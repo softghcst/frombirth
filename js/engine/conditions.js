@@ -14,6 +14,11 @@ export function tripleThreat(p = player()) {
 
 const SPECIAL = {
   roles: () => livingNpcs().map((n) => n.role),
+  // Country facts, for scenes: living.safety, living.infra, living.stability, living.graft, living.inflation, living.crisis
+  living: () => country().living,
+  hazards: () => country().living.hazards,
+  conscription: () => country().living.laws.conscription,
+  inCrisis: () => !!country().living.crisis,
   conditionIds: (p) => p.conditions.map((c) => c.id),
   inventoryIds: (p) => p.inventory.map((i) => i.id),
   degreeTypes: (p) => p.education.degrees.map((d) => d.type),
@@ -44,6 +49,7 @@ export function resolve(path, cast = {}) {
   const p = player();
   if (SPECIAL[path]) return SPECIAL[path](p);
   const parts = path.split('.');
+  if (SPECIAL[parts[0]]) return parts.slice(1).reduce((o, k) => (o == null ? undefined : o[k]), SPECIAL[parts[0]](p)) ?? null;
   if (parts[0] === 'cast' || parts[0] === 'memory') {
     const npc = store.state.npcs[cast[parts[1]]];
     if (!npc?.alive) return 0;

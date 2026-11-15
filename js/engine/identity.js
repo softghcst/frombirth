@@ -62,6 +62,8 @@ export function acceptanceOf(npc) {
     if (npc.role === 'friend' || npc.role === 'sibling' || npc.role === 'child' || npc.role === 'grandchild') score += 12;
     if (npc.orientation && npc.orientation !== 'straight') score += 30;
     if (npc.flags.trans) score += 30;
+    // Where the law itself is against it, fewer people feel free to be on your side.
+    score += { equal: 6, limited: -4, hostile: -24 }[country().living.laws.lgbt];
     npc.flags.acceptance = Math.round(clamp(score));
     // Some people will not be moved, whatever happens.
     npc.flags.stubborn = npc.flags.acceptance < 35 ? rng.chance(0.5) : npc.flags.acceptance < 62 && rng.chance(0.15);
@@ -90,6 +92,7 @@ function tellEveryone(what) {
   if (taken['not accepting'].length) parts.push(`Your ${list(taken['not accepting'])} ${taken['not accepting'].length === 1 ? 'takes' : 'take'} it badly.`);
   if (!parts.length) parts.push('There was nobody close enough to tell.');
   p.stats.mood = clamp(p.stats.mood + 6 + taken.accepting.length * 2 - taken['not accepting'].length * 4);
+  if (hostileHere()) { parts.push(`In ${country().name} this is against the law, or treated as if it were. From now on you are careful who else finds out.`); p.stats.mood = clamp(p.stats.mood - 6); }
   p.hidden.willpower = clamp(p.hidden.willpower + 3);
   return `${what} ${parts.join(' ')}`;
 }
@@ -175,7 +178,9 @@ export function changeName(name) {
   return result(true, text);
 }
 
-export const canChangeLegalGender = () => player().age >= AGES.legal && isTrans() && !ident().legal;
+/** In some countries none of this is available, by law. */
+export const hostileHere = () => country().living.laws.lgbt === 'hostile';
+export const canChangeLegalGender = () => player().age >= AGES.legal && isTrans() && !ident().legal && !hostileHere();
 export function changeLegalGender() {
   const p = player();
   const c = country();
@@ -196,7 +201,7 @@ export function changeLegalGender() {
 export const hrtCost = () => careCost(COSTS.hrtYear);
 export const canStartHrt = () => {
   const p = player();
-  return isTrans() && !ident().hrtAge && p.age >= AGES.hrt && !p.legal.incarceration;
+  return isTrans() && !ident().hrtAge && p.age >= AGES.hrt && !p.legal.incarceration && !hostileHere();
 };
 export function startHrt() {
   const p = player();
@@ -225,7 +230,7 @@ export function stopHrt() {
 export function surgeryOptions() {
   const p = player();
   const c = country();
-  if (!isTrans() || p.age < AGES.surgery || p.legal.incarceration) return [];
+  if (!isTrans() || p.age < AGES.surgery || p.legal.incarceration || hostileHere()) return [];
   const id = ident();
   return [
     { id: 'top', name: 'Top surgery', done: id.top, cost: careCost(COSTS.top) },

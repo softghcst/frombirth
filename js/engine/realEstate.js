@@ -24,7 +24,7 @@ export const home = () => assetOf(player().homeId);
 /** What a property is worth today: the market, its own quality, and its condition. */
 function worth(typeId, quality, condition) {
   const type = PROPERTY_BY_ID[typeId];
-  return Math.round(type.price * country().currency.scale * market().housing * quality * (0.6 + 0.4 * condition / 100));
+  return Math.round(type.price * country().currency.scale * (country().living?.costK ?? 1) * market().housing * quality * (0.6 + 0.4 * condition / 100));
 }
 
 const describe = (condition) => (condition >= 85 ? 'immaculate' : condition >= 65 ? 'in good order'
@@ -217,6 +217,12 @@ export function repossess(a) {
 }
 
 /** Changes a property from an event: which is 'home', 'rental' or 'any'. */
+/** Damage to one particular property (storms, earthquakes, war). */
+export function damageProperty(a, amount) {
+  a.condition = clamp(a.condition - amount);
+  a.value = worth(a.catalogId, a.quality, a.condition);
+}
+
 export function hitProperty(which, { condition = 0, evict: out = false } = {}) {
   const list = properties();
   const a = which === 'home' ? home() : which === 'rental' ? list.find((x) => x.tenant) : home() ?? list[0];

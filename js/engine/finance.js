@@ -1,7 +1,7 @@
 // Annual money flow: income, tax, living costs, loan payments, and settling
 // up if the account ends the year in the red.
 import { player, country, npcsByRole, log } from '../state.js';
-import { fmtMoney, localMoney } from '../util.js';
+import { fmtMoney, localMoney, localCost, clamp } from '../util.js';
 import { childCosts } from './children.js';
 import { settleUp } from './loans.js';
 import { sell as sellSecurity } from './market.js';
@@ -9,19 +9,22 @@ import { repossess } from './realEstate.js';
 import { repossessVehicle } from './vehicles.js';
 import { RENT_AND_BILLS, BILLS_ONLY } from '../data/properties.js';
 
+/** The first band of spending, at the country's own pay level. */
+const localWage30 = (c) => localMoney(30000 * (c.living?.wageK ?? 1), c);
+
 /** Income above this (base units a year) is taxed at the higher rate. */
 const HIGHER_RATE_FROM = 150000;
 const HIGHER_RATE_EXTRA = 0.12;
 
 /** Tax due on a year's income, in local currency. */
 export function incomeTax(gross, c = country()) {
-  const upper = Math.max(0, gross - localMoney(HIGHER_RATE_FROM, c));
+  const upper = Math.max(0, gross - localMoney(HIGHER_RATE_FROM * (c.living?.wageK ?? 1), c));
   return Math.round(gross * c.incomeTax + upper * HIGHER_RATE_EXTRA);
 }
 
 /** What a year of ordinary spending costs at a given income: the more you earn, the more of it you spend. */
 export function lifestyleCost(gross, c = country()) {
-  const a = localMoney(30000, c);
+  const a = localWage30(c);
   const g = Math.max(0, gross);
   return Math.round(Math.min(g, a) * 0.2 + Math.max(0, g - a) * 0.55);
 }
@@ -74,8 +77,17 @@ export function tickFinance() {
     // A spouse who earns pays their share of the household; one who does not is supported.
     const partner = npcsByRole('spouse')[0];
     const share = !partner ? 1 : partner.life?.job || partner.life?.pension ? 0.55 : 1.15;
-    const base = Math.round(localMoney(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share);
+    let base = Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share);
     const lifestyle = lifestyleCost(gross, c);
+    // Where pay is low against rents, people on ordinary wages do not live alone: they share.
+    const takeHome = gross - incomeTax(gross, c);
+    const crowded = gross > 0 && !p.homeId && base > takeHome * 0.7;
+    if (crowded) {
+      base = Math.round(takeHome * 0.32);
+      if (p.stats.mood > 40) p.stats.mood = clamp(p.stats.mood - 1);
+      if (!p.flags.sharedHousing) log('On what you earn here, a place of your own is out of reach. You share a room, as most people your age do.', 'system', 'neutral');
+    }
+    p.flags.sharedHousing = crowded;
     f.cash -= afford(base + lifestyle);
   }
 

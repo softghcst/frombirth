@@ -6,6 +6,7 @@ import { avatarSvg } from '../../avatar/render.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { randomAppearance } from '../../avatar/inherit.js';
 import { ORIENTATIONS } from '../../engine/identity.js';
+import { summary } from '../../engine/living.js';
 
 const TALENTS = { singing: 'Singing', dance: 'Dance', acting: 'Acting', music: 'Music', sports: 'Sports', crime: 'Mischief' };
 
@@ -113,7 +114,7 @@ export function renderCreator(app, hooks) {
     q('#f-city').innerHTML = '<option value="">Random</option>'
       + (c?.cities ?? []).map((city) => `<option>${esc(city)}</option>`).join('');
     q('[data-country-info]').textContent = c
-      ? `Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, estate tax ${Math.round(c.estateTax * 100)}%, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'}`
+      ? `Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, estate tax ${Math.round(c.estateTax * 100)}%, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'} ${summary(c).short}.`
       : 'Each country has its own currency and taxes.';
   });
 

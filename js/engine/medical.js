@@ -1,8 +1,9 @@
 // Doctors, check-ups, therapy and cosmetic surgery.
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
+import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { addCondition, cureCondition } from './health.js';
+import { careQuality } from './living.js';
 import { ILLNESS_BY_ID } from '../data/illnesses.js';
 import { TREATMENTS, PUBLIC_CARE_SHARE, CHECKUP_COST, THERAPY_COST, SURGERIES, SURGEONS } from '../data/activities.js';
 
@@ -18,7 +19,7 @@ function acts() {
 export function careCost(base) {
   const c = country();
   if (player().legal.incarceration) return 0;
-  return localMoney(base * (c.freeHealthcare ? PUBLIC_CARE_SHARE : 1), c);
+  return localCost(base * (c.freeHealthcare ? PUBLIC_CARE_SHARE : 1), c);
 }
 
 /** Conditions a doctor could do something about, with what it would cost. */
@@ -46,7 +47,7 @@ export function seeDoctor(conditionId) {
   const paid = cost ? ` It cost ${fmtMoney(cost, c)}.` : '';
   const plain = cond.name.replace(/^an? /, '');
 
-  if (!rng.chance(t.chance)) {
+  if (!rng.chance(t.chance * (0.72 + careQuality() / 320))) {
     const text = `The treatment for your ${plain} did not take. The doctor wants to try again next year.${paid}`;
     log(text, 'system', 'bad');
     return result(false, text);

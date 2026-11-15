@@ -145,6 +145,9 @@ tests/          checks that run on Node alone
 | Orientation, gender, transition steps and costs, how family respond | `js/engine/identity.js` |
 | Scenes about identity | `js/data/events/identity.js` |
 | Countries: currency, tax rates, cities, public services | `js/data/countries.js` |
+| What each country is like to live in: pay, prices, safety, health care, power and water, stability, hazards, laws, crises | `js/data/living.js` (simplified, mid-2020s; edit a row and the game follows) |
+| What living somewhere does each year, how wealth softens it, and what the law allows | `js/engine/living.js` |
+| Scenes that depend on the country | `js/data/events/country.js` |
 | First names and surnames for each country (people are named from where they live) | `js/data/names.js` |
 | Child acting: ages, levels, pay, and the head start it gives an adult actor | `child_actor` in `js/data/careers.js` |
 | Prison events | `js/data/events/prison.js` |

@@ -1,5 +1,6 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
-import { player } from '../../state.js';
+import { player, country } from '../../state.js';
+import * as living from '../../engine/living.js';
 import { esc } from '../../util.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
 import { BIRTH_BY_ID } from '../../data/birthConditions.js';
@@ -43,6 +44,11 @@ export default {
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         <button class="btn" data-identity style="margin-top:10px">Identity</button>
       </div>
+      ${(() => { const here = living.summary(); return `<div class="card"><h3>Life in ${esc(country().name)}</h3>
+        ${here.crisis ? `<p style="margin-bottom:8px"><strong>${esc(here.crisis.name)}.</strong> ${esc(here.crisis.blurb)}</p>` : ''}
+        <div class="kv"><span>Your standing here</span><span><strong>${esc(living.tierName())}</strong></span></div>
+        ${here.rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+        <p class="muted" style="margin-top:8px">How hard any of this lands depends on what you can afford.</p></div>`; })()}
       <div class="card"><h3>Traits</h3>
         ${traits.map((t) => `<div class="kv"><span>${esc(t.name)}${from(t.id)}</span><span>${esc(t.desc)}</span></div>`).join('')}
       </div>

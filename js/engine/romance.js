@@ -253,6 +253,7 @@ export function marry(npcId, weddingId, prenup) {
   const npc = npcOf(npcId);
   const w = WEDDINGS.find((x) => x.id === weddingId);
   if (!npc.flags.engaged) return result(false, 'You are not engaged.', 'neutral');
+  if (npc.gender === p.gender && !c.living.laws.marriage) return result(false, `Two ${p.gender === 'male' ? 'men' : p.gender === 'female' ? 'women' : 'people of the same gender'} cannot marry in ${c.name}. You can stay engaged, or move somewhere you can.`, 'neutral');
   const cost = localMoney(w.cost, c);
   if (p.finance.cash < cost) return result(false, 'You cannot afford that wedding.', 'neutral');
   p.finance.cash -= cost;

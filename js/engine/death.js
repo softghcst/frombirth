@@ -8,6 +8,7 @@ import { addToGraveyard, deleteSlot, saveGame } from '../save.js';
 import { stageLabel } from './education.js';
 import { roleLabel } from './relationships.js';
 import { heirs } from './legacy.js';
+import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
 
@@ -37,6 +38,7 @@ function careShift(p) {
   if (p.stats.mood >= 60) s += 1;
   if (p.stats.mood < 25) s -= 2;
   if (p.conditions.some((c) => c.chronic && !c.treated)) s -= 2; // an untreated long-term illness
+  s += (careQuality() - 84) / 7; // the standard of care within reach, which money can buy
   return s;
 }
 
@@ -47,6 +49,7 @@ export function rollDeath() {
   const p = player();
   const worst = [...p.conditions].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
+  if (p.legal.incarceration?.deathRow && p.legal.incarceration.served >= 2 && rng.chance(0.1)) return 'execution';
   if (!rng.chance(mortalityChance(p.age, p.stats.health, (p.flags.longevity ?? 0) + careShift(p)))) return null;
   if (worst && worst.severity >= 45 && rng.chance(0.7)) return worst.name.replace(/^an? /, '');
   return p.age >= 100 ? 'great old age' : p.age >= 70 ? 'old age' : rng.pick(ACCIDENTS);

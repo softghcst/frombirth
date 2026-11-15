@@ -6,7 +6,7 @@
 // in close family also reach the player's journal, and a few ask the player
 // to respond (see data/events/familyLives.js).
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
+import { clamp, localMoney, fmtMoney, localWage, localCost } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { inheritAppearance, inheritTalents, inheritTraits } from './genetics.js';
@@ -129,7 +129,7 @@ function careersFor(npc) {
   return open.filter((c) => !c.req?.majors && !c.req?.programme && !c.req?.trade);
 }
 
-const bandPay = (level, where = 0.4) => localMoney((level.pay[0] + (level.pay[1] - level.pay[0]) * where) * 1000, country());
+const bandPay = (level, where = 0.4) => localWage((level.pay[0] + (level.pay[1] - level.pay[0]) * where) * 1000, country());
 
 function startJob(npc, quiet = false) {
   const options = careersFor(npc);
@@ -296,7 +296,7 @@ function tickEducation(npc, quiet = false) {
 /** How far along a 'measured' ambition is, from the life actually lived (0–100). */
 const MEASURES = {
   career_top: (n) => (n.life.job ? n.life.job.level / (CAREER_BY_ID[n.life.job.careerId].levels.length - 1) * 100 : 0),
-  own_home: (n) => n.life.savings / localMoney(60000, country()) * 100,
+  own_home: (n) => n.life.savings / localCost(60000, country()) * 100,
   family: (n) => (n.role === 'spouse' || n.role === 'partner'
     ? livingNpcs().filter((k) => k.role === 'child').length : n.life.kids) / 2 * 100,
   degree: (n) => (n.life.edu.degrees.includes('university') ? 100 : n.life.edu.stage === 'university' ? 60 : 0),
@@ -488,7 +488,7 @@ function tickLife(npc, quiet = false) {
     if (L.job) tickJob(npc, quiet);
     else if (npc.age < 66 && !L.retired) startJob(npc, quiet);
     if (L.job && npc.age >= 66) {
-      L.pension = Math.min(localMoney(150000, country()), Math.round(L.job.salary * Math.min(0.6, (L.yearsWorked ?? 0) * 0.015)));
+      L.pension = Math.min(localWage(150000, country()), Math.round(L.job.salary * Math.min(0.6, (L.yearsWorked ?? 0) * 0.015)));
       if (!quiet) note(npc, `retired as ${an(npc.occupation)}`, true);
       npc.occupation = `retired ${npc.occupation}`;
       L.job = null;

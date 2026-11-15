@@ -1,6 +1,6 @@
 // The beauty salon: changing how the player wears what they were born with.
 // Only the `style` half of an appearance ever changes here.
-import { clamp, localMoney, fmtMoney } from '../util.js';
+import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
 import { player, country, log } from '../state.js';
 import { normalize, part } from '../avatar/catalog.js';
 
@@ -24,7 +24,7 @@ export function salonQuote(next) {
   for (const key of Object.keys(SALON_PRICES)) {
     if (now[key] === next.style[key]) continue;
     const removing = next.style[key] == null;
-    lines.push({ label: LABELS[key], cost: removing ? 0 : localMoney(SALON_PRICES[key], c) });
+    lines.push({ label: LABELS[key], cost: removing ? 0 : localCost(SALON_PRICES[key], c) });
   }
   const free = p.age < PAYS_FROM;
   return { lines, total: free ? 0 : lines.reduce((s, l) => s + l.cost, 0), free, changed: lines.length > 0 };

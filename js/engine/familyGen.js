@@ -1,7 +1,7 @@
 // Builds the family a life starts in, and runs the family's yearly business:
 // pocket money and new siblings.
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
+import { clamp, localMoney, fmtMoney, localWage } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, unknownParent } from './genetics.js';
@@ -84,7 +84,7 @@ export function tickFamily() {
   // Pocket money, sized by what the parents have and how freely they give.
   if (p.age >= 6 && p.age <= 17 && parents.length) {
     const share = parents.reduce((s, n) => s + (n.wealth / 100) * (n.meters.generosity / 100), 0) / parents.length;
-    const amount = localMoney(share * (p.age < 12 ? 500 : 1500), c);
+    const amount = localWage(share * (p.age < 12 ? 500 : 1500), c);
     if (amount > 0) {
       p.finance.cash += amount;
       if (!p.flags.gotPocketMoney) {
