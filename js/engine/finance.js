@@ -30,12 +30,16 @@ export function tickFinance() {
 
   // Living costs start once you support yourself.
   if (!p.flags.livesWithParents && p.age >= 18 && !p.education.enrolled) {
-    const base = Math.round(localMoney(12000, c) * (npcsByRole('spouse').length ? 0.65 : 1));
+    // A spouse who earns pays their share of the household; one who does not is supported.
+    const partner = npcsByRole('spouse')[0];
+    const share = !partner ? 1 : partner.life?.job || partner.life?.pension ? 0.55 : 1.15;
+    const base = Math.round(localMoney(12000, c) * share);
     const lifestyle = Math.round(Math.max(0, gross) * 0.2);
     f.cash -= base + lifestyle;
   }
 
-  if (p.age >= 18) f.cash -= childCosts();
+  const coParent = npcsByRole('spouse')[0];
+  if (p.age >= 18) f.cash -= Math.round(childCosts() * (coParent?.life?.job ? 0.5 : 1));
 
   for (const loan of f.loans) {
     // Student loans are frozen while you study, and repayments wait until you

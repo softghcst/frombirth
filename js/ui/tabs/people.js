@@ -5,13 +5,23 @@ import { esc, fmtMoney, localMoney } from '../../util.js';
 import * as rel from '../../engine/relationships.js';
 import * as love from '../../engine/romance.js';
 import * as kids from '../../engine/children.js';
+import * as lives from '../../engine/npcLives.js';
+import { openFamilyTree } from '../familyTree.js';
 import { avatarSvg, petGlyph } from '../avatar.js';
 import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
 
-const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'parent', 'sibling', 'grandparent', 'mentor', 'friend',
-  'classmate', 'coworker', 'boss', 'pet', 'ex', 'enemy', 'cellmate'];
+const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece',
+  'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
+const GROUPS = [
+  ['Partner', ['spouse', 'partner']],
+  ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
+  ['Family', ['parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'pet']],
+  ['Friends', ['friend', 'classmate']],
+  ['Work and mentors', ['mentor', 'coworker', 'boss']],
+  ['Others', ['ex', 'enemy', 'cellmate']],
+];
 
 const portrait = (npc) => (npc.role === 'pet'
   ? `<div class="avatar glyph">${petGlyph(npc.species)}</div>`
@@ -130,6 +140,7 @@ async function lookForLove(api) {
 // ---------- One person ----------
 
 function openNpc(npc, api) {
+  lives.ensureLife(npc);
   const m = npc.meters;
   const isPet = npc.role === 'pet';
   const meters = isPet
@@ -148,14 +159,25 @@ function openNpc(npc, api) {
     ? '<p class="muted" style="margin-top:8px">You are expecting a baby together.</p>' : '';
   const history = npc.memories?.length
     ? `<div class="section-label" style="margin-top:0">What they remember</div>
-       ${npc.memories.map((x) => `<div class="kv"><span>Age ${x.age}</span><span>${esc(x.text)}</span></div>`).join('')}
+       ${npc.memories.map((x) => `<div class="kv"><span>When you were ${x.age}</span><span>${esc(x.text)}</span></div>`).join('')}
        <div style="height:14px"></div>` : '';
 
+  const life = lives.lifeSummary(npc);
+  const lifeCard = life.length ? `<div class="section-label" style="margin-top:0">Their life</div>
+    ${life.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+    <div style="height:14px"></div>` : '';
+  const timeline = npc.life?.history.length
+    ? `<div class="section-label" style="margin-top:0">What has happened to them</div>
+       ${npc.life.history.slice(-14).reverse().map((h) => `<div class="kv"><span>Age ${h.age}</span><span>${esc(h.text.charAt(0).toUpperCase() + h.text.slice(1))}.</span></div>`).join('')}
+       <div style="height:14px"></div>` : '';
+  const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
+
   const actions = [
-    ...love.romanceActions(npc),
+    ...(npc.alive ? love.romanceActions(npc) : []),
+    ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
-    ...rel.basicActions(npc),
+    ...(npc.alive ? rel.basicActions(npc) : []),
   ];
   // Friendly things first, destructive things last.
   actions.sort((a, b) => Number(!!a.danger) - Number(!!b.danger));
@@ -164,11 +186,11 @@ function openNpc(npc, api) {
     <div class="row" style="border:0;padding:0;background:none">
       ${portrait(npc)}
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
-        <small>${esc(rel.roleLabel(npc))} · age ${npc.age}${detail}</small></div>
+        <small>${esc(rel.roleLabel(npc))} · ${npc.alive ? `age ${npc.age}` : `died at ${npc.age}`}${detail}</small></div>
     </div>
     ${traitChips}${feudNote}${expecting}
     <div style="margin:12px 0 16px">${meters}</div>
-    ${history}
+    ${lifeCard}${history}${timeline}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
       <button class="btn" data-close>Close</button>
@@ -189,6 +211,7 @@ function openNpc(npc, api) {
       date: () => report(api, love.goOnDate(npc.id)),
       hookUp: () => report(api, love.hookUp(npc.id)),
       baby: () => report(api, kids.tryForBaby(npc.id)),
+      encourage: () => report(api, lives.encourage(npc.id)),
       breakUp: async () => {
         const yes = await confirmModal({ title: `End things with ${npc.firstName}?`, body: 'They will become an ex.', yes: 'End it', danger: true });
         if (yes) await report(api, love.breakUp(npc.id));
@@ -206,27 +229,33 @@ export default {
     const list = livingNpcs().sort((a, b) =>
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
-    const top = [];
+    const top = [['tree', 'Family tree']];
     if (love.canLookForLove()) top.push(['love', 'Look for love']);
     if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
     if (rel.canGetPet()) top.push(['pet', `Get a pet (${fmtMoney(localMoney(rel.PET_PRICE, c), c)})`]);
 
+    const row = (n) => `
+      <button class="row" data-npc="${n.id}">
+        ${portrait(n)}
+        <div class="main"><strong>${esc(n.firstName)} ${n.role === 'pet' ? '' : esc(n.lastName)}</strong>
+          <small>${esc(rel.roleLabel(n))} · age ${n.age}${n.occupation ? ` · ${esc(n.occupation)}` : ''}</small></div>
+        <div class="side">${Math.round(n.meters.relationship)}%
+          <div class="mini"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
+      </button>`;
+
     el.innerHTML = `
       ${top.length ? `<div class="btn-stack" style="margin-bottom:14px">${top.map(([id, label]) =>
         `<button class="btn" data-top="${id}">${esc(label)}</button>`).join('')}</div>` : ''}
-      ${list.length ? list.map((n) => `
-        <button class="row" data-npc="${n.id}">
-          ${portrait(n)}
-          <div class="main"><strong>${esc(n.firstName)} ${n.role === 'pet' ? '' : esc(n.lastName)}</strong>
-            <small>${esc(rel.roleLabel(n))} · age ${n.age}</small></div>
-          <div class="side">${Math.round(n.meters.relationship)}%
-            <div class="mini"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
-        </button>`).join('') : '<p class="empty">There is nobody in your life right now.</p>'}`;
+      ${list.length ? GROUPS.map(([title, roles]) => {
+        const group = list.filter((n) => roles.includes(n.role));
+        return group.length ? `<div class="section-label">${esc(title)}</div>${group.map(row).join('')}` : '';
+      }).join('') : '<p class="empty">There is nobody in your life right now.</p>'}`;
 
     el.onclick = async (e) => {
       const row = e.target.closest('[data-npc]');
       if (row) return openNpc(store.state.npcs[row.dataset.npc], api);
       const id = e.target.closest('[data-top]')?.dataset.top;
+      if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api));
       if (id === 'love') return lookForLove(api);
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

@@ -121,3 +121,11 @@ for (const c of LIST) [c.freeHealthcare, c.freeUniversity] = POLICY[c.id];
 /** @type {Object<string, ReturnType<typeof C>>} */
 export const COUNTRIES = Object.fromEntries(LIST.map((c) => [c.id, c]));
 export const COUNTRY_LIST = LIST;
+
+/** Used once a family has used up every local first name, so no two relatives share one. */
+export const EXTRA_NAMES = {
+  male: ('Adam Felix Jonah Silas Rowan Miles Jude Ezra Leon Milo Arlo Kian Dante Idris Rafael Tobias Elias Oscar Hugo '
+    + 'Nico Luca Ivo Soren Anders Kofi Malik Tariq Zayn Ravi Arun Kenji Hiro Jin Mateus Thiago Emil Viktor Cormac Finn Ansel').split(' '),
+  female: ('Ada Clara Esme Iris Juno Lena Mira Nora Opal Pia Rosa Thea Vera Wren Zoe Alma Bea Cleo Dara Elin '
+    + 'Fern Greta Hana Ines Jade Kira Lyra Mae Noor Odette Petra Rhea Selma Talia Una Viola Yara Zara Amina Leila').split(' '),
+};

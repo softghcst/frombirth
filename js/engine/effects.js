@@ -99,6 +99,11 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         }
         break;
       }
+      case 'moveCity': {
+        const others = c.cities.filter((x) => x !== p.city);
+        p.city = others[Math.floor(Math.random() * others.length)] ?? p.city;
+        break;
+      }
       case 'queue':
         (ctx.queue ??= []).push(e.value);
         break;

@@ -8,6 +8,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { remember } from './conditions.js';
 import { spendAction, roleLabel } from './relationships.js';
 import { conceive, canConceive } from './children.js';
+import { ensureLife } from './npcLives.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -83,11 +84,13 @@ export function meetSomeone(place) {
   const npc = makeNpc({ role: 'partner', countryId: p.countryId, gender, age, relationship: rng.int(48, 62),
     lastName: rng.pick(surnames) });
   if (place === 'app') npc.meters.charm = clamp(npc.meters.charm - rng.int(0, 15)); // profiles flatter
+  ensureLife(npc);
   const m = npc.meters;
+  const job = npc.life.job ? `works as ${/^[aeiou]/i.test(npc.occupation) ? 'an' : 'a'} ${npc.occupation}` : npc.life.edu.yearsLeft > 0 ? 'is still studying' : npc.age < 18 ? 'is at school' : 'is between jobs';
   const blurb = [
     m.charm >= 70 ? 'very easy on the eye' : m.charm >= 45 ? 'pleasant-looking' : 'not much to look at, with a lovely laugh',
     m.intellect >= 70 ? 'sharp as a tack' : m.intellect >= 45 ? 'good company' : 'not a big reader',
-    m.money >= 70 ? 'clearly doing well' : m.money >= 35 ? 'getting by' : 'always short',
+    job,
     m.crazy >= 70 ? 'and a little intense' : 'and seems steady',
   ].join(', ');
   return { ok: true, npc, blurb };
@@ -151,6 +154,7 @@ export function askOut(npcId) {
   }
   npc.flags.wasRole = npc.role;
   npc.role = 'partner';
+  ensureLife(npc);
   npc.flags.since = p.age;
   bump(npc, 10);
   p.stats.mood = clamp(p.stats.mood + 10);
@@ -220,7 +224,7 @@ export function propose(npcId, ringId) {
 }
 
 /** How wealthy the other person is, in local money. Used for settlements. */
-const theirWealth = (npc) => localMoney(npc.meters.money ** 2 * 45, country());
+const theirWealth = (npc) => (npc.life ? Math.max(0, npc.life.savings) : localMoney(npc.meters.money ** 2 * 45, country()));
 
 /** Asks for a prenup. They may refuse, and asking always costs a little. */
 export function askForPrenup(npcId) {
@@ -291,6 +295,7 @@ function endMarriage(npc, yours) {
   const owed = settlement(npc.id);
   const fee = localMoney(DIVORCE_FEE, c);
   p.finance.cash -= owed + fee;
+  if (npc.life) npc.life.savings += owed;
   npc.role = 'ex';
   npc.flags.wasSpouse = true;
   npc.meters.relationship = Math.min(npc.meters.relationship, 15);

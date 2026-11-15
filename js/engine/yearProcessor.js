@@ -5,6 +5,7 @@ import { tickRelationships } from './relationships.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
 import { tickChildren } from './children.js';
+import { tickLives } from './npcLives.js';
 import { tickEducation } from './education.js';
 import { tickCareer } from './career.js';
 import { tickFinance } from './finance.js';
@@ -35,6 +36,7 @@ export function advanceYear() {
   tickFamily();
   tickRomance();
   tickChildren();
+  tickLives();
   tickEducation();
   const workDeath = tickCareer();
   if (workDeath) { die(workDeath); return; }

@@ -41,6 +41,7 @@ export function resolve(path, cast = {}) {
     const npc = store.state.npcs[cast[parts[1]]];
     if (!npc?.alive) return 0;
     if (parts[0] === 'memory') return hasMemory(npc, parts[2]) ? 100 : 0;
+    if (parts[2] === 'flags') return npc.flags[parts[3]] ? 100 : 0;
     return parts[2] === 'age' ? npc.age : npc.meters[parts[2]];
   }
   return parts.reduce((o, k) => (o == null ? undefined : o[k]), p);

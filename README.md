@@ -45,6 +45,8 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Workplace events | `js/data/events/work.js` |
 | Gift tiers, rings, wedding sizes, fees | top of `js/engine/relationships.js`, `romance.js`, `children.js` |
 | Romance and family events | `js/data/events/romance.js`, `family.js` |
+| Other people's lives: ambitions, hobbies, school and adult moments, family size limits | `js/data/npcLife.js` |
+| Scenes that other people's lives ask you to respond to | `js/data/events/familyLives.js` |
 | Friend scenes (new groups, fallings-out, memories) | `js/data/events/friends.js` |
 | One-off events | `js/data/events/*.js` |
 | Multi-year storylines: musical theatre, mentors, school paper | `js/data/events/stories/*.js` (each file's header explains its flags and contacts) |

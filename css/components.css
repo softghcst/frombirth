@@ -134,3 +134,15 @@
 .pick.swatch { padding: 0; width: 44px; }
 .pick.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .pick.on:not(.swatch) { background: var(--accent-soft); }
+
+/* ---------- Family tree ---------- */
+.tree { margin: 0 -6px; }
+.tree-row {
+  display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 10px; min-height: 44px;
+  border-left: 2px solid var(--line); margin: 2px 0;
+}
+.tree-row strong, .tree-row small { display: block; }
+.tree-row small { color: var(--muted); font-size: 0.8rem; }
+.tree-row.gone { opacity: 0.6; }
+.tree-row.you { background: var(--accent-soft); border-left-color: var(--accent); }
+button.tree-row:active { background: var(--accent-soft); }

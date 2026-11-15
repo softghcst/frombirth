@@ -7,7 +7,6 @@ import { store, player, country, npcsByRole, log, milestone } from '../state.js'
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats } from './genetics.js';
 import { spendAction, PET_PRICE, canGetPet } from './relationships.js';
-import { OCCUPATIONS } from '../data/traits.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -166,31 +165,8 @@ export function childCosts() {
   return minors * localMoney(CHILD_COST, country());
 }
 
-/** Yearly: births, children leaving home, starting work and having children. */
+/** Yearly: births. What children go on to do is in npcLives.js. */
 export function tickChildren() {
   const p = player();
   if (p.flags.pregnancy && p.age >= p.flags.pregnancy.dueAge) birth();
-
-  for (const kid of npcsByRole('child')) {
-    const they = kid.firstName;
-    if (kid.age === 5) log(`${they} started school.`);
-    if (kid.age === 18) log(`${they} turned eighteen and moved out.`);
-    if (kid.age === 22 && !kid.occupation) {
-      const fits = OCCUPATIONS.filter((o) => o.income > 0 && o.income <= 30000 + kid.meters.intellect * 1500);
-      const job = rng.pick(fits.length ? fits : OCCUPATIONS);
-      kid.occupation = job.title;
-      kid.wealth = rng.int(job.wealth[0], job.wealth[1]);
-      kid.meters.money = kid.wealth;
-      log(`${they} started work as a ${job.title}.`);
-    }
-    const grandkids = npcsByRole('grandchild').filter((g) => g.parentIds?.includes(kid.id)).length;
-    if (kid.age >= 25 && kid.age <= 38 && grandkids < 3 && rng.chance(0.08)) {
-      const baby = addNpc(makeNpc({ role: 'grandchild', countryId: p.countryId, lastName: kid.lastName, age: 0,
-        relationship: rng.int(55, 80), skinHint: kid.appearance?.skin }));
-      baby.parentIds = [kid.id];
-      log(`${they} had a baby: your ${baby.gender === 'male' ? 'grandson' : 'granddaughter'}, ${baby.firstName}.`, 'system', 'good');
-      p.stats.mood = clamp(p.stats.mood + 8);
-      if (grandkids === 0 && !p.flags.isGrandparent) { p.flags.isGrandparent = true; milestone('Became a grandparent.', 'family'); }
-    }
-  }
 }

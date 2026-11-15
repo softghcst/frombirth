@@ -52,7 +52,7 @@
  * @property {string} gender
  * @property {number} age
  * @property {boolean} alive
- * @property {'parent'|'grandparent'|'grandchild'|'mentor'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
+ * @property {'parent'|'grandparent'|'grandchild'|'greatgrandchild'|'niece'|'inlaw'|'mentor'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
  *            |'ex'|'child'|'pet'|'boss'|'cellmate'} role
  * @property {{relationship:number, money:number, crazy:number, intellect:number,
  *             charm:number, health:number, generosity:number}} meters
@@ -72,8 +72,22 @@
  * @property {CoreStats} [stats]
  * @property {Talents} [talents]
  * @property {{key:string, text:string, age:number}[]} [memories]  what they remember about the player
+ * @property {NpcLife} [life]  their own schooling, work, money, family and ambition (engine/npcLives.js)
  * @property {number} lastInteractionAge
  * @property {Object<string, any>} flags
+ *
+ * @typedef {Object} NpcLife
+ * @property {{stage:string, gpa:number, majorId:?string, trade:?string, degrees:string[], yearsLeft:number}} edu
+ * @property {?{careerId:string, level:number, title:string, salary:number, years:number}} job
+ * @property {number} savings  local currency; can go negative
+ * @property {number} [pension]
+ * @property {?{id:string, text:string, progress:number, achieved:boolean, boost?:number}} aspiration
+ * @property {?string} partnerId  the 'inlaw' NPC they are with
+ * @property {number} together  years with that partner
+ * @property {boolean} married
+ * @property {number} kids
+ * @property {?string} [hobby]
+ * @property {{age:number, year:number, text:string}[]} history  their timeline
  *
  * @typedef {Object} Asset
  * @property {string} id
@@ -179,7 +193,7 @@
  * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
  * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry

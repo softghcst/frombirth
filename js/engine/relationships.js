@@ -21,6 +21,18 @@ export function roleLabel(npc) {
     case 'grandparent': return byGender(npc, 'Grandfather', 'Grandmother', 'Grandparent');
     case 'child': return byGender(npc, 'Son', 'Daughter', 'Child') + (npc.adopted ? ' (adopted)' : '');
     case 'grandchild': return byGender(npc, 'Grandson', 'Granddaughter', 'Grandchild');
+    case 'greatgrandchild': return byGender(npc, 'Great-grandson', 'Great-granddaughter', 'Great-grandchild');
+    case 'niece': return byGender(npc, 'Nephew', 'Niece', 'Sibling\'s child');
+    case 'inlaw': {
+      // Someone who came into the family through a relative's relationship.
+      const of = store.state.npcs[npc.flags.partnerOf];
+      if (!of) return 'In-law';
+      if (npc.flags.former) return `${of.firstName}'s ex`;
+      if (!npc.flags.married) return `${of.firstName}'s partner`;
+      if (of.role === 'child') return byGender(npc, 'Son-in-law', 'Daughter-in-law', 'Child-in-law');
+      if (of.role === 'sibling') return byGender(npc, 'Brother-in-law', 'Sister-in-law', 'Sibling-in-law');
+      return `${of.firstName}'s ${byGender(npc, 'husband', 'wife', 'spouse')}`;
+    }
     case 'spouse': return byGender(npc, 'Husband', 'Wife', 'Spouse');
     case 'partner': return npc.flags.engaged ? byGender(npc, 'Fiancé', 'Fiancée', 'Betrothed')
       : byGender(npc, 'Boyfriend', 'Girlfriend', 'Partner');
@@ -31,7 +43,7 @@ export function roleLabel(npc) {
 }
 
 const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 3,
-  spouse: 2, child: 2, grandchild: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3 };
+  spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3 };
 
 export const removeNpc = (npc) => {
   const p = player();
@@ -64,7 +76,7 @@ export function tickRelationships() {
 
     // Mortality. People who matter to a storyline (tagged contacts) and young
     // children are spared random deaths, so later scenes can still find them.
-    const spared = (npc.flags.tag && npc.age < 70) || ((npc.role === 'child' || npc.role === 'grandchild') && npc.age < 40);
+    const spared = (npc.flags.tag && npc.age < 70) || (['child', 'grandchild', 'greatgrandchild', 'niece'].includes(npc.role) && npc.age < 40);
     const dies = npc.role === 'pet'
       ? npc.age >= npc.lifespan || rng.chance(0.01)
       : !spared && rng.chance(mortalityChance(npc.age, npc.meters.health));
@@ -98,7 +110,7 @@ export function tickRelationships() {
 
 // ---------- Everyday interactions ----------
 
-const GIVERS = ['parent', 'grandparent', 'sibling', 'spouse', 'partner', 'friend', 'child'];
+const GIVERS = ['parent', 'grandparent', 'sibling', 'spouse', 'partner', 'friend', 'child', 'grandchild'];
 
 /** Gift tiers, in base units. */
 export const GIFTS = [
@@ -211,7 +223,11 @@ export function interact(npcId, action, option) {
       const chance = clamp((m.generosity * 0.5 + m.relationship * 0.4 + m.money * 0.2 - 35) / 100, 0.03, 0.9);
       if (rng.chance(chance)) {
         const scale = npc.role === 'parent' || npc.role === 'grandparent' ? 25 : npc.role === 'spouse' ? 20 : 8;
-        const amount = localMoney(Math.max(20, m.money * scale * (0.4 + rng.next())) * (p.age < 16 ? 0.05 : 1), c);
+        let amount = localMoney(Math.max(20, m.money * scale * (0.4 + rng.next())) * (p.age < 16 ? 0.05 : 1), c);
+        if (npc.life) { // people with lives of their own give from their own savings
+          amount = Math.min(amount, Math.max(localMoney(20, c), Math.round(npc.life.savings * 0.15)));
+          npc.life.savings -= amount;
+        }
         p.finance.cash += amount;
         bump(npc, -3);
         text = `${name} gave you ${fmtMoney(amount, c)}.`;

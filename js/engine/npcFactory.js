@@ -1,7 +1,7 @@
 // Builds NPC records. Every NPC carries the same seven meters.
 import { rng } from '../rng.js';
 import { uid, clamp, localMoney } from '../util.js';
-import { COUNTRIES } from '../data/countries.js';
+import { COUNTRIES, EXTRA_NAMES } from '../data/countries.js';
 import { store } from '../state.js';
 import { OCCUPATIONS, BACKGROUNDS, PETS } from '../data/traits.js';
 import { randomAppearance, randomTraits, randomTalents } from './genetics.js';
@@ -9,12 +9,14 @@ import { randomAppearance, randomTraits, randomTalents } from './genetics.js';
 const meter = (mean = 55, spread = 35) => Math.round(clamp(rng.around(mean, spread)));
 
 /** A first name nobody in the current life already has, where one is left. */
-function freshName(pool) {
+function freshName(pool, gender) {
   const state = store.state;
   if (!state) return rng.pick(pool);
   const taken = new Set([state.player.firstName, ...Object.values(state.npcs).map((n) => n.firstName)]);
   const free = pool.filter((n) => !taken.has(n));
-  return rng.pick(free.length ? free : pool);
+  if (free.length) return rng.pick(free);
+  const wider = (EXTRA_NAMES[gender] ?? [...EXTRA_NAMES.male, ...EXTRA_NAMES.female]).filter((n) => !taken.has(n));
+  return rng.pick(wider.length ? wider : pool);
 }
 
 /**
@@ -37,7 +39,7 @@ export function makeNpc(o) {
   const gender = o.gender ?? rng.pick(['male', 'female']);
   const npc = {
     id: uid('npc'),
-    firstName: o.firstName ?? freshName(names[gender] ?? names.female),
+    firstName: o.firstName ?? freshName(names[gender] ?? names.female, gender),
     lastName: o.lastName ?? rng.pick(names.last),
     gender,
     age: Math.max(0, Math.round(o.age)),
