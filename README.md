@@ -49,6 +49,7 @@ Every portrait in the game is drawn by one renderer from layered, recolourable S
 | How children take after their parents | `js/avatar/inherit.js` |
 | The live editor | `js/avatar/editor.js` |
 | The salon's prices and rules | `js/engine/salon.js` |
+| The look of the portraits (proportions, outlines, cheeks, the baby) | constants at the top of `js/avatar/render.js` |
 
 **Where to open the live appearance editor**
 
@@ -140,6 +141,8 @@ tests/          checks that run on Node alone
 | Illnesses (what they do each year, who gets them) | `js/data/illnesses.js` |
 | Health, online and living-abroad scenes | `js/data/events/leisure.js` |
 | Epitaphs (titles, inscriptions, what earns each) and the untaxed estate allowance | `js/data/epitaphs.js` |
+| Age down: how many years can be taken back | `UNDO_YEARS` in `js/save.js` |
+| Which stats and talents can be edited on other people | `EDITABLE_METERS`, `EDITABLE_TALENTS` in `js/engine/relationships.js` |
 | Wills: who inherits, who gets which property or vehicle, what happens at death | `js/engine/death.js` |
 | Skills that can be practised, sessions a year, lesson price | `js/data/skills.js` (rules in `js/engine/skills.js`) |
 | Orientation, gender, transition steps and costs, how family respond | `js/engine/identity.js` |

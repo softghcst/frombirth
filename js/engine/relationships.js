@@ -278,3 +278,28 @@ export function interact(npcId, action, option) {
 
 export const PET_PRICE = 150;
 export const canGetPet = () => player().age >= 18 && npcsByRole('pet').length < 3;
+
+/** The numbers that can be edited on anyone but the player. */
+export const EDITABLE_METERS = [['relationship', 'Relationship'], ['health', 'Health'], ['intellect', 'Intellect'], ['charm', 'Charm'],
+  ['money', 'Money'], ['generosity', 'Generosity'], ['crazy', 'Crazy']];
+export const EDITABLE_TALENTS = [['music', 'Music'], ['singing', 'Singing'], ['dance', 'Dance'], ['acting', 'Acting'], ['sports', 'Sports'], ['crime', 'Mischief']];
+
+/**
+ * Sets someone's stats and talents directly. Open to the player for anyone
+ * in their life: a spouse, a child, a friend, a pet.
+ * @param {string} npcId
+ * @param {{meters?:Object<string,number>, talents?:Object<string,number>}} values  each 0–100
+ */
+export function editNpc(npcId, values) {
+  const npc = store.state.npcs[npcId];
+  if (!npc) return { ok: false, text: 'There is nobody to change.', tone: 'neutral' };
+  for (const [k, v] of Object.entries(values.meters ?? {})) if (k in npc.meters) npc.meters[k] = Math.round(clamp(Number(v)));
+  if (values.talents && npc.role !== 'pet') {
+    npc.talents ??= {};
+    for (const [k, v] of Object.entries(values.talents)) npc.talents[k] = Math.round(clamp(Number(v)));
+  }
+  if (npc.wealth != null) npc.wealth = npc.meters.money;
+  if (npc.stats) Object.assign(npc.stats, { health: npc.meters.health, intellect: npc.meters.intellect, charm: npc.meters.charm });
+  const text = `You changed ${npc.firstName}'s stats.`;
+  return { ok: true, text, tone: 'neutral' };
+}

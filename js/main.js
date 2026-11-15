@@ -7,7 +7,7 @@ import { renderObituary } from './ui/screens/obituary.js';
 import { mountGame } from './ui/shell.js';
 import { heirs, continueAs } from './engine/legacy.js';
 import { roleLabel } from './engine/relationships.js';
-import { saveGame, deleteSlot, getGraveyard, updateGrave } from './save.js';
+import { saveGame, deleteSlot, getGraveyard, updateGrave, undoDepth, popUndo, removeGrave } from './save.js';
 import { normalize } from './avatar/catalog.js';
 
 const app = document.getElementById('app');
@@ -19,6 +19,14 @@ function showDeath(entry) {
   renderObituary(app, entry, {
     heirs: list,
     onDone: () => { deleteSlot(state.slotId); showTitle(); },
+    // The death itself can be taken back, like any other year.
+    onUndo: undoDepth(state.slotId) ? () => {
+      const earlier = popUndo(state.slotId);
+      if (!earlier) return;
+      removeGrave(entry.id);
+      saveGame(earlier);
+      play(earlier);
+    } : null,
     // The same person, born again: same name, birthplace and face, a new roll of everything else.
     onRestart: () => {
       const old = state.player;
@@ -46,7 +54,7 @@ function play(state) {
     deleteSlot(state.slotId);
     return showTitle();
   }
-  return mountGame(app, { onExit: showTitle, onDeath: showDeath });
+  return mountGame(app, { onExit: showTitle, onDeath: showDeath, onRestore: play });
 }
 
 function showTitle() {

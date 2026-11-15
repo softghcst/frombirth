@@ -141,6 +141,36 @@ async function lookForLove(api) {
 
 // ---------- One person ----------
 
+/** Sliders for someone's stats and talents. Nothing changes until Save. */
+function editPerson(api, npc) {
+  const pet = npc.role === 'pet';
+  const meters = rel.EDITABLE_METERS.filter(([k]) => !pet || k === 'relationship' || k === 'health');
+  const talents = pet ? [] : rel.EDITABLE_TALENTS;
+  const slider = (group, key, label, value) => `<label class="slider"><span>${esc(label)}</span>
+    <input type="range" min="0" max="100" step="1" value="${Math.round(value)}" data-group="${group}" data-key="${key}">
+    <output>${Math.round(value)}</output></label>`;
+  const modal = openModal(`
+    <h2>${esc(npc.firstName)} ${pet ? '' : esc(npc.lastName)}</h2>
+    <p class="body muted">Set anything you like. This changes them, not how the story has gone so far.</p>
+    <div class="slider-group">${pet ? 'Stats' : 'Stats'}</div>
+    ${meters.map(([k, label]) => slider('meters', k, pet && k === 'relationship' ? 'Bond' : label, npc.meters[k])).join('')}
+    ${talents.length ? `<div class="slider-group">Talents</div>${talents.map(([k, label]) => slider('talents', k, label, npc.talents?.[k] ?? 0)).join('')}` : ''}
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn" data-cancel>Cancel</button>
+      <button class="btn primary" data-save>Save</button>
+    </div>`, { dismissable: true });
+  modal.el.addEventListener('input', (e) => { if (e.target.matches('input[type=range]')) e.target.nextElementSibling.textContent = e.target.value; });
+  modal.el.querySelector('[data-cancel]').addEventListener('click', () => { modal.close(); openNpc(npc, api); });
+  modal.el.querySelector('[data-save]').addEventListener('click', () => {
+    const values = { meters: {}, talents: {} };
+    for (const input of modal.el.querySelectorAll('input[type=range]')) values[input.dataset.group][input.dataset.key] = Number(input.value);
+    rel.editNpc(npc.id, values);
+    modal.close();
+    api.changed();
+    openNpc(npc, api);
+  });
+}
+
 function openNpc(npc, api) {
   lives.ensureLife(npc);
   const m = npc.meters;
@@ -182,6 +212,7 @@ function openNpc(npc, api) {
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
+    ...(npc.alive ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
   ];
   // Friendly things first, destructive things last.
   actions.sort((a, b) => Number(!!a.danger) - Number(!!b.danger));
@@ -217,6 +248,7 @@ function openNpc(npc, api) {
       baby: () => report(api, kids.tryForBaby(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
       talkIdentity: () => report(api, who.talkItThrough(npc.id)),
+      edit: () => editPerson(api, npc),
       breakUp: async () => {
         const yes = await confirmModal({ title: `End things with ${npc.firstName}?`, body: 'They will become an ex.', yes: 'End it', danger: true });
         if (yes) await report(api, love.breakUp(npc.id));

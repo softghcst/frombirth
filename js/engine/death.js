@@ -307,7 +307,7 @@ export function die(cause) {
   addToGraveyard(entry);
   // While there is someone to carry on as, the save is kept so the choice survives a refresh.
   state.legacy = { graveId: entry.id };
-  if (heirs(state).length) saveGame(state); else deleteSlot(state.slotId);
+  if (heirs(state).length) saveGame(state); else deleteSlot(state.slotId, true);
   store.lastObituary = entry;
   return entry;
 }

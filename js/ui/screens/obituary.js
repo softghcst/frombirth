@@ -92,6 +92,7 @@ export function renderObituary(app, g, hooks) {
         <div class="btn-stack">${heirs.map((h) => `<button class="btn" data-heir="${h.id}">Continue as ${esc(h.name)} <small>${esc(h.label)}, age ${h.age}</small></button>`).join('')}</div>
       </div>` : ''}
       <div class="btn-stack">
+        ${hooks.onUndo ? '<button class="btn" data-undo-death>Go back a year</button>' : ''}
         ${hooks.onRestart ? '<button class="btn" data-restart>Start this life again</button>' : ''}
         <button class="btn" data-epitaphs>Epitaphs earned</button>
         <button class="btn primary" data-done>${heirs.length ? 'End the story here' : 'Return to title'}</button>
@@ -102,5 +103,6 @@ export function renderObituary(app, g, hooks) {
   app.querySelector('[data-done]').addEventListener('click', () => hooks.onDone());
   app.querySelector('[data-epitaphs]').addEventListener('click', openEpitaphCollection);
   app.querySelector('[data-restart]')?.addEventListener('click', () => hooks.onRestart());
+  app.querySelector('[data-undo-death]')?.addEventListener('click', () => hooks.onUndo());
   for (const b of app.querySelectorAll('[data-heir]')) b.addEventListener('click', () => hooks.onContinue(b.dataset.heir));
 }

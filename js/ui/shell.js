@@ -2,14 +2,14 @@
 // five-tab dock, and the loop that walks the player through queued scenarios.
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
-import { saveGame } from '../save.js';
+import { saveGame, pushUndo, popUndo, undoDepth } from '../save.js';
 import { advanceYear } from '../engine/yearProcessor.js';
 import { getEvent, resolveChoice } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
 import { avatarSvg } from './avatar.js';
 import { meterHtml } from './meter.js';
-import { eventModal, outcomeModal } from './modals.js';
+import { eventModal, outcomeModal, confirmModal } from './modals.js';
 import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
 
@@ -24,7 +24,7 @@ function occupationLine(p) {
 
 /**
  * @param {HTMLElement} app
- * @param {{onExit:Function, onDeath:Function}} hooks
+ * @param {{onExit:Function, onDeath:Function, onRestore:(state:object)=>void}} hooks
  */
 export function mountGame(app, hooks) {
   let activeTab = null;
@@ -49,7 +49,10 @@ export function mountGame(app, hooks) {
       </div>
       </div>
       <footer class="dock">
-        <button class="year-btn" data-year></button>
+        <div class="year-row">
+          <button class="undo-btn" data-undo aria-label="Age down: take back the last year">↶<small>Age down</small></button>
+          <button class="year-btn" data-year></button>
+        </div>
         <nav aria-label="Sections">
           ${TABS.map((t) => `
             <button class="tab-btn" data-tab="${t.id}" aria-label="${esc(t.title)}">
@@ -98,6 +101,9 @@ export function mountGame(app, hooks) {
       + meterHtml('Intellect', p.stats.intellect) + meterHtml('Charm', p.stats.charm);
     yearBtn.innerHTML = `Live another year <small>→ age ${p.age + 1}</small>`;
     yearBtn.disabled = busy || !p.alive;
+    const undo = $('[data-undo]');
+    undo.disabled = busy || !undoDepth(store.state.slotId);
+    undo.hidden = p.age === 0 && !undoDepth(store.state.slotId);
   }
 
   function renderJournal() {
@@ -160,6 +166,7 @@ export function mountGame(app, hooks) {
   async function nextYear() {
     if (busy) return;
     closePanel();
+    pushUndo(store.state); // so this year can be taken back
     advanceYear();
     if (!player().alive) return finish(store.lastObituary);
     persist();
@@ -169,6 +176,13 @@ export function mountGame(app, hooks) {
   }
 
   yearBtn.addEventListener('click', nextYear);
+  $('[data-undo]').addEventListener('click', async () => {
+    if (busy) return;
+    const sure = await confirmModal({ title: `Go back to age ${player().age - 1}?`, body: 'Everything that happened this year is undone. You can go back up to three years, one at a time.', yes: 'Age down' });
+    if (!sure) return;
+    const earlier = popUndo(store.state.slotId);
+    if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }
+  });
   $('[data-panel-close]').addEventListener('click', closePanel);
   app.querySelector('.dock nav').addEventListener('click', (e) => {
     const btn = e.target.closest('.tab-btn');
