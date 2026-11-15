@@ -1,27 +1,29 @@
-// Education: compulsory school by age, effort and attendance, cliques, clubs,
-// then university, graduate, medical and law school with tuition and funding.
+// Education: compulsory school by age, effort and attendance, tutors, cliques,
+// clubs and classes, then university, trade school, graduate, medical and law
+// school with tuition, funding and housing.
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, uid } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { applyMods } from './genetics.js';
-import { resolve } from './conditions.js';
-import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, DROPOUT_AGE, PROGRAMMES, CLIQUES, CLIQUE_BY_ID,
+import { resolve, tripleThreat, remember } from './conditions.js';
+import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, DROPOUT_AGE, PROGRAMMES, HOUSING, CLIQUES, CLIQUE_BY_ID,
   CLUBS, CLUB_BY_ID, MAX_CLUBS } from '../data/schools.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
   high: 'High school', university: 'University', graduate: 'Graduate school',
-  medical: 'Medical school', law: 'Law school' };
+  medical: 'Medical school', law: 'Law school', cosmetology: 'Cosmetology school' };
 export const stageLabel = (stage) => LABELS[stage] ?? stage;
 export const isHigher = (stage) => stage in PROGRAMMES;
+const hasMajor = (stage) => isHigher(stage) && PROGRAMMES[stage].kind !== 'trade';
 const round2 = (n) => Math.round(n * 100) / 100;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
 /** One line for the header, e.g. "University · Biology". */
 export function educationLine(p) {
   const e = p.education;
-  const major = isHigher(e.stage) && MAJOR_BY_ID[e.majorId] ? ` · ${MAJOR_BY_ID[e.majorId].name}` : '';
+  const major = hasMajor(e.stage) && MAJOR_BY_ID[e.majorId] ? ` · ${MAJOR_BY_ID[e.majorId].name}` : '';
   return stageLabel(e.stage) + major;
 }
 
@@ -29,7 +31,7 @@ export function educationLine(p) {
 function acts() {
   const p = player();
   if (p.flags.eduActs?.age !== p.age) {
-    p.flags.eduActs = { age: p.age, study: 0, slack: 0, skip: 0, clique: 0, applied: {} };
+    p.flags.eduActs = { age: p.age, study: 0, slack: 0, skip: 0, clique: 0, tutor: 0, applied: {} };
   }
   return p.flags.eduActs;
 }
@@ -42,13 +44,20 @@ function checkChance(check) {
   return clamp(chance, 0.05, 0.95);
 }
 
+function addNpc(npc) {
+  store.state.npcs[npc.id] = npc;
+  player().npcIds.push(npc.id);
+  npc.lastInteractionAge = player().age;
+  return npc;
+}
+
 // ---------- Classmates ----------
 
 /** Old classmates you were close to stay on as friends; the rest fade away. */
 function turnOverClassmates(addNew) {
   const p = player();
   for (const n of npcsByRole('classmate')) {
-    if (n.meters.relationship >= 60) n.role = 'friend';
+    if (n.meters.relationship >= 60 || n.flags.tag) n.role = 'friend';
     else { p.npcIds = p.npcIds.filter((id) => id !== n.id); delete store.state.npcs[n.id]; }
   }
   if (!addNew) return;
@@ -58,8 +67,7 @@ function turnOverClassmates(addNew) {
       relationship: rng.int(30, 65) });
     if (taken.has(mate.firstName)) continue;
     taken.add(mate.firstName);
-    store.state.npcs[mate.id] = mate;
-    p.npcIds.push(mate.id);
+    addNpc(mate);
   }
 }
 
@@ -68,7 +76,8 @@ function turnOverClassmates(addNew) {
 /** Tuition for one year of a programme, in local currency. */
 export function tuitionFor(stage) {
   const c = country();
-  return c.freeUniversity ? 0 : localMoney(PROGRAMMES[stage].tuition, c);
+  const prog = PROGRAMMES[stage];
+  return c.freeUniversity && prog.kind !== 'trade' ? 0 : localMoney(prog.tuition, c);
 }
 
 export const studentLoan = () => player().finance.loans.find((l) => l.kind === 'student');
@@ -104,6 +113,97 @@ function chargeTuition() {
   log(`${fmtMoney(fee, c)} of tuition was added to your student loan.`);
 }
 
+// ---------- Housing ----------
+
+/** A year's rent for a housing choice, after any housing scholarship. */
+export function housingCost(id = player().education.housing) {
+  const e = player().education;
+  if (id === 'dorm' && e.housingAid && e.funding === 'scholarship') return 0;
+  return localMoney(HOUSING[id].cost, country());
+}
+
+export const roommate = () => store.state.npcs[player().education.roommateId];
+
+/** @returns {{id, label, blurb, cost:number, available:boolean, reason:string}[]} */
+export function housingOptions(housingAid = player().education.housingAid) {
+  const c = country();
+  const parents = npcsByRole('parent').length > 0;
+  return Object.values(HOUSING).map((h) => {
+    const free = h.id === 'dorm' && housingAid;
+    return { id: h.id, label: h.label, blurb: h.blurb, cost: free ? 0 : localMoney(h.cost, c),
+      note: free ? 'Covered by your housing scholarship.' : '',
+      available: h.id !== 'home' || parents, reason: 'You have no family home to stay in.' };
+  });
+}
+
+/** Friends you could share an apartment with. */
+export const roommateCandidates = () => npcsByRole('friend').filter((n) => n.age >= 17);
+
+/**
+ * Moves the player. For an apartment, roommateId picks a friend; leave it
+ * empty to be matched with a stranger.
+ */
+export function setHousing(id, roommateId) {
+  const p = player();
+  const e = p.education;
+  const old = roommate();
+  if (old) { old.flags.tag = null; if (old.flags.title === 'Roommate') old.flags.title = null; }
+  e.housing = id;
+  e.roommateId = null;
+  p.flags.livesWithParents = id === 'home';
+
+  let text = { home: 'You are living at home and commuting.', dorm: 'You moved into a campus dorm.' }[id];
+  if (id === 'apartment') {
+    let mate = store.state.npcs[roommateId];
+    if (mate) {
+      mate.meters.relationship = clamp(mate.meters.relationship + 5);
+      remember(mate, 'movedIn', 'You moved into an apartment together.');
+      text = `You and ${mate.firstName} signed a lease on an apartment together.`;
+    } else {
+      mate = addNpc(makeNpc({ role: 'friend', countryId: p.countryId, age: p.age + rng.int(-1, 3),
+        relationship: rng.int(35, 60) }));
+      text = `You moved into an off-campus apartment with a roommate you found online: ${mate.firstName}.`;
+    }
+    mate.flags.tag = 'roommate';
+    mate.flags.title = 'Roommate';
+    mate.lastInteractionAge = p.age;
+    e.roommateId = mate.id;
+  }
+  log(text);
+  return result(true, text, 'neutral');
+}
+
+function chargeHousing() {
+  const p = player();
+  const e = p.education;
+  const c = country();
+  const rent = housingCost();
+  if (!rent) return;
+  if (p.finance.cash >= rent) {
+    p.finance.cash -= rent;
+    log(`You paid ${fmtMoney(rent, c)} for a year of ${e.housing === 'dorm' ? 'dorm fees' : 'rent'}.`);
+  } else {
+    borrow(rent);
+    log(`You could not cover ${fmtMoney(rent, c)} of ${e.housing === 'dorm' ? 'dorm fees' : 'rent'}, so it went on your student loan.`, 'system', 'bad');
+  }
+}
+
+/** What a year of living somewhere does to you. */
+function liveThere() {
+  const p = player();
+  const e = p.education;
+  if (e.housing === 'dorm') p.stats.mood = clamp(p.stats.mood + 2);
+  if (e.housing === 'home') {
+    for (const parent of npcsByRole('parent')) parent.lastInteractionAge = p.age;
+    p.stats.mood = clamp(p.stats.mood - 1);
+  }
+  const mate = roommate();
+  if (e.housing === 'apartment' && mate?.alive) {
+    mate.meters.relationship = clamp(mate.meters.relationship + rng.int(-4, 7));
+    mate.lastInteractionAge = p.age;
+  }
+}
+
 // ---------- Yearly step ----------
 
 function enterStage(stage) {
@@ -121,28 +221,41 @@ function yearGpa(p) {
   const raw = p.stats.intellect * 0.55 + p.hidden.discipline * 0.15 + e.effort * 0.3;
   let g = raw / 25 + rng.around(0, 0.3);
   g -= e.absences * 0.12;
-  if (isHigher(e.stage)) g -= MAJOR_BY_ID[e.majorId]?.difficulty ?? 0.3;
+  if (hasMajor(e.stage)) g -= MAJOR_BY_ID[e.majorId]?.difficulty ?? 0.3;
   if (e.stage === 'medical') g -= 0.25;
   if (e.stage === 'law') g -= 0.15;
+  if (p.flags.tutorAge === p.age - 1) g += 0.3;
   g += CLIQUE_BY_ID[e.clique]?.gpa ?? 0;
   return clamp(g, 0, 4);
 }
 
 function leaveSchool() {
-  const e = player().education;
+  const p = player();
+  const e = p.education;
+  const wasAway = isHigher(e.stage) && e.housing !== 'home';
   e.enrolled = false;
   e.clique = null;
   e.clubs = [];
   e.funding = null;
+  e.housingAid = false;
+  const mate = roommate();
+  if (mate) mate.flags.title = 'Former roommate';
+  e.roommateId = null;
   turnOverClassmates(false);
+  // Until you have a job of your own (Phase 4), you go back to the family home.
+  if (wasAway && npcsByRole('parent').length) {
+    e.housing = 'home';
+    p.flags.livesWithParents = true;
+    log('With your course over, you moved back in with your family.');
+  }
 }
 
 function graduate() {
   const p = player();
   const e = p.education;
   const gpa = e.gpa.toFixed(2);
-  const major = MAJOR_BY_ID[e.majorId];
-  e.degrees.push({ type: e.stage, majorId: isHigher(e.stage) ? e.majorId : undefined, gpa: e.gpa, age: p.age });
+  const major = hasMajor(e.stage) ? MAJOR_BY_ID[e.majorId] : null;
+  e.degrees.push({ type: e.stage, majorId: major?.id, gpa: e.gpa, age: p.age });
   const honours = e.gpa >= 3.7 ? ' with top honours' : e.gpa >= 3.3 ? ' with honours' : '';
   const what = {
     high: 'high school',
@@ -150,11 +263,14 @@ function graduate() {
     graduate: `graduate school with a master's in ${major?.name}`,
     medical: 'medical school. You are a doctor',
     law: 'law school',
+    cosmetology: 'cosmetology school. You are now licensed in hair and makeup',
   }[e.stage];
-  log(`You graduated from ${what}${e.stage === 'medical' ? '' : honours} (GPA ${gpa}).`, 'system', 'good');
-  milestone(`Graduated ${stageLabel(e.stage).toLowerCase()}${major && isHigher(e.stage) ? ` (${major.name})` : ''}, GPA ${gpa}.`, 'education');
+  const plain = e.stage === 'medical' || e.stage === 'cosmetology';
+  log(`You graduated from ${what}${plain ? '' : honours} (GPA ${gpa}).`, 'system', 'good');
+  milestone(e.stage === 'cosmetology' ? 'Earned a licence in hair and makeup.'
+    : `Graduated ${stageLabel(e.stage).toLowerCase()}${major ? ` (${major.name})` : ''}, GPA ${gpa}.`, 'education');
   p.stats.mood = clamp(p.stats.mood + 8);
-  if (e.stage === 'high') log('You can apply for university from the Work & School tab.');
+  if (e.stage === 'high') log('University and trade school are open to you from the Work & School tab.');
   const loan = studentLoan();
   if (loan && isHigher(e.stage)) log(`You owe ${fmtMoney(loan.principal, country())} in student loans. Repayments start once you are earning.`);
   leaveSchool();
@@ -164,6 +280,9 @@ export function tickEducation() {
   const p = player();
   const e = p.education;
 
+  // Clubs and classes build skills every year, in or out of school.
+  for (const id of e.clubs) if (CLUB_BY_ID[id]) applyMods(p, CLUB_BY_ID[id].yearly);
+
   const starting = SCHOOL_STAGES.find((s) => s.start === p.age);
   if (starting && !e.expelled && !e.droppedOut) { enterStage(starting); return; }
   if (!e.enrolled) return;
@@ -171,13 +290,14 @@ export function tickEducation() {
   e.yearInStage += 1;
   const g = yearGpa(p);
   e.gpa = round2(e.gpa === 0 ? g : e.gpa * 0.6 + g * 0.4);
-  p.stats.intellect = clamp(p.stats.intellect + rng.int(0, 2));
+  p.stats.intellect = clamp(p.stats.intellect + rng.int(0, 2) + (p.flags.tutorAge === p.age - 1 ? 2 : 0));
 
-  // What you gained from the company you keep and the clubs you are in.
+  // What you gained from the company you keep and your course.
   const clique = CLIQUE_BY_ID[e.clique];
   if (clique) applyMods(p, clique.yearly);
-  for (const id of e.clubs) if (CLUB_BY_ID[id]) applyMods(p, CLUB_BY_ID[id].yearly);
-  if (isHigher(e.stage) && MAJOR_BY_ID[e.majorId]) applyMods(p, MAJOR_BY_ID[e.majorId].yearly);
+  if (hasMajor(e.stage) && MAJOR_BY_ID[e.majorId]) applyMods(p, MAJOR_BY_ID[e.majorId].yearly);
+  if (PROGRAMMES[e.stage]?.yearly) applyMods(p, PROGRAMMES[e.stage].yearly);
+  if (isHigher(e.stage)) liveThere();
 
   // Attendance
   if (e.absences >= 4 && !isHigher(e.stage)) {
@@ -205,6 +325,7 @@ export function tickEducation() {
     log('Your grades slipped and you lost your scholarship.', 'system', 'bad');
   }
   chargeTuition();
+  chargeHousing();
 }
 
 // ---------- Actions while enrolled ----------
@@ -261,6 +382,33 @@ export function skipSchool() {
   return result(true, text + warn, caught ? 'bad' : 'neutral');
 }
 
+export const canAskForTutor = () => {
+  const p = player();
+  return p.education.enrolled && !isHigher(p.education.stage) && p.age >= 7 && npcsByRole('parent').length > 0;
+};
+
+/** Asks the parents to pay for a private tutor for the year. They may refuse. */
+export function askForTutor() {
+  const p = player();
+  const parents = npcsByRole('parent');
+  if (!canAskForTutor()) return result(false, 'There is nobody to ask.');
+  if (acts().tutor >= 1) return result(false, 'You have already asked this year.', 'neutral');
+  acts().tutor += 1;
+  const avg = (f) => parents.reduce((s, n) => s + f(n), 0) / parents.length;
+  const chance = clamp(avg((n) => n.wealth) / 100 * 0.7 + avg((n) => n.meters.generosity) / 100 * 0.3
+    + (p.education.gpa && p.education.gpa < 2.5 ? 0.15 : 0), 0.05, 0.95);
+  if (!rng.chance(chance)) {
+    const text = 'You asked your parents for a tutor. They said the money is not there this year.';
+    log(text, 'system', 'bad');
+    return result(false, text);
+  }
+  p.flags.tutorAge = p.age;
+  p.education.effort = clamp(p.education.effort + 15);
+  const text = 'Your parents hired you a private tutor. Two evenings a week, no excuses. Your grades should show it by next year.';
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
 /** @returns {{id, name, desc, allowed:boolean, current:boolean}[]} */
 export function cliqueOptions() {
   const e = player().education;
@@ -290,20 +438,24 @@ export function joinClique(id) {
   return result(true, text);
 }
 
-/** @returns {{id, name, joined:boolean, chance:number}[]} */
+/** Clubs and classes open at the player's age. */
 export function clubOptions() {
-  const e = player().education;
-  return CLUBS.map((c) => ({ id: c.id, name: c.name, joined: e.clubs.includes(c.id),
-    chance: c.tryout ? checkChance(c.tryout) : 1 }));
+  const p = player();
+  const e = p.education;
+  return CLUBS.filter((c) => p.age >= c.from).map((c) => ({ id: c.id, name: c.name, blurb: c.blurb ?? '',
+    joined: e.clubs.includes(c.id), chance: c.tryout ? checkChance(c.tryout) : 1 }));
 }
+/** Children can take classes before they start school; adults need to be enrolled. */
+export const canJoinClubs = () =>
+  (player().education.enrolled || player().age < 18) && clubOptions().length > 0;
 
 export function joinClub(id) {
   const p = player();
   const e = p.education;
   const club = CLUB_BY_ID[id];
-  if (!e.enrolled || e.stage === 'elementary') return result(false, 'There are no clubs for you to join yet.');
+  if (!canJoinClubs() || p.age < club.from) return result(false, 'That is not open to you yet.');
   if (e.clubs.includes(id)) return result(false, 'You are already a member.', 'neutral');
-  if (e.clubs.length >= MAX_CLUBS) return result(false, `You only have time for ${MAX_CLUBS} clubs. Leave one first.`, 'neutral');
+  if (e.clubs.length >= MAX_CLUBS) return result(false, `You only have time for ${MAX_CLUBS} activities. Leave one first.`, 'neutral');
   const tried = acts().applied;
   if (tried[id]) return result(false, 'You already tried out this year. Come back next year.', 'neutral');
   tried[id] = true;
@@ -315,7 +467,17 @@ export function joinClub(id) {
   }
   e.clubs.push(id);
   p.stats.mood = clamp(p.stats.mood + 4);
-  const text = `You joined the ${club.name.toLowerCase()}.`;
+  let text = `You joined the ${club.name.toLowerCase()}.`;
+
+  // Some activities come with a person who gets to know you.
+  const spec = club.contact;
+  if (spec && !npcsByRole(`tag:${spec.tag}`).length) {
+    const npc = addNpc(makeNpc({ role: spec.role, countryId: p.countryId,
+      age: rng.int(spec.ageRange[0], spec.ageRange[1]), relationship: rng.int(45, 58) }));
+    npc.flags.tag = spec.tag;
+    npc.flags.title = spec.title;
+    text += ` It is run by ${npc.firstName} ${npc.lastName}, the ${spec.title.toLowerCase()}.`;
+  }
   log(text, 'system', 'good');
   return result(true, text);
 }
@@ -350,7 +512,7 @@ export function dropOut() {
   return result(true, text, 'neutral');
 }
 
-// ---------- Higher education admissions ----------
+// ---------- Admissions ----------
 
 const lastDegree = (type) => [...player().education.degrees].reverse().find((d) => d.type === type);
 
@@ -368,7 +530,7 @@ export function programmeOptions() {
     if (e.enrolled) reason = 'You are already studying.';
     else if (p.legal.incarceration) reason = 'Not from a cell.';
     else if (!base) reason = prog.needs === 'high' ? 'Needs a high-school diploma.' : 'Needs a university degree.';
-    else if (e.degrees.some((d) => d.type === prog.id) && prog.id !== 'university') reason = 'You already hold this degree.';
+    else if (e.degrees.some((d) => d.type === prog.id) && prog.id !== 'university') reason = 'You already hold this qualification.';
     else if (base.gpa < prog.minGpa) reason = `Needs a GPA of ${prog.minGpa.toFixed(1)} (yours: ${base.gpa.toFixed(2)}).`;
     else if (prog.id === 'medical' && !MAJOR_BY_ID[bachelor.majorId]?.tracks.includes('medical')) reason = 'Needs a science or health degree.';
     else if (acts().applied[prog.id]) reason = 'You already applied this year.';
@@ -377,50 +539,62 @@ export function programmeOptions() {
   });
 }
 
-function admissionChance(progId, majorId) {
+/** Chance of getting in. Audition majors are judged on performance, not grades. */
+export function admissionChance(progId, majorId) {
   const p = player();
   const iq = p.stats.intellect;
+  if (PROGRAMMES[progId].kind === 'trade') return 1; // open enrolment
   if (progId === 'university') {
     const m = MAJOR_BY_ID[majorId];
     const gpa = lastDegree('high').gpa;
     if (gpa < m.minGpa) return 0;
+    if (m.audition) {
+      return clamp(0.3 + (tripleThreat(p) - 50) / 100 * 1.1 + (p.flags.directorRec ? 0.2 : 0), 0.05, 0.97);
+    }
     return clamp(0.45 + (gpa - m.minGpa) * 0.45 + (iq - 50) / 200 - m.difficulty * 0.2, 0.05, 0.97);
   }
   const b = lastDegree('university');
   const affinity = MAJOR_BY_ID[b.majorId]?.tracks.includes(progId) ? 0.15 : 0;
-  if (progId === 'graduate') return clamp(0.5 + (b.gpa - 2.8) * 0.5 + (iq - 50) / 200, 0.05, 0.97);
-  if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.3) * 0.8 + (iq - 60) / 150, 0.05, 0.95);
-  return clamp(0.35 + (b.gpa - 3.0) * 0.6 + (iq - 55) / 150 + affinity, 0.05, 0.95);
+  if (progId === 'graduate') return clamp(0.5 + (b.gpa - 3.0) * 0.5 + (iq - 50) / 200, 0.05, 0.97);
+  if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150, 0.05, 0.95);
+  return clamp(0.35 + (b.gpa - 3.4) * 0.7 + (iq - 55) / 150 + affinity, 0.05, 0.95);
 }
 
 /**
  * Submits an application. One attempt per programme per year.
- * @returns {{accepted:boolean, text:string, scholarship?:string}}
+ * @returns {{accepted:boolean, text:string, scholarship?:string, housingAid?:boolean}}
  */
 export function applyTo(progId, majorId) {
   const p = player();
   const prog = PROGRAMMES[progId];
-  const major = MAJOR_BY_ID[progId === 'university' ? majorId : lastDegree('university').majorId];
+  const major = progId === 'university' ? MAJOR_BY_ID[majorId] : null;
   acts().applied[progId] = true;
-  const subject = progId === 'university' ? ` to study ${major.name}` : '';
+  const subject = major ? ` to study ${major.name}` : '';
+  const rec = major?.audition && p.flags.directorRec;
 
   if (!rng.chance(admissionChance(progId, majorId))) {
     p.stats.mood = clamp(p.stats.mood - 6);
-    const text = `Your application to ${prog.label.toLowerCase()}${subject} was rejected. You can try again next year.`;
+    const text = major?.audition
+      ? `You auditioned for ${major.name} and were not offered a place. The panel wants stronger singing, dancing and acting. You can try again next year.`
+      : `Your application to ${prog.label.toLowerCase()}${subject} was rejected. You can try again next year.`;
     log(text, 'system', 'bad');
     return { accepted: false, text };
   }
 
-  // Scholarship offers go to the best grades and the best athletes.
+  // Scholarship offers go to the best grades, the best athletes and the best auditions.
   const base = lastDegree(prog.needs);
   let scholarship;
-  if (tuitionFor(progId) > 0) {
+  if (tuitionFor(progId) > 0 && prog.kind !== 'trade') {
     if (rng.chance(base.gpa >= 3.7 ? 0.75 : base.gpa >= 3.4 ? 0.3 : 0)) scholarship = 'an academic scholarship';
     else if (progId === 'university' && p.talents.sports >= 80 && rng.chance(0.6)) scholarship = 'an athletic scholarship';
+    else if (major?.audition && tripleThreat(p) >= 75 && rng.chance(0.6)) scholarship = 'a performance scholarship';
   }
-  const text = `You were accepted to ${prog.label.toLowerCase()}${subject}${scholarship ? ` and offered ${scholarship}` : ''}.`;
+  const housingAid = !!scholarship && rng.chance(0.5);
+  const text = `${major?.audition ? `Your audition won you a place${subject}` : `You were accepted to ${prog.label.toLowerCase()}${subject}`}`
+    + `${rec ? '. Your drama director\'s recommendation was on the panel\'s desk' : ''}`
+    + `${scholarship ? `. You were offered ${scholarship}${housingAid ? ' that also covers a dorm room' : ''}` : ''}.`;
   log(text, 'system', 'good');
-  return { accepted: true, text, scholarship };
+  return { accepted: true, text, scholarship, housingAid };
 }
 
 /** Rolls whether the parents agree to pay. Can only be asked once per application. */
@@ -440,8 +614,14 @@ export function askParentsToPay() {
   return result(false, text);
 }
 
-/** Starts the programme. funding: 'scholarship' | 'parents' | 'loan' | 'self' ('public' where tuition is free). */
-export function enrol(progId, majorId, funding) {
+/**
+ * Starts the programme.
+ * @param {string} progId
+ * @param {?string} majorId  university only
+ * @param {'scholarship'|'parents'|'loan'|'self'} funding  ('public' is set where tuition is free)
+ * @param {{housing?:string, roommateId?:string, housingAid?:boolean}} [living]
+ */
+export function enrol(progId, majorId, funding, living = {}) {
   const p = player();
   const e = p.education;
   const prog = PROGRAMMES[progId];
@@ -451,9 +631,21 @@ export function enrol(progId, majorId, funding) {
   e.gpa = 0;
   e.absences = 0;
   e.effort = 50;
-  e.majorId = progId === 'university' ? majorId : lastDegree('university').majorId;
+  e.majorId = progId === 'university' ? majorId
+    : prog.needs === 'university' ? lastDegree('university').majorId : null;
   e.funding = tuitionFor(progId) === 0 ? 'public' : funding;
+  e.housingAid = e.funding === 'scholarship' && !!living.housingAid;
   turnOverClassmates(true);
   log(`You enrolled in ${prog.label.toLowerCase()}.`, 'system', 'good');
   chargeTuition();
+  setHousing(living.housing ?? (npcsByRole('parent').length ? 'home' : 'dorm'), living.roommateId);
+  chargeHousing();
+}
+
+/** Changes housing part-way through a course; the new place is charged from next year. */
+export function moveHousing(id, roommateId) {
+  const e = player().education;
+  if (!e.enrolled || !isHigher(e.stage)) return result(false, 'You can only do this while studying.');
+  if (id === e.housing && id !== 'apartment') return result(false, 'You already live there.', 'neutral');
+  return setHousing(id, roommateId);
 }

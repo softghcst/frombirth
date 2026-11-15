@@ -27,7 +27,8 @@ export const randomTraits = (n = rng.int(1, 2)) => {
 };
 
 export const randomTalents = () =>
-  ({ music: rng.int(0, 55), sports: rng.int(0, 55), acting: rng.int(0, 55), crime: rng.int(0, 55) });
+  ({ music: rng.int(0, 55), sports: rng.int(0, 55), acting: rng.int(0, 55), crime: rng.int(0, 55),
+    singing: rng.int(0, 55), dance: rng.int(0, 55) });
 
 /** Stand-in genome for a parent who is not in the picture. */
 export function unknownParent(other) {
@@ -77,7 +78,7 @@ export function inheritTraits(mother, father) {
 /** Talents regress toward the parents' average. `gift` forces one to be exceptional. */
 export function inheritTalents(mother, father, gift) {
   const t = {};
-  for (const key of ['music', 'sports', 'acting', 'crime']) {
+  for (const key of ['music', 'sports', 'acting', 'crime', 'singing', 'dance']) {
     const mean = ((mother.talents?.[key] ?? 28) + (father.talents?.[key] ?? 28)) / 2;
     t[key] = Math.round(clamp(rng.around(mean, 24)));
   }

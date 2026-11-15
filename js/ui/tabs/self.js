@@ -4,6 +4,7 @@ import { esc } from '../../util.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
 import { BIRTH_BY_ID } from '../../data/birthConditions.js';
 import { meterHtml } from '../meter.js';
+import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
 
 export default {
@@ -27,7 +28,9 @@ export default {
       </div>
       <div class="card"><h3>Aptitudes</h3>
         ${meterHtml('Music', p.talents.music, true)}${meterHtml('Sports', p.talents.sports, true)}
-        ${meterHtml('Acting', p.talents.acting, true)}
+        ${meterHtml('Acting', p.talents.acting, true)}${meterHtml('Singing', p.talents.singing, true)}
+        ${meterHtml('Dance', p.talents.dance, true)}
+        <div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat(p)}</strong> / 100</span></div>
       </div>
       <div class="card"><h3>Traits</h3>
         ${traits.map((t) => `<div class="kv"><span>${esc(t.name)}${from(t.id)}</span><span>${esc(t.desc)}</span></div>`).join('')}

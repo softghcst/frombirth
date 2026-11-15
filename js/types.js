@@ -4,7 +4,7 @@
  * @typedef {{mood:number, health:number, intellect:number, charm:number}} CoreStats  0–100
  * @typedef {{karma:number, discipline:number, willpower:number, fertility:number,
  *            fame:number, crazy:number}} HiddenStats  0–100
- * @typedef {{music:number, sports:number, acting:number, crime:number}} Talents  0–100
+ * @typedef {{music:number, sports:number, acting:number, crime:number, singing:number, dance:number}} Talents  0–100
  *
  * @typedef {Object} Character
  * @property {string} id
@@ -52,7 +52,7 @@
  * @property {string} gender
  * @property {number} age
  * @property {boolean} alive
- * @property {'parent'|'grandparent'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
+ * @property {'parent'|'grandparent'|'mentor'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
  *            |'ex'|'child'|'pet'|'boss'|'cellmate'} role
  * @property {{relationship:number, money:number, crazy:number, intellect:number,
  *             charm:number, health:number, generosity:number}} meters
@@ -71,6 +71,7 @@
  * @property {boolean} [adopted]
  * @property {CoreStats} [stats]
  * @property {Talents} [talents]
+ * @property {{key:string, text:string, age:number}[]} [memories]  what they remember about the player
  * @property {number} lastInteractionAge
  * @property {Object<string, any>} flags
  *
@@ -120,14 +121,14 @@
  * @property {number} yearsInField
  * @property {string[]} coworkerIds
  * @property {?string} bossId
- * @property {?{careerId:string, title:string, salary:number}} partTime
+ * @property {?{jobId:string, title:string, salary:number, since:number}} partTime
  * @property {{careerId:string, title:string, from:number, to:number, exit:string}[]} history
  * @property {boolean} retired
  * @property {number} pensionPerYear
  * @property {?{rank:number, branch:string, deployments:number}} military
  *
  * @typedef {Object} Education
- * @property {'none'|'elementary'|'middle'|'high'|'university'|'graduate'|'medical'|'law'} stage
+ * @property {'none'|'elementary'|'middle'|'high'|'university'|'graduate'|'medical'|'law'|'cosmetology'} stage
  * @property {boolean} enrolled
  * @property {number} yearInStage
  * @property {number} gpa
@@ -138,6 +139,9 @@
  * @property {?string} majorId
  * @property {'scholarship'|'parents'|'loan'|'self'|'public'|null} funding
  * @property {{type:string, majorId?:string, gpa:number, age:number}[]} degrees
+ * @property {'home'|'dorm'|'apartment'} housing  while in higher education
+ * @property {?string} [roommateId]
+ * @property {boolean} [housingAid]  scholarship covers the dorm
  * @property {boolean} expelled
  * @property {boolean} droppedOut
  *
@@ -157,15 +161,18 @@
  * @property {number} [weight]
  * @property {Object<string,string>} [cast]  token key -> role spec; event needs each to exist
  * @property {Requirement[]} [requires]
+ * @property {boolean} [priority]  story beat: always fires when first eligible
+ * @property {string} [exclusive]  only one event per group fires in a year
+ * @property {boolean} [queuedOnly]  reached only through a `queue` effect
  * @property {boolean} [once]
  * @property {number} [cooldown]  years before it can repeat (default 10)
  * @property {EventChoice[]} choices
  * @typedef {{label:string, requires?:Requirement[], check?:SkillCheck, outcomes:Outcome[]}} EventChoice
  * @typedef {{base:number, factors:Object<string,number>}} SkillCheck  path -> weight
- * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[]}} Outcome
- * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'has'|'lacks', value:any}} Requirement
+ * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
+ * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry

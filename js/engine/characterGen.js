@@ -18,7 +18,7 @@ import { SCHEMA_VERSION } from '../save.js';
  * @param {string} [opts.countryId]
  * @param {string} [opts.city]
  * @param {{skin?:number, hair?:number, hairStyle?:number, eyes?:number}} [opts.appearance]
- * @param {'music'|'sports'|'acting'|'crime'} [opts.talent]  a guaranteed natural gift
+ * @param {'music'|'sports'|'acting'|'crime'|'singing'|'dance'} [opts.talent]  a guaranteed natural gift
  * @param {'struggling'|'comfortable'|'wealthy'} [opts.background]
  * @returns {import('../types.js').GameState}
  */
@@ -56,7 +56,8 @@ export function createLife(opts = {}) {
     traits, traitSources: sources, birth: born.map((b) => b.id), conditions: [],
     appearance,
     education: { stage: 'none', enrolled: false, yearInStage: 0, gpa: 0, effort: 50, absences: 0,
-      clique: null, clubs: [], majorId: null, funding: null, degrees: [], expelled: false, droppedOut: false },
+      clique: null, clubs: [], majorId: null, funding: null, housing: 'home', roommateId: null, housingAid: false,
+      degrees: [], expelled: false, droppedOut: false },
     career: { careerId: null, title: null, level: 0, salary: 0, performance: 50, yearsInRole: 0,
       yearsInField: 0, coworkerIds: [], bossId: null, partTime: null, history: [], retired: false,
       pensionPerYear: 0, military: null },

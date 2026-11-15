@@ -23,3 +23,12 @@ export const any = (text, tone, ...effects) => ({ on: 'always', text, tone, effe
 /** Skill check: base chance plus weighted stat paths (each centred on 50). */
 export const chk = (base, factors = {}) => ({ base, factors });
 export const need = (path, op, value) => ({ path, op, value });
+
+/** The cast member will remember this about the player (shown in their history). */
+export const mem = (target, key, text) => ({ type: 'memory', target, value: { key, text } });
+/** Runs another scene straight after this one, with the same cast. */
+export const queue = (value) => ({ type: 'queue', value });
+/** Multiplies part-time pay, e.g. 0.5 when shifts are cut in half. */
+export const ptScale = (delta) => ({ type: 'partTimeScale', delta });
+/** Outcome variant used only when its history conditions hold. */
+export const when = (requires, outcome) => ({ ...outcome, requires });

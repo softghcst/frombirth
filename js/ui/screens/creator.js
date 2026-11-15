@@ -4,7 +4,7 @@ import { COUNTRIES, COUNTRY_LIST } from '../../data/countries.js';
 import { BACKGROUNDS } from '../../data/traits.js';
 import { avatarSvg, SKIN, HAIR, EYES, HAIR_STYLE_NAMES } from '../avatar.js';
 
-const TALENTS = { music: 'Music', sports: 'Sports', acting: 'Acting', crime: 'Mischief' };
+const TALENTS = { singing: 'Singing', dance: 'Dance', acting: 'Acting', music: 'Music', sports: 'Sports', crime: 'Mischief' };
 
 /** A row of options where the first one means "let the game decide". */
 function picker(key, label, autoLabel, options) {

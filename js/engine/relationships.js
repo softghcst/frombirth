@@ -6,6 +6,7 @@ import { store, player, livingNpcs, log } from '../state.js';
 import { mortalityChance } from './death.js';
 
 export function roleLabel(npc) {
+  if (npc.flags.title) return npc.flags.title;
   if (npc.role === 'parent') return npc.gender === 'male' ? 'Father' : 'Mother';
   if (npc.role === 'sibling') {
     const kind = npc.gender === 'male' ? 'brother' : 'sister';
@@ -17,7 +18,7 @@ export function roleLabel(npc) {
   return npc.role.charAt(0).toUpperCase() + npc.role.slice(1);
 }
 
-const DECAY = { parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 4,
+const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 4,
   spouse: 3, child: 1, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3 };
 
 export function tickRelationships() {
@@ -26,9 +27,12 @@ export function tickRelationships() {
     npc.age += 1;
 
     // Mortality
+    // People who matter to a storyline (tagged contacts) are spared random
+    // deaths until old age, so a scene years later can still find them.
+    const spared = npc.flags.tag && npc.age < 70;
     const dies = npc.role === 'pet'
       ? npc.age >= npc.lifespan || rng.chance(0.01)
-      : rng.chance(mortalityChance(npc.age, npc.meters.health));
+      : !spared && rng.chance(mortalityChance(npc.age, npc.meters.health));
     if (dies) {
       npc.alive = false;
       const who = `${roleLabel(npc).toLowerCase()} ${npc.firstName}`;

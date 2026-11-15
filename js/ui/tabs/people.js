@@ -7,7 +7,7 @@ import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal } from '../modals.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
 
-const ORDER = ['spouse', 'partner', 'child', 'parent', 'sibling', 'grandparent', 'friend', 'classmate',
+const ORDER = ['spouse', 'partner', 'child', 'parent', 'sibling', 'grandparent', 'mentor', 'friend', 'classmate',
   'coworker', 'boss', 'pet', 'ex', 'enemy', 'cellmate'];
 
 const portrait = (npc) => (npc.role === 'pet'
@@ -27,6 +27,10 @@ function openNpc(npc, api) {
   const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
   const traitChips = known.length
     ? `<div class="chips" style="margin-top:10px">${known.map((t) => `<span class="chip">${esc(t.name)}</span>`).join('')}</div>` : '';
+  const history = npc.memories?.length
+    ? `<div class="section-label" style="margin-top:0">What they remember</div>
+       ${npc.memories.map((m) => `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('')}
+       <div style="height:14px"></div>` : '';
   const actions = Object.entries(INTERACTIONS).map(([id, a]) =>
     `<button class="btn" data-act="${id}" ${p.age < a.minAge ? 'disabled' : ''}>${esc(a.label)}</button>`).join('');
 
@@ -38,6 +42,7 @@ function openNpc(npc, api) {
     </div>
     ${traitChips}
     <div style="margin:12px 0 16px">${meters}</div>
+    ${history}
     <div class="btn-stack">${actions}<button class="btn" data-close>Close</button></div>`,
   { dismissable: true });
 

@@ -4,10 +4,11 @@ import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { addCondition, cureCondition } from './health.js';
+import { remember } from './conditions.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
- * @param {{cast:Object<string,string>, death?:string}} ctx  cast maps token keys to NPC ids
+ * @param {{cast:Object<string,string>, death?:string, queue?:string[]}} ctx  cast maps token keys to NPC ids
  * @returns {{label:string, delta:number, money?:boolean}[]} visible changes for the UI
  */
 export function applyEffects(effects, ctx = { cast: {} }) {
@@ -57,6 +58,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         store.state.npcs[npc.id] = npc;
         p.npcIds.push(npc.id);
         npc.lastInteractionAge = p.age;
+        if (spec.tag) { npc.flags.tag = spec.tag; npc.flags.title = spec.title; }
+        if (spec.memory) remember(npc, spec.memory[0], spec.memory[1]);
         if (e.target) ctx.cast[e.target] = npc.id;
         break;
       }
@@ -66,6 +69,15 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         delete store.state.npcs[id];
         break;
       }
+      case 'memory':
+        remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
+        break;
+      case 'queue':
+        (ctx.queue ??= []).push(e.value);
+        break;
+      case 'partTimeScale':
+        if (p.career.partTime) p.career.partTime.salary = Math.round(p.career.partTime.salary * e.delta);
+        break;
       case 'condition': addCondition(e.value); break;
       case 'cure': cureCondition(e.value); break;
       case 'gpa':

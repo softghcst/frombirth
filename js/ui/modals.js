@@ -26,7 +26,7 @@ export function openModal(html, opts = {}) {
 /** Shows a scenario and resolves with the index of the chosen option. */
 export function eventModal(ev, cast) {
   return new Promise((resolve) => {
-    const choices = choiceStates(ev).map((c, i) => `
+    const choices = choiceStates(ev, cast).map((c, i) => `
       <button class="choice-btn" data-i="${i}" ${c.enabled ? '' : 'disabled'}>
         ${esc(renderText(c.label, cast))}
         ${c.enabled ? '' : '<small>Not available to you right now</small>'}

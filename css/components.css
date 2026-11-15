@@ -114,6 +114,12 @@
 .stone .years { font-family: var(--serif); color: var(--muted); margin: 4px 0 12px; }
 .stone .cause { font-style: italic; }
 
+.contact { padding: 8px 0; }
+.contact + .contact { border-top: 1px dashed var(--line); }
+.contact strong, .contact small { display: block; }
+.contact small { color: var(--muted); }
+.contact p { font-size: 0.9rem; margin-top: 3px; }
+
 /* ---------- Character creator ---------- */
 .creator-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
 .creator-head h1 { font-size: 1.7rem; }

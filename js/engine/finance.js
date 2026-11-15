@@ -27,7 +27,7 @@ export function tickFinance() {
   }
 
   // Living costs start once you support yourself.
-  if (!p.flags.livesWithParents && p.age >= 18) {
+  if (!p.flags.livesWithParents && p.age >= 18 && !p.education.enrolled) {
     const base = localMoney(14000, c);
     const lifestyle = Math.round(Math.max(0, gross) * 0.25);
     f.cash -= base + lifestyle;

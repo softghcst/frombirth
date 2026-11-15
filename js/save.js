@@ -25,6 +25,10 @@ function migrate(state) {
   state.eventHistory ??= [];
   state.player.birth ??= [];
   state.player.traitSources ??= {};
+  const t = state.player.talents;
+  t.singing ??= Math.round((t.music ?? 25) * 0.7);
+  t.dance ??= Math.round((t.sports ?? 25) * 0.5);
+  state.player.education.housing ??= 'home';
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

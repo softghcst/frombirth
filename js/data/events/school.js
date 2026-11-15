@@ -1,4 +1,4 @@
-import { st, hid, tal, cash, rel, flag, gpa, heat, count, ms, addNpc, ok, bad, any, chk, need } from './helpers.js';
+import { st, hid, tal, cash, rel, flag, gpa, heat, count, ms, addNpc, ok, bad, any, chk, need, mem } from './helpers.js';
 
 const enrolled = need('education.enrolled', '==', true);
 const at = (stage) => [enrolled, need('education.stage', '==', stage)];
@@ -136,8 +136,9 @@ export default [
     ],
   },
   {
-    id: 'uni_flatmate', category: 'university', ageRange: [18, 30], requires: at('university'), once: true, weight: 3,
-    text: 'Your new flatmate has labelled every item in the fridge, including the butter.',
+    id: 'uni_flatmate', category: 'campus life', ageRange: [18, 30], once: true, weight: 4,
+    requires: [enrolled, need('education.housing', '==', 'dorm'), need('age', '>=', 18)],
+    text: 'Your new dorm-mate has labelled every item in the fridge, including the butter.',
     choices: [
       { label: 'Introduce yourself properly', check: chk(0.6, { 'stats.charm': 0.6 }), outcomes: [
         ok('{mate} is just nervous. By the end of term you are inseparable.', addNpc('friend', 'mate'), st('mood', 6)),
@@ -145,6 +146,46 @@ export default [
       ] },
       { label: 'Eat the butter', outcomes: [any('A note appears on your door. Then another. {mate} never forgives you.', 'bad', addNpc('enemy', 'mate', { relationship: 8 }), hid('karma', -3), hid('crazy', 2))] },
       { label: 'Label your own things, more aggressively', outcomes: [any('An arms race of sticky notes. It is oddly bonding.', 'neutral', st('mood', 2))] },
+    ],
+  },
+  {
+    id: 'dorm_corridor', category: 'campus life', ageRange: [18, 30], cooldown: 3, weight: 2,
+    requires: [enrolled, need('education.housing', '==', 'dorm'), need('age', '>=', 18)],
+    text: 'It is 1 a.m. and the whole corridor has ended up in one room with a guitar and a bag of chips.',
+    choices: [
+      { label: 'Stay up with them', outcomes: [any('You talk until the sky goes grey. {pal}, from three doors down, becomes a fixture.', 'good', addNpc('friend', 'pal'), st('mood', 7), gpa(-0.05), st('health', -1))] },
+      { label: 'Sing something', check: chk(0.5, { 'talents.singing': 0.8 }), outcomes: [
+        ok('The room goes quiet, then loud. People you have never met know your name by breakfast.', st('charm', 3), st('mood', 6), tal('singing', 2)),
+        bad('Someone turns the guitar up, kindly.', st('mood', -2)),
+      ] },
+      { label: 'Close your door', outcomes: [any('You get eight hours. You also miss whatever that was.', 'neutral', gpa(0.05), st('mood', -1))] },
+    ],
+  },
+  {
+    id: 'apartment_rent', category: 'campus life', ageRange: [18, 32], cooldown: 3, weight: 3,
+    requires: [enrolled, need('education.housing', '==', 'apartment')], cast: { mate: 'tag:roommate' },
+    text: 'Rent is due on Friday and {mate} is {$300} short. Again.',
+    choices: [
+      { label: 'Cover it and say nothing', requires: [need('cashBase', '>=', 300)], outcomes: [any(
+        '{mate} pays you back in instalments and washing-up. Something between you gets sturdier.', 'good',
+        cash(-300), rel('mate', 10), hid('karma', 4), mem('mate', 'coveredRent', 'You covered their share of the rent without making it a thing.'))] },
+      { label: 'Sit down and work out a budget together', check: chk(0.55, { 'stats.charm': 0.4, 'cast.mate.relationship': 0.5 }), outcomes: [
+        ok('An awkward hour with a spreadsheet. It does not happen again.', rel('mate', 6), st('intellect', 1)),
+        bad('It turns into a list of everything each of you has ever left in the sink.', rel('mate', -12), st('mood', -4)),
+      ] },
+      { label: 'Tell them to sort it or move out', outcomes: [any(
+        '{mate} finds the money. The apartment is very quiet for a month.', 'bad', rel('mate', -18), st('mood', -3),
+        mem('mate', 'rentUltimatum', 'You threatened to throw them out over the rent.'))] },
+    ],
+  },
+  {
+    id: 'last_bus', category: 'campus life', ageRange: [18, 30], cooldown: 3, weight: 3,
+    requires: [enrolled, need('education.housing', '==', 'home'), need('age', '>=', 18), need('education.stage', '!=', 'high')],
+    text: 'Everyone on your course is staying on campus for the end-of-term night. Your last bus home leaves in twenty minutes.',
+    choices: [
+      { label: 'Catch the bus', outcomes: [any('You see the photos the next morning. Your bank balance, at least, is fine.', 'neutral', st('mood', -4), hid('discipline', 2))] },
+      { label: 'Stay and sleep on someone\'s floor', outcomes: [any('{pal} lends you a floor and a towel. Worth every stiff joint.', 'good', addNpc('friend', 'pal'), st('mood', 7), st('health', -1))] },
+      { label: 'Stay and pay for a taxi ({$45})', requires: [need('cashBase', '>=', 45)], outcomes: [any('A proper night out, and a very expensive ride home.', 'good', cash(-45), st('mood', 6))] },
     ],
   },
   {

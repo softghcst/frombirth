@@ -17,10 +17,11 @@ export const country = () => COUNTRIES[player().countryId];
 export const livingNpcs = () =>
   player().npcIds.map((id) => store.state.npcs[id]).filter((n) => n && n.alive);
 
-/** Role specs: any NPC role, plus 'mother' / 'father'. */
+/** Role specs: any NPC role, 'mother' / 'father', or 'tag:<contact tag>'. */
 export function npcMatches(npc, spec) {
   if (spec === 'mother') return npc.role === 'parent' && npc.gender === 'female';
   if (spec === 'father') return npc.role === 'parent' && npc.gender === 'male';
+  if (spec.startsWith('tag:')) return npc.flags.tag === spec.slice(4);
   return npc.role === spec;
 }
 
