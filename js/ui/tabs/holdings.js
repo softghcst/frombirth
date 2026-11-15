@@ -9,6 +9,7 @@ import * as mkt from '../../engine/market.js';
 import * as bank from '../../engine/loans.js';
 import { INVEST_AMOUNTS, BANK_LOAN, SECURITY_KINDS } from '../../data/securities.js';
 import { localMoney } from '../../util.js';
+import { propertyTaxLabel } from '../../data/countries.js';
 import { meterHtml } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal } from '../modals.js';
 import * as last from '../../engine/death.js';
@@ -104,9 +105,12 @@ function openProperty(a, api) {
     ['Mortgage', a.mortgage ? `${fmtMoney(a.mortgage.principal, c)} left, ${fmtMoney(a.mortgage.payment, c)} a year for ${a.mortgage.yearsLeft} more years` : 'None'],
     ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${fmtMoney(a.tenant.rent, c)} a year` : 'Standing empty'],
     ['Running costs', `${fmtMoney(Math.round(a.value * estate.propertyTypeOf(a).upkeep), c)} a year`],
+    ['Where', `${a.city ? `${a.city}, ` : ''}${estate.placeOf(a).name}`],
+    ['Property tax', estate.propertyTaxOn(a) ? `${fmtMoney(estate.propertyTaxOn(a), c)} a year (${propertyTaxLabel(estate.placeOf(a))})` : `None in ${estate.placeOf(a).name}`],
   ];
   const acts = [];
-  if (!isHome && !a.tenant) acts.push(['movein', 'Move in'], ['let', `Find a tenant (about ${fmtMoney(estate.rentFor(a), c)} a year)`]);
+  if (!isHome && !a.tenant && !estate.isAbroad(a)) acts.push(['movein', 'Move in']);
+  if (!isHome && !a.tenant) acts.push(['let', `Find a tenant (about ${fmtMoney(estate.rentFor(a), c)} a year)`]);
   if (isHome) acts.push(['moveout', 'Move out and rent somewhere']);
   if (a.tenant) acts.push(['evict', 'Give the tenant notice']);
   if (a.condition < 95) acts.push(['renovate', `Renovate (${fmtMoney(estate.renovationCost(a.id), c)})`]);
@@ -260,7 +264,7 @@ export default {
         <div class="side">${fmtMoney(value, c)}</div>
       </button>`;
     const props = estate.properties().map((a) => row(a, GLYPH.property,
-      `${p.homeId === a.id ? 'Your home' : a.tenant ? 'Let to a tenant' : 'Empty'} · condition ${Math.round(a.condition)}%${a.mortgage ? ' · mortgaged' : ''}`, a.value)).join('');
+      `${estate.isAbroad(a) ? `In ${estate.placeOf(a).name} · ` : ''}${p.homeId === a.id ? 'Your home' : a.tenant ? 'Let to a tenant' : estate.isAbroad(a) ? 'Yours to stay in when you visit' : 'Empty'} · condition ${Math.round(a.condition)}%${a.mortgage ? ' · mortgaged' : ''}`, a.value)).join('');
     const vehs = cars.vehicles().map((a) => row(a, GLYPH[a.vehicleClass], `${a.age} yr old · condition ${Math.round(a.condition)}%`, a.value)).join('');
     const invs = mkt.quotes().filter((q) => q.held).map((q) => `
       <button class="row" data-security="${q.id}">
@@ -278,7 +282,7 @@ export default {
         ${kv([['Cash', fmtMoney(f.cash, c)], ['Debts', fmtMoney(debt, c)]])}
         <div class="kv"><span>Net worth</span><span><strong>${fmtMoney(netWorth(store.state), c)}</strong></span></div>
         ${kv([['Where you live', living], ['Lifetime earnings', fmtMoney(f.lifetimeEarned, c)], ['Lifetime tax paid', fmtMoney(f.lifetimeTaxPaid, c)],
-    [`Income tax (${c.name})`, `${Math.round(c.incomeTax * 100)}%`],
+    [`Income tax (${c.name})`, `${Math.round(c.incomeTax * 100)}%`], ['Property tax', propertyTaxLabel(c)],
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}
       </div>
       ${actions.length ? `<div class="btn-stack" style="margin-bottom:14px">${actions.map(([id, label]) => `<button class="btn" data-go="${id}">${esc(label)}</button>`).join('')}</div>` : ''}

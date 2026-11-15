@@ -188,3 +188,11 @@ button.tree-row:active { background: var(--accent-soft); }
 .dpad { display: grid; justify-items: center; gap: 6px; margin-top: 14px; }
 .dpad > div { display: flex; gap: 6px; }
 .dpad .btn { width: auto; min-width: 64px; }
+
+/* ---------- Passport ---------- */
+.passport { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 14px 12px; padding: 6px 4px; max-height: 58vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.stamp { border: 2px dashed var(--muted); border-radius: 10px; padding: 10px 8px; text-align: center; color: var(--muted); }
+.stamp.lived { border-style: double; border-width: 4px; border-color: var(--accent); color: var(--accent); }
+.stamp .flag { display: block; font-size: 1.7rem; line-height: 1.2; }
+.stamp strong { display: block; font-family: var(--serif); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.stamp small { display: block; font-size: 0.72rem; margin-top: 2px; }

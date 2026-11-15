@@ -48,7 +48,9 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Funds, shares and coins (all fictional); bank loans; overdraft and bankruptcy | `js/data/securities.js` |
 | Gambling stakes, lottery prizes, the bookmaker's cut | top of `js/engine/gambling.js` |
 | Money events (leaks, tenants, breakdowns, tips) | `js/data/events/money.js` |
-| Crimes, lawyers, prison gangs, sentence rules | `js/data/crimes.js` |
+| Crimes and the age each opens at, strangers, ways of killing, lawyers, prison gangs, sentence rules | `js/data/crimes.js` |
+| Property tax by country | `PROPERTY_TAX` in `js/data/countries.js` |
+| Moving abroad: who comes, how likely relatives are to say yes, shipping costs, the passport | `js/engine/emigration.js` |
 | Escape puzzle maps (run `node tests/escape-layouts.mjs` after editing) | `js/data/prisonLayouts.js` |
 | Treatment costs and success rates, surgeries and surgeons, activity and holiday prices, follower packs, emigration fee | `js/data/activities.js` |
 | Trips: getaways, theme parks, cruises, flight classes, and the stories told about them | `js/data/activities.js` (`HOLIDAYS`, `CABINS`, `TRIP_STORIES`) |

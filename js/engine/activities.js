@@ -2,7 +2,8 @@
 // and nights out. Each can be done once a year.
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
-import { store, player, country, npcsByRole, log, milestone } from '../state.js';
+import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
+import { stamp } from './emigration.js';
 import { makeNpc } from './npcFactory.js';
 import { addCondition } from './health.js';
 import { remember } from './conditions.js';
@@ -99,8 +100,13 @@ export function holidayOptions(kind) {
 }
 
 /** Countries to fly to, and the seats on offer. */
-export const flightDestinations = () => COUNTRY_LIST.filter((c) => c.id !== player().countryId)
-  .map((c) => ({ id: c.id, name: c.name, flag: c.flag, visited: (player().flags.visited ?? []).includes(c.id) }));
+const kinIn = (id) => livingNpcs().filter((n) => n.flags.abroad === id && n.role !== 'pet');
+const homeIn = (id) => player().assets.find((a) => a.kind === 'property' && a.countryId === id && !a.tenant);
+export const flightDestinations = () => COUNTRY_LIST.filter((c) => c.id !== player().countryId).sort((a, b) => a.name.localeCompare(b.name))
+  .map((c) => ({ id: c.id, name: c.name, flag: c.flag, visited: (player().flags.visited ?? []).includes(c.id),
+    family: kinIn(c.id).map((n) => n.firstName), ownHome: !!homeIn(c.id) }))
+  // Places where your people or your property are come first.
+  .sort((a, b) => (b.family.length + (b.ownHome ? 1 : 0)) - (a.family.length + (a.ownHome ? 1 : 0)));
 export const cabinOptions = () => CABINS.map((k) => {
   const cost = localMoney(k.cost, country());
   return { id: k.id, name: k.name, blurb: k.blurb, cost, affordable: player().finance.cash >= cost };
@@ -127,7 +133,8 @@ export function holiday(id, bringFamily, trip = {}) {
     name: `A fortnight in ${theCountry(dest?.name ?? '')}, flying ${cabin.name.toLowerCase()}` } : HOLIDAYS.find((x) => x.id === id);
   if (!h || (flying && !dest)) return result(false, 'That trip is not on offer.', 'neutral');
   const party = bringFamily ? companions() : [];
-  const cost = Math.round((flying ? localMoney(cabin.cost, c) : tripCost(h)) * (1 + party.length * 0.6));
+  const ownPlace = flying ? homeIn(dest.id) : null; // no hotel to pay for
+  const cost = Math.round((flying ? localMoney(cabin.cost, c) : tripCost(h)) * (1 + party.length * 0.6) * (ownPlace ? 0.6 : 1));
   if (p.finance.cash < cost) return result(false, 'You cannot afford it.', 'neutral');
   if (!once('holiday')) return result(false, 'You have had your holiday this year.', 'neutral');
   p.finance.cash -= cost;
@@ -141,11 +148,22 @@ export function holiday(id, bringFamily, trip = {}) {
     remember(n, `holiday_${h.id}`, h.kind === 'park' ? `You took them to ${h.name.replace(/^.* at /, '')}.` : `You went away together: ${h.name.toLowerCase()}.`);
   }
   const where = flying ? rng.pick(dest.cities) : null;
-  let text = `${h.name}${party.length ? `, with ${names(party)}` : ''}. ${flying ? `You based yourself in ${where}. ` : ''}${rng.pick(TRIP_STORIES[h.thrill ? 'thrill' : h.kind])} It cost ${fmtMoney(cost, c)}.`;
+  const kin = flying ? kinIn(dest.id) : [];
+  for (const n of kin) {
+    n.meters.relationship = clamp(n.meters.relationship + rng.int(8, 14));
+    n.lastInteractionAge = p.age;
+    remember(n, 'visited', 'You flew over to see them.');
+  }
+  if (kin.length) p.stats.mood = clamp(p.stats.mood + 4);
+  let text = `${h.name}${party.length ? `, with ${names(party)}` : ''}. `
+    + `${flying ? (ownPlace ? `You stayed in your own ${ownPlace.name.charAt(0).toLowerCase() + ownPlace.name.slice(1)}. ` : `You based yourself in ${where}. `) : ''}`
+    + `${kin.length ? `You saw ${names(kin)}, and it was as if you had never been away. ` : ''}`
+    + `${rng.pick(TRIP_STORIES[h.thrill ? 'thrill' : h.kind])} It cost ${fmtMoney(cost, c)}.`;
   let tone = 'good';
   const smallest = party.filter((n) => n.role === 'child').sort((a, b) => a.age - b.age)[0];
 
   if (flying) {
+    stamp(dest.id, 'visit');
     const seen = p.flags.visited ?? (p.flags.visited = []);
     if (!seen.includes(dest.id)) {
       seen.push(dest.id);

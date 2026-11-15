@@ -14,6 +14,7 @@ import * as fun from '../../engine/activities.js';
 import * as net from '../../engine/social.js';
 import { canEmigrate } from '../../engine/emigration.js';
 import * as leisure from '../leisure.js';
+import { roleLabel } from '../../engine/relationships.js';
 
 async function report(api, r) {
   api.changed();
@@ -28,16 +29,30 @@ async function commitCrime(api) {
   });
   if (!id) return;
   let targetId;
+  const how = {};
   if (CRIME_BY_ID[id].target) {
-    targetId = await pickModal({
-      title: 'Who?',
-      options: law.targets().map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `Age ${n.age}` })),
-    });
-    if (!targetId) return;
+    const known = law.targets();
+    const kind = await pickModal({ title: 'Who?', options: [
+      { value: 'stranger', label: 'A stranger', sub: 'Whoever happens to be around this year.' },
+      { value: 'known', label: 'Someone you know', sub: known.length ? 'They trust you, which makes it easier to get close.' : 'You do not know anyone.', disabled: !known.length },
+    ] });
+    if (!kind) return;
+    if (kind === 'known') {
+      targetId = await pickModal({ title: 'Who?',
+        options: known.map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}, age ${n.age}` })) });
+      if (!targetId) return;
+    } else {
+      how.strangerId = await pickModal({ title: 'Who?', body: 'Different people every year.',
+        options: law.strangerOptions().map((x) => ({ value: x.id, label: x.name.replace(/^./, (ch) => ch.toUpperCase()), sub: x.note })) });
+      if (!how.strangerId) return;
+    }
+    how.methodId = await pickModal({ title: 'How?', body: 'Some ways are surer. Some are quieter. Some are neither.',
+      options: law.methodOptions().map((m) => ({ value: m.id, label: m.name, sub: `${m.blurb} Your chances: ${m.odds}.` })) });
+    if (!how.methodId) return;
   }
   const sure = await confirmModal({ title: `${CRIME_BY_ID[id].name}?`, body: 'There is no taking this back.', yes: 'Do it', danger: true });
   if (!sure) return;
-  const r = law.commitCrime(id, targetId);
+  const r = law.commitCrime(id, targetId, how);
   await report(api, r);
   if (r.arrested) await api.justice();
 }

@@ -1,6 +1,6 @@
 // Character creator. Every field can be left on "Random" / "Inherited".
 import { esc } from '../../util.js';
-import { COUNTRIES, COUNTRY_LIST } from '../../data/countries.js';
+import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel } from '../../data/countries.js';
 import { BACKGROUNDS } from '../../data/traits.js';
 import { avatarSvg, SKIN, HAIR, EYES, HAIR_STYLE_NAMES } from '../avatar.js';
 
@@ -49,7 +49,7 @@ export function renderCreator(app, hooks) {
         <div class="card"><h3>Birthplace</h3>
           <div class="field"><label for="f-country">Country</label>
             <select id="f-country"><option value="">Random</option>
-              ${COUNTRY_LIST.map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}
+              ${[...COUNTRY_LIST].sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}
             </select></div>
           <div class="field"><label for="f-city">City</label>
             <select id="f-city"><option value="">Random</option></select></div>
@@ -101,7 +101,7 @@ export function renderCreator(app, hooks) {
     q('#f-city').innerHTML = '<option value="">Random</option>'
       + (c?.cities ?? []).map((city) => `<option>${esc(city)}</option>`).join('');
     q('[data-country-info]').textContent = c
-      ? `Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, estate tax ${Math.round(c.estateTax * 100)}%. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'}`
+      ? `Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, estate tax ${Math.round(c.estateTax * 100)}%, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'}`
       : 'Each country has its own currency and taxes.';
   });
 

@@ -7,7 +7,7 @@ import { resolve } from './conditions.js';
 import { makeNpc } from './npcFactory.js';
 import { fire } from './career.js';
 import { leaveForPrison } from './education.js';
-import { CRIMES, CRIME_BY_ID, LAWYERS, LIFE_SENTENCE, COLD_CASE_YEARS } from '../data/crimes.js';
+import { CRIMES, CRIME_BY_ID, LAWYERS, LIFE_SENTENCE, COLD_CASE_YEARS, STRANGERS, METHODS, METHOD_BY_ID } from '../data/crimes.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const legal = () => {
@@ -22,10 +22,33 @@ export const convictions = () => player().legal.record.filter((r) => r.convicted
 
 // ---------- Committing a crime ----------
 
-export function successChance(crime) {
-  let chance = crime.base;
+export function successChance(crime, edge = 0) {
+  let chance = crime.base + edge;
   for (const [path, w] of Object.entries(crime.factors)) chance += w * ((Number(resolve(path)) || 0) - 50) / 100;
   return clamp(chance - legal().heat / 400, 0.03, 0.95);
+}
+
+/** A handful of strangers who happen to be around this year. */
+export function strangerOptions() {
+  const p = player();
+  if (p.flags.strangers?.age !== p.age) {
+    const pool = [...STRANGERS];
+    const ids = [];
+    while (ids.length < 7 && pool.length) ids.push(pool.splice(rng.int(0, pool.length - 1), 1)[0].id);
+    p.flags.strangers = { age: p.age, ids };
+  }
+  return p.flags.strangers.ids.map((id) => STRANGERS.find((x) => x.id === id)).filter(Boolean)
+    .map((x) => ({ id: x.id, name: x.name, note: x.guard >= 0.2 ? 'Well protected.' : x.heat ? 'The police would take it personally.' : x.guard < 0 ? 'Will not see it coming.' : '' }));
+}
+
+/** Ways of doing it that are open to the player, with a plain-words read on each. */
+export function methodOptions() {
+  const murder = CRIME_BY_ID.murder;
+  return METHODS.filter((m) => !m.needs || resolve(m.needs)).map((m) => {
+    const chance = successChance(murder, m.edge);
+    return { id: m.id, name: m.name, blurb: m.blurb,
+      odds: chance >= 0.7 ? 'good' : chance >= 0.45 ? 'fair' : chance >= 0.25 ? 'poor' : 'terrible' };
+  });
 }
 
 /** Crimes open to the player now, with a plain-words read on the odds. */
@@ -46,30 +69,38 @@ export const targets = () => player().npcIds.map((id) => store.state.npcs[id])
 
 /**
  * @param {string} crimeId
- * @param {string} [targetId]  for crimes against a person
+ * @param {string} [targetId]  for crimes against a person: someone the player knows
+ * @param {{strangerId?:string, methodId?:string}} [how]  a stranger instead, and the way it is done
  * @returns {{ok:boolean, text:string, tone:string, arrested:boolean}}
  */
-export function commitCrime(crimeId, targetId) {
+export function commitCrime(crimeId, targetId, how = {}) {
   const p = player();
   const c = country();
   const crime = CRIME_BY_ID[crimeId];
   const l = legal();
   if (!canCommitCrimes() || p.age < crime.minAge) return { ...result(false, 'You cannot do that now.', 'neutral'), arrested: false };
   const victim = store.state.npcs[targetId];
+  const stranger = crime.target && !victim ? STRANGERS.find((x) => x.id === how.strangerId) ?? STRANGERS[0] : null;
+  const method = crime.target ? METHOD_BY_ID[how.methodId] ?? METHOD_BY_ID.knife : null;
+  const who = victim ? `${victim.firstName} ${victim.lastName}` : stranger ? stranger.name.replace(/^an? /, 'The ').replace(/^the /, 'The ') : '';
+  const edge = (method?.edge ?? 0) - (stranger?.guard ?? 0) + (method?.id === 'bare_hands' ? (p.stats.health - 50) / 250 : 0);
+  const worked = rng.chance(successChance(crime, edge)); // judged on who you were before you did it
   p.counters.crimes += 1;
   p.hidden.karma = clamp(p.hidden.karma + crime.karma);
   p.talents.crime = clamp(p.talents.crime + 2);
 
-  if (rng.chance(successChance(crime))) {
-    const loot = localMoney(rng.int(crime.loot[0], crime.loot[1]), c);
+  if (worked) {
+    const range = stranger?.loot ?? crime.loot;
+    const loot = localMoney(rng.int(range[0], range[1]), c);
     p.finance.cash += loot;
-    l.heat = clamp(l.heat + crime.heat);
-    l.unsolved.push({ crimeId, age: p.age, victim: victim?.firstName });
+    l.heat = clamp(l.heat + crime.heat + (stranger?.heat ?? 0));
+    l.unsolved.push({ crimeId, age: p.age, victim: victim?.firstName ?? stranger?.name });
+    if (crime.mood) p.stats.mood = clamp(p.stats.mood + crime.mood);
     let text = crime.done;
-    if (victim) {
-      victim.alive = false;
+    if (crime.target) {
+      if (victim) victim.alive = false;
       p.counters.kills += 1;
-      text = `${victim.firstName} ${victim.lastName} is dead. ${crime.done}`;
+      text = `${method.done.replace(/\{v\}/g, who).replace(/([,a-z] )The /g, '$1the ')} ${crime.done}`;
     }
     if (loot) text += ` You are ${fmtMoney(loot, c)} richer.`;
     log(text, 'system', 'neutral');
@@ -78,14 +109,16 @@ export function commitCrime(crimeId, targetId) {
 
   // It went wrong. Either you are caught on the spot, or you get away with nothing.
   if (crime.danger && rng.chance(crime.danger)) p.stats.health = clamp(p.stats.health - rng.int(15, 35));
-  if (rng.chance(clamp(crime.caught + l.heat / 300, 0, 0.97))) {
-    const text = `${crime.failed} You are under arrest.`;
+  if (stranger && stranger.guard >= 0.25 && rng.chance(0.3)) p.stats.health = clamp(p.stats.health - rng.int(10, 30)); // they fought back
+  const failed = crime.target ? `${who} is still very much alive. ${crime.failed}` : crime.failed;
+  if (rng.chance(clamp(crime.caught + (method?.caught ?? 0) + l.heat / 300, 0.05, 0.97))) {
+    const text = `${failed} You are under arrest.`;
     log(text, 'system', 'bad');
-    arrest(crimeId, true, victim?.firstName);
+    arrest(crimeId, true, victim?.firstName ?? stranger?.name);
     return { ...result(false, text), arrested: true };
   }
   l.heat = clamp(l.heat + Math.round(crime.heat / 2));
-  const text = `${crime.failed} You run, and get away with nothing.`;
+  const text = `${failed} You run, and get away with nothing.`;
   log(text, 'system', 'bad');
   return { ...result(false, text), arrested: false };
 }

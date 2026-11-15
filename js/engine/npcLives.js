@@ -56,6 +56,14 @@ function ask(id, cast) {
   return true;
 }
 
+/** While the player is locked up, family news still arrives, by letter. */
+function letter(text) {
+  const p = player();
+  if (!p.legal.incarceration) return;
+  p.stats.mood = clamp(p.stats.mood - 4);
+  log(`A letter reaches you inside. ${text}`, 'system', 'bad');
+}
+
 function addNpc(npc) {
   store.state.npcs[npc.id] = npc;
   player().npcIds.push(npc.id);
@@ -367,6 +375,7 @@ function haveBaby(npc, love) {
     p.stats.mood = clamp(p.stats.mood + 8);
     if (!p.flags.isGrandparent) { p.flags.isGrandparent = true; milestone('Became a grandparent.', 'family'); }
     ask('grandchild_born', { kid: npc.id, baby: baby.id });
+    letter(`${npc.firstName} has had a baby ${kind}, ${baby.firstName}. A grandchild you have not held.`);
   }
   if (npc.role === 'grandchild' && !p.flags.isGreatGrandparent) { p.flags.isGreatGrandparent = true; milestone('Became a great-grandparent.', 'family'); }
 }
@@ -398,6 +407,7 @@ function tickLove(npc) {
       love.flags.married = true;
       note(npc, `married ${love.firstName} ${love.lastName}`, true, 'good');
       if (npc.role !== 'grandchild' || rng.chance(0.5)) ask('family_wedding', { who: npc.id, inlaw: love.id });
+      if (NEWSWORTHY.includes(npc.role)) letter(`${npc.firstName} and ${love.firstName} were married last month. There is a photograph, and an empty chair in it where you should have been.`);
     } else if (rng.chance(0.1) && !L.kids) {
       note(npc, `split up with ${love.firstName}`, npc.role === 'child');
       removeNpc(love);

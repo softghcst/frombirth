@@ -163,4 +163,84 @@ export const NAMES = {
     female: 'Shanice Kadian Tashana Latoya Nadine Marcia Sandra Beverley Yvonne Paulette Sheryl Keisha Tamara Shelly Simone Kerry Annmarie Jodian Shantel Britney Aaliyah Kimberly Ashley Tiana Janelle Rochelle Petagay Natalee Sasha Monique Dahlia Marva Cecile Veronica Elaine Shericka',
     last: 'Brown Williams Smith Campbell Johnson Thompson Clarke Reid Davis Morgan Lewis Grant Robinson Gordon Edwards Stewart Bailey Wright Henry Francis Powell Walker Simpson Richards Mckenzie Blake Bennett Forbes Palmer Samuels Whyte Barrett Dixon Lawrence Hylton Gayle Tulloch Chin Lyn Fraser Bolt Marley Patterson Pinnock Hibbert Mclean',
   },
+  nz: {
+    male: 'Oliver Jack Noah Leo George Lucas Hunter Mason Liam Cooper Tane Wiremu Nikau Manaaki Ari Kahu Rawiri Hemi Mikaere Tama Sione Tevita Mosese Ethan Caleb Blake Finn Angus Hamish Callum',
+    female: 'Charlotte Isla Amelia Olivia Mia Harper Ava Willow Lily Ruby Aroha Mere Ana Kiri Hine Maia Anahera Manaia Tia Ngaio Sina Mele Losa Ella Sophie Zoe Georgia Holly Paige Brooke',
+    last: 'Smith Wilson Williams Brown Taylor Jones Anderson Thompson Walker Robinson Campbell Stewart Clark Ngata Parata Tamihana Rangi Tipene Waaka Paewai Whaanga Hohaia Tuilagi Faleafa Taufa Singh Patel Wang McKenzie Fraser Henare Te_Kanawa',
+  },
+  ch: {
+    male: 'Noah Liam Luca Leon Matteo Elias Louis Gabriel Nico Jan Lukas Fabian Simon David Urs Beat Reto Hansruedi Stefan Marco Andrin Flurin Gian Lars Julien Mathieu Loïc Alessandro Samuel Tim',
+    female: 'Mia Emma Lina Elena Sofia Lea Laura Anna Nina Sara Giulia Chiara Alina Lena Ursula Heidi Vreni Regula Barbara Seraina Ladina Flurina Chloé Léa Camille Aurélie Noemi Leonie Livia Jana',
+    last: 'Müller Meier Schmid Keller Weber Huber Schneider Meyer Steiner Fischer Gerber Brunner Baumann Frei Zimmermann Moser Widmer Wyss Graf Roth Favre Rochat Blanc Bianchi Bernasconi Fontana Caduff Cavelti Egli Zürcher Bachmann Ammann',
+  },
+  no: {
+    male: 'Jakob Emil Noah Oliver Filip William Lucas Liam Henrik Oskar Aksel Magnus Sander Mathias Kristian Lars Ole Jan Per Knut Bjørn Geir Tor Sverre Håkon Sindre Eirik Jonas Even Trygve',
+    female: 'Nora Emma Olivia Ella Sofie Leah Frida Ingrid Maja Sara Thea Ida Hedda Tuva Astrid Kari Anne Liv Marit Solveig Sigrid Ragnhild Hilde Silje Marte Ingeborg Vilde Aurora Selma Guro',
+    last: 'Hansen Johansen Olsen Larsen Andersen Pedersen Nilsen Kristiansen Jensen Karlsen Johnsen Pettersen Eriksen Berg Haugen Hagen Johannessen Andreassen Jacobsen Dahl Halvorsen Lund Solberg Bakken Strand Moen Iversen Svendsen Nygård Sæther Aasen Lie',
+  },
+  dk: {
+    male: 'William Oscar Carl Alfred Noah Malthe Emil Valdemar Aksel August Magnus Frederik Mikkel Rasmus Mads Lars Jens Søren Niels Henrik Morten Anders Kasper Jesper Christian Peter Thomas Jonas Tobias Villads',
+    female: 'Emma Ida Clara Freja Alma Ella Sofia Agnes Olivia Karla Laura Josefine Mathilde Caroline Anne Mette Hanne Kirsten Lone Pia Camilla Louise Maria Sofie Cecilie Signe Astrid Asta Liva Nanna',
+    last: 'Nielsen Jensen Hansen Pedersen Andersen Christensen Larsen Sørensen Rasmussen Jørgensen Petersen Madsen Kristensen Olsen Thomsen Christiansen Poulsen Johansen Møller Mortensen Knudsen Jakobsen Mikkelsen Frederiksen Laursen Lund Holm Schmidt Bak Dahl Kjær Vestergaard',
+  },
+  gr: {
+    male: 'Giorgos Dimitris Konstantinos Yannis Nikos Christos Panagiotis Vasilis Thanasis Michalis Alexandros Stavros Spyros Petros Kostas Antonis Manolis Stelios Lefteris Apostolos Theodoros Sotiris Andreas Evangelos Ilias Aris Odysseas Fotis Pavlos Markos',
+    female: 'Maria Eleni Katerina Vasiliki Sofia Georgia Dimitra Ioanna Anna Konstantina Angeliki Christina Despina Evangelia Panagiota Athina Foteini Paraskevi Kalliopi Eirini Danae Nefeli Ariadni Zoi Melina Stella Chrysa Niki Olga Theodora',
+    last: 'Papadopoulos Vlachos Angelopoulos Nikolaidis Georgiou Petridis Athanasiou Dimitriou Papadakis Karagiannis Makris Kostopoulos Ioannidis Vasileiou Pappas Oikonomou Christodoulou Konstantinidis Mylonas Alexiou Stavropoulos Theodorakis Kalogeropoulos Panagiotopoulos Lamprou Zervas Samaras Katsaros Doukas Raptis Galanis Sideris',
+  },
+  ru: {
+    male: 'Aleksandr Dmitri Maksim Sergei Andrei Aleksei Artyom Ilya Kirill Mikhail Nikita Ivan Roman Yegor Vladimir Pavel Oleg Igor Viktor Yuri Boris Anton Denis Konstantin Timur Ruslan Lev Fyodor Gleb Stepan',
+    female: 'Anastasia Maria Daria Anna Yelizaveta Polina Viktoria Yekaterina Sofia Aleksandra Olga Tatiana Natalia Irina Svetlana Yelena Yulia Ksenia Vera Nadezhda Lyudmila Galina Alina Diana Milana Varvara Zoya Larisa Oksana Marina',
+    last: 'Ivanov Smirnov Kuznetsov Popov Vasiliev Petrov Sokolov Mikhailov Novikov Fyodorov Morozov Volkov Alekseev Lebedev Semyonov Yegorov Pavlov Kozlov Stepanov Nikolaev Orlov Andreev Makarov Nikitin Zakharov Zaitsev Solovyov Borisov Yakovlev Grigoriev Romanov Vorobyov',
+  },
+  ua: {
+    male: 'Oleksandr Dmytro Maksym Andrii Serhii Volodymyr Mykola Ivan Taras Bohdan Yaroslav Oleh Vasyl Petro Mykhailo Artem Denys Roman Vitalii Ihor Ostap Nazar Danylo Matvii Tymofii Yurii Pavlo Stepan Hryhorii Marko',
+    female: 'Anastasiia Sofiia Mariia Anna Viktoriia Yuliia Oksana Olena Iryna Nataliia Tetiana Kateryna Daryna Solomiia Zlata Yaryna Halyna Liudmyla Svitlana Olha Lesia Khrystyna Bohdana Myroslava Ivanna Polina Veronika Marta Nadiia Ruslana',
+    last: 'Melnyk Shevchenko Kovalenko Bondarenko Boyko Tkachenko Kravchenko Kovalchuk Koval Oliynyk Shevchuk Polishchuk Lysenko Marchenko Savchenko Rudenko Petrenko Moroz Klymenko Pavlenko Kuzmenko Ponomarenko Vasylenko Levchenko Karpenko Sydorenko Havryliuk Mazur Tymoshenko Romaniuk Hnatiuk Zinchenko',
+  },
+  pe: {
+    male: 'José Luis Juan Carlos Jorge Miguel Víctor César Pedro Manuel Jesús Ángel Diego Sebastián Mateo Thiago Gael Adrián Fabrizio Piero Renzo Gianfranco Alonso Rodrigo Joaquín Santiago Kevin Brayan Yahir Wilfredo',
+    female: 'María Rosa Ana Carmen Luz Juana Milagros Fiorella Ximena Valeria Camila Luciana Mía Daniela Andrea Alessandra Mayra Yessenia Kiara Nayeli Flor Maricielo Brenda Katherine Lizbeth Rocío Pilar Gladys Yolanda Killa',
+    last: 'Quispe Flores Sánchez García Rodríguez Rojas Mamani Huamán Vargas Mendoza Ramos Torres Chávez Díaz Gutiérrez López Castillo Espinoza Pérez Condori Vásquez Fernández Ccori Huanca Apaza Cárdenas Salazar Paredes Ticona Yupanqui Palomino Zevallos',
+  },
+  do: {
+    male: 'Juan José Luis Carlos Miguel Rafael Pedro Ramón Francisco Manuel Ángel Starling Yoel Wander Albert Vladimir Nelson Sammy Robinson Jeison Anderson Yeremi Braulio Radhamés Fausto Domingo Cristian Elvis Junior Maikel',
+    female: 'María Ana Carmen Altagracia Rosa Juana Mercedes Yolanda Yesenia Yaritza Rosanna Massiel Dahiana Leidy Wendy Perla Estefany Nathalie Scarlet Génesis Yokasta Miguelina Ramona Milagros Katherine Arisleidy Nicole Camila Luz Mayra',
+    last: 'Rodríguez Pérez Martínez García Reyes Sánchez Díaz Peña Jiménez Ramírez Hernández Rosario González Santana Núñez Castillo De_la_Cruz Guzmán Mejía Vásquez Polanco Féliz Encarnación De_los_Santos Tavárez Batista Mateo Cabrera Almonte Familia Paulino Pichardo',
+  },
+  cu: {
+    male: 'José Luis Juan Carlos Jorge Pedro Roberto Raúl Alberto Ernesto Yoandy Yunier Yosvany Yasiel Lázaro Osvaldo Reinaldo Orlando Rolando Ariel Maikel Dayron Leonel Alexis Julio Ramón Eduardo Vladimir Yoel Misael',
+    female: 'María Ana Yamilé Yanet Yusimí Yaima Dayana Mayelín Marisol Caridad Mercedes Odalys Zoila Idalmis Lisandra Daylín Leidys Yanelis Rosa Carmen Elena Gloria Maritza Niurka Liudmila Tania Yudelkis Arlenis Beatriz Milagros',
+    last: 'Rodríguez Pérez González Hernández García Martínez Díaz Fernández López Álvarez Sánchez Gómez Suárez Valdés Morales Reyes Castillo Torres Acosta Cabrera Batista Leyva Sosa Rivero Machado Echevarría Guerra Fonseca Céspedes Zayas Oquendo Bermúdez',
+  },
+  gh: {
+    male: 'Kwame Kofi Kwesi Yaw Kwabena Kojo Kwaku Akwasi Nana Kweku Ebo Fiifi Ato Yaw Nii Tetteh Selorm Edem Elikem Mawuli Abdul Ibrahim Issah Mohammed Emmanuel Samuel Daniel Isaac Prince Richmond',
+    female: 'Ama Akosua Abena Akua Yaa Afia Adwoa Esi Efua Araba Serwaa Akosua Naa Dede Korkor Sena Dzifa Eyram Mawuena Fatima Rahinatu Memuna Abigail Priscilla Gifty Comfort Mercy Patience Portia Nhyira',
+    last: 'Mensah Owusu Boateng Osei Asante Agyeman Appiah Amoah Darko Ofori Frimpong Acheampong Addo Ansah Asamoah Bonsu Danso Gyamfi Kyei Opoku Sarpong Tetteh Lartey Quaye Nartey Agbeko Dzokoto Kpodo Abubakar Mahama Yeboah Antwi',
+  },
+  ma: {
+    male: 'Mohammed Youssef Ahmed Omar Hamza Amine Mehdi Ayoub Anas Yassine Rachid Hassan Said Karim Khalid Abdelaziz Mustapha Driss Brahim Noureddine Soufiane Zakaria Bilal Ilyas Reda Tarik Jamal Hicham Adil Nabil',
+    female: 'Fatima Khadija Aicha Meryem Salma Zineb Imane Sara Hajar Nour Laila Naima Latifa Samira Malika Souad Hanane Ghita Yasmine Rania Asmae Kenza Loubna Siham Amal Houda Btissam Chaimae Ikram Wiam',
+    last: 'Alaoui Bennani El_Idrissi Tazi Berrada Benjelloun Lahlou El_Amrani Chraibi Fassi Bouzidi Ouazzani Benali El_Mansouri Naciri Zerouali Amrani Belhaj Cherkaoui Bensaid El_Khattabi Hamdaoui Jebari Kabbaj Lamrani Mouline Sefrioui Tahiri Ziani Ait_Ahmed Oulhaj Sabri',
+  },
+  pk: {
+    male: 'Muhammad Ali Ahmed Hassan Hussain Usman Bilal Hamza Umar Zain Imran Asad Faisal Kamran Shahid Tariq Waqas Adnan Saad Fahad Danish Haris Junaid Rizwan Salman Shoaib Babar Arslan Taimur Noman',
+    female: 'Fatima Ayesha Maryam Zainab Hira Sana Amna Iqra Mahnoor Noor Sadia Rabia Saba Bushra Nadia Farah Uzma Samina Shazia Kiran Mehwish Anam Laiba Aiman Minahil Zara Hania Alina Rimsha Sidra',
+    last: 'Khan Ahmed Ali Hussain Malik Butt Sheikh Chaudhry Qureshi Siddiqui Raza Iqbal Mirza Baig Javed Aslam Akhtar Mahmood Rana Bhatti Awan Gill Cheema Abbasi Durrani Yousafzai Afridi Khattak Memon Soomro Jatoi Bukhari',
+  },
+  id: {
+    male: 'Budi Agus Joko Bambang Slamet Eko Hendra Rudi Andi Dedi Wahyu Rizky Fajar Dimas Bayu Yoga Arief Iwan Putra Gilang Reza Ilham Taufik Hadi Surya Wayan Made Ketut Nyoman Gede',
+    female: 'Siti Sri Dewi Ani Rina Wati Lestari Putri Ayu Indah Fitri Nur Ratna Yuni Maya Dian Novi Rini Wulan Citra Intan Bunga Melati Kartika Anisa Nadia Salsabila Kadek Komang Luh',
+    last: 'Wijaya Susanto Santoso Setiawan Hidayat Saputra Pratama Nugroho Kurniawan Gunawan Wibowo Siregar Nasution Lubis Simanjuntak Sitompul Hutagalung Tanoto Halim Tan Lim Suryadi Hartono Purnomo Rahman Firmansyah Syahputra Maulana Utomo Prasetyo Sudirman Kusuma',
+  },
+  sg: {
+    male: 'Wei_Jie Jun_Hao Zhi_Hao Kai_Xiang Jia_Jun Yi_Xuan Ethan Lucas Ryan Marcus Darren Desmond Kelvin Terence Muhammad Ahmad Faizal Hafiz Irfan Syafiq Arjun Rajesh Suresh Vikram Kumar Ganesh Aaron Benjamin Caleb Ian',
+    female: 'Hui_Min Xin_Yi Jia_Hui Li_Ting Mei_Ling Shu_Fen Wei_Ling Yi_Ling Chloe Charlotte Rachel Michelle Joanne Cheryl Vanessa Nurul Siti Aisyah Farah Nadia Syazwani Priya Lakshmi Kavitha Divya Anjali Sarah Grace Faith Joy',
+    last: 'Tan Lim Lee Ng Ong Wong Goh Chua Chan Koh Teo Ang Yeo Tay Ho Low Toh Sim Chong Chia Seah Foo Rahman Ismail Yusof Hassan Pillai Nair Menon Raj Singh De_Souza Pereira',
+  },
+  ae: {
+    male: 'Mohammed Ahmed Ali Khalid Saeed Rashid Sultan Hamad Abdullah Omar Mansour Zayed Hamdan Majid Faisal Salem Yousef Saif Hazza Tahnoun Obaid Jassim Nasser Marwan Thani Butti Suhail Dhiyab Humaid Ghanim',
+    female: 'Fatima Mariam Aisha Shamma Latifa Hessa Moza Sheikha Noura Amna Salama Maitha Reem Alia Hind Shaikha Meera Afra Wadima Rawdha Mahra Shamsa Dana Lamia Asma Khawla Jawaher Hamda Ayesha Sara',
+    last: 'Al_Mansoori Al_Nuaimi Al_Mazrouei Al_Shamsi Al_Ketbi Al_Dhaheri Al_Suwaidi Al_Marri Al_Hashimi Al_Zaabi Al_Kaabi Al_Ameri Al_Mheiri Al_Falasi Al_Qubaisi Al_Romaithi Al_Muhairi Al_Hammadi Al_Balushi Al_Tunaiji Al_Shehhi Al_Ali Al_Jaberi Al_Rumaithi Al_Neyadi Al_Hosani Al_Remeithi Bin_Sulayem Al_Tayer',
+  },
 };

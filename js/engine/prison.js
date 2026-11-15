@@ -201,7 +201,16 @@ export function tickPrison() {
   p.stats.mood = clamp(p.stats.mood - (k.security === 'max' ? 6 : 4));
   p.stats.health = clamp(p.stats.health - (k.security === 'max' ? 2 : 1));
   const g = gang();
-  if (g) { bump('respect', g.perYear); bump('conduct', -4); } else bump('respect', -2);
+  if (g) {
+    bump('respect', g.perYear);
+    bump('conduct', g.conduct ?? -4);
+    if (g.health) p.stats.health = clamp(p.stats.health + g.health);
+    if (g.income) {
+      const cut = localMoney(g.income, country());
+      p.finance.cash += cut;
+      log(`Your share of ${g.name}'s business came to ${fmtMoney(cut, country())} this year.`);
+    }
+  } else bump('respect', -2);
   bump('conduct', 3);
 
   if (!g && !isJuvenile() && k.respect < 25 && rng.chance(0.2)) {

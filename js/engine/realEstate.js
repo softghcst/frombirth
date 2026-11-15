@@ -1,7 +1,8 @@
 // Property: what is for sale, mortgages, living in it, renovating, letting to
 // tenants, selling, and the yearly upkeep, wear and repayments.
 import { rng } from '../rng.js';
-import { uid, clamp, fmtMoney } from '../util.js';
+import { COUNTRIES } from '../data/countries.js';
+import { uid, clamp, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { market } from './market.js';
 import { householdIncome, isBankrupt, yearlyPayment } from './loans.js';
@@ -12,6 +13,12 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const lower = (name) => name.charAt(0).toLowerCase() + name.slice(1);
 const assetOf = (id) => player().assets.find((a) => a.id === id);
 export const properties = () => player().assets.filter((a) => a.kind === 'property');
+/** The country a property stands in. Older saves did not record it. */
+export const placeOf = (a) => COUNTRIES[a.countryId ?? player().countryId];
+/** True for a property in a country the player no longer lives in. */
+export const isAbroad = (a) => !!a.countryId && a.countryId !== player().countryId;
+/** A year's property tax on it, in the money the player uses now. */
+export const propertyTaxOn = (a) => Math.round(a.value * placeOf(a).propertyTax);
 export const home = () => assetOf(player().homeId);
 
 /** What a property is worth today: the market, its own quality, and its condition. */
@@ -83,7 +90,8 @@ export function buyProperty(listingId, deposit) {
   p.finance.cash -= deposit + fees;
   const first = !properties().length && !p.flags.ownedProperty;
   const asset = { id: uid('asset'), kind: 'property', catalogId: l.typeId, name: l.name, purchasePrice: l.price,
-    value: l.price, boughtAtAge: p.age, condition: l.condition, quality: l.quality, mortgage, tenant: null };
+    value: l.price, boughtAtAge: p.age, condition: l.condition, quality: l.quality, mortgage, tenant: null,
+    countryId: p.countryId, city: p.city };
   p.assets.push(asset);
   p.flags.ownedProperty = true;
   market().listings.property = market().listings.property.filter((x) => x.id !== listingId);
@@ -100,6 +108,7 @@ export function moveIn(id, quiet = false) {
   const p = player();
   const a = assetOf(id);
   if (a.tenant) return result(false, 'There is a tenant living there.', 'neutral');
+  if (isAbroad(a)) return result(false, `It is in ${theCountry(COUNTRIES[a.countryId].name)}. You would have to move back to live in it.`, 'neutral');
   p.homeId = id;
   p.flags.livesWithParents = false;
   const text = `You moved into the ${lower(a.name)}. No more rent.`;
@@ -223,12 +232,15 @@ export function tickProperties() {
   const c = country();
   const f = p.finance;
   let rent = 0;
+  let taxPaid = 0;
   for (const a of properties()) {
     const type = PROPERTY_BY_ID[a.catalogId];
     const hard = a.tenant && a.tenant.quality < 35;
     a.condition = clamp(a.condition - rng.int(0, 2) - (hard ? rng.int(1, 4) : 0));
     a.value = worth(a.catalogId, a.quality, a.condition);
     f.cash -= Math.round(a.value * type.upkeep);
+    const due = propertyTaxOn(a);
+    if (due) { f.cash -= due; f.lifetimeTaxPaid += due; taxPaid += due; }
 
     if (a.mortgage) {
       const m = a.mortgage;
@@ -258,6 +270,7 @@ export function tickProperties() {
       }
     }
   }
+  if (taxPaid) log(`You paid ${fmtMoney(taxPaid, c)} in property tax.`);
   if (rent) {
     const tax = Math.round(rent * c.incomeTax);
     f.cash += rent - tax;

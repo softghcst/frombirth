@@ -7,7 +7,7 @@ import { meterHtml } from '../meter.js';
 import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
-import { seeDoctor, cosmeticSurgery } from '../leisure.js';
+import { seeDoctor, cosmeticSurgery, openPassport } from '../leisure.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -44,6 +44,7 @@ export default {
       <div class="btn-stack" style="margin-bottom:14px">
         <button class="btn ${med.treatable().some((x) => !x.managed && !x.seen) ? 'primary' : ''}" data-doctor>See a doctor</button>
         ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
+        <button class="btn" data-passport>Passport</button>
       </div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
       <div class="section-label">Game</div>
@@ -53,6 +54,7 @@ export default {
       </div>`;
 
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
+    el.querySelector('[data-passport]').onclick = () => openPassport();
     if (el.querySelector('[data-surgery]')) el.querySelector('[data-surgery]').onclick = () => cosmeticSurgery(api);
     el.querySelector('[data-exit]').onclick = () => api.exitToTitle();
     el.querySelector('[data-end]').onclick = async () => {

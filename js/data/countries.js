@@ -136,6 +136,38 @@ const LIST = [
     ['Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 'Thika']),
   C('jm', 'Jamaica', '🇯🇲', 'JMD', 'J$', 155, 0.22, 0,
     ['Kingston', 'Montego Bay', 'Spanish Town', 'Portmore', 'Mandeville', 'Ocho Rios']),
+  C('nz', 'New Zealand', '🇳🇿', 'NZD', 'NZ$', 1.6, 0.26, 0,
+    ['Auckland', 'Wellington', 'Christchurch', 'Dunedin', 'Hamilton', 'Queenstown']),
+  C('ch', 'Switzerland', '🇨🇭', 'CHF', 'CHF ', 0.9, 0.22, 0.05,
+    ['Zurich', 'Geneva', 'Basel', 'Bern', 'Lausanne', 'Lucerne']),
+  C('no', 'Norway', '🇳🇴', 'NOK', 'kr', 10, 0.30, 0,
+    ['Oslo', 'Bergen', 'Trondheim', 'Stavanger', 'Tromsø', 'Kristiansand']),
+  C('dk', 'Denmark', '🇩🇰', 'DKK', 'kr', 7, 0.36, 0.15,
+    ['Copenhagen', 'Aarhus', 'Odense', 'Aalborg', 'Esbjerg', 'Roskilde']),
+  C('gr', 'Greece', '🇬🇷', 'EUR', '€', 0.9, 0.26, 0.05,
+    ['Athens', 'Thessaloniki', 'Patras', 'Heraklion', 'Larissa', 'Rhodes']),
+  C('ru', 'Russia', '🇷🇺', 'RUB', '₽', 90, 0.13, 0,
+    ['Moscow', 'Saint Petersburg', 'Novosibirsk', 'Kazan', 'Yekaterinburg', 'Sochi']),
+  C('ua', 'Ukraine', '🇺🇦', 'UAH', '₴', 40, 0.19, 0,
+    ['Kyiv', 'Lviv', 'Odesa', 'Kharkiv', 'Dnipro', 'Chernivtsi']),
+  C('pe', 'Peru', '🇵🇪', 'PEN', 'S/', 3.8, 0.17, 0,
+    ['Lima', 'Arequipa', 'Cusco', 'Trujillo', 'Piura', 'Iquitos']),
+  C('do', 'Dominican Republic', '🇩🇴', 'DOP', 'RD$', 58, 0.17, 0.03,
+    ['Santo Domingo', 'Santiago', 'Punta Cana', 'La Romana', 'Puerto Plata', 'San Pedro']),
+  C('cu', 'Cuba', '🇨🇺', 'CUP', '$', 120, 0.15, 0,
+    ['Havana', 'Santiago de Cuba', 'Camagüey', 'Holguín', 'Trinidad', 'Cienfuegos']),
+  C('gh', 'Ghana', '🇬🇭', 'GHS', 'GH₵', 12, 0.18, 0,
+    ['Accra', 'Kumasi', 'Tamale', 'Cape Coast', 'Takoradi', 'Ho']),
+  C('ma', 'Morocco', '🇲🇦', 'MAD', 'DH ', 10, 0.20, 0,
+    ['Casablanca', 'Rabat', 'Marrakesh', 'Fez', 'Tangier', 'Agadir']),
+  C('pk', 'Pakistan', '🇵🇰', 'PKR', '₨', 280, 0.15, 0,
+    ['Karachi', 'Lahore', 'Islamabad', 'Faisalabad', 'Peshawar', 'Multan']),
+  C('id', 'Indonesia', '🇮🇩', 'IDR', 'Rp', 15500, 0.15, 0,
+    ['Jakarta', 'Surabaya', 'Bandung', 'Denpasar', 'Yogyakarta', 'Medan']),
+  C('sg', 'Singapore', '🇸🇬', 'SGD', 'S$', 1.35, 0.12, 0,
+    ['Singapore']),
+  C('ae', 'United Arab Emirates', '🇦🇪', 'AED', 'AED ', 3.7, 0, 0,
+    ['Dubai', 'Abu Dhabi', 'Sharjah', 'Al Ain', 'Ajman', 'Ras Al Khaimah']),
 ];
 
 // Public services, used by health care and university costs in later phases.
@@ -148,8 +180,25 @@ const POLICY = {
   ve: [true, true], co: [false, false], cl: [false, false], pt: [true, false],
   nl: [true, false], pl: [true, true], tr: [true, true], eg: [false, true],
   th: [true, false], vn: [false, false], ke: [false, false], jm: [true, false],
+  nz: [true, false], ch: [false, false], no: [true, true], dk: [true, true],
+  gr: [true, true], ru: [true, false], ua: [true, false], pe: [false, false],
+  do: [false, false], cu: [true, true], gh: [false, false], ma: [false, true],
+  pk: [false, false], id: [false, false], sg: [false, false], ae: [false, false],
 };
 for (const c of LIST) [c.freeHealthcare, c.freeUniversity] = POLICY[c.id];
+
+// Yearly tax on property you own there, as a share of its value. Countries
+// left out charge none.
+const PROPERTY_TAX = {
+  us: 0.011, ca: 0.009, jp: 0.014, uk: 0.004, fr: 0.008, it: 0.006, es: 0.006, za: 0.007, ph: 0.01, ar: 0.006,
+  co: 0.008, cl: 0.01, jm: 0.008, br: 0.005, se: 0.004, pt: 0.004, au: 0.003, de: 0.002, in: 0.002, kr: 0.002,
+  ie: 0.002, pl: 0.002, tr: 0.002, mx: 0.001, nl: 0.001, ke: 0.001, nz: 0.004, dk: 0.007, gr: 0.005, pe: 0.004,
+  no: 0.003, ch: 0.002, ru: 0.001, pk: 0.002, id: 0.001, sg: 0.006, do: 0.001,
+};
+for (const c of LIST) c.propertyTax = PROPERTY_TAX[c.id] ?? 0;
+
+/** "1.1% a year" or "none", for display. */
+export const propertyTaxLabel = (c) => (c.propertyTax ? `${(c.propertyTax * 100).toFixed(1).replace(/\.0$/, '')}% a year` : 'none');
 
 /** @type {Object<string, ReturnType<typeof C>>} */
 export const COUNTRIES = Object.fromEntries(LIST.map((c) => [c.id, c]));
