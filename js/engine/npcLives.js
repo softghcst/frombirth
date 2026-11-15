@@ -49,7 +49,7 @@ function note(npc, text, major = false, tone = 'neutral') {
 /** Queues a scene about this person, at most one a year so news never floods. */
 function ask(id, cast) {
   const p = player();
-  if (p.flags.familySceneAge === p.age) return false;
+  if (p.flags.familySceneAge === p.age || p.legal.incarceration) return false;
   if (store.state.eventHistory.some((h) => h.id === id && p.age - h.lastAge < 2)) return false;
   p.flags.familySceneAge = p.age;
   store.state.pendingEvents.push({ id, cast });

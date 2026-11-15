@@ -110,6 +110,11 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'property': hitProperty(e.target, e.value); break;
       case 'vehicle': hitVehicle(e.delta); break;
       case 'sellInvestments': sellEverything(); break;
+      case 'prison': {
+        const k = p.legal.incarceration;
+        if (k) { k[e.target] = clamp(k[e.target] + e.delta); shown.push({ label: e.target === 'respect' ? 'Respect' : 'Conduct', delta: e.delta }); }
+        break;
+      }
       case 'queue':
         (ctx.queue ??= []).push(e.value);
         break;

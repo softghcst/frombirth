@@ -53,7 +53,7 @@ export function tickFinance() {
 
   // Living costs start once you support yourself. Rent is the biggest part,
   // and disappears when you live in a home you own.
-  if (!p.flags.livesWithParents && p.age >= 18 && !p.education.enrolled) {
+  if (!p.flags.livesWithParents && p.age >= 18 && !p.education.enrolled && !p.legal.incarceration) {
     // A spouse who earns pays their share of the household; one who does not is supported.
     const partner = npcsByRole('spouse')[0];
     const share = !partner ? 1 : partner.life?.job || partner.life?.pension ? 0.55 : 1.15;

@@ -128,7 +128,7 @@ export function romanceActions(npc) {
   if (['friend', 'classmate', 'coworker', 'ex'].includes(npc.role) && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
     a.push({ id: 'askOut', label: 'Ask out' });
   }
-  if (npc.role === 'partner' || npc.role === 'spouse') {
+  if ((npc.role === 'partner' || npc.role === 'spouse') && !p.legal.incarceration) {
     a.push({ id: 'date', label: npc.role === 'spouse' ? 'Plan a night out together' : 'Go on a date' });
     if (adults) a.push({ id: 'hookUp', label: 'Spend the night together' });
   }

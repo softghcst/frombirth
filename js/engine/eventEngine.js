@@ -4,6 +4,7 @@
 //   priority: true      always fires in the first year it is eligible
 //   exclusive: 'name'   only one event of this group fires per year
 //   queuedOnly: true    never drawn; only reached through a `queue` effect
+//   prison: true        fires only while the player is locked up (and nothing else does)
 //   cast: {key: spec}   spec is a role, 'mother'/'father', or 'tag:<contact tag>'
 //   castRequires: [...] conditions on the people cast, e.g. cast.kid.age >= 14
 //   outcome.requires    picks a text variant from history (see conditions.js)
@@ -37,6 +38,7 @@ function castFor(ev) {
 function eligibleCast(ev) {
   const p = player();
   if (ev.queuedOnly) return null;
+  if (!!ev.prison !== !!p.legal.incarceration) return null;
   if (p.age < ev.ageRange[0] || p.age > ev.ageRange[1]) return null;
   const seen = store.state.eventHistory.find((h) => h.id === ev.id);
   if (seen && (ev.once || p.age - seen.lastAge < (ev.cooldown ?? DEFAULT_COOLDOWN))) return null;

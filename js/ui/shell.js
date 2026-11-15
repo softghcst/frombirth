@@ -11,6 +11,7 @@ import { avatarSvg } from './avatar.js';
 import { meterHtml } from './meter.js';
 import { eventModal, outcomeModal } from './modals.js';
 import { TABS } from './tabs/index.js';
+import { runJustice } from './justice.js';
 
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
@@ -69,6 +70,8 @@ export function mountGame(app, hooks) {
     changed() { persist(); render(); },
     exitToTitle() { persist(); hooks.onExit(); },
     endLife() { closePanel(); finish(die('sudden unexplained causes')); },
+    /** Takes any open court case through to its verdict. */
+    async justice() { busy = true; renderHeader(); await runJustice(tabApi); busy = false; render(); },
   };
 
   function renderHeader() {
@@ -155,6 +158,7 @@ export function mountGame(app, hooks) {
     persist();
     render();
     await runPending();
+    if (player().alive && player().legal.pending) await tabApi.justice();
   }
 
   yearBtn.addEventListener('click', nextYear);
@@ -168,5 +172,8 @@ export function mountGame(app, hooks) {
 
   render();
   persist();
-  if (store.state.pendingEvents.length) runPending();
+  (async () => {
+    if (store.state.pendingEvents.length) await runPending();
+    if (player().alive && player().legal.pending) await tabApi.justice();
+  })();
 }

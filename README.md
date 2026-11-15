@@ -48,6 +48,9 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Stocks, funds and coins; bank loans; overdraft and bankruptcy | `js/data/securities.js` |
 | Gambling stakes, lottery prizes, the bookmaker's cut | top of `js/engine/gambling.js` |
 | Money events (leaks, tenants, breakdowns, tips) | `js/data/events/money.js` |
+| Crimes, lawyers, prison gangs, sentence rules | `js/data/crimes.js` |
+| Escape puzzle maps (run `node tests/escape-layouts.mjs` after editing) | `js/data/prisonLayouts.js` |
+| Prison events | `js/data/events/prison.js` |
 | Gift tiers, rings, wedding sizes, fees | top of `js/engine/relationships.js`, `romance.js`, `children.js` |
 | Romance and family events | `js/data/events/romance.js`, `family.js` |
 | Other people's lives: ambitions, hobbies, school and adult moments, family size limits | `js/data/npcLife.js` |
@@ -69,6 +72,6 @@ Add an object to a file in `js/data/events/` (or a new file registered in
 
 ## Status
 
-Phases 1–6 of 10 are built: core engine, saves, character creation and family,
+Phases 1–7 of 10 are built: core engine, saves, character creation and family,
 education with storylines, careers with fame, relationships with independent
-family lives, and the economy.
+family lives, the economy, and crime and prison.

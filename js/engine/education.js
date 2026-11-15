@@ -584,6 +584,12 @@ export function quitClub(id) {
   return result(true, text, 'neutral');
 }
 
+/** Being sent to prison ends a college course (school carries on inside). */
+export const leaveForPrison = () => {
+  const e = player().education;
+  if (e.enrolled && isHigher(e.stage)) leaveSchool();
+};
+
 export const canDropOut = () => {
   const p = player();
   return p.education.enrolled && (isHigher(p.education.stage) || p.age >= DROPOUT_AGE);

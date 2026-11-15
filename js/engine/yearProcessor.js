@@ -10,6 +10,8 @@ import { tickEducation } from './education.js';
 import { tickCareer } from './career.js';
 import { tickFinance } from './finance.js';
 import { tickMarket } from './market.js';
+import { tickCrime } from './justice.js';
+import { tickPrison } from './prison.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
@@ -49,7 +51,8 @@ export function advanceYear() {
   if (roadDeath) { die(roadDeath); return; }
   tickFinance();
   tickHealth();
-  p.legal.heat = Math.max(0, p.legal.heat - 10);
+  tickPrison();
+  tickCrime();
 
   const cause = rollDeath();
   if (cause) { die(cause); return; }

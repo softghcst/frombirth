@@ -48,7 +48,8 @@ export function conceive(npc, planned) {
 }
 
 export const canTryForBaby = (npc) =>
-  (npc.role === 'spouse' || npc.role === 'partner') && canConceive(npc) && !player().flags.pregnancy;
+  (npc.role === 'spouse' || npc.role === 'partner') && canConceive(npc) && !player().flags.pregnancy
+  && !player().legal.incarceration;
 
 export function tryForBaby(npcId) {
   const p = player();

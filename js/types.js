@@ -173,6 +173,8 @@
  * @property {?{facility:'juvenile'|'prison', security:'min'|'med'|'max', yearsLeft:number,
  *              respect:number, gangId:?string, escapeAttempts:number}} incarceration
  * @property {number} heat
+ * @property {{crimeId:string, age:number, victim?:string}[]} [unsolved]  crimes the police have not pinned on you yet
+ * @property {?{crimeId:string, age:number, evidence:number, lawyer:?string, skill:number}} [pending]  an open court case
  *
  * @typedef {{handle:?string, followers:number, posts:number, viral:number, boughtFollowers:number}} SocialMedia
  *
@@ -187,6 +189,7 @@
  * @property {Requirement[]} [castRequires]  conditions on the people cast, e.g. cast.kid.age >= 14
  * @property {boolean} [priority]  story beat: always fires when first eligible
  * @property {string} [exclusive]  only one event per group fires in a year
+ * @property {boolean} [prison]  fires only while the player is locked up
  * @property {boolean} [queuedOnly]  reached only through a `queue` effect
  * @property {boolean} [once]
  * @property {number} [cooldown]  years before it can repeat (default 10)
@@ -196,7 +199,7 @@
  * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
  * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity'|'property'|'vehicle'|'sellInvestments',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity'|'property'|'vehicle'|'sellInvestments'|'prison',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry

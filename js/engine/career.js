@@ -68,7 +68,7 @@ export function unmet(career) {
     const have = Math.round(Number(resolve(path)) || 0);
     if (have < min) out.push(`Needs ${STAT_NAMES[path] ?? path} of ${min} (yours: ${have}).`);
   }
-  if (r.cleanRecord && p.legal.record.some((c) => c.convicted)) out.push('Needs a clean record.');
+  if (r.cleanRecord && p.legal.record.some((c) => c.convicted && !c.juvenile)) out.push('Needs a clean record.');
   return out;
 }
 
