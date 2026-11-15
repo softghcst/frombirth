@@ -48,7 +48,7 @@ export function household() {
 }
 
 /** Multiplies every stored amount of money by the exchange rate. */
-function convert(rate) {
+export function convertMoney(rate) {
   const p = player();
   const f = p.finance;
   const x = (n) => Math.round((n ?? 0) * rate);
@@ -113,7 +113,7 @@ export function emigrate(countryId) {
     }
   }
 
-  convert(to.currency.scale / from.currency.scale);
+  convertMoney(to.currency.scale / from.currency.scale);
   p.countryId = to.id;
   p.city = rng.pick(to.cities);
   p.homeId = null;

@@ -53,6 +53,8 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Treatment costs and success rates, surgeries and surgeons, activity and holiday prices, follower packs, emigration fee | `js/data/activities.js` |
 | Illnesses (what they do each year, who gets them) | `js/data/illnesses.js` |
 | Health, online and living-abroad scenes | `js/data/events/leisure.js` |
+| Epitaphs (titles, inscriptions, what earns each) and the untaxed estate allowance | `js/data/epitaphs.js` |
+| Estate tax rate for each country | `js/data/countries.js` |
 | Prison events | `js/data/events/prison.js` |
 | Gift tiers, rings, wedding sizes, fees | top of `js/engine/relationships.js`, `romance.js`, `children.js` |
 | Romance and family events | `js/data/events/romance.js`, `family.js` |
@@ -75,7 +77,8 @@ Add an object to a file in `js/data/events/` (or a new file registered in
 
 ## Status
 
-Phases 1–8 of 10 are built: core engine, saves, character creation and family,
+Phases 1–9 of 10 are built: core engine, saves, character creation and family,
 education with storylines, careers with fame, relationships with independent
-family lives, the economy, crime and prison, and health and activities
-(doctors, cosmetic surgery, things to do, social media, moving abroad).
+family lives, the economy, crime and prison, health and activities, and death
+and legacy (wills, estate tax, 24 epitaphs, and carrying on as a child or
+grandchild).

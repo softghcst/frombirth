@@ -254,6 +254,25 @@ function hire(career, level, performance, how) {
   return result(true, text);
 }
 
+/** Puts the player into a job they already held as someone else (see engine/legacy.js). */
+export function takeOverJob(job, yearsWorked = 0) {
+  const p = player();
+  const career = CAREER_BY_ID[job?.careerId];
+  if (!career) return;
+  const lvl = career.levels[job.level];
+  Object.assign(p.career, { careerId: career.id, lastField: career.id, title: lvl.title, level: job.level, salary: job.salary,
+    performance: 55, yearsInRole: job.years, yearsInField: Math.max(job.years, yearsWorked), totalYears: yearsWorked, retired: false,
+    military: career.type === 'military' ? { rank: job.level, branch: rng.pick(BRANCHES), deployments: 0 } : null });
+  p.counters.jobsHeld = 1;
+  if (career.type === 'freelance') return;
+  const b = addNpc(makeNpc({ role: 'boss', countryId: p.countryId, age: rng.int(30, 58), relationship: rng.int(45, 60) }));
+  b.flags.tag = 'boss';
+  b.flags.title = career.type === 'military' ? 'Commanding officer' : 'Boss';
+  for (let i = 0; i < 2; i++) {
+    addNpc(makeNpc({ role: 'coworker', countryId: p.countryId, age: clamp(p.age + rng.int(-4, 12), 18, 64), relationship: rng.int(35, 60) }));
+  }
+}
+
 // ---------- Actions at work ----------
 
 export function workHarder() {

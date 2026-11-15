@@ -1,11 +1,17 @@
-// Mortality maths and the end of a life. Phase 9 adds epitaph awards,
-// estate tax and continuing as a child.
+// Mortality maths and the end of a life: the will, the estate and its tax,
+// who inherits, and the epitaphs the life earned.
 import { rng } from '../rng.js';
-import { uid } from '../util.js';
-import { store, player, log } from '../state.js';
+import { uid, localMoney } from '../util.js';
+import { store, player, country, log } from '../state.js';
 import { netWorth } from './finance.js';
-import { addToGraveyard, deleteSlot } from '../save.js';
+import { addToGraveyard, deleteSlot, saveGame } from '../save.js';
 import { stageLabel } from './education.js';
+import { roleLabel } from './relationships.js';
+import { heirs } from './legacy.js';
+import { CAREER_BY_ID } from '../data/careers.js';
+import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
+
+const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
 /** Yearly chance of dying, given age and a 0–100 health value. */
 export function mortalityChance(age, health) {
@@ -34,14 +40,127 @@ function lastOccupation(p) {
   return p.age < 5 ? 'Infant' : 'Unemployed';
 }
 
-/** Ends the current life, files it in the graveyard and frees the save slot. */
+const people = () => player().npcIds.map((id) => store.state.npcs[id]).filter(Boolean);
+const living = (role) => people().filter((n) => n.alive && n.role === role);
+
+// ---------- The will ----------
+
+export const canWriteWill = () => player().age >= 18;
+
+/** People the player could leave everything to. */
+export const willCandidates = () => people().filter((n) => n.alive
+  && ['spouse', 'partner', 'child', 'grandchild', 'sibling', 'parent', 'niece', 'friend'].includes(n.role));
+
+/** @returns {{mode:'family'|'person'|'charity', npcId?:string}} */
+export function currentWill() {
+  const w = player().flags.will;
+  if (w?.mode === 'person' && !store.state.npcs[w.npcId]?.alive) return { mode: 'family' };
+  return w ?? { mode: 'family' };
+}
+
+export function willSummary() {
+  const w = currentWill();
+  if (w.mode === 'charity') return 'Everything goes to charity.';
+  if (w.mode === 'person') { const n = store.state.npcs[w.npcId]; return `Everything goes to ${n.firstName} ${n.lastName}.`; }
+  return familyShares().length ? 'Shared among your closest family.' : 'You have no family to leave it to. It would go to the state.';
+}
+
+export function writeWill(mode, npcId) {
+  const p = player();
+  if (!canWriteWill()) return result(false, 'You are too young to make a will.', 'neutral');
+  if (mode === 'person' && !willCandidates().some((n) => n.id === npcId)) return result(false, 'You cannot name them.', 'neutral');
+  p.flags.will = mode === 'person' ? { mode, npcId } : { mode };
+  const text = `You signed a new will. ${willSummary()}`;
+  log(text);
+  return result(true, text, 'neutral');
+}
+
+/** With no will naming anyone: a spouse takes half, the children share the rest. */
+function familyShares() {
+  const spouse = living('spouse')[0];
+  const kids = living('child');
+  if (spouse && kids.length) return [[spouse, 0.5], ...kids.map((k) => [k, 0.5 / kids.length])];
+  if (spouse) return [[spouse, 1]];
+  for (const role of ['child', 'grandchild', 'sibling', 'parent']) {
+    const group = living(role);
+    if (group.length) return group.map((n) => [n, 1 / group.length]);
+  }
+  return [];
+}
+
+/**
+ * What would happen to everything the player owns if they died today.
+ * Amounts are in local currency.
+ * @returns {{gross:number, tax:number, net:number, charity:number, toState:number,
+ *            shares:{npcId:string, name:string, role:string, amount:number}[]}}
+ */
+export function estatePlan() {
+  const c = country();
+  const gross = netWorth(store.state);
+  const plan = { gross, tax: 0, net: 0, charity: 0, toState: 0, shares: [] };
+  if (gross <= 0) return plan;
+  const will = currentWill();
+  if (will.mode === 'charity') return { ...plan, net: gross, charity: gross }; // gifts to charity are not taxed
+  plan.tax = Math.round(Math.max(0, gross - localMoney(ESTATE_ALLOWANCE, c)) * c.estateTax);
+  plan.net = gross - plan.tax;
+  const split = will.mode === 'person' ? [[store.state.npcs[will.npcId], 1]] : familyShares();
+  if (!split.length) return { ...plan, toState: plan.net };
+  plan.shares = split.map(([n, part]) => ({ npcId: n.id, name: `${n.firstName} ${n.lastName}`, role: roleLabel(n),
+    amount: Math.round(plan.net * part) }));
+  return plan;
+}
+
+// ---------- Epitaphs ----------
+
+/** The facts of a life that epitaphs are judged on. Money is in base units. */
+function lifeSummary(p, plan) {
+  const scale = country().currency.scale;
+  const all = people();
+  const k = p.counters;
+  const jobs = [...p.career.history];
+  if (p.career.careerId) jobs.push({ careerId: p.career.careerId, title: p.career.title, from: p.age - p.career.yearsInRole, to: p.age });
+  const top = (j, back = 0) => { const lv = CAREER_BY_ID[j.careerId]?.levels; return !!lv && lv.slice(lv.length - 1 - back).some((l) => l.title === j.title); };
+  const married = all.filter((n) => n.marriedAtAge != null && n.role === 'spouse');
+  return {
+    age: p.age, worth: plan.gross / scale, donated: k.donated, gambled: k.gambled, leftToCharity: plan.charity / scale,
+    fame: p.hidden.fame, karma: p.hidden.karma, intellect: p.stats.intellect,
+    crimes: k.crimes, kills: k.kills, convictions: p.legal.record.filter((r) => r.convicted).length,
+    yearsJailed: k.yearsJailed, escapes: k.escapes, diedInside: !!p.legal.incarceration,
+    spouses: k.spouses, everMarried: k.spouses > 0, exes: all.filter((n) => n.role === 'ex').length,
+    marriedYears: Math.max(0, ...married.map((n) => p.age - n.marriedAtAge)),
+    children: all.filter((n) => n.role === 'child').length,
+    descendants: all.filter((n) => ['child', 'grandchild', 'greatgrandchild'].includes(n.role)).length,
+    jobsHeld: k.jobsHeld, reachedTop: jobs.some((j) => top(j)),
+    stageStar: jobs.some((j) => ['mt_performer', 'actor', 'singer'].includes(j.careerId) && top(j, 1)),
+    healerYears: jobs.filter((j) => ['doctor', 'nurse'].includes(j.careerId)).reduce((s, j) => s + (j.to - j.from), 0),
+    degrees: p.education.degrees.map((d) => d.type),
+    followers: Math.max(0, p.social.followers - p.social.boughtFollowers), countries: k.countriesLived,
+  };
+}
+
+/** Ids of every epitaph a life earned, the defining one first. */
+export const earnedEpitaphs = (summary) => EPITAPHS.filter((e) => e.earned(summary)).map((e) => e.id);
+
+// ---------- The end ----------
+
+/** Ends the current life and files it in the graveyard. */
 export function die(cause) {
   const state = store.state;
   const p = player();
+  const c = country();
   if (!p.alive) return store.lastObituary;
+  const plan = estatePlan(); // settled before anything else changes
+  const summary = lifeSummary(p, plan);
   p.alive = false;
   log(`You died of ${cause} at age ${p.age}.`, 'system', 'bad');
 
+  for (const s of plan.shares) {
+    const n = state.npcs[s.npcId];
+    if (n.life) n.life.savings += s.amount; else n.savings = (n.savings ?? 0) + s.amount;
+  }
+  if (plan.charity) p.counters.donated += Math.round(plan.charity / c.currency.scale);
+
+  const spouse = people().find((n) => n.role === 'spouse');
   /** @type {import('../types.js').GraveyardEntry} */
   const entry = {
     id: uid('grave'),
@@ -51,19 +170,25 @@ export function die(cause) {
     birthYear: p.birthYear,
     deathYear: state.year,
     causeOfDeath: cause,
-    netWorth: netWorth(state),
+    netWorth: plan.gross,
     countryId: p.countryId,
     city: p.city,
     lastOccupation: lastOccupation(p),
-    epitaphIds: [],
-    childrenCount: p.npcIds.filter((id) => state.npcs[id]?.role === 'child').length,
+    epitaphIds: earnedEpitaphs(summary),
+    childrenCount: summary.children,
+    grandchildrenCount: summary.descendants - summary.children,
+    spouseName: spouse ? `${spouse.firstName} ${spouse.lastName}` : null,
+    lifetimeEarned: p.finance.lifetimeEarned,
+    estate: plan,
     milestones: p.milestones,
     counters: p.counters,
     generation: p.generation,
-    continuedAsNpcId: null,
+    continuedAs: null,
   };
   addToGraveyard(entry);
-  deleteSlot(state.slotId);
+  // While there is someone to carry on as, the save is kept so the choice survives a refresh.
+  state.legacy = { graveId: entry.id };
+  if (heirs(state).length) saveGame(state); else deleteSlot(state.slotId);
   store.lastObituary = entry;
   return entry;
 }

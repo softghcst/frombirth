@@ -1,10 +1,12 @@
 // Title screen: start a life, resume a saved life, or visit the graveyard.
 import { esc, fmtMoney } from '../../util.js';
 import { COUNTRIES } from '../../data/countries.js';
-import { listSlots, loadGame, deleteSlot, getGraveyard } from '../../save.js';
+import { listSlots, loadGame, deleteSlot, getGraveyard, epitaphsEarned } from '../../save.js';
 import { createLife } from '../../engine/characterGen.js';
 import { avatarSvg } from '../avatar.js';
 import { confirmModal } from '../modals.js';
+import { openEpitaphCollection } from './obituary.js';
+import { EPITAPHS, EPITAPH_BY_ID } from '../../data/epitaphs.js';
 
 const MARK = `
   <svg class="title-mark" viewBox="0 0 64 64" aria-hidden="true">
@@ -28,7 +30,7 @@ export function renderTitle(app, hooks) {
         <button class="row" data-load="${s.slotId}" style="border:0;margin:0;padding:0;background:none;flex:1;min-width:0">
           <div class="avatar">${avatarSvg({ age: s.age, gender: s.gender, appearance: s.appearance, seed: s.slotId })}</div>
           <div class="main"><strong>${esc(s.name)}</strong>
-            <small>Age ${s.age} · ${c.flag} ${esc(c.name)} · ${fmtMoney(s.netWorth, c)}</small></div>
+            <small>${s.dead ? `Died at ${s.age} · choose who carries on` : `Age ${s.age} · ${c.flag} ${esc(c.name)} · ${fmtMoney(s.netWorth, c)}`}</small></div>
         </button>
         <button class="icon-btn" data-delete="${s.slotId}" aria-label="Delete ${esc(s.name)}">✕</button>
       </div>`;
@@ -40,7 +42,7 @@ export function renderTitle(app, hooks) {
       <button class="row" data-grave="${i}">
         <div class="avatar glyph">🪦</div>
         <div class="main"><strong>${esc(g.fullName)}</strong>
-          <small>${g.birthYear}–${g.deathYear} · died of ${esc(g.causeOfDeath)}</small></div>
+          <small>${g.birthYear}–${g.deathYear} · ${esc(EPITAPH_BY_ID[g.epitaphIds?.[0]]?.title ?? `died of ${g.causeOfDeath}`)}</small></div>
         <div class="side">Age ${g.ageAtDeath}<br>${fmtMoney(g.netWorth, c)}</div>
       </button>`;
   }).join('');
@@ -55,7 +57,8 @@ export function renderTitle(app, hooks) {
       <div class="title-section"><h2>Saved lives</h2>
         ${slotRows || '<p class="empty">No lives in progress.</p>'}</div>
       <div class="title-section"><h2>Graveyard</h2>
-        ${graveRows || '<p class="empty">Nobody is buried here yet.</p>'}</div>
+        ${graveRows || '<p class="empty">Nobody is buried here yet.</p>'}
+        ${graves.length ? `<button class="btn" data-epitaphs style="margin-top:10px">Epitaphs earned: ${epitaphsEarned().length} of ${EPITAPHS.length}</button>` : ''}</div>
     </section>`;
 
   app.querySelector('[data-random]').addEventListener('click', () => hooks.onPlay(createLife()));
@@ -64,6 +67,7 @@ export function renderTitle(app, hooks) {
     const load = e.target.closest('[data-load]');
     const del = e.target.closest('[data-delete]');
     const grave = e.target.closest('[data-grave]');
+    if (e.target.closest('[data-epitaphs]')) return openEpitaphCollection();
     if (load) {
       const state = loadGame(load.dataset.load);
       if (state) hooks.onPlay(state);
@@ -71,7 +75,7 @@ export function renderTitle(app, hooks) {
       const slot = slots.find((s) => s.slotId === del.dataset.delete);
       const sure = await confirmModal({
         title: `Delete ${slot.name}?`,
-        body: 'This saved life will be removed without a grave. This cannot be undone.',
+        body: slot.dead ? 'The grave stays, but nobody will carry this family on. This cannot be undone.' : 'This saved life will be removed without a grave. This cannot be undone.',
         yes: 'Delete', danger: true,
       });
       if (sure) { deleteSlot(slot.slotId); renderTitle(app, hooks); }

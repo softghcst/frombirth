@@ -67,7 +67,12 @@ export function mountGame(app, hooks) {
 
   const tabApi = {
     /** Call after a tab action changes state. */
-    changed() { persist(); render(); },
+    changed() {
+      // An action in a tab can be fatal; the obituary follows straight away.
+      if (!player().alive && store.lastObituary) { closePanel(); return finish(store.lastObituary); }
+      persist(); render();
+      return undefined;
+    },
     exitToTitle() { persist(); hooks.onExit(); },
     endLife() { closePanel(); finish(die('sudden unexplained causes')); },
     /** Takes any open court case through to its verdict. */

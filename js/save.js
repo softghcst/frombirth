@@ -51,6 +51,7 @@ export function saveGame(state) {
     appearance: p.appearance,
     countryId: p.countryId,
     netWorth: netWorth(state),
+    dead: !p.alive,
     updatedAt: state.updatedAt,
   };
   const index = read(K_INDEX, []).filter((m) => m.slotId !== state.slotId);
@@ -73,6 +74,18 @@ export function deleteSlot(slotId) {
 
 /** @returns {import('./types.js').GraveyardEntry[]} most recent first */
 export const getGraveyard = () => read(K_GRAVE, []);
+
+/** Changes a grave after the fact, e.g. to record who carried on. */
+export function updateGrave(id, patch) {
+  const list = getGraveyard();
+  const g = list.find((x) => x.id === id);
+  if (!g) return;
+  Object.assign(g, patch);
+  write(K_GRAVE, list);
+}
+
+/** Ids of every epitaph earned across all lives. */
+export const epitaphsEarned = () => [...new Set(getGraveyard().flatMap((g) => g.epitaphIds ?? []))];
 
 export function addToGraveyard(entry) {
   const list = getGraveyard();

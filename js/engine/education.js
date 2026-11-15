@@ -78,6 +78,9 @@ function turnOverClassmates(addNew) {
   }
 }
 
+/** Gives a school pupil a class to sit in. */
+export const meetClassmates = () => turnOverClassmates(true);
+
 // ---------- Money ----------
 
 /** Tuition for one year of a programme, in local currency. */

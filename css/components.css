@@ -113,6 +113,16 @@
 .stone h1 { font-size: 1.7rem; }
 .stone .years { font-family: var(--serif); color: var(--muted); margin: 4px 0 12px; }
 .stone .cause { font-style: italic; }
+.stone .epitaph { font-family: var(--serif); font-size: 1.25rem; font-weight: 700; color: var(--accent); margin-top: 6px; }
+.stone .epitaph-line { color: var(--muted); margin: 2px 0 12px; }
+.epitaph-row { padding: 8px 0; }
+.epitaph-row + .epitaph-row { border-top: 1px dashed var(--line); }
+.epitaph-row strong, .epitaph-row small { display: block; }
+.epitaph-row strong { font-family: var(--serif); }
+.epitaph-row small { color: var(--muted); font-size: 0.85rem; }
+.epitaph-row.locked strong { color: var(--muted); font-weight: 500; font-style: italic; }
+.epitaph-list { max-height: 55vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.btn small { display: block; font-weight: 400; opacity: 0.75; font-size: 0.8rem; }
 
 .contact { padding: 8px 0; }
 .contact + .contact { border-top: 1px dashed var(--line); }

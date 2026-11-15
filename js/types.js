@@ -53,7 +53,7 @@
  * @property {string} gender
  * @property {number} age
  * @property {boolean} alive
- * @property {'parent'|'grandparent'|'grandchild'|'greatgrandchild'|'niece'|'inlaw'|'mentor'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
+ * @property {'parent'|'grandparent'|'grandchild'|'greatgrandchild'|'niece'|'relative'|'inlaw'|'mentor'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
  *            |'ex'|'child'|'pet'|'boss'|'cellmate'} role
  * @property {{relationship:number, money:number, crazy:number, intellect:number,
  *             charm:number, health:number, generosity:number}} meters
@@ -214,12 +214,13 @@
  * @property {string} countryId
  * @property {string} city
  * @property {string} lastOccupation
- * @property {string[]} epitaphIds
+ * @property {string[]} epitaphIds  every epitaph earned, the defining one first
+ * @property {{gross:number, tax:number, net:number, charity:number, toState:number, shares:{npcId:string,name:string,role:string,amount:number}[]}} [estate]
+ * @property {?string} [continuedAs]  name of the child the player carried on as
  * @property {number} childrenCount
  * @property {Milestone[]} milestones
  * @property {LifeCounters} counters
  * @property {number} generation
- * @property {?string} continuedAsNpcId
  *
  * @typedef {Object} GameState
  * @property {number} schemaVersion

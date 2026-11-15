@@ -11,10 +11,44 @@ import { INVEST_AMOUNTS, BANK_LOAN } from '../../data/securities.js';
 import { localMoney } from '../../util.js';
 import { meterHtml } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal } from '../modals.js';
+import * as last from '../../engine/death.js';
+import { roleLabel } from '../../engine/relationships.js';
 
 const GLYPH = { car: '🚗', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
 const pct = (x) => `${x >= 0 ? '+' : ''}${Math.round(x * 100)}%`;
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
+
+async function changeWill(api) {
+  const mode = await pickModal({
+    title: 'Your will',
+    body: 'Who gets what you leave behind? You can change this whenever you like.',
+    options: [
+      { value: 'family', label: 'My closest family', sub: 'A spouse takes half and your children share the rest. With neither, it passes to other relatives.' },
+      { value: 'person', label: 'One person', sub: 'Everything to someone you name.', disabled: !last.willCandidates().length },
+      { value: 'charity', label: 'Charity', sub: 'Everything is given away. No estate tax is paid.' },
+    ],
+  });
+  if (!mode) return undefined;
+  let npcId;
+  if (mode === 'person') {
+    npcId = await pickModal({ title: 'Who inherits?',
+      options: last.willCandidates().map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}, age ${n.age}` })) });
+    if (!npcId) return undefined;
+  }
+  return report(api, last.writeWill(mode, npcId));
+}
+
+function willCard(c) {
+  if (!last.canWriteWill()) return '';
+  const e = last.estatePlan();
+  const rows = e.gross <= 0 ? [['If you died today', 'There would be nothing to leave']]
+    : [['Estate tax if you died today', fmtMoney(e.tax, c)],
+      ...e.shares.map((s) => [`${s.name} (${s.role.toLowerCase()})`, fmtMoney(s.amount, c)]),
+      ...(e.charity ? [['To charity', fmtMoney(e.charity, c)]] : []), ...(e.toState ? [['To the state', fmtMoney(e.toState, c)]] : [])];
+  return `<div class="card" style="margin-top:14px"><h3>Your will</h3>
+    <p class="muted" style="margin-bottom:8px">${esc(last.willSummary())}</p>${kv(rows)}
+    <button class="btn" data-go="will" style="margin-top:10px">Change your will</button></div>`;
+}
 
 async function report(api, r) {
   api.changed();
@@ -243,13 +277,14 @@ export default {
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
       ${invs ? `<div class="section-label">Investments</div>${invs}` : ''}
       ${loans ? `<div class="card" style="margin-top:14px"><h3>Loans</h3>${loans}</div>` : ''}
-      ${!props && !vehs && !invs ? '<p class="empty">You do not own any property, vehicles or investments.</p>' : ''}`;
+      ${!props && !vehs && !invs ? '<p class="empty">You do not own any property, vehicles or investments.</p>' : ''}
+      ${willCard(c)}`;
 
     el.onclick = (e) => {
       const go = e.target.closest('[data-go]')?.dataset.go;
       if (go) {
         return { property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
-          borrow: () => borrowMoney(api), driving: () => report(api, cars.takeDrivingTest()), flying: () => report(api, cars.learnToFly()) }[go]();
+          borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => report(api, cars.takeDrivingTest()), flying: () => report(api, cars.learnToFly()) }[go]();
       }
       const repay = e.target.closest('[data-repay]')?.dataset.repay;
       if (repay) return report(api, bank.repayLoan(repay));
