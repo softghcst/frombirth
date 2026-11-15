@@ -55,6 +55,18 @@ function showTitle() {
 
 showTitle();
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('./sw.js').catch(() => { /* offline support is optional */ });
+// Offline support: once the service worker is running, hand it every file
+// this page loaded, so the game works without a connection from the first visit.
+const secure = location.protocol === 'https:' || location.hostname === 'localhost';
+if ('serviceWorker' in navigator && secure) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => navigator.serviceWorker.ready)
+    .then((reg) => {
+      const here = new URL('./', location.href).href;
+      const extra = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png']
+        .map((u) => new URL(u, here).href);
+      const loaded = performance.getEntriesByType('resource').map((e) => e.name).filter((u) => u.startsWith(here));
+      reg.active?.postMessage({ type: 'precache', urls: [...new Set([...extra, ...loaded])] });
+    })
+    .catch(() => { /* offline support is optional */ });
 }

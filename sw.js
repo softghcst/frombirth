@@ -11,6 +11,13 @@ self.addEventListener('activate', (event) => {
       .then(() => self.clients.claim()));
 });
 
+// The page sends the list of files it loaded; store any that are missing.
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'precache') return;
+  event.waitUntil(caches.open(CACHE).then((cache) => Promise.all(event.data.urls.map((url) =>
+    cache.match(url).then((hit) => hit || cache.add(url).catch(() => { /* skip anything that fails */ }))))));
+});
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
