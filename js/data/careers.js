@@ -123,8 +123,18 @@ export const CAREERS = [
       { flag: 'directorRec', bonus: 0.1 }],
     levels: L(['Ensemble member', 28, 40, 2], ['Featured ensemble', 45, 65, 3, { tripleThreat: 66 }],
       ['Principal performer', 80, 130, 4, { tripleThreat: 78 }], ['Leading performer', 160, 320, 0, { tripleThreat: 88 }]) },
+  // Children and teenagers can work as actors around school. At 18 they age
+  // out, and what they did opens doors into screen acting (see tickCareer).
+  { id: 'child_actor', name: 'Child acting', category: 'performing', type: 'freelance', hire: 'audition', stress: 1,
+    skill: 'talents.acting', req: { minAge: 5, maxAge: 17, stats: { 'talents.acting': 35 } }, fame: { from: 2, label: 'Child actor' },
+    agesOut: 18, schoolCost: 0.06,
+    levels: L(['Child extra', 1, 4, 1], ['Advert and bit-part actor', 6, 18, 2, { 'talents.acting': 48 }],
+      ['Child actor', 30, 90, 2, { 'talents.acting': 60 }], ['Child star', 150, 600, 0, { 'talents.acting': 74 }]) },
   { id: 'actor', name: 'Screen acting', category: 'performing', type: 'fulltime', hire: 'audition', stress: 2,
     skill: 'talents.acting', req: { minAge: 16, stats: { 'talents.acting': 50 } }, fame: { from: 1, label: 'Actor' },
+    doors: [{ flag: 'childStar', guaranteed: true, level: 2, text: 'Everyone grew up watching you. A lead is yours for the asking.' },
+      { flag: 'childActor', guaranteed: true, level: 1, text: 'Your years on set as a child count: you go straight to supporting parts.' },
+      { flag: 'childExtra', bonus: 0.25 }],
     levels: L(['Background actor', 14, 22, 2], ['Supporting actor', 40, 80, 3, { 'talents.acting': 62 }],
       ['Lead actor', 150, 400, 4, { 'talents.acting': 76 }], ['Film star', 500, 2000, 0, { 'talents.acting': 88 }]) },
   { id: 'singer', name: 'Singing', category: 'performing', type: 'fulltime', hire: 'audition', stress: 2,

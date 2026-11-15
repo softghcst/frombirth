@@ -41,7 +41,7 @@ export function careerCard() {
   } else if (k.retired) {
     body = kv([['Status', 'Retired'], ['Pension', `${fmtMoney(k.pensionPerYear, c)} / year`]]);
   } else {
-    body = `<p class="muted">${p.age < 15 ? 'You are too young for a job, but not for the odd gig.' : 'You do not have a job.'}</p>`;
+    body = `<p class="muted">${p.age < 5 ? 'You are too young to work.' : p.age < 15 ? 'You are too young for an ordinary job, but children can act.' : 'You do not have a job.'}</p>`;
   }
   const fameRow = fame > 0 || cur?.fame
     ? `<div style="margin-top:10px">${meterHtml('Fame', fame, true)}</div>` : '';
@@ -55,6 +55,7 @@ export function careerButtons() {
   const cur = career.currentCareer();
   const list = [];
   if (p.age >= 15) list.push(['findwork', cur ? 'Look for a different job' : 'Find work']);
+  else if (p.age >= 5) list.push(['findwork', cur ? 'Look for other acting work' : 'Audition for acting work']);
   if (cur) {
     list.push(['harder', 'Work harder'], ['slack', 'Slack off']);
     if (cur.type !== 'freelance') list.push(['raise', 'Ask for a raise']);

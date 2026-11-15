@@ -44,8 +44,8 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Interview questions and audition pieces | `js/data/interviewQuestions.js` |
 | Workplace events | `js/data/events/work.js` |
 | Property types, mortgage terms, rent and bills | `js/data/properties.js` |
-| Vehicles, licences, servicing | `js/data/vehicles.js` |
-| Stocks, funds and coins; bank loans; overdraft and bankruptcy | `js/data/securities.js` |
+| Vehicles (bikes and boards for children, motorbikes, cars, boats, aircraft), the age each can be bought at, licences, servicing | `js/data/vehicles.js` |
+| Funds, shares and coins (all fictional); bank loans; overdraft and bankruptcy | `js/data/securities.js` |
 | Gambling stakes, lottery prizes, the bookmaker's cut | top of `js/engine/gambling.js` |
 | Money events (leaks, tenants, breakdowns, tips) | `js/data/events/money.js` |
 | Crimes, lawyers, prison gangs, sentence rules | `js/data/crimes.js` |
@@ -56,7 +56,9 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Illnesses (what they do each year, who gets them) | `js/data/illnesses.js` |
 | Health, online and living-abroad scenes | `js/data/events/leisure.js` |
 | Epitaphs (titles, inscriptions, what earns each) and the untaxed estate allowance | `js/data/epitaphs.js` |
-| Estate tax rate for each country | `js/data/countries.js` |
+| Countries: currency, tax rates, cities, public services | `js/data/countries.js` |
+| First names and surnames for each country (people are named from where they live) | `js/data/names.js` |
+| Child acting: ages, levels, pay, and the head start it gives an adult actor | `child_actor` in `js/data/careers.js` |
 | Prison events | `js/data/events/prison.js` |
 | Gift tiers, rings, wedding sizes, fees | top of `js/engine/relationships.js`, `romance.js`, `children.js` |
 | Romance and family events | `js/data/events/romance.js`, `family.js` |
@@ -90,7 +92,7 @@ names used in the text with nobody cast as them.
 All ten phases are built: core engine, saves, character creation and family,
 education with storylines, careers with fame, relationships with independent
 family lives, the economy, crime and prison, health and activities, death and
-legacy, and a final pass that brought the game to 202 scenes, rebalanced money
+legacy, and a final pass that brought the game to over 200 scenes, rebalanced money
 and promotions, and checked the layout at iPad and phone sizes.
 
 The layout has been checked in a desktop browser emulating iPad and phone

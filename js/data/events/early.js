@@ -1,6 +1,8 @@
 // Scenes from the first years of life through the teens. These fill the
 // quieter early years, when little else is going on.
-import { st, hid, tal, cash, rel, cond, gpa, addNpc, ok, bad, any, chk, need } from './helpers.js';
+import { st, hid, tal, cash, rel, cond, gpa, addNpc, ok, bad, any, chk, need, perf, followers, giveVehicle } from './helpers.js';
+
+const onSet = need('career.careerId', '==', 'child_actor');
 
 /** @type {import('../../types.js').GameEvent[]} */
 export default [
@@ -140,6 +142,63 @@ export default [
       { label: 'Meet every character in the park', outcomes: [any('You collect eleven autographs and hug a seven-foot mouse. Best day of your life so far.', 'good', st('mood', 12), st('charm', 2), rel('mother', 4))] },
       { label: 'Wander off to look at something', outcomes: [any('You are lost for twenty minutes that feel like a year. {mother} does not let go of your hand again.', 'neutral', st('mood', 2), rel('mother', 3), hid('discipline', 2))] },
       { label: 'Eat everything', outcomes: [any('Candy floss, a hot dog, an ice cream and then the teacups. You know how this ends.', 'neutral', st('mood', 6), st('health', -2))] },
+    ],
+  },
+
+  {
+    id: 'first_bike', category: 'childhood', ageRange: [5, 8], once: true, weight: 3, cast: { father: 'father' },
+    text: 'There is a large, badly wrapped, bicycle-shaped present in the hallway on your birthday.',
+    choices: [
+      { label: 'Tear the paper off', outcomes: [any('It is exactly the one you wanted. {father} spends the afternoon running behind you, holding the saddle.', 'good', giveVehicle('kids_bike'), st('mood', 12), rel('father', 6))] },
+      { label: 'Pretend to guess what it is', outcomes: [any('"Is it... a giraffe?" Everyone laughs. It is a bike, and it is yours.', 'good', giveVehicle('kids_bike'), st('mood', 10), st('charm', 2), rel('father', 4))] },
+      { label: 'Ask if it could be swapped for a scooter', outcomes: [any('{father}\'s face falls a little. The bike goes back, and a scooter comes home instead.', 'neutral', giveVehicle('kick_scooter'), st('mood', 5), rel('father', -3))] },
+    ],
+  },
+
+  // ---------- Children who act ----------
+  {
+    id: 'set_forgot_lines', category: 'on set', ageRange: [5, 17], cooldown: 3, requires: [onSet],
+    text: 'Forty adults are waiting, the camera is rolling, and your line has gone completely out of your head.',
+    choices: [
+      { label: 'Make something up', check: chk(0.45, { 'talents.acting': 0.7, 'stats.charm': 0.3 }), outcomes: [
+        ok('What you say is better than the script. The director keeps it.', perf(10), tal('acting', 3), st('mood', 5)),
+        bad('What you say makes no sense at all. Take fourteen.', perf(-5), st('mood', -4)),
+      ] },
+      { label: 'Ask for the line', outcomes: [any('Someone calls it from the dark. You say it perfectly. Nobody minds; it happens to grown-ups too.', 'neutral', tal('acting', 1), hid('discipline', 2))] },
+      { label: 'Burst into tears', outcomes: [any('Everything stops for twenty minutes. A kind woman from wardrobe brings you a biscuit.', 'bad', perf(-6), st('mood', -5))] },
+    ],
+  },
+  {
+    id: 'set_or_school', category: 'on set', ageRange: [8, 17], cooldown: 4, requires: [onSet, need('education.enrolled', '==', true)],
+    text: 'The shoot has overrun again. It is either the last week of filming or your end-of-year exams.',
+    choices: [
+      { label: 'Finish the film', outcomes: [any('You are in every scene of the ending. Your report card says "absent" in four subjects.', 'neutral', perf(10), gpa(-0.25), tal('acting', 2))] },
+      { label: 'Sit the exams', outcomes: [any('They shoot round you with a double in a wig. The director is not pleased, and your teachers are.', 'neutral', perf(-10), gpa(0.1), hid('discipline', 3))] },
+      { label: 'Do both, on four hours\' sleep', check: chk(0.4, { 'hidden.discipline': 0.6, 'stats.health': 0.4 }), outcomes: [
+        ok('Lines in the car, revision in the make-up chair. You pull off both, somehow.', perf(6), gpa(0.05), hid('willpower', 4), st('health', -3)),
+        bad('You fall asleep in a take and in an exam, in that order.', perf(-4), gpa(-0.15), st('health', -5)),
+      ] },
+    ],
+  },
+  {
+    id: 'recognised_at_school', category: 'on set', ageRange: [6, 17], cooldown: 5, requires: [onSet, need('career.level', '>=', 1)],
+    text: 'Someone at school has seen you on television. By lunchtime the whole playground is doing your line at you.',
+    choices: [
+      { label: 'Laugh along and do the line back', outcomes: [any('You do it properly, with the face. They love it. It gets old by Thursday, for them and for you.', 'good', st('charm', 3), followers(200), st('mood', 3))] },
+      { label: 'Act as though it is no big deal', check: chk(0.5, { 'stats.charm': 0.6 }), outcomes: [
+        ok('You shrug so convincingly that people decide you must be really famous.', st('charm', 2), hid('discipline', 2)),
+        bad('It comes across as stuck-up. You eat lunch on your own for a week.', st('mood', -5), st('charm', -2)),
+      ] },
+      { label: 'Hide in the library', outcomes: [any('The librarian has not seen it and does not care. It is the best hour of your day.', 'neutral', st('intellect', 2), st('mood', -1))] },
+    ],
+  },
+  {
+    id: 'stage_parent', category: 'on set', ageRange: [5, 15], once: true, requires: [onSet], cast: { mother: 'mother' },
+    text: '{mother} has started coming to every shoot, and telling the director how your scenes should go.',
+    choices: [
+      { label: 'Ask her to wait in the car', outcomes: [any('She is hurt, and she does it. The set relaxes. So do you.', 'neutral', rel('mother', -6), perf(6))] },
+      { label: 'Let her. She only wants the best for you', outcomes: [any('The crew start calling her by a nickname you are not supposed to hear.', 'bad', rel('mother', 4), perf(-6))] },
+      { label: 'Tell her how much it means that she comes', outcomes: [any('She cries, and after that she sits quietly at the back with a flask.', 'good', rel('mother', 8), perf(2), st('charm', 2))] },
     ],
   },
 

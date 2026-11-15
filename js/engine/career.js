@@ -518,9 +518,23 @@ export function tickCareer() {
     p.hidden.fame = clamp(p.hidden.fame - 3);
     return null;
   }
+  // Child performers grow up. What they did as a child follows them.
+  if (career.agesOut && p.age >= career.agesOut) {
+    const was = c.title.toLowerCase();
+    endJob('grew up');
+    log(`You are too old for children's parts now. Your years as ${an(was)} are over, and the people who cast grown-ups know your name.`, 'system', 'neutral');
+    milestone(`Grew out of child acting${p.flags.childActor ? ', a known face' : ''}.`, 'career');
+    return null;
+  }
   const level = career.levels[c.level];
   c.yearsInRole += 1;
   c.yearsInField += 1;
+  // How far a child performer got is remembered when they audition as an adult.
+  if (career.agesOut) { p.flags.childExtra = true; if (c.level >= 2) p.flags.childActor = true; if (c.level >= 3) p.flags.childStar = true; }
+  // Days on set are days out of the classroom.
+  if (career.schoolCost && p.education.enrolled) {
+    p.education.gpa = Math.max(0, Math.round((p.education.gpa - career.schoolCost * (1 + c.level * 0.5)) * 100) / 100);
+  }
   c.totalYears = (c.totalYears ?? 0) + 1;
 
   // How the year went

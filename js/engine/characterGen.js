@@ -1,7 +1,7 @@
 // Creates a brand-new life: the player, their family and the opening journal.
 import { rng } from '../rng.js';
 import { uid } from '../util.js';
-import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
+import { COUNTRIES, COUNTRY_LIST, surnameFor } from '../data/countries.js';
 import { TRAIT_BY_ID } from '../data/traits.js';
 import { ILLNESS_BY_ID } from '../data/illnesses.js';
 import { generateFamily } from './familyGen.js';
@@ -28,7 +28,7 @@ export function createLife(opts = {}) {
 
   const c = COUNTRIES[opts.countryId] ?? rng.pick(COUNTRY_LIST);
   const gender = opts.gender ?? rng.pick(['male', 'female']);
-  const lastName = opts.lastName?.trim() || rng.pick(c.names.last);
+  const lastName = surnameFor(c.id, opts.lastName?.trim() || rng.pick(c.names.last), gender);
   const firstName = opts.firstName?.trim()
     || rng.pick(c.names[gender] ?? [...c.names.male, ...c.names.female]);
   const city = opts.city && c.cities.includes(opts.city) ? opts.city : rng.pick(c.cities);

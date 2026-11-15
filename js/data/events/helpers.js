@@ -45,5 +45,8 @@ export const pay = (delta) => ({ type: 'pay', delta });
 export const fired = (value = 'fired') => ({ type: 'fired', value });
 export const promoted = () => ({ type: 'promoted' });
 
+/** Gives the player a new vehicle from data/vehicles.js, e.g. giveVehicle('kids_bike'). */
+export const giveVehicle = (value) => ({ type: 'giveVehicle', value });
+
 /** Changes a cast member's role and/or flags, e.g. npcSet('lover', { flags: { engaged: true } }). */
 export const npcSet = (target, value) => ({ type: 'npcSet', target, value });

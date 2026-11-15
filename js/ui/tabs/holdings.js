@@ -7,14 +7,14 @@ import * as estate from '../../engine/realEstate.js';
 import * as cars from '../../engine/vehicles.js';
 import * as mkt from '../../engine/market.js';
 import * as bank from '../../engine/loans.js';
-import { INVEST_AMOUNTS, BANK_LOAN } from '../../data/securities.js';
+import { INVEST_AMOUNTS, BANK_LOAN, SECURITY_KINDS } from '../../data/securities.js';
 import { localMoney } from '../../util.js';
 import { meterHtml } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal } from '../modals.js';
 import * as last from '../../engine/death.js';
 import { roleLabel } from '../../engine/relationships.js';
 
-const GLYPH = { car: '🚗', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
+const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
 const pct = (x) => `${x >= 0 ? '+' : ''}${Math.round(x * 100)}%`;
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
 
@@ -142,7 +142,7 @@ async function browseVehicles(api) {
   const c = country();
   const p = player();
   const listing = await pickModal({
-    title: 'Vehicles for sale',
+    title: p.age >= 16 ? 'Vehicles for sale' : 'Bikes and boards for sale',
     body: `New and used, different every year. You have ${fmtMoney(p.finance.cash, c)}.`,
     options: cars.listings().map((l) => ({ value: l, label: `${GLYPH[l.cls]} ${l.name}: ${fmtMoney(l.price, c)}`, disabled: !!l.blocked,
       sub: l.blocked || `Condition ${l.condition}%.` })),
@@ -152,8 +152,8 @@ async function browseVehicles(api) {
     title: listing.name,
     options: [
       { value: 'cash', label: `Pay ${fmtMoney(listing.price, c)} in cash`, disabled: p.finance.cash < listing.price },
-      { value: 'loan', label: 'Buy it on finance', disabled: !listing.finance.approved,
-        sub: listing.finance.approved ? `${fmtMoney(listing.finance.payment, c)} a year for ${BANK_LOAN.years} years.` : listing.finance.reason },
+      ...(p.age >= 18 ? [{ value: 'loan', label: 'Buy it on finance', disabled: !listing.finance.approved,
+        sub: listing.finance.approved ? `${fmtMoney(listing.finance.payment, c)} a year for ${BANK_LOAN.years} years.` : listing.finance.reason }] : []),
     ],
   });
   return how ? report(api, cars.buyVehicle(listing.id, how)) : undefined;
@@ -204,11 +204,20 @@ async function tradeSecurity(api, q) {
 async function browseMarket(api) {
   const c = country();
   if (player().age < 18) return messageModal({ body: 'You need to be 18 to invest.' });
-  const q = await pickModal({
+  const all = mkt.quotes();
+  const kind = await pickModal({
     title: 'The market',
-    body: 'Prices move once a year. Funds are steady; single companies swing; coins can do anything.',
-    options: mkt.quotes().map((x) => ({ value: x, label: `${GLYPH[x.kind]} ${x.name}`,
-      sub: `${fmtMoney(x.price, c)} · ${pct(x.change)} this year${x.held ? ` · you hold ${fmtMoney(x.held, c)}` : ''}` })),
+    body: 'Prices move once a year.',
+    options: SECURITY_KINDS.map((k) => {
+      const held = all.filter((x) => x.kind === k.id && x.held).reduce((s, x) => s + x.held, 0);
+      return { value: k.id, label: `${GLYPH[k.id]} ${k.name}`, sub: `${k.blurb}${held ? ` You hold ${fmtMoney(held, c)}.` : ''}` };
+    }),
+  });
+  if (!kind) return undefined;
+  const q = await pickModal({
+    title: SECURITY_KINDS.find((k) => k.id === kind).name,
+    options: all.filter((x) => x.kind === kind).map((x) => ({ value: x, label: x.name,
+      sub: `${x.blurb} ${fmtMoney(x.price, c)} · ${pct(x.change)} this year${x.held ? ` · you hold ${fmtMoney(x.held, c)}` : ''}` })),
   });
   return q ? tradeSecurity(api, q) : undefined;
 }
@@ -240,7 +249,7 @@ export default {
 
     const actions = [];
     if (p.age >= 18) actions.push(['property', 'Browse property'], ['market', 'Invest'], ['borrow', 'Borrow money']);
-    if (p.age >= 17) actions.push(['vehicles', 'Browse vehicles']);
+    if (p.age >= 3) actions.push(['vehicles', p.age >= 16 ? 'Browse vehicles' : 'Browse bikes and boards']);
     if (cars.canTakeDrivingTest()) actions.push(['driving', 'Take driving lessons and the test']);
     if (cars.canLearnToFly() && p.age >= 21) actions.push(['flying', 'Learn to fly']);
 

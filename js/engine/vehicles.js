@@ -6,8 +6,10 @@ import { player, country, log, milestone } from '../state.js';
 import { resolve } from './conditions.js';
 import { market } from './market.js';
 import { borrow, loanOffer } from './loans.js';
-import { VEHICLE_TYPES, VEHICLE_BY_ID, COLOURS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
+import { VEHICLE_TYPES, VEHICLE_BY_ID, COLOURS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST, VEHICLE_AGE } from '../data/vehicles.js';
 
+/** Lower-cases a name's first letter, unless it starts with an acronym (BMX, SUV). */
+const lower = (name) => (/^[A-Z]{2}/.test(name) ? name : name.charAt(0).toLowerCase() + name.slice(1));
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const assetOf = (id) => player().assets.find((a) => a.id === id);
 export const vehicles = () => player().assets.filter((a) => a.kind === 'vehicle');
@@ -85,13 +87,18 @@ export function listings() {
   const p = player();
   const m = market();
   if (m.listings?.age !== p.age || !m.listings.vehicle) {
+    // What is on offer suits the buyer's age: children see bikes and boards.
+    const fits = (t) => p.age >= (t.minAge ?? VEHICLE_AGE) && p.age <= (t.maxAge ?? 200);
+    const open = VEHICLE_TYPES.filter(fits);
+    const road = open.filter((t) => t.cls === 'car' || t.cls === 'bike');
+    const cycles = open.filter((t) => t.cls === 'cycle');
     const list = [];
-    for (let i = 0; i < 9; i++) {
-      const type = i < 5 ? rng.pick(VEHICLE_TYPES.filter((t) => t.cls === 'car' || t.cls === 'bike')) : rng.pick(VEHICLE_TYPES);
-      const age = rng.chance(0.3) ? 0 : rng.int(1, 14);
+    for (let i = 0; i < (road.length ? 14 : 7) && open.length; i++) {
+      const type = road.length ? (i < 7 ? rng.pick(road) : i < 10 && cycles.length ? rng.pick(cycles) : rng.pick(open)) : rng.pick(open);
+      const age = rng.chance(type.cls === 'cycle' ? 0.5 : 0.3) ? 0 : rng.int(1, type.cls === 'cycle' ? 6 : 14);
       const condition = age === 0 ? 100 : clamp(100 - age * 5 + rng.int(-10, 8), 15, 98);
       list.push({ id: uid('lst'), typeId: type.id, age, condition,
-        name: `${age === 0 ? 'New' : `${age}-year-old`} ${rng.pick(COLOURS)} ${type.name.toLowerCase()}`,
+        name: `${age === 0 ? 'New' : `${age}-year-old`} ${rng.pick(COLOURS)} ${lower(type.name)}`,
         price: worth(type, age, condition) });
     }
     m.listings = { ...(m.listings?.age === p.age ? m.listings : {}), age: p.age, vehicle: list.sort((a, b) => a.price - b.price) };
@@ -111,7 +118,8 @@ export function buyVehicle(listingId, how = 'cash') {
   const l = market().listings?.vehicle.find((x) => x.id === listingId);
   if (!l) return result(false, 'That one has gone.', 'neutral');
   const type = VEHICLE_BY_ID[l.typeId];
-  if (p.age < 17) return result(false, 'You are too young.', 'neutral');
+  if (p.age < (type.minAge ?? VEHICLE_AGE)) return result(false, 'You are too young for that.', 'neutral');
+  if (how === 'loan' && p.age < 18) return result(false, 'Nobody lends money to a child.', 'neutral');
   if (how === 'loan') {
     const lent = borrow(l.price, 'car');
     if (!lent.ok) return lent;
@@ -153,6 +161,7 @@ export function takeOut(id) {
   const text = { car: `You took the ${a.name.toLowerCase()} out on an empty road with the windows down.`,
     bike: `You took the ${a.name.toLowerCase()} out through the hills.`,
     boat: `You spent a long day on the water in the ${a.name.toLowerCase()}.`,
+    cycle: `You spent a whole day out on the ${a.name.toLowerCase()} and came home filthy and happy.`,
     plane: `You took the ${a.name.toLowerCase()} up above the clouds.` }[type.cls];
   log(text, 'system', 'good');
   return result(true, text);
@@ -195,15 +204,16 @@ export function tickVehicles() {
     a.age += 1;
     a.condition = clamp(a.condition - rng.int(3, 8));
     a.value = worth(type, a.age, a.condition);
-    p.finance.cash -= Math.round(type.price * c.currency.scale * type.maint * (1.3 - a.condition / 100 * 0.6));
+    // A child's bike is kept going by whoever looks after them.
+    if (p.age >= 18) p.finance.cash -= Math.round(type.price * c.currency.scale * type.maint * (1.3 - a.condition / 100 * 0.6));
 
     const chance = 0.012 * type.risk * (1.7 - a.condition / 100) * (1 + p.hidden.crazy / 150);
     if (crashed || !rng.chance(chance)) continue;
     crashed = true;
-    const what = { car: 'crashed', bike: 'came off', boat: 'ran aground in', plane: 'made a forced landing in' }[type.cls];
+    const what = { car: 'crashed', bike: 'came off', cycle: 'came off', boat: 'ran aground in', plane: 'made a forced landing in' }[type.cls];
     const roll = rng.next();
-    if (roll < (type.cls === 'plane' ? 0.25 : type.cls === 'bike' ? 0.08 : 0.03)) {
-      return { car: 'a car crash', bike: 'a motorbike crash', boat: 'a boating accident', plane: 'a plane crash' }[type.cls];
+    if (roll < (type.cls === 'plane' ? 0.25 : type.cls === 'bike' ? 0.08 : type.cls === 'cycle' ? 0.006 : 0.03)) {
+      return { car: 'a car crash', bike: 'a motorbike crash', cycle: 'a cycling accident', boat: 'a boating accident', plane: 'a plane crash' }[type.cls];
     }
     if (roll < 0.35) {
       p.stats.health = clamp(p.stats.health - rng.int(12, 30));
@@ -217,4 +227,16 @@ export function tickVehicles() {
     }
   }
   return null;
+}
+
+/** A vehicle given as a present (see the giveVehicle effect). @returns {?object} the new asset */
+export function giveVehicle(typeId) {
+  const p = player();
+  const type = VEHICLE_BY_ID[typeId];
+  if (!type) return null;
+  const price = worth(type, 0, 100);
+  const a = { id: uid('asset'), kind: 'vehicle', catalogId: type.id, name: `${rng.pick(COLOURS).replace(/^./, (ch) => ch.toUpperCase())} ${lower(type.name)}`,
+    purchasePrice: 0, value: price, boughtAtAge: p.age, condition: 100, age: 0, vehicleClass: type.cls };
+  p.assets.push(a);
+  return a;
 }

@@ -1,8 +1,13 @@
 // currency.scale converts base (USD-like) amounts into everyday local amounts.
 // incomeTax is an effective rate on annual income; estateTax applies at death.
-const C = (id, name, flag, code, symbol, scale, incomeTax, estateTax, cities, m, f, s) => ({
+import { NAMES } from './names.js';
+
+/** A name list: the short one here plus the long one in names.js, without repeats. */
+const pool = (short, long = '') => [...new Set(`${short} ${long}`.split(' ').filter(Boolean).map((n) => n.replace(/_/g, ' ')))];
+
+const C = (id, name, flag, code, symbol, scale, incomeTax, estateTax, cities, m = '', f = '', s = '') => ({
   id, name, flag, currency: { code, symbol, scale }, incomeTax, estateTax, cities,
-  names: { male: m.split(' '), female: f.split(' '), last: s.split(' ') },
+  names: { male: pool(m, NAMES[id]?.male), female: pool(f, NAMES[id]?.female), last: pool(s, NAMES[id]?.last) },
 });
 
 const LIST = [
@@ -106,6 +111,31 @@ const LIST = [
     'Mateo Bautista Thiago Joaquín Benjamín Lautaro Franco Agustín Tomás Facundo',
     'Sofía Martina Catalina Emilia Valentina Julieta Morena Abril Camila Florencia',
     'González Rodríguez Fernández Gómez Díaz Álvarez Romero Sosa Acosta Benítez Medina Herrera'),
+  // Names for the countries below are all in names.js.
+  C('ve', 'Venezuela', '🇻🇪', 'VES', 'Bs.', 36, 0.16, 0.10,
+    ['Caracas', 'Maracaibo', 'Valencia', 'Barquisimeto', 'Mérida', 'Maracay']),
+  C('co', 'Colombia', '🇨🇴', 'COP', 'COL$', 4000, 0.19, 0,
+    ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga']),
+  C('cl', 'Chile', '🇨🇱', 'CLP', 'CLP$', 900, 0.17, 0.10,
+    ['Santiago', 'Valparaíso', 'Concepción', 'La Serena', 'Antofagasta', 'Temuco']),
+  C('pt', 'Portugal', '🇵🇹', 'EUR', '€', 0.9, 0.28, 0,
+    ['Lisbon', 'Porto', 'Braga', 'Coimbra', 'Faro', 'Aveiro']),
+  C('nl', 'Netherlands', '🇳🇱', 'EUR', '€', 0.9, 0.35, 0.15,
+    ['Amsterdam', 'Rotterdam', 'Utrecht', 'The Hague', 'Eindhoven', 'Groningen']),
+  C('pl', 'Poland', '🇵🇱', 'PLN', 'zł', 4, 0.22, 0.05,
+    ['Warsaw', 'Kraków', 'Wrocław', 'Gdańsk', 'Poznań', 'Łódź']),
+  C('tr', 'Turkey', '🇹🇷', 'TRY', '₺', 30, 0.20, 0.05,
+    ['Istanbul', 'Ankara', 'Izmir', 'Bursa', 'Antalya', 'Konya']),
+  C('eg', 'Egypt', '🇪🇬', 'EGP', 'E£', 48, 0.15, 0,
+    ['Cairo', 'Alexandria', 'Giza', 'Luxor', 'Aswan', 'Mansoura']),
+  C('th', 'Thailand', '🇹🇭', 'THB', '฿', 35, 0.15, 0.05,
+    ['Bangkok', 'Chiang Mai', 'Phuket', 'Khon Kaen', 'Hat Yai', 'Pattaya']),
+  C('vn', 'Vietnam', '🇻🇳', 'VND', '₫', 25000, 0.15, 0,
+    ['Hanoi', 'Ho Chi Minh City', 'Da Nang', 'Huế', 'Hai Phong', 'Can Tho']),
+  C('ke', 'Kenya', '🇰🇪', 'KES', 'KSh', 130, 0.20, 0,
+    ['Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 'Thika']),
+  C('jm', 'Jamaica', '🇯🇲', 'JMD', 'J$', 155, 0.22, 0,
+    ['Kingston', 'Montego Bay', 'Spanish Town', 'Portmore', 'Mandeville', 'Ocho Rios']),
 ];
 
 // Public services, used by health care and university costs in later phases.
@@ -115,6 +145,9 @@ const POLICY = {
   in: [false, false], ng: [false, false], mx: [false, true], kr: [true, false],
   it: [true, false], es: [true, false], se: [true, true], ie: [false, false],
   za: [false, false], cn: [false, false], ph: [false, false], ar: [true, true],
+  ve: [true, true], co: [false, false], cl: [false, false], pt: [true, false],
+  nl: [true, false], pl: [true, true], tr: [true, true], eg: [false, true],
+  th: [true, false], vn: [false, false], ke: [false, false], jm: [true, false],
 };
 for (const c of LIST) [c.freeHealthcare, c.freeUniversity] = POLICY[c.id];
 
@@ -122,10 +155,8 @@ for (const c of LIST) [c.freeHealthcare, c.freeUniversity] = POLICY[c.id];
 export const COUNTRIES = Object.fromEntries(LIST.map((c) => [c.id, c]));
 export const COUNTRY_LIST = LIST;
 
-/** Used once a family has used up every local first name, so no two relatives share one. */
-export const EXTRA_NAMES = {
-  male: ('Adam Felix Jonah Silas Rowan Miles Jude Ezra Leon Milo Arlo Kian Dante Idris Rafael Tobias Elias Oscar Hugo '
-    + 'Nico Luca Ivo Soren Anders Kofi Malik Tariq Zayn Ravi Arun Kenji Hiro Jin Mateus Thiago Emil Viktor Cormac Finn Ansel').split(' '),
-  female: ('Ada Clara Esme Iris Juno Lena Mira Nora Opal Pia Rosa Thea Vera Wren Zoe Alma Bea Cleo Dara Elin '
-    + 'Fern Greta Hana Ines Jade Kira Lyra Mae Noor Odette Petra Rhea Selma Talia Una Viola Yara Zara Amina Leila').split(' '),
-};
+/** Some countries change a surname's ending by gender (Kowalski, Kowalska). */
+export function surnameFor(countryId, last, gender) {
+  if (countryId !== 'pl') return last;
+  return gender === 'female' ? last.replace(/(sk|ck|dzk)i$/, '$1a') : last.replace(/(sk|ck|dzk)a$/, '$1i');
+}

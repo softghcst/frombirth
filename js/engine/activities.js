@@ -149,7 +149,8 @@ export function holiday(id, bringFamily, trip = {}) {
     const seen = p.flags.visited ?? (p.flags.visited = []);
     if (!seen.includes(dest.id)) {
       seen.push(dest.id);
-      if ([5, 10, 19].includes(seen.length)) milestone(seen.length === 19 ? 'Has visited every country on the map.' : `Has visited ${seen.length} countries.`, 'life');
+      const all = COUNTRY_LIST.length - 1;
+      if ([5, 10, 20, all].includes(seen.length)) milestone(seen.length === all ? 'Has visited every country on the map.' : `Has visited ${seen.length} countries.`, 'life');
     }
   }
 
