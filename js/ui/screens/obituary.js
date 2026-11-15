@@ -17,6 +17,7 @@ function estateCard(g, c) {
   if (e.tax) rows.push([`Estate tax (${Math.round(c.estateTax * 100)}%)`, `− ${fmtMoney(e.tax, c)}`]);
   if (e.charity) rows.push(['Left to charity', fmtMoney(e.charity, c)]);
   for (const s of e.shares) rows.push([`${s.name} (${s.role.toLowerCase()})`, fmtMoney(s.amount, c)]);
+  if (e.lost) rows.push(['Buried in the garden, never found', fmtMoney(e.lost, c)]);
   if (e.toState) rows.push(['With no heirs, taken by the state', fmtMoney(e.toState, c)]);
   return `<div class="card"><h3>The estate</h3>${kv(rows)}</div>`;
 }

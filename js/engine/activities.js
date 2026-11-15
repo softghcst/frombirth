@@ -44,8 +44,8 @@ export function gym() {
     log(text, 'system', 'bad');
     return result(false, text);
   }
-  p.stats.health = clamp(p.stats.health + rng.int(4, 7));
-  p.stats.charm = clamp(p.stats.charm + rng.int(1, 3));
+  p.stats.health = clamp(p.stats.health + Math.max(1, Math.round(rng.int(4, 7) * (100 - p.stats.health) / 50)));
+  if (p.stats.charm < 75) p.stats.charm = clamp(p.stats.charm + rng.int(1, 2));
   p.stats.mood = clamp(p.stats.mood + 2);
   p.hidden.discipline = clamp(p.hidden.discipline + 1);
   const text = 'Three times a week, all year. You are fitter, and your clothes sit better.';

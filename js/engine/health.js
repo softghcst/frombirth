@@ -36,7 +36,7 @@ export function tickHealth() {
   if (age < 18) bump(s, 'charm', rng.int(-1, 2));
   else if (age < 40) bump(s, 'charm', rng.int(-1, 1));
   else bump(s, 'charm', rng.int(-2, 0));
-  if (!p.education.enrolled) bump(s, 'intellect', rng.int(-1, 1));
+  if (!p.education.enrolled) bump(s, 'intellect', age >= 75 ? rng.int(-2, 0) : rng.int(-1, 1));
   p.hidden.fertility = clamp(p.hidden.fertility - (age > 35 ? rng.int(2, 6) : 0));
 
   // Existing conditions take their toll, then may clear up.

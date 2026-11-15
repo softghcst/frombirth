@@ -61,6 +61,10 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Other people's lives: ambitions, hobbies, school and adult moments, family size limits | `js/data/npcLife.js` |
 | Scenes that other people's lives ask you to respond to | `js/data/events/familyLives.js` |
 | Friend scenes (new groups, fallings-out, memories) | `js/data/events/friends.js` |
+| Early-life scenes (infancy to the teens) | `js/data/events/early.js` |
+| Everyday adult and later-life scenes | `js/data/events/everyday.js` |
+| Higher-rate income tax and yearly living costs | `js/engine/finance.js` (`incomeTax`, `lifestyleCost`) |
+| How performance and promotion work | `js/engine/career.js` (`tickCareer`) |
 | One-off events | `js/data/events/*.js` |
 | Multi-year storylines: musical theatre, mentors, school paper | `js/data/events/stories/*.js` (each file's header explains its flags and contacts) |
 
@@ -75,10 +79,17 @@ Add an object to a file in `js/data/events/` (or a new file registered in
 `events/index.js`). See `js/types.js` for the `GameEvent` schema and
 `events/helpers.js` for the effect constructors.
 
+After adding or changing a scene, run `node tests/events.mjs`. It checks every
+scene for duplicate ids, missing outcomes, unknown effects and conditions, and
+names used in the text with nobody cast as them.
+
 ## Status
 
-Phases 1–9 of 10 are built: core engine, saves, character creation and family,
+All ten phases are built: core engine, saves, character creation and family,
 education with storylines, careers with fame, relationships with independent
-family lives, the economy, crime and prison, health and activities, and death
-and legacy (wills, estate tax, 24 epitaphs, and carrying on as a child or
-grandchild).
+family lives, the economy, crime and prison, health and activities, death and
+legacy, and a final pass that brought the game to 202 scenes, rebalanced money
+and promotions, and checked the layout at iPad and phone sizes.
+
+The layout has been checked in a desktop browser emulating iPad and phone
+screens (portrait and landscape). It has not been run on a physical iPad.

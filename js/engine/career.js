@@ -280,7 +280,7 @@ export function workHarder() {
   if (!p.career.careerId) return result(false, 'You do not have a job.');
   if (acts().harder) return result(false, 'You are already giving it everything this year.', 'neutral');
   acts().harder = 1;
-  p.career.performance = clamp(p.career.performance + 10);
+  p.career.performance = clamp(p.career.performance + 8);
   p.stats.mood = clamp(p.stats.mood - 4);
   p.hidden.discipline = clamp(p.hidden.discipline + 1);
   const text = 'You came in early and stayed late all year. It has been noticed.';
@@ -525,8 +525,8 @@ export function tickCareer() {
 
   // How the year went
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : 0;
-  c.performance = clamp(Math.round(c.performance + (55 - c.performance) * 0.12
-    + (p.hidden.discipline - 50) / 8 + craft + rng.int(-6, 6)));
+  c.performance = clamp(Math.round(c.performance + (55 - c.performance) * 0.25
+    + (p.hidden.discipline - 50) / 12 + craft + rng.int(-6, 6)));
   if (career.skill === 'tripleThreat') for (const k of ['singing', 'dance', 'acting']) p.talents[k] = clamp(p.talents[k] + 1);
   else if (career.skill?.startsWith('talents.')) { const k = career.skill.slice(8); p.talents[k] = clamp(p.talents[k] + 1); }
   p.stats.mood = clamp(p.stats.mood - Math.round(career.stress * 1.5));
@@ -570,7 +570,11 @@ export function tickCareer() {
   const next = career.levels[c.level + 1];
   const served = c.yearsInRole >= level.years;
   const missing = missingFor(next);
-  if (next && served && c.performance >= 62 && !missing.length && rng.chance(clamp(0.2 + (c.performance - 62) / 110, 0, 0.9))) {
+  // There are few seats at the very top: it takes an outstanding record, and luck.
+  const toTop = next && c.level + 1 === career.levels.length - 1;
+  const bar = toTop ? 80 : 62;
+  const odds = clamp(0.2 + (c.performance - bar) / 110, 0, 0.9) * (toTop ? 0.22 : 1);
+  if (next && served && c.performance >= bar && !missing.length && rng.chance(odds)) {
     promote();
   } else {
     if (next && served && missing.length && (c.yearsInRole - level.years) % 3 === 0) {

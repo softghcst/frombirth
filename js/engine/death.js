@@ -53,7 +53,8 @@ export const willCandidates = () => people().filter((n) => n.alive
 
 /** @returns {{mode:'family'|'person'|'charity', npcId?:string}} */
 export function currentWill() {
-  const w = player().flags.will;
+  let w = player().flags.will;
+  if (typeof w === 'string') w = { mode: w === 'charity' ? 'charity' : w === 'buried' ? 'buried' : 'family' };
   if (w?.mode === 'person' && !store.state.npcs[w.npcId]?.alive) return { mode: 'family' };
   return w ?? { mode: 'family' };
 }
@@ -61,6 +62,7 @@ export function currentWill() {
 export function willSummary() {
   const w = currentWill();
   if (w.mode === 'charity') return 'Everything goes to charity.';
+  if (w.mode === 'buried') return 'Your cash is buried in the garden. Only the map knows where.';
   if (w.mode === 'person') { const n = store.state.npcs[w.npcId]; return `Everything goes to ${n.firstName} ${n.lastName}.`; }
   return familyShares().length ? 'Shared among your closest family.' : 'You have no family to leave it to. It would go to the state.';
 }
@@ -101,6 +103,7 @@ export function estatePlan() {
   if (gross <= 0) return plan;
   const will = currentWill();
   if (will.mode === 'charity') return { ...plan, net: gross, charity: gross }; // gifts to charity are not taxed
+  if (will.mode === 'buried') return { ...plan, lost: gross }; // nobody ever finds it
   plan.tax = Math.round(Math.max(0, gross - localMoney(ESTATE_ALLOWANCE, c)) * c.estateTax);
   plan.net = gross - plan.tax;
   const split = will.mode === 'person' ? [[store.state.npcs[will.npcId], 1]] : familyShares();

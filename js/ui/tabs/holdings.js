@@ -44,7 +44,7 @@ function willCard(c) {
   const rows = e.gross <= 0 ? [['If you died today', 'There would be nothing to leave']]
     : [['Estate tax if you died today', fmtMoney(e.tax, c)],
       ...e.shares.map((s) => [`${s.name} (${s.role.toLowerCase()})`, fmtMoney(s.amount, c)]),
-      ...(e.charity ? [['To charity', fmtMoney(e.charity, c)]] : []), ...(e.toState ? [['To the state', fmtMoney(e.toState, c)]] : [])];
+      ...(e.charity ? [['To charity', fmtMoney(e.charity, c)]] : []), ...(e.lost ? [['Lost in the garden', fmtMoney(e.lost, c)]] : []), ...(e.toState ? [['To the state', fmtMoney(e.toState, c)]] : [])];
   return `<div class="card" style="margin-top:14px"><h3>Your will</h3>
     <p class="muted" style="margin-bottom:8px">${esc(last.willSummary())}</p>${kv(rows)}
     <button class="btn" data-go="will" style="margin-top:10px">Change your will</button></div>`;

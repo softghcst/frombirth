@@ -9,6 +9,23 @@ import { repossess } from './realEstate.js';
 import { repossessVehicle } from './vehicles.js';
 import { RENT_AND_BILLS, BILLS_ONLY } from '../data/properties.js';
 
+/** Income above this (base units a year) is taxed at the higher rate. */
+const HIGHER_RATE_FROM = 150000;
+const HIGHER_RATE_EXTRA = 0.12;
+
+/** Tax due on a year's income, in local currency. */
+export function incomeTax(gross, c = country()) {
+  const upper = Math.max(0, gross - localMoney(HIGHER_RATE_FROM, c));
+  return Math.round(gross * c.incomeTax + upper * HIGHER_RATE_EXTRA);
+}
+
+/** What a year of ordinary spending costs at a given income: the more you earn, the more of it you spend. */
+export function lifestyleCost(gross, c = country()) {
+  const a = localMoney(30000, c);
+  const g = Math.max(0, gross);
+  return Math.round(Math.min(g, a) * 0.2 + Math.max(0, g - a) * 0.55);
+}
+
 /** Cash plus asset equity minus debts. Takes the state so save.js can call it. */
 export function netWorth(state) {
   const p = state.player;
@@ -36,7 +53,7 @@ export function tickFinance() {
   const gross = (p.career.salary || 0) + (p.career.partTime?.salary || 0)
     + (p.career.retired ? p.career.pensionPerYear : 0);
   if (gross > 0) {
-    const tax = Math.round(gross * c.incomeTax);
+    const tax = incomeTax(gross, c);
     f.cash += gross - tax;
     f.lifetimeEarned += gross;
     f.lifetimeTaxPaid += tax;
@@ -58,7 +75,7 @@ export function tickFinance() {
     const partner = npcsByRole('spouse')[0];
     const share = !partner ? 1 : partner.life?.job || partner.life?.pension ? 0.55 : 1.15;
     const base = Math.round(localMoney(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share);
-    const lifestyle = Math.round(Math.max(0, gross) * 0.2);
+    const lifestyle = lifestyleCost(gross, c);
     f.cash -= afford(base + lifestyle);
   }
 

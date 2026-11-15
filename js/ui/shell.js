@@ -39,12 +39,14 @@ export function mountGame(app, hooks) {
         <div class="purse"><div class="label">Bank</div><div class="amount num" data-cash></div></div>
       </header>
       <div class="meters" data-meters></div>
+      <div class="sheet-area">
       <main class="journal" data-journal aria-live="polite"></main>
       <section class="panel" data-panel hidden>
         <div class="panel-head"><h2 data-panel-title></h2>
           <button class="icon-btn" data-panel-close aria-label="Close panel">✕</button></div>
         <div class="panel-body" data-panel-body></div>
       </section>
+      </div>
       </div>
       <footer class="dock">
         <button class="year-btn" data-year></button>
