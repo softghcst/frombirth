@@ -56,6 +56,26 @@ function ask(id, cast) {
   return true;
 }
 
+/**
+ * A child lives as who they are: a new name, from the day they tell their
+ * parent. Whether the parent stood by them is remembered either way.
+ */
+export function npcTransition(npc, accepted) {
+  if (!npc || npc.flags.transitioned) return;
+  const names = country().names;
+  npc.flags.bornAs = npc.gender;
+  npc.flags.formerName = npc.firstName;
+  npc.gender = npc.gender === 'male' ? 'female' : 'male';
+  const taken = new Set(livingNpcs().map((n) => n.firstName));
+  const free = names[npc.gender].filter((n) => !taken.has(n));
+  npc.firstName = rng.pick(free.length ? free : names[npc.gender]);
+  npc.flags.transitioned = true;
+  npc.flags.parentAccepted = !!accepted;
+  if (npc.life) note(npc, `began living as ${npc.gender === 'female' ? 'a woman' : 'a man'}, and took the name ${npc.firstName}`, false);
+  log(accepted ? `Your child is ${npc.firstName} now, and is your ${npc.gender === 'female' ? 'daughter' : 'son'}.`
+    : `Your child goes by ${npc.firstName} now, whether or not you use it.`, 'system', accepted ? 'good' : 'bad');
+}
+
 /** While the player is locked up, family news still arrives, by letter. */
 function letter(text) {
   const p = player();
@@ -232,6 +252,13 @@ function tickEducation(npc, quiet = false) {
     }
   }
   if (a === 17 && !quiet && npc.role === 'child') ask('kid_decides', { kid: npc.id });
+  // A child tells their parent who they are, when they are ready.
+  if (!quiet && npc.role === 'child' && a >= 13 && a <= 22 && npc.orientation && npc.orientation !== 'straight' && !npc.flags.cameOut && rng.chance(0.25)) {
+    if (ask('kid_comes_out', { kid: npc.id })) npc.flags.cameOut = true;
+  }
+  if (!quiet && npc.role === 'child' && a >= 6 && a <= 24 && npc.flags.trans && !npc.flags.transitioned && rng.chance(0.2)) {
+    if (ask('kid_is_trans', { kid: npc.id })) npc.flags.toldParent = true;
+  }
   if (a === 18 && ['high', 'none', 'middle', 'elementary'].includes(e.stage)) choosePath(npc, quiet);
 
   if (e.yearsLeft > 0 && a > 18) {
@@ -334,11 +361,12 @@ function meetPartner(npc) {
     note(npc, 'met someone');
     return;
   }
-  const same = rng.chance(0.08);
+  // Who they fall for follows who they are.
+  const same = npc.orientation === 'gay' ? true : ['bisexual', 'pansexual'].includes(npc.orientation) ? rng.chance(0.5) : false;
   const gender = same ? npc.gender : npc.gender === 'male' ? 'female' : 'male';
   const surnames = country().names.last.filter((n) => n !== npc.lastName);
   const love = addNpc(makeNpc({ role: 'inlaw', countryId: p.countryId, gender, age: Math.max(18, npc.age + rng.int(-4, 5)),
-    lastName: rng.pick(surnames), relationship: rng.int(40, 60) }));
+    lastName: rng.pick(surnames), relationship: rng.int(40, 60), orientation: same ? rng.pick(['gay', 'gay', 'bisexual']) : rng.pick(['straight', 'straight', 'straight', 'bisexual']) }));
   love.flags.partnerOf = npc.id;
   ensureLife(love);
   L.partnerId = love.id;

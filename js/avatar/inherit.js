@@ -1,0 +1,92 @@
+// Where faces come from: a random face for someone with no known parents,
+// and a child's face mixed from two parents.
+//
+// These are stylised game rules for visible family resemblance, not
+// genetics. Only the `inherited` half of a parent is ever read, so a dyed
+// or restyled parent passes on what they were born with.
+import { rng } from '../rng.js';
+import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES } from './catalog.js';
+
+const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
+const toneAt = (depth) => SKIN_TONES.find((t) => t.depth === clampDepth(depth)).id;
+const weighted = (table) => rng.weighted(Object.keys(table), (k) => table[k]);
+
+/** A face with no parents to take after. Hair and eye colour lean with skin depth. */
+export function randomInherited(skinDepthHint) {
+  const depth = skinDepthHint == null ? rng.int(0, SKIN_TONES.length - 1) : clampDepth(skinDepthHint + rng.int(-1, 1));
+  const g = {};
+  for (const key of INHERITED_KEYS) g[key] = rng.pick(CATALOG[key]).id;
+  g.skin = toneAt(depth);
+  g.hairColor = depth >= 7 ? weighted({ black: 70, dark_brown: 26, brown: 4 })
+    : depth >= 4 ? weighted({ black: 38, dark_brown: 34, brown: 20, light_brown: 8 })
+      : weighted({ black: 8, dark_brown: 20, brown: 24, light_brown: 16, auburn: 6, ginger: 5, dark_blonde: 11, blonde: 10 });
+  g.hairTexture = depth >= 8 ? weighted({ coily: 62, curly: 30, wavy: 8 })
+    : depth >= 5 ? weighted({ straight: 30, wavy: 30, curly: 28, coily: 12 })
+      : weighted({ straight: 46, wavy: 34, curly: 18, coily: 2 });
+  g.eyeColor = depth >= 6 ? weighted({ dark_brown: 70, brown: 26, hazel: 3, amber: 1 })
+    : depth >= 3 ? weighted({ dark_brown: 34, brown: 38, hazel: 14, amber: 6, green: 5, gray: 3 })
+      : weighted({ dark_brown: 8, brown: 26, hazel: 16, amber: 4, green: 14, blue: 24, gray: 8 });
+  g.marks = [];
+  if (depth <= 4 && rng.chance(0.14)) g.marks.push('freckles');
+  if (rng.chance(0.06)) g.marks.push('beauty_mark');
+  if (rng.chance(0.1)) g.marks.push('dimples');
+  return g;
+}
+
+/** A first haircut that suits the texture and, loosely, the gender. Everything else starts bare. */
+export function defaultStyle(inherited, gender) {
+  const suited = stylesFor(inherited.hairTexture);
+  const long = ['bob', 'long_straight', 'long_wavy', 'long_curly', 'ponytail', 'bun', 'braids', 'puffs', 'coils', 'waves', 'locs'];
+  const leaning = gender === 'female' ? suited.filter((s) => long.includes(s.id))
+    : gender === 'male' ? suited.filter((s) => !long.includes(s.id) || ['coils', 'waves', 'locs'].includes(s.id)) : suited;
+  const pool = leaning.length && rng.chance(0.85) ? leaning : suited;
+  return { hair: rng.pick(pool.length ? pool : CATALOG.hair).id, hairDye: null, glasses: null, facialHair: null, makeup: null, lipColor: null };
+}
+
+/** A complete appearance for someone with no known parents. */
+export function randomAppearance(skinDepthHint, gender) {
+  const inherited = randomInherited(skinDepthHint);
+  const style = defaultStyle(inherited, gender);
+  if (rng.chance(0.14)) style.glasses = rng.pick(CATALOG.glasses).id;
+  return { v: 2, inherited, style };
+}
+
+/**
+ * A child's appearance from up to two parents' appearances (any saved
+ * version, or missing). Each feature comes from one parent or the other,
+ * with a small chance of something neither has. Skin lands between the
+ * parents' tones. The result is generated once and saved on the child.
+ * `style.hair` is left null: call ensureStyled once the child's gender is known.
+ */
+export function inheritAppearance(a, b) {
+  const one = a ? normalize(a, 'parent-a').inherited : null;
+  const two = b ? normalize(b, 'parent-b').inherited : null;
+  const depthOf = (g) => part('skin', g.skin).depth;
+  const pa = one ?? randomInherited(two ? depthOf(two) : undefined);
+  const pb = two ?? randomInherited(depthOf(pa));
+
+  const g = {};
+  for (const key of INHERITED_KEYS) {
+    g[key] = rng.chance(0.06) ? rng.pick(CATALOG[key]).id : rng.pick([pa[key], pb[key]]);
+  }
+  // Skin: between the parents, a shade either way now and then.
+  const [lo, hi] = [Math.min(depthOf(pa), depthOf(pb)), Math.max(depthOf(pa), depthOf(pb))];
+  const between = (depthOf(pa) + depthOf(pb)) / 2 + (rng.chance(0.35) ? rng.pick([-1, 1]) : rng.chance(0.5) ? 0.5 : -0.5) * (lo === hi ? 0.6 : 1);
+  g.skin = toneAt(Math.max(lo - 1, Math.min(hi + 1, between)));
+  // Hair and eye colour and texture never appear from nowhere as often as shapes do.
+  for (const key of ['hairColor', 'hairTexture', 'eyeColor']) if (!rng.chance(0.04)) g[key] = rng.pick([pa[key], pb[key]]);
+  g.marks = CATALOG.marks.map((m) => m.id).filter((id) => {
+    const n = (pa.marks?.includes(id) ? 1 : 0) + (pb.marks?.includes(id) ? 1 : 0);
+    return rng.chance(n === 2 ? 0.8 : n === 1 ? 0.5 : 0.03);
+  });
+  return { v: 2, inherited: g, style: { hair: null, hairDye: null, glasses: null, facialHair: null, makeup: null, lipColor: null } };
+}
+
+/** Gives a newly made character a haircut if they have none yet. Changes and returns the appearance. */
+export function ensureStyled(appearance, gender) {
+  if (appearance?.inherited && !appearance.style?.hair) appearance.style = { ...defaultStyle(appearance.inherited, gender), ...Object.fromEntries(Object.entries(appearance.style ?? {}).filter(([, v]) => v != null)) };
+  return appearance;
+}
+
+/** A copy that shares nothing with the original. */
+export const cloneAppearance = (a) => JSON.parse(JSON.stringify(a));

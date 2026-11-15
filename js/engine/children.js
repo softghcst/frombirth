@@ -32,10 +32,12 @@ const npcGenes = (npc) => ({ appearance: npc.appearance, traits: npc.traits ?? [
 /** True when the player and this person could have a baby together. */
 export function canConceive(npc) {
   const p = player();
-  const pair = [p.gender, npc.gender].sort().join('+');
-  if (pair !== 'female+male') return false;
+  const mine = p.flags.bornAs ?? p.gender;
+  const theirs = npc.flags?.bornAs ?? npc.gender;
+  if ([mine, theirs].sort().join('+') !== 'female+male') return false;
+  if (p.flags.identity?.bottom) return false;
   if (p.age < 18 || npc.age < 18) return false;
-  const motherAge = p.gender === 'female' ? p.age : npc.age;
+  const motherAge = mine === 'female' ? p.age : npc.age;
   return motherAge <= MAX_CHILDBEARING_AGE;
 }
 

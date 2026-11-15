@@ -84,6 +84,8 @@ export function meetSomeone(place) {
   const surnames = COUNTRIES[p.countryId].names.last.filter((n) => n !== p.lastName);
   const npc = makeNpc({ role: 'partner', countryId: p.countryId, gender, age, relationship: rng.int(48, 62),
     lastName: rng.pick(surnames) });
+  // Someone who would go out with the player is, by definition, drawn to people like them.
+  npc.orientation = npc.gender === p.gender ? rng.pick(['gay', 'gay', 'bisexual', 'pansexual']) : rng.pick(['straight', 'straight', 'straight', 'bisexual']);
   if (place === 'app') npc.meters.charm = clamp(npc.meters.charm - rng.int(0, 15)); // profiles flatter
   ensureLife(npc);
   const m = npc.meters;

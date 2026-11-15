@@ -85,7 +85,7 @@ export function mountGame(app, hooks) {
     const p = player();
     const c = country();
     $('[data-avatar]').innerHTML = avatarSvg({
-      age: p.age, gender: p.gender, appearance: p.appearance,
+      age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id,
       jailed: !!p.legal.incarceration, mood: p.stats.mood,
     });
     $('[data-name]').textContent = `${p.firstName} ${p.lastName}`;

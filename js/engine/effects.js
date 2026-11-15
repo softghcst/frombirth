@@ -8,6 +8,7 @@ import { remember } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
 import { hitProperty } from './realEstate.js';
 import { hitVehicle, giveVehicle } from './vehicles.js';
+import { npcTransition } from './npcLives.js';
 import { sellEverything } from './market.js';
 
 /**
@@ -110,6 +111,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'property': hitProperty(e.target, e.value); break;
       case 'vehicle': hitVehicle(e.delta); break;
       case 'giveVehicle': giveVehicle(e.value); break;
+      case 'npcTransition': npcTransition(store.state.npcs[ctx.cast[e.target]], e.value); break;
       case 'sellInvestments': sellEverything(); break;
       case 'prison': {
         const k = p.legal.incarceration;

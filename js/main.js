@@ -8,6 +8,7 @@ import { mountGame } from './ui/shell.js';
 import { heirs, continueAs } from './engine/legacy.js';
 import { roleLabel } from './engine/relationships.js';
 import { saveGame, deleteSlot, getGraveyard, updateGrave } from './save.js';
+import { normalize } from './avatar/catalog.js';
 
 const app = document.getElementById('app');
 
@@ -18,6 +19,13 @@ function showDeath(entry) {
   renderObituary(app, entry, {
     heirs: list,
     onDone: () => { deleteSlot(state.slotId); showTitle(); },
+    // The same person, born again: same name, birthplace and face, a new roll of everything else.
+    onRestart: () => {
+      const old = state.player;
+      deleteSlot(state.slotId);
+      play(createLife({ firstName: old.flags.birthName ?? old.firstName, lastName: old.lastName, gender: old.flags.birthGender ?? old.gender,
+        countryId: old.birthCountryId, appearance: { inherited: normalize(old.appearance, old.id).inherited } }));
+    },
     onContinue: (id) => {
       const next = continueAs(id);
       if (!next) return;

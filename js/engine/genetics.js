@@ -1,5 +1,7 @@
 // Heredity: what a child takes from its parents, and what it is born with.
 import { rng } from '../rng.js';
+import { randomAppearance as avatarRandom, inheritAppearance as avatarInherit } from '../avatar/inherit.js';
+import { skinDepth } from '../avatar/catalog.js';
 import { clamp } from '../util.js';
 import { TRAITS, TRAIT_BY_ID } from '../data/traits.js';
 import { BIRTH_CONDITIONS } from '../data/birthConditions.js';
@@ -11,15 +13,8 @@ export const EYE_COLOURS = 4;
 
 const stat = (mean, spread) => Math.round(clamp(rng.around(mean, spread)));
 
-export function randomAppearance(skinHint) {
-  return {
-    skin: skinHint == null ? rng.int(0, SKIN_TONES - 1) : clamp(skinHint + rng.int(-1, 1), 0, SKIN_TONES - 1),
-    hair: rng.int(0, HAIR_COLOURS - 1),
-    hairStyle: rng.int(0, HAIR_STYLES - 1),
-    eyes: rng.int(0, EYE_COLOURS - 1),
-    weight: 50,
-  };
-}
+/** A face for someone with no known parents. skinHint is a skin depth (see avatar/parts/skin.js). */
+export const randomAppearance = (skinHint, gender) => avatarRandom(skinHint, gender);
 
 export const randomTraits = (n = rng.int(1, 2)) => {
   const pool = TRAITS.map((t) => t.id);
@@ -33,26 +28,15 @@ export const randomTalents = () =>
 /** Stand-in genome for a parent who is not in the picture. */
 export function unknownParent(other) {
   return {
-    appearance: randomAppearance(other.appearance.skin),
+    appearance: randomAppearance(skinDepth(other.appearance)),
     traits: randomTraits(1),
     talents: randomTalents(),
     meters: { intellect: stat(55, 35), charm: stat(55, 35), health: stat(80, 20), crazy: stat(30, 35) },
   };
 }
 
-/** Skin blends; hair and eye colour come from one parent, with rare surprises. */
-export function inheritAppearance(mother, father) {
-  const a = mother.appearance;
-  const b = father.appearance;
-  const drift = rng.chance(0.3) ? rng.pick([-1, 1]) : 0;
-  return {
-    skin: clamp(Math.round((a.skin + b.skin) / 2 + drift), 0, SKIN_TONES - 1),
-    hair: rng.chance(0.1) ? rng.int(0, HAIR_COLOURS - 1) : rng.pick([a.hair, b.hair]),
-    hairStyle: rng.int(0, HAIR_STYLES - 1),
-    eyes: rng.chance(0.1) ? rng.int(0, EYE_COLOURS - 1) : rng.pick([a.eyes, b.eyes]),
-    weight: 50,
-  };
-}
+/** A child's face, mixed from what each parent was born with (never from their styling). */
+export const inheritAppearance = (mother, father) => avatarInherit(mother?.appearance, father?.appearance);
 
 /**
  * Each parental trait has a 45% chance of passing on; now and then a child

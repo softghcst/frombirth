@@ -9,6 +9,9 @@ import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, rollBir
   applyMods, unknownParent } from './genetics.js';
 import { SCHEMA_VERSION } from '../save.js';
 import { rollLongevity } from './death.js';
+import { normalize, skinDepth, INHERITED_KEYS } from '../avatar/catalog.js';
+import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
+import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -18,32 +21,46 @@ import { rollLongevity } from './death.js';
  * @param {'male'|'female'|'nonbinary'} [opts.gender]
  * @param {string} [opts.countryId]
  * @param {string} [opts.city]
- * @param {{skin?:number, hair?:number, hairStyle?:number, eyes?:number}} [opts.appearance]
+ * @param {object} [opts.appearance]  a complete appearance from the editor; left out, the face is inherited
  * @param {'music'|'sports'|'acting'|'crime'|'singing'|'dance'} [opts.talent]  a guaranteed natural gift
  * @param {'struggling'|'comfortable'|'wealthy'} [opts.background]
+ * @param {string} [opts.orientation]  one of ORIENTATIONS in engine/identity.js
+ * @param {boolean} [opts.trans]  whether `gender` differs from the one registered at birth
  * @returns {import('../types.js').GameState}
  */
 export function createLife(opts = {}) {
   rng.seed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
 
   const c = COUNTRIES[opts.countryId] ?? rng.pick(COUNTRY_LIST);
-  const gender = opts.gender ?? rng.pick(['male', 'female']);
+  // `identityGender` is who they are. A transgender character is registered as something else at birth.
+  const identityGender = opts.gender ?? rng.pick(['male', 'female']);
+  const trans = opts.trans ?? rng.chance(TRANS_RATE);
+  const gender = !trans ? identityGender : identityGender === 'male' ? 'female' : identityGender === 'female' ? 'male' : rng.pick(['male', 'female']);
+  const orientation = opts.orientation ?? rollOrientation();
   const lastName = surnameFor(c.id, opts.lastName?.trim() || rng.pick(c.names.last), gender);
   const firstName = opts.firstName?.trim()
     || rng.pick(c.names[gender] ?? [...c.names.male, ...c.names.female]);
   const city = opts.city && c.cities.includes(opts.city) ? opts.city : rng.pick(c.cities);
   const year = new Date().getFullYear();
-  const picked = opts.appearance ?? {};
 
   // Family first, then the child is derived from the parents.
-  const fam = generateFamily(c, lastName, { background: opts.background, skinHint: picked.skin, avoidNames: [firstName] });
+  // A designed face: the family is built to resemble it.
+  const designed = opts.appearance?.inherited ? normalize(opts.appearance, 'designed') : null;
+  const fam = generateFamily(c, lastName, { background: opts.background, skinHint: designed ? skinDepth(designed) : undefined, avoidNames: [firstName] });
   const { mother, father } = fam;
   const genes = father ?? unknownParent(mother);
   const family = [mother, ...(father ? [father] : []), ...fam.siblings, ...fam.grandparents, ...fam.pets];
 
-  const appearance = { ...inheritAppearance(mother, genes) };
-  for (const k of ['skin', 'hair', 'hairStyle', 'eyes']) if (picked[k] != null) appearance[k] = picked[k];
-  if (fam.twin) { fam.twin.age = 0; if (rng.chance(0.4)) fam.twin.appearance = { ...appearance }; }
+  if (designed) {
+    // Each feature the player chose is given to one parent or the other, so the child visibly takes after them.
+    for (const key of INHERITED_KEYS) {
+      if (key === 'skin') continue;
+      const parent = father && rng.chance(0.5) ? father : mother;
+      if (rng.chance(0.8)) parent.appearance.inherited[key] = designed.inherited[key];
+    }
+  }
+  const appearance = ensureStyled(designed ?? inheritAppearance(mother, genes), gender);
+  if (fam.twin) { fam.twin.age = 0; if (rng.chance(0.4)) fam.twin.appearance = cloneAppearance(appearance); }
 
   const { stats, hidden } = inheritStats(mother, genes);
   const { traits, sources } = inheritTraits(mother, genes);
@@ -72,7 +89,14 @@ export function createLife(opts = {}) {
     counters: { crimes: 0, kills: 0, donated: 0, gambled: 0, yearsJailed: 0, escapes: 0,
       livesSaved: 0, spouses: 0, jobsHeld: 0, countriesLived: 1 },
     alive: true, generation: 1,
+    orientation, skills: {},
   };
+  player.flags.bornAs = gender;
+  player.flags.interestedIn = attractedTo(orientation, identityGender);
+  // A transgender child works out who they are some time in childhood.
+  if (trans) { player.flags.trueGender = identityGender; player.flags.realiseAge = rng.int(4, 14); }
+  // Natural gifts make the matching skills come faster all life long.
+  player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 65).map(([k]) => k);
 
   for (const id of traits) applyMods(player, TRAIT_BY_ID[id]);
   for (const b of born) {

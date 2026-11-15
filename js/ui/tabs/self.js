@@ -8,6 +8,10 @@ import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
 import { seeDoctor, cosmeticSurgery, openPassport } from '../leisure.js';
+import { openAppearanceEditor } from '../../avatar/editor.js';
+import * as salon from '../../engine/salon.js';
+import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
+import { messageModal } from '../modals.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -34,6 +38,11 @@ export default {
         ${meterHtml('Dance', p.talents.dance, true)}
         <div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat(p)}</strong> / 100</span></div>
       </div>
+      ${skillsCard()}
+      <div class="card"><h3>Identity</h3>
+        ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+        <button class="btn" data-identity style="margin-top:10px">Identity</button>
+      </div>
       <div class="card"><h3>Traits</h3>
         ${traits.map((t) => `<div class="kv"><span>${esc(t.name)}${from(t.id)}</span><span>${esc(t.desc)}</span></div>`).join('')}
       </div>
@@ -44,6 +53,7 @@ export default {
       <div class="btn-stack" style="margin-bottom:14px">
         <button class="btn ${med.treatable().some((x) => !x.managed && !x.seen) ? 'primary' : ''}" data-doctor>See a doctor</button>
         ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
+        ${salon.canVisitSalon() ? '<button class="btn" data-salon>Beauty salon</button>' : ''}
         <button class="btn" data-passport>Passport</button>
       </div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
@@ -55,6 +65,16 @@ export default {
 
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
     el.querySelector('[data-passport]').onclick = () => openPassport();
+    el.querySelector('[data-identity]').onclick = () => openIdentity(api);
+    if (el.querySelector('[data-practise]')) el.querySelector('[data-practise]').onclick = () => openPractice(api);
+    if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
+      const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id,
+        scope: 'style', note: salon.salonNote, confirm: 'Confirm appearance' });
+      if (!next) return;
+      const r = salon.applySalon(next);
+      api.changed();
+      await messageModal({ body: r.text, tone: r.tone });
+    };
     if (el.querySelector('[data-surgery]')) el.querySelector('[data-surgery]').onclick = () => cosmeticSurgery(api);
     el.querySelector('[data-exit]').onclick = () => api.exitToTitle();
     el.querySelector('[data-end]').onclick = async () => {

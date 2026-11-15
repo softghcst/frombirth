@@ -2,7 +2,10 @@
 import { esc } from '../../util.js';
 import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel } from '../../data/countries.js';
 import { BACKGROUNDS } from '../../data/traits.js';
-import { avatarSvg, SKIN, HAIR, EYES, HAIR_STYLE_NAMES } from '../avatar.js';
+import { avatarSvg } from '../../avatar/render.js';
+import { openAppearanceEditor } from '../../avatar/editor.js';
+import { randomAppearance } from '../../avatar/inherit.js';
+import { ORIENTATIONS } from '../../engine/identity.js';
 
 const TALENTS = { singing: 'Singing', dance: 'Dance', acting: 'Acting', music: 'Music', sports: 'Sports', crime: 'Mischief' };
 
@@ -20,7 +23,6 @@ function picker(key, label, autoLabel, options) {
     </div>`;
 }
 
-const swatches = (colours, name) => colours.map((colour, i) => ({ value: i, colour, label: `${name} ${i + 1}` }));
 const named = (map) => Object.entries(map).map(([value, label]) => ({ value, label: label.label ?? label }));
 
 /**
@@ -28,7 +30,9 @@ const named = (map) => Object.entries(map).map(([value, label]) => ({ value, lab
  * @param {{onCreate:(opts:object)=>void, onCancel:Function}} hooks
  */
 export function renderCreator(app, hooks) {
-  const choice = { skin: '', hair: '', hairStyle: '', eyes: '', talent: '', background: '', gender: '' };
+  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '' };
+  let look = null; // a designed appearance, or null to inherit one
+  const sample = randomAppearance();
 
   app.innerHTML = `
     <section class="title-screen creator">
@@ -45,6 +49,8 @@ export function renderCreator(app, hooks) {
               <input id="f-last" maxlength="24" autocomplete="off" placeholder="Random"></div>
           </div>
           ${picker('gender', 'Gender', 'Random', named({ female: 'Female', male: 'Male', nonbinary: 'Non-binary' }))}
+          ${picker('trans', 'Transgender', 'Random', named({ yes: 'Yes', no: 'No' }))}
+          ${picker('orientation', 'Attracted to', 'Random', ORIENTATIONS.map((o) => ({ value: o.id, label: o.name })))}
         </div>
         <div class="card"><h3>Birthplace</h3>
           <div class="field"><label for="f-country">Country</label>
@@ -56,10 +62,11 @@ export function renderCreator(app, hooks) {
           <p class="muted" data-country-info>Each country has its own currency and taxes.</p>
         </div>
         <div class="card"><h3>Appearance</h3>
-          ${picker('skin', 'Skin', 'Inherited', swatches(SKIN, 'Skin tone'))}
-          ${picker('hair', 'Hair colour', 'Inherited', swatches(HAIR, 'Hair colour'))}
-          ${picker('hairStyle', 'Hair style', 'Random', HAIR_STYLE_NAMES.map((label, value) => ({ value, label })))}
-          ${picker('eyes', 'Eye colour', 'Inherited', swatches(EYES, 'Eye colour'))}
+          <p class="muted" data-look-note style="margin-bottom:10px">Left alone, you will take after your parents.</p>
+          <div class="btn-stack">
+            <button type="button" class="btn" data-design-look>Design your look</button>
+            <button type="button" class="btn" data-clear-look hidden>Leave it to my parents</button>
+          </div>
         </div>
         <div class="card"><h3>Start in life</h3>
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
@@ -73,15 +80,20 @@ export function renderCreator(app, hooks) {
     </section>`;
 
   const q = (sel) => app.querySelector(sel);
-  const num = (v) => (v === '' ? undefined : Number(v));
 
   function preview() {
-    q('[data-preview]').innerHTML = avatarSvg({
-      age: 24, gender: choice.gender || 'female', mood: 70,
-      appearance: { skin: num(choice.skin) ?? 2, hair: num(choice.hair) ?? 1,
-        hairStyle: num(choice.hairStyle) ?? 1, eyes: num(choice.eyes) ?? 0 },
-    });
+    q('[data-preview]').innerHTML = avatarSvg({ age: 24, gender: choice.gender || 'female', mood: 70, appearance: look ?? sample, seed: 'creator' });
+    q('[data-preview]').style.opacity = look ? '1' : '0.45';
+    q('[data-look-note]').textContent = look ? 'This is the face you will grow into. Your family will take after you.' : 'Left alone, you will take after your parents.';
+    q('[data-clear-look]').hidden = !look;
+    q('[data-design-look]').textContent = look ? 'Change your look' : 'Design your look';
   }
+
+  q('[data-design-look]').addEventListener('click', async () => {
+    const result = await openAppearanceEditor({ title: 'Your look', appearance: look ?? sample, age: 24, gender: choice.gender || undefined, seed: 'creator' });
+    if (result) { look = result; preview(); }
+  });
+  q('[data-clear-look]').addEventListener('click', () => { look = null; preview(); });
 
   app.querySelectorAll('[data-pick]').forEach((group) => {
     group.addEventListener('click', (e) => {
@@ -111,10 +123,11 @@ export function renderCreator(app, hooks) {
     hooks.onCreate({
       firstName: q('#f-first').value, lastName: q('#f-last').value,
       gender: choice.gender || undefined,
+      trans: choice.trans === '' ? undefined : choice.trans === 'yes',
+      orientation: choice.orientation || undefined,
       countryId: q('#f-country').value || undefined,
       city: q('#f-city').value || undefined,
-      appearance: { skin: num(choice.skin), hair: num(choice.hair),
-        hairStyle: num(choice.hairStyle), eyes: num(choice.eyes) },
+      appearance: look ?? undefined,
       talent: choice.talent || undefined,
       background: choice.background || undefined,
     });
