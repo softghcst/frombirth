@@ -1,0 +1,115 @@
+/* ---------- Buttons ---------- */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; min-height: 48px; padding: 10px 16px;
+  border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card); font-weight: 600; text-align: center;
+}
+.btn:active:not(:disabled) { transform: scale(0.985); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.danger { color: var(--bad); border-color: var(--bad); background: transparent; }
+.btn.small { min-height: 38px; width: auto; padding: 6px 14px; font-size: 0.9rem; }
+.btn-row { display: flex; gap: 10px; }
+.btn-stack { display: grid; gap: 10px; }
+.icon-btn { width: 40px; height: 40px; border-radius: 50%; font-size: 1.3rem; color: var(--muted); }
+
+.year-btn {
+  width: 100%; min-height: 54px; border-radius: 14px;
+  background: var(--accent); color: var(--accent-ink);
+  font-family: var(--serif); font-size: 1.15rem; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  box-shadow: var(--shadow);
+}
+.year-btn small { font-family: var(--sans); font-weight: 500; font-size: 0.8rem; opacity: 0.85; }
+.year-btn:active:not(:disabled) { transform: scale(0.985); }
+
+.tab-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px; border-radius: 10px; min-height: 48px;
+  font-size: 0.7rem; font-weight: 600; color: var(--muted);
+}
+.tab-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tab-btn.active { color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- Meters ---------- */
+.meter { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 0.78rem; }
+.meter .name { font-weight: 600; min-width: 58px; }
+.meter .track { height: 9px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.meter .fill { height: 100%; border-radius: 5px; transition: width 0.35s ease, background-color 0.35s ease; }
+.meter .val { min-width: 2.6em; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fill.low { background: var(--bad); }
+.fill.mid { background: var(--warn); }
+.fill.high { background: var(--good); }
+.meter.wide { font-size: 0.85rem; padding: 3px 0; }
+.meter.wide .name { min-width: 92px; font-weight: 500; }
+
+/* ---------- Journal ---------- */
+.age-head {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--paper);
+  font-family: var(--serif); font-size: 1.05rem; font-weight: 600;
+  padding: 12px 0 6px; margin: 0;
+  display: flex; align-items: baseline; gap: 10px;
+}
+.age-head::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.age-head small { font-family: var(--sans); font-weight: 400; font-size: 0.75rem; color: var(--muted); }
+.entry { padding: 3px 0 3px 12px; border-left: 2px solid transparent; margin: 2px 0; }
+.entry.event { margin-top: 10px; font-family: var(--serif); font-size: 1.02rem; }
+.entry.choice { color: var(--muted); font-style: italic; }
+.entry.choice::before { content: "You chose: "; }
+.entry.good { border-left-color: var(--good); }
+.entry.bad { border-left-color: var(--bad); }
+
+/* ---------- Cards & lists ---------- */
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px; margin-bottom: 12px;
+}
+.card h3 { font-size: 1.05rem; margin-bottom: 8px; }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 0.93rem; }
+.kv + .kv { border-top: 1px dashed var(--line); }
+.kv span:first-child { color: var(--muted); }
+.kv span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+.row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px; margin-bottom: 8px; min-height: 60px;
+}
+.row .avatar { width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--accent-soft); overflow: hidden; }
+.row .avatar svg { width: 100%; height: 100%; display: block; }
+.row .avatar.glyph { display: grid; place-items: center; font-size: 1.4rem; }
+.row .main { flex: 1; min-width: 0; }
+.row .main strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .main small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .side { flex: none; text-align: right; font-size: 0.85rem; color: var(--muted); }
+.row .mini { width: 64px; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; }
+.row .mini i { display: block; height: 100%; }
+
+.section-label {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--muted); margin: 16px 0 8px;
+}
+.empty { text-align: center; color: var(--muted); padding: 22px 12px; font-size: 0.95rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-size: 0.82rem; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--ink);
+}
+.chip.up { color: var(--good); }
+.chip.down { color: var(--bad); }
+
+.field { display: grid; gap: 6px; margin-bottom: 12px; }
+.field label { font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ---------- Obituary ---------- */
+.stone {
+  max-width: 420px; margin: 8px auto 18px; text-align: center;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 140px 140px 14px 14px; padding: 44px 22px 24px;
+  box-shadow: var(--shadow);
+}
+.stone h1 { font-size: 1.7rem; }
+.stone .years { font-family: var(--serif); color: var(--muted); margin: 4px 0 12px; }
+.stone .cause { font-style: italic; }

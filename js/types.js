@@ -1,0 +1,203 @@
+// Master schemas for Pathways. Types only; this module exports nothing at runtime.
+
+/**
+ * @typedef {{mood:number, health:number, intellect:number, charm:number}} CoreStats  0–100
+ * @typedef {{karma:number, discipline:number, willpower:number, fertility:number,
+ *            fame:number, crazy:number}} HiddenStats  0–100
+ * @typedef {{music:number, sports:number, acting:number, crime:number}} Talents  0–100
+ *
+ * @typedef {Object} Character
+ * @property {string} id
+ * @property {string} firstName
+ * @property {string} lastName
+ * @property {'male'|'female'|'nonbinary'} gender
+ * @property {number} age
+ * @property {number} birthYear
+ * @property {string} countryId
+ * @property {string} city
+ * @property {string} birthCountryId
+ * @property {CoreStats} stats
+ * @property {HiddenStats} hidden
+ * @property {Talents} talents
+ * @property {string[]} traits
+ * @property {HealthCondition[]} conditions
+ * @property {{skin:number, hair:number, hairStyle:number, eyes:number, weight:number}} appearance
+ * @property {Education} education
+ * @property {CareerState} career
+ * @property {Finance} finance
+ * @property {Asset[]} assets
+ * @property {InventoryItem[]} inventory
+ * @property {string[]} npcIds
+ * @property {LegalState} legal
+ * @property {SocialMedia} social
+ * @property {Object<string, boolean|number|string>} flags
+ * @property {Milestone[]} milestones
+ * @property {LifeCounters} counters
+ * @property {boolean} alive
+ * @property {number} generation
+ *
+ * @typedef {{id:string, name:string, severity:number, chronic:boolean, sinceAge:number, treated:boolean}} HealthCondition
+ * @typedef {{id:string, name:string, kind:string, value:number}} InventoryItem
+ * @typedef {{age:number, text:string, kind:string}} Milestone
+ * @typedef {{crimes:number, kills:number, donated:number, gambled:number, yearsJailed:number,
+ *            escapes:number, livesSaved:number, spouses:number, jobsHeld:number,
+ *            countriesLived:number}} LifeCounters
+ *
+ * @typedef {Object} NPC
+ * @property {string} id
+ * @property {string} firstName
+ * @property {string} lastName
+ * @property {string} gender
+ * @property {number} age
+ * @property {boolean} alive
+ * @property {'parent'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
+ *            |'ex'|'child'|'pet'|'boss'|'cellmate'} role
+ * @property {{relationship:number, money:number, crazy:number, intellect:number,
+ *             charm:number, health:number, generosity:number}} meters
+ * @property {number} [strictness]
+ * @property {string} [occupation]
+ * @property {number} [wealth]
+ * @property {string} [species]
+ * @property {number} [lifespan]
+ * @property {boolean} [prenup]
+ * @property {number} [marriedAtAge]
+ * @property {string[]} [parentIds]
+ * @property {boolean} [adopted]
+ * @property {CoreStats} [stats]
+ * @property {Talents} [talents]
+ * @property {number} lastInteractionAge
+ * @property {Object<string, any>} flags
+ *
+ * @typedef {Object} Asset
+ * @property {string} id
+ * @property {'property'|'vehicle'|'security'|'item'} kind
+ * @property {string} catalogId
+ * @property {string} name
+ * @property {number} purchasePrice
+ * @property {number} value
+ * @property {number} boughtAtAge
+ * @property {number} [condition]
+ * @property {{principal:number, rate:number, yearsLeft:number, payment:number}} [mortgage]
+ * @property {{rent:number, quality:number, sinceAge:number}} [tenant]
+ * @property {number} [upkeep]
+ * @property {number} [units]
+ * @property {number} [costBasis]
+ * @property {'car'|'boat'|'plane'} [vehicleClass]
+ *
+ * @typedef {Object} Finance
+ * @property {number} cash
+ * @property {Loan[]} loans
+ * @property {number} pension
+ * @property {number} lifetimeEarned
+ * @property {number} lifetimeTaxPaid
+ * @typedef {{id:string, kind:'student'|'bank'|'personal', principal:number, rate:number, yearsLeft:number}} Loan
+ *
+ * @typedef {Object} Career  catalog entry (data/careers.js, Phase 4)
+ * @property {string} id
+ * @property {string} title
+ * @property {string} field
+ * @property {'fulltime'|'parttime'|'freelance'|'military'} type
+ * @property {CareerLevel[]} ladder
+ * @property {Requirement[]} requirements
+ * @property {string} [fameTrack]
+ * @property {number} stress
+ * @property {number} [retireAge]
+ * @typedef {{title:string, salary:[number,number], yearsToPromote:number, minPerformance:number}} CareerLevel
+ *
+ * @typedef {Object} CareerState
+ * @property {?string} careerId
+ * @property {?string} title
+ * @property {number} level
+ * @property {number} salary
+ * @property {number} performance
+ * @property {number} yearsInRole
+ * @property {number} yearsInField
+ * @property {string[]} coworkerIds
+ * @property {?string} bossId
+ * @property {?{careerId:string, title:string, salary:number}} partTime
+ * @property {{careerId:string, title:string, from:number, to:number, exit:string}[]} history
+ * @property {boolean} retired
+ * @property {number} pensionPerYear
+ * @property {?{rank:number, branch:string, deployments:number}} military
+ *
+ * @typedef {Object} Education
+ * @property {'none'|'elementary'|'middle'|'high'|'university'|'graduate'|'medical'|'law'} stage
+ * @property {boolean} enrolled
+ * @property {number} yearInStage
+ * @property {number} gpa
+ * @property {number} effort
+ * @property {number} absences
+ * @property {?string} clique
+ * @property {string[]} clubs
+ * @property {?string} majorId
+ * @property {'scholarship'|'parents'|'loan'|'self'|null} funding
+ * @property {{type:string, majorId?:string, gpa:number, age:number}[]} degrees
+ * @property {boolean} expelled
+ * @property {boolean} droppedOut
+ *
+ * @typedef {Object} LegalState
+ * @property {{crimeId:string, age:number, convicted:boolean, sentenceYears:number}[]} record
+ * @property {?{facility:'juvenile'|'prison', security:'min'|'med'|'max', yearsLeft:number,
+ *              respect:number, gangId:?string, escapeAttempts:number}} incarceration
+ * @property {number} heat
+ *
+ * @typedef {{handle:?string, followers:number, posts:number, viral:number, boughtFollowers:number}} SocialMedia
+ *
+ * @typedef {Object} GameEvent
+ * @property {string} id
+ * @property {string} category
+ * @property {string} text  supports {tokens}: {name} {city} {$50} and cast keys
+ * @property {[number,number]} ageRange
+ * @property {number} [weight]
+ * @property {Object<string,string>} [cast]  token key -> role spec; event needs each to exist
+ * @property {Requirement[]} [requires]
+ * @property {boolean} [once]
+ * @property {number} [cooldown]  years before it can repeat (default 10)
+ * @property {EventChoice[]} choices
+ * @typedef {{label:string, requires?:Requirement[], check?:SkillCheck, outcomes:Outcome[]}} EventChoice
+ * @typedef {{base:number, factors:Object<string,number>}} SkillCheck  path -> weight
+ * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[]}} Outcome
+ * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'has'|'lacks', value:any}} Requirement
+ * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers',
+ *            target?:string, value?:any, delta?:number}} Effect
+ *
+ * @typedef {Object} GraveyardEntry
+ * @property {string} id
+ * @property {string} fullName
+ * @property {string} gender
+ * @property {number} ageAtDeath
+ * @property {number} birthYear
+ * @property {number} deathYear
+ * @property {string} causeOfDeath
+ * @property {number} netWorth
+ * @property {string} countryId
+ * @property {string} city
+ * @property {string} lastOccupation
+ * @property {string[]} epitaphIds
+ * @property {number} childrenCount
+ * @property {Milestone[]} milestones
+ * @property {LifeCounters} counters
+ * @property {number} generation
+ * @property {?string} continuedAsNpcId
+ *
+ * @typedef {Object} GameState
+ * @property {number} schemaVersion
+ * @property {string} slotId
+ * @property {number} createdAt
+ * @property {number} updatedAt
+ * @property {number} year
+ * @property {Character} player
+ * @property {Object<string, NPC>} npcs
+ * @property {JournalEntry[]} journal
+ * @property {{prices:Object<string,number>, history:Object<string,number[]>, cycle:number}} market
+ * @property {{id:string, lastAge:number}[]} eventHistory
+ * @property {{id:string, cast:Object<string,string>}[]} pendingEvents  modal queue; survives reload
+ * @property {number} rngSeed
+ * @property {{theme:'auto'|'light'|'dark'}} settings
+ * @typedef {{age:number, text:string, kind:'event'|'choice'|'outcome'|'system', tone:'good'|'bad'|'neutral'}} JournalEntry
+ *
+ * @typedef {{slotId:string, name:string, age:number, gender:string, countryId:string,
+ *            netWorth:number, updatedAt:number}} SaveSlotMeta
+ */
+export {};

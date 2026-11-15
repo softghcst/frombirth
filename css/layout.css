@@ -1,0 +1,92 @@
+#app {
+  height: 100vh;
+  height: 100dvh;
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding: var(--safe-top) var(--safe-right) 0 var(--safe-left);
+}
+
+/* ---------- Title screen ---------- */
+.title-screen {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 28px 18px calc(28px + var(--safe-bottom));
+}
+.title-hero { text-align: center; padding: 26px 0 22px; }
+.title-hero h1 { font-size: 2.6rem; letter-spacing: 0.01em; }
+.title-hero p { color: var(--muted); margin-top: 6px; }
+.title-mark { width: 76px; height: 76px; margin: 0 auto 12px; display: block; }
+.title-section { margin-top: 26px; }
+.title-section > h2 {
+  font-size: 0.8rem; font-family: var(--sans); font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);
+  margin-bottom: 10px;
+}
+
+/* ---------- Game screen ---------- */
+.game { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+
+.idcard {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px 10px;
+}
+.idcard .avatar { width: 62px; height: 62px; flex: none; border-radius: 50%; background: var(--accent-soft); overflow: hidden; }
+.idcard .avatar svg { display: block; width: 100%; height: 100%; }
+.idcard .who { flex: 1; min-width: 0; }
+.idcard .who h1 { font-size: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.idcard .who p { font-size: 0.85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.idcard .purse { text-align: right; flex: none; }
+.idcard .purse .label { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.idcard .purse .amount { font-family: var(--serif); font-size: 1.15rem; font-weight: 600; }
+.idcard .purse .amount.neg { color: var(--bad); }
+
+.meters {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px;
+  padding: 4px 16px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.journal {
+  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 0 16px 18px;
+}
+
+.dock {
+  flex: none;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  padding: 10px 12px calc(8px + var(--safe-bottom));
+  z-index: 3;
+}
+.dock nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; margin-top: 8px; }
+
+/* Tab panel slides up over the journal, above the dock. */
+.panel {
+  position: absolute; left: 0; right: 0; bottom: 0; top: 96px;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.12);
+  display: flex; flex-direction: column;
+  z-index: 2;
+  animation: rise 0.18s ease-out;
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 8px;
+}
+.panel-head h2 { font-size: 1.3rem; }
+.panel-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 16px 20px; }
+
+@keyframes rise { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .panel, .modal { animation: none !important; } }
+
+@media (min-width: 700px) {
+  .idcard .avatar { width: 76px; height: 76px; }
+  .idcard .who h1 { font-size: 1.5rem; }
+  .meters { grid-template-columns: repeat(4, 1fr); }
+  .panel { top: 112px; }
+}
