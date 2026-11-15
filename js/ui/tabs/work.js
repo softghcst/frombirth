@@ -11,6 +11,7 @@ import { PROGRAMMES, HOUSING, CLIQUE_BY_ID, CLUB_BY_ID, MAX_CLUBS, TRADES, PRIOR
 import { MAJORS, MAJOR_BY_ID } from '../../data/majors.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
+import { careerCard, careerButtons, careerHandlers } from './workCareer.js';
 
 const FUNDING = { scholarship: 'Scholarship', parents: 'Paid by parents', loan: 'Student loan',
   self: 'Paying your own way', public: 'Publicly funded' };
@@ -361,20 +362,12 @@ export default {
     if (edu.canTakeGapYear()) school.push(['gap', 'Take a gap year']);
     if (edu.canDropOut()) school.push(['drop', 'Drop out']);
 
-    const work = [];
-    if (job.canWorkPartTime()) work.push(['findjob', 'Look for part-time work']);
-    if (k.partTime) work.push(['cover', 'Cover an extra shift'], ['quit', 'Quit your job']);
+    const work = careerButtons();
 
     const btns = (list) => (list.length ? `<div class="btn-stack" style="margin-bottom:14px">
-      ${list.map(([id, label]) => `<button class="btn ${id === 'drop' || id === 'quit' ? 'danger' : id === 'apply' ? 'primary' : ''}" data-act="${id}">${esc(label)}</button>`).join('')}
+      ${list.map(([id, label]) => `<button class="btn ${['drop', 'quit', 'quitcareer'].includes(id) ? 'danger' : ['apply', 'findwork'].includes(id) && !k.careerId ? 'primary' : ''}" data-act="${id}">${esc(label)}</button>`).join('')}
     </div>` : '');
 
-    const jobRows = k.title
-      ? kv([['Role', k.title], ['Salary', `${fmtMoney(k.salary, c)} / year`],
-        ['Performance', `${Math.round(k.performance)}%`], ['Years in role', String(k.yearsInRole)]])
-      : k.partTime
-        ? kv([['Part-time', k.partTime.title], ['Pay', `${fmtMoney(k.partTime.salary, c)} / year`], ['Since', `Age ${k.partTime.since}`]])
-        : `<p class="muted">${p.age < 15 ? 'You are too young to work.' : k.retired ? 'You are retired.' : 'You do not have a job.'}</p>`;
     const past = k.history.length
       ? k.history.map((h) => `<div class="kv"><span>${esc(h.title)}</span><span>Age ${h.from}–${h.to}</span></div>`).join('')
       : '<p class="muted">No past jobs.</p>';
@@ -384,14 +377,14 @@ export default {
       ${btns(school)}
       <div class="card"><h3>Commitments</h3>${commitments(p, c)}</div>
       ${contacts()}
-      <div class="card"><h3>Work</h3>${jobRows}</div>
+      ${careerCard()}
       ${btns(work)}
       <div class="card"><h3>Work history</h3>${past}</div>`;
 
     el.onclick = (ev) => {
       const id = ev.target.closest('[data-act]')?.dataset.act;
       if (!id) return;
-      ({ study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
+      ({ ...careerHandlers(api), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
         club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api),
         drop: () => leaveSchool(api), apply: () => applyFlow(api), priority: () => choosePriority(api),

@@ -117,6 +117,8 @@
  * @property {number} level
  * @property {number} salary
  * @property {number} performance
+ * @property {number} [totalYears]  years worked across all jobs, for the pension
+ * @property {?string} [lastField]
  * @property {number} yearsInRole
  * @property {number} yearsInField
  * @property {string[]} coworkerIds
@@ -176,7 +178,7 @@
  * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
  * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry

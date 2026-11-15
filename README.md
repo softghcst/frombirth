@@ -39,6 +39,10 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Kinds of university that make offers (names, cost, aid, what each is known for) | `SCHOOL_TYPES` in `js/data/schools.js` |
 | Apprenticeship trades, gap-year options, yearly priorities | `TRADES`, `GAP_YEARS`, `PRIORITIES` in `js/data/schools.js` |
 | Part-time jobs and pay | `js/data/partTimeJobs.js` |
+| Careers: ladders, pay bands, entry requirements, doors opened by storylines, fame | `js/data/careers.js` |
+| Freelance gigs and fame actions | `GIGS`, `FAME_ACTIONS` in `js/data/careers.js` |
+| Interview questions and audition pieces | `js/data/interviewQuestions.js` |
+| Workplace events | `js/data/events/work.js` |
 | Friend scenes (new groups, fallings-out, memories) | `js/data/events/friends.js` |
 | One-off events | `js/data/events/*.js` |
 | Multi-year storylines: musical theatre, mentors, school paper | `js/data/events/stories/*.js` (each file's header explains its flags and contacts) |
@@ -56,5 +60,5 @@ Add an object to a file in `js/data/events/` (or a new file registered in
 
 ## Status
 
-Phases 1–2 of 10 are built: core engine, saves, graveyard, UI shell, 44 branching events,
-character creator, 20 countries, genetics, birth conditions and family generation.
+Phases 1–4 of 10 are built: core engine, saves, character creation and family,
+education with storylines, and careers with fame.

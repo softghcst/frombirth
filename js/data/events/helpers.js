@@ -38,3 +38,9 @@ export const tagNpc = (target, tag, title) => ({ type: 'tag', target, value: { t
 /** Two cast members stop speaking to each other (or, with endFeud, make up). */
 export const feud = (a, b) => ({ type: 'feud', target: a, value: b, delta: 1 });
 export const endFeud = (a, b) => ({ type: 'feud', target: a, value: b, delta: 0 });
+
+/** Work: change performance, multiply salary, lose the job, or be promoted. */
+export const perf = (delta) => ({ type: 'perf', delta });
+export const pay = (delta) => ({ type: 'pay', delta });
+export const fired = (value = 'fired') => ({ type: 'fired', value });
+export const promoted = () => ({ type: 'promoted' });

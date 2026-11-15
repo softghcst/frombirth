@@ -5,6 +5,7 @@ import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { addCondition, cureCondition } from './health.js';
 import { remember } from './conditions.js';
+import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -83,6 +84,13 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (a && b) { a.flags.feudWith = e.delta ? b.id : null; b.flags.feudWith = e.delta ? a.id : null; }
         break;
       }
+      case 'perf':
+        adjustPerformance(e.delta);
+        if (p.career.careerId) shown.push({ label: 'Performance', delta: e.delta });
+        break;
+      case 'pay': scaleSalary(e.delta); break;
+      case 'fired': fire(e.value); break;
+      case 'promoted': promote(); break;
       case 'queue':
         (ctx.queue ??= []).push(e.value);
         break;
