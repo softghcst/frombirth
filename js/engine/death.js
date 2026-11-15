@@ -13,10 +13,31 @@ import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
-/** Yearly chance of dying, given age and a 0–100 health value. */
-export function mortalityChance(age, health) {
-  const base = 0.0004 + Math.min(0.6, Math.exp((age - 96) / 9) * 0.3);
-  return Math.min(0.95, base * (1.7 - health / 100));
+/**
+ * Yearly chance of dying, given age and a 0–100 health value. `shift` is how
+ * many years younger (or older) than their age someone's body behaves:
+ * the constitution they were born with, plus how they look after themselves.
+ */
+export function mortalityChance(age, health, shift = 0) {
+  const base = 0.0004 + Math.min(0.6, Math.exp((age - 95.5 - shift) / 8.5) * 0.3);
+  return Math.min(0.95, base * (1.75 - health / 100 * 1.1));
+}
+
+/** A newborn's constitution, in years: most are near 0, a few are built to last. */
+export function rollLongevity(inherited = 0) {
+  const lucky = rng.chance(0.06) ? rng.int(4, 8) : 0;
+  return Math.round(Math.max(-10, Math.min(18, rng.around(0, 11) + lucky + inherited * 0.5)));
+}
+
+/** Years added or taken off by the way the player lives. */
+function careShift(p) {
+  let s = 0;
+  if (p.flags.checkupAge >= p.age - 2) s += 1.5; // regular check-ups
+  if (p.flags.funActs?.gym && p.flags.funActs.age >= p.age - 1) s += 1; // keeps active
+  if (p.stats.mood >= 60) s += 1;
+  if (p.stats.mood < 25) s -= 2;
+  if (p.conditions.some((c) => c.chronic && !c.treated)) s -= 2; // an untreated long-term illness
+  return s;
 }
 
 const ACCIDENTS = ['a traffic accident', 'a fall', 'a house fire', 'drowning', 'a freak accident'];
@@ -26,9 +47,9 @@ export function rollDeath() {
   const p = player();
   const worst = [...p.conditions].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
-  if (!rng.chance(mortalityChance(p.age, p.stats.health))) return null;
+  if (!rng.chance(mortalityChance(p.age, p.stats.health, (p.flags.longevity ?? 0) + careShift(p)))) return null;
   if (worst && worst.severity >= 45 && rng.chance(0.7)) return worst.name.replace(/^an? /, '');
-  return p.age >= 70 ? 'old age' : rng.pick(ACCIDENTS);
+  return p.age >= 100 ? 'great old age' : p.age >= 70 ? 'old age' : rng.pick(ACCIDENTS);
 }
 
 function lastOccupation(p) {

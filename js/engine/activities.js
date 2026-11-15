@@ -1,12 +1,13 @@
 // Things to do with your time: the gym, the library, meditation, holidays
 // and nights out. Each can be done once a year.
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
-import { store, player, country, npcsByRole, log } from '../state.js';
+import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
+import { store, player, country, npcsByRole, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { addCondition } from './health.js';
 import { remember } from './conditions.js';
-import { GYM_COST, NIGHT_OUT_COST, NIGHTLIFE_AGE, HOLIDAYS } from '../data/activities.js';
+import { GYM_COST, NIGHT_OUT_COST, NIGHTLIFE_AGE, HOLIDAYS, HOLIDAY_KINDS, CABINS, TRIP_STORIES } from '../data/activities.js';
+import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -76,44 +77,109 @@ export function meditate() {
 }
 
 /** Holidays on offer, and who could come. */
-export function holidayOptions() {
+const HOLIDAY_AGES = [3, 15];
+
+/** What a trip costs one person, in local money, allowing for the journey there. */
+function tripCost(h) {
   const p = player();
-  const c = country();
-  return HOLIDAYS.map((h) => {
-    const cost = localMoney(h.cost, c);
-    return { id: h.id, name: h.name, cost, affordable: p.finance.cash >= cost * (companions().length ? 1 : 1) };
+  const far = h.home && h.home !== p.countryId ? h.farMult ?? 1.5 : 1;
+  return localMoney(h.cost * far, country());
+}
+
+export const holidayKinds = () => HOLIDAY_KINDS;
+
+/** Trips of one kind, priced for one traveller. */
+export function holidayOptions(kind) {
+  const p = player();
+  return HOLIDAYS.filter((h) => !kind || h.kind === kind).map((h) => {
+    const cost = tripCost(h);
+    return { id: h.id, kind: h.kind, name: h.name, cost, affordable: p.finance.cash >= cost,
+      note: h.home && h.home !== p.countryId ? 'Includes the long flight there.' : h.kids ? 'Good with children.' : '' };
   });
 }
+
+/** Countries to fly to, and the seats on offer. */
+export const flightDestinations = () => COUNTRY_LIST.filter((c) => c.id !== player().countryId)
+  .map((c) => ({ id: c.id, name: c.name, flag: c.flag, visited: (player().flags.visited ?? []).includes(c.id) }));
+export const cabinOptions = () => CABINS.map((k) => {
+  const cost = localMoney(k.cost, country());
+  return { id: k.id, name: k.name, blurb: k.blurb, cost, affordable: player().finance.cash >= cost };
+});
+
 /** Family who would come along: a partner and any children at home. */
 export const companions = () => [...npcsByRole('spouse'), ...npcsByRole('partner'), ...npcsByRole('child').filter((k) => k.age < 18)];
 
-export function holiday(id, bringFamily) {
+const names = (list) => list.map((n) => n.firstName).join(', ').replace(/, ([^,]*)$/, ' and $1');
+
+/**
+ * Takes a holiday. For a flight abroad pass { countryId, cabin } and id 'flight'.
+ * @param {string} id  a HOLIDAYS id, or 'flight'
+ * @param {boolean} bringFamily
+ * @param {{countryId?:string, cabin?:string}} [trip]
+ */
+export function holiday(id, bringFamily, trip = {}) {
   const p = player();
   const c = country();
-  const h = HOLIDAYS.find((x) => x.id === id);
+  const flying = id === 'flight';
+  const dest = flying ? COUNTRIES[trip.countryId] : null;
+  const cabin = flying ? CABINS.find((k) => k.id === (trip.cabin ?? 'economy')) : null;
+  const h = flying ? { id: 'flight', kind: 'flight', mood: cabin.mood, intellect: 2, charm: cabin.charm, kids: 9,
+    name: `A fortnight in ${theCountry(dest?.name ?? '')}, flying ${cabin.name.toLowerCase()}` } : HOLIDAYS.find((x) => x.id === id);
+  if (!h || (flying && !dest)) return result(false, 'That trip is not on offer.', 'neutral');
   const party = bringFamily ? companions() : [];
-  const cost = Math.round(localMoney(h.cost, c) * (1 + party.length * 0.6));
+  const cost = Math.round((flying ? localMoney(cabin.cost, c) : tripCost(h)) * (1 + party.length * 0.6));
   if (p.finance.cash < cost) return result(false, 'You cannot afford it.', 'neutral');
   if (!once('holiday')) return result(false, 'You have had your holiday this year.', 'neutral');
   p.finance.cash -= cost;
+  p.counters.holidays = (p.counters.holidays ?? 0) + 1;
   p.stats.mood = clamp(p.stats.mood + h.mood);
   for (const k of ['health', 'intellect', 'charm']) if (h[k]) p.stats[k] = clamp(p.stats[k] + h[k]);
   for (const n of party) {
-    n.meters.relationship = clamp(n.meters.relationship + rng.int(5, 10));
+    const child = n.role === 'child' && n.age >= HOLIDAY_AGES[0] && n.age <= HOLIDAY_AGES[1];
+    n.meters.relationship = clamp(n.meters.relationship + (child && h.kids ? h.kids : rng.int(5, 10)));
     n.lastInteractionAge = p.age;
-    remember(n, `holiday_${id}`, `You went on ${h.name.toLowerCase()} together.`);
+    remember(n, `holiday_${h.id}`, h.kind === 'park' ? `You took them to ${h.name.replace(/^.* at /, '')}.` : `You went away together: ${h.name.toLowerCase()}.`);
   }
-  let text = `${h.name}${party.length ? ` with ${party.map((n) => n.firstName).join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}. It cost ${fmtMoney(cost, c)} and was worth it.`;
+  const where = flying ? rng.pick(dest.cities) : null;
+  let text = `${h.name}${party.length ? `, with ${names(party)}` : ''}. ${flying ? `You based yourself in ${where}. ` : ''}${rng.pick(TRIP_STORIES[h.thrill ? 'thrill' : h.kind])} It cost ${fmtMoney(cost, c)}.`;
   let tone = 'good';
+  const smallest = party.filter((n) => n.role === 'child').sort((a, b) => a.age - b.age)[0];
+
+  if (flying) {
+    const seen = p.flags.visited ?? (p.flags.visited = []);
+    if (!seen.includes(dest.id)) {
+      seen.push(dest.id);
+      if ([5, 10, 19].includes(seen.length)) milestone(seen.length === 19 ? 'Has visited every country on the map.' : `Has visited ${seen.length} countries.`, 'life');
+    }
+  }
+
+  // What went wrong, if anything. At most one thing.
   if (h.risky && rng.chance(h.risky)) {
     p.stats.health = clamp(p.stats.health - rng.int(8, 18));
     addCondition('broken_arm');
     text += ' On the last day you fell on the descent and broke your arm.';
     tone = 'neutral';
-  } else if (rng.chance(0.07)) {
+  } else if (h.kind === 'cruise' && rng.chance(0.1)) {
+    p.stats.health = clamp(p.stats.health - 3);
+    p.stats.mood = clamp(p.stats.mood - 5);
+    text += ' Two days of rough sea kept you in your cabin, the colour of the wallpaper.';
+    tone = 'neutral';
+  } else if (h.kind === 'park' && smallest && smallest.age < 4 && rng.chance(0.3)) {
+    p.stats.mood = clamp(p.stats.mood - 3);
+    text += ` ${smallest.firstName} was too small for nearly every ride, and said so, loudly, all day.`;
+    tone = 'neutral';
+  } else if (h.kind === 'park' && rng.chance(0.1)) {
+    p.stats.mood = clamp(p.stats.mood - 4);
+    text += h.thrill ? ' The big ride stopped with you at the top of it for forty minutes.' : ' It rained on the day of the parade, and they ran it anyway.';
+    tone = 'neutral';
+  } else if (flying && cabin.id !== 'first' && rng.chance(0.1)) {
+    p.stats.mood = clamp(p.stats.mood - 4);
+    text += ' Your suitcase went somewhere else entirely and caught up with you on day five.';
+    tone = 'neutral';
+  } else if (rng.chance(0.06)) {
     addCondition('flu');
     p.stats.mood = clamp(p.stats.mood - 4);
-    text += ' You spent the last three days of it in bed with something you caught on the plane.';
+    text += ' You spent the last three days of it in bed with something you caught on the way.';
     tone = 'neutral';
   } else if (!party.length && rng.chance(0.15)) {
     const pal = makeNpc({ role: 'friend', countryId: p.countryId, age: Math.max(18, p.age + rng.int(-5, 5)), relationship: rng.int(50, 70) });

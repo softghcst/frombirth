@@ -1,6 +1,6 @@
 // The annual tick. Order matters: the world ages first, then the player's own
 // systems run, then the death check, then this year's scenarios are queued.
-import { store, player, log } from '../state.js';
+import { store, player, log, milestone } from '../state.js';
 import { tickRelationships } from './relationships.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
@@ -35,6 +35,8 @@ export function advanceYear() {
   if (!p.alive) return;
 
   p.age += 1;
+  if (p.age === 100) { milestone('Turned 100.', 'life'); log('You are 100 years old. A card arrives from the head of state, and the local paper sends a photographer.', 'system', 'good'); }
+  if (p.age === 110) milestone('Turned 110.', 'life');
   state.year += 1;
   if (BIRTHDAYS[p.age]) log(BIRTHDAYS[p.age]);
 

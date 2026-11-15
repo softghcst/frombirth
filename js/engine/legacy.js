@@ -12,6 +12,7 @@ import { takeOverJob } from './career.js';
 import { meetClassmates } from './education.js';
 import { convertMoney } from './emigration.js';
 import { SCHEMA_VERSION } from '../save.js';
+import { rollLongevity } from './death.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -189,7 +190,7 @@ export function continueAs(npcId) {
     npcIds: Object.keys(npcs),
     legal: { record: [], incarceration: null, heat: 0 },
     social: { handle: null, followers: 0, posts: 0, viral: 0, boughtFollowers: 0 },
-    flags: { livesWithParents: atHome, parentsStatus: parentsAlive ? 'together' : 'gone' },
+    flags: { livesWithParents: atHome, parentsStatus: parentsAlive ? 'together' : 'gone', longevity: rollLongevity(op.flags.longevity ?? 0) },
     milestones: [{ age: 0, text: `Born to ${op.firstName} ${op.lastName}.`, kind: 'life' }],
     counters: { crimes: 0, kills: 0, donated: 0, gambled: 0, yearsJailed: 0, escapes: 0, livesSaved: 0,
       spouses: Object.values(roles).filter((r) => r === 'spouse').length, jobsHeld: 0, countriesLived: 1 },

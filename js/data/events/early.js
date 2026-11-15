@@ -129,6 +129,20 @@ export default [
     ],
   },
 
+  {
+    id: 'theme_park_day', category: 'childhood', ageRange: [5, 11], cooldown: 5, cast: { mother: 'mother' },
+    text: '{mother} wakes you before it is light: the family is going to the theme park, today, and it was a secret until now.',
+    choices: [
+      { label: 'Run straight to the biggest ride', check: chk(0.5, { 'hidden.willpower': 0.5, 'stats.health': 0.3 }), outcomes: [
+        ok('You are exactly tall enough. You scream the whole way round and get straight back in the queue.', st('mood', 12), hid('willpower', 3)),
+        bad('You are tall enough, and at the top you wish you were not. {mother} holds the bag.', st('mood', 3), st('health', -1)),
+      ] },
+      { label: 'Meet every character in the park', outcomes: [any('You collect eleven autographs and hug a seven-foot mouse. Best day of your life so far.', 'good', st('mood', 12), st('charm', 2), rel('mother', 4))] },
+      { label: 'Wander off to look at something', outcomes: [any('You are lost for twenty minutes that feel like a year. {mother} does not let go of your hand again.', 'neutral', st('mood', 2), rel('mother', 3), hid('discipline', 2))] },
+      { label: 'Eat everything', outcomes: [any('Candy floss, a hot dog, an ice cream and then the teacups. You know how this ends.', 'neutral', st('mood', 6), st('health', -2))] },
+    ],
+  },
+
   // ---------- The teens ----------
   {
     id: 'growth_spurt', category: 'teen', ageRange: [12, 15], once: true,

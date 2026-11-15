@@ -52,12 +52,26 @@ export async function cosmeticSurgery(api) {
 export async function takeHoliday(api) {
   const c = country();
   const family = fun.companions();
-  const id = await pickModal({
+  const kind = await pickModal({
     title: 'Take a holiday',
     body: `One a year. You have ${fmtMoney(player().finance.cash, c)}.`,
-    options: fun.holidayOptions().map((h) => ({ value: h.id, label: h.name, sub: `${fmtMoney(h.cost, c)} for one.`, disabled: !h.affordable })),
+    options: fun.holidayKinds().map((k) => ({ value: k.id, label: k.name, sub: k.blurb })),
   });
-  if (!id) return undefined;
+  if (!kind) return undefined;
+  let id; let trip = {};
+  if (kind === 'flight') {
+    const countryId = await pickModal({ title: 'Where to?',
+      options: fun.flightDestinations().map((d) => ({ value: d.id, label: `${d.flag} ${d.name}`, sub: d.visited ? 'You have been before.' : 'Somewhere new.' })) });
+    if (!countryId) return undefined;
+    const cabin = await pickModal({ title: 'Which seat?', body: 'The price covers the flights and a fortnight there, for one.',
+      options: fun.cabinOptions().map((k) => ({ value: k.id, label: k.name, sub: `${k.blurb} ${fmtMoney(k.cost, c)}.`, disabled: !k.affordable })) });
+    if (!cabin) return undefined;
+    id = 'flight'; trip = { countryId, cabin };
+  } else {
+    id = await pickModal({ title: fun.holidayKinds().find((k) => k.id === kind).name,
+      options: fun.holidayOptions(kind).map((h) => ({ value: h.id, label: h.name, sub: `${fmtMoney(h.cost, c)} for one. ${h.note}`, disabled: !h.affordable })) });
+    if (!id) return undefined;
+  }
   let bring = false;
   if (family.length) {
     bring = await confirmModal({
@@ -66,7 +80,7 @@ export async function takeHoliday(api) {
       yes: 'Bring them', no: 'Go alone',
     });
   }
-  return report(api, fun.holiday(id, bring));
+  return report(api, fun.holiday(id, bring, trip));
 }
 
 export async function openAccount(api) {

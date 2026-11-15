@@ -51,6 +51,8 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Crimes, lawyers, prison gangs, sentence rules | `js/data/crimes.js` |
 | Escape puzzle maps (run `node tests/escape-layouts.mjs` after editing) | `js/data/prisonLayouts.js` |
 | Treatment costs and success rates, surgeries and surgeons, activity and holiday prices, follower packs, emigration fee | `js/data/activities.js` |
+| Trips: getaways, theme parks, cruises, flight classes, and the stories told about them | `js/data/activities.js` (`HOLIDAYS`, `CABINS`, `TRIP_STORIES`) |
+| How long people live: the mortality curve, the constitution rolled at birth, and what good habits add | `js/engine/death.js` (`mortalityChance`, `rollLongevity`, `careShift`) |
 | Illnesses (what they do each year, who gets them) | `js/data/illnesses.js` |
 | Health, online and living-abroad scenes | `js/data/events/leisure.js` |
 | Epitaphs (titles, inscriptions, what earns each) and the untaxed estate allowance | `js/data/epitaphs.js` |

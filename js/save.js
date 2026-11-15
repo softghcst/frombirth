@@ -30,6 +30,7 @@ function migrate(state) {
   t.dance ??= Math.round((t.sports ?? 25) * 0.5);
   state.player.education.housing ??= 'home';
   state.player.homeId ??= null;
+  state.player.flags.longevity ??= Math.round((Math.random() + Math.random() + Math.random() - 1.5) / 1.5 * 11);
   state.market ??= { prices: {}, history: {}, cycle: 0 };
   state.schemaVersion = SCHEMA_VERSION;
   return state;

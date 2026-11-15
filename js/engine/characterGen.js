@@ -8,6 +8,7 @@ import { generateFamily } from './familyGen.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, rollBirthConditions,
   applyMods, unknownParent } from './genetics.js';
 import { SCHEMA_VERSION } from '../save.js';
+import { rollLongevity } from './death.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -66,7 +67,7 @@ export function createLife(opts = {}) {
     npcIds: family.map((n) => n.id),
     legal: { record: [], incarceration: null, heat: 0 },
     social: { handle: null, followers: 0, posts: 0, viral: 0, boughtFollowers: 0 },
-    flags: { livesWithParents: true, parentsStatus: fam.status },
+    flags: { livesWithParents: true, parentsStatus: fam.status, longevity: 0 },
     milestones: [{ age: 0, text: `Born in ${city}, ${c.name}.`, kind: 'life' }],
     counters: { crimes: 0, kills: 0, donated: 0, gambled: 0, yearsJailed: 0, escapes: 0,
       livesSaved: 0, spouses: 0, jobsHeld: 0, countriesLived: 1 },
@@ -114,6 +115,8 @@ export function createLife(opts = {}) {
     const who = sources[id];
     if (who !== 'self') journal.push(j(`You have your ${who}'s ${TRAIT_BY_ID[id].name.toLowerCase()} nature.`));
   }
+  player.flags.longevity = rollLongevity();
+  if (player.flags.longevity >= 8) journal.push(j('People in your family tend to live to a great age.', 'good'));
   const gift = Object.entries(player.talents).find(([, v]) => v >= 75);
   if (gift) journal.push(j(`Something about you hints at a gift for ${gift[0]}.`, 'good'));
 
