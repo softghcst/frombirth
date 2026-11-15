@@ -26,6 +26,11 @@ export const ILLNESSES = [
     yearly: { health: -5 }, recover: 0, chronic: true },
   { id: 'cancer', name: 'cancer', ages: [35, 120], chance: 0.006, severity: 90,
     yearly: { health: -9, mood: -6 }, recover: 0.2 },
+  { id: 'depression', name: 'depression', ages: [14, 90], chance: 0.01, severity: 35,
+    yearly: { mood: -9, health: -1 }, recover: 0.2 },
+  // Never caught: only ever the result of cosmetic surgery going wrong.
+  { id: 'botched_surgery', name: 'a botched operation', ages: [0, 0], chance: 0, severity: 20,
+    yearly: { mood: -4 }, recover: 0.03, chronic: true },
 ];
 
 export const ILLNESS_BY_ID = Object.fromEntries(ILLNESSES.map((i) => [i.id, i]));

@@ -1,5 +1,5 @@
-// Pursuits tab: gambling, crime, and, when it goes wrong, life inside.
-// Health, travel, nightlife and social media arrive in Phase 8.
+// Pursuits tab: things to do, social media, gambling, crime, moving abroad,
+// and, when it goes wrong, life inside.
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import { canGamble, GAMBLING_AGE } from '../../engine/gambling.js';
@@ -10,6 +10,10 @@ import { playBlackjack, playHorses, playLottery } from '../minigames/casino.js';
 import { playEscape } from '../minigames/escape.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
+import * as fun from '../../engine/activities.js';
+import * as net from '../../engine/social.js';
+import { canEmigrate } from '../../engine/emigration.js';
+import * as leisure from '../leisure.js';
 
 async function report(api, r) {
   api.changed();
@@ -62,6 +66,24 @@ async function escape(api) {
   await report(api, jail.finishEscape(out));
 }
 
+function socialCard() {
+  const p = player();
+  const s = p.social;
+  if (!net.canUseSocial()) return '';
+  if (!net.hasAccount()) {
+    return '<div class="card"><h3>Social media</h3><p class="muted" style="margin-bottom:10px">You are not online yet.</p><button class="btn" data-go="account">Open an account</button></div>';
+  }
+  const left = net.postsLeft();
+  return `<div class="card"><h3>Social media</h3>
+    <div class="kv"><span>Account</span><span>@${esc(s.handle)}</span></div>
+    <div class="kv"><span>Followers</span><span>${Math.round(s.followers).toLocaleString('en-US')}</span></div>
+    <div class="kv"><span>Posts</span><span>${s.posts}${s.viral ? ` (${s.viral} went viral)` : ''}</span></div>
+    <div class="btn-stack" style="margin-top:10px">
+      <button class="btn" data-do="post" ${left <= 0 ? 'disabled' : ''}>Post something (${left} left this year)</button>
+      <button class="btn" data-go="followers">Buy followers</button>
+    </div></div>`;
+}
+
 function prisonCard() {
   const k = jail.cell();
   const g = jail.gang();
@@ -92,7 +114,12 @@ export default {
     } else {
       const gambled = p.counters.gambled * c.currency.scale;
       const record = p.legal.record.filter((r) => r.convicted);
+      const things = fun.activityOptions();
       el.innerHTML = `
+        ${things.length ? `<div class="card"><h3>Things to do</h3>
+          <p class="muted" style="margin-bottom:10px">Each of these can be done once a year.</p>
+          <div class="btn-stack">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
+        </div>` : ''}
         <div class="card"><h3>Gambling</h3>
           ${canGamble()
     ? `<p class="muted" style="margin-bottom:10px">The house always has an edge. Stakes leave your account the moment you place them.</p>
@@ -110,14 +137,17 @@ export default {
           ${p.flags.fugitive ? '<div class="kv"><span>Status</span><span>On the run</span></div>' : ''}
           <button class="btn danger" data-crime style="margin-top:10px">Commit a crime</button>
         </div>` : ''}
-        <div class="card"><h3>Online</h3>
-          <div class="kv"><span>Followers</span><span>${p.social.followers.toLocaleString('en-US')}</span></div>
-        </div>`;
+        ${socialCard()}
+        ${canEmigrate() ? '<div class="card"><h3>Abroad</h3><p class="muted" style="margin-bottom:10px">Sell up and start again in another country.</p><button class="btn" data-go="abroad">Move abroad</button></div>' : ''}`;
     }
     el.onclick = (e) => {
       const game = e.target.closest('[data-play]')?.dataset.play;
       if (game) return ({ blackjack: playBlackjack, horses: playHorses, lottery: playLottery })[game](api);
       if (e.target.closest('[data-crime]')) return commitCrime(api);
+      const todo = e.target.closest('[data-do]')?.dataset.do;
+      if (todo) return leisure.quick(api)[todo]();
+      const go = e.target.closest('[data-go]')?.dataset.go;
+      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: leisure.moveAbroad })[go](api);
       const act = e.target.closest('[data-prison]')?.dataset.prison;
       if (!act) return undefined;
       if (act === 'gang') return joinGang(api);

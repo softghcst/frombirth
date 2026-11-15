@@ -24,3 +24,6 @@ export function fmtMoney(amount, country) {
 }
 
 export const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** "the United Kingdom", but "Japan". */
+export const theCountry = (name) => (/^(United|Netherlands|Philippines)/.test(name) ? `the ${name}` : name);

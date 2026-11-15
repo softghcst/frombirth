@@ -99,7 +99,7 @@ export function tickRelationships() {
     const atHome = (p.flags.livesWithParents && !away && family)
       || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18);
     if (neglected && !atHome) {
-      npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2));
+      npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad ? 2 : 0));
     }
     if ((npc.role === 'friend' || npc.role === 'classmate') && npc.meters.relationship < 10 && !npc.flags.tag) {
       log(`You and ${npc.firstName} drifted apart.`);

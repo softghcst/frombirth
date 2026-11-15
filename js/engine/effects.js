@@ -130,7 +130,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         p.legal.heat = clamp(p.legal.heat + e.delta);
         break;
       case 'followers':
-        p.social.followers = Math.max(0, p.social.followers + e.delta);
+        p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;
       case 'counter':
         p.counters[e.target] = (p.counters[e.target] ?? 0) + (e.delta ?? 1);

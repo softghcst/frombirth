@@ -50,6 +50,9 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Money events (leaks, tenants, breakdowns, tips) | `js/data/events/money.js` |
 | Crimes, lawyers, prison gangs, sentence rules | `js/data/crimes.js` |
 | Escape puzzle maps (run `node tests/escape-layouts.mjs` after editing) | `js/data/prisonLayouts.js` |
+| Treatment costs and success rates, surgeries and surgeons, activity and holiday prices, follower packs, emigration fee | `js/data/activities.js` |
+| Illnesses (what they do each year, who gets them) | `js/data/illnesses.js` |
+| Health, online and living-abroad scenes | `js/data/events/leisure.js` |
 | Prison events | `js/data/events/prison.js` |
 | Gift tiers, rings, wedding sizes, fees | top of `js/engine/relationships.js`, `romance.js`, `children.js` |
 | Romance and family events | `js/data/events/romance.js`, `family.js` |
@@ -72,6 +75,7 @@ Add an object to a file in `js/data/events/` (or a new file registered in
 
 ## Status
 
-Phases 1–7 of 10 are built: core engine, saves, character creation and family,
+Phases 1–8 of 10 are built: core engine, saves, character creation and family,
 education with storylines, careers with fame, relationships with independent
-family lives, the economy, and crime and prison.
+family lives, the economy, crime and prison, and health and activities
+(doctors, cosmetic surgery, things to do, social media, moving abroad).

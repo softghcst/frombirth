@@ -6,6 +6,8 @@ import { BIRTH_BY_ID } from '../../data/birthConditions.js';
 import { meterHtml } from '../meter.js';
 import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
+import * as med from '../../engine/medical.js';
+import { seeDoctor, cosmeticSurgery } from '../leisure.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -16,7 +18,7 @@ export default {
     const from = (id) => ({ mother: ' (from your mother)', father: ' (from your father)' })[p.traitSources?.[id]] ?? '';
     const born = (p.birth ?? []).map((id) => BIRTH_BY_ID[id]).filter(Boolean);
     const conditions = p.conditions.length
-      ? p.conditions.map((c) => `<div class="kv"><span>${esc(c.name)}</span><span>since age ${c.sinceAge}</span></div>`).join('')
+      ? p.conditions.map((c) => `<div class="kv"><span>${esc(c.name.charAt(0).toUpperCase() + c.name.slice(1))}</span><span>since age ${c.sinceAge}${c.treated ? ', under treatment' : ''}</span></div>`).join('')
       : '<p class="muted">You are in good health.</p>';
     const milestones = p.milestones.map((m) =>
       `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('');
@@ -39,6 +41,10 @@ export default {
         ${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}
       </div>` : ''}
       <div class="card"><h3>Conditions</h3>${conditions}</div>
+      <div class="btn-stack" style="margin-bottom:14px">
+        <button class="btn ${med.treatable().some((x) => !x.managed && !x.seen) ? 'primary' : ''}" data-doctor>See a doctor</button>
+        ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
+      </div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
       <div class="section-label">Game</div>
       <div class="btn-stack">
@@ -46,6 +52,8 @@ export default {
         <button class="btn danger" data-end>End this life</button>
       </div>`;
 
+    el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
+    if (el.querySelector('[data-surgery]')) el.querySelector('[data-surgery]').onclick = () => cosmeticSurgery(api);
     el.querySelector('[data-exit]').onclick = () => api.exitToTitle();
     el.querySelector('[data-end]').onclick = async () => {
       const sure = await confirmModal({
