@@ -32,3 +32,9 @@ export const queue = (value) => ({ type: 'queue', value });
 export const ptScale = (delta) => ({ type: 'partTimeScale', delta });
 /** Outcome variant used only when its history conditions hold. */
 export const when = (requires, outcome) => ({ ...outcome, requires });
+
+/** Marks someone already in the scene as a contact, findable later as 'tag:<tag>'. */
+export const tagNpc = (target, tag, title) => ({ type: 'tag', target, value: { tag, title } });
+/** Two cast members stop speaking to each other (or, with endFeud, make up). */
+export const feud = (a, b) => ({ type: 'feud', target: a, value: b, delta: 1 });
+export const endFeud = (a, b) => ({ type: 'feud', target: a, value: b, delta: 0 });

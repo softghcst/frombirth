@@ -24,7 +24,8 @@ function isEligible(ev) {
   const seen = store.state.eventHistory.find((h) => h.id === ev.id);
   if (seen && (ev.once || p.age - seen.lastAge < (ev.cooldown ?? DEFAULT_COOLDOWN))) return false;
   if (!meetsAll(ev.requires)) return false;
-  return Object.values(ev.cast ?? {}).every((spec) => npcsByRole(spec).length > 0);
+  const specs = Object.values(ev.cast ?? {});
+  return specs.every((spec) => npcsByRole(spec).length >= specs.filter((s) => s === spec).length);
 }
 
 /** Binds each cast key to a concrete NPC id. */

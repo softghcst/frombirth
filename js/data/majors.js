@@ -24,8 +24,15 @@ export const MAJORS = [
   M('art', 'Fine Art', 0.1, 2.0, { stats: { mood: 2 } }),
   M('music', 'Music', 0.2, 2.0, { talents: { music: 5, singing: 2 } }),
   M('theatre', 'Theatre', 0.15, 2.0, { talents: { acting: 5 }, stats: { charm: 1 } }),
-  M('musical_theatre', 'Musical Theatre', 0.2, 2.0, { talents: { singing: 4, dance: 4, acting: 4 } }, [],
-    { audition: true }),
+  M('journalism', 'Journalism', 0.25, 2.6, { stats: { intellect: 1, charm: 1 } }, ['law']),
+  // BA: performance alongside a broad degree. BFA: conservatory-style, almost
+  // all studio time, a tougher audition and much faster skill growth.
+  M('musical_theatre', 'Musical Theatre (BA)', 0.2, 2.0,
+    { talents: { singing: 4, dance: 4, acting: 4 }, stats: { intellect: 1 } }, [],
+    { audition: true, auditionBase: 0.3, blurb: 'Performance classes inside a broad degree. Easier audition, steady growth.' }),
+  M('musical_theatre_bfa', 'Musical Theatre (BFA)', 0.3, 2.0,
+    { talents: { singing: 7, dance: 7, acting: 7 }, stats: { health: 1 } }, [],
+    { audition: true, auditionBase: 0.12, blurb: 'Conservatory training: studio all day, shows at night. Hard to get into, fastest growth.' }),
 ];
 
 export const MAJOR_BY_ID = Object.fromEntries(MAJORS.map((m) => [m.id, m]));

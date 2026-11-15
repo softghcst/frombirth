@@ -36,9 +36,12 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | University majors, their entry GPAs and audition majors | `js/data/majors.js` |
 | Clubs, classes, try-outs, yearly skill gains, the contact a club introduces | `CLUBS` in `js/data/schools.js` |
 | High-school crowds | `CLIQUES` in `js/data/schools.js` |
+| Kinds of university that make offers (names, cost, aid, what each is known for) | `SCHOOL_TYPES` in `js/data/schools.js` |
+| Apprenticeship trades, gap-year options, yearly priorities | `TRADES`, `GAP_YEARS`, `PRIORITIES` in `js/data/schools.js` |
 | Part-time jobs and pay | `js/data/partTimeJobs.js` |
+| Friend scenes (new groups, fallings-out, memories) | `js/data/events/friends.js` |
 | One-off events | `js/data/events/*.js` |
-| Multi-year storylines | `js/data/events/stories/*.js` (see the header of `musical.js`) |
+| Multi-year storylines: musical theatre, mentors, school paper | `js/data/events/stories/*.js` (each file's header explains its flags and contacts) |
 
 Storyline scenes are ordinary events with a few extra fields: `priority`,
 `exclusive`, `queuedOnly`, cast by contact tag (`'tag:director'`), outcome

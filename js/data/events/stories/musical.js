@@ -185,7 +185,7 @@ export default [
   // ---------- Route scenes: college and trade school ----------
   {
     id: 'mt_showcase', category: 'university', ageRange: [19, 24], once: true, priority: true,
-    requires: [need('education.enrolled', '==', true), need('education.majorId', '==', 'musical_theatre'), need('education.stage', '==', 'university')],
+    requires: [need('education.enrolled', '==', true), need('education.majorId', 'in', ['musical_theatre', 'musical_theatre_bfa']), need('education.stage', '==', 'university')],
     text: 'Your year is staging a showcase for invited agents. The head of the programme wants to know what you are bringing.',
     choices: [
       { label: 'A number you write yourself', check: chk(0.45, { 'stats.intellect': 0.4, 'talents.singing': 0.5, 'talents.music': 0.2 }), outcomes: [

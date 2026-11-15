@@ -72,6 +72,17 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;
+      case 'tag': {
+        const npc = store.state.npcs[ctx.cast[e.target]];
+        if (npc) { npc.flags.tag = e.value.tag; if (e.value.title) npc.flags.title = e.value.title; }
+        break;
+      }
+      case 'feud': {
+        const a = store.state.npcs[ctx.cast[e.target]];
+        const b = store.state.npcs[ctx.cast[e.value]];
+        if (a && b) { a.flags.feudWith = e.delta ? b.id : null; b.flags.feudWith = e.delta ? a.id : null; }
+        break;
+      }
       case 'queue':
         (ctx.queue ??= []).push(e.value);
         break;

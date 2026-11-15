@@ -128,7 +128,7 @@
  * @property {?{rank:number, branch:string, deployments:number}} military
  *
  * @typedef {Object} Education
- * @property {'none'|'elementary'|'middle'|'high'|'university'|'graduate'|'medical'|'law'|'cosmetology'} stage
+ * @property {'none'|'elementary'|'middle'|'high'|'university'|'graduate'|'medical'|'law'|'cosmetology'|'community'|'apprenticeship'} stage
  * @property {boolean} enrolled
  * @property {number} yearInStage
  * @property {number} gpa
@@ -140,6 +140,10 @@
  * @property {'scholarship'|'parents'|'loan'|'self'|'public'|null} funding
  * @property {{type:string, majorId?:string, gpa:number, age:number}[]} degrees
  * @property {'home'|'dorm'|'apartment'} housing  while in higher education
+ * @property {?string} [priority]  what a school student puts first this year
+ * @property {?string} [schoolId]  kind of university attended
+ * @property {?string} [schoolName]
+ * @property {number} [tuitionMult]
  * @property {?string} [roommateId]
  * @property {boolean} [housingAid]  scholarship covers the dorm
  * @property {boolean} expelled
@@ -172,7 +176,7 @@
  * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
  * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry

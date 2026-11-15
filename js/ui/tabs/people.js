@@ -27,6 +27,8 @@ function openNpc(npc, api) {
   const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
   const traitChips = known.length
     ? `<div class="chips" style="margin-top:10px">${known.map((t) => `<span class="chip">${esc(t.name)}</span>`).join('')}</div>` : '';
+  const rival = store.state.npcs[npc.flags.feudWith];
+  const feudNote = rival?.alive ? `<p class="muted" style="margin-top:8px">Not speaking to ${esc(rival.firstName)} at the moment.</p>` : '';
   const history = npc.memories?.length
     ? `<div class="section-label" style="margin-top:0">What they remember</div>
        ${npc.memories.map((m) => `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('')}
@@ -40,7 +42,7 @@ function openNpc(npc, api) {
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
         <small>${esc(roleLabel(npc))} · age ${npc.age}${detail}</small></div>
     </div>
-    ${traitChips}
+    ${traitChips}${feudNote}
     <div style="margin:12px 0 16px">${meters}</div>
     ${history}
     <div class="btn-stack">${actions}<button class="btn" data-close>Close</button></div>`,
