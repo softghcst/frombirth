@@ -6,7 +6,7 @@ import { saveGame } from '../save.js';
 import { advanceYear } from '../engine/yearProcessor.js';
 import { getEvent, resolveChoice } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
-import { stageLabel } from '../engine/education.js';
+import { educationLine } from '../engine/education.js';
 import { avatarSvg } from './avatar.js';
 import { meterHtml } from './meter.js';
 import { eventModal, outcomeModal } from './modals.js';
@@ -15,7 +15,7 @@ import { TABS } from './tabs/index.js';
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
   if (p.career.title) return p.career.title;
-  if (p.education.enrolled) return stageLabel(p.education.stage);
+  if (p.education.enrolled) return educationLine(p);
   if (p.career.retired) return 'Retired';
   if (p.age < 5) return p.age < 2 ? 'Infant' : 'Toddler';
   return p.age < 18 ? 'Not in school' : 'Unemployed';

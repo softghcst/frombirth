@@ -136,7 +136,7 @@
  * @property {?string} clique
  * @property {string[]} clubs
  * @property {?string} majorId
- * @property {'scholarship'|'parents'|'loan'|'self'|null} funding
+ * @property {'scholarship'|'parents'|'loan'|'self'|'public'|null} funding
  * @property {{type:string, majorId?:string, gpa:number, age:number}[]} degrees
  * @property {boolean} expelled
  * @property {boolean} droppedOut

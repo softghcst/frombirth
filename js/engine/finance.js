@@ -34,6 +34,13 @@ export function tickFinance() {
   }
 
   for (const loan of f.loans) {
+    // Student loans are frozen while you study, and repayments wait until you
+    // have an income (interest keeps building in the meantime).
+    if (loan.kind === 'student' && p.education.enrolled) continue;
+    if (loan.kind === 'student' && gross <= 0) {
+      loan.principal += Math.round(loan.principal * loan.rate);
+      continue;
+    }
     const interest = Math.round(loan.principal * loan.rate);
     const payment = Math.min(
       loan.principal + interest,

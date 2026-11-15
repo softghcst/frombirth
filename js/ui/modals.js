@@ -86,3 +86,29 @@ export function confirmModal({ title, body, yes = 'Confirm', no = 'Cancel', dang
     m.el.querySelector('[data-yes]').addEventListener('click', () => { m.close(); resolve(true); });
   });
 }
+
+/**
+ * A list of options to pick from. Resolves with the chosen value, or null if cancelled.
+ * @param {{title:string, body?:string, cancel?:string,
+ *          options:{value:any, label:string, sub?:string, disabled?:boolean}[]}} o
+ */
+export function pickModal({ title, body, options, cancel = 'Cancel' }) {
+  return new Promise((resolve) => {
+    const m = openModal(`
+      <h2>${esc(title)}</h2>
+      ${body ? `<p class="body">${esc(body)}</p>` : ''}
+      ${options.map((o, i) => `
+        <button class="choice-btn" data-i="${i}" ${o.disabled ? 'disabled' : ''}>
+          ${esc(o.label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}
+        </button>`).join('')}
+      <button class="btn" data-cancel style="margin-top:14px">${esc(cancel)}</button>`,
+    { dismissable: true, onDismiss: () => resolve(null) });
+    m.el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-cancel]')) { m.close(); return resolve(null); }
+      const btn = e.target.closest('.choice-btn');
+      if (!btn || btn.disabled) return;
+      m.close();
+      resolve(options[Number(btn.dataset.i)].value);
+    });
+  });
+}
