@@ -6,6 +6,9 @@ import { makeNpc, makePet } from './npcFactory.js';
 import { addCondition, cureCondition } from './health.js';
 import { remember } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
+import { hitProperty } from './realEstate.js';
+import { hitVehicle } from './vehicles.js';
+import { sellEverything } from './market.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -104,6 +107,9 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         p.city = others[Math.floor(Math.random() * others.length)] ?? p.city;
         break;
       }
+      case 'property': hitProperty(e.target, e.value); break;
+      case 'vehicle': hitVehicle(e.delta); break;
+      case 'sellInvestments': sellEverything(); break;
       case 'queue':
         (ctx.queue ??= []).push(e.value);
         break;

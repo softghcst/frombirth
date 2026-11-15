@@ -9,6 +9,7 @@ import { remember } from './conditions.js';
 import { spendAction, roleLabel } from './relationships.js';
 import { conceive, canConceive } from './children.js';
 import { ensureLife } from './npcLives.js';
+import { netWorth } from './finance.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -286,7 +287,7 @@ export function breakUp(npcId) {
 export function settlement(npcId) {
   const npc = npcOf(npcId);
   if (npc.prenup) return 0;
-  return Math.round((Math.max(0, player().finance.cash) - theirWealth(npc)) / 2);
+  return Math.round((Math.max(0, netWorth(store.state)) - theirWealth(npc)) / 2);
 }
 
 function endMarriage(npc, yours) {

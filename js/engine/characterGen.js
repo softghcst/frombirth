@@ -62,7 +62,7 @@ export function createLife(opts = {}) {
       yearsInField: 0, coworkerIds: [], bossId: null, partTime: null, history: [], retired: false,
       pensionPerYear: 0, military: null },
     finance: { cash: 0, loans: [], pension: 0, lifetimeEarned: 0, lifetimeTaxPaid: 0 },
-    assets: [], inventory: [],
+    assets: [], inventory: [], homeId: null,
     npcIds: family.map((n) => n.id),
     legal: { record: [], incarceration: null, heat: 0 },
     social: { handle: null, followers: 0, posts: 0, viral: 0, boughtFollowers: 0 },

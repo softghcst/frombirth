@@ -31,6 +31,7 @@ export function mountGame(app, hooks) {
 
   app.innerHTML = `
     <section class="game">
+      <div class="stage">
       <header class="idcard">
         <div class="avatar" data-avatar></div>
         <div class="who"><h1 data-name></h1><p data-line1></p><p data-line2></p></div>
@@ -43,6 +44,7 @@ export function mountGame(app, hooks) {
           <button class="icon-btn" data-panel-close aria-label="Close panel">✕</button></div>
         <div class="panel-body" data-panel-body></div>
       </section>
+      </div>
       <footer class="dock">
         <button class="year-btn" data-year></button>
         <nav aria-label="Sections">

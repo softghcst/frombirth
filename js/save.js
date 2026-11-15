@@ -29,6 +29,8 @@ function migrate(state) {
   t.singing ??= Math.round((t.music ?? 25) * 0.7);
   t.dance ??= Math.round((t.sports ?? 25) * 0.5);
   state.player.education.housing ??= 'home';
+  state.player.homeId ??= null;
+  state.market ??= { prices: {}, history: {}, cycle: 0 };
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

@@ -146,3 +146,20 @@
 .tree-row.gone { opacity: 0.6; }
 .tree-row.you { background: var(--accent-soft); border-left-color: var(--accent); }
 button.tree-row:active { background: var(--accent-soft); }
+
+/* ---------- Casino ---------- */
+.hand { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.card-face {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 46px; height: 64px; border-radius: 8px; background: #fff; color: #1d1b17;
+  border: 1px solid var(--line); font-family: var(--serif); font-weight: 700; font-size: 1.15rem; line-height: 1;
+}
+.card-face i { font-style: normal; font-size: 1rem; margin-top: 3px; }
+.card-face.red { color: #b2402f; }
+.card-face.back { background: repeating-linear-gradient(45deg, var(--accent), var(--accent) 5px, #244a40 5px, #244a40 10px); }
+.race { display: grid; gap: 8px; }
+.lane span { font-size: 0.85rem; font-weight: 600; }
+.lane.yours span { color: var(--accent); }
+.lane .track { height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; margin-top: 3px; }
+.lane .track i { display: block; height: 100%; width: 2%; background: var(--muted); border-radius: 6px; transition: width 0.11s linear; }
+.lane.yours .track i { background: var(--accent); }

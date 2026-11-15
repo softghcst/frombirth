@@ -43,6 +43,11 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Freelance gigs and fame actions | `GIGS`, `FAME_ACTIONS` in `js/data/careers.js` |
 | Interview questions and audition pieces | `js/data/interviewQuestions.js` |
 | Workplace events | `js/data/events/work.js` |
+| Property types, mortgage terms, rent and bills | `js/data/properties.js` |
+| Vehicles, licences, servicing | `js/data/vehicles.js` |
+| Stocks, funds and coins; bank loans; overdraft and bankruptcy | `js/data/securities.js` |
+| Gambling stakes, lottery prizes, the bookmaker's cut | top of `js/engine/gambling.js` |
+| Money events (leaks, tenants, breakdowns, tips) | `js/data/events/money.js` |
 | Gift tiers, rings, wedding sizes, fees | top of `js/engine/relationships.js`, `romance.js`, `children.js` |
 | Romance and family events | `js/data/events/romance.js`, `family.js` |
 | Other people's lives: ambitions, hobbies, school and adult moments, family size limits | `js/data/npcLife.js` |
@@ -64,5 +69,6 @@ Add an object to a file in `js/data/events/` (or a new file registered in
 
 ## Status
 
-Phases 1–5 of 10 are built: core engine, saves, character creation and family,
-education with storylines, careers with fame, and relationships.
+Phases 1–6 of 10 are built: core engine, saves, character creation and family,
+education with storylines, careers with fame, relationships with independent
+family lives, and the economy.

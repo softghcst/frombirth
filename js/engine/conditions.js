@@ -22,6 +22,13 @@ const SPECIAL = {
   jailed: (p) => !!p.legal.incarceration,
   employed: (p) => !!p.career.careerId,
   tripleThreat: (p) => tripleThreat(p),
+  ownsProperty: (p) => p.assets.some((a) => a.kind === 'property'),
+  ownsHome: (p) => !!p.homeId && p.assets.some((a) => a.id === p.homeId),
+  hasTenant: (p) => p.assets.some((a) => a.tenant),
+  ownsVehicle: (p) => p.assets.some((a) => a.kind === 'vehicle'),
+  /** Value of investments in base units. */
+  investedBase: (p) => p.assets.filter((a) => a.kind === 'security')
+    .reduce((s, a) => s + a.value * a.units, 0) / country().currency.scale,
 };
 
 export const hasMemory = (npc, key) => !!npc?.memories?.some((m) => m.key === key);

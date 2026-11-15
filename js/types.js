@@ -28,6 +28,7 @@
  * @property {CareerState} career
  * @property {Finance} finance
  * @property {Asset[]} assets
+ * @property {?string} homeId  the property the player lives in, if they own it
  * @property {InventoryItem[]} inventory
  * @property {string[]} npcIds
  * @property {LegalState} legal
@@ -103,7 +104,9 @@
  * @property {number} [upkeep]
  * @property {number} [units]
  * @property {number} [costBasis]
- * @property {'car'|'boat'|'plane'} [vehicleClass]
+ * @property {'car'|'bike'|'boat'|'plane'} [vehicleClass]
+ * @property {number} [age]  vehicles: years old
+ * @property {number} [quality]  property: how it compares with others of its type
  *
  * @typedef {Object} Finance
  * @property {number} cash
@@ -193,7 +196,7 @@
  * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
  * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity'|'property'|'vehicle'|'sellInvestments',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry
@@ -224,7 +227,7 @@
  * @property {Character} player
  * @property {Object<string, NPC>} npcs
  * @property {JournalEntry[]} journal
- * @property {{prices:Object<string,number>, history:Object<string,number[]>, cycle:number}} market
+ * @property {{prices:Object<string,number>, history:Object<string,number[]>, housing:number, listings?:object}} market  prices in base units
  * @property {{id:string, lastAge:number}[]} eventHistory
  * @property {{id:string, cast:Object<string,string>}[]} pendingEvents  modal queue; survives reload
  * @property {number} rngSeed
