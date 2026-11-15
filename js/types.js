@@ -19,7 +19,9 @@
  * @property {CoreStats} stats
  * @property {HiddenStats} hidden
  * @property {Talents} talents
- * @property {string[]} traits
+ * @property {string[]} traits  heritable trait ids
+ * @property {Object<string,'mother'|'father'|'self'>} traitSources
+ * @property {string[]} birth  birth condition ids
  * @property {HealthCondition[]} conditions
  * @property {{skin:number, hair:number, hairStyle:number, eyes:number, weight:number}} appearance
  * @property {Education} education
@@ -50,11 +52,15 @@
  * @property {string} gender
  * @property {number} age
  * @property {boolean} alive
- * @property {'parent'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
+ * @property {'parent'|'grandparent'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
  *            |'ex'|'child'|'pet'|'boss'|'cellmate'} role
  * @property {{relationship:number, money:number, crazy:number, intellect:number,
  *             charm:number, health:number, generosity:number}} meters
+ * @property {{skin:number, hair:number, hairStyle:number, eyes:number}} [appearance]
+ * @property {string[]} [traits]
  * @property {number} [strictness]
+ * @property {number} [income]  parents: yearly, local currency
+ * @property {number} [savings]  parents: local currency
  * @property {string} [occupation]
  * @property {number} [wealth]
  * @property {string} [species]

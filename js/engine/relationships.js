@@ -7,13 +7,17 @@ import { mortalityChance } from './death.js';
 
 export function roleLabel(npc) {
   if (npc.role === 'parent') return npc.gender === 'male' ? 'Father' : 'Mother';
-  if (npc.role === 'sibling') return npc.gender === 'male' ? 'Brother' : 'Sister';
+  if (npc.role === 'sibling') {
+    const kind = npc.gender === 'male' ? 'brother' : 'sister';
+    return npc.flags.twin ? `Twin ${kind}` : kind.charAt(0).toUpperCase() + kind.slice(1);
+  }
+  if (npc.role === 'grandparent') return npc.gender === 'male' ? 'Grandfather' : 'Grandmother';
   if (npc.role === 'child') return npc.gender === 'male' ? 'Son' : 'Daughter';
   if (npc.role === 'pet') return `Pet ${npc.species}`;
   return npc.role.charAt(0).toUpperCase() + npc.role.slice(1);
 }
 
-const DECAY = { parent: 1, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 4,
+const DECAY = { parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 4,
   spouse: 3, child: 1, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3 };
 
 export function tickRelationships() {
@@ -39,7 +43,9 @@ export function tickRelationships() {
 
     // Decay: closeness fades unless you put time in. Children at home are spared.
     const neglected = npc.lastInteractionAge < p.age - 1;
-    const atHome = p.flags.livesWithParents && (npc.role === 'parent' || npc.role === 'sibling' || npc.role === 'pet');
+    const away = npc.role === 'parent' && npc.gender === 'male' && p.flags.parentsStatus === 'separated';
+    const atHome = p.flags.livesWithParents && !away
+      && (npc.role === 'parent' || npc.role === 'sibling' || npc.role === 'pet');
     if (neglected && !atHome) {
       npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2));
     }

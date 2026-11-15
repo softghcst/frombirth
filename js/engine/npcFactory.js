@@ -1,8 +1,9 @@
 // Builds NPC records. Every NPC carries the same seven meters.
 import { rng } from '../rng.js';
-import { uid, clamp } from '../util.js';
+import { uid, clamp, localMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { OCCUPATIONS, PETS } from '../data/traits.js';
+import { OCCUPATIONS, BACKGROUNDS, PETS } from '../data/traits.js';
+import { randomAppearance, randomTraits, randomTalents } from './genetics.js';
 
 const meter = (mean = 55, spread = 35) => Math.round(clamp(rng.around(mean, spread)));
 
@@ -15,11 +16,14 @@ const meter = (mean = 55, spread = 35) => Math.round(clamp(rng.around(mean, spre
  * @param {string} [o.firstName]
  * @param {string} [o.lastName]
  * @param {number} [o.relationship]
- * @param {number} [o.bornAtPlayerAge]
+ * @param {object} [o.appearance]  defaults to a random one
+ * @param {number} [o.skinHint]    keeps relatives looking related
+ * @param {string} [o.background]  key of BACKGROUNDS; parents only
  * @returns {import('../types.js').NPC}
  */
 export function makeNpc(o) {
-  const names = COUNTRIES[o.countryId].names;
+  const country = COUNTRIES[o.countryId];
+  const names = country.names;
   const gender = o.gender ?? rng.pick(['male', 'female']);
   const npc = {
     id: uid('npc'),
@@ -34,15 +38,24 @@ export function makeNpc(o) {
       money: meter(45), crazy: meter(30), intellect: meter(), charm: meter(),
       health: meter(80, 20), generosity: meter(),
     },
+    appearance: o.appearance ?? randomAppearance(o.skinHint),
+    traits: randomTraits(),
     lastInteractionAge: -1,
     flags: {},
   };
   if (o.role === 'parent') {
-    const job = rng.pick(OCCUPATIONS);
+    const preset = BACKGROUNDS[o.background];
+    // Professions take years of training; very young parents do not hold them.
+    const trained = (j) => npc.age >= (j.income >= 130000 ? 30 : j.income >= 70000 ? 25 : 18);
+    const fitting = OCCUPATIONS.filter((j) => (!preset || preset.fits(j)) && trained(j));
+    const job = rng.pick(fitting.length ? fitting : OCCUPATIONS.filter(trained));
     npc.occupation = job.title;
-    npc.wealth = rng.int(job.wealth[0], job.wealth[1]);
+    npc.wealth = rng.int(Math.max(job.wealth[0], preset?.floor ?? 0), job.wealth[1]);
+    npc.income = localMoney(job.income * rng.around(1, 0.15), country);
+    npc.savings = localMoney(npc.wealth ** 2 * 60 * rng.around(1, 0.3), country);
     npc.meters.money = npc.wealth;
     npc.strictness = meter(50, 40);
+    npc.talents = randomTalents();
   }
   return npc;
 }
@@ -50,10 +63,11 @@ export function makeNpc(o) {
 export function makePet(countryId, lastName, relationship = 75) {
   const kind = rng.pick(PETS);
   const pet = makeNpc({
-    role: 'pet', countryId, lastName, age: rng.int(0, 4),
+    role: 'pet', countryId, lastName, age: rng.int(0, Math.min(4, kind.lifespan - 2)),
     firstName: rng.pick(kind.names), relationship,
   });
   pet.species = kind.species;
-  pet.lifespan = kind.lifespan + rng.int(-2, 3);
+  pet.lifespan = kind.lifespan + rng.int(-1, 3);
+  delete pet.traits;
   return pet;
 }

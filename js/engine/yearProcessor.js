@@ -2,6 +2,7 @@
 // systems run, then the death check, then this year's scenarios are queued.
 import { store, player, log } from '../state.js';
 import { tickRelationships } from './relationships.js';
+import { tickFamily } from './familyGen.js';
 import { tickEducation } from './education.js';
 import { tickFinance } from './finance.js';
 import { tickHealth } from './health.js';
@@ -28,6 +29,7 @@ export function advanceYear() {
   if (BIRTHDAYS[p.age]) log(BIRTHDAYS[p.age]);
 
   tickRelationships();
+  tickFamily();
   tickEducation();
   tickFinance();
   tickHealth();

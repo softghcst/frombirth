@@ -1,9 +1,11 @@
 // Procedural portrait. Changes with age, gender, appearance, mood and
 // incarceration. NPCs without stored appearance get one derived from their id.
-const SKIN = ['#f6d7c0', '#eec3a2', '#d9a47c', '#b97f56', '#8f5b3a', '#5f3b26'];
-const HAIR = ['#2a211b', '#5a3a22', '#8a5a2b', '#c99b4f', '#a2422b'];
+export const SKIN = ['#f6d7c0', '#eec3a2', '#d9a47c', '#b97f56', '#8f5b3a', '#5f3b26'];
+export const HAIR = ['#2a211b', '#5a3a22', '#8a5a2b', '#c99b4f', '#a2422b'];
+export const EYES = ['#4a3323', '#33608f', '#4d7240', '#7a6233'];
+export const HAIR_STYLE_NAMES = ['Short', 'Fringe', 'Long'];
 const SHIRT = ['#4f7f9e', '#8a5f8f', '#5d8a61', '#b5694a', '#56627a', '#a68a3d'];
-const PET_GLYPH = { dog: '🐕', cat: '🐈', rabbit: '🐇', parrot: '🦜' };
+const PET_GLYPH = { dog: '🐕', cat: '🐈', rabbit: '🐇', parrot: '🦜', hamster: '🐹' };
 
 function hash(str) {
   let h = 2166136261;
@@ -59,7 +61,8 @@ export function avatarSvg(o) {
   const mood = o.mood ?? 60;
   const curve = mood >= 60 ? 3.5 : mood >= 35 ? 1 : -2.5;
   const eyeY = cy + 1.5;
-  parts.push(`<circle cx="27" cy="${eyeY}" r="1.7" fill="#2a211b"/><circle cx="37" cy="${eyeY}" r="1.7" fill="#2a211b"/>`);
+  const eye = EYES[a.eyes % EYES.length];
+  parts.push(`<circle cx="27" cy="${eyeY}" r="2" fill="${eye}"/><circle cx="37" cy="${eyeY}" r="2" fill="${eye}"/>`);
   if (age >= 65 && a.eyes % 2 === 0) {
     parts.push(`<g fill="none" stroke="#2a211b" stroke-width="1"><circle cx="27" cy="${eyeY}" r="3.6"/><circle cx="37" cy="${eyeY}" r="3.6"/><path d="M30.6 ${eyeY}h2.8"/></g>`);
   }

@@ -24,7 +24,7 @@ js/rng.js       seeded RNG (state is saved with the game)
 js/types.js     master schemas (JSDoc)
 js/engine/      year processor, event engine, effects, conditions, generation,
                 health, education, finance, relationships, death
-js/data/        countries, traits, illnesses, events/
+js/data/        countries, traits, birthConditions, illnesses, events/
 js/ui/          shell, avatar, modals, screens/, tabs/
 ```
 
@@ -36,4 +36,5 @@ Add an object to a file in `js/data/events/` (or a new file registered in
 
 ## Status
 
-Phase 1 of 10 is built: core engine, saves, graveyard, UI shell, and 44 branching events.
+Phases 1–2 of 10 are built: core engine, saves, graveyard, UI shell, 44 branching events,
+character creator, 20 countries, genetics, birth conditions and family generation.

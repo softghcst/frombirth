@@ -23,6 +23,8 @@ function write(key, value) {
 function migrate(state) {
   state.pendingEvents ??= [];
   state.eventHistory ??= [];
+  state.player.birth ??= [];
+  state.player.traitSources ??= {};
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }
@@ -40,6 +42,7 @@ export function saveGame(state) {
     name: `${p.firstName} ${p.lastName}`,
     age: p.age,
     gender: p.gender,
+    appearance: p.appearance,
     countryId: p.countryId,
     netWorth: netWorth(state),
     updatedAt: state.updatedAt,

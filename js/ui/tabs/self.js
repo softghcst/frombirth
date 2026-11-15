@@ -1,7 +1,8 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
 import { player } from '../../state.js';
 import { esc } from '../../util.js';
-import { TRAITS } from '../../data/traits.js';
+import { TRAIT_BY_ID } from '../../data/traits.js';
+import { BIRTH_BY_ID } from '../../data/birthConditions.js';
 import { meterHtml } from '../meter.js';
 import { confirmModal } from '../modals.js';
 
@@ -10,7 +11,9 @@ export default {
   icon: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
   render(el, api) {
     const p = player();
-    const traits = p.traits.map((id) => TRAITS.find((t) => t.id === id)).filter(Boolean);
+    const traits = p.traits.map((id) => TRAIT_BY_ID[id]).filter(Boolean);
+    const from = (id) => ({ mother: ' (from your mother)', father: ' (from your father)' })[p.traitSources?.[id]] ?? '';
+    const born = (p.birth ?? []).map((id) => BIRTH_BY_ID[id]).filter(Boolean);
     const conditions = p.conditions.length
       ? p.conditions.map((c) => `<div class="kv"><span>${esc(c.name)}</span><span>since age ${c.sinceAge}</span></div>`).join('')
       : '<p class="muted">You are in good health.</p>';
@@ -27,8 +30,11 @@ export default {
         ${meterHtml('Acting', p.talents.acting, true)}
       </div>
       <div class="card"><h3>Traits</h3>
-        ${traits.map((t) => `<div class="kv"><span>${esc(t.name)}</span><span>${esc(t.desc)}</span></div>`).join('')}
+        ${traits.map((t) => `<div class="kv"><span>${esc(t.name)}${from(t.id)}</span><span>${esc(t.desc)}</span></div>`).join('')}
       </div>
+      ${born.length ? `<div class="card"><h3>Born with</h3>
+        ${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}
+      </div>` : ''}
       <div class="card"><h3>Conditions</h3>${conditions}</div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
       <div class="section-label">Game</div>

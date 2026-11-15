@@ -5,13 +5,14 @@ import { roleLabel, interact, INTERACTIONS } from '../../engine/relationships.js
 import { avatarSvg, petGlyph } from '../avatar.js';
 import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal } from '../modals.js';
+import { TRAIT_BY_ID } from '../../data/traits.js';
 
-const ORDER = ['spouse', 'partner', 'child', 'parent', 'sibling', 'friend', 'classmate',
+const ORDER = ['spouse', 'partner', 'child', 'parent', 'sibling', 'grandparent', 'friend', 'classmate',
   'coworker', 'boss', 'pet', 'ex', 'enemy', 'cellmate'];
 
 const portrait = (npc) => (npc.role === 'pet'
   ? `<div class="avatar glyph">${petGlyph(npc.species)}</div>`
-  : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, seed: npc.id, mood: npc.meters.relationship })}</div>`);
+  : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship })}</div>`);
 
 function openNpc(npc, api) {
   const p = player();
@@ -23,6 +24,9 @@ function openNpc(npc, api) {
       ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy]]
       .map(([n, v]) => meterHtml(n, v, true)).join('');
   const detail = npc.occupation ? ` · ${esc(npc.occupation)}` : '';
+  const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
+  const traitChips = known.length
+    ? `<div class="chips" style="margin-top:10px">${known.map((t) => `<span class="chip">${esc(t.name)}</span>`).join('')}</div>` : '';
   const actions = Object.entries(INTERACTIONS).map(([id, a]) =>
     `<button class="btn" data-act="${id}" ${p.age < a.minAge ? 'disabled' : ''}>${esc(a.label)}</button>`).join('');
 
@@ -32,6 +36,7 @@ function openNpc(npc, api) {
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
         <small>${esc(roleLabel(npc))} · age ${npc.age}${detail}</small></div>
     </div>
+    ${traitChips}
     <div style="margin:12px 0 16px">${meters}</div>
     <div class="btn-stack">${actions}<button class="btn" data-close>Close</button></div>`,
   { dismissable: true });
