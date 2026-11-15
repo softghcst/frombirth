@@ -5,6 +5,7 @@
 //   exclusive: 'name'   only one event of this group fires per year
 //   queuedOnly: true    never drawn; only reached through a `queue` effect
 //   cast: {key: spec}   spec is a role, 'mother'/'father', or 'tag:<contact tag>'
+//   castRequires: [...] conditions on the people cast, e.g. cast.kid.age >= 14
 //   outcome.requires    picks a text variant from history (see conditions.js)
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localMoney } from '../util.js';
@@ -17,57 +18,66 @@ const DEFAULT_COOLDOWN = 10;
 
 export const getEvent = (id) => EVENT_BY_ID[id];
 
-function isEligible(ev) {
-  const p = player();
-  if (ev.queuedOnly) return false;
-  if (p.age < ev.ageRange[0] || p.age > ev.ageRange[1]) return false;
-  const seen = store.state.eventHistory.find((h) => h.id === ev.id);
-  if (seen && (ev.once || p.age - seen.lastAge < (ev.cooldown ?? DEFAULT_COOLDOWN))) return false;
-  if (!meetsAll(ev.requires)) return false;
-  const specs = Object.values(ev.cast ?? {});
-  return specs.every((spec) => npcsByRole(spec).length >= specs.filter((s) => s === spec).length);
-}
-
-/** Binds each cast key to a concrete NPC id. */
+/** Binds each cast key to a concrete NPC id, preferring people who fit castRequires. */
 function castFor(ev) {
   const cast = {};
   const used = new Set();
   for (const [key, spec] of Object.entries(ev.cast ?? {})) {
-    const options = npcsByRole(spec).filter((n) => !used.has(n.id));
-    const npc = rng.pick(options.length ? options : npcsByRole(spec));
+    const fits = (npc) => meetsAll((ev.castRequires ?? []).filter((r) => r.path.split('.')[1] === key), { [key]: npc.id });
+    const free = npcsByRole(spec).filter((n) => !used.has(n.id));
+    const options = free.filter(fits);
+    const npc = rng.pick(options.length ? options : free.length ? free : npcsByRole(spec));
     cast[key] = npc.id;
     used.add(npc.id);
   }
   return cast;
 }
 
+/** The cast for an event if it can fire now, otherwise null. */
+function eligibleCast(ev) {
+  const p = player();
+  if (ev.queuedOnly) return null;
+  if (p.age < ev.ageRange[0] || p.age > ev.ageRange[1]) return null;
+  const seen = store.state.eventHistory.find((h) => h.id === ev.id);
+  if (seen && (ev.once || p.age - seen.lastAge < (ev.cooldown ?? DEFAULT_COOLDOWN))) return null;
+  if (!meetsAll(ev.requires)) return null;
+  const specs = Object.values(ev.cast ?? {});
+  if (!specs.every((spec) => npcsByRole(spec).length >= specs.filter((x) => x === spec).length)) return null;
+  const cast = castFor(ev);
+  return meetsAll(ev.castRequires, cast) ? cast : null;
+}
+
 /** Queues this year's scenarios onto state.pendingEvents: story beats first. */
 export function drawEvents() {
   const p = player();
   const pending = store.state.pendingEvents;
-  const pool = EVENTS.filter(isEligible);
+  const pool = [];
+  for (const ev of EVENTS) {
+    const cast = eligibleCast(ev);
+    if (cast) pool.push({ ev, cast });
+  }
 
   const groups = new Set();
   let stories = 0;
-  for (const ev of pool.filter((e) => e.priority)) {
+  for (const { ev, cast } of pool.filter((x) => x.ev.priority)) {
     if (ev.exclusive && groups.has(ev.exclusive)) continue;
     if (ev.exclusive) groups.add(ev.exclusive);
-    pending.push({ id: ev.id, cast: castFor(ev) });
+    pending.push({ id: ev.id, cast });
     stories += 1;
   }
 
   const rolled = p.age < 2
     ? (rng.chance(0.5) ? 1 : 0)
     : rng.weighted([1, 2, 3], (n) => ({ 1: 50, 2: 35, 3: 15 })[n]);
-  const ordinary = pool.filter((e) => !e.priority && (e.weight ?? 1) > 0 && !groups.has(e.exclusive));
+  const ordinary = pool.filter((x) => !x.ev.priority && (x.ev.weight ?? 1) > 0 && !groups.has(x.ev.exclusive));
   for (let i = 0; i < rolled - stories && ordinary.length; i++) {
-    const ev = rng.weighted(ordinary);
-    ordinary.splice(ordinary.indexOf(ev), 1);
-    if (ev.exclusive) {
-      if (groups.has(ev.exclusive)) continue;
-      groups.add(ev.exclusive);
+    const pickd = rng.weighted(ordinary, (x) => x.ev.weight ?? 1);
+    ordinary.splice(ordinary.indexOf(pickd), 1);
+    if (pickd.ev.exclusive) {
+      if (groups.has(pickd.ev.exclusive)) continue;
+      groups.add(pickd.ev.exclusive);
     }
-    pending.push({ id: ev.id, cast: castFor(ev) });
+    pending.push({ id: pickd.ev.id, cast: pickd.cast });
   }
 }
 

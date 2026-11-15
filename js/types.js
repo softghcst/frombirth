@@ -52,7 +52,7 @@
  * @property {string} gender
  * @property {number} age
  * @property {boolean} alive
- * @property {'parent'|'grandparent'|'mentor'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
+ * @property {'parent'|'grandparent'|'grandchild'|'mentor'|'sibling'|'classmate'|'coworker'|'friend'|'enemy'|'partner'|'spouse'
  *            |'ex'|'child'|'pet'|'boss'|'cellmate'} role
  * @property {{relationship:number, money:number, crazy:number, intellect:number,
  *             charm:number, health:number, generosity:number}} meters
@@ -167,6 +167,7 @@
  * @property {number} [weight]
  * @property {Object<string,string>} [cast]  token key -> role spec; event needs each to exist
  * @property {Requirement[]} [requires]
+ * @property {Requirement[]} [castRequires]  conditions on the people cast, e.g. cast.kid.age >= 14
  * @property {boolean} [priority]  story beat: always fires when first eligible
  * @property {string} [exclusive]  only one event per group fires in a year
  * @property {boolean} [queuedOnly]  reached only through a `queue` effect
@@ -178,7 +179,7 @@
  * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
  * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry

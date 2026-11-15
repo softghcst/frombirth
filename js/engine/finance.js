@@ -1,6 +1,8 @@
 // Annual money flow: income, tax, living costs, loan payments.
 import { player, country, log } from '../state.js';
 import { fmtMoney, localMoney } from '../util.js';
+import { childCosts } from './children.js';
+import { npcsByRole } from '../state.js';
 
 /** Cash plus asset equity minus debts. Takes the state so save.js can call it. */
 export function netWorth(state) {
@@ -28,10 +30,12 @@ export function tickFinance() {
 
   // Living costs start once you support yourself.
   if (!p.flags.livesWithParents && p.age >= 18 && !p.education.enrolled) {
-    const base = localMoney(12000, c);
+    const base = Math.round(localMoney(12000, c) * (npcsByRole('spouse').length ? 0.65 : 1));
     const lifestyle = Math.round(Math.max(0, gross) * 0.2);
     f.cash -= base + lifestyle;
   }
+
+  if (p.age >= 18) f.cash -= childCosts();
 
   for (const loan of f.loans) {
     // Student loans are frozen while you study, and repayments wait until you

@@ -3,6 +3,8 @@
 import { store, player, log } from '../state.js';
 import { tickRelationships } from './relationships.js';
 import { tickFamily } from './familyGen.js';
+import { tickRomance } from './romance.js';
+import { tickChildren } from './children.js';
 import { tickEducation } from './education.js';
 import { tickCareer } from './career.js';
 import { tickFinance } from './finance.js';
@@ -31,6 +33,8 @@ export function advanceYear() {
 
   tickRelationships();
   tickFamily();
+  tickRomance();
+  tickChildren();
   tickEducation();
   const workDeath = tickCareer();
   if (workDeath) { die(workDeath); return; }

@@ -2,7 +2,7 @@
 // the Character (e.g. "stats.intellect", "hidden.karma", "flags.metRival"),
 // plus computed paths in SPECIAL, plus two scene-aware forms that look at the
 // people cast in the current scene:
-//   cast.<key>.<meter>      e.g. cast.director.relationship  (0–100)
+//   cast.<key>.<meter>      e.g. cast.director.relationship  (0–100), or cast.kid.age
 //   memory.<key>.<memory>   e.g. memory.manager.coveredShift (100 if they remember it, else 0)
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 
@@ -40,7 +40,8 @@ export function resolve(path, cast = {}) {
   if (parts[0] === 'cast' || parts[0] === 'memory') {
     const npc = store.state.npcs[cast[parts[1]]];
     if (!npc?.alive) return 0;
-    return parts[0] === 'cast' ? npc.meters[parts[2]] : hasMemory(npc, parts[2]) ? 100 : 0;
+    if (parts[0] === 'memory') return hasMemory(npc, parts[2]) ? 100 : 0;
+    return parts[2] === 'age' ? npc.age : npc.meters[parts[2]];
   }
   return parts.reduce((o, k) => (o == null ? undefined : o[k]), p);
 }

@@ -91,6 +91,14 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'pay': scaleSalary(e.delta); break;
       case 'fired': fire(e.value); break;
       case 'promoted': promote(); break;
+      case 'npcSet': {
+        const npc = store.state.npcs[ctx.cast[e.target]];
+        if (npc) {
+          if (e.value.role) npc.role = e.value.role;
+          Object.assign(npc.flags, e.value.flags ?? {});
+        }
+        break;
+      }
       case 'queue':
         (ctx.queue ??= []).push(e.value);
         break;

@@ -43,6 +43,8 @@ js/ui/          shell, avatar, modals, screens/, tabs/
 | Freelance gigs and fame actions | `GIGS`, `FAME_ACTIONS` in `js/data/careers.js` |
 | Interview questions and audition pieces | `js/data/interviewQuestions.js` |
 | Workplace events | `js/data/events/work.js` |
+| Gift tiers, rings, wedding sizes, fees | top of `js/engine/relationships.js`, `romance.js`, `children.js` |
+| Romance and family events | `js/data/events/romance.js`, `family.js` |
 | Friend scenes (new groups, fallings-out, memories) | `js/data/events/friends.js` |
 | One-off events | `js/data/events/*.js` |
 | Multi-year storylines: musical theatre, mentors, school paper | `js/data/events/stories/*.js` (each file's header explains its flags and contacts) |
@@ -60,5 +62,5 @@ Add an object to a file in `js/data/events/` (or a new file registered in
 
 ## Status
 
-Phases 1–4 of 10 are built: core engine, saves, character creation and family,
-education with storylines, and careers with fame.
+Phases 1–5 of 10 are built: core engine, saves, character creation and family,
+education with storylines, careers with fame, and relationships.

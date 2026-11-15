@@ -112,3 +112,29 @@ export function pickModal({ title, body, options, cancel = 'Cancel' }) {
     });
   });
 }
+
+/**
+ * Asks for a short piece of text. Resolves the trimmed text, or null if cancelled.
+ * @param {{title:string, label:string, value?:string, maxLength?:number}} o
+ */
+export function inputModal({ title, label, value = '', maxLength = 24 }) {
+  return new Promise((resolve) => {
+    const m = openModal(`
+      <h2>${esc(title)}</h2>
+      <form novalidate>
+        <div class="field"><label for="m-input">${esc(label)}</label>
+          <input id="m-input" maxlength="${maxLength}" autocomplete="off" value="${esc(value)}"></div>
+        <div class="btn-row">
+          <button type="button" class="btn" data-cancel>Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>`, { dismissable: true, onDismiss: () => resolve(null) });
+    m.el.querySelector('[data-cancel]').addEventListener('click', () => { m.close(); resolve(null); });
+    m.el.querySelector('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = m.el.querySelector('#m-input').value.trim();
+      m.close();
+      resolve(text || null);
+    });
+  });
+}
