@@ -16,12 +16,15 @@ import * as sch from './schooling.js';
 import { graduationDay } from './schoollife.js';
 import { uniOf, onResults, remember as rememberAlumnus } from './university.js';
 import * as campus from './campus.js';
+import * as adult from './adulted.js';
+import { CERT_BY_ID } from '../data/schools.js';
 import { schoolModel } from '../data/education.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
   high: 'High school', university: 'University', graduate: 'Graduate school',
   medical: 'Medical school', law: 'Law school', cosmetology: 'Cosmetology school',
   community: 'Community college', apprenticeship: 'Apprenticeship' };
+for (const p of Object.values(PROGRAMMES)) LABELS[p.id] ??= p.label;
 const SCHOOL = ['elementary', 'middle', 'high'];
 /** What a stage is called. School stages take the country's own word for them. */
 /** A mark as this country writes it, for anyone who needs to show one. */
@@ -34,7 +37,7 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
 /** The major or trade being studied, if any. */
 export const subjectName = (stage, id) =>
-  (hasMajor(stage) ? MAJOR_BY_ID[id]?.name : TRADE_BY_ID[id]?.name) ?? '';
+  (stage === 'certificate' ? CERT_BY_ID[id]?.name : hasMajor(stage) ? MAJOR_BY_ID[id]?.name : TRADE_BY_ID[id]?.name) ?? '';
 
 /** One line for the header, e.g. "Marlowe College · Biology". */
 export function educationLine(p) {
@@ -104,7 +107,9 @@ export function tuitionFor(stage) {
 /** What this year actually costs at the school the player attends. */
 export function currentTuition() {
   const e = player().education;
-  return Math.round(tuitionFor(e.stage) * (e.stage === 'university' ? e.tuitionMult ?? 1 : 1));
+  // Part-time, the same fees are spread over more years.
+  const pace = e.partTime && PROGRAMMES[e.stage]?.partYears ? PROGRAMMES[e.stage].years / PROGRAMMES[e.stage].partYears : e.partTime && e.stage === 'university' ? 2 / 3 : 1;
+  return Math.round(tuitionFor(e.stage) * (e.stage === 'university' ? e.tuitionMult ?? 1 : 1) * pace);
 }
 
 export const studentLoan = () => player().finance.loans.find((l) => l.kind === 'student');
@@ -127,7 +132,7 @@ function chargeTuition() {
   const c = country();
   // What is owed is what is charged less whatever help came with the offer.
   const fee = Math.round(currentTuition() * (1 - (e.aid ?? 0)));
-  if (!fee || e.funding === 'scholarship' || e.funding === 'parents') return;
+  if (!fee || e.funding === 'scholarship' || e.funding === 'parents' || e.funding === 'employer') return;
   if (e.funding === 'self' && p.finance.cash >= fee) {
     p.finance.cash -= fee;
     log(`You paid ${fmtMoney(fee, c)} in tuition.`);
@@ -147,6 +152,7 @@ function chargeTuition() {
 export function housingCost(id = player().education.housing) {
   const e = player().education;
   if (id === 'dorm' && e.housingAid && e.funding === 'scholarship') return 0;
+  if (!HOUSING[id]) return 0; // living in one's own home, as someone studying alongside a job does
   return localCost(HOUSING[id].cost, country());
 }
 
@@ -276,7 +282,10 @@ function leaveSchool(how = 'completed') {
   e.schoolName = null;
   e.tuitionMult = 1;
   e.aid = 0; e.aidKeep = 0; e.aidParts = [];
+  adult.bank(e);
   campus.finish();
+  e.partTime = false;
+  delete e.thesis;
   const mate = roommate();
   if (mate) mate.flags.title = 'Former roommate';
   e.roommateId = null;
@@ -298,7 +307,10 @@ function graduate() {
   const school = uniOf(e.schoolId);
   const leaving = schoolModel(p.countryId).leaving;
   const place = SCHOOL.includes(e.stage) ? sch.school() : null;
-  e.degrees.push({ type: e.stage, majorId: major?.id ?? (e.stage === 'apprenticeship' ? trade?.id : undefined),
+  const prog = PROGRAMMES[e.stage];
+  // Some courses give a qualification of another kind: an adult certificate is a school-leaving one; a technical college, a trade.
+  const kind = prog?.gives ?? (prog?.givesTrade ? 'apprenticeship' : e.stage);
+  e.degrees.push({ type: kind, via: kind !== e.stage ? e.stage : undefined, majorId: major?.id ?? (['apprenticeship', 'technical', 'certificate'].includes(e.stage) ? e.majorId ?? undefined : undefined),
     gpa: e.gpa, age: p.age, school: e.schoolName ?? (place && place.kind !== 'home' ? place.name : undefined), award: e.stage === 'high' ? leaving : undefined, countryId: p.countryId,
     courses: e.stage === 'high' && e.courses ? { ...e.courses } : undefined });
   if (e.stage === 'high') { graduationDay(e.gpa); onResults(); }
@@ -313,14 +325,23 @@ function graduate() {
     law: 'law school',
     cosmetology: 'cosmetology school. You are now licensed in hair and makeup',
     apprenticeship: `your apprenticeship. You are a qualified ${trade?.name.toLowerCase()}`,
-  }[e.stage];
-  const plain = ['medical', 'cosmetology', 'apprenticeship'].includes(e.stage);
-  log(`You ${e.stage === 'apprenticeship' ? 'completed' : 'graduated from'} ${what}${plain ? '' : honours}${e.stage === 'apprenticeship' ? '' : e.stage === 'high' ? ` (${sch.mark(e.gpa)})` : ` (GPA ${gpa})`}.`, 'system', 'good');
+    technical: `technical college. You are a qualified ${trade?.name.toLowerCase()}`,
+    certificate: `your course with a certificate in ${CERT_BY_ID[e.majorId]?.name.toLowerCase()}`,
+  }[e.stage] ?? prog?.done ?? stageLabel(e.stage).toLowerCase();
+  const plain = ['medical', 'cosmetology', 'apprenticeship', 'technical', 'certificate', 'equivalency'].includes(e.stage) || !!prog?.plain || !!prog?.licence;
+  log(`You ${e.stage === 'apprenticeship' ? 'completed' : 'graduated from'} ${what}${plain ? '' : honours}${['apprenticeship', 'doctorate', 'equivalency'].includes(e.stage) ? '' : e.stage === 'high' ? ` (${sch.mark(e.gpa)})` : ` (GPA ${gpa})`}.`, 'system', 'good');
   milestone(e.stage === 'cosmetology' ? 'Earned a licence in hair and makeup.'
-    : e.stage === 'apprenticeship' ? `Qualified as a ${trade?.name.toLowerCase()}.`
+    : e.stage === 'apprenticeship' || e.stage === 'technical' ? `Qualified as a ${trade?.name.toLowerCase()}.`
+      : e.stage === 'doctorate' ? `Earned a doctorate: "${e.thesis?.topic}".`
+      : e.stage === 'equivalency' ? 'Finished school as an adult.'
+      : e.stage === 'certificate' ? `Earned a certificate in ${CERT_BY_ID[e.majorId]?.name.toLowerCase()}.`
       : e.stage === 'high' ? `Left ${place && place.kind !== 'home' ? place.name : 'school'} with ${/^[aeiouA]/.test(leaving) && !/s$/.test(leaving) ? 'an' : /s$/.test(leaving) ? '' : 'a'} ${leaving} (${sch.mark(e.gpa)}).`.replace('with  ', 'with ')
         : `Graduated ${stageLabel(e.stage).toLowerCase()}${major ? ` (${major.name})` : ''}, GPA ${gpa}.`, 'education');
   p.stats.mood = clamp(p.stats.mood + 8);
+  if (prog?.licence === 'teaching') log(`Schools will hire a graduate without it, but they prefer the ${adult.examName(prog.licence)}, which you can now sit.`);
+  else if (prog?.licence) log(`The degree is not yet the right to practise: for that there is the ${adult.examName(prog.licence)}, which you can now sit.`);
+  if (e.stage === 'equivalency') { e.droppedOut = false; e.expelled = false; log('Everything that asks for a school-leaving qualification is open to you now.'); }
+  if (e.stage === 'doctorate') { e.degrees[e.degrees.length - 1].thesis = e.thesis.topic; p.flags.doctor = true; delete e.thesis; }
   if (e.stage === 'high') log('University, community college, trade school and apprenticeships are open to you from the Work & School tab.');
   if (e.stage === 'community') log('You can now transfer straight into the third year of university.');
 
@@ -413,14 +434,14 @@ export function tickEducation() {
   if (clique) applyMods(p, clique.yearly);
   if (hasMajor(e.stage) && MAJOR_BY_ID[e.majorId]) applyMods(p, MAJOR_BY_ID[e.majorId].yearly);
   if (PROGRAMMES[e.stage]?.yearly) applyMods(p, PROGRAMMES[e.stage].yearly);
-  if (isHigher(e.stage)) { liveThere(); campus.tickCampus(g); }
+  if (isHigher(e.stage)) { liveThere(); campus.tickCampus(g); adult.tickPartTime(); }
   else applyPriority(p);
   const stipend = PROGRAMMES[e.stage]?.stipend;
   if (stipend) {
     const pay = localWage(stipend, country());
     p.finance.cash += pay;
     p.finance.lifetimeEarned += pay;
-    log(`You earned ${fmtMoney(pay, country())} as an apprentice this year.`);
+    log(e.stage === 'doctorate' ? `Your doctoral stipend came to ${fmtMoney(pay, country())} this year.` : `You earned ${fmtMoney(pay, country())} as an apprentice this year.`);
   }
 
   // Attendance
@@ -437,8 +458,17 @@ export function tickEducation() {
   // Finishing, failing or carrying on
   if (e.stage === 'high' && p.age >= SCHOOL_LEAVING_AGE) return graduate();
   if (!isHigher(e.stage)) return;
+  // A doctorate is finished when the thesis is, however long that takes.
+  if (e.stage === 'doctorate' && e.thesis) {
+    if (e.thesis.passed) return graduate();
+    const next = adult.thesisYear();
+    if (next === 'defend') { store.state.pendingEvents.push({ id: 'thesis_defence', cast: { words: { topic: e.thesis.topic } } }); return; }
+    if (next === 'out') { log('Eight years in, your funding has ended and the thesis is not finished. The university has closed your registration.', 'system', 'bad'); p.stats.mood = clamp(p.stats.mood - 12); leaveSchool('left'); return; }
+    chargeHousing();
+    return;
+  }
   // A degree is finished when its credits are earned; other courses, when their years are served.
-  if (e.credits != null && campus.atUniversity() ? campus.finished() : e.yearInStage >= PROGRAMMES[e.stage].years) return graduate();
+  if (e.credits != null && campus.atUniversity() ? campus.finished() : e.yearInStage >= adult.yearsFor(e.stage, e.partTime)) return graduate();
   if (e.gpa < 1.2) {
     log(`Your grades collapsed and ${stageLabel(e.stage).toLowerCase()} asked you to leave.`, 'system', 'bad');
     p.stats.mood = clamp(p.stats.mood - 12);
@@ -678,11 +708,12 @@ export function programmeOptions() {
     else if (p.legal.incarceration) reason = 'Not from a cell.';
     else if (p.flags.gapYearAge === p.age) reason = 'You are on a gap year. Apply next year.';
     else if (prog.minAge && p.age < prog.minAge) reason = `You need to be ${prog.minAge}.`;
-    else if (prog.needs && !base) reason = prog.needs === 'high' ? 'Needs a high-school diploma.' : 'Needs a university degree.';
-    else if (held(prog.id) && prog.id !== 'university') reason = 'You already hold this qualification.';
+    else if (prog.gives && held(prog.gives)) reason = 'You already have a school-leaving qualification.';
+    else if (prog.needs && !base) reason = prog.needs === 'high' ? 'Needs a school-leaving qualification. Adult school gives one.' : 'Needs a university degree.';
+    else if (held(prog.id) && prog.id !== 'university' && !prog.repeat) reason = 'You already hold this qualification.';
     else if (prog.id === 'community' && held('university')) reason = 'You already have a university degree.';
     else if (base && base.gpa < prog.minGpa) reason = `Needs a GPA of ${prog.minGpa.toFixed(1)} (yours: ${base.gpa.toFixed(2)}).`;
-    else if (prog.id === 'medical' && !MAJOR_BY_ID[bachelor.majorId]?.tracks.includes('medical')) reason = 'Needs a science or health degree.';
+    else if (prog.science && !MAJOR_BY_ID[bachelor.majorId]?.tracks.includes('medical')) reason = 'Needs a science or health degree.';
     else if (acts().applied[prog.id]) reason = 'You already applied this year.';
     const transfer = prog.id === 'university' && isTransfer();
     return { id: prog.id, label: transfer ? 'University (transfer)' : prog.label,
@@ -710,11 +741,15 @@ export function admissionChance(progId, subjectId) {
     const backing = (p.flags.teacherRec ? 0.12 : 0) + (p.flags.gapVolunteer ? 0.08 : 0) + (isTransfer() ? 0.1 : 0);
     return clamp(0.45 + (gpa - m.minGpa) * 0.45 + (iq - 50) / 200 - m.difficulty * 0.2 + backing, 0.05, 0.97);
   }
+  // A course entered from school is judged on school marks.
+  if (PROGRAMMES[progId].needs === 'high') { const hs = lastDegree('high'); return clamp(0.55 + ((hs?.gpa ?? 2) - PROGRAMMES[progId].minGpa) * 0.5 + (p.hidden.karma - 50) / 300, 0.08, 0.97); }
   const b = lastDegree('university');
   const affinity = MAJOR_BY_ID[b.majorId]?.tracks.includes(progId) ? 0.15 : 0;
   const prof = p.flags.profRec ? 0.2 : 0;
   if (progId === 'graduate') return clamp(0.5 + (b.gpa - 3.0) * 0.5 + (iq - 50) / 200 + prof, 0.05, 0.97);
   if (progId === 'medical') return clamp(0.3 + (b.gpa - 3.6) * 0.9 + (iq - 60) / 150 + prof / 2, 0.05, 0.95);
+  if (progId === 'doctorate') return clamp(0.3 + (b.gpa - 3.4) * 0.8 + (iq - 60) / 150 + prof + (lastDegree('graduate') ? 0.2 : 0), 0.05, 0.95);
+  if (progId !== 'law') return clamp(0.4 + (b.gpa - PROGRAMMES[progId].minGpa) * 0.7 + (iq - 55) / 150 + prof / 2, 0.05, 0.95);
   return clamp(0.35 + (b.gpa - 3.4) * 0.7 + (iq - 55) / 150 + affinity + prof / 2, 0.05, 0.95);
 }
 
@@ -775,7 +810,7 @@ export function applyTo(progId, subjectId) {
   const prog = PROGRAMMES[progId];
   const major = progId === 'university' || progId === 'community' ? MAJOR_BY_ID[subjectId] : null;
   const trade = progId === 'apprenticeship' ? TRADE_BY_ID[subjectId] : null;
-  acts().applied[progId] = true;
+  if (!prog.repeat) acts().applied[progId] = true;
   const subject = major ? ` to study ${major.name}` : '';
   const rec = major?.audition && p.flags.directorRec;
 
@@ -790,7 +825,7 @@ export function applyTo(progId, subjectId) {
   }
 
   const base = prog.needs ? lastDegree(prog.needs) : null;
-  const scholarship = tuitionFor(progId) > 0 && prog.kind !== 'trade' && !prog.open
+  const scholarship = tuitionFor(progId) > 0 && prog.kind !== 'trade' && !prog.open && base
     ? rollScholarship(major, base.gpa) : undefined;
   const housingAid = !!scholarship && rng.chance(0.5);
   const text = trade ? `You were taken on as an apprentice ${trade.name.toLowerCase()}.`
@@ -837,7 +872,8 @@ export function enrol(progId, subjectId, funding, living = {}, school = null) {
   e.gpa = 0;
   e.absences = 0;
   e.effort = 50;
-  e.majorId = ['university', 'community', 'apprenticeship'].includes(progId) ? subjectId
+  e.partTime = !!living.partTime && adult.canPartTime(progId);
+  e.majorId = ['university', 'community', 'apprenticeship', 'technical', 'certificate'].includes(progId) ? subjectId
     : prog.needs === 'university' ? lastDegree('university').majorId : null;
   e.schoolId = school?.id ?? null;
   e.schoolName = school?.name ?? null;
@@ -863,8 +899,11 @@ export function enrol(progId, subjectId, funding, living = {}, school = null) {
     log(`Professor ${prof.firstName} ${prof.lastName}, whose work brought you here, teaches your first seminar.`);
   }
   if (progId === 'university' || progId === 'community') campus.start(transfer);
+  if (progId === 'doctorate') adult.startThesis();
   chargeTuition();
-  setHousing(living.housing ?? (npcsByRole('parent').length ? 'home' : 'dorm'), living.roommateId);
+  // Someone studying alongside a job goes on living where they live.
+  if (e.partTime) { e.housing = 'own'; e.roommateId = null; if (e.credits != null) e.load = 'part'; log('You will study in the evenings and keep your job.'); }
+  else setHousing(living.housing ?? (npcsByRole('parent').length ? 'home' : 'dorm'), living.roommateId);
   chargeHousing();
 }
 

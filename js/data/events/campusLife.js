@@ -21,6 +21,11 @@ export default [
     ['Take fewer courses', 'You ask what can be dropped.', 'probLight'],
     ['Say it will be fine', 'You nod in the right places.', 'probCarry'],
   ]),
+  scene('thesis_defence', [22, 90], 'Your thesis, "{topic}", is written, bound, and in the hands of the examiners. On Thursday they will ask you to defend every page of it.', [
+    ['Rehearse it with your supervisor', 'You book a room and a hostile audience of two.', 'defendPrepare'],
+    ['Go in as you are', 'Nobody knows this better than you do.', 'defendPlain'],
+    ['Improvise', 'You have not opened it in a month.', 'defendWing'],
+  ]),
   scene('uni_graduation', [19, 90], 'Graduation day at {school}. {first}{offer}There is a ceremony this afternoon, and the people you have spent these years with are scattering tomorrow.', [
     ['Walk across the stage', 'You find your place in the line.', 'gradCeremony'],
     ['Spend the day with your friends', 'You leave the gown on its hanger.', 'gradFriends'],

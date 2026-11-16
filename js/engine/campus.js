@@ -23,6 +23,7 @@ import { ORGS, ORG_BY_ID, MAX_ORGS, LOADS, MAJOR_GROUP, HABITS, EMPLOYERS, DEGRE
 import { PLAYS } from '../data/education.js';
 import { makeNpc } from './npcFactory.js';
 import { uniOf, firstInFamily } from './university.js';
+import { unbank, defend as defendThesis } from './adulted.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const onCampus = (p = player()) => p.education.enrolled && ['university', 'community'].includes(p.education.stage);
@@ -39,6 +40,7 @@ export function start(transfer = false) {
   const p = player();
   const e = p.education;
   e.credits = transfer ? DEGREE_CREDITS / 2 : 0;
+  if (e.stage === 'university') e.credits = unbank(e, e.credits, (a, b) => !!MAJOR_GROUP[a] && MAJOR_GROUP[a] === MAJOR_GROUP[b]);
   e.load = 'standard';
   e.minorId = null;
   e.campus = { orgs: {} };
@@ -64,10 +66,10 @@ export function finish() {
 
 // ---------- Studies ----------
 
-export const loads = () => LOADS.map((l) => ({ ...l, current: (player().education.load ?? 'standard') === l.id }));
+export const loads = () => LOADS.filter((l) => (l.id === 'part') === !!player().education.partTime).map((l) => ({ ...l, current: (player().education.load ?? 'standard') === l.id }));
 export function setLoad(id) {
   const l = LOADS.find((x) => x.id === id);
-  if (!onCampus() || !l) return result(false, 'That is not open to you.', 'neutral');
+  if (!onCampus() || !l || (l.id === 'part') !== !!player().education.partTime) return result(false, 'That is not open to you.', 'neutral');
   player().education.load = id;
   return result(true, `${l.name}: ${l.blurb}`, 'neutral');
 }
@@ -378,6 +380,11 @@ export function decide(what, cast = {}) {
     case 'probTutor': e.effort = clamp(e.effort + 22); p.stats.mood = clamp(p.stats.mood - 4); return 'You sign up at the study centre and go three times a week. It is humbling, and it helps.';
     case 'probLight': e.load = 'light'; return 'You drop a course. The degree will take longer, and you will finish it.';
     case 'probCarry': return 'You tell yourself it was one bad year.';
+    case 'defendPrepare': case 'defendPlain': case 'defendWing': {
+      const r = defendThesis(what === 'defendPrepare' ? 'prepare' : what === 'defendWing' ? 'wing' : 'plain');
+      if (r.pass) e.thesis.passed = true;
+      return r.text;
+    }
     case 'gradCeremony': p.stats.mood = clamp(p.stats.mood + 8); for (const par of npcsByRole('parent')) rel(par, 8); return 'A gown that does not fit, your name read out slightly wrong, and a photograph that will be on a wall for forty years.';
     case 'gradFriends': p.stats.mood = clamp(p.stats.mood + 8); for (const n of livingNpcs()) if (n.flags.metAt === where() && n.role === 'friend') rel(n, 6); return 'You skip the lunch and spend the day with the people who made the years what they were.';
     default: return '';

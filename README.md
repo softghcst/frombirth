@@ -428,6 +428,29 @@ Once enrolled (`js/engine/campus.js`, scenes in `js/data/events/campusLife.js`):
 
 University and training are in `js/engine/education.js`.
 
+### After the first degree, and later in life
+
+`js/engine/adulted.js`, with the programmes as data in `js/data/schools.js`:
+
+- **Professional schools**: medicine, law, business, dentistry, pharmacy,
+  veterinary medicine, teacher training and nursing (which needs no degree).
+- **Licensing exams.** A professional degree lets you sit the exam; passing
+  it lets you practise. Once a year, with a choice of how to prepare.
+  Teaching is the exception: schools hire graduates without the
+  certificate, and prefer those with it. People who qualified in older
+  saves are treated as already licensed.
+- **A doctorate**: a topic, a supervisor with a style of their own, a
+  stipend, papers published along the way, and a defence. Four to eight
+  years; it opens university teaching.
+- **Part-time study** keeps the job and takes longer. An employer can be
+  asked to pay, once a year, and says yes to people it wants to keep.
+- **Ways back in**: an adult school certificate for people who left without
+  one, technical college as a paid-for alternative to an apprenticeship,
+  and one-year certificates that open some degree-only careers by a
+  narrower door.
+- **Credits are kept.** Leaving a degree banks what was earned; coming back
+  counts it, less a year's worth if the subject is a long way from the old one.
+
 ### What if?
 
 At a turning point (an offer, a proposal, a betrayal, a term ending, a crown)
