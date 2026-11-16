@@ -1,6 +1,6 @@
 // Character creator. Every field can be left on "Random" / "Inherited".
 import { esc } from '../../util.js';
-import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel } from '../../data/countries.js';
+import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel, surnameFor } from '../../data/countries.js';
 import { BACKGROUNDS } from '../../data/traits.js';
 import { avatarSvg } from '../../avatar/render.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
@@ -25,6 +25,13 @@ function picker(key, label, autoLabel, options) {
     </div>`;
 }
 
+/** A small die: the button beside each name box that picks a name at random. */
+const DIE = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+  <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+  <circle cx="8.5" cy="15.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor"/></svg>`;
+
+const pickFrom = (list) => list[Math.floor(Math.random() * list.length)];
+
 const named = (map) => Object.entries(map).map(([value, label]) => ({ value, label: label.label ?? label }));
 
 /**
@@ -46,13 +53,15 @@ export function renderCreator(app, hooks) {
         <div class="card"><h3>Identity</h3>
           <div class="field-row">
             <div class="field"><label for="f-first">First name</label>
-              <input id="f-first" maxlength="20" autocomplete="off" placeholder="Random"></div>
+              <div class="with-dice"><input id="f-first" maxlength="20" autocomplete="off" placeholder="Random">
+                <button type="button" class="dice-btn" data-dice="first" aria-label="Pick a random first name">${DIE}</button></div></div>
             <div class="field"><label for="f-last">Last name</label>
-              <input id="f-last" maxlength="24" autocomplete="off" placeholder="Random"></div>
+              <div class="with-dice"><input id="f-last" maxlength="24" autocomplete="off" placeholder="Random">
+                <button type="button" class="dice-btn" data-dice="last" aria-label="Pick a random last name">${DIE}</button></div></div>
           </div>
           ${picker('gender', 'Gender', 'Random', named({ female: 'Female', male: 'Male', nonbinary: 'Non-binary' }))}
           ${picker('trans', 'Transgender', 'Random', named({ yes: 'Yes', no: 'No' }))}
-          ${picker('orientation', 'Attracted to', 'Random', ORIENTATIONS.map((o) => ({ value: o.id, label: o.name })))}
+          ${picker('orientation', 'Sexuality', 'Random', ORIENTATIONS.map((o) => ({ value: o.id, label: o.name })))}
         </div>
         <div class="card"><h3>Birthplace</h3>
           <div class="field"><label for="f-country">Country</label>
@@ -130,6 +139,23 @@ export function renderCreator(app, hooks) {
       ? `Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, estate tax ${Math.round(c.estateTax * 100)}%, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'} ${summary(c).short}.`
       : 'Each country has its own currency and taxes.';
   });
+
+  // The dice: a name from the chosen country (or any country, if that is left on Random),
+  // a first name to suit the chosen gender. Each box rolls on its own.
+  app.querySelectorAll('[data-dice]').forEach((btn) => btn.addEventListener('click', () => {
+    const c = COUNTRIES[q('#f-country').value] ?? pickFrom(COUNTRY_LIST);
+    const gender = choice.gender === 'male' || choice.gender === 'female' ? choice.gender : pickFrom(['male', 'female']);
+    const box = q(btn.dataset.dice === 'first' ? '#f-first' : '#f-last');
+    let name;
+    for (let tries = 0; tries < 6 && (!name || name === box.value); tries++) {
+      name = btn.dataset.dice === 'first' ? pickFrom(c.names[gender]) : surnameFor(c.id, pickFrom(c.names.last), gender);
+    }
+    box.value = name;
+    btn.classList.remove('rolling');
+    void btn.offsetWidth; // restart the shake if the die is tapped again mid-roll
+    btn.classList.add('rolling');
+  }));
+  app.querySelectorAll('[data-dice]').forEach((btn) => btn.addEventListener('animationend', () => btn.classList.remove('rolling')));
 
   q('[data-cancel]').addEventListener('click', () => hooks.onCancel());
   q('form').addEventListener('submit', (e) => {

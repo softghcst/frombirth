@@ -20,7 +20,7 @@ export function identityRows() {
   const gender = { female: 'Woman', male: 'Man', nonbinary: 'Non-binary' }[p.gender];
   const rows = [['Gender', trans && p.gender !== who.bornAs() ? `${gender} (transgender)` : gender]];
   if (p.flags.trueGender && p.flags.trueGender !== p.gender && id.knows) rows.push(['What you know', `You are ${who.genderName(p.flags.trueGender)}. Nobody has been told.`]);
-  if (p.age >= 12) rows.push(['Attracted to', `${who.orientationName(p.orientation)}${p.orientation !== 'straight' ? (id.outOrientation ? ', out' : ', not out') : ''}`]);
+  if (p.age >= 12) rows.push(['Sexuality', `${who.orientationName(p.orientation)}${p.orientation !== 'straight' ? (id.outOrientation ? ', out' : ', not out') : ''}`]);
   if (id.hrtAge != null) rows.push(['Hormone therapy', `Since age ${id.hrtAge}`]);
   if (id.top || id.bottom) rows.push(['Surgery', [id.top ? 'top' : '', id.bottom ? 'bottom' : ''].filter(Boolean).join(' and ')]);
   if (id.legal) rows.push(['Legal gender', 'Changed']);
@@ -35,7 +35,7 @@ export async function openIdentity(api) {
   const options = [];
   if (who.canTransition()) options.push({ value: 'gender', label: 'Live as a different gender', sub: 'Tell the people around you who you are.' });
   options.push({ value: 'name', label: 'Change your first name', sub: p.age >= who.AGES.nameAlone ? `${fmtMoney(Math.round(who.COSTS.name * c.currency.scale), c)} in paperwork.` : 'Under 18, a parent on your side has to sign.' });
-  if (p.age >= who.AGES.comeOut) options.push({ value: 'orientation', label: 'Who you are attracted to', sub: `Now: ${who.orientationName(p.orientation).toLowerCase()}.` });
+  if (p.age >= who.AGES.comeOut) options.push({ value: 'orientation', label: 'Sexuality', sub: `Now: ${who.orientationName(p.orientation).toLowerCase()}.` });
   if (who.canComeOut()) options.push({ value: 'comeout', label: 'Come out', sub: 'Tell your family and friends. They will each take it their own way.' });
   if (who.canStartHrt()) options.push({ value: 'hrt', label: 'Start hormone therapy', sub: `${fmtMoney(who.hrtCost(), c)} a year.${p.age < 18 ? ' Needs a parent\'s consent.' : ''}` });
   if (id.hrtAge != null) options.push({ value: 'stophrt', label: 'Stop hormone therapy' });
