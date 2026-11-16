@@ -26,6 +26,7 @@ import { yearMark, carry, nextInterest, reason, showMark, stageFor } from './gra
 import { makeNpc } from './npcFactory.js';
 import { applyMods } from './genetics.js';
 import { wealthTier } from './living.js';
+import { tickSchoolLife, advancedPenalty, examEdge } from './schoollife.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const SCHOOL = ['elementary', 'middle', 'high'];
@@ -213,6 +214,11 @@ export function enter(stage, chosenKind = null) {
   if (kind.away) text += ' You will live there in term time, and come home for the holidays.';
   if (been.length) text += ` ${been[been.length - 1]} went here before you.`;
   log(text);
+  // The very first day of school is its own memory.
+  const e = p.education;
+  const first = classmates()[0];
+  if (stage === 'elementary' && !e.firstDay && first) store.state.pendingEvents.push({ id: 'first_day_school', cast: { mate: first.id } });
+  if (stage !== 'high') delete e.courses; else delete e.examPlan;
   return s;
 }
 
@@ -302,6 +308,7 @@ function classYear(s) {
     log(`${close.firstName} ${close.lastName} from your class has become your best friend.`, 'system', 'good');
   }
   if (classmates().length < kind.class) fillClass({ ...s, kind: s.kind, onlyPupils: true });
+  tickSchoolLife();
 }
 
 // ---------- The year's work ----------
@@ -328,7 +335,9 @@ export function markYear() {
   const s = school();
   if (!s || !e.subjects) return null;
   const kind = KIND_BY_ID[s.kind];
-  const live = subjectsAt(e.stage).filter((sub) => e.subjects[sub.id]);
+  const live = subjectsAt(e.stage).filter((sub) => e.subjects[sub.id] && !e.subjects[sub.id].done);
+  // In the last year, how the exams were prepared for tells on every paper.
+  const exam = e.stage === 'high' && p.age >= LEAVING_AGE ? examEdge() : { add: 0, why: '' };
   const tutored = p.flags.tutorAge === p.age - 1;
   const weakest = tutored ? live.reduce((w, sub) => ((e.subjects[sub.id].g ?? 2) < (e.subjects[w.id].g ?? 2) ? sub : w), live[0]) : null;
   const staff = teachers();
@@ -342,11 +351,11 @@ export function markYear() {
     const club = (sub.club ?? []).some((id) => e.clubs.includes(id));
     const f = { ability: clamp(natural + (e.aptitude[sub.id] ?? 0)), effort: e.effort, discipline: p.hidden.discipline, interest: rec.interest, absences: e.absences,
       teaching: kind.teach + (kind.favours?.includes(sub.id) ? 0.15 : 0) + (s.kind === 'public' ? funding(s.countryId) : 0) + (t ? (t.flags.skill - 50) / 200 + (t.meters.relationship - 50) / 400 : 0),
-      focus: e.focus === sub.id ? 1 : 0, support: weakest?.id === sub.id ? 0.5 : 0, luck: (rng.next() * 2 - 1) * 0.25 };
+      focus: e.focus === sub.id ? 1 : 0, support: (weakest?.id === sub.id ? 0.5 : 0) + exam.add - advancedPenalty(sub.id), luck: (rng.next() * 2 - 1) * 0.25 };
     const y = yearMark(f);
     rec.y = y;
     rec.g = carry(rec.g, y);
-    rec.why = reason(f, y);
+    rec.why = exam.why || reason(f, y);
     rec.interest = nextInterest(rec.interest, y, { teacher: style?.interest ?? 0, club, focus: f.focus });
     sum += y;
     done.push({ sub, y });
@@ -393,7 +402,7 @@ export function view() {
   return {
     school: s, kind, stage: e.stage, stageName: atSchool(p) ? stageName(e.stage) : null, year: (e.yearInStage ?? 0) + 1, grading: m.grading, leaving: m.leaving,
     overall: e.gpa ? mark(e.gpa) : null, effort: e.effort, absences: e.absences, focus: e.focus,
-    subjects: atSchool(p) && e.subjects ? subjectsAt(e.stage).filter((sub) => e.subjects[sub.id]).map((sub) => { const r = e.subjects[sub.id]; return { id: sub.id, name: sub.name, mark: r.g == null ? null : mark(r.g), g: r.g, interest: r.interest, why: r.why ?? '', teacher: teachers().find((t) => t.flags.teaches === sub.id) ?? null }; }) : [],
+    subjects: atSchool(p) && e.subjects ? subjectsAt(e.stage).filter((sub) => e.subjects[sub.id] && !e.subjects[sub.id].done).map((sub) => { const r = e.subjects[sub.id]; return { id: sub.id, name: sub.name, advanced: !!e.courses?.advanced.includes(sub.id), mark: r.g == null ? null : mark(r.g), g: r.g, interest: r.interest, why: r.why ?? '', teacher: teachers().find((t) => t.flags.teaches === sub.id) ?? null }; }) : [],
     classmates: classmates(), friends: npcsByRole('friend').filter((n) => n.flags.metAt), teachers: teachers(),
     history: [...(e.history ?? [])].reverse(), fee: kind?.fee ? localMoney(kind.fee, country()) : 0,
     family: s ? s.family.filter((n) => n !== `${p.firstName} ${p.lastName}`) : [],

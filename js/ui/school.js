@@ -4,6 +4,7 @@
 import { player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import * as sch from '../engine/schooling.js';
+import * as life from '../engine/schoollife.js';
 import { gradingNote } from '../engine/grades.js';
 import { KIND_BY_ID } from '../data/education.js';
 import { roleLabel } from '../engine/relationships.js';
@@ -36,8 +37,9 @@ function pageOverview(v) {
 function pageSubjects(v) {
   if (!v.subjects.length) return '<p class="muted">No subjects yet.</p>';
   return `<p class="muted" style="margin-bottom:8px">A mark comes from ability, work, interest, attendance and teaching together. ${v.focus ? '' : 'You can give one subject extra attention each year.'}</p>
+    ${life.canChooseCourses() ? '<button class="btn primary" data-courses style="width:100%;margin-bottom:10px">Choose your courses for these last years</button>' : ''}
     ${v.subjects.map((s) => `<div class="card sub-card ${v.focus === s.id ? 'on' : ''}">
-      <div class="sub-head"><strong>${esc(s.name)}</strong><span class="sub-mark">${s.mark ?? '–'}</span></div>
+      <div class="sub-head"><strong>${esc(s.name)}${s.advanced ? ' <small>(advanced)</small>' : ''}</strong><span class="sub-mark">${s.mark ?? '–'}</span></div>
       ${meterHtml('Interest', s.interest, true)}
       ${s.why ? `<p class="muted">Last year: ${esc(s.why)}.</p>` : ''}
       ${s.teacher ? `<p class="muted">Taught by ${esc(s.teacher.firstName)} ${esc(s.teacher.lastName)}, who is ${esc(sch.teacherLine(s.teacher))}.</p>` : ''}
@@ -48,10 +50,26 @@ function pageSubjects(v) {
 function pagePeople(v) {
   const old = v.friends.filter((n) => n.alive);
   return `${v.teachers.length ? `<div class="section-label">Teachers</div>${v.teachers.map((t) => person(t, `${t.flags.title} · ${sch.teacherLine(t)}`)).join('')}` : ''}
+    ${(() => { const g = life.group(); return g.members.length >= 2 ? `<div class="section-label">Your friends</div><p class="dyn-reach">${esc(g.members.map((n) => n.firstName).join(', '))}${g.through ? `: you mostly know each other through the ${esc(g.through)}` : ''}${g.circle ? `. People would call you ${esc(g.circle.name)}` : ''}.</p>` : ''; })()}
     <div class="section-label">Your class</div>
-    ${v.classmates.length ? v.classmates.map((n) => person(n, `Age ${n.age}`)).join('') : '<p class="muted">Nobody else is in your class.</p>'}
+    ${v.classmates.length ? v.classmates.map((n) => person(n, `${n.flags.title === 'Best friend' ? 'Best friend · ' : ''}${life.interestName(n) ? `Into ${life.interestName(n).toLowerCase()}` : `Age ${n.age}`}${n.flags.note ? ` · ${n.flags.note}` : ''}`)).join('') : '<p class="muted">Nobody else is in your class.</p>'}
     ${old.length ? `<div class="section-label">Friends from school</div>${old.map((n) => person(n, `${roleLabel(n)} · met at ${n.flags.metAt}`)).join('')}` : ''}
     <p class="muted" style="margin-top:8px">Spend time with any of them from the People tab. Friends you make here stay your friends when school ends.</p>`;
+}
+
+function pageActivities() {
+  const a = life.activities();
+  const p = player();
+  const clubs = a.clubs.map((c) => `<div class="card sub-card"><div class="sub-head"><strong>${esc(c.name)}</strong><span>${esc(c.role)}</span></div>
+      ${meterHtml('Your standing in it', c.standing, true)}
+      ${c.kind === 'sport' ? `<div class="kv"><span>Sport</span><span>${esc(a.sport ?? a.sports[0])}</span></div><button class="btn" data-sport>Play a different sport</button>` : ''}
+      ${c.mates.length ? `<p class="muted">With you: ${esc(c.mates.map((n) => n.firstName).join(', '))}.</p>` : ''}
+      ${c.record.map((r) => `<p class="muted">Age ${r.age}: ${esc(r.text)}.</p>`).join('')}</div>`).join('');
+  return `<div class="kv"><span>How the school sees you</span><span>${esc(a.standing)}</span></div>
+    <p class="muted" style="margin:6px 0 10px">Being well known is not the same as being happy here. Join and leave clubs from the Work tab.</p>
+    ${clubs || `<p class="muted">${p.age < 7 ? 'Clubs come later.' : 'You are not in any clubs or teams.'}</p>`}
+    ${a.athlete?.seasons ? `<div class="section-label">On the field</div><div class="kv"><span>${esc(a.athlete.sport)}</span><span>${a.athlete.seasons} ${a.athlete.seasons === 1 ? 'season' : 'seasons'}${a.athlete.captain ? ' · captain' : ''}</span></div>${a.athlete.awards.map((x) => `<p class="muted">Age ${x.age}: ${esc(x.what)}.</p>`).join('')}${a.athlete.recruited ? `<p class="dyn-reach">A university coach has asked about you.</p>` : ''}` : ''}
+    ${a.performances.length ? `<div class="section-label">On the stage</div>${a.performances.map((x) => `<div class="dyn-event"><span class="num">${x.year}</span><span>${esc(x.role[0].toUpperCase() + x.role.slice(1))} in <em>${esc(x.show)}</em>, ${esc(x.where)}</span></div>`).join('')}` : ''}`;
 }
 
 function pageHistory(v) {
@@ -65,7 +83,7 @@ function pageHistory(v) {
 
 /** Opens the school book. `onChange` is called when something the player did changes the life. */
 export function openSchool(onChange) {
-  const tabs = [['overview', 'School'], ['subjects', 'Subjects'], ['people', 'People'], ['history', 'History']];
+  const tabs = [['overview', 'School'], ['subjects', 'Subjects'], ['people', 'People'], ['activities', 'Clubs'], ['history', 'History']];
   let tab = 'overview';
   const m = openModal(`
     <div class="dyn-head"><div><div class="eyebrow">Education</div><h2>School</h2></div>
@@ -78,7 +96,7 @@ export function openSchool(onChange) {
     const v = sch.view();
     const top = body.scrollTop;
     m.el.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
-    body.innerHTML = tab === 'overview' ? pageOverview(v) : tab === 'subjects' ? pageSubjects(v) : tab === 'people' ? pagePeople(v) : pageHistory(v);
+    body.innerHTML = tab === 'overview' ? pageOverview(v) : tab === 'subjects' ? pageSubjects(v) : tab === 'people' ? pagePeople(v) : tab === 'activities' ? pageActivities() : pageHistory(v);
     body.scrollTop = keep ? top : 0;
   }
   m.el.addEventListener('click', async (e) => {
@@ -87,6 +105,32 @@ export function openSchool(onChange) {
     if (t) { tab = t.dataset.tab; return draw(); }
     const f = e.target.closest('[data-focus]');
     if (f) { sch.setFocus(f.dataset.focus); onChange?.(); return draw(true); }
+    if (e.target.closest('[data-sport]')) {
+      const pick = await pickModal({ title: 'Which sport?', cancel: 'Back', options: life.sportsHere().map((x) => ({ value: x, label: x[0].toUpperCase() + x.slice(1) })) });
+      if (pick) { life.setSport(pick); onChange?.(); }
+      return draw(true);
+    }
+    if (e.target.closest('[data-courses]')) {
+      const o = life.courseOptions();
+      const chosen = [];
+      for (let i = 0; i < o.pick; i++) {
+        const pick = await pickModal({ title: `Elective ${i + 1} of ${o.pick}`, cancel: 'Never mind', body: `Everyone takes ${o.core.map((x) => x.name.toLowerCase()).join(', ')}. Choose three more. Nothing here closes a door for good.`,
+          options: o.electives.filter((x) => !chosen.includes(x.id)).map((x) => ({ value: x.id, label: x.name })) });
+        if (!pick) return undefined;
+        chosen.push(pick);
+      }
+      const advanced = [];
+      for (let i = 0; i < o.advanced; i++) {
+        const pool = [...o.core, ...o.electives.filter((x) => chosen.includes(x.id))].filter((x) => !advanced.includes(x.id));
+        const pick = await pickModal({ title: 'Take a subject at the advanced level?', cancel: 'No more', body: 'Harder work and a lower mark for the same effort, but it counts for more with universities.', options: pool.map((x) => ({ value: x.id, label: x.name })) });
+        if (!pick) break;
+        advanced.push(pick);
+      }
+      const r = life.chooseCourses(chosen, advanced);
+      onChange?.();
+      await messageModal({ body: r.text, tone: r.tone });
+      return draw();
+    }
     if (e.target.closest('[data-move]')) {
       const kind = await pickModal({ title: 'Ask to change schools', cancel: 'Never mind', body: 'You can ask once at each stage of school. Your family decides, and friends you have made stay your friends.',
         options: sch.choices().map((k) => ({ value: k.id, label: k.name, sub: k.why || `${k.blurb} ${k.fee}`, disabled: !!k.why })) });

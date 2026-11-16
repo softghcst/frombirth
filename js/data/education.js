@@ -47,12 +47,12 @@ export const LEAVING_AGE = 18;
 export const SUBJECTS = [
   { id: 'reading', name: 'Reading and writing', until: 'elementary', from: 'elementary', apt: { 'stats.intellect': 1 } },
   { id: 'maths', name: 'Mathematics', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['chess'] },
-  { id: 'science', name: 'Science', from: 'elementary', apt: { 'stats.intellect': 1 } },
+  { id: 'science', name: 'Science', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['science_club', 'environment'] },
   { id: 'literature', name: 'Literature', from: 'middle', apt: { 'stats.intellect': 0.8, 'stats.charm': 0.2 }, club: ['paper', 'debate'] },
   { id: 'history', name: 'History', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['debate'] },
   { id: 'languages', name: 'Languages', from: 'middle', apt: { 'stats.intellect': 0.7, 'stats.charm': 0.3 } },
-  { id: 'technology', name: 'Technology', from: 'middle', apt: { 'stats.intellect': 1 } },
-  { id: 'art', name: 'Art', from: 'elementary', apt: { 'stats.intellect': 0.4, 'stats.charm': 0.6 } },
+  { id: 'technology', name: 'Technology', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['coding'] },
+  { id: 'art', name: 'Art', from: 'elementary', apt: { 'stats.intellect': 0.4, 'stats.charm': 0.6 }, club: ['art_club'] },
   { id: 'music', name: 'Music', from: 'elementary', apt: { 'talents.music': 0.7, 'talents.singing': 0.3 }, club: ['choir', 'band'] },
   { id: 'theatre', name: 'Theatre', from: 'middle', apt: { 'talents.acting': 0.8, 'stats.charm': 0.2 }, club: ['drama', 'youth_theatre', 'musical_theatre'] },
   { id: 'pe', name: 'Physical education', from: 'elementary', apt: { 'talents.sports': 0.7, 'stats.health': 0.3 }, club: ['sports_team', 'dance_class'] },
@@ -104,3 +104,47 @@ export const TEACHING_STYLES = [
   { id: 'dry', name: 'dry', interest: -3 },
   { id: 'fair', name: 'fair', interest: 1 },
 ];
+
+/** What a child may come to care about. Not fixed: interests move with what happens. */
+export const INTERESTS = [
+  { id: 'science', name: 'Science' }, { id: 'maths', name: 'Mathematics' }, { id: 'writing', name: 'Writing' }, { id: 'music', name: 'Music' },
+  { id: 'theatre', name: 'Theatre' }, { id: 'art', name: 'Art' }, { id: 'sport', name: 'Sport' }, { id: 'technology', name: 'Technology' },
+  { id: 'politics', name: 'Politics' }, { id: 'history', name: 'History' }, { id: 'languages', name: 'Languages' }, { id: 'service', name: 'Helping out' }, { id: 'games', name: 'Games' },
+];
+/** The circles a school sorts itself into: by what people care about, not by who they are. The last is for everyone else. */
+export const CIRCLES = [
+  { id: 'academic', name: 'the ones who like the work', interests: ['science', 'maths', 'history', 'languages'] },
+  { id: 'sport', name: 'the sports crowd', interests: ['sport'] },
+  { id: 'stage', name: 'the theatre and music lot', interests: ['theatre', 'music'] },
+  { id: 'makers', name: 'the ones who build things', interests: ['technology', 'games'] },
+  { id: 'creative', name: 'the artists and writers', interests: ['art', 'writing'] },
+  { id: 'causes', name: 'the ones with a cause', interests: ['politics', 'service'] },
+  { id: 'own', name: 'people who go their own way', interests: [] },
+];
+/** What each club does with its year, which decides how it is played: a season, a production, a competition, an election. */
+export const CLUB_KIND = { sports_team: 'sport', drama: 'stage', youth_theatre: 'stage', council: 'council', paper: 'press', debate: 'compete', chess: 'compete', band: 'compete', choir: 'compete',
+  science_club: 'compete', coding: 'compete', art_club: 'compete', environment: 'compete', volunteers: 'compete' };
+/** The interest a club belongs to: classmates who share it are the ones found there. */
+export const CLUB_INTEREST = { sports_team: 'sport', drama: 'theatre', youth_theatre: 'theatre', musical_theatre: 'theatre', council: 'politics', paper: 'writing', debate: 'politics', chess: 'games', band: 'music', choir: 'music',
+  science_club: 'science', coding: 'technology', art_club: 'art', environment: 'service', volunteers: 'service', dance_class: 'theatre' };
+/** The sports schools play, by country. */
+export const SPORTS = {
+  default: ['football', 'basketball', 'volleyball', 'athletics', 'swimming', 'tennis'],
+  us: ['American football', 'basketball', 'baseball', 'soccer', 'track and field', 'swimming', 'tennis', 'volleyball'],
+  ca: ['ice hockey', 'basketball', 'soccer', 'track and field', 'swimming', 'volleyball'],
+  uk: ['football', 'rugby', 'cricket', 'netball', 'hockey', 'athletics', 'swimming', 'tennis'],
+  ie: ['Gaelic football', 'hurling', 'rugby', 'football', 'athletics', 'swimming'],
+  au: ['Australian rules football', 'cricket', 'netball', 'rugby', 'swimming', 'athletics', 'tennis'],
+  nz: ['rugby', 'cricket', 'netball', 'football', 'swimming', 'athletics'],
+  in: ['cricket', 'hockey', 'football', 'badminton', 'athletics', 'kabaddi'],
+  pk: ['cricket', 'hockey', 'football', 'badminton', 'athletics'],
+  jp: ['baseball', 'football', 'judo', 'kendo', 'swimming', 'athletics', 'volleyball'],
+  kr: ['football', 'baseball', 'taekwondo', 'basketball', 'athletics', 'swimming'],
+  za: ['rugby', 'cricket', 'football', 'netball', 'athletics', 'swimming'],
+  jm: ['athletics', 'football', 'cricket', 'netball', 'swimming'],
+};
+/** The last stage of school: what everyone takes, and what can be chosen beside it. */
+export const CORE_HIGH = ['maths', 'science', 'literature', 'languages', 'pe'];
+export const ELECTIVES = ['history', 'technology', 'art', 'music', 'theatre', 'economics', 'government'];
+/** Plays a school might put on. All invented. */
+export const PLAYS = ['The Glass Orchard', 'A Winter Crossing', 'The Lamplighter\'s Daughter', 'Nine Days in August', 'The Paper Kingdom', 'Salt and Honey', 'The Clockmaker of Varna', 'Under the Signal Tower', 'A Door in the Hill', 'The Last Ferry Home'];

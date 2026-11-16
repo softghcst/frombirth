@@ -13,6 +13,7 @@ import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, DROPOUT_AGE, PROGRAMMES, HOUSING, CL
   PRIORITY_BY_ID } from '../data/schools.js';
 import { MAJORS, MAJOR_BY_ID } from '../data/majors.js';
 import * as sch from './schooling.js';
+import { graduationDay } from './schoollife.js';
 import { schoolModel } from '../data/education.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
@@ -288,7 +289,9 @@ function graduate() {
   const leaving = schoolModel(p.countryId).leaving;
   const place = SCHOOL.includes(e.stage) ? sch.school() : null;
   e.degrees.push({ type: e.stage, majorId: major?.id ?? (e.stage === 'apprenticeship' ? trade?.id : undefined),
-    gpa: e.gpa, age: p.age, school: e.schoolName ?? (place && place.kind !== 'home' ? place.name : undefined), award: e.stage === 'high' ? leaving : undefined, countryId: p.countryId });
+    gpa: e.gpa, age: p.age, school: e.schoolName ?? (place && place.kind !== 'home' ? place.name : undefined), award: e.stage === 'high' ? leaving : undefined, countryId: p.countryId,
+    courses: e.stage === 'high' && e.courses ? { ...e.courses } : undefined });
+  if (e.stage === 'high') graduationDay(e.gpa);
   const honours = e.gpa >= 3.7 ? ' with top honours' : e.gpa >= 3.3 ? ' with honours' : '';
   const what = {
     high: `${place && place.kind !== 'home' ? place.name : 'school'} with your ${leaving}`,
