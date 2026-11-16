@@ -9,6 +9,8 @@ import { heirs, continueAs } from './engine/legacy.js';
 import { roleLabel } from './engine/relationships.js';
 import { saveGame, deleteSlot, getGraveyard, updateGrave, undoDepth, popUndo, removeGrave } from './save.js';
 import { normalize } from './avatar/catalog.js';
+import * as cloud from './sync/cloud.js';
+import { askNewPassword, cloudLine } from './ui/settings.js';
 
 const app = document.getElementById('app');
 
@@ -46,6 +48,7 @@ function showDeath(entry) {
 }
 
 function play(state) {
+  onTitle = false;
   store.set(state);
   // A life that ended while the player was still choosing an heir.
   if (!state.player.alive) {
@@ -57,19 +60,30 @@ function play(state) {
   return mountGame(app, { onExit: showTitle, onDeath: showDeath, onRestore: play });
 }
 
+let onTitle = false;
+
 function showTitle() {
   store.state = null;
+  onTitle = true;
   renderTitle(app, {
     onPlay: play,
     onDesign: () => renderCreator(app, {
       onCreate: (opts) => play(createLife(opts)),
       onCancel: showTitle,
     }),
-    onViewGrave: (entry) => renderObituary(app, entry, { onDone: showTitle }),
+    onViewGrave: (entry) => { onTitle = false; renderObituary(app, entry, { onDone: showTitle }); },
   });
 }
 
+// Cloud saves: a link from an email (confirming an account, resetting a
+// password) lands here signed in; then saves sync in the background.
+const arrived = cloud.takeRedirect();
 showTitle();
+// Dialogs sit above the page, so the list of lives can be redrawn underneath one.
+cloud.onPulled(() => { if (onTitle) showTitle(); });
+cloud.onStatus((s) => { const line = document.querySelector('[data-sync-line]'); if (line) line.textContent = cloudLine(s); });
+cloud.startAutoSync();
+if (arrived === 'recovery') askNewPassword();
 
 // Offline support: once the service worker is running, hand it every file
 // this page loaded, so the game works without a connection from the first visit.

@@ -236,8 +236,28 @@ The rules are in `js/engine/politics.js`; the screens are in
 Settings (on the title screen and at the bottom of the Self tab) holds a list
 of names and genders you add yourself. In each life they can turn up as
 friends, classmates, colleagues, dates and strangers, never as born family,
-and each at most once at a time. The list is stored in this browser only
-(`js/people.js`), separately from the saved lives.
+and each at most once at a time. The list is stored in this browser
+(`js/people.js`), separately from the saved lives, and travels with them in a
+transfer code or cloud saves.
+
+## Moving saves between devices
+
+Saves live in the browser, so each device has its own. Two ways to share them,
+both under **Settings**:
+
+- **Transfer saves:** copy a code or save a file on one device, then load it on
+  the other. No account needed. Loading can keep what is already there and add
+  the new lives, or replace everything.
+- **Cloud saves:** sign in with an email and password, and the same lives,
+  graves and People you know are kept on every device that signs in. This needs
+  a free Supabase project. The steps are in
+  [docs/cloud-saves.md](docs/cloud-saves.md), and the two values it gives you go
+  in `js/sync/config.js`. Until then the game works exactly as before.
+
+When two copies are combined, the most recently played copy of each life wins,
+graves and people are joined, and deletions are carried over. The code is in
+`js/sync/`: `bundle.js` packs, combines and unpacks saves; `cloud.js` handles
+accounts and syncing; `config.js` holds the project address and public key.
 
 ## Adding events
 
@@ -258,7 +278,8 @@ legacy, and a final pass that brought the game to over 200 scenes, rebalanced mo
 and promotions, and checked the layout at iPad and phone sizes. Since then: a modular
 avatar system with a live editor, wills with named heirs, skills to practise,
 orientation and gender identity, living conditions by country, royalty,
-politics, and a list of people you know who are written into your lives.
+politics, a list of people you know who are written into your lives, and
+moving saves between devices with a transfer code or cloud saves.
 
 The layout has been checked in a desktop browser emulating iPad and phone
 screens (portrait and landscape). It has not been run on a physical iPad.
