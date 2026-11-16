@@ -99,3 +99,40 @@ export const SCANDALS = [
   'was found to have a second family abroad', 'was caught speeding, three times in one month', 'fell out with the rest of the family in public',
   'took a paid seat on the board of a company that sells to the government', 'was secretly recorded being rude about the prime minister',
 ];
+
+/**
+ * Affairs of state: what a reigning monarch can do with a year. kind 'advise'
+ * is for crowns that do not govern (ceremonial, constitutional); 'rule' for
+ * those that do (executive, absolute).
+ *   support  the country's support for the monarchy; image/family/press: the monarch's own reputations
+ *   risky    { base, stat }: it can fail, and `fail` then replaces the fields it names
+ *   gives    the kind of monarchy this turns the country into
+ */
+export const POWERS = [
+  { id: 'address', kind: 'advise', name: 'Address the nation', note: 'A broadcast in a hard year. It can steady a country, or fall flat.',
+    risky: { base: 0.6, stat: 'charm' }, support: 5, image: 5, text: 'You speak for nine minutes about what the country has been through, and it listens.',
+    fail: { support: -2, image: -4, text: 'The words are right and the delivery is wooden. It is mocked by breakfast.' } },
+  { id: 'honours', kind: 'advise', name: 'Honour people nobody has heard of', note: 'Nurses, lollipop ladies, a man who has run a youth club for forty years.',
+    support: 3, image: 3, karma: 3, text: 'You give the highest honours to people who never expected a letter from a palace. It is the most popular list in memory.' },
+  { id: 'books', kind: 'advise', name: 'Open the palace accounts', note: 'Publish what the crown costs, and cut it. The family will hate it.',
+    support: 9, family: -12, press: 5, chronicle: 'opened the palace accounts to the public and cut the cost of the crown', text: 'Every bill, published. Three residences are given up. The family eats in silence; the country approves.' },
+  { id: 'counsel', kind: 'advise', name: 'Press the government in private', note: 'Your right to advise and to warn. If it leaks, it is meddling.',
+    risky: { base: 0.55, stat: 'intellect' }, support: 3, karma: 4, text: 'A quiet word, at the right moment. A bad law is made a little less bad, and nobody ever knows.',
+    fail: { support: -6, press: -6, text: 'Your letter to a minister is in the newspapers by Friday. "The crown should know its place," says the editorial.' } },
+  { id: 'refuse', kind: 'advise', name: 'Refuse to sign a law', note: 'No monarch has done it in living memory. A constitutional crisis either way.',
+    risky: { base: 0.3, stat: 'charm' }, support: 12, image: 10, karma: 6, chronicle: 'refused to sign a law, and the country backed the crown', text: 'You will not sign. The government blusters, the country takes your side, and the law is withdrawn.',
+    fail: { support: -18, image: -12, press: -10, text: 'You will not sign. The government calls it an attack on democracy, and most of the country agrees.' } },
+
+  { id: 'spend', kind: 'rule', name: 'Build hospitals and schools', note: 'Popular, and what a ruler is for.',
+    support: 6, image: 4, karma: 6, text: 'A hospital in every province, begun this year. Your name is on none of them, at your own order.' },
+  { id: 'purge', kind: 'rule', name: 'Dismiss corrupt officials', note: 'They have friends. Some of the friends are your relatives.',
+    risky: { base: 0.6, stat: 'intellect' }, support: 7, family: -8, karma: 5, text: 'Forty officials gone in a morning, two of them cousins. The markets and the street both approve.',
+    fail: { support: -3, family: -12, text: 'The ones you dismissed were the ones who could be spared. The real thieves send their congratulations.' } },
+  { id: 'kin', kind: 'rule', name: 'Give ministries to your relatives', note: 'The family will be delighted. Nobody else will.',
+    support: -6, family: 12, karma: -5, text: 'Three ministries, three cousins. The family toasts you. In the cafés they are counting on their fingers.' },
+  { id: 'silence', kind: 'rule', name: 'Silence your critics', note: 'It works, for a while, and it is remembered for ever.',
+    support: -4, press: -15, image: -6, karma: -18, text: 'Two newspapers closed and a poet in prison. It is quieter. That is not the same as calmer.' },
+  { id: 'assembly', kind: 'rule', name: 'Hand power to an elected parliament', note: 'You would reign, and no longer rule. It cannot be taken back.', gives: 'constitutional',
+    support: 16, image: 10, family: -20, karma: 15, text: 'You sign away the power your family has held for centuries, in front of the cameras, with a borrowed pen. The family will never forgive you. The country may never forget it.' },
+];
+export const POWERS_PER_YEAR = 2;

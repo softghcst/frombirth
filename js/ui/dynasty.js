@@ -67,6 +67,7 @@ function pageMonarchs(d, me) {
     const span = (r.to ?? store.state.year) - r.from;
     return row(d, x, me, `${r.from}–${r.to ?? ''}<br><small>${span} ${span === 1 ? 'year' : 'years'}</small>`);
   }).join('');
+  const fallen = d.status === 'abolished';
   return `
     <div class="dyn-stats">
       <div><strong>${s.years}</strong><small>years on the throne</small></div>
@@ -76,7 +77,8 @@ function pageMonarchs(d, me) {
     </div>
     <div class="kv"><span>Longest reign</span><span>${name(s.longest)}, ${s.longest.years} years</span></div>
     ${s.shortest ? `<div class="kv"><span>Shortest reign</span><span>${name(s.shortest)}, ${s.shortest.years} ${s.shortest.years === 1 ? 'year' : 'years'}</span></div>` : ''}
-    <div class="kv"><span>How the public sees the house</span><span>${s.standing >= 70 ? 'With affection' : s.standing >= 55 ? 'Warmly enough' : s.standing >= 40 ? 'With mixed feelings' : 'With little patience'}</span></div>
+    ${fallen ? `<div class="kv"><span>The monarchy</span><span>Abolished in ${d.abolishedYear}</span></div>` : ''}
+    <div class="kv"><span>${fallen ? 'How the old house is remembered' : 'Support for the monarchy'}</span><span>${s.standing >= 70 ? 'With affection' : s.standing >= 55 ? 'Warmly enough' : s.standing >= 40 ? 'With mixed feelings' : 'With little patience'}</span></div>
     <div class="section-label">Every monarch of the house</div>${reigns}`;
 }
 
@@ -189,8 +191,8 @@ function pagePerson(d, me, x) {
 }
 
 /** Opens the journal for the royal house of the country the player lives in (or holds a title in). */
-export function openDynasty(startPersonId) {
-  const d = dyn.house(player().royal && ['monarch', 'heir', 'royal'].includes(player().royal.rank) ? player().royal.countryId : country().id);
+export function openDynasty(startPersonId, countryId) {
+  const d = countryId ? store.state.dynasties?.[countryId] : dyn.house(player().royal && ['monarch', 'heir', 'royal'].includes(player().royal.rank) ? player().royal.countryId : country().id);
   if (!d) return;
   const me = dyn.playerPerson(d);
   const tabs = [['monarchs', 'Monarchs'], ['family', 'Family'], ['line', 'Succession'], ['timeline', 'History']];
