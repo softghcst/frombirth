@@ -18,6 +18,8 @@ import { COUNTRIES } from '../data/countries.js';
 import { UNIVERSITY_KIND_BY_ID, UNI_PLACES, UNI_SAINTS, MAX_APPLICATIONS, STATEMENTS } from '../data/universities.js';
 import { SCHOOL_TYPE_BY_ID } from '../data/schools.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
+import { CAREERS } from '../data/careers.js';
+import { OCCUPATIONS } from '../data/traits.js';
 import { assess, meets, aid as aidFor, outlook } from './admissions.js';
 import { tripleThreat } from './conditions.js';
 import { wealthTier } from './living.js';
@@ -66,6 +68,23 @@ export function uniOf(id) {
 
 // ---------- The applicant ----------
 
+/** Whether someone has a degree, as far as can be told: from their own record if they have one, or from the work they do. */
+function hasDegree(n) {
+  if (n.life?.edu) return (n.life.edu.degrees ?? []).some((d) => ['university', 'graduate', 'medical', 'law'].includes(d));
+  // Parents are known by the work they do: the professions are the ones that took a degree to enter.
+  const job = OCCUPATIONS.find((j) => j.title === n.occupation);
+  if (job) return job.income >= 70000;
+  const title = String(n.occupation ?? '').toLowerCase();
+  return !!title && CAREERS.some((c) => (c.req?.degree === 'university' || c.req?.majors || ['medical', 'law'].includes(c.req?.programme)) && c.levels.some((l) => l.title.toLowerCase() === title));
+}
+/** Whether the player would be the first in their family to go to university: neither parent went, nor any family name is on an alumni roll. */
+export function firstInFamily() {
+  const p = player();
+  const parents = npcsByRole('parent');
+  if (!parents.length || parents.some(hasDegree)) return false;
+  return !Object.values(all()).some((u) => u.alumni.some((n) => n.endsWith(` ${p.lastName}`)));
+}
+
 /** Whether the player has anything to plan: nearing the end of school, or out of it with a leaving qualification. */
 export function canPlan() {
   const p = player();
@@ -97,7 +116,7 @@ export function profile(majorId, inst = null) {
     audition: major?.audition ? Math.round(clamp(tripleThreat(p) + (p.flags.directorRec ? 8 : 0) + Math.min(10, (p.flags.performances?.length ?? 0) * 2))) : null,
     athlete: !!p.flags.athlete?.recruited || (!!p.flags.coachRec && p.talents.sports >= 65),
     need: tier === 'poor' ? 2 : tier === 'middle' ? 1 : 0,
-    firstInFamily: parents.length > 0 && parents.every((n) => n.life?.edu) && !parents.some((n) => (n.life.edu.degrees ?? []).some((d) => ['university', 'graduate', 'medical', 'law'].includes(d))),
+    firstInFamily: firstInFamily(),
     legacy: !!inst && inst.alumni.some((n) => n.endsWith(` ${surname}`)),
     transfer: edu.isTransfer(),
   };

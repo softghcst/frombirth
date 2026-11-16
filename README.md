@@ -397,6 +397,35 @@ are always three stages and marks from 0 to 4; the player sees the country's.
   waived. What is left is paid by parents, savings or a loan. A merit
   scholarship is lost if marks fall; help for need is not.
 
+### University life
+
+Once enrolled (`js/engine/campus.js`, scenes in `js/data/events/campusLife.js`):
+
+- **The course is credits.** A degree is 120 credits. A light, standard or
+  heavy load earns 24, 30 or 40 a year and moves marks up or down, so a
+  degree takes five, four or three years. A minor can be taken alongside,
+  goes on the degree, and counts where an employer asks for that subject.
+  Changing course keeps every credit within a family of subjects and loses
+  a year's worth between families. Marks under 1.8 mean academic probation
+  before anything worse.
+- **People.** One professor knows the player; going to office hours each
+  year turns that into a recommendation. A roommate, in halls as well as in
+  a flat, is a person with a way of living: they become a close friend, or
+  the argument has to be had. Friends made here stay.
+- **Organisations.** Up to two of ten: students' union, a subject society,
+  sport, drama (cast by audition), the newspaper, debating, a party branch,
+  volunteering, music, and fraternities or sororities where those exist.
+  Standing grows, and can end in an election.
+- **Internships.** After the first year, three postings each summer in the
+  fields the subject leads to, one of them the one everybody wants. Getting
+  one depends on marks, a professor's backing, leadership and where one is
+  studying. A summer that goes well ends with a job held open, and any
+  internship is a foot in the door for that career.
+- **A year abroad** in one of four countries the university sends students
+  to: the language, a friend for life, and a better chance of a visa there.
+- **Graduation** records the minor and any organisation led, and notes it
+  when nobody in the family has done it before.
+
 University and training are in `js/engine/education.js`.
 
 ### What if?

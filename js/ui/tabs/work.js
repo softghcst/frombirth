@@ -1,6 +1,8 @@
 // Work & School tab: where you stand, what you have committed to, who can
 // open doors for you, and every school, housing and part-time-job action.
 // Full careers arrive in Phase 4.
+import * as campusLife from '../../engine/campus.js';
+import { openCampus } from '../campus.js';
 import * as uni from '../../engine/university.js';
 import { openUniversity } from '../university.js';
 import * as sch from '../../engine/schooling.js';
@@ -364,6 +366,7 @@ export default {
     if (edu.canAskForTutor()) school.push(['tutor', 'Ask your parents for a tutor']);
     if (edu.canJoinClubs()) school.push(['club', 'Clubs and classes']);
     if (e.enrolled && e.stage === 'high') school.push(['clique', 'Choose your crowd']);
+    if (campusLife.atUniversity()) school.unshift(['campus', 'University life: studies, people, experience']);
     if (e.enrolled && edu.isHigher(e.stage)) school.push(['housing', 'Change where you live']);
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);
     const leftSchool = !e.enrolled && (e.degrees.some((d) => d.type === 'high') || p.age >= 16);
@@ -400,7 +403,7 @@ export default {
       ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
         club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api),
-        drop: () => leaveSchool(api), apply: () => applyFlow(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
+        drop: () => leaveSchool(api), apply: () => applyFlow(api), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
         findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();
     };

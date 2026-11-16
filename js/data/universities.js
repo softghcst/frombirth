@@ -58,3 +58,48 @@ export const STATEMENTS = [
   { id: 'story', name: 'Tell the story of something hard', sub: 'Remembered if it is well told. Awkward if it is not.', risky: true },
   { id: 'polish', name: 'Have it polished until it gleams', sub: 'Smooth, impressive, and like a thousand others.', value: 0 },
 ];
+
+/** Credits a full degree takes. A two-year college course takes half. */
+export const DEGREE_CREDITS = 120;
+/** How much to take on in a year: the credits attempted, and what it does to marks. */
+export const LOADS = [
+  { id: 'light', name: 'A light load', credits: 24, mark: 0.2, blurb: 'Fewer courses, better marks, more time for everything else. The degree takes longer.' },
+  { id: 'standard', name: 'A standard load', credits: 30, mark: 0, blurb: 'What the timetable expects.' },
+  { id: 'heavy', name: 'A heavy load', credits: 40, mark: -0.25, blurb: 'Extra courses. Marks suffer, but it makes up lost ground or finishes early.' },
+];
+/** Families of subjects: moving within one keeps every credit; moving between them loses a year's worth. */
+export const MAJOR_GROUP = { engineering: 'stem', mathematics: 'stem', computer_science: 'stem', chemistry: 'stem', biology: 'stem', nursing: 'health', psychology: 'social',
+  political_science: 'social', history: 'humanities', english: 'humanities', journalism: 'humanities', communications: 'humanities', criminal_justice: 'social', education: 'social',
+  finance: 'business', business: 'business', art: 'arts', music: 'arts', theatre: 'arts', musical_theatre: 'arts', musical_theatre_bfa: 'arts' };
+
+/**
+ * Student organisations. factor: what makes someone good at it. mark: what
+ * it does to the year's marks. polExp: political experience a year.
+ * only: countries where such a thing exists.
+ */
+export const ORGS = [
+  { id: 'union', name: 'Students\' union', leader: 'President', factor: 'stats.charm', polExp: 1, blurb: 'Elections, motions, and arguments about the bar prices. Where politicians start.' },
+  { id: 'society', name: 'Subject society', leader: 'Chair', factor: 'stats.intellect', mark: 0.06, blurb: 'Talks, a journal, and people who love what you are studying.' },
+  { id: 'sports', name: 'University sports club', leader: 'Captain', factor: 'talents.sports', yearly: { stats: { health: 2 }, talents: { sports: 2 } }, blurb: 'Training twice a week and a fixture on Wednesdays.' },
+  { id: 'drama', name: 'Drama society', leader: 'President', factor: 'talents.acting', stage: true, blurb: 'Three shows a year, cast by audition.' },
+  { id: 'paper', name: 'Student newspaper', leader: 'Editor', factor: 'stats.intellect', yearly: { hidden: { discipline: 1 } }, blurb: 'Deadlines, libel worries, and your name in print.' },
+  { id: 'debate', name: 'Debating union', leader: 'President', factor: 'stats.charm', polExp: 1, yearly: { stats: { charm: 1 } }, blurb: 'Formal wear and informal cruelty.' },
+  { id: 'politics', name: 'Party student branch', leader: 'Chair', factor: 'stats.charm', polExp: 2, needsParty: true, blurb: 'Leaflets, canvassing, and meeting the people who will one day select candidates.' },
+  { id: 'volunteers', name: 'Volunteering society', leader: 'Coordinator', factor: 'hidden.karma', yearly: { hidden: { karma: 3 } }, blurb: 'Tutoring, food banks, and a minibus that mostly starts.' },
+  { id: 'music', name: 'Orchestra and choir', leader: 'Leader', factor: 'talents.music', yearly: { talents: { music: 2, singing: 1 } }, blurb: 'Rehearsals on Tuesdays, a concert every term.' },
+  { id: 'greek', name: 'Fraternity or sorority', leader: 'President', factor: 'stats.charm', mark: -0.08, dues: 1200, only: ['us', 'ca', 'ph'], yearly: { stats: { charm: 2, mood: 2 } }, blurb: 'A house, a set of letters, and friends who will answer the phone in thirty years. Dues every year.' },
+];
+export const ORG_BY_ID = Object.fromEntries(ORGS.map((o) => [o.id, o]));
+export const MAX_ORGS = 2;
+
+/** What a roommate is like to live with. line: how they are first described. clash: what the argument is about. */
+export const HABITS = [
+  { id: 'tidy', line: 'folds everything, including towels', clash: 'the state you leave the kitchen in' },
+  { id: 'messy', line: 'has never knowingly washed a mug', clash: 'the washing-up, which has begun to grow' },
+  { id: 'owl', line: 'comes alive at midnight', clash: 'the noise at three in the morning' },
+  { id: 'lark', line: 'is up at six, cheerfully', clash: 'the alarm that goes off at six, every day' },
+  { id: 'host', line: 'knows everyone, and invites them round', clash: 'the strangers asleep on the sofa' },
+  { id: 'quiet', line: 'says very little, and listens to everything', clash: 'the silence, which has started to feel pointed' },
+];
+/** Invented employers for internships: one word from each list. */
+export const EMPLOYERS = { first: ['Halden', 'Marrow', 'Castell', 'Brightwater', 'Northfold', 'Ostrander', 'Fairlight', 'Tessel', 'Kestrel', 'Lowry'], second: ['& Partners', 'Group', 'Associates', 'Works', 'Institute', 'Trust', 'Laboratories', 'Media', 'Systems', 'Holdings'] };

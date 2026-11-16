@@ -32,6 +32,7 @@ function visaChance(countryId) {
   if (p.career.careerId) chance += 0.1;
   if (p.legal.record.some((r) => r.convicted && !r.juvenile)) chance -= 0.4;
   if (countryId) chance += visaEdge(countryId, p); // speaking the language counts
+  if (countryId && (p.flags.studiedIn ?? []).includes(countryId)) chance += 0.1; // and so does having lived there as a student
   return clamp(chance, 0.05, 0.95);
 }
 

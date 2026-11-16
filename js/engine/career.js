@@ -54,7 +54,7 @@ export function unmet(career) {
   if (vouched) { /* someone who knows your work is holding the job for you */ }
   else if (r.degree === 'high' && !degrees().length) out.push('Needs a high-school diploma.');
   else if (r.degree === 'university' && !hasDegree('university')) out.push('Needs a university degree.');
-  else if (r.majors && !degrees().some((d) => d.type === 'university' && r.majors.includes(d.majorId))) {
+  else if (r.majors && !degrees().some((d) => d.type === 'university' && (r.majors.includes(d.majorId) || r.majors.includes(d.minorId)))) {
     const names = r.majors.slice(0, 3).map((m) => MAJOR_BY_ID[m].name);
     out.push(`Needs a degree in ${names.join(', ')}${r.majors.length > 3 ? ' or similar' : ''}.`);
   }
@@ -77,6 +77,9 @@ const doorOpen = (d) => (d.flag ? !!player().flags[d.flag] : hasTrade(d.trade));
 
 /** A standing offer that skips the hiring process, if the player has one. */
 function standingOffer(career) {
+  const p = player();
+  // An employer who liked their intern keeps a job open for them.
+  if (p.flags.returnOffer?.careerId === career.id && !p.flags[`usedDoor_${career.id}`]) return { guaranteed: true, level: 0, text: `${p.flags.returnOffer.employer} kept its word: the job was waiting for you.` };
   return (career.doors ?? []).find((d) => d.guaranteed && doorOpen(d) && !player().flags[`usedDoor_${career.id}`]);
 }
 
@@ -85,6 +88,7 @@ function doorBonus(career) {
   const p = player();
   let bonus = (career.doors ?? []).filter((d) => !d.guaranteed && doorOpen(d)).reduce((s, d) => s + d.bonus, 0);
   if (career.focus && p.flags.cosmoFocus === career.focus) bonus += 0.25;
+  if ((p.flags.internships ?? []).some((i) => i.careerId === career.id)) bonus += 0.2; // they have done the work before
   return bonus + hiringEdge(p); // languages: an asset anywhere, and a barrier where you cannot speak the one in use
 }
 
