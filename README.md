@@ -349,6 +349,24 @@ are always three stages and marks from 0 to 4; the player sees the country's.
 - **The school book** (Work tab) shows the school, every subject, the class
   and teachers, and every school attended. Rules: `js/engine/schooling.js`.
 
+- **School life** (`js/engine/schoollife.js`, scenes in
+  `js/data/events/schoolLife.js`). Classmates have interests and clubs of
+  their own, and news of their own each year. The player's friendship group
+  is whoever they are actually close to, usually found through a shared club.
+  - *Clubs and teams* have a year: a season for the school team (in a sport
+    the country plays), a competition for the debaters and the band, a
+    production for the drama club. Standing in a club grows with skill and
+    time, and can end in being chosen to lead it. The best older players are
+    noticed by university coaches.
+  - *Productions* begin with an audition against a named classmate, and the
+    part goes to whoever suits it. Every part played is kept for good.
+  - *Courses* are chosen for the last stage of school: three electives
+    beside the core, and up to two subjects at an advanced level.
+  - *Scenes* come from what is true of this class: a first day, a birthday
+    party, a best friend moving away, friends falling out, a rumour, being
+    bullied (with adults who act when told), a teacher who sees something,
+    a false accusation, the dance, the final exams, the last day.
+
 University and training are in `js/engine/education.js`.
 
 ### What if?
