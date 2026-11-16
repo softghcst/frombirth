@@ -37,13 +37,17 @@ function schooling(h, atHome) {
   const e = h.life.edu;
   const a = h.age;
   const gpa = round2(e.gpa || 2.5);
-  const degrees = e.degrees.map((t) => (t === 'high' ? { type: 'high', gpa, age: 18 }
+  const leaving = schoolModel(store.state.player.countryId).leaving;
+  const degrees = e.degrees.map((t) => (t === 'high' ? { type: 'high', gpa, age: 18, award: leaving }
     : t === 'university' ? { type: 'university', majorId: e.majorId, gpa, age: 22, ...(store.state.universities?.[e.uniId] ? { school: store.state.universities[e.uniId].name } : {}) }
       : t === 'apprenticeship' ? { type: 'apprenticeship', majorId: e.trade, gpa, age: 21 }
         : { type: t, gpa, age: 26 }));
   const edu = { stage: 'none', enrolled: false, yearInStage: 0, gpa: a >= 6 ? gpa : 0, effort: 50, absences: 0,
     clique: null, clubs: [], majorId: null, funding: null, housing: atHome ? 'home' : 'apartment', roommateId: null,
-    housingAid: false, degrees, expelled: false, droppedOut: false };
+    housingAid: false, degrees, expelled: false, droppedOut: false,
+    // The schools they went to as a child, kept for the family's record.
+    // (one still at school is re-enrolled at the current one, which adds it again)
+    history: (a < 18 ? (e.schools ?? []).slice(0, -1) : e.schools ?? []).map((s, i, all) => ({ schoolId: null, name: s.name, kind: s.kind, stage: null, stageName: '', from: s.from, to: all[i + 1]?.from ?? Math.min(a, 18), how: 'completed' })) };
   if (a < 18) {
     const stage = stageFor(a, schoolModel(store.state.player.countryId).stages, 99) ?? [...SCHOOL_STAGES].reverse().find((s) => s.start <= a);
     if (stage) Object.assign(edu, { stage: stage.id, enrolled: true, yearInStage: a - stage.start });
@@ -57,7 +61,7 @@ function schooling(h, atHome) {
       majorId: e.stage === 'apprenticeship' ? e.trade : e.majorId,
       funding: PROGRAMMES[e.stage].tuition ? 'loan' : null, housing: atHome ? 'home' : 'dorm' });
   }
-  if (!degrees.some((d) => d.type === 'high')) degrees.unshift({ type: 'high', gpa, age: 18 });
+  if (!degrees.some((d) => d.type === 'high')) degrees.unshift({ type: 'high', gpa, age: 18, award: leaving });
   edu.stage = degrees[degrees.length - 1].type;
   return edu;
 }

@@ -21,13 +21,14 @@ import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { schoolModel, subjectsAt, SUBJECT_BY_ID, SCHOOL_KINDS, KIND_BY_ID, SCHOOL_PLACES, SCHOOL_SAINTS, TEACHING_STYLES, LEAVING_AGE } from '../data/education.js';
-import { yearMark, carry, nextInterest, reason, showMark, stageFor } from './grades.js';
+import { degreeScheme, schoolModel, subjectsAt, SUBJECT_BY_ID, SCHOOL_KINDS, KIND_BY_ID, SCHOOL_PLACES, SCHOOL_SAINTS, TEACHING_STYLES, LEAVING_AGE } from '../data/education.js';
+import { yearMark, carry, nextInterest, reason, showMark, showDegree, stageFor } from './grades.js';
 import { makeNpc } from './npcFactory.js';
 import { applyMods } from './genetics.js';
 import { wealthTier } from './living.js';
 import { tickSchoolLife, advancedPenalty, examEdge } from './schoollife.js';
 import { preferredKind } from './royaled.js';
+import { localSchoolPatterns, fillName } from '../data/localNames.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const SCHOOL = ['elementary', 'middle', 'high'];
@@ -43,13 +44,23 @@ export const stageName = (stage, countryId = player().countryId) => schoolModel(
 export const stageDue = (age, countryId = player().countryId) => stageFor(age, schoolModel(countryId).stages, LEAVING_AGE);
 /** A mark as this country writes it. */
 export const mark = (g, countryId = player().countryId) => showMark(g, schoolModel(countryId).grading);
+/** A university or professional result as this country writes it: "2:1", "14/20", "GPA 3.40". */
+export const degreeMark = (g, countryId = player().countryId) => showDegree(g, degreeScheme(countryId));
 
 // ---------- Schools ----------
 
 const title = (s) => s.replace(/(^|\s)(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
 
-function nameFor(kind, stage, countryId) {
+function nameFor(kind, stage, countryId, city) {
   const taken = new Set(Object.values(schools()).map((s) => s.name));
+  // In much of the world schools are named in the country's own language.
+  const local = kind.id === 'palace' ? null : localSchoolPatterns(kind.id, stage, countryId);
+  if (local) {
+    for (let i = 0; i < 16; i++) {
+      const name = fillName(rng.pick(local), countryId, city, (xs) => rng.pick(xs), rng.int(2, 60));
+      if (!taken.has(name)) return name;
+    }
+  }
   for (let i = 0; i < 12; i++) {
     const name = rng.pick(kind.suffix).replace('{place}', rng.pick(SCHOOL_PLACES)).replace('{saint}', rng.pick(SCHOOL_SAINTS)).replace('{stage}', title(stageName(stage, countryId)));
     if (!taken.has(name)) return name;
@@ -67,7 +78,7 @@ function findOrFound(kindId, stage, city, countryId) {
   if (here) return here;
   const id = `sch${Object.keys(schools()).length + 1}_${Math.floor(rng.next() * 1e6).toString(36)}`;
   const c = COUNTRIES[countryId];
-  const s = { id, name: kindId === 'home' ? 'Home' : nameFor(kind, stage, countryId), kind: kindId, stage, countryId, city, founded: store.state.year - rng.int(8, 160), family: [],
+  const s = { id, name: kindId === 'home' ? 'Home' : nameFor(kind, stage, countryId, city), kind: kindId, stage, countryId, city, founded: store.state.year - rng.int(8, 160), family: [],
     head: `${rng.pick(rng.chance(0.5) ? c.names.male : c.names.female)} ${rng.pick(c.names.last)}` };
   schools()[id] = s;
   return s;

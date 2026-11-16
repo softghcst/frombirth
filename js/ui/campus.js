@@ -3,6 +3,7 @@
 // Rules: engine/campus.js. Everything shown comes from the saved life.
 import { player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
+import { degreeMark } from '../engine/schooling.js';
 import * as campus from '../engine/campus.js';
 import { COUNTRIES } from '../data/countries.js';
 import { avatarSvg } from './avatar.js';
@@ -18,7 +19,7 @@ function pageStudies(v) {
   const loads = campus.loads();
   return `<div class="kv"><span>At</span><span><strong>${esc(v.school)}</strong></span></div>
     <div class="kv"><span>Studying</span><span>${esc(v.major)}${v.minor ? `, with a minor in ${esc(v.minor)}` : ''}</span></div>
-    <div class="kv"><span>Marks</span><span>${v.gpa ? `GPA ${v.gpa.toFixed(2)}` : 'None yet'}${v.probation ? ' · on academic probation' : ''}</span></div>
+    <div class="kv"><span>Marks</span><span>${v.gpa ? esc(degreeMark(v.gpa)) : 'None yet'}${v.probation ? ' · on academic probation' : ''}</span></div>
     ${v.credits != null ? `<div style="margin:8px 0">${meterHtml(`Credits: ${v.credits} of ${v.needed}`, Math.round(v.credits / v.needed * 100), true)}</div>` : ''}
     <div class="section-label">This year's workload</div>
     ${loads.map((l) => `<button class="choice-btn ${l.current ? 'on' : ''}" data-load="${l.id}" ${l.current ? 'disabled' : ''}>${esc(l.name)}${l.current ? ' (now)' : ''}<small>${l.credits} credits a year. ${esc(l.blurb)}</small></button>`).join('')}

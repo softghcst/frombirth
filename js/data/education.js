@@ -23,6 +23,18 @@ const AU = model(['Primary school', 5], ['Secondary school', 12], ['Senior secon
 const NORDIC = model(['Primary school', 6], ['Lower secondary', 13], ['Upper secondary', 16], 'ten', 'upper secondary certificate');
 const DEFAULT = model(['Primary school', 6], ['Lower secondary', 12], ['Upper secondary', 15], 'percent', 'school-leaving certificate');
 
+/** How universities mark, by country. Not listed: a grade-point average. */
+const DEGREE_SCHEME = {
+  uk: 'honours', ie: 'honours', jm: 'honours', ng: 'honours', ke: 'honours', gh: 'honours', pk: 'honours', my: 'honours', sg: 'honours', au: 'honours', nz: 'honours', za: 'honours',
+  fr: 'twenty', be: 'twenty', mc: 'twenty', ma: 'twenty',
+  de: 'german', ch: 'german',
+  it: 'italy',
+  es: 'ten', mx: 'ten', ar: 'ten', co: 'ten', cl: 'ten', pe: 'ten', do: 'ten', ve: 'ten', cu: 'ten', pt: 'ten', br: 'ten', gr: 'ten', nl: 'ten',
+  se: 'ects', no: 'ects', dk: 'ects', pl: 'ects',
+  in: 'percent',
+};
+export const degreeScheme = (countryId) => DEGREE_SCHEME[countryId] ?? 'gpa';
+
 /** Which model each country follows. A country not listed uses DEFAULT. */
 const BY_COUNTRY = {
   us: US, ca: US, ph: US,

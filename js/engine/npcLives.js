@@ -7,6 +7,8 @@
 // to respond (see data/events/familyLives.js).
 import { rng } from '../rng.js';
 import * as kid from './kidschool.js';
+import { showMark } from './grades.js';
+import { schoolModel } from '../data/education.js';
 import { clamp, localMoney, fmtMoney, localWage, localCost } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
@@ -204,7 +206,7 @@ function chooseMajor(npc) {
 function choosePath(npc, quiet) {
   const e = npc.life.edu;
   const f = npc.flags;
-  let uni = clamp((e.gpa - 2) / 2 * 0.8 + (npc.meters.intellect - 50) / 120, 0.05, 0.92);
+  let uni = clamp((e.gpa - 2) / 2 * 0.8 + (npc.meters.intellect - 50) / 120 + kid.familyPull(npc), 0.05, 0.92);
   if (f.pushUniversity) uni = clamp(uni + 0.3, 0, 0.97);
   if (f.pushWork) uni = clamp(uni - 0.3, 0.02, 1);
   e.degrees.push('high');
@@ -550,7 +552,7 @@ export function lifeSummary(npc) {
   const named = npc.role === 'child' && (kid.schoolLine(npc));
   if (named) { /* shown by the People tab */ } else if (school && e.stage !== 'done') {
     rows.push(['Education', school + (e.stage === 'university' ? `, ${MAJOR_BY_ID[e.majorId].name}` : e.stage === 'apprenticeship' ? ` ${TRADE_BY_ID[e.trade].name.toLowerCase()}` : '')
-      + (npc.age >= 6 && npc.age <= 17 ? `, GPA ${e.gpa.toFixed(2)}` : '')]);
+      + (npc.age >= 6 && npc.age <= 17 ? `, ${showMark(e.gpa, schoolModel(npc.countryId ?? country().id).grading)}` : '')]);
   } else if (e.degrees.length) {
     const top = e.degrees.includes('medical') ? 'Medical degree' : e.degrees.includes('law') ? 'Law degree'
       : e.degrees.includes('university') ? `Degree in ${MAJOR_BY_ID[e.majorId].name}`

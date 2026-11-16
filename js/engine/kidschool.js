@@ -20,8 +20,9 @@ import { store, player, country, livingNpcs, log, milestone } from '../state.js'
 import { KIND_BY_ID, LEAVING_AGE } from '../data/education.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 import * as sch from './schooling.js';
-import { catalogue, uniOf } from './university.js';
+import { catalogue, uniOf, teaches } from './university.js';
 import { spendAction } from './relationships.js';
+import { wealthTier } from './living.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npcOf = (id) => store.state.npcs[id];
@@ -109,6 +110,11 @@ export function tickKids() {
         store.state.pendingEvents.push({ id: 'kid_prize', cast: { kid: n.id, words: { prize, school: schoolOf(n)?.name ?? 'school' } } });
       }
     }
+  }
+  // Grandchildren go to school too; their parents choose, quietly, and mostly the local school.
+  for (const n of livingNpcs().filter((x) => x.role === 'grandchild' && x.alive && x.age >= 5 && x.age < LEAVING_AGE && x.life?.edu && !x.flags.abroad)) {
+    const stage = stageOf(n);
+    if (stage && stage !== n.life.edu.schoolStage) place(n, giftedKind(n, stage) && rng.chance(0.2) ? giftedKind(n, stage) : 'public', true);
   }
   // A grown child who goes back to study, and whether they finish.
   for (const n of livingNpcs().filter((x) => x.role === 'child' && x.life?.edu)) {
@@ -294,7 +300,8 @@ export function uniTalk(id, how) {
  * university is likelier, and family history is noticed; neither is a guarantee.
  */
 export function chooseUniversity(n) {
-  const unis = catalogue(player().countryId).filter((u) => u.kind !== 'open');
+  const subject = n.life.edu.majorId;
+  const unis = catalogue(player().countryId).filter((u) => u.kind !== 'open' && (!subject || teaches(u, subject)));
   if (!unis.length) return null;
   const g = n.life.edu.gpa;
   const reach = (u) => g >= (u.bar ?? 2.5) - 0.35;
@@ -322,6 +329,20 @@ export function graduated(n) {
   if (n.role === 'child' && !p.flags.childGraduated) { p.flags.childGraduated = true; milestone(`Watched ${n.firstName} graduate${u ? ` from ${u.name}` : ''}.`, 'family'); }
 }
 
+/**
+ * What a family brings to a child's decision at eighteen, besides their marks:
+ * a parent who went to university and can tell them what it is like, money at
+ * home, a school that expects its pupils to go on. Not inherited ability.
+ */
+export function familyPull(n) {
+  if (n.role !== 'child') return 0;
+  const p = player();
+  const grad = p.education.degrees.some((d) => ['university', 'graduate', 'medical', 'law', 'doctorate'].includes(d.type));
+  const tier = wealthTier();
+  const kind = n.life?.edu?.kind;
+  return (grad ? 0.15 : 0) + (tier === 'rich' ? 0.1 : tier === 'middle' ? 0.05 : 0) + (['private', 'boarding', 'selective'].includes(kind) ? 0.08 : 0);
+}
+
 /** This year's help and the school itself, as they tell in the yearly mark. Spends the help. */
 export function edge(n) {
   const e = n.life?.edu;
@@ -343,6 +364,12 @@ function finishBack(n) {
   const odds = clamp(0.5 + (b.backed === 'paid' ? 0.25 : b.backed === 'cheer' ? 0.12 : b.backed === 'doubt' ? -0.15 : 0) + (n.meters.intellect - 50) / 200, 0.15, 0.95);
   if (rng.chance(odds)) {
     e.degrees.push(/teaching/.test(b.course) ? 'teaching' : 'university');
+    if (!/teaching/.test(b.course)) {
+      const subject = { Nursing: 'nursing', Business: 'business', Psychology: 'psychology', 'Computer Science': 'computer_science' }[(b.course.match(/in (.+)$/) ?? [])[1]];
+      if (subject && !e.majorId) e.majorId = subject;
+      const open = catalogue(player().countryId).find((u) => u.kind === 'open');
+      if (open && !e.uniId) { e.uniId = open.id; graduated(n); }
+    }
     n.meters.intellect = clamp(n.meters.intellect + 3);
     bump(n, b.backed === 'doubt' ? 0 : 5);
     log(`${n.firstName} has finished ${b.course}, at ${n.age}, after years of evenings. ${b.backed === 'paid' ? 'You paid for it, and you are in the front row.' : b.backed === 'doubt' ? `${they(n).replace(/^./, (c) => c.toUpperCase())} did it without your blessing.` : 'You are in the front row.'}`, 'system', 'good');

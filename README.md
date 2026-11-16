@@ -479,6 +479,23 @@ University and training are in `js/engine/education.js`.
   students can intern in a politician's office; one who remembers you well
   may endorse you later, as may a school-council friend.
 
+- **Families shape the choice, not the genes.** Whether a child goes to
+  university depends on their marks, and on what the family brings: a
+  parent who went, money at home, the school they attended. Grandchildren
+  go to school too, so an heir of any generation arrives with a record.
+
+### Schools and degrees in each country's own terms
+
+Schools and universities are named in the country's language
+(`js/data/localNames.js`): a *Lycée* in France, a *Gesamtschule* in
+Germany, an *Instituto* in Spain and Latin America, numbered schools in
+East Asia. All the place words are invented. University results are shown
+the way each country writes them (`showDegree` in `js/engine/grades.js`):
+honours classes in the UK and much of the Commonwealth, marks out of 20 in
+France, 1,0–5,0 in Germany, out of 110 in Italy, out of 10 in Spain and the
+Netherlands, A–F in Scandinavia, a GPA in the United States and East Asia.
+Underneath, every mark is still on one 0–4 scale.
+
 ### What if?
 
 At a turning point (an offer, a proposal, a betrayal, a term ending, a crown)
