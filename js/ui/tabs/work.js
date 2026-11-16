@@ -186,7 +186,7 @@ async function chooseFunding(api, fee, length, offer) {
       options: [
         ...(offer.scholarship ? [{ value: 'scholarship', label: 'Accept the scholarship',
           sub: `Free while your GPA stays above 2.5.${offer.housingAid ? ' Includes a dorm room.' : ''}` }] : []),
-        { value: 'parents', label: 'Ask your parents', sub: askedParents ? 'They already said no.' : 'They might say no.', disabled: askedParents },
+        ...(edu.canAskParents() ? [{ value: 'parents', label: 'Ask your parents', sub: askedParents ? 'They already said no.' : 'They might say no.', disabled: askedParents }] : []),
         ...(p.career.careerId ? [{ value: 'employer', label: 'Ask your employer to pay', sub: p.flags.askedEmployerAge === p.age ? 'You have asked this year.' : 'They do it for people they want to keep.', disabled: p.flags.askedEmployerAge === p.age }] : []),
         { value: 'loan', label: 'Take a student loan', sub: '5% interest. Repayments start once you are earning.' },
         { value: 'self', label: 'Pay from savings', sub: `You have ${fmtMoney(p.finance.cash, c)}.`, disabled: p.finance.cash < fee },

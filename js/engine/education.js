@@ -836,10 +836,15 @@ export function applyTo(progId, subjectId) {
   return { accepted: true, text, scholarship, housingAid };
 }
 
+/** Parents pay for a young person's studies, not for a grown adult's. */
+export const PARENTS_PAY_UNTIL = 25;
+export const canAskParents = (p = player()) => p.age <= PARENTS_PAY_UNTIL && npcsByRole('parent').length > 0;
+
 /** Rolls whether the parents agree to pay. Can only be asked once per application. */
 export function askParentsToPay() {
   const parents = npcsByRole('parent');
   if (!parents.length) return result(false, 'There is nobody to ask.');
+  if (!canAskParents()) return result(false, 'At your age, this is yours to pay for.');
   const avg = (f) => parents.reduce((s, n) => s + f(n), 0) / parents.length;
   const chance = clamp(avg((n) => n.wealth) / 100 * 0.7 + avg((n) => n.meters.generosity) / 100 * 0.3
     + avg((n) => n.meters.relationship) / 100 * 0.3 - 0.3, 0.03, 0.95);
