@@ -27,6 +27,9 @@ import { tickLanguages } from './languages.js';
 import { tickAlumni } from './schooling.js';
 import { tickApplications } from './university.js';
 import { grandfather } from './adulted.js';
+import { tickKids } from './kidschool.js';
+import { tickSchoolFunding } from './edlegacy.js';
+import { tickRoyalEducation } from './royaled.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
@@ -83,6 +86,9 @@ export function advanceYear() {
   tickAlumni();
   tickApplications();
   grandfather();
+  tickSchoolFunding();
+  tickKids();
+  tickRoyalEducation();
   { const learned = tickLanguages(); if (learned) log(learned, 'system', 'good'); }
   for (const n of tickLocal()) log(n.text, 'system', n.tone);
   tickActivism();

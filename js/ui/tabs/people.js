@@ -6,6 +6,7 @@ import * as rel from '../../engine/relationships.js';
 import * as love from '../../engine/romance.js';
 import * as kids from '../../engine/children.js';
 import * as lives from '../../engine/npcLives.js';
+import * as kid from '../../engine/kidschool.js';
 import { openFamilyTree } from '../familyTree.js';
 import { avatarSvg, petGlyph } from '../avatar.js';
 import { meterHtml, band } from '../meter.js';
@@ -224,6 +225,8 @@ function openNpc(npc, api) {
        <div style="height:14px"></div>` : '';
 
   const life = lives.lifeSummary(npc);
+  const at = npc.role === 'child' && npc.alive ? kid.schoolLine(npc) : null;
+  if (at) life.unshift(at);
   const lifeCard = life.length ? `<div class="section-label" style="margin-top:0">Their life</div>
     ${life.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
     <div style="height:14px"></div>` : '';
@@ -235,6 +238,7 @@ function openNpc(npc, api) {
 
   const actions = [
     ...(npc.alive ? love.romanceActions(npc) : []),
+    ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
@@ -276,6 +280,28 @@ function openNpc(npc, api) {
       hookUp: () => report(api, love.hookUp(npc.id)),
       baby: () => report(api, kids.tryForBaby(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
+      homework: async () => {
+        const how = await pickModal({ title: `${npc.firstName}'s homework`, body: 'How you help matters, and what works depends on the child.', options: kid.HOMEWORK.map((h) => ({ value: h.id, label: h.label, sub: h.sub })) });
+        if (how) await report(api, kid.homework(npc.id, how));
+      },
+      schoolEvent: () => report(api, kid.attend(npc.id)),
+      kidTutor: async () => {
+        const c = country();
+        const yes = await confirmModal({ title: 'Pay for a tutor?', body: `Two evenings a week for a year: ${fmtMoney(localMoney(kid.TUTOR_COST, c), c)}.`, yes: 'Pay for it' });
+        if (yes) await report(api, kid.tutor(npc.id));
+      },
+      kidSchool: async () => {
+        const c = country();
+        const pick = await pickModal({ title: `A school for ${npc.firstName}`, body: 'Moving a child takes them away from their friends. A school that suits them can be worth it.',
+          options: kid.schoolOptions(npc.id).map((o) => ({ value: o.id, label: `${o.name}${o.now ? ' (now)' : ''}`, sub: o.why || `${o.blurb}${o.fee ? ` ${fmtMoney(o.fee, c)} a year.` : ''}`, disabled: !!o.why || o.now })) });
+        if (pick) await report(api, kid.moveSchool(npc.id, pick));
+      },
+      uniPlans: async () => {
+        const mine = kid.myUniversity();
+        const how = await pickModal({ title: `${npc.firstName}'s plans`, body: `${npc.firstName} is ${npc.age}. The decision is theirs to make; you can help them make it.`,
+          options: kid.UNI_TALKS.map((t) => ({ value: t.id, label: t.id === 'mine' && mine ? `Suggest ${mine.name}` : t.label, sub: t.sub, disabled: t.id === 'mine' && !mine })) });
+        if (how) await report(api, kid.uniTalk(npc.id, how));
+      },
       talkIdentity: () => report(api, who.talkItThrough(npc.id)),
       edit: () => editPerson(api, npc),
       dynasty: () => openDynasty(npc.flags.houseId),

@@ -13,6 +13,7 @@ import * as fame from '../engine/reputation.js';
 import * as throne from '../engine/reign.js';
 import * as home from '../engine/household.js';
 import * as peers from '../engine/peerage.js';
+import * as royalEd from '../engine/royaled.js';
 import { MONARCHIES } from '../data/royalty.js';
 import { openModal } from './modals.js';
 
@@ -69,6 +70,7 @@ export function royalCard() {
       ${inFamily ? '<button class="btn" data-household>Household and residences</button>' : ''}
       ${peers.nobleRanks(r.countryId).length ? '<button class="btn" data-titles>Titles and honours</button>' : ''}
       ${throne.canGovern() ? `<button class="btn" data-state>Affairs of state <small>${throne.powersLeft()} left this year</small></button>` : ''}
+      ${royalEd.royalChild() && p.age >= 8 ? `<button class="btn" data-lessons>Royal lessons <small>${royalEd.lessonTaken() ? 'Done this year' : 'One this year'}</small></button>` : ''}
       ${crown.canDoDuties() && inFamily ? `<button class="btn" data-duties>Public duties <small>${crown.dutiesLeft()} left this year</small></button>` : ''}
       ${p.age >= 18 && !r.waiting ? `<button class="btn" data-renounce>${r.rank === 'monarch' && r.reigning ? 'Abdicate' : inFamily ? 'Step back from royal life' : 'Give up the title'}</button>` : ''}
     </div></div>`;
@@ -88,8 +90,23 @@ export function bindRoyalCard(el, api) {
   if (repBtn) repBtn.onclick = () => openReputation();
   const duties = el.querySelector('[data-duties]');
   if (duties) duties.onclick = () => openDuties(api);
+  const lessons = el.querySelector('[data-lessons]');
+  if (lessons) lessons.onclick = () => openLessons(api);
   const out = el.querySelector('[data-renounce]');
   if (out) out.onclick = () => openRenounce(api);
+}
+
+async function openLessons(api) {
+  if (royalEd.lessonTaken()) return messageModal({ body: 'The palace timetable has room for one of these a year. The next is next year.' });
+  const pick = await pickModal({
+    title: 'Royal lessons',
+    body: 'Lessons nobody else at school has. One a year, on top of ordinary school. Whether you take to them is up to you, not your title.',
+    options: royalEd.lessonOptions().map((l) => ({ value: l.id, label: l.name, sub: l.why || `${l.sub}${l.years ? ` ${l.years} ${l.years === 1 ? 'year' : 'years'} so far.` : ''}`, disabled: !!l.why })),
+  });
+  if (!pick) return undefined;
+  const r = royalEd.takeLesson(pick);
+  api.changed();
+  return messageModal({ body: r.text, tone: r.tone });
 }
 
 async function openDuties(api) {

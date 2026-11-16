@@ -24,6 +24,7 @@ import { PLAYS } from '../data/education.js';
 import { makeNpc } from './npcFactory.js';
 import { uniOf, firstInFamily } from './university.js';
 import { unbank, defend as defendThesis } from './adulted.js';
+import { legislativePosting, servedIntern } from './edlegacy.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const onCampus = (p = player()) => p.education.enrolled && ['university', 'community'].includes(p.education.stage);
@@ -226,6 +227,9 @@ export function postings() {
       list.push({ id: `i${i}`, employer: `${rng.pick(EMPLOYERS.first)} ${rng.pick(EMPLOYERS.second)}`, careerId: career?.id ?? null, title: `${career ? career.name : 'Office'} intern`, sought,
         pay: localWage(sought ? 9000 : rng.int(2500, 6000), country()), applied: false });
     }
+    // For students of politics, or who have been in student politics: an office in the legislature.
+    const leg = legislativePosting(p.countryId);
+    if (leg) list[2] = { ...list[2], ...leg, careerId: null };
     c.postings = { age: p.age, list };
   }
   return c.postings.list;
@@ -266,6 +270,7 @@ export function applyIntern(id) {
   (p.flags.internships ??= []).push({ age: p.age, employer: post.employer, careerId: post.careerId, title: post.title, went });
   let text = `You spend the summer at ${post.employer} as ${/^[aeiou]/i.test(post.title) ? 'an' : 'a'} ${post.title.toLowerCase()}, under ${boss.firstName} ${boss.lastName}, and are paid ${fmtMoney(post.pay, country())}. `;
   text += went >= 70 ? 'By August they are giving you real work, and asking what your plans are.' : went >= 45 ? 'You learn how the place actually runs, which is not how the brochure says.' : 'You make a great deal of coffee, and one serious mistake.';
+  if (post.figureId) text += servedIntern(post.figureId, went);
   if (went >= 70 && post.careerId) { p.flags.returnOffer = { careerId: post.careerId, employer: post.employer }; text += ' There will be a job for you there when you graduate.'; }
   log(text, 'system', went >= 45 ? 'good' : 'neutral');
   if ((p.flags.internships.length === 1)) milestone(`First internship, at ${post.employer}.`, 'career');

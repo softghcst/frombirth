@@ -20,6 +20,7 @@ import { rollLongevity } from './death.js';
 import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
 import { attractedTo } from './identity.js';
+import { passOn } from './edlegacy.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -37,7 +38,7 @@ function schooling(h, atHome) {
   const a = h.age;
   const gpa = round2(e.gpa || 2.5);
   const degrees = e.degrees.map((t) => (t === 'high' ? { type: 'high', gpa, age: 18 }
-    : t === 'university' ? { type: 'university', majorId: e.majorId, gpa, age: 22 }
+    : t === 'university' ? { type: 'university', majorId: e.majorId, gpa, age: 22, ...(store.state.universities?.[e.uniId] ? { school: store.state.universities[e.uniId].name } : {}) }
       : t === 'apprenticeship' ? { type: 'apprenticeship', majorId: e.trade, gpa, age: 21 }
         : { type: t, gpa, age: 26 }));
   const edu = { stage: 'none', enrolled: false, yearInStage: 0, gpa: a >= 6 ? gpa : 0, effort: 50, absences: 0,
@@ -46,6 +47,8 @@ function schooling(h, atHome) {
   if (a < 18) {
     const stage = stageFor(a, schoolModel(store.state.player.countryId).stages, 99) ?? [...SCHOOL_STAGES].reverse().find((s) => s.start <= a);
     if (stage) Object.assign(edu, { stage: stage.id, enrolled: true, yearInStage: a - stage.start });
+    // The school they were already at, if it is for this stage.
+    if (e.schoolId) edu.joinSchoolId = e.schoolId;
     return edu;
   }
   if (e.yearsLeft > 0 && PROGRAMMES[e.stage]) {
@@ -241,6 +244,7 @@ export function continueAs(npcId) {
   }
 
   // The schools of the world are the same schools: the next generation may sit in the same classrooms.
+  passOn(old, next);
   if (old.schools) next.schools = old.schools;
   if (old.universities) next.universities = old.universities;
   if (player.education.enrolled && !PROGRAMMES[player.education.stage]) ensureSchool();

@@ -451,6 +451,34 @@ University and training are in `js/engine/education.js`.
 - **Credits are kept.** Leaving a degree banks what was earned; coming back
   counts it, less a year's worth if the subject is a long way from the old one.
 
+### Education through a whole life
+
+- **Your children's schooling** (`js/engine/kidschool.js`, scenes in
+  `js/data/events/parenting.js`). Children go to the same schools and
+  universities as everyone else in the world. At each stage you choose
+  where they go: the local school, private, boarding, somewhere that fits
+  their gifts, or what they want. From the People tab: help with homework
+  (patient, strict, or hands-off — strictness helps some children and
+  backfires with others), pay for a tutor, turn up to their concert or
+  match, change their school, talk about university. Scenes for a bad
+  report, a prize, and a grown child going back to study.
+- **The family's record** (`js/engine/edlegacy.js`, Work tab → *Family
+  schooling*). Each generation's schools, degrees, prizes and the teacher
+  who mattered pass to the heir. An heir carries on at the school they
+  were at, and arriving at a university a parent attended is noted.
+  Family history is noticed in admissions; it guarantees nothing.
+- **A royal education** (`js/engine/royaled.js`). At ten: palace tutors,
+  the family's boarding school, or a day school. One royal lesson a year
+  from the royal card: protocol, the constitution, diplomacy, a language,
+  cadet training. At seventeen, the family's expectations — and the choice
+  to follow them, serve first, or go your own way. A title earns nothing
+  at admissions.
+- **Politics.** State schools' teaching follows what national and local
+  government spend on them, a little each year. A rival on the ballot may
+  be someone from your school year, often from the school council. Politics
+  students can intern in a politician's office; one who remembers you well
+  may endorse you later, as may a school-council friend.
+
 ### What if?
 
 At a turning point (an offer, a proposal, a betrayal, a term ending, a crown)

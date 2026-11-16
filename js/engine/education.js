@@ -260,8 +260,13 @@ function yearGpa(p) {
   if (hasMajor(e.stage)) g -= (MAJOR_BY_ID[e.majorId]?.difficulty ?? 0.3) * (e.stage === 'community' ? 0.5 : 1);
   if (e.stage === 'university' && uniOf(e.schoolId)?.strong.includes(e.majorId)) g += 0.1;
   if (!isHigher(e.stage) && p.age >= 12) g += PRIORITY_BY_ID[e.priority]?.gpa ?? 0;
-  if (e.stage === 'medical') g -= 0.25;
-  if (e.stage === 'law') g -= 0.15;
+  // Professional and graduate study builds on the degree before it: a strong student stays strong.
+  if (PROGRAMMES[e.stage]?.needs === 'university') {
+    const prior = [...e.degrees].reverse().find((d) => ['university', 'graduate'].includes(d.type));
+    if (prior?.gpa) g = g * 0.6 + prior.gpa * 0.4;
+  }
+  if (e.stage === 'medical') g -= 0.15;
+  if (e.stage === 'law') g -= 0.08;
   if (p.flags.tutorAge === p.age - 1 && marked == null) g += 0.3; // at school a tutor works on the weakest subject instead
   g += CLIQUE_BY_ID[e.clique]?.gpa ?? 0;
   g += campus.markEdge(); // workload, a minor, and what clubs take out of the week
