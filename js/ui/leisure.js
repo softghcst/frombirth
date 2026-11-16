@@ -50,9 +50,9 @@ export async function cosmeticSurgery(api) {
   if (proc === 'reshape') {
     const p = player();
     const next = await openAppearanceEditor({ title: 'Reshape your features', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id, scope: 'tweaks',
-      confirm: 'Choose a surgeon', note: () => 'Eye spacing, eye size and height, nose and mouth size. Your children will still take after the face you were born with.' });
+      confirm: 'Choose a surgeon', note: () => 'Eye spacing, eye size and height, nose and mouth size.' });
     if (!next) return undefined;
-    tweaks = next.style.tweaks;
+    tweaks = next.inherited.tweaks;
   }
   const surgeon = await pickModal({
     title: 'Who does it?',

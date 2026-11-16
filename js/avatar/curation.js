@@ -77,14 +77,26 @@ export const ROYAL = {
 
 /** Work clothes the portrait wears, by career id (engine/career.js). */
 export const CAREER_DRESS = {
-  police: { outfit: 'outfit_police_01', hat: 'hat_police_01', senior: { outfit: 'outfit_swat_02', hat: 'hat_swat_02', level: 4 } },
-  firefighter: { outfit: 'outfit_firefighter_01', hat: 'hat_firefighter_01' },
-  enlisted: { outfit: 'outfit_military_01', hat: 'hat_military_01' },
-  officer: { outfit: 'outfit_military_01', hat: 'hat_military_01' },
+  police: { outfit: 'outfit_police_01', senior: { outfit: 'outfit_swat_02', level: 4 } },
+  firefighter: { outfit: 'outfit_firefighter_01' },
+  enlisted: { outfit: 'outfit_military_01' },
+  officer: { outfit: 'outfit_military_01' },
   doctor: { outfit: 'outfit_06_doctor' }, nurse: { outfit: 'outfit_06_doctor' }, dentist: { outfit: 'outfit_06_doctor' }, vet: { outfit: 'outfit_06_doctor' },
   pharmacist: { outfit: 'outfit_06_doctor' }, scientist: { outfit: 'outfit_06_doctor' },
-  kitchen: { hat: 'hat_08_chef_hat' },
   lawyer: { outfit: 'outfit_03_suit' }, banker: { outfit: 'outfit_19_tuxedo' }, accountant: { outfit: 'outfit_03_suit' }, political_staff: { outfit: 'outfit_03_suit' },
 };
 export const PRISON = 'outfit_07_prison';
-export const GRADUATION = { outfit: 'outfit_08_grad', hat: 'hat_07_grad_cap' };
+export const GRADUATION = { outfit: 'outfit_08_grad' };
+
+/**
+ * Hairstyles that hide an eye or much of the face (measured: see README). Nobody is given one
+ * at random; they can still be chosen in the creator or the salon.
+ */
+export const HAIR_COVERS_FACE = [
+  'hair_boy_medium_14', 'hair_girl_long_04', 'hair_boy_long_07', 'hair_girl_medium_01',
+  'hair_updo_10', 'hair_updo_02', 'hair_girl_long_11', 'hair_girl_long_03',
+  'hair_boy_long_03', 'hair_boy_long_11', 'hair_girl_long_12', 'hair_girl_medium_03',
+  'hair_girl_medium_12', 'hair_girl_long_01', 'hair_girl_long_08', 'hair_girl_long_10',
+  'hair_boy_medium_13', 'hair_boy_updo_01_manbun', 'hair_boy_medium_01', 'hair_boy_long_04',
+  'hair_girl_medium_04', 'hair_girl_long_15',
+];

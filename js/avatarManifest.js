@@ -315,18 +315,6 @@ export const AVATAR_MANIFEST = {
     {"id": "crown_08_dark_royal", "file": "crowns/crown_08_dark_royal.svg", "label": "Dark royal", "tags": {"royal": true, "rank": "noble"}},
   ],
   hats: [
-    {"id": "hat_01_beanie", "file": "hats/hat_01_beanie.svg", "label": "Beanie"},
-    {"id": "hat_02_baseball_cap", "file": "hats/hat_02_baseball_cap.svg", "label": "Baseball cap"},
-    {"id": "hat_03_bucket_hat", "file": "hats/hat_03_bucket_hat.svg", "label": "Bucket"},
-    {"id": "hat_04_beret", "file": "hats/hat_04_beret.svg", "label": "Beret"},
-    {"id": "hat_05_cowboy", "file": "hats/hat_05_cowboy.svg", "label": "Cowboy"},
-    {"id": "hat_06_sun_hat", "file": "hats/hat_06_sun_hat.svg", "label": "Sun"},
-    {"id": "hat_07_grad_cap", "file": "hats/hat_07_grad_cap.svg", "label": "Grad cap", "tags": {"career": "grad"}},
-    {"id": "hat_08_chef_hat", "file": "hats/hat_08_chef_hat.svg", "label": "Chef", "tags": {"career": "chef"}},
-    {"id": "hat_firefighter_01", "file": "hats/hat_firefighter_01.svg", "label": "Firefighter", "tags": {"career": "firefighter"}},
-    {"id": "hat_military_01", "file": "hats/hat_military_01.svg", "label": "Military", "tags": {"career": "military"}},
-    {"id": "hat_police_01", "file": "hats/hat_police_01.svg", "label": "Police", "tags": {"career": "police"}},
-    {"id": "hat_swat_02", "file": "hats/hat_swat_02.svg", "label": "Swat", "tags": {"career": "swat"}},
   ],
   glasses: [
     {"id": "glasses_07_browline", "file": "glasses/glasses_07_browline.svg", "label": "Browline"},
