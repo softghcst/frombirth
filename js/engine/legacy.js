@@ -247,6 +247,7 @@ export function continueAs(npcId) {
         : player.career.retired ? 'You are retired.' : 'You are not working at the moment.'),
   );
   if (atHome && !parentsAlive) next.journal.push(entry('With no parent left, relatives have taken you in.', 'bad'));
+  if ((op.flags.offices ?? []).some((o) => o.tier >= 3) || (op.politics?.tier ?? 0) >= 3 || op.flags.politicalFamily) player.flags.politicalFamily = true;
   const crownLine = inheritStanding(old, h);
   if (crownLine) next.journal.push(entry(crownLine, 'good'));
   return next;

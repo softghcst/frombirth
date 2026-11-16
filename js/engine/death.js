@@ -57,6 +57,9 @@ export function rollDeath() {
 }
 
 function lastOccupation(p) {
+  if (p.politics) return p.politics.title;
+  const top = (p.flags.offices ?? []).reduce((a, b) => (b.tier > (a?.tier ?? 0) ? b : a), null);
+  if (top && top.tier >= 4) return `Former ${top.title}`;
   if (p.career.title) return p.career.title;
   if (p.career.retired) return 'Retired';
   const last = p.career.history[p.career.history.length - 1];
@@ -252,6 +255,9 @@ function lifeSummary(p, plan) {
     reigned: !!p.flags.reigned, abdicated: !!p.flags.abdicated, consort: p.royal?.by === 'marriage' && ['monarch', 'heir', 'royal'].includes(p.royal.rank),
     bornTitled: p.royal?.by === 'birth', honoured: !!p.flags.honouredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
     marriedRoyal: !!p.flags.marriedRoyal, image: p.royal?.image ?? 0,
+    topOffice: Math.max(0, p.politics?.tier ?? 0, ...(p.flags.offices ?? []).map((o) => o.tier)), yearsInOffice: k.yearsInOffice ?? 0,
+    electionsWon: k.electionsWon ?? 0, electionsLost: k.electionsLost ?? 0, ruledAlone: !!p.flags.ruledAlone,
+    removedFromOffice: !!p.flags.removedFromOffice, approval: p.politics?.approval ?? 0,
   };
 }
 

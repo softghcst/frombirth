@@ -6,6 +6,7 @@
 //   memory.<key>.<memory>   e.g. memory.manager.coveredShift (100 if they remember it, else 0)
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
+import { SYSTEMS } from '../data/politics.js';
 
 /** Singing, dance and acting together. The weakest of the three drags it down. */
 export function tripleThreat(p = player()) {
@@ -28,6 +29,12 @@ const SPECIAL = {
   titled: (p) => !!p.royal,
   reigning: (p) => !!p.royal?.reigning,
   royalBy: (p) => p.royal?.by ?? null,
+  // Politics: inOffice, officeTier (1 council … 5 head of government), democracy (voters choose), partyState.
+  // Approval is plain 'politics.approval'.
+  inOffice: (p) => !!p.politics,
+  officeTier: (p) => p.politics?.tier ?? 0,
+  democracy: () => ['presidential', 'parliamentary'].includes(SYSTEMS[country().id]?.kind),
+  partyState: () => SYSTEMS[country().id]?.kind === 'party',
   conditionIds: (p) => p.conditions.map((c) => c.id),
   inventoryIds: (p) => p.inventory.map((i) => i.id),
   degreeTypes: (p) => p.education.degrees.map((d) => d.type),

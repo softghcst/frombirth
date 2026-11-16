@@ -10,6 +10,7 @@
 //   leftToCharity (base units), visited, generation, earned, livesSaved, properties,
 //   vehicles, greatGrandchildren, talents (how many at 80+), music, childStar,
 //   lifeSentence, neverMoved, holidays, surgeries, mood, health,
+//   topOffice (0 none … 5 head of government), yearsInOffice, electionsWon, electionsLost, ruledAlone, removedFromOffice, approval
 //   reigned, abdicated, consort, bornTitled, honoured, lostTitle, marriedRoyal, image (public opinion, royals only)
 
 export const EPITAPHS = [
@@ -23,6 +24,10 @@ export const EPITAPHS = [
     hint: 'Marry into a royal family, and stay.', earned: (s) => s.consort },
   { id: 'fallen_from_grace', title: 'Fallen from Grace', line: 'Had a title once. The palace does not speak of it.',
     hint: 'Lose a royal title.', earned: (s) => s.lostTitle || s.abdicated },
+  { id: 'ruler_for_life', title: 'Ruler for Life', line: 'Did away with elections, and found that elections were not the only way out.',
+    hint: 'Seize power and rule alone.', earned: (s) => s.ruledAlone },
+  { id: 'led_the_nation', title: 'Led the Nation', line: 'For a few years the whole country was their responsibility, and they knew it.',
+    hint: 'Become head of government.', earned: (s) => s.topOffice >= 5 },
   { id: 'household_name', title: 'Household Name', line: 'Strangers wept. Newspapers cleared the front page.',
     hint: 'Become truly famous.', earned: (s) => s.fame >= 80 },
   { id: 'tycoon', title: 'The Tycoon', line: 'Left behind more money than most towns ever see.',
@@ -90,6 +95,14 @@ export const EPITAPHS = [
     hint: 'Save two lives.', earned: (s) => s.livesSaved >= 2 },
   { id: 'the_lifer', title: 'The Lifer', line: 'The sentence was life, and they served it.',
     hint: 'Die serving a life sentence.', earned: (s) => s.lifeSentence },
+  { id: 'thrown_out', title: 'Thrown Out', line: 'Left office by the back door, with a coat over their head.',
+    hint: 'Be removed from office.', earned: (s) => s.removedFromOffice },
+  { id: 'the_incumbent', title: 'The Incumbent', line: 'Won so often that the other side stopped printing posters.',
+    hint: 'Spend twenty years in elected office.', earned: (s) => s.yearsInOffice >= 20 },
+  { id: 'public_servant', title: 'Public Servant', line: 'Sat through ten thousand meetings so that others did not have to.',
+    hint: 'Hold elected office.', earned: (s) => s.topOffice >= 1 },
+  { id: 'also_ran', title: 'The Also-Ran', line: 'Name on the ballot again and again. Never once on the door.',
+    hint: 'Lose four elections without ever winning one.', earned: (s) => s.electionsLost >= 4 && s.electionsWon === 0 },
   { id: 'arise', title: 'For Services Rendered', line: 'Knelt once, before the crown, and rose with a longer name.',
     hint: 'Be honoured by the crown.', earned: (s) => s.honoured },
   { id: 'blue_blood', title: 'Blue Blood', line: 'Born with a title, a portrait gallery and a leaking roof.',

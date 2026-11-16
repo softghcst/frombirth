@@ -134,7 +134,7 @@ export function resolveChoice(ev, choiceIndex, cast) {
 
   const ctx = { cast: { ...cast }, queue: [] };
   const changes = applyEffects(outcome.effects, ctx);
-  const text = renderText(outcome.text, ctx.cast);
+  const text = renderText(outcome.text, ctx.cast) + (ctx.note ? ` ${ctx.note}` : '');
   const tone = outcome.tone ?? (result === 'success' ? 'good' : result === 'fail' ? 'bad' : 'neutral');
 
   log(renderText(ev.text, cast), 'event');

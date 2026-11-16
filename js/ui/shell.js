@@ -17,6 +17,7 @@ import { runJustice } from './justice.js';
 
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
+  if (p.politics) return `${p.politics.title}${p.career.title && p.politics.tier < 2 ? ` · ${p.career.title}` : ''}`;
   if (p.career.title) return p.career.title;
   if (p.royal && ROYAL_RANKS.includes(p.royal.rank) && (p.age >= 18 || !p.education.enrolled)) return standing(p);
   if (p.education.enrolled) return educationLine(p);
