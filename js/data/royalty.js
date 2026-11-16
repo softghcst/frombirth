@@ -58,14 +58,28 @@ export const ALLOWANCE = { monarch: 9000000, heir: 2500000, royal: 600000, duke:
 export const BORN_ROYAL = 0.012;
 export const BORN_NOBLE = 0.03;
 
-/** Public duties: a few a year. image: what it does for the public's opinion; cost: base units. */
+/**
+ * Public duties: a few a year, of four kinds. image: what it does for the public's opinion; family: for the
+ * family's regard; support: for the monarchy itself; cost: base units; text: one of these is told each time.
+ */
 export const DUTIES = [
-  { id: 'opening', name: 'Open a hospital wing', image: [3, 6], mood: -1, text: 'You cut a ribbon, shook two hundred hands, and remembered every name you were told.' },
-  { id: 'patron', name: 'Become patron of a charity', image: [5, 9], cost: 20000, karma: 6, text: 'Your name on the letterhead doubles what they raise this year.' },
-  { id: 'tour', name: 'Go on a royal tour', image: [4, 10], mood: 2, text: 'Six cities in nine days, a great many children with flags, and one very long banquet.' },
-  { id: 'troops', name: 'Visit the armed forces', image: [3, 6], text: 'You ate in the mess, asked the right questions, and stayed longer than the schedule allowed.' },
-  { id: 'interview', name: 'Give a television interview', image: [-14, 14], risky: true, text: 'An hour on camera, with nowhere to hide.' },
-  { id: 'walkabout', name: 'Meet the crowds', image: [2, 7], mood: 2, text: 'Flowers, phones held up, and an old woman who would not let go of your hand.' },
+  // Charity and public service
+  { id: 'opening', kind: 'Public service', name: 'Open a hospital wing', image: [3, 6], mood: -1, text: ['You cut a ribbon, shook two hundred hands, and remembered every name you were told.', 'The ribbon would not cut. You laughed, somebody found better scissors, and the photograph of you laughing is the one they used.'] },
+  { id: 'patron', kind: 'Public service', name: 'Become patron of a charity', image: [5, 9], cost: 20000, karma: 6, text: ['Your name on the letterhead doubles what they raise this year.', 'You ask to see the accounts before you agree. They are impressed, and a little frightened.'] },
+  { id: 'disaster', kind: 'Public service', name: 'Visit people after a disaster', image: [5, 10], karma: 5, mood: -3, support: 2, text: ['You stand in what was somebody\'s kitchen and listen. There is nothing to say, and you do not try to say it.', 'A man shows you a photograph of his house as it was. You stay with him an hour longer than the schedule allowed.'] },
+  { id: 'walkabout', kind: 'Public service', name: 'Meet the crowds', image: [2, 7], mood: 2, text: ['Flowers, phones held up, and an old woman who would not let go of your hand.', 'A child asks whether you have a crown at home. You say it is very heavy and mostly kept in a cupboard.'] },
+  // Ceremonial
+  { id: 'troops', kind: 'Ceremonial', name: 'Visit the armed forces', image: [3, 6], text: ['You ate in the mess, asked the right questions, and stayed longer than the schedule allowed.', 'A sergeant teaches you to strip a rifle. You are slow, and he is tactful about it.'] },
+  { id: 'memorial', kind: 'Ceremonial', name: 'Lead a service of remembrance', image: [3, 6], support: 2, family: 2, text: ['Two minutes of silence in the rain, and a wreath laid without a single wrong step.', 'An old soldier in the front row salutes you from a wheelchair. You salute back, which is not in the order of service.'] },
+  { id: 'investiture', kind: 'Ceremonial', name: 'Present honours', image: [2, 5], family: 2, mood: 2, text: ['Ninety people, ninety medals, and a different sentence for each of them.', 'A lollipop lady of forty years\' service tells you off for standing in a draught.'] },
+  // Diplomatic
+  { id: 'tour', kind: 'Diplomatic', name: 'Go on a royal tour', image: [4, 10], mood: 2, support: 1, text: ['Six cities in nine days, a great many children with flags, and one very long banquet.', 'You are garlanded, fed, danced at and rained on, and you would not have missed a minute.'] },
+  { id: 'banquet', kind: 'Diplomatic', name: 'Host a state dinner', image: [2, 6], support: 2, family: 3, text: ['A hundred and seventy guests, six courses, and a toast you gave in the visitor\'s own language.', 'The visiting president\'s wife turns out to keep bees. You talk about nothing else, and a treaty is signed in the morning.'] },
+  { id: 'abroad', kind: 'Diplomatic', name: 'Represent the country abroad', image: [-8, 12], risky: true, support: 2, text: ['A week of handshakes in a country that does not much like yours.', 'Every word you say abroad is weighed twice: once there, and once at home.'] },
+  { id: 'interview', kind: 'Diplomatic', name: 'Give a television interview', image: [-14, 14], risky: true, text: ['An hour on camera, with nowhere to hide.'] },
+  // Family
+  { id: 'standin', kind: 'Family', name: 'Stand in for an older relative', image: [2, 5], family: 6, text: ['You take the engagements they can no longer manage, and say each time that they send their love.', 'You read the speech they would have given, in their words. Half the hall is in tears.'] },
+  { id: 'mentor', kind: 'Family', name: 'Prepare a younger royal for the work', image: [0, 2], family: 5, karma: 3, text: ['You take them on their first walkabout and stand half a step behind. They do well. You tell them so.', 'You teach them the trick of it: ask a question, and listen to the answer.'] },
 ];
 export const DUTIES_PER_YEAR = 3;
 

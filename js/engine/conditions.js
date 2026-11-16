@@ -37,6 +37,9 @@ const SPECIAL = {
   officeTier: (p) => p.politics?.tier ?? 0,
   democracy: () => ['presidential', 'parliamentary'].includes(SYSTEMS[country().id]?.kind),
   partyState: () => SYSTEMS[country().id]?.kind === 'party',
+  // The royal household: the posts the player has filled, and whether the family owns property of its own.
+  staffPosts: (p) => p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'staff').map((n) => n.flags.staff),
+  ownsEstate: (p) => (store.state.dynasties?.[p.royal?.countryId]?.residences ?? []).some((r) => r.owner === 'private' && !r.sold),
   conditionIds: (p) => p.conditions.map((c) => c.id),
   inventoryIds: (p) => p.inventory.map((i) => i.id),
   degreeTypes: (p) => p.education.degrees.map((d) => d.type),

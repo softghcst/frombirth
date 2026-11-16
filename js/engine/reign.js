@@ -20,6 +20,7 @@ import { MONARCHIES, POWERS, POWERS_PER_YEAR } from '../data/royalty.js';
 import * as dyn from './dynasty.js';
 import * as fame from './reputation.js';
 import { destinations, emigrate } from './emigration.js';
+import { counsel } from './household.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -66,7 +67,7 @@ export function usePower(id) {
   acts().done += 1;
   // Some acts can go either way, on the monarch's own qualities.
   let good = true;
-  if (x.risky) good = rng.chance(clamp(x.risky.base + (p.stats[x.risky.stat] - 50) / 120 + (p.royal.image - 50) / 200, 0.08, 0.92));
+  if (x.risky) good = rng.chance(clamp(x.risky.base + (p.stats[x.risky.stat] - 50) / 120 + (p.royal.image - 50) / 200 + counsel(), 0.08, 0.92));
   const o = good ? x : { ...x, ...x.fail };
   if (o.support) shiftSupport(o.support, d);
   if (o.image) fame.shift('image', o.image, x.name.toLowerCase());

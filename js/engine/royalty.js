@@ -17,7 +17,8 @@ import { COUNTRIES } from '../data/countries.js';
 import * as dyn from './dynasty.js';
 import { tickCourt } from './court.js';
 import * as fame from './reputation.js';
-import { tickReign } from './reign.js';
+import { tickReign, shiftSupport } from './reign.js';
+import { counsel, tickHousehold } from './household.js';
 import { MONARCHIES, ROYAL_RANKS, ALLOWANCE, BORN_ROYAL, BORN_NOBLE, DUTIES, DUTIES_PER_YEAR, DISGRACE } from '../data/royalty.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -279,7 +280,7 @@ function acts() {
 }
 export const dutiesLeft = () => DUTIES_PER_YEAR - acts().done;
 export const canDoDuties = () => !!royal() && !royal().waiting && royal().rank !== 'knight' && player().age >= 16 && !player().legal.incarceration;
-export const dutyOptions = () => DUTIES.map((d) => ({ id: d.id, name: d.name, risky: !!d.risky, cost: d.cost ? localMoney(d.cost, country()) : 0 }));
+export const dutyOptions = () => DUTIES.map((d) => ({ id: d.id, name: d.name, kind: d.kind, risky: !!d.risky, cost: d.cost ? localMoney(d.cost, country()) : 0 }));
 export const allowance = () => (royal() && !royal().waiting ? Math.round(localMoney(ALLOWANCE[royal().rank] ?? 0, country()) * (player().flags.familyFrost ? 0.5 : 1)) : 0);
 
 /** Moves the public's opinion, and notes why (engine/reputation.js keeps the record). */
@@ -337,14 +338,17 @@ export function doDuty(id) {
   acts().done += 1;
   p.finance.cash -= cost;
   let change = rng.int(d.image[0], d.image[1]);
-  if (d.risky) change = Math.round(change + (p.stats.charm - 50) / 6 + (p.stats.intellect - 50) / 10);
+  // A good private secretary has you well briefed for the risky ones.
+  if (d.risky) change = Math.round(change + (p.stats.charm - 50) / 6 + (p.stats.intellect - 50) / 10 + counsel() * 30);
   const before = royal().image;
   shiftImage(change, d.name.toLowerCase().replace(/^(open|become|go on|visit|give|meet)/, (w) => ({ open: 'opening', become: 'becoming', 'go on': 'going on', visit: 'visiting', give: 'giving', meet: 'meeting' })[w]));
   change = royal().image - before;
   if (d.mood) p.stats.mood = clamp(p.stats.mood + d.mood);
   if (d.karma) p.hidden.karma = clamp(p.hidden.karma + d.karma);
+  if (d.family) fame.shift('family', d.family, `${d.name[0].toLowerCase()}${d.name.slice(1)}`);
+  if (d.support) shiftSupport(d.support, dyn.house(royal().countryId));
   const how = change >= 6 ? 'The country loved it.' : change >= 1 ? 'It went well.' : change >= -3 ? 'It did you no good.' : 'It was a disaster, replayed for a week.';
-  const text = `${d.text} ${how}`;
+  const text = `${rng.pick([].concat(d.text))} ${how}`;
   log(text, 'system', change >= 0 ? 'good' : 'bad');
   return result(change >= 0, text);
 }
@@ -461,6 +465,7 @@ export function tickRoyalty() {
 
   // The crown itself: what the country makes of it, and whether it lasts.
   tickReign(d);
+  tickHousehold(d);
   if (!royal() && r) return; // the monarchy fell this year
 
   // Family politics: for those born into it.
