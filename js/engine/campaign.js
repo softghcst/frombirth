@@ -24,6 +24,10 @@ import { COUNTRIES } from '../data/countries.js';
 import { duel, countByArea } from './elections.js';
 import * as world from './polity.js';
 import { system, offices, barrier, standing, takeOffice, highestHeld, leave } from './politics.js';
+import { report, post } from './news.js';
+import { addSecret } from './scandal.js';
+import { afterGeneral } from './leadership.js';
+import { formCabinet } from './government.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -57,16 +61,19 @@ export function declare(officeId, defending = false) {
   const why = defending ? (p.legal.incarceration ? 'You cannot campaign from a cell.' : '') : barrier(o);
   if (why) return result(false, why, 'neutral');
   const rival = world.opponentFor(officeId, c.id);
+  // In a parliament the top office is not a race between two people: the leader takes their party into a general election.
+  const national = officeId === 'head' && system(c).kind === 'parliamentary';
   const size = officeId === 'head' ? c.cities.length * 1.1e6 : ELECTORATE[officeId] ?? 50000;
   p.flags.campaignAge = p.age;
-  p.flags.race = { officeId, countryId: c.id, year: store.state.year, rivalId: rival?.id ?? null, stage: !defending && needsNomination(o, c) ? 'nomination' : 'plan',
+  p.flags.race = { officeId, countryId: c.id, year: store.state.year, rivalId: rival?.id ?? null, stage: !defending && !national && needsNomination(o, c) ? 'nomination' : 'plan', national,
     // Where the count leans towards those in power, it leans towards the one who holds the office.
     defend: defending, round: 0, platform: null, budget: null, appeal: defending && system(c).rigged ? 12 : 0, edge: {}, used: {}, polls: [], promises: 0,
     // A rival with charm is harder to beat; how good their campaign is, nobody knows yet.
     rivalAppeal: 56 + rng.int(-10, 10) + (rival ? (rival.t.charisma - 55) / 8 : 0),
     bias: Math.round(noise(3.5) * 10) / 10, electorate: Math.round(size * (0.8 + rng.next() * 0.4)) };
   const pa = world.membership(c.id);
-  const text = p.flags.race.stage === 'nomination'
+  const text = national ? `You will lead ${world.the(pa)} into the general election. ${rival ? `${rival.name} is the one to beat.` : ''}`
+    : p.flags.race.stage === 'nomination'
     ? `You have put your name forward for ${o.title}. First ${world.the(pa)} must choose its candidate, and you are not the only one who wants it.`
     : defending ? `You are standing again as ${o.title}${rival ? `, against ${rival.name}` : ''}. Carry the campaign on from the Work tab before the year is out.`
       : `You are a candidate for ${o.title}${rival ? `, against ${rival.name}` : ''}.`;
@@ -193,7 +200,7 @@ export function setPlan(platformId, budgetId) {
   }
   r.stage = 'trail';
   const poll = takePoll(r);
-  return result(true, `${text} The first poll puts you on ${poll.me}%.`, 'neutral', { poll });
+  return result(true, `${text} The first poll puts ${r.national ? 'your party' : 'you'} on ${poll.me}%.`, 'neutral', { poll });
 }
 
 // ---------- Where the race stands ----------
@@ -211,8 +218,30 @@ function sides(r) {
     rival: { id: 'rival', positions: world.party(w, them?.partyId)?.positions ?? NEUTRAL, appeal: r.rivalAppeal } };
 }
 
+/** What the player's campaign is worth to their party in a general election, as points of appeal. */
+function boostOf(r) {
+  const budget = BUDGETS.find((b) => b.id === r.budget);
+  const groups = world.voters(r.countryId);
+  const edge = groups.reduce((s, g) => s + g.share * (r.edge[g.id] ?? 0), 0);
+  return clamp((standing(office(r)) + (budget?.boost ?? 0) + r.appeal + edge - 55) / 5, -5, 6);
+}
+
+/** A poll before a general election: every party's share, with the error polls have. */
+function nationalPoll(r, own) {
+  const w = world.polity(r.countryId);
+  const mine = world.membership(r.countryId);
+  const truth = world.pollGeneral(w, mine ? { [mine.id]: boostOf(r) } : {});
+  const err = () => (own ? noise(1) : r.bias / 2 + noise(2));
+  const parties = w.parties.map((x) => ({ id: x.id, name: x.name, share: Math.round(clamp(truth[x.id] + (x.id === mine?.id ? (own ? noise(1) : r.bias + noise(2)) : err()), 1, 90)) })).sort((a, b) => b.share - a.share);
+  const poll = { round: r.round, me: parties.find((x) => x.id === mine?.id)?.share ?? 0, margin: own ? 2 : 4, parties: parties.slice(0, 4).map((x) => ({ name: x.name, share: x.share, mine: x.id === mine?.id })) };
+  if (own) poll.own = true;
+  r.polls.push(poll);
+  return poll;
+}
+
 /** A poll: the truth, plus the error polls have. A private poll is closer, and breaks the voters down. */
 function takePoll(r, own = false) {
+  if (r.national) return nationalPoll(r, own);
   const s = sides(r);
   const groups = world.voters(r.countryId);
   const truth = duel(s.me, s.rival, groups, () => 0, 100000);
@@ -236,7 +265,7 @@ export function view() {
   const pa = f ? world.party(world.polity(r.countryId), f.partyId) : null;
   const last = r.polls[r.polls.length - 1] ?? null;
   return { stage: r.stage, office: o, rival: f, rivalParty: pa, round: r.round, rounds: ROUNDS.length, when: ROUNDS[Math.min(r.round, ROUNDS.length - 1)],
-    polls: r.polls, poll: last, platform: PLATFORMS.find((x) => x.id === r.platform)?.name ?? null, spent: r.spent ?? 0, debated: r.debated ?? null,
+    polls: r.polls, poll: last, national: !!r.national, party: world.membership(r.countryId), platform: PLATFORMS.find((x) => x.id === r.platform)?.name ?? null, spent: r.spent ?? 0, debated: r.debated ?? null,
     pollYear: world.nextElection(r.officeId, r.countryId), country: c, nominee: r.nominee ?? null };
 }
 
@@ -295,11 +324,12 @@ export function act(id, arg) {
     tone = 'good';
   } else if (m.poll) {
     const poll = takePoll(r, true);
-    const order = Object.entries(poll.byGroup).sort((a, b) => b[1] - a[1]);
-    text = `Your own pollster has you on ${poll.me}%, give or take ${poll.margin}. You are strongest with ${groupName(order[0][0]).toLowerCase()} (${order[0][1]}%) and weakest with ${groupName(order[order.length - 1][0]).toLowerCase()} (${order[order.length - 1][1]}%).`;
+    const order = Object.entries(poll.byGroup ?? {}).sort((a, b) => b[1] - a[1]);
+    text = r.national ? `Your own pollster puts the party on ${poll.me}%, give or take ${poll.margin}: ${poll.parties.map((x) => `${x.name} ${x.share}%`).join(', ')}.` : `Your own pollster has you on ${poll.me}%, give or take ${poll.margin}. You are strongest with ${groupName(order[0][0]).toLowerCase()} (${order[0][1]}%) and weakest with ${groupName(order[order.length - 1][0]).toLowerCase()} (${order[order.length - 1][1]}%).`;
   } else if (m.illegal) {
     // Easier to get away with where it is how things are done.
     if (rng.chance(clamp(0.55 - c.living.graft / 150, 0.08, 0.5))) { r.caught = true; gain = -20; p.legal.heat = clamp(p.legal.heat + 35); text = 'The envelopes were filmed changing hands. The police would like a word.'; tone = 'bad'; }
+    else addSecret('envelopes', rng.int(40, 75)); // nobody saw. Somebody knows.
   } else if (m.dirty) {
     const f = rivalOf(r);
     if (f && f.t.integrity < 45) gain += 3; // there was something to find
@@ -393,6 +423,8 @@ export function pollingDay() {
   const pa = f ? world.party(w, f.partyId) : null;
   const notes = [];
   if (r.donors && rng.chance(0.18)) { r.appeal -= 5; notes.push('On the last weekend a newspaper printed the guest list of your donors\' dinner, and what each of them wanted.'); }
+  else if (r.donors) addSecret('donors', rng.int(20, 45)); // it did not come out. It still could.
+  if (r.national) return generalElection(r, notes);
   // The weather, the last headlines, and everything else nobody controls.
   r.appeal += rng.int(-6, 6) + rng.int(-4, 4);
   const cand = sides(r);
@@ -440,9 +472,11 @@ export function pollingDay() {
       text = `You are voted out, with ${share}% of the vote${s.rigged ? ', by the official count' : ''}. ${f ? f.name : 'Your opponent'} takes your place, and you have until Friday to clear your desk.${told}`;
       world.recordRace(f, `Beat ${p.firstName} ${p.lastName}, the sitting ${o.title}, ${Math.round((100 - share) * 10) / 10}% to ${share}%.`);
     }
+    report(w, won ? 'held' : 'ousted', { office: o.title, share, rival: f?.name ?? 'the challenger' });
     log(text, 'system', won ? 'good' : 'bad');
     return result(won, text, won ? 'good' : 'bad', { night: rec });
   }
+  report(w, won ? 'won' : 'lost', { office: o.title, share, rival: f?.name ?? 'the other candidate' });
   if (won) {
     p.counters.electionsWon = (p.counters.electionsWon ?? 0) + 1;
     takeOffice(o, r.caught ? 40 : Math.round(clamp(48 + (share - 50) * 0.8, 45, 75)));
@@ -459,6 +493,66 @@ export function pollingDay() {
   }
   log(text, 'system', won ? 'good' : 'bad');
   return result(won, text, won ? 'good' : 'bad', { night: rec });
+}
+
+/**
+ * A general election fought as party leader. The campaign is worth points to
+ * the party; then the whole country votes, seats are shared out, and a
+ * government is formed. The player governs if their party leads it.
+ */
+function generalElection(r, notes) {
+  const p = player();
+  const c = COUNTRIES[r.countryId];
+  const w = world.polity(c.id);
+  const o = office(r);
+  const mine = world.membership(c.id);
+  const year = store.state.year;
+  const f = world.playerFigure(c.id);
+  r.appeal += rng.int(-5, 5);
+  if (mine) mine.boost = boostOf(r);
+  const before = { lead: w.govt.lead, held: p.politics?.officeId === 'head' };
+  const rec = world.runGeneral(w, year);
+  w.calendar.general = year + w.calendar.term;
+  if (w.govt.lead !== before.lead && w.govt.headId !== f.id) formCabinet(w);
+  const lastPoll = [...r.polls].reverse().find((x) => !x.own) ?? r.polls[r.polls.length - 1];
+  const spent = r.spent ?? 0;
+  delete p.flags.race;
+  p.counters.polExp = (p.counters.polExp ?? 0) + 2;
+  const parties = w.parties.map((x) => ({ id: x.id, name: x.name, colour: x.colour, share: rec.shares[x.id] ?? 0, seats: rec.seats[x.id] ?? 0, mine: x.id === mine?.id })).sort((a, b) => b.seats - a.seats || b.share - a.share);
+  // The seats come in over the night, a quarter of the country at a time.
+  const order = AREAS.map((x) => x.name).sort(() => rng.next() - 0.5);
+  const left = Object.fromEntries(parties.map((x) => [x.id, x.seats]));
+  const running = Object.fromEntries(parties.map((x) => [x.id, 0]));
+  const batches = order.map((name, i) => {
+    for (const x of parties) { const n = i === order.length - 1 ? left[x.id] : Math.min(left[x.id], Math.round(x.seats / order.length + noise(x.seats / 10))); running[x.id] += Math.max(0, n); left[x.id] -= Math.max(0, n); }
+    return { name, running: { ...running }, declared: Object.values(running).reduce((a, b) => a + b, 0) };
+  });
+  const won = w.govt.headId === f.id;
+  const inGovt = !!mine && (w.govt.lead === mine.id || w.govt.partners.includes(mine.id));
+  const lead = world.party(w, w.govt.lead);
+  const night = { national: true, year, title: o.title, parties, seatCount: w.seatCount, need: Math.floor(w.seatCount / 2) + 1, turnout: rec.turnout, total: rec.total, batches,
+    exit: parties.map((x) => ({ name: x.name, share: Math.round(clamp(x.share + noise(3), 1, 90)), mine: x.mine })).sort((a, b) => b.share - a.share).slice(0, 4), lastPoll: lastPoll?.me ?? null,
+    won, inGovt, govt: { kind: w.govt.kind, head: rec.govt.headName, lead: lead?.name ?? '', partners: w.govt.partners.map((id) => world.party(w, id)?.name).filter(Boolean) } };
+  const top = parties.slice(0, 3).map((x) => `${x.name} ${x.share}%`).join(', ');
+  post(w, `General election: ${top}; turnout ${rec.turnout}%. ${rec.govt.headName} of ${lead ? world.the(lead) : 'no party'} will lead ${w.govt.kind === 'coalition' ? 'a coalition' : w.govt.kind === 'minority' ? 'a minority government' : 'a majority government'}.`);
+  const my = parties.find((x) => x.mine);
+  const told = notes.length ? ` ${notes.join(' ')}` : '';
+  let text;
+  if (won) {
+    p.counters.electionsWon = (p.counters.electionsWon ?? 0) + 1;
+    p.stats.mood = clamp(p.stats.mood + 14);
+    text = `${mine.name} has won ${my.seats} of ${w.seatCount} seats with ${my.share}% of the vote${w.govt.kind === 'coalition' ? `, and will govern in coalition with ${night.govt.partners.join(' and ')}` : w.govt.kind === 'minority' ? ', short of a majority, and will govern alone' : ', a majority'}. You ${before.held ? 'remain' : 'are'} ${o.title} of ${theCountry(c.name)}.${told}`;
+    if (before.held) report(w, 'held', { office: o.title, share: my.share });
+  } else {
+    p.counters.electionsLost = (p.counters.electionsLost ?? 0) + 1;
+    p.stats.mood = clamp(p.stats.mood - 12);
+    text = `${mine?.name ?? 'Your side'} has won ${my?.seats ?? 0} of ${w.seatCount} seats with ${my?.share ?? 0}% of the vote. ${rec.govt.headName} of ${lead ? world.the(lead) : 'another party'} will be ${o.title}${inGovt ? ', with your party as a junior partner' : ''}.${told}`;
+  }
+  text += ` The campaign cost you ${fmtMoney(spent, c)}.`;
+  log(text, 'system', won ? 'good' : 'bad');
+  afterGeneral();
+  if (won && r.promises && p.politics) p.politics.promises = r.promises;
+  return result(won, text, won ? 'good' : 'bad', { night });
 }
 
 /** Pulls out of the race. What has been spent is spent. */

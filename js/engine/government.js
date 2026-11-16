@@ -15,6 +15,7 @@ import { LEVERS, DEPARTMENTS, POLITICAL_SCANDALS } from '../data/parties.js';
 import { MONARCHIES } from '../data/royalty.js';
 import { tally, overrides, lean } from './legislature.js';
 import * as world from './polity.js';
+import { report } from './news.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -134,7 +135,9 @@ function playerYear(w, tell) {
       break;
     }
     if (rng.chance(clamp(0.04 + (50 - f.t.integrity) / 500, 0.01, 0.16))) {
-      pend.push({ id: 'pol_minister_scandal', cast: { dept: d.id, words: { minister: f.name, post: d.title, what: rng.pick(POLITICAL_SCANDALS) } } });
+      const what = rng.pick(POLITICAL_SCANDALS);
+      report(w, 'minister', { post: `${d.title} ${f.name}`, what });
+      pend.push({ id: 'pol_minister_scandal', cast: { dept: d.id, words: { minister: f.name, post: d.title, what } } });
       break;
     }
   }
@@ -384,9 +387,13 @@ function voteSetup(w, move, deals) {
 
 /** The government falls: the player must face the voters at once. */
 function fall() {
-  const k = player().politics;
-  k.termLeft = 0;
+  const p = player();
+  const k = p.politics;
+  const w = world.polity(p.countryId);
   k.fallen = true;
+  report(w, 'fell', { office: k.title });
+  if (k.viaParty) w.calendar.general = store.state.year + 1; // an early general election
+  else k.termLeft = 0;
 }
 
 /** Puts the bill to the vote. @returns {{ok, text, tone, tally}} */
@@ -418,6 +425,7 @@ export function putToVote(move = 'none') {
   const shown = t ? { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } : null;
   w.budget = Math.round((w.budget - b.cost) * 10) / 10; // what was promised is paid for either way
   if (!passed) {
+    report(w, 'lawLost', { what: doing, votes: `${t.for} votes to ${t.against}` });
     k.approval = Math.round(clamp(k.approval - 3));
     let text = `Your bill to ${doing} is defeated, ${t.for} votes to ${t.against}. ${notes.join(' ')}`.trim();
     if (move === 'confidence') { fall(); text += ' You made it a matter of confidence, and lost. The government has fallen, and you must face the voters.'; }
@@ -430,6 +438,7 @@ export function putToVote(move = 'none') {
   const law = world.enact(w, b.lever, b.dir, `${p.firstName} ${p.lastName}`);
   if (!law) return result(false, 'It cannot be taken any further.', 'neutral');
   if (t) law.vote = [t.for, t.against];
+  report(w, 'law', { what: doing, votes: t ? `${t.for} votes to ${t.against}` : 'by decree' });
   k.approval = Math.round(clamp(k.approval + (b.lever === 'tax' ? -b.dir : b.dir) * 3));
   aftermath(w, wants, world.membership(w.countryId), notes);
   return result(true, `${t ? `By ${t.for} votes to ${t.against}, your` : 'Your'} government has ${law.text}. ${L.feel(w.policies[b.lever])} ${notes.join(' ')}`.trim(), 'good', { tally: shown, law });
@@ -485,6 +494,7 @@ export function presentBudget(changes, move = 'none') {
     if (move === 'public') k.approval = Math.round(clamp(k.approval + (passed ? 1 : -4)));
     if (!passed) {
       k.approval = Math.round(clamp(k.approval - 5));
+      report(w, 'budgetLost', { votes: `${t.for} votes to ${t.against}` });
       const lost = `Your budget is defeated, ${t.for} votes to ${t.against}.`;
       const own = mine ? (w.seats[mine.id] ?? 0) : 0;
       if (w.kind === 'parliamentary' && (move === 'confidence' || own <= w.seatCount / 2)) { fall(); return result(false, `${lost} A government that cannot pass its budget cannot govern: yours has fallen, and you must face the voters.`, 'bad', { tally: { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } }); }
@@ -492,6 +502,7 @@ export function presentBudget(changes, move = 'none') {
       return result(false, `${lost} Last year's figures roll over, offices close for a fortnight, and everybody blames you.`, 'bad', { tally: { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } });
     }
   }
+  if (t) report(w, 'budget', { votes: `${t.for} votes to ${t.against}` });
   let liked = 0;
   const done = [];
   for (const [id, dir] of list) {

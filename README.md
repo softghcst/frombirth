@@ -384,6 +384,27 @@ whether or not the player takes any part.
     by two thirds.
   Policing joins tax, tuition, health and housing as something governments
   change: it moves the chance that a crime is solved.
+- **Leading a party** (`js/engine/leadership.js`). In a parliamentary country
+  nobody is elected head of government: they lead the party that can command
+  the legislature. A sitting member can challenge their party's leader, and
+  the party's members of the legislature vote. A leader whose party governs
+  becomes head of government at once; otherwise they take the party into the
+  next general election, with a campaign of their own that is worth points to
+  the whole party, and a night on which the seats come in. They govern if, and
+  only if, their party leads the government; a leader who loses has the party
+  to face. Presidential countries keep the race between two candidates.
+- **Scandal** (`js/engine/scandal.js`). What an office-holder does in the dark
+  (contracts for friends, bought votes, favours for donors) is kept as a
+  secret with a weight of evidence that fades over the years. A reporter may
+  pick one up: a rumour can be confessed, denied or suppressed; a story can
+  be apologised for, pinned on an aide, or sent to an inquiry; and an inquiry
+  clears or condemns.
+- **The news** (`js/engine/news.js`). Each country has invented newspapers
+  that lean one way or the other, a tabloid and a broadcaster. What happens
+  in politics is reported in the Politics book's News tab, and the same event
+  reads differently in a paper that likes the player and one that does not.
+- **The next generation** inherits the country's politics as they were: the
+  parent becomes a name in its history.
 - **Where there are no elections,** ministers are appointed and rule by
   decree. In a monarchy the monarch remains head of state whatever the voters do.
 

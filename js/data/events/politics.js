@@ -2,7 +2,7 @@
 // and holding office. The scenes whose ids start with pol_ and are marked
 // queuedOnly are sent by engine/politics.js (end of term, removal, uprising).
 // In office, nearly every choice moves approval: what the voters make of you.
-import { st, hid, cash, flag, count, ms, ok, bad, any, chk, need, heat, death, approval, reelect, ousted, resignOffice, govt } from './helpers.js';
+import { st, hid, cash, flag, count, ms, ok, bad, any, chk, need, heat, death, approval, reelect, ousted, resignOffice, govt, scandal, leader } from './helpers.js';
 
 const office = need('inOffice', '==', true);
 const tier = (n) => need('officeTier', '>=', n);
@@ -214,6 +214,40 @@ export default [
     choices: [
       { label: 'Stand again', outcomes: [any('You put your record in front of the people who decide, and wait.', 'neutral', reelect())] },
       { label: 'Step down while they still like you', outcomes: [any('You hand over the keys, and somebody else gets the blame from now on.', 'neutral', resignOffice(), st('mood', 4))] },
+    ],
+  },
+  {
+    id: 'scandal_rumour', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: 'A reporter has been asking questions about {what}. She has not got the whole story, but she has enough of it to telephone your office and ask for a comment by six.',
+    choices: [
+      { label: 'Tell it yourself, before she can', outcomes: [any('You ask for ten minutes to think, and use them.', 'neutral', scandal('confess'))] },
+      { label: 'Deny everything', outcomes: [any('"There is no truth in it whatever."', 'neutral', scandal('deny'))] },
+      { label: 'Lean on her editor ({hush})', requires: [has(80000)], outcomes: [any('You make a call to a man who owes you a favour, and offer him another.', 'neutral', scandal('kill'))] },
+    ],
+  },
+  {
+    id: 'scandal_story', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: 'It is on every front page: {what}. Your telephone has not stopped, your colleagues are suddenly hard to reach, and there are cameras at the end of the road.',
+    choices: [
+      { label: 'Apologise', outcomes: [any('You face the cameras.', 'neutral', scandal('apologise'))] },
+      { label: 'Let an aide take the blame', outcomes: [any('You have a quiet word with someone junior, loyal, and expendable.', 'neutral', scandal('aide'))] },
+      { label: 'Call an independent inquiry', outcomes: [any('"I have nothing to hide, and I want that established."', 'neutral', scandal('inquiry'))] },
+      { label: 'Resign', outcomes: [any('A short statement on the steps, and a car with the engine running.', 'neutral', resignOffice(), st('mood', -6))] },
+    ],
+  },
+  {
+    id: 'scandal_verdict', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: 'The inquiry into {what} reports today. An advance copy is on your desk, face down.',
+    choices: [
+      { label: 'Turn it over', outcomes: [any('You read the last page first.', 'neutral', scandal('verdict'))] },
+    ],
+  },
+  {
+    id: 'pol_leader_defeated', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: 'The election is lost, and the morning after is very quiet. In the corridors of {party} they are asking whether the leader who lost can be the leader who wins next time.',
+    choices: [
+      { label: 'Fight on as leader', outcomes: [any('You call a meeting of the party.', 'neutral', leader('fight'))] },
+      { label: 'Step down', outcomes: [any('You say that the party needs a fresh start, and mean most of it.', 'neutral', leader('resign'), st('mood', -4))] },
     ],
   },
   {
