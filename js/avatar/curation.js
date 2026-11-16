@@ -40,7 +40,7 @@ export const TEXTURES = ['straight', 'wavy', 'curly', 'coily'];
 
 /** Eyes, mouths and noses that are a resting face (others are expressions, or gags, and are never picked at random). */
 export const RESTING = {
-  eyes: ['eyes_03', 'eyes_6', 'eyes_8', 'eyes_9', 'eyes_10', 'eyes_11', 'eyes_12', 'eyes_15', 'eyes_16', 'eyes_17', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_21', 'eyes_22',
+  eyes: ['eyes_03', 'eyes_04', 'eyes_6', 'eyes_8', 'eyes_9', 'eyes_10', 'eyes_11', 'eyes_12', 'eyes_16', 'eyes_17', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_21', 'eyes_22',
     'eyes_23', 'eyes_25', 'eyes_26'],
   lips: ['lips_1', 'lips_3', 'lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_12', 'lips_14', 'lips_16'],
   noses: ['nose_1', 'nose_3', 'nose_5', 'nose_6', 'nose_7', 'nose_8', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
