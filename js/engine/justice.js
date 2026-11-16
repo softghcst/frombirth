@@ -224,8 +224,15 @@ export function enterPlea(plea) {
   }
   const term = years >= LIFE_SENTENCE ? 'life' : `${years} year${years === 1 ? '' : 's'}`;
   const text = `${how} You were sentenced to ${term}${juvenile ? ' in juvenile detention' : ' in prison'}.`;
-  log(text, 'system', 'bad');
   imprison(years, crime.severity);
+  // Where the law allows it, a murder conviction can carry the death sentence.
+  if (c.crimeId === 'murder' && !juvenile && cty.living.laws.deathPenalty && rng.chance(0.3)) {
+    Object.assign(p.legal.incarceration, { deathRow: true, yearsLeft: LIFE_SENTENCE + 10, security: 'max' });
+    const doom = `${how} The court sentenced you to death. You will wait on death row while the appeals run out.`;
+    log(doom, 'system', 'bad');
+    return { ...result(false, doom), years: LIFE_SENTENCE + 10 };
+  }
+  log(text, 'system', 'bad');
   return { ...result(false, text), years };
 }
 

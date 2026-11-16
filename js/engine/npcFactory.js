@@ -1,10 +1,14 @@
 // Builds NPC records. Every NPC carries the same seven meters.
 import { rng } from '../rng.js';
-import { uid, clamp, localMoney } from '../util.js';
+import { uid, clamp, localMoney, localWage } from '../util.js';
 import { COUNTRIES, surnameFor } from '../data/countries.js';
 import { store } from '../state.js';
+import { ensureStyled } from '../avatar/inherit.js';
 import { OCCUPATIONS, BACKGROUNDS, PETS } from '../data/traits.js';
 import { randomAppearance, randomTraits, randomTalents } from './genetics.js';
+
+// Kept in step with ORIENTATIONS in engine/identity.js (which cannot be imported here without a loop).
+const ORIENTATION_WEIGHTS = [['straight', 86], ['gay', 5], ['bisexual', 5.5], ['pansexual', 1.5], ['asexual', 2]];
 
 const meter = (mean = 55, spread = 35) => Math.round(clamp(rng.around(mean, spread)));
 
@@ -48,11 +52,15 @@ export function makeNpc(o) {
       money: meter(45), crazy: meter(30), intellect: meter(), charm: meter(),
       health: meter(80, 20), generosity: meter(),
     },
-    appearance: o.appearance ?? randomAppearance(o.skinHint),
+    appearance: ensureStyled(o.appearance ?? randomAppearance(o.skinHint, gender), gender),
     traits: randomTraits(),
     lastInteractionAge: -1,
     flags: {},
   };
+  if (o.role !== 'pet') {
+    npc.orientation = o.orientation ?? rng.weighted(ORIENTATION_WEIGHTS, (x) => x[1])[0];
+    if (rng.chance(0.012)) npc.flags.trans = true;
+  }
   if (o.role === 'parent') {
     const preset = BACKGROUNDS[o.background];
     // Professions take years of training; very young parents do not hold them.
@@ -61,8 +69,8 @@ export function makeNpc(o) {
     const job = rng.pick(fitting.length ? fitting : OCCUPATIONS.filter(trained));
     npc.occupation = job.title;
     npc.wealth = rng.int(Math.max(job.wealth[0], preset?.floor ?? 0), job.wealth[1]);
-    npc.income = localMoney(job.income * rng.around(1, 0.15), country);
-    npc.savings = localMoney(npc.wealth ** 2 * 60 * rng.around(1, 0.3), country);
+    npc.income = localWage(job.income * rng.around(1, 0.15), country);
+    npc.savings = localWage(npc.wealth ** 2 * 60 * rng.around(1, 0.3), country);
     npc.meters.money = npc.wealth;
     npc.strictness = meter(50, 40);
     npc.talents = randomTalents();

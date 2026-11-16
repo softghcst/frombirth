@@ -13,6 +13,9 @@ import { meetClassmates } from './education.js';
 import { convertMoney } from './emigration.js';
 import { SCHEMA_VERSION } from '../save.js';
 import { rollLongevity } from './death.js';
+import { normalize } from '../avatar/catalog.js';
+import { cloneAppearance } from '../avatar/inherit.js';
+import { attractedTo } from './identity.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -57,7 +60,7 @@ function asAncestor(old, role, year) {
   return { id: uid('npc'), firstName: old.firstName, lastName: old.lastName, gender: old.gender, age: old.age,
     alive: false, role, meters: { relationship: 80, money: 50, crazy: old.hidden.crazy, intellect: old.stats.intellect,
       charm: old.stats.charm, health: 0, generosity: 50 },
-    appearance: { ...old.appearance }, traits: [...old.traits], occupation: (old.career.title ?? 'retired').toLowerCase(),
+    appearance: cloneAppearance(old.appearance), traits: [...old.traits], occupation: (old.career.title ?? 'retired').toLowerCase(),
     talents: { ...old.talents }, lastInteractionAge: -1, flags: { diedYear: year } };
 }
 
@@ -179,14 +182,14 @@ export function continueAs(npcId) {
       fertility: h.hidden?.fertility ?? rolled(), fame: Math.round(op.hidden.fame * 0.3), crazy: h.meters.crazy },
     talents: { music: 20, sports: 20, acting: 20, crime: 10, singing: 20, dance: 20, ...h.talents },
     traits: [...(h.traits ?? [])], traitSources: {}, birth: [], conditions: [],
-    appearance: { weight: 50, ...h.appearance },
+    appearance: cloneAppearance(normalize(h.appearance, h.id)),
     education: schooling(h, atHome),
     career: { careerId: null, title: null, level: 0, salary: 0, performance: 50, yearsInRole: 0, yearsInField: 0,
       coworkerIds: [], bossId: null, partTime: null, history: [], retired: !!L.retired,
       pensionPerYear: L.retired ? L.pension ?? 0 : 0, military: null },
     finance: { cash: Math.max(0, L.savings), pension: 0, lifetimeEarned: 0, lifetimeTaxPaid: 0,
       loans: debt ? [{ id: uid('loan'), kind: 'personal', principal: debt, rate: 0.08, yearsLeft: 8 }] : [] },
-    assets: [], inventory: [], homeId: null,
+    assets: (h.inheritance?.assets ?? []).map((a) => ({ ...a, id: uid('asset') })), inventory: [], homeId: null,
     npcIds: Object.keys(npcs),
     legal: { record: [], incarceration: null, heat: 0 },
     social: { handle: null, followers: 0, posts: 0, viral: 0, boughtFollowers: 0 },
@@ -195,7 +198,15 @@ export function continueAs(npcId) {
     counters: { crimes: 0, kills: 0, donated: 0, gambled: 0, yearsJailed: 0, escapes: 0, livesSaved: 0,
       spouses: Object.values(roles).filter((r) => r === 'spouse').length, jobsHeld: 0, countriesLived: 1 },
     alive: true, generation: (op.generation ?? 1) + 1,
+    orientation: h.orientation ?? 'straight', skills: {},
   };
+  player.flags.bornAs = h.flags.bornAs ?? h.gender;
+  player.flags.interestedIn = attractedTo(player.orientation, h.gender);
+  player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 70).map(([k]) => k);
+  if (h.flags.transitioned || h.flags.cameOut) {
+    player.flags.identity = { knows: true, outOrientation: !!h.flags.cameOut, outGender: !!h.flags.transitioned, hrtAge: null, top: false, bottom: false, legal: false, names: h.flags.formerName ? [h.flags.formerName] : [] };
+    if (h.flags.formerName) player.flags.birthName = h.flags.formerName;
+  }
   player.milestones.push({ age: h.age, text: `Lost ${op.firstName}, and carried the family on.`, kind: 'family' });
 
   const entry = (text, tone = 'neutral') => ({ age: h.age, text, kind: 'system', tone });

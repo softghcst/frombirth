@@ -10,6 +10,7 @@ import { sellProperty, properties } from './realEstate.js';
 import { sellVehicle, vehicles } from './vehicles.js';
 import { market, priceOf } from './market.js';
 import { EMIGRATION } from '../data/activities.js';
+import { mayLeave } from './living.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -39,7 +40,7 @@ export function destinations() {
   const kin = (id) => livingNpcs().filter((n) => n.flags.abroad === id).length;
   return COUNTRY_LIST.filter((c) => c.id !== p.countryId).sort((a, b) => a.name.localeCompare(b.name)).map((c) => ({ id: c.id, name: c.name, flag: c.flag,
     currency: c.currency.code, incomeTax: c.incomeTax, propertyTax: c.propertyTax, freeHealthcare: c.freeHealthcare,
-    family: kin(c.id), ownsHome: properties().some((a) => a.countryId === c.id),
+    living: c.living, family: kin(c.id), ownsHome: properties().some((a) => a.countryId === c.id),
     outlook: chance >= 0.7 ? 'Your application looks strong.' : chance >= 0.4 ? 'Your application could go either way.' : 'Your record makes this a long shot.' }));
 }
 
@@ -133,6 +134,7 @@ export function emigrate(countryId, opts = {}) {
   const shipping = ship ? shippingCost() : 0;
   const fee = emigrationFee();
   if (!canEmigrate() || !to || to.id === from.id) return result(false, 'You cannot move there now.', 'neutral');
+  if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
   if (p.flags.visaAge === p.age) return result(false, 'You have already applied this year. Try again next year.', 'neutral');
   if (p.finance.cash < fee + shipping) return result(false, `Visas, lawyers and shipping come to ${fmtMoney(fee + shipping, from)}. You do not have it.`, 'neutral');
   p.flags.visaAge = p.age;
@@ -170,6 +172,8 @@ export function emigrate(countryId, opts = {}) {
   }
 
   convertMoney(to.currency.scale / from.currency.scale);
+  // Those who came will be paid at the new country's level from now on.
+  for (const id of coming) { const job = store.state.npcs[id].life?.job; if (job) job.salary = Math.round(job.salary * to.living.wageK / from.living.wageK); }
   p.countryId = to.id;
   p.city = rng.pick(to.cities);
   p.homeId = null;

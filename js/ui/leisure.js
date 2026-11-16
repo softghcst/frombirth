@@ -2,7 +2,8 @@
 // emigrating. The Self and Pursuits tabs call into these.
 import { player, country } from '../state.js';
 import { fmtMoney, theCountry, esc } from '../util.js';
-import { propertyTaxLabel } from '../data/countries.js';
+import { propertyTaxLabel, COUNTRIES } from '../data/countries.js';
+import { summary, mayLeave } from '../engine/living.js';
 import { roleLabel } from '../engine/relationships.js';
 import * as med from '../engine/medical.js';
 import * as fun from '../engine/activities.js';
@@ -104,13 +105,14 @@ export async function buyFollowers(api) {
 
 export async function moveAbroad(api) {
   const c = country();
+  if (!mayLeave().ok) return messageModal({ body: mayLeave().reason });
   const pct = (x) => `${Math.round(x * 100)}%`;
   const id = await pickModal({
     title: 'Move abroad',
     body: `Visas and lawyers cost ${fmtMoney(move.emigrationFee(), c)}. You leave your job. Property you own stays yours, and your vehicles can be shipped.`,
     options: move.destinations().map((d) => ({ value: d.id, label: `${d.flag} ${d.name}`,
       sub: `${d.currency} · income tax ${pct(d.incomeTax)} · property tax ${propertyTaxLabel(d)} · ${d.freeHealthcare ? 'public' : 'private'} health care`
-        + `${d.family ? ` · ${d.family} of your family live${d.family === 1 ? 's' : ''} here` : ''}${d.ownsHome ? ' · you own a home here' : ''}` })),
+        + ` · ${summary(COUNTRIES[d.id]).short.toLowerCase()}${d.family ? ` · ${d.family} of your family live${d.family === 1 ? 's' : ''} here` : ''}${d.ownsHome ? ' · you own a home here' : ''}` })),
   });
   if (!id) return undefined;
   const dest = move.destinations().find((d) => d.id === id);

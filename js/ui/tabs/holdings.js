@@ -22,29 +22,58 @@ const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span
 async function changeWill(api) {
   const mode = await pickModal({
     title: 'Your will',
-    body: 'Who gets what you leave behind? You can change this whenever you like.',
+    body: 'Who gets what you leave behind? Nothing is sold when you die: property and vehicles pass on as they are.',
     options: [
-      { value: 'family', label: 'My closest family', sub: 'A spouse takes half and your children share the rest. With neither, it passes to other relatives.' },
-      { value: 'person', label: 'One person', sub: 'Everything to someone you name.', disabled: !last.willCandidates().length },
-      { value: 'charity', label: 'Charity', sub: 'Everything is given away. No estate tax is paid.' },
+      { value: 'people', label: 'Choose the people', sub: 'Add or remove anyone. They share the money equally.', disabled: !last.willCandidates().length },
+      { value: 'items', label: 'Who gets which property or vehicle', sub: 'Leave a particular house or car to a particular person.',
+        disabled: !last.keepsakes().length || last.willHeirs().length < 2 },
+      { value: 'family', label: 'Tear it up', sub: 'Back to the default: a spouse takes half and your children share the rest.' },
+      { value: 'charity', label: 'Everything to charity', sub: 'All of it is given away. No estate tax is paid.' },
     ],
   });
   if (!mode) return undefined;
-  let npcId;
-  if (mode === 'person') {
-    npcId = await pickModal({ title: 'Who inherits?',
-      options: last.willCandidates().map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}, age ${n.age}` })) });
-    if (!npcId) return undefined;
+  if (mode === 'family' || mode === 'charity') return report(api, last.writeWill(mode));
+  if (mode === 'items') return assignKeepsakes(api);
+  // Add and remove people until the list is right.
+  for (;;) {
+    const heirs = last.willHeirs().map(([n]) => n);
+    const others = last.willCandidates().filter((n) => !heirs.includes(n));
+    const pick = await pickModal({
+      title: 'Who inherits',
+      body: heirs.length ? `${heirs.map((n) => n.firstName).join(', ')}: ${heirs.length === 1 ? 'everything' : `a ${['', '', 'half', 'third', 'quarter', 'fifth'][heirs.length] ?? `1/${heirs.length}`} each`}.` : 'Nobody yet.',
+      options: [{ value: 'done', label: 'That is right', sub: 'Sign it.' },
+        ...heirs.map((n) => ({ value: `-${n.id}`, label: `Remove ${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}, age ${n.age}` })),
+        ...others.map((n) => ({ value: `+${n.id}`, label: `Add ${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}, age ${n.age}` }))],
+    });
+    if (!pick || pick === 'done') break;
+    const r = pick[0] === '+' ? last.addHeir(pick.slice(1)) : last.removeHeir(pick.slice(1));
+    api.changed();
+    if (!r.ok) await messageModal({ body: r.text, tone: r.tone });
   }
-  return report(api, last.writeWill(mode, npcId));
+  return messageModal({ body: `Your will is signed. ${last.willSummary()}` });
+}
+
+async function assignKeepsakes(api) {
+  const c = country();
+  for (;;) {
+    const plan = last.estatePlan();
+    const holder = (id) => plan.shares.find((s) => s.items.some((it) => it.id === id));
+    const assetId = await pickModal({ title: 'Who gets what', body: 'Tap anything to leave it to someone else.',
+      options: [{ value: 'done', label: 'That is right' }, ...last.keepsakes().map((a) => ({ value: a.id, label: `${GLYPH[a.vehicleClass] ?? GLYPH.property} ${a.name}`,
+        sub: `${fmtMoney(a.value, c)} · goes to ${holder(a.id)?.name ?? 'nobody'}` }))] });
+    if (!assetId || assetId === 'done') return undefined;
+    const to = await pickModal({ title: 'Leave it to', options: last.willHeirs().map(([n]) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: roleLabel(n) })) });
+    if (to) { last.assignItem(assetId, to); api.changed(); }
+  }
 }
 
 function willCard(c) {
   if (!last.canWriteWill()) return '';
   const e = last.estatePlan();
-  const rows = e.gross <= 0 ? [['If you died today', 'There would be nothing to leave']]
+  const things = (s) => (s.items.length ? ` + ${s.items.map((it) => it.name.charAt(0).toLowerCase() + it.name.slice(1)).join(', ')}` : '');
+  const rows = e.gross <= 0 && !e.shares.length ? [['If you died today', 'There would be nothing to leave']]
     : [['Estate tax if you died today', fmtMoney(e.tax, c)],
-      ...e.shares.map((s) => [`${s.name} (${s.role.toLowerCase()})`, fmtMoney(s.amount, c)]),
+      ...e.shares.map((s) => [`${s.name} (${s.role.toLowerCase()})`, `${fmtMoney(s.amount, c)}${things(s)}`]),
       ...(e.charity ? [['To charity', fmtMoney(e.charity, c)]] : []), ...(e.lost ? [['Lost in the garden', fmtMoney(e.lost, c)]] : []), ...(e.toState ? [['To the state', fmtMoney(e.toState, c)]] : [])];
   return `<div class="card" style="margin-top:14px"><h3>Your will</h3>
     <p class="muted" style="margin-bottom:8px">${esc(last.willSummary())}</p>${kv(rows)}

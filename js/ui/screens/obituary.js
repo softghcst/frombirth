@@ -12,14 +12,18 @@ const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span
 function estateCard(g, c) {
   const e = g.estate;
   if (!e) return '';
-  if (e.gross <= 0) return '<div class="card"><h3>The estate</h3><p class="muted">There was nothing to leave. The debts were written off.</p></div>';
+  const shares = e.shares ?? [];
+  if (e.gross <= 0 && !shares.some((s) => s.items?.length)) return '<div class="card"><h3>The estate</h3><p class="muted">There was nothing to leave. The debts were written off.</p></div>';
   const rows = [['Everything they owned', fmtMoney(e.gross, c)]];
   if (e.tax) rows.push([`Estate tax (${Math.round(c.estateTax * 100)}%)`, `− ${fmtMoney(e.tax, c)}`]);
   if (e.charity) rows.push(['Left to charity', fmtMoney(e.charity, c)]);
-  for (const s of e.shares) rows.push([`${s.name} (${s.role.toLowerCase()})`, fmtMoney(s.amount, c)]);
+  for (const s of shares) {
+    rows.push([`${s.name} (${s.role.toLowerCase()})`, fmtMoney(s.amount, c)]);
+    for (const it of s.items ?? []) rows.push([`   and the ${it.name.charAt(0).toLowerCase() + it.name.slice(1)}`, fmtMoney(it.value, c)]);
+  }
   if (e.lost) rows.push(['Buried in the garden, never found', fmtMoney(e.lost, c)]);
   if (e.toState) rows.push(['With no heirs, taken by the state', fmtMoney(e.toState, c)]);
-  return `<div class="card"><h3>The estate</h3>${kv(rows)}</div>`;
+  return `<div class="card"><h3>The estate</h3>${kv(rows)}<p class="muted" style="margin-top:8px">Nothing was sold. Property and vehicles passed on as they were.</p></div>`;
 }
 
 /** Every epitaph in the game, showing which have been earned across all lives. */
@@ -39,7 +43,7 @@ export function openEpitaphCollection() {
 /**
  * @param {HTMLElement} app
  * @param {import('../../types.js').GraveyardEntry} g
- * @param {{onDone:Function, heirs?:{id:string, name:string, label:string, age:number}[], onContinue?:(id:string)=>void}} hooks
+ * @param {{onDone:Function, onRestart?:Function, heirs?:{id:string, name:string, label:string, age:number}[], onContinue?:(id:string)=>void}} hooks
  */
 export function renderObituary(app, g, hooks) {
   const c = COUNTRIES[g.countryId];
@@ -83,11 +87,13 @@ export function renderObituary(app, g, hooks) {
       <div class="card"><h3>Milestones</h3>
         ${g.milestones.map((m) => `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('')}
       </div>
-      ${heirs.length ? `<div class="card"><h3>Carry on the family</h3>
+      ${heirs.length ? `<div class="card"><h3>Carry on as ${heirs[0].label.includes('grand') ? 'a grandchild' : 'a child'}</h3>
         <p class="muted" style="margin-bottom:10px">Step into the life of one of the family. They keep their own schooling, work, savings and loved ones, and whatever they were left.</p>
         <div class="btn-stack">${heirs.map((h) => `<button class="btn" data-heir="${h.id}">Continue as ${esc(h.name)} <small>${esc(h.label)}, age ${h.age}</small></button>`).join('')}</div>
       </div>` : ''}
       <div class="btn-stack">
+        ${hooks.onUndo ? '<button class="btn" data-undo-death>Go back a year</button>' : ''}
+        ${hooks.onRestart ? '<button class="btn" data-restart>Start this life again</button>' : ''}
         <button class="btn" data-epitaphs>Epitaphs earned</button>
         <button class="btn primary" data-done>${heirs.length ? 'End the story here' : 'Return to title'}</button>
       </div>
@@ -96,5 +102,7 @@ export function renderObituary(app, g, hooks) {
   window.scrollTo(0, 0);
   app.querySelector('[data-done]').addEventListener('click', () => hooks.onDone());
   app.querySelector('[data-epitaphs]').addEventListener('click', openEpitaphCollection);
+  app.querySelector('[data-restart]')?.addEventListener('click', () => hooks.onRestart());
+  app.querySelector('[data-undo-death]')?.addEventListener('click', () => hooks.onUndo());
   for (const b of app.querySelectorAll('[data-heir]')) b.addEventListener('click', () => hooks.onContinue(b.dataset.heir));
 }

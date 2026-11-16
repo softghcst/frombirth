@@ -1,6 +1,7 @@
 // currency.scale converts base (USD-like) amounts into everyday local amounts.
 // incomeTax is an effective rate on annual income; estateTax applies at death.
 import { NAMES } from './names.js';
+import { LIVING } from './living.js';
 
 /** A name list: the short one here plus the long one in names.js, without repeats. */
 const pool = (short, long = '') => [...new Set(`${short} ${long}`.split(' ').filter(Boolean).map((n) => n.replace(/_/g, ' ')))];
@@ -196,6 +197,14 @@ const PROPERTY_TAX = {
   no: 0.003, ch: 0.002, ru: 0.001, pk: 0.002, id: 0.001, sg: 0.006, do: 0.001,
 };
 for (const c of LIST) c.propertyTax = PROPERTY_TAX[c.id] ?? 0;
+
+// Living conditions (data/living.js). wageK and costK are what pay and local
+// prices are multiplied by. The raw gaps between countries are softened so
+// that every country stays playable while still feeling as rich or poor as it is.
+for (const c of LIST) {
+  const L = LIVING[c.id];
+  c.living = { ...L, wageK: Math.round(L.wage ** 0.6 * 1000) / 1000, costK: Math.round(L.cost ** 0.85 * 1000) / 1000 };
+}
 
 /** "1.1% a year" or "none", for display. */
 export const propertyTaxLabel = (c) => (c.propertyTax ? `${(c.propertyTax * 100).toFixed(1).replace(/\.0$/, '')}% a year` : 'none');

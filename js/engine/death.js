@@ -8,6 +8,7 @@ import { addToGraveyard, deleteSlot, saveGame } from '../save.js';
 import { stageLabel } from './education.js';
 import { roleLabel } from './relationships.js';
 import { heirs } from './legacy.js';
+import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
 
@@ -37,6 +38,7 @@ function careShift(p) {
   if (p.stats.mood >= 60) s += 1;
   if (p.stats.mood < 25) s -= 2;
   if (p.conditions.some((c) => c.chronic && !c.treated)) s -= 2; // an untreated long-term illness
+  s += (careQuality() - 84) / 7; // the standard of care within reach, which money can buy
   return s;
 }
 
@@ -47,6 +49,7 @@ export function rollDeath() {
   const p = player();
   const worst = [...p.conditions].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
+  if (p.legal.incarceration?.deathRow && p.legal.incarceration.served >= 2 && rng.chance(0.1)) return 'execution';
   if (!rng.chance(mortalityChance(p.age, p.stats.health, (p.flags.longevity ?? 0) + careShift(p)))) return null;
   if (worst && worst.severity >= 45 && rng.chance(0.7)) return worst.name.replace(/^an? /, '');
   return p.age >= 100 ? 'great old age' : p.age >= 70 ? 'old age' : rng.pick(ACCIDENTS);
@@ -65,37 +68,29 @@ const people = () => player().npcIds.map((id) => store.state.npcs[id]).filter(Bo
 const living = (role) => people().filter((n) => n.alive && n.role === role);
 
 // ---------- The will ----------
+//
+// p.flags.will = { mode, heirs?: [npc ids], items?: { asset id: npc id } }
+//   mode 'family'  the default: a spouse takes half, the children share the rest
+//        'named'   the people in `heirs`, in equal shares
+//        'charity' everything is given away
+// `items` says who gets a particular property or vehicle. Nothing is sold at
+// death: property and vehicles pass to the heirs as they are, mortgage and all.
+// Only investments are cashed in, and estate tax is paid out of the cash.
 
 export const canWriteWill = () => player().age >= 18;
 
-/** People the player could leave everything to. */
+/** People the player could name in a will. */
 export const willCandidates = () => people().filter((n) => n.alive
-  && ['spouse', 'partner', 'child', 'grandchild', 'sibling', 'parent', 'niece', 'friend'].includes(n.role));
+  && ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'sibling', 'parent', 'niece', 'inlaw', 'relative', 'friend'].includes(n.role));
 
-/** @returns {{mode:'family'|'person'|'charity', npcId?:string}} */
+/** The will as it stands, tidied: old formats are read, and the dead drop out. */
 export function currentWill() {
   let w = player().flags.will;
   if (typeof w === 'string') w = { mode: w === 'charity' ? 'charity' : w === 'buried' ? 'buried' : 'family' };
-  if (w?.mode === 'person' && !store.state.npcs[w.npcId]?.alive) return { mode: 'family' };
-  return w ?? { mode: 'family' };
-}
-
-export function willSummary() {
-  const w = currentWill();
-  if (w.mode === 'charity') return 'Everything goes to charity.';
-  if (w.mode === 'buried') return 'Your cash is buried in the garden. Only the map knows where.';
-  if (w.mode === 'person') { const n = store.state.npcs[w.npcId]; return `Everything goes to ${n.firstName} ${n.lastName}.`; }
-  return familyShares().length ? 'Shared among your closest family.' : 'You have no family to leave it to. It would go to the state.';
-}
-
-export function writeWill(mode, npcId) {
-  const p = player();
-  if (!canWriteWill()) return result(false, 'You are too young to make a will.', 'neutral');
-  if (mode === 'person' && !willCandidates().some((n) => n.id === npcId)) return result(false, 'You cannot name them.', 'neutral');
-  p.flags.will = mode === 'person' ? { mode, npcId } : { mode };
-  const text = `You signed a new will. ${willSummary()}`;
-  log(text);
-  return result(true, text, 'neutral');
+  if (w?.mode === 'person') w = { mode: 'named', heirs: [w.npcId] };
+  w = { mode: w?.mode ?? 'family', heirs: (w?.heirs ?? []).filter((id) => store.state.npcs[id]?.alive), items: { ...(w?.items ?? {}) } };
+  if (w.mode === 'named' && !w.heirs.length) w.mode = 'family';
+  return w;
 }
 
 /** With no will naming anyone: a spouse takes half, the children share the rest. */
@@ -111,27 +106,113 @@ function familyShares() {
   return [];
 }
 
+/** Who inherits and what fraction of the money each gets. */
+export function willHeirs() {
+  const w = currentWill();
+  if (w.mode === 'charity' || w.mode === 'buried') return [];
+  if (w.mode === 'named') return w.heirs.map((id) => [store.state.npcs[id], 1 / w.heirs.length]);
+  return familyShares();
+}
+
+export function willSummary() {
+  const w = currentWill();
+  if (w.mode === 'charity') return 'Everything goes to charity.';
+  if (w.mode === 'buried') return 'Your cash is buried in the garden. Only the map knows where.';
+  const heirs = willHeirs();
+  if (!heirs.length) return 'You have no family to leave it to. It would go to the state.';
+  if (w.mode === 'named') return heirs.length === 1 ? `Everything goes to ${heirs[0][0].firstName} ${heirs[0][0].lastName}.` : `Shared equally between ${names(heirs.map(([n]) => n))}.`;
+  return 'No will written: a spouse takes half and your children share the rest.';
+}
+const names = (list) => list.map((n) => n.firstName).join(', ').replace(/, ([^,]*)$/, ' and $1');
+
+function saveWill(w, text) {
+  player().flags.will = w;
+  const line = `${text} ${willSummary()}`;
+  log(line);
+  return result(true, line, 'neutral');
+}
+
+/** Sets the will to the family default or to charity. */
+export function writeWill(mode, npcId) {
+  if (!canWriteWill()) return result(false, 'You are too young to make a will.', 'neutral');
+  if (mode === 'person') return addHeir(npcId, true);
+  return saveWill({ mode: mode === 'charity' ? 'charity' : 'family', heirs: [], items: currentWill().items }, 'You signed a new will.');
+}
+
+/** Names someone in the will. `only` makes them the sole heir. */
+export function addHeir(npcId, only = false) {
+  if (!canWriteWill()) return result(false, 'You are too young to make a will.', 'neutral');
+  const n = store.state.npcs[npcId];
+  if (!willCandidates().some((x) => x.id === npcId)) return result(false, 'You cannot name them.', 'neutral');
+  const w = currentWill();
+  // Naming people starts from whoever would have inherited anyway, so they can be taken off one by one.
+  const base = only ? [] : w.mode === 'named' ? w.heirs : familyShares().map(([x]) => x.id);
+  return saveWill({ mode: 'named', heirs: [...new Set([...base, npcId])], items: w.items }, `You added ${n.firstName} to your will.`);
+}
+
+/** Takes someone out of the will. Taking out the last person returns it to the family default. */
+export function removeHeir(npcId) {
+  const n = store.state.npcs[npcId];
+  const w = currentWill();
+  const base = w.mode === 'named' ? w.heirs : familyShares().map(([x]) => x.id);
+  const heirs = base.filter((id) => id !== npcId);
+  const items = Object.fromEntries(Object.entries(w.items).filter(([, id]) => id !== npcId));
+  return saveWill({ mode: heirs.length ? 'named' : 'family', heirs, items }, `You cut ${n?.firstName ?? 'them'} out of your will.`);
+}
+
+/** Says who gets one property or vehicle. They must be an heir. */
+export function assignItem(assetId, npcId) {
+  const w = currentWill();
+  const a = player().assets.find((x) => x.id === assetId);
+  const n = store.state.npcs[npcId];
+  if (!a || !willHeirs().some(([x]) => x.id === npcId)) return result(false, 'They are not in your will.', 'neutral');
+  player().flags.will = { ...w, items: { ...w.items, [assetId]: npcId } };
+  const text = `The ${a.name.charAt(0).toLowerCase() + a.name.slice(1)} will go to ${n.firstName}.`;
+  log(text);
+  return result(true, text, 'neutral');
+}
+
+/** Property and vehicles: the things that are handed on as they are. */
+export const keepsakes = () => player().assets.filter((a) => a.kind === 'property' || a.kind === 'vehicle');
+const equity = (a) => a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0);
+
 /**
  * What would happen to everything the player owns if they died today.
  * Amounts are in local currency.
- * @returns {{gross:number, tax:number, net:number, charity:number, toState:number,
- *            shares:{npcId:string, name:string, role:string, amount:number}[]}}
+ *   gross: everything, less debts · liquid: cash and investments, less loans
+ *   tax: estate tax, paid from the liquid part only (nothing is sold to meet it)
+ *   shares: each heir's cash and the property and vehicles they receive
  */
 export function estatePlan() {
+  const p = player();
   const c = country();
   const gross = netWorth(store.state);
-  const plan = { gross, tax: 0, net: 0, charity: 0, toState: 0, shares: [] };
-  if (gross <= 0) return plan;
+  const kept = keepsakes();
+  const liquid = gross - kept.reduce((s, a) => s + equity(a), 0);
+  const plan = { gross, liquid, tax: 0, net: 0, charity: 0, toState: 0, shares: [] };
   const will = currentWill();
-  if (will.mode === 'charity') return { ...plan, net: gross, charity: gross }; // gifts to charity are not taxed
-  if (will.mode === 'buried') return { ...plan, lost: gross }; // nobody ever finds it
-  plan.tax = Math.round(Math.max(0, gross - localMoney(ESTATE_ALLOWANCE, c)) * c.estateTax);
+  const item = (a) => ({ id: a.id, name: a.name, kind: a.kind, value: equity(a) });
+  if (gross <= 0 && !kept.length) return plan;
+  if (will.mode === 'charity') return { ...plan, net: gross, charity: Math.max(0, gross), given: kept.map(item) }; // gifts to charity are not taxed
+  if (will.mode === 'buried') return { ...plan, lost: Math.max(0, liquid), ...(kept.length ? distribute(plan, familyShares(), kept, will, 0, item) : {}) };
+  plan.tax = Math.max(0, Math.min(liquid, Math.round(Math.max(0, gross - localMoney(ESTATE_ALLOWANCE, c)) * c.estateTax)));
   plan.net = gross - plan.tax;
-  const split = will.mode === 'person' ? [[store.state.npcs[will.npcId], 1]] : familyShares();
-  if (!split.length) return { ...plan, toState: plan.net };
-  plan.shares = split.map(([n, part]) => ({ npcId: n.id, name: `${n.firstName} ${n.lastName}`, role: roleLabel(n),
-    amount: Math.round(plan.net * part) }));
-  return plan;
+  const split = willHeirs();
+  if (!split.length) return { ...plan, toState: plan.net, given: kept.map(item) };
+  return { ...plan, ...distribute(plan, split, kept, will, Math.max(0, liquid - plan.tax), item) };
+}
+
+/** Shares out the cash by fraction, and each property and vehicle to one heir. */
+function distribute(plan, split, kept, will, cash, item) {
+  const shares = split.map(([n, part]) => ({ npcId: n.id, name: `${n.firstName} ${n.lastName}`, role: roleLabel(n),
+    amount: Math.round(cash * part), items: [] }));
+  if (!shares.length) return { shares };
+  kept.forEach((a, i) => {
+    // Named in the will, or else: the home to the first heir, the rest in turn.
+    const to = shares.find((s) => s.npcId === will.items[a.id]) ?? (a.id === player().homeId ? shares[0] : shares[i % shares.length]);
+    to.items.push(item(a));
+  });
+  return { shares };
 }
 
 // ---------- Epitaphs ----------
@@ -159,6 +240,14 @@ function lifeSummary(p, plan) {
     healerYears: jobs.filter((j) => ['doctor', 'nurse'].includes(j.careerId)).reduce((s, j) => s + (j.to - j.from), 0),
     degrees: p.education.degrees.map((d) => d.type),
     followers: Math.max(0, p.social.followers - p.social.boughtFollowers), countries: k.countriesLived,
+    visited: new Set([...(p.flags.visited ?? []), ...(p.flags.passport ?? []).map((x) => x.id)]).size,
+    generation: p.generation ?? 1, earned: p.finance.lifetimeEarned / scale, livesSaved: k.livesSaved ?? 0,
+    properties: p.assets.filter((a) => a.kind === 'property').length, vehicles: p.assets.filter((a) => a.kind === 'vehicle').length,
+    greatGrandchildren: all.filter((n) => n.role === 'greatgrandchild').length,
+    talents: Object.values(p.talents).filter((v) => v >= 80).length, music: p.talents.music ?? 0,
+    childStar: !!p.flags.childStar || !!p.flags.childActor, lifeSentence: (p.legal.incarceration?.yearsLeft ?? 0) >= 50,
+    neverMoved: k.countriesLived === 1 && !(p.flags.visited ?? []).length, holidays: k.holidays ?? 0,
+    surgeries: k.surgeries ?? 0, mood: p.stats.mood, health: p.stats.health,
   };
 }
 
@@ -181,6 +270,12 @@ export function die(cause) {
   for (const s of plan.shares) {
     const n = state.npcs[s.npcId];
     if (n.life) n.life.savings += s.amount; else n.savings = (n.savings ?? 0) + s.amount;
+    // The property and vehicles themselves, kept whole: whoever carries on as this person owns them.
+    const things = s.items.map((it) => JSON.parse(JSON.stringify(p.assets.find((a) => a.id === it.id))));
+    if (things.length) {
+      n.inheritance = { assets: [...(n.inheritance?.assets ?? []), ...things] };
+      n.holdings = [...(n.holdings ?? []), ...things.map((a) => a.name)];
+    }
   }
   if (plan.charity) p.counters.donated += Math.round(plan.charity / c.currency.scale);
 
@@ -212,7 +307,7 @@ export function die(cause) {
   addToGraveyard(entry);
   // While there is someone to carry on as, the save is kept so the choice survives a refresh.
   state.legacy = { graveId: entry.id };
-  if (heirs(state).length) saveGame(state); else deleteSlot(state.slotId);
+  if (heirs(state).length) saveGame(state); else deleteSlot(state.slotId, true);
   store.lastObituary = entry;
   return entry;
 }

@@ -1,7 +1,7 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
+import { clamp, localMoney, fmtMoney, localWage } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { resolve, remember } from './conditions.js';
@@ -87,7 +87,7 @@ function doorBonus(career) {
   return bonus;
 }
 
-const payBand = (level) => level.pay.map((k) => localMoney(k * K, country()));
+const payBand = (level) => level.pay.map((k) => localWage(k * K, country()));
 /** The most a level will ever pay, however many raises you collect. */
 const payCeiling = (level) => Math.round(payBand(level)[1] * 1.25);
 const capSalary = () => {
@@ -456,7 +456,7 @@ export function gigOptions() {
       else if (done.length >= MAX_GIGS_PER_YEAR) reason = `You only have time for ${MAX_GIGS_PER_YEAR} gigs a year.`;
     }
     const skill = Number(resolve(g.skill)) || 0;
-    return { id: g.id, name: g.name, pay: localMoney(g.pay * (0.6 + skill / 100), country()), available: !reason, reason };
+    return { id: g.id, name: g.name, pay: localWage(g.pay * (0.6 + skill / 100), country()), available: !reason, reason };
   });
 }
 export const canGig = () => player().age >= 12 && !player().legal.incarceration;

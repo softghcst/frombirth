@@ -2,7 +2,7 @@
 // getting a pet. Children carry their own stats and talents so a later phase
 // can let the player continue as one of them.
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
+import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats } from './genetics.js';
@@ -32,10 +32,12 @@ const npcGenes = (npc) => ({ appearance: npc.appearance, traits: npc.traits ?? [
 /** True when the player and this person could have a baby together. */
 export function canConceive(npc) {
   const p = player();
-  const pair = [p.gender, npc.gender].sort().join('+');
-  if (pair !== 'female+male') return false;
+  const mine = p.flags.bornAs ?? p.gender;
+  const theirs = npc.flags?.bornAs ?? npc.gender;
+  if ([mine, theirs].sort().join('+') !== 'female+male') return false;
+  if (p.flags.identity?.bottom) return false;
   if (p.age < 18 || npc.age < 18) return false;
-  const motherAge = p.gender === 'female' ? p.age : npc.age;
+  const motherAge = mine === 'female' ? p.age : npc.age;
   return motherAge <= MAX_CHILDBEARING_AGE;
 }
 
@@ -163,7 +165,7 @@ export function getPet() {
 /** What the children cost this year, in local money. */
 export function childCosts() {
   const minors = npcsByRole('child').filter((k) => k.age < 18).length;
-  return minors * localMoney(CHILD_COST, country());
+  return minors * localCost(CHILD_COST, country());
 }
 
 /** Yearly: births. What children go on to do is in npcLives.js. */

@@ -2,7 +2,7 @@
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney, uid } from '../util.js';
+import { clamp, localMoney, fmtMoney, uid, localWage, localCost } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { applyMods } from './genetics.js';
@@ -87,7 +87,7 @@ export const meetClassmates = () => turnOverClassmates(true);
 export function tuitionFor(stage) {
   const c = country();
   const prog = PROGRAMMES[stage];
-  return c.freeUniversity && prog.kind !== 'trade' ? 0 : localMoney(prog.tuition, c);
+  return c.freeUniversity && prog.kind !== 'trade' ? 0 : localCost(prog.tuition, c);
 }
 
 /** What this year actually costs at the school the player attends. */
@@ -135,7 +135,7 @@ function chargeTuition() {
 export function housingCost(id = player().education.housing) {
   const e = player().education;
   if (id === 'dorm' && e.housingAid && e.funding === 'scholarship') return 0;
-  return localMoney(HOUSING[id].cost, country());
+  return localCost(HOUSING[id].cost, country());
 }
 
 export const roommate = () => store.state.npcs[player().education.roommateId];
@@ -146,7 +146,7 @@ export function housingOptions(housingAid = player().education.housingAid) {
   const parents = npcsByRole('parent').length > 0;
   return Object.values(HOUSING).map((h) => {
     const free = h.id === 'dorm' && housingAid;
-    return { id: h.id, label: h.label, blurb: h.blurb, cost: free ? 0 : localMoney(h.cost, c),
+    return { id: h.id, label: h.label, blurb: h.blurb, cost: free ? 0 : localCost(h.cost, c),
       note: free ? 'Covered by your housing scholarship.' : '',
       available: h.id !== 'home' || parents, reason: 'You have no family home to stay in.' };
   });
@@ -389,7 +389,7 @@ export function tickEducation() {
   else applyPriority(p);
   const stipend = PROGRAMMES[e.stage]?.stipend;
   if (stipend) {
-    const pay = localMoney(stipend, country());
+    const pay = localWage(stipend, country());
     p.finance.cash += pay;
     p.finance.lifetimeEarned += pay;
     log(`You earned ${fmtMoney(pay, country())} as an apprentice this year.`);
@@ -652,7 +652,7 @@ export function programmeOptions() {
     return { id: prog.id, label: transfer ? 'University (transfer)' : prog.label,
       blurb: transfer ? 'Your community-college credits count: you start in the third year.' : prog.blurb,
       years: transfer ? 2 : prog.years, tuition: tuitionFor(prog.id),
-      stipend: prog.stipend ? localMoney(prog.stipend, c) : 0, eligible: !reason, reason };
+      stipend: prog.stipend ? localWage(prog.stipend, c) : 0, eligible: !reason, reason };
   });
 }
 

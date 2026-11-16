@@ -84,6 +84,8 @@ export function meetSomeone(place) {
   const surnames = COUNTRIES[p.countryId].names.last.filter((n) => n !== p.lastName);
   const npc = makeNpc({ role: 'partner', countryId: p.countryId, gender, age, relationship: rng.int(48, 62),
     lastName: rng.pick(surnames) });
+  // Someone who would go out with the player is, by definition, drawn to people like them.
+  npc.orientation = npc.gender === p.gender ? rng.pick(['gay', 'gay', 'bisexual', 'pansexual']) : rng.pick(['straight', 'straight', 'straight', 'bisexual']);
   if (place === 'app') npc.meters.charm = clamp(npc.meters.charm - rng.int(0, 15)); // profiles flatter
   ensureLife(npc);
   const m = npc.meters;
@@ -251,6 +253,7 @@ export function marry(npcId, weddingId, prenup) {
   const npc = npcOf(npcId);
   const w = WEDDINGS.find((x) => x.id === weddingId);
   if (!npc.flags.engaged) return result(false, 'You are not engaged.', 'neutral');
+  if (npc.gender === p.gender && !c.living.laws.marriage) return result(false, `Two ${p.gender === 'male' ? 'men' : p.gender === 'female' ? 'women' : 'people of the same gender'} cannot marry in ${c.name}. You can stay engaged, or move somewhere you can.`, 'neutral');
   const cost = localMoney(w.cost, c);
   if (p.finance.cash < cost) return result(false, 'You cannot afford that wedding.', 'neutral');
   p.finance.cash -= cost;

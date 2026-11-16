@@ -11,7 +11,8 @@ export const GAMBLING_AGE = 18;
 export const STAKES = [10, 50, 250, 1000, 5000, 25000];
 export const LOTTERY_TICKET = 2;
 
-export const canGamble = () => player().age >= GAMBLING_AGE && !player().legal.incarceration;
+export const gamblingLegal = () => country().living.laws.gambling;
+export const canGamble = () => player().age >= GAMBLING_AGE && !player().legal.incarceration && gamblingLegal();
 export const stakes = () => STAKES.map((s) => localMoney(s, country())).map((amount) => ({ amount, affordable: player().finance.cash >= amount }));
 
 function stake(amount) {

@@ -1,11 +1,15 @@
 // localStorage persistence: multiple save slots plus the graveyard.
 import { rng } from './rng.js';
 import { netWorth } from './engine/finance.js';
+import { normalize, hash } from './avatar/catalog.js';
 
 export const SCHEMA_VERSION = 1;
 const K_INDEX = 'pathways.index';
 const K_SLOT = 'pathways.slot.';
 const K_GRAVE = 'pathways.graveyard';
+const K_UNDO = 'pathways.undo.';
+/** How many years back "age down" can go. */
+export const UNDO_YEARS = 3;
 
 function read(key, fallback) {
   try {
@@ -32,6 +36,17 @@ function migrate(state) {
   state.player.homeId ??= null;
   state.player.flags.longevity ??= Math.round((Math.random() + Math.random() + Math.random() - 1.5) / 1.5 * 11);
   state.market ??= { prices: {}, history: {}, cycle: 0 };
+  // Lives saved before orientation, identity and skills existed.
+  const pl = state.player;
+  pl.orientation ??= 'straight';
+  pl.skills ??= {};
+  pl.flags.bornAs ??= pl.gender;
+  pl.flags.gifts ??= Object.entries(pl.talents).filter(([, v]) => v >= 75).map(([k]) => k);
+  for (const n of Object.values(state.npcs)) if (n.role !== 'pet') n.orientation ??= ['straight', 'straight', 'straight', 'straight', 'straight', 'straight', 'straight', 'straight', 'gay', 'bisexual'][hash(n.id) % 10];
+  // Faces saved before the avatar system: give each a complete appearance,
+  // chosen from the character's id so it is the same on every load.
+  state.player.appearance = normalize(state.player.appearance, state.player.id);
+  for (const n of Object.values(state.npcs)) if (n.role !== 'pet') n.appearance = normalize(n.appearance, n.id);
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }
@@ -68,10 +83,39 @@ export function loadGame(slotId) {
   return state;
 }
 
-export function deleteSlot(slotId) {
-  try { localStorage.removeItem(K_SLOT + slotId); } catch { /* storage unavailable */ }
+export function deleteSlot(slotId, keepUndo = false) {
+  try { localStorage.removeItem(K_SLOT + slotId); if (!keepUndo) localStorage.removeItem(K_UNDO + slotId); } catch { /* storage unavailable */ }
   write(K_INDEX, read(K_INDEX, []).filter((m) => m.slotId !== slotId));
 }
+
+/**
+ * Remembers the life as it stands, so the year about to be lived can be
+ * taken back. Called just before the age goes up. If storage is short, older
+ * years are dropped rather than failing.
+ */
+export function pushUndo(state) {
+  state.rngSeed = rng.state();
+  // Only the life being played keeps its history: it is large, and browser storage is small.
+  try { for (const key of Object.keys(localStorage)) if (key.startsWith(K_UNDO) && key !== K_UNDO + state.slotId) localStorage.removeItem(key); } catch { /* storage unavailable */ }
+  const list = read(K_UNDO + state.slotId, []);
+  list.push(JSON.stringify(state));
+  while (list.length > UNDO_YEARS) list.shift();
+  while (list.length && !write(K_UNDO + state.slotId, list)) list.shift();
+}
+/** How many years can be taken back for this life. */
+export const undoDepth = (slotId) => read(K_UNDO + slotId, []).length;
+/** Takes back the most recent year: returns the life as it was before it, or null. */
+export function popUndo(slotId) {
+  const list = read(K_UNDO + slotId, []);
+  const raw = list.pop();
+  if (!raw) return null;
+  write(K_UNDO + slotId, list);
+  const state = migrate(JSON.parse(raw));
+  rng.seed(state.rngSeed);
+  return state;
+}
+/** Removes a grave, when the death it records is taken back. */
+export function removeGrave(id) { write(K_GRAVE, getGraveyard().filter((g) => g.id !== id)); }
 
 /** @returns {import('./types.js').GraveyardEntry[]} most recent first */
 export const getGraveyard = () => read(K_GRAVE, []);

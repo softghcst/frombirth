@@ -196,3 +196,48 @@ button.tree-row:active { background: var(--accent-soft); }
 .stamp .flag { display: block; font-size: 1.7rem; line-height: 1.2; }
 .stamp strong { display: block; font-family: var(--serif); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em; }
 .stamp small { display: block; font-size: 0.72rem; margin-top: 2px; }
+
+/* ---------- Appearance editor ---------- */
+.av-screen { position: fixed; inset: 0; z-index: 30; background: var(--paper); display: flex; justify-content: center;
+  padding: calc(10px + var(--safe-top)) 12px calc(10px + var(--safe-bottom)); }
+.av-sheet { width: 100%; max-width: 520px; display: flex; flex-direction: column; min-height: 0; }
+.av-sheet h2 { font-size: 1.3rem; margin-bottom: 6px; }
+.av-sheet [data-editor] { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.av-note { margin: 8px 0; font-size: 0.9rem; }
+.av-editor { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* The portrait never scrolls away: only the options below it do. */
+.av-stage { flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-bottom: 8px; }
+.av-portrait { width: min(42vw, 170px); height: min(42vw, 170px); border-radius: 50%; overflow: hidden; background: var(--accent-soft); box-shadow: var(--shadow); }
+.av-portrait svg, .av-thumb svg { display: block; width: 100%; height: 100%; }
+.av-stage .btn { width: auto; }
+.av-tabs { flex: none; display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; -webkit-overflow-scrolling: touch; }
+.av-tab { flex: none; min-height: 40px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--card); font: inherit; font-size: 0.9rem; color: inherit; }
+.av-tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.av-panel { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 2px 2px 10px; }
+.av-control { margin-bottom: 14px; }
+.av-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 0.85rem; }
+.av-label span { color: var(--muted); }
+.av-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.av-opt { border: 2px solid var(--line); background: var(--card); color: inherit; font: inherit; padding: 0; cursor: pointer; }
+.av-opt.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.av-thumb { width: 72px; border-radius: 12px; overflow: hidden; padding-bottom: 3px; }
+.av-thumb svg { height: 68px; background: var(--accent-soft); }
+.av-thumb span { display: block; font-size: 0.66rem; line-height: 1.15; padding: 3px 2px 0; }
+.av-swatch { width: 44px; height: 44px; border-radius: 50%; }
+.av-chip { min-height: 44px; padding: 6px 14px; border-radius: 22px; font-size: 0.9rem; }
+.av-chip.on { background: var(--accent-soft); }
+
+/* ---------- Age down ---------- */
+.year-row { display: flex; gap: 8px; align-items: stretch; }
+.year-row .year-btn { flex: 1; }
+.undo-btn { flex: none; width: 64px; min-height: 48px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: inherit;
+  font: inherit; font-size: 1.15rem; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.undo-btn small { font-size: 0.62rem; color: var(--muted); }
+.undo-btn:disabled { opacity: 0.4; }
+.undo-btn[hidden] { display: none; }
+
+/* ---------- Sliders (editing someone's stats) ---------- */
+.slider { display: grid; grid-template-columns: 96px 1fr 38px; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 0.9rem; }
+.slider input[type=range] { width: 100%; height: 32px; accent-color: var(--accent); }
+.slider output { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.slider-group { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 12px 0 8px; }

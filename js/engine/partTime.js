@@ -1,7 +1,7 @@
 // Part-time jobs: getting one, covering shifts, quitting. Each job comes with a
 // manager who remembers how you behave (contact tag 'manager').
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
+import { clamp, localMoney, fmtMoney, localWage } from '../util.js';
 import { store, player, country, npcsByRole, log } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { checkChance } from './eventEngine.js';
@@ -25,7 +25,7 @@ export function jobOptions() {
     let reason = '';
     if (p.age < j.minAge) reason = `You need to be ${j.minAge}.`;
     else if (yearActs().applied[j.id]) reason = 'You already applied this year.';
-    return { id: j.id, title: j.title, place: j.place, pay: localMoney(j.pay, c), available: !reason, reason };
+    return { id: j.id, title: j.title, place: j.place, pay: localWage(j.pay, c), available: !reason, reason };
   });
 }
 
@@ -54,7 +54,7 @@ export function takeJob(id) {
   store.state.npcs[boss.id] = boss;
   p.npcIds.push(boss.id);
 
-  p.career.partTime = { jobId: id, title: job.title, salary: localMoney(job.pay, c), since: p.age };
+  p.career.partTime = { jobId: id, title: job.title, salary: localWage(job.pay, c), since: p.age };
   p.counters.jobsHeld += 1;
   const text = `You got a part-time job as a ${job.title.toLowerCase()} at ${job.place}. Your manager is ${boss.firstName}. It pays ${fmtMoney(p.career.partTime.salary, c)} a year.`;
   log(text, 'system', 'good');
@@ -68,7 +68,7 @@ export function coverShift() {
   if (!p.career.partTime) return result(false, 'You do not have a job.');
   if (yearActs().covered >= 1) return result(false, 'You have already covered for someone this year.', 'neutral');
   yearActs().covered += 1;
-  const pay = localMoney(COVER_SHIFT_PAY, country());
+  const pay = localWage(COVER_SHIFT_PAY, country());
   p.finance.cash += pay;
   p.stats.mood = clamp(p.stats.mood - 2);
   if (boss) {

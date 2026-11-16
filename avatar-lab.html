@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pathways avatar lab</title>
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <style>
+    body { overflow: auto; height: auto; }
+    main { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+    h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    h2 { font-size: 1.3rem; margin: 34px 0 6px; }
+    h3 small { font-weight: 400; color: var(--muted); }
+    .lab-editor { max-width: 460px; height: 620px; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+    .lab-editor > div { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    #family { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-top: 12px; }
+    .person { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+    .person .face { width: 150px; height: 150px; margin: 0 auto 8px; border-radius: 50%; overflow: hidden; background: var(--accent-soft); }
+    .person h3 { text-align: center; }
+    .person p { text-align: center; font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
+    .person table { width: 100%; font-size: 0.8rem; border-collapse: collapse; }
+    .person td { padding: 2px 0; border-top: 1px dashed var(--line); }
+    .from { text-align: right; font-weight: 600; }
+    .from.mother { color: #b0497a; } .from.father { color: #3b6ea8; } .from.both { color: var(--accent); } .from.new, .from.between { color: var(--muted); }
+    #family-small { display: flex; gap: 8px; margin-top: 12px; }
+    .menu-face { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: var(--accent-soft); }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .buttons .btn { width: auto; }
+    .sheet { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 18px; }
+    .sheet figure { margin: 0; width: 96px; text-align: center; font-size: 0.75rem; }
+    .sheet .face { width: 96px; height: 96px; border-radius: 50%; overflow: hidden; background: var(--accent-soft); }
+    .sheet code { display: block; color: var(--muted); font-size: 0.7rem; }
+    pre { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 0.78rem; overflow: auto; max-height: 260px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Avatar lab</h1>
+  <p class="muted">A workbench for Pathways portraits. Nothing here touches your saved lives.</p>
+
+  <h2>1. Live editor</h2>
+  <p class="muted">The same editor the game uses in "Design a life" and at the salon.</p>
+  <div class="lab-editor"><div id="editor"></div></div>
+  <div class="buttons"><button class="btn" id="editor-json">Show what would be saved</button></div>
+  <pre id="json"></pre>
+
+  <h2>2. Family resemblance</h2>
+  <p class="muted">Two parents with different features, one with dyed hair, and their children. The last column shows which parent each feature came from.</p>
+  <div class="buttons">
+    <button class="btn" id="family-new">New family</button>
+    <button class="btn" id="family-child">Have another child</button>
+    <button class="btn" id="family-dye">Restyle the parents</button>
+    <button class="btn" id="family-save">Save and reload</button>
+  </div>
+  <p id="family-note" style="margin-top:8px;font-weight:600"></p>
+  <div id="family"></div>
+  <p class="muted" style="margin-top:12px">At menu size:</p>
+  <div id="family-small"></div>
+
+  <h2>3. Every part</h2>
+  <p class="muted">Each part with the id that is written into saves. Artwork lives in <code>js/avatar/parts/</code>.</p>
+  <div id="parts"></div>
+</main>
+<script type="module" src="./js/avatar/lab.js"></script>
+</body>
+</html>

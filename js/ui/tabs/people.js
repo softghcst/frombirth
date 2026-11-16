@@ -12,6 +12,7 @@ import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
 import { COUNTRIES } from '../../data/countries.js';
+import * as who from '../../engine/identity.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
@@ -140,6 +141,36 @@ async function lookForLove(api) {
 
 // ---------- One person ----------
 
+/** Sliders for someone's stats and talents. Nothing changes until Save. */
+function editPerson(api, npc) {
+  const pet = npc.role === 'pet';
+  const meters = rel.EDITABLE_METERS.filter(([k]) => !pet || k === 'relationship' || k === 'health');
+  const talents = pet ? [] : rel.EDITABLE_TALENTS;
+  const slider = (group, key, label, value) => `<label class="slider"><span>${esc(label)}</span>
+    <input type="range" min="0" max="100" step="1" value="${Math.round(value)}" data-group="${group}" data-key="${key}">
+    <output>${Math.round(value)}</output></label>`;
+  const modal = openModal(`
+    <h2>${esc(npc.firstName)} ${pet ? '' : esc(npc.lastName)}</h2>
+    <p class="body muted">Set anything you like. This changes them, not how the story has gone so far.</p>
+    <div class="slider-group">${pet ? 'Stats' : 'Stats'}</div>
+    ${meters.map(([k, label]) => slider('meters', k, pet && k === 'relationship' ? 'Bond' : label, npc.meters[k])).join('')}
+    ${talents.length ? `<div class="slider-group">Talents</div>${talents.map(([k, label]) => slider('talents', k, label, npc.talents?.[k] ?? 0)).join('')}` : ''}
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn" data-cancel>Cancel</button>
+      <button class="btn primary" data-save>Save</button>
+    </div>`, { dismissable: true });
+  modal.el.addEventListener('input', (e) => { if (e.target.matches('input[type=range]')) e.target.nextElementSibling.textContent = e.target.value; });
+  modal.el.querySelector('[data-cancel]').addEventListener('click', () => { modal.close(); openNpc(npc, api); });
+  modal.el.querySelector('[data-save]').addEventListener('click', () => {
+    const values = { meters: {}, talents: {} };
+    for (const input of modal.el.querySelectorAll('input[type=range]')) values[input.dataset.group][input.dataset.key] = Number(input.value);
+    rel.editNpc(npc.id, values);
+    modal.close();
+    api.changed();
+    openNpc(npc, api);
+  });
+}
+
 function openNpc(npc, api) {
   lives.ensureLife(npc);
   const m = npc.meters;
@@ -149,8 +180,9 @@ function openNpc(npc, api) {
     : [['Relationship', m.relationship], ['Money', m.money], ['Intellect', m.intellect],
       ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy]]
       .map(([n, v]) => meterHtml(n, v, true)).join('');
-  const detail = [npc.occupation, typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : '', npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
+  const detail = [npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : '', npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
     .filter(Boolean).map((x) => ` · ${esc(x)}`).join('');
+  const owns = (npc.holdings ?? []).length ? `<p class="muted" style="margin-top:8px">Owns: ${esc(npc.holdings.join(', '))}.</p>` : '';
   const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
   const traitChips = known.length
     ? `<div class="chips" style="margin-top:10px">${known.map((t) => `<span class="chip">${esc(t.name)}</span>`).join('')}</div>` : '';
@@ -178,7 +210,9 @@ function openNpc(npc, api) {
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
+    ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
+    ...(npc.alive ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
   ];
   // Friendly things first, destructive things last.
   actions.sort((a, b) => Number(!!a.danger) - Number(!!b.danger));
@@ -189,7 +223,7 @@ function openNpc(npc, api) {
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
         <small>${esc(rel.roleLabel(npc))} · ${npc.alive ? `age ${npc.age}` : `died at ${npc.age}`}${detail}</small></div>
     </div>
-    ${traitChips}${feudNote}${expecting}
+    ${traitChips}${owns}${feudNote}${expecting}
     <div style="margin:12px 0 16px">${meters}</div>
     ${lifeCard}${history}${timeline}
     <div class="btn-stack">
@@ -213,6 +247,8 @@ function openNpc(npc, api) {
       hookUp: () => report(api, love.hookUp(npc.id)),
       baby: () => report(api, kids.tryForBaby(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
+      talkIdentity: () => report(api, who.talkItThrough(npc.id)),
+      edit: () => editPerson(api, npc),
       breakUp: async () => {
         const yes = await confirmModal({ title: `End things with ${npc.firstName}?`, body: 'They will become an ex.', yes: 'End it', danger: true });
         if (yes) await report(api, love.breakUp(npc.id));

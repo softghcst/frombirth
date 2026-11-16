@@ -1,10 +1,11 @@
 // Builds the family a life starts in, and runs the family's yearly business:
 // pocket money and new siblings.
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
+import { clamp, localMoney, fmtMoney, localWage } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, unknownParent } from './genetics.js';
+import { skinDepth } from '../avatar/catalog.js';
 
 /**
  * @param {object} c  country record
@@ -31,7 +32,7 @@ export function generateFamily(c, lastName, opts = {}) {
   const mother = member({ ...common, role: 'parent', gender: 'female', lastName,
     age: rng.int(youngest, 40), relationship: rng.int(65, 100), skinHint: opts.skinHint });
   const father = status === 'single' ? null : member({ ...common, role: 'parent', gender: 'male', lastName,
-    age: Math.max(youngest, mother.age + rng.int(-3, 8)), skinHint: opts.skinHint ?? mother.appearance.skin,
+    age: Math.max(youngest, mother.age + rng.int(-3, 8)), skinHint: opts.skinHint ?? skinDepth(mother.appearance),
     relationship: status === 'separated' ? rng.int(25, 70) : rng.int(55, 100) });
   const genes = father ?? unknownParent(mother);
 
@@ -60,7 +61,7 @@ export function generateFamily(c, lastName, opts = {}) {
       const age = parent.age + rng.int(21, 35);
       if (age > 88 || !rng.chance(clamp(1.35 - age / 70, 0.05, 0.95))) continue;
       const g = member({ role: 'grandparent', countryId: c.id, gender, lastName: surname, age,
-        relationship: rng.int(45, 90), skinHint: parent.appearance.skin });
+        relationship: rng.int(45, 90), skinHint: skinDepth(parent.appearance) });
       g.flags.side = side;
       grandparents.push(g);
     }
@@ -83,7 +84,7 @@ export function tickFamily() {
   // Pocket money, sized by what the parents have and how freely they give.
   if (p.age >= 6 && p.age <= 17 && parents.length) {
     const share = parents.reduce((s, n) => s + (n.wealth / 100) * (n.meters.generosity / 100), 0) / parents.length;
-    const amount = localMoney(share * (p.age < 12 ? 500 : 1500), c);
+    const amount = localWage(share * (p.age < 12 ? 500 : 1500), c);
     if (amount > 0) {
       p.finance.cash += amount;
       if (!p.flags.gotPocketMoney) {

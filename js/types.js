@@ -23,7 +23,7 @@
  * @property {Object<string,'mother'|'father'|'self'>} traitSources
  * @property {string[]} birth  birth condition ids
  * @property {HealthCondition[]} conditions
- * @property {{skin:number, hair:number, hairStyle:number, eyes:number, weight:number}} appearance
+ * @property {Appearance} appearance  see js/avatar/catalog.js: { v:2, inherited:{...}, style:{...} }
  * @property {Education} education
  * @property {CareerState} career
  * @property {Finance} finance
@@ -57,7 +57,7 @@
  *            |'ex'|'child'|'pet'|'boss'|'cellmate'} role
  * @property {{relationship:number, money:number, crazy:number, intellect:number,
  *             charm:number, health:number, generosity:number}} meters
- * @property {{skin:number, hair:number, hairStyle:number, eyes:number}} [appearance]
+ * @property {Appearance} [appearance]
  * @property {string[]} [traits]
  * @property {number} [strictness]
  * @property {number} [income]  parents: yearly, local currency
@@ -199,7 +199,7 @@
  * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
  * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity'|'property'|'vehicle'|'sellInvestments'|'prison'|'giveVehicle',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity'|'property'|'vehicle'|'sellInvestments'|'prison'|'giveVehicle'|'npcTransition',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry
