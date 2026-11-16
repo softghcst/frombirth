@@ -272,7 +272,16 @@ spouse and children are the same people as in the People tab, linked in.
 - **Duties of four kinds:** public service, ceremonial, diplomatic and family,
   thirteen in all, each moving a different mix of the reputations.
 
-The rules are in `js/engine/royalty.js` (the player's side), `js/engine/household.js`
+- **Noble titles.** A title such as "Duke of Ghent" is a record of its own
+  (`state.titles`), with a holder and a history. Each country with a nobility
+  has a few old families. Someone born noble is heir to a named title, which
+  comes to them when its holder dies. A reigning monarch can create one title
+  a year, for a relative or for someone in their life, hereditary or for life,
+  and can revoke any. Hereditary titles pass to the eldest child, and die out
+  when there is none.
+
+The rules are in `js/engine/royalty.js` (the player's side), `js/engine/peerage.js`
+(noble titles), `js/engine/household.js`
 (residences and staff), `js/engine/reign.js`
 (powers, abolition, exile and restoration), `js/engine/court.js`
 (rivalries and the wedding), `js/engine/reputation.js` (the three reputations

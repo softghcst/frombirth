@@ -17,6 +17,7 @@ import { COUNTRIES } from '../data/countries.js';
 import * as dyn from './dynasty.js';
 import { tickCourt } from './court.js';
 import * as fame from './reputation.js';
+import * as peers from './peerage.js';
 import { tickReign, shiftSupport } from './reign.js';
 import { counsel, tickHousehold } from './household.js';
 import { MONARCHIES, ROYAL_RANKS, ALLOWANCE, BORN_ROYAL, BORN_NOBLE, DUTIES, DUTIES_PER_YEAR, DISGRACE } from '../data/royalty.js';
@@ -37,6 +38,13 @@ export function titleOf(countryId, rank, gender) {
   return row ? (gender === 'female' ? row[2] : row[1]) : '';
 }
 
+/** The named title a noble player holds ("Duke of Ghent"), or null. */
+function ownTitle(p) {
+  if (p !== store.state?.player) return null;
+  const t = peers.playerTitle(p.royal.countryId);
+  return t ? peers.titleName(t, p.gender) : null;
+}
+
 /** The player's name as the world says it: "Queen Robin", "Sir Robin Hale", or plain "Robin Hale". */
 export function styledName(p = player()) {
   const r = p.royal;
@@ -44,7 +52,8 @@ export function styledName(p = player()) {
   const t = titleOf(r.countryId, r.rank, p.gender);
   if (ROYAL_RANKS.includes(r.rank)) return `${t} ${p.firstName}`;
   if (r.waiting) return `${p.firstName} ${p.lastName}`;
-  return r.rank === 'knight' ? `${t} ${p.firstName} ${p.lastName}` : `${p.firstName} ${p.lastName}, ${t}`;
+  if (r.rank === 'knight') return `${t} ${p.firstName} ${p.lastName}`;
+  return `${p.firstName} ${p.lastName}, ${ownTitle(p) ?? t}`;
 }
 
 /** What the player is, in a few words: "Queen of Sweden", "Princess by marriage", "Baron". */
@@ -57,7 +66,7 @@ export function standing(p = player()) {
   if (r.rank === 'heir') return `${t} of ${realm(c.id)}${r.line === 1 ? ', heir to the throne' : ''}`;
   if (r.waiting) return `Heir to the title of ${t.toLowerCase()}`;
   if (r.rank === 'royal') return `${t} of ${realm(c.id)}${r.by === 'marriage' ? ', by marriage' : r.line ? `, ${ordinal(r.line)} in line` : ''}`;
-  return `${r.rank === 'knight' && t === 'Sir' ? 'Knight' : t}${r.by === 'honour' ? ', for services to the country' : ''}`;
+  return `${r.rank === 'knight' && t === 'Sir' ? 'Knight' : ownTitle(p) ?? t}${r.by === 'honour' ? ', for services to the country' : ''}`;
 }
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : Math.min(n % 10, 4) % 4]}`;
 
@@ -371,6 +380,8 @@ export function renounce() {
     delete p.royal;
     dress(d);
   }
+  const held = !ROYAL_RANKS.includes(r.rank) ? peers.playerTitle(r.countryId) : null;
+  if (held) { held.status = 'extinct'; held.holder = null; held.history.push({ year: store.state.year, text: `${p.firstName} ${p.lastName} gave the title up, and it lapsed.` }); }
   delete p.royal;
   if (wasMonarch) p.flags.abdicated = true;
   p.stats.mood = clamp(p.stats.mood + 4);
@@ -398,6 +409,7 @@ export function tickRoyalty() {
   const c = country();
   const m = monarchy(c);
   const r = royal();
+  peers.tickPeerage();
 
   const old = p.flags.formerRoyal;
   if (old && old.countryId !== c.id && store.state.dynasties?.[old.countryId]) {
@@ -542,6 +554,7 @@ export function inheritStanding(old, h) {
   const op = old.player;
   const r = op.royal;
   if (old.dynasties) store.state.dynasties = old.dynasties;
+  const carried = peers.carryTitles(old, h);
   const d = store.state.dynasties?.[p.countryId];
   if (d) {
     const was = dyn.playerPerson(d);
@@ -583,8 +596,10 @@ export function inheritStanding(old, h) {
     }
   }
   if (r && r.countryId === p.countryId && r.by === 'birth' && !ROYAL_RANKS.includes(r.rank) && r.rank !== 'knight' && h.role === 'child') {
-    p.royal = { countryId: r.countryId, rank: r.rank, by: 'birth', line: null, image: 55, reigning: false };
+    const t = peers.playerTitle(r.countryId);
+    p.royal = { countryId: r.countryId, rank: t?.rank ?? r.rank, by: 'birth', line: null, image: 55, reigning: false, ...(t ? { titleId: t.id } : {}) };
     return `The title has come down to you. You are ${styledName(p)}.`;
   }
+  if (carried && p.royal && !ROYAL_RANKS.includes(p.royal.rank)) return `The title has come down to you. You are ${styledName(p)}.`;
   return '';
 }
