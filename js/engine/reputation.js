@@ -50,9 +50,11 @@ export function shift(what, delta, text) {
 }
 
 /** Something the newspapers have got hold of. `truth` is whether it really happened. */
-export function addStory(label, truth, heat) {
+export function addStory(label, truth, heat0) {
   const r = rep();
   if (!r) return;
+  const aide = player().npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'staff' && n.flags.staff === 'press');
+  const heat = Math.round(heat0 * (aide ? 1 - Math.max(0, aide.meters.charm - 30) / 150 : 1));
   const had = r.stories.find((s) => s.label === label);
   if (had) { had.heat = clamp(had.heat + heat); had.truth = had.truth || truth; return; }
   r.stories.push({ label, truth: !!truth, heat: clamp(heat), year: store.state.year });

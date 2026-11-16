@@ -24,6 +24,7 @@ const GROUPS = [
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
   ['Family', ['parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
+  ['Your household', ['staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
   ['Others', ['ex', 'enemy', 'cellmate']],
 ];

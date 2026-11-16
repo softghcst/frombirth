@@ -256,7 +256,21 @@ spouse and children are the same people as in the People tab, linked in.
   or go into exile. The house and its history remain, and a republic that goes
   badly sometimes asks its royal house back.
 
-The rules are in `js/engine/royalty.js` (the player's side), `js/engine/reign.js`
+- **Residences.** The palaces belong to the country and can never be sold.
+  The family's own castle and estates belong to the head of the house, who
+  pays for their upkeep and can open them to visitors, restore them or sell
+  them. Some houses are land-rich and some are threadbare. Private property
+  stays with the family if the monarchy falls.
+- **Household staff.** A private secretary, a press secretary and (for the
+  head of the family) an estate steward. They are people under People, hired
+  from three candidates whose ability shows and whose loyalty does not. A good
+  one makes risky acts safer, takes the heat out of stories, or cuts the cost
+  of the estates; a disloyal one leaks.
+- **Duties of four kinds:** public service, ceremonial, diplomatic and family,
+  thirteen in all, each moving a different mix of the reputations.
+
+The rules are in `js/engine/royalty.js` (the player's side), `js/engine/household.js`
+(residences and staff), `js/engine/reign.js`
 (powers, abolition, exile and restoration), `js/engine/court.js`
 (rivalries and the wedding), `js/engine/reputation.js` (the three reputations
 and the press),

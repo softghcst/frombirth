@@ -11,6 +11,7 @@ import { openDynasty } from './dynasty.js';
 import * as dyn from '../engine/dynasty.js';
 import * as fame from '../engine/reputation.js';
 import * as throne from '../engine/reign.js';
+import * as home from '../engine/household.js';
 import { MONARCHIES } from '../data/royalty.js';
 import { openModal } from './modals.js';
 
@@ -33,7 +34,7 @@ export function royalCard() {
         <div class="kv"><span>Head of the house</span><span>${head.isPlayer ? 'You' : `${esc(head.name)}, age ${dyn.ageOf(head)}`}</span></div>
         ${p.flags.formerRoyal ? `<div class="kv"><span>You</span><span>${p.flags.exile ? 'In exile' : 'A private citizen, once royal'}</span></div>` : ''}
         <p class="muted" style="margin-top:8px">The titles are gone and the palaces belong to the state. The family, and its history, remain. Countries have been known to ask a royal house back.</p>
-        <div class="btn-stack" style="margin-top:10px"><button class="btn" data-dynasty="${gone.countryId}">The family and its history</button></div></div>`;
+        <div class="btn-stack" style="margin-top:10px"><button class="btn" data-dynasty="${gone.countryId}">The family and its history</button>${head.isPlayer ? '<button class="btn" data-household>The family\'s own property</button>' : ''}</div></div>`;
     }
     if (!m) return '';
     const k = crown.court().monarch;
@@ -64,6 +65,7 @@ export function royalCard() {
   })() : ''}
     <div class="btn-stack" style="margin-top:10px">
       ${inFamily ? '<button class="btn primary" data-dynasty>The dynasty</button><button class="btn" data-reputation>Reputation</button>' : ''}
+      ${inFamily ? '<button class="btn" data-household>Household and residences</button>' : ''}
       ${throne.canGovern() ? `<button class="btn" data-state>Affairs of state <small>${throne.powersLeft()} left this year</small></button>` : ''}
       ${crown.canDoDuties() && inFamily ? `<button class="btn" data-duties>Public duties <small>${crown.dutiesLeft()} left this year</small></button>` : ''}
       ${p.age >= 18 && !r.waiting ? `<button class="btn" data-renounce>${r.rank === 'monarch' && r.reigning ? 'Abdicate' : inFamily ? 'Step back from royal life' : 'Give up the title'}</button>` : ''}
@@ -74,6 +76,8 @@ export function royalCard() {
 export function bindRoyalCard(el, api) {
   const book = el.querySelector('[data-dynasty]');
   if (book) book.onclick = () => openDynasty(undefined, book.dataset.dynasty || undefined);
+  const homeBtn = el.querySelector('[data-household]');
+  if (homeBtn) homeBtn.onclick = () => openHousehold(api);
   const stateBtn = el.querySelector('[data-state]');
   if (stateBtn) stateBtn.onclick = () => openAffairs(api);
   const repBtn = el.querySelector('[data-reputation]');
@@ -91,7 +95,7 @@ async function openDuties(api) {
     title: 'Public duties',
     body: `You can carry out ${crown.dutiesLeft()} more this year. Do none, and it will be noticed.`,
     options: crown.dutyOptions().map((d) => ({ value: d.id, label: d.name,
-      sub: d.risky ? 'It could go very well or very badly. Charm and wits help.' : d.cost ? `Costs ${fmtMoney(d.cost, c)} of your own money.` : '' })),
+      sub: `${d.kind}.${d.risky ? ' It could go very well or very badly. Charm and wits help.' : d.cost ? ` Costs ${fmtMoney(d.cost, c)} of your own money.` : ''}` })),
   });
   if (!pick) return undefined;
   const r = crown.doDuty(pick);
@@ -148,4 +152,48 @@ async function openAffairs(api) {
   const r = throne.usePower(pick);
   api.changed();
   return messageModal({ body: r.text, tone: r.tone });
+}
+
+/** Where the family lives, and who works for the player. */
+async function openHousehold(api) {
+  for (;;) {
+    const c = country();
+    const res = home.residenceRows();
+    const staff = home.canKeepStaff() ? home.staffRows() : [];
+    const head = home.isHead();
+    const money = (n) => (n === 0 ? '' : n > 0 ? `brings in ${fmtMoney(n, c)} a year` : `costs ${fmtMoney(-n, c)} a year`);
+    const pick = await pickModal({
+      title: 'Household and residences',
+      body: head ? 'As head of the family, its own houses are yours to keep up, open, restore or sell. The palaces belong to the country.' : 'The palaces belong to the country, and the family\'s own houses to its head. Your staff are yours.',
+      cancel: 'Done',
+      options: [
+        ...res.map((r) => ({ value: `res:${r.id}`, label: r.name, disabled: r.state || !head,
+          sub: `${r.note}${r.state ? '' : ` Worth about ${fmtMoney(r.value, c)}${money(r.yearly) ? `; ${money(r.yearly)}` : ''}.`}` })),
+        ...staff.map((x) => ({ value: `staff:${x.id}`, label: x.name ? `${x.title}: ${x.name}` : `${x.title}: nobody`,
+          sub: x.name ? `${x.skill[0].toUpperCase()}${x.skill.slice(1)}. With you ${x.years} ${x.years === 1 ? 'year' : 'years'}. ${fmtMoney(x.pay, c)} a year.` : `${x.does} ${fmtMoney(x.pay, c)} a year.` })),
+      ],
+    });
+    if (!pick) return;
+    const [kind, id] = pick.split(':');
+    if (kind === 'res') {
+      const act = await pickModal({ title: res.find((r) => r.id === id).name, options: home.residenceActions(id).map((a) => ({ value: a.id, label: a.label, sub: a.sub })), cancel: 'Back' });
+      if (!act) continue;
+      if (act === 'sell' && !(await confirmModal({ title: 'Sell it?', body: 'It has been the family\'s for generations, and it will not come back.', yes: 'Sell', danger: true }))) continue;
+      const r = home.manageResidence(id, act);
+      api.changed();
+      await messageModal({ body: r.text, tone: r.tone });
+    } else {
+      const row = staff.find((x) => x.id === id);
+      const what = row.name ? await pickModal({ title: `${row.title}: ${row.name}`, body: row.does, cancel: 'Back',
+        options: [{ value: 'replace', label: 'Look for someone else', sub: 'Interview three people for the post.' }, { value: 'dismiss', label: 'Let them go', sub: 'Someone who leaves unhappy knows a great deal.' }] }) : 'replace';
+      if (!what) continue;
+      if (what === 'dismiss') { const r = home.dismiss(id); api.changed(); await messageModal({ body: r.text, tone: r.tone }); continue; }
+      const who = await pickModal({ title: `A new ${row.title.toLowerCase()}`, body: 'Three people have been put forward. How good they are shows at interview. How loyal they will be does not.', cancel: 'Appoint nobody',
+        options: home.candidates(id).map((x) => ({ value: x.index, label: `${x.name}, ${x.age}`, sub: `${x.skill[0].toUpperCase()}${x.skill.slice(1)}. ${x.manner}` })) });
+      if (who == null) continue;
+      const r = home.hire(id, who);
+      api.changed();
+      await messageModal({ body: r.text, tone: r.tone });
+    }
+  }
 }
