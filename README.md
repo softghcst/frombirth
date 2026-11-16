@@ -221,7 +221,17 @@ spouse and children are the same people as in the People tab, linked in.
 - **It carries on.** Continue as a child and the house, its history and your
   former self all remain; the heir takes whatever place is really theirs.
 
-The rules are in `js/engine/royalty.js` (the player's side),
+- **Rivalries.** An ambitious relative close to you in the line may come to
+  resent you. The story runs over several years (overlooked, finding allies,
+  going public) and your choices decide whether it ends in peace, a long
+  silence, or a public crisis. Not every life has one.
+- **A royal childhood and a royal wedding.** Nannies, etiquette, the first
+  public engagement, boarding school, being the spare. Marrying in, you choose
+  the scale of the wedding, the cameras and the honeymoon, and the public
+  reacts to each.
+
+The rules are in `js/engine/royalty.js` (the player's side), `js/engine/court.js`
+(rivalries and the wedding),
 `js/engine/dynasty.js` (the house) and `js/engine/succession.js` (the law);
 the screens are in `js/ui/royalty.js` and `js/ui/dynasty.js`.
 Scenes can test `monarchy`, `isRoyal`, `isNoble`, `titled`, `reigning`,

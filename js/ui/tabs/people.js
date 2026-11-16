@@ -14,6 +14,7 @@ import { TRAIT_BY_ID } from '../../data/traits.js';
 import { COUNTRIES } from '../../data/countries.js';
 import * as who from '../../engine/identity.js';
 import { openDynasty } from '../dynasty.js';
+import * as court from '../../engine/court.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
@@ -72,7 +73,18 @@ async function planWedding(api, npc) {
     const ask = await confirmModal({ title: 'Ask the palace for consent?',
       body: `No one marries ${npc.flags.royal.title} ${npc.firstName} without it. The palace will weigh your good name, your past and how the public sees you. If it says yes, the crown arranges and pays for the wedding, and its lawyers write the marriage contract.`,
       yes: 'Ask for consent', no: 'Not yet' });
-    if (ask) await report(api, love.marry(npc.id, love.WEDDINGS[0].id, false));
+    if (!ask) return;
+    const wasRoyal = !!player().royal;
+    const res = love.marry(npc.id, love.WEDDINGS[0].id, false);
+    await report(api, res);
+    // The palace said yes, and you are joining the family: the wedding is yours to shape.
+    if (res.ok && !wasRoyal && player().royal?.by === 'marriage') {
+      const picks = {};
+      for (const [key, title, body] of [['scale', 'The wedding', 'The crown pays. What kind of day will it be?'], ['media', 'The cameras', 'The whole country wants to watch.'], ['honeymoon', 'Afterwards', 'Where will the two of you go?']]) {
+        picks[key] = await pickModal({ title, body, cancel: 'Let the palace decide', options: court.WEDDING[key].map((o) => ({ value: o.id, label: o.name, sub: o.sub })) }) ?? court.WEDDING[key][0].id;
+      }
+      await report(api, court.royalWedding(npc.id, picks));
+    }
     return;
   }
   const wedding = await pickModal({
