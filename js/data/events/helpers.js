@@ -53,6 +53,18 @@ export const image = (delta) => ({ type: 'image', delta });
 export const meetRoyal = (as) => ({ type: 'meetRoyal', target: as });
 export const honour = () => ({ type: 'honour' });
 
+/**
+ * A royal's reputation (engine/reputation.js): the family's regard, the press's
+ * tone, a story in the newspapers (truth: whether it happened; heat: how loud),
+ * and turning the loudest current story up or down.
+ */
+export const family = (delta) => ({ type: 'family', delta });
+export const press = (delta) => ({ type: 'press', delta });
+export const story = (label, truth, heat) => ({ type: 'story', value: { label, truth, heat } });
+export const coolStory = (delta) => ({ type: 'coolStory', delta });
+/** A cast member of the royal house gives up their title and place in the line. */
+export const kinOut = (target) => ({ type: 'kinOut', target });
+
 /** A rivalry inside the royal family: make it worse or better; end it ('peace' | 'cold' | 'removed' | 'lost'). */
 export const rivalry = (delta) => ({ type: 'rivalry', delta });
 export const rivalEnd = (value) => ({ type: 'rivalEnd', value });

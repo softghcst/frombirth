@@ -423,6 +423,17 @@ export function marryIn(d, spouse, year = yearNow()) {
   return me;
 }
 
+/** Someone from outside marries a member of the house: they join the tree, linked to the person they are in the game. */
+export function marryOutsider(d, member, npc, year = yearNow()) {
+  if (member.spouseId) return d.people[member.spouseId];
+  const s = npc.flags.houseId && d.people[npc.flags.houseId] ? d.people[npc.flags.houseId]
+    : newPerson(d, { name: npc.firstName, gender: npc.gender, born: year - npc.age, look: npc.appearance });
+  link(s, npc);
+  delete s.divorced;
+  wed(d, member, s, year);
+  return s;
+}
+
 /** Someone unmarried in the house whom the player might meet, or null. */
 export function eligibleMember(d, gender, age) {
   const fits = living(d).filter((x) => x.blood && !x.spouseId && !x.out && !x.npcId && !x.isPlayer && x.gender === gender

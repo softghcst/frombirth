@@ -132,7 +132,8 @@ export function resolveChoice(ev, choiceIndex, cast) {
   if (!options.length) options = choice.outcomes;
   const outcome = rng.weighted(options);
 
-  const ctx = { cast: { ...cast }, queue: [] };
+  // `why` is what reputation changes are put down to in the royal's record.
+  const ctx = { cast: { ...cast }, queue: [], why: renderText(choice.label, cast).replace(/^./, (c) => c.toLowerCase()) };
   const changes = applyEffects(outcome.effects, ctx);
   const text = renderText(outcome.text, ctx.cast) + (ctx.note ? ` ${ctx.note}` : '');
   const tone = outcome.tone ?? (result === 'success' ? 'good' : result === 'fail' ? 'bad' : 'neutral');

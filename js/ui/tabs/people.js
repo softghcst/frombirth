@@ -15,6 +15,7 @@ import { COUNTRIES } from '../../data/countries.js';
 import * as who from '../../engine/identity.js';
 import { openDynasty } from '../dynasty.js';
 import * as court from '../../engine/court.js';
+import { MONARCHIES } from '../../data/royalty.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
@@ -86,6 +87,11 @@ async function planWedding(api, npc) {
       await report(api, court.royalWedding(npc.id, picks));
     }
     return;
+  }
+  const mine = player().royal;
+  if (mine?.by === 'birth' && !mine.reigning && ['heir', 'royal'].includes(mine.rank) && MONARCHIES[mine.countryId]?.leavesOnMarriage && player().gender === 'female') {
+    const go = await confirmModal({ title: 'Leave the royal family?', body: `By the law of your house, a princess who marries outside it gives up her title and her place in the family. If you marry ${npc.firstName}, you will be a private citizen.`, yes: 'I understand', no: 'Not yet' });
+    if (!go) return;
   }
   const wedding = await pickModal({
     title: 'Plan the wedding',

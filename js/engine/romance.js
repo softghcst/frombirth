@@ -275,7 +275,7 @@ export function marry(npcId, weddingId, prenup) {
   if (p.flags.livesWithParents) p.flags.livesWithParents = false;
   remember(npc, 'weddingDay', `You married them with ${w.name.toLowerCase()}.`);
   const wed = `${crown.npcName(npc)} ${npc.lastName}`;
-  const after = palace ? crown.afterWedding(npc, palace.leaves) : '';
+  const after = palace ? crown.afterWedding(npc, palace.leaves) : crown.afterMarryingOut(npc);
   const text = palace && !palace.leaves
     ? `${palace.text} You married ${wed} in the cathedral, under a marriage contract drawn up by the palace's lawyers.${after}`
     : `${palace ? `${palace.text} ` : ''}You married ${wed}: ${w.name.toLowerCase()}${prenup ? ', with a prenup in the drawer' : ''}. It cost ${fmtMoney(cost, c)}.${after}`;
