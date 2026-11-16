@@ -31,11 +31,61 @@ export const PROGRAMMES = {
     blurb: 'Trade school. One year to a licence in hair and makeup.' },
   graduate: { id: 'graduate', label: 'Graduate school', years: 2, tuition: 18000, needs: 'university', minGpa: 3.0,
     blurb: 'Two more years for a master\'s in your subject.' },
-  medical: { id: 'medical', label: 'Medical school', years: 4, tuition: 38000, needs: 'university', minGpa: 3.6,
+  medical: { id: 'medical', label: 'Medical school', years: 4, tuition: 38000, needs: 'university', minGpa: 3.6, science: true, licence: 'medical',
     blurb: 'Four gruelling years. Needs a science or health degree.' },
-  law: { id: 'law', label: 'Law school', years: 3, tuition: 32000, needs: 'university', minGpa: 3.4,
+  law: { id: 'law', label: 'Law school', years: 3, tuition: 32000, needs: 'university', minGpa: 3.4, licence: 'law',
     blurb: 'Three years of case law and very little sleep.' },
+  // done: how graduating reads, after "You graduated from". partYears: how long it takes alongside a job.
+  // licence: the degree is not the right to practise; an exam follows. science: needs a science or health degree.
+  business: { id: 'business', label: 'Business school', years: 2, partYears: 3, tuition: 30000, needs: 'university', minGpa: 2.9,
+    done: 'business school with an MBA', yearly: { stats: { charm: 2 } },
+    blurb: 'Case studies, group work and a great many contacts. Often taken by people already working.' },
+  dental: { id: 'dental', label: 'Dental school', years: 4, tuition: 36000, needs: 'university', minGpa: 3.4, science: true, licence: 'dental',
+    done: 'dental school', blurb: 'Four years, most of them with your hands in someone\'s mouth.' },
+  pharmacy: { id: 'pharmacy', label: 'Pharmacy school', years: 4, tuition: 28000, needs: 'university', minGpa: 3.2, science: true, licence: 'pharmacy',
+    done: 'pharmacy school', blurb: 'Chemistry, law, and the patience to read handwriting.' },
+  veterinary: { id: 'veterinary', label: 'Veterinary school', years: 4, tuition: 34000, needs: 'university', minGpa: 3.5, science: true, licence: 'veterinary',
+    done: 'veterinary school', blurb: 'Harder to get into than medicine, and the patients bite.' },
+  teaching: { id: 'teaching', label: 'Teacher training', years: 1, partYears: 2, tuition: 9000, needs: 'university', minGpa: 2.5, licence: 'teaching',
+    done: 'teacher training', yearly: { stats: { charm: 2 }, hidden: { discipline: 2 } },
+    blurb: 'A year split between lectures and a classroom of thirty people who would rather be elsewhere.' },
+  nursing: { id: 'nursing', label: 'Nursing school', years: 3, tuition: 9000, needs: 'high', minGpa: 2.4, licence: 'nursing',
+    done: 'nursing school', yearly: { hidden: { karma: 2, discipline: 2 } },
+    blurb: 'Three years, half of them on the wards. A route into nursing without a university degree.' },
+  doctorate: { id: 'doctorate', label: 'Doctoral programme', years: 5, tuition: 0, stipend: 20000, needs: 'university', minGpa: 3.4, thesis: true,
+    done: 'your doctorate', plain: true,
+    blurb: 'Years on one question nobody has answered, paid a little, under a supervisor. A master\'s degree helps you in.' },
+  technical: { id: 'technical', label: 'Technical college', kind: 'trade', years: 2, partYears: 3, tuition: 5000, needs: null, minAge: 16, subjects: 'trades', givesTrade: true,
+    yearly: { hidden: { discipline: 2 } }, done: 'technical college',
+    blurb: 'A trade learned in a workshop, not on a site. Costs fees where an apprenticeship pays, but nobody has to take you on.' },
+  certificate: { id: 'certificate', label: 'Professional certificate', kind: 'trade', years: 1, partYears: 1, tuition: 3500, needs: 'high', minGpa: 0, open: true, subjects: 'certs', repeat: true,
+    done: 'your certificate course',
+    blurb: 'One year, evenings, in something employers ask for. A way into some careers without a degree.' },
+  equivalency: { id: 'equivalency', label: 'Adult school certificate', kind: 'trade', years: 1, partYears: 1, tuition: 600, needs: null, minAge: 17, open: true, gives: 'high', adult: true,
+    done: 'adult school',
+    blurb: 'For anyone who left school without finishing. One year, evenings, and the same doors open as for everyone else.' },
 };
+
+/** The right to practise. A degree qualifies someone to sit the exam; passing it is something else. */
+export const LICENCES = {
+  medical: { name: 'medicine', people: 'doctors', fee: 900, exam: { default: 'medical licensing exam' } },
+  law: { name: 'law', people: 'lawyers', fee: 700, exam: { default: 'professional qualifying exam', us: 'bar exam', ca: 'bar exam', ph: 'bar exam', in: 'bar exam', ng: 'bar exam', ke: 'bar exam', gh: 'bar exam', jp: 'bar exam', kr: 'bar exam' } },
+  dental: { name: 'dentistry', people: 'dentists', fee: 800, exam: { default: 'dental licensing exam' } },
+  pharmacy: { name: 'pharmacy', people: 'pharmacists', fee: 500, exam: { default: 'pharmacy registration exam' } },
+  veterinary: { name: 'veterinary medicine', people: 'vets', fee: 800, exam: { default: 'veterinary licensing exam' } },
+  nursing: { name: 'nursing', people: 'nurses', fee: 300, exam: { default: 'nursing registration exam' } },
+  teaching: { name: 'teaching', people: 'teachers', fee: 200, exam: { default: 'teaching certification' } },
+};
+/** One-year certificates. opens: the career it is a way into. */
+export const CERTS = [
+  { id: 'coding', name: 'Programming', opens: 'software' },
+  { id: 'bookkeeping', name: 'Bookkeeping', opens: 'accountant' },
+  { id: 'digital_marketing', name: 'Digital marketing', opens: 'marketing' },
+  { id: 'project_management', name: 'Project management', opens: 'office' },
+];
+export const CERT_BY_ID = Object.fromEntries(CERTS.map((c) => [c.id, c]));
+/** Words for a thesis title: one from each list, then the field. */
+export const THESIS_WORDS = { first: ['Hidden', 'Competing', 'Early', 'Unstable', 'Forgotten', 'Emergent', 'Contested', 'Slow'], second: ['Structures', 'Patterns', 'Mechanisms', 'Traditions', 'Networks', 'Boundaries', 'Signals', 'Economies'] };
 
 /** Trades you can apprentice in. */
 export const TRADES = [
@@ -45,6 +95,8 @@ export const TRADES = [
   { id: 'chef', name: 'Chef' },
   { id: 'mechanic', name: 'Mechanic' },
   { id: 'stage_tech', name: 'Stage technician' },
+  { id: 'welder', name: 'Welder' },
+  { id: 'hvac', name: 'Heating and cooling engineer' },
 ];
 export const TRADE_BY_ID = Object.fromEntries(TRADES.map((t) => [t.id, t]));
 

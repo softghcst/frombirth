@@ -65,6 +65,7 @@ export const DEGREE_CREDITS = 120;
 export const LOADS = [
   { id: 'light', name: 'A light load', credits: 24, mark: 0.2, blurb: 'Fewer courses, better marks, more time for everything else. The degree takes longer.' },
   { id: 'standard', name: 'A standard load', credits: 30, mark: 0, blurb: 'What the timetable expects.' },
+  { id: 'part', name: 'Part-time', credits: 20, mark: 0.05, blurb: 'Evenings and weekends, alongside a job. The degree takes six years.' },
   { id: 'heavy', name: 'A heavy load', credits: 40, mark: -0.25, blurb: 'Extra courses. Marks suffer, but it makes up lost ground or finishes early.' },
 ];
 /** Families of subjects: moving within one keeps every credit; moving between them loses a year's worth. */

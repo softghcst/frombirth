@@ -1,6 +1,8 @@
 // Work & School tab: where you stand, what you have committed to, who can
 // open doors for you, and every school, housing and part-time-job action.
 // Full careers arrive in Phase 4.
+import * as adult from '../../engine/adulted.js';
+import { CERTS } from '../../data/schools.js';
 import * as campusLife from '../../engine/campus.js';
 import { openCampus } from '../campus.js';
 import * as uni from '../../engine/university.js';
@@ -20,7 +22,7 @@ import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { careerCard, careerButtons, careerHandlers } from './workCareer.js';
 
-const FUNDING = { scholarship: 'Scholarship', parents: 'Paid by parents', loan: 'Student loan',
+const FUNDING = { employer: 'Paid by your employer', scholarship: 'Scholarship', parents: 'Paid by parents', loan: 'Student loan',
   self: 'Paying your own way', public: 'Publicly funded' };
 
 const degreeLabel = (d) => (d.school ?? edu.stageLabel(d.type))
@@ -185,10 +187,12 @@ async function chooseFunding(api, fee, length, offer) {
         ...(offer.scholarship ? [{ value: 'scholarship', label: 'Accept the scholarship',
           sub: `Free while your GPA stays above 2.5.${offer.housingAid ? ' Includes a dorm room.' : ''}` }] : []),
         { value: 'parents', label: 'Ask your parents', sub: askedParents ? 'They already said no.' : 'They might say no.', disabled: askedParents },
+        ...(p.career.careerId ? [{ value: 'employer', label: 'Ask your employer to pay', sub: p.flags.askedEmployerAge === p.age ? 'You have asked this year.' : 'They do it for people they want to keep.', disabled: p.flags.askedEmployerAge === p.age }] : []),
         { value: 'loan', label: 'Take a student loan', sub: '5% interest. Repayments start once you are earning.' },
         { value: 'self', label: 'Pay from savings', sub: `You have ${fmtMoney(p.finance.cash, c)}.`, disabled: p.finance.cash < fee },
       ],
     });
+    if (funding === 'employer') { const yes = adult.askEmployer(); api.changed(); await messageModal({ body: yes.text, tone: yes.tone }); if (yes.ok) return 'employer'; continue; }
     if (funding !== 'parents') return funding;
     askedParents = true;
     const answer = edu.askParentsToPay();
@@ -250,6 +254,22 @@ async function applyFlow(api) {
     subjectId = await pickMajor(progId);
     if (!subjectId) return;
   }
+  if (prog.subjects === 'trades') {
+    subjectId = await pickModal({ title: 'Which trade?', options: TRADES.map((t) => ({ value: t.id, label: t.name })) });
+    if (!subjectId) return;
+  }
+  if (prog.subjects === 'certs') {
+    subjectId = await pickModal({ title: 'A certificate in what?', body: 'Each is a way into a line of work that otherwise asks for a degree. It is harder to be hired that way, but not closed.', options: CERTS.map((t) => ({ value: t.id, label: t.name })) });
+    if (!subjectId) return;
+  }
+  // Alongside a job, or instead of one.
+  let partTime = !!prog.adult || prog.id === 'certificate';
+  if (!partTime && adult.canPartTime(progId) && (player().career.careerId || player().age >= 25)) {
+    const pace = await pickModal({ title: 'Full-time or part-time?', body: 'Part-time takes longer and keeps your job. The fees are the same in the end.',
+      options: [{ value: 'part', label: 'Part-time, alongside work', sub: `${years(adult.yearsFor(progId, true))}. Evenings and weekends.` }, { value: 'full', label: 'Full-time', sub: `${years(prog.years)}. You leave your job.` }] });
+    if (!pace) return;
+    partTime = pace === 'part';
+  }
 
   let offer;
   let school = null;
@@ -273,12 +293,25 @@ async function applyFlow(api) {
     fee = edu.tuitionFor(progId);
   }
 
-  const funding = await chooseFunding(api, fee, length, offer);
+  if (partTime) length = adult.yearsFor(progId, true);
+  const funding = await chooseFunding(api, partTime && prog.partYears ? Math.round(fee * prog.years / prog.partYears) : fee, length, offer);
   if (!funding) return;
   const housingAid = funding === 'scholarship' && offer.housingAid;
-  const living = await chooseHousing(housingAid) ?? {};
+  const living = partTime ? { partTime: true } : await chooseHousing(housingAid) ?? {};
   edu.enrol(progId, subjectId, funding, { ...living, housingAid }, school);
   api.changed();
+}
+
+/** A licensing exam: how to prepare, then the result. */
+async function sitExam(api) {
+  const c = country();
+  const o = adult.examOptions()[0];
+  if (!o) return undefined;
+  if (o.sat) return messageModal({ body: 'You have sat an exam this year. The next sitting is next year.' });
+  const prep = await pickModal({ title: `The ${o.name}`, body: `Your degree lets you sit it; passing it lets you practise ${o.profession}. The fee is ${fmtMoney(o.fee, c)}. You can sit it once a year.`,
+    options: adult.prepOptions().map((x) => ({ value: x.id, label: x.name, sub: `${x.sub}${x.local ? ` ${fmtMoney(x.local, c)} more.` : ''}` })) });
+  if (!prep) return undefined;
+  return report(api, adult.sitExam(o.id, prep));
 }
 
 async function findJob(api) {
@@ -312,6 +345,9 @@ function educationCard(p, c) {
     ...(e.enrolled && sch.atSchool(p) ? [['Overall mark', e.gpa ? sch.mark(e.gpa) : 'No marks yet'], ['Days skipped this year', String(e.absences)]]
       : e.enrolled ? [['GPA', e.gpa ? e.gpa.toFixed(2) : 'No grades yet'], ['Absences this year', String(e.absences)]] : []),
     ...(e.enrolled && edu.isHigher(e.stage) ? [['Tuition', `${FUNDING[e.funding] ?? '—'}${e.aid > 0 && e.aid < 1 ? ` · ${Math.round(e.aid * 100)}% waived` : ''}`]] : []),
+    ...(e.enrolled && e.partTime ? [['Pace', 'Part-time, alongside work']] : []),
+    ...(e.thesis ? [['Thesis', `${e.thesis.progress}% written${e.thesis.published ? ` · ${e.thesis.published} published` : ''}`]] : []),
+    ...((p.flags.licences ?? []).length ? [['Licensed in', p.flags.licences.join(', ')]] : []),
     ...(loan ? [['Student loan', fmtMoney(loan.principal, c)]] : []),
     ...e.degrees.map((d) => ['Completed', d.type === 'high' ? `${d.school ?? 'School'}${d.award ? `: ${d.award}` : ''}, ${sch.mark(d.gpa, d.countryId ?? p.countryId)}` : `${degreeLabel(d)}, GPA ${d.gpa.toFixed(2)}`]),
   ];
@@ -330,7 +366,7 @@ function commitments(p, c) {
   if (e.enrolled && edu.isHigher(e.stage)) {
     const mate = edu.roommate();
     const rent = edu.housingCost();
-    rows.push(['Housing', `${HOUSING[e.housing].label}${mate ? ` with ${mate.firstName}` : ''}${rent ? `, ${fmtMoney(rent, c)} a year` : ''}`]);
+    rows.push(['Housing', `${HOUSING[e.housing]?.label ?? 'Your own home'}${mate ? ` with ${mate.firstName}` : ''}${rent ? `, ${fmtMoney(rent, c)} a year` : ''}`]);
   }
   return rows.length ? kv(rows) : '<p class="muted">Nothing on your plate beyond the basics.</p>';
 }
@@ -371,6 +407,7 @@ export default {
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);
     const leftSchool = !e.enrolled && (e.degrees.some((d) => d.type === 'high') || p.age >= 16);
     if (uni.canPlan()) school.push(['uniplan', uni.plan()?.sent ? 'University: your answers' : 'University: places and applications']);
+    if (adult.examOptions().length) school.push(['exam', `Sit the ${adult.examOptions()[0].name}`]);
     if (leftSchool) school.push(['apply', 'Plan what comes next']);
     if (edu.canTakeGapYear()) school.push(['gap', 'Take a gap year']);
     if (edu.canDropOut()) school.push(['drop', 'Drop out']);
@@ -403,7 +440,7 @@ export default {
       ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
         club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api),
-        drop: () => leaveSchool(api), apply: () => applyFlow(api), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
+        drop: () => leaveSchool(api), apply: () => applyFlow(api), exam: () => sitExam(api), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
         findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();
     };

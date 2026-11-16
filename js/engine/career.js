@@ -1,5 +1,7 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { licenceFor, licensed, examName } from './adulted.js';
+import { PROGRAMMES } from '../data/schools.js';
 import { hiringEdge } from './languages.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localWage } from '../util.js';
@@ -47,11 +49,16 @@ export function unmet(career) {
   const out = [];
   if (p.legal.incarceration) out.push('Not from a cell.');
   if (p.career.careerId === career.id) out.push('This is your current job.');
-  if (p.education.enrolled && p.education.stage !== 'none' && career.type !== 'freelance') {
+  if (p.education.enrolled && p.education.stage !== 'none' && career.type !== 'freelance' && !p.education.partTime) {
     out.push('Finish or leave your course first.');
   }
   const vouched = !!standingOffer(career);
   if (vouched) { /* someone who knows your work is holding the job for you */ }
+  // Some careers have another way in: a certificate in the skill, or a vocational school.
+  else if ((r.altCert && degrees().some((d) => d.type === 'certificate' && d.majorId === r.altCert)) || (r.altProgramme && hasDegree(r.altProgramme))) {
+    const l = r.altProgramme ? licenceFor(r.altProgramme) : null;
+    if (l && !licensed(l)) out.push(`Needs you to pass the ${examName(l)}.`);
+  }
   else if (r.degree === 'high' && !degrees().length) out.push('Needs a high-school diploma.');
   else if (r.degree === 'university' && !hasDegree('university')) out.push('Needs a university degree.');
   else if (r.majors && !degrees().some((d) => d.type === 'university' && (r.majors.includes(d.majorId) || r.majors.includes(d.minorId)))) {
@@ -60,7 +67,10 @@ export function unmet(career) {
   }
   if (r.programme && !hasDegree(r.programme)) {
     out.push({ medical: 'Needs a medical degree.', law: 'Needs a law degree.',
-      cosmetology: 'Needs a hair and makeup licence.' }[r.programme]);
+      cosmetology: 'Needs a hair and makeup licence.' }[r.programme] ?? `Needs you to have finished ${PROGRAMMES[r.programme].label.toLowerCase()}.`);
+  } else if (r.programme && licenceFor(r.programme) && !licensed(licenceFor(r.programme)) && !vouched) {
+    // The degree is not the right to practise.
+    out.push(`Needs you to pass the ${examName(licenceFor(r.programme))}.`);
   }
   if (r.trade && !hasTrade(r.trade)) out.push(`Needs a completed ${TRADE_BY_ID[r.trade].name.toLowerCase()} apprenticeship.`);
   if (r.minAge && p.age < r.minAge) out.push(`You need to be ${r.minAge}.`);
