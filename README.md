@@ -34,6 +34,7 @@ node tests/events.mjs
 node tests/escape-layouts.mjs
 node tests/succession.mjs      # the rules of royal succession, on hand-built families
 node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candidate races and the count
+node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 ```
@@ -366,6 +367,35 @@ are always three stages and marks from 0 to 4; the player sees the country's.
     party, a best friend moving away, friends falling out, a rumour, being
     bullied (with adults who act when told), a teacher who sees something,
     a false accusation, the dance, the final exams, the last day.
+
+### Getting into university
+
+- **A catalogue per country** (`js/engine/university.js`, patterns in
+  `js/data/universities.js`). Nine invented institutions, named for the
+  country's own cities and kept in the save: an old and very selective one,
+  two large public universities, a technical institute, two regional
+  universities, a small college, a conservatoire that teaches only the arts,
+  and an open university that takes anyone. They differ in how hard they
+  are to get into, what they cost, where they are, what they are good at,
+  and how generous they are. None is real.
+- **A round of applications.** From 16, or any time after leaving school:
+  choose a subject, add up to five places, write a personal statement, and
+  send. Still at school, offers are conditional on final marks and settled
+  on results day; with results in hand, answers are final. Waiting lists
+  move, one decision a round can be appealed, and one place can be held for
+  a year.
+- **How it is decided** (`js/engine/admissions.js`, checked by
+  `tests/admissions.mjs`). The record, not the mind: marks against what the
+  place usually takes, advanced courses in the subject, teachers'
+  recommendations, life outside lessons, the statement, and, where it
+  applies, what the applicant had to work with, a family history there, or a
+  coach's request. Performance courses are decided by audition. The most
+  selective turn away good applicants for want of room. Every answer comes
+  with its reasons.
+- **Help with the cost.** A scholarship for merit, athletics or performance
+  (the largest only), plus a grant for need, each as a share of tuition
+  waived. What is left is paid by parents, savings or a loan. A merit
+  scholarship is lost if marks fall; help for need is not.
 
 University and training are in `js/engine/education.js`.
 

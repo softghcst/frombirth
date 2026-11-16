@@ -1,6 +1,8 @@
 // Work & School tab: where you stand, what you have committed to, who can
 // open doors for you, and every school, housing and part-time-job action.
 // Full careers arrive in Phase 4.
+import * as uni from '../../engine/university.js';
+import { openUniversity } from '../university.js';
 import * as sch from '../../engine/schooling.js';
 import { openSchool } from '../school.js';
 import { politicsCard, politicsAction } from '../politics.js';
@@ -239,6 +241,8 @@ async function applyFlow(api) {
     return;
   }
 
+  if (progId === 'university') return openUniversity(api, { funding: chooseFunding, housing: chooseHousing });
+
   let subjectId;
   if (progId === 'university' || progId === 'community') {
     subjectId = await pickMajor(progId);
@@ -305,7 +309,7 @@ function educationCard(p, c) {
     ['Status', status],
     ...(e.enrolled && sch.atSchool(p) ? [['Overall mark', e.gpa ? sch.mark(e.gpa) : 'No marks yet'], ['Days skipped this year', String(e.absences)]]
       : e.enrolled ? [['GPA', e.gpa ? e.gpa.toFixed(2) : 'No grades yet'], ['Absences this year', String(e.absences)]] : []),
-    ...(e.enrolled && edu.isHigher(e.stage) ? [['Tuition', FUNDING[e.funding] ?? '—']] : []),
+    ...(e.enrolled && edu.isHigher(e.stage) ? [['Tuition', `${FUNDING[e.funding] ?? '—'}${e.aid > 0 && e.aid < 1 ? ` · ${Math.round(e.aid * 100)}% waived` : ''}`]] : []),
     ...(loan ? [['Student loan', fmtMoney(loan.principal, c)]] : []),
     ...e.degrees.map((d) => ['Completed', d.type === 'high' ? `${d.school ?? 'School'}${d.award ? `: ${d.award}` : ''}, ${sch.mark(d.gpa, d.countryId ?? p.countryId)}` : `${degreeLabel(d)}, GPA ${d.gpa.toFixed(2)}`]),
   ];
@@ -363,6 +367,7 @@ export default {
     if (e.enrolled && edu.isHigher(e.stage)) school.push(['housing', 'Change where you live']);
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);
     const leftSchool = !e.enrolled && (e.degrees.some((d) => d.type === 'high') || p.age >= 16);
+    if (uni.canPlan()) school.push(['uniplan', uni.plan()?.sent ? 'University: your answers' : 'University: places and applications']);
     if (leftSchool) school.push(['apply', 'Plan what comes next']);
     if (edu.canTakeGapYear()) school.push(['gap', 'Take a gap year']);
     if (edu.canDropOut()) school.push(['drop', 'Drop out']);
@@ -395,7 +400,7 @@ export default {
       ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
         club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api),
-        drop: () => leaveSchool(api), apply: () => applyFlow(api), priority: () => choosePriority(api),
+        drop: () => leaveSchool(api), apply: () => applyFlow(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
         findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();
     };
