@@ -31,6 +31,19 @@ const DIE = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" w
   <circle cx="8.5" cy="15.5" r="1.5" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor"/></svg>`;
 
 const pickFrom = (list) => list[Math.floor(Math.random() * list.length)];
+/** Picks a key of `weights` in proportion to its weight. */
+function weightedKey(weights) {
+  const entries = Object.entries(weights).filter(([, w]) => w > 0);
+  let r = Math.random() * entries.reduce((s, [, w]) => s + w, 0);
+  for (const [k, w] of entries) { r -= w; if (r <= 0) return k; }
+  return entries[entries.length - 1][0];
+}
+/** Restarts a die's shake. */
+function shake(btn) {
+  btn.classList.remove('rolling');
+  void btn.offsetWidth;
+  btn.classList.add('rolling');
+}
 
 const named = (map) => Object.entries(map).map(([value, label]) => ({ value, label: label.label ?? label }));
 
@@ -47,8 +60,9 @@ export function renderCreator(app, hooks) {
     <section class="title-screen creator">
       <div class="creator-head">
         <div class="avatar preview" data-preview></div>
-        <div><h1>Design a life</h1><p class="muted">Leave anything on Random and fate will decide.</p></div>
+        <div><h1>Design a life</h1><p class="muted" data-head-note>Leave anything on Random and fate will decide.</p></div>
       </div>
+      <button type="button" class="btn randomize-all" data-randomize>${DIE}<span>Randomize everything</span></button>
       <form novalidate>
         <div class="card"><h3>Identity</h3>
           <div class="field-row">
@@ -142,20 +156,48 @@ export function renderCreator(app, hooks) {
 
   // The dice: a name from the chosen country (or any country, if that is left on Random),
   // a first name to suit the chosen gender. Each box rolls on its own.
-  app.querySelectorAll('[data-dice]').forEach((btn) => btn.addEventListener('click', () => {
+  function rollName(which) {
     const c = COUNTRIES[q('#f-country').value] ?? pickFrom(COUNTRY_LIST);
     const gender = choice.gender === 'male' || choice.gender === 'female' ? choice.gender : pickFrom(['male', 'female']);
-    const box = q(btn.dataset.dice === 'first' ? '#f-first' : '#f-last');
+    const box = q(which === 'first' ? '#f-first' : '#f-last');
     let name;
     for (let tries = 0; tries < 6 && (!name || name === box.value); tries++) {
-      name = btn.dataset.dice === 'first' ? pickFrom(c.names[gender]) : surnameFor(c.id, pickFrom(c.names.last), gender);
+      name = which === 'first' ? pickFrom(c.names[gender]) : surnameFor(c.id, pickFrom(c.names.last), gender);
     }
     box.value = name;
-    btn.classList.remove('rolling');
-    void btn.offsetWidth; // restart the shake if the die is tapped again mid-roll
-    btn.classList.add('rolling');
-  }));
-  app.querySelectorAll('[data-dice]').forEach((btn) => btn.addEventListener('animationend', () => btn.classList.remove('rolling')));
+    shake(q(`[data-dice="${which}"]`));
+  }
+  app.querySelectorAll('[data-dice]').forEach((btn) => btn.addEventListener('click', () => rollName(btn.dataset.dice)));
+  app.querySelectorAll('[data-dice], [data-randomize]').forEach((btn) => btn.addEventListener('animationend', () => btn.classList.remove('rolling')));
+
+  /** Sets a row of options as if the player had tapped one. */
+  const setPick = (key, value) => q(`[data-pick="${key}"] [data-value="${value}"]`)?.click();
+
+  // Everything at once: a whole random person, every choice filled in and
+  // showing, so the player can keep what they like and change the rest.
+  // Odds follow the ones the game uses for lives left to chance.
+  q('[data-randomize]').addEventListener('click', () => {
+    const c = pickFrom(COUNTRY_LIST);
+    q('#f-country').value = c.id;
+    q('#f-country').dispatchEvent(new Event('change'));
+    q('#f-city').value = pickFrom(c.cities);
+    setPick('gender', weightedKey({ female: 49, male: 49, nonbinary: 2 }));
+    setPick('trans', Math.random() < 0.03 ? 'yes' : 'no');
+    setPick('orientation', weightedKey(Object.fromEntries(ORIENTATIONS.map((o) => [o.id, o.weight]))));
+    rollName('first');
+    rollName('last');
+    look = randomAppearance(undefined, choice.gender === 'male' || choice.gender === 'female' ? choice.gender : undefined);
+    setPick('talent', pickFrom(Object.keys(TALENTS)));
+    setPick('background', pickFrom(Object.keys(BACKGROUNDS)));
+    const crown = MONARCHIES[c.id];
+    if (crown) {
+      const nobles = crown.ranks.some((r) => !['monarch', 'heir', 'royal', 'knight'].includes(r[0]));
+      setPick('birthRank', weightedKey({ commoner: 96, noble: nobles ? 3 : 0, royal: 1 }));
+    }
+    preview();
+    q('[data-head-note]').textContent = 'Here is someone at random. Change anything you like.';
+    shake(q('[data-randomize]'));
+  });
 
   q('[data-cancel]').addEventListener('click', () => hooks.onCancel());
   q('form').addEventListener('submit', (e) => {
