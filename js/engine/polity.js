@@ -24,6 +24,7 @@ import { vote, proportional, districts, firstRound, formGovernment } from './ele
 import { formCabinet, tickCabinet, floorVote, toDo } from './government.js';
 import { post as postNews } from './news.js';
 import { tickDiplomacy } from './diplomacy.js';
+import { asSchoolmate } from './edlegacy.js';
 
 const yearNow = () => store.state.year;
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -504,6 +505,7 @@ export function opponentFor(officeId, countryId = store.state.player.countryId) 
     const rivals = w.parties.filter((p) => p.id !== mine?.id);
     f = newFigure(w, rng.pick(rivals).id, rng.int(30, 58));
     f.post = 'local';
+    if (countryId === store.state.player.countryId) asSchoolmate(f);
     w[key] = f.id;
   }
   f.metPlayer = true;
@@ -541,6 +543,7 @@ export function primaryRival(officeId, countryId = store.state.player.countryId)
   if (!f || f.died != null || f.retired || f.partyId !== mine.id || f.isPlayer) {
     f = newFigure(w, mine.id, rng.int(30, 58));
     f.post = 'local';
+    if (countryId === store.state.player.countryId) asSchoolmate(f);
     w[key] = f.id;
   }
   f.metPlayer = true;

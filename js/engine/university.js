@@ -24,6 +24,7 @@ import { assess, meets, aid as aidFor, outlook } from './admissions.js';
 import { tripleThreat } from './conditions.js';
 import { wealthTier } from './living.js';
 import * as edu from './education.js';
+import { arriveAt } from './edlegacy.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -304,6 +305,7 @@ export function accept(instId, funding, living = {}) {
   const fraction = a.aid?.fraction ?? 0;
   edu.enrol('university', r.majorId, fraction >= 1 ? 'scholarship' : funding, { ...living, housingAid: !!a.aid?.housing }, { id: u.id, name: u.name, aid: a.aid });
   e.apps = null;
+  arriveAt(u.name);
   return result(true, `You are going to ${u.name}.`);
 }
 

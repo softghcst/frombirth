@@ -28,6 +28,7 @@ import { report, post } from './news.js';
 import { addSecret } from './scandal.js';
 import { afterGeneral } from './leadership.js';
 import { formCabinet } from './government.js';
+import { backers } from './edlegacy.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -72,12 +73,15 @@ export function declare(officeId, defending = false) {
     rivalAppeal: 56 + rng.int(-10, 10) + (rival ? (rival.t.charisma - 55) / 8 : 0),
     bias: Math.round(noise(3.5) * 10) / 10, electorate: Math.round(size * (0.8 + rng.next() * 0.4)) };
   const pa = world.membership(c.id);
+  const old = rival?.schoolmate ? ` You were at ${rival.schoolmate} together.` : '';
+  const help = backers();
+  p.flags.race.appeal += help.boost;
   const text = national ? `You will lead ${world.the(pa)} into the general election. ${rival ? `${rival.name} is the one to beat.` : ''}`
     : p.flags.race.stage === 'nomination'
     ? `You have put your name forward for ${o.title}. First ${world.the(pa)} must choose its candidate, and you are not the only one who wants it.`
     : defending ? `You are standing again as ${o.title}${rival ? `, against ${rival.name}` : ''}. Carry the campaign on from the Work tab before the year is out.`
       : `You are a candidate for ${o.title}${rival ? `, against ${rival.name}` : ''}.`;
-  return result(true, text, 'neutral');
+  return result(true, `${text}${old}${help.lines.length ? ` ${help.lines.join(' ')}` : ''}`, 'neutral');
 }
 
 /** The contest inside the party: who the other hopeful is, and what each way of winning costs. */

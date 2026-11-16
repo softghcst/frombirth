@@ -6,6 +6,7 @@
 // in close family also reach the player's journal, and a few ask the player
 // to respond (see data/events/familyLives.js).
 import { rng } from '../rng.js';
+import * as kid from './kidschool.js';
 import { clamp, localMoney, fmtMoney, localWage, localCost } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
@@ -212,8 +213,9 @@ function choosePath(npc, quiet) {
     e.majorId = chooseMajor(npc);
     e.yearsLeft = 4;
     npc.flags.atUniversity = true;
+    const uni = ['child', 'grandchild'].includes(npc.role) ? kid.chooseUniversity(npc) : null;
     if (!quiet) {
-      note(npc, `finished school and went to university to study ${MAJOR_BY_ID[e.majorId].name}`, true, 'good');
+      note(npc, `finished school and went to ${uni?.name ?? 'university'} to study ${MAJOR_BY_ID[e.majorId].name}`, true, 'good');
       if (npc.role === 'child' && rng.chance(0.6)) ask('kid_tuition', { kid: npc.id });
     }
   } else if (rng.chance(0.35)) {
@@ -236,7 +238,9 @@ function tickEducation(npc, quiet = false) {
   if (a === 11) { e.stage = 'middle'; if (!quiet) note(npc, 'moved up to middle school'); }
   if (a === 14) { e.stage = 'high'; if (!quiet) note(npc, 'started high school'); }
   if (a >= 6 && a <= 17) {
-    e.gpa = Math.round(clamp(e.gpa * 0.8 + (npc.meters.intellect / 25 + rng.around(0, 0.35)) * 0.2, 0.5, 4) * 100) / 100;
+    // A child of the player's: the school they are at, and this year's help at home, tell too.
+    const k = npc.role === 'child' ? kid.edge(npc) : { steady: 0, once: 0 };
+    e.gpa = Math.round(clamp(e.gpa * 0.8 + (npc.meters.intellect / 25 + rng.around(0, 0.35) + k.steady) * 0.2 + k.once * 0.6, 0.5, 4) * 100) / 100;
     if (!L.hobby && a >= 7 && rng.chance(0.3) && npc.talents) {
       const [key] = Object.entries(npc.talents).filter(([k]) => HOBBIES[k]).sort((x, y) => y[1] - x[1])[0];
       L.hobby = key;
@@ -273,7 +277,8 @@ function tickEducation(npc, quiet = false) {
         npc.flags.atUniversity = false;
         npc.meters.intellect = clamp(npc.meters.intellect + 5);
         if (npc.flags.studentDebt) npc.life.savings -= localMoney(24000, country());
-        if (!quiet) note(npc, `graduated from university with a degree in ${MAJOR_BY_ID[e.majorId].name}`, true, 'good');
+        kid.graduated(npc);
+        if (!quiet) note(npc, `graduated from ${kid.uniName(npc) ?? 'university'} with a degree in ${MAJOR_BY_ID[e.majorId].name}`, true, 'good');
         const tracks = MAJOR_BY_ID[e.majorId].tracks;
         if (tracks.length && e.gpa >= 3.3 && rng.chance(0.3)) {
           e.stage = rng.pick(tracks); e.yearsLeft = e.stage === 'law' ? 3 : 4;
@@ -541,7 +546,9 @@ export function lifeSummary(npc) {
   const e = L.edu;
   const school = { elementary: 'Elementary school', middle: 'Middle school', high: 'High school', university: 'At university',
     apprenticeship: 'Apprentice', medical: 'At medical school', law: 'At law school' }[e.stage];
-  if (school && e.stage !== 'done') {
+  // A child of the player's at school, or at a named university, has a fuller line of its own (kidschool.schoolLine).
+  const named = npc.role === 'child' && (kid.schoolLine(npc));
+  if (named) { /* shown by the People tab */ } else if (school && e.stage !== 'done') {
     rows.push(['Education', school + (e.stage === 'university' ? `, ${MAJOR_BY_ID[e.majorId].name}` : e.stage === 'apprenticeship' ? ` ${TRADE_BY_ID[e.trade].name.toLowerCase()}` : '')
       + (npc.age >= 6 && npc.age <= 17 ? `, GPA ${e.gpa.toFixed(2)}` : '')]);
   } else if (e.degrees.length) {

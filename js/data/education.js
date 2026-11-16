@@ -90,7 +90,32 @@ export const SCHOOL_KINDS = [
   { id: 'home', name: 'Taught at home', fee: 0, teach: 0.05, class: 0, suffix: ['home'],
     blurb: 'Lessons at the kitchen table. No bell, no uniform, not many other children.' },
 ];
+SCHOOL_KINDS.push({ id: 'palace', name: 'Palace tutors', fee: 0, teach: 0.12, class: 2, needs: { royal: true }, suffix: ['The Palace Schoolroom', 'The Schoolroom at {place} House', 'The {place} Palace Schoolroom'],
+  blurb: 'Lessons at home from tutors chosen by the household. Two companions chosen for you, and few friends of your own choosing.' });
 export const KIND_BY_ID = Object.fromEntries(SCHOOL_KINDS.map((k) => [k.id, k]));
+
+/**
+ * The lessons a royal child has that nobody else does: one a year, from eight.
+ * `factor`: what decides whether the child takes to it; `gains` apply in full
+ * if they do, half if they do not.
+ */
+export const ROYAL_LESSONS = [
+  { id: 'etiquette', name: 'Etiquette and protocol', from: 8, factor: 'hidden.discipline', gains: { 'hidden.discipline': 2, 'stats.charm': 1 },
+    sub: 'Forms of address, where to stand, which fork. It shows in public.',
+    good: 'A year of protocol: you can now greet an ambassador, a bishop and a nervous child, in that order, without a mistake.', bad: 'A year of protocol. You learned which fork; you also learned to hate the man who teaches it.' },
+  { id: 'constitution', name: 'The constitution and the law', from: 12, factor: 'stats.intellect', gains: { 'stats.intellect': 2 },
+    sub: 'What the crown may do, what it may not, and why.',
+    good: 'A year with a constitutional historian. You understand, now, exactly how little the crown may do, and how much that little matters.', bad: 'A year of constitutional history. Some of it went in.' },
+  { id: 'diplomacy', name: 'Diplomacy and state visits', from: 12, factor: 'stats.charm', gains: { 'stats.charm': 2 },
+    sub: 'How to be a guest, and how to be a host, on behalf of a country.',
+    good: 'A year learning diplomacy from a retired ambassador. You can now make conversation with anyone about anything for twenty minutes.', bad: 'A year of diplomacy lessons. You can be polite for twenty minutes, just.' },
+  { id: 'languages', name: 'A foreign language', from: 8, factor: 'stats.intellect', gains: { 'stats.intellect': 1 },
+    sub: 'Taught by a native speaker, an hour every day.',
+    good: 'A year of lessons with a native speaker, an hour every day, and it has stuck.', bad: 'A year of language lessons, an hour every day. You can order lunch.' },
+  { id: 'cadets', name: 'Cadet training', from: 15, factor: 'stats.health', gains: { 'stats.health': 2, 'hidden.discipline': 2, 'hidden.willpower': 2 },
+    sub: 'Weekends with the cadet force: drill, map-reading, cold mornings.',
+    good: 'A year of weekends with the cadets. You are fitter, and you can read a map in the dark.', bad: 'A year of cold weekends with the cadets, most of them spent wishing you were somewhere else.' },
+];
 
 /** Invented names for places and saints, for naming schools. */
 export const SCHOOL_PLACES = ['Ashdown', 'Brookfield', 'Elm Park', 'Riverside', 'Oakhill', 'Highfield', 'Westbury', 'Kingsmead', 'Larkhall', 'Thornbury', 'Fernleigh', 'Marlow Road', 'Northgate', 'Castle Hill', 'Greenacre', 'Millbrook'];

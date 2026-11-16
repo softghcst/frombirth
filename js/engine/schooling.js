@@ -27,6 +27,7 @@ import { makeNpc } from './npcFactory.js';
 import { applyMods } from './genetics.js';
 import { wealthTier } from './living.js';
 import { tickSchoolLife, advancedPenalty, examEdge } from './schoollife.js';
+import { preferredKind } from './royaled.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const SCHOOL = ['elementary', 'middle', 'high'];
@@ -57,6 +58,8 @@ function nameFor(kind, stage, countryId) {
 }
 
 /** The school of a kind for a stage in a town. A town has one of each, and it stays. */
+/** The school of this kind for this stage in a town, founding one if there is none. Used for the player's children too. */
+export function placeFor(kindId, stage, city, countryId) { return findOrFound(kindId, stage, city, countryId); }
 function findOrFound(kindId, stage, city, countryId) {
   const kind = KIND_BY_ID[kindId];
   // Boarding schools draw from the whole country, not one town.
@@ -74,6 +77,7 @@ function findOrFound(kindId, stage, city, countryId) {
 export function barred(kind, stage, p = player()) {
   const tier = wealthTier();
   if (kind.from && SCHOOL.indexOf(stage) < SCHOOL.indexOf(kind.from)) return 'Not for children this young.';
+  if (kind.needs?.royal && !(p.royal && !p.royal.waiting)) return 'Only for the royal family.';
   if (kind.needs?.wealth === 'rich' && tier !== 'rich') return 'The fees are beyond your family.';
   if (kind.fee >= 1500 && kind.fee < 5000 && tier === 'poor') return 'Even small fees are too much at home just now.';
   if (kind.needs?.entry && val(p, kind.needs.entry.path) < kind.needs.entry.min) return kind.id === 'selective' ? 'You would not pass the entrance test.' : 'You would not get through the audition or trial.';
@@ -85,6 +89,9 @@ function parentsChoose(stage) {
   const p = player();
   const c = country();
   const ok = (id) => !barred(KIND_BY_ID[id], stage, p);
+  // A royal household keeps to what was decided for the child at ten.
+  const pref = preferredKind(stage);
+  if (pref && ok(pref)) return pref;
   // A school the family already has a history with, if it would still take them.
   const old = Object.values(schools()).find((s) => s.stage === stage && s.countryId === c.id && s.family.length && (KIND_BY_ID[s.kind].away || s.city === p.city) && s.kind !== 'public' && ok(s.kind));
   if (old && rng.chance(0.6)) return old.kind;
@@ -122,7 +129,7 @@ export const teachers = () => livingNpcs().filter((n) => n.flags.tag === 'teache
 /** A classmate the player was not close to is not deleted from the world: they are remembered, and may come back. */
 function remember(npc, s) {
   const list = (store.state.alumni ??= []);
-  list.push({ id: npc.id, firstName: npc.firstName, lastName: npc.lastName, gender: npc.gender, born: store.state.year - npc.age, appearance: npc.appearance, schoolId: s?.id ?? npc.flags.schoolId, rel: npc.meters.relationship, left: store.state.year });
+  list.push({ id: npc.id, firstName: npc.firstName, lastName: npc.lastName, gender: npc.gender, born: store.state.year - npc.age, appearance: npc.appearance, schoolId: s?.id ?? npc.flags.schoolId, interest: npc.flags.interest ?? null, clubs: npc.flags.clubs ?? [], rel: npc.meters.relationship, left: store.state.year });
   if (list.length > 40) list.shift();
   forget(npc);
 }
@@ -228,7 +235,13 @@ export function ensure() {
   const e = p.education;
   if (!atSchool(p)) return;
   const s = school();
-  if (!s) { enter(e.stage); return; }
+  if (!s) {
+    // An heir carries on at the school they were already at.
+    const want = schools()[e.joinSchoolId];
+    delete e.joinSchoolId;
+    if (want && want.stage === e.stage) { enrolAt(want, 0); seedMarks(); return; }
+    enter(e.stage); return;
+  }
   if (!KIND_BY_ID[s.kind].away && s.kind !== 'home' && (s.city !== p.city || s.countryId !== p.countryId)) {
     // The family has moved: a new school, and the old class left behind, though not the friends made there.
     const next = findOrFound(barred(KIND_BY_ID[s.kind], e.stage) ? 'public' : s.kind, e.stage, p.city, p.countryId);
@@ -350,7 +363,7 @@ export function markYear() {
     const style = t ? TEACHING_STYLES.find((x) => x.id === t.flags.style) : null;
     const club = (sub.club ?? []).some((id) => e.clubs.includes(id));
     const f = { ability: clamp(natural + (e.aptitude[sub.id] ?? 0)), effort: e.effort, discipline: p.hidden.discipline, interest: rec.interest, absences: e.absences,
-      teaching: kind.teach + (kind.favours?.includes(sub.id) ? 0.15 : 0) + (s.kind === 'public' ? funding(s.countryId) : 0) + (t ? (t.flags.skill - 50) / 200 + (t.meters.relationship - 50) / 400 : 0),
+      teaching: kind.teach + (kind.favours?.includes(sub.id) ? 0.15 : 0) + (s.kind === 'public' ? s.funding ?? funding(s.countryId) : 0) + (t ? (t.flags.skill - 50) / 200 + (t.meters.relationship - 50) / 400 : 0),
       focus: e.focus === sub.id ? 1 : 0, support: (weakest?.id === sub.id ? 0.5 : 0) + exam.add - advancedPenalty(sub.id), luck: (rng.next() * 2 - 1) * 0.25 };
     const y = yearMark(f);
     rec.y = y;

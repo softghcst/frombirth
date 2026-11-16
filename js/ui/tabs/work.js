@@ -9,6 +9,8 @@ import * as uni from '../../engine/university.js';
 import { openUniversity } from '../university.js';
 import * as sch from '../../engine/schooling.js';
 import { openSchool } from '../school.js';
+import { openFamilyEducation } from '../familyEducation.js';
+import { familyRecord } from '../../engine/edlegacy.js';
 import { politicsCard, politicsAction } from '../politics.js';
 import { player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
@@ -411,6 +413,7 @@ export default {
     if (leftSchool) school.push(['apply', 'Plan what comes next']);
     if (edu.canTakeGapYear()) school.push(['gap', 'Take a gap year']);
     if (edu.canDropOut()) school.push(['drop', 'Drop out']);
+    { const fr = familyRecord(); if (fr.past.length || fr.kids.length || p.age >= 18) school.push(['family', 'Family schooling, across the generations']); }
 
     const work = careerButtons();
 
@@ -440,7 +443,7 @@ export default {
       ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
         club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api),
-        drop: () => leaveSchool(api), apply: () => applyFlow(api), exam: () => sitExam(api), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
+        drop: () => leaveSchool(api), apply: () => applyFlow(api), exam: () => sitExam(api), family: () => openFamilyEducation(), campus: () => openCampus(api), uniplan: () => openUniversity(api, { funding: chooseFunding, housing: chooseHousing }), priority: () => choosePriority(api),
         gap: () => chooseGapYear(api), switch: () => chooseNewMajor(api),
         findjob: () => findJob(api), cover: () => report(api, job.coverShift()), quit: () => quitJob(api) })[id]();
     };
