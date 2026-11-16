@@ -230,8 +230,22 @@ spouse and children are the same people as in the People tab, linked in.
   the scale of the wedding, the cameras and the honeymoon, and the public
   reacts to each.
 
+- **Three reputations.** Public approval, the family's regard and the tone of
+  the press are separate and move for different reasons; the Reputation screen
+  (Self tab) lists what changed and why. The family notices who does their
+  duties, and halves the allowance of someone it has closed ranks against.
+- **The press.** Stories are either true or rumour. A rumour can be denied or
+  ignored; denying the truth can come back. Stories fade over the years, and
+  cost approval while they are loud.
+- **Love and children.** Someone born royal can fall for a commoner in secret,
+  be found out, and choose between them and the family. Marrying out brings
+  the spouse into the family tree (and, where the house's law says so, takes a
+  princess out of it). Grown children refuse their training, want another
+  life, marry for love, or give up their place.
+
 The rules are in `js/engine/royalty.js` (the player's side), `js/engine/court.js`
-(rivalries and the wedding),
+(rivalries and the wedding), `js/engine/reputation.js` (the three reputations
+and the press),
 `js/engine/dynasty.js` (the house) and `js/engine/succession.js` (the law);
 the screens are in `js/ui/royalty.js` and `js/ui/dynasty.js`.
 Scenes can test `monarchy`, `isRoyal`, `isNoble`, `titled`, `reigning`,

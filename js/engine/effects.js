@@ -13,6 +13,7 @@ import { sellEverything } from './market.js';
 import * as crown from './royalty.js';
 import * as pol from './politics.js';
 import * as courtLife from './court.js';
+import * as fame from './reputation.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -62,7 +63,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         const spec = e.value;
         const npc = spec.role === 'pet'
           ? makePet(p.countryId, p.lastName)
-          : makeNpc({ countryId: p.countryId, age: p.age + (spec.ageOffset ?? 0), ...spec });
+          : makeNpc({ countryId: p.countryId, age: p.age + (spec.ageOffset ?? 0),
+            ...(spec.attracted ? { gender: p.flags.interestedIn === 'men' ? 'male' : p.flags.interestedIn === 'women' ? 'female' : undefined } : {}), ...spec });
         store.state.npcs[npc.id] = npc;
         p.npcIds.push(npc.id);
         npc.lastInteractionAge = p.age;
@@ -118,7 +120,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'sellInvestments': sellEverything(); break;
       case 'image': {
         const before = p.royal?.image;
-        crown.shiftImage(e.delta);
+        crown.shiftImage(e.delta, ctx.why);
         if (p.royal && p.royal.image !== before) shown.push({ label: 'Public image', delta: p.royal.image - before });
         break;
       }
@@ -129,6 +131,11 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       }
       case 'honour': crown.honour(p.flags.honourRank ?? 'knight'); break;
+      case 'family': { const d = fame.shift('family', e.delta, ctx.why); if (d) shown.push({ label: 'Family approval', delta: d }); break; }
+      case 'press': { const d = fame.shift('press', e.delta, ctx.why); if (d) shown.push({ label: 'The press', delta: d }); break; }
+      case 'story': fame.addStory(e.value.label, e.value.truth, e.value.heat); break;
+      case 'coolStory': fame.coolStory(e.delta); break;
+      case 'kinOut': crown.kinRenounces(store.state.npcs[ctx.cast[e.target]]); break;
       case 'rivalry': courtLife.shiftRivalry(e.delta); break;
       case 'rivalEnd': courtLife.endRivalry(e.value); break;
       case 'approval': {

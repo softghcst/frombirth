@@ -16,6 +16,7 @@ import { ensureLife } from './npcLives.js';
 import { COUNTRIES } from '../data/countries.js';
 import * as dyn from './dynasty.js';
 import { tickCourt } from './court.js';
+import * as fame from './reputation.js';
 import { MONARCHIES, ROYAL_RANKS, ALLOWANCE, BORN_ROYAL, BORN_NOBLE, DUTIES, DUTIES_PER_YEAR, DISGRACE } from '../data/royalty.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -277,14 +278,50 @@ function acts() {
 export const dutiesLeft = () => DUTIES_PER_YEAR - acts().done;
 export const canDoDuties = () => !!royal() && !royal().waiting && royal().rank !== 'knight' && player().age >= 16 && !player().legal.incarceration;
 export const dutyOptions = () => DUTIES.map((d) => ({ id: d.id, name: d.name, risky: !!d.risky, cost: d.cost ? localMoney(d.cost, country()) : 0 }));
-export const allowance = () => (royal() && !royal().waiting ? localMoney(ALLOWANCE[royal().rank] ?? 0, country()) : 0);
+export const allowance = () => (royal() && !royal().waiting ? Math.round(localMoney(ALLOWANCE[royal().rank] ?? 0, country()) * (player().flags.familyFrost ? 0.5 : 1)) : 0);
 
-/** Moves the public's opinion. The better liked a royal already is, the less each good deed adds. */
-export function shiftImage(delta) {
+/** Moves the public's opinion, and notes why (engine/reputation.js keeps the record). */
+export function shiftImage(delta, why) {
+  if (fame.rep()) fame.shift('image', delta, why);
+}
+
+/** A relative gives up their title and their place in the line, of their own will. */
+export function kinRenounces(npc) {
+  const d = dyn.house(player().royal?.countryId);
+  const x = d?.people[npc?.flags?.houseId];
+  if (!x || x.out) return;
+  const before = dyn.nameOf(d, x);
+  x.out = 'renounced'; x.outYear = store.state.year;
+  dyn.chronicle(d, `${before} gave up a title and a place in the line of succession to live privately.`, [x.id]);
+  dress(d);
+}
+
+/**
+ * Someone born royal marries a person from outside the house. The spouse
+ * joins the family tree; in a house whose law says so, the royal leaves it.
+ * @returns {string} what to add to the wedding's account
+ */
+export function afterMarryingOut(npc) {
+  const p = player();
   const r = royal();
-  if (!r) return;
-  const d = delta > 0 ? Math.max(1, Math.round(delta * Math.min(1, (100 - r.image) / 55))) : delta;
-  r.image = Math.round(clamp(r.image + d));
+  if (!r || r.by !== 'birth' || !ROYAL_RANKS.includes(r.rank) || npc.flags.royal) return '';
+  const d = dyn.house(r.countryId);
+  const me = dyn.playerPerson(d);
+  if (!me) return '';
+  dyn.marryOutsider(d, me, npc);
+  const m = MONARCHIES[r.countryId];
+  if (m.leavesOnMarriage && p.gender === 'female' && !r.reigning) {
+    me.out = 'left'; me.outYear = store.state.year;
+    dyn.chronicle(d, `${p.firstName} left the royal family on her marriage, as the law of the house requires.`, [me.id]);
+    delete p.royal;
+    p.flags.lostTitle = true;
+    dress(d);
+    return ' By the law of your house, a princess who marries outside it leaves the family. You are a private citizen now, with a single payment from the state to start you off.';
+  }
+  const blessed = (r.family ?? 60) >= 40;
+  fame.shift('family', blessed ? 4 : -10, blessed ? 'a marriage the family blessed' : 'marrying without the family\'s blessing');
+  dress(d);
+  return blessed ? ` ${npc.firstName} joins the family, with a title and no place in the line.` : ` The family did not come. ${npc.firstName} has a title all the same, and no place in the line.`;
 }
 
 export function doDuty(id) {
@@ -300,7 +337,7 @@ export function doDuty(id) {
   let change = rng.int(d.image[0], d.image[1]);
   if (d.risky) change = Math.round(change + (p.stats.charm - 50) / 6 + (p.stats.intellect - 50) / 10);
   const before = royal().image;
-  shiftImage(change);
+  shiftImage(change, d.name.toLowerCase().replace(/^(open|become|go on|visit|give|meet)/, (w) => ({ open: 'opening', become: 'becoming', 'go on': 'going on', visit: 'visiting', give: 'giving', meet: 'meeting' })[w]));
   change = royal().image - before;
   if (d.mood) p.stats.mood = clamp(p.stats.mood + d.mood);
   if (d.karma) p.hidden.karma = clamp(p.hidden.karma + d.karma);
@@ -403,6 +440,13 @@ export function tickRoyalty() {
     }
   }
 
+  // A secret does not keep for ever.
+  if (p.flags.secretLove && isRoyalFamily()) {
+    const love = livingNpcs().find((n) => n.role === 'partner' && n.memories?.some((x) => x.key === 'secretRoyal'));
+    if (!love) p.flags.secretLove = false;
+    else if (rng.chance(0.45)) store.state.pendingEvents.push({ id: 'royal_love_found_out', cast: { love: love.id } });
+  }
+
   // Family politics: for those born into it.
   if (isRoyalFamily() && royal().by === 'birth') tickCourt(d);
 
@@ -424,10 +468,11 @@ export function tickRoyalty() {
     // The public's opinion: neglect, scandal and time.
     if (ROYAL_RANKS.includes(r.rank) && p.age >= 18) {
       const done = p.flags.royalActs?.age === p.age - 1 ? p.flags.royalActs.done : 0;
-      if (!done) { shiftImage(-6); log('You carried out no public duties this year, and it was noticed.', 'system', 'bad'); }
+      if (!done) { shiftImage(-6, 'no public duties all year'); log('You carried out no public duties this year, and it was noticed.', 'system', 'bad'); }
+      fame.tickReputation(done);
       r.image = Math.round(r.image + (50 - r.image) * 0.12); // yesterday's cheers fade, and so do yesterday's scandals
-      if (p.legal.record.some((x) => x.convicted && x.age === p.age - 1)) shiftImage(-35);
-      if (p.legal.incarceration) shiftImage(-20);
+      if (p.legal.record.some((x) => x.convicted && x.age === p.age - 1)) { shiftImage(-35, 'a criminal conviction'); fame.shift('family', -25, 'a criminal conviction'); fame.addStory('your conviction', true, 70); }
+      if (p.legal.incarceration) shiftImage(-20, 'being in prison');
       p.hidden.fame = clamp(Math.max(p.hidden.fame, r.rank === 'monarch' ? 95 : 70));
       if (r.image < DISGRACE) {
         const was = standing();
