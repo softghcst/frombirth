@@ -1,6 +1,6 @@
 // The arithmetic of elections, checked on small hand-built cases.
 // Run with: node tests/elections.mjs
-import { alignment, vote, proportional, districts, firstRound, distance, formGovernment, auditResult } from '../js/engine/elections.js';
+import { alignment, vote, proportional, districts, firstRound, distance, formGovernment, auditResult, duel, countByArea } from '../js/engine/elections.js';
 
 let failed = 0;
 const eq = (name, got, want) => {
@@ -57,6 +57,37 @@ eq('no majority: the largest takes its nearest partner', formGovernment([left, r
 eq('partners too far apart: a minority government', formGovernment([left, right], { left: 50, right: 50 }).kind, 'minority');
 eq('the larger of two governs when tied parties cannot agree', formGovernment([left, right], { left: 50, right: 50 }).partners, []);
 yes('a coalition never includes more partners than it needs', formGovernment([left, right, centre, { id: 'green', positions: { tax: 1, services: 2, order: -1 } }], { left: 40, right: 30, centre: 15, green: 15 }).partners.length === 1);
+
+// A race between two candidates, and the count as it comes in.
+{
+  const me = { id: 'me', positions: { tax: 2, services: 2 }, appeal: 50 };
+  const them = { id: 'rival', positions: { tax: -2, order: 2 }, appeal: 50 };
+  const r = duel(me, them, [workers, owners], undefined, 100000);
+  eq('a duel: the votes add up to the number cast', r.votes.me + r.votes.rival, r.total);
+  eq('a duel: every group\'s votes add up to the candidates\' totals', Object.values(r.byGroup).reduce((s, g) => s + g.me, 0), r.votes.me);
+  yes('a duel: each group leans to the candidate who wants what it wants', r.byGroup.workers.me > r.byGroup.workers.rival && r.byGroup.owners.rival > r.byGroup.owners.me);
+  const better = duel({ ...me, appeal: 60 }, them, [workers, owners], undefined, 100000);
+  yes('a duel: a stronger campaign wins more votes, but not all of them', better.shares.me > r.shares.me && better.shares.me < 70);
+  const courted = duel({ ...me, edge: { owners: 12 } }, them, [workers, owners], undefined, 100000);
+  yes('a duel: courting a group moves that group and no other', courted.byGroup.owners.me > r.byGroup.owners.me && courted.byGroup.workers.me === r.byGroup.workers.me);
+  eq('a duel: two identical candidates split the vote evenly', duel({ id: 'me', positions: {}, appeal: 5 }, { id: 'rival', positions: {}, appeal: 5 }, [workers, owners], undefined, 100000).shares, { me: 50, rival: 50 });
+
+  const areas = [{ id: 'city', mix: { workers: 0.7, owners: 0.2 } }, { id: 'town', mix: { workers: 0.2, owners: 0.3 } }, { id: 'farms', mix: { workers: 0.1, owners: 0.5 } }];
+  const count = countByArea(r.byGroup, areas, ['farms', 'city', 'town']);
+  eq('the count: areas report in the order given', count.map((b) => b.id), ['farms', 'city', 'town']);
+  eq('the count: the last running total is the result', count[2].running, r.votes);
+  eq('the count: everything is counted by the end', count[2].counted, 100);
+  yes('the count: the lead can change hands as areas report', count[0].running.rival > count[0].running.me && count[1].running.me > count[0].running.me);
+  let bad = 0;
+  for (let s = 1; s <= 300; s++) {
+    const n = seeded(s);
+    const d = duel({ ...me, appeal: 50 + n(15) }, { ...them, appeal: 50 + n(15) }, [workers, owners], n, 20000 + s * 311);
+    const c = countByArea(d.byGroup, areas);
+    const sum = c.reduce((t, b) => t + b.votes.me + b.votes.rival, 0);
+    if (d.votes.me + d.votes.rival !== d.total || sum !== d.total || c[2].running.me !== d.votes.me || c.some((b) => b.votes.me < 0 || b.votes.rival < 0) || d.turnout < 0 || d.turnout > 100) bad += 1;
+  }
+  eq('300 random races: every count adds up to its result', bad, 0);
+}
 
 console.log(failed ? `${failed} failed.` : 'The arithmetic of elections holds.');
 process.exit(failed ? 1 : 0);

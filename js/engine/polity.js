@@ -464,6 +464,22 @@ export function opponentFor(officeId, countryId = store.state.player.countryId) 
   return f;
 }
 
+/** The colleague who wants the same nomination: someone in the player's own party, the same one until one of them moves on. */
+export function primaryRival(officeId, countryId = store.state.player.countryId) {
+  const w = polity(countryId);
+  const mine = membership(countryId);
+  if (!mine) return null;
+  const key = `primary_${officeId}`;
+  let f = w.figures[w[key]];
+  if (!f || f.died != null || f.retired || f.partyId !== mine.id || f.isPlayer) {
+    f = newFigure(w, mine.id, rng.int(30, 58));
+    f.post = 'local';
+    w[key] = f.id;
+  }
+  f.metPlayer = true;
+  return f;
+}
+
 /** Writes a race into the record of the politician the player fought. */
 export function recordRace(f, text) { if (f) { f.metPlayer = true; say(f, text); } }
 
