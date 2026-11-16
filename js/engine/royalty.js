@@ -6,13 +6,15 @@
 //   line   place in the succession (1 is next), or null if not in it
 //   image  the public's opinion, 0–100. Duties raise it; scandal sinks it.
 // On a royal NPC: npc.flags.royal = { rank, line, title }
-// The throne itself is kept simply in state.court = { monarch: { name, gender, age } }.
+// The royal house itself (everyone in it, the line of succession, its history)
+// lives in engine/dynasty.js. This file is the player's side of it.
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { ensureLife } from './npcLives.js';
 import { COUNTRIES } from '../data/countries.js';
+import * as dyn from './dynasty.js';
 import { MONARCHIES, ROYAL_RANKS, ALLOWANCE, BORN_ROYAL, BORN_NOBLE, DUTIES, DUTIES_PER_YEAR, DISGRACE } from '../data/royalty.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -54,56 +56,81 @@ const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 <
 
 // ---------- The throne ----------
 
-/** The reigning monarch of the player's country, invented once and then aged like anyone else. */
+/** Who is on the throne of the player's country, in brief. Null where there is no crown. */
 export function court() {
-  const c = country();
-  if (!monarchy(c)) return null;
-  const st = store.state;
-  if (st.court?.countryId !== c.id) {
-    const gender = monarchy(c).maleOnly ? 'male' : rng.pick(['male', 'female']);
-    const born = st.player.flags.courtAtBirth;
-    st.court = { countryId: c.id, monarch: born && st.player.royal?.countryId === c.id && st.player.royal.by === 'birth' && !st.court
-      ? { ...born, age: born.age + st.player.age } : { name: rng.pick(c.names[gender]), gender, age: rng.int(45, 78) } };
-  }
-  return st.court;
+  const d = dyn.house();
+  if (!d) return null;
+  const mo = dyn.monarchOf(d);
+  return { countryId: d.countryId, monarch: { name: mo.name, gender: mo.gender, age: dyn.ageOf(mo), isPlayer: !!mo.isPlayer, npcId: mo.npcId ?? null } };
 }
-const monarchTitle = () => `${titleOf(country().id, 'monarch', court().monarch.gender)} ${court().monarch.name}`;
+const monarchTitle = () => dyn.nameOf(dyn.house(), dyn.monarchOf());
 
 /** "Princess Astrid" for a royal, plain "Astrid" for anyone else. */
 export const npcName = (npc) => (npc?.flags?.royal?.title ? `${npc.flags.royal.title} ${npc.firstName}` : npc?.firstName ?? '');
 
-/** A new monarch for the country, when the old one is gone and the player is not next. */
-function crownSomeoneElse() {
-  const c = country();
-  const m = monarchy(c);
-  if (!m || !store.state.court) return;
-  const gender = m.maleOnly ? 'male' : rng.pick(['male', 'female']);
-  store.state.court.monarch = { name: rng.pick(c.names[gender]), gender, age: rng.int(32, 62) };
+/**
+ * Copies the house's view of things onto the game's: titles onto the people
+ * the player knows, and the player's own rank and place in line onto p.royal.
+ * `st` is the game state (given explicitly while a life is being created).
+ */
+export function dress(d = dyn.house(), st = store.state) {
+  if (!d) return;
+  const line = dyn.lineOf(d);
+  for (const x of Object.values(d.people)) {
+    const npc = x.npcId ? st.npcs[x.npcId] : null;
+    if (!npc) continue;
+    const rank = dyn.rankOf(d, x);
+    if (!rank) { delete npc.flags.royal; continue; }
+    npc.flags.royal = { rank: rank === 'consort' ? 'monarch' : rank, line: line.indexOf(x.id) + 1 || null, title: dyn.titleOf(d, x, rank), consort: rank === 'consort' };
+    if (npc.alive && (npc.age >= 18 || rank === 'monarch')) {
+      npc.occupation = rank === 'monarch' ? 'reigning monarch' : rank === 'consort' ? 'consort to the monarch' : rank === 'heir' ? 'heir to the throne' : 'working royal';
+      npc.meters.money = Math.max(npc.meters.money, 95);
+      if (npc.life) npc.life.job = null;
+    }
+  }
+  const r = st.player.royal;
+  const me = dyn.playerPerson(d);
+  if (!me || !r || r.countryId !== d.countryId || !ROYAL_RANKS.includes(r.rank)) return;
+  if (r.by === 'birth') {
+    if (me.id === d.monarchId) { r.rank = 'monarch'; r.reigning = true; r.line = null; return; }
+    const place = line.indexOf(me.id) + 1;
+    r.line = place || null; r.rank = place === 1 ? 'heir' : 'royal'; r.reigning = false;
+  } else if (r.by === 'marriage') {
+    const sp = d.people[me.spouseId ?? me.widowOf];
+    const rank = dyn.rankOf(d, me);
+    r.rank = rank === 'consort' ? 'monarch' : sp && sp.died == null && dyn.rankOf(d, sp) === 'heir' ? 'heir' : 'royal';
+    r.reigning = false; r.line = null; r.dowager = rank === 'consort' && !!me.widowOf;
+  }
 }
 
 // ---------- Birth ----------
 
-/**
- * Decides whether a newborn is royal or noble, and sets it up. Called by
- * character creation. `wish` is 'royal' | 'noble' | 'commoner' | undefined (chance).
- */
-export function bornInto(p, wish) {
-  const m = MONARCHIES[p.countryId];
-  if (!m || wish === 'commoner') return;
-  const nobles = m.ranks.filter((r) => !ROYAL_RANKS.includes(r[0]) && r[0] !== 'knight');
+/** Whether a newborn is to be 'royal', 'noble' or neither. `wish` is the creator's choice, if any. */
+export function birthKind(countryId, wish) {
+  const m = MONARCHIES[countryId];
+  if (!m || wish === 'commoner') return null;
+  const nobles = m.ranks.some((r) => !ROYAL_RANKS.includes(r[0]) && r[0] !== 'knight');
+  if (wish) return wish === 'noble' && !nobles ? null : wish;
   const roll = rng.next();
-  const kind = wish ?? (roll < BORN_ROYAL ? 'royal' : roll < BORN_ROYAL + BORN_NOBLE && nobles.length ? 'noble' : null);
-  if (!kind) return;
-  const male = (p.flags.bornAs ?? p.gender) === 'male';
-  if (kind === 'royal') {
-    // Either the monarch's child, or a child of the monarch's younger brother or sister.
-    const direct = rng.chance(0.4);
-    const line = m.maleOnly && !male ? null : direct ? rng.int(1, 3) : rng.int(4, 8);
-    p.royal = { countryId: p.countryId, rank: line === 1 ? 'heir' : 'royal', by: 'birth', line, image: 60, reigning: false };
-    const gender = m.maleOnly ? 'male' : rng.pick(['male', 'female']);
-    p.flags.courtAtBirth = { name: rng.pick(COUNTRIES[p.countryId].names[gender]), gender, age: direct ? rng.int(30, 48) : rng.int(40, 62) };
-  } else if (nobles.length) {
-    const rank = (wish === 'noble' ? rng.pick(nobles) : rng.weighted(nobles, (_, i) => i + 1))[0];
+  return roll < BORN_ROYAL ? 'royal' : roll < BORN_ROYAL + BORN_NOBLE && nobles ? 'noble' : null;
+}
+
+/**
+ * Sets a newborn up with the title they are born to. For a royal child,
+ * `seat` is their place in the house (dynasty.seatFamily), built around
+ * their own parents before they were born.
+ */
+export function bornInto(p, kind, seat) {
+  const m = MONARCHIES[p.countryId];
+  if (!m || !kind) return;
+  if (kind === 'royal' && seat) {
+    const d = seat.dynasty;
+    const me = dyn.seatPlayer(d, seat, p);
+    const place = dyn.placeOf(d, me.id);
+    p.royal = { countryId: p.countryId, rank: place === 1 ? 'heir' : 'royal', by: 'birth', line: place || null, image: Math.round(clamp(d.standing + 4, 35, 80)), reigning: false };
+  } else if (kind === 'noble') {
+    const nobles = m.ranks.filter((r) => !ROYAL_RANKS.includes(r[0]) && r[0] !== 'knight');
+    const rank = rng.weighted(nobles, (_, i) => i + 1)[0];
     // The title itself comes with the death of the parent who holds it; until then the child is the heir to it.
     p.royal = { countryId: p.countryId, rank, by: 'birth', line: null, image: 55, reigning: false, waiting: true };
   }
@@ -132,33 +159,29 @@ export function suitability() {
 }
 
 /**
- * Creates an unmarried royal near the player's age, drawn to people like the
- * player. Usually a prince or princess some way down the line; now and then
- * the heir, and once in a long while the monarch, widowed. Not yet part of the player's life.
+ * An unmarried member of the royal house, near the player's age and drawn to
+ * people like the player, brought into the game as someone they can know.
+ * It is a real person from the house's family tree: usually a prince or
+ * princess some way down the line, now and then the heir or a widowed monarch.
  */
 export function eligibleRoyal() {
   const p = player();
   const c = country();
-  const m = monarchy(c);
-  const k = court();
+  const d = dyn.house();
   const want = p.flags.interestedIn;
   const gender = want === 'men' ? 'male' : want === 'women' ? 'female' : rng.pick(['male', 'female']);
-  const canReign = !m.maleOnly || gender === 'male';
-  const roll = rng.next();
-  let rank = 'royal';
-  if (roll < 0.08 && canReign && p.age >= 28 && !k.monarch.isPlayer && !k.monarch.npcId) rank = 'monarch';
-  else if (roll < 0.28 && canReign) rank = 'heir';
-  const age = rank === 'monarch' ? clamp(p.age + rng.int(0, 12), 30, 72) : clamp(p.age + rng.int(-5, 6), 18, 60);
-  const npc = makeNpc({ role: 'partner', countryId: c.id, gender, age, relationship: rng.int(42, 58),
-    orientation: gender === p.gender ? 'bisexual' : 'straight' });
-  const line = rank === 'monarch' ? null : rank === 'heir' ? 1 : canReign ? rng.int(2, 7) : null;
-  npc.flags.royal = { rank, line, title: titleOf(c.id, rank, gender) };
+  const x = dyn.eligibleMember(d, gender, p.age);
+  const rank = dyn.rankOf(d, x) ?? 'royal';
+  const npc = makeNpc({ role: 'partner', countryId: c.id, gender: x.gender, firstName: x.name, age: dyn.ageOf(x), relationship: rng.int(42, 58),
+    orientation: gender === p.gender ? 'bisexual' : 'straight', appearance: x.look });
+  x.npcId = npc.id;
+  npc.flags.houseId = x.id;
+  npc.flags.royal = { rank, line: dyn.placeOf(d, x.id) || null, title: dyn.titleOf(d, x, rank) };
   npc.lastName = `of ${theCountry(c.name)}`;
   npc.meters.money = 98;
   ensureLife(npc);
   npc.occupation = rank === 'monarch' ? 'reigning monarch' : rank === 'heir' ? 'heir to the throne' : 'working royal';
   if (npc.life) { npc.life.job = null; npc.life.lastJob = null; npc.life.history = []; npc.life.savings = localMoney(rank === 'royal' ? 2000000 : 20000000, c); }
-  if (rank === 'monarch') k.monarch = { name: npc.firstName, gender, age: npc.age, npcId: npc.id };
   return npc;
 }
 
@@ -186,7 +209,7 @@ export function consent(npc) {
   if (p.flags.consentAge === p.age) return { ok: false, text: 'The palace has given its answer for this year.' };
   p.flags.consentAge = p.age;
   const s = suitability();
-  const who = npc.flags.royal.rank === 'monarch' ? 'The government' : monarchTitle();
+  const who = npc.flags.royal.rank === 'monarch' && !npc.flags.royal.consort ? 'The government' : monarchTitle();
   if (rng.chance(clamp((s - 25) / 55, 0.03, 0.95))) return { ok: true, text: `${who} gives consent to the marriage.` };
   // Refused. Now and then love wins anyway, at the cost of the title.
   if (npc.meters.relationship >= 88 && rng.chance(0.3)) return { ok: true, leaves: true, text: `${who} refuses consent. ${npc.firstName} chooses you over the crown, and gives up ${npc.flags.royal.rank === 'monarch' ? 'the throne' : 'the title'}.` };
@@ -199,25 +222,43 @@ export function afterWedding(npc, leaves) {
   const p = player();
   const c = country();
   if (!npc.flags.royal) return '';
+  const d = dyn.house();
+  const x = d.people[npc.flags.houseId];
   if (leaves) {
-    if (store.state.court?.monarch.npcId === npc.id) crownSomeoneElse();
+    if (x) {
+      if (x.id === d.monarchId) dyn.accede(d, 'abdication');
+      x.out = monarchy(c).leavesOnMarriage ? 'left' : 'renounced';
+      x.outYear = store.state.year;
+      dyn.marryIn(d, x);
+      dyn.playerPerson(d).divorced = undefined;
+    }
     delete npc.flags.royal;
     npc.lastName = p.lastName;
     npc.occupation = 'former royal';
+    dress(d);
     return ` ${npc.firstName} is a private citizen now, and so are you.`;
   }
   if (p.royal && ROYAL_RANKS.includes(p.royal.rank)) return ''; // already royal in their own right
-  p.royal = { countryId: c.id, rank: npc.flags.royal.rank, by: 'marriage', line: null, image: 58, reigning: false, spouseId: npc.id };
+  if (x) dyn.marryIn(d, x);
+  p.royal = { countryId: c.id, rank: 'royal', by: 'marriage', line: null, image: Math.round(clamp(d.standing + 2, 40, 70)), reigning: false, spouseId: npc.id };
+  dress(d);
   p.hidden.fame = clamp(p.hidden.fame + 30);
   p.flags.livesWithParents = false;
   p.flags.marriedRoyal = true;
   milestone(`Married into the royal family of ${theCountry(c.name)}.`, 'family');
-  return ` The wedding is watched by half the world, and paid for by the crown. You are ${titleOf(c.id, p.royal.rank, p.gender)} ${p.firstName} now.`;
+  return ` The wedding is watched by half the world, and paid for by the crown. You are ${titleOf(c.id, p.royal.rank, p.gender)} ${p.firstName} now${p.royal.rank === 'monarch' ? ', consort to the monarch' : ''}. Marriage gives you a title, and no place in the line of succession.`;
 }
 
 /** Called when a marriage to a royal ends: a title held by marriage goes with it. */
 export function afterDivorce(npc) {
   const p = player();
+  const d = dyn.house(p.royal?.countryId ?? country().id);
+  const x = d?.people[npc.flags.houseId];
+  const me = d ? dyn.playerPerson(d) : null;
+  if (x && me && !me.blood && (x.spouseId === me.id || me.spouseId === x.id)) {
+    x.spouseId = null; me.spouseId = null; me.divorced = store.state.year;
+    dyn.chronicle(d, `${dyn.nameOf(d, x)} and ${p.firstName} divorced.`, [x.id, me.id]);
+  }
   if (p.royal?.by !== 'marriage' || p.royal.spouseId !== npc.id) return '';
   const was = titleOf(p.royal.countryId, p.royal.rank, p.gender);
   delete p.royal;
@@ -275,10 +316,19 @@ export function renounce() {
   if (!r) return result(false, 'You have no title to give up.', 'neutral');
   const was = standing();
   const wasMonarch = r.rank === 'monarch' && r.reigning;
+  let next = null;
+  if (ROYAL_RANKS.includes(r.rank)) {
+    const d = dyn.house(r.countryId);
+    const me = dyn.playerPerson(d);
+    if (wasMonarch) next = dyn.accede(d, 'abdication');
+    else if (me?.blood) { me.out = 'renounced'; me.outYear = store.state.year; dyn.chronicle(d, `${dyn.nameOf(d, { ...me, out: null })} gave up a place in the royal family to live privately.`, [me.id]); }
+    delete p.royal;
+    dress(d);
+  }
   delete p.royal;
-  if (wasMonarch) { crownSomeoneElse(); p.flags.abdicated = true; }
+  if (wasMonarch) p.flags.abdicated = true;
   p.stats.mood = clamp(p.stats.mood + 4);
-  const text = wasMonarch ? `You have abdicated. The crown passes on, and for the first time in your life nobody is watching you eat breakfast.`
+  const text = wasMonarch ? `You have abdicated. ${next ? `${dyn.nameOf(dyn.house(r.countryId), next)} reigns in your place, and` : 'The crown passes on, and'} for the first time in your life nobody is watching you eat breakfast.`
     : `You have given up your place as ${was}. You are a private citizen, with a private citizen's income.`;
   log(text, 'system', 'neutral');
   milestone(wasMonarch ? 'Abdicated the throne.' : 'Renounced a title.', 'life');
@@ -310,55 +360,45 @@ export function tickRoyalty() {
     return;
   }
   if (!m) return;
-  const k = court();
-
-  // The throne: the monarch ages, and one day dies.
-  const known = k.monarch.npcId ? store.state.npcs[k.monarch.npcId] : null;
-  let dies;
-  if (known) { k.monarch.age = known.age; dies = !known.alive; } else {
-    k.monarch.age += 1;
-    dies = rng.chance(k.monarch.age < 60 ? 0.006 : k.monarch.age < 75 ? 0.03 : k.monarch.age < 88 ? 0.1 : 0.3);
-  }
-  const spouse = r?.spouseId ? store.state.npcs[r.spouseId] : null;
-  if (dies && !(r?.rank === 'monarch' && r.reigning)) {
-    const old = monarchTitle();
-    if (r?.by === 'birth' && r.line === 1 && !r.waiting) {
-      r.rank = 'monarch'; r.reigning = true; r.line = null;
-      k.monarch = { name: p.firstName, gender: p.gender, age: p.age, isPlayer: true };
+  // The house lives a year: births, marriages, scandals, deaths, and the throne changing hands.
+  const d = dyn.house();
+  const inFamily = isRoyalFamily();
+  const before = inFamily && r.by === 'birth' ? r.line : null;
+  const wasHeir = before === 1;
+  const res = dyn.tickDynasty(d);
+  const me = dyn.playerPerson(d);
+  if (res.newMonarch) {
+    const old = `${titleOf(c.id, 'monarch', res.oldMonarch.gender)} ${res.oldMonarch.name}`;
+    const next = res.newMonarch;
+    if (next.isPlayer && r) {
+      dress(d);
       p.hidden.fame = 100;
       p.flags.reigned = true;
       log(`${old} has died. You are ${titleOf(c.id, 'monarch', p.gender)} ${p.firstName} of ${theCountry(c.name)}.`, 'system', 'good');
       milestone(`Crowned ${titleOf(c.id, 'monarch', p.gender)} of ${theCountry(c.name)}.`, 'fame');
       if (p.age < 18) log('You are too young to rule. A regent will govern in your name until you are eighteen.', 'system', 'neutral');
       else store.state.pendingEvents.push({ id: 'coronation_day', cast: {} });
-    } else if (spouse?.alive && spouse.flags.royal?.line === 1) {
-      spouse.flags.royal = { rank: 'monarch', line: null, title: titleOf(c.id, 'monarch', spouse.gender) };
-      spouse.occupation = 'reigning monarch';
-      r.rank = 'monarch'; r.reigning = false;
-      k.monarch = { name: spouse.firstName, gender: spouse.gender, age: spouse.age, npcId: spouse.id };
-      log(`${old} has died. ${spouse.firstName} is ${spouse.flags.royal.title} now, and you are ${titleOf(c.id, 'monarch', p.gender)} consort.`, 'system', 'good');
-      milestone(`Became ${titleOf(c.id, 'monarch', p.gender)} consort of ${theCountry(c.name)}.`, 'fame');
     } else {
-      const gender = m.maleOnly ? 'male' : rng.pick(['male', 'female']);
-      k.monarch = { name: rng.pick(c.names[gender]), gender, age: rng.int(35, 62) };
-      if (p.age >= 8) log(`${old} has died. ${monarchTitle()} has come to the throne.`);
-      if (r?.by === 'marriage' && r.rank === 'monarch') r.dowager = true;
-      if (r?.by === 'birth' && r.line > 1) { r.line -= 1; if (r.line === 1) r.rank = 'heir'; }
-      if (spouse?.alive && spouse.flags.royal?.line > 1) spouse.flags.royal.line -= 1;
+      if (p.age >= 8) log(`${old} has died. ${dyn.nameOf(d, next)} has come to the throne.`, 'system', inFamily ? 'bad' : 'neutral');
+      if (me && !me.blood && next.id === me.spouseId) {
+        log(`You are ${titleOf(c.id, 'monarch', p.gender)} consort.`, 'system', 'good');
+        milestone(`Became ${titleOf(c.id, 'monarch', p.gender)} consort of ${theCountry(c.name)}.`, 'fame');
+      }
     }
   }
-
-  // People ahead in the line drop out now and then; new births push everyone back.
-  for (const who of [r?.by === 'birth' ? r : null, spouse?.alive ? spouse.flags.royal : null]) {
-    if (!who || !who.line || who.line <= 1) continue;
-    if (rng.chance(0.03)) { who.line -= 1; if (who === r && r.line === 1) { r.rank = 'heir'; log('A death in the family has made you heir to the throne.', 'system', 'neutral'); } }
-    else if (rng.chance(0.05)) who.line += 1;
+  dress(d);
+  // News of the family reaches those who are in it.
+  if (me && inFamily && p.age >= 6) {
+    const mine = res.news.filter((n) => !n.ids.includes(d.monarchId) || !res.newMonarch)
+      .filter((n) => n.weight >= 4 || n.ids.some((id) => dyn.closeness(d, me.id, id) <= 3)).slice(0, 4);
+    for (const n of mine) log(n.text, 'system', 'neutral');
   }
-
-  // Children of the royal family are princes and princesses from birth.
-  if (isRoyalFamily()) {
-    for (const kid of livingNpcs()) {
-      if (kid.role === 'child' && !kid.flags.royal && !kid.flags.adopted) kid.flags.royal = { rank: 'royal', line: null, title: titleOf(c.id, 'royal', kid.gender) };
+  if (royal()?.by === 'birth' && isRoyalFamily() && !royal().reigning && before !== royal().line && p.age >= 6) {
+    const now = royal().line;
+    log(now ? `You are now ${ordinal(now)} in line to the throne${before ? ` (you were ${ordinal(before)})` : ''}.` : 'You no longer have a place in the line of succession.', 'system', now && before && now < before ? 'good' : 'neutral');
+    // Someone just ahead has walked away from it all.
+    if (now && before && now < before && now <= 3 && p.age >= 14 && !wasHeir && res.news.some((n) => n.weight >= 4 && /gave up/.test(n.text))) {
+      store.state.pendingEvents.push({ id: 'heirs_dilemma', cast: {} });
     }
   }
 
@@ -388,9 +428,11 @@ export function tickRoyalty() {
       if (r.image < DISGRACE) {
         const was = standing();
         const monarchOut = r.rank === 'monarch' && r.reigning;
+        if (monarchOut) dyn.accede(d, 'removed');
+        else if (me?.blood) { me.out = 'removed'; me.outYear = store.state.year; dyn.chronicle(d, `${p.firstName} was removed from royal life by the palace.`, [me.id]); }
         delete p.royal;
+        dress(d);
         p.flags.lostTitle = true;
-        if (monarchOut) crownSomeoneElse();
         p.stats.mood = clamp(p.stats.mood - 15);
         const text = monarchOut ? 'The country has had enough. Parliament asks for your abdication, and gets it.'
           : `The palace announces that you will no longer carry out royal duties or use your title. You are no longer ${was}.`;
@@ -418,34 +460,57 @@ export function tickRoyalty() {
 }
 
 /**
- * When the story carries on with a child or grandchild: what of the old
- * player's standing passes to them. Called by legacy.continueAs once the new
- * state is in place. `old` is the previous state, `h` the heir as they were.
+ * When the story carries on with a child or grandchild: the house goes with
+ * it, and the heir takes whatever place in it is really theirs. Called by
+ * legacy.continueAs once the new state is in place. `old` is the previous
+ * state, `h` the heir as they were.
  */
 export function inheritStanding(old, h) {
   const p = player();
   const op = old.player;
   const r = op.royal;
-  if (old.court) store.state.court = old.court;
-  if (!r || r.countryId !== p.countryId) return '';
-  const m = MONARCHIES[r.countryId];
-  const mayReign = !m.maleOnly || p.gender === 'male';
-  if (ROYAL_RANKS.includes(r.rank) && (r.by === 'birth' || h.flags.royal)) {
-    if (r.rank === 'monarch' && r.reigning && mayReign) {
-      p.royal = { countryId: r.countryId, rank: 'monarch', by: 'birth', line: null, image: 60, reigning: true };
-      p.flags.reigned = true;
-      p.hidden.fame = 100;
-      store.state.court = { countryId: r.countryId, monarch: { name: p.firstName, gender: p.gender, age: p.age, isPlayer: true } };
-      milestone(`Crowned ${titleOf(r.countryId, 'monarch', p.gender)} of ${theCountry(COUNTRIES[r.countryId].name)}.`, 'fame');
-      return `The crown has passed to you. You are ${titleOf(r.countryId, 'monarch', p.gender)} ${p.firstName} of ${theCountry(COUNTRIES[r.countryId].name)}.`;
+  if (old.dynasties) store.state.dynasties = old.dynasties;
+  const d = store.state.dynasties?.[p.countryId];
+  if (d) {
+    const was = dyn.playerPerson(d);
+    const me = Object.values(d.people).find((x) => x.npcId === h.id);
+    if (was) {
+      was.isPlayer = false;
+      was.wasPlayer = true;
+      was.look = op.appearance;
+      if (was.died == null) {
+        const title = dyn.nameOf(d, was);
+        was.died = old.year;
+        const sp = d.people[was.spouseId];
+        if (sp) { sp.widowOf = was.id; sp.spouseId = null; }
+        dyn.chronicle(d, `${title} died, aged ${op.age}.`, [was.id]);
+      }
     }
-    if (r.rank === 'monarch' && r.reigning) crownSomeoneElse();
-    const line = !mayReign ? null : r.line ? r.line : rng.int(2, 6);
-    p.royal = { countryId: r.countryId, rank: line === 1 ? 'heir' : 'royal', by: 'birth', line, image: 58, reigning: false };
-    p.hidden.fame = Math.max(p.hidden.fame, 70);
-    return `You are ${styledName(p)}, ${standing(p).replace(/^\S+( \S+)? of/, 'of')}.`;
+    if (me) {
+      me.isPlayer = true;
+      delete me.npcId;
+      let note = '';
+      if (was && d.monarchId === was.id) {
+        const next = dyn.accede(d, 'death');
+        if (next.id !== me.id) note = ` ${dyn.nameOf(d, next)} has come to the throne.`;
+      }
+      if (me.blood && dyn.rankOf(d, me)) {
+        p.royal = { countryId: d.countryId, rank: 'royal', by: 'birth', line: null, image: Math.round(clamp(d.standing + 3, 35, 80)), reigning: false };
+        dress(d);
+        if (p.royal.reigning) {
+          p.flags.reigned = true;
+          p.hidden.fame = 100;
+          milestone(`Crowned ${titleOf(d.countryId, 'monarch', p.gender)} of ${theCountry(COUNTRIES[d.countryId].name)}.`, 'fame');
+          return `The crown has passed to you. You are ${titleOf(d.countryId, 'monarch', p.gender)} ${p.firstName} of ${theCountry(COUNTRIES[d.countryId].name)}.`;
+        }
+        p.hidden.fame = Math.max(p.hidden.fame, 70);
+        return `You are ${styledName(p)}${p.royal.line ? `, ${ordinal(p.royal.line)} in line to the throne` : ''}.${note}`;
+      }
+      dress(d);
+      if (note) return note.trim();
+    }
   }
-  if (r.by === 'birth' && !ROYAL_RANKS.includes(r.rank) && r.rank !== 'knight' && h.role === 'child') {
+  if (r && r.countryId === p.countryId && r.by === 'birth' && !ROYAL_RANKS.includes(r.rank) && r.rank !== 'knight' && h.role === 'child') {
     p.royal = { countryId: r.countryId, rank: r.rank, by: 'birth', line: null, image: 55, reigning: false };
     return `The title has come down to you. You are ${styledName(p)}.`;
   }

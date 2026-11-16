@@ -32,6 +32,7 @@ node tests/events.mjs
 
 ```bash
 node tests/escape-layouts.mjs
+node tests/succession.mjs      # the rules of royal succession, on hand-built families
 ```
 
 `avatar.mjs` checks the parts catalogue, the renderer, inheritance and the loading of old saves.
@@ -197,7 +198,32 @@ barons where a nobility survives). Every house and person is invented.
 - **Honours:** in the United Kingdom and Spain the crown honours commoners who
   give a great deal or become widely known.
 
-The rules are in `js/engine/royalty.js`; the screens are in `js/ui/royalty.js`.
+### The royal house and the dynasty journal
+
+Each monarchy has a royal house: a family tree of real people going back
+about 150 years, kept in the save (`state.dynasties`). Everyone in it has a
+face inherited from their parents through the ordinary avatar genetics, a
+birth and death, a marriage, and a story. The player's own parents, siblings,
+spouse and children are the same people as in the People tab, linked in.
+
+- **The line of succession is worked out from the tree** under each country's
+  law (`law` in `js/data/royalty.js`): eldest child, sons first, or men only
+  through fathers. Marrying in gives a title and never a place in the line;
+  adopted children follow the law; someone who abdicates stays out.
+- **The house lives a year at a time.** Relatives marry, have children, cause
+  scandals, give up their place, divorce and die, and the line moves. When the
+  monarch dies the first in line takes the throne, whoever that is.
+- **The dynasty journal** (Self tab, "The dynasty", or "The royal family and
+  its history" for a commoner): every monarch back to the founder, the living
+  family, the line of succession with the reason for each place, and the
+  house's history. Tap anyone, living or long dead, for their portrait, their
+  reign and what of them reaches you, such as "You have her eyes".
+- **It carries on.** Continue as a child and the house, its history and your
+  former self all remain; the heir takes whatever place is really theirs.
+
+The rules are in `js/engine/royalty.js` (the player's side),
+`js/engine/dynasty.js` (the house) and `js/engine/succession.js` (the law);
+the screens are in `js/ui/royalty.js` and `js/ui/dynasty.js`.
 Scenes can test `monarchy`, `isRoyal`, `isNoble`, `titled`, `reigning`,
 `royalBy` and `royal.image`, and use the `image()`, `meetRoyal()` and
 `honour()` effects.
@@ -277,7 +303,7 @@ family lives, the economy, crime and prison, health and activities, death and
 legacy, and a final pass that brought the game to over 200 scenes, rebalanced money
 and promotions, and checked the layout at iPad and phone sizes. Since then: a modular
 avatar system with a live editor, wills with named heirs, skills to practise,
-orientation and gender identity, living conditions by country, royalty,
+orientation and gender identity, living conditions by country, royalty with a living royal house and a dynasty journal,
 politics, a list of people you know who are written into your lives, and
 moving saves between devices with a transfer code or cloud saves.
 

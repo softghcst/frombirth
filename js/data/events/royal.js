@@ -48,6 +48,23 @@ export default [
     ],
   },
 
+  {
+    id: 'heirs_dilemma', category: 'royalty', ageRange: [14, 100], queuedOnly: true, cooldown: 1,
+    text: 'Someone just ahead of you in the line of succession has given up their place to live a private life. The family is furious with them, and the newspapers have noticed that you are now a step closer to the throne.',
+    choices: [
+      { label: 'Stand up for their right to choose, in public', outcomes: [
+        { on: 'always', weight: 0.6, tone: 'good', text: 'You say that nobody should be made to live a life they did not choose. The younger half of the country agrees with you, loudly.', effects: [image(7), hid('karma', 5), st('mood', 3)] },
+        { on: 'always', weight: 0.4, tone: 'bad', text: 'The older members of the family take it as an attack on everything they have given up themselves. Dinner is very quiet for a year.', effects: [image(3), hid('karma', 5), st('mood', -5)] },
+      ] },
+      { label: 'Support them privately, and say nothing', outcomes: [any('You send a letter, and help them pack. They never forget it.', 'good', hid('karma', 4), st('mood', 2))] },
+      { label: 'Ask them to think again', check: chk(0.2, { 'stats.charm': 0.4 }), outcomes: [
+        ok('You talk until four in the morning. They do not change their mind, but they agree to stay for the family\'s big occasions, and that is something.', image(2), st('mood', 2)),
+        bad('They hear it as one more person telling them what their duty is. You part badly.', st('mood', -5)),
+      ] },
+      { label: 'Quietly start preparing for more', outcomes: [any('You ask for the constitutional papers to be sent to your rooms, and begin to read. Somebody notices, and tells somebody else.', 'neutral', st('intellect', 2), hid('discipline', 3), hid('karma', -3), image(-2))] },
+    ],
+  },
+
   // ---------- Inside the royal family ----------
   {
     id: 'royal_long_lens', category: 'royalty', ageRange: [16, 80], cooldown: 5, requires: [royal],
