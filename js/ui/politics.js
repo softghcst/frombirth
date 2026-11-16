@@ -7,7 +7,7 @@ import { meterHtml } from './meter.js';
 import { messageModal, pickModal, confirmModal } from './modals.js';
 import * as world from '../engine/polity.js';
 import { openPolity } from './polity.js';
-import { openCabinet, lawFlow, budgetFlow, governButtons } from './government.js';
+import { openCabinet, lawFlow, budgetFlow, governButtons, foreignFlow } from './government.js';
 import * as lead from '../engine/leadership.js';
 import * as kin from '../engine/kin.js';
 import * as cause from '../engine/activism.js';
@@ -162,6 +162,7 @@ export async function politicsAction(id, api) {
   if (id === 'world') return openPolity(() => api.changed());
   if (id === 'law') return lawFlow(api);
   if (id === 'cabinet') return openCabinet(api);
+  if (id === 'foreign') return foreignFlow(api);
   if (id === 'budget') return budgetFlow(api);
   if (id === 'run') return run(api);
   if (id === 'govern') return govern(api);

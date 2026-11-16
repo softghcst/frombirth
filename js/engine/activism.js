@@ -13,6 +13,12 @@ import { LEVERS } from '../data/parties.js';
 import { CAUSES, CAUSE_ACTIONS } from '../data/politics.js';
 import * as world from './polity.js';
 import { post } from './news.js';
+import { MONARCHIES } from '../data/royalty.js';
+import * as dyn from './dynasty.js';
+import { referendum } from './reign.js';
+
+/** The royal house of the country, if it still reigns. */
+const crown = (cid) => (MONARCHIES[cid] && store.state.dynasties?.[cid]?.status !== 'abolished' ? dyn.house(cid) : null);
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const ACTS_PER_YEAR = 2;
@@ -27,13 +33,15 @@ export const strength = (id = player().flags.cause?.id) => Math.round(world.poli
 const grow = (id, n) => { const w = world.polity(player().countryId); (w.movements ??= {})[id] = clamp((w.movements[id] ?? 0) + n); };
 
 /** The causes that can be joined, and what each wants. */
-export const causes = () => CAUSES.map((c) => ({ ...c, strength: strength(c.id) }));
+export const causes = () => CAUSES.filter((c) => !c.crown || crown(player().countryId)).map((c) => ({ ...c, strength: strength(c.id) }));
 
 export function join(id) {
   const p = player();
   const c = cause(id);
   if (!c || p.age < 14) return result(false, 'You cannot join that.', 'neutral');
   if ((p.politics?.tier ?? 0) >= 3) return result(false, 'Someone who holds national office does not march behind a banner. Step down first.', 'neutral');
+  if (c.crown && p.royal && !p.royal.waiting) return result(false, 'Not with your name. The family would never recover.', 'neutral');
+  if (c.crown && !crown(p.countryId)) return result(false, 'There is no crown here to argue about.', 'neutral');
   const had = mine();
   p.flags.cause = { id, countryId: p.countryId, since: store.state.year, standing: 5 };
   if (!strength(id)) grow(id, rng.int(8, 20));
@@ -74,7 +82,15 @@ function concession(m, forced = false) {
   const lever = leverFor(m);
   const led = m.standing >= 40;
   let text;
-  if (lever && Math.abs(w.policies[lever] + m.dir) <= 2 && (forced || w.budget - LEVERS[lever].cost * m.dir > -4)) {
+  const d = m.crown ? crown(p.countryId) : null;
+  if (m.crown && !d) return null;
+  if (m.crown < 0) {
+    // What a republican movement wins is the vote itself. How the vote goes is another matter.
+    text = `After years of pressure from ${m.name}, a referendum on the monarchy is held. ${referendum(-strength(m.id) / 12)}`;
+  } else if (m.crown > 0) {
+    d.standing = Math.round(clamp(d.standing + 8));
+    text = `After a campaign by ${m.name}, the government has declared a year of celebration for the crown. The country joins in, mostly.`;
+  } else if (lever && Math.abs(w.policies[lever] + m.dir) <= 2 && (forced || w.budget - LEVERS[lever].cost * m.dir > -4)) {
     const law = world.enact(w, lever, m.dir, world.figure(w, w.govt.headId)?.name);
     if (!law) return null;
     law.pressed = m.name;
@@ -141,6 +157,8 @@ export function tickActivism() {
   const m = mine();
   for (const id of Object.keys(w.movements ?? {})) w.movements[id] = Math.max(0, w.movements[id] - (m?.id === id ? 5 : 8));
   if (!m) return;
+  // A cause about the crown moves what the country thinks of it, a little every year it is heard.
+  if (m.crown) { const d = crown(p.countryId); if (!d) { delete p.flags.cause; return; } if (rng.chance(strength() / 160)) d.standing = Math.round(clamp(d.standing + m.crown)); }
   if ((p.politics?.tier ?? 0) >= 3) { delete p.flags.cause; log(`Now that you hold national office, you step back from ${m.name}.`, 'system', 'neutral'); return; }
   const s = strength();
   if (s >= 55 && w.kind !== 'none' && rng.chance((s - 50) / 300 * (unfree(p.countryId) ? 0.3 : 1))) { const text = concession(m); if (text) log(text, 'system', 'good'); }

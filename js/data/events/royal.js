@@ -3,7 +3,7 @@
 //   life inside a royal family (isRoyal), where nearly every choice moves the public's opinion
 //   life with a noble title (isNoble), and life as a commoner in a country with a crown (monarchy)
 // Every house and person is invented.
-import { st, hid, cash, ms, ok, bad, any, chk, need, rel, image, meetRoyal, honour, followers } from './helpers.js';
+import { st, hid, cash, ms, ok, bad, any, chk, need, rel, image, meetRoyal, honour, followers, govt } from './helpers.js';
 
 const royal = need('isRoyal', '==', true);
 const has = (amount) => need('cashBase', '>=', amount);
@@ -180,8 +180,8 @@ export default [
     ],
   },
   {
-    id: 'monarch_signs_law', category: 'royalty', ageRange: [18, 110], cooldown: 10, requires: [need('reigning', '==', true)],
-    text: 'The government sends a law for your signature. You think it is cruel. By custom, the crown signs whatever parliament passes.',
+    id: 'monarch_signs_law', category: 'royalty', ageRange: [18, 110], cooldown: 6, requires: [need('reigning', '==', true), need('recentLaw', '==', true)],
+    text: 'The government of {pm} sends a law for your signature: to {law}. You think it is a mistake. By custom, the crown signs whatever the legislature passes.',
     choices: [
       { label: 'Sign it', outcomes: [any('You sign. That is the bargain your family made a long time ago.', 'neutral', st('mood', -5), hid('karma', -2))] },
       { label: 'Sign, and let it be known you were unhappy', check: chk(0.5, { 'stats.intellect': 0.4 }), outcomes: [
@@ -189,7 +189,7 @@ export default [
         bad('It looks like meddling. The prime minister reminds you, in front of others, what your job is.', image(-7), st('mood', -5)),
       ] },
       { label: 'Refuse to sign', outcomes: [
-        { on: 'always', weight: 0.35, tone: 'good', text: 'The country is with you. The government backs down, and you are never quite an ornament again.', effects: [image(14), hid('karma', 8), st('mood', 8)] },
+        { on: 'always', weight: 0.35, tone: 'good', text: 'The country is with you. The government backs down, and you are never quite an ornament again.', effects: [image(14), hid('karma', 8), st('mood', 8), govt('refuseAssent')] },
         { on: 'always', weight: 0.65, tone: 'bad', text: 'It is called the worst constitutional crisis in a century. There is talk, serious talk, of doing without a monarch altogether.', effects: [image(-20), hid('karma', 6), st('mood', -10)] },
       ] },
     ],

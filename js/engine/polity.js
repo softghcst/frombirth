@@ -23,6 +23,7 @@ import { randomAppearance, ensureStyled } from '../avatar/inherit.js';
 import { vote, proportional, districts, firstRound, formGovernment } from './elections.js';
 import { formCabinet, tickCabinet, floorVote, toDo } from './government.js';
 import { post as postNews } from './news.js';
+import { tickDiplomacy } from './diplomacy.js';
 
 const yearNow = () => store.state.year;
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -304,6 +305,7 @@ export function tickPolity(w) {
     }
   }
   tickCabinet(w, tell, playerLeads);
+  tickDiplomacy(w, tell, playerLeads);
   if (w.kind === 'none') {
     const h = head(w);
     if (!h || h.died != null || h.retired || rng.chance(0.07)) { const f = newFigure(w, null); f.post = 'head'; w.govt.headId = f.id; w.govt.since = year; say(f, `Appointed ${headTitle(cid)} by the crown.`); tell(`The ruler has appointed ${f.name} as ${headTitle(cid)}.`); }

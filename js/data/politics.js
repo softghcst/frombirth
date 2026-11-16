@@ -205,6 +205,9 @@ export const CAUSES = [
   { id: 'jobsfirst', name: 'Jobs First', issue: 'green', dir: -1, wants: 'It wants green rules loosened.' },
   { id: 'doors', name: 'Open Doors', issue: 'open', dir: 1, wants: 'It wants open borders and wider freedoms.' },
   { id: 'borders', name: 'Borders First', issue: 'open', dir: -1, wants: 'It wants immigration cut.' },
+  // Only where there is a crown. crown: which way it pushes the country's support for the monarchy.
+  { id: 'republic', name: 'Republic Now', crown: -1, wants: 'It wants the monarchy put to a vote, and ended.' },
+  { id: 'loyal', name: 'The Crown Society', crown: 1, wants: 'It wants the monarchy kept, and cherished.' },
 ];
 
 /**
@@ -218,4 +221,21 @@ export const CAUSE_ACTIONS = [
   { id: 'organise', name: 'Organise a local branch', gain: [8, 13], rise: 8, exp: 1, standing: 15, factor: 'intellect', sub: 'Meetings, rotas and other people\'s arguments. It counts as experience.', text: 'You run a branch: the meetings, the rotas, and the falling-out over the banner.' },
   { id: 'speak', name: 'Speak for the movement', gain: [6, 14], rise: 10, exp: 1, standing: 40, factor: 'charm', sub: 'A microphone and a crowd. It makes you known.', text: 'You speak from the back of a lorry, and people quote it afterwards.' },
   { id: 'lobby', name: 'Take it to a minister', gain: [0, 3], rise: 4, standing: 40, strength: 40, sub: 'If the movement is strong enough, the government may give way.', text: '' },
+];
+
+/** What goes wrong between two countries. {them}: the other country, as it reads in a sentence; {Them}: at the start of one. */
+export const DISPUTES = [
+  'A row over fishing waters with {them} has turned ugly.',
+  '{Them} has slapped tariffs on the country\'s exports, and a trade row has followed.',
+  'A spy scandal has soured relations with {them}.',
+  '{Them} has detained two of the country\'s citizens, and will not say why.',
+  'A dispute with {them} over a border crossing has closed it for weeks.',
+  'An ambassador has been expelled by {them}, and one sent home in return.',
+];
+/** What goes right. */
+export const GOODWILL = [
+  'A state visit from the leader of {them} has gone better than anyone hoped.',
+  'A joint rescue after an earthquake has brought the country closer to {them}.',
+  'Talks with {them} have ended an old argument over tariffs.',
+  'A cultural year with {them} has been a quiet success.',
 ];

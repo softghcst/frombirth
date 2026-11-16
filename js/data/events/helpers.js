@@ -91,6 +91,8 @@ export const scandal = (value) => ({ type: 'scandal', value });
 export const leader = (value) => ({ type: 'leader', value });
 /** A choice about a relative in politics (engine/kin.js). */
 export const kin = (value) => ({ type: 'kin', value });
+/** A choice in foreign affairs (engine/diplomacy.js). */
+export const abroad = (value) => ({ type: 'abroad', value });
 
 /** Changes a cast member's role and/or flags, e.g. npcSet('lover', { flags: { engaged: true } }). */
 export const npcSet = (target, value) => ({ type: 'npcSet', target, value });

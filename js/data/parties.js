@@ -81,6 +81,8 @@ export const DEPARTMENTS = [
   { id: 'education', title: 'Education Minister', lever: 'tuition' },
   { id: 'housing', title: 'Housing Minister', lever: 'rent' },
   { id: 'justice', title: 'Justice Minister', lever: 'police' },
+  // No lever of its own: the foreign minister's skill tells in talks, visits and crises (engine/diplomacy.js).
+  { id: 'foreign', title: 'Foreign Minister', lever: null },
 ];
 
 /** Things that bring a head of government low. truth is decided when it happens. */
