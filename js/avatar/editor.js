@@ -3,7 +3,7 @@
 // creator (every feature), the in-game salon (styling only) and the avatar
 // lab page. Each feature has its own row of options, the portrait updates on
 // every tap, and nothing is saved until the caller's confirm handler runs.
-import { CATALOG, normalize, part, stylesFor } from './catalog.js';
+import { CATALOG, normalize, part, stylesFor, TWEAKS } from './catalog.js';
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
@@ -42,8 +42,8 @@ const CONTROLS = {
 
 const TABS = [
   { id: 'face', name: 'Face', keys: ['head', 'skin', 'marks'] },
-  { id: 'eyes', name: 'Eyes', keys: ['eyes', 'eyeColor', 'brows'] },
-  { id: 'features', name: 'Nose and mouth', keys: ['nose', 'lips', 'lipColor'] },
+  { id: 'eyes', name: 'Eyes', keys: ['eyes', 'eyeColor', 'brows'], tweaks: ['eyeGap', 'eyeSize', 'eyeY'] },
+  { id: 'features', name: 'Nose and mouth', keys: ['nose', 'lips', 'lipColor'], tweaks: ['noseSize', 'lipSize'] },
   { id: 'hair', name: 'Hair', keys: ['hair', 'hairDye', 'hairColor', 'hairTexture'] },
   { id: 'style', name: 'Clothes', keys: ['outfit', 'outfitColor', 'hat'] },
   { id: 'extras', name: 'Extras', keys: ['glasses', 'jewelry', 'makeup', 'facialHair'] },
@@ -114,6 +114,15 @@ export function mountAppearanceEditor(el, o = {}) {
       <div class="av-options ${c.kind}">${options.join('')}</div></div>`;
   }
 
+  /** A five-step adjuster for one proportion: two steps either side of "as drawn". */
+  function tweakControl(id) {
+    const k = TWEAKS.find((x) => x.id === id);
+    const now = a.inherited.tweaks[id];
+    const labels = [`${k.low} still`, k.low, 'Normal', k.high, `${k.high} still`];
+    return `<div class="av-control"><div class="av-label"><strong>${esc(k.name)}</strong><span>${esc(labels[now + 2])}</span></div>
+      <div class="av-steps" role="group" aria-label="${esc(k.name)}">${[-2, -1, 0, 1, 2].map((v) => `<button type="button" class="av-chip av-step ${v === now ? 'on' : ''}" data-tweak="${id}" data-val="${v}" aria-pressed="${v === now}" aria-label="${esc(labels[v + 2])}">${v === 0 ? 'Normal' : v < 0 ? '−'.repeat(-v) : '+'.repeat(v)}</button>`).join('')}</div></div>`;
+  }
+
   function render() {
     const t = tabs.find((x) => x.id === tab);
     const shownAge = preview === 'now' ? age : preview;
@@ -125,7 +134,7 @@ export function mountAppearanceEditor(el, o = {}) {
           <button type="button" class="btn small" data-random>Randomize</button>
         </div>
         <div class="av-tabs" role="tablist">${tabs.map((x) => `<button type="button" role="tab" aria-selected="${x.id === tab}" class="av-tab ${x.id === tab ? 'on' : ''}" data-tab="${x.id}">${esc(x.name)}</button>`).join('')}</div>
-        <div class="av-panel">${t.keys.map(control).join('')}</div>
+        <div class="av-panel">${t.keys.map(control).join('')}${scope === 'all' ? (t.tweaks ?? []).map(tweakControl).join('') : ''}</div>
       </div>`;
   }
   const keepScroll = (fn) => {
@@ -143,6 +152,8 @@ export function mountAppearanceEditor(el, o = {}) {
     if (pv) { preview = pv.dataset.preview === 'now' ? 'now' : Number(pv.dataset.preview); keepScroll(render); return; }
     const f = e.target.closest('[data-filter]');
     if (f) { hairFilter = f.dataset.filter; keepScroll(render); return; }
+    const tw = e.target.closest('[data-tweak]');
+    if (tw) { a.inherited.tweaks[tw.dataset.tweak] = Number(tw.dataset.val); keepScroll(render); o.onChange?.(cloneAppearance(a)); return; }
     const opt = e.target.closest('.av-opt');
     if (!opt) return;
     const key = opt.dataset.key;

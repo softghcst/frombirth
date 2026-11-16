@@ -51,6 +51,19 @@ export const CATALOG = {
   outfit: parts('clothes', (p) => !AUTO_OUTFIT.test(p.id)), outfitColor: OUTFIT_COLORS, hat: parts('hats', (p) => !p.tags?.career),
 };
 
+/**
+ * A person's own proportions, part of what they are born with: each is a
+ * whole number of steps from -2 to 2 (0 is as drawn). Saved as inherited.tweaks.
+ */
+export const TWEAKS = [
+  { id: 'eyeGap', name: 'Eye spacing', low: 'Closer', high: 'Wider' },
+  { id: 'eyeSize', name: 'Eye size', low: 'Smaller', high: 'Bigger' },
+  { id: 'eyeY', name: 'Eye height', low: 'Lower', high: 'Higher' },
+  { id: 'noseSize', name: 'Nose size', low: 'Smaller', high: 'Bigger' },
+  { id: 'lipSize', name: 'Mouth size', low: 'Smaller', high: 'Bigger' },
+];
+export const cleanTweaks = (t) => Object.fromEntries(TWEAKS.map((k) => [k.id, Math.max(-2, Math.min(2, Math.round(Number(t?.[k.id]) || 0)))]));
+
 /** Born with: one id each, except marks, which is a list of ids. */
 export const INHERITED_KEYS = ['head', 'skin', 'eyes', 'eyeColor', 'brows', 'nose', 'lips', 'hairColor', 'hairTexture'];
 /** Styling: hair must have a value ('bald' for none); jewelry is a list; the others may be null (none). */
@@ -117,6 +130,7 @@ export function normalize(a, seed = 'x') {
     const pool = ['eyes', 'brows', 'nose', 'lips'].includes(key) ? resting(key) : CATALOG[key];
     inherited[key] = has(key, id) ? id : seeded(pool, seed, key).id;
   }
+  inherited.tweaks = cleanTweaks(src.tweaks);
   inherited.marks = Array.isArray(src.marks) ? src.marks.filter((id) => has('marks', id))
     : hash(`${seed}:marks`) % 9 === 0 ? ['freckles'] : [];
 
@@ -159,7 +173,7 @@ export function resolveLook(appearance, seed = 'x', gender) {
       : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
   const sex = gender === 'female' ? 'female' : 'male';
   return {
-    head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: g.lips,
+    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: g.lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),
     facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,

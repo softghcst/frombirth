@@ -48,6 +48,15 @@ for (const h of AVATAR_MANIFEST.heads) {
     check(y('eyebrows') < y('eyes') && y('eyes') < y('nose') && y('nose') < y('lips'), `${h.id}/${stage}: features out of order`);
     check(y('eyebrows') > f.top + 40 && y('lips') + 20 * sc < f.chin - 4, `${h.id}/${stage}: features fall outside the face`);
     check(y('lips') - y('nose') - 42 * sc >= 8, `${h.id}/${stage}: nose and mouth touch`); // half the nose box plus half the mouth box
+    // With every personal adjustment at its extreme, the face still holds together.
+    for (const v of [-2, 2]) {
+      const x = fitTransforms(h.id, stage, { eyeGap: v, eyeSize: v, eyeY: v, noseSize: v, lipSize: v });
+      const num = (k, re) => Number(x[k].match(re)[1]);
+      const big = num('nose', /scale\((\S+)\)/);
+      check(num('lips', /translate\(\S+ (\S+)\)/) - num('nose', /translate\(\S+ (\S+)\)/) - 42 * big >= 2, `${h.id}/${stage}: nose and mouth touch at size ${v}`);
+      check(num('eyesL', /translate\((-?[\d.]+) 0\)"$/) < 0 === true || v < 0, `${h.id}/${stage}: eyes do not move apart`);
+      check(num('eyesL', /translate\(\S+ (\S+)\)/) > f.top + 60, `${h.id}/${stage}: eyes leave the face at ${v}`);
+    }
   }
 }
 const eyesWithWhites = AVATAR_MANIFEST.eyes.filter((e) => /fill:#ffffff/.test(readFileSync(new URL(`assets/avatars/${e.file}`, root), 'utf8'))).length;
@@ -115,6 +124,7 @@ for (let i = 0; i < 200; i++) {
   mum.style.hair = 'bald'; dad.inherited.skin = 'porcelain';
   check(before === JSON.stringify(kid), 'a child changed when a parent did');
   check(JSON.stringify(cloneAppearance(kid)) === before, 'clone is not a copy');
+  check(Object.entries(kid.inherited.tweaks).every(([k, v]) => v === mum.inherited.tweaks[k] || v === dad.inherited.tweaks[k]), 'a child\'s proportions came from neither parent');
 }
 
 // 6. Portraits.

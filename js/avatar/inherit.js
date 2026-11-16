@@ -5,7 +5,7 @@
 // genetics. Only the `inherited` half of a parent is ever read, so a dyed
 // or restyled parent passes on what they were born with.
 import { rng } from '../rng.js';
-import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, HAIR_STYLES } from './catalog.js';
+import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, HAIR_STYLES, TWEAKS } from './catalog.js';
 import { RESTING, OUTFITS } from './curation.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
@@ -30,6 +30,8 @@ export function randomInherited(skinDepthHint) {
   g.eyeColor = depth >= 6 ? weighted({ dark_brown: 70, brown: 26, hazel: 3, amber: 1 })
     : depth >= 3 ? weighted({ dark_brown: 34, brown: 38, hazel: 14, amber: 6, green: 5, gray: 3 })
       : weighted({ dark_brown: 8, brown: 26, hazel: 16, amber: 4, green: 14, blue: 24, gray: 8 });
+  // Most faces are as drawn; some have eyes a little wider set, a bigger nose, and so on.
+  g.tweaks = Object.fromEntries(TWEAKS.map((k) => [k.id, rng.chance(0.3) ? rng.pick([-1, 1]) : 0]));
   g.marks = [];
   if (depth <= 4 && rng.chance(0.14)) g.marks.push(rng.chance(0.3) ? 'dense_freckles' : 'freckles');
   if (rng.chance(0.06)) g.marks.push('beauty_mark');
@@ -82,6 +84,8 @@ export function inheritAppearance(a, b) {
   g.skin = toneAt(Math.max(lo - 1, Math.min(hi + 1, between)));
   // Hair and eye colour and texture never appear from nowhere as often as shapes do.
   for (const key of ['hairColor', 'hairTexture', 'eyeColor']) if (!rng.chance(0.04)) g[key] = rng.pick([pa[key], pb[key]]);
+  // Proportions run in families too.
+  g.tweaks = Object.fromEntries(TWEAKS.map((k) => [k.id, rng.pick([pa.tweaks?.[k.id] ?? 0, pb.tweaks?.[k.id] ?? 0])]));
   g.marks = CATALOG.marks.map((m) => m.id).filter((id) => {
     const n = (pa.marks?.includes(id) ? 1 : 0) + (pb.marks?.includes(id) ? 1 : 0);
     return rng.chance(n === 2 ? 0.8 : n === 1 ? 0.5 : 0.03);

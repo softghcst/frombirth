@@ -75,6 +75,10 @@ head: features keep their place between forehead and chin, hair and hats follow 
 earrings hang from that head's ears, clothes sit under its chin. Babies, toddlers and children get slightly smaller,
 lower-set features. Eyes drawn as an empty outline are given whites by filling the opening.
 
+**Personal proportions.** Each person also has `inherited.tweaks`: eye spacing, eye size, eye height, nose size
+and mouth size, each from -2 to 2 steps (`TWEAKS` in `js/avatar/catalog.js`, step sizes in `TWEAK_STEP` in
+`js/CharacterAvatar.js`). They are set in the creator, vary a little at random, and children take each from a parent.
+
 **Ages and dress.** Babies and toddlers have their own heads, baby hair and baby clothes; children have the child
 head; from fifty, lines arrive and hair greys unless dyed. Portraits dress for the moment: prison orange in prison,
 crown and robes for the royal family (a coronet for the peerage), and uniforms at work — police (tactical gear when
@@ -89,7 +93,7 @@ hair filtered by length or by what suits your texture, a preview at other ages, 
 ```js
 appearance: {
   v: 3,
-  inherited: { head, skin, eyes, eyeColor, brows, nose, lips, hairColor, hairTexture, marks: [] }, // set once, at birth
+  inherited: { head, skin, eyes, eyeColor, brows, nose, lips, hairColor, hairTexture, marks: [], tweaks: {} }, // set once, at birth
   style: { hair, hairDye, glasses, facialHair, makeup, lipColor, jewelry: [], outfit, outfitColor, hat }, // the salon and wardrobe
 }
 ```

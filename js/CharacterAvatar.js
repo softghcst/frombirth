@@ -107,6 +107,11 @@ let serial = 0;
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const use = (id, extra = '') => { const h = href(id); return h ? `<use href="${h}"${extra}/>` : ''; };
 
+/** What one step of each personal adjustment changes. Steps run from -2 to 2. */
+export const TWEAK_STEP = { size: 0.09, gap: 4, height: 5 };
+/** Every face's eyes are set this far further apart than the artwork draws them (template units, each side). */
+const EYE_APART = 3;
+
 // Younger faces: features a little smaller for the size of the head, and set a little lower.
 const STAGE_FEATURES = { baby: { k: 0.74, drop: 0.05 }, toddler: { k: 0.82, drop: 0.04 }, kid: { k: 0.94, drop: 0.02 } };
 const n1 = (v) => Math.round(v * 100) / 100;
@@ -120,7 +125,7 @@ const n1 = (v) => Math.round(v * 100) / 100;
  * from this head's ears, clothes sit under this head's chin.
  * @returns {Record<string, string>} an SVG transform attribute (with a leading space) per layer
  */
-export function fitTransforms(headId, stage) {
+export function fitTransforms(headId, stage, tweaks = {}) {
   const fit = PART_BY_ID[headId]?.fit;
   if (!fit) return {};
   const wr = fit.w / T.face.w;
@@ -131,11 +136,20 @@ export function fitTransforms(headId, stage) {
   const s = Math.sqrt(wr * hr) * young.k;
   const at = (ay) => fit.top + (ay - T.face.top) * hr + young.drop * faceH;
   const feature = (ay, scale = s) => move(256, ay, fit.cx, at(ay), scale);
+  // A person's own proportions: each step is a small, fixed change (see TWEAKS).
+  const step = (k) => Math.max(-2, Math.min(2, Number(tweaks[k]) || 0));
+  const eyeS = s * (1 + step('eyeSize') * TWEAK_STEP.size);
+  const eyeUp = step('eyeY') * TWEAK_STEP.height * hr;
+  const apart = EYE_APART + step('eyeGap') * TWEAK_STEP.gap; // template units, each eye moves this far outwards
+  const eyeAt = (ay, scale, side) => `${move(256, ay, fit.cx, at(ay) - eyeUp, scale).slice(0, -1)} translate(${side * apart} 0)"`;
   const earS = (fit.earR - fit.earL - 20) / (T.ear.right - T.ear.left);
   const body = Math.max(0.8, Math.min(1.06, fit.shoulderW / T.shoulderW));
   const crown = move(256, T.face.top, fit.cx, fit.top, wr);
   return {
-    eyes: feature(T.anchor.eyes), eyebrows: feature(T.anchor.eyebrows), nose: feature(T.anchor.nose), lips: feature(T.anchor.lips),
+    eyesL: eyeAt(T.anchor.eyes, eyeS, -1), eyesR: eyeAt(T.anchor.eyes, eyeS, 1),
+    browsL: eyeAt(T.anchor.eyebrows, s, -1), browsR: eyeAt(T.anchor.eyebrows, s, 1),
+    eyes: feature(T.anchor.eyes), eyebrows: feature(T.anchor.eyebrows),
+    nose: feature(T.anchor.nose, s * (1 + step('noseSize') * TWEAK_STEP.size)), lips: feature(T.anchor.lips, s * (1 + step('lipSize') * TWEAK_STEP.size)),
     makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes),
     glasses: feature(T.anchor.eyes, wr * young.k), facialHair: feature(T.anchor.lips, wr),
     hair: crown, hat: crown,
@@ -174,11 +188,14 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // Under a hat, hair is hidden above the brim, and tucks in at the sides rather than ending in a flat shelf.
   const under = (bottom) => `<path d="M-200 ${bottom}V${hairTop + 120}L96 ${hairTop + 26}Q120 ${hairTop} 160 ${hairTop}H352Q392 ${hairTop} 416 ${hairTop + 26}L712 ${hairTop + 120}V${bottom}Z"/>`;
   const defs = [
+    `<clipPath id="pw-l-${n}"><rect x="-400" y="-400" width="656" height="1400"/></clipPath><clipPath id="pw-r-${n}"><rect x="256" y="-400" width="656" height="1400"/></clipPath>`,
     `<clipPath id="pw-face-${n}"><use href="${href(d.head)?.replace('#art', '#skin')}"/></clipPath>`,
     `<clipPath id="pw-back-${n}">${hatOn ? under(900) : '<rect x="-200" y="-300" width="912" height="1200"/>'}</clipPath>`,
     `<clipPath id="pw-front-${n}">${hatOn ? under(FRONT_HAIR_CUT) : `<rect x="-200" y="-300" width="912" height="${FRONT_HAIR_CUT + 300}"/>`}</clipPath>`,
   ];
-  const f = fitTransforms(d.head, ageStage(ctx.age ?? 25));
+  const f = fitTransforms(d.head, ageStage(ctx.age ?? 25), look.tweaks);
+  // Eyes and brows are drawn as a pair in one file: each half is shown separately so they can sit closer or further apart.
+  const pair = (id, l, r) => (href(id) ? `<g${l} clip-path="url(#pw-l-${n})">${use(id)}</g><g${r} clip-path="url(#pw-r-${n})">${use(id)}</g>` : '');
   const kind = (j) => PART_BY_ID[j]?.tags?.kind;
   const necklaces = d.jewelry.filter((j) => kind(j) === 'necklace');
   const earrings = d.jewelry.filter((j) => kind(j) === 'ears');
@@ -189,7 +206,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     use(d.head),
     d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m, f.makeup)).join('')}</g>` : '',
     d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".8"`)).join(''),
-    use(d.eyes, f.eyes), use(d.eyebrows, f.eyebrows), use(d.nose, f.nose), use(d.lips, f.lips),
+    pair(d.eyes, f.eyesL, f.eyesR), pair(d.eyebrows, f.browsL, f.browsR), use(d.nose, f.nose), use(d.lips, f.lips),
     d.facialHair ? use(d.facialHair, f.facialHair) : '',
     use(d.clothes, f.clothes),
     necklaces.map((j) => use(j, f.necklace)).join(''),
