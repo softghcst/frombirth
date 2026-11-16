@@ -53,6 +53,10 @@ export const image = (delta) => ({ type: 'image', delta });
 export const meetRoyal = (as) => ({ type: 'meetRoyal', target: as });
 export const honour = () => ({ type: 'honour' });
 
+/** A rivalry inside the royal family: make it worse or better; end it ('peace' | 'cold' | 'removed' | 'lost'). */
+export const rivalry = (delta) => ({ type: 'rivalry', delta });
+export const rivalEnd = (value) => ({ type: 'rivalEnd', value });
+
 /** Politics: move an office-holder's approval; stand for re-election; be thrown out; step down. */
 export const approval = (delta) => ({ type: 'approval', delta });
 export const reelect = () => ({ type: 'reelect' });

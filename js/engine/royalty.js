@@ -15,6 +15,7 @@ import { makeNpc } from './npcFactory.js';
 import { ensureLife } from './npcLives.js';
 import { COUNTRIES } from '../data/countries.js';
 import * as dyn from './dynasty.js';
+import { tickCourt } from './court.js';
 import { MONARCHIES, ROYAL_RANKS, ALLOWANCE, BORN_ROYAL, BORN_NOBLE, DUTIES, DUTIES_PER_YEAR, DISGRACE } from '../data/royalty.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -401,6 +402,9 @@ export function tickRoyalty() {
       store.state.pendingEvents.push({ id: 'heirs_dilemma', cast: {} });
     }
   }
+
+  // Family politics: for those born into it.
+  if (isRoyalFamily() && royal().by === 'birth') tickCourt(d);
 
   // A noble title waits for the parent who holds it.
   if (r?.waiting && !livingNpcs().some((n) => n.role === 'parent')) {

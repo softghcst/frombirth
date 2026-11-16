@@ -12,6 +12,7 @@ import { npcTransition } from './npcLives.js';
 import { sellEverything } from './market.js';
 import * as crown from './royalty.js';
 import * as pol from './politics.js';
+import * as courtLife from './court.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -128,6 +129,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       }
       case 'honour': crown.honour(p.flags.honourRank ?? 'knight'); break;
+      case 'rivalry': courtLife.shiftRivalry(e.delta); break;
+      case 'rivalEnd': courtLife.endRivalry(e.value); break;
       case 'approval': {
         const before = p.politics?.approval;
         pol.shiftApproval(e.delta);
