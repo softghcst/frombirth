@@ -25,8 +25,8 @@ export function leads(countryId = player().countryId) {
   return f && pa.leaderId === f.id ? pa : null;
 }
 
-/** Why the player cannot challenge for the leadership now, or ''. */
-export function barrier() {
+/** Why the player cannot challenge for the leadership now, or ''. `open`: the leadership has just changed hands, and the usual wait does not apply. */
+export function barrier(open = false) {
   const p = player();
   const c = country();
   const year = store.state.year;
@@ -37,7 +37,7 @@ export function barrier() {
   if (p.legal.incarceration) return 'Not from a cell.';
   if (p.politics?.officeId !== 'seat') return `Only a sitting ${system(c).seat} can lead the party. Win a seat first.`;
   if (year - (p.flags.party.since ?? year) < 3) return 'You have not been in the party long enough for anyone to follow you.';
-  if (p.flags.party.triedAt != null && year - p.flags.party.triedAt < 3) return 'You tried too recently. The party needs time to forget.';
+  if (!open && p.flags.party.triedAt != null && year - p.flags.party.triedAt < 3) return 'You tried too recently. The party needs time to forget.';
   return '';
 }
 
@@ -89,10 +89,10 @@ function becomeLeader(w, pa, quiet = false) {
 }
 
 /** Challenges the sitting leader. The party's members of the legislature vote. */
-export function challenge(approach) {
+export function challenge(approach, open = false) {
   const p = player();
   const c = country();
-  const why = barrier();
+  const why = barrier(open);
   if (why) return result(false, why, 'neutral');
   const w = world.polity(c.id);
   const pa = world.membership(c.id);
@@ -100,7 +100,8 @@ export function challenge(approach) {
   const year = store.state.year;
   p.flags.party.triedAt = year;
   let mine = (p.counters.polExp ?? 0) / 4 + (p.politics.approval - 50) / 6 + Math.min(4, (year - p.flags.party.since) / 4) + (p.hidden.fame ?? 0) / 20;
-  const theirs = leaderStrength(w, pa, old);
+  // Someone who took over this year has had no time to make the job their own.
+  const theirs = leaderStrength(w, pa, old) - (open ? 9 : 0);
   if (approach === 'vision') mine += (p.stats.intellect - 50) / 4 + rng.int(-3, 5);
   else if (approach === 'knives') { mine += (19 - theirs) * 0.8 + rng.int(-4, 6); p.hidden.karma = clamp(p.hidden.karma - 6); } else mine += (p.stats.charm - 50) / 4 + rng.int(-2, 4);
   const electors = Math.max(15, w.seats[pa.id] ?? 0);
@@ -157,7 +158,15 @@ export function afterGeneral() {
     pa.leaderId = f.id; f.partyId = pa.id; p.flags.party.leader = true; k.viaParty = true;
   }
   const pa = leads(c.id);
-  if (!pa) return;
+  if (!pa) {
+    // The leadership of the player's party has just changed hands: a sitting member may put their name forward.
+    const mine = world.membership(c.id);
+    if (mine && mine.vacancy === store.state.year && p.flags.party.askedVacancy !== store.state.year && !barrier(true)) {
+      p.flags.party.askedVacancy = store.state.year;
+      store.state.pendingEvents.push({ id: 'pol_leadership_open', cast: { words: { party: world.the(mine), leader: w.figures[mine.leaderId]?.name ?? 'the deputy' } } });
+    }
+    return;
+  }
   const f = world.playerFigure(c.id);
   f.t.charisma = Math.round(p.stats.charm);
   // A leader who has lost their place in the legislature cannot go on leading.
@@ -195,4 +204,9 @@ export function faceTheParty() {
   if (rng.chance(clamp(0.55 + (last - before) / 20 + (p.stats.charm - 50) / 200, 0.1, 0.9))) return 'You tell the party you will fight on. There is muttering, but nobody moves against you.';
   resignLeadership('removed by the party after the election defeat');
   return 'You tell the party you will fight on. The party has other ideas: within a month you have been voted out as leader.';
+}
+
+/** Stands for a leadership that has just fallen vacant. @returns {string} */
+export function standForVacancy() {
+  return challenge('colleagues', true).text;
 }

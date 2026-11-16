@@ -3,7 +3,7 @@
 import { decide as abroadChoice } from './diplomacy.js';
 import { decide as kinChoice } from './kin.js';
 import { decide as scandalChoice } from './scandal.js';
-import { resignLeadership, faceTheParty } from './leadership.js';
+import { resignLeadership, faceTheParty, standForVacancy } from './leadership.js';
 import { defend } from './campaign.js';
 import { decide } from './government.js';
 import { clamp, localMoney, cap } from '../util.js';
@@ -161,7 +161,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'scandal': ctx.note = scandalChoice(e.value); break;
       case 'kin': ctx.note = kinChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;
-      case 'leader': ctx.note = e.value === 'resign' ? resignLeadership().text : faceTheParty(); break;
+      case 'leader': ctx.note = e.value === 'resign' ? resignLeadership().text : e.value === 'stand' ? standForVacancy() : faceTheParty(); break;
       case 'ousted': pol.removed(e.value); break;
       case 'resignOffice': pol.resign(); break;
       case 'prison': {

@@ -21,14 +21,19 @@ export const SECRETS = {
   donors: { what: 'favours promised to wealthy donors' },
   coverup: { what: 'a newspaper story suppressed' },
   nepotism: { what: 'a ministry given to a relative' },
+  // An allegation with nothing behind it. It can still do damage before it is seen off.
+  smear: { what: 'money said to have gone missing', false: true },
 };
 export const HUSH = 80000; // what it costs to lean on an editor, in base money
 
 const secrets = () => (player().flags.secrets ??= []);
 const find = (id) => secrets().find((s) => s.id === id) ?? null;
 const drop = (id) => { player().flags.secrets = secrets().filter((s) => s.id !== id); };
-const shift = (n) => { const k = player().politics; if (k) k.approval = Math.round(clamp(k.approval + n)); };
-const words = (s) => ({ what: SECRETS[s.kind].what, office: player().politics?.title ?? 'candidate' });
+/** What people think of the player: approval in office; out of it, the standing they left with, and they will stand on again. */
+const shift = (n) => { const p = player(); const k = p.politics; if (k) k.approval = Math.round(clamp(k.approval + n)); else p.flags.lastApproval = Math.round(clamp((p.flags.lastApproval ?? 50) + n)); };
+/** Whether the player is a public figure: in office, standing for it, or remembered for it. */
+const publicFigure = (p) => !!p.politics || !!p.flags.race || (p.flags.offices ?? []).some((o) => o.tier >= 2);
+const words = (s) => ({ what: SECRETS[s.kind].what, office: player().politics?.title ?? 'former office-holder' });
 const tell = (kind, s) => report(world.polity(player().countryId), kind, words(s));
 
 /** Something has been done that could come out later. */
@@ -50,15 +55,17 @@ export function tickScandal() {
   const q = p.flags.inquiry;
   if (q) {
     const s = find(q.secretId);
-    // Out of office, nobody cares enough to finish the job.
-    if (!s || !p.politics) { delete p.flags.inquiry; return; }
+    if (!s || !publicFigure(p)) { delete p.flags.inquiry; return; }
     if (q.stage === 'story') { shift(-Math.round(s.evidence / 6)); tell('story', s); pend.push({ id: 'scandal_story', cast: { words: words(s) } }); }
     else if (q.stage === 'inquiry') pend.push({ id: 'scandal_verdict', cast: { words: words(s) } });
     return;
   }
-  if (!p.politics) return;
-  // A freer press digs more; the higher the office, the more worth digging.
-  const keen = clamp(1.2 - (c.living?.graft ?? 40) / 120, 0.3, 1.2) * (1 + p.politics.tier / 5);
+  if (!publicFigure(p)) return;
+  // A freer press digs more; the higher the office, the more worth digging. Out of office, there is less of a story in it.
+  const tier = p.politics?.tier ?? 0;
+  const keen = clamp(1.2 - (c.living?.graft ?? 40) / 120, 0.3, 1.2) * (p.politics ? 1 + tier / 5 : 0.5);
+  // Not everything said about a public figure is true.
+  if (tier >= 2 && !secrets().some((s) => SECRETS[s.kind].false) && rng.chance(0.015)) addSecret('smear', rng.int(15, 35));
   for (const s of secrets()) {
     if (s.year === year) continue;
     if (!rng.chance(clamp(s.evidence / 400 * keen, 0, 0.4))) continue;
@@ -106,15 +113,15 @@ export function decide(what) {
   }
   if (q.stage === 'inquiry') {
     end();
-    if (rng.chance(clamp(s.evidence / 100 + (q.denied ? 0.1 : 0), 0.05, 0.95))) {
+    if (!SECRETS[s.kind].false && rng.chance(clamp(s.evidence / 100 + (q.denied ? 0.1 : 0), 0.05, 0.95))) {
       shift(-18);
       p.flags.disgraced = true; // the name carries it, for this generation and the next
       if (SECRETS[s.kind].crime) p.legal.heat = clamp(p.legal.heat + 40);
       drop(s.id); tell('guilty', s);
       return `The inquiry finds against you, in four hundred pages.${SECRETS[s.kind].crime ? ' A copy has gone to the police.' : ''}`;
     }
-    shift(8); drop(s.id); tell('cleared', s);
-    return 'The inquiry finds that nothing can be proved. You are cleared, and say so on every channel.';
+    shift(SECRETS[s.kind].false ? 12 : 8); drop(s.id); tell('cleared', s);
+    return SECRETS[s.kind].false ? 'The inquiry finds that there was never anything in it: the documents were forged, and it says by whom. You are cleared completely.' : 'The inquiry finds that nothing can be proved. You are cleared, and say so on every channel.';
   }
   return '';
 }
