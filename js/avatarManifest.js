@@ -31,7 +31,6 @@ export const AVATAR_MANIFEST = {
     {"id": "eyes_12", "file": "eyes/eyes_12.svg", "label": "Eyes 12"},
     {"id": "eyes_13", "file": "eyes/eyes_13.svg", "label": "Eyes 13"},
     {"id": "eyes_14", "file": "eyes/eyes_14.svg", "label": "Eyes 14"},
-    {"id": "eyes_15", "file": "eyes/eyes_15.svg", "label": "Eyes 15"},
     {"id": "eyes_16", "file": "eyes/eyes_16.svg", "label": "Eyes 16"},
     {"id": "eyes_17", "file": "eyes/eyes_17.svg", "label": "Eyes 17"},
     {"id": "eyes_18", "file": "eyes/eyes_18.svg", "label": "Eyes 18"},

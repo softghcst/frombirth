@@ -56,7 +56,13 @@ def clean_name(name):
     return base + '.svg'
 
 
+# Artwork that has been withdrawn: never sorted in, even if a pack still contains it.
+EXCLUDED = {'eyes_15.svg'}
+
+
 def folder_for(name):
+    if name in EXCLUDED:
+        return None
     for prefix, folder in PREFIXES:
         if name.startswith(prefix):
             return folder
@@ -661,6 +667,86 @@ def add_eye_whites(elements):
     elements.insert(0, {'cmds': [c for sp in holes for c in sp], 'fill': '#ffffff', 'opacity': None, 'rule': 'nonzero', 'id': 'white', 'layer': None})
     return len(holes)
 
+def scale_about(e, cx, cy, k):
+    e['cmds'] = [(c, [(cx + (v - cx) * k) if i % 2 == 0 else (cy + (v - cy) * k) for i, v in enumerate(a)]) for c, a in e['cmds']]
+    e.pop('polys', None)
+
+
+def open_up_eyes(elements):
+    """
+    Some eyes are all iris: a big round iris (or a solid dark oval) with no
+    white showing. For each such eye the ball keeps its outline, a white
+    eyeball is laid over where it was, and the iris, pupil and highlights are
+    drawn smaller inside it. Eyes that already show white are left alone.
+    """
+    box = bbox_of(elements)
+    total = (box[2] - box[0]) * (box[3] - box[1])
+    mid = (box[0] + box[2]) / 2
+    def round_ball(e):
+        b = bbox_of([e])
+        w, h = b[2] - b[0], b[3] - b[1]
+        return h > 0 and 0.55 <= w / h <= 1.7 and area(e) >= total * 0.01 and area(e) >= w * h * 0.4
+    def within(inner, outer, slack=0.12):
+        w, h = outer[2] - outer[0], outer[3] - outer[1]
+        return inner[0] >= outer[0] - w * slack and inner[2] <= outer[2] + w * slack and inner[1] >= outer[1] - h * slack and inner[3] <= outer[3] + h * slack
+    # every separate white shape, with its own outline box and size
+    whites = []
+    for e in elements:
+        if is_white(e['fill']):
+            for sp in subpaths(e['cmds']):
+                pl = flatten(sp)
+                if pl and poly_area(pl[0]) > total * 0.003:
+                    xs, ys = [q[0] for q in pl[0]], [q[1] for q in pl[0]]
+                    whites.append(((min(xs), min(ys), max(xs), max(ys)), poly_area(pl[0])))
+    overlaps = lambda a, b: a[0] < b[2] and a[2] > b[0] and a[1] < b[3] and a[3] > b[1]
+    coloured = [e for e in elements if not is_white(e['fill']) and (e.get('paint') or lum(e['fill']) >= INK) and round_ball(e)]
+    inky = [e for e in elements if not is_white(e['fill']) and not e.get('paint') and lum(e['fill']) < INK and round_ball(e)]
+    done = 0
+    for side in (-1, 1):
+        on_side = lambda e: ((bbox_of([e])[0] + bbox_of([e])[2]) / 2 - mid) * side > 0
+        pool = [e for e in coloured if on_side(e)] or [e for e in inky if on_side(e)]
+        if not pool:
+            continue
+        ball = max(pool, key=area)
+        bb = bbox_of([ball])
+        if ball in inky:
+            # a solid dark eye that already has a large white inside it is a finished eye
+            if sum(a for w, a in whites if within(w, bb, 0.02)) >= area(ball) * 0.15:
+                continue
+        else:
+            # an iris drawn in several pieces counts as one
+            group = [e for e in elements if e is not ball and not is_white(e['fill']) and (e.get('paint') or lum(e['fill']) >= INK) and on_side(e) and overlaps(bbox_of([e]), bb)]
+            bb = bbox_of([ball] + group)
+        # white already showing beside this iris: nothing to do
+        if any(overlaps(w, bb) and not within(w, bb, 0.1) for w, _ in whites):
+            continue
+        cx, cy = (bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2
+        inner = [e for e in elements if e is not ball and within(bbox_of([e]), bb) and area(e) < area(ball) * 1.01]
+        i = elements.index(ball)
+        white = {'cmds': [(c, list(a)) for c, a in ball['cmds']], 'fill': '#ffffff', 'opacity': None, 'rule': ball.get('rule'), 'id': 'white', 'layer': None}
+        if ball in inky:
+            # a solid dark eye: keep it as the outline, white inside it, and a smaller dark centre
+            centre = dict(ball, cmds=[(c, list(a)) for c, a in ball['cmds']])
+            centre.pop('polys', None)
+            w, h = bb[2] - bb[0], bb[3] - bb[1]
+            if area(ball) < w * h * 0.6:
+                # an eye with lashes drawn into the same shape: plain ovals read better than a copy of the lashes
+                white['cmds'] = shape_to_path('ellipse', f'cx="{cx}" cy="{cy}" rx="{w * 0.33}" ry="{h * 0.37}"')
+                centre['cmds'] = shape_to_path('ellipse', f'cx="{cx}" cy="{cy}" rx="{w * 0.2}" ry="{h * 0.24}"')
+                white['rule'] = centre['rule'] = None
+            else:
+                scale_about(white, cx, cy, 0.84)
+                scale_about(centre, cx, cy, 0.56)
+            elements[i + 1:i + 1] = [white, centre]
+            for e in inner:
+                scale_about(e, cx, cy, 0.56)
+        else:
+            elements.insert(i, white)
+            for e in [ball] + inner:
+                scale_about(e, cx, cy, 0.66)
+        done += 1
+    return done
+
 # ---------- Measuring a head ----------
 
 
@@ -754,6 +840,9 @@ def process(path, folder, force=False):
         n = add_eye_whites(elements)
         if n:
             notes.append(f'added whites to {n} opening(s)')
+        m = open_up_eyes(elements)
+        if m:
+            notes.append(f'made room for whites round {m} iris(es)')
     if main:
         notes.append(f'{main} -> var(--{RECOLOUR[folder]})')
     notes.append(place(folder, name, elements))
