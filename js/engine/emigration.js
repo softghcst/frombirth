@@ -1,5 +1,6 @@
 // Emigrating: applying to move, selling up, converting everything into the
 // new currency, and who comes with you.
+import { visaEdge, fluency } from './languages.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
@@ -21,7 +22,7 @@ export const canEmigrate = () => {
 export const emigrationFee = () => localMoney(EMIGRATION.fee, country());
 
 /** How likely a country is to let the player in. */
-function visaChance() {
+function visaChance(countryId) {
   const p = player();
   const has = (t) => p.education.degrees.some((d) => d.type === t);
   let chance = 0.45;
@@ -30,18 +31,19 @@ function visaChance() {
   if (has('apprenticeship') || has('cosmetology')) chance += 0.1;
   if (p.career.careerId) chance += 0.1;
   if (p.legal.record.some((r) => r.convicted && !r.juvenile)) chance -= 0.4;
+  if (countryId) chance += visaEdge(countryId, p); // speaking the language counts
   return clamp(chance, 0.05, 0.95);
 }
 
 /** Countries the player could move to, with how the move looks. */
 export function destinations() {
   const p = player();
-  const chance = visaChance();
   const kin = (id) => livingNpcs().filter((n) => n.flags.abroad === id).length;
   return COUNTRY_LIST.filter((c) => c.id !== p.countryId).sort((a, b) => a.name.localeCompare(b.name)).map((c) => ({ id: c.id, name: c.name, flag: c.flag,
     currency: c.currency.code, incomeTax: c.incomeTax, propertyTax: c.propertyTax, freeHealthcare: c.freeHealthcare,
     living: c.living, family: kin(c.id), ownsHome: properties().some((a) => a.countryId === c.id),
-    outlook: chance >= 0.7 ? 'Your application looks strong.' : chance >= 0.4 ? 'Your application could go either way.' : 'Your record makes this a long shot.' }));
+    language: fluency(c.id, p),
+    outlook: visaChance(c.id) >= 0.7 ? 'Your application looks strong.' : visaChance(c.id) >= 0.4 ? 'Your application could go either way.' : 'This is a long shot.' }));
 }
 
 /** People who come without being asked: a spouse, a committed partner, children at home, and pets. */
@@ -142,7 +144,7 @@ export function emigrate(countryId, opts = {}) {
     if (p.finance.cash < fee + shipping) return result(false, `Visas, lawyers and shipping come to ${fmtMoney(fee + shipping, from)}. You do not have it.`, 'neutral');
     p.flags.visaAge = p.age;
     p.finance.cash -= Math.round(fee * 0.2); // the application fee is gone either way
-    if (!rng.chance(visaChance())) {
+    if (!rng.chance(visaChance(to.id))) {
       const text = `${theCountry(to.name).replace(/^the/, 'The')} turned down your visa application. You can apply again next year.`;
       log(text, 'system', 'bad');
       return result(false, text);

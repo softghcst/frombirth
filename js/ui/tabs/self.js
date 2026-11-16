@@ -39,7 +39,7 @@ export default {
         ${meterHtml('Music', p.talents.music, true)}${meterHtml('Sports', p.talents.sports, true)}
         ${meterHtml('Acting', p.talents.acting, true)}${meterHtml('Singing', p.talents.singing, true)}
         ${meterHtml('Dance', p.talents.dance, true)}
-        <div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat(p)}</strong> / 100</span></div>
+        ${p.flags.musicalRoute || p.career.careerId === 'mt_performer' || /musical/.test(p.education.majorId ?? '') ? `<div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat(p)}</strong> / 100</span></div>` : ''}
       </div>
       ${royalCard()}
       ${skillsCard()}

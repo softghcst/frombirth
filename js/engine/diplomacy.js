@@ -17,6 +17,7 @@ import { MONARCHIES } from '../data/royalty.js';
 import * as world from './polity.js';
 import { skillOf } from './government.js';
 import { post } from './news.js';
+import { envoyEdge } from './languages.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const yearNow = () => store.state.year;
@@ -142,10 +143,11 @@ export function act(cid, id) {
   const approve = (n) => { k.approval = Math.round(clamp(k.approval + n)); };
   if (id === 'visit') {
     p.finance.cash -= localMoney(60000, c);
-    const gain = Math.round(rng.int(5, 10) + (p.stats.charm - 50) / 8 + envoy(w) * 30);
+    const tongue = envoyEdge(cid, p);
+    const gain = Math.round(rng.int(5, 10) + (p.stats.charm - 50) / 8 + envoy(w) * 30 + tongue * 5);
     shift(w, cid, gain); approve(1);
     post(w, `${p.firstName} ${p.lastName} has made a state visit to ${them}.`, { you: true });
-    return result(true, gain >= 8 ? `${x.leader} meets you at the foot of the aircraft steps. By the second evening you are on first-name terms.` : `The visit to ${them} is correct, courteous and slightly chilly. It does no harm.`, 'neutral');
+    return result(true, gain >= 8 ? `${x.leader} meets you at the foot of the aircraft steps.${tongue ? ' You make your speech in their language, and the room warms at once.' : ''} By the second evening you are on first-name terms.` : `The visit to ${them} is correct, courteous and slightly chilly. It does no harm.`, 'neutral');
   }
   if (id === 'aid') {
     w.budget = round(w.budget - 0.5); shift(w, cid, rng.int(10, 18)); p.hidden.karma = clamp(p.hidden.karma + 4); approve(-1);
@@ -178,7 +180,7 @@ export function decide(what, cast = {}) {
   const them = name(cid);
   const approve = (n) => { k.approval = Math.round(clamp(k.approval + n)); };
   if (what === 'negotiate') {
-    if (rng.chance(clamp(0.35 + (p.stats.intellect - 50) / 200 + envoy(w) + (x.rel + 100) / 600, 0.1, 0.9))) { shift(w, cid, 20); approve(6); post(w, `The dispute with ${them} has been settled by negotiation.`, { you: true, tone: 'good' }); return `Three nights of talks, and a text both sides can live with. ${x.leader} shakes your hand for the cameras.`; }
+    if (rng.chance(clamp(0.35 + (p.stats.intellect - 50) / 200 + envoy(w) + (x.rel + 100) / 600 + envoyEdge(cid, p) * 0.08, 0.1, 0.9))) { shift(w, cid, 20); approve(6); post(w, `The dispute with ${them} has been settled by negotiation.`, { you: true, tone: 'good' }); return `Three nights of talks, and a text both sides can live with. ${x.leader} shakes your hand for the cameras.`; }
     shift(w, cid, -10); approve(-5);
     return `The talks collapse on the second day. ${x.leader} leaves by a side door, and the dispute is worse than before.`;
   }

@@ -318,6 +318,25 @@ without regions skip that rung.
   yourself, or seizing emergency powers and ruling without elections, which
   can end in an uprising.
 
+### What if?
+
+At a turning point (an offer, a proposal, a betrayal, a term ending, a crown)
+the scene offers **What if?**: the moment is kept as a second saved life with
+the choice still to make, so both roads can be lived. Settings (on the Self
+tab) has the same button for decisions made outside scenes. A life can have
+four timelines; each gets its own run of luck from the moment it parts. The
+title screen tags them and compares them side by side. Which scenes count is
+a list in `js/engine/turning.js`; the copying is `forkGame` in `js/save.js`.
+
+### Languages
+
+A language is a skill, and now it matters (`js/engine/languages.js`, with
+where each is spoken in `js/data/skills.js`): speaking a country's language
+makes a visa likelier and work there easier, not speaking it makes both
+harder, and living there teaches it slowly. Languages spoken well count with
+employers anywhere, and a head of government who speaks a partner's language
+does better on a visit or in talks.
+
 ### The political world
 
 Each country has a political life of its own (`state.polities`), which goes on

@@ -63,3 +63,14 @@ export const SKILL_BY_ID = Object.fromEntries(SKILLS.map((s) => [s.id, s]));
 
 /** What a level is called. */
 export const LEVELS = [[0, 'Beginner'], [20, 'Getting somewhere'], [40, 'Competent'], [60, 'Good'], [80, 'Excellent'], [100, 'Master']];
+
+/** Where each language is the one daily life is lived in. A country in no list needs none. */
+export const SPOKEN = {
+  spanish: ['es', 'mx', 'ar', 'co', 'cl', 'pe', 'do', 've', 'cu'],
+  french: ['fr', 'be', 'mc', 'ma'],
+  japanese: ['jp'],
+  mandarin: ['cn', 'sg'],
+  german: ['de', 'ch'],
+  korean: ['kr'],
+  arabic: ['sa', 'ae', 'qa', 'kw', 'eg', 'jo', 'ma'],
+};
