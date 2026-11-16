@@ -16,6 +16,10 @@
 //                    adoption: adopted children can inherit; renounceCoversHeirs: giving up a place also
 //                    takes out children born afterwards
 //   reformed       daughters were given equal rights within living memory (told in the house's history)
+//   names          { male, female, house }: names for the royal house itself, where they differ from the country's at large
+//   elective       { title, term, houses, realms }: (realms: the states the houses rule; the house in the game has one)
+//                   the national throne is held in turn by several royal houses,
+//                  each for `term` years; the house in the game takes its turn once every houses × term years
 // Countries that share another country's monarch (Canada, Australia, New
 // Zealand, Jamaica) have no royal family of their own and are not listed.
 export const MONARCHIES = {
@@ -46,6 +50,29 @@ export const MONARCHIES = {
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess']] },
   ae: { type: 'absolute', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Ruling House', honours: false, maleOnly: true,
     ranks: [['monarch', 'Emir', 'Sheikha'], ['heir', 'Crown Prince', 'Sheikha'], ['royal', 'Sheikh', 'Sheikha']] },
+  be: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honours: false,
+    ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess'],
+      ['earl', 'Count', 'Countess'], ['baron', 'Baron', 'Baroness']] },
+  // A principality: the sovereign is a prince, not a king.
+  mc: { type: 'executive', law: { order: 'malePreference', adoption: false, renounceCoversHeirs: false }, reformed: false, house: 'Princely House', honours: false,
+    ranks: [['monarch', 'Prince', 'Princess'], ['heir', 'Hereditary Prince', 'Hereditary Princess'], ['royal', 'Prince', 'Princess']] },
+  jo: { type: 'executive', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honours: false, maleOnly: true,
+    ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess']] },
+  sa: { type: 'absolute', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honours: false, maleOnly: true,
+    ranks: [['monarch', 'King', 'Princess'], ['heir', 'Crown Prince', 'Princess'], ['royal', 'Prince', 'Princess']] },
+  kw: { type: 'executive', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Ruling House', honours: false, maleOnly: true,
+    ranks: [['monarch', 'Emir', 'Sheikha'], ['heir', 'Crown Prince', 'Sheikha'], ['royal', 'Sheikh', 'Sheikha']] },
+  qa: { type: 'absolute', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Ruling House', honours: false, maleOnly: true,
+    ranks: [['monarch', 'Emir', 'Sheikha'], ['heir', 'Heir Apparent', 'Sheikha'], ['royal', 'Sheikh', 'Sheikha']] },
+  // A federation of nine royal houses. The house in the game is one of them: its sultan rules a state by
+  // inheritance, and every so often takes a five-year turn as king of the whole country (`elective`).
+  my: { type: 'constitutional', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honours: false, maleOnly: true,
+    elective: { title: ['King', 'Queen'], term: 5, houses: 9, realms: ['Johor', 'Kedah', 'Kelantan', 'Pahang', 'Perak', 'Selangor', 'Terengganu', 'Perlis', 'Negeri Sembilan'] },
+    // The country has many peoples; its royal houses are Malay, and are named so.
+    names: { male: ['Ahmad', 'Iskandar', 'Ibrahim', 'Abdullah', 'Azlan', 'Ismail', 'Mahmud', 'Mizan', 'Sharafuddin', 'Nazrin', 'Muhammad', 'Sallehuddin', 'Hassanal', 'Idris', 'Yahya', 'Zainal', 'Faris', 'Aminuddin', 'Hisham', 'Sulaiman'],
+      female: ['Azizah', 'Zarith', 'Haminah', 'Aminah', 'Nur', 'Siti', 'Zara', 'Aishah', 'Fatimah', 'Maimunah', 'Norashikin', 'Bahiyah', 'Intan', 'Salehah', 'Kalsom', 'Mariam', 'Zanariah', 'Afzan', 'Iman', 'Jihan'],
+      house: ['Temenggong', 'Bendahara', 'Jamalullail', 'Siak', 'Mahawangsa', 'Opu Daeng', 'Pagaruyung', 'Long Yunus', 'Bugis'] },
+    ranks: [['monarch', 'Sultan', 'Sultanah'], ['heir', 'Raja Muda', 'Raja Puan Muda'], ['royal', 'Tengku', 'Tengku']] },
 };
 
 export const ROYAL_RANKS = ['monarch', 'heir', 'royal'];

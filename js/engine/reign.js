@@ -178,6 +178,8 @@ export function tickReign(d) {
     shiftSupport(Math.round((monarch.t.charisma - 50) / 40 + rng.int(-1, 1)), d);
   }
 
+  if (MONARCHIES[d.countryId].elective) tickRotation(d);
+
   // The question of a republic.
   if (d.standing >= 27) { d.doubt = 0; return; }
   d.doubt = (d.doubt ?? 0) + 1;
@@ -208,4 +210,37 @@ export function referendum(push = 0) {
   }
   abolish(d);
   return `${100 - share}% vote for a republic. The monarchy is abolished.`;
+}
+
+/**
+ * Where the national throne is held in turn by several royal houses: this
+ * house's ruler is elected to it for a fixed term, once every time round.
+ */
+function tickRotation(d) {
+  const p = player();
+  const e = MONARCHIES[d.countryId].elective;
+  const year = store.state.year;
+  const ruler = dyn.monarchOf(d);
+  const nation = COUNTRIES[d.countryId].name;
+  d.turnAt ??= year + rng.int(2, e.term * e.houses);
+  if (d.kingUntil) {
+    // The term ends on time, or early if the ruler who was elected is no longer the ruler.
+    if (year < d.kingUntil && d.kingId === ruler.id) return;
+    const was = d.people[d.kingId];
+    dyn.chronicle(d, `${was?.name ?? 'The ruler'}'s term as ${dyn.nationalTitle(d, was ?? ruler)} of ${nation} came to an end, and the throne passed to the next house in turn.`, was ? [was.id] : []);
+    if (was?.isPlayer && p.royal) log(`Your five years as ${dyn.nationalTitle(d, was)} of ${nation} are over. The next ruler in turn takes the national throne; you remain ${dyn.titleOf(d, was)} of ${d.realm}.`, 'system', 'neutral');
+    d.kingUntil = null; d.kingId = null;
+    d.turnAt = year + e.term * (e.houses - 1);
+    return;
+  }
+  if (year < d.turnAt) return;
+  d.kingUntil = year + e.term;
+  d.kingId = ruler.id;
+  dyn.chronicle(d, `The rulers met and elected ${dyn.nameOf(d, ruler)} of ${d.realm} as ${dyn.nationalTitle(d, ruler)} of ${nation} for ${e.term} years.`, [ruler.id]);
+  if (ruler.isPlayer && p.royal) {
+    log(`The Conference of Rulers has met, and it is your house's turn: you are ${dyn.nationalTitle(d, ruler)} of ${nation} for the next ${e.term} years.`, 'system', 'good');
+    milestone(`Elected ${dyn.nationalTitle(d, ruler)} of ${nation}.`, 'fame');
+    fame.shift('image', 5, `being elected ${dyn.nationalTitle(d, ruler).toLowerCase()}`);
+    p.hidden.fame = 100;
+  } else if (p.countryId === d.countryId && p.age >= 8 && dyn.playerPerson(d)) log(`${dyn.nameOf(d, ruler)} has been elected ${dyn.nationalTitle(d, ruler)} of ${nation} for ${e.term} years.`, 'system', 'good');
 }
