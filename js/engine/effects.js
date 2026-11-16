@@ -1,5 +1,6 @@
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { decide as campusChoice } from './campus.js';
 import { decide as schoolChoice } from './schoollife.js';
 import { decide as abroadChoice } from './diplomacy.js';
 import { decide as kinChoice } from './kin.js';
@@ -162,6 +163,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'scandal': ctx.note = scandalChoice(e.value); break;
       case 'kin': ctx.note = kinChoice(e.value, ctx.cast); break;
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
+      case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;
       case 'leader': ctx.note = e.value === 'resign' ? resignLeadership().text : e.value === 'stand' ? standForVacancy() : faceTheParty(); break;
       case 'ousted': pol.removed(e.value); break;

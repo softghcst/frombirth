@@ -15,6 +15,7 @@ import { MAJORS, MAJOR_BY_ID } from '../data/majors.js';
 import * as sch from './schooling.js';
 import { graduationDay } from './schoollife.js';
 import { uniOf, onResults, remember as rememberAlumnus } from './university.js';
+import * as campus from './campus.js';
 import { schoolModel } from '../data/education.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
@@ -180,6 +181,7 @@ export function setHousing(id, roommateId) {
   p.flags.livesWithParents = id === 'home';
 
   let text = { home: 'You are living at home and commuting.', dorm: 'You moved into a campus dorm.' }[id];
+  if (id === 'dorm') { const mate = campus.assignRoommate(); text = `You moved into a campus dorm. Your roommate is ${mate.firstName} ${mate.lastName}, who ${campus.habitOf(mate).line}.`; }
   if (id === 'apartment') {
     let mate = store.state.npcs[roommateId];
     if (mate) {
@@ -193,6 +195,7 @@ export function setHousing(id, roommateId) {
     }
     mate.flags.tag = 'roommate';
     mate.flags.title = 'Roommate';
+    campus.fleshRoommate(mate);
     mate.lastInteractionAge = p.age;
     e.roommateId = mate.id;
   }
@@ -255,6 +258,7 @@ function yearGpa(p) {
   if (e.stage === 'law') g -= 0.15;
   if (p.flags.tutorAge === p.age - 1 && marked == null) g += 0.3; // at school a tutor works on the weakest subject instead
   g += CLIQUE_BY_ID[e.clique]?.gpa ?? 0;
+  g += campus.markEdge(); // workload, a minor, and what clubs take out of the week
   return clamp(g, 0, 4);
 }
 
@@ -272,6 +276,7 @@ function leaveSchool(how = 'completed') {
   e.schoolName = null;
   e.tuitionMult = 1;
   e.aid = 0; e.aidKeep = 0; e.aidParts = [];
+  campus.finish();
   const mate = roommate();
   if (mate) mate.flags.title = 'Former roommate';
   e.roommateId = null;
@@ -297,7 +302,7 @@ function graduate() {
     gpa: e.gpa, age: p.age, school: e.schoolName ?? (place && place.kind !== 'home' ? place.name : undefined), award: e.stage === 'high' ? leaving : undefined, countryId: p.countryId,
     courses: e.stage === 'high' && e.courses ? { ...e.courses } : undefined });
   if (e.stage === 'high') { graduationDay(e.gpa); onResults(); }
-  if (e.stage === 'university') rememberAlumnus(e.schoolId);
+  if (e.stage === 'university') { Object.assign(e.degrees[e.degrees.length - 1], campus.onGraduate()); rememberAlumnus(e.schoolId); }
   const honours = e.gpa >= 3.7 ? ' with top honours' : e.gpa >= 3.3 ? ' with honours' : '';
   const what = {
     high: `${place && place.kind !== 'home' ? place.name : 'school'} with your ${leaving}`,
@@ -408,7 +413,7 @@ export function tickEducation() {
   if (clique) applyMods(p, clique.yearly);
   if (hasMajor(e.stage) && MAJOR_BY_ID[e.majorId]) applyMods(p, MAJOR_BY_ID[e.majorId].yearly);
   if (PROGRAMMES[e.stage]?.yearly) applyMods(p, PROGRAMMES[e.stage].yearly);
-  if (isHigher(e.stage)) liveThere();
+  if (isHigher(e.stage)) { liveThere(); campus.tickCampus(g); }
   else applyPriority(p);
   const stipend = PROGRAMMES[e.stage]?.stipend;
   if (stipend) {
@@ -432,7 +437,8 @@ export function tickEducation() {
   // Finishing, failing or carrying on
   if (e.stage === 'high' && p.age >= SCHOOL_LEAVING_AGE) return graduate();
   if (!isHigher(e.stage)) return;
-  if (e.yearInStage >= PROGRAMMES[e.stage].years) return graduate();
+  // A degree is finished when its credits are earned; other courses, when their years are served.
+  if (e.credits != null && campus.atUniversity() ? campus.finished() : e.yearInStage >= PROGRAMMES[e.stage].years) return graduate();
   if (e.gpa < 1.2) {
     log(`Your grades collapsed and ${stageLabel(e.stage).toLowerCase()} asked you to leave.`, 'system', 'bad');
     p.stats.mood = clamp(p.stats.mood - 12);
@@ -856,6 +862,7 @@ export function enrol(progId, subjectId, funding, living = {}, school = null) {
     remember(prof, 'choseForThem', 'You chose the college because of their work, and told them so in week one.');
     log(`Professor ${prof.firstName} ${prof.lastName}, whose work brought you here, teaches your first seminar.`);
   }
+  if (progId === 'university' || progId === 'community') campus.start(transfer);
   chargeTuition();
   setHousing(living.housing ?? (npcsByRole('parent').length ? 'home' : 'dorm'), living.roommateId);
   chargeHousing();
@@ -890,10 +897,12 @@ export function switchMajor(id) {
     return result(false, text);
   }
   const from = MAJOR_BY_ID[e.majorId]?.name ?? 'your old course';
-  const costYear = e.yearInStage >= 1;
-  if (costYear) e.yearInStage -= 1;
+  // Credits carry over within a family of subjects; between families, a year's worth is lost.
+  const lost = e.credits != null ? campus.switchCost(e.majorId, id) : null;
+  const costYear = lost != null ? lost > 0 : e.yearInStage >= 1;
+  if (lost != null) e.credits = Math.max(0, e.credits - lost); else if (costYear) e.yearInStage -= 1;
   e.majorId = id;
-  const text = `You switched from ${from} to ${m.name}.${costYear ? ' Not all your credits carried over, so it adds a year, and a year of fees.' : ' It is early enough that nothing is lost.'}`;
+  const text = `You switched from ${from} to ${m.name}.${costYear ? ' Not all your credits carried over, so it adds a year, and a year of fees.' : lost === 0 && (e.credits ?? 0) >= 30 ? ' The subjects are close enough that every credit carries over.' : ' It is early enough that nothing is lost.'}`;
   log(text, 'system', 'neutral');
   milestone(`Switched major to ${m.name}.`, 'education');
   return result(true, text, 'neutral');

@@ -307,6 +307,7 @@ button.dyn-event { cursor: pointer; }
 .pol-result span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pol-result .num { text-align: right; color: var(--muted); }
 .sub-card { margin-bottom: 10px; }
+.dyn-body .choice-btn.on { border-color: var(--accent); }
 .sub-card.on { border-color: var(--accent); }
 .sub-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; }
 .sub-mark { font-family: Georgia, 'Times New Roman', serif; font-size: 1.3rem; font-weight: 700; }
