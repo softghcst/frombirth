@@ -3,23 +3,23 @@
 // Paths are relative to assets/avatars/.
 export const AVATAR_MANIFEST = {
   heads: [
-    {"id": "face_01_oval", "file": "heads/face_01_oval.svg", "label": "Oval", "tags": {"age": "adult"}},
-    {"id": "face_02_round", "file": "heads/face_02_round.svg", "label": "Round", "tags": {"age": "adult"}},
-    {"id": "face_03_square", "file": "heads/face_03_square.svg", "label": "Square", "tags": {"age": "adult"}},
-    {"id": "face_04_heart", "file": "heads/face_04_heart.svg", "label": "Heart", "tags": {"age": "adult"}},
-    {"id": "face_05_diamond", "file": "heads/face_05_diamond.svg", "label": "Diamond", "tags": {"age": "adult"}},
-    {"id": "face_06_pear", "file": "heads/face_06_pear.svg", "label": "Pear", "tags": {"age": "adult"}},
-    {"id": "head_00_baby", "file": "heads/head_00_baby.svg", "label": "Head_00_baby", "tags": {"age": "baby"}},
-    {"id": "head_00_kid", "file": "heads/head_00_kid.svg", "label": "Kid", "tags": {"age": "kid"}},
-    {"id": "head_00_toddler", "file": "heads/head_00_toddler.svg", "label": "Toddler", "tags": {"age": "toddler"}},
-    {"id": "head_11_pixie", "file": "heads/head_11_pixie.svg", "label": "Pixie", "tags": {"age": "adult"}},
-    {"id": "head_12_sculpted", "file": "heads/head_12_sculpted.svg", "label": "Sculpted", "tags": {"age": "adult"}},
-    {"id": "head_13_athletic", "file": "heads/head_13_athletic.svg", "label": "Athletic", "tags": {"age": "adult"}},
-    {"id": "head_14_almond", "file": "heads/head_14_almond.svg", "label": "Almond", "tags": {"age": "adult"}},
-    {"id": "head_15_cherubic", "file": "heads/head_15_cherubic.svg", "label": "Cherubic", "tags": {"age": "adult"}},
-    {"id": "head_16_angular", "file": "heads/head_16_angular.svg", "label": "Angular", "tags": {"age": "adult"}},
-    {"id": "head_17_dimple_oval", "file": "heads/head_17_dimple_oval.svg", "label": "Dimple oval", "tags": {"age": "adult"}},
-    {"id": "head_18_long_rect", "file": "heads/head_18_long_rect.svg", "label": "Rect", "tags": {"age": "adult"}},
+    {"id": "face_01_oval", "file": "heads/face_01_oval.svg", "label": "Oval", "tags": {"age": "adult"}, "fit": {"cx": 256.9, "top": 150, "chin": 438, "w": 240.0, "earL": 110.5, "earR": 400.9, "earTop": 294, "lobe": 354, "neck": 442, "neckW": 86.0, "shoulderW": 265.0}},
+    {"id": "face_02_round", "file": "heads/face_02_round.svg", "label": "Round", "tags": {"age": "adult"}, "fit": {"cx": 257.1, "top": 150, "chin": 440, "w": 264.3, "earL": 93.8, "earR": 418.2, "earTop": 292, "lobe": 352, "neck": 444, "neckW": 93.6, "shoulderW": 274.5}},
+    {"id": "face_03_square", "file": "heads/face_03_square.svg", "label": "Square", "tags": {"age": "adult"}, "fit": {"cx": 255.9, "top": 150, "chin": 436, "w": 246.3, "earL": 104.5, "earR": 407.5, "earTop": 292, "lobe": 354, "neck": 440, "neckW": 93.8, "shoulderW": 277.1}},
+    {"id": "face_04_heart", "file": "heads/face_04_heart.svg", "label": "Heart", "tags": {"age": "adult"}, "fit": {"cx": 256.9, "top": 150, "chin": 424, "w": 268.6, "earL": 104.0, "earR": 408.0, "earTop": 276, "lobe": 324, "neck": 428, "neckW": 81.6, "shoulderW": 275.7}},
+    {"id": "face_05_diamond", "file": "heads/face_05_diamond.svg", "label": "Diamond", "tags": {"age": "adult"}, "fit": {"cx": 256.5, "top": 150, "chin": 428, "w": 239.8, "earL": 103.6, "earR": 408.4, "earTop": 276, "lobe": 340, "neck": 432, "neckW": 87.8, "shoulderW": 273.4}},
+    {"id": "face_06_pear", "file": "heads/face_06_pear.svg", "label": "Pear", "tags": {"age": "adult"}, "fit": {"cx": 255.2, "top": 150, "chin": 436, "w": 216.3, "earL": 111.0, "earR": 401.0, "earTop": 272, "lobe": 338, "neck": 440, "neckW": 95.8, "shoulderW": 288.5}},
+    {"id": "head_00_baby", "file": "heads/head_00_baby.svg", "label": "Head_00_baby", "tags": {"age": "baby"}, "fit": {"cx": 256.2, "top": 150, "chin": 446, "w": 318.7, "earL": 66.2, "earR": 445.8, "earTop": 316, "lobe": 382, "neck": 450, "neckW": 180.6, "shoulderW": 245.7}},
+    {"id": "head_00_kid", "file": "heads/head_00_kid.svg", "label": "Kid", "tags": {"age": "kid"}, "fit": {"cx": 256.2, "top": 150, "chin": 420, "w": 255.2, "earL": 110.6, "earR": 401.3, "earTop": 300, "lobe": 346, "neck": 424, "neckW": 83.2, "shoulderW": 276.6}},
+    {"id": "head_00_toddler", "file": "heads/head_00_toddler.svg", "label": "Toddler", "tags": {"age": "toddler"}, "fit": {"cx": 256.8, "top": 150, "chin": 434, "w": 276.0, "earL": 92.2, "earR": 419.8, "earTop": 308, "lobe": 364, "neck": 438, "neckW": 113.2, "shoulderW": 257.3}},
+    {"id": "head_11_pixie", "file": "heads/head_11_pixie.svg", "label": "Pixie", "tags": {"age": "adult"}, "fit": {"cx": 255.2, "top": 158, "chin": 414, "w": 232.0, "earL": 117.7, "earR": 393.7, "earTop": 292, "lobe": 338, "neck": 418, "neckW": 29.5, "shoulderW": 288.5}},
+    {"id": "head_12_sculpted", "file": "heads/head_12_sculpted.svg", "label": "Sculpted", "tags": {"age": "adult"}, "fit": {"cx": 255.0, "top": 158, "chin": 416, "w": 206.2, "earL": 126.1, "earR": 384.1, "earTop": 284, "lobe": 334, "neck": 420, "neckW": 65.2, "shoulderW": 282.1}},
+    {"id": "head_13_athletic", "file": "heads/head_13_athletic.svg", "label": "Athletic", "tags": {"age": "adult"}, "fit": {"cx": 255.4, "top": 158, "chin": 422, "w": 212.9, "earL": 122.2, "earR": 388.1, "earTop": 284, "lobe": 334, "neck": 426, "neckW": 65.8, "shoulderW": 283.1}},
+    {"id": "head_14_almond", "file": "heads/head_14_almond.svg", "label": "Almond", "tags": {"age": "adult"}, "fit": {"cx": 253.4, "top": 158, "chin": 424, "w": 214.8, "earL": 119.8, "earR": 388.6, "earTop": 286, "lobe": 336, "neck": 428, "neckW": 42.8, "shoulderW": 282.8}},
+    {"id": "head_15_cherubic", "file": "heads/head_15_cherubic.svg", "label": "Cherubic", "tags": {"age": "adult"}, "fit": {"cx": 256.4, "top": 158, "chin": 422, "w": 226.4, "earL": 115.2, "earR": 398.1, "earTop": 286, "lobe": 336, "neck": 426, "neckW": 55.4, "shoulderW": 279.8}},
+    {"id": "head_16_angular", "file": "heads/head_16_angular.svg", "label": "Angular", "tags": {"age": "adult"}, "fit": {"cx": 255.0, "top": 158, "chin": 418, "w": 216.3, "earL": 125.4, "earR": 385.5, "earTop": 284, "lobe": 330, "neck": 422, "neckW": 59.3, "shoulderW": 280.0}},
+    {"id": "head_17_dimple_oval", "file": "heads/head_17_dimple_oval.svg", "label": "Dimple oval", "tags": {"age": "adult"}, "fit": {"cx": 255.5, "top": 158, "chin": 422, "w": 218.7, "earL": 121.1, "earR": 390.0, "earTop": 286, "lobe": 334, "neck": 426, "neckW": 53.7, "shoulderW": 279.6}},
+    {"id": "head_18_long_rect", "file": "heads/head_18_long_rect.svg", "label": "Rect", "tags": {"age": "adult"}, "fit": {"cx": 254.8, "top": 158, "chin": 424, "w": 190.0, "earL": 132.9, "earR": 376.0, "earTop": 284, "lobe": 334, "neck": 428, "neckW": 43.5, "shoulderW": 277.2}},
   ],
   eyes: [
     {"id": "eyes_02", "file": "eyes/eyes_02.svg", "label": "Eyes 2"},
@@ -418,6 +418,9 @@ export const AVATAR_MANIFEST = {
     {"id": "emotion_04_love_hearts", "file": "emotions/emotion_04_love_hearts.svg", "label": "Love hearts"},
   ],
 };
+
+/** The template face every part was fitted to. Each head's own measurements are in its `fit`. */
+export const AVATAR_TEMPLATE = {"face": {"cx": 256, "top": 154, "chin": 424, "w": 238}, "anchor": {"eyes": 292, "eyebrows": 254, "nose": 327, "lips": 386, "cheek": 318}, "ear": {"left": 112, "right": 400, "lobe": 326}, "clothesTop": 432, "shoulderW": 285};
 
 /** Every part, by id. */
 export const PART_BY_ID = Object.fromEntries(Object.values(AVATAR_MANIFEST).flat().map((p) => [p.id, p]));

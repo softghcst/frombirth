@@ -69,6 +69,12 @@ shoulders. A hat hides hair above the brim (bulky styles, above the ears). Colou
 (`--skin-color`, `--hair-color`, `--brow-color`, `--eye-color`, `--lip-color`, `--blush-color`, `--outfit-color`)
 that reach into the part files.
 
+**Fitting each head.** The script measures every head (top, chin, width above the ears, the ears, neck and
+shoulders; stored as `fit` in the manifest), and the renderer moves each layer from the template face onto that
+head: features keep their place between forehead and chin, hair and hats follow the top and width of the head,
+earrings hang from that head's ears, clothes sit under its chin. Babies, toddlers and children get slightly smaller,
+lower-set features. Eyes drawn as an empty outline are given whites by filling the opening.
+
 **Ages and dress.** Babies and toddlers have their own heads, baby hair and baby clothes; children have the child
 head; from fifty, lines arrive and hair greys unless dyed. Portraits dress for the moment: prison orange in prison,
 crown and robes for the royal family (a coronet for the peerage), and uniforms at work — police (tactical gear when
