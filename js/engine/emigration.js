@@ -133,18 +133,22 @@ export function emigrate(countryId, opts = {}) {
   const ship = opts.shipVehicles !== false;
   const shipping = ship ? shippingCost() : 0;
   const fee = emigrationFee();
-  if (!canEmigrate() || !to || to.id === from.id) return result(false, 'You cannot move there now.', 'neutral');
-  if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
-  if (p.flags.visaAge === p.age) return result(false, 'You have already applied this year. Try again next year.', 'neutral');
-  if (p.finance.cash < fee + shipping) return result(false, `Visas, lawyers and shipping come to ${fmtMoney(fee + shipping, from)}. You do not have it.`, 'neutral');
-  p.flags.visaAge = p.age;
-  p.finance.cash -= Math.round(fee * 0.2); // the application fee is gone either way
-  if (!rng.chance(visaChance())) {
-    const text = `${theCountry(to.name).replace(/^the/, 'The')} turned down your visa application. You can apply again next year.`;
-    log(text, 'system', 'bad');
-    return result(false, text);
+  // `forced` is exile: no application, no fee, no waiting.
+  if (!to || to.id === from.id) return result(false, 'You cannot move there now.', 'neutral');
+  if (!opts.forced) {
+    if (!canEmigrate()) return result(false, 'You cannot move there now.', 'neutral');
+    if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
+    if (p.flags.visaAge === p.age) return result(false, 'You have already applied this year. Try again next year.', 'neutral');
+    if (p.finance.cash < fee + shipping) return result(false, `Visas, lawyers and shipping come to ${fmtMoney(fee + shipping, from)}. You do not have it.`, 'neutral');
+    p.flags.visaAge = p.age;
+    p.finance.cash -= Math.round(fee * 0.2); // the application fee is gone either way
+    if (!rng.chance(visaChance())) {
+      const text = `${theCountry(to.name).replace(/^the/, 'The')} turned down your visa application. You can apply again next year.`;
+      log(text, 'system', 'bad');
+      return result(false, text);
+    }
+    p.finance.cash -= Math.round(fee * 0.8) + shipping;
   }
-  p.finance.cash -= Math.round(fee * 0.8) + shipping;
 
   // Leave work and study. The house stays where it is; the vehicles follow, or are sold.
   const kept = properties();

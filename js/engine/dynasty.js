@@ -280,8 +280,15 @@ export { ageOf, childrenOf, bloodParent };
 
 const reigned = (d, id) => d.reigns.some((r) => r.id === id);
 
-/** The rank someone holds (or held at death): 'monarch' | 'consort' | 'heir' | 'royal' | null. */
+/**
+ * The rank someone holds (or held at death): 'monarch' | 'consort' | 'heir' | 'royal' | null.
+ * Once a monarchy is abolished the living hold no rank; the dead keep what they were.
+ */
 export function rankOf(d, p) {
+  return d.status === 'abolished' && p.died == null ? null : memberRank(d, p);
+}
+/** The same, ignoring abolition: someone's place in the family, throne or no throne. */
+function memberRank(d, p) {
   if (p.id === d.monarchId || (p.died != null && reigned(d, p.id))) return 'monarch';
   if (p.abdicated) return 'royal';
   if (p.out || p.divorced) return null;
@@ -306,6 +313,10 @@ export function standingOf(d, p) {
   const rank = rankOf(d, p);
   const where = theCountry(COUNTRIES[d.countryId].name);
   const reign = d.reigns.find((r) => r.id === p.id);
+  if (d.status === 'abolished' && p.died == null) {
+    if (p.id === d.monarchId) return reign ? `Last to reign (${reign.from}–${reign.to}); head of the former royal house` : 'Head of the former royal house';
+    return memberRank(d, p) ? 'Of the former royal family' : 'A private citizen';
+  }
   if (rank === 'monarch') return reign?.to != null ? `Reigned ${reign.from}–${reign.to}` : `${titleOf(d, p)} of ${where} since ${reign?.from ?? '?'}`;
   if (p.abdicated) return `Gave up the throne in ${p.abdicated}`;
   if (rank === 'consort') return `Consort of ${nameOf(d, d.people[p.spouseId ?? p.widowOf])}`;
@@ -331,13 +342,13 @@ export const chronicle = (d, text, ids) => record(d, yearNow(), text, ids);
 export function stats(d) {
   const year = yearNow();
   const spans = d.reigns.map((r) => ({ id: r.id, years: (r.to ?? year) - r.from, done: r.to != null }));
-  const done = spans.filter((s) => s.done);
+  const done = spans.filter((s) => s.done && s.years > 0);
   const longest = spans.reduce((a, b) => (b.years > (a?.years ?? -1) ? b : a), null);
   const shortest = done.reduce((a, b) => (b.years < (a?.years ?? 1e9) ? b : a), null);
   const depth = (p) => { let n = 1; let at = p; while ((at = bloodParent(d.people, at))) n += 1; return n; };
   const people = Object.values(d.people);
-  return { founded: d.reigns[0]?.from, years: year - (d.reigns[0]?.from ?? year), monarchs: d.reigns.length, longest, shortest,
-    generations: Math.max(...people.filter((p) => p.blood).map(depth)), livingMembers: people.filter((p) => p.died == null && rankOf(d, p)).length,
+  return { founded: d.reigns[0]?.from, years: spans.reduce((n, x) => n + x.years, 0), monarchs: d.reigns.length, longest, shortest,
+    generations: Math.max(...people.filter((p) => p.blood).map(depth)), livingMembers: people.filter((p) => p.died == null && memberRank(d, p)).length,
     marriages: people.filter((p) => !p.blood).length, standing: d.standing };
 }
 
@@ -479,6 +490,11 @@ export function accede(d, why = 'death') {
   const next = d.people[nextId];
   d.monarchId = nextId;
   touch(d);
+  if (d.status === 'abolished') {
+    // No throne to take: the headship of the house passes, and that is all.
+    record(d, year, `${next.name} became head of the former royal house.`, [next.id]);
+    return next;
+  }
   d.reigns.push({ id: nextId, from: year, to: null });
   const widow = d.people[old.spouseId];
   if (why === 'death' && widow) { widow.widowOf = old.id; }
@@ -552,7 +568,7 @@ function liveAYear(d, year) {
       tell(`${nameAt(d, x, x.id === d.monarchId ? 'monarch' : rankOf(d, { ...x, died: null }))} died, aged ${age}.`, [x.id], x.id === d.monarchId ? 5 : 2);
       continue;
     }
-    if (!rankOf(d, x)) continue;
+    if (!memberRank(d, x)) continue;
     // Marriage.
     if (own && x.blood && !x.spouseId && !x.widowOf && age >= 22 && age <= 44 && rng.chance((age < 30 ? 0.11 : 0.07) * (far(x) ? (crowded ? 0.1 : 0.4) : thin ? 2 : 1))) {
       const s = outsider(d, c, x, year);
@@ -576,7 +592,7 @@ function liveAYear(d, year) {
     }
     if (age < 18 || x.isPlayer) continue;
     // Scandal: the careless and the unlucky.
-    if (rng.chance(0.004 + x.t.scandal / 9000)) {
+    if (d.status !== 'abolished' && rng.chance(0.004 + x.t.scandal / 9000)) {
       const what = rng.pick(SCANDALS);
       d.standing = clamp(d.standing - rng.int(2, 6));
       tell(`${nameOf(d, x)} ${what}.`, [x.id], 1);

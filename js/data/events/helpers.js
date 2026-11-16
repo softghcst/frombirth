@@ -65,6 +65,16 @@ export const coolStory = (delta) => ({ type: 'coolStory', delta });
 /** A cast member of the royal house gives up their title and place in the line. */
 export const kinOut = (target) => ({ type: 'kinOut', target });
 
+/**
+ * The crown itself (engine/reign.js): support for the monarchy; a referendum
+ * (push: what the player's campaign added); exile; restoration; abdication.
+ */
+export const support = (delta) => ({ type: 'support', delta });
+export const vote = (delta) => ({ type: 'vote', delta });
+export const exile = () => ({ type: 'exile' });
+export const restore = () => ({ type: 'restore' });
+export const abdicate = () => ({ type: 'abdicate' });
+
 /** A rivalry inside the royal family: make it worse or better; end it ('peace' | 'cold' | 'removed' | 'lost'). */
 export const rivalry = (delta) => ({ type: 'rivalry', delta });
 export const rivalEnd = (value) => ({ type: 'rivalEnd', value });

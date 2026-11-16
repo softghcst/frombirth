@@ -14,6 +14,7 @@ import * as crown from './royalty.js';
 import * as pol from './politics.js';
 import * as courtLife from './court.js';
 import * as fame from './reputation.js';
+import * as throne from './reign.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -136,6 +137,11 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'story': fame.addStory(e.value.label, e.value.truth, e.value.heat); break;
       case 'coolStory': fame.coolStory(e.delta); break;
       case 'kinOut': crown.kinRenounces(store.state.npcs[ctx.cast[e.target]]); break;
+      case 'support': throne.shiftSupport(e.delta); break;
+      case 'vote': ctx.note = throne.referendum(e.delta); break;
+      case 'exile': { const r = throne.goIntoExile(); ctx.note = r.ok ? '' : 'No country would have you just now. You stay, for the present.'; break; }
+      case 'restore': throne.restore(); crown.dress(); break;
+      case 'abdicate': if (p.royal?.reigning) crown.renounce(); break;
       case 'rivalry': courtLife.shiftRivalry(e.delta); break;
       case 'rivalEnd': courtLife.endRivalry(e.value); break;
       case 'approval': {

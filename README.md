@@ -243,7 +243,21 @@ spouse and children are the same people as in the People tab, linked in.
   princess out of it). Grown children refuse their training, want another
   life, marry for love, or give up their place.
 
-The rules are in `js/engine/royalty.js` (the player's side), `js/engine/court.js`
+- **Reigning.** What a monarch can do depends on the kind of monarchy (`type`
+  in `js/data/royalty.js`). Where the crown only advises, it can address the
+  nation, give honours, open the palace accounts, press the government in
+  private, or refuse to sign a law. Where it governs, it can build, dismiss
+  officials, favour relatives, silence critics, or hand power to an elected
+  parliament for good.
+- **A monarchy can fall.** Each country has a level of support for having a
+  crown at all. If it stays very low there is a referendum, which a royal
+  player can campaign in. If it is lost the monarchy is abolished: titles and
+  residences go, the family become private citizens, and the player can stay
+  or go into exile. The house and its history remain, and a republic that goes
+  badly sometimes asks its royal house back.
+
+The rules are in `js/engine/royalty.js` (the player's side), `js/engine/reign.js`
+(powers, abolition, exile and restoration), `js/engine/court.js`
 (rivalries and the wedding), `js/engine/reputation.js` (the three reputations
 and the press),
 `js/engine/dynasty.js` (the house) and `js/engine/succession.js` (the law);

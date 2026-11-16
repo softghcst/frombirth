@@ -17,11 +17,13 @@ import { COUNTRIES } from '../data/countries.js';
 import * as dyn from './dynasty.js';
 import { tickCourt } from './court.js';
 import * as fame from './reputation.js';
+import { tickReign } from './reign.js';
 import { MONARCHIES, ROYAL_RANKS, ALLOWANCE, BORN_ROYAL, BORN_NOBLE, DUTIES, DUTIES_PER_YEAR, DISGRACE } from '../data/royalty.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
-export const monarchy = (c = country()) => MONARCHIES[c.id] ?? null;
+/** The crown of a country, or null where there is none (or where it has been abolished). */
+export const monarchy = (c = country()) => (MONARCHIES[c.id] && store.state?.dynasties?.[c.id]?.status !== 'abolished' ? MONARCHIES[c.id] : null);
 export const royal = () => player().royal ?? null;
 export const isRoyalFamily = () => !!royal() && ROYAL_RANKS.includes(royal().rank);
 const rankRow = (countryId, rank) => MONARCHIES[countryId]?.ranks.find((r) => r[0] === rank);
@@ -391,13 +393,23 @@ export function tickRoyalty() {
   const m = monarchy(c);
   const r = royal();
 
+  const old = p.flags.formerRoyal;
+  if (old && old.countryId !== c.id && store.state.dynasties?.[old.countryId]) {
+    const far = store.state.dynasties[old.countryId];
+    dyn.tickDynasty(far); tickReign(far);
+  }
   // Someone who leaves the country leaves the role (a title of honour or nobility travels with them).
   if (r && r.countryId !== c.id && ROYAL_RANKS.includes(r.rank)) {
     delete p.royal;
     log('Having left the country, you are no longer a working member of the royal family.', 'system', 'neutral');
     return;
   }
-  if (!m) return;
+  if (!m) {
+    // A house without a throne still lives, and may yet be asked back.
+    const fallen = MONARCHIES[c.id] ? store.state.dynasties?.[c.id] : null;
+    if (fallen) { dyn.tickDynasty(fallen); tickReign(fallen); }
+    return;
+  }
   // The house lives a year: births, marriages, scandals, deaths, and the throne changing hands.
   const d = dyn.house();
   const inFamily = isRoyalFamily();
@@ -446,6 +458,10 @@ export function tickRoyalty() {
     if (!love) p.flags.secretLove = false;
     else if (rng.chance(0.45)) store.state.pendingEvents.push({ id: 'royal_love_found_out', cast: { love: love.id } });
   }
+
+  // The crown itself: what the country makes of it, and whether it lasts.
+  tickReign(d);
+  if (!royal() && r) return; // the monarchy fell this year
 
   // Family politics: for those born into it.
   if (isRoyalFamily() && royal().by === 'birth') tickCourt(d);
