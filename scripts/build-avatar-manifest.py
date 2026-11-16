@@ -462,6 +462,9 @@ def recolour(folder, name, elements):
     lm = max(lum(main), 0.01)
     mapping = {main: f'var(--{var},{main})'}
     for c in candidates:
+        if folder == 'hair' and c != main and lum(c) > 0.38 and lum(c) > lm * 1.7:
+            mapping[c] = f'var(--skin-color,{c})'  # scalp showing at a parting or hairline
+            continue
         if c == main or hue_gap(c, main) > 32 or abs(hls(c)[2] - hls(main)[2]) > 0.45:
             continue
         l = lum(c)
@@ -489,20 +492,17 @@ FACE = {'w': 238, 'top': 154, 'eye_y': 292, 'brow_y': 254, 'nose_y': 327, 'mouth
 # the box, keeping its shape; anchor 'center' puts its centre on the point, 'top' its top
 # edge, 'bottom' its bottom edge.
 LAYOUT = {
-    'eyes': (172, 72, 256, FACE['eye_y'], 'center'),
+    'eyes': (158, 66, 256, FACE['eye_y'], 'center'),
     'eyebrows': (184, 46, 256, FACE['brow_y'], 'center'),
     'noses': (52, 44, 256, FACE['nose_y'], 'center'),
     'lips': (80, 40, 256, FACE['mouth_y'], 'center'),
-    'glasses': (248, 110, 256, FACE['eye_y'] + 8, 'center'),
+    'glasses': (226, 100, 256, FACE['eye_y'] + 6, 'center'),
     'clothes': (420, 400, 256, 432, 'top'),
     'hats': (300, 250, 256, 268, 'bottom'),
     'crowns': (176, 150, 256, 176, 'bottom'),
 }
 # Parts whose place depends on what they are, matched on the filename.
 BY_NAME = [
-    ('facial_hair', r'stubble|full_beard|shaped_beard|chinstrap|chevron|vandyke|muttonchop', (232, 999, 256, 340, 'top')),
-    ('facial_hair', r'handlebar|mustache', (104, 999, 256, FACE['mouth_y'] - 20, 'center')),
-    ('facial_hair', r'goatee|soulpatch', (70, 999, 256, FACE['mouth_y'] + 10, 'top')),
     ('jewelry', r'choker|chain|necklace|pendant', (120, 999, 256, FACE['neck_y'], 'top')),
     ('jewelry', r'lip_ring', (60, 999, 256, FACE['mouth_y'] + 6, 'center')),
     ('jewelry', r'helix', (FACE['ear_span'] + 8, 999, 256, FACE['ear_y'] - 22, 'center')),
@@ -523,6 +523,25 @@ BY_NAME = [
 ]
 
 
+# Facial hair, style by style: (width, the point down the drawing that is anchored, where that point goes).
+# A beard is anchored by its mouth opening to the mouth; a moustache sits between nose and mouth;
+# a chinstrap or stubble by its lowest point just under the chin.
+MOUSTACHE_Y = (FACE['nose_y'] + 22 + FACE['mouth_y'] - 14) / 2 + 2
+BEARDS = [
+    (r'shaped_beard', (208, 0.40, FACE['mouth_y'])),
+    (r'bushy_full_beard', (226, 0.33, FACE['mouth_y'] - 2)),
+    (r'vandyke', (112, 0.47, FACE['mouth_y'])),
+    (r'handlebar', (108, 0.5, MOUSTACHE_Y)),
+    (r'chevron|mustache|moustache', (92, 0.5, MOUSTACHE_Y)),
+    (r'goatee', (204, 1.0, FACE['chin_y'] + 20)),
+    (r'chinstrap', (220, 1.0, FACE['chin_y'] + 10)),
+    (r'stubble', (212, 1.0, FACE['chin_y'] + 6)),
+    (r'muttonchop', (246, 0.5, FACE['mouth_y'] - 34)),
+    (r'soulpatch', (24, 0.0, FACE['mouth_y'] + 17)),
+    (r'.', (200, 0.4, FACE['mouth_y'])),
+]
+
+
 def rule_for(folder, name):
     """The placement box for a part: by name if a rule matches, else by folder."""
     for f, pat, rule in BY_NAME:
@@ -534,6 +553,20 @@ def rule_for(folder, name):
 EAR = {'left_x': 106, 'right_x': 406, 'lobe_y': 326, 'top_y': 270}
 
 
+def clip_half(poly, cx, side):
+    """The part of a polygon on one side of the vertical line x = cx (side -1: left, 1: right)."""
+    keep = lambda q: (q[0] - cx) * side >= 0
+    out = []
+    for i in range(len(poly)):
+        a, b = poly[i], poly[(i + 1) % len(poly)]
+        if keep(a):
+            out.append(a)
+        if keep(a) != keep(b):
+            t = (cx - a[0]) / (b[0] - a[0])
+            out.append((cx, a[1] + t * (b[1] - a[1])))
+    return out
+
+
 def hang_from_ears(name, elements, box):
     """
     Earrings come as a pair drawn side by side. Each half is kept to a sensible
@@ -541,6 +574,26 @@ def hang_from_ears(name, elements, box):
     helix studs.
     """
     cx = (box[0] + box[2]) / 2
+    # A pair is often one shape holding both earrings: split every shape into its left and right outlines.
+    pieces = []
+    for e in elements:
+        sides = {-1: [], 1: []}
+        for sp in subpaths(e['cmds']):
+            pts = [a[i] for c, a in sp for i in range(0, len(a), 2)]
+            reach = (box[2] - box[0]) * 0.1
+            if min(pts) < cx - reach and max(pts) > cx + reach:
+                # one outline drawn round both earrings: cut it down the middle
+                poly = (flatten(sp, 10) or [[]])[0]
+                for side in (-1, 1):
+                    half = clip_half(poly, cx, side)
+                    if len(half) > 2:
+                        sides[side].extend([('M', list(half[0]))] + [('L', list(q)) for q in half[1:]] + [('Z', [])])
+                continue
+            sides[-1 if (min(pts) + max(pts)) / 2 < cx else 1].extend(sp)
+        for cmds in sides.values():
+            if cmds:
+                pieces.append(dict({k: v for k, v in e.items() if k != 'polys'}, cmds=cmds))
+    elements[:] = pieces
     halves = [[e for e in elements if (lambda b: (b[0] + b[2]) / 2 < cx)(bbox_of([e]))],
               [e for e in elements if (lambda b: (b[0] + b[2]) / 2 >= cx)(bbox_of([e]))]]
     halves = [h for h in halves if h]
@@ -589,6 +642,11 @@ def place(folder, name, elements):
         return 'no face opening found: fitted to the crown of the head' + lifted
     if folder == 'jewelry' and not re.search(r'choker|chain|necklace|pendant|lip_ring', name):
         return hang_from_ears(name, elements, box)
+    if folder == 'facial_hair':
+        width, frac, ay = next(r for pat, r in BEARDS if re.search(pat, name))
+        s = width / w
+        transform_elements(elements, s, 256 - (x0 + w / 2) * s, ay - (y0 + frac * h) * s)
+        return f'beard fitted: {width} wide, anchored {frac:.2f} of the way down at y={ay:.0f}'
     rule = rule_for(folder, name)
     if not rule:
         return 'left as drawn'
