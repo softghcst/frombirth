@@ -9,6 +9,8 @@ import * as world from '../engine/polity.js';
 import { openPolity } from './polity.js';
 import { openCabinet, lawFlow, budgetFlow, governButtons } from './government.js';
 import * as lead from '../engine/leadership.js';
+import * as kin from '../engine/kin.js';
+import * as cause from '../engine/activism.js';
 import * as camp from '../engine/campaign.js';
 import { runCampaign, raceRows } from './campaign.js';
 
@@ -36,8 +38,15 @@ export function politicsCard() {
     : leading ? `${!camp.race() && world.inSeason('head', c.id) ? '<button class="btn primary" data-pol="general">Lead your party into the election</button>' : ''}<button class="btn" data-pol="unlead">Step down as party leader</button>`
       : `<button class="btn" data-pol="lead" ${lead.barrier() ? 'disabled' : ''}>Challenge for the party leadership${lead.barrier() ? `<small>${esc(lead.barrier())}</small>` : ''}</button>`;
   const worldBtn = '<button class="btn" data-pol="world">The political world</button>';
+  // The family, and causes outside party politics.
+  const family = kin.inPolitics();
+  const my = cause.mine();
+  const extras = `${kin.nameLine(p) ? `<div class="section-label">The family name</div><p class="muted">${esc(kin.nameLine(p))}</p>` : ''}
+    ${family.length ? `<div class="section-label">Family in politics</div>${family.map((k) => `<div class="kv"><span>${esc(k.npc.firstName)}, your ${k.word}</span><span>${esc(k.title)}${k.party ? ` · ${esc(k.party.name)}` : ''}</span></div>`).join('')}` : ''}
+    ${my ? `<div class="section-label">Your cause</div><div class="kv"><span>${esc(my.name)}</span><span>${esc(cause.rank())}</span></div>${meterHtml('How loud it is', cause.strength(), true)}` : ''}`;
+  const causeBtn = `<button class="btn" data-pol="cause">${my ? `Work for your cause <small>${cause.actsLeft()} left this year</small>` : 'Join a cause'}</button>`;
   if (s.kind === 'none') {
-    return `<div class="card"><h3>Politics</h3><p class="muted">There are no elections in ${esc(theCountry(c.name))}. Power here is inherited.</p>${worldRows}<div class="btn-stack" style="margin-top:10px">${worldBtn}</div></div>`;
+    return `<div class="card"><h3>Politics</h3><p class="muted">There are no elections in ${esc(theCountry(c.name))}. Power here is inherited.</p>${worldRows}${extras}<div class="btn-stack" style="margin-top:10px">${causeBtn}${worldBtn}</div></div>`;
   }
   const past = (p.flags.offices ?? []).map((o) => `<div class="kv"><span>${esc(o.title)}</span><span>Age ${o.from}–${o.to}</span></div>`).join('');
   const exp = p.counters.polExp ?? 0;
@@ -55,7 +64,7 @@ export function politicsCard() {
         ${worldBtn}
         ${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : k.tier < 5 && !k.ruler ? '<button class="btn" data-pol="run">Run for higher office</button>' : ''}
         <button class="btn danger" data-pol="resign">${k.ruler ? 'Give up power' : 'Resign'}</button>
-      </div>${raceRows()}${past ? `<div class="section-label">Offices held before</div>${past}` : ''}</div>`;
+      </div>${raceRows()}${extras}${k.tier < 3 ? `<div class="btn-stack" style="margin-top:10px">${causeBtn}</div>` : ''}${past ? `<div class="section-label">Offices held before</div>${past}` : ''}</div>`;
   }
   return `<div class="card"><h3>Politics</h3>
     <p class="muted" style="margin-bottom:8px">${esc(KIND[s.kind])}${s.rigged ? ' The count is not always honest.' : ''}</p>
@@ -64,7 +73,8 @@ export function politicsCard() {
     <p class="muted" style="margin-top:8px">Student council, debating, a law or politics degree, helping on campaigns and every office you hold all make the next race easier.</p>
     ${worldRows}
     ${raceRows()}
-    <div class="btn-stack" style="margin-top:10px">${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : p.age >= 18 ? '<button class="btn" data-pol="run">Run for office</button>' : ''}${leadBtn}${worldBtn}</div></div>`;
+    ${extras}
+    <div class="btn-stack" style="margin-top:10px">${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : p.age >= 18 ? '<button class="btn" data-pol="run">Run for office</button>' : ''}${leadBtn}${causeBtn}${worldBtn}</div></div>`;
 }
 
 async function report(api, r) {
@@ -127,7 +137,22 @@ async function challenge(api) {
   return report(api, lead.challenge(pick));
 }
 
+async function causes(api) {
+  if (!cause.mine()) {
+    const pick = await pickModal({ title: 'Join a cause', cancel: 'Not now', body: 'Change does not only come from inside politics. A cause that grows loud enough can force a government to move.',
+      options: cause.causes().map((c) => ({ value: c.id, label: c.name, sub: `${c.wants}${c.strength >= 35 ? ' Already being talked about.' : ''}` })) });
+    return pick ? report(api, cause.join(pick)) : undefined;
+  }
+  const m = cause.mine();
+  const options = cause.actions().map((a) => ({ value: a.id, label: a.name, sub: a.why || a.sub, disabled: !!a.disabled || cause.actsLeft() <= 0 }));
+  options.push({ value: 'leave', label: 'Leave the cause' });
+  const pick = await pickModal({ title: m.name, cancel: 'Back', body: `${m.wants} You are ${cause.rank()}. You can do ${cause.actsLeft()} more ${cause.actsLeft() === 1 ? 'thing' : 'things'} for it this year.`, options });
+  if (!pick) return undefined;
+  return report(api, pick === 'leave' ? cause.leaveCause() : cause.act(pick));
+}
+
 export async function politicsAction(id, api) {
+  if (id === 'cause') return causes(api);
   if (id === 'lead') return challenge(api);
   if (id === 'general') { const d = camp.declare('head'); api.changed(); await messageModal({ body: d.text, tone: d.tone }); return d.ok ? runCampaign(api) : undefined; }
   if (id === 'unlead') {

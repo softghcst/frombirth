@@ -1,5 +1,6 @@
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { decide as kinChoice } from './kin.js';
 import { decide as scandalChoice } from './scandal.js';
 import { resignLeadership, faceTheParty } from './leadership.js';
 import { defend } from './campaign.js';
@@ -157,6 +158,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'reelect': ctx.note = (p.politics && pol.isDemocracy() && !p.politics.ruler ? defend() : pol.reElection()).text; break;
       case 'govt': ctx.note = decide(e.value, ctx.cast); break;
       case 'scandal': ctx.note = scandalChoice(e.value); break;
+      case 'kin': ctx.note = kinChoice(e.value, ctx.cast); break;
       case 'leader': ctx.note = e.value === 'resign' ? resignLeadership().text : faceTheParty(); break;
       case 'ousted': pol.removed(e.value); break;
       case 'resignOffice': pol.resign(); break;

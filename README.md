@@ -405,6 +405,22 @@ whether or not the player takes any part.
   reads differently in a paper that likes the player and one that does not.
 - **The next generation** inherits the country's politics as they were: the
   parent becomes a name in its history.
+- **Political families** (`js/engine/kin.js`). A spouse or grown child may go
+  into politics, in the family's party or, now and then, the other one. They
+  fight their own elections, and the player can campaign beside them, pay
+  for the leaflets, or stay out; they get into trouble, and the player
+  stands by them or does not. A relative in the legislature can be given a
+  ministry, which the family likes and the newspapers notice. What a
+  generation did in office becomes the family name: it helps the next one,
+  unless it ended in disgrace. An heir who was already in office carries on
+  in it.
+- **Causes** (`js/engine/activism.js`). Twelve invented campaigns, one for
+  each side of each issue. A member collects signatures, marches, organises
+  and, in time, speaks for it. A cause that grows loud enough can force the
+  government to change a law. Where protest is not tolerated, marching gets
+  people arrested, and governments give way far less.
+- **Political staff** is a career of its own, from campaign organiser to
+  chief of staff, and counts as experience with voters.
 - **Where there are no elections,** ministers are appointed and rule by
   decree. In a monarchy the monarch remains head of state whatever the voters do.
 

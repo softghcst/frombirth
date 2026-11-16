@@ -16,6 +16,7 @@ import { MONARCHIES } from '../data/royalty.js';
 import { tally, overrides, lean } from './legislature.js';
 import * as world from './polity.js';
 import { report } from './news.js';
+import { forCabinet, nepotism } from './kin.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -223,8 +224,11 @@ export function shortlist(deptId) {
     const from = [mine?.id ?? null, mine?.id ?? null, mine?.id ?? null, ...partners];
     w.shortlists[deptId] = { year: yearNow(), ids: from.map((pid) => { const f = world.newFigure(w, pid, rng.int(34, 62)); f.post = 'backbench'; skillOf(f); return f.id; }) };
   }
-  return w.shortlists[deptId].ids.map((id) => w.figures[id]).filter((f) => f && f.post === 'backbench' && f.died == null)
+  const list = w.shortlists[deptId].ids.map((id) => w.figures[id]).filter((f) => f && f.post === 'backbench' && f.died == null)
     .map((f) => ({ figure: f, party: world.party(w, f.partyId), sketch: sketch(f) }));
+  // A relative in the legislature can always be found a ministry. Whether they should be is another matter.
+  for (const k of forCabinet()) if (k.figure.post !== 'minister') list.push({ figure: k.figure, party: k.party, sketch: sketch(k.figure), kin: k.word });
+  return list;
 }
 
 export function appoint(deptId, figureId) {
@@ -234,9 +238,10 @@ export function appoint(deptId, figureId) {
   if (!playerHeads(w) || !d || !f || f.died != null) return result(false, 'That appointment is not yours to make.', 'neutral');
   if (minister(w, deptId)) dismiss(deptId);
   w.cabinet[deptId] = f.id;
+  if (f.kin) nepotism(f);
   f.post = 'minister'; f.metPlayer = true;
   world.note(f, `Appointed ${d.title} by ${player().firstName} ${player().lastName}.`);
-  return result(true, `${f.name} is your ${d.title}.`, 'neutral');
+  return result(true, f.kin ? `${f.name} is your ${d.title}. The family is delighted. The newspapers have noticed the surname.` : `${f.name} is your ${d.title}.`, 'neutral');
 }
 
 export function dismiss(deptId) {

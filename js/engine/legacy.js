@@ -2,6 +2,7 @@
 // their children (or, with no children left, a grandchild). The heir keeps the
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
+import { leaveName, carryCareer } from './kin.js';
 import { rng } from '../rng.js';
 import { inheritStanding } from './royalty.js';
 import { uid, clamp, theCountry } from '../util.js';
@@ -248,7 +249,11 @@ export function continueAs(npcId) {
   );
   if (atHome && !parentsAlive) next.journal.push(entry('With no parent left, relatives have taken you in.', 'bad'));
   if ((op.flags.offices ?? []).some((o) => o.tier >= 3) || (op.politics?.tier ?? 0) >= 3 || op.flags.politicalFamily) player.flags.politicalFamily = true;
+  leaveName(op, player);
   const crownLine = inheritStanding(old, h);
   if (crownLine) next.journal.push(entry(crownLine, 'good'));
+  // An heir who was already in politics carries on from where they were.
+  const officeLine = carryCareer(h);
+  if (officeLine) next.journal.push(entry(officeLine, 'good'));
   return next;
 }

@@ -13,6 +13,7 @@ import { store, player, country, log, milestone } from '../state.js';
 import { SYSTEMS, OFFICES, PLATFORMS, BUDGETS, MOVES, ACTIONS, ACTIONS_PER_YEAR, REMOVAL } from '../data/politics.js';
 import { race, finishRace } from './campaign.js';
 import { addSecret } from './scandal.js';
+import { nameWorth } from './kin.js';
 import { ROYAL_RANKS } from '../data/royalty.js';
 import { incomeTax } from './finance.js';
 import { quitCareer } from './career.js';
@@ -86,7 +87,9 @@ export function standing(o) {
   else if (p.flags.lastApproval != null) score += (p.flags.lastApproval - 50) * 0.2;
   score -= convictions(p) * 14;
   if (p.flags.removedFromOffice) score -= 10;
-  if (p.flags.politicalFamily) score += 5;
+  score += nameWorth(p); // a family name, and relatives already in office
+  // A campaigner people have heard of starts ahead.
+  if (p.flags.cause?.countryId === p.countryId) score += Math.min(5, p.flags.cause.standing / 15);
   if (p.royal && !ROYAL_RANKS.includes(p.royal.rank) && !p.royal.waiting) score += 3;
   if (s.rigged && !p.politics) score -= 18;
   score += world.partyBacking(o.tier);
@@ -277,6 +280,8 @@ export function tickPolitics() {
   const clubs = p.education.enrolled ? p.education.clubs ?? [] : [];
   if (clubs.includes('council')) p.counters.polExp = Math.min(30, (p.counters.polExp ?? 0) + 2);
   if (clubs.includes('debate')) p.counters.polExp = Math.min(30, (p.counters.polExp ?? 0) + 1);
+  // Years on a politician's staff are an education of their own.
+  if (p.career.careerId === 'political_staff') p.counters.polExp = Math.min(30, (p.counters.polExp ?? 0) + 1);
   if (!p.flags.polDegree && p.education.degrees.some((d) => ['political_science', 'law'].includes(d.majorId) || d.type === 'law')) {
     p.flags.polDegree = true;
     p.counters.polExp = (p.counters.polExp ?? 0) + 6;

@@ -187,3 +187,35 @@ export const NOMINATION = [
   { id: 'leadership', name: 'Win over the leadership', sub: 'Years of loyalty and patience count.' },
   { id: 'money', name: 'Outspend your rival', sub: 'It costs, and it shows.', cost: 1 },
 ];
+
+/**
+ * Causes: campaigns from outside politics, one for each side of each issue
+ * (data/parties.js). All invented. dir: which way it wants the issue to move.
+ */
+export const CAUSES = [
+  { id: 'hospitals', name: 'Save Our Hospitals', issue: 'services', lever: 'health', dir: 1, wants: 'It wants more public money for hospitals.' },
+  { id: 'smallstate', name: 'The Smaller State Society', issue: 'services', lever: 'tuition', dir: -1, wants: 'It wants the state to spend less and do less.' },
+  { id: 'fairtax', name: 'The Fair Tax Campaign', issue: 'tax', dir: 1, wants: 'It wants higher taxes on higher incomes.' },
+  { id: 'taxpayers', name: 'The Taxpayers\' League', issue: 'tax', dir: -1, wants: 'It wants income tax cut.' },
+  { id: 'homes', name: 'Homes for All', issue: 'housing', dir: 1, wants: 'It wants rents capped and homes built.' },
+  { id: 'builders', name: 'Free the Builders', issue: 'housing', dir: -1, wants: 'It wants rent controls lifted.' },
+  { id: 'streets', name: 'Safe Streets', issue: 'order', dir: 1, wants: 'It wants more police.' },
+  { id: 'justice', name: 'Justice Reform Now', issue: 'order', dir: -1, wants: 'It wants fewer police and lighter sentences.' },
+  { id: 'earth', name: 'Clean Earth', issue: 'green', dir: 1, wants: 'It wants the environment put first.' },
+  { id: 'jobsfirst', name: 'Jobs First', issue: 'green', dir: -1, wants: 'It wants green rules loosened.' },
+  { id: 'doors', name: 'Open Doors', issue: 'open', dir: 1, wants: 'It wants open borders and wider freedoms.' },
+  { id: 'borders', name: 'Borders First', issue: 'open', dir: -1, wants: 'It wants immigration cut.' },
+];
+
+/**
+ * What a campaigner can do. gain: what it adds to the movement's strength;
+ * rise: what it does for the player's standing in it; standing/strength: what is needed first.
+ */
+export const CAUSE_ACTIONS = [
+  { id: 'petition', name: 'Collect signatures', gain: [3, 6], rise: 3, sub: 'A clipboard, a high street, and a thick skin.', text: 'You stand outside a supermarket for six Saturdays with a clipboard.' },
+  { id: 'march', name: 'March', gain: [5, 11], rise: 5, factor: 'charm', sub: 'Loud, visible, and not without risk.', text: 'Thousands of you fill the streets, and the evening news has to show it.' },
+  { id: 'donate', name: 'Give money', gain: [4, 7], rise: 2, cost: 2000, sub: 'Placards and coaches are not free.', text: 'Your money pays for placards, coaches and a great many sandwiches.' },
+  { id: 'organise', name: 'Organise a local branch', gain: [8, 13], rise: 8, exp: 1, standing: 15, factor: 'intellect', sub: 'Meetings, rotas and other people\'s arguments. It counts as experience.', text: 'You run a branch: the meetings, the rotas, and the falling-out over the banner.' },
+  { id: 'speak', name: 'Speak for the movement', gain: [6, 14], rise: 10, exp: 1, standing: 40, factor: 'charm', sub: 'A microphone and a crowd. It makes you known.', text: 'You speak from the back of a lorry, and people quote it afterwards.' },
+  { id: 'lobby', name: 'Take it to a minister', gain: [0, 3], rise: 4, standing: 40, strength: 40, sub: 'If the movement is strong enough, the government may give way.', text: '' },
+];

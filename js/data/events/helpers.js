@@ -89,6 +89,8 @@ export const govt = (value) => ({ type: 'govt', value });
 /** A choice in a scandal (engine/scandal.js) or about the leadership of a party (engine/leadership.js). */
 export const scandal = (value) => ({ type: 'scandal', value });
 export const leader = (value) => ({ type: 'leader', value });
+/** A choice about a relative in politics (engine/kin.js). */
+export const kin = (value) => ({ type: 'kin', value });
 
 /** Changes a cast member's role and/or flags, e.g. npcSet('lover', { flags: { engaged: true } }). */
 export const npcSet = (target, value) => ({ type: 'npcSet', target, value });

@@ -20,6 +20,8 @@ import { tickPolitics } from './politics.js';
 import { polity, tickPolity } from './polity.js';
 import { afterGeneral } from './leadership.js';
 import { tickScandal } from './scandal.js';
+import { tickKin } from './kin.js';
+import { tickActivism } from './activism.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
@@ -72,6 +74,8 @@ export function advanceYear() {
   const happened = tickPolity(polity(p.countryId)).sort((a, b) => b.weight - a.weight).slice(0, 3);
   if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
   afterGeneral();
+  tickKin();
+  tickActivism();
   tickCrime();
 
   const cause = rollDeath();

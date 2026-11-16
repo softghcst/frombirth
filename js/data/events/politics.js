@@ -2,7 +2,7 @@
 // and holding office. The scenes whose ids start with pol_ and are marked
 // queuedOnly are sent by engine/politics.js (end of term, removal, uprising).
 // In office, nearly every choice moves approval: what the voters make of you.
-import { st, hid, cash, flag, count, ms, ok, bad, any, chk, need, heat, death, approval, reelect, ousted, resignOffice, govt, scandal, leader } from './helpers.js';
+import { st, hid, cash, flag, count, ms, ok, bad, any, chk, need, heat, death, approval, reelect, ousted, resignOffice, govt, scandal, leader, kin } from './helpers.js';
 
 const office = need('inOffice', '==', true);
 const tier = (n) => need('officeTier', '>=', n);
@@ -214,6 +214,40 @@ export default [
     choices: [
       { label: 'Stand again', outcomes: [any('You put your record in front of the people who decide, and wait.', 'neutral', reelect())] },
       { label: 'Step down while they still like you', outcomes: [any('You hand over the keys, and somebody else gets the blame from now on.', 'neutral', resignOffice(), st('mood', 4))] },
+    ],
+  },
+  {
+    id: 'kin_wants_politics', category: 'family', ageRange: [30, 120], queuedOnly: true,
+    text: 'Your {rel} {kin} has something to tell you, and takes most of dinner to get to it: {kin} wants to go into politics.',
+    choices: [
+      { label: 'Back them, and write a cheque ({cost})', outcomes: [any('You say you could not be prouder.', 'good', kin('back'))] },
+      { label: 'Say it is their life', outcomes: [any('You say you will be there either way.', 'neutral', kin('neutral'))] },
+      { label: 'Tell them what it really costs', outcomes: [any('You tell the truth about the hours, the letters, and what it does to a family.', 'neutral', kin('discourage'))] },
+    ],
+  },
+  {
+    id: 'kin_campaign', category: 'family', ageRange: [30, 120], queuedOnly: true,
+    text: 'Your {rel} {kin} is standing for {title}, and polling day is close. {kin} has not asked for your help, which is how you know it is wanted.',
+    choices: [
+      { label: 'Campaign at their side', outcomes: [any('You clear your diary.', 'neutral', kin('campaign'))] },
+      { label: 'Pay for the leaflets ({cost})', outcomes: [any('You reach for your chequebook.', 'neutral', kin('money'))] },
+      { label: 'Stay out of it', outcomes: [any('You keep your distance.', 'neutral', kin('stayOut'))] },
+    ],
+  },
+  {
+    id: 'kin_scandal', category: 'family', ageRange: [30, 120], queuedOnly: true,
+    text: 'Your {rel} {kin}, the {title}, is in the newspapers for the wrong reasons, and every report mentions whose {rel} {kin} is. Reporters are asking what you have to say.',
+    choices: [
+      { label: 'Stand beside them', outcomes: [any('Family is family.', 'neutral', kin('standBy'))] },
+      { label: 'Say it is a matter for them alone', outcomes: [any('You choose your words with great care.', 'neutral', kin('distance'))] },
+    ],
+  },
+  {
+    id: 'spouse_public', category: 'family', ageRange: [25, 120], queuedOnly: true,
+    text: 'A magazine wants a long interview with your {rel} {kin}: the home, the marriage, what you are really like. Your advisers think it could be wonderful, or a disaster.',
+    choices: [
+      { label: 'Let them speak freely', outcomes: [any('You say you trust {kin} completely, and hope it is true.', 'neutral', kin('speak'))] },
+      { label: 'Keep them out of the papers', outcomes: [any('You have the request declined.', 'neutral', kin('hide'))] },
     ],
   },
   {
