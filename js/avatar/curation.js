@@ -40,14 +40,17 @@ export const TEXTURES = ['straight', 'wavy', 'curly', 'coily'];
 
 /** Eyes, mouths and noses that are a resting face (others are expressions, or gags, and are never picked at random). */
 export const RESTING = {
-  eyes: ['eyes_03', 'eyes_04', 'eyes_6', 'eyes_8', 'eyes_9', 'eyes_10', 'eyes_11', 'eyes_12', 'eyes_16', 'eyes_17', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_21', 'eyes_22',
-    'eyes_23', 'eyes_25', 'eyes_26'],
-  lips: ['lips_1', 'lips_3', 'lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_12', 'lips_14', 'lips_16'],
-  noses: ['nose_1', 'nose_3', 'nose_5', 'nose_6', 'nose_7', 'nose_8', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
-    'nose_18', 'nose_19', 'nose_20', 'nose_21', 'nose_22', 'nose_23'],
-  eyebrows: ['brows_02', 'brows_03', 'brows_04', 'brows_05', 'brows_6', 'brows_7', 'brows_8', 'brows_9', 'brows_10', 'brows_11', 'brows_12', 'brows_13', 'brows_14',
-    'brows_15', 'brows_16_feathered', 'brows_17_puppy', 'brows_19_glam_arch', 'brows_21_mini_comma'],
+  // one family of eyes, so faces drawn at random look like they belong to the same world
+  eyes: ['eyes_6', 'eyes_8', 'eyes_9', 'eyes_10', 'eyes_11', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_21', 'eyes_22', 'eyes_23', 'eyes_25'],
+  // neutral or pleasant mouths only
+  lips: ['lips_1', 'lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_12', 'lips_14'],
+  noses: ['nose_3', 'nose_5', 'nose_6', 'nose_7', 'nose_8', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
+    'nose_18', 'nose_19', 'nose_20', 'nose_22', 'nose_23'],
+  // relaxed brows: nothing angry, sceptical or comic
+  eyebrows: ['brows_02', 'brows_03', 'brows_10', 'brows_12', 'brows_14', 'brows_15', 'brows_16_feathered', 'brows_17_puppy', 'brows_19_glam_arch', 'brows_6', 'brows_8'],
 };
+/** The soft, thin brows every baby and toddler has, whatever they grow into. */
+export const BABY_BROWS = 'brows_8';
 /** Expressions the renderer can borrow for a mood. */
 export const EXPRESSION = { crying: 'eyes_14', closedHappy: 'eyes_24', laughing: 'lips_20', grin: 'lips_2' };
 /** Brows that come with age. */

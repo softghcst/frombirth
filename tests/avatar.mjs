@@ -63,7 +63,7 @@ const eyesWithWhites = AVATAR_MANIFEST.eyes.filter((e) => /fill:#ffffff/.test(re
 check(eyesWithWhites >= 20, `only ${eyesWithWhites} eye styles have whites`);
 
 // 2. Curated ids.
-const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, ...Object.values(CUR.OUTFITS).flat(),
+const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, CUR.BABY_BROWS, ...Object.values(CUR.OUTFITS).flat(),
   ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch),
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
   ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, CUR.GRADUATION.hat];
@@ -143,7 +143,7 @@ for (const age of [0, 1, 3, 7, 12, 15, 30, 49, 55, 66, 80, 101]) {
     if (s.jailed) check(d.clothes === CUR.PRISON, 'prisoners are not in prison clothes');
     if (s.royal?.rank === 'monarch' && age >= 13) check(/crown_0[13]/.test(d.crown ?? ''), 'a monarch has no crown');
     if (ageStage(age) === 'baby') check(d.head === 'head_00_baby' && !d.glasses && !d.jewelry.length, 'a baby is wearing grown-up things');
-    if (age >= 64) check(d.aging.length >= 3, 'no lines with age');
+    if (age >= 66) check(d.aging.length >= 2, 'no lines with age');
     if (s.career?.id === 'police' && age >= 18) check(/police|swat/.test(d.clothes) && /police|swat/.test(d.hat ?? ''), 'police are not in uniform');
     check(filesFor(resolveLook(a, 'x'), { age, ...s }).every((f) => existsSync(new URL(f.replace('./', ''), root))), 'filesFor lists a missing file');
   }

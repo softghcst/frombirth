@@ -26,7 +26,7 @@
 // `ctx` describes the moment: { age, gender, mood, jailed, royal: { rank }, career: { id, level }, label }.
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
-import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS } from './avatar/curation.js';
+import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/avatars/';
@@ -49,7 +49,7 @@ export function ageStage(age = 25) {
 const STAGE_HEAD = { baby: 'head_00_baby', toddler: 'head_00_toddler', kid: 'head_00_kid' };
 
 /** Lines that come with age, from fifty on. */
-const AGING = [[50, 'aging_01_smile_lines'], [57, 'aging_02_crows_feet'], [64, 'aging_03_forehead_lines'], [71, 'aging_04_eyebags']];
+const AGING = [[55, 'aging_01_smile_lines'], [66, 'aging_02_crows_feet'], [78, 'aging_03_forehead_lines']];
 
 /**
  * What the portrait actually wears at this moment: work clothes, royal dress,
@@ -67,6 +67,7 @@ export function dressFor(look, ctx = {}) {
     out.hair = look.babyHair ?? null;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = []; out.glasses = null; out.facialHair = null; out.hat = null;
+    out.eyebrows = BABY_BROWS;
   } else if (stage === 'kid') {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
@@ -77,7 +78,7 @@ export function dressFor(look, ctx = {}) {
   }
   if (stage === 'older') {
     out.aging = AGING.filter(([from]) => age >= from).map(([, id]) => id);
-    if (age >= 74 && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
+    if (age >= 84 && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
   }
   // Clothes: prison, then crown, then work, then the person's own.
   if (young) out.clothes = look.babyClothes ?? 'outfit_baby_01_bib_onesie';
@@ -113,7 +114,7 @@ export const TWEAK_STEP = { size: 0.09, gap: 4, height: 5 };
 const EYE_APART = 3;
 
 // Younger faces: features a little smaller for the size of the head, and set a little lower.
-const STAGE_FEATURES = { baby: { k: 0.74, drop: 0.05 }, toddler: { k: 0.82, drop: 0.04 }, kid: { k: 0.94, drop: 0.02 } };
+const STAGE_FEATURES = { baby: { k: 0.74, drop: 0.05, mouth: 0.8 }, toddler: { k: 0.82, drop: 0.04, mouth: 0.86 }, kid: { k: 0.94, drop: 0.02 } };
 const n1 = (v) => Math.round(v * 100) / 100;
 
 /**
@@ -149,7 +150,7 @@ export function fitTransforms(headId, stage, tweaks = {}) {
     eyesL: eyeAt(T.anchor.eyes, eyeS, -1), eyesR: eyeAt(T.anchor.eyes, eyeS, 1),
     browsL: eyeAt(T.anchor.eyebrows, s, -1), browsR: eyeAt(T.anchor.eyebrows, s, 1),
     eyes: feature(T.anchor.eyes), eyebrows: feature(T.anchor.eyebrows),
-    nose: feature(T.anchor.nose, s * (1 + step('noseSize') * TWEAK_STEP.size)), lips: feature(T.anchor.lips, s * (1 + step('lipSize') * TWEAK_STEP.size)),
+    nose: feature(T.anchor.nose, s * (1 + step('noseSize') * TWEAK_STEP.size)), lips: feature(T.anchor.lips, s * (young.mouth ?? 1) * (1 + step('lipSize') * TWEAK_STEP.size)),
     makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes),
     glasses: feature(T.anchor.eyes, wr * young.k), facialHair: feature(T.anchor.lips, wr),
     hair: crown, hat: crown,
@@ -186,7 +187,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const bulky = !!PART_BY_ID[d.hair]?.tags?.bulky;
   const hairTop = hatOn ? (bulky ? BULKY_HAT_LINE : HAT_LINE) : 0;
   // Under a hat, hair is hidden above the brim, and tucks in at the sides rather than ending in a flat shelf.
-  const under = (bottom) => `<path d="M-200 ${bottom}V${hairTop + 120}L96 ${hairTop + 26}Q120 ${hairTop} 160 ${hairTop}H352Q392 ${hairTop} 416 ${hairTop + 26}L712 ${hairTop + 120}V${bottom}Z"/>`;
+  const under = (bottom) => `<path d="M-200 ${bottom}V${hairTop + 64}H112V${hairTop}H400V${hairTop + 64}H712V${bottom}Z"/>`;
   const defs = [
     `<clipPath id="pw-l-${n}"><rect x="-400" y="-400" width="656" height="1400"/></clipPath><clipPath id="pw-r-${n}"><rect x="256" y="-400" width="656" height="1400"/></clipPath>`,
     `<clipPath id="pw-face-${n}"><use href="${href(d.head)?.replace('#art', '#skin')}"/></clipPath>`,
@@ -205,7 +206,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     d.hair ? `<g${f.hair ?? ''} clip-path="url(#pw-back-${n})">${use(d.hair)}</g>` : '',
     use(d.head),
     d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m, f.makeup)).join('')}</g>` : '',
-    d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".8"`)).join(''),
+    d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join(''),
     pair(d.eyes, f.eyesL, f.eyesR), pair(d.eyebrows, f.browsL, f.browsR), use(d.nose, f.nose), use(d.lips, f.lips),
     d.facialHair ? use(d.facialHair, f.facialHair) : '',
     use(d.clothes, f.clothes),
