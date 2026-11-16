@@ -1,4 +1,5 @@
 // Doctors, check-ups, therapy and cosmetic surgery.
+import { normalize, cleanTweaks } from '../avatar/catalog.js';
 import { healthFactor } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
@@ -120,7 +121,11 @@ export function surgeonOptions(procedureId) {
 }
 export const canHaveSurgery = () => player().age >= 18 && !player().legal.incarceration;
 
-export function haveSurgery(procedureId, surgeonId) {
+/**
+ * @param {object} [tweaks] for 'reshape': the proportions asked for (eye spacing, sizes).
+ *   They are worn, not inherited: children take after what the patient was born with.
+ */
+export function haveSurgery(procedureId, surgeonId, tweaks) {
   const p = player();
   const c = country();
   const proc = SURGERIES.find((s) => s.id === procedureId);
@@ -144,6 +149,11 @@ export function haveSurgery(procedureId, surgeonId) {
     log(text, 'system', 'bad');
     milestone(`Had a ${name} that went badly wrong.`, 'life');
     return result(false, text);
+  }
+  if (proc.reshape && tweaks) {
+    const a = normalize(p.appearance, p.id);
+    a.style.tweaks = cleanTweaks(tweaks);
+    p.appearance = a;
   }
   const gain = rng.int(proc.gain[0], proc.gain[1]);
   p.stats.charm = clamp(p.stats.charm + gain);

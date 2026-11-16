@@ -10,6 +10,7 @@ import * as fun from '../engine/activities.js';
 import * as net from '../engine/social.js';
 import * as move from '../engine/emigration.js';
 import { messageModal, pickModal, confirmModal, inputModal, openModal } from './modals.js';
+import { openAppearanceEditor } from '../avatar/editor.js';
 
 async function report(api, r) {
   api.changed();
@@ -44,12 +45,21 @@ export async function cosmeticSurgery(api) {
     options: med.surgeryOptions().map((s) => ({ value: s.id, label: s.name })),
   });
   if (!proc) return undefined;
+  // Reshaping: choose the new proportions first, on your own face.
+  let tweaks;
+  if (proc === 'reshape') {
+    const p = player();
+    const next = await openAppearanceEditor({ title: 'Reshape your features', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id, scope: 'tweaks',
+      confirm: 'Choose a surgeon', note: () => 'Eye spacing, eye size and height, nose and mouth size. Your children will still take after the face you were born with.' });
+    if (!next) return undefined;
+    tweaks = next.style.tweaks;
+  }
   const surgeon = await pickModal({
     title: 'Who does it?',
     options: med.surgeonOptions(proc).map((s) => ({ value: s.id, label: s.name, disabled: !s.affordable,
       sub: `${s.blurb} ${fmtMoney(s.cost, c)}. Risk of it going wrong: ${s.risk}.` })),
   });
-  return surgeon ? report(api, med.haveSurgery(proc, surgeon)) : undefined;
+  return surgeon ? report(api, med.haveSurgery(proc, surgeon, tweaks)) : undefined;
 }
 
 export async function takeHoliday(api) {

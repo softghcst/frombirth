@@ -99,8 +99,8 @@ export function dressFor(look, ctx = {}) {
   // Mood shows in the face.
   const mood = ctx.mood ?? 60;
   if (ctx.emotion) out.emotion = ctx.emotion;
-  else if (mood <= 12 && !young) { out.emotion = 'emotion_02_tears'; }
-  if (mood <= 12 && stage !== 'baby') out.eyes = EXPRESSION.crying;
+  // Crying eyes are never a resting face: they appear only while something sad is weighing on the person.
+  if (mood <= 15 && stage !== 'baby') out.eyes = EXPRESSION.crying;
   return out;
 }
 
@@ -207,7 +207,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     use(d.head),
     d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m, f.makeup)).join('')}</g>` : '',
     d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join(''),
-    pair(d.eyes, f.eyesL, f.eyesR), pair(d.eyebrows, f.browsL, f.browsR), use(d.nose, f.nose), use(d.lips, f.lips),
+    pair(d.eyes, f.eyesL, f.eyesR), use(d.eyebrows, f.eyebrows), use(d.nose, f.nose), use(d.lips, f.lips),
     d.facialHair ? use(d.facialHair, f.facialHair) : '',
     use(d.clothes, f.clothes),
     necklaces.map((j) => use(j, f.necklace)).join(''),

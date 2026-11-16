@@ -57,7 +57,8 @@ def clean_name(name):
 
 
 # Artwork that has been withdrawn: never sorted in, even if a pack still contains it.
-EXCLUDED = {'eyes_15.svg'}
+EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05.svg', 'eyes_13.svg', 'eyes_17.svg', 'eyes_21.svg', 'eyes_23.svg',
+            'face_01_oval.svg', 'face_02_round.svg', 'face_03_square.svg', 'face_04_heart.svg', 'face_05_diamond.svg', 'face_06_pear.svg'}
 
 
 def folder_for(name):
@@ -628,9 +629,9 @@ def place(folder, name, elements):
                 # the widest point of the opening sits at cheekbone level
                 transform_elements(elements, s, 256 - gx * s, FACE['cheek_y'] - 16 - gy * s)
                 return f'fitted by its face opening ({gw:.0f} wide)'
-        spread = 0.62 if 'baby' in name else 1.75 if re.search(r'long|medium', name) else 1.45 if 'updo' in name else 1.38
+        spread = 0.86 if 'baby' in name else 1.75 if re.search(r'long|medium', name) else 1.45 if 'updo' in name else 1.38
         s = FACE['w'] * spread / w
-        ty = FACE['top'] - (12 if 'baby' in name else 22) - y0 * s
+        ty = FACE['top'] - (20 if 'baby' in name else 22) - y0 * s
         # A heavy fringe must not cover the eyes: find where the hair stops covering the middle of
         # the face and, if that falls below the brows, lift the whole style until it does not.
         hairline = fringe_edge(elements, box)

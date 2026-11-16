@@ -77,7 +77,10 @@ lower-set features. Eyes drawn as an empty outline are given whites by filling t
 
 **Personal proportions.** Each person also has `inherited.tweaks`: eye spacing, eye size, eye height, nose size
 and mouth size, each from -2 to 2 steps (`TWEAKS` in `js/avatar/catalog.js`, step sizes in `TWEAK_STEP` in
-`js/CharacterAvatar.js`). They are set in the creator, vary a little at random, and children take each from a parent.
+`js/CharacterAvatar.js`). They are set in the creator, vary a little at random, and children take each from a parent. Cosmetic surgery
+(**Self** → **Cosmetic surgery** → *Facial reshaping*) changes them as `style.tweaks`: worn, not inherited, so children
+still take after the face a parent was born with. Anyone's whole look can be edited from **People** → a person →
+**Edit stats and talents** → **Edit their look**.
 
 **Ages and dress.** Babies and toddlers have their own heads, baby hair and baby clothes; children have the child
 head; from fifty, lines arrive and hair greys unless dyed. Portraits dress for the moment: prison orange in prison,

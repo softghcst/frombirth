@@ -60,7 +60,10 @@ for (const h of AVATAR_MANIFEST.heads) {
   }
 }
 const eyesWithWhites = AVATAR_MANIFEST.eyes.filter((e) => /fill:#ffffff/.test(readFileSync(new URL(`assets/avatars/${e.file}`, root), 'utf8'))).length;
-check(eyesWithWhites >= 20, `only ${eyesWithWhites} eye styles have whites`);
+check(eyesWithWhites >= AVATAR_MANIFEST.eyes.length - 2, `only ${eyesWithWhites} eye styles have whites`);
+
+check(!CATALOG.eyes.some((e) => e.id === CUR.EXPRESSION.crying), 'crying eyes can be chosen as a resting face');
+check(!AVATAR_MANIFEST.heads.some((h) => /^face_0/.test(h.id)) && normalize({ v: 3, inherited: { head: 'face_02_round' } }, 'z').inherited.head === 'head_15_cherubic', 'withdrawn face shapes are not replaced');
 
 // 2. Curated ids.
 const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, CUR.BABY_BROWS, ...Object.values(CUR.OUTFITS).flat(),
@@ -124,6 +127,12 @@ for (let i = 0; i < 200; i++) {
   mum.style.hair = 'bald'; dad.inherited.skin = 'porcelain';
   check(before === JSON.stringify(kid), 'a child changed when a parent did');
   check(JSON.stringify(cloneAppearance(kid)) === before, 'clone is not a copy');
+  // Surgery changes what a parent shows, not what a child inherits.
+  mum.style.tweaks = { eyeGap: 2, eyeSize: 2, eyeY: 2, noseSize: -2, lipSize: 2 };
+  const born = normalize(mum, 'm').inherited.tweaks;
+  const later = inheritAppearance(mum, mum).inherited.tweaks;
+  check(Object.keys(born).every((k) => later[k] === born[k]), 'a parent\'s surgery reached a child');
+  check(resolveLook(mum, 'm').tweaks.eyeGap === 2, 'surgery does not show on the parent');
   check(Object.entries(kid.inherited.tweaks).every(([k, v]) => v === mum.inherited.tweaks[k] || v === dad.inherited.tweaks[k]), 'a child\'s proportions came from neither parent');
 }
 

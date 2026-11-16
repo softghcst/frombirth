@@ -3,7 +3,7 @@
 // creator (every feature), the in-game salon (styling only) and the avatar
 // lab page. Each feature has its own row of options, the portrait updates on
 // every tap, and nothing is saved until the caller's confirm handler runs.
-import { CATALOG, normalize, part, stylesFor, TWEAKS } from './catalog.js';
+import { CATALOG, normalize, part, stylesFor, TWEAKS, shownTweaks } from './catalog.js';
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
@@ -67,7 +67,10 @@ export function mountAppearanceEditor(el, o = {}) {
   let preview = 'now';
   let hairFilter = 'suits';
   const usable = (key) => (scope === 'all' || CONTROLS[key].half === 'style') && age >= (CONTROLS[key].minAge ?? 0);
-  const tabs = TABS.map((t) => ({ ...t, keys: t.keys.filter(usable) })).filter((t) => t.keys.length);
+  // scope 'tweaks' is the surgeon's: only proportions, and they are worn rather than born with.
+  const tabs = scope === 'tweaks' ? [{ id: 'shape', name: 'Proportions', keys: [], tweaks: TWEAKS.map((k) => k.id) }]
+    : TABS.map((t) => ({ ...t, keys: t.keys.filter(usable) })).filter((t) => t.keys.length);
+  const tw = () => (scope === 'tweaks' ? (a.style.tweaks ??= shownTweaks(a)) : a.inherited.tweaks);
   if (scope === 'style') tabs.sort((x, y) => (y.id === 'hair') - (x.id === 'hair')); // a salon starts with the hair
   let tab = tabs[0].id;
 
@@ -117,7 +120,7 @@ export function mountAppearanceEditor(el, o = {}) {
   /** A five-step adjuster for one proportion: two steps either side of "as drawn". */
   function tweakControl(id) {
     const k = TWEAKS.find((x) => x.id === id);
-    const now = a.inherited.tweaks[id];
+    const now = tw()[id];
     const labels = [`${k.low} still`, k.low, 'Normal', k.high, `${k.high} still`];
     return `<div class="av-control"><div class="av-label"><strong>${esc(k.name)}</strong><span>${esc(labels[now + 2])}</span></div>
       <div class="av-steps" role="group" aria-label="${esc(k.name)}">${[-2, -1, 0, 1, 2].map((v) => `<button type="button" class="av-chip av-step ${v === now ? 'on' : ''}" data-tweak="${id}" data-val="${v}" aria-pressed="${v === now}" aria-label="${esc(labels[v + 2])}">${v === 0 ? 'Normal' : v < 0 ? '−'.repeat(-v) : '+'.repeat(v)}</button>`).join('')}</div></div>`;
@@ -134,7 +137,7 @@ export function mountAppearanceEditor(el, o = {}) {
           <button type="button" class="btn small" data-random>Randomize</button>
         </div>
         <div class="av-tabs" role="tablist">${tabs.map((x) => `<button type="button" role="tab" aria-selected="${x.id === tab}" class="av-tab ${x.id === tab ? 'on' : ''}" data-tab="${x.id}">${esc(x.name)}</button>`).join('')}</div>
-        <div class="av-panel">${t.keys.map(control).join('')}${scope === 'all' ? (t.tweaks ?? []).map(tweakControl).join('') : ''}</div>
+        <div class="av-panel">${t.keys.map(control).join('')}${scope !== 'style' ? (t.tweaks ?? []).map(tweakControl).join('') : ''}</div>
       </div>`;
   }
   const keepScroll = (fn) => {
@@ -152,8 +155,8 @@ export function mountAppearanceEditor(el, o = {}) {
     if (pv) { preview = pv.dataset.preview === 'now' ? 'now' : Number(pv.dataset.preview); keepScroll(render); return; }
     const f = e.target.closest('[data-filter]');
     if (f) { hairFilter = f.dataset.filter; keepScroll(render); return; }
-    const tw = e.target.closest('[data-tweak]');
-    if (tw) { a.inherited.tweaks[tw.dataset.tweak] = Number(tw.dataset.val); keepScroll(render); o.onChange?.(cloneAppearance(a)); return; }
+    const twBtn = e.target.closest('[data-tweak]');
+    if (twBtn) { (scope === 'tweaks' ? (a.style.tweaks ??= shownTweaks(a)) : a.inherited.tweaks)[twBtn.dataset.tweak] = Number(twBtn.dataset.val); keepScroll(render); o.onChange?.(cloneAppearance(a)); return; }
     const opt = e.target.closest('.av-opt');
     if (!opt) return;
     const key = opt.dataset.key;
@@ -171,7 +174,8 @@ export function mountAppearanceEditor(el, o = {}) {
     get: () => cloneAppearance(a),
     set: (next) => { a = cloneAppearance(normalize(next, seed)); render(); },
     randomize() {
-      if (scope === 'all') a = normalize(randomAppearance(undefined, o.gender), seed);
+      if (scope === 'tweaks') a.style.tweaks = Object.fromEntries(TWEAKS.map((k) => [k.id, rng.pick([-1, 0, 0, 1])]));
+      else if (scope === 'all') a = normalize(randomAppearance(undefined, o.gender), seed);
       else {
         a.style = { ...defaultStyle(a.inherited, o.gender), jewelry: a.style.jewelry };
         if (rng.chance(0.3)) a.style.hairDye = rng.pick(CATALOG.hairDye).id;

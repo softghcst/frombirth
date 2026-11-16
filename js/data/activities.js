@@ -33,6 +33,7 @@ export const SURGERIES = [
   { id: 'nose', name: 'Nose reshaping', cost: 7000, gain: [4, 9], risk: 0.08, minAge: 18 },
   { id: 'lipo', name: 'Liposuction', cost: 6000, gain: [3, 8], risk: 0.1, minAge: 18 },
   { id: 'hair', name: 'Hair transplant', cost: 9000, gain: [3, 7], risk: 0.06, minAge: 25 },
+  { id: 'reshape', name: 'Facial reshaping', cost: 8000, gain: [2, 5], risk: 0.07, minAge: 18, reshape: true },
   { id: 'facelift', name: 'Facelift', cost: 15000, gain: [6, 12], risk: 0.12, minAge: 40 },
 ];
 /** Who holds the knife. cost and risk multiply the procedure's own. */
