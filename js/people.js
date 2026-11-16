@@ -1,7 +1,10 @@
 // "People you know": names the player has added in Settings. They turn up in
 // lives as friends, classmates, colleagues, dates and strangers. The list is
-// kept in this browser only (localStorage), separate from any one life, and
-// is never sent anywhere.
+// kept in this browser (localStorage), separate from any one life. It goes to
+// another device only in a transfer code, or to the player's own account when
+// they have signed in to cloud saves.
+import { changed, rememberDeleted } from './sync/bundle.js';
+
 const KEY = 'pathways.people';
 export const MAX_PEOPLE = 80;
 export const GENDERS = [['female', 'Woman'], ['male', 'Man'], ['nonbinary', 'Non-binary']];
@@ -15,7 +18,9 @@ export function getPeople() {
 }
 
 function save(list) {
-  try { localStorage.setItem(KEY, JSON.stringify(list)); return true; } catch { return false; }
+  try { localStorage.setItem(KEY, JSON.stringify(list)); } catch { return false; }
+  changed();
+  return true;
 }
 
 const tidy = (s, max) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -33,5 +38,6 @@ export function addPerson(first, last, gender) {
 }
 
 export function removePerson(id) {
+  rememberDeleted('people', id);
   save(getPeople().filter((x) => x.id !== id));
 }

@@ -2,6 +2,7 @@
 import { rng } from './rng.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
+import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
 
 export const SCHEMA_VERSION = 1;
 const K_INDEX = 'pathways.index';
@@ -19,8 +20,11 @@ function read(key, fallback) {
 }
 
 function write(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+  try { localStorage.setItem(key, JSON.stringify(value)); }
   catch { return false; }
+  // Saved lives and the graveyard travel to other devices; the age-down history does not.
+  if (!key.startsWith(K_UNDO)) changed();
+  return true;
 }
 
 /** Bring older saves up to the current schema. */
@@ -72,6 +76,7 @@ export function saveGame(state) {
   };
   const index = read(K_INDEX, []).filter((m) => m.slotId !== state.slotId);
   index.push(meta);
+  forgetDeleted('slots', state.slotId);
   return write(K_SLOT + state.slotId, state) && write(K_INDEX, index);
 }
 
@@ -84,6 +89,7 @@ export function loadGame(slotId) {
 }
 
 export function deleteSlot(slotId, keepUndo = false) {
+  rememberDeleted('slots', slotId);
   try { localStorage.removeItem(K_SLOT + slotId); if (!keepUndo) localStorage.removeItem(K_UNDO + slotId); } catch { /* storage unavailable */ }
   write(K_INDEX, read(K_INDEX, []).filter((m) => m.slotId !== slotId));
 }
@@ -115,7 +121,7 @@ export function popUndo(slotId) {
   return state;
 }
 /** Removes a grave, when the death it records is taken back. */
-export function removeGrave(id) { write(K_GRAVE, getGraveyard().filter((g) => g.id !== id)); }
+export function removeGrave(id) { rememberDeleted('graves', id); write(K_GRAVE, getGraveyard().filter((g) => g.id !== id)); }
 
 /** @returns {import('./types.js').GraveyardEntry[]} most recent first */
 export const getGraveyard = () => read(K_GRAVE, []);
@@ -134,6 +140,7 @@ export const epitaphsEarned = () => [...new Set(getGraveyard().flatMap((g) => g.
 
 export function addToGraveyard(entry) {
   const list = getGraveyard();
+  entry.buriedAt ??= Date.now();
   list.unshift(entry);
   write(K_GRAVE, list);
 }
