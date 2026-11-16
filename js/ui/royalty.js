@@ -12,6 +12,7 @@ import * as dyn from '../engine/dynasty.js';
 import * as fame from '../engine/reputation.js';
 import * as throne from '../engine/reign.js';
 import * as home from '../engine/household.js';
+import * as peers from '../engine/peerage.js';
 import { MONARCHIES } from '../data/royalty.js';
 import { openModal } from './modals.js';
 
@@ -66,6 +67,7 @@ export function royalCard() {
     <div class="btn-stack" style="margin-top:10px">
       ${inFamily ? '<button class="btn primary" data-dynasty>The dynasty</button><button class="btn" data-reputation>Reputation</button>' : ''}
       ${inFamily ? '<button class="btn" data-household>Household and residences</button>' : ''}
+      ${peers.nobleRanks(r.countryId).length ? '<button class="btn" data-titles>Titles and honours</button>' : ''}
       ${throne.canGovern() ? `<button class="btn" data-state>Affairs of state <small>${throne.powersLeft()} left this year</small></button>` : ''}
       ${crown.canDoDuties() && inFamily ? `<button class="btn" data-duties>Public duties <small>${crown.dutiesLeft()} left this year</small></button>` : ''}
       ${p.age >= 18 && !r.waiting ? `<button class="btn" data-renounce>${r.rank === 'monarch' && r.reigning ? 'Abdicate' : inFamily ? 'Step back from royal life' : 'Give up the title'}</button>` : ''}
@@ -76,6 +78,8 @@ export function royalCard() {
 export function bindRoyalCard(el, api) {
   const book = el.querySelector('[data-dynasty]');
   if (book) book.onclick = () => openDynasty(undefined, book.dataset.dynasty || undefined);
+  const titlesBtn = el.querySelector('[data-titles]');
+  if (titlesBtn) titlesBtn.onclick = () => openTitles(api);
   const homeBtn = el.querySelector('[data-household]');
   if (homeBtn) homeBtn.onclick = () => openHousehold(api);
   const stateBtn = el.querySelector('[data-state]');
@@ -195,5 +199,48 @@ async function openHousehold(api) {
       api.changed();
       await messageModal({ body: r.text, tone: r.tone });
     }
+  }
+}
+
+/** The nobility of the country: every title, who holds it, and its history. A monarch can create and revoke. */
+async function openTitles(api) {
+  const cid = player().royal.countryId;
+  for (;;) {
+    const list = peers.roll(cid);
+    const can = peers.mayGrant();
+    const pick = await pickModal({
+      title: 'Titles and honours',
+      body: can ? 'As monarch you may create one title a year, and take any away. Titles pass to the eldest child unless they are given for life.' : 'The titles of the realm. Only the monarch can create or revoke them.',
+      cancel: 'Done',
+      options: [
+        ...(can ? [{ value: 'new', label: 'Create a title', sub: 'For a relative, or for someone in your life.' }] : []),
+        ...list.map((t) => ({ value: t.id, label: t.name,
+          sub: t.status === 'active' ? `${t.isPlayer ? 'Yours' : `Held by ${t.holder}`}. Created ${t.created}${t.hereditary ? '' : ', for life'}.` : t.status === 'extinct' ? 'Extinct: the line ended.' : 'Revoked.' })),
+      ],
+    });
+    if (!pick) return;
+    if (pick === 'new') {
+      const people = peers.candidates();
+      if (!people.length) { await messageModal({ body: 'There is nobody suitable just now: grown relatives, friends, mentors and members of your household can be raised.' }); continue; }
+      const who = await pickModal({ title: 'Who is to be raised?', cancel: 'Back', options: people.map((x, i) => ({ value: i, label: x.name, sub: `${x.kind === 'family' ? 'Family' : 'A commoner'}: ${x.sub}.` })) });
+      if (who == null) continue;
+      const rank = await pickModal({ title: 'What rank?', cancel: 'Back', options: peers.nobleRanks(cid).map((r) => ({ value: r[0], label: r[1] === r[2] ? r[1] : `${r[1]} or ${r[2]}` })) });
+      if (!rank) continue;
+      const kind = await pickModal({ title: 'For how long?', cancel: 'Back', options: [{ value: 'h', label: 'Hereditary', sub: 'It passes to their eldest child, and on down the family.' }, { value: 'l', label: 'For life', sub: 'It ends when they die.' }] });
+      if (!kind) continue;
+      const r = peers.grant(people[who].ref, rank, kind === 'h');
+      api.changed();
+      await messageModal({ body: r.text, tone: r.tone });
+      continue;
+    }
+    const t = list.find((x) => x.id === pick);
+    const act = await pickModal({ title: t.name, cancel: 'Back',
+      body: `${t.history.map((h) => `${h.year}: ${h.text}`).join(' ')}`,
+      options: t.canRevoke ? [{ value: 'revoke', label: 'Revoke this title', sub: 'It is your right. It is rarely forgiven.' }] : [] });
+    if (act !== 'revoke') continue;
+    if (!(await confirmModal({ title: `Revoke ${t.name}?`, body: `${t.holder} will lose it, and it will not be given again.`, yes: 'Revoke', danger: true }))) continue;
+    const r = peers.revoke(t.id);
+    api.changed();
+    await messageModal({ body: r.text, tone: r.tone });
   }
 }
