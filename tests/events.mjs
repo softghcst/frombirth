@@ -6,7 +6,7 @@ import { ILLNESS_BY_ID } from '../js/data/illnesses.js';
 
 const EFFECTS = new Set(['stat', 'hidden', 'talent', 'cash', 'relationship', 'flag', 'addNpc', 'removeNpc', 'condition', 'cure',
   'gpa', 'legal', 'followers', 'counter', 'milestone', 'death', 'memory', 'queue', 'partTimeScale', 'tag', 'feud', 'perf', 'pay',
-  'fired', 'promoted', 'npcSet', 'moveCity', 'property', 'vehicle', 'sellInvestments', 'prison', 'giveVehicle', 'npcTransition']);
+  'fired', 'promoted', 'npcSet', 'moveCity', 'property', 'vehicle', 'sellInvestments', 'prison', 'giveVehicle', 'npcTransition', 'image', 'meetRoyal', 'honour', 'approval', 'reelect', 'ousted', 'resignOffice']);
 const problems = [];
 const ids = new Set();
 const allIds = new Set(EVENTS.map((e) => e.id));
@@ -24,7 +24,7 @@ for (const ev of EVENTS) {
     if (c.check && !(on.has('success') && on.has('fail')) && !on.has('always')) at(`"${c.label}" has a check without both results`);
     if (!c.check && !on.has('always')) at(`"${c.label}" has no outcome`);
     for (const o of c.outcomes) {
-      const added = new Set(o.effects.filter((e) => e.type === 'addNpc').map((e) => e.target));
+      const added = new Set(o.effects.filter((e) => e.type === 'addNpc' || e.type === 'meetRoyal').map((e) => e.target));
       for (const e of o.effects) {
         if (!EFFECTS.has(e.type)) at(`unknown effect "${e.type}"`);
         if (e.type === 'condition' && !ILLNESS_BY_ID[e.value]) at(`unknown condition "${e.value}"`);

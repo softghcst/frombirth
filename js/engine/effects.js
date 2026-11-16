@@ -10,10 +10,12 @@ import { hitProperty } from './realEstate.js';
 import { hitVehicle, giveVehicle } from './vehicles.js';
 import { npcTransition } from './npcLives.js';
 import { sellEverything } from './market.js';
+import * as crown from './royalty.js';
+import * as pol from './politics.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
- * @param {{cast:Object<string,string>, death?:string, queue?:string[]}} ctx  cast maps token keys to NPC ids
+ * @param {{cast:Object<string,string>, death?:string, queue?:string[], note?:string}} ctx  cast maps token keys to NPC ids; note is added to the outcome text
  * @returns {{label:string, delta:number, money?:boolean}[]} visible changes for the UI
  */
 export function applyEffects(effects, ctx = { cast: {} }) {
@@ -113,6 +115,28 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'giveVehicle': giveVehicle(e.value); break;
       case 'npcTransition': npcTransition(store.state.npcs[ctx.cast[e.target]], e.value); break;
       case 'sellInvestments': sellEverything(); break;
+      case 'image': {
+        const before = p.royal?.image;
+        crown.shiftImage(e.delta);
+        if (p.royal && p.royal.image !== before) shown.push({ label: 'Public image', delta: p.royal.image - before });
+        break;
+      }
+      case 'meetRoyal': {
+        const npc = crown.eligibleRoyal();
+        crown.startSeeing(npc);
+        if (e.target) ctx.cast[e.target] = npc.id;
+        break;
+      }
+      case 'honour': crown.honour(p.flags.honourRank ?? 'knight'); break;
+      case 'approval': {
+        const before = p.politics?.approval;
+        pol.shiftApproval(e.delta);
+        if (p.politics && p.politics.approval !== before) shown.push({ label: 'Approval', delta: p.politics.approval - before });
+        break;
+      }
+      case 'reelect': ctx.note = pol.reElection().text; break;
+      case 'ousted': pol.removed(e.value); break;
+      case 'resignOffice': pol.resign(); break;
       case 'prison': {
         const k = p.legal.incarceration;
         if (k) { k[e.target] = clamp(k[e.target] + e.delta); shown.push({ label: e.target === 'respect' ? 'Respect' : 'Conduct', delta: e.delta }); }

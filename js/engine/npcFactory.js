@@ -3,12 +3,28 @@ import { rng } from '../rng.js';
 import { uid, clamp, localMoney, localWage } from '../util.js';
 import { COUNTRIES, surnameFor } from '../data/countries.js';
 import { store } from '../state.js';
+import { getPeople } from '../people.js';
 import { ensureStyled } from '../avatar/inherit.js';
 import { OCCUPATIONS, BACKGROUNDS, PETS } from '../data/traits.js';
 import { randomAppearance, randomTraits, randomTalents } from './genetics.js';
 
 // Kept in step with ORIENTATIONS in engine/identity.js (which cannot be imported here without a loop).
 const ORIENTATION_WEIGHTS = [['straight', 86], ['gay', 5], ['bisexual', 5.5], ['pansexual', 1.5], ['asexual', 2]];
+
+// Relatives are named by the family; everyone else may be somebody from the player's own list (Settings).
+const FAMILY_ROLES = ['parent', 'sibling', 'child', 'grandparent', 'grandchild', 'greatgrandchild', 'relative', 'niece', 'pet'];
+const KNOWN_CHANCE = 0.6;
+
+/** Someone from "People you know" who has not yet appeared in this life, or null. */
+function someoneKnown(o) {
+  const state = store.state;
+  if (!state || o.firstName || FAMILY_ROLES.includes(o.role)) return null;
+  // Someone who has dropped out of the player's life (an old classmate, say) can turn up again later.
+  const used = Object.values(state.npcs).map((n) => n.flags?.knownId).filter(Boolean);
+  const free = getPeople().filter((x) => !used.includes(x.id) && (!o.gender || x.gender === o.gender));
+  if (!free.length || !rng.chance(KNOWN_CHANCE)) return null;
+  return rng.pick(free);
+}
 
 const meter = (mean = 55, spread = 35) => Math.round(clamp(rng.around(mean, spread)));
 
@@ -38,11 +54,12 @@ function freshName(pool) {
 export function makeNpc(o) {
   const country = COUNTRIES[o.countryId];
   const names = country.names;
-  const gender = o.gender ?? rng.pick(['male', 'female']);
+  const known = someoneKnown(o);
+  const gender = known?.gender ?? o.gender ?? rng.pick(['male', 'female']);
   const npc = {
     id: uid('npc'),
-    firstName: o.firstName ?? freshName(names[gender] ?? names.female, gender),
-    lastName: surnameFor(o.countryId, o.lastName ?? rng.pick(names.last), gender),
+    firstName: known?.first ?? o.firstName ?? freshName(names[gender] ?? names.female, gender),
+    lastName: known?.last && !o.lastName ? known.last : surnameFor(o.countryId, o.lastName ?? rng.pick(names.last), gender),
     gender,
     age: Math.max(0, Math.round(o.age)),
     alive: true,
@@ -55,7 +72,7 @@ export function makeNpc(o) {
     appearance: ensureStyled(o.appearance ?? randomAppearance(o.skinHint, gender), gender),
     traits: randomTraits(),
     lastInteractionAge: -1,
-    flags: {},
+    flags: known ? { known: true, knownId: known.id } : {},
   };
   if (o.role !== 'pet') {
     npc.orientation = o.orientation ?? rng.weighted(ORIENTATION_WEIGHTS, (x) => x[1])[0];

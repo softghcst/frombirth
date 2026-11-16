@@ -132,6 +132,7 @@ function careersFor(npc) {
 const bandPay = (level, where = 0.4) => localWage((level.pay[0] + (level.pay[1] - level.pay[0]) * where) * 1000, country());
 
 function startJob(npc, quiet = false) {
+  if (npc.flags.royal) return false; // working royals do not take jobs
   const options = careersFor(npc);
   if (!options.length) return false;
   // After losing a job, most people go back to the field they know, a rung lower.

@@ -1,6 +1,7 @@
 // Work & School tab: where you stand, what you have committed to, who can
 // open doors for you, and every school, housing and part-time-job action.
 // Full careers arrive in Phase 4.
+import { politicsCard, politicsAction } from '../politics.js';
 import { player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import * as edu from '../../engine/education.js';
@@ -379,9 +380,12 @@ export default {
       ${contacts()}
       ${careerCard()}
       ${btns(work)}
+      ${politicsCard()}
       <div class="card"><h3>Work history</h3>${past}</div>`;
 
     el.onclick = (ev) => {
+      const pol = ev.target.closest('[data-pol]')?.dataset.pol;
+      if (pol) return politicsAction(pol, api);
       const id = ev.target.closest('[data-act]')?.dataset.act;
       if (!id) return;
       ({ ...careerHandlers(api), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),

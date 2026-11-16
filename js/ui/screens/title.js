@@ -1,4 +1,5 @@
 // Title screen: start a life, resume a saved life, or visit the graveyard.
+import { openSettings } from '../settings.js';
 import { esc, fmtMoney } from '../../util.js';
 import { COUNTRIES } from '../../data/countries.js';
 import { listSlots, loadGame, deleteSlot, getGraveyard, epitaphsEarned } from '../../save.js';
@@ -53,6 +54,7 @@ export function renderTitle(app, hooks) {
       <div class="btn-stack">
         <button class="btn primary" data-random>Begin a random life</button>
         <button class="btn" data-design>Design a life</button>
+        <button class="btn" data-settings>Settings</button>
       </div>
       <div class="title-section"><h2>Saved lives</h2>
         ${slotRows || '<p class="empty">No lives in progress.</p>'}</div>
@@ -68,6 +70,7 @@ export function renderTitle(app, hooks) {
     const del = e.target.closest('[data-delete]');
     const grave = e.target.closest('[data-grave]');
     if (e.target.closest('[data-epitaphs]')) return openEpitaphCollection();
+    if (e.target.closest('[data-settings]')) return openSettings();
     if (load) {
       const state = loadGame(load.dataset.load);
       if (state) hooks.onPlay(state);

@@ -13,6 +13,8 @@ import { openAppearanceEditor } from '../../avatar/editor.js';
 import * as salon from '../../engine/salon.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
 import { messageModal } from '../modals.js';
+import { royalCard, bindRoyalCard } from '../royalty.js';
+import { openSettings } from '../settings.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -39,6 +41,7 @@ export default {
         ${meterHtml('Dance', p.talents.dance, true)}
         <div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat(p)}</strong> / 100</span></div>
       </div>
+      ${royalCard()}
       ${skillsCard()}
       <div class="card"><h3>Identity</h3>
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
@@ -65,10 +68,12 @@ export default {
       <div class="card"><h3>Milestones</h3>${milestones}</div>
       <div class="section-label">Game</div>
       <div class="btn-stack">
+        <button class="btn" data-settings>Settings</button>
         <button class="btn" data-exit>Save and return to title</button>
         <button class="btn danger" data-end>End this life</button>
       </div>`;
 
+    bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
     el.querySelector('[data-passport]').onclick = () => openPassport();
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
@@ -82,6 +87,7 @@ export default {
       await messageModal({ body: r.text, tone: r.tone });
     };
     if (el.querySelector('[data-surgery]')) el.querySelector('[data-surgery]').onclick = () => cosmeticSurgery(api);
+    el.querySelector('[data-settings]').onclick = () => openSettings();
     el.querySelector('[data-exit]').onclick = () => api.exitToTitle();
     el.querySelector('[data-end]').onclick = async () => {
       const sure = await confirmModal({

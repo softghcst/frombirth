@@ -116,6 +116,11 @@ export const categories = () => CAREER_CATEGORIES;
  */
 export function startApplication(id) {
   const career = CAREER_BY_ID[id];
+  const pr = player().royal;
+  if (pr && !pr.waiting && ['monarch', 'heir', 'royal'].includes(pr.rank) && career.type !== 'military') {
+    return { kind: 'blocked', text: 'Members of the royal family do not take jobs. The armed forces are the one exception; otherwise you would have to give up your place first.' };
+  }
+  if (player().politics && player().politics.tier >= 2) return { kind: 'blocked', text: `Being ${player().politics.title} is a full-time job. You would have to resign first.` };
   if (unmet(career).length) return { kind: 'blocked', text: unmet(career)[0] };
   const offer = standingOffer(career);
   if (offer) return { kind: 'offer', text: offer.text };

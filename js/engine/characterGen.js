@@ -1,5 +1,7 @@
 // Creates a brand-new life: the player, their family and the opening journal.
 import { rng } from '../rng.js';
+import { bornInto } from './royalty.js';
+import { titleOf } from './royalty.js';
 import { uid } from '../util.js';
 import { COUNTRIES, COUNTRY_LIST, surnameFor } from '../data/countries.js';
 import { TRAIT_BY_ID } from '../data/traits.js';
@@ -25,6 +27,7 @@ import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
  * @param {'music'|'sports'|'acting'|'crime'|'singing'|'dance'} [opts.talent]  a guaranteed natural gift
  * @param {'struggling'|'comfortable'|'wealthy'} [opts.background]
  * @param {string} [opts.orientation]  one of ORIENTATIONS in engine/identity.js
+ * @param {'commoner'|'noble'|'royal'} [opts.birthRank]  only matters in a monarchy; left out, a title at birth is rare
  * @param {boolean} [opts.trans]  whether `gender` differs from the one registered at birth
  * @returns {import('../types.js').GameState}
  */
@@ -109,14 +112,15 @@ export function createLife(opts = {}) {
   }
 
   // Opening journal
+  const an = (job) => `${/^[aeiou]/i.test(job) ? 'an' : 'a'} ${job}`;
   const j = (text, tone = 'neutral') => ({ age: 0, text, kind: 'system', tone });
   const kind = gender === 'male' ? 'a boy' : gender === 'female' ? 'a girl' : 'a baby';
   const journal = [
     j(`You are born in ${city}, ${c.name}: ${kind} named ${firstName} ${lastName}.`),
-    j(`Your mother is ${mother.firstName}, a ${mother.occupation}, age ${mother.age}.`),
+    j(`Your mother is ${mother.firstName}, ${an(mother.occupation)}, age ${mother.age}.`),
   ];
   if (father) {
-    journal.push(j(`Your father is ${father.firstName}, a ${father.occupation}, age ${father.age}.`));
+    journal.push(j(`Your father is ${father.firstName}, ${an(father.occupation)}, age ${father.age}.`));
     if (fam.status === 'separated') journal.push(j('Your parents are no longer together. You live with your mother.'));
   } else {
     journal.push(j('Your father is not in the picture.'));
@@ -138,6 +142,27 @@ export function createLife(opts = {}) {
   for (const id of traits) {
     const who = sources[id];
     if (who !== 'self') journal.push(j(`You have your ${who}'s ${TRAIT_BY_ID[id].name.toLowerCase()} nature.`));
+  }
+  // Born to a title, in a country that has them.
+  bornInto(player, opts.birthRank);
+  if (player.royal) {
+    const royalBlood = ['heir', 'royal'].includes(player.royal.rank);
+    for (const par of [mother, father].filter(Boolean)) {
+      par.occupation = royalBlood ? 'member of the royal family' : 'landed aristocrat';
+      par.wealth = Math.max(par.wealth, royalBlood ? 97 : 85);
+      par.meters.money = par.wealth;
+      par.savings = Math.max(par.savings, Math.round(par.savings * 6));
+      if (royalBlood) par.flags.royal = { rank: 'royal', line: null, title: titleOf(c.id, 'royal', par.gender) };
+    }
+    player.hidden.fame = royalBlood ? 70 : 15;
+    const what = royalBlood ? 'a member of the royal family' : 'a landed aristocrat';
+    for (const e of journal) {
+      if (/^Your (mother|father) is /.test(e.text)) e.text = e.text.replace(/, an? [^,]+, age/, `, ${what}, age`);
+      if (/^Your family (is|does) /.test(e.text)) e.text = royalBlood ? 'Your family lives in a palace.' : 'Your family has land, a great house, and a name older than the country\'s laws.';
+    }
+    journal.splice(1, 0, j(royalBlood
+      ? `You are born into the royal family: ${titleOf(c.id, player.royal.rank, gender)} ${firstName}${player.royal.line ? `, ${player.royal.line === 1 ? 'heir to the throne' : `number ${player.royal.line} in line to the throne`}` : ''}. The guns fire a salute.`
+      : `You are born into the nobility. One day you will be ${titleOf(c.id, player.royal.rank, gender)}.`, 'good'));
   }
   player.flags.longevity = rollLongevity();
   if (player.flags.longevity >= 8) journal.push(j('People in your family tend to live to a great age.', 'good'));
