@@ -8,7 +8,7 @@ import * as kids from '../../engine/children.js';
 import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openFamilyTree } from '../familyTree.js';
-import { avatarSvg, petGlyph } from '../avatar.js';
+import { avatarSvg, petGlyph, royalDress } from '../avatar.js';
 import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
@@ -32,7 +32,7 @@ const GROUPS = [
 
 const portrait = (npc) => (npc.role === 'pet'
   ? `<div class="avatar glyph">${petGlyph(npc.species)}</div>`
-  : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship })}</div>`);
+  : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship, royal: royalDress(npc.flags.royal?.rank), label: npc.firstName })}</div>`);
 
 async function report(api, r) {
   api.changed();

@@ -21,7 +21,7 @@ $('#editor-json').addEventListener('click', () => { $('#json').textContent = JSO
 function newFamily() {
   const mother = randomAppearance(rng.int(0, 3), 'female');
   const father = randomAppearance(rng.int(7, 11), 'male');
-  for (const key of ['face', 'eyeShape', 'brows', 'nose', 'lips']) {
+  for (const key of ['head', 'eyes', 'brows', 'nose', 'lips']) {
     while (father.inherited[key] === mother.inherited[key]) father.inherited[key] = rng.pick(CATALOG[key]).id;
   }
   mother.style.hairDye = rng.pick(['pink', 'blue', 'purple', 'teal', 'red']);
@@ -30,7 +30,7 @@ function newFamily() {
     { label: 'Child, 9', ...child('female', 9) }, { label: 'Child, 16', ...child('male', 16) }] };
 }
 
-const FEATURES = [['face', 'Face'], ['skin', 'Skin'], ['eyeShape', 'Eye shape'], ['eyeColor', 'Eye colour'], ['brows', 'Brows'], ['nose', 'Nose'],
+const FEATURES = [['head', 'Face'], ['skin', 'Skin'], ['eyes', 'Eyes'], ['eyeColor', 'Eye colour'], ['brows', 'Brows'], ['nose', 'Nose'],
   ['lips', 'Lips'], ['hairColor', 'Natural hair'], ['hairTexture', 'Texture']];
 
 function showFamily(family, note = '') {
@@ -46,7 +46,7 @@ function showFamily(family, note = '') {
     }).join('');
     return `<div class="person"><div class="face">${avatarSvg({ appearance: a, age: person.age, gender: person.gender, seed: `lab-${i}` })}</div>
       <h3>${esc(person.label)}</h3>
-      <p>Wearing: ${esc(part('hair', a.style.hair).name)}${a.style.hairDye ? `, dyed ${esc(part('hairDye', a.style.hairDye).name.toLowerCase())}` : ''}</p>
+      <p>Wearing: ${esc(part('hair', a.style.hair)?.name ?? 'Shaved')}${a.style.hairDye ? `, dyed ${esc(part('hairDye', a.style.hairDye).name.toLowerCase())}` : ''}</p>
       <table>${rows}</table></div>`;
   };
   $('#family').innerHTML = family.people.map(card).join('');
@@ -82,15 +82,16 @@ $('#family-save').addEventListener('click', () => {
 });
 
 // ---------- 3. Every part ----------
-const base = normalize({ inherited: { face: 'oval', skin: 'sand', eyeShape: 'almond', eyeColor: 'brown', brows: 'soft_arch', nose: 'narrow', lips: 'full', hairColor: 'dark_brown', hairTexture: 'straight', marks: [] }, style: { hair: 'short_crop' } });
-const HALF = { hair: 'style', hairDye: 'style', glasses: 'style', facialHair: 'style', makeup: 'style', lipColor: 'style' };
-const SHAVED = ['face', 'eyeShape', 'eyeColor', 'brows', 'nose', 'lips', 'marks'];
+const base = normalize({ v: 3, inherited: { head: 'face_01_oval', skin: 'sand', eyes: 'eyes_10', eyeColor: 'brown', brows: 'brows_10', nose: 'nose_10', lips: 'lips_10',
+  hairColor: 'dark_brown', hairTexture: 'straight', marks: [] }, style: { hair: 'bald', outfit: 'outfit_01_tee' } }, 'sheet');
+const STYLE = new Set(['hair', 'hairDye', 'glasses', 'facialHair', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat']);
 $('#parts').innerHTML = Object.entries(CATALOG).map(([key, list]) => `
   <h3>${esc(key)} <small>${list.length} parts</small></h3>
   <div class="sheet">${list.map((x) => {
     const a = cloneAppearance(base);
-    if (key === 'marks') a.inherited.marks = [x.id]; else a[HALF[key] ?? 'inherited'][key] = x.id;
-    if (SHAVED.includes(key)) a.style.hair = 'bald';
-    if (key === 'hairDye' || key === 'hairColor' || key === 'hairTexture') a.style.hair = 'long_wavy';
+    if (key === 'marks') a.inherited.marks = [x.id];
+    else if (key === 'jewelry') a.style.jewelry = [x.id];
+    else a[STYLE.has(key) ? 'style' : 'inherited'][key] = x.id;
+    if (['hairDye', 'hairColor', 'hairTexture'].includes(key)) a.style.hair = 'hair_girl_long_01';
     return `<figure><div class="face">${avatarSvg({ appearance: a, age: 28, seed: 'sheet' })}</div><figcaption>${esc(x.name)}<code>${esc(x.id)}</code></figcaption></figure>`;
   }).join('')}</div>`).join('');

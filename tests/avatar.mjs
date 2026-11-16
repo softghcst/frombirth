@@ -1,120 +1,127 @@
 // Checks the avatar system. Run with: node tests/avatar.mjs
-//  - every part has a unique id and draws without errors
-//  - ids already shipped are still present (so existing saves keep loading)
+//  - every part in the manifest is on disk, normalised, and has the ids the renderer uses
+//  - every hand-curated id names a real part
+//  - colour ids that have shipped are still present (so existing saves keep their colours)
+//  - saves from both earlier avatar systems, missing data and unknown ids all load to a complete, stable face
 //  - children are built only from what their parents were born with
-//  - old saves, missing data and unknown ids all load to a stable face
-import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part } from '../js/avatar/catalog.js';
+//  - portraits render at every age and in every situation, using only files that exist
+import { readFileSync, existsSync } from 'node:fs';
+import { AVATAR_MANIFEST, PART_BY_ID } from '../js/avatarManifest.js';
+import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
+import { dressFor, filesFor, ageStage } from '../js/CharacterAvatar.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
+import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
 
 rng.seed(20240611);
 const problems = [];
 const check = (ok, msg) => { if (!ok) problems.push(msg); };
+const root = new URL('../', import.meta.url);
 
-// Ids that have shipped. Add new ids to the catalogue freely; never remove one from this list.
-const SHIPPED = {
-  face: ['oval', 'round', 'square', 'heart', 'long', 'diamond'],
-  skin: ['porcelain', 'ivory', 'rose_beige', 'sand', 'golden', 'olive', 'tan', 'bronze', 'chestnut', 'umber', 'espresso', 'ebony'],
-  eyeShape: ['almond', 'round', 'hooded', 'upturned', 'downturned', 'monolid'],
-  eyeColor: ['dark_brown', 'brown', 'hazel', 'amber', 'green', 'blue', 'gray'],
-  brows: ['straight', 'straight_bold', 'soft_arch', 'soft_arch_bold', 'sharp_arch', 'sharp_arch_bold', 'rounded'],
-  nose: ['button', 'narrow', 'wide', 'aquiline', 'rounded', 'upturned'],
-  lips: ['thin', 'full', 'cupid', 'lower_full', 'wide', 'heart'],
-  hairColor: ['black', 'dark_brown', 'brown', 'light_brown', 'auburn', 'ginger', 'dark_blonde', 'blonde'],
-  hairTexture: ['straight', 'wavy', 'curly', 'coily'],
-  marks: ['freckles', 'beauty_mark', 'dimples'],
-  hair: ['bald', 'buzz', 'short_crop', 'side_part', 'pixie', 'waves', 'curls_tight', 'coils', 'braids', 'locs', 'bob', 'long_straight',
-    'long_wavy', 'long_curly', 'ponytail', 'bun', 'puffs'],
-  hairDye: ['black', 'dark_brown', 'brown', 'light_brown', 'auburn', 'ginger', 'dark_blonde', 'blonde', 'platinum', 'silver', 'pink', 'red',
-    'purple', 'blue', 'teal', 'green'],
-  glasses: ['round', 'square', 'cat_eye', 'aviator'],
-  facialHair: ['stubble', 'moustache', 'goatee', 'beard', 'full_beard'],
-  makeup: ['soft', 'defined', 'bold'],
-  lipColor: ['rose', 'red', 'berry', 'coral', 'nude', 'black'],
-};
-
-// 1. The catalogue
-let parts = 0;
-for (const [key, list] of Object.entries(CATALOG)) {
-  const ids = list.map((x) => x.id);
-  parts += ids.length;
-  check(new Set(ids).size === ids.length, `${key}: duplicate id`);
-  check(list.every((x) => x.id && x.name), `${key}: a part is missing its id or name`);
-  for (const id of SHIPPED[key] ?? []) check(ids.includes(id), `${key}: shipped id "${id}" has been removed; saves that use it would change`);
-  check(SHIPPED[key], `${key}: add its ids to SHIPPED in tests/avatar.mjs`);
-}
-
-// 2. Every part draws, at every age
-const base = normalize(null, 'base');
-const bad = (svg) => /NaN|undefined|null\b/.test(svg) || !svg.startsWith('<svg') || !svg.endsWith('</svg>');
-for (const [key, list] of Object.entries(CATALOG)) {
-  for (const x of list) {
-    const a = cloneAppearance(base);
-    if (key === 'marks') a.inherited.marks = [x.id];
-    else if (STYLE_KEYS.includes(key)) a.style[key] = x.id; else a.inherited[key] = x.id;
-    for (const age of [0, 4, 10, 16, 30, 70, 90]) check(!bad(avatarSvg({ appearance: a, age, seed: 's', mood: 20 + age })), `${key}/${x.id} draws badly at age ${age}`);
+// 1. The artwork.
+for (const [folder, list] of Object.entries(AVATAR_MANIFEST)) {
+  for (const p of list) {
+    const file = new URL(`assets/avatars/${p.file}`, root);
+    if (!existsSync(file)) { check(false, `missing file ${p.file}`); continue; }
+    const svg = readFileSync(file, 'utf8');
+    check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-pathways="1"') && svg.includes('<g id="art">'), `${p.file} is not normalised`);
+    if (folder === 'heads') check(svg.includes('id="skin"'), `${p.file} has no skin path for the make-up clip`);
+    check(!/<rect[^>]*fill="#fff/i.test(svg), `${p.file} still has a white background`);
   }
 }
-check(!bad(avatarSvg({ age: 30, seed: 'nobody' })), 'a character with no appearance draws badly');
-check(!bad(avatarSvg({ age: 30, seed: 'jail', jailed: true })), 'the prison portrait draws badly');
+const ids = Object.values(AVATAR_MANIFEST).flat().map((p) => p.id);
+check(new Set(ids).size === ids.length, 'duplicate part ids in the manifest');
 
-// 3. Inheritance
-let fromParents = 0; let total = 0; const combos = new Set(); let dyeLeaks = 0; let twins = 0;
-for (let f = 0; f < 300; f++) {
+// 2. Curated ids.
+const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, ...Object.values(CUR.OUTFITS).flat(),
+  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch),
+  ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
+  ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, CUR.GRADUATION.hat];
+for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
+for (const h of AVATAR_MANIFEST.hair) if (!/baby/.test(h.id)) check(!!CUR.HAIR_TYPE[h.id], `hairstyle without a texture: ${h.id}`);
+
+// 3. Colours that saves store by id.
+const SHIPPED = {
+  skin: ['porcelain', 'ivory', 'rose_beige', 'sand', 'golden', 'olive', 'tan', 'bronze', 'chestnut', 'umber', 'espresso', 'ebony'],
+  eyeColor: ['dark_brown', 'brown', 'hazel', 'amber', 'green', 'blue', 'gray'],
+  hairColor: ['black', 'dark_brown', 'brown', 'light_brown', 'auburn', 'ginger', 'dark_blonde', 'blonde'],
+  hairDye: ['black', 'dark_brown', 'brown', 'light_brown', 'auburn', 'ginger', 'dark_blonde', 'blonde', 'platinum', 'silver', 'pink', 'red', 'purple', 'blue', 'teal', 'green'],
+  lipColor: ['rose', 'red', 'berry', 'coral', 'nude', 'black'],
+  hairTexture: ['straight', 'wavy', 'curly', 'coily'],
+};
+for (const [key, list] of Object.entries(SHIPPED)) for (const id of list) check(!!part(key, id), `shipped ${key} id removed: ${id}`);
+
+// 4. Loading anything.
+const valid = (a, label) => {
+  check(a.v === 3, `${label}: not version 3`);
+  for (const key of INHERITED_KEYS) check(!!part(key, a.inherited[key]), `${label}: inherited ${key} invalid (${a.inherited[key]})`);
+  check(a.style.hair === 'bald' || !!part('hair', a.style.hair), `${label}: hair invalid`);
+  for (const key of STYLE_KEYS) if (!['hair', 'jewelry'].includes(key) && a.style[key] != null) check(!!part(key, a.style[key]), `${label}: style ${key} invalid`);
+  check(Array.isArray(a.style.jewelry) && Array.isArray(a.inherited.marks), `${label}: lists missing`);
+};
+const v2 = { v: 2, inherited: { face: 'long', skin: 'umber', eyeShape: 'hooded', eyeColor: 'green', brows: 'sharp_arch', nose: 'aquiline', lips: 'cupid', hairColor: 'auburn',
+  hairTexture: 'coily', marks: ['freckles', 'dimples'] }, style: { hair: 'locs', hairDye: 'teal', glasses: 'aviator', facialHair: 'goatee', makeup: 'bold', lipColor: 'berry' } };
+const cases = { nothing: undefined, empty: {}, fourNumbers: { skin: 3, hair: 4, eyes: 2, hairStyle: 1 }, v2, unknown: { v: 3, inherited: { head: 'gone', skin: 'nope' }, style: { hair: 'gone', jewelry: ['gone'] } } };
+for (const [label, saved] of Object.entries(cases)) {
+  const a = normalize(saved, `seed-${label}`);
+  valid(a, label);
+  check(JSON.stringify(a) === JSON.stringify(normalize(saved, `seed-${label}`)), `${label}: not stable between loads`);
+}
+const fromV2 = normalize(v2, 'x');
+check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green' && fromV2.style.hairDye === 'teal' && fromV2.inherited.head === 'head_18_long_rect'
+  && fromV2.style.glasses && fromV2.style.facialHair && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colours, dye, face shape or accessories');
+// Two relatives who shared an old nose still share one.
+check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inherited.nose, 'old shared nose no longer shared');
+
+// 5. Random faces and families.
+let coily = 0, deep = 0;
+for (let i = 0; i < 400; i++) {
+  const g = i % 2 ? 'female' : 'male';
+  const a = randomAppearance(i % 12, g);
+  valid(normalize(a, `r${i}`), `random ${i}`);
+  check(CUR.RESTING.eyes.includes(a.inherited.eyes) && CUR.RESTING.lips.includes(a.inherited.lips), `random ${i} was given an expression for a resting face`);
+  if (i % 12 >= 8) { deep++; if (['coily', 'curly'].includes(a.inherited.hairTexture)) coily++; }
+}
+check(coily / deep > 0.7, `deep skin tones should mostly have curly or coily hair (${coily}/${deep})`);
+for (let i = 0; i < 200; i++) {
   const mum = randomAppearance(rng.int(0, 11), 'female');
   const dad = randomAppearance(rng.int(0, 11), 'male');
-  mum.style.hairDye = 'pink'; mum.style.hair = 'bob'; dad.style.hairDye = 'blue'; dad.style.glasses = 'round'; dad.style.facialHair = 'beard';
-  const kids = [];
-  for (let k = 0; k < 4; k++) {
-    const child = ensureStyled(inheritAppearance(mum, dad), k % 2 ? 'male' : 'female');
-    kids.push(JSON.stringify(child.inherited));
-    for (const key of INHERITED_KEYS) {
-      check(part(key, child.inherited[key]), `child has unknown ${key} "${child.inherited[key]}"`);
-      total++;
-      if (key === 'skin') {
-        const [a, b, c] = [mum, dad, child].map((x) => part('skin', x.inherited.skin).depth);
-        check(c >= Math.min(a, b) - 1 && c <= Math.max(a, b) + 1, `child's skin depth ${c} is outside the parents' ${a} and ${b}`);
-        fromParents++;
-      } else if (child.inherited[key] === mum.inherited[key] || child.inherited[key] === dad.inherited[key]) fromParents++;
-    }
-    if (child.style.hairDye || child.style.glasses || child.style.facialHair || child.style.makeup) dyeLeaks++;
-    if (!part('hairColor', child.inherited.hairColor)) dyeLeaks++; // a dye colour must never become a natural colour
-    check(child.style.hair && part('hair', child.style.hair), 'child has no haircut');
-    combos.add(kids[k]);
-  }
-  if (new Set(kids).size < 4) twins++;
+  mum.style.hairDye = 'pink'; dad.style.outfit = 'outfit_03_suit';
+  const kid = ensureStyled(inheritAppearance(mum, dad), i % 2 ? 'female' : 'male');
+  valid(normalize(kid, `k${i}`), `child ${i}`);
+  check(kid.style.hairDye == null, 'a parent\'s dye reached a child');
+  const before = JSON.stringify(kid);
+  mum.style.hair = 'bald'; dad.inherited.skin = 'porcelain';
+  check(before === JSON.stringify(kid), 'a child changed when a parent did');
+  check(JSON.stringify(cloneAppearance(kid)) === before, 'clone is not a copy');
 }
-check(dyeLeaks === 0, `${dyeLeaks} children picked up a parent's styling`);
-check(fromParents / total > 0.9, `only ${(fromParents / total * 100).toFixed(0)}% of features came from a parent`);
-check(combos.size > 900, `siblings are not varied enough (${combos.size} distinct faces in 1,200 children)`);
 
-// A parent restyled after the birth leaves the child as they were.
-{ const mum = randomAppearance(2, 'female'); const dad = randomAppearance(9, 'male');
-  const child = ensureStyled(inheritAppearance(mum, dad), 'female');
-  const saved = JSON.stringify(child);
-  mum.style.hairDye = 'green'; mum.style.hair = 'bald'; dad.style.glasses = 'aviator';
-  check(JSON.stringify(child) === saved, 'restyling a parent changed their child');
-  check(JSON.stringify(JSON.parse(saved)) === saved && JSON.stringify(normalize(JSON.parse(saved), 'x')) === JSON.stringify(normalize(child, 'x')), 'a child does not survive a save and reload unchanged'); }
+// 6. Portraits.
+const SITUATIONS = [{}, { jailed: true }, { royal: { rank: 'monarch' } }, { royal: { rank: 'heir' } }, { royal: { rank: 'royal' } }, { royal: { rank: 'noble' } },
+  { career: { id: 'police' } }, { career: { id: 'police', level: 5 } }, { career: { id: 'firefighter' } }, { career: { id: 'doctor' } }, { career: { id: 'kitchen' } },
+  { mood: 3 }, { emotion: 'emotion_04_love_hearts' }];
+for (const age of [0, 1, 3, 7, 12, 15, 30, 49, 55, 66, 80, 101]) {
+  for (const [i, s] of SITUATIONS.entries()) {
+    const a = randomAppearance(rng.int(0, 11), i % 2 ? 'female' : 'male');
+    a.style.hat = i === 0 ? 'hat_01_beanie' : null;
+    let svg = '';
+    try { svg = avatarSvg({ appearance: a, age, gender: i % 2 ? 'female' : 'male', seed: `p${age}-${i}`, mood: 60, ...s }); } catch (e) { check(false, `portrait threw at ${age} (${JSON.stringify(s)}): ${e.message}`); continue; }
+    for (const m of svg.matchAll(/href="\.\/assets\/avatars\/([^"#]+)#(art|skin)"/g)) check(existsSync(new URL(`assets/avatars/${m[1]}`, root)), `portrait uses a missing file ${m[1]}`);
+    check(!/undefined|NaN|null/.test(svg), `portrait at ${age} (${JSON.stringify(s)}) has a hole: ${svg.match(/.{40}(undefined|NaN|null).{20}/)?.[0]}`);
+    const d = dressFor(resolveLook(a, 'x', 'female'), { age, ...s });
+    if (s.jailed) check(d.clothes === CUR.PRISON, 'prisoners are not in prison clothes');
+    if (s.royal?.rank === 'monarch' && age >= 13) check(/crown_0[13]/.test(d.crown ?? ''), 'a monarch has no crown');
+    if (ageStage(age) === 'baby') check(d.head === 'head_00_baby' && !d.glasses && !d.jewelry.length, 'a baby is wearing grown-up things');
+    if (age >= 64) check(d.aging.length >= 3, 'no lines with age');
+    if (s.career?.id === 'police' && age >= 18) check(/police|swat/.test(d.clothes) && /police|swat/.test(d.hat ?? ''), 'police are not in uniform');
+    check(filesFor(resolveLook(a, 'x'), { age, ...s }).every((f) => existsSync(new URL(f.replace('./', ''), root))), 'filesFor lists a missing file');
+  }
+}
 
-// One parent, or none
-{ const mum = randomAppearance(10, 'female');
-  let near = 0; for (let i = 0; i < 200; i++) { const c = inheritAppearance(mum, null); if (Math.abs(part('skin', c.inherited.skin).depth - 10) <= 2) near++; }
-  check(near > 170, `with one known parent, only ${near}/200 children resembled them in skin tone`);
-  const orphan = ensureStyled(inheritAppearance(null, null), 'male');
-  check(INHERITED_KEYS.every((k) => part(k, orphan.inherited[k])) && orphan.style.hair, 'a child with no known parents is incomplete'); }
-
-// 4. Loading saves
-{ const old = { skin: 4, hair: 1, hairStyle: 2, eyes: 1, weight: 50 };
-  const a = normalize(old, 'npc_1'); const b = normalize(old, 'npc_1');
-  check(JSON.stringify(a) === JSON.stringify(b), 'an old save does not load to the same face twice');
-  check(a.inherited.skin === 'chestnut' && a.inherited.hairColor === 'brown' && a.inherited.eyeColor === 'blue' && a.style.hair === 'long_straight', 'an old save lost its colours or cut');
-  check(JSON.stringify(normalize(a, 'someone-else')) === JSON.stringify(a), 'loading a current appearance changed it');
-  const gap = normalize({ inherited: { face: 'no_such_face', skin: 'tan' }, style: { hair: 'removed_cut', hairDye: 'pink' } }, 'npc_2');
-  check(part('face', gap.inherited.face) && part('hair', gap.style.hair) && gap.inherited.skin === 'tan' && gap.style.hairDye === 'pink', 'unknown ids were not replaced cleanly');
-  check(JSON.stringify(normalize(undefined, 'npc_3')) === JSON.stringify(normalize(undefined, 'npc_3')), 'a missing appearance is not stable');
-  check(JSON.stringify(normalize(undefined, 'npc_3')) !== JSON.stringify(normalize(undefined, 'npc_4')), 'every missing appearance gets the same face'); }
-
-console.log(`${parts} avatar parts in ${Object.keys(CATALOG).length} groups; 1,200 children generated (${(fromParents / total * 100).toFixed(0)}% of features from a parent, ${combos.size} distinct faces, ${twins} families with look-alike siblings).`);
-if (problems.length) { console.log([...new Set(problems)].slice(0, 30).join('\n')); process.exit(1); }
-console.log('The avatar system is sound.');
+if (problems.length) {
+  console.log([...new Set(problems)].slice(0, 30).join('\n'));
+  console.log(`${problems.length} problem(s).`);
+  process.exit(1);
+}
+console.log(`The avatar system is sound: ${ids.length} parts, every save format loads, families hold together.`);

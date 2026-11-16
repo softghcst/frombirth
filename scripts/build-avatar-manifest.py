@@ -1,0 +1,793 @@
+#!/usr/bin/env python3
+"""
+Builds the avatar parts: unpacks new asset packs, sorts every SVG into its
+folder, cleans and normalises each one onto the shared 512x512 portrait
+frame, swaps the main colours for CSS variables, and writes the manifest the
+game reads (js/avatarManifest.js).
+
+Run it from the repository root whenever parts are added:
+
+    python3 scripts/build-avatar-manifest.py                 # process anything new in assets/avatars/
+    python3 scripts/build-avatar-manifest.py packs/new.zip   # unpack a pack first (nested zips too)
+    python3 scripts/build-avatar-manifest.py --force         # re-measure everything (only on untouched sources)
+
+Standard library only. A processed file carries data-pathways="1" on its
+<svg> element and is skipped on later runs, so running it twice is safe.
+
+How placement works. The artwork arrives on canvases of every size, each
+part drawn wherever the artist put it. The script measures what is actually
+drawn (from the path coordinates), then fits each kind of part to its place
+on one template face: eyes to the eye line, brows above them, outfits to the
+shoulders, and so on (LAYOUT below). Hair is fitted by its face opening: the
+script scans each hairstyle row by row, finds the gap the face shows
+through, and scales and centres the hair so that gap matches the template
+face. Coordinates are rewritten into the 512 frame, so no transforms remain.
+
+Colours. Each recolourable part's main colour becomes a CSS variable with
+the original as fallback, e.g. style="fill:var(--hair-color,#8f4b29)".
+Lighter and darker shades of the same colour become color-mix() of that
+variable, so a dye recolours the highlights too. Outlines, whites and
+decorations keep their colours.
+"""
+import colorsys, json, math, os, re, shutil, sys, tempfile, zipfile
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ASSETS = os.path.join(ROOT, 'assets', 'avatars')
+MANIFEST = os.path.join(ROOT, 'js', 'avatarManifest.js')
+FOLDERS = ['heads', 'eyes', 'eyebrows', 'noses', 'lips', 'hair', 'clothes', 'crowns', 'hats', 'glasses', 'jewelry',
+           'facial_hair', 'makeup', 'aging', 'emotions']
+
+# ---------- 1. Unpacking and sorting ----------
+
+PREFIXES = [  # longest first
+    ('facial_hair', 'facial_hair'), ('accessory', 'jewelry'), ('jewelry', 'jewelry'), ('emotion', 'emotions'),
+    ('glasses', 'glasses'), ('outfit', 'clothes'), ('makeup', 'makeup'), ('eyebrow', 'eyebrows'), ('brows', 'eyebrows'),
+    ('crown', 'crowns'), ('aging', 'aging'), ('head', 'heads'), ('face', 'heads'), ('hair', 'hair'), ('eyes', 'eyes'),
+    ('nose', 'noses'), ('lips', 'lips'), ('hat', 'hats'),
+]
+
+
+def clean_name(name):
+    """'eyes_02.svg.svg' -> 'eyes_02.svg'; 'aging_02_crows_feet 2.svg' -> 'aging_02_crows_feet_2.svg'."""
+    base = name
+    while base.lower().endswith('.svg'):
+        base = base[:-4]
+    base = re.sub(r'[^a-z0-9]+', '_', base.lower()).strip('_')
+    return base + '.svg'
+
+
+def folder_for(name):
+    for prefix, folder in PREFIXES:
+        if name.startswith(prefix):
+            return folder
+    return None
+
+
+def unpack(zips, into):
+    """Extracts zips, and zips inside them, into `into`. Returns the zip files it extracted."""
+    done = []
+    queue = list(zips)
+    while queue:
+        z = queue.pop()
+        with zipfile.ZipFile(z) as f:
+            for member in f.namelist():
+                if member.startswith('__MACOSX/') or '/._' in member or member.endswith('/'):
+                    continue
+                target = os.path.realpath(os.path.join(into, member))
+                if not target.startswith(os.path.realpath(into) + os.sep):
+                    continue  # never write outside the scratch folder
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                with f.open(member) as src, open(target, 'wb') as dst:
+                    shutil.copyfileobj(src, dst)
+                if target.lower().endswith('.zip'):
+                    queue.append(target)
+        done.append(z)
+    return done
+
+
+def sort_into_folders(search_dirs):
+    """Moves every .svg found under search_dirs into assets/avatars/<folder>/ by its filename prefix."""
+    moved, skipped = 0, []
+    for top in search_dirs:
+        for d, _, files in os.walk(top):
+            for f in files:
+                if not f.lower().endswith('.svg'):
+                    continue
+                src = os.path.join(d, f)
+                name = clean_name(f)
+                folder = folder_for(name)
+                if not folder:
+                    skipped.append(f)
+                    continue
+                dest_dir = os.path.join(ASSETS, folder)
+                if os.path.realpath(d) == os.path.realpath(dest_dir) and name == f:
+                    continue
+                os.makedirs(dest_dir, exist_ok=True)
+                dest = os.path.join(dest_dir, name)
+                if os.path.exists(dest) and os.path.realpath(dest) != os.path.realpath(src):
+                    stem = name[:-4]
+                    n = 2
+                    while os.path.exists(os.path.join(dest_dir, f'{stem}_{n}.svg')):
+                        n += 1
+                    dest = os.path.join(dest_dir, f'{stem}_{n}.svg')
+                shutil.move(src, dest)
+                moved += 1
+    return moved, skipped
+
+# ---------- 2. Reading the artwork ----------
+
+NUM = re.compile(r'-?\d*\.?\d+(?:[eE]-?\d+)?')
+TAG = re.compile(r'<(/?)(svg|g|path|rect|circle|ellipse|polygon)\b([^>]*?)(/?)>', re.S)
+
+
+def attr(attrs, name):
+    m = re.search(r'(?:^|\s)' + re.escape(name) + r'="([^"]*)"', attrs)
+    return m.group(1) if m else None
+
+
+def style_prop(attrs, name):
+    st = attr(attrs, 'style') or ''
+    m = re.search(r'(?:^|;)\s*' + re.escape(name) + r'\s*:\s*([^;]+)', st)
+    return m.group(1).strip() if m else None
+
+
+def parse_path(d):
+    """Absolute M/L/H/V/C/S/Q/T/Z only (what the packs use) -> [(cmd, [x, y, ...])]."""
+    out = []
+    for cmd, args in re.findall(r'([MLHVCSQTZmlhvcsqtz])([^MLHVCSQTZmlhvcsqtz]*)', d):
+        nums = [float(n) for n in NUM.findall(args)]
+        if cmd.islower() and cmd != 'z':
+            raise ValueError('relative path commands are not supported')
+        if cmd in 'Zz':
+            out.append(('Z', []))
+            continue
+        size = {'M': 2, 'L': 2, 'T': 2, 'H': 1, 'V': 1, 'C': 6, 'S': 4, 'Q': 4}[cmd]
+        for i in range(0, len(nums) - size + 1, size):
+            c = cmd
+            if cmd == 'M' and i > 0:
+                c = 'L'
+            out.append((c, nums[i:i + size]))
+    # H and V become L so every command is made of x,y pairs.
+    x = y = 0.0
+    norm = []
+    for c, a in out:
+        if c == 'H':
+            c, a = 'L', [a[0], y]
+        elif c == 'V':
+            c, a = 'L', [x, a[0]]
+        if a:
+            x, y = a[-2], a[-1]
+        norm.append((c, a))
+    return norm
+
+
+def shape_to_path(tag, attrs):
+    f = lambda n, dflt=0.0: float(attr(attrs, n) or dflt)
+    if tag == 'rect':
+        x, y, w, h = f('x'), f('y'), f('width'), f('height')
+        return [('M', [x, y]), ('L', [x + w, y]), ('L', [x + w, y + h]), ('L', [x, y + h]), ('Z', [])]
+    if tag in ('circle', 'ellipse'):
+        cx, cy = f('cx'), f('cy')
+        rx = f('r') if tag == 'circle' else f('rx')
+        ry = f('r') if tag == 'circle' else f('ry')
+        k = 0.5523
+        return [('M', [cx + rx, cy]), ('C', [cx + rx, cy + ry * k, cx + rx * k, cy + ry, cx, cy + ry]),
+                ('C', [cx - rx * k, cy + ry, cx - rx, cy + ry * k, cx - rx, cy]),
+                ('C', [cx - rx, cy - ry * k, cx - rx * k, cy - ry, cx, cy - ry]),
+                ('C', [cx + rx * k, cy - ry, cx + rx, cy - ry * k, cx + rx, cy]), ('Z', [])]
+    if tag == 'polygon':
+        pts = [float(n) for n in NUM.findall(attr(attrs, 'points') or '')]
+        cmds = [('M' if i == 0 else 'L', pts[i:i + 2]) for i in range(0, len(pts) - 1, 2)]
+        return cmds + [('Z', [])]
+    return []
+
+
+def read_svg(text):
+    """-> (viewBox [x, y, w, h], [element]) with each element's translate already applied."""
+    head = re.search(r'<svg\b[^>]*>', text, re.S).group(0)
+    vb = [float(n) for n in NUM.findall(attr(head, 'viewBox') or '0 0 512 512')]
+    body = re.sub(r'<!--.*?-->', '', text, flags=re.S)
+    body = re.sub(r'<(title|desc|metadata|sodipodi:[a-z]+)\b.*?</\1>', '', body, flags=re.S)
+    stack = [{'dx': 0.0, 'dy': 0.0, 'fill': None, 'opacity': None, 'rule': None, 'id': None}]
+    elements = []
+    for m in TAG.finditer(body):
+        close, tag, attrs, selfclose = m.groups()
+        if tag == 'svg':
+            continue
+        if tag == 'g':
+            if close:
+                stack.pop()
+                continue
+            top = dict(stack[-1])
+            t = attr(attrs, 'transform')
+            if t:
+                tm = re.match(r'\s*translate\(([^)]*)\)\s*$', t)
+                if not tm:
+                    raise ValueError(f'unsupported transform {t}')
+                v = [float(n) for n in NUM.findall(tm.group(1))]
+                top['dx'] += v[0]
+                top['dy'] += v[1] if len(v) > 1 else 0.0
+            top['fill'] = style_prop(attrs, 'fill') or attr(attrs, 'fill') or top['fill']
+            top['opacity'] = attr(attrs, 'opacity') or top['opacity']
+            top['rule'] = attr(attrs, 'fill-rule') or top['rule']
+            top['id'] = attr(attrs, 'id') or top['id']
+            if not selfclose:
+                stack.append(top)
+            continue
+        if close:
+            continue
+        ctx = stack[-1]
+        cmds = parse_path(attr(attrs, 'd') or '') if tag == 'path' else shape_to_path(tag, attrs)
+        dx, dy = ctx['dx'], ctx['dy']
+        t = attr(attrs, 'transform')
+        if t:
+            tm = re.match(r'\s*translate\(([^)]*)\)\s*$', t)
+            if not tm:
+                raise ValueError(f'unsupported transform {t}')
+            v = [float(n) for n in NUM.findall(tm.group(1))]
+            dx += v[0]
+            dy += v[1] if len(v) > 1 else 0.0
+        cmds = [(c, [a[i] + (dx if i % 2 == 0 else dy) for i in range(len(a))]) for c, a in cmds]
+        fill = style_prop(attrs, 'fill') or attr(attrs, 'fill') or ctx['fill'] or '#000000'
+        if fill == 'none' or not cmds:
+            continue
+        elements.append({'cmds': cmds, 'fill': normal_hex(fill), 'opacity': attr(attrs, 'opacity') or attr(attrs, 'fill-opacity') or ctx['opacity'],
+                         'rule': attr(attrs, 'fill-rule') or ctx['rule'], 'id': attr(attrs, 'id') or ctx['id'],
+                         'layer': attr(attrs, 'data-layer')})
+    return vb, elements
+
+
+def normal_hex(c):
+    c = c.strip().lower()
+    named = {'white': '#ffffff', 'black': '#000000'}
+    c = named.get(c, c)
+    if re.fullmatch(r'#[0-9a-f]{3}', c):
+        c = '#' + ''.join(ch * 2 for ch in c[1:])
+    return c
+
+# ---------- Geometry ----------
+
+
+def flatten(cmds, steps=6):
+    """-> list of polygons (lists of (x, y)) approximating the path."""
+    polys, cur = [], []
+    x = y = 0.0
+    sx = sy = 0.0
+    for c, a in cmds:
+        if c == 'M':
+            if len(cur) > 2:
+                polys.append(cur)
+            cur = [(a[0], a[1])]
+            x, y = a[0], a[1]
+            sx, sy = x, y
+        elif c in ('L', 'T'):
+            cur.append((a[-2], a[-1]))
+            x, y = a[-2], a[-1]
+        elif c == 'Q' or c == 'S':
+            x1, y1, x2, y2 = a
+            for i in range(1, steps + 1):
+                t = i / steps
+                cur.append(((1 - t) ** 2 * x + 2 * (1 - t) * t * x1 + t * t * x2, (1 - t) ** 2 * y + 2 * (1 - t) * t * y1 + t * t * y2))
+            x, y = x2, y2
+        elif c == 'C':
+            x1, y1, x2, y2, x3, y3 = a
+            for i in range(1, steps + 1):
+                t = i / steps
+                u = 1 - t
+                cur.append((u ** 3 * x + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t ** 3 * x3, u ** 3 * y + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t ** 3 * y3))
+            x, y = x3, y3
+        elif c == 'Z':
+            if len(cur) > 2:
+                polys.append(cur)
+            cur = [(sx, sy)]
+            x, y = sx, sy
+    if len(cur) > 2:
+        polys.append(cur)
+    return polys
+
+
+def bbox_of(elements):
+    xs, ys = [], []
+    for e in elements:
+        for poly in e.setdefault('polys', flatten(e['cmds'])):
+            for px, py in poly:
+                xs.append(px)
+                ys.append(py)
+    if not xs:
+        return None
+    return [min(xs), min(ys), max(xs), max(ys)]
+
+
+def area(e):
+    total = 0.0
+    for poly in e.setdefault('polys', flatten(e['cmds'])):
+        s = 0.0
+        for i in range(len(poly)):
+            x1, y1 = poly[i]
+            x2, y2 = poly[(i + 1) % len(poly)]
+            s += x1 * y2 - x2 * y1
+        total += abs(s) / 2
+    return total
+
+
+def row_spans(elements, y):
+    """Filled x-intervals of all elements at height y (even-odd within each element), merged."""
+    spans = []
+    for e in elements:
+        xs = []
+        for poly in e.setdefault('polys', flatten(e['cmds'])):
+            n = len(poly)
+            for i in range(n):
+                x1, y1 = poly[i]
+                x2, y2 = poly[(i + 1) % n]
+                if (y1 <= y < y2) or (y2 <= y < y1):
+                    xs.append(x1 + (y - y1) * (x2 - x1) / (y2 - y1))
+        xs.sort()
+        for i in range(0, len(xs) - 1, 2):
+            spans.append((xs[i], xs[i + 1]))
+    spans.sort()
+    merged = []
+    for a, b in spans:
+        if merged and a <= merged[-1][1] + 0.5:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    return merged
+
+
+def face_opening(elements, box):
+    """
+    For a hairstyle: the gap the face shows through. Scans rows from the top,
+    finds the central gap between hair on the left and on the right, and takes
+    its first widest point (cheekbone level). -> (width, centre_x, y) or None.
+    """
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    cx = (x0 + x1) / 2
+    rows = []
+    for i in range(1, 140):
+        y = y0 + h * i / 140
+        spans = row_spans(elements, y)
+        best = None
+        for (a0, a1), (b0, b1) in zip(spans, spans[1:]):
+            gap = b0 - a1
+            mid = (a1 + b0) / 2
+            if gap > w * 0.14 and abs(mid - cx) < w * 0.25 and (best is None or gap > best[0]):
+                best = (gap, mid, y)
+        rows.append(best)
+    widths = [r[0] if r else 0 for r in rows]
+    start = next((i for i, r in enumerate(rows) if r), None)
+    if start is None:
+        return None
+    # first local maximum, ignoring small wobbles
+    peak = start
+    for i in range(start, len(rows)):
+        if not rows[i]:
+            if i - start > 6:
+                break
+            continue
+        if widths[i] >= widths[peak]:
+            peak = i
+        elif widths[i] < widths[peak] * 0.9 and i - peak > 3:
+            break
+    if i - start < 4:
+        return None
+    return rows[peak]
+
+
+def fringe_edge(elements, box):
+    """The first height, scanning down, at which the hair no longer covers the middle of the face."""
+    x0, y0, x1, y1 = box
+    cx = (x0 + x1) / 2
+    covered = False
+    for i in range(1, 120):
+        y = y0 + (y1 - y0) * i / 120
+        inside = any(a <= cx <= b for a, b in row_spans(elements, y))
+        if inside:
+            covered = True
+        elif covered:
+            return y
+    return None
+
+
+def transform_elements(elements, s, tx, ty):
+    for e in elements:
+        e['cmds'] = [(c, [v * s + (tx if i % 2 == 0 else ty) for i, v in enumerate(a)]) for c, a in e['cmds']]
+        e.pop('polys', None)
+
+# ---------- Colour ----------
+
+
+def rgb(h):
+    h = h.lstrip('#')
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) if len(h) == 6 else (0, 0, 0)
+
+
+def lum(h):
+    r, g, b = [c / 255 for c in rgb(h)]
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def hls(h):
+    return colorsys.rgb_to_hls(*[c / 255 for c in rgb(h)])
+
+
+INK = 0.12  # below this (gamma-encoded) luminance a colour is outline ink
+
+
+def is_white(h):
+    return min(rgb(h)) >= 238
+
+
+def hue_gap(a, b):
+    d = abs(hls(a)[0] - hls(b)[0]) * 360
+    return min(d, 360 - d)
+
+
+# What each folder's main colour becomes. clothes: only everyday outfits; uniforms and costumes keep their colours.
+RECOLOUR = {'heads': 'skin-color', 'noses': 'skin-color', 'hair': 'hair-color', 'facial_hair': 'hair-color',
+            'eyebrows': 'brow-color', 'eyes': 'eye-color', 'lips': 'lip-color', 'makeup': 'blush-color', 'clothes': 'outfit-color'}
+FIXED_OUTFITS = re.compile(r'royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|doublet|jabot|capelet|'
+                           r'police|swat|military|firefighter|doctor|prison|grad|chef|tuxedo')
+
+
+def recolour(folder, name, elements):
+    var = RECOLOUR.get(folder)
+    if not var or (folder == 'clothes' and FIXED_OUTFITS.search(name)):
+        return None
+    weights = {}
+    for e in elements:
+        if e['fill'].startswith('#'):
+            weights[e['fill']] = weights.get(e['fill'], 0) + area(e)
+    if not weights:
+        return None
+    darkest = min(weights, key=lum)
+    marked = [e['fill'] for e in elements if (e.get('id') or '').startswith(('hair-color', 'hair-fill', 'skin')) or e.get('layer') == 'skin-color']
+    hairlike = folder in ('hair', 'facial_hair', 'eyebrows')
+    # Outlines are ink: never recoloured. Hair can itself be nearly black, so there only the darkest of several tones counts as ink.
+    candidates = {c: w for c, w in weights.items() if not is_white(c) and not (lum(c) < INK and (not hairlike or (c == darkest and len(weights) > 1)))}
+    if folder == 'makeup':  # only blush-like pinks and peaches are recoloured; liner, glitter and freckles keep theirs
+        candidates = {c: w for c, w in candidates.items() if (hls(c)[0] * 360 > 330 or hls(c)[0] * 360 < 30) and hls(c)[1] > 0.55}
+    if not candidates:
+        return None
+    main = max(set(marked) & set(candidates), key=lambda c: candidates[c]) if set(marked) & set(candidates) else max(candidates, key=candidates.get)
+    lm = max(lum(main), 0.01)
+    mapping = {main: f'var(--{var},{main})'}
+    for c in candidates:
+        if c == main or hue_gap(c, main) > 32 or abs(hls(c)[2] - hls(main)[2]) > 0.45:
+            continue
+        l = lum(c)
+        if l < lm:
+            p = max(5, min(95, round(100 * l / lm)))
+            mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#000)'
+        else:
+            p = max(5, min(95, round(100 * (1 - l) / max(1 - lm, 0.01))))
+            mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#fff)'
+    for e in elements:
+        if e['fill'] in mapping:
+            e['paint'] = mapping[e['fill']]
+    return main
+
+# ---------- Placement on the template face ----------
+
+# The template, in the 512 frame. Every head is fitted to HEAD; the other
+# parts are placed relative to the face inside it.
+HEAD = {'top': 150, 'bottom': 512, 'cx': 256}
+FACE = {'w': 238, 'top': 154, 'eye_y': 296, 'brow_y': 258, 'nose_y': 340, 'mouth_y': 383, 'chin_y': 424, 'cheek_y': 318,
+        'ear_y': 302, 'ear_span': 318, 'neck_y': 442}
+
+# (max width, max height, anchor-x, anchor-y, anchor): the drawing is scaled to fit inside
+# the box, keeping its shape; anchor 'center' puts its centre on the point, 'top' its top
+# edge, 'bottom' its bottom edge.
+LAYOUT = {
+    'eyes': (172, 72, 256, FACE['eye_y'], 'center'),
+    'eyebrows': (184, 46, 256, FACE['brow_y'], 'center'),
+    'noses': (58, 62, 256, FACE['nose_y'], 'center'),
+    'lips': (82, 46, 256, FACE['mouth_y'], 'center'),
+    'glasses': (248, 110, 256, FACE['eye_y'] + 8, 'center'),
+    'clothes': (420, 400, 256, 432, 'top'),
+    'hats': (300, 250, 256, 268, 'bottom'),
+    'crowns': (176, 150, 256, 176, 'bottom'),
+}
+# Parts whose place depends on what they are, matched on the filename.
+BY_NAME = [
+    ('facial_hair', r'stubble|full_beard|shaped_beard|chinstrap|chevron|vandyke|muttonchop', (232, 999, 256, 340, 'top')),
+    ('facial_hair', r'handlebar|mustache', (104, 999, 256, FACE['mouth_y'] - 20, 'center')),
+    ('facial_hair', r'goatee|soulpatch', (70, 999, 256, FACE['mouth_y'] + 10, 'top')),
+    ('jewelry', r'choker|chain|necklace|pendant', (120, 999, 256, FACE['neck_y'], 'top')),
+    ('jewelry', r'lip_ring', (60, 999, 256, FACE['mouth_y'] + 6, 'center')),
+    ('jewelry', r'helix', (FACE['ear_span'] + 8, 999, 256, FACE['ear_y'] - 22, 'center')),
+    ('jewelry', r'.', (FACE['ear_span'] + 4, 999, 256, FACE['ear_y'] + 22, 'top')),
+    ('aging', r'smile', (150, 999, 256, FACE['mouth_y'] - 8, 'center')),
+    ('aging', r'crows', (238, 999, 256, FACE['eye_y'], 'center')),
+    ('aging', r'forehead', (120, 999, 256, 216, 'center')),
+    ('aging', r'eyebag|under_eye', (168, 999, 256, FACE['eye_y'] + 22, 'center')),
+    ('emotions', r'sweat', (999, 54, 346, 214, 'center')),
+    ('emotions', r'tear', (190, 999, 256, FACE['eye_y'] + 18, 'top')),
+    ('emotions', r'vein', (52, 999, 322, 196, 'center')),
+    ('emotions', r'heart', (330, 999, 256, 200, 'center')),
+    ('makeup', r'blush|contour|highlighter|sunkissed|peach', (214, 999, 256, FACE['cheek_y'] + 18, 'center')),
+    ('makeup', r'freckle', (150, 999, 256, FACE['nose_y'] - 6, 'center')),
+    ('makeup', r'beauty_mark', (14, 999, 290, FACE['mouth_y'] - 16, 'center')),
+    ('makeup', r'egirl|heart', (176, 999, 256, FACE['eye_y'] + 34, 'center')),
+    ('makeup', r'.', (190, 999, 256, FACE['eye_y'] - 6, 'center')),
+]
+
+
+def rule_for(folder, name):
+    """The placement box for a part: by name if a rule matches, else by folder."""
+    for f, pat, rule in BY_NAME:
+        if f == folder and re.search(pat, name):
+            return rule
+    return LAYOUT.get(folder)
+
+
+EAR = {'left_x': 106, 'right_x': 406, 'lobe_y': 326, 'top_y': 270}
+
+
+def hang_from_ears(name, elements, box):
+    """
+    Earrings come as a pair drawn side by side. Each half is kept to a sensible
+    size and hung from its own ear: lobes for most, the top of the ear for
+    helix studs.
+    """
+    cx = (box[0] + box[2]) / 2
+    halves = [[e for e in elements if (lambda b: (b[0] + b[2]) / 2 < cx)(bbox_of([e]))],
+              [e for e in elements if (lambda b: (b[0] + b[2]) / 2 >= cx)(bbox_of([e]))]]
+    halves = [h for h in halves if h]
+    helix = 'helix' in name
+    for side, half in zip(('left', 'right') if len(halves) == 2 else ('right',), halves):
+        x0, y0, x1, y1 = bbox_of(half)
+        w, h = x1 - x0, y1 - y0
+        s = min(34 / w, 78 / h) if not helix else min(24 / w, 40 / h)
+        ax = EAR[f'{side}_x'] + (6 if side == 'left' else -6)
+        ay = EAR['top_y'] if helix else EAR['lobe_y']
+        transform_elements(half, s, ax - (x0 + w / 2) * s, ay - y0 * s)
+    return f'hung from the ears ({len(halves)} piece(s))'
+
+
+def place(folder, name, elements):
+    """Rewrites the elements' coordinates into the 512 frame. -> a note on how it was placed."""
+    box = bbox_of(elements)
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    if folder == 'heads':
+        s = (HEAD['bottom'] - HEAD['top']) / h
+        transform_elements(elements, s, HEAD['cx'] - (x0 + w / 2) * s, HEAD['top'] - y0 * s)
+        return 'fitted to the head box'
+    if folder == 'hair':
+        gap = None if 'baby' in name else face_opening(elements, box)
+        if gap:
+            gw, gx, gy = gap
+            s = FACE['w'] * 1.04 / gw
+            # A believable fit leaves the whole style between about one and two faces wide.
+            top = FACE['cheek_y'] - 16 - (gy - y0) * s  # where the top of the hair would land
+            if FACE['w'] * 0.98 <= w * s <= FACE['w'] * 1.95 and top <= FACE['top'] + 6:
+                # the widest point of the opening sits at cheekbone level
+                transform_elements(elements, s, 256 - gx * s, FACE['cheek_y'] - 16 - gy * s)
+                return f'fitted by its face opening ({gw:.0f} wide)'
+        spread = 0.92 if 'baby' in name else 1.75 if re.search(r'long|medium', name) else 1.45 if 'updo' in name else 1.38
+        s = FACE['w'] * spread / w
+        ty = FACE['top'] - 22 - y0 * s
+        # A heavy fringe must not cover the eyes: find where the hair stops covering the middle of
+        # the face and, if that falls below the brows, lift the whole style until it does not.
+        hairline = fringe_edge(elements, box)
+        lifted = ''
+        if hairline is not None and 'baby' not in name and hairline * s + ty > FACE['brow_y'] - 20:
+            ty = FACE['brow_y'] - 20 - hairline * s
+            lifted = ', lifted clear of the eyes'
+        transform_elements(elements, s, 256 - (x0 + w / 2) * s, ty)
+        return 'no face opening found: fitted to the crown of the head' + lifted
+    if folder == 'jewelry' and not re.search(r'choker|chain|necklace|pendant|lip_ring', name):
+        return hang_from_ears(name, elements, box)
+    rule = rule_for(folder, name)
+    if not rule:
+        return 'left as drawn'
+    bw, bh, ax, ay, anchor = rule
+    s = min(bw / w, bh / h)
+    ty = ay - (y0 + h / 2) * s if anchor == 'center' else ay - y0 * s if anchor == 'top' else ay - y1 * s
+    transform_elements(elements, s, ax - (x0 + w / 2) * s, ty)
+    return f'fitted inside {bw}x{bh} at ({ax}, {ay})'
+
+# ---------- 3. Cleaning one file ----------
+
+HALO_FOLDERS = {'clothes', 'hats', 'crowns', 'jewelry', 'glasses', 'emotions'}
+
+
+def fmt(v):
+    s = f'{v:.1f}'
+    s = s.rstrip('0').rstrip('.') if '.' in s else s
+    return '0' if s in ('-0', '') else s
+
+
+def path_d(cmds):
+    out = []
+    for c, a in cmds:
+        out.append(c + ' '.join(fmt(v) for v in a))
+    return ''.join(out)
+
+
+def process(path, folder, force=False):
+    text = open(path, encoding='utf-8').read()
+    if 'data-pathways="1"' in text and not force:
+        return None
+    vb, elements = read_svg(text)
+    name = os.path.basename(path)[:-4]
+    notes = []
+    # Solid white backgrounds, and the white "sticker" outline some packs put round a garment.
+    box = bbox_of(elements)
+    if box:
+        bw, bh = box[2] - box[0], box[3] - box[1]
+        full = lambda e: (lambda b: b and (b[2] - b[0]) >= bw * 0.9 and (b[3] - b[1]) >= bh * 0.9)(bbox_of([e]))
+        big = lambda e: area(e) > bw * bh * 0.04
+        kept = [e for e in elements if not (is_white(e['fill']) and ((folder in HALO_FOLDERS or abs(bw - vb[2]) < 2) and full(e) or folder == 'hair' and big(e)))]
+        if len(kept) < len(elements) and kept:
+            notes.append(f'removed {len(elements) - len(kept)} white background shape(s)')
+            elements = kept
+    # Heads: the dark silhouette must sit under the skin, or it hides it.
+    if folder == 'heads':
+        skin = [i for i, e in enumerate(elements) if e['fill'] not in ('#000000',) and lum(e['fill']) > 0.2]
+        dark = [i for i, e in enumerate(elements) if lum(e['fill']) < INK]
+        if skin and dark and dark[0] > skin[0]:
+            d = elements.pop(dark[0])
+            elements.insert(0, d)
+            sb, db = bbox_of([elements[skin[0]]]), bbox_of([d])
+            if all(abs(a - b) < 3 for a, b in zip(sb, db)):  # the same shape: no outline would show
+                elements[skin[0]]['stroke'] = d['fill']
+            notes.append('outline moved under the skin')
+    main = recolour(folder, name, elements)
+    if main:
+        notes.append(f'{main} -> var(--{RECOLOUR[folder]})')
+    notes.append(place(folder, name, elements))
+    paths = []
+    for e in elements:
+        role = ''
+        if folder == 'heads' and e.get('paint', '').startswith('var(--skin-color') and 'skin' not in ''.join(paths):
+            role = ' id="skin"'
+        paint = e.get('paint') or e['fill']
+        extra = (f' fill-rule="{e["rule"]}"' if e.get('rule') else '') + (f' opacity="{e["opacity"]}"' if e.get('opacity') else '')
+        stroke = f';stroke:{e["stroke"]};stroke-width:5;stroke-linejoin:round' if e.get('stroke') else ''
+        paths.append(f'<path{role} style="fill:{paint}{stroke}"{extra} d="{path_d(e["cmds"])}"/>')
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" '
+           f'data-pathways="1" data-source-viewbox="{" ".join(fmt(v) for v in vb)}">'
+           f'<g id="art">{"".join(paths)}</g></svg>\n')
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(svg)
+    return notes
+
+# ---------- 4. The manifest ----------
+
+
+def tags_for(folder, name):
+    t = {}
+    parts = name.split('_')
+    if folder == 'hair':
+        if 'girl' in parts or name.startswith('hair_updo'):
+            t['gender'] = 'female'
+        if 'boy' in parts:
+            t['gender'] = 'male'
+        if 'baby' in parts:
+            t['age'] = 'baby'
+        for length in ('short', 'medium', 'long', 'updo'):
+            if length in parts:
+                t['length'] = length
+        if name.startswith('hair_updo'):
+            t['length'] = 'updo'
+        t['bulky'] = t.get('length') in ('long', 'medium', 'updo') or bool(re.search(r'afro|puff|curl', name))
+    if folder == 'heads':
+        t['age'] = next((a for a in ('baby', 'toddler', 'kid') if a in parts), 'adult')
+    if folder in ('clothes', 'hats'):
+        for k in ('police', 'swat', 'military', 'firefighter', 'doctor', 'prison', 'chef', 'grad'):
+            if k in parts:
+                t['career'] = k
+        if 'baby' in parts:
+            t['age'] = 'baby'
+        if re.search(r'royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|ermine|jabot|capelet|armor', name):
+            t['royal'] = True
+    if folder == 'crowns':
+        t['royal'] = True
+        t['rank'] = ('monarch' if re.search(r'king|queen|imperial', name) else 'heir' if re.search(r'prince|tiara|circlet', name) else 'noble')
+    if folder == 'jewelry':
+        t['kind'] = 'necklace' if re.search(r'choker|chain|necklace', name) else 'face' if re.search(r'lip_ring', name) else 'ears'
+    return t
+
+
+GENERIC = {'hair', 'outfit', 'hat', 'crown', 'accessory', 'jewelry', 'makeup', 'aging', 'emotion', 'facial', 'glasses', 'eyes', 'brows', 'nose', 'lips',
+           'face', 'head', 'boy', 'girl', 'baby'}
+LENGTH = {'short': 'Short', 'medium': 'Medium', 'long': 'Long', 'updo': 'Up'}
+
+
+def label(name):
+    """A name for the creator: what tells this part apart. 'hair_boy_long_02' -> 'Long, style 2'; 'glasses_08_octagonal' -> 'Octagonal'."""
+    parts = name.split('_')
+    number = next((int(w) for w in parts if w.isdigit()), None)
+    words = [w for w in parts if not w.isdigit() and w not in GENERIC and w not in LENGTH]
+    length = next((LENGTH[w] for w in parts if w in LENGTH), None)
+    if name.startswith('hair_updo'):
+        length = 'Up'
+    text = ' '.join(words)
+    if name.startswith('hair_baby') or (name.startswith('head_00')):
+        text = text or name
+    if name.startswith('hair') and not name.startswith('hair_baby'):
+        # Two packs share their numbering; the second continues from 17 so every name is different.
+        text = f'{length}, {text}' if text else f'{length}, style {number + (16 if "boy" in parts else 0)}'
+    elif not text:
+        kind = {'eyes': 'Eyes', 'brows': 'Brows', 'nose': 'Nose', 'lips': 'Mouth', 'glasses': 'Glasses'}.get(parts[0], parts[0].title())
+        text = f'{kind} {number}' if number is not None else kind
+    return text[:1].upper() + text[1:]
+
+
+def write_manifest():
+    data = {}
+    for folder in FOLDERS:
+        d = os.path.join(ASSETS, folder)
+        files = sorted(f for f in os.listdir(d) if f.endswith('.svg')) if os.path.isdir(d) else []
+        data[folder] = [{'id': f[:-4], 'file': f'{folder}/{f}', 'label': label(f[:-4]), **({'tags': tags_for(folder, f[:-4])} if tags_for(folder, f[:-4]) else {})} for f in files]
+    lines = ['// Generated by scripts/build-avatar-manifest.py. Do not edit by hand: add SVGs under',
+             '// assets/avatars/ and run the script again.',
+             '// Paths are relative to assets/avatars/.',
+             'export const AVATAR_MANIFEST = {']
+    for folder in FOLDERS:
+        lines.append(f'  {folder}: [')
+        for item in data[folder]:
+            lines.append('    ' + json.dumps(item, ensure_ascii=False, separators=(', ', ': ')) + ',')
+        lines.append('  ],')
+    lines.append('};')
+    lines.append('')
+    lines.append('/** Every part, by id. */')
+    lines.append('export const PART_BY_ID = Object.fromEntries(Object.values(AVATAR_MANIFEST).flat().map((p) => [p.id, p]));')
+    with open(MANIFEST, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
+    return {k: len(v) for k, v in data.items()}
+
+# ---------- Main ----------
+
+
+def main(argv):
+    force = '--force' in argv
+    zips = [a for a in argv if a.lower().endswith('.zip')]
+    os.makedirs(ASSETS, exist_ok=True)
+    if zips:
+        scratch = tempfile.mkdtemp(prefix='avatar-pack-')
+        try:
+            done = unpack(zips, scratch)
+            moved, skipped = sort_into_folders([scratch])
+            print(f'unpacked {len(done)} zip file(s); sorted {moved} SVG(s)' + (f'; no folder for: {", ".join(skipped)}' if skipped else ''))
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+        for z in zips:  # the packs are temporary once their contents are sorted
+            os.remove(z)
+    # Loose SVGs dropped anywhere under assets/avatars/ are sorted too.
+    loose = [os.path.join(ASSETS, d) for d in os.listdir(ASSETS) if os.path.isdir(os.path.join(ASSETS, d)) and d not in FOLDERS]
+    moved, skipped = sort_into_folders([ASSETS] + loose)
+    for d in loose:
+        if not any(f.endswith('.svg') for _, _, fs in os.walk(d) for f in fs):
+            shutil.rmtree(d, ignore_errors=True)
+    if moved:
+        print(f'sorted {moved} loose SVG(s)')
+    processed, problems = 0, []
+    for folder in FOLDERS:
+        d = os.path.join(ASSETS, folder)
+        if not os.path.isdir(d):
+            continue
+        for f in sorted(os.listdir(d)):
+            if not f.endswith('.svg'):
+                continue
+            try:
+                notes = process(os.path.join(d, f), folder, force)
+            except Exception as err:  # keep going; report at the end
+                problems.append(f'{folder}/{f}: {err}')
+                continue
+            if notes is not None:
+                processed += 1
+                if '-v' in argv:
+                    print(f'{folder}/{f}: ' + '; '.join(notes))
+    counts = write_manifest()
+    print(f'processed {processed} new SVG(s); manifest lists ' + ', '.join(f'{k} {v}' for k, v in counts.items()))
+    for p in problems:
+        print('PROBLEM', p)
+    return 1 if problems else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

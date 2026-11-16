@@ -1,0 +1,87 @@
+// Hand-made notes on the avatar artwork that the filenames cannot carry.
+// The manifest (js/avatarManifest.js) is generated; this file is edited by
+// hand when artwork is added. Anything not listed here still works: it is
+// simply never picked at random, and is always available in the creator.
+
+/**
+ * Hair texture of each hairstyle, judged by eye. Textures decide which
+ * styles a character is given at random, and are inherited, so a family
+ * keeps its hair. 'braids' and 'locs' are styles worn mostly on curly and
+ * coily hair.
+ */
+const T = (ids, type) => Object.fromEntries(ids.map((id) => [id, type]));
+export const HAIR_TYPE = {
+  ...T(['hair_girl_long_02', 'hair_girl_medium_02', 'hair_girl_medium_06', 'hair_girl_medium_08', 'hair_girl_short_01', 'hair_girl_short_02', 'hair_girl_short_03', 'hair_girl_short_06',
+    'hair_boy_long_05', 'hair_boy_long_06', 'hair_boy_medium_06', 'hair_boy_medium_07', 'hair_boy_medium_08', 'hair_boy_short_02', 'hair_boy_short_04', 'hair_boy_short_06', 'hair_boy_short_07',
+    'hair_boy_updo_02_samurai', 'hair_boy_updo_04_curtain_bun', 'hair_boy_updo_11_high_ponytail', 'hair_updo_03', 'hair_updo_07'], 'straight'),
+  ...T(['hair_girl_long_01', 'hair_girl_long_03', 'hair_girl_long_04', 'hair_girl_long_05', 'hair_girl_long_06', 'hair_girl_long_08', 'hair_girl_medium_01', 'hair_girl_medium_03',
+    'hair_girl_medium_04', 'hair_girl_medium_07', 'hair_girl_short_04', 'hair_girl_short_07', 'hair_girl_short_08', 'hair_girl_short_12',
+    'hair_boy_long_01', 'hair_boy_long_02', 'hair_boy_long_03', 'hair_boy_long_07', 'hair_boy_long_08', 'hair_boy_medium_01', 'hair_boy_medium_02', 'hair_boy_medium_03',
+    'hair_boy_medium_05', 'hair_boy_short_01', 'hair_boy_short_03', 'hair_boy_short_08', 'hair_boy_short_12', 'hair_boy_updo_01_manbun', 'hair_boy_updo_08_royal_lowpony',
+    'hair_boy_updo_10_surfer_bun', 'hair_boy_updo_14_double_lowbuns', 'hair_updo_01', 'hair_updo_02', 'hair_updo_05'], 'wavy'),
+  ...T(['hair_girl_long_07', 'hair_girl_long_10', 'hair_girl_long_12', 'hair_girl_medium_05', 'hair_girl_medium_14', 'hair_girl_medium_15', 'hair_girl_short_05', 'hair_girl_short_09',
+    'hair_boy_long_04', 'hair_boy_long_16', 'hair_boy_medium_04', 'hair_boy_medium_15', 'hair_boy_short_05', 'hair_boy_short_13', 'hair_boy_updo_03_curly_puff',
+    'hair_updo_06', 'hair_updo_10', 'hair_updo_14'], 'curly'),
+  ...T(['hair_girl_medium_11', 'hair_girl_short_11', 'hair_girl_short_13', 'hair_girl_short_14', 'hair_girl_short_15', 'hair_girl_short_16',
+    'hair_boy_medium_12', 'hair_boy_short_09', 'hair_boy_short_10', 'hair_boy_short_11', 'hair_boy_short_15', 'hair_boy_short_16',
+    'hair_boy_updo_09_spacebuns', 'hair_boy_updo_15_headband_puff', 'hair_updo_09'], 'coily'),
+  ...T(['hair_girl_long_09', 'hair_girl_long_11', 'hair_girl_long_14', 'hair_girl_long_15', 'hair_girl_long_16', 'hair_girl_medium_10', 'hair_girl_medium_12', 'hair_girl_medium_16',
+    'hair_girl_short_10', 'hair_boy_long_10', 'hair_boy_long_11', 'hair_boy_long_12', 'hair_boy_long_14', 'hair_boy_long_15', 'hair_boy_medium_10', 'hair_boy_medium_11',
+    'hair_boy_medium_16', 'hair_boy_short_14', 'hair_boy_updo_06_braid_bun', 'hair_boy_updo_12_twist_pineapple', 'hair_boy_updo_13_braid_mohawk', 'hair_boy_updo_16_halfup_braids',
+    'hair_updo_04', 'hair_updo_08', 'hair_updo_12', 'hair_updo_15', 'hair_updo_16'], 'braids'),
+  ...T(['hair_girl_long_13', 'hair_girl_medium_09', 'hair_girl_medium_13', 'hair_boy_long_09', 'hair_boy_long_13', 'hair_boy_medium_09', 'hair_boy_medium_13', 'hair_boy_medium_14',
+    'hair_boy_updo_05_loc_bun', 'hair_boy_updo_07_fountain_pony', 'hair_updo_11', 'hair_updo_13'], 'locs'),
+};
+/** Which hair types suit each natural texture. */
+export const SUITS = {
+  straight: ['straight', 'wavy'], wavy: ['wavy', 'straight', 'curly'], curly: ['curly', 'wavy', 'braids', 'coily'], coily: ['coily', 'braids', 'locs', 'curly'],
+};
+export const TEXTURES = ['straight', 'wavy', 'curly', 'coily'];
+
+/** Eyes, mouths and noses that are a resting face (others are expressions, or gags, and are never picked at random). */
+export const RESTING = {
+  eyes: ['eyes_03', 'eyes_6', 'eyes_8', 'eyes_9', 'eyes_10', 'eyes_11', 'eyes_12', 'eyes_15', 'eyes_16', 'eyes_17', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_21', 'eyes_22',
+    'eyes_23', 'eyes_25', 'eyes_26'],
+  lips: ['lips_1', 'lips_3', 'lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_12', 'lips_14', 'lips_16'],
+  noses: ['nose_1', 'nose_3', 'nose_5', 'nose_6', 'nose_7', 'nose_8', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
+    'nose_18', 'nose_19', 'nose_20', 'nose_21', 'nose_22', 'nose_23'],
+  eyebrows: ['brows_02', 'brows_03', 'brows_04', 'brows_05', 'brows_6', 'brows_7', 'brows_8', 'brows_9', 'brows_10', 'brows_11', 'brows_12', 'brows_13', 'brows_14',
+    'brows_15', 'brows_16_feathered', 'brows_17_puppy', 'brows_19_glam_arch', 'brows_21_mini_comma'],
+};
+/** Expressions the renderer can borrow for a mood. */
+export const EXPRESSION = { crying: 'eyes_14', closedHappy: 'eyes_24', laughing: 'lips_20', grin: 'lips_2' };
+/** Brows that come with age. */
+export const ELDER_BROWS = 'brows_23_elder_bushy';
+
+/** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
+export const OUTFITS = {
+  any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
+    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket'],
+  female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset'],
+  male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
+  baby: ['outfit_baby_01_bib_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_peterpan_dress', 'outfit_baby_04_bear_hoodie', 'outfit_baby_05_sailor_romper',
+    'outfit_baby_07_rainbow_sweatshirt', 'outfit_baby_08_mini_tux', 'outfit_04_babybib'],
+};
+
+/** Royal dress, by sex where the art suggests it. */
+export const ROYAL = {
+  outfits: { female: ['outfit_09_princess_gown', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
+    male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
+      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: 'outfit_37_emperor_ermine', female: 'outfit_10_queen_collar' } },
+  crowns: { monarch: { male: 'crown_01_king', female: 'crown_03_queen' }, heir: { male: 'crown_04_prince_circlet', female: 'crown_02_princess_tiara' },
+    royal: { male: null, female: 'crown_02_princess_tiara' }, child: 'crown_04_prince_circlet', noble: 'crown_06_noble_coronet' },
+};
+
+/** Work clothes the portrait wears, by career id (engine/career.js). */
+export const CAREER_DRESS = {
+  police: { outfit: 'outfit_police_01', hat: 'hat_police_01', senior: { outfit: 'outfit_swat_02', hat: 'hat_swat_02', level: 4 } },
+  firefighter: { outfit: 'outfit_firefighter_01', hat: 'hat_firefighter_01' },
+  enlisted: { outfit: 'outfit_military_01', hat: 'hat_military_01' },
+  officer: { outfit: 'outfit_military_01', hat: 'hat_military_01' },
+  doctor: { outfit: 'outfit_06_doctor' }, nurse: { outfit: 'outfit_06_doctor' }, dentist: { outfit: 'outfit_06_doctor' }, vet: { outfit: 'outfit_06_doctor' },
+  pharmacist: { outfit: 'outfit_06_doctor' }, scientist: { outfit: 'outfit_06_doctor' },
+  kitchen: { hat: 'hat_08_chef_hat' },
+  lawyer: { outfit: 'outfit_03_suit' }, banker: { outfit: 'outfit_19_tuxedo' }, accountant: { outfit: 'outfit_03_suit' }, political_staff: { outfit: 'outfit_03_suit' },
+};
+export const PRISON = 'outfit_07_prison';
+export const GRADUATION = { outfit: 'outfit_08_grad', hat: 'hat_07_grad_cap' };
