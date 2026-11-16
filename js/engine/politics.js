@@ -14,6 +14,7 @@ import { SYSTEMS, OFFICES, PLATFORMS, BUDGETS, MOVES, ACTIONS, ACTIONS_PER_YEAR,
 import { ROYAL_RANKS } from '../data/royalty.js';
 import { incomeTax } from './finance.js';
 import { quitCareer } from './career.js';
+import * as world from './polity.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -47,6 +48,8 @@ export function barrier(o) {
   if (p.politics?.officeId === o.id) return 'You hold this office.';
   if (o.id === 'head' && s.nativeOnly && p.birthCountryId !== c.id) return `Only someone born in ${theCountry(c.name)} may hold this office.`;
   if (p.flags.campaignAge === p.age) return 'You have already fought one campaign this year.';
+  // Offices are filled on a calendar, and a campaign is fought in the year before the vote.
+  if (s.kind !== 'party' && !world.inSeason(o.id, c.id)) return `The next election for this office is in ${world.nextElection(o.id, c.id)}. Campaigning opens the year before.`;
   if (p.finance.cash < localMoney(o.cost, c)) return `Standing costs at least ${fmtMoney(localMoney(o.cost, c), c)}.`;
   return '';
 }
@@ -55,7 +58,8 @@ export function barrier(o) {
 export function ladder() {
   const c = country();
   return offices(c).map((o) => ({ id: o.id, title: o.title, tier: o.tier, blocked: barrier(o),
-    cost: localMoney(o.cost, c), salary: localWage(o.salary, c), term: o.term, fullTime: o.fullTime, odds: oddsLabel(o) }));
+    cost: localMoney(o.cost, c), salary: localWage(o.salary, c), term: o.term, fullTime: o.fullTime, odds: oddsLabel(o),
+    electionYear: world.nextElection(o.id, c.id), opponent: world.opponentFor(o.id, c.id)?.name ?? null }));
 }
 
 /** How the voters see the player before a campaign begins, as a rough score. */
@@ -80,6 +84,7 @@ function standing(o) {
   if (p.flags.politicalFamily) score += 5;
   if (p.royal && !ROYAL_RANKS.includes(p.royal.rank) && !p.royal.waiting) score += 3;
   if (s.rigged && !p.politics) score -= 18;
+  score += world.partyBacking(o.tier);
   return score;
 }
 
@@ -102,7 +107,11 @@ function takeOffice(o, approval = 55) {
   const c = country();
   leave('moved up', true);
   if (o.fullTime && p.career.careerId) quitCareer();
-  p.politics = { officeId: o.id, title: o.title, tier: o.tier, termLeft: o.term, terms: 1, approval, since: p.age, salary: localWage(o.salary, c) };
+  // The term runs to the next election for the office, whenever in the cycle it was won.
+  const next = world.nextElection(o.id, c.id);
+  const termLeft = next ? Math.max(1, next - store.state.year - 1 + (o.id === 'seat' || o.id === 'head' ? world.polity(c.id).calendar.term : 4)) : o.term;
+  p.politics = { officeId: o.id, title: o.title, tier: o.tier, termLeft, terms: 1, approval, since: p.age, salary: localWage(o.salary, c) };
+  if (o.id === 'head') world.seatPlayer(c.id);
   p.flags.officeCountry = c.id;
   p.hidden.fame = clamp(Math.max(p.hidden.fame, o.tier * 16) + 4);
   if (o.tier === 5) p.flags.ledCountry = true;
@@ -165,7 +174,10 @@ export function campaign(officeId, plan) {
   }
 
   // The other candidate, the weather on polling day, and everything else nobody controls.
-  const opponent = 50 + rng.int(-14, 14) + rng.int(-10, 10);
+  const rival = world.opponentFor(officeId, c.id);
+  const rivalParty = rival ? world.party(world.polity(c.id), rival.partyId) : null;
+  // A rival with charm and a clean name is harder to beat.
+  const opponent = 50 + rng.int(-14, 14) + rng.int(-10, 10) + (rival ? (rival.t.charisma - 55) / 8 : 0);
   const share = Math.round(clamp(50 + (score - opponent) * 0.6, 4, 96));
   const won = share > 50 || (share === 50 && rng.chance(0.5));
   const votes = won && share <= 50 ? 51 : !won && share >= 50 ? 49 : share;
@@ -178,14 +190,16 @@ export function campaign(officeId, plan) {
     p.stats.mood = clamp(p.stats.mood + 14);
     text = s.kind === 'party'
       ? `The committee met behind closed doors, and your name came out. You are ${o.title}.${told} The campaign cost ${fmtMoney(cost, c)}.`
-      : `You won with ${votes}% of the vote. You are ${o.title}${o.tier >= 5 ? ` of ${theCountry(c.name)}` : ''}.${told} The campaign cost ${fmtMoney(cost, c)}.`;
+      : `You beat ${rival ? `${rival.name}${rivalParty ? ` of ${world.the(rivalParty)}` : ''}` : 'your opponent'} with ${votes}% of the vote. You are ${o.title}${o.tier >= 5 ? ` of ${theCountry(c.name)}` : ''}.${told} The campaign cost ${fmtMoney(cost, c)}.`;
+    world.recordRace(rival, `Lost the race for ${o.title} to ${p.firstName} ${p.lastName}, ${100 - votes}% to ${votes}%.`);
     if (o.fullTime) text += ' It is a full-time job, and you have left your old one.';
   } else {
     p.counters.electionsLost = (p.counters.electionsLost ?? 0) + 1;
     p.stats.mood = clamp(p.stats.mood - 10);
     text = s.kind === 'party'
       ? `The committee chose someone else for ${o.title}. You applaud with everyone else.${told} It cost you ${fmtMoney(cost, c)}.`
-      : `You lost, with ${votes}% of the vote${s.rigged ? ', by the official count' : ''}. Someone else is ${o.title}.${told} The campaign cost ${fmtMoney(cost, c)}.`;
+      : `You lost to ${rival ? `${rival.name}${rivalParty ? ` of ${world.the(rivalParty)}` : ''}` : 'your opponent'}, with ${votes}% of the vote${s.rigged ? ', by the official count' : ''}.${told} The campaign cost ${fmtMoney(cost, c)}.`;
+    world.recordRace(rival, `Beat ${p.firstName} ${p.lastName} for ${o.title}, ${100 - votes}% to ${votes}%.`);
   }
   log(text, 'system', won ? 'good' : 'bad');
   return result(won, text);

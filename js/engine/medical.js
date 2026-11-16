@@ -1,4 +1,5 @@
 // Doctors, check-ups, therapy and cosmetic surgery.
+import { healthFactor } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
@@ -19,7 +20,7 @@ function acts() {
 export function careCost(base) {
   const c = country();
   if (player().legal.incarceration) return 0;
-  return localCost(base * (c.freeHealthcare ? PUBLIC_CARE_SHARE : 1), c);
+  return Math.round(localCost(base * (c.freeHealthcare ? PUBLIC_CARE_SHARE : 1), c) * healthFactor(c.id));
 }
 
 /** Conditions a doctor could do something about, with what it would cost. */

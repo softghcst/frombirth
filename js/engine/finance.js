@@ -1,5 +1,6 @@
 // Annual money flow: income, tax, living costs, loan payments, and settling
 // up if the account ends the year in the red.
+import { taxShift, rentFactor } from './policy.js';
 import { player, country, npcsByRole, log } from '../state.js';
 import { fmtMoney, localMoney, localCost, clamp } from '../util.js';
 import { childCosts } from './children.js';
@@ -19,7 +20,9 @@ const HIGHER_RATE_EXTRA = 0.12;
 /** Tax due on a year's income, in local currency. */
 export function incomeTax(gross, c = country()) {
   const upper = Math.max(0, gross - localMoney(HIGHER_RATE_FROM * (c.living?.wageK ?? 1), c));
-  return Math.round(gross * c.incomeTax + upper * HIGHER_RATE_EXTRA);
+  // The basic rate is the country's own, moved by whatever its government has done since (engine/policy.js).
+  const rate = Math.min(0.6, Math.max(0, c.incomeTax + taxShift(c.id)));
+  return Math.round(gross * rate + upper * HIGHER_RATE_EXTRA);
 }
 
 /** What a year of ordinary spending costs at a given income: the more you earn, the more of it you spend. */
@@ -78,7 +81,7 @@ export function tickFinance() {
     const partner = npcsByRole('spouse')[0];
     const share = !partner ? 1 : partner.life?.job || partner.life?.pension ? 0.55 : 1.15;
     const housed = p.royal && !p.royal.waiting && ['monarch', 'heir', 'royal'].includes(p.royal.rank);
-    let base = housed ? 0 : Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share);
+    let base = housed ? 0 : Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share * (p.homeId ? 1 : rentFactor(c.id)));
     const lifestyle = lifestyleCost(gross, c);
     // Where pay is low against rents, people on ordinary wages do not live alone: they share.
     const takeHome = gross - incomeTax(gross, c);
