@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL } from './curation.js';
+import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION } from './curation.js';
 import { mixHex } from './color.js';
 
 const named = (ids, hexes, names, extra = () => ({})) => ids.map((id, i) => ({ id, name: names[i], hex: hexes[i], ...extra(i) }));
@@ -44,7 +44,8 @@ export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));
 
 /** Every list of options, by the key it is saved under. */
 export const CATALOG = {
-  head: HEADS, skin: SKIN_TONES, eyes: parts('eyes'), eyeColor: EYE_COLORS, brows: parts('eyebrows'), nose: parts('noses'), lips: parts('lips'),
+  head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying), // crying eyes appear only when something sad is happening
+  eyeColor: EYE_COLORS, brows: parts('eyebrows'), nose: parts('noses'), lips: parts('lips'),
   hairColor: HAIR_COLORS.filter((c) => c.natural), hairTexture: HAIR_TEXTURES, marks: MARKS,
   hair: HAIR_STYLES, hairDye: HAIR_COLORS, glasses: parts('glasses'), facialHair: parts('facial_hair'),
   makeup: parts('makeup', (p) => !MARK_FILES.has(p.id)), lipColor: LIP_COLORS, jewelry: parts('jewelry'),
@@ -68,6 +69,8 @@ export const cleanTweaks = (t) => Object.fromEntries(TWEAKS.map((k) => [k.id, Ma
 export const INHERITED_KEYS = ['head', 'skin', 'eyes', 'eyeColor', 'brows', 'nose', 'lips', 'hairColor', 'hairTexture'];
 /** Styling: hair must have a value ('bald' for none); jewelry is a list; the others may be null (none). */
 export const STYLE_KEYS = ['hair', 'hairDye', 'glasses', 'facialHair', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat'];
+/** The proportions someone shows today: surgery's, if they have had any, else what they were born with. */
+export const shownTweaks = (a) => ({ ...(a.style.tweaks ?? a.inherited.tweaks) });
 
 const INDEX = Object.fromEntries(Object.entries(CATALOG).map(([k, list]) => [k, Object.fromEntries(list.map((x) => [x.id, x]))]));
 INDEX.anyHair = Object.fromEntries(HAIR_COLORS.map((x) => [x.id, x]));
@@ -96,7 +99,9 @@ const OLD_SKIN = ['ivory', 'sand', 'golden', 'tan', 'chestnut', 'espresso'];
 const OLD_HAIR = ['black', 'brown', 'light_brown', 'blonde', 'auburn'];
 const OLD_EYES = ['dark_brown', 'blue', 'green', 'hazel'];
 const OLD_STYLE_NUM = ['short_crop', 'side_part', 'long_straight'];
-const OLD_FACE = { oval: 'face_01_oval', round: 'face_02_round', square: 'face_03_square', heart: 'face_04_heart', long: 'head_18_long_rect', diamond: 'face_05_diamond' };
+const OLD_FACE = { oval: 'head_17_dimple_oval', round: 'head_15_cherubic', square: 'head_13_athletic', heart: 'head_11_pixie', long: 'head_18_long_rect', diamond: 'head_16_angular' };
+// Face shapes that have been withdrawn: anyone saved with one keeps the nearest shape that remains.
+const GONE_HEAD = { face_01_oval: 'head_17_dimple_oval', face_02_round: 'head_15_cherubic', face_03_square: 'head_13_athletic', face_04_heart: 'head_11_pixie', face_05_diamond: 'head_16_angular', face_06_pear: 'head_14_almond' };
 const OLD_HAIRSTYLE = {
   bald: 'bald', buzz: 'hair_boy_short_10', short_crop: 'hair_boy_short_06', side_part: 'hair_boy_short_02', pixie: 'hair_girl_short_02', waves: 'hair_boy_short_10',
   curls_tight: 'hair_boy_short_11', coils: 'hair_girl_short_14', braids: 'hair_girl_long_09', locs: 'hair_boy_medium_09', bob: 'hair_girl_short_01',
@@ -126,7 +131,8 @@ export function normalize(a, seed = 'x') {
   };
   const inherited = {};
   for (const key of INHERITED_KEYS) {
-    const id = (v2 && legacy[key] !== undefined ? legacy[key] : src[key]) ?? legacy[key];
+    let id = (v2 && legacy[key] !== undefined ? legacy[key] : src[key]) ?? legacy[key];
+    if (key === 'head' && GONE_HEAD[id]) id = GONE_HEAD[id];
     const pool = ['eyes', 'brows', 'nose', 'lips'].includes(key) ? resting(key) : CATALOG[key];
     inherited[key] = has(key, id) ? id : seeded(pool, seed, key).id;
   }
@@ -148,6 +154,8 @@ export function normalize(a, seed = 'x') {
   style.outfit = has('outfit', st.outfit) ? st.outfit : seeded(CATALOG.outfit.filter((o) => OUTFITS.any.includes(o.id)), seed, 'outfit').id;
   style.outfitColor = has('outfitColor', st.outfitColor) ? st.outfitColor : null;
   style.hat = has('hat', st.hat) ? st.hat : null;
+  // Proportions changed by surgery: worn, not passed on to children.
+  style.tweaks = st.tweaks ? cleanTweaks(st.tweaks) : null;
   return { v: 3, inherited, style };
 }
 
@@ -173,7 +181,7 @@ export function resolveLook(appearance, seed = 'x', gender) {
       : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
   const sex = gender === 'female' ? 'female' : 'male';
   return {
-    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: g.lips,
+    tweaks: st.tweaks ?? g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: g.lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),
     facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,

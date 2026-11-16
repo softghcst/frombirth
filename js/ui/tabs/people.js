@@ -7,6 +7,7 @@ import * as love from '../../engine/romance.js';
 import * as kids from '../../engine/children.js';
 import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
+import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
 import { avatarSvg, petGlyph, royalDress } from '../avatar.js';
 import { meterHtml, band } from '../meter.js';
@@ -184,11 +185,19 @@ function editPerson(api, npc) {
     <div class="slider-group">${pet ? 'Stats' : 'Stats'}</div>
     ${meters.map(([k, label]) => slider('meters', k, pet && k === 'relationship' ? 'Bond' : label, npc.meters[k])).join('')}
     ${talents.length ? `<div class="slider-group">Talents</div>${talents.map(([k, label]) => slider('talents', k, label, npc.talents?.[k] ?? 0)).join('')}` : ''}
+    ${pet ? '' : '<div class="btn-stack" style="margin-top:8px"><button class="btn" data-look>Edit their look</button></div>'}
     <div class="btn-row" style="margin-top:8px">
       <button class="btn" data-cancel>Cancel</button>
       <button class="btn primary" data-save>Save</button>
     </div>`, { dismissable: true });
   modal.el.addEventListener('input', (e) => { if (e.target.matches('input[type=range]')) e.target.nextElementSibling.textContent = e.target.value; });
+  modal.el.querySelector('[data-look]')?.addEventListener('click', async () => {
+    modal.close();
+    // Everything about their face, including eye spacing and the sizes of their features.
+    const next = await openAppearanceEditor({ title: `${npc.firstName}'s look`, appearance: npc.appearance, age: npc.age, gender: npc.gender, seed: npc.id, confirm: 'Save their look' });
+    if (next) { npc.appearance = next; api.changed(); }
+    openNpc(npc, api);
+  });
   modal.el.querySelector('[data-cancel]').addEventListener('click', () => { modal.close(); openNpc(npc, api); });
   modal.el.querySelector('[data-save]').addEventListener('click', () => {
     const values = { meters: {}, talents: {} };

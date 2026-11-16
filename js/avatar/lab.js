@@ -82,7 +82,7 @@ $('#family-save').addEventListener('click', () => {
 });
 
 // ---------- 3. Every part ----------
-const base = normalize({ v: 3, inherited: { head: 'face_01_oval', skin: 'sand', eyes: 'eyes_10', eyeColor: 'brown', brows: 'brows_10', nose: 'nose_10', lips: 'lips_10',
+const base = normalize({ v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'sand', eyes: 'eyes_10', eyeColor: 'brown', brows: 'brows_10', nose: 'nose_10', lips: 'lips_10',
   hairColor: 'dark_brown', hairTexture: 'straight', marks: [] }, style: { hair: 'bald', outfit: 'outfit_01_tee' } }, 'sheet');
 const STYLE = new Set(['hair', 'hairDye', 'glasses', 'facialHair', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat']);
 $('#parts').innerHTML = Object.entries(CATALOG).map(([key, list]) => `
