@@ -49,7 +49,7 @@ export const PROGRAMMES = {
   teaching: { id: 'teaching', label: 'Teacher training', years: 1, partYears: 2, tuition: 9000, needs: 'university', minGpa: 2.5, licence: 'teaching',
     done: 'teacher training', yearly: { stats: { charm: 2 }, hidden: { discipline: 2 } },
     blurb: 'A year split between lectures and a classroom of thirty people who would rather be elsewhere.' },
-  nursing: { id: 'nursing', label: 'Nursing school', years: 3, tuition: 9000, needs: 'high', minGpa: 2.4, licence: 'nursing',
+  nursing: { id: 'nursing', label: 'Nursing school', years: 3, partYears: 5, tuition: 9000, needs: 'high', minGpa: 2.4, licence: 'nursing',
     done: 'nursing school', yearly: { hidden: { karma: 2, discipline: 2 } },
     blurb: 'Three years, half of them on the wards. A route into nursing without a university degree.' },
   doctorate: { id: 'doctorate', label: 'Doctoral programme', years: 5, tuition: 0, stipend: 20000, needs: 'university', minGpa: 3.4, thesis: true,
