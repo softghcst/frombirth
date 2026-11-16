@@ -306,6 +306,11 @@ button.dyn-event { cursor: pointer; }
 .pol-result { display: grid; grid-template-columns: minmax(0, 1.5fr) 1fr 3.4em 4.6em; gap: 8px; align-items: center; font-size: 0.88rem; padding: 4px 0; }
 .pol-result span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pol-result .num { text-align: right; color: var(--muted); }
+.whatif-btn { display: block; width: 100%; margin-top: 14px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; background: transparent; color: var(--accent); font: inherit; font-weight: 600; text-align: left; cursor: pointer; min-height: 44px; }
+.whatif-btn small { display: block; font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+.whatif-btn:disabled { cursor: default; }
+.row .main small.timeline-tag { display: block; color: var(--accent); white-space: normal; overflow: visible; }
+.timeline-card { margin-bottom: 10px; }
 .news-item { padding: 7px 0 7px 10px; border-left: 3px solid var(--line); margin-bottom: 6px; font-size: 0.92rem; }
 .news-item small { display: block; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .news-item.you { border-left-color: var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; padding-right: 8px; }

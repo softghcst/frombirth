@@ -3,7 +3,7 @@ import { openSettings, cloudLine } from '../settings.js';
 import * as cloud from '../../sync/cloud.js';
 import { esc, fmtMoney } from '../../util.js';
 import { COUNTRIES } from '../../data/countries.js';
-import { listSlots, loadGame, deleteSlot, getGraveyard, epitaphsEarned } from '../../save.js';
+import { listSlots, loadGame, deleteSlot, getGraveyard, epitaphsEarned, peekGame, timelinesOf } from '../../save.js';
 import { createLife } from '../../engine/characterGen.js';
 import { avatarSvg } from '../avatar.js';
 import { confirmModal } from '../modals.js';
@@ -32,8 +32,10 @@ export function renderTitle(app, hooks) {
         <button class="row" data-load="${s.slotId}" style="border:0;margin:0;padding:0;background:none;flex:1;min-width:0">
           <div class="avatar">${avatarSvg({ age: s.age, gender: s.gender, appearance: s.appearance, seed: s.slotId })}</div>
           <div class="main"><strong>${esc(s.name)}</strong>
-            <small>${s.dead ? `Died at ${s.age} · choose who carries on` : `Age ${s.age} · ${c.flag} ${esc(c.name)} · ${fmtMoney(s.netWorth, c)}`}</small></div>
+            <small>${s.dead ? `Died at ${s.age} · choose who carries on` : `Age ${s.age} · ${c.flag} ${esc(c.name)} · ${fmtMoney(s.netWorth, c)}`}</small>
+            ${s.timeline ? `<small class="timeline-tag">${esc(s.timeline.name)}${s.timeline.note ? ` · parted at ${s.timeline.age}: ${esc(s.timeline.note)}` : ''}</small>` : ''}</div>
         </button>
+        ${s.timeline && timelinesOf(s.timeline.root).length > 1 ? `<button class="icon-btn" data-compare="${s.timeline.root}" aria-label="Compare timelines">⇄</button>` : ''}
         <button class="icon-btn" data-delete="${s.slotId}" aria-label="Delete ${esc(s.name)}">✕</button>
       </div>`;
   }).join('');
@@ -68,6 +70,8 @@ export function renderTitle(app, hooks) {
   app.querySelector('[data-random]').addEventListener('click', () => hooks.onPlay(createLife()));
   app.querySelector('[data-design]').addEventListener('click', () => hooks.onDesign());
   app.querySelector('.title-screen').addEventListener('click', async (e) => {
+    const cmp = e.target.closest('[data-compare]');
+    if (cmp) return compareTimelines(cmp.dataset.compare);
     const load = e.target.closest('[data-load]');
     const del = e.target.closest('[data-delete]');
     const grave = e.target.closest('[data-grave]');
@@ -88,4 +92,32 @@ export function renderTitle(app, hooks) {
       hooks.onViewGrave(graves[Number(grave.dataset.grave)]);
     }
   });
+}
+
+/** The timelines of one life, side by side: where each has got to. */
+function compareTimelines(root) {
+  const rows = timelinesOf(root).map((m) => ({ m, st: peekGame(m.slotId) })).filter((x) => x.st).sort((a, b) => (a.m.timeline?.age ?? -1) - (b.m.timeline?.age ?? -1));
+  const cell = (x) => {
+    const p = x.st.player;
+    const c = COUNTRIES[p.countryId];
+    const people = Object.values(x.st.npcs).filter((n) => n.alive);
+    const love = people.find((n) => n.role === 'spouse') ?? people.find((n) => n.role === 'partner');
+    const kids = people.filter((n) => n.role === 'child').length;
+    const last = (p.milestones ?? []).slice(-3).reverse();
+    return `<div class="card timeline-card"><h3>${esc(x.m.timeline?.name ?? 'The first telling')}</h3>
+      ${x.m.timeline?.note ? `<p class="muted">Parted at ${x.m.timeline.age}: ${esc(x.m.timeline.note)}</p>` : '<p class="muted">The road first taken.</p>'}
+      <div class="kv"><span>Now</span><span>${p.alive ? `Age ${p.age}` : `Died at ${p.age}`} · ${c.flag} ${esc(p.city)}</span></div>
+      <div class="kv"><span>Work</span><span>${esc(p.politics?.title ?? p.career.title ?? (p.education.enrolled ? 'Studying' : p.career.retired ? 'Retired' : 'Not working'))}</span></div>
+      <div class="kv"><span>Worth</span><span>${fmtMoney(x.m.netWorth, c)}</span></div>
+      <div class="kv"><span>Love</span><span>${love ? `${esc(love.firstName)}${love.role === 'spouse' ? ' (married)' : ''}` : 'Nobody'}${kids ? ` · ${kids} ${kids === 1 ? 'child' : 'children'}` : ''}</span></div>
+      <div class="kv"><span>Mood · health</span><span>${Math.round(p.stats.mood)}% · ${Math.round(p.stats.health)}%</span></div>
+      ${last.length ? `<div class="section-label">Lately</div>${last.map((t) => `<p class="muted">Age ${t.age}: ${esc(t.text)}</p>`).join('')}` : ''}</div>`;
+  };
+  const scrim = document.createElement('div');
+  scrim.className = 'scrim';
+  scrim.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><div class="eyebrow">What if?</div><h2>One life, ${rows.length} ways</h2>
+    <p class="body">The same person, from the same moments, down different roads.</p>${rows.map(cell).join('')}
+    <button class="btn primary" data-ok style="margin-top:10px">Close</button></div>`;
+  scrim.addEventListener('click', (e) => { if (e.target === scrim || e.target.closest('[data-ok]')) scrim.remove(); });
+  document.getElementById('modal-root').appendChild(scrim);
 }

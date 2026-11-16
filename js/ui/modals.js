@@ -24,7 +24,7 @@ export function openModal(html, opts = {}) {
 }
 
 /** Shows a scenario and resolves with the index of the chosen option. */
-export function eventModal(ev, cast) {
+export function eventModal(ev, cast, opts = {}) {
   return new Promise((resolve) => {
     const choices = choiceStates(ev, cast).map((c, i) => `
       <button class="choice-btn" data-i="${i}" ${c.enabled ? '' : 'disabled'}>
@@ -34,8 +34,17 @@ export function eventModal(ev, cast) {
     const m = openModal(`
       <div class="eyebrow">${esc(ev.category)}</div>
       <p class="scene">${esc(renderText(ev.text, cast))}</p>
-      ${choices}`);
-    m.el.addEventListener('click', (e) => {
+      ${choices}
+      ${opts.onFork ? '<button class="whatif-btn" data-fork>What if? <small>Keep this moment, and live both choices</small></button>' : ''}`);
+    m.el.addEventListener('click', async (e) => {
+      const fork = e.target.closest('[data-fork]');
+      if (fork) {
+        // Kept once: the button says what happened, and the choice is still to make.
+        fork.disabled = true;
+        const r = await opts.onFork();
+        fork.innerHTML = `${r.ok ? 'Kept.' : 'Not kept.'} <small>${esc(r.text)}</small>`;
+        return;
+      }
       const btn = e.target.closest('.choice-btn');
       if (!btn || btn.disabled) return;
       m.close();

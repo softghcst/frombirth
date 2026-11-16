@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { hiringEdge } from './languages.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localWage } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
@@ -84,7 +85,7 @@ function doorBonus(career) {
   const p = player();
   let bonus = (career.doors ?? []).filter((d) => !d.guaranteed && doorOpen(d)).reduce((s, d) => s + d.bonus, 0);
   if (career.focus && p.flags.cosmoFocus === career.focus) bonus += 0.25;
-  return bonus;
+  return bonus + hiringEdge(p); // languages: an asset anywhere, and a barrier where you cannot speak the one in use
 }
 
 const payBand = (level) => level.pay.map((k) => localWage(k * K, country()));
@@ -103,7 +104,7 @@ export function careersIn(categoryId) {
     const offer = standingOffer(c);
     const start = c.levels[offer?.level ?? 0];
     return { id: c.id, name: c.name, title: start.title, pay: payBand(start), eligible: !reasons.length,
-      reasons, offer: offer?.text ?? '', applied: !!acts().applied[c.id], helped: doorBonus(c) > 0 };
+      reasons, offer: offer?.text ?? '', applied: !!acts().applied[c.id], helped: doorBonus(c) - hiringEdge(player()) > 0 };
   });
 }
 export const categories = () => CAREER_CATEGORIES;

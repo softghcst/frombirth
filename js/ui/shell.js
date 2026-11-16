@@ -1,5 +1,7 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
+import { forkGame } from '../save.js';
+import { turningPoint, turningNote } from '../engine/turning.js';
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { saveGame, pushUndo, popUndo, undoDepth } from '../save.js';
@@ -154,7 +156,7 @@ export function mountGame(app, hooks) {
       const pending = state.pendingEvents[0];
       const ev = getEvent(pending.id);
       if (!ev) { state.pendingEvents.shift(); continue; }
-      const index = await eventModal(ev, pending.cast);
+      const index = await eventModal(ev, pending.cast, turningPoint(ev) ? { onFork: () => forkGame(state, turningNote(ev, pending.cast)) } : {});
       const result = resolveChoice(ev, index, pending.cast);
       state.pendingEvents.shift();
       persist();

@@ -73,11 +73,61 @@ export function saveGame(state) {
     netWorth: netWorth(state),
     dead: !p.alive,
     updatedAt: state.updatedAt,
+    timeline: state.timeline ?? null,
   };
   const index = read(K_INDEX, []).filter((m) => m.slotId !== state.slotId);
   index.push(meta);
   forgetDeleted('slots', state.slotId);
   return write(K_SLOT + state.slotId, state) && write(K_INDEX, index);
+}
+
+/** A saved life as it stands, without starting to play it: for comparing timelines. */
+export function peekGame(slotId) {
+  const state = read(K_SLOT + slotId, null);
+  return state ? migrate(state) : null;
+}
+
+/** How many timelines one life may have, the first included. Saved lives are large, and browser storage is small. */
+export const MAX_TIMELINES = 4;
+/** The saved lives that began as the same life. */
+export const timelinesOf = (root) => listSlots().filter((m) => (m.timeline?.root ?? m.slotId) === root);
+
+/**
+ * "What if?": keeps a copy of this exact moment as a life of its own, so the
+ * other choice can be lived too. The copy is a separate saved life; the one
+ * being played carries on. Both remember where they parted.
+ * @param {object} state  the life as it stands, the choice not yet made
+ * @param {string} note   what the moment was, in a few words
+ * @returns {{ok:boolean, text:string, slotId?:string}}
+ */
+export function forkGame(state, note) {
+  const root = state.timeline?.root ?? state.slotId;
+  const have = timelinesOf(root).length || 1;
+  if (have >= MAX_TIMELINES) return { ok: false, text: `This life already has ${MAX_TIMELINES} timelines. Delete one from the title screen to keep another.` };
+  const p = state.player;
+  const at = { age: p.age, year: state.year, note };
+  state.rngSeed = rng.state();
+  const copy = JSON.parse(JSON.stringify(state));
+  copy.slotId = `life_${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
+  copy.createdAt = Date.now();
+  copy.timeline = { root, from: state.slotId, ...at, name: `What if ${have}` };
+  // The copy takes its own road from here: a different run of luck, the same past.
+  copy.rngSeed = (state.rngSeed ^ (0x9e3779b9 * have)) >>> 0 || 1;
+  const keepSeed = rng.state();
+  const saved = saveCopy(copy);
+  rng.seed(keepSeed);
+  if (!saved) { deleteSlot(copy.slotId); return { ok: false, text: 'There is not enough storage left on this device to keep another timeline.' }; }
+  state.timeline ??= { root, name: 'The first telling' };
+  (state.timeline.forks ??= []).push(at);
+  saveGame(state);
+  return { ok: true, text: `This moment is kept. "${copy.timeline.name}" is waiting on the title screen, with the choice still to make.`, slotId: copy.slotId };
+}
+/** Saves a life that is not the one being played, leaving the dice alone. */
+function saveCopy(state) {
+  const seed = state.rngSeed;
+  const done = saveGame(state);
+  if (done) { const raw = read(K_SLOT + state.slotId, null); if (raw) { raw.rngSeed = seed; write(K_SLOT + state.slotId, raw); } }
+  return done;
 }
 
 export function loadGame(slotId) {
