@@ -421,6 +421,21 @@ whether or not the player takes any part.
   people arrested, and governments give way far less.
 - **Political staff** is a career of its own, from campaign organiser to
   chief of staff, and counts as experience with voters.
+- **Abroad** (`js/engine/diplomacy.js`). Each country deals most with six
+  others, and stands somewhere between hostile and close friends with each.
+  Governments have good and bad years abroad, sign trade agreements (money
+  for the treasury) and defence pacts (an ally in a crisis), and tear them up
+  when relations sour. A head of government makes state visits, proposes
+  agreements, sends aid and imposes sanctions, with a foreign minister whose
+  skill tells; and faces crises, to be settled by talks, sanctions, a show of
+  force or giving way.
+- **The crown and the government.** Where a monarch reigns without ruling,
+  the head of government is received every week: they can ask advice, keep
+  to formalities, or leak what was said and lose the palace for good. A
+  player who is the monarch is sent the government's real laws to sign, by
+  the real head of government, and a refusal that carries the country undoes
+  the law. A republican cause and a loyalist one can be joined where there
+  is a crown; a republican movement that grows loud enough wins a referendum.
 - **Where there are no elections,** ministers are appointed and rule by
   decree. In a monarchy the monarch remains head of state whatever the voters do.
 

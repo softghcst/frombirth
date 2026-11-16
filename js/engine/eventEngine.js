@@ -8,6 +8,8 @@
 //   cast: {key: spec}   spec is a role, 'mother'/'father', or 'tag:<contact tag>'
 //   castRequires: [...] conditions on the people cast, e.g. cast.kid.age >= 14
 //   outcome.requires    picks a text variant from history (see conditions.js)
+import { headTitle } from './polity.js';
+import { latestLaw } from './government.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localMoney } from '../util.js';
 import { store, player, country, npcsByRole, log } from '../state.js';
@@ -91,6 +93,8 @@ export function renderText(text, cast = {}) {
     if (key[0] === '$') return fmtMoney(localMoney(Number(key.slice(1)), c), c);
     if (key === 'name') return p.firstName;
     if (key === 'city') return p.city;
+    if (key === 'pm' || key === 'pmTitle') { const w = store.state.polities?.[c.id]; const h = w?.figures[w.govt.headId]; return key === 'pm' ? (h?.name ?? 'the prime minister') : headTitle(c.id); }
+    if (key === 'law') return latestLaw(c.id) ?? 'change the law';
     // Scenes sent by the engine can carry their own words: the name of a minister, the text of a bill.
     if (cast.words && key in cast.words) return cast.words[key];
     const npc = store.state.npcs[cast[key]];

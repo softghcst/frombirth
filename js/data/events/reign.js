@@ -15,7 +15,7 @@ export default [
   // ---------- Reigning ----------
   {
     id: 'weekly_audience', category: 'royalty', ageRange: [18, 110], cooldown: 7, requires: advises,
-    text: 'The prime minister comes every week, and what is said never leaves the room. This week they are about to do something you think is a serious mistake.',
+    text: '{pm}, the {pmTitle}, comes every week, and what is said never leaves the room. This week the government is about to do something you think is a serious mistake.',
     choices: [
       { label: 'Ask the three questions that expose it', check: chk(0.5, { 'stats.intellect': 0.7 }), outcomes: [
         ok('You never say it is a mistake. You only ask what happens in the second year. The prime minister goes away thoughtful, and the plan is quietly changed.', support(3), hid('karma', 4), st('mood', 4)),
@@ -29,7 +29,7 @@ export default [
     ],
   },
   {
-    id: 'hung_parliament', category: 'royalty', ageRange: [18, 110], cooldown: 14, requires: advises,
+    id: 'hung_parliament', category: 'royalty', ageRange: [18, 110], cooldown: 4, requires: [...advises, need('hung', '==', true)],
     text: 'The election has produced no winner. Two party leaders each claim they can form a government, and by custom it falls to you to send for one of them. Whoever you do not send for will say you took sides.',
     choices: [
       { label: 'Wait, and make them agree between themselves', check: chk(0.6, { 'hidden.willpower': 0.5, 'hidden.discipline': 0.3 }), outcomes: [

@@ -17,6 +17,7 @@ import { tally, overrides, lean } from './legislature.js';
 import * as world from './polity.js';
 import { report } from './news.js';
 import { forCabinet, nepotism } from './kin.js';
+import * as dyn from './dynasty.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -143,6 +144,17 @@ function playerYear(w, tell) {
     }
   }
 
+  // Where there is a crown that reigns but does not rule, its first minister is received by it.
+  const house = store.state.dynasties?.[w.countryId];
+  const crown = house?.type ?? MONARCHIES[w.countryId]?.type;
+  if (crown && MONARCHIES[w.countryId] && !['executive', 'absolute'].includes(crown) && !p.royal?.reigning) {
+    const d = dyn.house(w.countryId);
+    if (d.status !== 'abolished') {
+      if ((w.palace ?? 0) <= -20) { k.approval = Math.round(clamp(k.approval - 2)); tell('The palace lets it be known, through friends, that it has no confidence in your discretion.', 'bad', 2); w.palace += 5; }
+      else if (rng.chance(0.2)) pend.push({ id: 'pm_audience', cast: { words: { monarch: dyn.nameOf(d, dyn.monarchOf(d)) } } });
+    }
+  }
+
   // A leader without a majority does not control what the legislature passes.
   if (w.kind === 'party' || w.kind === 'none' || k.ruler) return;
   const mine = world.membership(w.countryId);
@@ -171,8 +183,10 @@ export function decide(what, cast = {}) {
   const p = player();
   const w = world.polity(p.countryId);
   const k = p.politics;
+  if (what === 'refuseAssent') return refuseAssent();
   if (!k) return '';
   const shift = (n) => { k.approval = Math.round(clamp(k.approval + n)); };
+  if (what === 'refuseAssent') return refuseAssent();
   if (what === 'standBy' || what === 'sack') {
     const d = dept(cast.dept);
     const f = d ? minister(w, d.id) : null;
@@ -182,6 +196,21 @@ export function decide(what, cast = {}) {
     if (what === 'sack') { shift(-1); world.note(f, `Dismissed as ${d.title} over a scandal.`); return `${f.name} is gone by lunchtime. The post of ${d.title} is empty until you fill it.`; }
     shift(-8); world.note(f, `Resigned as ${d.title} after weeks of headlines.`);
     return `It does not blow over. After three weeks of headlines ${f.name} resigns anyway, and you look as though you were the last to know. The post of ${d.title} is empty.`;
+  }
+  if (what === 'audienceAsk' || what === 'audienceLeak' || what === 'audienceFormal') {
+    const d = dyn.house(w.countryId);
+    const mon = dyn.nameOf(d, dyn.monarchOf(d));
+    if (what === 'audienceFormal') return 'Twenty minutes on the weather, the harvest and the state of the roads. You bow and leave.';
+    if (what === 'audienceAsk') {
+      w.palace = clamp((w.palace ?? 0) + 6, -50, 50);
+      // Someone who has seen a dozen governments come and go sometimes sees what a new one cannot.
+      if (rng.chance(0.6)) { shift(2); return `You tell ${mon} what is really keeping you awake. The questions that come back are better than any your advisers asked, and you change your plans.`; }
+      return `You tell ${mon} what is really keeping you awake. The advice is kindly meant, and forty years out of date.`;
+    }
+    w.palace = clamp((w.palace ?? 0) - 25, -50, 50);
+    d.standing = Math.round(clamp(d.standing - 3));
+    shift(4);
+    return `By Sunday every newspaper knows what ${mon} thinks of your opponents. It helps you, this week. Nobody at the palace will ever speak freely in front of you again.`;
   }
   if (what === 'sign' || what === 'veto') {
     const L = LEVERS[cast.lever];
@@ -522,4 +551,27 @@ export function presentBudget(changes, move = 'none') {
   aftermath(w, { wants }, world.membership(w.countryId), notes);
   return result(true, `${t ? `Your budget passes, ${t.for} votes to ${t.against}.` : 'Your budget is adopted.'} You have ${done.join('; ')}. The public finances are now ${w.budget <= -3 ? 'deep in deficit' : w.budget < 0 ? 'in deficit' : w.budget === 0 ? 'in balance' : 'in surplus'}. ${notes.join(' ')}`.trim(),
     'good', { tally: t ? { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } : null });
+}
+
+/**
+ * The crown refuses its assent to the latest law, and the government gives
+ * way: the law is undone. Used when the player is the monarch.
+ * @returns {string} what was undone, or '' if there was nothing recent to refuse
+ */
+export function refuseAssent() {
+  const w = world.polity(player().countryId);
+  const law = [...w.laws].reverse().find((l) => store.state.year - l.year <= 1 && !l.refused && LEVERS[l.lever]);
+  if (!law) return '';
+  w.policies[law.lever] = clamp(w.policies[law.lever] - law.dir, -2, 2);
+  w.budget = Math.round((w.budget + LEVERS[law.lever].cost * law.dir) * 10) / 10;
+  law.refused = true;
+  w.laws.push({ year: store.state.year, lever: law.lever, dir: -law.dir, by: 'the crown', over: true, text: `refused assent, and the government withdrew its plan to ${toDo(law.text)}` });
+  return `The plan to ${toDo(law.text)} is withdrawn.`;
+}
+
+/** The most recent law, as something that was done: for scenes in which a monarch is asked to sign it. */
+export function latestLaw(countryId = player().countryId) {
+  const w = store.state.polities?.[countryId];
+  const law = w ? [...w.laws].reverse().find((l) => store.state.year - l.year <= 1 && !l.refused && LEVERS[l.lever]) : null;
+  return law ? toDo(law.text) : null;
 }

@@ -2,7 +2,7 @@
 // and holding office. The scenes whose ids start with pol_ and are marked
 // queuedOnly are sent by engine/politics.js (end of term, removal, uprising).
 // In office, nearly every choice moves approval: what the voters make of you.
-import { st, hid, cash, flag, count, ms, ok, bad, any, chk, need, heat, death, approval, reelect, ousted, resignOffice, govt, scandal, leader, kin } from './helpers.js';
+import { st, hid, cash, flag, count, ms, ok, bad, any, chk, need, heat, death, approval, reelect, ousted, resignOffice, govt, scandal, leader, kin, abroad } from './helpers.js';
 
 const office = need('inOffice', '==', true);
 const tier = (n) => need('officeTier', '>=', n);
@@ -214,6 +214,34 @@ export default [
     choices: [
       { label: 'Stand again', outcomes: [any('You put your record in front of the people who decide, and wait.', 'neutral', reelect())] },
       { label: 'Step down while they still like you', outcomes: [any('You hand over the keys, and somebody else gets the blame from now on.', 'neutral', resignOffice(), st('mood', 4))] },
+    ],
+  },
+  {
+    id: 'dip_crisis', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: '{what} {leader}, the {title} of {country}, has gone on television to blame you by name. Your foreign ministry wants to know what you intend to do.',
+    choices: [
+      { label: 'Negotiate', outcomes: [any('You ask for a meeting on neutral ground.', 'neutral', abroad('negotiate'))] },
+      { label: 'Impose sanctions', outcomes: [any('You sign the order before lunch.', 'neutral', abroad('sanction'))] },
+      { label: 'Make a show of force', outcomes: [any('You ask the admirals what can be at sea by Friday.', 'neutral', abroad('threaten'))] },
+      { label: 'Give them what they want', outcomes: [any('You decide this is not the hill.', 'neutral', abroad('concede'))] },
+    ],
+  },
+  {
+    id: 'dip_trade_offer', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: '{leader}, the {title} of {country}, proposes a trade agreement. The terms on the table are decent, though your own farmers and factories would feel the competition.',
+    choices: [
+      { label: 'Sign it as offered', outcomes: [any('You tell your officials to prepare the pens.', 'neutral', abroad('signTrade'))] },
+      { label: 'Hold out for better terms', outcomes: [any('You send the draft back with a great deal of red ink on it.', 'neutral', abroad('haggle'))] },
+      { label: 'Decline', outcomes: [any('You say the time is not right.', 'neutral', abroad('declineTrade'))] },
+    ],
+  },
+  {
+    id: 'pm_audience', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: 'Every week you are received by {monarch}: an hour alone, no notes, no officials. Nothing said in that room is ever repeated. This week you have a great deal on your mind.',
+    choices: [
+      { label: 'Ask for advice', outcomes: [any('You put down your cup.', 'neutral', govt('audienceAsk'))] },
+      { label: 'Keep to the formalities', outcomes: [any('You keep your troubles to yourself.', 'neutral', govt('audienceFormal'))] },
+      { label: 'Let the newspapers know what was said', outcomes: [any('You have a quiet word with a friendly editor on the way home.', 'neutral', govt('audienceLeak'), hid('karma', -6))] },
     ],
   },
   {

@@ -35,6 +35,9 @@ const SPECIAL = {
   // Approval is plain 'politics.approval'.
   // True in the year a general election is held (engine/polity.js).
   electionYear: () => { const w = store.state.polities?.[country().id]; return !!w && w.calendar?.general === store.state.year; },
+  // A law passed in the last year; an election that left no party with a majority.
+  recentLaw: () => { const w = store.state.polities?.[country().id]; return !!w && w.laws.some((l) => store.state.year - l.year <= 1 && !l.refused && !l.over); },
+  hung: () => { const w = store.state.polities?.[country().id]; const e = w?.elections[w.elections.length - 1]; return !!e && store.state.year - e.year <= 1 && ['coalition', 'minority'].includes(e.govt?.kind); },
   inOffice: (p) => !!p.politics,
   officeTier: (p) => p.politics?.tier ?? 0,
   democracy: () => ['presidential', 'parliamentary'].includes(SYSTEMS[country().id]?.kind),

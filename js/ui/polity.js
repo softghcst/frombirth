@@ -11,6 +11,7 @@ import { avatarSvg } from './avatar.js';
 import { openModal, confirmModal, messageModal } from './modals.js';
 import { cabinetView } from '../engine/government.js';
 import { feed, press } from '../engine/news.js';
+import { view as abroad } from '../engine/diplomacy.js';
 import { DEPARTMENTS } from '../data/parties.js';
 
 const KIND = {
@@ -55,6 +56,8 @@ function pageGovernment(w, o) {
     <div class="section-label">The cabinet</div>
     ${cabinetView(c.id).map((d) => (d.minister ? personRow(w, d.minister, esc(d.title.replace(' Minister', ''))) : `<div class="kv"><span>${esc(d.title)}</span><span>Empty</span></div>`)).join('')}
     ${o.parties.length ? `<div class="section-label">The legislature, ${o.seatCount} seats</div>${seatBar(o)}` : ''}
+    <div class="section-label">Abroad</div>
+    ${abroad(c.id).map((x) => `<div class="kv"><span>${x.flag} ${esc(x.name)}</span><span>${esc(x.mood)}${x.treaties.length ? ` · ${esc(x.treaties.join(', '))}` : ''}</span></div>`).join('')}
     <div class="section-label">What its governments have changed</div>
     ${o.policies.length ? o.policies.map((t) => `<p class="dyn-reach">${esc(t)}</p>`).join('') : '<p class="muted">Taxes, tuition, medical bills and rents are as they have long been.</p>'}`;
 }

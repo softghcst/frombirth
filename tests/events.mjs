@@ -4,7 +4,7 @@
 import { EVENTS } from '../js/data/events/index.js';
 import { ILLNESS_BY_ID } from '../js/data/illnesses.js';
 
-const EFFECTS = new Set(['kin', 'govt', 'scandal', 'leader', 'stat', 'hidden', 'talent', 'cash', 'relationship', 'flag', 'addNpc', 'removeNpc', 'condition', 'cure',
+const EFFECTS = new Set(['abroad', 'kin', 'govt', 'scandal', 'leader', 'stat', 'hidden', 'talent', 'cash', 'relationship', 'flag', 'addNpc', 'removeNpc', 'condition', 'cure',
   'gpa', 'legal', 'followers', 'counter', 'milestone', 'death', 'memory', 'queue', 'partTimeScale', 'tag', 'feud', 'perf', 'pay',
   'fired', 'promoted', 'npcSet', 'moveCity', 'property', 'vehicle', 'sellInvestments', 'prison', 'giveVehicle', 'npcTransition', 'image', 'meetRoyal', 'honour', 'approval', 'reelect', 'ousted', 'resignOffice', 'rivalry', 'rivalEnd', 'family', 'press', 'story', 'coolStory', 'kinOut', 'support', 'vote', 'exile', 'restore', 'abdicate']);
 const problems = [];
@@ -31,7 +31,7 @@ for (const ev of EVENTS) {
         if (e.type === 'queue' && !allIds.has(e.value)) at(`queues unknown scene "${e.value}"`);
       }
       for (const [, key] of `${ev.text} ${c.label} ${o.text}`.matchAll(/\{([a-zA-Z]+)\}/g)) {
-        if (!ev.queuedOnly && !ev.castGiven && !['name', 'city'].includes(key) && !cast.has(key) && !added.has(key)) at(`text uses {${key}} with nobody cast as it`);
+        if (!ev.queuedOnly && !ev.castGiven && !['name', 'city', 'pm', 'pmTitle', 'law'].includes(key) && !cast.has(key) && !added.has(key)) at(`text uses {${key}} with nobody cast as it`);
       }
     }
   }

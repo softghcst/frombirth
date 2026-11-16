@@ -5,6 +5,7 @@ import { esc } from '../util.js';
 import * as gov from '../engine/government.js';
 import * as world from '../engine/polity.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
+import * as dip from '../engine/diplomacy.js';
 
 /** How a vote went, party by party. Resolves when closed. */
 function tallyModal(title, t) {
@@ -144,5 +145,23 @@ export function governButtons() {
   const b = gov.bill();
   return `<button class="btn ${empty ? 'primary' : ''}" data-pol="cabinet">Your cabinet <small>${empty ? `${empty} ${empty === 1 ? 'post' : 'posts'} empty` : 'all posts filled'}</small></button>
     <button class="btn" data-pol="budget">The budget <small>${v.presented ? 'presented for this year' : 'not yet presented'}</small></button>
-    <button class="btn" data-pol="law">${b ? 'Carry on with your bill' : 'Bring in a law'} <small>${b ? (b.stage === 'amend' ? 'in committee' : 'awaiting a vote') : `${gov.billsLeft()} left this year`}</small></button>`;
+    <button class="btn" data-pol="law">${b ? 'Carry on with your bill' : 'Bring in a law'} <small>${b ? (b.stage === 'amend' ? 'in committee' : 'awaiting a vote') : `${gov.billsLeft()} left this year`}</small></button>
+    <button class="btn" data-pol="foreign">Foreign affairs <small>${dip.actsLeft()} left this year</small></button>`;
+}
+
+/** Foreign affairs: choose a country, then what to do about it. */
+export async function foreignFlow(api) {
+  for (;;) {
+    const list = dip.view();
+    const cid = await pickModal({ title: 'Foreign affairs', cancel: 'Close', body: `How the country stands with those it deals with most. You can do ${dip.actsLeft()} more ${dip.actsLeft() === 1 ? 'thing' : 'things'} abroad this year. A good foreign minister helps with all of it.`,
+      options: list.map((x) => ({ value: x.id, label: `${x.flag} ${x.name}: ${x.mood.toLowerCase()}`, sub: `${x.leader}, ${x.title}.${x.treaties.length ? ` In force: ${x.treaties.join(', ')}.` : ''}` })) });
+    if (!cid) return undefined;
+    const x = list.find((q) => q.id === cid);
+    const what = await pickModal({ title: `${x.flag} ${x.name}`, cancel: 'Back', body: `Relations are ${x.mood.toLowerCase()}. ${x.leader} is ${x.title}.`,
+      options: dip.options(cid).map((o) => ({ value: o.id, label: o.name, sub: o.sub, disabled: !!o.disabled || dip.actsLeft() <= 0 })) });
+    if (!what) continue;
+    const r = dip.act(cid, what);
+    api.changed();
+    await messageModal({ body: r.text, tone: r.tone });
+  }
 }
