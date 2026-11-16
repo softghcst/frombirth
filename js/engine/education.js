@@ -1,6 +1,7 @@
 // Education: compulsory school by age, effort and attendance, tutors, cliques,
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
+import { tuitionFactor } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, uid, localWage, localCost } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
@@ -87,7 +88,7 @@ export const meetClassmates = () => turnOverClassmates(true);
 export function tuitionFor(stage) {
   const c = country();
   const prog = PROGRAMMES[stage];
-  return c.freeUniversity && prog.kind !== 'trade' ? 0 : localCost(prog.tuition, c);
+  return c.freeUniversity && prog.kind !== 'trade' ? 0 : Math.round(localCost(prog.tuition, c) * tuitionFactor(c.id));
 }
 
 /** What this year actually costs at the school the player attends. */

@@ -43,7 +43,7 @@ export default [
 
   // ---------- Being a voter ----------
   {
-    id: 'polling_day', category: 'politics', ageRange: [18, 100], cooldown: 5, requires: voter,
+    id: 'polling_day', category: 'politics', ageRange: [18, 100], cooldown: 3, requires: [...voter, need('electionYear', '==', true)],
     text: 'It is polling day. There is a queue outside the school hall, and a dog tied to the railings.',
     choices: [
       { label: 'Read up on everyone, then vote', outcomes: [any('You make a cross in a box with a pencil on a string, and feel briefly like part of something.', 'good', st('mood', 3), st('intellect', 1))] },

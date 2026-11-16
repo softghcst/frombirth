@@ -33,6 +33,8 @@ const SPECIAL = {
   royalBy: (p) => p.royal?.by ?? null,
   // Politics: inOffice, officeTier (1 council … 5 head of government), democracy (voters choose), partyState.
   // Approval is plain 'politics.approval'.
+  // True in the year a general election is held (engine/polity.js).
+  electionYear: () => { const w = store.state.polities?.[country().id]; return !!w && w.calendar?.general === store.state.year; },
   inOffice: (p) => !!p.politics,
   officeTier: (p) => p.politics?.tier ?? 0,
   democracy: () => ['presidential', 'parliamentary'].includes(SYSTEMS[country().id]?.kind),

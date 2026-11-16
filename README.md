@@ -33,6 +33,7 @@ node tests/events.mjs
 ```bash
 node tests/escape-layouts.mjs
 node tests/succession.mjs      # the rules of royal succession, on hand-built families
+node tests/elections.mjs       # votes, seats, run-offs and coalitions, on hand-built cases
 ```
 
 `avatar.mjs` checks the parts catalogue, the renderer, inheritance and the loading of old saves.
@@ -316,8 +317,38 @@ without regions skip that rung.
   yourself, or seizing emergency powers and ruling without elections, which
   can end in an uprising.
 
-The rules are in `js/engine/politics.js`; the screens are in
-`js/ui/politics.js`. Scenes can test `inOffice`, `officeTier`, `democracy`,
+### The political world
+
+Each country has a political life of its own (`state.polities`), which goes on
+whether or not the player takes any part.
+
+- **Parties and politicians.** Three to five invented parties, each with
+  positions on six issues (`js/data/parties.js`), and politicians who persist:
+  they have faces, ages and careers, lead their parties, win and lose, retire
+  and die. Nothing here describes a real party.
+- **Elections on a calendar.** General elections fall every four to six years
+  by country. Voters are five groups with their own priorities and turnout.
+  Votes become seats by proportional lists or by districts, depending on the
+  country; presidents are elected separately, with a run-off where the country
+  holds one. A parliament with no majority produces a coalition or a minority
+  government, and coalitions can collapse into an early election.
+- **Governments change the law.** Income tax, university funding, health
+  funding and housing each move a step at a time, towards what the governing
+  parties stand for, within a budget: a government deep in deficit has to
+  raise tax or cut something. The changes reach everyone's tax bill, tuition,
+  medical costs and rent (`js/engine/policy.js`), and the journal reports them.
+- **The player's part.** Join or leave a party from the Politics screen (Work
+  tab, "The political world"). A party's backing helps in a campaign; an
+  independent has no machine for the bigger races. Offices are contested on
+  the calendar, in the year before polling, against a named opponent who
+  remembers the result. A head of government can bring in laws, which pass if
+  they have the seats.
+- **Where there are no elections,** ministers are appointed and rule by
+  decree. In a monarchy the monarch remains head of state whatever the voters do.
+
+The rules are in `js/engine/politics.js` (the player's career), `js/engine/polity.js`
+(the political world) and `js/engine/elections.js` (the arithmetic, checked by
+`tests/elections.mjs`); the screens are in `js/ui/politics.js` and `js/ui/polity.js`. Scenes can test `inOffice`, `officeTier`, `democracy`,
 `partyState` and `politics.approval`, and use the `approval()`, `reelect()`,
 `ousted()` and `resignOffice()` effects.
 

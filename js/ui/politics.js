@@ -5,6 +5,9 @@ import { esc, fmtMoney, theCountry } from '../util.js';
 import * as pol from '../engine/politics.js';
 import { meterHtml } from './meter.js';
 import { messageModal, pickModal, confirmModal } from './modals.js';
+import * as world from '../engine/polity.js';
+import { openPolity } from './polity.js';
+import { LEVERS } from '../data/parties.js';
 
 const KIND = {
   presidential: 'The president is elected directly by the voters.',
@@ -18,9 +21,15 @@ export function politicsCard() {
   const c = country();
   const s = pol.system(c);
   const k = pol.inOffice();
-  if (p.age < 16 && !k) return '';
+  if (p.age < 14 && !k) return '';
+  const o = world.overview(c.id);
+  const mine = world.membership(c.id);
+  const worldRows = `<div class="kv"><span>${esc(o.headTitle)}</span><span>${esc(o.head?.name ?? '')}${o.headParty ? `, ${esc(o.headParty.name)}` : ''}</span></div>
+    ${o.nextElection ? `<div class="kv"><span>Next general election</span><span>${o.nextElection}</span></div>` : ''}
+    ${o.kind !== 'none' ? `<div class="kv"><span>Your party</span><span>${mine ? esc(mine.name) : 'None'}</span></div>` : ''}`;
+  const worldBtn = '<button class="btn" data-pol="world">The political world</button>';
   if (s.kind === 'none') {
-    return `<div class="card"><h3>Politics</h3><p class="muted">There are no elections in ${esc(theCountry(c.name))}. Power here is inherited.</p></div>`;
+    return `<div class="card"><h3>Politics</h3><p class="muted">There are no elections in ${esc(theCountry(c.name))}. Power here is inherited.</p>${worldRows}<div class="btn-stack" style="margin-top:10px">${worldBtn}</div></div>`;
   }
   const past = (p.flags.offices ?? []).map((o) => `<div class="kv"><span>${esc(o.title)}</span><span>Age ${o.from}–${o.to}</span></div>`).join('');
   const exp = p.counters.polExp ?? 0;
@@ -33,6 +42,8 @@ export function politicsCard() {
       <p class="muted" style="margin-top:6px">Use the office, or be blamed for doing nothing. If approval falls far enough, there will be a move to throw you out.</p>
       <div class="btn-stack" style="margin-top:10px">
         <button class="btn" data-pol="govern">Govern <small>${pol.actionsLeft()} left this year</small></button>
+        ${k.officeId === 'head' ? '<button class="btn" data-pol="law">Bring in a law</button>' : ''}
+        ${worldBtn}
         ${k.tier < 5 && !k.ruler ? '<button class="btn" data-pol="run">Run for higher office</button>' : ''}
         <button class="btn danger" data-pol="resign">${k.ruler ? 'Give up power' : 'Resign'}</button>
       </div>${past ? `<div class="section-label">Offices held before</div>${past}` : ''}</div>`;
@@ -42,7 +53,8 @@ export function politicsCard() {
     <div class="kv"><span>Experience that counts</span><span>${exp ? `${exp} ${exp >= 20 ? '(a great deal)' : exp >= 8 ? '(some)' : '(a little)'}` : 'None yet'}</span></div>
     ${past}
     <p class="muted" style="margin-top:8px">Student council, debating, a law or politics degree, helping on campaigns and every office you hold all make the next race easier.</p>
-    ${p.age >= 18 ? '<div class="btn-stack" style="margin-top:10px"><button class="btn" data-pol="run">Run for office</button></div>' : ''}</div>`;
+    ${worldRows}
+    <div class="btn-stack" style="margin-top:10px">${p.age >= 18 ? '<button class="btn" data-pol="run">Run for office</button>' : ''}${worldBtn}</div></div>`;
 }
 
 async function report(api, r) {
@@ -57,7 +69,7 @@ async function run(api) {
     title: party ? 'Seek a post' : 'Run for office',
     body: party ? 'The committee decides. Loyalty, patience and usefulness are what it looks for.' : 'You can fight one campaign a year. Skipping rungs is possible, and hard.',
     options: pol.ladder().map((o) => ({ value: o.id, label: o.title, disabled: !!o.blocked,
-      sub: o.blocked || `${o.odds[0].toUpperCase()}${o.odds.slice(1)}. From ${fmtMoney(o.cost, c)}; pays ${fmtMoney(o.salary, c)} a year for ${o.term} years${o.fullTime ? '' : ', alongside your job'}.` })),
+      sub: o.blocked || `${o.odds[0].toUpperCase()}${o.odds.slice(1)}${o.opponent ? ` against ${o.opponent}` : ''}. Polling in ${o.electionYear}. From ${fmtMoney(o.cost, c)}; pays ${fmtMoney(o.salary, c)} a year${o.fullTime ? '' : ', alongside your job'}.` })),
   });
   if (!officeId) return undefined;
   let platform = 'jobs';
@@ -93,7 +105,34 @@ async function govern(api) {
 }
 
 /** Handles the card's buttons. */
+/** As head of government: change one of the things that touch everyone's life. */
+async function law(api) {
+  const w = world.polity(country().id);
+  const options = [];
+  for (const [id, L] of Object.entries(LEVERS)) {
+    for (const dir of [1, -1]) {
+      const at = w.policies[id];
+      if (at + dir > 2 || at + dir < -2) continue;
+      const text = L[dir > 0 ? 'up' : 'down'].replace(/^(raised|cut|put|capped|lifted)/, (v) => ({ raised: 'Raise', cut: 'Cut', put: 'Put', capped: 'Cap', lifted: 'Lift' })[v]);
+      const money = L.cost * dir > 0 ? 'Costs the treasury.' : 'Brings money in.';
+      options.push({ value: `${id}:${dir}`, label: text[0].toUpperCase() + text.slice(1), sub: `${money} ${L.feel(at + dir)}` });
+    }
+  }
+  const mine = world.membership(country().id);
+  const seats = mine ? w.seats[mine.id] ?? 0 : 0;
+  const pick = await pickModal({ title: 'Bring in a law', cancel: 'Back',
+    body: `${mine ? `Your party holds ${seats} of ${w.seatCount} seats.` : 'You have no party behind you.'} ${seats > w.seatCount / 2 ? 'What you propose will pass.' : 'You will have to find the votes, and may not.'} The public finances are ${w.budget <= -3 ? 'deep in deficit' : w.budget < 0 ? 'in deficit' : 'sound'}.`,
+    options });
+  if (!pick) return undefined;
+  const [id, dir] = pick.split(':');
+  const r = world.playerLaw(id, Number(dir));
+  if (r.law) pol.shiftApproval(id === 'tax' ? -Number(dir) * 3 : Number(dir) * 3);
+  return report(api, r);
+}
+
 export async function politicsAction(id, api) {
+  if (id === 'world') return openPolity(() => api.changed());
+  if (id === 'law') return law(api);
   if (id === 'run') return run(api);
   if (id === 'govern') return govern(api);
   if (id === 'resign') {
