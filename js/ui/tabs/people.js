@@ -13,6 +13,7 @@ import { openModal, messageModal, pickModal, confirmModal, inputModal } from '..
 import { TRAIT_BY_ID } from '../../data/traits.js';
 import { COUNTRIES } from '../../data/countries.js';
 import * as who from '../../engine/identity.js';
+import { openDynasty } from '../dynasty.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
@@ -220,6 +221,7 @@ function openNpc(npc, api) {
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
+    ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
     ...(npc.alive ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
   ];
   // Friendly things first, destructive things last.
@@ -257,6 +259,7 @@ function openNpc(npc, api) {
       encourage: () => report(api, lives.encourage(npc.id)),
       talkIdentity: () => report(api, who.talkItThrough(npc.id)),
       edit: () => editPerson(api, npc),
+      dynasty: () => openDynasty(npc.flags.houseId),
       breakUp: async () => {
         const yes = await confirmModal({ title: `End things with ${npc.firstName}?`, body: 'They will become an ex.', yes: 'End it', danger: true });
         if (yes) await report(api, love.breakUp(npc.id));

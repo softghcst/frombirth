@@ -7,6 +7,8 @@ import { ROYAL_RANKS } from '../data/royalty.js';
 import * as crown from '../engine/royalty.js';
 import { meterHtml } from './meter.js';
 import { messageModal, pickModal, confirmModal } from './modals.js';
+import { openDynasty } from './dynasty.js';
+import * as dyn from '../engine/dynasty.js';
 
 const mood = (v) => (v >= 80 ? 'adored' : v >= 62 ? 'well liked' : v >= 45 ? 'tolerated' : v >= 28 ? 'unpopular' : 'in disgrace');
 
@@ -20,12 +22,16 @@ export function royalCard() {
     const k = crown.court().monarch;
     return `<div class="card"><h3>The crown</h3>
       <div class="kv"><span>On the throne</span><span>${esc(crown.titleOf(country().id, 'monarch', k.gender))} ${esc(k.name)}, age ${k.age}</span></div>
+      <div class="kv"><span>The house</span><span>${esc(dyn.house().name)}</span></div>
       <div class="kv"><span>You</span><span>A commoner</span></div>
-      <p class="muted" style="margin-top:8px">The famous, the wealthy and the successful are sometimes invited to the palace, where unmarried royals are to be met.${m.honours ? ' The crown also honours people who give a great deal to the country.' : ''}</p></div>`;
+      <p class="muted" style="margin-top:8px">The famous, the wealthy and the successful are sometimes invited to the palace, where unmarried royals are to be met.${m.honours ? ' The crown also honours people who give a great deal to the country.' : ''}</p>
+      <div class="btn-stack" style="margin-top:10px"><button class="btn" data-dynasty>The royal family and its history</button></div></div>`;
   }
   const inFamily = ROYAL_RANKS.includes(r.rank);
   const pay = crown.allowance();
-  const rows = [['Title', crown.standing(p)], ['How you came by it', { birth: 'By birth', marriage: 'By marriage', honour: 'Given by the crown' }[r.by]]];
+  const d = inFamily ? dyn.house(r.countryId) : null;
+  const mon = d ? dyn.monarchOf(d) : null;
+  const rows = [['Title', crown.standing(p)], ...(d ? [['House', d.name], ...(mon && !mon.isPlayer ? [['On the throne', `${dyn.nameOf(d, mon)}, age ${dyn.ageOf(mon)}`]] : [])] : []), ['How you came by it', { birth: 'By birth', marriage: 'By marriage', honour: 'Given by the crown' }[r.by]]];
   if (r.line && r.rank !== 'monarch') rows.push(['Place in line to the throne', String(r.line)]);
   if (pay && p.age >= 18) rows.push(['Allowance from the crown', `${fmtMoney(pay, country())} a year`]);
   if (inFamily) rows.push(['Home', 'A royal residence, rent free']);
@@ -35,6 +41,7 @@ export function royalCard() {
     ${inFamily ? `<div style="margin-top:10px">${meterHtml('Public image', r.image, true)}</div>
       <p class="muted" style="margin-top:6px">The public finds you ${mood(r.image)}. Duties raise their opinion; scandal, idleness and crime sink it. Fall too far and the palace will remove you.</p>` : ''}
     <div class="btn-stack" style="margin-top:10px">
+      ${inFamily ? '<button class="btn primary" data-dynasty>The dynasty</button>' : ''}
       ${crown.canDoDuties() && inFamily ? `<button class="btn" data-duties>Public duties <small>${crown.dutiesLeft()} left this year</small></button>` : ''}
       ${p.age >= 18 && !r.waiting ? `<button class="btn" data-renounce>${r.rank === 'monarch' && r.reigning ? 'Abdicate' : inFamily ? 'Step back from royal life' : 'Give up the title'}</button>` : ''}
     </div></div>`;
@@ -42,6 +49,8 @@ export function royalCard() {
 
 /** Wires the card's buttons. Call after the Self tab has drawn it. */
 export function bindRoyalCard(el, api) {
+  const book = el.querySelector('[data-dynasty]');
+  if (book) book.onclick = () => openDynasty();
   const duties = el.querySelector('[data-duties]');
   if (duties) duties.onclick = () => openDuties(api);
   const out = el.querySelector('[data-renounce]');

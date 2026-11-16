@@ -1,7 +1,7 @@
 // Creates a brand-new life: the player, their family and the opening journal.
 import { rng } from '../rng.js';
-import { bornInto } from './royalty.js';
-import { titleOf } from './royalty.js';
+import { bornInto, birthKind, titleOf, dress } from './royalty.js';
+import { seatFamily, nameOf, monarchOf, bloodParent, relationToMonarch } from './dynasty.js';
 import { uid } from '../util.js';
 import { COUNTRIES, COUNTRY_LIST, surnameFor } from '../data/countries.js';
 import { TRAIT_BY_ID } from '../data/traits.js';
@@ -50,6 +50,9 @@ export function createLife(opts = {}) {
   // A designed face: the family is built to resemble it.
   const designed = opts.appearance?.inherited ? normalize(opts.appearance, 'designed') : null;
   const fam = generateFamily(c, lastName, { background: opts.background, skinHint: designed ? skinDepth(designed) : undefined, avoidNames: [firstName] });
+  // A royal child: the house is built around the family before the child is drawn from it.
+  const birth = birthKind(c.id, opts.birthRank);
+  const seat = birth === 'royal' ? seatFamily(c, year, fam, gender) : null;
   const { mother, father } = fam;
   const genes = father ?? unknownParent(mother);
   const family = [mother, ...(father ? [father] : []), ...fam.siblings, ...fam.grandparents, ...fam.pets];
@@ -144,7 +147,7 @@ export function createLife(opts = {}) {
     if (who !== 'self') journal.push(j(`You have your ${who}'s ${TRAIT_BY_ID[id].name.toLowerCase()} nature.`));
   }
   // Born to a title, in a country that has them.
-  bornInto(player, opts.birthRank);
+  bornInto(player, birth, seat);
   if (player.royal) {
     const royalBlood = ['heir', 'royal'].includes(player.royal.rank);
     for (const par of [mother, father].filter(Boolean)) {
@@ -152,7 +155,6 @@ export function createLife(opts = {}) {
       par.wealth = Math.max(par.wealth, royalBlood ? 97 : 85);
       par.meters.money = par.wealth;
       par.savings = Math.max(par.savings, Math.round(par.savings * 6));
-      if (royalBlood) par.flags.royal = { rank: 'royal', line: null, title: titleOf(c.id, 'royal', par.gender) };
     }
     player.hidden.fame = royalBlood ? 70 : 15;
     const what = royalBlood ? 'a member of the royal family' : 'a landed aristocrat';
@@ -160,21 +162,30 @@ export function createLife(opts = {}) {
       if (/^Your (mother|father) is /.test(e.text)) e.text = e.text.replace(/, an? [^,]+, age/, `, ${what}, age`);
       if (/^Your family (is|does) /.test(e.text)) e.text = royalBlood ? 'Your family lives in a palace.' : 'Your family has land, a great house, and a name older than the country\'s laws.';
     }
-    journal.splice(1, 0, j(royalBlood
-      ? `You are born into the royal family: ${titleOf(c.id, player.royal.rank, gender)} ${firstName}${player.royal.line ? `, ${player.royal.line === 1 ? 'heir to the throne' : `number ${player.royal.line} in line to the throne`}` : ''}. The guns fire a salute.`
-      : `You are born into the nobility. One day you will be ${titleOf(c.id, player.royal.rank, gender)}.`, 'good'));
+    let born = `You are born into the nobility. One day you will be ${titleOf(c.id, player.royal.rank, gender)}.`;
+    if (seat) {
+      const d = seat.dynasty;
+      const mon = monarchOf(d);
+      const me = Object.values(d.people).find((x) => x.isPlayer);
+      const rel = relationToMonarch(d, me.id).replace(/^(eldest|second|third|fourth|fifth) /, '');
+      born = `You are born into the ${d.name}: ${titleOf(c.id, player.royal.rank, gender)} ${firstName}, ${rel} of ${nameOf(d, mon)}${player.royal.line ? `, and ${player.royal.line === 1 ? 'heir to the throne' : `number ${player.royal.line} in line to the throne`}` : ''}. The guns fire a salute.`;
+    }
+    journal.splice(1, 0, j(born, 'good'));
   }
   player.flags.longevity = rollLongevity();
   if (player.flags.longevity >= 8) journal.push(j('People in your family tend to live to a great age.', 'good'));
   const gift = Object.entries(player.talents).find(([, v]) => v >= 75);
   if (gift) journal.push(j(`Something about you hints at a gift for ${gift[0]}.`, 'good'));
 
-  return {
+  const state = {
     schemaVersion: SCHEMA_VERSION, slotId: uid('life'),
     createdAt: Date.now(), updatedAt: Date.now(), year,
     player, npcs: Object.fromEntries(family.map((n) => [n.id, n])),
     journal, market: { prices: {}, history: {}, cycle: 0 },
     eventHistory: [], pendingEvents: [], rngSeed: rng.state(),
     settings: { theme: 'auto' },
+    ...(seat ? { dynasties: { [c.id]: seat.dynasty } } : {}),
   };
+  if (seat) dress(seat.dynasty, state);
+  return state;
 }
