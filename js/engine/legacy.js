@@ -242,6 +242,7 @@ export function continueAs(npcId) {
 
   // The schools of the world are the same schools: the next generation may sit in the same classrooms.
   if (old.schools) next.schools = old.schools;
+  if (old.universities) next.universities = old.universities;
   if (player.education.enrolled && !PROGRAMMES[player.education.stage]) ensureSchool();
 
   const c = COUNTRIES[player.countryId];

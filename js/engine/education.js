@@ -14,6 +14,7 @@ import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, DROPOUT_AGE, PROGRAMMES, HOUSING, CL
 import { MAJORS, MAJOR_BY_ID } from '../data/majors.js';
 import * as sch from './schooling.js';
 import { graduationDay } from './schoollife.js';
+import { uniOf, onResults, remember as rememberAlumnus } from './university.js';
 import { schoolModel } from '../data/education.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
@@ -22,6 +23,8 @@ const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle:
   community: 'Community college', apprenticeship: 'Apprenticeship' };
 const SCHOOL = ['elementary', 'middle', 'high'];
 /** What a stage is called. School stages take the country's own word for them. */
+/** A mark as this country writes it, for anyone who needs to show one. */
+export const markText = (g) => sch.mark(g);
 export const stageLabel = (stage) => (SCHOOL.includes(stage) && store.state?.player ? sch.stageName(stage) : LABELS[stage] ?? stage);
 export const isHigher = (stage) => stage in PROGRAMMES;
 const hasMajor = (stage) => isHigher(stage) && PROGRAMMES[stage].kind !== 'trade';
@@ -121,7 +124,8 @@ function chargeTuition() {
   const p = player();
   const e = p.education;
   const c = country();
-  const fee = currentTuition();
+  // What is owed is what is charged less whatever help came with the offer.
+  const fee = Math.round(currentTuition() * (1 - (e.aid ?? 0)));
   if (!fee || e.funding === 'scholarship' || e.funding === 'parents') return;
   if (e.funding === 'self' && p.finance.cash >= fee) {
     p.finance.cash -= fee;
@@ -245,7 +249,7 @@ function yearGpa(p) {
   const raw = p.stats.intellect * 0.55 + p.hidden.discipline * 0.15 + e.effort * 0.3;
   let g = marked ?? raw / 25 + rng.around(0, 0.3) - e.absences * 0.12;
   if (hasMajor(e.stage)) g -= (MAJOR_BY_ID[e.majorId]?.difficulty ?? 0.3) * (e.stage === 'community' ? 0.5 : 1);
-  if (e.stage === 'university' && SCHOOL_TYPE_BY_ID[e.schoolId]?.strong.includes(e.majorId)) g += 0.1;
+  if (e.stage === 'university' && uniOf(e.schoolId)?.strong.includes(e.majorId)) g += 0.1;
   if (!isHigher(e.stage) && p.age >= 12) g += PRIORITY_BY_ID[e.priority]?.gpa ?? 0;
   if (e.stage === 'medical') g -= 0.25;
   if (e.stage === 'law') g -= 0.15;
@@ -267,6 +271,7 @@ function leaveSchool(how = 'completed') {
   e.schoolId = null;
   e.schoolName = null;
   e.tuitionMult = 1;
+  e.aid = 0; e.aidKeep = 0; e.aidParts = [];
   const mate = roommate();
   if (mate) mate.flags.title = 'Former roommate';
   e.roommateId = null;
@@ -285,13 +290,14 @@ function graduate() {
   const gpa = e.gpa.toFixed(2);
   const major = hasMajor(e.stage) ? MAJOR_BY_ID[e.majorId] : null;
   const trade = TRADE_BY_ID[e.majorId];
-  const school = SCHOOL_TYPE_BY_ID[e.schoolId];
+  const school = uniOf(e.schoolId);
   const leaving = schoolModel(p.countryId).leaving;
   const place = SCHOOL.includes(e.stage) ? sch.school() : null;
   e.degrees.push({ type: e.stage, majorId: major?.id ?? (e.stage === 'apprenticeship' ? trade?.id : undefined),
     gpa: e.gpa, age: p.age, school: e.schoolName ?? (place && place.kind !== 'home' ? place.name : undefined), award: e.stage === 'high' ? leaving : undefined, countryId: p.countryId,
     courses: e.stage === 'high' && e.courses ? { ...e.courses } : undefined });
-  if (e.stage === 'high') graduationDay(e.gpa);
+  if (e.stage === 'high') { graduationDay(e.gpa); onResults(); }
+  if (e.stage === 'university') rememberAlumnus(e.schoolId);
   const honours = e.gpa >= 3.7 ? ' with top honours' : e.gpa >= 3.3 ? ' with honours' : '';
   const what = {
     high: `${place && place.kind !== 'home' ? place.name : 'school'} with your ${leaving}`,
@@ -433,9 +439,16 @@ export function tickEducation() {
     leaveSchool();
     return;
   }
-  if (e.funding === 'scholarship' && e.gpa < 2.5) {
+  if (e.funding === 'scholarship' && e.gpa < 2.5 && !(e.aid > 0 && !e.aidKeep)) {
     e.funding = 'loan';
+    // Help given for need is not taken away for a bad year; a scholarship for merit is.
+    const kept = (e.aidParts ?? []).filter((x) => x.kind === 'need').reduce((t, x) => t + x.fraction, 0);
+    e.aid = Math.min(1, kept); e.aidKeep = 0; e.aidParts = (e.aidParts ?? []).filter((x) => x.kind === 'need');
     log('Your grades slipped and you lost your scholarship.', 'system', 'bad');
+  } else if (e.aidKeep && e.gpa < e.aidKeep && (e.aidParts ?? []).some((x) => x.kind !== 'need')) {
+    const kept = e.aidParts.filter((x) => x.kind === 'need').reduce((t, x) => t + x.fraction, 0);
+    e.aid = Math.min(1, kept); e.aidKeep = 0; e.aidParts = e.aidParts.filter((x) => x.kind === 'need');
+    log('Your grades slipped below what your scholarship asks for, and it has been withdrawn.', 'system', 'bad');
   }
   chargeTuition();
   chargeHousing();
@@ -822,7 +835,11 @@ export function enrol(progId, subjectId, funding, living = {}, school = null) {
     : prog.needs === 'university' ? lastDegree('university').majorId : null;
   e.schoolId = school?.id ?? null;
   e.schoolName = school?.name ?? null;
-  e.tuitionMult = SCHOOL_TYPE_BY_ID[school?.id]?.tuitionMult ?? 1;
+  e.tuitionMult = uniOf(school?.id)?.tuitionMult ?? 1;
+  // Help with the cost, as offered: a share of tuition waived, and the mark that keeps it.
+  e.aid = school?.aid?.fraction ?? 0;
+  e.aidKeep = school?.aid?.keep ?? 0;
+  e.aidParts = school?.aid?.parts ?? [];
   e.funding = currentTuition() === 0 ? 'public' : funding;
   e.housingAid = e.funding === 'scholarship' && !!living.housingAid;
   turnOverClassmates(true);
@@ -832,7 +849,7 @@ export function enrol(progId, subjectId, funding, living = {}, school = null) {
     : `You enrolled at ${where}${transfer ? ', transferring straight into the third year' : ''}.`, 'system', 'good');
 
   // A small college puts you in a room with the professor you came for.
-  if (SCHOOL_TYPE_BY_ID[e.schoolId]?.perk === 'mentor' && !npcsByRole('tag:favProfessor').length) {
+  if (uniOf(e.schoolId)?.perk === 'mentor' && !npcsByRole('tag:favProfessor').length) {
     const prof = addNpc(makeNpc({ role: 'mentor', countryId: p.countryId, age: rng.int(38, 62), relationship: 55 }));
     prof.flags.tag = 'favProfessor';
     prof.flags.title = 'Professor';

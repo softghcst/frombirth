@@ -25,6 +25,7 @@ import { tickActivism } from './activism.js';
 import { tickLocal } from './local.js';
 import { tickLanguages } from './languages.js';
 import { tickAlumni } from './schooling.js';
+import { tickApplications } from './university.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
@@ -79,6 +80,7 @@ export function advanceYear() {
   afterGeneral();
   tickKin();
   tickAlumni();
+  tickApplications();
   { const learned = tickLanguages(); if (learned) log(learned, 'system', 'good'); }
   for (const n of tickLocal()) log(n.text, 'system', n.tone);
   tickActivism();
