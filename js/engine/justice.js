@@ -1,5 +1,6 @@
 // Crime and the courts: committing a crime, police heat, arrest, choosing a
 // lawyer, pleading, the verdict, and being sent down.
+import { policingShift } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
@@ -111,7 +112,7 @@ export function commitCrime(crimeId, targetId, how = {}) {
   if (crime.danger && rng.chance(crime.danger)) p.stats.health = clamp(p.stats.health - rng.int(15, 35));
   if (stranger && stranger.guard >= 0.25 && rng.chance(0.3)) p.stats.health = clamp(p.stats.health - rng.int(10, 30)); // they fought back
   const failed = crime.target ? `${who} is still very much alive. ${crime.failed}` : crime.failed;
-  if (rng.chance(clamp(crime.caught + (method?.caught ?? 0) + l.heat / 300, 0.05, 0.97))) {
+  if (rng.chance(clamp(crime.caught + (method?.caught ?? 0) + l.heat / 300 + policingShift(p.countryId), 0.05, 0.97))) {
     const text = `${failed} You are under arrest.`;
     log(text, 'system', 'bad');
     arrest(crimeId, true, victim?.firstName ?? stranger?.name);

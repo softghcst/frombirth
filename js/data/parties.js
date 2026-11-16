@@ -69,8 +69,19 @@ export const LEVERS = {
   health: { name: 'health funding', follows: 'services', cost: 1, step: 0.15,
     up: 'put more money into health care, cutting what patients pay', down: 'cut health funding, raising what patients pay', feel: (n) => `Medical bills are ${Math.abs(n) * 15}% ${n > 0 ? 'lower' : 'higher'}.` },
   rent: { name: 'housing', follows: 'housing', cost: 0.5, step: 0.06,
-    up: 'capped rent rises and funded new homes', down: 'lifted rent controls', feel: (n) => `Rents are ${Math.abs(n) * 6}% ${n > 0 ? 'lower' : 'higher'}.` },
+    up: 'capped rent rises, with money for new homes', down: 'lifted rent controls', feel: (n) => `Rents are ${Math.abs(n) * 6}% ${n > 0 ? 'lower' : 'higher'}.` },
+  police: { name: 'policing', follows: 'order', cost: 0.5, step: 0.04,
+    up: 'put more police on the streets', down: 'cut police numbers', feel: (n) => `Crimes are ${n > 0 ? 'more' : 'less'} likely to be solved than they were.` },
 };
+
+/** The departments of a government. Each is run by a minister, and each answers for one of the levers above. */
+export const DEPARTMENTS = [
+  { id: 'treasury', title: 'Finance Minister', lever: 'tax' },
+  { id: 'health', title: 'Health Minister', lever: 'health' },
+  { id: 'education', title: 'Education Minister', lever: 'tuition' },
+  { id: 'housing', title: 'Housing Minister', lever: 'rent' },
+  { id: 'justice', title: 'Justice Minister', lever: 'police' },
+];
 
 /** Things that bring a head of government low. truth is decided when it happens. */
 export const POLITICAL_SCANDALS = ['was found to have taken gifts from a company bidding for state contracts', 'misled the legislature about what they knew, and when',

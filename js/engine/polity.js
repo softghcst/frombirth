@@ -21,6 +21,7 @@ import { MONARCHIES } from '../data/royalty.js';
 import { PARTY_KINDS, RULING_PARTY, VOTERS, DISTRICT_SEATS, ONE_ROUND, TERMS, LEVERS, POLITICAL_SCANDALS, ISSUES } from '../data/parties.js';
 import { randomAppearance, ensureStyled } from '../avatar/inherit.js';
 import { vote, proportional, districts, firstRound, formGovernment } from './elections.js';
+import { formCabinet, tickCabinet, floorVote, toDo } from './government.js';
 
 const yearNow = () => store.state.year;
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -29,16 +30,18 @@ const kindOf = (countryId) => SYSTEMS[countryId]?.kind ?? 'none';
 
 // ---------- People ----------
 
-function newFigure(w, partyId, age) {
+export function newFigure(w, partyId, age) {
   const c = COUNTRIES[w.countryId];
   const gender = rng.chance(0.62) ? 'male' : 'female';
   w.seq += 1;
   const f = { id: `f${w.seq}`, name: `${rng.pick(c.names[gender])} ${rng.pick(c.names.last)}`, gender, born: yearNow() - (age ?? rng.int(36, 62)), died: null,
-    partyId, look: ensureStyled(randomAppearance(undefined, gender), gender), t: { ambition: trait(), integrity: trait(), charisma: trait() }, post: null, history: [] };
+    partyId, look: ensureStyled(randomAppearance(undefined, gender), gender), t: { ambition: trait(), integrity: trait(), charisma: trait(), skill: trait() }, post: null, history: [] };
   w.figures[f.id] = f;
   return f;
 }
 const say = (f, text) => f?.history.push({ year: yearNow(), text });
+/** Writes a line into a politician's career. */
+export const note = say;
 export const ageOf = (f) => (f.died ?? yearNow()) - f.born;
 export const party = (w, id) => w.parties.find((p) => p.id === id) ?? null;
 export const figure = (w, id) => w.figures[id] ?? null;
@@ -56,18 +59,23 @@ export function polity(countryId = store.state.player.countryId) {
   const st = store.state;
   st.polities ??= {};
   if (!st.polities[countryId]) st.polities[countryId] = build(countryId);
-  return st.polities[countryId];
+  const w = st.polities[countryId];
+  // Saves from before there were cabinets or a policing budget.
+  if (w.policies.police == null) w.policies.police = 0;
+  w.cabinet ??= {};
+  return w;
 }
 
 function build(countryId) {
   const kind = kindOf(countryId);
   const year = yearNow();
   const w = { countryId, kind, parties: [], figures: {}, seq: 0, seatCount: 100, seats: {}, govt: { lead: null, partners: [], headId: null, since: year, kind: 'none' },
-    calendar: { term: TERMS[countryId] ?? 4, general: null, local: rng.int(0, 3) }, policies: { tax: 0, tuition: 0, health: 0, rent: 0 }, budget: 0, laws: [], elections: [], approval: 50 };
+    calendar: { term: TERMS[countryId] ?? 4, general: null, local: rng.int(0, 3) }, policies: { tax: 0, tuition: 0, health: 0, rent: 0, police: 0 }, budget: 0, debt: 0, cabinet: {}, laws: [], elections: [], approval: 50 };
   if (kind === 'none') {
     // No parties and no elections: ministers serve at the ruler's pleasure.
     const f = newFigure(w, null); f.post = 'head'; w.govt = { lead: null, partners: [], headId: f.id, since: year - rng.int(1, 9), kind: 'appointed' };
     say(f, `Appointed ${headTitle(countryId)} by the crown.`);
+    formCabinet(w);
     return w;
   }
   const kinds = kind === 'party' ? [RULING_PARTY] : [PARTY_KINDS[0], PARTY_KINDS[1], ...[...PARTY_KINDS.slice(2)].sort(() => rng.next() - 0.5).slice(0, rng.int(1, 3))];
@@ -86,6 +94,7 @@ function build(countryId) {
   const since = year - rng.int(0, w.calendar.term - 1);
   w.calendar.general = since + w.calendar.term;
   runGeneral(w, since, true);
+  formCabinet(w);
   return w;
 }
 
@@ -212,16 +221,21 @@ function legislate(w) {
     if (at !== target && settled && w.budget - L.cost * dir > -3) want.push({ id, dir });
   }
   let pick = null;
-  if (w.budget <= -3) {
+  if (w.budget <= -3 || ((w.debt ?? 0) >= 12 && w.budget < 0)) {
     // Either way of balancing the books is unpopular; which one depends on who governs.
     pick = lead.positions.tax >= 0 && w.policies.tax < 2 ? { id: 'tax', dir: 1, forced: true }
       : ['tuition', 'health', 'rent'].filter((id) => w.policies[id] > -2).map((id) => ({ id, dir: -1, forced: true }))[0] ?? (w.policies.tax < 2 ? { id: 'tax', dir: 1, forced: true } : null);
   } else if (want.length) pick = rng.pick(want);
   if (!pick) return null;
-  // A minority or a president facing a hostile legislature gets less through.
-  const through = { majority: 0.6, coalition: 0.45, minority: 0.25, divided: 0.2, 'one party': 0.6, appointed: 0.4 }[w.govt.kind] ?? 0.4;
-  if (!rng.chance(pick.forced ? Math.max(0.6, through) : through)) return null;
-  return enact(w, pick.id, pick.dir, head(w)?.name, pick.forced);
+  // Not every year brings a bill. When one comes, the legislature votes on it: a minority
+  // government, or a president facing a hostile chamber, loses votes a majority would win.
+  if (!rng.chance(pick.forced ? 0.8 : 0.6)) return null;
+  if (w.kind === 'party' || w.kind === 'none') return enact(w, pick.id, pick.dir, head(w)?.name, pick.forced);
+  const t = floorVote(w, pick.id, pick.dir, { whip: pick.forced ? 0.1 : 0 });
+  if (!t.passes) return { failed: true, text: toDo(LEVERS[pick.id][pick.dir > 0 ? 'up' : 'down']), vote: [t.for, t.against] };
+  const law = enact(w, pick.id, pick.dir, head(w)?.name, pick.forced);
+  if (law) law.vote = [t.for, t.against];
+  return law;
 }
 
 /** Moves a lever one step, records the law, and charges or credits the budget. */
@@ -274,6 +288,7 @@ export function tickPolity(w) {
       if (wasHead && !playerLeads) { w.govt.headId = next.id; w.govt.since = year; next.post = 'head'; tell(`${leader.name} is ${leader.died != null ? 'dead' : 'gone'}, and ${next.name} is the new ${headTitle(cid)}.`, 'neutral', 3); }
     }
   }
+  tickCabinet(w, tell, playerLeads);
   if (w.kind === 'none') {
     const h = head(w);
     if (!h || h.died != null || h.retired || rng.chance(0.07)) { const f = newFigure(w, null); f.post = 'head'; w.govt.headId = f.id; w.govt.since = year; say(f, `Appointed ${headTitle(cid)} by the crown.`); tell(`The ruler has appointed ${f.name} as ${headTitle(cid)}.`); }
@@ -283,7 +298,7 @@ export function tickPolity(w) {
 
   if (year % 10 === 0) {
     // Remembered: the living, everyone who governed, and anyone the player crossed paths with.
-    const keep = new Set(w.parties.flatMap((p) => [p.leaderId, p.deputyId]));
+    const keep = new Set([...w.parties.flatMap((p) => [p.leaderId, p.deputyId]), ...Object.values(w.cabinet ?? {}), ...Object.values(w.shortlists ?? {}).flatMap((x) => x.ids)]);
     for (const f of Object.values(w.figures)) if (f.died != null && year - f.died > 15 && !f.wasHead && !f.metPlayer && !f.isPlayer && !keep.has(f.id)) delete w.figures[f.id];
   }
 
@@ -307,7 +322,8 @@ export function tickPolity(w) {
       } else tell(`${headTitle(cid)} ${h.name} ${what}.`, 'neutral', 2);
     }
     const law = legislate(w);
-    if (law) tell(`The government has ${law.text}.`, 'neutral', 2);
+    if (law?.failed) tell(`The government's bill to ${law.text} was defeated in the legislature, ${law.vote[0]} votes to ${law.vote[1]}.`, 'neutral', 1);
+    else if (law) tell(`The government has ${law.text}.`, 'neutral', 2);
     // A coalition of parties that do not much like each other can fall apart.
     if (w.govt.kind === 'coalition' && w.calendar.general - year > 1 && rng.chance(0.06)) {
       tell('The governing coalition has collapsed. There will be an early election.', 'neutral', 3);
@@ -323,6 +339,7 @@ export function tickPolity(w) {
     sitting.post = 'former head';
     w.govt = { ...w.govt, lead: biggest.id, partners: [], headId: biggest.leaderId, since: year, kind: (w.seats[biggest.id] ?? 0) > w.seatCount / 2 ? 'majority' : 'minority' };
     w.figures[biggest.leaderId].post = 'head';
+    formCabinet(w);
     tell(`${w.figures[biggest.leaderId].name} of ${the(biggest)} is the new ${headTitle(cid)}.`, 'neutral', 3);
   }
   if (year >= w.calendar.general) {
@@ -338,6 +355,8 @@ export function tickPolity(w) {
       rec.govt = { ...rec.govt, headId: me.id, headName: me.name, lead: w.govt.lead, kind: w.govt.kind };
     }
     w.calendar.general = year + w.calendar.term;
+    // A new government names new ministers; one that is returned keeps its own.
+    if (!kept && before.lead !== w.govt.lead) formCabinet(w);
     const lead = party(w, rec.govt.lead);
     const top = Object.entries(rec.shares).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, s]) => `${party(w, id).name} ${s}%`).join(', ');
     const how = w.kind === 'party' ? `${rec.govt.headName} ${before.headId === rec.govt.headId ? 'remains' : 'now stands'} at the head of ${the(lead)}.`
@@ -353,7 +372,7 @@ export function tickPolity(w) {
 /** Where nobody is elected, policy is whatever the ruler's ministers think the ruler wants. */
 function legislateByDecree(w, tell) {
   const id = rng.pick(Object.keys(LEVERS));
-  const dir = w.budget <= -3 ? (id === 'tax' ? 1 : -1) : rng.pick([1, 1, -1]);
+  const dir = w.budget <= -3 || ((w.debt ?? 0) >= 12 && w.budget < 0) ? (id === 'tax' ? 1 : -1) : rng.pick([1, 1, -1]);
   const law = enact(w, id, dir, head(w)?.name);
   if (law) tell(`By decree, the government has ${law.text}.`, 'neutral', 2);
 }
@@ -381,7 +400,7 @@ export function overview(countryId = store.state.player.countryId) {
     parties: [...w.parties].sort((a, b) => (w.seats[b.id] ?? 0) - (w.seats[a.id] ?? 0)).map((p) => ({ ...p, seats: w.seats[p.id] ?? 0, share: w.elections[w.elections.length - 1]?.shares[p.id] ?? 0,
       leader: w.figures[p.leaderId], inGovt: p.id === w.govt.lead || w.govt.partners.includes(p.id), stances: Object.keys(ISSUES).map((i) => stance(i, p.positions[i])).filter((s) => !/as (they are|it is)/.test(s)) })),
     seatCount: w.seatCount, nextElection: w.kind === 'none' ? null : w.calendar.general, yearsToElection: w.kind === 'none' ? null : w.calendar.general - year,
-    policies: Object.entries(w.policies).filter(([, n]) => n).map(([id, n]) => LEVERS[id].feel(n)), budget: w.budget,
+    policies: Object.entries(w.policies).filter(([, n]) => n).map(([id, n]) => LEVERS[id].feel(n)), budget: w.budget, debt: w.debt ?? 0,
     laws: [...w.laws].reverse().slice(0, 12), elections: [...w.elections].reverse(),
   };
 }
@@ -495,6 +514,10 @@ export function seatPlayer(countryId = store.state.player.countryId) {
   f.post = 'head'; f.wasHead = true;
   w.govt = { ...w.govt, headId: f.id, since: yearNow(), lead: f.partyId ?? w.govt.lead, partners: f.partyId ? [] : w.govt.partners, leadSince: yearNow(), kind: f.partyId && (w.seats[f.partyId] ?? 0) > w.seatCount / 2 ? 'majority' : 'minority' };
   say(f, `Became ${headTitle(countryId)}.`);
+  // The last government's ministers clear their desks. The new leader chooses their own.
+  for (const id of Object.values(w.cabinet ?? {})) { const m = w.figures[id]; if (m?.post === 'minister') m.post = 'former minister'; }
+  w.cabinet = {};
+  delete w.bill;
   w.approval = 55;
   return f;
 }

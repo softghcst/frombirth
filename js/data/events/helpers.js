@@ -84,6 +84,8 @@ export const approval = (delta) => ({ type: 'approval', delta });
 export const reelect = () => ({ type: 'reelect' });
 export const ousted = (value) => ({ type: 'ousted', value });
 export const resignOffice = () => ({ type: 'resignOffice' });
+/** Governing: a decision on something the engine has put on the leader's desk (see engine/government.js, decide). */
+export const govt = (value) => ({ type: 'govt', value });
 
 /** Changes a cast member's role and/or flags, e.g. npcSet('lover', { flags: { engaged: true } }). */
 export const npcSet = (target, value) => ({ type: 'npcSet', target, value });

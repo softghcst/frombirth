@@ -13,5 +13,7 @@ export const taxShift = (countryId) => level(countryId, 'tax') * LEVERS.tax.step
 export const tuitionFactor = (countryId) => 1 - level(countryId, 'tuition') * LEVERS.tuition.step;
 /** What a patient's medical costs are multiplied by. */
 export const healthFactor = (countryId) => 1 - level(countryId, 'health') * LEVERS.health.step;
+/** What is added to the chance that a crime is solved. */
+export const policingShift = (countryId) => level(countryId, 'police') * LEVERS.police.step;
 /** What rents are multiplied by. */
 export const rentFactor = (countryId) => 1 - level(countryId, 'rent') * LEVERS.rent.step;

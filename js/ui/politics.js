@@ -7,7 +7,7 @@ import { meterHtml } from './meter.js';
 import { messageModal, pickModal, confirmModal } from './modals.js';
 import * as world from '../engine/polity.js';
 import { openPolity } from './polity.js';
-import { LEVERS } from '../data/parties.js';
+import { openCabinet, lawFlow, budgetFlow, governButtons } from './government.js';
 import * as camp from '../engine/campaign.js';
 import { runCampaign, raceRows } from './campaign.js';
 
@@ -44,7 +44,7 @@ export function politicsCard() {
       <p class="muted" style="margin-top:6px">Use the office, or be blamed for doing nothing. If approval falls far enough, there will be a move to throw you out.</p>
       <div class="btn-stack" style="margin-top:10px">
         <button class="btn" data-pol="govern">Govern <small>${pol.actionsLeft()} left this year</small></button>
-        ${k.officeId === 'head' ? '<button class="btn" data-pol="law">Bring in a law</button>' : ''}
+        ${k.officeId === 'head' ? governButtons() : ''}
         ${worldBtn}
         ${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : k.tier < 5 && !k.ruler ? '<button class="btn" data-pol="run">Run for higher office</button>' : ''}
         <button class="btn danger" data-pol="resign">${k.ruler ? 'Give up power' : 'Resign'}</button>
@@ -111,34 +111,11 @@ async function govern(api) {
 }
 
 /** Handles the card's buttons. */
-/** As head of government: change one of the things that touch everyone's life. */
-async function law(api) {
-  const w = world.polity(country().id);
-  const options = [];
-  for (const [id, L] of Object.entries(LEVERS)) {
-    for (const dir of [1, -1]) {
-      const at = w.policies[id];
-      if (at + dir > 2 || at + dir < -2) continue;
-      const text = L[dir > 0 ? 'up' : 'down'].replace(/^(raised|cut|put|capped|lifted)/, (v) => ({ raised: 'Raise', cut: 'Cut', put: 'Put', capped: 'Cap', lifted: 'Lift' })[v]);
-      const money = L.cost * dir > 0 ? 'Costs the treasury.' : 'Brings money in.';
-      options.push({ value: `${id}:${dir}`, label: text[0].toUpperCase() + text.slice(1), sub: `${money} ${L.feel(at + dir)}` });
-    }
-  }
-  const mine = world.membership(country().id);
-  const seats = mine ? w.seats[mine.id] ?? 0 : 0;
-  const pick = await pickModal({ title: 'Bring in a law', cancel: 'Back',
-    body: `${mine ? `Your party holds ${seats} of ${w.seatCount} seats.` : 'You have no party behind you.'} ${seats > w.seatCount / 2 ? 'What you propose will pass.' : 'You will have to find the votes, and may not.'} The public finances are ${w.budget <= -3 ? 'deep in deficit' : w.budget < 0 ? 'in deficit' : 'sound'}.`,
-    options });
-  if (!pick) return undefined;
-  const [id, dir] = pick.split(':');
-  const r = world.playerLaw(id, Number(dir));
-  if (r.law) pol.shiftApproval(id === 'tax' ? -Number(dir) * 3 : Number(dir) * 3);
-  return report(api, r);
-}
-
 export async function politicsAction(id, api) {
   if (id === 'world') return openPolity(() => api.changed());
-  if (id === 'law') return law(api);
+  if (id === 'law') return lawFlow(api);
+  if (id === 'cabinet') return openCabinet(api);
+  if (id === 'budget') return budgetFlow(api);
   if (id === 'run') return run(api);
   if (id === 'govern') return govern(api);
   if (id === 'resign') {
