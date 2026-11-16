@@ -54,7 +54,9 @@ function newPerson(d, o) {
 /** A first name nobody living in the house has. */
 function freeName(d, c, gender, avoid = []) {
   const taken = new Set([...living(d).map((p) => p.name), ...avoid]);
-  const pool = c.names[gender === 'male' ? 'male' : 'female'];
+  const own = MONARCHIES[d.countryId].names;
+  // People who marry in come from the whole country; those born to the house are named in its tradition.
+  const pool = (own && !d.naming ? own : c.names)[gender === 'male' ? 'male' : 'female'];
   const free = pool.filter((n) => !taken.has(n));
   return rng.pick(free.length ? free : pool);
 }
@@ -70,7 +72,10 @@ function wed(d, a, b, year, quiet) {
 /** Someone from outside the house, to marry into it. */
 function outsider(d, c, partner, year) {
   const gender = partner.gender === 'male' ? 'female' : 'male';
-  return newPerson(d, { name: freeName(d, c, gender), gender, born: partner.born + rng.int(-4, 5), look: strangerLook(partner.look, gender) });
+  d.naming = 'outsider';
+  const name = freeName(d, c, gender);
+  delete d.naming;
+  return newPerson(d, { name, gender, born: partner.born + rng.int(-4, 5), look: strangerLook(partner.look, gender) });
 }
 
 /** A child of a couple, with a face from both. */
@@ -110,8 +115,10 @@ function grow(d, c, person, year, depth = 0) {
 export function buildHouse(c, year, seat) {
   const m = MONARCHIES[c.id];
   const maleLine = m.law.order === 'maleOnly';
-  const d = { countryId: c.id, name: `${m.house.replace(/ House$/, '')} House of ${seat?.surname ?? rng.pick(c.names.last)}`, law: { ...m.law }, monarchId: null,
+  const d = { countryId: c.id, name: `${m.house.replace(/ House$/, '')} House of ${seat?.surname ?? rng.pick(m.names?.house ?? c.names.last)}`, law: { ...m.law }, monarchId: null,
     people: {}, reigns: [], history: [], standing: 55, seq: 0 };
+  // Where several houses share a country, this one rules one state of it.
+  if (m.elective) d.realm = rng.pick(m.elective.realms);
 
   // The main line, as birth years: from the person the present hangs on, back to the founder.
   const anchorBorn = seat ? year - seat.blood.age : year - rng.int(46, 76);
@@ -308,16 +315,21 @@ function nameAt(d, p, rank) { return `${titleOf(d, p, rank)} ${p.name}`.trim(); 
 /** "Queen Astrid", or plain "Astrid" for someone without a title. */
 export const nameOf = (d, p) => nameAt(d, p, rankOf(d, p));
 
+/** What the house reigns over: the country, or one state of it. */
+export const realmOf = (d) => d.realm ?? theCountry(COUNTRIES[d.countryId].name);
+/** The title of the national throne where it is held in turn ("King"), for the person holding it. */
+export const nationalTitle = (d, p) => { const e = MONARCHIES[d.countryId].elective; return e ? e.title[p.gender === 'female' ? 1 : 0] : ''; };
+
 /** In a few words, what someone is to the house. */
 export function standingOf(d, p) {
   const rank = rankOf(d, p);
-  const where = theCountry(COUNTRIES[d.countryId].name);
+  const where = realmOf(d);
   const reign = d.reigns.find((r) => r.id === p.id);
   if (d.status === 'abolished' && p.died == null) {
     if (p.id === d.monarchId) return reign ? `Last to reign (${reign.from}–${reign.to}); head of the former royal house` : 'Head of the former royal house';
     return memberRank(d, p) ? 'Of the former royal family' : 'A private citizen';
   }
-  if (rank === 'monarch') return reign?.to != null ? `Reigned ${reign.from}–${reign.to}` : `${titleOf(d, p)} of ${where} since ${reign?.from ?? '?'}`;
+  if (rank === 'monarch') return reign?.to != null ? `Reigned ${reign.from}–${reign.to}` : `${titleOf(d, p)} of ${where} since ${reign?.from ?? '?'}${d.kingUntil ? `; ${nationalTitle(d, p)} of ${COUNTRIES[d.countryId].name} until ${d.kingUntil}` : ''}`;
   if (p.abdicated) return `Gave up the throne in ${p.abdicated}`;
   if (rank === 'consort') return `Consort of ${nameOf(d, d.people[p.spouseId ?? p.widowOf])}`;
   if (p.out === 'renounced') return `Gave up their place in ${p.outYear}`;

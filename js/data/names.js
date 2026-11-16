@@ -238,6 +238,41 @@ export const NAMES = {
     female: 'Hui_Min Xin_Yi Jia_Hui Li_Ting Mei_Ling Shu_Fen Wei_Ling Yi_Ling Chloe Charlotte Rachel Michelle Joanne Cheryl Vanessa Nurul Siti Aisyah Farah Nadia Syazwani Priya Lakshmi Kavitha Divya Anjali Sarah Grace Faith Joy',
     last: 'Tan Lim Lee Ng Ong Wong Goh Chua Chan Koh Teo Ang Yeo Tay Ho Low Toh Sim Chong Chia Seah Foo Rahman Ismail Yusof Hassan Pillai Nair Menon Raj Singh De_Souza Pereira',
   },
+  be: {
+    male: 'Lucas Louis Noah Arthur Jules Adam Liam Victor Gabriel Mathis Finn Lars Wout Daan Milan Senne Kobe Jef Pieter Thomas Maxime Antoine Hugo Emile Cedric Bram Stijn Jasper Olivier Quentin',
+    female: 'Emma Louise Olivia Mila Alice Juliette Elise Lina Marie Camille Lotte Noor Fien Hanne Sien Amber Julie Charlotte Manon Chloé Léa Zoé Eline Febe Anouk Margaux Clara Nora Axelle Jana',
+    last: 'Peeters Janssens Maes Jacobs Mertens Willems Claes Goossens Wouters De_Smet Dubois Lambert Dupont Martin Simon Leclercq Laurent Vermeulen Van_Damme Desmet Hermans Pauwels Michiels Aerts Lemmens De_Clercq Renard Thys Coppens Segers',
+  },
+  mc: {
+    male: 'Louis Gabriel Raphaël Léo Jules Hugo Arthur Lucas Mathéo Adrien Baptiste Clément Théo Maxime Antoine Julien Nicolas Olivier Laurent Pascal Stéphane Rainier Albert Marco Luca Matteo Alessandro Giovanni Pierre Charles',
+    female: 'Emma Louise Jade Alice Chloé Léa Manon Camille Inès Juliette Clara Charlotte Margaux Élise Anaïs Mathilde Pauline Sophie Caroline Stéphanie Alexandra Gabriella Giulia Sofia Chiara Francesca Valentina Amélie Céleste Océane',
+    last: 'Rossi Ferrari Bianchi Pastor Médecin Crovetto Marsan Gastaud Lorenzi Boisson Aureglia Notari Rey Campora Sangiorgio Palmero Fissore Raimbert Brousse Boéri Vatrican Gaziello Orengo Blanchi Sciorelli Martin Bernard Dubois Laurent Moreau',
+  },
+  jo: {
+    male: 'Mohammad Ahmad Omar Yousef Khaled Hussein Abdullah Ali Zaid Hamzah Faisal Rashed Tariq Laith Qais Samer Fadi Rami Bassam Nabil Majed Saif Ayman Mahmoud Ibrahim Anas Yazan Karam Hashem Ghazi',
+    female: 'Rania Noor Lina Dana Sara Haya Iman Salma Aya Farah Leen Jana Tala Rand Dina Hala Maha Reem Sawsan Ghada Lubna Zein Basma Alia Muna Raya Joud Layan Hind Abeer',
+    last: 'Al_Majali Al_Tarawneh Al_Fayez Haddad Khoury Al_Khatib Al_Momani Obeidat Al_Zoubi Abu_Zaid Al_Masri Nasser Hijazi Qasem Al_Rawashdeh Bani_Hani Al_Shboul Khasawneh Al_Adwan Sweis Batayneh Hamdan Saleh Daoud Jaber Al_Bakri Tell Malkawi Shraideh Al_Hadid',
+  },
+  sa: {
+    male: 'Mohammed Abdullah Fahad Khalid Faisal Saud Sultan Turki Nawaf Bandar Salman Abdulaziz Nasser Saad Majed Talal Mishaal Yazeed Rakan Ziyad Hamad Badr Mansour Waleed Ibrahim Yousef Omar Ahmed Musaed Thamer',
+    female: 'Noura Sara Reem Haifa Lama Jawaher Hessa Latifa Maha Dalal Amal Hind Lulwa Munira Nouf Rana Abeer Ghada Shahad Lamia Deema Joud Layan Aljohara Wafa Mashael Asma Basma Seeta Fatimah',
+    last: 'Al_Otaibi Al_Qahtani Al_Ghamdi Al_Harbi Al_Zahrani Al_Shehri Al_Dosari Al_Mutairi Al_Shammari Al_Anazi Al_Rashid Al_Subaie Al_Malki Al_Amri Al_Juhani Al_Yami Al_Tamimi Al_Khaldi Al_Omari Al_Faraj Al_Suwailem Al_Hazmi Al_Sharif Al_Bishi Al_Asiri Al_Ruwaili Al_Jaber Al_Najjar Bin_Mahfouz Al_Turki',
+  },
+  kw: {
+    male: 'Mohammad Ahmad Abdullah Fahad Jaber Sabah Nasser Salem Mubarak Khaled Yousef Bader Hamad Talal Faisal Meshal Nawaf Saad Ali Hussain Abdulaziz Dhari Thamer Bandar Mishari Barrak Waleed Jassim Fawaz Othman',
+    female: 'Fatima Mariam Noura Sheikha Hessa Dana Lulwa Bibi Amna Shaikha Reem Sara Dalal Munira Latifa Ghalia Farah Haya Rawan Jana Asma Maha Hind Altaf Anwar Nouf Wadha Taiba Shaima Eman',
+    last: 'Al_Mutairi Al_Enezi Al_Ajmi Al_Rashidi Al_Azmi Al_Kandari Al_Shammari Al_Hajri Al_Otaibi Al_Dosari Al_Fadhli Al_Saleh Al_Ghanim Al_Kharafi Al_Marzouq Al_Roumi Al_Bahar Al_Saqer Al_Qattan Behbehani Al_Awadhi Dashti Al_Mulla Al_Nafisi Al_Duaij Bouresli Al_Tabtabai Al_Wazzan Al_Sayer Al_Hamad',
+  },
+  qa: {
+    male: 'Mohammed Hamad Tamim Khalifa Jassim Abdullah Ahmed Nasser Khalid Ali Saud Fahad Faisal Abdulrahman Mansour Rashid Saoud Thani Majid Sultan Ghanim Mubarak Salem Hassan Yousef Abdulaziz Talal Turki Meshaal Nawaf',
+    female: 'Moza Mariam Hind Noora Sheikha Aisha Fatima Maryam Al_Mayassa Reem Sara Lolwa Amna Hessa Jawaher Dana Shamma Latifa Ghalya Noof Rawda Alanoud Maha Wadha Kholoud Asma Buthaina Hanouf Najla Haya',
+    last: 'Al_Kuwari Al_Mohannadi Al_Marri Al_Naimi Al_Sulaiti Al_Hajri Al_Kaabi Al_Mannai Al_Emadi Al_Ansari Al_Malki Al_Dosari Al_Attiyah Al_Misnad Al_Khater Al_Mahmoud Al_Subaie Al_Hitmi Al_Rumaihi Al_Khulaifi Al_Buainain Al_Abdulla Al_Obaidly Fakhroo Darwish Al_Jaidah Al_Muftah Al_Nasr Al_Baker Al_Sada',
+  },
+  my: {
+    male: 'Ahmad Muhammad Amir Hafiz Faizal Azlan Iskandar Zulkifli Hakim Syafiq Danial Irfan Aiman Firdaus Rizal Wei_Jie Jun_Hao Chee_Keong Kah_Wai Zhi_Hao Arjun Kumar Vikram Suresh Ganesh Darren Jason Adam Harith Luqman',
+    female: 'Siti Nurul Aisyah Farah Nadia Aina Balqis Hana Izzah Syazwani Zulaikha Amira Alya Nabila Sofea Hui_Min Xin_Yi Mei_Ling Li_Ting Jia_Hui Priya Kavitha Divya Lakshmi Anjali Sarah Michelle Puteri Wardina Damia',
+    last: 'Abdullah Ismail Hassan Ibrahim Yusof Othman Rahman Hamid Aziz Razak Zainal Mahmud Tan Lim Lee Wong Ng Chong Chan Goh Teoh Ooi Pillai Nair Menon Raj Singh Subramaniam Krishnan Fernandez',
+  },
   ae: {
     male: 'Mohammed Ahmed Ali Khalid Saeed Rashid Sultan Hamad Abdullah Omar Mansour Zayed Hamdan Majid Faisal Salem Yousef Saif Hazza Tahnoun Obaid Jassim Nasser Marwan Thani Butti Suhail Dhiyab Humaid Ghanim',
     female: 'Fatima Mariam Aisha Shamma Latifa Hessa Moza Sheikha Noura Amna Salama Maitha Reem Alia Hind Shaikha Meera Afra Wadima Rawdha Mahra Shamsa Dana Lamia Asma Khawla Jawaher Hamda Ayesha Sara',

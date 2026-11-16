@@ -178,9 +178,12 @@ people with `mem()`, and follow-up scenes with `queue()`.
 
 ## Royalty
 
-Countries that have a reigning royal family today have one in the game: the
-United Kingdom, Spain, Sweden, Norway, Denmark, the Netherlands, Japan,
-Thailand, Morocco and the United Arab Emirates. Titles follow each country
+Seventeen countries have a reigning royal family in the game: the United
+Kingdom, Spain, Sweden, Norway, Denmark, the Netherlands, Belgium, Monaco,
+Japan, Thailand, Malaysia, Morocco, Jordan, Saudi Arabia, Kuwait, Qatar and
+the United Arab Emirates. Monaco's sovereign is a prince, not a king.
+Malaysia has nine royal houses: the one in the game rules a state by
+inheritance, and its sultan takes a five-year turn as king every 45 years. Titles follow each country
 (Infanta in Spain, Emperor in Japan, Sheikh in the Emirates; dukes, earls and
 barons where a nobility survives). Every house and person is invented.
 

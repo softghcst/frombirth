@@ -77,6 +77,13 @@ export const LIVING = {
   id: row(0.10, 0.30, 62, 56, 66, 64, 62, 'low', ['earthquake', 'volcano', 'flood'], law(N, 'limited', N, Y, N)),
   sg: row(0.90, 1.15, 94, 90, 98, 88, 8, 'low', ['heat'], law(N, 'limited', Y, Y, Y)),
   ae: row(0.80, 0.85, 90, 82, 96, 84, 30, 'low', ['heat'], law(N, 'hostile', N, Y, N)),
+  be: row(0.88, 0.92, 76, 86, 94, 74, 14, 'low', ['flood'], law(Y, 'equal', Y, N, N)),
+  mc: row(1.35, 1.60, 96, 92, 98, 92, 8, 'low', ['heat'], law(N, 'limited', Y, N, N)),
+  jo: row(0.14, 0.45, 78, 66, 80, 70, 45, 'low', ['drought', 'heat'], law(N, 'limited', N, Y, N)),
+  sa: row(0.62, 0.70, 84, 78, 92, 80, 40, 'low', ['heat', 'drought'], law(N, 'hostile', N, Y, N)),
+  kw: row(0.75, 0.80, 88, 80, 94, 76, 35, 'low', ['heat'], law(N, 'hostile', N, Y, N)),
+  qa: row(1.00, 0.95, 92, 86, 97, 86, 25, 'low', ['heat'], law(N, 'hostile', N, Y, N)),
+  my: row(0.28, 0.42, 72, 76, 86, 72, 40, 'low', ['flood', 'heat'], law(N, 'hostile', Y, Y, N)),
 };
 
 /** Natural hazards: how often they strike in a year, and how they read in the journal. */

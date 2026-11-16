@@ -68,6 +68,13 @@ export const SYSTEMS = {
   cu: { kind: 'party', head: 'President', seat: 'Deputy to the National Assembly', region: 'Provincial Governor' },
 
   ae: { kind: 'none' },
+  sa: { kind: 'none' },
+  qa: { kind: 'none' },
+  be: M('Prime Minister', MP, 'Minister-President'),
+  mc: M('Minister of State', 'National Councillor', null),
+  jo: M('Prime Minister', MP, 'Governor'),
+  kw: M('Prime Minister', 'Member of the National Assembly', 'Governor'),
+  my: M('Prime Minister', MP, 'Chief Minister'),
 };
 
 /**

@@ -169,6 +169,20 @@ const LIST = [
     ['Singapore']),
   C('ae', 'United Arab Emirates', '🇦🇪', 'AED', 'AED ', 3.7, 0, 0,
     ['Dubai', 'Abu Dhabi', 'Sharjah', 'Al Ain', 'Ajman', 'Ras Al Khaimah']),
+  C('be', 'Belgium', '🇧🇪', 'EUR', '€', 0.9, 0.40, 0.10,
+    ['Brussels', 'Antwerp', 'Ghent', 'Bruges', 'Liège', 'Leuven']),
+  C('mc', 'Monaco', '🇲🇨', 'EUR', '€', 0.9, 0, 0,
+    ['Monaco-Ville', 'Monte Carlo', 'La Condamine', 'Fontvieille', 'Larvotto', 'Moneghetti']),
+  C('jo', 'Jordan', '🇯🇴', 'JOD', 'JD ', 0.71, 0.14, 0,
+    ['Amman', 'Zarqa', 'Irbid', 'Aqaba', 'Salt', 'Madaba']),
+  C('sa', 'Saudi Arabia', '🇸🇦', 'SAR', 'SR ', 3.75, 0, 0,
+    ['Riyadh', 'Jeddah', 'Mecca', 'Medina', 'Dammam', 'Abha']),
+  C('kw', 'Kuwait', '🇰🇼', 'KWD', 'KD ', 0.31, 0, 0,
+    ['Kuwait City', 'Hawalli', 'Salmiya', 'Al Ahmadi', 'Jahra', 'Farwaniya']),
+  C('qa', 'Qatar', '🇶🇦', 'QAR', 'QR ', 3.64, 0, 0,
+    ['Doha', 'Al Rayyan', 'Al Wakrah', 'Al Khor', 'Umm Salal', 'Lusail']),
+  C('my', 'Malaysia', '🇲🇾', 'MYR', 'RM ', 4.6, 0.20, 0,
+    ['Kuala Lumpur', 'George Town', 'Johor Bahru', 'Ipoh', 'Kuching', 'Kota Kinabalu']),
 ];
 
 // Public services, used by health care and university costs in later phases.
@@ -185,6 +199,8 @@ const POLICY = {
   gr: [true, true], ru: [true, false], ua: [true, false], pe: [false, false],
   do: [false, false], cu: [true, true], gh: [false, false], ma: [false, true],
   pk: [false, false], id: [false, false], sg: [false, false], ae: [false, false],
+  be: [true, false], mc: [true, false], jo: [false, false], sa: [true, true],
+  kw: [true, true], qa: [true, true], my: [true, false],
 };
 for (const c of LIST) [c.freeHealthcare, c.freeUniversity] = POLICY[c.id];
 
@@ -195,6 +211,7 @@ const PROPERTY_TAX = {
   co: 0.008, cl: 0.01, jm: 0.008, br: 0.005, se: 0.004, pt: 0.004, au: 0.003, de: 0.002, in: 0.002, kr: 0.002,
   ie: 0.002, pl: 0.002, tr: 0.002, mx: 0.001, nl: 0.001, ke: 0.001, nz: 0.004, dk: 0.007, gr: 0.005, pe: 0.004,
   no: 0.003, ch: 0.002, ru: 0.001, pk: 0.002, id: 0.001, sg: 0.006, do: 0.001,
+  be: 0.006, my: 0.002,
 };
 for (const c of LIST) c.propertyTax = PROPERTY_TAX[c.id] ?? 0;
 

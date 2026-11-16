@@ -27,6 +27,8 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 export const monarchy = (c = country()) => (MONARCHIES[c.id] && store.state?.dynasties?.[c.id]?.status !== 'abolished' ? MONARCHIES[c.id] : null);
 export const royal = () => player().royal ?? null;
 export const isRoyalFamily = () => !!royal() && ROYAL_RANKS.includes(royal().rank);
+/** What the crown of a country reigns over: the country itself, or (where several houses share it) one state. */
+const realm = (countryId) => store.state?.dynasties?.[countryId]?.realm ?? theCountry(COUNTRIES[countryId].name);
 const rankRow = (countryId, rank) => MONARCHIES[countryId]?.ranks.find((r) => r[0] === rank);
 
 /** "Princess", "Duke", "Sir": the word for a rank, in a country, for a gender. */
@@ -51,10 +53,10 @@ export function standing(p = player()) {
   if (!r) return '';
   const c = COUNTRIES[r.countryId];
   const t = titleOf(r.countryId, r.rank, p.gender);
-  if (r.rank === 'monarch') return `${t}${r.reigning ? '' : ' consort'} of ${theCountry(c.name)}${r.dowager ? ', widowed' : ''}`;
-  if (r.rank === 'heir') return `${t} of ${theCountry(c.name)}${r.line === 1 ? ', heir to the throne' : ''}`;
+  if (r.rank === 'monarch') return `${t}${r.reigning ? '' : ' consort'} of ${realm(c.id)}${r.dowager ? ', widowed' : ''}`;
+  if (r.rank === 'heir') return `${t} of ${realm(c.id)}${r.line === 1 ? ', heir to the throne' : ''}`;
   if (r.waiting) return `Heir to the title of ${t.toLowerCase()}`;
-  if (r.rank === 'royal') return `${t} of ${theCountry(c.name)}${r.by === 'marriage' ? ', by marriage' : r.line ? `, ${ordinal(r.line)} in line` : ''}`;
+  if (r.rank === 'royal') return `${t} of ${realm(c.id)}${r.by === 'marriage' ? ', by marriage' : r.line ? `, ${ordinal(r.line)} in line` : ''}`;
   return `${r.rank === 'knight' && t === 'Sir' ? 'Knight' : t}${r.by === 'honour' ? ', for services to the country' : ''}`;
 }
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : Math.min(n % 10, 4) % 4]}`;
@@ -182,7 +184,7 @@ export function eligibleRoyal() {
   x.npcId = npc.id;
   npc.flags.houseId = x.id;
   npc.flags.royal = { rank, line: dyn.placeOf(d, x.id) || null, title: dyn.titleOf(d, x, rank) };
-  npc.lastName = `of ${theCountry(c.name)}`;
+  npc.lastName = `of ${realm(c.id)}`;
   npc.meters.money = 98;
   ensureLife(npc);
   npc.occupation = rank === 'monarch' ? 'reigning monarch' : rank === 'heir' ? 'heir to the throne' : 'working royal';
@@ -250,7 +252,7 @@ export function afterWedding(npc, leaves) {
   p.hidden.fame = clamp(p.hidden.fame + 30);
   p.flags.livesWithParents = false;
   p.flags.marriedRoyal = true;
-  milestone(`Married into the royal family of ${theCountry(c.name)}.`, 'family');
+  milestone(`Married into the royal family of ${realm(c.id)}.`, 'family');
   return ` The wedding is watched by half the world, and paid for by the crown. You are ${titleOf(c.id, p.royal.rank, p.gender)} ${p.firstName} now${p.royal.rank === 'monarch' ? ', consort to the monarch' : ''}. Marriage gives you a title, and no place in the line of succession.`;
 }
 
@@ -428,15 +430,15 @@ export function tickRoyalty() {
       dress(d);
       p.hidden.fame = 100;
       p.flags.reigned = true;
-      log(`${old} has died. You are ${titleOf(c.id, 'monarch', p.gender)} ${p.firstName} of ${theCountry(c.name)}.`, 'system', 'good');
-      milestone(`Crowned ${titleOf(c.id, 'monarch', p.gender)} of ${theCountry(c.name)}.`, 'fame');
+      log(`${old} has died. You are ${titleOf(c.id, 'monarch', p.gender)} ${p.firstName} of ${realm(c.id)}.`, 'system', 'good');
+      milestone(`Crowned ${titleOf(c.id, 'monarch', p.gender)} of ${realm(c.id)}.`, 'fame');
       if (p.age < 18) log('You are too young to rule. A regent will govern in your name until you are eighteen.', 'system', 'neutral');
       else store.state.pendingEvents.push({ id: 'coronation_day', cast: {} });
     } else {
       if (p.age >= 8) log(`${old} has died. ${dyn.nameOf(d, next)} has come to the throne.`, 'system', inFamily ? 'bad' : 'neutral');
       if (me && !me.blood && next.id === me.spouseId) {
         log(`You are ${titleOf(c.id, 'monarch', p.gender)} consort.`, 'system', 'good');
-        milestone(`Became ${titleOf(c.id, 'monarch', p.gender)} consort of ${theCountry(c.name)}.`, 'fame');
+        milestone(`Became ${titleOf(c.id, 'monarch', p.gender)} consort of ${realm(c.id)}.`, 'fame');
       }
     }
   }
@@ -570,8 +572,8 @@ export function inheritStanding(old, h) {
         if (p.royal.reigning) {
           p.flags.reigned = true;
           p.hidden.fame = 100;
-          milestone(`Crowned ${titleOf(d.countryId, 'monarch', p.gender)} of ${theCountry(COUNTRIES[d.countryId].name)}.`, 'fame');
-          return `The crown has passed to you. You are ${titleOf(d.countryId, 'monarch', p.gender)} ${p.firstName} of ${theCountry(COUNTRIES[d.countryId].name)}.`;
+          milestone(`Crowned ${titleOf(d.countryId, 'monarch', p.gender)} of ${realm(d.countryId)}.`, 'fame');
+          return `The crown has passed to you. You are ${titleOf(d.countryId, 'monarch', p.gender)} ${p.firstName} of ${realm(d.countryId)}.`;
         }
         p.hidden.fame = Math.max(p.hidden.fame, 70);
         return `You are ${styledName(p)}${p.royal.line ? `, ${ordinal(p.royal.line)} in line to the throne` : ''}.${note}`;
