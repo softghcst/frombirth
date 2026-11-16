@@ -18,6 +18,8 @@ import { tickLiving } from './living.js';
 import { tickRoyalty } from './royalty.js';
 import { tickPolitics } from './politics.js';
 import { polity, tickPolity } from './polity.js';
+import { afterGeneral } from './leadership.js';
+import { tickScandal } from './scandal.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
@@ -65,9 +67,11 @@ export function advanceYear() {
   tickLiving();
   tickRoyalty();
   tickPolitics();
+  tickScandal();
   // The country's politics move on whether or not the player takes any part. The news reaches those old enough to follow it.
   const happened = tickPolity(polity(p.countryId)).sort((a, b) => b.weight - a.weight).slice(0, 3);
   if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
+  afterGeneral();
   tickCrime();
 
   const cause = rollDeath();

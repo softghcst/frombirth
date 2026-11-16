@@ -86,6 +86,9 @@ export const ousted = (value) => ({ type: 'ousted', value });
 export const resignOffice = () => ({ type: 'resignOffice' });
 /** Governing: a decision on something the engine has put on the leader's desk (see engine/government.js, decide). */
 export const govt = (value) => ({ type: 'govt', value });
+/** A choice in a scandal (engine/scandal.js) or about the leadership of a party (engine/leadership.js). */
+export const scandal = (value) => ({ type: 'scandal', value });
+export const leader = (value) => ({ type: 'leader', value });
 
 /** Changes a cast member's role and/or flags, e.g. npcSet('lover', { flags: { engaged: true } }). */
 export const npcSet = (target, value) => ({ type: 'npcSet', target, value });

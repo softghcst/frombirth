@@ -10,6 +10,7 @@ import { monarchy } from '../engine/royalty.js';
 import { avatarSvg } from './avatar.js';
 import { openModal, confirmModal, messageModal } from './modals.js';
 import { cabinetView } from '../engine/government.js';
+import { feed, press } from '../engine/news.js';
 import { DEPARTMENTS } from '../data/parties.js';
 
 const KIND = {
@@ -101,6 +102,15 @@ function pageElections(w, o) {
   }).join('');
 }
 
+function pageNews(w) {
+  const years = feed(w);
+  const papers = press(w);
+  const lean = (x) => (x.kind === 'broadcaster' ? 'takes no side' : x.lean > 0 ? 'leans left' : 'leans right');
+  return `<p class="muted" style="margin-bottom:8px">${papers.map((x) => `${esc(x.name)} (${x.kind === 'tabloid' ? 'a tabloid, ' : ''}${lean(x)})`).join(' · ')}</p>`
+    + (years.length ? years.map((y) => `<div class="section-label">${y.year}</div>${y.items.map((n) => `<div class="news-item ${n.you ? 'you' : ''} tone-${n.tone}"><small>${esc(n.outlet)}</small><span>${esc(n.text)}</span></div>`).join('')}`).join('')
+      : '<p class="muted">Nothing has made the news yet.</p>');
+}
+
 function pageLaws(o) {
   return o.laws.length ? o.laws.map((l) => `<div class="dyn-event"><span class="num">${l.year}</span><span>${l.over ? `${esc(l.by.replace(/^t/, 'T'))} ${esc(l.text)}` : `${esc(l.by)}'s government ${esc(l.text)}`}${l.vote ? `, ${l.vote[0]} votes to ${l.vote[1]}` : ''}.</span></div>`).join('')
     : '<p class="muted">No changes to the law have been recorded yet.</p>';
@@ -125,7 +135,7 @@ function pageFigure(w, f) {
 export function openPolity(onChange) {
   const c = country();
   const w = world.polity(c.id);
-  const tabs = [['government', 'Government'], ['parties', 'Parties'], ['elections', 'Elections'], ['laws', 'Laws']];
+  const tabs = [['government', 'Government'], ['parties', 'Parties'], ['elections', 'Elections'], ['laws', 'Laws'], ['news', 'News']];
   let tab = 'government';
   let viewing = null;
   const m = openModal(`
@@ -140,7 +150,7 @@ export function openPolity(onChange) {
     const mine = world.membership(c.id);
     m.el.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', !viewing && b.dataset.tab === tab));
     body.innerHTML = viewing ? `<button class="btn dyn-back" data-back>← Back</button>${pageFigure(w, viewing)}`
-      : tab === 'government' ? pageGovernment(w, o) : tab === 'parties' ? pageParties(w, o, mine) : tab === 'elections' ? pageElections(w, o) : pageLaws(o);
+      : tab === 'government' ? pageGovernment(w, o) : tab === 'parties' ? pageParties(w, o, mine) : tab === 'elections' ? pageElections(w, o) : tab === 'news' ? pageNews(w) : pageLaws(o);
     body.scrollTop = 0;
   }
   m.el.addEventListener('click', async (e) => {

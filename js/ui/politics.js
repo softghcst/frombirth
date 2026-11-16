@@ -8,6 +8,7 @@ import { messageModal, pickModal, confirmModal } from './modals.js';
 import * as world from '../engine/polity.js';
 import { openPolity } from './polity.js';
 import { openCabinet, lawFlow, budgetFlow, governButtons } from './government.js';
+import * as lead from '../engine/leadership.js';
 import * as camp from '../engine/campaign.js';
 import { runCampaign, raceRows } from './campaign.js';
 
@@ -28,7 +29,12 @@ export function politicsCard() {
   const mine = world.membership(c.id);
   const worldRows = `<div class="kv"><span>${esc(o.headTitle)}</span><span>${esc(o.head?.name ?? '')}${o.headParty ? `, ${esc(o.headParty.name)}` : ''}</span></div>
     ${o.nextElection ? `<div class="kv"><span>Next general election</span><span>${o.nextElection}</span></div>` : ''}
-    ${o.kind !== 'none' ? `<div class="kv"><span>Your party</span><span>${mine ? esc(mine.name) : 'None'}</span></div>` : ''}`;
+    ${o.kind !== 'none' ? `<div class="kv"><span>Your party</span><span>${mine ? `${esc(mine.name)}${lead.leads(c.id) ? ' (you lead it)' : ''}` : 'None'}</span></div>` : ''}`;
+  // Leading a party: only where the head of government is the leader of a party.
+  const leading = lead.leads(c.id);
+  const leadBtn = s.kind !== 'parliamentary' || !mine ? ''
+    : leading ? `${!camp.race() && world.inSeason('head', c.id) ? '<button class="btn primary" data-pol="general">Lead your party into the election</button>' : ''}<button class="btn" data-pol="unlead">Step down as party leader</button>`
+      : `<button class="btn" data-pol="lead" ${lead.barrier() ? 'disabled' : ''}>Challenge for the party leadership${lead.barrier() ? `<small>${esc(lead.barrier())}</small>` : ''}</button>`;
   const worldBtn = '<button class="btn" data-pol="world">The political world</button>';
   if (s.kind === 'none') {
     return `<div class="card"><h3>Politics</h3><p class="muted">There are no elections in ${esc(theCountry(c.name))}. Power here is inherited.</p>${worldRows}<div class="btn-stack" style="margin-top:10px">${worldBtn}</div></div>`;
@@ -45,6 +51,7 @@ export function politicsCard() {
       <div class="btn-stack" style="margin-top:10px">
         <button class="btn" data-pol="govern">Govern <small>${pol.actionsLeft()} left this year</small></button>
         ${k.officeId === 'head' ? governButtons() : ''}
+        ${leadBtn}
         ${worldBtn}
         ${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : k.tier < 5 && !k.ruler ? '<button class="btn" data-pol="run">Run for higher office</button>' : ''}
         <button class="btn danger" data-pol="resign">${k.ruler ? 'Give up power' : 'Resign'}</button>
@@ -57,7 +64,7 @@ export function politicsCard() {
     <p class="muted" style="margin-top:8px">Student council, debating, a law or politics degree, helping on campaigns and every office you hold all make the next race easier.</p>
     ${worldRows}
     ${raceRows()}
-    <div class="btn-stack" style="margin-top:10px">${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : p.age >= 18 ? '<button class="btn" data-pol="run">Run for office</button>' : ''}${worldBtn}</div></div>`;
+    <div class="btn-stack" style="margin-top:10px">${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : p.age >= 18 ? '<button class="btn" data-pol="run">Run for office</button>' : ''}${leadBtn}${worldBtn}</div></div>`;
 }
 
 async function report(api, r) {
@@ -111,7 +118,22 @@ async function govern(api) {
 }
 
 /** Handles the card's buttons. */
+async function challenge(api) {
+  const info = lead.contestInfo();
+  const pick = await pickModal({ title: `Lead ${info.party.name}?`, cancel: 'Not yet',
+    body: `${info.leader?.name ?? 'The leader'} leads the party${info.inGovt ? ', and the government' : ''}. ${info.mood} The party's ${info.electors} members of the legislature will vote. Lose, and you cannot try again for years.`,
+    options: lead.APPROACHES.map((a) => ({ value: a.id, label: a.name, sub: a.sub })) });
+  if (!pick) return undefined;
+  return report(api, lead.challenge(pick));
+}
+
 export async function politicsAction(id, api) {
+  if (id === 'lead') return challenge(api);
+  if (id === 'general') { const d = camp.declare('head'); api.changed(); await messageModal({ body: d.text, tone: d.tone }); return d.ok ? runCampaign(api) : undefined; }
+  if (id === 'unlead') {
+    const sure = await confirmModal({ title: 'Step down as leader?', body: pol.inOffice()?.viaParty ? 'You hold the top office as leader of your party. Give up one and you give up both.' : 'Somebody else will lead the party into the next election.', yes: 'Step down', danger: true });
+    return sure ? report(api, lead.resignLeadership()) : undefined;
+  }
   if (id === 'world') return openPolity(() => api.changed());
   if (id === 'law') return lawFlow(api);
   if (id === 'cabinet') return openCabinet(api);

@@ -12,6 +12,7 @@ import { clamp, localMoney, localWage, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { SYSTEMS, OFFICES, PLATFORMS, BUDGETS, MOVES, ACTIONS, ACTIONS_PER_YEAR, REMOVAL } from '../data/politics.js';
 import { race, finishRace } from './campaign.js';
+import { addSecret } from './scandal.js';
 import { ROYAL_RANKS } from '../data/royalty.js';
 import { incomeTax } from './finance.js';
 import { quitCareer } from './career.js';
@@ -46,7 +47,9 @@ export function barrier(o) {
   if (p.royal && !p.royal.waiting && ROYAL_RANKS.includes(p.royal.rank)) return 'The royal family stays out of politics. You would have to give up your place first.';
   if (p.age < o.minAge) return `You must be ${o.minAge}.`;
   if (p.politics?.ruler) return 'You have done away with elections.';
-  if (p.politics?.officeId === o.id) return 'You hold this office.';
+  if (p.politics?.officeId === o.id && !(o.id === 'head' && p.politics.viaParty)) return 'You hold this office.';
+  // In a parliament nobody is elected head of government: they lead the party that can command it.
+  if (o.id === 'head' && s.kind === 'parliamentary' && !(p.flags.party?.leader && world.membership(c.id))) return `Here the ${s.head} is whoever leads the party that can command the legislature. Win a seat, lead your party, then win a general election.`;
   if (o.id === 'head' && s.nativeOnly && p.birthCountryId !== c.id) return `Only someone born in ${theCountry(c.name)} may hold this office.`;
   if (race()) return 'You are already in a race.';
   if (p.flags.campaignAge === p.age) return 'You have already fought one campaign this year.';
@@ -104,7 +107,7 @@ export const budgets = (officeId) => {
 export const moves = () => MOVES.filter((m) => system().kind !== 'party' || !['rally', 'debate', 'babies', 'smear'].includes(m.id))
   .map((m) => ({ id: m.id, name: system().kind === 'party' && m.id === 'buy' ? 'Send gifts to the committee' : system().kind === 'party' && m.id === 'doors' ? 'Volunteer for every thankless task' : m.name, risky: !!(m.dirty || m.illegal) }));
 
-export function takeOffice(o, approval = 55) {
+export function takeOffice(o, approval = 55, quiet = false) {
   const p = player();
   const c = country();
   leave('moved up', true);
@@ -113,11 +116,14 @@ export function takeOffice(o, approval = 55) {
   const next = world.nextElection(o.id, c.id);
   const termLeft = next ? Math.max(1, next - store.state.year - 1 + (o.id === 'seat' || o.id === 'head' ? world.polity(c.id).calendar.term : 4)) : o.term;
   p.politics = { officeId: o.id, title: o.title, tier: o.tier, termLeft, terms: 1, approval, since: p.age, salary: localWage(o.salary, c) };
-  if (o.id === 'head') world.seatPlayer(c.id);
+  if (o.id === 'head') {
+    world.seatPlayer(c.id);
+    if (system(c).kind === 'parliamentary' && p.flags.party?.leader && world.membership(c.id)) p.politics.viaParty = true;
+  }
   p.flags.officeCountry = c.id;
   p.hidden.fame = clamp(Math.max(p.hidden.fame, o.tier * 16) + 4);
   if (o.tier === 5) p.flags.ledCountry = true;
-  milestone(`Became ${o.title}${o.tier >= 5 ? ` of ${theCountry(c.name)}` : ''}.`, o.tier >= 4 ? 'fame' : 'career');
+  if (!quiet) milestone(`Became ${o.title}${o.tier >= 5 ? ` of ${theCountry(c.name)}` : ''}.`, o.tier >= 4 ? 'fame' : 'career');
 }
 
 /** Ends the current office and writes it into the record. */
@@ -128,6 +134,8 @@ export function leave(why, quiet = false) {
   (p.flags.offices ??= []).push({ title: k.ruler ? `${k.title} for Life` : k.title, tier: k.tier, from: k.since, to: p.age });
   p.flags.lastApproval = k.approval;
   delete p.politics;
+  // A leader who governs through their party and goes for any reason but an election gives up the party too.
+  if (k.viaParty && why !== 'lost the general election' && p.flags.party?.leader) { world.release(world.polity(p.flags.officeCountry ?? p.countryId), why); delete p.flags.party.leader; }
   if (!quiet) milestone(`Left office as ${k.title}: ${why}.`, 'career');
 }
 
@@ -194,7 +202,7 @@ export function govern(id) {
       shiftApproval(-22); p.legal.heat = clamp(p.legal.heat + 30);
       text = `${a.text} ${fmtMoney(take, c)} finds its way to you, and three weeks later the whole story finds its way to a newspaper.`;
       tone = 'bad';
-    } else text = `${a.text} ${fmtMoney(take, c)} finds its way to you. Nobody asks.`;
+    } else { addSecret('graft', rng.int(30, 65)); text = `${a.text} ${fmtMoney(take, c)} finds its way to you. Nobody asks. Not yet.`; }
   } else {
     const change = rng.int(a.approval[0], a.approval[1]);
     shiftApproval(change);
@@ -313,6 +321,7 @@ export function tickPolitics() {
     return;
   }
   if (k.approval < REMOVAL) { pend.push({ id: 'pol_removal_vote', cast: {} }); return; }
+  if (k.viaParty) return; // the general election decides, not a term of their own
   k.termLeft -= 1;
   if (k.termLeft <= 0) {
     const limit = k.officeId === 'head' ? system(c).limit : 0;

@@ -14,6 +14,10 @@ const GROUPS = { young: 'Younger voters', workers: 'Working households', profess
 /** The polls so far, in a sentence. */
 function pollLine(v) {
   if (!v.poll) return 'No poll has been published yet.';
+  if (v.national) {
+    const pub = v.polls.filter((x) => !x.own);
+    return `${v.poll.own ? 'Your own poll' : 'The latest poll'}: ${v.poll.parties.map((x) => `${x.mine ? 'your party' : x.name} ${x.share}%`).join(', ')}, give or take ${v.poll.margin}.${pub.length > 1 ? ` Your party in the published polls so far: ${pub.slice(-4).map((x) => `${x.me}%`).join(' → ')}.` : ''}`;
+  }
   const pub = v.polls.filter((x) => !x.own);
   const trend = pub.length > 1 ? pub.slice(-4).map((x) => `${x.me}%`).join(' → ') : null;
   const p = v.poll;
@@ -35,6 +39,29 @@ function nightStep(html, button) {
     const m = openModal(`${html}<button class="btn primary" data-ok style="margin-top:14px">${esc(button)}</button>`);
     m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
   });
+}
+
+/** A general election night: the exit poll, the seats as they are declared, and who will govern. */
+export async function generalNight(rec) {
+  const row = (x, n, of) => `<div class="pol-result"><span>${x.mine ? '<strong>' : ''}${esc(x.name)}${x.mine ? '</strong>' : ''}</span><span class="pol-track"><i style="width:${Math.round(n / of * 100)}%;background:${x.colour}"></i></span><span class="num">${n}</span><span class="num">${x.mine ? 'yours' : ''}</span></div>`;
+  await nightStep(`<div class="eyebrow">General election · ${rec.year}</div><h2>The polls have closed</h2>
+    <p class="body">The last published poll had your party on ${rec.lastPoll ?? '?'}%. The exit poll says:</p>
+    ${rec.exit.map((x) => `<div class="kv"><span>${x.mine ? '<strong>' : ''}${esc(x.name)}${x.mine ? ' (yours)</strong>' : ''}</span><span>${x.share}%</span></div>`).join('')}
+    <p class="muted" style="margin-top:8px">${rec.need} seats of ${rec.seatCount} make a majority. Exit polls have been wrong before.</p>`, 'Watch the results');
+  for (let i = 0; i < rec.batches.length; i++) {
+    const b = rec.batches[i];
+    const order = [...rec.parties].sort((x, y) => b.running[y.id] - b.running[x.id]);
+    const mine = rec.parties.find((x) => x.mine);
+    const lead = order[0];
+    await nightStep(`<div class="eyebrow">${b.declared} of ${rec.seatCount} seats declared</div><h2>${esc(b.name)} ${i === 0 ? 'declare first' : 'have declared'}</h2>
+      ${order.map((x) => row(x, b.running[x.id], rec.seatCount)).join('')}
+      <p class="muted" style="margin-top:8px">${mine && lead.id === mine.id ? 'Your party is in front.' : `${esc(lead.name)} is in front.`} ${rec.need} needed for a majority.</p>`, i < rec.batches.length - 1 ? 'Next results' : 'The outcome');
+  }
+  const kind = { majority: 'a majority government', coalition: 'a coalition', minority: 'a minority government' }[rec.govt.kind] ?? rec.govt.kind;
+  await nightStep(`<div class="eyebrow">${rec.year} · General election</div><h2>${rec.won ? `You are ${esc(rec.title)}` : rec.inGovt ? 'In government, but not leading it' : 'Your party has lost'}</h2>
+    ${rec.parties.map((x) => `<div class="pol-result"><span>${x.mine ? '<strong>' : ''}${esc(x.name)}${x.mine ? '</strong>' : ''}</span><span class="pol-track"><i style="width:${x.share}%;background:${x.colour}"></i></span><span class="num">${x.share}%</span><span class="num">${x.seats} seats</span></div>`).join('')}
+    <div class="kv" style="margin-top:8px"><span>Votes cast</span><span>${num(rec.total)} (${rec.turnout}% turnout)</span></div>
+    <div class="kv"><span>The government</span><span>${esc(rec.govt.head)}, ${esc(rec.govt.lead)}: ${kind}${rec.govt.partners.length ? ` with ${esc(rec.govt.partners.join(' and '))}` : ''}</span></div>`, 'Continue');
 }
 
 /** Election night: the exit poll, then each area as it declares, then the result. */
@@ -108,7 +135,7 @@ async function trail(api) {
   const options = camp.trailOptions().map((m) => ({ value: m.id, label: m.name, sub: m.sub, disabled: m.disabled }));
   options.push({ value: 'withdraw', label: 'Withdraw from the race', sub: 'What you have spent is gone.' });
   const pick = await pickModal({ title: `${v.when}`, cancel: 'Put it down for now',
-    body: `${v.office.title}, against ${v.rival?.name ?? 'your opponent'}${v.rivalParty ? ` (${v.rivalParty.name})` : ''}. ${pollLine(v)} What will you do with this stretch of the campaign?`, options });
+    body: `${v.national ? `The general election. You lead ${v.party?.name ?? 'your party'}; ${v.rival?.name ?? 'your opponent'}${v.rivalParty ? ` leads ${v.rivalParty.name}` : ''}.` : `${v.office.title}, against ${v.rival?.name ?? 'your opponent'}${v.rivalParty ? ` (${v.rivalParty.name})` : ''}.`} ${pollLine(v)} What will you do with this stretch of the campaign?`, options });
   if (!pick) return false;
   if (pick === 'withdraw') {
     if (!(await confirmModal({ title: 'Withdraw?', body: 'Your name comes off the ballot, and you cannot stand again this year.', yes: 'Withdraw', danger: true }))) return true;
@@ -124,7 +151,7 @@ async function trail(api) {
   }
   const r = camp.act(pick, group);
   api.changed();
-  const poll = r.poll && !r.poll.own ? ` The new poll: you ${r.poll.me}%, give or take ${r.poll.margin}.` : '';
+  const poll = r.poll && !r.poll.own ? ` The new poll: ${r.poll.parties ? 'your party' : 'you'} ${r.poll.me}%, give or take ${r.poll.margin}.` : '';
   await messageModal({ body: `${r.text}${r.ok ? poll : ''}`, tone: r.tone });
   return true;
 }
@@ -153,7 +180,7 @@ async function debate(api) {
 async function vote(api) {
   const r = camp.pollingDay();
   api.changed();
-  if (r.night) await electionNight(r.night);
+  if (r.night) await (r.night.national ? generalNight(r.night) : electionNight(r.night));
   await messageModal({ body: r.text, tone: r.tone });
   api.changed();
   return false;
@@ -176,9 +203,9 @@ export function raceRows() {
   if (!v) return '';
   const stage = { nomination: 'Seeking your party\'s nomination', defeated: 'The party chose someone else', plan: 'Choosing what to stand for', trail: v.when, debate: 'The debate', vote: 'Polling day' }[v.stage];
   return `<div class="section-label">Your campaign</div>
-    <div class="kv"><span>For</span><span><strong>${esc(v.office.title)}</strong></span></div>
+    <div class="kv"><span>For</span><span><strong>${v.national ? 'The general election' : esc(v.office.title)}</strong></span></div>
     ${v.rival ? `<div class="kv"><span>Against</span><span>${esc(v.rival.name)}${v.rivalParty ? `, ${esc(v.rivalParty.name)}` : ''}</span></div>` : ''}
     <div class="kv"><span>Where it stands</span><span>${esc(stage)}</span></div>
-    ${v.poll ? `<div class="kv"><span>${v.poll.own ? 'Your own poll' : 'Latest poll'}</span><span>You ${v.poll.me}% (±${v.poll.margin})</span></div>` : ''}
+    ${v.poll ? `<div class="kv"><span>${v.poll.own ? 'Your own poll' : 'Latest poll'}</span><span>${v.national ? 'Your party' : 'You'} ${v.poll.me}% (±${v.poll.margin})</span></div>` : ''}
     <p class="muted" style="margin-top:6px">If the year ends before you finish, the rest of the campaign runs itself and the vote is held.</p>`;
 }

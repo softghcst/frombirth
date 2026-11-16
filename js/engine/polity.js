@@ -22,6 +22,7 @@ import { PARTY_KINDS, RULING_PARTY, VOTERS, DISTRICT_SEATS, ONE_ROUND, TERMS, LE
 import { randomAppearance, ensureStyled } from '../avatar/inherit.js';
 import { vote, proportional, districts, firstRound, formGovernment } from './elections.js';
 import { formCabinet, tickCabinet, floorVote, toDo } from './government.js';
+import { post as postNews } from './news.js';
 
 const yearNow = () => store.state.year;
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -47,7 +48,7 @@ export const party = (w, id) => w.parties.find((p) => p.id === id) ?? null;
 export const figure = (w, id) => w.figures[id] ?? null;
 const head = (w) => w.figures[w.govt.headId] ?? null;
 /** "the National Union", "the Greens": a party's name as it reads in a sentence. */
-export const the = (p) => (/^The /.test(p.name) ? `the ${p.name.slice(4)}` : `the ${p.name}`);
+export const the = (p) => (/^The /.test(p.name) ? `the ${p.name.slice(4)}` : /(Party|Union|Alliance|League|Front|Movement|Centre|Democrats)$/.test(p.name) ? `the ${p.name}` : p.name);
 
 /** What the head of government is called here. */
 export const headTitle = (countryId) => SYSTEMS[countryId]?.head ?? (MONARCHIES[countryId] ? 'Chief Minister' : 'Head of Government');
@@ -113,6 +114,28 @@ export function voters(countryId) {
 // ---------- Elections ----------
 
 /**
+ * The parties as an election sees them: positions, and what each brings
+ * besides. `mood`: how much the moment (a gaffe, a scare) can move each one.
+ * `boosts`: campaigns under way, by party, for a poll taken before the vote.
+ */
+export function partyField(w, year = yearNow(), mood = 0, boosts = {}) {
+  const sys = SYSTEMS[w.countryId] ?? {};
+  const inPower = new Set([w.govt.lead, ...(w.govt.partners ?? [])]);
+  return w.parties.map((p) => {
+    const leader = w.figures[p.leaderId];
+    let appeal = ((leader?.t.charisma ?? 50) - 50) / 6 + (p.record ?? 0);
+    // Governments are judged on how things are going, and wear out their welcome the longer they stay.
+    if (inPower.has(p.id)) appeal += (w.approval - 50) / 3 - Math.min(14, (year - (w.govt.leadSince ?? year)) * 0.9);
+    if (mood) appeal += noise(mood);
+    if (sys.rigged && p.id === w.govt.lead) appeal += 14; // the count leans towards those already in power
+    appeal += boosts[p.id] ?? p.boost ?? 0; // a player's campaign for this party
+    return { id: p.id, positions: p.positions, appeal };
+  });
+}
+/** Where the parties stand today, with no luck in it: what a perfect poll would find. */
+export const pollGeneral = (w, boosts = {}) => vote(partyField(w, yearNow(), 0, boosts), voters(w.countryId), () => 0, 100000).shares;
+
+/**
  * Holds a general election. For a parliament it decides the seats and then
  * the government; for a presidency it also elects the president. `quiet`
  * is used for the election in the past that produced today's government.
@@ -123,18 +146,7 @@ export function runGeneral(w, year = yearNow(), quiet = false) {
   const groups = voters(cid);
   const sys = SYSTEMS[cid] ?? {};
   const inPower = new Set([w.govt.lead, ...(w.govt.partners ?? [])]);
-  // What each party brings beyond its positions: its leader, and its record if it has been governing.
-  const field = w.parties.map((p) => {
-    const leader = w.figures[p.leaderId];
-    let appeal = ((leader?.t.charisma ?? 50) - 50) / 6 + (p.record ?? 0);
-    // Governments are judged on how things are going, and wear out their welcome the longer they stay.
-    if (inPower.has(p.id)) appeal += (w.approval - 50) / 3 - Math.min(14, (year - (w.govt.leadSince ?? year)) * 0.9);
-    // The mood of the moment: a good or bad campaign, a gaffe, a scare.
-    appeal += noise(6);
-    if (sys.rigged && p.id === w.govt.lead) appeal += 14; // the count leans towards those already in power
-    if (p.boost) appeal += p.boost; // a player's campaign for this party
-    return { id: p.id, positions: p.positions, appeal };
-  });
+  const field = partyField(w, year, 6);
   const electorate = Math.round(COUNTRIES[cid].cities.length * 1.1e6 * (0.6 + rng.next() * 0.8));
   const rec = { year, kind: w.kind, electorate };
   if (w.kind === 'party') {
@@ -178,7 +190,8 @@ export function runGeneral(w, year = yearNow(), quiet = false) {
     for (const p of w.parties) {
       p.boost = 0;
       const leader = w.figures[p.leaderId];
-      if (p.id !== w.govt.lead && leader && leader.died == null && rng.chance(0.3 + (leader.t.ambition < 45 ? 0.2 : 0))) replaceLeader(w, p, 'stood down after the election defeat');
+      // (A party the player leads decides its leader's fate with the player: see engine/leadership.js.)
+      if (p.id !== w.govt.lead && leader && !leader.isPlayer && leader.died == null && rng.chance(0.3 + (leader.t.ambition < 45 ? 0.2 : 0))) replaceLeader(w, p, 'stood down after the election defeat');
       if (!inPower.has(p.id)) p.record = Math.round((p.record ?? 0) * 0.4);
     }
     w.approval = 55;
@@ -267,7 +280,7 @@ export function tickPolity(w) {
   const cid = w.countryId;
   const c = COUNTRIES[cid];
   const news = [];
-  const tell = (text, tone = 'neutral', weight = 1) => news.push({ text, tone, weight });
+  const tell = (text, tone = 'neutral', weight = 1) => { news.push({ text, tone, weight }); postNews(w, text, { tone }); };
   const playerLeads = store.state.player.politics?.officeId === 'head' && store.state.player.countryId === cid;
 
   // People: age, retire, die. A party is never left without a leader.
@@ -344,7 +357,8 @@ export function tickPolity(w) {
   }
   if (year >= w.calendar.general) {
     const before = { lead: w.govt.lead, headId: w.govt.headId };
-    const kept = playerLeads ? { ...w.govt } : null;
+    // A leader who holds the top office through their party keeps it only if the party keeps the government.
+    const kept = playerLeads && !pl.politics.viaParty ? { ...w.govt } : null;
     const rec = runGeneral(w, year);
     if (kept) {
       // The player won their own race for the top office; this election decides the seats they will work with.
@@ -356,7 +370,7 @@ export function tickPolity(w) {
     }
     w.calendar.general = year + w.calendar.term;
     // A new government names new ministers; one that is returned keeps its own.
-    if (!kept && before.lead !== w.govt.lead) formCabinet(w);
+    if (!kept && before.lead !== w.govt.lead && !head(w)?.isPlayer) formCabinet(w);
     const lead = party(w, rec.govt.lead);
     const top = Object.entries(rec.shares).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, s]) => `${party(w, id).name} ${s}%`).join(', ');
     const how = w.kind === 'party' ? `${rec.govt.headName} ${before.headId === rec.govt.headId ? 'remains' : 'now stands'} at the head of ${the(lead)}.`
@@ -420,6 +434,7 @@ export function joinParty(partyId) {
   if (!pa || p.age < 16) return { ok: false, text: 'You cannot join that party.', tone: 'neutral' };
   if (p.royal && ['monarch', 'heir', 'royal'].includes(p.royal.rank)) return { ok: false, text: 'The royal family belongs to no party.', tone: 'neutral' };
   const was = membership(p.countryId);
+  if (p.flags.party?.leader) release(w, 'left the party');
   p.flags.party = { countryId: p.countryId, partyId, since: yearNow() };
   const text = was ? `You have left ${the(was)} and joined ${the(pa)}. Your old colleagues will not forget it.` : `You have joined ${the(pa)}. There is a card, a newsletter, and a great many meetings.`;
   if (was) p.counters.polExp = Math.max(0, (p.counters.polExp ?? 0) - 3);
@@ -430,6 +445,7 @@ export function leaveParty() {
   const p = store.state.player;
   const was = membership(p.countryId);
   if (!was) return { ok: false, text: 'You belong to no party.', tone: 'neutral' };
+  if (p.flags.party?.leader) release(polity(p.countryId), 'left the party');
   delete p.flags.party;
   return { ok: true, text: `You have left ${the(was)}. You are an independent now.`, tone: 'neutral' };
 }
@@ -502,17 +518,51 @@ export function primaryRival(officeId, countryId = store.state.player.countryId)
 /** Writes a race into the record of the politician the player fought. */
 export function recordRace(f, text) { if (f) { f.metPlayer = true; say(f, text); } }
 
-/** The player takes (or leaves) the top office: the political world has a new head of government. */
-export function seatPlayer(countryId = store.state.player.countryId) {
+/** The player's own entry among the country's politicians. */
+export function playerFigure(countryId = store.state.player.countryId, create = true) {
   const p = store.state.player;
   const w = polity(countryId);
   let f = Object.values(w.figures).find((x) => x.isPlayer);
+  if (!f && !create) return null;
   if (!f) { f = newFigure(w, membership(countryId)?.id ?? null, p.age); f.isPlayer = true; }
   f.name = `${p.firstName} ${p.lastName}`; f.gender = p.gender; f.look = p.appearance; f.born = yearNow() - p.age; f.partyId = membership(countryId)?.id ?? null;
+  f.t.charisma = Math.round(p.stats.charm);
+  return f;
+}
+
+/** The player gives up whatever they lead: their party gets a new leader, and the country a new head of government. */
+export function release(w, why = 'stepped down') {
+  const f = Object.values(w.figures).find((x) => x.isPlayer);
+  if (!f) return;
+  for (const pa of w.parties) if (pa.leaderId === f.id) replaceLeader(w, pa, why);
+  if (w.govt.headId === f.id) {
+    const lead = party(w, w.govt.lead) ?? [...w.parties].sort((a, b) => (w.seats[b.id] ?? 0) - (w.seats[a.id] ?? 0))[0];
+    const next = lead ? w.figures[lead.leaderId] : null;
+    f.post = 'former head';
+    if (next) { w.govt.headId = next.id; w.govt.since = yearNow(); next.post = 'head'; next.wasHead = true; say(next, `Became ${headTitle(w.countryId)}.`); formCabinet(w); }
+  }
+  delete w.bill;
+}
+
+/** The player is gone (a new generation has taken over): their entry becomes one more name in the country's history. */
+export function detach(w) {
+  const f = Object.values(w.figures).find((x) => x.isPlayer);
+  if (!f) return;
+  release(w, 'died');
+  f.isPlayer = false;
+  if (f.died == null) { f.died = yearNow(); say(f, `Died, aged ${f.died - f.born}.`); }
+  delete w.shortlists;
+}
+
+/** The player takes the top office: the political world has a new head of government. */
+export function seatPlayer(countryId = store.state.player.countryId) {
+  const w = polity(countryId);
+  const f = playerFigure(countryId);
   const old = head(w);
   if (old && old.id !== f.id) { old.post = 'former head'; say(old, `Lost the office of ${headTitle(countryId)} to ${f.name}.`); }
   f.post = 'head'; f.wasHead = true;
-  w.govt = { ...w.govt, headId: f.id, since: yearNow(), lead: f.partyId ?? w.govt.lead, partners: f.partyId ? [] : w.govt.partners, leadSince: yearNow(), kind: f.partyId && (w.seats[f.partyId] ?? 0) > w.seatCount / 2 ? 'majority' : 'minority' };
+  // A government already formed around the player (they lead the party that won) is kept as it is.
+  if (w.govt.headId !== f.id) w.govt = { ...w.govt, headId: f.id, since: yearNow(), lead: f.partyId ?? w.govt.lead, partners: f.partyId ? [] : w.govt.partners, leadSince: yearNow(), kind: f.partyId && (w.seats[f.partyId] ?? 0) > w.seatCount / 2 ? 'majority' : 'minority' };
   say(f, `Became ${headTitle(countryId)}.`);
   // The last government's ministers clear their desks. The new leader chooses their own.
   for (const id of Object.values(w.cabinet ?? {})) { const m = w.figures[id]; if (m?.post === 'minister') m.post = 'former minister'; }

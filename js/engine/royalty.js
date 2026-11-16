@@ -8,6 +8,7 @@
 // On a royal NPC: npc.flags.royal = { rank, line, title }
 // The royal house itself (everyone in it, the line of succession, its history)
 // lives in engine/dynasty.js. This file is the player's side of it.
+import { detach as detachPlayer } from './polity.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
@@ -554,6 +555,8 @@ export function inheritStanding(old, h) {
   const op = old.player;
   const r = op.royal;
   if (old.dynasties) store.state.dynasties = old.dynasties;
+  // The politics of every country goes on; the one who has died becomes part of its history.
+  if (old.polities) { store.state.polities = old.polities; for (const w of Object.values(old.polities)) detachPlayer(w); }
   const carried = peers.carryTitles(old, h);
   const d = store.state.dynasties?.[p.countryId];
   if (d) {
