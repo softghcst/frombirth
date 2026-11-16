@@ -24,7 +24,7 @@
 //   { head, eyes, eyebrows, nose, lips, hair, facialHair, makeup: [], jewelry: [], glasses, clothes, hat, crown, emotion,
 //     colors: { skin, hair, brow, eye, lip, blush, outfit } }
 // `ctx` describes the moment: { age, gender, mood, jailed, royal: { rank }, career: { id, level }, label }.
-import { PART_BY_ID } from './avatarManifest.js';
+import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS } from './avatar/curation.js';
 
@@ -107,6 +107,43 @@ let serial = 0;
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const use = (id, extra = '') => { const h = href(id); return h ? `<use href="${h}"${extra}/>` : ''; };
 
+// Younger faces: features a little smaller for the size of the head, and set a little lower.
+const STAGE_FEATURES = { baby: { k: 0.74, drop: 0.05 }, toddler: { k: 0.82, drop: 0.04 }, kid: { k: 0.94, drop: 0.02 } };
+const n1 = (v) => Math.round(v * 100) / 100;
+
+/**
+ * Every part file is drawn on one template face. Each head has been measured
+ * (its `fit` in the manifest: top, chin, width, ears, neck, shoulders), and
+ * this works out, for one head, the transform that moves each kind of part
+ * from the template onto it: features keep their place between forehead and
+ * chin, hair and hats follow the top and width of the head, earrings hang
+ * from this head's ears, clothes sit under this head's chin.
+ * @returns {Record<string, string>} an SVG transform attribute (with a leading space) per layer
+ */
+export function fitTransforms(headId, stage) {
+  const fit = PART_BY_ID[headId]?.fit;
+  if (!fit) return {};
+  const wr = fit.w / T.face.w;
+  const faceH = fit.chin - fit.top;
+  const hr = faceH / (T.face.chin - T.face.top);
+  const young = STAGE_FEATURES[stage] ?? { k: 1, drop: 0 };
+  const move = (ax, ay, x, y, s) => ` transform="translate(${n1(x)} ${n1(y)}) scale(${n1(s)}) translate(${-ax} ${-ay})"`;
+  const s = Math.sqrt(wr * hr) * young.k;
+  const at = (ay) => fit.top + (ay - T.face.top) * hr + young.drop * faceH;
+  const feature = (ay, scale = s) => move(256, ay, fit.cx, at(ay), scale);
+  const earS = (fit.earR - fit.earL - 20) / (T.ear.right - T.ear.left);
+  const body = Math.max(0.8, Math.min(1.06, fit.shoulderW / T.shoulderW));
+  const crown = move(256, T.face.top, fit.cx, fit.top, wr);
+  return {
+    eyes: feature(T.anchor.eyes), eyebrows: feature(T.anchor.eyebrows), nose: feature(T.anchor.nose), lips: feature(T.anchor.lips),
+    makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes),
+    glasses: feature(T.anchor.eyes, wr * young.k), facialHair: feature(T.anchor.lips, wr),
+    hair: crown, hat: crown,
+    ears: move(256, T.ear.lobe, (fit.earL + fit.earR) / 2, fit.lobe, earS),
+    clothes: move(256, T.clothesTop, fit.cx, fit.chin + 8, body), necklace: move(256, T.clothesTop, fit.cx, fit.chin + 8, body),
+  };
+}
+
 /**
  * The colours, as CSS custom properties. Hair greys with age unless dyed;
  * brows grey more slowly.
@@ -134,28 +171,34 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const hatOn = !!d.hat;
   const bulky = !!PART_BY_ID[d.hair]?.tags?.bulky;
   const hairTop = hatOn ? (bulky ? BULKY_HAT_LINE : HAT_LINE) : 0;
+  // Under a hat, hair is hidden above the brim, and tucks in at the sides rather than ending in a flat shelf.
+  const under = (bottom) => `<path d="M-200 ${bottom}V${hairTop + 120}L96 ${hairTop + 26}Q120 ${hairTop} 160 ${hairTop}H352Q392 ${hairTop} 416 ${hairTop + 26}L712 ${hairTop + 120}V${bottom}Z"/>`;
   const defs = [
     `<clipPath id="pw-face-${n}"><use href="${href(d.head)?.replace('#art', '#skin')}"/></clipPath>`,
-    `<clipPath id="pw-back-${n}"><rect x="-200" y="${hairTop}" width="912" height="${900 - hairTop}"/></clipPath>`,
-    `<clipPath id="pw-front-${n}"><rect x="-200" y="${hairTop - 300}" width="912" height="${FRONT_HAIR_CUT - hairTop + 300}"/></clipPath>`,
+    `<clipPath id="pw-back-${n}">${hatOn ? under(900) : '<rect x="-200" y="-300" width="912" height="1200"/>'}</clipPath>`,
+    `<clipPath id="pw-front-${n}">${hatOn ? under(FRONT_HAIR_CUT) : `<rect x="-200" y="-300" width="912" height="${FRONT_HAIR_CUT + 300}"/>`}</clipPath>`,
   ];
-  if (hatOn) defs[2] = `<clipPath id="pw-front-${n}"><rect x="-200" y="${hairTop}" width="912" height="${Math.max(0, FRONT_HAIR_CUT - hairTop)}"/></clipPath>`;
-  const necklaces = d.jewelry.filter((j) => PART_BY_ID[j]?.tags?.kind === 'necklace');
-  const earrings = d.jewelry.filter((j) => PART_BY_ID[j]?.tags?.kind !== 'necklace');
+  const f = fitTransforms(d.head, ageStage(ctx.age ?? 25));
+  const kind = (j) => PART_BY_ID[j]?.tags?.kind;
+  const necklaces = d.jewelry.filter((j) => kind(j) === 'necklace');
+  const earrings = d.jewelry.filter((j) => kind(j) === 'ears');
+  const piercings = d.jewelry.filter((j) => kind(j) === 'face');
+  // The clips are in the template's coordinates, on the same element as the fit, so they move with the hair.
   const layers = [
-    d.hair ? `<g clip-path="url(#pw-back-${n})">${use(d.hair)}</g>` : '',
+    d.hair ? `<g${f.hair ?? ''} clip-path="url(#pw-back-${n})">${use(d.hair)}</g>` : '',
     use(d.head),
-    d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m)).join('')}</g>` : '',
-    d.aging.map((a) => use(a, ' opacity=".8"')).join(''),
-    use(d.eyes), use(d.eyebrows), use(d.nose), use(d.lips),
-    d.facialHair ? use(d.facialHair) : '',
-    use(d.clothes),
-    necklaces.map((j) => use(j)).join(''),
-    d.hair ? `<g clip-path="url(#pw-front-${n})">${use(d.hair)}</g>` : '',
-    earrings.map((j) => use(j)).join(''),
-    d.glasses ? use(d.glasses) : '',
-    d.hat ? use(d.hat) : d.crown ? use(d.crown) : '',
-    d.emotion ? use(d.emotion) : '',
+    d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m, f.makeup)).join('')}</g>` : '',
+    d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".8"`)).join(''),
+    use(d.eyes, f.eyes), use(d.eyebrows, f.eyebrows), use(d.nose, f.nose), use(d.lips, f.lips),
+    d.facialHair ? use(d.facialHair, f.facialHair) : '',
+    use(d.clothes, f.clothes),
+    necklaces.map((j) => use(j, f.necklace)).join(''),
+    d.hair ? `<g${f.hair ?? ''} clip-path="url(#pw-front-${n})">${use(d.hair)}</g>` : '',
+    earrings.map((j) => use(j, f.ears)).join(''),
+    piercings.map((j) => use(j, f.lips)).join(''),
+    d.glasses ? use(d.glasses, f.glasses) : '',
+    d.hat ? use(d.hat, f.hat) : d.crown ? use(d.crown, f.hat) : '',
+    d.emotion ? use(d.emotion, f.emotion) : '',
   ];
   const size = opts.size != null ? ` width="${opts.size}" height="${opts.size}"` : '';
   const label = ctx.label ? `<title>${esc(ctx.label)}</title>` : '';

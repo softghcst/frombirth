@@ -446,6 +446,8 @@ def recolour(folder, name, elements):
     hairlike = folder in ('hair', 'facial_hair', 'eyebrows')
     # Outlines are ink: never recoloured. Hair can itself be nearly black, so there only the darkest of several tones counts as ink.
     candidates = {c: w for c, w in weights.items() if not is_white(c) and not (lum(c) < INK and (not hairlike or (c == darkest and len(weights) > 1)))}
+    if folder == 'eyes':  # irises are drawn in browns; tears and sparkles keep their colours
+        candidates = {c: w for c, w in candidates.items() if 5 <= hls(c)[0] * 360 <= 50}
     if folder == 'makeup':  # only blush-like pinks and peaches are recoloured; liner, glitter and freckles keep theirs
         candidates = {c: w for c, w in candidates.items() if (hls(c)[0] * 360 > 330 or hls(c)[0] * 360 < 30) and hls(c)[1] > 0.55}
     if not candidates:
@@ -473,8 +475,9 @@ def recolour(folder, name, elements):
 # The template, in the 512 frame. Every head is fitted to HEAD; the other
 # parts are placed relative to the face inside it.
 HEAD = {'top': 150, 'bottom': 512, 'cx': 256}
-FACE = {'w': 238, 'top': 154, 'eye_y': 296, 'brow_y': 258, 'nose_y': 340, 'mouth_y': 383, 'chin_y': 424, 'cheek_y': 318,
+FACE = {'w': 238, 'top': 154, 'eye_y': 292, 'brow_y': 254, 'nose_y': 327, 'mouth_y': 386, 'chin_y': 424, 'cheek_y': 318,
         'ear_y': 302, 'ear_span': 318, 'neck_y': 442}
+# The nose ends well above the mouth: its box stops at 349, and no mouth starts above 366.
 
 # (max width, max height, anchor-x, anchor-y, anchor): the drawing is scaled to fit inside
 # the box, keeping its shape; anchor 'center' puts its centre on the point, 'top' its top
@@ -482,8 +485,8 @@ FACE = {'w': 238, 'top': 154, 'eye_y': 296, 'brow_y': 258, 'nose_y': 340, 'mouth
 LAYOUT = {
     'eyes': (172, 72, 256, FACE['eye_y'], 'center'),
     'eyebrows': (184, 46, 256, FACE['brow_y'], 'center'),
-    'noses': (58, 62, 256, FACE['nose_y'], 'center'),
-    'lips': (82, 46, 256, FACE['mouth_y'], 'center'),
+    'noses': (52, 44, 256, FACE['nose_y'], 'center'),
+    'lips': (80, 40, 256, FACE['mouth_y'], 'center'),
     'glasses': (248, 110, 256, FACE['eye_y'] + 8, 'center'),
     'clothes': (420, 400, 256, 432, 'top'),
     'hats': (300, 250, 256, 268, 'bottom'),
@@ -566,9 +569,9 @@ def place(folder, name, elements):
                 # the widest point of the opening sits at cheekbone level
                 transform_elements(elements, s, 256 - gx * s, FACE['cheek_y'] - 16 - gy * s)
                 return f'fitted by its face opening ({gw:.0f} wide)'
-        spread = 0.92 if 'baby' in name else 1.75 if re.search(r'long|medium', name) else 1.45 if 'updo' in name else 1.38
+        spread = 0.62 if 'baby' in name else 1.75 if re.search(r'long|medium', name) else 1.45 if 'updo' in name else 1.38
         s = FACE['w'] * spread / w
-        ty = FACE['top'] - 22 - y0 * s
+        ty = FACE['top'] - (12 if 'baby' in name else 22) - y0 * s
         # A heavy fringe must not cover the eyes: find where the hair stops covering the middle of
         # the face and, if that falls below the brows, lift the whole style until it does not.
         hairline = fringe_edge(elements, box)
@@ -588,6 +591,117 @@ def place(folder, name, elements):
     ty = ay - (y0 + h / 2) * s if anchor == 'center' else ay - y0 * s if anchor == 'top' else ay - y1 * s
     transform_elements(elements, s, ax - (x0 + w / 2) * s, ty)
     return f'fitted inside {bw}x{bh} at ({ax}, {ay})'
+
+# ---------- Eye whites ----------
+
+
+def inside(pt, poly):
+    x, y = pt
+    hit = False
+    n = len(poly)
+    for i in range(n):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % n]
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            hit = not hit
+    return hit
+
+
+def subpaths(cmds):
+    out, cur = [], []
+    for c in cmds:
+        if c[0] == 'M' and cur:
+            out.append(cur)
+            cur = []
+        cur.append(c)
+    if cur:
+        out.append(cur)
+    return out
+
+
+def poly_area(poly):
+    return abs(sum(poly[i][0] * poly[(i + 1) % len(poly)][1] - poly[(i + 1) % len(poly)][0] * poly[i][1] for i in range(len(poly)))) / 2
+
+
+def add_eye_whites(elements):
+    """
+    Some eyes are drawn as an outline with nothing inside, so skin shows where
+    the white of the eye should be. The opening is a hole in the outline: this
+    fills each such hole with white, underneath everything else. Eyes that
+    already have whites, closed eyes and dot eyes are left alone.
+    """
+    box = bbox_of(elements)
+    total = (box[2] - box[0]) * (box[3] - box[1])
+    if sum(area(e) for e in elements if is_white(e['fill'])) > total * 0.035:
+        return 0
+    iris = [bbox_of([e]) for e in elements if e.get('paint') or (not is_white(e['fill']) and lum(e['fill']) >= INK)]
+    holes = []
+    for e in elements:
+        if lum(e['fill']) >= INK:
+            continue
+        subs = [(sp, flatten(sp)) for sp in subpaths(e['cmds'])]
+        subs = [(sp, pl[0]) for sp, pl in subs if pl]
+        for sp, poly in subs:
+            if poly_area(poly) < total * 0.005:
+                continue
+            # a hole: its outline lies inside another outline of the same shape
+            if not any(other is not poly and inside(poly[0], other) for _, other in subs):
+                continue
+            xs = [q[0] for q in poly]
+            ys = [q[1] for q in poly]
+            hb = (min(xs), min(ys), max(xs), max(ys))
+            if iris:
+                # the opening sits at the level of the iris; a lid crease above it does not
+                level = any(hb[1] <= (b[1] + b[3]) / 2 <= hb[3] or b[1] <= (hb[1] + hb[3]) / 2 <= b[3] for b in iris)
+                if not level:
+                    continue
+            holes.append(sp)
+    if not holes:
+        return 0
+    elements.insert(0, {'cmds': [c for sp in holes for c in sp], 'fill': '#ffffff', 'opacity': None, 'rule': 'nonzero', 'id': 'white', 'layer': None})
+    return len(holes)
+
+# ---------- Measuring a head ----------
+
+
+def measure_head(elements):
+    """
+    Where things go on this particular head, measured from its skin shape:
+    the top of the head, the face's width above the ears, the ears, the chin
+    (where the jaw meets the neck) and the shoulders. The renderer uses these
+    to move every part from the template face onto this head.
+    """
+    skins = [e for e in elements if str(e['fill']).startswith('var(--skin-color')]
+    skin = max(skins or elements, key=area)
+    rows = {}
+    for y in range(140, 512, 2):
+        spans = row_spans([skin], y + 0.5)
+        if spans:
+            rows[y] = (spans[0][0], spans[-1][1])  # edge to edge: lines drawn inside the shape do not count
+    ys = sorted(rows)
+    wid = lambda y: rows[y][1] - rows[y][0]
+    top = ys[0]
+    ear_top = next((y for y in ys if y > top + 40 and y - 6 in rows and wid(y) - wid(y - 6) > 16), None)
+    above = [y for y in ys if y < (ear_top or top + 150)]
+    face_w = max(wid(y) for y in above)
+    band = [y for y in ys if ear_top and y >= ear_top - 6 and wid(y) > face_w + 10]
+    band = [y for y in band if y - band[0] < 76]
+    if band:
+        widest = max(band, key=wid)
+        ear_l, ear_r = rows[widest]
+        ear_bottom = band[-1]
+    else:
+        widest = top + int((ys[-1] - top) * 0.45)
+        ear_l, ear_r = rows[min(ys, key=lambda y: abs(y - widest))]
+        ear_bottom = widest + 20
+    centre = [(rows[y][0] + rows[y][1]) / 2 for y in above if y > top + 16]
+    cx = sum(centre) / len(centre)
+    below = [y for y in ys if ear_bottom + 10 < y < 500]
+    neck = min(below, key=wid)
+    shoulder = max(wid(y) for y in ys if y >= 490)
+    r = lambda v: round(v, 1)
+    return {'cx': r(cx), 'top': top, 'chin': neck - 4, 'w': r(face_w), 'earL': r(ear_l), 'earR': r(ear_r), 'earTop': band[0] if band else widest - 20,
+            'lobe': ear_bottom - 8, 'neck': neck, 'neckW': r(wid(neck)), 'shoulderW': r(shoulder)}
 
 # ---------- 3. Cleaning one file ----------
 
@@ -636,6 +750,10 @@ def process(path, folder, force=False):
                 elements[skin[0]]['stroke'] = d['fill']
             notes.append('outline moved under the skin')
     main = recolour(folder, name, elements)
+    if folder == 'eyes':
+        n = add_eye_whites(elements)
+        if n:
+            notes.append(f'added whites to {n} opening(s)')
     if main:
         notes.append(f'{main} -> var(--{RECOLOUR[folder]})')
     notes.append(place(folder, name, elements))
@@ -723,6 +841,10 @@ def write_manifest():
         d = os.path.join(ASSETS, folder)
         files = sorted(f for f in os.listdir(d) if f.endswith('.svg')) if os.path.isdir(d) else []
         data[folder] = [{'id': f[:-4], 'file': f'{folder}/{f}', 'label': label(f[:-4]), **({'tags': tags_for(folder, f[:-4])} if tags_for(folder, f[:-4]) else {})} for f in files]
+        if folder == 'heads':  # each head is measured, so parts can be moved onto it exactly
+            for item in data[folder]:
+                _, els = read_svg(open(os.path.join(ASSETS, item['file']), encoding='utf-8').read())
+                item['fit'] = measure_head(els)
     lines = ['// Generated by scripts/build-avatar-manifest.py. Do not edit by hand: add SVGs under',
              '// assets/avatars/ and run the script again.',
              '// Paths are relative to assets/avatars/.',
@@ -733,6 +855,13 @@ def write_manifest():
             lines.append('    ' + json.dumps(item, ensure_ascii=False, separators=(', ', ': ')) + ',')
         lines.append('  ],')
     lines.append('};')
+    lines.append('')
+    template = {'face': {'cx': 256, 'top': FACE['top'], 'chin': FACE['chin_y'], 'w': FACE['w']},
+                'anchor': {'eyes': FACE['eye_y'], 'eyebrows': FACE['brow_y'], 'nose': FACE['nose_y'], 'lips': FACE['mouth_y'], 'cheek': FACE['cheek_y']},
+                'ear': {'left': EAR['left_x'] + 6, 'right': EAR['right_x'] - 6, 'lobe': EAR['lobe_y']},
+                'clothesTop': LAYOUT['clothes'][3], 'shoulderW': 285}
+    lines.append('/** The template face every part was fitted to. Each head\'s own measurements are in its `fit`. */')
+    lines.append('export const AVATAR_TEMPLATE = ' + json.dumps(template, separators=(', ', ': ')) + ';')
     lines.append('')
     lines.append('/** Every part, by id. */')
     lines.append('export const PART_BY_ID = Object.fromEntries(Object.values(AVATAR_MANIFEST).flat().map((p) => [p.id, p]));')

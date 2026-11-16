@@ -6,10 +6,10 @@
 //  - children are built only from what their parents were born with
 //  - portraits render at every age and in every situation, using only files that exist
 import { readFileSync, existsSync } from 'node:fs';
-import { AVATAR_MANIFEST, PART_BY_ID } from '../js/avatarManifest.js';
+import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManifest.js';
 import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
-import { dressFor, filesFor, ageStage } from '../js/CharacterAvatar.js';
+import { dressFor, filesFor, ageStage, fitTransforms } from '../js/CharacterAvatar.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
 import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
@@ -32,6 +32,26 @@ for (const [folder, list] of Object.entries(AVATAR_MANIFEST)) {
 }
 const ids = Object.values(AVATAR_MANIFEST).flat().map((p) => p.id);
 check(new Set(ids).size === ids.length, 'duplicate part ids in the manifest');
+
+// 1b. Every head is measured, and every part lands inside it.
+const T = AVATAR_TEMPLATE;
+check(T.anchor.lips - T.anchor.nose >= 50, 'the template leaves too little room between nose and mouth');
+for (const h of AVATAR_MANIFEST.heads) {
+  const f = h.fit;
+  if (!f) { check(false, `${h.id} has not been measured`); continue; }
+  check(f.top < f.earTop && f.earTop < f.lobe && f.lobe < f.chin + 10 && f.chin < f.neck + 1, `${h.id}: measurements out of order ${JSON.stringify(f)}`);
+  check(f.w > 150 && f.w < 340 && f.earL < f.cx - f.w / 2 + 12 && f.earR > f.cx + f.w / 2 - 12 && Math.abs(f.cx - 256) < 8, `${h.id}: implausible width or ears`);
+  for (const stage of ['baby', 'toddler', 'kid', 'adult']) {
+    const t = fitTransforms(h.id, stage);
+    const y = (k) => Number(t[k].match(/translate\(\S+ (\S+)\)/)[1]);
+    const sc = Number(t.nose.match(/scale\((\S+)\)/)[1]);
+    check(y('eyebrows') < y('eyes') && y('eyes') < y('nose') && y('nose') < y('lips'), `${h.id}/${stage}: features out of order`);
+    check(y('eyebrows') > f.top + 40 && y('lips') + 20 * sc < f.chin - 4, `${h.id}/${stage}: features fall outside the face`);
+    check(y('lips') - y('nose') - 42 * sc >= 8, `${h.id}/${stage}: nose and mouth touch`); // half the nose box plus half the mouth box
+  }
+}
+const eyesWithWhites = AVATAR_MANIFEST.eyes.filter((e) => /fill:#ffffff/.test(readFileSync(new URL(`assets/avatars/${e.file}`, root), 'utf8'))).length;
+check(eyesWithWhites >= 20, `only ${eyesWithWhites} eye styles have whites`);
 
 // 2. Curated ids.
 const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, ...Object.values(CUR.OUTFITS).flat(),
