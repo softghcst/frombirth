@@ -11,6 +11,7 @@ import { rng } from '../rng.js';
 import { clamp, localMoney, localWage, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { SYSTEMS, OFFICES, PLATFORMS, BUDGETS, MOVES, ACTIONS, ACTIONS_PER_YEAR, REMOVAL } from '../data/politics.js';
+import { race, finishRace } from './campaign.js';
 import { ROYAL_RANKS } from '../data/royalty.js';
 import { incomeTax } from './finance.js';
 import { quitCareer } from './career.js';
@@ -34,7 +35,7 @@ export const offices = (c = country()) => (system(c).kind === 'none' ? []
   : OFFICES.filter((o) => officeTitle(o.id, c)).map((o) => ({ ...o, title: officeTitle(o.id, c) })));
 
 const convictions = (p) => p.legal.record.filter((r) => r.convicted && !r.juvenile).length;
-const highestHeld = (p) => Math.max(0, ...(p.flags.offices ?? []).map((o) => o.tier), p.politics?.tier ?? 0);
+export const highestHeld = (p) => Math.max(0, ...(p.flags.offices ?? []).map((o) => o.tier), p.politics?.tier ?? 0);
 
 /** Why the player cannot stand for an office right now, or '' if they can. */
 export function barrier(o) {
@@ -47,6 +48,7 @@ export function barrier(o) {
   if (p.politics?.ruler) return 'You have done away with elections.';
   if (p.politics?.officeId === o.id) return 'You hold this office.';
   if (o.id === 'head' && s.nativeOnly && p.birthCountryId !== c.id) return `Only someone born in ${theCountry(c.name)} may hold this office.`;
+  if (race()) return 'You are already in a race.';
   if (p.flags.campaignAge === p.age) return 'You have already fought one campaign this year.';
   // Offices are filled on a calendar, and a campaign is fought in the year before the vote.
   if (s.kind !== 'party' && !world.inSeason(o.id, c.id)) return `The next election for this office is in ${world.nextElection(o.id, c.id)}. Campaigning opens the year before.`;
@@ -63,7 +65,7 @@ export function ladder() {
 }
 
 /** How the voters see the player before a campaign begins, as a rough score. */
-function standing(o) {
+export function standing(o) {
   const p = player();
   const s = system();
   const held = highestHeld(p);
@@ -102,7 +104,7 @@ export const budgets = (officeId) => {
 export const moves = () => MOVES.filter((m) => system().kind !== 'party' || !['rally', 'debate', 'babies', 'smear'].includes(m.id))
   .map((m) => ({ id: m.id, name: system().kind === 'party' && m.id === 'buy' ? 'Send gifts to the committee' : system().kind === 'party' && m.id === 'doors' ? 'Volunteer for every thankless task' : m.name, risky: !!(m.dirty || m.illegal) }));
 
-function takeOffice(o, approval = 55) {
+export function takeOffice(o, approval = 55) {
   const p = player();
   const c = country();
   leave('moved up', true);
@@ -129,81 +131,8 @@ function leave(why, quiet = false) {
   if (!quiet) milestone(`Left office as ${k.title}: ${why}.`, 'career');
 }
 
-/**
- * Fights an election (or, in a one-party state, seeks the committee's nod).
- * @param {string} officeId
- * @param {{platform:string, budget:string, moves:string[]}} plan
- */
-export function campaign(officeId, plan) {
-  const p = player();
-  const c = country();
-  const s = system(c);
-  const o = offices(c).find((x) => x.id === officeId);
-  if (!o) return result(false, 'There is no such office here.', 'neutral');
-  const why = barrier(o);
-  if (why) return result(false, why, 'neutral');
-  const budget = BUDGETS.find((b) => b.id === plan.budget) ?? BUDGETS[0];
-  const cost = localMoney(o.cost * budget.times, c);
-  if (p.finance.cash < cost) return result(false, 'You cannot afford that campaign.', 'neutral');
-  p.finance.cash -= cost;
-  p.flags.campaignAge = p.age;
-
-  let score = standing(o) + budget.boost;
-  const notes = [];
-  // What the voters want this year is only known once the votes are in.
-  const mood = rng.pick(PLATFORMS.filter((x) => !x.silly)).id;
-  const platform = PLATFORMS.find((x) => x.id === plan.platform) ?? PLATFORMS[0];
-  if (s.kind !== 'party') {
-    if (platform.silly) { score -= 6; p.hidden.fame = clamp(p.hidden.fame + 4); notes.push('The pony pledge made the news everywhere, though not always kindly.'); }
-    else if (platform.id === mood) { score += 7; notes.push(`"${platform.name}" turned out to be exactly what people wanted to hear.`); }
-  }
-  let caught = false;
-  for (const id of (plan.moves ?? []).slice(0, 2)) {
-    const m = MOVES.find((x) => x.id === id);
-    if (!m) continue;
-    let gain = rng.int(m.boost[0], m.boost[1]);
-    if (m.factor) gain += ((m.factor === 'discipline' ? p.hidden.discipline : p.stats[m.factor]) - 50) / 8;
-    if (m.karma) p.hidden.karma = clamp(p.hidden.karma + m.karma);
-    if (m.illegal) {
-      // Easier to get away with where it is how things are done.
-      if (rng.chance(clamp(0.55 - c.living.graft / 150, 0.08, 0.5))) { caught = true; gain = -20; p.legal.heat = clamp(p.legal.heat + 35); notes.push('The envelopes were filmed changing hands. The police would like a word.'); }
-      else notes.push(m.text);
-    } else if (m.dirty && gain < 0) notes.push('The attack adverts were so nasty that people felt sorry for your opponent.');
-    else notes.push(m.text);
-    score += gain;
-  }
-
-  // The other candidate, the weather on polling day, and everything else nobody controls.
-  const rival = world.opponentFor(officeId, c.id);
-  const rivalParty = rival ? world.party(world.polity(c.id), rival.partyId) : null;
-  // A rival with charm and a clean name is harder to beat.
-  const opponent = 50 + rng.int(-14, 14) + rng.int(-10, 10) + (rival ? (rival.t.charisma - 55) / 8 : 0);
-  const share = Math.round(clamp(50 + (score - opponent) * 0.6, 4, 96));
-  const won = share > 50 || (share === 50 && rng.chance(0.5));
-  const votes = won && share <= 50 ? 51 : !won && share >= 50 ? 49 : share;
-  p.counters.polExp = (p.counters.polExp ?? 0) + 1;
-  const told = notes.length ? ` ${notes.join(' ')}` : '';
-  let text;
-  if (won) {
-    p.counters.electionsWon = (p.counters.electionsWon ?? 0) + 1;
-    takeOffice(o, caught ? 40 : clamp(48 + (votes - 50) * 0.8, 45, 75));
-    p.stats.mood = clamp(p.stats.mood + 14);
-    text = s.kind === 'party'
-      ? `The committee met behind closed doors, and your name came out. You are ${o.title}.${told} The campaign cost ${fmtMoney(cost, c)}.`
-      : `You beat ${rival ? `${rival.name}${rivalParty ? ` of ${world.the(rivalParty)}` : ''}` : 'your opponent'} with ${votes}% of the vote. You are ${o.title}${o.tier >= 5 ? ` of ${theCountry(c.name)}` : ''}.${told} The campaign cost ${fmtMoney(cost, c)}.`;
-    world.recordRace(rival, `Lost the race for ${o.title} to ${p.firstName} ${p.lastName}, ${100 - votes}% to ${votes}%.`);
-    if (o.fullTime) text += ' It is a full-time job, and you have left your old one.';
-  } else {
-    p.counters.electionsLost = (p.counters.electionsLost ?? 0) + 1;
-    p.stats.mood = clamp(p.stats.mood - 10);
-    text = s.kind === 'party'
-      ? `The committee chose someone else for ${o.title}. You applaud with everyone else.${told} It cost you ${fmtMoney(cost, c)}.`
-      : `You lost to ${rival ? `${rival.name}${rivalParty ? ` of ${world.the(rivalParty)}` : ''}` : 'your opponent'}, with ${votes}% of the vote${s.rigged ? ', by the official count' : ''}.${told} The campaign cost ${fmtMoney(cost, c)}.`;
-    world.recordRace(rival, `Beat ${p.firstName} ${p.lastName} for ${o.title}, ${100 - votes}% to ${votes}%.`);
-  }
-  log(text, 'system', won ? 'good' : 'bad');
-  return result(won, text);
-}
+// The campaign itself (nomination, the trail, the debate, polling day) is in engine/campaign.js.
+export { campaign } from './campaign.js';
 
 // ---------- In office ----------
 
@@ -345,6 +274,9 @@ export function tickPolitics() {
     p.counters.polExp = (p.counters.polExp ?? 0) + 6;
   }
 
+  // A campaign left unfinished is decided all the same: polling day does not wait.
+  if (race()) finishRace();
+
   const k = inOffice();
   if (!k) return;
   // An office belongs to a country: leave, or be locked up, and it is gone.
@@ -360,6 +292,12 @@ export function tickPolitics() {
   p.counters.polExp = Math.min(40, (p.counters.polExp ?? 0) + 1);
   log(`Your salary as ${k.title} came to ${fmtMoney(pay, c)} after tax.`);
 
+  if (k.promises) {
+    // What was said to win the room has to be delivered, and cannot all be.
+    shiftApproval(-3 * k.promises);
+    log(k.promises > 1 ? 'The promises you made in the debate are coming due, and you cannot keep them all.' : 'The promise you made in the debate is coming due, and it is proving hard to keep.', 'system', 'bad');
+    delete k.promises;
+  }
   const done = p.flags.officeActs?.age === p.age - 1 ? p.flags.officeActs.done : 0;
   if (!done) { shiftApproval(-5); log('You did little with your office this year, and people noticed.', 'system', 'bad'); }
   k.approval = Math.round(k.approval + (50 - k.approval) * 0.1);

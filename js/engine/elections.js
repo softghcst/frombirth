@@ -124,6 +124,64 @@ export function formGovernment(parties, seats, tooFar = 2.2) {
   return { lead: lead.id, partners, seats: have, majority, kind: partners.length ? 'coalition' : 'majority' };
 }
 
+/**
+ * A race between two candidates for one office. Each group of voters splits
+ * between them by how well each fits what the group wants, by what each
+ * brings besides (appeal), and by any work done on that group in particular.
+ * @param {{id:string, positions:object, appeal:number, edge?:Object<string,number>}} a
+ * @param {{id:string, positions:object, appeal:number, edge?:Object<string,number>}} b
+ * @param {(n:number) => number} noise
+ * @returns {{shares:object, votes:object, total:number, turnout:number, byGroup:Object<string,object>}}
+ *   byGroup holds the votes each candidate won in each group; they add up to votes.
+ */
+export function duel(a, b, groups, noise = () => 0, electorate = 100000) {
+  const votes = { [a.id]: 0, [b.id]: 0 };
+  const byGroup = {};
+  for (const g of groups) {
+    const lead = (alignment(a, g) - alignment(b, g)) * 25 + (a.appeal ?? 0) - (b.appeal ?? 0) + (a.edge?.[g.id] ?? 0) - (b.edge?.[g.id] ?? 0) + noise(3);
+    const part = 1 / (1 + Math.exp(-lead / 36));
+    const n = Math.round(g.share * Math.min(1, Math.max(0.05, g.turnout + noise(0.03))) * electorate);
+    const forA = Math.round(n * part);
+    byGroup[g.id] = { [a.id]: forA, [b.id]: n - forA };
+    votes[a.id] += forA;
+    votes[b.id] += n - forA;
+  }
+  const total = votes[a.id] + votes[b.id];
+  const shareA = total ? Math.round(votes[a.id] / total * 1000) / 10 : 50;
+  return { shares: { [a.id]: shareA, [b.id]: Math.round((100 - shareA) * 10) / 10 }, votes, total, turnout: Math.round(total / electorate * 1000) / 10, byGroup };
+}
+
+/**
+ * The count, as it comes in. Each area is a mix of the voter groups; the
+ * areas report in the order given, and the running totals end at the result.
+ * @param {Object<string,object>} byGroup  votes per group, as duel() returns them
+ * @param {{id:string, mix:Object<string,number>}[]} areas  for each group, the fractions across areas add up to 1
+ * @param {string[]} order  area ids, first to report first
+ * @returns {{id:string, votes:object, running:object, counted:number}[]}  counted: percent of all votes in so far
+ */
+export function countByArea(byGroup, areas, order = areas.map((x) => x.id)) {
+  const ids = Object.keys(Object.values(byGroup)[0] ?? {});
+  const per = Object.fromEntries(areas.map((x) => [x.id, Object.fromEntries(ids.map((id) => [id, 0]))]));
+  for (const [g, won] of Object.entries(byGroup)) {
+    for (const id of ids) {
+      let left = won[id];
+      areas.forEach((x, i) => {
+        // The last area takes whatever rounding has left, so nothing is lost or invented.
+        const n = i === areas.length - 1 ? left : Math.min(left, Math.round(won[id] * (x.mix[g] ?? 0)));
+        per[x.id][id] += n;
+        left -= n;
+      });
+    }
+  }
+  const total = Object.values(per).reduce((s, v) => s + ids.reduce((t, id) => t + v[id], 0), 0);
+  const running = Object.fromEntries(ids.map((id) => [id, 0]));
+  let counted = 0;
+  return order.map((areaId) => {
+    for (const id of ids) { running[id] += per[areaId][id]; counted += per[areaId][id]; }
+    return { id: areaId, votes: { ...per[areaId] }, running: { ...running }, counted: total ? Math.round(counted / total * 100) : 100 };
+  });
+}
+
 /** Checks a result for things that must never be true. Returns problems (empty when sound). */
 export function auditResult(result, seats, seatCount) {
   const problems = [];

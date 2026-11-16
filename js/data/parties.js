@@ -40,6 +40,14 @@ export const VOTERS = [
   { id: 'rural', name: 'Rural and small towns', share: 0.1, turnout: 0.68, cares: { order: 1, green: 1, open: 2, tax: 1 }, wants: { order: 1, green: -1, open: -1.5, tax: -1 } },
 ];
 
+/** Where the votes are counted. Each is a mix of the voter groups; for each group the fractions add up to 1. */
+export const AREAS = [
+  { id: 'cities', name: 'The city centres', mix: { young: 0.5, workers: 0.2, professionals: 0.35, older: 0.15, rural: 0 } },
+  { id: 'suburbs', name: 'The suburbs', mix: { young: 0.25, workers: 0.25, professionals: 0.45, older: 0.3, rural: 0.05 } },
+  { id: 'towns', name: 'The industrial towns', mix: { young: 0.2, workers: 0.45, professionals: 0.15, older: 0.3, rural: 0.15 } },
+  { id: 'country', name: 'The villages and farms', mix: { young: 0.05, workers: 0.1, professionals: 0.05, older: 0.25, rural: 0.8 } },
+];
+
 /** Countries whose legislature is elected one member per district (the rest use proportional lists). */
 export const DISTRICT_SEATS = ['us', 'uk', 'ca', 'au', 'in', 'pk', 'jm', 'my', 'sg', 'fr', 'ph', 'ng', 'ke', 'gh', 'jp', 'th', 'kw', 'jo'];
 /** Presidential countries that elect the president in a single round (the rest hold a run-off if nobody passes half). */

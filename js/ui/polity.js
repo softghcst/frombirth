@@ -68,9 +68,22 @@ function pageParties(w, o, mine) {
     + (mine ? '<button class="btn" data-leave style="margin-top:6px">Leave your party and sit as an independent</button>' : '');
 }
 
+function myRaces(countryId) {
+  const races = (player().flags.races ?? []).filter((r) => r.countryId === countryId).reverse();
+  if (!races.length) return '';
+  return `<div class="section-label">Your own races</div>${races.map((r) => `<div class="card"><h3>${r.year} · ${esc(r.title)} <small>(${r.won ? 'won' : 'lost'})</small></h3>
+    <div class="pol-result"><span>You${r.party ? `, ${esc(r.party)}` : ''}</span><span class="pol-track"><i style="width:${r.share}%;background:${r.colour}"></i></span><span class="num">${r.share}%</span><span class="num">${num(r.votes.me)}</span></div>
+    <div class="pol-result"><span>${esc(r.rival)}${r.rivalParty ? `, ${esc(r.rivalParty)}` : ''}</span><span class="pol-track"><i style="width:${Math.round((100 - r.share) * 10) / 10}%;background:${r.rivalColour}"></i></span><span class="num">${Math.round((100 - r.share) * 10) / 10}%</span><span class="num">${num(r.votes.rival)}</span></div>
+    <div class="kv"><span>Votes cast</span><span>${num(r.total)} (${r.turnout}% turnout)</span></div>
+    ${r.platform ? `<div class="kv"><span>You stood for</span><span>${esc(r.platform)}</span></div>` : ''}
+    ${r.debated ? `<div class="kv"><span>The debate</span><span>${{ won: 'You won it', lost: 'You lost it', drawn: 'A draw', ducked: 'You declined it' }[r.debated]}</span></div>` : ''}
+    ${r.lastPoll != null ? `<div class="kv"><span>The last poll said</span><span>${r.lastPoll}%</span></div>` : ''}</div>`).join('')}
+    <div class="section-label">General elections</div>`;
+}
+
 function pageElections(w, o) {
   if (!o.elections.length) return '<p class="muted">No elections are held here.</p>';
-  return o.elections.map((e, i) => {
+  return myRaces(w.countryId) + o.elections.map((e, i) => {
     const order = Object.entries(e.shares).sort((a, b) => b[1] - a[1]);
     const lead = world.party(w, e.govt.lead);
     return `<div class="card"><h3>${e.year}${i === 0 ? ' <small>(the most recent)</small>' : ''}</h3>

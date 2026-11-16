@@ -33,7 +33,7 @@ node tests/events.mjs
 ```bash
 node tests/escape-layouts.mjs
 node tests/succession.mjs      # the rules of royal succession, on hand-built families
-node tests/elections.mjs       # votes, seats, run-offs and coalitions, on hand-built cases
+node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candidate races and the count
 ```
 
 `avatar.mjs` checks the parts catalogue, the renderer, inheritance and the loading of old saves.
@@ -343,12 +343,30 @@ whether or not the player takes any part.
   the calendar, in the year before polling, against a named opponent who
   remembers the result. A head of government can bring in laws, which pass if
   they have the seats.
+- **A campaign.** Standing for office is a race in stages (`js/engine/campaign.js`),
+  kept in the save so it can be put down and picked up:
+  - *The nomination.* A party member seeking anything above the council must
+    first beat a named colleague for the party's backing, by winning over the
+    members, the leadership, or by outspending them. A loser can stand aside,
+    or leave the party and run as an independent.
+  - *The pledge.* Each one takes a position on an issue, so it pleases the
+    voter groups who want that and puts off those who do not.
+  - *The trail.* Four stretches, one thing in each: doors, rallies, courting
+    one group of voters, advertising, raising money, a private poll, attack
+    adverts, and worse. A published poll follows each, and polls are out by a
+    few points, the same way all campaign long.
+  - *The debate.* Three questions. A straight answer, a crowd-pleasing promise
+    (which comes due in office), an attack, or a dodge.
+  - *Polling day.* The result is worked out once and stored; election night
+    shows it arriving area by area, after an exit poll that may be wrong.
+  A campaign left unfinished when the year ends plays itself out. One-party
+  states have no voters to win: the committee decides.
 - **Where there are no elections,** ministers are appointed and rule by
   decree. In a monarchy the monarch remains head of state whatever the voters do.
 
 The rules are in `js/engine/politics.js` (the player's career), `js/engine/polity.js`
 (the political world) and `js/engine/elections.js` (the arithmetic, checked by
-`tests/elections.mjs`); the screens are in `js/ui/politics.js` and `js/ui/polity.js`. Scenes can test `inOffice`, `officeTier`, `democracy`,
+`tests/elections.mjs`); the screens are in `js/ui/politics.js`, `js/ui/campaign.js` and `js/ui/polity.js`. Scenes can test `inOffice`, `officeTier`, `democracy`,
 `partyState` and `politics.approval`, and use the `approval()`, `reelect()`,
 `ousted()` and `resignOffice()` effects.
 

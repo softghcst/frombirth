@@ -83,21 +83,28 @@ export const SYSTEMS = {
  * fullTime offices replace an ordinary job.
  */
 export const OFFICES = [
-  { id: 'council', tier: 1, minAge: 18, base: 46, cost: 1500, salary: 14000, term: 4, fullTime: false },
+  { id: 'council', tier: 1, minAge: 18, base: 43, cost: 1500, salary: 14000, term: 4, fullTime: false },
   { id: 'mayor', tier: 2, minAge: 21, base: 40, cost: 12000, salary: 95000, term: 4, fullTime: true },
   { id: 'seat', tier: 3, minAge: 25, base: 37, cost: 50000, salary: 150000, term: 5, fullTime: true },
   { id: 'region', tier: 4, minAge: 30, base: 36, cost: 140000, salary: 165000, term: 4, fullTime: true },
   { id: 'head', tier: 5, minAge: 35, base: 30, cost: 450000, salary: 380000, term: 4, fullTime: true },
 ];
 
-/** What you stand for. One of these is what the voters happen to want this year. */
+/**
+ * What you stand for. Each pledge takes a position on one of the issues the
+ * voters divide on (data/parties.js), so it pleases the groups who want that
+ * and puts off the ones who do not. `against`: runs against whoever governs.
+ */
 export const PLATFORMS = [
-  { id: 'jobs', name: 'Jobs and wages' },
-  { id: 'order', name: 'Law and order' },
-  { id: 'health', name: 'Hospitals and schools' },
-  { id: 'taxes', name: 'Lower taxes' },
-  { id: 'green', name: 'Clean air and water' },
-  { id: 'change', name: 'Throw the old lot out' },
+  { id: 'jobs', name: 'Jobs and wages', issue: 'services', to: 1 },
+  { id: 'health', name: 'Hospitals and schools', issue: 'services', to: 2 },
+  { id: 'taxes', name: 'Lower taxes', issue: 'tax', to: -2 },
+  { id: 'homes', name: 'Homes people can afford', issue: 'housing', to: 2 },
+  { id: 'order', name: 'Law and order', issue: 'order', to: 2 },
+  { id: 'green', name: 'Clean air and water', issue: 'green', to: 2 },
+  { id: 'borders', name: 'Tighter borders', issue: 'open', to: -2 },
+  { id: 'open', name: 'An open, free country', issue: 'open', to: 2 },
+  { id: 'change', name: 'Throw the old lot out', against: true },
   { id: 'silly', name: 'A free pony for every household', silly: true },
 ];
 
@@ -134,3 +141,49 @@ export const ACTIONS_PER_YEAR = 2;
 
 /** Below this approval, the people (or the party) move to throw an office-holder out. */
 export const REMOVAL = 22;
+
+/** The stretches of a campaign. One thing can be done in each. */
+export const ROUNDS = ['Six weeks to go', 'A month to go', 'Two weeks to go', 'The last days'];
+
+/**
+ * What a candidate can do with a stretch of the campaign. boost: points of
+ * support, low to high; factor: the trait that helps; cost: as a multiple of
+ * the office's basic cost. Doing the same thing twice is worth half as much.
+ */
+export const TRAIL = [
+  { id: 'doors', name: 'Knock on doors', boost: [2, 4], factor: 'discipline', text: 'You wear out a pair of shoes, one doorstep at a time.' },
+  { id: 'rally', name: 'Hold rallies', boost: [0, 6], factor: 'charm', text: 'The crowds are loud, and some of them are even there for you.' },
+  { id: 'babies', name: 'Kiss babies and eat local food', boost: [1, 3], factor: 'charm', text: 'You eat nine regional delicacies in one day and smile through all of them.' },
+  { id: 'target', name: 'Court one group of voters', group: true, text: '' },
+  { id: 'adverts', name: 'Buy advertising', boost: [3, 6], cost: 1.5, text: 'Your face is on every bus shelter, looking trustworthy.' },
+  { id: 'fundraise', name: 'Raise money from supporters', raise: [0.6, 1.4], boost: [1, 1], text: 'Raffles, dinners and a great many small cheques.' },
+  { id: 'donors', name: 'Dine with wealthy donors', raise: [2.5, 5], karma: -2, strings: true, text: 'The wine is excellent, and everybody at the table wants something.' },
+  { id: 'poll', name: 'Commission a private poll', cost: 0.5, poll: true, text: '' },
+  { id: 'smear', name: 'Run attack adverts', boost: [-5, 8], cost: 1, dirty: true, karma: -6, text: 'Your opponent\'s worst photograph is on every channel.' },
+  { id: 'buy', name: 'Hand out envelopes on polling day', boost: [6, 12], illegal: true, karma: -12, last: true, text: 'A great many people are suddenly very keen to vote.' },
+];
+
+/** What is asked in a debate, by issue. Three are drawn. */
+export const DEBATE_QUESTIONS = {
+  tax: 'The moderator asks who would pay more tax under you, and who less.',
+  services: 'A nurse in the audience asks why her ward is always short of staff.',
+  housing: 'A young couple ask when they will ever be able to afford a home.',
+  order: 'A shopkeeper, burgled three times this year, asks what you would do about it.',
+  green: 'A farmer asks whether your promises on the environment will cost him his living.',
+  open: 'A question from the floor: how many newcomers is too many?',
+};
+
+/** Ways to answer. What each is worth is decided in engine/campaign.js. */
+export const DEBATE_ANSWERS = [
+  { id: 'straight', name: 'Answer it straight', sub: 'Worth more the sharper you are. Costs nothing later.' },
+  { id: 'crowd', name: 'Tell the room what it wants to hear', sub: 'Works tonight. In office, the promise comes due.' },
+  { id: 'attack', name: 'Turn it on your opponent', sub: 'Lands hard, or makes you look rattled.' },
+  { id: 'dodge', name: 'Talk about something else', sub: 'Safe once. The moderator notices the second time.' },
+];
+
+/** Ways to win a party's nomination. */
+export const NOMINATION = [
+  { id: 'members', name: 'Win over the members', sub: 'Draughty halls and handshakes. Charm counts.' },
+  { id: 'leadership', name: 'Win over the leadership', sub: 'Years of loyalty and patience count.' },
+  { id: 'money', name: 'Outspend your rival', sub: 'It costs, and it shows.', cost: 1 },
+];

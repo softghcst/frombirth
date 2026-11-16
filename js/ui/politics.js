@@ -1,5 +1,5 @@
-// Screens for politics: the card on the Work tab, the campaign (platform,
-// budget, two moves, the count), and governing. Rules: engine/politics.js.
+// Screens for politics: the card on the Work tab, choosing an office to run
+// for, and governing. The campaign itself is in ui/campaign.js. Rules: engine/politics.js.
 import { player, country } from '../state.js';
 import { esc, fmtMoney, theCountry } from '../util.js';
 import * as pol from '../engine/politics.js';
@@ -8,6 +8,8 @@ import { messageModal, pickModal, confirmModal } from './modals.js';
 import * as world from '../engine/polity.js';
 import { openPolity } from './polity.js';
 import { LEVERS } from '../data/parties.js';
+import * as camp from '../engine/campaign.js';
+import { runCampaign, raceRows } from './campaign.js';
 
 const KIND = {
   presidential: 'The president is elected directly by the voters.',
@@ -44,9 +46,9 @@ export function politicsCard() {
         <button class="btn" data-pol="govern">Govern <small>${pol.actionsLeft()} left this year</small></button>
         ${k.officeId === 'head' ? '<button class="btn" data-pol="law">Bring in a law</button>' : ''}
         ${worldBtn}
-        ${k.tier < 5 && !k.ruler ? '<button class="btn" data-pol="run">Run for higher office</button>' : ''}
+        ${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : k.tier < 5 && !k.ruler ? '<button class="btn" data-pol="run">Run for higher office</button>' : ''}
         <button class="btn danger" data-pol="resign">${k.ruler ? 'Give up power' : 'Resign'}</button>
-      </div>${past ? `<div class="section-label">Offices held before</div>${past}` : ''}</div>`;
+      </div>${raceRows()}${past ? `<div class="section-label">Offices held before</div>${past}` : ''}</div>`;
   }
   return `<div class="card"><h3>Politics</h3>
     <p class="muted" style="margin-bottom:8px">${esc(KIND[s.kind])}${s.rigged ? ' The count is not always honest.' : ''}</p>
@@ -54,7 +56,8 @@ export function politicsCard() {
     ${past}
     <p class="muted" style="margin-top:8px">Student council, debating, a law or politics degree, helping on campaigns and every office you hold all make the next race easier.</p>
     ${worldRows}
-    <div class="btn-stack" style="margin-top:10px">${p.age >= 18 ? '<button class="btn" data-pol="run">Run for office</button>' : ''}${worldBtn}</div></div>`;
+    ${raceRows()}
+    <div class="btn-stack" style="margin-top:10px">${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : p.age >= 18 ? '<button class="btn" data-pol="run">Run for office</button>' : ''}${worldBtn}</div></div>`;
 }
 
 async function report(api, r) {
@@ -63,6 +66,7 @@ async function report(api, r) {
 }
 
 async function run(api) {
+  if (camp.race()) return runCampaign(api);
   const c = country();
   const party = pol.system(c).kind === 'party';
   const officeId = await pickModal({
@@ -72,12 +76,14 @@ async function run(api) {
       sub: o.blocked || `${o.odds[0].toUpperCase()}${o.odds.slice(1)}${o.opponent ? ` against ${o.opponent}` : ''}. Polling in ${o.electionYear}. From ${fmtMoney(o.cost, c)}; pays ${fmtMoney(o.salary, c)} a year${o.fullTime ? '' : ', alongside your job'}.` })),
   });
   if (!officeId) return undefined;
-  let platform = 'jobs';
   if (!party) {
-    platform = await pickModal({ title: 'What do you stand for?', body: 'Nobody knows what the voters want this year until the votes are counted.', options: pol.platforms().map((x) => ({ value: x.id, label: x.name })) });
-    if (!platform) return undefined;
+    const d = camp.declare(officeId);
+    api.changed();
+    await messageModal({ body: d.text, tone: d.tone });
+    return d.ok ? runCampaign(api) : undefined;
   }
-  const budget = await pickModal({ title: party ? 'How much will you spend on making friends?' : 'How much will you spend?', body: 'It comes out of your own pocket.',
+  // A one-party state: no voters, no polls, no count. The committee decides.
+  const budget = await pickModal({ title: 'How much will you spend on making friends?', body: 'It comes out of your own pocket.',
     options: pol.budgets(officeId).map((b) => ({ value: b.id, label: b.name, sub: `${fmtMoney(b.cost, c)}. ${b.desc}`, disabled: !b.affordable })) });
   if (!budget) return undefined;
   const chosen = [];
@@ -89,7 +95,7 @@ async function run(api) {
     if (!move) return undefined;
     chosen.push(move);
   }
-  return report(api, pol.campaign(officeId, { platform, budget, moves: chosen }));
+  return report(api, pol.campaign(officeId, { platform: 'jobs', budget, moves: chosen }));
 }
 
 async function govern(api) {
