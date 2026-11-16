@@ -20,6 +20,7 @@ export const SECRETS = {
   envelopes: { what: 'votes bought with cash', crime: true },
   donors: { what: 'favours promised to wealthy donors' },
   coverup: { what: 'a newspaper story suppressed' },
+  nepotism: { what: 'a ministry given to a relative' },
 };
 export const HUSH = 80000; // what it costs to lean on an editor, in base money
 
@@ -107,6 +108,7 @@ export function decide(what) {
     end();
     if (rng.chance(clamp(s.evidence / 100 + (q.denied ? 0.1 : 0), 0.05, 0.95))) {
       shift(-18);
+      p.flags.disgraced = true; // the name carries it, for this generation and the next
       if (SECRETS[s.kind].crime) p.legal.heat = clamp(p.legal.heat + 40);
       drop(s.id); tell('guilty', s);
       return `The inquiry finds against you, in four hundred pages.${SECRETS[s.kind].crime ? ' A copy has gone to the police.' : ''}`;

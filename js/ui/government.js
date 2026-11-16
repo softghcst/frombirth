@@ -19,7 +19,7 @@ function tallyModal(title, t) {
   });
 }
 
-const who = (x) => `${x.party ? `${x.party.name}. ` : ''}Age ${world.ageOf(x.figure)}. ${x.sketch[0].toUpperCase()}${x.sketch.slice(1)}.`;
+const who = (x) => `${x.kin ? `Your ${x.kin}. ` : ''}${x.party ? `${x.party.name}. ` : ''}Age ${world.ageOf(x.figure)}. ${x.sketch[0].toUpperCase()}${x.sketch.slice(1)}.`;
 
 /** The cabinet: every department, who runs it, and the chance to change that. */
 export async function openCabinet(api) {
