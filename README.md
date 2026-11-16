@@ -436,6 +436,19 @@ whether or not the player takes any part.
   the real head of government, and a refusal that carries the country undoes
   the law. A republican cause and a loyalist one can be joined where there
   is a crown; a republican movement that grows loud enough wins a referendum.
+- **Cities and regions** (`js/engine/local.js`). A mayor or the head of a
+  region presents a budget of their own each year: local taxes, clinics and
+  schools, policing and housing, voted on by a council in which their own
+  side holds the largest block. What is decided stays with the place, and
+  moves the tax, medical bills, rents and policing of whoever lives there.
+- **A citizen's vote.** An adult citizen can say how they will vote (the
+  Parties page); the vote is recorded at each general election. Newcomers
+  wait five years, and nobody votes where no votes are counted.
+- **Loose ends tied.** A party leadership that has just changed hands can be
+  contested by a sitting member. Allegations are not always true: a false
+  one can still make the papers, and an inquiry clears it. Scandal follows
+  a public figure out of office. A relative in the legislature may, rarely,
+  come to lead their party and the country.
 - **Where there are no elections,** ministers are appointed and rule by
   decree. In a monarchy the monarch remains head of state whatever the voters do.
 

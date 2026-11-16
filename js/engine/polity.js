@@ -211,6 +211,7 @@ function replaceLeader(w, p, why) {
   const next = w.figures[p.deputyId]?.died == null ? w.figures[p.deputyId] : newFigure(w, p.id, rng.int(38, 55));
   if (old) { say(old, `${why[0].toUpperCase()}${why.slice(1)} as leader of ${the(p)}.`); if (old.post !== 'head') old.post = 'former leader'; }
   p.leaderId = next.id; next.post = next.post === 'head' ? 'head' : 'leader';
+  p.vacancy = yearNow(); // for a year the new leader is untested, and others may fancy their chances
   say(next, `Became leader of ${the(p)}.`);
   const dep = newFigure(w, p.id, rng.int(32, 48)); dep.post = 'deputy'; p.deputyId = dep.id;
   return next;
@@ -382,6 +383,12 @@ export function tickPolity(w) {
         : rec.govt.kind === 'coalition' ? `No party won a majority. ${the(lead).replace(/^t/, 'T')} will govern in coalition with ${rec.govt.partners.map((id) => the(party(w, id))).join(' and ')}, under ${rec.govt.headName}.`
           : rec.govt.kind === 'minority' ? `No party won a majority, and none could agree a coalition. ${the(lead).replace(/^t/, 'T')} will govern alone, as a minority, under ${rec.govt.headName}.`
             : `${the(lead).replace(/^t/, 'T')} won a majority. ${rec.govt.headName} ${before.headId === rec.govt.headId ? 'stays on as' : 'is the new'} ${headTitle(cid)}.`;
+    // The player's own vote: one among millions, but theirs, and on the record.
+    const v = pl.flags.voteFor;
+    if (pl.countryId === cid && w.kind !== 'party' && !mayVote(cid)) {
+      const chosen = party(w, v?.countryId === cid ? v.partyId : membership(cid)?.id);
+      if (chosen) { (pl.flags.voted ??= []).push({ year, party: chosen.name, won: chosen.id === w.govt.lead }); if (pl.flags.voted.length > 30) pl.flags.voted.shift(); tell(`You voted for ${the(chosen)}. ${chosen.id === w.govt.lead ? 'It will lead the government.' : (w.seats[chosen.id] ?? 0) ? 'It did not win.' : 'It won no seats at all.'}`, 'neutral', 4); }
+    }
     tell(w.kind === 'party' ? `The party congress has met. ${how}` : kept ? `Legislative election: ${top}; turnout ${rec.turnout}%. You remain ${headTitle(cid)}${w.govt.kind === 'majority' ? ', with a majority behind you' : ', without a majority'}.` : `General election: ${top}; turnout ${rec.turnout}%. ${how}`, 'neutral', 5);
   }
   return news;
@@ -503,6 +510,27 @@ export function opponentFor(officeId, countryId = store.state.player.countryId) 
   return f;
 }
 
+/** Whether the player may vote here: an adult citizen, where votes are counted. */
+export function mayVote(countryId = store.state.player.countryId) {
+  const p = store.state.player;
+  const kind = kindOf(countryId);
+  if (kind !== 'presidential' && kind !== 'parliamentary') return 'No votes are cast here.';
+  if (p.age < 18) return 'You are too young to vote.';
+  if (p.legal?.incarceration) return 'Prisoners cannot vote here.';
+  if (p.birthCountryId !== countryId && !p.flags.citizenOf?.includes?.(countryId) && (store.state.year - (p.flags.arrivedYear ?? -99)) < 5) return 'You are not yet a citizen, and cannot vote.';
+  return '';
+}
+/** Says how the player will vote at the next general election. */
+export function intend(partyId) {
+  const p = store.state.player;
+  const w = polity(p.countryId);
+  const pa = party(w, partyId);
+  const why = mayVote(p.countryId);
+  if (why || !pa) return { ok: false, text: why || 'There is no such party.', tone: 'neutral' };
+  p.flags.voteFor = { countryId: p.countryId, partyId };
+  return { ok: true, text: `At the next general election, in ${Math.max(yearNow() + 1, w.calendar.general)}, you will vote for ${the(pa)}.`, tone: 'neutral' };
+}
+
 /** The colleague who wants the same nomination: someone in the player's own party, the same one until one of them moves on. */
 export function primaryRival(officeId, countryId = store.state.player.countryId) {
   const w = polity(countryId);
@@ -532,6 +560,17 @@ export function playerFigure(countryId = store.state.player.countryId, create = 
   f.name = `${p.firstName} ${p.lastName}`; f.gender = p.gender; f.look = p.appearance; f.born = yearNow() - p.age; f.partyId = membership(countryId)?.id ?? null;
   f.t.charisma = Math.round(p.stats.charm);
   return f;
+}
+
+/** Puts a particular politician at the head of their party; if the party leads the government, at the head of that too. @returns {boolean} whether they now govern */
+export function makeLeader(w, pa, f) {
+  const old = w.figures[pa.leaderId];
+  const wasHead = w.govt.headId === pa.leaderId;
+  if (old && old.id !== f.id) { old.post = wasHead ? 'former head' : 'former leader'; say(old, `Gave way to ${f.name} as leader of ${the(pa)}.`); }
+  pa.leaderId = f.id; f.post = 'leader';
+  say(f, `Became leader of ${the(pa)}.`);
+  if (w.govt.lead === pa.id && wasHead) { w.govt.headId = f.id; w.govt.since = yearNow(); f.post = 'head'; f.wasHead = true; say(f, `Became ${headTitle(w.countryId)}.`); return true; }
+  return false;
 }
 
 /** The player gives up whatever they lead: their party gets a new leader, and the country a new head of government. */

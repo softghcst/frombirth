@@ -30,7 +30,7 @@ const shiftApproval = (n) => { const k = player().politics; if (k) k.approval = 
 export function inPolitics() {
   const w = world.polity(player().countryId);
   return livingNpcs().filter((n) => n.flags?.pol && !n.flags.pol.left).map((npc) => ({ npc, figure: w.figures[npc.flags.pol.figureId] ?? null, party: world.party(w, npc.flags.pol.partyId),
-    title: npc.flags.pol.office ? officeTitle(npc.flags.pol.office, country()) : 'Party activist', word: word(npc) }));
+    title: npc.flags.pol.post === 'head' ? world.headTitle(player().countryId) : npc.flags.pol.post === 'leader' ? 'Party leader' : npc.flags.pol.office ? officeTitle(npc.flags.pol.office, country()) : 'Party activist', word: word(npc) }));
 }
 
 /** What the family name is worth to a candidate, as points of standing. Good names help; a disgraced one costs. */
@@ -154,6 +154,22 @@ export function tickKin() {
     if (k.office && rng.chance(0.02 + (55 - f.t.integrity) / 900)) {
       pend.push({ id: 'kin_scandal', cast: { kin: npc.id, words: { rel: word(npc), their: their(npc), title: officeTitle(k.office, c) } } });
       continue;
+    }
+    // Someone in the legislature for long enough may be chosen to lead their party, like anyone else there.
+    const pa = world.party(w, k.partyId);
+    if (k.office === 'seat' && pa && !k.post && !w.figures[pa.leaderId]?.isPlayer && pa.vacancy === year && rng.chance(clamp(0.06 + (f.t.charisma - 50) / 400, 0.01, 0.2))) {
+      const governs = world.makeLeader(w, pa, f);
+      k.post = governs ? 'head' : 'leader';
+      npc.occupation = governs ? world.headTitle(c.id) : `Leader of ${world.the(pa)}`;
+      const text = governs ? `Your ${word(npc)} ${npc.firstName} has been chosen to lead ${world.the(pa)}, and with it the country: ${npc.firstName} is ${world.headTitle(c.id)}.` : `Your ${word(npc)} ${npc.firstName} has been chosen to lead ${world.the(pa)}.`;
+      post(w, `${full(npc)} is the new leader of ${world.the(pa)}.`); log(text, 'system', 'good'); p.stats.mood = clamp(p.stats.mood + 8);
+    }
+    if (k.post) {
+      // The post follows the figure: lost when the party drops them, gained when the party wins.
+      const leads = pa?.leaderId === f.id;
+      const now = !leads ? null : w.govt.headId === f.id ? 'head' : 'leader';
+      if (now !== k.post) { k.post = now; npc.occupation = now === 'head' ? world.headTitle(c.id) : now === 'leader' ? `Leader of ${world.the(pa)}` : officeTitle('seat', c); if (now === 'head') log(`Your ${word(npc)} ${npc.firstName} is ${world.headTitle(c.id)}.`, 'system', 'good'); }
+      if (now) continue; // a leader's fate is decided by general elections, not a race of their own
     }
     if (year >= k.nextRace) {
       if (k.askedRace !== year && rng.chance(0.7)) { k.askedRace = year; pend.push({ id: 'kin_campaign', cast: { kin: npc.id, words: { rel: word(npc), their: their(npc), title: officeTitle(RUNGS[k.office ? Math.min(2, RUNGS.indexOf(k.office) + 1) : 0], c), cost: fmtMoney(localMoney(20000, c), c) } } }); } else race(npc);

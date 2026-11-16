@@ -11,6 +11,7 @@ import { openCabinet, lawFlow, budgetFlow, governButtons, foreignFlow } from './
 import * as lead from '../engine/leadership.js';
 import * as kin from '../engine/kin.js';
 import * as cause from '../engine/activism.js';
+import * as local from '../engine/local.js';
 import * as camp from '../engine/campaign.js';
 import { runCampaign, raceRows } from './campaign.js';
 
@@ -60,6 +61,7 @@ export function politicsCard() {
       <div class="btn-stack" style="margin-top:10px">
         <button class="btn" data-pol="govern">Govern <small>${pol.actionsLeft()} left this year</small></button>
         ${k.officeId === 'head' ? governButtons() : ''}
+        ${local.runsPlace() ? `<button class="btn" data-pol="localBudget">${k.officeId === 'region' ? 'The region\'s budget' : 'The city\'s budget'} <small>${local.budgetView().presented ? 'presented for this year' : 'not yet presented'}</small></button>` : ''}
         ${leadBtn}
         ${worldBtn}
         ${camp.race() ? '<button class="btn primary" data-pol="run">Carry on your campaign</button>' : k.tier < 5 && !k.ruler ? '<button class="btn" data-pol="run">Run for higher office</button>' : ''}
@@ -164,6 +166,7 @@ export async function politicsAction(id, api) {
   if (id === 'cabinet') return openCabinet(api);
   if (id === 'foreign') return foreignFlow(api);
   if (id === 'budget') return budgetFlow(api);
+  if (id === 'localBudget') return budgetFlow(api, local);
   if (id === 'run') return run(api);
   if (id === 'govern') return govern(api);
   if (id === 'resign') {

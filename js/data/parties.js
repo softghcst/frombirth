@@ -74,6 +74,17 @@ export const LEVERS = {
     up: 'put more police on the streets', down: 'cut police numbers', feel: (n) => `Crimes are ${n > 0 ? 'more' : 'less'} likely to be solved than they were.` },
 };
 
+/**
+ * What a city or a region can change for itself. Like the national levers,
+ * each runs from -2 to 2. `follows`: the issue a party judges it by.
+ */
+export const LOCAL_LEVERS = {
+  rates: { name: 'local taxes', follows: 'tax', cost: -1.5, up: 'raised local taxes', down: 'cut local taxes', feel: (n) => (n ? `People here pay ${Math.abs(n)}% ${n > 0 ? 'more' : 'less'} of their income in tax.` : 'Local taxes are back where they were.') },
+  services: { name: 'clinics and schools', follows: 'services', cost: 1, up: 'put more into local clinics and schools', down: 'cut local clinics and schools', feel: (n) => (n ? `Medical bills here are ${Math.abs(n) * 5}% ${n > 0 ? 'lower' : 'higher'}.` : 'Local services are back where they were.') },
+  safety: { name: 'local policing', follows: 'order', cost: 0.5, up: 'put more officers on local streets', down: 'cut local policing', feel: (n) => (n ? `Crimes here are ${n > 0 ? 'more' : 'less'} likely to be solved.` : 'Local policing is back where it was.') },
+  housing: { name: 'local housing', follows: 'housing', cost: 0.5, up: 'built homes and held rents down', down: 'sold off public housing', feel: (n) => (n ? `Rents here are ${Math.abs(n) * 4}% ${n > 0 ? 'lower' : 'higher'}.` : 'Local housing is back where it was.') },
+};
+
 /** The departments of a government. Each is run by a minister, and each answers for one of the levers above. */
 export const DEPARTMENTS = [
   { id: 'treasury', title: 'Finance Minister', lever: 'tax' },

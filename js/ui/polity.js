@@ -73,13 +73,20 @@ function pageParties(w, o, mine) {
       <div class="kv"><span>Stands for</span><span>${esc(p.stances.slice(0, 4).join('; ') || 'things much as they are')}</span></div>
       ${p.leader ? personRow(w, p.leader, 'leader') : ''}
       ${player().age >= 16 && o.kind !== 'none' ? `<button class="btn" data-join="${p.id}" ${mine?.id === p.id ? 'disabled' : ''}>${mine?.id === p.id ? 'You are a member' : mine ? 'Leave yours and join this one' : 'Join this party'}</button>` : ''}
+      ${!world.mayVote(w.countryId) ? `<button class="btn" data-vote="${p.id}" ${player().flags.voteFor?.partyId === p.id && player().flags.voteFor?.countryId === w.countryId ? 'disabled' : ''}>${player().flags.voteFor?.partyId === p.id && player().flags.voteFor?.countryId === w.countryId ? 'You will vote for this party' : 'Vote for this party next time'}</button>` : ''}
     </div>`).join('')
+    + (world.mayVote(w.countryId) && o.kind !== 'none' && o.kind !== 'party' ? `<p class="muted">${esc(world.mayVote(w.countryId))}</p>` : '')
     + (mine ? '<button class="btn" data-leave style="margin-top:6px">Leave your party and sit as an independent</button>' : '');
+}
+
+function myVotes() {
+  const v = player().flags.voted ?? [];
+  return v.length ? `<div class="section-label">How you have voted</div>${[...v].reverse().slice(0, 8).map((x) => `<div class="kv"><span>${x.year}</span><span>${esc(x.party)}${x.won ? ' · it won' : ''}</span></div>`).join('')}` : '';
 }
 
 function myRaces(countryId) {
   const races = (player().flags.races ?? []).filter((r) => r.countryId === countryId).reverse();
-  if (!races.length) return '';
+  if (!races.length) return myVotes();
   return `<div class="section-label">Your own races</div>${races.map((r) => `<div class="card"><h3>${r.year} · ${esc(r.title)} <small>(${r.won ? 'won' : 'lost'})</small></h3>
     <div class="pol-result"><span>You${r.party ? `, ${esc(r.party)}` : ''}</span><span class="pol-track"><i style="width:${r.share}%;background:${r.colour}"></i></span><span class="num">${r.share}%</span><span class="num">${num(r.votes.me)}</span></div>
     <div class="pol-result"><span>${esc(r.rival)}${r.rivalParty ? `, ${esc(r.rivalParty)}` : ''}</span><span class="pol-track"><i style="width:${Math.round((100 - r.share) * 10) / 10}%;background:${r.rivalColour}"></i></span><span class="num">${Math.round((100 - r.share) * 10) / 10}%</span><span class="num">${num(r.votes.rival)}</span></div>
@@ -87,7 +94,7 @@ function myRaces(countryId) {
     ${r.platform ? `<div class="kv"><span>You stood for</span><span>${esc(r.platform)}</span></div>` : ''}
     ${r.debated ? `<div class="kv"><span>The debate</span><span>${{ won: 'You won it', lost: 'You lost it', drawn: 'A draw', ducked: 'You declined it' }[r.debated]}</span></div>` : ''}
     ${r.lastPoll != null ? `<div class="kv"><span>The last poll said</span><span>${r.lastPoll}%</span></div>` : ''}</div>`).join('')}
-    <div class="section-label">General elections</div>`;
+    ${myVotes()}<div class="section-label">General elections</div>`;
 }
 
 function pageElections(w, o) {
@@ -170,6 +177,8 @@ export function openPolity(onChange) {
       await messageModal({ body: r.text, tone: r.tone });
       return draw();
     }
+    const vote = e.target.closest('[data-vote]');
+    if (vote) { const r = world.intend(vote.dataset.vote); onChange?.(); await messageModal({ body: r.text, tone: r.tone }); return draw(); }
     if (e.target.closest('[data-leave]')) { const r = world.leaveParty(); onChange?.(); await messageModal({ body: r.text, tone: r.tone }); return draw(); }
     const who = e.target.closest('[data-figure]');
     if (who && w.figures[who.dataset.figure]) { viewing = w.figures[who.dataset.figure]; return draw(); }

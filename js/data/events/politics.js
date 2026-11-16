@@ -294,7 +294,7 @@ export default [
       { label: 'Apologise', outcomes: [any('You face the cameras.', 'neutral', scandal('apologise'))] },
       { label: 'Let an aide take the blame', outcomes: [any('You have a quiet word with someone junior, loyal, and expendable.', 'neutral', scandal('aide'))] },
       { label: 'Call an independent inquiry', outcomes: [any('"I have nothing to hide, and I want that established."', 'neutral', scandal('inquiry'))] },
-      { label: 'Resign', outcomes: [any('A short statement on the steps, and a car with the engine running.', 'neutral', resignOffice(), st('mood', -6))] },
+      { label: 'Resign', requires: [need('inOffice', '==', true)], outcomes: [any('A short statement on the steps, and a car with the engine running.', 'neutral', resignOffice(), st('mood', -6))] },
     ],
   },
   {
@@ -302,6 +302,14 @@ export default [
     text: 'The inquiry into {what} reports today. An advance copy is on your desk, face down.',
     choices: [
       { label: 'Turn it over', outcomes: [any('You read the last page first.', 'neutral', scandal('verdict'))] },
+    ],
+  },
+  {
+    id: 'pol_leadership_open', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: 'The leadership of {party} has changed hands in a hurry, and {leader} has it for now. Nobody has had time to get used to the idea. Colleagues are asking, quietly, whether you would stand.',
+    choices: [
+      { label: 'Put your name forward', outcomes: [any('You let it be known that you are available.', 'neutral', leader('stand'))] },
+      { label: 'Stay loyal, and wait', outcomes: [any('You say the party needs unity, and are thanked for it.', 'neutral', st('mood', 1))] },
     ],
   },
   {

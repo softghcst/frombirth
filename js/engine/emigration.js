@@ -179,6 +179,7 @@ export function emigrate(countryId, opts = {}) {
   // Those who came will be paid at the new country's level from now on.
   for (const id of coming) { const job = store.state.npcs[id].life?.job; if (job) job.salary = Math.round(job.salary * to.living.wageK / from.living.wageK); }
   p.countryId = to.id;
+  p.flags.arrivedYear = store.state.year; // newcomers wait five years before they can vote
   p.city = rng.pick(to.cities);
   p.homeId = null;
   p.flags.livesWithParents = false;

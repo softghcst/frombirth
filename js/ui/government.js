@@ -51,7 +51,7 @@ export async function openCabinet(api) {
 }
 
 /** Choosing how hard to push before a vote. */
-const pushModal = (title, body) => pickModal({ title, cancel: 'Not yet', body, options: gov.voteOptions().map((o) => ({ value: o.id, label: o.name, sub: o.sub })) });
+const pushModal = (title, options, body) => pickModal({ title, cancel: 'Not yet', body, options: options.map((o) => ({ value: o.id, label: o.name, sub: o.sub })) });
 
 /** A bill: bring it in, get it through committee, and put it to the vote. */
 export async function lawFlow(api) {
@@ -80,7 +80,7 @@ export async function lawFlow(api) {
     await messageModal({ body: r.text, tone: r.tone });
   }
   if (gov.bill()?.stage === 'floor') {
-    const move = await pushModal('The vote', 'The bill is out of committee and on the floor. How hard will you push?');
+    const move = await pushModal('The vote', gov.voteOptions(), 'The bill is out of committee and on the floor. How hard will you push?');
     if (!move) return undefined;
     const r = gov.putToVote(move);
     api.changed();
@@ -95,19 +95,19 @@ const TAX = ['Very low', 'Low', 'As it has long been', 'High', 'Very high'];
 const state = (balance) => (balance <= -3 ? 'deep in deficit' : balance < 0 ? 'in deficit' : balance === 0 ? 'in balance' : 'in surplus');
 
 /** The year's budget: every department on one page, then a single vote. */
-export async function budgetFlow(api) {
-  const v = gov.budgetView();
+export async function budgetFlow(api, src = gov) {
+  const v = src.budgetView();
   if (v.presented) return messageModal({ body: 'This year\'s budget has already been presented.' });
   const changes = await new Promise((resolve) => {
     const picked = {};
-    const m = openModal(`<div class="eyebrow">The budget</div><h2>The year's money</h2>
-      <p class="body">Tax brings money in; everything else spends it. One step each way at most, and one vote on the whole of it.</p>
+    const m = openModal(`<div class="eyebrow">${esc(v.eyebrow ?? 'The budget')}</div><h2>${esc(v.title ?? 'The year\'s money')}</h2>
+      <p class="body">${esc(v.intro ?? 'Tax brings money in; everything else spends it. One step each way at most, and one vote on the whole of it.')}</p>
       ${v.rows.map((r) => `<div class="bud-row" data-row="${r.lever}">
-        <div class="main"><strong>${esc(r.name)}</strong><small>${esc((r.lever === 'tax' ? TAX : LEVEL)[r.at + 2])}${r.minister ? ` · ${esc(r.minister.name)}` : r.dept ? ' · no minister' : ''}</small></div>
-        <div class="seg"><button data-dir="-1" ${r.canCut ? '' : 'disabled'}>${r.lever === 'tax' ? 'Cut' : 'Cut'}</button><button data-dir="0" class="on">Hold</button><button data-dir="1" ${r.canRaise ? '' : 'disabled'}>${r.lever === 'tax' ? 'Raise' : 'Spend'}</button></div></div>`).join('')}
+        <div class="main"><strong>${esc(r.name)}</strong><small>${esc((r.words ?? (r.lever === 'tax' ? TAX : LEVEL))[r.at + 2])}${r.minister ? ` · ${esc(r.minister.name)}` : r.dept ? ' · no minister' : ''}</small></div>
+        <div class="seg"><button data-dir="-1" ${r.canCut ? '' : 'disabled'}>Cut</button><button data-dir="0" class="on">Hold</button><button data-dir="1" ${r.canRaise ? '' : 'disabled'}>${r.lever === 'tax' || r.income ? 'Raise' : 'Spend'}</button></div></div>`).join('')}
       <div class="kv" style="margin-top:10px"><span>The public finances now</span><span>${state(v.balance)}</span></div>
       <div class="kv"><span>After this budget</span><span data-after>${state(v.balance)}</span></div>
-      <div class="kv"><span>National debt</span><span>${v.debt >= 12 ? 'Alarming' : v.debt >= 6 ? 'Heavy' : v.debt > 0 ? 'Manageable' : 'None to speak of'}</span></div>
+      ${v.debt == null ? '' : `<div class="kv"><span>National debt</span><span>${v.debt >= 12 ? 'Alarming' : v.debt >= 6 ? 'Heavy' : v.debt > 0 ? 'Manageable' : 'None to speak of'}</span></div>`}
       <div class="btn-row" style="margin-top:14px"><button class="btn" data-cancel>Not yet</button><button class="btn primary" data-go>Put it to the vote</button></div>`, { dismissable: true, onDismiss: () => resolve(null) });
     m.el.addEventListener('click', (e) => {
       if (e.target.closest('[data-cancel]')) { m.close(); return resolve(null); }
@@ -117,20 +117,20 @@ export async function budgetFlow(api) {
       const row = b.closest('[data-row]');
       picked[row.dataset.row] = Number(b.dataset.dir);
       row.querySelectorAll('[data-dir]').forEach((x) => x.classList.toggle('on', x === b));
-      const after = gov.balanceAfter(Object.fromEntries(Object.entries(picked).filter(([, d]) => d)));
+      const after = src.balanceAfter(Object.fromEntries(Object.entries(picked).filter(([, d]) => d)));
       const out = m.el.querySelector('[data-after]');
-      out.textContent = after < -5 ? 'more than the country can borrow' : state(after);
+      out.textContent = after < (v.floor ?? -5) ? 'more than can be borrowed' : state(after);
       return undefined;
     });
   });
   if (!changes) return undefined;
   let move = 'none';
   if (Object.keys(changes).length) {
-    move = await pushModal('The budget vote', v.fragile ? 'You have no majority of your own. If the budget is lost, the government falls and you face the voters. How hard will you push?' : 'A government that loses its budget is in serious trouble. How hard will you push?');
+    move = await pushModal('The budget vote', src.voteOptions(), v.fragile ? 'You have no majority of your own. If the budget is lost, the government falls and you face the voters. How hard will you push?' : v.push ?? 'A government that loses its budget is in serious trouble. How hard will you push?');
     if (!move) return undefined;
     if (move === 'confidence' && !(await confirmModal({ title: 'Stake the government on it?', body: 'If the budget is lost, the government falls and you face the voters at once.', yes: 'Stake it', danger: true }))) return undefined;
   }
-  const r = gov.presentBudget(changes, move);
+  const r = src.presentBudget(changes, move);
   api.changed();
   await tallyModal(r.ok ? 'The budget passes' : 'The budget is defeated', r.tally);
   await messageModal({ body: r.text, tone: r.tone });
