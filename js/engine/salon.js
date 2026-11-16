@@ -5,8 +5,10 @@ import { player, country, log } from '../state.js';
 import { normalize, part } from '../avatar/catalog.js';
 
 /** Prices in base units. A change back to "none" or "natural" is free, apart from a haircut. */
-export const SALON_PRICES = { hair: 45, hairDye: 110, glasses: 180, facialHair: 25, makeup: 60, lipColor: 15 };
-const LABELS = { hair: 'Haircut', hairDye: 'Colour', glasses: 'New glasses', facialHair: 'Barber', makeup: 'Make-up', lipColor: 'Lip colour' };
+export const SALON_PRICES = { hair: 45, hairDye: 110, glasses: 180, facialHair: 25, makeup: 60, lipColor: 15, jewelry: 90, outfit: 80, outfitColor: 30, hat: 35 };
+const LABELS = { hair: 'Haircut', hairDye: 'Colour', glasses: 'New glasses', facialHair: 'Barber', makeup: 'Make-up', lipColor: 'Lip colour',
+  jewelry: 'Jewellery', outfit: 'New clothes', outfitColor: 'Dyeing', hat: 'A hat' };
+const same = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null);
 /** Children do not pay: whoever looks after them does. */
 const PAYS_FROM = 16;
 
@@ -22,8 +24,8 @@ export function salonQuote(next) {
   const now = normalize(p.appearance, p.id).style;
   const lines = [];
   for (const key of Object.keys(SALON_PRICES)) {
-    if (now[key] === next.style[key]) continue;
-    const removing = next.style[key] == null;
+    if (same(now[key], next.style[key])) continue;
+    const removing = next.style[key] == null || (Array.isArray(next.style[key]) && !next.style[key].length);
     lines.push({ label: LABELS[key], cost: removing ? 0 : localCost(SALON_PRICES[key], c) });
   }
   const free = p.age < PAYS_FROM;
@@ -48,7 +50,7 @@ export function applySalon(next) {
   if (p.finance.cash < q.total) return { ok: false, text: `That comes to ${fmtMoney(q.total, c)}. You do not have it.`, tone: 'neutral' };
   p.finance.cash -= q.total;
   const current = normalize(p.appearance, p.id);
-  p.appearance = { v: 2, inherited: current.inherited, style: { ...current.style, ...next.style } };
+  p.appearance = { v: 3, inherited: current.inherited, style: { ...current.style, ...next.style } };
   const first = p.flags.salonAge !== p.age;
   p.flags.salonAge = p.age;
   if (first) { p.stats.mood = clamp(p.stats.mood + 4); if (p.stats.charm < 80) p.stats.charm = clamp(p.stats.charm + 1); }

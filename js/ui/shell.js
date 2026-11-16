@@ -11,7 +11,7 @@ import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
 import { styledName, standing } from '../engine/royalty.js';
 import { ROYAL_RANKS } from '../data/royalty.js';
-import { avatarSvg } from './avatar.js';
+import { avatarSvg, dressOfPlayer } from './avatar.js';
 import { meterHtml } from './meter.js';
 import { eventModal, outcomeModal, confirmModal } from './modals.js';
 import { TABS } from './tabs/index.js';
@@ -94,8 +94,7 @@ export function mountGame(app, hooks) {
     const p = player();
     const c = country();
     $('[data-avatar]').innerHTML = avatarSvg({
-      age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id,
-      jailed: !!p.legal.incarceration, mood: p.stats.mood,
+      age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id, mood: p.stats.mood, label: `${p.firstName} ${p.lastName}`, ...dressOfPlayer(p),
     });
     $('[data-name]').textContent = styledName(p);
     $('[data-line1]').textContent = `Age ${p.age} · ${p.city}, ${c.name} ${c.flag}`;

@@ -7,7 +7,7 @@ import { esc, theCountry } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
 import * as dyn from '../engine/dynasty.js';
 import { relationTo } from '../engine/succession.js';
-import { avatarSvg } from './avatar.js';
+import { avatarSvg, royalDress } from './avatar.js';
 import { openModal } from './modals.js';
 
 const ORD = (n) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : Math.min(n % 10, 4) % 4]}`;
@@ -18,7 +18,7 @@ const LAW = {
 };
 const list = (words) => (words.length <= 1 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`);
 
-const face = (x, year) => avatarSvg({ age: Math.max(0, dyn.ageOf(x, year)), gender: x.gender, appearance: x.look, seed: x.id, mood: 62 });
+const face = (x, year, d) => avatarSvg({ age: Math.max(0, dyn.ageOf(x, year)), gender: x.gender, appearance: x.look, seed: x.id, mood: 62, royal: d ? royalDress(dyn.rankOf(d, x)) : null });
 const years = (x) => `${x.born}–${x.died ?? ''}`;
 
 /** What someone is to the player: "your grandmother", "your cousin", or '' for no relation worth naming. */
@@ -50,7 +50,7 @@ function kin(d, me, x) {
 function row(d, x, me, side = '') {
   const k = kin(d, me, x);
   return `<button class="row dyn-row ${x.died != null ? 'gone' : ''} ${x.isPlayer ? 'you' : ''}" data-person="${x.id}">
-    <div class="avatar">${face(x)}</div>
+    <div class="avatar">${face(x, undefined, d)}</div>
     <div class="main"><strong>${esc(dyn.nameOf(d, x))}</strong>
       <small>${esc(dyn.standingOf(d, x))}${k ? ` · ${esc(k)}` : ''}</small></div>
     <div class="side">${side || esc(x.died != null ? years(x) : `age ${dyn.ageOf(x)}`)}</div>
@@ -175,7 +175,7 @@ function pagePerson(d, me, x) {
   const age = dyn.ageOf(x);
   return `
     <div class="dyn-hero">
-      <div class="avatar dyn-portrait">${face(x)}</div>
+      <div class="avatar dyn-portrait">${face(x, undefined, d)}</div>
       <div><h3>${esc(dyn.nameOf(d, x))}</h3>
         <p class="muted">${years(x)}${x.died != null ? ` · lived ${age} years` : ` · age ${age}`}</p>
         <p>${esc(dyn.standingOf(d, x))}${k && k !== 'you' ? `<br><em>${esc(k[0].toUpperCase() + k.slice(1))}</em>` : k === 'you' ? '<br><em>This is you.</em>' : ''}</p></div>

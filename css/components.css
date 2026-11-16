@@ -246,6 +246,11 @@ button.tree-row:active { background: var(--accent-soft); }
 .av-swatch { width: 44px; height: 44px; border-radius: 50%; }
 .av-chip { min-height: 44px; padding: 6px 14px; border-radius: 22px; font-size: 0.9rem; }
 .av-chip.on { background: var(--accent-soft); }
+.av-filters, .av-previews { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.av-previews { justify-content: center; margin: 0; }
+.av-filter, .av-preview { border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; min-height: 36px; padding: 4px 12px; font-size: 0.82rem; cursor: pointer; }
+.av-filter.on, .av-preview.on { border-color: var(--accent); }
+.character-avatar { display: block; overflow: hidden; }
 
 /* ---------- Age down ---------- */
 .year-row { display: flex; gap: 8px; align-items: stretch; }

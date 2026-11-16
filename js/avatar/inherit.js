@@ -5,17 +5,21 @@
 // genetics. Only the `inherited` half of a parent is ever read, so a dyed
 // or restyled parent passes on what they were born with.
 import { rng } from '../rng.js';
-import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES } from './catalog.js';
+import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, HAIR_STYLES } from './catalog.js';
+import { RESTING, OUTFITS } from './curation.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
 const toneAt = (depth) => SKIN_TONES.find((t) => t.depth === clampDepth(depth)).id;
 const weighted = (table) => rng.weighted(Object.keys(table), (k) => table[k]);
+const FOLDER = { eyes: 'eyes', brows: 'eyebrows', nose: 'noses', lips: 'lips' };
+/** The options a random face is drawn from: resting faces only, never expressions. */
+const pool = (key) => (FOLDER[key] ? CATALOG[key].filter((x) => RESTING[FOLDER[key]].includes(x.id)) : CATALOG[key]);
 
 /** A face with no parents to take after. Hair and eye colour lean with skin depth. */
 export function randomInherited(skinDepthHint) {
   const depth = skinDepthHint == null ? rng.int(0, SKIN_TONES.length - 1) : clampDepth(skinDepthHint + rng.int(-1, 1));
   const g = {};
-  for (const key of INHERITED_KEYS) g[key] = rng.pick(CATALOG[key]).id;
+  for (const key of INHERITED_KEYS) g[key] = rng.pick(pool(key)).id;
   g.skin = toneAt(depth);
   g.hairColor = depth >= 7 ? weighted({ black: 70, dark_brown: 26, brown: 4 })
     : depth >= 4 ? weighted({ black: 38, dark_brown: 34, brown: 20, light_brown: 8 })
@@ -27,28 +31,31 @@ export function randomInherited(skinDepthHint) {
     : depth >= 3 ? weighted({ dark_brown: 34, brown: 38, hazel: 14, amber: 6, green: 5, gray: 3 })
       : weighted({ dark_brown: 8, brown: 26, hazel: 16, amber: 4, green: 14, blue: 24, gray: 8 });
   g.marks = [];
-  if (depth <= 4 && rng.chance(0.14)) g.marks.push('freckles');
+  if (depth <= 4 && rng.chance(0.14)) g.marks.push(rng.chance(0.3) ? 'dense_freckles' : 'freckles');
   if (rng.chance(0.06)) g.marks.push('beauty_mark');
-  if (rng.chance(0.1)) g.marks.push('dimples');
   return g;
 }
 
-/** A first haircut that suits the texture and, loosely, the gender. Everything else starts bare. */
+/** A first haircut that suits the texture and, loosely, the gender, and something to wear. */
 export function defaultStyle(inherited, gender) {
   const suited = stylesFor(inherited.hairTexture);
-  const long = ['bob', 'long_straight', 'long_wavy', 'long_curly', 'ponytail', 'bun', 'braids', 'puffs', 'coils', 'waves', 'locs'];
-  const leaning = gender === 'female' ? suited.filter((s) => long.includes(s.id))
-    : gender === 'male' ? suited.filter((s) => !long.includes(s.id) || ['coils', 'waves', 'locs'].includes(s.id)) : suited;
-  const pool = leaning.length && rng.chance(0.85) ? leaning : suited;
-  return { hair: rng.pick(pool.length ? pool : CATALOG.hair).id, hairDye: null, glasses: null, facialHair: null, makeup: null, lipColor: null };
+  const longOk = rng.chance(0.25);
+  const leaning = gender === 'female' ? suited.filter((s) => s.tags.gender !== 'male')
+    : gender === 'male' ? suited.filter((s) => s.tags.gender === 'male' && (longOk || s.tags.length !== 'long')) : suited;
+  const hairPool = leaning.length && rng.chance(0.88) ? leaning : suited;
+  const wardrobe = [...OUTFITS.any, ...(gender === 'female' ? OUTFITS.female : gender === 'male' ? OUTFITS.male : [])];
+  return { hair: rng.pick(hairPool.length ? hairPool : HAIR_STYLES).id, hairDye: null, glasses: null, facialHair: null, makeup: null, lipColor: null,
+    jewelry: [], outfit: rng.pick(wardrobe), outfitColor: null, hat: null };
 }
 
 /** A complete appearance for someone with no known parents. */
 export function randomAppearance(skinDepthHint, gender) {
   const inherited = randomInherited(skinDepthHint);
   const style = defaultStyle(inherited, gender);
-  if (rng.chance(0.14)) style.glasses = rng.pick(CATALOG.glasses).id;
-  return { v: 2, inherited, style };
+  if (rng.chance(0.14)) style.glasses = rng.pick(CATALOG.glasses.filter((g) => !/star|visor/.test(g.id))).id;
+  if (gender === 'male' && rng.chance(0.3)) style.facialHair = rng.pick(CATALOG.facialHair).id;
+  if (gender === 'female' && rng.chance(0.35)) style.jewelry = [rng.pick(CATALOG.jewelry.filter((j) => j.tags.kind === 'ears')).id];
+  return { v: 3, inherited, style };
 }
 
 /**
@@ -67,7 +74,7 @@ export function inheritAppearance(a, b) {
 
   const g = {};
   for (const key of INHERITED_KEYS) {
-    g[key] = rng.chance(0.06) ? rng.pick(CATALOG[key]).id : rng.pick([pa[key], pb[key]]);
+    g[key] = rng.chance(0.06) ? rng.pick(pool(key)).id : rng.pick([pa[key], pb[key]]);
   }
   // Skin: between the parents, a shade either way now and then.
   const [lo, hi] = [Math.min(depthOf(pa), depthOf(pb)), Math.max(depthOf(pa), depthOf(pb))];
@@ -79,12 +86,15 @@ export function inheritAppearance(a, b) {
     const n = (pa.marks?.includes(id) ? 1 : 0) + (pb.marks?.includes(id) ? 1 : 0);
     return rng.chance(n === 2 ? 0.8 : n === 1 ? 0.5 : 0.03);
   });
-  return { v: 2, inherited: g, style: { hair: null, hairDye: null, glasses: null, facialHair: null, makeup: null, lipColor: null } };
+  return { v: 3, inherited: g, style: { hair: null, hairDye: null, glasses: null, facialHair: null, makeup: null, lipColor: null, jewelry: [], outfit: null, outfitColor: null, hat: null } };
 }
 
-/** Gives a newly made character a haircut if they have none yet. Changes and returns the appearance. */
+/** Gives a newly made character a haircut and clothes if they have none yet. Changes and returns the appearance. */
 export function ensureStyled(appearance, gender) {
-  if (appearance?.inherited && !appearance.style?.hair) appearance.style = { ...defaultStyle(appearance.inherited, gender), ...Object.fromEntries(Object.entries(appearance.style ?? {}).filter(([, v]) => v != null)) };
+  if (appearance?.inherited && !appearance.style?.hair) {
+    const kept = Object.fromEntries(Object.entries(appearance.style ?? {}).filter(([, v]) => v != null && !(Array.isArray(v) && !v.length)));
+    appearance.style = { ...defaultStyle(appearance.inherited, gender), ...kept };
+  }
   return appearance;
 }
 

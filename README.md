@@ -39,63 +39,72 @@ node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 ```
 
-`avatar.mjs` checks the parts catalogue, the renderer, inheritance and the loading of old saves.
+`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
 
 ## Avatars
 
-Every portrait in the game is drawn by one renderer from layered, recolourable SVG parts.
+Every portrait in the game is the **CharacterAvatar** system: hand-drawn SVG parts in `assets/avatars/`, stacked
+in layers and recoloured with CSS variables. There is no build step: the parts are plain files, and a short
+Python script (standard library only) keeps them tidy and lists them for the game.
 
 | What | Where |
 |---|---|
-| Artwork, one file per feature | `js/avatar/parts/`: `face.js`, `eyes.js`, `brows.js`, `nose.js`, `lips.js`, `skin.js`, `hair.js`, `extras.js` (marks, glasses, facial hair, make-up) |
-| The catalogue, and how saved appearances are read | `js/avatar/catalog.js` |
-| The portrait renderer and the shared face template | `js/avatar/render.js` |
+| The artwork, one folder per kind of part | `assets/avatars/` — `heads/`, `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `hats/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
+| The list of every part (generated: do not edit) | `js/avatarManifest.js` |
+| Cleaning, aligning and listing the artwork | `scripts/build-avatar-manifest.py` |
+| Skin, hair, eye, lip and outfit colours | `js/avatarPalettes.js` |
+| Notes the filenames cannot carry (hair textures, resting faces, uniforms, royal dress) | `js/avatar/curation.js` |
+| The renderer: layers, ages, auto-dress | `js/CharacterAvatar.js` |
+| How saved appearances are read, and old saves converted | `js/avatar/catalog.js` |
 | How children take after their parents | `js/avatar/inherit.js` |
-| The live editor | `js/avatar/editor.js` |
-| The salon's prices and rules | `js/engine/salon.js` |
-| The look of the portraits (proportions, outlines, cheeks, the baby) | constants at the top of `js/avatar/render.js` |
+| The character creator and salon editor | `js/avatar/editor.js` |
+| The salon's prices | `js/engine/salon.js` |
 
-**Where to open the live appearance editor**
+**How a portrait is built.** Each layer is an SVG `<use>` of a part file, in this order: back hair, head, make-up
+(clipped to the head), age lines, eyes, eyebrows, nose, mouth, facial hair, clothes, necklaces, front hair,
+earrings and piercings, glasses, hat or crown, emotions. Hair is drawn twice — the whole style behind the head,
+and the part above the jaw again in front — so a fringe falls over the forehead while long hair falls behind the
+shoulders. A hat hides hair above the brim (bulky styles, above the ears). Colours are CSS variables on the portrait
+(`--skin-color`, `--hair-color`, `--brow-color`, `--eye-color`, `--lip-color`, `--blush-color`, `--outfit-color`)
+that reach into the part files.
 
-- In the game: title screen → **Design a life** → **Design your look**.
-- In a life: **Self** tab → **Beauty salon** (hair, dye, glasses, facial hair, make-up; from age 3).
-- On its own: `avatar-lab.html`, section 1.
+**Ages and dress.** Babies and toddlers have their own heads, baby hair and baby clothes; children have the child
+head; from fifty, lines arrive and hair greys unless dyed. Portraits dress for the moment: prison orange in prison,
+crown and robes for the royal family (a coronet for the peerage), and uniforms at work — police (tactical gear when
+senior), fire service, the armed forces, white coats in medicine, a suit in law and finance, a chef's hat in kitchens.
 
-**How to see a family resemblance example**
-
-Open `avatar-lab.html`, section 2. It shows two parents with different features (one with dyed hair) and their
-children, with a column saying which parent each feature came from. The buttons make a new family, add a child,
-restyle the parents (the children must not change) and save and reload (they must come back identical).
-In the game, design a look and start the life: your parents are built to resemble you, and the People tab shows them.
+**The character creator.** Title screen → **Design a life** → **Design your look**; in a life, **Self** →
+**Beauty salon** (styling only); or `avatar-lab.html`. Six tabs (face, eyes, nose and mouth, hair, clothes, extras),
+hair filtered by length or by what suits your texture, a preview at other ages, and **Randomize**.
 
 **How appearance is saved**
 
-Each character carries its own `appearance`, written by the normal save system:
-
 ```js
 appearance: {
-  v: 2,
-  inherited: { face, skin, eyeShape, eyeColor, brows, nose, lips, hairColor, hairTexture, marks: [] }, // set once, at birth
-  style: { hair, hairDye, glasses, facialHair, makeup, lipColor },                                    // changed at the salon
+  v: 3,
+  inherited: { head, skin, eyes, eyeColor, brows, nose, lips, hairColor, hairTexture, marks: [] }, // set once, at birth
+  style: { hair, hairDye, glasses, facialHair, makeup, lipColor, jewelry: [], outfit, outfitColor, hat }, // the salon and wardrobe
 }
 ```
 
-A child is built from the parents' `inherited` halves only and then keeps their own copy, so a parent's dye or
-haircut never reaches a child, and restyling a parent later changes nobody else. Saves from before this system
-(four numbers) are converted on load; anything missing is chosen from the character's id, so the same person
-always gets the same face.
+A child is built from the parents' `inherited` halves only, so a parent's dye, haircut or clothes never reach a
+child. Saves from the two earlier avatar systems are converted on load, deterministically: an old part always
+becomes the same new part (relatives who shared a nose still do), colours keep their names, and anything missing is
+chosen from the character's id, so nobody's face changes between loads.
 
-**How to add a new avatar part**
+**How to add artwork**
 
-1. Open the file for the feature in `js/avatar/parts/` and add an entry with a new `id` and a `name`.
-   Each file's header explains the coordinates: everything is drawn on one 100 by 100 template with the eyes
-   at (38,47) and (62,47), so a new part lines up with the rest.
-2. Add the new id to the `SHIPPED` list for that feature in `tests/avatar.mjs`.
-3. Run `node tests/avatar.mjs`, then look at it in `avatar-lab.html`, section 3 (every part, with its id).
+1. Drop the new SVGs (or a `.zip` of them, nested zips too) into the repository and run
+   `python3 scripts/build-avatar-manifest.py path/to/pack.zip` — or put loose SVGs anywhere under `assets/avatars/`
+   and run `python3 scripts/build-avatar-manifest.py`. Files are sorted by their name's prefix (`hair_`, `outfit_`,
+   `nose_`, ...), cleaned, fitted onto the shared face and listed in the manifest. Processed files are marked and
+   skipped next time, so running it again is safe. `-v` prints how each file was placed.
+2. For a new hairstyle, add its texture to `HAIR_TYPE` in `js/avatar/curation.js` (the check below will remind you).
+3. Run `node tests/avatar.mjs` and look at the new parts in `avatar-lab.html`, section 3.
 
-Ids are written into saves. Add new ones freely, and never rename or remove one: the check fails if a shipped
-id disappears. If one ever does go missing, characters using it fall back to a stable replacement instead of breaking.
+Part ids are written into saves: add new ones freely, and avoid renaming a file. A part that goes missing falls back
+to a stable replacement instead of breaking.
 
 ## Layout
 

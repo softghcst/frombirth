@@ -13,7 +13,7 @@ export const EYE_COLOURS = 4;
 
 const stat = (mean, spread) => Math.round(clamp(rng.around(mean, spread)));
 
-/** A face for someone with no known parents. skinHint is a skin depth (see avatar/parts/skin.js). */
+/** A face for someone with no known parents. skinHint is a skin depth (see js/avatarPalettes.js). */
 export const randomAppearance = (skinHint, gender) => avatarRandom(skinHint, gender);
 
 export const randomTraits = (n = rng.int(1, 2)) => {
