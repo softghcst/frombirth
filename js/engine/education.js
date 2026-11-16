@@ -12,12 +12,16 @@ import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, DROPOUT_AGE, PROGRAMMES, HOUSING, CL
   CLUBS, CLUB_BY_ID, MAX_CLUBS, TRADE_BY_ID, SCHOOL_TYPES, SCHOOL_TYPE_BY_ID, GAP_YEARS, PRIORITIES,
   PRIORITY_BY_ID } from '../data/schools.js';
 import { MAJORS, MAJOR_BY_ID } from '../data/majors.js';
+import * as sch from './schooling.js';
+import { schoolModel } from '../data/education.js';
 
 const LABELS = { none: 'Not in school', elementary: 'Elementary school', middle: 'Middle school',
   high: 'High school', university: 'University', graduate: 'Graduate school',
   medical: 'Medical school', law: 'Law school', cosmetology: 'Cosmetology school',
   community: 'Community college', apprenticeship: 'Apprenticeship' };
-export const stageLabel = (stage) => LABELS[stage] ?? stage;
+const SCHOOL = ['elementary', 'middle', 'high'];
+/** What a stage is called. School stages take the country's own word for them. */
+export const stageLabel = (stage) => (SCHOOL.includes(stage) && store.state?.player ? sch.stageName(stage) : LABELS[stage] ?? stage);
 export const isHigher = (stage) => stage in PROGRAMMES;
 const hasMajor = (stage) => isHigher(stage) && PROGRAMMES[stage].kind !== 'trade';
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -30,7 +34,8 @@ export const subjectName = (stage, id) =>
 /** One line for the header, e.g. "Marlowe College · Biology". */
 export function educationLine(p) {
   const e = p.education;
-  const where = e.stage === 'university' && e.enrolled && e.schoolName ? e.schoolName : stageLabel(e.stage);
+  const at = e.enrolled && SCHOOL.includes(e.stage) ? sch.school() : null;
+  const where = at && at.kind !== 'home' ? at.name : e.stage === 'university' && e.enrolled && e.schoolName ? e.schoolName : stageLabel(e.stage);
   const subject = isHigher(e.stage) ? subjectName(e.stage, e.majorId) : '';
   return where + (subject ? ` · ${subject}` : '');
 }
@@ -228,29 +233,30 @@ function enterStage(stage) {
   e.stage = stage.id;
   e.enrolled = true;
   e.yearInStage = 0;
-  turnOverClassmates(true);
-  log(`You started ${stage.label}.`);
+  sch.enter(stage.id); // the family chooses the school, and the class is made or carried over there
 }
 
 /** GPA earned this year from brains, discipline, effort, attendance and company kept. */
 function yearGpa(p) {
   const e = p.education;
+  // At school the year is marked subject by subject (engine/schooling.js); the overall mark is their average.
+  const marked = SCHOOL.includes(e.stage) ? sch.markYear() : null;
   const raw = p.stats.intellect * 0.55 + p.hidden.discipline * 0.15 + e.effort * 0.3;
-  let g = raw / 25 + rng.around(0, 0.3);
-  g -= e.absences * 0.12;
+  let g = marked ?? raw / 25 + rng.around(0, 0.3) - e.absences * 0.12;
   if (hasMajor(e.stage)) g -= (MAJOR_BY_ID[e.majorId]?.difficulty ?? 0.3) * (e.stage === 'community' ? 0.5 : 1);
   if (e.stage === 'university' && SCHOOL_TYPE_BY_ID[e.schoolId]?.strong.includes(e.majorId)) g += 0.1;
   if (!isHigher(e.stage) && p.age >= 12) g += PRIORITY_BY_ID[e.priority]?.gpa ?? 0;
   if (e.stage === 'medical') g -= 0.25;
   if (e.stage === 'law') g -= 0.15;
-  if (p.flags.tutorAge === p.age - 1) g += 0.3;
+  if (p.flags.tutorAge === p.age - 1 && marked == null) g += 0.3; // at school a tutor works on the weakest subject instead
   g += CLIQUE_BY_ID[e.clique]?.gpa ?? 0;
   return clamp(g, 0, 4);
 }
 
-function leaveSchool() {
+function leaveSchool(how = 'completed') {
   const p = player();
   const e = p.education;
+  if (SCHOOL.includes(e.stage) && e.place) sch.leave(how);
   const wasAway = isHigher(e.stage) && e.housing !== 'home';
   e.enrolled = false;
   e.clique = null;
@@ -279,11 +285,13 @@ function graduate() {
   const major = hasMajor(e.stage) ? MAJOR_BY_ID[e.majorId] : null;
   const trade = TRADE_BY_ID[e.majorId];
   const school = SCHOOL_TYPE_BY_ID[e.schoolId];
+  const leaving = schoolModel(p.countryId).leaving;
+  const place = SCHOOL.includes(e.stage) ? sch.school() : null;
   e.degrees.push({ type: e.stage, majorId: major?.id ?? (e.stage === 'apprenticeship' ? trade?.id : undefined),
-    gpa: e.gpa, age: p.age, school: e.schoolName ?? undefined });
+    gpa: e.gpa, age: p.age, school: e.schoolName ?? (place && place.kind !== 'home' ? place.name : undefined), award: e.stage === 'high' ? leaving : undefined, countryId: p.countryId });
   const honours = e.gpa >= 3.7 ? ' with top honours' : e.gpa >= 3.3 ? ' with honours' : '';
   const what = {
-    high: 'high school',
+    high: `${place && place.kind !== 'home' ? place.name : 'school'} with your ${leaving}`,
     university: `${e.schoolName ?? 'university'} with a degree in ${major?.name}`,
     community: `community college with an associate degree in ${major?.name}`,
     graduate: `graduate school with a master's in ${major?.name}`,
@@ -293,10 +301,11 @@ function graduate() {
     apprenticeship: `your apprenticeship. You are a qualified ${trade?.name.toLowerCase()}`,
   }[e.stage];
   const plain = ['medical', 'cosmetology', 'apprenticeship'].includes(e.stage);
-  log(`You ${e.stage === 'apprenticeship' ? 'completed' : 'graduated from'} ${what}${plain ? '' : honours}${e.stage === 'apprenticeship' ? '' : ` (GPA ${gpa})`}.`, 'system', 'good');
+  log(`You ${e.stage === 'apprenticeship' ? 'completed' : 'graduated from'} ${what}${plain ? '' : honours}${e.stage === 'apprenticeship' ? '' : e.stage === 'high' ? ` (${sch.mark(e.gpa)})` : ` (GPA ${gpa})`}.`, 'system', 'good');
   milestone(e.stage === 'cosmetology' ? 'Earned a licence in hair and makeup.'
     : e.stage === 'apprenticeship' ? `Qualified as a ${trade?.name.toLowerCase()}.`
-      : `Graduated ${stageLabel(e.stage).toLowerCase()}${major ? ` (${major.name})` : ''}, GPA ${gpa}.`, 'education');
+      : e.stage === 'high' ? `Left ${place && place.kind !== 'home' ? place.name : 'school'} with ${/^[aeiouA]/.test(leaving) && !/s$/.test(leaving) ? 'an' : /s$/.test(leaving) ? '' : 'a'} ${leaving} (${sch.mark(e.gpa)}).`.replace('with  ', 'with ')
+        : `Graduated ${stageLabel(e.stage).toLowerCase()}${major ? ` (${major.name})` : ''}, GPA ${gpa}.`, 'education');
   p.stats.mood = clamp(p.stats.mood + 8);
   if (e.stage === 'high') log('University, community college, trade school and apprenticeships are open to you from the Work & School tab.');
   if (e.stage === 'community') log('You can now transfer straight into the third year of university.');
@@ -372,9 +381,13 @@ export function tickEducation() {
   // Clubs and classes build skills every year, in or out of school.
   for (const id of e.clubs) if (CLUB_BY_ID[id]) applyMods(p, CLUB_BY_ID[id].yearly);
 
-  const starting = SCHOOL_STAGES.find((s) => s.start === p.age);
-  if (starting && !e.expelled && !e.droppedOut) { enterStage(starting); return; }
+  // School starts, and moves from stage to stage, at the ages this country sets. Only ever forwards.
+  const due = sch.stageDue(p.age);
+  const at = SCHOOL.indexOf(e.stage);
+  const finished = e.degrees.some((d) => d.type === 'high');
+  if (due && !isHigher(e.stage) && !finished && !e.expelled && !e.droppedOut && SCHOOL.indexOf(due.id) > at && (e.enrolled || e.stage === 'none')) { enterStage(due); return; }
   if (!e.enrolled) return;
+  if (SCHOOL.includes(e.stage)) sch.ensure();
 
   e.yearInStage += 1;
   const g = yearGpa(p);
@@ -401,7 +414,7 @@ export function tickEducation() {
     e.expelled = true;
     log('You missed so much school that you were expelled.', 'system', 'bad');
     p.stats.mood = clamp(p.stats.mood - 10);
-    leaveSchool();
+    leaveSchool('expelled');
     return;
   }
   e.absences = 0;
@@ -605,7 +618,7 @@ export function dropOut() {
   if (!canDropOut()) return result(false, `You have to stay in school until you are ${DROPOUT_AGE}.`);
   const where = stageLabel(e.stage).toLowerCase();
   if (!isHigher(e.stage)) e.droppedOut = true;
-  leaveSchool();
+  leaveSchool('left');
   for (const parent of npcsByRole('parent')) {
     parent.meters.relationship = clamp(parent.meters.relationship - 10);
   }

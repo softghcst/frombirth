@@ -34,6 +34,7 @@ node tests/events.mjs
 node tests/escape-layouts.mjs
 node tests/succession.mjs      # the rules of royal succession, on hand-built families
 node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candidate races and the count
+node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 ```
 
@@ -317,6 +318,38 @@ without regions skip that rung.
 - **At the top:** national holidays, a statue of yourself, a pardon for
   yourself, or seizing emergency powers and ruling without elections, which
   can end in an uprising.
+
+### School
+
+School is shaped by the country (`js/data/education.js`): what each stage is
+called and when it starts (primary school at 5 and sixth form at 16 in one
+place; école primaire at 6 and lycée at 15 in another), how work is marked
+(letters, out of 20, out of 10, percentages, 1 to 6, or a grade point
+average), and what a school-leaver walks away with. Inside the game there
+are always three stages and marks from 0 to 4; the player sees the country's.
+
+- **Schools are places.** A town has named schools of different kinds
+  (state, faith, selective, private, boarding, performing arts, sports
+  academy, or lessons at home) and they persist in the save: the next child,
+  and the next generation, can sit in the same classrooms. The family
+  chooses, by what it can afford, what the child is good at, and what it has
+  always done; from 11 the child can ask to change, once per stage.
+- **Subjects have their own marks** (`js/engine/grades.js`, checked by
+  `tests/schooling.mjs`). A year's mark comes from ability, work, interest,
+  attendance and teaching together, with work counting for as much as
+  ability. Each child has a bent for some subjects; interest grows with
+  success, good teachers and clubs. One subject a year can be given extra
+  attention, and a tutor works on the weakest.
+- **The class stays.** Classmates move up the school together instead of
+  being replaced each year, grow closer or do not by how well they suit the
+  player, and the closest becomes a best friend. Those the player was close
+  to stay friends after school; the rest are remembered and can turn up
+  again decades later. Two teachers at each stage are people with a subject
+  and a way of teaching.
+- **The school book** (Work tab) shows the school, every subject, the class
+  and teachers, and every school attended. Rules: `js/engine/schooling.js`.
+
+University and training are in `js/engine/education.js`.
 
 ### What if?
 

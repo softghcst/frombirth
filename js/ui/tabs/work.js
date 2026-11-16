@@ -1,6 +1,8 @@
 // Work & School tab: where you stand, what you have committed to, who can
 // open doors for you, and every school, housing and part-time-job action.
 // Full careers arrive in Phase 4.
+import * as sch from '../../engine/schooling.js';
+import { openSchool } from '../school.js';
 import { politicsCard, politicsAction } from '../politics.js';
 import { player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
@@ -301,10 +303,11 @@ function educationCard(p, c) {
   const rows = [
     ['Stage', edu.educationLine(p)],
     ['Status', status],
-    ...(e.enrolled ? [['GPA', e.gpa ? e.gpa.toFixed(2) : 'No grades yet'], ['Absences this year', String(e.absences)]] : []),
+    ...(e.enrolled && sch.atSchool(p) ? [['Overall mark', e.gpa ? sch.mark(e.gpa) : 'No marks yet'], ['Days skipped this year', String(e.absences)]]
+      : e.enrolled ? [['GPA', e.gpa ? e.gpa.toFixed(2) : 'No grades yet'], ['Absences this year', String(e.absences)]] : []),
     ...(e.enrolled && edu.isHigher(e.stage) ? [['Tuition', FUNDING[e.funding] ?? '—']] : []),
     ...(loan ? [['Student loan', fmtMoney(loan.principal, c)]] : []),
-    ...e.degrees.map((d) => ['Completed', `${degreeLabel(d)}, GPA ${d.gpa.toFixed(2)}`]),
+    ...e.degrees.map((d) => ['Completed', d.type === 'high' ? `${d.school ?? 'School'}${d.award ? `: ${d.award}` : ''}, ${sch.mark(d.gpa, d.countryId ?? p.countryId)}` : `${degreeLabel(d)}, GPA ${d.gpa.toFixed(2)}`]),
   ];
   return kv(rows) + (e.enrolled ? `<div style="margin-top:10px">${meterHtml('Effort', e.effort, true)}</div>` : '');
 }
@@ -348,6 +351,7 @@ export default {
     const k = p.career;
 
     const school = [];
+    if (sch.atSchool(p) || (e.history ?? []).length) school.push(['school', sch.atSchool(p) ? 'Your school: subjects, class and teachers' : 'Your school years']);
     if (e.enrolled && p.age >= 6) {
       school.push(['study', 'Study harder'], ['slack', 'Slack off']);
       if (p.age >= 10) school.push(['skip', edu.isHigher(e.stage) ? 'Skip lectures' : 'Skip school']);
@@ -388,7 +392,7 @@ export default {
       if (pol) return politicsAction(pol, api);
       const id = ev.target.closest('[data-act]')?.dataset.act;
       if (!id) return;
-      ({ ...careerHandlers(api), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
+      ({ ...careerHandlers(api), school: () => openSchool(() => api.changed()), study: () => report(api, edu.studyHard()), slack: () => report(api, edu.slackOff()),
         skip: () => report(api, edu.skipSchool()), tutor: () => report(api, edu.askForTutor()),
         club: () => chooseClub(api), clique: () => chooseClique(api), housing: () => changeHousing(api),
         drop: () => leaveSchool(api), apply: () => applyFlow(api), priority: () => choosePriority(api),

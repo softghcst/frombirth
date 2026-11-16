@@ -11,7 +11,9 @@ import { COUNTRIES } from '../data/countries.js';
 import { SCHOOL_STAGES, PROGRAMMES } from '../data/schools.js';
 import { ensureLife } from './npcLives.js';
 import { takeOverJob } from './career.js';
-import { meetClassmates } from './education.js';
+import { ensure as ensureSchool } from './schooling.js';
+import { schoolModel } from '../data/education.js';
+import { stageFor } from './grades.js';
 import { convertMoney } from './emigration.js';
 import { SCHEMA_VERSION } from '../save.js';
 import { rollLongevity } from './death.js';
@@ -42,7 +44,7 @@ function schooling(h, atHome) {
     clique: null, clubs: [], majorId: null, funding: null, housing: atHome ? 'home' : 'apartment', roommateId: null,
     housingAid: false, degrees, expelled: false, droppedOut: false };
   if (a < 18) {
-    const stage = [...SCHOOL_STAGES].reverse().find((s) => s.start <= a);
+    const stage = stageFor(a, schoolModel(store.state.player.countryId).stages, 99) ?? [...SCHOOL_STAGES].reverse().find((s) => s.start <= a);
     if (stage) Object.assign(edu, { stage: stage.id, enrolled: true, yearInStage: a - stage.start });
     return edu;
   }
@@ -238,7 +240,9 @@ export function continueAs(npcId) {
     }
   }
 
-  if (player.education.enrolled && !PROGRAMMES[player.education.stage]) meetClassmates();
+  // The schools of the world are the same schools: the next generation may sit in the same classrooms.
+  if (old.schools) next.schools = old.schools;
+  if (player.education.enrolled && !PROGRAMMES[player.education.stage]) ensureSchool();
 
   const c = COUNTRIES[player.countryId];
   next.journal.push(

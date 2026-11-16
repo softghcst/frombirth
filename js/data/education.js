@@ -1,0 +1,106 @@
+// Schooling by country: what each stage of school is called and when it
+// starts, how work is marked, and what a school-leaver walks away with.
+// Also: the subjects taught at each stage, and the kinds of school there are.
+// Everything is the game's own simplification, set out so it can be changed.
+//
+// Inside the game a school life always has three stages, 'elementary',
+// 'middle' and 'high', and marks run from 0 to 4. What the player sees is
+// the country's own: its names, its starting ages, its way of marking.
+
+const model = (primary, lower, upper, grading, leaving, extra = {}) => ({
+  stages: [{ id: 'elementary', name: primary[0], start: primary[1] }, { id: 'middle', name: lower[0], start: lower[1] }, { id: 'high', name: upper[0], start: upper[1] }],
+  grading, leaving, dropout: 16, ...extra,
+});
+
+const US = model(['Elementary school', 5], ['Middle school', 11], ['High school', 14], 'gpa', 'high-school diploma');
+const UK = model(['Primary school', 5], ['Secondary school', 11], ['Sixth form', 16], 'letters', 'A-levels');
+const FR = model(['École primaire', 6], ['Collège', 11], ['Lycée', 15], 'twenty', 'baccalauréat');
+const DE = model(['Grundschule', 6], ['Gymnasium', 10], ['Oberstufe', 16], 'german', 'Abitur');
+const ES = model(['Primary school', 6], ['Secondary school', 12], ['Bachillerato', 16], 'ten', 'bachillerato');
+const JP = model(['Elementary school', 6], ['Junior high school', 12], ['Senior high school', 15], 'percent', 'senior high school certificate');
+const IN = model(['Primary school', 6], ['Secondary school', 11], ['Higher secondary', 16], 'percent', 'higher secondary certificate');
+const AU = model(['Primary school', 5], ['Secondary school', 12], ['Senior secondary', 16], 'percent', 'senior secondary certificate');
+const NORDIC = model(['Primary school', 6], ['Lower secondary', 13], ['Upper secondary', 16], 'ten', 'upper secondary certificate');
+const DEFAULT = model(['Primary school', 6], ['Lower secondary', 12], ['Upper secondary', 15], 'percent', 'school-leaving certificate');
+
+/** Which model each country follows. A country not listed uses DEFAULT. */
+const BY_COUNTRY = {
+  us: US, ca: US, ph: US,
+  uk: UK, ie: UK, jm: UK, sg: UK, my: UK, ng: UK, ke: UK, gh: UK, pk: UK,
+  fr: FR, be: FR, mc: FR, ma: FR,
+  de: DE, ch: DE, nl: DE, pl: DE,
+  es: ES, mx: ES, ar: ES, co: ES, cl: ES, pe: ES, do: ES, ve: ES, cu: ES, it: ES, pt: ES, gr: ES, br: ES,
+  jp: JP, kr: JP, cn: JP, th: JP, vn: JP,
+  in: IN,
+  au: AU, nz: AU, za: AU,
+  se: NORDIC, no: NORDIC, dk: NORDIC,
+};
+export const schoolModel = (countryId) => BY_COUNTRY[countryId] ?? DEFAULT;
+/** The age at which school ends everywhere in the game. */
+export const LEAVING_AGE = 18;
+
+/**
+ * Subjects. `from`: the stage at which it starts. `apt`: what natural ability
+ * for it draws on (paths on the player, with weights that add up to 1).
+ * `club`: clubs that feed an interest in it.
+ */
+export const SUBJECTS = [
+  { id: 'reading', name: 'Reading and writing', until: 'elementary', from: 'elementary', apt: { 'stats.intellect': 1 } },
+  { id: 'maths', name: 'Mathematics', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['chess'] },
+  { id: 'science', name: 'Science', from: 'elementary', apt: { 'stats.intellect': 1 } },
+  { id: 'literature', name: 'Literature', from: 'middle', apt: { 'stats.intellect': 0.8, 'stats.charm': 0.2 }, club: ['paper', 'debate'] },
+  { id: 'history', name: 'History', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['debate'] },
+  { id: 'languages', name: 'Languages', from: 'middle', apt: { 'stats.intellect': 0.7, 'stats.charm': 0.3 } },
+  { id: 'technology', name: 'Technology', from: 'middle', apt: { 'stats.intellect': 1 } },
+  { id: 'art', name: 'Art', from: 'elementary', apt: { 'stats.intellect': 0.4, 'stats.charm': 0.6 } },
+  { id: 'music', name: 'Music', from: 'elementary', apt: { 'talents.music': 0.7, 'talents.singing': 0.3 }, club: ['choir', 'band'] },
+  { id: 'theatre', name: 'Theatre', from: 'middle', apt: { 'talents.acting': 0.8, 'stats.charm': 0.2 }, club: ['drama', 'youth_theatre', 'musical_theatre'] },
+  { id: 'pe', name: 'Physical education', from: 'elementary', apt: { 'talents.sports': 0.7, 'stats.health': 0.3 }, club: ['sports_team', 'dance_class'] },
+  { id: 'economics', name: 'Economics', from: 'high', apt: { 'stats.intellect': 1 } },
+  { id: 'government', name: 'Government', from: 'high', apt: { 'stats.intellect': 0.6, 'stats.charm': 0.4 }, club: ['council', 'debate'] },
+];
+export const SUBJECT_BY_ID = Object.fromEntries(SUBJECTS.map((s) => [s.id, s]));
+const ORDER = ['elementary', 'middle', 'high'];
+/** The subjects taught at a stage. */
+export const subjectsAt = (stage) => SUBJECTS.filter((s) => ORDER.indexOf(s.from) <= ORDER.indexOf(stage) && (!s.until || ORDER.indexOf(stage) <= ORDER.indexOf(s.until)));
+
+/**
+ * Kinds of school. fee: base money a year, paid by the family. teach: what
+ * the teaching adds to a year's marks. needs: what gets a child in.
+ *   wealth  the least a family must be: 'middle' or 'rich'
+ *   entry   a test of the child: { path, min }
+ * yearly: what a year there does to a child, beyond the lessons.
+ * suffix: how such schools are named; {stage} is the country's word for the stage.
+ */
+export const SCHOOL_KINDS = [
+  { id: 'public', name: 'State school', fee: 0, teach: 0, class: 6, suffix: ['{place} {stage}'],
+    blurb: 'The local school. Free, mixed, and where most people go.' },
+  { id: 'religious', name: 'Faith school', fee: 1500, teach: 0.05, class: 6, yearly: { hidden: { discipline: 1, karma: 1 } }, suffix: ['St {saint}\'s School', 'Holy Cross {stage}'],
+    blurb: 'Small fees, assemblies, and firm ideas about behaviour.' },
+  { id: 'selective', name: 'Selective school', fee: 0, teach: 0.18, class: 6, from: 'middle', needs: { entry: { path: 'stats.intellect', min: 62 } }, yearly: { stats: { mood: -1 } }, suffix: ['{place} Grammar School', '{place} Academy'],
+    blurb: 'Free, but there is an entrance test, and the work never lets up.' },
+  { id: 'private', name: 'Private school', fee: 11000, teach: 0.15, class: 5, needs: { wealth: 'rich' }, yearly: { stats: { charm: 1 } }, suffix: ['{place} Hall', 'The {place} School'],
+    blurb: 'Small classes, good facilities, and fees to match.' },
+  { id: 'boarding', name: 'Boarding school', fee: 24000, teach: 0.2, class: 6, from: 'middle', away: true, needs: { wealth: 'rich' }, yearly: { hidden: { willpower: 2 }, stats: { charm: 1 } }, suffix: ['St {saint}\'s College', '{place} College'],
+    blurb: 'Home only in the holidays. Old buildings, older rules, friends for life.' },
+  { id: 'arts', name: 'Performing arts school', fee: 2000, teach: 0, class: 6, from: 'middle', needs: { entry: { path: 'talents.acting|talents.singing|talents.dance|talents.music', min: 55 } }, favours: ['music', 'theatre', 'art'], suffix: ['The {place} School of Performing Arts'],
+    blurb: 'Half the timetable is on a stage. Entry by audition.' },
+  { id: 'sports', name: 'Sports academy', fee: 2000, teach: -0.05, class: 6, from: 'middle', needs: { entry: { path: 'talents.sports', min: 60 } }, favours: ['pe'], suffix: ['{place} Sports Academy'],
+    blurb: 'Training before lessons and after them. Entry by trial.' },
+  { id: 'home', name: 'Taught at home', fee: 0, teach: 0.05, class: 0, suffix: ['home'],
+    blurb: 'Lessons at the kitchen table. No bell, no uniform, not many other children.' },
+];
+export const KIND_BY_ID = Object.fromEntries(SCHOOL_KINDS.map((k) => [k.id, k]));
+
+/** Invented names for places and saints, for naming schools. */
+export const SCHOOL_PLACES = ['Ashdown', 'Brookfield', 'Elm Park', 'Riverside', 'Oakhill', 'Highfield', 'Westbury', 'Kingsmead', 'Larkhall', 'Thornbury', 'Fernleigh', 'Marlow Road', 'Northgate', 'Castle Hill', 'Greenacre', 'Millbrook'];
+export const SCHOOL_SAINTS = ['Aldric', 'Brigid', 'Cuthbert', 'Hilda', 'Oswin', 'Edith', 'Wilfrid', 'Mildred'];
+
+/** What a teacher is like in a classroom. */
+export const TEACHING_STYLES = [
+  { id: 'warm', name: 'encouraging', interest: 4 },
+  { id: 'strict', name: 'strict', discipline: 1 },
+  { id: 'inspiring', name: 'inspiring', interest: 7 },
+  { id: 'dry', name: 'dry', interest: -3 },
+  { id: 'fair', name: 'fair', interest: 1 },
+];

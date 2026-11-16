@@ -24,6 +24,7 @@ import { tickKin } from './kin.js';
 import { tickActivism } from './activism.js';
 import { tickLocal } from './local.js';
 import { tickLanguages } from './languages.js';
+import { tickAlumni } from './schooling.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
@@ -77,6 +78,7 @@ export function advanceYear() {
   if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
   afterGeneral();
   tickKin();
+  tickAlumni();
   { const learned = tickLanguages(); if (learned) log(learned, 'system', 'good'); }
   for (const n of tickLocal()) log(n.text, 'system', n.tone);
   tickActivism();
