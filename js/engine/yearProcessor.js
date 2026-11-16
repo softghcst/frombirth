@@ -15,6 +15,7 @@ import { tickPrison } from './prison.js';
 import { tickSocial } from './social.js';
 import { tickIdentity } from './identity.js';
 import { tickLiving } from './living.js';
+import { tickRoyalty } from './royalty.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
@@ -60,6 +61,7 @@ export function advanceYear() {
   tickSocial();
   tickIdentity();
   tickLiving();
+  tickRoyalty();
   tickCrime();
 
   const cause = rollDeath();

@@ -10,6 +10,7 @@ import { hitProperty } from './realEstate.js';
 import { hitVehicle, giveVehicle } from './vehicles.js';
 import { npcTransition } from './npcLives.js';
 import { sellEverything } from './market.js';
+import * as crown from './royalty.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -113,6 +114,19 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'giveVehicle': giveVehicle(e.value); break;
       case 'npcTransition': npcTransition(store.state.npcs[ctx.cast[e.target]], e.value); break;
       case 'sellInvestments': sellEverything(); break;
+      case 'image': {
+        const before = p.royal?.image;
+        crown.shiftImage(e.delta);
+        if (p.royal && p.royal.image !== before) shown.push({ label: 'Public image', delta: p.royal.image - before });
+        break;
+      }
+      case 'meetRoyal': {
+        const npc = crown.eligibleRoyal();
+        crown.startSeeing(npc);
+        if (e.target) ctx.cast[e.target] = npc.id;
+        break;
+      }
+      case 'honour': crown.honour(p.flags.honourRank ?? 'knight'); break;
       case 'prison': {
         const k = p.legal.incarceration;
         if (k) { k[e.target] = clamp(k[e.target] + e.delta); shown.push({ label: e.target === 'respect' ? 'Respect' : 'Conduct', delta: e.delta }); }

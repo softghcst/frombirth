@@ -1,6 +1,7 @@
 // Life in a particular country: what the place does to the player each
 // year, depending on how well off they are, and what its laws allow.
 // The figures come from data/living.js.
+import { MONARCHIES } from '../data/royalty.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log } from '../state.js';
@@ -65,6 +66,7 @@ export function summary(c = country()) {
       ['Power and water', grade(L.infra)], ['Stability', grade(L.stability)],
       ['Rising prices', { low: 'steady', high: 'fast', extreme: 'out of control' }[L.inflation]],
       ['Natural hazards', L.hazards.map((h) => HAZARDS[h].name).join(', ') || 'few'],
+      ...(MONARCHIES[c.id] ? [['Head of state', `a monarchy${MONARCHIES[c.id].maleOnly ? '; only men inherit the throne' : ''}`]] : []),
       ['Same-sex marriage', L.laws.marriage ? 'legal' : 'not recognised'],
       ...(L.laws.lgbt === 'hostile' ? [['Being gay or transgender', 'against the law, or treated as if it were']] : []),
       ['Gambling', L.laws.gambling ? 'legal' : 'illegal'],

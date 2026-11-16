@@ -77,7 +77,8 @@ export function tickFinance() {
     // A spouse who earns pays their share of the household; one who does not is supported.
     const partner = npcsByRole('spouse')[0];
     const share = !partner ? 1 : partner.life?.job || partner.life?.pension ? 0.55 : 1.15;
-    let base = Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share);
+    const housed = p.royal && !p.royal.waiting && ['monarch', 'heir', 'royal'].includes(p.royal.rank);
+    let base = housed ? 0 : Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share);
     const lifestyle = lifestyleCost(gross, c);
     // Where pay is low against rents, people on ordinary wages do not live alone: they share.
     const takeHome = gross - incomeTax(gross, c);

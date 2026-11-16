@@ -3,6 +3,7 @@
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
 import { rng } from '../rng.js';
+import { inheritStanding } from './royalty.js';
 import { uid, clamp, theCountry } from '../util.js';
 import { store } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -225,7 +226,7 @@ export function continueAs(npcId) {
     player.birthCountryId = abroad;
     player.city = rng.pick(COUNTRIES[abroad].cities);
   }
-  if (L.job) takeOverJob(L.job, L.yearsWorked ?? 0);
+  if (L.job && !h.flags.royal) takeOverJob(L.job, L.yearsWorked ?? 0);
   if (moved) {
     const rate = COUNTRIES[abroad].currency.scale / COUNTRIES[op.countryId].currency.scale;
     convertMoney(rate);
@@ -246,5 +247,7 @@ export function continueAs(npcId) {
         : player.career.retired ? 'You are retired.' : 'You are not working at the moment.'),
   );
   if (atHome && !parentsAlive) next.journal.push(entry('With no parent left, relatives have taken you in.', 'bad'));
+  const crownLine = inheritStanding(old, h);
+  if (crownLine) next.journal.push(entry(crownLine, 'good'));
   return next;
 }

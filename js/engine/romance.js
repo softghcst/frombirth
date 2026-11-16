@@ -1,6 +1,7 @@
 // Romance: meeting people, dating, engagement, weddings (with or without a
 // prenup), break-ups and divorce.
 import { rng } from '../rng.js';
+import * as crown from './royalty.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
@@ -254,22 +255,32 @@ export function marry(npcId, weddingId, prenup) {
   const w = WEDDINGS.find((x) => x.id === weddingId);
   if (!npc.flags.engaged) return result(false, 'You are not engaged.', 'neutral');
   if (npc.gender === p.gender && !c.living.laws.marriage) return result(false, `Two ${p.gender === 'male' ? 'men' : p.gender === 'female' ? 'women' : 'people of the same gender'} cannot marry in ${c.name}. You can stay engaged, or move somewhere you can.`, 'neutral');
-  const cost = localMoney(w.cost, c);
+  const royalMatch = !!npc.flags.royal;
+  let cost = localMoney(w.cost, c);
+  if (!royalMatch && p.finance.cash < cost) return result(false, 'You cannot afford that wedding.', 'neutral');
+  // Marrying into a royal family needs the palace's consent, and the palace can say no.
+  const palace = royalMatch ? crown.consent(npc) : null;
+  if (palace && !palace.ok) { log(palace.text, 'system', 'bad'); return result(false, palace.text, 'bad'); }
+  if (palace && !palace.leaves) cost = 0; // a royal wedding is paid for by the crown
   if (p.finance.cash < cost) return result(false, 'You cannot afford that wedding.', 'neutral');
   p.finance.cash -= cost;
   npc.role = 'spouse';
   npc.flags.engaged = false;
   npc.marriedAtAge = p.age;
-  npc.prenup = !!prenup;
+  npc.prenup = !!prenup || (!!palace && !palace.leaves); // the palace's lawyers always insist
   npc.lastInteractionAge = p.age;
   bump(npc, w.joy);
   p.stats.mood = clamp(p.stats.mood + 15);
   p.counters.spouses += 1;
   if (p.flags.livesWithParents) p.flags.livesWithParents = false;
   remember(npc, 'weddingDay', `You married them with ${w.name.toLowerCase()}.`);
-  const text = `You married ${npc.firstName} ${npc.lastName}: ${w.name.toLowerCase()}${prenup ? ', with a prenup in the drawer' : ''}. It cost ${fmtMoney(cost, c)}.`;
+  const wed = `${crown.npcName(npc)} ${npc.lastName}`;
+  const after = palace ? crown.afterWedding(npc, palace.leaves) : '';
+  const text = palace && !palace.leaves
+    ? `${palace.text} You married ${wed} in the cathedral, under a marriage contract drawn up by the palace's lawyers.${after}`
+    : `${palace ? `${palace.text} ` : ''}You married ${wed}: ${w.name.toLowerCase()}${prenup ? ', with a prenup in the drawer' : ''}. It cost ${fmtMoney(cost, c)}.${after}`;
   log(text, 'system', 'good');
-  milestone(`Married ${npc.firstName} ${npc.lastName}.`, 'family');
+  milestone(`Married ${wed}.`, 'family');
   return result(true, text);
 }
 
@@ -308,7 +319,7 @@ function endMarriage(npc, yours) {
   const money = npc.prenup ? 'The prenup held: you each kept what was yours.'
     : owed > 0 ? `Everything was split down the middle: you paid ${fmtMoney(owed, c)}.`
       : owed < 0 ? `Everything was split down the middle: you received ${fmtMoney(-owed, c)}.` : 'There was nothing to split.';
-  const text = `${yours ? `You divorced ${npc.firstName}` : `${npc.firstName} divorced you`}. ${money} The lawyers took ${fmtMoney(fee, c)}.`;
+  const text = `${yours ? `You divorced ${npc.firstName}` : `${npc.firstName} divorced you`}. ${money} The lawyers took ${fmtMoney(fee, c)}.${crown.afterDivorce(npc)}`;
   log(text, 'system', 'bad');
   milestone(`Divorced ${npc.firstName} ${npc.lastName}.`, 'family');
   return text;

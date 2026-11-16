@@ -9,11 +9,20 @@
 //   healerYears, degrees (array of types), intellect, followers, countries,
 //   leftToCharity (base units), visited, generation, earned, livesSaved, properties,
 //   vehicles, greatGrandchildren, talents (how many at 80+), music, childStar,
-//   lifeSentence, neverMoved, holidays, surgeries, mood, health
+//   lifeSentence, neverMoved, holidays, surgeries, mood, health,
+//   reigned, abdicated, consort, bornTitled, honoured, lostTitle, marriedRoyal, image (public opinion, royals only)
 
 export const EPITAPHS = [
   { id: 'brief_candle', title: 'A Brief Candle', line: 'Gone before the story had properly begun.',
     hint: 'Die before turning 18.', earned: (s) => s.age < 18 },
+  { id: 'the_crown', title: 'Wore the Crown', line: 'The bells rang in every town, and the flags came down to half mast.',
+    hint: 'Reign as monarch.', earned: (s) => s.reigned },
+  { id: 'beloved_of_the_people', title: 'Beloved of the People', line: 'The flowers outside the palace gates were three feet deep.',
+    hint: 'Die a royal the public adores.', earned: (s) => s.image >= 85 },
+  { id: 'beside_the_throne', title: 'Beside the Throne', line: 'Married into the family, and outlasted every doubter.',
+    hint: 'Marry into a royal family, and stay.', earned: (s) => s.consort },
+  { id: 'fallen_from_grace', title: 'Fallen from Grace', line: 'Had a title once. The palace does not speak of it.',
+    hint: 'Lose a royal title.', earned: (s) => s.lostTitle || s.abdicated },
   { id: 'household_name', title: 'Household Name', line: 'Strangers wept. Newspapers cleared the front page.',
     hint: 'Become truly famous.', earned: (s) => s.fame >= 80 },
   { id: 'tycoon', title: 'The Tycoon', line: 'Left behind more money than most towns ever see.',
@@ -81,6 +90,10 @@ export const EPITAPHS = [
     hint: 'Save two lives.', earned: (s) => s.livesSaved >= 2 },
   { id: 'the_lifer', title: 'The Lifer', line: 'The sentence was life, and they served it.',
     hint: 'Die serving a life sentence.', earned: (s) => s.lifeSentence },
+  { id: 'arise', title: 'For Services Rendered', line: 'Knelt once, before the crown, and rose with a longer name.',
+    hint: 'Be honoured by the crown.', earned: (s) => s.honoured },
+  { id: 'blue_blood', title: 'Blue Blood', line: 'Born with a title, a portrait gallery and a leaking roof.',
+    hint: 'Be born into a title.', earned: (s) => s.bornTitled },
   { id: 'the_holidaymaker', title: 'The Holidaymaker', line: 'Always just back from somewhere, or just about to go.',
     hint: 'Take thirty holidays.', earned: (s) => s.holidays >= 30 },
   { id: 'never_left_home', title: 'Never Left Home', line: 'Born, lived and died within sight of the same hills.',

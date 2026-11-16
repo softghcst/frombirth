@@ -48,5 +48,10 @@ export const promoted = () => ({ type: 'promoted' });
 /** Gives the player a new vehicle from data/vehicles.js, e.g. giveVehicle('kids_bike'). */
 export const giveVehicle = (value) => ({ type: 'giveVehicle', value });
 
+/** Royalty: move the public's opinion of a royal player; meet an unmarried royal (bound to token `as`); accept an honour. */
+export const image = (delta) => ({ type: 'image', delta });
+export const meetRoyal = (as) => ({ type: 'meetRoyal', target: as });
+export const honour = () => ({ type: 'honour' });
+
 /** Changes a cast member's role and/or flags, e.g. npcSet('lover', { flags: { engaged: true } }). */
 export const npcSet = (target, value) => ({ type: 'npcSet', target, value });

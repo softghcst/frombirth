@@ -66,6 +66,14 @@ async function proposeTo(api, npc) {
 async function planWedding(api, npc) {
   const c = country();
   const cash = player().finance.cash;
+  if (npc.flags.royal) {
+    // A royal match is not planned by the couple: the palace decides whether it happens at all.
+    const ask = await confirmModal({ title: 'Ask the palace for consent?',
+      body: `No one marries ${npc.flags.royal.title} ${npc.firstName} without it. The palace will weigh your good name, your past and how the public sees you. If it says yes, the crown arranges and pays for the wedding, and its lawyers write the marriage contract.`,
+      yes: 'Ask for consent', no: 'Not yet' });
+    if (ask) await report(api, love.marry(npc.id, love.WEDDINGS[0].id, false));
+    return;
+  }
   const wedding = await pickModal({
     title: 'Plan the wedding',
     options: love.WEDDINGS.map((w) => {
@@ -180,7 +188,7 @@ function openNpc(npc, api) {
     : [['Relationship', m.relationship], ['Money', m.money], ['Intellect', m.intellect],
       ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy]]
       .map(([n, v]) => meterHtml(n, v, true)).join('');
-  const detail = [npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : '', npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
+  const detail = [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : '', npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
     .filter(Boolean).map((x) => ` · ${esc(x)}`).join('');
   const owns = (npc.holdings ?? []).length ? `<p class="muted" style="margin-top:8px">Owns: ${esc(npc.holdings.join(', '))}.</p>` : '';
   const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
@@ -274,7 +282,7 @@ export default {
     const row = (n) => `
       <button class="row" data-npc="${n.id}">
         ${portrait(n)}
-        <div class="main"><strong>${esc(n.firstName)} ${n.role === 'pet' ? '' : esc(n.lastName)}</strong>
+        <div class="main"><strong>${n.flags.royal?.title ? `${esc(n.flags.royal.title)} ` : ''}${esc(n.firstName)} ${n.role === 'pet' ? '' : esc(n.lastName)}</strong>
           <small>${esc(rel.roleLabel(n))} · age ${n.age}${n.occupation ? ` · ${esc(n.occupation)}` : ''}</small></div>
         <div class="side">${Math.round(n.meters.relationship)}%
           <div class="mini"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>

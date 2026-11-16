@@ -7,6 +7,8 @@ import { advanceYear } from '../engine/yearProcessor.js';
 import { getEvent, resolveChoice } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
+import { styledName, standing } from '../engine/royalty.js';
+import { ROYAL_RANKS } from '../data/royalty.js';
 import { avatarSvg } from './avatar.js';
 import { meterHtml } from './meter.js';
 import { eventModal, outcomeModal, confirmModal } from './modals.js';
@@ -16,6 +18,7 @@ import { runJustice } from './justice.js';
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
   if (p.career.title) return p.career.title;
+  if (p.royal && ROYAL_RANKS.includes(p.royal.rank) && (p.age >= 18 || !p.education.enrolled)) return standing(p);
   if (p.education.enrolled) return educationLine(p);
   if (p.career.retired) return 'Retired';
   if (p.age < 5) return p.age < 2 ? 'Infant' : 'Toddler';
@@ -91,7 +94,7 @@ export function mountGame(app, hooks) {
       age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id,
       jailed: !!p.legal.incarceration, mood: p.stats.mood,
     });
-    $('[data-name]').textContent = `${p.firstName} ${p.lastName}`;
+    $('[data-name]').textContent = styledName(p);
     $('[data-line1]').textContent = `Age ${p.age} · ${p.city}, ${c.name} ${c.flag}`;
     $('[data-line2]').textContent = occupationLine(p);
     const cashEl = $('[data-cash]');

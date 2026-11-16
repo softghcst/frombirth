@@ -92,7 +92,7 @@ export function renderText(text, cast = {}) {
     if (key === 'name') return p.firstName;
     if (key === 'city') return p.city;
     const npc = store.state.npcs[cast[key]];
-    return npc ? npc.firstName : whole;
+    return npc ? (npc.flags?.royal?.title ? `${npc.flags.royal.title} ${npc.firstName}` : npc.firstName) : whole;
   });
 }
 

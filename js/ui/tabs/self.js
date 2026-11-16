@@ -13,6 +13,7 @@ import { openAppearanceEditor } from '../../avatar/editor.js';
 import * as salon from '../../engine/salon.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
 import { messageModal } from '../modals.js';
+import { royalCard, bindRoyalCard } from '../royalty.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -39,6 +40,7 @@ export default {
         ${meterHtml('Dance', p.talents.dance, true)}
         <div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat(p)}</strong> / 100</span></div>
       </div>
+      ${royalCard()}
       ${skillsCard()}
       <div class="card"><h3>Identity</h3>
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
@@ -69,6 +71,7 @@ export default {
         <button class="btn danger" data-end>End this life</button>
       </div>`;
 
+    bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
     el.querySelector('[data-passport]').onclick = () => openPassport();
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);

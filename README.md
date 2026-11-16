@@ -133,6 +133,8 @@ tests/          checks that run on Node alone
 | Money events (leaks, tenants, breakdowns, tips) | `js/data/events/money.js` |
 | Crimes and the age each opens at, strangers, ways of killing, lawyers, prison gangs, sentence rules | `js/data/crimes.js` |
 | Property tax by country | `PROPERTY_TAX` in `js/data/countries.js` |
+| Monarchies: which countries have a crown, the titles used there, allowances, public duties, how rare a royal birth is | `js/data/royalty.js` |
+| Royal and noble scenes (palace invitation, honours, scandal, protocol) | `js/data/events/royal.js` |
 | Moving abroad: who comes, how likely relatives are to say yes, shipping costs, the passport | `js/engine/emigration.js` |
 | Escape puzzle maps (run `node tests/escape-layouts.mjs` after editing) | `js/data/prisonLayouts.js` |
 | Treatment costs and success rates, surgeries and surgeons, activity and holiday prices, follower packs, emigration fee | `js/data/activities.js` |
@@ -171,6 +173,33 @@ Storyline scenes are ordinary events with a few extra fields: `priority`,
 variants chosen from history with `when([...], outcome)`, memories stored on
 people with `mem()`, and follow-up scenes with `queue()`.
 
+## Royalty
+
+Countries that have a reigning royal family today have one in the game: the
+United Kingdom, Spain, Sweden, Norway, Denmark, the Netherlands, Japan,
+Thailand, Morocco and the United Arab Emirates. Titles follow each country
+(Infanta in Spain, Emperor in Japan, Sheikh in the Emirates; dukes, earls and
+barons where a nobility survives). Every house and person is invented.
+
+- **Born to it:** rarely by chance, or chosen under "Born into" when designing a
+  life in a monarchy. A royal child has a place in the line of succession and
+  can inherit the throne. A noble's child inherits the title from their parents.
+- **Married into it:** the famous, wealthy and successful are sometimes invited
+  to the palace, where an unmarried royal may take an interest. Marrying one
+  needs the palace's consent, which depends on your good name, criminal record
+  and past marriages. It can be refused, and asked for again the next year.
+- **Public image:** a royal's standing with the public, shown on the Self tab.
+  Public duties (three a year) raise it; idleness, scandal and convictions sink
+  it. If it falls far enough the palace removes the title, and a monarch is
+  made to abdicate.
+- **Honours:** in the United Kingdom and Spain the crown honours commoners who
+  give a great deal or become widely known.
+
+The rules are in `js/engine/royalty.js`; the screens are in `js/ui/royalty.js`.
+Scenes can test `monarchy`, `isRoyal`, `isNoble`, `titled`, `reigning`,
+`royalBy` and `royal.image`, and use the `image()`, `meetRoyal()` and
+`honour()` effects.
+
 ## Adding events
 
 Add an object to a file in `js/data/events/` (or a new file registered in
@@ -188,8 +217,8 @@ education with storylines, careers with fame, relationships with independent
 family lives, the economy, crime and prison, health and activities, death and
 legacy, and a final pass that brought the game to over 200 scenes, rebalanced money
 and promotions, and checked the layout at iPad and phone sizes. Since then: a modular
-avatar system with a live editor, wills with named heirs, skills to practise, and
-orientation and gender identity.
+avatar system with a live editor, wills with named heirs, skills to practise,
+orientation and gender identity, living conditions by country, and royalty.
 
 The layout has been checked in a desktop browser emulating iPad and phone
 screens (portrait and landscape). It has not been run on a physical iPad.

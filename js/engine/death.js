@@ -1,6 +1,7 @@
 // Mortality maths and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
 import { rng } from '../rng.js';
+import { styledName } from './royalty.js';
 import { uid, localMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
 import { netWorth } from './finance.js';
@@ -248,6 +249,9 @@ function lifeSummary(p, plan) {
     childStar: !!p.flags.childStar || !!p.flags.childActor, lifeSentence: (p.legal.incarceration?.yearsLeft ?? 0) >= 50,
     neverMoved: k.countriesLived === 1 && !(p.flags.visited ?? []).length, holidays: k.holidays ?? 0,
     surgeries: k.surgeries ?? 0, mood: p.stats.mood, health: p.stats.health,
+    reigned: !!p.flags.reigned, abdicated: !!p.flags.abdicated, consort: p.royal?.by === 'marriage' && ['monarch', 'heir', 'royal'].includes(p.royal.rank),
+    bornTitled: p.royal?.by === 'birth', honoured: !!p.flags.honouredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
+    marriedRoyal: !!p.flags.marriedRoyal, image: p.royal?.image ?? 0,
   };
 }
 
@@ -283,7 +287,7 @@ export function die(cause) {
   /** @type {import('../types.js').GraveyardEntry} */
   const entry = {
     id: uid('grave'),
-    fullName: `${p.firstName} ${p.lastName}`,
+    fullName: styledName(p),
     gender: p.gender,
     ageAtDeath: p.age,
     birthYear: p.birthYear,

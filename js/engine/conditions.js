@@ -5,6 +5,7 @@
 //   cast.<key>.<meter>      e.g. cast.director.relationship  (0–100), or cast.kid.age
 //   memory.<key>.<memory>   e.g. memory.manager.coveredShift (100 if they remember it, else 0)
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
+import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 
 /** Singing, dance and acting together. The weakest of the three drags it down. */
 export function tripleThreat(p = player()) {
@@ -19,6 +20,14 @@ const SPECIAL = {
   hazards: () => country().living.hazards,
   conscription: () => country().living.laws.conscription,
   inCrisis: () => !!country().living.crisis,
+  // Royalty: monarchy (the country has a crown), isRoyal (in the royal family), isNoble (holds a noble title),
+  // reigning, royalBy ('birth' | 'marriage' | 'honour' | null). The public's opinion is plain 'royal.image'.
+  monarchy: () => !!MONARCHIES[country().id],
+  isRoyal: (p) => !!p.royal && ROYAL_RANKS.includes(p.royal.rank),
+  isNoble: (p) => !!p.royal && !p.royal.waiting && !ROYAL_RANKS.includes(p.royal.rank) && p.royal.rank !== 'knight',
+  titled: (p) => !!p.royal,
+  reigning: (p) => !!p.royal?.reigning,
+  royalBy: (p) => p.royal?.by ?? null,
   conditionIds: (p) => p.conditions.map((c) => c.id),
   inventoryIds: (p) => p.inventory.map((i) => i.id),
   degreeTypes: (p) => p.education.degrees.map((d) => d.type),

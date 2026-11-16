@@ -7,6 +7,7 @@ import { openAppearanceEditor } from '../../avatar/editor.js';
 import { randomAppearance } from '../../avatar/inherit.js';
 import { ORIENTATIONS } from '../../engine/identity.js';
 import { summary } from '../../engine/living.js';
+import { MONARCHIES } from '../../data/royalty.js';
 
 const TALENTS = { singing: 'Singing', dance: 'Dance', acting: 'Acting', music: 'Music', sports: 'Sports', crime: 'Mischief' };
 
@@ -31,7 +32,7 @@ const named = (map) => Object.entries(map).map(([value, label]) => ({ value, lab
  * @param {{onCreate:(opts:object)=>void, onCancel:Function}} hooks
  */
 export function renderCreator(app, hooks) {
-  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '' };
+  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '', birthRank: '' };
   let look = null; // a designed appearance, or null to inherit one
   const sample = randomAppearance();
 
@@ -72,6 +73,10 @@ export function renderCreator(app, hooks) {
         <div class="card"><h3>Start in life</h3>
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
+          <div data-rank-field hidden>
+            ${picker('birthRank', 'Born into', 'Random', named({ commoner: 'Commoners', noble: 'The nobility', royal: 'The royal family' }))}
+            <p class="muted" data-rank-note></p>
+          </div>
         </div>
         <div class="btn-row">
           <button type="button" class="btn" data-cancel>Back</button>
@@ -113,6 +118,14 @@ export function renderCreator(app, hooks) {
     const c = COUNTRIES[e.target.value];
     q('#f-city').innerHTML = '<option value="">Random</option>'
       + (c?.cities ?? []).map((city) => `<option>${esc(city)}</option>`).join('');
+    const crown = c ? MONARCHIES[c.id] : null;
+    const nobles = !!crown && crown.ranks.some((r) => !['monarch', 'heir', 'royal', 'knight'].includes(r[0]));
+    q('[data-rank-field]').hidden = !crown;
+    q('[data-rank-field] [data-value="noble"]').hidden = !nobles;
+    if (!crown || (!nobles && choice.birthRank === 'noble')) q('[data-rank-field] [data-value=""]').click();
+    if (crown) {
+      q('[data-rank-note]').textContent = `${c.name} is a monarchy: ${crown.ranks.map((r) => (r[1] === r[2] ? r[1] : `${r[1]} or ${r[2]}`)).filter((t, i, a) => a.indexOf(t) === i).join(', ')}.${crown.maleOnly ? ' Only men inherit the throne.' : ''} Left on Random, a royal birth is very rare.`;
+    }
     q('[data-country-info]').textContent = c
       ? `Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, estate tax ${Math.round(c.estateTax * 100)}%, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'} ${summary(c).short}.`
       : 'Each country has its own currency and taxes.';
@@ -131,6 +144,7 @@ export function renderCreator(app, hooks) {
       appearance: look ?? undefined,
       talent: choice.talent || undefined,
       background: choice.background || undefined,
+      birthRank: choice.birthRank || undefined,
     });
   });
 
