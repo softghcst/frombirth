@@ -78,7 +78,7 @@ function pageHistory(v) {
   if (!v.history.length && !degrees.length) return '<p class="muted">Nothing yet.</p>';
   const how = { completed: 'completed', 'moved on': 'moved up', left: 'left early', expelled: 'expelled' };
   return v.history.map((h) => `<div class="dyn-event"><span class="num">${h.from}–${h.to ?? ''}</span><span><strong>${esc(h.kind === 'home' ? 'Taught at home' : h.name)}</strong><br>${esc(h.stageName)} · ${esc(KIND_BY_ID[h.kind].name)}${h.to != null ? ` · ${how[h.how] ?? 'left'}${h.mark ? `, ${sch.mark(h.mark)}` : ''}` : ' · now'}</span></div>`).join('')
-    + degrees.map((d) => `<div class="dyn-event"><span class="num">${d.age}</span><span><strong>${esc(d.school ?? d.type)}</strong><br>GPA ${d.gpa.toFixed(2)}</span></div>`).join('');
+    + degrees.map((d) => `<div class="dyn-event"><span class="num">${d.age}</span><span><strong>${esc(d.school ?? d.type)}</strong><br>${esc(sch.degreeMark(d.gpa, d.countryId))}</span></div>`).join('');
 }
 
 /** Opens the school book. `onChange` is called when something the player did changes the life. */

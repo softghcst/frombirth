@@ -162,13 +162,13 @@ function pickMajor(progId) {
     title: community ? 'What will you study?' : 'Choose a major',
     body: community
       ? 'Community college takes everyone. Pick the subject you mean to carry on with.'
-      : `Your GPA is ${gpa.toFixed(2)}. Harder subjects want better grades.`,
+      : `Your school marks: ${sch.mark(gpa)}. Harder subjects want better grades.`,
     options: MAJORS.filter((m) => !(community && m.audition)).map((m) => ({
       value: m.id, label: m.name, disabled: !community && gpa < m.minGpa,
       sub: m.audition
         ? `${m.blurb} Entry by audition (your triple-threat score is ${tripleThreat(p)}): about ${Math.round(edu.admissionChance('university', m.id) * 100)}% at a typical school.`
         : `${m.difficulty >= 0.45 ? 'Demanding' : m.difficulty >= 0.25 ? 'Moderate' : 'Gentle'} workload`
-          + (community ? '' : ` · needs GPA ${m.minGpa.toFixed(1)}`)
+          + (community ? '' : ` · needs ${sch.mark(m.minGpa)} at school`)
           + (m.tracks.length ? ` · opens ${m.tracks.join(' and ')} school` : ''),
     })),
   });
@@ -187,7 +187,7 @@ async function chooseFunding(api, fee, length, offer) {
       cancel: 'Turn the place down',
       options: [
         ...(offer.scholarship ? [{ value: 'scholarship', label: 'Accept the scholarship',
-          sub: `Free while your GPA stays above 2.5.${offer.housingAid ? ' Includes a dorm room.' : ''}` }] : []),
+          sub: `Free while your marks stay at ${sch.degreeMark(2.5)} or better.${offer.housingAid ? ' Includes a dorm room.' : ''}` }] : []),
         ...(edu.canAskParents() ? [{ value: 'parents', label: 'Ask your parents', sub: askedParents ? 'They already said no.' : 'They might say no.', disabled: askedParents }] : []),
         ...(p.career.careerId ? [{ value: 'employer', label: 'Ask your employer to pay', sub: p.flags.askedEmployerAge === p.age ? 'You have asked this year.' : 'They do it for people they want to keep.', disabled: p.flags.askedEmployerAge === p.age }] : []),
         { value: 'loan', label: 'Take a student loan', sub: '5% interest. Repayments start once you are earning.' },
@@ -345,13 +345,13 @@ function educationCard(p, c) {
     ['Stage', edu.educationLine(p)],
     ['Status', status],
     ...(e.enrolled && sch.atSchool(p) ? [['Overall mark', e.gpa ? sch.mark(e.gpa) : 'No marks yet'], ['Days skipped this year', String(e.absences)]]
-      : e.enrolled ? [['GPA', e.gpa ? e.gpa.toFixed(2) : 'No grades yet'], ['Absences this year', String(e.absences)]] : []),
+      : e.enrolled ? [['Marks', e.gpa ? sch.degreeMark(e.gpa) : 'No grades yet'], ['Absences this year', String(e.absences)]] : []),
     ...(e.enrolled && edu.isHigher(e.stage) ? [['Tuition', `${FUNDING[e.funding] ?? '—'}${e.aid > 0 && e.aid < 1 ? ` · ${Math.round(e.aid * 100)}% waived` : ''}`]] : []),
     ...(e.enrolled && e.partTime ? [['Pace', 'Part-time, alongside work']] : []),
     ...(e.thesis ? [['Thesis', `${e.thesis.progress}% written${e.thesis.published ? ` · ${e.thesis.published} published` : ''}`]] : []),
     ...((p.flags.licences ?? []).length ? [['Licensed in', p.flags.licences.join(', ')]] : []),
     ...(loan ? [['Student loan', fmtMoney(loan.principal, c)]] : []),
-    ...e.degrees.map((d) => ['Completed', d.type === 'high' ? `${d.school ?? 'School'}${d.award ? `: ${d.award}` : ''}, ${sch.mark(d.gpa, d.countryId ?? p.countryId)}` : `${degreeLabel(d)}, GPA ${d.gpa.toFixed(2)}`]),
+    ...e.degrees.map((d) => ['Completed', d.type === 'high' ? `${d.school ?? 'School'}${d.award ? `: ${d.award}` : ''}, ${sch.mark(d.gpa, d.countryId ?? p.countryId)}` : `${degreeLabel(d)}, ${sch.degreeMark(d.gpa, d.countryId ?? p.countryId)}`]),
   ];
   return kv(rows) + (e.enrolled ? `<div style="margin-top:10px">${meterHtml('Effort', e.effort, true)}</div>` : '');
 }

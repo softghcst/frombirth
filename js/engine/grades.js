@@ -70,6 +70,21 @@ export function showMark(g, grading) {
     default: return g.toFixed(2);
   }
 }
+/** A university result as a country writes it. Higher-education schemes differ from school ones. */
+export function showDegree(g, scheme) {
+  if (g == null) return '';
+  switch (scheme) {
+    case 'honours': return g >= 3.6 ? 'First' : g >= 3.2 ? '2:1' : g >= 2.7 ? '2:2' : g >= 2.2 ? 'Third' : 'Pass';
+    case 'twenty': return `${(Math.round(Math.max(0, 10 + (g - 2) * 2.5) * 2) / 2).toString().replace('.', ',')}/20`; // a 14 is a very good degree
+    case 'german': return (Math.round((5 - g) * 10) / 10).toFixed(1).replace(/^(\d)\.(\d)$/, '$1,$2'); // 1,0 is the best, 4,0 a pass
+    case 'italy': return `${Math.min(110, Math.round(66 + g * 11))}/110`;
+    case 'ten': return `${Math.max(0, Math.min(10, 5 + (g - 1.5) * 1.6)).toFixed(1)}/10`;
+    case 'ects': return g >= 3.7 ? 'A' : g >= 3.3 ? 'B' : g >= 2.8 ? 'C' : g >= 2.3 ? 'D' : g >= 1.8 ? 'E' : 'F';
+    case 'percent': return `${Math.round(35 + g * 13)}%`;
+    default: return `GPA ${g.toFixed(2)}`;
+  }
+}
+
 /** What the marking scheme is called, for the screens. */
 export const gradingNote = (grading) => ({ letters: 'Marked from A* down to U.', twenty: 'Marked out of 20.', german: 'Marked from 1 (the best) to 6.', ten: 'Marked out of 10.', percent: 'Marked as a percentage.', gpa: 'Marked as a grade point average, out of 4.' })[grading] ?? '';
 

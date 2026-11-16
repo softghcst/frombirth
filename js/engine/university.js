@@ -25,6 +25,7 @@ import { tripleThreat } from './conditions.js';
 import { wealthTier } from './living.js';
 import * as edu from './education.js';
 import { arriveAt } from './edlegacy.js';
+import { localUniPatterns, fillName } from '../data/localNames.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -50,7 +51,9 @@ export function catalogue(countryId = player().countryId) {
     const city = cities[i % cities.length];
     let name = '';
     for (let t = 0; t < 12 && (!name || taken.has(name)); t++) {
-      name = kind.names[(i + t) % kind.names.length].replace('{city}', city).replace('{place}', rng.pick(UNI_PLACES)).replace('{saint}', rng.pick(UNI_SAINTS)).replace('{country}', c.name);
+      const local = localUniPatterns(kindId, countryId);
+      name = local ? fillName(local[(i + t) % local.length], countryId, city, (xs) => rng.pick(xs))
+        : kind.names[(i + t) % kind.names.length].replace('{city}', city).replace('{place}', rng.pick(UNI_PLACES)).replace('{saint}', rng.pick(UNI_SAINTS)).replace('{country}', c.name);
     }
     taken.add(name);
     const id = `uni_${countryId}_${i}`;
