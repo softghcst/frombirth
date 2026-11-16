@@ -6,7 +6,7 @@
 // or restyled parent passes on what they were born with.
 import { rng } from '../rng.js';
 import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, HAIR_STYLES, TWEAKS } from './catalog.js';
-import { RESTING, OUTFITS } from './curation.js';
+import { RESTING, OUTFITS, HAIR_COVERS_FACE } from './curation.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
 const toneAt = (depth) => SKIN_TONES.find((t) => t.depth === clampDepth(depth)).id;
@@ -40,7 +40,7 @@ export function randomInherited(skinDepthHint) {
 
 /** A first haircut that suits the texture and, loosely, the gender, and something to wear. */
 export function defaultStyle(inherited, gender) {
-  const suited = stylesFor(inherited.hairTexture);
+  const suited = stylesFor(inherited.hairTexture).filter((s) => !HAIR_COVERS_FACE.includes(s.id));
   const longOk = rng.chance(0.25);
   const leaning = gender === 'female' ? suited.filter((s) => s.tags.gender !== 'male')
     : gender === 'male' ? suited.filter((s) => s.tags.gender === 'male' && (longOk || s.tags.length !== 'long')) : suited;

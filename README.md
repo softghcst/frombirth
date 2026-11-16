@@ -50,7 +50,7 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 
 | What | Where |
 |---|---|
-| The artwork, one folder per kind of part | `assets/avatars/` — `heads/`, `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `hats/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
+| The artwork, one folder per kind of part | `assets/avatars/` — `heads/`, `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
 | The list of every part (generated: do not edit) | `js/avatarManifest.js` |
 | Cleaning, aligning and listing the artwork | `scripts/build-avatar-manifest.py` |
 | Skin, hair, eye, lip and outfit colours | `js/avatarPalettes.js` |
@@ -78,14 +78,15 @@ lower-set features. Eyes drawn as an empty outline are given whites by filling t
 **Personal proportions.** Each person also has `inherited.tweaks`: eye spacing, eye size, eye height, nose size
 and mouth size, each from -2 to 2 steps (`TWEAKS` in `js/avatar/catalog.js`, step sizes in `TWEAK_STEP` in
 `js/CharacterAvatar.js`). They are set in the creator, vary a little at random, and children take each from a parent. Cosmetic surgery
-(**Self** → **Cosmetic surgery** → *Facial reshaping*) changes them as `style.tweaks`: worn, not inherited, so children
-still take after the face a parent was born with. Anyone's whole look can be edited from **People** → a person →
+(**Self** → **Cosmetic surgery** → *Facial reshaping*) changes them too, and children born afterwards can take after the new face. Anyone's whole look can be edited from **People** → a person →
 **Edit stats and talents** → **Edit their look**.
 
 **Ages and dress.** Babies and toddlers have their own heads, baby hair and baby clothes; children have the child
 head; from fifty, lines arrive and hair greys unless dyed. Portraits dress for the moment: prison orange in prison,
 crown and robes for the royal family (a coronet for the peerage), and uniforms at work — police (tactical gear when
-senior), fire service, the armed forces, white coats in medicine, a suit in law and finance, a chef's hat in kitchens.
+senior), fire service, the armed forces, white coats in medicine, a suit in law and finance. Hats have been withdrawn:
+only crowns and tiaras are worn on the head. Hairstyles that hide an eye or much of the face (`HAIR_COVERS_FACE` in
+`js/avatar/curation.js`) are never given at random, though they can still be chosen.
 
 **The character creator.** Title screen → **Design a life** → **Design your look**; in a life, **Self** →
 **Beauty salon** (styling only); or `avatar-lab.html`. Six tabs (face, eyes, nose and mouth, hair, clothes, extras),

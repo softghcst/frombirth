@@ -49,7 +49,7 @@ export const CATALOG = {
   hairColor: HAIR_COLORS.filter((c) => c.natural), hairTexture: HAIR_TEXTURES, marks: MARKS,
   hair: HAIR_STYLES, hairDye: HAIR_COLORS, glasses: parts('glasses'), facialHair: parts('facial_hair'),
   makeup: parts('makeup', (p) => !MARK_FILES.has(p.id)), lipColor: LIP_COLORS, jewelry: parts('jewelry'),
-  outfit: parts('clothes', (p) => !AUTO_OUTFIT.test(p.id)), outfitColor: OUTFIT_COLORS, hat: parts('hats', (p) => !p.tags?.career),
+  outfit: parts('clothes', (p) => !AUTO_OUTFIT.test(p.id)), outfitColor: OUTFIT_COLORS, hat: [],
 };
 
 /**
@@ -69,8 +69,8 @@ export const cleanTweaks = (t) => Object.fromEntries(TWEAKS.map((k) => [k.id, Ma
 export const INHERITED_KEYS = ['head', 'skin', 'eyes', 'eyeColor', 'brows', 'nose', 'lips', 'hairColor', 'hairTexture'];
 /** Styling: hair must have a value ('bald' for none); jewelry is a list; the others may be null (none). */
 export const STYLE_KEYS = ['hair', 'hairDye', 'glasses', 'facialHair', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat'];
-/** The proportions someone shows today: surgery's, if they have had any, else what they were born with. */
-export const shownTweaks = (a) => ({ ...(a.style.tweaks ?? a.inherited.tweaks) });
+/** The proportions of someone's face. */
+export const shownTweaks = (a) => ({ ...a.inherited.tweaks });
 
 const INDEX = Object.fromEntries(Object.entries(CATALOG).map(([k, list]) => [k, Object.fromEntries(list.map((x) => [x.id, x]))]));
 INDEX.anyHair = Object.fromEntries(HAIR_COLORS.map((x) => [x.id, x]));
@@ -154,8 +154,8 @@ export function normalize(a, seed = 'x') {
   style.outfit = has('outfit', st.outfit) ? st.outfit : seeded(CATALOG.outfit.filter((o) => OUTFITS.any.includes(o.id)), seed, 'outfit').id;
   style.outfitColor = has('outfitColor', st.outfitColor) ? st.outfitColor : null;
   style.hat = has('hat', st.hat) ? st.hat : null;
-  // Proportions changed by surgery: worn, not passed on to children.
-  style.tweaks = st.tweaks ? cleanTweaks(st.tweaks) : null;
+  // Earlier saves kept surgery separately; it is simply the person's face now.
+  if (st.tweaks) inherited.tweaks = cleanTweaks(st.tweaks);
   return { v: 3, inherited, style };
 }
 
@@ -181,7 +181,7 @@ export function resolveLook(appearance, seed = 'x', gender) {
       : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
   const sex = gender === 'female' ? 'female' : 'male';
   return {
-    tweaks: st.tweaks ?? g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: g.lips,
+    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: g.lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),
     facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,

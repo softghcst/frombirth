@@ -62,7 +62,7 @@ EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05
 
 
 def folder_for(name):
-    if name in EXCLUDED:
+    if name in EXCLUDED or name.startswith('hat'):  # hats are withdrawn: only crowns and tiaras are worn on the head
         return None
     for prefix, folder in PREFIXES:
         if name.startswith(prefix):
@@ -452,7 +452,9 @@ def recolour(folder, name, elements):
     marked = [e['fill'] for e in elements if (e.get('id') or '').startswith(('hair-color', 'hair-fill', 'skin')) or e.get('layer') == 'skin-color']
     hairlike = folder in ('hair', 'facial_hair', 'eyebrows')
     # Outlines are ink: never recoloured. Hair can itself be nearly black, so there only the darkest of several tones counts as ink.
-    candidates = {c: w for c, w in weights.items() if not is_white(c) and not (lum(c) < INK and (not hairlike or (c == darkest and len(weights) > 1)))}
+    # Outlines are never recoloured. In hair, brows and beards the darkest of several tones is the outline, however dark or light it is.
+    browns = [c for c in weights if not is_white(c)]
+    candidates = {c: w for c, w in weights.items() if not is_white(c) and not ((hairlike and c == darkest and len(browns) > 1) or (not hairlike and lum(c) < INK))}
     if folder == 'eyes':  # irises are drawn in browns; tears and sparkles keep their colours
         candidates = {c: w for c, w in candidates.items() if 5 <= hls(c)[0] * 360 <= 50}
     if folder == 'makeup':  # only blush-like pinks and peaches are recoloured; liner, glitter and freckles keep theirs
@@ -463,7 +465,7 @@ def recolour(folder, name, elements):
     lm = max(lum(main), 0.01)
     mapping = {main: f'var(--{var},{main})'}
     for c in candidates:
-        if folder == 'hair' and c != main and lum(c) > 0.38 and lum(c) > lm * 1.7:
+        if folder == 'hair' and c != main and lum(c) > 0.42 and lum(c) > lm * 1.7 and weights[c] < sum(weights.values()) * 0.1 and 10 <= hls(c)[0] * 360 <= 40:
             mapping[c] = f'var(--skin-color,{c})'  # scalp showing at a parting or hairline
             continue
         if c == main or hue_gap(c, main) > 32 or abs(hls(c)[2] - hls(main)[2]) > 0.45:

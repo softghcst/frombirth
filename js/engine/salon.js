@@ -5,9 +5,9 @@ import { player, country, log } from '../state.js';
 import { normalize, part } from '../avatar/catalog.js';
 
 /** Prices in base units. A change back to "none" or "natural" is free, apart from a haircut. */
-export const SALON_PRICES = { hair: 45, hairDye: 110, glasses: 180, facialHair: 25, makeup: 60, lipColor: 15, jewelry: 90, outfit: 80, outfitColor: 30, hat: 35 };
+export const SALON_PRICES = { hair: 45, hairDye: 110, glasses: 180, facialHair: 25, makeup: 60, lipColor: 15, jewelry: 90, outfit: 80, outfitColor: 30 };
 const LABELS = { hair: 'Haircut', hairDye: 'Colour', glasses: 'New glasses', facialHair: 'Barber', makeup: 'Make-up', lipColor: 'Lip colour',
-  jewelry: 'Jewellery', outfit: 'New clothes', outfitColor: 'Dyeing', hat: 'A hat' };
+  jewelry: 'Jewellery', outfit: 'New clothes', outfitColor: 'Dyeing' };
 const same = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null);
 /** Children do not pay: whoever looks after them does. */
 const PAYS_FROM = 16;

@@ -65,11 +65,14 @@ check(eyesWithWhites >= AVATAR_MANIFEST.eyes.length - 2, `only ${eyesWithWhites}
 check(!CATALOG.eyes.some((e) => e.id === CUR.EXPRESSION.crying), 'crying eyes can be chosen as a resting face');
 check(!AVATAR_MANIFEST.heads.some((h) => /^face_0/.test(h.id)) && normalize({ v: 3, inherited: { head: 'face_02_round' } }, 'z').inherited.head === 'head_15_cherubic', 'withdrawn face shapes are not replaced');
 
+check(AVATAR_MANIFEST.hats.length === 0 && AVATAR_MANIFEST.crowns.length === 8, 'hats should be gone and crowns kept');
+for (let i = 0; i < 300; i++) check(!CUR.HAIR_COVERS_FACE.includes(randomAppearance(i % 12, i % 2 ? 'female' : 'male').style.hair), 'a face-covering hairstyle was handed out at random');
+
 // 2. Curated ids.
 const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, CUR.BABY_BROWS, ...Object.values(CUR.OUTFITS).flat(),
   ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch),
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
-  ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, CUR.GRADUATION.hat];
+  ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, ...CUR.HAIR_COVERS_FACE];
 for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
 for (const h of AVATAR_MANIFEST.hair) if (!/baby/.test(h.id)) check(!!CUR.HAIR_TYPE[h.id], `hairstyle without a texture: ${h.id}`);
 
@@ -127,23 +130,19 @@ for (let i = 0; i < 200; i++) {
   mum.style.hair = 'bald'; dad.inherited.skin = 'porcelain';
   check(before === JSON.stringify(kid), 'a child changed when a parent did');
   check(JSON.stringify(cloneAppearance(kid)) === before, 'clone is not a copy');
-  // Surgery changes what a parent shows, not what a child inherits.
-  mum.style.tweaks = { eyeGap: 2, eyeSize: 2, eyeY: 2, noseSize: -2, lipSize: 2 };
-  const born = normalize(mum, 'm').inherited.tweaks;
-  const later = inheritAppearance(mum, mum).inherited.tweaks;
-  check(Object.keys(born).every((k) => later[k] === born[k]), 'a parent\'s surgery reached a child');
-  check(resolveLook(mum, 'm').tweaks.eyeGap === 2, 'surgery does not show on the parent');
-  check(Object.entries(kid.inherited.tweaks).every(([k, v]) => v === mum.inherited.tweaks[k] || v === dad.inherited.tweaks[k]), 'a child\'s proportions came from neither parent');
+  // Surgery becomes the face: it shows, and children can take after it.
+  mum.inherited.tweaks = { eyeGap: 2, eyeSize: 2, eyeY: 2, noseSize: -2, lipSize: 2 };
+  check(inheritAppearance(mum, mum).inherited.tweaks.eyeGap === 2 && resolveLook(mum, 'm').tweaks.eyeGap === 2, 'reshaped features are not passed on');
+  check(normalize({ v: 3, inherited: {}, style: { tweaks: { eyeGap: 1 } } }, 'q').inherited.tweaks.eyeGap === 1, 'surgery from an earlier save was lost');
 }
 
 // 6. Portraits.
 const SITUATIONS = [{}, { jailed: true }, { royal: { rank: 'monarch' } }, { royal: { rank: 'heir' } }, { royal: { rank: 'royal' } }, { royal: { rank: 'noble' } },
-  { career: { id: 'police' } }, { career: { id: 'police', level: 5 } }, { career: { id: 'firefighter' } }, { career: { id: 'doctor' } }, { career: { id: 'kitchen' } },
+  { career: { id: 'police' } }, { career: { id: 'police', level: 5 } }, { career: { id: 'firefighter' } }, { career: { id: 'doctor' } },
   { mood: 3 }, { emotion: 'emotion_04_love_hearts' }];
 for (const age of [0, 1, 3, 7, 12, 15, 30, 49, 55, 66, 80, 101]) {
   for (const [i, s] of SITUATIONS.entries()) {
     const a = randomAppearance(rng.int(0, 11), i % 2 ? 'female' : 'male');
-    a.style.hat = i === 0 ? 'hat_01_beanie' : null;
     let svg = '';
     try { svg = avatarSvg({ appearance: a, age, gender: i % 2 ? 'female' : 'male', seed: `p${age}-${i}`, mood: 60, ...s }); } catch (e) { check(false, `portrait threw at ${age} (${JSON.stringify(s)}): ${e.message}`); continue; }
     for (const m of svg.matchAll(/href="\.\/assets\/avatars\/([^"#]+)#(art|skin)"/g)) check(existsSync(new URL(`assets/avatars/${m[1]}`, root)), `portrait uses a missing file ${m[1]}`);
@@ -153,7 +152,7 @@ for (const age of [0, 1, 3, 7, 12, 15, 30, 49, 55, 66, 80, 101]) {
     if (s.royal?.rank === 'monarch' && age >= 13) check(/crown_0[13]/.test(d.crown ?? ''), 'a monarch has no crown');
     if (ageStage(age) === 'baby') check(d.head === 'head_00_baby' && !d.glasses && !d.jewelry.length, 'a baby is wearing grown-up things');
     if (age >= 66) check(d.aging.length >= 2, 'no lines with age');
-    if (s.career?.id === 'police' && age >= 18) check(/police|swat/.test(d.clothes) && /police|swat/.test(d.hat ?? ''), 'police are not in uniform');
+    if (s.career?.id === 'police' && age >= 18) check(/police|swat/.test(d.clothes), 'police are not in uniform');
     check(filesFor(resolveLook(a, 'x'), { age, ...s }).every((f) => existsSync(new URL(f.replace('./', ''), root))), 'filesFor lists a missing file');
   }
 }

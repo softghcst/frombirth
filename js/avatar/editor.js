@@ -45,7 +45,7 @@ const TABS = [
   { id: 'eyes', name: 'Eyes', keys: ['eyes', 'eyeColor', 'brows'], tweaks: ['eyeGap', 'eyeSize', 'eyeY'] },
   { id: 'features', name: 'Nose and mouth', keys: ['nose', 'lips', 'lipColor'], tweaks: ['noseSize', 'lipSize'] },
   { id: 'hair', name: 'Hair', keys: ['hair', 'hairDye', 'hairColor', 'hairTexture'] },
-  { id: 'style', name: 'Clothes', keys: ['outfit', 'outfitColor', 'hat'] },
+  { id: 'style', name: 'Clothes', keys: ['outfit', 'outfitColor'] },
   { id: 'extras', name: 'Extras', keys: ['glasses', 'jewelry', 'makeup', 'facialHair'] },
 ];
 const HAIR_FILTERS = [['suits', 'Suits my hair'], ['short', 'Short'], ['medium', 'Medium'], ['long', 'Long'], ['updo', 'Up'], ['all', 'All']];
@@ -70,7 +70,7 @@ export function mountAppearanceEditor(el, o = {}) {
   // scope 'tweaks' is the surgeon's: only proportions, and they are worn rather than born with.
   const tabs = scope === 'tweaks' ? [{ id: 'shape', name: 'Proportions', keys: [], tweaks: TWEAKS.map((k) => k.id) }]
     : TABS.map((t) => ({ ...t, keys: t.keys.filter(usable) })).filter((t) => t.keys.length);
-  const tw = () => (scope === 'tweaks' ? (a.style.tweaks ??= shownTweaks(a)) : a.inherited.tweaks);
+  const tw = () => a.inherited.tweaks;
   if (scope === 'style') tabs.sort((x, y) => (y.id === 'hair') - (x.id === 'hair')); // a salon starts with the hair
   let tab = tabs[0].id;
 
@@ -156,7 +156,7 @@ export function mountAppearanceEditor(el, o = {}) {
     const f = e.target.closest('[data-filter]');
     if (f) { hairFilter = f.dataset.filter; keepScroll(render); return; }
     const twBtn = e.target.closest('[data-tweak]');
-    if (twBtn) { (scope === 'tweaks' ? (a.style.tweaks ??= shownTweaks(a)) : a.inherited.tweaks)[twBtn.dataset.tweak] = Number(twBtn.dataset.val); keepScroll(render); o.onChange?.(cloneAppearance(a)); return; }
+    if (twBtn) { a.inherited.tweaks[twBtn.dataset.tweak] = Number(twBtn.dataset.val); keepScroll(render); o.onChange?.(cloneAppearance(a)); return; }
     const opt = e.target.closest('.av-opt');
     if (!opt) return;
     const key = opt.dataset.key;
@@ -174,7 +174,7 @@ export function mountAppearanceEditor(el, o = {}) {
     get: () => cloneAppearance(a),
     set: (next) => { a = cloneAppearance(normalize(next, seed)); render(); },
     randomize() {
-      if (scope === 'tweaks') a.style.tweaks = Object.fromEntries(TWEAKS.map((k) => [k.id, rng.pick([-1, 0, 0, 1])]));
+      if (scope === 'tweaks') a.inherited.tweaks = Object.fromEntries(TWEAKS.map((k) => [k.id, rng.pick([-1, 0, 0, 1])]));
       else if (scope === 'all') a = normalize(randomAppearance(undefined, o.gender), seed);
       else {
         a.style = { ...defaultStyle(a.inherited, o.gender), jewelry: a.style.jewelry };

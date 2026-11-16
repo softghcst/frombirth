@@ -123,7 +123,7 @@ export const canHaveSurgery = () => player().age >= 18 && !player().legal.incarc
 
 /**
  * @param {object} [tweaks] for 'reshape': the proportions asked for (eye spacing, sizes).
- *   They are worn, not inherited: children take after what the patient was born with.
+ *   They become the patient's face, and children born afterwards can take after it.
  */
 export function haveSurgery(procedureId, surgeonId, tweaks) {
   const p = player();
@@ -152,7 +152,7 @@ export function haveSurgery(procedureId, surgeonId, tweaks) {
   }
   if (proc.reshape && tweaks) {
     const a = normalize(p.appearance, p.id);
-    a.style.tweaks = cleanTweaks(tweaks);
+    a.inherited.tweaks = cleanTweaks(tweaks);
     p.appearance = a;
   }
   const gain = rng.int(proc.gain[0], proc.gain[1]);
