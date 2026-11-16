@@ -250,6 +250,9 @@ button.tree-row:active { background: var(--accent-soft); }
 .av-previews { justify-content: center; margin: 0; }
 .av-filter, .av-preview { border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; min-height: 36px; padding: 4px 12px; font-size: 0.82rem; cursor: pointer; }
 .av-filter.on, .av-preview.on { border-color: var(--accent); }
+.av-steps { display: flex; gap: 6px; }
+.av-step { flex: 1; border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; min-height: 44px; padding: 4px 6px; cursor: pointer; }
+.av-step.on { border-color: var(--accent); }
 .character-avatar { display: block; overflow: hidden; }
 
 /* ---------- Age down ---------- */
