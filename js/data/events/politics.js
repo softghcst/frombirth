@@ -2,7 +2,7 @@
 // and holding office. The scenes whose ids start with pol_ and are marked
 // queuedOnly are sent by engine/politics.js (end of term, removal, uprising).
 // In office, nearly every choice moves approval: what the voters make of you.
-import { st, hid, cash, flag, count, ms, ok, bad, any, chk, need, heat, death, approval, reelect, ousted, resignOffice } from './helpers.js';
+import { st, hid, cash, flag, count, ms, ok, bad, any, chk, need, heat, death, approval, reelect, ousted, resignOffice, govt } from './helpers.js';
 
 const office = need('inOffice', '==', true);
 const tier = (n) => need('officeTier', '>=', n);
@@ -214,6 +214,22 @@ export default [
     choices: [
       { label: 'Stand again', outcomes: [any('You put your record in front of the people who decide, and wait.', 'neutral', reelect())] },
       { label: 'Step down while they still like you', outcomes: [any('You hand over the keys, and somebody else gets the blame from now on.', 'neutral', resignOffice(), st('mood', 4))] },
+    ],
+  },
+  {
+    id: 'pol_minister_scandal', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: 'The morning papers have it on the front page: {minister}, your {post}, {what}. The opposition wants a head, and your own side wants to know what you will do.',
+    choices: [
+      { label: 'Stand by your minister', outcomes: [any('You tell the cameras that you have full confidence in your colleague.', 'neutral', govt('standBy'))] },
+      { label: 'Dismiss them today', outcomes: [any('You make the telephone call yourself.', 'neutral', govt('sack'))] },
+    ],
+  },
+  {
+    id: 'pol_bill_on_desk', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    text: 'The legislature is not yours, and it has stopped waiting for you. Led by {party}, it has passed a bill to {bill}, by {votes}. It is on your desk for signature.',
+    choices: [
+      { label: 'Sign it', outcomes: [any('You uncap the pen.', 'neutral', govt('sign'))] },
+      { label: 'Veto it', outcomes: [any('You send it back with a short, cold message.', 'neutral', govt('veto'))] },
     ],
   },
   {

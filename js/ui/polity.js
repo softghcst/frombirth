@@ -9,6 +9,8 @@ import * as dyn from '../engine/dynasty.js';
 import { monarchy } from '../engine/royalty.js';
 import { avatarSvg } from './avatar.js';
 import { openModal, confirmModal, messageModal } from './modals.js';
+import { cabinetView } from '../engine/government.js';
+import { DEPARTMENTS } from '../data/parties.js';
 
 const KIND = {
   presidential: 'A presidential republic: the voters elect the president and the legislature separately.',
@@ -48,6 +50,9 @@ function pageGovernment(w, o) {
     ${o.kind !== 'none' ? `<div class="kv"><span>How it is doing</span><span>${o.approval >= 60 ? 'Popular' : o.approval >= 45 ? 'Holding its own' : o.approval >= 32 ? 'Unpopular' : 'Deeply unpopular'} (${Math.round(o.approval)}% approve)</span></div>
     <div class="kv"><span>Next general election</span><span>${o.nextElection}${o.yearsToElection <= 1 ? ' (this coming year)' : ''}</span></div>` : ''}
     <div class="kv"><span>The public finances</span><span>${o.budget <= -3 ? 'Deep in deficit' : o.budget < 0 ? 'In deficit' : o.budget === 0 ? 'In balance' : 'In surplus'}</span></div>
+    <div class="kv"><span>National debt</span><span>${o.debt >= 12 ? 'Alarming' : o.debt >= 6 ? 'Heavy' : o.debt > 0 ? 'Manageable' : 'None to speak of'}</span></div>
+    <div class="section-label">The cabinet</div>
+    ${cabinetView(c.id).map((d) => (d.minister ? personRow(w, d.minister, esc(d.title.replace(' Minister', ''))) : `<div class="kv"><span>${esc(d.title)}</span><span>Empty</span></div>`)).join('')}
     ${o.parties.length ? `<div class="section-label">The legislature, ${o.seatCount} seats</div>${seatBar(o)}` : ''}
     <div class="section-label">What its governments have changed</div>
     ${o.policies.length ? o.policies.map((t) => `<p class="dyn-reach">${esc(t)}</p>`).join('') : '<p class="muted">Taxes, tuition, medical bills and rents are as they have long been.</p>'}`;
@@ -97,19 +102,21 @@ function pageElections(w, o) {
 }
 
 function pageLaws(o) {
-  return o.laws.length ? o.laws.map((l) => `<div class="dyn-event"><span class="num">${l.year}</span><span>${esc(l.by)}'s government ${esc(l.text)}.</span></div>`).join('')
+  return o.laws.length ? o.laws.map((l) => `<div class="dyn-event"><span class="num">${l.year}</span><span>${l.over ? `${esc(l.by.replace(/^t/, 'T'))} ${esc(l.text)}` : `${esc(l.by)}'s government ${esc(l.text)}`}${l.vote ? `, ${l.vote[0]} votes to ${l.vote[1]}` : ''}.</span></div>`).join('')
     : '<p class="muted">No changes to the law have been recorded yet.</p>';
 }
 
 function pageFigure(w, f) {
   const pa = world.party(w, f.partyId);
-  const post = { head: world.headTitle(w.countryId), leader: 'Party leader', deputy: 'Deputy leader', 'former head': `Former ${world.headTitle(w.countryId)}`, 'former leader': 'Former party leader', local: 'Local politician' }[f.post] ?? 'Politician';
+  const post = { head: world.headTitle(w.countryId), leader: 'Party leader', deputy: 'Deputy leader', 'former head': `Former ${world.headTitle(w.countryId)}`, 'former leader': 'Former party leader', local: 'Local politician', 'former minister': 'Former minister', backbench: 'Member of the legislature',
+    minister: DEPARTMENTS.find((d) => w.cabinet?.[d.id] === f.id)?.title ?? 'Minister' }[f.post] ?? 'Politician';
   const t = f.t;
   const words = [t.charisma >= 70 ? 'a natural on a platform' : t.charisma <= 38 ? 'no speaker' : null, t.integrity >= 70 ? 'scrupulously honest' : t.integrity <= 38 ? 'known to cut corners' : null, t.ambition >= 72 ? 'openly ambitious' : t.ambition <= 38 ? 'without much appetite for the top' : null].filter(Boolean);
   return `<div class="dyn-hero"><div class="avatar dyn-portrait">${face(f)}</div>
       <div><h3>${esc(f.name)}</h3><p class="muted">${f.born}–${f.died ?? ''} · ${f.died != null ? `lived ${world.ageOf(f)} years` : `age ${world.ageOf(f)}`}</p>
         <p>${esc(post)}${pa ? `<br><em>${esc(pa.name)}</em>` : ''}</p></div></div>
     ${words.length ? `<div class="kv"><span>Said to be</span><span>${esc(words.join(', '))}</span></div>` : ''}
+    ${f.post === 'minister' && t.skill != null ? `<div class="kv"><span>As a minister</span><span>${t.skill >= 72 ? 'Very able' : t.skill >= 55 ? 'Capable' : t.skill >= 40 ? 'Adequate' : 'Out of their depth'}</span></div>` : ''}
     <div class="section-label">A career</div>
     ${f.history.length ? f.history.map((h) => `<div class="dyn-event"><span class="num">${h.year}</span><span>${esc(h.text)}</span></div>`).join('') : '<p class="muted">Nothing on the record yet.</p>'}`;
 }

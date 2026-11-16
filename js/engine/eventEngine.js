@@ -91,6 +91,8 @@ export function renderText(text, cast = {}) {
     if (key[0] === '$') return fmtMoney(localMoney(Number(key.slice(1)), c), c);
     if (key === 'name') return p.firstName;
     if (key === 'city') return p.city;
+    // Scenes sent by the engine can carry their own words: the name of a minister, the text of a bill.
+    if (cast.words && key in cast.words) return cast.words[key];
     const npc = store.state.npcs[cast[key]];
     return npc ? (npc.flags?.royal?.title ? `${npc.flags.royal.title} ${npc.firstName}` : npc.firstName) : whole;
   });

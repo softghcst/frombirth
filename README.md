@@ -34,6 +34,7 @@ node tests/events.mjs
 node tests/escape-layouts.mjs
 node tests/succession.mjs      # the rules of royal succession, on hand-built families
 node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candidate races and the count
+node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 ```
 
 `avatar.mjs` checks the parts catalogue, the renderer, inheritance and the loading of old saves.
@@ -361,6 +362,28 @@ whether or not the player takes any part.
     shows it arriving area by area, after an exit poll that may be wrong.
   A campaign left unfinished when the year ends plays itself out. One-party
   states have no voters to win: the committee decides.
+- **Standing again.** At the end of a term the office-holder fights the same
+  kind of campaign to keep the job, running on their record.
+- **Governing** (`js/engine/government.js`), for a head of government:
+  - *The cabinet.* Five departments, each run by a minister who is a
+    politician like any other, with a skill of their own. Able ministers lift
+    the government and help its bills; an empty post drags it down. Ministers
+    are caught in scandals (stand by them or dismiss them), resign on
+    principle, or walk out when the leader is weak. Every government in the
+    world has a cabinet, not only the player's.
+  - *Bills.* A bill goes to committee, where another party may name its
+    price, and then to a vote that is counted party by party
+    (`js/engine/legislature.js`, checked by `tests/legislature.mjs`). The
+    leader can whip, buy votes, appeal to the country, or stake the
+    government on it. Where the crown still governs, it may refuse assent.
+  - *The budget.* Once a year: tax and every department on one page, one vote
+    on the whole. Deficits pile up as debt. A parliamentary leader without a
+    majority who loses a budget falls, and must face the voters.
+  - *The other side.* A leader without a majority sees the legislature pass
+    laws of its own. A president can sign or veto, and a veto can be overridden
+    by two thirds.
+  Policing joins tax, tuition, health and housing as something governments
+  change: it moves the chance that a crime is solved.
 - **Where there are no elections,** ministers are appointed and rule by
   decree. In a monarchy the monarch remains head of state whatever the voters do.
 

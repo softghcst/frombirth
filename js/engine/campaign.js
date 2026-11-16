@@ -23,7 +23,7 @@ import { AREAS, VOTERS } from '../data/parties.js';
 import { COUNTRIES } from '../data/countries.js';
 import { duel, countByArea } from './elections.js';
 import * as world from './polity.js';
-import { system, offices, barrier, standing, takeOffice, highestHeld } from './politics.js';
+import { system, offices, barrier, standing, takeOffice, highestHeld, leave } from './politics.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', more = {}) => ({ ok, text, tone, ...more });
 const noise = (n) => (rng.next() * 2 - 1) * n;
@@ -40,26 +40,36 @@ const needsNomination = (o, c) => system(c).kind !== 'party' && o.tier >= 2 && !
 
 // ---------- Declaring, and the nomination ----------
 
-/** Enters a race. Nothing is spent yet. */
-export function declare(officeId) {
+/** At the end of a term: the office-holder stands again. The record in office is most of what they run on. */
+export function defend() {
+  const k = player().politics;
+  if (!k) return result(false, 'You hold no office.', 'neutral');
+  if (race()) withdraw();
+  return declare(k.officeId, true);
+}
+
+/** Enters a race. Nothing is spent yet. `defending`: standing again for the office already held. */
+export function declare(officeId, defending = false) {
   const p = player();
   const c = country();
   const o = offices(c).find((x) => x.id === officeId);
   if (!o) return result(false, 'There is no such office here.', 'neutral');
-  const why = barrier(o);
+  const why = defending ? (p.legal.incarceration ? 'You cannot campaign from a cell.' : '') : barrier(o);
   if (why) return result(false, why, 'neutral');
   const rival = world.opponentFor(officeId, c.id);
   const size = officeId === 'head' ? c.cities.length * 1.1e6 : ELECTORATE[officeId] ?? 50000;
   p.flags.campaignAge = p.age;
-  p.flags.race = { officeId, countryId: c.id, year: store.state.year, rivalId: rival?.id ?? null, stage: needsNomination(o, c) ? 'nomination' : 'plan',
-    round: 0, platform: null, budget: null, appeal: 0, edge: {}, used: {}, polls: [], promises: 0,
+  p.flags.race = { officeId, countryId: c.id, year: store.state.year, rivalId: rival?.id ?? null, stage: !defending && needsNomination(o, c) ? 'nomination' : 'plan',
+    // Where the count leans towards those in power, it leans towards the one who holds the office.
+    defend: defending, round: 0, platform: null, budget: null, appeal: defending && system(c).rigged ? 12 : 0, edge: {}, used: {}, polls: [], promises: 0,
     // A rival with charm is harder to beat; how good their campaign is, nobody knows yet.
     rivalAppeal: 56 + rng.int(-10, 10) + (rival ? (rival.t.charisma - 55) / 8 : 0),
     bias: Math.round(noise(3.5) * 10) / 10, electorate: Math.round(size * (0.8 + rng.next() * 0.4)) };
   const pa = world.membership(c.id);
   const text = p.flags.race.stage === 'nomination'
     ? `You have put your name forward for ${o.title}. First ${world.the(pa)} must choose its candidate, and you are not the only one who wants it.`
-    : `You are a candidate for ${o.title}${rival ? `, against ${rival.name}` : ''}.`;
+    : defending ? `You are standing again as ${o.title}${rival ? `, against ${rival.name}` : ''}. Carry the campaign on from the Work tab before the year is out.`
+      : `You are a candidate for ${o.title}${rival ? `, against ${rival.name}` : ''}.`;
   return result(true, text, 'neutral');
 }
 
@@ -412,6 +422,27 @@ export function pollingDay() {
   const told = notes.length ? ` ${notes.join(' ')}` : '';
   const them = f ? `${f.name}${pa ? ` of ${world.the(pa)}` : ''}` : 'your opponent';
   let text;
+  const k = p.politics;
+  if (r.defend && k?.officeId === o.id) {
+    // Standing again: keep the office, or lose it.
+    if (won) {
+      p.counters.electionsWon = (p.counters.electionsWon ?? 0) + 1;
+      k.terms += 1; k.termLeft = o.term; delete k.fallen;
+      k.approval = Math.round(clamp(k.approval + (share - 50) * 0.3));
+      if (r.promises) k.promises = r.promises;
+      p.stats.mood = clamp(p.stats.mood + 10);
+      text = `You are re-elected as ${o.title} with ${share}% of the vote, ahead of ${them}.${told} The campaign cost ${fmtMoney(r.spent ?? 0, c)}.`;
+      world.recordRace(f, `Lost to ${p.firstName} ${p.lastName}, who was re-elected ${o.title}, ${Math.round((100 - share) * 10) / 10}% to ${share}%.`);
+    } else {
+      p.counters.electionsLost = (p.counters.electionsLost ?? 0) + 1;
+      p.stats.mood = clamp(p.stats.mood - 12);
+      leave('voted out');
+      text = `You are voted out, with ${share}% of the vote${s.rigged ? ', by the official count' : ''}. ${f ? f.name : 'Your opponent'} takes your place, and you have until Friday to clear your desk.${told}`;
+      world.recordRace(f, `Beat ${p.firstName} ${p.lastName}, the sitting ${o.title}, ${Math.round((100 - share) * 10) / 10}% to ${share}%.`);
+    }
+    log(text, 'system', won ? 'good' : 'bad');
+    return result(won, text, won ? 'good' : 'bad', { night: rec });
+  }
   if (won) {
     p.counters.electionsWon = (p.counters.electionsWon ?? 0) + 1;
     takeOffice(o, r.caught ? 40 : Math.round(clamp(48 + (share - 50) * 0.8, 45, 75)));

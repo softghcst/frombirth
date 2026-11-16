@@ -121,7 +121,7 @@ export function takeOffice(o, approval = 55) {
 }
 
 /** Ends the current office and writes it into the record. */
-function leave(why, quiet = false) {
+export function leave(why, quiet = false) {
   const p = player();
   const k = p.politics;
   if (!k) return;

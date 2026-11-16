@@ -1,5 +1,7 @@
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { defend } from './campaign.js';
+import { decide } from './government.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
@@ -150,7 +152,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (p.politics && p.politics.approval !== before) shown.push({ label: 'Approval', delta: p.politics.approval - before });
         break;
       }
-      case 'reelect': ctx.note = pol.reElection().text; break;
+      case 'reelect': ctx.note = (p.politics && pol.isDemocracy() && !p.politics.ruler ? defend() : pol.reElection()).text; break;
+      case 'govt': ctx.note = decide(e.value, ctx.cast); break;
       case 'ousted': pol.removed(e.value); break;
       case 'resignOffice': pol.resign(); break;
       case 'prison': {
