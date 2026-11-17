@@ -90,7 +90,7 @@ export function passportQuote(person, issuerId) {
   else if (!guardianOf(person)) why = 'Adults apply for their own passports.';
   else if (eraOf().id === 'open') why = 'In this period most journeys need no passport at all.';
   else if (current && yearOf(current.expiresOn) > store.state.year + 1) why = `${isPlayer(person) ? 'Your' : 'Their'} passport is valid until ${current.expiresOn}. It can be renewed in its last year.`;
-  else if ((store.state.player.applications ?? []).some((a) => a.kind === 'passport' && a.personId === person.id && a.jurisdictionId === issuerId && a.submittedYear === store.state.year)) why = 'An application has already been made this year.';
+  else if (!lostOne && !current && (store.state.player.applications ?? []).some((a) => a.kind === 'passport' && a.personId === person.id && a.jurisdictionId === issuerId && a.submittedYear === store.state.year && passports(person).some((d) => d.applicationId === a.id && d.status === 'valid'))) why = 'An application has already been made this year.';
   else if (player().finance.cash < fee && !(isPlayer(person) && person.age < 16)) why = `The fee is ${fmtMoney(fee, c)}. You do not have it.`;
   return { possible: !why, why, fee, renewal: !!current, years };
 }
@@ -109,7 +109,7 @@ export function applyPassport(personId, issuerId) {
   const year = store.state.year;
   // A child's first passport, for a child who is the player: a parent applies and pays.
   const parentsPay = isPlayer(person) && person.age < 16 && p.finance.cash < q.fee;
-  const paid = charge({ amount: q.fee, kind: 'passport_fee', memo: `Passport for ${person.firstName}, issued by ${nameOf(issuerId)}`, key: `passport:${person.id}:${issuerId}:${year}`,
+  const paid = charge({ amount: q.fee, kind: 'passport_fee', memo: `Passport for ${person.firstName}, issued by ${nameOf(issuerId)}`, key: `passport:${person.id}:${issuerId}:${passports(person).length}`,
     ref: { personId: person.id }, payer: parentsPay ? 'parent' : 'player' });
   if (!paid.ok) return result(false, paid.why, 'neutral');
   const app = { id: uid('app'), personId: person.id, kind: 'passport', jurisdictionId: issuerId, purpose: 'travel', status: 'approved', submittedYear: year, decideYear: year,

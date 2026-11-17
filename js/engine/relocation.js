@@ -157,7 +157,7 @@ export function checklist(caseId, p = player()) {
     { id: 'review', label: `Review ${COUNTRIES[app.jurisdictionId].name}`, done: true, note: `${app.city}, ${Math.round(distanceKm({ countryId: p.countryId, city: p.city }, { countryId: app.jurisdictionId, city: app.city }) ?? 0)} km away.` },
     { id: 'eligible', label: 'Confirm eligibility', done: true, note: app.routeName },
     { id: 'apply', label: 'Submit application', done: true, note: app.paid ? `Fee paid: ${fmtMoney(app.paid, country())}.` : 'No application needed.' },
-    { id: 'decision', label: 'Receive a decision', done: app.status === 'approved' || app.used, note: app.status === 'approved' ? 'Approved.' : app.status === 'refused' ? `Refused. ${app.reason ?? ''}` : 'Decided when the year turns.' },
+    { id: 'decision', label: 'Receive a decision', done: app.status === 'approved' || !!app.used, note: app.status === 'approved' ? 'Approved.' : app.status === 'refused' ? `Refused. ${app.reason ?? ''}` : 'Decided when the year turns.' },
     { id: 'housing', label: 'Arrange housing', done: !!a.housing, note: a.housing ? housingOptions(app, p).find((o) => o.id === a.housing)?.label ?? 'Chosen.' : '' },
     { id: 'work', label: 'Arrange work or study', done: true, note: work },
     { id: 'money', label: 'Review finances', done: a.money != null, note: a.money != null ? (a.money ? `Leaving ${Math.round(a.money * 100)}% in ${country().currency.code}.` : `Changing everything into ${COUNTRIES[app.jurisdictionId].currency.code}.`) : '' },
