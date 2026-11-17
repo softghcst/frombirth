@@ -14,4 +14,5 @@ export * as stories from './stories.js';
 export * as professional from './professional.js';
 export * as civic from './civic.js';
 export * as school from './school.js';
+export * as broadcast from './broadcast.js';
 export { tickDigital, migrateDigital, syncCompat } from './tick.js';

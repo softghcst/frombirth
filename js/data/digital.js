@@ -69,6 +69,8 @@ export const ADOPTION = { maxLag: 14, available: 0.08 };
  */
 /** @type {DigitalDeviceDef[]} */
 export const DEVICES = [
+  { id: 'radio_set', name: 'Radio set', tech: 'radio', cost: 40, life: 25, quality: 0, can: ['listen'] },
+  { id: 'tv_set', name: 'Television set', tech: 'television', cost: 350, life: 12, quality: 0, can: ['watch'] },
   { id: 'home_phone', name: 'Home telephone', tech: 'landline', cost: 60, life: 20, quality: 0, can: ['call'] },
   { id: 'desktop', name: 'Desktop computer', tech: 'pc', cost: 900, life: 6, quality: 0.5, can: ['web', 'edit', 'game'] },
   { id: 'laptop', name: 'Laptop', tech: 'pc', cost: 1000, life: 5, quality: 0.5, can: ['web', 'edit', 'video', 'game'] },

@@ -206,6 +206,22 @@ async function extras() {
   await page.waitForSelector('.tab-btn[data-tab="pursuits"]');
   const born = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return { year: store.state.year, birth: store.state.player.birthYear }; });
   check(born.year === 1850 && born.birth === 1850, 'the character creator can start a life in 1850');
+  // Radio in 1935, through the Pursuits tab.
+  const s35 = await page.evaluate(async () => {
+    const { createLife } = await import('/js/engine/characterGen.js');
+    const { saveGame } = await import('/js/save.js');
+    let st; do { st = createLife({ countryId: 'uk', year: 1925 }); } while (st.player.royal);
+    st.year = 1935; st.player.age = 10; for (const n of Object.values(st.npcs)) n.age += 10;
+    saveGame(st); return st.slotId;
+  });
+  await page.reload();
+  await page.click(`[data-load="${s35}"]`);
+  await page.click('.tab-btn[data-tab="pursuits"]');
+  check(await page.locator('[data-tune="radio"]').count() === 1 && await page.locator('[data-tune="tv"]').count() === 0, 'in 1935 Pursuits offers the radio, not television');
+  await page.click('[data-tune="radio"]');
+  await page.locator('#modal-root .choice-btn', { hasText: 'Radio plays' }).click();
+  check((await continueModal()).includes('radio plays'), 'an evening of radio plays happens');
+  check(await page.locator('[data-tune="radio"]').isDisabled(), 'and is done for the year');
   // The Family Archive, from the People tab.
   await page.click('.tab-btn[data-tab="people"]');
   await page.click('[data-top="archive"]');

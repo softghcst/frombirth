@@ -400,6 +400,7 @@ More of it, by part:
 | More messaging | `messaging.js` | Plans and invitations that really happen the next year (and are remembered), photos, anniversary wishes, talking about the relationship (which can clear the air or start a row), venting (the only thing a leak can ever be made of), birthday messages from family (three a year at most), helping an older relative get online |
 | More creators | `creator.js` | Optional posting routines; merchandise (with the cost of making it), labelled affiliate links, licensing offers for good work, paid collaborations paid on publication; livestreams scheduled for later with chosen equipment; project work counts as practice for the matching skill |
 | Other people | `npc.js` | Gifted friends start channels of their own; people join communities for their hobbies; an online friend who ends up in the player's field becomes a colleague; a few well-known creators on each platform to follow, who are strangers, not friends |
+| Radio and television | `broadcast.js` | Once a year, an evening's listening or viewing (news, music, plays, sport, serials, cartoons) with whoever is at home, or at a neighbour's when there is no set; the first set in the house as a life moment; now and then a broadcast the whole household remembers. Sets are household devices like any other |
 | Story arcs | `stories.js` | Also: a creator's crossroads (make it a job, keep it on the side, step back), burnout after two heavy years, stopping decades later; life after going viral; a bigger creator reaching out; a recruiter; an invitation to moderate; meeting an online friend; a partner abroad; old posts decades on (shared with the family, they join the archive); a child's school photography project |
 
 Also: the character creator can start a life in any year from 1800; scenes that mention modern technology, and the
@@ -411,7 +412,7 @@ accounts can be recovered; neighbourhood groups follow a move; a university's co
 dating has preferences (ages, distance, what one is looking for); the Family Archive opens from the People tab too.
 
 Still not built: business partnerships (there is no business system in the game for an online friend to join);
-radio and television are in the technology registry but have no activities of their own; content projects live in
+content projects live in
 the Digital World because the game has no separate hobby-project system.
 
 ## Where to edit content

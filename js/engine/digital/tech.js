@@ -104,7 +104,7 @@ export function syncInventory(p = player()) {
 export const devicesForSale = (yr, countryId) => DEVICES.filter((d) => techAvailable(d.tech, yr, countryId));
 
 /** Whether the household the player grew up in has a device of this kind. Access, not ability: it says nothing about the child. */
-function householdHas(deviceType) {
+export function householdHas(deviceType) {
   const p = player();
   if (!p.flags.livesWithParents) return false;
   const def = DEVICE_BY_ID[deviceType];

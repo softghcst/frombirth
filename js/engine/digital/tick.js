@@ -13,6 +13,7 @@ import { tickCommunities } from './community.js';
 import { tickCreators, settleCollab, deliver, useRoutinePublisher } from './creator.js';
 import { publish } from './content.js';
 import { tickFame } from './civic.js';
+import { tickBroadcast } from './broadcast.js';
 import { schoolSystems, portfolioStrength } from './school.js';
 import { tickPlans, tickGreetings } from './messaging.js';
 import { tickReputation } from './reputation.js';
@@ -133,6 +134,7 @@ export function tickDigital() {
   d0.lastYearUse = { year: store.state.year - 1, used: d0.time.year === store.state.year - 1 ? d0.time.used : 0 };
   settleThisYear(); // last year's posts, published since the previous tick
   tickPlatforms();
+  tickBroadcast();
   tickNpcDigital();
   tickGroups();
   tickPlans();

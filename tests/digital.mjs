@@ -748,6 +748,33 @@ section('Story arcs');
   check(ld?.cast.partner === love.id, 'a partner abroad starts a long-distance story');
 }
 
+// ---------- Radio and television ----------
+section('Radio and television');
+{
+  const bc = await import('../js/engine/digital/broadcast.js');
+  life({ born: 1790, age: 10 });
+  check(bc.broadcastOptions().length === 0, 'in 1800 there is no radio or television');
+  const p = life({ born: 1922, age: 8 });
+  const ids = bc.broadcastOptions().map((o) => o.id);
+  check(ids.includes('radio') && !ids.includes('tv'), `in 1930 there is radio and no television (${ids.join(', ')})`);
+  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'parent');
+  const before = mum?.meters.relationship;
+  const r = bc.tuneIn('radio', 'drama');
+  check(r.ok && (bc.setFor('radio') === 'elsewhere' || mum?.meters.relationship > before), 'an evening round the family radio brings the household closer');
+  check(!bc.tuneIn('radio', 'news').ok, 'once a year');
+  grow(30);
+  check(bc.broadcastOptions().some((o) => o.id === 'tv'), 'by 1960 there is television too');
+  for (let i = 0; i < 30; i++) grow(1);
+  check(core.eventsOf(p.id).some((e) => e.kind === 'first_radio') || core.eventsOf(p.id).some((e) => e.kind === 'first_tv'), 'the first set in the house is a life moment');
+  const b = core.eventsOf(p.id).filter((e) => e.kind === 'broadcast');
+  check(b.length >= 1 && new Set(b.map((e) => e.ref.id)).size === b.length, `broadcasts everyone remembers come along, each only once (${b.length})`);
+  rich();
+  const p2 = life({ born: 1940, age: 25 });
+  p2.flags.livesWithParents = false; rich();
+  if (bc.setFor('tv') === 'elsewhere') check(tech.buyDevice('tv_set').ok && bc.setFor('tv') === 'own', 'a set of one\'s own can be bought');
+  else check(true, 'the household already had one');
+}
+
 // ---------- Era-appropriate scenes ----------
 section('Scenes and eras');
 {
