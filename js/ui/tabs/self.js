@@ -1,4 +1,6 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { getEra, eventsIn } from '../../engine/history.js';
+import { store } from '../../state.js';
 import { outlook } from '../../engine/economy.js';
 import { openNews } from '../leisure.js';
 import { openWorld } from '../world.js';
@@ -50,6 +52,9 @@ export default {
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         <button class="btn" data-identity style="margin-top:10px">Identity</button>
       </div>
+      ${(() => { const era = getEra(store.state.year); const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence); return era.id === 'now' && !now.length ? '' : `<div class="card"><h3>The times: ${esc(era.name)}</h3>
+        <p class="muted">${esc(era.description)}</p>${now.length ? `<div class="kv"><span>Under way</span><span>${now.map((e) => esc(e.name)).join(', ')}</span></div>` : ''}
+        <div class="kv"><span>Born into</span><span>${esc(getEra(p.birthYear).name)} (${p.birthYear})</span></div></div>`; })()}
       ${(() => { const here = living.summary(); return `<div class="card"><h3>Life in ${esc(country().name)}</h3>
         ${here.crisis ? `<p style="margin-bottom:8px"><strong>${esc(here.crisis.name)}.</strong> ${esc(here.crisis.blurb)}</p>` : ''}
         <div class="kv"><span>Your standing here</span><span><strong>${esc(living.tierName())}</strong></span></div>

@@ -1,4 +1,6 @@
 // Character creator. Every field can be left on "Random" / "Inherited".
+import { getEra } from '../../engine/history.js';
+import { technologies } from '../../engine/digital/tech.js';
 import { cityLine } from '../../engine/cities.js';
 import { esc } from '../../util.js';
 import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel, surnameFor } from '../../data/countries.js';
@@ -102,7 +104,7 @@ export function renderCreator(app, hooks) {
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
           <div class="field"><label for="f-year">Year of birth</label>
             <input id="f-year" type="number" inputmode="numeric" min="1800" max="${new Date().getFullYear()}" placeholder="${new Date().getFullYear()} (now)">
-            <p class="muted" style="margin-top:4px">Born in an earlier year, you live through the technology of the time: letters before telephones, telephones before the internet.</p></div>
+            <div class="era-note" data-era-note aria-live="polite"></div></div>
           <div data-rank-field hidden>
             ${picker('birthRank', 'Born into', 'Random', named({ commoner: 'Commoners', noble: 'The nobility', royal: 'The royal family' }))}
             <p class="muted" data-rank-note></p>
@@ -228,6 +230,24 @@ export function renderCreator(app, hooks) {
       year: (() => { const y = Math.round(Number(q('#f-year').value)); return y >= 1800 && y <= new Date().getFullYear() ? y : undefined; })(),
     });
   });
+
+  // What the chosen year means: its era, and what life is like then (Historical Eras).
+  const eraNote = () => {
+    const y = Math.round(Number(q('#f-year').value));
+    const year = y >= 1800 && y <= new Date().getFullYear() ? y : new Date().getFullYear();
+    const era = getEra(year);
+    const countryId = q('#f-country').value || null;
+    const tech = countryId ? technologies(year, countryId).filter((t) => t.status === 'common' || t.status === 'spreading').map((t) => t.tech.name.toLowerCase()) : [];
+    q('[data-era-note]').innerHTML = `<p><strong>Born in ${year}: ${esc(era.name)}</strong> <span class="muted">(${esc(era.short)})</span></p>
+      <p class="muted">${esc(era.description)}${era.id === 'now' ? '' : ' Careers, money, schools, laws and medicine follow the times, and new opportunities come as you grow older.'}</p>
+      ${era.id === 'now' ? '' : `<details><summary>More about the times</summary><ul class="era-list">
+        <li><strong>Work:</strong> ${esc(era.careers)}</li><li><strong>Money:</strong> ${esc(era.economy)}</li>
+        <li><strong>School:</strong> ${esc(era.schooling)}</li><li><strong>The law:</strong> ${esc(era.law)}</li>
+        ${tech.length ? `<li><strong>To keep in touch:</strong> ${esc(tech.slice(-4).join(', '))}.</li>` : ''}</ul></details>`}`;
+  };
+  q('#f-year').addEventListener('input', eraNote);
+  q('#f-country').addEventListener('change', eraNote);
+  eraNote();
 
   preview();
 }

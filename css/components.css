@@ -433,3 +433,6 @@ button.dl-card { cursor: pointer; }
 .dl-mono { font-family: var(--serif); font-size: 1rem; color: var(--accent); background: var(--accent-soft); }
 .dl-mono svg { width: 70%; height: 70%; }
 .dl-news { border-left-color: var(--muted); }
+.era-note { margin-top: 6px; display: grid; gap: 4px; font-size: 0.9rem; }
+.era-note details summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.era-list { margin: 4px 0 0 18px; display: grid; gap: 3px; }

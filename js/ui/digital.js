@@ -6,6 +6,7 @@
 // section, filters, the open post or conversation, how far down they had
 // scrolled — is remembered, so a trip to someone's profile and back loses
 // nothing, and neither does closing Digital Life and opening it again.
+import { getEra, erasBetween, eventsIn } from '../engine/history.js';
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney, localMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -644,7 +645,12 @@ function pageHistory() {
   const p = player();
   const techs = tech.technologies().filter((t) => t.status !== 'future' || t.tech.from <= store.state.year + 15);
   const ancestors = legacy.ancestors();
-  return `${ancestors.length ? '<button class="btn" data-section="archive" style="margin-bottom:10px">Open the Family Archive</button>' : ''}
+  const era = getEra(store.state.year);
+  const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence);
+  return `<div class="card"><h3>${esc(era.name)} <small class="muted">${esc(era.short)}</small></h3><p class="muted">${esc(era.description)}</p>
+      ${now.length ? `<p style="margin-top:6px">Under way: ${now.map((e) => esc(e.name)).join(', ')}.</p>` : ''}
+      ${(store.state.era?.transitions ?? []).length ? `<p class="muted" style="margin-top:6px">You have lived through: ${erasBetween(p.birthYear, store.state.year).map((x) => esc(x.name)).join(' → ')}.</p>` : ''}</div>
+    ${ancestors.length ? '<button class="btn" data-section="archive" style="margin-bottom:10px">Open the Family Archive</button>' : ''}
     <div class="section-label">Communication in ${esc(country().name)}, ${store.state.year}</div>
     ${techs.map((t) => `<div class="dl-tech"><div><strong>${esc(t.tech.name)}</strong><small>${esc({ future: 'not yet', arriving: 'just arriving', spreading: 'spreading', common: 'everywhere', declining: 'fading' }[t.status])}</small></div><div class="dl-share" role="img" aria-label="${Math.round(t.share * 100)}% of people"><i style="width:${Math.round(t.share * 100)}%"></i></div></div>`).join('')}
     <div class="section-label">Platforms</div>
@@ -654,14 +660,14 @@ function pageHistory() {
 function pageArchive() {
   const list = legacy.ancestors();
   return `<div class="card"><h3>Family Archive</h3><p class="muted">The people your family came from: their life stories, and what they left online that they meant others to see. Their private messages stay private.</p></div>
-    ${list.length ? `<div class="section-label">Digital legacy</div>${list.map((a) => `<button class="row" data-ancestor="${a.id}">${face(a.id, '', { inert: true })}<div class="main"><strong>${esc(a.name)}</strong><small>${a.born}–${a.died} · generation ${a.generation} · ${a.accounts.length ? `${a.accounts.length} account${a.accounts.length === 1 ? '' : 's'}` : 'no accounts: a life before the internet, or away from it'}</small></div><div class="side">›</div></button>`).join('')}`
+    ${list.length ? `<div class="section-label">Digital legacy</div>${list.map((a) => `<button class="row" data-ancestor="${a.id}">${face(a.id, '', { inert: true })}<div class="main"><strong>${esc(a.name)}</strong><small>${a.born}–${a.died} · ${esc(erasBetween(a.born, a.died).map((x) => x.name).join(' → '))} · ${a.accounts.length ? `${a.accounts.length} account${a.accounts.length === 1 ? '' : 's'}` : 'no accounts: a life before the internet, or away from it'}</small></div><div class="side">›</div></button>`).join('')}`
     : '<p class="empty">When you carry the family on as someone\'s heir, their story is kept here.</p>'}`;
 }
 
 function pageAncestor(id) {
   const v = legacy.archiveOf(id);
   if (!v) return '<p class="empty">Nothing in the archive.</p>';
-  return `<div class="dl-card"><div class="row" style="border:0;padding:0;background:none">${face(id, 'lg')}<div class="main"><strong>${esc(v.entry.name)}</strong><small>${v.entry.born}–${v.entry.died} · generation ${v.entry.generation}</small></div></div></div>
+  return `<div class="dl-card"><div class="row" style="border:0;padding:0;background:none">${face(id, 'lg')}<div class="main"><strong>${esc(v.entry.name)}</strong><small>${v.entry.born}–${v.entry.died} · generation ${v.entry.generation}</small><small>Lived through: ${esc(erasBetween(v.entry.born, v.entry.died).map((x) => x.name).join(' → '))}</small></div></div></div>
     <div class="section-label">Life story</div>${v.entry.milestones.slice(-12).map((m) => `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('')}
     <div class="section-label">Accounts</div>${v.accounts.map(accountCard).join('') || '<p class="empty">No public accounts.</p>'}
     ${v.hiddenAccounts ? `<p class="muted">${v.hiddenAccounts} other account${v.hiddenAccounts === 1 ? ' was' : 's were'} private, and stay${v.hiddenAccounts === 1 ? 's' : ''} that way.</p>` : ''}

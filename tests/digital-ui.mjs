@@ -201,11 +201,20 @@ async function extras() {
   const continueModal = async () => { const ok = page.locator('#modal-root [data-ok]').last(); await ok.waitFor(); const t = await page.locator('#modal-root .modal').last().innerText(); await ok.click(); return t; };
   // A life designed to begin in 1850.
   await page.click('[data-design]');
+  await page.fill('#f-year', '1930');
+  check((await page.locator('[data-era-note]').innerText()).includes('Between the Wars'), 'the creator names the era of the chosen year');
+  await page.fill('#f-year', '2010');
+  check((await page.locator('[data-era-note]').innerText()).includes('Modern Day'), 'and updates when the year changes');
   await page.fill('#f-year', '1850');
+  check((await page.locator('[data-era-note]').innerText()).includes('Early Era'), 'the early era too');
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'the creator fits a phone');
   await page.click('form button[type="submit"]');
   await page.waitForSelector('.tab-btn[data-tab="pursuits"]');
   const born = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return { year: store.state.year, birth: store.state.player.birthYear }; });
   check(born.year === 1850 && born.birth === 1850, 'the character creator can start a life in 1850');
+  await page.click('.tab-btn[data-tab="self"]');
+  check((await page.locator('[data-panel-body]').innerText()).includes('The times: Early Era'), 'the Self tab shows the times');
+
   // Radio in 1935, through the Pursuits tab.
   const s35 = await page.evaluate(async () => {
     const { createLife } = await import('/js/engine/characterGen.js');
@@ -222,6 +231,10 @@ async function extras() {
   await page.locator('#modal-root .choice-btn', { hasText: 'Radio plays' }).click();
   check((await continueModal()).includes('radio plays'), 'an evening of radio plays happens');
   check(await page.locator('[data-tune="radio"]').isDisabled(), 'and is done for the year');
+  await page.click('[data-digital]');
+  await page.click('.dl-nav [data-section="history"]');
+  check((await page.locator('.dl-body').innerText()).includes('Between the Wars'), 'Digital History shows the era of the year');
+  await page.click('.dl-modal [data-close]');
   // The Family Archive, from the People tab.
   await page.click('.tab-btn[data-tab="people"]');
   await page.click('[data-top="archive"]');
