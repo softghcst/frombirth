@@ -9,6 +9,15 @@ const j = (value) => ({ type: 'justice', value });
 /** @type {import('../../types.js').GameEvent[]} */
 export default [
   {
+    // Sent by engine/guardianship.js when a teenager faces a long stay with a carer who lives in another town.
+    id: 'care_choice', category: 'family', ageRange: [10, 17], queuedOnly: true,
+    text: '{carer} will be looking after you for a long while. {carer} lives in {town}. You could move there and start again at a new school, or {carer} could come and live with you here in {here}, near your school and your friends.',
+    choices: [
+      { label: 'Move to their town', outcomes: [any('You pack your room into boxes.', 'neutral', j('care_move'))] },
+      { label: 'Ask them to come and live here', outcomes: [any('You ask. It is a lot to ask.', 'neutral', j('care_stay'))] },
+    ],
+  },
+  {
     // Sent by engine/kinCases.js when a relative is charged. The case runs to its end with the choice made here.
     id: 'kin_charged', category: 'family', ageRange: [10, 120], queuedOnly: true,
     text: 'A phone call you will remember: {kin} has been charged with {offense}. {bail} They say they need you.',

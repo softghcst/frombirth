@@ -644,7 +644,7 @@ function framedBy(offenseId, reliability = 0.85) {
     p.flags.livesWithParents = true;
     const parents = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n.role === 'parent');
     for (const n of parents) n.age = Math.max(n.age, 30);
-    if (!opts.grandparents) for (const id of [...p.npcIds]) { const n = store.state.npcs[id]; if (['grandparent', 'relative', 'sibling'].includes(n.role)) p.npcIds = p.npcIds.filter((x) => x !== id); }
+    for (const id of [...p.npcIds]) { const n = store.state.npcs[id]; if (['grandparent', 'relative', 'sibling'].includes(n.role)) p.npcIds = p.npcIds.filter((x) => x !== id); }
     if (opts.grandparents) {
       const g = makeNpc({ role: 'grandparent', countryId: 'uk', age: 66, relationship: 75 });
       store.state.npcs[g.id] = g; p.npcIds.push(g.id);
@@ -718,6 +718,91 @@ function framedBy(offenseId, reliability = 0.85) {
   ({ p, parents } = child(30));
   for (const n of parents) jailParent(n);
   check(care.checkCare() === null && !p.flags.care, 'an adult is not put into care');
+
+  // Where the child lives depends on where the carer lives, and for how long.
+  const elsewhere = (n) => { const other = store.state.player.city === 'X' ? 'Y' : COUNTRIES_CITIES.find((c) => c !== store.state.player.city); n.city = other; return other; };
+  const gran = () => store.state.npcs[store.state.player.npcIds.find((id) => store.state.npcs[id].role === 'grandparent')];
+  const COUNTRIES_CITIES = (await import('../js/data/countries.js')).COUNTRIES.uk.cities;
+  const setYears = (ps, y) => { for (const n of ps) n.flags.inmate.yearsLeft = y; };
+
+  // Short sentence, grandparent in another town: the grandparent comes to stay.
+  ({ p, parents } = child(9, { grandparents: true }));
+  let town = p.city;
+  elsewhere(gran());
+  for (const n of parents) jailParent(n);
+  setYears(parents, 2);
+  care.checkCare();
+  check(p.flags.care?.where === 'home' && p.city === town, 'a short sentence: the grandparent comes to stay, the child stays put');
+  check(/comes from/.test(store.state.journal[store.state.journal.length - 1].text), 'and the journal says so');
+  // The sentence turns out longer: the child moves after all.
+  setYears(parents, 8);
+  care.checkCare();
+  check(p.flags.care?.where === 'moved' && p.city === gran().city && p.city !== town, 'a stay that becomes long: the child moves');
+  // And goes back when a parent is out.
+  parents[0].flags.inmate.released = store.state.year;
+  care.checkCare();
+  check(!p.flags.care && p.city === town, 'home again, back in the family\'s town');
+
+  // Long sentence, grandparent in another town: a younger child moves.
+  ({ p, parents } = child(8, { grandparents: true }));
+  town = p.city;
+  const there = elsewhere(gran());
+  for (const n of parents) jailParent(n);
+  setYears(parents, 9);
+  care.checkCare();
+  check(p.city === there && p.locations[p.locations.length - 1].city === there && p.legal.history.some((h) => /Moved from/.test(h.text)), 'a long sentence: the child moves to the grandparent\'s town');
+
+  // Long sentence, grandparent in the same town: the child moves in with them, and nothing else changes.
+  ({ p, parents } = child(8, { grandparents: true }));
+  town = p.city;
+  gran().city = town;
+  for (const n of parents) jailParent(n);
+  setYears(parents, 9);
+  care.checkCare();
+  check(p.flags.care?.where === 'theirs' && p.city === town, 'a grandparent in the same town: same town, same school');
+
+  // A teenager facing a long stay is asked.
+  for (const answer of ['care_stay', 'care_move']) {
+    ({ p, parents } = child(14, { grandparents: true }));
+    town = p.city;
+    elsewhere(gran()); gran().age = 66; gran().meters.health = 80;
+    for (const n of parents) jailParent(n);
+    setYears(parents, 9);
+    store.state.pendingEvents = [];
+    care.checkCare();
+    check(p.flags.care?.where === 'asking' && store.state.pendingEvents.some((e) => e.id === 'care_choice'), 'a teenager is asked where they would rather live');
+    justiceScene(answer, {});
+    check(answer === 'care_stay' ? p.city === town && p.flags.care.where === 'home' : p.city === gran().city, `the answer is kept (${answer})`);
+  }
+
+  // A carer too frail to move cannot come, even for a short stay.
+  ({ p, parents } = child(14, { grandparents: true }));
+  town = p.city;
+  elsewhere(gran()); gran().age = 82;
+  for (const n of parents) jailParent(n);
+  setYears(parents, 1);
+  store.state.pendingEvents = [];
+  care.checkCare();
+  check(p.city === gran().city && !store.state.pendingEvents.some((e) => e.id === 'care_choice'), 'a grandparent too old to move: the child goes to them');
+
+  // The player's own children, while the player serves a long sentence.
+  {
+    const q = adult('uk', 40);
+    const mum = q.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive);
+    for (const id of [...q.npcIds]) { const n = store.state.npcs[id]; if (['spouse', 'partner'].includes(n.role)) q.npcIds = q.npcIds.filter((x) => x !== id); }
+    const kid = makeNpc({ role: 'child', countryId: 'uk', age: 7, relationship: 80 });
+    store.state.npcs[kid.id] = kid; q.npcIds.push(kid.id);
+    if (mum) {
+      mum.age = 65; mum.meters.health = 80; mum.meters.relationship = 90;
+      mum.city = COUNTRIES_CITIES.find((c) => c !== q.city);
+      law.imprison(8, 3, {});
+      check(kid.flags.livesIn === mum.city, 'a long sentence: the player\'s child moves to the grandparent\'s town');
+      law.release();
+      check(!kid.flags.livesIn && !kid.flags.guardian, 'and comes home when the player is released');
+      law.imprison(1, 1, {});
+      check(!kid.flags.livesIn, 'a short one: the grandparent comes to them');
+    }
+  }
   section('care: grandparents, family or foster care while no parent can, home when one can, out at eighteen');
 }
 

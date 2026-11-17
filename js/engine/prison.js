@@ -11,6 +11,7 @@ import { store, player, country, log, milestone, npcsByRole, livingNpcs } from '
 import { release, imprison, legal } from './justice.js';
 import * as k from './cases.js';
 import { remember } from './conditions.js';
+import { careWhere, homeOf } from './guardianship.js';
 import { GANGS, ESCAPE_PENALTY, RECAPTURE_PENALTY, LIFE_SENTENCE } from '../data/crimes.js';
 import { LAYOUTS } from '../data/prisonLayouts.js';
 import {
@@ -115,12 +116,21 @@ function arrangeCare(c) {
   const gran = npcsByRole('parent').filter((n) => n.age < 80).sort((a, b) => b.meters.relationship - a.meters.relationship)[0];
   const sib = npcsByRole('sibling').filter((n) => n.age >= 21).sort((a, b) => b.meters.relationship - a.meters.relationship)[0];
   const carer = partner ?? gran ?? sib ?? null;
+  // The same rule as for any child: where the carer lives, and for how long.
+  const where = !carer || carer === partner ? 'theirs' : careWhere(carer, c.yearsLeft);
+  const town = carer && where === 'move' ? homeOf(carer) : null;
   for (const kid of kids) {
     c.guardians[kid.id] = carer?.id ?? 'care';
     kid.flags.guardian = carer ? `${carer.firstName} ${carer.lastName}` : 'foster care';
+    if (town) kid.flags.livesIn = town;
   }
   const names = kids.map((x) => x.firstName).join(' and ');
-  log(carer ? `${names} will live with ${carer.firstName} while you are away. You are still their parent.` : `With nobody in the family able to take them, ${names} go into foster care. You are still their parent, and you can still write.`, 'system', carer ? 'neutral' : 'bad');
+  const text = !carer ? `With nobody in the family able to take them, ${names} go into foster care near home. You are still their parent, and you can still write.`
+    : carer === partner ? `${names} stay at home with ${carer.firstName} while you are away. You are still their parent.`
+      : where === 'theirs' ? `${names} move in with ${carer.firstName}, nearby, while you are away. Same school. You are still their parent.`
+        : where === 'home' ? `${carer.firstName} comes from ${homeOf(carer)} to stay in your home with ${names}, so they keep their school. You are still their parent.`
+          : `With a long sentence ahead, ${names} move to ${town} to live with ${carer.firstName}, and start at a new school. You are still their parent.`;
+  log(text, 'system', carer ? 'neutral' : 'bad');
 }
 
 // ---------- What there is to do ----------
