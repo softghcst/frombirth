@@ -4,7 +4,7 @@
 // look for help, to lean on people, and to use what has been learned.
 // Scenes about distress are support-focused, never graphic, and are switched
 // off by the "reduced" content setting in My Health.
-import { st, hid, rel, any, ok, bad, chk, need, mem } from './helpers.js';
+import { st, hid, rel, any, ok, bad, chk, need, mem, perf } from './helpers.js';
 
 const health = (value) => ({ type: 'health', value });
 const skill = (k, topic, text, amount = 1.5) => health({ do: 'skill', skill: k, topic, text, amount });
@@ -36,8 +36,99 @@ const disagreement = (role) => ({
   ],
 });
 
+/** Telling a partner or spouse about a diagnosis: when, how, and whether, are the player's to choose. */
+const tellPartner = (role) => ({
+  id: `tell_${role}`, category: 'love', ageRange: [16, 95], cooldown: 6, weight: 2, cast: { love: role },
+  requires: [need('untold', '==', true)], castRequires: [need('cast.love.relationship', '>=', 55)],
+  text: 'Out walking with {love}, the conversation turns to the things you each find hard. There is something about your health you have not told them.',
+  choices: [
+    { label: 'Tell them', outcomes: [any('You tell them, in your own words. {love} listens, asks one or two careful questions, and takes your hand.', 'good',
+      health({ do: 'tell', with: 'love' }), st('mood', 4))] },
+    { label: 'Tell them what helps you, without the label', outcomes: [any('You talk about what helps on a hard day. {love} says they are glad to know. The rest can wait, or not.', 'good', rel('love', 4))] },
+    { label: 'Not yet', outcomes: [any('You talk about something else. It is yours to share when you are ready.', 'neutral')] },
+  ],
+});
+
 /** @type {import('../../types.js').GameEvent[]} */
 export default [
+  tellPartner('partner'),
+  tellPartner('spouse'),
+  {
+    id: 'back_on_track', category: 'health', ageRange: [14, 95], cooldown: 8, weight: 3,
+    requires: [need('recovering', '==', true)],
+    text: 'You notice, one ordinary morning, that you have stopped dreading the day. It has been like that for a while now.',
+    choices: [
+      { label: 'Mark it with someone who was there for you', outcomes: [any('Dinner, nothing fancy. You say thank you properly, and they wave it away.', 'good', st('mood', 6))] },
+      { label: 'Take on the thing you had been putting off', requires: [need('employed', '==', true)], outcomes: [any('You pick it back up at work. It goes better than you expected.', 'good', perf(5), st('mood', 3))] },
+      { label: 'Keep up the routines that got you here', outcomes: [any('Sleep, people, the things that help. Boring, and it works.', 'good',
+        health({ do: 'skill', skill: 'coping', topic: 'progress', text: 'how much better things have been', amount: 2 }))] },
+    ],
+  },
+  {
+    id: 'diagnosis_makes_sense', category: 'health', ageRange: [14, 95], once: true, weight: 3,
+    requires: [need('diagnosed', 'has', 'adhd')],
+    text: 'Since your ADHD assessment, a lot of old memories look different: the lost homework, the last-minute brilliance, the teachers who said you could try harder.',
+    choices: [
+      { label: 'Find other people who get it', outcomes: [any('An online group, then a real one. People finish each other\'s sentences, which is the point.', 'good', st('mood', 5))] },
+      { label: 'Read everything you can find', outcomes: [any('You learn a great deal, and set up two systems that actually stick.', 'good',
+        health({ do: 'skill', skill: 'organisation', topic: 'learning', text: 'learning about how your attention works', amount: 4 }))] },
+      { label: 'Tell your family what you have learned', outcomes: [any('Your mother goes quiet, then says she has always been exactly the same.', 'neutral', st('mood', 2))] },
+    ],
+  },
+  {
+    id: 'child_noticed', category: 'family', ageRange: [16, 120], queuedOnly: true, cast: { kid: 'child' },
+    text: 'Something you have noticed about {kid} for a while comes up again at school: some things are much harder work for them than for the other children, however hard they try.',
+    choices: [
+      { label: 'Ask the school and the doctor about an assessment', outcomes: [any('You make the calls. {kid} is nervous, then relieved: someone is finally asking the right questions.', 'good',
+        health({ do: 'childAssess', with: 'kid' }), rel('kid', 6), mem('kid', 'assessed', 'You made sure someone looked into why school was so hard.'))] },
+      { label: 'Ask {kid} what is hard, and what helps', outcomes: [any('{kid} has thought about it more than you realised. You make a few changes at home together.', 'good', rel('kid', 8))] },
+      { label: 'Tell them to try harder', outcomes: [any('{kid} nods and goes quiet. They were already trying.', 'bad', rel('kid', -8), mem('kid', 'tryHarder', 'You told them to try harder when school was hard.'))] },
+    ],
+  },
+  {
+    id: 'partner_hard_stretch', category: 'love', ageRange: [16, 120], queuedOnly: true, cast: { love: 'partner' },
+    text: '{love} is going through a harder stretch with their mental health. They are still going to their appointments. They are tired.',
+    choices: [
+      { label: 'Ask what would help, and do that', outcomes: [any('It is smaller than you thought: company on the sofa, and not having to explain.', 'good', rel('love', 7))] },
+      { label: 'Take some of the load off them for a while', outcomes: [any('You do the shopping and the forms for a few weeks. It counts.', 'good', rel('love', 5), health({ do: 'stress', delta: 5 }))] },
+      { label: 'Look after yourself too: see your friends, keep your routines', outcomes: [any('You are better company for it. {love} says they are glad you did.', 'good', st('mood', 4), rel('love', 2))] },
+      { label: 'Try to fix it for them', outcomes: [any('You make lists and suggestions. They have a therapist; they wanted a partner.', 'neutral', rel('love', -3))] },
+    ],
+  },
+  {
+    id: 'inaccessible_venue', category: 'friends', ageRange: [13, 95], cooldown: 6, weight: 2, cast: { friend: 'friend' },
+    requires: [need('wheelchairBarrier', '==', true)],
+    text: '{friend} is having a birthday party, upstairs at a bar with no lift.',
+    choices: [
+      { label: 'Tell {friend}, and suggest somewhere step-free', outcomes: [any('{friend} is mortified they did not think of it, and moves it to the place round the corner. It is a better bar anyway.', 'good', rel('friend', 5), st('mood', 3))] },
+      { label: 'Write to the bar about access', outcomes: [any('A month later they reply. A year later there is a ramp and a lift. Small things move.', 'good', hid('karma', 2))] },
+      { label: 'Skip it and see {friend} another day', outcomes: [any('You take {friend} out for lunch the week after. Still, you would have liked to be there.', 'neutral', rel('friend', -1), st('mood', -2))] },
+    ],
+  },
+  {
+    id: 'loud_gathering', category: 'friends', ageRange: [12, 95], cooldown: 5, weight: 2,
+    requires: [need('sensory', '==', true)],
+    text: 'The party is loud, bright and crowded, and it is getting to be a lot.',
+    choices: [
+      { label: 'Step outside for a while', outcomes: [any('Ten minutes of cold air, and you come back in on your own terms.', 'good', health({ do: 'stress', delta: -4 }))] },
+      { label: 'Put your headphones on and find a quiet corner', outcomes: [any('Someone else is already in the quiet corner. You have a long, good conversation.', 'good', st('mood', 4))] },
+      { label: 'Leave early and message the host', outcomes: [any('"Thanks for coming!" they reply. Nobody minds. You sleep well.', 'neutral')] },
+      { label: 'Push through to the end', outcomes: [any('You make it to the end, and spend all of the next day recovering.', 'neutral', health({ do: 'stress', delta: 8 }))] },
+    ],
+  },
+  {
+    id: 'meeting_no_interpreter', category: 'work', ageRange: [16, 80], cooldown: 5, weight: 2,
+    requires: [need('hearing', '==', true), need('employed', '==', true)],
+    text: 'An all-staff meeting is announced for tomorrow: an hour of people talking, with no captions and no interpreter booked.',
+    choices: [
+      { label: 'Ask for an interpreter', outcomes: [any('You email the organiser. Arranging it is their job; asking is yours.', 'good',
+        health({ do: 'accommodate', setting: 'work', type: 'interpreter', need: 'sign_language' }))] },
+      { label: 'Ask for live captions', outcomes: [any('Captions on the big screen, for everyone. Three colleagues thank you afterwards.', 'good',
+        health({ do: 'accommodate', setting: 'work', type: 'captions', need: 'captions' }))] },
+      { label: 'Get through it and ask a colleague for notes', outcomes: [any('You catch about half of it. The notes fill in the rest.', 'neutral', health({ do: 'stress', delta: 5 }))] },
+    ],
+  },
+
   {
     id: 'persistent_low', category: 'health', ageRange: [13, 95], cooldown: 3, weight: 4,
     requires: [need('healthSigns', 'has', 'mood')],

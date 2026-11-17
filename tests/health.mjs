@@ -479,6 +479,7 @@ section('heredity: averages, dominant, recessive, X-linked and mitochondrial pat
   check(story.publicMilestones(p.milestones).every((m) => !m.private), 'private milestones stay out of the obituary and the title screen');
   // Family history: what relatives have shared, and what is not known.
   const mum = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.gender === 'female');
+  mum.age = 68;
   mum.health = { v: 1, last: mum.age, conds: [{ id: 'bipolar_1', age: 30, diagnosed: true, shared: true }, { id: 'gad', age: 40, diagnosed: true, shared: false }] };
   const fh = story.familyHistory(p);
   const row = fh.rows.find((r) => r.npcId === mum.id);
@@ -552,6 +553,62 @@ section('old saves: migrated, nothing invented, nothing duplicated');
   check(diagnosedLives > 0 && diagnosedLives < lives, `some lives include a health condition, not all (${diagnosedLives}/${lives})`);
 }
 section('long lives: conditions are part of some lives, the calendar and the ledger stay sound');
+
+// ---------- 12. Health in everyday play: notices and scenes ----------
+{
+  const { careWaiting } = H;
+  const { meetsAll } = await import('../js/engine/conditions.js');
+  const { EVENT_BY_ID } = await import('../js/data/events/index.js');
+  const eligible = (id, cast = {}) => meetsAll(EVENT_BY_ID[id].requires ?? [], cast);
+  let p = adult(30);
+  check(careWaiting() === null, 'nothing waiting: no notice');
+  const rec = living('mdd', 30, 60);
+  const doc = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'primary'), 'gp');
+  const dx = { id: 'dx_n', conditionId: 'mdd', underlyingId: rec.id, status: 'active', wk: now(), providerId: doc.id, name: 'Major depressive disorder', history: [] };
+  R.healthOf().diagnoses.push(dx);
+  meds.discussMedication('dx_n');
+  const appt = R.healthOf().appointments.find((a) => a.status === 'booked');
+  check(careWaiting() === null || careWaiting().decision === false, 'an appointment weeks away is not urgent');
+  appt.wk = now();
+  check(careWaiting()?.decision === false && /this week/.test(careWaiting().text), 'an appointment this week is noticed');
+  until(() => R.healthOf().proposals.some((x) => x.status === 'open'));
+  check(careWaiting()?.decision === true && /waiting/.test(careWaiting().text), 'a waiting decision is put in front of the player');
+  // Telling a partner, in a scene.
+  const love = makeNpc({ role: 'partner', countryId: 'uk', age: 31, relationship: 70 }); store.state.npcs[love.id] = love; p.npcIds.push(love.id);
+  check(eligible('tell_partner'), 'an untold diagnosis makes the "telling a partner" scene possible');
+  resolveChoice(EVENT_BY_ID.tell_partner, 0, { love: love.id });
+  check(rec.disclosedTo.includes(love.id) && rec.disclosedTo.length === 1 && !eligible('tell_partner'), 'telling them in the scene tells only them');
+  check(!eligible('back_on_track'), 'the "back on track" scene waits for real recovery');
+  rec.remissionWk = now(); rec.status = 'in_remission';
+  check(eligible('back_on_track'), 'and fires once a diagnosed condition has gone into remission');
+  // A partner's own hard stretch, only if they have shared a condition.
+  love.health = { v: 1, last: love.age, conds: [{ id: 'gad', age: 25, diagnosed: true, shared: true }] };
+  let queued = false;
+  for (let i = 0; i < 60 && !queued; i++) { love.health.last = love.age - 1; store.state.pendingEvents = []; story.tickPeopleHealth(); queued = store.state.pendingEvents.some((e) => e.id === 'partner_hard_stretch' && e.cast.love === love.id); }
+  check(queued, 'a partner who shared their condition sometimes has a harder stretch to support them through');
+  // A child begins to show a difference present from birth: noticed, assessed, recorded on the child.
+  p = adult(38);
+  const kid = makeNpc({ role: 'child', countryId: 'uk', age: 5, relationship: 80 }); kid.parentIds = []; store.state.npcs[kid.id] = kid; p.npcIds.push(kid.id);
+  kid.health = { v: 1, last: 5, conds: [{ id: 'adhd', age: 6, diagnosed: false, shared: false }] };
+  check(!story.knownHealth(kid).length && !story.begun(kid).length, 'a condition that has not begun to show is not part of anyone\'s history yet');
+  kid.age = 6; store.state.pendingEvents = [];
+  story.tickPeopleHealth();
+  check(store.state.pendingEvents.some((e) => e.id === 'child_noticed' && e.cast.kid === kid.id), 'a parent notices when it begins to show');
+  const r = resolveChoice(EVENT_BY_ID.child_noticed, 0, { kid: kid.id });
+  check(kid.health.conds[0].diagnosed && kid.health.conds[0].shared && /ADHD|attention/i.test(r.text), 'an assessment the parent arranges is recorded on the child');
+  check(!R.healthOf().diagnoses.length, 'and nothing about the child\'s diagnosis lands on the parent\'s own record');
+  // Access scenes follow real needs; a work accommodation can be asked for from a scene.
+  p = adult(33);
+  check(!eligible('inaccessible_venue') && !eligible('meeting_no_interpreter'), 'access scenes do not fire for someone they do not concern');
+  living('spinal_cord_injury', 30, 40);
+  check(eligible('inaccessible_venue'), 'a wheelchair user meets an inaccessible venue');
+  p = adult(33); p.career.careerId = 'office';
+  living('deaf', 1000, 40);
+  check(eligible('meeting_no_interpreter'), 'a Deaf employee meets a meeting with no interpreter');
+  resolveChoice(EVENT_BY_ID.meeting_no_interpreter, 1, {});
+  check(R.healthOf().supports.accommodations.some((a) => a.typeId === 'captions' && a.setting === 'work'), 'asking from the scene is a real accommodation request');
+}
+section('everyday play: notices for waiting decisions, telling a partner, recovery, supporting a partner, a child noticed and assessed, access scenes');
 
 console.log(ok.map((x) => `ok  ${x}`).join('\n'));
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n${problems.join('\n')}`); process.exit(1); }

@@ -19,6 +19,7 @@ import { healthOf, lifeNote, presentConditions, diagnosisFor } from './record.js
 import { genomeOf, hazardMultiplier, bornWith, isBiological, carrierOf, affected } from './heredity.js';
 import { now, seeded, charge, priceOf } from './util.js';
 import { serviceOptions, seekAssessment } from './care.js';
+import { requestAccommodation } from './access.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
@@ -102,8 +103,9 @@ export function npcHealth(npc) {
     if (def.onset.kind !== 'hazard' || a < def.onset.ages[0] || a > def.onset.ages[1] || conds.some((c) => c.id === def.id)) continue;
     if (r.chance(def.onset.rate * hazardMultiplier(g, def.id))) add(def.id, a);
   }
-  // Genetic conditions with a later onset only count once they have begun.
-  npc.health = { v: 1, conds: conds.filter((c) => c.age <= npc.age), last: npc.age };
+  // Conditions present from birth that show later (a child's ADHD at six, Huntington's at forty) are kept,
+  // and only count once they have begun (see begun()).
+  npc.health = { v: 1, conds, last: npc.age };
   return npc.health;
 }
 
@@ -120,6 +122,21 @@ export function tickPeopleHealth(p = player()) {
     if (!h || h.last >= n.age) continue;
     h.last = n.age;
     const g = genomeOf(n);
+    const queue = (id, cast) => { if (!store.state.pendingEvents.some((e) => e.id === id)) store.state.pendingEvents.push({ id, cast }); };
+    // A child of the player's begins to show a difference present from birth: their parent notices first.
+    if (n.role === 'child' && n.age < 18) {
+      for (const c of h.conds) {
+        const def = CONDITION_BY_ID[c.id];
+        if (c.age !== n.age || c.noticed || def.group !== 'neurodev' || !nameIn(def, store.state.year)) continue;
+        c.noticed = true;
+        queue('child_noticed', { kid: n.id });
+        n.flags.noticedHealth = c.id;
+      }
+    }
+    // A partner living with a condition they have shared: some years are harder than others.
+    if (['partner', 'spouse'].includes(n.role) && h.conds.some((c) => c.shared && MENTAL.includes(CONDITION_BY_ID[c.id].group) && c.age <= n.age) && rng.chance(0.25)) {
+      queue('partner_hard_stretch', { love: n.id });
+    }
     for (const def of CONDITIONS) {
       if (def.onset.kind !== 'hazard' || n.age < def.onset.ages[0] || n.age > def.onset.ages[1] || h.conds.some((c) => c.id === def.id)) continue;
       if (!rng.chance(def.onset.rate * hazardMultiplier(g, def.id))) continue;
@@ -141,7 +158,8 @@ export function tickPeopleHealth(p = player()) {
 }
 
 /** What the player knows of an NPC's health: only what has been shared. */
-export const knownHealth = (npc) => (npcHealth(npc)?.conds ?? []).filter((c) => c.shared);
+export const begun = (npc) => (npcHealth(npc)?.conds ?? []).filter((c) => c.age <= npc.age);
+export const knownHealth = (npc) => begun(npc).filter((c) => c.shared);
 
 // ---------- Family medical history ----------
 
@@ -243,6 +261,27 @@ export function healthEffect(v, ctx = {}) {
       return r.ok ? r.text : '';
     }
     case 'sensitive': h.settings.sensitive = v.value; return '';
+    case 'tell': {
+      // Telling someone in a scene: the first diagnosis they do not know about yet, and only that.
+      const npc = store.state.npcs[ctx.cast?.[v.with]];
+      const dx = h.diagnoses.find((d) => d.status === 'active' && !(h.conditions.find((c) => c.id === d.underlyingId)?.disclosedTo ?? []).includes(npc?.id));
+      if (!npc || !dx) return '';
+      tell(npc.id, dx.id, p);
+      return '';
+    }
+    case 'accommodate': {
+      const r = requestAccommodation(v.setting, v.type, v.need, p);
+      return r.ok ? '' : r.text;
+    }
+    case 'childAssess': {
+      // A parent arranges an assessment for their child. What is found is the child's, and recorded on them.
+      const kid = store.state.npcs[ctx.cast?.[v.with]];
+      const c = kid ? npcHealth(kid)?.conds.find((x) => x.id === kid.flags.noticedHealth) : null;
+      if (!c) return '';
+      c.diagnosed = true; c.shared = true;
+      kid.flags.support = c.id;
+      return `The assessment finds ${nameIn(CONDITION_BY_ID[c.id], store.state.year)}. It explains a lot, and it changes nothing about who ${kid.firstName} is. School puts support in place.`;
+    }
     default: return '';
   }
 }
@@ -272,6 +311,16 @@ export const HEALTH_PATHS = {
   sensitiveOk: (p) => (p.health?.settings.sensitive ?? 'full') === 'full',
   hardStretch: (p) => !!p.health && presentConditions(p.health).some((c) => MENTAL.includes(CONDITION_BY_ID[c.conditionId].group) && c.burden >= 70),
   wheelchairBarrier: (p) => !!p.health && presentConditions(p.health).some((c) => (CONDITION_BY_ID[c.conditionId].supports ?? []).includes('wheelchair')),
+  /** Came through a hard stretch in the last year: a mental health condition went into remission. */
+  recovering: (p) => !!p.health && p.health.conditions.some((c) => MENTAL.includes(CONDITION_BY_ID[c.conditionId].group) && c.remissionWk != null && now(p) - c.remissionWk <= 52 && diagnosisFor(c, p.health)),
+  /** A diagnosis nobody in the player's life has been told about yet. */
+  untold: (p) => !!p.health && p.health.diagnoses.some((d) => d.status === 'active' && !(p.health.conditions.find((c) => c.id === d.underlyingId)?.disclosedTo ?? []).length),
+  /** Deaf or hard of hearing. */
+  hearing: (p) => !!p.health && presentConditions(p.health).some((c) => ['deaf', 'hearing_loss'].includes(c.conditionId) && (c.showsAge == null || p.age >= c.showsAge)),
+  /** Some sensory needs in everyday life (autistic, or sensory needs recorded). */
+  sensory: (p) => !!p.health && (presentConditions(p.health).some((c) => c.conditionId === 'autism' && diagnosisFor(c, p.health)) || !!p.health.supports.needs.sensory?.self),
+  /** A care decision is waiting for the player. */
+  decisionWaiting: (p) => !!p.health && p.health.proposals.some((x) => x.status === 'open'),
 };
 
 /** A price for display. */

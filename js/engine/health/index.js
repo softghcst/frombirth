@@ -133,14 +133,33 @@ export function heirHealth(next, heirNpc) {
     healthOf(p);
     p.genome = heirNpc.genome?.v ? heirNpc.genome : undefined;
     for (const c of heirNpc.health?.conds ?? []) {
-      const rec = startCondition(c.id, { onsetAge: c.age, onsetWk: (p.birthYear + c.age) * WEEKS, severity: 35, source: 'carried', note: 'From before you took up this life.' }, p);
-      if (c.diagnosed && rec) {
+      const later = c.age > p.age; // present from birth, not yet showing
+      const rec = startCondition(c.id, { onsetAge: later ? 0 : c.age, onsetWk: (p.birthYear + (later ? 0 : c.age)) * WEEKS, showsAge: later ? c.age : null, severity: 35, source: 'carried', note: 'From before you took up this life.' }, p);
+      if (c.diagnosed && !later && rec) {
         p.health.diagnoses.push({ id: `dx_h_${rec.id}`, conditionId: c.id, underlyingId: rec.id, status: 'active', wk: rec.onsetWk, providerId: null,
           name: CONDITION_BY_ID[c.id].name, certainty: 'recorded', history: [{ wk: rec.onsetWk, text: 'Diagnosed earlier in life. The details were not kept.' }] });
         rec.dx = 'diagnosed';
       }
     }
   } finally { store.state = keep; }
+}
+
+/**
+ * What in the player's care needs their attention, if anything: a decision a
+ * clinician is waiting on, or an appointment or session this week.
+ * @returns {{decision:boolean, short:string, text:string}|null}
+ */
+export function careWaiting(p = player()) {
+  const h = p.health;
+  if (!h) return null;
+  const open = h.proposals.find((x) => x.status === 'open');
+  if (open) {
+    const who = store.state.npcs[open.providerId];
+    return { decision: true, short: 'a care decision is waiting', text: `${clinicianName(who)} is waiting to hear what you would like to do about your treatment.` };
+  }
+  const w = now(p);
+  if (h.appointments.some((a) => a.status === 'booked' && a.wk <= w)) return { decision: false, short: 'an appointment this week', text: 'You have an appointment this week.' };
+  return null;
 }
 
 export { migrateHealth, legacySummary };

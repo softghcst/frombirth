@@ -16,6 +16,8 @@ import { meterHtml } from './meter.js';
 import { eventModal, outcomeModal, confirmModal } from './modals.js';
 import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
+import { openHealth } from './health/hub.js';
+import { careWaiting } from '../engine/health/index.js';
 
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
@@ -129,6 +131,10 @@ export function mountGame(app, hooks) {
   function renderPanel() {
     app.querySelectorAll('.tab-btn').forEach((b) =>
       b.classList.toggle('active', b.dataset.tab === activeTab));
+    // A dot on Self when care needs the player: a decision to make, or an appointment this week.
+    const waiting = player().alive ? careWaiting() : null;
+    const self = app.querySelector('.tab-btn[data-tab="self"]');
+    if (self) { self.classList.toggle('badge', !!waiting); self.setAttribute('aria-label', waiting ? `Self (${waiting.short})` : 'Self'); }
     const tab = TABS.find((t) => t.id === activeTab);
     panelEl.hidden = !tab;
     if (!tab) return;
@@ -178,6 +184,15 @@ export function mountGame(app, hooks) {
     render();
     await runPending();
     if (player().alive && player().legal.pending) await tabApi.justice();
+    await healthNotice();
+  }
+
+  /** After a year, a care decision that is waiting is put in front of the player, once. */
+  async function healthNotice() {
+    const w = player().alive ? careWaiting() : null;
+    if (!w?.decision || busy) return;
+    const go = await confirmModal({ title: 'Your care', body: w.text, yes: 'Open My Health', no: 'Later' });
+    if (go) openHealth(tabApi, { section: 'overview' });
   }
 
   yearBtn.addEventListener('click', nextYear);

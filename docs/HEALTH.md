@@ -154,6 +154,22 @@ conditions follow dominant, recessive, X-linked and mitochondrial patterns, with
 rare new variants. Genes follow biological parents only. A parent's diagnosis is
 never copied to a child, and predisposition never creates a diagnosis.
 
+### Health in everyday play
+
+A dot on the Self tab shows when care needs the player (a decision waiting, or
+an appointment this week), and after each year a waiting decision is put in
+front of the player with a link to My Health. Scenes follow the health record
+and only fire when they fit: seeking help for low mood or worry; school and
+university assessments; telling a partner about a diagnosis (or not); getting
+back on track after recovery; making sense of an ADHD diagnosis; a child of the
+player's beginning to show a difference present from birth, noticed and (if the
+parent chooses) assessed, with the result recorded on the child; supporting a
+partner through their own hard stretch without becoming their therapist; an
+inaccessible venue; a loud party for someone with sensory needs; a meeting with
+no interpreter, where asking is a real accommodation request; a disagreement
+where practised DBT skills open new responses; and a support-focused scene for
+hard stretches.
+
 ### Privacy
 
 Diagnoses, therapy, medication and care plans are private. The player can tell
