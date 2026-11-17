@@ -563,7 +563,7 @@ export function sealRecord(caseId) {
   r.sealed = true;
   r.sealedYear = store.state.year;
   k.note(player().id, 'sealed', `The record of ${(r.offense ?? '').toLowerCase()} was sealed.`, caseId);
-  const text = `${courtsFor(player().countryId).lower} sealed the record. Most employers will no longer see it, though the history itself is not erased.`;
+  const text = `The ${courtsFor(player().countryId).lower} sealed the record. Most employers will no longer see it, though the history itself is not erased.`;
   log(text, 'system', 'good');
   return result(true, text);
 }
