@@ -6,7 +6,10 @@ import { rng } from '../../rng.js';
 import { store, player } from '../../state.js';
 import { PLATFORMS, PLATFORM_BY_ID } from '../../data/digital.js';
 import { mortalityChance } from '../death.js';
-import { world, newId, charOf, LIMITS, referenced } from './core.js';
+import { makeNpc } from '../npcFactory.js';
+import { COUNTRIES } from '../../data/countries.js';
+import { world, newId, charOf, LIMITS, referenced, recordEvent } from './core.js';
+const isPlayerId = (id) => store.state.player.id === id;
 import { platformStatus, isOpen, platformActivity } from './tech.js';
 import { accountsOf, activeAccountsOf, accountOn, makeAccount, follow, handleTaken, cleanHandle, followerCount } from './accounts.js';
 import { npcUses, lean } from './messaging.js';
@@ -94,10 +97,54 @@ function ageOffList() {
   }
 }
 
+/**
+ * Public figures on a platform: a handful of well-known creators, real people in the world, created once
+ * per platform the player uses. Following one is following a stranger, not making a friend.
+ */
+export function publicFigures(platformId) {
+  const d = world();
+  d.figures ??= {};
+  const pl = PLATFORM_BY_ID[platformId];
+  if (!pl || pl.audience !== 'followers' || !isOpen(platformStatus(platformId))) return [];
+  if (!d.figures[platformId]) {
+    d.figures[platformId] = [];
+    const topics = ['music', 'cooking', 'gaming', 'education', 'sports', 'fashion', 'travel', 'comedy'].filter((t) => t !== 'comedy');
+    for (let i = 0; i < 3; i++) {
+      const topic = topics[(i * 3 + platformId.length) % topics.length];
+      const n = makeNpc({ role: 'contact', countryId: rng.pick(Object.keys(COUNTRIES)), age: rng.int(22, 45), relationship: 30 });
+      n.flags.digitalOnly = true; n.flags.creator = topic; n.flags.publicFigure = true; n.flags.interest = topic;
+      if (n.bornIn !== store.state.player.countryId) n.flags.abroad = n.bornIn;
+      store.state.npcs[n.id] = n;
+      const acc = makeAccount(n.id, platformId, handleFor(n, platformId), { visibility: 'public', interests: [topic], audience: rng.int(200000, 3000000) });
+      acc.creator = { pathway: topic, stage: 'public', since: Math.max(pl.launch, store.state.year - rng.int(2, 8)), monetized: true, stageHistory: [] };
+      d.figures[platformId].push(acc.id);
+    }
+  }
+  return d.figures[platformId].map((id) => d.accounts[id]).filter((a) => a && a.status === 'active');
+}
+
+/** Now and then, a well-known creator posts something: their own work, never news about anyone the player knows. */
+function figuresPost() {
+  for (const ids of Object.values(world().figures ?? {})) {
+    for (const id of ids) {
+      const acc = world().accounts[id];
+      if (!acc || acc.status !== 'active' || !rng.chance(0.5)) continue;
+      const post = { id: newId('post'), accountId: acc.id, authorId: acc.ownerId, platformId: acc.platformId, year: store.state.year, age: charOf(acc.ownerId).age,
+        format: 'short_video', topic: acc.creator.pathway, text: rng.pick(['New video is up.', 'Thank you for a wonderful year.', 'Behind the scenes of the latest one.', 'Answering your questions.']),
+        audience: 'public', source: null, aboutIds: [], quality: 0.8, comments: [], removed: null, outcome: 'normal', resolvedYear: store.state.year,
+        metrics: { views: Math.round(acc.audience * rng.around(0.2, 0.05)), likes: Math.round(acc.audience * rng.around(0.03, 0.01)), comments: Math.round(acc.audience * 0.002), shares: 0, saves: 0, followerDelta: 0, named: 0 } };
+      world().posts[post.id] = post;
+      acc.postIds.push(post.id);
+      if (acc.postIds.length > 20) { const old = acc.postIds.shift(); delete world().posts[old]; }
+    }
+  }
+}
+
 /** The year in other people's digital lives. */
 export function tickNpcDigital() {
   const p = player();
   ageOffList();
+  figuresPost();
   const people = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n && n.role !== 'pet');
   for (const n of people) {
     if (!n.alive) {
@@ -124,6 +171,28 @@ export function tickNpcDigital() {
       const acc = activeAccountsOf(n.id).find((a) => ['personal'].includes(PLATFORM_BY_ID[a.platformId].type));
       const sharer = lean(n.id, 'sharer') < 0.7;
       if (acc && sharer) for (const h of (n.life?.history ?? []).filter((x) => x.year === store.state.year && SHAREABLE.test(x.text))) shareNews(n, acc, h);
+    }
+    // A few gifted people start making things for an audience of their own.
+    const gift = ['music', 'singing', 'acting', 'dance', 'sports'].find((k) => (n.talents?.[k] ?? 0) >= 70);
+    const stage = activeAccountsOf(n.id).find((a) => PLATFORM_BY_ID[a.platformId].audience === 'followers' && PLATFORM_BY_ID[a.platformId].privacy.includes('public'));
+    if (tier === 'detailed' && gift && stage && !stage.creator && n.age >= 15 && rng.chance(0.06)) {
+      stage.creator = { pathway: gift, stage: 'hobbyist', since: store.state.year, monetized: false, stageHistory: [{ year: store.state.year, stage: 'hobbyist' }] };
+      stage.visibility = 'public';
+      if (n.life) n.life.history.push({ age: n.age, year: store.state.year, text: `started sharing ${gift} videos online` });
+    }
+    if (stage?.creator && !isPlayerId(n.id)) stage.audience = Math.round(stage.audience * rng.around(1.25, 0.2) + rng.int(5, 60) * ((n.talents?.[stage.creator.pathway] ?? 50) / 50));
+    // People with a hobby find others who share it.
+    const hobby = n.flags?.interest ?? n.life?.hobby;
+    if (tier !== 'aggregate' && hobby && n.age >= 13 && rng.chance(0.05)) {
+      const c = Object.values(world().communities).find((x) => x.topic === hobby && isOpen(platformStatus(x.platformId)) && !x.place && !x.school);
+      if (c && accountOn(n.id, c.platformId) && !world().memberships.some((mm) => mm.communityId === c.id && mm.charId === n.id && !mm.leftYear)) {
+        world().memberships.push({ id: newId('mem'), communityId: c.id, charId: n.id, sinceYear: store.state.year, role: 'member', posts: 0, standing: 10, leftYear: null });
+      }
+    }
+    // An online friend who ends up in the player's line of work: the same person, now a colleague in the field.
+    if (n.flags?.metOnline && n.life?.job?.careerId && n.life.job.careerId === p.career?.careerId && !n.flags.colleague) {
+      n.flags.colleague = store.state.year;
+      recordEvent({ kind: 'online_friend_colleague', charIds: [p.id, n.id], ref: { type: 'npc', id: n.id }, summary: `${n.firstName}, whom you met online, now works in the same field as you. Small world.`, visibility: 'family', once: `colleague_${n.id}` });
     }
     // Some people simply stop.
     for (const acc of activeAccountsOf(n.id)) {

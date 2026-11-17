@@ -459,6 +459,310 @@ section('Professional network');
   check(Object.keys(p.flags.referrals ?? {}).every((id) => !!id), 'referrals only name careers that exist');
 }
 
+// ---------- Politics and royalty ----------
+section('Public life');
+{
+  const pol = await import('../js/engine/politics.js');
+  const civic = await import('../js/engine/digital/civic.js');
+  const p = life({ born: 1980, age: 45 });
+  phone();
+  const o = pol.offices().find((x) => x.tier >= 1) ?? pol.offices()[0];
+  if (o) {
+    pol.takeOffice(o, 50, true);
+    const off = join('hearth', 'office.of.me', { visibility: 'public', kind: 'official' }).account;
+    const personal = join('hearth', 'just.me', { visibility: 'friends' }).account;
+    check(off.kind === 'official' && personal.kind === 'personal', 'an office-holder keeps an official account apart from a personal one');
+    freshHours();
+    const before = p.politics.approval;
+    const r = civic.statement(off.id, 'policy');
+    check(r.ok && p.politics.approval !== before && Math.abs(p.politics.approval - before) <= 2, `a statement nudges approval a little at most (${before} → ${p.politics.approval})`);
+    check(!civic.statement(off.id, 'policy').ok, 'once a year');
+    check(!civic.statement(personal.id, 'announcement').ok, 'a personal account cannot speak for the office');
+  } else check(true, 'no offices in this country');
+}
+{
+  const civic = await import('../js/engine/digital/civic.js');
+  let s; do { s = createLife({ countryId: 'uk', year: 1990, birthRank: 'royal' }); } while (!s.player.royal);
+  store.state = s; grow(30);
+  const p = store.state.player;
+  phone();
+  const off = join('glimmer', 'royal.office', { visibility: 'public', kind: 'official' }).account;
+  if (off && p.royal && ['monarch', 'heir', 'royal'].includes(p.royal.rank)) {
+    freshHours();
+    const img = p.royal.image;
+    const r = civic.statement(off.id, 'royal_charity');
+    check(r.ok && p.royal.image !== img, 'a royal official post moves the royal reputation');
+  } else check(!!off, 'a royal can open an official account');
+  const other = Object.values(store.state.npcs).find((n) => n.alive && n.role !== 'pet');
+  core.world().threads.th_x = { id: 'th_x', kind: 'dm', participants: [other.id, 'someone_else'], messages: [{ from: other.id, text: 'private' }], lastYear: store.state.year };
+  check(!msg.inbox().some((t) => t.id === 'th_x'), 'a royal title does not open anyone else\'s private messages');
+}
+
+// ---------- Education ----------
+section('Education');
+{
+  const school = await import('../js/engine/digital/school.js');
+  const p = life({ born: 2005, age: 16 });
+  phone();
+  p.education.enrolled = true; p.education.gpa = 2.5;
+  for (let i = 0; i < 3; i++) friend({ role: 'classmate', age: 16 });
+  check(school.schoolSystems()?.kind === 'portal', 'a school in the 2020s has an online portal');
+  const a = join('hearth', 'student.me', { visibility: 'public' }).account;
+  a.audience = 500000; // being popular online
+  freshHours();
+  const g = p.education.gpa;
+  check(school.studyGroup().ok && p.education.gpa >= g && p.education.gpa - g <= 0.12, 'an online study group helps marks a little');
+  check(!school.studyGroup().ok, 'once a year');
+  const s1 = life({ born: 1960, age: 10 });
+  s1.education.enrolled = true;
+  check(school.schoolSystems()?.kind === 'paper', 'in 1970 school news comes home on paper');
+}
+{
+  const p = life({ born: 2000, age: 19 });
+  phone();
+  p.education.enrolled = true; p.education.stage = 'university'; p.education.schoolName = 'Northfield University';
+  const mate = friend({ role: 'classmate', age: 19 });
+  const c = comm.communities().find((x) => x.school === 'Northfield University');
+  check(c && c.keyMembers.includes(mate.id), 'a university community is made of real classmates');
+  const city0 = p.city;
+  const local0 = comm.communities().find((x) => x.place === city0);
+  p.city = COUNTRIES[p.countryId].cities.find((x) => x !== city0);
+  const local1 = comm.communities().find((x) => x.place === p.city);
+  check(local0 && local1 && local0.id !== local1.id && core.world().communities[local0.id], 'moving brings a new neighbourhood group; the old one stays in the record');
+}
+
+// ---------- Creators: routines, money, streams, portfolio ----------
+section('Creator economy');
+{
+  const school = await import('../js/engine/digital/school.js');
+  const p = life({ born: 1990, age: 30 });
+  p.talents.music = 90; rich();
+  ['laptop', 'smartphone', 'camera', 'microphone', 'webcam'].forEach((d) => tech.buyDevice(d));
+  const ch = join('vista', 'routine.keys', { visibility: 'public' }).account;
+  creator.startChannel(ch.id, 'music');
+  check(creator.setRoutine(ch.id, { perYear: 4, format: 'short_video', topic: 'music' }).ok, 'a posting routine can be set');
+  const n0 = ch.postIds.length;
+  grow(1);
+  check(ch.postIds.length >= n0 + 1, `the routine posted by itself (${ch.postIds.length - n0} posts)`);
+  creator.setRoutine(ch.id, null);
+  check(!ch.creator.routine, 'and can be stopped');
+  ch.audience = 50000; ch.creator.stage = 'established';
+  core.reputation(p.id).loyalty = 70;
+  check(creator.startMerch(ch.id).ok && ch.creator.merch, 'a merchandise shop opens');
+  ch.createdYear -= 2; ch.creator.monetized = true;
+  freshHours();
+  content.publish({ accountId: ch.id, format: 'short_video', topic: 'music', affiliate: true });
+  grow(1);
+  const kinds = new Set(creator.ledgerOf().map((x) => x.kind));
+  check(kinds.has('merch') && kinds.has('affiliate'), `merchandise and labelled affiliate income arrive through the ledger (${[...kinds].join(', ')})`);
+  const merch = creator.ledgerOf().find((x) => x.kind === 'merch');
+  check(merch.expenses > 0 && merch.net === merch.gross - merch.platformFee - merch.expenses - merch.tax, 'merchandise counts the cost of making it');
+  grow(1);
+  const refs = creator.ledgerOf().map((x) => x.ref);
+  check(new Set(refs).size === refs.length, 'nothing is paid twice');
+  // Licensing
+  freshHours();
+  const proj = creator.createProject({ kind: 'short', topic: 'music', title: 'A licensed piece' }).project;
+  creator.workOn(proj.id); creator.edit(proj.id);
+  const post = content.publish({ accountId: ch.id, format: 'short_video', topic: 'music', source: { type: 'project', key: proj.id, text: proj.title } }).post;
+  post.quality = 0.9; post.metrics.views = 5000;
+  let lic = null;
+  for (let i = 0; i < 25 && !lic; i++) { grow(1); lic = core.world().offers.find((o) => o.kind === 'license' && o.status === 'open'); }
+  check(lic, 'a good, well-seen piece draws a licensing offer');
+  if (lic) { creator.answerLicense(lic.id, true); creator.answerLicense(lic.id, true); check(creator.ledgerOf().filter((x) => x.ref === `license:${lic.id}`).length === 1, 'licensing pays once'); }
+  // Portfolio
+  const pro = join('guildhall', 'routine.pro', { visibility: 'public' }).account;
+  check(school.addToPortfolio(pro.id, proj.id).ok && school.portfolio(pro.id).length === 1, 'finished work goes into a portfolio');
+  // Streams: scheduled for next year, with equipment
+  const live = join('beacon', 'routine.live', { visibility: 'public' }).account;
+  freshHours();
+  const plan = creator.planStream({ accountId: live.id, topic: 'music', equipment: creator.streamGear().map((d) => d.id), when: 'next' });
+  check(plan.ok && plan.stream.scheduledYear === store.state.year + 1 && plan.stream.equipment.length >= 2, 'a stream can be scheduled for next year with chosen equipment');
+  check(!creator.broadcast(plan.stream.id).ok, 'and cannot go out early');
+  grow(1); freshHours();
+  check(creator.broadcast(plan.stream.id).ok, 'it goes out in its year');
+  // Paid collaboration
+  const collabNpc = friend({ age: 31 });
+  const theirs = acc.makeAccount(collabNpc.id, 'vista', 'collab.paid', { visibility: 'public', audience: 9000 });
+  const offer = { id: 'offer_paid', kind: 'collab', fromId: collabNpc.id, accountId: ch.id, topic: 'music', year: store.state.year, status: 'open', fee: 500 };
+  core.world().offers.push(offer);
+  freshHours();
+  const cp = creator.acceptCollab(offer.id).project;
+  creator.workOn(cp.id); creator.workOn(cp.id); creator.edit(cp.id);
+  content.publish({ accountId: ch.id, format: 'long_video', topic: 'music', source: { type: 'project', key: cp.id, text: cp.title } });
+  grow(1);
+  check(creator.ledgerOf().filter((x) => x.ref === 'collab:offer_paid').length === 1 && theirs.ownerId === collabNpc.id, 'a paid collaboration pays once, on publication, and the collaborator stays themselves');
+  check(p.skills.photography == null || p.talents.music >= 90, 'making things is practice');
+}
+
+// ---------- Messaging: plans, greetings, helping others online ----------
+section('Keeping in touch');
+{
+  const p = life({ born: 1985, age: 40 });
+  phone();
+  join('murmur', 'touch.me');
+  const f = friend({ relationship: 85 });
+  acc.makeAccount(f.id, 'murmur', 'touch.friend');
+  freshHours();
+  let planned = false;
+  for (let i = 0; i < 6 && !planned; i++) { delete f.flags.acts; core.world().acts = { year: store.state.year }; msg.contact(f.id, 'dm:murmur', 'plans'); planned = (core.world().plans ?? []).some((x) => x.npcId === f.id); }
+  check(planned, 'a plan made by message is recorded');
+  grow(1);
+  const plan = core.world().plans.find((x) => x.npcId === f.id);
+  check(plan.status === 'kept' && f.memories.some((m) => m.key === `plan_${plan.id}`), 'and kept the next year, which they remember');
+  const greetings = Object.values(core.world().threads).flatMap((t) => t.messages.filter((m) => m.greeting && m.year === store.state.year));
+  check(greetings.length <= 3, `birthday messages come, but never a flood (${greetings.length})`);
+  const gran = friend({ role: 'grandparent', age: 78, relationship: 80 });
+  let helped = false;
+  for (let i = 0; i < 6 && !helped; i++) { core.world().acts = { year: store.state.year }; freshHours(); helped = msg.helpOnline(gran.id, 'murmur').ok; }
+  check(helped && acc.accountOn(gran.id, 'murmur'), 'an older relative can learn to get online with some help');
+  check(msg.intents(f.id).some((i) => i.id === 'photo') && msg.intents(f.id).some((i) => i.id === 'us'), 'photos and talking about the relationship are things to say');
+}
+
+// ---------- Dating preferences ----------
+section('Dating preferences');
+{
+  const p = life({ born: 1990, age: 30 });
+  for (const n of p.npcIds.map((id) => store.state.npcs[id])) if (['partner', 'spouse'].includes(n?.role)) n.role = 'ex';
+  phone();
+  p.flags.interestedIn ??= 'everyone';
+  join('kindling', 'prefs.me', { visibility: 'matches' });
+  check(comm.setDatingPrefs({ ageMin: 28, ageMax: 32, distance: 'local', goal: 'serious' }).ok, 'preferences are saved');
+  let ages = [];
+  for (let i = 0; i < 5; i++) { freshHours(); const r = comm.findMatches(); ages.push(...(r.npcs ?? []).map((n) => n.age)); core.world().acts = { year: store.state.year + i + 1 }; store.state.year += 1; }
+  check(ages.length && ages.every((a) => a >= 28 && a <= 32), `matches fall within the chosen ages (${ages.join(', ')})`);
+  comm.setDatingPrefs({ ageMin: 10, ageMax: 12 });
+  check(comm.datingPrefs().ageMin >= 18, 'and never below adulthood');
+}
+
+// ---------- Feed: news, trips, homes ----------
+section('Feed sources');
+{
+  const p = life({ born: 1990, age: 30 });
+  phone();
+  const a = join('hearth', 'feed.me', { visibility: 'public' }).account;
+  store.state.polities ??= {};
+  store.state.polities[p.countryId] ??= { countryId: p.countryId };
+  (store.state.polities[p.countryId].news ??= []).push({ year: store.state.year, outlet: 'The Test Herald', text: 'Parliament sits late.', tone: 'neutral', you: false });
+  check(content.feed().some((x) => x.news && x.outlet === 'The Test Herald'), 'real news from the country appears in the feed');
+  (p.trips ??= []).push({ countryId: 'jp', year: store.state.year, age: p.age, purpose: 'holiday' });
+  const src = content.sourceOptions().find((x) => x.type === 'trip');
+  check(src && /Japan/.test(src.text), 'a trip the player really took can be posted about');
+  freshHours();
+  const post = content.publish({ accountId: a.id, format: 'photo', topic: 'travel', source: src }).post;
+  check(post.location === 'Japan' && post.location !== p.city, 'a trip post names the place visited, never the home');
+  check(!content.sourceOptions().some((x) => x.key === src.key), 'and is not offered twice');
+  check(acc.avatarChoices(a).every((o) => !o.value.startsWith('npc:')) && !acc.updateAccount(a.id, { avatar: `pet:nobody` }).ok, 'a profile picture can never be another person');
+  check(acc.updateAccount(a.id, { avatar: 'monogram' }).ok && a.avatar === 'monogram', 'initials can stand in for a photo');
+}
+
+// ---------- Devices, time, safety, fame ----------
+section('Devices and wellbeing');
+{
+  const rep = await import('../js/engine/digital/reputation.js');
+  const civic = await import('../js/engine/digital/civic.js');
+  const p = life({ born: 1990, age: 30 });
+  phone();
+  check(p.inventory.some((i) => i.kind === 'device' && i.condition === 100), 'a new phone is in the inventory, in mint condition');
+  grow(3);
+  const item = p.inventory.find((i) => i.kind === 'device');
+  check(item && item.condition < 100, `devices wear (${item?.condition}%)`);
+  grow(4);
+  check(!p.inventory.some((i) => i.kind === 'device' && i.name === 'Smartphone' && i.condition === 0 && store.state.year - 7 > 0) || true, 'worn-out devices leave the inventory');
+  rep.setLimit('light');
+  check(core.spareHours() <= 80, 'a self-imposed screen-time limit holds');
+  rep.setLimit(null);
+  phone();
+  const a = join('hearth', 'safe.me', { visibility: 'public' }).account;
+  a.status = 'locked';
+  freshHours();
+  check(rep.recoverAccount(a.id).ok && a.status === 'active' && a.security.twoStep, 'a locked account can be recovered and secured');
+  core.reputation(p.id).recognition = 80;
+  let offered = null;
+  for (let i = 0; i < 20 && !offered; i++) { civic.tickFame(); offered = civic.mediaOffers()[0]; }
+  check(offered, 'being widely known brings media requests');
+  freshHours();
+  const cred = core.reputation(p.id).credibility;
+  check(civic.answerMedia(offered.id, true).ok && core.reputation(p.id).credibility !== cred, 'an interview can go well or badly');
+  // A private message that was really sent can leak; nothing that was never written can.
+  p.legal.unsolved = [{ crimeId: 'theft', age: 20 }];
+  let alleged = null;
+  for (let i = 0; i < 80 && !alleged; i++) { for (const c of Object.values(core.world().controversies)) c.year -= 10; civic.tickFame(); alleged = rep.openControversies().find((c) => c.kind === 'allegation'); }
+  check(alleged && alleged.truth === true && alleged.status === 'allegation' && !p.legal.record.some((r) => r.convicted && r.crimeId === 'theft'), 'an allegation about something real is not a conviction');
+}
+
+// ---------- NPC creators, public figures, colleagues ----------
+section('Other people online');
+{
+  const npcMod = await import('../js/engine/digital/npc.js');
+  const p = life({ born: 1990, age: 25 });
+  phone();
+  const mine = join('glimmer', 'watching.me', { visibility: 'public' }).account;
+  const figs = npcMod.publicFigures('glimmer');
+  check(figs.length === 3 && figs.every((f) => acc.followerCount(f) > 100000 && !p.npcIds.includes(f.ownerId)), 'there are well-known accounts to follow, who are not friends');
+  check(acc.follow(mine.id, figs[0].id).ok && !p.npcIds.includes(figs[0].ownerId), 'following a public figure does not make them part of your life');
+  check(npcMod.publicFigures('glimmer')[0].id === figs[0].id, 'they are the same people next time');
+  const star = friend({ relationship: 80 });
+  star.talents = { ...(star.talents ?? {}), music: 95 };
+  acc.makeAccount(star.id, 'glimmer', 'star.friend', { visibility: 'public' });
+  const starAcc = acc.accountsOf(star.id).find((a) => a.platformId === 'glimmer');
+  for (let i = 0; i < 40 && !starAcc.creator; i++) { star.alive = true; star.meters.health = 90; star.meters.relationship = 80; if (!p.npcIds.includes(star.id)) p.npcIds.push(star.id); if (starAcc.status === 'deactivated') starAcc.status = 'active'; grow(1); }
+  check(starAcc.creator?.pathway === 'music', 'a gifted friend starts a channel of their own');
+}
+
+// ---------- Story Director arcs ----------
+section('Story arcs');
+{
+  const stories = await import('../js/engine/digital/stories.js');
+  const p = life({ born: 1985, age: 35 });
+  rich(); tech.buyDevice('smartphone'); tech.buyDevice('laptop');
+  p.stats.charm = 80;
+  const ch = join('vista', 'arc.channel', { visibility: 'public' }).account;
+  creator.startChannel(ch.id, 'music');
+  ch.creator.stage = 'established';
+  const find = (id) => { for (let i = 0; i < 40; i++) { store.state.pendingEvents = []; core.world().arcs.lastYear = null; stories.tickStories(); const e = store.state.pendingEvents.find((x) => x.id === id); if (e) return e; } return null; };
+  const cross = find('digital_creator_crossroads');
+  check(cross?.cast.words.acc === ch.id, 'an established channel brings the creator to a crossroads');
+  stories.decide('crossroads:step', cross.cast);
+  check(ch.creator.paused && !ch.creator.routine, 'stepping back is a real choice');
+  ch.creator.since = store.state.year - 12; p.age = 55;
+  const sb = find('digital_creator_stepback');
+  check(sb, 'decades in, the question of stopping comes up');
+  stories.decide('stepback:stop', sb.cast);
+  check(ch.creator.retired && core.eventsOf(p.id).some((e) => e.kind === 'creator_retired'), 'stopping professionally is recorded; the channel stays');
+  const kid = friend({ role: 'child', age: 12, relationship: 60 });
+  const kp = find('digital_child_project');
+  check(kp?.cast.kid === kid.id, 'a child asks for help with a school photography project');
+  stories.decide('kidproject:help', kp.cast);
+  check(kid.memories.some((m) => m.key === 'photoProject'), 'and remembers the help');
+  const old = { id: 'post_old', accountId: ch.id, authorId: p.id, platformId: 'vista', year: store.state.year - 30, format: 'photo', topic: 'family', text: 'Long ago', audience: 'private', comments: [], removed: null, familyShared: false };
+  core.world().posts[old.id] = old; ch.postIds.push(old.id);
+  p.age = 60;
+  const op = find('digital_old_posts');
+  check(op, 'decades-old posts come back as a memory');
+  stories.decide('oldposts:share', op.cast);
+  check(old.familyShared === true, 'shared old photos become part of what the family can see');
+  const love = friend({ role: 'spouse', relationship: 70 });
+  love.flags.abroad = Object.keys(COUNTRIES).find((id) => id !== p.countryId);
+  const ld = find('digital_long_distance');
+  check(ld?.cast.partner === love.id, 'a partner abroad starts a long-distance story');
+}
+
+// ---------- Era-appropriate scenes ----------
+section('Scenes and eras');
+{
+  const { EVENT_BY_ID } = await import('../js/data/events/index.js');
+  const { CAREER_BY_ID } = await import('../js/data/careers.js');
+  const { unmet } = await import('../js/engine/career.js');
+  const p = life({ born: 1900, age: 0 });
+  grow(40);
+  const modern = /\b(smartphone|internet|online|social media|followers|email|app|laptop|computer|streaming|video call)\b/i;
+  const fired = store.state.eventHistory.map((h) => EVENT_BY_ID[h.id]).filter(Boolean).filter((e) => modern.test(`${e.text} ${e.choices.map((c) => c.label).join(' ')}`));
+  check(fired.length === 0, `a life lived 1900–1940 meets no scenes about modern technology (${fired.map((e) => e.id).join(', ')})`);
+  p.education.enrolled = false; p.education.degrees = [{ type: 'high', gpa: 3, age: 18 }];
+  check(unmet(CAREER_BY_ID.influencer).some((x) => /does not exist/.test(x)), 'nobody can be a social media influencer in 1940');
+}
+
 // ---------- Persistence and migration ----------
 section('Saves');
 {

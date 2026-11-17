@@ -21,9 +21,12 @@ import * as creator from '../engine/digital/creator.js';
 import * as rep from '../engine/digital/reputation.js';
 import * as legacy from '../engine/digital/legacy.js';
 import * as pro from '../engine/digital/professional.js';
+import * as civic from '../engine/digital/civic.js';
+import * as school from '../engine/digital/school.js';
+import { publicFigures } from '../engine/digital/npc.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 import { syncCompat } from '../engine/digital/tick.js';
-import { avatarSvg, dressOfPlayer } from './avatar.js';
+import { avatarSvg, dressOfPlayer, petGlyph } from './avatar.js';
 import { meterHtml } from './meter.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from './modals.js';
 import { openNpc } from './tabs/people.js';
@@ -31,9 +34,9 @@ import { openNpc } from './tabs/people.js';
 const SECTIONS = [
   ['accounts', 'My Accounts'], ['feed', 'Feed'], ['messages', 'Messages'], ['people', 'Friends & Connections'],
   ['communities', 'Communities'], ['create', 'Create Content'], ['studio', 'Creator Studio'], ['reputation', 'Online Reputation'],
-  ['memories', 'Digital Memories'], ['history', 'Digital History'],
+  ['memories', 'Digital Memories'], ['history', 'Digital History'], ['archive', 'Family Archive'],
 ];
-const OFFLINE = [['keep', 'Keeping in Touch'], ['messages', 'Letters & Calls'], ['memories', 'Digital Memories'], ['history', 'Digital History']];
+const OFFLINE = [['keep', 'Keeping in Touch'], ['messages', 'Letters & Calls'], ['memories', 'Digital Memories'], ['history', 'Digital History'], ['archive', 'Family Archive']];
 const VIS = { public: 'Public', friends: 'Friends only', private: 'Private', connections: 'Connections', members: 'Members', matches: 'Matches', unlisted: 'Unlisted', followers: 'Followers' };
 const STUDIO = [['overview', 'Overview'], ['library', 'Content Library'], ['analytics', 'Analytics'], ['audience', 'Audience'], ['collabs', 'Collaborations'], ['deals', 'Sponsorships'], ['live', 'Livestreams'], ['revenue', 'Revenue'], ['story', 'Creator History']];
 
@@ -61,6 +64,16 @@ function face(charId, size = '', o = {}) {
   // Inside something that is itself a button, a portrait is a picture; the page it opens has the link.
   if (o.inert) return `<div class="avatar dl-face ${size} ${c.alive === false ? 'gone' : ''}" aria-hidden="true">${svg}</div>`;
   return `<button class="avatar dl-face ${size} ${c.alive === false ? 'gone' : ''}" data-person="${esc(c.id)}" aria-label="Open ${esc(c.firstName)}'s profile">${svg}</button>`;
+}
+/** An account's profile picture: the owner's portrait, a pet, initials or a symbol. It always opens the real person. */
+function accountFace(a, size = '', o = {}) {
+  const v = a.avatar ?? 'portrait';
+  if (v === 'portrait') return face(a.ownerId, size, o);
+  const c = core.charOf(a.ownerId);
+  const pet = v.startsWith('pet:') ? core.charOf(v.slice(4)) : null;
+  const inner = pet ? petGlyph(pet.species) : v.startsWith('symbol:') ? esc(v.slice(7)) : esc(`${c?.firstName?.[0] ?? ''}${c?.lastName?.[0] ?? ''}`);
+  if (o.inert || !c) return `<div class="avatar dl-face dl-mono ${size}" aria-hidden="true">${inner}</div>`;
+  return `<button class="avatar dl-face dl-mono ${size}" data-person="${esc(c.id)}" aria-label="Open ${esc(c.firstName)}'s profile">${inner}</button>`;
 }
 const who = (charId) => { const c = core.charOf(charId); return c ? `<button class="dl-name" data-person="${esc(c.id)}">${esc(c.firstName)} ${esc(c.lastName ?? '')}</button>` : '<span class="muted">Someone</span>'; };
 
@@ -138,7 +151,7 @@ function accountCard(a) {
   const p = pl(a.platformId);
   const owner = core.charOf(a.ownerId);
   return `<button class="dl-card dl-acc" style="--pl:${p.accent}" data-open-account="${a.id}">
-    <div class="row" style="border:0;padding:0;background:none">${face(a.ownerId, 'sm', { inert: true })}
+    <div class="row" style="border:0;padding:0;background:none">${accountFace(a, 'sm', { inert: true })}
       <div class="main"><strong>@${esc(a.handle)}</strong><small>${esc(p.name)} · ${esc(owner?.firstName ?? '')}${a.creator ? ` · ${esc(CREATOR_STAGES.find((s) => s.id === a.creator.stage).name)}` : ''}</small></div>
       <div class="side">${a.status === 'active' ? visChip(a.visibility) : `<span class="dl-status">${esc(a.status)}</span>`}</div></div>
     <div class="dl-stats"><div><strong>${n0(acc.followerCount(a))}</strong><small>followers</small></div><div><strong>${n0(a.following.length)}</strong><small>following</small></div><div><strong>${n0(a.postIds.filter((id) => !core.world().posts[id]?.removed).length)}</strong><small>posts</small></div></div>
@@ -152,6 +165,10 @@ function metrics(x) {
 }
 
 function postCard(x, o = {}) {
+  if (x.news) {
+    return `<article class="dl-card dl-post dl-news"><div class="dl-post-head"><div class="avatar dl-crowd sm" aria-hidden="true">📰</div>
+      <div><strong>${esc(x.outlet)}</strong><small>${x.year} · news${x.you ? ' · about you' : ''}</small></div></div><p>${esc(x.text)}</p></article>`;
+  }
   if (x.background) {
     return `<article class="dl-card dl-post dl-bg"><div class="dl-post-head"><div class="avatar dl-crowd sm" aria-hidden="true">#</div>
       <div><strong>Around ${esc(pl(x.platformId).name)}</strong><small>${x.year} · not about anyone you know</small></div></div><p>${esc(x.text)}</p>
@@ -162,7 +179,7 @@ function postCard(x, o = {}) {
     : x.source?.type === 'milestone' ? '<span class="dl-tag">Milestone</span>' : x.source?.type === 'project' ? '<span class="dl-tag">Project</span>' : '';
   const outcome = { viral: 'Went viral', reach: 'Reached new people', disagreement: 'Sparked an argument', quiet: 'Quiet' }[x.outcome];
   return `<article class="dl-card dl-post" style="--pl:${pl(x.platformId).accent}">
-    <div class="dl-post-head">${face(x.authorId, 'sm')}<div class="dl-post-who">${who(x.authorId)}<small>@${esc(a?.handle ?? '')} · ${esc(pl(x.platformId).name)} · ${x.year}${x.format !== 'text' ? ` · ${esc(FORMATS[x.format].name.toLowerCase())}` : ''}</small></div>${visChip(x.audience)}</div>
+    <div class="dl-post-head">${a ? accountFace(a, 'sm') : face(x.authorId, 'sm')}<div class="dl-post-who">${who(x.authorId)}<small>@${esc(a?.handle ?? '')} · ${esc(pl(x.platformId).name)} · ${x.year}${x.format !== 'text' ? ` · ${esc(FORMATS[x.format].name.toLowerCase())}` : ''}</small></div>${visChip(x.audience)}</div>
     <p>${esc(x.text)}</p>
     <div class="chips">${tag}${outcome ? `<span class="dl-tag">${esc(outcome)}</span>` : ''}${x.contractId ? `<span class="dl-tag">${x.disclosed ? 'Paid partnership' : 'Sponsored (not labelled)'}</span>` : ''}${x.location ? `<span class="dl-tag">📍 ${esc(x.location)}</span>` : ''}</div>
     ${metrics(x)}
@@ -197,14 +214,37 @@ function pageAccounts() {
       <div class="kv"><span>Internet</span><span>${web ? esc(web.via === 'own' ? `your ${web.name.toLowerCase()}` : web.name) : 'No way online'}</span></div>
       <div class="kv"><span>Photos and video</span><span>${phone ? esc(phone.via === 'own' ? `your ${phone.name.toLowerCase()}` : phone.name) : 'Nothing to film with'}</span></div>
       <div class="kv"><span>Spare time left this year</span><span>${core.hoursLeft()} hours</span></div>
-      ${own.length ? `<div class="kv"><span>Your devices</span><span>${own.map((d) => esc(DEVICE_BY_ID[d.type].name)).join(', ')}</span></div>` : ''}
+      ${own.map((d) => `<div class="kv"><span>${esc(DEVICE_BY_ID[d.type].name)}</span><span>bought ${d.boughtYear} · condition ${tech.condition(d)}%${tech.condition(d) < 20 ? ' · wearing out' : ''}</span></div>`).join('')}
       <div class="btn-stack" style="margin-top:10px">
         ${p.flags.livesWithParents && p.age >= 9 && !own.some((d) => ['smartphone', 'mobile_phone'].includes(d.type)) && (tech.techAvailable('mobile') || tech.techAvailable('smartphone')) ? '<button class="btn" data-do="askPhone">Ask your parents for a phone</button>' : ''}
         ${sale.length ? '<button class="btn" data-do="buyDevice">Buy a device</button>' : ''}
       </div></div>
+    ${publicLifeCard()}
+    ${schoolCard()}
     <div class="section-label">Your accounts</div>
     ${mine.length ? mine.map(accountCard).join('') : '<p class="empty">You are not on any platform. That is a perfectly good way to live.</p>'}
     <button class="btn primary" data-do="newAccount" style="margin-top:10px">Open an account</button>`;
+}
+
+/** For office-holders, candidates and royals: speaking through an official account. */
+function publicLifeCard() {
+  const opts = civic.statementOptions();
+  if (!opts.length) return '';
+  const off = civic.officialAccounts();
+  return `<div class="card"><h3>Public life</h3>
+    <p class="muted" style="margin-bottom:8px">Official accounts speak for your ${player().royal ? 'royal office' : 'office'}; your personal accounts stay personal. Posting can make you more visible. It never decides an election.</p>
+    ${off.length ? `<div class="dl-btns">${opts.map((o) => `<button class="btn small" data-stmt="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' ✓' : ''}</button>`).join('')}</div>`
+    : '<p class="muted">Open an account and choose "official" to speak publicly.</p>'}</div>`;
+}
+
+/** School and study online, for students. */
+function schoolCard() {
+  const sys = school.schoolSystems();
+  if (!sys) return '';
+  return `<div class="card"><h3>School online</h3><p class="muted" style="margin-bottom:8px">${esc(sys.text)}</p>
+    ${sys.kind === 'portal' ? `<div class="kv"><span>Marks</span><span>${sys.gpa.toFixed(2)}</span></div><div class="kv"><span>Absences</span><span>${sys.absences}</span></div>` : ''}
+    <div class="kv"><span>Digital skills</span><span>${school.literacyOf()}/100</span></div>
+    ${sys.kind !== 'paper' ? '<div class="btn-stack" style="margin-top:8px"><button class="btn" data-do="studyGroup">Study with classmates online (12 h)</button></div>' : ''}</div>`;
 }
 
 function pageAccount(id) {
@@ -215,10 +255,11 @@ function pageAccount(id) {
   const p = pl(a.platformId);
   return `
     <div class="dl-card dl-profile" style="--pl:${p.accent}">
-      <div class="row" style="border:0;padding:0;background:none">${face(a.ownerId, 'lg')}
+      <div class="row" style="border:0;padding:0;background:none">${accountFace(a, 'lg')}
         <div class="main"><strong>${esc(a.displayName)}</strong><small>@${esc(a.handle)} · ${esc(p.name)} · since ${a.createdYear}</small>
         ${a.handles.length > 1 ? `<small>Formerly ${a.handles.slice(0, -1).map((h) => `@${esc(h.handle)}`).join(', ')}</small>` : ''}</div></div>
       ${a.bio ? `<p class="dl-bio">${esc(a.bio)}</p>` : ''}
+      ${(a.links ?? []).map(acc.account).filter((l) => l && l.status !== 'deleted' && (mine || l.visibility === 'public')).map((l) => `<button class="btn small" data-open-account="${l.id}">Also on ${esc(pl(l.platformId).name)}: @${esc(l.handle)}</button>`).join(' ')}
       <div class="dl-stats"><div><strong>${n0(acc.followerCount(a))}</strong><small>followers</small></div><div><strong>${n0(a.following.length)}</strong><small>following</small></div><div><strong>${n0(posts.length)}</strong><small>posts</small></div></div>
       <div class="chips">${visChip(a.visibility)}<span class="dl-tag">${esc(a.status)}</span>${a.creator ? `<span class="dl-tag">${esc(CREATOR_STAGES.find((s) => s.id === a.creator.stage).name)}</span>` : ''}${a.kind === 'official' ? '<span class="dl-tag">Official account</span>' : ''}${a.interests.map((t) => `<span class="dl-tag">${esc(TOPIC_BY_ID[t]?.name ?? t)}</span>`).join('')}</div>
       ${a.legacyImport ? `<p class="muted" style="margin-top:8px">Brought over from your old account: ${n0(a.legacyImport.followers)} followers. Its old posts were not kept.</p>` : ''}
@@ -229,10 +270,12 @@ function pageAccount(id) {
         <button class="btn" data-acc="security" data-id="${a.id}">${a.security?.twoStep ? 'Account protected ✓' : 'Protect this account'}</button>
         <button class="btn" data-acc="deactivate" data-id="${a.id}">Deactivate</button>` : ''}
       ${a.status === 'deactivated' ? `<button class="btn" data-acc="reactivate" data-id="${a.id}">Reactivate</button>` : ''}
+      ${a.status === 'locked' ? `<button class="btn primary" data-acc="recover" data-id="${a.id}">Recover your account</button>` : ''}
       ${['active', 'deactivated'].includes(a.status) ? `<button class="btn danger" data-acc="delete" data-id="${a.id}">Delete account</button>` : ''}
     </div>
     ${a.requests.length ? `<div class="section-label">Follow requests</div>${a.requests.map((r) => { const o = acc.account(r); return o ? `<div class="row">${face(o.ownerId)}<div class="main"><strong>@${esc(o.handle)}</strong><small>${esc(core.nameOf(o.ownerId))}</small></div><div class="side dl-btns"><button class="btn small" data-req="yes" data-id="${a.id}" data-from="${o.id}">Accept</button><button class="btn small" data-req="no" data-id="${a.id}" data-from="${o.id}">Decline</button></div></div>` : ''; }).join('')}` : ''}` : ''}
     ${p.type === 'professional' ? proCard(a, mine) : ''}
+    ${school.portfolio(a.id).length ? `<div class="card"><h3>Portfolio</h3>${school.portfolio(a.id).map((x) => `<div class="kv"><span>${esc(x.title)}</span><span>${x.postId && core.world().posts[x.postId] && acc.canSee(player().id, core.world().posts[x.postId]) ? `<button class="btn small" data-open-post="${x.postId}">See it</button>` : esc(x.status)}</span></div>`).join('')}</div>` : ''}
     <div class="section-label">Posts</div>
     ${posts.length ? posts.slice(0, 40).map((x) => postCard(x)).join('') : '<p class="empty">No posts you can see.</p>'}`;
 }
@@ -311,6 +354,7 @@ function pageThread(id) {
   return `<div class="dl-card"><div class="dl-members">${t.participants.map((x) => face(x, 'sm')).join('')}</div>
       <strong>${esc(t.kind === 'group' ? t.name : `${other?.firstName ?? 'Someone'} ${other?.lastName ?? ''}`)}</strong>
       <small class="muted"> · ${t.kind === 'group' ? `${esc(pl(t.platformId).name)} group${t.admins?.includes(p.id) ? ' · you are the admin' : ''}` : other && p.npcIds.includes(other.id) ? esc(roleLabel(other)) : ''}</small>
+      ${(core.world().plans ?? []).filter((x) => t.kind === 'dm' && x.npcId === other?.id).slice(-2).map((x) => `<div class="dl-memory-strip"><small>Plan made ${x.made}: ${esc({ pending: 'still to happen', kept: 'kept', fell_through: 'fell through' }[x.status])}</small></div>`).join('')}
       ${memories.length ? `<div class="dl-memory-strip">${memories.map((e) => `<small>${e.year}: ${esc(e.summary)}</small>`).join('')}</div>` : ''}</div>
     <div class="dl-chat" role="log" aria-label="Messages">${t.messages.map((m) => `<div class="dl-msg ${core.isPlayer(m.from) ? 'me' : ''}">${core.isPlayer(m.from) ? '' : face(m.from, 'xs')}<div><small>${core.isPlayer(m.from) ? 'You' : esc(core.firstOf(m.from))} · ${m.year} · ${esc(channelName(m.channel))}</small><p>${esc(m.text)}</p></div></div>`).join('') || '<p class="empty">No messages yet.</p>'}</div>
     <div class="btn-stack">
@@ -338,7 +382,26 @@ function pagePeople() {
     <div class="section-label">Your connections</div>
     ${conns.length ? conns.slice(0, 60).map(({ me, other }) => `<div class="row">${face(other.ownerId)}<div class="main"><strong>@${esc(other.handle)}</strong><small>${esc(core.nameOf(other.ownerId))} · ${esc(pl(other.platformId).name)} · ${esc(acc.connectionLabel[acc.connection(me, other)])}</small></div><div class="side dl-btns">${me.following.includes(other.id) ? `<button class="btn small" data-unfollow="${other.id}" data-from="${me.id}">Unfollow</button>` : `<button class="btn small" data-follow="${other.id}" data-from="${me.id}">Follow back</button>`}<button class="btn small" data-mute="${other.id}" data-from="${me.id}">${me.muted.includes(other.id) ? 'Unmute' : 'Mute'}</button></div></div>`).join('') : '<p class="empty">No connections yet.</p>'}
     ${blocked.length ? `<div class="section-label">Blocked</div>${blocked.map(({ me, other }) => `<div class="row"><div class="main"><strong>@${esc(other.handle)}</strong><small>${esc(pl(other.platformId).name)}</small></div><div class="side"><button class="btn small" data-unblock="${other.id}" data-from="${me.id}">Unblock</button></div></div>`).join('')}` : ''}
+    ${helpCard()}
+    ${discoverCard()}
     ${datingOpen ? datingCard() : ''}`;
+}
+
+/** Relatives and friends who are not online yet, whom the player could help get set up. */
+function helpCard() {
+  const p = player();
+  const mine = acc.activeAccountsOf(p.id).filter((a) => ['messaging', 'personal'].includes(pl(a.platformId).type));
+  if (!mine.length) return '';
+  const target = mine.find((a) => pl(a.platformId).type === 'messaging') ?? mine[0];
+  const people = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role !== 'pet' && n.age >= 13 && !acc.accountOn(n.id, target.platformId) && n.meters.relationship >= 40).slice(0, 6);
+  return people.length ? `<div class="section-label">Not on ${esc(pl(target.platformId).name)} yet</div>${people.map((n) => `<div class="row">${face(n.id)}<div class="main"><strong>${esc(n.firstName)} ${esc(n.lastName)}</strong><small>${esc(roleLabel(n))}, ${n.age}</small></div><div class="side"><button class="btn small" data-help="${n.id}" data-pl="${target.platformId}">Help them get online</button></div></div>`).join('')}` : '';
+}
+
+/** Well-known creators to follow: following them is following strangers, not making friends. */
+function discoverCard() {
+  const mine = acc.activeAccountsOf(player().id).filter((a) => pl(a.platformId).audience === 'followers');
+  const rows = mine.flatMap((m) => publicFigures(m.platformId).filter((f) => !m.following.includes(f.id)).map((f) => ({ m, f })));
+  return rows.length ? `<div class="section-label">Well-known accounts</div>${rows.slice(0, 6).map(({ m, f }) => `<div class="row">${accountFace(f)}<div class="main"><strong>@${esc(f.handle)}</strong><small>${esc(TOPIC_BY_ID[f.creator?.pathway]?.name ?? '')} · ${esc(pl(f.platformId).name)} · ${n0(acc.followerCount(f))} followers</small></div><div class="side"><button class="btn small" data-follow="${f.id}" data-from="${m.id}">Follow</button></div></div>`).join('')}` : '';
 }
 
 function datingCard() {
@@ -348,7 +411,7 @@ function datingCard() {
   const matches = comm.openMatches();
   return `<div class="card" style="margin-top:14px"><h3>Online dating on ${esc(PLATFORM_BY_ID.kindling.name)}</h3>
     <p class="muted" style="margin-bottom:10px">Adults only. Matching is a start, not a relationship: you talk, and only then decide whether to meet.</p>
-    ${!has ? '<button class="btn" data-do="datingProfile">Make a dating profile</button>' : blocks.length ? `<p class="muted">${esc(blocks[0])}</p>` : '<button class="btn" data-do="findMatches">See new matches</button>'}
+    ${!has ? '<button class="btn" data-do="datingProfile">Make a dating profile</button>' : blocks.length ? `<p class="muted">${esc(blocks[0])}</p>` : `<div class="dl-btns"><button class="btn small primary" data-do="findMatches">See new matches</button><button class="btn small" data-do="datingPrefs">What you are looking for</button></div>`}
     ${matches.map((m) => { const n = core.charOf(m.npcId); return `<div class="row">${face(n.id)}<div class="main"><strong>${esc(n.firstName)}, ${n.age}</strong><small>${m.stage === 'talking' ? `talking · ${m.chats} conversations` : 'new match'} · likes ${esc(TOPIC_BY_ID[n.flags.interest]?.name.toLowerCase() ?? 'many things')} · ${Math.round(m.compat * 100)}% on paper</small></div><div class="side dl-btns"><button class="btn small" data-match="chat" data-id="${m.id}">Message</button>${m.stage === 'talking' && m.chats >= 2 ? `<button class="btn small" data-match="meet" data-id="${m.id}">Meet</button>` : ''}<button class="btn small" data-match="unmatch" data-id="${m.id}">Unmatch</button></div></div>`; }).join('')}
   </div>`;
 }
@@ -435,6 +498,8 @@ function studioOverview(a) {
       <button class="btn" data-studio="live">Plan a livestream</button>
       ${a.creator.monetized ? '<p class="muted">Monetised: the platform shares ad money with you.</p>' : `<button class="btn" data-chan="monetize" data-id="${a.id}" ${why.length ? 'disabled' : ''}>Turn on payments${why.length ? ` — ${esc(why[0])}` : ''}</button>`}
       ${['established', 'public'].includes(a.creator.stage) && p.career.careerId !== 'influencer' ? `<button class="btn" data-chan="fulltime" data-id="${a.id}">Make this your job</button>` : ''}
+      <button class="btn" data-chan="routine" data-id="${a.id}">${a.creator.routine ? `Routine: ${a.creator.routine.perYear} a year — change` : 'Set a posting routine (optional)'}</button>
+      ${a.creator.merch ? `<p class="muted">You sell merchandise (since ${a.creator.merch.since}).</p>` : `<button class="btn" data-chan="merch" data-id="${a.id}">Open a merchandise shop (${esc(fmtMoney(localMoney(1500, country()), country()))})</button>`}
     </div>
     ${deals.length ? `<div class="card"><h3>Sponsorship obligations</h3>${deals.map((c) => `<div class="kv"><span>${esc(SPONSOR_BY_ID[c.sponsorId].name)}</span><span>${c.status === 'offered' ? 'offer waiting' : `${c.deliverables.done}/${c.deliverables.posts} posts by ${c.deadline}`}</span></div>`).join('')}</div>` : ''}
     ${projects.length ? `<div class="card"><h3>Active projects</h3>${projects.map((x) => `<div class="kv"><span>${esc(x.title)}</span><span>${esc(x.status.replace('_', ' '))}</span></div>`).join('')}</div>` : ''}
@@ -453,6 +518,7 @@ function libraryHtml() {
         ${x.status === 'editing' ? `<button class="btn small" data-proj="edit" data-id="${x.id}">Edit</button>` : ''}
         ${x.status === 'ready' ? `<button class="btn small primary" data-proj="publish" data-id="${x.id}">Publish</button>` : ''}
         ${x.postId && core.world().posts[x.postId] ? `<button class="btn small" data-open-post="${x.postId}">See post</button>` : ''}
+        ${['ready', 'published'].includes(x.status) ? `<button class="btn small" data-proj="portfolio" data-id="${x.id}">Add to portfolio</button>` : ''}
         ${x.status !== 'archived' ? `<button class="btn small" data-proj="archive" data-id="${x.id}">Archive</button>` : ''}
       </div></div>`).join('') : '<p class="empty">No projects yet.</p>'}`;
 }
@@ -485,8 +551,9 @@ function studioAudience(a) {
 function studioCollabs() {
   const open = creator.offers().filter((o) => o.kind === 'collab');
   const done = core.world().events.filter((e) => e.kind === 'collaboration' && e.charIds.includes(player().id));
-  return `${open.map((o) => `<div class="dl-card">${face(o.fromId)} <strong>${who(o.fromId)}</strong><p>Wants to make some ${esc(TOPIC_BY_ID[o.topic].name.toLowerCase())} content with you.</p>
+  return `${open.map((o) => `<div class="dl-card">${face(o.fromId)} <strong>${who(o.fromId)}</strong><p>Wants to make some ${esc(TOPIC_BY_ID[o.topic].name.toLowerCase())} content with you.${o.fee ? ` Paid: ${esc(fmtMoney(o.fee, country()))} when it is published.` : ''}</p>
       <div class="dl-btns"><button class="btn small primary" data-offer="accept" data-id="${o.id}">Accept</button><button class="btn small" data-offer="decline" data-id="${o.id}">Decline</button></div></div>`).join('') || '<p class="empty">No collaboration offers right now. They come once a channel is going.</p>'}
+    ${core.world().offers.filter((o) => o.kind === 'license' && o.status === 'open').map((o) => `<div class="dl-card"><strong>Licensing request</strong><p>${esc(o.from)} wants to use "${esc(core.world().posts[o.postId]?.text ?? 'your work')}" and will pay ${esc(fmtMoney(o.fee, country()))}, once.</p><div class="dl-btns"><button class="btn small primary" data-license="yes" data-id="${o.id}">Agree</button><button class="btn small" data-license="no" data-id="${o.id}">Decline</button></div></div>`).join('')}
     <div class="section-label">Past collaborations</div>
     ${done.map((e) => `<div class="row">${e.charIds.filter((id) => !core.isPlayer(id)).map((id) => face(id)).join('')}<div class="main"><strong>${e.year}</strong><small style="white-space:normal">${esc(e.summary)}</small></div></div>`).join('') || '<p class="empty">None yet.</p>'}`;
 }
@@ -508,7 +575,7 @@ function studioLive(a) {
   const plan = lives.find((s) => s.status === 'scheduled');
   const can = acc.activeAccountsOf(p.id).filter((x) => pl(x.platformId).formats.includes('livestream'));
   return `<div class="card"><h3>Livestreams</h3>
-      ${plan ? `<p>Planned: ${esc(TOPIC_BY_ID[plan.topic].name)} on ${esc(pl(plan.platformId).name)}${plan.collaborators.length ? ` with ${plan.collaborators.map((id) => esc(core.firstOf(id))).join(' and ')}` : ''}.</p>
+      ${plan ? `<p>Planned for ${plan.scheduledYear ?? plan.year}: ${esc(TOPIC_BY_ID[plan.topic].name)} on ${esc(pl(plan.platformId).name)}${plan.collaborators.length ? ` with ${plan.collaborators.map((id) => esc(core.firstOf(id))).join(' and ')}` : ''}${plan.equipment?.length ? `, using ${plan.equipment.map((id) => esc(DEVICE_BY_ID[core.world().devices.find((d) => d.id === id)?.type]?.name.toLowerCase() ?? 'gear')).join(' and ')}` : ''}.</p>
         <div class="dl-btns"><button class="btn small primary" data-live="go" data-id="${plan.id}">Go live (about 10 hours)</button><button class="btn small" data-live="cancel" data-id="${plan.id}">Cancel</button></div>`
     : can.length ? '<button class="btn" data-do="planStream">Plan a stream</button>' : `<p class="muted">You need an account on a live platform (${esc(PLATFORMS.filter((x) => x.type === 'live').map((x) => x.name).join(', '))}) and a device that can stream.</p>`}
     </div>
@@ -545,6 +612,7 @@ function pageReputation() {
   return `<div class="card"><h3>How you are seen online</h3>
       ${meterHtml('Recognition', r.recognition, true)}${meterHtml('Credibility', r.credibility, true)}${meterHtml('Loyalty', r.loyalty, true)}
       <p class="muted" style="margin-top:8px">Recognition is how many people know your name. Credibility is how far they trust you. They are not the same thing.</p></div>
+    ${civic.mediaOffers().length ? `<div class="section-label">Public attention</div>${civic.mediaOffers().map((o) => `<div class="dl-card"><strong>${esc(o.outlet)}</strong><p>${esc(civic.MEDIA.find((m) => m.id === o.media).label)}. Being known is not automatically good: it takes time, and not everything you say will come across.</p><div class="dl-btns"><button class="btn small primary" data-media="yes" data-id="${o.id}">Accept</button><button class="btn small" data-media="no" data-id="${o.id}">Decline</button></div></div>`).join('')}` : ''}
     ${cvs.length ? `<div class="section-label">Controversies</div>${cvs.map((c) => `<div class="dl-card"><strong>${esc(rep.CONTROVERSY[c.kind].name)}</strong> <small class="muted">${c.year} · ${esc({ rumor: 'unverified', verified: 'verified', cleared: 'cleared', resolved: 'resolved', allegation: 'alleged' }[c.status] ?? c.status)}${c.resolvedYear ? ` · settled ${c.resolvedYear}` : ''}</small>
         <p>${esc(c.text ?? '')}</p>
         ${!c.resolvedYear ? `<div class="dl-btns">${rep.RESPONSES.map((x) => `<button class="btn small" data-cv="${x.id}" data-id="${c.id}">${esc(x.label)}${x.cost ? ` (${esc(fmtMoney(localMoney(x.cost, country()), country()))})` : ''}</button>`).join('')}</div>` : c.response ? `<small class="muted">You chose: ${esc(rep.RESPONSES.find((x) => x.id === c.response)?.label ?? 'to let it pass')}</small>` : ''}</div>`).join('')}` : ''}
@@ -554,6 +622,8 @@ function pageReputation() {
       ${w.lastYear ? `<div class="kv"><span>Last year online</span><span>${w.lastYear.posts} posts · ${w.lastYear.hours} hours${w.lastYear.mood ? ` · mood ${w.lastYear.mood > 0 ? '+' : ''}${w.lastYear.mood}` : ''}</span></div>` : ''}
       <div class="kv"><span>Notifications</span><span>${esc({ all: 'Everything', important: 'Only important things', off: 'Off' }[w.notifications])}</span></div>
       <div class="dl-btns" style="margin-top:8px">${['all', 'important', 'off'].map((x) => `<button class="btn small ${w.notifications === x ? 'primary' : ''}" data-notify="${x}">${esc({ all: 'All', important: 'Important only', off: 'Off' }[x])}</button>`).join('')}</div>
+      <div class="kv" style="margin-top:8px"><span>Screen time</span><span>${esc({ light: 'A little', moderate: 'A moderate amount' }[w.limit] ?? 'No limit')}</span></div>
+      <div class="dl-btns">${[[null, 'No limit'], ['moderate', 'Moderate'], ['light', 'A little']].map(([x, l]) => `<button class="btn small ${(w.limit ?? null) === x ? 'primary' : ''}" data-limit="${x ?? ''}">${l}</button>`).join('')}</div>
       <div class="btn-stack" style="margin-top:10px">${rep.onBreak() ? '<button class="btn" data-do="endBreak">End your break</button>' : '<button class="btn" data-do="takeBreak">Take a break from social media</button>'}
       ${pub && p.age >= 18 ? `<button class="btn" data-fund="${pub.id}">Run a charity fundraiser</button>` : ''}</div></div>
     ${r.log.length ? `<div class="section-label">Why it changed</div>${r.log.slice(-12).reverse().map((x) => `<div class="kv"><span>${x.year} · ${esc(x.part)} ${x.delta > 0 ? '+' : ''}${x.delta}</span><span>${esc(x.cause)}</span></div>`).join('')}` : ''}`;
@@ -574,11 +644,18 @@ function pageHistory() {
   const p = player();
   const techs = tech.technologies().filter((t) => t.status !== 'future' || t.tech.from <= store.state.year + 15);
   const ancestors = legacy.ancestors();
-  return `${ancestors.length ? `<div class="section-label">Family Archive · Digital Legacy</div>${ancestors.map((a) => `<button class="row" data-ancestor="${a.id}">${face(a.id, '', { inert: true })}<div class="main"><strong>${esc(a.name)}</strong><small>${a.born}–${a.died} · ${a.accounts.length} account${a.accounts.length === 1 ? '' : 's'}</small></div><div class="side">›</div></button>`).join('')}` : ''}
+  return `${ancestors.length ? '<button class="btn" data-section="archive" style="margin-bottom:10px">Open the Family Archive</button>' : ''}
     <div class="section-label">Communication in ${esc(country().name)}, ${store.state.year}</div>
     ${techs.map((t) => `<div class="dl-tech"><div><strong>${esc(t.tech.name)}</strong><small>${esc({ future: 'not yet', arriving: 'just arriving', spreading: 'spreading', common: 'everywhere', declining: 'fading' }[t.status])}</small></div><div class="dl-share" role="img" aria-label="${Math.round(t.share * 100)}% of people"><i style="width:${Math.round(t.share * 100)}%"></i></div></div>`).join('')}
     <div class="section-label">Platforms</div>
     ${PLATFORMS.filter((x) => x.launch <= store.state.year + 2).map((x) => { const st = tech.platformStatus(x.id); const mine = acc.accountsOf(p.id).filter((a) => a.platformId === x.id); return `<div class="kv"><span>${platChip(x.id)} ${x.launch}${x.closes && x.closes <= store.state.year ? `–${x.closes}` : ''}</span><span>${esc({ unlaunched: 'coming soon', unavailable: 'not here yet', new: 'new', popular: 'popular', declining: 'declining', closed: 'shut down' }[st])}${mine.length ? ` · you: ${mine.map((a) => `@${esc(a.handle)} (${esc(a.status)})`).join(', ')}` : ''}</span></div>`; }).join('')}`;
+}
+
+function pageArchive() {
+  const list = legacy.ancestors();
+  return `<div class="card"><h3>Family Archive</h3><p class="muted">The people your family came from: their life stories, and what they left online that they meant others to see. Their private messages stay private.</p></div>
+    ${list.length ? `<div class="section-label">Digital legacy</div>${list.map((a) => `<button class="row" data-ancestor="${a.id}">${face(a.id, '', { inert: true })}<div class="main"><strong>${esc(a.name)}</strong><small>${a.born}–${a.died} · generation ${a.generation} · ${a.accounts.length ? `${a.accounts.length} account${a.accounts.length === 1 ? '' : 's'}` : 'no accounts: a life before the internet, or away from it'}</small></div><div class="side">›</div></button>`).join('')}`
+    : '<p class="empty">When you carry the family on as someone\'s heir, their story is kept here.</p>'}`;
 }
 
 function pageAncestor(id) {
@@ -634,6 +711,8 @@ async function editAccount(api, rerender, id) {
     { name: 'handle', label: 'Username (your account stays the same account)', value: a.handle, max: 20 },
     { name: 'bio', label: 'Bio', type: 'textarea', value: a.bio, max: 160 },
     { name: 'interests', label: 'Interests', type: 'checks', value: a.interests, options: TOPICS.map((t) => ({ value: t.id, label: t.name })) },
+    { name: 'avatar', label: 'Profile picture', type: 'select', value: a.avatar ?? 'portrait', options: acc.avatarChoices(a) },
+    ...(acc.accountsOf(a.ownerId).filter((o) => o.id !== a.id && o.status === 'active').length ? [{ name: 'links', label: 'Link to your other accounts', type: 'checks', value: a.links ?? [], options: acc.accountsOf(a.ownerId).filter((o) => o.id !== a.id && o.status === 'active').map((o) => ({ value: o.id, label: `@${o.handle} on ${pl(o.platformId).name}` })) }] : []),
   ] });
   if (v) await say(api, acc.updateAccount(id, v), rerender);
 }
@@ -672,13 +751,14 @@ async function compose(api, rerender, o = {}) {
     { name: 'familyShared', label: 'Keep it for the family archive', type: 'check', value: false },
     ...(a.locationSharing ? [{ name: 'shareLocation', label: `Add your city (${p.city})`, type: 'check', value: false }] : []),
     ...(o.contractId ? [{ name: 'disclosed', label: 'Label it as a paid partnership', type: 'check', value: true }] : []),
+    ...(a.creator?.monetized && !o.contractId ? [{ name: 'affiliate', label: 'Include affiliate links (always labelled as such)', type: 'check', value: false }] : []),
   ] });
   if (!v) return;
   const [stype, skey] = v.source ? v.source.split('|') : [];
   const src = stype ? sources.find((s) => s.type === stype && s.key === skey) : null;
   const sure = await confirmModal({ title: 'Ready to post?', body: `${FORMATS[v.format].name} on ${pl(a.platformId).name}, about ${TOPIC_BY_ID[src?.topic ?? v.topic].name.toLowerCase()}, visible to: ${VIS[v.audience] ?? v.audience}. ${v.text ? `"${v.text}"` : src ? `"${src.text}"` : ''} It takes ${FORMATS[v.format].hours} hours of your spare time.${o.contractId && !v.disclosed ? ' It is paid for, and it will not say so.' : ''}`, yes: 'Publish' });
   if (!sure) return;
-  const r = content.publish({ accountId, format: v.format, topic: src?.topic ?? v.topic, text: v.text, audience: v.audience, source: src, trendId: v.trendId || undefined, aboutIds: v.aboutIds ?? [], familyShared: v.familyShared, shareLocation: v.shareLocation, contractId: o.contractId, disclosed: v.disclosed });
+  const r = content.publish({ accountId, format: v.format, topic: src?.topic ?? v.topic, text: v.text, audience: v.audience, source: src, trendId: v.trendId || undefined, aboutIds: v.aboutIds ?? [], familyShared: v.familyShared, shareLocation: v.shareLocation, contractId: o.contractId, disclosed: v.disclosed, affiliate: v.affiliate });
   if (r.ok) state().trail.push({ type: 'post', id: r.post.id });
   await say(api, r, rerender);
 }
@@ -777,6 +857,8 @@ async function planStream(api, rerender) {
     { name: 'accountId', label: 'Where', type: 'select', value: can[0].id, options: can.map((a) => ({ value: a.id, label: `@${a.handle} on ${pl(a.platformId).name}` })) },
     { name: 'topic', label: 'What', type: 'select', value: creator.channels()[0]?.creator.pathway ?? 'gaming', options: TOPICS.map((t) => ({ value: t.id, label: t.name })) },
     { name: 'collaboratorIds', label: 'Invite (optional)', type: 'checks', options: p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.age >= 16 && ['friend', 'sibling', 'partner', 'spouse'].includes(n.role)).slice(0, 8).map((n) => ({ value: n.id, label: n.firstName })) },
+    ...(creator.streamGear().length ? [{ name: 'equipment', label: 'Use your equipment', type: 'checks', value: creator.streamGear().map((d) => d.id), options: creator.streamGear().map((d) => ({ value: d.id, label: `${DEVICE_BY_ID[d.type].name} (${tech.condition(d)}%)` })) }] : []),
+    { name: 'when', label: 'When', type: 'select', value: 'this', options: [{ value: 'this', label: `Later this year (${store.state.year})` }, { value: 'next', label: `Next year (${store.state.year + 1})` }] },
   ] });
   if (v) await say(api, creator.planStream(v), rerender);
 }
@@ -822,7 +904,7 @@ export function openDigitalLife(api, o = {}) {
     if (top) {
       html = `<button class="btn dyn-back" data-back>← Back</button>${({ account: () => pageAccount(top.id), post: () => pagePost(top.id), thread: () => pageThread(top.id), ancestor: () => pageAncestor(top.id), me: pageMe })[top.type]()}`;
     } else {
-      html = ({ accounts: pageAccounts, feed: pageFeed, messages: pageMessages, people: pagePeople, communities: pageCommunities, create: pageCreate, studio: pageStudio, reputation: pageReputation, memories: pageMemories, history: pageHistory, keep: pageKeepInTouch })[v.section]();
+      html = ({ accounts: pageAccounts, feed: pageFeed, messages: pageMessages, people: pagePeople, communities: pageCommunities, create: pageCreate, studio: pageStudio, reputation: pageReputation, memories: pageMemories, history: pageHistory, keep: pageKeepInTouch, archive: pageArchive })[v.section]();
     }
     body.innerHTML = html;
     body.scrollTop = v.scroll[key()] ?? 0;
@@ -858,6 +940,15 @@ export function openDigitalLife(api, o = {}) {
         newProject: () => newProject(api, rerender), planStream: () => planStream(api, rerender), buyDevice: () => buyDevice(api, rerender),
         askPhone: () => say(api, tech.askForPhone(), rerender), takeBreak: () => say(api, rep.takeBreak(), rerender), endBreak: () => say(api, rep.endBreak(), rerender),
         findMatches: () => say(api, comm.findMatches(), rerender),
+        studyGroup: () => say(api, school.studyGroup(), rerender),
+        datingPrefs: async () => {
+          const pr = comm.datingPrefs();
+          const r = await formModal({ title: 'What you are looking for', submit: 'Save', fields: [
+            { name: 'ageMin', label: 'Youngest', value: String(pr.ageMin), max: 3 }, { name: 'ageMax', label: 'Oldest', value: String(pr.ageMax), max: 3 },
+            { name: 'distance', label: 'Where', type: 'select', value: pr.distance, options: [{ value: 'local', label: 'Near me' }, { value: 'anywhere', label: 'Anywhere, even abroad' }] },
+            { name: 'goal', label: 'Looking for', type: 'select', value: pr.goal, options: [{ value: 'serious', label: 'Something serious' }, { value: 'casual', label: 'Something casual' }, { value: 'unsure', label: 'Not sure yet' }] }] });
+          if (r) await say(api, comm.setDatingPrefs(r), rerender);
+        },
         datingProfile: async () => {
           const r = await formModal({ title: `A ${PLATFORM_BY_ID.kindling.name} profile`, body: 'Adults only. Your profile is shown only to your matches.', submit: 'Create profile', fields: [
             { name: 'handle', label: 'Name on your profile', value: player().firstName.toLowerCase(), max: 20 }, { name: 'bio', label: 'About you', type: 'textarea', max: 160 },
@@ -882,6 +973,7 @@ export function openDigitalLife(api, o = {}) {
         security: () => say(api, a.security?.twoStep ? { ok: true, text: 'This account already has a strong password and two-step sign-in.', tone: 'neutral' } : (a.security = { strong: true, twoStep: true }, { ok: true, text: 'Strong password set and two-step sign-in turned on.', tone: 'good' }), rerender),
         deactivate: async () => { if (await confirmModal({ title: `Deactivate @${a.handle}?`, body: 'Nobody can see it while it is off. You can switch it back on.', yes: 'Deactivate' })) await say(api, acc.deactivate(id), rerender); },
         reactivate: () => say(api, acc.reactivate(id), rerender),
+        recover: () => say(api, rep.recoverAccount(id), rerender),
         delete: async () => {
           const typed = await inputModal({ title: `Delete @${a.handle}?`, label: `This removes the account and its posts for good. Type ${a.handle} to confirm.`, maxLength: 24 });
           if (typed == null) return;
@@ -923,10 +1015,29 @@ export function openDigitalLife(api, o = {}) {
       const r = ({ join: () => comm.join(id), leave: () => comm.leave(id), event: () => comm.attendEvent(id), moderate: () => comm.volunteerModerate(id) })[el.dataset.comm]?.() ?? comm.participate(id, el.dataset.comm);
       return say(api, r, rerender);
     }
-    if ((el = ds('data-chan'))) return say(api, el.dataset.chan === 'monetize' ? creator.monetize(el.dataset.id) : creator.goFullTime(el.dataset.id), rerender);
+    if ((el = ds('data-chan'))) {
+      const id = el.dataset.id;
+      if (el.dataset.chan === 'routine') {
+        const a = acc.account(id);
+        const r = await formModal({ title: 'A posting routine', body: 'Optional. The posts are made through the year, as long as you have the time. Stop it whenever you like.', submit: 'Save', fields: [
+          { name: 'perYear', label: 'Posts a year (0 to stop)', value: String(a.creator.routine?.perYear ?? 6), max: 2 },
+          { name: 'format', label: 'Kind of post', type: 'select', value: a.creator.routine?.format, options: pl(a.platformId).formats.filter((f) => f !== 'livestream').map((f) => ({ value: f, label: `${FORMATS[f].name} · ${FORMATS[f].hours} h each` })) },
+          { name: 'topic', label: 'About', type: 'select', value: a.creator.routine?.topic ?? a.creator.pathway, options: TOPICS.map((t) => ({ value: t.id, label: t.name })) }] });
+        if (r) await say(api, creator.setRoutine(id, Number(r.perYear) > 0 ? r : null), rerender);
+        return undefined;
+      }
+      return say(api, ({ monetize: creator.monetize, fulltime: creator.goFullTime, merch: creator.startMerch })[el.dataset.chan](id), rerender);
+    }
     if ((el = ds('data-proj'))) {
       const id = el.dataset.id;
       if (el.dataset.proj === 'publish') return publishProject(api, rerender, id);
+      if (el.dataset.proj === 'portfolio') {
+        const where = acc.activeAccountsOf(player().id).filter((a) => ['professional', 'blog', 'personal', 'video'].includes(pl(a.platformId).type));
+        if (!where.length) return messageModal({ body: 'A portfolio lives on an account: a professional profile, a blog, or a personal or video page.' });
+        const to = where.length === 1 ? where[0].id : await pickModal({ title: 'Show it on which account?', options: where.map((a) => ({ value: a.id, label: `@${a.handle} on ${pl(a.platformId).name}` })) });
+        if (to) await say(api, school.addToPortfolio(to, id), rerender);
+        return undefined;
+      }
       return say(api, ({ work: creator.workOn, edit: creator.edit, archive: creator.archiveProject })[el.dataset.proj](id), rerender);
     }
     if ((el = ds('data-offer'))) return say(api, el.dataset.offer === 'accept' ? creator.acceptCollab(el.dataset.id) : creator.declineOffer(el.dataset.id), rerender);
@@ -943,6 +1054,16 @@ export function openDigitalLife(api, o = {}) {
     if ((el = ds('data-memorial'))) return say(api, legacy.memorialChoice(el.dataset.id, el.dataset.memorial), rerender);
     if ((el = ds('data-reach'))) return startConversation(api, rerender, el.dataset.reach);
     if ((el = ds('data-referral'))) return say(api, pro.askReferral(el.dataset.referral), rerender);
+    if ((el = ds('data-stmt'))) {
+      const off = civic.officialAccounts();
+      const to = off.length === 1 ? off[0].id : await pickModal({ title: 'Which official account?', options: off.map((a) => ({ value: a.id, label: `@${a.handle} on ${pl(a.platformId).name}` })) });
+      if (to) await say(api, civic.statement(to, el.dataset.stmt), rerender);
+      return undefined;
+    }
+    if ((el = ds('data-help'))) return say(api, msg.helpOnline(el.dataset.help, el.dataset.pl), rerender);
+    if ((el = ds('data-license'))) return say(api, creator.answerLicense(el.dataset.id, el.dataset.license === 'yes'), rerender);
+    if ((el = ds('data-media'))) return say(api, civic.answerMedia(el.dataset.id, el.dataset.media === 'yes'), rerender);
+    if ((el = ds('data-limit'))) return say(api, rep.setLimit(el.dataset.limit || null), rerender);
     return undefined;
   });
   draw();

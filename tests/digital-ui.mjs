@@ -192,7 +192,70 @@ async function run(viewport) {
   await page.close();
 }
 
+/** The rest of Digital Life, at phone width: a life designed to start in 1850, the Family Archive, a creator's routine, dating preferences. */
+async function extras() {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+  page.on('pageerror', (e) => errors.push(`extras: ${e.message}`));
+  await page.goto(url);
+  await page.waitForSelector('[data-design]');
+  const continueModal = async () => { const ok = page.locator('#modal-root [data-ok]').last(); await ok.waitFor(); const t = await page.locator('#modal-root .modal').last().innerText(); await ok.click(); return t; };
+  // A life designed to begin in 1850.
+  await page.click('[data-design]');
+  await page.fill('#f-year', '1850');
+  await page.click('form button[type="submit"]');
+  await page.waitForSelector('.tab-btn[data-tab="pursuits"]');
+  const born = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return { year: store.state.year, birth: store.state.player.birthYear }; });
+  check(born.year === 1850 && born.birth === 1850, 'the character creator can start a life in 1850');
+  // The Family Archive, from the People tab.
+  await page.click('.tab-btn[data-tab="people"]');
+  await page.click('[data-top="archive"]');
+  await page.waitForSelector('.dl-modal');
+  check((await page.locator('.dl-body').innerText()).includes('Family Archive'), 'the Family Archive opens from the People tab');
+  await page.click('.dl-modal [data-close]');
+  // A modern creator: routine and dating preferences through the forms.
+  const slot = await page.evaluate(async () => {
+    const { store } = await import('/js/state.js');
+    const { createLife } = await import('/js/engine/characterGen.js');
+    const { saveGame } = await import('/js/save.js');
+    const tech = await import('/js/engine/digital/tech.js');
+    const acc = await import('/js/engine/digital/accounts.js');
+    const creator = await import('/js/engine/digital/creator.js');
+    let st; do { st = createLife({ countryId: 'us', year: 1996 }); } while (st.player.royal);
+    st.year = 2026; st.player.age = 30; for (const n of Object.values(st.npcs)) n.age += 30;
+    for (const n of Object.values(st.npcs)) if (['partner', 'spouse'].includes(n.role)) n.role = 'ex';
+    st.player.flags.livesWithParents = false; st.player.finance.cash = 1e5; st.player.flags.interestedIn = 'everyone';
+    store.state = st;
+    tech.buyDevice('smartphone'); tech.buyDevice('laptop');
+    const a = acc.createAccount({ platformId: 'vista', handle: 'ui.creator', visibility: 'public' }).account;
+    creator.startChannel(a.id, 'music');
+    acc.createAccount({ platformId: 'kindling', handle: 'ui.dater', visibility: 'matches' });
+    saveGame(st); return st.slotId;
+  });
+  await page.reload();
+  await page.click(`[data-load="${slot}"]`);
+  await page.click('.tab-btn[data-tab="pursuits"]');
+  await page.click('[data-digital]');
+  await page.click('.dl-nav [data-section="studio"]');
+  await page.click('.dl-body [data-chan="routine"]');
+  await page.fill('#modal-root input[name="perYear"]', '3');
+  await page.click('#modal-root button[type="submit"]');
+  check((await continueModal()).includes('Routine set'), 'a posting routine is set from Creator Studio');
+  check((await page.locator('.dl-body').innerText()).includes('Routine: 3 a year'), 'and shows on the overview');
+  await page.click('.dl-nav [data-section="people"]');
+  await page.click('.dl-body [data-do="datingPrefs"]');
+  await page.fill('#modal-root input[name="ageMin"]', '27');
+  await page.fill('#modal-root input[name="ageMax"]', '33');
+  await page.click('#modal-root button[type="submit"]');
+  check((await continueModal()).includes('ages 27–33'), 'dating preferences are saved from the form');
+  for (const sec of ['accounts', 'feed', 'messages', 'people', 'communities', 'create', 'studio', 'reputation', 'memories', 'history', 'archive']) {
+    await page.click(`.dl-nav [data-section="${sec}"]`);
+    check(await page.evaluate(() => document.querySelectorAll('.dl-modal button button').length === 0 && document.querySelector('.dl-body').scrollWidth - document.querySelector('.dl-body').clientWidth <= 1), `${sec}: well-formed and fits a phone`);
+  }
+  await page.close();
+}
+
 try {
+  await extras();
   await run({ width: 390, height: 844 });
   await run({ width: 1280, height: 860 });
 } catch (e) {

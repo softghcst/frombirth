@@ -430,3 +430,6 @@ button.dl-card { cursor: pointer; }
 .dl-bio { white-space: pre-wrap; }
 .dl-sealed { margin-top: 12px; }
 .modal textarea { resize: vertical; }
+.dl-mono { font-family: var(--serif); font-size: 1rem; color: var(--accent); background: var(--accent-soft); }
+.dl-mono svg { width: 70%; height: 70%; }
+.dl-news { border-left-color: var(--muted); }

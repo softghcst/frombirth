@@ -81,6 +81,25 @@ export function devicesOf(charId) {
   return world().devices.filter((d) => d.ownerId === charId && !d.gone && y - d.boughtYear < DEVICE_BY_ID[d.type].life * 1.6);
 }
 
+/** How worn a device is, 0–100: new is 100; past its expected life it is worn out, and soon after it stops working. */
+export function condition(dev) {
+  const def = DEVICE_BY_ID[dev.type];
+  return Math.max(0, Math.round(100 - (store.state.year - dev.boughtYear) / def.life * 100));
+}
+
+/** Keeps the player's inventory listing their working devices (the inventory is what the rest of the game shows as belongings). */
+export function syncInventory(p = player()) {
+  p.inventory ??= [];
+  const working = devicesOf(p.id);
+  p.inventory = p.inventory.filter((it) => it.kind !== 'device' || working.some((d) => d.id === it.id));
+  for (const d of working) {
+    const def = DEVICE_BY_ID[d.type];
+    const item = p.inventory.find((it) => it.id === d.id);
+    const value = Math.round(d.cost * condition(d) / 100);
+    if (item) { item.value = value; item.condition = condition(d); } else p.inventory.push({ id: d.id, name: def.name, kind: 'device', value, condition: condition(d) });
+  }
+}
+
 /** Device kinds on sale this year in this country. */
 export const devicesForSale = (yr, countryId) => DEVICES.filter((d) => techAvailable(d.tech, yr, countryId));
 
@@ -159,6 +178,7 @@ export function buyDevice(type) {
   p.finance.cash -= cost;
   const dev = { id: newId('dv'), type, ownerId: p.id, boughtYear: store.state.year, cost, via: 'bought' };
   world().devices.push(dev);
+  syncInventory(p);
   const first = !world().devices.some((d) => d.ownerId === p.id && d.id !== dev.id && DEVICE_BY_ID[d.type].tech === def.tech);
   const text = `You bought a ${def.name.toLowerCase()} for ${fmtMoney(cost, country())}.`;
   if (first && ['smartphone', 'mobile_phone', 'desktop', 'laptop'].includes(type)) {
@@ -185,6 +205,7 @@ export function askForPhone() {
   const fond = parents.reduce((s, n) => s + n.meters.relationship, 0) / parents.length;
   const chance = clamp((means / 100) * 0.5 + adoption(DEVICE_BY_ID[kind].tech) * 0.4 + (fond - strict) / 300 + (p.age - 11) * 0.06, 0.05, 0.95);
   if (!rng.chance(chance)) return result(false, 'Your parents said not yet.', 'neutral');
-  world().devices.push({ id: newId('dv'), type: kind, ownerId: p.id, boughtYear: store.state.year, cost: 0, via: 'gift' });
+  world().devices.push({ id: newId('dv'), type: kind, ownerId: p.id, boughtYear: store.state.year, cost: localMoney(DEVICE_BY_ID[kind].cost, country()), via: 'gift' });
+  syncInventory(p);
   return result(true, `Your parents gave you a ${DEVICE_BY_ID[kind].name.toLowerCase()}, with rules about when it goes in the drawer at night.`, 'good');
 }

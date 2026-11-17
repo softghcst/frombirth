@@ -127,6 +127,16 @@ export function goFullTime(accountId) {
   return result(true, `You made it official: making ${TOPIC_BY_ID[acc.creator.pathway].name.toLowerCase()} content for @${acc.handle} is your job now.`, 'good');
 }
 
+/** Making something is practice: a session on a project moves the matching skill or talent a little. */
+const PRACTICE = { music: 'talents.music', singing: 'talents.singing', dance: 'talents.dance', acting: 'talents.acting', sports: 'talents.sports', cooking: 'skills.cooking', art: 'skills.photography', books: 'skills.writing', gaming: 'skills.coding' };
+function practise(p, topic) {
+  const path = PRACTICE[topic];
+  if (!path) return;
+  const [group, key] = path.split('.');
+  p[group] ??= {};
+  p[group][key] = clamp((p[group][key] ?? 0) + (group === 'talents' ? 0.5 : 1));
+}
+
 // ---------- Projects ----------
 
 /**
@@ -170,6 +180,7 @@ export function workOn(projectId) {
   const q = qualityOf(p.id, x.topic, k.format);
   x.quality = Math.round(clamp((x.quality * (x.sessions - 1) + q) / x.sessions + gear + help, 0.02, 0.98) * 1000) / 1000;
   literacy(p.id, 1);
+  practise(p, x.topic);
   if (x.sessions >= k.sessions) move(x, 'editing');
   return result(true, x.status === 'editing' ? `You finished the last session on ${x.title}. It needs editing.` : `A good session on ${x.title}.`, 'good');
 }
@@ -199,7 +210,10 @@ export const projectsOf = (charId = player().id) => Object.values(world().projec
 // ---------- Livestreams ----------
 
 /** Plans a stream for later in the year. */
-export function planStream({ accountId, topic, collaboratorIds = [] }) {
+/** Gear the player owns that helps a stream: a webcam and lights, a good microphone, a good camera. */
+export const streamGear = () => devicesOf(player().id).filter((d) => ['webcam', 'microphone', 'camera', 'presence_set'].includes(d.type));
+
+export function planStream({ accountId, topic, collaboratorIds = [], equipment = [], when = 'this' }) {
   const p = player();
   const acc = account(accountId);
   if (!acc || !isPlayer(acc.ownerId) || acc.status !== 'active') return result(false, 'That is not one of your active accounts.');
@@ -209,7 +223,9 @@ export function planStream({ accountId, topic, collaboratorIds = [] }) {
   if (p.age < pl.minAge) return result(false, `Streaming on ${pl.name} is for ${pl.minAge} and over.`);
   if (!accessFor('stream')) return result(false, 'You need a device that can stream.');
   if (world().streams.some((s) => s.ownerId === p.id && s.status === 'scheduled')) return result(false, 'You already have a stream planned.');
-  const s = { id: newId('live'), ownerId: p.id, accountId: acc.id, platformId: pl.id, topic: TOPIC_BY_ID[topic] ? topic : 'life', collaborators: collaboratorIds.filter((id) => charOf(id)?.alive), status: 'scheduled', year: store.state.year, result: null };
+  const gear = (Array.isArray(equipment) ? equipment : [equipment]).filter((id) => streamGear().some((d) => d.id === id));
+  const s = { id: newId('live'), ownerId: p.id, accountId: acc.id, platformId: pl.id, topic: TOPIC_BY_ID[topic] ? topic : 'life', collaborators: collaboratorIds.filter((id) => charOf(id)?.alive),
+    equipment: gear, status: 'scheduled', year: store.state.year, scheduledYear: store.state.year + (when === 'next' ? 1 : 0), result: null };
   world().streams.push(s);
   return result(true, `Stream planned on ${pl.name}: ${TOPIC_BY_ID[s.topic].name.toLowerCase()}${s.collaborators.length ? `, with ${s.collaborators.map((id) => charOf(id).firstName).join(' and ')}` : ''}.`, 'good', { stream: s });
 }
@@ -219,6 +235,7 @@ export function broadcast(streamId) {
   const p = player();
   const s = world().streams.find((x) => x.id === streamId);
   if (!s || s.ownerId !== p.id || s.status !== 'scheduled') return result(false, 'There is no stream planned.');
+  if ((s.scheduledYear ?? s.year) > store.state.year) return result(false, `This stream is planned for ${s.scheduledYear}.`);
   const acc = account(s.accountId);
   if (!acc || acc.status !== 'active' || !platformOpen(s.platformId)) return result(false, 'That account cannot go live right now.');
   if (!accessFor('stream')) return result(false, 'You need a device that can stream.');
@@ -226,7 +243,8 @@ export function broadcast(streamId) {
   if ((a.streams ?? 0) >= 6) return result(false, 'Six streams in a year is plenty.');
   if (!spendHours(FORMATS.livestream.hours + 2)) return result(false, 'A stream takes about ten hours with the preparation. You do not have that left this year.');
   a.streams = (a.streams ?? 0) + 1;
-  const q = qualityOf(p.id, s.topic, 'livestream');
+  const gearBoost = (s.equipment ?? []).map((id) => world().devices.find((d) => d.id === id)).filter(Boolean).reduce((x, d) => x + ({ webcam: 0.05, microphone: 0.06, camera: 0.04, presence_set: 0.05 }[d.type] ?? 0), 0);
+  const q = Math.min(0.98, qualityOf(p.id, s.topic, 'livestream') + gearBoost);
   const rep = reputation(p.id);
   const friends = s.collaborators.map((id) => accountOn(id, s.platformId)).filter(Boolean);
   const base = acc.followers.length * 0.5 + acc.audience * (0.01 + 0.04 * q) + friends.reduce((x, f) => x + f.audience * 0.02 + f.followers.length * 0.3, 0);
@@ -314,6 +332,9 @@ export function settleCollab(post) {
     else if (n?.meters) n.meters.relationship = clamp(n.meters.relationship + 5);
     recordEvent({ kind: 'collaboration', charIds: [p.id, id], platformId: post.platformId, ref: { type: 'post', id: post.id }, summary: `You and ${n.firstName} ${n.lastName} published ${x.title} together.`, visibility: 'public', once: `collab_${x.id}` });
   }
+  // A paid collaboration is paid on publication, by contract, once.
+  const offer = world().offers.find((o) => o.id === x.offerId);
+  if (offer?.fee) pay({ accountId: post.accountId, kind: 'collaboration', gross: offer.fee, fee: 0, ref: `collab:${offer.id}` });
 }
 
 // ---------- Sponsorships ----------
@@ -361,6 +382,8 @@ export function acceptDeal(contractId) {
   if (player().age < 18) return result(false, 'Sponsorship contracts are for adults.');
   c.status = 'active';
   c.acceptedYear = store.state.year;
+  // The time to deliver runs from signing, not from when the offer arrived.
+  c.deadline = Math.max(c.deadline, store.state.year + 1);
   return result(true, `Deal signed with ${SPONSOR_BY_ID[c.sponsorId].name}: ${c.deliverables.posts} sponsored ${c.deliverables.posts === 1 ? 'post' : 'posts'}, labelled as paid, by the end of next year. ${fmtMoney(c.fee, country())} when they are done.`, 'good');
 }
 export function declineDeal(contractId) {
@@ -444,13 +467,43 @@ export function tickCreators() {
       const friend = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && accountOn(n.id, acc.platformId)?.creator?.pathway === acc.creator.pathway);
       const from = friend ?? (rng.chance(0.6) ? creatorNpc(acc.platformId, acc.creator.pathway) : null);
       if (from) {
-        d.offers.push({ id: newId('offer'), kind: 'collab', fromId: from.id, accountId: acc.id, topic: acc.creator.pathway, year: y, status: 'open' });
+        // Established creators with a brand behind them sometimes pay for the work; friends never do.
+        const fee = !friend && ['established', 'fulltime', 'public'].includes(acc.creator.stage) && p.age >= 18 && rng.chance(0.4) ? localMoney(Math.max(200, followerCount(acc) * 0.01), country()) : 0;
+        d.offers.push({ id: newId('offer'), kind: 'collab', fromId: from.id, accountId: acc.id, topic: acc.creator.pathway, year: y, status: 'open', fee });
         log(`${from.firstName} ${from.lastName}, who makes ${TOPIC_BY_ID[acc.creator.pathway].name.toLowerCase()} content on ${pl.name}, asked if you would like to make something together.`, 'system', 'good');
       }
     }
     if (p.age >= 18 && followerCount(acc) >= 1000 && rng.chance(0.35)) {
       const c = sponsorOffer(acc);
       if (c) log(`${SPONSOR_BY_ID[c.sponsorId].name} offered @${acc.handle} a sponsorship: ${fmtMoney(c.fee, country())} for ${c.deliverables.posts} ${c.deliverables.posts === 1 ? 'post' : 'posts'}.`, 'system', 'good');
+    }
+  }
+  for (const acc of channels(p.id).filter((a) => a.status === 'active')) {
+    const pl = PLATFORM_BY_ID[acc.platformId];
+    // Merchandise: sold to the people who stick around, with the cost of making it taken off.
+    if (acc.creator.merch && p.age >= 18) {
+      const units = Math.round(followerCount(acc) * 0.0015 * (reputation(p.id).loyalty / 50) * rng.around(1, 0.3));
+      if (units > 0) pay({ accountId: acc.id, kind: 'merch', gross: localMoney(units * 25, country()), fee: 0.05, expenses: localMoney(units * 12, country()), ref: `merch:${acc.id}:${y - 1}` });
+    }
+    // Affiliate links, always labelled: a small share of what the audience bought through last year's posts.
+    if (acc.creator.monetized && p.age >= 18) {
+      const views = acc.postIds.map((id) => d.posts[id]).filter((x) => x?.affiliate && x.year === y - 1 && x.metrics).reduce((s, x) => s + x.metrics.views, 0);
+      if (views > 0) pay({ accountId: acc.id, kind: 'affiliate', gross: localMoney(views * 0.004, country()), fee: 0, ref: `aff:${acc.id}:${y - 1}` });
+    }
+    // Licensing: someone wants to use a good, well-seen piece of work, and pays once for it.
+    const good = acc.postIds.map((id) => d.posts[id]).find((x) => x && !x.removed && x.audience === 'public' && x.quality >= 0.7 && x.metrics?.views >= 800 && x.source?.type === 'project' && !d.offers.some((o) => o.kind === 'license' && o.postId === x.id));
+    if (good && p.age >= 18 && rng.chance(0.25)) {
+      d.offers.push({ id: newId('offer'), kind: 'license', postId: good.id, accountId: acc.id, fee: localMoney(Math.max(150, good.metrics.views * 0.05), country()), year: y, status: 'open', from: rng.pick(['a television producer', 'a small film company', 'an advertising agency', 'a school textbook publisher']) });
+      log(`Someone wants to license "${good.text}" from @${acc.handle}.`, 'system', 'good');
+    }
+    // A routine the player set: the posts get made as the year goes, time allowing.
+    if (acc.creator.routine && pl && platformOpen(pl.id)) runRoutine(acc);
+    // Good work that reached new people can lead somewhere.
+    const hit = acc.postIds.map((id) => d.posts[id]).find((x) => x && x.year === y - 1 && ['reach', 'viral'].includes(x.outcome));
+    if (hit && !offers().some((o) => o.kind === 'collab') && rng.chance(0.3)) {
+      const from = creatorNpc(acc.platformId, acc.creator.pathway);
+      d.offers.push({ id: newId('offer'), kind: 'collab', fromId: from.id, accountId: acc.id, topic: acc.creator.pathway, year: y, status: 'open', fee: 0, fromPost: hit.id });
+      log(`${from.firstName} ${from.lastName} saw your post that took off and asked about making something together.`, 'system', 'good');
     }
   }
   // Deals: paid when delivered, lapsed when not.
@@ -487,6 +540,52 @@ function tickTrends() {
     d.trends.push({ id: newId('trend'), defId: t.id, platformId: pl.id, name: t.name, topics: t.topics, text: t.text, startYear: y, endYear: y + rng.int(0, 1) });
   }
 }
+/** A creator's routine: a few posts a year, made automatically while time allows. Optional, and stopped any time. */
+export function setRoutine(accountId, routine) {
+  const acc = account(accountId);
+  if (!acc?.creator || !isPlayer(acc.ownerId)) return result(false, 'That is not one of your channels.');
+  if (!routine) { acc.creator.routine = null; return result(true, 'Routine stopped. You will post when you feel like it.', 'neutral'); }
+  const pl = PLATFORM_BY_ID[acc.platformId];
+  const format = pl.formats.includes(routine.format) ? routine.format : pl.formats.find((f) => f !== 'livestream');
+  const perYear = Math.max(1, Math.min(24, Math.round(Number(routine.perYear) || 6)));
+  acc.creator.routine = { perYear, format, topic: TOPIC_BY_ID[routine.topic] ? routine.topic : acc.creator.pathway };
+  return result(true, `Routine set: ${perYear} ${FORMATS[format].name.toLowerCase()}${perYear === 1 ? '' : 's'} a year about ${TOPIC_BY_ID[acc.creator.routine.topic].name.toLowerCase()}, about ${perYear * FORMATS[format].hours} hours.`, 'good');
+}
+function runRoutine(acc) {
+  const r = acc.creator.routine;
+  let made = 0;
+  for (let i = 0; i < r.perYear; i++) { const res = publishRoutine(acc, r); if (!res.ok) break; made += 1; }
+  if (made) log(`Your routine on @${acc.handle}: ${made} ${made === 1 ? 'post' : 'posts'} this year${made < r.perYear ? `, fewer than planned: there was not the time` : ''}.`);
+}
+// content.publish, handed over by tick.js at start-up: content imports this module, so it cannot be imported here directly.
+var publisher = null; // eslint-disable-line no-var
+function publishRoutine(acc, r) { return publisher ? publisher({ accountId: acc.id, format: r.format, topic: r.topic, routine: true }) : { ok: false }; }
+export function useRoutinePublisher(fn) { publisher = fn; }
+
+/** Starts selling merchandise. Costs a setup fee; sales come in yearly, through the ledger. */
+export function startMerch(accountId) {
+  const p = player();
+  const acc = account(accountId);
+  if (!acc?.creator || !isPlayer(acc.ownerId)) return result(false, 'That is not one of your channels.');
+  if (p.age < 18) return result(false, 'Selling things is for adults.');
+  if (acc.creator.merch) return result(false, 'You already sell merchandise.');
+  if (!['growing', 'established', 'fulltime', 'public'].includes(acc.creator.stage) || followerCount(acc) < 500) return result(false, 'Merchandise needs an audience that wants it: a growing channel with 500 followers or more.');
+  const cost = localMoney(1500, country());
+  if (p.finance.cash < cost) return result(false, `Designs, samples and a shop cost ${fmtMoney(cost, country())}.`);
+  p.finance.cash -= cost;
+  acc.creator.merch = { since: store.state.year, setup: cost };
+  return result(true, `You opened a shop for @${acc.handle}. Sales come in through the year.`, 'good');
+}
+
+export function answerLicense(offerId, yes) {
+  const o = world().offers.find((x) => x.id === offerId && x.kind === 'license' && x.status === 'open');
+  if (!o) return result(false, 'That offer is no longer open.');
+  if (!yes) { o.status = 'declined'; return result(true, 'You kept it to yourself.', 'neutral'); }
+  o.status = 'accepted';
+  const row = pay({ accountId: o.accountId, kind: 'licensing', gross: o.fee, fee: 0, ref: `license:${o.id}` });
+  return result(true, `You licensed it to ${o.from} for ${fmtMoney(o.fee, country())}${row ? ` (${fmtMoney(row.net, country())} after tax)` : ''}.`, 'good');
+}
+
 export const currentTrends = (platformId) => world().trends.filter((t) => t.endYear >= store.state.year && (!platformId || t.platformId === platformId));
 
 /** Digital skills grow with use. Kept per character; never a stand-in for intelligence. */

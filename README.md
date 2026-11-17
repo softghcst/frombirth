@@ -391,10 +391,28 @@ The screen is `js/ui/digital.js`. Portraits anywhere in it open the person's own
 tab opens); where the player is — section, filters, the open post or conversation, scroll position — is kept while
 they visit a profile, and when Digital Life is closed and opened again.
 
-What is not built yet: political campaigning and royal duties online are limited to official accounts (posting does
-not yet move the Politics or Royalty engines); there is no separate housing-renovation or travel-photo flow beyond
-choosing those topics; lives still begin in the present (the engine supports any year, and the tests begin lives in
-1800 and 1980, but the character creator offers no historical start).
+More of it, by part:
+
+| Part | Where | What it does |
+|---|---|---|
+| Public life | `civic.js` | Office-holders, candidates and royals speak through official accounts (kept apart from personal ones): a statement nudges approval in office or a campaign's appeal by a capped amount, or a royal's public image, and the country's press reports it. Elections are still counted by the Politics engine. Being widely known brings interviews and panels, a loss of privacy, and — for something the player really did and was never caught for — an allegation, which is not a conviction |
+| Study | `school.js` | The school's own systems by era (paper, email, a portal with marks), online study groups with real classmates (a small effect on marks; followers count for nothing), a portfolio of finished work (which helps in creative careers), digital skills |
+| More messaging | `messaging.js` | Plans and invitations that really happen the next year (and are remembered), photos, anniversary wishes, talking about the relationship (which can clear the air or start a row), venting (the only thing a leak can ever be made of), birthday messages from family (three a year at most), helping an older relative get online |
+| More creators | `creator.js` | Optional posting routines; merchandise (with the cost of making it), labelled affiliate links, licensing offers for good work, paid collaborations paid on publication; livestreams scheduled for later with chosen equipment; project work counts as practice for the matching skill |
+| Other people | `npc.js` | Gifted friends start channels of their own; people join communities for their hobbies; an online friend who ends up in the player's field becomes a colleague; a few well-known creators on each platform to follow, who are strangers, not friends |
+| Story arcs | `stories.js` | Also: a creator's crossroads (make it a job, keep it on the side, step back), burnout after two heavy years, stopping decades later; life after going viral; a bigger creator reaching out; a recruiter; an invitation to moderate; meeting an online friend; a partner abroad; old posts decades on (shared with the family, they join the archive); a child's school photography project |
+
+Also: the character creator can start a life in any year from 1800; scenes that mention modern technology, and the
+creator career, only appear once the registry says that technology exists where the player lives; the feed carries
+the country's real news; trips the player took and homes they bought or renovated can be posted about (a trip names
+the place visited, never the home); profile pictures (portrait, initials, a pet, a symbol — never someone else) and
+links to one's own other accounts; devices are belongings with a condition; a self-set limit on screen time; locked
+accounts can be recovered; neighbourhood groups follow a move; a university's community is made of real classmates;
+dating has preferences (ages, distance, what one is looking for); the Family Archive opens from the People tab too.
+
+Still not built: business partnerships (there is no business system in the game for an online friend to join);
+radio and television are in the technology registry but have no activities of their own; content projects live in
+the Digital World because the game has no separate hobby-project system.
 
 ## Where to edit content
 

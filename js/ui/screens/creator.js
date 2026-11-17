@@ -100,6 +100,9 @@ export function renderCreator(app, hooks) {
         <div class="card"><h3>Start in life</h3>
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
+          <div class="field"><label for="f-year">Year of birth</label>
+            <input id="f-year" type="number" inputmode="numeric" min="1800" max="${new Date().getFullYear()}" placeholder="${new Date().getFullYear()} (now)">
+            <p class="muted" style="margin-top:4px">Born in an earlier year, you live through the technology of the time: letters before telephones, telephones before the internet.</p></div>
           <div data-rank-field hidden>
             ${picker('birthRank', 'Born into', 'Random', named({ commoner: 'Commoners', noble: 'The nobility', royal: 'The royal family' }))}
             <p class="muted" data-rank-note></p>
@@ -222,6 +225,7 @@ export function renderCreator(app, hooks) {
       talent: choice.talent || undefined,
       background: choice.background || undefined,
       birthRank: choice.birthRank || undefined,
+      year: (() => { const y = Math.round(Number(q('#f-year').value)); return y >= 1800 && y <= new Date().getFullYear() ? y : undefined; })(),
     });
   });
 

@@ -9,7 +9,7 @@ import { PLATFORM_BY_ID, TECH_BY_ID } from '../../data/digital.js';
 import { roleLabel, spendAction } from '../relationships.js';
 import { world, newId, charOf, isPlayer, firstOf, acts, result, recordEvent, spendHours, LIMITS } from './core.js';
 import { adoption, techAvailable, accessFor, platformOpen } from './tech.js';
-import { accountOn, account, blocks, activeAccountsOf } from './accounts.js';
+import { accountOn, account, blocks, activeAccountsOf, makeAccount, handleTaken } from './accounts.js';
 
 export const FAMILY = ['parent', 'grandparent', 'sibling', 'child', 'grandchild', 'greatgrandchild', 'niece', 'relative', 'inlaw', 'spouse', 'partner'];
 const ADULT = 18;
@@ -79,6 +79,10 @@ export function intents(npcId) {
     { id: 'birthday', label: 'Send birthday wishes' },
     { id: 'support', label: 'Ask how they are really doing', needs: () => p.age >= 12 },
     { id: 'romance', label: 'Something sweet', needs: () => ['partner', 'spouse'].includes(npc?.role) && p.age >= ADULT && npc.age >= ADULT },
+    { id: 'anniversary', label: 'Send anniversary wishes', needs: () => npc?.role === 'spouse' && npc.marriedAtAge != null },
+    { id: 'us', label: 'Talk about how things are between you', needs: () => p.age >= 12 && ['partner', 'spouse', 'friend', 'sibling', 'parent'].includes(npc?.role) },
+    { id: 'photo', label: 'Send a photo', needs: () => !!accessFor('photo') },
+    { id: 'vent', label: 'Complain about people at work or school', needs: () => p.age >= 12 },
   ];
   return list.filter((x) => !x.needs || x.needs());
 }
@@ -131,6 +135,10 @@ const OPEN = {
   birthday: ['Happy birthday! Hope this year is a good one.', 'Many happy returns!'],
   support: ['How are you really doing? You can tell me.', 'You have been on my mind. Everything all right?'],
   romance: ['Thinking about you.', 'Cannot wait to see you tonight.', 'Still the best thing that ever happened to me.'],
+  anniversary: ['Happy anniversary. I would choose you again.', 'Another year. Still my favourite person.'],
+  us: ['Can we talk about us? I feel like we have drifted a bit.', 'I just want to make sure we are all right.'],
+  photo: ['Look what I saw today!', 'Thought you would like this one.', 'Found this old photo of us.'],
+  vent: ['I cannot stand some of the people I deal with. Honestly.', 'Can I just complain for a minute? Everyone is driving me up the wall.'],
 };
 
 /**
@@ -155,6 +163,10 @@ function replyFrom(npc, intent) {
     birthday: ['Thank you! You remembered.', 'Aw, thank you!'],
     support: [`I am all right, mostly.${news} Thank you for asking.`, 'Better for hearing from you.'],
     romance: ['Same. Always.', '❤', 'Come home soon.'],
+    anniversary: ['Happy anniversary, love. Here is to many more.', '❤ Every year better.'],
+    us: fond >= 55 ? ['We are good. Better than good. But thank you for asking.', 'I have felt it too. Let us make time for each other.'] : ['Honestly? I am not sure. We should talk properly.'],
+    photo: ['Ha! I love it.', 'Oh, that takes me back.', 'Beautiful.'],
+    vent: ['Ugh, I know exactly what you mean.', 'Vent away. I am listening.'],
   }[intent] ?? ['Thanks for the message.'];
   const text = shortReplies ? by[0].split('.')[0] + '.' : rng.pick(by);
   return { text, warm: true };
@@ -198,6 +210,17 @@ export function contact(npcId, channelId, intent = 'catch_up') {
     spendAction(npc, 'message');
   }
   if (npc.flags?.digitalOnly) bond(npc, reply.warm ? 6 : 1);
+  // Talking about the relationship is a risk when things are not good: it can clear the air, or start a row.
+  if (intent === 'us' && npc.meters && p.npcIds.includes(npc.id) && npc.meters.relationship < 55) {
+    const cleared = rng.chance(0.5 + p.stats.charm / 300);
+    npc.meters.relationship = clamp(npc.meters.relationship + (cleared ? 6 : -6));
+    addMessage(t, npc.id, cleared ? 'Thank you for saying it. I am glad we talked.' : 'I do not think a message is the place for this.', ch.id);
+  }
+  // An invitation or a plan they say yes to is a real plan: it happens next year, if both of you are still able.
+  if (['plans', 'invite'].includes(intent) && reply.warm && p.npcIds.includes(npc.id)) {
+    world().plans ??= [];
+    if (!world().plans.some((x) => x.npcId === npc.id && x.status === 'pending')) world().plans.push({ id: newId('plan'), npcId: npc.id, kind: intent, made: store.state.year, status: 'pending' });
+  }
   // A meaningful message from family is kept: once per person.
   if (reply.warm && FAMILY.includes(npc.role) && (npc.meters?.relationship ?? 0) >= 80 && ['support', 'share_news', 'birthday'].includes(intent)) {
     recordEvent({ kind: 'family_message', charIds: [p.id, npc.id], ref: { type: 'message', id: t.messages[t.messages.length - 1].id }, summary: `A message from your ${roleLabel(npc).toLowerCase()} ${npc.firstName} that you kept: "${reply.text}"`, visibility: 'family', once: `family_message_${npc.id}`, tone: 'good' });
@@ -320,6 +343,73 @@ export function inbox() {
   return Object.values(world().threads)
     .filter((t) => t.participants.includes(p.id) || t.left?.includes(p.id))
     .sort((a, b) => b.lastYear - a.lastYear || b.messages.length - a.messages.length);
+}
+
+/** Plans made by message, kept (or not) the following year. */
+export function tickPlans() {
+  const p = player();
+  for (const x of world().plans ?? []) {
+    if (x.status !== 'pending' || x.made >= store.state.year) continue;
+    const n = charOf(x.npcId);
+    const far = typeof n?.flags?.abroad === 'string' && n.flags.abroad !== p.countryId;
+    if (!n?.alive || !p.npcIds.includes(n.id) || p.legal?.incarceration) { x.status = 'fell_through'; continue; }
+    if (far && p.age < ADULT) { x.status = 'fell_through'; log(`The plan with ${n.firstName} never quite happened: too far away.`); continue; }
+    x.status = 'kept';
+    n.meters.relationship = clamp(n.meters.relationship + rng.int(3, 6));
+    n.lastInteractionAge = p.age;
+    n.memories ??= [];
+    if (!n.memories.some((mm) => mm.key === `plan_${x.id}`)) n.memories.push({ key: `plan_${x.id}`, text: x.kind === 'invite' ? 'You invited them along, and they came.' : 'The two of you made a plan, and kept it.', age: p.age });
+    log(`You and ${n.firstName} ${x.kind === 'invite' ? 'went to the thing you invited them to' : 'finally got together, as planned'}.`, 'system', 'good');
+  }
+}
+
+/** Family and close friends remember birthdays, and spouses anniversaries. A few messages a year, never a flood. */
+export function tickGreetings() {
+  const p = player();
+  if (!COMM_DIGITAL()) return;
+  let sent = 0;
+  const people = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role !== 'pet' && n.meters.relationship >= 60 && !contactBlock(n.id))
+    .sort((a, b) => b.meters.relationship - a.meters.relationship);
+  for (const n of people) {
+    if (sent >= 3) break;
+    const ch = channels(n.id).find((c) => c.id.startsWith('dm:') || c.id === 'text');
+    if (!ch || !rng.chance(n.role === 'spouse' || n.role === 'parent' ? 0.7 : 0.25)) continue;
+    const t = threadWith(n.id);
+    const anniv = n.role === 'spouse' && n.marriedAtAge != null && (p.age - n.marriedAtAge) > 0 && (p.age - n.marriedAtAge) % 5 === 0;
+    addMessage(t, n.id, anniv ? `${p.age - n.marriedAtAge} years married today. I would do it all again.` : rng.pick(['Happy birthday! Hope it is a lovely one.', `Happy birthday, ${p.firstName}!`, 'Many happy returns. Call me later?']), ch.id, { greeting: anniv ? 'anniversary' : 'birthday' });
+    sent += 1;
+  }
+}
+const COMM_DIGITAL = () => techAvailable('mobile') || techAvailable('instant');
+
+/**
+ * Helps an older relative or friend get online: setting up a phone, showing them how. Older people
+ * can learn this as well as anyone; some just need someone to sit with them the first time.
+ */
+export function helpOnline(npcId, platformId) {
+  const p = player();
+  const n = charOf(npcId);
+  if (!n?.alive || !p.npcIds.includes(npcId)) return result(false, 'They are not in your life.');
+  if (accountOn(npcId, platformId)) return result(false, `${n.firstName} is already there.`);
+  const pl = PLATFORM_BY_ID[platformId];
+  if (!pl || !platformOpen(platformId)) return result(false, 'That service is not running.');
+  if (n.age < pl.minAge) return result(false, `${n.firstName} is too young for ${pl.name}.`);
+  if (acts()[`help:${npcId}`]) return result(false, 'You already spent an afternoon on this with them this year.');
+  if (!spendHours(4)) return result(false, 'No spare time left this year.');
+  acts()[`help:${npcId}`] = true;
+  const willing = n.meters.relationship >= 40 && rng.chance(0.55 + n.meters.relationship / 250);
+  if (!willing) return result(false, `${n.firstName} listened politely and said they would think about it.`, 'neutral');
+  n.flags.helpedOnline = store.state.year;
+  n.meters.relationship = clamp(n.meters.relationship + 4);
+  n.lastInteractionAge = p.age;
+  const h = `${n.firstName}.${n.lastName}`.toLowerCase().replace(/[^a-z0-9_.]/g, '').slice(0, 16);
+  let handle = h.length >= 3 ? h : `${h}fam`;
+  while (handleTaken(platformId, handle)) handle = `${handle.slice(0, 14)}${rng.int(10, 99)}`;
+  const acc = makeAccount(n.id, platformId, handle, { visibility: pl.privacy.includes('friends') ? 'friends' : pl.privacy[0] });
+  const mine = accountOn(p.id, platformId);
+  if (mine) { acc.following.push(mine.id); mine.followers.push(acc.id); }
+  recordEvent({ kind: 'helped_online', charIds: [p.id, n.id], platformId, summary: `You spent an afternoon helping ${n.firstName} get set up on ${pl.name}. Their first message was to you.`, visibility: 'family', once: `helped_${n.id}_${platformId}` });
+  return result(true, `${n.firstName} is on ${pl.name} now, and very pleased about it.`, 'good');
 }
 
 /** The year's group chatter, from people with real news. At most two messages a group a year; muted groups stay quiet. */

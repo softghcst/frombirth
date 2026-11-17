@@ -68,7 +68,10 @@ export function spareHours(p = player()) {
   if (p.career?.partTime) h -= SPARE_HOURS.parttime;
   const small = p.npcIds?.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'child' && n.age < 12).length ?? 0;
   h -= Math.min(2, small) * SPARE_HOURS.kids;
-  return Math.max(SPARE_HOURS.minimum, h);
+  // A limit the player set themselves (Online Reputation → Time and well-being).
+  const limit = store.state.digital?.wellbeing?.[p.id]?.limit;
+  const cap = { light: 80, moderate: 180 }[limit];
+  return Math.max(Math.min(SPARE_HOURS.minimum, cap ?? Infinity), Math.min(h, cap ?? Infinity));
 }
 
 export function hoursLeft() {

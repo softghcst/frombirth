@@ -8,6 +8,7 @@
 //   cast: {key: spec}   spec is a role, 'mother'/'father', or 'tag:<contact tag>'
 //   castRequires: [...] conditions on the people cast, e.g. cast.kid.age >= 14
 //   outcome.requires    picks a text variant from history (see conditions.js)
+import { techAvailable } from './digital/tech.js';
 import { headTitle } from './polity.js';
 import { latestLaw } from './government.js';
 import { rng } from '../rng.js';
@@ -36,10 +37,34 @@ function castFor(ev) {
   return cast;
 }
 
+/**
+ * Scenes that mention modern technology only happen once it exists where the player lives. The words
+ * map to the Digital World's registry (engine/digital/tech.js), which decides by year and country.
+ */
+const TECH_WORDS = [
+  [/\b(smartphone|selfie|app|apps|swipe|texted|texting|group chat)\b/i, 'smartphone'],
+  [/\b(social media|followers|influencer|went viral|posted online)\b/i, 'social'],
+  [/\b(internet|online|website|email|e-mail|googl\w*)\b/i, 'web'],
+  [/\b(streaming|livestream|livestreaming)\b/i, 'video_share'],
+  [/\b(video call)\b/i, 'video_call'],
+  [/\b(laptop|computer|video game|video games)\b/i, 'pc'],
+  [/\b(phone|phones|phoned|ringtone|voicemail)\b/i, 'landline'],
+  [/\b(television|tv)\b/i, 'television'],
+];
+const techCache = new Map();
+function timely(ev) {
+  if (!techCache.has(ev.id)) {
+    const words = `${ev.text} ${ev.choices.map((c) => c.label).join(' ')}`;
+    techCache.set(ev.id, TECH_WORDS.filter(([re]) => re.test(words)).map(([, id]) => id));
+  }
+  return techCache.get(ev.id).every((id) => techAvailable(id));
+}
+
 /** The cast for an event if it can fire now, otherwise null. */
 function eligibleCast(ev) {
   const p = player();
   if (ev.queuedOnly) return null;
+  if (!timely(ev)) return null;
   if (!!ev.prison !== !!p.legal.incarceration) return null;
   if (p.age < ev.ageRange[0] || p.age > ev.ageRange[1]) return null;
   const seen = store.state.eventHistory.find((h) => h.id === ev.id);

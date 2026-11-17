@@ -21,17 +21,33 @@ const ADULT = 18;
 /** Communities that exist this year: their platform has to be running. */
 export function communities() {
   const d = world();
+  const p = player();
+  const make = (id, def, o = {}) => {
+    if (d.communities[id]) return d.communities[id];
+    d.communities[id] = {
+      id, defId: def.id, platformId: o.platform ?? def.platform, topic: def.topic, name: o.name ?? def.name, rules: def.rules,
+      memberCount: Math.round((o.size ?? def.size ?? 800) * Math.max(0.05, platformActivity(o.platform ?? def.platform))), keyMembers: [...(o.members ?? [])], moderators: [],
+      events: [], history: [{ year: store.state.year, text: 'You first came across it.' }], createdYear: store.state.year, local: !!def.local, place: o.place ?? null, school: o.school ?? null,
+    };
+    return d.communities[id];
+  };
   for (const def of COMMUNITIES) {
     if (!platformOpen(def.platform)) continue;
-    if (!d.communities[def.id]) {
-      d.communities[def.id] = {
-        id: def.id, platformId: def.platform, topic: def.topic, name: def.local ? `${player().city} ${def.name}` : def.name, rules: def.rules,
-        memberCount: Math.round((def.size || 800) * Math.max(0.05, platformActivity(def.platform))), keyMembers: [], moderators: [],
-        events: [], history: [{ year: store.state.year, text: 'You first came across it.' }], createdYear: store.state.year, local: !!def.local,
-      };
-    }
+    // A neighbourhood group belongs to a place: moving brings a new one, and the old one stays in the record.
+    if (def.local) make(`${def.id}:${p.countryId}:${p.city}`, def, { name: `${p.city} ${def.name}`, size: 600, place: `${p.city}` });
+    else make(def.id, def);
   }
-  return Object.values(d.communities).filter((c) => platformOpen(c.platformId) || membership(c.id));
+  // A university's own students' community, whose members are the player's real classmates.
+  const e = p.education;
+  const uniPlat = ['hearth', 'corkboard'].find((id) => platformOpen(id));
+  if (e?.enrolled && ['university', 'graduate', 'medical', 'law', 'community'].includes(e.stage) && uniPlat) {
+    const school = e.schoolName ?? 'University';
+    const mates = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && (n.role === 'classmate' || n.id === e.roommateId)).map((n) => n.id).slice(0, 4);
+    const c = make(`uni:${school}`, { id: 'uni', topic: 'education', platform: uniPlat, rules: 'Students and alumni only. Be kind to first-years.', size: 9000 }, { name: `${school} students`, members: mates, school });
+    for (const id of mates) if (!c.keyMembers.includes(id)) c.keyMembers.push(id);
+  }
+  const here = (c) => !c.place || c.place === p.city;
+  return Object.values(d.communities).filter((c) => (platformOpen(c.platformId) && here(c) && (!c.school || e?.schoolName === c.school || membership(c.id))) || membership(c.id));
 }
 
 export const membership = (communityId, charId = player().id) => world().memberships.find((m) => m.communityId === communityId && m.charId === charId && !m.leftYear) ?? null;
@@ -117,7 +133,12 @@ export function participate(communityId, kind = 'discuss') {
   const people = c.keyMembers.map(charOf).filter((n) => n?.alive);
   const who = rng.pick(people);
   let text = { discuss: `You got into a long, friendly argument in ${c.name}.`, ask: 'People were kinder about your question than you expected.', help: 'Someone thanked you for the answer.', share: `You shared ${work?.title ?? 'your work'} in ${c.name}.` }[kind];
-  if (who && rng.chance(0.75)) {
+  if (who && rng.chance(0.75) && player().npcIds.includes(who.id)) {
+    // Someone the player already knows: the community just brings them closer.
+    who.meters.relationship = clamp(who.meters.relationship + rng.int(2, 5));
+    who.lastInteractionAge = p.age;
+    text += ` You and ${who.firstName} got talking there.`;
+  } else if (who && rng.chance(0.75)) {
     const became = bond(who, rng.int(5, 11));
     const closeEnough = !contactBlock(who.id);
     text += became ? ` You and ${who.firstName} have been talking so much you would call them a friend now.` : ` ${who.firstName} (@${accountOn(who.id, c.platformId)?.handle ?? 'someone'}) replied${closeEnough ? ', and you got talking' : ''}.`;
@@ -208,10 +229,29 @@ function compatibility(n) {
   const traits = (n.traits ?? []).filter((t) => p.traits.includes(t)).length * 0.1;
   const age = 1 - Math.min(1, Math.abs(n.age - p.age) / 20);
   const near = n.flags.abroad ? -0.15 : 0.1;
-  return clamp(0.3 + shared + traits + age * 0.25 + near + rng.around(0, 0.1), 0, 1);
+  const want = accountOn(p.id, DATING)?.dating?.goal;
+  const goals = !want || !n.flags.goal ? 0 : want === n.flags.goal ? 0.12 : want === 'unsure' || n.flags.goal === 'unsure' ? 0 : -0.15;
+  return clamp(0.3 + shared + traits + age * 0.25 + near + goals + rng.around(0, 0.1), 0, 1);
 }
 
-/** Up to three new matches a year: adults, of the gender the player is interested in, near where they live. */
+/** The player's dating preferences: ages, how far, and what they are looking for. */
+export function datingPrefs() {
+  const p = player();
+  const acc = accountOn(p.id, DATING);
+  if (!acc) return null;
+  acc.dating ??= { ageMin: Math.max(ADULT, p.age - 6), ageMax: p.age + 8, distance: 'local', goal: 'serious' };
+  return acc.dating;
+}
+export function setDatingPrefs(o) {
+  const prefs = datingPrefs();
+  if (!prefs) return result(false, 'You need a dating profile first.');
+  const lo = Math.max(ADULT, Math.round(Number(o.ageMin) || prefs.ageMin));
+  const hi = Math.max(lo, Math.round(Number(o.ageMax) || prefs.ageMax));
+  Object.assign(prefs, { ageMin: lo, ageMax: Math.min(99, hi), distance: o.distance === 'anywhere' ? 'anywhere' : 'local', goal: ['serious', 'casual', 'unsure'].includes(o.goal) ? o.goal : prefs.goal });
+  return result(true, `Looking for: ${prefs.goal === 'serious' ? 'something serious' : prefs.goal === 'casual' ? 'something casual' : 'whatever happens'}, ages ${prefs.ageMin}–${prefs.ageMax}, ${prefs.distance === 'local' ? 'nearby' : 'anywhere'}.`, 'good');
+}
+
+/** Up to three new matches a year: adults, of the gender the player is interested in, within their preferences. */
 export function findMatches() {
   const p = player();
   const block = datingBlocks();
@@ -224,7 +264,12 @@ export function findMatches() {
   for (let i = 0; i < 3; i++) {
     if (!rng.chance(0.55 + p.stats.charm / 300)) continue;
     const gender = want === 'men' ? 'male' : want === 'women' ? 'female' : rng.pick(['male', 'female']);
-    const n = makeNpc({ role: 'contact', countryId: p.countryId, gender, age: Math.max(ADULT, p.age + rng.int(-5, 6)), relationship: rng.int(40, 55) });
+    const prefs = datingPrefs();
+    const far = prefs.distance === 'anywhere' && rng.chance(0.3);
+    const from = far ? rng.pick(Object.keys(COUNTRIES).filter((id) => id !== p.countryId)) : p.countryId;
+    const n = makeNpc({ role: 'contact', countryId: from, gender, age: rng.int(prefs.ageMin, prefs.ageMax), relationship: rng.int(40, 55) });
+    if (far) n.flags.abroad = from;
+    n.flags.goal = rng.pick(['serious', 'serious', 'casual', 'unsure']);
     n.orientation = n.gender === p.gender ? rng.pick(['gay', 'bisexual']) : rng.pick(['straight', 'straight', 'bisexual']);
     n.flags.digitalOnly = true;
     n.flags.dating = true;
@@ -298,7 +343,7 @@ export function unmatch(matchId) {
 /** The year in communities: membership counts follow the platform, moderators put in their hours, people age. */
 export function tickCommunities() {
   for (const c of Object.values(world().communities)) {
-    const def = COMMUNITY_BY_ID[c.id];
+    const def = COMMUNITY_BY_ID[c.defId ?? c.id];
     const target = Math.round((def?.size || 800) * Math.max(0.02, platformActivity(c.platformId)));
     c.memberCount = Math.max(0, Math.round(c.memberCount + (target - c.memberCount) * 0.3));
     if (!platformOpen(c.platformId) && !c.closedYear) { c.closedYear = store.state.year; c.history.push({ year: store.state.year, text: `${PLATFORM_BY_ID[c.platformId].name} shut down, and ${c.name} with it. Its threads are archived.` }); }

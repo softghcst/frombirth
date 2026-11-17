@@ -33,7 +33,7 @@ export const COMM_TECH = [
   { id: 'telegraph', name: 'Telegrams', from: 1850, span: 30, infra: 15, declines: 1960, devices: [], activities: ['telegram'], cost: 10, blurb: 'Short, urgent, paid for by the word.' },
   { id: 'landline', name: 'The telephone', from: 1890, span: 50, infra: 25, devices: ['home_phone'], activities: ['call'], cost: 120, blurb: 'A voice down a wire.' },
   { id: 'radio', name: 'Radio', from: 1922, span: 15, infra: 15, devices: [], activities: ['listen'], cost: 0, blurb: 'News and music from the air.' },
-  { id: 'television', name: 'Television', from: 1950, span: 15, infra: 25, devices: [], activities: ['watch'], cost: 0, blurb: 'The world in the living room.' },
+  { id: 'television', name: 'Television', from: 1946, span: 15, infra: 25, devices: [], activities: ['watch'], cost: 0, blurb: 'The world in the living room.' },
   { id: 'pc', name: 'Personal computers', from: 1979, span: 16, infra: 40, devices: ['desktop', 'laptop'], activities: ['compute'], cost: 0, digital: true, blurb: 'A machine of your own on the desk.' },
   { id: 'email', name: 'Email', from: 1992, span: 8, infra: 45, devices: ['desktop', 'laptop', 'smartphone', 'tablet'], activities: ['email'], cost: 0, digital: true, blurb: 'Letters that arrive in seconds.' },
   { id: 'web', name: 'The web', from: 1993, span: 9, infra: 45, devices: ['desktop', 'laptop', 'smartphone', 'tablet'], activities: ['browse', 'publish'], cost: 240, digital: true, blurb: 'Pages from anywhere, and a page of your own if you want one.' },
@@ -218,6 +218,7 @@ export const COMMUNITIES = [
   { id: 'c_theatre', topic: 'acting', name: 'Stage Door', platform: 'hearth', rules: 'Break a leg, figuratively.', size: 9000 },
   { id: 'c_style', topic: 'fashion', name: 'Thread Count', platform: 'glimmer', rules: 'Critique the clothes, not the body.', size: 35000 },
   { id: 'c_travel', topic: 'travel', name: 'Wanderlist', platform: 'hearth', rules: 'Never post anyone\'s home address.', size: 28000 },
+  { id: 'c_study', topic: 'education', name: 'Study Hall', platform: 'corkboard', rules: 'Help with understanding, never with cheating.', size: 24000, academic: true },
   { id: 'c_neighbours', topic: 'life', name: 'Neighbours', platform: 'hearth', rules: 'Local news, lost cats, and no feuds.', size: 0, local: true },
 ];
 export const COMMUNITY_BY_ID = Object.fromEntries(COMMUNITIES.map((c) => [c.id, c]));

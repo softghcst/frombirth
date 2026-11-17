@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { techAvailable } from './digital/tech.js';
 import { forgetNpc } from './digital/core.js';
 import { hiringClimate, layoffChance } from './economy.js';
 import { payK } from './cities.js';
@@ -53,6 +54,7 @@ export function unmet(career) {
   const r = career.req ?? {};
   const out = [];
   if (p.legal.incarceration) out.push('Not from a cell.');
+  if (career.id === 'influencer' && !techAvailable('social')) out.push('There is no such job yet: social media does not exist here.');
   if (career.type !== 'freelance' && !residency(p).workAuthorized) out.push('Your student visa does not allow full-time work.');
   if (p.career.careerId === career.id) out.push('This is your current job.');
   if (p.education.enrolled && p.education.stage !== 'none' && career.type !== 'freelance' && !p.education.partTime) {
@@ -106,7 +108,8 @@ function doorBonus(career) {
   if (career.focus && p.flags.cosmoFocus === career.focus) bonus += 0.25;
   if ((p.flags.internships ?? []).some((i) => i.careerId === career.id)) bonus += 0.2; // they have done the work before
   const referred = p.flags.referrals?.[career.id];
-  if (referred != null && p.age - referred <= 1) bonus += 0.2; // someone there vouched for them, or a recruiter put them forward (engine/digital/professional.js)
+  if (referred != null && p.age - referred <= 1) bonus += 0.2;
+  if (['performing', 'beauty'].includes(career.category) && (p.flags.portfolio ?? 0) >= 0.55) bonus += 0.1; // a portfolio of good finished work (engine/digital/school.js) // someone there vouched for them, or a recruiter put them forward (engine/digital/professional.js)
   return bonus + hiringEdge(p) + hiringClimate(); // the economy; and languages: an asset anywhere, and a barrier where you cannot speak the one in use
 }
 

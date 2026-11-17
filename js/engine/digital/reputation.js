@@ -5,7 +5,7 @@ import { rng } from '../../rng.js';
 import { clamp, localMoney, fmtMoney } from '../../util.js';
 import { store, player, country, log } from '../../state.js';
 import { PLATFORM_BY_ID } from '../../data/digital.js';
-import { world, newId, charOf, acts, result, recordEvent, reputation, adjustReputation, spendHours } from './core.js';
+import { world, newId, charOf, acts, result, recordEvent, reputation, adjustReputation, spendHours, spareHours } from './core.js';
 import { accountsOf, activeAccountsOf, account, followerCount, block as blockAccount, updateAccount } from './accounts.js';
 import { FAMILY } from './messaging.js';
 
@@ -18,6 +18,10 @@ export const CONTROVERSY = {
   rumor: { name: 'A rumour', status: 'rumor', truth: false },
   undisclosed_ad: { name: 'Hidden advertising', status: 'verified', truth: true },
   opinion: { name: 'An unpopular opinion', status: 'verified', truth: true },
+  // A claim about something the player really did: an allegation, not a conviction. Courts are the Justice engine's business.
+  allegation: { name: 'An allegation', status: 'allegation', truth: true },
+  // A private message that someone shared without asking: the words were real, the sharing was not the player's doing.
+  leak: { name: 'A leaked private message', status: 'verified', truth: true },
   charity: { name: 'A charity drive', status: 'resolved', truth: true, positive: true },
 };
 
@@ -145,6 +149,7 @@ export const SAFETY = {
   unwanted: { name: 'Unwanted contact', text: 'A stranger keeps sending you messages, though you have never replied.' },
   impersonation: { name: 'Impersonation', text: 'An account is pretending to be you.' },
   signin: { name: 'Suspicious sign-in', text: 'Someone tried to sign in to your account from somewhere you have never been.' },
+  privacy: { name: 'Too much attention', text: 'People who recognise you online have started turning up where you go, and someone posted which neighbourhood you live in.' },
 };
 
 export const openSafety = () => world().safety.filter((s) => s.charId === player().id && s.status === 'open');
@@ -155,6 +160,7 @@ export const SAFETY_ACTIONS = {
   unwanted: [['block', 'Block and report them'], ['restrict', 'Only accept messages from people you follow'], ['tell', 'Tell someone you trust']],
   impersonation: [['report', 'Report the fake account'], ['post', 'Tell your followers which account is really you']],
   signin: [['secure', 'Change your password and turn on two-step sign-in'], ['ignore', 'Ignore it']],
+  privacy: [['report', 'Report the post with your neighbourhood in it'], ['private', 'Make your accounts private for a while'], ['tell', 'Tell someone you trust'], ['break', 'Step back from posting']],
 };
 
 export function handleSafety(safetyId, actionId) {
@@ -201,8 +207,9 @@ export function handleSafety(safetyId, actionId) {
       break;
     case 'ignore':
       if (rng.chance(0.4) && acc) {
-        acc.status = 'active';
-        text = 'Someone got into your account and posted spam before you could take it back. It took a week to sort out.';
+        acc.status = 'locked';
+        acc.lockedYear = store.state.year;
+        text = 'Someone got into your account and posted spam. You are locked out until you recover it.';
         adjustReputation(p.id, 'credibility', -1, 'Account taken over');
       } else text = 'Nothing came of it this time.';
       break;
@@ -235,6 +242,17 @@ function tickSafety() {
   if (kind === 'bullying') p.stats.mood = clamp(p.stats.mood - 4);
 }
 
+/** Gets a compromised account back: proving who you are, then a new password and two-step sign-in. */
+export function recoverAccount(accountId) {
+  const acc = account(accountId);
+  if (!acc || acc.ownerId !== player().id || acc.status !== 'locked') return result(false, 'That account is not locked.');
+  if (!spendHours(3)) return result(false, 'Recovering an account takes a few hours you do not have this year.');
+  acc.status = 'active';
+  acc.security = { strong: true, twoStep: true };
+  for (const id of acc.postIds) { const x = world().posts[id]; if (x?.spam) x.removed = 'spam'; }
+  return result(true, `@${acc.handle} is yours again, with a new password and two-step sign-in.`, 'good');
+}
+
 // ---------- Well-being and time ----------
 
 export function wellbeing(charId = player().id) {
@@ -253,6 +271,13 @@ export function takeBreak() {
 }
 export const onBreak = () => (wellbeing().breakUntil ?? 0) >= store.state.year;
 export function endBreak() { wellbeing().breakUntil = store.state.year - 1; return result(true, 'Welcome back.', 'neutral'); }
+/** A limit on how much of the year goes to screens: 'light', 'moderate' or none. */
+export function setLimit(level) {
+  if (![null, 'light', 'moderate'].includes(level)) return result(false, 'Not a setting.');
+  wellbeing().limit = level;
+  return result(true, level ? `You will keep screens to ${level === 'light' ? 'a little' : 'a moderate amount'} of your spare time.` : 'No limit on screen time.', 'neutral');
+}
+
 export function setNotifications(level) {
   if (!['all', 'important', 'off'].includes(level)) return result(false, 'Not a setting.');
   wellbeing().notifications = level;
@@ -270,10 +295,14 @@ function tickWellbeing() {
   const d = world();
   const w = wellbeing();
   if (!activeAccountsOf(p.id).length) return;
-  const mine = Object.values(d.posts).filter((x) => x.authorId === p.id && x.year === store.state.year);
+  // The tick runs as a new year starts: this looks back at the year that has just ended.
+  const last = store.state.year - 1;
+  const mine = Object.values(d.posts).filter((x) => x.authorId === p.id && x.year === last);
   const hostile = mine.reduce((s, x) => s + x.comments.filter((c) => c.tone === 'hostile' && !c.hidden).length, 0);
   const warm = mine.reduce((s, x) => s + x.comments.filter((c) => c.authorId && c.tone === 'warm').length, 0);
-  const busy = d.time.year === store.state.year ? d.time.used : 0;
+  const busy = d.lastYearUse?.year === last ? d.lastYearUse.used : 0;
+  const heavy = busy >= spareHours() * 0.85 && busy >= 150;
+  w.heavyYears = heavy ? (w.heavyYears ?? 0) + 1 : 0;
   const frets = p.traits.includes('worrier');
   const loves = p.traits.some((t) => ['radiant', 'dramatic', 'musical', 'sunny'].includes(t));
   let delta = 0;
@@ -285,7 +314,7 @@ function tickWellbeing() {
   if (onBreak()) delta += frets ? 2 : 0.5;
   if (w.notifications === 'off') delta += 0.5;
   p.stats.mood = clamp(p.stats.mood + Math.round(delta));
-  w.lastYear = { year: store.state.year, posts: mine.length, hostile, warm, hours: busy, mood: Math.round(delta) };
+  w.lastYear = { year: last, posts: mine.length, hostile, warm, hours: busy, mood: Math.round(delta) };
 }
 
 /** The year's reputation drift: attention fades without new reasons for it; trust slowly returns. */
@@ -295,9 +324,13 @@ export function tickReputation() {
   if (r.recognition > 0) adjustReputation(p.id, 'recognition', -Math.max(0.5, r.recognition * 0.06), 'Time passing');
   if (r.credibility < 60 && !openControversies().length) adjustReputation(p.id, 'credibility', 1, 'Time passing');
   // A post that drew an argument this year can become a misunderstanding people talk about.
-  const argued = Object.values(world().posts).find((x) => x.authorId === p.id && x.year === store.state.year && x.outcome === 'disagreement' && !x.removed);
+  const argued = Object.values(world().posts).find((x) => x.authorId === p.id && x.year >= store.state.year - 1 && x.outcome === 'disagreement' && !x.removed);
   if (argued && rng.chance(0.35)) {
     const c = raise('misunderstood', { postId: argued.id, text: `A post of yours ("${argued.text}") has been taken the wrong way, and people are talking about it.` });
+    if (c) log(c.text, 'system', 'bad');
+  } else if (r.recognition >= 25 && rng.chance(0.06) && Object.values(world().threads).some((t) => t.messages.some((m) => m.from === p.id && m.intent === 'vent' && store.state.year - m.year <= 3))) {
+    // Something the player really wrote, in private, that someone else shared.
+    const c = raise('leak', { text: 'Someone screenshotted a private message where you complained about people, and shared it.' });
     if (c) log(c.text, 'system', 'bad');
   } else if (r.recognition >= 35 && rng.chance(0.05)) {
     const c = raise('rumor', { text: 'A rumour about you is going around online. It is not true.' });

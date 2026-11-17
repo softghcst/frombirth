@@ -5,6 +5,7 @@ import { rng } from '../../rng.js';
 import { clamp } from '../../util.js';
 import { store, player } from '../../state.js';
 import { FORMATS, TOPIC_BY_ID, TOPICS, PLATFORM_BY_ID } from '../../data/digital.js';
+import { COUNTRIES } from '../../data/countries.js';
 import { world, newId, charOf, isPlayer, firstOf, nameOf, acts, result, recordEvent, spendHours, hoursLeft, reputation, adjustReputation, LIMITS } from './core.js';
 import { accessFor, platformActivity, platformStatus, isOpen } from './tech.js';
 import { account, accountOn, activeAccountsOf, canSee, followerCount, blocks } from './accounts.js';
@@ -38,13 +39,21 @@ export function formatOptions(accountId) {
  */
 export function sourceOptions() {
   const p = player();
-  const used = new Set(Object.values(world().posts).filter((x) => x.source?.type === 'milestone' && x.authorId === p.id).map((x) => x.source.key));
+  const used = new Set(Object.values(world().posts).filter((x) => x.source && x.authorId === p.id).map((x) => x.source.key));
   const ms = p.milestones.map((m, i) => ({ m, i })).filter(({ m }) => m.age >= p.age - 3 && m.kind !== 'digital')
     .map(({ m, i }) => ({ type: 'milestone', key: `${i}:${m.age}`, text: m.text, topic: topicFor(m.text, m.kind), age: m.age }))
     .filter((s) => !used.has(s.key));
   const projects = Object.values(world().projects).filter((x) => x.ownerId === p.id && x.status === 'ready')
     .map((x) => ({ type: 'project', key: x.id, text: x.title, topic: x.topic, projectId: x.id }));
-  return [...projects, ...ms.reverse()];
+  // Trips the player really took, and homes they really bought or did up. The post can say where the trip was;
+  // it never says where the player lives.
+  const trips = (p.trips ?? []).filter((t) => !t.refused && t.year >= store.state.year - 1 && COUNTRIES[t.countryId])
+    .map((t, i) => ({ type: 'trip', key: `trip:${t.year}:${t.countryId}:${i}`, text: `Your trip to ${COUNTRIES[t.countryId].name}`, topic: 'travel', place: COUNTRIES[t.countryId].name }))
+    .filter((s) => !used.has(s.key));
+  const homes = p.assets.filter((a) => a.kind === 'property' && (a.boughtAtAge >= p.age - 1 || a.renovatedYear >= store.state.year - 1))
+    .map((a) => ({ type: 'home', key: `home:${a.id}:${a.renovatedYear ?? a.boughtAtAge}`, text: a.renovatedYear >= store.state.year - 1 ? 'Your renovation, finished' : 'Your new home', topic: 'life' }))
+    .filter((s) => !used.has(s.key));
+  return [...projects, ...trips, ...homes, ...ms.reverse()];
 }
 
 function topicFor(text, kind) {
@@ -100,7 +109,8 @@ export function qualityOf(charId, topicId, format, o = {}) {
  * it does to reputation and relationships.
  * @param {{accountId:string, format:string, topic:string, audience?:string, text?:string,
  *          source?:{type:string, key:string, text?:string, projectId?:string}, aboutIds?:string[],
- *          contractId?:string, disclosed?:boolean, trendId?:string, shareLocation?:boolean, familyShared?:boolean}} o
+ *          contractId?:string, disclosed?:boolean, trendId?:string, shareLocation?:boolean, familyShared?:boolean,
+ *          affiliate?:boolean, civic?:string}} o
  */
 export function publish(o) {
   const p = player();
@@ -114,7 +124,7 @@ export function publish(o) {
   if (!fmt) return result(false, `${pl.name} does not take that kind of post.`);
   if (fmt.why) return result(false, fmt.why);
   const topic = TOPIC_BY_ID[o.topic] ? o.topic : 'life';
-  if (topic === 'work' && !o.source && !p.career?.careerId) return result(false, 'There is no work news to share right now.');
+  if (topic === 'work' && !o.source && !o.civic && !p.career?.careerId && !p.politics) return result(false, 'There is no work news to share right now.');
   const audience = o.audience && [...pl.privacy, 'public', 'friends', 'private'].includes(o.audience) ? o.audience : acc.visibility;
   const a = acts();
   a.posts = (a.posts ?? 0) + 1;
@@ -129,7 +139,10 @@ export function publish(o) {
     id: newId('post'), accountId: acc.id, authorId: p.id, platformId: acc.platformId, year: store.state.year, age: p.age,
     format: o.format, topic, text, audience, source: o.source ? { type: o.source.type, key: o.source.key } : null,
     aboutIds: (o.aboutIds ?? []).filter((id) => charOf(id)), quality: q, trendId: trend?.id ?? null,
-    contractId: o.contractId ?? null, disclosed: o.contractId ? !!o.disclosed : null, location: o.shareLocation ? p.city : null,
+    contractId: o.contractId ?? null, disclosed: o.contractId ? !!o.disclosed : null,
+    // A trip post may name the place visited; otherwise only the city, and only when the player chose to.
+    location: o.source?.place ?? (o.shareLocation ? p.city : null),
+    affiliate: !!o.affiliate && !!account(o.accountId)?.creator, civic: o.civic ?? null,
     familyShared: !!o.familyShared, metrics: null, outcome: null, comments: [], resolvedYear: null, removed: null,
   };
   world().posts[post.id] = post;
@@ -145,7 +158,7 @@ export function publish(o) {
   return result(true, sim.text, sim.tone, { post });
 }
 
-const sourceLine = (s) => (s.type === 'project' ? `New: ${s.text}.` : `Some news: ${s.text.replace(/\.$/, '')}.`);
+const sourceLine = (s) => (s.type === 'project' ? `New: ${s.text}.` : s.type === 'trip' ? `${s.text.replace(/^Your/, 'My')}, in pictures.` : s.type === 'home' ? `${s.text.replace(/^Your/, 'My')}.` : `Some news: ${s.text.replace(/\.$/, '')}.`);
 
 /** Keeps an account's post list within storage limits, never dropping posts the life story points at. */
 function trimPosts(acc) {
@@ -418,6 +431,12 @@ export function feed(o = {}) {
     ? posts.sort((a, b) => b.year - a.year || b.id.localeCompare(a.id, undefined, { numeric: true }))
     : posts.sort((a, b) => score(b) - score(a));
   const items = order.slice(0, 60);
+  // Real news from the country's press, as it was reported this year and last: what is actually happening.
+  const w = store.state.polities?.[player().countryId];
+  if (w?.news?.length && (!o.topic || o.topic === 'work') && !o.platformId) {
+    const recent = w.news.filter((n) => n.year >= store.state.year - 1).slice(-3).reverse();
+    items.splice(Math.min(2, items.length), 0, ...recent.map((n, i) => ({ id: `news_${n.year}_${i}`, news: true, year: n.year, outlet: n.outlet, text: n.text, tone: n.tone, you: n.you })));
+  }
   if (o.background !== false) {
     const plats = [...new Set(mine.map((a) => a.platformId))].filter((id) => isOpen(platformStatus(id)) && PLATFORM_BY_ID[id].audience === 'followers');
     const bg = plats.flatMap((id) => backgroundPosts(id, 2)).filter((x) => !o.topic || x.topic === o.topic).slice(0, LIMITS.feedBackground);

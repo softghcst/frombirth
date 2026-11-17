@@ -4,11 +4,17 @@
 import { store, player, log } from '../../state.js';
 import { PLATFORMS, PLATFORM_BY_ID, COMM_TECH } from '../../data/digital.js';
 import { world, recordEvent, newId } from './core.js';
-import { platformStatus, techAvailable, digitalEra } from './tech.js';
+import { platformStatus, techAvailable, digitalEra, syncInventory } from './tech.js';
 import { accountsOf, activeAccountsOf, snapshot, makeAccount, followerCount, cleanHandle, handleTaken } from './accounts.js';
 import { tickGroups } from './messaging.js';
+
+useRoutinePublisher(publish);
 import { tickCommunities } from './community.js';
-import { tickCreators, settleCollab, deliver } from './creator.js';
+import { tickCreators, settleCollab, deliver, useRoutinePublisher } from './creator.js';
+import { publish } from './content.js';
+import { tickFame } from './civic.js';
+import { schoolSystems, portfolioStrength } from './school.js';
+import { tickPlans, tickGreetings } from './messaging.js';
 import { tickReputation } from './reputation.js';
 import { tickNpcDigital } from './npc.js';
 import { tickStories } from './stories.js';
@@ -122,20 +128,29 @@ export function tickDigital() {
   const state = store.state;
   migrateDigital(state);
   const p = player();
+  // Last year's time online, kept before anything starts counting this year's.
+  const d0 = world();
+  d0.lastYearUse = { year: store.state.year - 1, used: d0.time.year === store.state.year - 1 ? d0.time.used : 0 };
   settleThisYear(); // last year's posts, published since the previous tick
   tickPlatforms();
   tickNpcDigital();
   tickGroups();
+  tickPlans();
+  tickGreetings();
   tickCommunities();
   if (digitalEra()) {
     tickCreators();
     tickReputation();
     tickProfessional();
+    tickFame();
     tickStories();
   }
   for (const a of accountsOf(p.id)) snapshot(a);
   for (const a of Object.values(world().accounts)) if (a.creator && a.ownerId !== p.id) snapshot(a);
   syncCompat();
+  syncInventory(p);
+  // A strong portfolio helps in creative careers; the career engine reads this (doorBonus).
+  p.flags.portfolio = Math.round(portfolioStrength(p.id) * 100) / 100;
 }
 
 export { newId };

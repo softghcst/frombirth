@@ -155,7 +155,22 @@ export function updateAccount(accountId, changes) {
   if (changes.notifications) acc.notifications = changes.notifications;
   if (changes.messages) acc.messages = changes.messages;
   if (changes.locationSharing != null) acc.locationSharing = !!changes.locationSharing;
+  if (changes.avatar != null) {
+    if (!avatarChoices(acc).some((o) => o.value === changes.avatar)) return result(false, 'That cannot be your profile picture.');
+    acc.avatar = changes.avatar;
+  }
+  // Links on a profile point only to the owner's own other accounts: nothing outside the game.
+  if (changes.links) acc.links = changes.links.filter((id) => { const o = account(id); return o && o.ownerId === acc.ownerId && o.id !== acc.id; }).slice(0, 4);
   return result(true, 'Profile saved.', 'good', { account: acc });
+}
+
+/** Profile pictures someone may use: their own portrait, a pet of theirs, their initials, or a simple symbol. Never another person's face. */
+export const SYMBOLS = ['🌿', '🎵', '📷', '⭐', '🌙', '🎨', '⚽', '📚'];
+export function avatarChoices(acc) {
+  const owner = charOf(acc.ownerId);
+  const pets = isPlayer(acc.ownerId) ? player().npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'pet') : [];
+  return [{ value: 'portrait', label: 'Your own photo' }, { value: 'monogram', label: `Your initials (${owner.firstName[0]}${(owner.lastName ?? ' ')[0]})` },
+    ...pets.map((n) => ({ value: `pet:${n.id}`, label: `${n.firstName}, your ${n.species}`, species: n.species })), ...SYMBOLS.map((s) => ({ value: `symbol:${s}`, label: `A symbol: ${s}` }))];
 }
 
 /** Steps away from an account without losing it. */
