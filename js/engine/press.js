@@ -12,6 +12,7 @@ import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, uid } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { BRANDS, AGENT_COMMISSION, PUBLICIST_FEE, ACCURACY } from '../data/fame.js';
+import { ensureTerms, look, offered, clearOffer, triesLeft } from './agents.js';
 import { fameOf, gain, regard, recognitionIn, exists } from './fame.js';
 import { ent, org, orgsOf, production, workOf, proCredits, playerSkill, article, pool } from './entertainment.js';
 import { makeNpc } from './npcFactory.js';
@@ -33,8 +34,24 @@ export function agentsWilling(p = player()) {
   const s = standing(p);
   return Object.values(ent().orgs).filter((o) => o.kind === 'agency' && o.countryId === p.countryId)
     .flatMap((o) => o.staff.map((id) => ({ org: o, npc: store.state.npcs[id] })))
-    .filter((x) => x.npc?.alive && x.npc.flags.agent && x.npc.flags.agent.standard <= s);
+    .filter((x) => x.npc?.alive && x.npc.flags.agent && x.npc.flags.agent.standard <= s)
+    .map((x) => { ensureTerms(x.npc, x.org.tier); return x; });
 }
+
+/** Looks for an agent: one agent who would take you on, with their terms and their clients. Twice a year. */
+export function findAgent() {
+  const p = player();
+  if (p.age < 16 && !p.flags.guardianWork) return result(false, 'A parent or guardian has to agree first.', 'neutral');
+  const willing = agentsWilling(p).filter((x) => x.npc.id !== pr(p).agent?.npcId);
+  const r = look('talent', willing.map((x) => x.npc), p);
+  if (r.error) return result(false, r.error, 'neutral');
+  if (r.none) return result(false, willing.length ? 'Nobody new will see you this year.' : 'No agent will take you on yet. Credits, skill and a little recognition change that.', 'neutral');
+  const a = r.agent.flags.agent;
+  return result(true, `${r.agent.firstName} ${r.agent.lastName} at ${ent().orgs[a.orgId]?.name} would take you on, for ${Math.round(a.commission * 100)}%.`, 'neutral');
+}
+export const agentOnOffer = () => offered('talent');
+export const agentTriesLeft = () => triesLeft('talent');
+export function passOnAgent() { clearOffer('talent'); return result(true, 'You thank them and say no.', 'neutral'); }
 
 export function signAgent(npcId) {
   const p = player();
@@ -43,12 +60,15 @@ export function signAgent(npcId) {
   const x = agentsWilling(p).find((a) => a.npc.id === npcId);
   if (!x) return result(false, 'They are not taking you on.', 'neutral');
   if (f.agent?.npcId === npcId) return result(false, 'They already represent you.', 'neutral');
-  f.agent = { npcId, orgId: x.org.id, since: year(), commission: AGENT_COMMISSION };
+  const terms = ensureTerms(x.npc, x.org.tier);
+  if (f.agent) endAgent();
+  f.agent = { npcId, orgId: x.org.id, since: year(), commission: terms.commission ?? AGENT_COMMISSION, clout: terms.clout ?? 1 };
+  clearOffer('talent');
   x.npc.flags.agent.clients.push('player');
   if (!p.npcIds.includes(npcId)) { x.npc.role = 'colleague'; x.npc.flags.title = `Your agent, at ${x.org.name}`; x.npc.age = year() - (x.npc.flags.star?.born ?? year() - x.npc.age); p.npcIds.push(npcId); }
   else x.npc.flags.title = `Your agent, at ${x.org.name}`;
   x.npc.lastInteractionAge = p.age;
-  const text = `${x.npc.firstName} ${x.npc.lastName} at ${x.org.name} represents you now, for ${Math.round(AGENT_COMMISSION * 100)}% of what you earn through them.`;
+  const text = `${x.npc.firstName} ${x.npc.lastName} at ${x.org.name} represents you now, for ${Math.round(f.agent.commission * 100)}% of what you earn through them.`;
   log(text, 'system', 'good');
   return result(true, text);
 }

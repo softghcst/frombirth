@@ -51,6 +51,16 @@ bodies). Women's professional leagues begin in their own years. Countries, laws 
 and money is shown at today's values throughout: a constant-price world, chosen over inflating every stored
 salary and price.
 
+## Agents
+
+`js/engine/agents.js`. Every agent (talent agents at agencies, literary agents) is a person with their own
+terms: a cut between 5% and 20% (leading agencies usually charge more, not always), their pull with the people
+who hire (clout: it changes audition odds, offers, which publishers read a book and the advance), and a list of
+clients who are real people in the world (actors with their credits, authors with their books; the biggest
+names are with the leading agencies). Looking for an agent shows one at a time; you can sign, say no, or look
+again, but only twice a year for each kind. Signing a new agent replaces the old one; work already signed keeps
+the terms it was signed on (each contract and book records its agent's cut).
+
 ## Also in the engines
 
 - **Sport**: football, basketball, rugby and cricket leagues (men's and women's, from their own founding years);

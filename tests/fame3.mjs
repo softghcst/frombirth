@@ -119,7 +119,7 @@ for (let y = 0; y < 2; y++) { for (let i = 0; i < 3; i++) pub.writeSession(); if
 const bid = pub.writingOf(p).books[0];
 pub.book(bid).quality = 82; // a strong manuscript, so the agent and the sale can be checked
 let tries = 0;
-while (!pub.writingOf(p).agent && tries++ < 12) { pub.writingOf(p).acts.queries = 0; pub.queryAgents(bid); }
+while (!pub.writingOf(p).agent && tries++ < 12) { p.fame.agentSearch = {}; pub.queryAgents(bid); if (pub.litAgentOnOffer()) pub.signLitAgent(); }
 check(!!pub.writingOf(p).agent && p.npcIds.includes(pub.writingOf(p).agent.npcId), 'a literary agent takes the player on, and is someone they know');
 tries = 0;
 while (pub.book(bid).status === 'manuscript' && tries++ < 12) { pub.writingOf(p).acts.queries = 0; pub.submit(bid); }
@@ -142,6 +142,38 @@ p.career.paidYear = null;
 check(!work.payLines(p).some((l) => l.source.startsWith('opt:') || l.source.startsWith('trans:')), 'rights are paid once');
 check(adv > 0, 'setup');
 section(`books: an agent, ${(b.foreign ?? []).length} translations, ${made ? 'a film' : 'an option'}; everything paid once`);
+
+// Agents each have their own terms and clients, and are shopped for twice a year.
+p = life('uk', 30);
+p.talents.acting = 85; p.stats.charm = 80;
+fame.gain({ audience: 'film', amount: 60, lasting: 1, why: 'films' }, p);
+const press = await import('../js/engine/press.js');
+const agentsMod = await import('../js/engine/agents.js');
+const talent = press.agentsWilling(p).map((x) => x.npc);
+const cuts = new Set(talent.map((n) => n.flags.agent.commission));
+check(talent.length >= 3 && cuts.size >= 2, `agents take different cuts (${[...cuts].map((c) => Math.round(c * 100)).join(', ')}%)`);
+check(talent.every((n) => n.flags.agent.commission >= 0.05 && n.flags.agent.commission <= 0.2), 'every cut is between 5% and 20%');
+const listed = talent.flatMap((n) => agentsMod.clientsOf(n));
+check(listed.length > 0 && listed.every((c) => store.state.npcs[c.id] && c.flags.star?.agentId), 'their clients are real people in the world, each with one agent');
+const top = talent.filter((n) => n.flags.agent.tier === 'top').flatMap((n) => agentsMod.clientsOf(n)).map((c) => c.flags.star.fame);
+const small = talent.filter((n) => n.flags.agent.tier === 'small').flatMap((n) => agentsMod.clientsOf(n)).map((c) => c.flags.star.fame);
+if (top.length && small.length) check(Math.max(...top) >= Math.max(...small), 'the leading agencies have the biggest names');
+const look1 = press.findAgent();
+const first = press.agentOnOffer();
+check(look1.ok && first, 'looking shows one agent, with their terms');
+press.passOnAgent();
+const look2 = press.findAgent();
+const second = press.agentOnOffer();
+check(look2.ok ? second && second.id !== first.id : true, 'a second look shows someone else');
+check(!press.findAgent().ok && press.agentTriesLeft() === 0, 'and that is all the looking for this year');
+if (second) {
+  check(press.signAgent(second.id).ok && ent.workOf(p).agent.commission === second.flags.agent.commission, 'signing takes on that agent\'s own cut');
+  check(second.flags.agent.clients.includes('player'), 'and the player joins their client list');
+}
+year();
+check(press.agentTriesLeft() === 2, 'a new year, two more looks');
+section(`agents: cuts from ${Math.round(Math.min(...cuts) * 100)}% to ${Math.round(Math.max(...cuts) * 100)}%, client lists, two looks a year`);
+
 
 // 6. Celebrity brands launch products.
 p = life('uk', 30);

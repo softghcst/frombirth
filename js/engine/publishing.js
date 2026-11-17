@@ -21,6 +21,7 @@ import { levelOf } from './skills.js';
 import { ent, workOf, article, makeProduction, production } from './entertainment.js';
 import { gain, regard, fameOf, exists } from './fame.js';
 import { registerEmployer } from './employers.js';
+import { rollTerms, look, offered, clearOffer, triesLeft, search } from './agents.js';
 import { makeNpc } from './npcFactory.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -101,32 +102,84 @@ export function writeSession() {
 
 // ---------- Literary agents ----------
 
-const LIT_AGENCIES = ['{S} Literary', '{W} Literary Agency', '{S} & {S2} Associates'];
-export const AGENT_SHARE = 0.15;
+const LIT_AGENCIES = ['{S} Literary', '{W} Literary Agency', '{S} & {S2} Associates', '{W} Authors'];
+export const AGENT_SHARE = 0.15; // the usual cut, for books signed before agents had their own terms
 
-/** Asks literary agents to take you on, with a finished manuscript to show them. */
+/** A country's literary agents, made once: people at agencies, each with their own cut, pull and authors. */
+export function litAgents(countryId) {
+  const E = B();
+  E.litAgents ??= {};
+  if (!E.litAgents[countryId]) {
+    const c = COUNTRIES[countryId];
+    E.litAgents[countryId] = ['top', 'top', 'mid', 'mid', 'small', 'small'].map((tier, i) => {
+      const agency = LIT_AGENCIES[i % LIT_AGENCIES.length].replace('{W}', rng.pick(ORG_WORDS)).replace('{S}', rng.pick(c.names.last)).replace('{S2}', rng.pick(c.names.last));
+      const n = makeNpc({ role: 'performer', countryId, age: rng.int(32, 66), relationship: rng.int(40, 55) });
+      n.occupation = 'literary agent';
+      n.flags.agent = { kind: 'literary', agency, tier, standard: { top: 70, mid: 58, small: 45 }[tier] + rng.int(-4, 4), clients: [], ...rollTerms(tier) };
+      // Their authors: real people with books to their names, the best known with the leading agents.
+      for (let k = 0; k < rng.int(2, 4); k++) {
+        const au = makeNpc({ role: 'performer', countryId, age: rng.int(30, 78) });
+        au.occupation = 'author';
+        const fame = Math.round(clamp(rng.around({ top: 55, mid: 32, small: 15 }[tier], 12)));
+        au.flags.star = { kind: 'author', fame, born: year() - au.age, credits: [], skill: { writing: Math.round(clamp(rng.around(60 + fame / 3, 8))) },
+          books: Array.from({ length: rng.int(1, 6) }, () => titleFor()), bestseller: fame >= 45 && rng.chance(0.7) };
+        au.flags.star.agentId = n.id;
+        store.state.npcs[au.id] = au;
+        n.flags.agent.clients.push(au.id);
+      }
+      store.state.npcs[n.id] = n;
+      return n.id;
+    });
+  }
+  return E.litAgents[countryId].map((id) => store.state.npcs[id]).filter((n) => n?.alive !== false);
+}
+
+/** Agents who would take on this manuscript: the book has to clear their bar. */
+function litWilling(b, p) {
+  const name = (fameOf(p).audiences.literary ?? 0) * 0.5 + (b.kind === 'memoir' ? (p.hidden.fame ?? 0) * 0.6 : 0);
+  return litAgents(p.countryId).filter((n) => n.id !== writingOf(p).agent?.npcId && b.quality + name + rng.around(0, 6) >= n.flags.agent.standard);
+}
+
+/** Looks for a literary agent with a finished manuscript: one at a time, twice a year. */
 export function queryAgents(bookId) {
   const p = player();
-  const w = writingOf(p);
   const b = book(bookId);
-  if (w.agent) return result(false, `${w.agent.name} already represents you.`, 'neutral');
   if (!b || b.author !== 'player' || b.status !== 'manuscript') return result(false, 'Agents want to read a finished manuscript.', 'neutral');
-  if (w.acts.queries >= 2) return result(false, 'You have sent enough letters this year.', 'neutral');
-  w.acts.queries += 1;
-  const name = (fameOf(p).audiences.literary ?? 0) * 0.5 + (b.kind === 'memoir' ? (p.hidden.fame ?? 0) * 0.6 : 0);
-  if (!rng.chance(clamp(0.15 + (b.quality + name - 58) / 35, 0.03, 0.85))) return result(false, rng.pick(['Form rejections. One says "not for us at this time".', 'Nothing back at all from most of them.', 'One asks for the full manuscript, then passes.']));
-  const c = COUNTRIES[p.countryId];
-  const n = makeNpc({ role: 'colleague', countryId: p.countryId, age: rng.int(30, 62), relationship: 55 });
-  n.occupation = 'literary agent';
-  n.flags.title = 'Your literary agent';
-  store.state.npcs[n.id] = n;
-  p.npcIds.push(n.id);
-  const agency = rng.pick(LIT_AGENCIES).replace('{W}', rng.pick(ORG_WORDS)).replace('{S}', rng.pick(c.names.last)).replace('{S2}', rng.pick(c.names.last));
-  w.agent = { npcId: n.id, name: `${n.firstName} ${n.lastName}`, agency, since: year() };
-  milestone(`Signed with a literary agent: ${n.firstName} ${n.lastName}.`, 'career');
-  return result(true, `${n.firstName} ${n.lastName} of ${agency} loves it and will represent you. They take ${Math.round(AGENT_SHARE * 100)}% of what your books earn, and get you better deals.`);
+  const r = look('literary', litWilling(b, p), p);
+  if (r.error) return result(false, r.error, 'neutral');
+  if (r.none) return result(false, rng.pick(['Form rejections. One says "not for us at this time".', 'Nothing back from most of them.', 'One asks for the full manuscript, then passes.']));
+  const a = r.agent.flags.agent;
+  search('literary', p).bookId = bookId;
+  return result(true, `${r.agent.firstName} ${r.agent.lastName} of ${a.agency} wants to represent you, for ${Math.round(a.commission * 100)}% of what your books earn.`, 'neutral');
 }
-export function dropAgent() { const w = writingOf(); if (!w.agent) return result(false, 'You have no agent.', 'neutral'); w.agent = null; return result(true, 'You go it alone.', 'neutral'); }
+export const litAgentOnOffer = () => offered('literary');
+export const litTriesLeft = () => triesLeft('literary');
+export function passOnLitAgent() { clearOffer('literary'); return result(true, 'You say no, politely.', 'neutral'); }
+
+/** Signs with the agent on offer. A new agent replaces the old for books not yet sold. */
+export function signLitAgent() {
+  const p = player();
+  const w = writingOf(p);
+  const n = offered('literary', p);
+  if (!n) return result(false, 'No agent is on offer.', 'neutral');
+  const a = n.flags.agent;
+  if (!p.npcIds.includes(n.id)) { p.npcIds.push(n.id); n.role = 'colleague'; }
+  n.flags.title = 'Your literary agent';
+  n.lastInteractionAge = p.age;
+  if (!a.clients.includes('player')) a.clients.push('player');
+  w.agent = { npcId: n.id, name: `${n.firstName} ${n.lastName}`, agency: a.agency, since: year(), commission: a.commission, clout: a.clout };
+  clearOffer('literary', p);
+  milestone(`Signed with a literary agent: ${n.firstName} ${n.lastName}.`, 'career');
+  return result(true, `${n.firstName} ${n.lastName} of ${a.agency} represents you now, for ${Math.round(a.commission * 100)}%. Books already sold keep the terms they were sold on.`);
+}
+export function dropAgent() {
+  const w = writingOf();
+  if (!w.agent) return result(false, 'You have no agent.', 'neutral');
+  const n = store.state.npcs[w.agent.npcId];
+  if (n?.flags.agent) { n.flags.agent.clients = n.flags.agent.clients.filter((c) => c !== 'player'); n.flags.title = 'Your former literary agent'; }
+  w.agent = null;
+  return result(true, 'You go it alone. Books already sold keep paying them their share.', 'neutral');
+}
 
 /** Sends a finished manuscript out. Publishers answer on the book, and on the name on it. */
 export function submit(bookId) {
@@ -141,11 +194,12 @@ export function submit(bookId) {
   const name = b.kind === 'memoir' ? Math.max(f.headline ?? p.hidden.fame ?? 0, 0) : (f.audiences.literary ?? 0) * 0.6 + (p.hidden.fame ?? 0) * 0.2;
   const c = COUNTRIES[p.countryId];
   b.offers = publishers(p.countryId).filter((pub) => {
-    const bar = (pub.tier === 'big' ? 66 : 50) - (agent ? 8 : 0); // an agent gets the book read by the right people
+    const bar = (pub.tier === 'big' ? 66 : 50) - (agent ? 8 * (agent.clout ?? 1) : 0); // an agent gets the book read by the right people
     return rng.chance(clamp(0.2 + (b.quality + name * 0.5 - bar) / 40, 0.02, 0.92));
-  }).map((pub) => ({ publisherId: pub.id, advance: Math.round(localWage((pub.tier === 'big' ? 9000 : 2500) * (1 + Math.max(0, b.quality - 55) / 15 + name / 12) * (agent ? 1.4 : 1) * rng.around(1, 0.2), c)),
+  }).map((pub) => ({ publisherId: pub.id, advance: Math.round(localWage((pub.tier === 'big' ? 9000 : 2500) * (1 + Math.max(0, b.quality - 55) / 15 + name / 12) * (agent ? 1 + 0.4 * (agent.clout ?? 1) : 1) * rng.around(1, 0.2), c)),
     royalty: Math.round((BOOK_DEAL.royalty[0] + rng.next() * (BOOK_DEAL.royalty[1] - BOOK_DEAL.royalty[0])) * 100) / 100 }));
   b.agented = !!agent;
+  b.agentShare = agent ? agent.commission ?? AGENT_SHARE : 0; // the terms of the agent who sold it
   if (!b.offers.length) return result(false, b.kind === 'memoir' && name < 25 ? 'Every publisher says the same, more kindly or less: who are you?' : 'Rejections, all of them. Some are kind.');
   b.status = 'offered';
   return result(true, `${b.offers.length} ${b.offers.length === 1 ? 'publisher wants' : 'publishers want'} ${b.title}.`);
@@ -313,7 +367,7 @@ export function bookLines(p = player()) {
   for (const id of writingOf(p).books) {
     const b = book(id);
     if (!b) continue;
-    const net = (g) => Math.round(g * (b.agented ? 1 - AGENT_SHARE : 1)); // the agent's share comes off the top
+    const net = (g) => Math.round(g * (b.agented ? 1 - (b.agentShare ?? AGENT_SHARE) : 1)); // the agent's share comes off the top
     if (b.publisherId && !b.advancePaid && b.signed === lived) out.push({ source: `badv:${b.id}`, label: `Advance for ${b.title}`, gross: net(b.advance), kind: 'advance' });
     const e = b.revenue.find((x) => x.year === lived);
     if (e?.toAuthor > 0 && !b.paid.includes(lived)) out.push({ source: `book:${b.id}:${lived}`, label: `Royalties: ${b.title}`, gross: net(e.toAuthor), book: b.id });

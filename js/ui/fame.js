@@ -22,6 +22,7 @@ import * as sports from '../engine/sports.js';
 import * as modelling from '../engine/modelling.js';
 import * as pub from '../engine/publishing.js';
 import * as celebs from '../engine/celebs.js';
+import * as agents from '../engine/agents.js';
 import { SPORTS, BOOKINGS, BOOK_KINDS, BOOK_GENRES, BOOK_AWARD } from '../data/fame.js';
 
 const BODIES = [...AWARD_BODIES, MUSIC_AWARD, BOOK_AWARD];
@@ -95,6 +96,31 @@ export function openFame(api, start = 'overview') {
   return modal;
 }
 
+// ---------- Agents ----------
+
+/** Who else an agent represents: the names that tell you what kind of agent they are. */
+function agentClients(n) {
+  const list = agents.clientsOf(n);
+  if (!list.length) return '<p class="muted" style="margin:4px 0">No other clients you would know.</p>';
+  return `<div class="section-label">Also represents</div>${list.slice(0, 6).map((c) => {
+    const st = c.flags.star ?? {};
+    const known = st.fame >= 60 ? 'A household name' : st.fame >= 35 ? 'Well known' : st.fame >= 15 ? 'Known in the business' : 'Up and coming';
+    const credits = ent.creditsOf(c.id);
+    const sub = st.kind === 'author' ? `${known} · author of ${(st.books ?? []).length} ${(st.books ?? []).length === 1 ? 'book' : 'books'}${st.bestseller ? ', bestselling' : ''}${st.books?.[0] ? `, including ${st.books[0]}` : ''}`
+      : `${known} · ${credits.length ? `${credits.length} ${credits.length === 1 ? 'credit' : 'credits'}, latest ${credits.at(-1).production.title}` : `${c.age >= 40 ? 'a long career' : 'a working actor'}`}`;
+    return row('person', c.id, `${c.firstName} ${c.lastName}`, sub, '', c);
+  }).join('')}`;
+}
+
+/** An agent on offer: their terms, their pull, their clients, and the choice. */
+function agentOffer(n, agency, signAct, passAct, againAct, left) {
+  const a = n.flags.agent;
+  return `<div class="card" style="margin-top:8px"><h3>${esc(`${n.firstName} ${n.lastName}`)}</h3>
+    ${kv([['Agency', agency], ['Kind of agency', agents.tierLabel(a.tier)], ['Their cut', `${Math.round(a.commission * 100)}%`], ['Pull with the people who hire', a.clout >= 1.25 ? 'A lot' : a.clout >= 0.9 ? 'Some' : 'Not much'], ['Clients', String(agents.clientsOf(n).length)]])}
+    ${agentClients(n)}
+    <div class="btn-stack">${btn(signAct, 'Sign with them', { cls: 'primary' })}${btn(againAct, 'Look for another', { disabled: left <= 0, sub: left > 0 ? `${left} ${left === 1 ? 'look' : 'looks'} left this year` : 'No more looks this year' })}${btn(passAct, 'Say no')}</div></div>`;
+}
+
 // ---------- Views ----------
 
 const VIEWS = {
@@ -153,12 +179,13 @@ const VIEWS = {
   representation(p) {
     const w = ent.workOf(p);
     const agent = w.agent ? store.state.npcs[w.agent.npcId] : null;
-    const willing = press.agentsWilling(p).filter((x) => x.npc.id !== w.agent?.npcId);
+    const offer = press.agentOnOffer();
+    const left = press.agentTriesLeft();
     const pub = w.publicist ? store.state.npcs[w.publicist.npcId] : null;
-    return `<div class="card"><h3>Agent</h3>${agent ? `${row('person', agent.id, `${agent.firstName} ${agent.lastName}`, `${ent.org(w.agent.orgId)?.name ?? ''} · since ${w.agent.since} · ${Math.round(w.agent.commission * 100)}%`, '', agent)}${btn('endagent', 'End the representation', { cls: 'danger' })}`
-    : '<p class="muted">An agent finds parts, puts you up for them, and negotiates. They take a share, and guarantee nothing.</p>'}
-      ${willing.length ? `<div class="section-label">Would take you on</div>${willing.map((x) => btn('agent', `${x.npc.firstName} ${x.npc.lastName}, ${x.org.name}`, { arg: x.npc.id, sub: `${x.org.tier === 'top' ? 'A leading agency' : x.org.tier === 'mid' ? 'A solid agency' : 'A small agency'} · ${x.npc.flags.agent.clients.length} clients you know of` })).join('')}`
-    : !agent ? '<p class="muted">No agent will take you on yet. Credits, skill and a little recognition change that.</p>' : ''}</div>
+    return `<div class="card"><h3>Agent</h3>${agent ? `${row('person', agent.id, `${agent.firstName} ${agent.lastName}`, `${ent.org(w.agent.orgId)?.name ?? ''} · since ${w.agent.since} · takes ${Math.round(w.agent.commission * 100)}%`, '', agent)}
+      ${agentClients(agent)}${btn('endagent', 'End the representation', { cls: 'danger' })}`
+    : '<p class="muted">An agent finds parts, puts you up for them, and negotiates. Each takes their own cut, and some carry more weight than others. They guarantee nothing.</p>'}
+      ${offer ? agentOffer(offer, ent.org(offer.flags.agent.orgId)?.name ?? '', 'signagent', 'passagent', 'findagent', left) : `<div class="btn-stack">${btn('findagent', agent ? 'Look for a different agent' : 'Look for an agent', { disabled: left <= 0, sub: left > 0 ? `${left} ${left === 1 ? 'look' : 'looks'} left this year` : 'You have looked twice this year' })}</div>`}</div>
       <div class="card"><h3>Publicist</h3>${pub ? `${row('person', pub.id, `${pub.firstName} ${pub.lastName}`, `${money(w.publicist.fee)} a year`, '', pub)}${btn('nopub', 'Let them go')}` : btn('pub', 'Hire a publicist', { sub: 'Helps you say things well. Cannot change what happened.' })}</div>
       <p class="muted">Lawyers and accountants are separate professions; nothing here gives legal or financial representation.</p>`;
   },
@@ -321,8 +348,9 @@ const VIEWS = {
       <div class="btn-stack">${d ? btn('wsession', 'Write', { sub: `${3 - w.acts.sessions} seasons of work left this year` }) : btn('draft', 'Start a book')}</div>
       ${unpublished.map((b) => `<div class="card"><h3>${esc(b.title)}</h3><p class="muted" style="margin:0">${esc(BOOK_KINDS[b.kind].name)}, ${esc(b.genre)}, finished ${b.written}.</p>
         ${b.offers?.length ? `<div class="section-label">Offers</div><div class="btn-stack">${b.offers.map((o) => btn('bookoffer', ent.org(o.publisherId)?.name ?? 'A publisher', { arg: `${b.id}:${o.publisherId}`, sub: `${money(o.advance)} advance, ${Math.round(o.royalty * 100)}% royalties` })).join('')}</div>` : ''}
-        <div class="btn-stack">${!w.agent && b.status === 'manuscript' ? btn('queryagent', 'Look for a literary agent', { arg: b.id, disabled: w.acts.queries >= 2, sub: 'They take 15%, and get you read and paid better.' }) : ''}${btn('submit', w.agent ? `Have ${w.agent.name} send it out` : 'Send it to publishers', { arg: b.id, disabled: w.acts.queries >= 2 })}${btn('selfpub', 'Publish it yourself', { arg: b.id })}</div></div>`).join('')}
-      ${w.agent ? `<div class="card"><h3>Your agent</h3>${kv([['Agent', `${w.agent.name}, ${w.agent.agency}`], ['Since', String(w.agent.since)]])}${store.state.npcs[w.agent.npcId] ? row('person', w.agent.npcId, w.agent.name, 'Literary agent', '', store.state.npcs[w.agent.npcId]) : ''}<div class="btn-stack">${btn('dropagent', 'Part ways')}</div></div>` : ''}
+        <div class="btn-stack">${b.status === 'manuscript' && !pub.litAgentOnOffer() ? btn('queryagent', w.agent ? 'Look for a different literary agent' : 'Look for a literary agent', { arg: b.id, disabled: pub.litTriesLeft() <= 0, sub: pub.litTriesLeft() > 0 ? `Each takes their own cut. ${pub.litTriesLeft()} ${pub.litTriesLeft() === 1 ? 'look' : 'looks'} left this year.` : 'You have looked twice this year.' }) : ''}${btn('submit', w.agent ? `Have ${w.agent.name} send it out` : 'Send it to publishers', { arg: b.id, disabled: w.acts.queries >= 2 })}${btn('selfpub', 'Publish it yourself', { arg: b.id })}</div></div>`).join('')}
+      ${pub.litAgentOnOffer() ? agentOffer(pub.litAgentOnOffer(), pub.litAgentOnOffer().flags.agent.agency, 'signlit', 'passlit', 'queryagent2', pub.litTriesLeft()) : ''}
+      ${w.agent ? `<div class="card"><h3>Your agent</h3>${kv([['Agent', `${w.agent.name}, ${w.agent.agency}`], ['Their cut', `${Math.round((w.agent.commission ?? pub.AGENT_SHARE) * 100)}%`], ['Since', String(w.agent.since)]])}${store.state.npcs[w.agent.npcId] ? agentClients(store.state.npcs[w.agent.npcId]) : ''}${store.state.npcs[w.agent.npcId] ? row('person', w.agent.npcId, w.agent.name, 'Literary agent', '', store.state.npcs[w.agent.npcId]) : ''}<div class="btn-stack">${btn('dropagent', 'Part ways')}</div></div>` : ''}
       ${pub.bibliography(p).length ? `<div class="section-label">Your books</div>${[...pub.bibliography(p)].reverse().map((b) => row('bookview', b.id, b.title, `${b.released} · ${BOOK_KINDS[b.kind].name}${b.list ? ` · bestseller #${b.list}` : ''}`, `${b.critics}/100`)).join('')}` : ''}`;
   },
 
@@ -435,6 +463,12 @@ const ACTIONS = {
   wsession: (_, x) => x.say(pub.writeSession()),
   submit: (id, x) => x.say(pub.submit(id)),
   queryagent: (id, x) => x.say(pub.queryAgents(id)),
+  queryagent2: (_, x) => { const b = pub.writingOf().books.map(pub.book).find((y) => y?.status === 'manuscript'); return b ? x.say(pub.queryAgents(b.id)) : undefined; },
+  signlit: async (_, x) => { if (await confirmModal({ title: 'Sign with this agent?', body: pub.writingOf().agent ? 'They replace your current agent for anything not yet sold.' : 'They take their cut of everything your books earn from now on.', yes: 'Sign' })) await x.say(pub.signLitAgent()); },
+  passlit: (_, x) => x.say(pub.passOnLitAgent()),
+  findagent: (_, x) => x.say(press.findAgent()),
+  signagent: async (_, x) => { const n = press.agentOnOffer(); if (n && await confirmModal({ title: `Sign with ${n.firstName} ${n.lastName}?`, body: ent.workOf().agent ? 'They replace your current agent. Contracts already signed still pay the old one.' : `They take ${Math.round(n.flags.agent.commission * 100)}% of what you earn through them.`, yes: 'Sign' })) await x.say(press.signAgent(n.id)); },
+  passagent: (_, x) => x.say(press.passOnAgent()),
   dropagent: async (_, x) => { if (await confirmModal({ title: 'Part ways with your agent?', body: 'Books already sold stay as they are.', yes: 'Part ways' })) await x.say(pub.dropAgent()); },
   selfpub: async (id, x) => { if (await confirmModal({ title: 'Publish it yourself?', body: 'You keep more of each sale, and sell far fewer.', yes: 'Publish' })) await x.say(pub.selfPublish(id)); },
   bookoffer: (arg, x) => { const [b, o] = arg.split(':'); return x.say(pub.acceptOffer(b, o)); },

@@ -31,6 +31,7 @@ import { resolve, remember } from './conditions.js';
 import { cityOf } from './cities.js';
 import { registerEmployer } from './employers.js';
 import { fameOf, gain, regard, exists, recognitionIn } from './fame.js';
+import { rollTerms } from './agents.js';
 import { canFit } from './worklife.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -143,11 +144,15 @@ export function orgsOf(countryId) {
     makeOrg('agency', countryId, big, 'mid');
     makeOrg('agency', countryId, rng.pick(cities), 'small');
     for (let i = 0; i < 3; i++) makeOrg('outlet', countryId, big, 'outlet');
-    // Agents work at agencies; each is a person with a list of clients and a standard.
+    // Agents work at agencies; each is a person with their own cut, their own pull, a standard, and clients.
+    // The best-known working actors are with the leading agencies.
+    const actors = pool(countryId).filter((n) => !n.flags.star.agentId).sort((a, b) => (b.flags.star.fame ?? 0) - (a.flags.star.fame ?? 0));
     for (const o of E.byCountry[countryId].map((id) => E.orgs[id]).filter((x) => x.kind === 'agency')) {
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < 3; i++) {
         const a = makePerformer(countryId, { kind: 'agent', age: rng.int(30, 64) });
-        a.flags.agent = { orgId: o.id, standard: { top: 55, mid: 30, small: 8 }[o.tier] + rng.int(-5, 5), clients: [] };
+        a.flags.agent = { kind: 'talent', orgId: o.id, tier: o.tier, standard: { top: 55, mid: 30, small: 8 }[o.tier] + rng.int(-5, 5), clients: [], ...rollTerms(o.tier) };
+        const take = o.tier === 'top' ? actors.splice(0, rng.int(3, 5)) : actors.splice(rng.int(0, Math.max(0, actors.length - 4)), rng.int(2, 4));
+        for (const c of take) { c.flags.star.agentId = a.id; a.flags.agent.clients.push(c.id); }
         o.staff.push(a.id);
       }
     }
@@ -329,7 +334,7 @@ export function audition(productionId, idx, prep = 'study', approach = 'restrain
   const craft = skill + { none: -4, study: 1, coach: 4 }[prep] + fit;
   // What helps around it: a record, a reputation, an agent, a known face for a lead. Each a little.
   const star = ['lead', 'voice_lead'].includes(r.kind) ? recognitionIn(p.countryId, p) / 20 : 0;
-  const mine = craft + Math.min(6, proCredits(p) * 1.5) + fameOf(p).credibility / 20 + (f.agent ? 2 : 0) + star + rng.around(0, 8);
+  const mine = craft + Math.min(6, proCredits(p) * 1.5) + fameOf(p).credibility / 20 + (f.agent ? 2 * (f.agent.clout ?? 1) : 0) + star + rng.around(0, 8);
   // The field: other people go for every part, from the same pool of working actors; bigger parts draw stronger fields.
   const field = Math.max(1, Math.round(tier.field * ROLE_KINDS[r.kind].field));
   let best = 0;
@@ -371,7 +376,7 @@ export function negotiate(contractId) {
   c.asked = true;
   if (!c.fee) return result(false, 'There is no money in it to negotiate.', 'neutral');
   if (rng.chance(0.06)) { c.status = 'withdrawn'; return result(false, 'The producers decided to go another way.'); }
-  const odds = clamp(0.3 + (f.agent ? 0.2 : 0) + recognitionIn(player().countryId) / 150, 0.1, 0.85);
+  const odds = clamp(0.3 + (f.agent ? 0.2 * (f.agent.clout ?? 1) : 0) + recognitionIn(player().countryId) / 150, 0.1, 0.85);
   if (!rng.chance(odds)) return result(false, '"That is the fee for the part."', 'neutral');
   c.fee = Math.round(c.fee * (1.08 + rng.next() * 0.12));
   return result(true, `They came up to ${fmtMoney(c.fee, COUNTRIES[production(c.productionId).countryId])}.`);
