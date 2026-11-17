@@ -11,7 +11,8 @@
 import { store, player, country, npcsByRole, log } from '../state.js';
 import { fmtMoney, localCost, clamp } from '../util.js';
 import { rng } from '../rng.js';
-import { FAMILY_LAW, FAMILY_LAW_OF, decimalsOf } from '../data/money.js';
+import { FAMILY_LAW, FAMILY_LAW_OF, decimalsOf, PETS } from '../data/money.js';
+import { recordLoss } from './insurance.js';
 import { book, ledgerOf, toMinor, fromMinor } from './ledger.js';
 import { move, banksHere, accounts, rateAt, shareOf } from './banking.js';
 
@@ -247,8 +248,26 @@ function tickAllowance() {
 }
 
 /** Yearly: a partner pays into what you share, debts between people move, children get their pocket money. */
+/** Yearly: what the player's pets cost, and the odd vet's bill nobody saw coming. */
+function tickPets() {
+  const p = player();
+  const c = country();
+  const pets = npcsByRole('pet');
+  if (!pets.length || p.age < 18) return;
+  p.finance.cash -= pets.length * localCost(PETS.upkeep, c);
+  for (const pet of pets) {
+    if (!rng.chance(PETS.emergency)) continue;
+    const bill = localCost(rng.int(PETS.bill[0], PETS.bill[1]), c);
+    p.finance.cash -= bill;
+    recordLoss({ id: pet.id, name: pet.firstName, role: 'pet' }, bill, 0, 'a vet\'s bill');
+    log(`${pet.firstName} needed the vet urgently. The bill was ${fmtMoney(bill, c)}.`, 'system', 'bad');
+  }
+  book({ cat: 'pets', src: 'year', desc: 'Your pets: food, the vet, and everything else' });
+}
+
 export function tickFamilyMoney() {
   const p = player();
+  tickPets();
   for (const a of jointAccounts()) {
     const s = npc(a.joint);
     if (!s?.alive || s.role !== 'spouse') continue;

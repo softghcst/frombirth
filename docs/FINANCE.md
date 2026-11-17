@@ -202,22 +202,43 @@ When an heir carries on, they get a new ledger that opens with their own savings
 share of the estate. `state.familyMoney` keeps a summary of each ancestor: what they left, what they earned,
 their money milestones, their property, and who got what. Their transactions are not passed on.
 
+## Added in the third round
+
+- **Car finance** (`engine/vehicles.js`, `engine/loans.js`). A vehicle bought on finance has its loan secured
+  on it, at a lower rate than an ordinary loan. Selling it pays the loan off first; a vehicle worth less than
+  its loan can be sold only with the money to make up the difference. If it is taken back, the lender is
+  paid first and the owner gets what is left. If it is written off, the loan is still owed.
+- **Winding up an estate** (`engine/death.js`, `PROBATE`). What passes under a will costs 3% of itself to
+  wind up, paid from the cash; naming an executor halves that. What passes outside the will costs nothing.
+- **Pets cost money**: food and ordinary vet visits every year, and now and then a large vet's bill. **Pet
+  insurance** pays those bills, above an excess and up to a limit. **Business insurance** pays for fires,
+  floods and break-ins, and pays the business, not the owner.
+- **The finances of the people closest to the player** (`engine/npcMoney.js`). A spouse or partner, grown
+  children and brothers and sisters keep fuller books: a home bought with a deposit they saved and a mortgage
+  their income supports, debts when money runs out, a home sold if they sink too far, and a temperament
+  that shapes how they go about it. A spouse shares the player's home and does not buy one of their own.
+  Everyone further away keeps the single savings figure they always had.
+- **Partners in a business are people.** A share can be sold to someone the player knows, who pays from their
+  own savings and can say no, or to an outside investor, who joins the player's contacts. Partners are paid
+  their part of any profit taken out.
+- **Portraits**: people in My Money (a partner, family, business partners, heirs, the executor) appear with
+  their portraits, and tapping one opens their profile.
+- **A net-worth chart** in the overview, from a figure recorded at the end of every year. A move to another
+  currency starts a new line, so two currencies are never drawn on one scale. Hover or tap for a year's
+  value; there is also a table.
+
 ## Not built
 
 These were in the brief and are **not** in the game:
 
+- **Other people's accounts in detail.** The closest family have a home, a mortgage and debts, but not bank
+  accounts, cards or investments of their own, and there is no shared household ledger.
+- **Beneficiary rules by country** beyond the reserved share for children; **deposit protection and bank failure.**
+- **Pay by pay period.** Pay, bills and statements are posted once a year. A year in Pathways is lived as one
+  step: something bought during a year is paid for from the next tick on, so a mortgage taken out is never
+  charged for months before it existed, and nothing is pro-rated within a year either.
 - **Historical eras.** The game has no lives set in the past. Banking products, cards and insurance each have
   a first year and refuse to exist before it, but period currencies, merchant banking and the like are not
   there.
-- **Detailed finances for other people.** Family and friends keep one savings figure and a job. They do not
-  have accounts, cards, loans or investments of their own, and there is no shared household ledger.
-- **Pay by pay period.** Pay, bills and statements are posted once a year for the year.
-- **Executors, probate costs and beneficiary rules by country** beyond the reserved share for children.
-- **Pet and business insurance; deposit protection and bank failure.**
-- **Secured car finance.** Buying a vehicle on finance is the existing unsecured bank loan.
-- **Partners in a business as people.** An investor who buys a stake is not a character.
-- **Portraits in the money screens.** People are chosen from the player's existing relationships by name;
-  tapping through to their profile from My Money is not there.
-- **Charts.** Bars only.
 - Money that changes in a scene or a screen outside the money engines is filed by the words of the journal
   line that came with it. That is a guess, and some lines end up under "Other".

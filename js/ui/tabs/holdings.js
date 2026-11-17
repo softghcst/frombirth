@@ -222,7 +222,7 @@ async function browseVehicles(api) {
     options: [
       { value: 'cash', label: `Pay ${fmtMoney(listing.price, c)} in cash`, disabled: p.finance.cash < listing.price },
       ...(p.age >= 18 ? [{ value: 'loan', label: 'Buy it on finance', disabled: !listing.finance.approved,
-        sub: listing.finance.approved ? `${fmtMoney(listing.finance.payment, c)} a year for ${BANK_LOAN.years} years.` : listing.finance.reason }] : []),
+        sub: listing.finance.approved ? `${fmtMoney(listing.finance.payment, c)} a year for ${BANK_LOAN.years} years, at a lower rate because it is secured on the vehicle. Miss the payments and it can be taken back.` : listing.finance.reason }] : []),
     ],
   });
   return how ? report(api, cars.buyVehicle(listing.id, how)) : undefined;
@@ -232,12 +232,12 @@ function openVehicle(a, api) {
   const c = country();
   const m = openModal(`
     <h2>${GLYPH[a.vehicleClass]} ${esc(a.name)}</h2>
-    ${kv([['Worth', fmtMoney(a.value, c)], ['You paid', fmtMoney(a.purchasePrice, c)], ['Age', `${a.age} ${a.age === 1 ? 'year' : 'years'}`]])}
+    ${kv([['Worth', fmtMoney(a.value, c)], ['You paid', fmtMoney(a.purchasePrice, c)], ['Age', `${a.age} ${a.age === 1 ? 'year' : 'years'}`], ...(cars.loanOn(a) ? [['Still owed on it', `${fmtMoney(cars.loanOn(a).principal, c)}: the lender can take it back if the loan goes unpaid`]] : [])])}
     <div style="margin:12px 0 16px">${meterHtml('Condition', a.condition, true)}</div>
     <div class="btn-stack">
       <button class="btn" data-act="out">Take it out</button>
       ${a.condition < 95 ? `<button class="btn" data-act="service">Service it (${fmtMoney(cars.serviceCost(a), c)})</button>` : ''}
-      <button class="btn danger" data-act="sell">Sell for ${fmtMoney(a.value, c)}</button>
+      <button class="btn danger" data-act="sell">Sell for ${fmtMoney(a.value, c)}${cars.loanOn(a) ? ` (${cars.saleNet(a) >= 0 ? `${fmtMoney(cars.saleNet(a), c)} after the loan` : `${fmtMoney(-cars.saleNet(a), c)} short of the loan`})` : ''}</button>
       <button class="btn" data-close>Close</button>
     </div>`, { dismissable: true });
   m.el.addEventListener('click', (e) => {

@@ -377,6 +377,9 @@ export function tickMoneyReview() {
   const owes = p.finance.loans.length > 0 || p.assets.some((a) => a.mortgage);
   if (owes) p.flags.hadDebt = true;
   else if (p.flags.hadDebt) { p.flags.hadDebt = false; milestone('Became free of debt.', 'money'); log('You owe nobody anything. Every debt is paid.', 'system', 'good'); }
+  // What the player was worth at the end of each year, in the money of the place they lived: for the chart in My Money.
+  const o = overview();
+  (L().worth ??= {})[store.state.year] = { cur: o.cur, v: o.netWorth, age: p.age };
   compact(L(), store.state.year);
 }
 

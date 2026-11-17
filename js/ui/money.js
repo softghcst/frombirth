@@ -25,6 +25,8 @@ import * as tr from '../engine/trusts.js';
 import * as biz from '../engine/business.js';
 import * as ach from '../engine/achievements.js';
 import { roleLabel } from '../engine/relationships.js';
+import { portrait, openNpc } from './tabs/people.js';
+import { npcWorth } from '../engine/npcMoney.js';
 import { INSURANCE, INSOLVENCY, PENSION_PLAN, CARDS } from '../data/money.js';
 
 /** An exact amount, without the small change when there is none. */
@@ -85,6 +87,46 @@ function txRow(L, t) {
     <div class="amt ${inside ? '' : n > 0 ? 'in' : 'out'}">${esc(amount)}</div></div>`;
 }
 
+/** A person, with their portrait. Tapping opens their profile. */
+const personRow = (n, sub, side = '') => (n ? `<button class="row" data-npc="${n.id}">${portrait(n)}
+    <div class="main"><strong>${esc(n.firstName)} ${esc(n.lastName)}</strong><small>${esc(sub)}</small></div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>` : '');
+const npcById = (id) => store.state.npcs[id] ?? null;
+
+/**
+ * Net worth at the end of each year, as recorded at the time. A move to a
+ * country with another currency starts a new line: amounts in two currencies
+ * are never drawn on one scale. Hover or tap a year to read it.
+ */
+function worthChart() {
+  const L = ledgerOf();
+  const all = Object.entries(L.worth ?? {}).map(([y, w]) => ({ year: Number(y), ...w })).sort((a, b) => a.year - b.year);
+  const pts = [];
+  for (let i = all.length - 1; i >= 0 && all[i].cur === L.home; i--) pts.unshift(all[i]); // the latest stretch in today's currency
+  if (pts.length < 2) return '';
+  const W = 320; const H = 120; const padL = 4; const padR = 4; const padT = 10; const padB = 18;
+  const lo = Math.min(0, ...pts.map((x) => x.v)); const hi = Math.max(1, ...pts.map((x) => x.v));
+  const X = (i) => padL + i * (W - padL - padR) / (pts.length - 1);
+  const Y = (v) => padT + (hi - v) * (H - padT - padB) / (hi - lo || 1);
+  const line = pts.map((x, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(x.v).toFixed(1)}`).join('');
+  const zero = lo < 0 ? `<line x1="${padL}" x2="${W - padR}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}" class="mm-zero"/>` : '';
+  const hits = pts.map((x, i) => `<rect class="mm-hit" x="${(X(i) - (W / pts.length) / 2).toFixed(1)}" y="0" width="${(W / pts.length).toFixed(1)}" height="${H}" data-i="${i}"><title>${x.year}, age ${x.age}: ${fx.fmt(x.v, x.cur)}</title></rect>`).join('');
+  const first = pts[0]; const lastPt = pts[pts.length - 1];
+  return `<div class="card"><h3>Net worth over the years</h3>
+    <div class="mm-chart" data-chart='${esc(JSON.stringify(pts.map((x) => [x.year, x.age, fx.fmt(x.v, x.cur)])))}'>
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Net worth from ${first.year} to ${lastPt.year}, from ${esc(fx.fmt(first.v, first.cur))} to ${esc(fx.fmt(lastPt.v, lastPt.cur))}">
+        ${zero}<line x1="${padL}" x2="${W - padR}" y1="${H - padB}" y2="${H - padB}" class="mm-axis"/>
+        <path d="${line}" class="mm-line-path"/>
+        <line class="mm-cross" x1="0" x2="0" y1="${padT - 4}" y2="${H - padB}" visibility="hidden"/>
+        <circle class="mm-dot" r="4" cx="${X(pts.length - 1).toFixed(1)}" cy="${Y(lastPt.v).toFixed(1)}"/>
+        <text x="${padL}" y="${H - 4}" class="mm-tick">${first.year}</text><text x="${W - padR}" y="${H - 4}" class="mm-tick" text-anchor="end">${lastPt.year}</text>
+        ${hits}
+      </svg>
+      <div class="mm-tip" data-tip>${lastPt.year}, age ${lastPt.age}: <strong>${esc(fx.fmt(lastPt.v, lastPt.cur))}</strong></div>
+    </div>
+    <details class="mm-table"><summary>As a table</summary>${kv(pts.slice().reverse().map((x) => [`${x.year} (age ${x.age})`, fx.fmt(x.v, x.cur)]))}</details>
+    <p class="muted" style="margin-top:6px">As it stood at the end of each year, in ${esc(L.home)}${all.length > pts.length ? '. Years in another currency, before you moved, are not drawn on the same line' : ''}.</p></div>`;
+}
+
 function overviewHtml() {
   const c = country();
   const o = bank.overview();
@@ -106,6 +148,7 @@ function overviewHtml() {
     </div>
     <div class="card mm-worth"><small>Net worth</small><strong class="${o.netWorth < 0 ? 'neg' : ''}">${esc(fmtMoney(netWorth(store.state), c))}</strong>
       <p class="muted">Everything you have, less everything you owe. Property, vehicles and investments are counted at what they would fetch today: an estimate, and not money you can spend.</p></div>
+    ${worthChart()}
     <div class="card"><h3>This year so far</h3>
       ${kv([['Money in', fmtMoney(o.income, c)], ['Money out', fmtMoney(o.spent, c)], ['A month, on average', `${fmtMoney(o.income / 12, c)} in · ${fmtMoney(o.spent / 12, c)} out`]])}
       <p class="muted" style="margin-top:6px">Borrowing, moving money between your accounts and buying things you still own are not counted as money in or out.</p></div>
@@ -175,7 +218,7 @@ function debtHtml() {
   const loanRows = p.finance.loans.map((l) => {
     const sch = loans.loanSchedule(l);
     return `<button class="row" data-loan="${l.id}"><div class="avatar glyph">📄</div>
-      <div class="main"><strong>${esc(l.kind.charAt(0).toUpperCase() + l.kind.slice(1))} loan</strong><small>${(l.rate * 100).toFixed(1)}% a year · ${l.yearsLeft} ${l.yearsLeft === 1 ? 'year' : 'years'} left · about ${esc(fmtMoney(sch.rows[0]?.payment ?? 0, c))} this year</small></div>
+      <div class="main"><strong>${esc(l.kind.charAt(0).toUpperCase() + l.kind.slice(1))} loan</strong><small>${l.assetId && p.assets.some((a) => a.id === l.assetId) ? `secured on the ${esc(lower(p.assets.find((a) => a.id === l.assetId).name))} · ` : ''}${(l.rate * 100).toFixed(1)}% a year · ${l.yearsLeft} ${l.yearsLeft === 1 ? 'year' : 'years'} left · about ${esc(fmtMoney(sch.rows[0]?.payment ?? 0, c))} this year</small></div>
       <div class="side">${esc(fmtMoney(l.principal, c))}</div></button>`;
   }).join('');
   const mortRows = mortgages.map((a) => `<div class="row"><div class="avatar glyph">🏠</div>
@@ -226,23 +269,23 @@ function coverHtml() {
   const list = ins.policies();
   const losses = ins.openLosses();
   const who = (id) => { const n = store.state.npcs[id]; return n ? `${n.firstName} ${n.lastName}` : 'your estate'; };
-  const rows = list.map((x) => `<button class="row" data-policy="${x.id}"><div class="avatar glyph">${x.kind === 'home' ? '🏠' : x.kind === 'motor' ? '🚗' : '🕊️'}</div>
-      <div class="main"><strong>${esc(INSURANCE[x.kind].name)}${x.assetName ? `: ${esc(lower(x.assetName))}` : ''}</strong><small>${esc(x.insurer)} · ${x.kind === 'life' ? `pays ${esc(fmtMoney(x.cover, c))} to ${esc(who(x.beneficiaryId))}` : `you pay the first ${esc(fmtMoney(x.excess, c))}`}</small></div>
+  const rows = list.map((x) => `<button class="row" data-policy="${x.id}"><div class="avatar glyph">${{ home: '🏠', motor: '🚗', pet: '🐾', business: '🏪' }[x.kind] ?? '🕊️'}</div>
+      <div class="main"><strong>${esc(INSURANCE[x.kind].name)}${x.assetName ? `: ${esc(x.kind === 'pet' || x.kind === 'business' ? x.assetName : lower(x.assetName))}` : ''}</strong><small>${esc(x.insurer)} · ${x.kind === 'life' ? `pays ${esc(fmtMoney(x.cover, c))} to ${esc(who(x.beneficiaryId))}` : `you pay the first ${esc(fmtMoney(x.excess, c))}`}</small></div>
       <div class="side">${esc(fmtMoney(x.premium, c))}<br>a year</div></button>`).join('');
   const lossRows = losses.map((l) => { const a = ins.assess(l.id); return `<button class="row" data-loss="${l.id}"><div class="avatar glyph">📋</div>
-      <div class="main"><strong>${l.year}: the ${esc(lower(l.assetName))}</strong><small>${esc(l.what)} · a loss of ${esc(fmtMoney(l.amount, c))} · ${a.ok ? `a claim would pay ${esc(fmtMoney(a.pay, c))}` : esc(a.reason)}</small></div>
+      <div class="main"><strong>${l.year}: ${esc(l.kind === 'pet' || l.kind === 'business' ? l.assetName : `the ${lower(l.assetName)}`)}</strong><small>${esc(l.what)} · a loss of ${esc(fmtMoney(l.amount, c))} · ${a.ok ? `a claim would pay ${esc(fmtMoney(a.pay, c))}` : esc(a.reason)}</small></div>
       <div class="side">Claim</div></button>`; }).join('');
-  const insurable = p.assets.filter((a) => (a.kind === 'property' || a.kind === 'vehicle') && !ins.policyFor(a.id));
+  const insurable = [...p.assets.filter((a) => ['property', 'vehicle', 'business'].includes(a.kind)), ...p.npcIds.map(npcById).filter((n) => n?.alive && n.role === 'pet')].filter((x) => !ins.policyFor(x.id));
   return `<div class="card"><h3>Health cover</h3>
       ${kv([['System here', k.model.name], ['Are you covered?', k.covered ? 'Yes' : 'No'], ['Your share of a bill', `${Math.round(k.share * 100)}%`], ...(k.premium ? [['What it costs you a year', fmtMoney(k.premium, c)]] : [])])}
       <p class="muted" style="margin-top:6px">${esc(k.how)} It is arranged when you see the doctor, from the Self tab.</p></div>
     ${lossRows ? `<div class="section-label">Losses you can claim for</div>${lossRows}` : ''}
     ${rows ? `<div class="section-label">Your policies</div>${rows}` : '<p class="empty">You have no other insurance.</p>'}
     <div class="btn-stack">
-      ${insurable.length ? '<button class="btn" data-act="insure">Insure a property or vehicle</button>' : ''}
+      ${insurable.length ? '<button class="btn" data-act="insure">Insure something you own, or a pet</button>' : ''}
       ${ins.quote('life').ok ? '<button class="btn" data-act="life">Take out life insurance</button>' : ''}
     </div>
-    <p class="muted mm-note">A claim is paid only for damage that really happened to the thing insured, while it was insured, and only once. Insurance takes some risks off you; it does not take them all.</p>`;
+    <p class="muted mm-note">A business's claim is paid into the business, not to you. A claim is paid only for damage that really happened to the thing insured, while it was insured, and only once. Insurance takes some risks off you; it does not take them all.</p>`;
 }
 
 function goalsHtml() {
@@ -301,15 +344,21 @@ function estateHtml() {
   const e = last.estatePlan();
   const things = (s) => (s.items.length ? ` + ${s.items.map((it) => (it.kind === 'business' ? it.name : lower(it.name))).join(', ')}` : '');
   const inBank = bank.bankWorth();
+  const ex2 = last.executor();
   return `<div class="card"><h3>Your will</h3>
       <p class="muted" style="margin-bottom:8px">${esc(last.willSummary())}</p>
       ${e.gross <= 0 && !e.shares.length ? kv([['If you died today', 'There would be nothing to leave']]) : kv([
-    ['Everything, less debts', fmtMoney(e.gross, c)], ['Estate tax', fmtMoney(e.tax, c)],
+    ['Everything, less debts', fmtMoney(e.gross, c)], ['Estate tax', fmtMoney(e.tax, c)], ['Winding up the estate', fmtMoney(e.probate ?? 0, c)],
     ...e.shares.map((s) => [`${s.name} (${s.role.toLowerCase()})`, `${fmtMoney(s.amount, c)}${things(s)}`]),
     ...(e.charity ? [['To charity', fmtMoney(e.charity, c)]] : []), ...(e.lost ? [['Lost in the garden', fmtMoney(e.lost, c)]] : []), ...(e.toState ? [['To the state', fmtMoney(e.toState, c)]] : [])])}
     </div>
     <div class="card"><h3>What happens to your accounts</h3>
       <p class="muted">${inBank ? `Your bank accounts hold ${esc(fmtMoney(inBank, c))}. ` : ''}When you die they are closed. An account held jointly, or with someone named on it, goes straight to that person; the rest joins your estate, once. Debts are paid from the estate; nobody inherits them as their own. Property, vehicles and businesses pass on as they are.</p></div>
+    ${e.shares.length ? `<div class="section-label">Who would inherit</div>${e.shares.map((x) => personRow(npcById(x.npcId), `${x.role}${x.items.length ? ` · with ${x.items.map((it) => (it.kind === 'business' ? it.name : lower(it.name))).join(', ')}` : ''}`, fmtMoney(x.amount, c))).join('')}` : ''}
+    <div class="card"><h3>Seeing to it</h3>
+      ${ex2 ? personRow(ex2, 'Named to see to your estate') : '<p class="muted">Nobody is named to see to your estate.</p>'}
+      <p class="muted" style="margin-top:6px">Winding up what passes under your will costs ${Math.round(last.PROBATE.rate * 100)}% of it, or half that if someone is named to see to it. What passes outside your will costs nothing. A rule made for the game.</p>
+      <div class="btn-stack" style="margin-top:10px"><button class="btn" data-act="executor">${ex2 ? 'Name someone else' : 'Name someone'}</button></div></div>
     ${outsideHtml()}
     <div class="btn-stack"><button class="btn" data-link="will">Change your will</button>
       ${tr.trustCandidates().length ? '<button class="btn" data-act="trust">Set up a trust</button>' : ''}</div>
@@ -345,6 +394,18 @@ function familyHtml() {
     + '<p class="muted mm-note">What is recorded here is what happened: amounts are in the money of the time and place. The private detail of their accounts was not passed on.</p>';
 }
 
+/** The family whose money the game follows in detail: a home, a mortgage, debts of their own. */
+function familyRows() {
+  const c = country();
+  const list = player().npcIds.map(npcById).filter((n) => n?.alive && n.life?.fin && n.age >= 18 && n.role !== 'spouse' && n.role !== 'partner');
+  if (!list.length) return '';
+  return `<div class="section-label">How your family are doing</div>${list.map((n) => {
+    const f = n.life.fin;
+    const bits = [roleLabel(n), f.home ? (f.home.mortgage ? 'owns a home, with a mortgage' : 'owns their home outright') : 'renting', ...(f.debt > 0 ? [`owes ${fmtMoney(f.debt, c)}`] : [])];
+    return personRow(n, bits.join(' · '), fmtMoney(npcWorth(n), c));
+  }).join('')}<p class="muted mm-note" style="margin-top:0">Their money is theirs. Tap anyone to see their life.</p>`;
+}
+
 function householdHtml() {
   const p = player();
   const c = country();
@@ -362,6 +423,8 @@ function householdHtml() {
       <p class="muted" style="margin-top:6px">${esc(how.line)} ${esc(law.line)} Marrying merged nothing: what was yours is yours, and what is ${esc(s.firstName)}'s is not yours to spend.</p>
       <div class="btn-stack" style="margin-top:10px"><button class="btn" data-act="arrange">Suggest another way to share the bills</button>
         ${fam.jointAccounts().some((a) => a.joint === s.id) ? '' : '<button class="btn" data-act="joint">Open a joint account</button>'}</div></div>` : ''}
+    ${s ? `<div class="section-label">${esc(s.firstName)}'s own money</div>${personRow(s, `${roleLabel(s)} · worth about ${fmtMoney(npcWorth(s), c)}`)}` : ''}
+    ${familyRows()}
     ${out ? `<div class="section-label">Money you have lent</div>${out}` : ''}
     <div class="btn-stack"><button class="btn" data-act="give">Give money to someone</button><button class="btn" data-act="lend">Lend money to someone</button></div>
     ${kids.length ? `<div class="card" style="margin-top:14px"><h3>Pocket money</h3>
@@ -375,7 +438,8 @@ function businessHtml() {
   const c = country();
   const rows = biz.businesses().map((a) => `<button class="row" data-biz="${a.id}"><div class="avatar glyph">🏪</div>
       <div class="main"><strong>${esc(a.name)}</strong><small>${esc(biz.businessLine(a))}</small></div>
-      <div class="side">${esc(fmtMoney(a.value, c))}</div></button>`).join('');
+      <div class="side">${esc(fmtMoney(a.value, c))}</div></button>
+      ${(a.partners ?? []).map((x) => personRow(npcById(x.npcId), `Owns ${Math.round(x.stake * 100)}% of ${a.name}, since ${x.since}`)).join('')}`).join('');
   const can = biz.startOptions().some((o) => o.ok);
   return `${rows || '<p class="empty">You do not own a business.</p>'}
     <div class="btn-stack"><button class="btn primary" data-act="startbiz" ${can ? '' : 'disabled'}>Start a business</button></div>
@@ -604,10 +668,12 @@ async function cardFlow(id) {
 async function insureFlow() {
   const c = country();
   const p = player();
-  const list = p.assets.filter((a) => (a.kind === 'property' || a.kind === 'vehicle') && !ins.policyFor(a.id));
-  const a = await pickModal({ title: 'Insure what?', options: list.map((x) => { const q = ins.quote(x.kind === 'property' ? 'home' : 'motor', { asset: x });
-    return { value: x, label: x.name, disabled: !q.ok, sub: q.ok ? `${fmtMoney(q.premium, c)} a year · you pay the first ${fmtMoney(q.excess, c)} of a claim` : q.reason }; }) });
-  return a ? ins.takeOut(a.kind === 'property' ? 'home' : 'motor', { asset: a }) : undefined;
+  const kindOf = (x) => (x.role === 'pet' ? 'pet' : x.kind === 'property' ? 'home' : x.kind === 'vehicle' ? 'motor' : 'business');
+  const list = [...p.assets.filter((a) => ['property', 'vehicle', 'business'].includes(a.kind)), ...p.npcIds.map(npcById).filter((n) => n?.alive && n.role === 'pet')].filter((x) => !ins.policyFor(x.id));
+  const a = await pickModal({ title: 'Insure what?', options: list.map((x) => { const q = ins.quote(kindOf(x), { asset: x });
+    return { value: x, label: x.role === 'pet' ? `${x.firstName}, your ${x.species}` : x.name, disabled: !q.ok,
+      sub: q.ok ? `${INSURANCE[kindOf(x)].name}: ${fmtMoney(q.premium, c)} a year · you pay the first ${fmtMoney(q.excess, c)} of a claim${kindOf(x) === 'pet' ? ` · up to ${fmtMoney(q.cover, c)} a bill` : ''}` : q.reason }; }) });
+  return a ? ins.takeOut(kindOf(a), { asset: a }) : undefined;
 }
 async function lifeFlow() {
   const c = country();
@@ -684,6 +750,11 @@ async function trustAdd(id) {
   return amount ? tr.addToTrust(id, amount) : undefined;
 }
 
+async function executorFlow() {
+  const n = await pickModal({ title: 'Who should see to your estate?', body: 'Someone you trust to wind it up. It halves the cost of doing so.', options: [{ value: 0, label: 'Nobody' }, ...adults().map((x) => ({ value: x.id, label: `${x.firstName} ${x.lastName}`, sub: `${roleLabel(x)}, age ${x.age}` }))] });
+  return n == null ? undefined : last.nameExecutor(n || null);
+}
+
 async function startBizFlow() {
   const c = country();
   const t = await pickModal({ title: 'Start a business', body: 'Half of what you put in is spent setting up. The rest becomes the business\'s own money.', options: biz.startOptions().map((o) => ({ value: o, label: `${o.name}: ${fmtMoney(o.cost, c)}`, disabled: !o.ok,
@@ -710,7 +781,13 @@ async function bizFlow(id) {
   if (act === 'run') return biz.setBusiness(id, { manager: 'you' });
   if (act === 'learn') return biz.learnBusiness(id);
   if (act === 'fund') { const n = await askAmount({ title: 'Put in how much?', body: 'It becomes the business\'s money.', max: player().finance.cash, cur: c.currency.code }); return n ? biz.fundBusiness(id, n) : undefined; }
-  if (act === 'stake') { const f = await pickModal({ title: 'Sell how much?', options: [0.1, 0.25, 0.4].filter((x) => x < a.stake - 0.2).map((x) => ({ value: x, label: `${Math.round(x * 100)}% of the business`, sub: `For about ${fmtMoney(a.value * (x / a.stake) * 0.9, c)}. You would own ${Math.round((a.stake - x) * 100)}%.` })) }); return f ? biz.sellStake(id, f) : undefined; }
+  if (act === 'stake') {
+    const f = await pickModal({ title: 'Sell how much?', options: [0.1, 0.25, 0.4].filter((x) => x < a.stake - 0.2).map((x) => ({ value: x, label: `${Math.round(x * 100)}% of the business`, sub: `For about ${fmtMoney(biz.stakePrice(a, x), c)}. You would own ${Math.round((a.stake - x) * 100)}%.` })) });
+    if (!f) return undefined;
+    const to = await pickModal({ title: 'Sell it to', body: 'Whoever buys it owns that share for good, and is paid their part of any profit you take out.', options: [{ value: 'outside', label: 'An outside investor', sub: 'Someone with money looking for a business to back.' },
+      ...biz.buyersFor(id, f).map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}. They pay from their own savings, and may say no.` }))] });
+    return to ? biz.sellStake(id, f, to === 'outside' ? null : to) : undefined;
+  }
   return (await confirmModal({ title: `Sell ${a.name}?`, body: `You would get about ${fmtMoney(biz.salePrice(a), c)}, less tax on any gain.`, yes: 'Sell', danger: true })) ? biz.sellBusiness(id) : undefined;
 }
 
@@ -749,7 +826,21 @@ export function openMyMoney(api, links = {}) {
     return undefined;
   }
 
+  // The chart: hover or tap a year to read it.
+  const readChart = (e) => {
+    const hit = e.target.closest?.('.mm-hit');
+    const chart = e.target.closest?.('[data-chart]');
+    if (!hit || !chart) return;
+    const pts = JSON.parse(chart.dataset.chart);
+    const [year, age, v] = pts[Number(hit.dataset.i)];
+    chart.querySelector('[data-tip]').innerHTML = `${year}, age ${age}: <strong>${esc(v)}</strong>`;
+    const svg = chart.querySelector('svg');
+    const x = Number(hit.getAttribute('x')) + Number(hit.getAttribute('width')) / 2;
+    const cross = svg.querySelector('.mm-cross'); cross.setAttribute('x1', x); cross.setAttribute('x2', x); cross.setAttribute('visibility', 'visible');
+  };
+  root.addEventListener('pointermove', readChart);
   root.addEventListener('click', async (e) => {
+    if (e.target.closest('.mm-hit')) return readChart(e);
     const on = (sel) => e.target.closest(sel);
     if (on('[data-close]')) return m.close();
     if (on('[data-tab]')) { tab = on('[data-tab]').dataset.tab; return render(); }
@@ -764,6 +855,7 @@ export function openMyMoney(api, links = {}) {
     if (on('[data-lent]')) return settle(await lentFlow(on('[data-lent]').dataset.lent));
     if (on('[data-trust]')) return settle(await trustAdd(on('[data-trust]').dataset.trust));
     if (on('[data-biz]')) return settle(await bizFlow(on('[data-biz]').dataset.biz));
+    if (on('[data-npc]')) { const n = npcById(on('[data-npc]').dataset.npc); if (n) openNpc(n, { ...api, changed: () => { api.changed(); render(); } }); return undefined; }
     const link = on('[data-link]')?.dataset.link;
     if (link && links[link]) { await links[link](api); return settle(null); }
     const act = on('[data-act]')?.dataset.act;
@@ -771,7 +863,7 @@ export function openMyMoney(api, links = {}) {
     if (act === 'between') return settle(await betweenFlow());
     if (act === 'goal') return settle(await goalFlow());
     const flows = { card: () => cards.applyForCard(), insure: insureFlow, life: lifeFlow, plan: () => planFlow(false), planrate: () => planFlow(true), arrange: arrangeFlow, joint: jointFlow,
-      give: () => giveFlow(false), lend: () => giveFlow(true), allowance: allowanceFlow, trust: trustFlow, startbiz: startBizFlow };
+      give: () => giveFlow(false), lend: () => giveFlow(true), allowance: allowanceFlow, trust: trustFlow, startbiz: startBizFlow, executor: executorFlow };
     if (flows[act]) return settle(await flows[act]());
     return undefined;
   });

@@ -18,6 +18,7 @@ import { remember } from './conditions.js';
 import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
 import { MAJORS, MAJOR_BY_ID } from '../data/majors.js';
 import { TRADES, TRADE_BY_ID } from '../data/schools.js';
+import { tickNpcMoney, finRows } from './npcMoney.js';
 import { ASPIRATIONS, HOBBIES, SCHOOL_MOMENTS, ADULT_MOMENTS, MAX_KIDS, MAX_PEOPLE } from '../data/npcLife.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -304,7 +305,7 @@ function tickEducation(npc, quiet = false) {
 /** How far along a 'measured' ambition is, from the life actually lived (0–100). */
 const MEASURES = {
   career_top: (n) => (n.life.job ? n.life.job.level / (CAREER_BY_ID[n.life.job.careerId].levels.length - 1) * 100 : 0),
-  own_home: (n) => n.life.savings / localCost(60000, country()) * 100,
+  own_home: (n) => (n.life.fin?.home ? 100 : n.life.savings / localCost(60000, country()) * 100),
   family: (n) => (n.role === 'spouse' || n.role === 'partner'
     ? livingNpcs().filter((k) => k.role === 'child').length : n.life.kids) / 2 * 100,
   degree: (n) => (n.life.edu.degrees.includes('university') ? 100 : n.life.edu.stage === 'university' ? 60 : 0),
@@ -509,6 +510,8 @@ function tickLife(npc, quiet = false) {
   }
   tickAspiration(npc, quiet);
   tickMoney(npc);
+  // The people closest to the player keep fuller books: a home, a mortgage, debts (engine/npcMoney.js).
+  if (tickNpcMoney(npc, quiet) === 'bought' && !quiet) note(npc, `bought ${npc.life.fin.home.name}`, true, 'good');
 }
 
 /**
@@ -562,7 +565,7 @@ export function lifeSummary(npc) {
   if (L.job) rows.push(['Work', `${L.job.title}, ${fmtMoney(L.job.salary, c)} a year`]);
   else if (L.retired) rows.push(['Work', `Retired, pension ${fmtMoney(L.pension ?? 0, c)} a year`]);
   else if (npc.age >= 18 && e.stage === 'done') rows.push(['Work', 'Between jobs']);
-  if (npc.age >= 18) rows.push(['Savings', fmtMoney(L.savings, c)]);
+  if (npc.age >= 18) rows.push(['Savings', fmtMoney(L.savings, c)], ...finRows(npc));
   const love = npcOf(L.partnerId);
   if (love?.alive) rows.push([L.married ? 'Married to' : 'Seeing', `${love.firstName} ${love.lastName}`]);
   else if (L.offscreenPartner) rows.push(['Relationship', L.married ? 'Married' : 'Seeing someone']);

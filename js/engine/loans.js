@@ -37,6 +37,9 @@ export function debtService() {
  * What the bank would say to a loan of this size.
  * @returns {{amount:number, payment:number, approved:boolean, reason:string}}
  */
+/** A loan secured on a vehicle is cheaper, because the lender can take the vehicle back. */
+export const CAR_LOAN = { rate: BANK_LOAN.rate - 0.025, years: BANK_LOAN.years };
+
 export function loanOffer(amount, rate = BANK_LOAN.rate, years = BANK_LOAN.years) {
   const p = player();
   const payment = yearlyPayment(amount, rate, years);
@@ -52,13 +55,14 @@ export function loanOffer(amount, rate = BANK_LOAN.rate, years = BANK_LOAN.years
 /** The loan sizes on offer, in local money. */
 export const loanOptions = () => BANK_LOAN.amounts.map((a) => loanOffer(localMoney(a, country())));
 
-export function borrow(amount, kind = 'bank') {
+export function borrow(amount, kind = 'bank', secured = null) {
   const p = player();
-  const offer = loanOffer(amount);
+  const terms = secured ? CAR_LOAN : BANK_LOAN;
+  const offer = loanOffer(amount, terms.rate, terms.years);
   if (!offer.approved) return result(false, offer.reason, 'neutral');
-  p.finance.loans.push({ id: uid('loan'), kind, principal: amount, rate: BANK_LOAN.rate, yearsLeft: BANK_LOAN.years });
+  p.finance.loans.push({ id: uid('loan'), kind, principal: amount, rate: terms.rate, yearsLeft: terms.years, ...(secured ? { assetId: secured } : {}) });
   p.finance.cash += amount;
-  const text = `The bank lent you ${fmtMoney(amount, country())} at ${Math.round(BANK_LOAN.rate * 100)}% over ${BANK_LOAN.years} years: ${fmtMoney(offer.payment, country())} a year.`;
+  const text = `The bank lent you ${fmtMoney(amount, country())} at ${(terms.rate * 100).toFixed(1).replace(/\.0$/, '')}% over ${terms.years} years: ${fmtMoney(offer.payment, country())} a year${secured ? ', secured on what you bought with it' : ''}.`;
   log(text);
   return result(true, text, 'neutral');
 }

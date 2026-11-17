@@ -12,11 +12,13 @@
 //   asset = { id, kind: 'business', catalogId, name, stake, till, value, purchasePrice, boughtAtAge,
 //             founded, manager: 'you'|'hired', payout: 0|0.5|1, scale, lossYears, profits: [], takings }
 import { store, player, country, log, milestone } from '../state.js';
+import { makeNpc } from './npcFactory.js';
 import { uid, fmtMoney, localCost, clamp } from '../util.js';
 import { rng } from '../rng.js';
 import { BUSINESS_TYPES, BUSINESS } from '../data/money.js';
 import { book, toMinor } from './ledger.js';
 import { phaseOf } from './economy.js';
+import { recordLoss } from './insurance.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const TYPE = Object.fromEntries(BUSINESS_TYPES.map((t) => [t.id, t]));
@@ -107,21 +109,58 @@ export function learnBusiness(id) {
 /** Tax on a gain when a stake is sold: half the income-tax rate, as for investments. */
 const gainsTax = (gain) => Math.max(0, Math.round(gain * country().incomeTax * 0.5));
 
-/** Sells part of the business to an investor. The money is the player's; the stake is smaller for good. */
-export function sellStake(id, fraction) {
+/** What a share of the business would sell for. */
+export const stakePrice = (a, fraction) => Math.round(a.value * (fraction / a.stake) * 0.9);
+/** People the player knows who could afford a share, and would consider one. */
+export function buyersFor(id, fraction) {
+  const a = businessById(id);
+  if (!a) return [];
+  const price = stakePrice(a, fraction);
+  return player().npcIds.map((x) => store.state.npcs[x]).filter((n) => n?.alive && n.age >= 21 && n.role !== 'pet' && (n.life?.savings ?? n.savings ?? 0) >= price);
+}
+const savingsOf = (n) => n.life?.savings ?? n.savings ?? 0;
+const spend = (n, d) => { if (n.life) n.life.savings -= d; else n.savings = (n.savings ?? 0) - d; };
+const earn = (n, d) => { if (n.life) n.life.savings += d; else n.savings = (n.savings ?? 0) + d; };
+
+/**
+ * Sells part of the business: to someone the player knows, who pays from their
+ * own savings and can say no, or to an outside investor, who becomes someone
+ * the player knows. Either way they own their share from then on, and are paid
+ * their part of any profit taken out.
+ */
+export function sellStake(id, fraction, buyerId = null) {
   const p = player();
   const c = country();
   const a = businessById(id);
   if (!a) return result(false, 'You do not own it.', 'neutral');
   if (!(fraction > 0) || fraction >= a.stake) return result(false, 'To sell all of it, sell the business.', 'neutral');
   if (a.value <= 0) return result(false, 'Nobody will buy into a business that is worth nothing.', 'neutral');
-  const price = Math.round(a.value * (fraction / a.stake) * 0.9);
+  const price = stakePrice(a, fraction);
+  let buyer = buyerId ? store.state.npcs[buyerId] : null;
+  if (buyerId) {
+    if (!buyer?.alive || savingsOf(buyer) < price) return result(false, 'They do not have that kind of money.', 'neutral');
+    // A friend or relative will put money in only if they trust you, and if the business looks like it works.
+    const doing = a.profits.slice(-2).reduce((s, x) => s + x, 0);
+    if (buyer.meters.relationship < 55 || (doing <= 0 && rng.chance(0.7))) {
+      const text = `${buyer.firstName} thought about it, and said no. ${doing <= 0 ? 'The figures did not persuade them.' : 'They would rather keep their money where it is.'}`;
+      log(text, 'system', 'neutral');
+      return result(false, text, 'neutral');
+    }
+    spend(buyer, price);
+  } else {
+    buyer = makeNpc({ role: 'friend', countryId: p.countryId, age: rng.int(35, 65), relationship: rng.int(40, 60) });
+    buyer.flags.tag = 'investor'; buyer.flags.title = `Investor in ${a.name}`;
+    store.state.npcs[buyer.id] = buyer; p.npcIds.push(buyer.id);
+  }
+  const part = (a.partners ??= []).find((x) => x.npcId === buyer.id);
+  if (part) part.stake = Math.round((part.stake + fraction) * 1000) / 1000; else a.partners.push({ npcId: buyer.id, stake: fraction, since: store.state.year });
+  buyer.lastInteractionAge = p.age;
   const cost = a.purchasePrice * (fraction / a.stake);
   const tax = gainsTax(price - cost);
   p.finance.cash += price - tax; p.finance.lifetimeTaxPaid += tax;
   a.purchasePrice -= cost; a.stake = Math.round((a.stake - fraction) * 1000) / 1000;
   revalue(a);
-  const text = `You sold ${Math.round(fraction * 100)}% of ${a.name} to an investor for ${fmtMoney(price, c)}${tax ? `, and paid ${fmtMoney(tax, c)} tax on the gain` : ''}. You own ${Math.round(a.stake * 100)}% of it now.`;
+  const text = `You sold ${Math.round(fraction * 100)}% of ${a.name} to ${buyerId ? '' : 'an investor, '}${buyer.firstName} ${buyer.lastName}, for ${fmtMoney(price, c)}${tax ? `, and paid ${fmtMoney(tax, c)} tax on the gain` : ''}. You own ${Math.round(a.stake * 100)}% of it now.`;
   log(text, 'system', 'neutral');
   book({ cat: 'business', src: 'action', desc: text, split: [['tax', toMinor(tax, c.currency.code)]] });
   return result(true, text, 'neutral');
@@ -159,6 +198,15 @@ export function tickBusiness() {
     const companyTax = profit > 0 ? Math.round(profit * c.incomeTax * 0.6) : 0;
     profit -= companyTax;
     a.till += profit;
+    // Now and then: a fire, a flood, a break-in. The business bears it; insurance, if it has any, can pay it back.
+    if (rng.chance(BUSINESS.mishap)) {
+      const what = rng.pick(['fire', 'flood', 'break-in']);
+      const hit = Math.round(a.takings * rng.int(5, 25) / 100);
+      const before = a.till;
+      a.till -= hit; profit -= hit;
+      recordLoss({ id: a.id, name: a.name, value: before }, before, a.till, what);
+      log(`A ${what} at ${a.name} cost the business ${fmtMoney(hit, c)}.`, 'system', 'bad');
+    }
     a.profits.push(profit);
     if (a.profits.length > 6) a.profits.shift();
     a.scale = clamp(a.scale + (profit > 0 ? 0.12 : -0.05), 0.3, 2.2);
@@ -171,6 +219,7 @@ export function tickBusiness() {
       const out = Math.min(a.till - reserve, Math.round(profit * a.payout));
       a.till -= out; // every owner is paid in proportion
       taken = Math.round(out * a.stake);
+      for (const x of a.partners ?? []) { const n = store.state.npcs[x.npcId]; if (n?.alive) earn(n, Math.round(out * x.stake)); }
       tax = Math.round(taken * c.incomeTax * 0.5);
       p.finance.cash += taken - tax; p.finance.lifetimeEarned += taken; p.finance.lifetimeTaxPaid += tax;
     }

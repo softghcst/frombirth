@@ -31,7 +31,7 @@ const GROUPS = [
   ['Others', ['ex', 'enemy', 'cellmate']],
 ];
 
-const portrait = (npc) => (npc.role === 'pet'
+export const portrait = (npc) => (npc.role === 'pet'
   ? `<div class="avatar glyph">${petGlyph(npc.species)}</div>`
   : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship, royal: royalDress(npc.flags.royal?.rank), label: npc.firstName })}</div>`);
 
@@ -209,7 +209,7 @@ function editPerson(api, npc) {
   });
 }
 
-function openNpc(npc, api) {
+export function openNpc(npc, api) {
   lives.ensureLife(npc);
   const m = npc.meters;
   const isPet = npc.role === 'pet';

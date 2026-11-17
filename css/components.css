@@ -395,3 +395,15 @@ button.dyn-event { cursor: pointer; }
 .mm-tx .amt.in { color: var(--good); }
 .mm-tx .amt.out { color: var(--ink); }
 @media (min-width: 520px) { .mm-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.mm-chart { position: relative; }
+.mm-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.mm-line-path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.mm-dot { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+.mm-axis { stroke: var(--line); stroke-width: 1; }
+.mm-zero { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.mm-cross { stroke: var(--muted); stroke-width: 1; }
+.mm-tick { fill: var(--muted); font-size: 10px; font-family: var(--sans); }
+.mm-hit { fill: transparent; cursor: crosshair; }
+.mm-tip { font-size: 0.85rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.mm-tip strong { color: var(--ink); }
+.mm-table summary { cursor: pointer; font-size: 0.85rem; color: var(--muted); margin-top: 6px; min-height: 32px; display: flex; align-items: center; }

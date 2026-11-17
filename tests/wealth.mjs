@@ -53,6 +53,7 @@ function life(id = 'us', { age = 30, cash = 20000, job = true } = {}) {
   p.finance.cash = Math.round(cash * COUNTRIES[id].currency.scale);
   p.flags.livesWithParents = false; p.education.enrolled = false; p.finance.loans = []; p.assets = []; p.stats.health = 90;
   for (const n of Object.values(store.state.npcs)) if (n.role === 'spouse' || n.role === 'partner') n.role = 'ex';
+  for (const n of Object.values(store.state.npcs)) if (n.role === 'pet') n.alive = false; // pets cost money now; checks that count cash start without them
   ledgerOf();
   if (job) { hire(office, 2, 60, 'Hired.'); p.career.salary = Math.round(60000 * COUNTRIES[id].currency.scale); }
   return p;
@@ -531,6 +532,138 @@ for (const id of ['us', 'de', 'in', 'jp', 'cn']) {
 }
 check(lived === 5, 'five whole lives were lived');
 section('whole lives using cards, plans, insurance, businesses, loans and trusts: sound every year');
+
+// ---------- 13. A car bought on finance ----------
+{
+  p = life('us', { cash: 2000 });
+  p.flags.licence = true; p.flags.drivingLicence = true;
+  /** A vehicle for sale that a lender would finance. Listings are random, so look until there is one. */
+  const financeable = () => { for (let i = 0; i < 40; i++) { store.state.market.listings = null; const l = cars.listings().find((x) => !x.blocked && x.finance.approved && x.price > 5000); if (l) return l; } return null; };
+  const lst = financeable();
+  check(!!lst, 'there is a vehicle a lender will finance');
+  if (lst) {
+    const nw = netWorth(store.state);
+    check(cars.buyVehicle(lst.id, 'loan').ok, 'a vehicle can be bought on finance');
+    const v = p.assets.find((a) => a.kind === 'vehicle');
+    const loan = cars.loanOn(v);
+    check(loan && loan.kind === 'car' && loan.principal === lst.price && loan.rate === loans.CAR_LOAN.rate && loan.rate < 0.09, 'the loan is secured on the vehicle, at a lower rate');
+    bookAction();
+    check(Math.abs(netWorth(store.state) - nw) <= 1, 'buying on finance changes nothing on paper: a vehicle and a debt of the same size');
+    v.value = Math.round(loan.principal * 0.5); p.finance.cash = 10;
+    check(!cars.sellVehicle(v.id).ok && p.assets.includes(v), 'a vehicle worth less than its loan cannot be sold without the money to clear it');
+    p.finance.cash = loan.principal; book({ cat: 'giftIn', desc: 'test' });
+    const owed = loan.principal; const c0 = p.finance.cash;
+    check(cars.sellVehicle(v.id).ok && !p.finance.loans.includes(loan) && p.finance.cash === c0 + v.value - owed, 'selling it pays off the loan first');
+    bookAction(); sound('after selling a financed vehicle');
+    // Repossession: the lender is paid first, and only the rest reaches the owner.
+    p = life('us', { cash: 2000 }); p.flags.licence = true; p.flags.drivingLicence = true;
+    const l2 = financeable();
+    check(!!l2, 'and another, to be taken back');
+    if (l2) {
+      cars.buyVehicle(l2.id, 'loan'); bookAction();
+      const v2 = p.assets.find((a) => a.kind === 'vehicle'); const ln = cars.loanOn(v2);
+      v2.value = ln.principal * 2;
+      const c1 = p.finance.cash;
+      const owedR = ln.principal;
+      const raisedR = cars.repossessVehicle(v2);
+      check(raisedR === Math.round(v2.value * 0.8) && p.finance.cash === c1 + raisedR - owedR && !p.finance.loans.includes(ln), 'a repossessed vehicle pays its lender first; the owner gets what is left');
+      bookAction(); sound('after a repossession');
+    }
+  }
+}
+section('car finance: secured on the vehicle, cheaper, and the lender is paid first on any sale');
+
+// ---------- 14. Winding up an estate ----------
+p = life('us', { cash: 100000 });
+const kid2 = person('child', 30); const pal = person('friend', 40);
+let pl = death.estatePlan();
+check(pl.probate === Math.round(pl.gross * death.PROBATE.rate) && pl.net === pl.gross - pl.tax - pl.probate, 'winding up an estate costs a share of what passes under the will');
+check(!death.nameExecutor(kid2.id).ok === false && death.executor()?.id === kid2.id, 'an adult can be named to see to it');
+const pl2 = death.estatePlan();
+check(pl2.probate === Math.round(pl2.gross * death.PROBATE.withExecutor) && pl2.probate < pl.probate && pl2.executor, 'which halves the cost');
+check(Math.abs(pl2.shares.reduce((x, y) => x + y.amount, 0) - (pl2.gross - pl2.tax - pl2.probate)) <= pl2.shares.length, 'and the heirs share exactly what is left');
+fam.openJoint; const before2 = death.estatePlan().probate;
+const sp2 = person('spouse', 30); fam.openJoint(50000);
+check(death.estatePlan().probate < before2, 'what passes outside the will costs nothing to wind up');
+check(!death.nameExecutor(person('child', 10).id).ok, 'a child cannot be an executor');
+void pal;
+section('probate: a cost on what passes under the will, halved by an executor, nothing on what passes outside');
+
+// ---------- 15. Pets and their insurance ----------
+p = life('us', { cash: 40000 });
+const dog = (() => { const n = makeNpc({ role: 'friend', countryId: 'us', age: 3 }); n.role = 'pet'; n.species = 'dog'; n.firstName = 'Biscuit'; store.state.npcs[n.id] = n; p.npcIds.push(n.id); return n; })();
+const pq = ins.quote('pet', { asset: dog });
+check(pq.ok && pq.premium > 0 && pq.cover > 0 && ins.takeOut('pet', { asset: dog }).ok && !ins.quote('pet', { asset: dog }).ok, 'a pet can be insured, once');
+let bills = 0; let paidBack = 0;
+for (let i = 0; i < 60; i++) { // long enough that something goes wrong at the vet's
+  store.state.year += 1; const c = p.finance.cash; fam.tickFamilyMoney(); bills += c - p.finance.cash;
+  for (const l of ins.openLosses()) { const c2 = p.finance.cash; ins.claim(l.id); paidBack += p.finance.cash - c2; }
+}
+check(bills > 60 * 600 && paidBack > 0 && paidBack < bills, 'a pet costs money every year; insurance pays back some of the vet\'s bills, never all of it');
+const yearsOf = (cat) => Object.values(store.state.ledger.years).some((y) => y.USD?.[cat]);
+check(yearsOf('pets') && yearsOf('claim'), 'the costs are filed under pets, the payouts as insurance');
+dog.alive = false; store.state.year += 1; ins.tickInsurance();
+check(!ins.policies().some((x) => x.kind === 'pet'), 'when the pet dies the policy ends');
+sound('after years with a pet');
+// A business: a mishap is the business's loss; the payout goes back into the business.
+p = life('us', { cash: 200000, job: false });
+biz.startBusiness('shop'); const sh = biz.businesses()[0]; sh.takings = 100000;
+check(ins.takeOut('business', { asset: sh }).ok, 'a business can be insured');
+const till0 = sh.till; const cashS = p.finance.cash;
+ins.recordLoss({ id: sh.id, name: sh.name, value: till0 }, till0, till0 - 20000, 'fire'); sh.till -= 20000;
+const lossB = ins.openLosses()[0]; const want2 = ins.assess(lossB.id).pay;
+check(ins.claim(lossB.id).ok && sh.till === till0 - 20000 + want2 && p.finance.cash === cashS, 'a business\'s claim is paid into the business, not to the owner');
+bookAction(); sound('after a business claim');
+section('pets cost money, and pet and business insurance pay what they should, where they should');
+
+// ---------- 16. The family's own money ----------
+{
+  const { finOf, npcWorth, tickNpcMoney } = await import('../js/engine/npcMoney.js');
+  p = life('us', { cash: 1000 });
+  const fresh = (n) => { n.life.fin = null; return finOf(n); }; // someone who arrives as an adult comes with a past; these checks start from a clean slate
+  const bro = person('sibling', 30, { savings: 0, salary: 50000 });
+  const f = fresh(bro);
+  check(f && ['cautious', 'balanced', 'bold'].includes(f.style) && !f.home && f.debt === 0, 'someone close has books of their own');
+  check(finOf(person('friend', 30)) === null, 'someone further away keeps the simple savings figure');
+  bro.life.savings = -5000; tickNpcMoney(bro);
+  check(bro.life.savings === 0 && f.debt === 5000, 'running out of money becomes their debt, not the player\'s');
+  bro.life.savings = 400000; let bought = false;
+  for (let i = 0; i < 30 && !bought; i++) bought = tickNpcMoney(bro) === 'bought';
+  check(bought && f.home && f.home.mortgage > 0 && f.home.mortgage <= bro.life.job.salary * 4.5, 'with a deposit saved, and an income a lender will accept, they buy a home with a mortgage');
+  const w1 = npcWorth(bro);
+  check(w1 === Math.round(bro.life.savings + f.home.value - f.home.mortgage - f.debt), 'their worth is savings and home, less what they owe');
+  const poor = person('sibling', 30, { savings: 1000000, salary: 0 }); fresh(poor);
+  for (let i = 0; i < 10; i++) tickNpcMoney(poor);
+  check(!finOf(poor).home, 'nobody buys a home with no income, whatever they have saved');
+  const spouse3 = person('spouse', 30, { savings: 1000000, salary: 90000 });
+  for (let i = 0; i < 10; i++) tickNpcMoney(spouse3);
+  check(!finOf(spouse3).home, 'a spouse shares the player\'s home, and does not buy one of their own');
+  // Selling part of a business to someone they know: from their own savings, and they can say no.
+  p = life('us', { cash: 300000, job: false });
+  biz.startBusiness('cafe'); const cafe = biz.businesses()[0]; cafe.till = 100000; cafe.profits = [20000, 20000];
+  const aunt = person('sibling', 50, { savings: 500000, relationship: 90 });
+  const price = biz.stakePrice(cafe, 0.25); const auntHad = aunt.life.savings;
+  check(biz.buyersFor(cafe.id, 0.25).includes(aunt) && biz.sellStake(cafe.id, 0.25, aunt.id).ok && aunt.life.savings === auntHad - price, 'a relative can buy a share, paying from their own savings');
+  check(cafe.partners.length === 1 && cafe.partners[0].npcId === aunt.id && cafe.stake === 0.75, 'and owns it from then on');
+  cafe.payout = 1; cafe.scale = 2; p.stats.charm = 100; const aSav = aunt.life.savings;
+  for (let i = 0; i < 5; i++) { store.state.year += 1; biz.tickBusiness(); }
+  check(aunt.life.savings >= aSav, 'and is paid their part of the profit taken out');
+  const cold2 = person('sibling', 50, { savings: 500000, relationship: 20 });
+  const cB3 = p.finance.cash;
+  check(!biz.sellStake(cafe.id, 0.1, cold2.id).ok && cold2.life.savings === 500000 && p.finance.cash === cB3, 'someone who does not trust the player keeps their money');
+  const nIds = p.npcIds.length;
+  if (biz.businesses().length) check(biz.sellStake(cafe.id, 0.1).ok && p.npcIds.length === nIds + 1 && store.state.npcs[p.npcIds.at(-1)].flags.tag === 'investor', 'an outside investor becomes someone the player knows');
+  bookAction(); sound('after selling shares');
+}
+section('family money: their own homes, mortgages and debts; buying into a business, or saying no');
+
+// ---------- 17. Net worth over the years ----------
+p = life('us', { cash: 5000 });
+for (let i = 0; i < 4; i++) advanceYear();
+const hist = store.state.ledger.worth ?? {};
+const ys = Object.keys(hist).map(Number);
+check(ys.length >= 4 && ys.every((y) => hist[y].cur === 'USD') && hist[store.state.year].v === netWorth(store.state) - (netWorth(store.state) - bank.overview().netWorth), 'each year\'s net worth is recorded as it stood, with its currency');
+section('net worth is recorded at the end of every year');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

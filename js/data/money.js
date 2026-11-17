@@ -220,6 +220,8 @@ export const PENSION_PLAN = { since: 1975, unlockAge: 60, earlyPenalty: 0.25, ma
 export const INSURANCE = {
   home: { name: 'Home insurance', since: 1850, premium: 0.003, excess: 0.01, blurb: 'Pays to put right damage to a property you own, above the excess.' },
   motor: { name: 'Vehicle insurance', since: 1920, premium: 0.04, excess: 0.05, blurb: 'Pays for damage to a vehicle you own, above the excess.' },
+  pet: { name: 'Pet insurance', since: 1975, premium: 0.12, excess: 0.1, base: 1500, blurb: 'Pays a vet\'s bill for an accident or illness, above the excess.' },
+  business: { name: 'Business insurance', since: 1900, premium: 0.02, excess: 0.05, blurb: 'Pays the business back for fire, flood and theft, above the excess.' },
   life: { name: 'Life insurance', since: 1850, blurb: 'Pays a fixed sum when you die, to whoever you name or else to your estate.', covers: [5, 10, 20], load: 1.3 },
 };
 export const INSURERS = ['Granite Mutual', 'Hearth & Harbour', 'Northlight Assurance'];
@@ -234,4 +236,6 @@ export const BUSINESS_TYPES = [
   { id: 'studio', name: 'Design studio', cost: 15000, takings: 110000, margin: 0.14, swing: 0.7, skill: 'charm' },
   { id: 'software', name: 'Software company', cost: 60000, takings: 150000, margin: 0.12, swing: 1.1, skill: 'intellect' },
 ];
-export const BUSINESS = { minAge: 18, managerShare: 0.4, saleFee: 0.05, multiple: 3, failAfter: 2 };
+export const BUSINESS = { minAge: 18, managerShare: 0.4, saleFee: 0.05, multiple: 3, failAfter: 2, mishap: 0.06 };
+/** What a pet costs a year in food and ordinary vet visits, and how often something goes badly wrong (base units). */
+export const PETS = { upkeep: 600, emergency: 0.12, bill: [800, 4000] };
