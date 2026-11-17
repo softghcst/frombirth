@@ -44,6 +44,7 @@ check((p.finance.accounts.MXN ?? 0) === acct - l.quote.fromAccount && p.finance.
 check(near(a.value, fx.convert(l.price, 'MXN', 'USD'), 0.01), 'it is worth, in dollars, what was paid in pesos');
 const lost = worth0 - netWorth(store.state); const feesUsd = fx.convert(l.fees, 'MXN', 'USD') + l.quote.fee;
 check(near(lost, feesUsd, 0.03) && lost > 0, `net worth fell by the fees and nothing else (${lost} against ${feesUsd})`);
+// Money is changed only when the peso account does not cover it all; when it does, there is no exchange to record.
 check(l.quote.fromCash === 0 || (p.finance.fxLog.at(-1).what && p.finance.fxLog.at(-1).received === total - l.quote.fromAccount), 'any money changed for it is in the record');
 check(!estate.buyAbroad(l.id).ok, 'a listing can be bought once');
 p.finance.cash = 10; store.state.market.abroad = null; list = estate.listingsAbroad('jp', 'Tokyo');
@@ -86,7 +87,7 @@ let plan = estatePlan();
 const jp = plan.taxBy?.find((t) => t.countryId === 'jp'); const us = plan.taxBy?.find((t) => t.countryId === 'us');
 check(!!jp && near(jp.amount, j.value * COUNTRIES.jp.estateTax, 0.01) && jp.rate === COUNTRIES.jp.estateTax, 'the house in Japan is taxed by Japan, at Japan\'s rate');
 check(!!us && us.rate === COUNTRIES.us.estateTax && plan.tax === plan.taxBy.reduce((s, t) => s + t.amount, 0), 'the rest is taxed where the owner lived, and the parts add up');
-check(plan.net === plan.gross - plan.tax && plan.tax <= plan.liquid, 'tax never exceeds what can be paid without selling');
+check(plan.net === plan.gross - plan.tax - (plan.probate ?? 0) && plan.tax + (plan.probate ?? 0) <= plan.liquid, 'tax, and the cost of winding up the estate, never exceed what can be paid without selling');
 const noAbroad = (() => { const keep = p.assets; p.assets = []; p.finance.cash += j.value; const t = estatePlan().tax; p.assets = keep; p.finance.cash -= j.value; return t; })();
 check(COUNTRIES.jp.estateTax > COUNTRIES.us.estateTax ? plan.tax > noAbroad : plan.tax <= noAbroad, 'holding it abroad changes the bill in the direction the two rates say');
 p.finance.cash = 100; plan = estatePlan(); check(plan.tax <= Math.max(0, plan.liquid) && plan.taxBy.reduce((s, t) => s + t.amount, 0) <= plan.tax + 2, 'with no cash, each country takes a share of what little there is');

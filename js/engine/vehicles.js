@@ -6,8 +6,10 @@ import { uid, clamp, localMoney, fmtMoney } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { resolve } from './conditions.js';
 import { market } from './market.js';
-import { borrow, loanOffer } from './loans.js';
+import { borrow, loanOffer, CAR_LOAN } from './loans.js';
 import { VEHICLE_TYPES, VEHICLE_BY_ID, COLOURS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
+import { book } from './ledger.js';
+import { recordLoss } from './insurance.js';
 
 /** Lower-cases a name's first letter, unless it starts with an acronym (BMX, SUV). */
 const lower = (name) => (/^[A-Z]{2}/.test(name) ? name : name.charAt(0).toLowerCase() + name.slice(1));
@@ -56,6 +58,7 @@ export function takeDrivingTest() {
   const text = 'You passed your driving test.';
   log(text, 'system', 'good');
   milestone('Passed the driving test.', 'life');
+  book({ cat: 'transport', src: 'action', desc: text });
   return result(true, text);
 }
 
@@ -78,6 +81,7 @@ export function learnToFly() {
   const text = 'You earned your pilot\'s license.';
   log(text, 'system', 'good');
   milestone('Earned a pilot\'s license.', 'life');
+  book({ cat: 'transport', src: 'action', desc: text });
   return result(true, text);
 }
 
@@ -108,7 +112,7 @@ export function listings() {
     const type = VEHICLE_BY_ID[l.typeId];
     const blocked = type.needs === 'licence' && !hasLicence() ? 'You need a driving license.'
       : type.needs === 'pilot' && !hasPilotLicence() ? 'You need a pilot\'s license.' : '';
-    return { ...l, cls: type.cls, blocked, finance: loanOffer(l.price) };
+    return { ...l, cls: type.cls, blocked, finance: loanOffer(l.price, CAR_LOAN.rate, CAR_LOAN.years) };
   });
 }
 
@@ -121,17 +125,20 @@ export function buyVehicle(listingId, how = 'cash') {
   const type = VEHICLE_BY_ID[l.typeId];
   if (p.age < (type.minAge ?? rule('drivingAge'))) return result(false, type.minAge ? 'You are too young for that.' : may('drive').why, 'neutral');
   if (how === 'loan' && p.age < 18) return result(false, 'Nobody lends money to a child.', 'neutral');
+  const assetId = uid('asset');
   if (how === 'loan') {
-    const lent = borrow(l.price, 'car');
+    // The loan is secured on the vehicle: it is the lender's to take back if the loan goes unpaid.
+    const lent = borrow(l.price, 'car', assetId);
     if (!lent.ok) return lent;
   }
   if (p.finance.cash < l.price) return result(false, 'You cannot afford it.', 'neutral');
   p.finance.cash -= l.price;
-  p.assets.push({ id: uid('asset'), kind: 'vehicle', catalogId: l.typeId, name: l.name.replace(/^New |^\d+-year-old /, '').replace(/^./, (ch) => ch.toUpperCase()),
+  p.assets.push({ id: assetId, kind: 'vehicle', catalogId: l.typeId, name: l.name.replace(/^New |^\d+-year-old /, '').replace(/^./, (ch) => ch.toUpperCase()),
     purchasePrice: l.price, value: l.price, boughtAtAge: p.age, condition: l.condition, age: l.age, vehicleClass: type.cls });
   market().listings.vehicle = market().listings.vehicle.filter((x) => x.id !== listingId);
   const text = `You bought ${/^(8|11|18)-|^[aeiou]/i.test(l.name) ? 'an' : 'a'} ${l.name.toLowerCase()} for ${fmtMoney(l.price, c)}${how === 'loan' ? ', on finance' : ''}.`;
   log(text, 'system', 'good');
+  book({ cat: 'vehicle', src: 'action', desc: text });
   return result(true, text);
 }
 
@@ -148,6 +155,7 @@ export function service(id) {
   a.value = worth(vehicleTypeOf(a), a.age, a.condition);
   const text = `You had the ${a.name.toLowerCase()} serviced for ${fmtMoney(cost, country())}.`;
   log(text);
+  book({ cat: 'transport', src: 'action', desc: text });
   return result(true, text, 'neutral');
 }
 
@@ -168,13 +176,35 @@ export function takeOut(id) {
   return result(true, text);
 }
 
+/** The loan secured on a vehicle, if it was bought on finance and not yet paid off. */
+export const loanOn = (a) => player().finance.loans.find((l) => l.assetId === a.id) ?? null;
+/** What selling would leave once the loan on it is cleared (negative: the sale does not cover the loan). */
+export const saleNet = (a) => Math.round(a.value - (loanOn(a)?.principal ?? 0));
+
+/** Clears a vehicle's loan from what it raised. Returns what is left over. */
+function settleLoan(a, raised) {
+  const p = player();
+  const loan = loanOn(a);
+  if (!loan) return raised;
+  const paid = Math.min(loan.principal, raised);
+  loan.principal -= paid;
+  delete loan.assetId; // whatever is still owed is no longer secured on anything
+  if (loan.principal <= 0) p.finance.loans = p.finance.loans.filter((x) => x !== loan);
+  return raised - paid;
+}
+
 export function sellVehicle(id) {
   const p = player();
   const a = assetOf(id);
+  const loan = loanOn(a);
+  const net = saleNet(a);
+  if (net < 0 && p.finance.cash < -net) return result(false, `It would fetch ${fmtMoney(a.value, country())}, and you still owe ${fmtMoney(loan.principal, country())} on it. You need ${fmtMoney(-net, country())} more to clear the loan before it can be sold.`, 'neutral');
   p.finance.cash += a.value;
   p.assets = p.assets.filter((x) => x !== a);
-  const text = `You sold the ${a.name.toLowerCase()} for ${fmtMoney(a.value, country())}.`;
+  if (loan) { const owed = Math.min(loan.principal, p.finance.cash); p.finance.cash -= owed; loan.principal -= owed; if (loan.principal <= 0) p.finance.loans = p.finance.loans.filter((x) => x !== loan); }
+  const text = `You sold the ${a.name.toLowerCase()} for ${fmtMoney(a.value, country())}${loan ? `, and the loan on it was paid off from the sale` : ''}.`;
   log(text);
+  book({ cat: 'vehicle', src: 'action', desc: text });
   return result(true, text, 'neutral');
 }
 
@@ -182,8 +212,10 @@ export function sellVehicle(id) {
 export function repossessVehicle(a) {
   const p = player();
   const raised = Math.round(a.value * 0.8);
-  p.finance.cash += raised;
   p.assets = p.assets.filter((x) => x !== a);
+  // A lender with a claim on the vehicle is paid first; only what is left reaches the owner.
+  const left = settleLoan(a, raised);
+  p.finance.cash += left;
   return raised;
 }
 
@@ -191,8 +223,10 @@ export function repossessVehicle(a) {
 export function hitVehicle(condition) {
   const a = vehicles().sort((x, y) => y.value - x.value)[0];
   if (!a) return;
+  const before = a.value;
   a.condition = clamp(a.condition + condition);
   a.value = worth(vehicleTypeOf(a), a.age, a.condition);
+  if (condition < 0) recordLoss(a, before, a.value, 'damage');
 }
 
 /** Yearly: age, wear, running costs, and the chance of a crash. @returns {?string} cause of death */
@@ -218,11 +252,15 @@ export function tickVehicles() {
     }
     if (roll < 0.35) {
       p.stats.health = clamp(p.stats.health - rng.int(12, 30));
+      recordLoss(a, a.value, 0, 'written off in a crash');
+      { const loan = loanOn(a); if (loan) delete loan.assetId; } // still owed, with nothing left to secure it
       p.assets = p.assets.filter((x) => x !== a);
       log(`You ${what} the ${a.name.toLowerCase()} and were badly hurt. It was written off.`, 'system', 'bad');
     } else {
+      const before = a.value;
       a.condition = clamp(a.condition - 30);
       a.value = worth(type, a.age, a.condition);
+      recordLoss(a, before, a.value, 'a crash');
       p.stats.health = clamp(p.stats.health - rng.int(0, 6));
       log(`You ${what} the ${a.name.toLowerCase()}. You walked away; it will need work.`, 'system', 'bad');
     }

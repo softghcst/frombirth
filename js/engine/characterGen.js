@@ -16,6 +16,7 @@ import { rollLongevity } from './death.js';
 import { normalize, skinDepth, INHERITED_KEYS } from '../avatar/catalog.js';
 import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
 import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
+import { startingSense } from './achievements.js';
 import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
 
 /**
@@ -120,6 +121,8 @@ export function createLife(opts = {}) {
   if (trans) { player.flags.trueGender = identityGender; player.flags.realiseAge = rng.int(4, 14); }
   // Natural gifts make the matching skills come faster all life long.
   player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 65).map(([k]) => k);
+  // Growing up around how their parents handle money gives a child a little to start from (engine/achievements.js).
+  player.flags.moneySense = startingSense([mother, father]);
 
   for (const id of traits) applyMods(player, TRAIT_BY_ID[id]);
   for (const b of born) {

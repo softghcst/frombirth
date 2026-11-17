@@ -4,6 +4,7 @@ import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
+import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
 
 export const SCHEMA_VERSION = 1;
@@ -82,6 +83,12 @@ function migrate(state) {
     if (!b.closed && b.owner?.id === state.player.id && b.cash > 0) state.player.finance.cash += b.cash;
     if (!b.closed) b.closed = { year: state.year, why: 'wound up when businesses were brought together' };
     b.cash = 0;
+  }
+  // Lives saved before the ledger: what they have today becomes an opening balance. No past is invented,
+  // no bills are charged for years that were never recorded, and nobody is paid a "first" wage twice.
+  if (!state.ledger) {
+    if (pl.finance.lifetimeEarned > 0) pl.flags.firstPay ??= true;
+    ledgerOf(state, { desc: 'What you had when the books were opened (from an earlier version of the game)' });
   }
   state.schemaVersion = SCHEMA_VERSION;
   return state;

@@ -52,6 +52,12 @@ const SPECIAL = {
   degreeTypes: (p) => p.education.degrees.map((d) => d.type),
   /** Cash expressed in base units so events can compare across currencies. */
   cashBase: (p) => p.finance.cash / country().currency.scale,
+  // Money: the year of a first wage; what has been picked up about money; cards and accounts actually held.
+  firstPayNow: (p) => p.flags.firstPayAge === p.age,
+  moneySense: (p) => Math.round(p.flags.moneySense ?? 0),
+  hasCard: (p) => (p.finance.cards ?? []).some((k) => k.status === 'open'),
+  hasBankAccount: () => Object.values(store.state.ledger?.accounts ?? {}).some((a) => a.kind === 'bank' && a.closed == null),
+  ownsBusiness: (p) => p.assets.some((a) => a.kind === 'business'),
   jailed: (p) => !!p.legal.incarceration,
   employed: (p) => !!p.career.careerId,
   // Working life (engine/worklife.js, business.js): the field of the main job, whether the player manages people or owns a business, and the week.
