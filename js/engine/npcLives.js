@@ -6,6 +6,7 @@
 // in close family also reach the player's journal, and a few ask the player
 // to respond (see data/events/familyLives.js).
 import { rng } from '../rng.js';
+import { spouseFactor } from './couple.js';
 import * as kid from './kidschool.js';
 import { showMark } from './grades.js';
 import { schoolModel } from '../data/education.js';
@@ -182,7 +183,8 @@ function tickJob(npc, quiet = false) {
     return path === 'tripleThreat' ? Math.min(npc.talents?.singing ?? 0, npc.talents?.dance ?? 0, npc.talents?.acting ?? 0) + 8 >= min
       : path.startsWith('talents.') ? (npc.talents?.[key] ?? 0) >= min : npc.meters[key] === undefined || npc.meters[key] >= min * 0.9;
   });
-  if (next && able && job.years >= level.years && rng.chance(0.18 + npc.meters.intellect / 500)) {
+  // A spouse's chances follow the household plan agreed with the player (engine/couple.js).
+  if (next && able && job.years >= level.years && rng.chance((0.18 + npc.meters.intellect / 500) * spouseFactor(npc))) {
     job.level += 1;
     job.title = next.title;
     job.salary = Math.max(Math.round(job.salary * 1.08), bandPay(next, 0.2));

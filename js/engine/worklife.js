@@ -20,6 +20,7 @@
 //   paidYear, lastPay                    the year last paid; what that payslip said
 //   achievements                         career milestones earned (engine/careerRecord.js)
 import { rng } from '../rng.js';
+import { careHours } from './couple.js';
 import { clamp, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
 import { CAREER_BY_ID } from '../data/careers.js';
@@ -100,6 +101,8 @@ export function weeklyLoad(p = player(), age = p.age) {
   const fl = freelanceHours(c);
   if (fl) rows.push({ label: 'Freelance work', hours: fl, kind: 'freelance' });
   for (const b of (p.businesses ?? []).filter((x) => x.status === 'open' && x.ownerHours > 0)) rows.push({ label: `Running ${b.name}`, hours: b.ownerHours, kind: 'business' });
+  const care = careHours(p);
+  if (care) rows.push({ label: 'Looking after the children', hours: care, kind: 'care' });
   const study = studyHours(p);
   if (study) rows.push({ label: p.education.stage === 'high' || p.age < 18 ? 'School' : 'Studying', hours: study, kind: 'study' });
   const travel = commute(c, p);

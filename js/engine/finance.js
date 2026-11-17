@@ -1,6 +1,7 @@
 // Annual money flow: income, tax, living costs, loan payments, and settling
 // up if the account ends the year in the red.
 import { housingK } from './cities.js';
+import { careCost } from './couple.js';
 import { runPayroll } from './worklife.js';
 import { foreignWorth } from './currency.js';
 import { rentFactor } from './policy.js';
@@ -95,7 +96,7 @@ export function tickFinance() {
   }
 
   const coParent = npcsByRole('spouse')[0];
-  if (p.age >= 18) f.cash -= afford(Math.round(childCosts() * (coParent?.life?.job ? 0.5 : 1)));
+  if (p.age >= 18) f.cash -= afford(Math.round(childCosts() * (coParent?.life?.job ? 0.5 : 1) + careCost(p))); // with paid childcare, if the household chose it (engine/couple.js)
 
   for (const loan of f.loans) {
     // Student loans are frozen while you study, and repayments wait until you

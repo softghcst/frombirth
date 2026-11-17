@@ -7,6 +7,7 @@
 //   p.career.recruiterIds  the recruiters who know the player
 //   p.career.leads         [{ id, from (npc id), postingId, age, text, abroad, seen, bonus }]
 import { rng } from '../rng.js';
+import { spouseFollows } from './couple.js';
 import { clamp, fmtMoney, uid } from '../util.js';
 import { store, player, country, livingNpcs, log } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
@@ -182,6 +183,8 @@ export function moveForOffer(offer, acceptOffer) {
   } else if (post.city !== p.city) {
     const moved = relocate(post.city);
     if (!moved.ok) return moved;
+    const home = spouseFollows(post.city); // and what it means for a spouse's job
+    if (home) log(home);
   }
   return acceptOffer(offer.id);
 }

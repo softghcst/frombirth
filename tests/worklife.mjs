@@ -20,6 +20,9 @@ import * as hiring from '../js/engine/hiring.js';
 import * as market from '../js/engine/employers.js';
 import { romanceActions } from '../js/engine/romance.js';
 import { workChoice, queueWorkScenes, partnerAtWork } from '../js/engine/workEvents.js';
+import * as couple from '../js/engine/couple.js';
+import { tickFinance } from '../js/engine/finance.js';
+import { recordJob } from '../js/engine/career.js';
 
 rng.seed(31337);
 const problems = [];
@@ -68,7 +71,7 @@ for (const ev of careerScenes) {
     } catch (err) { problems.push(`${ev.id} choice ${ci} outcome ${oi}: ${err.stack.split('\n').slice(0, 3).join(' ')}`); }
   }));
 }
-for (const k of keys) check(['bonus', 'partTime', 'overtime', 'stress', 'satisfaction', 'newBoss', 'acquired', 'voluntary', 'biz', 'romance', 'inspire'].includes(k), `a scene asks for a work choice nobody handles: ${k}`);
+for (const k of keys) check(['bonus', 'partTime', 'overtime', 'stress', 'satisfaction', 'newBoss', 'acquired', 'voluntary', 'biz', 'romance', 'inspire', 'couple'].includes(k), `a scene asks for a work choice nobody handles: ${k}`);
 // The requirements the scenes use are ones the game can answer.
 {
   const { p } = life('nurse');
@@ -176,6 +179,78 @@ section('romance at work: allowed between equals, not with a report; noticed, de
   check(p.royal.image > img && work.career().careerId === 'nurse', 'and the public thinks the better of it');
 }
 section('royals: the monarch and heir are bound; the rest of the family may work, outside government');
+
+// 6. Two careers, one household.
+{
+  const { p, love, kid } = life('accountant', 1);
+  kid.age = 3;
+  ensureLife(love);
+  love.life.edu.stage = 'done'; love.life.edu.yearsLeft = 0;
+  love.life.job = { careerId: 'teacher', level: 1, title: 'Teacher', salary: 50000, years: 3, employerId: market.placeAt('teacher', p.countryId, p.city).id };
+  const h = couple.plan();
+  check(h.lead === 'balanced' && h.childcare === 'shared', 'a household starts with both careers equal and the childcare shared');
+  const shared = couple.careHours();
+  check(shared === 6 && work.weeklyLoad().rows.some((r) => r.kind === 'care' && r.hours === 6), `a toddler takes six hours of each parent's week when it is shared (${shared})`);
+  h.childcare = 'me'; const me = couple.careHours();
+  h.childcare = 'them'; const them = couple.careHours();
+  h.childcare = 'paid'; const paidH = couple.careHours();
+  check(me > shared && them < shared && paidH < shared, `who looks after the children changes the player's week (${me}, ${shared}, ${them}, ${paidH})`);
+  check(couple.careCost() > 0, 'paid childcare costs money');
+  const cashPaid = (() => { const before = p.finance.cash; store.state.year += 1; p.career.paidYear = store.state.year; tickFinance(); return before - p.finance.cash; })();
+  h.childcare = 'shared';
+  const cashShared = (() => { const before = p.finance.cash; store.state.year += 1; p.career.paidYear = store.state.year; tickFinance(); return before - p.finance.cash; })();
+  check(cashPaid > cashShared, `paid childcare comes out of the household's money (${cashPaid} against ${cashShared})`);
+  // Agreeing a plan.
+  love.meters.relationship = 70;
+  const give = couple.proposePlan({ lead: 'theirs' });
+  check(give.ok && h.lead === 'theirs' && love.meters.relationship > 70, 'putting their career first is always agreed, and appreciated');
+  check(!couple.proposePlan({ lead: 'balanced' }).ok, 'and it is talked about once a year');
+  let refused = 0; let agreed = 0;
+  for (let i = 0; i < 60; i++) {
+    h.lead = 'balanced'; h.askedAge = null; love.meters.relationship = 55;
+    const r = couple.proposePlan({ lead: 'mine' });
+    if (r.ok) agreed += 1; else refused += 1;
+  }
+  check(refused > 5 && agreed > 5, `asking them to give way is sometimes agreed and sometimes refused (${agreed} yes, ${refused} no)`);
+  h.lead = 'balanced'; h.askedAge = null; love.meters.relationship = 95;
+  const sal = love.life.job.salary;
+  let went = false;
+  for (let i = 0; i < 30 && !went; i++) { h.askedAge = null; h.childcare = 'shared'; delete love.flags.partTimeForKids; love.life.job.salary = sal; went = couple.proposePlan({ childcare: 'them' }).ok; }
+  check(went && love.flags.partTimeForKids && love.life.job.salary === Math.round(sal * 0.6), 'a spouse who takes on the childcare goes part-time, on part-time pay');
+  h.askedAge = null;
+  couple.proposePlan({ childcare: 'me' });
+  check(!love.flags.partTimeForKids && Math.abs(love.life.job.salary - sal) <= 1, 'and goes back to full time when it changes');
+  // Both careers feel the plan.
+  const factor = (lead, care) => { h.lead = lead; h.childcare = care; return couple.spouseFactor(love); };
+  check(factor('theirs', 'me') > factor('balanced', 'shared') && factor('balanced', 'shared') > factor('mine', 'them'), 'the spouse\'s prospects follow the plan');
+  h.lead = 'mine'; const up = couple.leadFactor(); h.lead = 'theirs'; const down = couple.leadFactor();
+  check(up > 1 && down < 1, 'and so do the player\'s');
+  h.lead = 'balanced'; h.childcare = 'shared';
+  // Moving city for the player's job.
+  let kept = 0; let lost = 0;
+  for (let i = 0; i < 40; i++) {
+    love.life.job = { careerId: 'teacher', level: 1, title: 'Teacher', salary: 50000, years: 3, employerId: null };
+    love.meters.relationship = 70;
+    couple.spouseFollows(p.city);
+    if (love.life.job) kept += 1; else { lost += 1; check(love.meters.relationship < 70 && love.life.lastJob, 'a spouse who gives up a job to move is out of work, and it is felt'); }
+  }
+  check(kept > 2 && lost > 15, `moving city for a job usually costs a spouse theirs (${lost} of 40 lost it)`);
+  love.life.job = { careerId: 'software', level: 1, title: 'Developer', salary: 90000, years: 3, employerId: null };
+  couple.spouseFollows(p.city);
+  check(!!love.life.job, 'work that can be done from anywhere comes along');
+  // Losing a job, retraining.
+  love.life.lastJob = { careerId: 'software', level: 1 }; love.life.job = null; love.flags.lostJobAge = p.age;
+  store.state.pendingEvents = []; p.flags.familySceneAge = null; store.state.eventHistory = store.state.eventHistory.filter((x) => !x.id.startsWith('hh_'));
+  couple.tickCouple();
+  check(store.state.pendingEvents.some((x) => x.id === 'hh_spouse_out_of_work'), 'a spouse losing their job comes to the kitchen table');
+  workChoice('couple:retrain', { love: love.id });
+  check(love.flags.retraining && !love.life.job && love.occupation === 'student', 'they can go back to college');
+  const field = CAREER_BY_ID[love.flags.retraining.careerId].family;
+  p.age += 2;
+  couple.tickCouple();
+  check(love.life.job && CAREER_BY_ID[love.life.job.careerId].family === field && field !== 'tech', 'and come out of it in a new field');
+}
+section('households: a plan agreed between two careers shapes both, the week, the bills, a move, and how it feels');
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);

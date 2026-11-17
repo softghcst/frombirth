@@ -12,6 +12,7 @@ import { RATES, AVAILABILITY } from '../data/freelance.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from './modals.js';
 import { PRICING, OWNER_HOURS, DRAWS, BUSINESS_BY_ID } from '../data/business.js';
 import * as biz from '../engine/business.js';
+import * as couple from '../engine/couple.js';
 import { meterHtml } from './meter.js';
 import { avatarSvg } from './avatar.js';
 import * as career from '../engine/career.js';
@@ -39,7 +40,7 @@ const person = (n, side = '') => `<button type="button" class="row world-row" da
 
 const SECTIONS = [
   ['now', 'Current jobs'], ['workplace', 'Workplace'], ['find', 'Find a job'], ['offers', 'Offers & recruiters'], ['parttime', 'Part-time'],
-  ['freelance', 'Freelance'], ['business', 'Business'], ['special', 'Special careers'], ['military', 'Military'], ['quals', 'Qualifications'], ['history', 'History'], ['retire', 'Retirement'],
+  ['freelance', 'Freelance'], ['business', 'Business'], ['household', 'Household'], ['special', 'Special careers'], ['military', 'Military'], ['quals', 'Qualifications'], ['history', 'History'], ['retire', 'Retirement'],
 ];
 
 /** Which sections make sense for this person now. */
@@ -52,6 +53,7 @@ function sectionsFor(p) {
     if (id === 'parttime') return p.age >= Math.min(law.workAge, 15);
     if (id === 'freelance') return p.age >= 12;
     if (id === 'business') return p.age >= 18 || biz.businesses(p).length > 0;
+    if (id === 'household') return !!couple.spouse() || (p.age >= 18 && couple.youngKids(p).length > 0);
     if (id === 'military') return p.age >= 16;
     if (id === 'retire') return p.age >= 45 || c.retired;
     if (id === 'special') return p.age >= 5;
@@ -265,6 +267,24 @@ const VIEWS = {
       ${open.map(card).join('')}
       ${btn('bizstart', open.length ? 'Start another business' : 'Start a business', { cls: open.length ? '' : 'primary' })}
       ${past.length ? `<div class="card" style="margin-top:10px"><h3>Before</h3>${kv(past.map((b) => [b.name, `${b.founded}–${b.founded + b.years} · ${{ sold: 'sold', closed: 'closed', failed: 'went under', family: `run by ${store.state.npcs[b.ownerNpcId]?.firstName ?? 'family'}` }[b.status]}`]))}</div>` : ''}`;
+  },
+
+  household(p) {
+    const h = couple.householdView();
+    const c = work.career();
+    const n = h.spouse;
+    const sw = h.theirs;
+    const mine = work.weeklyLoad();
+    const careRow = h.kids.length ? [['Children under 12', String(h.kids.length)], ['Childcare', couple.CARE[h.plan.childcare].label], ...(h.careCost ? [['Paid childcare', `${money(h.careCost)} a year`]] : [])] : [];
+    return `<p class="muted" style="margin:0 0 6px">${n ? `Two working lives in one home. What you agree with ${esc(n.firstName)} shapes both careers, your week, and how they feel about it.` : 'On your own, the children\'s time comes out of yours, unless you pay for help.'}</p>
+      <div class="card"><h3>You</h3>${kv([['Work', c.careerId ? `${c.title}${market.employer(c.employerId) ? `, ${market.employer(c.employerId).name}` : ''}` : biz.openBusinesses().length ? `Running ${biz.openBusinesses()[0].name}` : c.retired ? 'Retired' : 'Not working'],
+    ['Pay', c.salary ? `${money(c.salary)} a year` : '—'], ['Your week', `${mine.total} hours, ${h.careHours} of them with the children`]])}</div>
+      ${n ? `<div class="card"><h3>${esc(n.firstName)} ${esc(n.lastName)}</h3>${kv([['Work', sw.retraining ? `Retraining, back at work at about ${sw.retraining.until - p.age + n.age}` : sw.job ? `${sw.job.title}${market.employer(sw.job.employerId) ? `, ${market.employer(sw.job.employerId).name}` : ''}` : n.life?.retired ? 'Retired' : 'Between jobs'],
+    ['Pay', sw.job ? `${money(sw.job.salary)} a year${n.flags.partTimeForKids ? ' (part-time, for the children)' : ''}` : '—'], ['Their week', sw.job ? `${sw.hours} hours at work, ${sw.care} with the children` : `${sw.care} hours with the children`],
+    ['Relationship', `${Math.round(n.meters.relationship)}%`]])}</div>` : ''}
+      <div class="card"><h3>The plan</h3>${kv([...(n ? [['Careers', couple.LEADS[h.plan.lead].label]] : []), ...careRow, ...(n ? [['Household income', `${money(h.income.total)} a year before tax`]] : [])])}
+        ${h.plan.history.length ? `<div class="section-label">Agreed</div>${h.plan.history.slice(-4).reverse().map((x) => `<p style="margin:3px 0">Age ${x.age}: ${esc(x.text)}</p>`).join('')}` : ''}</div>
+      <div class="btn-stack">${n ? btn('hhlead', 'Talk about whose career comes first', { sub: couple.LEADS[h.plan.lead].sub }) : ''}${h.kids.length ? btn('hhcare', 'Talk about the childcare', { sub: couple.CARE[h.plan.childcare].sub }) : ''}</div>`;
   },
 
   special(p) {
@@ -591,6 +611,20 @@ const ACTIONS = {
   async bizclose(id, x) {
     const b = biz.business(id);
     if (await confirmModal({ title: `Close ${b.name}?`, body: 'The staff lose their jobs. What is left after its debts comes back to you; if it owes more than it has, half the shortfall is yours.', yes: 'Close it', danger: true })) await x.say(biz.close(b));
+  },
+  async hhlead(_, x) {
+    const v = await pickModal({ title: 'Whose career comes first?', body: 'When the two collide (a move, a promotion, a late night), which one gives way? Asking them to give way may be refused.',
+      options: Object.entries(couple.LEADS).map(([k, o]) => ({ value: k, label: o.label, sub: o.sub, disabled: couple.plan().lead === k })) });
+    if (v) await x.say(couple.proposePlan({ lead: v }));
+  },
+  async hhcare(_, x) {
+    const c = country();
+    const v = await pickModal({ title: 'The childcare', body: 'Who looks after the children while you both work.',
+      options: Object.entries(couple.CARE).filter(([k]) => couple.spouse() || ['me', 'paid'].includes(k)).map(([k, o]) => ({ value: k, label: o.label, disabled: couple.plan().childcare === k,
+        sub: k === 'paid' ? `${o.sub} About ${money(couple.careCost({ ...player(), household: { ...couple.plan(), childcare: 'paid' } }), c)} a year.` : o.sub })) });
+    if (!v) return;
+    if (couple.spouse()) await x.say(couple.proposePlan({ childcare: v }));
+    else { couple.plan().childcare = v; await x.say({ ok: true, text: v === 'paid' ? `You arrange childcare: about ${money(couple.careCost(), c)} a year.` : 'You will look after them yourself.', tone: 'neutral' }); }
   },
   special: (id, x) => specialApply(id, x),
   enlist: (id, x) => specialApply(id, x),

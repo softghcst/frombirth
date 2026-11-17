@@ -473,6 +473,41 @@ export default [
       ] },
     ]),
 
+  // ---------- Two careers, one household (queued by engine/couple.js) ----------
+  queued('hh_spouse_out_of_work', 'their life',
+    '{love} has lost their job. They tell you at the kitchen table, very calmly, and then not calmly at all.', [
+      { label: 'Say they should take their time and find the right thing', outcomes: [any('You take on a few more hours to cover it. {love} looks for six months, and finds something they actually want.', 'good',
+        wk('overtime:5'), rel('love', 8), wk('couple:anyJob'), mem('love', 'tookMyTime', 'When they lost their job, you told them to take their time.'))] },
+      { label: 'Suggest they retrain for something new', outcomes: [any('Two years at college, on your wage alone. {love} comes out of it with a new field and something of their old spark.', 'good',
+        wk('couple:retrain'), rel('love', 6), wk('stress:6'))] },
+      { label: 'Say they need to take whatever comes up', outcomes: [any('{love} takes the first offer, a step down. The bills are paid. Something has gone quiet in them.', 'neutral',
+        wk('couple:anyJob'), rel('love', -6))] },
+    ]),
+  queued('hh_both_stretched', 'family',
+    'Neither of you has had an evening off in a month. The children are fine, mostly. You and {love} have started communicating in notes on the fridge.', [
+      { label: 'Offer to step back at work for a while yourself', outcomes: [any('You ask for fewer hours. Your career slows; your house breathes again. {love} notices exactly what you gave.', 'good',
+        wk('partTime'), wk('couple:iCare'), wk('couple:theyLead'), rel('love', 10), wk('stress:-12'), mem('love', 'steppedBack', 'You stepped back at work so the family could breathe.'))] },
+      { label: 'Ask {love} to step back', check: chk(0.5, { 'cast.love.relationship': 0.8 }), outcomes: [
+        ok('{love} goes part-time. It is the right call for the family, and you both know whose career it costs.', wk('couple:theyCare'), wk('couple:iLead'), rel('love', -3), wk('stress:-8')),
+        bad('"Why is it always me who is supposed to give way?" It is a long night.', rel('love', -12), wk('stress:6')),
+      ] },
+      { label: 'Pay for more childcare and keep going', outcomes: [any('A nanny three days a week. It costs more than you like to say aloud. You get your evenings back, some of them.', 'neutral', wk('couple:paid'), wk('stress:-6'))] },
+    ]),
+  queued('hh_spouse_retrain', 'their life',
+    '{love} has been reading about a different line of work for months. Tonight they say it out loud: they want to go back to college and start again, at their age.', [
+      { label: 'Back them completely', outcomes: [any('Two years of thinner budgets and textbooks on the kitchen table. You would do it again.', 'good',
+        wk('couple:retrain'), rel('love', 12), mem('love', 'backedMyChange', 'You backed them when they wanted to start again in a new career.'))] },
+      { label: 'Ask them to wait until the children are older', outcomes: [any('{love} agrees, and you can see them put it somewhere for later.', 'neutral', rel('love', -5))] },
+      { label: 'Say you cannot afford it', outcomes: [any('You may be right about the money. {love} stops mentioning it, which is worse.', 'bad', rel('love', -9))] },
+    ]),
+  queued('hh_spouse_big_job', 'their life',
+    '{love} has been offered a bigger job: more money, more responsibility, and a great deal more of their week. With the children still small, someone else would have to pick up what they put down.', [
+      { label: 'Tell them to take it; you will pick up more at home', outcomes: [any('{love} takes it, and flourishes. Your week fills up with school runs, and you find you do not mind as much as you thought.', 'good',
+        wk('couple:promote'), wk('couple:iCare'), wk('couple:theyLead'), rel('love', 12))] },
+      { label: 'Tell them to take it, and pay for more help', outcomes: [any('The new salary covers a nursery and then some. It is a tighter, busier, better-paid life.', 'neutral', wk('couple:promote'), wk('couple:paid'), rel('love', 6))] },
+      { label: 'Ask them to turn it down for now', outcomes: [any('{love} turns it down. They do not say much about it, then or later.', 'bad', rel('love', -10), npcSet('love', { flags: { heldBack: true } }))] },
+    ]),
+
   // ---------- A child's curiosity ----------
   queued('kid_asks_work', 'their life',
     '{kid} has been asked at school what their parents do, and realised they are not sure. "What do you actually do all day?"', [

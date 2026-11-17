@@ -47,7 +47,7 @@ node tests/rules.mjs           # the legal rule engine: layers, overrides, what 
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
-node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work
+node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
@@ -903,7 +903,8 @@ The Work button on the Work & School tab opens the occupation hub: current jobs 
 satisfaction and stress), the people at work, a job board of real openings at persistent employers, offers and
 recruiters, part-time work, a freelance practice, special careers (auditions, portfolios, selection boards), the
 military of the country you live in, qualifications, your working history with milestones, retirement, and
-businesses of your own: staff, prices, the accounts, partners, selling, and handing on to the next generation.
+businesses of your own (staff, prices, the accounts and their tax, partners, selling, handing on), and a household
+plan agreed with a spouse: whose career comes first, and who looks after the children.
 
 There are 193 career tracks and 714 job titles in 19 families. A track is one entry in `js/data/occupations.js`.
 How it all fits together (employers, hiring, payroll, the time budget, workplaces, records across generations)

@@ -5,6 +5,7 @@
 // rather than from chance (a relationship at work being noticed; a child
 // asking about the player's job).
 import { rng } from '../rng.js';
+import { coupleChoice } from './couple.js';
 import { clamp, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs } from '../state.js';
 import { CAREER_BY_ID } from '../data/careers.js';
@@ -129,6 +130,7 @@ export function workChoice(value, cast = {}) {
       if (a === 'end') { n.role = 'ex'; delete p.flags.workRomance; }
       return '';
     }
+    case 'couple': return coupleChoice(a, cast);
     case 'inspire': {
       // A child takes an interest in the player's work, or is told to find their own way.
       const kid = npc('kid');

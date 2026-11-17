@@ -114,6 +114,32 @@ yearly employer tick leaves it alone and it never advertises on the job board.
   owns it: they inherit the ownership, not the manager's chair. Abroad, a business with a manager carries on and
   pays out across the border; one without is wound up.
 
+### Tax on business profit
+
+Each country taxes business profit at its own rate (`PROFIT_TAX` in `js/data/business.js`, gameplay
+configuration, unverified), with a lower rate on the first slice of profit where the country has one. Losses
+are carried forward (`lossCarry`) and set against later profit. The tax comes out of the business's account
+before the owners take anything; what they take is then taxed as their income. A sole trader (working alone,
+no partners) pays no profit tax: their profit is their income, taxed once.
+
+## Two careers, one household
+
+`js/engine/couple.js`. A spouse has a working life of their own, with an employer. The household plan,
+agreed between the two of them in the hub's Household section, says:
+
+- **whose career comes first** (`balanced`, `mine`, `theirs`): it tilts both partners' chances of promotion,
+  and how fair the spouse finds it, year by year. Giving way is always agreed; asking them to give way can be
+  refused, more often when their own career is going somewhere.
+- **who looks after children under 12** (`shared`, `me`, `them`, `paid`): childcare takes real hours from the
+  player's week (and so from the time budget every commitment is checked against), or money every year if it is
+  paid for. A spouse who takes most of it goes part-time, on part-time pay, until the children are older.
+
+Moving city for the player's own job usually costs the spouse theirs (unless it can be done from anywhere, or
+their employer has somewhere to put them), and it is felt more if their career was meant to come first.
+Scenes come from the state of the household: a spouse losing their job, both stretched too thin with small
+children, a spouse wanting to retrain (two years at college, then a new field), and a spouse offered a bigger job
+while the children are small.
+
 ## Scenes of working life
 
 `js/data/events/career.js`, with their effects in `js/engine/workEvents.js` (the `work` effect type):
@@ -146,14 +172,13 @@ government they must stand apart from. A royal with a profession of their own is
 - **Entertainment careers with their own gameplay** (productions, tours, albums, contracts between projects,
   awards). Actors, singers, dancers and models get in by audition and climb a ladder; the rest is left for a
   separate fame system.
-- **Workplace scenes about spouses' careers** go through the existing NPC-life events (a spouse's job in
-  another city, for instance). There is no shared household plan between two careers beyond those.
 - **Criminal careers** (organised crime, dealing, street hustling) are not employment and are not in the
   catalog: they belong to the crime system (`js/engine/justice.js`), with its own consequences.
 - **Elected office** is not a job posting: it goes through the elections and politics systems. Holding high
   office rules out other paid work.
 - **Royal household staff** as an employer is not modelled.
-- **The business tax**: a company's profit is not taxed separately; what the owner takes out is taxed as income.
+- **Pass-through and dividend rules**: an owner's draw is taxed as ordinary income everywhere; countries'
+  special treatment of dividends or small-business income is not modelled.
 
 ## Balance
 

@@ -1,6 +1,7 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
 import { hiringClimate, layoffChance } from './economy.js';
+import { leadFactor, tickCouple } from './couple.js';
 import { payK } from './cities.js';
 import { rule, may } from './rules.js';
 import { residency } from './citizenship.js';
@@ -642,7 +643,7 @@ export function tickWork() {
   tickOffers();
   const death = tickCareer();
   if (death) return death;
-  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickWorkLife(), ...tickRecruiters()];
+  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickWorkLife(), ...tickRecruiters()];
   for (const l of lines) log(l);
   queueWorkScenes();
   if (p.age >= 14) checkAchievements(p);
@@ -755,7 +756,7 @@ export function tickCareer() {
   const toTop = next && c.level + 1 === career.levels.length - 1;
   const bar = toTop ? 80 : 62;
   // A promotion needs a seat to be free: big, healthy employers have more of them.
-  const odds = clamp(0.2 + (c.performance - bar) / 110 + mentor * 0.03, 0, 0.9) * (toTop ? 0.22 : 1) * vacancyOdds(c);
+  const odds = clamp((0.2 + (c.performance - bar) / 110 + mentor * 0.03) * leadFactor(), 0, 0.9) * (toTop ? 0.22 : 1) * vacancyOdds(c);
   if (next && served && c.performance >= bar && !missing.length && rng.chance(odds)) {
     promote();
   } else {
