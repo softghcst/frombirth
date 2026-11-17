@@ -173,6 +173,8 @@ function tickJob(npc, quiet = false) {
   const L = npc.life;
   const job = L.job;
   const career = CAREER_BY_ID[job.careerId];
+  // A job saved under an older career ladder can point past its top rung: treat it as the top.
+  if (!(job.level >= 0 && job.level < career.levels.length)) job.level = Math.max(0, Math.min(career.levels.length - 1, job.level | 0));
   const level = career.levels[job.level];
   job.years += 1;
   L.yearsWorked = (L.yearsWorked ?? 0) + 1;

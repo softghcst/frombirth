@@ -1,7 +1,7 @@
 // Mortality maths and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
 import { COUNTRIES } from '../data/countries.js';
-import { settleEstate } from './currency.js';
+import { settleEstate, atHome } from './currency.js';
 import { rng } from '../rng.js';
 import { styledName } from './royalty.js';
 import { uid, localMoney } from '../util.js';
@@ -181,7 +181,7 @@ export function assignItem(assetId, npcId) {
 
 /** Property and vehicles: the things that are handed on as they are. */
 export const keepsakes = () => player().assets.filter((a) => a.kind === 'property' || a.kind === 'vehicle');
-const equity = (a) => a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0);
+const equity = (a) => a.value * (a.units ?? 1) - (a.mortgage ? atHome(a.mortgage.principal, a.mortgage.code) : 0);
 
 /**
  * What would happen to everything the player owns if they died today.

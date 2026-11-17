@@ -15,7 +15,10 @@ import { post } from './economy.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { LIVING } from '../data/living.js';
 import { regionOf } from '../data/cities.js';
-import { RULES, PLACE_RULES, REGION_RULES, REFORM } from '../data/rules.js';
+
+/** The region whose law applies in a city: a recorded state or province, or else the area around the city itself. */
+export const lawRegion = (placeId, city) => (city ? regionOf(placeId, city) ?? `around:${city}` : null);
+import { RULES, PLACE_RULES, REGION_RULES, REFORM, REGIONAL_RULES, REGIONAL_COUNTRIES } from '../data/rules.js';
 
 const here = () => player().countryId;
 const parentOf = (placeId) => COUNTRIES[placeId]?.place?.parentId ?? null;
@@ -31,10 +34,13 @@ const book = () => (store.state ? (store.state.rules ??= {}) : {});
 export function source(id, placeId = here(), opts = {}) {
   const def = RULES[id];
   if (!def) throw new Error(`Unknown rule: ${id}`);
-  const enacted = book()[placeId]?.[id];
-  if (enacted) return { value: enacted.value, source: 'enacted', year: enacted.year, by: enacted.by };
   const me = store.state?.player;
-  const region = opts.region !== undefined ? opts.region : placeId === me?.countryId ? me.regionId ?? regionOf(placeId, me.city) : null;
+  const region = opts.region !== undefined ? opts.region : placeId === me?.countryId ? me.regionId ?? lawRegion(placeId, me.city) : null;
+  // Law made during this life: national, or by the region. Whichever was made more recently stands.
+  const enacted = book()[placeId]?.[id];
+  const regional = region ? book().regions?.[`${placeId}/${region}`]?.[id] : null;
+  if (regional && (!enacted || regional.year >= enacted.year)) return { value: regional.value, source: 'enacted region', year: regional.year, by: regional.by };
+  if (enacted) return { value: enacted.value, source: 'enacted', year: enacted.year, by: enacted.by };
   const local = region ? REGION_RULES[`${placeId}/${region}`]?.[id] : undefined;
   if (local !== undefined) return { value: local, source: 'region' };
   if (PLACE_RULES[placeId]?.[id] !== undefined) return { value: PLACE_RULES[placeId][id], source: 'place' };
@@ -91,7 +97,7 @@ export function sheet(placeId = here(), opts = {}) {
     const s = source(id, placeId, opts);
     const up = parentOf(placeId);
     return { id, name: def.name, value: s.value, text: WORDS(def, s.value), source: s.source,
-      note: s.source === 'enacted' ? `changed in ${s.year}` : s.source === 'parent' ? `as in ${theCountry(COUNTRIES[up].name)}` : s.source === 'region' ? 'local law' : '' };
+      note: s.source === 'enacted' ? `changed in ${s.year}` : s.source === 'enacted region' ? `changed by the region in ${s.year}` : s.source === 'parent' ? `as in ${theCountry(COUNTRIES[up].name)}` : s.source === 'region' ? 'local law' : '' };
   });
 }
 
@@ -133,8 +139,8 @@ function describe(placeId, id, was, value) {
  *          people, liberal reforms cost a government support; where it protects them, they win it.
  * @returns {{rule:string, value:any, name:string, wants:Object<string,number>, liked:number}[]}
  */
-export function choices(placeId = here()) {
-  const r = (id) => rule(id, placeId, { region: null });
+export function choices(placeId = here(), opts = {}) {
+  const r = (id) => rule(id, placeId, { region: opts.region ?? null });
   const climate = { equal: 2, limited: 0, hostile: -3 }[r('lgbt')];
   const out = [];
   const add = (id, value, name, wants, liked) => { if (r(id) !== value) out.push({ rule: id, value, name, wants, liked }); };
@@ -198,3 +204,28 @@ export function tickRules() {
 
 /** Changes of law in this life, newest first; for one place, or everywhere. */
 export const reforms = (placeId) => [...(book().history ?? [])].filter((e) => !placeId || e.placeId === placeId).reverse();
+
+// ---------- Regional law ----------
+
+/** Whether the regions of a country make any of their own law. */
+export const regionsLegislate = (placeId) => REGIONAL_COUNTRIES.includes(placeId);
+
+/** The changes of law a regional government could make now, for its own region. */
+export function regionalChoices(placeId, region) {
+  if (!regionsLegislate(placeId) || !region) return [];
+  return choices(placeId, { region }).filter((c) => REGIONAL_RULES.includes(c.rule));
+}
+
+/** Records a regional change of law. Applies to people living in that region only. */
+export function enactRegional(placeId, region, id, value, regionName, by = 'the regional assembly') {
+  if (!REGIONAL_RULES.includes(id) || !regionsLegislate(placeId)) throw new Error(`${id} is not regional law in ${placeId}`);
+  const was = rule(id, placeId, { region });
+  const b = book();
+  ((b.regions ??= {})[`${placeId}/${region}`] ??= {})[id] = { value, year: store.state.year, by };
+  const text = describe(placeId, id, was, value).replace(/^(The )?[A-Z][^ ]*( [A-Z][a-z]+)*?( (legalized|banned|brought|abolished|lifted|changed|ended|rolled|passed))/, `${regionName}$3`);
+  const entry = { placeId, region, id, from: was, to: value, year: store.state.year, by, text };
+  const list = (b.history ??= []);
+  list.push(entry);
+  if (list.length > 80) list.shift();
+  return entry;
+}

@@ -53,6 +53,7 @@ node tests/citizenship.mjs     # nationality at birth, residency, naturalisation
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
+node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 
@@ -250,6 +251,12 @@ Routes that are closed are shown with the reason. A temporary status is renewed 
 crisis at home), becomes permanent after five years, and otherwise ends: one year's warning, then the return home. A graduate
 gets two years to find a sponsor. Citizenship is for permanent residents.
 
+Family who move with you hold a status of their own: citizens of the place need none, and anyone else is your
+**dependant**, for as long as your own permission lasts and permanently once yours is. A child who turns eighteen on a
+dependant visa needs a status of their own (a course, a job, or a year to leave), and a dependant whose sponsor leaves must go
+too. When you become a citizen your children under eighteen become citizens with you; a husband or wife applies in their own
+right. The passport lists your household and how each of them stands.
+
 A husband or wife now decides for themselves whether to come. If they stay, the marriage continues across a border: it wears
 with distance, and a strong one often ends with them following.
 
@@ -284,6 +291,12 @@ bill costs nothing and has no committee stage; it counts as one of the year's tw
 it; where one person rules, it is a decree. The world's own reforms in a country your life has a government for now need a
 government that wants them.
 
+**Regional law.** In countries whose regions make law (the federations, and the United Kingdom's devolved nations), the head
+of a region can change the laws a region controls, one a year, through the regional assembly: the drinking, driving and
+gambling ages, bans on gambling or alcohol, and the death penalty. It applies to everyone living in that region (Texas, Ontario,
+Bavaria; where the game records no states, the area around the city). Between a regional and a national change to the same
+law, the more recent one stands.
+
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
 ### Cities and regions that differ
@@ -301,6 +314,10 @@ profile and are marked as estimates.
 - A region can have its own law, through the rule engine: the death penalty by American state, the drinking age by Canadian
   province, alcohol by emirate.
 
+Safety, schools and hospitals also vary a little by kind of city: the capital and the largest city have the major hospitals
+and slightly better schools, and a little more crime; smaller cities are safer, with fewer specialist hospitals. This is a
+rule by kind of city, not data about any named place, and it is modest next to the differences between countries.
+
 The multipliers are rough estimates for play, not statistics.
 
 ### A world that moves without you
@@ -313,6 +330,8 @@ The multipliers are rough estimates for play, not statistics.
 - **Crises end, and new ones begin.** A war can end in a ceasefire, a collapsed economy can recover, and an unstable country
   can slide into rationing or runaway prices. Everything that read a country's crisis before (the ban on leaving a country at
   war, the protection route, prices, approval of the government) now reads the world as it is in this life.
+  Rarely, armed conflict breaks out in a country that is already deeply unstable. It is reported as conflict within that
+  country, never as one named country attacking another: the game does not invent wars between real nations.
 - **The news** records all of it, with changes of law. **World news** (Self tab) lists what touches you first: where you
   live, where you were born, countries you are a citizen of, and where your family and property are. Only those reach the
   journal.
@@ -334,6 +353,12 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
   the currency as well as the market. It can be let, and stayed in when you visit. If you move to that country it becomes a
   home in local money, at the same worth.
 - **Selling it** pays in the money of the place, into your account in that currency.
+- **One housing market per country.** Each country's prices move with its own economy (and now and then slump), so a home in
+  Mexico and one in Canada no longer rise and fall together.
+- **Loans and rent keep their currency.** A mortgage is held in the currency it was taken out in, and a tenancy is paid in
+  the money of the place: moving abroad no longer converts them. Payments, upkeep and local tax on a property abroad come
+  from your account in that currency first, then from everyday money at today's rate; rent abroad is paid into that
+  account. Net worth, debts and estates count each loan at today's rate.
 - **Tax by place**: property tax and tax on rent are charged by the country the property is in. At death, property abroad is
   taxed by the country it stands in and everything else by the country you lived in; the obituary lists each. An inheritance
   from someone who lived abroad is taxed there.

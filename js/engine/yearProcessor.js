@@ -1,6 +1,6 @@
 // The annual tick. Order matters: the world ages first, then the player's own
 // systems run, then the death check, then this year's scenarios are queued.
-import { store, player, log, milestone } from '../state.js';
+import { store, player, log, milestone, prunePending } from '../state.js';
 import { tickRelationships } from './relationships.js';
 import { tickAnimals } from './animals.js';
 import { tickCare } from './animalCare.js';
@@ -38,7 +38,7 @@ import { tickFx } from './currency.js';
 import { tickRules } from './rules.js';
 import { tickCover } from './systems.js';
 import { tickEconomy, tickMoves, familyLeaves, ties } from './economy.js';
-import { tickStatus, tickApart } from './immigration.js';
+import { tickStatus, tickApart, tickFamilyStatus } from './immigration.js';
 import { emigrate } from './emigration.js';
 import { tickSchoolFunding } from './edlegacy.js';
 import { tickRoyalEducation } from './royaled.js';
@@ -107,6 +107,7 @@ export function advanceYear() {
   tickMoves();
   { const to = familyLeaves(); if (to) emigrate(to, { forced: true, family: true }); }
   tickApart();
+  tickFamilyStatus();
   { const back = tickStatus(); if (back) emigrate(back, { forced: true }); }
   tickSchoolFunding();
   tickKids();
@@ -125,5 +126,6 @@ export function advanceYear() {
   const cause = rollDeath();
   if (cause) { die(cause); return; }
 
+  prunePending(); // a scene queued earlier in the year may name someone the year has since taken away
   drawEvents();
 }

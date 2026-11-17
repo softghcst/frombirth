@@ -143,9 +143,17 @@ export function naturalise() {
   if (p.flags.citizenOf) p.flags.citizenOf = p.flags.citizenOf.filter((j) => !gone.includes(j));
   p.citizenships.push({ jurisdictionId: n.here, acquisitionType: 'naturalization', acquiredAt: year });
   p.residency = null;
+  // Children under eighteen who live with the player become citizens with them. A husband or wife does not: they apply in their own right.
+  const kids = livingNpcs().filter((k) => k.role === 'child' && k.age < 18 && !k.flags.abroad && !held(k).includes(n.here));
+  for (const k of kids) {
+    k.citizenships ??= held(k).map((j) => ({ jurisdictionId: j, acquisitionType: 'birth', acquiredAt: year - k.age }));
+    if (SINGLE.has(n.here)) for (const rec of k.citizenships) if (!rec.lostAt) rec.lostAt = year;
+    k.citizenships.push({ jurisdictionId: n.here, acquisitionType: 'with a parent', acquiredAt: year });
+    k.residency = null;
+  }
   p.stats.mood = clamp(p.stats.mood + 8);
   const lost = gone.length ? ` ${n.mustRenounce.length ? 'You gave up' : 'By its own law you lost'} your citizenship of ${gone.map(nameOf).join(' and ')}.` : '';
-  const text = `You took the oath. You are a citizen of ${nameOf(n.here)}.${lost} It cost ${fmtMoney(n.fee, c)}.`;
+  const text = `You took the oath. You are a citizen of ${nameOf(n.here)}.${lost}${kids.length ? ` ${kids.map((k) => k.firstName).join(' and ')} became citizen${kids.length > 1 ? 's' : ''} with you.` : ''} It cost ${fmtMoney(n.fee, c)}.`;
   log(text, 'system', 'good');
   milestone(`Became a citizen of ${nameOf(n.here)}.`, 'life');
   return result(true, text);

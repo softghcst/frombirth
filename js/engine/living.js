@@ -1,6 +1,7 @@
 // Life in a particular country: what the place does to the player each
 // year, depending on how well off they are, and what its laws allow.
 // The figures come from data/living.js.
+import { localScore } from './cities.js';
 import { rule, lawsOf } from './rules.js';
 import { expectedPay } from './worklife.js';
 import { MONARCHIES } from '../data/royalty.js';
@@ -42,7 +43,7 @@ export const tierName = (t = wealthTier()) => ({ poor: 'Struggling', middle: 'Ge
 
 /** The standard of health care this person can actually reach: the rich go private. */
 export function careQuality() {
-  const L = livingIn();
+  const L = { ...livingIn(), health: localScore('health', livingIn()) }; // the hospitals within reach of this city
   const t = wealthTier();
   return t === 'rich' ? Math.max(L.health, 88) : t === 'middle' ? Math.max(L.health, Math.min(78, L.health + 12)) : L.health;
 }
@@ -136,7 +137,7 @@ export function tickLiving() {
   }
 
   // Crime finds people who cannot buy their way out of its path, and targets those who look worth robbing.
-  if (p.age >= 10 && rng.chance((100 - L.safety) / 100 * 0.14 * (tier === 'poor' ? 1.3 : tier === 'rich' ? 0.6 : 1))) {
+  if (p.age >= 10 && rng.chance((100 - localScore('safety', L)) / 100 * 0.14 * (tier === 'poor' ? 1.3 : tier === 'rich' ? 0.6 : 1))) {
     const cash = Math.max(0, p.finance.cash);
     const taken = Math.round(cash * rng.int(tier === 'rich' ? 1 : 3, tier === 'rich' ? 4 : 12) / 100);
     p.finance.cash -= taken;

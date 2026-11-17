@@ -40,24 +40,24 @@ export function mountGame(app, hooks) {
   let storyReturn = null;
 
   app.innerHTML = `
-    <section class="game">
-      <div class="stage">
-      <header class="idcard">
+    <div class="game">
+      <main class="stage" aria-label="Your life">
+      <div class="idcard">
         <div class="avatar" data-avatar></div>
         <div class="who"><h1 data-name></h1><p data-line1></p><p data-line2></p></div>
         <div class="purse"><div class="label">Bank</div><div class="amount num" data-cash></div></div>
-      </header>
+      </div>
       <div class="meters" data-meters></div>
       <div class="sheet-area">
-      <main class="journal" data-journal aria-live="polite"></main>
+      <div class="journal" data-journal role="log" aria-live="polite" aria-label="Your life so far" tabindex="0"></div>
       <button class="story-back" data-story-back hidden></button>
-      <section class="panel" data-panel hidden>
-        <div class="panel-head"><h2 data-panel-title></h2>
+      <section class="panel" data-panel aria-labelledby="panel-title" hidden>
+        <div class="panel-head"><h2 data-panel-title id="panel-title"></h2>
           <button class="icon-btn" data-panel-close aria-label="Close panel">✕</button></div>
         <div class="panel-body" data-panel-body></div>
       </section>
       </div>
-      </div>
+      </main>
       <footer class="dock">
         <div class="year-row">
           <button class="undo-btn" data-undo aria-label="Age down: take back the last year">↶<small>Age down</small></button>
@@ -70,7 +70,7 @@ export function mountGame(app, hooks) {
             </button>`).join('')}
         </nav>
       </footer>
-    </section>`;
+    </div>`;
 
   const $ = (sel) => app.querySelector(sel);
   const journalEl = $('[data-journal]');
@@ -187,11 +187,16 @@ export function mountGame(app, hooks) {
     }
     busy = false;
     renderHeader();
+    // The button was disabled while the year ran, which drops keyboard focus; give it back.
+    if (keepFocus && !document.querySelector('#modal-root .scrim')) yearBtn.focus({ preventScroll: true });
+    keepFocus = false;
   }
 
+  let keepFocus = false;
   async function nextYear() {
     if (busy) return;
     leaveStory();
+    keepFocus = document.activeElement === yearBtn;
     closePanel();
     pushUndo(store.state); // so this year can be taken back
     advanceYear();
