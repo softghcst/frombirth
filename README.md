@@ -268,6 +268,10 @@ profile and are marked as estimates.
 - A region can have its own law, through the rule engine: the death penalty by American state, the drinking age by Canadian
   province, alcohol by emirate.
 
+Safety, schools and hospitals also vary a little by kind of city: the capital and the largest city have the major hospitals
+and slightly better schools, and a little more crime; smaller cities are safer, with fewer specialist hospitals. This is a
+rule by kind of city, not data about any named place, and it is modest next to the differences between countries.
+
 The multipliers are rough estimates for play, not statistics.
 
 ### A world that moves without you
