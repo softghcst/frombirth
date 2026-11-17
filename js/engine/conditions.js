@@ -9,6 +9,7 @@ import { CAREER_BY_ID } from '../data/careers.js';
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
+import { hasRecord } from './records.js';
 
 /** Singing, dance and acting together. The weakest of the three drags it down. */
 export function tripleThreat(p = player()) {
@@ -59,6 +60,12 @@ const SPECIAL = {
   hasBankAccount: () => Object.values(store.state.ledger?.accounts ?? {}).some((a) => a.kind === 'bank' && a.closed == null),
   ownsBusiness: (p) => p.assets.some((a) => a.kind === 'business'),
   jailed: (p) => !!p.legal.incarceration,
+  // Justice: where juries sit, whether the player rents, has an unspent record, has served time, or has an ancestor with a court record to find.
+  jurySystem: () => rule('juryTrials'),
+  renting: (p) => !p.homeId && !p.flags.livesWithParents,
+  hasRecord: (p) => hasRecord(p),
+  servedTime: (p) => !!p.legal.custodyHistory?.some((x) => x.how !== 'escape') && !p.legal.incarceration,
+  ancestorRecord: (p) => p.npcIds.some((id) => store.state.npcs[id]?.flags.tag === 'recordedAncestor'),
   employed: (p) => !!p.career.careerId,
   // Working life (engine/worklife.js, business.js): the field of the main job, whether the player manages people or owns a business, and the week.
   workFamily: (p) => CAREER_BY_ID[p.career.careerId]?.family ?? null,

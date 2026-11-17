@@ -4,7 +4,7 @@
 import { EVENTS } from '../js/data/events/index.js';
 import { ILLNESS_BY_ID } from '../js/data/illnesses.js';
 
-const EFFECTS = new Set(['money', 'work', 'parent', 'royalEd', 'campus', 'school', 'abroad', 'kin', 'govt', 'scandal', 'leader', 'stat', 'hidden', 'talent', 'cash', 'relationship', 'flag', 'addNpc', 'removeNpc', 'animalHealth', 'animal', 'animalLife', 'animalArc', 'condition', 'cure',
+const EFFECTS = new Set(['justice', 'money', 'work', 'parent', 'royalEd', 'campus', 'school', 'abroad', 'kin', 'govt', 'scandal', 'leader', 'stat', 'hidden', 'talent', 'cash', 'relationship', 'flag', 'addNpc', 'removeNpc', 'animalHealth', 'animal', 'animalLife', 'animalArc', 'condition', 'cure',
   'gpa', 'legal', 'followers', 'counter', 'milestone', 'death', 'memory', 'queue', 'partTimeScale', 'tag', 'feud', 'perf', 'pay',
   'fired', 'promoted', 'npcSet', 'moveCity', 'property', 'vehicle', 'sellInvestments', 'prison', 'giveVehicle', 'npcTransition', 'image', 'meetRoyal', 'honour', 'approval', 'reelect', 'ousted', 'resignOffice', 'rivalry', 'rivalEnd', 'family', 'press', 'story', 'coolStory', 'kinOut', 'support', 'vote', 'exile', 'restore', 'abdicate']);
 const problems = [];

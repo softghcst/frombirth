@@ -1,5 +1,6 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
+import * as kinCase from '../../engine/kinCases.js';
 import { familyStatus } from '../../engine/immigration.js';
 import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
@@ -24,11 +25,11 @@ import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
-  'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
+  'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
-  ['Family', ['parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
+  ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
   ['Your household', ['staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
@@ -213,11 +214,30 @@ function editPerson(api, npc, done = () => openNpc(npc, api)) {
   });
 }
 
+/** What the courts recorded about someone, as far as it is public. */
+function courtRecord(npc) {
+  const rows = (npc.flags.legalHistory ?? []).filter((h) => h.kind !== 'sealed');
+  const j = npc.flags.justice;
+  const role = j && !['civilian', 'inmate', 'released'].includes(j.kind) ? `<div class="kv"><span>Work</span><span>${esc(npc.occupation ?? '')}${j.retired ? `, retired ${j.retired}` : ''}${j.caseIds?.length ? ` · ${j.caseIds.length} case${j.caseIds.length === 1 ? '' : 's'}` : ''}</span></div>` : '';
+  const inside = npc.flags.inmate && !npc.flags.inmate.released
+    ? `<div class="kv"><span>Inside</span><span>${esc(npc.flags.inmate.yearsLeft)} year${npc.flags.inmate.yearsLeft === 1 ? '' : 's'} left · loves ${esc(npc.flags.inmate.interest)} · wants to ${esc(npc.flags.inmate.goal)}</span></div>` : '';
+  if (!rows.length && !role && !inside) return '';
+  return `<div class="section-label" style="margin-top:0">Court and custody</div>${role}${inside}
+    ${rows.slice(-8).reverse().map((h) => `<div class="kv"><span>${h.year ?? ''}${h.age != null ? ` · age ${h.age}` : ''}</span><span>${esc(h.text)}</span></div>`).join('')}
+    <div style="height:14px"></div>`;
+}
+
 /**
+ * The profile of anyone in the world. People who are not part of the player's
+ * life (a judge, a witness, an inmate on another landing) are shown without
+ * the actions that need a relationship.
+ *
  * @param {Function} [back]  where this was opened from, when not from the list: called when the profile is left,
  *                           so that screen can come back as it was
+ * @param {{readOnly?:boolean}} [o]
  */
-export function openNpc(npc, api, back) {
+export function openNpc(npc, api, back, o = {}) {
+  const inLife = player().npcIds.includes(npc.id) && !o.readOnly;
   // An animal has a profile of its own, kept for good in the family's record.
   if (npc.role === 'pet' && animalById(npc.id)) return zooUi.openAnimalProfile(api, npc.id);
   lives.ensureLife(npc);
@@ -255,13 +275,14 @@ export function openNpc(npc, api, back) {
        <div style="height:14px"></div>` : '';
   const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
 
-  const actions = [
+  const actions = !inLife ? [] : [
     ...(npc.alive ? love.romanceActions(npc) : []),
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
+    ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
     ...(npc.alive ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
@@ -277,7 +298,7 @@ export function openNpc(npc, api, back) {
     </div>
     ${traitChips}${owns}${feudNote}${expecting}
     <div style="margin:12px 0 16px">${meters}</div>
-    ${lifeCard}${history}${timeline}
+    ${lifeCard}${history}${timeline}${courtRecord(npc)}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
@@ -323,6 +344,8 @@ export function openNpc(npc, api, back) {
       },
       talkIdentity: () => report(api, who.talkItThrough(npc.id)),
       edit: () => editPerson(api, npc, () => openNpc(npc, api, back)),
+      visitInside: () => report(api, kinCase.visitKin(npc.id)),
+      writeInside: () => report(api, kinCase.writeToKin(npc.id)),
       dynasty: () => openDynasty(npc.flags.houseId),
       breakUp: async () => {
         const yes = await confirmModal({ title: `End things with ${npc.firstName}?`, body: 'They will become an ex.', yes: 'End it', danger: true });
@@ -354,7 +377,7 @@ export default {
       <button class="row" data-npc="${n.id}">
         ${portrait(n)}
         <div class="main"><strong>${n.flags.royal?.title ? `${esc(n.flags.royal.title)} ` : ''}${esc(n.firstName)} ${n.role === 'pet' ? '' : esc(n.lastName)}</strong>
-          <small>${esc(rel.roleLabel(n))} · age ${n.age}${n.occupation ? ` · ${esc(n.occupation)}` : ''}</small></div>
+          <small>${esc(rel.roleLabel(n))} · age ${n.age}${kinCase.inside(n) ? ' · in prison' : n.occupation && n.occupation !== rel.roleLabel(n) ? ` · ${esc(n.occupation)}` : ''}</small></div>
         <div class="side">${Math.round(n.meters.relationship)}%
           <div class="mini"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
       </button>`;

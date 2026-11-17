@@ -132,7 +132,7 @@ export function tickRelationships() {
     const away = npc.role === 'parent' && npc.gender === 'male' && p.flags.parentsStatus === 'separated';
     const family = npc.role === 'parent' || npc.role === 'sibling';
     const atHome = (p.flags.livesWithParents && !away && family)
-      || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18);
+      || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || p.flags.care?.guardianId === npc.id;
     if (neglected && !atHome) {
       npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad ? 2 : 0));
     }

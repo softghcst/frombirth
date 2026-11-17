@@ -8,6 +8,7 @@ import { decide as schoolChoice } from './schoollife.js';
 import { decide as abroadChoice } from './diplomacy.js';
 import { decide as kinChoice } from './kin.js';
 import { decide as scandalChoice } from './scandal.js';
+import { justiceScene } from './justiceScenes.js';
 import { resignLeadership, faceTheParty, standForVacancy } from './leadership.js';
 import { defend } from './campaign.js';
 import { decide } from './government.js';
@@ -175,6 +176,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'reelect': ctx.note = (p.politics && pol.isDemocracy() && !p.politics.ruler ? defend() : pol.reElection()).text; break;
       case 'govt': ctx.note = decide(e.value, ctx.cast); break;
       case 'scandal': ctx.note = scandalChoice(e.value); break;
+      case 'justice': ctx.note = justiceScene(e.value, ctx.cast); break;
       case 'kin': ctx.note = kinChoice(e.value, ctx.cast); break;
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;

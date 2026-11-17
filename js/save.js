@@ -7,7 +7,7 @@ import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 const K_INDEX = 'pathways.index';
 const K_SLOT = 'pathways.slot.';
 const K_GRAVE = 'pathways.graveyard';
@@ -89,6 +89,24 @@ function migrate(state) {
   if (!state.ledger) {
     if (pl.finance.lifetimeEarned > 0) pl.flags.firstPay ??= true;
     ledgerOf(state, { desc: 'What you had when the books were opened (from an earlier version of the game)' });
+  }
+  // Lives saved before the justice records: each record entry is kept as it was,
+  // marked as older, with its offence named in today's terms. Nothing is invented:
+  // open cases, unsolved crimes and sentences are upgraded the first time they are
+  // used (engine/justice.js upgradeLegacy), with no trial history made up for them.
+  const legal = pl.legal;
+  legal.record ??= [];
+  legal.history ??= [];
+  legal.counselIds ??= [];
+  legal.supervision ??= null;
+  const OLD = { shoplift: 'shoplifting', pickpocket: 'theft', vandalism: 'criminal_damage', bike_theft: 'theft', burglary: 'burglary', mugging: 'robbery', car_theft: 'vehicle_theft', fraud: 'fraud', bank_robbery: 'armed_robbery', murder: 'homicide' };
+  for (const r of legal.record) {
+    if (r.caseId) continue;
+    r.caseId = `legacy_${legal.record.indexOf(r)}`;
+    r.legacy = true;
+    if (OLD[r.crimeId]) { r.oldCrimeId = r.crimeId; r.crimeId = OLD[r.crimeId]; }
+    r.outcome ??= r.convicted ? 'convicted' : 'acquitted';
+    r.year ??= pl.birthYear + r.age;
   }
   state.schemaVersion = SCHEMA_VERSION;
   return state;

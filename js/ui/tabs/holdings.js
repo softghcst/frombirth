@@ -1,5 +1,6 @@
 // Holdings tab: money, where you live, property, vehicles, investments and
 // loans, with everything you can do about each.
+import { careLine } from '../../engine/guardianship.js';
 import * as sys from '../../engine/systems.js';
 import { taxLine } from '../../engine/systems.js';
 import { cityLine } from '../../engine/cities.js';
@@ -317,8 +318,8 @@ export default {
     const f = p.finance;
     const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + estate.owedOn(a), 0) + (f.cards ?? []).reduce((s, k) => s + k.balance, 0);
     const home = estate.home();
-    const living = home ? `In your ${home.name.charAt(0).toLowerCase() + home.name.slice(1)}` : p.flags.livesWithParents ? 'With your family'
-      : p.education.enrolled && p.age >= 18 ? 'Student housing' : p.age >= 18 ? 'Renting' : 'With your family';
+    const living = careLine() ?? (home ? `In your ${home.name.charAt(0).toLowerCase() + home.name.slice(1)}` : p.flags.livesWithParents ? 'With your family'
+      : p.education.enrolled && p.age >= 18 ? 'Student housing' : p.age >= 18 ? 'Renting' : 'With your family');
 
     const actions = [];
     if (p.age >= 18) actions.push(['property', 'Browse property'], ['market', 'Invest'], ['borrow', 'Borrow money'], ['currencies', 'Currencies']);

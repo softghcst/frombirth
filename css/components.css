@@ -484,3 +484,10 @@ div.row { cursor: default; }
 .mm-spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 .mm-slips summary { cursor: pointer; list-style: none; min-height: 32px; }
 .mm-slips summary::-webkit-details-marker { display: none; }
+/* ---------- Prison life and the courts ---------- */
+.hub-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
+.hub-nav button { flex: none; min-height: 40px; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--line); background: transparent; font: inherit; font-size: 0.85rem; color: inherit; }
+.hub-nav button.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
+.person-link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+.btn.stacked { flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; }
+.btn.stacked small { font-weight: 400; opacity: 0.8; }

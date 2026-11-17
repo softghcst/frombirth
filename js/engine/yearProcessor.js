@@ -16,6 +16,9 @@ import { tickEducation } from './education.js';
 import { tickWork } from './career.js';
 import { tickFinance } from './finance.js';
 import { tickCrime } from './justice.js';
+import { tickCivil } from './civil.js';
+import { tickKinCases } from './kinCases.js';
+import { checkCare } from './guardianship.js';
 import { tickPrison } from './prison.js';
 import { tickSocial } from './social.js';
 import { tickIdentity } from './identity.js';
@@ -133,7 +136,8 @@ export function advanceYear() {
   { const learned = tickLanguages(); if (learned) log(learned, 'system', 'good'); }
   for (const n of tickLocal()) log(n.text, 'system', n.tone);
   tickActivism();
-  tickCrime();
+  booked('legal', 'Courts, fines and legal costs', () => { tickCrime(); tickCivil(); tickKinCases(); });
+  booked('auto', 'Who looks after you', checkCare);
   tickAnimals(); // last, so the record sees the year as it ended: who died, who moved, who is left to care
   tickBreeding(); // young that are due
   booked('pets', 'Your animals: food, the vet and their care', tickCare); // then what the animals cost, how they fared, and anything that needs a decision

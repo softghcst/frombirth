@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { hasRecord } from './records.js';
 import { hiringClimate, layoffChance } from './economy.js';
 import { leadFactor, tickCouple } from './couple.js';
 import { payK } from './cities.js';
@@ -113,7 +114,7 @@ export function unmet(career, o = {}) {
     const have = Math.round(Number(resolve(path)) || 0);
     if (have < min) out.push(`Needs ${STAT_NAMES[path] ?? path} of ${min} (yours: ${have}).`);
   }
-  if (r.cleanRecord && p.legal.record.some((c) => c.convicted && !c.juvenile)) out.push('Needs a clean record.');
+  if (r.cleanRecord && hasRecord(p)) out.push('Needs a clean record.');
   return out;
 }
 

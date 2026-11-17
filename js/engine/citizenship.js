@@ -11,6 +11,7 @@
 // Puerto Rico holds the United States' (data/world.js, nationalityOf).
 // The rules themselves are data (data/citizenship.js) and are gameplay
 // configuration, not legal information.
+import { hasRecord } from './records.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
@@ -107,7 +108,7 @@ export function naturalisation(p = player()) {
   // Taking a single-nationality citizenship means giving up the rest; and some of the rest give you up.
   const mustRenounce = SINGLE.has(here) ? mine : [];
   const willLose = SINGLE.has(here) ? [] : mine.filter((j) => SINGLE.has(j));
-  const convicted = p.legal.record.some((r) => r.convicted && !r.juvenile);
+  const convicted = hasRecord(p, { sealed: true });
   let why = '';
   if (p.age < 18) why = 'You must be an adult to apply.';
   else if (base >= 90) why = `${nameOf(here).replace(/^the/, 'The')} does not, in practice, naturalize people who move there.`;
