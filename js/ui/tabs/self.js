@@ -77,7 +77,7 @@ export default {
 
     bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
-    el.querySelector('[data-passport]').onclick = () => openPassport();
+    el.querySelector('[data-passport]').onclick = () => openPassport(api);
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practise]')) el.querySelector('[data-practise]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {

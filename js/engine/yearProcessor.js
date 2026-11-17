@@ -28,6 +28,7 @@ import { tickAlumni } from './schooling.js';
 import { tickApplications } from './university.js';
 import { grandfather } from './adulted.js';
 import { tickKids } from './kidschool.js';
+import { tickFx } from './currency.js';
 import { tickSchoolFunding } from './edlegacy.js';
 import { tickRoyalEducation } from './royaled.js';
 import { tickProperties } from './realEstate.js';
@@ -86,6 +87,7 @@ export function advanceYear() {
   tickAlumni();
   tickApplications();
   grandfather();
+  tickFx();
   tickSchoolFunding();
   tickKids();
   tickRoyalEducation();

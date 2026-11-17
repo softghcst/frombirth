@@ -1,7 +1,8 @@
 // Annual money flow: income, tax, living costs, loan payments, and settling
 // up if the account ends the year in the red.
+import { foreignWorth } from './currency.js';
 import { taxShift, rentFactor } from './policy.js';
-import { player, country, npcsByRole, log } from '../state.js';
+import { store, player, country, npcsByRole, log } from '../state.js';
 import { fmtMoney, localMoney, localCost, clamp } from '../util.js';
 import { childCosts } from './children.js';
 import { settleUp } from './loans.js';
@@ -38,7 +39,7 @@ export function netWorth(state) {
   const assets = p.assets.reduce(
     (sum, a) => sum + a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0), 0);
   const debt = p.finance.loans.reduce((sum, l) => sum + l.principal, 0);
-  return Math.round(p.finance.cash + assets - debt);
+  return Math.round(p.finance.cash + (state === store.state ? foreignWorth(p) : 0) + assets - debt);
 }
 
 /** Sells an asset in a hurry, for whatever it will fetch. */

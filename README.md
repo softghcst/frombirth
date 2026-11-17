@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps)
 ```
 
@@ -143,12 +144,34 @@ the **Self** tab. Search by country, city, language, currency or code (accents a
 region, open a profile, and compare a place with where you live. A profile keeps three things apart: facts about the place,
 how the game models living there, and what has happened there in your save.
 
-A person's `citizenships` are recorded separately from where they were born and where they live. Someone born in a territory
-holds the nationality of the state it belongs to.
+### Papers: birthplace, citizenship and residence
 
-This is the first slice of the Living World engine. Still to come, in order: citizenship from parents and residency; money
-held in more than one currency; immigration routes and travel; a shared legal rule engine; cities that differ from each other;
-an economy and news that move without you. `docs/WORLD_DATA.md` lists the gaps.
+Three separate records (`js/engine/citizenship.js`, rules in `js/data/citizenship.js`):
+
+- **Citizenship** comes from your parents, and from the place itself where being born there is enough (most of the
+  Americas). A child can hold several. Someone born in a territory holds the nationality of the state it belongs to.
+- **Residence**: citizens live in their own country, and its territories, as of right. Anyone else is a permanent resident
+  from the day they move, with a history of everywhere they have lived.
+- **Becoming a citizen**: after the years of residence the place asks for (five by default; three if married to a citizen,
+  which shortens the wait and grants nothing by itself), with a fee and a test that is easier if you speak the language.
+  Places that allow one nationality only make you give up the others, or take theirs away when you acquire another.
+  Only citizens vote.
+
+The **Passport** (Self tab) shows all of it and is where you apply. The rules are gameplay configuration and are unverified;
+see [`docs/WORLD_DATA.md`](docs/WORLD_DATA.md).
+
+### Money in more than one currency
+
+`js/engine/currency.js`. Everyday money is always in the currency of the country you live in. Beyond that you can hold
+accounts in other currencies (**Holdings** → **Currencies**), change money between them for a 1.5% fee, and see the record of
+each exchange with the rate that was used. When you move abroad you choose how much to change and how much to leave behind
+in the old currency. Net worth and estates count every currency once. Rates are fictional: each currency wanders a few per
+cent a year around a fixed starting rate. Amounts are whole units and every conversion rounds down, so exchanging never
+creates money.
+
+Still to come in the Living World engine, in order: immigration routes (work, study, family) and travel; a shared legal rule
+engine; states, provinces and cities that differ from each other; an economy and news that move without you.
+`docs/WORLD_DATA.md` lists the gaps.
 
 ## Layout
 

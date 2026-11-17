@@ -1,5 +1,7 @@
 // Emigrating: applying to move, selling up, converting everything into the
 // new currency, and who comes with you.
+import { rightToLive, held, settle } from './citizenship.js';
+import { rate, setAside, absorb } from './currency.js';
 import { visaEdge, fluency } from './languages.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
@@ -21,20 +23,8 @@ export const canEmigrate = () => {
 };
 export const emigrationFee = () => localMoney(EMIGRATION.fee, country());
 
-/** The jurisdictions whose nationality the player holds. Lives begun before citizenship was recorded count their birthplace. */
-export function nationalities(p = player()) {
-  const born = COUNTRIES[p.birthCountryId]?.place?.nationalityOf ?? p.birthCountryId;
-  return [...new Set([...(p.citizenships ?? []).filter((c) => !c.lostAt).map((c) => c.jurisdictionId), ...(p.citizenships ? [] : [born]), ...(p.flags.citizenOf ?? [])])];
-}
-/**
- * Whether the player may settle somewhere as of right: it is their own country, or a territory of it,
- * or the state their territory belongs to. No application, no refusal.
- */
-export function rightToLive(countryId, p = player()) {
-  const mine = nationalities(p);
-  const there = COUNTRIES[countryId]?.place;
-  return mine.includes(countryId) || (!!there?.nationalityOf && mine.includes(there.nationalityOf));
-}
+// Who may live where as of right, and what nationality anyone holds, is engine/citizenship.js.
+export { rightToLive, held as nationalities };
 
 /** How likely a country is to let the player in. */
 function visaChance(countryId) {
@@ -194,12 +184,16 @@ export function emigrate(countryId, opts = {}) {
     }
   }
 
-  convertMoney(to.currency.scale / from.currency.scale);
+  // Money follows, at today's rate, except whatever the player chose to leave in the old currency.
+  const leftBehind = setAside(opts.keep, from.currency.code);
+  convertMoney(rate(from.currency.code, to.currency.code));
+  absorb(to.currency.code);
   // Those who came will be paid at the new country's level from now on.
   for (const id of coming) { const job = store.state.npcs[id].life?.job; if (job) job.salary = Math.round(job.salary * to.living.wageK / from.living.wageK); }
   p.countryId = to.id;
   p.flags.arrivedYear = store.state.year; // newcomers wait five years before they can vote
   p.city = rng.pick(to.cities);
+  settle(to.id, p.city);
   p.homeId = null;
   p.flags.livesWithParents = false;
   p.flags.emigratedAge = p.age;
@@ -216,7 +210,7 @@ export function emigrate(countryId, opts = {}) {
     + `${shipped ? `Your ${shipped === 1 ? 'vehicle is' : `${shipped} vehicles are`} on a ship behind you. ` : ''}`
     + `${left ? `You still own ${left === 1 ? 'your property' : `${left} properties`} in ${theCountry(from.name)}: let it, sell it, or stay there when you visit. ` : ''}`
     + `${back ? 'You own a home here already, and can move straight in. ' : ''}`
-    + `Your money is now in ${to.currency.code}.`;
+    + `Your money is now in ${to.currency.code}${leftBehind ? `, apart from what you left in ${from.currency.code}` : ''}.`;
   log(text, 'system', 'good');
   milestone(`Emigrated from ${theCountry(from.name)} to ${theCountry(to.name)}.`, 'life');
   return result(true, text);

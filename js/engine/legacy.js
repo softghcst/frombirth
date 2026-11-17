@@ -2,6 +2,7 @@
 // their children (or, with no children left, a grandchild). The heir keeps the
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
+import { held } from './citizenship.js';
 import { leaveName, carryCareer } from './kin.js';
 import { rng } from '../rng.js';
 import { inheritStanding } from './royalty.js';
@@ -187,7 +188,8 @@ export function continueAs(npcId) {
   /** @type {import('../types.js').Character} */
   const player = {
     id: uid('pc'), firstName: h.firstName, lastName: h.lastName, gender: h.gender, age: h.age,
-    birthYear: old.year - h.age, countryId: op.countryId, city: op.city, birthCountryId: op.countryId,
+    birthYear: old.year - h.age, countryId: op.countryId, city: op.city, birthCountryId: h.bornIn ?? op.countryId,
+    citizenships: (h.citizenships ?? held(h).map((j) => ({ jurisdictionId: j, acquisitionType: 'birth', acquiredAt: old.year - h.age }))).map((x) => ({ ...x })),
     stats: { mood: 45, health: h.meters.health, intellect: h.meters.intellect, charm: h.meters.charm },
     hidden: { karma: h.hidden?.karma ?? rolled(), discipline: h.hidden?.discipline ?? rolled(), willpower: h.hidden?.willpower ?? rolled(),
       fertility: h.hidden?.fertility ?? rolled(), fame: Math.round(op.hidden.fame * 0.3), crazy: h.meters.crazy },

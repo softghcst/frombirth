@@ -11,6 +11,8 @@ import * as net from '../engine/social.js';
 import * as move from '../engine/emigration.js';
 import { messageModal, pickModal, confirmModal, inputModal, openModal } from './modals.js';
 import { openAppearanceEditor } from '../avatar/editor.js';
+import * as papersOf from '../engine/citizenship.js';
+import * as money from '../engine/currency.js';
 
 async function report(api, r) {
   api.changed();
@@ -156,16 +158,35 @@ export async function moveAbroad(api) {
     if (!choice) return undefined;
     shipVehicles = choice === 'ship';
   }
+  // Money: take it all, or leave some behind in the old currency.
+  let keep = 0;
+  if (player().finance.cash > move.emigrationFee() * 3 && dest.currency !== c.currency.code) {
+    const k = await pickModal({ title: 'Your money', body: `Your savings are in ${c.currency.code}. In ${dest.name} everyday money is ${dest.currency}. What you take is changed at today's rate; what you leave stays in ${c.currency.code} in an account you can change later.`,
+      options: [{ value: '0', label: `Change all of it into ${dest.currency}` }, { value: '0.25', label: `Leave a quarter in ${c.currency.code}` }, { value: '0.5', label: `Leave half in ${c.currency.code}` }] });
+    if (k == null) return undefined;
+    keep = Number(k);
+  }
   const total = move.emigrationFee() + (shipVehicles ? shipping : 0);
   const sure = await confirmModal({ title: `Apply to move to ${theCountry(dest.name)}?`,
     body: `${dest.outlook} It comes to ${fmtMoney(total, c)} in all. A fifth of the visa cost is gone even if they say no.`, yes: 'Apply' });
-  return sure ? report(api, move.emigrate(id, { shipVehicles })) : undefined;
+  return sure ? report(api, move.emigrate(id, { shipVehicles, keep })) : undefined;
 }
 
 /** The passport: every country lived in or visited. */
-export function openPassport() {
+export function openPassport(api) {
   const book = move.passport();
   const p = player();
+  const doc = papersOf.papers(p);
+  const nat = doc.naturalisation;
+  const kvRow = (a, b) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
+  const papers = `<div class="card"><h3>Your papers</h3>
+    ${kvRow('Born in', `${doc.born.flag} ${doc.born.name}`)}
+    ${doc.citizenships.map((c) => kvRow(c.lost ? 'Former citizen of' : 'Citizen of', `${c.flag} ${c.name}, ${c.how}${c.lost ? ` (until ${c.lost})` : ''}`)).join('')}
+    ${kvRow('Lives in', `${doc.residency.flag} ${doc.residency.name}`)}
+    ${kvRow('Status there', `${doc.residency.word}${doc.residency.status === 'citizen' ? '' : ` since ${doc.residency.since}`}`)}
+    ${doc.residency.status === 'citizen' ? '' : `<p class="muted" style="margin-top:6px">${esc(nat.possible ? `You can apply for citizenship. ${nat.outlook}` : nat.why)}</p>`}
+    ${nat.possible ? '<div class="btn-stack" style="margin-top:8px"><button class="btn primary" data-naturalise>Apply for citizenship</button></div>' : ''}</div>
+    ${doc.locations.length > 1 ? `<div class="card"><h3>Where you have lived</h3>${doc.locations.map((l) => kvRow(`${l.from ?? ''}${l.to ? `–${l.to}` : l.from ? ' to now' : ''}`, `${l.flag} ${l.city ? `${l.city}, ` : ''}${l.name}`)).join('')}</div>` : ''}`;
   const when = (e) => (e.first.age == null ? '' : `, first at age ${e.first.age}`);
   const stamps = book.countries.map((e, i) => `
     <div class="stamp ${e.lived ? 'lived' : ''}" style="transform:rotate(${[-3, 2, -1, 3, -2, 1][i % 6]}deg)">
@@ -176,9 +197,21 @@ export function openPassport() {
   const m = openModal(`
     <h2>Passport</h2>
     <p class="body muted">${esc(p.firstName)} ${esc(p.lastName)} · ${book.countries.length} of ${book.total} countries</p>
+    ${papers}
     <div class="passport">${stamps}</div>
     <button class="btn" data-close style="margin-top:14px">Close</button>`, { dismissable: true });
   m.el.querySelector('[data-close]').addEventListener('click', () => m.close());
+  m.el.querySelector('[data-naturalise]')?.addEventListener('click', async () => {
+    const c = country();
+    const gone = [...nat.mustRenounce, ...nat.willLose].map((j) => COUNTRIES[j]?.name ?? j);
+    const sure = await confirmModal({ title: 'Apply for citizenship?', yes: 'Apply',
+      body: `The fee is ${fmtMoney(nat.fee, c)}, and there is a test. ${nat.outlook}${gone.length ? ` ${nat.mustRenounce.length ? 'You would have to give up' : 'By its own law you would lose'} your citizenship of ${gone.join(' and ')}.` : ' You would keep the citizenship you have.'}` });
+    if (!sure) return;
+    m.close();
+    const r = papersOf.naturalise();
+    api?.changed();
+    await messageModal({ body: r.text, tone: r.tone });
+  });
 }
 
 /** Simple once-a-year activities, keyed by id. */
@@ -190,3 +223,31 @@ export const quick = (api) => ({
   holiday: () => takeHoliday(api),
   post: () => report(api, net.post()),
 });
+
+/** Money in other currencies: what is held, changing it, and the record of every exchange. */
+export async function openCurrencies(api) {
+  const c = country();
+  const home = c.currency.code;
+  const list = money.balances();
+  const log = [...(player().finance.fxLog ?? [])].reverse().slice(0, 8);
+  const pickFrom = await pickModal({
+    title: 'Currencies',
+    body: `Everyday money is in ${home}. You can hold other currencies too. Changing money costs ${(money.FX_FEE * 100).toFixed(1)}%. Rates here belong to the game, not the real world.`
+      + (log.length ? ` Recent: ${log.slice(0, 3).map((e) => `${e.year}: ${money.fmt(e.paid, e.from)} → ${money.fmt(e.received, e.to)} at ${e.rate}`).join('; ')}.` : ''),
+    options: list.map((b) => ({ value: b.code, label: `${money.fmt(b.amount, b.code)} in ${b.code}${b.home ? ' (everyday money)' : ''}`,
+      sub: b.home ? 'Change some into another currency.' : `Worth about ${money.fmt(b.worth, home)} today.`, disabled: b.amount < 1 })),
+    cancel: 'Close',
+  });
+  if (!pickFrom) return undefined;
+  const have = list.find((b) => b.code === pickFrom).amount;
+  // From everyday money: any currency. From an account: back into everyday money, or onwards.
+  const targets = money.currencies().filter((x) => x.code !== pickFrom);
+  const held = new Set(list.map((b) => b.code));
+  const to = await pickModal({ title: `Change ${pickFrom} into`, options: targets.sort((a, b) => Number(held.has(b.code)) - Number(held.has(a.code)) || a.code.localeCompare(b.code))
+    .map((x) => ({ value: x.code, label: `${x.code} (${x.symbol})`, sub: `1 ${pickFrom} buys ${money.rate(pickFrom, x.code).toPrecision(4)} ${x.code} today${x.code === home ? ' · your everyday money' : held.has(x.code) ? ' · you hold some' : ''}` })) });
+  if (!to) return undefined;
+  const part = await pickModal({ title: 'How much?', options: [0.1, 0.25, 0.5, 1].map((f) => ({ value: String(f), label: `${f === 1 ? 'All of it' : `${Math.round(f * 100)}%`}: ${money.fmt(Math.floor(have * f), pickFrom)}`,
+    sub: `About ${money.fmt(Math.floor(money.convert(Math.floor(have * f), pickFrom, to) * (1 - money.FX_FEE)), to)} after the fee.`, disabled: Math.floor(have * f) < 1 })) });
+  if (!part) return undefined;
+  return report(api, money.exchange(pickFrom, to, Math.floor(have * Number(part))));
+}
