@@ -59,6 +59,7 @@ export function rollDeath() {
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
   if (p.legal.incarceration?.deathRow && p.legal.incarceration.served >= 2 && rng.chance(0.1)) return 'execution';
   if (p.flags.birthDeath) { delete p.flags.birthDeath; return 'complications after childbirth'; }
+  if (p.flags.warDeath) { delete p.flags.warDeath; return 'wounds received in the war'; }
   if (!rng.chance(mortalityChance(p.age, p.stats.health, (p.flags.longevity ?? 0) + careShift(p)))) return null;
   if (worst && worst.severity >= 45 && rng.chance(0.7)) return worst.name.replace(/^an? /, '');
   return p.age >= 100 ? 'great old age' : p.age >= 70 ? 'old age' : rng.pick(ACCIDENTS);

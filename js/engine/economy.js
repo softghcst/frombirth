@@ -89,17 +89,28 @@ function turn(id, to, quiet) {
   if (!quiet && (ties().has(id) || rng.chance(0.05))) post(id, 'economy', `${The(id)}: ${PHASES[to].start.charAt(0).toLowerCase()}${PHASES[to].start.slice(1)}`, to === 'slump' ? 'bad' : to === 'boom' ? 'good' : 'neutral', to !== 'steady');
 }
 
+/**
+ * Holds a country's economy in a phase until a year (Historical Eras: the Depression, a postwar boom).
+ * The ordinary turns leave it alone until then.
+ */
+export function holdPhase(id, to, until) {
+  const e = entry(id);
+  if (e.phase !== to) { e.phase = to; e.since = store.state.year; }
+  e.heldUntil = Math.max(e.heldUntil ?? 0, until);
+}
+
 /** Yearly: economies turn, crises begin and end. */
 export function tickEconomy() {
   const year = store.state.year;
   // Now and then trouble crosses every border at once.
   if (rng.chance(WORLD_DOWNTURN.chance)) {
     let n = 0;
-    for (const c of COUNTRY_LIST) if (phaseOf(c.id) !== 'slump' && rng.chance(WORLD_DOWNTURN.share)) { turn(c.id, 'slump', true); n += 1; }
+    for (const c of COUNTRY_LIST) if (phaseOf(c.id) !== 'slump' && (store.state.world?.places?.[c.id]?.heldUntil ?? 0) < year && rng.chance(WORLD_DOWNTURN.share)) { turn(c.id, 'slump', true); n += 1; }
     post(null, 'economy', `A financial crisis has spread around the world. ${n} economies are in recession${phaseOf() === 'slump' ? `, ${the(player().countryId)} among them` : ''}.`, 'bad');
     return;
   }
   for (const c of COUNTRY_LIST) {
+    if ((store.state.world?.places?.[c.id]?.heldUntil ?? 0) >= year) continue; // an era holds it (engine/eras.js)
     const now = phaseOf(c.id);
     const settled = year - (store.state.world?.places?.[c.id]?.since ?? -99) >= 2; // nothing turns twice in two years
     const roll = rng.next();

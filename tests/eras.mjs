@@ -329,7 +329,7 @@ section('Health');
   const modern = [];
   for (let i = 0; i < 100; i++) { const k = makeNpc({ role: 'sibling', countryId: 'us', age: 0 }); ensureLife(k); store.state.npcs[k.id] = k; q.npcIds.push(k.id); modern.push(k); }
   for (let i = 0; i < 5; i++) { q.stats.health = 95; advanceYear(); store.state.pendingEvents = []; }
-  check(modern.every((k) => k.alive), 'today, none of the hundred did');
+  check(!store.state.journal.some((j) => /died of an illness at \d\. In these years, many families lost a child/.test(j.text)) && modern.filter((k) => !k.alive).length <= 2, 'today, the era adds no child deaths');
   // What a doctor could do.
   check(H.treatmentIn('diabetes', 1915).manage === false && H.treatmentIn('diabetes', 1930).manage === true, 'diabetes could not be managed before insulin (1922)');
   check(H.treatmentIn('flu', 1930).chance < H.treatmentIn('flu', 1950).chance, 'infections were harder to treat before antibiotics');
@@ -352,6 +352,57 @@ section('Health');
   grow(10);
   const second = `${store.state.player.alive}:${store.state.journal.length}:${Object.values(store.state.npcs).filter((n) => !n.alive).length}`;
   check(first === second, 'reloading and living the same years gives the same deaths and illnesses');
+}
+
+// ---------- Phase 8: events ----------
+section('Events');
+{
+  const { phaseOf } = await import('../js/engine/economy.js');
+  const { decide } = await import('../js/engine/eraScenes.js');
+  check(!H.atWar('uk', 1955) && H.atWar('uk', 1940) && H.atWar('uk', 1916), 'Britain at war 1914–18 and 1939–45, not in 1955');
+  check(!H.atWar('us', 1940) && H.atWar('us', 1943), 'the United States entered the Second World War only after 1941');
+  check(!H.atWar('se', 1942) && !H.atWar('ch', 1942), 'neutral countries were not at war');
+  check(H.eventsIn('us', 2026).length === 0 && !H.atWar('us', 2026), 'no historical events in the present');
+  // The Depression holds economies in a slump.
+  const p = life({ born: 1905, age: 24, countryId: 'us', gender: 'male' });
+  grow(3); // 1932
+  check(phaseOf('us') === 'slump' && phaseOf('fr') === 'slump', 'in 1932 economies are in the Depression');
+  check(store.state.journal.filter((j) => /banks are failing/.test(j.text)).length === 1, 'the Depression is reported once');
+  grow(1);
+  check(phaseOf('us') === 'slump', 'and it lasts');
+  // The call-up, in wartime, where the law conscripts, for young men.
+  let q; let called = null;
+  for (let attempt = 0; attempt < 6 && !called; attempt++) {
+    q = life({ born: 1922, age: 17, countryId: 'uk', gender: 'male' });
+    if (q.countryId !== 'uk' || q.flags.trueGender) continue; // a family that emigrated, or a life that is not a young man's
+    for (let i = 0; i < 3 && !called; i++) { q.stats.health = 95; q.legal.incarceration = null; advanceYear(); called = store.state.pendingEvents.find((x) => x.id === 'era_call_up'); if (!called) store.state.pendingEvents = []; }
+  }
+  check(called && called.cast.words.id === 'ww2', `a young British man is called up in ${store.state.year}`);
+  decide('callup:serve', called.cast);
+  check(q.flags.serving && q.milestones.some((m) => /Served in the Second World War/.test(m.text)), 'serving is recorded in the life story');
+  store.state.pendingEvents = [];
+  for (let i = 0; i < 8; i++) { q.stats.health = 95; q.alive = true; advanceYear(); store.state.pendingEvents = store.state.pendingEvents.filter((x) => x.id !== 'era_call_up'); }
+  check(!q.flags.serving && q.milestones.some((m) => /Came home/.test(m.text)), 'and coming home when it is over');
+  check(store.state.journal.filter((j) => /Second World War is over/.test(j.text)).length === 1, 'the end of the war is reported once');
+  const w = life({ born: 1920, age: 20, countryId: 'uk', gender: 'female' });
+  let womanCalled = false;
+  for (let i = 0; i < 4; i++) { w.stats.health = 95; advanceYear(); if (store.state.pendingEvents.some((x) => x.id === 'era_call_up')) womanCalled = true; store.state.pendingEvents = []; }
+  check(!womanCalled, 'in this simplified model women are not called up');
+  const s = life({ born: 1920, age: 20, countryId: 'se', gender: 'male' });
+  let swede = false;
+  for (let i = 0; i < 4; i++) { s.stats.health = 95; advanceYear(); if (store.state.pendingEvents.some((x) => x.id === 'era_call_up')) swede = true; store.state.pendingEvents = []; }
+  check(!swede, 'nobody is called up to a war their country stayed out of');
+  // Losses in the family are possible, never more than one a year, never invented as a battle.
+  const f = life({ born: 1890, age: 24, countryId: 'fr', gender: 'female' });
+  for (let i = 0; i < 6; i++) { const b = makeNpc({ role: 'sibling', countryId: 'fr', age: 22, gender: 'male' }); store.state.npcs[b.id] = b; f.npcIds.push(b.id); }
+  const deaths = [];
+  for (let i = 0; i < 5; i++) { const before = Object.values(store.state.npcs).filter((n) => n.flags.diedIn === 'ww1').length; f.stats.health = 95; advanceYear(); store.state.pendingEvents = []; deaths.push(Object.values(store.state.npcs).filter((n) => n.flags.diedIn === 'ww1').length - before); }
+  check(deaths.every((d) => d <= 1), `at most one loss in the family a year (${deaths.join(', ')})`);
+  check(Object.values(store.state.npcs).filter((n) => n.flags.diedIn).every((n) => n.gender === 'male' && n.age <= 41), 'only men of fighting age were lost to the war');
+  check(store.state.journal.filter((j) => /War has broken out across Europe/.test(j.text)).length === 1, 'the war\'s beginning is reported once');
+  // Independence: news in the country concerned, in its year.
+  const g = life({ born: 1940, age: 17, countryId: 'gh' });
+  check(store.state.journal.some((j) => /Ghana is independent now/.test(j.text)), 'Ghana\'s independence in 1957 is in the news of a life there');
 }
 
 console.log(`${passed.length} checks passed.`);

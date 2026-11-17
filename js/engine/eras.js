@@ -2,7 +2,9 @@
 // has moved. It records crossing into a new era (once), and from later phases
 // applies what the era changes. The rules themselves are in engine/history.js.
 import { store, player, log, milestone } from '../state.js';
-import { getEra, getEraTransition, syncWorld, currencyFor, secondaryShare, childRisk, MODERN_YEAR } from './history.js';
+import { getEra, getEraTransition, syncWorld, currencyFor, secondaryShare, childRisk, involved, atWar, MODERN_YEAR } from './history.js';
+import { EVENTS } from '../data/history.js';
+import { holdPhase, post } from './economy.js';
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
 import { roleLabel } from './relationships.js';
@@ -115,7 +117,72 @@ export function tickEra() {
     if (line && e.laws[`${here}:${id}:${state.year}`] == null) { e.laws[`${here}:${id}:${state.year}`] = v; log(line, 'system', 'neutral'); }
   }
   childMortality(state);
+  tickEvents(state);
   offerScenes(state);
+}
+
+/** The year when an event reached a country (a war, from the year it entered). */
+const startFor = (ev, id) => Math.max(ev.from, ev.entry?.[id] ?? ev.from);
+
+/**
+ * The broad events of the time, as they touch the player: news when they begin and end,
+ * economies held in a boom or a slump, and in wartime the call-up and the danger to the
+ * men of the family. No battles, and nobody real.
+ */
+function tickEvents(state) {
+  const p = state.player;
+  const here = p.countryId;
+  const e = state.era;
+  const y = state.year;
+  for (const ev of EVENTS) {
+    // Economies anywhere follow the event while it lasts.
+    if (ev.economy && y >= ev.from && y <= ev.to && !e.events[`${ev.id}:economy:${y}`]) {
+      e.events[`${ev.id}:economy:${y}`] = true;
+      for (const id of (ev.who.includes('*') ? Object.keys(COUNTRIES) : ev.who)) if (COUNTRIES[id]) holdPhase(id, ev.economy, ev.to);
+    }
+    const mine = involved(ev, here, y);
+    if (mine && y === startFor(ev, here) && !e.events[`${ev.id}:begin`]) {
+      e.events[`${ev.id}:begin`] = y;
+      const text = ev.independence ? `${theCountry(COUNTRIES[here].name).replace(/^the/, 'The')} is independent now.` : ev.begin;
+      if (text) post(ev.who.includes('*') ? null : here, 'history', text, ev.war || ev.economy === 'slump' || ev.extraRisk ? 'bad' : 'neutral', p.age >= 6);
+      if (ev.war && p.age >= 6) queueScene(state, 'era_war_news', { words: { war: ev.name } }, `warNews:${ev.id}`);
+      if (ev.id === 'depression' && p.age >= 14) queueScene(state, 'era_hard_times', {}, 'hardTimes');
+    }
+    if (e.events[`${ev.id}:begin`] && y === ev.to + 1 && !e.events[`${ev.id}:end`]) {
+      e.events[`${ev.id}:end`] = y;
+      if (ev.end) post(null, 'history', ev.end, 'good', p.age >= 6);
+      if (ev.war && p.age >= 6) queueScene(state, 'era_peace', { words: { war: ev.name } }, `peace:${ev.id}`);
+    }
+    if (!mine || !ev.war) continue;
+    // The call-up: young men, where the law says so, while the country is at war.
+    const man = (p.flags.trueGender ?? p.gender) === 'male';
+    if (man && p.age >= 18 && p.age <= 35 && rule('conscription', here) && !p.legal?.incarceration && !p.flags.served?.[ev.id]) queueScene(state, 'era_call_up', { words: { war: ev.name, id: ev.id } }, `callUp:${ev.id}`);
+    // Men of fighting age in the family: a few do not come home. At most one loss a year.
+    const men = p.npcIds.map((id) => state.npcs[id]).filter((n) => n?.alive && n.gender === 'male' && n.age >= 18 && n.age <= 40 && !n.flags.abroad && n.role !== 'pet');
+    const lost = men.find(() => rng.chance(ev.risk ?? 0));
+    if (lost) {
+      lost.alive = false;
+      lost.flags.diedYear = y;
+      lost.flags.diedIn = ev.id;
+      log(`Your ${roleLabel(lost).toLowerCase()} ${lost.firstName} was killed in ${ev.name}. He was ${lost.age}.`, 'system', 'bad');
+      p.stats.mood = clamp(p.stats.mood - Math.round(10 + lost.meters.relationship / 6));
+    }
+  }
+  // Serving in a war is dangerous.
+  if (p.flags.serving && atWar(here, y) && rng.chance(0.02)) p.flags.warDeath = true;
+  if (p.flags.serving && !atWar(here, y)) {
+    const w = p.flags.serving;
+    delete p.flags.serving;
+    log('You came home from the war.', 'system', 'good');
+    milestone(`Came home from ${w}.`, 'era');
+  }
+}
+
+/** Queues an era scene once, keyed so it never comes back. */
+function queueScene(state, id, cast, key) {
+  if (state.era.seen[key]) return;
+  state.era.seen[key] = state.year;
+  if (!state.pendingEvents.some((x) => x.id === id)) state.pendingEvents.push({ id, cast });
 }
 
 /**
