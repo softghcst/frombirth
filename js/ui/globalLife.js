@@ -36,6 +36,10 @@ const TITLES = { discover: 'Discover', destination: 'Destination', plan: 'Plan a
 const NAV = { slot: null, stack: [], ui: {} };
 let context = null;
 const CONTEXT = () => (context ??= Object.values(COORDINATES).flatMap((r) => Object.values(r.cities)));
+// The land outline (Natural Earth, data/land.js) is loaded the first time a map is drawn.
+let land = null;
+let landLoading = null;
+const loadLand = (then) => { landLoading ??= import('../data/land.js').then((m) => { land = m.LAND; }).catch(() => { land = ''; }); landLoading.then(then); };
 const uiOf = (key) => (NAV.ui[key] ??= {});
 const keyOf = (v) => `${v.view}:${v.params?.id ?? ''}`;
 
@@ -344,7 +348,7 @@ export function openExplore(api, start = {}) {
         <div class="section-label">Timeline</div>
         ${s.timeline.map((i, n) => `<details class="gl-tl" ${ui.open === n ? 'open' : ''} data-tl="${n}"><summary>${esc(String(i.year ?? '?'))} · ${esc(i.name ?? '')}: ${esc({ born: 'born', lived: 'lived', visited: 'visited', moved: 'moved' }[i.kind])} ${esc(i.where)}</summary>
           <div class="btn-row" style="flex-wrap:wrap;margin:6px 0">${btn('The person', `data-person="${esc(i.person)}"`, 'small')}${i.eventId ? btn('The move', `data-event="${i.eventId}"`, 'small') : ''}${i.tripId ? btn('The trip', `data-trip="${i.tripId}"`, 'small') : ''}${(i.homes ?? []).map((h) => btn('The home', `data-house="${h}"`, 'small')).join('')}</div></details>`).join('') || '<p class="empty">Nothing matches.</p>'}
-        <p class="muted">Every marker is a place recorded in this family's life; positions from GeoNames. A place known only by country is shown at its capital (hollow marker). Lines join only moves that were made.</p>`;
+        <p class="muted">Every marker is a place recorded in this family's life; positions from GeoNames, land from Natural Earth. A place known only by country is shown at its capital (hollow marker). Lines join only moves that were made.</p>`;
     },
 
     person({ id }) {
@@ -402,8 +406,21 @@ export function openExplore(api, start = {}) {
     for (let lon = -150; lon <= 150; lon += 30) { const x = project(0, lon, W, H).x; grid.push(`<line x1="${x}" y1="0" x2="${x}" y2="${H}"/>`); }
     for (let lat = -60; lat <= 60; lat += 30) { const y = project(lat, 0, W, H).y; grid.push(`<line x1="0" y1="${y}" x2="${W}" y2="${y}"/>`); }
     // Context: every city the game knows, faintly. Real positions only: no outlines are drawn that the data does not have.
-    const context = CONTEXT().map((c) => { const q = project(c[0], c[1], W, H); return `<circle cx="${q.x}" cy="${q.y}" r="${0.7 * k}" class="gl-ctx"/>`; }).join('');
-    const lines = s.lines.map((l) => { const a = project(l.from.lat, l.from.lon, W, H); const b = project(l.to.lat, l.to.lon, W, H); return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="gl-move" stroke-width="${0.8 * k}" stroke-dasharray="${2 * k} ${1.2 * k}"/>`; }).join('');
+    if (land == null) loadLand(() => { if (root.isConnected && root.querySelector('.gl-map')) render(modal.el.scrollTop); });
+    // Land from Natural Earth; until it has loaded (or if it cannot), every city the game knows, faintly.
+    const context = land ? `<path d="${land}" class="gl-land" stroke-width="${0.25 * k}"/>`
+      : CONTEXT().map((c) => { const q = project(c[0], c[1], W, H); return `<circle cx="${q.x}" cy="${q.y}" r="${0.7 * k}" class="gl-ctx"/>`; }).join('');
+    // A move more than half the world apart is drawn the short way, off one edge and on at the other.
+    const seg = (a, b) => `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="gl-move" stroke-width="${0.8 * k}" stroke-dasharray="${2 * k} ${1.2 * k}"/>`;
+    const lines = s.lines.map((l) => {
+      const a = project(l.from.lat, l.from.lon, W, H); const b = project(l.to.lat, l.to.lon, W, H);
+      if (Math.abs(b.x - a.x) <= W / 2) return seg(a, b);
+      const bx = b.x > a.x ? b.x - W : b.x + W; // b, moved one world over
+      const edge = a.x < bx ? W : 0;
+      const t = (edge === W ? W - a.x : a.x) / Math.abs(bx - a.x);
+      const y = a.y + (b.y - a.y) * t;
+      return seg(a, { x: edge === W ? W : 0, y }) + seg({ x: edge === W ? 0 : W, y }, b);
+    }).join('');
     const marks = pts.map((m) => `<g class="gl-mark ${ui.marker === m.key ? 'on' : ''} ${m.approx ? 'approx' : ''}" data-marker="${esc(m.key)}" tabindex="0" role="button" aria-label="${esc(m.name)}"><circle cx="${m.x}" cy="${m.y}" r="${Math.min(4.5, 2.2 + m.items.length * 0.3) * k}" stroke-width="${0.7 * k}"/><title>${esc(m.name)}: ${m.items.length}</title></g>`).join('');
     return `<div class="gl-mapwrap"><svg class="gl-map" viewBox="${vb.join(' ')}" role="img" aria-label="Map of places in the family's history"><rect x="0" y="0" width="${W}" height="${H}" class="gl-sea"/><g class="gl-grid">${grid.join('')}</g>${context}${lines}${marks}</svg>
       <div class="btn-row" style="margin-top:6px">${btn(ui.zoom ? 'Whole world' : 'Fit to our places', 'data-zoom', 'small')}</div></div>

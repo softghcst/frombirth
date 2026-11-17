@@ -384,6 +384,7 @@ button.dyn-event { cursor: pointer; }
 .gl-sea { fill: var(--accent-soft); }
 .gl-grid line { stroke: var(--line); stroke-width: 0.3; }
 .gl-ctx { fill: var(--muted); opacity: 0.5; }
+.gl-land { fill: var(--card); stroke: var(--muted); stroke-linejoin: round; opacity: 0.95; }
 .gl-move { stroke: var(--accent); opacity: 0.85; }
 .gl-mark circle { fill: var(--bad); stroke: var(--card); cursor: pointer; }
 .gl-mark.approx circle { fill: var(--card); stroke: var(--bad); }
