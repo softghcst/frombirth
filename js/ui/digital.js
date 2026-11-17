@@ -20,6 +20,8 @@ import * as comm from '../engine/digital/community.js';
 import * as creator from '../engine/digital/creator.js';
 import * as rep from '../engine/digital/reputation.js';
 import * as legacy from '../engine/digital/legacy.js';
+import * as pro from '../engine/digital/professional.js';
+import { MAJOR_BY_ID } from '../data/majors.js';
 import { syncCompat } from '../engine/digital/tick.js';
 import { avatarSvg, dressOfPlayer } from './avatar.js';
 import { meterHtml } from './meter.js';
@@ -49,13 +51,15 @@ const visChip = (v) => `<span class="dl-vis dl-vis-${esc(v)}" title="Who can see
 const platChip = (id) => `<span class="dl-plat" style="--pl:${pl(id).accent}">${esc(pl(id).name)}</span>`;
 
 /** A portrait. People who exist in the game are links to their profile; the crowd is not. */
-function face(charId, size = '') {
+function face(charId, size = '', o = {}) {
   const c = core.charOf(charId);
   if (!c) return `<div class="avatar dl-crowd ${size}" aria-hidden="true">·</div>`;
   const p = player();
   const svg = c === p
     ? avatarSvg({ age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id, mood: p.stats.mood, label: p.firstName, ...dressOfPlayer(p) })
     : avatarSvg({ age: c.age, gender: c.gender, appearance: c.appearance, seed: c.id, mood: c.meters?.relationship ?? 60, label: c.firstName });
+  // Inside something that is itself a button, a portrait is a picture; the page it opens has the link.
+  if (o.inert) return `<div class="avatar dl-face ${size} ${c.alive === false ? 'gone' : ''}" aria-hidden="true">${svg}</div>`;
   return `<button class="avatar dl-face ${size} ${c.alive === false ? 'gone' : ''}" data-person="${esc(c.id)}" aria-label="Open ${esc(c.firstName)}'s profile">${svg}</button>`;
 }
 const who = (charId) => { const c = core.charOf(charId); return c ? `<button class="dl-name" data-person="${esc(c.id)}">${esc(c.firstName)} ${esc(c.lastName ?? '')}</button>` : '<span class="muted">Someone</span>'; };
@@ -134,7 +138,7 @@ function accountCard(a) {
   const p = pl(a.platformId);
   const owner = core.charOf(a.ownerId);
   return `<button class="dl-card dl-acc" style="--pl:${p.accent}" data-open-account="${a.id}">
-    <div class="row" style="border:0;padding:0;background:none">${face(a.ownerId, 'sm')}
+    <div class="row" style="border:0;padding:0;background:none">${face(a.ownerId, 'sm', { inert: true })}
       <div class="main"><strong>@${esc(a.handle)}</strong><small>${esc(p.name)} · ${esc(owner?.firstName ?? '')}${a.creator ? ` · ${esc(CREATOR_STAGES.find((s) => s.id === a.creator.stage).name)}` : ''}</small></div>
       <div class="side">${a.status === 'active' ? visChip(a.visibility) : `<span class="dl-status">${esc(a.status)}</span>`}</div></div>
     <div class="dl-stats"><div><strong>${n0(acc.followerCount(a))}</strong><small>followers</small></div><div><strong>${n0(a.following.length)}</strong><small>following</small></div><div><strong>${n0(a.postIds.filter((id) => !core.world().posts[id]?.removed).length)}</strong><small>posts</small></div></div>
@@ -174,7 +178,7 @@ function threadRow(t) {
   const n = core.charOf(others[0]);
   const relation = t.kind === 'group' ? `${t.participants.length} people · ${pl(t.platformId).name}` : n && p.npcIds.includes(n.id) ? roleLabel(n) : n?.flags?.digitalOnly ? 'Met online' : '';
   return `<button class="row dl-thread ${t.unread ? 'unread' : ''}" data-open-thread="${t.id}">
-    ${t.kind === 'group' ? `<div class="avatar dl-crowd" aria-hidden="true">${esc(title.charAt(0))}</div>` : face(others[0])}
+    ${t.kind === 'group' ? `<div class="avatar dl-crowd" aria-hidden="true">${esc(title.charAt(0))}</div>` : face(others[0], '', { inert: true })}
     <div class="main"><strong>${esc(title)}${t.muted ? ' 🔕' : ''}</strong><small>${esc(relation)}${last ? ` · ${esc((core.isPlayer(last.from) ? 'You: ' : '') + last.text)}` : ''}</small></div>
     <div class="side">${t.lastYear}${t.unread ? `<span class="dl-badge" aria-label="${t.unread} unread">${t.unread}</span>` : ''}</div></button>`;
 }
@@ -228,8 +232,21 @@ function pageAccount(id) {
       ${['active', 'deactivated'].includes(a.status) ? `<button class="btn danger" data-acc="delete" data-id="${a.id}">Delete account</button>` : ''}
     </div>
     ${a.requests.length ? `<div class="section-label">Follow requests</div>${a.requests.map((r) => { const o = acc.account(r); return o ? `<div class="row">${face(o.ownerId)}<div class="main"><strong>@${esc(o.handle)}</strong><small>${esc(core.nameOf(o.ownerId))}</small></div><div class="side dl-btns"><button class="btn small" data-req="yes" data-id="${a.id}" data-from="${o.id}">Accept</button><button class="btn small" data-req="no" data-id="${a.id}" data-from="${o.id}">Decline</button></div></div>` : ''; }).join('')}` : ''}` : ''}
+    ${p.type === 'professional' ? proCard(a, mine) : ''}
     <div class="section-label">Posts</div>
     ${posts.length ? posts.slice(0, 40).map((x) => postCard(x)).join('') : '<p class="empty">No posts you can see.</p>'}`;
+}
+
+/** A professional profile: the person's real record, and the contacts who could vouch for them. */
+function proCard(a, mine) {
+  const cv = pro.resume(a.ownerId);
+  if (!cv) return '';
+  const deg = (d) => `${{ high: 'High school', university: 'University', graduate: 'Graduate school', medical: 'Medical school', law: 'Law school', community: 'College', apprenticeship: 'Apprenticeship', certificate: 'Certificate', cosmetology: 'Cosmetology' }[d.what] ?? d.what}${d.field && MAJOR_BY_ID[d.field] ? `, ${MAJOR_BY_ID[d.field].name}` : ''}${d.school ? ` · ${d.school}` : ''}`;
+  const refs = mine ? pro.referralOptions() : [];
+  return `<div class="card"><h3>Experience</h3>${cv.jobs.slice().reverse().map((j) => `<div class="kv"><span>${esc(j.title)}</span><span>${j.current ? `since age ${j.from}` : `ages ${j.from}–${j.to}`}</span></div>`).join('') || '<p class="muted">No jobs yet.</p>'}
+    <h3 style="margin-top:12px">Education</h3>${cv.degrees.map((d) => `<div class="kv"><span>${esc(deg(d))}</span><span>age ${d.age}</span></div>`).join('') || '<p class="muted">Nothing listed.</p>'}
+    <p class="muted" style="margin-top:8px">This is your real record. Nothing on it can be embellished.</p></div>
+    ${refs.length ? `<div class="section-label">Contacts who could refer you</div>${refs.map((r) => `<div class="row">${face(r.npc.id)}<div class="main"><strong>${esc(r.npc.firstName)} ${esc(r.npc.lastName)}</strong><small>${esc(r.npc.life.job.title)} · ${esc(r.career.name)}${r.linked ? ' · connected' : ''}</small></div><div class="side"><button class="btn small" data-referral="${r.npc.id}" ${r.why ? 'disabled' : ''}>Ask for a referral</button></div></div>`).join('')}` : ''}`;
 }
 
 function pageMe() {
@@ -557,7 +574,7 @@ function pageHistory() {
   const p = player();
   const techs = tech.technologies().filter((t) => t.status !== 'future' || t.tech.from <= store.state.year + 15);
   const ancestors = legacy.ancestors();
-  return `${ancestors.length ? `<div class="section-label">Family Archive · Digital Legacy</div>${ancestors.map((a) => `<button class="row" data-ancestor="${a.id}">${face(a.id)}<div class="main"><strong>${esc(a.name)}</strong><small>${a.born}–${a.died} · ${a.accounts.length} account${a.accounts.length === 1 ? '' : 's'}</small></div><div class="side">›</div></button>`).join('')}` : ''}
+  return `${ancestors.length ? `<div class="section-label">Family Archive · Digital Legacy</div>${ancestors.map((a) => `<button class="row" data-ancestor="${a.id}">${face(a.id, '', { inert: true })}<div class="main"><strong>${esc(a.name)}</strong><small>${a.born}–${a.died} · ${a.accounts.length} account${a.accounts.length === 1 ? '' : 's'}</small></div><div class="side">›</div></button>`).join('')}` : ''}
     <div class="section-label">Communication in ${esc(country().name)}, ${store.state.year}</div>
     ${techs.map((t) => `<div class="dl-tech"><div><strong>${esc(t.tech.name)}</strong><small>${esc({ future: 'not yet', arriving: 'just arriving', spreading: 'spreading', common: 'everywhere', declining: 'fading' }[t.status])}</small></div><div class="dl-share" role="img" aria-label="${Math.round(t.share * 100)}% of people"><i style="width:${Math.round(t.share * 100)}%"></i></div></div>`).join('')}
     <div class="section-label">Platforms</div>
@@ -601,6 +618,8 @@ async function newAccount(api, rerender) {
     { name: 'visibility', label: 'Who can see your posts', type: 'select', value: p.age < 18 ? x.privacy.find((o) => o !== 'public') ?? x.privacy[0] : x.privacy[0], options: x.privacy.map((o) => ({ value: o, label: VIS[o] ?? o })) },
     { name: 'interests', label: 'Interests', type: 'checks', options: TOPICS.slice(0, 12).map((t) => ({ value: t.id, label: t.name })) },
     { name: 'notifications', label: 'Notifications', type: 'select', value: 'important', options: [{ value: 'all', label: 'Everything' }, { value: 'important', label: 'Important only' }, { value: 'off', label: 'Off' }] },
+    // A royal or an office-holder can keep a personal account and an official one apart.
+    ...(p.royal || p.politics ? [{ name: 'kind', label: 'Whose voice', type: 'select', value: 'personal', options: [{ value: 'personal', label: 'Your own, personal account' }, { value: 'official', label: `The official account of your ${p.royal ? 'royal office' : 'office'}` }] }] : []),
   ] });
   if (!v) return;
   const r = acc.createAccount({ platformId: id, ...v });
@@ -807,6 +826,7 @@ export function openDigitalLife(api, o = {}) {
     }
     body.innerHTML = html;
     body.scrollTop = v.scroll[key()] ?? 0;
+    m.el.querySelector('.dl-nav button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   const rerender = () => { if (document.body.contains(m.el)) draw(); };
   const push = (entry) => { v.scroll[key()] = body.scrollTop; v.trail.push(entry); draw(); };
@@ -922,6 +942,7 @@ export function openDigitalLife(api, o = {}) {
     if ((el = ds('data-fund'))) return say(api, rep.fundraise(el.dataset.fund), rerender);
     if ((el = ds('data-memorial'))) return say(api, legacy.memorialChoice(el.dataset.id, el.dataset.memorial), rerender);
     if ((el = ds('data-reach'))) return startConversation(api, rerender, el.dataset.reach);
+    if ((el = ds('data-referral'))) return say(api, pro.askReferral(el.dataset.referral), rerender);
     return undefined;
   });
   draw();

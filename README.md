@@ -46,7 +46,14 @@ node tests/cities.mjs          # cities and regions: prices, pay, regional law, 
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
+node tests/digital.mjs         # the Digital World: technology by era, accounts and privacy, posts, messaging, creators and money, reputation, legacy, saves; the Digital Life brief's scenarios A to L
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
+```
+
+One check runs in a real browser and needs Playwright with Chromium (it skips itself where Playwright is not installed):
+
+```bash
+node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
@@ -354,6 +361,40 @@ js/ui/          shell, modals, screens/, tabs/
 avatar-lab.html a workbench for avatar artwork
 tests/          checks that run on Node alone
 ```
+
+## Digital Life
+
+Pursuits → **Digital Life** (*Your connections, your creativity, your world.*): the character's accounts, feed,
+messages and group chats, friends and connections, online communities, posts, Creator Studio, online reputation,
+digital memories and digital history — or, before there is an online world, the letters, visits and telephone calls
+of the time. It is one engine, the **Digital World Engine**, in `js/engine/digital/`, with its registry in
+`js/data/digital.js`; the year processor runs it with the rest of the world (`tickDigital`).
+
+| Part | Where | What it does |
+|---|---|---|
+| Registry | `js/data/digital.js` | Communication technologies (letters to shared presence) with first year, spread and infrastructure needed; devices; places to get online; the game's own platforms (Corkboard, Chatterbox, Inkwell, Guildhall, Hearth, Vista, Murmur, Glimmer, Beacon, Kindling, Spinnet, Lumen) with launch, decline and closing years, age limits, formats, privacy settings, rules and pay; topics, communities, sponsors, trends, project kinds |
+| Core | `core.js` | `state.digital` (one per saved life), stable ids, spare hours a year, life events (the Life Story and Family Archive read these), the one reputation record per character |
+| Technology | `tech.js` | The only place a year becomes "does this exist yet": adoption by year and country infrastructure, platform status, devices, school/library/work access |
+| Accounts | `accounts.js` | Accounts always owned by a real character; guardian consent for young teenagers, decided once a year; handles that change while the account stays the same; `canSee`, the single privacy rule every screen uses; follows, requests, blocks, mutes |
+| Posts | `content.js` | Posting (format, topic, real source, audience, time); the audience's response worked out once and kept; comments and moderation; the feed, with disposable "around the platform" background posts kept apart from anything that happened to anyone |
+| Messaging | `messaging.js` | Letters, telegrams, calls, texts, email, video calls and direct messages, by era and by what both people have; group chats; replies drawn from the other person's real life; protections for young players |
+| Communities | `community.js` | Communities with a few real, persistent members and a member count; friendships that move into the Relationship engine; online dating that hands a first date to the Romance engine |
+| Creators | `creator.js` | Channels, stages earned by circumstance, projects with checked transitions, livestreams, collaborations with real people, sponsorships that pay only when delivered, a ledger (gross, platform fee, costs, tax, net) paid through the Finance engine, at most once per key; going full-time through the Occupation engine's creator career |
+| Professional | `professional.js` | A profile that is the real résumé; referrals from contacts at their actual employers and recruiter messages, which feed the career engine's existing hiring odds |
+| Reputation | `reputation.js` | Recognition, credibility and loyalty kept apart; controversies that record what really happened; safety problems and sensible responses; breaks, notifications and a small, personal effect on mood |
+| People | `npc.js` | Close family and friends join platforms (or never do), follow people they know, share news that really happened to them, move on when a platform fades |
+| Stories | `stories.js` + `js/data/events/stories/digital.js` | The Story Director's digital scenes, found in saved state: an old friend to reconnect with, a teenager's first video, an ancestor's archive, a controversy, bullying |
+| Legacy | `legacy.js` | Accounts become memorials at death; the digital world passes to the heir; descendants see public and family-shared posts, never private messages |
+| Year | `tick.js` | The yearly order of work; migration of older saves (the old handle and follower count become one account, with no posts invented); the old `player.social` numbers kept in step |
+
+The screen is `js/ui/digital.js`. Portraits anywhere in it open the person's own profile (the same one the People
+tab opens); where the player is — section, filters, the open post or conversation, scroll position — is kept while
+they visit a profile, and when Digital Life is closed and opened again.
+
+What is not built yet: political campaigning and royal duties online are limited to official accounts (posting does
+not yet move the Politics or Royalty engines); there is no separate housing-renovation or travel-photo flow beyond
+choosing those topics; lives still begin in the present (the engine supports any year, and the tests begin lives in
+1800 and 1980, but the character creator offers no historical start).
 
 ## Where to edit content
 

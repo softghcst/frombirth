@@ -437,6 +437,28 @@ section('J. Reputation');
   check(!rep.respond(ad.id, 'apologize').ok && p.finance.cash === rich2, 'and it cannot be re-litigated once answered');
 }
 
+// ---------- Professional network ----------
+section('Professional network');
+{
+  const p = life({ born: 1990, age: 30 });
+  phone();
+  const mine = join('guildhall', 'pro.me', { visibility: 'public' }).account;
+  const cv = (await import('../js/engine/digital/professional.js'));
+  const r = cv.resume();
+  check(r && r.degrees.length === p.education.degrees.length, 'the profile shows the real education record');
+  const colleague = friend({ age: 35, relationship: 85 });
+  colleague.life.job = { careerId: 'office', level: 1, title: 'Office manager', salary: 50000, years: 4 };
+  const theirs = acc.makeAccount(colleague.id, 'guildhall', 'colleague.pro');
+  acc.follow(mine.id, theirs.id); acc.follow(theirs.id, mine.id);
+  const opt = cv.referralOptions().find((o) => o.npc.id === colleague.id);
+  check(opt && opt.career.id === 'office' && opt.linked, 'a connected contact can refer the player to their actual employer');
+  freshHours();
+  let ok = false;
+  for (let i = 0; i < 6 && !ok; i++) { core.world().acts = { year: store.state.year }; ok = cv.askReferral(colleague.id).ok; }
+  check(!ok || p.flags.referrals?.office === p.age, 'a referral is recorded for that kind of work, and no job is created');
+  check(Object.keys(p.flags.referrals ?? {}).every((id) => !!id), 'referrals only name careers that exist');
+}
+
 // ---------- Persistence and migration ----------
 section('Saves');
 {

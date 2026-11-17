@@ -105,6 +105,8 @@ function doorBonus(career) {
   let bonus = (career.doors ?? []).filter((d) => !d.guaranteed && doorOpen(d)).reduce((s, d) => s + d.bonus, 0);
   if (career.focus && p.flags.cosmoFocus === career.focus) bonus += 0.25;
   if ((p.flags.internships ?? []).some((i) => i.careerId === career.id)) bonus += 0.2; // they have done the work before
+  const referred = p.flags.referrals?.[career.id];
+  if (referred != null && p.age - referred <= 1) bonus += 0.2; // someone there vouched for them, or a recruiter put them forward (engine/digital/professional.js)
   return bonus + hiringEdge(p) + hiringClimate(); // the economy; and languages: an asset anywhere, and a barrier where you cannot speak the one in use
 }
 

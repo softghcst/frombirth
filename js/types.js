@@ -177,6 +177,8 @@
  * @property {?{crimeId:string, age:number, evidence:number, lawyer:?string, skill:number}} [pending]  an open court case
  *
  * @typedef {{handle:?string, followers:number, posts:number, viral:number, boughtFollowers:number}} SocialMedia
+ *   A summary of the player's main account, kept in step by engine/digital/tick.js (syncCompat). The Digital World
+ *   (state.digital) is the record; see js/engine/digital/core.js for its shape.
  *
  * @typedef {Object} GameEvent
  * @property {string} id
@@ -236,6 +238,7 @@
  * @property {{id:string, cast:Object<string,string>}[]} pendingEvents  modal queue; survives reload
  * @property {number} rngSeed
  * @property {{theme:'auto'|'light'|'dark'}} settings
+ * @property {object} [digital]  the Digital World of this life: accounts, posts, threads, communities, projects, deals, ledger, events, archive (engine/digital)
  * @typedef {{age:number, text:string, kind:'event'|'choice'|'outcome'|'system', tone:'good'|'bad'|'neutral'}} JournalEntry
  *
  * @typedef {{slotId:string, name:string, age:number, gender:string, countryId:string,

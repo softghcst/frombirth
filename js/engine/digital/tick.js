@@ -12,6 +12,7 @@ import { tickCreators, settleCollab, deliver } from './creator.js';
 import { tickReputation } from './reputation.js';
 import { tickNpcDigital } from './npc.js';
 import { tickStories } from './stories.js';
+import { tickProfessional } from './professional.js';
 
 /**
  * Brings older saves into the Digital World without inventing anything. A
@@ -129,6 +130,7 @@ export function tickDigital() {
   if (digitalEra()) {
     tickCreators();
     tickReputation();
+    tickProfessional();
     tickStories();
   }
   for (const a of accountsOf(p.id)) snapshot(a);

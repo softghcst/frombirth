@@ -11,4 +11,5 @@ export * as reputation from './reputation.js';
 export * as legacy from './legacy.js';
 export * as npc from './npc.js';
 export * as stories from './stories.js';
+export * as professional from './professional.js';
 export { tickDigital, migrateDigital, syncCompat } from './tick.js';
