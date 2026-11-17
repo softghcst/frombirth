@@ -100,7 +100,7 @@ Where a record is kept, a recent forced sale or bankruptcy stops banks lending f
 what was carried over, the year's everyday spending (if the card is used for it), anything everyday money
 could not cover, and then the payment, in full or the minimum, as the player has chosen. Paid in full, a card
 costs nothing and returns 1%. A missed minimum costs a fee and leaves a mark; two in a row and the card is
-cancelled and the balance becomes a loan. Cash can be taken out on a card for a 3% fee. The limit and rate
+canceled and the balance becomes a loan. Cash can be taken out on a card for a 3% fee. The limit and rate
 offered follow income and the standing with lenders. Card borrowing is never income and never adds to net
 worth.
 
@@ -124,11 +124,11 @@ Life cover pays once: to the person named, outside the estate, or else into the 
 
 ## Pension plans
 
-`engine/retirement.js`. A plan is a ledger account, paid into from the year's pay at a rate the player
-chooses. Where there are workplace plans, an employer adds half as much on the first 6% while the player
-holds a full-time job. The pot is invested, more in shares when young, and follows the game's market up and
-down. It is locked until 60; taking it early costs a quarter. The projection shown is three scenarios and
-says so. The pension earned by years of work (`engine/career.js`) is separate and unchanged.
+`engine/retirement.js`. A plan of the player's own, on top of any pension an employer builds for them (that
+is `pensionPot` in `engine/worklife.js`, and is paid as part of the work pension). The plan is a ledger
+account, paid into from the year's pay at a rate the player chooses. The pot is invested, more in shares when
+young, and follows the game's market up and down. It is locked until 60; taking it early costs a quarter.
+The projection shown is three scenarios and says so.
 
 ## Money between people
 
@@ -144,7 +144,7 @@ says so. The pension earned by years of work (`engine/career.js`) is separate an
 - **Gifts and loans.** A gift is gone. A loan is owed back, without interest, and is counted as something
   the player is owed. People can refuse either, pay back if they are able and willing, and a loan can be
   forgiven (it becomes a gift) or lost (if they die).
-- **Pocket money** for the player's children costs money and teaches them a little.
+- **Allowance** for the player's children costs money and teaches them a little.
 
 Other people's own finances are still the simple savings and job they had (`engine/npcLives.js`); what is
 new is that money moving between them and the player really leaves one and reaches the other.
@@ -159,14 +159,20 @@ new is that money moving between them and the player really leaves one and reach
   over stays held in the heir's books until they reach the age.
 - Where the law reserves a share for children, a will cannot leave them out: half the estate is theirs.
 
-## Businesses
+## Businesses and animals
 
-`engine/business.js`. A business is an asset with its own money (its till). Takings go into the till. The
-owner receives only what they choose to take out of profit, and that is taxed as income when they do. Their
-net worth counts the value of their stake, not the takings. Part of a business can be sold to an investor;
-the whole can be sold; a business that runs out of money closes and costs the owner what they put in and
-nothing more. An heir inherits the stake with a manager in place, and has to learn the business before they
-can run it.
+Owning a business is `engine/business.js` (staff, partners, loans, profit tax, heirs), and the family's
+animals, their costs, the vet and pet insurance are `engine/animalCare.js`. The money side here connects to
+them rather than repeating them:
+
+- what a business pays its owner arrives through the year's payroll (`engine/worklife.js`) and is booked
+  once, under "Profits taken from your business"; money put into a business is not income;
+- a business is not part of net worth or of the estate: it passes to an heir whole. My Money lists the
+  player's businesses at roughly what their share would sell for, and opens the business screens from there;
+- a divorce counts the value of the player's business stakes when dividing what the couple has, and if
+  everyday money and the pension plan do not cover what is owed, the former spouse is given a share of a
+  business as a partner;
+- what the animals cost each year is filed under "Pets" in the budget.
 
 ## Milestones, money sense and scenes
 
@@ -181,11 +187,11 @@ move real money through the same engines as the money screens (`engine/moneyEffe
 - The standing with lenders. It is a game measure, not a credit score, and the grouping of countries is a
   simplification for play, not a description of any country's system.
 - Exchange rates, share prices and companies (as before: `engine/currency.js`, `engine/market.js`).
-- Card terms, insurers and premiums, pension plan rules, trust rules, business types and their figures.
-- Which countries fall under which rules for insolvency, divorce, reserved shares and workplace pensions.
+- Card terms, insurers and premiums, pension plan rules and trust rules.
+- Which countries fall under which rules for insolvency, divorce and reserved shares.
   These groupings are simplifications for play and do not describe the law of any country.
 - Tax, estate tax and pensions are the game's simplified rules (`engine/systems.js`, `engine/death.js`,
-  `engine/career.js`). Bank interest and profit taken from a business are taxed at half the income-tax rate,
+  `engine/career.js`). Bank interest and investment payouts are taxed at half the income-tax rate,
   as gains on investments already were. None of this is financial, tax or legal advice.
 
 No real bank details are ever asked for, and nothing about a life's money leaves the device except as part
@@ -210,18 +216,12 @@ their money milestones, their property, and who got what. Their transactions are
   paid first and the owner gets what is left. If it is written off, the loan is still owed.
 - **Winding up an estate** (`engine/death.js`, `PROBATE`). What passes under a will costs 3% of itself to
   wind up, paid from the cash; naming an executor halves that. What passes outside the will costs nothing.
-- **Pets cost money**: food and ordinary vet visits every year, and now and then a large vet's bill. **Pet
-  insurance** pays those bills, above an excess and up to a limit. **Business insurance** pays for fires,
-  floods and break-ins, and pays the business, not the owner.
 - **The finances of the people closest to the player** (`engine/npcMoney.js`). A spouse or partner, grown
   children and brothers and sisters keep fuller books: a home bought with a deposit they saved and a mortgage
   their income supports, debts when money runs out, a home sold if they sink too far, and a temperament
   that shapes how they go about it. A spouse shares the player's home and does not buy one of their own.
   Everyone further away keeps the single savings figure they always had.
-- **Partners in a business are people.** A share can be sold to someone the player knows, who pays from their
-  own savings and can say no, or to an outside investor, who joins the player's contacts. Partners are paid
-  their part of any profit taken out.
-- **Portraits**: people in My Money (a partner, family, business partners, heirs, the executor) appear with
+- **Portraits**: people in My Money (a partner, family, heirs, the executor) appear with
   their portraits, and tapping one opens their profile.
 - **A net-worth chart** in the overview, from a figure recorded at the end of every year. A move to another
   currency starts a new line, so two currencies are never drawn on one scale. Hover or tap for a year's
@@ -243,7 +243,7 @@ their money milestones, their property, and who got what. Their transactions are
 - **Divorce, continued** (`engine/family.js`). What is owed is paid from everyday money, then from the
   pension plan, then as a share of a business. Where what a couple has is shared equally and the marriage
   lasted five years or more, the higher earner pays the lower a share of the difference for half as many
-  years as the marriage lasted. The children stay with the player, and the other parent pays towards them
+  years as the marriage lasted. The children stay with the player, and the other parent pays toward them
   until the youngest is grown. Support ends early if either of them dies.
 - **A state pension** (`engine/retirement.js`, `STATE_PENSION`) from 67, paid by the country the player
   lives in at a share of an ordinary wage there: in full after 35 years of work, less for fewer, never
@@ -268,7 +268,7 @@ their money milestones, their property, and who got what. Their transactions are
 - **a credit card**, for some of them. Whether to have one is a choice made every ten years or so, weighted
   by temperament (most of the easy-going, few of the careful) and by how lenders keep records where they
   live. Some of their spending goes on it; the careful and sensible pay it off, the easy-going pay the
-  minimum and carry the rest, with interest. Two missed years and it is cancelled, the balance becomes their
+  minimum and carry the rest, with interest. Two missed years and it is canceled, the balance becomes their
   debt, and no new card is offered for six years.
 - **early retirement**, from 58, if what they have put by would carry them, on a pension from their years
   of work.
@@ -311,12 +311,20 @@ Fixed as a result of the playtest:
 Not money, but noticed: an auto-player that never sees a doctor dies at a median age of about 60, the same
 as before these changes.
 
+## Merged with main
+
+When this work met main, main already had its own business system, animal care with pet insurance, a
+workplace pension, a payroll for every source of income, mortgages in their own currency, and American
+English. Those were kept, and the money engine was connected to them: my earlier business engine, pet costs,
+pet and business insurance, and the employer share of the pension plan were removed so that nothing exists
+twice. The state pension is one more line in main's payroll.
+
 ## Not built
 
 These were in the brief and are **not** in the game:
 
 - **A shared household ledger.** Each person close to the player keeps their own books; the household's
-  combined money is not one ledger, and relatives' transactions are not itemised the way the player's are.
+  combined money is not one ledger, and relatives' transactions are not itemized the way the player's are.
 - **Beneficiary rules by country** beyond the reserved share for children; **deposit protection and bank failure.**
 - **Pay by pay period.** Payslips show the year month by month, but pay, bills and statements are still
   posted once a year. A year in Pathways is lived as one step: something bought during a year is paid for from the next tick on, so a mortgage taken out is never

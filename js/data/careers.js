@@ -12,6 +12,8 @@
 //   { flag, guaranteed: true, level } is a standing offer that skips the process.
 // fame: { from: level index where fame starts, label }
 // stress: 0–3, wears on mood (and health at 3) every year.
+import { TRACKS, EXISTING, FAMILIES } from './occupations.js';
+
 const L = (...levels) => levels.map(([title, lo, hi, years, needs]) => ({ title, pay: [lo, hi], years, needs }));
 
 export const CAREER_CATEGORIES = [
@@ -28,7 +30,7 @@ const journeyman = (id, name) => ({
     [`Master ${name.toLowerCase()}`, 88, 120, 6], [`${name} contractor`, 110, 180, 0]),
 });
 
-export const CAREERS = [
+const BASE_CAREERS = [
   // ---------- Professional and office ----------
   { id: 'software', name: 'Software', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
     req: { degree: 'university', majors: ['computer_science', 'engineering', 'mathematics'], altCert: 'coding' },
@@ -37,7 +39,7 @@ export const CAREERS = [
       ['Engineering lead', 150, 200, 5], ['App founder', 250, 900, 0]) },
   { id: 'political_staff', name: 'Political staff', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
     req: { degree: 'high', minAge: 18 }, doors: [{ flag: 'party', bonus: 0.25 }, { flag: 'politicalFamily', bonus: 0.15 }],
-    levels: L(['Campaign organiser', 30, 40, 2], ['Assistant to a legislator', 40, 55, 3], ['Policy adviser', 60, 85, 4], ['Special adviser to a minister', 90, 130, 5], ['Chief of staff', 140, 210, 0]) },
+    levels: L(['Campaign organizer', 30, 40, 2], ['Assistant to a legislator', 40, 55, 3], ['Policy adviser', 60, 85, 4], ['Special adviser to a minister', 90, 130, 5], ['Chief of staff', 140, 210, 0]) },
   { id: 'accountant', name: 'Accounting', category: 'professional', type: 'fulltime', hire: 'interview', stress: 1,
     req: { degree: 'university', majors: ['finance', 'business', 'mathematics'], altCert: 'bookkeeping' }, doors: [{ flag: 'alumniIntro', bonus: 0.2 }],
     levels: L(['Junior accountant', 45, 58, 2], ['Accountant', 60, 80, 3], ['Senior accountant', 85, 110, 4], ['Finance director', 130, 190, 0]) },
@@ -127,15 +129,15 @@ export const CAREERS = [
   { id: 'sfx', name: 'Special-effects makeup', category: 'beauty', type: 'fulltime', hire: 'practical', stress: 2,
     req: { programme: 'cosmetology', stats: { 'stats.intellect': 50 } }, focus: 'sfx', doors: [{ flag: 'sfxPiece', bonus: 0.3 }],
     levels: L(['Workshop assistant', 26, 34, 2], ['Special-effects makeup artist', 48, 70, 4], ['Prosthetics designer', 80, 120, 5], ['Head of makeup effects', 130, 200, 0]) },
-  { id: 'theatre_hmu', name: 'Theatre hair and makeup', category: 'beauty', type: 'fulltime', hire: 'practical', stress: 2,
+  { id: 'theatre_hmu', name: 'Theater hair and makeup', category: 'beauty', type: 'fulltime', hire: 'practical', stress: 2,
     req: { programme: 'cosmetology' }, focus: 'theatre',
     doors: [{ flag: 'proBackstage', guaranteed: true, level: 1, text: 'The head of wigs who hired you once wants you back in the department.' },
       { flag: 'theatreCredit', bonus: 0.25 }],
     levels: L(['Dresser and wig assistant', 26, 34, 2], ['Wig and makeup artist', 40, 56, 3], ['Head of wigs', 60, 82, 5], ['Hair and makeup designer', 90, 140, 0]) },
 
   // ---------- Performing and creative ----------
-  { id: 'mt_performer', name: 'Musical theatre', category: 'performing', type: 'fulltime', hire: 'audition', stress: 2,
-    skill: 'tripleThreat', req: { minAge: 18, stats: { tripleThreat: 55 } }, fame: { from: 2, label: 'Musical theatre star' },
+  { id: 'mt_performer', name: 'Musical theater', category: 'performing', type: 'fulltime', hire: 'audition', stress: 2,
+    skill: 'tripleThreat', req: { minAge: 18, stats: { tripleThreat: 55 } }, fame: { from: 2, label: 'Musical theater star' },
     doors: [{ flag: 'proDebut', guaranteed: true, level: 1, text: 'The company that cast you at the open call has your contract ready.' },
       { flag: 'directorRec', bonus: 0.1 }],
     levels: L(['Ensemble member', 28, 40, 2], ['Featured ensemble', 45, 65, 3, { tripleThreat: 66 }],
@@ -181,7 +183,19 @@ export const CAREERS = [
     req: { degree: 'university', maxAge: 34, stats: { 'stats.health': 55 }, cleanRecord: true }, pensionAfter: 20,
     levels: L(['Lieutenant', 48, 60, 3], ['Captain', 66, 82, 4], ['Major', 88, 108, 5], ['Colonel', 115, 145, 6], ['General', 170, 230, 0]) },
 ];
+// The catalog (data/occupations.js) adds its tracks, and says what the older ones are like to work in.
+for (const c of BASE_CAREERS) Object.assign(c, EXISTING[c.id] ?? {});
+export const CAREERS = [...BASE_CAREERS, ...TRACKS];
+for (const c of CAREERS) {
+  c.family ??= c.category;
+  c.hours ??= c.type === 'freelance' ? 25 : 40;
+  c.schedule ??= c.type === 'freelance' ? 'flexible' : 'standard';
+  c.remote ??= 'none';
+  c.payModel ??= c.type === 'freelance' ? 'fees' : 'salary';
+  c.values ??= [];
+}
 export const CAREER_BY_ID = Object.fromEntries(CAREERS.map((c) => [c.id, c]));
+export { FAMILIES };
 
 export const BRANCHES = ['Army', 'Navy', 'Air Force'];
 export const RETIREMENT_AGE = 68;
@@ -210,7 +224,7 @@ export const FAME_ACTIONS = [
   { id: 'photoshoot', name: 'Do a photoshoot', min: 20, skill: 'stats.charm', cash: 15000, fame: 3,
     ok: 'The cover sells out in a week.', fail: 'The photos are fine. Nobody mentions them.' },
   { id: 'commercial', name: 'Film a commercial', min: 30, skill: 'stats.charm', cash: 90000, fame: 2, karma: -2,
-    ok: 'Your face is on every bus shelter in the country, holding a yoghurt.', fail: 'The advert is pulled after a week of complaints.' },
+    ok: 'Your face is on every bus shelter in the country, holding a yogurt.', fail: 'The advert is pulled after a week of complaints.' },
   { id: 'talk_show', name: 'Go on a talk show', min: 35, skill: 'stats.charm', cash: 8000, fame: 8, risky: true,
     ok: 'You tell one story and the clip is everywhere by morning.', fail: 'You say the wrong thing on live television. The clip is everywhere by morning.' },
 ];

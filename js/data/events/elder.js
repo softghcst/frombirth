@@ -4,7 +4,7 @@ import { st, hid, cash, flag, cond, count, ms, ok, bad, any, chk, need } from '.
 export default [
   {
     id: 'life_story', category: 'elder', ageRange: [65, 120], once: true, weight: 2,
-    text: 'A young neighbour asks what life was like when you were their age.',
+    text: 'A young neighbor asks what life was like when you were their age.',
     choices: [
       { label: 'Tell them everything', outcomes: [any('Three hours and two pots of tea. They come back the next week for more.', 'good', st('mood', 8), hid('karma', 3))] },
       { label: 'Write it all down instead', check: chk(0.5, { 'stats.intellect': 0.6, 'hidden.discipline': 0.4 }), outcomes: [
@@ -50,11 +50,11 @@ export default [
   },
   {
     id: 'grand_gift', category: 'elder', ageRange: [60, 120], cooldown: 8,
-    text: 'The community centre that taught you to dance is about to close for lack of funds.',
+    text: 'The community center that taught you to dance is about to close for lack of funds.',
     choices: [
-      { label: 'Donate {$2000}', requires: [need('cashBase', '>=', 2000)], outcomes: [any('They name the tea urn after you. The centre stays open.', 'good', cash(-2000), hid('karma', 15), st('mood', 8), count('donated', 2000))] },
-      { label: 'Organise a fundraiser', check: chk(0.5, { 'stats.charm': 0.6, 'hidden.willpower': 0.3 }), outcomes: [
-        ok('A raffle, a bake sale and a sponsored waltz. You raise enough.', hid('karma', 12), st('mood', 10), ms('Saved the community centre.')),
+      { label: 'Donate {$2000}', requires: [need('cashBase', '>=', 2000)], outcomes: [any('They name the tea urn after you. The center stays open.', 'good', cash(-2000), hid('karma', 15), st('mood', 8), count('donated', 2000))] },
+      { label: 'Organize a fundraiser', check: chk(0.5, { 'stats.charm': 0.6, 'hidden.willpower': 0.3 }), outcomes: [
+        ok('A raffle, a bake sale and a sponsored waltz. You raise enough.', hid('karma', 12), st('mood', 10), ms('Saved the community center.')),
         bad('You raise a third of what is needed. The doors close in the spring.', hid('karma', 6), st('mood', -5)),
       ] },
       { label: 'Let it go', outcomes: [any('It becomes flats. You stop walking down that road.', 'neutral', st('mood', -4))] },

@@ -246,6 +246,7 @@ export function imprison(years, severity = 2) {
   const term = juvenile ? Math.max(1, Math.min(years, 18 - p.age)) : years;
   if (p.career.careerId) fire('dismissed');
   if (p.career.partTime) p.career.partTime = null;
+  if (p.career.sides) p.career.sides = [];
   leaveForPrison();
   p.legal.incarceration = { facility: juvenile ? 'juvenile' : 'prison',
     security: juvenile ? 'min' : severity >= 4 ? 'max' : severity >= 3 ? 'med' : 'min',

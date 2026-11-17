@@ -1,5 +1,5 @@
 // Money between people: how a couple shares the bills, an account held
-// jointly, gifts and loans to people the player knows, and pocket money for
+// jointly, gifts and loans to people the player knows, and allowance for
 // their children.
 //
 // Nobody's money is anybody else's by default. Marriage merges nothing; a
@@ -11,9 +11,10 @@
 import { store, player, country, npcsByRole, log } from '../state.js';
 import { fmtMoney, localCost, clamp } from '../util.js';
 import { rng } from '../rng.js';
-import { FAMILY_LAW, FAMILY_LAW_OF, decimalsOf, PETS, SUPPORT } from '../data/money.js';
+import { FAMILY_LAW, FAMILY_LAW_OF, decimalsOf, SUPPORT } from '../data/money.js';
 import { recordLoss } from './insurance.js';
 import { familyHelp, spendable, takeFrom } from './npcMoney.js';
+import { openBusinesses, valuation } from './business.js';
 import { book, ledgerOf, toMinor, fromMinor } from './ledger.js';
 import { move, banksHere, accounts, rateAt, shareOf } from './banking.js';
 
@@ -221,9 +222,9 @@ function tickLent() {
 // ---------- Children ----------
 
 export const ALLOWANCES = [
-  { name: 'No pocket money', cost: 0 },
-  { name: 'A little pocket money', cost: 250, sense: 1 },
-  { name: 'Generous pocket money', cost: 900, sense: 1 },
+  { name: 'No allowance', cost: 0 },
+  { name: 'A little allowance', cost: 250, sense: 1 },
+  { name: 'Generous allowance', cost: 900, sense: 1 },
 ];
 export const allowance = () => clamp(player().flags.allowance ?? 0, 0, 2);
 const ofAge = () => npcsByRole('child').filter((k) => k.age >= 5 && k.age < 18);
@@ -239,37 +240,19 @@ function tickAllowance() {
   const kids = ofAge();
   if (!level || !kids.length) return;
   const cost = allowanceCost(level);
-  if (p.finance.cash < cost) { log('There was no money for pocket money this year.', 'system', 'neutral'); return; }
+  if (p.finance.cash < cost) { log('There was no money for allowance this year.', 'system', 'neutral'); return; }
   p.finance.cash -= cost;
   for (const k of kids) {
     // Having money of their own to manage teaches something; it does not decide who they become.
     k.flags.moneySense = Math.min(20, (k.flags.moneySense ?? 0) + ALLOWANCES[level].sense);
     k.meters.relationship = clamp(k.meters.relationship + 1);
   }
-  book({ cat: 'childcare', src: 'year', desc: 'Pocket money for your children' });
+  book({ cat: 'childcare', src: 'year', desc: 'Allowance for your children' });
 }
 
-/** Yearly: a partner pays into what you share, debts between people move, children get their pocket money. */
-/** Yearly: what the player's pets cost, and the odd vet's bill nobody saw coming. */
-function tickPets() {
-  const p = player();
-  const c = country();
-  const pets = npcsByRole('pet');
-  if (!pets.length || p.age < 18) return;
-  p.finance.cash -= pets.length * localCost(PETS.upkeep, c);
-  for (const pet of pets) {
-    if (!rng.chance(PETS.emergency)) continue;
-    const bill = localCost(rng.int(PETS.bill[0], PETS.bill[1]), c);
-    p.finance.cash -= bill;
-    recordLoss({ id: pet.id, name: pet.firstName, role: 'pet' }, bill, 0, 'a vet\'s bill');
-    log(`${pet.firstName} needed the vet urgently. The bill was ${fmtMoney(bill, c)}.`, 'system', 'bad');
-  }
-  book({ cat: 'pets', src: 'year', desc: 'Your pets: food, the vet, and everything else' });
-}
-
+/** Yearly: a partner pays into what you share, debts between people move, children get their allowance. */
 export function tickFamilyMoney() {
   const p = player();
-  tickPets();
   // Someone close who can spare it may help when the player is in trouble (engine/npcMoney.js).
   const help = familyHelp();
   if (help) {
@@ -316,15 +299,17 @@ export function payDivorce(npcId, owed) {
       out.pension = take; left -= take;
     }
   }
-  const biz = left > 0 ? player().assets.find((a) => a.kind === 'business' && a.value > 0 && a.stake > 0.2) : null;
-  if (biz && n) {
-    const share = Math.min(biz.stake - 0.1, Math.round(left / biz.value * biz.stake * 1000) / 1000);
+  // Then a share of a business (engine/business.js): the former spouse becomes a partner in it.
+  const b = left > 0 && n ? openBusinesses().find((x) => x.stake > 0.2 && valuation(x) > 0) : null;
+  if (b) {
+    const worth = valuation(b);
+    const share = Math.min(b.stake - 0.1, Math.round(left / worth * 1000) / 1000);
     if (share > 0.01) {
-      biz.stake = Math.round((biz.stake - share) * 1000) / 1000;
-      (biz.partners ??= []).push({ npcId: n.id, stake: share, since: store.state.year });
-      const worth = Math.round(biz.value * share / (biz.stake + share));
-      biz.value -= worth; left -= worth;
-      out.stake = { name: biz.name, share };
+      b.stake = Math.round((b.stake - share) * 1000) / 1000;
+      b.partners.push({ id: n.id, stake: share });
+      (b.history ??= []).push({ year: store.state.year, text: `${n.firstName} ${n.lastName} was given ${Math.round(share * 100)}% of it on a divorce.` });
+      left -= Math.round(worth * share);
+      out.stake = { name: b.name, share };
     }
   }
   if (left > 0) { p.finance.cash -= left; out.cash += left; }
@@ -347,7 +332,7 @@ export function setSupport(exId) {
     const gap = Math.abs(mine - theirs);
     if (gap > Math.max(mine, theirs) * 0.5) add({ kind: 'spousal', dir: mine > theirs ? 'pay' : 'receive', amount: Math.round(gap * SUPPORT.spousalShare), until: store.state.year + Math.min(SUPPORT.maxYears, Math.ceil(years / 2)) });
   }
-  // The children stay with the player; the parent who does not have them pays towards them while they are growing up.
+  // The children stay with the player; the parent who does not have them pays toward them while they are growing up.
   const kids = npcsByRole('child').filter((k) => k.age < 18 && (k.parentIds ?? []).includes(n.id));
   if (kids.length && theirs > 0) add({ kind: 'child', dir: 'receive', amount: Math.round(theirs * SUPPORT.childShare * Math.min(3, kids.length)), until: store.state.year + 18 - Math.min(...kids.map((k) => k.age)) });
   return made;

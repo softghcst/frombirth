@@ -60,7 +60,7 @@ export function view(countryId = player().countryId) {
   const w = world.polity(countryId);
   const a = partners(w);
   return Object.entries(a).map(([id, x]) => ({ id, name: COUNTRIES[id].name, flag: COUNTRIES[id].flag, rel: x.rel, mood: mood(x.rel), leader: x.leader, title: titleOf(id),
-    treaties: w.treaties.filter((t) => t.with === id).map((t) => (t.kind === 'trade' ? 'trade agreement' : 'defence pact')) })).sort((p, q) => q.rel - p.rel);
+    treaties: w.treaties.filter((t) => t.with === id).map((t) => (t.kind === 'trade' ? 'trade agreement' : 'defense pact')) })).sort((p, q) => q.rel - p.rel);
 }
 
 /** Yearly, from the political world's own tick. */
@@ -71,7 +71,7 @@ export function tickDiplomacy(w, tell, playerLeads) {
     x.rel = Math.round(x.rel + (15 - x.rel) * 0.03);
     if (rng.chance(0.09)) x.leader = newLeader(id);
     // An agreement does not outlive the goodwill it was made in.
-    for (const t of w.treaties.filter((q) => q.with === id)) if (x.rel < (t.kind === 'defence' ? 0 : -25)) { tear(w, t); tell(`${name(id).replace(/^t/, 'T')} has torn up its ${t.kind === 'trade' ? 'trade agreement' : 'defence pact'} with ${theCountry(here)}.`, 'bad', 3); }
+    for (const t of w.treaties.filter((q) => q.with === id)) if (x.rel < (t.kind === 'defence' ? 0 : -25)) { tear(w, t); tell(`${name(id).replace(/^t/, 'T')} has torn up its ${t.kind === 'trade' ? 'trade agreement' : 'defense pact'} with ${theCountry(here)}.`, 'bad', 3); }
   }
   const ids = Object.keys(a);
   if (!playerLeads) {
@@ -122,7 +122,7 @@ export function options(cid) {
   return [
     { id: 'visit', name: 'Make a state visit', sub: `Flags, an anthem, and a long dinner. ${fmtMoney(visit, c)} of your own on gifts and tailoring.`, disabled: p.finance.cash < visit },
     { id: 'trade', name: treaty(w, cid, 'trade') ? 'A trade agreement is in force' : 'Propose a trade agreement', sub: 'Money for the treasury while it lasts. They must be friendly enough to talk.', disabled: !!treaty(w, cid, 'trade') || x.rel < 30 },
-    { id: 'pact', name: treaty(w, cid, 'defence') ? 'A defence pact is in force' : 'Propose a defence pact', sub: 'An ally at your back in a crisis. Only close friends sign one.', disabled: !!treaty(w, cid, 'defence') || x.rel < 55 },
+    { id: 'pact', name: treaty(w, cid, 'defence') ? 'A defense pact is in force' : 'Propose a defense pact', sub: 'An ally at your back in a crisis. Only close friends sign one.', disabled: !!treaty(w, cid, 'defence') || x.rel < 55 },
     { id: 'aid', name: 'Send aid', sub: 'It costs the treasury, and is remembered.' },
     { id: 'sanctions', name: 'Impose sanctions', sub: x.rel < 0 ? 'Popular at home. It costs trade, and they will not forget it.' : 'On a country you are on good terms with, this will baffle everyone.' },
   ];
@@ -165,8 +165,8 @@ export function act(cid, id) {
   if (!rng.chance(chance)) { shift(w, cid, -4); return result(false, `The talks with ${them} run for months and end with a communiqué that says nothing. ${x.leader} was not ready to sign.`, 'bad'); }
   sign(w, cid, id === 'pact' ? 'defence' : 'trade');
   shift(w, cid, 8); approve(id === 'pact' ? 1 : 2);
-  post(w, id === 'pact' ? `${theCountry(c.name).replace(/^t/, 'T')} and ${them} have signed a defence pact.` : `A trade agreement with ${them} has been signed.`, { you: true });
-  return result(true, id === 'pact' ? `You and ${x.leader} sign a defence pact under two flags. An attack on one is now the business of both.` : `You and ${x.leader} sign a trade agreement. The treasury will feel it within the year.`);
+  post(w, id === 'pact' ? `${theCountry(c.name).replace(/^t/, 'T')} and ${them} have signed a defense pact.` : `A trade agreement with ${them} has been signed.`, { you: true });
+  return result(true, id === 'pact' ? `You and ${x.leader} sign a defense pact under two flags. An attack on one is now the business of both.` : `You and ${x.leader} sign a trade agreement. The treasury will feel it within the year.`);
 }
 
 /** What the player chose in a scene from abroad. @returns {string} */

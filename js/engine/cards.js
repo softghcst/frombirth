@@ -21,7 +21,7 @@ export const cardById = (id) => list().find((k) => k.id === id);
 export const available = (k) => Math.max(0, k.limit - k.balance);
 export const cardDebt = (p = player()) => (p.finance.cards ?? []).reduce((s, k) => s + k.balance, 0);
 /** How much of all card limits is in use, 0 to 1. */
-export const utilisation = () => { const open = cards(); const lim = open.reduce((s, k) => s + k.limit, 0); return lim ? open.reduce((s, k) => s + k.balance, 0) / lim : 0; };
+export const utilization = () => { const open = cards(); const lim = open.reduce((s, k) => s + k.limit, 0); return lim ? open.reduce((s, k) => s + k.balance, 0) / lim : 0; };
 /**
  * The least a statement asks for: the year's interest on what is owed, plus a small part of it. The
  * balance has already had the interest added, so paying the minimum always brings it down.
@@ -181,8 +181,8 @@ export function tickCards(spent = 0) {
       if (k.balance > 0) f.loans.push({ id: `loan_${k.id}`, kind: 'card debt', principal: k.balance, rate: k.rateBp / 10000, yearsLeft: 6 });
       k.balance = 0;
       mark('default');
-      log(`Your ${k.name.toLowerCase()} was cancelled for non-payment. What you owed is now a debt to be repaid over six years.`, 'system', 'bad');
-      book({ cat: 'debt', src: 'year', desc: `${k.name} cancelled: the balance became a loan` });
+      log(`Your ${k.name.toLowerCase()} was canceled for non-payment. What you owed is now a debt to be repaid over six years.`, 'system', 'bad');
+      book({ cat: 'debt', src: 'year', desc: `${k.name} canceled: the balance became a loan` });
     }
   }
   return anyMissed;

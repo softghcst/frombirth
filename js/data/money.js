@@ -32,8 +32,8 @@ export const CATEGORIES = {
   dividends: { name: 'Dividends and fund payouts', kind: I },
   supportIn: { name: 'Support received', kind: I },
   statePension: { name: 'State pension', kind: I },
+  benefits: { name: 'Unemployment benefit', kind: I },
   distribution: { name: 'Profits taken from your business', kind: I },
-  employerMatch: { name: 'Employer pension contributions', kind: I },
   growth: { name: 'Pension pot: gains and losses', kind: I },
   otherIncome: { name: 'Other money in', kind: I },
 
@@ -79,7 +79,7 @@ const HINTS = [
   [/\b(tuition|school|university|college|course|class|lesson|tutor|textbook|degree)\b/i, 'education'],
   [/\b(doctor|hospital|surgery|clinic|dentist|therap|treatment|medic|prescription|operation)\b/i, 'health'],
   [/\b(insurance|premium|cover)\b/i, 'insurance'],
-  [/\b(flight|holiday|trip|visa|travel|abroad|hotel)\b/i, 'travel'],
+  [/\b(flight|vacation|trip|visa|travel|abroad|hotel)\b/i, 'travel'],
   [/\b(car|bike|garage|fuel|driving|vehicle|boat|plane)\b/i, 'transport'],
   [/\b(dog|cat|pet|vet|puppy|kitten)\b/i, 'pets'],
   [/\b(gift|present|donat|charity|gave|lent|wedding|ring)\b/i, 'giftOut'],
@@ -91,7 +91,7 @@ const HINTS = [
 const HINTS_IN = [
   [/\b(won|jackpot|prize|lottery|winnings)\b/i, 'winnings'],
   [/\b(inherit|left you|estate)\b/i, 'inheritance'],
-  [/\b(gift|gave you|sent you|allowance|pocket money|birthday|grant|scholarship|bursary)\b/i, 'giftIn'],
+  [/\b(gift|gave you|sent you|allowance|allowance|birthday|grant|scholarship|bursary)\b/i, 'giftIn'],
   [/\b(shift|paid you|earned|gig|tips|fee for|freelance|commission|royalt)\b/i, 'gigs'],
 ];
 export function guessCategory(text, moneyIn) {
@@ -107,14 +107,14 @@ export function guessCategory(text, moneyIn) {
 //   minAge / maxAge, needs   who may open one
 //   term       years the money is locked away
 export const PRODUCTS = {
-  current: { name: 'Current account', since: 1900, minAge: 18, rateBp: 0, fee: 0,
+  current: { name: 'Checking account', since: 1900, minAge: 18, rateBp: 0, fee: 0,
     blurb: 'For everyday money. Pays no interest.' },
   savings: { name: 'Savings account', since: 1820, minAge: 18, rateBp: 180, fee: 0,
     blurb: 'Money set aside. Take it out whenever you like.' },
   youth: { name: 'Young saver account', since: 1900, minAge: 7, maxAge: 17, needs: 'guardian', rateBp: 250, fee: 0, cap: 20000,
     blurb: 'Opened with a parent or guardian, who can see it but does not own it. Becomes an ordinary savings account at 18.' },
   student: { name: 'Student account', since: 1960, minAge: 17, needs: 'student', rateBp: 60, fee: 0,
-    blurb: 'For people in higher education. No fees. Becomes a current account when you leave.' },
+    blurb: 'For people in higher education. No fees. Becomes a checking account when you leave.' },
   highyield: { name: 'High-interest savings', since: 1995, minAge: 18, rateBp: 320, fee: 0, min: 5000,
     blurb: 'Better interest, for a larger opening balance.' },
   term2: { name: 'Two-year fixed deposit', since: 1850, minAge: 18, rateBp: 380, fee: 0, min: 1000, term: 2,
@@ -125,18 +125,18 @@ export const PRODUCTS = {
 
 /**
  * Invented banks. `bonusBp` is added to (or taken from) every savings rate;
- * `fee` is a yearly charge on a current account, in base units; `reach` is how
+ * `fee` is a yearly charge on a checking account, in base units; `reach` is how
  * many places in every ten the bank has branches in.
  */
 export const BANKS = [
   { id: 'commonwealth_post', name: 'Post Office Savings', reach: 10, bonusBp: -30, fee: 0, products: ['savings', 'youth', 'term2'],
     blurb: 'A counter in every town. Plain accounts, plain rates.' },
   { id: 'meridian', name: 'Meridian Bank', reach: 7, bonusBp: 0, fee: 0, products: ['current', 'savings', 'youth', 'student', 'term2', 'term5'],
-    blurb: 'A large high-street bank. A little of everything.' },
+    blurb: 'A large national bank. A little of everything.' },
   { id: 'harrowgate', name: 'Harrowgate & Lyle', reach: 4, bonusBp: 30, fee: 90, products: ['current', 'savings', 'highyield', 'term5'],
-    blurb: 'An old name. Charges for a current account, pays a little more on savings.' },
+    blurb: 'An old name. Charges for a checking account, pays a little more on savings.' },
   { id: 'kestrel', name: 'Kestrel Mutual', reach: 5, bonusBp: 20, fee: 0, products: ['savings', 'youth', 'highyield', 'term2', 'term5'],
-    blurb: 'Owned by its savers. No current accounts.' },
+    blurb: 'Owned by its savers. No checking accounts.' },
   { id: 'brightline', name: 'Brightline', reach: 6, bonusBp: 45, fee: 0, since: 2005, products: ['current', 'savings', 'student', 'highyield'],
     blurb: 'No branches, only an app. Good rates while it is trying to grow.' },
   { id: 'ostrava', name: 'Ostrava Trust', reach: 3, bonusBp: 10, fee: 40, products: ['current', 'savings', 'term2', 'term5'],
@@ -215,36 +215,19 @@ const FORCED = 'fr de it es pt be at gr br ar cl co pe mx jp kr ph sa eg ir iq j
 export const RESERVED_SHARE_OF = Object.fromEntries(FORCED.split(' ').map((id) => [id, 0.5]));
 
 // ---------- Saving for retirement ----------
-//   workplace  an employer pays in alongside you while you hold a full-time job
-//   personal   a plan of your own, with nobody else paying in
-const WORKPLACE = 'us uk ca au nz ie nl ch se dk no za sg hk jp de';
-export const PENSION_PLAN_OF = Object.fromEntries(WORKPLACE.split(' ').map((id) => [id, 'workplace']));
-export const PENSION_PLAN = { since: 1975, unlockAge: 60, earlyPenalty: 0.25, match: 0.5, matchUpTo: 0.06, rates: [0, 0.03, 0.06, 0.1, 0.15], bondReturn: 0.03 };
+// A plan of the player's own. An employer's pension is separate (engine/worklife.js).
+export const PENSION_PLAN = { since: 1975, unlockAge: 60, earlyPenalty: 0.25, rates: [0, 0.03, 0.06, 0.1, 0.15], bondReturn: 0.03 };
 
 // ---------- Insurance ----------
 // premium and excess are shares of what is insured. Health cover is separate (engine/systems.js).
 export const INSURANCE = {
   home: { name: 'Home insurance', since: 1850, premium: 0.003, excess: 0.01, blurb: 'Pays to put right damage to a property you own, above the excess.' },
   motor: { name: 'Vehicle insurance', since: 1920, premium: 0.04, excess: 0.05, blurb: 'Pays for damage to a vehicle you own, above the excess.' },
-  pet: { name: 'Pet insurance', since: 1975, premium: 0.12, excess: 0.1, base: 1500, blurb: 'Pays a vet\'s bill for an accident or illness, above the excess.' },
-  business: { name: 'Business insurance', since: 1900, premium: 0.02, excess: 0.05, blurb: 'Pays the business back for fire, flood and theft, above the excess.' },
   life: { name: 'Life insurance', since: 1850, blurb: 'Pays a fixed sum when you die, to whoever you name or else to your estate.', covers: [5, 10, 20], load: 1.3 },
 };
-export const INSURERS = ['Granite Mutual', 'Hearth & Harbour', 'Northlight Assurance'];
+export const INSURERS = ['Granite Mutual', 'Hearth & Harbor', 'Northlight Assurance'];
 
-// ---------- Businesses ----------
-// cost: what it takes to start, in base units. margin: profit as a share of takings in an ordinary year.
-// swing: how much a year can differ. skill: what the owner needs to be good at.
-export const BUSINESS_TYPES = [
-  { id: 'cafe', name: 'Café', cost: 40000, takings: 160000, margin: 0.08, swing: 0.5, skill: 'charm' },
-  { id: 'shop', name: 'Corner shop', cost: 30000, takings: 200000, margin: 0.05, swing: 0.35, skill: 'intellect' },
-  { id: 'trade', name: 'Building firm', cost: 25000, takings: 180000, margin: 0.1, swing: 0.6, skill: 'intellect' },
-  { id: 'studio', name: 'Design studio', cost: 15000, takings: 110000, margin: 0.14, swing: 0.7, skill: 'charm' },
-  { id: 'software', name: 'Software company', cost: 60000, takings: 150000, margin: 0.12, swing: 1.1, skill: 'intellect' },
-];
-export const BUSINESS = { minAge: 18, managerShare: 0.4, saleFee: 0.05, multiple: 3, failAfter: 2, mishap: 0.06 };
-/** What a pet costs a year in food and ordinary vet visits, and how often something goes badly wrong (base units). */
-export const PETS = { upkeep: 600, emergency: 0.12, bill: [800, 4000] };
+// Businesses are engine/business.js and data/business.js; pets' costs and insurance are engine/animalCare.js.
 
 // ---------- Payouts from investments ----------
 // What each holding pays out a year, as a share of its price. The price then
@@ -272,7 +255,7 @@ export const STATE_PENSION = { age: 67, full: 35, floor: 0.4, fallback: 0.06 };
 // Support is a game rule, not any country's law: a former spouse who earns much
 // less is paid a share of the difference for half as many years as the marriage
 // lasted (where what a couple has is shared equally); a parent who does not have
-// the children pays towards them until they are grown.
+// the children pays toward them until they are grown.
 export const SUPPORT = { spousalShare: 0.2, minYears: 5, maxYears: 10, childShare: 0.12 };
 
 // ---------- Learning about money ----------

@@ -50,7 +50,7 @@ export function takeDrivingTest() {
   yearActs().test = 1;
   p.finance.cash -= fee;
   if (!rng.chance(passChance(DRIVING_TEST.pass))) {
-    const text = 'You failed your driving test: you mounted the kerb on the way out of the test centre.';
+    const text = 'You failed your driving test: you mounted the curb on the way out of the test center.';
     log(text, 'system', 'bad');
     return result(false, text);
   }
@@ -78,9 +78,9 @@ export function learnToFly() {
     return result(false, text);
   }
   p.flags.pilotLicence = true;
-  const text = 'You earned your pilot\'s licence.';
+  const text = 'You earned your pilot\'s license.';
   log(text, 'system', 'good');
-  milestone('Earned a pilot\'s licence.', 'life');
+  milestone('Earned a pilot\'s license.', 'life');
   book({ cat: 'transport', src: 'action', desc: text });
   return result(true, text);
 }
@@ -110,8 +110,8 @@ export function listings() {
   }
   return m.listings.vehicle.map((l) => {
     const type = VEHICLE_BY_ID[l.typeId];
-    const blocked = type.needs === 'licence' && !hasLicence() ? 'You need a driving licence.'
-      : type.needs === 'pilot' && !hasPilotLicence() ? 'You need a pilot\'s licence.' : '';
+    const blocked = type.needs === 'licence' && !hasLicence() ? 'You need a driving license.'
+      : type.needs === 'pilot' && !hasPilotLicence() ? 'You need a pilot\'s license.' : '';
     return { ...l, cls: type.cls, blocked, finance: loanOffer(l.price, CAR_LOAN.rate, CAR_LOAN.years) };
   });
 }

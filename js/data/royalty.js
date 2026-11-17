@@ -98,7 +98,7 @@ export const DUTIES = [
   // Ceremonial
   { id: 'troops', kind: 'Ceremonial', name: 'Visit the armed forces', image: [3, 6], text: ['You ate in the mess, asked the right questions, and stayed longer than the schedule allowed.', 'A sergeant teaches you to strip a rifle. You are slow, and he is tactful about it.'] },
   { id: 'memorial', kind: 'Ceremonial', name: 'Lead a service of remembrance', image: [3, 6], support: 2, family: 2, text: ['Two minutes of silence in the rain, and a wreath laid without a single wrong step.', 'An old soldier in the front row salutes you from a wheelchair. You salute back, which is not in the order of service.'] },
-  { id: 'investiture', kind: 'Ceremonial', name: 'Present honours', image: [2, 5], family: 2, mood: 2, text: ['Ninety people, ninety medals, and a different sentence for each of them.', 'A lollipop lady of forty years\' service tells you off for standing in a draught.'] },
+  { id: 'investiture', kind: 'Ceremonial', name: 'Present honors', image: [2, 5], family: 2, mood: 2, text: ['Ninety people, ninety medals, and a different sentence for each of them.', 'A lollipop lady of forty years\' service tells you off for standing in a draft.'] },
   // Diplomatic
   { id: 'tour', kind: 'Diplomatic', name: 'Go on a royal tour', image: [4, 10], mood: 2, support: 1, text: ['Six cities in nine days, a great many children with flags, and one very long banquet.', 'You are garlanded, fed, danced at and rained on, and you would not have missed a minute.'] },
   { id: 'banquet', kind: 'Diplomatic', name: 'Host a state dinner', image: [2, 6], support: 2, family: 3, text: ['A hundred and seventy guests, six courses, and a toast you gave in the visitor\'s own language.', 'The visiting president\'s wife turns out to keep bees. You talk about nothing else, and a treaty is signed in the morning.'] },
@@ -119,7 +119,7 @@ export const DISGRACE = 15;
  * still colour how her descendants are received.
  */
 export const REIGN_NOTES = [
-  { text: 'kept the country out of a war that ruined its neighbours', standing: 6 },
+  { text: 'kept the country out of a war that ruined its neighbors', standing: 6 },
   { text: 'was the first of the house to pay tax like anyone else', standing: 5 },
   { text: 'gave the first royal broadcast, and turned out to be a natural', standing: 4 },
   { text: 'married for love, against the advice of every minister', standing: 4 },
@@ -153,8 +153,8 @@ export const POWERS = [
   { id: 'address', kind: 'advise', name: 'Address the nation', note: 'A broadcast in a hard year. It can steady a country, or fall flat.',
     risky: { base: 0.6, stat: 'charm' }, support: 5, image: 5, text: 'You speak for nine minutes about what the country has been through, and it listens.',
     fail: { support: -2, image: -4, text: 'The words are right and the delivery is wooden. It is mocked by breakfast.' } },
-  { id: 'honours', kind: 'advise', name: 'Honour people nobody has heard of', note: 'Nurses, lollipop ladies, a man who has run a youth club for forty years.',
-    support: 3, image: 3, karma: 3, text: 'You give the highest honours to people who never expected a letter from a palace. It is the most popular list in memory.' },
+  { id: 'honours', kind: 'advise', name: 'Honor people nobody has heard of', note: 'Nurses, lollipop ladies, a man who has run a youth club for forty years.',
+    support: 3, image: 3, karma: 3, text: 'You give the highest honors to people who never expected a letter from a palace. It is the most popular list in memory.' },
   { id: 'books', kind: 'advise', name: 'Open the palace accounts', note: 'Publish what the crown costs, and cut it. The family will hate it.',
     support: 9, family: -12, press: 5, chronicle: 'opened the palace accounts to the public and cut the cost of the crown', text: 'Every bill, published. Three residences are given up. The family eats in silence; the country approves.' },
   { id: 'counsel', kind: 'advise', name: 'Press the government in private', note: 'Your right to advise and to warn. If it leaks, it is meddling.',

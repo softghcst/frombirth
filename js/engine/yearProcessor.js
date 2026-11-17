@@ -1,13 +1,19 @@
 // The annual tick. Order matters: the world ages first, then the player's own
 // systems run, then the death check, then this year's scenarios are queued.
-import { store, player, log, milestone } from '../state.js';
+import { store, player, log, milestone, prunePending } from '../state.js';
 import { tickRelationships } from './relationships.js';
+import { tickAnimals } from './animals.js';
+import { tickCare } from './animalCare.js';
+import { tickEquestrian } from './equestrian.js';
+import { tickLife } from './animalLife.js';
+import { tickArcs } from './animalArcs.js';
+import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
 import { tickChildren } from './children.js';
 import { tickLives } from './npcLives.js';
 import { tickEducation } from './education.js';
-import { tickCareer } from './career.js';
+import { tickWork } from './career.js';
 import { tickFinance } from './finance.js';
 import { tickCrime } from './justice.js';
 import { tickPrison } from './prison.js';
@@ -30,8 +36,8 @@ import { tickKids } from './kidschool.js';
 import { tickFx } from './currency.js';
 import { tickRules } from './rules.js';
 import { tickCover } from './systems.js';
-import { tickEconomy, tickMoves } from './economy.js';
-import { tickStatus, tickApart } from './immigration.js';
+import { tickEconomy, tickMoves, familyLeaves, ties } from './economy.js';
+import { tickStatus, tickApart, tickFamilyStatus } from './immigration.js';
 import { emigrate } from './emigration.js';
 import { tickSchoolFunding } from './edlegacy.js';
 import { tickRoyalEducation } from './royaled.js';
@@ -44,7 +50,6 @@ import { book, booked } from './ledger.js';
 import { tickBanking, tickMoneyReview } from './banking.js';
 import { tickPlan, tickStatePension } from './retirement.js';
 import { tickMarket, payouts } from './market.js';
-import { tickBusiness } from './business.js';
 import { tickInsurance } from './insurance.js';
 import { tickFamilyMoney } from './family.js';
 import { tickTrusts } from './trusts.js';
@@ -81,15 +86,13 @@ export function advanceYear() {
   booked('childcare', 'Your children', tickChildren);
   tickLives();
   booked('education', 'Fees and the cost of studying', tickEducation);
-  const workDeath = booked('salary', 'Work: bonuses and pay-offs', tickCareer);
+  const workDeath = booked('salary', 'Work: bonuses and pay-offs', tickWork);
   if (workDeath) { die(workDeath); return; }
   tickMarket();
   payouts();
   tickPlan();
   tickStatePension();
   tickProperties();
-  tickBusiness();
-  book({ cat: 'business', src: 'year', desc: 'Your businesses' });
   const roadDeath = booked('transport', 'Running your vehicles', tickVehicles);
   if (roadDeath) { die(roadDeath); return; }
   tickBanking();
@@ -108,6 +111,8 @@ export function advanceYear() {
   // The country's politics move on whether or not the player takes any part. The news reaches those old enough to follow it.
   const happened = tickPolity(polity(p.countryId)).sort((a, b) => b.weight - a.weight).slice(0, 3);
   if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
+  // Politics also goes on in countries the player has lived in and still has ties to: the results are there when they look, or go back.
+  for (const id of ties()) if (id !== p.countryId && store.state.polities?.[id]) tickPolity(store.state.polities[id]);
   afterGeneral();
   booked('auto', 'Family', tickKin);
   tickAlumni();
@@ -118,7 +123,9 @@ export function advanceYear() {
   tickRules();
   tickEconomy();
   tickMoves();
+  { const to = familyLeaves(); if (to) emigrate(to, { forced: true, family: true }); }
   tickApart();
+  tickFamilyStatus();
   { const back = tickStatus(); if (back) emigrate(back, { forced: true }); }
   tickSchoolFunding();
   booked('education', 'Your children\'s schooling', tickKids);
@@ -127,6 +134,12 @@ export function advanceYear() {
   for (const n of tickLocal()) log(n.text, 'system', n.tone);
   tickActivism();
   tickCrime();
+  tickAnimals(); // last, so the record sees the year as it ended: who died, who moved, who is left to care
+  tickBreeding(); // young that are due
+  booked('pets', 'Your animals: food, the vet and their care', tickCare); // then what the animals cost, how they fared, and anything that needs a decision
+  tickEquestrian();
+  tickLife(); // behaviour that begins, and what families argue about
+  tickArcs(); // stories that take years
   book({ cat: 'auto', src: 'year', desc: 'The rest of the year' });
   tickSense();
   tickMoneyReview();
@@ -134,5 +147,6 @@ export function advanceYear() {
   const cause = rollDeath();
   if (cause) { die(cause); return; }
 
+  prunePending(); // a scene queued earlier in the year may name someone the year has since taken away
   drawEvents();
 }

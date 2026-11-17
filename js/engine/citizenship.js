@@ -110,7 +110,7 @@ export function naturalisation(p = player()) {
   const convicted = p.legal.record.some((r) => r.convicted && !r.juvenile);
   let why = '';
   if (p.age < 18) why = 'You must be an adult to apply.';
-  else if (base >= 90) why = `${nameOf(here).replace(/^the/, 'The')} does not, in practice, naturalise people who move there.`;
+  else if (base >= 90) why = `${nameOf(here).replace(/^the/, 'The')} does not, in practice, naturalize people who move there.`;
   else if (['student', 'worker', 'temporary_resident'].includes(residency(p).status)) why = 'Citizenship is for permanent residents. Your visa is temporary.';
   else if (lived < needs) why = `You need ${needs} years of residence${spouse ? ' (fewer, as you are married to a citizen)' : ''}. You have ${lived}.`;
   else if (convicted) why = 'A criminal conviction rules the application out.';
@@ -143,9 +143,17 @@ export function naturalise() {
   if (p.flags.citizenOf) p.flags.citizenOf = p.flags.citizenOf.filter((j) => !gone.includes(j));
   p.citizenships.push({ jurisdictionId: n.here, acquisitionType: 'naturalization', acquiredAt: year });
   p.residency = null;
+  // Children under eighteen who live with the player become citizens with them. A husband or wife does not: they apply in their own right.
+  const kids = livingNpcs().filter((k) => k.role === 'child' && k.age < 18 && !k.flags.abroad && !held(k).includes(n.here));
+  for (const k of kids) {
+    k.citizenships ??= held(k).map((j) => ({ jurisdictionId: j, acquisitionType: 'birth', acquiredAt: year - k.age }));
+    if (SINGLE.has(n.here)) for (const rec of k.citizenships) if (!rec.lostAt) rec.lostAt = year;
+    k.citizenships.push({ jurisdictionId: n.here, acquisitionType: 'with a parent', acquiredAt: year });
+    k.residency = null;
+  }
   p.stats.mood = clamp(p.stats.mood + 8);
   const lost = gone.length ? ` ${n.mustRenounce.length ? 'You gave up' : 'By its own law you lost'} your citizenship of ${gone.map(nameOf).join(' and ')}.` : '';
-  const text = `You took the oath. You are a citizen of ${nameOf(n.here)}.${lost} It cost ${fmtMoney(n.fee, c)}.`;
+  const text = `You took the oath. You are a citizen of ${nameOf(n.here)}.${lost}${kids.length ? ` ${kids.map((k) => k.firstName).join(' and ')} became citizen${kids.length > 1 ? 's' : ''} with you.` : ''} It cost ${fmtMoney(n.fee, c)}.`;
   log(text, 'system', 'good');
   milestone(`Became a citizen of ${nameOf(n.here)}.`, 'life');
   return result(true, text);
@@ -154,7 +162,7 @@ export function naturalise() {
 /** Everything the passport page shows about who the player is on paper. */
 export function papers(p = player()) {
   const flag = (j) => COUNTRIES[j]?.flag ?? '';
-  const how = { birth: 'by birth', descent: 'through a parent', naturalization: 'by naturalisation', restoration: 'restored' };
+  const how = { birth: 'by birth', descent: 'through a parent', naturalization: 'by naturalization', restoration: 'restored' };
   const records = p.citizenships ?? held(p).map((j) => ({ jurisdictionId: j, acquisitionType: 'birth', acquiredAt: p.birthYear }));
   const r = residency(p);
   return {

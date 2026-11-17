@@ -57,7 +57,7 @@ export default [
   },
   {
     id: 'card_alert', category: 'money', ageRange: [18, 90], cooldown: 12, weight: 0.6, requires: [need('hasCard', '==', true)],
-    text: 'A message from your bank: two payments on your card that you do not recognise, in a town you have never been to. Was this you?',
+    text: 'A message from your bank: two payments on your card that you do not recognize, in a town you have never been to. Was this you?',
     choices: [
       { label: 'Ring the bank on the number on the card', outcomes: [any('It was not you, and they had guessed as much. The payments are stopped, the card is replaced, and you owe nothing.', 'good', learn(3, 'cardfraud'))] },
       { label: 'Go through the statement first', outcomes: [any('You check every line, find the two that are not yours, and report them the same evening. Nothing is lost.', 'good', learn(4, 'cardfraud'))] },
@@ -66,7 +66,7 @@ export default [
   },
   {
     id: 'money_talk', category: 'money', ageRange: [20, 80], cooldown: 10, cast: { love: 'spouse' },
-    text: 'It starts as a conversation about a holiday and turns into one about money. {love} thinks one of you spends too freely. You are fairly sure which one they mean.',
+    text: 'It starts as a conversation about a vacation and turns into one about money. {love} thinks one of you spends too freely. You are fairly sure which one they mean.',
     choices: [
       { label: 'Sit down and go through it together', outcomes: [any('An hour with the figures on the table. It is less frightening written down, and you agree what matters to both of you.', 'good', rel('love', 6), learn(3, 'couple'))] },
       { label: 'Agree to keep your money separate', outcomes: [any('What is yours is yours, what is theirs is theirs, and the bills get paid. It suits you both, more or less.', 'neutral', rel('love', 1))] },
@@ -97,7 +97,7 @@ export default [
     text: 'A baby is coming. Somebody at work hands you a list of everything you will apparently need. It runs to two pages, and the total at the bottom is not small.',
     choices: [
       { label: 'Start putting money aside now', outcomes: [any('You set aside a little each month. By the time the baby comes, the pram is paid for.', 'good', money('save', { share: 0.2 }), learn(3, 'baby'))] },
-      { label: 'Buy secondhand from other parents', outcomes: [any('A cot from a neighbour, clothes in bin bags from a cousin. The baby does not notice.', 'good', money('spend', { base: 300, what: 'Secondhand things for the baby' }), learn(2, 'baby'))] },
+      { label: 'Buy secondhand from other parents', outcomes: [any('A cot from a neighbor, clothes in bin bags from a cousin. The baby does not notice.', 'good', money('spend', { base: 300, what: 'Secondhand things for the baby' }), learn(2, 'baby'))] },
       { label: 'Buy everything new', outcomes: [any('It is all beautiful, and some of it will be used.', 'neutral', money('spend', { base: 3500, what: 'Everything new for the baby' }), st('mood', 4))] },
     ],
   },
@@ -114,7 +114,7 @@ export default [
     id: 'parent_money_help', category: 'money', ageRange: [30, 80], cooldown: 12, cast: { par: 'parent' }, castRequires: [need('cast.par.age', '>=', 74), need('cast.par.money', '<=', 45)],
     text: '{par} is finding things harder: the stairs, the shopping, the bills. They would never ask, but a little help with money would make a real difference.',
     choices: [
-      { label: 'Help with their bills ({$2000})', requires: [need('cashBase', '>=', 2500)], outcomes: [any('You set up a payment towards their heating and shopping. {par} protests, and then thanks you.', 'good', money('give', { target: 'par', base: 2000 }), hid('karma', 5), mem('par', 'helped_old', 'You looked after me when I needed it.'))] },
+      { label: 'Help with their bills ({$2000})', requires: [need('cashBase', '>=', 2500)], outcomes: [any('You set up a payment toward their heating and shopping. {par} protests, and then thanks you.', 'good', money('give', { target: 'par', base: 2000 }), hid('karma', 5), mem('par', 'helped_old', 'You looked after me when I needed it.'))] },
       { label: 'Give your time instead', outcomes: [any('Saturday mornings are theirs now: shopping, letters, the odd repair.', 'good', rel('par', 8), st('mood', -1), hid('karma', 3))] },
       { label: 'Ask your brothers and sisters to share it', requires: [need('roles', 'has', 'sibling')], outcomes: [any('A family conversation, slightly tense, ends in a plan everyone can live with.', 'neutral', money('give', { target: 'par', base: 700 }), rel('par', 4))] },
       { label: 'Leave them to manage', outcomes: [any('They manage, more or less. You do not ask how.', 'bad', rel('par', -10))] },

@@ -139,7 +139,7 @@ export function tickNpcMoney(npc, quiet = false) {
       const fromHand = Math.min(deposit, Math.max(0, L.savings));
       L.savings -= fromHand;
       if (deposit > fromHand) f.bank.bal -= deposit - fromHand;
-      f.home = { name: rng.pick(['a flat', 'a terraced house', 'a small house', 'a semi-detached house', 'a cottage']), value: price, paid: price, mortgage: loan,
+      f.home = { name: rng.pick(['an apartment', 'a row house', 'a small house', 'a duplex', 'a cottage']), value: price, paid: price, mortgage: loan,
         payment: yearlyPayment(loan, MORTGAGE.rate, MORTGAGE.years), yearsLeft: MORTGAGE.years, bought: store.state.year };
       note(f, npc.age, `Bought ${f.home.name} for ${fmtMoney(price, c)}, with a mortgage.`);
       return 'bought';
@@ -170,7 +170,7 @@ function tickBank(npc, f, earns, s, quiet) {
  * A credit card: the year's everyday spending goes on it (more of it for the
  * easy-going), and it is paid off in full, or the minimum is paid, as suits
  * them. Interest on what is carried; a fee for a missed payment; two missed
- * years and the card is cancelled and the balance becomes their debt. A
+ * years and the card is canceled and the balance becomes their debt. A
  * lender does not offer a new card for some years after that.
  */
 function tickCard(npc, f, earns, s, quiet) {
@@ -205,7 +205,7 @@ function tickCard(npc, f, earns, s, quiet) {
     k.missed += 1; k.balance += localCost(CARDS.lateFee, c);
     if (k.missed >= 2) {
       f.debt += k.balance; f.card = null; f.defaulted = year;
-      if (!quiet) note(f, npc.age, 'Had their credit card cancelled for missed payments.');
+      if (!quiet) note(f, npc.age, 'Had their credit card canceled for missed payments.');
       return;
     }
   } else k.missed = 0;

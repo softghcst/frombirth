@@ -15,25 +15,79 @@ The World Explorer shows them in separate sections and says which is which.
 
 ## Sources and verification
 
-Nothing here was machine-imported. The reference rows were written from general knowledge of these standards:
+The reference rows were written by hand, then checked field by field by `scripts/verify-world.py` against:
 
-- **Codes and regions**: ISO 3166-1 alpha-2 and alpha-3; UN M49 regions (<https://unstats.un.org/unsd/methodology/m49/overview/>).
-- **Currency codes**: ISO 4217 (<https://www.iso.org/iso-4217-currency-codes.html>).
-- **Time zones**: IANA tz database names (<https://www.iana.org/time-zones>). One principal zone per place.
+| Field | Source |
+|---|---|
+| ISO codes, standard name | ISO 3166-1, via [pycountry](https://pypi.org/project/pycountry/) |
+| Currency in use | ISO 4217 as used by the [Unicode CLDR](https://cldr.unicode.org/), via [babel](https://pypi.org/project/babel/) |
+| Official languages | Unicode CLDR territory data, via babel |
+| Time zone | the [IANA time-zone database](https://www.iana.org/time-zones), via [tzdata](https://pypi.org/project/tzdata/) |
+| Capital, continent (as a check on the UN M49 region), cities, the states of American cities | [GeoNames](https://www.geonames.org/) (CC BY 4.0), via [geonamescache](https://pypi.org/project/geonamescache/) |
 
-Every row in `world.js` therefore carries `verification: 'compiled'`. To verify a place: check its row against the sources
-above, then set `verification: 'verified'` for it. `node tests/world.mjs --report` lists what is unverified or thin, place by place.
+The script reads the game's data through Node, so the JavaScript stays the only copy. It writes the results to
+`js/data/worldVerification.js` (generated: do not edit it), and each place carries them as `checked`. The World Explorer shows
+them under "How this was checked". Each field is one of:
 
-No city coordinates, populations or statistics are stored: none could be sourced with a clear licence in this pass, and inventing
-them was not an option.
+- **confirmed**: the source agrees;
+- **differs on purpose**: the source disagrees and a person decided the game's value stands. The reason is in `REVIEWED` in the
+  script. Examples: Taiwan is named "Taiwan" rather than ISO's "Taiwan, Province of China"; Astana is the capital of Kazakhstan
+  although the GeoNames extract still says Nur-Sultan; Ukrainian is Ukraine's only official language although CLDR adds Russian;
+- **not confirmed**: the source has no answer. Ten towns in nine places are absent from the GeoNames extract, which is
+  incomplete (it lacks El Alto, a city of nearly a million), so this is not evidence that they do not exist.
+
+As of this pass, 94 places are fully confirmed and 9 partly, and nothing disagrees with a source unexplained. `node
+tests/world.mjs` fails if anything does. To re-check after changing the data:
+
+```
+python3 -m venv .venv && .venv/bin/pip install pycountry babel tzdata geonamescache
+.venv/bin/python scripts/verify-world.py --write
+```
+
+The packages are for checking only; the game itself still has no dependencies.
+
+### Laws, ages, citizenship and government
+
+`scripts/verify-laws.py` checks these against English Wikipedia's comparison articles, each fetched at a pinned revision
+(listed in `SOURCES` in the script), so a check can be repeated against exactly the same text. Wikipedia is a secondary
+source; it is used because it gathers one table per question for every country, and its rows cite the primary sources
+(ILGA World, Amnesty International, national statutes). Every disagreement was decided by a person and the reason written in
+`DECIDED`; nothing was copied across automatically. Results are in `js/data/lawVerification.js` (generated), shown in the World
+Explorer under "How the law was checked", and `node tests/rules.mjs` fails if anything disagrees unexplained.
+
+| Question | Source article | Test used |
+|---|---|---|
+| Death penalty | Capital punishment by country | in use = an execution in the last ten years |
+| Same-sex marriage | Same-sex marriage (timeline of legalizations) | legal nationwide |
+| LGBT people | LGBTQ rights in Africa / Asia / Europe / the Americas / Oceania | hostile = activity criminalized; protected = civil unions or marriage, and anti-discrimination law |
+| Military service | Conscription (by-country table) | compulsory in law, even where selective |
+| Voting, drinking, pension ages; alcohol bans | Voting age; Legal drinking age; Retirement age | pension age = the men's age, or the standard age where a range is given |
+| Divorce | Divorce law by country | |
+| Citizenship by birth | Jus soli | unconditional, allowing for a diplomats' exception or a registration step |
+| One nationality only | Multiple citizenship, and 13 national nationality-law articles | |
+| Form of government | List of countries by system of government | |
+
+What changed as a result: four countries no longer execute (the Bahamas, DR Congo, Ethiopia, Uganda); six gained "protected"
+status (Bolivia, Czechia, Croatia, Italy, Monaco, Nepal); conscription was added in twelve countries and removed in Syria;
+voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries and an alcohol ban for Pakistan; pension ages
+for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
+nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
+
+Still not checked: driving, gambling, marriage and school-leaving ages; residence years for naturalization (other than
+Malaysia and Singapore); gambling bans; the free-movement lists; tax and health-care models; the status sentences. Where a
+source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
+
+Re-run with `python3 scripts/verify-laws.py --write` (needs access to en.wikipedia.org; pages are cached in `.cache/`).
+
+
+No city coordinates, populations or statistics are stored.
 
 ## Things that are deliberately not what they look like
 
 - **`currency.scale` is a fictional simulation rate**, roughly the order of magnitude of each currency against a base unit so that
   prices read naturally. It is not a market quote and does not move with real exchange rates.
-- **Law flags and legal ages** (same-sex marriage, LGBT protection, gambling, the death penalty, conscription, and the ages and
-  bans in `js/data/rules.js`) are the author's best understanding of
-  the mid-2020s for the 48 newest places and have not been checked against legislation. They configure the game; they are not legal
+- **Law flags and legal ages** are checked against published summaries (above) but are one value per country: real law has
+  exceptions, regional variation and dates of effect that are not modeled. They configure the game; they are not legal
   information. Laws change, and in a long game the simulation changes them too.
 - **"Free health care" and "free university"** are yes-or-no simplifications of systems that are neither.
 - **Browsing groups follow a game convention**, not strict geography: Georgia and Turkey are listed under "Middle East", and Central
@@ -41,7 +95,7 @@ them was not an option.
 
 ## Places that are not ordinary sovereign states
 
-| Place | Modelled as | Tied to | Nationality at birth |
+| Place | Modeled as | Tied to | Nationality at birth |
 |---|---|---|---|
 | Puerto Rico | territory | United States | United States |
 | Aruba | territory (constituent country of the Kingdom of the Netherlands) | Netherlands | Dutch |
@@ -58,31 +112,42 @@ shown on its profile.
 - City profiles (`js/data/cities.js`) are two multipliers, housing and pay, guessed by the author for twelve countries and
   generic elsewhere (the capital, and the first city listed, assumed to be dearer and better paid). They come from no dataset.
   Region names are real and unverified. Regions exist only where a city in the game sits in one; they have no government,
-  taxes or budget of their own. Safety, schools and health care do not vary by city. People the player knows are not paid by city.
+  taxes or budget of their own. Safety, schools and health care vary only by kind of city (capital, largest, other), by a rule in `SERVICES`, not by data about any place. People the player knows are not paid by city.
 - Citizenship rules (`js/data/citizenship.js`) are three yes-or-no lists and a table of years: which places grant citizenship by
   birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
   conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.
 - The moving world (`js/data/economy.js`) is fiction with invented odds. An economy has three states and no numbers behind
-  them (no growth, unemployment or interest rates). Wars can end but never begin. Stability, safety and the other living
+  them (no growth, unemployment or interest rates). Wars can end, and can begin (rarely, and only within a country whose stability is very low; no war is ever between two named countries). Stability, safety and the other living
   scores do not change. Only the player's country of residence feels its economy; other countries' phases are news, and
   nudge where people move and what currencies do. Elections abroad are not simulated. People who move are named in the
   journal but have no city, visa or job search of their own.
 - Legal rules (`js/data/rules.js`) hold one value per place for fourteen questions. Ages are the common adult case and ignore
   exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
-  the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A player in office cannot yet propose these laws:
-  they change only by the world's own slow reforms. School-leaving age is the same everywhere.
+  the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A head of government can change them through the legislature; public
+  opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional law can be changed by the head of a region,
+  for six regional matters, in the countries listed in `REGIONAL_COUNTRIES`; which matters belong to regions in each real
+  country is simplified to one list. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
-  permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
-  New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
-  is no deportation for crime, no overstaying, and no visa needed for a short visit.
+  permanence. Real systems differ by country and are not modeled. The free-movement areas (a European area, and Australia with
+  New Zealand) are simplified lists and unverified. Family members hold dependant status on the player's visa, simplified to one rule for every country; there is no
+  deportation for crime, no overstaying, and no visa needed for a short visit.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
-  is valued in its own country's money and shown at today's rate; its mortgage (if it was bought while living there), rent and
-  running costs are still kept in everyday money. There is one housing index for the whole world, not one per country. No
+  is valued in its own country's money and shown at today's rate, with its mortgage and rent kept in the currency they were
+  agreed in. Each country has its own housing index, moved by its economy; the numbers are invented, not house-price data. No
   country restricts foreign buyers, and there are no tax treaties: nothing is taxed twice, and nothing is credited. Income tax is
   each country's headline rate through one of four shapes (`js/data/systems.js`) with thresholds in multiples of a typical wage:
   not real brackets, and with no social contributions, credits or regional taxes. Health care is one of six models; which
   country has which is unverified, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
   bounds and are pulled weaker by a recession or a crisis, without following measured inflation.
+
+## Where further work would go
+
+In rough order of value:
+
+1. **Check what is still unchecked** (listed above): the remaining ages, residence years and the free-movement lists.
+2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
+5. **Regions with governments and taxes of their own.**
+6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
 
 ## Adding a place
 

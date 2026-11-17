@@ -42,6 +42,16 @@ export const CRISIS_START = {
   },
 };
 
+/**
+ * War can break out, rarely, in a country that is already deeply unstable. It is described as conflict within the
+ * country, never as one named country attacking another: the game does not invent wars between real nations.
+ */
+export const WAR_START = {
+  chance: 0.004,
+  below: 32,
+  text: 'Armed conflict has broken out in {place}. There is fighting in several regions, and the government has declared a state of emergency.',
+};
+
 /** How much a crisis weakens the currency (engine/currency.js pulls each rate towards 1 + this). */
 export const CRISIS_FX = { war: 0.15, collapse: 0.3, shortages: 0.12, inflation: 0.3, sanctions: 0.15 };
 
@@ -54,6 +64,18 @@ export const MOVES = {
   slumpK: 1.6,
   comeBack: 0.04,
   joinYou: 0.015,   // someone close, abroad, moving to where you are
+};
+
+/**
+ * Families and couples that cross borders. Chances, not statistics: the same
+ * everywhere, and the country someone comes from is drawn evenly from the
+ * whole world so that no place is cast as a source of migrants.
+ */
+export const ROOTS = {
+  parentFromAbroad: 0.1,   // a child is born to one parent who came from another country
+  partnerFromAbroad: 0.08, // someone the player meets grew up somewhere else
+  familyLeaves: 0.004,     // a year in which a child's family emigrates
+  familyLeavesCrisisK: 6,
 };
 
 export const NEWS_MAX = 150;

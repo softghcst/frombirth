@@ -94,5 +94,8 @@ export const kin = (value) => ({ type: 'kin', value });
 /** A choice in foreign affairs (engine/diplomacy.js). */
 export const abroad = (value) => ({ type: 'abroad', value });
 
+/** A line in an animal's health record: animalHealth('pet', { kind: 'vet', note, costBase, recovered }). The money is taken by `cash`, once. */
+export const animalHealth = (target, value) => ({ type: 'animalHealth', target, value });
+
 /** Changes a cast member's role and/or flags, e.g. npcSet('lover', { flags: { engaged: true } }). */
 export const npcSet = (target, value) => ({ type: 'npcSet', target, value });

@@ -5,6 +5,7 @@
 //   cast.<key>.<meter>      e.g. cast.director.relationship  (0–100), or cast.kid.age
 //   memory.<key>.<memory>   e.g. memory.manager.coveredShift (100 if they remember it, else 0)
 import { rule, may } from './rules.js';
+import { CAREER_BY_ID } from '../data/careers.js';
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
@@ -59,6 +60,14 @@ const SPECIAL = {
   ownsBusiness: (p) => p.assets.some((a) => a.kind === 'business'),
   jailed: (p) => !!p.legal.incarceration,
   employed: (p) => !!p.career.careerId,
+  // Working life (engine/worklife.js, business.js): the field of the main job, whether the player manages people or owns a business, and the week.
+  workFamily: (p) => CAREER_BY_ID[p.career.careerId]?.family ?? null,
+  salaried: (p) => !!p.career.careerId && CAREER_BY_ID[p.career.careerId].type === 'fulltime',
+  single: (p) => !p.npcIds.some((id) => { const n = store.state.npcs[id]; return n?.alive && ['partner', 'spouse'].includes(n.role); }),
+  ownsBusiness: (p) => (p.businesses ?? []).some((b) => b.status === 'open'),
+  yearsInRole: (p) => p.career.yearsInRole ?? 0,
+  workStress: (p) => p.career.stress ?? 0,
+  hasYoungChild: (p) => p.npcIds.some((id) => { const n = store.state.npcs[id]; return n?.alive && n.role === 'child' && n.age < 12; }),
   tripleThreat: (p) => tripleThreat(p),
   ownsProperty: (p) => p.assets.some((a) => a.kind === 'property'),
   ownsHome: (p) => !!p.homeId && p.assets.some((a) => a.id === p.homeId),

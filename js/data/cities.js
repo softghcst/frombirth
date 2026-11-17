@@ -13,7 +13,7 @@
 
 /** [city, region, housing, pay] */
 const ROWS = {
-  us: [['New York', 'New York', 1.7, 1.2], ['Chicago', 'Illinois', 1.0, 1.05], ['Austin', 'Texas', 1.05, 1.02], ['Seattle', 'Washington', 1.45, 1.15], ['Atlanta', 'Georgia', 0.9, 1.0], ['Denver', 'Colorado', 1.15, 1.03]],
+  us: [['New York', 'New York', 1.7, 1.2], ['Chicago', 'Illinois', 1.0, 1.05], ['Austin', 'Texas', 1.05, 1.02], ['Seattle', 'Washington', 1.45, 1.15], ['Atlanta', 'Georgia', 0.9, 1.0], ['Denver', 'Colorado', 1.15, 1.03], ['Orlando', 'Florida', 0.95, 0.95]],
   uk: [['London', 'England', 1.8, 1.25], ['Manchester', 'England', 0.9, 0.98], ['Leeds', 'England', 0.8, 0.95], ['Bristol', 'England', 1.1, 1.0], ['Glasgow', 'Scotland', 0.75, 0.95], ['Cardiff', 'Wales', 0.8, 0.93]],
   ca: [['Toronto', 'Ontario', 1.5, 1.1], ['Vancouver', 'British Columbia', 1.7, 1.05], ['Montreal', 'Quebec', 1.0, 0.97], ['Calgary', 'Alberta', 0.95, 1.08], ['Halifax', 'Nova Scotia', 0.85, 0.92], ['Winnipeg', 'Manitoba', 0.7, 0.93]],
   mx: [['Mexico City', 'Mexico City', 1.5, 1.2], ['Guadalajara', 'Jalisco', 1.05, 1.02], ['Monterrey', 'Nuevo León', 1.15, 1.2], ['Puebla', 'Puebla', 0.8, 0.9], ['Mérida', 'Yucatán', 0.85, 0.88], ['Oaxaca', 'Oaxaca', 0.75, 0.8]],
@@ -40,6 +40,18 @@ export const CITY_ROWS = Object.fromEntries(Object.entries(ROWS).map(([id, rows]
 export const regionOf = (countryId, name) => CITY_ROWS[countryId]?.[name]?.regionId ?? null;
 
 /** The generic profiles used everywhere else. */
+/**
+ * How a city differs from its country's safety, schools and hospitals, in points on the 0-100 national scores.
+ * A ROUGH RULE BY KIND OF CITY, not data about any particular place: the capital and the largest city have the big
+ * hospitals and more specialist schools, and a little more crime; smaller cities are safer and further from specialist care.
+ */
+export const SERVICES = {
+  capital: { safety: -3, schools: 3, health: 8 },
+  largest: { safety: -4, schools: 2, health: 6 },
+  city: { safety: 3, schools: 0, health: -4 },
+  only: { safety: 0, schools: 0, health: 0 },
+};
+
 export const GENERIC = {
   capital: { housing: 1.3, pay: 1.1 },
   largest: { housing: 1.2, pay: 1.08 },

@@ -1,5 +1,5 @@
-// Saving for retirement: a plan the player pays into from their wages, that an
-// employer may pay into too, invested in the game's own market and locked
+// Saving for retirement: a plan of the player's own, paid into from their wages
+// (an employer's pension is engine/worklife.js's pensionPot), invested in the game's own market and locked
 // until later life.
 //
 // The plan is a ledger account like any other (engine/banking.js), so it is
@@ -9,7 +9,7 @@
 //   p.finance.plan = { accountId, rate }
 import { store, player, country, log, milestone } from '../state.js';
 import { fmtMoney } from '../util.js';
-import { PENSION_PLAN, PENSION_PLAN_OF, STATE_PENSION, STATE_PENSION_OF } from '../data/money.js';
+import { PENSION_PLAN, STATE_PENSION, STATE_PENSION_OF } from '../data/money.js';
 import { typicalWage } from './systems.js';
 import { ledgerOf, toMinor, fromMinor, Money } from './ledger.js';
 import { move, banksHere, accountById, fmtExact } from './banking.js';
@@ -18,7 +18,6 @@ import { pensionEstimate } from './career.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const home = () => country().currency.code;
-export const planKind = (countryId = player().countryId) => PENSION_PLAN_OF[countryId] ?? 'personal';
 /** The player's plan, if it is still open and in the money of the country they live in. */
 export function plan() {
   const pl = player().finance.plan;
@@ -48,7 +47,7 @@ export function openPlan(rate = 0.06) {
   L.accounts[id] = { id, kind: 'bank', cur: home(), bal: 0, bankId: bank.id, product: 'pension', name: 'Pension plan', opened: store.state.year, openedAge: p.age,
     rateBp: 0, feeMinor: 0, unlockAge: PENSION_PLAN.unlockAge, owners: [{ id: p.id, role: 'owner' }] };
   p.finance.plan = { accountId: id, rate };
-  const text = `You started a pension plan${planKind() === 'workplace' ? '. While you hold a full-time job, your employer pays in too' : ''}. ${Math.round(rate * 100)}% of your pay goes into it each year, and it is locked until you are ${PENSION_PLAN.unlockAge}.`;
+  const text = `You started a pension plan of your own, on top of any pension from work. ${Math.round(rate * 100)}% of your pay goes into it each year, and it is locked until you are ${PENSION_PLAN.unlockAge}.`;
   log(text, 'system', 'good');
   milestone('Started saving for retirement.', 'money');
   return result(true, text);
@@ -61,14 +60,8 @@ export function setPlanRate(rate) {
   return result(true, rate ? `${Math.round(rate * 100)}% of your pay will go into your pension plan each year.` : 'You have stopped paying into your pension plan. What is in it stays invested.', 'neutral');
 }
 
-/** What an employer would add this year. */
-export function employerMatch(salary, rate) {
-  const p = player();
-  if (planKind() !== 'workplace' || !p.career.careerId) return 0;
-  return Math.round(salary * Math.min(rate, PENSION_PLAN.matchUpTo) * PENSION_PLAN.match);
-}
 
-/** Yearly, when the year's pay has arrived: the player's share leaves their money, and the employer's is added. */
+/** Yearly, when the year's pay has arrived: the player's share leaves their money for the plan. */
 export function contribute() {
   const p = player();
   const pl = plan();
@@ -77,11 +70,8 @@ export function contribute() {
   const mine = Math.min(Math.round(salary * pl.rate), Math.max(0, Math.floor(p.finance.cash)));
   if (mine <= 0) return 0;
   const cur = home();
-  const match = employerMatch(salary, pl.rate);
-  move(`Paid into your pension plan${match ? ', with your employer\'s share' : ''}`, [[pl.accountId, toMinor(mine + match, cur)]],
-    { walletCur: cur, walletMinor: -toMinor(mine, cur), key: `plan:${store.state.year}`, nominal: [['employerMatch', cur, -toMinor(match, cur)]] });
-  if (match) p.finance.lifetimeEarned += match;
-  return mine + match;
+  move('Paid into your pension plan', [[pl.accountId, toMinor(mine, cur)]], { walletCur: cur, walletMinor: -toMinor(mine, cur), key: `plan:${store.state.year}` });
+  return mine;
 }
 
 /** Yearly: the pot follows the market, for better or worse. */
@@ -111,7 +101,7 @@ export function projection() {
   if (!pl) return null;
   const years = Math.max(0, PENSION_PLAN.unlockAge - p.age);
   const salary = p.career.retired ? 0 : p.career.salary || 0;
-  const yearly = pl.current ? Math.round(salary * pl.rate) + employerMatch(salary, pl.rate) : 0;
+  const yearly = pl.current ? Math.round(salary * pl.rate) : 0;
   const grow = (r) => { let pot = fromMinor(pl.account.bal, pl.account.cur); for (let i = 0; i < years; i++) pot = pot * (1 + r) + yearly; return Math.round(pot); };
   return { at: PENSION_PLAN.unlockAge, years, yearly, low: grow(0.01), mid: grow(0.04), high: grow(0.07), pension: p.career.retired ? p.career.pensionPerYear : pensionEstimate() };
 }

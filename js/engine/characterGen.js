@@ -1,9 +1,10 @@
 // Creates a brand-new life: the player, their family and the opening journal.
-import { atBirth, issuer } from './citizenship.js';
+import { atBirth, held } from './citizenship.js';
+import { fromAbroad, rollsRoots } from './economy.js';
 import { rng } from '../rng.js';
 import { bornInto, birthKind, titleOf, dress } from './royalty.js';
 import { seatFamily, nameOf, monarchOf, bloodParent, relationToMonarch } from './dynasty.js';
-import { uid } from '../util.js';
+import { uid, theCountry } from '../util.js';
 import { COUNTRIES, COUNTRY_LIST, surnameFor } from '../data/countries.js';
 import { TRAIT_BY_ID } from '../data/traits.js';
 import { ILLNESS_BY_ID } from '../data/illnesses.js';
@@ -16,6 +17,7 @@ import { normalize, skinDepth, INHERITED_KEYS } from '../avatar/catalog.js';
 import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
 import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
 import { startingSense } from './achievements.js';
+import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -57,6 +59,15 @@ export function createLife(opts = {}) {
   const seat = birth === 'royal' ? seatFamily(c, year, fam, gender) : null;
   const { mother, father } = fam;
   const genes = father ?? unknownParent(mother);
+  // One family in ten has a parent who came from another country. Their own parents, if living, are still there.
+  let roots = null;
+  if (!birth && rollsRoots('parentFromAbroad')) {
+    const parent = father && rng.chance(0.5) ? father : mother;
+    const from = fromAbroad(parent, c.id, { settled: true, keepSurname: parent === father, year });
+    const theirs = fam.grandparents.filter((g) => g.flags.side === (parent === father ? 'paternal' : 'maternal'));
+    for (const g of theirs) { g.bornIn = from; g.firstName = rng.pick(COUNTRIES[from].names[g.gender] ?? COUNTRIES[from].names.female); g.flags.abroad = from; g.flags.from = from; }
+    roots = { parent, from, there: theirs.length };
+  }
   const family = [mother, ...(father ? [father] : []), ...fam.siblings, ...fam.grandparents, ...fam.pets];
 
   if (designed) {
@@ -96,7 +107,7 @@ export function createLife(opts = {}) {
       // People born in a territory ordinarily hold the nationality of the state it belongs to.
       ...(c.place?.nationalityOf ? { citizenOf: [c.place.nationalityOf] } : {}) },
     // Citizenship is its own record: birthplace, residence and nationality are three different things.
-    citizenships: atBirth(c.id, [[issuer(c.id)], [issuer(c.id)]], year),
+    citizenships: atBirth(c.id, [held(mother), father ? held(father) : []], year),
     locations: [{ countryId: c.id, city, from: year }],
     milestones: [{ age: 0, text: `Born in ${city}, ${c.name}.`, kind: 'life' }],
     counters: { crimes: 0, kills: 0, donated: 0, gambled: 0, yearsJailed: 0, escapes: 0,
@@ -146,6 +157,7 @@ export function createLife(opts = {}) {
   for (const s of fam.siblings.filter((n) => n !== fam.twin)) {
     journal.push(j(`You have an older ${s.gender === 'male' ? 'brother' : 'sister'}, ${s.firstName}, age ${s.age}.`));
   }
+  if (roots) journal.push(j(`Your ${roots.parent.gender === 'male' ? 'father' : 'mother'} came to ${theCountry(c.name)} from ${theCountry(COUNTRIES[roots.from].name)}${roots.there ? `, where your grandparent${roots.there > 1 ? 's' : ''} on that side still live${roots.there > 1 ? '' : 's'}` : ''}.`));
   if (fam.grandparents.length) {
     journal.push(j(`You have ${fam.grandparents.length} living grandparent${fam.grandparents.length > 1 ? 's' : ''}.`));
   }
@@ -196,5 +208,8 @@ export function createLife(opts = {}) {
     ...(seat ? { dynasties: { [c.id]: seat.dynasty } } : {}),
   };
   if (seat) dress(seat.dynasty, state);
+  // The family's animals were there first: they go on the family's record with the line that introduces them.
+  for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => !e.animal && e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });
+  reconcileAnimals(state);
   return state;
 }

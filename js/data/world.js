@@ -5,11 +5,11 @@
 // knowing it by name. Gameplay numbers (pay, prices, taxes) are elsewhere:
 // data/countries.js, data/living.js.
 //
-// PROVENANCE. Compiled by hand from general reference knowledge of ISO 3166-1
-// (codes), ISO 4217 (currencies, in countries.js), the UN M49 regions and the
-// IANA time-zone names. It was NOT machine-imported from those sources, so
-// each row carries verification: 'compiled' until someone checks it against
-// the source. docs/WORLD_DATA.md lists what to check and how.
+// PROVENANCE. Written by hand, then checked field by field against ISO 3166-1,
+// ISO 4217 and the Unicode CLDR, the IANA time-zone database and GeoNames by
+// scripts/verify-world.py. The results are in data/worldVerification.js (generated);
+// each place's `checked` says what was confirmed. Form of government and the status
+// sentences have no machine-readable source and remain hand-written.
 //
 // `group` is the reference grouping used for browsing (it follows a common
 // game convention: Georgia and Turkey sit under "Middle East", and Central
@@ -20,6 +20,8 @@
 //   type: 'country' | 'territory' | 'special_administrative_region' | 'jurisdiction'
 //   parent: the place it is constitutionally tied to, if any
 //   status: one neutral sentence, for places that are not ordinary sovereign states
+import { CHECKED } from './worldVerification.js';
+
 const NA = 'North America';
 const SA = 'South America';
 const EU = 'Europe';
@@ -31,7 +33,7 @@ const OC = 'Oceania';
 const ROWS = {
   // ---------- North America (16) ----------
   aw: ['AW', 'ABW', 'territory', 'nl', NA, 'Americas', 'Oranjestad', ['Dutch', 'Papiamento'], 'America/Aruba', 'Parliamentary democracy within a kingdom',
-    'A constituent country of the Kingdom of the Netherlands: self-governing at home, with defence and foreign affairs handled by the Kingdom. Its people hold Dutch nationality.'],
+    'A constituent country of the Kingdom of the Netherlands: self-governing at home, with defense and foreign affairs handled by the Kingdom. Its people hold Dutch nationality.'],
   bs: ['BS', 'BHS', 'country', null, NA, 'Americas', 'Nassau', ['English'], 'America/Nassau', 'Parliamentary constitutional monarchy'],
   bz: ['BZ', 'BLZ', 'country', null, NA, 'Americas', 'Belmopan', ['English', 'Spanish', 'Belizean Creole'], 'America/Belize', 'Parliamentary constitutional monarchy'],
   ca: ['CA', 'CAN', 'country', null, NA, 'Americas', 'Ottawa', ['English', 'French'], 'America/Toronto', 'Federal parliamentary constitutional monarchy'],
@@ -55,7 +57,7 @@ const ROWS = {
   br: ['BR', 'BRA', 'country', null, SA, 'Americas', 'Brasília', ['Portuguese'], 'America/Sao_Paulo', 'Federal presidential republic'],
   cl: ['CL', 'CHL', 'country', null, SA, 'Americas', 'Santiago', ['Spanish'], 'America/Santiago', 'Presidential republic'],
   co: ['CO', 'COL', 'country', null, SA, 'Americas', 'Bogotá', ['Spanish'], 'America/Bogota', 'Presidential republic'],
-  ec: ['EC', 'ECU', 'country', null, SA, 'Americas', 'Quito', ['Spanish'], 'America/Guayaquil', 'Presidential republic'],
+  ec: ['EC', 'ECU', 'country', null, SA, 'Americas', 'Quito', ['Spanish', 'Kichwa'], 'America/Guayaquil', 'Presidential republic'],
   gy: ['GY', 'GUY', 'country', null, SA, 'Americas', 'Georgetown', ['English', 'Guyanese Creole'], 'America/Guyana', 'Presidential republic with a parliament'],
   py: ['PY', 'PRY', 'country', null, SA, 'Americas', 'Asunción', ['Spanish', 'Guaraní'], 'America/Asuncion', 'Presidential republic'],
   pe: ['PE', 'PER', 'country', null, SA, 'Americas', 'Lima', ['Spanish', 'Quechua'], 'America/Lima', 'Presidential republic'],
@@ -78,7 +80,7 @@ const ROWS = {
   hu: ['HU', 'HUN', 'country', null, EU, 'Europe', 'Budapest', ['Hungarian'], 'Europe/Budapest', 'Parliamentary republic'],
   ie: ['IE', 'IRL', 'country', null, EU, 'Europe', 'Dublin', ['English', 'Irish'], 'Europe/Dublin', 'Parliamentary republic'],
   it: ['IT', 'ITA', 'country', null, EU, 'Europe', 'Rome', ['Italian'], 'Europe/Rome', 'Parliamentary republic'],
-  mc: ['MC', 'MCO', 'country', null, EU, 'Europe', 'Monaco', ['French'], 'Europe/Monaco', 'Constitutional principality'],
+  mc: ['MC', 'MCO', 'country', null, EU, 'Europe', 'Monaco', ['French'], 'Europe/Monaco', 'Semi-constitutional monarchy (principality)'],
   nl: ['NL', 'NLD', 'country', null, EU, 'Europe', 'Amsterdam (capital); The Hague (seat of government)', ['Dutch'], 'Europe/Amsterdam', 'Parliamentary constitutional monarchy'],
   no: ['NO', 'NOR', 'country', null, EU, 'Europe', 'Oslo', ['Norwegian'], 'Europe/Oslo', 'Parliamentary constitutional monarchy'],
   pl: ['PL', 'POL', 'country', null, EU, 'Europe', 'Warsaw', ['Polish'], 'Europe/Warsaw', 'Parliamentary republic'],
@@ -98,11 +100,11 @@ const ROWS = {
   ao: ['AO', 'AGO', 'country', null, AF, 'Africa', 'Luanda', ['Portuguese'], 'Africa/Luanda', 'Presidential republic'],
   dj: ['DJ', 'DJI', 'country', null, AF, 'Africa', 'Djibouti City', ['French', 'Arabic', 'Somali', 'Afar'], 'Africa/Djibouti', 'Presidential republic'],
   cd: ['CD', 'COD', 'country', null, AF, 'Africa', 'Kinshasa', ['French', 'Lingala', 'Swahili', 'Kikongo', 'Tshiluba'], 'Africa/Kinshasa', 'Semi-presidential republic',
-    'The Democratic Republic of the Congo (capital Kinshasa). Not to be confused with its neighbour the Republic of the Congo (capital Brazzaville), which is a different country.'],
+    'The Democratic Republic of the Congo (capital Kinshasa). Not to be confused with its neighbor the Republic of the Congo (capital Brazzaville), which is a different country.'],
   eg: ['EG', 'EGY', 'country', null, AF, 'Africa', 'Cairo', ['Arabic'], 'Africa/Cairo', 'Semi-presidential republic'],
   et: ['ET', 'ETH', 'country', null, AF, 'Africa', 'Addis Ababa', ['Amharic', 'Oromo', 'Tigrinya', 'Somali'], 'Africa/Addis_Ababa', 'Federal parliamentary republic'],
   ke: ['KE', 'KEN', 'country', null, AF, 'Africa', 'Nairobi', ['Swahili', 'English'], 'Africa/Nairobi', 'Presidential republic'],
-  ma: ['MA', 'MAR', 'country', null, AF, 'Africa', 'Rabat', ['Arabic', 'Tamazight', 'French'], 'Africa/Casablanca', 'Parliamentary constitutional monarchy'],
+  ma: ['MA', 'MAR', 'country', null, AF, 'Africa', 'Rabat', ['Arabic', 'Tamazight', 'French'], 'Africa/Casablanca', 'Semi-constitutional monarchy'],
   ng: ['NG', 'NGA', 'country', null, AF, 'Africa', 'Abuja', ['English', 'Hausa', 'Yoruba', 'Igbo'], 'Africa/Lagos', 'Federal presidential republic'],
   za: ['ZA', 'ZAF', 'country', null, AF, 'Africa', 'Pretoria (executive); Cape Town (legislative); Bloemfontein (judicial)', ['English', 'isiZulu', 'isiXhosa', 'Afrikaans'], 'Africa/Johannesburg', 'Parliamentary republic with an executive president'],
   tn: ['TN', 'TUN', 'country', null, AF, 'Africa', 'Tunis', ['Arabic', 'French'], 'Africa/Tunis', 'Presidential republic'],
@@ -114,14 +116,14 @@ const ROWS = {
   ir: ['IR', 'IRN', 'country', null, ME, 'Asia', 'Tehran', ['Persian'], 'Asia/Tehran', 'Islamic republic'],
   iq: ['IQ', 'IRQ', 'country', null, ME, 'Asia', 'Baghdad', ['Arabic', 'Kurdish'], 'Asia/Baghdad', 'Federal parliamentary republic'],
   il: ['IL', 'ISR', 'country', null, ME, 'Asia', 'Jerusalem (seat of government; status disputed internationally)', ['Hebrew', 'Arabic'], 'Asia/Jerusalem', 'Parliamentary republic'],
-  jo: ['JO', 'JOR', 'country', null, ME, 'Asia', 'Amman', ['Arabic'], 'Asia/Amman', 'Parliamentary constitutional monarchy'],
-  kw: ['KW', 'KWT', 'country', null, ME, 'Asia', 'Kuwait City', ['Arabic'], 'Asia/Kuwait', 'Constitutional emirate'],
+  jo: ['JO', 'JOR', 'country', null, ME, 'Asia', 'Amman', ['Arabic'], 'Asia/Amman', 'Semi-constitutional monarchy'],
+  kw: ['KW', 'KWT', 'country', null, ME, 'Asia', 'Kuwait City', ['Arabic'], 'Asia/Kuwait', 'Semi-constitutional monarchy (emirate)'],
   lb: ['LB', 'LBN', 'country', null, ME, 'Asia', 'Beirut', ['Arabic', 'French'], 'Asia/Beirut', 'Parliamentary republic'],
-  qa: ['QA', 'QAT', 'country', null, ME, 'Asia', 'Doha', ['Arabic'], 'Asia/Qatar', 'Emirate'],
+  qa: ['QA', 'QAT', 'country', null, ME, 'Asia', 'Doha', ['Arabic'], 'Asia/Qatar', 'Semi-constitutional monarchy (emirate)'],
   sa: ['SA', 'SAU', 'country', null, ME, 'Asia', 'Riyadh', ['Arabic'], 'Asia/Riyadh', 'Absolute monarchy'],
   sy: ['SY', 'SYR', 'country', null, ME, 'Asia', 'Damascus', ['Arabic'], 'Asia/Damascus', 'Republic under a transitional government'],
   tr: ['TR', 'TUR', 'country', null, ME, 'Asia', 'Ankara', ['Turkish'], 'Europe/Istanbul', 'Presidential republic'],
-  ae: ['AE', 'ARE', 'country', null, ME, 'Asia', 'Abu Dhabi', ['Arabic'], 'Asia/Dubai', 'Federation of emirates'],
+  ae: ['AE', 'ARE', 'country', null, ME, 'Asia', 'Abu Dhabi', ['Arabic'], 'Asia/Dubai', 'Federal semi-constitutional monarchy'],
 
   // ---------- Asia (18) ----------
   af: ['AF', 'AFG', 'country', null, AS, 'Asia', 'Kabul', ['Dari', 'Pashto'], 'Asia/Kabul', 'De facto theocratic emirate'],
@@ -132,7 +134,7 @@ const ROWS = {
   in: ['IN', 'IND', 'country', null, AS, 'Asia', 'New Delhi', ['Hindi', 'English'], 'Asia/Kolkata', 'Federal parliamentary republic'],
   id: ['ID', 'IDN', 'country', null, AS, 'Asia', 'Jakarta', ['Indonesian'], 'Asia/Jakarta', 'Presidential republic'],
   jp: ['JP', 'JPN', 'country', null, AS, 'Asia', 'Tokyo', ['Japanese'], 'Asia/Tokyo', 'Parliamentary constitutional monarchy'],
-  kz: ['KZ', 'KAZ', 'country', null, AS, 'Asia', 'Astana', ['Kazakh', 'Russian'], 'Asia/Almaty', 'Presidential republic'],
+  kz: ['KZ', 'KAZ', 'country', null, AS, 'Asia', 'Astana', ['Kazakh', 'Russian'], 'Asia/Almaty', 'Semi-presidential republic'],
   my: ['MY', 'MYS', 'country', null, AS, 'Asia', 'Kuala Lumpur', ['Malay'], 'Asia/Kuala_Lumpur', 'Federal parliamentary elective constitutional monarchy'],
   mn: ['MN', 'MNG', 'country', null, AS, 'Asia', 'Ulaanbaatar', ['Mongolian'], 'Asia/Ulaanbaatar', 'Semi-presidential republic'],
   np: ['NP', 'NPL', 'country', null, AS, 'Asia', 'Kathmandu', ['Nepali'], 'Asia/Kathmandu', 'Federal parliamentary republic'],
@@ -141,7 +143,7 @@ const ROWS = {
   sg: ['SG', 'SGP', 'country', null, AS, 'Asia', 'Singapore', ['English', 'Malay', 'Mandarin', 'Tamil'], 'Asia/Singapore', 'Parliamentary republic'],
   kr: ['KR', 'KOR', 'country', null, AS, 'Asia', 'Seoul', ['Korean'], 'Asia/Seoul', 'Presidential republic'],
   th: ['TH', 'THA', 'country', null, AS, 'Asia', 'Bangkok', ['Thai'], 'Asia/Bangkok', 'Parliamentary constitutional monarchy'],
-  tw: ['TW', 'TWN', 'jurisdiction', null, AS, 'Asia', 'Taipei', ['Mandarin', 'Taiwanese Hokkien'], 'Asia/Taipei', 'Semi-presidential republic',
+  tw: ['TW', 'TWN', 'jurisdiction', null, AS, 'Asia', 'Taipei', ['Mandarin', 'Taiwanese Hokkien', 'Hakka'], 'Asia/Taipei', 'Semi-presidential republic',
     'Governed separately, with its own elected government, laws, currency and passports. Its political status is disputed; the game lists it as a distinct place to live without taking a position on that.'],
   vn: ['VN', 'VNM', 'country', null, AS, 'Asia', 'Hanoi', ['Vietnamese'], 'Asia/Ho_Chi_Minh', 'One-party socialist republic'],
 
@@ -168,6 +170,13 @@ export const REFERENCE = {
 export const GROUPS = [NA, SA, EU, AF, ME, AS, OC];
 const REFERENCE_IDS = new Set(Object.values(REFERENCE).flat());
 
+/** One word for a place's checks: every covered field confirmed, some not, or never checked. */
+function verdict(c) {
+  if (!c) return 'compiled';
+  const covered = Object.values(c).filter((v) => v.status !== 'unchecked');
+  if (covered.some((v) => v.status === 'mismatch')) return 'compiled';
+  return covered.every((v) => v.status === 'ok' || v.status === 'review') ? 'verified' : 'partly verified';
+}
 const TYPE_LABEL = { country: 'Country', territory: 'Territory', special_administrative_region: 'Special administrative region', jurisdiction: 'Self-governing jurisdiction' };
 
 /**
@@ -187,13 +196,14 @@ const TYPE_LABEL = { country: 'Country', territory: 'Territory', special_adminis
  * @property {string} government    form of government (reference; who governs in a save is simulation)
  * @property {?string} status       a neutral sentence for places that are not ordinary sovereign states
  * @property {boolean} reference    one of the 102 reference places
- * @property {'compiled'|'verified'} verification
+ * @property {'verified'|'partly verified'|'compiled'} verification  every field a source covers agrees ('verified'), or some could not be confirmed
+ * @property {Object<string,{status:string, note?:string}>} checked  field by field, from scripts/verify-world.py
  */
 /** @type {Object<string, Place>} */
 export const PLACES = Object.fromEntries(Object.entries(ROWS).map(([id, r]) => [id, {
   id, iso2: r[0], iso3: r[1], type: r[2], typeLabel: TYPE_LABEL[r[2]], parentId: r[3], nationalityOf: r[2] === 'territory' || r[2] === 'special_administrative_region' ? r[3] : null,
   group: r[4], unRegion: r[5], capital: r[6], languages: r[7], timeZone: r[8], government: r[9], status: r[10] ?? null,
-  reference: REFERENCE_IDS.has(id), verification: 'compiled', metadataVersion: 1,
+  reference: REFERENCE_IDS.has(id), checked: CHECKED[id] ?? {}, verification: verdict(CHECKED[id]), metadataVersion: 1,
 }]));
 
 export const place = (id) => PLACES[id] ?? null;

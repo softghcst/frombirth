@@ -30,7 +30,8 @@ export const ACHIEVEMENTS = [
   { id: 'long_investor', name: 'Long-term investor', blurb: 'Hold an investment for ten years.',
     earned: (p) => p.assets.some((a) => a.kind === 'security' && p.age - a.boughtAtAge >= 10) },
   { id: 'builder', name: 'Business builder', blurb: 'Own a business that has traded for five years.',
-    earned: (p) => p.assets.some((a) => a.kind === 'business' && !a.inherited && store.state.year - a.founded >= 5) },
+    // A business the player started (not one handed down to them) that has traded for five years (engine/business.js).
+    earned: (p) => (p.businesses ?? []).some((b) => b.status === 'open' && !(b.history ?? []).some((h) => /passed to/.test(h.text)) && store.state.year - b.founded >= 5) },
   { id: 'retire_ready', name: 'Ready to retire', blurb: 'Have a pension and money of your own that would cover what you spend for twenty years.',
     earned: (p) => { const o = overview(); const pension = p.career.retired ? p.career.pensionPerYear : pensionEstimate(); const own = Math.max(0, o.cash) + bankWorth() + o.investments;
       return p.age >= 50 && o.spent > 0 && pension + own / 20 >= o.spent; } },

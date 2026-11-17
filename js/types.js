@@ -216,7 +216,7 @@
  * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
  * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity'|'property'|'vehicle'|'sellInvestments'|'prison'|'giveVehicle'|'npcTransition',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity'|'property'|'vehicle'|'sellInvestments'|'prison'|'giveVehicle'|'npcTransition'|'animalHealth'|'animal'|'animalLife'|'animalArc',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry
@@ -251,9 +251,10 @@
  * @property {{prices:Object<string,number>, history:Object<string,number[]>, housing:number, listings?:object}} market  prices in base units
  * @property {{id:string, lastAge:number}[]} eventHistory
  * @property {{id:string, cast:Object<string,string>}[]} pendingEvents  modal queue; survives reload
+ * @property {object} [animals]  the family's animals, their keepers and their moments, kept across generations (engine/animals.js)
  * @property {number} rngSeed
  * @property {{theme:'auto'|'light'|'dark'}} settings
- * @typedef {{age:number, text:string, kind:'event'|'choice'|'outcome'|'system', tone:'good'|'bad'|'neutral'}} JournalEntry
+ * @typedef {{age:number, text:string, kind:'event'|'choice'|'outcome'|'system', tone:'good'|'bad'|'neutral', animal?:{id:string, ev:string}}} JournalEntry  `animal` marks a line that tells a moment in an animal's life
  *
  * @typedef {{slotId:string, name:string, age:number, gender:string, countryId:string,
  *            netWorth:number, updatedAt:number}} SaveSlotMeta

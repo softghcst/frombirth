@@ -94,7 +94,7 @@ export function setCover(on) {
     return result(true, text);
   }
   delete p.flags.healthCover;
-  const text = 'You cancelled your health insurance. From now on you pay the whole bill.';
+  const text = 'You canceled your health insurance. From now on you pay the whole bill.';
   log(text, 'system', 'neutral');
   return result(true, text, 'neutral');
 }

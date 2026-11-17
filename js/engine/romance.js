@@ -1,5 +1,6 @@
 // Romance: meeting people, dating, engagement, weddings (with or without a
 // prenup), break-ups and divorce.
+import { fromAbroad, rollsRoots } from './economy.js';
 import { may } from './rules.js';
 import { rng } from '../rng.js';
 import * as crown from './royalty.js';
@@ -13,6 +14,7 @@ import { conceive, canConceive } from './children.js';
 import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
 import { splitJoint, familyLawOf, payDivorce, setSupport } from './family.js';
+import { stakesWorth } from './business.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -89,6 +91,7 @@ export function meetSomeone(place) {
     lastName: rng.pick(surnames) });
   // Someone who would go out with the player is, by definition, drawn to people like them.
   npc.orientation = npc.gender === p.gender ? rng.pick(['gay', 'gay', 'bisexual', 'pansexual']) : rng.pick(['straight', 'straight', 'straight', 'bisexual']);
+  if (p.age >= ADULT && rollsRoots('partnerFromAbroad')) fromAbroad(npc, p.countryId);
   if (place === 'app') npc.meters.charm = clamp(npc.meters.charm - rng.int(0, 15)); // profiles flatter
   ensureLife(npc);
   const m = npc.meters;
@@ -130,7 +133,8 @@ export function romanceActions(npc) {
   const p = player();
   const adults = p.age >= ADULT && npc.age >= ADULT;
   const a = [];
-  if (['friend', 'classmate', 'coworker', 'ex'].includes(npc.role) && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
+  // Not someone who reports to you: a manager asking is not a free question.
+  if (['friend', 'classmate', 'coworker', 'ex'].includes(npc.role) && !npc.flags.report && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
     a.push({ id: 'askOut', label: 'Ask out' });
   }
   if ((npc.role === 'partner' || npc.role === 'spouse') && !p.legal.incarceration) {
@@ -216,7 +220,7 @@ export function propose(npcId, ringId) {
     p.finance.cash += Math.round(cost * 0.6); // the jeweller takes it back, at a loss
     bump(npc, -15);
     p.stats.mood = clamp(p.stats.mood - 12);
-    const text = `You got down on one knee. ${npc.firstName} said they were not ready. The jeweller gave you some of the money back.`;
+    const text = `You got down on one knee. ${npc.firstName} said they were not ready. The jeweler gave you some of the money back.`;
     log(text, 'system', 'bad');
     return result(false, text);
   }
@@ -304,7 +308,8 @@ export function settlement(npcId) {
   const npc = npcOf(npcId);
   // Where each keeps their own, nothing changes hands but what was held jointly (engine/family.js).
   if (npc.prenup || familyLawOf() === 'separate') return 0;
-  return Math.round((Math.max(0, netWorth(store.state)) - theirWealth(npc)) / 2);
+  // A business is counted too: it is not in net worth, but it is part of what the two of them have (engine/business.js).
+  return Math.round((Math.max(0, netWorth(store.state) + stakesWorth()) - theirWealth(npc)) / 2);
 }
 
 function endMarriage(npc, yours) {

@@ -21,6 +21,7 @@ import { openCurrencies } from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
 import { openMyMoney } from '../money.js';
 import { bankWorth } from '../../engine/banking.js';
+import { householdAnimalsHtml, openAnimalProfile, openHouseChronicle } from '../animals.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
 const pct = (x) => `${x >= 0 ? '+' : ''}${Math.round(x * 100)}%`;
@@ -166,8 +167,8 @@ function openProperty(a, api) {
   const rows = [
     ['Worth', estate.isAbroad(a) ? `${fmtMoney(a.value, c)} at today's rate` : fmtMoney(a.value, c)],
     ['You paid', `${fmtMoney(a.purchasePrice, c)} at age ${a.boughtAtAge}`],
-    ['Mortgage', a.mortgage ? `${fmtMoney(a.mortgage.principal, c)} left, ${fmtMoney(a.mortgage.payment, c)} a year for ${a.mortgage.yearsLeft} more years` : 'None'],
-    ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${fmtMoney(a.tenant.rent, c)} a year` : 'Standing empty'],
+    ['Mortgage', a.mortgage ? `${money.fmt(a.mortgage.principal, a.mortgage.code ?? c.currency.code)} left${a.mortgage.code && a.mortgage.code !== c.currency.code ? ` (about ${fmtMoney(estate.owedOn(a), c)})` : ''}, ${money.fmt(a.mortgage.payment, a.mortgage.code ?? c.currency.code)} a year for ${a.mortgage.yearsLeft} more years` : 'None'],
+    ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${money.fmt(a.tenant.rent, a.tenant.code ?? c.currency.code)} a year${a.tenant.code && a.tenant.code !== c.currency.code ? ` (about ${fmtMoney(estate.rentAtHome(a), c)})` : ''}` : 'Standing empty'],
     ['Running costs', `${fmtMoney(Math.round(a.value * estate.propertyTypeOf(a).upkeep), c)} a year`],
     ['Where', `${a.city ? `${a.city}, ` : ''}${estate.placeOf(a).name}`],
     ...(estate.isAbroad(a) ? [['Tax on rent', `${Math.round(estate.placeOf(a).incomeTax * 100)}%, paid in ${estate.placeOf(a).name}`], ['When you die', estate.placeOf(a).estateTax ? `Taxed at ${Math.round(estate.placeOf(a).estateTax * 100)}% in ${estate.placeOf(a).name}` : `No inheritance tax in ${estate.placeOf(a).name}`]] : []),
@@ -179,7 +180,7 @@ function openProperty(a, api) {
   if (isHome) acts.push(['moveout', 'Move out and rent somewhere']);
   if (a.tenant) acts.push(['evict', 'Give the tenant notice']);
   if (a.condition < 95) acts.push(['renovate', `Renovate (${fmtMoney(estate.renovationCost(a.id), c)})`]);
-  if (a.mortgage) acts.push(['payoff', `Pay off the mortgage (${fmtMoney(a.mortgage.principal, c)})`]);
+  if (a.mortgage) acts.push(['payoff', `Pay off the mortgage (${money.fmt(a.mortgage.principal, a.mortgage.code ?? c.currency.code)})`]);
   acts.push(['sell', `Sell (you would keep ${fmtMoney(estate.saleProceeds(a), c)})`]);
 
   const m = openModal(`
@@ -314,7 +315,7 @@ export default {
     const p = player();
     const c = country();
     const f = p.finance;
-    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + (a.mortgage?.principal ?? 0), 0) + (f.cards ?? []).reduce((s, k) => s + k.balance, 0);
+    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + estate.owedOn(a), 0) + (f.cards ?? []).reduce((s, k) => s + k.balance, 0);
     const home = estate.home();
     const living = home ? `In your ${home.name.charAt(0).toLowerCase() + home.name.slice(1)}` : p.flags.livesWithParents ? 'With your family'
       : p.education.enrolled && p.age >= 18 ? 'Student housing' : p.age >= 18 ? 'Renting' : 'With your family';
@@ -358,6 +359,7 @@ export default {
       </div>
       <div class="btn-stack" style="margin-bottom:10px"><button class="btn primary" data-go="mymoney">My Money<small style="display:block;font-weight:400;opacity:.85">Accounts, budget, goals, debts and history</small></button></div>
       ${actions.length ? `<div class="btn-stack" style="margin-bottom:14px">${actions.map(([id, label]) => `<button class="btn" data-go="${id}">${esc(label)}</button>`).join('')}</div>` : ''}
+      ${householdAnimalsHtml()}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
       ${invs ? `<div class="section-label">Investments</div>${invs}` : ''}
@@ -367,6 +369,9 @@ export default {
 
     el.onclick = (e) => {
       const go = e.target.closest('[data-go]')?.dataset.go;
+      const animal = e.target.closest('[data-animal]')?.dataset.animal;
+      if (animal) return openAnimalProfile(api, animal);
+      if (go === 'chronicle') return openHouseChronicle(api);
       if (go) {
         return { mymoney: () => openMoney(api), currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
           borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => report(api, cars.takeDrivingTest()), flying: () => report(api, cars.learnToFly()) }[go]();

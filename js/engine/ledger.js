@@ -25,6 +25,7 @@
 import { store } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { decimalsOf, CATEGORIES, guessCategory } from '../data/money.js';
+import { rate as rateOf } from './currency.js';
 
 /** How many years of individual transactions are kept. Older years survive as yearly totals. */
 export const KEEP_YEARS = 5;
@@ -84,7 +85,9 @@ function mirror(state) {
     want[`debt:${l.id}:${home}`] = { kind: 'debt', cur: home, bal: -toMinor(l.principal, home), name: `${l.kind.charAt(0).toUpperCase() + l.kind.slice(1)} loan`, debtKind: l.kind };
   }
   for (const a of p.assets ?? []) {
-    if (a.mortgage) want[`debt:${a.id}:${home}`] = { kind: 'debt', cur: home, bal: -toMinor(a.mortgage.principal, home), name: `Mortgage on the ${a.name.charAt(0).toLowerCase() + a.name.slice(1)}`, debtKind: 'mortgage' };
+    // A mortgage is owed in the money it was agreed in (engine/realEstate.js), which need not be the money of where the player lives now.
+    const mc = a.mortgage?.code ?? home;
+    if (a.mortgage) want[`debt:${a.id}:${mc}`] = { kind: 'debt', cur: mc, bal: -toMinor(a.mortgage.principal, mc), name: `Mortgage on the ${a.name.charAt(0).toLowerCase() + a.name.slice(1)}`, debtKind: 'mortgage' };
   }
   for (const k of f.cards ?? []) {
     if (k.balance || k.status === 'open') want[`debt:${k.id}:${home}`] = { kind: 'debt', cur: home, bal: -toMinor(k.balance, home), name: k.name, debtKind: 'card' };
@@ -184,6 +187,19 @@ export function book(o = {}) {
   // A heading given in advance for a part of the year may turn out to face the wrong way: a cost under "salary".
   else if (o.soft && !o.split?.length && ((CATEGORIES[cat]?.kind === 'income' && !moneyIn) || (CATEGORIES[cat]?.kind === 'expense' && moneyIn))) cat = guessCategory(o.desc, moneyIn);
 
+  // A debt in one currency paid from money in another (a mortgage abroad): the part that crossed currencies is an exchange,
+  // through the clearing account in each; only what is left in local money is filed under the heading (interest, say).
+  if (cat !== 'exchange' && debtMove) {
+    for (const cur of Object.keys(rest)) {
+      if (cur === home || !rest[cur]) continue;
+      const local = Math.round(fromMinor(-rest[cur], cur) * rateOf(cur, home) * 10 ** decimalsOf(home));
+      const cross = (rest[home] ?? 0) > 0 && local > 0 ? Math.min(local, rest[home]) : local;
+      entries.push([account(L, `fx:${cur}`, () => ({ kind: 'clearing', cur })).id, rest[cur]]);
+      entries.push([account(L, `fx:${home}`, () => ({ kind: 'clearing', cur: home })).id, cross]);
+      rest[home] = (rest[home] ?? 0) - cross;
+      rest[cur] = 0;
+    }
+  }
   for (const [c, amt] of o.split ?? []) {
     if (!amt) continue;
     entries.push([account(L, nominalId(c, home), () => ({ kind: 'nominal', cur: home, cat: c })).id, amt]);

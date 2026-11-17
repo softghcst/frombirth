@@ -18,9 +18,9 @@ export const policies = () => all().filter((x) => x.status === 'active');
 export const pastPolicies = () => all().filter((x) => x.status !== 'active');
 export const policyFor = (assetId) => policies().find((x) => x.assetId === assetId) ?? null;
 export const lifePolicy = () => policies().find((x) => x.kind === 'life') ?? null;
-const kindOf = (asset) => (asset.kind === 'property' ? 'home' : asset.kind === 'vehicle' ? 'motor' : asset.kind === 'business' ? 'business' : asset.role === 'pet' ? 'pet' : null);
-/** What a policy is on: something owned, or a pet. */
-const insured = (x) => player().assets.find((a) => a.id === x.assetId) ?? (store.state.npcs[x.assetId]?.role === 'pet' ? store.state.npcs[x.assetId] : null);
+// Pets are insured through their care (engine/animalCare.js); a business carries its own costs (engine/business.js).
+const kindOf = (asset) => (asset.kind === 'property' ? 'home' : asset.kind === 'vehicle' ? 'motor' : null);
+const insured = (x) => player().assets.find((a) => a.id === x.assetId) ?? null;
 
 /** The yearly chance an insurer prices a life at: low when young, steep when old. */
 const lifeRate = (age) => Math.min(0.25, 0.0008 * Math.exp(0.085 * Math.max(0, age - 30)));
@@ -41,9 +41,7 @@ export function quote(kind, { asset, mult } = {}) {
   }
   if (!asset || kindOf(asset) !== kind) reason = 'There is nothing of that kind to insure.';
   else if (policyFor(asset.id)) reason = 'It is already insured.';
-  else if (kind === 'pet' && !asset.alive) reason = 'It is too late for that.';
-  // A pet is insured for a vet's bill of up to a set sum; a business for its yearly takings; anything else for what it is worth.
-  const value = kind === 'pet' ? localWage(rule.base, country()) * (asset?.age > 8 ? 2 : 1) : kind === 'business' ? asset?.takings || asset?.purchasePrice || 0 : asset?.value ?? 0;
+  const value = asset?.value ?? 0;
   return { ok: !reason, reason, kind, cover: Math.round(value), excess: Math.round(value * rule.excess), premium: Math.max(1, Math.round(value * rule.premium)) };
 }
 
@@ -58,8 +56,8 @@ export function takeOut(kind, opts = {}) {
   p.finance.cash -= q.premium;
   const insurer = INSURERS[(all().length + p.age) % INSURERS.length];
   all().push({ id: `pol${all().length + 1}_${store.state.year}`, kind, insurer, assetId: opts.asset?.id ?? null, assetName: opts.asset?.name ?? null,
-    premium: q.premium, excess: q.excess, cover: q.cover, start: store.state.year, ...(kind === 'pet' ? { assetName: opts.asset.firstName } : {}), paidYear: store.state.year, status: 'active', beneficiaryId: opts.beneficiaryId ?? null, claims: 0 });
-  const what = kind === 'life' ? `your life for ${fmtMoney(q.cover, c)}` : kind === 'pet' ? opts.asset.firstName : kind === 'business' ? opts.asset.name : `the ${lower(opts.asset.name)}`;
+    premium: q.premium, excess: q.excess, cover: q.cover, start: store.state.year, paidYear: store.state.year, status: 'active', beneficiaryId: opts.beneficiaryId ?? null, claims: 0 });
+  const what = kind === 'life' ? `your life for ${fmtMoney(q.cover, c)}` : `the ${lower(opts.asset.name)}`;
   const text = `${insurer} insured ${what}. It costs ${fmtMoney(q.premium, c)} a year${q.excess ? `, and you pay the first ${fmtMoney(q.excess, c)} of any claim` : ''}.`;
   log(text, 'system', 'neutral');
   book({ cat: 'insurance', src: 'action', desc: text });
@@ -70,7 +68,7 @@ export function cancel(id) {
   const x = all().find((y) => y.id === id && y.status === 'active');
   if (!x) return result(false, 'That policy has already ended.', 'neutral');
   x.status = 'ended'; x.end = store.state.year;
-  const text = `You cancelled your ${lower(INSURANCE[x.kind].name)} with ${x.insurer}.`;
+  const text = `You canceled your ${lower(INSURANCE[x.kind].name)} with ${x.insurer}.`;
   log(text, 'system', 'neutral');
   return result(true, text, 'neutral');
 }
@@ -127,11 +125,8 @@ export function claim(lossId) {
   a.loss.claimed = true; a.loss.paid = a.pay;
   a.pol.claims += 1;
   a.pol.premium = Math.round(a.pol.premium * 1.1); // a claim is remembered at renewal
-  // A business's loss is the business's: the money goes back into its till, not to the owner.
-  const biz = a.pol.kind === 'business' ? p.assets.find((x) => x.id === a.loss.assetId) : null;
-  if (biz) biz.till += a.pay; else p.finance.cash += a.pay;
-  const about = a.pol.kind === 'pet' ? `${a.loss.assetName}'s vet bill` : a.pol.kind === 'business' ? `the ${a.loss.what} at ${a.loss.assetName}` : `the damage to the ${lower(a.loss.assetName)}`;
-  const text = `${a.pol.insurer} paid ${fmtMoney(a.pay, c)} for ${about}: the loss of ${fmtMoney(a.loss.amount, c)}, less your excess.${biz ? ' It went into the business\'s till.' : ''}`;
+  p.finance.cash += a.pay;
+  const text = `${a.pol.insurer} paid ${fmtMoney(a.pay, c)} for the damage to the ${lower(a.loss.assetName)}: the loss of ${fmtMoney(a.loss.amount, c)}, less your excess.`;
   log(text, 'system', 'good');
   book({ cat: 'claim', src: 'action', desc: text });
   return result(true, text);
@@ -146,11 +141,10 @@ export function tickInsurance() {
     if (x.paidYear === store.state.year) continue;
     if (x.assetId) {
       const asset = insured(x);
-      if (!asset || asset.alive === false) { x.status = 'ended'; x.end = store.state.year; continue; } // sold, or gone
+      if (!asset) { x.status = 'ended'; x.end = store.state.year; continue; } // sold, or gone
       const rule = INSURANCE[x.kind];
-      const base = x.kind === 'pet' ? x.cover : x.kind === 'business' ? asset.takings || x.cover : asset.value;
-      x.cover = Math.round(base); x.excess = Math.round(base * rule.excess);
-      x.premium = Math.max(1, Math.round(base * rule.premium * 1.1 ** x.claims * (x.kind === 'pet' && asset.age > 8 ? 1.5 : 1)));
+      x.cover = Math.round(asset.value); x.excess = Math.round(asset.value * rule.excess);
+      x.premium = Math.max(1, Math.round(asset.value * rule.premium * 1.1 ** x.claims));
     } else if (x.kind === 'life') {
       x.premium = Math.max(x.premium, Math.round(x.cover * lifeRate(p.age) * INSURANCE.life.load));
     }

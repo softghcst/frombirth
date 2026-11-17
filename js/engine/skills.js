@@ -63,9 +63,9 @@ export function practise(id, lesson = false) {
   const p = player();
   const c = country();
   const s = SKILL_BY_ID[id];
-  if (!s || !canPractise()) return result(false, 'You cannot practise now.', 'neutral');
+  if (!s || !canPractise()) return result(false, 'You cannot practice now.', 'neutral');
   if (p.age < s.minAge) return result(false, `You need to be ${s.minAge} to start ${s.name.toLowerCase()}.`, 'neutral');
-  if (sessionsLeft() <= 0) return result(false, 'You have practised as much as you can this year.', 'neutral');
+  if (sessionsLeft() <= 0) return result(false, 'You have practiced as much as you can this year.', 'neutral');
   const before = levelOf(id);
   if (before >= 100) return result(false, `There is nothing left to learn about ${s.name.toLowerCase()}. You could teach it.`, 'neutral');
   const cost = lesson ? lessonCost() : 0;
@@ -89,7 +89,7 @@ export function practise(id, lesson = false) {
 
   const what = s.name.toLowerCase();
   const natural = k >= 1.7 ? ' It comes to you as if you had always known it.' : k < 0.8 ? ' It does not come easily.' : '';
-  let text = `${lesson ? `You took lessons in ${what}` : before === 0 ? `You took up ${what}` : `You practised ${what}`}: ${before}% to ${after}%.${natural}`;
+  let text = `${lesson ? `You took lessons in ${what}` : before === 0 ? `You took up ${what}` : `You practiced ${what}`}: ${before}% to ${after}%.${natural}`;
   if (levelName(after) !== levelName(before) && after < 100) text += ` You would call yourself ${levelName(after).toLowerCase()} now.`;
   if (after >= 100) {
     text += ` You have mastered it.`;

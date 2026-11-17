@@ -15,7 +15,7 @@ import { CREDIT_MODEL_OF, CREDIT_MODELS } from '../data/money.js';
 
 const SERIOUS = { forcedSale: 1, bankruptcy: 1, default: 1, plan: 1 };
 const MARK_NAMES = { overdraft: 'Went overdrawn', forcedSale: 'Possessions sold to cover debts', bankruptcy: 'Declared bankrupt', missed: 'Missed a card payment',
-  default: 'A card cancelled for non-payment', plan: 'Put on a court repayment plan', arrears: 'Debts turned into arrears' };
+  default: 'A card canceled for non-payment', plan: 'Put on a court repayment plan', arrears: 'Debts turned into arrears' };
 export const markName = (kind) => MARK_NAMES[kind] ?? kind;
 
 export const creditModelOf = (countryId = player().countryId) => CREDIT_MODEL_OF[countryId] ?? 'bank';

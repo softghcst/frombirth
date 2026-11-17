@@ -1,7 +1,7 @@
 // Mortality maths and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
 import { COUNTRIES } from '../data/countries.js';
-import { settleEstate } from './currency.js';
+import { settleEstate, atHome } from './currency.js';
 import { closeForEstate } from './banking.js';
 import { trustsAtDeath } from './trusts.js';
 import { settleLife } from './insurance.js';
@@ -19,6 +19,7 @@ import { heirs } from './legacy.js';
 import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
+import { settleOnDeath as settleAnimals } from './animals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -197,8 +198,8 @@ export function assignItem(assetId, npcId) {
 }
 
 /** Property and vehicles: the things that are handed on as they are. */
-export const keepsakes = () => player().assets.filter((a) => a.kind === 'property' || a.kind === 'vehicle' || a.kind === 'business');
-const equity = (a) => a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0);
+export const keepsakes = () => player().assets.filter((a) => a.kind === 'property' || a.kind === 'vehicle');
+const equity = (a) => a.value * (a.units ?? 1) - (a.mortgage ? atHome(a.mortgage.principal, a.mortgage.code) : 0);
 
 /**
  * What would happen to everything the player owns if they died today.
@@ -332,6 +333,7 @@ export function die(cause) {
   const outside = [...closeForEstate(), ...trustsAtDeath()];
   const life = settleLife();
   if (life?.to) outside.push(life);
+  settleAnimals(state); // every animal that depended on them is given a keeper before the life is closed
   settleEstate(); // money held in other currencies is counted once, in one currency
   book({ cat: 'exchange', src: 'estate', desc: 'The estate counted in one currency' });
   const plan = estatePlan(); // settled before anything else changes

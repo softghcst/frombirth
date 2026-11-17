@@ -8,6 +8,8 @@
 //   w.bill       the player's bill in progress: { lever, dir, stage: 'amend' | 'floor', ask, deals, cost }
 //   w.shortlists { departmentId: { year, ids } }   who the player may appoint this year
 // A minister is a politician like any other (a figure), with one more trait: t.skill.
+import * as law from './rules.js';
+import { post } from './economy.js';
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
 import { store, player } from '../state.js';
@@ -478,6 +480,71 @@ export function putToVote(move = 'none') {
   return result(true, `${t ? `By ${t.for} votes to ${t.against}, your` : 'Your'} government has ${law.text}. ${L.feel(w.policies[b.lever])} ${notes.join(' ')}`.trim(), 'good', { tally: shown, law });
 }
 
+// ---------- Social law ----------
+// Marriage, the death penalty, conscription, what may be bought and at what age: the rules in engine/rules.js.
+// These cost the treasury nothing, so there is no committee stage: they are won or lost on the floor.
+
+/** The changes of law the head of government could put to the legislature now. */
+export function reformOptions() {
+  const w = world.polity(player().countryId);
+  return law.choices(w.countryId).map((c) => {
+    const mine = world.membership(w.countryId);
+    const t = w.kind !== 'party' && w.kind !== 'none' && !player().politics?.ruler && w.parties.length
+      ? tally(w.parties, w.seats, { wants: c.wants }, { lead: mine?.id ?? null, partners: mine && w.govt.lead === mine.id ? w.govt.partners : [], noise: () => 0 }) : null;
+    return { ...c, name: cap(c.name), outlook: !t ? 'Yours to decree.' : t.for >= t.need + 8 ? 'The votes look to be there.' : t.for >= t.need - 8 ? 'It would be close.' : 'The legislature is against it.',
+      public: c.liked >= 2 ? 'Popular.' : c.liked <= -3 ? 'Deeply unpopular.' : c.liked < 0 ? 'Unpopular.' : 'The public is split.' };
+  });
+}
+
+/** Puts a change of law to the vote. Counts as one of the year's bills. */
+export function putReform(ruleId, value, move = 'none') {
+  const p = player();
+  const k = p.politics;
+  const w = world.polity(p.countryId);
+  const c = law.choices(w.countryId).find((x) => x.rule === ruleId && x.value === value);
+  if (!playerHeads(w) || !c) return result(false, 'That is not in your power.', 'neutral');
+  if (billsLeft() <= 0) return result(false, 'The legislature has no more time for your bills this year.', 'neutral');
+  billCount().n += 1;
+  const wants = { wants: c.wants };
+  const notes = [];
+  let t = null;
+  let passed = true;
+  if (w.kind !== 'party' && w.kind !== 'none' && !k.ruler && w.parties.length) {
+    const { o, cost, mine } = voteSetup(w, move, {});
+    t = tally(w.parties, w.seats, wants, o);
+    passed = t.passes;
+    w.budget = Math.round((w.budget - cost) * 10) / 10;
+    if (o.bought) notes.push(`${cap(world.the(o.bought))} has been promised a good deal.`);
+    if (move === 'whip' || move === 'confidence') k.approval = Math.round(clamp(k.approval - 2));
+    if (move === 'public') k.approval = Math.round(clamp(k.approval + (passed ? 1 : -4)));
+    if (mine && t.rebels > 0 && lean(mine, wants) < 0) notes.push(`${t.rebels} of your own side voted against you.`);
+  }
+  const shown = t ? { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } : null;
+  if (!passed) {
+    report(w, 'lawLost', { what: c.name, votes: `${t.for} votes to ${t.against}` });
+    k.approval = Math.round(clamp(k.approval - 3));
+    let text = `Your bill to ${c.name} is defeated, ${t.for} votes to ${t.against}. ${notes.join(' ')}`.trim();
+    if (move === 'confidence') { fall(); text += ' You made it a matter of confidence, and lost. The government has fallen, and you must face the voters.'; }
+    return result(false, text, 'bad', { tally: shown });
+  }
+  if (crownRefuses(w)) {
+    k.approval = Math.round(clamp(k.approval - 2));
+    return result(false, `Your bill to ${c.name} passes${t ? `, ${t.for} votes to ${t.against}` : ''}, and then the palace declines to give its assent. Here, that is the end of it.`, 'bad', { tally: shown });
+  }
+  const e = law.enact(w.countryId, c.rule, c.value, `${p.firstName} ${p.lastName}`);
+  const entry = { year: store.state.year, rule: c.rule, by: `${p.firstName} ${p.lastName}`, text: `changed the law to ${c.name}` };
+  if (t) entry.vote = [t.for, t.against];
+  w.laws.push(entry);
+  if (w.laws.length > 60) w.laws.shift();
+  post(w.countryId, 'law', e.text, 'neutral', false);
+  report(w, 'law', { what: c.name, votes: t ? `${t.for} votes to ${t.against}` : 'by decree' });
+  k.approval = Math.round(clamp(k.approval + c.liked));
+  w.approval = clamp(w.approval + c.liked);
+  aftermath(w, wants, world.membership(w.countryId), notes);
+  const felt = c.liked >= 2 ? 'The country is pleased.' : c.liked <= -3 ? 'The country is angry.' : c.liked < 0 ? 'Much of the country does not like it.' : '';
+  return result(true, `${t ? `By ${t.for} votes to ${t.against}, it` : 'By your decree, it'} is the law: ${e.text} ${felt} ${notes.join(' ')}`.replace(/\s+/g, ' ').trim(), 'good', { tally: shown });
+}
+
 // ---------- The budget ----------
 
 /** The public finances department by department, for the budget screen. */
@@ -533,7 +600,7 @@ export function presentBudget(changes, move = 'none') {
       const own = mine ? (w.seats[mine.id] ?? 0) : 0;
       if (w.kind === 'parliamentary' && (move === 'confidence' || own <= w.seatCount / 2)) { fall(); return result(false, `${lost} A government that cannot pass its budget cannot govern: yours has fallen, and you must face the voters.`, 'bad', { tally: { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } }); }
       w.approval = clamp(w.approval - 5);
-      return result(false, `${lost} Last year's figures roll over, offices close for a fortnight, and everybody blames you.`, 'bad', { tally: { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } });
+      return result(false, `${lost} Last year's figures roll over, offices close for two weeks, and everybody blames you.`, 'bad', { tally: { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } });
     }
   }
   if (t) report(w, 'budget', { votes: `${t.for} votes to ${t.against}` });

@@ -1,7 +1,9 @@
 // Annual money flow: income, tax, living costs, loan payments, and settling
 // up if the account ends the year in the red.
 import { housingK } from './cities.js';
-import { foreignWorth } from './currency.js';
+import { careCost } from './couple.js';
+import { runPayroll } from './worklife.js';
+import { foreignWorth, atHome } from './currency.js';
 import { rentFactor } from './policy.js';
 import { taxBreakdown } from './systems.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
@@ -17,11 +19,22 @@ import { bankWorth, coverShortfall } from './banking.js';
 import { mark, goodYear } from './credit.js';
 import { tickCards } from './cards.js';
 import { billShare } from './family.js';
-import { contribute, employerMatch } from './retirement.js';
-import { sellBusiness } from './business.js';
+import { contribute } from './retirement.js';
 
 /** The first band of spending, at the country's own pay level. */
 const localWage30 = (c) => localMoney(30000 * (c.living?.wageK ?? 1), c);
+
+/** Which heading a line of the year's pay belongs under (engine/worklife.js payLines). */
+export function payCategory(source) {
+  if (source === 'main') return 'salary';
+  if (source === 'parttime' || source.startsWith('side:')) return 'partTime';
+  if (source.startsWith('gig:')) return 'gigs';
+  if (source.startsWith('biz:')) return 'distribution';
+  if (source === 'state') return 'statePension';
+  if (source === 'benefit') return 'benefits';
+  return source === 'pension' ? 'pension' : 'otherIncome';
+}
+const WORK = new Set(['salary', 'partTime', 'gigs']);
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 /**
@@ -53,7 +66,7 @@ export function lifestyleCost(gross, c = country()) {
 export function netWorth(state) {
   const p = state.player;
   const assets = p.assets.reduce(
-    (sum, a) => sum + a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0), 0);
+    (sum, a) => sum + a.value * (a.units ?? 1) - (a.mortgage ? (state === store.state ? atHome(a.mortgage.principal, a.mortgage.code) : a.mortgage.principal) : 0), 0);
   const debt = p.finance.loans.reduce((sum, l) => sum + l.principal, 0) + (p.finance.cards ?? []).reduce((sum, k) => sum + k.balance, 0)
     - (p.finance.lent ?? []).reduce((sum, l) => sum + l.left, 0); // what others owe the player counts for them
   return Math.round(p.finance.cash + (state === store.state ? foreignWorth(p) : 0) + bankWorth(state) + assets - debt);
@@ -64,10 +77,9 @@ function forceSale(asset) {
   book({ cat: 'interest', desc: 'Interest on being overdrawn', src: 'year' });
   const before = player().finance.cash;
   if (asset.kind === 'security') sellSecurity(asset.catalogId, 1);
-  else if (asset.kind === 'business') sellBusiness(asset.id, 0.7);
   else if (asset.kind === 'vehicle') repossessVehicle(asset);
   else repossess(asset);
-  book({ cat: asset.kind === 'security' ? 'investments' : asset.kind === 'vehicle' ? 'vehicle' : asset.kind === 'business' ? 'business' : 'property', desc: `Sold to cover debts: ${asset.name}`, src: 'year' });
+  book({ cat: asset.kind === 'security' ? 'investments' : asset.kind === 'vehicle' ? 'vehicle' : 'property', desc: `Sold to cover debts: ${asset.name}`, src: 'year' });
   return player().finance.cash - before;
 }
 
@@ -77,25 +89,26 @@ export function tickFinance() {
   const f = p.finance;
   let everyday = 0; // what the year's ordinary spending came to, for the card statement
 
-  const gross = (p.career.salary || 0) + (p.career.partTime?.salary || 0)
-    + (p.career.retired ? p.career.pensionPerYear : 0) + (p.flags.statePension ?? 0);
+  // Every source of income for the year just lived, each paid once (engine/worklife.js).
+  const pay = runPayroll(p);
+  const gross = pay.gross;
   if (gross > 0) {
     const tax = incomeTax(gross, c);
     f.cash += gross - tax;
     f.lifetimeEarned += gross;
     f.lifetimeTaxPaid += tax;
-    log(`You earned ${fmtMoney(gross, c)} and paid ${fmtMoney(tax, c)} in tax.`);
-    // One entry for the year's pay: what was earned, by source, and the tax taken from it.
+    p.career.lastPay.tax = tax;
+    log(`You earned ${fmtMoney(gross, c)}${pay.lines.length > 1 ? ` from ${pay.lines.length} sources` : ''} and paid ${fmtMoney(tax, c)} in tax.`);
+    // One entry for the year's pay: each source under its own heading, and the tax taken from it.
     const cur = c.currency.code;
-    // Each source of income under its own heading: the first is the transaction's own, the rest are split out.
-    const sources = { salary: p.career.salary || 0, partTime: p.career.partTime?.salary || 0, pension: p.career.retired ? p.career.pensionPerYear || 0 : 0, statePension: p.flags.statePension ?? 0 };
-    const main = Object.keys(sources).find((k) => sources[k] > 0);
-    book({ cat: main, src: 'year', key: `pay:${store.state.year}`, desc: main === 'pension' || main === 'statePension' ? 'Pensions for the year' : 'Pay for the year, after tax',
-      split: [['tax', toMinor(tax, cur)], ...Object.entries(sources).filter(([k, v]) => k !== main && v > 0).map(([k, v]) => [k, -toMinor(v, cur)])] });
-    const into = contribute(); // the pension plan takes its share of the year's pay, and an employer may add to it
-    const employer = into ? employerMatch(p.career.salary || 0, f.plan?.rate ?? 0) : 0;
-    f.payslips = payslips({ year: store.state.year, cur, gross, tax, plan: into - employer, employer, sources });
-    if ((p.career.salary || p.career.partTime?.salary) && !p.flags.firstPay) {
+    const sources = {};
+    for (const l of pay.lines) { const k = payCategory(l.source); sources[k] = (sources[k] ?? 0) + l.gross; }
+    const first = Object.keys(sources).find((k) => sources[k] > 0);
+    book({ cat: first, src: 'year', key: `pay:${store.state.year}`, desc: first === 'pension' || first === 'statePension' ? 'Pensions for the year' : 'Pay for the year, after tax',
+      split: [['tax', toMinor(tax, cur)], ...Object.entries(sources).filter(([k, v]) => k !== first && v > 0).map(([k, v]) => [k, -toMinor(v, cur)])] });
+    const into = contribute(); // the player's own pension plan takes its share of the year's pay
+    f.payslips = payslips({ year: store.state.year, cur, gross, tax, plan: into, employer: 0, sources });
+    if (pay.lines.some((l) => WORK.has(payCategory(l.source))) && !p.flags.firstPay) {
       p.flags.firstPay = true;
       p.flags.firstPayAge = p.age;
       milestone('Received a first paycheck.', 'money');
@@ -137,7 +150,7 @@ export function tickFinance() {
   }
 
   const coParent = npcsByRole('spouse')[0];
-  if (p.age >= 18) f.cash -= afford(Math.round(childCosts() * (coParent?.life?.job ? 0.5 : 1)));
+  if (p.age >= 18) f.cash -= afford(Math.round(childCosts() * (coParent?.life?.job ? 0.5 : 1) + careCost(p))); // with paid childcare, if the household chose it (engine/couple.js)
   book({ cat: 'childcare', src: 'year', desc: 'Raising your children' });
 
   for (const loan of f.loans) {
@@ -160,7 +173,7 @@ export function tickFinance() {
   // What was paid, less what came off the debts, is the interest.
   book({ cat: 'debt', nominal: 'interest', src: 'year', desc: 'Loan repayments' });
 
-  // Adults answer for their debts. Children's pocket money never goes this far.
+  // Adults answer for their debts. Children's allowance never goes this far.
   if (p.age >= 18) {
     const owed = f.loans.length > 0 || p.assets.some((a) => a.mortgage);
     // Money in the bank is taken before interest is charged or anything is sold.

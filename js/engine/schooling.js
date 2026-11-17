@@ -17,6 +17,7 @@
 //   p.education.history   [{ schoolId, name, kind, stage, stageName, from, to, how, mark }]
 // People: classmates are NPCs with role 'classmate' and flags.schoolId. Teachers are NPCs
 // with role 'mentor', flags.tag 'teacher', flags.teaches (a subject), flags.style and flags.skill.
+import { cityOf as cityProfile } from './cities.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
@@ -374,7 +375,7 @@ export function markYear() {
     const style = t ? TEACHING_STYLES.find((x) => x.id === t.flags.style) : null;
     const club = (sub.club ?? []).some((id) => e.clubs.includes(id));
     const f = { ability: clamp(natural + (e.aptitude[sub.id] ?? 0)), effort: e.effort, discipline: p.hidden.discipline, interest: rec.interest, absences: e.absences,
-      teaching: kind.teach + (kind.favours?.includes(sub.id) ? 0.15 : 0) + (s.kind === 'public' ? s.funding ?? funding(s.countryId) : 0) + (t ? (t.flags.skill - 50) / 200 + (t.meters.relationship - 50) / 400 : 0),
+      teaching: kind.teach + (kind.favours?.includes(sub.id) ? 0.15 : 0) + (s.kind === 'public' ? (s.funding ?? funding(s.countryId)) + cityProfile(s.countryId, s.city).schools / 100 : 0) + (t ? (t.flags.skill - 50) / 200 + (t.meters.relationship - 50) / 400 : 0),
       focus: e.focus === sub.id ? 1 : 0, support: (weakest?.id === sub.id ? 0.5 : 0) + exam.add - advancedPenalty(sub.id), luck: (rng.next() * 2 - 1) * 0.25 };
     const y = yearMark(f);
     rec.y = y;

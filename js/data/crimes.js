@@ -58,7 +58,7 @@ export const STRANGERS = [
   { id: 'traffic_warden', name: 'a traffic warden', guard: 0 },
   { id: 'mime', name: 'a mime', guard: -0.05 },
   { id: 'telemarketer', name: 'a telemarketer', guard: -0.05 },
-  { id: 'leaf_blower', name: 'a neighbour with a leaf blower', guard: 0 },
+  { id: 'leaf_blower', name: 'a neighbor with a leaf blower', guard: 0 },
   { id: 'food_critic', name: 'a food critic', guard: 0 },
   { id: 'landlord', name: 'a landlord', guard: 0, loot: [200, 3000] },
   { id: 'influencer', name: 'an influencer mid-livestream', guard: 0.1, heat: 15 },
@@ -70,7 +70,7 @@ export const STRANGERS = [
   { id: 'gang_boss', name: 'a gang boss', guard: 0.25, loot: [2000, 40000] },
   { id: 'referee', name: 'a football referee', guard: 0 },
   { id: 'karaoke_host', name: 'a karaoke host', guard: -0.05 },
-  { id: 'mall_santa', name: 'a shopping-centre Santa', guard: 0 },
+  { id: 'mall_santa', name: 'a shopping-center Santa', guard: 0 },
   { id: 'strongman', name: 'a circus strongman', guard: 0.3 },
   { id: 'street_magician', name: 'a street magician', guard: 0.05 },
   { id: 'celebrity_chef', name: 'a celebrity chef', guard: 0.1, heat: 15 },
@@ -130,7 +130,7 @@ export const CRIME_BY_ID = Object.fromEntries(CRIMES.map((c) => [c.id, c]));
 export const LAWYERS = [
   { id: 'self', name: 'Represent yourself', cost: 0, skill: null, blurb: 'Free. As good as you are clever.' },
   { id: 'public', name: 'Public defender', cost: 0, skill: 38, blurb: 'Free, overworked, and has four minutes for you.' },
-  { id: 'good', name: 'A good defence lawyer', cost: 12000, skill: 64, blurb: 'Knows the judges and reads the file.' },
+  { id: 'good', name: 'A good defense lawyer', cost: 12000, skill: 64, blurb: 'Knows the judges and reads the file.' },
   { id: 'star', name: 'The best attorney in the city', cost: 90000, skill: 88, blurb: 'Has not lost in years. Charges accordingly.' },
 ];
 
@@ -139,7 +139,7 @@ export const LAWYERS = [
 // conduct: what membership does to your conduct each year (default -4).
 // income: what your share of the gang's business brings in each year, base units.
 export const GANGS = [
-  { id: 'laundry', name: 'The Laundry Crew', respect: 10, perYear: 2, conduct: -1, blurb: 'Fixers and favour-traders. Harmless, mostly.' },
+  { id: 'laundry', name: 'The Laundry Crew', respect: 10, perYear: 2, conduct: -1, blurb: 'Fixers and favor-traders. Harmless, mostly.' },
   { id: 'chapel', name: 'The Chapel', respect: 15, perYear: 3, conduct: 2, blurb: 'Bible study, choir practice, and nobody touches their members.' },
   { id: 'row', name: 'The Row', respect: 25, perYear: 4, blurb: 'Old-timers who run the kitchen and the phones.' },
   { id: 'bookkeepers', name: 'The Bookkeepers', respect: 35, perYear: 5, income: 900, blurb: 'Run every card game and every bet on the block.' },

@@ -191,7 +191,7 @@ for (let i = 0; i < 8 && !(y2?.income.salary > 0 && y2?.expense.tax > 0); i++) {
 check((y2.expense.housing ?? 0) > 0 && (y2.expense.living ?? 0) > 0, 'rent and everyday spending were paid and recorded');
 check((y2.income.salary ?? 0) > 0 && (y2.expense.tax ?? 0) > 0, 'salary and the tax on it are recorded separately');
 check(y2.in - (y2.income.salary ?? 0) - (y2.income.partTime ?? 0) - (y2.income.interestIncome ?? 0) - (y2.income.giftIn ?? 0) - (y2.income.otherIncome ?? 0) - (y2.income.gigs ?? 0) - (y2.income.winnings ?? 0) - (y2.income.rentIncome ?? 0) - (y2.income.pension ?? 0) === 0, 'income is made of real sources only');
-// 11-13. a goal, money saved towards it, progress.
+// 11-13. a goal, money saved toward it, progress.
 p.finance.cash += 0;
 const acct = bank.accounts()[0];
 check(acct.product === 'savings' && acct.owners.length === 1, 'at 18 the young saver account became an ordinary one, the owner\'s alone');

@@ -1,9 +1,11 @@
 // localStorage persistence: multiple save slots plus the graveyard.
 import { rng } from './rng.js';
+import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
 import { ledgerOf } from './engine/ledger.js';
+import { reconcile as reconcileAnimals } from './engine/animals.js';
 
 export const SCHEMA_VERSION = 1;
 const K_INDEX = 'pathways.index';
@@ -52,6 +54,36 @@ function migrate(state) {
   // chosen from the character's id so it is the same on every load.
   state.player.appearance = normalize(state.player.appearance, state.player.id);
   for (const n of Object.values(state.npcs)) if (n.role !== 'pet') n.appearance = normalize(n.appearance, n.id);
+  // Cities renamed when the world data was checked against its sources: older saves keep working.
+  const RENAMED = { do: { 'San Pedro': 'San Pedro de Macorís' } };
+  const rename = (o, countryId) => { const to = RENAMED[countryId]?.[o?.city]; if (to) o.city = to; };
+  rename(pl, pl.countryId);
+  for (const l of pl.locations ?? []) rename(l, l.countryId);
+  for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
+  // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
+  for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
+  for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);
+  for (const [key, ids] of Object.entries(state.jobs?.cities ?? {})) {
+    const [cc, city] = key.split('/'); const to = RENAMED[cc]?.[city];
+    if (to) { state.jobs.cities[`${cc}/${to}`] = ids; delete state.jobs.cities[key]; }
+  }
+  for (const b of pl.businesses ?? []) rename(b, b.countryId);
+  // Careers before employers, side jobs and the time budget: fill in what the save lacks. Nothing is re-paid.
+  ensureCareer(state.player.career);
+  state.player.businesses ??= [];
+  if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
+  for (const a of Object.values(state.animals?.byId ?? {})) for (const h of a.homes) rename(h, h.countryId);
+  for (const e of state.animals?.events ?? []) if (e.place) rename(e.place, e.place.countryId);
+  // Lives saved before the family's animals had a record of their own: each is entered once, as it stands,
+  // with nothing made up about a past that was never written down.
+  reconcileAnimals(state);
+  // Animal businesses once had books of their own, before they joined the shared business system (engine/business.js).
+  // Any still open in an old save are wound up: what was in them is paid to their owner, once.
+  for (const b of Object.values(state.animals?.businesses ?? {})) {
+    if (!b.closed && b.owner?.id === state.player.id && b.cash > 0) state.player.finance.cash += b.cash;
+    if (!b.closed) b.closed = { year: state.year, why: 'wound up when businesses were brought together' };
+    b.cash = 0;
+  }
   // Lives saved before the ledger: what they have today becomes an opening balance. No past is invented,
   // no bills are charged for years that were never recorded, and nobody is paid a "first" wage twice.
   if (!state.ledger) {

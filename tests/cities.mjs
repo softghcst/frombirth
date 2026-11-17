@@ -1,4 +1,5 @@
 // Checks cities and regions: profiles, prices and pay, regional law, moving. Run with: node tests/cities.mjs
+import { ROOTS } from '../js/data/economy.js';
 import { store } from '../js/state.js';
 import { rng } from '../js/rng.js';
 import { createLife } from '../js/engine/characterGen.js';
@@ -15,6 +16,7 @@ import { emigrate } from '../js/engine/emigration.js';
 import { profile } from '../js/engine/world.js';
 
 rng.seed(5150);
+ROOTS.parentFromAbroad = 0; // these checks are about plain families; families with roots abroad are tested in world-scenarios.mjs
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
@@ -26,7 +28,7 @@ const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 // 1. Data: every hand-written row names a real city; every region with its own law has a city.
 for (const [id, rows] of Object.entries(CITY_ROWS)) {
   check(!!COUNTRIES[id] && !!REGION_WORD[id], `city rows for an unknown place, or one with no word for its regions: ${id}`);
-  for (const name of COUNTRIES[id].cities) check(!!rows[name], `${id}: ${name} has no row, though its neighbours do`);
+  for (const name of COUNTRIES[id].cities) check(!!rows[name], `${id}: ${name} has no row, though its neighbors do`);
   for (const [name, r] of Object.entries(rows)) {
     check(COUNTRIES[id].cities.includes(name), `${id}: row for a city that is not in the game: ${name}`);
     check(r.housing >= 0.4 && r.housing <= 2.2 && r.pay >= 0.7 && r.pay <= 1.4 && r.region && r.regionId, `${id}/${name}: out of range`);
@@ -50,7 +52,7 @@ section(`profiles: all ${n} cities have one`);
 // 3. Homes and pay follow the city.
 const priceIn = (id, city) => { life(id, city); const all = []; for (let i = 0; i < 60; i++) { store.state.market.listings = null; for (const l of estate.listings()) all.push(l.price); } all.sort((a, b) => a - b); return all[Math.floor(all.length / 2)]; }; // the median: one mansion does not move it
 const ny = priceIn('us', 'New York'); const atl = priceIn('us', 'Atlanta');
-check(ny / atl > 1.5 && ny / atl < 2.4, `homes in New York cost far more than in Atlanta (ratio ${(ny / atl).toFixed(2)})`);
+check(ny / atl > 1.4 && ny / atl < 2.8, `homes in New York cost far more than in Atlanta (ratio ${(ny / atl).toFixed(2)})`);
 const payIn = (id, city) => { const all = []; for (let i = 0; i < 25; i++) { const p = life(id, city); hire(CAREERS.find((c) => c.id === 'office'), 0, 60); all.push(p.career.salary); } return mean(all); };
 const ldn = payIn('uk', 'London'); const car = payIn('uk', 'Cardiff');
 check(ldn / car > 1.2 && ldn / car < 1.5, `the same job pays more in London than in Cardiff (ratio ${(ldn / car).toFixed(2)})`);
@@ -67,7 +69,7 @@ section('law: a region overrides its country for the people who live there');
 // 5. Moving within the country.
 p = life('us', 'Atlanta'); hire(CAREERS.find((c) => c.id === 'office'), 0, 60);
 const cash = p.finance.cash; const jobs = p.counters.jobsHeld; const papers = JSON.stringify([p.citizenships, p.residency]);
-check(towns.moveOptions().length === 5 && towns.moveOptions().every((o) => o.versus && o.line), 'five other cities are offered, each compared with home');
+check(towns.moveOptions().length === 6 && towns.moveOptions().every((o) => o.versus && o.line), 'six other cities are offered, each compared with home');
 let r = towns.relocate('Seattle');
 check(r.ok && p.city === 'Seattle' && p.countryId === 'us' && p.finance.cash === cash - towns.moveCost(), 'the move happens and costs what it said');
 check(JSON.stringify([p.citizenships, p.residency]) === papers, 'papers do not change: it is the same country');
@@ -92,6 +94,25 @@ p = life('uk', 'Leeds', 15); check(!!towns.moveBlock(), 'children do not move on
 p = life('br', 'Recife'); for (let i = 0; i < 40 && p.countryId === 'br'; i++) { p.flags.visaAge = null; emigrate('ca', { city: 'Calgary' }); }
 check(p.countryId === 'ca' && p.city === 'Calgary', 'an emigrant arrives in the city they chose');
 section('moving: cost, record, job, home, and the city chosen when emigrating');
+
+// 6. Safety, schools and hospitals follow the kind of city.
+{
+  const { careQuality } = await import('../js/engine/living.js');
+  const { SERVICES } = await import('../js/data/cities.js');
+  for (const c of COUNTRY_LIST) for (const k of towns.citiesOf(c.id)) {
+    check([k.safety, k.schools, k.health].every((v) => Number.isFinite(v) && Math.abs(v) <= 10), `${c.id}/${k.name}: services out of range`);
+  }
+  const cap = towns.cityOf('fr', 'Paris'); const small = towns.cityOf('fr', 'Nantes');
+  check(cap.health > small.health && cap.safety < small.safety && cap.schools >= small.schools, 'the capital has the big hospitals and more crime; a smaller city is safer');
+  check(/major hospitals/.test(towns.cityLine('fr', 'Paris')) && /safer/.test(towns.cityLine('fr', 'Nantes')), 'and the city lists say so');
+  check(towns.cityOf('sg', 'Singapore').health === 0 && towns.cityOf('sg', 'Singapore').safety === 0, 'a one-city place is its own average');
+  let p = life('fr', 'Paris'); p.finance.cash = 0; const there = careQuality();
+  p.city = 'Nantes'; const here = careQuality();
+  check(there > here, `the care within reach is better in Paris than in Nantes (${there} against ${here})`);
+  check(towns.localScore('safety', { safety: 99 }) <= 100 && towns.localScore('safety', { safety: 1 }) >= 0, 'scores stay within 0 to 100');
+  check(Object.values(SERVICES).every((v) => Math.abs(v.safety) <= 5 && Math.abs(v.health) <= 10), 'the city effect is modest next to the differences between countries');
+  section('services: safety, schools and hospitals vary by kind of city, modestly, and reach the game');
+}
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);

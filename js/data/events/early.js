@@ -81,14 +81,14 @@ export default [
   // ---------- Childhood ----------
   {
     id: 'bike_without_stabilisers', category: 'childhood', ageRange: [5, 8], once: true, weight: 2,
-    text: 'The stabilisers are off. The pavement stretches away downhill.',
+    text: 'The stabilizers are off. The pavement stretches away downhill.',
     choices: [
       { label: 'Push off and pedal', check: chk(0.55, { 'talents.sports': 0.6 }), outcomes: [
         ok('Wobble, wobble, and then you are simply riding. You do not stop until dark.', tal('sports', 4), st('mood', 8)),
         bad('You meet a hedge at speed. Scratches everywhere, and you get back on.', st('health', -3), hid('willpower', 4)),
       ] },
       { label: 'Ask someone to hold the saddle', outcomes: [any('They run behind you and let go without saying. You only find out at the corner.', 'good', tal('sports', 2), st('mood', 4))] },
-      { label: 'Put the stabilisers back on', outcomes: [any('Another summer with four wheels. Nobody minds but you.', 'neutral', st('mood', -2))] },
+      { label: 'Put the stabilizers back on', outcomes: [any('Another summer with four wheels. Nobody minds but you.', 'neutral', st('mood', -2))] },
     ],
   },
   {
@@ -233,7 +233,7 @@ export default [
     choices: [
       { label: 'Tell an adult', outcomes: [any('A long evening in a waiting room, a support bandage, and a lecture.', 'neutral', st('health', -2), st('mood', -2))] },
       { label: 'Walk it off and say nothing', check: chk(0.4, { 'stats.health': 0.5 }), outcomes: [
-        ok('It hurts for a fortnight and then it does not. You got away with it.', hid('willpower', 3), st('health', -2)),
+        ok('It hurts for two weeks and then it does not. You got away with it.', hid('willpower', 3), st('health', -2)),
         bad('It was broken after all. By the time anyone looks, the arm you landed on is too.', cond('broken_arm'), st('health', -6)),
       ] },
       { label: 'Make a new friend of whoever dared you', outcomes: [any('{pal} carries your bag for three weeks out of guilt. It becomes a friendship.', 'good', addNpc('friend', 'pal'), st('health', -3))] },

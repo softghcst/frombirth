@@ -11,7 +11,9 @@ import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { LIVING, BASE_LIVING, dynamic } from '../data/living.js';
 import { SPOKEN } from '../data/skills.js';
 import { FREE_MOVEMENT } from '../data/immigration.js';
-import { PHASES, TURN, WORLD_DOWNTURN, CRISIS_END, CRISIS_START, CRISIS_FX, MOVES, NEWS_MAX } from '../data/economy.js';
+import { PHASES, TURN, WORLD_DOWNTURN, CRISIS_END, CRISIS_START, WAR_START, CRISIS_FX, MOVES, ROOTS, NEWS_MAX } from '../data/economy.js';
+import { SINGLE } from '../data/citizenship.js';
+import { surnameFor } from '../data/countries.js';
 
 const world = () => (store.state.world ??= { places: {}, news: [] });
 const entry = (id) => (world().places[id] ??= { phase: 'steady', since: store.state.year });
@@ -32,6 +34,8 @@ export const hiringClimate = () => phase().hiring;
 export const layoffChance = () => phase().layoff;
 /** What it adds to this year's move in house prices. */
 export const housingDrift = () => phase().housing;
+/** The same, for any country. */
+export const housingDriftIn = (id) => PHASES[phaseOf(id)].housing;
 /** Where a currency is being pulled, as an offset from its usual rate: weaker in a slump or a crisis. */
 export function fxBias(code) {
   if (!store.state?.world) return 0;
@@ -121,6 +125,10 @@ export function tickEconomy() {
         if (was === 'inflation' || was === 'collapse') entry(c.id).inflation = BASE_LIVING[c.id].inflation === 'extreme' ? 'high' : BASE_LIVING[c.id].inflation;
         post(c.id, 'crisis', line.replace('{place}', the(c.id)), 'good');
       }
+    } else if (L.stability < WAR_START.below && rng.chance(WAR_START.chance)) {
+      Object.assign(entry(c.id), { crisis: 'war', crisisSince: year });
+      turn(c.id, 'slump', true);
+      post(c.id, 'crisis', WAR_START.text.replace('{place}', the(c.id)), 'bad');
     } else if (L.stability < CRISIS_START.below && rng.chance(CRISIS_START.chance)) {
       const kind = rng.pick(Object.keys(CRISIS_START.kinds));
       Object.assign(entry(c.id), { crisis: kind, crisisSince: year });
@@ -179,4 +187,44 @@ export function tickMoves() {
       delete n.flags.movedYear;
     }
   }
+}
+
+// ---------- Roots somewhere else ----------
+
+const pickName = (id, gender) => { const names = COUNTRIES[id].names; return rng.pick(names[gender] ?? names.female); };
+
+/**
+ * Makes someone a person who grew up in another country: their name, where
+ * they were born, and the citizenship they hold. If `settled`, they have
+ * also taken the citizenship of the country they live in, where both allow it.
+ * @returns {string} the id of the country they are from
+ */
+export function fromAbroad(n, hereId, { settled = false, keepSurname = false, year = store.state?.year ?? 0 } = {}) {
+  const from = rng.pick(COUNTRY_LIST.filter((c) => c.id !== hereId && (c.place?.nationalityOf ?? c.id) !== (COUNTRIES[hereId].place?.nationalityOf ?? hereId))).id;
+  const issuerOf = (id) => COUNTRIES[id].place?.nationalityOf ?? id;
+  n.bornIn = from;
+  n.firstName = pickName(from, n.gender);
+  if (!keepSurname) n.lastName = surnameFor(from, rng.pick(COUNTRIES[from].names.last), n.gender);
+  n.flags.from = from;
+  n.citizenships = [{ jurisdictionId: issuerOf(from), acquisitionType: 'birth', acquiredAt: year - n.age }];
+  // Someone long settled has usually naturalised, unless either country allows only one nationality.
+  if (settled && !SINGLE.has(issuerOf(from)) && !SINGLE.has(issuerOf(hereId))) n.citizenships.push({ jurisdictionId: issuerOf(hereId), acquisitionType: 'naturalisation', acquiredAt: year - Math.min(10, Math.max(1, n.age - 20)) });
+  return from;
+}
+/** Whether a newly made family, or someone newly met, has roots abroad. */
+export const rollsRoots = (kind) => rng.chance(ROOTS[kind]);
+
+/**
+ * Yearly, for a child: now and then the family emigrates, far more often
+ * from a country in crisis. Returns where to, or null.
+ */
+export function familyLeaves() {
+  const p = player();
+  if (p.age < 2 || p.age >= 17 || p.royal || p.legal.incarceration) return null;
+  const parents = livingNpcs().filter((n) => n.role === 'parent' && !n.flags.abroad);
+  if (!parents.length) return null;
+  if (!rng.chance(ROOTS.familyLeaves * (LIVING[p.countryId].crisis ? ROOTS.familyLeavesCrisisK : 1))) return null;
+  // A parent who came from somewhere may go back; otherwise wherever a family like theirs would go.
+  const back = parents.map((n) => n.bornIn).find((id) => id && id !== p.countryId && COUNTRIES[id] && !LIVING[id].crisis);
+  return back && rng.chance(0.5) ? back : destinationFor(p.countryId);
 }

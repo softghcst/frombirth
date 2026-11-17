@@ -27,7 +27,7 @@ export async function runJustice(api) {
     const top = crime.sentence[1] >= LIFE_SENTENCE ? 'life' : `${crime.sentence[1]} years`;
     const plea = await pickModal({
       title: 'How do you plead?',
-      body: `${law.trialOutlook()} ${crime.minor ? 'A first offence usually means a fine.' : `The sentence could be anything up to ${top}.`}`,
+      body: `${law.trialOutlook()} ${crime.minor ? 'A first offense usually means a fine.' : `The sentence could be anything up to ${top}.`}`,
       cancel: 'Plead not guilty',
       options: [
         { value: 'notGuilty', label: 'Not guilty', sub: 'Go to trial. Walk free if the jury believes you.' },

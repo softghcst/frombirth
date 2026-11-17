@@ -6,6 +6,7 @@
 // in close family also reach the player's journal, and a few ask the player
 // to respond (see data/events/familyLives.js).
 import { rng } from '../rng.js';
+import { spouseFactor } from './couple.js';
 import * as kid from './kidschool.js';
 import { showMark } from './grades.js';
 import { schoolModel } from '../data/education.js';
@@ -16,6 +17,7 @@ import { inheritAppearance, inheritTalents, inheritTraits } from './genetics.js'
 import { roleLabel, spendAction, removeNpc } from './relationships.js';
 import { remember } from './conditions.js';
 import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
+import { placeAt } from './employers.js';
 import { MAJORS, MAJOR_BY_ID } from '../data/majors.js';
 import { TRADES, TRADE_BY_ID } from '../data/schools.js';
 import { tickNpcMoney, finRows } from './npcMoney.js';
@@ -25,7 +27,7 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 
 /** Who gets a full life. Friends get one too, but their families stay off-screen. */
-const LIVE = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'sibling', 'niece', 'inlaw', 'friend'];
+const LIVE = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'sibling', 'niece', 'inlaw', 'friend', 'coworker', 'boss', 'colleague'];
 /** Whose partners and children become people you can see. */
 const FAMILY_MAKERS = ['child', 'grandchild', 'sibling'];
 /** Whose big moments are reported in the player's journal. */
@@ -116,6 +118,8 @@ function careersFor(npc) {
   const open = CAREERS.filter((c) => {
     const r = c.req ?? {};
     if (c.category === 'performing') return false;
+    if (c.branchOnly || r.experience || r.programmes || c.agesOut) return false; // reached from inside a career, not hired into cold
+    if (r.altOnly && !rng.chance(0.15)) return false; // needs a certificate few people have
     if (c.type === 'military' && !rng.chance(0.08)) return false;
     if (r.programme && !has(r.programme)) return false;
     if (r.trade && e.trade !== r.trade) return false;
@@ -129,6 +133,14 @@ function careersFor(npc) {
   // Someone with a trade, a profession or a subject works in it nine times in ten.
   const own = open.filter((c) => (e.trade && usesTrade(c)) || (c.req?.programme && has(c.req.programme))
     || (c.req?.majors && has('university')));
+  // A child may lean towards a parent's line of work (more so if they were shown it and liked it), where they
+  // qualify for it. Never forced: one told to find their own way does not lean at all.
+  if (npc.role === 'child' && !npc.flags.ownPath && store.state?.player) {
+    const mine = store.state.player.career;
+    const fam = npc.flags.inspiredBy ?? CAREER_BY_ID[mine.careerId ?? mine.lastField]?.family;
+    const same = fam ? open.filter((c) => c.family === fam) : [];
+    if (same.length && rng.chance(npc.flags.inspiredBy ? 0.6 : 0.1)) { npc.flags.followed = fam; return same; }
+  }
   if (own.length && rng.chance(0.9)) return own;
   return open.filter((c) => !c.req?.majors && !c.req?.programme && !c.req?.trade);
 }
@@ -146,6 +158,12 @@ function startJob(npc, quiet = false) {
   const rung = back ? Math.max(0, last.level - 1) : career.type === 'fulltime' && career.doors?.some((d) => d.trade === npc.life.edu.trade) ? 1 : 0;
   const level = career.levels[rung];
   npc.life.job = { careerId: career.id, level: rung, title: level.title, salary: bandPay(level, rng.next() * 0.6), years: 0 };
+  // Someone the player knows works somewhere real, in the player's city unless they live abroad.
+  if (!quiet && !npc.flags.abroad && store.state?.player) {
+    const e = placeAt(career.id, store.state.player.countryId, store.state.player.city);
+    npc.life.job.employerId = e.id;
+    if (!e.staff.includes(npc.id)) e.staff.push(npc.id);
+  }
   npc.occupation = level.title.toLowerCase();
   if (!quiet) note(npc, `started work as ${an(npc.occupation)}`, npc.life.worked ? false : true);
   npc.life.worked = true;
@@ -156,6 +174,8 @@ function tickJob(npc, quiet = false) {
   const L = npc.life;
   const job = L.job;
   const career = CAREER_BY_ID[job.careerId];
+  // A job saved under an older career ladder can point past its top rung: treat it as the top.
+  if (!(job.level >= 0 && job.level < career.levels.length)) job.level = Math.max(0, Math.min(career.levels.length - 1, job.level | 0));
   const level = career.levels[job.level];
   job.years += 1;
   L.yearsWorked = (L.yearsWorked ?? 0) + 1;
@@ -166,7 +186,8 @@ function tickJob(npc, quiet = false) {
     return path === 'tripleThreat' ? Math.min(npc.talents?.singing ?? 0, npc.talents?.dance ?? 0, npc.talents?.acting ?? 0) + 8 >= min
       : path.startsWith('talents.') ? (npc.talents?.[key] ?? 0) >= min : npc.meters[key] === undefined || npc.meters[key] >= min * 0.9;
   });
-  if (next && able && job.years >= level.years && rng.chance(0.18 + npc.meters.intellect / 500)) {
+  // A spouse's chances follow the household plan agreed with the player (engine/couple.js).
+  if (next && able && job.years >= level.years && rng.chance((0.18 + npc.meters.intellect / 500) * spouseFactor(npc))) {
     job.level += 1;
     job.title = next.title;
     job.salary = Math.max(Math.round(job.salary * 1.08), bandPay(next, 0.2));

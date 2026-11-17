@@ -1,6 +1,8 @@
 // The stock and crypto market, and the housing market index. Prices are kept
 // in base units and move once a year.
-import { housingDrift } from './economy.js';
+import { housingDriftIn } from './economy.js';
+import { COUNTRY_LIST } from '../data/countries.js';
+import { theCountry } from '../util.js';
 import { rng } from '../rng.js';
 import { uid, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
@@ -22,12 +24,17 @@ export function market() {
   m.prices ??= {};
   m.history ??= {};
   m.housing ??= 1;
+  // One housing market per country. Saves from before start every country where the single market stood.
+  m.housingBy ??= {};
   for (const s of SECURITIES) {
     m.prices[s.id] ??= s.price;
     m.history[s.id] ??= [s.price];
   }
   return m;
 }
+
+/** A country's housing index: 1 where prices began. */
+export const housingIndex = (countryId) => { const m = market(); return m.housingBy[countryId] ?? m.housing ?? 1; };
 
 /** Current price of one unit, in local money. */
 export const priceOf = (id) => market().prices[id] * country().currency.scale;
@@ -120,14 +127,18 @@ export function tickMarket() {
     if (own) own.value = priceOf(s.id);
   }
 
-  // Housing: mostly a slow climb, occasionally a slump.
-  const slump = rng.chance(0.04);
-  const move = slump ? -rng.int(12, 25) / 100 : rng.around(0.035, 0.05) + housingDrift(); // and the economy where the player lives
-  m.housing = Math.max(0.3, m.housing * (1 + move));
-  m.housingMove = move;
-  if (slump && p.assets.some((a) => a.kind === 'property')) {
-    log(`The housing market slumped: prices fell ${Math.round(-move * 100)}% this year.`, 'system', 'bad');
+  // Housing: one market per country, each mostly a slow climb, moved by that country's economy, now and then a slump.
+  m.housingMoves = {};
+  const owned = new Set(p.assets.filter((a) => a.kind === 'property').map((a) => a.countryId ?? p.countryId));
+  for (const k of COUNTRY_LIST) {
+    const slump = rng.chance(0.04);
+    const move = slump ? -rng.int(12, 25) / 100 : rng.around(0.035, 0.05) + housingDriftIn(k.id);
+    m.housingBy[k.id] = Math.round(Math.max(0.3, housingIndex(k.id) * (1 + move)) * 10000) / 10000;
+    m.housingMoves[k.id] = move;
+    if (slump && owned.has(k.id)) log(`The housing market ${k.id === p.countryId ? '' : `in ${theCountry(k.name)} `}slumped: prices fell ${Math.round(-move * 100)}% this year.`, 'system', 'bad');
   }
+  m.housing = housingIndex(p.countryId); // kept for anything that still reads the single figure
+  m.housingMove = m.housingMoves[p.countryId];
 
   if (before > 0) {
     const after = portfolioValue();
