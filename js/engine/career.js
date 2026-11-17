@@ -426,8 +426,9 @@ export function askForRaise() {
   return result(false, text);
 }
 
-function endJob(exit) {
+export function endJob(exit) {
   const c = player().career;
+  c.sportContract = null; // a professional sports contract is held with the job (engine/sportsLife.js)
   if (c.military && c.yearsInField >= 2) player().flags.veteran = true;
   recordJob(exit);
   leaveColleagues();
@@ -684,6 +685,9 @@ export function tickCareer() {
     p.education.gpa = Math.max(0, Math.round((p.education.gpa - career.schoolCost * (1 + c.level * 0.5)) * 100) / 100);
   }
   c.totalYears = (c.totalYears ?? 0) + 1;
+  // A professional athlete's year is the sports season: their role in the side and their contract are settled there
+  // (engine/sportsLife.js), not by an annual review.
+  if (c.sportContract && career.id === 'athlete') return null;
 
   // How the year went: skill, discipline, a mentor, how stretched or bored, and luck.
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : (p.stats.intellect - 55) / 15;
