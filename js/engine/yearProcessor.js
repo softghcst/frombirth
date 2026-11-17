@@ -4,6 +4,8 @@ import { store, player, log, milestone } from '../state.js';
 import { tickRelationships } from './relationships.js';
 import { tickAnimals } from './animals.js';
 import { tickCare } from './animalCare.js';
+import { tickEquestrian } from './equestrian.js';
+import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
 import { tickChildren } from './children.js';
@@ -109,7 +111,9 @@ export function advanceYear() {
   tickActivism();
   tickCrime();
   tickAnimals(); // last, so the record sees the year as it ended: who died, who moved, who is left to care
+  tickBreeding(); // young that are due
   tickCare(); // then what the animals cost, how they fared, and anything that needs a decision
+  tickEquestrian();
 
   const cause = rollDeath();
   if (cause) { die(cause); return; }

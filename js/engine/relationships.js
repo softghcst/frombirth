@@ -117,6 +117,28 @@ export function tickRelationships() {
 
 const GIVERS = ['parent', 'grandparent', 'sibling', 'spouse', 'partner', 'friend', 'child', 'grandchild'];
 
+/** Time spent with an animal: what the button says, and what happened. */
+const PET_TIME = {
+  dog: ['Play together', 'You spent the afternoon with {name}. Tail-level approval.'],
+  cat: ['Play together', 'You ran a piece of string across the floor until {name} lay flat, furious and happy.'],
+  ferret: ['Play together', '{name} stole your sock, hid it, and came back for the other one.'],
+  rat: ['Play together', '{name} rode round the house on your shoulder, supervising.'],
+  parrot: ['Spend time together', 'You and {name} took a cardboard box to pieces, with great care.'],
+  budgie: ['Spend time together', 'You let {name} out to fly, and were landed on.'],
+  rabbit: ['Sit with them', 'You sat on the floor until {name} decided you were furniture, and then something better.'],
+  guinea_pig: ['Sit with them', '{name} sat in your lap and made the noise that means more parsley.'],
+  hamster: ['Sit with them', 'You built {name} a cardboard maze. It was solved, then eaten.'],
+  fish: ['Watch the tank', 'You sat and watched {name} for a while. It is more calming than it has any right to be.'],
+  horse: ['Groom and spend time', 'You spent an hour grooming {name}, who leaned into the brush and sighed.'],
+  pony: ['Groom and spend time', 'You spent an hour grooming {name}, who searched every pocket you own.'],
+  donkey: ['Groom and spend time', 'You scratched {name} behind the ears until your arm ached.'],
+  chicken: ['Sit out with them', '{name} followed you round the garden, commenting.'],
+  duck: ['Sit out with them', 'You refilled the pool. {name} approved, loudly.'],
+  goat: ['Spend time together', '{name} stood on something to be level with you, and ate your sleeve.'],
+  sheep: ['Spend time together', '{name} let you scratch the one place a sheep cannot reach.'],
+  other: ['Spend time together', 'You spent time with {name}.'],
+};
+
 /** Gift tiers, in base units. */
 export const GIFTS = [
   { id: 'small', name: 'Something small', cost: 30, gain: [3, 6] },
@@ -131,8 +153,14 @@ export const GIFTS = [
 export function basicActions(npc) {
   const p = player();
   const a = [];
-  if (p.age >= 3) a.push({ id: 'spendTime', label: npc.role === 'pet' ? 'Play together' : 'Spend time' });
-  if (npc.role === 'pet') { if (p.age >= 4) a.push({ id: 'treat', label: 'Give a treat' }); return a; }
+  if (npc.role === 'pet') {
+    // What suits the animal. Nobody plays fetch with a fish.
+    const how = PET_TIME[npc.species] ?? PET_TIME.other;
+    if (p.age >= 3) a.push({ id: 'spendTime', label: how[0] });
+    if (p.age >= 4 && npc.species !== 'fish') a.push({ id: 'treat', label: 'Give a treat' });
+    return a;
+  }
+  if (p.age >= 3) a.push({ id: 'spendTime', label: 'Spend time' });
   if (p.age >= 4 && npc.age >= 2) a.push({ id: 'talk', label: 'Have a conversation' });
   if (p.age >= 5 && npc.age >= 3) a.push({ id: 'compliment', label: 'Compliment' });
   if (p.age >= 6) a.push({ id: 'gift', label: 'Give a gift' });
@@ -188,7 +216,7 @@ export function interact(npcId, action, option) {
     case 'spendTime': {
       bump(npc, rng.int(3, 9));
       p.stats.mood = clamp(p.stats.mood + rng.int(1, 4));
-      text = npc.role === 'pet' ? `You spent the afternoon with ${name}. Tail-level approval.` : `You spent time with ${name}.`;
+      text = npc.role === 'pet' ? (PET_TIME[npc.species] ?? PET_TIME.other)[1].replace('{name}', name) : `You spent time with ${name}.`;
       break;
     }
     case 'treat':

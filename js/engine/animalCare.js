@@ -59,8 +59,24 @@ export function shelter(state = store.state) {
   return P.shelters[key];
 }
 
+const FARM_INTAKE = [['chicken', 42], ['duck', 14], ['goat', 20], ['sheep', 14], ['donkey', 7], ['pony', 3]];
+/** The farm animal rescue near the player: hens at the end of their laying, goats nobody could fence in, a donkey or two. */
+export function farmRescue(state = store.state) {
+  const P = places(state);
+  const key = `${cityKey(state)}:farm`;
+  if (!P.shelters[key]) {
+    const { city, countryId } = state.player;
+    const roll = T.seeded(`farm:${key}`);
+    P.shelters[key] = { id: `shelter:${key}`, key, city, countryId, farm: true, name: roll.pick([`${city} Farm Animal Rescue`, `Hen and Hoof, ${city}`, `The ${city} Smallholders' Rehoming Scheme`]),
+      capacity: roll.int(6, 10), feeK: 0.8 + roll.int(0, 5) / 10, founded: state.year - roll.int(3, 30),
+      staff: [{ ...localName(countryId, `${key}:manager`), role: 'Manager' }, { ...localName(countryId, `${key}:care`), role: 'Stockperson' }], stockYear: null, seq: 0 };
+  }
+  return P.shelters[key];
+}
+
 const HISTORIES = ['Found as a stray, with no chip and nobody looking.', 'Given up when their owner moved somewhere that did not allow animals.', 'Their owner died, and nobody in the family could take them.',
   'Came in from a home with far too many animals.', 'Handed in by someone who could no longer afford the vet.', 'Born at the shelter.', 'Left behind when a tenancy ended.'];
+const FARM_HISTORIES = ['Came from a farm that was giving up.', 'A laying hen at the end of her working life.', 'Kept as a pet by someone who did not have the land.', 'Bottle-reared, and too tame to go back to a flock.', 'Found wandering on a road.'];
 const INTAKE = [['dog', 34], ['cat', 34], ['rabbit', 9], ['guinea_pig', 6], ['hamster', 4], ['rat', 3], ['budgie', 4], ['ferret', 3], ['parrot', 2]];
 
 /** The animals waiting at a shelter now. They are the same ones as last time, less any who found homes, plus new arrivals. */
@@ -85,14 +101,14 @@ export function shelterAnimals(sh = shelter(), state = store.state) {
     const banned = (id) => SPECIES[id].banned.includes(sh.countryId);
     for (let guard = 0; there().length < want && guard < 30; guard++) {
       const r = T.seeded(`${sh.id}:${state.year}:${++sh.seq}`);
-      const sp = SPECIES[r.weighted(INTAKE.filter(([id]) => !banned(id)), (x) => x[1])[0]];
+      const sp = SPECIES[r.weighted((sh.farm ? FARM_INTAKE : INTAKE).filter(([id]) => !banned(id)), (x) => x[1])[0]];
       const lifespan = r.int(sp.lifespan[0], sp.lifespan[1]);
       const taken = new Set(there().map((a) => a.name));
       const names = sp.names.filter((n) => !taken.has(n));
       const share = r.weighted([[0.04, 3], [0.2, 4], [0.45, 3], [0.75, 2]], (x) => x[1])[0];
       zoo.register({ id: `an_${T.hash(`${sh.id}:${sh.seq}`).toString(36)}${sh.seq}`, firstName: r.pick(names.length ? names : sp.names), species: sp.id,
         age: Math.max(0, Math.min(lifespan - 1, Math.round(lifespan * share * (0.6 + r.next() * 0.8)))), lifespan, alive: true, meters: { relationship: 50 } },
-      { state, stock: sh, origin: 'shelter', history: r.pick(HISTORIES) });
+      { state, stock: sh, origin: 'shelter', history: sh.farm ? r.pick(FARM_HISTORIES) : r.pick(HISTORIES) });
     }
     sh.stockYear = state.year;
   }
@@ -228,6 +244,8 @@ export function adoptionCheck(animalId, { foster = false, state = store.state } 
   if (capNow.free < loadOf(a)) problems.push('Your household already has as many animals as it can look after properly.');
   if (!foster && p.finance.cash < fee + Math.round(yearly / 2)) problems.push(`You could not cover the ${fmtMoney(fee, c)} fee and the first months of food and supplies.`);
   for (const o of outlook(a, state)) notes.push(o.text);
+  if (speciesOf(a.speciesId).group === 'equine') notes.push(`${a.name} would be a companion on your land, not a riding horse: ${zoo.pronoun(a)} needs shelter, a farrier and another equine for company.`);
+  if (['chicken', 'duck', 'goat', 'sheep'].includes(a.speciesId) && !zoo.householdAnimals(state).some((b) => b.speciesId === a.speciesId)) notes.push(`${cap(sp.name)}s are flock animals: one alone is unhappy. Take two.`);
   if (a.speciesId === 'dog' && need === 'room' && a.appearance.size !== 'small') notes.push(`With no garden, ${a.name} will need long walks every day.`);
   if (['guinea_pig', 'rat', 'rabbit', 'budgie'].includes(a.speciesId) && !zoo.householdAnimals(state).some((b) => b.speciesId === a.speciesId)) notes.push(`${cap(sp.name)}s do best with another of their own kind.`);
   if (zoo.stageOf(a, state) === 'senior') notes.push(`${a.name} is in later life: fewer years, and more visits to the vet.`);
@@ -387,7 +405,7 @@ export function rehome(animalId, to, state = store.state) {
   T.setOwner(state, a, who, 'rehomed within the family'); T.setPrimary(state, a, who, 'rehomed');
   for (const x of a.care) if (x.to == null && x.role === 'helper') { x.to = state.year; x.ended = 'rehomed'; }
   T.firstBond(a, who, 10);
-  T.setHome(state, a, T.homeWith(state, who));
+  if (!a.board) T.setHome(state, a, T.homeWith(state, who)); // a horse at livery stays at its yard; its new owner pays
   delete a.insurance;
   const text = `${a.name} lives with ${zoo.whoPhrase(state, who)} now. You can still visit.`;
   T.record(state, { type: 'care', animalId: a.id, people: [me, who], sig: 3, key: `rehome:${to}`, story: text,
@@ -687,8 +705,9 @@ export function auditCare(state = store.state) {
     if (ids.has(t.id)) bad.push(`two charges share an id: ${t.id}`);
     keys.add(t.k); ids.add(t.id);
     if (!t.currency) bad.push(`${t.id}: no currency`);
-    if (t.refOf) { const of = A.ledger.find((x) => x.id === t.refOf); if (!of) bad.push(`${t.id}: pays back a bill that does not exist`); else if (-t.amount > of.amount) bad.push(`${t.id}: pays back more than the bill`); }
+    if (t.refOf) { const of = A.ledger.find((x) => x.id === t.refOf); if (!of) bad.push(`${t.id}: pays back a bill that does not exist`); else if (-t.amount > of.amount && t.kind !== 'prize') bad.push(`${t.id}: pays back more than the bill`); }
     else if (t.amount < 0) bad.push(`${t.id}: money from nowhere`);
+    if (t.kind === 'prize' && -t.amount > 400 * COUNTRIES[state.player.countryId].currency.scale * 3) bad.push(`${t.id}: a prize larger than any class pays`);
   }
   for (const pr of Object.values(A.pairs ?? {})) if (pr.value > pr.top) bad.push(`${pr.a}|${pr.b}: closer than they could be`);
   for (const a of zoo.everyAnimal(state)) {

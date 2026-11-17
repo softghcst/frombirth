@@ -73,7 +73,57 @@ function hamster(ap, c1, c2, dark, eyes, old) {
     ${eye(24.500, 31, eyes, 2.600)}${eye(39.500, 31, eyes, 2.600)}<ellipse cx="32" cy="38" rx="2.200" ry="1.700" fill="#d98a8a"/><path d="M32 39.700v2.300" stroke="#3a302a" stroke-width="1.100" stroke-linecap="round"/>`;
 }
 
-const DRAW = { dog, cat, rabbit, parrot, hamster };
+function horse(ap, c1, c2, dark, eyes, old, kind) {
+  const mane = shade(c1, c1 === '#f1ede4' || c1 === '#e9d8b4' ? -0.25 : -0.5);
+  const long = kind === 'donkey';
+  const ears = long ? `<path d="M22 18C17 8 18 0 22-2c4 3 5 11 4 20z" fill="${dark}"/><path d="M40 18c5-10 4-18 0-20-4 3-5 11-4 20z" fill="${dark}"/>`
+    : `<path d="M22 17 20 4l8 9z" fill="${dark}"/><path d="M41 17 43 4l-8 9z" fill="${dark}"/>`;
+  const blaze = ap.pattern === 'blaze' || ap.pattern === 'socks' ? `<path d="M29 16h5l2.500 26-5 6-5-6z" fill="${c2}"/>` : ap.pattern === 'patched' ? `<path d="M33 16c7 2 9 10 8 18-6-2-9-9-8-18z" fill="${c2}"/>` : '';
+  return `<path d="M21 16c-7 4-9 16-6 30l5 2c0-10 1-22 5-30z" fill="${mane}"/>${ears}
+    <path d="M20 22c0-7 5-11 11.500-11S43 15 43 22c0 9 2 15 2 22 0 8-6 13-13.500 13S18 52 18 44c0-7 2-13 2-22z" fill="${c1}"/>${blaze}
+    <path d="M26 12c2-4 9-4 11 0-1 5-3 8-5.500 9-2.500-1-4.500-4-5.500-9z" fill="${mane}"/>
+    <ellipse cx="31.500" cy="48" rx="11" ry="8.500" fill="${long ? '#e9e2d4' : shade(c1, -0.18)}"/>${old ? '<ellipse cx="31.500" cy="48" rx="11" ry="8.500" fill="#fff" opacity=".35"/>' : ''}
+    ${eye(22.500, 28, eyes, 2.700)}${eye(40.500, 28, eyes, 2.700)}
+    <ellipse cx="27" cy="49" rx="1.700" ry="2.400" fill="#2a2420"/><ellipse cx="36" cy="49" rx="1.700" ry="2.400" fill="#2a2420"/>`;
+}
+function fish(ap, c1, c2) {
+  return `<path d="M50 32 62 20v24z" fill="${shade(c1, -0.2)}"/><path d="M28 18c4-7 12-8 16-4-4 1-8 4-10 8z" fill="${shade(c1, -0.2)}"/>
+    <ellipse cx="30" cy="32" rx="23" ry="14" fill="${c1}"/>${ap.pattern === 'patched' ? `<path d="M30 19c8 1 14 6 16 13-8 2-15-3-16-13z" fill="${c2}"/>` : ''}
+    <path d="M24 32c5 4 5 9 0 12" stroke="${shade(c1, -0.3)}" stroke-width="1.500" fill="none"/><circle cx="15" cy="29" r="3.600" fill="#fff"/><circle cx="14.500" cy="29" r="1.900" fill="#151210"/>
+    <circle cx="6" cy="20" r="1.500" fill="none" stroke="#9cc3d6" stroke-width="1"/><circle cx="10" cy="13" r="2.200" fill="none" stroke="#9cc3d6" stroke-width="1"/>`;
+}
+function fowl(ap, c1, c2, dark, eyes, old, kind) {
+  const duck = kind === 'duck';
+  return `${duck ? '' : '<path d="M27 12c0-5 4-6 5-2 1-5 6-5 6 0 3-3 6 0 4 4l-13 2z" fill="#c8382c"/>'}
+    <ellipse cx="32" cy="34" rx="17" ry="19" fill="${c1}"/>${ap.pattern === 'patched' ? `<path d="M20 44c6-6 18-6 24 0-4 6-20 6-24 0z" fill="${c2}"/>` : ''}
+    ${eye(25, 29, eyes, 2.400)}${eye(39, 29, eyes, 2.400)}
+    ${duck ? '<path d="M22 36c3-3 17-3 20 0 0 5-5 7-10 7s-10-2-10-7z" fill="#e3a235"/>' : '<path d="M27 34h10l-5 8z" fill="#e3a235"/><path d="M29 44c0 4 2 6 3 6s3-2 3-6z" fill="#c8382c"/>'}`;
+}
+function goat(ap, c1, c2, dark, eyes, old) {
+  return `<path d="M24 16C20 8 21 2 25 1c1 5 2 10 4 14z" fill="#8b8172"/><path d="M40 16c4-8 3-14-1-15-1 5-2 10-4 14z" fill="#8b8172"/>
+    <path d="M17 22 5 20c1 6 6 9 13 8z" fill="${dark}"/><path d="M47 22l12-2c-1 6-6 9-13 8z" fill="${dark}"/>
+    <path d="M19 24c0-7 6-11 13-11s13 4 13 11c0 8-3 13-4 19-1 6-4 9-9 9s-8-3-9-9c-1-6-4-11-4-19z" fill="${c1}"/>${ap.pattern === 'patched' ? `<path d="M32 13c7 0 12 4 13 10-7 1-12-3-13-10z" fill="${c2}"/>` : ''}
+    <ellipse cx="32" cy="44" rx="7.500" ry="6" fill="${shade(c1, 0.22)}"/>${old ? '<ellipse cx="32" cy="44" rx="7.500" ry="6" fill="#fff" opacity=".35"/>' : ''}<path d="M29 51c1 6 2 8 3 9 1-1 2-3 3-9z" fill="${shade(c1, 0.3)}"/>
+    <ellipse cx="24" cy="29" rx="3" ry="2.400" fill="${eyes}"/><rect x="22" y="28.300" width="4" height="1.400" rx=".7" fill="#151210"/><ellipse cx="40" cy="29" rx="3" ry="2.400" fill="${eyes}"/><rect x="38" y="28.300" width="4" height="1.400" rx=".7" fill="#151210"/>
+    <path d="M30 43h4l-2 2z" fill="#3a302a"/>`;
+}
+function sheep(ap, c1, c2, dark, eyes) {
+  const face = c1 === '#f1ede4' || c1 === '#e9d8b4' ? '#3b3632' : shade(c1, -0.35);
+  const wool = [[18, 22], [26, 14], [38, 14], [46, 22], [50, 34], [14, 34], [20, 46], [44, 46], [32, 11]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="9" fill="${c1}"/>`).join('');
+  return `${wool}<path d="M17 30 8 32c2 5 6 6 10 4z" fill="${face}"/><path d="M47 30l9 2c-2 5-6 6-10 4z" fill="${face}"/>
+    <path d="M21 30c0-6 5-9 11-9s11 3 11 9c0 7-2 12-3 16-1 5-4 7-8 7s-7-2-8-7c-1-4-3-9-3-16z" fill="${face}"/>
+    <circle cx="25.500" cy="33" r="2.600" fill="#f4efe6"/><circle cx="25.500" cy="33" r="1.400" fill="#151210"/><circle cx="38.500" cy="33" r="2.600" fill="#f4efe6"/><circle cx="38.500" cy="33" r="1.400" fill="#151210"/>
+    <path d="M30 45h4l-2 2.200zm2 2.200v2.300" fill="#e8a9a0" stroke="#e8a9a0" stroke-width="1"/>`;
+}
+function ferret(ap, c1, c2, dark, eyes, old) {
+  return `<circle cx="18" cy="18" r="6" fill="${dark}"/><circle cx="46" cy="18" r="6" fill="${dark}"/><circle cx="18" cy="18" r="3" fill="#e8a9a0"/><circle cx="46" cy="18" r="3" fill="#e8a9a0"/>
+    <path d="M14 30c0-10 8-16 18-16s18 6 18 16c0 12-8 22-18 22S14 42 14 30z" fill="${c1}"/><path d="M16 27c6-4 26-4 32 0-1 6-7 9-16 9s-15-3-16-9z" fill="#3b2f27" opacity=".75"/>
+    <ellipse cx="32" cy="43" rx="8" ry="7" fill="#f4efe6"/>${old ? '<ellipse cx="32" cy="43" rx="8" ry="7" fill="#fff" opacity=".4"/>' : ''}
+    ${eye(24.500, 30, eyes, 2.400)}${eye(39.500, 30, eyes, 2.400)}<ellipse cx="32" cy="40" rx="2.400" ry="1.800" fill="#d98a8a"/><path d="M32 41.800v2.200" stroke="#3a302a" stroke-width="1.100" stroke-linecap="round"/>`;
+}
+const as = (fn, kind) => (...args) => fn(...args, kind);
+const DRAW = { dog, cat, rabbit, parrot, hamster, guinea_pig: hamster, rat: hamster, budgie: parrot, ferret, fish, horse: as(horse, 'horse'), pony: as(horse, 'pony'), donkey: as(horse, 'donkey'),
+  chicken: as(fowl, 'chicken'), duck: as(fowl, 'duck'), goat, sheep };
 const SCALE = { small: 0.86, medium: 0.94, large: 1 };
 
 /**

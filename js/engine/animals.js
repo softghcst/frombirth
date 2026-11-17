@@ -146,6 +146,7 @@ function setHome(state, a, home) {
   if (now && now.hh === home.hh && now.key === home.key && now.city === home.city && now.countryId === home.countryId) return false;
   closeOpen(a.homes, state.year);
   a.homes.push({ ...home, from: state.year, to: null });
+  if (home.hh !== 'stable') delete a.board; // livery is paid only while the horse lives at the yard
   return true;
 }
 const homeWith = (state, r) => {
@@ -210,7 +211,7 @@ export function register(npc, o = {}) {
   // An animal already on record only as one waiting in a shelter is taken into the family: the same record, carried on.
   // That includes one the family itself once gave up, if someone comes back for it.
   const had = A.byId[npc.id];
-  const waiting = !!had && !o.stock && had.status === 'living' && !had.inCircle && homeOf(had)?.hh === 'shelter';
+  const waiting = !!had && !o.stock && had.status === 'living' && !had.inCircle && (had.family === false || homeOf(had)?.hh === 'shelter' || !ownerOf(had)?.id);
   if (had && !waiting) return had;
   const p = state.player;
   const origin = o.origin ?? 'unknown';
@@ -223,9 +224,9 @@ export function register(npc, o = {}) {
     id: npc.id, name: npc.firstName, speciesId: sp.id === 'other' ? (npc.species ?? 'other') : sp.id,
     breedId: looks.breedId,
     // A breed is on record only where someone would know it. Otherwise it is a guess, and shown as one.
-    breedKnown: !!looks.breedId && (origin === 'family' || !!breedOf(sp.id, looks.breedId)?.mix),
+    breedKnown: !!looks.breedId && (origin === 'family' || origin === 'bought' || origin === 'born' || !!o.papers || !!breedOf(sp.id, looks.breedId)?.mix),
     sex: sp.sexes === 'both' ? roll.pick(['female', 'male']) : null,
-    born: alive ? state.year - npc.age : null, bornKnown: origin === 'family',
+    born: alive ? state.year - npc.age : null, bornKnown: origin === 'family' || origin === 'born' || !!o.papers,
     died: null, ageAtDeath: alive ? null : npc.age, status: alive ? 'living' : 'deceased',
     lifespan: npc.lifespan ?? sp.lifespan[1],
     appearance: looks.appearance, temperament: drawTemperament(sp, roll),
@@ -242,7 +243,7 @@ export function register(npc, o = {}) {
     Object.assign(a, { family: false, inCircle: false, origin: { how: 'stock', year: state.year, city: o.stock.city, countryId: o.stock.countryId, from: o.stock.name, history: o.history ?? null } });
     a.ownerships.push({ who: org, from: state.year, to: null, how: 'taken in' });
     a.care.push({ who: org, role: 'primary', from: state.year, to: null });
-    a.homes.push({ hh: 'shelter', key: o.stock.id, label: o.stock.name, city: o.stock.city, countryId: o.stock.countryId, from: state.year, to: null });
+    a.homes.push({ hh: o.stock.hh ?? 'shelter', key: o.stock.id, label: o.stock.name, city: o.stock.city, countryId: o.stock.countryId, from: state.year, to: null });
     return a;
   }
   if (had) for (const list of [a.ownerships, a.care, a.homes]) closeOpen(list, state.year, 'left the shelter');
@@ -271,7 +272,7 @@ export function register(npc, o = {}) {
   const from = known ? state.year : null;
   const how = { family: 'already theirs', shelter: 'adopted', found: 'taken in', unknown: 'unknown', bought: 'bought', born: 'born to the household' }[origin] ?? origin;
   // The family's animal lives in the family home, whoever in it the player is.
-  const home = mine ? playerHome(state) : { ...playerHome(state), hh: 'parents', key: 'family-home', label: `The ${p.lastName} family home` };
+  const home = o.home ?? (mine ? playerHome(state) : { ...playerHome(state), hh: 'parents', key: 'family-home', label: `The ${p.lastName} family home` });
   // An animal that had already died when the record began: what is known is how old it was, not when.
   const span = alive ? { from, to: null } : { from: null, to: null, closed: true };
   a.ownerships.push({ who: owner, ...span, how });
@@ -476,7 +477,7 @@ function arrangeCare(state, a, goneId, why, quiet = false) {
   const before = homeOf(a);
   // It stays where it lives if its new keeper lives there too; otherwise it goes to them.
   const stays = before && ((before.hh === 'parents' && state.npcs[next]?.role === 'parent') || (before.hh === 'player' && !isPlayer(state, goneId) && ['spouse', 'child'].includes(state.npcs[next]?.role)));
-  if (!stays) setHome(state, a, same ?? homeWith(state, who));
+  if (!stays && !a.board) setHome(state, a, same ?? homeWith(state, who));
   const you = isPlayer(state, next);
   record(state, { type: 'care', animalId: a.id, people: [gone, who], sig: 3, key: `care:${next}`,
     story: quiet ? null : you ? `${a.name} is yours to look after now.` : `${cap(whoPhrase(state, who))} has taken over looking after ${a.name}.`,
@@ -502,8 +503,8 @@ export function leaveToOrg(state, a, o = {}) {
   setHome(state, a, o.placed ? { hh: 'elsewhere', key: 'elsewhere', label: 'A permanent home with a new family', city: last?.city ?? p.city, countryId: last?.countryId ?? p.countryId }
     : { hh: 'shelter', key: org.org ?? 'rescue', label: org.name.replace(/^a /, 'A '), city: last?.city ?? p.city, countryId: last?.countryId ?? p.countryId });
   if (a.foster) { a.fostered = { ...a.foster, until: state.year }; delete a.foster; }
-  delete a.insurance;
-  record(state, { type: o.placed ? 'placed' : 'rehomed', animalId: a.id, people, sig: 3, key: o.placed ? 'placed' : `rehomed:${state.year}`, story: o.story ?? null, tone: o.tone,
+  delete a.insurance; delete a.board;
+  record(state, { type: o.placed ? 'placed' : 'rehomed', animalId: a.id, people, sig: o.sig ?? 3, key: o.placed ? 'placed' : `rehomed:${state.year}`, story: o.story ?? null, tone: o.tone,
     text: o.text ?? (o.placed ? `${a.name} the ${sp.name} went to a permanent home with a new family.` : `${a.name} the ${sp.name} went into the care of ${org.name}.`), memories: o.memories ?? [] });
   if (state.npcs[a.id]) { a.lastBond = state.npcs[a.id].meters.relationship; delete state.npcs[a.id]; p.npcIds = p.npcIds.filter((id) => id !== a.id); }
   a.inCircle = false;
@@ -672,8 +673,10 @@ export function train(id, skillId, state = store.state) {
   n.lastInteractionAge = p.age;
   const stage = stageOf(a, state);
   const temper = a.temperament.trainability ?? (100 - (a.temperament.independence ?? 50));
+  // A horse is taught by someone who knows horses. Without that, it goes slowly.
+  const handler = speciesOf(a.speciesId).group === 'equine' ? ((p.riding?.skills.handling ?? 10) - 45) * 0.3 : 0;
   const gain = Math.max(8, Math.round(rng.int(28, 46) + (temper - 50) * 0.3 + (n.meters.relationship - 50) * 0.2 - skill.difficulty * 7
-    + (stage === 'senior' ? -6 : stage === 'adult' ? 0 : 5) + (p.age < 12 ? -6 : 0)));
+    + (stage === 'senior' ? -6 : stage === 'adult' ? 0 : 5) + (p.age < 12 ? -6 : 0) + handler));
   t.progress = Math.min(100, t.progress + gain);
   t.sessions += 1; t.lastYear = state.year; t.by = ref(state, p.id);
   n.meters.relationship = clamp(n.meters.relationship + rng.int(2, 5));
@@ -748,7 +751,9 @@ export function familyLink(a, state = store.state) {
   if (isPlayer(state, owner?.id)) return gone ? `Your ${sp}` : homeOf(a)?.hh === 'player' || livesWithPlayer(a.id, state) ? `Your ${sp}` : `Your ${sp}, living elsewhere`;
   const kin = owner?.id ? kinWord(state, owner.id) : null;
   if (kin) return `${gone ? 'Was your' : 'Your'} ${kin} ${state.npcs[owner.id].firstName}'s ${sp}${everKept(state, a) ? ', and partly yours' : ''}`;
-  if (!owner?.id && owner) return `Once the family's ${sp}; rehomed through a rescue`;
+  if (!owner?.id && owner && a.riders) return `${owner.name}'s ${sp}, ridden by the family`;
+  if (!owner?.id && owner && a.foster) return `Fostered for ${owner.name}`;
+  if (!owner?.id && owner) return a.ownerships.some((o) => o.who.id) ? `Once the family's ${sp}; ${gone ? 'was' : 'now'} with ${owner.name}` : `${owner.name}'s ${sp}`;
   return owner ? `${owner.name}'s ${sp}, from the family's past` : `A ${sp} of the family`;
 }
 
@@ -862,8 +867,8 @@ export function handOver(old, next, ids) {
     if (a.status !== 'living') continue;
     const keeper = primaryOf(a) ?? ownerOf(a);
     // Where it lives now, said from the new player's side.
-    if (keeper?.id === np.id) setHome(next, a, home);
-    else if (keeper?.id && next.npcs[keeper.id]) {
+    if (keeper?.id === np.id) { if (!a.board) setHome(next, a, home); } // a horse at livery stays at its yard
+    else if (keeper?.id && next.npcs[keeper.id] && !a.board) { // a horse at livery stays at its yard, whoever keeps it
       const withFamily = next.npcs[keeper.id].role === 'parent' && np.flags.livesWithParents;
       setHome(next, a, withFamily ? { ...home, hh: 'parents', key: 'family-home', label: `The ${np.lastName} family home` } : homeWith(next, keeper));
     } else if (homeOf(a)?.hh === ids.ancestorId) {

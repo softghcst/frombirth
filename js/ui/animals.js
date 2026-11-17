@@ -13,6 +13,10 @@ import { esc, cap, theCountry } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
 import * as zoo from '../engine/animals.js';
 import * as rel from '../engine/relationships.js';
+import * as care from '../engine/animalCare.js';
+import { ROUTINES } from '../data/animals.js';
+import { fmtMoney } from '../util.js';
+import { confirmModal } from './modals.js';
 import { speciesOf, TEMPERAMENT, EVENT_TYPES } from '../data/animals.js';
 import { animalPortraitSvg } from './animalPortrait.js';
 import { avatarSvg } from './avatar.js';
@@ -193,7 +197,10 @@ function profile(step) {
         return known(c.who) ? `<button class="row" data-person="${c.who.id}">${inner}</button>` : `<div class="row">${inner}</div>`;
       };
       return `<p class="muted zoo-note">${esc(a.name)} ${alive ? 'has' : 'had'} a bond of ${their} own with each person.</p>
-        ${[...carers, ...others].map(row).join('') || '<p class="empty">Nobody is on record.</p>'}`;
+        ${[...carers, ...others].map(row).join('') || '<p class="empty">Nobody is on record.</p>'}
+        ${care.companionsOf(a).length ? `<div class="section-label">Other animals</div>${care.companionsOf(a).map((x) => `<button class="row" data-animal="${x.other.id}">${animalFace(x.other)}
+          <div class="main"><strong>${x.other.status === 'living' ? '' : '† '}${esc(x.other.name)}</strong><small>${esc(cap(x.word))} · since ${x.since}</small></div>
+          <div class="side">${x.value}%<div class="mini"><i class="fill ${band(x.value)}" style="width:${x.value}%"></i></div></div></button>`).join('')}` : ''}`;
     },
     care: () => `
       ${kv([['Owner', owner ? personChip(owner) : 'Not recorded'], alive ? ['Main caregiver', main ? personChip(main) : 'Not recorded'] : null,
@@ -201,6 +208,16 @@ function profile(step) {
     [alive ? 'Lives at' : 'Last home', home ? `${esc(home.label)}${place(home) ? `, ${esc(place(home))}` : ''}` : '']])}
       <p class="muted zoo-note">Who owns an animal, who looks after it day to day, and where it lives are kept as three separate things.</p>
       ${home && home.key !== 'rescue' && !home.key.startsWith('with:') ? `<div class="btn-stack"><button class="btn" data-chronicle="${esc(home.key)}">The chronicle of this house</button></div>` : ''}
+      ${(() => {
+    const c = COUNTRIES[player().countryId];
+    if (a.foster) return `<div class="section-label">Foster placement</div>${kv([['For', esc(a.foster.name)], ['Since', String(a.foster.since)], ['Next review', String(a.foster.review)], ['Vet\'s bills', 'Paid by the rescue']])}`;
+    if (!care.paysFor(a)) return '';
+    const y = care.yearlyCost(a);
+    return `<div class="section-label">What ${esc(a.name)} costs you</div>
+        ${kv([['Routine', esc(ROUTINES[a.routine ?? 'standard'].name)], ['Food, supplies and everyday care', `${fmtMoney(y.care, c)} a year`], y.board ? ['Livery', `${fmtMoney(y.board, c)} a year`] : null,
+      ['Insurance', a.insurance ? `${fmtMoney(y.insurance, c)} a year · pays ${Math.round(a.insurance.rate * 100)}% after ${fmtMoney(a.insurance.deductible, c)}` : 'Not insured'], ['Altogether', `<strong>${fmtMoney(y.total, c)} a year</strong>`]])}
+        ${care.ledgerOf(a.id).length ? `<div class="section-label">Paid so far</div>${kv(Object.entries(care.ledgerOf(a.id).reduce((m, t) => ({ ...m, [t.kind]: (m[t.kind] ?? 0) + t.amount }), {})).map(([k, v]) => [cap(k), `${v < 0 ? '+' : ''}${Math.abs(v).toLocaleString('en-US')} ${esc(care.ledgerOf(a.id)[0].currency)}`]))}` : ''}`;
+  })()}
       <div class="section-label">What a ${esc(sp.name)} needs</div>
       <ul class="zoo-list">${sp.needs.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
       <p class="muted zoo-note">${esc(sp.housing)}${alive && zoo.livesWithPlayer(a.id) ? ' Everyday care is seen to by the household without being asked.' : ''}</p>`,
@@ -245,12 +262,19 @@ function profile(step) {
   const acts = [];
   if (alive && npc?.alive) {
     acts.push(...rel.basicActions(npc), ...zoo.animalActions(a.id));
+    if (care.vetServices(a.id).some((x) => !x.done)) acts.push({ id: 'vet', label: 'Go to the vet' });
+    if (care.paysFor(a)) acts.push({ id: 'routine', label: 'Change the care routine' });
+    if (care.insuranceQuote(a.id).available) acts.push({ id: 'insure', label: 'Take out insurance' });
+    if (a.insurance) acts.push({ id: 'uninsure', label: 'Cancel the insurance' });
+    for (const f of care.fosterChoices(a)) acts.push({ id: `foster:${f.id}`, label: f.label });
+    for (const x of extras.actions) acts.push(...x(a));
+    if (care.rehomeOptions(a.id).length) acts.push({ id: 'rehome', label: `Find ${a.name} a new home`, danger: true });
     if (hooks.editStats) acts.push({ id: 'edit', label: 'Edit stats' });
   } else if (!alive && !a.memorial && player().age >= 5) acts.push({ id: 'memorial', label: 'Make a memorial' });
   const away = alive && !npc ? `<p class="muted zoo-note">${esc(a.name)} is no longer in your life. ${esc(cap(zoo.pronoun(a)))} is with ${esc(main?.name ?? 'someone else')} now.</p>` : '';
 
   return { title: `${alive ? '' : '† '}${a.name}`, sub: '', tabs: TABS, tab, body: `${head}${(sections[tab] ?? sections.overview)()}
-    ${away}${acts.length ? `<div class="section-label">${alive ? 'Together' : 'Remembering'}</div><div class="btn-stack">${acts.map((x) => `<button class="btn" data-act="${x.id}">${esc(x.label)}</button>`).join('')}</div>` : ''}` };
+    ${away}${acts.length ? `<div class="section-label">${alive ? 'Together' : 'Remembering'}</div><div class="btn-stack">${acts.map((x) => `<button class="btn ${x.danger ? 'danger' : ''}" data-act="${x.id}">${esc(x.label)}</button>`).join('')}</div>` : ''}` };
 }
 
 function chronicle(step) {
@@ -281,6 +305,22 @@ function story(step) {
 }
 
 const SCREENS = { archive, album, profile, chronicle, story };
+/** What other files add to these screens: whole screens, things to do, and more for a profile. */
+const extras = { actions: [], profile: [], doers: {}, acts: {} };
+/**
+ * @param {{screens?:Object<string,Function>, doers?:Object<string,Function>, actions?:Function, acts?:Object<string,Function>}} x
+ *   screens  name -> (step) => { title, sub, tabs?, tab?, body }
+ *   doers    what a button marked data-do="name" does: (dataset, ui) => void
+ *   actions  (animal) => [{ id, label }] to offer on a living animal's profile      acts  id -> async (animal) => result
+ */
+export function extend(x) {
+  Object.assign(SCREENS, x.screens ?? {});
+  Object.assign(extras.doers, x.doers ?? {});
+  Object.assign(extras.acts, x.acts ?? {});
+  if (x.actions) extras.actions.push(x.actions);
+}
+/** For those files: the same moves these screens make. */
+export const ui = { get api() { return api; }, nav, show: () => show(), shut: () => shut(), note: (x) => note(x), closeAll: () => closeAll(), animalFace, personChip: (r, n) => personChip(r, n), seg: (...x) => seg(...x), eventRow: (...x) => eventRow(...x) };
 
 // ---------- Showing, and moving between ----------
 
@@ -337,6 +377,7 @@ async function onClick(e) {
     return openFamilyTree((npc) => hooks.openPerson?.(npc, api, () => show()));
   }
   if ((el = hit('data-act'))) return act(step.params.animalId, el.dataset.act);
+  if ((el = hit('data-do'))) return extras.doers[el.dataset.do]?.(el.dataset, step);
   return undefined;
 }
 
@@ -365,7 +406,44 @@ async function act(id, what) {
       options: zoo.trainingOf(a).map((s) => ({ value: s.id, label: s.name, sub: s.progress >= 100 ? 'Learned' : s.progress ? `${s.progress}% of the way` : ['', 'Easy to begin with', 'Takes a while', 'Hard: expect it to take years'][s.difficulty], disabled: s.progress >= 100 })) });
     if (!skill) return show();
     r = zoo.train(id, skill);
-  } else if (what === 'memorial') { shut(); r = zoo.memorialize(id); } else { shut(); r = rel.interact(id, what); }
+  } else if (what === 'memorial') { shut(); r = zoo.memorialize(id);
+  } else if (what === 'vet') {
+    shut();
+    const c = COUNTRIES[player().countryId]; const cl = care.clinic();
+    const svc = await pickModal({ title: cl.name, body: `${cl.vets[0].name} and ${cl.vets[1].name} see ${a.name} here.`,
+      options: care.vetServices(id).map((x) => ({ value: x.id, label: x.name, sub: x.done ? 'Done this year' : `${x.blurb} ${x.price ? fmtMoney(x.price, c) : 'Paid by the rescue'}`, disabled: x.done || !x.affordable })) });
+    if (!svc) return show();
+    r = care.vetVisit(id, svc);
+  } else if (what === 'routine') {
+    shut();
+    const c = COUNTRIES[player().countryId];
+    const pick = await pickModal({ title: `How ${a.name} is looked after`, body: 'Everyday care happens without being asked. This is how much goes into it.',
+      options: Object.entries(ROUTINES).map(([k, v]) => ({ value: k, label: `${v.name}${(a.routine ?? 'standard') === k ? ' (now)' : ''}`, sub: `${v.blurb} ${fmtMoney(Math.round(care.yearlyCost({ ...a, routine: k }).care), c)} a year.` })) });
+    if (!pick) return show();
+    r = care.setRoutine(id, pick);
+  } else if (what === 'insure') {
+    shut();
+    const c = COUNTRIES[player().countryId]; const q = care.insuranceQuote(id);
+    const yes = await confirmModal({ title: `Insure ${a.name}?`, body: `${fmtMoney(q.premium, c)} a year. It pays ${Math.round(q.rate * 100)}% of illness and injury after the first ${fmtMoney(q.deductible, c)} of each bill, up to ${fmtMoney(q.yearCap, c)} a year. Check-ups, vaccinations and dental work are not covered.`, yes: 'Take the policy' });
+    if (!yes) return show();
+    r = care.insure(id);
+  } else if (what === 'uninsure') { shut(); r = care.cancelInsurance(id);
+  } else if (what.startsWith('foster:')) {
+    shut();
+    const kind = what.slice(7);
+    const yes = await confirmModal(kind === 'adopt' ? { title: `Apply to adopt ${a.name}?`, body: `Fostering does not make ${a.name} yours: you apply like anyone else, and pay the adoption fee.`, yes: 'Apply' }
+      : { title: `Let ${a.name} go?`, body: `${a.foster.name} will place ${zoo.pronoun(a, 'them')} with a permanent family if one is waiting. ${a.name} will leave your life; you keep the memories.`, yes: 'It is time', danger: true });
+    if (!yes) return show();
+    r = care.fosterDecision(id, kind);
+  } else if (what === 'rehome') {
+    shut();
+    const to = await pickModal({ title: `A new home for ${a.name}`, body: `If you can no longer look after ${a.name}, someone else can. ${cap(zoo.pronoun(a))} will not understand why.`, options: care.rehomeOptions(id) });
+    if (!to) return show();
+    const sure = await confirmModal({ title: `Give ${a.name} up?`, body: 'This cannot be undone.', yes: `Give ${a.name} up`, danger: true });
+    if (!sure) return show();
+    r = care.rehome(id, to);
+  } else if (extras.acts[what]) { shut(); r = await extras.acts[what](a); if (!r) return show();
+  } else { shut(); r = rel.interact(id, what); }
   api?.changed();
   await messageModal({ body: r.text, tone: r.tone });
   return show();

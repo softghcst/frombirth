@@ -195,7 +195,7 @@ export function createLife(opts = {}) {
   };
   if (seat) dress(seat.dynasty, state);
   // The family's animals were there first: they go on the family's record with the line that introduces them.
-  for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });
+  for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => !e.animal && e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });
   reconcileAnimals(state);
   return state;
 }

@@ -308,3 +308,32 @@ export const EVENT_TYPES = {
   died: { label: 'Passed away', glyph: '🕯️' },
   memorial: { label: 'Memorial', glyph: '🌿' },
 };
+
+// ---------- Riding ----------
+
+/** What a rider is made of. Each is 0–100 and grows with lessons and hours in the saddle. */
+export const RIDER_SKILLS = {
+  balance: 'Balance', seat: 'Seat', reins: 'Rein contact', handling: 'Handling on the ground', groundwork: 'Groundwork', confidence: 'Confidence', knowledge: 'Horse knowledge',
+};
+export const RIDER_LEVELS = [[0, 'Beginner'], [25, 'Novice'], [45, 'Intermediate'], [65, 'Advanced'], [85, 'Expert']];
+/**
+ * Ways of riding. `needs` says which of a rider's skills each one leans on (the weights add up to 1);
+ * `horse` says what it asks of the horse's temperament; `hard` marks those an old horse should be spared.
+ */
+export const DISCIPLINES = {
+  hacking: { name: 'Hacking out', blurb: 'Riding out across country for the pleasure of it.', needs: { confidence: 0.4, balance: 0.3, handling: 0.3 }, horse: 'confidence', show: false },
+  dressage: { name: 'Dressage', blurb: 'Precision and harmony, on the flat.', needs: { seat: 0.4, reins: 0.4, balance: 0.2 }, horse: 'trainability', show: true },
+  jumping: { name: 'Show jumping', blurb: 'A course of fences, against the clock.', needs: { balance: 0.4, confidence: 0.35, seat: 0.25 }, horse: 'confidence', hard: true, show: true },
+  eventing: { name: 'Eventing', blurb: 'Dressage, cross-country and show jumping, on one horse.', needs: { balance: 0.3, confidence: 0.3, seat: 0.2, reins: 0.2 }, horse: 'adaptability', hard: true, show: true },
+  western: { name: 'Western riding', blurb: 'A loose rein, a deep seat, and a horse that thinks for itself.', needs: { seat: 0.35, reins: 0.25, handling: 0.4 }, horse: 'trainability', show: true },
+  endurance: { name: 'Endurance', blurb: 'Long distances, at the horse\'s pace, with a vet check at every stage.', needs: { knowledge: 0.4, balance: 0.3, handling: 0.3 }, horse: 'activity', hard: true, show: true },
+};
+/** Levels a show class is run at: what a rider must have before entering, the entry fee and the top prize, in base units. */
+export const SHOW_LEVELS = {
+  intro: { name: 'Introductory', needs: 25, fee: 40, prize: 0, field: [18, 42] },
+  novice: { name: 'Novice', needs: 45, fee: 70, prize: 60, field: [35, 62] },
+  open: { name: 'Open', needs: 65, fee: 120, prize: 220, field: [55, 86] },
+};
+/** A year of weekly lessons at a riding school, and a year of livery for one horse, in base units. */
+export const LESSON_COST = 1500;
+export const LIVERY_COST = 5200;
