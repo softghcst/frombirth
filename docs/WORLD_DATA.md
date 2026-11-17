@@ -112,7 +112,7 @@ shown on its profile.
 - City profiles (`js/data/cities.js`) are two multipliers, housing and pay, guessed by the author for twelve countries and
   generic elsewhere (the capital, and the first city listed, assumed to be dearer and better paid). They come from no dataset.
   Region names are real and unverified. Regions exist only where a city in the game sits in one; they have no government,
-  taxes or budget of their own. Safety, schools and health care do not vary by city. People the player knows are not paid by city.
+  taxes or budget of their own. Safety, schools and health care vary only by kind of city (capital, largest, other), by a rule in `SERVICES`, not by data about any place. People the player knows are not paid by city.
 - Citizenship rules (`js/data/citizenship.js`) are three yes-or-no lists and a table of years: which places grant citizenship by
   birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
   conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.

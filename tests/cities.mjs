@@ -95,6 +95,25 @@ p = life('br', 'Recife'); for (let i = 0; i < 40 && p.countryId === 'br'; i++) {
 check(p.countryId === 'ca' && p.city === 'Calgary', 'an emigrant arrives in the city they chose');
 section('moving: cost, record, job, home, and the city chosen when emigrating');
 
+// 6. Safety, schools and hospitals follow the kind of city.
+{
+  const { careQuality } = await import('../js/engine/living.js');
+  const { SERVICES } = await import('../js/data/cities.js');
+  for (const c of COUNTRY_LIST) for (const k of towns.citiesOf(c.id)) {
+    check([k.safety, k.schools, k.health].every((v) => Number.isFinite(v) && Math.abs(v) <= 10), `${c.id}/${k.name}: services out of range`);
+  }
+  const cap = towns.cityOf('fr', 'Paris'); const small = towns.cityOf('fr', 'Nantes');
+  check(cap.health > small.health && cap.safety < small.safety && cap.schools >= small.schools, 'the capital has the big hospitals and more crime; a smaller city is safer');
+  check(/major hospitals/.test(towns.cityLine('fr', 'Paris')) && /safer/.test(towns.cityLine('fr', 'Nantes')), 'and the city lists say so');
+  check(towns.cityOf('sg', 'Singapore').health === 0 && towns.cityOf('sg', 'Singapore').safety === 0, 'a one-city place is its own average');
+  let p = life('fr', 'Paris'); p.finance.cash = 0; const there = careQuality();
+  p.city = 'Nantes'; const here = careQuality();
+  check(there > here, `the care within reach is better in Paris than in Nantes (${there} against ${here})`);
+  check(towns.localScore('safety', { safety: 99 }) <= 100 && towns.localScore('safety', { safety: 1 }) >= 0, 'scores stay within 0 to 100');
+  check(Object.values(SERVICES).every((v) => Math.abs(v.safety) <= 5 && Math.abs(v.health) <= 10), 'the city effect is modest next to the differences between countries');
+  section('services: safety, schools and hospitals vary by kind of city, modestly, and reach the game');
+}
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('Cities and regions hold.');

@@ -106,9 +106,10 @@ for (let i = 0; i < 15; i++) m.tickMarket();
 const idx = store.state.market.housingBy;
 check(Object.keys(idx).length >= 100 && new Set(Object.values(idx).map((v) => v.toFixed(3))).size > 20, 'housing markets move separately from country to country');
 check(store.state.market.housing === m.housingIndex('us'), 'the old single figure follows the country the player lives in');
-store.state.market.abroad = null; const before = estate.listingsAbroad('mx', 'Mérida').reduce((s, l) => s + l.price / l.quality, 0);
-store.state.market.housingBy.mx = m.housingIndex('mx') * 2; store.state.market.abroad = null;
-const doubled = estate.listingsAbroad('mx', 'Mérida').reduce((s, l) => s + l.price / l.quality, 0);
+const avgPrice = () => { let t = 0; let n = 0; for (let i = 0; i < 40; i++) { store.state.market.abroad = null; for (const l of estate.listingsAbroad('mx', 'Mérida')) { t += l.price; n += 1; } } return t / n; };
+const before = avgPrice();
+store.state.market.housingBy.mx = m.housingIndex('mx') * 2;
+const doubled = avgPrice();
 check(doubled > before * 1.3, 'a Mexican boom raises Mexican prices');
 p = life('us', 'Chicago'); { const { hire } = await import('../js/engine/career.js'); const { CAREERS } = await import('../js/data/careers.js'); hire(CAREERS.find((c) => c.id === 'office'), 2, 70); }
 store.state.market.listings = null; const l2 = estate.listings()[1];
