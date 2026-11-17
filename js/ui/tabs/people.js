@@ -226,7 +226,8 @@ function geoLine(npc) {
   const born = npc.bornIn && COUNTRIES[npc.bornIn] ? placeName(npc.bornIn, npc.birthCity ?? null, store.state.year - npc.age) : null;
   const now = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad].name : COUNTRIES[player().countryId].name;
   const lived = new Set((npc.places ?? []).map((l) => l.countryId)).size;
-  return `<p class="muted" style="margin-top:8px">${born ? `Born in ${esc(born)}. ` : ''}${npc.alive ? `Lives in ${esc(now)}.` : ''}${lived > 1 ? ` Has lived in ${lived} countries.` : ''}</p>`;
+  const home = npc.flags.homeLanguage?.pace ? ` Growing up with ${npc.flags.homeLanguage.lang.replace(/^./, (c) => c.toUpperCase()).replace('_', ' ')} at home.` : '';
+  return `<p class="muted" style="margin-top:8px">${born ? `Born in ${esc(born)}. ` : ''}${npc.alive ? `Lives in ${esc(now)}.` : ''}${lived > 1 ? ` Has lived in ${lived} countries.` : ''}${esc(home)}</p>`;
 }
 
 /** What the courts recorded about someone, as far as it is public. */

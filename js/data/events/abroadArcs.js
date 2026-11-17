@@ -27,6 +27,24 @@ export default [
     ['Go and see them first', 'You look at flights both ways.', 'homeward:visit'],
     ['Stay where your life is', 'You stay, and call more often.', 'homeward:stay'],
   ]),
+  scene('abroad_firstTrip', [12, 17], 'Your parents have been whispering about money, and then about maps. This summer, they say, the family goes abroad: a fortnight {trip}. It would be your first time out of the country.', [
+    ['Count down the days', 'You start a list of everything you want to see.', 'firstTrip:go'],
+    ['Ask if you can see family there', 'You ask whether there will be time for family.', 'firstTrip:kin'],
+    ['Say you would rather stay at home', 'You shrug, and say it is not really your thing.', 'firstTrip:stay'],
+  ]),
+  scene('abroad_exchange', [18, 30], 'The international office has pinned up its list of exchange places for next spring. One of them is a semester in {place}, and your tutor has written your name next to it in pencil.', [
+    ['Apply for it', 'You fill in the form before you can talk yourself out of it.', 'exchange:apply'],
+    ['Let it go', 'You decide this is not the year.', 'exchange:no'],
+  ]),
+  scene('abroad_cultures', [20, 100], '{who} answered you in the local language again tonight, and asked what a word in {lang} meant. It is the language {parent} grew up with, and it is slipping out of the house.', [
+    ['Speak {lang} at home', 'You decide to keep it in the house.', 'cultures:home'],
+    ['Send {who} to weekend {lang} school', 'You look up the Saturday classes.', 'cultures:school'],
+    ['Let the local language take over', 'You decide not to fight it.', 'cultures:local'],
+  ]),
+  scene('abroad_venture', [25, 100], 'Customers keep asking whether {business} will ever open in {country}. {who}', [
+    ['Open a branch there', 'You ask the accountant what it would take.', 'venture:go'],
+    ['Not yet', 'You keep the business where it is.', 'venture:no'],
+  ]),
   scene('abroad_retire', [60, 100], 'Retirement has made the days long and the winters longer. {why}', [
     ['Apply to live there', 'You find out what it would take.', 'retire:apply'],
     ['Spend a month there first', 'You decide to try it before you decide.', 'retire:visit'],

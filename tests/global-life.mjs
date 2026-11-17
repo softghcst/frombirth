@@ -332,7 +332,7 @@ let moved;
   check(p.assets.some((a) => a.id === home.id), 'the flat is still owned');
   check(later.status === 'cancelled' && p.finance.receipts.some((x) => x.kind === 'refund' && x.ref?.tripId === later.id), 'the Puebla weekend was canceled at the move and refunded on its terms');
   check(friend.alive && p.npcIds.includes(friend.id) && friend.role === 'friend' && (friend.flags.abroad === 'mx' || friend.places?.some((l) => l.countryId === 'mx')), 'the friend from Mexico is still a friend, with their life in Mexico on record');
-  check(!mum || (p.npcIds.includes(mum.id) && mum.flags.abroad === 'mx'), 'and so is mum');
+  check(!mum || !mum.alive || (p.npcIds.includes(mum.id) && (mum.flags.abroad === 'mx' || mum.places?.some((l) => l.countryId === 'mx'))), 'and so is mum, with her life in Mexico on record');
   check(!dog.alive || (!dog.flags.abroad && store.state.npcs[dog.id] === dog), `the dog came, the same dog (${dog.flags.abroad}, ${dog.alive}, ${dog.role})`);
   const moves = store.state.canon.events.filter((e) => e.type === 'relocation' && e.international);
   check(moves.length === 1 && p.locations[p.locations.length - 1].eventId === moves[0].id, 'one relocation event, linked from the residence record');
@@ -671,6 +671,7 @@ let moved;
     do { store.state = createLife({ countryId, year }); } while (store.state.player.royal);
     const q = store.state.player;
     for (let i = 0; i < age; i++) { q.stats.health = 95; advanceYear(); store.state.pendingEvents = []; q.legal.pending = null; q.alive = true; }
+    if (q.countryId !== countryId) { q.countryId = countryId; q.residency = null; q.locations = null; } // the family's own wanderings are not what this tests
     if (city) q.city = city;
     q.finance.cash = Math.max(q.finance.cash, Math.round(4000 * COUNTRIES[countryId].currency.scale)); q.flags.livesWithParents = false; q.education.enrolled = false; q.legal.record = [];
     return q;
@@ -753,7 +754,38 @@ let moved;
   const r4 = choose('abroad_retire', 'Spend a month');
   check(travel.trips(['draft']).some((t) => t.destination?.countryId === 'es' && t.type === 'vacation') && !p.finance.receipts.some((x) => x.kind === 'travel'), 'trying it first is a plan, not a booking: nothing paid');
   check(!r4.text.includes('undefined'), 'the scene reads properly');
-  section('stories abroad: a job offer, a marriage across a border, going home, retiring near family; each from real state, each an application or a plan');
+  // A first trip abroad: a teenager who has never crossed a border, with parents who can afford it.
+  p = life('fr', 14, 0, 'Lyon');
+  for (const n of p.npcIds.map((id) => store.state.npcs[id]).filter((x) => x?.role === 'parent')) { n.savings = 1e7; if (n.life) n.life.savings = 1e7; n.flags.abroad = false; n.alive = true; }
+  p.flags.visited = [];
+  check(arcs.tickAbroadArcs(p, 'firstTrip') === 'firstTrip' && scene('abroad_firstTrip'), 'a fourteen-year-old who has never been abroad is offered a first trip');
+  const ft = choose('abroad_firstTrip', 'Count down');
+  check(chron.hasEvent(`first-abroad:${chron.archiveIdOf(p)}`) && travel.trips(['completed']).length === 1 && docs.validPassport(p), `the first trip abroad happens, with a passport, and is remembered (${ft.text.slice(0, 70)})`);
+  check(arcs.tickAbroadArcs(p, 'firstTrip') === null, 'and is not offered again');
+  // A semester abroad: a plan, not an enrolment.
+  p = life('us', 20, 50000, 'Chicago'); p.education.enrolled = true; p.education.stage = 'university';
+  check(arcs.tickAbroadArcs(p, 'exchange') === 'exchange', 'a university student is offered an exchange semester');
+  choose('abroad_exchange', 'Apply');
+  check(travel.trips(['draft']).some((t) => t.type === 'semester'), 'applying makes a semester plan, still to be booked, with its visa still to get');
+  // Two cultures: a child at home, a parent who grew up with Korean.
+  p = life('us', 35, 50000, 'Seattle');
+  const sp3 = add('spouse', 'kr', 35); sp3.bornIn = 'kr';
+  const kid3 = add('child', 'us', 6, 90); kid3.parentIds = [p.id, sp3.id];
+  check(arcs.tickAbroadArcs(p, 'cultures') === 'cultures' && scene('abroad_cultures').cast.words.lang === 'Korean', 'a child with a Korean parent at home: the family language');
+  choose('abroad_cultures', 'Speak');
+  year(4);
+  check((kid3.flags.homeLanguage?.level ?? 0) > 10 && kid3.flags.homeLanguage.level < 90, `the child picks it up, gradually (${kid3.flags.homeLanguage?.level})`);
+  // The family business abroad: a branch, through the business engine.
+  const bz2 = await import('../js/engine/business.js');
+  p = life('de', 50, 400000, 'Munich');
+  bz2.start('bakery', 'Bäckerei Müller');
+  const bk2 = bz2.openBusinesses()[0];
+  bz2.hire(bk2, 0); bz2.setManager(bk2, bz2.staffOf(bk2)[0].npc.id); bk2.years = 4; bk2.reputation = 75; bk2.cash += 5000000;
+  const son2 = add('child', 'de', 26); son2.flags.abroad = 'at';
+  check(arcs.tickAbroadArcs(p, 'venture') === 'venture' && scene('abroad_venture').cast.words.country === 'Austria', 'a son in Austria, and an established bakery: the family business goes abroad');
+  choose('abroad_venture', 'Open');
+  check(bz2.openBusinesses().some((b) => b.countryId === 'at' && b.parentId === bk2.id), 'a branch in Austria, with its own accounts');
+  section('stories abroad: a job offer, a marriage across a border, going home, retiring near family, a first trip, an exchange, two cultures, a family business abroad; each from real state');
 }
 {
   // A long life: trips most years, passports renewed, moves applied for, seventy years. Nothing breaks, nothing is paid twice.

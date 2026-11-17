@@ -460,7 +460,10 @@ they hold, which passports they carry, what a border asks of them, and whether t
 - **Stories of a life abroad** (`js/engine/abroadArcs.js`, scenes in `js/data/events/abroadArcs.js`), each begun only from the save: a job offer
   abroad for someone qualified and established (apply, go and meet them, talk it over, or say no); a husband or wife living in another
   country (ask them to come, which is their decision and their permission; move to them, which is your application; visit; let it be);
-  going home after ten years away when a parent there is growing old; retiring near a child abroad, or somewhere warmer and cheaper.
+  going home after ten years away when a parent there is growing old; retiring near a child abroad, or somewhere warmer and cheaper;
+  a teenager's first trip abroad with the family (to family abroad if there is any, somewhere no visa is needed); an exchange
+  semester for a university student; a child growing up with a parent's language at home (spoken at home, weekend school, or let
+  go); and an established family business opening a branch abroad, near a relative who lives there.
   A "yes" is an application or a draft trip, never an approval.
 - **Moving with children** (`js/engine/familyMove.js`): a child under 18 whose other parent is alive and not coming moves only with
   that parent's agreement or a court's permission (which weighs the child's age, who they are close to, and why the family is

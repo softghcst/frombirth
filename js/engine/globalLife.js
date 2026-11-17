@@ -167,6 +167,13 @@ export function tickGlobalLife() {
   const h = tickHeritage(p);
   if (h) lines.push({ text: h, tone: 'good' });
   lines.push(...tickChildrenSettling(p));
+  // Children brought up with a second language at home (engine/abroadArcs.js): their own pace, never guaranteed fluency.
+  for (const n of livingNpcs().filter((x) => x.flags.homeLanguage?.pace && x.age < 18 && !x.flags.abroad)) {
+    const h = n.flags.homeLanguage;
+    const before = h.level ?? 0;
+    h.level = Math.min(90, before + h.pace + (hash(`${n.id}:${h.lang}`) % 4) - 1);
+    if (before < 50 && h.level >= 50) lines.push({ text: `${n.firstName} can hold a real conversation in ${SKILL_BY_ID[h.lang]?.name ?? 'the family language'} now.`, tone: 'good' });
+  }
   const s = tickSettling(p);
   if (s) lines.push(s);
   for (const name of earn(p)) lines.push({ text: `Achievement: ${name}.`, tone: 'good' });
