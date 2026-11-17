@@ -1,5 +1,6 @@
 // School stages, programmes after high school, housing, cliques and clubs.
 // Everything here is plain data: edit values or add entries freely.
+import { CATALOG_CERTS } from './occupations.js';
 
 /** Compulsory schooling. `start` is the age a stage begins. */
 export const SCHOOL_STAGES = [
@@ -82,6 +83,7 @@ export const CERTS = [
   { id: 'bookkeeping', name: 'Bookkeeping', opens: 'accountant' },
   { id: 'digital_marketing', name: 'Digital marketing', opens: 'marketing' },
   { id: 'project_management', name: 'Project management', opens: 'office' },
+  ...CATALOG_CERTS,
 ];
 export const CERT_BY_ID = Object.fromEntries(CERTS.map((c) => [c.id, c]));
 /** Words for a thesis title: one from each list, then the field. */

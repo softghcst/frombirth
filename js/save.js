@@ -1,5 +1,6 @@
 // localStorage persistence: multiple save slots plus the graveyard.
 import { rng } from './rng.js';
+import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
@@ -58,6 +59,18 @@ function migrate(state) {
   rename(pl, pl.countryId);
   for (const l of pl.locations ?? []) rename(l, l.countryId);
   for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
+  // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
+  for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
+  for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);
+  for (const [key, ids] of Object.entries(state.jobs?.cities ?? {})) {
+    const [cc, city] = key.split('/'); const to = RENAMED[cc]?.[city];
+    if (to) { state.jobs.cities[`${cc}/${to}`] = ids; delete state.jobs.cities[key]; }
+  }
+  for (const b of pl.businesses ?? []) rename(b, b.countryId);
+  // Careers before employers, side jobs and the time budget: fill in what the save lacks. Nothing is re-paid.
+  ensureCareer(state.player.career);
+  state.player.businesses ??= [];
+  if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
   for (const a of Object.values(state.animals?.byId ?? {})) for (const h of a.homes) rename(h, h.countryId);
   for (const e of state.animals?.events ?? []) if (e.place) rename(e.place, e.place.countryId);
   // Lives saved before the family's animals had a record of their own: each is entered once, as it stands,

@@ -131,7 +131,8 @@ export function romanceActions(npc) {
   const p = player();
   const adults = p.age >= ADULT && npc.age >= ADULT;
   const a = [];
-  if (['friend', 'classmate', 'coworker', 'ex'].includes(npc.role) && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
+  // Not someone who reports to you: a manager asking is not a free question.
+  if (['friend', 'classmate', 'coworker', 'ex'].includes(npc.role) && !npc.flags.report && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
     a.push({ id: 'askOut', label: 'Ask out' });
   }
   if ((npc.role === 'partner' || npc.role === 'spouse') && !p.legal.incarceration) {

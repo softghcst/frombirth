@@ -38,7 +38,7 @@ export const KINDS = {
   boarding: { name: 'Boarding kennels and cattery', start: 15000, premises: 6000, price: 900, perHead: 22, base: 10, supplies: 0.25,
     needs: (s) => (s.player.age < 18 ? 'You must be an adult.' : care.homeSpace(s) !== 'land' ? 'Kennels need land: a country property of your own.' : '') },
   training: { name: 'Dog training school', start: 3000, premises: 4000, price: 300, perHead: 60, base: 20, supplies: 0.08,
-    needs: (s) => (s.player.age < 18 ? 'You must be an adult.' : !(s.player.career.careerId === 'dog_training' || s.player.career.history.some((h) => h.careerId === 'dog_training')) ? 'You need to have worked as a dog trainer.' : '') },
+    needs: (s) => (s.player.age < 18 ? 'You must be an adult.' : !(s.player.career.careerId === 'animal_training' || s.player.career.history.some((h) => h.careerId === 'animal_training')) ? 'You need to have worked as a dog trainer.' : '') },
   riding: { name: 'Riding school', start: 40000, premises: 12000, price: 1400, perHead: 16, base: 8, supplies: 0.12, horseCost: 3200,
     needs: (s) => (s.player.age < 21 ? 'You must be twenty-one.' : !s.player.flags.riderAdvanced ? 'You need to ride at an advanced level to teach.' : care.homeSpace(s) !== 'land' ? 'A riding school needs land: a country property of your own.' : '') },
   farm: { name: 'Smallholding', start: 8000, premises: 1500, farm: true,

@@ -12,6 +12,8 @@
 //   { flag, guaranteed: true, level } is a standing offer that skips the process.
 // fame: { from: level index where fame starts, label }
 // stress: 0–3, wears on mood (and health at 3) every year.
+import { TRACKS, EXISTING, FAMILIES } from './occupations.js';
+
 const L = (...levels) => levels.map(([title, lo, hi, years, needs]) => ({ title, pay: [lo, hi], years, needs }));
 
 export const CAREER_CATEGORIES = [
@@ -28,7 +30,7 @@ const journeyman = (id, name) => ({
     [`Master ${name.toLowerCase()}`, 88, 120, 6], [`${name} contractor`, 110, 180, 0]),
 });
 
-export const CAREERS = [
+const BASE_CAREERS = [
   // ---------- Professional and office ----------
   { id: 'software', name: 'Software', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
     req: { degree: 'university', majors: ['computer_science', 'engineering', 'mathematics'], altCert: 'coding' },
@@ -96,21 +98,6 @@ export const CAREERS = [
   { id: 'kitchen', name: 'Kitchens', category: 'trade', type: 'fulltime', hire: 'practical', stress: 2, req: { minAge: 16 },
     doors: [{ trade: 'chef', guaranteed: true, level: 1, text: 'Your chef\'s apprenticeship gets you straight onto the line.' }],
     levels: L(['Kitchen porter', 20, 25, 1], ['Line cook', 27, 35, 3], ['Sous chef', 40, 55, 4], ['Head chef', 62, 95, 0]) },
-  // Working with animals. Experience counts: someone who has fostered, or ridden for years, is taken more seriously.
-  { id: 'animal_care', name: 'Animal care', category: 'trade', type: 'fulltime', hire: 'practical', stress: 1, req: { minAge: 16 },
-    doors: [{ flag: 'animalExperience', bonus: 0.25 }],
-    levels: L(['Kennel assistant', 21, 26, 2], ['Animal care officer', 28, 35, 3], ['Senior animal care officer', 37, 46, 4], ['Shelter manager', 50, 68, 0]) },
-  { id: 'dog_training', name: 'Dog training and behavior', category: 'trade', type: 'fulltime', hire: 'practical', stress: 1, req: { minAge: 18 },
-    doors: [{ flag: 'animalExperience', bonus: 0.3 }],
-    levels: L(['Trainee dog trainer', 22, 28, 2], ['Dog trainer', 32, 44, 4], ['Behavior consultant', 48, 70, 0]) },
-  { id: 'grooming', name: 'Pet grooming', category: 'trade', type: 'fulltime', hire: 'practical', stress: 1, req: { minAge: 16 },
-    doors: [{ flag: 'animalExperience', bonus: 0.2 }],
-    levels: L(['Grooming assistant', 20, 25, 2], ['Groomer', 27, 36, 4], ['Salon owner', 40, 64, 0]) },
-  { id: 'equestrian', name: 'Horses and riding', category: 'trade', type: 'fulltime', hire: 'practical', stress: 1, req: { minAge: 16 },
-    doors: [{ flag: 'riderAdvanced', bonus: 0.4 }, { flag: 'riderExpert', guaranteed: true, level: 1, text: 'The yard has seen you ride. They offer you lessons to teach on the spot.' }],
-    levels: L(['Groom', 20, 25, 2], ['Riding instructor', 28, 38, 4, { 'flags.riderAdvanced': 1 }], ['Head instructor', 40, 52, 5], ['Yard manager', 55, 75, 0]) },
-  { id: 'farming', name: 'Farming', category: 'trade', type: 'fulltime', hire: 'practical', stress: 1, req: { minAge: 16, stats: { 'stats.health': 45 } },
-    levels: L(['Farm hand', 22, 27, 2], ['Stockperson', 29, 36, 4], ['Farm manager', 42, 62, 0]) },
   { id: 'driver', name: 'Driving', category: 'trade', type: 'fulltime', hire: 'interview', stress: 1, req: { minAge: 18 },
     levels: L(['Delivery driver', 28, 36, 3], ['Truck driver', 42, 58, 5], ['Fleet supervisor', 60, 78, 0]) },
   { id: 'warehouse', name: 'Warehousing', category: 'trade', type: 'fulltime', hire: 'interview', stress: 1, req: { minAge: 16 },
@@ -196,7 +183,19 @@ export const CAREERS = [
     req: { degree: 'university', maxAge: 34, stats: { 'stats.health': 55 }, cleanRecord: true }, pensionAfter: 20,
     levels: L(['Lieutenant', 48, 60, 3], ['Captain', 66, 82, 4], ['Major', 88, 108, 5], ['Colonel', 115, 145, 6], ['General', 170, 230, 0]) },
 ];
+// The catalog (data/occupations.js) adds its tracks, and says what the older ones are like to work in.
+for (const c of BASE_CAREERS) Object.assign(c, EXISTING[c.id] ?? {});
+export const CAREERS = [...BASE_CAREERS, ...TRACKS];
+for (const c of CAREERS) {
+  c.family ??= c.category;
+  c.hours ??= c.type === 'freelance' ? 25 : 40;
+  c.schedule ??= c.type === 'freelance' ? 'flexible' : 'standard';
+  c.remote ??= 'none';
+  c.payModel ??= c.type === 'freelance' ? 'fees' : 'salary';
+  c.values ??= [];
+}
 export const CAREER_BY_ID = Object.fromEntries(CAREERS.map((c) => [c.id, c]));
+export { FAMILIES };
 
 export const BRANCHES = ['Army', 'Navy', 'Air Force'];
 export const RETIREMENT_AGE = 68;

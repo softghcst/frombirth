@@ -1,6 +1,8 @@
 // Annual money flow: income, tax, living costs, loan payments, and settling
 // up if the account ends the year in the red.
 import { housingK } from './cities.js';
+import { careCost } from './couple.js';
+import { runPayroll } from './worklife.js';
 import { foreignWorth } from './currency.js';
 import { rentFactor } from './policy.js';
 import { taxBreakdown } from './systems.js';
@@ -52,14 +54,16 @@ export function tickFinance() {
   const c = country();
   const f = p.finance;
 
-  const gross = (p.career.salary || 0) + (p.career.partTime?.salary || 0)
-    + (p.career.retired ? p.career.pensionPerYear : 0);
+  // Every source of income for the year just lived, each paid once (engine/worklife.js).
+  const pay = runPayroll(p);
+  const gross = pay.gross;
   if (gross > 0) {
     const tax = incomeTax(gross, c);
     f.cash += gross - tax;
     f.lifetimeEarned += gross;
     f.lifetimeTaxPaid += tax;
-    log(`You earned ${fmtMoney(gross, c)} and paid ${fmtMoney(tax, c)} in tax.`);
+    p.career.lastPay.tax = tax;
+    log(`You earned ${fmtMoney(gross, c)}${pay.lines.length > 1 ? ` from ${pay.lines.length} sources` : ''} and paid ${fmtMoney(tax, c)} in tax.`);
   }
 
   // With no income at all, the state covers what your savings cannot.
@@ -92,7 +96,7 @@ export function tickFinance() {
   }
 
   const coParent = npcsByRole('spouse')[0];
-  if (p.age >= 18) f.cash -= afford(Math.round(childCosts() * (coParent?.life?.job ? 0.5 : 1)));
+  if (p.age >= 18) f.cash -= afford(Math.round(childCosts() * (coParent?.life?.job ? 0.5 : 1) + careCost(p))); // with paid childcare, if the household chose it (engine/couple.js)
 
   for (const loan of f.loans) {
     // Student loans are frozen while you study, and repayments wait until you

@@ -71,7 +71,7 @@ export function routes(destId, p = player()) {
   add('work', 'Sponsored by an employer', 'An employer there offers you a job and applies for you. The permission is tied to working.', {
     eligible: p.age >= 18 && qualified, why: p.age < 18 ? 'You must be an adult.' : 'Employers sponsor people with a degree or a trade.',
     chance: 0.3 + (has(p, 'university') ? 0.15 : 0.08) + (['medical', 'law', 'graduate', 'doctorate'].some((t) => has(p, t)) ? 0.1 : 0) + Math.min(0.2, (p.career.yearsInField ?? 0) / 25)
-      + (wanted ? 0.15 : 0) + (p.career.careerId ? 0.05 : 0) + lang + crime, status: 'worker', years: ROUTE.workYears });
+      + (wanted ? 0.15 : 0) + (p.career.careerId ? 0.05 : 0) + (p.flags.sponsor === destId ? 0.35 : 0) + lang + crime, status: 'worker', years: ROUTE.workYears }); // sponsor: a job offer in hand (engine/recruiters.js)
 
   // Study
   const funds = localMoney(ROUTE.studyFunds, here);

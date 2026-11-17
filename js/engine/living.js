@@ -2,6 +2,7 @@
 // year, depending on how well off they are, and what its laws allow.
 // The figures come from data/living.js.
 import { rule, lawsOf } from './rules.js';
+import { expectedPay } from './worklife.js';
 import { MONARCHIES } from '../data/royalty.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, theCountry } from '../util.js';
@@ -32,7 +33,7 @@ export function wealthTier() {
   // Judged against local prices: the same money goes further where things cost less.
   const k = c.currency.scale * c.living.costK;
   const worth = netWorth(store.state) / k;
-  const income = ((p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0)) / k;
+  const income = (expectedPay() || 0) / k;
   if (worth >= 400000 || income >= 160000) return 'rich';
   if (worth >= 15000 || income >= 30000) return 'middle';
   return 'poor';

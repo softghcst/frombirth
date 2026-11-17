@@ -291,7 +291,7 @@ section('children: the adults decide, own the animal, and may say no');
   check(r.ok && !care.volunteer().ok && p.finance.cash === 300000 - 100000 && !p.flags.animalExperience, 'a year of volunteering earns nothing, and can be done once a year');
   p.age = 16; care.volunteer();
   check(p.flags.animalExperience && p.npcIds.some((id) => S().npcs[id].flags.tag === 'shelter'), 'a second year counts as experience, and someone there becomes a friend');
-  const ids = ['animal_care', 'dog_training', 'grooming', 'equestrian', 'farming', 'vet'];
+  const ids = ['animal_care', 'animal_training', 'grooming', 'equestrian', 'farming', 'vet'];
   check(ids.every((id) => CAREERS.some((x) => x.id === id && x.levels.length >= 3)), 'there are careers with animals: shelters, training, grooming, horses, farms and veterinary medicine');
   check(CAREERS.find((x) => x.id === 'equestrian').levels[1].needs['flags.riderAdvanced'] === 1, 'only someone who rides well can teach riding');
 }
