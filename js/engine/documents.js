@@ -7,8 +7,8 @@
 //                                              can expire, be lost or be replaced,
 //                                              and none of that touches citizenship
 //   entry permission   here                    what a border asks of a visitor: nothing,
-//                                              an electronic authorisation, or a visa
-//   authorisation      here                    a granted permission: where, for what
+//                                              an electronic authorization, or a visa
+//   authorization      here                    a granted permission: where, for what
 //                                              (visit, business, study), from when to when
 //   application        here                    a request with a fee, a status, a decision
 //                                              made once and kept
@@ -176,7 +176,7 @@ export function entryRule(person, destId, purpose = 'visit', year = store.state.
     if (area) { options.push({ ...base, kind: 'visa_free', name: `No visa (${area.name})`, nationality: n, days: rule.days ?? 90, rolling: rule.rolling ?? null, zone: rule.zone ?? null, why: `${area.name}.` }); continue; }
     if (rule.exempt?.includes(n)) { options.push({ ...base, kind: 'visa_free', name: 'No visa needed', nationality: n, days: rule.days, rolling: rule.rolling ?? null, zone: rule.zone ?? null, why: `As a citizen of ${nameOf(n)}.` }); continue; }
     if (rule.free?.includes(n)) {
-      if (rule.eta) options.push({ ...base, kind: 'eta', name: rule.eta, nationality: n, days: rule.days, rolling: rule.rolling ?? null, zone: rule.zone ?? null, why: 'An electronic authorisation, applied for online before travelling.' });
+      if (rule.eta) options.push({ ...base, kind: 'eta', name: rule.eta, nationality: n, days: rule.days, rolling: rule.rolling ?? null, zone: rule.zone ?? null, why: 'An electronic authorization, applied for online before traveling.' });
       else options.push({ ...base, kind: 'visa_free', name: 'No visa needed', nationality: n, days: rule.days, rolling: rule.rolling ?? null, zone: rule.zone ?? null, why: `As a citizen of ${nameOf(n)}.` });
       continue;
     }
@@ -195,7 +195,7 @@ export const needsAuthorization = (kind) => ['eta', 'evisa', 'visa', 'study', 'o
 
 const auths = (person) => (person.authorizations ??= []);
 const covers = (a, destId) => a.jurisdictionId === destId || (a.zone && a.zone === zoneOf(destId));
-/** A granted authorisation covering a journey's dates and purpose. */
+/** A granted authorization covering a journey's dates and purpose. */
 export function authorizationFor(person, destId, purpose, from, to) {
   return auths(person).find((a) => a.status === 'granted' && covers(a, destId) && a.validFrom <= from && a.validUntil >= to
     && (a.permitted.includes(purpose) || (purpose === 'visit' && a.permitted.includes('business')) || (purpose === 'business' && a.permitted.includes('visit')))) ?? null;
@@ -224,7 +224,7 @@ export function addStay(person, destId, from, to, tripId) {
 
 /**
  * Everything that would stop a person crossing a border on these dates:
- * no passport, a passport that runs out, a missing authorisation, too many days.
+ * no passport, a passport that runs out, a missing authorization, too many days.
  * @returns {{ok:boolean, rule:object, problems:string[], needs:?string}}  needs: what to apply for
  */
 export function readiness(person, destId, purpose, from, to) {
@@ -253,9 +253,9 @@ export function readiness(person, destId, purpose, from, to) {
 // ---------- Applications ----------
 
 const PERMITS = { visit: ['visit', 'business'], business: ['visit', 'business'], study: ['study', 'visit'] };
-const KIND_NAMES = { eta: 'electronic authorisation', evisa: 'e-visa', visa: 'visitor visa', study: 'student visa', on_arrival: 'visa on arrival' };
+const KIND_NAMES = { eta: 'electronic authorization', evisa: 'e-visa', visa: 'visitor visa', study: 'student visa', on_arrival: 'visa on arrival' };
 
-/** The fee for an authorisation to enter a place, local money. Fictional amounts. */
+/** The fee for an authorization to enter a place, local money. Fictional amounts. */
 export function authorizationFee(rule, destId) {
   const base = rule.kind === 'eta' ? (ENTRY[destId]?.etaFee ?? 15) : rule.kind === 'study' ? DECISION.studyFee : rule.kind === 'on_arrival' ? 40 : DECISION.visaFee;
   return localMoney(base, country());
@@ -302,8 +302,8 @@ function grant(app, person) {
 }
 
 /**
- * Applies for an entry authorisation for someone the player may apply for.
- * Electronic authorisations, e-visas and visas on arrival are decided at once;
+ * Applies for an entry authorization for someone the player may apply for.
+ * Electronic authorizations, e-visas and visas on arrival are decided at once;
  * visitor and student visas are decided when the year turns. The decision is
  * made once and kept.
  * @param {{from:string, to:string, purpose:string, tripId?:string, cost?:number}} o

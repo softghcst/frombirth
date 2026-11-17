@@ -43,7 +43,7 @@ export const GENERAL = [
     ['Name a real one and what you do to manage it', 2],
     ['"I work too hard."', 0],
     ['"I do not really have one."', 0],
-    ['Name a real one, and apologise for it at length', 1]),
+    ['Name a real one, and apologize for it at length', 1]),
   Q('"You notice a colleague quietly taking stock home."',
     ['Report what you saw to a manager, just the facts', 2],
     ['Tell them you saw, and give them a chance to put it back', 1],
@@ -62,7 +62,7 @@ export const GENERAL = [
   Q('"How do you handle being told your work is not good enough?"',
     ['Ask what good would look like, and go and do that', 2],
     ['Explain why it was actually fine', 0],
-    ['Apologise and redo all of it from scratch overnight', 1],
+    ['Apologize and redo all of it from scratch overnight', 1],
     ['Take it very quietly and very personally', 0]),
 ];
 
@@ -214,7 +214,7 @@ export const FAMILY_QUESTIONS = {
   ],
   hospitality: [
     F('"How would you handle an unhappy guest?"',
-      ['Listen, apologise for how they feel, and fix what can be fixed', 1.8, 'stats.charm'],
+      ['Listen, apologize for how they feel, and fix what can be fixed', 1.8, 'stats.charm'],
       ['Find out exactly what went wrong so it does not happen again', 1.3, 'stats.intellect'],
       ['Offer something free straight away', 1],
       ['Explain the policy', 0.3]),

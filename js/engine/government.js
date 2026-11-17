@@ -600,7 +600,7 @@ export function presentBudget(changes, move = 'none') {
       const own = mine ? (w.seats[mine.id] ?? 0) : 0;
       if (w.kind === 'parliamentary' && (move === 'confidence' || own <= w.seatCount / 2)) { fall(); return result(false, `${lost} A government that cannot pass its budget cannot govern: yours has fallen, and you must face the voters.`, 'bad', { tally: { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } }); }
       w.approval = clamp(w.approval - 5);
-      return result(false, `${lost} Last year's figures roll over, offices close for a fortnight, and everybody blames you.`, 'bad', { tally: { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } });
+      return result(false, `${lost} Last year's figures roll over, offices close for two weeks, and everybody blames you.`, 'bad', { tally: { for: t.for, against: t.against, need: t.need, rows: rows(w, t) } });
     }
   }
   if (t) report(w, 'budget', { votes: `${t.for} votes to ${t.against}` });

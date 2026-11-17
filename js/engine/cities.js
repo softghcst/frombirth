@@ -9,6 +9,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { quitCareer } from './career.js';
 import { REGION_RULES } from '../data/rules.js';
+import { SERVICES } from '../data/cities.js';
 import { regionOf, CITY_ROWS, GENERIC, REGION_WORD, MOVE_COST, TRANSFER_CHANCE } from '../data/cities.js';
 
 /** Whether two regions of a country have any law that differs. */
@@ -29,8 +30,11 @@ export function cityOf(countryId, name) {
   const g = single || !c?.cities.includes(name) ? { housing: 1, pay: 1 } : GENERIC[kind];
   const housing = row?.housing ?? g.housing;
   const pay = row?.pay ?? g.pay;
+  const svc = SERVICES[single || !c?.cities.includes(name) ? 'only' : kind];
   return { name, countryId, region: row?.region ?? null, regionId: row?.regionId ?? null, regionWord: row ? REGION_WORD[countryId] : null, kind, housing, pay,
-    estimated: !row, housingWord: word(housing, 'dearer', 'cheaper'), payWord: word(pay, 'higher', 'lower') };
+    estimated: !row, housingWord: word(housing, 'dearer', 'cheaper'), payWord: word(pay, 'higher', 'lower'),
+    safety: svc.safety, schools: svc.schools, health: svc.health,
+    servicesLine: [svc.health >= 5 ? 'major hospitals' : svc.health < 0 ? 'fewer specialist hospitals' : '', svc.safety > 0 ? 'safer than average' : svc.safety < 0 ? 'more crime than average' : ''].filter(Boolean).join(', ') };
 }
 
 /** Every city of a country. */
@@ -46,7 +50,7 @@ export const payK = (city = player().city, countryId = player().countryId) => ci
 /** One line about a city, for a list. */
 export function cityLine(countryId, name) {
   const k = cityOf(countryId, name);
-  return [k.region && k.region !== name ? k.region : '', k.kind === 'capital' ? 'the capital' : '', `homes ${k.housingWord}`, `pay ${k.payWord}`].filter(Boolean).join(' · ');
+  return [k.region && k.region !== name ? k.region : '', k.kind === 'capital' ? 'the capital' : '', `homes ${k.housingWord}`, `pay ${k.payWord}`, k.servicesLine].filter(Boolean).join(' · ');
 }
 
 // ---------- Moving within the country ----------
@@ -137,3 +141,6 @@ export function relocate(cityName) {
   log(text, 'system', 'good');
   return { ...result(true, text), quit };
 }
+
+/** Where the player lives: the country's scores, moved by the city. Never outside 0-100. */
+export const localScore = (key, L, p = player()) => Math.max(0, Math.min(100, (L[key] ?? 50) + (cityOf(p.countryId, p.city)[{ safety: 'safety', health: 'health', schools: 'schools' }[key]] ?? 0)));

@@ -153,7 +153,7 @@ const KIND_WORDS = { born: 'Born here', lived: 'Lived here', visited: 'Visited',
  * The whole family across places and generations, filtered. Markers are real
  * saved places, positioned from GeoNames; a person known only by country is
  * placed at its capital and marked approximate. No route is drawn that was
- * not travelled: moves connect the places a recorded move connected.
+ * not traveled: moves connect the places a recorded move connected.
  * @param {{generation?:number|null, person?:string|null, country?:string|null, from?:number|null, to?:number|null, kinds?:string[]}} f
  */
 export function globalStory(f = {}, p = player()) {

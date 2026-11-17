@@ -37,6 +37,10 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
+node tests/animal-care.mjs     # shelters, adoption, costs, the vet, insurance, fostering, rehoming, moving abroad, careers
+node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, breeding and pedigrees
+node tests/animal-life.mjs     # staff, classes, behaviour, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
@@ -49,12 +53,69 @@ node tests/citizenship.mjs     # nationality at birth, residency, naturalisation
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
+node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
+node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
+node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
+node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
 node tests/global-life.mjs     # travel, passports, borders, relocation, children born abroad, generations; the three vertical slices (SEED=n to vary)
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
+
+## Money
+
+Every movement of the player's money is written in one double-entry ledger (`js/engine/ledger.js`), in whole
+numbers of each currency's smallest unit. **My Money** (tap the amount at the top of the game, or Holdings →
+My Money) shows accounts, a budget of what was actually earned and spent, debts and standing with lenders,
+savings goals, the household, retirement, the estate and the history. Bank accounts, goals and
+budgets are in `js/engine/banking.js`; cards, insurance, pension plans, family money and trusts each have an engine of their own beside it. The banks, insurers and their terms are invented
+(`js/data/money.js`).
+
+How it works, what is fiction, and what is not built yet: [docs/FINANCE.md](docs/FINANCE.md).
+
+## The family's animals
+
+People → **Pets & Animals** is the hub: your animals, the local shelter and farm rescue, care and costs, training, the vet,
+riding, and the album. People → **Family archive → Our Animal Family** is the generational album and timeline.
+Holdings lists the animals of your household and the chronicle of your house.
+
+Every animal has one record, kept for good (`state.animals`). Owner, main caregiver and home are three separate
+histories. Moments worth keeping are written once and tied to the line of the life story that tells them. When a
+life ends, each animal that depended on the player gets a keeper, and the whole record crosses to the heir.
+
+| What | Where |
+|---|---|
+| Seventeen species, breeds, temperament, costs, what can be taught, riding disciplines and show levels | `js/data/animals.js` |
+| The record: identity, owners, carers, homes, bonds, moments, the hand-over between generations | `js/engine/animals.js` |
+| Shelters, adoption checks, yearly costs, the vet, insurance, fostering, rehoming, volunteering, moving abroad | `js/engine/animalCare.js` |
+| Riding schools and instructors, lessons, livery yards, buying and riding a horse, shows | `js/engine/equestrian.js` |
+| Breeding (vet-checked, unrelated, limited, never for profit), parentage and pedigrees | `js/engine/animalBreeding.js` |
+| Classes and trainers, behavior problems, outings, the local pet show, custody after a split, siblings' chores | `js/engine/animalLife.js` |
+| Stories that take years: first pet, a nervous rescue settling, training, lifelong bonds, remembrance, the show ring, an older horse | `js/engine/animalArcs.js` |
+| Scenes: illness, emergencies, foster reviews, settling in, a child asking for a pet, visiting the family dog | `js/data/events/animals.js` |
+| Screens: album, timeline, profiles, chronicle / the hub / portraits / the way back | `js/ui/animals.js`, `js/ui/animalHub.js`, `js/ui/animalPortrait.js`, `js/ui/animalNav.js` |
+
+Rules the tests hold the game to: one shelter animal is the same animal on every visit and after it is adopted; every
+charge is in one ledger, once, with its currency; insurance pays its share of a bill once and never routine care; a
+show class is ridden once and its result survives a reload; prizes never cover a horse's costs and animals never
+make the family money; parentage is never invented and no animal is its own ancestor.
+
+Careers with animals (animal care, dog training, grooming, horses and riding, farming, and veterinary medicine) are in
+`js/data/careers.js`; fostering, volunteering and riding well open their doors. The people at shelters, vets, yards and
+training clubs become people in the player's life the first time they deal with them, and stay the same people.
+Landlords set rules about animals; some species need a license and some are banned. Each person's bond with an animal
+has three sides: attachment, trust and comfort. Horses can be leased or sold (never for more than they cost); Pursuits
+→ Riding leads to the same screens.
+
+Animal businesses (pet sitting, a grooming salon, kennels, a dog training school, a riding school, a smallholding) are
+kinds of business in the shared business system (`js/data/business.js`), started and run from the Work screen like any
+other; the Pets & Animals hub links there. Kennels, a riding school and a smallholding need land of one's own, and a
+riding school needs a rider who rides at an advanced level.
+
+Not built, because the rest of the game does not have it yet: historical eras (every life starts in the present
+day, so there is nothing for era rules to change).
 
 ## Avatars
 
@@ -67,7 +128,7 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 | The artwork, one folder per kind of part | `assets/avatars/` — `heads/`, `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
 | The list of every part (generated: do not edit) | `js/avatarManifest.js` |
 | Cleaning, aligning and listing the artwork | `scripts/build-avatar-manifest.py` |
-| Skin, hair, eye, lip and outfit colours | `js/avatarPalettes.js` |
+| Skin, hair, eye, lip and outfit colors | `js/avatarPalettes.js` |
 | Notes the filenames cannot carry (hair textures, resting faces, uniforms, royal dress) | `js/avatar/curation.js` |
 | The renderer: layers, ages, auto-dress | `js/CharacterAvatar.js` |
 | How saved appearances are read, and old saves converted | `js/avatar/catalog.js` |
@@ -79,7 +140,7 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 (clipped to the head), age lines, eyes, eyebrows, nose, mouth, facial hair, clothes, necklaces, front hair,
 earrings and piercings, glasses, hat or crown, emotions. Hair is drawn twice — the whole style behind the head,
 and the part above the jaw again in front — so a fringe falls over the forehead while long hair falls behind the
-shoulders. A hat hides hair above the brim (bulky styles, above the ears). Colours are CSS variables on the portrait
+shoulders. A hat hides hair above the brim (bulky styles, above the ears). Colors are CSS variables on the portrait
 (`--skin-color`, `--hair-color`, `--brow-color`, `--eye-color`, `--lip-color`, `--blush-color`, `--outfit-color`)
 that reach into the part files.
 
@@ -96,7 +157,7 @@ and mouth size, each from -2 to 2 steps (`TWEAKS` in `js/avatar/catalog.js`, ste
 **Edit stats and talents** → **Edit their look**.
 
 **Ages and dress.** Babies and toddlers have their own heads, baby hair and baby clothes; children have the child
-head; from fifty, lines arrive and hair greys unless dyed. Portraits dress for the moment: prison orange in prison,
+head; from fifty, lines arrive and hair grays unless dyed. Portraits dress for the moment: prison orange in prison,
 crown and robes for the royal family (a coronet for the peerage), and uniforms at work — police (tactical gear when
 senior), fire service, the armed forces, white coats in medicine, a suit in law and finance. Hats have been withdrawn:
 only crowns and tiaras are worn on the head. Hairstyles that hide an eye or much of the face (`HAIR_COVERS_FACE` in
@@ -118,7 +179,7 @@ appearance: {
 
 A child is built from the parents' `inherited` halves only, so a parent's dye, haircut or clothes never reach a
 child. Saves from the two earlier avatar systems are converted on load, deterministically: an old part always
-becomes the same new part (relatives who shared a nose still do), colours keep their names, and anything missing is
+becomes the same new part (relatives who shared a nose still do), colors keep their names, and anything missing is
 chosen from the character's id, so nobody's face changes between loads.
 
 **How to add artwork**
@@ -198,13 +259,19 @@ conditions, cost, odds and the status it gives:
 | Sponsored by an employer | a degree or a trade; comes with the job | work visa, 4 years |
 | As a student | a school-leaving qualification and a year's funds | student visa, 4 years, no full-time work |
 | As an investor | a large sum | permanent resident |
-| Settlement programme | points for education, work, age and language | permanent resident |
+| Settlement program | points for education, work, age and language | permanent resident |
 | Seeking protection | people whose own country is in crisis; no fee | temporary, 3 years |
 | To retire | 55 or over, with a pension or savings to live on | retirement visa, 5 years, renewed while the money lasts; no work |
 
 Routes that are closed are shown with the reason. A temporary status is renewed while its reason holds (a job, a course, a
 crisis at home), becomes permanent after five years, and otherwise ends: one year's warning, then the return home. A graduate
 gets two years to find a sponsor. Citizenship is for permanent residents.
+
+Family who move with you hold a status of their own: citizens of the place need none, and anyone else is your
+**dependant**, for as long as your own permission lasts and permanently once yours is. A child who turns eighteen on a
+dependant visa needs a status of their own (a course, a job, or a year to leave), and a dependant whose sponsor leaves must go
+too. When you become a citizen your children under eighteen become citizens with you; a husband or wife applies in their own
+right. The passport lists your household and how each of them stands.
 
 A husband or wife now decides for themselves whether to come. If they stay, the marriage continues across a border: it wears
 with distance, and a strong one often ends with them following.
@@ -240,6 +307,12 @@ bill costs nothing and has no committee stage; it counts as one of the year's tw
 it; where one person rules, it is a decree. The world's own reforms in a country your life has a government for now need a
 government that wants them.
 
+**Regional law.** In countries whose regions make law (the federations, and the United Kingdom's devolved nations), the head
+of a region can change the laws a region controls, one a year, through the regional assembly: the drinking, driving and
+gambling ages, bans on gambling or alcohol, and the death penalty. It applies to everyone living in that region (Texas, Ontario,
+Bavaria; where the game records no states, the area around the city). Between a regional and a national change to the same
+law, the more recent one stands.
+
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
 ### Cities and regions that differ
@@ -257,6 +330,10 @@ profile and are marked as estimates.
 - A region can have its own law, through the rule engine: the death penalty by American state, the drinking age by Canadian
   province, alcohol by emirate.
 
+Safety, schools and hospitals also vary a little by kind of city: the capital and the largest city have the major hospitals
+and slightly better schools, and a little more crime; smaller cities are safer, with fewer specialist hospitals. This is a
+rule by kind of city, not data about any named place, and it is modest next to the differences between countries.
+
 The multipliers are rough estimates for play, not statistics.
 
 ### A world that moves without you
@@ -269,6 +346,8 @@ The multipliers are rough estimates for play, not statistics.
 - **Crises end, and new ones begin.** A war can end in a ceasefire, a collapsed economy can recover, and an unstable country
   can slide into rationing or runaway prices. Everything that read a country's crisis before (the ban on leaving a country at
   war, the protection route, prices, approval of the government) now reads the world as it is in this life.
+  Rarely, armed conflict breaks out in a country that is already deeply unstable. It is reported as conflict within that
+  country, never as one named country attacking another: the game does not invent wars between real nations.
 - **The news** records all of it, with changes of law. **World news** (Self tab) lists what touches you first: where you
   live, where you were born, countries you are a citizen of, and where your family and property are. Only those reach the
   journal.
@@ -290,6 +369,12 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
   the currency as well as the market. It can be let, and stayed in when you visit. If you move to that country it becomes a
   home in local money, at the same worth.
 - **Selling it** pays in the money of the place, into your account in that currency.
+- **One housing market per country.** Each country's prices move with its own economy (and now and then slump), so a home in
+  Mexico and one in Canada no longer rise and fall together.
+- **Loans and rent keep their currency.** A mortgage is held in the currency it was taken out in, and a tenancy is paid in
+  the money of the place: moving abroad no longer converts them. Payments, upkeep and local tax on a property abroad come
+  from your account in that currency first, then from everyday money at today's rate; rent abroad is paid into that
+  account. Net worth, debts and estates count each loan at today's rate.
 - **Tax by place**: property tax and tax on rent are charged by the country the property is in. At death, property abroad is
   taxed by the country it stands in and everything else by the country you lived in; the obituary lists each. An inheritance
   from someone who lived abroad is taxed there.
@@ -315,7 +400,7 @@ anything more you earn.
 | Public clinics, private care | Mexico, India | two fifths |
 | Out of pocket | where the game had no public care | the whole bill |
 
-Private cover is bought and cancelled at the doctor's, lapses if it cannot be paid for, and does not travel to another country.
+Private cover is bought and canceled at the doctor's, lapses if it cannot be paid for, and does not travel to another country.
 
 These are shapes for play. The thresholds are multiples of a typical wage in the game, not real brackets, and which country
 gets which shape or model is unverified.
@@ -364,7 +449,7 @@ they hold, which passports they carry, what a border asks of them, and whether t
 - **Health care follows status** (`VISA_HEALTH` in `js/data/systems.js`, a gameplay rule): where care is for everyone, work and
   student visa holders pay a yearly health charge and are covered like residents (unpaid, they pay in full); a retirement visa gives
   no public care, so private cover is bought or the whole bill paid. The moving checklist says what care will look like on arrival.
-- **Stories of a life abroad** (`js/engine/arcs.js`, scenes in `js/data/events/arcs.js`), each begun only from the save: a job offer
+- **Stories of a life abroad** (`js/engine/abroadArcs.js`, scenes in `js/data/events/abroadArcs.js`), each begun only from the save: a job offer
   abroad for someone qualified and established (apply, go and meet them, talk it over, or say no); a husband or wife living in another
   country (ask them to come, which is their decision and their permission; move to them, which is your application; visit; let it be);
   going home after ten years away when a parent there is growing old; retiring near a child abroad, or somewhere warmer and cheaper.
@@ -387,7 +472,7 @@ child; a mayor's budget; dollars, pesos and a house in Mexico; three generations
 twenty-five years away. A scenario whose character dies early of something unrelated is played again.
 
 The Living World engine is complete as a first version. `docs/WORLD_DATA.md` lists what is simplified, unverified or not
-modelled, which is where further work would go.
+modeled, which is where further work would go.
 
 ## Layout
 
@@ -412,7 +497,7 @@ tests/          checks that run on Node alone
 
 | To change | Edit |
 |---|---|
-| School stages, programmes after high school (university, cosmetology, graduate, medical, law), tuition, entry GPAs, housing costs | `js/data/schools.js` |
+| School stages, programs after high school (university, cosmetology, graduate, medical, law), tuition, entry GPAs, housing costs | `js/data/schools.js` |
 | University majors, their entry GPAs and audition majors | `js/data/majors.js` |
 | Clubs, classes, try-outs, yearly skill gains, the contact a club introduces | `CLUBS` in `js/data/schools.js` |
 | High-school crowds | `CLIQUES` in `js/data/schools.js` |
@@ -424,7 +509,7 @@ tests/          checks that run on Node alone
 | Interview questions and audition pieces | `js/data/interviewQuestions.js` |
 | Workplace events | `js/data/events/work.js` |
 | Property types, mortgage terms, rent and bills | `js/data/properties.js` |
-| Vehicles (bikes and boards for children, motorbikes, cars, boats, aircraft), the age each can be bought at, licences, servicing | `js/data/vehicles.js` |
+| Vehicles (bikes and boards for children, motorbikes, cars, boats, aircraft), the age each can be bought at, licenses, servicing | `js/data/vehicles.js` |
 | Funds, shares and coins (all fictional); bank loans; overdraft and bankruptcy | `js/data/securities.js` |
 | Gambling stakes, lottery prizes, the bookmaker's cut | top of `js/engine/gambling.js` |
 | Money events (leaks, tenants, breakdowns, tips) | `js/data/events/money.js` |
@@ -433,7 +518,7 @@ tests/          checks that run on Node alone
 | Monarchies: which countries have a crown, the titles used there, allowances, public duties, how rare a royal birth is | `js/data/royalty.js` |
 | How each country is governed, what its offices are called, campaign platforms, budgets and moves, what office-holders can do | `js/data/politics.js` |
 | Political scenes (class president, polling day, scandals, removal votes, uprisings) | `js/data/events/politics.js` |
-| Royal and noble scenes (palace invitation, honours, scandal, protocol) | `js/data/events/royal.js` |
+| Royal and noble scenes (palace invitation, honors, scandal, protocol) | `js/data/events/royal.js` |
 | Moving abroad: who comes, how likely relatives are to say yes, shipping costs, the passport | `js/engine/emigration.js` |
 | Transport by era, places to stay, things to do on a trip, kinds of trip, refund terms, passports, visit rules by destination, pets moving, earlier jurisdictions | `js/data/travel.js` |
 | City coordinates (generated from GeoNames: run `scripts/build-coordinates.py --write`) | `js/data/coordinates.js` |
@@ -448,7 +533,7 @@ tests/          checks that run on Node alone
 | Age down: how many years can be taken back | `UNDO_YEARS` in `js/save.js` |
 | Which stats and talents can be edited on other people | `EDITABLE_METERS`, `EDITABLE_TALENTS` in `js/engine/relationships.js` |
 | Wills: who inherits, who gets which property or vehicle, what happens at death | `js/engine/death.js` |
-| Skills that can be practised, sessions a year, lesson price | `js/data/skills.js` (rules in `js/engine/skills.js`) |
+| Skills that can be practiced, sessions a year, lesson price | `js/data/skills.js` (rules in `js/engine/skills.js`) |
 | Orientation, gender, transition steps and costs, how family respond | `js/engine/identity.js` |
 | Scenes about identity | `js/data/events/identity.js` |
 | Countries: currency, tax rates, cities, public services | `js/data/countries.js` |
@@ -468,7 +553,7 @@ tests/          checks that run on Node alone
 | Higher-rate income tax and yearly living costs | `js/engine/finance.js` (`incomeTax`, `lifestyleCost`) |
 | How performance and promotion work | `js/engine/career.js` (`tickCareer`) |
 | One-off events | `js/data/events/*.js` |
-| Multi-year storylines: musical theatre, mentors, school paper | `js/data/events/stories/*.js` (each file's header explains its flags and contacts) |
+| Multi-year storylines: musical theater, mentors, school paper | `js/data/events/stories/*.js` (each file's header explains its flags and contacts) |
 
 Storyline scenes are ordinary events with a few extra fields: `priority`,
 `exclusive`, `queuedOnly`, cast by contact tag (`'tag:director'`), outcome
@@ -497,7 +582,7 @@ barons where a nobility survives). Every house and person is invented.
   Public duties (three a year) raise it; idleness, scandal and convictions sink
   it. If it falls far enough the palace removes the title, and a monarch is
   made to abdicate.
-- **Honours:** in the United Kingdom and Spain the crown honours commoners who
+- **Honors:** in the United Kingdom and Spain the crown honors commoners who
   give a great deal or become widely known.
 
 ### The royal house and the dynasty journal
@@ -536,7 +621,7 @@ spouse and children are the same people as in the People tab, linked in.
   the press are separate and move for different reasons; the Reputation screen
   (Self tab) lists what changed and why. The family notices who does their
   duties, and halves the allowance of someone it has closed ranks against.
-- **The press.** Stories are either true or rumour. A rumour can be denied or
+- **The press.** Stories are either true or rumor. A rumor can be denied or
   ignored; denying the truth can come back. Stories fade over the years, and
   cost approval while they are loud.
 - **Love and children.** Someone born royal can fall for a commoner in secret,
@@ -547,9 +632,9 @@ spouse and children are the same people as in the People tab, linked in.
 
 - **Reigning.** What a monarch can do depends on the kind of monarchy (`type`
   in `js/data/royalty.js`). Where the crown only advises, it can address the
-  nation, give honours, open the palace accounts, press the government in
+  nation, give honors, open the palace accounts, press the government in
   private, or refuse to sign a law. Where it governs, it can build, dismiss
-  officials, favour relatives, silence critics, or hand power to an elected
+  officials, favor relatives, silence critics, or hand power to an elected
   parliament for good.
 - **A monarchy can fall.** Each country has a level of support for having a
   crown at all. If it stays very low there is a referendum, which a royal
@@ -602,7 +687,7 @@ without regions skip that rung.
 
 - **Systems:** presidential, parliamentary, one-party (China, Vietnam, Cuba:
   a committee chooses, not the voters) and none (the Emirates). In Russia,
-  Venezuela and Egypt the count leans towards those already in power.
+  Venezuela and Egypt the count leans toward those already in power.
 - **Campaigns:** one a year. Pick what you stand for, how much of your own
   money to spend, and two moves. Charm, intellect, fame, a clean record and
   experience all count: student council, the debate team, a law or politics
@@ -659,13 +744,13 @@ are always three stages and marks from 0 to 4; the player sees the country's.
   - *Courses* are chosen for the last stage of school: three electives
     beside the core, and up to two subjects at an advanced level.
   - *Scenes* come from what is true of this class: a first day, a birthday
-    party, a best friend moving away, friends falling out, a rumour, being
+    party, a best friend moving away, friends falling out, a rumor, being
     bullied (with adults who act when told), a teacher who sees something,
     a false accusation, the dance, the final exams, the last day.
 
 ### Getting into university
 
-- **A catalogue per country** (`js/engine/university.js`, patterns in
+- **A catalog per country** (`js/engine/university.js`, patterns in
   `js/data/universities.js`). Nine invented institutions, named for the
   country's own cities and kept in the save: an old and very selective one,
   two large public universities, a technical institute, two regional
@@ -707,7 +792,7 @@ Once enrolled (`js/engine/campus.js`, scenes in `js/data/events/campusLife.js`):
   year turns that into a recommendation. A roommate, in halls as well as in
   a flat, is a person with a way of living: they become a close friend, or
   the argument has to be had. Friends made here stay.
-- **Organisations.** Up to two of ten: students' union, a subject society,
+- **Organizations.** Up to two of ten: students' union, a subject society,
   sport, drama (cast by audition), the newspaper, debating, a party branch,
   volunteering, music, and fraternities or sororities where those exist.
   Standing grows, and can end in an election.
@@ -718,24 +803,24 @@ Once enrolled (`js/engine/campus.js`, scenes in `js/data/events/campusLife.js`):
   internship is a foot in the door for that career.
 - **A year abroad** in one of four countries the university sends students
   to: the language, a friend for life, and a better chance of a visa there.
-- **Graduation** records the minor and any organisation led, and notes it
+- **Graduation** records the minor and any organization led, and notes it
   when nobody in the family has done it before.
 
 University and training are in `js/engine/education.js`.
 
 ### After the first degree, and later in life
 
-`js/engine/adulted.js`, with the programmes as data in `js/data/schools.js`:
+`js/engine/adulted.js`, with the programs as data in `js/data/schools.js`:
 
 - **Professional schools**: medicine, law, business, dentistry, pharmacy,
   veterinary medicine, teacher training and nursing (which needs no degree).
 - **Licensing exams.** A professional degree lets you sit the exam; passing
-  it lets you practise. Once a year, with a choice of how to prepare.
+  it lets you practice. Once a year, with a choice of how to prepare.
   Teaching is the exception: schools hire graduates without the
   certificate, and prefer those with it. People who qualified in older
   saves are treated as already licensed.
 - **A doctorate**: a topic, a supervisor with a style of their own, a
-  stipend, papers published along the way, and a defence. Four to eight
+  stipend, papers published along the way, and a defense. Four to eight
   years; it opens university teaching.
 - **Part-time study** keeps the job and takes longer. An employer can be
   asked to pay, once a year, and says yes to people it wants to keep.
@@ -786,7 +871,7 @@ Schools and universities are named in the country's language
 Germany, an *Instituto* in Spain and Latin America, numbered schools in
 East Asia. All the place words are invented. University results are shown
 the way each country writes them (`showDegree` in `js/engine/grades.js`):
-honours classes in the UK and much of the Commonwealth, marks out of 20 in
+honors classes in the UK and much of the Commonwealth, marks out of 20 in
 France, 1,0–5,0 in Germany, out of 110 in Italy, out of 10 in Spain and the
 Netherlands, A–F in Scandinavia, a GPA in the United States and East Asia.
 Underneath, every mark is still on one 0–4 scale.
@@ -826,7 +911,7 @@ whether or not the player takes any part.
   holds one. A parliament with no majority produces a coalition or a minority
   government, and coalitions can collapse into an early election.
 - **Governments change the law.** Income tax, university funding, health
-  funding and housing each move a step at a time, towards what the governing
+  funding and housing each move a step at a time, toward what the governing
   parties stand for, within a budget: a government deep in deficit has to
   raise tax or cut something. The changes reach everyone's tax bill, tuition,
   medical costs and rent (`js/engine/policy.js`), and the journal reports them.
@@ -886,10 +971,10 @@ whether or not the player takes any part.
   only if, their party leads the government; a leader who loses has the party
   to face. Presidential countries keep the race between two candidates.
 - **Scandal** (`js/engine/scandal.js`). What an office-holder does in the dark
-  (contracts for friends, bought votes, favours for donors) is kept as a
+  (contracts for friends, bought votes, favors for donors) is kept as a
   secret with a weight of evidence that fades over the years. A reporter may
-  pick one up: a rumour can be confessed, denied or suppressed; a story can
-  be apologised for, pinned on an aide, or sent to an inquiry; and an inquiry
+  pick one up: a rumor can be confessed, denied or suppressed; a story can
+  be apologized for, pinned on an aide, or sent to an inquiry; and an inquiry
   clears or condemns.
 - **The news** (`js/engine/news.js`). Each country has invented newspapers
   that lean one way or the other, a tabloid and a broadcaster. What happens
@@ -907,16 +992,16 @@ whether or not the player takes any part.
   unless it ended in disgrace. An heir who was already in office carries on
   in it.
 - **Causes** (`js/engine/activism.js`). Twelve invented campaigns, one for
-  each side of each issue. A member collects signatures, marches, organises
+  each side of each issue. A member collects signatures, marches, organizes
   and, in time, speaks for it. A cause that grows loud enough can force the
   government to change a law. Where protest is not tolerated, marching gets
   people arrested, and governments give way far less.
-- **Political staff** is a career of its own, from campaign organiser to
+- **Political staff** is a career of its own, from campaign organizer to
   chief of staff, and counts as experience with voters.
 - **Abroad** (`js/engine/diplomacy.js`). Each country deals most with six
   others, and stands somewhere between hostile and close friends with each.
   Governments have good and bad years abroad, sign trade agreements (money
-  for the treasury) and defence pacts (an ally in a crisis), and tear them up
+  for the treasury) and defense pacts (an ally in a crisis), and tear them up
   when relations sour. A head of government makes state visits, proposes
   agreements, sends aid and imposes sanctions, with a foreign minister whose
   skill tells; and faces crises, to be settled by talks, sanctions, a show of
@@ -1008,7 +1093,7 @@ education with storylines, careers with fame, relationships with independent
 family lives, the economy, crime and prison, health and activities, death and
 legacy, and a final pass that brought the game to over 200 scenes, rebalanced money
 and promotions, and checked the layout at iPad and phone sizes. Since then: a modular
-avatar system with a live editor, wills with named heirs, skills to practise,
+avatar system with a live editor, wills with named heirs, skills to practice,
 orientation and gender identity, living conditions by country, royalty with a living royal house and a dynasty journal,
 politics, a list of people you know who are written into your lives,
 moving saves between devices with a transfer code or cloud saves, and a working life with persistent

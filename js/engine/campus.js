@@ -382,7 +382,7 @@ export function decide(what, cast = {}) {
       return 'You stand, you speak, and you lose by eleven votes to someone with better posters.';
     }
     case 'electNo': return 'You vote for someone else, and keep your evenings.';
-    case 'probTutor': e.effort = clamp(e.effort + 22); p.stats.mood = clamp(p.stats.mood - 4); return 'You sign up at the study centre and go three times a week. It is humbling, and it helps.';
+    case 'probTutor': e.effort = clamp(e.effort + 22); p.stats.mood = clamp(p.stats.mood - 4); return 'You sign up at the study center and go three times a week. It is humbling, and it helps.';
     case 'probLight': e.load = 'light'; return 'You drop a course. The degree will take longer, and you will finish it.';
     case 'probCarry': return 'You tell yourself it was one bad year.';
     case 'defendPrepare': case 'defendPlain': case 'defendWing': {

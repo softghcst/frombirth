@@ -206,12 +206,12 @@ section('royals: the monarch and heir are bound; the rest of the family may work
   check(give.ok && h.lead === 'theirs' && love.meters.relationship > 70, 'putting their career first is always agreed, and appreciated');
   check(!couple.proposePlan({ lead: 'balanced' }).ok, 'and it is talked about once a year');
   let refused = 0; let agreed = 0;
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 200; i++) {
     h.lead = 'balanced'; h.askedAge = null; love.meters.relationship = 55;
     const r = couple.proposePlan({ lead: 'mine' });
     if (r.ok) agreed += 1; else refused += 1;
   }
-  check(refused > 5 && agreed > 5, `asking them to give way is sometimes agreed and sometimes refused (${agreed} yes, ${refused} no)`);
+  check(refused > 10 && agreed > 10, `asking them to give way is sometimes agreed and sometimes refused (${agreed} yes, ${refused} no)`);
   h.lead = 'balanced'; h.askedAge = null; love.meters.relationship = 95;
   const sal = love.life.job.salary;
   let went = false;

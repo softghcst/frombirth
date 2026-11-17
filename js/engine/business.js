@@ -109,6 +109,8 @@ export function startBlock(type) {
   if (n.experience && !n.programme && !Object.entries(n.experience).some(([id, y]) => (c.experience[id] ?? 0) >= y)) {
     return `Needs experience first: ${Object.entries(n.experience).slice(0, 3).map(([id, y]) => `${y} years in ${CAREER_BY_ID[id].name.toLowerCase()}`).join(', or ')}.`;
   }
+  if (n.land && !['country', 'mansion'].includes(p.assets.find((a) => a.id === p.homeId)?.catalogId)) return 'Needs land of your own: a country property you live in.';
+  if (n.flag && !p.flags[n.flag]) return n.flagText ?? 'You are not ready for this yet.';
   if (n.experienceTotal && Object.values(c.experience).reduce((a, b) => a + b, 0) < n.experienceTotal) return `Clients want ${n.experienceTotal} years of working life behind you.`;
   if (openBusinesses().length >= 3) return 'Three businesses is as many as one person can keep hold of.';
   return '';
@@ -596,7 +598,7 @@ function runYear(b) {
   // The name the place has.
   const stretched = demand > heads * 1.25;
   const idle = heads > demand * 1.4;
-  // A name is earned slowly: it moves towards what the place deserves (the work, the service, the price), a fifth of the way a year.
+  // A name is earned slowly: it moves toward what the place deserves (the work, the service, the price), a fifth of the way a year.
   const deserved = clamp(22 + b.quality * 0.62 + price.rep * 4 + (stretched ? -12 : 6) + (ownerHeads > 0.8 || manager ? 5 : -4));
   b.reputation = Math.round(clamp(b.reputation + (deserved - b.reputation) * 0.2 + rng.int(-2, 2)));
   b.quality = Math.round(clamp(b.quality - (b.quality > 45 ? 1 : 0)));
@@ -714,3 +716,9 @@ export function inherit(oldPlayer, newPlayer, heirNpc, npcs) {
   }
   return out;
 }
+
+/**
+ * What the player's shares in their businesses would fetch, in the money of where they live. Not part of net
+ * worth (a business passes to an heir whole), but counted when what a couple has is divided (engine/romance.js).
+ */
+export const stakesWorth = (p = player()) => Math.round(openBusinesses(p).reduce((s, b) => s + toOwner(b, valuation(b) * b.stake), 0));

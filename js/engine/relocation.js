@@ -7,7 +7,7 @@
 // same however it is reached.
 //
 //   p.applications  { kind:'relocation', routeId, jurisdictionId, city, status, decideYear, fee, paid, remaining,
-//                     arrangements:{ housing, money, pets, shipVehicles, travel }, history:[] }
+//                     arrangements:{ housing, money, animals, shipVehicles, travel }, history:[] }
 //
 // Citizens, and citizens of a free-movement area, have no application to
 // make: their case is approved as it is opened. Nobody becomes a citizen,
@@ -18,12 +18,11 @@ import { localMoney, fmtMoney, theCountry, uid } from '../util.js';
 import { store, player, country, livingNpcs, log } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { routes } from './immigration.js';
-import { emigrate, household, canEmigrate } from './emigration.js';
+import { emigrate, household, canEmigrate, travelPlan } from './emigration.js';
 import { mayLeave } from './living.js';
 import { charge } from './chronicle.js';
 import { validPassport, today, eraOf } from './documents.js';
 import { capitalCity, distanceKm } from './geo.js';
-import { PET_TRAVEL } from '../data/travel.js';
 import { healthOnArrival } from './systems.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -136,7 +135,8 @@ export function arrange(caseId, changes, p = player()) {
   if (changes.city && COUNTRIES[app.jurisdictionId].cities.includes(changes.city)) app.city = changes.city;
   if (changes.money != null) a.money = Number(changes.money);
   if (changes.shipVehicles != null) a.shipVehicles = !!changes.shipVehicles;
-  if (changes.pets) a.pets = { ...(a.pets ?? {}), ...changes.pets };
+  // The household's animals (engine/animalCare.js): every one that can come comes, or all are found homes here.
+  if (changes.animals === 'bring' || changes.animals === 'leave') a.animals = changes.animals;
   if (changes.travel) a.travel = changes.travel;
   return result(true, 'Noted.', 'neutral', { app });
 }
@@ -152,7 +152,7 @@ export function checklist(caseId, p = player()) {
   const goingPeople = [p, ...household(app.jurisdictionId).filter((n) => n.role !== 'pet' && n.flags.abroad !== app.jurisdictionId)];
   const needPapers = eraOf().passport;
   const missing = needPapers ? goingPeople.filter((x) => !validPassport(x)) : [];
-  const pets = livingNpcs().filter((n) => n.role === 'pet' && !n.flags.abroad);
+  const plan = travelPlan(app.jurisdictionId);
   const work = app.routeId === 'work' ? 'Your sponsoring employer has a job waiting.' : app.routeId === 'study' ? 'Your place at university is confirmed.' : p.career.careerId ? 'You will need to find work there.' : 'Not needed for this route.';
   return [
     { id: 'review', label: `Review ${COUNTRIES[app.jurisdictionId].name}`, done: true, note: `${app.city}, ${Math.round(distanceKm({ countryId: p.countryId, city: p.city }, { countryId: app.jurisdictionId, city: app.city }) ?? 0)} km away.` },
@@ -164,7 +164,8 @@ export function checklist(caseId, p = player()) {
     { id: 'health', label: 'Health care there', done: true, note: healthOnArrival(app.jurisdictionId, app.status_on_arrival) },
     { id: 'money', label: 'Review finances', done: a.money != null, note: a.money != null ? (a.money ? `Leaving ${Math.round(a.money * 100)}% in ${country().currency.code}.` : `Changing everything into ${COUNTRIES[app.jurisdictionId].currency.code}.`) : '' },
     { id: 'papers', label: 'Family documents', done: !missing.length, note: missing.length ? `Without a valid passport: ${missing.map((x) => x.firstName).join(', ')}.` : needPapers ? 'Everyone has a valid passport.' : 'No documents needed in this period.' },
-    { id: 'pets', label: 'Arrangements for animals', done: !pets.length || pets.every((n) => a.pets?.[n.id]), note: pets.length ? pets.map((n) => `${n.firstName}: ${a.pets?.[n.id] === 'bring' ? 'coming' : a.pets?.[n.id] === 'leave' ? 'staying with family' : 'not decided'}${PET_TRAVEL[n.species]?.restricted?.includes(app.jurisdictionId) ? ' (not allowed in)' : ''}`).join('; ') : 'No animals.' },
+    { id: 'pets', label: 'Arrangements for animals', done: !plan.length || !!a.animals, note: !plan.length ? 'No animals.'
+      : `${a.animals === 'bring' ? 'Coming: ' : a.animals === 'leave' ? 'Homes found here for: ' : 'Not decided: '}${plan.map((t) => `${t.a.name}${t.ok ? (t.quarantine ? ' (quarantine on arrival)' : '') : ` (cannot come: ${t.why})`}`).join('; ')}.` },
     { id: 'travel', label: 'Plan the journey', done: !!a.travel, note: a.travel ? `By ${a.travel}.` : '' },
     { id: 'move', label: 'Complete the move', done: !!app.used, note: app.used ? `Moved in ${app.movedYear}.` : '' },
   ];
@@ -177,7 +178,7 @@ export function completeMove(caseId, p = player()) {
   const open = checklist(caseId, p).filter((s) => s.id !== 'move' && !s.done);
   if (open.length) return result(false, `Not yet: ${open[0].label.toLowerCase()}.`, 'neutral');
   const a = app.arrangements;
-  const r = emigrate(app.jurisdictionId, { route: app.routeId, city: app.city, keep: a.money ?? 0, shipVehicles: a.shipVehicles !== false, pets: a.pets, grant: app,
+  const r = emigrate(app.jurisdictionId, { route: app.routeId, city: app.city, keep: a.money ?? 0, shipVehicles: a.shipVehicles !== false, animals: a.animals ?? 'bring', grant: app,
     reason: { work: 'for a job', study: 'to study', family: 'to be with family', invest: 'to invest', settle: 'to settle', retire: 'to retire', right: 'home, as a citizen', free: 'under free movement', protection: 'for protection' }[app.routeId] });
   if (!r.ok) return r;
   app.used = true;

@@ -25,7 +25,7 @@ import { tickRelocation } from './relocation.js';
 import { openYear, earn, travelState, compactHistory } from './travel.js';
 import { placeName } from './geo.js';
 import { remember } from './conditions.js';
-import { tickArcs } from './arcs.js';
+import { tickAbroadArcs } from './abroadArcs.js';
 
 const nameOf = (id) => theCountry(COUNTRIES[id]?.name ?? id);
 const hash = (s) => { let h = 7; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) % 100003; return h; };
@@ -166,7 +166,7 @@ export function tickGlobalLife() {
   const s = tickSettling(p);
   if (s) lines.push(s);
   for (const name of earn(p)) lines.push({ text: `Achievement: ${name}.`, tone: 'good' });
-  tickArcs(p); // at most one story of a life abroad begins, from what is really so
+  tickAbroadArcs(p); // at most one story of a life abroad begins, from what is really so
   for (const l of lines) log(l.text, 'system', l.tone);
   for (const a of p.assets) if (a.kind === 'property') rememberHome(a, p);
   // Keep the current home in the record of where they live.
@@ -190,7 +190,7 @@ export function ensureGlobal(state) {
   p.travel ??= { trips: [], whereabouts: null, earned: {} };
   p.travel.earned ??= {};
   p.applications ??= [];
-  p.finance.ledger ??= [];
+  p.finance.receipts ??= [];
   p.documents ??= [];
   // A first life that never moved city still lives in the city it was born in.
   if (p.birthCity === undefined) {

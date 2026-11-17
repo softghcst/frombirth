@@ -81,7 +81,7 @@ let p = life('us', 30, 80000, 'New York');
   check(!docs.applyPassport(p.id, 'jp').ok, 'no passport from a country one is not a citizen of');
   const r = docs.applyPassport(p.id, 'us');
   check(r.ok && docs.validPassport(p)?.issuer === 'us', 'a citizen gets their passport');
-  const ledger = p.finance.ledger.filter((x) => x.kind === 'passport_fee');
+  const ledger = p.finance.receipts.filter((x) => x.kind === 'passport_fee');
   check(ledger.length === 1, 'the fee is written down once');
   check(!docs.applyPassport(p.id, 'us').ok, 'a valid passport is not issued twice');
   check(docs.entryRule(p, 'jp').kind === 'visa_free' && docs.entryRule(p, 'uk').kind === 'eta' && docs.entryRule(p, 'us').kind === 'right', 'an American: Japan visa-free, the UK an ETA, home as of right');
@@ -151,7 +151,7 @@ let p = life('us', 30, 80000, 'New York');
   const sp = add('spouse', 'us', 33); sp.marriedAtAge = 30;
   docs.applyPassport(p.id, 'us');
   const plan = travel.startPlan('vacation');
-  check(plan.status === 'draft' && !p.finance.ledger.some((x) => x.ref?.tripId === plan.id), 'opening the planner costs nothing');
+  check(plan.status === 'draft' && !p.finance.receipts.some((x) => x.ref?.tripId === plan.id), 'opening the planner costs nothing');
   travel.updatePlan(plan.id, { destination: { countryId: 'jp', city: 'Kyoto' } });
   const y = store.state.year;
   travel.updatePlan(plan.id, { depart: `${y}-04-02`, ret: `${y}-04-14` });
@@ -164,7 +164,7 @@ let p = life('us', 30, 80000, 'New York');
   if (!inv.ok) { plan.travelers.find((x) => x.id === sp.id).status = 'accepted'; docs.ensureOwnPassport(sp, plan.depart, plan.ret); }
   travel.updatePlan(plan.id, { mode: 'jet', cabin: 'economy', stay: 'hotel', activities: ['landmark', 'food', 'museum'] });
   const ent = travel.entryCheck(plan);
-  check(ent.length === 2 && ent.every((x) => x.rule.kind === 'visa_free'), 'both travellers: no visa needed for Japan');
+  check(ent.length === 2 && ent.every((x) => x.rule.kind === 'visa_free'), 'both travelers: no visa needed for Japan');
   const j = travel.journey(plan.origin, plan.destination, travel.tripById(plan.id) && (await import('../js/data/travel.js')).MODE_BY_ID.jet, plan.depart);
   check(j.legs.length >= 1 && j.hours > 12 && j.hours < 20 && j.legs[j.legs.length - 1].arrive.date >= plan.depart, `the flight takes ${j.hours} hours and arrives on ${j.arriveDate} local time`);
   check(travel.problems(plan).length === 0, `the plan is complete (${travel.problems(plan)})`);
@@ -173,8 +173,8 @@ let p = life('us', 30, 80000, 'New York');
   const c = travel.confirm(plan.id);
   check(c.ok && plan.status === 'confirmed', 'booked');
   check(before - cash() === q.organizer, `paid exactly the quote (${before - cash()} vs ${q.organizer})`);
-  const n = p.finance.ledger.filter((x) => x.ref?.tripId === plan.id).length;
-  check(!travel.confirm(plan.id).ok && p.finance.ledger.filter((x) => x.ref?.tripId === plan.id).length === n, 'confirming again charges nothing');
+  const n = p.finance.receipts.filter((x) => x.ref?.tripId === plan.id).length;
+  check(!travel.confirm(plan.id).ok && p.finance.receipts.filter((x) => x.ref?.tripId === plan.id).length === n, 'confirming again charges nothing');
   const d = travel.depart(plan.id);
   check(d.ok && travel.whereabouts().away && travel.whereabouts().countryId === 'jp' && p.countryId === 'us' && p.city === 'New York', 'away in Japan; still living in New York');
   const act = travel.doActivity(plan.id, 'tour');
@@ -186,7 +186,7 @@ let p = life('us', 30, 80000, 'New York');
   check(sp.memories.some((m) => m.key === `trip_${plan.id}`), 'the spouse remembers it');
   check(p.stays.some((s) => s.tripId === plan.id && s.countryId === 'jp') && sp.stays?.some((s) => s.tripId === plan.id), 'days in Japan are counted for both');
   const card = travel.tripCard(plan);
-  check(card.travelers.some((x) => x.id === sp.id && x.relation) && card.memories.length >= 1 && card.spent > 0, 'the journal card has the travellers, the memories and the money');
+  check(card.travelers.some((x) => x.id === sp.id && x.relation) && card.memories.length >= 1 && card.spent > 0, 'the journal card has the travelers, the memories and the money');
   check(card.itinerary.out[0].from.city === 'New York' && card.itinerary.back.at(-1).to.city === 'New York' && /^\d{2}:\d{2}$/.test(card.itinerary.out[0].arrive.time), 'the journey is kept: there and back, with local times');
   const spent = cash();
   const events = store.state.canon.events.length;
@@ -195,8 +195,16 @@ let p = life('us', 30, 80000, 'New York');
   check(again?.status === 'completed' && again.travelers.length === 2 && store.state.npcs[sp.id]?.memories.length, 'reloaded: the trip, the companion, the memories');
   check(!travel.comeHome(plan.id).ok && !travel.confirm(plan.id).ok, 'a completed trip cannot be completed or booked again');
   check(cash() === spent && store.state.canon.events.length === events, 'no money or memory moved on reload');
+  {
+    const L = await import('../js/engine/ledger.js');
+    L.book();
+    const bad = L.audit();
+    const code = COUNTRIES[p.countryId].currency.code;
+    const travelled = L.yearTotals(store.state.ledger, store.state.year, code).expense.travel ?? 0;
+    check(!bad.length && travelled > 0, `the game's ledger balances, with the trip filed under Travel (${bad.slice(0, 2).join('; ')})`);
+  }
   year(2);
-  check(p.finance.ledger.filter((x) => x.ref?.tripId === plan.id && x.amount < 0).length === n + 1, 'later years never charge for it again');
+  check(p.finance.receipts.filter((x) => x.ref?.tripId === plan.id && x.amount < 0).length === n + 1, 'later years never charge for it again');
   check(docs.validPassport(p) && store.state.npcs[sp.id].documents.length === 1, 'documents survive');
   section('slice 1: a trip to Kyoto planned, booked once, taken, remembered, reloaded, never charged again');
 }
@@ -205,7 +213,7 @@ let p = life('us', 30, 80000, 'New York');
 {
   p = life('fr', 40, 90000, 'Paris');
   const y = store.state.year;
-  // Cancelling: what comes back depends on the terms and the date.
+  // Canceling: what comes back depends on the terms and the date.
   const t = travel.startPlan('getaway');
   travel.updatePlan(t.id, { destination: { countryId: 'fr', city: 'Lyon' }, depart: `${y}-06-05`, ret: `${y}-06-08`, mode: 'rail', stay: 'hotel', activities: ['museum'] });
   check(travel.problems(t).length === 0, `a domestic weekend needs no passport (${travel.problems(t)})`);
@@ -213,7 +221,7 @@ let p = life('us', 30, 80000, 'New York');
   travel.confirm(t.id);
   const paid = before - cash();
   const r = travel.cancel(t.id);
-  check(r.ok && r.refunded > 0 && r.refunded < paid && t.status === 'cancelled', `cancelling early returns most, not all (${r.refunded} of ${paid})`);
+  check(r.ok && r.refunded > 0 && r.refunded < paid && t.status === 'cancelled', `canceling early returns most, not all (${r.refunded} of ${paid})`);
   check(!travel.cancel(t.id).ok, 'and only once');
   // Dates.
   const bad = travel.startPlan('vacation');
@@ -251,7 +259,7 @@ let p = life('us', 30, 80000, 'New York');
   const q = life('fr', 35, 90000, 'Paris');
   const r0 = fun.holiday('city', false);
   const quick = travel.trips(['completed']).find((x) => x.package);
-  check(r0.ok && quick && q.finance.ledger.filter((x) => x.ref?.tripId === quick.id).length === 1 && chron.hasEvent(`trip:${quick.id}`), 'a one-tap getaway becomes a completed trip, charged once, recorded once');
+  check(r0.ok && quick && q.finance.receipts.filter((x) => x.ref?.tripId === quick.id).length === 1 && chron.hasEvent(`trip:${quick.id}`), 'a one-tap getaway becomes a completed trip, charged once, recorded once');
   check(!fun.holiday('disneyland', false).ok, 'a package abroad needs a passport');
   section('travel: refunds by terms, dates checked, clashes refused, trip kinds need real reasons, 1800 and 1950 travel by what existed');
 }
@@ -287,6 +295,7 @@ let moved;
   const friend = add('friend', 'mx', 29, 85);
   const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
   const dog = add('pet', 'mx', 3, 90); dog.species = 'dog'; dog.firstName = 'Biscuit';
+  (await import('../js/engine/animals.js')).reconcile(); // the family's animals are registered with the animals engine
   const home = { id: 'asset_home_gdl', kind: 'property', catalogId: 'condo', name: 'Two-bedroom condo', purchasePrice: 100000, value: 100000, boughtAtAge: 26, condition: 80, quality: 1, mortgage: null, tenant: null, countryId: 'mx', city: 'Guadalajara' };
   p.assets.push(home); p.homeId = home.id;
   const routes = imm.routes('ca');
@@ -311,17 +320,17 @@ let moved;
   const later = travel.startPlan('getaway');
   travel.updatePlan(later.id, { destination: { countryId: 'mx', city: 'Puebla' }, depart: `${y0}-11-01`, ret: `${y0}-11-04`, mode: 'bus', stay: 'hotel' });
   check(travel.confirm(later.id).ok, 'a weekend in Puebla booked before the move');
-  reloc.arrange(app.id, { housing: 'employer', money: 0.25, travel: 'plane', pets: Object.fromEntries(p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'pet' && n.alive).map((n) => [n.id, 'bring'])), shipVehicles: false });
+  reloc.arrange(app.id, { housing: 'employer', money: 0.25, travel: 'plane', animals: 'bring', shipVehicles: false });
   check(steps().length === 1 && steps()[0] === 'move', `every step done but the move itself (${steps()})`);
   const before = cash();
   const r = reloc.completeMove(app.id);
   check(r.ok && p.countryId === 'ca' && p.city === 'Toronto', `moved to Toronto (${r.text})`);
-  check(p.finance.ledger.filter((x) => x.key === `move:${app.id}:apply`).length === 1 && p.finance.ledger.filter((x) => x.key === `move:${app.id}:grant`).length === 1 && before > cash(), 'the application fee and the rest of the visa fee, each paid once');
+  check(p.finance.receipts.filter((x) => x.key === `move:${app.id}:apply`).length === 1 && p.finance.receipts.filter((x) => x.key === `move:${app.id}:grant`).length === 1 && before > cash(), 'the application fee and the rest of the visa fee, each paid once');
   check(!cit.held(p).includes('ca') && cit.held(p).includes('mx') && p.birthCountryId === 'mx', 'still Mexican, born in Mexico, not Canadian');
   check(p.residency.status === 'worker' && p.residency.workAuthorized && p.career.careerId, 'a work visa, with the job that sponsored it');
   check(p.locations.length >= 2 && p.locations[p.locations.length - 2].countryId === 'mx' && p.locations[p.locations.length - 2].to === store.state.year && p.locations[p.locations.length - 2].homes.includes(home.id), 'Guadalajara stays in the record, with the flat');
   check(p.assets.some((a) => a.id === home.id), 'the flat is still owned');
-  check(later.status === 'cancelled' && p.finance.ledger.some((x) => x.kind === 'refund' && x.ref?.tripId === later.id), 'the Puebla weekend was cancelled at the move and refunded on its terms');
+  check(later.status === 'cancelled' && p.finance.receipts.some((x) => x.kind === 'refund' && x.ref?.tripId === later.id), 'the Puebla weekend was canceled at the move and refunded on its terms');
   check(friend.alive && p.npcIds.includes(friend.id) && friend.role === 'friend' && (friend.flags.abroad === 'mx' || friend.places?.some((l) => l.countryId === 'mx')), 'the friend from Mexico is still a friend, with their life in Mexico on record');
   check(!mum || (p.npcIds.includes(mum.id) && mum.flags.abroad === 'mx'), 'and so is mum');
   check(!dog.flags.abroad && store.state.npcs[dog.id] === dog, `the dog came, the same dog (${dog.flags.abroad}, ${dog.alive}, ${dog.role})`);
@@ -343,19 +352,19 @@ let moved;
   const gone = story.homeChronicle(home.id);
   check(!p.assets.some((a) => a.id === home.id) && gone.name === 'Two-bedroom condo' && gone.city === 'Guadalajara' && gone.owner === 'Not owned by you' && gone.residents.some((x) => x.id === chron.archiveIdOf(p)), 'a sold home keeps its name, its place and who lived there');
   moved = { slot: store.state.slotId };
-  // A trip booked from the old home is cancelled at the move, refunded in the money it was paid in, before savings are changed.
+  // A trip booked from the old home is canceled at the move, refunded in the money it was paid in, before savings are changed.
   section('slice 2: Mexico to Toronto: applied, decided at the year\'s turn, arranged, moved; old life, friends, flat and dog intact; no nationality granted');
 }
 {
-  // Permanent residence is not citizenship; naturalisation needs eligibility and a process.
+  // Permanent residence is not citizenship; naturalization needs eligibility and a process.
   p = store.state.player;
   for (let i = 0; i < 10 && p.residency?.status === 'worker'; i++) { if (!p.career.careerId) hire(CAREERS.find((c) => c.id === 'office'), 0, 60); p.career.performance = 70; year(); }
   check(p.residency?.status === 'permanent_resident' && !cit.held(p).includes('ca'), 'permanent resident after years of work; still not a citizen');
-  check(!cit.naturalisation(p).possible || cit.naturalisation(p).lived >= cit.naturalisation(p).needs, 'naturalisation only once the years are there');
+  check(!cit.naturalisation(p).possible || cit.naturalisation(p).lived >= cit.naturalisation(p).needs, 'naturalization only once the years are there');
   for (let i = 0; i < 8 && !cit.naturalisation(p).possible; i++) year();
   let got = false;
   for (let i = 0; i < 6 && !got; i++) { p.flags.natAge = null; p.finance.cash += 100000; got = cit.naturalise().ok; if (!got) year(); }
-  check(got && cit.held(p).includes('ca') && p.birthCountryId === 'mx', 'naturalised: a Canadian born in Mexico');
+  check(got && cit.held(p).includes('ca') && p.birthCountryId === 'mx', 'naturalized: a Canadian born in Mexico');
   check(docs.applyPassport(p.id, 'ca').ok && docs.validPassport(p, undefined, undefined, 'ca'), 'a Canadian passport follows');
   check(cit.held(p).includes('mx') ? docs.passports(p).filter((d) => d.status === 'valid').length >= 1 : true, 'the Mexican passport is a separate document');
   section('residence and nationality: a work visa became permanent residence, and only an application made a citizen');
@@ -379,7 +388,7 @@ let moved;
   let app;
   for (let i = 0; i < 6 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; const a = reloc.applyToMove('pt', 'retire', 'Porto'); if (a.ok) app = a.app; year(); }
   check(app?.status === 'approved', 'approved');
-  reloc.arrange(app.id, { housing: 'rent', money: 0, travel: 'plane', pets: Object.fromEntries(p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'pet').map((n) => [n.id, 'bring'])) });
+  reloc.arrange(app.id, { housing: 'rent', money: 0, travel: 'plane', animals: 'bring' });
   docs.applyPassport(p.id, 'uk');
   const m = reloc.completeMove(app.id);
   check(m.ok && p.residency?.status === 'retiree' && !p.residency.workAuthorized && !cit.held(p).includes('pt'), `retired to Porto on a retirement visa: no work, not Portuguese (${m.text})`);
@@ -509,7 +518,7 @@ let moved;
   const q = travel.quote(t);
   check(q.employer > 0 && q.organizer === 0, 'the employer pays for a work trip');
   travel.confirm(t.id);
-  check(cash() === before && p.finance.ledger.some((x) => x.ref?.tripId === t.id && x.payer === 'employer'), 'nothing from your own pocket; it is still written down');
+  check(cash() === before && p.finance.receipts.some((x) => x.ref?.tripId === t.id && x.payer === 'employer'), 'nothing from your own pocket; it is still written down');
   section('work: a business visit is not work, needs its own permission, and the employer pays');
 }
 {
@@ -525,7 +534,7 @@ let moved;
 {
   // An older save, with trips from before this system: nothing is invented.
   p = life('br', 40, 50000);
-  delete store.state.canon; delete p.travel; delete p.documents; delete p.applications; delete p.finance.ledger; delete p.birthCity;
+  delete store.state.canon; delete p.travel; delete p.documents; delete p.applications; delete p.finance.receipts; delete p.birthCity;
   p.trips = [{ countryId: 'pt', year: store.state.year - 3, age: 37, purpose: 'holiday' }];
   p.flags.visited = ['pt'];
   gl.ensureGlobal(store.state); gl.ensureGlobal(store.state);
@@ -544,7 +553,7 @@ let moved;
 
 {
   // Stories of a life abroad: each begins only from real state; each choice is an application or a plan, never an approval.
-  const arcs = await import('../js/engine/arcs.js');
+  const arcs = await import('../js/engine/abroadArcs.js');
   const { EVENT_BY_ID } = await import('../js/data/events/index.js');
   const { resolveChoice } = await import('../js/engine/eventEngine.js');
   const scene = (id) => store.state.pendingEvents.find((e) => e.id === id);
@@ -552,35 +561,35 @@ let moved;
 
   // A job offer: only for someone qualified and working; "apply" is a real application, still pending.
   p = life('mx', 30, 120000, 'Monterrey');
-  check(arcs.tickArcs(p, 'offer') === null, 'no job offer abroad for someone without a career');
+  check(arcs.tickAbroadArcs(p, 'offer') === null, 'no job offer abroad for someone without a career');
   p.education.degrees.push({ type: 'university', majorId: 'engineering', gpa: 3.5, age: 22 });
   hire(CAREERS.find((c) => c.id === 'office'), 1, 60); p.career.yearsInField = 5;
-  check(arcs.tickArcs(p, 'offer') === 'offer' && scene('arc_offer')?.cast.words.place, 'an engineer with five years in the field is offered a job abroad, somewhere named');
+  check(arcs.tickAbroadArcs(p, 'offer') === 'offer' && scene('abroad_offer')?.cast.words.place, 'an engineer with five years in the field is offered a job abroad, somewhere named');
   const dest = p.flags.arcs.offer.dest;
   check(!cit.rightToLive(dest, p) && imm.routes(dest).find((r) => r.id === 'work').eligible, `the offer is from somewhere a work visa is a real route (${dest})`);
-  const r1 = choose('arc_offer', 'Apply');
+  const r1 = choose('abroad_offer', 'Apply');
   const offerCase = reloc.cases().find((a) => a.jurisdictionId === dest);
   check(offerCase?.status === 'submitted' && p.flags.sponsor === dest && p.countryId === 'mx' && /sponsor/.test(r1.text), 'applying files a real application, pending, with the offer counted; nobody has moved');
 
   // Married across a border: asking them to come is their decision and their permission; moving to them is an application.
   p = life('fr', 40, 120000, 'Lyon');
   const wife = add('spouse', 'jp', 39); wife.citizenships = [{ jurisdictionId: 'jp', acquisitionType: 'birth', acquiredAt: 1990 }]; wife.flags.abroad = 'jp'; wife.flags.stayedBehind = true;
-  check(arcs.tickArcs(p, 'distance') === 'distance' && scene('arc_distance').cast.words.country === 'Japan', 'a spouse living in Japan begins the long-distance story');
-  const r2 = choose('arc_distance', 'Say you will come');
+  check(arcs.tickAbroadArcs(p, 'distance') === 'distance' && scene('abroad_distance').cast.words.country === 'Japan', 'a spouse living in Japan begins the long-distance story');
+  const r2 = choose('abroad_distance', 'Say you will come');
   const toJapan = reloc.cases().find((a) => a.jurisdictionId === 'jp');
   check(toJapan && toJapan.routeId === 'family' && toJapan.status === 'submitted' && !cit.held(p).includes('jp'), `moving to her is a family-route application, not citizenship (${r2.text})`);
   let came = false;
-  for (let i = 0; i < 12 && !came; i++) { p.flags.arcs.distance.year -= 5; wife.meters.relationship = 95; arcs.tickArcs(p, 'distance'); if (!scene('arc_distance')) break; choose('arc_distance', 'Ask'); came = !wife.flags.abroad; }
+  for (let i = 0; i < 12 && !came; i++) { p.flags.arcs.distance.year -= 5; wife.meters.relationship = 95; arcs.tickAbroadArcs(p, 'distance'); if (!scene('abroad_distance')) break; choose('abroad_distance', 'Ask'); came = !wife.flags.abroad; }
   check(came && store.state.canon.events.some((e) => e.type === 'relocation' && e.subject === chron.archiveIdOf(wife)), 'asked often enough, she comes, and her move is recorded as hers');
-  check(arcs.tickArcs(p, 'distance') === null, 'once together, the long-distance story does not begin again');
+  check(arcs.tickAbroadArcs(p, 'distance') === null, 'once together, the long-distance story does not begin again');
 
   // Going home: only after years away, still a citizen, with a parent growing old there.
   p = life('ph', 45, 120000, 'Manila');
   move.emigrate('ca', { forced: true }); p.flags.arrivedYear = store.state.year - 12;
   const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive) ?? add('parent', 'ph', 75);
   mum.age = 76; mum.flags.abroad = 'ph'; mum.alive = true;
-  check(arcs.tickArcs(p, 'homeward') === 'homeward' && scene('arc_homeward').cast.words.years === '12', 'twelve years in Canada and a mother of 76 in the Philippines');
-  choose('arc_homeward', 'Go home');
+  check(arcs.tickAbroadArcs(p, 'homeward') === 'homeward' && scene('abroad_homeward').cast.words.years === '12', 'twelve years in Canada and a mother of 76 in the Philippines');
+  choose('abroad_homeward', 'Go home');
   const home = reloc.cases().find((a) => a.jurisdictionId === 'ph');
   check(home?.routeId === 'right' && home.status === 'approved' && p.countryId === 'ca', 'going home as a citizen needs no application; the move itself is still to arrange');
 
@@ -588,9 +597,9 @@ let moved;
   p = life('uk', 66, 300000, 'Leeds');
   p.career.retired = true; p.career.pensionPerYear = Math.round(30000 * COUNTRIES.uk.currency.scale);
   const son = add('child', 'uk', 38); son.flags.abroad = 'es';
-  check(arcs.tickArcs(p, 'retire') === 'retire' && /lives|life/.test(scene('arc_retire').cast.words.why), 'a retired parent is drawn towards the child in Spain');
-  const r4 = choose('arc_retire', 'Spend a month');
-  check(travel.trips(['draft']).some((t) => t.destination?.countryId === 'es' && t.type === 'vacation') && !p.finance.ledger.some((x) => x.kind === 'travel'), 'trying it first is a plan, not a booking: nothing paid');
+  check(arcs.tickAbroadArcs(p, 'retire') === 'retire' && /lives|life/.test(scene('abroad_retire').cast.words.why), 'a retired parent is drawn toward the child in Spain');
+  const r4 = choose('abroad_retire', 'Spend a month');
+  check(travel.trips(['draft']).some((t) => t.destination?.countryId === 'es' && t.type === 'vacation') && !p.finance.receipts.some((x) => x.kind === 'travel'), 'trying it first is a plan, not a booking: nothing paid');
   check(!r4.text.includes('undefined'), 'the scene reads properly');
   section('stories abroad: a job offer, a marriage across a border, going home, retiring near family; each from real state, each an application or a plan');
 }
@@ -615,7 +624,7 @@ let moved;
       if (travel.confirm(t.id).ok) trips += 1; else travel.discardPlan(t.id);
       if (i % 15 === 7) { p.flags.visaAge = null; if (reloc.applyToMove(['ca', 'nz', 'pt'][Math.floor(i / 15) % 3], 'settle').ok) moves += 1; }
       for (const a of reloc.cases().filter((x) => x.status === 'approved' && !x.used)) {
-        reloc.arrange(a.id, { housing: 'rent', money: 0, travel: 'plane', pets: Object.fromEntries(p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'pet' && n.alive && !n.flags.abroad).map((n) => [n.id, 'leave'])) });
+        reloc.arrange(a.id, { housing: 'rent', money: 0, travel: 'plane', animals: 'leave' });
         for (const x of [p, ...move.household(a.jurisdictionId).filter((n) => n.role === 'child' && n.age < 18)]) for (const j of cit.held(x)) if (!docs.validPassport(x)) docs.applyPassport(x.id, j);
         reloc.completeMove(a.id);
       }
@@ -626,19 +635,19 @@ let moved;
   const full = all.filter((t) => !t.compact);
   const fullIds = new Set(full.map((t) => t.id));
   const bookedPaid = full.flatMap((t) => t.bookings.filter((b) => b.payer === 'player')).length;
-  const travelCharges = p.finance.ledger.filter((x) => fullIds.has(x.ref?.tripId) && x.amount < 0 && x.payer === 'player' && x.key?.startsWith('trip:') && !x.key.includes(':act:')).length;
+  const travelCharges = p.finance.receipts.filter((x) => fullIds.has(x.ref?.tripId) && x.amount < 0 && x.payer === 'player' && x.key?.startsWith('trip:') && !x.key.includes(':act:')).length;
   const compact = all.filter((t) => t.compact);
   const taken = compact.filter((t) => t.status === 'completed');
   check(compact.length > 40 && compact.every((t) => !t.itinerary && !t.bookings.length && t.spent >= 0 && t.destination && t.travelers.length) && taken.every((t) => t.events.length), `old trips keep their summary and cost, and taken ones their memories, not their detail (${compact.length} compacted)`);
   check(taken.every((t) => travel.tripCard(t).memories.length >= 1) && compact.every((t) => travel.tripCard(t).spent === t.spent), 'and the journal still shows them');
-  check(p.finance.ledger.every((x) => x.year > store.state.year - travel.KEEP.ledgerYears) && Object.keys(p.finance.ledgerYears ?? {}).length >= 50, 'the ledger keeps ten years in full and yearly totals before that');
+  check(p.finance.receipts.every((x) => x.year > store.state.year - travel.KEEP.ledgerYears) && Object.keys(p.finance.receiptYears ?? {}).length >= 50, 'the ledger keeps ten years in full and yearly totals before that');
   check(p.stays.every((x) => x.to >= `${store.state.year - 2}`), 'days abroad are kept only as long as a limit could count them');
   check(!errors && trips >= 40, `seventy years: ${trips} trips booked, ${moves} moves applied for, no errors`);
   check(bookedPaid === travelCharges, `every booking charged exactly once (${bookedPaid} bookings, ${travelCharges} charges)`);
   check(all.every((t) => !['confirmed', 'in_progress'].includes(t.status) || docs.yearOf(t.depart) >= store.state.year), 'no trip is left hanging from an earlier year');
   check(new Set(store.state.canon.events.map((e) => e.key)).size === store.state.canon.events.length, 'no event recorded twice');
   const size = JSON.stringify(store.state).length;
-  const own = JSON.stringify([p.travel, store.state.canon, store.state.archive, p.finance.ledger, p.finance.ledgerYears, p.applications, p.stays, p.documents, p.authorizations]).length;
+  const own = JSON.stringify([p.travel, store.state.canon, store.state.archive, p.finance.receipts, p.finance.receiptYears, p.applications, p.stays, p.documents, p.authorizations]).length;
   check(own < 160000, `travel and papers stay small: ${Math.round(own / 1024)} KB of a ${Math.round(size / 1024)} KB save`);
   section(`a long life: seventy years, ${trips} trips, ${moves} moves applied for; one charge per booking, one record per event, ${Math.round(own / 1024)} KB of records in a ${Math.round(size / 1024)} KB save`);
 }

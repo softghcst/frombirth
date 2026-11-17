@@ -49,8 +49,8 @@ export default [
     id: 'steward_finds_money', category: 'royalty', ageRange: [18, 110], cooldown: 9, cast: { aide: 'tag:steward' }, requires: [need('reigning', '==', true), employs('steward')],
     text: '{aide} has been through the estate books for the last thirty years, and has found that a firm of land agents has been quietly overcharging the family the whole time.',
     choices: [
-      { label: 'Recover it, through the courts', outcomes: [any('It takes two years and is settled on the court steps. {aide} brings you the cheque themselves.', 'good', cash(350000), rel('aide', 8), press(-2))] },
-      { label: 'Settle quietly for half', outcomes: [any('No court, no headlines, and a cheque by the end of the month.', 'good', cash(170000), rel('aide', 3))] },
+      { label: 'Recover it, through the courts', outcomes: [any('It takes two years and is settled on the court steps. {aide} brings you the check themselves.', 'good', cash(350000), rel('aide', 8), press(-2))] },
+      { label: 'Settle quietly for half', outcomes: [any('No court, no headlines, and a check by the end of the month.', 'good', cash(170000), rel('aide', 3))] },
       { label: 'Let it go, and change agents', outcomes: [any('You have no wish to see the family\'s accounts read out in court. {aide} thinks it a pity, and says so once.', 'neutral', rel('aide', -4))] },
     ],
   },

@@ -32,7 +32,7 @@ export const LANDLOCKED = ['ad', 'at', 'bo', 'py', 'ch', 'cz', 'hu', 'rs', 'sk',
  * kmh: average speed while moving; hoursPerDay: how long a day's travel lasts
  * (a ship sails through the night, a coach stops at an inn); overhead: hours
  * spent at stations, ports and airports. perKm and base: fictional prices for
- * one traveller. over: 'land' (one landmass), 'sea' (ports, any coast),
+ * one traveler. over: 'land' (one landmass), 'sea' (ports, any coast),
  * 'short_sea' (a crossing of up to 600 km), 'air'. maxKm: longest single leg.
  * accessible: whether step-free help is normally arranged (a game simplification).
  */
@@ -57,7 +57,7 @@ export const HUBS = [['ae', 'Dubai'], ['qa', 'Doha'], ['sg', 'Singapore'], ['uk'
 export const NONSTOP_KM = 12500;
 export const MODE_BY_ID = Object.fromEntries(MODES.map((m) => [m.id, m]));
 
-/** Where travellers sleep. perNight in base units, per person. kin/own: free, if family lives there or you own a home there. */
+/** Where travelers sleep. perNight in base units, per person. kin/own: free, if family lives there or you own a home there. */
 export const STAYS = [
   { id: 'inn', name: 'An inn', to: 1900, perNight: 6, comfort: 1, accessible: false },
   { id: 'hostel', name: 'A hostel', from: 1912, perNight: 25, comfort: 1, accessible: false, young: true },
@@ -76,8 +76,8 @@ export const STAY_BY_ID = Object.fromEntries(STAYS.map((s) => [s.id, s]));
  * tags: what the Discover filters match. from: the year it is offered.
  * needs: 'coast' (not landlocked), 'kin' (people you know live there),
  * 'language' (the place has its own language). interest: a talent or skill
- * that makes it mean more. skill: practised by doing it. mood: what it does
- * for a traveller. significance 1-3: how likely it is to be remembered.
+ * that makes it mean more. skill: practiced by doing it. mood: what it does
+ * for a traveler. significance 1-3: how likely it is to be remembered.
  */
 export const ACTIVITIES = [
   { id: 'sights', name: 'Walk the old streets', cost: 0, days: 1, tags: ['cities', 'culture', 'budget'], mood: 3, significance: 1 },
@@ -117,7 +117,7 @@ export const FILTERS = [
 export const TRIP_TYPES = [
   { id: 'getaway', group: 'Leisure', name: 'Weekend getaway', purpose: 'visit', maxDays: 4 },
   { id: 'vacation', group: 'Leisure', name: 'Vacation', purpose: 'visit' },
-  { id: 'family_holiday', group: 'Leisure', name: 'Family holiday', purpose: 'visit', needs: 'family' },
+  { id: 'family_holiday', group: 'Leisure', name: 'Family vacation', purpose: 'visit', needs: 'family' },
   { id: 'romantic', group: 'Leisure', name: 'Romantic trip', purpose: 'visit', needs: 'partner' },
   { id: 'honeymoon', group: 'Leisure', name: 'Honeymoon', purpose: 'visit', needs: 'newlywed' },
   { id: 'anniversary', group: 'Leisure', name: 'Anniversary trip', purpose: 'visit', needs: 'married' },
@@ -135,7 +135,7 @@ export const TRIP_TYPES = [
 ];
 export const TRIP_TYPE_BY_ID = Object.fromEntries(TRIP_TYPES.map((t) => [t.id, t]));
 
-/** Refund terms, by what was booked. Fraction of the price returned on cancelling: [more than 30 days ahead, closer]. */
+/** Refund terms, by what was booked. Fraction of the price returned on canceling: [more than 30 days ahead, closer]. */
 export const REFUNDS = { transport: [0.8, 0.25], stay: [1, 0.5], activity: [1, 1], insurance: [0, 0] };
 /** Travel insurance: a share of the trip's price. It refunds what a disruption costs. */
 export const INSURANCE_RATE = 0.06;
@@ -164,7 +164,7 @@ const SCHENGEN = ['at', 'be', 'hr', 'cz', 'dk', 'ee', 'fi', 'fr', 'de', 'gr', 'h
 const WIDE = [...SCHENGEN, 'ie', 'uk', 'us', 'ca', 'au', 'nz', 'jp', 'kr', 'sg', 'mc', 'ad'];
 
 /**
- * Areas where neighbours' citizens visit without a visa (on top of free
+ * Areas where neighbors' citizens visit without a visa (on top of free
  * movement, which data/immigration.js defines and which also covers visits).
  * Simplified and UNVERIFIED.
  */
@@ -182,7 +182,7 @@ export const VISIT_AREAS = [
  * Destination rules for visitors (tourism, family visits, business meetings).
  * zone: destinations that count days together (the Schengen area).
  * days: longest stay; rolling: the window in days that `days` is counted over.
- * free: nationalities that need no visa. eta: an electronic authorisation those
+ * free: nationalities that need no visa. eta: an electronic authorization those
  * nationalities need first (instant, cheap). exempt: free without even an ETA.
  * visa: what the visitor visa is called there. evisa: applied for online and
  * decided in days rather than at the year's end.
@@ -194,7 +194,7 @@ export const ENTRY = {
   ...Object.fromEntries([...SCHENGEN, 'mc', 'ad'].map((id) => [id, SCHENGEN_RULE])),
   us: { days: 90, visa: 'Visitor visa (B-2)', eta: 'ESTA', etaFee: 21, exempt: ['ca'],
     free: [...SCHENGEN, 'ie', 'uk', 'au', 'nz', 'jp', 'kr', 'sg', 'mc', 'ad', 'tw', 'cl', 'il', 'qa'] },
-  uk: { days: 180, visa: 'Standard Visitor visa', eta: 'Electronic Travel Authorisation (ETA)', etaFee: 16, exempt: ['ie'],
+  uk: { days: 180, visa: 'Standard Visitor visa', eta: 'Electronic Travel Authorization (ETA)', etaFee: 16, exempt: ['ie'],
     free: [...SCHENGEN, 'mc', 'ad', 'ie', 'us', 'ca', 'au', 'nz', 'jp', 'kr', 'sg', 'my', 'tw', 'hk', 'il', 'br', 'ar', 'cl', 'mx', 'uy', 'py', 'cr', 'pa', 'bs', 'ae', 'qa', 'kw', 'sa', 'ws'] },
   ie: { days: 90, visa: 'Short-stay visit visa', exempt: ['uk'], free: [...WIDE, 'br', 'ar', 'cl', 'mx', 'uy', 'my', 'il', 'hk', 'tw'] },
   ca: { days: 180, visa: 'Visitor visa (temporary resident visa)', eta: 'eTA', etaFee: 7, exempt: ['us'],

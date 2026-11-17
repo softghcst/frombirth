@@ -44,7 +44,7 @@ export function royalCard() {
       <div class="kv"><span>On the throne</span><span>${esc(crown.titleOf(country().id, 'monarch', k.gender))} ${esc(k.name)}, age ${k.age}</span></div>
       <div class="kv"><span>The house</span><span>${esc(dyn.house().name)}</span></div>
       <div class="kv"><span>You</span><span>A commoner</span></div>
-      <p class="muted" style="margin-top:8px">The famous, the wealthy and the successful are sometimes invited to the palace, where unmarried royals are to be met.${m.honours ? ' The crown also honours people who give a great deal to the country.' : ''}</p>
+      <p class="muted" style="margin-top:8px">The famous, the wealthy and the successful are sometimes invited to the palace, where unmarried royals are to be met.${m.honours ? ' The crown also honors people who give a great deal to the country.' : ''}</p>
       <div class="btn-stack" style="margin-top:10px"><button class="btn" data-dynasty>The royal family and its history</button></div></div>`;
   }
   const inFamily = ROYAL_RANKS.includes(r.rank);
@@ -68,7 +68,7 @@ export function royalCard() {
     <div class="btn-stack" style="margin-top:10px">
       ${inFamily ? '<button class="btn primary" data-dynasty>The dynasty</button><button class="btn" data-reputation>Reputation</button>' : ''}
       ${inFamily ? '<button class="btn" data-household>Household and residences</button>' : ''}
-      ${peers.nobleRanks(r.countryId).length ? '<button class="btn" data-titles>Titles and honours</button>' : ''}
+      ${peers.nobleRanks(r.countryId).length ? '<button class="btn" data-titles>Titles and honors</button>' : ''}
       ${throne.canGovern() ? `<button class="btn" data-state>Affairs of state <small>${throne.powersLeft()} left this year</small></button>` : ''}
       ${royalEd.royalChild() && p.age >= 8 ? `<button class="btn" data-lessons>Royal lessons <small>${royalEd.lessonTaken() ? 'Done this year' : 'One this year'}</small></button>` : ''}
       ${crown.canDoDuties() && inFamily ? `<button class="btn" data-duties>Public duties <small>${crown.dutiesLeft()} left this year</small></button>` : ''}
@@ -147,7 +147,7 @@ export function openReputation() {
     <h2>Reputation</h2>
     ${rep.meters.map((x) => `${meterHtml(x.name, x.value, true)}<p class="muted" style="margin:2px 0 10px">${esc(x.word[0].toUpperCase() + x.word.slice(1))}.</p>`).join('')}
     ${(() => { const d = dyn.house(player().royal.countryId); return `${meterHtml('Support for the monarchy', d.standing, true)}<p class="muted" style="margin:2px 0 10px">${esc(throne.supportWord(d))}. If it stays very low, the country will be asked whether it wants a crown at all.</p>`; })()}
-    <p class="muted">Public approval is what keeps you in royal life. The family's regard decides how much they back you, and your allowance. The press colours everything else.</p>
+    <p class="muted">Public approval is what keeps you in royal life. The family's regard decides how much they back you, and your allowance. The press colors everything else.</p>
     <div class="section-label">In the newspapers</div>
     ${rep.stories.length ? rep.stories.map((s) => `<div class="kv"><span>${esc(s.label[0].toUpperCase() + s.label.slice(1))}${s.truth ? '' : ' <em>(untrue)</em>'}</span><span>${esc(s.loud)}</span></div>`).join('') : '<p class="muted">Nothing about you, for once.</p>'}
     <div class="section-label">What changed, and why</div>
@@ -226,7 +226,7 @@ async function openTitles(api) {
     const list = peers.roll(cid);
     const can = peers.mayGrant();
     const pick = await pickModal({
-      title: 'Titles and honours',
+      title: 'Titles and honors',
       body: can ? 'As monarch you may create one title a year, and take any away. Titles pass to the eldest child unless they are given for life.' : 'The titles of the realm. Only the monarch can create or revoke them.',
       cancel: 'Done',
       options: [

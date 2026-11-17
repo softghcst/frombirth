@@ -86,7 +86,7 @@ export async function takeHoliday(api) {
         sub: [d.family.length ? `${d.family.join(', ')} live${d.family.length === 1 ? 's' : ''} here.` : '', d.ownHome ? 'You have a place of your own to stay.' : '',
           d.visited ? 'You have been before.' : 'Somewhere new.'].filter(Boolean).join(' ') })) });
     if (!countryId) return undefined;
-    const cabin = await pickModal({ title: 'Which seat?', body: 'The price covers the flights and a fortnight there, for one.',
+    const cabin = await pickModal({ title: 'Which seat?', body: 'The price covers the flights and two weeks there, for one.',
       options: fun.cabinOptions().map((k) => ({ value: k.id, label: k.name, sub: `${k.blurb} ${fmtMoney(k.cost, c)}.`, disabled: !k.affordable })) });
     if (!cabin) return undefined;
     const d = fun.flightDestinations().find((x) => x.id === countryId);
@@ -94,7 +94,7 @@ export async function takeHoliday(api) {
     if (!move.rightToLive(countryId, player()) || d.family.length) {
       purpose = await pickModal({ title: 'What is the trip for?', options: [
         { value: 'holiday', label: 'A holiday', sub: 'Rest, and see the place.' },
-        ...(d.family.length ? [{ value: 'family', label: `To see ${d.family.join(', ')}`, sub: 'Most of the fortnight with them. Brings you closer.' }] : []),
+        ...(d.family.length ? [{ value: 'family', label: `To see ${d.family.join(', ')}`, sub: 'Most of the two weeks with them. Brings you closer.' }] : []),
         ...(move.rightToLive(countryId, player()) ? [] : [{ value: 'scouting', label: 'To look, with a move in mind', sub: 'Less of a rest. Helps a later application to live there.' }]),
       ] });
       if (!purpose) return undefined;

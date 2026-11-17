@@ -1,5 +1,6 @@
 // Things to do with your time: the gym, the library, meditation, holidays
 // and nights out. Each can be done once a year.
+import { hasRecord } from './records.js';
 import { rule, may } from './rules.js';
 import { rightToLive } from './citizenship.js';
 import { practise } from './languages.js';
@@ -136,7 +137,7 @@ export function holiday(id, bringFamily, trip = {}) {
   const dest = flying ? COUNTRIES[trip.countryId] : null;
   const cabin = flying ? CABINS.find((k) => k.id === (trip.cabin ?? 'economy')) : null;
   const h = flying ? { id: 'flight', kind: 'flight', mood: cabin.mood, intellect: 2, charm: cabin.charm, kids: 9,
-    name: `A fortnight in ${theCountry(dest?.name ?? '')}, flying ${cabin.name.toLowerCase()}` } : HOLIDAYS.find((x) => x.id === id);
+    name: `Two weeks in ${theCountry(dest?.name ?? '')}, flying ${cabin.name.toLowerCase()}` } : HOLIDAYS.find((x) => x.id === id);
   if (!h || (flying && !dest)) return result(false, 'That trip is not on offer.', 'neutral');
   const party = bringFamily ? companions() : [];
   const ownPlace = flying ? homeIn(dest.id) : null; // no hotel to pay for
@@ -151,7 +152,7 @@ export function holiday(id, bringFamily, trip = {}) {
   if (!once('holiday')) return result(false, 'You have had your holiday this year.', 'neutral');
   const purpose = flying ? (trip.purpose ?? 'holiday') : 'holiday';
   // The border. Gameplay configuration: a criminal record can get a visitor turned round.
-  if (flying && !rightToLive(dest.id, p) && p.legal.record.some((r) => r.convicted && !r.juvenile) && rng.chance(0.2)) {
+  if (flying && !rightToLive(dest.id, p) && hasRecord(p, { sealed: true }) && rng.chance(0.2)) {
     const lost = Math.round(cost / 2);
     charge({ amount: Math.min(lost, p.finance.cash), kind: 'travel', memo: `Turned back at the border: half the fare to ${dest.name}` });
     p.stats.mood = clamp(p.stats.mood - 6);
@@ -215,7 +216,7 @@ export function holiday(id, bringFamily, trip = {}) {
   } else if (h.kind === 'cruise' && rng.chance(0.1)) {
     p.stats.health = clamp(p.stats.health - 3);
     p.stats.mood = clamp(p.stats.mood - 5);
-    text += ' Two days of rough sea kept you in your cabin, the colour of the wallpaper.';
+    text += ' Two days of rough sea kept you in your cabin, the color of the wallpaper.';
     tone = 'neutral';
   } else if (h.kind === 'park' && smallest && smallest.age < 4 && rng.chance(0.3)) {
     p.stats.mood = clamp(p.stats.mood - 3);

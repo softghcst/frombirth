@@ -50,9 +50,9 @@ const btn = (label, attrs, cls = '') => `<button type="button" class="btn ${cls}
 const money = (n) => fmtMoney(n, country());
 const flag = (id) => COUNTRIES[id]?.flag ?? '';
 const nameOf = (id) => COUNTRIES[id]?.name ?? id;
-const STATUS = { draft: 'Draft', confirmed: 'Booked', in_progress: 'Away now', completed: 'Completed', cancelled: 'Cancelled', disrupted: 'Disrupted',
+const STATUS = { draft: 'Draft', confirmed: 'Booked', in_progress: 'Away now', completed: 'Completed', canceled: 'Cancelled', disrupted: 'Disrupted',
   submitted: 'Submitted', under_review: 'Under review', review_requested: 'Review requested', approved: 'Approved', refused: 'Refused', withdrawn: 'Withdrawn', expired: 'Expired', used: 'Used' };
-const HOW = { birth: 'by birth', descent: 'through a parent', naturalization: 'by naturalisation', restoration: 'restored' };
+const HOW = { birth: 'by birth', descent: 'through a parent', naturalization: 'by naturalization', restoration: 'restored' };
 
 /**
  * Opens the hub.
@@ -159,7 +159,7 @@ export function openExplore(api, start = {}) {
           <label class="field">Return <input type="date" data-planfield="ret" value="${esc(trip.ret)}" min="${esc(trip.depart)}" max="${docs.yearOf(trip.depart)}-12-31"></label></div>
           <p class="muted">${docs.daysBetween(trip.depart, trip.ret)} nights. It is ${esc(docs.today())}; a trip ends in the year it starts.</p></div>
         <div class="card gl-step"><h3>4 · Who is going</h3>
-          ${trip.travelers.map((x) => { const who = docs.personById(x.id); return who ? kv(x.status === 'organizer' ? 'You' : `${who.firstName}`, `${esc(({ organizer: 'Organiser', accepted: 'Coming', declined: 'Not coming', stayed: 'Could not come' })[x.status] ?? x.status)}${x.reason && x.status !== 'organizer' ? ` <small class="muted">${esc(x.reason)}</small>` : ''}${x.status !== 'organizer' ? ` <button type="button" class="btn small" data-uninvite="${x.id}">Remove</button>` : ''}`) : ''; }).join('')}
+          ${trip.travelers.map((x) => { const who = docs.personById(x.id); return who ? kv(x.status === 'organizer' ? 'You' : `${who.firstName}`, `${esc(({ organizer: 'Organizer', accepted: 'Coming', declined: 'Not coming', stayed: 'Could not come' })[x.status] ?? x.status)}${x.reason && x.status !== 'organizer' ? ` <small class="muted">${esc(x.reason)}</small>` : ''}${x.status !== 'organizer' ? ` <button type="button" class="btn small" data-uninvite="${x.id}">Remove</button>` : ''}`) : ''; }).join('')}
           ${dest ? `<details ${ui.inviteOpen ? 'open' : ''} data-toggle="inviteOpen"><summary>Invite someone</summary>${travel.invitable(trip).map((n) => `<button type="button" class="tree-row" data-invite="${n.id}"><strong>${esc(n.firstName)} ${esc(n.lastName)}</strong><small>${esc(n.age)} · they decide for themselves</small></button>`).join('') || '<p class="muted">Nobody else to ask.</p>'}</details>` : ''}</div>
         ${dest ? `<div class="card gl-step"><h3>5 · Getting there</h3>
           ${modes.length ? modes.map((x) => { const j = travel.journey(trip.origin, dest, x, trip.depart, trip.cabin); return `<label class="gl-radio"><input type="radio" name="mode" data-planfield="mode" value="${x.id}" ${trip.mode === x.id ? 'checked' : ''}> ${esc(x.name)} <small class="muted">${j.hours < 48 ? `${Math.round(j.hours)} h` : `${Math.round(j.hours / 24)} days`}${x.accessible ? '' : ' · no step-free help'}</small></label>`; }).join('') : '<p class="muted">No way to make this journey in this period.</p>'}
@@ -179,10 +179,10 @@ export function openExplore(api, start = {}) {
           <label class="gl-radio"><input type="checkbox" data-planfield="insurance" ${trip.insurance ? 'checked' : ''}> Travel insurance</label>
           ${q.lines.map((l) => kvt(`${l.label}${l.payer === 'employer' ? ' (employer)' : l.payer && !['organizer', 'player'].includes(l.payer) ? ` (${docs.personById(l.payer)?.firstName})` : ''}`, money(l.amount))).join('')}
           ${kv('<strong>You pay</strong>', `<strong>${esc(money(q.organizer))}</strong>`)}${q.employer ? kvt('Your employer pays', money(q.employer)) : ''}
-          <p class="muted">Refunds if cancelled more than 30 days ahead: most of the journey, all of the stay; closer, much less. Insurance pays back a disrupted trip.</p></div>` : ''}
+          <p class="muted">Refunds if canceled more than 30 days ahead: most of the journey, all of the stay; closer, much less. Insurance pays back a disrupted trip.</p></div>` : ''}
         ${bad.length ? `<div class="card gl-problems"><h3>Before booking</h3>${bad.map((b) => `<p>• ${esc(b)}</p>`).join('')}</div>` : ''}
         <div class="btn-stack">${btn(`Book${bad.length ? '' : ` for ${money(q.organizer)}`}`, `data-book="${trip.id}" ${bad.length ? 'disabled' : ''}`, 'primary')}${btn('Discard this plan', `data-discard="${trip.id}"`)}</div>
-        ${going.length > 1 ? `<p class="muted">${going.length} travelling.</p>` : ''}`;
+        ${going.length > 1 ? `<p class="muted">${going.length} traveling.</p>` : ''}`;
     },
 
     trips() {
@@ -203,7 +203,7 @@ export function openExplore(api, start = {}) {
         <div class="card"><h3>The trip</h3>${kvt('Dates', `${c.depart} to ${c.ret}`)}${c.mode ? kvt('Travel', c.mode) : ''}${c.stay ? kvt('Stayed', c.stay) : ''}${kvt('Your share', money(c.spent))}
           ${c.itinerary ? `<details ${ui.legs ? 'open' : ''} data-toggle="legs"><summary>Journey</summary>${[...c.itinerary.out, ...c.itinerary.back].map((l) => `<p>${esc(l.from.city)} ${esc(l.depart.date)} ${esc(l.depart.time)} → ${esc(l.to.city)} ${esc(l.arrive.date)} ${esc(l.arrive.time)}</p>`).join('')}</details>` : ''}
           ${c.notes.map((n) => `<p class="muted">${esc(n)}</p>`).join('')}</div>
-        <div class="card"><h3>Travellers</h3>${c.travelers.map((x) => `<button type="button" class="tree-row" ${x.you ? '' : `data-npcperson="${x.id}"`}><strong>${esc(x.name)}</strong><small>${esc(x.relation)} · ${esc(x.status === 'organizer' ? 'organiser' : x.status === 'accepted' ? 'came' : x.status === 'stayed' ? 'could not come' : 'did not come')}</small></button>`).join('')}</div>
+        <div class="card"><h3>Travelers</h3>${c.travelers.map((x) => `<button type="button" class="tree-row" ${x.you ? '' : `data-npcperson="${x.id}"`}><strong>${esc(x.name)}</strong><small>${esc(x.relation)} · ${esc(x.status === 'organizer' ? 'organizer' : x.status === 'accepted' ? 'came' : x.status === 'stayed' ? 'could not come' : 'did not come')}</small></button>`).join('')}</div>
         ${c.done.length || c.planned.length ? `<div class="card"><h3>What you did</h3>${c.done.map((d) => kvt(d.date ?? '', `${d.name}${d.liked ? ' ★' : ''}`)).join('')}${t.status === 'confirmed' ? `<p class="muted">Planned: ${esc(c.planned.join(', '))}</p>` : ''}</div>` : ''}
         ${c.memories.length ? `<div class="card"><h3>Memories</h3>${c.memories.map((e) => `<button type="button" class="tree-row" data-event="${e.id}"><strong>${esc(e.title)}</strong><small>${esc(e.text ?? '')}</small></button>`).join('')}</div>` : ''}
         ${away ? `<div class="card"><h3>While you are here</h3><p class="muted">${travel.daysLeft(t)} days left.</p>${acts.map((a) => `<button type="button" class="tree-row" data-doact="${a.id}" ${t.done.some((d) => d.id === a.id) || a.days > travel.daysLeft(t) ? 'disabled' : ''}><strong>${esc(a.name)}${a.liked ? ' ★' : ''}</strong><small>${a.cost ? esc(money(a.costLocal)) : 'Free'} · ${a.days ? `${a.days} day${a.days > 1 ? 's' : ''}` : 'an evening'}${t.activities.includes(a.id) ? ' · paid for' : ''}</small></button>`).join('')}</div>
@@ -215,21 +215,21 @@ export function openExplore(api, start = {}) {
       const d = docs.documentsView();
       const p = player();
       const paper = cit.papers(p);
-      const nat = paper.naturalisation;
+      const nat = paper.naturalization;
       const tab = ui.tab ?? 'citizenship';
       const tabs = [['citizenship', 'Citizenship'], ['passports', 'Passports'], ['visas', 'Visas'], ['residence', 'Residence'], ['applications', 'Applications'], ['history', 'Immigration history']];
       let body = '';
       if (tab === 'citizenship') body = `<div class="card"><h3>Born</h3>${kvt('Birthplace', placeName(p.birthCountryId, p.birthCity, p.birthYear))}<p class="muted">Where you were born is not the same as your nationality.</p></div>
         ${paper.citizenships.map((c) => `<div class="card"><h3>${c.flag} ${esc(c.name)}</h3>${kvt('How', c.how)}${kvt('Since', c.since ?? 'birth')}${kvt('Status', c.lost ? `Ended ${c.lost}` : 'Held')}</div>`).join('')}
-        <div class="card"><h3>Becoming a citizen where you live</h3><p>${esc(nat.possible ? `You can apply. ${nat.outlook}` : nat.why)}</p>${nat.possible ? btn('Apply for citizenship', 'data-naturalise', 'primary') : ''}</div>`;
+        <div class="card"><h3>Becoming a citizen where you live</h3><p>${esc(nat.possible ? `You can apply. ${nat.outlook}` : nat.why)}</p>${nat.possible ? btn('Apply for citizenship', 'data-naturalize', 'primary') : ''}</div>`;
       if (tab === 'passports') body = d.people.map((x) => `<div class="card"><h3>${esc(x.name)}${x.you ? '' : ' (your child)'}</h3>
         ${x.passports.length ? x.passports.map((pp) => kv(`${pp.flag} ${esc(pp.name)}`, `${esc(pp.word)} · ${esc(pp.issuedOn)} to ${esc(pp.expiresOn)}${pp.status === 'valid' ? ` <button type="button" class="btn small" data-lost="${x.id}" data-doc="${pp.id}">Report lost</button>` : ''}`)).join('') : '<p class="muted">No passport.</p>'}
         ${x.nationalities.map((n) => `<p>${n.flag} ${esc(n.name)}: ${n.quote.possible ? btn(`${n.quote.renewal ? 'Renew' : 'Apply'} (${money(n.quote.fee)}, ${n.quote.years} years)`, `data-passport="${x.id}" data-issuer="${n.id}"`, 'small') : `<small class="muted">${esc(n.quote.why)}</small>`}</p>`).join('')}</div>`).join('')
         + '<p class="muted">A passport is a document. It can expire or be lost without changing anyone\'s citizenship.</p>';
       if (tab === 'visas') body = d.people.map((x) => `<div class="card"><h3>${esc(x.name)}</h3>${x.authorizations.length ? x.authorizations.map((a) => kvt(`${a.name}: ${a.place}`, `${STATUS[a.status] ?? a.status} · ${a.validFrom} to ${a.validUntil} · ${a.permitted.join(', ')}`)).join('') : '<p class="muted">None.</p>'}</div>`).join('')
         + '<p class="muted">A visa is permission to visit, for a purpose and a time. It is not residence and it is not permission to work.</p>';
-      if (tab === 'residence') { const r = paper.residency; body = `<div class="card"><h3>${r.flag} ${esc(r.name)}</h3>${kvt('Status', r.word)}${r.status !== 'citizen' ? kvt('Since', r.since) : ''}${imm.statusLine(p) ? kvt('Permission', imm.statusLine(p)) : ''}${kvt('Work', r.workAuthorized ? 'Allowed' : 'Not allowed')}${kvt('Health care', healthCover(p).how)}${kvt('Tax residence (game rule)', `${nameOf(p.countryId)}: where you live`)}</div><p class="muted">Residence is permission to live somewhere. It is not citizenship, and owning a home somewhere does not give it.</p>`; }
-      if (tab === 'applications') body = d.applications.length ? d.applications.map((a) => `<div class="card"><h3>${esc({ passport: 'Passport', eta: 'Electronic authorisation', evisa: 'e-Visa', visa: 'Visitor visa', study: 'Student visa', on_arrival: 'Visa on arrival', relocation: 'Moving abroad' }[a.kind] ?? a.kind)}: ${esc(a.place)}</h3>
+      if (tab === 'residence') { const r = paper.residency; body = `<div class="card"><h3>${r.flag} ${esc(r.name)}</h3>${kvt('Status', r.word)}${r.status !== 'citizen' ? kvt('Since', r.since) : ''}${imm.statusLine(p) ? kvt('Permission', imm.statusLine(p)) : ''}${kvt('Work', r.workAuthorized ? 'Allowed' : 'Not allowed')}${kvt('Health care', healthCover(p).how)}${kvt('Tax residence (game rule)', `${nameOf(p.countryId)}: where you live`)}</div>${(() => { const house = imm.household(p).filter((h) => !h.citizen || r.status !== 'citizen'); return house.length ? `<div class="card"><h3>Your household here</h3>${house.map((h) => kvt(`${h.name}${h.role === 'child' ? `, ${h.age}` : ''}`, h.status)).join('')}<p class="muted">Each person's status is recorded separately; a child's nationality comes from the law of the place and the parents, never from a visa.</p></div>` : ''; })()}<p class="muted">Residence is permission to live somewhere. It is not citizenship, and owning a home somewhere does not give it.</p>`; }
+      if (tab === 'applications') body = d.applications.length ? d.applications.map((a) => `<div class="card"><h3>${esc({ passport: 'Passport', eta: 'Electronic authorization', evisa: 'e-Visa', visa: 'Visitor visa', study: 'Student visa', on_arrival: 'Visa on arrival', relocation: 'Moving abroad' }[a.kind] ?? a.kind)}: ${esc(a.place)}</h3>
           ${kvt('For', a.who)}${kvt('Submitted', a.submittedYear)}${kvt('Status', STATUS[a.status] ?? a.status)}${['submitted', 'review_requested'].includes(a.status) ? kvt('Decision', `when ${a.decideYear} begins`) : ''}${a.reason ? `<p class="muted">${esc(a.reason)}</p>` : ''}
           ${a.status === 'refused' && a.kind !== 'eta' && a.kind !== 'relocation' && !(a.reviews >= 1) ? btn('Ask for a review', `data-review="${a.id}"`, 'small') : ''}${['submitted'].includes(a.status) && a.kind !== 'relocation' ? btn('Withdraw', `data-withdraw="${a.id}"`, 'small') : ''}</div>`).join('') : '<p class="empty">No applications.</p>';
       if (tab === 'history') body = `<div class="card">${story.placesLived().map((l) => kvt(`${l.from ?? '?'}${l.to ? `–${l.to}` : l.current ? ' to now' : ''}`, `${l.flag} ${l.city ? `${l.city}, ` : ''}${l.jurisdiction.name}${l.reason ? ` · ${l.reason}` : ''}`)).join('')}</div>`;
@@ -247,14 +247,14 @@ export function openExplore(api, start = {}) {
         ${live.map((a) => {
           const steps = reloc.checklist(a.id);
           const opts = reloc.housingOptions(a);
-          const pets = livingNpcs().filter((n) => n.role === 'pet' && !n.flags.abroad);
+          const pets = move.travelPlan(a.jurisdictionId);
           return `<div class="card"><h3>Moving to ${flag(a.jurisdictionId)} ${esc(nameOf(a.jurisdictionId))}</h3>${kvt('Route', a.routeName)}${kvt('Status', STATUS[a.status])}
             <div class="section-label">Moving checklist</div>${steps.map((s) => `<p class="gl-check ${s.done ? 'done' : ''}">${s.done ? '✓' : '○'} ${esc(s.label)} ${s.note ? `<small class="muted">${esc(s.note)}</small>` : ''}</p>`).join('')}
             ${a.status === 'approved' ? `
               <label class="field">City <select data-arr="city" data-case="${a.id}">${COUNTRIES[a.jurisdictionId].cities.map((c) => `<option ${c === a.city ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
               <label class="field">Housing <select data-arr="housing" data-case="${a.id}"><option value="">Choose…</option>${opts.map((o) => `<option value="${o.id}" ${a.arrangements.housing === o.id ? 'selected' : ''} ${o.disabled ? 'disabled' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
               <label class="field">Money <select data-arr="money" data-case="${a.id}"><option value="">Choose…</option>${[['0', 'Change it all'], ['0.25', 'Leave a quarter behind'], ['0.5', 'Leave half behind']].map(([v2, l]) => `<option value="${v2}" ${a.arrangements.money != null && String(a.arrangements.money) === v2 ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-              ${pets.map((n) => `<label class="field">${esc(n.firstName)} the ${esc(n.species)} <select data-arr="pet" data-pet="${n.id}" data-case="${a.id}"><option value="">Choose…</option><option value="bring" ${a.arrangements.pets?.[n.id] === 'bring' ? 'selected' : ''}>Comes, with papers and transport</option><option value="leave" ${a.arrangements.pets?.[n.id] === 'leave' ? 'selected' : ''}>Stays with family</option></select></label>`).join('')}
+              ${pets.length ? `<label class="field">Your animals (${esc(pets.map((t) => t.a.name).join(', '))}) <select data-arr="animals" data-case="${a.id}"><option value="">Choose…</option>${pets.some((t) => t.ok) ? `<option value="bring" ${a.arrangements.animals === 'bring' ? 'selected' : ''}>Bring those who can come (${money(pets.reduce((s2, t) => s2 + t.cost, 0))})</option>` : ''}<option value="leave" ${a.arrangements.animals === 'leave' ? 'selected' : ''}>Find them homes here</option></select></label>` : ''}
               <label class="field">Journey <select data-arr="travel" data-case="${a.id}"><option value="">Choose…</option>${travel.modesFor({ countryId: p.countryId, city: p.city }, { countryId: a.jurisdictionId, city: a.city }, store.state.year).map((m) => `<option value="${esc(m.name.toLowerCase())}" ${a.arrangements.travel === m.name.toLowerCase() ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
               <div class="btn-stack">${btn('Complete the move', `data-complete="${a.id}"`, 'primary')}</div>` : ''}</div>`;
         }).join('')}
@@ -308,7 +308,7 @@ export function openExplore(api, start = {}) {
       const p = player();
       const done = travel.trips(['completed']);
       const tab = ui.tab ?? 'timeline';
-      const tabs = [['timeline', 'Timeline'], ['map', 'Map'], ['country', 'By country'], ['year', 'By year'], ['companions', 'By companion'], ['favourites', 'Favourite memories'], ['collection', 'Collection']];
+      const tabs = [['timeline', 'Timeline'], ['map', 'Map'], ['country', 'By country'], ['year', 'By year'], ['companions', 'By companion'], ['favorites', 'Favorite memories'], ['collection', 'Collection']];
       const row = (t) => { const c = travel.tripCard(t); return `<button type="button" class="row world-row" data-trip="${t.id}"><div class="world-flag">${c.flag}</div><div class="main"><strong>${esc(c.where)}</strong><small>${esc(c.depart)} · ${esc(c.type)}${c.travelers.length > 1 ? ` · with ${esc(c.travelers.filter((x) => !x.you && x.status === 'accepted').map((x) => x.name).join(', '))}` : ''}</small></div></button>`; };
       const groupBy = (f) => { const m = new Map(); for (const t of done) for (const k of [].concat(f(t))) { if (!m.has(k)) m.set(k, []); m.get(k).push(t); } return m; };
       let body = '';
@@ -317,10 +317,10 @@ export function openExplore(api, start = {}) {
       if (tab === 'country') body = [...groupBy((t) => nameOf(t.destination.countryId))].map(([k, v]) => `<div class="section-label">${esc(k)}</div>${v.map(row).join('')}`).join('');
       if (tab === 'year') body = [...groupBy((t) => t.depart.slice(0, 4))].map(([k, v]) => `<div class="section-label">${esc(k)}</div>${v.map(row).join('')}`).join('');
       if (tab === 'companions') body = [...groupBy((t) => { const xs = t.travelers.filter((x) => x.status === 'accepted').map((x) => docs.personById(x.id)?.firstName).filter(Boolean); return xs.length ? xs : ['On your own']; })].map(([k, v]) => `<div class="section-label">${esc(k)}</div>${v.map(row).join('')}`).join('');
-      if (tab === 'favourites') body = chron.events((e) => e.tripId && e.significance >= 2 && chron.visible(e)).reverse().map((e) => `<button type="button" class="tree-row" data-event="${e.id}"><strong>${esc(e.title)}</strong><small>${e.year}${e.text ? ` · ${esc(e.text)}` : ''}</small></button>`).join('') || '<p class="empty">Nothing yet.</p>';
+      if (tab === 'favorites') body = chron.events((e) => e.tripId && e.significance >= 2 && chron.visible(e)).reverse().map((e) => `<button type="button" class="tree-row" data-event="${e.id}"><strong>${esc(e.title)}</strong><small>${e.year}${e.text ? ` · ${esc(e.text)}` : ''}</small></button>`).join('') || '<p class="empty">Nothing yet.</p>';
       if (tab === 'collection') {
         const col = travel.collection();
-        body = `<div class="card">${kvt('Countries', String(col.countries.length))}${kvt('Cities', String(col.cities))}${col.favourite ? kvt('Most visited', `${col.favourite.flag} ${col.favourite.name}`) : ''}</div>
+        body = `<div class="card">${kvt('Countries', String(col.countries.length))}${kvt('Cities', String(col.cities))}${col.favorite ? kvt('Most visited', `${col.favorite.flag} ${col.favorite.name}`) : ''}</div>
           <div class="passport">${col.countries.map((e, i) => `<div class="stamp" style="transform:rotate(${[-3, 2, -1, 3, -2, 1][i % 6]}deg)"><span class="flag">${e.flag}</span><strong>${esc(e.name)}</strong><small>${e.legacy ? 'An older record' : `First ${esc(String(e.first))}${e.visits > 1 ? ` · ${e.visits} visits` : ''}`}</small></div>`).join('')}</div>
           <p class="muted">Stamps are a keepsake of the game, for trips actually taken.</p>
           <div class="card"><h3>Achievements</h3>${travel.achievements().map((a) => kv(`${a.year ? '★' : '☆'} ${esc(a.name)}`, `<small>${esc(a.year ? `${a.year}` : a.desc)}</small>`)).join('')}</div>`;
@@ -457,7 +457,7 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-lost]'))) { if (await confirmModal({ title: 'Report this passport lost?', body: 'It can no longer be used. Your citizenship is not affected.', yes: 'Report it' })) return tell(docs.reportLost(x.dataset.lost, x.dataset.doc)); return undefined; }
       if ((x = t('[data-review]'))) return tell(docs.requestReview(x.dataset.review));
       if ((x = t('[data-withdraw]'))) return tell(docs.withdraw(x.dataset.withdraw));
-      if (t('[data-naturalise]')) { const n = cit.naturalisation(); if (await confirmModal({ title: 'Apply for citizenship?', yes: 'Apply', body: `The fee is ${money(n.fee)}, and there is a test. ${n.outlook}` })) return tell(cit.naturalise()); return undefined; }
+      if (t('[data-naturalize]')) { const n = cit.naturalisation(); if (await confirmModal({ title: 'Apply for citizenship?', yes: 'Apply', body: `The fee is ${money(n.fee)}, and there is a test. ${n.outlook}` })) return tell(cit.naturalise()); return undefined; }
       if ((x = t('[data-applymove]'))) { const r = reloc.applyToMove(ui.dest, x.dataset.applymove); return tell(r); }
       if ((x = t('[data-ask]'))) return tell(move.askToCome(x.dataset.ask));
       if ((x = t('[data-complete]'))) { if (await confirmModal({ title: 'Make the move?', body: 'This is the move itself: your home changes, and your old life stays where it is.', yes: 'Move' })) return tell(reloc.completeMove(x.dataset.complete)); return undefined; }
@@ -494,8 +494,7 @@ export function openExplore(api, start = {}) {
       const arr = el.dataset.arr;
       if (arr) {
         const id = el.dataset.case;
-        if (arr === 'pet') reloc.arrange(id, { pets: { [el.dataset.pet]: el.value } });
-        else if (arr === 'money') { if (el.value !== '') reloc.arrange(id, { money: Number(el.value) }); }
+        if (arr === 'money') { if (el.value !== '') reloc.arrange(id, { money: Number(el.value) }); }
         else if (el.value) reloc.arrange(id, { [arr]: el.value });
         return changed();
       }

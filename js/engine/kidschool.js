@@ -14,6 +14,7 @@
 //   uniId              the university they went to
 //   back               { until, backed, course }   an adult child back in study
 //   said               { struggling, prize, back }  the age each scene was last raised
+import { cityOf as cityProfile } from './cities.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
@@ -349,7 +350,7 @@ export function edge(n) {
   if (!e) return { steady: 0, once: 0 };
   const s = schoolOf(n);
   const kind = KIND_BY_ID[e.kind];
-  const steady = (kind?.teach ?? 0) + (s && s.kind === 'public' ? s.funding ?? 0 : 0);
+  const steady = (kind?.teach ?? 0) + (s && s.kind === 'public' ? (s.funding ?? 0) + cityProfile(s.countryId, s.city).schools / 100 : 0);
   const once = e.boost ?? 0;
   e.boost = 0;
   return { steady, once };

@@ -356,6 +356,142 @@ button.dyn-event { cursor: pointer; }
 .pol-track { height: 9px; background: var(--line); border-radius: 5px; overflow: hidden; }
 .pol-track i { display: block; height: 100%; }
 
+/* The family's animals: album, timeline, profiles, the chronicle of a house */
+.zoo-modal .zoo-sub { font-family: var(--serif); font-style: italic; margin: -4px 0 10px; }
+.zoo-tabs { display: flex; gap: 4px; padding: 4px; margin-bottom: 10px; background: var(--line); border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.zoo-tabs::-webkit-scrollbar { display: none; }
+.zoo-tabs button { flex: 1 0 auto; border: 0; background: transparent; border-radius: 9px; padding: 9px 12px; font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--muted); cursor: pointer; min-height: 40px; }
+.zoo-tabs button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+.zoo-foot { margin-top: 10px; }
+.zoo-filter { margin-bottom: 8px; }
+.chip.pickable, .chip.link { border: 1px solid transparent; font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; min-height: 30px; }
+.chip.pickable { background: transparent; border-color: var(--line); color: var(--muted); }
+.chip.pickable.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip.link { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.chip.you { background: transparent; border: 1px solid var(--line); }
+.chips.end { justify-content: flex-end; }
+.zoo-face svg { width: 100%; height: 100%; display: block; }
+.zoo-face { display: grid; place-items: center; font-size: 1.4rem; }
+.zoo-face.gone { filter: sepia(0.6) saturate(0.65); }
+.zoo-card { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; }
+.zoo-card.gone { background: transparent; }
+.zoo-portrait { flex: none; border: 0; background: none; padding: 0; cursor: pointer; border-radius: 50%; }
+.zoo-portrait .avatar { width: 68px; height: 68px; border-radius: 50%; background: var(--accent-soft); overflow: hidden; }
+.zoo-card .main { flex: 1; min-width: 0; }
+.zoo-card .main small, .zoo-hero .main small { display: block; color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+.zoo-card .chips { margin: 8px 0 0; }
+.zoo-name { border: 0; background: none; padding: 0; font: inherit; font-family: var(--serif); font-size: 1.2rem; font-weight: 700; color: var(--ink); cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+small.zoo-link { color: var(--accent) !important; font-weight: 600; }
+.zoo-miles { list-style: none; margin: 8px 0 0; padding: 8px 0 0; border-top: 1px dashed var(--line); font-size: 0.84rem; }
+.zoo-miles li { padding: 1px 0; }
+.zoo-miles span { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+.zoo-hero { display: flex; gap: 14px; align-items: center; margin-bottom: 6px; }
+.zoo-hero .avatar.big { width: 84px; height: 84px; flex: none; border-radius: 50%; background: var(--accent-soft); overflow: hidden; }
+.zoo-list { margin: 0 0 4px; padding-left: 18px; font-size: 0.93rem; }
+.zoo-list li { padding: 2px 0; }
+.zoo-note { font-size: 0.84rem; margin: 8px 0; }
+.zoo-dim { display: grid; grid-template-columns: 1fr 72px 1fr; gap: 8px; align-items: center; font-size: 0.78rem; color: var(--muted); padding: 5px 0; }
+.zoo-dim span:first-child { text-align: right; }
+.zoo-dim i { position: relative; height: 5px; border-radius: 3px; background: var(--line); display: block; }
+.zoo-dim b { position: absolute; top: -4px; width: 13px; height: 13px; margin-left: -6px; border-radius: 50%; background: var(--accent); border: 2px solid var(--card); }
+.zoo-skill { margin-bottom: 10px; }
+.zoo-event { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 6px; background: var(--card); }
+.zoo-event.open { border-color: var(--accent); }
+.zoo-event-head { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; border: 0; background: none; padding: 10px 12px; font: inherit; color: inherit; cursor: pointer; min-height: 52px; }
+.zoo-event-head .glyph { flex: none; font-size: 1.15rem; line-height: 1.4; }
+.zoo-event-head .main { flex: 1; min-width: 0; }
+.zoo-event-head strong { display: block; font-size: 0.92rem; }
+.zoo-event-head small { display: block; color: var(--muted); font-size: 0.84rem; line-height: 1.35; }
+.zoo-event-head small.serif { font-family: var(--serif); font-size: 0.95rem; color: var(--ink); }
+.zoo-event-head .year { flex: none; color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.zoo-detail { padding: 0 12px 12px; }
+.zoo-detail .section-label { margin-top: 6px; }
+.zoo-detail .chips { margin-bottom: 8px; }
+.zoo-detail .btn-stack { margin-top: 10px; }
+.zoo-memory { font-family: var(--serif); font-size: 0.98rem; line-height: 1.45; padding: 4px 0 4px 10px; border-left: 2px solid var(--accent-soft); margin: 4px 0; }
+.zoo-memory strong { font-family: var(--sans, inherit); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); display: block; }
+.zoo-initial { font-weight: 700; color: var(--muted); }
+div.row { cursor: default; }
+/* Lines in the life story that tell a moment in an animal's life, and the way back from one */
+.entry.linked { cursor: pointer; text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
+.entry.lit { background: var(--accent-soft); border-radius: 0 8px 8px 0; }
+.story-back { position: absolute; left: 50%; transform: translateX(-50%); bottom: 12px; z-index: 4; max-width: calc(100% - 32px); padding: 11px 18px; min-height: 44px; border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 600; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+
+.zoo-warn { border-left: 3px solid var(--bad); padding-left: 8px; margin: 8px 0; }
+.zoo-tree { display: grid; gap: 8px; }
+.zoo-tree-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.zoo-ped { display: flex; gap: 8px; align-items: center; text-align: left; width: 100%; border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 8px; font: inherit; color: inherit; cursor: pointer; min-width: 0; }
+.zoo-ped.unknown { border-style: dashed; color: var(--muted); cursor: default; }
+.zoo-ped .avatar { width: 38px; height: 38px; flex: none; border-radius: 50%; background: var(--accent-soft); overflow: hidden; }
+.zoo-ped span { min-width: 0; }
+.zoo-ped strong, .zoo-ped small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zoo-ped small { color: var(--muted); font-size: 0.75rem; }
+.zoo-modal .dyn-head, .zoo-modal .zoo-tabs, .zoo-modal .zoo-foot { flex: none; }
+.zoo-modal .row .main small { white-space: normal; }
+/* ---------- My Money ---------- */
+.idcard button.purse { background: none; border: 0; padding: 4px 0 4px 8px; color: inherit; font: inherit; cursor: pointer; border-radius: 10px; min-height: 44px; }
+.idcard button.purse:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.idcard button.purse .label::after { content: " ›"; }
+.modal.mm-modal { max-width: 560px; padding-top: 14px; }
+.mm-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.mm-head h2 { margin-bottom: 2px; }
+.mm-head p { font-size: 0.9rem; }
+.mm-nav, .mm-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 8px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.mm-chips { flex-wrap: wrap; overflow: visible; }
+.mm-chip { flex: none; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; font-size: 0.85rem; font-weight: 600; padding: 8px 12px; border-radius: 999px; min-height: 40px; white-space: nowrap; }
+.mm-chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mm-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.mm-stat { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; min-width: 0; }
+.mm-stat small, .mm-worth small { display: block; font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.mm-stat strong { display: block; font-family: var(--serif); font-size: 1.1rem; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+.mm-stat.neg strong, .mm-worth strong.neg { color: var(--bad); }
+.mm-worth strong { display: block; font-family: var(--serif); font-size: 1.6rem; margin: 2px 0 6px; font-variant-numeric: tabular-nums; }
+.mm .muted { font-size: 0.85rem; }
+.mm-note { margin: 12px 2px 4px; }
+.mm-line { display: flex; justify-content: space-between; gap: 12px; font-size: 0.93rem; padding-top: 6px; }
+.mm-line span:last-child { text-align: right; font-variant-numeric: tabular-nums; flex: none; max-width: 62%; }
+.mm-bar { display: block; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 5px 0 4px; }
+.mm-bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.mm-bar.good i { background: var(--good); }
+.mm-bar.bad i { background: var(--bad); }
+.mm-budget { display: block; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px dashed var(--line); padding: 4px 0 6px; color: inherit; font: inherit; min-height: 48px; }
+.mm-budget:last-child { border-bottom: 0; }
+.mm-budget:disabled { opacity: 1; }
+.mm-tx { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.mm-tx:last-child { border-bottom: 0; }
+.mm-tx .main { min-width: 0; flex: 1; }
+.mm-tx .main strong { display: block; font-weight: 600; font-size: 0.92rem; }
+.mm-tx .main small { display: block; color: var(--muted); font-size: 0.78rem; }
+.mm-tx .amt { flex: none; text-align: right; font-variant-numeric: tabular-nums; font-size: 0.92rem; font-weight: 600; }
+.mm-tx .amt small { display: block; font-weight: 400; color: var(--muted); font-size: 0.78rem; }
+.mm-tx .amt.in { color: var(--good); }
+.mm-tx .amt.out { color: var(--ink); }
+@media (min-width: 520px) { .mm-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.mm-chart { position: relative; }
+.mm-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.mm-line-path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.mm-dot { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+.mm-axis { stroke: var(--line); stroke-width: 1; }
+.mm-zero { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.mm-cross { stroke: var(--muted); stroke-width: 1; }
+.mm-tick { fill: var(--muted); font-size: 10px; font-family: var(--sans); }
+.mm-hit { fill: transparent; cursor: crosshair; }
+.mm-tip { font-size: 0.85rem; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.mm-tip strong { color: var(--ink); }
+.mm-table summary { cursor: pointer; font-size: 0.85rem; color: var(--muted); margin-top: 6px; min-height: 32px; display: flex; align-items: center; }
+.mm-hold { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px dashed var(--line); color: inherit; font: inherit; }
+.mm-spark { width: 72px; height: 22px; flex: none; }
+.mm-spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.mm-slips summary { cursor: pointer; list-style: none; min-height: 32px; }
+.mm-slips summary::-webkit-details-marker { display: none; }
+/* ---------- Prison life and the courts ---------- */
+.hub-nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
+.hub-nav button { flex: none; min-height: 40px; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--line); background: transparent; font: inherit; font-size: 0.85rem; color: inherit; }
+.hub-nav button.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
+.person-link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+.btn.stacked { flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; }
+.btn.stacked small { font-weight: 400; opacity: 0.8; }
+
 /* Explore the World (js/ui/globalLife.js) */
 .gl-modal select, .gl-modal input[type="date"], .gl-modal input[type="number"] { width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: inherit; font: inherit; }
 .gl-modal label.field { font-size: 0.85rem; color: var(--muted); }

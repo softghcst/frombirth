@@ -1,11 +1,11 @@
 // Trips: planning, booking, going, doing things there, and coming home.
 //
-//   p.travel.trips       every trip planned, booked, taken or cancelled
+//   p.travel.trips       every trip planned, booked, taken or canceled
 //   p.travel.whereabouts where the player physically is while away (null: at home)
 //   p.travel.earned      achievements, with the year each was earned
 //
 // A trip moves through: draft -> confirmed -> in_progress -> completed, or
-// cancelled / disrupted. Opening the planner costs nothing; money changes
+// canceled / disrupted. Opening the planner costs nothing; money changes
 // hands only when a trip is confirmed, once per booking (engine/chronicle.js
 // ledger). A trip is completed once. Taking a trip never changes where
 // anyone lives: the primary residence is p.countryId / p.city, untouched here.
@@ -153,7 +153,7 @@ const fareFor = (m, km, cabin) => (m.base + m.perKm * km) * (m.cabins ? CABIN_FA
 
 /**
  * The legs of a one-way journey, with distances, hours, local departure and
- * arrival times, and the fare per traveller (base units). A long flight changes
+ * arrival times, and the fare per traveler (base units). A long flight changes
  * planes at a hub; a slow journey stops overnight on the way.
  */
 export function journey(from, to, m, date, cabin = 'economy') {
@@ -210,12 +210,12 @@ function activityOpen(a, to, month, p = player()) {
   if (a.seasonal && !FESTIVAL_MONTHS(to.countryId).some((m) => Math.abs(m - month) <= 1)) return false;
   return true;
 }
-/** Activities on offer at a trip's destination, in its month, with why each would mean more to this traveller. */
+/** Activities on offer at a trip's destination, in its month, with why each would mean more to this traveler. */
 export function activityOptions(trip, p = player()) {
   const month = Number(trip.depart.slice(5, 7));
   return ACTIVITIES.filter((a) => activityOpen(a, trip.destination, month, p)).map((a) => ({ ...a, liked: likes(a, p), costLocal: localMoney(a.cost * costK(trip.destination.countryId), country()) }));
 }
-/** Whether an activity touches something the person cares about: a talent, a skill they practise. */
+/** Whether an activity touches something the person cares about: a talent, a skill they practice. */
 function likes(a, p) {
   if (!a.interest) return false;
   const keys = Array.isArray(a.interest) ? a.interest : [a.interest];
@@ -371,7 +371,7 @@ export function quote(trip, p = player()) {
   if (!m?.includesStay) lines.push({ kind: 'daily', label: `Food and getting about, ${nights + 1} days`, amount: people.reduce((sum, x) => sum + localMoney(DAILY * k * (nights + 1) * childK(x), c), 0) });
   const sub = lines.reduce((sum, l) => sum + l.amount, 0);
   if (trip.insurance) lines.push({ kind: 'insurance', label: 'Travel insurance', amount: Math.round(sub * INSURANCE_RATE) });
-  // Who pays: the organiser, everyone their own share, or an employer for a work trip (the journey, the hotel and expenses).
+  // Who pays: the organizer, everyone their own share, or an employer for a work trip (the journey, the hotel and expenses).
   const employerPays = ['business', 'conference', 'interview'].includes(trip.type);
   let employer = 0; const shares = {};
   for (const l of lines) {
@@ -379,7 +379,7 @@ export function quote(trip, p = player()) {
     l.payer = 'organizer';
   }
   if (trip.payment === 'split' || trip.payment === 'separate') {
-    // Each adult who came pays for themselves (their journey) and an equal part of the shared things; the organiser covers children.
+    // Each adult who came pays for themselves (their journey) and an equal part of the shared things; the organizer covers children.
     const adults = people.filter((x) => x === p || (x.age ?? 30) >= 18);
     for (const l of lines.filter((x) => x.payer === 'organizer')) {
       if (l.personId && l.personId !== p.id && adults.some((x) => x.id === l.personId)) { l.payer = l.personId; shares[l.personId] = (shares[l.personId] ?? 0) + l.amount; continue; }
@@ -432,7 +432,7 @@ export function problems(trip, p = player()) {
     else if (p.flags.travelNeeds?.stepFree && !STAY_BY_ID[trip.stay].accessible) out.push(`${STAY_BY_ID[trip.stay].name} cannot promise step-free access.`);
   }
   if (p.flags.travelNeeds?.stepFree && m && !m.accessible) out.push(`${m.name}: step-free help cannot be arranged.`);
-  // Travelling with children: a child under 16 crossing a border goes with a parent, or with written consent.
+  // Traveling with children: a child under 16 crossing a border goes with a parent, or with written consent.
   const abroad = trip.destination.countryId !== p.countryId;
   const people = goingPeople(trip);
   if (p.age < 16 && !people.some((x) => x.role === 'parent')) out.push('A child travels with a parent or guardian.');
@@ -453,7 +453,7 @@ export function problems(trip, p = player()) {
   return [...new Set(out)];
 }
 
-/** What the border asks of each traveller on a plan, so the planner can show it and offer the applications. */
+/** What the border asks of each traveler on a plan, so the planner can show it and offer the applications. */
 export function entryCheck(trip, p = player()) {
   if (!trip.destination || trip.destination.countryId === p.countryId) return [];
   const purpose = TRIP_TYPE_BY_ID[trip.type].purpose;
@@ -501,20 +501,20 @@ export function confirm(tripId, p = player()) {
 /** Cancels a booked trip. What comes back depends on what was booked and how close the date is. */
 export function cancel(tripId, p = player()) {
   const trip = tripById(tripId, p);
-  if (!trip || trip.status !== 'confirmed') return result(false, 'Only a booked trip that has not begun can be cancelled.', 'neutral');
+  if (!trip || trip.status !== 'confirmed') return result(false, 'Only a booked trip that has not begun can be canceled.', 'neutral');
   const early = daysBetween(today(), trip.depart) > 30;
   let back = 0;
   for (const b of trip.bookings) {
     if (b.status !== 'confirmed') continue;
     const terms = REFUNDS[b.kind === 'daily' ? 'activity' : b.kind] ?? [0, 0];
-    const r = refund(b.txId, early ? terms[0] : terms[1], `Cancelled: ${b.label}`, p);
+    const r = refund(b.txId, early ? terms[0] : terms[1], `Canceled: ${b.label}`, p);
     if (r.ok && b.payer === 'player') back += r.amount;
     if (r.ok && b.payer !== 'player' && b.payer !== 'employer' && b.payer !== 'parent') { const n = store.state.npcs[b.payer]; if (n) { if (n.life) n.life.savings += r.amount; else n.savings = (n.savings ?? 0) + r.amount; } }
     b.status = 'cancelled';
   }
   trip.status = 'cancelled';
-  trip.notes.push(`Cancelled on ${today()}.`);
-  const text = `You cancelled the trip to ${COUNTRIES[trip.destination.countryId].name}. ${back ? `${fmtMoney(back, country())} came back to you.` : 'Nothing could be refunded.'}`;
+  trip.notes.push(`Canceled on ${today()}.`);
+  const text = `You canceled the trip to ${COUNTRIES[trip.destination.countryId].name}. ${back ? `${fmtMoney(back, country())} came back to you.` : 'Nothing could be refunded.'}`;
   log(text, 'system', 'neutral');
   return result(true, text, 'neutral', { refunded: back });
 }
@@ -655,15 +655,15 @@ export function comeHome(tripId, p = player()) {
     const lang = languagesOf(trip.destination.countryId).filter((l) => (p.skills?.[l] ?? 0) > 0 && (p.skills[l] ?? 0) < 85)[0];
     if (lang) { const gain = days >= 60 ? 6 : days >= 14 ? 3 : 1; p.skills[lang] = clamp(p.skills[lang] + gain); (p.languageLog ??= []).push({ year: year(), lang, source: 'travel', gain }); }
   }
-  // A semester abroad: the course goes on, the credit is the university's to recognise, and classmates are people now.
+  // A semester abroad: the course goes on, the credit is the university's to recognize, and classmates are people now.
   let study = '';
   if (trip.type === 'semester') {
-    (p.education.abroad ??= []).push({ countryId: trip.destination.countryId, city: trip.destination.city, year: year(), tripId: trip.id, credit: 'recognised by your university' });
+    (p.education.abroad ??= []).push({ countryId: trip.destination.countryId, city: trip.destination.city, year: year(), tripId: trip.id, credit: 'recognized by your university' });
     const mate = makeNpc({ role: 'friend', countryId: trip.destination.countryId, age: Math.max(18, p.age + rng.int(-2, 2)), relationship: rng.int(55, 75) });
     mate.flags.abroad = trip.destination.countryId; mate.flags.metAbroad = trip.id;
     store.state.npcs[mate.id] = mate; p.npcIds.push(mate.id);
     remember(mate, `classmate_${trip.id}`, `You studied together in ${trip.destination.city}.`);
-    study = ` You came back with the term's credit, recognised by your university, and a friend: ${mate.firstName}, who lives in ${trip.destination.city}.`;
+    study = ` You came back with the term's credit, recognized by your university, and a friend: ${mate.firstName}, who lives in ${trip.destination.city}.`;
   }
   store.state.today = trip.ret;
   travelState(p).whereabouts = null;
@@ -721,7 +721,7 @@ function milestones(trip, p) {
   if (leisure) first(`first-vacation:${aid}`, 'First vacation', `To ${placeName(place.countryId, place.city)}.`);
   if (trip.destination.countryId !== p.countryId) first(`first-abroad:${aid}`, `First trip abroad: ${COUNTRIES[place.countryId].name}`, `Crossed a border for the first time, to ${placeName(place.countryId, place.city)}.`, 3);
   if (!people.length && p.age >= 16) first(`first-solo:${aid}`, 'First trip alone', `To ${placeName(place.countryId, place.city)}.`);
-  if (people.some((n) => ['child', 'parent', 'sibling'].includes(n.role)) && leisure) first(`first-family-holiday:${aid}`, 'First family holiday', `With ${list(people.map((n) => n.firstName))}.`);
+  if (people.some((n) => ['child', 'parent', 'sibling'].includes(n.role)) && leisure) first(`first-family-holiday:${aid}`, 'First family vacation', `With ${list(people.map((n) => n.firstName))}.`);
   if (trip.type === 'honeymoon') { const s = people.find((n) => n.role === 'spouse'); if (s) first(`honeymoon:${s.id}`, `Honeymoon with ${s.firstName}`, `In ${placeName(place.countryId, place.city)}.`, 3); }
   if (trip.type === 'anniversary') { const s = people.find((n) => n.role === 'spouse'); if (s) first(`anniversary:${s.id}:${year()}`, `An anniversary in ${place.city ?? COUNTRIES[place.countryId].name}`, `With ${s.firstName}.`); }
   if (trip.done.some((d) => d.id === 'landmark')) first(`landmark:${aid}:${place.countryId}`, `Saw the great sights of ${place.city ?? COUNTRIES[place.countryId].name}`, '', 1);
@@ -792,7 +792,7 @@ export function closeYear(p = player()) {
 export const KEEP = { tripDetail: 3, ledgerYears: 10, stayDays: 400 };
 
 /**
- * Keeps saves small in long, well-travelled lives. A finished trip older than
+ * Keeps saves small in long, well-traveled lives. A finished trip older than
  * a few years keeps where, when, who, what was done, its memories and what it
  * cost; the journey's legs and the booking lines go (the ledger kept the
  * money). Ledger entries older than ten years become yearly totals by kind.
@@ -803,18 +803,18 @@ export function compactHistory(p = player()) {
   const done = ['completed', 'cancelled', 'disrupted'];
   for (const t of travelState(p).trips) {
     if (!done.includes(t.status) || t.compact || yearOf(t.depart) > yr - KEEP.tripDetail) continue;
-    t.spent = -(p.finance.ledger ?? []).filter((x) => x.ref?.tripId === t.id && x.payer === 'player').reduce((s2, x) => s2 + x.amount, 0);
+    t.spent = -(p.finance.receipts ?? []).filter((x) => x.ref?.tripId === t.id && x.payer === 'player').reduce((s2, x) => s2 + x.amount, 0);
     t.bookingCount = t.bookings.length;
     delete t.itinerary; t.bookings = []; t.activities = [];
     delete t.cabin; delete t.insurance; delete t.payment;
     t.compact = true;
   }
-  const ledger = p.finance.ledger ?? [];
+  const ledger = p.finance.receipts ?? [];
   const old = ledger.filter((x) => x.year <= yr - KEEP.ledgerYears);
   if (old.length) {
-    const years = (p.finance.ledgerYears ??= {});
+    const years = (p.finance.receiptYears ??= {});
     for (const x of old) { const y = (years[x.year] ??= {}); const k = `${x.kind}${x.payer === 'player' ? '' : `:${x.payer === 'employer' || x.payer === 'parent' ? x.payer : 'others'}`}`; y[k] = (y[k] ?? 0) + x.amount; }
-    p.finance.ledger = ledger.filter((x) => x.year > yr - KEEP.ledgerYears);
+    p.finance.receipts = ledger.filter((x) => x.year > yr - KEEP.ledgerYears);
   }
   const cutoff = addDays(`${yr}-01-01`, -KEEP.stayDays);
   for (const person of [p, ...Object.values(store.state.npcs).filter((n) => n.stays?.length)]) if (person.stays?.length) person.stays = person.stays.filter((x) => x.to >= cutoff);
@@ -834,7 +834,7 @@ export function whereabouts(p = player()) {
 /** A trip, ready to show: its people, money, memories and dates. */
 export function tripCard(trip, p = player()) {
   const people = trip.travelers.map((x) => ({ ...x, person: personById(x.id) })).filter((x) => x.person);
-  const spent = trip.compact ? trip.spent : -(p.finance.ledger ?? []).filter((x) => x.ref?.tripId === trip.id && x.payer === 'player').reduce((s, x) => s + x.amount, 0);
+  const spent = trip.compact ? trip.spent : -(p.finance.receipts ?? []).filter((x) => x.ref?.tripId === trip.id && x.payer === 'player').reduce((s, x) => s + x.amount, 0);
   const memories = events((e) => e.tripId === trip.id);
   return {
     id: trip.id, status: trip.status, type: TRIP_TYPE_BY_ID[trip.type]?.name ?? trip.type, group: TRIP_TYPE_BY_ID[trip.type]?.group,
@@ -885,7 +885,7 @@ export function earn(p = player()) {
 }
 export const achievements = (p = player()) => ACHIEVEMENTS.map((a) => ({ ...a, year: travelState(p).earned[a.id] ?? null }));
 
-/** Countries and cities visited, first visits, repeats and favourites, from completed trips (and older records). */
+/** Countries and cities visited, first visits, repeats and favorites, from completed trips (and older records). */
 export function collection(p = player()) {
   const by = new Map();
   for (const t of travelState(p).trips.filter((x) => x.status === 'completed')) {
@@ -897,8 +897,8 @@ export function collection(p = player()) {
   // Older records, from before trips were kept in full: by country, and by year where known.
   for (const t of p.trips ?? []) if (!t.tripId && !t.refused && !by.has(t.countryId) && COUNTRIES[t.countryId]) by.set(t.countryId, { id: t.countryId, name: COUNTRIES[t.countryId].name, flag: COUNTRIES[t.countryId].flag, first: t.year ? `${t.year}` : 'before records', visits: 1, cities: new Set(t.city ? [t.city] : []), days: 0, legacy: true });
   const all = [...by.values()].map((e) => ({ ...e, cities: [...e.cities].filter(Boolean) }));
-  const favourite = [...all].sort((a, b) => b.visits - a.visits || b.days - a.days)[0] ?? null;
-  return { countries: all.sort((a, b) => String(a.first).localeCompare(String(b.first))), favourite, cities: all.reduce((s, e) => s + e.cities.length, 0) };
+  const favorite = [...all].sort((a, b) => b.visits - a.visits || b.days - a.days)[0] ?? null;
+  return { countries: all.sort((a, b) => String(a.first).localeCompare(String(b.first))), favorite, cities: all.reduce((s, e) => s + e.cities.length, 0) };
 }
 
 export { eraOf, needsAuthorization };

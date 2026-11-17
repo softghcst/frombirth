@@ -1,13 +1,13 @@
 // Two shared records that the travel, immigration and family-history systems
 // write to, so that every screen reads the same thing:
 //
-//   p.finance.ledger   every payment and refund they make, once each, with an
+//   p.finance.receipts   every payment and refund they make, once each, with an
 //                      id. A booking points at its transaction; paying twice is
 //                      refused because the transaction already exists.
 //
 //   state.canon        canonical life events: one record per thing that
 //                      happened (a first trip abroad, a move, a child born
-//                      abroad, a naturalisation). Each has a stable id and a
+//                      abroad, a naturalization). Each has a stable id and a
 //                      `key` that makes recording it again a no-op. Journals,
 //                      the Travel Journal, Places I've Lived and Our Global
 //                      Story are views of this list; none keeps its own copy.
@@ -22,13 +22,16 @@
 // id the heir had as a relative), falling back to p.id.
 import { store, player } from '../state.js';
 import { uid } from '../util.js';
+import { book } from './ledger.js';
 
 /** The id a person is known by in the family's history. */
 export const archiveIdOf = (person) => person?.archiveId ?? person?.flags?.archiveId ?? person?.id ?? null;
 
-// ---------- The ledger ----------
+// ---------- Receipts ----------
 
-const ledgerOf = (p) => (p.finance.ledger ??= []);
+const receiptsOf = (p) => (p.finance.receipts ??= []);
+/** Books the change in cash into the game's ledger (engine/ledger.js), under Travel. */
+const toBooks = (memo) => { try { book({ cat: 'travel', src: 'action', desc: memo }); } catch { /* the books are reconciled at the next booking */ } };
 
 /**
  * Takes money from the player's everyday account and writes it down.
@@ -39,11 +42,11 @@ const ledgerOf = (p) => (p.finance.ledger ??= []);
 export function charge(o, p = player()) {
   const amount = Math.round(o.amount);
   if (!(amount >= 0)) return { ok: false, why: 'That amount is not valid.' };
-  const ledger = ledgerOf(p);
+  const ledger = receiptsOf(p);
   if (o.key && ledger.some((t) => t.key === o.key && t.amount < 0)) return { ok: false, why: 'Already paid.' };
   const payer = o.payer ?? 'player';
   if (payer === 'player' && p.finance.cash < amount) return { ok: false, why: 'Not enough money.' };
-  if (payer === 'player') p.finance.cash -= amount;
+  if (payer === 'player') { p.finance.cash -= amount; toBooks(o.memo); }
   const tx = { id: uid('tx'), year: store.state.year, date: store.state.today ?? null, kind: o.kind, amount: -amount, memo: o.memo, payer };
   if (o.currency) tx.currency = o.currency;
   if (o.ref) tx.ref = o.ref;
@@ -54,12 +57,12 @@ export function charge(o, p = player()) {
 
 /** Returns part of an earlier payment. Each transaction can be refunded once. */
 export function refund(txId, fraction, memo, p = player()) {
-  const ledger = ledgerOf(p);
+  const ledger = receiptsOf(p);
   const tx = ledger.find((t) => t.id === txId);
   if (!tx || tx.amount >= 0) return { ok: false, why: 'Nothing to refund.' };
   if (ledger.some((t) => t.refundOf === txId)) return { ok: false, why: 'Already refunded.' };
   const back = Math.floor(-tx.amount * Math.max(0, Math.min(1, fraction)));
-  if (tx.payer === 'player') p.finance.cash += back;
+  if (tx.payer === 'player') { p.finance.cash += back; toBooks(memo); }
   const r = { id: uid('tx'), year: store.state.year, date: store.state.today ?? null, kind: 'refund', amount: back, memo, refundOf: txId, payer: tx.payer };
   if (tx.ref) r.ref = tx.ref;
   ledger.push(r);
@@ -68,7 +71,7 @@ export function refund(txId, fraction, memo, p = player()) {
 
 /** Everything paid for one thing (a trip, an application), net of refunds, by the player. */
 export function spentOn(refKey, refId, p = player()) {
-  return -(p.finance.ledger ?? []).filter((t) => t.payer === 'player' && t.ref?.[refKey] === refId).reduce((s, t) => s + t.amount, 0);
+  return -(p.finance.receipts ?? []).filter((t) => t.payer === 'player' && t.ref?.[refKey] === refId).reduce((s, t) => s + t.amount, 0);
 }
 
 // ---------- Canonical events ----------

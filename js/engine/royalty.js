@@ -8,6 +8,7 @@
 // On a royal NPC: npc.flags.royal = { rank, line, title }
 // The royal house itself (everyone in it, the line of succession, its history)
 // lives in engine/dynasty.js. This file is the player's side of it.
+import { convictionsOf, hasRecord } from './records.js';
 import { rule, may } from './rules.js';
 import { detach as detachPlayer } from './polity.js';
 import { rng } from '../rng.js';
@@ -169,7 +170,7 @@ export function invitable() {
 export function suitability() {
   const p = player();
   let s = 30 + p.hidden.karma / 4 + p.hidden.fame / 5 + p.stats.charm / 5;
-  s -= p.legal.record.filter((r) => r.convicted && !r.juvenile).length * 30;
+  s -= convictionsOf(p, { sealed: true }).length * 30;
   s -= Math.max(0, p.counters.spouses) * 10;
   if (p.royal) s += 15;
   if (p.flags.identity?.outOrientation && rule('lgbt') === 'hostile') s -= 20;
@@ -534,7 +535,7 @@ export function tickRoyalty() {
     p.flags.palaceAge = p.age;
     store.state.pendingEvents.push({ id: 'palace_invitation', cast: {} });
   }
-  if (m.honours && p.age >= 30 && !p.royal && !p.flags.honoured && !p.legal.record.some((x) => x.convicted && !x.juvenile)) {
+  if (m.honours && p.age >= 30 && !p.royal && !p.flags.honoured && !hasRecord(p, { sealed: true })) {
     const great = p.counters.donated >= 1000000 || p.hidden.fame >= 90;
     const good = p.counters.donated >= 100000 || p.hidden.fame >= 65 || (p.counters.livesSaved ?? 0) >= 2;
     if ((great || good) && rng.chance(0.2)) {

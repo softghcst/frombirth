@@ -6,7 +6,7 @@
 // Which shape a country gets, and which health-care model, is the author's
 // coarse understanding of the mid-2020s and is unverified. Real systems
 // have credits, deductions, contributions, regional taxes, co-payments and
-// exceptions that are not modelled. Nothing here is tax or medical advice.
+// exceptions that are not modeled. Nothing here is tax or medical advice.
 
 /**
  * allowance: income below this is untaxed. bands: [up to, multiple of the headline rate].

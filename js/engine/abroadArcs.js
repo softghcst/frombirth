@@ -8,7 +8,7 @@
 //
 //   p.flags.arcs   { [arc]: { year, dest?, npc? } }   when each arc last began, and about what
 //
-// Scenes are in data/events/arcs.js; they are sent from here (queuedOnly).
+// Scenes are in data/events/abroadArcs.js; they are sent from here (queuedOnly).
 import { rng } from '../rng.js';
 import { clamp, theCountry } from '../util.js';
 import { store, player, livingNpcs, log } from '../state.js';
@@ -89,8 +89,8 @@ function retireFor(p) {
 const send = (id, cast) => store.state.pendingEvents.push({ id, cast });
 
 /** Yearly: at most one arc begins, and only from what is really so. */
-export function tickArcs(p = player(), force = null) {
-  if (!p.alive || busy(p) || store.state.pendingEvents.some((e) => String(e.id).startsWith('arc_'))) return null;
+export function tickAbroadArcs(p = player(), force = null) {
+  if (!p.alive || busy(p) || store.state.pendingEvents.some((e) => String(e.id).startsWith('abroad_'))) return null;
   const year = store.state.year;
   const tries = [
     ['distance', distanceFor], ['homeward', homewardFor], ['retire', retireFor], ['offer', offerFor],
@@ -105,7 +105,7 @@ export function tickArcs(p = player(), force = null) {
     const words = { country: nameOf(it.dest), place: it.city ? `${it.city}, ${nameOf(it.dest)}` : nameOf(it.dest), who: n?.firstName ?? '', age: String(n?.age ?? ''), home: nameOf(p.birthCountryId),
       job: p.career.title ? `${/^[aeiou]/i.test(p.career.title) ? 'an' : 'a'} ${p.career.title.toLowerCase()}` : 'someone who does what you do', years: String(year - (p.flags.arrivedYear ?? year)),
       why: it.why === 'kid' ? `${n?.firstName} has made a life in ${nameOf(it.dest)}, and keeps saying there is room for you.` : `${nameOf(it.dest).replace(/^the /, 'The ')} is warmer than here, and cheaper.` };
-    send(`arc_${id}`, { ...(n ? { kin: n.id } : {}), words });
+    send(`abroad_${id}`, { ...(n ? { kin: n.id } : {}), words });
     return id;
   }
   return null;

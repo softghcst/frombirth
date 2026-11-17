@@ -78,7 +78,7 @@ export function endRivalry(how) {
   if (how === 'peace') {
     if (npc) npc.meters.relationship = clamp(npc.meters.relationship + 30);
     if (x) x.t.loyalty = clamp(x.t.loyalty + 30);
-    dyn.chronicle(d, `${name} and ${p.firstName} made their peace after years of quarrelling.`, x ? [x.id] : []);
+    dyn.chronicle(d, `${name} and ${p.firstName} made their peace after years of quarreling.`, x ? [x.id] : []);
   } else if (how === 'removed') {
     if (npc) npc.meters.relationship = Math.min(npc.meters.relationship, 5);
     if (x) { x.out = 'removed'; x.outYear = store.state.year; }

@@ -13,14 +13,41 @@ export function openModal(html, opts = {}) {
   const scrim = document.createElement('div');
   scrim.className = 'scrim';
   scrim.innerHTML = `<div class="modal ${opts.tone ? `tone-${opts.tone}` : ''}" role="dialog" aria-modal="true">${html}</div>`;
-  const close = () => scrim.remove();
+  // Focus goes into the dialog, and back to where it was when the dialog closes.
+  // A dialog opened from inside another returns focus where that one would have.
+  const opener = document.activeElement;
+  const returnTo = opener?.closest?.('.modal')?._returnTo ?? opener;
+  const close = () => {
+    scrim.remove();
+    const still = document.querySelector('#modal-root .scrim:last-child .modal');
+    if (still) { (still.querySelector('button:not([disabled])') ?? still).focus({ preventScroll: true }); return; }
+    const target = returnTo?.isConnected ? returnTo : document.querySelector('[data-year]');
+    target?.focus?.({ preventScroll: true });
+  };
   if (opts.dismissable) {
     scrim.addEventListener('click', (e) => {
       if (e.target === scrim) { close(); opts.onDismiss?.(); }
     });
+    scrim.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); opts.onDismiss?.(); } });
   }
   root().appendChild(scrim);
-  return { el: scrim.firstElementChild, close };
+  const card = scrim.firstElementChild;
+  card._returnTo = returnTo;
+  nameDialog(card);
+  card.setAttribute('tabindex', '-1');
+  // Only things that can take focus: an SVG <use href> inside a portrait matches [href] but cannot.
+  (card.querySelector('button:not([disabled]), a[href], input, select, textarea, summary') ?? card).focus({ preventScroll: true });
+  return { el: card, close };
+}
+
+let dialogSeq = 0;
+/** Gives a dialog an accessible name: its heading, or failing that its first line of text. */
+function nameDialog(card) {
+  if (card.hasAttribute('aria-label') || card.hasAttribute('aria-labelledby')) return;
+  const head = card.querySelector('h1, h2, h3, .eyebrow, .scene, .body, p');
+  if (!head) { card.setAttribute('aria-label', 'Dialog'); return; }
+  head.id ||= `dialog-title-${++dialogSeq}`;
+  card.setAttribute('aria-labelledby', head.id);
 }
 
 /** Shows a scenario and resolves with the index of the chosen option. */

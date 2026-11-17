@@ -1,5 +1,7 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
+import * as kinCase from '../../engine/kinCases.js';
+import { familyStatus } from '../../engine/immigration.js';
 import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
 import * as rel from '../../engine/relationships.js';
@@ -9,10 +11,13 @@ import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
-import { openExplore, openGlobalStory } from '../globalLife.js';
+import { openExplore } from '../globalLife.js';
 import { archiveIdOf } from '../../engine/chronicle.js';
 import { placeName } from '../../engine/geo.js';
 import { avatarSvg, petGlyph, royalDress } from '../avatar.js';
+import { animalById, reconcile as reconcileAnimals } from '../../engine/animals.js';
+import * as zooUi from '../animals.js';
+import { openAnimalHub } from '../animalHub.js';
 import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
@@ -23,19 +28,19 @@ import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
-  'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
+  'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
-  ['Family', ['parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
+  ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
   ['Your household', ['staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
   ['Others', ['ex', 'enemy', 'cellmate']],
 ];
 
-const portrait = (npc) => (npc.role === 'pet'
-  ? `<div class="avatar glyph">${petGlyph(npc.species)}</div>`
+export const portrait = (npc) => (npc.role === 'pet'
+  ? (animalById(npc.id) ? zooUi.animalFace(animalById(npc.id)) : `<div class="avatar glyph">${petGlyph(npc.species)}</div>`)
   : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship, royal: royalDress(npc.flags.royal?.rank), label: npc.firstName })}</div>`);
 
 async function report(api, r) {
@@ -175,7 +180,7 @@ async function lookForLove(api) {
 // ---------- One person ----------
 
 /** Sliders for someone's stats and talents. Nothing changes until Save. */
-function editPerson(api, npc) {
+function editPerson(api, npc, done = () => openNpc(npc, api)) {
   const pet = npc.role === 'pet';
   const meters = rel.EDITABLE_METERS.filter(([k]) => !pet || k === 'relationship' || k === 'health');
   const talents = pet ? [] : rel.EDITABLE_TALENTS;
@@ -199,16 +204,16 @@ function editPerson(api, npc) {
     // Everything about their face, including eye spacing and the sizes of their features.
     const next = await openAppearanceEditor({ title: `${npc.firstName}'s look`, appearance: npc.appearance, age: npc.age, gender: npc.gender, seed: npc.id, confirm: 'Save their look' });
     if (next) { npc.appearance = next; api.changed(); }
-    openNpc(npc, api);
+    done();
   });
-  modal.el.querySelector('[data-cancel]').addEventListener('click', () => { modal.close(); openNpc(npc, api); });
+  modal.el.querySelector('[data-cancel]').addEventListener('click', () => { modal.close(); done(); });
   modal.el.querySelector('[data-save]').addEventListener('click', () => {
     const values = { meters: {}, talents: {} };
     for (const input of modal.el.querySelectorAll('input[type=range]')) values[input.dataset.group][input.dataset.key] = Number(input.value);
     rel.editNpc(npc.id, values);
     modal.close();
     api.changed();
-    openNpc(npc, api);
+    done();
   });
 }
 
@@ -221,7 +226,32 @@ function geoLine(npc) {
   return `<p class="muted" style="margin-top:8px">${born ? `Born in ${esc(born)}. ` : ''}${npc.alive ? `Lives in ${esc(now)}.` : ''}${lived > 1 ? ` Has lived in ${lived} countries.` : ''}</p>`;
 }
 
-export function openNpc(npc, api) {
+/** What the courts recorded about someone, as far as it is public. */
+function courtRecord(npc) {
+  const rows = (npc.flags.legalHistory ?? []).filter((h) => h.kind !== 'sealed');
+  const j = npc.flags.justice;
+  const role = j && !['civilian', 'inmate', 'released'].includes(j.kind) ? `<div class="kv"><span>Work</span><span>${esc(npc.occupation ?? '')}${j.retired ? `, retired ${j.retired}` : ''}${j.caseIds?.length ? ` · ${j.caseIds.length} case${j.caseIds.length === 1 ? '' : 's'}` : ''}</span></div>` : '';
+  const inside = npc.flags.inmate && !npc.flags.inmate.released
+    ? `<div class="kv"><span>Inside</span><span>${esc(npc.flags.inmate.yearsLeft)} year${npc.flags.inmate.yearsLeft === 1 ? '' : 's'} left · loves ${esc(npc.flags.inmate.interest)} · wants to ${esc(npc.flags.inmate.goal)}</span></div>` : '';
+  if (!rows.length && !role && !inside) return '';
+  return `<div class="section-label" style="margin-top:0">Court and custody</div>${role}${inside}
+    ${rows.slice(-8).reverse().map((h) => `<div class="kv"><span>${h.year ?? ''}${h.age != null ? ` · age ${h.age}` : ''}</span><span>${esc(h.text)}</span></div>`).join('')}
+    <div style="height:14px"></div>`;
+}
+
+/**
+ * The profile of anyone in the world. People who are not part of the player's
+ * life (a judge, a witness, an inmate on another landing) are shown without
+ * the actions that need a relationship.
+ *
+ * @param {Function} [back]  where this was opened from, when not from the list: called when the profile is left,
+ *                           so that screen can come back as it was
+ * @param {{readOnly?:boolean}} [o]
+ */
+export function openNpc(npc, api, back, o = {}) {
+  const inLife = player().npcIds.includes(npc.id) && !o.readOnly;
+  // An animal has a profile of its own, kept for good in the family's record.
+  if (npc.role === 'pet' && animalById(npc.id)) return zooUi.openAnimalProfile(api, npc.id);
   lives.ensureLife(npc);
   const m = npc.meters;
   const isPet = npc.role === 'pet';
@@ -230,7 +260,7 @@ export function openNpc(npc, api) {
     : [['Relationship', m.relationship], ['Money', m.money], ['Intellect', m.intellect],
       ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy]]
       .map(([n, v]) => meterHtml(n, v, true)).join('');
-  const detail = [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : '', npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
+  const detail = [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : familyStatus(npc).toLowerCase(), npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
     .filter(Boolean).map((x) => ` · ${esc(x)}`).join('');
   const owns = (npc.holdings ?? []).length ? `<p class="muted" style="margin-top:8px">Owns: ${esc(npc.holdings.join(', '))}.</p>` : '';
   const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
@@ -257,13 +287,14 @@ export function openNpc(npc, api) {
        <div style="height:14px"></div>` : '';
   const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
 
-  const actions = [
+  const actions = !inLife ? [] : [
     ...(npc.alive ? love.romanceActions(npc) : []),
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
+    ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
     ...(npc.role !== 'pet' ? [{ id: 'places', label: 'Places they have lived' }] : []),
@@ -280,14 +311,14 @@ export function openNpc(npc, api) {
     </div>
     ${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
     <div style="margin:12px 0 16px">${meters}</div>
-    ${lifeCard}${history}${timeline}
+    ${lifeCard}${history}${timeline}${courtRecord(npc)}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
-      <button class="btn" data-close>Close</button>
-    </div>`, { dismissable: true });
+      <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
+    </div>`, { dismissable: true, onDismiss: () => back?.() });
 
   modal.el.addEventListener('click', async (e) => {
-    if (e.target.closest('[data-close]')) return modal.close();
+    if (e.target.closest('[data-close]')) { modal.close(); return back?.(); }
     const id = e.target.closest('[data-act]')?.dataset.act;
     if (!id) return undefined;
     modal.close();
@@ -325,7 +356,9 @@ export function openNpc(npc, api) {
         if (how) await report(api, kid.uniTalk(npc.id, how));
       },
       talkIdentity: () => report(api, who.talkItThrough(npc.id)),
-      edit: () => editPerson(api, npc),
+      edit: () => editPerson(api, npc, () => openNpc(npc, api, back)),
+      visitInside: () => report(api, kinCase.visitKin(npc.id)),
+      writeInside: () => report(api, kinCase.writeToKin(npc.id)),
       dynasty: () => openDynasty(npc.flags.houseId),
       places: () => openExplore(api, { view: 'person', params: { id: archiveIdOf(npc) } }),
       breakUp: async () => {
@@ -333,9 +366,13 @@ export function openNpc(npc, api) {
         if (yes) await report(api, love.breakUp(npc.id));
       },
     };
-    return (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
+    await (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
+    // Opened from somewhere else: go back there once the thing is done (the stat editor returns here by itself).
+    if (id !== 'edit' && id !== 'dynasty') back?.();
+    return undefined;
   });
 }
+zooUi.connect({ openPerson: openNpc, editStats: editPerson });
 
 export default {
   id: 'people', title: 'People', short: 'People',
@@ -345,16 +382,16 @@ export default {
     const list = livingNpcs().sort((a, b) =>
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
-    const top = [['tree', 'Family tree'], ['story', 'Family archive: Our Global Story']];
+    reconcileAnimals();
+    const top = [['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree']];
     if (love.canLookForLove()) top.push(['love', 'Look for love']);
     if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
-    if (rel.canGetPet()) top.push(['pet', `Get a pet (${fmtMoney(localMoney(rel.PET_PRICE, c), c)})`]);
 
     const row = (n) => `
       <button class="row" data-npc="${n.id}">
         ${portrait(n)}
         <div class="main"><strong>${n.flags.royal?.title ? `${esc(n.flags.royal.title)} ` : ''}${esc(n.firstName)} ${n.role === 'pet' ? '' : esc(n.lastName)}</strong>
-          <small>${esc(rel.roleLabel(n))} · age ${n.age}${n.occupation ? ` · ${esc(n.occupation)}` : ''}</small></div>
+          <small>${esc(rel.roleLabel(n))} · age ${n.age}${kinCase.inside(n) ? ' · in prison' : n.occupation && n.occupation !== rel.roleLabel(n) ? ` · ${esc(n.occupation)}` : ''}</small></div>
         <div class="side">${Math.round(n.meters.relationship)}%
           <div class="mini"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
       </button>`;
@@ -371,8 +408,9 @@ export default {
       const row = e.target.closest('[data-npc]');
       if (row) return openNpc(store.state.npcs[row.dataset.npc], api);
       const id = e.target.closest('[data-top]')?.dataset.top;
+      if (id === 'animals') return openAnimalHub(api);
+      if (id === 'archive') return zooUi.openFamilyArchive(api);
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api));
-      if (id === 'story') return openGlobalStory(api);
       if (id === 'love') return lookForLove(api);
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

@@ -364,7 +364,7 @@ export function stats(d) {
     marriages: people.filter((p) => !p.blood).length, standing: d.standing };
 }
 
-const FEATURES = { eyeColor: 'eye colour', eyes: 'eyes', hairColor: 'hair colour', hairTexture: 'hair', nose: 'nose', lips: 'mouth', head: 'face', brows: 'brows' };
+const FEATURES = { eyeColor: 'eye color', eyes: 'eyes', hairColor: 'hair color', hairTexture: 'hair', nose: 'nose', lips: 'mouth', head: 'face', brows: 'brows' };
 /** The features two people share, as words: ["eyes", "nose"]. */
 export function shared(a, b) {
   const x = normalize(a, 'a').inherited;
