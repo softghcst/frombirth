@@ -325,6 +325,10 @@ export function release(how = 'You served your sentence and walked out of the ga
     studied: Object.keys(cell.studied ?? {}), job: cell.job });
   p.legal.incarceration = null;
   p.stats.mood = clamp(p.stats.mood + 15);
+  // Children placed elsewhere while the player was inside come home, if they are still children.
+  const home = Object.keys(cell.guardians ?? {}).map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.age < 18);
+  for (const kid of Object.keys(cell.guardians ?? {}).map((id) => store.state.npcs[id]).filter(Boolean)) delete kid.flags.guardian;
+  if (home.length && !o.escape) log(`${home.map((n) => n.firstName).join(' and ')} ${home.length === 1 ? 'comes' : 'come'} home to live with you again.`, 'system', 'good');
   log(how, 'system', 'good');
   if (!o.escape) {
     k.note(p.id, 'released', o.parole ? 'Released on parole.' : 'Released from custody.', cell.caseId);

@@ -46,6 +46,7 @@ function adult(countryId = 'uk', age = 25) {
 function year() {
   const p = store.state.player;
   p.stats.health = 90;
+  p.flags.longevity = 40; // these tests are about the courts, not about dying young
   advanceYear();
   store.state.pendingEvents = [];
   if (!p.alive) throw new Error('the player died in a test year');
@@ -631,6 +632,93 @@ function framedBy(offenseId, reliability = 0.85) {
     check(!jail.cell() || c.security === 'max', 'a bad one, back up');
   }
   section('transfers: earned down, lost up, always recorded');
+}
+
+// ---------- Who looks after a child ----------
+{
+  const care = await import('../js/engine/guardianship.js');
+  const kin = await import('../js/engine/kinCases.js');
+  const jailParent = (n) => { const f = jail.facilityFor(n.flags.abroad ? 'uk' : store.state.player.countryId, 'med'); n.flags.inmate = { facilityId: f.id, offenseId: 'theft', yearsLeft: 2, kin: true, interest: 'chess', goal: 'come home', background: 'x' }; f.inmateIds.push(n.id); };
+  const child = (age, opts = {}) => {
+    const p = adult('uk', age);
+    p.flags.livesWithParents = true;
+    const parents = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n.role === 'parent');
+    for (const n of parents) n.age = Math.max(n.age, 30);
+    if (!opts.grandparents) for (const id of [...p.npcIds]) { const n = store.state.npcs[id]; if (['grandparent', 'relative', 'sibling'].includes(n.role)) p.npcIds = p.npcIds.filter((x) => x !== id); }
+    if (opts.grandparents) {
+      const g = makeNpc({ role: 'grandparent', countryId: 'uk', age: 66, relationship: 75 });
+      store.state.npcs[g.id] = g; p.npcIds.push(g.id);
+    }
+    return { p, parents };
+  };
+
+  // Both parents in prison: the grandparents take them, until a parent is back.
+  let { p, parents } = child(10, { grandparents: true });
+  check(parents.length >= 1, 'a child with parents');
+  for (const n of parents) jailParent(n);
+  care.checkCare();
+  check(p.flags.care?.kind === 'grandparent' && p.flags.care.until === 'release', 'with both parents inside, a grandparent takes them, for now');
+  check(store.state.npcs[p.flags.care.guardianId].role === 'grandparent' && /grand/i.test(care.careLine()), 'they live with that grandparent');
+  check(care.checkCare() === null, 'checking again changes nothing');
+  parents[0].flags.inmate.released = store.state.year;
+  care.checkCare();
+  check(!p.flags.care && p.flags.livesWithParents, 'home again when a parent is released');
+
+  // No family able to: foster care.
+  ({ p, parents } = child(9));
+  for (const n of parents) jailParent(n);
+  care.checkCare();
+  check(p.flags.care?.kind === 'foster' && store.state.npcs[p.flags.care.guardianId]?.flags.title === 'Foster carer', 'with no family to take them, foster care');
+  check(p.npcIds.includes(p.flags.care.guardianId), 'the foster carer is a person in their life');
+  check(p.milestones.some((m) => /foster/.test(m.text)), 'it is part of their story');
+
+  // A single parent who goes to prison.
+  ({ p, parents } = child(12, { grandparents: true }));
+  for (const n of parents.slice(1)) { n.alive = false; }
+  jailParent(parents[0]);
+  care.checkCare();
+  check(p.flags.care?.kind === 'grandparent' && p.flags.care.until === 'release', 'a single parent in prison: to the grandparents, for now');
+
+  // Both parents dead: care until adulthood, and leaving care at eighteen.
+  ({ p, parents } = child(15));
+  for (const n of parents) n.alive = false;
+  care.checkCare();
+  check(p.flags.care?.kind === 'foster' && p.flags.care.until === 'adult', 'orphaned with no family: foster care until grown');
+  const cash = p.finance.cash;
+  while (p.age < 18) year();
+  check(!p.flags.care && !p.flags.livesWithParents && p.finance.cash > cash, 'at eighteen they leave care, with a grant');
+
+  // A parent abroad, the other in prison.
+  ({ p, parents } = child(8, { grandparents: true }));
+  if (parents.length === 2) {
+    parents[0].flags.abroad = 'fr';
+    jailParent(parents[1]);
+    care.checkCare();
+    check(p.flags.care?.kind === 'grandparent', 'one parent abroad and one inside: still nobody at home');
+    parents[0].flags.abroad = false;
+    care.checkCare();
+    check(!p.flags.care, 'home when the parent abroad comes back');
+  }
+
+  // Through the real year: a parent charged, sent inside, then released.
+  ({ p, parents } = child(11, { grandparents: true }));
+  for (const n of parents.slice(1)) n.alive = false;
+  let placed = false;
+  for (let i = 0; i < 15 && !placed; i++) {
+    store.state.pendingEvents = [];
+    const c = kin.charge(parents[0], { offenseId: 'armed_robbery', innocent: false });
+    if (c) kin.standBy('kin_court', parents[0].id);
+    placed = !!p.flags.care;
+  }
+  check(placed, 'a single parent sentenced to custody: the child is placed straight away');
+  for (let i = 0; i < 25 && p.flags.care && p.age < 17; i++) year();
+  check(!p.flags.care || p.age >= 17, 'and goes home when the parent is released');
+
+  // Adults are not placed anywhere.
+  ({ p, parents } = child(30));
+  for (const n of parents) jailParent(n);
+  check(care.checkCare() === null && !p.flags.care, 'an adult is not put into care');
+  section('care: grandparents, family or foster care while no parent can, home when one can, out at eighteen');
 }
 
 // ---------- A long life ----------

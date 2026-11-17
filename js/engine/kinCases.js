@@ -8,6 +8,7 @@ import { store, player, country, log } from '../state.js';
 import * as k from './cases.js';
 import { remember } from './conditions.js';
 import { facilityFor } from './prison.js';
+import { checkCare } from './guardianship.js';
 import { LAWYERS } from '../data/crimes.js';
 import { OFFENSE_BY_ID, INMATE_LIVES, responsibilityAge } from '../data/justice.js';
 
@@ -116,6 +117,7 @@ function sendInside(n, c, s) {
   if (n.life?.job) n.life.job = null;
   f.inmateIds.push(n.id);
   log(`${n.firstName} is taken to ${f.name}. You can still write, and visit.`, 'system', 'bad');
+  checkCare();
 }
 
 /** Visiting a relative inside. They decide whether to see you. */

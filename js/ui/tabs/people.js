@@ -21,11 +21,11 @@ import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
-  'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
+  'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
-  ['Family', ['parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
+  ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
   ['Your household', ['staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
@@ -363,7 +363,7 @@ export default {
       <button class="row" data-npc="${n.id}">
         ${portrait(n)}
         <div class="main"><strong>${n.flags.royal?.title ? `${esc(n.flags.royal.title)} ` : ''}${esc(n.firstName)} ${n.role === 'pet' ? '' : esc(n.lastName)}</strong>
-          <small>${esc(rel.roleLabel(n))} · age ${n.age}${n.occupation ? ` · ${esc(n.occupation)}` : ''}</small></div>
+          <small>${esc(rel.roleLabel(n))} · age ${n.age}${kinCase.inside(n) ? ' · in prison' : n.occupation && n.occupation !== rel.roleLabel(n) ? ` · ${esc(n.occupation)}` : ''}</small></div>
         <div class="side">${Math.round(n.meters.relationship)}%
           <div class="mini"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
       </button>`;
