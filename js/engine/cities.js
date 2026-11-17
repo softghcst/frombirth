@@ -107,7 +107,7 @@ export function relocate(cityName) {
       work = 'Your employer had nowhere to send you, so you handed in your notice. ';
     }
   }
-  if (job.partTime) { job.partTime = null; work += 'You gave up your part-time job. '; }
+  if (job.partTime || job.sides?.length) { job.partTime = null; job.sides = []; work += 'You gave up your part-time work. '; }
 
   // Home: a house in the old city is no longer where you live.
   const home = p.assets.find((a) => a.id === p.homeId);

@@ -1,6 +1,7 @@
 // Emigrating: applying to move, selling up, converting everything into the
 // new currency, and who comes with you.
 import { rightToLive, held, settle } from './citizenship.js';
+import { onEmigrate as leaveBusinesses } from './business.js';
 import { rate, setAside, absorb } from './currency.js';
 import { fluency } from './languages.js';
 import { rng } from '../rng.js';
@@ -168,6 +169,8 @@ export function emigrate(countryId, opts = {}) {
   const rung = p.career.careerId ? p.career.level : Math.max(0, (p.career.lastLevel ?? 0) - 1);
   if (p.career.careerId) quitCareer();
   if (p.career.partTime) p.career.partTime = null;
+  if (p.career.sides) p.career.sides = []; // part-time work is local
+  for (const l of leaveBusinesses()) log(l); // a business with a manager carries on; one without is wound up
   leaveForPrison();
   const there = new Set(livingNpcs().filter((n) => n.flags.abroad === to.id).map((n) => n.id)); // already living where the player is going
   const coming = new Set(household(opts.forced ? null : to.id).map((n) => n.id));
@@ -183,9 +186,13 @@ export function emigrate(countryId, opts = {}) {
     } else if (n.role === 'partner') {
       n.role = 'ex';
       log(`${n.firstName} would not come with you. It is over.`, 'system', 'bad');
-    } else if (['boss', 'coworker', 'classmate'].includes(n.role)) {
+    } else if (n.role === 'classmate') {
       p.npcIds = p.npcIds.filter((id) => id !== n.id);
       delete store.state.npcs[n.id];
+    } else if (['boss', 'coworker', 'colleague'].includes(n.role)) {
+      // People from work stay people the player knows, at a distance.
+      if (n.role !== 'colleague') { n.role = 'colleague'; n.flags.tag = null; n.flags.title = n.flags.mentor ? 'Mentor' : 'Former colleague'; }
+      if (!n.flags.abroad) n.flags.abroad = from.id;
     } else {
       if (n.flags.abroad === to.id) { n.flags.abroad = false; continue; }
       if (n.flags.abroad) continue;

@@ -7,7 +7,7 @@ import { tickRomance } from './romance.js';
 import { tickChildren } from './children.js';
 import { tickLives } from './npcLives.js';
 import { tickEducation } from './education.js';
-import { tickCareer } from './career.js';
+import { tickWork } from './career.js';
 import { tickFinance } from './finance.js';
 import { tickMarket } from './market.js';
 import { tickCrime } from './justice.js';
@@ -69,7 +69,7 @@ export function advanceYear() {
   tickChildren();
   tickLives();
   tickEducation();
-  const workDeath = tickCareer();
+  const workDeath = tickWork();
   if (workDeath) { die(workDeath); return; }
   tickMarket();
   tickProperties();
