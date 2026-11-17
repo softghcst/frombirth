@@ -1,4 +1,5 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { openWorld } from '../world.js';
 import { player, country } from '../../state.js';
 import * as living from '../../engine/living.js';
 import { esc } from '../../util.js';
@@ -64,6 +65,7 @@ export default {
         ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
         ${salon.canVisitSalon() ? '<button class="btn" data-salon>Beauty salon</button>' : ''}
         <button class="btn" data-passport>Passport</button>
+        <button class="btn" data-world>The world</button>
       </div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
       <div class="section-label">Game</div>
@@ -86,6 +88,7 @@ export default {
       api.changed();
       await messageModal({ body: r.text, tone: r.tone });
     };
+    el.querySelector('[data-world]').onclick = () => openWorld({ start: p.countryId, home: p.countryId });
     if (el.querySelector('[data-surgery]')) el.querySelector('[data-surgery]').onclick = () => cosmeticSurgery(api);
     el.querySelector('[data-settings]').onclick = () => openSettings();
     el.querySelector('[data-exit]').onclick = () => api.exitToTitle();

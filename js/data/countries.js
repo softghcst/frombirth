@@ -2,6 +2,8 @@
 // incomeTax is an effective rate on annual income; estateTax applies at death.
 import { NAMES } from './names.js';
 import { LIVING } from './living.js';
+import { NEW_PLACES } from './worldNew.js';
+import { PLACES } from './world.js';
 
 /** A name list: the short one here plus the long one in names.js, without repeats. */
 const pool = (short, long = '') => [...new Set(`${short} ${long}`.split(' ').filter(Boolean).map((n) => n.replace(/_/g, ' ')))];
@@ -185,6 +187,12 @@ const LIST = [
     ['Kuala Lumpur', 'George Town', 'Johor Bahru', 'Ipoh', 'Kuching', 'Kota Kinabalu']),
 ];
 
+// The places added by the Living World engine (data/worldNew.js): the same record, from one row each.
+for (const [id, r] of Object.entries(NEW_PLACES)) {
+  const [name, flag, [code, symbol, scale], [incomeTax, estateTax], cities, [m, f, s]] = r;
+  LIST.push(C(id, name, flag, code, symbol, scale, incomeTax, estateTax, cities, m, f, s));
+}
+
 // Public services, used by health care and university costs in later phases.
 const POLICY = {
   us: [false, false], uk: [true, false], ca: [true, false], au: [true, false],
@@ -202,6 +210,7 @@ const POLICY = {
   be: [true, false], mc: [true, false], jo: [false, false], sa: [true, true],
   kw: [true, true], qa: [true, true], my: [true, false],
 };
+for (const [id, r] of Object.entries(NEW_PLACES)) POLICY[id] = r[7];
 for (const c of LIST) [c.freeHealthcare, c.freeUniversity] = POLICY[c.id];
 
 // Yearly tax on property you own there, as a share of its value. Countries
@@ -213,7 +222,11 @@ const PROPERTY_TAX = {
   no: 0.003, ch: 0.002, ru: 0.001, pk: 0.002, id: 0.001, sg: 0.006, do: 0.001,
   be: 0.006, my: 0.002,
 };
+for (const [id, r] of Object.entries(NEW_PLACES)) if (r[3][2]) PROPERTY_TAX[id] = r[3][2];
 for (const c of LIST) c.propertyTax = PROPERTY_TAX[c.id] ?? 0;
+
+// What kind of place each is, and how it relates to others (data/world.js).
+for (const c of LIST) c.place = PLACES[c.id] ?? null;
 
 // Living conditions (data/living.js). wageK and costK are what pay and local
 // prices are multiplied by. The raw gaps between countries are softened so

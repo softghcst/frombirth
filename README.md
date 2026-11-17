@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps)
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
@@ -119,6 +120,35 @@ chosen from the character's id, so nobody's face changes between loads.
 
 Part ids are written into saves: add new ones freely, and avoid renaming a file. A part that goes missing falls back
 to a stable replacement instead of breaking.
+
+## The world
+
+Pathways has 103 places to live: the 102 on the reference list (16 in North America, 11 in South America, 28 in Europe,
+13 in Africa, 12 under "Middle East", 18 in Asia, 4 in Oceania) and Ghana. Not all are sovereign states, and the game
+says so: Puerto Rico and Aruba are territories, Hong Kong is a special administrative region, Taiwan is a self-governing
+jurisdiction whose status is disputed. Each has its own currency code, languages, cities, pay and prices, taxes, school
+system and form of government.
+
+| What | Where |
+|---|---|
+| What each place is: codes, kind, parent, capital, languages, time zone, government | `js/data/world.js` |
+| The 48 newest places, one row each | `js/data/worldNew.js` |
+| Names, currency, taxes, cities; living conditions; political systems | `js/data/countries.js`, `js/data/living.js`, `js/data/politics.js` |
+| Profiles, search and comparison (one source for every screen) | `js/engine/world.js` |
+| The World Explorer | `js/ui/world.js` |
+| What is real, what is game, and what is unverified | [`docs/WORLD_DATA.md`](docs/WORLD_DATA.md) |
+
+**The World Explorer** opens from the title screen (**The world**), from **Design a life** (**Explore the world**) and from
+the **Self** tab. Search by country, city, language, currency or code (accents are ignored: "turkiye", "sao paulo"), filter by
+region, open a profile, and compare a place with where you live. A profile keeps three things apart: facts about the place,
+how the game models living there, and what has happened there in your save.
+
+A person's `citizenships` are recorded separately from where they were born and where they live. Someone born in a territory
+holds the nationality of the state it belongs to.
+
+This is the first slice of the Living World engine. Still to come, in order: citizenship from parents and residency; money
+held in more than one currency; immigration routes and travel; a shared legal rule engine; cities that differ from each other;
+an economy and news that move without you. `docs/WORLD_DATA.md` lists the gaps.
 
 ## Layout
 
