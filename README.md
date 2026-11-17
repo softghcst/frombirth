@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
@@ -274,8 +275,34 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
   taxed by the country it stands in and everything else by the country you lived in; the obituary lists each. An inheritance
   from someone who lived abroad is taxed there.
 
-Still to come in the Living World engine: deeper data for the twelve main countries (tax bands, health-care models), and the
-brief's scenarios A to J replayed end to end. `docs/WORLD_DATA.md` lists the gaps.
+### How tax and health care work, country by country
+
+`js/engine/systems.js`, shapes in `js/data/systems.js`.
+
+**Income tax** is the country's headline rate run through a schedule: an allowance, then bands. There are four shapes: none
+(the United Arab Emirates and others that charge nothing), one flat rate (Russia, Ukraine, Hungary and others), rising bands
+(the default, and the United States), and steeply rising bands (much of western Europe, Japan, South Korea, Canada,
+Australia). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
+anything more you earn.
+
+**Health care** has six models:
+
+| Model | Where (examples) | What you pay |
+|---|---|---|
+| Public | United Kingdom, Canada, Australia, Brazil | almost nothing |
+| Compulsory insurance | Germany, France, Japan, South Korea | a yearly contribution if you earn, and a fifth of each bill |
+| Private insurance | United States | a fifth with cover, which a full-time job brings or you buy; the whole bill without |
+| Through your employer | United Arab Emirates | a tenth with a full-time job; the whole bill without |
+| Public clinics, private care | Mexico, India | two fifths |
+| Out of pocket | where the game had no public care | the whole bill |
+
+Private cover is bought and cancelled at the doctor's, lapses if it cannot be paid for, and does not travel to another country.
+
+These are shapes for play. The thresholds are multiples of a typical wage in the game, not real brackets, and which country
+gets which shape or model is unverified.
+
+Still to come in the Living World engine: the brief's scenarios A to J replayed end to end as a final check.
+`docs/WORLD_DATA.md` lists the gaps.
 
 ## Layout
 

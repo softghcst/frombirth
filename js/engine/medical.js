@@ -1,4 +1,5 @@
 // Doctors, check-ups, therapy and cosmetic surgery.
+import { cover } from './systems.js';
 import { normalize, cleanTweaks } from '../avatar/catalog.js';
 import { healthFactor } from './policy.js';
 import { rng } from '../rng.js';
@@ -7,7 +8,7 @@ import { player, country, log, milestone } from '../state.js';
 import { addCondition, cureCondition } from './health.js';
 import { careQuality } from './living.js';
 import { ILLNESS_BY_ID } from '../data/illnesses.js';
-import { TREATMENTS, PUBLIC_CARE_SHARE, CHECKUP_COST, THERAPY_COST, SURGERIES, SURGEONS } from '../data/activities.js';
+import { TREATMENTS, CHECKUP_COST, THERAPY_COST, SURGERIES, SURGEONS } from '../data/activities.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -21,7 +22,7 @@ function acts() {
 export function careCost(base) {
   const c = country();
   if (player().legal.incarceration) return 0;
-  return Math.round(localCost(base * (c.freeHealthcare ? PUBLIC_CARE_SHARE : 1), c) * healthFactor(c.id));
+  return Math.round(localCost(base * cover().share, c) * healthFactor(c.id)); // what the patient pays depends on the system, and on whether they are covered
 }
 
 /** Conditions a doctor could do something about, with what it would cost. */

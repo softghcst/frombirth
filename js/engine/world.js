@@ -6,6 +6,7 @@
 //   reference   real-world facts about the place (data/world.js)
 //   game        how the game models living there (data/countries.js, living.js): estimates, not statistics
 //   yourWorld   what has happened there in this save (the political world, engine/polity.js): fiction
+import { healthLine, taxLine } from './systems.js';
 import { outlook } from './economy.js';
 import { cityLine } from './cities.js';
 import { sheet, reforms } from './rules.js';
@@ -66,7 +67,8 @@ export function profile(id) {
     ['Income tax', `${Math.round(c.incomeTax * 100)}%`],
     ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
     ['Property tax', propertyTaxLabel(c)],
-    ['Health care', c.freeHealthcare ? 'Public: free when you need it' : 'Paid for by the patient'],
+    ['Health care', healthLine(c)],
+    ['How income is taxed', taxLine(c)],
     ['University', c.freeUniversity ? 'Free at public universities' : 'Tuition is charged'],
     ['Safety', level(L.safety, ['Very safe', 'Safe', 'Mixed', 'Dangerous in places', 'Dangerous'])],
     ['Standard of care', level(L.health, ['Excellent', 'Good', 'Uneven', 'Poor', 'Very poor'])],

@@ -2,7 +2,8 @@
 // up if the account ends the year in the red.
 import { housingK } from './cities.js';
 import { foreignWorth } from './currency.js';
-import { taxShift, rentFactor } from './policy.js';
+import { rentFactor } from './policy.js';
+import { taxBreakdown } from './systems.js';
 import { store, player, country, npcsByRole, log } from '../state.js';
 import { fmtMoney, localMoney, localCost, clamp } from '../util.js';
 import { childCosts } from './children.js';
@@ -15,16 +16,9 @@ import { RENT_AND_BILLS, BILLS_ONLY } from '../data/properties.js';
 /** The first band of spending, at the country's own pay level. */
 const localWage30 = (c) => localMoney(30000 * (c.living?.wageK ?? 1), c);
 
-/** Income above this (base units a year) is taxed at the higher rate. */
-const HIGHER_RATE_FROM = 150000;
-const HIGHER_RATE_EXTRA = 0.12;
-
-/** Tax due on a year's income, in local currency. */
+/** Tax due on a year's income, in local currency: the country's rate, through its schedule (engine/systems.js). */
 export function incomeTax(gross, c = country()) {
-  const upper = Math.max(0, gross - localMoney(HIGHER_RATE_FROM * (c.living?.wageK ?? 1), c));
-  // The basic rate is the country's own, moved by whatever its government has done since (engine/policy.js).
-  const rate = Math.min(0.6, Math.max(0, c.incomeTax + taxShift(c.id)));
-  return Math.round(gross * rate + upper * HIGHER_RATE_EXTRA);
+  return taxBreakdown(Math.max(0, gross), c).tax;
 }
 
 /** What a year of ordinary spending costs at a given income: the more you earn, the more of it you spend. */
