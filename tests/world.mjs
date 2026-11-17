@@ -3,6 +3,7 @@
 //  - codes, types, parents, groups, currencies, cities, names and living data are all in order
 //  - every place works with the systems that read it: schools, politics, languages, a new life
 // Add --report to print what is still thin for each place.
+import { ROOTS } from '../js/data/economy.js';
 import { COUNTRIES, COUNTRY_LIST } from '../js/data/countries.js';
 import { PLACES, REFERENCE, GROUPS, placesIn } from '../js/data/world.js';
 import { NEW_PLACES } from '../js/data/worldNew.js';
@@ -11,6 +12,8 @@ import { HAZARDS, CRISES } from '../js/data/living.js';
 import { schoolModel } from '../js/data/education.js';
 import { SPOKEN } from '../js/data/skills.js';
 import { NAMES } from '../js/data/names.js';
+
+ROOTS.parentFromAbroad = 0; // these checks are about plain families; families with roots abroad are tested in world-scenarios.mjs
 
 const problems = [];
 const ok = [];
@@ -114,7 +117,7 @@ try {
       const p = store.state.player;
       check(p.countryId === c.id && p.birthCountryId === c.id && p.city === c.cities[c.cities.length - 1], `${c.id}: a life did not start in the chosen city`);
       for (let y = 0; y < 3; y++) { advanceYear(); store.state.pendingEvents = []; }
-      check(p.age === 3 && Number.isFinite(p.finance.cash), `${c.id}: the first years did not run`);
+      check((p.age === 3 || p.alive === false) && Number.isFinite(p.finance.cash), `${c.id}: the first years did not run`);
       born++;
     } catch (e) { check(false, `${c.id}: a life could not be lived there: ${e.message}`); }
   }

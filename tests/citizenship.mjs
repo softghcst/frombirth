@@ -1,4 +1,5 @@
 // Checks nationality, residence and money in several currencies. Run with: node tests/citizenship.mjs
+import { ROOTS } from '../js/data/economy.js';
 import { store } from '../js/state.js';
 import { rng } from '../js/rng.js';
 import { createLife } from '../js/engine/characterGen.js';
@@ -13,6 +14,7 @@ import { mayVote } from '../js/engine/polity.js';
 import { makeNpc } from '../js/engine/npcFactory.js';
 
 rng.seed(424242);
+ROOTS.parentFromAbroad = 0; // these checks are about plain families; families with roots abroad are tested in world-scenarios.mjs
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };

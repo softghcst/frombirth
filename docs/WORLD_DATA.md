@@ -84,6 +84,18 @@ shown on its profile.
   country has which is unverified, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
   bounds and are pulled weaker by a recession or a crisis, without following measured inflation.
 
+## Where further work would go
+
+In rough order of value:
+
+1. **Verify the reference data** against the sources above, place by place (`node tests/world.mjs --report`), then the law
+   flags, legal ages, citizenship rules and free-movement lists, which are all hand-compiled.
+2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
+3. **Social laws for a player in office**: the rule engine can enact them; the legislature cannot yet propose them.
+4. **A housing index per country**, and mortgages and rent abroad kept in local money.
+5. **Regions with governments and taxes of their own**, and visas for family members other than a spouse.
+6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
+
 ## Adding a place
 
 Add one row to `NEW_PLACES` in `js/data/worldNew.js` and one row to `ROWS` in `js/data/world.js`, then run `node tests/world.mjs`.

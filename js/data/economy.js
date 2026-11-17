@@ -56,4 +56,16 @@ export const MOVES = {
   joinYou: 0.015,   // someone close, abroad, moving to where you are
 };
 
+/**
+ * Families and couples that cross borders. Chances, not statistics: the same
+ * everywhere, and the country someone comes from is drawn evenly from the
+ * whole world so that no place is cast as a source of migrants.
+ */
+export const ROOTS = {
+  parentFromAbroad: 0.1,   // a child is born to one parent who came from another country
+  partnerFromAbroad: 0.08, // someone the player meets grew up somewhere else
+  familyLeaves: 0.004,     // a year in which a child's family emigrates
+  familyLeavesCrisisK: 6,
+};
+
 export const NEWS_MAX = 150;

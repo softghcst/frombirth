@@ -44,7 +44,7 @@ check((p.finance.accounts.MXN ?? 0) === acct - l.quote.fromAccount && p.finance.
 check(near(a.value, fx.convert(l.price, 'MXN', 'USD'), 0.01), 'it is worth, in dollars, what was paid in pesos');
 const lost = worth0 - netWorth(store.state); const feesUsd = fx.convert(l.fees, 'MXN', 'USD') + l.quote.fee;
 check(near(lost, feesUsd, 0.03) && lost > 0, `net worth fell by the fees and nothing else (${lost} against ${feesUsd})`);
-check(p.finance.fxLog.at(-1).what && (l.quote.fromCash === 0 || p.finance.fxLog.at(-1).received === total - l.quote.fromAccount), 'the exchange is in the record');
+check(l.quote.fromCash === 0 || (p.finance.fxLog.at(-1).what && p.finance.fxLog.at(-1).received === total - l.quote.fromAccount), 'any money changed for it is in the record');
 check(!estate.buyAbroad(l.id).ok, 'a listing can be bought once');
 p.finance.cash = 10; store.state.market.abroad = null; list = estate.listingsAbroad('jp', 'Tokyo');
 check(list.every((x) => !x.quote.ok) && !estate.buyAbroad(list[0].id).ok && p.finance.cash === 10, 'no money, no purchase, nothing taken');

@@ -129,7 +129,7 @@ export function convertMoney(rate) {
  * Property is kept (it can be sold or let from anywhere, and lived in again
  * if the player moves back). Vehicles are shipped, or sold if the player prefers.
  * @param {string} countryId
- * @param {{shipVehicles?:boolean, keep?:number, route?:string, city?:string, forced?:boolean}} [opts]  route: an id from immigration.routes()
+ * @param {{shipVehicles?:boolean, keep?:number, route?:string, city?:string, forced?:boolean, family?:boolean}} [opts]  family: a child's family is moving (use with forced)  route: an id from immigration.routes()
  */
 export function emigrate(countryId, opts = {}) {
   const p = player();
@@ -171,6 +171,8 @@ export function emigrate(countryId, opts = {}) {
   leaveForPrison();
   const there = new Set(livingNpcs().filter((n) => n.flags.abroad === to.id).map((n) => n.id)); // already living where the player is going
   const coming = new Set(household(opts.forced ? null : to.id).map((n) => n.id));
+  // A child does not move alone: it is the family that is moving.
+  if (opts.family) for (const n of livingNpcs()) if ((n.role === 'parent' && !n.flags.abroad) || (n.role === 'sibling' && n.age < 18 && !n.flags.abroad)) coming.add(n.id);
   for (const n of livingNpcs()) {
     if (coming.has(n.id)) { if (n.flags.abroad === to.id) n.flags.abroad = false; delete n.flags.stayedBehind; continue; }
     if (n.role === 'spouse' && !n.flags.abroad) {
@@ -204,7 +206,7 @@ export function emigrate(countryId, opts = {}) {
   settle(to.id, p.city, route?.status === 'citizen' ? 'permanent_resident' : route?.status ?? 'permanent_resident');
   if (p.residency && route) { p.residency.route = route.id; if (route.years) p.residency.until = store.state.year + route.years; }
   p.homeId = null;
-  p.flags.livesWithParents = false;
+  p.flags.livesWithParents = !!opts.family;
   p.flags.emigratedAge = p.age;
   p.counters.countriesLived += 1;
   stamp(to.id, 'moved');
@@ -225,7 +227,7 @@ export function emigrate(countryId, opts = {}) {
   const left = kept.length - back;
   const granted = { free: 'You needed no visa. ', family: 'Your family visa came through. ', work: `An employer sponsored you: a work visa for ${route?.years} years. `, study: `Your student visa came through, for ${route?.years} years. You may not work full-time on it. `,
     invest: 'Your investor visa came through. ', protection: `You were given protection for ${route?.years} years. ` }[route?.id] ?? 'Your visa came through. ';
-  const text = `${opts.forced ? '' : rightToLive(to.id, p) ? 'As a citizen you needed no visa. ' : granted}You moved to ${p.city}, ${theCountry(to.name)}${who.length ? `, with ${who.join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}. `
+  const text = `${opts.family ? 'Your parents had decided, and that was that. ' : opts.forced ? '' : rightToLive(to.id, p) ? 'As a citizen you needed no visa. ' : granted}${opts.family ? 'The family moved to' : 'You moved to'} ${p.city}, ${theCountry(to.name)}${who.length ? `, with ${who.join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}. `
     + `${met.length ? `${met.join(', ').replace(/, ([^,]*)$/, ' and $1')} ${met.length === 1 ? 'was' : 'were'} there to meet you. ` : ''}${job}`
     + `${shipped ? `Your ${shipped === 1 ? 'vehicle is' : `${shipped} vehicles are`} on a ship behind you. ` : ''}`
     + `${left ? `You still own ${left === 1 ? 'your property' : `${left} properties`} in ${theCountry(from.name)}: let it, sell it, or stay there when you visit. ` : ''}`

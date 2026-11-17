@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
@@ -301,8 +302,28 @@ Private cover is bought and cancelled at the doctor's, lapses if it cannot be pa
 These are shapes for play. The thresholds are multiples of a typical wage in the game, not real brackets, and which country
 gets which shape or model is unverified.
 
-Still to come in the Living World engine: the brief's scenarios A to J replayed end to end as a final check.
-`docs/WORLD_DATA.md` lists the gaps.
+### Families and couples that cross borders
+
+- One new family in ten has a parent who came from another country: they have that country's name and nationality (and the
+  local one too, where both allow it), their own parents still live there, and the child is born with whatever both parents
+  and the place give. The country is drawn evenly from the whole world.
+- Now and then a child's family emigrates, far more often from a country in crisis. The parents and young brothers and
+  sisters come; grandparents and friends stay, and can be visited.
+- Some of the people an adult meets grew up abroad. Marrying one opens the family route to their country, shortens the wait
+  for its citizenship, and grants nothing by itself.
+- Politics goes on in countries you have left and still have ties to, so a country you return to has moved on.
+- Portuguese is a language of its own in the game now (Portugal, Brazil, Angola), and someone born where the same language is
+  spoken arrives already speaking it.
+
+### The brief's ten scenarios
+
+`node tests/world-scenarios.mjs` plays the Living World brief's scenarios A to J through the engine: born in Orlando; a
+Brazilian childhood moved to Portugal; India to Canada as a student; a marriage between Japan and the United Kingdom; a royal
+child; a mayor's budget; dollars, pesos and a house in Mexico; three generations across three countries; a recession; and
+twenty-five years away. A scenario whose character dies early of something unrelated is played again.
+
+The Living World engine is complete as a first version. `docs/WORLD_DATA.md` lists what is simplified, unverified or not
+modelled, which is where further work would go.
 
 ## Layout
 
