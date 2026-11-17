@@ -16,7 +16,8 @@ import { ensure as ensureSchool } from './schooling.js';
 import { schoolModel } from '../data/education.js';
 import { stageFor } from './grades.js';
 import { convertMoney } from './emigration.js';
-import { SCHEMA_VERSION } from '../save.js';
+import { SCHEMA_VERSION, getGraveyard } from '../save.js';
+import { ledgerOf } from './ledger.js';
 import { rollLongevity } from './death.js';
 import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
@@ -248,6 +249,23 @@ export function continueAs(npcId) {
       else if (!n.flags.abroad && n.role !== 'child' && n.role !== 'spouse' && n.role !== 'pet') n.flags.abroad = op.countryId;
     }
   }
+
+  // What the family had, and what became of it: a summary only. The private detail of an ancestor's accounts is not passed on.
+  const grave = getGraveyard().find((g) => g.id === old.legacy?.graveId);
+  const fromCur = COUNTRIES[op.countryId].currency.code;
+  next.familyMoney = [...(old.familyMoney ?? []), {
+    name: `${op.firstName} ${op.lastName}`, born: op.birthYear, died: old.year, generation: op.generation ?? 1, cur: fromCur,
+    netWorth: grave?.estate?.gross ?? null, earned: Math.round(op.finance.lifetimeEarned), tax: grave?.estate?.tax ?? 0, charity: grave?.estate?.charity ?? 0,
+    milestones: op.milestones.filter((m) => m.kind === 'money').map((m) => ({ age: m.age, text: m.text })),
+    homes: op.assets.filter((a) => a.kind === 'property').map((a) => a.name),
+    shares: (grave?.estate?.shares ?? []).map((s) => ({ name: s.name, role: s.role, amount: s.amount, items: s.items.map((it) => it.name), you: s.npcId === h.id })),
+  }];
+  // The heir's own books open with what they really have: their savings, and their share of the estate, named as such.
+  const share = grave?.estate?.shares?.find((s) => s.npcId === h.id)?.amount ?? 0;
+  ledgerOf(next, { desc: `Your own savings, and what ${op.firstName} left you`,
+    inheritance: Math.round(share * (moved ? COUNTRIES[abroad].currency.scale / COUNTRIES[op.countryId].currency.scale : 1)) });
+  if (share > 0) player.milestones.push({ age: h.age, text: `Inherited from ${op.firstName}.`, kind: 'money' });
+  if (player.finance.lifetimeEarned > 0 || player.career.salary) player.flags.firstPay = true;
 
   // The schools of the world are the same schools: the next generation may sit in the same classrooms.
   passOn(old, next);

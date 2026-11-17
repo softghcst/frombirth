@@ -16,6 +16,7 @@ import { market, priceOf } from './market.js';
 import { EMIGRATION } from '../data/activities.js';
 import { mayLeave } from './living.js';
 import { routes, bestRoute, spouseAnswer } from './immigration.js';
+import { book } from './ledger.js';
 
 export { routes };
 
@@ -193,12 +194,14 @@ export function emigrate(countryId, opts = {}) {
   }
 
   // Money follows, at today's rate, except whatever the player chose to leave in the old currency.
+  book({ cat: 'travel', src: 'action', desc: `Moving to ${to.name}: visas, lawyers and shipping` });
   const leftBehind = setAside(opts.keep, from.currency.code);
   convertMoney(rate(from.currency.code, to.currency.code));
   absorb(to.currency.code);
   // Those who came will be paid at the new country's level from now on.
   for (const id of coming) { const job = store.state.npcs[id].life?.job; if (job) job.salary = Math.round(job.salary * to.living.wageK / from.living.wageK); }
   p.countryId = to.id;
+  book({ cat: 'exchange', src: 'action', desc: `Moved to ${to.name}: money and debts are now in ${to.currency.code}` });
   p.flags.arrivedYear = store.state.year; // newcomers wait five years before they can vote
   p.city = opts.city && to.cities.includes(opts.city) ? opts.city : rng.pick(to.cities);
   settle(to.id, p.city, route?.status === 'citizen' ? 'permanent_resident' : route?.status ?? 'permanent_resident');

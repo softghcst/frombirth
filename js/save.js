@@ -3,6 +3,7 @@ import { rng } from './rng.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
+import { ledgerOf } from './engine/ledger.js';
 
 export const SCHEMA_VERSION = 1;
 const K_INDEX = 'pathways.index';
@@ -51,6 +52,12 @@ function migrate(state) {
   // chosen from the character's id so it is the same on every load.
   state.player.appearance = normalize(state.player.appearance, state.player.id);
   for (const n of Object.values(state.npcs)) if (n.role !== 'pet') n.appearance = normalize(n.appearance, n.id);
+  // Lives saved before the ledger: what they have today becomes an opening balance. No past is invented,
+  // no bills are charged for years that were never recorded, and nobody is paid a "first" wage twice.
+  if (!state.ledger) {
+    if (pl.finance.lifetimeEarned > 0) pl.flags.firstPay ??= true;
+    ledgerOf(state, { desc: 'What you had when the books were opened (from an earlier version of the game)' });
+  }
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

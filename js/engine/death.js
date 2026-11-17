@@ -2,6 +2,8 @@
 // who inherits, and the epitaphs the life earned.
 import { COUNTRIES } from '../data/countries.js';
 import { settleEstate } from './currency.js';
+import { closeForEstate } from './banking.js';
+import { book } from './ledger.js';
 import { rng } from '../rng.js';
 import { styledName } from './royalty.js';
 import { uid, localMoney } from '../util.js';
@@ -283,7 +285,9 @@ export function die(cause) {
   const p = player();
   const c = country();
   if (!p.alive) return store.lastObituary;
+  closeForEstate(); // money in the bank joins the estate, once
   settleEstate(); // money held in other currencies is counted once, in one currency
+  book({ cat: 'exchange', src: 'estate', desc: 'The estate counted in one currency' });
   const plan = estatePlan(); // settled before anything else changes
   const summary = lifeSummary(p, plan);
   p.alive = false;

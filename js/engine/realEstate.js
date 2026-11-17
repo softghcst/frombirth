@@ -9,6 +9,7 @@ import { market } from './market.js';
 import { householdIncome, isBankrupt, yearlyPayment } from './loans.js';
 import { PROPERTY_TYPES, PROPERTY_BY_ID, STREETS, MORTGAGE, SELLING_FEE, BUYING_FEE, FOREIGN_BUYER_FEE } from '../data/properties.js';
 import { rate, fmt, quoteForeign, payForeign, receiveForeign } from './currency.js';
+import { book, toMinor } from './ledger.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "Family house on Elm Street" -> "family house on Elm Street". */
@@ -120,6 +121,7 @@ export function buyAbroad(listingId) {
   const text = `You bought the ${lower(l.name)} in ${m.city}, ${theCountry(at.name)}, for ${fmt(l.price, code)} plus ${fmt(fees, code)} in fees, paid with ${how}. It is taxed there, and what it is worth to you will move with the ${code}.`;
   log(text, 'system', 'good');
   if (first) milestone(`Bought a first property: the ${lower(l.name)}, in ${theCountry(at.name)}.`, 'money');
+  book({ cat: 'property', src: 'action', desc: text });
   return result(true, text);
 }
 
@@ -174,6 +176,7 @@ export function buyProperty(listingId, deposit) {
   log(text, 'system', 'good');
   if (first) milestone(`Bought a first property: the ${lower(l.name)}.`, 'money');
   if (!p.homeId) moveIn(asset.id, true);
+  book({ cat: 'property', src: 'action', desc: text });
   return result(true, text);
 }
 
@@ -206,6 +209,7 @@ export function renovate(id) {
   a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined, a.countryId ?? undefined);
   const text = `You spent ${fmtMoney(cost, country())} renovating the ${lower(a.name)}. It is now worth ${fmtMoney(a.value, country())}.`;
   log(text, 'system', 'good');
+  book({ cat: 'housing', src: 'action', desc: text });
   return result(true, text);
 }
 
@@ -283,6 +287,7 @@ export function sellProperty(id) {
   const text = `You sold the ${lower(a.name)} for ${fmtMoney(a.value, c)}, ${gain >= 0 ? `${fmtMoney(gain, c)} more` : `${fmtMoney(-gain, c)} less`} than you paid. After fees${a.mortgage ? ' and the mortgage' : ''} you kept ${fmtMoney(raised, c)}.${wasHome ? ' You are renting again.' : ''}`;
   const text2 = away ? `${text} It was paid in ${away}: ${fmt(paid, away)} is in your ${away} account.` : text;
   log(text2, 'system', gain >= 0 ? 'good' : 'bad');
+  book({ cat: 'property', src: 'action', desc: text2 });
   return result(true, text2, gain >= 0 ? 'good' : 'neutral');
 }
 
@@ -326,6 +331,7 @@ export function tickProperties() {
     f.cash -= Math.round(a.value * type.upkeep);
     const due = propertyTaxOn(a);
     if (due) { f.cash -= due; f.lifetimeTaxPaid += due; taxPaid += due; }
+    book({ cat: 'housing', src: 'year', desc: `Upkeep${due ? ' and property tax' : ''}: ${lower(a.name)}`, split: [['tax', toMinor(due || 0, c.currency.code)]] });
 
     if (a.mortgage) {
       const m = a.mortgage;
@@ -339,6 +345,7 @@ export function tickProperties() {
         log(`You made the last payment on the ${lower(a.name)}. It is yours outright.`, 'system', 'good');
         milestone('Paid off a mortgage.', 'money');
       }
+      book({ cat: 'debt', nominal: 'interest', src: 'year', desc: `Mortgage payment: ${lower(a.name)}` });
     }
 
     if (a.tenant) {
@@ -363,6 +370,7 @@ export function tickProperties() {
     f.lifetimeEarned += rent;
     f.lifetimeTaxPaid += tax;
     log(`Your tenants paid ${fmtMoney(rent, c)} in rent. You paid ${fmtMoney(tax, c)} tax on it.`, 'system', 'good');
+    book({ cat: 'rentIncome', src: 'year', desc: 'Rent from your tenants, after tax', split: [['tax', toMinor(tax, c.currency.code)]] });
   }
   const h = home();
   if (h) p.stats.mood = clamp(p.stats.mood + Math.round(PROPERTY_BY_ID[h.catalogId].comfort / 3));

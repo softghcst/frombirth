@@ -3,6 +3,7 @@
 import { uid, localMoney, fmtMoney, clamp } from '../util.js';
 import { player, country, npcsByRole, log, milestone } from '../state.js';
 import { BANK_LOAN, OVERDRAFT_RATE, BANKRUPTCY_YEARS } from '../data/securities.js';
+import { recentDefault } from './credit.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -40,6 +41,7 @@ export function loanOffer(amount, rate = BANK_LOAN.rate, years = BANK_LOAN.years
   let reason = '';
   if (p.age < 18) reason = 'You need to be 18.';
   else if (isBankrupt()) reason = 'No bank will lend to you until your bankruptcy is discharged.';
+  else if (recentDefault()) reason = 'Lenders can see that things you owned were sold to cover your debts. They will want a few clean years first.';
   else if (householdIncome() <= 0) reason = 'The bank wants to see an income.';
   else if (debtService() + payment > householdIncome() * BANK_LOAN.maxShare) reason = 'Your repayments would be too large for your income.';
   return { amount, payment, approved: !reason, reason };
@@ -107,4 +109,48 @@ export function settleUp(forceSale) {
   p.stats.mood = clamp(p.stats.mood - 18);
   log(`You were declared bankrupt. ${fmtMoney(wiped, c)} of debt was written off, and no bank will lend to you for ${BANKRUPTCY_YEARS} years.`, 'system', 'bad');
   milestone('Declared bankrupt.', 'money');
+}
+
+/**
+ * How a loan runs from here if nothing changes: each year's interest, payment
+ * and what is left. It follows the same rule the year itself uses, so it is a
+ * projection of the game's own arithmetic, not a promise.
+ * @returns {{rows:{year:number, interest:number, payment:number, left:number}[], interest:number, paid:number}}
+ */
+export function loanSchedule(loan) {
+  const rows = [];
+  let principal = loan.principal;
+  let years = Math.max(1, loan.yearsLeft);
+  let interest = 0; let paid = 0;
+  for (let y = 1; principal > 0 && y <= 60; y++) {
+    const i = Math.round(principal * loan.rate);
+    const pay = Math.min(principal + i, Math.round((principal + i) / Math.max(1, years)));
+    principal = principal + i - pay;
+    years = Math.max(0, years - 1);
+    interest += i; paid += pay;
+    rows.push({ year: y, interest: i, payment: pay, left: principal });
+  }
+  return { rows, interest, paid };
+}
+
+/** Pays part of a loan early. Whatever is paid comes straight off what is owed. */
+export function payDown(id, amount) {
+  const p = player();
+  const loan = p.finance.loans.find((l) => l.id === id);
+  if (!loan) return result(false, 'That loan is already cleared.', 'neutral');
+  amount = Math.floor(amount);
+  if (!(amount > 0)) return result(false, 'Choose an amount.', 'neutral');
+  if (amount >= loan.principal) return repayLoan(id);
+  if (p.finance.cash < amount) return result(false, 'You do not have that much to spare.', 'neutral');
+  p.finance.cash -= amount;
+  loan.principal -= amount;
+  const text = `You paid ${fmtMoney(amount, country())} off your ${loan.kind} loan. ${fmtMoney(loan.principal, country())} is left.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
+/** The order to clear debts in, by two common rules. Neither is right for everyone. */
+export function payoffOrder(rule = 'rate') {
+  const list = [...player().finance.loans];
+  return rule === 'rate' ? list.sort((a, b) => b.rate - a.rate || a.principal - b.principal) : list.sort((a, b) => a.principal - b.principal || b.rate - a.rate);
 }

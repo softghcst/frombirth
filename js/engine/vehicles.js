@@ -8,6 +8,7 @@ import { resolve } from './conditions.js';
 import { market } from './market.js';
 import { borrow, loanOffer } from './loans.js';
 import { VEHICLE_TYPES, VEHICLE_BY_ID, COLOURS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
+import { book } from './ledger.js';
 
 /** Lower-cases a name's first letter, unless it starts with an acronym (BMX, SUV). */
 const lower = (name) => (/^[A-Z]{2}/.test(name) ? name : name.charAt(0).toLowerCase() + name.slice(1));
@@ -56,6 +57,7 @@ export function takeDrivingTest() {
   const text = 'You passed your driving test.';
   log(text, 'system', 'good');
   milestone('Passed the driving test.', 'life');
+  book({ cat: 'transport', src: 'action', desc: text });
   return result(true, text);
 }
 
@@ -78,6 +80,7 @@ export function learnToFly() {
   const text = 'You earned your pilot\'s licence.';
   log(text, 'system', 'good');
   milestone('Earned a pilot\'s licence.', 'life');
+  book({ cat: 'transport', src: 'action', desc: text });
   return result(true, text);
 }
 
@@ -132,6 +135,7 @@ export function buyVehicle(listingId, how = 'cash') {
   market().listings.vehicle = market().listings.vehicle.filter((x) => x.id !== listingId);
   const text = `You bought ${/^(8|11|18)-|^[aeiou]/i.test(l.name) ? 'an' : 'a'} ${l.name.toLowerCase()} for ${fmtMoney(l.price, c)}${how === 'loan' ? ', on finance' : ''}.`;
   log(text, 'system', 'good');
+  book({ cat: 'vehicle', src: 'action', desc: text });
   return result(true, text);
 }
 
@@ -148,6 +152,7 @@ export function service(id) {
   a.value = worth(vehicleTypeOf(a), a.age, a.condition);
   const text = `You had the ${a.name.toLowerCase()} serviced for ${fmtMoney(cost, country())}.`;
   log(text);
+  book({ cat: 'transport', src: 'action', desc: text });
   return result(true, text, 'neutral');
 }
 
@@ -175,6 +180,7 @@ export function sellVehicle(id) {
   p.assets = p.assets.filter((x) => x !== a);
   const text = `You sold the ${a.name.toLowerCase()} for ${fmtMoney(a.value, country())}.`;
   log(text);
+  book({ cat: 'vehicle', src: 'action', desc: text });
   return result(true, text, 'neutral');
 }
 

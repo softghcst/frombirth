@@ -4,7 +4,7 @@ import { housingK } from './cities.js';
 import { foreignWorth } from './currency.js';
 import { rentFactor } from './policy.js';
 import { taxBreakdown } from './systems.js';
-import { store, player, country, npcsByRole, log } from '../state.js';
+import { store, player, country, npcsByRole, log, milestone } from '../state.js';
 import { fmtMoney, localMoney, localCost, clamp } from '../util.js';
 import { childCosts } from './children.js';
 import { settleUp } from './loans.js';
@@ -12,6 +12,9 @@ import { sell as sellSecurity } from './market.js';
 import { repossess } from './realEstate.js';
 import { repossessVehicle } from './vehicles.js';
 import { RENT_AND_BILLS, BILLS_ONLY } from '../data/properties.js';
+import { book, toMinor } from './ledger.js';
+import { bankWorth, coverShortfall } from './banking.js';
+import { mark, goodYear } from './credit.js';
 
 /** The first band of spending, at the country's own pay level. */
 const localWage30 = (c) => localMoney(30000 * (c.living?.wageK ?? 1), c);
@@ -28,23 +31,24 @@ export function lifestyleCost(gross, c = country()) {
   return Math.round(Math.min(g, a) * 0.2 + Math.max(0, g - a) * 0.55);
 }
 
-/** Cash plus asset equity minus debts. Takes the state so save.js can call it. */
+/** Cash and money in the bank, plus asset equity, minus debts. Takes the state so save.js can call it. */
 export function netWorth(state) {
   const p = state.player;
   const assets = p.assets.reduce(
     (sum, a) => sum + a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0), 0);
   const debt = p.finance.loans.reduce((sum, l) => sum + l.principal, 0);
-  return Math.round(p.finance.cash + (state === store.state ? foreignWorth(p) : 0) + assets - debt);
+  return Math.round(p.finance.cash + (state === store.state ? foreignWorth(p) : 0) + bankWorth(state) + assets - debt);
 }
 
 /** Sells an asset in a hurry, for whatever it will fetch. */
 function forceSale(asset) {
-  if (asset.kind === 'security') {
-    const before = player().finance.cash;
-    sellSecurity(asset.catalogId, 1);
-    return player().finance.cash - before;
-  }
-  return asset.kind === 'vehicle' ? repossessVehicle(asset) : repossess(asset);
+  book({ cat: 'interest', desc: 'Interest on being overdrawn', src: 'year' });
+  const before = player().finance.cash;
+  if (asset.kind === 'security') sellSecurity(asset.catalogId, 1);
+  else if (asset.kind === 'vehicle') repossessVehicle(asset);
+  else repossess(asset);
+  book({ cat: asset.kind === 'security' ? 'investments' : asset.kind === 'vehicle' ? 'vehicle' : 'property', desc: `Sold to cover debts: ${asset.name}`, src: 'year' });
+  return player().finance.cash - before;
 }
 
 export function tickFinance() {
@@ -60,6 +64,17 @@ export function tickFinance() {
     f.lifetimeEarned += gross;
     f.lifetimeTaxPaid += tax;
     log(`You earned ${fmtMoney(gross, c)} and paid ${fmtMoney(tax, c)} in tax.`);
+    // One entry for the year's pay: what was earned, by source, and the tax taken from it.
+    const cur = c.currency.code;
+    const pension = p.career.retired ? p.career.pensionPerYear : 0;
+    const main = p.career.salary ? 'salary' : p.career.partTime?.salary ? 'partTime' : 'pension';
+    book({ cat: main, src: 'year', key: `pay:${store.state.year}`, desc: main === 'pension' ? 'Pension for the year' : 'Pay for the year, after tax',
+      split: [['tax', toMinor(tax, cur)], ...(main !== 'partTime' ? [['partTime', -toMinor(p.career.partTime?.salary || 0, cur)]] : []), ...(main !== 'pension' ? [['pension', -toMinor(pension, cur)]] : [])] });
+    if ((p.career.salary || p.career.partTime?.salary) && !p.flags.firstPay) {
+      p.flags.firstPay = true;
+      milestone('Received a first paycheck.', 'money');
+      log('Your first pay. Money you earned yourself.', 'system', 'good');
+    }
   }
 
   // With no income at all, the state covers what your savings cannot.
@@ -88,11 +103,15 @@ export function tickFinance() {
       if (!p.flags.sharedHousing) log('On what you earn here, a place of your own is out of reach. You share a room, as most people your age do.', 'system', 'neutral');
     }
     p.flags.sharedHousing = crowded;
-    f.cash -= afford(base + lifestyle);
+    const paid = afford(base + lifestyle);
+    f.cash -= paid;
+    book({ cat: 'living', src: 'year', desc: p.homeId ? 'Bills and everyday spending' : 'Rent, bills and everyday spending',
+      split: [['housing', toMinor(Math.min(paid, base), c.currency.code)]] });
   }
 
   const coParent = npcsByRole('spouse')[0];
   if (p.age >= 18) f.cash -= afford(Math.round(childCosts() * (coParent?.life?.job ? 0.5 : 1)));
+  book({ cat: 'childcare', src: 'year', desc: 'Raising your children' });
 
   for (const loan of f.loans) {
     // Student loans are frozen while you study, and repayments wait until you
@@ -111,7 +130,24 @@ export function tickFinance() {
     f.cash -= payment;
   }
   f.loans = f.loans.filter((l) => l.principal > 0);
+  // What was paid, less what came off the debts, is the interest.
+  book({ cat: 'debt', nominal: 'interest', src: 'year', desc: 'Loan repayments' });
 
   // Adults answer for their debts. Children's pocket money never goes this far.
-  if (p.age >= 18) settleUp(forceSale);
+  if (p.age >= 18) {
+    const owed = f.loans.length > 0 || p.assets.some((a) => a.mortgage);
+    // Money in the bank is taken before interest is charged or anything is sold.
+    if (f.cash < 0) coverShortfall();
+    const overdrawn = f.cash < 0;
+    const owned = p.assets.length;
+    const bankruptBefore = p.flags.bankruptUntil ?? 0;
+    settleUp(forceSale);
+    const bankrupt = (p.flags.bankruptUntil ?? 0) !== bankruptBefore;
+    book({ cat: bankrupt ? 'debtRelief' : 'interest', src: 'year', desc: bankrupt ? 'Debts written off in bankruptcy' : 'Interest on being overdrawn' });
+    // What lenders will remember of this year.
+    if (bankrupt) mark('bankruptcy');
+    else if (p.assets.length < owned) mark('forcedSale');
+    else if (overdrawn) mark('overdraft');
+    else if (owed) goodYear();
+  }
 }

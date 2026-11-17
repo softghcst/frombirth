@@ -44,11 +44,22 @@ node tests/cities.mjs          # cities and regions: prices, pay, regional law, 
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
+node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps)
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
+
+## Money
+
+Every movement of the player's money is written in one double-entry ledger (`js/engine/ledger.js`), in whole
+numbers of each currency's smallest unit. **My Money** (tap the amount at the top of the game, or Holdings →
+My Money) shows accounts, a budget of what was actually earned and spent, debts and standing with lenders,
+savings goals, retirement, the estate and the history. Bank accounts, goals and budgets are in
+`js/engine/banking.js`; the banks and their rates are invented (`js/data/money.js`).
+
+How it works, what is fiction, and what is not built yet: [docs/FINANCE.md](docs/FINANCE.md).
 
 ## Avatars
 

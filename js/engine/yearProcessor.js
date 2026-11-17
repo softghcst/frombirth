@@ -41,6 +41,8 @@ import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
 import { rollDeath, die } from './death.js';
 import { drawEvents } from './eventEngine.js';
+import { book, booked } from './ledger.js';
+import { tickBanking, tickMoneyReview } from './banking.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -63,49 +65,56 @@ export function advanceYear() {
   state.year += 1;
   if (BIRTHDAYS[p.age]) log(BIRTHDAYS[p.age]);
 
-  tickRelationships();
+  // Anything the player did with money since the last year is written down before this one begins.
+  book({ cat: 'auto', src: 'action' });
+
+  // Each part of the year books what it did to the player's money under its own heading (engine/ledger.js).
+  booked('auto', 'Family and friends', tickRelationships);
   tickFamily();
-  tickRomance();
-  tickChildren();
+  booked('auto', 'Love and marriage', tickRomance);
+  booked('childcare', 'Your children', tickChildren);
   tickLives();
-  tickEducation();
-  const workDeath = tickCareer();
+  booked('education', 'Fees and the cost of studying', tickEducation);
+  const workDeath = booked('salary', 'Work: bonuses and pay-offs', tickCareer);
   if (workDeath) { die(workDeath); return; }
   tickMarket();
   tickProperties();
-  const roadDeath = tickVehicles();
+  const roadDeath = booked('transport', 'Running your vehicles', tickVehicles);
   if (roadDeath) { die(roadDeath); return; }
+  tickBanking();
   tickFinance();
-  tickHealth();
-  tickPrison();
-  tickSocial();
-  tickIdentity();
-  tickLiving();
-  tickRoyalty();
-  tickPolitics();
-  tickScandal();
+  booked('health', 'Health', tickHealth);
+  booked('legal', 'Prison', tickPrison);
+  booked('auto', 'Friends and followers', tickSocial);
+  booked('health', 'Health and identity', tickIdentity);
+  booked('losses', 'Rising prices and losses', tickLiving);
+  booked('auto', 'The royal household', tickRoyalty);
+  booked('auto', 'Politics', tickPolitics);
+  booked('auto', 'Scandal', tickScandal);
   // The country's politics move on whether or not the player takes any part. The news reaches those old enough to follow it.
   const happened = tickPolity(polity(p.countryId)).sort((a, b) => b.weight - a.weight).slice(0, 3);
   if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
   afterGeneral();
-  tickKin();
+  booked('auto', 'Family', tickKin);
   tickAlumni();
   tickApplications();
   grandfather();
   tickFx();
-  tickCover();
+  booked('insurance', 'Health insurance', tickCover);
   tickRules();
   tickEconomy();
   tickMoves();
   tickApart();
   { const back = tickStatus(); if (back) emigrate(back, { forced: true }); }
   tickSchoolFunding();
-  tickKids();
+  booked('education', 'Your children\'s schooling', tickKids);
   tickRoyalEducation();
   { const learned = tickLanguages(); if (learned) log(learned, 'system', 'good'); }
   for (const n of tickLocal()) log(n.text, 'system', n.tone);
   tickActivism();
   tickCrime();
+  book({ cat: 'auto', src: 'year', desc: 'The rest of the year' });
+  tickMoneyReview();
 
   const cause = rollDeath();
   if (cause) { die(cause); return; }

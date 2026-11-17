@@ -5,6 +5,7 @@ import { rng } from '../rng.js';
 import { uid, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
 import { SECURITIES, SECURITY_BY_ID } from '../data/securities.js';
+import { book, toMinor } from './ledger.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -65,6 +66,7 @@ export function buy(id, amount) {
   own.value = price;
   const text = `You put ${fmtMoney(amount, country())} into ${s.name}.`;
   log(text);
+  book({ cat: 'investments', src: 'action', desc: text });
   return result(true, text, 'neutral');
 }
 
@@ -86,6 +88,7 @@ export function sell(id, fraction = 1) {
   const gain = Math.round(proceeds - cost);
   const text = `You sold ${fmtMoney(proceeds, c)} of ${own.name}: ${gain >= 0 ? `a profit of ${fmtMoney(gain, c)}` : `a loss of ${fmtMoney(-gain, c)}`}${tax ? `, with ${fmtMoney(tax, c)} tax on the gain` : ''}.`;
   log(text, 'system', gain >= 0 ? 'good' : 'bad');
+  book({ cat: 'investments', src: 'action', desc: text, split: [['tax', toMinor(tax, c.currency.code)]] });
   return result(true, text, gain >= 0 ? 'good' : 'bad');
 }
 
