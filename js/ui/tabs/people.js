@@ -19,7 +19,7 @@ import { openDynasty } from '../dynasty.js';
 import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
 import { careRelationship, openFamilyHistory } from '../health/hub.js';
-import { npcHealthLines, npcCareActions, encourageCare, goWithCare } from '../../engine/health/story.js';
+import { npcHealthLines, npcCareActions, npcCareHistory, encourageCare, goWithCare, askCare, helpCare, visitCare } from '../../engine/health/story.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
@@ -253,6 +253,7 @@ export function openNpc(npc, api, onClose) {
   const shared = npc.flags.clinician ? [] : npcHealthLines(npc);
   const healthCard = shared.length ? `<div class="section-label" style="margin-top:0">What they have shared about their health</div>
     ${shared.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+    ${npcCareHistory(npc).slice(0, 6).map(([y, t]) => `<div class="kv"><span>${y}</span><span>${esc(t.charAt(0).toUpperCase() + t.slice(1))}</span></div>`).join('')}
     <div style="height:14px"></div>` : '';
   const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
 
@@ -305,6 +306,9 @@ export function openNpc(npc, api, onClose) {
       encourage: () => report(api, lives.encourage(npc.id)),
       encourageCare: () => report(api, encourageCare(npc.id)),
       goWithCare: () => report(api, goWithCare(npc.id)),
+      askCare: () => report(api, askCare(npc.id)),
+      helpCare: () => report(api, helpCare(npc.id)),
+      visitCare: () => report(api, visitCare(npc.id)),
       homework: async () => {
         const how = await pickModal({ title: `${npc.firstName}'s homework`, body: 'How you help matters, and what works depends on the child.', options: kid.HOMEWORK.map((h) => ({ value: h.id, label: h.label, sub: h.sub })) });
         if (how) await report(api, kid.homework(npc.id, how));

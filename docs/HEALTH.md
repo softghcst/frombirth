@@ -227,11 +227,22 @@ from the existing per-country model in `engine/systems.js`.
 
 ### Other people's care
 
-Family members and partners can get care of their own for what they have: a
-therapy or medicine that existed in their year, which makes recovery likelier
-(and, for cancer and heart disease, slows the toll on their health). The player
-sees only what they have shared, and can encourage them, or offer to go with
-them to an appointment; the decision stays theirs.
+Family members and partners get care of their own (`engine/health/kincare.js`),
+a year at a time. Starting is their decision, likelier when the player
+encourages them or goes with them to an appointment. Care has the same parts as
+the player's: a therapist who is a persistent clinician at a real clinic near
+the player, a course of sessions attended or missed (more get attended when the
+player helps them get there), and a medicine that was available in their year,
+is used for what they have, suits their age, is never for BPD itself and is not
+an antidepressant on its own in bipolar disorder (even if they never told the
+player about the bipolar disorder). Each year the medicine is reviewed; one that
+is not helping or not tolerated is changed, and the first is kept in their
+history. Heart attacks and cancer surgery are hospital stays the player can
+visit. Care makes recovery likelier and slows what cancer and heart disease do
+to their health; cancer treatment ends in remission or not, likelier the earlier
+it was found. The player sees that someone is getting support only if they shared
+the condition, and who, what and how it is going only if they chose to share
+that too; asking is allowed, and they may say no.
 
 ## Not built yet
 
@@ -241,6 +252,6 @@ them to an appointment; the decision stays theirs.
   so the health engine is ready for eras when they come.
 - **Workplace and school discrimination** are not modelled beyond accommodations
   being refused where there is no law requiring them.
-- **Other people's care** is lighter than the player's: no individual trials,
-  sessions or clinicians of their own.
+- **Other people's care** runs a year at a time rather than week by week, and
+  their clinicians do not appear in the player's own care team.
 - **Clinical review**, as above.

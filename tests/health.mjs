@@ -389,11 +389,13 @@ section('medication rules: bipolar precautions, monitoring enforced, ADHD age an
   for (let i = 0; i < 6; i++) course.weekCourse(p);
   const s0 = access.studyBarrier(p);
   const intellect = p.stats.intellect;
-  const r1 = access.requestAccommodation('school', 'extra_time', 'extra_time');
-  const r2 = access.requestAccommodation('school', 'accessible_materials', 'reading_tools');
+  // Asked until agreed: this checks what an accommodation does, not whether a school says yes.
+  const ask = (t, n) => { for (let i = 0; i < 8; i++) { const r = access.requestAccommodation('school', t, n); if (r.ok) return r; } return { ok: false }; };
+  const r1 = ask('extra_time', 'extra_time');
+  const r2 = ask('accessible_materials', 'reading_tools');
   for (let i = 0; i < 20; i++) course.weekCourse(p);
   const s1 = access.studyBarrier(p);
-  check((r1.ok || r2.ok) && s1 < s0, `school accommodations reduce what barriers cost in marks (${s0} → ${s1})`);
+  check(r1.ok && r2.ok && s1 < s0, `school accommodations reduce what barriers cost in marks (${s0} → ${s1})`);
   check(p.stats.intellect === intellect, 'and change nothing about intelligence');
   check(R.healthOf().supports.accommodations.every((a) => a.shared === 'need only'), 'an accommodation request shares the need, not the diagnosis');
   // Work.
@@ -716,10 +718,62 @@ section('everyday play: notices for waiting decisions, telling a partner, recove
   check(story.npcCareActions(mum).some((a) => a.id === 'encourageCare'), 'for someone who shared an untreated condition, the player can encourage them');
   check(story.npcHealthLines(mum).length === 1 && /depress/i.test(story.npcHealthLines(mum)[0][0]), 'their profile shows only what they shared');
   for (let i = 0; i < 10 && !mum.health.conds[0].care; i++) story.goWithCare(mum.id) && (store.state.year += 1, mum.flags.goWith = null);
-  check(mum.health.conds[0].care?.what, `going with them can turn into care of their own (${mum.health.conds[0].care?.what})`);
-  check(!mum.health.conds[1].care || true, 'what they did not share stays theirs');
+  check(mum.health.conds[0].care?.v === 2, 'going with them can turn into care of their own');
 }
 section('physical conditions, hospital stays, rehabilitation goals, cancer care, insurance claims and appeals, care for family members');
+
+// ---------- 14. Family members' care in full ----------
+{
+  const kin = await import('../js/engine/health/kincare.js');
+  const p = adult(40);
+  const dad = makeNpc({ role: 'parent', countryId: 'uk', age: 66, gender: 'male', relationship: 75 }); store.state.npcs[dad.id] = dad; p.npcIds.push(dad.id);
+  dad.health = { v: 1, last: 65, conds: [{ id: 'mdd', age: 64, diagnosed: true, shared: true }, { id: 'bipolar_1', age: 30, diagnosed: true, shared: false }] };
+  // Their own care: a real clinician, a therapy that exists, a medicine that is allowed for them.
+  const care = kin.startCare(dad, dad.health.conds[0]);
+  check(care?.therapy && store.state.npcs[care.therapy.providerId]?.flags.clinician, "a family member's therapist is a persistent clinician");
+  check(care.meds.length === 0 || !['antidepressant'].includes(MED_BY_ID[care.meds[0].medId].family), 'with bipolar disorder (even unshared), no antidepressant is started on its own');
+  const brother = makeNpc({ role: 'sibling', countryId: 'uk', age: 38, gender: 'male', relationship: 70 }); store.state.npcs[brother.id] = brother; p.npcIds.push(brother.id);
+  brother.health = { v: 1, last: 37, conds: [{ id: 'mdd', age: 36, diagnosed: true, shared: true }] };
+  const bc = kin.startCare(brother, brother.health.conds[0]);
+  check(bc.meds[0] && MED_BY_ID[bc.meds[0].medId].uses.mdd, 'their medicine is one used for what they have');
+  check(kin.npcMedOptions(brother, 'bpd').length === 0, 'nobody is given a medicine for BPD itself');
+  // Sessions are attended (or not) year by year; medicines are reviewed and changed, keeping the old one.
+  bc.meds[0].kind = 'little';
+  const first = bc.meds[0].medId;
+  store.state.year += 1; brother.age += 1;
+  kin.careYear(brother, brother.health.conds[0]);
+  check(bc.therapy.attended + bc.therapy.missed > 0 && bc.therapy.attended <= THERAPY_BY_ID[bc.therapy.therapyId].sessions, 'sessions are attended or missed, never more than the course');
+  check(bc.meds.length === 2 && bc.meds[0].status === 'switched' && bc.meds[0].medId === first && bc.meds[1].replaces === first, 'a medicine that is not helping is changed at the yearly review, and the first is kept');
+  // Helping them get there makes more sessions happen.
+  let plain = 0; let helped = 0;
+  for (let i = 0; i < 40; i++) {
+    const a = makeNpc({ role: 'sibling', countryId: 'uk', age: 30, relationship: 70 }); a.health = { v: 1, last: 29, conds: [{ id: 'gad', age: 28, diagnosed: true, shared: true }] };
+    const b = makeNpc({ role: 'sibling', countryId: 'uk', age: 30, relationship: 70 }); b.health = { v: 1, last: 29, conds: [{ id: 'gad', age: 28, diagnosed: true, shared: true }] };
+    kin.startCare(a, a.health.conds[0]); kin.startCare(b, b.health.conds[0]); b.flags.helpCare = store.state.year + 1;
+    store.state.year += 1; kin.careYear(a, a.health.conds[0]); kin.careYear(b, b.health.conds[0]); store.state.year -= 1;
+    plain += a.health.conds[0].care.therapy?.attended ?? 0; helped += b.health.conds[0].care.therapy?.attended ?? 0;
+  }
+  check(helped > plain, `helping them get to appointments means more sessions (${helped} against ${plain})`);
+  // Privacy: details only when they choose to share them.
+  bc.details = false;
+  check(!/sertraline|escitalopram|fluoxetine|CBT|therapy/i.test(kin.npcHealthLines(brother).flat().join(' ')) && kin.npcCareHistory(brother).length === 0, 'without details shared, the player sees only that they are getting support');
+  brother.meters.relationship = 80;
+  const ask = kin.askCare(brother.id);
+  check(ask.ok && bc.details && kin.npcCareHistory(brother).length >= 2, 'asking, when they are willing, shares the details and their history');
+  check(!kin.npcHealthLines(dad).some(([n]) => /bipolar/i.test(n)), 'a condition they never shared stays theirs');
+  // A heart attack: in hospital, a visit is possible.
+  const mumc = { id: 'heart_disease', age: 66, diagnosed: true, shared: true };
+  dad.health.conds.push(mumc);
+  kin.kinAdmitted(dad, mumc, 'a heart attack');
+  check(kin.npcCareActions(dad).some((a) => a.id === 'visitCare') && kin.visitCare(dad.id).ok, 'a family member in hospital can be visited');
+  check(mumc.care.stays.length === 1, 'the stay is part of their record');
+  // A save and reload keeps it all.
+  const back = roundTrip();
+  const b2 = store.state.npcs[brother.id];
+  check(b2.health.conds[0].care.meds.length === 2 && b2.health.conds[0].care.details, 'their care survives a reload');
+  void back;
+}
+section("family members' care: their own clinicians, sessions attended, medicines reviewed and changed, help that counts, hospital visits, details shared by choice");
 
 console.log(ok.map((x) => `ok  ${x}`).join('\n'));
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n${problems.join('\n')}`); process.exit(1); }
