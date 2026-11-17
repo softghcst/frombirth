@@ -207,7 +207,7 @@ function riding(step) {
     },
     shows: () => {
       const list = horse.shows(); const mounts = horse.mounts();
-      return `${list.map((s) => `<div class="card"><h3>${esc(s.name)}</h3>${kv([['Judge', esc(s.judge)], ['Organiser', esc(s.organiser)], ['Entries', String(s.entrants)], ['Entry fee', money(localCost(SHOW_LEVELS[s.level].fee, C()))], ['You need', `${SHOW_LEVELS[s.level].needs}+ in ${esc(DISCIPLINES[s.discipline].name.toLowerCase())} (you: ${horse.disciplineSkill(s.discipline)})`]])}
+      return `${list.map((s) => `<div class="card"><h3>${esc(s.name)}</h3>${kv([['Judge', esc(s.judge)], ['Organizer', esc(s.organiser)], ['Entries', String(s.entrants)], ['Entry fee', money(localCost(SHOW_LEVELS[s.level].fee, C()))], ['You need', `${SHOW_LEVELS[s.level].needs}+ in ${esc(DISCIPLINES[s.discipline].name.toLowerCase())} (you: ${horse.disciplineSkill(s.discipline)})`]])}
         ${s.result ? `<p class="zoo-note"><strong>${s.result.place === 1 ? 'Won' : `Placed ${s.result.place} of ${s.result.of}`}</strong> on ${esc(zoo.animalById(s.result.horseId)?.name ?? '')}.</p>`
     : `<div class="btn-stack">${mounts.map((m) => { const c = horse.showCheck(s.id, m.id); return `<button class="btn" data-do="enter" data-show="${s.id}" data-id="${m.id}" ${c.ok ? '' : 'disabled'}>Enter on ${esc(m.name)}${c.ok ? '' : ` · ${esc(c.problems[0])}`}</button>`; }).join('') || '<p class="muted zoo-note">You have no horse to enter on.</p>'}</div>`}</div>`).join('')}
       ${r?.record.length ? `<div class="section-label">Your results</div>${[...r.record].reverse().map((e) => `<div class="kv"><span>${e.year} · ${esc(e.horse)}</span><span>${e.place} of ${e.of}: ${esc(e.name)}</span></div>`).join('')}` : ''}`;

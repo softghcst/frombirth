@@ -90,7 +90,7 @@ export default [
     id: 'animal_behaviour', category: 'animals', ageRange: [14, 120], queuedOnly: true, cooldown: 0, cast: { pet: 'pet' },
     text: '{pet} {problem}. It is not spite: something is wrong for {pet}, and it is not going away on its own.',
     choices: [
-      { label: 'Book a qualified behaviourist ({$220})', requires: [need('cashBase', '>=', 220)], outcomes: [any('The behaviourist watches for an hour and gives you a plan. Most of it is about you.', 'good', life({ do: 'behaviour', how: 'trainer' }))] },
+      { label: 'Book a qualified behaviorist ({$220})', requires: [need('cashBase', '>=', 220)], outcomes: [any('The behaviorist watches for an hour and gives you a plan. Most of it is about you.', 'good', life({ do: 'behaviour', how: 'trainer' }))] },
       { label: 'Ask the vet whether something hurts ({$90})', requires: [need('cashBase', '>=', 90)], outcomes: [any('The vet checks {pet} over properly.', 'neutral', life({ do: 'behaviour', how: 'vet' }))] },
       { label: 'Change the house: a safe space, a routine, more to do', outcomes: [any('You rearrange a corner, set the days to a pattern, and find {pet} more to do.', 'good', life({ do: 'behaviour', how: 'environment' }))] },
       { label: 'Tell {pet} off', outcomes: [any('You lose your temper.', 'bad', life({ do: 'behaviour', how: 'scold' }))] },
@@ -143,7 +143,7 @@ export default [
     id: 'arc_instructor_suggests', category: 'animals', ageRange: [8, 120], queuedOnly: true, cooldown: 0, cast: { teacher: 'mentor' },
     text: 'After your lesson {teacher} leans on the fence and says you are ready for the show ring. Introductory level, on a school horse, at the show this year.',
     choices: [
-      { label: 'Say yes before you can talk yourself out of it', outcomes: [any('{teacher} has the horse plaited and gleaming before you arrive.', 'good', arc({ do: 'compete', how: 'yes' }), rel('teacher', 4))] },
+      { label: 'Say yes before you can talk yourself out of it', outcomes: [any('{teacher} has the horse braided and gleaming before you arrive.', 'good', arc({ do: 'compete', how: 'yes' }), rel('teacher', 4))] },
       { label: 'Not this year', outcomes: [any('{teacher} shrugs. The offer stands.', 'neutral', arc({ do: 'compete', how: 'no' }))] },
     ],
   },

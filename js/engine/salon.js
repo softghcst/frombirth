@@ -6,8 +6,8 @@ import { normalize, part } from '../avatar/catalog.js';
 
 /** Prices in base units. A change back to "none" or "natural" is free, apart from a haircut. */
 export const SALON_PRICES = { hair: 45, hairDye: 110, glasses: 180, facialHair: 25, makeup: 60, lipColor: 15, jewelry: 90, outfit: 80, outfitColor: 30 };
-const LABELS = { hair: 'Haircut', hairDye: 'Colour', glasses: 'New glasses', facialHair: 'Barber', makeup: 'Make-up', lipColor: 'Lip colour',
-  jewelry: 'Jewellery', outfit: 'New clothes', outfitColor: 'Dyeing' };
+const LABELS = { hair: 'Haircut', hairDye: 'Color', glasses: 'New glasses', facialHair: 'Barber', makeup: 'Make-up', lipColor: 'Lip color',
+  jewelry: 'Jewelry', outfit: 'New clothes', outfitColor: 'Dyeing' };
 const same = (x, y) => JSON.stringify(x ?? null) === JSON.stringify(y ?? null);
 /** Children do not pay: whoever looks after them does. */
 const PAYS_FROM = 16;
@@ -54,7 +54,7 @@ export function applySalon(next) {
   const first = p.flags.salonAge !== p.age;
   p.flags.salonAge = p.age;
   if (first) { p.stats.mood = clamp(p.stats.mood + 4); if (p.stats.charm < 80) p.stats.charm = clamp(p.stats.charm + 1); }
-  const dye = q.lines.some((l) => l.label === 'Colour') && next.style.hairDye ? ` Your hair is ${part('hairDye', next.style.hairDye).name.toLowerCase()} now.` : '';
+  const dye = q.lines.some((l) => l.label === 'Color') && next.style.hairDye ? ` Your hair is ${part('hairDye', next.style.hairDye).name.toLowerCase()} now.` : '';
   const text = `You walked out of the salon with a new look.${dye}${q.total ? ` It cost ${fmtMoney(q.total, c)}.` : ''}`;
   log(text, 'system', 'good');
   return { ok: true, text, tone: 'good' };

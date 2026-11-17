@@ -132,7 +132,7 @@ export const CRISES = {
     yearly: 'Another year of ration books and long queues.', mood: -4, shortages: 0.4 },
   inflation: { name: 'Runaway prices', blurb: 'Prices rise month by month. Nobody keeps savings in cash if they can help it.',
     yearly: null, mood: -2 },
-  sanctions: { name: 'Sanctions and mobilisation', blurb: 'The country is under sanctions and at war abroad. Imports are scarce, and men can be called up.',
+  sanctions: { name: 'Sanctions and mobilization', blurb: 'The country is under sanctions and at war abroad. Imports are scarce, and men can be called up.',
     yearly: 'Another year of sanctions. More things have quietly vanished from the shops.', mood: -3, callUp: 0.03 },
 };
 

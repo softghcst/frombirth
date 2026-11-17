@@ -30,9 +30,9 @@ export default [
       { label: 'Pay for proper lessons ({$1200})', requires: [need('cashBase', '>=', 1200)], outcomes: [any(
         'Every Saturday for a year. {kid} complains about practice and then cannot be dragged away from it.', 'good', cash(-1200), rel('kid', 8), hid('karma', 3),
         mem('kid', 'lessons', 'You paid for lessons when a teacher said they had a gift.'))] },
-      { label: 'Practise with them yourself', check: chk(0.5, { 'hidden.discipline': 0.6 }), outcomes: [
+      { label: 'Practice with them yourself', check: chk(0.5, { 'hidden.discipline': 0.6 }), outcomes: [
         ok('An hour together every evening. You are not much of a teacher, and {kid} does not mind.', rel('kid', 12), st('mood', 4),
-          mem('kid', 'practisedTogether', 'You practised with them every evening for a year.')),
+          mem('kid', 'practisedTogether', 'You practiced with them every evening for a year.')),
         bad('It lasts three weeks before life gets in the way.', rel('kid', 1)),
       ] },
       { label: 'Say there is time for that later', outcomes: [any('{kid} stops mentioning it after a while.', 'neutral', rel('kid', -4))] },
@@ -67,7 +67,7 @@ export default [
       { label: 'Give it to them', requires: [need('cashBase', '>=', 8000)], outcomes: [any('"Do not pay it back. Pay it forward." {kid} does not know what to say.', 'good', cash(-8000), rel('kid', 15), hid('karma', 6), count('donated', 8000),
         mem('kid', 'deposit', 'You gave them the deposit for their first flat.'))] },
       { label: 'Lend it, properly, with a repayment plan', requires: [need('cashBase', '>=', 8000)], outcomes: [
-        { on: 'always', weight: 3, tone: 'good', text: '{kid} pays back every instalment, early.', effects: [rel('kid', 6)] },
+        { on: 'always', weight: 3, tone: 'good', text: '{kid} pays back every installment, early.', effects: [rel('kid', 6)] },
         { on: 'always', weight: 1, tone: 'bad', text: 'The repayments stop after four months, and neither of you mentions it.', effects: [cash(-6000), rel('kid', -8)] },
       ] },
       { label: 'Say you cannot', outcomes: [any('{kid} says of course, they should not have asked.', 'neutral', rel('kid', -6))] },

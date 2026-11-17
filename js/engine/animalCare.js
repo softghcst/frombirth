@@ -320,7 +320,7 @@ export function adoptionCheck(animalId, { foster = false, state = store.state } 
   if (space && SPACES.indexOf(space) < SPACES.indexOf(need)) problems.push(`${a.name} needs ${SPACE_WORDS[need]}. Where you live now does not have it.`);
   const capNow = careCapacity(state);
   if (capNow.free < loadOf(a)) problems.push('Your household already has as many animals as it can look after properly.');
-  if (sp.permit.includes(p.countryId) && !foster) notes.push(`Keeping ${an(sp.name)} ${sp.name} in ${theCountry(c.name)} needs a licence: ${fmtMoney(localCost(PERMIT_FEE, c), c)}, applied for with the adoption.`);
+  if (sp.permit.includes(p.countryId) && !foster) notes.push(`Keeping ${an(sp.name)} ${sp.name} in ${theCountry(c.name)} needs a license: ${fmtMoney(localCost(PERMIT_FEE, c), c)}, applied for with the adoption.`);
   if (sp.group === 'reptile') notes.push(`${cap(sp.name)}s need heat and light all their lives, and a vet who knows reptiles.${a.speciesId === 'tortoise' ? ' A tortoise may well outlive you: someone will need to take it on.' : ''}`);
   const lease = rentalPolicy(state);
   if (lease && ['companion', 'reptile'].includes(speciesOf(a.speciesId).group)) {
@@ -598,7 +598,7 @@ export function insure(animalId, state = store.state) {
   if (state.player.finance.cash < q.premium) return result(false, `The first year's premium is ${fmtMoney(q.premium, c)}. You do not have it.`, 'neutral');
   a.insurance = { since: state.year, premium: q.premium, deductible: q.deductible, rate: q.rate, yearCap: q.yearCap, paidUntil: state.year, claimed: {} };
   pay(state, q.premium, 'insurance', a.id, `insurance|${a.id}|${state.year}`);
-  const text = `You insured ${a.name}: ${fmtMoney(q.premium, c)} a year. It pays ${Math.round(q.rate * 100)}% of illness and injury after the first ${fmtMoney(q.deductible, c)}, and nothing towards routine care.`;
+  const text = `You insured ${a.name}: ${fmtMoney(q.premium, c)} a year. It pays ${Math.round(q.rate * 100)}% of illness and injury after the first ${fmtMoney(q.deductible, c)}, and nothing toward routine care.`;
   say(state, text);
   return result(true, text, 'neutral');
 }
@@ -606,7 +606,7 @@ export function cancelInsurance(animalId, state = store.state) {
   const a = zoo.animalById(animalId, state);
   if (!a?.insurance) return result(false, 'There is no policy to cancel.', 'neutral');
   delete a.insurance;
-  return result(true, `${a.name}'s insurance is cancelled.`, 'neutral');
+  return result(true, `${a.name}'s insurance is canceled.`, 'neutral');
 }
 /** Pays back what the policy owes against one bill. Once for each bill, and never above the year's limit. */
 function claim(state, a, tx) {
@@ -746,7 +746,7 @@ export function tickCare(state = store.state) {
     npc.meters.health = clamp(npc.meters.health + d);
     if ((stage === 'senior' || stage === 'old') && !a.seniorNoted && zoo.livesWithPlayer(a.id, state)) {
       a.seniorNoted = state.year;
-      say(state, `${a.name} is getting older: slower on the stairs, greyer round the face. ${paysFor(a, state) ? 'It may be time to change how you look after ' + zoo.pronoun(a, 'them') + '.' : ''}`.trim());
+      say(state, `${a.name} is getting older: slower on the stairs, grayer round the face. ${paysFor(a, state) ? 'It may be time to change how you look after ' + zoo.pronoun(a, 'them') + '.' : ''}`.trim());
     }
   }
 

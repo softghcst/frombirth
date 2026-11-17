@@ -194,7 +194,7 @@ function drawLooks(npc, sp, roll, origin) {
   const coat = roll.pick(coats);
   const pattern = roll.pick(breed?.patterns ?? sp.patterns);
   const second = pattern === 'solid' ? null : roll.pick(['white', 'white', 'cream', ...sp.coats.filter((c) => c !== coat)]);
-  const mark = roll.chance(0.35) ? roll.pick(['a white tip to the tail', 'one ear that never stands up', 'a notch in the left ear', 'a pale patch over one eye', 'odd-coloured toes', 'a kink in the tail']) : null;
+  const mark = roll.chance(0.35) ? roll.pick(['a white tip to the tail', 'one ear that never stands up', 'a notch in the left ear', 'a pale patch over one eye', 'odd-colored toes', 'a kink in the tail']) : null;
   return {
     breedId: breed?.id ?? null,
     appearance: { coat, second, pattern, eyes: roll.pick(breed?.eyes ?? sp.eyes), size: breed?.size ?? 'small', ears: breed?.ears ?? 'up', length: breed?.length ?? 'short',
@@ -475,13 +475,13 @@ function arrangeCare(state, a, goneId, why, quiet = false) {
   const next = successors(state, a, goneId)[0];
   const lost = why === 'death' ? `After ${gone.name}'s death` : `When ${gone.name} could no longer keep ${pronoun(a, 'them')}`;
   if (!next) {
-    const rescue = { id: null, name: 'a rescue organisation' };
+    const rescue = { id: null, name: 'a rescue organization' };
     setOwner(state, a, rescue, 'rehomed'); setPrimary(state, a, rescue, why);
     for (const c of a.care) if (c.to == null && c.role === 'helper') { c.to = state.year; c.ended = why; }
     setHome(state, a, { hh: 'rescue', key: 'rescue', label: 'A new home, found through a rescue', city: a.homes[a.homes.length - 1]?.city ?? p.city, countryId: a.homes[a.homes.length - 1]?.countryId ?? p.countryId });
     record(state, { type: 'rehomed', animalId: a.id, people: [gone], sig: 3, key: 'rehomed',
       story: !quiet ? `Nobody in the family could take ${a.name}. A rescue found ${pronoun(a, 'them')} a new home.` : null,
-      text: `${lost}, nobody in the family could take ${a.name}. A rescue organisation found the ${sp.name} a new home.` });
+      text: `${lost}, nobody in the family could take ${a.name}. A rescue organization found the ${sp.name} a new home.` });
     // No longer in the player's life; still on the record.
     if (state.npcs[a.id]) { a.lastBond = state.npcs[a.id].meters.relationship; delete state.npcs[a.id]; p.npcIds = p.npcIds.filter((id) => id !== a.id); }
     a.inCircle = false;
@@ -514,7 +514,7 @@ function arrangeCare(state, a, goneId, why, quiet = false) {
 export function leaveToOrg(state, a, o = {}) {
   const p = state.player;
   const last = a.homes[a.homes.length - 1];
-  const org = a.foster ? { id: null, org: a.foster.org, name: a.foster.name } : o.org ?? (ownerOf(a)?.org ? ownerOf(a) : { id: null, name: 'a rescue organisation' });
+  const org = a.foster ? { id: null, org: a.foster.org, name: a.foster.name } : o.org ?? (ownerOf(a)?.org ? ownerOf(a) : { id: null, name: 'a rescue organization' });
   const keeper = o.keeper ?? (o.placed ? { id: null, name: 'an adoptive family' } : org);
   const sp = speciesOf(a.speciesId);
   const people = [ownerOf(a), primaryOf(a), ...helpersOf(a)].filter((r) => r?.id);
@@ -682,7 +682,7 @@ export function animalActions(id, state = store.state) {
   const n = a && handle(state, a);
   if (!a || a.status !== 'living' || !n?.alive) return [];
   const out = [];
-  if (p.age >= 6 && trainingOf(a).some((s) => s.progress < 100 && !s.classOnly)) out.push({ id: 'train', label: 'Practise training' });
+  if (p.age >= 6 && trainingOf(a).some((s) => s.progress < 100 && !s.classOnly)) out.push({ id: 'train', label: 'Practice training' });
   return out;
 }
 
@@ -842,7 +842,9 @@ export function describeLooks(a) {
   const sp = speciesOf(a.speciesId);
   const b = breedOf(a.speciesId, a.breedId);
   const ap = a.appearance;
-  const coat = ap.pattern === 'solid' || !ap.second ? ap.coat : `${ap.coat} and ${ap.second}`;
+  // Colours are stored by name, and some names are spelled as they always were in saves ('grey'); they are shown as players read them.
+  const word = (c) => ({ grey: 'gray' }[c] ?? c);
+  const coat = ap.pattern === 'solid' || !ap.second ? word(ap.coat) : `${word(ap.coat)} and ${word(ap.second)}`;
   const pat = { solid: '', patched: 'patched', saddle: 'with a dark saddle', socks: 'with pale socks', blaze: 'with a pale blaze', tabby: 'tabby', bicolour: 'two-coloured', tortoiseshell: 'tortoiseshell', calico: 'calico', pointed: 'with dark points' }[ap.pattern] ?? '';
   return [`${cap(ap.size)}, ${ap.length}-coated ${sp.name}`, `${cap(coat)}${pat ? `, ${pat}` : ''}`, `${cap(ap.eyes)} eyes`, ...(sp.id === 'dog' || sp.id === 'rabbit' ? [{ up: 'Upright ears', drop: 'Drop ears', half: 'Half-pricked ears', tuft: 'Tufted ears' }[ap.ears]] : []),
     ...(ap.mark ? [cap(ap.mark)] : []), ...(b && !a.breedKnown ? [`Looks like a ${b.name}; nobody knows for certain`] : [])];

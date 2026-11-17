@@ -117,7 +117,7 @@ export const BEHAVIOURS = {
 };
 /** Help for a behaviour problem: how much it moves things on, what it costs, and whether it hurts trust. */
 export const HELP = {
-  trainer: { name: 'A qualified behaviourist', gain: 45, cost: 220, trust: 4 },
+  trainer: { name: 'A qualified behaviorist', gain: 45, cost: 220, trust: 4 },
   vet: { name: 'A vet\'s check for pain or illness behind it', gain: 25, cost: 90, trust: 2 },
   environment: { name: 'Change the house: safe spaces, routine, things to do', gain: 30, cost: 60, trust: 3 },
   time: { name: 'Patience, and gentle practice', gain: 18, cost: 0, trust: 2 },
@@ -302,7 +302,7 @@ export function tickLife(state = store.state) {
   const queue = (id, cast) => { if (!waiting.has(id)) { state.pendingEvents.push({ id, cast }); waiting.add(id); } };
   for (const a of zoo.allAnimals(state)) {
     if (!mineToRun(a, state) || !zoo.livesWithPlayer(a.id, state)) continue;
-    const roll = T.seeded(`${a.id}:behaviour:${state.year}`);
+    const roll = T.seeded(`${a.id}:behavior:${state.year}`);
     // A behaviour problem starts at most once, early in an animal's time with the family, and only if its nature leans that way.
     if (!a.behaviour && state.year - (a.homes.find((h) => h.hh !== 'shelter' && h.hh !== 'stable')?.from ?? state.year) <= 3) {
       const fits = Object.entries(BEHAVIOURS).filter(([, b]) => b.species.includes(a.speciesId) && b.who(a.temperament) && (!b.young || ['puppy', 'young dog'].includes(zoo.stageOf(a, state))));

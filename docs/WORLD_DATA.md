@@ -66,7 +66,7 @@ No city coordinates, populations or statistics are stored.
 
 ## Places that are not ordinary sovereign states
 
-| Place | Modelled as | Tied to | Nationality at birth |
+| Place | Modeled as | Tied to | Nationality at birth |
 |---|---|---|---|
 | Puerto Rico | territory | United States | United States |
 | Aruba | territory (constituent country of the Kingdom of the Netherlands) | Netherlands | Dutch |
@@ -98,7 +98,7 @@ shown on its profile.
   opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional laws cannot
   be changed by a mayor or governor. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
-  permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
+  permanence. Real systems differ by country and are not modeled. The free-movement areas (a European area, and Australia with
   New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
   is no deportation for crime, no overstaying, and no visa needed for a short visit.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
@@ -116,7 +116,7 @@ In rough order of value:
 
 1. **Verify the law flags, legal ages, citizenship rules and free-movement lists.** The reference metadata is checked (above);
    these are not, and need a legal source per country that is current and citable.
-2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
+2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
 3. **Regional law-making**: a governor or mayor changing the law of their own region.
 4. **A housing index per country**, and mortgages and rent abroad kept in local money.
 5. **Regions with governments and taxes of their own**, and visas for family members other than a spouse.

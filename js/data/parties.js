@@ -19,13 +19,13 @@ export const PARTY_KINDS = [
     positions: { tax: 1.5, services: 2, housing: 1, order: 0, green: 1, open: 1 }, says: 'Higher taxes on the well-off to pay for schools, hospitals and homes.' },
   { kind: 'conservative', names: ['National Union', 'Conservative League', 'Heritage Party', 'Homeland Union'], colour: '#1f4e8c',
     positions: { tax: -1.5, services: -0.5, housing: -1, order: 2, green: -1, open: -1 }, says: 'Lower taxes, firm policing, and caution about change.' },
-  { kind: 'liberal', names: ['Liberal Centre', 'Free Democrats', 'Progress Party', 'Open Society Party'], colour: '#d4a017',
+  { kind: 'liberal', names: ['Liberal Center', 'Free Democrats', 'Progress Party', 'Open Society Party'], colour: '#d4a017',
     positions: { tax: -1, services: 0, housing: -1, order: -1, green: 0, open: 2 }, says: 'Low taxes, open markets, open borders and personal freedom.' },
   { kind: 'green', names: ['Green Future', 'Earth Alliance', 'The Greens'], colour: '#2e8b57',
     positions: { tax: 1, services: 1, housing: 1, order: -1, green: 2, open: 1 }, says: 'The environment first, paid for by those who pollute.' },
   { kind: 'populist', names: ['Homeland Movement', 'Common Sense Front', 'People First'], colour: '#5d3a8e',
     positions: { tax: -0.5, services: 1, housing: 0, order: 2, green: -2, open: -2 }, says: 'Closed borders, tough justice, and spending on our own.' },
-  { kind: 'agrarian', names: ['Country Party', 'Farmers and Towns', 'Centre Union'], colour: '#8a6d1d',
+  { kind: 'agrarian', names: ['Country Party', 'Farmers and Towns', 'Center Union'], colour: '#8a6d1d',
     positions: { tax: -1, services: 1, housing: 0, order: 1, green: -1, open: -1 }, says: 'The countryside and small towns before the capital.' },
 ];
 /** The one party of a one-party state. */
@@ -42,7 +42,7 @@ export const VOTERS = [
 
 /** Where the votes are counted. Each is a mix of the voter groups; for each group the fractions add up to 1. */
 export const AREAS = [
-  { id: 'cities', name: 'The city centres', mix: { young: 0.5, workers: 0.2, professionals: 0.35, older: 0.15, rural: 0 } },
+  { id: 'cities', name: 'The city centers', mix: { young: 0.5, workers: 0.2, professionals: 0.35, older: 0.15, rural: 0 } },
   { id: 'suburbs', name: 'The suburbs', mix: { young: 0.25, workers: 0.25, professionals: 0.45, older: 0.3, rural: 0.05 } },
   { id: 'towns', name: 'The industrial towns', mix: { young: 0.2, workers: 0.45, professionals: 0.15, older: 0.3, rural: 0.15 } },
   { id: 'country', name: 'The villages and farms', mix: { young: 0.05, workers: 0.1, professionals: 0.05, older: 0.25, rural: 0.8 } },

@@ -95,7 +95,7 @@ export function profile(id) {
     ...(sys.head ? [['Head of government', sys.head]] : []),
     ...(sys.seat ? [['National legislator', sys.seat]] : []),
     ...(sys.region ? [['Regional leader', sys.region]] : []),
-    ...(sys.rigged ? [['Elections', 'Held, but the count leans towards those in power']] : []),
+    ...(sys.rigged ? [['Elections', 'Held, but the count leans toward those in power']] : []),
     ...(sys.nativeOnly ? [['Top office', 'Open only to people born here']] : []),
     ...(crown ? [['Crown', `A ${crown.type} monarchy you can be born into or marry into`]] : []),
   ];

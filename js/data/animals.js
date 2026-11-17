@@ -95,7 +95,7 @@ export const SPECIES = {
       { id: 'target', name: 'Touching a target', learned: 'touches a target on cue', difficulty: 2 },
       { id: 'cage', name: 'Going back into the cage when asked', learned: 'goes back into the cage when asked', difficulty: 3 },
     ],
-    activities: [{ id: 'forage', label: 'Set up a foraging puzzle', text: 'You hid {name}\'s favourite things in a box of paper. It was destroyed with great care.' }],
+    activities: [{ id: 'forage', label: 'Set up a foraging puzzle', text: 'You hid {name}\'s favorite things in a box of paper. It was destroyed with great care.' }],
     coats: ['green', 'grey', 'blue', 'scarlet', 'yellow', 'white'], patterns: ['solid', 'blaze'], eyes: ['dark', 'gold'], sexes: 'unknown',
   },
   hamster: {

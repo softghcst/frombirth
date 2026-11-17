@@ -64,7 +64,7 @@ export function school(state = store.state) {
     const { city, countryId } = state.player;
     const roll = T.seeded(`school:${key}`);
     const teacher = care.localName(countryId, `${key}:instructor`);
-    const sc = { id: `school:${key}`, key, city, countryId, hh: 'stable', name: roll.pick([`${city} Riding School`, `${teacher.name.split(' ')[1]} Equestrian Centre`, `Hollow Farm Riding School, ${city}`, `The ${city} Riding Club`]),
+    const sc = { id: `school:${key}`, key, city, countryId, hh: 'stable', name: roll.pick([`${city} Riding School`, `${teacher.name.split(' ')[1]} Equestrian Center`, `Hollow Farm Riding School, ${city}`, `The ${city} Riding Club`]),
       priceK: 0.8 + roll.int(0, 6) / 10, instructor: { ...teacher, years: roll.int(6, 30) }, instructorNpc: null, founded: state.year - roll.int(5, 50) };
     P.schools[key] = sc;
     // The school's own horses: steady, well-schooled, and used to beginners.
@@ -435,7 +435,7 @@ export function shows(state = store.state) {
       const discipline = kinds[(roll.int(0, 5) + i) % kinds.length];
       return { id: `show:${key}:${state.year}:${i}`, year: state.year, city, countryId, level, discipline, entrants: roll.int(7, 16),
         name: `${roll.pick([`${city} ${['Spring', 'Summer', 'Autumn', 'Midwinter'][i]} Show`, `${school(state).name} ${['Open Day', 'Championship', 'Members\' Show', 'Derby'][i]}`, `The ${city} ${DISCIPLINES[discipline].name} Series`])}: ${SHOW_LEVELS[level].name.toLowerCase()} ${DISCIPLINES[discipline].name.toLowerCase()}`,
-        organiser: care.localName(countryId, `${key}:organiser:${i}`).name, judge: care.localName(countryId, `${key}:judge:${state.year}:${i}`).name, result: null };
+        organiser: care.localName(countryId, `${key}:organizer:${i}`).name, judge: care.localName(countryId, `${key}:judge:${state.year}:${i}`).name, result: null };
     });
     for (const y of Object.keys(book)) if (Number(y) < state.year - 1 && !book[y].some((s) => s.result)) delete book[y];
   }

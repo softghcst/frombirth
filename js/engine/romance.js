@@ -217,7 +217,7 @@ export function propose(npcId, ringId) {
     p.finance.cash += Math.round(cost * 0.6); // the jeweller takes it back, at a loss
     bump(npc, -15);
     p.stats.mood = clamp(p.stats.mood - 12);
-    const text = `You got down on one knee. ${npc.firstName} said they were not ready. The jeweller gave you some of the money back.`;
+    const text = `You got down on one knee. ${npc.firstName} said they were not ready. The jeweler gave you some of the money back.`;
     log(text, 'system', 'bad');
     return result(false, text);
   }

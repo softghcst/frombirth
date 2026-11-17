@@ -88,7 +88,7 @@ export async function takeHoliday(api) {
         sub: [d.family.length ? `${d.family.join(', ')} live${d.family.length === 1 ? 's' : ''} here.` : '', d.ownHome ? 'You have a place of your own to stay.' : '',
           d.visited ? 'You have been before.' : 'Somewhere new.'].filter(Boolean).join(' ') })) });
     if (!countryId) return undefined;
-    const cabin = await pickModal({ title: 'Which seat?', body: 'The price covers the flights and a fortnight there, for one.',
+    const cabin = await pickModal({ title: 'Which seat?', body: 'The price covers the flights and two weeks there, for one.',
       options: fun.cabinOptions().map((k) => ({ value: k.id, label: k.name, sub: `${k.blurb} ${fmtMoney(k.cost, c)}.`, disabled: !k.affordable })) });
     if (!cabin) return undefined;
     const d = fun.flightDestinations().find((x) => x.id === countryId);
@@ -96,7 +96,7 @@ export async function takeHoliday(api) {
     if (!move.rightToLive(countryId, player()) || d.family.length) {
       purpose = await pickModal({ title: 'What is the trip for?', options: [
         { value: 'holiday', label: 'A holiday', sub: 'Rest, and see the place.' },
-        ...(d.family.length ? [{ value: 'family', label: `To see ${d.family.join(', ')}`, sub: 'Most of the fortnight with them. Brings you closer.' }] : []),
+        ...(d.family.length ? [{ value: 'family', label: `To see ${d.family.join(', ')}`, sub: 'Most of the two weeks with them. Brings you closer.' }] : []),
         ...(move.rightToLive(countryId, player()) ? [] : [{ value: 'scouting', label: 'To look, with a move in mind', sub: 'Less of a rest. Helps a later application to live there.' }]),
       ] });
       if (!purpose) return undefined;
@@ -139,7 +139,7 @@ export async function moveAbroad(api) {
   const pct = (x) => `${Math.round(x * 100)}%`;
   const id = await pickModal({
     title: 'Move abroad',
-    body: 'There is more than one way in: as a citizen, through family, work, study, investment or a settlement programme. You leave your job. Property you own stays yours, and your vehicles can be shipped.',
+    body: 'There is more than one way in: as a citizen, through family, work, study, investment or a settlement program. You leave your job. Property you own stays yours, and your vehicles can be shipped.',
     options: move.destinations().map((d) => ({ value: d.id, label: `${d.flag} ${d.name}`,
       sub: `${d.currency} · income tax ${pct(d.incomeTax)} · property tax ${propertyTaxLabel(d)} · ${d.freeHealthcare ? 'public' : 'private'} health care`
         + ` · ${summary(COUNTRIES[d.id]).short.toLowerCase()}${d.family ? ` · ${d.family} of your family live${d.family === 1 ? 's' : ''} here` : ''}${d.ownsHome ? ' · you own a home here' : ''}${d.language ? ` · ${d.language}` : ''}${d.route ? ` · best route: ${d.route.toLowerCase()}` : ''}` })),
@@ -256,7 +256,7 @@ export function openPassport(api) {
     ${kvRow('Status there', `${doc.residency.word}${doc.residency.status === 'citizen' ? '' : ` since ${doc.residency.since}`}`)}
     ${statusLine(p) ? kvRow('Permission', statusLine(p)) : ''}
     ${doc.residency.status === 'citizen' ? '' : `<p class="muted" style="margin-top:6px">${esc(nat.possible ? `You can apply for citizenship. ${nat.outlook}` : nat.why)}</p>`}
-    ${nat.possible ? '<div class="btn-stack" style="margin-top:8px"><button class="btn primary" data-naturalise>Apply for citizenship</button></div>' : ''}</div>
+    ${nat.possible ? '<div class="btn-stack" style="margin-top:8px"><button class="btn primary" data-naturalize>Apply for citizenship</button></div>' : ''}</div>
     ${doc.locations.length > 1 ? `<div class="card"><h3>Where you have lived</h3>${doc.locations.map((l) => kvRow(`${l.from ?? ''}${l.to ? `–${l.to}` : l.from ? ' to now' : ''}`, `${l.flag} ${l.city ? `${l.city}, ` : ''}${l.name}`)).join('')}</div>` : ''}`;
   const journeys = fun.trips(p);
   const tripCard = journeys.length ? `<div class="card"><h3>Trips abroad</h3>${journeys.slice(0, 12).map((t) => kvRow(`${t.year} · ${t.what}`, `${t.flag} ${t.city ? `${t.city}, ` : ''}${t.name}`)).join('')}${journeys.length > 12 ? `<p class="muted">and ${journeys.length - 12} earlier.</p>` : ''}</div>` : '';

@@ -69,9 +69,9 @@ export default [
   {
     id: 'senior_rumour', category: 'senior year', ageRange: [17, 17], once: true, priority: true,
     requires: [need('education.stage', '==', 'high')], cast: { mate: 'tag:defended' },
-    text: 'An ugly rumour about you is going round the senior year. Before you have decided what to do, {mate} stands up in the common room: "I know who started that, and it is a lie. {name} was the only person who helped me in my first month here."',
+    text: 'An ugly rumor about you is going round the senior year. Before you have decided what to do, {mate} stands up in the common room: "I know who started that, and it is a lie. {name} was the only person who helped me in my first month here."',
     choices: [
-      { label: 'Thank {mate}', outcomes: [any('The room goes quiet, and then it moves on. The rumour is dead by Friday.', 'good', rel('mate', 10), st('mood', 8), st('charm', 3))] },
+      { label: 'Thank {mate}', outcomes: [any('The room goes quiet, and then it moves on. The rumor is dead by Friday.', 'good', rel('mate', 10), st('mood', 8), st('charm', 3))] },
       { label: 'Find out who started it', check: chk(0.5, { 'stats.intellect': 0.5, 'stats.charm': 0.3 }), outcomes: [
         ok('{mate} tells you who. You have one short, calm conversation, and get an apology in front of witnesses.', rel('mate', 8), st('charm', 4), hid('willpower', 3)),
         bad('You accuse the wrong person, loudly. {mate} winces.', rel('mate', 3), st('charm', -3), st('mood', -4)),

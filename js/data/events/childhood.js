@@ -102,7 +102,7 @@ export default [
   },
   {
     id: 'sibling_toy', category: 'childhood', ageRange: [3, 10], cast: { sib: 'sibling', mother: 'mother' },
-    text: '{sib} has broken your favourite toy and is pretending not to know anything about it.',
+    text: '{sib} has broken your favorite toy and is pretending not to know anything about it.',
     choices: [
       { label: 'Scream the house down', outcomes: [any('{mother} sends you both to your rooms.', 'bad', st('mood', -3), rel('sib', -4), rel('mother', -2))] },
       { label: 'Forgive them', outcomes: [any('{sib} looks surprised, then quietly helps you tape it together.', 'good', hid('karma', 5), rel('sib', 8))] },

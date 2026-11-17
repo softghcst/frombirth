@@ -41,7 +41,7 @@ for (const c of COUNTRY_LIST) {
   check(new Set(list.map((x) => `${x.rule}:${x.value}`)).size === list.length, `${c.id}: the same change is offered twice`);
 }
 check(law.choices('jp').some((x) => x.rule === 'sameSexMarriage' && x.value === true) && !law.choices('es').some((x) => x.rule === 'sameSexMarriage' && x.value === true), 'only what is not yet law is offered');
-check(law.choices('ph').some((x) => x.rule === 'divorce') && !law.choices('us').some((x) => x.rule === 'divorce'), 'divorce can be legalised only where there is none');
+check(law.choices('ph').some((x) => x.rule === 'divorce') && !law.choices('us').some((x) => x.rule === 'divorce'), 'divorce can be legalized only where there is none');
 section(`choices: every one of ${COUNTRY_LIST.length} countries has real changes of law to offer`);
 
 // 2. Only the head of government, and only twice a year.
@@ -82,7 +82,7 @@ section(`votes: ${passed} passed, ${lost} defeated; what passes is the law and i
 p = leader('jp'); const w = polity('jp');
 const tallyFor = (wants, leadKind) => { const lead = w.parties.find((x) => x.kind === leadKind) ?? w.parties[0]; return lead.positions; };
 const liberal = law.choices('jp').find((x) => x.rule === 'sameSexMarriage'); const hard = law.choices('jp').find((x) => x.rule === 'conscription');
-check(liberal.wants.open === 1 && hard.wants.order === 1 && hard.wants.open === -1, 'a liberalising law is judged on freedoms; conscription on order against freedoms');
+check(liberal.wants.open === 1 && hard.wants.order === 1 && hard.wants.open === -1, 'a liberalizing law is judged on freedoms; conscription on order against freedoms');
 check(hard.liked < 0 && law.choices('jp').find((x) => x.rule === 'retirementAge' && x.value > law.rule('retirementAge', 'jp')).liked < 0, 'conscription and a later pension are unpopular');
 check(law.choices('ng').find((x) => x.rule === 'sameSexMarriage').liked < 0 && law.choices('es').find((x) => x.rule === 'sameSexMarriage').liked < 0 && law.choices('nl').find((x) => x.rule === 'lgbt' && x.value === 'limited').liked < 0,
   'the public takes the law it has as its starting point: reform is unpopular where the law is hostile, and repeal where it is not');

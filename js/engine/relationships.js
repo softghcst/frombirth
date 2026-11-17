@@ -140,7 +140,7 @@ const PET_TIME = {
   leopard_gecko: ['Spend a quiet hour', '{name} sat on your hand, warmed up, and licked your thumb thoughtfully.'],
   bearded_dragon: ['Spend a quiet hour', '{name} lay along your arm under the lamp like a small, judgemental pharaoh.'],
   corn_snake: ['Spend a quiet hour', '{name} explored the length of both your arms, very slowly.'],
-  tortoise: ['Sit out with them', 'You and {name} spent the afternoon in the garden. {name} covered almost a metre.'],
+  tortoise: ['Sit out with them', 'You and {name} spent the afternoon in the garden. {name} covered almost a meter.'],
   other: ['Spend time together', 'You spent time with {name}.'],
 };
 

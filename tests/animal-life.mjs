@@ -96,7 +96,7 @@ check(r.ok && a.behaviour.progress === 0 && zoo.bondDetail(a, p.id).trust < trus
 check(!life.helpWith(a.id, 'trainer').ok, 'one kind of help a year');
 let years2 = 0;
 while (!a.behaviour.resolved && years2 < 8) { year(); life.helpWith(a.id, 'trainer'); years2 += 1; }
-check(a.behaviour.resolved && years2 >= 2 && lastOf('trained', a.id)?.text.includes('Distress when left alone'.toLowerCase()), `with a behaviourist it gets better, over years (${years2}), and getting past it is recorded`);
+check(a.behaviour.resolved && years2 >= 2 && lastOf('trained', a.id)?.text.includes('Distress when left alone'.toLowerCase()), `with a behaviorist it gets better, over years (${years2}), and getting past it is recorded`);
 check(zoo.bondDetail(a, p.id).trust > trust0 - 12 && life.behaviourOf(a) === null, 'patient help rebuilds trust');
 // It starts from temperament, not at random.
 let started = 0; let wrong = 0;
@@ -108,7 +108,7 @@ for (let i = 0; i < 40; i++) {
 }
 check(started > 5 && wrong === 0, `problems come from an animal's nature (${started} lively dogs, ${wrong} calm cats)`);
 clean('behaviour');
-section('behaviour: from temperament, kind help works slowly, anger makes it worse');
+section('behavior: from temperament, kind help works slowly, anger makes it worse');
 
 // ---------- 4. Landlords, kit, licences ----------
 p = adult(); const lease = care.rentalPolicy(); lease.kind = 'none';
@@ -129,11 +129,11 @@ check(!l2.premium || care.ledgerOf(null).some((t) => t.kind === 'pet rent'), 'wh
 house('house'); check(care.rentalPolicy() === null, 'in a home of one\'s own there is no landlord');
 { const q = adult(30, 300000, 'nz'); const sn = waiting('corn_snake'); check(!care.adoptionCheck(sn.id).ok && q, 'a snake cannot be kept where the law forbids it'); }
 { const q = adult(30, 300000, 'au'); const sn = waiting('corn_snake'); const chk = care.adoptionCheck(sn.id); cash = q.finance.cash;
-  check(chk.ok && chk.notes.some((x) => /licence/.test(x)) && care.adopt(sn.id).ok && sn.permit && care.ledgerOf(sn.id).filter((t) => t.kind === 'permit').length === 1, 'where a licence is needed, it is paid for once with the adoption');
+  check(chk.ok && chk.notes.some((x) => /license/.test(x)) && care.adopt(sn.id).ok && sn.permit && care.ledgerOf(sn.id).filter((t) => t.kind === 'permit').length === 1, 'where a license is needed, it is paid for once with the adoption');
   check(!care.vetServices(sn.id).some((s) => s.id === 'vaccination') && !life.coursesFor(sn.id).length && zoo.trainingOf(sn).length === 0, 'a snake is not vaccinated, trained or taken to class'); }
 { adult(); const t = waiting('tortoise'); check(!care.adoptionCheck(t.id).ok && care.adoptionCheck(t.id).problems.some((x) => /garden/.test(x)), 'a tortoise needs a garden'); house('house'); check(care.adoptionCheck(t.id).ok && care.adoptionCheck(t.id).notes.some((x) => /outlive/.test(x)), 'and its owner is told it may outlive them'); }
 clean('landlords');
-section('housing: landlords\' rules, deposits once, kit kept; licences and bans for reptiles');
+section('housing: landlords\' rules, deposits once, kit kept; licenses and bans for reptiles');
 
 // ---------- 5. Outings and the pet show ----------
 p = adult(); a = own('dog');

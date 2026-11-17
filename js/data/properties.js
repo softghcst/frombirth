@@ -12,7 +12,7 @@ export const PROPERTY_TYPES = [
 ];
 export const PROPERTY_BY_ID = Object.fromEntries(PROPERTY_TYPES.map((t) => [t.id, t]));
 
-export const STREETS = ['Elm Street', 'Harbour Road', 'Mill Lane', 'Station Road', 'Orchard Close', 'Kingsway',
+export const STREETS = ['Elm Street', 'Harbor Road', 'Mill Lane', 'Station Road', 'Orchard Close', 'Kingsway',
   'Willow Crescent', 'Hill View', 'Market Street', 'Chapel Row', 'Riverside', 'Linden Avenue', 'Quarry Lane', 'The Green'];
 
 /** Mortgage terms. deposit is the minimum share of the price paid up front. */

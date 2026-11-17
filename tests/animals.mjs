@@ -201,7 +201,7 @@ check(!!second && second.id !== first.id && zoo.primaryOf(a).id === second.id &&
 check(!!lastOf('care', a.id) && lastOf('care', a.id).people.some((x) => x.id === first.id), 'the hand-over is a moment on record, naming both people');
 for (const n of Object.values(S().npcs)) if (n.role !== 'pet') n.alive = false;
 p.age = 12; zoo.reconcile(); // nobody left who could take it, and the player is a child
-check(a.status === 'living' && zoo.ownerOf(a)?.name === 'a rescue organisation' && !S().npcs[a.id] && !a.inCircle && !!lastOf('rehomed', a.id), 'with nobody to take it, it is rehomed through a rescue: gone from the player\'s life, kept on the record');
+check(a.status === 'living' && zoo.ownerOf(a)?.name === 'a rescue organization' && !S().npcs[a.id] && !a.inCircle && !!lastOf('rehomed', a.id), 'with nobody to take it, it is rehomed through a rescue: gone from the player\'s life, kept on the record');
 check(zoo.albumAnimals().some((x) => x.id === a.id) && zoo.eventsOf(a.id).length >= 4, 'it is still in the album, with its history');
 const gone = a; gone.born = S().year - 1; gone.lifespan = Math.max(gone.lifespan, 3); const until = gone.born + gone.lifespan;
 while (S().year < until) { S().year += 1; zoo.tickAnimals(); }
@@ -266,7 +266,7 @@ check(snap(zoo.allAnimals().map((x) => x.id).sort()) === snap(was.ids), 'and sti
 p = grown(70); for (const n of Object.values(S().npcs)) n.alive = false;
 const kid = addKin('child', 9); const orphan = adopt();
 die('old age');
-check(zoo.ownerOf(zoo.animalById(orphan.id))?.name === 'a rescue organisation', 'with no adult in the family, the animal is rehomed when its owner dies');
+check(zoo.ownerOf(zoo.animalById(orphan.id))?.name === 'a rescue organization', 'with no adult in the family, the animal is rehomed when its owner dies');
 store.state = continueAs(kid.id);
 check(!!S() && zoo.animalById(orphan.id)?.status === 'living' && !S().npcs[orphan.id] && zoo.albumAnimals().some((x) => x.id === orphan.id), 'it is not in the child\'s life, and it is still in the family album');
 clean('rehomed across a generation');

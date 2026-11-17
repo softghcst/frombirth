@@ -43,7 +43,7 @@ let p = life('br');
 let rs = imm.routes('jp');
 check(rs.length >= 6 && rs.every((r) => r.name && r.blurb && (r.eligible ? r.chance > 0 && r.outlook : r.why)), 'every route explains itself, open or closed');
 check(!by('work', 'jp').eligible && !by('family', 'jp').eligible && !by('invest', 'jp').eligible && !by('protection', 'jp').eligible, 'no degree, family, fortune or crisis: those four are closed');
-check(by('study', 'jp').eligible && by('settle', 'jp').eligible, 'a school leaver with savings can study or try the settlement programme');
+check(by('study', 'jp').eligible && by('settle', 'jp').eligible, 'a school leaver with savings can study or try the settlement program');
 p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.4, age: 22 });
 check(by('work', 'jp').eligible && by('work', 'jp').status === 'worker' && by('work', 'jp').years === ROUTE.workYears, 'a degree opens the work route, for a fixed term');
 const before = by('work', 'jp').chance; p.career.lastField = 'engineer';

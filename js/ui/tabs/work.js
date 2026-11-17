@@ -310,7 +310,7 @@ async function sitExam(api) {
   const o = adult.examOptions()[0];
   if (!o) return undefined;
   if (o.sat) return messageModal({ body: 'You have sat an exam this year. The next sitting is next year.' });
-  const prep = await pickModal({ title: `The ${o.name}`, body: `Your degree lets you sit it; passing it lets you practise ${o.profession}. The fee is ${fmtMoney(o.fee, c)}. You can sit it once a year.`,
+  const prep = await pickModal({ title: `The ${o.name}`, body: `Your degree lets you sit it; passing it lets you practice ${o.profession}. The fee is ${fmtMoney(o.fee, c)}. You can sit it once a year.`,
     options: adult.prepOptions().map((x) => ({ value: x.id, label: x.name, sub: `${x.sub}${x.local ? ` ${fmtMoney(x.local, c)} more.` : ''}` })) });
   if (!prep) return undefined;
   return report(api, adult.sitExam(o.id, prep));

@@ -76,7 +76,7 @@ year(); check(!horse.takeLessons('jumping').ok && horse.riderLevel() === l0, 'a 
 for (let i = 0; i < 6; i++) { year(); horse.takeLessons(horse.riderLevel() >= 25 ? 'dressage' : 'hacking'); }
 check(horse.riderLevel() > l0 + 15 && Object.values(p.riding.skills).every((v) => v >= 0 && v <= 100) && p.riding.disciplines.dressage > 0, `years of lessons make a rider (${l0} → ${horse.riderLevel()})`);
 check(S().npcs[sc.instructorNpc] === teacher && teacher.meters.relationship > rel0 && p.riding.schoolHorse === hid, 'the same instructor all along, who knows them better each year; the same horse');
-check(zoo.eventsOf(hid).filter((e) => e.type === 'lesson').length >= 2 && horse.disciplineSkill('dressage') > horse.disciplineSkill('western'), 'reaching a new level is recorded; what was practised is what improved most');
+check(zoo.eventsOf(hid).filter((e) => e.type === 'lesson').length >= 2 && horse.disciplineSkill('dressage') > horse.disciplineSkill('western'), 'reaching a new level is recorded; what was practiced is what improved most');
 saveGame(S()); const kept = snap([p.riding, S().animals.places.schools]); store.state = loadGame(S().slotId); p = P();
 check(snap([p.riding, S().animals.places.schools]) === kept, 'the rider, the school and its horses survive a reload');
 clean('lessons');

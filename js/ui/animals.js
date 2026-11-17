@@ -210,7 +210,7 @@ function profile(step) {
     [alive ? 'Lives at' : 'Last home', home ? `${esc(home.label)}${place(home) ? `, ${esc(place(home))}` : ''}` : '']])}
       <p class="muted zoo-note">Who owns an animal, who looks after it day to day, and where it lives are kept as three separate things.</p>
       ${a.kit?.length ? `<div class="kv"><span>At home</span><span>${esc(cap(a.kit.join(', ')))}</span></div>` : ''}
-      ${a.permit ? `<div class="kv"><span>Licence</span><span>Held since ${a.permit.year}</span></div>` : ''}
+      ${a.permit ? `<div class="kv"><span>License</span><span>Held since ${a.permit.year}</span></div>` : ''}
       ${a.lease ? `<div class="kv"><span>Leased from</span><span>${esc(a.lease.name)} · ${fmtMoney(a.lease.fee, COUNTRIES[player().countryId])} a year</span></div>` : ''}
       ${a.visits ? `<div class="kv"><span>Also sees</span><span>${esc(a.visits.who.name)}, every other weekend</span></div>` : ''}
       ${home && home.key !== 'rescue' && !home.key.startsWith('with:') ? `<div class="btn-stack"><button class="btn" data-chronicle="${esc(home.key)}">The chronicle of this house</button></div>` : ''}
@@ -412,7 +412,7 @@ async function act(id, what) {
   if (what === 'edit') { shut(); return hooks.editStats(api, npc, () => show()); }
   if (what === 'train') {
     shut();
-    const skill = await pickModal({ title: `Practise with ${a.name}`, body: 'A year of short, kind sessions. Pick one thing to work on.',
+    const skill = await pickModal({ title: `Practice with ${a.name}`, body: 'A year of short, kind sessions. Pick one thing to work on.',
       options: zoo.trainingOf(a).map((s) => ({ value: s.id, label: s.name, sub: s.progress >= 100 ? 'Learned' : s.progress ? `${s.progress}% of the way` : ['', 'Easy to begin with', 'Takes a while', 'Hard: expect it to take years'][s.difficulty], disabled: s.progress >= 100 })) });
     if (!skill) return show();
     r = zoo.train(id, skill);
