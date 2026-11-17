@@ -13,6 +13,7 @@ const { ROOTS } = await import('../js/data/economy.js');
 const { saveGame, loadGame } = await import('../js/save.js');
 const { continueAs } = await import('../js/engine/legacy.js');
 const { unmet } = await import('../js/engine/career.js');
+const { ensureCareer } = await import('../js/engine/worklife.js');
 const { CAREER_BY_ID } = await import('../js/data/careers.js');
 const { convictionsOf, hasRecord } = await import('../js/engine/records.js');
 const { resolve } = await import('../js/engine/conditions.js');
@@ -129,7 +130,7 @@ function framedBy(offenseId, reliability = 0.85) {
   // 20: education.
   const eq = jail.programmeOptions().find((x) => x.id === 'equivalency');
   check(eq?.ok, 'a school-leaving course is on offer');
-  check(jail.enrol('equivalency').ok && cell.programme?.id === 'equivalency', 'the player enrols');
+  check(jail.enrol('equivalency').ok && cell.programme?.id === 'equivalency', 'the player enrolls');
   jail.setRoutine('study');
   // 21–24: years pass.
   const startLeft = cell.yearsLeft;
@@ -267,13 +268,16 @@ function framedBy(offenseId, reliability = 0.85) {
 {
   let p = adult('uk', 40);
   p.career.careerId = 'lawyer'; p.career.title = 'Associate lawyer'; p.career.level = 0;
-  check(jobs.duties().map((d) => d.id).join() === 'defend,prosecute', 'a lawyer can defend and prosecute');
+  check(jobs.duties().map((d) => d.id).join() === 'defend', 'a defense lawyer defends');
+  p.career.careerId = 'prosecutor';
+  check(jobs.duties().map((d) => d.id).join() === 'prosecute', 'a prosecutor prosecutes, and does nothing else');
+  p.career.careerId = 'lawyer';
   const c = jobs.openCourtBrief('defend');
-  check(c && c.defenceId === p.id && c.defendantId !== p.id && valid(c.defendantId), 'a defence brief is a real case with a real client');
+  check(c && c.defenceId === p.id && c.defendantId !== p.id && valid(c.defendantId), 'a defense brief is a real case with a real client');
   const r = jobs.argue(c, 'trial');
   check(['sentenced', 'acquitted', 'dismissed'].includes(c.stage) && c.hearings.length >= 3 && r.text, 'the case is argued to an end, with hearings on record');
-  check(!jobs.openCourtBrief('defend'), 'one defence brief a year');
-  section('E  defence lawyer: a persistent client, evidence and hearings');
+  check(!jobs.openCourtBrief('defend'), 'one defense brief a year');
+  section('E  defense lawyer: a persistent client, evidence and hearings');
 
   p = adult('us', 35);
   p.career.careerId = 'police'; p.career.title = 'Police officer';
@@ -292,9 +296,9 @@ function framedBy(offenseId, reliability = 0.85) {
   p.education.degrees.push({ type: 'university', majorId: 'law', gpa: 3.5, age: 22 }, { type: 'law', gpa: 3.5, age: 25 });
   p.flags.licences = ['law'];
   const before = unmet(CAREER_BY_ID.judiciary);
-  check(before.some((x) => /experience/.test(x)), 'a judge must first practise law');
-  p.career.history.push({ careerId: 'lawyer', title: 'Partner', from: 30, to: 44, exit: 'quit' });
-  check(!unmet(CAREER_BY_ID.judiciary).some((x) => /experience/.test(x)), `fourteen years in practice is enough (${unmet(CAREER_BY_ID.judiciary).join('; ')})`);
+  check(before.some((x) => /years as/.test(x)), `a judge must first practice law (${before.join('; ')})`);
+  ensureCareer(p.career).experience.lawyer = 14;
+  check(!unmet(CAREER_BY_ID.judiciary).some((x) => /years as/.test(x)), `fourteen years in practice is enough (${unmet(CAREER_BY_ID.judiciary).join('; ')})`);
   p.career.careerId = 'judiciary'; p.career.title = 'District judge';
   let heard = null;
   for (let i = 0; i < 10 && !heard; i++) { p.flags.legalActs = null; const b = jobs.openBench(); if (b) heard = b; }
@@ -433,7 +437,7 @@ function framedBy(offenseId, reliability = 0.85) {
   law.imprison(3, 2, {});
   check(!jail.programmeOptions().find((x) => x.id === 'coding').ok, 'no computer courses before computers');
   store.state.year = EVIDENCE_FROM.forensic + 20;
-  section('N  an earlier era: evidence and education follow the calendar (eras are otherwise not modelled)');
+  section('N  an earlier era: evidence and education follow the calendar (eras are otherwise not modeled)');
 }
 
 // ---------- O: generations ----------
@@ -668,7 +672,7 @@ function framedBy(offenseId, reliability = 0.85) {
   ({ p, parents } = child(9));
   for (const n of parents) jailParent(n);
   care.checkCare();
-  check(p.flags.care?.kind === 'foster' && store.state.npcs[p.flags.care.guardianId]?.flags.title === 'Foster carer', 'with no family to take them, foster care');
+  check(p.flags.care?.kind === 'foster' && store.state.npcs[p.flags.care.guardianId]?.flags.title === 'Foster parent', 'with no family to take them, foster care');
   check(p.npcIds.includes(p.flags.care.guardianId), 'the foster carer is a person in their life');
   check(p.milestones.some((m) => /foster/.test(m.text)), 'it is part of their story');
 
@@ -789,7 +793,8 @@ function framedBy(offenseId, reliability = 0.85) {
   {
     const q = adult('uk', 40);
     const mum = q.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive);
-    for (const id of [...q.npcIds]) { const n = store.state.npcs[id]; if (['spouse', 'partner'].includes(n.role)) q.npcIds = q.npcIds.filter((x) => x !== id); }
+    // Only one grandparent, and nobody else who could look after the child.
+    for (const id of [...q.npcIds]) { const n = store.state.npcs[id]; if (['spouse', 'partner', 'sibling'].includes(n.role) || (n.role === 'parent' && n !== mum)) q.npcIds = q.npcIds.filter((x) => x !== id); }
     const kid = makeNpc({ role: 'child', countryId: 'uk', age: 7, relationship: 80 });
     store.state.npcs[kid.id] = kid; q.npcIds.push(kid.id);
     if (mum) {

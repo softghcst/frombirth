@@ -94,7 +94,7 @@ export function setCover(on) {
     return result(true, text);
   }
   delete p.flags.healthCover;
-  const text = 'You cancelled your health insurance. From now on you pay the whole bill.';
+  const text = 'You canceled your health insurance. From now on you pay the whole bill.';
   log(text, 'system', 'neutral');
   return result(true, text, 'neutral');
 }
@@ -109,7 +109,7 @@ export function tickCover() {
   if (!k.premium || p.flags.coverPaidAge === p.age) return;
   if (k.model.covers === 'everyone') {
     // A contribution taken with the rest: people with no income are carried.
-    const earns = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0) > 0;
+    const earns = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0) + (p.flags.statePension ?? 0) > 0;
     if (!earns) return;
     p.finance.cash -= k.premium;
     log(`You paid ${fmtMoney(k.premium, c)} in health insurance contributions.`);

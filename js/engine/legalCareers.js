@@ -10,9 +10,13 @@ import { currentCareer, adjustPerformance } from './career.js';
 import { OFFENSE_BY_ID, SYSTEMS, EVIDENCE } from '../data/justice.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
+// Keyed by the careers in data/occupations.js: each role has only its own powers.
 const DUTIES = {
   police: [{ id: 'investigate', label: 'Work a case' }],
-  lawyer: [{ id: 'defend', label: 'Take a defence brief' }, { id: 'prosecute', label: 'Take a prosecution brief' }],
+  detective: [{ id: 'investigate', label: 'Work a case' }],
+  lawyer: [{ id: 'defend', label: 'Take a defense brief' }],
+  defender: [{ id: 'defend', label: 'Take a defense brief' }],
+  prosecutor: [{ id: 'prosecute', label: 'Take a prosecution brief' }],
   judiciary: [{ id: 'preside', label: 'Hear a case' }],
   corrections: [{ id: 'shift', label: 'Work a shift on the wing' }],
 };
@@ -119,7 +123,7 @@ export function detectiveAct(inv, act) {
       }
       inv.events.push({ year: store.state.year, text: 'A witness corrected their account.' });
       inv.suspectIds = [...new Set([...inv.suspectIds, inc.truth.perpetratorId])];
-      return result(true, 'Going back over it slowly, a witness realises they were wrong about who they saw.');
+      return result(true, 'Going back over it slowly, a witness realizes they were wrong about who they saw.');
     }
     return result(true, 'The witnesses tell it the same way again.', 'neutral');
   }
@@ -249,7 +253,7 @@ export function hear(c, admit) {
   const sys = k.procedure(c);
   const rulings = {};
   for (const r of rulingsNeeded(c)) rulings[r.id] = sys.exclusion === 'strict' ? false : !!admit[r.id];
-  // The judge's ruling stands whether or not the defence raised it.
+  // The judge's ruling stands whether or not the defense raised it.
   for (const [id, yes] of Object.entries(rulings)) { const e = k.J().evidence[id]; e.admissible = yes; c.rulings.push({ evidenceId: id, challenged: true, admitted: yes, year: store.state.year, byPlayer: true }); }
   const r = c.stage === 'trial' ? k.trial(c, { deferSentence: true }) : { lines: [] };
   return r;

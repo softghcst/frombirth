@@ -134,7 +134,7 @@ export function holiday(id, bringFamily, trip = {}) {
   const dest = flying ? COUNTRIES[trip.countryId] : null;
   const cabin = flying ? CABINS.find((k) => k.id === (trip.cabin ?? 'economy')) : null;
   const h = flying ? { id: 'flight', kind: 'flight', mood: cabin.mood, intellect: 2, charm: cabin.charm, kids: 9,
-    name: `A fortnight in ${theCountry(dest?.name ?? '')}, flying ${cabin.name.toLowerCase()}` } : HOLIDAYS.find((x) => x.id === id);
+    name: `Two weeks in ${theCountry(dest?.name ?? '')}, flying ${cabin.name.toLowerCase()}` } : HOLIDAYS.find((x) => x.id === id);
   if (!h || (flying && !dest)) return result(false, 'That trip is not on offer.', 'neutral');
   const party = bringFamily ? companions() : [];
   const ownPlace = flying ? homeIn(dest.id) : null; // no hotel to pay for
@@ -201,7 +201,7 @@ export function holiday(id, bringFamily, trip = {}) {
   } else if (h.kind === 'cruise' && rng.chance(0.1)) {
     p.stats.health = clamp(p.stats.health - 3);
     p.stats.mood = clamp(p.stats.mood - 5);
-    text += ' Two days of rough sea kept you in your cabin, the colour of the wallpaper.';
+    text += ' Two days of rough sea kept you in your cabin, the color of the wallpaper.';
     tone = 'neutral';
   } else if (h.kind === 'park' && smallest && smallest.age < 4 && rng.chance(0.3)) {
     p.stats.mood = clamp(p.stats.mood - 3);

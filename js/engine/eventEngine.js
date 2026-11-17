@@ -16,6 +16,7 @@ import { store, player, country, npcsByRole, log } from '../state.js';
 import { meetsAll, resolve } from './conditions.js';
 import { applyEffects } from './effects.js';
 import { EVENTS, EVENT_BY_ID } from '../data/events/index.js';
+import { claimStory } from './animals.js';
 
 const DEFAULT_COOLDOWN = 10;
 
@@ -147,6 +148,7 @@ export function resolveChoice(ev, choiceIndex, cast) {
   log(renderText(ev.text, cast), 'event');
   log(renderText(choice.label, cast), 'choice');
   log(text, 'outcome', tone);
+  claimStory(store.state.journal[store.state.journal.length - 1]); // a moment in an animal's life, told by this line
 
   const seen = state.eventHistory.find((h) => h.id === ev.id);
   if (seen) seen.lastAge = p.age; else state.eventHistory.push({ id: ev.id, lastAge: p.age });

@@ -26,7 +26,7 @@ const bindPeople = (el, api, after) => el.addEventListener('click', (e) => {
   const id = e.target.closest('[data-person]')?.dataset.person;
   if (!id) return;
   const n = k.person(id);
-  if (n) { after?.(); openNpc(n, api, { readOnly: true }); }
+  if (n) { after?.(); openNpc(n, api, undefined, { readOnly: true }); }
 });
 
 // ---------- From arrest to sentence ----------
@@ -68,7 +68,7 @@ async function bail(c, api) {
 async function counsel(c, api) {
   const c2 = cty();
   const opts = k.counselOptions(c);
-  const pick = await pickModal({ title: 'Who will defend you?', body: `The charge is ${offName(c).toLowerCase()}. Lawyers are people: the same one can act for you again. A dearer lawyer has more time, not a guarantee.`,
+  const pick = await pickModal({ title: 'Who will defend you?', body: `The charge is ${offName(c).toLowerCase()}. Lawyers are people: the same one can act for you again. A more expensive lawyer has more time, not a guarantee.`,
     cancel: 'Decide later',
     options: opts.map((o) => ({ value: o, label: o.label, disabled: !o.ok, sub: `${o.blurb ?? ''}${o.cost ? ` ${fmtMoney(o.cost, c2)}.` : o.tier === 'public' ? ' Free.' : ''}${o.why ? ` ${o.why}` : ''}`.trim() })) });
   const chosen = pick ?? opts.find((o) => o.tier === 'public' && o.ok) ?? opts.find((o) => o.tier === 'self');
@@ -126,7 +126,7 @@ export function openCaseFile(caseId, api) {
     <div class="kv"><span>Defendant</span><span>${person(c.defendantId)}</span></div>
     <div class="kv"><span>Judge</span><span>${person(c.judgeId)}</span></div>
     <div class="kv"><span>Prosecutor</span><span>${person(c.prosecutorId)}</span></div>
-    <div class="kv"><span>Defence</span><span>${c.defenceTier === 'self' ? 'Represented themselves' : person(c.defenceId)}</span></div>
+    <div class="kv"><span>Defense</span><span>${c.defenceTier === 'self' ? 'Represented themselves' : person(c.defenceId)}</span></div>
     <div class="section-label">Evidence</div>${ev || '<p class="muted">None on file.</p>'}
     <div class="section-label">Hearings</div>
     ${c.hearings.map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.text)}</span></div>`).join('')}
@@ -177,7 +177,7 @@ export function legalCard() {
 }
 function outcomeWords(r) {
   const base = r.exonerated ? 'exonerated' : r.pardoned ? 'convicted, later pardoned' : r.outcome === 'diversion completed' ? 'diverted, no conviction'
-    : r.outcome === 'diverted' ? 'diversion programme' : r.convicted ? `convicted${r.sentenceYears ? `, ${r.sentenceYears} yr` : r.sentenceType ? `, ${SANCTIONS[r.sentenceType] ?? r.sentenceType}` : ''}` : r.outcome ?? 'not convicted';
+    : r.outcome === 'diverted' ? 'diversion program' : r.convicted ? `convicted${r.sentenceYears ? `, ${r.sentenceYears} yr` : r.sentenceType ? `, ${SANCTIONS[r.sentenceType] ?? r.sentenceType}` : ''}` : r.outcome ?? 'not convicted';
   return `${base}${r.sealed ? ' · sealed' : ''}${r.juvenile ? ' · juvenile' : ''}${r.legacy ? ' · older record' : ''}`;
 }
 

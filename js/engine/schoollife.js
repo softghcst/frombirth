@@ -260,7 +260,7 @@ export function decide(what, cast = {}) {
       return say('You stay out of it. Both of them think you should have taken their side.');
     }
     case 'rumourConfront': if (rng.chance(0.35 + p.stats.charm / 200)) { if (n) rel(n, 6); e.standing = clamp((e.standing ?? 50) + 4); return say(`You ask ${n?.firstName} about it, quietly, face to face. It stops.`); } if (n) rel(n, -8); e.standing = clamp((e.standing ?? 50) - 3); return say('It turns into a scene in the corridor, and now everyone has heard it.');
-    case 'rumourIgnore': mood(-4); return say('You say nothing. In a fortnight the school is talking about something else.');
+    case 'rumourIgnore': mood(-4); return say('You say nothing. In two weeks the school is talking about something else.');
     case 'rumourTell': { const t = sch.teachers()[0]; if (t && t.flags.skill >= 45) { if (t) rel(t, 4); return say(`${t.firstName} ${t.lastName} deals with it without making it worse. That is rarer than it should be.`); } mood(-3); return say('A teacher gives the whole class a talk about kindness. Everybody knows why.'); }
     case 'bullyTeacher': { const t = sch.teachers().sort((a, b) => b.flags.skill - a.flags.skill)[0]; delete e.bullied; if (t) rel(t, 6); mood(4); return say(`${t ? `${t.firstName} ${t.lastName}` : 'A teacher'} listens to all of it, writes it down, and acts: parents are called in, seats are moved, and someone checks on you every week. It stops.`); }
     case 'bullyParents': { delete e.bullied; for (const par of npcsByRole('parent')) rel(par, 5); mood(3); return say('You tell them at the kitchen table. They are angrier than you expected, on your behalf. They go to the school the next morning, and things change.'); }
@@ -268,7 +268,7 @@ export function decide(what, cast = {}) {
     case 'bullyEndure': e.bullied = { id: n?.id }; mood(-10); p.stats.health = clamp(p.stats.health - 2); return say('You tell nobody. You find routes through the building that avoid them. It goes on.');
     case 'teacherYes': if (n) { rel(n, 10); n.flags.believed = true; n.flags.wouldRecommend = true; const s = e.subjects?.[n.flags.teaches]; if (s) s.interest = clamp(s.interest + 12); } p.stats.intellect = clamp(p.stats.intellect + 2); return say(`You take the extra work. ${n?.firstName} ${n?.lastName} treats you like someone who might be good at this, and it turns out you might.`);
     case 'teacherNo': if (n) n.flags.believed = true; return say('You say you are too busy. The offer is not made twice.');
-    case 'cheatCalm': if (n && rng.chance(0.4 + n.flags.skill / 150)) { rel(n, 3); return say(`You show your working, line by line. ${n.firstName} ${n.lastName} apologises, in front of the class.`); } e.absences += 1; mood(-6); return say('You explain. You are not believed, and the mark is struck out. Later the real culprit is found, and nobody says sorry.');
+    case 'cheatCalm': if (n && rng.chance(0.4 + n.flags.skill / 150)) { rel(n, 3); return say(`You show your working, line by line. ${n.firstName} ${n.lastName} apologizes, in front of the class.`); } e.absences += 1; mood(-6); return say('You explain. You are not believed, and the mark is struck out. Later the real culprit is found, and nobody says sorry.');
     case 'cheatAngry': if (n) rel(n, -10); mood(-4); return say('You say exactly what you think. You are right, and you are in detention.');
     case 'cheatAccept': mood(-8); p.hidden.willpower = clamp(p.hidden.willpower - 2); return say('You take the punishment for something you did not do, because arguing seemed worse.');
     case 'danceAsk': {

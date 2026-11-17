@@ -38,7 +38,7 @@ export default [
   },
   {
     id: 'deposit_kept', category: 'money', ageRange: [19, 70], cooldown: 12, weight: 0.5, requires: [need('renting', '==', true)],
-    text: 'Your landlord is keeping your whole deposit for "wear and tear" on a flat you left spotless.',
+    text: 'Your landlord is keeping your whole deposit for "wear and tear" on an apartment you left spotless.',
     choices: [
       { label: 'Take them to the small claims court', outcomes: [any('You fill in the claim form and post it. It is a civil matter: nobody is in trouble, somebody owes somebody money.', 'neutral', j('civil_deposit'))] },
       { label: 'Write them a firm letter', check: chk(0.45, { 'stats.charm': 0.4, 'stats.intellect': 0.4 }), outcomes: [

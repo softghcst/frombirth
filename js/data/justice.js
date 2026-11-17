@@ -1,21 +1,21 @@
-// The law the justice system applies: offences, how each country's courts
+// The law the justice system applies: offenses, how each country's courts
 // work, the places people are held, and what there is to do inside.
 //
 // GAMEPLAY CONFIGURATION, COMPILED BY HAND AND UNVERIFIED, like data/rules.js.
 // Each country is placed in one of a few broad families of procedure. Real
 // systems have many more courts, exceptions and regional differences than are
-// modelled here, and they change. Nothing here is legal information.
+// modeled here, and they change. Nothing here is legal information.
 //
 // Money is in base units (scaled by each currency); time is in years.
 
 /**
- * Offences, by legal classification. Crimes the player can choose
+ * Offenses, by legal classification. Crimes the player can choose
  * (data/crimes.js) point at one of these through `offense`.
  *   severity  1 (minor) to 5 (the gravest)
  *   custody   [least, most] years in custody, where custody is lawful
  *   ladder    the sanctions a court may choose from, lightest first
- *   lesser    a lesser offence a court may convict of instead
- *   fine      base-unit fine for a minor offence
+ *   lesser    a lesser offense a court may convict of instead
+ *   fine      base-unit fine for a minor offense
  *   victim    whether there is a person who was wronged
  */
 export const OFFENSES = [
@@ -56,7 +56,7 @@ export const OFFENSE_BY_ID = Object.fromEntries(OFFENSES.map((o) => [o.id, o]));
 
 /** Plain words for each sanction. */
 export const SANCTIONS = {
-  diversion: 'a diversion programme instead of prosecution',
+  diversion: 'a diversion program instead of prosecution',
   discharge: 'a conditional discharge',
   fine: 'a fine',
   community: 'community service',
@@ -68,13 +68,13 @@ export const SANCTIONS = {
 /**
  * Families of criminal procedure.
  *   factFinder   who decides guilt in a contested trial: 'jury', 'judge', or 'mixed' (judges with lay judges)
- *   juryFrom     the least severe offence tried by a jury, where there are juries
+ *   juryFrom     the least severe offense tried by a jury, where there are juries
  *   plea         'bargain': the prosecution may offer a deal, which a judge must accept
  *                'credit':  pleading guilty earns a fixed discount on the sentence
  *                'limited': an admission is evidence and mitigation, but the court still hears the case
  *   pleaCredit   the share taken off a custodial term for a guilty plea
  *   bail         'money': release may depend on a sum of money; 'conditions': release on conditions, or not at all
- *   release      when a custodial term may end early: 'board' (a parole board decides) or 'automatic' (release on licence)
+ *   release      when a custodial term may end early: 'board' (a parole board decides) or 'automatic' (release on parole)
  *   releaseAt    the share of the term served before that can happen
  *   exclusion    'strict': unlawfully obtained evidence must be left out; 'discretion': the judge weighs it
  *   sealAfter    years after a sentence is complete before a record can be sealed: [minor, serious]; null: never
@@ -153,7 +153,7 @@ export const EVIDENCE = {
   character: { name: 'Character statement', reliability: [0.2, 0.4] },
 };
 
-/** What the police look for, by offence category. Kinds missing from the world yet are skipped. */
+/** What the police look for, by offense category. Kinds missing from the world yet are skipped. */
 export const LEADS = {
   property: ['witness', 'physical', 'forensic', 'cctv'],
   financial: ['documents', 'financial', 'digital', 'witness'],
@@ -173,8 +173,8 @@ export const APPEAL_GROUNDS = {
 
 /** Kinds of place people are held. */
 export const FACILITY_KINDS = {
-  juvenile: { name: 'Youth detention centre', words: ['Youth Centre', 'Young Offender Institution', 'Youth Academy'] },
-  remand: { name: 'Remand centre', words: ['Remand Centre', 'Detention Centre'] },
+  juvenile: { name: 'Youth detention center', words: ['Youth Center', 'Young Offender Institution', 'Youth Academy'] },
+  remand: { name: 'Remand center', words: ['Remand Center', 'Detention Center'] },
   min: { name: 'Open prison', words: ['Open Prison', 'Correctional Camp', 'Farm'] },
   med: { name: 'Prison', words: ['Prison', 'Correctional Facility', 'Penitentiary'] },
   max: { name: 'High-security prison', words: ['High Security Prison', 'Maximum Security Facility', 'Penitentiary'] },
@@ -194,9 +194,9 @@ export const PROGRAMMES = [
   { id: 'equivalency', name: 'School-leaving certificate', years: 1, needs: null, notHeld: 'high', security: 'max', schooling: 0.3,
     gives: { type: 'high', via: 'equivalency' }, blurb: 'The same certificate adults take outside. It counts the same.' },
   { id: 'chef', name: 'Catering (trade qualification)', years: 2, needs: null, security: 'med', schooling: 0.3,
-    gives: { type: 'apprenticeship', via: 'technical', majorId: 'chef' }, blurb: 'Two years in the training kitchen. A recognised trade at the end.' },
+    gives: { type: 'apprenticeship', via: 'technical', majorId: 'chef' }, blurb: 'Two years in the training kitchen. A recognized trade at the end.' },
   { id: 'carpenter', name: 'Carpentry (trade qualification)', years: 2, needs: null, security: 'min', schooling: 0.4,
-    gives: { type: 'apprenticeship', via: 'technical', majorId: 'carpenter' }, blurb: 'The workshop, a qualified instructor and a recognised trade.' },
+    gives: { type: 'apprenticeship', via: 'technical', majorId: 'carpenter' }, blurb: 'The workshop, a qualified instructor and a recognized trade.' },
   { id: 'bookkeeping', name: 'Bookkeeping certificate', years: 1, needs: 'high', security: 'med', schooling: 0.5,
     gives: { type: 'certificate', majorId: 'bookkeeping' }, blurb: 'A professional certificate, studied by correspondence.' },
   { id: 'coding', name: 'Programming certificate', years: 1, needs: 'high', security: 'min', schooling: 0.7, from: 2005,
@@ -223,7 +223,7 @@ export const ROUTINES = [
   { id: 'work', name: 'Work', blurb: 'A full work detail, and the pay that goes with it.' },
   { id: 'fitness', name: 'Fitness', blurb: 'The gym and the yard.' },
   { id: 'family', name: 'Family', blurb: 'Every letter answered, every phone slot used.' },
-  { id: 'programmes', name: 'Rehabilitation', blurb: 'Courses, counselling and the chaplaincy.' },
+  { id: 'programmes', name: 'Rehabilitation', blurb: 'Courses, counseling and the chaplaincy.' },
 ];
 
 /** Interests and goals that make the people inside people. */
@@ -238,7 +238,7 @@ export const STAFF_ROLES = [
   { id: 'governor', name: 'Governor' },
   { id: 'officer', name: 'Wing officer' },
   { id: 'teacher', name: 'Education officer' },
-  { id: 'counsellor', name: 'Counsellor' },
+  { id: 'counsellor', name: 'Counselor' },
   { id: 'nurse', name: 'Healthcare' },
   { id: 'caseworker', name: 'Release caseworker' },
 ];
@@ -252,7 +252,7 @@ export const DISPUTES = {
   consumer: { name: 'Faulty goods', claim: [300, 3000], against: 'Retailer', blurb: 'A shop will not refund something that broke.' },
   repairs: { name: 'Repairs not done', claim: [500, 4000], against: 'Landlord', blurb: 'A landlord will not fix what the lease says they must.' },
   rent: { name: 'Rent arrears', claim: [800, 5000], against: 'Tenant', blurb: 'A tenant has stopped paying the rent.' },
-  boundary: { name: 'Damage to property', claim: [400, 5000], against: 'Neighbour', blurb: 'A neighbour damaged what is yours.' },
+  boundary: { name: 'Damage to property', claim: [400, 5000], against: 'Neighbor', blurb: 'A neighbor damaged what is yours.' },
 };
 
 /** Years an investigation stays open with no progress before it is closed. Homicide never is. */

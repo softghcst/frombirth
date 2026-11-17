@@ -28,7 +28,7 @@ export default [
     ['Ask why it was not first place in everything', 'You ask.', 'kidDoBetter'],
   ]),
   scene('kid_back_to_study', [40, 130], '{kid}, at {age}, has decided to go back to study: {course}, in the evenings, alongside work. The fees come to {$6000}. They have not asked you for anything.', [
-    ['Offer to pay the fees', 'You write the cheque before they can refuse.', 'kidFund', [need('cashBase', '>=', 6000)]],
+    ['Offer to pay the fees', 'You write the check before they can refuse.', 'kidFund', [need('cashBase', '>=', 6000)]],
     ['Tell them you are proud of them', 'You ring them that night.', 'kidCheerOn'],
     ['Ask if it is wise, at their age', 'You ask.', 'kidDoubt'],
   ]),

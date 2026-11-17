@@ -47,7 +47,7 @@ const BODY = {
       <div class="kv"><span>Release</span><span>${esc(out.text)}</span></div>
       ${c.programme ? `<div class="kv"><span>Studying</span><span>${esc(PROGRAMME_BY_ID[c.programme.id].name)}</span></div>` : ''}
       ${c.job ? `<div class="kv"><span>Work</span><span>${esc(jail.jobOptions().find((j) => j.id === c.job.id)?.name ?? '')}</span></div>` : ''}
-      ${kids.map(([n, g]) => `<div class="kv"><span>${esc(n.firstName)}, ${n.age}</span><span>living with ${g === 'care' ? 'foster carers' : esc(k.nameOf(g))}</span></div>`).join('')}
+      ${kids.map(([n, g]) => `<div class="kv"><span>${esc(n.firstName)}, ${n.age}</span><span>living with ${g === 'care' ? 'foster parents' : esc(k.nameOf(g))}</span></div>`).join('')}
       <div style="margin-top:10px">${meterHtml('Respect', c.respect, true)}${meterHtml('Conduct', c.conduct, true)}</div>
       <p class="muted" style="margin-top:8px">Conduct, courses and a place to live matter at a parole review. Respect keeps trouble away, but so does asking for help.</p>
       ${jail.paroleDue() ? '<button class="btn primary" data-hub-act="parole" style="margin-top:10px">Prepare for your parole review</button>' : ''}
@@ -100,7 +100,7 @@ const BODY = {
     return `<div class="card"><h3>Health and well-being</h3>${meterHtml('Health', player().stats.health, true)}${meterHtml('Mood', player().stats.mood, true)}
       <div class="btn-stack" style="margin-top:10px">
         <button class="btn" data-hub-act="healthcare">See the healthcare team</button>
-        <button class="btn" data-hub-act="counselling">Counselling</button>
+        <button class="btn" data-hub-act="counselling">Counseling</button>
         <button class="btn" data-hub-act="course">Join a rehabilitation course</button>
       </div></div>`;
   },
@@ -136,7 +136,7 @@ async function report(api, r) {
 async function contact(api, n) {
   const what = await pickModal({ title: `${n.firstName} ${n.lastName}`, body: `${roleLabel(n)}, ${n.age}.`, cancel: 'Back',
     options: [{ value: 'letter', label: 'Write a letter' }, { value: 'call', label: 'Phone them' }, { value: 'visit', label: 'Send a visiting order' }, { value: 'profile', label: 'See their profile' }] });
-  if (what === 'profile') return openNpc(n, api, { readOnly: true });
+  if (what === 'profile') return openNpc(n, api, undefined, { readOnly: true });
   if (!what) return undefined;
   return report(api, { letter: jail.writeLetter, call: jail.phoneCall, visit: jail.requestVisit }[what](n.id));
 }
@@ -144,7 +144,7 @@ async function contact(api, n) {
 async function mate(api, n) {
   const what = await pickModal({ title: `${n.firstName} ${n.lastName}`, body: `${n.age}. They ${n.flags.inmate.background}. They want to ${n.flags.inmate.goal}.`, cancel: 'Back',
     options: [{ value: 'know', label: 'Spend time together' }, { value: 'study', label: 'Study together', disabled: !jail.cell().programme }, { value: 'profile', label: 'See their profile' }] });
-  if (what === 'profile') return openNpc(n, api, { readOnly: true });
+  if (what === 'profile') return openNpc(n, api, undefined, { readOnly: true });
   if (what === 'know') return report(api, jail.getToKnow(n.id));
   if (what === 'study') return report(api, jail.studyTogether(n.id));
   return undefined;
@@ -187,7 +187,7 @@ export function hubClick(e, api, joinGang) {
     const n = store.state.npcs[who.dataset.contact ?? who.dataset.mate ?? who.dataset.staff];
     if (who.dataset.contact) contact(api, n);
     else if (who.dataset.mate) mate(api, n);
-    else openNpc(n, api, { readOnly: true });
+    else openNpc(n, api, undefined, { readOnly: true });
     return true;
   }
   const act = t.closest('[data-hub-act]')?.dataset.hubAct;

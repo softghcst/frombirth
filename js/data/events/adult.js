@@ -152,7 +152,7 @@ export default [
   },
   {
     id: 'noisy_neighbour', category: 'adult', ageRange: [18, 85],
-    text: 'Your neighbour has taken up the drums. They practise at midnight.',
+    text: 'Your neighbor has taken up the drums. They practice at midnight.',
     choices: [
       { label: 'Knock and ask nicely', check: chk(0.55, { 'stats.charm': 0.6 }), outcomes: [
         ok('They had no idea the walls were so thin. They move the kit and bring round a cake.', st('mood', 5), hid('karma', 3)),

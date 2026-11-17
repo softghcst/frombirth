@@ -55,7 +55,7 @@ const CONSERVATORY = [
   addNpc('mentor', 'coach', { tag: 'choreographer', title: 'Conservatory choreographer', ageOffset: 20, relationship: 55,
     memory: ['summerStudent', 'You were their student at the summer conservatory.'] }),
   mem('director', 'recommended', 'They recommended you for the summer conservatory, and you went.'),
-  ms('Trained at a summer theatre conservatory on a director\'s recommendation.'),
+  ms('Trained at a summer theater conservatory on a director\'s recommendation.'),
 ];
 const INTERNSHIP = [
   cash(3200), hid('discipline', 5), st('intellect', 2), flag('internship'),
@@ -75,7 +75,7 @@ const NOT_YET = [flag('auditionFailed'), ...triple(2), st('mood', -6)];
 export default [
   // ---------- Building history with the director (ages 14–16) ----------
   {
-    id: 'mt_callbacks', category: 'musical theatre', ageRange: [13, 16], once: true, weight: 5,
+    id: 'mt_callbacks', category: 'musical theater', ageRange: [13, 16], once: true, weight: 5,
     requires: [inCompany], cast: { director: 'tag:director' },
     text: 'Callbacks for the winter show. {director} has it down to you and one other student for the solo.',
     choices: [
@@ -100,7 +100,7 @@ export default [
     ],
   },
   {
-    id: 'mt_set_collapse', category: 'musical theatre', ageRange: [14, 16], once: true, weight: 5,
+    id: 'mt_set_collapse', category: 'musical theater', ageRange: [14, 16], once: true, weight: 5,
     requires: [inCompany], cast: { director: 'tag:director' },
     text: 'The night before opening, half the set comes down. {director} looks round the hall and asks who can stay.',
     choices: [
@@ -186,43 +186,43 @@ export default [
   {
     id: 'mt_showcase', category: 'university', ageRange: [19, 24], once: true, priority: true,
     requires: [need('education.enrolled', '==', true), need('education.majorId', 'in', ['musical_theatre', 'musical_theatre_bfa']), need('education.stage', '==', 'university')],
-    text: 'Your year is staging a showcase for invited agents. The head of the programme wants to know what you are bringing.',
+    text: 'Your year is staging a showcase for invited agents. The head of the program wants to know what you are bringing.',
     choices: [
       { label: 'A number you write yourself', check: chk(0.45, { 'stats.intellect': 0.4, 'talents.singing': 0.5, 'talents.music': 0.2 }), outcomes: [
         ok('It is yours from the first bar to the last. Professor {prof} keeps the sheet music. Two agents ask for your details.', flag('showcase', 'original'), tal('singing', 4), st('mood', 8),
-          addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theatre professor', ageOffset: 25, relationship: 65,
+          addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theater professor', ageOffset: 25, relationship: 65,
             memory: ['originalNumber', 'You wrote and performed an original number for the showcase.'] }),
           ms('Wrote and performed an original number for the college showcase.')),
         bad('The bridge falls apart on the night, but it was unmistakably yours. Professor {prof} tells you to keep writing.', flag('showcase', 'original'), tal('singing', 2), st('mood', -3),
-          addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theatre professor', ageOffset: 25, relationship: 55,
+          addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theater professor', ageOffset: 25, relationship: 55,
             memory: ['originalNumber', 'You risked an original number at the showcase.'] })),
       ] },
       { label: 'A classic you can nail', check: chk(0.5, { tripleThreat: 0.9 }), outcomes: [
         ok('Clean, bright, exactly on the beat. Professor {prof} calls it "bankable".', flag('showcase', 'classic'), ...triple(3), st('mood', 6),
-          addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theatre professor', ageOffset: 25, relationship: 60,
+          addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theater professor', ageOffset: 25, relationship: 60,
             memory: ['classicNumber', 'You delivered a polished classic at the showcase.'] })),
         bad('You crack on the money note. Professor {prof} makes you sing it again the next morning until it holds.', flag('showcase', 'classic'), tal('singing', 3), st('mood', -4),
-          addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theatre professor', ageOffset: 25, relationship: 55,
+          addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theater professor', ageOffset: 25, relationship: 55,
             memory: ['classicNumber', 'You cracked at the showcase and came back the next morning to fix it.'] })),
       ] },
       { label: 'Stage-manage the whole thing', outcomes: [any(
         'Twenty-two acts, one hundred and forty cues, no dead air. Professor {prof} says half of this industry is people who can do what you just did.',
         'good', flag('showcase', 'stageManaged'), hid('discipline', 6), st('intellect', 2),
-        addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theatre professor', ageOffset: 25, relationship: 62,
+        addNpc('mentor', 'prof', { tag: 'professor', title: 'Musical theater professor', ageOffset: 25, relationship: 62,
           memory: ['stageManaged', 'You stage-managed the entire showcase without a dropped cue.'] }))] },
     ],
   },
   {
     id: 'cosmo_placement', category: 'cosmetology school', ageRange: [18, 60], once: true, priority: true,
     requires: [need('education.stage', '==', 'cosmetology')],
-    text: 'Placement week. The community theatre needs twelve wigs set and a cast of thirty made up by curtain, a bridal salon wants a junior for the weekend rush, and your tutor is taking volunteers for a film-effects workshop.',
+    text: 'Placement week. The community theater needs twelve wigs set and a cast of thirty made up by curtain, a bridal salon wants a junior for the weekend rush, and your tutor is taking volunteers for a film-effects workshop.',
     choices: [
-      { label: 'The theatre: wigs and quick changes', outcomes: [any(
+      { label: 'The theater: wigs and quick changes', outcomes: [any(
         'Ninety seconds to turn a villager into a queen, in the dark, with pins in your mouth. {wigs}, the head of wigs, starts trusting you with the leads.',
         'good', flag('theatreCredit'), hid('discipline', 4), st('charm', 2),
         addNpc('mentor', 'wigs', { tag: 'wigmaster', title: 'Head of wigs', ageOffset: 22, relationship: 60,
           memory: ['quickChanges', 'You ran quick changes for a full cast on your placement.'] }),
-        ms('Ran hair and makeup for a theatre production on placement.'))] },
+        ms('Ran hair and makeup for a theater production on placement.'))] },
       { label: 'The bridal salon', outcomes: [any(
         'Six brides, eleven bridesmaids, one mother of the bride who cries off her mascara twice. You go home with {$600} in tips and three bookings of your own.',
         'good', flag('bridalClients'), cash(600), st('charm', 3))] },
@@ -235,13 +235,13 @@ export default [
   {
     id: 'cosmo_focus', category: 'licensed', ageRange: [18, 62], once: true, priority: true,
     requires: [need('degreeTypes', 'has', 'cosmetology')],
-    text: 'Your licence in hair and makeup arrives in the post. Where do you want to point it?',
+    text: 'Your license in hair and makeup arrives in the post. Where do you want to point it?',
     choices: [
-      { label: 'Salon hair styling', outcomes: [any('You start building a chair of regulars.', 'good', flag('cosmoFocus', 'salon'), ms('Chose to specialise in salon hair styling.'))] },
-      { label: 'Bridal hair and makeup', outcomes: [any('Saturdays are now booked a year ahead.', 'good', flag('cosmoFocus', 'bridal'), ms('Chose to specialise in bridal hair and makeup.'))] },
-      { label: 'Runway and print', outcomes: [any('You start assisting on shoots for nothing but the credit.', 'good', flag('cosmoFocus', 'editorial'), ms('Chose to specialise in runway and print makeup.'))] },
-      { label: 'Special effects for film and shows', outcomes: [any('Your kitchen fills up with silicone and fake blood.', 'good', flag('cosmoFocus', 'sfx'), ms('Chose to specialise in special-effects makeup.'))] },
-      { label: 'Theatre hair and makeup', outcomes: [any('You start turning up at stage doors with your kit.', 'good', flag('cosmoFocus', 'theatre'), ms('Chose to specialise in theatre hair and makeup.'))] },
+      { label: 'Salon hair styling', outcomes: [any('You start building a chair of regulars.', 'good', flag('cosmoFocus', 'salon'), ms('Chose to specialize in salon hair styling.'))] },
+      { label: 'Bridal hair and makeup', outcomes: [any('Saturdays are now booked a year ahead.', 'good', flag('cosmoFocus', 'bridal'), ms('Chose to specialize in bridal hair and makeup.'))] },
+      { label: 'Runway and print', outcomes: [any('You start assisting on shoots for nothing but the credit.', 'good', flag('cosmoFocus', 'editorial'), ms('Chose to specialize in runway and print makeup.'))] },
+      { label: 'Special effects for film and shows', outcomes: [any('Your kitchen fills up with silicone and fake blood.', 'good', flag('cosmoFocus', 'sfx'), ms('Chose to specialize in special-effects makeup.'))] },
+      { label: 'Theater hair and makeup', outcomes: [any('You start turning up at stage doors with your kit.', 'good', flag('cosmoFocus', 'theatre'), ms('Chose to specialize in theater hair and makeup.'))] },
     ],
   },
 
@@ -278,7 +278,7 @@ export default [
     text: '{wigs}, who ran wigs on your placement, is heading hair and makeup on a new musical in {city}: "I need an assistant who has done quick changes in the dark. I have only ever seen one student do it properly."',
     choices: [
       { label: 'Take the job', outcomes: [any(
-        'Eight shows a week, forty wigs, and your name in the programme.', 'good',
+        'Eight shows a week, forty wigs, and your name in the program.', 'good',
         flag('proBackstage'), cash(9000), st('mood', 12), hid('fame', 2), rel('wigs', 10), ms('Joined the hair and makeup team of a professional musical.'))] },
       { label: 'Stay with your own clients', outcomes: [any('{wigs} says the door stays open.', 'neutral', rel('wigs', -2))] },
     ],

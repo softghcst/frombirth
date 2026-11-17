@@ -75,14 +75,14 @@ export function skillsCard() {
   const left = skill.sessionsLeft();
   return `<div class="card"><h3>Skills</h3>
     ${mine.length ? mine.map((s) => meterHtml(`${s.name} · ${s.levelName}`, s.level, true)).join('') : '<p class="muted">You have not taken anything up yet.</p>'}
-    <button class="btn" data-practise style="margin-top:10px" ${left <= 0 ? 'disabled' : ''}>Practise a skill (${left} left this year)</button></div>`;
+    <button class="btn" data-practice style="margin-top:10px" ${left <= 0 ? 'disabled' : ''}>Practice a skill (${left} left this year)</button></div>`;
 }
 
 export async function openPractice(api) {
   const p = player();
   const c = country();
   const groups = skill.skillOptions();
-  const group = await pickModal({ title: 'Practise', body: `${skill.sessionsLeft()} sessions left this year. Things you have a gift for come faster.`,
+  const group = await pickModal({ title: 'Practice', body: `${skill.sessionsLeft()} sessions left this year. Things you have a gift for come faster.`,
     options: groups.map((g) => {
       const going = g.skills.filter((s) => s.started);
       return { value: g.id, label: g.name, sub: going.length ? going.map((s) => `${s.name} ${s.level}%`).join(' · ') : `${g.skills.length} to choose from.` };
@@ -94,7 +94,7 @@ export async function openPractice(api) {
       sub: s.tooYoung ? `From age ${s.tooYoung}.` : `${s.level}% · ${s.levelName}${s.natural ? ' · you have a gift for this' : ''}` })) });
   if (!id) return undefined;
   const how = await pickModal({ title: 'How?', options: [
-    { value: 'self', label: 'Practise on your own', sub: 'Free.' },
+    { value: 'self', label: 'Practice on your own', sub: 'Free.' },
     { value: 'lesson', label: 'Take lessons', sub: p.age < 16 ? 'Your family pays. You learn half as much again.' : `${fmtMoney(skill.lessonCost(), c)}. You learn half as much again.` },
   ] });
   return how ? report(api, skill.practise(id, how === 'lesson')) : undefined;

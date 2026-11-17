@@ -99,7 +99,7 @@ for (const p of Object.values(PLACES)) { let x = p; let n = 0; while (x?.parentI
 // Not everything is in dollars.
 const usd = COUNTRY_LIST.filter((c) => c.currency.code === 'USD').map((c) => c.id).sort().join();
 check(usd === 'ec,pr,sv,us', `only the United States, Puerto Rico, Ecuador and El Salvador use the dollar here (found ${usd})`);
-if (!problems.length) pass('territories, special regions and disputed places are modelled as what they are');
+if (!problems.length) pass('territories, special regions and disputed places are modeled as what they are');
 
 // 4. Languages point at real places; the new rows are complete.
 for (const [lang, ids] of Object.entries(SPOKEN)) for (const id of ids) check(!!COUNTRIES[id], `language ${lang} lists an unknown place ${id}`);

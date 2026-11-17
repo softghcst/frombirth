@@ -191,7 +191,7 @@ function arrestFor(inv, onTheSpot) {
   const c = k.decideCharge(inv, p.id);
   l.heat = Math.max(0, l.heat - 20);
   if (!c) return 'You are questioned for hours, and released without charge.';
-  // Children and teenagers who admit a first minor offence can be diverted from court.
+  // Children and teenagers who admit a first minor offense can be diverted from court.
   l.pending = { caseId: c.id };
   return onTheSpot ? 'You are under arrest, and charged.' : 'You are charged.';
 }
@@ -239,7 +239,7 @@ export function closeCase(c) {
   }
   if (s.supervision) {
     l.supervision = { kind: s.type, sentenceId: s.id, caseId: c.id, from: store.state.year, until: store.state.year + s.supervision,
-      conditions: s.type === 'probation' ? ['Report to a probation officer', 'Commit no further offence'] : ['Commit no further offence'] };
+      conditions: s.type === 'probation' ? ['Report to a probation officer', 'Commit no further offense'] : ['Commit no further offense'] };
   }
   if (s.type !== 'diversion' && !p.flags.convicted && !c.juvenile) { p.flags.convicted = true; milestone(`Convicted of ${off.name.toLowerCase()}.`, 'crime'); }
   p.stats.mood = clamp(p.stats.mood - 5);
@@ -254,7 +254,7 @@ function breach(c) {
   l.supervision = null;
   if (old.type === 'suspended' || old.type === 'probation') {
     const years = Math.max(1, OFFENSE_BY_ID[old.offenseId].custody[0] || 1);
-    old.modifications.push({ year: store.state.year, from: 0, to: years, why: 'Breached by a new offence: activated as custody.' });
+    old.modifications.push({ year: store.state.year, from: 0, to: years, why: 'Breached by a new offense: activated as custody.' });
     old.type = 'custody'; old.years = years;
     return years;
   }
@@ -288,12 +288,13 @@ export function imprison(years, severity = 2, o = {}) {
   const term = juvenile ? Math.max(1, Math.min(years, systemFor(p.countryId).adultAge + 3 - p.age)) : years;
   if (p.career.careerId) fire('dismissed');
   if (p.career.partTime) p.career.partTime = null;
+  if (p.career.sides) p.career.sides = [];
   leaveForPrison();
   const security = juvenile ? 'min' : severity >= 4 ? 'max' : severity >= 3 ? 'med' : 'min';
   p.legal.incarceration = { id: k.newId('custody'), facility: juvenile ? 'juvenile' : 'prison', security,
     yearsLeft: term, total: term, served: 0, respect: 20, conduct: 55, gangId: null, escapeAttempts: 0,
     caseId: o.caseId ?? null, sentenceId: o.sentenceId ?? null, admitted: store.state.year,
-    routine: 'study', programme: null, studied: {}, job: null, work: [], visits: [], letters: 0, calls: 0, reviews: [], discipline: [], guardians: {} };
+    routine: 'study', program: null, studied: {}, job: null, work: [], visits: [], letters: 0, calls: 0, reviews: [], discipline: [], guardians: {} };
   p.stats.mood = clamp(p.stats.mood - 15);
   admit(p.legal.incarceration);
   if (!p.flags.beenInside) { p.flags.beenInside = true; milestone(juvenile ? 'Sent to youth detention.' : 'Sent to prison.', 'crime'); }
@@ -316,7 +317,7 @@ export function release(how = 'You served your sentence and walked out of the ga
   }
   if (o.parole && cell.yearsLeft > 0 && cell.yearsLeft < LIFE_SENTENCE) {
     p.legal.supervision = { kind: 'parole', sentenceId: cell.sentenceId, caseId: cell.caseId, from: store.state.year, until: store.state.year + cell.yearsLeft,
-      conditions: ['Live at an approved address', 'Meet your supervising officer', 'Commit no further offence'] };
+      conditions: ['Live at an approved address', 'Meet your supervising officer', 'Commit no further offense'] };
   }
   const s = k.J().sentences[cell.sentenceId];
   if (s && s.status === 'active' && !o.parole) s.status = 'complete';
@@ -403,7 +404,7 @@ export function upgradeLegacy() {
   const cell = l.incarceration;
   if (cell && !cell.facilityId) {
     Object.assign(cell, { id: cell.id ?? k.newId('custody'), caseId: cell.caseId ?? null, sentenceId: cell.sentenceId ?? null, admitted: cell.admitted ?? store.state.year - (cell.served ?? 0),
-      routine: cell.routine ?? 'work', programme: null, studied: {}, job: null, work: [], visits: [], letters: 0, calls: 0, reviews: [], discipline: [], guardians: {}, legacy: true });
+      routine: cell.routine ?? 'work', program: null, studied: {}, job: null, work: [], visits: [], letters: 0, calls: 0, reviews: [], discipline: [], guardians: {}, legacy: true });
     const f = facilityFor(p.countryId, cell.facility === 'juvenile' ? 'juvenile' : cell.security);
     cell.facilityId = f.id;
     // The cellmate the old save had is kept, and becomes one of the people there.
@@ -480,7 +481,7 @@ export function tickCrime() {
     const s = J.sentences[sup.sentenceId];
     if (s) s.status = 'complete';
     l.supervision = null;
-    const what = { probation: 'probation', suspended: 'your suspended sentence', discharge: 'your conditional discharge', parole: 'your parole', diversion: 'the diversion programme' }[sup.kind] ?? 'your supervision';
+    const what = { probation: 'probation', suspended: 'your suspended sentence', discharge: 'your conditional discharge', parole: 'your parole', diversion: 'the diversion program' }[sup.kind] ?? 'your supervision';
     log(`You have completed ${what}. The conditions no longer apply.`, 'system', 'good');
     k.note(p.id, 'completed', `Completed ${what}.`, sup.caseId);
     if (sup.kind === 'diversion') { const r = l.record.find((x) => x.caseId === sup.caseId); if (r) r.outcome = 'diversion completed'; }
@@ -586,10 +587,10 @@ export function status() {
   if (p.flags.fugitive) return 'Wanted';
   const c = pendingCase();
   if (c) return c.remand ? 'Held awaiting trial' : 'Awaiting trial';
-  if (l.supervision) return { probation: 'On probation', parole: 'On parole', suspended: 'Serving a suspended sentence', discharge: 'Conditionally discharged', diversion: 'In a diversion programme' }[l.supervision.kind] ?? 'Under supervision';
+  if (l.supervision) return { probation: 'On probation', parole: 'On parole', suspended: 'Serving a suspended sentence', discharge: 'Conditionally discharged', diversion: 'In a diversion program' }[l.supervision.kind] ?? 'Under supervision';
   if (convictions().length) return 'Has a criminal record';
   return 'No criminal record';
 }
 
-/** Offences, for anything that lists them. */
+/** Offenses, for anything that lists them. */
 export const offenses = () => OFFENSES;

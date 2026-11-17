@@ -46,7 +46,7 @@ eq('a party under the threshold gets nothing', proportional({ a: 600, b: 370, c:
 {
   const s = districts({ a: 42, b: 38, c: 20 }, 200, seeded(3));
   eq('district seats: all filled', Object.values(s).reduce((x, y) => x + y, 0), 200);
-  yes('district seats favour the largest and squeeze the smallest', s.a / 200 > 0.42 && s.c / 200 < 0.2 && s.c > 0);
+  yes('district seats favor the largest and squeeze the smallest', s.a / 200 > 0.42 && s.c / 200 < 0.2 && s.c > 0);
 }
 eq('over half in the first round: no run-off', firstRound({ a: 54, b: 30, c: 16 }), { leader: 'a', second: 'b', runoff: false });
 eq('nobody over half: a run-off between the top two', firstRound({ a: 41, b: 35, c: 24 }), { leader: 'a', second: 'b', runoff: true });

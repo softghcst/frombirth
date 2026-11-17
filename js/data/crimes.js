@@ -5,7 +5,7 @@
 // give) is in data/justice.js, through `offense`.
 //
 // A crime succeeds on a skill check: base chance plus weighted stats (each
-// centred on 50). Karma works as luck. On failure, `caught` is the chance the
+// centered on 50). Karma works as luck. On failure, `caught` is the chance the
 // police have you there and then. Getting away adds `heat`, and unsolved
 // crimes can catch up with you later.
 export const CRIMES = [
@@ -61,7 +61,7 @@ export const STRANGERS = [
   { id: 'traffic_warden', name: 'a traffic warden', guard: 0 },
   { id: 'mime', name: 'a mime', guard: -0.05 },
   { id: 'telemarketer', name: 'a telemarketer', guard: -0.05 },
-  { id: 'leaf_blower', name: 'a neighbour with a leaf blower', guard: 0 },
+  { id: 'leaf_blower', name: 'a neighbor with a leaf blower', guard: 0 },
   { id: 'food_critic', name: 'a food critic', guard: 0 },
   { id: 'landlord', name: 'a landlord', guard: 0, loot: [200, 3000] },
   { id: 'influencer', name: 'an influencer mid-livestream', guard: 0.1, heat: 15 },
@@ -73,7 +73,7 @@ export const STRANGERS = [
   { id: 'gang_boss', name: 'a gang boss', guard: 0.25, loot: [2000, 40000] },
   { id: 'referee', name: 'a football referee', guard: 0 },
   { id: 'karaoke_host', name: 'a karaoke host', guard: -0.05 },
-  { id: 'mall_santa', name: 'a shopping-centre Santa', guard: 0 },
+  { id: 'mall_santa', name: 'a shopping-center Santa', guard: 0 },
   { id: 'strongman', name: 'a circus strongman', guard: 0.3 },
   { id: 'street_magician', name: 'a street magician', guard: 0.05 },
   { id: 'celebrity_chef', name: 'a celebrity chef', guard: 0.1, heat: 15 },
@@ -130,15 +130,15 @@ export const METHOD_BY_ID = Object.fromEntries(METHODS.map((m) => [m.id, m]));
 export const CRIME_BY_ID = Object.fromEntries(CRIMES.map((c) => [c.id, c]));
 
 /**
- * Kinds of defence. Each lawyer is a person who stays in the world
+ * Kinds of defense. Each lawyer is a person who stays in the world
  * (engine/cases.js); skill here is where a lawyer of that kind starts, 0–100.
  * cost is base units. aid: paid for by the state for those who qualify.
  */
 export const LAWYERS = [
   { id: 'self', name: 'Represent yourself', cost: 0, skill: null, blurb: 'Free. Courts make allowances, but not many.' },
   { id: 'public', name: 'Legal aid lawyer', cost: 0, skill: 48, aid: true, blurb: 'Paid for by the state. Capable, and carrying sixty other cases.' },
-  { id: 'good', name: 'A private defence lawyer', cost: 12000, skill: 62, blurb: 'Time to read the whole file, and to argue every page of it.' },
-  { id: 'star', name: 'A leading defence barrister', cost: 90000, skill: 78, blurb: 'Decades of experience. Expensive, and still bound by the evidence.' },
+  { id: 'good', name: 'A private defense lawyer', cost: 12000, skill: 62, blurb: 'Time to read the whole file, and to argue every page of it.' },
+  { id: 'star', name: 'A leading defense attorney', cost: 90000, skill: 78, blurb: 'Decades of experience. Expensive, and still bound by the evidence.' },
 ];
 
 /** Prison gangs. All fictional. respect: needed to be let in. */
@@ -146,7 +146,7 @@ export const LAWYERS = [
 // conduct: what membership does to your conduct each year (default -4).
 // income: what your share of the gang's business brings in each year, base units.
 export const GANGS = [
-  { id: 'laundry', name: 'The Laundry Crew', respect: 10, perYear: 2, conduct: -1, blurb: 'Fixers and favour-traders. Harmless, mostly.' },
+  { id: 'laundry', name: 'The Laundry Crew', respect: 10, perYear: 2, conduct: -1, blurb: 'Fixers and favor-traders. Harmless, mostly.' },
   { id: 'chapel', name: 'The Chapel', respect: 15, perYear: 3, conduct: 2, blurb: 'Bible study, choir practice, and nobody touches their members.' },
   { id: 'row', name: 'The Row', respect: 25, perYear: 4, blurb: 'Old-timers who run the kitchen and the phones.' },
   { id: 'bookkeepers', name: 'The Bookkeepers', respect: 35, perYear: 5, income: 900, blurb: 'Run every card game and every bet on the block.' },

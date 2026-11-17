@@ -81,9 +81,9 @@ export function sitExam(id, prepId = 'self') {
   (p.flags.licences ??= []).push(id);
   if (id === 'teaching') p.flags.teachingCert = true;
   p.stats.mood = clamp(p.stats.mood + 10);
-  const text = `You passed the ${o.name}${tries[id] > 1 ? `, at the ${['', 'first', 'second', 'third', 'fourth'][tries[id]] ?? 'latest'} attempt` : ''}. You are licensed to practise ${LICENCES[id].name}.`;
+  const text = `You passed the ${o.name}${tries[id] > 1 ? `, at the ${['', 'first', 'second', 'third', 'fourth'][tries[id]] ?? 'latest'} attempt` : ''}. You are licensed to practice ${LICENCES[id].name}.`;
   log(text, 'system', 'good');
-  milestone(`Licensed to practise ${LICENCES[id].name}.`, 'career');
+  milestone(`Licensed to practice ${LICENCES[id].name}.`, 'career');
   return result(true, text);
 }
 
@@ -97,7 +97,7 @@ export function startThesis() {
   const field = MAJOR_BY_ID[e.majorId]?.name ?? 'your subject';
   const sup = add(makeNpc({ role: 'mentor', countryId: p.countryId, age: rng.int(40, 66), relationship: rng.int(40, 58) }));
   sup.flags.tag = 'supervisor'; sup.flags.title = 'Doctoral supervisor';
-  sup.flags.style = rng.pick(['hands-off', 'exacting', 'generous with time', 'always travelling']);
+  sup.flags.style = rng.pick(['hands-off', 'exacting', 'generous with time', 'always traveling']);
   e.thesis = { topic: `${rng.pick(THESIS_WORDS.first)} ${rng.pick(THESIS_WORDS.second)} in ${field}`, progress: 0, years: 0, published: 0, supervisorId: sup.id };
   log(`Your doctorate begins. Your topic: "${e.thesis.topic}". Your supervisor is ${sup.firstName} ${sup.lastName}, who is ${sup.flags.style}.`, 'system', 'good');
 }
@@ -181,6 +181,6 @@ export function unbank(e, startWith, sameFamily) {
   if (!e.banked) return startWith;
   const kept = Math.max(0, e.banked.credits - (sameFamily(e.banked.majorId, e.majorId) ? 0 : 30));
   delete e.banked;
-  if (kept > startWith) log(`${kept} credits from your earlier time at university have been counted towards this degree.`, 'system', 'good');
+  if (kept > startWith) log(`${kept} credits from your earlier time at university have been counted toward this degree.`, 'system', 'good');
   return Math.max(startWith, kept);
 }

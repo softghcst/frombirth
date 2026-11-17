@@ -83,7 +83,7 @@ section('in play: ages and bans decide what is offered, with the reason');
 // 5. Laws change, are remembered, and never produce an illegal value.
 p = life('jp', 30);
 const e = law.enact('jp', 'sameSexMarriage', true);
-check(law.rule('sameSexMarriage', 'jp') === true && law.source('sameSexMarriage', 'jp').source === 'enacted' && /legalised same-sex marriage/.test(e.text), 'an enacted law overrides everything, and reads properly');
+check(law.rule('sameSexMarriage', 'jp') === true && law.source('sameSexMarriage', 'jp').source === 'enacted' && /legalized same-sex marriage/.test(e.text), 'an enacted law overrides everything, and reads properly');
 check(law.may('marry', { partner: { gender: p.gender } }).ok, 'and takes effect at once');
 check(profile('jp').lawChanges.length === 1 && profile('jp').laws.some(([k, v]) => k === 'Same-sex marriage' && /changed in/.test(v)), 'the world explorer shows the change');
 check(LIVING.jp.laws.marriage === false, 'the reference data is not rewritten: the change lives in the save');
@@ -104,6 +104,19 @@ for (let k = 0; k < 6; k++) {
 }
 check(changes >= 3 && changes <= 60, `over six sixty-year lives the world changed its laws a believable number of times (${changes})`);
 section(`change: enacted law is kept in the save; ${changes} reforms across six lives, all well formed`);
+
+// 6. Every law is checked against its source (scripts/verify-laws.py), and nothing disagrees unexplained.
+{
+  const { LAW_CHECKED } = await import('../js/data/lawVerification.js');
+  const { COUNTRY_LIST: ALL } = await import('../js/data/countries.js');
+  let ok = 0; let review = 0;
+  for (const c of ALL) {
+    const r = LAW_CHECKED[c.id];
+    check(!!r && Object.keys(r).length >= 10, `${c.id}: no law verification (run scripts/verify-laws.py --write)`);
+    for (const [k, v] of Object.entries(r ?? {})) { check(v.status !== 'mismatch', `${c.id}.${k} disagrees with its source: ${v.note ?? ''}`); if (v.status === 'ok') ok += 1; if (v.status === 'review') review += 1; }
+  }
+  section(`verification: ${ok} laws confirmed against sources, ${review} differ for recorded reasons, none disagree unexplained`);
+}
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);

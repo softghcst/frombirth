@@ -159,7 +159,7 @@ export function hearing(c) {
   c.history.push({ year: year(), text: won ? `Judgment for the claimant: ${fmtMoney(amount, country())}.` : 'The claim was dismissed.' });
   if (won) k.pay({ key: `judgment:${c.id}`, kind: 'judgment', amount, payer: c.respondentId, payee: c.claimantId, caseId: c.id, allowDebt: true });
   const youWon = c.judgment.for === p.id;
-  k.note(p.id, 'civil', `${c.name}: ${youWon ? 'decided in your favour' : 'decided against you'}.`, c.id);
+  k.note(p.id, 'civil', `${c.name}: ${youWon ? 'decided in your favor' : 'decided against you'}.`, c.id);
   const text = youWon ? `The ${c.court} found for you${amount ? `: ${fmtMoney(amount, country())}` : ''}.` : `The ${c.court} found against you${amount ? `: you owe ${fmtMoney(amount, country())}` : ''}. It is a civil judgment, not a criminal record.`;
   log(text, 'system', youWon ? 'good' : 'bad');
   return result(youWon, text);

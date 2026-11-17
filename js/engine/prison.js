@@ -69,7 +69,7 @@ function staffUp(f) {
   }
 }
 
-/** A person serving a sentence: a whole person, not their offence. */
+/** A person serving a sentence: a whole person, not their offense. */
 function newInmate(f) {
   const off = rng.pick(OFFENSES.filter((o) => (f.kind === 'max' ? o.severity >= 3 : f.kind === 'min' ? o.severity <= 3 : o.severity >= 2) && o.custody[1] > 0));
   const n = k.civilian(f.countryId, { kind: 'inmate', age: f.kind === 'juvenile' ? rng.int(14, 17) : rng.int(19, 66), role: 'official',
@@ -318,7 +318,7 @@ export function phoneCall(npcId) {
   cell().calls += 1;
   n.meters.relationship = clamp(n.meters.relationship + 5);
   player().stats.mood = clamp(player().stats.mood + 4);
-  const text = `Ten minutes on the wing phone with ${n.firstName}. The queue behind you grumbles; you do not care.`;
+  const text = `Ten minutes on the wing phone with ${n.firstName}. The line behind you grumbles; you do not care.`;
   log(text, 'system', 'good');
   return result(true, text);
 }
@@ -399,7 +399,7 @@ export function studyTogether(npcId) {
   return result(true, text);
 }
 
-// ---------- Health, programmes and conduct ----------
+// ---------- Health, programs and conduct ----------
 
 export function healthcare() {
   const p = player();
@@ -424,7 +424,7 @@ export function counselling() {
   p.stats.mood = clamp(p.stats.mood + 7);
   bump('conduct', 4);
   c2().courses = (c2().courses ?? 0) + 0.5;
-  const text = 'Weekly sessions with the counsellor. Some weeks you talk about nothing; some weeks about everything.';
+  const text = 'Weekly sessions with the counselor. Some weeks you talk about nothing; some weeks about everything.';
   log(text, 'system', 'good');
   return result(true, text);
 }
@@ -625,7 +625,7 @@ export function releaseOutlook() {
   const at = Math.ceil(c.total * sys.releaseAt);
   const left = Math.max(0, at - c.served);
   const end = `Sentence ends in ${c.yearsLeft} year${c.yearsLeft === 1 ? '' : 's'}.`;
-  if (sys.release === 'automatic') return { text: `${end} Release on licence ${left ? `in ${left} year${left === 1 ? '' : 's'}` : 'is due'}, under supervision for the rest of the term.`, at };
+  if (sys.release === 'automatic') return { text: `${end} Release on parole ${left ? `in ${left} year${left === 1 ? '' : 's'}` : 'is due'}, under supervision for the rest of the term.`, at };
   return { text: `${end} ${left ? `Eligible for a parole review in ${left} year${left === 1 ? '' : 's'}.` : 'Eligible for parole review.'}`, at };
 }
 
@@ -711,7 +711,7 @@ export function tickPrison() {
   const c = cell();
   tickFacilities();
 
-  // On the run: sooner or later someone recognises you.
+  // On the run: sooner or later someone recognizes you.
   if (!c && p.flags.fugitive) {
     if (rng.chance(0.22)) recapture();
     else { p.legal.heat = Math.max(p.legal.heat, 60); p.stats.mood = clamp(p.stats.mood - 3); }
@@ -755,7 +755,7 @@ export function tickPrison() {
   if (!isJuvenile() && !c.deathRow) {
     const why = transferCase(c);
     if (why.down) transfer(DOWN[c.security], why.text);
-    else if (why.up) transfer(UP[c.security], 'A string of proven offences inside: you are moved to tighter security.');
+    else if (why.up) transfer(UP[c.security], 'A string of proven offenses inside: you are moved to tighter security.');
   }
 
   // Coming of age inside: the rest of the term is served somewhere else.
@@ -773,7 +773,7 @@ export function tickPrison() {
   const life = c.total >= LIFE_SENTENCE;
   const at = life ? 15 : Math.ceil(c.total * sys.releaseAt);
   if (!c.deathRow && c.served >= at) {
-    if (sys.release === 'automatic' && !life) return release(`You have served the part of your sentence the law requires. You are released on licence for the remaining ${c.yearsLeft} year${c.yearsLeft === 1 ? '' : 's'}.`, { parole: true });
+    if (sys.release === 'automatic' && !life) return release(`You have served the part of your sentence the law requires. You are released on parole for the remaining ${c.yearsLeft} year${c.yearsLeft === 1 ? '' : 's'}.`, { parole: true });
     if (c.paroleDue) paroleHearing('file'); // a review left waiting is decided on the file
     else if (!c.nextReview || year() >= c.nextReview) {
       c.paroleDue = true;
@@ -796,7 +796,7 @@ function transferCase(c) {
   if (UP[c.security] && c.conduct <= 15 && recent >= 1) return { up: true };
   if (!DOWN[c.security]) return { text: 'You are already in open conditions.' };
   if (!enough) return { text: `Not yet: you must serve ${life ? 10 : Math.max(2, Math.ceil(c.total / 3))} years first.` };
-  if (recent) return { text: 'Not with a proven offence inside in the last two years.' };
+  if (recent) return { text: 'Not with a proven offense inside in the last two years.' };
   if (c.gangId) return { text: 'Not while you are in a gang.' };
   if (c.conduct < 75) return { text: 'Your conduct record needs to be better.' };
   return { down: true, text: c.security === 'med' ? 'Your record inside has earned a move to open conditions.' : 'Your record inside has earned a move to lower security.' };
@@ -844,7 +844,7 @@ function recapture() {
     const s = k.J().sentences[c.sentenceId];
     if (s) { extra = Math.max(1, s.years); s.status = 'active'; }
   }
-  log(`You were recognised and recaptured. A court added ${extra} year${extra === 1 ? '' : 's'} for the escape.`, 'system', 'bad');
+  log(`You were recognized and recaptured. A court added ${extra} year${extra === 1 ? '' : 's'} for the escape.`, 'system', 'bad');
   imprison(f.owed + extra, 3, { caseId: f.caseId, sentenceId: f.sentenceId });
 }
 

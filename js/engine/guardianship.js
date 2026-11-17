@@ -138,7 +138,7 @@ function place(parents) {
   p.stats.mood = clamp(p.stats.mood - (kind === 'foster' ? 12 : 6));
   remember(g, 'tookYouIn', 'They took you in when your parents could not look after you.');
   const temp = until === 'release' ? ' for now, until you can go home' : '';
-  const who = kind === 'foster' ? `${g.firstName} ${g.lastName}, a foster carer` : `your ${roleLabel(g).toLowerCase()} ${g.firstName}`;
+  const who = kind === 'foster' ? `${g.firstName} ${g.lastName}, a foster parent` : `your ${roleLabel(g).toLowerCase()} ${g.firstName}`;
   const lead = kind === 'foster' ? `With ${why}, and nobody in the family able to take you, you go into foster care${temp}.` : `With ${why}, ${who} will look after you${temp}.`;
   const text = where === 'theirs' ? `${lead} You move into ${kind === 'foster' ? 'their' : `${g.firstName}'s`} home, here in ${p.city}. Same school, same friends.`
     : where === 'home' ? `${lead} ${g.firstName} comes from ${homeOf(g)} to stay with you at home, so you can keep your school and your friends.`
@@ -204,8 +204,8 @@ function moveTo(city, g) {
 function foster() {
   const p = player();
   const n = makeNpc({ role: 'guardian', countryId: p.countryId, age: rng.int(35, 62), relationship: rng.int(45, 65) });
-  n.flags.title = 'Foster carer';
-  n.occupation = 'Foster carer';
+  n.flags.title = 'Foster parent';
+  n.occupation = 'Foster parent';
   n.savings = localMoney(rng.int(2000, 15000), country());
   store.state.npcs[n.id] = n;
   p.npcIds.push(n.id);
@@ -222,7 +222,7 @@ function goHome(parent) {
   if (back) moveTo(back, null);
   parent.meters.relationship = clamp(parent.meters.relationship + 6);
   p.stats.mood = clamp(p.stats.mood + 8);
-  if (g && kind === 'foster') { g.role = 'friend'; g.flags.title = 'Former foster carer'; }
+  if (g && kind === 'foster') { g.role = 'friend'; g.flags.title = 'Former foster parent'; }
   const text = `${parent.firstName} can look after you again. You go home${back ? ` to ${back}` : ''}${g ? `, and ${g.firstName} says the door is always open` : ''}.`;
   log(text, 'system', 'good');
   k.note(p.id, 'care', `Went home to ${parent.firstName}.`);
@@ -237,7 +237,7 @@ function leaveCare() {
   if (c.kind === 'foster') {
     p.flags.livesWithParents = false;
     k.pay({ key: `care_leaver:${p.id}`, kind: 'care_leaver_grant', amount: localMoney(2000, country()), payer: 'state', payee: p.id, caseId: null });
-    if (g) { g.role = 'friend'; g.flags.title = 'Former foster carer'; }
+    if (g) { g.role = 'friend'; g.flags.title = 'Former foster parent'; }
     const text = `You turn ${CARE_AGE} and leave care, with a grant to start you off${g ? ` and ${g.firstName}'s number` : ''}.`;
     log(text, 'system', 'neutral');
     milestone('Left foster care.', 'family');

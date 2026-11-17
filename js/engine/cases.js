@@ -119,7 +119,7 @@ export function agency(countryId, city = COUNTRIES[countryId].cities[0]) {
   return a;
 }
 
-/** Judges, prosecutors and defence lawyers practising in a country. */
+/** Judges, prosecutors and defense lawyers practicing in a country. */
 export function bench(countryId) {
   const b = (J().benches[countryId] ??= { judges: [], prosecutors: [], defence: { public: [], good: [], star: [] } });
   b.judges = b.judges.filter(active);
@@ -130,7 +130,7 @@ export function bench(countryId) {
     const base = LAWYERS.find((x) => x.id === tier).skill;
     b.defence[tier] = b.defence[tier].filter(active);
     while (b.defence[tier].length < (tier === 'star' ? 2 : 3)) {
-      b.defence[tier].push(official(countryId, 'defence', tier === 'public' ? 'Legal aid lawyer' : tier === 'star' ? 'Senior defence barrister' : 'Defence lawyer',
+      b.defence[tier].push(official(countryId, 'defence', tier === 'public' ? 'Legal aid lawyer' : tier === 'star' ? 'Senior defense attorney' : 'Defense lawyer',
         { tier, skill: clamp(base + rng.int(-8, 8)), age: tier === 'star' ? rng.int(45, 64) : rng.int(28, 55) }).id);
     }
   }
@@ -440,11 +440,11 @@ export function appoint(c, tier, npcId) {
     const list = c.defendantId === player().id ? (player().legal.counselIds ??= []) : (person(c.defendantId).flags.counselIds ??= []);
     if (!list.includes(npcId)) list.push(npcId);
   }
-  if (c.stage === 'pretrial') move(c, 'plea', tier === 'self' ? 'The defendant will speak for themselves.' : `${nameOf(npcId)} appears for the defence.`);
+  if (c.stage === 'pretrial') move(c, 'plea', tier === 'self' ? 'The defendant will speak for themselves.' : `${nameOf(npcId)} appears for the defense.`);
   return true;
 }
 
-/** What the evidence looks like from the defence table. */
+/** What the evidence looks like from the defense table. */
 export function caseFile(c) {
   return c.evidenceIds.map((id) => J().evidence[id]).map((e) => ({ id: e.id, kind: EVIDENCE[e.kind].name, summary: e.summary,
     against: e.pointsTo === c.defendantId, reliability: e.reliability >= 0.8 ? 'solid' : e.reliability >= 0.6 ? 'fair' : 'shaky',
@@ -530,7 +530,7 @@ export function factFinder(c) {
 }
 
 /**
- * The trial. Unlawfully obtained evidence is ruled on first; the defence
+ * The trial. Unlawfully obtained evidence is ruled on first; the defense
  * tests the rest; the fact-finder weighs what is left against the burden of
  * proof. The truth of the incident is never consulted: only the evidence.
  * @param {{admit?:Object<string,boolean>}} [o]  a judge's rulings on contested evidence (player judges)
@@ -555,7 +555,7 @@ export function trial(c, o = {}) {
     e.admissible = !out;
     c.rulings.push({ evidenceId: id, challenged, admitted: !out, year: year() });
     if (challenged) lines.push(out ? `The judge left out the ${EVIDENCE[e.kind].name.toLowerCase()}: it was obtained unlawfully.`
-      : `The defence challenged the ${EVIDENCE[e.kind].name.toLowerCase()}, but the judge allowed it.`);
+      : `The defense challenged the ${EVIDENCE[e.kind].name.toLowerCase()}, but the judge allowed it.`);
   }
   // 2. Testing the evidence: shaky evidence is weakened by good cross-examination.
   const weigh = (e) => {
@@ -587,7 +587,7 @@ export function trial(c, o = {}) {
     // Convinced of something, but perhaps not of everything the charge requires.
     const partial = charge.lesser && view < BURDEN + 0.1 && rng.chance(0.4);
     const off = partial ? charge.lesser : charge.offenseId;
-    lines.push(`${body} found the defendant guilty${partial ? ` of the lesser offence of ${OFFENSE_BY_ID[off].name.toLowerCase()}` : ''}.`);
+    lines.push(`${body} found the defendant guilty${partial ? ` of the lesser offense of ${OFFENSE_BY_ID[off].name.toLowerCase()}` : ''}.`);
     convict(c, off, partial ? 'partial verdict' : 'verdict', o.deferSentence);
     return { stage: c.stage, lines, verdict: partial ? 'partial' : 'guilty' };
   }
@@ -627,7 +627,7 @@ function priors(defendantId, caseId) {
   return recs.filter((r) => r.convicted && !r.exonerated && !r.juvenile && !r.sealed && r.caseId !== caseId && year() - (r.year ?? year()) <= 15).length;
 }
 
-/** The lawful range for an offence: never below or above it. */
+/** The lawful range for an offense: never below or above it. */
 export function lawfulRange(offenseId) {
   const off = OFFENSE_BY_ID[offenseId];
   return { ladder: off.ladder, custody: off.custody };
@@ -687,7 +687,7 @@ const cap1 = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 export function describe(s) {
   const yrs = (n) => `${n} year${n === 1 ? '' : 's'}`;
   return {
-    diversion: 'a diversion programme, with no conviction recorded if it is completed',
+    diversion: 'a diversion program, with no conviction recorded if it is completed',
     discharge: 'a conditional discharge for a year',
     fine: 'a fine',
     community: `${s.hours} hours of community service`,
