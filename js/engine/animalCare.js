@@ -797,6 +797,9 @@ export function tickCare(state = store.state) {
 
 // ---------- Checking ----------
 
+/** How many of a currency make one base unit, for the country that uses it. */
+const scaleOf = (code, state) => Object.values(COUNTRIES).find((c) => c.currency.code === code)?.currency.scale ?? COUNTRIES[state.player.countryId].currency.scale;
+
 /** Everything wrong with the money and the places. An empty list means they are sound. */
 export function auditCare(state = store.state) {
   const A = zoo.ensure(state);
@@ -810,7 +813,8 @@ export function auditCare(state = store.state) {
     if (t.refOf) { const of = A.ledger.find((x) => x.id === t.refOf); if (!of) bad.push(`${t.id}: pays back a bill that does not exist`); else if (-t.amount > of.amount && t.kind !== 'prize') bad.push(`${t.id}: pays back more than the bill`); }
     else if (t.amount < 0 && t.kind !== 'sale') bad.push(`${t.id}: money from nowhere`);
     if (t.kind === 'sale' && ledgerOf(t.animalId, state).filter((x) => x.kind === 'sale').length > 1) bad.push(`${t.id}: the same animal sold twice`);
-    if (t.kind === 'prize' && -t.amount > 400 * COUNTRIES[state.player.countryId].currency.scale * 3) bad.push(`${t.id}: a prize larger than any class pays`);
+    // (each payment is judged in its own currency: a family that has moved country keeps its old records in the old money)
+    if (t.kind === 'prize' && -t.amount > 400 * scaleOf(t.currency, state) * 3) bad.push(`${t.id}: a prize larger than any class pays`);
   }
   for (const pr of Object.values(A.pairs ?? {})) if (pr.value > pr.top) bad.push(`${pr.a}|${pr.b}: closer than they could be`);
   for (const a of zoo.everyAnimal(state)) {

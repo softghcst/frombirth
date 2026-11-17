@@ -636,7 +636,7 @@ async function editGoal(id) {
   if (!act) return undefined;
   if (act === 'pay') {
     const wallet = g.cur === country().currency.code ? player().finance.cash : player().finance.accounts?.[g.cur] ?? 0;
-    const n = await askAmount({ title: `Towards ${lower(g.name)}`, max: wallet, cur: g.cur });
+    const n = await askAmount({ title: `Toward ${lower(g.name)}`, max: wallet, cur: g.cur });
     return n ? bank.deposit(g.accountId, n) : undefined;
   }
   if (act === 'target') {
