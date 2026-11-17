@@ -11,6 +11,7 @@ import { tickCareer } from './career.js';
 import { tickFinance } from './finance.js';
 import { tickMarket } from './market.js';
 import { tickCrime } from './justice.js';
+import { tickCivil } from './civil.js';
 import { tickPrison } from './prison.js';
 import { tickSocial } from './social.js';
 import { tickIdentity } from './identity.js';
@@ -109,6 +110,7 @@ export function advanceYear() {
   for (const n of tickLocal()) log(n.text, 'system', n.tone);
   tickActivism();
   tickCrime();
+  tickCivil();
 
   const cause = rollDeath();
   if (cause) { die(cause); return; }

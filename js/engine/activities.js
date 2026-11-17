@@ -1,5 +1,6 @@
 // Things to do with your time: the gym, the library, meditation, holidays
 // and nights out. Each can be done once a year.
+import { hasRecord } from './records.js';
 import { rule, may } from './rules.js';
 import { rightToLive } from './citizenship.js';
 import { practise } from './languages.js';
@@ -142,7 +143,7 @@ export function holiday(id, bringFamily, trip = {}) {
   if (!once('holiday')) return result(false, 'You have had your holiday this year.', 'neutral');
   const purpose = flying ? (trip.purpose ?? 'holiday') : 'holiday';
   // The border. Gameplay configuration: a criminal record can get a visitor turned round.
-  if (flying && !rightToLive(dest.id, p) && p.legal.record.some((r) => r.convicted && !r.juvenile) && rng.chance(0.2)) {
+  if (flying && !rightToLive(dest.id, p) && hasRecord(p, { sealed: true }) && rng.chance(0.2)) {
     const lost = Math.round(cost / 2);
     p.finance.cash -= lost;
     p.stats.mood = clamp(p.stats.mood - 6);

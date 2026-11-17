@@ -209,7 +209,26 @@ function editPerson(api, npc) {
   });
 }
 
-function openNpc(npc, api) {
+/** What the courts recorded about someone, as far as it is public. */
+function courtRecord(npc) {
+  const rows = (npc.flags.legalHistory ?? []).filter((h) => h.kind !== 'sealed');
+  const j = npc.flags.justice;
+  const role = j && !['civilian', 'inmate', 'released'].includes(j.kind) ? `<div class="kv"><span>Work</span><span>${esc(npc.occupation ?? '')}${j.retired ? `, retired ${j.retired}` : ''}${j.caseIds?.length ? ` · ${j.caseIds.length} case${j.caseIds.length === 1 ? '' : 's'}` : ''}</span></div>` : '';
+  const inside = npc.flags.inmate && !npc.flags.inmate.released
+    ? `<div class="kv"><span>Inside</span><span>${esc(npc.flags.inmate.yearsLeft)} year${npc.flags.inmate.yearsLeft === 1 ? '' : 's'} left · loves ${esc(npc.flags.inmate.interest)} · wants to ${esc(npc.flags.inmate.goal)}</span></div>` : '';
+  if (!rows.length && !role && !inside) return '';
+  return `<div class="section-label" style="margin-top:0">Court and custody</div>${role}${inside}
+    ${rows.slice(-8).reverse().map((h) => `<div class="kv"><span>${h.year ?? ''}${h.age != null ? ` · age ${h.age}` : ''}</span><span>${esc(h.text)}</span></div>`).join('')}
+    <div style="height:14px"></div>`;
+}
+
+/**
+ * The profile of anyone in the world. People who are not part of the player's
+ * life (a judge, a witness, an inmate on another landing) are shown without
+ * the actions that need a relationship.
+ */
+export function openNpc(npc, api, o = {}) {
+  const inLife = player().npcIds.includes(npc.id) && !o.readOnly;
   lives.ensureLife(npc);
   const m = npc.meters;
   const isPet = npc.role === 'pet';
@@ -245,7 +264,7 @@ function openNpc(npc, api) {
        <div style="height:14px"></div>` : '';
   const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
 
-  const actions = [
+  const actions = !inLife ? [] : [
     ...(npc.alive ? love.romanceActions(npc) : []),
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
@@ -267,7 +286,7 @@ function openNpc(npc, api) {
     </div>
     ${traitChips}${owns}${feudNote}${expecting}
     <div style="margin:12px 0 16px">${meters}</div>
-    ${lifeCard}${history}${timeline}
+    ${lifeCard}${history}${timeline}${courtRecord(npc)}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
       <button class="btn" data-close>Close</button>

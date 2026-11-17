@@ -19,6 +19,7 @@
 // reason holds, become permanent after five years, and end otherwise.
 // Everything here is gameplay configuration: no route promises anything
 // about a real visa.
+import { hasRecord } from './records.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log } from '../state.js';
@@ -28,7 +29,7 @@ import { held, issuer, rightToLive, residency } from './citizenship.js';
 import { visaEdge } from './languages.js';
 
 const has = (p, t) => p.education.degrees.some((d) => d.type === t);
-const convicted = (p) => p.legal.record.some((r) => r.convicted && !r.juvenile);
+const convicted = (p) => hasRecord(p, { sealed: true });
 /** The free-movement area a place belongs to, if any. */
 const areaOf = (id) => FREE_MOVEMENT.find((a) => a.members.includes(id)) ?? null;
 

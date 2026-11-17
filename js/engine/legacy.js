@@ -73,7 +73,19 @@ function asAncestor(old, role, year) {
     alive: false, role, meters: { relationship: 80, money: 50, crazy: old.hidden.crazy, intellect: old.stats.intellect,
       charm: old.stats.charm, health: 0, generosity: 50 },
     appearance: cloneAppearance(old.appearance), traits: [...old.traits], occupation: (old.career.title ?? 'retired').toLowerCase(),
-    talents: { ...old.talents }, lastInteractionAge: -1, flags: { diedYear: year } };
+    talents: { ...old.talents }, lastInteractionAge: -1, flags: { diedYear: year, wasPlayer: old.id, ...publicRecord(old) } };
+}
+
+/**
+ * What of a life's legal history the family can find later: convictions that
+ * were not sealed or juvenile, acquittals, exonerations. The rest stays private.
+ */
+function publicRecord(old) {
+  const shown = (old.legal?.record ?? []).filter((r) => !r.juvenile && !r.sealed);
+  if (!shown.length) return {};
+  const ids = new Set(shown.map((r) => r.caseId));
+  return { tag: 'recordedAncestor', record: shown.map((r) => ({ ...r })),
+    legalHistory: (old.legal.history ?? []).filter((h) => !h.caseId || ids.has(h.caseId)).map((h) => ({ ...h })) };
 }
 
 /** Turns someone with a life of their own into a parent of the heir. */
@@ -247,6 +259,12 @@ export function continueAs(npcId) {
       if (n.flags.abroad === abroad) n.flags.abroad = false;
       else if (!n.flags.abroad && n.role !== 'child' && n.role !== 'spouse' && n.role !== 'pet') n.flags.abroad = op.countryId;
     }
+  }
+
+  // The justice system is the same system: its records, its places and its people carry on.
+  if (old.justice) {
+    next.justice = old.justice;
+    for (const id of old.justice.people) if (old.npcs[id] && !npcs[id]) npcs[id] = old.npcs[id];
   }
 
   // The schools of the world are the same schools: the next generation may sit in the same classrooms.

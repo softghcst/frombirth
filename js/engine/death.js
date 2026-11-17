@@ -244,7 +244,7 @@ function lifeSummary(p, plan) {
   return {
     age: p.age, worth: plan.gross / scale, donated: k.donated, gambled: k.gambled, leftToCharity: plan.charity / scale,
     fame: p.hidden.fame, karma: p.hidden.karma, intellect: p.stats.intellect,
-    crimes: k.crimes, kills: k.kills, convictions: p.legal.record.filter((r) => r.convicted).length,
+    crimes: k.crimes, kills: k.kills, convictions: p.legal.record.filter((r) => r.convicted && !r.exonerated).length, exonerated: p.legal.record.some((r) => r.exonerated),
     yearsJailed: k.yearsJailed, escapes: k.escapes, diedInside: !!p.legal.incarceration,
     spouses: k.spouses, everMarried: k.spouses > 0, exes: all.filter((n) => n.role === 'ex').length,
     marriedYears: Math.max(0, ...married.map((n) => p.age - n.marriedAtAge)),

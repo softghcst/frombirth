@@ -169,12 +169,18 @@
  * @property {boolean} droppedOut
  *
  * @typedef {Object} LegalState
- * @property {{crimeId:string, age:number, convicted:boolean, sentenceYears:number}[]} record
+ * @property {{caseId:string, crimeId:string, offense?:string, age:number, year?:number, convicted:boolean, outcome:string, sentenceYears:number,
+ *             sentenceType?:string, juvenile:boolean, sealed?:boolean, exonerated?:boolean, pardoned?:boolean, legacy?:boolean}[]} record
+ *           one entry per case: its outcome. The case itself is in state.justice (engine/cases.js)
+ * @property {{year:number, age:number, kind:string, text:string, caseId:?string}[]} [history]  every legal event, in order
+ * @property {string[]} [counselIds]  lawyers who have acted for the player
+ * @property {?{kind:string, sentenceId:string, caseId:string, from:number, until:number, conditions:string[]}} [supervision]  probation, parole and the like
+ * @property {{id:string, facilityId:string, from:number, to:number, served:number, how:string}[]} [custodyHistory]
  * @property {?{facility:'juvenile'|'prison', security:'min'|'med'|'max', yearsLeft:number,
  *              respect:number, gangId:?string, escapeAttempts:number}} incarceration
  * @property {number} heat
- * @property {{crimeId:string, age:number, victim?:string}[]} [unsolved]  crimes the police have not pinned on you yet
- * @property {?{crimeId:string, age:number, evidence:number, lawyer:?string, skill:number}} [pending]  an open court case
+ * @property {{crimeId:string, age:number, victim?:string}[]} [unsolved]  older saves only: becomes investigations on load
+ * @property {?{caseId:string}} [pending]  the open criminal case (older saves held {crimeId, evidence, lawyer} until upgraded)
  *
  * @typedef {{handle:?string, followers:number, posts:number, viral:number, boughtFollowers:number}} SocialMedia
  *

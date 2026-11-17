@@ -8,6 +8,8 @@ import { rule, may } from './rules.js';
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
+import { systemFor } from '../data/justice.js';
+import { hasRecord } from './records.js';
 
 /** Singing, dance and acting together. The weakest of the three drags it down. */
 export function tripleThreat(p = player()) {
@@ -52,6 +54,12 @@ const SPECIAL = {
   /** Cash expressed in base units so events can compare across currencies. */
   cashBase: (p) => p.finance.cash / country().currency.scale,
   jailed: (p) => !!p.legal.incarceration,
+  // Justice: where juries sit, whether the player rents, has an unspent record, has served time, or has an ancestor with a court record to find.
+  jurySystem: () => systemFor(country().id).factFinder === 'jury',
+  renting: (p) => !p.homeId && !p.flags.livesWithParents,
+  hasRecord: (p) => hasRecord(p),
+  servedTime: (p) => !!p.legal.custodyHistory?.some((x) => x.how !== 'escape') && !p.legal.incarceration,
+  ancestorRecord: (p) => p.npcIds.some((id) => store.state.npcs[id]?.flags.tag === 'recordedAncestor'),
   employed: (p) => !!p.career.careerId,
   tripleThreat: (p) => tripleThreat(p),
   ownsProperty: (p) => p.assets.some((a) => a.kind === 'property'),

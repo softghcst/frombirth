@@ -6,6 +6,7 @@
 //   degree: 'high' | 'university'      majors: [...]  (any of these university majors)
 //   programme: 'medical' | 'law' | 'cosmetology'      trade: apprenticeship trade id
 //   minAge / maxAge, stats: { path: minimum }, cleanRecord: true
+//   field: { careerId, years }  years already worked in another career (a judge must first practise law)
 // hire: how you get in: 'interview' | 'practical' | 'audition' | 'portfolio' | 'military'
 //   skill: the path an audition or portfolio is judged on
 // doors: contacts and history that help. { flag, bonus } raises the odds;
@@ -86,6 +87,12 @@ export const CAREERS = [
   { id: 'police', name: 'Police', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
     req: { degree: 'high', minAge: 19, stats: { 'stats.health': 55 }, cleanRecord: true },
     levels: L(['Police officer', 44, 58, 4], ['Sergeant', 62, 78, 5], ['Lieutenant', 82, 100, 5], ['Chief of police', 115, 160, 0]) },
+  { id: 'judiciary', name: 'The judiciary', category: 'professional', type: 'fulltime', hire: 'interview', stress: 3,
+    req: { programme: 'law', minAge: 35, cleanRecord: true, field: { careerId: 'lawyer', years: 7 } },
+    levels: L(['District judge', 120, 150, 6], ['Circuit judge', 155, 190, 8], ['Appeal court judge', 200, 250, 8], ['Chief justice', 260, 320, 0]) },
+  { id: 'corrections', name: 'Prisons and probation', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
+    req: { degree: 'high', minAge: 20, cleanRecord: true },
+    levels: L(['Prison officer', 32, 40, 3], ['Senior officer', 42, 52, 4], ['Probation officer', 46, 58, 5], ['Prison governor', 75, 105, 0]) },
   { id: 'office', name: 'Office administration', category: 'professional', type: 'fulltime', hire: 'interview', stress: 1,
     req: { degree: 'high' }, doors: [{ flag: 'internship', bonus: 0.2 }],
     levels: L(['Office assistant', 26, 34, 2], ['Administrator', 36, 46, 3], ['Office manager', 50, 68, 5], ['Operations director', 90, 130, 0]) },
