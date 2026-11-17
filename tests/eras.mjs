@@ -148,6 +148,61 @@ section('Careers');
   check(CAREERS.every((c) => !unmet(c).includes('There is no such job yet.')), 'in Modern Day every career exists, as before');
 }
 
+// ---------- Phase 4: money ----------
+section('Money');
+{
+  const { localWage, localCost, localMoney } = await import('../js/util.js');
+  const { tickEra } = await import('../js/engine/eras.js');
+  const estate = await import('../js/engine/realEstate.js');
+  const wageAt = (y) => { life({ born: y, age: 0 }); return { wage: localWage(50000, COUNTRIES.us), rent: localCost(14000, COUNTRIES.us) }; };
+  const w1900 = wageAt(1900); const w2026 = wageAt(2026);
+  check(w2026.wage === localWage(50000, COUNTRIES.us) && COUNTRIES.us.currency.scale === 1, 'in the present, money is exactly as before');
+  check(w1900.wage < w2026.wage / 50 && w1900.rent < w2026.rent / 50, `a 1900 wage and rent are a small fraction of today's (${w1900.wage} and ${w1900.rent} against ${w2026.wage} and ${w2026.rent})`);
+  check(Math.abs(w1900.rent / w1900.wage - w2026.rent / w2026.wage) < 0.02, 'and stand in the same proportion to each other, so a life then is as affordable as now');
+  const p = life({ born: 1900, age: 30 });
+  p.flags.livesWithParents = false; p.finance.cash = localMoney(500000, COUNTRIES.us);
+  const homes = estate.listings();
+  const mid = homes.map((h) => h.price).sort((a, b) => a - b)[Math.floor(homes.length / 2)];
+  check(homes.length && mid < 20000, `houses in 1930 cost what they did then (a middling one: ${mid})`);
+  // The yearly change moves every amount together: no money is made or lost by it.
+  const cash = p.finance.cash;
+  const before = H.currencyFor('us', store.state.year).scale;
+  store.state.year += 1;
+  tickEra();
+  const after = H.currencyFor('us', store.state.year).scale;
+  check(Math.abs(p.finance.cash - Math.round(cash * after / before)) <= 1, 'a year\'s change in what money is worth moves savings in step');
+}
+{
+  const p = life({ born: 1975, age: 0, countryId: 'de' });
+  check(COUNTRIES.de.currency.code === 'DEM', 'a German life in 1975 is lived in Deutsche Marks');
+  grow(20);
+  p.finance.cash = 20000;
+  store.state.journal.push({ age: p.age, text: 'You were paid DM 3,000 for the summer job.', kind: 'system', tone: 'neutral' });
+  grow(8); // to 2003
+  const lines = store.state.journal.filter((j) => /changed its money/.test(j.text));
+  check(COUNTRIES.de.currency.code === 'EUR' && lines.length === 1 && store.state.era.conversions['de:DEM>EUR'] === 2002, 'the euro arrives in 2002, and savings are converted once');
+  check(store.state.journal.some((j) => j.text === 'You were paid DM 3,000 for the summer job.'), 'what happened before keeps its old money');
+  save.saveGame(store.state);
+  const back = save.loadGame(store.state.slotId);
+  store.state = back;
+  const { alignWorld } = await import('../js/engine/eras.js');
+  alignWorld(back);
+  grow(1);
+  check(back.journal.filter((j) => /changed its money/.test(j.text)).length === 1, 'reloading never converts again');
+}
+{
+  const old = createLife({ countryId: 'fr', year: 1960 });
+  delete old.era;
+  mem.set(`pathways.slot.${old.slotId}`, JSON.stringify(old));
+  const back = save.loadGame(old.slotId);
+  store.state = back;
+  const { alignWorld } = await import('../js/engine/eras.js');
+  alignWorld(back);
+  check(COUNTRIES.fr.currency.code === 'EUR' && COUNTRIES.fr.currency.scale === H.modernCurrency('fr').scale, 'a past life saved before eras keeps today\'s money as it was');
+  grow(3);
+  check(COUNTRIES.fr.currency.scale === H.modernCurrency('fr').scale, 'year after year');
+}
+
 console.log(`${passed.length} checks passed.`);
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(` - ${x}`); process.exit(1); }
 console.log('The eras hold together.');

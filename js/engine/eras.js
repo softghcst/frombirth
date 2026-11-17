@@ -2,7 +2,10 @@
 // has moved. It records crossing into a new era (once), and from later phases
 // applies what the era changes. The rules themselves are in engine/history.js.
 import { store, player, log, milestone } from '../state.js';
-import { getEra, getEraTransition, syncWorld, MODERN_YEAR } from './history.js';
+import { getEra, getEraTransition, syncWorld, currencyFor, MODERN_YEAR } from './history.js';
+import { convertMoney } from './emigration.js';
+import { COUNTRIES } from '../data/countries.js';
+import { theCountry, fmtMoney } from '../util.js';
 
 /**
  * The era record of a life, created once. `money` says how this life's amounts are
@@ -42,11 +45,42 @@ function noteTransition(state) {
   return t;
 }
 
+/**
+ * Everyone's money, in the new year's terms. Wages, prices, savings and debts move
+ * together (so no money is made or lost by the change itself), and a currency that
+ * is replaced is converted once, at its official rate. Uses the same conversion as
+ * moving abroad (engine/emigration.js).
+ */
+function revalue(state) {
+  const e = state.era;
+  const p = state.player;
+  const from = currencyFor(p.countryId, e.applied?.year ?? state.year, e.money);
+  const to = currencyFor(p.countryId, state.year, e.money);
+  if (!from || !to || from.scale === to.scale) return null;
+  const k = to.scale / from.scale;
+  convertMoney(k);
+  const x = (n) => Math.round((n ?? 0) * k);
+  p.career.salary = x(p.career.salary);
+  if (p.career.partTime) p.career.partTime.salary = x(p.career.partTime.salary);
+  if (p.politics?.salary) p.politics.salary = x(p.politics.salary);
+  if (from.code !== to.code) {
+    const key = `${p.countryId}:${from.code}>${to.code}`;
+    if (!e.conversions?.[key]) {
+      (e.conversions ??= {})[key] = state.year;
+      log(`${theCountry(COUNTRIES[p.countryId].name).replace(/^the/, 'The')} has changed its money: the ${from.name ?? from.code} is replaced by the ${to.name ?? to.code}. Your savings were converted at the official rate, and are now ${fmtMoney(p.finance.cash, { currency: to })}.`, 'system', 'neutral');
+    }
+  }
+  return k;
+}
+
 /** The eras' part of the year. Runs right after the world's year has moved on. */
 export function tickEra() {
   const state = store.state;
   const e = ensureEra(state);
+  // The world's currencies as this life's amounts are kept, then into the new year.
+  syncWorld(e.applied?.year ?? state.year - 1, e.money);
   noteTransition(state);
+  revalue(state);
   e.applied = { year: state.year, countryId: player().countryId };
   syncWorld(state.year, e.money);
 }

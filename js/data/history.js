@@ -58,9 +58,11 @@ export const MONEY_ANCHORS = [
  *   until: last year the currency was in use · per: units per unit of the next currency
  */
 export const CURRENCY_HISTORY = {
-  // Germany: the Mark (and Reichsmark) until the 1948 currency reform, at 10 to 1 for most
-  // savings [fact: Währungsreform, June 1948]; the Deutsche Mark until the euro.
-  de: [{ until: 1947, code: 'RM', symbol: 'ℳ', name: 'Mark', per: 10 }, { until: 2001, code: 'DEM', symbol: 'DM', name: 'Deutsche Mark', per: 1.95583 }],
+  // Germany: the Mark (and Reichsmark) until the 1948 currency reform [fact: Währungsreform, June 1948];
+  // the Deutsche Mark until the euro. [estimate] The Mark is valued at 2.4 to the Deutsche Mark so that
+  // prices and wages around 1900 come out near their real level (about 4 Marks to the dollar). The real
+  // reform converted most savings at 10 to 1, wiping out much of them; the game converts at its own rate.
+  de: [{ until: 1947, code: 'RM', symbol: 'ℳ', name: 'Mark', per: 2.4 }, { until: 2001, code: 'DEM', symbol: 'DM', name: 'Deutsche Mark', per: 1.95583 }],
   // France: the old franc until the new franc of 1960 (100 to 1), then the euro.
   fr: [{ until: 1959, code: 'FRF0', symbol: '₣', name: 'old franc', per: 100 }, { until: 2001, code: 'FRF', symbol: '₣', name: 'franc', per: 6.55957 }],
   mc: [{ until: 1959, code: 'FRF0', symbol: '₣', name: 'old franc', per: 100 }, { until: 2001, code: 'FRF', symbol: '₣', name: 'franc', per: 6.55957 }],

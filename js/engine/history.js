@@ -80,7 +80,7 @@ export const modernCurrency = (countryId) => MODERN[countryId];
 export function currencyFor(countryId, year, money = 'era') {
   const now = MODERN[countryId];
   if (!now) return null;
-  if (money === 'modern' || year >= MODERN_YEAR) return { ...now, historical: false };
+  if (money === 'modern' || year >= MODERN_YEAR) return { ...now, name: now.code === 'EUR' ? 'euro' : now.code, historical: false };
   const idx = moneyIndex(year);
   const chain = CURRENCY_HISTORY[countryId] ?? [];
   // Walk back from today's currency through each predecessor in use by this year.
@@ -92,7 +92,7 @@ export function currencyFor(countryId, year, money = 'era') {
     cur = chain[i];
   }
   return cur ? { code: cur.code, symbol: cur.symbol, scale: now.scale * per * idx, name: cur.name, historical: true }
-    : { ...now, scale: now.scale * idx, historical: false };
+    : { ...now, name: now.code === 'EUR' ? 'euro' : now.code, scale: now.scale * idx, historical: false };
 }
 
 /**
