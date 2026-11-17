@@ -355,3 +355,41 @@ button.dyn-event { cursor: pointer; }
 .pol-night strong { font-size: 1.35rem; }
 .pol-track { height: 9px; background: var(--line); border-radius: 5px; overflow: hidden; }
 .pol-track i { display: block; height: 100%; }
+
+/* Explore the World (js/ui/globalLife.js) */
+.gl-modal select, .gl-modal input[type="date"], .gl-modal input[type="number"] { width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: inherit; font: inherit; }
+.gl-modal label.field { font-size: 0.85rem; color: var(--muted); }
+.gl-head .gl-where { font-size: 0.85rem; margin: 6px 0 2px; padding: 6px 10px; border-radius: 8px; background: var(--accent-soft); }
+.gl-nav { position: sticky; top: -1px; z-index: 2; background: var(--card); padding-bottom: 6px; }
+.gl-step h3 { color: var(--accent); }
+.gl-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gl-radio { display: flex; gap: 8px; align-items: center; min-height: 40px; font-size: 0.93rem; }
+.gl-radio input { width: 20px; height: 20px; flex: none; }
+.gl-legs p { font-size: 0.85rem; margin: 4px 0; }
+.gl-entry { padding: 8px 0; border-top: 1px dashed var(--line); }
+.gl-entry small { display: block; color: var(--bad); font-size: 0.82rem; }
+.gl-entry.ok small { color: var(--muted); }
+.gl-entry .btn { margin-top: 6px; }
+.gl-problems { border-left: 3px solid var(--warn); }
+.gl-problems p { margin: 4px 0; font-size: 0.9rem; }
+.gl-route { padding: 8px 0; border-top: 1px dashed var(--line); }
+.gl-route small { display: block; color: var(--muted); font-size: 0.83rem; }
+.gl-route.closed { opacity: 0.6; }
+.gl-route .btn { margin-top: 6px; }
+.gl-check { margin: 4px 0; font-size: 0.92rem; }
+.gl-check.done { color: var(--good); }
+.gl-check small { display: block; margin-left: 18px; }
+.gl-mapwrap { margin: 8px 0; }
+.gl-map { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--line); }
+.gl-sea { fill: var(--accent-soft); }
+.gl-grid line { stroke: var(--line); stroke-width: 0.3; }
+.gl-ctx { fill: var(--muted); opacity: 0.5; }
+.gl-move { stroke: var(--accent); opacity: 0.85; }
+.gl-mark circle { fill: var(--bad); stroke: var(--card); cursor: pointer; }
+.gl-mark.approx circle { fill: var(--card); stroke: var(--bad); }
+.gl-mark.on circle { fill: var(--accent); stroke: var(--ink); }
+.gl-legend { font-size: 0.8rem; }
+.gl-tl { padding: 8px 4px; border-bottom: 1px dashed var(--line); font-size: 0.9rem; }
+.gl-tl summary { cursor: pointer; min-height: 32px; }
+.gl-modal .tree-row[disabled] { opacity: 0.5; }
+@media (max-width: 420px) { .gl-dates { grid-template-columns: 1fr; } }

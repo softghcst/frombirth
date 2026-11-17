@@ -17,8 +17,9 @@ import { market, priceOf } from './market.js';
 import { EMIGRATION } from '../data/activities.js';
 import { mayLeave } from './living.js';
 import { routes, bestRoute, spouseAnswer } from './immigration.js';
-import { charge, recordEvent, archiveIdOf } from './chronicle.js';
+import { charge, recordEvent, archiveIdOf, rememberHome } from './chronicle.js';
 import { placeName } from './geo.js';
+import { syncNpcPlaces } from './globalLife.js';
 import { uid } from '../util.js';
 import { PET_TRAVEL } from '../data/travel.js';
 
@@ -209,6 +210,7 @@ export function emigrate(countryId, opts = {}) {
     x.n.flags.caredBy = carer?.id ?? null;
   }
   const homeBefore = p.homeId;
+  for (const a of kept) rememberHome(a, p);
   for (const n of livingNpcs()) {
     if (coming.has(n.id)) { if (n.flags.abroad === to.id) n.flags.abroad = false; delete n.flags.stayedBehind; continue; }
     if (n.role === 'spouse' && !n.flags.abroad) {
@@ -285,6 +287,7 @@ export function emigrate(countryId, opts = {}) {
   log(text, 'system', 'good');
   milestone(`Emigrated from ${theCountry(from.name)} to ${theCountry(to.name)}.`, 'life');
   p.flags.settling = { since: store.state.year, countryId: to.id };
+  syncNpcPlaces(p); // who moved with them, and who stayed, is written down in the year it happened
   const leftPets = petPlan.filter((x) => x.choice === 'leave');
   const petLine = leftPets.length ? ` ${leftPets.map((x) => x.n.firstName).join(' and ')} stayed behind${leftPets[0].banned ? ': the rules there do not allow the animal in' : ''}, with family.` : petPlan.length ? ` ${petPlan.map((x) => x.n.firstName).join(' and ')} came too, with ${petPlan[0].rule.papers}.` : '';
   if (petLine) log(petLine.trim(), 'system', 'neutral');

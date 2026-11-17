@@ -11,7 +11,8 @@ import { meterHtml } from '../meter.js';
 import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
-import { seeDoctor, cosmeticSurgery, openPassport } from '../leisure.js';
+import { seeDoctor, cosmeticSurgery } from '../leisure.js';
+import { openExplore } from '../globalLife.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import * as salon from '../../engine/salon.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
@@ -67,7 +68,8 @@ export default {
         <button class="btn ${med.treatable().some((x) => !x.managed && !x.seen) ? 'primary' : ''}" data-doctor>See a doctor</button>
         ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
         ${salon.canVisitSalon() ? '<button class="btn" data-salon>Beauty salon</button>' : ''}
-        <button class="btn" data-passport>Passport</button>
+        <button class="btn primary" data-explore>Explore the World</button>
+        <button class="btn" data-passport>Passport & Documents</button>
         <button class="btn" data-world>The world</button>
         <button class="btn" data-news>World news</button>
       </div>
@@ -81,7 +83,8 @@ export default {
 
     bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
-    el.querySelector('[data-passport]').onclick = () => openPassport(api);
+    el.querySelector('[data-passport]').onclick = () => openExplore(api, { view: 'documents' });
+    el.querySelector('[data-explore]').onclick = () => openExplore(api);
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practise]')) el.querySelector('[data-practise]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {

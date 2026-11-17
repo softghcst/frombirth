@@ -49,6 +49,7 @@ node tests/citizenship.mjs     # nationality at birth, residency, naturalisation
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
+node tests/global-life.mjs     # travel, passports, borders, relocation, children born abroad, generations; the three vertical slices (SEED=n to vary)
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 
@@ -199,6 +200,7 @@ conditions, cost, odds and the status it gives:
 | As an investor | a large sum | permanent resident |
 | Settlement programme | points for education, work, age and language | permanent resident |
 | Seeking protection | people whose own country is in crisis; no fee | temporary, 3 years |
+| To retire | 55 or over, with a pension or savings to live on | retirement visa, 5 years, renewed while the money lasts; no work |
 
 Routes that are closed are shown with the reason. A temporary status is renewed while its reason holds (a job, a course, a
 crisis at home), becomes permanent after five years, and otherwise ends: one year's warning, then the return home. A graduate
@@ -331,6 +333,41 @@ gets which shape or model is unverified.
 - Portuguese is a language of its own in the game now (Portugal, Brazil, Angola), and someone born where the same language is
   spoken arrives already speaking it.
 
+### Travel, immigration and living abroad
+
+**Explore the World** (Self tab; Pursuits → Travel; People → Family archive) is one hub over the Global Life engine. Each part
+keeps apart things that are easy to confuse: where someone was born, where they are now, where they live, which nationalities
+they hold, which passports they carry, what a border asks of them, and whether they may live, study or work somewhere.
+
+| Engine | What it keeps |
+|---|---|
+| `js/engine/geo.js` | a stable id for every city (`jp/Kyoto`), its GeoNames position, landmass, time zone, season, and the jurisdiction it belonged to in a given year (Leipzig in 1980 was East Germany) |
+| `js/engine/documents.js` | passports (issued only to nationals; expiring or being lost never touches citizenship), what each border asks of each nationality, ETAs and e-visas decided at once, visitor and student visas decided when the year turns, days spent abroad and the Schengen 90-in-180 count |
+| `js/engine/travel.js` | trips: plan, invite (each person decides for themselves, once), choose transport by era (no planes in 1800, a change of planes at a hub on long flights, local arrival times across the date line), stay, things to do, pay once, cancel by the terms, set off, do things there, come home |
+| `js/engine/relocation.js` | moving abroad as a case: apply, a decision when the year turns, then a checklist read from saved state (housing, money, the family's passports, the pets, the journey) before the move itself |
+| `js/engine/chronicle.js` | the ledger (every payment once, every refund once), canonical life events (one per thing that happened, with a stable id) and the archive of past lives |
+| `js/engine/globalLife.js` | the year's turn: decisions due, papers that run out, everyone's residence history, relatives abroad who visit, a parent's language picked up at home, settling in after a move, births abroad |
+| `js/engine/globalStory.js` | the views: Places I've Lived, Our Global Story (map and timeline by generation, person, country, period and kind), the House Chronicle, a person's geography |
+
+- **A trip is not a move.** Taking a trip changes where the player is, never where they live. Days away are counted at the border.
+  A one-tap holiday is recorded as a trip too, so the Travel Journal sees every trip.
+- **Time.** The world clock moves a year at a time. Inside a year a calendar date moves forward only as journeys take people away
+  and back, and starts again on 1 January; nobody ages on a trip. A trip booked for a year and not taken is taken as planned before
+  the year turns. Applications that take time are decided at the turn of the year, once, and the decision is kept.
+- **Moving** never grants a nationality or permanent residence by itself; marriage and owning property grant neither; a work visa
+  becomes permanent residence only through the route's own conditions; citizenship only by applying. The old home, friends, family
+  and property stay where they are, in the records. Pets travel only with an arrangement, or stay with family.
+- **Children born abroad** get the nationalities the place and each parent give (`js/data/citizenship.js`): Mexican parents in Japan
+  give a Mexican child; a Korean and a Spanish parent in Canada give a Canadian and Spanish child. No child inherits a visa.
+- **Generations.** When an heir carries on, the life that ended is archived with its places, trips and papers; every event carries
+  over with its id; homes keep their ids. Our Global Story shows all of it; an ancestor's papers stay private.
+- **Older saves** gain empty records: no passports, visas, trips or events are invented for them, and old trips stay as they were
+  recorded (country and year).
+
+The visit rules, visa names, passport terms, transport dates and earlier jurisdictions are simplified and unverified gameplay
+configuration (`js/data/travel.js`); positions are from GeoNames (`scripts/build-coordinates.py`). See `docs/WORLD_DATA.md`. None of
+it is travel or immigration advice.
+
 ### The brief's ten scenarios
 
 `node tests/world-scenarios.mjs` plays the Living World brief's scenarios A to J through the engine: born in Orlando; a
@@ -387,6 +424,8 @@ tests/          checks that run on Node alone
 | Political scenes (class president, polling day, scandals, removal votes, uprisings) | `js/data/events/politics.js` |
 | Royal and noble scenes (palace invitation, honours, scandal, protocol) | `js/data/events/royal.js` |
 | Moving abroad: who comes, how likely relatives are to say yes, shipping costs, the passport | `js/engine/emigration.js` |
+| Transport by era, places to stay, things to do on a trip, kinds of trip, refund terms, passports, visit rules by destination, pets moving, earlier jurisdictions | `js/data/travel.js` |
+| City coordinates (generated from GeoNames: run `scripts/build-coordinates.py --write`) | `js/data/coordinates.js` |
 | Escape puzzle maps (run `node tests/escape-layouts.mjs` after editing) | `js/data/prisonLayouts.js` |
 | Treatment costs and success rates, surgeries and surgeons, activity and holiday prices, follower packs, emigration fee | `js/data/activities.js` |
 | Trips: getaways, theme parks, cruises, flight classes, and the stories told about them | `js/data/activities.js` (`HOLIDAYS`, `CABINS`, `TRIP_STORIES`) |

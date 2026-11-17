@@ -85,6 +85,7 @@ export function tickRelationships() {
       : !spared && rng.chance(mortalityChance(npc.age, npc.meters.health));
     if (dies) {
       npc.alive = false;
+      npc.flags.diedYear = store.state.year;
       const who = `${roleLabel(npc).toLowerCase()} ${npc.firstName}`;
       log(`Your ${who} died at age ${npc.age}.`, 'system', 'bad');
       p.stats.mood = clamp(p.stats.mood - Math.round(8 + npc.meters.relationship / 5));

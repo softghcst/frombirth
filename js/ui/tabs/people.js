@@ -9,6 +9,9 @@ import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
+import { openExplore, openGlobalStory } from '../globalLife.js';
+import { archiveIdOf } from '../../engine/chronicle.js';
+import { placeName } from '../../engine/geo.js';
 import { avatarSvg, petGlyph, royalDress } from '../avatar.js';
 import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
@@ -209,7 +212,16 @@ function editPerson(api, npc) {
   });
 }
 
-function openNpc(npc, api) {
+/** Where someone was born, lives, and has lived: from the same records as Places I've Lived. */
+function geoLine(npc) {
+  if (npc.role === 'pet') return '';
+  const born = npc.bornIn && COUNTRIES[npc.bornIn] ? placeName(npc.bornIn, npc.birthCity ?? null, store.state.year - npc.age) : null;
+  const now = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad].name : COUNTRIES[player().countryId].name;
+  const lived = new Set((npc.places ?? []).map((l) => l.countryId)).size;
+  return `<p class="muted" style="margin-top:8px">${born ? `Born in ${esc(born)}. ` : ''}${npc.alive ? `Lives in ${esc(now)}.` : ''}${lived > 1 ? ` Has lived in ${lived} countries.` : ''}</p>`;
+}
+
+export function openNpc(npc, api) {
   lives.ensureLife(npc);
   const m = npc.meters;
   const isPet = npc.role === 'pet';
@@ -254,6 +266,7 @@ function openNpc(npc, api) {
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
+    ...(npc.role !== 'pet' ? [{ id: 'places', label: 'Places they have lived' }] : []),
     ...(npc.alive ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
   ];
   // Friendly things first, destructive things last.
@@ -265,7 +278,7 @@ function openNpc(npc, api) {
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
         <small>${esc(rel.roleLabel(npc))} · ${npc.alive ? `age ${npc.age}` : `died at ${npc.age}`}${detail}</small></div>
     </div>
-    ${traitChips}${owns}${feudNote}${expecting}
+    ${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
     <div style="margin:12px 0 16px">${meters}</div>
     ${lifeCard}${history}${timeline}
     <div class="btn-stack">
@@ -314,6 +327,7 @@ function openNpc(npc, api) {
       talkIdentity: () => report(api, who.talkItThrough(npc.id)),
       edit: () => editPerson(api, npc),
       dynasty: () => openDynasty(npc.flags.houseId),
+      places: () => openExplore(api, { view: 'person', params: { id: archiveIdOf(npc) } }),
       breakUp: async () => {
         const yes = await confirmModal({ title: `End things with ${npc.firstName}?`, body: 'They will become an ex.', yes: 'End it', danger: true });
         if (yes) await report(api, love.breakUp(npc.id));
@@ -331,7 +345,7 @@ export default {
     const list = livingNpcs().sort((a, b) =>
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
-    const top = [['tree', 'Family tree']];
+    const top = [['tree', 'Family tree'], ['story', 'Family archive: Our Global Story']];
     if (love.canLookForLove()) top.push(['love', 'Look for love']);
     if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
     if (rel.canGetPet()) top.push(['pet', `Get a pet (${fmtMoney(localMoney(rel.PET_PRICE, c), c)})`]);
@@ -358,6 +372,7 @@ export default {
       if (row) return openNpc(store.state.npcs[row.dataset.npc], api);
       const id = e.target.closest('[data-top]')?.dataset.top;
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api));
+      if (id === 'story') return openGlobalStory(api);
       if (id === 'love') return lookForLove(api);
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

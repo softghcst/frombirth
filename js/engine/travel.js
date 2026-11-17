@@ -729,6 +729,33 @@ function milestones(trip, p) {
   return notes;
 }
 
+/**
+ * A one-tap holiday (engine/activities.holiday): booked, taken and finished at
+ * once. It becomes an ordinary completed trip, so the journal, the stays at the
+ * border, the milestones and the ledger see it like any other.
+ * @param {{countryId:string, city?:string, nights:number, people:object[], name:string, txId:string, amount:number, purpose?:string}} o
+ */
+export function recordQuickTrip(o, p = player()) {
+  const from = home(p);
+  const depart = today();
+  const ret = yearOf(addDays(depart, o.nights)) === year() ? addDays(depart, o.nights) : `${year()}-12-31`;
+  const type = o.purpose === 'scouting' ? 'scouting' : o.purpose === 'family' ? 'visiting' : 'vacation';
+  const trip = { id: uid('trip'), type, status: 'completed', createdYear: year(), organizerId: p.id, origin: from,
+    destination: { countryId: o.countryId, city: o.city ?? (o.countryId === p.countryId ? null : capitalCity(o.countryId)) }, depart, ret,
+    travelers: [{ id: p.id, status: 'organizer', pays: 'self' }, ...o.people.map((n) => ({ id: n.id, status: 'accepted', pays: 'organizer' }))],
+    mode: null, cabin: null, stay: null, activities: [], done: [], insurance: false, payment: 'organizer', package: o.name,
+    bookings: [{ id: uid('bk'), kind: 'package', label: o.name, amount: o.amount, payer: 'player', txId: o.txId, status: 'used' }], events: [], notes: [], completedOn: ret, completedYear: year() };
+  travelState(p).trips.push(trip);
+  if (o.countryId !== p.countryId) for (const x of [p, ...o.people]) addStay(x, o.countryId, depart, ret, trip.id);
+  const notes = milestones(trip, p);
+  const ev = recordEvent({ key: `trip:${trip.id}`, type: 'trip', title: `${o.name}`, date: depart, tripId: trip.id, place: trip.destination,
+    people: o.people.map(archiveIdOf), significance: notes.length ? 2 : 1, privacy: 'family', text: `${o.nights} days${o.people.length ? ` with ${list(o.people.map((n) => n.firstName))}` : ''}.` });
+  trip.events.unshift(ev.id);
+  store.state.today = ret;
+  earn(p);
+  return { trip, notes };
+}
+
 // ---------- The year ----------
 
 /**

@@ -19,7 +19,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { SKILL_BY_ID } from '../data/skills.js';
 import { languagesOf } from './languages.js';
 import { held } from './citizenship.js';
-import { recordEvent, archiveIdOf } from './chronicle.js';
+import { recordEvent, archiveIdOf, rememberHome } from './chronicle.js';
 import { tickPapers, entryRule, needsAuthorization, ensureOwnPassport, today, addDays } from './documents.js';
 import { tickRelocation } from './relocation.js';
 import { openYear, earn, travelState } from './travel.js';
@@ -39,18 +39,23 @@ export const npcCountry = (n, p = player()) => (typeof n.flags?.abroad === 'stri
  */
 export function syncNpcPlaces(p = player()) {
   const year = store.state.year;
+  // People who share the player's home live in the player's city; anyone else, as far as the record goes, in a country.
+  const household = (n) => !n.flags.abroad && (n.role === 'spouse' || n.role === 'pet' || (n.role === 'child' && n.age < 18) || (n.role === 'partner' && n.flags.livesTogether) || (n.role === 'parent' && p.flags.livesWithParents));
   for (const n of Object.values(store.state.npcs)) {
-    if (!n.alive) continue;
+    if (!n.alive) { const last = n.places?.[n.places.length - 1]; if (last && last.to == null) last.to = n.flags.diedYear ?? year; continue; }
     const now = npcCountry(n, p);
+    const city = household(n) ? p.city ?? null : null;
     if (!n.places) {
       const born = n.bornIn && COUNTRIES[n.bornIn] ? n.bornIn : now;
       n.places = born !== now
-        ? [{ countryId: born, from: year - (n.age ?? 0), to: n.flags.movedYear ?? null, derived: true }, { countryId: now, from: n.flags.movedYear ?? null, derived: true }]
-        : [{ countryId: now, from: year - (n.age ?? 0), derived: true }];
+        ? [{ countryId: born, city: n.birthCity ?? null, from: year - (n.age ?? 0), to: n.flags.movedYear ?? null, derived: true }, { countryId: now, city, from: n.flags.movedYear ?? null, derived: true }]
+        : [{ countryId: now, city: n.birthCity && n.birthCity === city ? city : n.birthCity ?? city, from: year - (n.age ?? 0), derived: true }];
       continue;
     }
     const last = n.places[n.places.length - 1];
-    if (last.countryId !== now) { last.to = year; n.places.push({ countryId: now, from: year }); }
+    if (last.countryId !== now) { last.to = year; n.places.push({ countryId: now, city, from: year }); }
+    else if (city && last.city && last.city !== city) { last.to = year; n.places.push({ countryId: now, city, from: year }); }
+    else if (city && !last.city) last.city = city;
   }
 }
 
@@ -160,6 +165,7 @@ export function tickGlobalLife() {
   if (s) lines.push(s);
   for (const name of earn(p)) lines.push({ text: `Achievement: ${name}.`, tone: 'good' });
   for (const l of lines) log(l.text, 'system', l.tone);
+  for (const a of p.assets) if (a.kind === 'property') rememberHome(a, p);
   // Keep the current home in the record of where they live.
   const cur = (p.locations ?? [])[p.locations?.length - 1];
   if (cur && p.homeId && !(cur.homes ??= []).includes(p.homeId)) cur.homes.push(p.homeId);

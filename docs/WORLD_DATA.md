@@ -126,10 +126,30 @@ shown on its profile.
   the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A head of government can change them through the legislature; public
   opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional laws cannot
   be changed by a mayor or governor. School-leaving age is the same everywhere.
-- Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
-  permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
-  New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
-  is no deportation for crime, no overstaying, and no visa needed for a short visit.
+- Immigration routes (`js/data/immigration.js`) are the same nine everywhere (the eight above and a retirement route), with the
+  same fees, terms and five-year path to permanence. Real systems differ by country and are not modelled. The free-movement areas
+  (a European area, and Australia with New Zealand) are simplified lists and unverified. Family members other than a spouse do not
+  hold residence permits of their own, and there is no deportation for crime and no overstaying. Moving abroad is a case decided
+  when the year turns (`js/engine/relocation.js`); the odds of a decision are invented gameplay parameters.
+- Visits (`js/data/travel.js`, `ENTRY`, `VISIT_AREAS`, `LIBERAL`, `ON_ARRIVAL`) are a hand-compiled, **unverified** picture of the
+  mid-2020s: which nationalities visit which places without a visa, need an electronic authorisation (ESTA, the UK's ETA, eTA,
+  K-ETA, NZeTA, Australia's ETA) or need a visitor visa, the longest stay, and the Schengen area's 90 days in any 180. The visa
+  names are the common ones. Real rules depend on far more than nationality (purpose, previous travel, the document held,
+  exemptions and reciprocity), change often, and are not modelled. Fees, processing times and the odds of a decision are invented
+  (`DECISION`), and a decision never depends on nationality. This is not travel or immigration advice.
+- Passports are valid ten years (five for children under sixteen) everywhere; real terms vary. A passport is issued only to a
+  national of the issuing place, and expiring, being lost or being replaced never changes citizenship.
+- Transport (`MODES`) uses broad global dates (the first railways around 1830, liners from 1840, scheduled airlines from 1919,
+  jets from 1958); real availability varied by country and route. Overland travel follows landmasses (`LANDMASS`, `ISLANDS`,
+  the Channel Tunnel from 1994); every coastal place is assumed to have a port and every place an airport. `LANDLOCKED` is
+  factual. Speeds and fares are game numbers. Before 1914 no passports or visas are asked for (simplified: some states did).
+- Earlier jurisdictions (`JURISDICTIONS`) are well-known dates of independence, unification and dissolution, hand-compiled for
+  the places in the game and **unverified**; only the name shown changes. Nationality is not re-derived through successor-state
+  rules, and the game itself starts in the present, so no life can yet be begun in 1800: the era rules for transport and borders
+  are in place and tested, but there is no historical start.
+- Coordinates (`js/data/coordinates.js`) come from GeoNames through `scripts/build-coordinates.py`: 570 of the game's cities.
+  Seventeen are not in that extract and are left out (the game uses the capital's position for them, marked approximate). The
+  family map draws real positions only: it has no coastlines, and draws lines only along moves that were recorded.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
   is valued in its own country's money and shown at today's rate; its mortgage (if it was bought while living there), rent and
   running costs are still kept in everyday money. There is one housing index for the whole world, not one per country. No
@@ -149,6 +169,10 @@ In rough order of value:
 4. **A housing index per country**, and mortgages and rent abroad kept in local money.
 5. **Regions with governments and taxes of their own**, and visas for family members other than a spouse.
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
+7. **Check the visit rules** (`ENTRY` in `js/data/travel.js`) against each government's published list, place by place, as the
+   laws were checked; add study and work visas that differ by country; historical document regimes beyond the three broad eras.
+8. **A historical start**: a life begun in an earlier year, with the jurisdiction table driving nationality through
+   configured successor-state rules.
 
 ## Adding a place
 

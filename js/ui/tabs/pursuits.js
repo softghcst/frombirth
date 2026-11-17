@@ -16,6 +16,7 @@ import * as fun from '../../engine/activities.js';
 import * as net from '../../engine/social.js';
 import { canEmigrate } from '../../engine/emigration.js';
 import * as leisure from '../leisure.js';
+import { openExplore } from '../globalLife.js';
 import { roleLabel } from '../../engine/relationships.js';
 
 async function report(api, r) {
@@ -155,6 +156,7 @@ export default {
           <button class="btn danger" data-crime style="margin-top:10px">Commit a crime</button>
         </div>` : ''}
         ${socialCard()}
+        <div class="card"><h3>Travel</h3><p class="muted" style="margin-bottom:10px">Trips at home and abroad, your papers, and the places you have been.</p><div class="btn-stack"><button class="btn" data-go="travel">Explore the World</button></div></div>
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
     }
     el.onclick = (e) => {
@@ -164,7 +166,7 @@ export default {
       const todo = e.target.closest('[data-do]')?.dataset.do;
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;
-      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: leisure.moveAbroad, city: leisure.moveCity })[go](api);
+      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a) })[go](api);
       const act = e.target.closest('[data-prison]')?.dataset.prison;
       if (!act) return undefined;
       if (act === 'gang') return joinGang(api);

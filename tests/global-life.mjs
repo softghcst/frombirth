@@ -245,6 +245,13 @@ let p = life('us', 30, 80000, 'New York');
   // A long modern flight changes planes.
   const far = travel.journey({ countryId: 'ar', city: 'Buenos Aires' }, { countryId: 'jp', city: 'Tokyo' }, (await import('../js/data/travel.js')).MODE_BY_ID.jet, `${y}-03-01`);
   check(far.legs.length === 2, `Buenos Aires to Tokyo changes planes (${far.legs.map((l) => l.to.city).join(' > ')})`);
+  // A one-tap holiday is a trip like any other: one record, one charge.
+  const fun = await import('../js/engine/activities.js');
+  const q = life('fr', 35, 90000, 'Paris');
+  const r0 = fun.holiday('city', false);
+  const quick = travel.trips(['completed']).find((x) => x.package);
+  check(r0.ok && quick && q.finance.ledger.filter((x) => x.ref?.tripId === quick.id).length === 1 && chron.hasEvent(`trip:${quick.id}`), 'a one-tap getaway becomes a completed trip, charged once, recorded once');
+  check(!fun.holiday('disneyland', false).ok, 'a package abroad needs a passport');
   section('travel: refunds by terms, dates checked, clashes refused, trip kinds need real reasons, 1800 and 1950 travel by what existed');
 }
 {
@@ -324,6 +331,11 @@ let moved;
   check(gs.international.some((e) => e.id === moves[0].id) && gs.lines.length >= 1 && gs.markers.some((m) => m.city === 'Toronto'), 'Our Global Story shows it, with a line along the move and a marker in Toronto');
   const hc = story.homeChronicle(home.id);
   check(hc && hc.residents.some((x) => x.id === chron.archiveIdOf(p)) && hc.owner === 'You' && !hc.livedInNow, 'the House Chronicle: you lived there, you own it, you do not live there now');
+  // Sold: still the same home in the family's history, with the same place and residents.
+  const { sellProperty } = await import('../js/engine/realEstate.js');
+  sellProperty(home.id);
+  const gone = story.homeChronicle(home.id);
+  check(!p.assets.some((a) => a.id === home.id) && gone.name === 'Two-bedroom condo' && gone.city === 'Guadalajara' && gone.owner === 'Not owned by you' && gone.residents.some((x) => x.id === chron.archiveIdOf(p)), 'a sold home keeps its name, its place and who lived there');
   moved = { slot: store.state.slotId };
   section('slice 2: Mexico to Toronto: applied, decided at the year\'s turn, arranged, moved; old life, friends, flat and dog intact; no nationality granted');
 }

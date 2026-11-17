@@ -114,6 +114,7 @@ const archive = () => (store.state.archive ??= { people: {} });
 export function archivePerson(person, extra = {}) {
   const id = archiveIdOf(person);
   const a = archive();
+  for (const asset of person.assets ?? []) rememberHome(asset, person);
   a.people[id] = {
     id, firstName: person.firstName, lastName: person.lastName, gender: person.gender,
     born: { year: person.birthYear ?? null, countryId: person.birthCountryId ?? person.bornIn ?? null, city: person.birthCity ?? null },
@@ -127,4 +128,17 @@ export function archivePerson(person, extra = {}) {
   return a.people[id];
 }
 export const archivedPeople = () => Object.values(archive().people);
+
+/**
+ * Remembers a home the family has had: its name and where it stands, so the
+ * House Chronicle can still say what and where it was after it is sold or
+ * passes out of the family. Ownership is not recorded here: only identity.
+ */
+export function rememberHome(asset, p = player()) {
+  if (!asset || asset.kind !== 'property') return;
+  const homes = (archive().homes ??= {});
+  const at = homes[asset.id] ?? { id: asset.id };
+  homes[asset.id] = { ...at, name: asset.name, countryId: asset.countryId ?? p.countryId, city: asset.city ?? (asset.countryId && asset.countryId !== p.countryId ? null : p.city) ?? null };
+}
+export const homeOnRecord = (id) => archive().homes?.[id] ?? null;
 export const archived = (id) => archive().people[id] ?? null;

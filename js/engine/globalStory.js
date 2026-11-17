@@ -8,12 +8,14 @@
 import { store, player } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { coords, jurisdictionAt, placeName } from './geo.js';
-import { events, visible, archiveIdOf, archivedPeople, archived } from './chronicle.js';
+import { events, visible, archiveIdOf, archivedPeople, archived, homeOnRecord } from './chronicle.js';
 import { held } from './citizenship.js';
 import { roleLabel } from './relationships.js';
 
 const GEN = { grandparent: -2, parent: -1, sibling: 0, spouse: 0, partner: 0, ex: 0, relative: 0, cousin: 0, child: 1, niece: 1, grandchild: 2, greatgrandchild: 3, inlaw: 0 };
 const year = () => store.state.year;
+/** The year someone was born: from their age now, or at death. Unknown for someone whose death year was never recorded. */
+const bornYear = (n) => (n.alive ? year() - (n.age ?? 0) : n.flags?.diedYear != null ? n.flags.diedYear - (n.age ?? 0) : null);
 
 /** Everyone in the family's history: the archive, the player, and relatives in the save. */
 export function familyPeople(p = player()) {
@@ -31,7 +33,7 @@ export function familyPeople(p = player()) {
     const aid = archiveIdOf(n);
     if (out.has(aid)) { out.get(aid).npcId = n.id; continue; } // an ancestor who is also in the save (the previous player): the same person
     out.set(aid, { id: aid, kind: 'npc', npcId: n.id, name: `${n.firstName} ${n.lastName}`, firstName: n.firstName, generation: g + GEN[n.role], alive: n.alive, relation: roleLabel(n),
-      born: { year: year() - (n.age ?? 0), countryId: n.bornIn ?? null, city: n.birthCity ?? null }, places: n.places ?? [], trips: [], appearance: n.appearance, citizenships: n.citizenships ?? null });
+      born: { year: bornYear(n), countryId: n.bornIn ?? null, city: n.birthCity ?? null }, died: n.alive ? null : n.flags?.diedYear ?? null, places: n.places ?? [], trips: [], appearance: n.appearance, citizenships: n.citizenships ?? null });
   }
   return [...out.values()];
 }
@@ -91,7 +93,7 @@ export function personHistory(archiveId, p = player()) {
   const x = familyPeople(p).find((y) => y.id === archiveId);
   const n = x?.npcId ? store.state.npcs[x.npcId] : Object.values(store.state.npcs).find((m) => archiveIdOf(m) === archiveId);
   const base = x ?? (n ? { id: archiveId, kind: 'npc', npcId: n.id, name: `${n.firstName} ${n.lastName}`, firstName: n.firstName, alive: n.alive, relation: roleLabel(n),
-    born: { year: year() - (n.age ?? 0), countryId: n.bornIn ?? null, city: n.birthCity ?? null }, places: n.places ?? [], trips: [], appearance: n.appearance } : null);
+    born: { year: bornYear(n), countryId: n.bornIn ?? null, city: n.birthCity ?? null }, places: n.places ?? [], trips: [], appearance: n.appearance } : null);
   if (!base) return null;
   const seen = events((e) => (e.subject === archiveId || e.people.includes(archiveId)) && visible(e, me));
   const shared = archiveId === me ? [] : seen.filter((e) => e.people.includes(me) || e.subject === me);
@@ -113,9 +115,13 @@ export function personHistory(archiveId, p = player()) {
 /** A property as the family's history knows it: owned now, or remembered from someone's residence record. */
 function homeRecord(id, p = player()) {
   const a = p.assets.find((x) => x.id === id);
-  if (a) return { id, name: a.name, countryId: a.countryId ?? p.countryId, city: a.city ?? null, owned: true, tenant: !!a.tenant };
+  if (a) return { id, name: a.name, countryId: a.countryId ?? p.countryId, city: a.city ?? (a.countryId && a.countryId !== p.countryId ? null : p.city), owned: true, tenant: !!a.tenant };
+  const known = homeOnRecord(id);
+  if (known) return { id, name: known.name, countryId: known.countryId, city: known.city, owned: false };
+  // Known only from a move away from it: it stood where the move started.
   const ev = events((e) => e.propertyId === id)[0];
-  return { id, name: 'A former home', countryId: ev?.place?.countryId ?? null, city: ev?.place?.city ?? null, owned: false };
+  const at = ev?.type === 'relocation' ? ev.from : ev?.place;
+  return { id, name: 'A former home', countryId: at?.countryId ?? null, city: at?.city ?? null, owned: false };
 }
 
 /**
@@ -133,7 +139,7 @@ export function homeChronicle(propertyId, p = player()) {
   const a = p.assets.find((x) => x.id === propertyId);
   return {
     ...home, where: home.countryId ? placeName(home.countryId, home.city) : 'Unknown',
-    owner: a ? 'You' : 'No longer in the family', livedInNow: p.homeId === propertyId, let: !!a?.tenant, bought: a?.boughtAtAge != null ? p.birthYear + a.boughtAtAge : null,
+    owner: a ? 'You' : 'Not owned by you', livedInNow: p.homeId === propertyId, let: !!a?.tenant, bought: a?.boughtAtAge != null ? p.birthYear + a.boughtAtAge : null,
     residents: residents.sort((x, y) => (x.from ?? 0) - (y.from ?? 0)),
     events: events((e) => e.propertyId === propertyId && visible(e)),
   };

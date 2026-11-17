@@ -100,7 +100,7 @@ export function commitCrime(crimeId, targetId, how = {}) {
     if (crime.mood) p.stats.mood = clamp(p.stats.mood + crime.mood);
     let text = crime.done;
     if (crime.target) {
-      if (victim) victim.alive = false;
+      if (victim) { victim.alive = false; victim.flags.diedYear = store.state.year; }
       p.counters.kills += 1;
       text = `${method.done.replace(/\{v\}/g, who).replace(/([,a-z] )The /g, '$1the ')} ${crime.done}`;
     }

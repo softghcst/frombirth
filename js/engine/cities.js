@@ -1,6 +1,7 @@
 // Cities that differ: what a home costs, what work pays, which region's law
 // applies, and moving between them without leaving the country.
 import { recordEvent } from './chronicle.js';
+import { syncNpcPlaces } from './globalLife.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
@@ -126,6 +127,7 @@ export function relocate(cityName) {
 
   p.city = cityName;
   p.flags.livesWithParents = false;
+  syncNpcPlaces(p);
   if (store.state.market) store.state.market.listings = null; // a different market
   p.stats.mood = clamp(p.stats.mood + 2);
   const law = lawDiffers(p.countryId, to.regionId, from.regionId) ? `Some laws are different in ${to.region ?? cityName}. ` : '';

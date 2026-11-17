@@ -1,5 +1,6 @@
 // Property: what is for sale, mortgages, living in it, renovating, letting to
 // tenants, selling, and the yearly upkeep, wear and repayments.
+import { rememberHome } from './chronicle.js';
 import { housingK } from './cities.js';
 import { rng } from '../rng.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -279,6 +280,7 @@ export function sellProperty(id) {
   if (!away) p.finance.cash += raised;
   const gain = a.value - a.purchasePrice;
   const wasHome = p.homeId === id;
+  rememberHome(a);
   remove(a);
   const text = `You sold the ${lower(a.name)} for ${fmtMoney(a.value, c)}, ${gain >= 0 ? `${fmtMoney(gain, c)} more` : `${fmtMoney(-gain, c)} less`} than you paid. After fees${a.mortgage ? ' and the mortgage' : ''} you kept ${fmtMoney(raised, c)}.${wasHome ? ' You are renting again.' : ''}`;
   const text2 = away ? `${text} It was paid in ${away}: ${fmt(paid, away)} is in your ${away} account.` : text;
