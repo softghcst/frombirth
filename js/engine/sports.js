@@ -26,11 +26,23 @@ import { clamp, cap, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
 import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS } from '../data/sports.js';
 import { makeNpc } from './npcFactory.js';
+import { remember } from './conditions.js';
 import { seeded, hash, teamGame, tennisMatch, rallyMatch, bout, mark, better, fmtMark, judged, golfRound, prChange, prOfSkill, edge } from './sportsPlay.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const fullName = (x) => `${x.firstName} ${x.lastName}`.trim();
 const yearNow = (state = store.state) => state.year;
+
+/**
+ * Writes a line in the life story that opens a page of My Athletics when tapped: { screen, id } where screen is
+ * 'season' | 'event' | 'sport' | 'team' | 'coach' | 'athlete' | a section of the hub ('hub:career').
+ */
+export function say(state, text, tone = 'neutral', link = null) {
+  const e = { age: state.player.age, text, kind: 'system', tone };
+  if (link) e.sport = link;
+  state.journal.push(e);
+  return e;
+}
 
 // ---------- The record ----------
 
@@ -123,6 +135,22 @@ function newEntry(state, p, a, sport, since = state.year) {
   return e;
 }
 
+/**
+ * A sport entry known only lightly (a relative's) given skills: worked out from the person's own talent and the level
+ * they had reached, never above it. Used when a relative becomes the player.
+ */
+function fillEntry(state, p, e) {
+  if (Object.keys(e.skills).length) return e;
+  const sport = sportOf(e.id);
+  e.ceiling = ceilings(p, sport);
+  const level = Math.min(e.peak ?? 20, LEVEL_STRENGTH[e.level] ?? 30);
+  for (const [k] of sport.skills) e.skills[k] = Math.round(Math.min(e.ceiling[k] - 3, level * 0.85));
+  e.position ??= sport.positions?.[0]?.[0] ?? null;
+  e.plan = { type: 'balanced', hours: e.status === 'active' ? 2 : 0 };
+  e.orgId = null; e.teamId = null; e.coachId = null;
+  return e;
+}
+
 /** The character's athletic profile, made the first time it is needed. */
 export function profile(state = store.state) {
   const S = ensure(state);
@@ -189,7 +217,13 @@ export function takeUp(sportId, state = store.state) {
   let e = a.sports[sportId];
   if (e?.status === 'active') return result(false, `You already play ${sport.name.toLowerCase()}.`, 'neutral');
   if (activeSports(p.id, state).length >= 3) return result(false, 'You already play three sports. Give one up first.', 'neutral');
-  if (e) { e.status = 'active'; e.level = 'recreational'; e.plan = { type: 'balanced', hours: 2 }; }
+  if (e) fillEntry(state, p, e);
+  if (e) {
+    // Back after a break: remembered, so the comeback can be told when the first season back is played.
+    const away = state.year - (e.stoppedYear ?? e.retiredYear ?? state.year);
+    if (away >= 2) e.comeback = { from: e.stoppedYear ?? e.retiredYear, year: state.year, age: p.age };
+    e.status = 'active'; e.level = 'recreational'; e.plan = { type: 'balanced', hours: 2 };
+  }
   else e = newEntry(state, p, a, sport);
   if (!a.primary || a.sports[a.primary]?.status !== 'active') a.primary = sportId;
   joinOrg(rec(state, sport), state, { quiet: true });
@@ -204,6 +238,7 @@ export function giveUp(sportId, state = store.state) {
   if (e.contractId && ensure(state).contracts[e.contractId]?.status === 'active') return result(false, 'You are under contract. Retire, or see the contract out.', 'neutral');
   leaveOrg(e, state, 'stopped playing');
   e.status = 'stopped';
+  e.stoppedYear = state.year;
   e.plan.hours = 0;
   const a = myAthlete(state);
   if (a.primary === sportId) a.primary = activeSports(state.player.id, state)[0]?.id ?? sportId;
@@ -257,8 +292,10 @@ const kindOf = (k) => (SKILL_KIND.physical.includes(k) ? 'physical' : SKILL_KIND
 function trainYear(state, p, a, e) {
   const sport = sportOf(e.id);
   const plan = PLANS[e.plan.type] ?? PLANS.balanced;
-  const coach = coachOf(e.coachId, state);
-  const cq = coach ? 0.7 + coach.quality / 200 : 0.65;
+  const club = coachOf(e.coachId, state);
+  const own = coachOf(e.privateCoachId, state);
+  const coach = own && (!club || own.quality >= club.quality) ? own : club;
+  const cq = (coach ? 0.7 + coach.quality / 200 : 0.65) + (own && club ? 0.05 : 0) + (e.mentorId ? 0.05 : 0);
   const disc = 0.8 + val(p, 'hidden.discipline') / 250;
   const injured = a.injuries.some((x) => x.sportId === e.id && x.status === 'out');
   const base = 5.5 * hoursFactor(e.plan.hours) * ageFactor(p.age) * cq * disc * plan.k * (injured ? 0.35 : 1) * (0.6 + a.motivation / 160);
@@ -513,14 +550,14 @@ export function tryOut(orgId, state = store.state) {
     myAthlete(state).confidence = clamp(myAthlete(state).confidence - 4);
     const near = showing >= bar - 5;
     const text = `You tried out for ${org.name}. ${c.name.split(' ')[0]}, the coach, ${near ? 'said it was close, and to come back next year' : 'thanked you, and said you were not ready yet'}.`;
-    log(text, 'system', 'bad');
+    say(state, text, 'bad', { screen: 'sport', id: org.sportId });
     moment(state, { type: 'tryout', sportId: org.sportId, text: `Tried out for ${org.name} and was not taken.`, sig: 1, orgId: org.id });
     return result(false, text);
   }
   joinOrg(org, state);
   myAthlete(state).confidence = clamp(myAthlete(state).confidence + 5);
   const text = `You made it: ${org.name} took you on. Your coach is ${c.name}${c.style ? `, ${c.style === 'demanding' ? 'who expects a lot' : c.style === 'supportive' ? 'who is patient with young players' : c.style === 'technical' ? 'who drills technique' : 'who talks tactics'}` : ''}.`;
-  log(text, 'system', 'good');
+  say(state, text, 'good', { screen: 'team', id: entryOf(org.sportId, p.id, state).teamId });
   if (org.level === 'academy') milestone(`Joined the ${org.name}.`, 'career');
   return result(true, text);
 }
@@ -930,6 +967,65 @@ function rivalNote(state, e, name, won) {
   x.met += 1; if (won) x.won += 1;
 }
 
+// ---------- A private coach ----------
+
+/** What a private coach costs a year, base units: more for a better one. */
+export const privateCoachCost = (quality) => Math.round(600 + quality * 25);
+/** Private coaches the player could hire for a sport: three real people, the same three all year. */
+export function privateCoaches(sportId, state = store.state) {
+  const S = ensure(state);
+  const p = state.player;
+  const key = `private/${sportId}/${p.countryId}/${cityOf(p)}/${state.year}`;
+  S.privatePool ??= {};
+  if (!S.privatePool[key]) {
+    const r = seeded(key);
+    S.privatePool[key] = [0, 1, 2].map((i) => ({ i, quality: Math.round(clamp(42 + i * 14 + r.int(-6, 6), 30, 92)), style: r.pick(Object.keys(COACH_STYLE)), specialty: r.pick(['technical', 'physical', 'mental']), npcId: null }));
+  }
+  return S.privatePool[key].map((x) => ({ ...x, cost: localMoney(privateCoachCost(x.quality), COUNTRIES[p.countryId]) }));
+}
+/**
+ * Hires a private coach: a person, kept, who works with the player alone. Paid each year by the player, or by the family
+ * for a child (engine/sportsLife.js). Better coaches cost more.
+ */
+export function hirePrivateCoach(sportId, i, state = store.state) {
+  const S = ensure(state);
+  const p = state.player;
+  const e = entryOf(sportId, p.id, state);
+  const sport = sportOf(sportId);
+  if (!e || e.status !== 'active') return result(false, 'You do not play that.', 'neutral');
+  if (e.privateCoachId) return result(false, 'You already have a private coach for this.', 'neutral');
+  if (e.contractId) return result(false, 'Your club coaches you now.', 'neutral');
+  const offer = privateCoaches(sportId, state).find((x) => x.i === Number(i));
+  if (!offer) return result(false, 'That coach is not available.', 'neutral');
+  if (p.age >= 18 && p.finance.cash < offer.cost) return result(false, `${fmtMoney(offer.cost, COUNTRIES[p.countryId])} a year is more than you have.`, 'neutral');
+  if (p.age < 18 && !academyAffordable(state)) return result(false, 'Your family cannot pay for a private coach.', 'neutral');
+  const r = seeded(`privatecoach/${p.id}/${sportId}/${state.year}/${i}`);
+  const npc = makeNpc({ role: 'coach', countryId: p.countryId, age: r.int(26, 60), relationship: 50 });
+  npc.flags.title = `Private ${sport.name.toLowerCase()} coach`;
+  npc.flags.sport = sportId;
+  state.npcs[npc.id] = npc; p.npcIds.push(npc.id);
+  S.coaches[npc.id] = { id: npc.id, name: fullName(npc), sportId, quality: offer.quality, style: offer.style, specialty: offer.specialty, orgId: null, private: true, fee: offer.cost,
+    since: state.year, history: [{ year: state.year, orgId: null, text: `Began coaching ${fullName(p)} privately.` }], players: [p.id] };
+  e.privateCoachId = npc.id;
+  const text = `${fullName(npc)} will coach you privately: ${COACH_STYLE[offer.style].split('.')[0].toLowerCase()}. ${p.age >= 18 ? `${fmtMoney(offer.cost, COUNTRIES[p.countryId])} a year.` : 'Your family pays.'}`;
+  say(state, text, 'good', { screen: 'coach', id: npc.id });
+  moment(state, { type: 'private_coach', sportId, text: `Started working with ${fullName(npc)}, a private coach.`, sig: 2, people: [npc.id], memory: `You started training together, ${sport.name.toLowerCase()}, just the two of you.` });
+  return result(true, text);
+}
+export function dropPrivateCoach(sportId, state = store.state) {
+  const e = entryOf(sportId, state.player.id, state);
+  const c = coachOf(e?.privateCoachId, state);
+  if (!c) return result(false, 'You have no private coach.', 'neutral');
+  c.history.push({ year: state.year, orgId: null, text: `Stopped coaching ${fullName(state.player)}.` });
+  c.until = state.year;
+  const n = state.npcs[c.id];
+  if (n) n.flags.title = `Former private coach (${sportOf(sportId).name.toLowerCase()})`;
+  e.privateCoachId = null;
+  const text = `You stopped working with ${c.name}.`;
+  log(text);
+  return result(true, text, 'neutral');
+}
+
 // ---------- Partnerships (doubles) ----------
 
 /** A doubles partner: a real person, kept, with how well the two of them play together. */
@@ -954,7 +1050,7 @@ export function findPartner(sportId, state = store.state) {
   e.partnershipId = id;
   const text = `You teamed up with ${fullName(n)} for doubles: ${S.partnerships[id].style}.`;
   log(text, 'system', 'good');
-  moment(state, { type: 'partner', sportId, text: `Started playing doubles with ${fullName(n)}.`, sig: 2, people: [n.id] });
+  moment(state, { type: 'partner', sportId, text: `Started playing doubles with ${fullName(n)}.`, sig: 2, people: [n.id], memory: `You started playing ${sport.name.toLowerCase()} doubles together.` });
   return result(true, text);
 }
 export function currentPartnership(sportId, state = store.state) {
@@ -983,16 +1079,28 @@ export function moment(state, m) {
   const key = m.key ?? `${m.type}/${m.sportId ?? ''}/${state.year}/${m.text}`;
   if (S.moments.some((x) => x.key === key)) return null;
   const p = state.player;
-  const x = { id: `mo_${S.moments.length + 1}`, key, year: state.year, age: p.age, personId: m.personId ?? p.id, name: fullName(p), gen: p.generation ?? 1,
+  const x = { id: `mo_${S.moments.length + 1}`, key, year: m.year ?? state.year, age: m.age ?? p.age, personId: m.personId ?? p.id, name: m.name ?? fullName(p), gen: m.gen ?? p.generation ?? 1,
     type: m.type, sportId: m.sportId ?? null, text: m.text, sig: m.sig ?? 1, orgId: m.orgId ?? null, seasonId: m.seasonId ?? null, eventId: m.eventId ?? null, people: m.people ?? [] };
   S.moments.push(x);
+  // The people who were there remember it too: a coach, a doubles partner, the teammates the player knows.
+  const who = new Set(x.people);
+  if (m.sig >= 2 && x.sportId && x.personId === p.id) {
+    const e = entryOf(x.sportId, p.id, state);
+    if (e?.coachId) who.add(e.coachId);
+    if (e?.privateCoachId) who.add(e.privateCoachId);
+    for (const r of teamOf(e?.teamId, state)?.roster ?? []) if (r.npcId) who.add(r.npcId);
+  }
+  // Told from the player's side, like every other memory: "You won the City League."
+  const said = m.memory ?? `You ${x.text.replace(/^./, (c) => c.toLowerCase())}`;
+  for (const id of who) { const n = state.npcs[id]; if (n?.alive && n.role !== 'pet') remember(n, `sport:${x.id}`, said); }
+  x.people = [...who];
   return x;
 }
 export const momentsOf = (personId = store.state.player.id, state = store.state) => ensure(state).moments.filter((m) => m.personId === personId);
 
 // ---------- Exports for the other sports modules ----------
 
-export const internals = { regroup, nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, leagueFor, playSeason, playEvent, newEntry, newAthlete, trainYear,
+export const internals = { fillEntry, academyAffordable, regroup, nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, leagueFor, playSeason, playEvent, newEntry, newAthlete, trainYear,
   overall, meanSkill, rec, LEVEL_STRENGTH, EVENTS_A_YEAR, teamStrength, val, fullName, rivalNote, seeded, hash, ordinal };
 export { SPORTS, LEVEL_NAMES };
 void cap; void yearNow;

@@ -18,6 +18,8 @@ import { registerEmployer, payAt, employer } from './employers.js';
 import { catalogue } from './university.js';
 import { makeNpc } from './npcFactory.js';
 import * as sp from './sports.js';
+import { familyPast, tickRelatives, parentsYear } from './sportsFamily.js';
+import { tickSportsArcs } from './sportsArcs.js';
 
 const { nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, playSeason, playEvent, overall, rec, EVENTS_A_YEAR, fullName, seeded } = sp.internals;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -110,7 +112,6 @@ const ANSWERS = {
     log(text, 'system', 'good');
     milestone(`Committed to play ${sportOf(d.sportId).name.toLowerCase()} at ${offer.name}.`, 'education');
     sp.moment(state, { type: 'commit', sportId: d.sportId, text: `Committed to ${offer.name} on an athletic scholarship.`, sig: 3 });
-    arc(state, 'scholarship', d.sportId, 'The scholarship', `A university wanted you to play for them, and offered to pay for it: ${offer.name}.`);
     return result(true, text);
   },
   contract(state, d, choice) {
@@ -120,6 +121,7 @@ const ANSWERS = {
   renew(state, d, choice) {
     const S = sp.ensure(state);
     const k = S.contracts[d.contractId];
+    if (k && k.status !== 'active') return { ...result(false, `You have already left ${k.name}.`, 'neutral'), close: true };
     if (choice === 'no' || !k) { if (k) endContract(state, k, 'let the contract run out'); return result(true, 'You will look for a new club.', 'neutral'); }
     k.to = state.year + d.years; k.salary = d.salary;
     state.player.career.salary = d.salary;
@@ -131,7 +133,7 @@ const ANSWERS = {
     if (choice === 'no') { log(`You stayed, and ${d.orgName} looked elsewhere.`); return result(true, 'You stayed.', 'neutral'); }
     const S = sp.ensure(state);
     const old = S.contracts[d.contractId];
-    if (old) endContract(state, old, `transferred to ${d.orgName}`);
+    if (old?.status === 'active') endContract(state, old, `transferred to ${d.orgName}`);
     return signPro(state, d, { transfer: true });
   },
   turnPro(state, d, choice) {
@@ -293,7 +295,7 @@ function rollInjury(state, a, e) {
   a.injuries.push(inj);
   addCondition(injuryCondition(type));
   for (const [k] of sport.skills) if (def.skillLoss && r.chance(0.4)) e.skills[k] = Math.max(0, e.skills[k] - def.skillLoss);
-  log(`You picked up ${def.name} playing ${sport.name.toLowerCase()}.${def.seasons >= 1 ? ' It will be a long way back.' : ''}`, 'system', 'bad');
+  sp.say(state, `You picked up ${def.name} playing ${sport.name.toLowerCase()}.${def.seasons >= 1 ? ' It will be a long way back.' : ''}`, 'bad', { screen: 'hub', id: 'health' });
   sp.moment(state, { type: 'injury', sportId: e.id, text: `Injured: ${def.name}.`, sig: def.severity >= 35 ? 2 : 1, key: `injury/${id}` });
   decide(state, { kind: 'rehab', sportId: e.id, injuryId: id, key: `rehab/${id}`, text: `You have ${def.name}. How will you deal with it?`,
     options: Object.entries(REHAB).map(([k, x]) => ({ id: k, label: x.name + (x.cost ? ` (${fmt(state, money(state, x.cost))})` : '') })) });
@@ -348,7 +350,7 @@ function recruiting(state, a, e, rating) {
   const offers = r.shuffle(unis).slice(0, n).map((u) => ({ instId: u.id, name: u.name, fraction: o >= 74 ? 1 : o >= 66 ? 0.75 : 0.5 }));
   decide(state, { kind: 'scholarship', sportId: e.id, text: `University coaches have been watching. ${offers.length === 1 ? 'One has' : `${offers.length} have`} offered you an athletic scholarship. Committing means the coach backs your application and the scholarship pays part of the tuition, for as long as you play.`,
     offers, options: [...offers.map((x) => ({ id: x.instId, label: `${x.name}: ${Math.round(x.fraction * 100)}% of tuition` })), { id: 'no', label: 'Not now' }] });
-  log(`University ${sport.name.toLowerCase()} coaches have been in touch.`, 'system', 'good');
+  sp.say(state, `University ${sport.name.toLowerCase()} coaches have been in touch.`, 'good', { screen: 'hub', id: 'career' });
 }
 /** At university: the program the player plays for, kept, with the scholarship tied to it. */
 function collegeTeam(state, a, e) {
@@ -426,7 +428,7 @@ function proRoutes(state, a, e) {
     decide(state, { kind: 'contract', how: 'draft', sportId: e.id, orgId: org.id, orgName: org.name, ...off, key: `draft/${e.id}/${state.year}`,
       text: `${org.name} drafted you with pick ${pick}. They offer ${off.years} ${off.years === 1 ? 'year' : 'years'} at ${fmt(state, off.salary)} a year.`,
       options: [{ id: 'yes', label: 'Sign' }, { id: 'no', label: 'Turn it down' }] });
-    log(`You were drafted: pick ${pick}, by ${org.name}.`, 'system', 'good');
+    sp.say(state, `You were drafted: pick ${pick}, by ${org.name}.`, 'good', { screen: 'hub', id: 'career' });
     sp.moment(state, { type: 'drafted', sportId: e.id, text: `Drafted with pick ${pick} by ${org.name}.`, sig: 3, orgId: org.id });
     return;
   }
@@ -463,14 +465,14 @@ function contractYear(state, a, e) {
     const org = sp.orgOf(k.orgId, state);
     if (o >= 60 && p.age <= 35) {
       const off = offerFor(state, e, org);
-      decide(state, { kind: 'renew', sportId: e.id, contractId: k.id, orgName: org.name, ...off, key: `renew/${k.id}`, text: `Your contract with ${org.name} is up. They offer ${off.years} more ${off.years === 1 ? 'year' : 'years'} at ${fmt(state, off.salary)}.`,
+      decide(state, { kind: 'renew', sportId: e.id, contractId: k.id, orgName: org.name, ...off, key: `renew/${k.id}/${state.year}`, text: `Your contract with ${org.name} is up. They offer ${off.years} more ${off.years === 1 ? 'year' : 'years'} at ${fmt(state, off.salary)}.`,
         options: [{ id: 'yes', label: 'Sign again' }, { id: 'no', label: 'Leave as a free agent' }] });
     } else { endContract(state, k, 'released at the end of the contract'); log(`${org.name} did not offer you a new contract.`, 'system', 'bad'); }
-    return;
   }
   // Another club wants the player: a transfer. The fee passes between the clubs; it is not the player's money.
+  // The better the player, the more clubs ask; in the last year of a contract a bid competes with the offer to stay.
   const r = seeded(`bid/${k.id}/${state.year}`);
-  if (o >= 74 && r.chance(0.18)) {
+  if (k.status === 'active' && o >= 74 && r.chance(Math.min(0.45, 0.12 + (o - 74) / 55))) {
     const sport = sportOf(e.id);
     const org = proClub(state, sport, r.int(8, 15), 1);
     if (org.id === k.orgId) return;
@@ -510,7 +512,8 @@ function fameYear(state, a, e, sum) {
   if (a.fame >= 25 && ['pro', 'elite', 'college'].includes(e.level) && !Object.values(sp.ensure(state).contracts).some((k) => k.kind === 'sponsor' && k.status === 'active' && k.personId === p.id)) {
     const r = seeded(`sponsor/${p.id}/${state.year}`);
     if (e.level === 'college' && !['us'].includes(p.countryId)) return; // university athletes elsewhere are not paid for their name
-    if (r.chance(0.5)) {
+    // The better known, the likelier a brand calls.
+    if (r.chance(Math.min(0.9, 0.2 + a.fame / 100))) {
       const brand = r.pick(SPONSORS);
       const amount = money(state, Math.round(a.fame * 900 * (a.agentId ? 1.15 : 1)));
       decide(state, { kind: 'sponsor', sportId: e.id, brand, amount, years: r.int(1, 3), key: `sponsor/${state.year}`, text: `${brand} want you in their next campaign: ${fmt(state, amount)} a year.`,
@@ -606,35 +609,24 @@ export function becomeCoach(sportId, state = store.state) {
 
 // ---------- Stories that run across years ----------
 
-export const ARCS = {
-  first_title: 'First silverware', comeback: 'The comeback', rivalry: 'A rivalry', partners: 'Partners', underdog: 'The underdog season',
-  late_bloomer: 'Late bloomer', scholarship: 'The scholarship', family: 'In the family', farewell: 'Farewell',
-};
+/** Highlights: notes on a career, written when the record shows them. The stories with scenes, A to I, are in engine/sportsArcs.js. */
+export const ARCS = { first_title: 'First silverware', rivalry: 'A rivalry', underdog: 'The underdog season', late_bloomer: 'Late bloomer', farewell: 'Farewell' };
 function arc(state, id, sportId, title, text) {
   const a = sp.myAthlete(state);
   if (!a || a.arcs.some((x) => x.id === id && x.sportId === sportId)) return null;
   const x = { id, sportId, year: state.year, age: state.player.age, title, text };
   a.arcs.push(x);
   sp.moment(state, { type: 'arc', sportId, text: `${title}: ${text}`, sig: 3, key: `arc/${id}/${sportId}` });
-  log(`${title}. ${text}`, 'system', 'good');
+  sp.say(state, `${title}. ${text}`, 'good', { screen: 'sport', id: sportId });
   return x;
 }
 /** The stories, from what actually happened this year. */
 function arcsYear(state, a, e, sum) {
   const sport = sportOf(e.id);
   if (sum.title && !a.arcs.some((x) => x.id === 'first_title' && x.sportId === e.id)) arc(state, 'first_title', e.id, ARCS.first_title, `The first ${sport.name.toLowerCase()} title: ${sum.titleName}.`);
-  const back = (a.comebacks ?? []).find((c) => c.sportId === e.id && c.year >= state.year - 1);
-  if (back && (sum.title || sum.rating >= 6.8 || sum.wins > sum.losses)) arc(state, 'comeback', e.id, ARCS.comeback, `Back from ${a.injuries.find((x) => x.id === back.injuryId)?.name ?? 'injury'}, and playing as well as ever.`);
   const rival = Object.entries(e.rivals ?? {}).find(([, x]) => x.met >= 3);
   if (rival) arc(state, 'rivalry', e.id, ARCS.rivalry, `${rival[0]}: met ${rival[1].met} times, and ${rival[1].won} of them were yours.`);
-  const pair = e.partnershipId ? sp.ensure(state).partnerships[e.partnershipId] : null;
-  if (pair && pair.titles >= 1 && state.year - pair.since >= 1) arc(state, 'partners', e.id, ARCS.partners, `With ${pair.bName}: ${pair.titles} ${pair.titles === 1 ? 'title' : 'titles'} in doubles.`);
   if (sum.underdog) arc(state, 'underdog', e.id, ARCS.underdog, `Picked to finish ${sp.internals.ordinal(sum.underdog)}, and champions.`);
-  if (a.parents.length && ['academy', 'college', 'pro', 'elite'].includes(e.level)) {
-    const S = sp.ensure(state);
-    const par = a.parents.map((x) => S.athletes[x.id]).find((x) => x && Object.values(x.sports).some((s) => s.id === e.id || ['academy', 'college', 'pro', 'elite'].includes(s.level)));
-    if (par) arc(state, 'family', e.id, ARCS.family, `${par.name} played before you. Now you are carrying it on in ${sport.name.toLowerCase()}.`);
-  }
 }
 
 // ---------- The year ----------
@@ -648,8 +640,10 @@ export function tickSports(state = store.state) {
   const p = state.player;
   if (S.tickYear === state.year || !p.alive) return;
   S.tickYear = state.year;
+  familyPast(state);
+  const started = tickRelatives(state);
   const a = sp.myAthlete(state);
-  if (!a) return;
+  if (!a) { tickSportsArcs(state, started); return; }
   a.name = fullName(p); a.countryId = p.countryId;
   // Decisions not taken lapse: the default is the cautious one.
   for (const d of S.decisions) if (d.status === 'open' && d.year < state.year) {
@@ -666,6 +660,8 @@ export function tickSports(state = store.state) {
     const f = (p.flags.athlete ??= { sport: sportOf(main.id).name.toLowerCase(), seasons: 0, best: 0, captain: false, awards: [] });
     f.best = Math.max(f.best ?? 0, overall(main, p));
   }
+  parentsYear(state);
+  tickSportsArcs(state, started);
 }
 
 function yearIn(state, a, e) {
@@ -714,7 +710,7 @@ function yearIn(state, a, e) {
       const avg = mine.length ? Math.round(mine.reduce((s, f) => s + f.me.rating, 0) / mine.length * 10) / 10 : 0;
       const goals = mine.reduce((s, f) => s + (f.me.goals ?? f.me.points ?? f.me.runs ?? f.me.touchdowns ?? f.me.tries ?? f.me.kills ?? f.me.hits ?? 0), 0);
       const unit = { goals: 'goals', points: sport.id.includes('basketball') ? 'points' : sport.id === 'american_football' ? 'touchdowns' : sport.id === 'rugby' ? 'tries' : 'kills', baseball: 'hits', cricket: 'runs' }[sport.adapter] ?? '';
-      log(`${team.name}, ${state.year}: ${place}${['th', 'st', 'nd', 'rd'][place] ?? 'th'} of ${table.length} in the ${season.name}${champ ? ', then won the playoffs. Champions.' : fin && (fin.home === team.id || fin.away === team.id) ? ', and beaten in the final.' : '.'} You played ${mine.length} ${mine.length === 1 ? 'game' : 'games'}${mine.length ? `, rated ${avg} on average${goals && unit ? `, with ${goals} ${unit}` : ''}` : ''}.`, 'system', champ ? 'good' : 'neutral');
+      sp.say(state, `${team.name}, ${state.year}: ${place}${['th', 'st', 'nd', 'rd'][place] ?? 'th'} of ${table.length} in the ${season.name}${champ ? ', then won the playoffs. Champions.' : fin && (fin.home === team.id || fin.away === team.id) ? ', and beaten in the final.' : '.'} You played ${mine.length} ${mine.length === 1 ? 'game' : 'games'}${mine.length ? `, rated ${avg} on average${goals && unit ? `, with ${goals} ${unit}` : ''}` : ''}.`, champ ? 'good' : 'neutral', { screen: 'season', id: season.id });
       // The school's own record of clubs.
       if (org.kind === 'school') { const f = (p.flags.athlete ??= { seasons: 0, best: 0, awards: [] }); f.sport = sport.name.toLowerCase(); f.seasons = (f.seasons ?? 0) + 1; if (avg >= 7.8) f.awards.push({ age: p.age, what: 'Player of the season' }); }
     }
@@ -760,13 +756,18 @@ function yearIn(state, a, e) {
     const best = can ? e.events.map((id) => S.events[id]).filter((x) => x.year === state.year).map((x) => x.place) : [];
     sum.rating = Math.round(clamp(6 + (sum.wins - sum.losses) / Math.max(4, sum.wins + sum.losses) * 3, 3, 10) * 10) / 10;
     e.lastRating = Math.round(clamp((sum.rating - 3) * 14));
-    if (can) log(`Your ${sport.name.toLowerCase()} year: ${can} ${can === 1 ? 'event' : 'events'}${sum.wins + sum.losses ? `, ${sum.wins} matches won and ${sum.losses} lost` : ''}${titles ? `, ${titles} ${titles === 1 ? 'title' : 'titles'}` : best.length ? `, best finish ${bestOf(best)}` : ''}. Pathways Rating ${e.pr}.`, 'system', titles ? 'good' : 'neutral');
+    if (can) sp.say(state, `Your ${sport.name.toLowerCase()} year: ${can} ${can === 1 ? 'event' : 'events'}${sum.wins + sum.losses ? `, ${sum.wins} matches won and ${sum.losses} lost` : ''}${titles ? `, ${titles} ${titles === 1 ? 'title' : 'titles'}` : best.length ? `, best finish ${bestOf(best)}` : ''}. Pathways Rating ${e.pr}.`, titles ? 'good' : 'neutral', { screen: 'sport', id: e.id });
     else log(`Injury kept you out of every ${sport.name.toLowerCase()} event this year.`, 'system', 'bad');
   }
   e.seasonsPlayed += 1;
   // Paying for it: the family pays for children; adults pay their own, except what a club or scholarship covers.
   const cost = yearlyCost(state, e);
   if (cost && p.age >= 18 && !(p.flags.livesWithParents && p.age < 21)) settle(state, `fees/${e.id}/${state.year}`, -cost, 'sport', `${sport.name}: fees, coaching and kit`);
+  const own = sp.coachOf(e.privateCoachId, state);
+  if (own && p.age >= 18) {
+    if (p.finance.cash >= own.fee) settle(state, `private/${own.id}/${state.year}`, -own.fee, 'sport', `${sport.name}: a private coach`);
+    else { sp.dropPrivateCoach(e.id, state); sp.say(state, `You could not pay ${own.name} this year, and the coaching stopped.`, 'bad', { screen: 'coach', id: own.id }); }
+  }
   // A coach who sees something says so: an academy calls.
   scouting(state, a, e, sum);
   recruiting(state, a, e, sum.rating);
@@ -833,6 +834,13 @@ export function handOver(old, next, ids) {
   // Teams the last player was still on are left with their name on the roster, now as someone who has gone.
   for (const t of Object.values(S.teams)) t.roster = t.roster.filter((x) => x.id !== ids.ancestorId);
   S.decisions = S.decisions.map((d) => (d.status === 'open' ? { ...d, status: 'lapsed' } : d));
+  // The heir may have played already, as a relative with a light record. It becomes their own full profile now:
+  // the sports and levels they reached are kept, and their skills are worked out from their own talent, not inherited.
+  const heir = S.athletes[np.id];
+  if (heir?.light) {
+    delete heir.light; heir.name = `${np.firstName} ${np.lastName}`;
+    for (const e of Object.values(heir.sports)) sp.internals.fillEntry(next, np, e);
+  }
   S.tickYear = next.year;
   return S;
 }
