@@ -1,5 +1,6 @@
 // The stock and crypto market, and the housing market index. Prices are kept
 // in base units and move once a year.
+import { housingDrift } from './economy.js';
 import { rng } from '../rng.js';
 import { uid, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
@@ -116,7 +117,7 @@ export function tickMarket() {
 
   // Housing: mostly a slow climb, occasionally a slump.
   const slump = rng.chance(0.04);
-  const move = slump ? -rng.int(12, 25) / 100 : rng.around(0.035, 0.05);
+  const move = slump ? -rng.int(12, 25) / 100 : rng.around(0.035, 0.05) + housingDrift(); // and the economy where the player lives
   m.housing = Math.max(0.3, m.housing * (1 + move));
   m.housingMove = move;
   if (slump && p.assets.some((a) => a.kind === 'property')) {

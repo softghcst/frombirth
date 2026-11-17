@@ -1,4 +1,6 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { outlook } from '../../engine/economy.js';
+import { openNews } from '../leisure.js';
 import { openWorld } from '../world.js';
 import { player, country } from '../../state.js';
 import * as living from '../../engine/living.js';
@@ -51,6 +53,7 @@ export default {
       ${(() => { const here = living.summary(); return `<div class="card"><h3>Life in ${esc(country().name)}</h3>
         ${here.crisis ? `<p style="margin-bottom:8px"><strong>${esc(here.crisis.name)}.</strong> ${esc(here.crisis.blurb)}</p>` : ''}
         <div class="kv"><span>Your standing here</span><span><strong>${esc(living.tierName())}</strong></span></div>
+        <div class="kv"><span>The economy</span><span>${esc(outlook().name)}</span></div>
         ${here.rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         <p class="muted" style="margin-top:8px">How hard any of this lands depends on what you can afford.</p></div>`; })()}
       <div class="card"><h3>Traits</h3>
@@ -66,6 +69,7 @@ export default {
         ${salon.canVisitSalon() ? '<button class="btn" data-salon>Beauty salon</button>' : ''}
         <button class="btn" data-passport>Passport</button>
         <button class="btn" data-world>The world</button>
+        <button class="btn" data-news>World news</button>
       </div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
       <div class="section-label">Game</div>
@@ -89,6 +93,7 @@ export default {
       await messageModal({ body: r.text, tone: r.tone });
     };
     el.querySelector('[data-world]').onclick = () => openWorld({ start: p.countryId, home: p.countryId });
+    el.querySelector('[data-news]').onclick = () => openNews();
     if (el.querySelector('[data-surgery]')) el.querySelector('[data-surgery]').onclick = () => cosmeticSurgery(api);
     el.querySelector('[data-settings]').onclick = () => openSettings();
     el.querySelector('[data-exit]').onclick = () => api.exitToTitle();

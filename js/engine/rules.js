@@ -10,7 +10,8 @@
 // does not end under the laws it began with.
 import { rng } from '../rng.js';
 import { theCountry } from '../util.js';
-import { store, player, log } from '../state.js';
+import { store, player } from '../state.js';
+import { post } from './economy.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { LIVING } from '../data/living.js';
 import { regionOf } from '../data/cities.js';
@@ -156,8 +157,7 @@ export function tickRules() {
   if (!options.length) return null;
   const [id, value] = rng.pick(options);
   const e = enact(placeId, id, value);
-  const mine = placeId === p.countryId || (p.citizenships ?? []).some((c) => c.jurisdictionId === placeId && !c.lostAt);
-  if (mine) log(`${e.text}${id === 'retirementAge' ? '' : placeId === p.countryId ? ' It is the law where you live now.' : ''}`, 'system', 'neutral');
+  post(placeId, 'law', `${e.text}${id === 'retirementAge' ? '' : placeId === p.countryId ? ' It is the law where you live now.' : ''}`);
   return e;
 }
 

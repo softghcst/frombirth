@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
@@ -237,8 +238,27 @@ profile and are marked as estimates.
 
 The multipliers are rough estimates for play, not statistics.
 
-Still to come in the Living World engine, in order: an economy and news that move without you, and people you know moving
-away; buying property across currencies; tax and inheritance by place. `docs/WORLD_DATA.md` lists the gaps.
+### A world that moves without you
+
+`js/engine/economy.js`, numbers in `js/data/economy.js`. Each year, in every country:
+
+- **The economy turns** between boom, steady and recession. Where you live this changes how easy it is to be hired, how
+  likely you are to be laid off, what house prices do, and where the currency is heading. Now and then a financial crisis
+  crosses every border at once.
+- **Crises end, and new ones begin.** A war can end in a ceasefire, a collapsed economy can recover, and an unstable country
+  can slide into rationing or runaway prices. Everything that read a country's crisis before (the ban on leaving a country at
+  war, the protection route, prices, approval of the government) now reads the world as it is in this life.
+- **The news** records all of it, with changes of law. **World news** (Self tab) lists what touches you first: where you
+  live, where you were born, countries you are a citizen of, and where your family and property are. Only those reach the
+  journal.
+- **People you know move.** Brothers, sisters, friends and grown children sometimes move abroad, more often from a country
+  in trouble; some come home, and some move to be nearer to you. You can fly out to see them, and family abroad opens the
+  family route if you want to follow.
+
+All of it is fiction, kept in the save. The reference data is never rewritten, so each new life starts from the same world.
+
+Still to come in the Living World engine, in order: buying property across currencies; tax and inheritance by place;
+deeper data for the twelve main countries. `docs/WORLD_DATA.md` lists the gaps.
 
 ## Layout
 

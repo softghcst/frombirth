@@ -6,6 +6,7 @@
 //   reference   real-world facts about the place (data/world.js)
 //   game        how the game models living there (data/countries.js, living.js): estimates, not statistics
 //   yourWorld   what has happened there in this save (the political world, engine/polity.js): fiction
+import { outlook } from './economy.js';
 import { cityLine } from './cities.js';
 import { sheet, reforms } from './rules.js';
 import { store } from '../state.js';
@@ -74,6 +75,7 @@ export function profile(id) {
     ['Prices over time', { low: 'Steady', high: 'Rising fast', extreme: 'Out of control' }[L.inflation]],
     ...(L.hazards.length ? [['Natural hazards', L.hazards.map((h) => HAZARDS[h].name ?? h).join(', ')]] : []),
     ...(L.crisis ? [['Ongoing', CRISES[L.crisis].name]] : []),
+    ...(store.state ? [['Economy now', outlook(id).name]] : []),
   ];
   const m = schoolModel(id);
   const school = [

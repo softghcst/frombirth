@@ -30,6 +30,7 @@ import { grandfather } from './adulted.js';
 import { tickKids } from './kidschool.js';
 import { tickFx } from './currency.js';
 import { tickRules } from './rules.js';
+import { tickEconomy, tickMoves } from './economy.js';
 import { tickStatus, tickApart } from './immigration.js';
 import { emigrate } from './emigration.js';
 import { tickSchoolFunding } from './edlegacy.js';
@@ -92,6 +93,8 @@ export function advanceYear() {
   grandfather();
   tickFx();
   tickRules();
+  tickEconomy();
+  tickMoves();
   tickApart();
   { const back = tickStatus(); if (back) emigrate(back, { forced: true }); }
   tickSchoolFunding();
