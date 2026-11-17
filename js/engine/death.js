@@ -3,6 +3,9 @@
 import { COUNTRIES } from '../data/countries.js';
 import { settleEstate } from './currency.js';
 import { closeForEstate } from './banking.js';
+import { trustsAtDeath } from './trusts.js';
+import { settleLife } from './insurance.js';
+import { RESERVED_SHARE_OF } from '../data/money.js';
 import { book } from './ledger.js';
 import { rng } from '../rng.js';
 import { styledName } from './royalty.js';
@@ -118,8 +121,20 @@ function familyShares() {
 export function willHeirs() {
   const w = currentWill();
   if (w.mode === 'charity' || w.mode === 'buried') return [];
-  if (w.mode === 'named') return w.heirs.map((id) => [store.state.npcs[id], 1 / w.heirs.length]);
+  if (w.mode === 'named') return reserve(w.heirs.map((id) => [store.state.npcs[id], 1 / w.heirs.length]));
   return familyShares();
+}
+
+/** The share of an estate the law here keeps for the player's children, whatever the will says (data/money.js). */
+export const reservedShare = () => (living('child').length ? RESERVED_SHARE_OF[player().countryId] ?? 0 : 0);
+/** Applies it: the children share the reserved part; the will governs the rest. */
+function reserve(split) {
+  const r = reservedShare();
+  if (!r) return split;
+  const kids = living('child');
+  const out = new Map(split.map(([n, part]) => [n, part * (1 - r)]));
+  for (const k of kids) out.set(k, (out.get(k) ?? 0) + r / kids.length);
+  return [...out.entries()];
 }
 
 export function willSummary() {
@@ -181,7 +196,7 @@ export function assignItem(assetId, npcId) {
 }
 
 /** Property and vehicles: the things that are handed on as they are. */
-export const keepsakes = () => player().assets.filter((a) => a.kind === 'property' || a.kind === 'vehicle');
+export const keepsakes = () => player().assets.filter((a) => a.kind === 'property' || a.kind === 'vehicle' || a.kind === 'business');
 const equity = (a) => a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0);
 
 /**
@@ -201,7 +216,7 @@ export function estatePlan() {
   const will = currentWill();
   const item = (a) => ({ id: a.id, name: a.name, kind: a.kind, value: equity(a) });
   if (gross <= 0 && !kept.length) return plan;
-  if (will.mode === 'charity') return { ...plan, net: gross, charity: Math.max(0, gross), given: kept.map(item) }; // gifts to charity are not taxed
+  if (will.mode === 'charity' && !reservedShare()) return { ...plan, net: gross, charity: Math.max(0, gross), given: kept.map(item) }; // gifts to charity are not taxed
   if (will.mode === 'buried') return { ...plan, lost: Math.max(0, liquid), ...(kept.length ? distribute(plan, familyShares(), kept, will, 0, item) : {}) };
   // Estate tax by place: property abroad is taxed by the country it stands in; everything else where the player lived.
   const away = {};
@@ -214,6 +229,11 @@ export function estatePlan() {
   // Paid from cash and investments only; if that does not cover it, each country takes its share of what there is.
   plan.taxBy = due.map((d) => ({ ...d, name: COUNTRIES[d.countryId].name, amount: owed > plan.tax ? Math.round(d.amount * plan.tax / owed) : d.amount }));
   plan.net = gross - plan.tax;
+  // Everything to charity, where children cannot be left out: they take their reserved share, and charity the rest.
+  if (will.mode === 'charity') {
+    const kids = living('child'); const r = reservedShare(); const cash = Math.max(0, liquid - plan.tax);
+    return { ...plan, charity: Math.round(cash * (1 - r)), ...distribute(plan, kids.map((k) => [k, r / kids.length]), kept, will, cash, item) };
+  }
   const split = willHeirs();
   if (!split.length) return { ...plan, toState: plan.net, given: kept.map(item) };
   return { ...plan, ...distribute(plan, split, kept, will, Math.max(0, liquid - plan.tax), item) };
@@ -285,10 +305,15 @@ export function die(cause) {
   const p = player();
   const c = country();
   if (!p.alive) return store.lastObituary;
-  closeForEstate(); // money in the bank joins the estate, once
+  // What passes outside the will: joint accounts, accounts and policies with someone named on them, and trusts.
+  const outside = [...closeForEstate(), ...trustsAtDeath()];
+  const life = settleLife();
+  if (life?.to) outside.push(life);
   settleEstate(); // money held in other currencies is counted once, in one currency
   book({ cat: 'exchange', src: 'estate', desc: 'The estate counted in one currency' });
   const plan = estatePlan(); // settled before anything else changes
+  plan.outside = outside;
+  if (life && !life.to) plan.lifeCover = life.amount;
   const summary = lifeSummary(p, plan);
   p.alive = false;
   log(`You died of ${cause} at age ${p.age}.`, 'system', 'bad');

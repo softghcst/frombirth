@@ -13,8 +13,9 @@
 import { store, player } from '../state.js';
 import { CREDIT_MODEL_OF, CREDIT_MODELS } from '../data/money.js';
 
-const SERIOUS = { forcedSale: 1, bankruptcy: 1 };
-const MARK_NAMES = { overdraft: 'Went overdrawn', forcedSale: 'Possessions sold to cover debts', bankruptcy: 'Declared bankrupt' };
+const SERIOUS = { forcedSale: 1, bankruptcy: 1, default: 1, plan: 1 };
+const MARK_NAMES = { overdraft: 'Went overdrawn', forcedSale: 'Possessions sold to cover debts', bankruptcy: 'Declared bankrupt', missed: 'Missed a card payment',
+  default: 'A card cancelled for non-payment', plan: 'Put on a court repayment plan', arrears: 'Debts turned into arrears' };
 export const markName = (kind) => MARK_NAMES[kind] ?? kind;
 
 export const creditModelOf = (countryId = player().countryId) => CREDIT_MODEL_OF[countryId] ?? 'bank';
@@ -44,7 +45,7 @@ export function recentDefault(years = 5) {
 
 /**
  * The player's standing with lenders.
- * @param {{income:number, service:number}} now  yearly income and yearly repayments, in local money
+ * @param {{income:number, service:number, used?:number}} now  yearly income and yearly repayments, in local money; the share of card limits in use
  * @returns {{model:string, name:string, line:string, standing:?number, band:?string, marks:object[], onTime:number}}
  *   standing is 0 to 100, and null where no number exists or there is no history yet
  */
@@ -57,12 +58,13 @@ export function standing(now = { income: 0, service: 0 }) {
   if (model === 'bank') return base;
   const recent = (kind, years) => r.marks.filter((m) => m.kind === kind && y - m.year < years).length;
   if (model === 'registry') {
-    const listed = recent('forcedSale', 7) + recent('bankruptcy', 7) > 0;
+    const listed = recent('forcedSale', 7) + recent('bankruptcy', 7) + recent('default', 7) + recent('plan', 7) > 0;
     return { ...base, band: listed ? 'Listed' : 'Clear' };
   }
   if (!r.marks.length && !r.onTime) return { ...base, band: 'No record yet' };
   let s = 50 + Math.min(30, r.onTime * 2) + Math.min(10, r.since == null ? 0 : y - r.since);
-  s -= recent('bankruptcy', 7) * 30 + recent('forcedSale', 7) * 15 + recent('overdraft', 3) * 5;
+  s -= (recent('bankruptcy', 7) + recent('plan', 7)) * 30 + (recent('forcedSale', 7) + recent('default', 7)) * 15 + recent('overdraft', 3) * 5 + recent('missed', 3) * 8 + recent('arrears', 5) * 12;
+  if ((now.used ?? 0) > 0.7) s -= 8; // most of the credit on offer is in use
   if (now.income > 0 && now.service / now.income > 0.35) s -= 10;
   s = Math.max(0, Math.min(100, Math.round(s)));
   return { ...base, standing: s, band: s >= 80 ? 'Excellent' : s >= 65 ? 'Good' : s >= 45 ? 'Fair' : s >= 25 ? 'Poor' : 'Very poor' };

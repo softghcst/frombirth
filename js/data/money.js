@@ -28,6 +28,10 @@ export const CATEGORIES = {
   inheritance: { name: 'Inheritance', kind: I },
   winnings: { name: 'Winnings', kind: I },
   debtRelief: { name: 'Debt written off', kind: I },
+  claim: { name: 'Insurance payouts', kind: I },
+  distribution: { name: 'Profits taken from your business', kind: I },
+  employerMatch: { name: 'Employer pension contributions', kind: I },
+  growth: { name: 'Pension pot: gains and losses', kind: I },
   otherIncome: { name: 'Other money in', kind: I },
 
   housing: { name: 'Housing', kind: E, budget: true },
@@ -55,6 +59,11 @@ export const CATEGORIES = {
   investments: { name: 'Investments bought and sold', kind: T },
   property: { name: 'Property bought and sold', kind: T },
   vehicle: { name: 'Vehicles bought and sold', kind: T },
+  business: { name: 'Business bought, funded and sold', kind: T },
+  trust: { name: 'Put into trust', kind: T },
+  trustGrowth: { name: 'Growth inside a trust', kind: T },
+  familyLoan: { name: 'Lent to family and friends', kind: T },
+  jointPartner: { name: 'A partner\'s money in a joint account', kind: T },
   opening: { name: 'Opening balance', kind: T },
 };
 export const BUDGET_CATEGORIES = Object.keys(CATEGORIES).filter((k) => CATEGORIES[k].budget);
@@ -160,3 +169,69 @@ export const GOAL_KINDS = [
   { id: 'family', name: 'Help for someone in the family', base: 8000, blurb: 'Set aside for somebody else.' },
   { id: 'retire', name: 'Retirement', base: 150000, blurb: 'Money of your own, on top of any pension.' },
 ];
+
+// ---------- Credit cards ----------
+// Invented terms. `since` is the first year cards exist in the game at all.
+export const CARDS = { since: 1960, max: 2, minAge: 18, minPay: 0.1, minPayFloor: 300, lateFee: 40, advanceFee: 0.03, reward: 0.01,
+  tiers: [ // by standing with lenders: share of yearly income offered as a limit, and the yearly rate in basis points
+    { min: 80, limit: 0.3, rateBp: 1500, name: 'Platinum card' },
+    { min: 65, limit: 0.2, rateBp: 1900, name: 'Classic card' },
+    { min: 45, limit: 0.1, rateBp: 2400, name: 'Starter card' },
+  ],
+  starter: { limit: 0.08, rateBp: 2400, name: 'Starter card' } };
+
+// ---------- When debts cannot be paid ----------
+// A simplification for play. It is not a description of any country's law.
+//   discharge  most debts are written off; no lender will deal with you for some years
+//   plan       a court sets a plan: part is written off, the rest is repaid over years without interest
+//   none       nothing is written off: what is owed becomes arrears, repaid with interest
+const PLAN = 'de fr it es pt nl be at fi se no dk ch pl cz hu ro gr jp kr tw';
+const NONE = 'cn vn cu ir sy af iq lb et cd dj ao dz sa kw qa ae jo eg pk bd np mn kz';
+export const INSOLVENCY_OF = { ...Object.fromEntries(PLAN.split(' ').map((id) => [id, 'plan'])), ...Object.fromEntries(NONE.split(' ').map((id) => [id, 'none'])) };
+export const INSOLVENCY = {
+  discharge: { name: 'Bankruptcy with discharge', line: 'Most debts are written off. Student loans are not. No bank will lend to you for years afterwards.' },
+  plan: { name: 'Court repayment plan', line: 'A court writes off part of what you owe and sets a plan to repay the rest, without interest, over six years.', keep: 0.6, years: 6 },
+  none: { name: 'No release from debt', line: 'There is no way to have a debt written off here. What you cannot pay becomes arrears, and follows you.', rate: 0.1, years: 10, bar: 3 },
+};
+
+// ---------- Marriage and money ----------
+// How a divorce treats what the two of you have. A simplification for play.
+//   equal     everything either of you has is shared out evenly (the game's original rule)
+//   separate  each keeps what is theirs; only what is held jointly is divided, by what each put in
+const SEPARATE = 'uk in pk bd ng gh ke ug jm au nz sg hk my ae sa kw qa jo eg ir iq';
+export const FAMILY_LAW_OF = Object.fromEntries(SEPARATE.split(' ').map((id) => [id, 'separate']));
+export const FAMILY_LAW = {
+  equal: { name: 'Shared equally', line: 'On divorce, what the two of you have is added up and divided evenly, unless you signed otherwise.' },
+  separate: { name: 'Each keeps their own', line: 'On divorce, each of you keeps what is yours. Only what you hold jointly is divided, by what each of you put in.' },
+};
+/** Where children cannot be left out of a will: the share of an estate reserved for them. */
+const FORCED = 'fr de it es pt be at gr br ar cl co pe mx jp kr ph sa eg ir iq jo kw qa ae ma dz tn';
+export const RESERVED_SHARE_OF = Object.fromEntries(FORCED.split(' ').map((id) => [id, 0.5]));
+
+// ---------- Saving for retirement ----------
+//   workplace  an employer pays in alongside you while you hold a full-time job
+//   personal   a plan of your own, with nobody else paying in
+const WORKPLACE = 'us uk ca au nz ie nl ch se dk no za sg hk jp de';
+export const PENSION_PLAN_OF = Object.fromEntries(WORKPLACE.split(' ').map((id) => [id, 'workplace']));
+export const PENSION_PLAN = { since: 1975, unlockAge: 60, earlyPenalty: 0.25, match: 0.5, matchUpTo: 0.06, rates: [0, 0.03, 0.06, 0.1, 0.15], bondReturn: 0.03 };
+
+// ---------- Insurance ----------
+// premium and excess are shares of what is insured. Health cover is separate (engine/systems.js).
+export const INSURANCE = {
+  home: { name: 'Home insurance', since: 1850, premium: 0.003, excess: 0.01, blurb: 'Pays to put right damage to a property you own, above the excess.' },
+  motor: { name: 'Vehicle insurance', since: 1920, premium: 0.04, excess: 0.05, blurb: 'Pays for damage to a vehicle you own, above the excess.' },
+  life: { name: 'Life insurance', since: 1850, blurb: 'Pays a fixed sum when you die, to whoever you name or else to your estate.', covers: [5, 10, 20], load: 1.3 },
+};
+export const INSURERS = ['Granite Mutual', 'Hearth & Harbour', 'Northlight Assurance'];
+
+// ---------- Businesses ----------
+// cost: what it takes to start, in base units. margin: profit as a share of takings in an ordinary year.
+// swing: how much a year can differ. skill: what the owner needs to be good at.
+export const BUSINESS_TYPES = [
+  { id: 'cafe', name: 'Café', cost: 40000, takings: 160000, margin: 0.08, swing: 0.5, skill: 'charm' },
+  { id: 'shop', name: 'Corner shop', cost: 30000, takings: 200000, margin: 0.05, swing: 0.35, skill: 'intellect' },
+  { id: 'trade', name: 'Building firm', cost: 25000, takings: 180000, margin: 0.1, swing: 0.6, skill: 'intellect' },
+  { id: 'studio', name: 'Design studio', cost: 15000, takings: 110000, margin: 0.14, swing: 0.7, skill: 'charm' },
+  { id: 'software', name: 'Software company', cost: 60000, takings: 150000, margin: 0.12, swing: 1.1, skill: 'intellect' },
+];
+export const BUSINESS = { minAge: 18, managerShare: 0.4, saleFee: 0.05, multiple: 3, failAfter: 2 };

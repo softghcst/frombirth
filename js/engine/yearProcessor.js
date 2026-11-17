@@ -43,6 +43,12 @@ import { rollDeath, die } from './death.js';
 import { drawEvents } from './eventEngine.js';
 import { book, booked } from './ledger.js';
 import { tickBanking, tickMoneyReview } from './banking.js';
+import { tickPlan } from './retirement.js';
+import { tickBusiness } from './business.js';
+import { tickInsurance } from './insurance.js';
+import { tickFamilyMoney } from './family.js';
+import { tickTrusts } from './trusts.js';
+import { tickSense } from './achievements.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -78,11 +84,17 @@ export function advanceYear() {
   const workDeath = booked('salary', 'Work: bonuses and pay-offs', tickCareer);
   if (workDeath) { die(workDeath); return; }
   tickMarket();
+  tickPlan();
   tickProperties();
+  tickBusiness();
+  book({ cat: 'business', src: 'year', desc: 'Your businesses' });
   const roadDeath = booked('transport', 'Running your vehicles', tickVehicles);
   if (roadDeath) { die(roadDeath); return; }
   tickBanking();
+  booked('insurance', 'Insurance premiums', tickInsurance);
   tickFinance();
+  tickFamilyMoney();
+  tickTrusts();
   booked('health', 'Health', tickHealth);
   booked('legal', 'Prison', tickPrison);
   booked('auto', 'Friends and followers', tickSocial);
@@ -114,6 +126,7 @@ export function advanceYear() {
   tickActivism();
   tickCrime();
   book({ cat: 'auto', src: 'year', desc: 'The rest of the year' });
+  tickSense();
   tickMoneyReview();
 
   const cause = rollDeath();

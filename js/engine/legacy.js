@@ -18,6 +18,7 @@ import { stageFor } from './grades.js';
 import { convertMoney } from './emigration.js';
 import { SCHEMA_VERSION, getGraveyard } from '../save.js';
 import { ledgerOf } from './ledger.js';
+import { carryTrust } from './trusts.js';
 import { rollLongevity } from './death.js';
 import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
@@ -203,7 +204,8 @@ export function continueAs(npcId) {
       pensionPerYear: L.retired ? L.pension ?? 0 : 0, military: null },
     finance: { cash: Math.max(0, L.savings), pension: 0, lifetimeEarned: 0, lifetimeTaxPaid: 0,
       loans: debt ? [{ id: uid('loan'), kind: 'personal', principal: debt, rate: 0.08, yearsLeft: 8 }] : [] },
-    assets: (h.inheritance?.assets ?? []).map((a) => ({ ...a, id: uid('asset') })), inventory: [], homeId: null,
+    // What was left to them, as it was. A business comes with its manager: owning it is not knowing how to run it.
+    assets: (h.inheritance?.assets ?? []).map((a) => ({ ...a, id: uid('asset'), ...(a.kind === 'business' ? { inherited: true, learned: false, manager: 'hired', boughtAtAge: h.age } : {}) })), inventory: [], homeId: null,
     npcIds: Object.keys(npcs),
     legal: { record: [], incarceration: null, heat: 0 },
     social: { handle: null, followers: 0, posts: 0, viral: 0, boughtFollowers: 0 },
@@ -259,12 +261,16 @@ export function continueAs(npcId) {
     milestones: op.milestones.filter((m) => m.kind === 'money').map((m) => ({ age: m.age, text: m.text })),
     homes: op.assets.filter((a) => a.kind === 'property').map((a) => a.name),
     shares: (grave?.estate?.shares ?? []).map((s) => ({ name: s.name, role: s.role, amount: s.amount, items: s.items.map((it) => it.name), you: s.npcId === h.id })),
+    outside: (grave?.estate?.outside ?? []).map((o) => ({ name: o.name, amount: o.amount, how: o.how, you: o.to === h.id })),
+    businesses: op.assets.filter((a) => a.kind === 'business').map((a) => a.name),
   }];
   // The heir's own books open with what they really have: their savings, and their share of the estate, named as such.
   const share = grave?.estate?.shares?.find((s) => s.npcId === h.id)?.amount ?? 0;
   ledgerOf(next, { desc: `Your own savings, and what ${op.firstName} left you`,
     inheritance: Math.round(share * (moved ? COUNTRIES[abroad].currency.scale / COUNTRIES[op.countryId].currency.scale : 1)) });
-  if (share > 0) player.milestones.push({ age: h.age, text: `Inherited from ${op.firstName}.`, kind: 'money' });
+  if (share > 0 || player.assets.length) player.milestones.push({ age: h.age, text: `Inherited from ${op.firstName}.`, kind: 'money' });
+  carryTrust(old, next, h.id, `${op.firstName} ${op.lastName}`); // a trust still being held for them stays held
+  if (h.flags.moneySense) player.flags.moneySense = h.flags.moneySense; // what pocket money taught them
   if (player.finance.lifetimeEarned > 0 || player.career.salary) player.flags.firstPay = true;
 
   // The schools of the world are the same schools: the next generation may sit in the same classrooms.

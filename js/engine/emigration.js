@@ -106,6 +106,9 @@ export function convertMoney(rate) {
   f.lifetimeEarned = x(f.lifetimeEarned);
   f.lifetimeTaxPaid = x(f.lifetimeTaxPaid);
   for (const l of f.loans) l.principal = x(l.principal);
+  for (const k of f.cards ?? []) { k.limit = x(k.limit); k.balance = x(k.balance); k.statements = []; }
+  for (const l of f.lent ?? []) { l.amount = x(l.amount); l.left = x(l.left); }
+  for (const pol of f.policies ?? []) { pol.premium = x(pol.premium); pol.excess = x(pol.excess); pol.cover = x(pol.cover); }
   p.career.pensionPerYear = x(p.career.pensionPerYear);
   for (const a of p.assets) {
     a.purchasePrice = x(a.purchasePrice);
@@ -113,6 +116,7 @@ export function convertMoney(rate) {
     if (a.kind !== 'security') a.value = x(a.value);
     if (a.mortgage) { a.mortgage.principal = x(a.mortgage.principal); a.mortgage.payment = x(a.mortgage.payment); }
     if (a.tenant) a.tenant.rent = x(a.tenant.rent);
+    if (a.kind === 'business') { a.till = x(a.till); a.takings = x(a.takings); a.profits = a.profits.map(x); }
   }
   for (const n of Object.values(store.state.npcs)) {
     if (n.savings != null) n.savings = x(n.savings);

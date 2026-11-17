@@ -9,6 +9,7 @@ import { market } from './market.js';
 import { borrow, loanOffer } from './loans.js';
 import { VEHICLE_TYPES, VEHICLE_BY_ID, COLOURS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
 import { book } from './ledger.js';
+import { recordLoss } from './insurance.js';
 
 /** Lower-cases a name's first letter, unless it starts with an acronym (BMX, SUV). */
 const lower = (name) => (/^[A-Z]{2}/.test(name) ? name : name.charAt(0).toLowerCase() + name.slice(1));
@@ -197,8 +198,10 @@ export function repossessVehicle(a) {
 export function hitVehicle(condition) {
   const a = vehicles().sort((x, y) => y.value - x.value)[0];
   if (!a) return;
+  const before = a.value;
   a.condition = clamp(a.condition + condition);
   a.value = worth(vehicleTypeOf(a), a.age, a.condition);
+  if (condition < 0) recordLoss(a, before, a.value, 'damage');
 }
 
 /** Yearly: age, wear, running costs, and the chance of a crash. @returns {?string} cause of death */
@@ -224,11 +227,14 @@ export function tickVehicles() {
     }
     if (roll < 0.35) {
       p.stats.health = clamp(p.stats.health - rng.int(12, 30));
+      recordLoss(a, a.value, 0, 'written off in a crash');
       p.assets = p.assets.filter((x) => x !== a);
       log(`You ${what} the ${a.name.toLowerCase()} and were badly hurt. It was written off.`, 'system', 'bad');
     } else {
+      const before = a.value;
       a.condition = clamp(a.condition - 30);
       a.value = worth(type, a.age, a.condition);
+      recordLoss(a, before, a.value, 'a crash');
       p.stats.health = clamp(p.stats.health - rng.int(0, 6));
       log(`You ${what} the ${a.name.toLowerCase()}. You walked away; it will need work.`, 'system', 'bad');
     }

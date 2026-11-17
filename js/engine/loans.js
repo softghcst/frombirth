@@ -3,6 +3,8 @@
 import { uid, localMoney, fmtMoney, clamp } from '../util.js';
 import { player, country, npcsByRole, log, milestone } from '../state.js';
 import { BANK_LOAN, OVERDRAFT_RATE, BANKRUPTCY_YEARS } from '../data/securities.js';
+import { INSOLVENCY, INSOLVENCY_OF } from '../data/money.js';
+import { store } from '../state.js';
 import { recentDefault } from './credit.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -101,14 +103,98 @@ export function settleUp(forceSale) {
 
   if (isBankrupt()) { f.cash = 0; return; } // already bankrupt: there is nothing more to take
 
-  // Nothing left: bankruptcy wipes the slate, at a price.
-  const wiped = -f.cash + f.loans.filter((l) => l.kind !== 'student').reduce((s, l) => s + l.principal, 0);
-  f.cash = 0;
+  // Nothing left. What happens next depends on where you live (data/money.js).
+  const model = insolvencyOf();
+  const cardsOwed = (f.cards ?? []).filter((k) => k.status === 'open').reduce((s, k) => s + k.balance, 0);
+  const closeCards = () => { for (const k of f.cards ?? []) if (k.status === 'open') { k.balance = 0; k.status = 'closed'; k.closed = store.state.year; } };
+  const owed = -f.cash + cardsOwed + f.loans.filter((l) => l.kind !== 'student').reduce((s, l) => s + l.principal, 0);
+  p.stats.mood = clamp(p.stats.mood - 18);
+  if (model === 'none') {
+    // Nothing is written off: the overdraft becomes arrears, and the other debts stand.
+    const rule = INSOLVENCY.none;
+    f.loans.push({ id: uid('loan'), kind: 'arrears', principal: Math.round(-f.cash), rate: rule.rate, yearsLeft: rule.years });
+    f.cash = 0;
+    p.flags.bankruptUntil = p.age + rule.bar;
+    p.flags.insolvency = 'arrears';
+    log(`You could not pay what you owed, and there is no release from debt here. ${fmtMoney(owed, c)} still stands against you, to be repaid over the years.`, 'system', 'bad');
+    milestone('Fell into arrears.', 'money');
+    return;
+  }
+  if (model === 'plan') {
+    const rule = INSOLVENCY.plan;
+    const keep = Math.round(owed * rule.keep);
+    f.cash = 0; closeCards();
+    f.loans = [...f.loans.filter((l) => l.kind === 'student'), { id: uid('loan'), kind: 'court plan', principal: keep, rate: 0, yearsLeft: rule.years }];
+    p.flags.bankruptUntil = p.age + rule.years;
+    p.flags.insolvency = 'plan';
+    log(`A court put you on a repayment plan. ${fmtMoney(owed - keep, c)} was written off; you will repay ${fmtMoney(keep, c)} over ${rule.years} years, and no bank will lend to you until it is done.`, 'system', 'bad');
+    milestone('Put on a court repayment plan.', 'money');
+    return;
+  }
+  // Discharge: the slate is wiped, at a price. Student loans survive it.
+  f.cash = 0; closeCards();
   f.loans = f.loans.filter((l) => l.kind === 'student');
   p.flags.bankruptUntil = p.age + BANKRUPTCY_YEARS;
-  p.stats.mood = clamp(p.stats.mood - 18);
-  log(`You were declared bankrupt. ${fmtMoney(wiped, c)} of debt was written off, and no bank will lend to you for ${BANKRUPTCY_YEARS} years.`, 'system', 'bad');
+  p.flags.insolvency = 'bankruptcy';
+  log(`You were declared bankrupt. ${fmtMoney(owed, c)} of debt was written off, and no bank will lend to you for ${BANKRUPTCY_YEARS} years.`, 'system', 'bad');
   milestone('Declared bankrupt.', 'money');
+}
+
+/** What happens here to someone who cannot pay. */
+export const insolvencyOf = (countryId = player().countryId) => INSOLVENCY_OF[countryId] ?? 'discharge';
+
+/**
+ * What a lender would offer to replace a loan with: a rate that follows the
+ * borrower's standing, over the years the loan has left. Worth taking only if it is cheaper.
+ */
+export function refinanceOffer(loan, standingNow = null) {
+  const p = player();
+  const c = country();
+  let reason = '';
+  const rate = Math.max(0.03, BANK_LOAN.rate - (standingNow == null ? 0 : standingNow >= 80 ? 0.025 : standingNow >= 65 ? 0.012 : 0));
+  const fee = Math.round(loan.principal * 0.01);
+  if (['court plan', 'arrears'].includes(loan.kind)) reason = 'A debt set by a court cannot be moved.';
+  else if (loan.kind === 'student' && p.education.enrolled) reason = 'Not while you are studying.';
+  else if (isBankrupt() || recentDefault()) reason = 'No lender will take it on with your record as it is.';
+  else if (householdIncome() <= 0) reason = 'A lender wants to see an income.';
+  else if (rate >= loan.rate - 0.005) reason = 'Nobody is offering a better rate than you already have.';
+  else if (p.finance.cash < fee) reason = `The arrangement fee is ${fmtMoney(fee, c)}.`;
+  const years = Math.max(1, loan.yearsLeft);
+  const saving = reason ? 0 : loanSchedule(loan).interest - loanSchedule({ ...loan, rate }).interest - fee;
+  return { ok: !reason && saving > 0, reason: reason || (saving > 0 ? '' : 'With the fee it would save you nothing.'), rate, fee, years, saving };
+}
+export function refinance(id, standingNow = null) {
+  const p = player();
+  const loan = p.finance.loans.find((l) => l.id === id);
+  if (!loan) return result(false, 'That loan is already cleared.', 'neutral');
+  const o = refinanceOffer(loan, standingNow);
+  if (!o.ok) return result(false, o.reason, 'neutral');
+  p.finance.cash -= o.fee;
+  const was = loan.rate;
+  loan.rate = o.rate; loan.refinanced = store.state.year;
+  const text = `You moved your ${loan.kind} loan from ${(was * 100).toFixed(1)}% to ${(o.rate * 100).toFixed(1)}%. The fee was ${fmtMoney(o.fee, country())}; if nothing changes it saves about ${fmtMoney(o.saving, country())}.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
+/**
+ * Asking a lender for time. They agree when the borrower really is struggling
+ * (no income, or repayments taking most of it), once for each loan: the debt
+ * is spread over more years, which costs more interest in the end.
+ */
+export function askForTime(id) {
+  const p = player();
+  const loan = p.finance.loans.find((l) => l.id === id);
+  if (!loan) return result(false, 'That loan is already cleared.', 'neutral');
+  if (loan.eased) return result(false, 'They have already given you more time on this one.', 'neutral');
+  if (['court plan'].includes(loan.kind)) return result(false, 'The court set the plan. It is not for the lender to change.', 'neutral');
+  const income = householdIncome();
+  const hard = income <= 0 || debtService() > income * 0.4 || p.finance.cash < 0;
+  if (!hard) { const text = 'The lender looked at your income and what you owe, and said you can manage the payments as they are.'; log(text, 'system', 'neutral'); return result(false, text, 'neutral'); }
+  loan.eased = store.state.year; loan.yearsLeft += 3;
+  const text = `The lender agreed to spread your ${loan.kind} loan over three more years. Each payment is smaller; in the end you will pay more interest.`;
+  log(text, 'system', 'neutral');
+  return result(true, text, 'neutral');
 }
 
 /**

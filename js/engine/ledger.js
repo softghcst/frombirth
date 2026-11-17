@@ -86,8 +86,14 @@ function mirror(state) {
   for (const a of p.assets ?? []) {
     if (a.mortgage) want[`debt:${a.id}:${home}`] = { kind: 'debt', cur: home, bal: -toMinor(a.mortgage.principal, home), name: `Mortgage on the ${a.name.charAt(0).toLowerCase() + a.name.slice(1)}`, debtKind: 'mortgage' };
   }
+  for (const k of f.cards ?? []) {
+    if (k.balance || k.status === 'open') want[`debt:${k.id}:${home}`] = { kind: 'debt', cur: home, bal: -toMinor(k.balance, home), name: k.name, debtKind: 'card' };
+  }
+  // Money lent to people the player knows is something owed to them.
+  for (const l of f.lent ?? []) want[`lent:${l.id}:${home}`] = { kind: 'lent', cur: home, bal: toMinor(l.left, home), name: l.name };
   return want;
 }
+const MIRRORED = { wallet: 1, debt: 1, lent: 1 };
 
 /** The ledger of a life, created on first use. A life that began before the ledger starts from an opening balance. */
 export function ledgerOf(state = store.state, opening = null) {
@@ -150,7 +156,7 @@ export function book(o = {}) {
   const L = state.ledger ?? ledgerOf(state);
   const home = homeOf(state);
   const want = mirror(state);
-  for (const a of Object.values(L.accounts)) if ((a.kind === 'wallet' || a.kind === 'debt') && !want[a.id]) want[a.id] = { kind: a.kind, cur: a.cur, bal: 0 };
+  for (const a of Object.values(L.accounts)) if (MIRRORED[a.kind] && !want[a.id]) want[a.id] = { kind: a.kind, cur: a.cur, bal: 0 };
 
   const entries = [];
   const rest = {};
@@ -161,8 +167,8 @@ export function book(o = {}) {
     if (!d) continue;
     entries.push([id, d]);
     rest[w.cur] = (rest[w.cur] ?? 0) - d;
-    if (w.kind === 'wallet') moved.add(Math.sign(d)); else debtMove += d;
-    if (w.kind === 'debt') { if (w.bal === 0) a.closed = state.year; else delete a.closed; }
+    if (w.kind === 'wallet') moved.add(Math.sign(d)); else if (w.kind === 'debt') debtMove += d;
+    if (w.kind !== 'wallet') { if (w.bal === 0) a.closed = state.year; else delete a.closed; }
   }
   if (!entries.length) return null;
 
@@ -286,7 +292,7 @@ export function audit(state = store.state) {
   for (const [cur, s] of Object.entries(totals)) if (s) bad.push(`${cur} accounts add up to ${s}, not nothing`);
   const want = mirror(state);
   for (const a of Object.values(L.accounts)) {
-    if (a.kind !== 'wallet' && a.kind !== 'debt') continue;
+    if (!MIRRORED[a.kind]) continue;
     const w = want[a.id]?.bal ?? 0;
     if (w !== a.bal) bad.push(`${a.id}: the ledger says ${a.bal}, the game says ${w}`);
   }

@@ -10,6 +10,7 @@ import { householdIncome, isBankrupt, yearlyPayment } from './loans.js';
 import { PROPERTY_TYPES, PROPERTY_BY_ID, STREETS, MORTGAGE, SELLING_FEE, BUYING_FEE, FOREIGN_BUYER_FEE } from '../data/properties.js';
 import { rate, fmt, quoteForeign, payForeign, receiveForeign } from './currency.js';
 import { book, toMinor } from './ledger.js';
+import { recordLoss } from './insurance.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "Family house on Elm Street" -> "family house on Elm Street". */
@@ -302,17 +303,21 @@ export function repossess(a) {
 /** Changes a property from an event: which is 'home', 'rental' or 'any'. */
 /** Damage to one particular property (storms, earthquakes, war). */
 export function damageProperty(a, amount) {
+  const before = a.value;
   a.condition = clamp(a.condition - amount);
   a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined, a.countryId ?? undefined);
+  if (amount > 0) recordLoss(a, before, a.value, 'damage');
 }
 
 export function hitProperty(which, { condition = 0, evict: out = false } = {}) {
   const list = properties();
   const a = which === 'home' ? home() : which === 'rental' ? list.find((x) => x.tenant) : home() ?? list[0];
   if (!a) return;
+  const before = a.value;
   a.condition = clamp(a.condition + condition);
   if (out) a.tenant = null;
   a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined, a.countryId ?? undefined);
+  if (condition < 0) recordLoss(a, before, a.value, 'damage');
 }
 
 /** Yearly: wear, value, upkeep, mortgage payments, and rent from tenants. */

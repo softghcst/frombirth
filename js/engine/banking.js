@@ -14,7 +14,7 @@ import { fmtMoney, localMoney, localCost } from '../util.js';
 import { convert, currencyOf } from './currency.js';
 import { isHigher } from './education.js';
 import { ledgerOf, book, post, toMinor, fromMinor, Money, yearTotals, compact } from './ledger.js';
-import { decimalsOf, PRODUCTS, BANKS, BANK_BY_ID, MAX_ACCOUNTS, GOAL_KINDS, CATEGORIES, BUDGET_CATEGORIES } from '../data/money.js';
+import { decimalsOf, PRODUCTS, BANKS, BANK_BY_ID, MAX_ACCOUNTS, GOAL_KINDS, CATEGORIES, BUDGET_CATEGORIES, FAMILY_LAW_OF, PENSION_PLAN } from '../data/money.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const home = () => country().currency.code;
@@ -34,7 +34,7 @@ const fmtUnits = (units, code) => `${units < 0 ? '-' : ''}${currencyOf(code)?.sy
 
 const walletUnits = (cur) => (cur === home() ? player().finance.cash : player().finance.accounts?.[cur] ?? 0);
 /** Changes the game's own balance by an exact amount, and makes sure the ledger has the matching account. */
-function moveWallet(cur, minor) {
+export function moveWallet(cur, minor) {
   const f = player().finance;
   const d = 10 ** decimalsOf(cur);
   if (cur === home()) f.cash = (Math.round(f.cash * d) + minor) / d;
@@ -46,7 +46,7 @@ function moveWallet(cur, minor) {
   return ((L().accounts[`wallet:${cur}`] ??= { id: `wallet:${cur}`, kind: 'wallet', cur, bal: 0 })).id;
 }
 /** Posts a movement between everyday money and bank accounts. The ledger is brought up to date first, so the two stay in step. */
-function move(desc, bankEntries, { cat = 'transfer', key, walletCur, walletMinor = 0, nominal } = {}) {
+export function move(desc, bankEntries, { cat = 'transfer', key, walletCur, walletMinor = 0, nominal } = {}) {
   book();
   const entries = [...bankEntries];
   if (walletMinor) entries.push([moveWallet(walletCur, walletMinor), walletMinor]);
@@ -69,7 +69,7 @@ export function banksHere(countryId = player().countryId, year = store.state.yea
   return BANKS.filter((b) => year >= (b.since ?? 0) && hashOf(b.id + countryId) % 10 < b.reach);
 }
 const guardian = () => npcsByRole('parent')[0] ?? npcsByRole('grandparent')[0] ?? null;
-const openCount = () => accounts().length;
+const openCount = () => accounts().filter((a) => a.product !== 'pension').length;
 
 /** Whether the player may open this kind of account today, and why not. */
 export function eligible(productId, bank = null) {
@@ -100,7 +100,8 @@ export function offers() {
 
 // ---------- Accounts ----------
 
-const describe = (a) => ({ ...a, bank: BANK_BY_ID[a.bankId], units: fromMinor(a.bal, a.cur), locked: a.matures != null && store.state.year < a.matures,
+const describe = (a) => ({ ...a, bank: BANK_BY_ID[a.bankId], units: fromMinor(a.bal, a.cur),
+  locked: (a.matures != null && store.state.year < a.matures) || (a.unlockAge != null && player().age < a.unlockAge), share: shareOf(a),
   goal: (player().finance.goals ?? []).find((g) => g.accountId === a.id && (g.status === 'active' || g.status === 'paused')) ?? null });
 /** The player's open bank accounts. */
 export const accounts = () => Object.values(store.state.ledger?.accounts ?? {}).filter((a) => a.kind === 'bank' && a.closed == null).map(describe);
@@ -108,14 +109,26 @@ export const accountById = (id) => { const a = store.state.ledger?.accounts[id];
 /** Accounts that were closed: kept, with their history, for as long as the ledger remembers. */
 export const closedAccounts = () => Object.values(store.state.ledger?.accounts ?? {}).filter((a) => a.kind === 'bank' && a.closed != null);
 
-/** Everything in the bank, in the money of the country the player lives in. */
+/**
+ * How much of an account is the player's. A joint account belongs to two
+ * people: evenly where the law shares things equally, and otherwise by what each put in.
+ */
+export function shareOf(a, state = store.state) {
+  if (!a.joint) return 1;
+  if ((FAMILY_LAW_OF[state.player.countryId] ?? 'equal') === 'equal') return 0.5;
+  const you = Math.max(0, a.contrib?.you ?? 0); const them = Math.max(0, a.contrib?.them ?? 0);
+  return you + them > 0 ? you / (you + them) : 0.5;
+}
+
+/** Everything in the bank that is the player's, in the money of the country they live in. */
 export function bankWorth(state = store.state) {
   const h = state.ledger?.home;
   let sum = 0;
   for (const a of Object.values(state.ledger?.accounts ?? {})) {
     if (a.kind !== 'bank' || a.closed != null || !a.bal) continue;
-    if (a.cur === h) sum += fromMinor(a.bal, a.cur);
-    else if (state === store.state) sum += convert(fromMinor(a.bal, a.cur), a.cur, home());
+    const mine = fromMinor(a.bal, a.cur) * shareOf(a, state);
+    if (a.cur === h) sum += mine;
+    else if (state === store.state) sum += convert(mine, a.cur, home());
   }
   return sum;
 }
@@ -165,6 +178,7 @@ export function deposit(id, units) {
   const m = toMinor(units, a.cur);
   if (a.capMinor && a.bal + m > a.capMinor) return result(false, `This account holds at most ${fmtExact(a.capMinor, a.cur)}.`, 'neutral');
   move(`Paid into ${lower(a.name)}`, [[id, m]], { walletCur: a.cur, walletMinor: -m });
+  if (a.joint) { const c = (store.state.ledger.accounts[id].contrib ??= { you: 0, them: 0 }); c.you += m; }
   checkGoals();
   return result(true, `You paid ${fmtUnits(units, a.cur)} into your ${lower(a.name)}.`, 'neutral');
 }
@@ -173,11 +187,17 @@ export function deposit(id, units) {
 export function withdraw(id, units) {
   const a = accountById(id);
   if (!a || a.closed != null) return result(false, 'That account is closed.', 'neutral');
-  if (a.locked) return result(false, `It is locked until ${a.matures}. You can break the deposit, at a cost.`, 'neutral');
+  if (a.locked) return result(false, a.unlockAge != null ? `It is locked until you are ${a.unlockAge}. Taking it early costs a quarter of it.` : `It is locked until ${a.matures}. You can break the deposit, at a cost.`, 'neutral');
   if (!whole(units)) return result(false, 'Choose a whole amount.', 'neutral');
   const m = toMinor(units, a.cur);
   if (m > a.bal) return result(false, `There is ${fmtExact(a.bal, a.cur)} in it.`, 'neutral');
   move(`Taken out of ${lower(a.name)}`, [[id, -m]], { walletCur: a.cur, walletMinor: m });
+  if (a.joint) {
+    const acct = store.state.ledger.accounts[id]; (acct.contrib ??= { you: 0, them: 0 }).you -= m;
+    // Taking most of what is shared, without a word, is noticed.
+    const other = store.state.npcs[a.joint];
+    if (other?.alive && m > a.bal / 2 && a.bal > 0) { other.meters.relationship = Math.max(0, other.meters.relationship - 10); log(`${other.firstName} noticed how much you took out of the account you share.`, 'system', 'bad'); }
+  }
   return result(true, `You took ${fmtUnits(units, a.cur)} out of your ${lower(a.name)}.`, 'neutral');
 }
 
@@ -187,7 +207,8 @@ export function transfer(fromId, toId, units) {
   const b = accountById(toId);
   if (!a || !b || a.id === b.id) return result(false, 'Choose two different accounts.', 'neutral');
   if (a.cur !== b.cur) return result(false, `One account is in ${a.cur} and the other in ${b.cur}. Take the money out and change it first.`, 'neutral');
-  if (a.locked || b.matures != null) return result(false, 'A fixed deposit cannot be paid into or out of.', 'neutral');
+  if (a.locked || b.matures != null) return result(false, 'One of those is locked.', 'neutral');
+  if (a.joint || b.joint) return result(false, 'Money goes into or out of a joint account through your everyday money, so that it is clear whose it was.', 'neutral');
   if (!whole(units)) return result(false, 'Choose a whole amount.', 'neutral');
   const m = toMinor(units, a.cur);
   if (m > a.bal) return result(false, `There is ${fmtExact(a.bal, a.cur)} in it.`, 'neutral');
@@ -198,7 +219,7 @@ export function transfer(fromId, toId, units) {
 }
 
 /** What breaking a fixed deposit early costs: a year of its interest. */
-export const breakCost = (a) => (a.locked ? Math.min(a.bal, Money.bp(a.bal, a.rateBp)) : 0);
+export const breakCost = (a) => (!a.locked ? 0 : a.unlockAge != null ? Money.bp(a.bal, PENSION_PLAN.earlyPenalty * 10000) : Math.min(a.bal, Money.bp(a.bal, a.rateBp)));
 
 /** Empties an account into everyday money and closes it. Its history stays. */
 function payOut(a, why) {
@@ -236,7 +257,7 @@ export function coverShortfall() {
   const cur = home();
   let moved = 0;
   const order = (a) => (a.locked ? 2 : a.product === 'current' ? 0 : 1);
-  for (const a of accounts().filter((x) => x.cur === cur && x.product !== 'youth').sort((x, y) => order(x) - order(y))) {
+  for (const a of accounts().filter((x) => x.cur === cur && x.product !== 'youth' && x.product !== 'pension' && !x.joint).sort((x, y) => order(x) - order(y))) {
     const need = Math.ceil(-p.finance.cash);
     if (need <= 0) break;
     if (a.locked) {
@@ -255,15 +276,41 @@ export function coverShortfall() {
   return moved;
 }
 
-/** At death: every account is closed and its balance joins the estate, once. Call before the estate is counted. */
+/**
+ * At death: every account is closed, once. A joint account passes to the
+ * other owner; an account with a living person named on it passes to them;
+ * both stay outside the estate. Everything else joins the estate. Call before
+ * the estate is counted.
+ * @returns {{to:string, name:string, amount:number, how:string}[]} what passed outside the estate, in local money
+ */
 export function closeForEstate() {
-  if (!store.state.ledger) return;
+  const outside = [];
+  if (!store.state.ledger) return outside;
   for (const a of accounts()) {
     const acct = store.state.ledger.accounts[a.id];
-    if (acct.bal) move(`${a.name} closed on death: the balance passes to the estate`, [[a.id, -acct.bal]], { walletCur: a.cur, walletMinor: acct.bal });
+    const to = store.state.npcs[a.joint ?? a.beneficiary];
+    if (acct.bal && to?.alive) {
+      const units = Math.round(a.cur === home() ? fromMinor(acct.bal, a.cur) : convert(fromMinor(acct.bal, a.cur), a.cur, home()));
+      if (to.life) to.life.savings += units; else to.savings = (to.savings ?? 0) + units;
+      outside.push({ to: to.id, name: `${to.firstName} ${to.lastName}`, amount: units, how: a.joint ? 'a joint account' : `named on the ${lower(a.name)}` });
+      move(`${a.name}: passed to ${to.firstName} ${to.lastName} on death`, [[a.id, -acct.bal]], { cat: 'transfer', nominal: [['jointPartner', a.cur, acct.bal]] });
+    } else if (acct.bal) move(`${a.name} closed on death: the balance passes to the estate`, [[a.id, -acct.bal]], { walletCur: a.cur, walletMinor: acct.bal });
     acct.closed = store.state.year;
   }
   book({ cat: 'auto' });
+  return outside;
+}
+
+/** Names who an account goes to when its owner dies, or with null nobody. */
+export function nameOnAccount(id, npcId) {
+  const a = accountById(id);
+  if (!a || a.closed != null) return result(false, 'That account is closed.', 'neutral');
+  if (a.joint) return result(false, 'A joint account already passes to the other owner.', 'neutral');
+  const n = npcId ? store.state.npcs[npcId] : null;
+  if (npcId && !n?.alive) return result(false, 'Choose someone living.', 'neutral');
+  const acct = store.state.ledger.accounts[id];
+  if (n) acct.beneficiary = n.id; else delete acct.beneficiary;
+  return result(true, n ? `If you die, your ${lower(a.name)} goes straight to ${n.firstName} ${n.lastName}, outside your will.` : `Your ${lower(a.name)} will pass under your will.`, 'neutral');
 }
 
 // ---------- The year ----------
@@ -286,6 +333,12 @@ export function tickBanking() {
     const fee = Math.min(acct.feeMinor ?? 0, acct.bal);
     if (fee > 0) move(`Yearly charge: ${lower(a.name)}, ${a.bank.name}`, [[a.id, -fee]], { cat: 'fees', key: `fee:${a.id}:${year}`, nominal: [['fees', a.cur, fee]] });
 
+    // The other owner of a joint account has died: it belongs to the survivor.
+    if (acct.joint && !store.state.npcs[acct.joint]?.alive) {
+      const who = store.state.npcs[acct.joint]?.firstName ?? 'The other owner';
+      delete acct.joint; acct.owners = acct.owners.filter((o) => o.role === 'owner'); acct.name = PRODUCTS[acct.product].name;
+      log(`${who} has died. The account you shared is yours alone now.`, 'system', 'neutral');
+    }
     const becomes = (product, line) => {
       acct.product = product; acct.name = PRODUCTS[product].name; acct.rateBp = rateAt(product, a.bank);
       acct.owners = acct.owners.filter((o) => o.role === 'owner'); delete acct.capMinor; delete acct.matures;
@@ -431,15 +484,16 @@ export function overview() {
   const sum = (list, fn) => list.reduce((s, a) => s + fn(a), 0);
   const foreign = Object.entries(f.accounts ?? {}).reduce((s, [code, n]) => s + (code === cur ? n : convert(n, code, cur)), 0);
   const of = (kind) => p.assets.filter((a) => a.kind === kind);
-  const others = p.assets.filter((a) => !['security', 'property', 'vehicle'].includes(a.kind));
+  const others = p.assets.filter((a) => !['security', 'property', 'vehicle', 'business'].includes(a.kind));
   const parts = {
     cash: f.cash, foreign, bank: bankWorth(),
     investments: sum(of('security'), (a) => a.value * (a.units ?? 1)),
-    property: sum(of('property'), (a) => a.value), vehicles: sum(of('vehicle'), (a) => a.value), other: sum(others, (a) => a.value * (a.units ?? 1)),
+    business: sum(of('business'), (a) => a.value), property: sum(of('property'), (a) => a.value), vehicles: sum(of('vehicle'), (a) => a.value), other: sum(others, (a) => a.value * (a.units ?? 1)),
     loans: sum(f.loans, (l) => l.principal), mortgages: sum(p.assets, (a) => a.mortgage?.principal ?? 0),
+    cards: sum(f.cards ?? [], (k) => k.balance), lent: sum(f.lent ?? [], (l) => l.left),
   };
-  const assets = parts.cash + parts.foreign + parts.bank + parts.investments + parts.property + parts.vehicles + parts.other;
-  const liabilities = parts.loans + parts.mortgages;
+  const assets = parts.cash + parts.foreign + parts.bank + parts.investments + parts.property + parts.vehicles + parts.other + parts.lent + parts.business;
+  const liabilities = parts.loans + parts.mortgages + parts.cards;
   const t = yearTotals(L(), store.state.year, cur);
   return { cur, ...parts, assets, liabilities, netWorth: Math.round(assets - liabilities),
     income: Math.round(fromMinor(t.in, cur)), spent: Math.round(fromMinor(t.out, cur)) };

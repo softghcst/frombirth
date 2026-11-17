@@ -15,6 +15,10 @@ import { RENT_AND_BILLS, BILLS_ONLY } from '../data/properties.js';
 import { book, toMinor } from './ledger.js';
 import { bankWorth, coverShortfall } from './banking.js';
 import { mark, goodYear } from './credit.js';
+import { tickCards } from './cards.js';
+import { billShare } from './family.js';
+import { contribute } from './retirement.js';
+import { sellBusiness } from './business.js';
 
 /** The first band of spending, at the country's own pay level. */
 const localWage30 = (c) => localMoney(30000 * (c.living?.wageK ?? 1), c);
@@ -36,7 +40,8 @@ export function netWorth(state) {
   const p = state.player;
   const assets = p.assets.reduce(
     (sum, a) => sum + a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0), 0);
-  const debt = p.finance.loans.reduce((sum, l) => sum + l.principal, 0);
+  const debt = p.finance.loans.reduce((sum, l) => sum + l.principal, 0) + (p.finance.cards ?? []).reduce((sum, k) => sum + k.balance, 0)
+    - (p.finance.lent ?? []).reduce((sum, l) => sum + l.left, 0); // what others owe the player counts for them
   return Math.round(p.finance.cash + (state === store.state ? foreignWorth(p) : 0) + bankWorth(state) + assets - debt);
 }
 
@@ -45,9 +50,10 @@ function forceSale(asset) {
   book({ cat: 'interest', desc: 'Interest on being overdrawn', src: 'year' });
   const before = player().finance.cash;
   if (asset.kind === 'security') sellSecurity(asset.catalogId, 1);
+  else if (asset.kind === 'business') sellBusiness(asset.id, 0.7);
   else if (asset.kind === 'vehicle') repossessVehicle(asset);
   else repossess(asset);
-  book({ cat: asset.kind === 'security' ? 'investments' : asset.kind === 'vehicle' ? 'vehicle' : 'property', desc: `Sold to cover debts: ${asset.name}`, src: 'year' });
+  book({ cat: asset.kind === 'security' ? 'investments' : asset.kind === 'vehicle' ? 'vehicle' : asset.kind === 'business' ? 'business' : 'property', desc: `Sold to cover debts: ${asset.name}`, src: 'year' });
   return player().finance.cash - before;
 }
 
@@ -55,6 +61,7 @@ export function tickFinance() {
   const p = player();
   const c = country();
   const f = p.finance;
+  let everyday = 0; // what the year's ordinary spending came to, for the card statement
 
   const gross = (p.career.salary || 0) + (p.career.partTime?.salary || 0)
     + (p.career.retired ? p.career.pensionPerYear : 0);
@@ -70,8 +77,10 @@ export function tickFinance() {
     const main = p.career.salary ? 'salary' : p.career.partTime?.salary ? 'partTime' : 'pension';
     book({ cat: main, src: 'year', key: `pay:${store.state.year}`, desc: main === 'pension' ? 'Pension for the year' : 'Pay for the year, after tax',
       split: [['tax', toMinor(tax, cur)], ...(main !== 'partTime' ? [['partTime', -toMinor(p.career.partTime?.salary || 0, cur)]] : []), ...(main !== 'pension' ? [['pension', -toMinor(pension, cur)]] : [])] });
+    contribute(); // the pension plan takes its share of the year's pay, and an employer may add to it
     if ((p.career.salary || p.career.partTime?.salary) && !p.flags.firstPay) {
       p.flags.firstPay = true;
+      p.flags.firstPayAge = p.age;
       milestone('Received a first paycheck.', 'money');
       log('Your first pay. Money you earned yourself.', 'system', 'good');
     }
@@ -89,8 +98,8 @@ export function tickFinance() {
   // and disappears when you live in a home you own.
   if (!p.flags.livesWithParents && p.age >= 18 && !p.education.enrolled && !p.legal.incarceration) {
     // A spouse who earns pays their share of the household; one who does not is supported.
-    const partner = npcsByRole('spouse')[0];
-    const share = !partner ? 1 : partner.life?.job || partner.life?.pension ? 0.55 : 1.15;
+    // How a couple shares the household's costs is theirs to agree (engine/family.js).
+    const share = billShare(gross);
     const housed = p.royal && !p.royal.waiting && ['monarch', 'heir', 'royal'].includes(p.royal.rank);
     let base = housed ? 0 : Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share * (p.homeId ? 1 : rentFactor(c.id) * (0.5 + 0.5 * housingK()))); // rent is about half of it, and follows the city
     const lifestyle = lifestyleCost(gross, c);
@@ -105,6 +114,7 @@ export function tickFinance() {
     p.flags.sharedHousing = crowded;
     const paid = afford(base + lifestyle);
     f.cash -= paid;
+    everyday = Math.max(0, paid - base);
     book({ cat: 'living', src: 'year', desc: p.homeId ? 'Bills and everyday spending' : 'Rent, bills and everyday spending',
       split: [['housing', toMinor(Math.min(paid, base), c.currency.code)]] });
   }
@@ -138,16 +148,21 @@ export function tickFinance() {
     const owed = f.loans.length > 0 || p.assets.some((a) => a.mortgage);
     // Money in the bank is taken before interest is charged or anything is sold.
     if (f.cash < 0) coverShortfall();
+    // Then the cards: the year's spending, anything still uncovered, and the statement.
+    const hadCard = (f.cards ?? []).some((k) => k.status === 'open' && (k.balance > 0 || k.everyday));
+    const missed = tickCards(everyday);
     const overdrawn = f.cash < 0;
     const owned = p.assets.length;
     const bankruptBefore = p.flags.bankruptUntil ?? 0;
     settleUp(forceSale);
     const bankrupt = (p.flags.bankruptUntil ?? 0) !== bankruptBefore;
-    book({ cat: bankrupt ? 'debtRelief' : 'interest', src: 'year', desc: bankrupt ? 'Debts written off in bankruptcy' : 'Interest on being overdrawn' });
+    const how = bankrupt ? p.flags.insolvency : null;
+    book({ cat: how && how !== 'arrears' ? 'debtRelief' : how ? 'debt' : 'interest', src: 'year',
+      desc: how === 'plan' ? 'Debts set aside by a court repayment plan' : how === 'arrears' ? 'What could not be paid became arrears' : how ? 'Debts written off in bankruptcy' : 'Interest on being overdrawn' });
     // What lenders will remember of this year.
-    if (bankrupt) mark('bankruptcy');
+    if (bankrupt) mark(how === 'plan' ? 'plan' : how === 'arrears' ? 'arrears' : 'bankruptcy');
     else if (p.assets.length < owned) mark('forcedSale');
     else if (overdrawn) mark('overdraft');
-    else if (owed) goodYear();
+    else if ((owed || hadCard) && !missed) goodYear();
   }
 }

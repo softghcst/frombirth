@@ -25,6 +25,7 @@ import * as pol from './politics.js';
 import * as courtLife from './court.js';
 import * as fame from './reputation.js';
 import * as throne from './reign.js';
+import { moneyEffect } from './moneyEffects.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -197,6 +198,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'counter':
         p.counters[e.target] = (p.counters[e.target] ?? 0) + (e.delta ?? 1);
         break;
+      case 'money': shown.push(...moneyEffect(e, ctx)); break;
       case 'milestone': milestone(e.value); break;
       case 'death': ctx.death = e.value; break;
       default: console.warn('Unknown effect', e);

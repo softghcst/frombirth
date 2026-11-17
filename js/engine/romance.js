@@ -12,6 +12,7 @@ import { spendAction, roleLabel } from './relationships.js';
 import { conceive, canConceive } from './children.js';
 import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
+import { splitJoint, familyLawOf } from './family.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -301,15 +302,18 @@ export function breakUp(npcId) {
 /** What a divorce would move between the two of you. Positive means you pay. */
 export function settlement(npcId) {
   const npc = npcOf(npcId);
-  if (npc.prenup) return 0;
+  // Where each keeps their own, nothing changes hands but what was held jointly (engine/family.js).
+  if (npc.prenup || familyLawOf() === 'separate') return 0;
   return Math.round((Math.max(0, netWorth(store.state)) - theirWealth(npc)) / 2);
 }
 
 function endMarriage(npc, yours) {
   const p = player();
   const c = country();
+  const joint = splitJoint(npc.id); // what was held in both names is divided first
   const owed = settlement(npc.id);
   const fee = localMoney(DIVORCE_FEE, c);
+  if (p.flags.moneyWith) p.flags.moneyWith = 'separate';
   p.finance.cash -= owed + fee;
   if (npc.life) npc.life.savings += owed;
   npc.role = 'ex';
@@ -317,9 +321,9 @@ function endMarriage(npc, yours) {
   npc.meters.relationship = Math.min(npc.meters.relationship, 15);
   p.stats.mood = clamp(p.stats.mood - 15);
   for (const kid of npcsByRole('child')) if (kid.age < 18) bump(kid, -8);
-  const money = npc.prenup ? 'The prenup held: you each kept what was yours.'
+  const money = `${joint ? `Your share of the joint account came to ${fmtMoney(joint, c)}. ` : ''}${npc.prenup ? 'The prenup held: you each kept what was yours.' : familyLawOf() === 'separate' ? 'As the law here has it, you each kept what was yours.'
     : owed > 0 ? `Everything was split down the middle: you paid ${fmtMoney(owed, c)}.`
-      : owed < 0 ? `Everything was split down the middle: you received ${fmtMoney(-owed, c)}.` : 'There was nothing to split.';
+      : owed < 0 ? `Everything was split down the middle: you received ${fmtMoney(-owed, c)}.` : 'There was nothing to split.'}`;
   const text = `${yours ? `You divorced ${npc.firstName}` : `${npc.firstName} divorced you`}. ${money} The lawyers took ${fmtMoney(fee, c)}.${crown.afterDivorce(npc)}`;
   log(text, 'system', 'bad');
   milestone(`Divorced ${npc.firstName} ${npc.lastName}.`, 'family');
