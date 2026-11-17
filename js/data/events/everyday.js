@@ -135,7 +135,7 @@ export default [
         bad('You say all the right things with a face like a shut door. {pal} is not fooled.', rel('pal', -4), st('mood', -4)),
       ] },
       { label: 'Ask how they did it', outcomes: [any('{pal} talks you through it over lunch. Some of it is even useful.', 'good', rel('pal', 4), st('intellect', 2), hid('discipline', 2))] },
-      { label: 'Find a reason to be busy', outcomes: [any('You see the photographs online instead, which is worse.', 'bad', rel('pal', -8), st('mood', -5))] },
+      { label: 'Find a reason to be busy', outcomes: [any('You see the photographs online instead, which is worse.', 'bad', rel('pal', -8), st('mood', -5)), any('You hear all about it afterwards from someone else, which is worse.', 'bad', rel('pal', -8), st('mood', -5))] },
     ],
   },
   {

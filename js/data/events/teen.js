@@ -43,7 +43,7 @@ export default [
         ok('Home by eleven, phone on, no arguments. Deal.', st('mood', 6), rel('mother', 3)),
         bad('"The answer was no before the presentation and it is no after it."', st('mood', -4)),
       ] },
-      { label: 'Stay home', outcomes: [any('You watch the photos appear online one by one.', 'neutral', st('mood', -4), rel('mother', 4), hid('discipline', 3))] },
+      { label: 'Stay home', outcomes: [any('You watch the photos appear online one by one.', 'neutral', st('mood', -4), rel('mother', 4), hid('discipline', 3)), any('On Monday you hear every detail, twice.', 'neutral', st('mood', -4), rel('mother', 4), hid('discipline', 3))] },
     ],
   },
   {

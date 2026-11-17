@@ -62,7 +62,7 @@ export const CURRENCY_HISTORY = {
   // the Deutsche Mark until the euro. [estimate] The Mark is valued at 2.4 to the Deutsche Mark so that
   // prices and wages around 1900 come out near their real level (about 4 Marks to the dollar). The real
   // reform converted most savings at 10 to 1, wiping out much of them; the game converts at its own rate.
-  de: [{ until: 1947, code: 'RM', symbol: 'ℳ', name: 'Mark', per: 2.4 }, { until: 2001, code: 'DEM', symbol: 'DM', name: 'Deutsche Mark', per: 1.95583 }],
+  de: [{ until: 1947, code: 'RM', symbol: 'ℳ', name: 'Mark', per: 2.4, official: false }, { until: 2001, code: 'DEM', symbol: 'DM', name: 'Deutsche Mark', per: 1.95583 }],
   // France: the old franc until the new franc of 1960 (100 to 1), then the euro.
   fr: [{ until: 1959, code: 'FRF0', symbol: '₣', name: 'old franc', per: 100 }, { until: 2001, code: 'FRF', symbol: '₣', name: 'franc', per: 6.55957 }],
   mc: [{ until: 1959, code: 'FRF0', symbol: '₣', name: 'old franc', per: 100 }, { until: 2001, code: 'FRF', symbol: '₣', name: 'franc', per: 6.55957 }],
@@ -78,6 +78,15 @@ export const CURRENCY_HISTORY = {
   sk: [{ until: 2008, code: 'SKK', symbol: 'Sk ', name: 'koruna', per: 30.126 }],
   ee: [{ until: 2010, code: 'EEK', symbol: 'kr ', name: 'kroon', per: 15.6466 }],
   hr: [{ until: 2022, code: 'HRK', symbol: 'kn ', name: 'kuna', per: 7.5345 }],
+  // [fact] Decimal currency replaced the pound at two new dollars to the pound: Australia 14 Feb 1966,
+  // New Zealand 10 July 1967.
+  au: [{ until: 1965, code: 'AUP', symbol: '£A', name: 'Australian pound', per: 0.5 }],
+  nz: [{ until: 1966, code: 'NZP', symbol: '£NZ', name: 'New Zealand pound', per: 0.5 }],
+  // Not included, on purpose: currencies replaced after runaway inflation (Brazil's cruzeiros, Mexico's old
+  // peso, Argentina's australes, Israel's old shekel, Turkey's old lira) and those that inflated heavily
+  // after a changeover (South Africa's, Jamaica's and Nigeria's pounds). The game has one price index for
+  // the world, so their old amounts would be wrong by factors of thousands. They show today's currency.
+  // Britain's shillings and pence (before 1971) are not shown: amounts are kept in whole pounds.
 };
 
 // ---------- Laws ----------
@@ -322,6 +331,29 @@ export const EVENTS = [
   ...[['in', 1947], ['pk', 1947], ['il', 1948], ['id', 1949], ['gh', 1957], ['ng', 1960], ['ke', 1963], ['jm', 1962], ['tz', 1961], ['ug', 1962], ['dz', 1962], ['ma', 1956], ['tn', 1956], ['ph', 1946], ['kr', 1945], ['ie', 1922]]
     .map(([id, year]) => ({ id: `independence_${id}`, from: year, to: year, who: [id], independence: true, begin: null, end: null })),
 ];
+
+/**
+ * [reviewed] Scenes written for the present day whose story only makes sense from a certain year, even
+ * though they name no technology the event engine recognises: the first year each can happen. Every scene
+ * not listed here is timeless, or is gated by the technology it mentions (js/engine/eventEngine.js).
+ */
+export const SCENE_FROM = {
+  // Everyday modern life
+  theme_park_day: 1955, supermarket_meltdown: 1955, cash_machine_extra: 1975, scratch_ticket: 1985, subscription_trap: 1985,
+  gym_regular: 1975, volunteer_ask: 1980, scam_call: 1985, talent_night: 1960, cousin_pitch: 1950, science_fair: 1950,
+  uni_flatmate: 1950, heat_with_no_air: 1960, lost_passport: 1960, stuck_lift: 1900, power_cut: 1925, blackout_week: 1935,
+  // Cars on ordinary roads
+  driving_lesson: 1925, driving_keys: 1930, witness_crash: 1925, road_rage: 1975, warning_light: 1975, kidnap_scare: 1920, protocol_lessons: 1920, pol_hot_mic: 1930,
+  // Mobile phones and the messages they carry
+  first_phone: 1998, contraband: 1998, card_school: 1998, jealous: 2002, their_secret: 2002, ex_returns: 1995, headhunter_call: 1998,
+  found_phone: 2008, exam_answers: 2008, school_petition: 2007, sibling_video: 1985,
+  // Social media
+  brand_offer: 2010, post_backlash: 2010,
+  // Working life
+  headhunter: 1960, pol_old_photo: 1960,
+  // Gay and transgender life lived openly
+  pride_march: 1970, wrong_name_at_dinner: 1965, younger_person_asks: 1970,
+};
 
 /** Scenes for the eras: queued by the history engine at the right moments (see js/data/events/stories/eras.js). */
 export const ERA_SCENES = { callUp: 'era_call_up', warNews: 'era_war_news', depression: 'era_hard_times', peace: 'era_peace', leaveSchool: 'era_leave_school' };

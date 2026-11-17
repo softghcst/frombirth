@@ -373,11 +373,12 @@ runs as each year begins. From 2025 on, every answer is today's game unchanged.
 | What changes | How |
 |---|---|
 | Careers | Jobs exist from when they did (no programmers in 1900), with the titles of the time, kept by a job once taken; some were closed to women by law then (the marriage bar, law, uniformed services), through the rule engine. Parents' occupations and NPCs' jobs are of their time |
-| Money | Wages and prices move together on a price-level and real-wage index ([estimate]); old currencies (marks, francs, lire, pesetas and others) and their change to the euro at the official rates, applied once, through the same conversion as emigrating |
+| Money | Wages and prices move together on a price-level and real-wage index ([estimate]); old currencies (marks, francs, lire, pesetas, Australian and New Zealand pounds and others) and their change to the euro at the official rates, applied once, through the same conversion as emigrating |
 | Laws | A historical layer in the rule engine: women's vote by country, the voting age, same-sex marriage, divorce, Prohibition, conscription, the law on being gay, the death penalty, school-leaving age. Dated facts carry a source note; places without their own record use the period's usual law, marked as such |
 | Schooling | Most children leave school at the leaving age in earlier eras (the player is offered it, and it is not dropping out); university is rarer; degree subjects exist from when they did |
 | Health | Shorter lives in earlier eras, extra risk at working ages, young children in the family who may not survive (never the player as a baby), the danger of childbirth, the 1918 influenza; treatments as medicine then could give them |
 | Events | The world wars (with each country's year of entry), the Depression, the postwar boom, the oil crisis, the end of the Cold War, independence: news, economies held in a slump or boom, the call-up for young men where the law conscripted, losses in the family. No battles, no real leaders |
+| Scenes | Present-day scenes stay in the present (by the technology they mention, or a reviewed first year); a modern choice in an older scene is hidden. About thirty scenes belong to their decades, from the railway reaching town to the millennium |
 | Screens | The creator names the era of a birth year; the Self tab, Digital History and the Family Archive show the times |
 
 `docs/HISTORICAL_ERAS.md` maps where each system meets the eras, and what is a fact and what an estimate. Lives saved

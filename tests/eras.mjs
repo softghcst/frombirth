@@ -505,6 +505,62 @@ section('Dynasty');
   check(R.rule('womenVote', 'de') === true && R.rule('sameSexMarriage', 'de') === true, 'the law moved on with the years');
 }
 
+// ---------- Scenes of their time ----------
+section('Scenes');
+{
+  const { drawEvents, choiceStates, resolveChoice, getEvent } = await import('../js/engine/eventEngine.js');
+  const { SCENE_FROM } = await import('../js/data/history.js');
+  const { EVENTS } = await import('../js/data/events/index.js');
+  const drawn = (n) => { const ids = new Set(); for (let i = 0; i < n; i++) { store.state.pendingEvents = []; store.state.eventHistory = []; drawEvents(); for (const e of store.state.pendingEvents) ids.add(e.id); } store.state.pendingEvents = []; return ids; };
+  const decade = Object.fromEntries(EVENTS.filter((e) => e.years).map((e) => [e.id, e]));
+  // An adult in 1950.
+  let p = life({ born: 1920, age: 30 });
+  let seen = drawn(400);
+  const wrong = [...seen].filter((id) => (SCENE_FROM[id] ?? 0) > 1950 || (decade[id] && (1950 < decade[id].years[0] || 1950 > decade[id].years[1])));
+  check(!wrong.length, `in 1950 no scene from a later time comes up (${wrong.join(', ') || 'none'}; ${seen.size} different scenes drawn)`);
+  check(!seen.has('jealous') && !seen.has('found_phone') && !seen.has('brand_offer') && !seen.has('cash_machine_extra'), 'no mobile phones, social media or cash machines in 1950');
+  // The same adult today: present-day scenes are back.
+  p = life({ born: 1996, age: 30 });
+  seen = drawn(400);
+  check([...seen].some((id) => SCENE_FROM[id] > 1990), 'today, present-day scenes come up as before');
+  check(![...seen].some((id) => decade[id]), 'and no scene from past decades does');
+  // A timeless scene with one modern choice keeps the scene and hides the choice.
+  life({ born: 1910, age: 40 });
+  const chest = getEvent('chest_pain');
+  const states = choiceStates(chest, {});
+  check(states.some((c) => c.hidden && /online/i.test(c.label)) && states.some((c) => !c.hidden), 'in 1950, "look it up online" is hidden and the rest of the scene stays');
+  // An outcome that mentions video is not used when there is one that fits.
+  const kid = makeNpc({ role: 'child', countryId: 'us', age: 1 }); store.state.npcs[kid.id] = kid; store.state.player.npcIds.push(kid.id);
+  const steps = getEvent('first_steps');
+  const i = steps.choices.findIndex((c) => /cheer/i.test(c.label));
+  const texts = new Set(); for (let k = 0; k < 20; k++) texts.add(resolveChoice(steps, i, { kid: kid.id }).text);
+  check([...texts].every((t) => !/video/.test(t)), 'in 1950 a child\'s first steps are remembered, not filmed');
+  // Scenes of their decade.
+  p = life({ born: 1939, age: 30 });
+  store.state.pendingEvents = []; store.state.eventHistory = [];
+  drawEvents();
+  check(store.state.year === 1969 && store.state.pendingEvents.some((e) => e.id === 'dec_moon_landing'), 'in 1969, the night of the Moon landing');
+  check(H.sceneFits(decade.dec_suffrage, 1910, 'uk') && !H.sceneFits(decade.dec_suffrage, 1910, 'fr') && !H.sceneFits(decade.dec_suffrage, 1925, 'uk'), 'a scene belongs to its years and its places');
+  check(EVENTS.filter((e) => e.years).length >= 25, `${EVENTS.filter((e) => e.years).length} scenes belong to particular decades`);
+  // Many of a life's decades each bring something.
+  rng.seed(77);
+  p = life({ born: 1890, age: 0, countryId: 'uk' });
+  const met = new Set();
+  for (let y = 0; y < 100 && p.alive; y++) { p.stats.health = 95; advanceYear(); for (const e of store.state.pendingEvents) if (decade[e.id]) { met.add(e.id); const ev = getEvent(e.id); resolveChoice(ev, 0, e.cast); } store.state.pendingEvents = []; if (!p.alive) p.alive = true; }
+  check(met.size >= 6, `a British life from 1890 to 1990 met ${met.size} scenes of its decades (${[...met].join(', ')})`);
+}
+{
+  // Old pounds in Australia and New Zealand, decimal from 1966 and 1967.
+  const p = life({ born: 1955, age: 5, countryId: 'au' });
+  check(COUNTRIES.au.currency.code === 'AUP', 'Australia in 1960: the Australian pound');
+  grow(8);
+  check(COUNTRIES.au.currency.code === 'AUD' && store.state.era.conversions['au:AUP>AUD'] === 1966 && store.state.journal.filter((j) => /official rate/.test(j.text)).length === 1, 'decimal dollars from 1966, at two to the pound, once');
+  const g = life({ born: 1890, age: 0, countryId: 'de' });
+  grow(60);
+  check(store.state.journal.some((j) => /the game's rate/.test(j.text)) || g.countryId !== 'de', 'the old Mark changes at the game\'s rate, and the journal says so');
+}
+
+if (process.env.SHOW) for (const x of passed) if (/met \d+ scenes/.test(x)) console.log(x);
 console.log(`${passed.length} checks passed.`);
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(` - ${x}`); process.exit(1); }
 console.log('The eras hold together.');

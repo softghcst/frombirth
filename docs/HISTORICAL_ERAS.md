@@ -46,15 +46,29 @@ the screens, and validation (`tests/eras.mjs`, with lives born in 1800, 1900, 19
 seeded German family carried by heirs from 1900 to today, saved and reloaded every twenty years; the browser test
 `tests/digital-ui.mjs` checks the creator, the Self tab and Digital History at phone width).
 
+## Scenes of their time
+
+Every scene is checked against the year where the player lives (`js/engine/eventEngine.js`): the technology its story
+mentions has to exist (the Digital World's registry), it has to be within any `years` and `places` it declares, and
+present-day scenes that name no technology have a reviewed first year (`SCENE_FROM` in `js/data/history.js`). A
+timeless scene with one modern choice keeps the scene and hides the choice; an outcome that mentions something not
+yet invented is passed over for one that fits. `js/data/events/stories/decades.js` holds scenes that belong to their
+decades (the railway reaching town, cholera, the first motor car, suffrage marches, the Titanic, jazz, the talkies,
+bank runs, evacuation, air raids, rationing, the polio vaccine, Sputnik, rock and roll, the missile crisis, civil
+rights marches, the Moon landing, the oil crisis, disco, Chernobyl, the home computer, the famine-relief concert, the
+fall of the Berlin Wall, the millennium), each once in a life and at most one a year.
+
 ## Known limits
 
 - Money is one index for the world, scaled into each country's currency: real differences in living standards
-  between countries in the past are not modelled, and a few old currencies' values are gameplay rates (noted in
-  the data). Currencies outside the euro area and its predecessors are today's (no réis, cruzeiros, old pesos,
-  pre-decimal shillings).
+  between countries in the past are not modelled, and the old German Mark's value is a gameplay rate (noted in the
+  data and in the journal when it changes). Old currencies are shown for the euro countries and for Australia and New
+  Zealand's pounds; currencies replaced after runaway inflation (Brazil, Mexico, Argentina, Israel, Turkey) and those
+  that inflated heavily after a changeover (South Africa, Jamaica, Nigeria) are left as today's on purpose, since one
+  price index would make their old amounts wrong by factors of thousands. Britain's shillings and pence are not shown
+  (amounts are kept in whole pounds).
 - Laws: only the rules listed in `LAW_HISTORY` change with history; others are today's in every year. Racial
   restrictions on voting (the US South before 1965, apartheid South Africa) are mentioned in source notes but not
   modelled, because the game does not record race.
 - Countries keep today's borders and names; empires and colonies appear only as independence news.
 - Vehicles, property types and most consumer goods are today's catalogues, priced in the era's money.
-- Scenes written for the present day that do not mention technology can still appear in earlier eras.

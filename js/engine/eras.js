@@ -74,7 +74,7 @@ function revalue(state) {
     const key = `${p.countryId}:${from.code}>${to.code}`;
     if (!e.conversions?.[key]) {
       (e.conversions ??= {})[key] = state.year;
-      log(`${theCountry(COUNTRIES[p.countryId].name).replace(/^the/, 'The')} has changed its money: the ${from.name ?? from.code} is replaced by the ${to.name ?? to.code}. Your savings were converted at the official rate, and are now ${fmtMoney(p.finance.cash, { currency: to })}.`, 'system', 'neutral');
+      log(`${theCountry(COUNTRIES[p.countryId].name).replace(/^the/, 'The')} has changed its money: the ${from.name ?? from.code} is replaced by the ${to.name ?? to.code}. Your savings were converted at ${from.official === false ? 'the game\'s rate (the real reform wiped out most savings)' : 'the official rate'}, and are now ${fmtMoney(p.finance.cash, { currency: to })}.`, 'system', 'neutral');
     }
   }
   return k;

@@ -13,7 +13,7 @@ import { clamp } from '../util.js';
 import { store, player, log, milestone } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { ERAS, ERA_BY_ID, MONEY_ANCHORS, CURRENCY_HISTORY, LAW_HISTORY, CAREER_ERAS, PARENT_OCCUPATIONS, MODERN_OCCUPATIONS,
-  MAJOR_FROM, UNIVERSITY_ACCESS, SECONDARY, HEALTH, TREATMENT_HISTORY, PROCEDURE_FROM, EVENTS } from '../data/history.js';
+  MAJOR_FROM, UNIVERSITY_ACCESS, SECONDARY, SCENE_FROM, HEALTH, TREATMENT_HISTORY, PROCEDURE_FROM, EVENTS } from '../data/history.js';
 import { OCCUPATIONS } from '../data/traits.js';
 import { techAvailable } from './digital/tech.js';
 
@@ -91,7 +91,7 @@ export function currencyFor(countryId, year, money = 'era') {
     per *= chain[i].per;
     cur = chain[i];
   }
-  return cur ? { code: cur.code, symbol: cur.symbol, scale: now.scale * per * idx, name: cur.name, historical: true }
+  return cur ? { code: cur.code, symbol: cur.symbol, scale: now.scale * per * idx, name: cur.name, historical: true, official: cur.official !== false }
     : { ...now, name: now.code === 'EUR' ? 'euro' : now.code, scale: now.scale * idx, historical: false };
 }
 
@@ -209,6 +209,20 @@ export function treatmentIn(conditionId, year = store.state?.year ?? MODERN_YEAR
   return { chance: hit?.chance ?? 1, manage: hit?.manage ?? true, limited: !!hit };
 }
 export const procedureOpen = (id, year = store.state?.year ?? MODERN_YEAR) => !PROCEDURE_FROM[id] || year >= PROCEDURE_FROM[id];
+
+// ---------- Scenes ----------
+
+/**
+ * Whether a scene belongs to a year and place: within its own `years` and `places`, and not before the
+ * reviewed year a present-day scene became possible (data/history.js SCENE_FROM). `late` is a year implied
+ * by the scene's wording (the event engine works it out).
+ */
+export function sceneFits(ev, year, countryId, late = 0) {
+  if (ev.years && (year < ev.years[0] || year > ev.years[1])) return false;
+  if (ev.places && !ev.places.includes(countryId)) return false;
+  if (year < (SCENE_FROM[ev.id] ?? 0) || year < late) return false;
+  return true;
+}
 
 // ---------- Events ----------
 
