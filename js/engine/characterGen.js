@@ -15,6 +15,7 @@ import { rollLongevity } from './death.js';
 import { normalize, skinDepth, INHERITED_KEYS } from '../avatar/catalog.js';
 import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
 import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
+import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -193,5 +194,8 @@ export function createLife(opts = {}) {
     ...(seat ? { dynasties: { [c.id]: seat.dynasty } } : {}),
   };
   if (seat) dress(seat.dynasty, state);
+  // The family's animals were there first: they go on the family's record with the line that introduces them.
+  for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });
+  reconcileAnimals(state);
   return state;
 }

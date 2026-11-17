@@ -25,6 +25,7 @@ import * as pol from './politics.js';
 import * as courtLife from './court.js';
 import * as fame from './reputation.js';
 import * as throne from './reign.js';
+import { register as registerAnimal, recordHealth } from './animals.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -81,6 +82,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         npc.lastInteractionAge = p.age;
         if (spec.tag) { npc.flags.tag = spec.tag; npc.flags.title = spec.title; }
         if (spec.memory) remember(npc, spec.memory[0], spec.memory[1]);
+        // An animal taken in goes on the family's record; the line that tells it is written when the scene ends.
+        if (spec.role === 'pet') registerAnimal(npc, { origin: 'found', pending: true });
         if (e.target) ctx.cast[e.target] = npc.id;
         break;
       }
@@ -90,6 +93,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         delete store.state.npcs[id];
         break;
       }
+      case 'animalHealth': recordHealth(ctx.cast[e.target], e.value); break;
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;

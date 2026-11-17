@@ -8,6 +8,7 @@ import { store, player, country, npcsByRole, log, milestone } from '../state.js'
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats } from './genetics.js';
 import { spendAction, PET_PRICE, canGetPet } from './relationships.js';
+import { register as registerAnimal } from './animals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -162,6 +163,7 @@ export function getPet() {
   p.stats.mood = clamp(p.stats.mood + 8);
   const text = `You came home from the shelter with a ${pet.species} called ${pet.firstName}.`;
   log(text, 'system', 'good');
+  registerAnimal(pet, { origin: 'shelter', fee: price, storyEntry: store.state.journal[store.state.journal.length - 1] });
   return result(true, text);
 }
 

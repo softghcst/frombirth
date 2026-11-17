@@ -1,5 +1,5 @@
 // Raising children, and looking after the family you came from.
-import { st, hid, cash, rel, ok, bad, any, chk, need, mem, count } from './helpers.js';
+import { st, hid, cash, rel, ok, bad, any, chk, need, mem, count, animalHealth } from './helpers.js';
 
 const kidAged = (lo, hi) => [need('cast.kid.age', '>=', lo), need('cast.kid.age', '<=', hi)];
 
@@ -101,10 +101,10 @@ export default [
     id: 'pet_poorly', category: 'family', ageRange: [8, 95], cooldown: 6, cast: { pet: 'pet' },
     text: '{pet} has been off their food for three days and is hiding under the bed.',
     choices: [
-      { label: 'Take them to the vet ({$350})', requires: [need('cashBase', '>=', 350)], outcomes: [any('It is treatable, and caught early. {pet} is back to stealing socks within the week.', 'good', cash(-350), rel('pet', 10), st('mood', 5))] },
+      { label: 'Take them to the vet ({$350})', requires: [need('cashBase', '>=', 350)], outcomes: [any('It is treatable, and caught early. {pet} is back to stealing socks within the week.', 'good', cash(-350), rel('pet', 10), st('mood', 5), animalHealth('pet', { kind: 'vet', note: 'Off their food for three days. Treatable, and caught early.', costBase: 350, recovered: true }))] },
       { label: 'Sit with them and wait', check: chk(0.5, {}), outcomes: [
-        ok('On the fourth day {pet} comes out, eats everything, and pretends nothing happened.', rel('pet', 6)),
-        bad('{pet} gets worse before they get better. You do not forgive yourself quickly.', rel('pet', -4), st('mood', -8)),
+        ok('On the fourth day {pet} comes out, eats everything, and pretends nothing happened.', rel('pet', 6), animalHealth('pet', { kind: 'illness', note: 'Off their food for three days. Recovered at home without seeing a vet.', recovered: true })),
+        bad('{pet} gets worse before they get better. You do not forgive yourself quickly.', rel('pet', -4), st('mood', -8), animalHealth('pet', { kind: 'illness', note: 'Off their food for three days, and worse before better. Not seen by a vet.', recovered: true })),
       ] },
     ],
   },

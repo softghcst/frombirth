@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
@@ -48,6 +49,26 @@ node tests/world.mjs           # the 102 reference places: codes, kinds, currenc
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
+
+## The family's animals
+
+Every animal the family keeps has one record, kept for good (`state.animals`, built by `js/engine/animals.js`).
+It holds who the animal is, who owned it, who looked after it and where it lived, as three separate histories,
+along with what it learned, its health record, and the moments worth keeping. Those moments are written once
+and carry the id of the line in the life story that tells them. When a life ends, every animal that depended on
+the player is given a keeper, and the whole record crosses to the heir: the dead keep their profiles.
+
+| What | Where |
+|---|---|
+| Species, breeds, temperament, what can be taught | `js/data/animals.js` |
+| The record, care passing on, the hand-over between generations | `js/engine/animals.js` |
+| Album, timeline, profiles, the chronicle of a house | `js/ui/animals.js` (People → Family archive; Holdings → Household animals) |
+| Portraits, drawn from each animal's recorded looks | `js/ui/animalPortrait.js` |
+| Where the player is among those screens, and the way back | `js/ui/animalNav.js` |
+
+Not built yet: shelters with animals waiting in them, fostering, insurance, vet clinics as places, horses and
+riding, farms, breeding and pedigrees. The species on record are the five the game already had: dog, cat,
+rabbit, parrot and hamster.
 
 ## Avatars
 

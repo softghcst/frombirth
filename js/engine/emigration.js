@@ -16,6 +16,7 @@ import { market, priceOf } from './market.js';
 import { EMIGRATION } from '../data/activities.js';
 import { mayLeave } from './living.js';
 import { routes, bestRoute, spouseAnswer } from './immigration.js';
+import { livesWithPlayer } from './animals.js';
 
 export { routes };
 
@@ -44,8 +45,8 @@ export function destinations() {
     outlook: rightToLive(c.id, p) ? 'You are a citizen: no visa is needed.' : bestRoute(c.id)?.outlook ?? 'No route is open to you.' }));
 }
 
-/** People who come without being asked: a spouse, a committed partner, children at home, and pets. */
-const comesAnyway = (n) => n.role === 'spouse' || n.role === 'pet' || (n.role === 'child' && n.age < 18)
+/** People who come without being asked: a spouse, a committed partner, children at home, and the animals of the player's own household. */
+const comesAnyway = (n) => n.role === 'spouse' || (n.role === 'pet' && livesWithPlayer(n.id)) || (n.role === 'child' && n.age < 18)
   || (n.role === 'partner' && (n.flags.livesTogether || n.flags.engaged || n.meters.relationship >= 75));
 
 /**

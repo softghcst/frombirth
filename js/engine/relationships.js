@@ -7,6 +7,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js';
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
+import { animalDied } from './animals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -85,8 +86,9 @@ export function tickRelationships() {
       : !spared && rng.chance(mortalityChance(npc.age, npc.meters.health));
     if (dies) {
       npc.alive = false;
-      const who = `${roleLabel(npc).toLowerCase()} ${npc.firstName}`;
-      log(`Your ${who} died at age ${npc.age}.`, 'system', 'bad');
+      // An animal's death is written into the family's record, which tells it in the life story.
+      if (npc.role === 'pet') animalDied(npc);
+      else log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}.`, 'system', 'bad');
       p.stats.mood = clamp(p.stats.mood - Math.round(8 + npc.meters.relationship / 5));
       inheritFrom(npc);
       continue;
