@@ -1,5 +1,6 @@
 // Romance: meeting people, dating, engagement, weddings (with or without a
 // prenup), break-ups and divorce.
+import { may } from './rules.js';
 import { rng } from '../rng.js';
 import * as crown from './royalty.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
@@ -254,7 +255,7 @@ export function marry(npcId, weddingId, prenup) {
   const npc = npcOf(npcId);
   const w = WEDDINGS.find((x) => x.id === weddingId);
   if (!npc.flags.engaged) return result(false, 'You are not engaged.', 'neutral');
-  if (npc.gender === p.gender && !c.living.laws.marriage) return result(false, `Two ${p.gender === 'male' ? 'men' : p.gender === 'female' ? 'women' : 'people of the same gender'} cannot marry in ${c.name}. You can stay engaged, or move somewhere you can.`, 'neutral');
+  { const legal = may('marry', { partner: npc }); if (!legal.ok) return result(false, legal.why, 'neutral'); }
   const royalMatch = !!npc.flags.royal;
   let cost = localMoney(w.cost, c);
   if (!royalMatch && p.finance.cash < cost) return result(false, 'You cannot afford that wedding.', 'neutral');
@@ -326,6 +327,21 @@ function endMarriage(npc, yours) {
 }
 
 export function divorce(npcId) {
+  const p = player();
+  // Where there is no divorce, only an annulment: costly, once a year, and usually refused.
+  if (!may('divorce').ok) {
+    const fee = localMoney(DIVORCE_FEE * 2, country());
+    if (p.flags.annulAge === p.age) return result(false, 'The court has heard you this year. You can petition again next year.', 'neutral');
+    if (p.finance.cash < fee) return result(false, `${may('divorce').why} The petition costs ${fmtMoney(fee, country())}, and you do not have it.`, 'neutral');
+    p.flags.annulAge = p.age;
+    p.finance.cash -= fee;
+    if (!rng.chance(0.3)) {
+      const text = `${may('divorce').why} You petitioned for one. It cost ${fmtMoney(fee, country())}, and the court refused.`;
+      log(text, 'system', 'bad');
+      return result(false, text);
+    }
+    return result(true, `The court annulled the marriage. ${endMarriage(npcOf(npcId), true)}`, 'neutral');
+  }
   return result(true, endMarriage(npcOf(npcId), true), 'neutral');
 }
 

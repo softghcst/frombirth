@@ -12,6 +12,7 @@
 // A figure:  a politician, who persists: { id, name, gender, born, died, partyId, look,
 //              t: { ambition, integrity, charisma }, post, history: [{ year, text }] }
 // The arithmetic is in engine/elections.js; what policies do to daily life is in engine/policy.js.
+import { rule, may } from './rules.js';
 import { held, issuer } from './citizenship.js';
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
@@ -518,7 +519,7 @@ export function mayVote(countryId = store.state.player.countryId) {
   const p = store.state.player;
   const kind = kindOf(countryId);
   if (kind !== 'presidential' && kind !== 'parliamentary') return 'No votes are cast here.';
-  if (p.age < 18) return 'You are too young to vote.';
+  if (p.age < rule('votingAge', countryId)) return `You are too young to vote: the voting age here is ${rule('votingAge', countryId)}.`;
   if (p.legal?.incarceration) return 'Prisoners cannot vote here.';
   if (!held(p).includes(issuer(countryId))) return 'You are not a citizen here, and cannot vote. You can apply for citizenship from your passport.';
   return '';

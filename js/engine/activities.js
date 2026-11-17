@@ -1,5 +1,6 @@
 // Things to do with your time: the gym, the library, meditation, holidays
 // and nights out. Each can be done once a year.
+import { rule, may } from './rules.js';
 import { rightToLive } from './citizenship.js';
 import { practise } from './languages.js';
 import { rng } from '../rng.js';
@@ -9,7 +10,7 @@ import { stamp } from './emigration.js';
 import { makeNpc } from './npcFactory.js';
 import { addCondition } from './health.js';
 import { remember } from './conditions.js';
-import { GYM_COST, NIGHT_OUT_COST, NIGHTLIFE_AGE, HOLIDAYS, HOLIDAY_KINDS, CABINS, TRIP_STORIES } from '../data/activities.js';
+import { GYM_COST, NIGHT_OUT_COST, HOLIDAYS, HOLIDAY_KINDS, CABINS, TRIP_STORIES } from '../data/activities.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -32,7 +33,7 @@ export function activityOptions() {
   if (p.age >= 6) a.push({ id: 'library', label: 'Spend time at the library' });
   if (p.age >= 10) a.push({ id: 'meditate', label: 'Meditate' });
   if (p.age >= 18) a.push({ id: 'holiday', label: 'Take a holiday' });
-  if (p.age >= NIGHTLIFE_AGE) a.push({ id: 'night', label: `Go out for the night (${fmtMoney(localMoney(NIGHT_OUT_COST, c), c)})` });
+  if (may('drink').ok) a.push({ id: 'night', label: `Go out for the night (${fmtMoney(localMoney(NIGHT_OUT_COST, c), c)})` });
   return a.map((x) => ({ ...x, done: !!acts()[x.id] }));
 }
 
@@ -234,7 +235,7 @@ export function nightOut() {
   const p = player();
   const c = country();
   const cost = localMoney(NIGHT_OUT_COST, c);
-  if (p.age < NIGHTLIFE_AGE) return result(false, 'You are too young to get in.', 'neutral');
+  if (!may('drink').ok) return result(false, may('drink').why, 'neutral');
   if (p.finance.cash < cost) return result(false, 'You cannot afford a night out.', 'neutral');
   if (!once('night')) return result(false, 'You have had your big night out this year.', 'neutral');
   p.finance.cash -= cost;

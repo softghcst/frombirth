@@ -1,5 +1,6 @@
 // Crime and the courts: committing a crime, police heat, arrest, choosing a
 // lawyer, pleading, the verdict, and being sent down.
+import { rule, may } from './rules.js';
 import { policingShift } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
@@ -227,7 +228,7 @@ export function enterPlea(plea) {
   const text = `${how} You were sentenced to ${term}${juvenile ? ' in juvenile detention' : ' in prison'}.`;
   imprison(years, crime.severity);
   // Where the law allows it, a murder conviction can carry the death sentence.
-  if (c.crimeId === 'murder' && !juvenile && cty.living.laws.deathPenalty && rng.chance(0.3)) {
+  if (c.crimeId === 'murder' && !juvenile && rule('deathPenalty', cty.id) && rng.chance(0.3)) {
     Object.assign(p.legal.incarceration, { deathRow: true, yearsLeft: LIFE_SENTENCE + 10, security: 'max' });
     const doom = `${how} The court sentenced you to death. You will wait on death row while the appeals run out.`;
     log(doom, 'system', 'bad');

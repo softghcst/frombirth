@@ -1,0 +1,163 @@
+// One place to ask what the law is.
+//
+// Every legal question the game asks (how old to vote, drive, drink or
+// gamble; whether two men can marry; whether a murderer can be executed)
+// goes through rule(). The answer is built in layers: a default, the state
+// a territory belongs to, the place itself, a region inside it, and
+// finally anything changed during this life. See data/rules.js.
+//
+// The world also changes its own laws, slowly (tickRules), so a long life
+// does not end under the laws it began with.
+import { rng } from '../rng.js';
+import { theCountry } from '../util.js';
+import { store, player, log } from '../state.js';
+import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
+import { LIVING } from '../data/living.js';
+import { RULES, PLACE_RULES, REGION_RULES, REFORM } from '../data/rules.js';
+
+const here = () => player().countryId;
+const parentOf = (placeId) => COUNTRIES[placeId]?.place?.parentId ?? null;
+const book = () => (store.state ? (store.state.rules ??= {}) : {});
+
+/**
+ * Where a rule's value comes from.
+ * @param {string} id       a key of RULES
+ * @param {string} [placeId]
+ * @param {{region?:string}} [opts]
+ * @returns {{value:any, source:'default'|'parent'|'place'|'region'|'enacted', year?:number, by?:string}}
+ */
+export function source(id, placeId = here(), opts = {}) {
+  const def = RULES[id];
+  if (!def) throw new Error(`Unknown rule: ${id}`);
+  const enacted = book()[placeId]?.[id];
+  if (enacted) return { value: enacted.value, source: 'enacted', year: enacted.year, by: enacted.by };
+  const region = opts.region ?? (placeId === store.state?.player?.countryId ? store.state.player.regionId : null);
+  const local = region ? REGION_RULES[`${placeId}/${region}`]?.[id] : undefined;
+  if (local !== undefined) return { value: local, source: 'region' };
+  if (PLACE_RULES[placeId]?.[id] !== undefined) return { value: PLACE_RULES[placeId][id], source: 'place' };
+  if (def.from && LIVING[placeId]) return { value: LIVING[placeId].laws[def.from], source: 'place' };
+  const up = parentOf(placeId);
+  if (up && PLACE_RULES[up]?.[id] !== undefined) return { value: PLACE_RULES[up][id], source: 'parent' };
+  return { value: def.default, source: 'default' };
+}
+
+/** What the law says. */
+export const rule = (id, placeId, opts) => source(id, placeId, opts).value;
+
+/** The five flags older code knows, in their old shape. */
+export const lawsOf = (placeId = here()) => ({ marriage: rule('sameSexMarriage', placeId), lgbt: rule('lgbt', placeId), gambling: rule('gambling', placeId),
+  deathPenalty: rule('deathPenalty', placeId), conscription: rule('conscription', placeId) });
+
+const WORDS = (def, v) => (def.kind === 'age' ? String(v) : def.kind === 'flag' ? def.words[v ? 1 : 0] : def.words[v]);
+
+/**
+ * Whether the player may do something where they live, and if not, why.
+ * @param {'vote'|'drive'|'drink'|'gamble'|'marry'|'leaveSchool'|'divorce'} action
+ * @param {{person?:object, partner?:object}} [opts]
+ * @returns {{ok:boolean, why:string}}
+ */
+export function may(action, opts = {}) {
+  const p = opts.person ?? player();
+  const id = p.countryId ?? here();
+  const name = theCountry(COUNTRIES[id].name);
+  const no = (why) => ({ ok: false, why });
+  const age = (ruleId, what) => (p.age < rule(ruleId, id) ? no(`You have to be ${rule(ruleId, id)} to ${what} in ${name}.`) : null);
+  switch (action) {
+    case 'vote': return age('votingAge', 'vote') ?? { ok: true, why: '' };
+    case 'drive': return age('drivingAge', 'drive') ?? { ok: true, why: '' };
+    case 'drink': return !rule('alcohol', id) ? no(`Alcohol is banned in ${name}.`) : age('drinkingAge', 'drink') ?? { ok: true, why: '' };
+    case 'gamble': return !rule('gambling', id) ? no(`Gambling is against the law in ${name}.`) : age('gamblingAge', 'gamble') ?? { ok: true, why: '' };
+    case 'leaveSchool': return age('schoolLeavingAge', 'leave school') ?? { ok: true, why: '' };
+    case 'divorce': return rule('divorce', id) ? { ok: true, why: '' } : no(`There is no divorce in ${name}. A marriage can only be annulled, and that is slow and rare.`);
+    case 'marry': {
+      const o = opts.partner;
+      if (age('marriageAge', 'marry')) return age('marriageAge', 'marry');
+      if (o && o.gender === p.gender && !rule('sameSexMarriage', id)) return no(`Two ${p.gender === 'male' ? 'men' : p.gender === 'female' ? 'women' : 'people of the same gender'} cannot marry in ${name}.`);
+      return { ok: true, why: '' };
+    }
+    default: throw new Error(`Unknown action: ${action}`);
+  }
+}
+
+/**
+ * Every rule for a place, for showing.
+ * @returns {{id, name, value, text:string, source:string, note:string}[]}
+ */
+export function sheet(placeId = here(), opts = {}) {
+  return Object.entries(RULES).map(([id, def]) => {
+    const s = source(id, placeId, opts);
+    const up = parentOf(placeId);
+    return { id, name: def.name, value: s.value, text: WORDS(def, s.value), source: s.source,
+      note: s.source === 'enacted' ? `changed in ${s.year}` : s.source === 'parent' ? `as in ${theCountry(COUNTRIES[up].name)}` : s.source === 'region' ? 'local law' : '' };
+  });
+}
+
+// ---------- Laws that change ----------
+
+/** Records a change of law. Returns the entry. */
+export function enact(placeId, id, value, by = 'the legislature') {
+  const def = RULES[id];
+  if (!def || !COUNTRIES[placeId]) throw new Error(`Cannot enact ${id} in ${placeId}`);
+  const was = rule(id, placeId, { region: null });
+  const b = book();
+  (b[placeId] ??= {})[id] = { value, year: store.state.year, by };
+  const entry = { placeId, id, from: was, to: value, year: store.state.year, by, text: describe(placeId, id, was, value) };
+  const list = (b.history ??= []);
+  list.push(entry);
+  if (list.length > 80) list.shift();
+  return entry;
+}
+
+function describe(placeId, id, was, value) {
+  const name = theCountry(COUNTRIES[placeId].name).replace(/^the/, 'The');
+  const lines = {
+    sameSexMarriage: value ? `${name} legalised same-sex marriage.` : `${name} ended same-sex marriage. Existing marriages stand.`,
+    lgbt: RULES.lgbt.levels.indexOf(value) > RULES.lgbt.levels.indexOf(was) ? `${name} passed a law protecting gay and transgender people.` : `${name} rolled back its protections for gay and transgender people.`,
+    deathPenalty: value ? `${name} brought back the death penalty.` : `${name} abolished the death penalty.`,
+    conscription: value ? `${name} brought in compulsory military service.` : `${name} ended compulsory military service.`,
+    gambling: value ? `${name} legalised gambling.` : `${name} banned gambling.`,
+    alcohol: value ? `${name} lifted its ban on alcohol.` : `${name} banned alcohol.`,
+    divorce: value ? `${name} legalised divorce.` : `${name} abolished divorce.`,
+  };
+  return lines[id] ?? `${name} changed its ${RULES[id].name.toLowerCase()} from ${WORDS(RULES[id], was)} to ${WORDS(RULES[id], value)}.`;
+}
+
+/** The reforms a place is ripe for, given how settled it is. */
+function reformsFor(placeId) {
+  const L = LIVING[placeId];
+  if (!L) return [];
+  const r = (id) => rule(id, placeId, { region: null });
+  const out = [];
+  if (!r('sameSexMarriage') && (r('lgbt') === 'equal' || (r('lgbt') === 'limited' && L.stability >= 62))) out.push(['sameSexMarriage', true]);
+  if (r('lgbt') === 'limited' && L.stability >= 60) out.push(['lgbt', 'equal']);
+  if (r('lgbt') === 'hostile' && L.stability >= 55) out.push(['lgbt', 'limited']);
+  if (r('lgbt') === 'equal' && !r('sameSexMarriage') && L.stability < 45) out.push(['lgbt', 'limited']);
+  if (r('deathPenalty') && L.stability >= 55) out.push(['deathPenalty', false]);
+  if (r('conscription') && L.stability >= 70 && L.crisis !== 'war') out.push(['conscription', false]);
+  if (!r('conscription') && L.crisis === 'war') out.push(['conscription', true]);
+  if (!r('gambling') && L.stability >= 60 && r('alcohol')) out.push(['gambling', true]);
+  if (!r('divorce')) out.push(['divorce', true]);
+  if (r('retirementAge') < 70 && L.wage >= 0.5) out.push(['retirementAge', r('retirementAge') + 1]);
+  return out;
+}
+
+/**
+ * Yearly: now and then, somewhere, the law changes. The player hears of it
+ * when it is where they live or a country they are a citizen of.
+ * @returns {?object} the change, if there was one
+ */
+export function tickRules() {
+  if (!rng.chance(REFORM.chance)) return null;
+  const p = player();
+  const placeId = rng.chance(REFORM.homeBias) ? p.countryId : rng.pick(COUNTRY_LIST).id;
+  const options = reformsFor(placeId);
+  if (!options.length) return null;
+  const [id, value] = rng.pick(options);
+  const e = enact(placeId, id, value);
+  const mine = placeId === p.countryId || (p.citizenships ?? []).some((c) => c.jurisdictionId === placeId && !c.lostAt);
+  if (mine) log(`${e.text}${id === 'retirementAge' ? '' : placeId === p.countryId ? ' It is the law where you live now.' : ''}`, 'system', 'neutral');
+  return e;
+}
+
+/** Changes of law in this life, newest first; for one place, or everywhere. */
+export const reforms = (placeId) => [...(book().history ?? [])].filter((e) => !placeId || e.placeId === placeId).reverse();

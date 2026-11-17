@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { rule, may } from './rules.js';
 import { residency } from './citizenship.js';
 import { licenceFor, licensed, examName } from './adulted.js';
 import { PROGRAMMES } from '../data/schools.js';
@@ -631,7 +632,7 @@ export function tickCareer() {
   }
 
   // Bodies and careers both have limits.
-  const limit = career.retireAge ?? RETIREMENT_AGE;
+  const limit = career.retireAge ?? rule('retirementAge');
   if (p.age >= limit) {
     if (career.retireAge) { log('Your body has decided for you: your playing days are over.'); endJob('retired from play'); } else retire();
   }

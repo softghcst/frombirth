@@ -31,7 +31,8 @@ them was not an option.
 
 - **`currency.scale` is a fictional simulation rate**, roughly the order of magnitude of each currency against a base unit so that
   prices read naturally. It is not a market quote and does not move with real exchange rates.
-- **Law flags** (same-sex marriage, LGBT protection, gambling, the death penalty, conscription) are the author's best understanding of
+- **Law flags and legal ages** (same-sex marriage, LGBT protection, gambling, the death penalty, conscription, and the ages and
+  bans in `js/data/rules.js`) are the author's best understanding of
   the mid-2020s for the 48 newest places and have not been checked against legislation. They configure the game; they are not legal
   information. Laws change, and in a long game the simulation changes them too.
 - **"Free health care" and "free university"** are yes-or-no simplifications of systems that are neither.
@@ -58,6 +59,10 @@ shown on its profile.
 - Citizenship rules (`js/data/citizenship.js`) are three yes-or-no lists and a table of years: which places grant citizenship by
   birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
   conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.
+- Legal rules (`js/data/rules.js`) hold one value per place for fourteen questions. Ages are the common adult case and ignore
+  exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
+  the value is the commonest one. No regional overrides are filled in yet. A player in office cannot yet propose these laws:
+  they change only by the world's own slow reforms. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
   permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
   New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there

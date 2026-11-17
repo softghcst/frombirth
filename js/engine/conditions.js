@@ -4,6 +4,7 @@
 // people cast in the current scene:
 //   cast.<key>.<meter>      e.g. cast.director.relationship  (0–100), or cast.kid.age
 //   memory.<key>.<memory>   e.g. memory.manager.coveredShift (100 if they remember it, else 0)
+import { rule, may } from './rules.js';
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
@@ -19,7 +20,7 @@ const SPECIAL = {
   // Country facts, for scenes: living.safety, living.infra, living.stability, living.graft, living.inflation, living.crisis
   living: () => country().living,
   hazards: () => country().living.hazards,
-  conscription: () => country().living.laws.conscription,
+  conscription: () => rule('conscription'),
   inCrisis: () => !!country().living.crisis,
   // Royalty: monarchy (the country has a crown), isRoyal (in the royal family), isNoble (holds a noble title),
   // reigning, royalBy ('birth' | 'marriage' | 'honour' | null). The public's opinion is plain 'royal.image'.

@@ -1,6 +1,7 @@
 // Education: compulsory school by age, effort and attendance, tutors, cliques,
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
+import { rule, may } from './rules.js';
 import { tuitionFactor } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, uid, localWage, localCost } from '../util.js';
@@ -8,7 +9,7 @@ import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '
 import { makeNpc } from './npcFactory.js';
 import { applyMods } from './genetics.js';
 import { resolve, tripleThreat, remember } from './conditions.js';
-import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, DROPOUT_AGE, PROGRAMMES, HOUSING, CLIQUES, CLIQUE_BY_ID,
+import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, PROGRAMMES, HOUSING, CLIQUES, CLIQUE_BY_ID,
   CLUBS, CLUB_BY_ID, MAX_CLUBS, TRADE_BY_ID, SCHOOL_TYPES, SCHOOL_TYPE_BY_ID, GAP_YEARS, PRIORITIES,
   PRIORITY_BY_ID } from '../data/schools.js';
 import { MAJORS, MAJOR_BY_ID } from '../data/majors.js';
@@ -666,13 +667,13 @@ export const leaveForPrison = () => {
 
 export const canDropOut = () => {
   const p = player();
-  return p.education.enrolled && (isHigher(p.education.stage) || p.age >= DROPOUT_AGE);
+  return p.education.enrolled && (isHigher(p.education.stage) || may('leaveSchool').ok);
 };
 
 export function dropOut() {
   const p = player();
   const e = p.education;
-  if (!canDropOut()) return result(false, `You have to stay in school until you are ${DROPOUT_AGE}.`);
+  if (!canDropOut()) return result(false, `You have to stay in school until you are ${rule('schoolLeavingAge')}.`);
   const where = stageLabel(e.stage).toLowerCase();
   if (!isHigher(e.stage)) e.droppedOut = true;
   leaveSchool('left');
