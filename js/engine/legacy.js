@@ -234,8 +234,8 @@ export function continueAs(npcId) {
   const abroad = typeof h.flags.abroad === 'string' && COUNTRIES[h.flags.abroad] ? h.flags.abroad : null;
   const moved = abroad && abroad !== op.countryId;
   if (moved) {
-    player.countryId = abroad;
-    player.birthCountryId = abroad;
+    player.countryId = abroad; // where they live now; where they were born does not change
+    player.flags.arrivedYear = h.flags.movedYear ?? old.year;
     player.city = rng.pick(COUNTRIES[abroad].cities);
   }
   if (L.job && !h.flags.royal) takeOverJob(L.job, L.yearsWorked ?? 0);

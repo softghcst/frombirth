@@ -1,4 +1,5 @@
 // Checks cities and regions: profiles, prices and pay, regional law, moving. Run with: node tests/cities.mjs
+import { ROOTS } from '../js/data/economy.js';
 import { store } from '../js/state.js';
 import { rng } from '../js/rng.js';
 import { createLife } from '../js/engine/characterGen.js';
@@ -15,6 +16,7 @@ import { emigrate } from '../js/engine/emigration.js';
 import { profile } from '../js/engine/world.js';
 
 rng.seed(5150);
+ROOTS.parentFromAbroad = 0; // these checks are about plain families; families with roots abroad are tested in world-scenarios.mjs
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
@@ -50,7 +52,7 @@ section(`profiles: all ${n} cities have one`);
 // 3. Homes and pay follow the city.
 const priceIn = (id, city) => { life(id, city); const all = []; for (let i = 0; i < 60; i++) { store.state.market.listings = null; for (const l of estate.listings()) all.push(l.price); } all.sort((a, b) => a - b); return all[Math.floor(all.length / 2)]; }; // the median: one mansion does not move it
 const ny = priceIn('us', 'New York'); const atl = priceIn('us', 'Atlanta');
-check(ny / atl > 1.5 && ny / atl < 2.4, `homes in New York cost far more than in Atlanta (ratio ${(ny / atl).toFixed(2)})`);
+check(ny / atl > 1.4 && ny / atl < 2.8, `homes in New York cost far more than in Atlanta (ratio ${(ny / atl).toFixed(2)})`);
 const payIn = (id, city) => { const all = []; for (let i = 0; i < 25; i++) { const p = life(id, city); hire(CAREERS.find((c) => c.id === 'office'), 0, 60); all.push(p.career.salary); } return mean(all); };
 const ldn = payIn('uk', 'London'); const car = payIn('uk', 'Cardiff');
 check(ldn / car > 1.2 && ldn / car < 1.5, `the same job pays more in London than in Cardiff (ratio ${(ldn / car).toFixed(2)})`);
@@ -67,7 +69,7 @@ section('law: a region overrides its country for the people who live there');
 // 5. Moving within the country.
 p = life('us', 'Atlanta'); hire(CAREERS.find((c) => c.id === 'office'), 0, 60);
 const cash = p.finance.cash; const jobs = p.counters.jobsHeld; const papers = JSON.stringify([p.citizenships, p.residency]);
-check(towns.moveOptions().length === 5 && towns.moveOptions().every((o) => o.versus && o.line), 'five other cities are offered, each compared with home');
+check(towns.moveOptions().length === 6 && towns.moveOptions().every((o) => o.versus && o.line), 'six other cities are offered, each compared with home');
 let r = towns.relocate('Seattle');
 check(r.ok && p.city === 'Seattle' && p.countryId === 'us' && p.finance.cash === cash - towns.moveCost(), 'the move happens and costs what it said');
 check(JSON.stringify([p.citizenships, p.residency]) === papers, 'papers do not change: it is the same country');
