@@ -24,6 +24,7 @@ import { charge } from './chronicle.js';
 import { validPassport, today, eraOf } from './documents.js';
 import { capitalCity, distanceKm } from './geo.js';
 import { PET_TRAVEL } from '../data/travel.js';
+import { healthOnArrival } from './systems.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const nameOf = (id) => theCountry(COUNTRIES[id]?.name ?? id);
@@ -160,6 +161,7 @@ export function checklist(caseId, p = player()) {
     { id: 'decision', label: 'Receive a decision', done: app.status === 'approved' || !!app.used, note: app.status === 'approved' ? 'Approved.' : app.status === 'refused' ? `Refused. ${app.reason ?? ''}` : 'Decided when the year turns.' },
     { id: 'housing', label: 'Arrange housing', done: !!a.housing, note: a.housing ? housingOptions(app, p).find((o) => o.id === a.housing)?.label ?? 'Chosen.' : '' },
     { id: 'work', label: 'Arrange work or study', done: true, note: work },
+    { id: 'health', label: 'Health care there', done: true, note: healthOnArrival(app.jurisdictionId, app.status_on_arrival) },
     { id: 'money', label: 'Review finances', done: a.money != null, note: a.money != null ? (a.money ? `Leaving ${Math.round(a.money * 100)}% in ${country().currency.code}.` : `Changing everything into ${COUNTRIES[app.jurisdictionId].currency.code}.`) : '' },
     { id: 'papers', label: 'Family documents', done: !missing.length, note: missing.length ? `Without a valid passport: ${missing.map((x) => x.firstName).join(', ')}.` : needPapers ? 'Everyone has a valid passport.' : 'No documents needed in this period.' },
     { id: 'pets', label: 'Arrangements for animals', done: !pets.length || pets.every((n) => a.pets?.[n.id]), note: pets.length ? pets.map((n) => `${n.firstName}: ${a.pets?.[n.id] === 'bring' ? 'coming' : a.pets?.[n.id] === 'leave' ? 'staying with family' : 'not decided'}${PET_TRAVEL[n.species]?.restricted?.includes(app.jurisdictionId) ? ' (not allowed in)' : ''}`).join('; ') : 'No animals.' },

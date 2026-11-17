@@ -53,3 +53,18 @@ export const HEALTH_MODEL_OF = {
   mx: 'mixed', in: 'mixed',
   ae: 'employer',
 };
+
+/**
+ * Health care for people on a temporary visa, where care is for everyone
+ * (public, compulsory insurance, mixed). GAMEPLAY RULE, unverified, the same
+ * in every such country:
+ *   charge   holders of these statuses pay a yearly visa health charge (a
+ *            multiple of the typical wage) and are then covered like residents
+ *   private  holders must buy private cover; without it they pay the whole bill
+ * Permanent residents, citizens and people given protection are covered as residents.
+ */
+export const VISA_HEALTH = {
+  worker: { kind: 'charge', rate: 0.03 },
+  student: { kind: 'charge', rate: 0.02 },
+  retiree: { kind: 'private', rate: 0.1 },
+};

@@ -22,6 +22,7 @@ import * as chron from '../engine/chronicle.js';
 import { languagesOf, fluency } from '../engine/languages.js';
 import { placeName, project, coords, capitalCity, jurisdictionAt } from '../engine/geo.js';
 import { avatarSvg } from './avatar.js';
+import { cover as healthCover } from '../engine/systems.js';
 import { COORDINATES } from '../data/coordinates.js';
 
 const SECTIONS = [
@@ -223,7 +224,7 @@ export function openExplore(api, start = {}) {
         + '<p class="muted">A passport is a document. It can expire or be lost without changing anyone\'s citizenship.</p>';
       if (tab === 'visas') body = d.people.map((x) => `<div class="card"><h3>${esc(x.name)}</h3>${x.authorizations.length ? x.authorizations.map((a) => kvt(`${a.name}: ${a.place}`, `${STATUS[a.status] ?? a.status} · ${a.validFrom} to ${a.validUntil} · ${a.permitted.join(', ')}`)).join('') : '<p class="muted">None.</p>'}</div>`).join('')
         + '<p class="muted">A visa is permission to visit, for a purpose and a time. It is not residence and it is not permission to work.</p>';
-      if (tab === 'residence') { const r = paper.residency; body = `<div class="card"><h3>${r.flag} ${esc(r.name)}</h3>${kvt('Status', r.word)}${r.status !== 'citizen' ? kvt('Since', r.since) : ''}${imm.statusLine(p) ? kvt('Permission', imm.statusLine(p)) : ''}${kvt('Work', r.workAuthorized ? 'Allowed' : 'Not allowed')}${kvt('Tax residence (game rule)', `${nameOf(p.countryId)}: where you live`)}</div><p class="muted">Residence is permission to live somewhere. It is not citizenship, and owning a home somewhere does not give it.</p>`; }
+      if (tab === 'residence') { const r = paper.residency; body = `<div class="card"><h3>${r.flag} ${esc(r.name)}</h3>${kvt('Status', r.word)}${r.status !== 'citizen' ? kvt('Since', r.since) : ''}${imm.statusLine(p) ? kvt('Permission', imm.statusLine(p)) : ''}${kvt('Work', r.workAuthorized ? 'Allowed' : 'Not allowed')}${kvt('Health care', healthCover(p).how)}${kvt('Tax residence (game rule)', `${nameOf(p.countryId)}: where you live`)}</div><p class="muted">Residence is permission to live somewhere. It is not citizenship, and owning a home somewhere does not give it.</p>`; }
       if (tab === 'applications') body = d.applications.length ? d.applications.map((a) => `<div class="card"><h3>${esc({ passport: 'Passport', eta: 'Electronic authorisation', evisa: 'e-Visa', visa: 'Visitor visa', study: 'Student visa', on_arrival: 'Visa on arrival', relocation: 'Moving abroad' }[a.kind] ?? a.kind)}: ${esc(a.place)}</h3>
           ${kvt('For', a.who)}${kvt('Submitted', a.submittedYear)}${kvt('Status', STATUS[a.status] ?? a.status)}${['submitted', 'review_requested'].includes(a.status) ? kvt('Decision', `when ${a.decideYear} begins`) : ''}${a.reason ? `<p class="muted">${esc(a.reason)}</p>` : ''}
           ${a.status === 'refused' && a.kind !== 'eta' && a.kind !== 'relocation' && !(a.reviews >= 1) ? btn('Ask for a review', `data-review="${a.id}"`, 'small') : ''}${['submitted'].includes(a.status) && a.kind !== 'relocation' ? btn('Withdraw', `data-withdraw="${a.id}"`, 'small') : ''}</div>`).join('') : '<p class="empty">No applications.</p>';

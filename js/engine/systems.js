@@ -4,7 +4,8 @@ import { localMoney, fmtMoney, theCountry } from '../util.js';
 import { player, country, log } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { TAX_SHAPES, TAX_SHAPE_OF, HEALTH_MODELS, HEALTH_MODEL_OF } from '../data/systems.js';
+import { TAX_SHAPES, TAX_SHAPE_OF, HEALTH_MODELS, HEALTH_MODEL_OF, VISA_HEALTH } from '../data/systems.js';
+import { residency } from './citizenship.js';
 import { taxShift } from './policy.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -70,6 +71,18 @@ export function cover(p = player()) {
   const price = Math.round(m.premium * typicalWage(c));
   if (p.legal.incarceration) return { model: m, covered: true, share: 0, how: 'The prison doctor costs nothing.', premium: 0, canBuy: false, bought: false };
   if (p.age < 18) return { model: m, covered: true, share: Math.min(m.share, 0.2), how: 'Covered as a child.', premium: 0, canBuy: false, bought: false };
+  // Where care is for everyone, a temporary visa can change the terms (data/systems.js VISA_HEALTH).
+  const visa = m.covers === 'everyone' && m.share < 1 ? VISA_HEALTH[residency(p).status] : null;
+  if (visa?.kind === 'charge') {
+    const charge = Math.round(visa.rate * typicalWage(c));
+    if (p.flags.visaHealthUnpaid === c.id) return { model: m, covered: false, share: 1, how: `The health charge on your visa is unpaid: you pay the whole bill until it is paid (${fmtMoney(charge, c)} a year).`, premium: charge, visaCharge: true, canBuy: false, bought: false };
+    return { model: m, covered: true, share: m.share, how: `On your visa you pay a yearly health charge of ${fmtMoney(charge, c)}, and are covered like a resident.`, premium: charge, visaCharge: true, canBuy: false, bought: false };
+  }
+  if (visa?.kind === 'private') {
+    const own = Math.round(visa.rate * typicalWage(c));
+    if (bought) return { model: m, covered: true, share: m.share, how: 'Your visa requires private cover, and you have it.', premium: own, canBuy: true, bought: true };
+    return { model: m, covered: false, share: 1, how: 'Your visa does not give you public care: without private cover you pay the whole bill.', premium: 0, canBuy: true, bought: false, price: own };
+  }
   if (m.covers === 'everyone') return { model: m, covered: true, share: m.share, how: m.line, premium: p.age >= 18 && m.premium ? price : 0, canBuy: false, bought: false };
   if (working) return { model: m, covered: true, share: m.share, how: 'Your job brings health cover with it.', premium: 0, canBuy: false, bought };
   if (m.covers === 'buyers' && bought) return { model: m, covered: true, share: m.share, how: 'You pay for your own cover.', premium: price, canBuy: true, bought: true };
@@ -84,7 +97,7 @@ export function setCover(on) {
   const k = cover(p);
   if (!k.canBuy) return result(false, 'There is no cover to buy here.', 'neutral');
   if (on) {
-    const price = Math.round(k.model.premium * typicalWage(c));
+    const price = k.price ?? Math.round(k.model.premium * typicalWage(c));
     if (p.finance.cash < price) return result(false, `A year of cover costs ${fmtMoney(price, c)}. You do not have it.`, 'neutral');
     p.finance.cash -= price;
     p.flags.healthCover = c.id;
@@ -107,7 +120,14 @@ export function tickCover() {
   if (p.age < 18 || p.legal.incarceration) return;
   const k = cover(p);
   if (!k.premium || p.flags.coverPaidAge === p.age) return;
-  if (k.model.covers === 'everyone') {
+  if (k.visaCharge) {
+    // The visa health charge is due whether or not they earn.
+    if (p.finance.cash >= k.premium) { p.finance.cash -= k.premium; delete p.flags.visaHealthUnpaid; log(`You paid ${fmtMoney(k.premium, c)} in the yearly health charge for visa holders.`); }
+    else { p.flags.visaHealthUnpaid = c.id; log('You could not pay the health charge on your visa this year. Care will cost you in full until you can.', 'system', 'bad'); }
+    p.flags.coverPaidAge = p.age;
+    return;
+  }
+  if (k.model.covers === 'everyone' && !k.bought) {
     // A contribution taken with the rest: people with no income are carried.
     const earns = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0) > 0;
     if (!earns) return;
@@ -122,3 +142,13 @@ export function tickCover() {
 
 /** One line about how health care works somewhere, for a list. */
 export const healthLine = (c = country()) => { const m = healthModelOf(c); return `${m.name}: ${m.line.charAt(0).toLowerCase()}${m.line.slice(1)}`; };
+
+/** What health care will look like on arriving somewhere with a given status, in a sentence (for the moving checklist). */
+export function healthOnArrival(countryId, status) {
+  const c = COUNTRIES[countryId];
+  const m = healthModelOf(c);
+  const visa = m.covers === 'everyone' && m.share < 1 ? VISA_HEALTH[status] : null;
+  if (visa?.kind === 'charge') return `${m.name}: on this visa, a yearly health charge of ${fmtMoney(Math.round(visa.rate * typicalWage(c)), c)}, then covered like a resident.`;
+  if (visa?.kind === 'private') return `${m.name}: this visa gives no public care. Private cover costs about ${fmtMoney(Math.round(visa.rate * typicalWage(c)), c)} a year.`;
+  return `${m.name}: ${m.line.charAt(0).toLowerCase()}${m.line.slice(1)}`;
+}
