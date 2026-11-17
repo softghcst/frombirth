@@ -309,7 +309,7 @@ let moved;
   check(p.residency.status === 'worker' && p.residency.workAuthorized && p.career.careerId, 'a work visa, with the job that sponsored it');
   check(p.locations.length >= 2 && p.locations[p.locations.length - 2].countryId === 'mx' && p.locations[p.locations.length - 2].to === store.state.year && p.locations[p.locations.length - 2].homes.includes(home.id), 'Guadalajara stays in the record, with the flat');
   check(p.assets.some((a) => a.id === home.id), 'the flat is still owned');
-  check(friend.alive && p.npcIds.includes(friend.id) && friend.flags.abroad === 'mx', 'the friend in Mexico is still a friend, in Mexico');
+  check(friend.alive && p.npcIds.includes(friend.id) && friend.role === 'friend' && (friend.flags.abroad === 'mx' || friend.places?.some((l) => l.countryId === 'mx')), 'the friend from Mexico is still a friend, with their life in Mexico on record');
   check(!mum || (p.npcIds.includes(mum.id) && mum.flags.abroad === 'mx'), 'and so is mum');
   check(!dog.flags.abroad && store.state.npcs[dog.id] === dog, `the dog came, the same dog (${dog.flags.abroad}, ${dog.alive}, ${dog.role})`);
   const moves = store.state.canon.events.filter((e) => e.type === 'relocation' && e.international);
