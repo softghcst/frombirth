@@ -110,6 +110,8 @@ export function convertMoney(rate) {
   for (const l of f.lent ?? []) { l.amount = x(l.amount); l.left = x(l.left); }
   for (const pol of f.policies ?? []) { pol.premium = x(pol.premium); pol.excess = x(pol.excess); pol.cover = x(pol.cover); }
   p.career.pensionPerYear = x(p.career.pensionPerYear);
+  if (p.flags.statePension) p.flags.statePension = null; // a state pension is paid by the country you live in: it is worked out again there
+  for (const s of f.support ?? []) s.amount = x(s.amount);
   for (const a of p.assets) {
     a.purchasePrice = x(a.purchasePrice);
     if (a.costBasis != null) a.costBasis = x(a.costBasis);

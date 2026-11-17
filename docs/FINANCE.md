@@ -227,15 +227,46 @@ their money milestones, their property, and who got what. Their transactions are
   currency starts a new line, so two currencies are never drawn on one scale. Hover or tap for a year's
   value; there is also a table.
 
+## Added in the fourth round
+
+- **Inheriting from family** (`engine/relationships.js`). A parent's savings go to the other parent if they
+  are alive, and otherwise are shared between the player and their brothers and sisters after estate tax.
+  A grandparent's go to their own child, the player's parent, if living. A spouse's savings come to the
+  player without estate tax. Each is recorded once, as an inheritance.
+- **Payouts from investments** (`engine/market.js`, `YIELD`). Funds and steady companies pay out a share
+  of their value each year; their prices grow by that much less, so the return is the same, partly as
+  money. Payouts are income, taxed as they are paid, and can be reinvested instead of paid out.
+- **Spreading investments** across a cautious, balanced or adventurous mix. Everything held is sold (gains
+  taxed as usual) and put into the mix; no new money is put in.
+- **Price lines** for each holding, from the prices the market keeps.
+- **Moving a mortgage** to a cheaper rate (`remortgage`), on the record and the state of the economy, for a fee.
+- **Divorce, continued** (`engine/family.js`). What is owed is paid from everyday money, then from the
+  pension plan, then as a share of a business. Where what a couple has is shared equally and the marriage
+  lasted five years or more, the higher earner pays the lower a share of the difference for half as many
+  years as the marriage lasted. The children stay with the player, and the other parent pays towards them
+  until the youngest is grown. Support ends early if either of them dies.
+- **A state pension** (`engine/retirement.js`, `STATE_PENSION`) from 67, paid by the country the player
+  lives in at a share of an ordinary wage there: in full after 35 years of work, less for fewer, never
+  nothing. Worked out again after a move abroad.
+- **Learning about money**: a book, an evening course or a financial adviser, each at a cost; a term of
+  money lessons at school at 15; and a small start from the parents a child grows up with.
+- **Six more money scenes**: the wedding budget (possibly on a card), saving for a baby, a partner who
+  wants to retrain, a parent who needs help with bills, a child going to university, a grandparent's gift.
+- **Investments for close family**: the spouse, grown children and siblings put spare money into the same
+  market, more or less depending on their temperament, and sell before they borrow.
+- **Payslips**: the year's pay shown as twelve monthly payslips, with tax and pension contributions taken
+  off, adding up to exactly the year. The year is still booked as one transaction.
+- **Ancestors' life stories** open from the Family legacy section.
+
 ## Not built
 
 These were in the brief and are **not** in the game:
 
-- **Other people's accounts in detail.** The closest family have a home, a mortgage and debts, but not bank
-  accounts, cards or investments of their own, and there is no shared household ledger.
+- **Other people's accounts in detail.** The closest family have a home, a mortgage, debts and investments,
+  but not bank accounts or cards of their own, and there is no shared household ledger.
 - **Beneficiary rules by country** beyond the reserved share for children; **deposit protection and bank failure.**
-- **Pay by pay period.** Pay, bills and statements are posted once a year. A year in Pathways is lived as one
-  step: something bought during a year is paid for from the next tick on, so a mortgage taken out is never
+- **Pay by pay period.** Payslips show the year month by month, but pay, bills and statements are still
+  posted once a year. A year in Pathways is lived as one step: something bought during a year is paid for from the next tick on, so a mortgage taken out is never
   charged for months before it existed, and nothing is pro-rated within a year either.
 - **Historical eras.** The game has no lives set in the past. Banking products, cards and insurance each have
   a first year and refuse to exist before it, but period currencies, merchant banking and the like are not

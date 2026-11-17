@@ -82,4 +82,60 @@ export default [
       { label: 'Change the subject', outcomes: [any('"Not for years yet." You get another drink.', 'neutral')] },
     ],
   },
+  {
+    id: 'wedding_budget', category: 'money', ageRange: [18, 80], cooldown: 99, weight: 3, cast: { love: 'partner' }, castRequires: [need('cast.love.flags.engaged', '>=', 100)],
+    text: 'The wedding. {love} has a folder of ideas, and you have a number in your head that is a good deal smaller. It is time to agree what you will spend.',
+    choices: [
+      { label: 'Small and close: family and a long lunch', outcomes: [any('A dozen people, a good meal, and nothing owed afterwards. {love} says it was perfect, and means it.', 'good', rel('love', 5), learn(2, 'wedding'))] },
+      { label: 'Save for a year first', outcomes: [any('You agree a figure and put money aside for it every month. The wedding waits, and is paid for.', 'good', money('save', { share: 0.25 }), learn(3, 'wedding'), rel('love', 2))] },
+      { label: 'The day of your dreams ({$15000})', requires: [need('cashBase', '>=', 15000)], outcomes: [any('A day nobody will forget, and a bill you will remember a while longer.', 'good', money('spend', { base: 15000, what: 'Your wedding' }), rel('love', 8), st('mood', 6))] },
+      { label: 'Put it on a card and worry later', requires: [need('hasCard', '==', true)], outcomes: [any('It is a wonderful day. The statement in January is less so.', 'neutral', money('spend', { base: 8000, what: 'Your wedding, on the card', card: true }), rel('love', 6), st('mood', 3))] },
+    ],
+  },
+  {
+    id: 'baby_savings', category: 'money', ageRange: [18, 55], cooldown: 99, weight: 4, requires: [need('flags.pregnancy', '!=', false)],
+    text: 'A baby is coming. Somebody at work hands you a list of everything you will apparently need. It runs to two pages, and the total at the bottom is not small.',
+    choices: [
+      { label: 'Start putting money aside now', outcomes: [any('You set aside a little each month. By the time the baby comes, the pram is paid for.', 'good', money('save', { share: 0.2 }), learn(3, 'baby'))] },
+      { label: 'Buy secondhand from other parents', outcomes: [any('A cot from a neighbour, clothes in bin bags from a cousin. The baby does not notice.', 'good', money('spend', { base: 300, what: 'Secondhand things for the baby' }), learn(2, 'baby'))] },
+      { label: 'Buy everything new', outcomes: [any('It is all beautiful, and some of it will be used.', 'neutral', money('spend', { base: 3500, what: 'Everything new for the baby' }), st('mood', 4))] },
+    ],
+  },
+  {
+    id: 'partner_retrains', category: 'money', ageRange: [24, 62], cooldown: 15, cast: { love: 'spouse' }, castRequires: [need('cast.love.age', '<=', 55)],
+    text: '{love} has been unhappy at work for a long time. Tonight they say it out loud: they want to retrain, and it would mean a year or two of earning very little.',
+    choices: [
+      { label: 'Back them, and help with the course ({$3000})', requires: [need('cashBase', '>=', 3000)], outcomes: [any('You pay for the course and take on more of the bills for a while. {love} has not looked this awake in years.', 'good', money('give', { target: 'love', base: 3000 }), rel('love', 10), mem('love', 'backed_retrain', 'You backed me when I wanted to start again.'))] },
+      { label: 'Back them, once there is more saved', outcomes: [any('You agree on a date a year from now, and a number to reach before then. It is a plan, and {love} can live with a plan.', 'neutral', money('save', { share: 0.15 }), rel('love', 3), learn(2, 'couple'))] },
+      { label: 'Say you cannot afford it', outcomes: [any('{love} nods and does not raise it again. It sits between you for a while.', 'bad', rel('love', -8))] },
+    ],
+  },
+  {
+    id: 'parent_money_help', category: 'money', ageRange: [30, 80], cooldown: 12, cast: { par: 'parent' }, castRequires: [need('cast.par.age', '>=', 74), need('cast.par.money', '<=', 45)],
+    text: '{par} is finding things harder: the stairs, the shopping, the bills. They would never ask, but a little help with money would make a real difference.',
+    choices: [
+      { label: 'Help with their bills ({$2000})', requires: [need('cashBase', '>=', 2500)], outcomes: [any('You set up a payment towards their heating and shopping. {par} protests, and then thanks you.', 'good', money('give', { target: 'par', base: 2000 }), hid('karma', 5), mem('par', 'helped_old', 'You looked after me when I needed it.'))] },
+      { label: 'Give your time instead', outcomes: [any('Saturday mornings are theirs now: shopping, letters, the odd repair.', 'good', rel('par', 8), st('mood', -1), hid('karma', 3))] },
+      { label: 'Ask your brothers and sisters to share it', requires: [need('roles', 'has', 'sibling')], outcomes: [any('A family conversation, slightly tense, ends in a plan everyone can live with.', 'neutral', money('give', { target: 'par', base: 700 }), rel('par', 4))] },
+      { label: 'Leave them to manage', outcomes: [any('They manage, more or less. You do not ask how.', 'bad', rel('par', -10))] },
+    ],
+  },
+  {
+    id: 'child_to_university', category: 'money', ageRange: [36, 80], cooldown: 4, cast: { kid: 'child' }, castRequires: [need('cast.kid.age', '>=', 18), need('cast.kid.age', '<=', 20)],
+    text: '{kid} has a place to study, and a long list of costs: fees, rent, books, a laptop that works. They ask, carefully, what you might be able to do.',
+    choices: [
+      { label: 'Pay a good part of it ({$8000})', requires: [need('cashBase', '>=', 8000)], outcomes: [any('You cover the rent for the first year. {kid} will owe less when they finish.', 'good', money('give', { target: 'kid', base: 8000 }), rel('kid', 8), mem('kid', 'paid_uni', 'You helped me through university.'))] },
+      { label: 'Lend it, to be paid back once they work ({$8000})', requires: [need('cashBase', '>=', 8000)], outcomes: [any('A loan between you, written down, no interest. {kid} seems relieved to be trusted with it.', 'neutral', money('lend', { target: 'kid', base: 8000, years: 5 }), rel('kid', 3))] },
+      { label: 'Help them find grants and a part-time job', outcomes: [any('An evening of forms and job adverts. They will manage it themselves, with a student loan.', 'neutral', rel('kid', 2), learn(1, 'uni'))] },
+    ],
+  },
+  {
+    id: 'grandparent_gift', category: 'money', ageRange: [8, 17], cooldown: 4, cast: { gp: 'grandparent' },
+    text: '{gp} presses an envelope into your hand when nobody is looking. "Do not tell your parents. Do something sensible with it. Or not." Inside is more money than you have ever held.',
+    choices: [
+      { label: 'Put it in the bank', requires: [need('hasBankAccount', '==', true)], outcomes: [any('It goes straight into your account. You check the balance more than once that week.', 'good', cash(200), money('save', { base: 200 }), rel('gp', 4), learn(2, 'gift'))] },
+      { label: 'Spend some, keep some', outcomes: [any('Half on something you wanted, half in a sock drawer.', 'good', cash(100), rel('gp', 4), learn(1, 'gift'))] },
+      { label: 'Spend it all, today', outcomes: [any('A glorious afternoon. By dinner it is gone.', 'neutral', cash(0), st('mood', 6), rel('gp', 3))] },
+    ],
+  },
 ];

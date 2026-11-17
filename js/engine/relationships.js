@@ -7,6 +7,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js';
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
+import { book } from './ledger.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -53,23 +54,50 @@ export const removeNpc = (npc) => {
 };
 
 /** A parent's estate goes to the other parent if living, otherwise to the children. */
-function inheritFrom(npc) {
+/**
+ * Someone close has died: what they leave to whom. A parent's or a
+ * grandparent's money goes first to the partner who survives them, and
+ * otherwise is shared between the player and their brothers and sisters, after
+ * estate tax where the person lived. A spouse's money comes to the player,
+ * without estate tax, as between married people almost everywhere. Anyone they
+ * were not on speaking terms with may be left out.
+ * Amounts arrive in everyday money and are written down as an inheritance (engine/ledger.js).
+ */
+export function inheritFrom(npc) {
   const p = player();
   const c = country();
-  if (npc.role !== 'parent' || !npc.savings) return;
-  const other = npcsByRole('parent').find((n) => n.id !== npc.id);
-  if (other) { other.savings = (other.savings ?? 0) + npc.savings; return; }
+  const savings = Math.max(0, Math.round(npc.role === 'spouse' ? npc.life?.savings ?? 0 : npc.savings ?? npc.life?.savings ?? 0));
+  if (!savings) return;
+  const record = (amount, text) => {
+    p.finance.cash += amount;
+    log(text, 'system', 'neutral');
+    p.milestones.push({ age: p.age, text: `Inherited from ${npc.firstName}.`, kind: 'money' });
+    book({ cat: 'inheritance', src: 'year', desc: `Inherited from ${npc.firstName} ${npc.lastName}` });
+  };
+  if (npc.role === 'spouse') {
+    if (npc.life) npc.life.savings = 0;
+    return record(savings, `${npc.firstName}'s savings, ${fmtMoney(savings, c)}, came to you.`);
+  }
+  if (npc.role !== 'parent' && npc.role !== 'grandparent') return;
+  const partner = npcsByRole(npc.role).find((n) => n.id !== npc.id && (npc.role === 'parent' || n.flags.side === npc.flags.side));
+  if (partner) { partner.savings = (partner.savings ?? 0) + savings; npc.savings = 0; return; }
+  // A grandparent's money goes to their own child first, if that child is living.
+  if (npc.role === 'grandparent') {
+    const child = npcsByRole(npc.flags.side === 'maternal' ? 'mother' : npc.flags.side === 'paternal' ? 'father' : 'parent')[0];
+    if (child) { child.savings = (child.savings ?? 0) + savings; npc.savings = 0; log(`${npc.firstName} left what they had to your ${roleLabel(child).toLowerCase()}.`); return; }
+  }
   if (npc.meters.relationship < 15) {
     log(`${npc.firstName} left you out of the will.`, 'system', 'bad');
     return;
   }
   const heirs = npcsByRole('sibling').length + 1;
-  const gross = Math.round(npc.savings / heirs);
+  const gross = Math.round(savings / heirs);
   // An estate is taxed where the person who died lived.
   const where = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad] : c;
   const tax = Math.round(gross * where.estateTax);
-  p.finance.cash += gross - tax;
-  log(`You inherited ${fmtMoney(gross - tax, c)} from ${npc.firstName}'s estate${tax ? ` after ${fmtMoney(tax, c)} in estate tax${where !== c ? ` in ${theCountry(where.name)}` : ''}` : ''}${heirs > 1 ? `, split ${heirs} ways` : ''}.`, 'system', 'good');
+  npc.savings = 0;
+  for (const sib of npcsByRole('sibling')) { if (sib.life) sib.life.savings += gross - tax; else sib.savings = (sib.savings ?? 0) + gross - tax; }
+  record(gross - tax, `You inherited ${fmtMoney(gross - tax, c)} from ${npc.firstName}'s estate${tax ? ` after ${fmtMoney(tax, c)} in estate tax${where !== c ? ` in ${theCountry(where.name)}` : ''}` : ''}${heirs > 1 ? `, a ${heirs === 2 ? 'half' : `1/${heirs}`} share with your ${heirs === 2 ? 'sibling' : 'siblings'}` : ''}.`);
 }
 
 export function tickRelationships() {

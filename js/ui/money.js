@@ -27,6 +27,10 @@ import * as ach from '../engine/achievements.js';
 import { roleLabel } from '../engine/relationships.js';
 import { portrait, openNpc } from './tabs/people.js';
 import { npcWorth } from '../engine/npcMoney.js';
+import * as estate from '../engine/realEstate.js';
+import { MIXES, STATE_PENSION } from '../data/money.js';
+import { EPITAPHS } from '../data/epitaphs.js';
+import { getGraveyard } from '../save.js';
 import { INSURANCE, INSOLVENCY, PENSION_PLAN, CARDS } from '../data/money.js';
 
 /** An exact amount, without the small change when there is none. */
@@ -127,6 +131,15 @@ function worthChart() {
     <p class="muted" style="margin-top:6px">As it stood at the end of each year, in ${esc(L.home)}${all.length > pts.length ? '. Years in another currency, before you moved, are not drawn on the same line' : ''}.</p></div>`;
 }
 
+/** A small line of a price over the years the market remembers. Read the figures from the label; the line shows the shape. */
+function sparkline(values) {
+  if (values.length < 2) return '';
+  const W = 72; const H = 22;
+  const lo = Math.min(...values); const hi = Math.max(...values);
+  const pts = values.map((v, i) => `${(i * W / (values.length - 1)).toFixed(1)},${(H - 2 - (v - lo) * (H - 4) / (hi - lo || 1)).toFixed(1)}`).join(' ');
+  return `<svg class="mm-spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline points="${pts}"/></svg>`;
+}
+
 function overviewHtml() {
   const c = country();
   const o = bank.overview();
@@ -156,6 +169,23 @@ function overviewHtml() {
     <div class="card"><h3>Lately</h3>${recent.length ? recent.map((t) => txRow(L, t)).join('') : '<p class="muted">Nothing has moved yet.</p>'}</div>`;
 }
 
+const SOURCE = { salary: 'your salary', partTime: 'part-time work', pension: 'your work pension', statePension: 'the state pension' };
+/** The year's pay, month by month. */
+function payslipHtml() {
+  const ps = player().finance.payslips;
+  if (!ps || store.state.year - ps.year > 1) return '';
+  const m = ps.months[0];
+  const sum = (k) => ps.months.reduce((t, x) => t + x[k], 0);
+  return `<details class="card mm-slips"><summary><h3 style="display:inline">Payslips, ${ps.year}</h3><span class="muted"> · ${esc(ex(m.net, ps.cur))} a month</span></summary>
+    <p class="muted" style="margin:6px 0">From ${esc(ps.from.map((k) => SOURCE[k]).join(' and '))}.</p>
+    ${kv([['Each month, before anything is taken', ex(m.gross, ps.cur)], ['Tax', `−${ex(m.tax, ps.cur)}`], ...(m.plan ? [['Into your pension plan', `−${ex(m.plan, ps.cur)}`]] : []), ['Paid to you', ex(m.net, ps.cur)],
+    ...(m.employer ? [['Your employer also paid into your pension', ex(m.employer, ps.cur)]] : [])])}
+    <div class="section-label">Month by month</div>
+    ${kv(ps.months.map((x) => [x.name, ex(x.net, ps.cur)]))}
+    ${kv([['The year', `${ex(sum('gross'), ps.cur)} earned, ${ex(sum('net'), ps.cur)} paid to you`]])}
+    <p class="muted" style="margin-top:6px">The months add up to exactly the year. In the game the year's pay arrives in one step; this is how it was made up.</p></details>`;
+}
+
 function accountsHtml() {
   const p = player();
   const c = country();
@@ -173,6 +203,7 @@ function accountsHtml() {
     <div class="card"><h3>Everyday money</h3>
       ${kv([[`Cash (${c.currency.code})`, fmtMoney(p.finance.cash, c)], ...holdings.map((b) => [`Held in ${b.code}`, `${fx.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`])])}
       <p class="muted" style="margin-top:6px">What you spend from. Wages arrive here and bills leave from here.</p></div>
+    ${payslipHtml()}
     ${rows ? `<div class="section-label">Your bank accounts</div>${rows}` : `<p class="empty">You have no bank account${p.age < 7 ? ' yet. You are a little young.' : '.'}</p>`}
     <div class="btn-stack">
       <button class="btn primary" data-act="open" ${can ? '' : 'disabled'}>Open an account</button>
@@ -221,9 +252,9 @@ function debtHtml() {
       <div class="main"><strong>${esc(l.kind.charAt(0).toUpperCase() + l.kind.slice(1))} loan</strong><small>${l.assetId && p.assets.some((a) => a.id === l.assetId) ? `secured on the ${esc(lower(p.assets.find((a) => a.id === l.assetId).name))} · ` : ''}${(l.rate * 100).toFixed(1)}% a year · ${l.yearsLeft} ${l.yearsLeft === 1 ? 'year' : 'years'} left · about ${esc(fmtMoney(sch.rows[0]?.payment ?? 0, c))} this year</small></div>
       <div class="side">${esc(fmtMoney(l.principal, c))}</div></button>`;
   }).join('');
-  const mortRows = mortgages.map((a) => `<div class="row"><div class="avatar glyph">🏠</div>
+  const mortRows = mortgages.map((a) => `<button class="row" data-mortgage="${a.id}"><div class="avatar glyph">🏠</div>
       <div class="main"><strong>Mortgage: ${esc(lower(a.name))}</strong><small>${(a.mortgage.rate * 100).toFixed(1)}% · ${a.mortgage.yearsLeft} years left · ${esc(fmtMoney(a.mortgage.payment, c))} a year · secured on the property</small></div>
-      <div class="side">${esc(fmtMoney(a.mortgage.principal, c))}</div></div>`).join('');
+      <div class="side">${esc(fmtMoney(a.mortgage.principal, c))}</div></button>`).join('');
   const order = (rule) => loans.payoffOrder(rule).map((l) => `${l.kind} (${fmtMoney(l.principal, c)}, ${(l.rate * 100).toFixed(0)}%)`).join(' → ');
   return `
     <div class="card"><h3>Your standing with lenders</h3>
@@ -249,17 +280,20 @@ function investHtml() {
   const cost = assets.reduce((s, a) => s + a.costBasis, 0);
   const value = mkt.portfolioValue();
   const byKind = SECURITY_KINDS.map((k) => ({ name: k.name, value: held.filter((q) => q.kind === k.id).reduce((s, q) => s + q.held, 0) })).filter((k) => k.value > 0);
-  const rows = held.map((q) => { const a = assets.find((x) => x.catalogId === q.id); return `
-    <div class="mm-tx"><div class="main"><strong>${esc(q.name)}</strong><small>Paid ${esc(fmtMoney(a.costBasis, c))} · ${pct(q.change)} this year</small></div>
-      <div class="amt ${q.gain >= 0 ? 'in' : 'out'}">${esc(fmtMoney(q.held, c))}<small>${pct(q.gain)}</small></div></div>`; }).join('');
+  const rows = held.map((q) => { const a = assets.find((x) => x.catalogId === q.id); const y = mkt.yieldOf(q.id); return `
+    <button class="mm-tx mm-hold" data-hold="${q.id}">${sparkline(mkt.priceHistory(q.id))}<div class="main"><strong>${esc(q.name)}</strong><small>Paid ${esc(fmtMoney(a.costBasis, c))} · ${pct(q.change)} this year${y ? ` · pays ${(y * 100).toFixed(1)}% a year${a.reinvest ? ', reinvested' : ''}` : ''}</small></div>
+      <div class="amt ${q.gain >= 0 ? 'in' : 'out'}">${esc(fmtMoney(q.held, c))}<small>${pct(q.gain)}</small></div></button>`; }).join('');
+  const paidOut = yearTotals(ledgerOf(), store.state.year, c.currency.code).income.dividends ?? 0;
   return `
     ${held.length ? `<div class="card"><h3>Your holdings</h3>
       ${kv([['Worth today', fmtMoney(value, c)], ['What you paid', fmtMoney(cost, c)], [value >= cost ? 'Gain, on paper' : 'Loss, on paper', fmtMoney(Math.abs(value - cost), c)]])}
       <p class="muted" style="margin:6px 0 10px">A gain on paper is not money until you sell, and can be gone by next year.</p>${rows}</div>
     <div class="card"><h3>How it is spread</h3>${byKind.map((k) => `<div class="mm-line"><span>${esc(k.name)}</span><span>${Math.round(k.value / value * 100)}%</span></div>${bar(k.value / value)}`).join('')}</div>`
     : '<p class="empty">You hold no investments. Nobody has to.</p>'}
-    <div class="btn-stack"><button class="btn" data-link="invest">Go to the market</button></div>
-    <p class="muted mm-note">The market in Pathways is a simulation with invented companies. Prices move once a year, down as well as up.</p>`;
+    ${paidOut ? `<p class="muted mm-note">This year your investments paid out ${esc(ex(paidOut, c.currency.code))}, after tax.</p>` : ''}
+    <div class="btn-stack"><button class="btn" data-link="invest">Go to the market</button>
+      ${held.length ? '<button class="btn" data-act="rebalance">Spread my investments</button>' : ''}</div>
+    <p class="muted mm-note">Tap a holding to choose whether what it pays out comes to you or buys more of it. The market in Pathways is a simulation with invented companies. Prices move once a year, down as well as up.</p>`;
 }
 
 function coverHtml() {
@@ -317,8 +351,20 @@ function retireHtml() {
     ['A year, less the pension', fmtMoney(gap, c)],
     ['Your own money would last', gap <= 0 ? 'The pension covers it' : o.spent ? `about ${Math.floor(own / gap)} ${Math.floor(own / gap) === 1 ? 'year' : 'years'}` : 'No spending recorded yet']])}
       <p class="muted" style="margin-top:6px">A rough sum, not a promise: it takes this year's spending and today's prices, and assumes nothing changes. Things change. Property is left out, because you have to live somewhere.</p></div>
+    ${stateHtml()}
     ${planHtml()}
     <p class="muted mm-note">The pension above comes from the years you have worked (Work tab). A plan of your own is on top of it.</p>`;
+}
+
+function stateHtml() {
+  const p = player();
+  const c = country();
+  const now = p.flags.statePension;
+  const est = ret.statePensionFor(p);
+  const years = p.career.totalYears ?? 0;
+  return `<div class="card"><h3>The state pension</h3>
+    ${kv(now ? [['Paid to you', `${fmtMoney(now, c)} a year`]] : [[`From ${STATE_PENSION.age}, as things stand`, `about ${fmtMoney(est, c)} a year`], ['Years you have worked', `${years} of the ${STATE_PENSION.full} for a full pension`]])}
+    <p class="muted" style="margin-top:6px">Paid by the country you live in, at a share of an ordinary wage there. Fewer years of work mean less, never nothing. Move abroad and it is worked out again there. A rule made for the game.</p></div>`;
 }
 
 function planHtml() {
@@ -390,7 +436,8 @@ function familyHtml() {
     ...(f.homes.length ? [['Property owned at the end', f.homes.join(', ')]] : []), ...((f.businesses ?? []).length ? [['Businesses owned at the end', f.businesses.join(', ')]] : []),
     ...(f.outside ?? []).map((x) => [`${x.you ? 'To you' : `To ${x.name}`}, by ${x.how}`, fx.fmt(x.amount, f.cur)]),
     ...f.shares.map((s) => [`${s.you ? 'To you' : `To ${s.name}`} (${s.role.toLowerCase()})`, `${fx.fmt(s.amount, f.cur)}${s.items.length ? ` + ${s.items.map(lower).join(', ')}` : ''}`])])}
-      ${f.milestones.length ? `<div style="margin-top:8px">${kv(f.milestones.map((m) => [`Age ${m.age}`, m.text]))}</div>` : ''}</div>`).join('')
+      ${f.milestones.length ? `<div style="margin-top:8px">${kv(f.milestones.map((m) => [`Age ${m.age}`, m.text]))}</div>` : ''}
+      ${f.graveId && getGraveyard().some((g) => g.id === f.graveId) ? `<div class="btn-stack" style="margin-top:10px"><button class="btn" data-grave="${f.graveId}">${esc(f.name.split(' ')[0])}'s life story</button></div>` : ''}</div>`).join('')
     + '<p class="muted mm-note">What is recorded here is what happened: amounts are in the money of the time and place. The private detail of their accounts was not passed on.</p>';
 }
 
@@ -426,6 +473,7 @@ function householdHtml() {
     ${s ? `<div class="section-label">${esc(s.firstName)}'s own money</div>${personRow(s, `${roleLabel(s)} · worth about ${fmtMoney(npcWorth(s), c)}`)}` : ''}
     ${familyRows()}
     ${out ? `<div class="section-label">Money you have lent</div>${out}` : ''}
+    ${fam.supportList().length ? `<div class="section-label">Support after a divorce</div>${fam.supportList().map((x) => personRow(npcById(x.npcId), `${x.kind === 'child' ? 'Child' : 'Spousal'} support · you ${x.dir === 'pay' ? 'pay' : 'receive'} it until ${x.until}`, `${fmtMoney(x.amount, c)} a year`)).join('')}` : ''}
     <div class="btn-stack"><button class="btn" data-act="give">Give money to someone</button><button class="btn" data-act="lend">Lend money to someone</button></div>
     ${kids.length ? `<div class="card" style="margin-top:14px"><h3>Pocket money</h3>
       ${kv([['Now', fam.ALLOWANCES[fam.allowance()].name], ['Costs you', `${fmtMoney(fam.allowanceCost(), c)} a year`], ['For', kids.map((k) => k.firstName).join(', ')]])}
@@ -451,7 +499,8 @@ function awardsHtml() {
   const v = ach.moneySense();
   return `<div class="card"><h3>What you understand about money</h3>
       <div class="mm-line"><span>${esc(ach.senseWord(v))}</span><span>${v} of 100</span></div>${bar(v / 100)}
-      <p class="muted" style="margin-top:6px">Picked up from living with money: earning it, budgeting, saving for something, getting into trouble and out again. It helps you see through a bad offer and argue with a bank. It is not cleverness, and it makes nobody rich.</p></div>
+      <p class="muted" style="margin-top:6px">Picked up from living with money, from school, and from the people you grew up with; and learned on purpose. It helps you see through a bad offer and argue with a bank. It is not cleverness, and it makes nobody rich.</p>
+      <div class="btn-stack" style="margin-top:10px">${ach.lessonOptions().map((l) => `<button class="btn" data-lesson="${l.id}" ${l.ok ? '' : 'disabled'}>${esc(l.name)}<small style="display:block;font-weight:400">${esc(l.ok ? `${fmtMoney(l.cost, country())} · ${l.blurb}` : l.reason)}</small></button>`).join('')}</div></div>
     <div class="card"><h3>Milestones</h3>
       ${list.map((a) => `<div class="mm-tx"><div class="main"><strong>${a.earned ? '✓ ' : ''}${esc(a.name)}</strong><small>${esc(a.blurb)}</small></div><div class="amt ${a.earned ? 'in' : ''}">${a.earned ? `age ${a.age}` : '—'}</div></div>`).join('')}
       <p class="muted" style="margin-top:8px">Each is worked out from what has actually happened in this life. They are things that can happen, not a score: plenty of good lives have none of them.</p></div>`;
@@ -750,6 +799,52 @@ async function trustAdd(id) {
   return amount ? tr.addToTrust(id, amount) : undefined;
 }
 
+async function holdingFlow(id) {
+  const c = country();
+  const q = mkt.quotes().find((x) => x.id === id);
+  const a = player().assets.find((x) => x.kind === 'security' && x.catalogId === id);
+  if (!q || !a) return undefined;
+  const h = mkt.priceHistory(id);
+  const y = mkt.yieldOf(id);
+  const act = await pickModal({ title: q.name,
+    body: `${q.blurb} Over the ${h.length - 1} years on record its price went from ${fmtMoney(h[0], c)} to ${fmtMoney(h[h.length - 1], c)} (lowest ${fmtMoney(Math.min(...h), c)}, highest ${fmtMoney(Math.max(...h), c)}). ${y ? `It pays out about ${(y * 100).toFixed(1)}% of its value a year, taxed as it is paid.` : 'It pays nothing out: any return is in its price.'}`,
+    options: [...(y ? [{ value: 'reinvest', label: a.reinvest ? 'Have its payouts paid to me' : 'Use its payouts to buy more of it', sub: a.reinvest ? 'Money in your pocket each year.' : 'Your holding grows instead. The payouts are still income, and still taxed.' }] : []),
+      { value: 'trade', label: 'Buy or sell' }] });
+  if (act === 'reinvest') return mkt.setReinvest(id, !a.reinvest);
+  if (act === 'trade') return { ok: true, text: '', link: 'invest' };
+  return undefined;
+}
+
+async function rebalanceFlow() {
+  const c = country();
+  const pot = mkt.portfolioValue();
+  const mix = await pickModal({ title: 'Spread my investments', body: `Everything you hold (about ${fmtMoney(pot, c)}) is sold and put into the mix you choose. Selling at a gain is taxed as usual. None of these is safe from losses.`,
+    options: Object.entries(MIXES).map(([id, m]) => ({ value: id, label: m.name, sub: `${m.blurb} ${Object.entries(m.parts).map(([k, v]) => `${Math.round(v * 100)}% ${mkt.quotes().find((x) => x.id === k)?.name}`).join(', ')}.` })) });
+  return mix ? mkt.rebalance(mix) : undefined;
+}
+
+async function mortgageFlow(id) {
+  const c = country();
+  const a = player().assets.find((x) => x.id === id);
+  if (!a?.mortgage) return undefined;
+  const o = estate.remortgageOffer(id, standingNow().standing);
+  const act = await pickModal({ title: `Mortgage: ${lower(a.name)}`, body: `${fmtMoney(a.mortgage.principal, c)} owed at ${(a.mortgage.rate * 100).toFixed(1)}%, ${fmtMoney(a.mortgage.payment, c)} a year for ${a.mortgage.yearsLeft} more years.`,
+    options: [{ value: 'remortgage', label: 'Move it to a cheaper rate', disabled: !o.ok, sub: o.ok ? `${(o.rate * 100).toFixed(1)}%: ${fmtMoney(o.payment, c)} a year. Fee ${fmtMoney(o.fee, c)}; saves about ${fmtMoney(o.saving, c)} if nothing changes.` : o.reason },
+      { value: 'payoff', label: `Pay it off: ${fmtMoney(a.mortgage.principal, c)}`, disabled: player().finance.cash < a.mortgage.principal }] });
+  if (act === 'remortgage') return estate.remortgage(id, standingNow().standing);
+  if (act === 'payoff') return estate.payOffMortgage(id);
+  return undefined;
+}
+
+/** An ancestor's life, from the record kept when they died. */
+async function graveFlow(id) {
+  const g = getGraveyard().find((x) => x.id === id);
+  if (!g) return undefined;
+  const titles = (g.epitaphIds ?? []).map((e) => EPITAPHS.find((x) => x.id === e)?.title).filter(Boolean);
+  return messageModal({ eyebrow: `${g.birthYear} to ${g.deathYear}`, title: g.fullName,
+    body: `${g.lastOccupation ? `${g.lastOccupation}. ` : ''}Died at ${g.ageAtDeath} of ${g.causeOfDeath}${g.city ? `, in ${g.city}` : ''}.${g.spouseName ? ` Married to ${g.spouseName}.` : ''}${g.childrenCount ? ` ${g.childrenCount} ${g.childrenCount === 1 ? 'child' : 'children'}.` : ''}${titles.length ? ` Remembered as: ${titles.join(', ')}.` : ''} ${(g.milestones ?? []).map((m) => `At ${m.age}: ${m.text}`).join(' ')}` });
+}
+
 async function executorFlow() {
   const n = await pickModal({ title: 'Who should see to your estate?', body: 'Someone you trust to wind it up. It halves the cost of doing so.', options: [{ value: 0, label: 'Nobody' }, ...adults().map((x) => ({ value: x.id, label: `${x.firstName} ${x.lastName}`, sub: `${roleLabel(x)}, age ${x.age}` }))] });
   return n == null ? undefined : last.nameExecutor(n || null);
@@ -855,6 +950,10 @@ export function openMyMoney(api, links = {}) {
     if (on('[data-lent]')) return settle(await lentFlow(on('[data-lent]').dataset.lent));
     if (on('[data-trust]')) return settle(await trustAdd(on('[data-trust]').dataset.trust));
     if (on('[data-biz]')) return settle(await bizFlow(on('[data-biz]').dataset.biz));
+    if (on('[data-hold]')) { const r = await holdingFlow(on('[data-hold]').dataset.hold); if (r?.link && links[r.link]) { await links[r.link](api); return settle(null); } return settle(r); }
+    if (on('[data-mortgage]')) return settle(await mortgageFlow(on('[data-mortgage]').dataset.mortgage));
+    if (on('[data-lesson]')) return settle(ach.takeLesson(on('[data-lesson]').dataset.lesson));
+    if (on('[data-grave]')) return graveFlow(on('[data-grave]').dataset.grave);
     if (on('[data-npc]')) { const n = npcById(on('[data-npc]').dataset.npc); if (n) openNpc(n, { ...api, changed: () => { api.changed(); render(); } }); return undefined; }
     const link = on('[data-link]')?.dataset.link;
     if (link && links[link]) { await links[link](api); return settle(null); }
@@ -863,7 +962,7 @@ export function openMyMoney(api, links = {}) {
     if (act === 'between') return settle(await betweenFlow());
     if (act === 'goal') return settle(await goalFlow());
     const flows = { card: () => cards.applyForCard(), insure: insureFlow, life: lifeFlow, plan: () => planFlow(false), planrate: () => planFlow(true), arrange: arrangeFlow, joint: jointFlow,
-      give: () => giveFlow(false), lend: () => giveFlow(true), allowance: allowanceFlow, trust: trustFlow, startbiz: startBizFlow, executor: executorFlow };
+      give: () => giveFlow(false), lend: () => giveFlow(true), allowance: allowanceFlow, trust: trustFlow, startbiz: startBizFlow, executor: executorFlow, rebalance: rebalanceFlow };
     if (flows[act]) return settle(await flows[act]());
     return undefined;
   });

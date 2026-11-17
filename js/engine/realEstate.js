@@ -11,6 +11,8 @@ import { PROPERTY_TYPES, PROPERTY_BY_ID, STREETS, MORTGAGE, SELLING_FEE, BUYING_
 import { rate, fmt, quoteForeign, payForeign, receiveForeign } from './currency.js';
 import { book, toMinor } from './ledger.js';
 import { recordLoss } from './insurance.js';
+import { recentDefault } from './credit.js';
+import { phaseOf } from './economy.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "Family house on Elm Street" -> "family house on Elm Street". */
@@ -248,6 +250,46 @@ export function moveOut() {
   const text = `You moved out of the ${lower(a.name)} and are renting again.`;
   log(text);
   return result(true, text, 'neutral');
+}
+
+/**
+ * What a lender would offer to take over a mortgage: a rate that follows the
+ * borrower's standing and the state of the economy, over the years it has
+ * left, for a fee. Worth it only if it is cheaper.
+ * @param {?number} standing  the Pathways standing with lenders, 0 to 100, or null where none is kept
+ */
+export function remortgageOffer(id, standing = null) {
+  const p = player();
+  const a = assetOf(id);
+  const m = a?.mortgage;
+  if (!m) return { ok: false, reason: 'There is no mortgage on it.' };
+  const rate = Math.round((MORTGAGE.rate + (phaseOf() === 'boom' ? 0.008 : phaseOf() === 'slump' ? -0.012 : 0)
+    - (standing == null ? 0 : standing >= 80 ? 0.01 : standing >= 65 ? 0.005 : 0)) * 1000) / 1000;
+  const fee = Math.round(m.principal * 0.01);
+  const years = Math.max(1, m.yearsLeft);
+  const cost = (r) => { let left = m.principal; let paid = 0; const pay = yearlyPayment(m.principal, r, years); for (let y = 0; y < years && left > 0; y++) { const i = Math.round(left * r); const x = Math.min(pay, left + i); left = left + i - x; paid += x; } return paid; };
+  let reason = '';
+  if (isBankrupt() || recentDefault()) reason = 'No lender will take it on with your record as it is.';
+  else if (householdIncome() <= 0) reason = 'A lender wants to see an income.';
+  else if (m.refinanced === store.state.year) reason = 'You have moved it this year already.';
+  else if (rate >= m.rate - 0.002) reason = `Nobody is offering better than your ${(m.rate * 100).toFixed(1)}% at the moment.`;
+  else if (p.finance.cash < fee) reason = `The arrangement fee is ${fmtMoney(fee, country())}.`;
+  const saving = reason ? 0 : cost(m.rate) - cost(rate) - fee;
+  return { ok: !reason && saving > 0, reason: reason || (saving > 0 ? '' : 'With the fee it would save you nothing.'), rate, fee, years, saving, payment: yearlyPayment(m.principal, rate, years) };
+}
+export function remortgage(id, standing = null) {
+  const p = player();
+  const a = assetOf(id);
+  const o = remortgageOffer(id, standing);
+  if (!o.ok) return result(false, o.reason, 'neutral');
+  const m = a.mortgage;
+  p.finance.cash -= o.fee;
+  const was = m.rate;
+  m.rate = o.rate; m.payment = o.payment; m.refinanced = store.state.year;
+  const text = `You moved the mortgage on the ${lower(a.name)} from ${(was * 100).toFixed(1)}% to ${(o.rate * 100).toFixed(1)}%: ${fmtMoney(o.payment, country())} a year now. The fee was ${fmtMoney(o.fee, country())}.`;
+  log(text, 'system', 'good');
+  book({ cat: 'fees', src: 'action', desc: text });
+  return result(true, text);
 }
 
 export function payOffMortgage(id) {

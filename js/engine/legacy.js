@@ -256,7 +256,7 @@ export function continueAs(npcId) {
   const grave = getGraveyard().find((g) => g.id === old.legacy?.graveId);
   const fromCur = COUNTRIES[op.countryId].currency.code;
   next.familyMoney = [...(old.familyMoney ?? []), {
-    name: `${op.firstName} ${op.lastName}`, born: op.birthYear, died: old.year, generation: op.generation ?? 1, cur: fromCur,
+    name: `${op.firstName} ${op.lastName}`, born: op.birthYear, died: old.year, graveId: grave?.id ?? null, generation: op.generation ?? 1, cur: fromCur,
     netWorth: grave?.estate?.gross ?? null, earned: Math.round(op.finance.lifetimeEarned), tax: grave?.estate?.tax ?? 0, charity: grave?.estate?.charity ?? 0,
     milestones: op.milestones.filter((m) => m.kind === 'money').map((m) => ({ age: m.age, text: m.text })),
     homes: op.assets.filter((a) => a.kind === 'property').map((a) => a.name),

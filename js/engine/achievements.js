@@ -7,7 +7,10 @@
 // "Money sense" (0 to 100) is what the player has picked up about money from
 // living with it. It helps them spot a bad offer or win an argument with a
 // bank. It is not intelligence, and it does not make anyone rich.
-import { store, player } from '../state.js';
+import { store, player, country, log } from '../state.js';
+import { localCost, fmtMoney } from '../util.js';
+import { LESSONS } from '../data/money.js';
+import { book } from './ledger.js';
 import { clamp } from '../util.js';
 import { bankWorth, goalList, overview } from './banking.js';
 import { plan } from './retirement.js';
@@ -69,6 +72,7 @@ export function tickSense() {
   const f = p.finance;
   if (p.age >= 8 && p.age < 18 && f.cash > 0) learn(1, 'pocket');
   if (p.education.enrolled && p.age >= 14) learn(1, 'school');
+  if (p.education.enrolled && p.age === 15 && !p.flags.moneyClass) { p.flags.moneyClass = true; learn(4, 'class'); log('At school this year there was a term of lessons on money: budgets, interest, and what a payslip says.', 'system', 'neutral'); }
   if (p.career.careerId || p.career.partTime) learn(1.5, 'work');
   if (Object.keys(f.budget?.limits ?? {}).length) learn(2, 'budget');
   if (goalList().some((g) => g.status === 'active')) learn(1.5, 'goal');
@@ -76,4 +80,38 @@ export function tickSense() {
   if ((f.credit?.marks ?? []).some((m) => m.year === store.state.year)) learn(3, 'trouble'); // hard lessons are still lessons
   if (plan()) learn(1, 'plan');
   achievements(); // note the year anything first became true
+}
+
+/** Ways to learn about money on purpose, with what they cost and whether the player can take them now. */
+export function lessonOptions() {
+  const p = player();
+  const done = p.flags.moneyLessonsTaken ?? {};
+  return LESSONS.map((l) => {
+    const cost = localCost(l.cost, country());
+    let reason = '';
+    if (p.age < l.minAge) reason = `You need to be ${l.minAge}.`;
+    else if (done[l.id] === p.age) reason = 'Once a year is enough.';
+    else if (p.finance.cash < cost) reason = `It costs ${fmtMoney(cost, country())}.`;
+    return { ...l, cost, ok: !reason, reason };
+  });
+}
+export function takeLesson(id) {
+  const p = player();
+  const l = lessonOptions().find((x) => x.id === id);
+  if (!l) return { ok: false, text: 'There is no such thing.', tone: 'neutral' };
+  if (!l.ok) return { ok: false, text: l.reason, tone: 'neutral' };
+  p.finance.cash -= l.cost;
+  (p.flags.moneyLessonsTaken ??= {})[id] = p.age;
+  const before = moneySense();
+  learn(l.gain, `lesson:${id}`);
+  const text = `${{ book: 'You read it cover to cover, with a pencil.', course: 'Ten Tuesday evenings, a folder of handouts, and a better idea of what you are doing.', adviser: 'An hour of plain questions and plain answers about your own money.' }[id]} (${senseWord()}, ${moneySense()} of 100${moneySense() > before ? '' : ': you knew most of it already'}.)`;
+  log(text, 'system', 'good');
+  book({ cat: 'learning', src: 'action', desc: l.name });
+  return { ok: true, text, tone: 'good' };
+}
+
+/** At birth: a child picks up a little of how their parents handle money. It is a start, not a fate. */
+export function startingSense(parents) {
+  const m = parents.filter(Boolean).map((n) => n.meters?.money ?? 30);
+  return m.length ? Math.round(m.reduce((s, x) => s + x, 0) / m.length / 12) : 0;
 }

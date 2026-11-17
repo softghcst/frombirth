@@ -29,6 +29,9 @@ export const CATEGORIES = {
   winnings: { name: 'Winnings', kind: I },
   debtRelief: { name: 'Debt written off', kind: I },
   claim: { name: 'Insurance payouts', kind: I },
+  dividends: { name: 'Dividends and fund payouts', kind: I },
+  supportIn: { name: 'Support received', kind: I },
+  statePension: { name: 'State pension', kind: I },
   distribution: { name: 'Profits taken from your business', kind: I },
   employerMatch: { name: 'Employer pension contributions', kind: I },
   growth: { name: 'Pension pot: gains and losses', kind: I },
@@ -44,6 +47,8 @@ export const CATEGORIES = {
   leisure: { name: 'Leisure and hobbies', kind: E, budget: true },
   travel: { name: 'Travel', kind: E, budget: true },
   pets: { name: 'Pets', kind: E, budget: true },
+  supportOut: { name: 'Support paid', kind: E },
+  learning: { name: 'Learning about money', kind: E, budget: true },
   giftOut: { name: 'Gifts and giving', kind: E, budget: true },
   tax: { name: 'Tax', kind: E },
   interest: { name: 'Interest paid', kind: E },
@@ -239,3 +244,39 @@ export const BUSINESS_TYPES = [
 export const BUSINESS = { minAge: 18, managerShare: 0.4, saleFee: 0.05, multiple: 3, failAfter: 2, mishap: 0.06 };
 /** What a pet costs a year in food and ordinary vet visits, and how often something goes badly wrong (base units). */
 export const PETS = { upkeep: 600, emergency: 0.12, bill: [800, 4000] };
+
+// ---------- Payouts from investments ----------
+// What each holding pays out a year, as a share of its price. The price then
+// grows by that much less, so a holding returns the same in all; it simply
+// comes partly as money. Invented figures.
+export const YIELD = { index: 0.018, bonds: 0.03, cashfund: 0.024, dividend: 0.04, techfund: 0.004, smallcap: 0.01, emerging: 0.022,
+  property_trust: 0.045, green: 0.006, healthfund: 0.014, halcyon: 0.035, brightwell: 0.03, atlas: 0.04, granite: 0.035, tidewater: 0.03, meadow: 0.032 };
+/** Ready-made mixes to spread money across, for the "spread my investments" choice. */
+export const MIXES = {
+  cautious: { name: 'Cautious', blurb: 'Mostly bonds and cash. Small swings, small growth.', parts: { bonds: 0.5, cashfund: 0.2, index: 0.3 } },
+  balanced: { name: 'Balanced', blurb: 'Shares and bonds about evenly. Middling swings.', parts: { index: 0.5, bonds: 0.3, dividend: 0.2 } },
+  adventurous: { name: 'Adventurous', blurb: 'Nearly all shares. Big swings both ways, more growth over a long time.', parts: { index: 0.6, emerging: 0.2, smallcap: 0.2 } },
+};
+
+// ---------- State pensions ----------
+// A pension from the state, from the age it starts, at a share of an ordinary
+// wage where the player lives. Full after `full` years of work; less for fewer,
+// down to a floor for those who barely worked. Simplified, and invented.
+const GENEROUS = 'uk de fr nl be at ch se no dk fi ie it es pt pl cz jp nz au ca';
+const MODEST = 'us kr br ar cl uy cr mx za ru tr gr hu ro sk ee hr il sg tw';
+export const STATE_PENSION_OF = { ...Object.fromEntries(GENEROUS.split(' ').map((id) => [id, 0.3])), ...Object.fromEntries(MODEST.split(' ').map((id) => [id, 0.18])) };
+export const STATE_PENSION = { age: 67, full: 35, floor: 0.4, fallback: 0.06 };
+
+// ---------- After a divorce ----------
+// Support is a game rule, not any country's law: a former spouse who earns much
+// less is paid a share of the difference for half as many years as the marriage
+// lasted (where what a couple has is shared equally); a parent who does not have
+// the children pays towards them until they are grown.
+export const SUPPORT = { spousalShare: 0.2, minYears: 5, maxYears: 10, childShare: 0.12 };
+
+// ---------- Learning about money ----------
+export const LESSONS = [
+  { id: 'book', name: 'Read a book about money', cost: 25, gain: 4, minAge: 12, blurb: 'A plain guide to saving, borrowing and not being fooled.' },
+  { id: 'course', name: 'Take an evening course in personal finance', cost: 400, gain: 10, minAge: 16, blurb: 'Ten weeks of budgets, interest and pensions, with homework.' },
+  { id: 'adviser', name: 'Sit down with a financial adviser', cost: 900, gain: 6, minAge: 21, blurb: 'An hour on your own situation, with someone who does this all day.' },
+];

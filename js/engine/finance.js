@@ -12,16 +12,30 @@ import { sell as sellSecurity } from './market.js';
 import { repossess } from './realEstate.js';
 import { repossessVehicle } from './vehicles.js';
 import { RENT_AND_BILLS, BILLS_ONLY } from '../data/properties.js';
-import { book, toMinor } from './ledger.js';
+import { book, toMinor, Money } from './ledger.js';
 import { bankWorth, coverShortfall } from './banking.js';
 import { mark, goodYear } from './credit.js';
 import { tickCards } from './cards.js';
 import { billShare } from './family.js';
-import { contribute } from './retirement.js';
+import { contribute, employerMatch } from './retirement.js';
 import { sellBusiness } from './business.js';
 
 /** The first band of spending, at the country's own pay level. */
 const localWage30 = (c) => localMoney(30000 * (c.living?.wageK ?? 1), c);
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/**
+ * The year's pay as twelve monthly payslips: what was earned, the tax and the
+ * pension contribution taken from it, and what was paid in. Each column is
+ * shared out so that the twelve months add up to exactly the year. The year
+ * itself is booked as one transaction; the payslips show how it was made up.
+ */
+export function payslips({ year, cur, gross, tax, plan, employer, sources }) {
+  const m = (n) => Money.allocate(toMinor(Math.max(0, n), cur), Array(12).fill(1));
+  const g = m(gross); const t = m(tax); const pl = m(plan); const em = m(employer);
+  return { year, cur, from: Object.entries(sources).filter(([, v]) => v > 0).map(([k]) => k),
+    months: MONTHS.map((name, i) => ({ name, gross: g[i], tax: t[i], plan: pl[i], employer: em[i], net: g[i] - t[i] - pl[i] })) };
+}
 
 /** Tax due on a year's income, in local currency: the country's rate, through its schedule (engine/systems.js). */
 export function incomeTax(gross, c = country()) {
@@ -64,7 +78,7 @@ export function tickFinance() {
   let everyday = 0; // what the year's ordinary spending came to, for the card statement
 
   const gross = (p.career.salary || 0) + (p.career.partTime?.salary || 0)
-    + (p.career.retired ? p.career.pensionPerYear : 0);
+    + (p.career.retired ? p.career.pensionPerYear : 0) + (p.flags.statePension ?? 0);
   if (gross > 0) {
     const tax = incomeTax(gross, c);
     f.cash += gross - tax;
@@ -73,11 +87,14 @@ export function tickFinance() {
     log(`You earned ${fmtMoney(gross, c)} and paid ${fmtMoney(tax, c)} in tax.`);
     // One entry for the year's pay: what was earned, by source, and the tax taken from it.
     const cur = c.currency.code;
-    const pension = p.career.retired ? p.career.pensionPerYear : 0;
-    const main = p.career.salary ? 'salary' : p.career.partTime?.salary ? 'partTime' : 'pension';
-    book({ cat: main, src: 'year', key: `pay:${store.state.year}`, desc: main === 'pension' ? 'Pension for the year' : 'Pay for the year, after tax',
-      split: [['tax', toMinor(tax, cur)], ...(main !== 'partTime' ? [['partTime', -toMinor(p.career.partTime?.salary || 0, cur)]] : []), ...(main !== 'pension' ? [['pension', -toMinor(pension, cur)]] : [])] });
-    contribute(); // the pension plan takes its share of the year's pay, and an employer may add to it
+    // Each source of income under its own heading: the first is the transaction's own, the rest are split out.
+    const sources = { salary: p.career.salary || 0, partTime: p.career.partTime?.salary || 0, pension: p.career.retired ? p.career.pensionPerYear || 0 : 0, statePension: p.flags.statePension ?? 0 };
+    const main = Object.keys(sources).find((k) => sources[k] > 0);
+    book({ cat: main, src: 'year', key: `pay:${store.state.year}`, desc: main === 'pension' || main === 'statePension' ? 'Pensions for the year' : 'Pay for the year, after tax',
+      split: [['tax', toMinor(tax, cur)], ...Object.entries(sources).filter(([k, v]) => k !== main && v > 0).map(([k, v]) => [k, -toMinor(v, cur)])] });
+    const into = contribute(); // the pension plan takes its share of the year's pay, and an employer may add to it
+    const employer = into ? employerMatch(p.career.salary || 0, f.plan?.rate ?? 0) : 0;
+    f.payslips = payslips({ year: store.state.year, cur, gross, tax, plan: into - employer, employer, sources });
     if ((p.career.salary || p.career.partTime?.salary) && !p.flags.firstPay) {
       p.flags.firstPay = true;
       p.flags.firstPayAge = p.age;

@@ -9,7 +9,6 @@ import { tickLives } from './npcLives.js';
 import { tickEducation } from './education.js';
 import { tickCareer } from './career.js';
 import { tickFinance } from './finance.js';
-import { tickMarket } from './market.js';
 import { tickCrime } from './justice.js';
 import { tickPrison } from './prison.js';
 import { tickSocial } from './social.js';
@@ -43,7 +42,8 @@ import { rollDeath, die } from './death.js';
 import { drawEvents } from './eventEngine.js';
 import { book, booked } from './ledger.js';
 import { tickBanking, tickMoneyReview } from './banking.js';
-import { tickPlan } from './retirement.js';
+import { tickPlan, tickStatePension } from './retirement.js';
+import { tickMarket, payouts } from './market.js';
 import { tickBusiness } from './business.js';
 import { tickInsurance } from './insurance.js';
 import { tickFamilyMoney } from './family.js';
@@ -84,7 +84,9 @@ export function advanceYear() {
   const workDeath = booked('salary', 'Work: bonuses and pay-offs', tickCareer);
   if (workDeath) { die(workDeath); return; }
   tickMarket();
+  payouts();
   tickPlan();
+  tickStatePension();
   tickProperties();
   tickBusiness();
   book({ cat: 'business', src: 'year', desc: 'Your businesses' });

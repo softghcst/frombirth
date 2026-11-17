@@ -9,7 +9,8 @@
 //   p.finance.plan = { accountId, rate }
 import { store, player, country, log, milestone } from '../state.js';
 import { fmtMoney } from '../util.js';
-import { PENSION_PLAN, PENSION_PLAN_OF } from '../data/money.js';
+import { PENSION_PLAN, PENSION_PLAN_OF, STATE_PENSION, STATE_PENSION_OF } from '../data/money.js';
+import { typicalWage } from './systems.js';
 import { ledgerOf, toMinor, fromMinor, Money } from './ledger.js';
 import { move, banksHere, accountById, fmtExact } from './banking.js';
 import { market } from './market.js';
@@ -115,3 +116,27 @@ export function projection() {
   return { at: PENSION_PLAN.unlockAge, years, yearly, low: grow(0.01), mid: grow(0.04), high: grow(0.07), pension: p.career.retired ? p.career.pensionPerYear : pensionEstimate() };
 }
 export const fmtPlan = (n) => fmtMoney(n, country());
+
+// ---------- The state pension ----------
+
+/** Whether the country where the player lives pays a state pension, and how generous it is. */
+export const stateScheme = (countryId = player().countryId) => STATE_PENSION_OF[countryId] ?? STATE_PENSION.fallback;
+/**
+ * What the state would pay a year, from the age it starts: a share of an
+ * ordinary wage here, in full after enough years of work and less for fewer,
+ * with a floor for those who hardly worked.
+ */
+export function statePensionFor(p = player()) {
+  const years = p.career.totalYears ?? 0;
+  const share = Math.max(STATE_PENSION.floor, Math.min(1, years / STATE_PENSION.full));
+  return Math.round(typicalWage(country()) * stateScheme(p.countryId) * share);
+}
+/** Yearly: at the age it starts, the state pension is paid from then on. Worked out again after a move abroad. */
+export function tickStatePension() {
+  const p = player();
+  if (p.age < STATE_PENSION.age || p.flags.statePension) return;
+  p.flags.statePension = statePensionFor(p);
+  const text = `You have reached ${STATE_PENSION.age}. The state will pay you a pension of ${fmtMoney(p.flags.statePension, country())} a year, from ${(p.career.totalYears ?? 0) >= STATE_PENSION.full ? 'a full working life' : `${p.career.totalYears ?? 0} years of work`}.`;
+  log(text, 'system', 'good');
+  milestone('Began drawing a state pension.', 'money');
+}

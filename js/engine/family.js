@@ -11,7 +11,7 @@
 import { store, player, country, npcsByRole, log } from '../state.js';
 import { fmtMoney, localCost, clamp } from '../util.js';
 import { rng } from '../rng.js';
-import { FAMILY_LAW, FAMILY_LAW_OF, decimalsOf, PETS } from '../data/money.js';
+import { FAMILY_LAW, FAMILY_LAW_OF, decimalsOf, PETS, SUPPORT } from '../data/money.js';
 import { recordLoss } from './insurance.js';
 import { book, ledgerOf, toMinor, fromMinor } from './ledger.js';
 import { move, banksHere, accounts, rateAt, shareOf } from './banking.js';
@@ -278,5 +278,89 @@ export function tickFamilyMoney() {
     store.state.ledger.accounts[a.id].contrib.them += m;
     addSavings(s, -give);
   }
-  if (p.age >= 18) { tickLent(); tickAllowance(); }
+  if (p.age >= 18) { tickLent(); tickAllowance(); tickSupport(); }
 }
+
+// ---------- After a divorce ----------
+// p.finance.support = [{ id, npcId, name, kind: 'spousal'|'child', dir: 'pay'|'receive', amount, until, since }]
+
+/**
+ * Pays what a divorce settlement says is owed to a former spouse: from
+ * everyday money first, then from the pension plan (a share of it is moved to
+ * them), then as a share of a business. Only what is left after all of that
+ * is taken from everyday money regardless.
+ * @returns {{cash:number, pension:number, stake:?{name:string, share:number}}}
+ */
+export function payDivorce(npcId, owed) {
+  const p = player();
+  const n = npc(npcId);
+  const out = { cash: 0, pension: 0, stake: null };
+  let left = Math.round(owed);
+  if (left <= 0) return out;
+  out.cash = Math.min(left, Math.max(0, Math.floor(p.finance.cash)));
+  p.finance.cash -= out.cash; left -= out.cash;
+  const plan = accounts().find((a) => a.product === 'pension' && a.cur === home());
+  if (left > 0 && plan?.bal > 0) {
+    const take = Math.min(left, Math.floor(fromMinor(plan.bal, plan.cur)));
+    if (take > 0) {
+      move(`Pension plan shared with ${n?.firstName ?? 'your former spouse'} on divorce`, [[plan.id, -toMinor(take, plan.cur)]], { cat: 'transfer', nominal: [['jointPartner', plan.cur, toMinor(take, plan.cur)]] });
+      out.pension = take; left -= take;
+    }
+  }
+  const biz = left > 0 ? player().assets.find((a) => a.kind === 'business' && a.value > 0 && a.stake > 0.2) : null;
+  if (biz && n) {
+    const share = Math.min(biz.stake - 0.1, Math.round(left / biz.value * biz.stake * 1000) / 1000);
+    if (share > 0.01) {
+      biz.stake = Math.round((biz.stake - share) * 1000) / 1000;
+      (biz.partners ??= []).push({ npcId: n.id, stake: share, since: store.state.year });
+      const worth = Math.round(biz.value * share / (biz.stake + share));
+      biz.value -= worth; left -= worth;
+      out.stake = { name: biz.name, share };
+    }
+  }
+  if (left > 0) { p.finance.cash -= left; out.cash += left; }
+  if (n) addSavings(n, out.cash + out.pension);
+  return out;
+}
+
+/** Sets what is paid between the two of them from now on: support for a spouse who earns much less, and for children. */
+export function setSupport(exId) {
+  const p = player();
+  const n = npc(exId);
+  if (!n) return [];
+  const mine = (p.career.salary || 0) + (p.career.partTime?.salary || 0);
+  const theirs = earns(n);
+  const years = n.marriedAtAge != null ? p.age - n.marriedAtAge : 0;
+  const list = (p.finance.support ??= []);
+  const made = [];
+  const add = (x) => { const s = { id: `sup${list.length + 1}_${store.state.year}`, npcId: n.id, name: `${n.firstName} ${n.lastName}`, since: store.state.year, ...x }; list.push(s); made.push(s); };
+  if (familyLawOf() === 'equal' && years >= SUPPORT.minYears) {
+    const gap = Math.abs(mine - theirs);
+    if (gap > Math.max(mine, theirs) * 0.5) add({ kind: 'spousal', dir: mine > theirs ? 'pay' : 'receive', amount: Math.round(gap * SUPPORT.spousalShare), until: store.state.year + Math.min(SUPPORT.maxYears, Math.ceil(years / 2)) });
+  }
+  // The children stay with the player; the parent who does not have them pays towards them while they are growing up.
+  const kids = npcsByRole('child').filter((k) => k.age < 18 && (k.parentIds ?? []).includes(n.id));
+  if (kids.length && theirs > 0) add({ kind: 'child', dir: 'receive', amount: Math.round(theirs * SUPPORT.childShare * Math.min(3, kids.length)), until: store.state.year + 18 - Math.min(...kids.map((k) => k.age)) });
+  return made;
+}
+
+/** Yearly: support is paid or received, until it ends, or one of the two of them dies. */
+function tickSupport() {
+  const p = player();
+  const c = country();
+  for (const s of p.finance.support ?? []) {
+    if (s.ended) continue;
+    const n = npc(s.npcId);
+    if (store.state.year > s.until || !n?.alive) { s.ended = store.state.year; log(`${s.kind === 'child' ? 'Child' : 'Spousal'} support ${s.dir === 'pay' ? 'to' : 'from'} ${s.name.split(' ')[0]} has come to an end.`, 'system', 'neutral'); continue; }
+    if (s.dir === 'pay') {
+      p.finance.cash -= s.amount; addSavings(n, s.amount);
+      book({ cat: 'supportOut', src: 'year', desc: `${s.kind === 'child' ? 'Child' : 'Spousal'} support to ${n.firstName}` });
+    } else {
+      const can = Math.max(0, Math.min(s.amount, savingsOf(n) + earns(n)));
+      addSavings(n, -can); p.finance.cash += can;
+      if (can < s.amount) log(`${n.firstName} paid only ${fmtMoney(can, c)} of the ${fmtMoney(s.amount, c)} support they owe you this year.`, 'system', 'bad');
+      if (can) book({ cat: 'supportIn', src: 'year', desc: `${s.kind === 'child' ? 'Child' : 'Spousal'} support from ${n.firstName}` });
+    }
+  }
+}
+export const supportList = () => (player().finance.support ?? []).filter((s) => !s.ended);

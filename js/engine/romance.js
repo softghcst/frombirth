@@ -12,7 +12,7 @@ import { spendAction, roleLabel } from './relationships.js';
 import { conceive, canConceive } from './children.js';
 import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
-import { splitJoint, familyLawOf } from './family.js';
+import { splitJoint, familyLawOf, payDivorce, setSupport } from './family.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -314,17 +314,21 @@ function endMarriage(npc, yours) {
   const owed = settlement(npc.id);
   const fee = localMoney(DIVORCE_FEE, c);
   if (p.flags.moneyWith) p.flags.moneyWith = 'separate';
-  p.finance.cash -= owed + fee;
-  if (npc.life) npc.life.savings += owed;
+  p.finance.cash -= fee;
+  // What is owed is paid from everyday money, then the pension plan, then a share of a business (engine/family.js).
+  const paid = owed > 0 ? payDivorce(npc.id, owed) : null;
+  if (owed < 0) { p.finance.cash -= owed; if (npc.life) npc.life.savings += owed; }
+  const support = setSupport(npc.id);
   npc.role = 'ex';
   npc.flags.wasSpouse = true;
   npc.meters.relationship = Math.min(npc.meters.relationship, 15);
   p.stats.mood = clamp(p.stats.mood - 15);
   for (const kid of npcsByRole('child')) if (kid.age < 18) bump(kid, -8);
   const money = `${joint ? `Your share of the joint account came to ${fmtMoney(joint, c)}. ` : ''}${npc.prenup ? 'The prenup held: you each kept what was yours.' : familyLawOf() === 'separate' ? 'As the law here has it, you each kept what was yours.'
-    : owed > 0 ? `Everything was split down the middle: you paid ${fmtMoney(owed, c)}.`
+    : owed > 0 ? `Everything was split down the middle: you paid ${fmtMoney(owed, c)}${paid?.pension ? `, ${fmtMoney(paid.pension, c)} of it from your pension plan` : ''}${paid?.stake ? `, and ${npc.firstName} now owns ${Math.round(paid.stake.share * 100)}% of ${paid.stake.name}` : ''}.`
       : owed < 0 ? `Everything was split down the middle: you received ${fmtMoney(-owed, c)}.` : 'There was nothing to split.'}`;
-  const text = `${yours ? `You divorced ${npc.firstName}` : `${npc.firstName} divorced you`}. ${money} The lawyers took ${fmtMoney(fee, c)}.${crown.afterDivorce(npc)}`;
+  const supportLine = support.map((s) => ` You will ${s.dir === 'pay' ? 'pay' : 'receive'} ${fmtMoney(s.amount, c)} a year in ${s.kind === 'child' ? 'child' : 'spousal'} support until ${s.until}.`).join('');
+  const text = `${yours ? `You divorced ${npc.firstName}` : `${npc.firstName} divorced you`}. ${money} The lawyers took ${fmtMoney(fee, c)}.${supportLine}${crown.afterDivorce(npc)}`;
   log(text, 'system', 'bad');
   milestone(`Divorced ${npc.firstName} ${npc.lastName}.`, 'family');
   return text;

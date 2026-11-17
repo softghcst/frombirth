@@ -43,7 +43,9 @@ function styleOf(npc) {
 
 export function finOf(npc) {
   if (!npc?.life || !CLOSE.includes(npc.role)) return null;
-  return (npc.life.fin ??= { style: styleOf(npc), home: null, debt: 0, debtRate: 0.09, history: [] });
+  const f = (npc.life.fin ??= { style: styleOf(npc), home: null, debt: 0, debtRate: 0.09, history: [] });
+  f.invested ??= 0;
+  return f;
 }
 
 /** What someone close has, less what they owe, in local money. */
@@ -51,7 +53,7 @@ export function npcWorth(npc) {
   const f = npc?.life?.fin;
   const savings = npc?.life?.savings ?? npc?.savings ?? 0;
   if (!f) return Math.round(savings);
-  return Math.round(savings + (f.home ? f.home.value - f.home.mortgage : 0) - f.debt);
+  return Math.round(savings + (f.invested ?? 0) + (f.home ? f.home.value - f.home.mortgage : 0) - f.debt);
 }
 
 /** One year of someone close's money, after their earnings have been added to their savings. */
@@ -94,12 +96,25 @@ export function tickNpcMoney(npc, quiet = false) {
     const clear = Math.min(f.debt, Math.max(0, L.savings));
     f.debt -= clear; L.savings -= clear;
   }
+  // Investments follow the same market the player's do, up and down.
+  if (f.invested > 0) {
+    const h = store.state.market?.history?.index ?? [];
+    const r = h.length > 1 ? h[h.length - 1] / h[h.length - 2] - 1 + 0.018 : 0.05;
+    f.invested = Math.max(0, Math.round(f.invested * (1 + r)));
+  }
+  // In a hard year, investments are sold before anything is borrowed.
+  if (L.savings < 0 && f.invested > 0) { const sold = Math.min(f.invested, -L.savings); f.invested -= sold; L.savings += sold; }
   // Running out: savings go first, then they borrow to get by. Nobody's money is bottomless.
   if (L.savings < 0) {
     f.debt += -L.savings;
     L.savings = 0;
     if (!quiet && f.debt > localCost(5000, c) && !f.struggling) { f.struggling = true; note(f, npc.age, 'Fell behind and borrowed to get by.'); }
   } else if (f.debt <= 0) f.struggling = false;
+  // Money beyond what they want to keep to hand is invested: more of it by the bold, little by the careful.
+  if (npc.age >= 25 && npc.age < 75 && f.debt === 0 && L.savings > earns * (s.buffer + 0.5)) {
+    const put = Math.round((L.savings - earns * (s.buffer + 0.5)) * { cautious: 0.15, balanced: 0.35, bold: 0.6 }[f.style]);
+    if (put > 0) { L.savings -= put; if (!f.invested) note(f, npc.age, 'Started investing.'); f.invested += put; }
+  }
   // A home of their own, when they have saved a deposit and earn enough for a lender to agree.
   if (!f.home && !SHARES_HOME.includes(npc.role) && npc.age >= 24 && npc.age <= 60 && earns > 0 && f.debt === 0) {
     const price = Math.round(localCost(HOUSE, c) * (store.state.market?.housing ?? 1) * (0.6 + rng.next() * 0.8));
@@ -124,6 +139,7 @@ export function finRows(npc) {
   const c = country();
   const rows = [['With money', styleName(f.style)]];
   if (f.home) rows.push(['Home', `Owns ${f.home.name}, worth ${fmtMoney(f.home.value, c)}${f.home.mortgage ? `, ${fmtMoney(f.home.mortgage, c)} still on the mortgage` : ', paid for'}`]);
+  if (f.invested > 0) rows.push(['Invested', fmtMoney(f.invested, c)]);
   if (f.debt > 0) rows.push(['Owes', fmtMoney(f.debt, c)]);
   rows.push(['Worth, all told', fmtMoney(npcWorth(npc), c)]);
   return rows;

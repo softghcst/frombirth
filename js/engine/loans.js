@@ -12,7 +12,7 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** What the player earns in a year before tax. */
 export function grossIncome() {
   const k = player().career;
-  return (k.salary || 0) + (k.partTime?.salary || 0) + (k.retired ? k.pensionPerYear : 0);
+  return (k.salary || 0) + (k.partTime?.salary || 0) + (k.retired ? k.pensionPerYear : 0) + (player().flags.statePension ?? 0);
 }
 /** Household income, which is what lenders look at. */
 export const householdIncome = () => grossIncome() + (npcsByRole('spouse')[0]?.life?.job?.salary ?? 0);

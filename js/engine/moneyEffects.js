@@ -13,13 +13,14 @@ import { accounts, deposit } from './banking.js';
 import { giveMoney, lendMoney } from './family.js';
 import { learn } from './achievements.js';
 import { book } from './ledger.js';
+import { cards, available } from './cards.js';
 
 export function moneyEffect(e, ctx) {
   const p = player();
   const c = country();
   const shown = [];
   const cash = Math.max(0, Math.floor(p.finance.cash));
-  const amount = e.base != null ? Math.min(cash, localMoney(e.base, c)) : Math.floor(cash * (e.share ?? 0));
+  const amount = e.base != null ? (e.card ? localMoney(e.base, c) : Math.min(cash, localMoney(e.base, c))) : Math.floor(cash * (e.share ?? 0));
   if (e.op === 'learn') { learn(e.value ?? 2, `scene:${e.why ?? 'general'}`); return shown; }
   if (!(amount > 0)) return shown;
   if (e.op === 'save') {
@@ -27,6 +28,9 @@ export function moneyEffect(e, ctx) {
     if (a && deposit(a.id, amount).ok) shown.push({ label: 'Saved', delta: amount, money: true });
     else ctx.note = 'You have no bank account to put it in, so it stays in your pocket.';
   } else if (e.op === 'spend') {
+    // On a card, it is borrowed: the card takes it, while there is room, and everyday money is untouched.
+    const card = e.card ? cards().find((k) => available(k) >= amount) : null;
+    if (card) { card.balance += amount; book({ cat: 'leisure', src: 'scene', desc: e.what ?? 'Something you wanted' }); shown.push({ label: 'On your card', delta: amount, money: true }); return shown; }
     p.finance.cash -= amount;
     book({ cat: 'leisure', src: 'scene', desc: e.what ?? 'Something you wanted' });
     shown.push({ label: 'Cash', delta: -amount, money: true });
