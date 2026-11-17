@@ -48,5 +48,7 @@ export function createNav() {
 export function backLabel(step, nameOf = () => '') {
   if (!step) return 'Close';
   return { archive: 'Back to the family archive', album: 'Back to Our Animal Family', chronicle: 'Back to the house chronicle', story: 'Back to the life story',
-    profile: `Back to ${nameOf(step.params.animalId) || 'the profile'}` }[step.screen] ?? 'Back';
+    profile: `Back to ${nameOf(step.params.animalId) || 'the profile'}`, hub: 'Back to Pets & Animals', mine: 'Back to My animals', adopt: 'Back to Adopt & rescue',
+    waiting: 'Back to the shelter', care: 'Back to Animal care', training: 'Back to Training', vet: 'Back to the vet', riding: 'Back to Equestrian', horse: 'Back to the horse',
+    pedigree: 'Back to the family tree' }[step.screen] ?? 'Back';
 }

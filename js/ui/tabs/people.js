@@ -12,6 +12,7 @@ import { openFamilyTree } from '../familyTree.js';
 import { avatarSvg, petGlyph, royalDress } from '../avatar.js';
 import { animalById, reconcile as reconcileAnimals } from '../../engine/animals.js';
 import * as zooUi from '../animals.js';
+import { openAnimalHub } from '../animalHub.js';
 import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
@@ -344,10 +345,9 @@ export default {
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
-    const top = [['archive', 'Family archive'], ['tree', 'Family tree']];
+    const top = [['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree']];
     if (love.canLookForLove()) top.push(['love', 'Look for love']);
     if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
-    if (rel.canGetPet()) top.push(['pet', `Get a pet (${fmtMoney(localMoney(rel.PET_PRICE, c), c)})`]);
 
     const row = (n) => `
       <button class="row" data-npc="${n.id}">
@@ -370,6 +370,7 @@ export default {
       const row = e.target.closest('[data-npc]');
       if (row) return openNpc(store.state.npcs[row.dataset.npc], api);
       const id = e.target.closest('[data-top]')?.dataset.top;
+      if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api));
       if (id === 'love') return lookForLove(api);

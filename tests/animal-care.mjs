@@ -256,7 +256,44 @@ for (let i = 0; i < 30; i++) {
 check(got > 0 && got < asked, `asking does not always get a yes (${got} of ${asked})`);
 section('children: the adults decide, own the animal, and may say no');
 
-// ---------- 10. Whole lives ----------
+// ---------- 10. Moving country, volunteering, careers ----------
+{
+  const { emigrate } = await import('../js/engine/emigration.js');
+  const { CAREERS } = await import('../js/data/careers.js');
+  p = adult(35, 300000, 'us');
+  const d1 = waiting('dog', (x) => { x.appearance.size = 'small'; }); care.adopt(d1.id);
+  const f1 = waiting('fish'); care.adopt(f1.id);
+  const fo1 = waiting('cat'); care.foster(fo1.id);
+  const sib2 = addKin('sibling', 33); sib2.meters.relationship = 80;
+  const plan = care.travelPlan('au');
+  const dogPlan = plan.find((t) => t.a.id === d1.id);
+  check(plan.length === 3 && dogPlan.ok && dogPlan.quarantine && dogPlan.cost > care.travelPlan('ca').find((t) => t.a.id === d1.id).cost, 'moving to a country with quarantine costs more, and the household is told before it decides');
+  check(!plan.find((t) => t.a.id === f1.id).ok && !plan.find((t) => t.a.id === fo1.id).ok, 'fish do not travel, and a fostered animal goes back to its rescue');
+  cash = p.finance.cash;
+  // A visa is not certain: apply again in later years until it comes through.
+  for (let i = 0; i < 12; i++) { rng.seed(40 + i); r = emigrate('ca', { animals: 'bring' }); if (r.ok) break; S().year += 1; p.age += 1; p.finance.cash = 300000; }
+  if (r.ok) {
+    const dd = zoo.animalById(d1.id);
+    check(zoo.homeOf(dd).countryId === 'ca' && S().npcs[dd.id] && care.ledgerOf(dd.id).some((t) => t.kind === 'transport') && dd.health.at(-1).service === 'travel', 'the dog comes, with papers and a paid journey, and it is on the health record');
+    check(zoo.ownerOf(zoo.animalById(f1.id)).id !== p.id && zoo.allAnimals().some((x) => x.id === f1.id) && !zoo.animalById(fo1.id).foster && !S().npcs[fo1.id], 'the fish stays with someone who can keep it, the foster cat goes back; both stay on the record');
+  } else check(false, `the move went through: ${r.text}`);
+  clean('moving country');
+  p = adult(30, 300000, 'us');
+  const fer = waiting('ferret'); care.adopt(fer.id);
+  check(!care.travelPlan('nz').find((t) => t.a.id === fer.id).ok, 'an animal that is against the law where the family is going cannot come');
+  p = adult(13);
+  check(!care.volunteer().ok, 'volunteering starts at fourteen');
+  p.age = 15; r = care.volunteer();
+  check(r.ok && !care.volunteer().ok && p.finance.cash === 300000 - 100000 && !p.flags.animalExperience, 'a year of volunteering earns nothing, and can be done once a year');
+  p.age = 16; care.volunteer();
+  check(p.flags.animalExperience && p.npcIds.some((id) => S().npcs[id].flags.tag === 'shelter'), 'a second year counts as experience, and someone there becomes a friend');
+  const ids = ['animal_care', 'dog_training', 'grooming', 'equestrian', 'farming', 'vet'];
+  check(ids.every((id) => CAREERS.some((x) => x.id === id && x.levels.length >= 3)), 'there are careers with animals: shelters, training, grooming, horses, farms and veterinary medicine');
+  check(CAREERS.find((x) => x.id === 'equestrian').levels[1].needs['flags.riderAdvanced'] === 1, 'only someone who rides well can teach riding');
+}
+section('moving, volunteering, careers: papers and quarantine, nobody left without a keeper, experience opens doors');
+
+// ---------- 11. Whole lives ----------
 let seen = 0; let spent = 0; let scenes = 0;
 for (let i = 0; i < 5; i++) {
   rng.seed(3000 + i);

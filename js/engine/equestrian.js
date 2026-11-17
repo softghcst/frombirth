@@ -46,6 +46,14 @@ export function disciplineSkill(id, state = store.state) {
   return Math.round(base * 0.65 + (r.disciplines[id] ?? 0) * 0.35);
 }
 
+/** What a stable yard or a riding school looks for when it hires: how well someone rides. */
+function markRider(state) {
+  const lvl = riderLevel(state); const f = state.player.flags;
+  if (lvl >= 65) f.riderAdvanced = true;
+  if (lvl >= 85) f.riderExpert = true;
+  if (lvl >= 30) f.animalExperience = true;
+}
+
 // ---------- Places ----------
 
 /** The riding school in the player's city, with its instructor and its own horses. */
@@ -187,6 +195,7 @@ export function takeLessons(focus = 'hacking', state = store.state) {
   let fell = '';
   if (rng.chance(clamp(0.1 - r.skills.balance / 1500, 0.02, 0.1))) { r.falls += 1; r.skills.confidence = clamp(r.skills.confidence - 4); p.stats.health = clamp(p.stats.health - 2); fell = ' You came off once, got back on, and were sore for a week.'; }
   const now = riderLevel(state);
+  markRider(state);
   let text = first ? `You started riding lessons at ${sc.name}. ${teacher.firstName} put you on ${horse?.name ?? 'a quiet horse'} and spent the first month on how to stop.${fell}`
     : `A year of lessons with ${teacher.firstName} at ${sc.name}${focus === 'hacking' ? '' : `, working on ${DISCIPLINES[focus].name.toLowerCase()}`}. You ride like ${/^[aeiou]/i.test(levelName(now)) ? 'an' : 'a'} ${levelName(now).toLowerCase()} now.${fell}`;
   if (can.payer === 'you') text += ` It cost ${fmtMoney(can.price, c)}.`;
@@ -319,6 +328,7 @@ export function ride(animalId, discipline = 'hacking', state = store.state) {
   if (rng.chance(a.mismatch ? 0.25 : 0.05)) { r.falls += 1; r.skills.confidence = clamp(r.skills.confidence - 5); p.stats.health = clamp(p.stats.health - 3); text += ' You came off once, hard.'; }
   if (a.mismatch && riderLevel(state) >= 45) { delete a.mismatch; text += ` You have grown into ${zoo.pronoun(a, 'them')}.`; }
   say(state, text, 'good');
+  markRider(state);
   p.stats.mood = clamp(p.stats.mood + 4);
   return result(true, text, 'good');
 }

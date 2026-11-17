@@ -328,6 +328,7 @@ export function foster(animalId, state = store.state) {
   const npc = makeHandle(state, a, firstBondWith(a));
   const text = `You agreed to foster ${a.name} for ${check.shelter.name}: a home for now, until a permanent one is found.`;
   zoo.register(npc, { state, foster: check.shelter, storyEntry: say(state, text, 'good') });
+  state.player.flags.animalExperience = true;
   introduce(state, a);
   return result(true, text, 'good', { animalId: a.id });
 }
@@ -381,7 +382,7 @@ export function rehomeOptions(animalId, state = store.state) {
   const p = state.player;
   if (!a || a.status !== 'living' || !state.npcs[a.id] || a.foster || zoo.ownerOf(a)?.id !== p.id) return [];
   const kin = T.livingBy(state, ['spouse', 'child', 'sibling', 'parent', 'grandchild', 'friend']).filter((n) => n.age >= 18 && !n.flags.abroad && n.meters.relationship >= 45)
-    .sort((x, y) => (zoo.bondOf(a, y.id) ?? 0) - (zoo.bondOf(a, x.id) ?? 0)).slice(0, 5);
+    .sort((x, y) => (zoo.bondOf(a, y.id) ?? 0) - (zoo.bondOf(a, x.id) ?? 0) || y.meters.relationship - x.meters.relationship).slice(0, 6); // those the animal knows, then those closest to the player
   return [...kin.map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `${cap(zoo.kinWord(state, n.id) ?? n.role)}${zoo.bondOf(a, n.id) != null ? ` · already knows ${a.name}` : ''}` })),
     ...(speciesOf(a.speciesId).group === 'companion' ? [{ value: 'shelter', label: shelter(state).name, sub: 'They will look for a new home. You will not be told where.' }] : [])];
 }
@@ -716,4 +717,88 @@ export function auditCare(state = store.state) {
     if (a.insurance && !paysFor(a, state)) bad.push(`${a.name}: insured by someone who does not own it`);
   }
   return bad;
+}
+
+// ---------- Moving country ----------
+
+/** Countries that hold arriving animals in quarantine for a while, at the owner's cost. A gameplay simplification of real rules. */
+const QUARANTINE = ['au', 'nz', 'jp', 'sg', 'hk', 'tw', 'is', 'mu'];
+const TRAVEL = { small: 160, room: 900, yard: 1100, land: 6500 };
+/**
+ * What it would take to bring each of the household's animals to another country.
+ * @returns {{a:object, cost:number, ok:boolean, why:string, quarantine:boolean}[]}
+ */
+export function travelPlan(destId, state = store.state) {
+  const p = state.player; const c = COUNTRIES[p.countryId];
+  return zoo.householdAnimals(state).filter((a) => state.npcs[a.id] && (paysFor(a, state) || a.foster)).map((a) => {
+    const sp = speciesOf(a.speciesId);
+    const q = QUARANTINE.includes(destId) && sp.group !== 'farm';
+    const cost = localCost((TRAVEL[spaceNeeded(a)] ?? 900) * (q ? 2.2 : 1), c);
+    const why = a.foster ? `${a.name} belongs to ${a.foster.name}, and goes back to them.`
+      : sp.banned.includes(destId) ? `It is against the law to keep ${an(sp.name)} ${sp.name} in ${theCountry(COUNTRIES[destId].name)}.`
+        : a.speciesId === 'fish' ? 'Fish do not survive a move between countries well. A friend could take the tank.'
+          : sp.group === 'farm' ? `Farm animals are not moved abroad as pets. ${a.name} would stay behind with someone who can keep ${zoo.pronoun(a, 'them')}.` : '';
+    return { a, cost: why ? 0 : cost, ok: !why, why, quarantine: q && !why };
+  });
+}
+/**
+ * Before the household leaves: papers, transport and, where needed, quarantine for those coming; a home for those not.
+ * Called by emigration once the move is certain.
+ * @param {'bring'|'leave'} choice  bring every animal that can come, or find them all homes here
+ */
+export function prepareMove(destId, choice = 'bring', state = store.state, forced = false) {
+  const p = state.player; const c = COUNTRIES[p.countryId];
+  const out = { coming: [], staying: [] };
+  for (const t of travelPlan(destId, state)) {
+    const a = t.a;
+    if (a.foster) { fosterDecision(a.id, 'return', state); out.staying.push(a.name); continue; }
+    if (t.ok && choice === 'bring' && (forced || p.finance.cash >= t.cost)) {
+      if (!forced) pay(state, t.cost, 'transport', a.id, `move|${a.id}|${state.year}|${destId}`);
+      a.health.push({ id: `h${a.health.length + 1}`, year: state.year, age: zoo.ageOf(a, state), kind: 'vet', service: 'travel', cost: 0, currency: c.currency.code, recovered: null, eventId: null,
+        note: `Identification, vaccinations and a health certificate for the move to ${COUNTRIES[destId].name}${t.quarantine ? ', and a spell in quarantine on arrival' : ''}.` });
+      out.coming.push(a.name);
+      continue;
+    }
+    // Not coming: family first, then the rescue. The record keeps them either way.
+    const to = rehomeOptions(a.id, state).find((o) => o.value !== 'shelter' && !state.npcs[o.value]?.flags.willComeAge)?.value ?? 'shelter';
+    if (rehomeOptions(a.id, state).some((o) => o.value === to)) rehome(a.id, to, state);
+    else zoo.leaveToOrg(state, a, { why: 'the family moved abroad', text: `${a.name} stayed behind when the family moved abroad, in the care of a rescue.` });
+    out.staying.push(a.name);
+  }
+  return out;
+}
+
+// ---------- Volunteering ----------
+
+/**
+ * A year of Saturday mornings at the shelter: walking dogs, cleaning out, sitting with the frightened ones.
+ * It earns nothing. It teaches a good deal, and the people there remember who turned up.
+ */
+export function volunteer(state = store.state) {
+  const p = state.player;
+  if (p.age < 14) return result(false, 'The shelter takes volunteers from fourteen.', 'neutral');
+  if (p.legal?.incarceration) return result(false, 'Not from in here.', 'neutral');
+  if (p.flags.volunteeredAge === p.age) return result(false, 'You have given your Saturdays this year already.', 'neutral');
+  const sh = shelter(state);
+  const stock = shelterAnimals(sh, state);
+  p.flags.volunteeredAge = p.age;
+  p.flags.volunteerYears = (p.flags.volunteerYears ?? 0) + 1;
+  p.hidden.karma = clamp(p.hidden.karma + 3);
+  p.stats.mood = clamp(p.stats.mood + 3);
+  if (p.flags.volunteerYears >= 2) p.flags.animalExperience = true;
+  // Someone there becomes someone in the player's life.
+  let met = '';
+  if (p.flags.volunteerYears === 2 && !p.npcIds.some((id) => state.npcs[id]?.flags.tag === 'shelter')) {
+    const who = sh.staff[2];
+    const [firstName, ...rest] = who.name.split(' ');
+    const n = makeNpc({ role: 'friend', countryId: sh.countryId, age: clamp(p.age + rng.int(-8, 15), 18, 75), gender: who.gender, firstName, lastName: rest.join(' '), relationship: 50 });
+    n.occupation = 'shelter worker'; n.flags.tag = 'shelter'; n.flags.title = `Friend from ${sh.name}`;
+    state.npcs[n.id] = n; p.npcIds.push(n.id);
+    met = ` ${firstName}, who runs adoptions, has started saving you the dogs nobody else can walk.`;
+  }
+  // The animals there get to know a regular face.
+  for (const a of stock.slice(0, 3)) T.setBond(a, T.ref(state, p.id), clamp((zoo.bondOf(a, p.id) ?? 25) + rng.int(6, 14)));
+  const text = `You spent the year's Saturdays at ${sh.name}${stock.length ? `, mostly with ${stock.slice(0, 2).map((a) => a.name).join(' and ')}` : ''}.${met}`;
+  say(state, text, 'good');
+  return result(true, text, 'good');
 }

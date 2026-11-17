@@ -190,6 +190,20 @@ export async function moveAbroad(api) {
     await messageModal({ body: r.text, tone: r.tone });
   }
 
+  // The household's animals: papers, transport and quarantine, or a home here.
+  let animals = 'bring';
+  const plan = move.travelPlan(id);
+  if (plan.length) {
+    const can = plan.filter((t) => t.ok); const cant = plan.filter((t) => !t.ok);
+    const cost = can.reduce((s, t) => s + t.cost, 0);
+    const note = [can.some((t) => t.quarantine) ? `${theCountry(dest.name)} holds arriving animals in quarantine for a while.` : '', ...cant.map((t) => t.why)].filter(Boolean).join(' ');
+    const choice = await pickModal({ title: 'Your animals', body: note || undefined, options: [
+      ...(can.length ? [{ value: 'bring', label: `Bring ${can.map((t) => t.a.name).join(', ')} (${fmtMoney(cost, c)})`, sub: 'Identification, vaccinations, a health certificate and the journey.' }] : []),
+      { value: 'leave', label: can.length ? 'Find them all homes here' : 'Find them homes here', sub: 'Family first, if anyone can; otherwise a rescue. You will not see them again.' },
+    ] });
+    if (!choice) return undefined;
+    animals = choice;
+  }
   let shipVehicles = true;
   const shipping = move.shippingCost();
   if (shipping) {
@@ -208,10 +222,10 @@ export async function moveAbroad(api) {
     if (k == null) return undefined;
     keep = Number(k);
   }
-  const total = route.fee + (shipVehicles ? shipping : 0);
+  const total = route.fee + (shipVehicles ? shipping : 0) + (animals === 'bring' ? plan.filter((t) => t.ok).reduce((s, t) => s + t.cost, 0) : 0);
   const sure = await confirmModal({ title: `Apply to move to ${theCountry(dest.name)}?`,
     body: `${route.name}. ${route.outlook} It comes to ${fmtMoney(total, c)} in all.${route.chance < 1 && route.fee ? ' A fifth of the visa cost is gone even if they say no.' : ''}`, yes: route.chance >= 1 ? 'Move' : 'Apply' });
-  return sure ? report(api, move.emigrate(id, { shipVehicles, keep, route: route.id, city })) : undefined;
+  return sure ? report(api, move.emigrate(id, { shipVehicles, keep, route: route.id, city, animals })) : undefined;
 }
 
 /** Moving to another city in the same country. */

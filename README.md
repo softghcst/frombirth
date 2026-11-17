@@ -38,6 +38,8 @@ node tests/admissions.mjs      # university decisions and aid, on hand-built app
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
+node tests/animal-care.mjs     # shelters, adoption, costs, the vet, insurance, fostering, rehoming, moving abroad, careers
+node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, breeding and pedigrees
 node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
@@ -53,23 +55,35 @@ node tests/world.mjs           # the 102 reference places: codes, kinds, currenc
 
 ## The family's animals
 
-Every animal the family keeps has one record, kept for good (`state.animals`, built by `js/engine/animals.js`).
-It holds who the animal is, who owned it, who looked after it and where it lived, as three separate histories,
-along with what it learned, its health record, and the moments worth keeping. Those moments are written once
-and carry the id of the line in the life story that tells them. When a life ends, every animal that depended on
-the player is given a keeper, and the whole record crosses to the heir: the dead keep their profiles.
+People → **Pets & Animals** is the hub: your animals, the local shelter and farm rescue, care and costs, training, the vet,
+riding, and the album. People → **Family archive → Our Animal Family** is the generational album and timeline.
+Holdings lists the animals of your household and the chronicle of your house.
+
+Every animal has one record, kept for good (`state.animals`). Owner, main caregiver and home are three separate
+histories. Moments worth keeping are written once and tied to the line of the life story that tells them. When a
+life ends, each animal that depended on the player gets a keeper, and the whole record crosses to the heir.
 
 | What | Where |
 |---|---|
-| Species, breeds, temperament, what can be taught | `js/data/animals.js` |
-| The record, care passing on, the hand-over between generations | `js/engine/animals.js` |
-| Album, timeline, profiles, the chronicle of a house | `js/ui/animals.js` (People → Family archive; Holdings → Household animals) |
-| Portraits, drawn from each animal's recorded looks | `js/ui/animalPortrait.js` |
-| Where the player is among those screens, and the way back | `js/ui/animalNav.js` |
+| Seventeen species, breeds, temperament, costs, what can be taught, riding disciplines and show levels | `js/data/animals.js` |
+| The record: identity, owners, carers, homes, bonds, moments, the hand-over between generations | `js/engine/animals.js` |
+| Shelters, adoption checks, yearly costs, the vet, insurance, fostering, rehoming, volunteering, moving abroad | `js/engine/animalCare.js` |
+| Riding schools and instructors, lessons, livery yards, buying and riding a horse, shows | `js/engine/equestrian.js` |
+| Breeding (vet-checked, unrelated, limited, never for profit), parentage and pedigrees | `js/engine/animalBreeding.js` |
+| Scenes: illness, emergencies, foster reviews, settling in, a child asking for a pet, visiting the family dog | `js/data/events/animals.js` |
+| Screens: album, timeline, profiles, chronicle / the hub / portraits / the way back | `js/ui/animals.js`, `js/ui/animalHub.js`, `js/ui/animalPortrait.js`, `js/ui/animalNav.js` |
 
-Not built yet: shelters with animals waiting in them, fostering, insurance, vet clinics as places, horses and
-riding, farms, breeding and pedigrees. The species on record are the five the game already had: dog, cat,
-rabbit, parrot and hamster.
+Rules the tests hold the game to: one shelter animal is the same animal on every visit and after it is adopted; every
+charge is in one ledger, once, with its currency; insurance pays its share of a bill once and never routine care; a
+show class is ridden once and its result survives a reload; prizes never cover a horse's costs and animals never
+make the family money; parentage is never invented and no animal is its own ancestor.
+
+Careers with animals (animal care, dog training, grooming, horses and riding, farming, and veterinary medicine) are in
+`js/data/careers.js`; fostering, volunteering and riding well open their doors.
+
+Not built, because the rest of the game does not have it yet: historical eras (every life starts in the present
+day), a business engine (so no riding schools or farms to run as a business), and a story director beyond the
+scenes listed above. Farm animals are kept, not farmed.
 
 ## Avatars
 

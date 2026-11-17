@@ -442,7 +442,7 @@ async function act(id, what) {
     const sure = await confirmModal({ title: `Give ${a.name} up?`, body: 'This cannot be undone.', yes: `Give ${a.name} up`, danger: true });
     if (!sure) return show();
     r = care.rehome(id, to);
-  } else if (extras.acts[what]) { shut(); r = await extras.acts[what](a); if (!r) return show();
+  } else if (extras.acts[what]) { shut(); r = await extras.acts[what](a); if (!r) return nav.top() ? show() : undefined;
   } else { shut(); r = rel.interact(id, what); }
   api?.changed();
   await messageModal({ body: r.text, tone: r.tone });
@@ -458,6 +458,8 @@ function start(tabApi, screen, params, ui) {
   show();
 }
 
+/** Any screen, on its own: those added by other files with extend() as well. */
+export const openScreen = (tabApi, screen, params = {}, ui = {}) => start(tabApi, screen, params, ui);
 /** Family archive: the album and the tree. */
 export const openFamilyArchive = (tabApi) => start(tabApi, 'archive');
 /** Our Animal Family. */

@@ -24,7 +24,7 @@ const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 const K = 1000;
 const STAT_NAMES = { 'stats.health': 'Health', 'stats.intellect': 'Intellect', 'stats.charm': 'Charm',
   'talents.acting': 'Acting', 'talents.singing': 'Singing', 'talents.dance': 'Dance', 'talents.sports': 'Sports',
-  'talents.music': 'Music', tripleThreat: 'Triple-threat score', 'social.followers': 'Followers' };
+  'talents.music': 'Music', tripleThreat: 'Triple-threat score', 'social.followers': 'Followers', 'flags.riderAdvanced': 'Riding at an advanced level' };
 
 /** Per-year action counters; reset when the age changes. */
 function acts() {
