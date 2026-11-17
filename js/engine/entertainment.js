@@ -291,7 +291,9 @@ export function scheduleClash(prod, p = player()) {
   if (stage(prod) && others.some((x) => x.kind === 'tv')) return 'A stage run and a television series cannot be done at once.';
   if (prod.kind === 'tv' && others.some(stage)) return 'A stage run and a television series cannot be done at once.';
   if (others.some((x) => x.countryId !== prod.countryId)) return 'You are committed to work in another country that year.';
-  const weeks = others.reduce((s, x) => s + weeksOf(x), 0) + weeksOf(prod);
+  const touring = Object.values(ent().tours ?? {}).filter((t) => t.year === prod.workYear && (workOf(p).acts ?? []).includes(t.actId)).reduce((s, t) => s + t.weeks, 0);
+  if (touring && ['stage', 'musical', 'tv'].includes(prod.kind)) return 'You are on tour that year.';
+  const weeks = others.reduce((s, x) => s + weeksOf(x), 0) + weeksOf(prod) + touring;
   if (weeks > 46) return 'Your year is already full of work.';
   return '';
 }
@@ -635,7 +637,8 @@ export function carryWorld(old, next, ancestorId) {
   next.ent = old.ent;
   const E = next.ent;
   const keep = new Set([...Object.values(E.pool).flat(), ...Object.values(E.orgs).flatMap((o) => o.staff),
-    ...Object.values(E.productions).flatMap((x) => [x.directorId, ...x.cast.map((r) => r.who)])]);
+    ...Object.values(E.productions).flatMap((x) => [x.directorId, ...x.cast.map((r) => r.who)]),
+    ...Object.values(E.musicians ?? {}).flat(), ...Object.values(E.acts ?? {}).flatMap((a) => a.members.map((m) => m.who))]);
   for (const id of keep) {
     if (!id || id === 'player' || next.npcs[id] || !old.npcs[id]) continue;
     const n = old.npcs[id];
@@ -646,6 +649,14 @@ export function carryWorld(old, next, ancestorId) {
   for (const x of Object.values(E.productions)) for (const r of x.cast) r.who = who(r.who);
   for (const s of Object.values(E.seasons)) for (const cat of Object.values(s.categories)) { for (const n of cat.nominees) n.who = who(n.who); cat.winner.who = who(cat.winner.who); }
   for (const a of E.articles) if (a.about === 'player') a.about = ancestorId ?? null;
+  // Music: the parent's acts carry on in the world (or rest), as theirs; the heir starts with none of their own.
+  for (const a of Object.values(E.acts ?? {})) {
+    if (!a.members.some((m) => m.who === 'player')) continue;
+    for (const m of a.members) if (m.who === 'player') { m.who = ancestorId ?? null; if (m.to == null) m.to = old.year; }
+    a.npc = true;
+    if (!a.members.some((m) => m.who && m.to == null)) a.status = 'split';
+    a.offer = null;
+  }
   for (const o of Object.values(E.orgs)) for (const id of o.staff) { const n = next.npcs[id]; if (n?.flags.agent) n.flags.agent.clients = n.flags.agent.clients.filter((c) => c !== 'player'); }
 }
 

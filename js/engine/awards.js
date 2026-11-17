@@ -9,7 +9,8 @@
 import { rng } from '../rng.js';
 import { store, player, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { AWARD_BODIES, NOMINEES } from '../data/fame.js';
+import { AWARD_BODIES, NOMINEES, MUSIC_AWARD } from '../data/fame.js';
+import { act, release } from './music.js';
 import { ent, production, article } from './entertainment.js';
 import { gain, regard } from './fame.js';
 
@@ -53,6 +54,36 @@ export function holdSeason(body, scope, forYear) {
   return season;
 }
 
+/**
+ * The music awards: judged on releases that came out that year, anywhere. A nominee is
+ * an act; the player is nominated with it if they were in it when the record was made.
+ */
+export function holdMusicSeason(forYear) {
+  const E = ent();
+  const body = MUSIC_AWARD;
+  const id = `${body.id}:world:${forYear}`;
+  if (E.seasons[id]) return E.seasons[id];
+  if (forYear < body.founded || !E.releases) return null;
+  const eligible = Object.values(E.releases).filter((r) => r.released === forYear && r.critics != null && Object.values(r.units).reduce((s, n) => s + n, 0) >= 5000); // records enough people heard
+  const season = { id, bodyId: body.id, scope: 'world', year: forYear, ceremony: forYear + 1, categories: {} };
+  for (const [catId, name, kind] of body.categories) {
+    const pool = eligible.filter((r) => (kind === 'first' ? r.first : r.type === kind)).map((r) => {
+      const a = act(r.actId);
+      const units = Object.values(r.units).reduce((s, n) => s + n, 0);
+      const mine = a && a.members.some((m) => m.who === 'player' && m.from <= r.made && (m.to == null || m.to >= r.made));
+      return { who: mine ? 'player' : (a?.members[0]?.who ?? null), name: a?.name ?? '', releaseId: r.id, productionId: null, title: r.title, idx: null, score: r.critics * 0.7 + Math.log10(units + 1) * 8 };
+    });
+    if (pool.length < 2) continue;
+    const nominees = pool.sort((a, b) => b.score - a.score).slice(0, NOMINEES).map((n) => ({ ...n, score: Math.round(n.score) }));
+    const floor = nominees[nominees.length - 1].score;
+    const winner = nominees[rng.weighted(nominees.map((n, i) => ({ i, w: Math.max(1, n.score - floor + 6) })), (x) => x.w).i];
+    season.categories[catId] = { name, nominees, winner: { who: winner.who, releaseId: winner.releaseId, productionId: null, idx: null } };
+    for (const n of nominees) { const r = release(n.releaseId); (r.awards ??= []).push({ seasonId: id, catId, won: n === winner }); }
+  }
+  E.seasons[id] = season;
+  return season;
+}
+
 /** Once a year: every body that exists holds its season for last year's work. @returns {string[]} */
 export function tickAwards() {
   const p = player();
@@ -79,6 +110,19 @@ export function tickAwards() {
       }
     }
   }
+  const before = !!ent().seasons[`${MUSIC_AWARD.id}:world:${forYear}`];
+  const ms = holdMusicSeason(forYear);
+  if (ms && !before) for (const cat of Object.values(ms.categories)) {
+    const mine = cat.nominees.find((n) => n.who === 'player');
+    if (!mine) continue;
+    const won = cat.winner.releaseId === mine.releaseId;
+    const text = won ? `${mine.name} won ${cat.name} at the ${MUSIC_AWARD.name} for ${mine.title}.` : `${mine.name} was nominated for ${cat.name} at the ${MUSIC_AWARD.name} for ${mine.title}.`;
+    lines.push(text);
+    milestone(text, 'fame');
+    gain({ audience: 'music', amount: won ? 10 : 4, lasting: won ? 0.9 : 0.4, reach: 0.5, why: `${won ? 'winning' : 'a nomination for'} ${cat.name}` }, p);
+    regard({ credibility: won ? 8 : 3, why: cat.name }, p);
+    article({ kind: won ? 'award' : 'nomination', about: 'player', accuracy: 'verified', text });
+  }
   return lines;
 }
 
@@ -87,7 +131,7 @@ export function myAwards(p = player()) {
   const out = [];
   for (const s of Object.values(ent().seasons)) for (const [catId, cat] of Object.entries(s.categories)) {
     const n = cat.nominees.find((x) => x.who === 'player');
-    if (n) out.push({ season: s, catId, cat, productionId: n.productionId, won: cat.winner.who === 'player', body: AWARD_BODIES.find((b) => b.id === s.bodyId) });
+    if (n) out.push({ season: s, catId, cat, productionId: n.productionId, releaseId: n.releaseId ?? null, title: n.title, won: n.releaseId ? cat.winner.releaseId === n.releaseId : cat.winner.who === 'player', body: [...AWARD_BODIES, MUSIC_AWARD].find((b) => b.id === s.bodyId) });
   }
   return out.sort((a, b) => b.season.year - a.season.year);
 }

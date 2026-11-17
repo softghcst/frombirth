@@ -163,3 +163,25 @@ export const CHILD_TRUST_SHARE = 0.15;
 export const AGENT_COMMISSION = 0.1;
 /** A publicist's yearly fee, in base units. */
 export const PUBLICIST_FEE = 18000;
+
+// ---------- Music ----------
+
+export const MUSIC_GENRES = ['pop', 'rock', 'folk', 'hip-hop', 'R&B', 'electronic', 'jazz', 'country', 'indie', 'classical crossover', 'soul', 'metal'];
+export const BAND_WORDS = { a: ['Paper', 'Velvet', 'Northern', 'Midnight', 'Glass', 'Copper', 'Electric', 'Quiet', 'Wild', 'Silver', 'Hollow', 'Lucky'], b: ['Foxes', 'Lanterns', 'Tides', 'Satellites', 'Harbours', 'Ravens', 'Engines', 'Orchards', 'Strangers', 'Signals', 'Comets', 'Wolves'] };
+export const SONG_WORDS = { a: ['Slow', 'Golden', 'Late', 'Paper', 'Borrowed', 'Burning', 'Little', 'Wide', 'Blue', 'Summer', 'Last', 'Neon'], b: ['Hearts', 'Rooms', 'Rivers', 'Lights', 'Letters', 'Roads', 'Mornings', 'Windows', 'Ghosts', 'Promises', 'Streets', 'Skies'] };
+/** Kinds of release: how many songs, and what recording costs (base units) without a label. */
+export const RELEASE_TYPES = { single: { name: 'Single', songs: 1, cost: 1500 }, ep: { name: 'EP', songs: 4, cost: 6000 }, album: { name: 'Album', songs: 10, cost: 18000 } };
+/** Venues by size. capacity per show; price per ticket (base units); cost per show (crew, travel, hall). */
+export const VENUES = {
+  bar: { name: 'Bars and pubs', capacity: 120, price: 10, cost: 300, fans: 0 },
+  club: { name: 'Clubs', capacity: 500, price: 20, cost: 1800, fans: 4000 },
+  theatre: { name: 'Theatres and halls', capacity: 2500, price: 40, cost: 14000, fans: 40000 },
+  arena: { name: 'Arenas', capacity: 15000, price: 70, cost: 110000, fans: 400000 },
+  stadium: { name: 'Stadiums', capacity: 55000, price: 90, cost: 500000, fans: 3000000 },
+};
+export const LABEL_NAMES = ['{W} Records', '{W} Recordings', '{C} Sound', '{S} Music Group', '{W} Discs'];
+/** A record deal's usual terms: royalty share to the act, and what a label pays for each unit sold (base units). */
+export const MUSIC_DEAL = { royalty: [0.14, 0.22], unitValue: 0.9, independent: 0.7 };
+/** The music award body, which judges releases. */
+export const MUSIC_AWARD = { id: 'disc', name: 'Silver Disc Awards', founded: 1959, scope: 'international', medium: 'music',
+  categories: [['album', 'Album of the Year', 'album'], ['song', 'Song of the Year', 'single'], ['new_act', 'Best New Act', 'first']] };
