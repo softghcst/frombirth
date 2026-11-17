@@ -22,6 +22,7 @@ import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
 import { attractedTo } from './identity.js';
 import { passOn } from './edlegacy.js';
+import { passOn as carryCareers } from './careerRecord.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -229,6 +230,7 @@ export function continueAs(npcId) {
     rngSeed: rng.state(), settings: old.settings ?? { theme: 'auto' },
   };
   store.state = next;
+  carryCareers(old, next); // the family's working history, and the same employers
 
   // An heir who was living in another country carries on there.
   const abroad = typeof h.flags.abroad === 'string' && COUNTRIES[h.flags.abroad] ? h.flags.abroad : null;

@@ -1,5 +1,6 @@
 // localStorage persistence: multiple save slots plus the graveyard.
 import { rng } from './rng.js';
+import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
@@ -51,6 +52,9 @@ function migrate(state) {
   // chosen from the character's id so it is the same on every load.
   state.player.appearance = normalize(state.player.appearance, state.player.id);
   for (const n of Object.values(state.npcs)) if (n.role !== 'pet') n.appearance = normalize(n.appearance, n.id);
+  // Careers before employers, side jobs and the time budget: fill in what the save lacks. Nothing is re-paid.
+  ensureCareer(state.player.career);
+  if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

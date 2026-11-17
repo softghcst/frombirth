@@ -364,6 +364,7 @@ function commitments(p, c) {
   for (const id of e.clubs) rows.push([CLUB_BY_ID[id].name, 'Member']);
   if (e.enrolled && e.stage === 'high') rows.push(['Crowd', CLIQUE_BY_ID[e.clique]?.name ?? 'None yet']);
   if (p.career.partTime) rows.push([p.career.partTime.title, `${fmtMoney(p.career.partTime.salary, c)} a year`]);
+  for (const s of p.career.sides ?? []) rows.push([s.title, `${s.hours} h/week, ${fmtMoney(s.salary, c)} a year`]);
   if (p.flags.tutorAge === p.age) rows.push(['Private tutor', 'Two evenings a week']);
   if (e.enrolled && edu.isHigher(e.stage)) {
     const mate = edu.roommate();
@@ -422,7 +423,7 @@ export default {
     </div>` : '');
 
     const past = k.history.length
-      ? k.history.map((h) => `<div class="kv"><span>${esc(h.title)}</span><span>Age ${h.from}–${h.to}</span></div>`).join('')
+      ? k.history.map((h) => `<div class="kv"><span>${esc(h.title)}${h.employer ? `, ${esc(h.employer)}` : ''}</span><span>Age ${h.from}–${h.to}</span></div>`).join('')
       : '<p class="muted">No past jobs.</p>';
 
     el.innerHTML = `

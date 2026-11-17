@@ -43,6 +43,7 @@ node tests/cities.mjs          # cities and regions: prices, pay, regional law, 
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
+node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps)
 ```
 
@@ -835,6 +836,17 @@ The rules are in `js/engine/politics.js` (the player's career), `js/engine/polit
 `partyState` and `politics.approval`, and use the `approval()`, `reelect()`,
 `ousted()` and `resignOffice()` effects.
 
+## Work
+
+The Work button on the Work & School tab opens the occupation hub: current jobs (with pay, hours, performance,
+satisfaction and stress), the people at work, a job board of real openings at persistent employers, offers and
+recruiters, part-time work, a freelance practice, special careers (auditions, portfolios, selection boards), the
+military of the country you live in, qualifications, your working history with milestones, and retirement.
+
+There are 193 career tracks and 714 job titles in 19 families. A track is one entry in `js/data/occupations.js`.
+How it all fits together (employers, hiring, payroll, the time budget, workplaces, records across generations)
+is in [docs/CAREERS.md](docs/CAREERS.md), with an audit of which occupations from the brief live where.
+
 ## People you know
 
 Settings (on the title screen and at the bottom of the Self tab) holds a list
@@ -882,8 +894,9 @@ legacy, and a final pass that brought the game to over 200 scenes, rebalanced mo
 and promotions, and checked the layout at iPad and phone sizes. Since then: a modular
 avatar system with a live editor, wills with named heirs, skills to practise,
 orientation and gender identity, living conditions by country, royalty with a living royal house and a dynasty journal,
-politics, a list of people you know who are written into your lives, and
-moving saves between devices with a transfer code or cloud saves.
+politics, a list of people you know who are written into your lives,
+moving saves between devices with a transfer code or cloud saves, and a working life with persistent
+employers, coworkers, side jobs, freelancing and recruiters.
 
 The layout has been checked in a desktop browser emulating iPad and phone
 screens (portrait and landscape). It has not been run on a physical iPad.

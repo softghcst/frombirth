@@ -12,6 +12,8 @@
 //   { flag, guaranteed: true, level } is a standing offer that skips the process.
 // fame: { from: level index where fame starts, label }
 // stress: 0–3, wears on mood (and health at 3) every year.
+import { TRACKS, EXISTING, FAMILIES } from './occupations.js';
+
 const L = (...levels) => levels.map(([title, lo, hi, years, needs]) => ({ title, pay: [lo, hi], years, needs }));
 
 export const CAREER_CATEGORIES = [
@@ -28,7 +30,7 @@ const journeyman = (id, name) => ({
     [`Master ${name.toLowerCase()}`, 88, 120, 6], [`${name} contractor`, 110, 180, 0]),
 });
 
-export const CAREERS = [
+const BASE_CAREERS = [
   // ---------- Professional and office ----------
   { id: 'software', name: 'Software', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
     req: { degree: 'university', majors: ['computer_science', 'engineering', 'mathematics'], altCert: 'coding' },
@@ -181,7 +183,19 @@ export const CAREERS = [
     req: { degree: 'university', maxAge: 34, stats: { 'stats.health': 55 }, cleanRecord: true }, pensionAfter: 20,
     levels: L(['Lieutenant', 48, 60, 3], ['Captain', 66, 82, 4], ['Major', 88, 108, 5], ['Colonel', 115, 145, 6], ['General', 170, 230, 0]) },
 ];
+// The catalog (data/occupations.js) adds its tracks, and says what the older ones are like to work in.
+for (const c of BASE_CAREERS) Object.assign(c, EXISTING[c.id] ?? {});
+export const CAREERS = [...BASE_CAREERS, ...TRACKS];
+for (const c of CAREERS) {
+  c.family ??= c.category;
+  c.hours ??= c.type === 'freelance' ? 25 : 40;
+  c.schedule ??= c.type === 'freelance' ? 'flexible' : 'standard';
+  c.remote ??= 'none';
+  c.payModel ??= c.type === 'freelance' ? 'fees' : 'salary';
+  c.values ??= [];
+}
 export const CAREER_BY_ID = Object.fromEntries(CAREERS.map((c) => [c.id, c]));
+export { FAMILIES };
 
 export const BRANCHES = ['Army', 'Navy', 'Air Force'];
 export const RETIREMENT_AGE = 68;

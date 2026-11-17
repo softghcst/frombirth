@@ -16,6 +16,7 @@ import { inheritAppearance, inheritTalents, inheritTraits } from './genetics.js'
 import { roleLabel, spendAction, removeNpc } from './relationships.js';
 import { remember } from './conditions.js';
 import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
+import { placeAt } from './employers.js';
 import { MAJORS, MAJOR_BY_ID } from '../data/majors.js';
 import { TRADES, TRADE_BY_ID } from '../data/schools.js';
 import { ASPIRATIONS, HOBBIES, SCHOOL_MOMENTS, ADULT_MOMENTS, MAX_KIDS, MAX_PEOPLE } from '../data/npcLife.js';
@@ -24,7 +25,7 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 
 /** Who gets a full life. Friends get one too, but their families stay off-screen. */
-const LIVE = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'sibling', 'niece', 'inlaw', 'friend'];
+const LIVE = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'sibling', 'niece', 'inlaw', 'friend', 'coworker', 'boss', 'colleague'];
 /** Whose partners and children become people you can see. */
 const FAMILY_MAKERS = ['child', 'grandchild', 'sibling'];
 /** Whose big moments are reported in the player's journal. */
@@ -115,6 +116,8 @@ function careersFor(npc) {
   const open = CAREERS.filter((c) => {
     const r = c.req ?? {};
     if (c.category === 'performing') return false;
+    if (c.branchOnly || r.experience || r.programmes || c.agesOut) return false; // reached from inside a career, not hired into cold
+    if (r.altOnly && !rng.chance(0.15)) return false; // needs a certificate few people have
     if (c.type === 'military' && !rng.chance(0.08)) return false;
     if (r.programme && !has(r.programme)) return false;
     if (r.trade && e.trade !== r.trade) return false;
@@ -145,6 +148,12 @@ function startJob(npc, quiet = false) {
   const rung = back ? Math.max(0, last.level - 1) : career.type === 'fulltime' && career.doors?.some((d) => d.trade === npc.life.edu.trade) ? 1 : 0;
   const level = career.levels[rung];
   npc.life.job = { careerId: career.id, level: rung, title: level.title, salary: bandPay(level, rng.next() * 0.6), years: 0 };
+  // Someone the player knows works somewhere real, in the player's city unless they live abroad.
+  if (!quiet && !npc.flags.abroad && store.state?.player) {
+    const e = placeAt(career.id, store.state.player.countryId, store.state.player.city);
+    npc.life.job.employerId = e.id;
+    if (!e.staff.includes(npc.id)) e.staff.push(npc.id);
+  }
   npc.occupation = level.title.toLowerCase();
   if (!quiet) note(npc, `started work as ${an(npc.occupation)}`, npc.life.worked ? false : true);
   npc.life.worked = true;
