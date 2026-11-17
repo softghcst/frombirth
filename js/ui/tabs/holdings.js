@@ -1,5 +1,7 @@
 // Holdings tab: money, where you live, property, vehicles, investments and
 // loans, with everything you can do about each.
+import * as sys from '../../engine/systems.js';
+import { taxLine } from '../../engine/systems.js';
 import { cityLine } from '../../engine/cities.js';
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
@@ -338,13 +340,15 @@ export default {
       <div class="kv"><span>${esc(l.kind.charAt(0).toUpperCase() + l.kind.slice(1))} loan, ${l.yearsLeft} yr left</span>
         <span>${fmtMoney(l.principal, c)} ${l.kind !== 'student' || !p.education.enrolled ? `<button class="btn small" data-repay="${l.id}" ${f.cash < l.principal ? 'disabled' : ''} style="display:inline-flex;margin-left:6px">Pay off</button>` : ''}</span></div>`).join('');
 
+    const earned = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0);
+    const taxOn = earned > 0 ? sys.taxBreakdown(earned, c) : null;
     el.innerHTML = `
       <div class="card">
         <h3>Money</h3>
         ${kv([['Cash', fmtMoney(f.cash, c)], ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
         <div class="kv"><span>Net worth</span><span><strong>${fmtMoney(netWorth(store.state), c)}</strong></span></div>
         ${kv([['Where you live', living], ['Lifetime earnings', fmtMoney(f.lifetimeEarned, c)], ['Lifetime tax paid', fmtMoney(f.lifetimeTaxPaid, c)],
-    [`Income tax (${c.name})`, `${Math.round(c.incomeTax * 100)}%`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
+    [`Income tax (${c.name})`, taxLine(c)], ...(taxOn ? [['On what you earn now', `${Math.round(taxOn.effective * 100)}% overall, ${Math.round(taxOn.marginal * 100)}% on anything more you earn`]] : []), ['Health care', `${sys.cover().model.name}${sys.cover().covered ? '' : ' (you are not covered)'}`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
     ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}
       </div>

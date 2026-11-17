@@ -1,5 +1,6 @@
 // Flows for health care, cosmetic surgery, holidays, social media and
 // emigrating. The Self and Pursuits tabs call into these.
+import * as sys from '../engine/systems.js';
 import * as econ from '../engine/economy.js';
 import { player, country } from '../state.js';
 import { fmtMoney, theCountry, esc } from '../util.js';
@@ -25,18 +26,22 @@ async function report(api, r) {
 export async function seeDoctor(api) {
   const c = country();
   const list = med.treatable();
+  const k = sys.cover();
   const pick = await pickModal({
     title: 'The doctor',
-    body: player().legal.incarceration ? 'The prison doctor costs you nothing.' : c.freeHealthcare ? 'Health care here is public: you pay very little.' : 'Health care here is private: you pay the full cost.',
+    body: `${k.model.name}. ${k.how} You pay ${Math.round(k.share * 100)}% of a bill.`,
     options: [
       ...list.map((x) => ({ value: x.id, label: `Treat your ${x.name.replace(/^an? /, '')}`, disabled: x.seen || !x.affordable || (x.manage && x.managed),
         sub: x.manage && x.managed ? 'Under control. Nothing more to do.' : x.seen ? 'Already seen this year.'
           : `${x.cost ? fmtMoney(x.cost, c) : 'Free'}${x.manage ? '. Cannot be cured, only managed.' : '.'}` })),
       { value: 'checkup', label: 'Have a check-up', sub: `${fmtMoney(med.careCost(200), c)}. Makes illness less likely next year.` },
       { value: 'therapy', label: 'See a therapist', sub: `${fmtMoney(med.careCost(1200), c)} for a year of sessions. Lifts your mood.` },
+      ...(k.canBuy && !k.bought && !k.covered ? [{ value: 'insure', label: `Take out health insurance (${fmtMoney(k.price, c)} a year)`, sub: `You would pay ${Math.round(k.model.share * 100)}% of a bill, not all of it.` }] : []),
+      ...(k.bought ? [{ value: 'uninsure', label: 'Cancel your health insurance', sub: k.premium ? `It costs you ${fmtMoney(k.premium, c)} a year.` : 'Your job covers you now; this is not costing you anything.' }] : []),
     ],
   });
   if (!pick) return undefined;
+  if (pick === 'insure' || pick === 'uninsure') return report(api, sys.setCover(pick === 'insure'));
   if (pick === 'checkup') return report(api, med.checkUp());
   if (pick === 'therapy') return report(api, med.therapy());
   return report(api, med.seeDoctor(pick));
