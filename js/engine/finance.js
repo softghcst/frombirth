@@ -34,7 +34,7 @@ export function netWorth(state) {
   const assets = p.assets.reduce(
     (sum, a) => sum + a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0), 0);
   const debt = p.finance.loans.reduce((sum, l) => sum + l.principal, 0);
-  return Math.round(p.finance.cash + (state === store.state ? foreignWorth(p) : 0) + assets - debt);
+  return Math.round(p.finance.cash + (p.finance.savings ?? 0) + (state === store.state ? foreignWorth(p) : 0) + assets - debt);
 }
 
 /** Sells an asset in a hurry, for whatever it will fetch. */

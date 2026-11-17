@@ -393,3 +393,4 @@ button.dyn-event { cursor: pointer; }
 @media (max-width: 380px) { .hl-meter { grid-template-columns: 5.5em 1fr 4.5em; } }
 .tab-btn { position: relative; }
 .tab-btn.badge::after { content: ''; position: absolute; top: 6px; right: calc(50% - 16px); width: 9px; height: 9px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 2px var(--card); }
+.yu-line { margin: 2px 0 6px; padding-left: 12px; border-left: 3px solid var(--accent-soft); }

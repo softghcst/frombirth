@@ -46,6 +46,8 @@ node tests/cities.mjs          # cities and regions: prices, pay, regional law, 
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
+node tests/yearly.mjs          # one Age Up is one year: steps run once, limits, plans, the yearly update, a full year, three generations
+node tests/yearly-ui.mjs       # the yearly screens in a real browser at phone and desktop widths (needs Playwright; skips without it)
 node tests/health.mjs          # conditions and diagnosis, therapy and DBT, medication trials and switching, access, heredity, privacy, old saves
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
@@ -336,6 +338,15 @@ twenty-five years away. A scenario whose character dies early of something unrel
 
 The Living World engine is complete as a first version. `docs/WORLD_DATA.md` lists what is simplified, unverified or not
 modelled, which is where further work would go.
+
+## One year at a time
+
+Every choice happens in the year it is made; "Live another year" lives the
+year and then shows what it changed. Things you would otherwise repeat every
+year can be set once on the **Your life this year** card (Pursuits): a hobby
+focus, a posting routine, a savings goal, care for your animals, family
+traditions. See [`docs/YEARLY.md`](docs/YEARLY.md) for how it works and what
+is not built.
 
 ## Health, mental health and accessibility
 

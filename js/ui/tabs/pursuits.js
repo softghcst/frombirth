@@ -17,6 +17,7 @@ import * as net from '../../engine/social.js';
 import { canEmigrate } from '../../engine/emigration.js';
 import * as leisure from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
+import { thisYearCard, thisYearAction } from '../thisYear.js';
 
 async function report(api, r) {
   api.changed();
@@ -133,6 +134,7 @@ export default {
       const record = p.legal.record.filter((r) => r.convicted);
       const things = fun.activityOptions();
       el.innerHTML = `
+        ${thisYearCard()}
         ${things.length ? `<div class="card"><h3>Things to do</h3>
           <p class="muted" style="margin-bottom:10px">Each of these can be done once a year.</p>
           <div class="btn-stack">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
@@ -158,6 +160,8 @@ export default {
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
     }
     el.onclick = (e) => {
+      const plan = e.target.closest('[data-year-plan]')?.dataset.yearPlan;
+      if (plan) return thisYearAction(plan, api);
       const game = e.target.closest('[data-play]')?.dataset.play;
       if (game) return ({ blackjack: playBlackjack, horses: playHorses, lottery: playLottery })[game](api);
       if (e.target.closest('[data-crime]')) return commitCrime(api);

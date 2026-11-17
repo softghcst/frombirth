@@ -25,6 +25,7 @@ import { passOn } from './edlegacy.js';
 import { genomeOf } from './health/heredity.js';
 import { npcHealth } from './health/story.js';
 import { heirHealth, legacySummary } from './health/index.js';
+import { inheritPlans } from './plans.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -237,6 +238,7 @@ export function continueAs(npcId) {
   };
   store.state = next;
   heirHealth(next, h);
+  inheritPlans(op, player); // family traditions carry on
 
   // An heir who was living in another country carries on there.
   const abroad = typeof h.flags.abroad === 'string' && COUNTRIES[h.flags.abroad] ? h.flags.abroad : null;

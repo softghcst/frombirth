@@ -286,6 +286,8 @@ export function die(cause) {
   const p = player();
   const c = country();
   if (!p.alive) return store.lastObituary;
+  // Savings are the player's money like any other: they go into the estate.
+  if (p.finance.savings) { p.finance.cash += p.finance.savings; p.finance.savings = 0; }
   settleEstate(); // money held in other currencies is counted once, in one currency
   const plan = estatePlan(); // settled before anything else changes
   const summary = lifeSummary(p, plan);
