@@ -122,8 +122,13 @@ section(`world: ${everywhere} reforms across eight forty-year lives, ${total} of
   const opts = local.regionalLawOptions();
   check(opts.length >= 3 && opts.every((o) => REGIONAL_RULES.includes(o.rule) && o.outlook), 'only regional matters are offered, each with an outlook');
   check(!opts.some((o) => o.rule === 'sameSexMarriage' || o.rule === 'votingAge'), 'national law is not a region\'s to change');
-  let passed = false; let tries = 0;
-  for (; tries < 40 && !passed; tries++) { p.politics.regionalLawAge = null; p.politics.approval = 80; passed = local.putRegionalLaw('deathPenalty', false, 'public').ok; }
+  // Whether the assembly passes it depends on who sits in it. Some assemblies never will, however often they are asked:
+  // that is the game working. So if this one will not, the check moves to another Texas (another life), up to a few times.
+  let passed = false;
+  for (let life = 0; life < 6 && !passed; life++) {
+    if (life) p = governor('us', 'Austin');
+    for (let tries = 0; tries < 40 && !passed; tries++) { p.politics.regionalLawAge = null; p.politics.approval = 80; passed = local.putRegionalLaw('deathPenalty', false, 'public').ok; }
+  }
   check(passed && law.rule('deathPenalty') === false && law.source('deathPenalty').source === 'enacted region', 'Texas abolishes its death penalty');
   check(law.rule('deathPenalty', 'us', { region: 'florida' }) === true && law.rule('deathPenalty', 'us', { region: null }) === true, 'Florida, and the national law, are untouched');
   check(law.sheet('us').find((r) => r.id === 'deathPenalty').note.includes('region'), 'the law card says the region changed it');
