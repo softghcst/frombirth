@@ -1,4 +1,5 @@
 // Character creator. Every field can be left on "Random" / "Inherited".
+import { cityLine } from '../../engine/cities.js';
 import { esc } from '../../util.js';
 import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel, surnameFor } from '../../data/countries.js';
 import { BACKGROUNDS } from '../../data/traits.js';
@@ -85,7 +86,7 @@ export function renderCreator(app, hooks) {
               ${browse().map((g) => `<optgroup label="${esc(g.group)}">${[...g.places].sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>`).join('')}
             </select></div>
           <div class="field"><label for="f-city">City</label>
-            <select id="f-city"><option value="">Random</option></select></div>
+            <select id="f-city"><option value="">Random</option></select><p class="muted" data-city-note style="margin-top:4px"></p></div>
           <p class="muted" data-country-info>Each country has its own currency and taxes.</p>
           <div class="btn-stack"><button type="button" class="btn" data-browse-world>Explore the world</button></div>
         </div>
@@ -142,6 +143,8 @@ export function renderCreator(app, hooks) {
 
   q('[data-browse-world]').addEventListener('click', () => openWorld({ start: q('#f-country').value || undefined, choose: 'Be born here',
     onChoose: (id) => { q('#f-country').value = id; q('#f-country').dispatchEvent(new Event('change')); } }));
+  const cityNote = () => { const id = q('#f-country').value; const n = q('#f-city').value; q('[data-city-note]').textContent = id && n ? cityLine(id, n).replace(/^./, (x) => x.toUpperCase()) + '.' : ''; };
+  q('#f-city').addEventListener('change', cityNote);
   q('#f-country').addEventListener('change', (e) => {
     const c = COUNTRIES[e.target.value];
     q('#f-city').innerHTML = '<option value="">Random</option>'
@@ -186,6 +189,7 @@ export function renderCreator(app, hooks) {
     q('#f-country').value = c.id;
     q('#f-country').dispatchEvent(new Event('change'));
     q('#f-city').value = pickFrom(c.cities);
+    cityNote();
     setPick('gender', weightedKey({ female: 49, male: 49, nonbinary: 2 }));
     setPick('trans', Math.random() < 0.03 ? 'yes' : 'no');
     setPick('orientation', weightedKey(Object.fromEntries(ORIENTATIONS.map((o) => [o.id, o.weight]))));

@@ -1,5 +1,6 @@
 // Pursuits tab: things to do, social media, gambling, crime, moving abroad,
 // and, when it goes wrong, life inside.
+import { cityLine } from '../../engine/cities.js';
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import { canGamble } from '../../engine/gambling.js';
@@ -154,7 +155,7 @@ export default {
           <button class="btn danger" data-crime style="margin-top:10px">Commit a crime</button>
         </div>` : ''}
         ${socialCard()}
-        ${canEmigrate() ? '<div class="card"><h3>Abroad</h3><p class="muted" style="margin-bottom:10px">Sell up and start again in another country.</p><button class="btn" data-go="abroad">Move abroad</button></div>' : ''}`;
+        ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
     }
     el.onclick = (e) => {
       const game = e.target.closest('[data-play]')?.dataset.play;
@@ -163,7 +164,7 @@ export default {
       const todo = e.target.closest('[data-do]')?.dataset.do;
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;
-      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: leisure.moveAbroad })[go](api);
+      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: leisure.moveAbroad, city: leisure.moveCity })[go](api);
       const act = e.target.closest('[data-prison]')?.dataset.prison;
       if (!act) return undefined;
       if (act === 'gang') return joinGang(api);

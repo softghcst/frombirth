@@ -6,6 +6,7 @@
 //   reference   real-world facts about the place (data/world.js)
 //   game        how the game models living there (data/countries.js, living.js): estimates, not statistics
 //   yourWorld   what has happened there in this save (the political world, engine/polity.js): fiction
+import { cityLine } from './cities.js';
 import { sheet, reforms } from './rules.js';
 import { store } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel } from '../data/countries.js';
@@ -110,7 +111,7 @@ export function profile(id) {
   }
   const dyn = store.state?.dynasties?.[id];
   if (dyn && yourWorld) yourWorld.lines.push(['Royal house', `${dyn.name}${dyn.status === 'abolished' ? ' (the monarchy was abolished)' : ''}`]);
-  return { id, name: c.name, flag: c.flag, typeLabel: p.typeLabel, status: p.status, reference, game, school, politics, laws, lawChanges: store.state ? reforms(id).slice(0, 5).map((e) => `${e.year}: ${e.text}`) : [], cities: c.cities, capital: p.capital, spoken, yourWorld,
+  return { id, name: c.name, flag: c.flag, typeLabel: p.typeLabel, status: p.status, reference, game, school, politics, cityLines: c.cities.map((n) => [n, cityLine(id, n)]), laws, lawChanges: store.state ? reforms(id).slice(0, 5).map((e) => `${e.year}: ${e.text}`) : [], cities: c.cities, capital: p.capital, spoken, yourWorld,
     notes: ['Reference facts were compiled by hand and have not yet been checked line by line against official sources.',
       'Pay, prices, taxes, scores and the laws listed are simplified for play. They are not statistics or legal information.'] };
 }

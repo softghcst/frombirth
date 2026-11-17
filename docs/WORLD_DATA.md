@@ -55,13 +55,16 @@ shown on its profile.
 ## Known gaps (as of this pass)
 
 - The 48 newest places use the default school model, short name lists (8–10 names each) and first-estimate gameplay numbers.
-- No subdivisions (states, provinces) or city-level differences yet: a city is a name within its country.
+- City profiles (`js/data/cities.js`) are two multipliers, housing and pay, guessed by the author for twelve countries and
+  generic elsewhere (the capital, and the first city listed, assumed to be dearer and better paid). They come from no dataset.
+  Region names are real and unverified. Regions exist only where a city in the game sits in one; they have no government,
+  taxes or budget of their own. Safety, schools and health care do not vary by city. People the player knows are not paid by city.
 - Citizenship rules (`js/data/citizenship.js`) are three yes-or-no lists and a table of years: which places grant citizenship by
   birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
   conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.
 - Legal rules (`js/data/rules.js`) hold one value per place for fourteen questions. Ages are the common adult case and ignore
   exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
-  the value is the commonest one. No regional overrides are filled in yet. A player in office cannot yet propose these laws:
+  the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A player in office cannot yet propose these laws:
   they change only by the world's own slow reforms. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
   permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with

@@ -13,6 +13,7 @@ import { theCountry } from '../util.js';
 import { store, player, log } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { LIVING } from '../data/living.js';
+import { regionOf } from '../data/cities.js';
 import { RULES, PLACE_RULES, REGION_RULES, REFORM } from '../data/rules.js';
 
 const here = () => player().countryId;
@@ -31,7 +32,8 @@ export function source(id, placeId = here(), opts = {}) {
   if (!def) throw new Error(`Unknown rule: ${id}`);
   const enacted = book()[placeId]?.[id];
   if (enacted) return { value: enacted.value, source: 'enacted', year: enacted.year, by: enacted.by };
-  const region = opts.region ?? (placeId === store.state?.player?.countryId ? store.state.player.regionId : null);
+  const me = store.state?.player;
+  const region = opts.region !== undefined ? opts.region : placeId === me?.countryId ? me.regionId ?? regionOf(placeId, me.city) : null;
   const local = region ? REGION_RULES[`${placeId}/${region}`]?.[id] : undefined;
   if (local !== undefined) return { value: local, source: 'region' };
   if (PLACE_RULES[placeId]?.[id] !== undefined) return { value: PLACE_RULES[placeId][id], source: 'place' };

@@ -1,5 +1,6 @@
 // Property: what is for sale, mortgages, living in it, renovating, letting to
 // tenants, selling, and the yearly upkeep, wear and repayments.
+import { housingK } from './cities.js';
 import { rng } from '../rng.js';
 import { COUNTRIES } from '../data/countries.js';
 import { uid, clamp, fmtMoney, theCountry } from '../util.js';
@@ -22,9 +23,9 @@ export const propertyTaxOn = (a) => Math.round(a.value * placeOf(a).propertyTax)
 export const home = () => assetOf(player().homeId);
 
 /** What a property is worth today: the market, its own quality, and its condition. */
-function worth(typeId, quality, condition) {
+function worth(typeId, quality, condition, city = player().city) {
   const type = PROPERTY_BY_ID[typeId];
-  return Math.round(type.price * country().currency.scale * (country().living?.costK ?? 1) * market().housing * quality * (0.6 + 0.4 * condition / 100));
+  return Math.round(type.price * country().currency.scale * (country().living?.costK ?? 1) * market().housing * housingK(city) * quality * (0.6 + 0.4 * condition / 100));
 }
 
 const describe = (condition) => (condition >= 85 ? 'immaculate' : condition >= 65 ? 'in good order'
@@ -109,6 +110,7 @@ export function moveIn(id, quiet = false) {
   const a = assetOf(id);
   if (a.tenant) return result(false, 'There is a tenant living there.', 'neutral');
   if (isAbroad(a)) return result(false, `It is in ${theCountry(COUNTRIES[a.countryId].name)}. You would have to move back to live in it.`, 'neutral');
+  if (a.city && a.city !== p.city && country().cities.includes(a.city)) return result(false, `It is in ${a.city}. You would have to move there to live in it.`, 'neutral');
   p.homeId = id;
   p.flags.livesWithParents = false;
   const text = `You moved into the ${lower(a.name)}. No more rent.`;
@@ -129,7 +131,7 @@ export function renovate(id) {
   p.finance.cash -= cost;
   a.condition = clamp(a.condition + 35);
   a.quality *= 1.03;
-  a.value = worth(a.catalogId, a.quality, a.condition);
+  a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined);
   const text = `You spent ${fmtMoney(cost, country())} renovating the ${lower(a.name)}. It is now worth ${fmtMoney(a.value, country())}.`;
   log(text, 'system', 'good');
   return result(true, text);
@@ -220,7 +222,7 @@ export function repossess(a) {
 /** Damage to one particular property (storms, earthquakes, war). */
 export function damageProperty(a, amount) {
   a.condition = clamp(a.condition - amount);
-  a.value = worth(a.catalogId, a.quality, a.condition);
+  a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined);
 }
 
 export function hitProperty(which, { condition = 0, evict: out = false } = {}) {
@@ -229,7 +231,7 @@ export function hitProperty(which, { condition = 0, evict: out = false } = {}) {
   if (!a) return;
   a.condition = clamp(a.condition + condition);
   if (out) a.tenant = null;
-  a.value = worth(a.catalogId, a.quality, a.condition);
+  a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined);
 }
 
 /** Yearly: wear, value, upkeep, mortgage payments, and rent from tenants. */
@@ -243,7 +245,7 @@ export function tickProperties() {
     const type = PROPERTY_BY_ID[a.catalogId];
     const hard = a.tenant && a.tenant.quality < 35;
     a.condition = clamp(a.condition - rng.int(0, 2) - (hard ? rng.int(1, 4) : 0));
-    a.value = worth(a.catalogId, a.quality, a.condition);
+    a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined);
     f.cash -= Math.round(a.value * type.upkeep);
     const due = propertyTaxOn(a);
     if (due) { f.cash -= due; f.lifetimeTaxPaid += due; taxPaid += due; }

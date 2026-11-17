@@ -71,10 +71,25 @@ export const PLACE_RULES = {
 };
 
 /**
- * Where part of a place differs from the rest of it, keyed 'place/region'.
- * Filled in as states and provinces are added to the game.
+ * Where part of a place differs from the rest of it, keyed 'place/region'
+ * (region ids are in data/cities.js). Only regions that have a city in the
+ * game are listed. Unverified, like everything else here.
  */
-export const REGION_RULES = {};
+export const REGION_RULES = {
+  // United States: the death penalty is a matter for each state.
+  'us/new_york': { deathPenalty: false },
+  'us/illinois': { deathPenalty: false },
+  'us/washington': { deathPenalty: false },
+  'us/colorado': { deathPenalty: false },
+  // Canada: the drinking age is set by each province.
+  'ca/quebec': { drinkingAge: 18 },
+  'ca/alberta': { drinkingAge: 18 },
+  'ca/manitoba': { drinkingAge: 18 },
+  // India: set by each state.
+  'in/maharashtra': { drinkingAge: 25 },
+  // United Arab Emirates: set by each emirate.
+  'ae/sharjah': { alcohol: false },
+};
 
 /** Changes the world may make by itself over the years (engine/rules.js tickRules). */
 export const REFORM = {
