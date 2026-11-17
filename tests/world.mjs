@@ -142,6 +142,14 @@ try {
   console.log(`(skipped the lived-life check outside a browser: ${e.message.split('\n')[0]})`);
 }
 
+// Every place has been checked by scripts/verify-world.py, and nothing disagrees with its source unexplained.
+for (const p of Object.values(PLACES)) {
+  check(Object.keys(p.checked).length >= 8, `${p.id}: no verification results (run scripts/verify-world.py --write)`);
+  for (const [k, v] of Object.entries(p.checked)) check(v.status !== 'mismatch', `${p.id}.${k} disagrees with its source: ${v.note ?? ''}`);
+  check(p.verification !== 'compiled', `${p.id}: never verified`);
+}
+pass(`verification: ${Object.values(PLACES).filter((p) => p.verification === 'verified').length} places fully confirmed, ${Object.values(PLACES).filter((p) => p.verification === 'partly verified').length} partly, none disagreeing`);
+
 if (process.argv.includes('--report')) {
   console.log('\nWhat is still thin, by place (development report):');
   for (const c of COUNTRY_LIST) {
@@ -149,7 +157,7 @@ if (process.argv.includes('--report')) {
     if (c.cities.length < 4) thin.push(`${c.cities.length} cities`);
     if (!NAMES[c.id]) thin.push('short name lists');
     if (schoolModel(c.id) === schoolModel('zz')) thin.push('default school model');
-    if (PLACES[c.id].verification !== 'verified') thin.push('reference data unverified');
+    if (PLACES[c.id].verification !== 'verified') thin.push(`reference data ${PLACES[c.id].verification}`);
     if (NEW_PLACES[c.id]) thin.push('gameplay numbers are first estimates');
     console.log(`  ${c.flag} ${c.name}: ${thin.join('; ') || 'complete'}`);
   }

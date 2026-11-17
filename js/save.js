@@ -52,6 +52,20 @@ function migrate(state) {
   // chosen from the character's id so it is the same on every load.
   state.player.appearance = normalize(state.player.appearance, state.player.id);
   for (const n of Object.values(state.npcs)) if (n.role !== 'pet') n.appearance = normalize(n.appearance, n.id);
+  // Cities renamed when the world data was checked against its sources: older saves keep working.
+  const RENAMED = { do: { 'San Pedro': 'San Pedro de Macorís' } };
+  const rename = (o, countryId) => { const to = RENAMED[countryId]?.[o?.city]; if (to) o.city = to; };
+  rename(pl, pl.countryId);
+  for (const l of pl.locations ?? []) rename(l, l.countryId);
+  for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
+  // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
+  for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
+  for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);
+  for (const [key, ids] of Object.entries(state.jobs?.cities ?? {})) {
+    const [cc, city] = key.split('/'); const to = RENAMED[cc]?.[city];
+    if (to) { state.jobs.cities[`${cc}/${to}`] = ids; delete state.jobs.cities[key]; }
+  }
+  for (const b of pl.businesses ?? []) rename(b, b.countryId);
   // Careers before employers, side jobs and the time budget: fill in what the save lacks. Nothing is re-paid.
   ensureCareer(state.player.career);
   state.player.businesses ??= [];
