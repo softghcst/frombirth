@@ -27,6 +27,8 @@ import * as fame from './reputation.js';
 import * as throne from './reign.js';
 import { register as registerAnimal, recordHealth } from './animals.js';
 import { sceneChoice as animalChoice } from './animalCare.js';
+import { lifeChoice } from './animalLife.js';
+import { arcChoice } from './animalArcs.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -96,6 +98,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       }
       case 'animalHealth': recordHealth(ctx.cast[e.target], e.value); break;
       case 'animal': ctx.note = animalChoice(e.value, ctx.cast); break;
+      case 'animalLife': ctx.note = lifeChoice(e.value, ctx.cast); break;
+      case 'animalArc': ctx.note = arcChoice(e.value, ctx.cast); break;
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;

@@ -14,7 +14,7 @@ import { store } from '../state.js';
 import { rng } from '../rng.js';
 import { clamp, cap, localCost, fmtMoney, theCountry } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { SPECIES, speciesOf, SPACES, ROUTINES, VET_SERVICES, INSURANCE } from '../data/animals.js';
+import { SPECIES, speciesOf, SPACES, ROUTINES, VET_SERVICES, INSURANCE, PERMIT_FEE } from '../data/animals.js';
 import { PROPERTY_BY_ID } from '../data/properties.js';
 import { makeNpc } from './npcFactory.js';
 import * as zoo from './animals.js';
@@ -77,7 +77,7 @@ export function farmRescue(state = store.state) {
 const HISTORIES = ['Found as a stray, with no chip and nobody looking.', 'Given up when their owner moved somewhere that did not allow animals.', 'Their owner died, and nobody in the family could take them.',
   'Came in from a home with far too many animals.', 'Handed in by someone who could no longer afford the vet.', 'Born at the shelter.', 'Left behind when a tenancy ended.'];
 const FARM_HISTORIES = ['Came from a farm that was giving up.', 'A laying hen at the end of her working life.', 'Kept as a pet by someone who did not have the land.', 'Bottle-reared, and too tame to go back to a flock.', 'Found wandering on a road.'];
-const INTAKE = [['dog', 34], ['cat', 34], ['rabbit', 9], ['guinea_pig', 6], ['hamster', 4], ['rat', 3], ['budgie', 4], ['ferret', 3], ['parrot', 2]];
+const INTAKE = [['dog', 34], ['cat', 34], ['rabbit', 9], ['guinea_pig', 6], ['hamster', 4], ['rat', 3], ['mouse', 2], ['budgie', 4], ['ferret', 3], ['parrot', 2], ['leopard_gecko', 2], ['bearded_dragon', 2], ['corn_snake', 2], ['tortoise', 1]];
 
 /** The animals waiting at a shelter now. They are the same ones as last time, less any who found homes, plus new arrivals. */
 export function shelterAnimals(sh = shelter(), state = store.state) {
@@ -129,6 +129,84 @@ export function clinic(state = store.state) {
       vets: [{ ...lead, role: 'Veterinary surgeon' }, { ...localName(countryId, `${key}:vet2`), role: 'Veterinary surgeon' }, { ...localName(countryId, `${key}:nurse`), role: 'Veterinary nurse' }] };
   }
   return P.clinics[key];
+}
+
+// ---------- The people at these places ----------
+
+/**
+ * Someone who works at one of these places, as a person in the player's life: made the first time the
+ * player deals with them, and the same person every time after. Each place keeps who it has introduced.
+ * @param {object} place  a shelter, clinic, yard, school or training club
+ * @param {number} i      which of its people
+ */
+export function meetStaff(place, i = 0, state = store.state) {
+  const p = state.player;
+  const who = (place.staff ?? place.vets)?.[i];
+  if (!who) return null;
+  place.met ??= {};
+  let n = place.met[i] ? state.npcs[place.met[i]] : null;
+  if (!n) {
+    const [firstName, ...rest] = who.name.split(' ');
+    n = makeNpc({ role: 'friend', countryId: place.countryId, age: 26 + (T.hash(`${place.id}:${i}`) % 30), gender: who.gender, firstName, lastName: rest.join(' '), relationship: 35 });
+    n.occupation = who.role.toLowerCase(); n.flags.tag = `staff:${place.id}:${i}`; n.flags.title = `${who.role}, ${place.name}`;
+    // Someone met through work does not drift out of the record the way an old school friend does.
+    state.npcs[n.id] = n;
+    place.met[i] = n.id;
+  }
+  if (!n.alive) return null;
+  if (!p.npcIds.includes(n.id)) p.npcIds.push(n.id);
+  n.lastInteractionAge = p.age;
+  n.meters.relationship = clamp(n.meters.relationship + 2);
+  return n;
+}
+
+// ---------- Renting with animals ----------
+
+/**
+ * What the landlord allows, for the place the player rents now. Decided when they move in, and
+ * fixed for as long as they stay. Animals already in the house are allowed for: the player found a
+ * place that would take them, and pays a little more rent for it.
+ *   'any'    animals welcome, with a deposit      'small'  caged animals, fish and cats only
+ *   'none'   no animals at all
+ */
+export function rentalPolicy(state = store.state) {
+  const p = state.player;
+  if (p.homeId || p.flags.livesWithParents || p.legal?.incarceration) return null;
+  const key = `${p.countryId}:${p.city}:${p.flags.emigratedAge ?? 0}:${p.flags.rentalSince ?? 0}`;
+  if (p.flags.petPolicy?.key !== key) {
+    const roll = T.seeded(`rent:${p.id}:${key}`);
+    let kind = roll.weighted([['any', 4], ['small', 3], ['none', 3]], (x) => x[1])[0];
+    const here = zoo.householdAnimals(state).filter((a) => !a.board);
+    const needs = here.some((a) => !SMALL_OK(a)) ? 'any' : here.length ? 'small' : null;
+    const premium = needs && (kind === 'none' || (kind === 'small' && needs === 'any'));
+    if (premium) kind = needs;
+    p.flags.petPolicy = { key, kind, premium: !!premium, since: state.year };
+  }
+  return p.flags.petPolicy;
+}
+const SMALL_OK = (a) => speciesOf(a.speciesId).space === 'small' || a.speciesId === 'cat' || speciesOf(a.speciesId).group === 'reptile';
+export const PET_DEPOSIT = 300;
+export const PET_RENT = 360;
+
+/** The things an animal needs at home on the first day, by kind. Bought once, and kept. */
+const KIT = {
+  dog: ['a bed', 'bowls', 'a lead and collar', 'a crate'], cat: ['a bed', 'bowls', 'a litter tray', 'a scratching post'], rabbit: ['a large pen', 'a hay rack', 'a hide'],
+  guinea_pig: ['a large pen', 'a hay rack', 'two hides'], hamster: ['a large enclosure', 'a wheel', 'deep bedding'], rat: ['a tall cage', 'hammocks'], mouse: ['a tank with deep bedding', 'a wheel'],
+  ferret: ['a cage', 'hammocks', 'tunnels'], parrot: ['a large cage', 'perches', 'foraging toys'], budgie: ['a flight cage', 'perches'], fish: ['a tank', 'a filter', 'a heater'],
+  leopard_gecko: ['a vivarium', 'a heat mat', 'hides'], bearded_dragon: ['a large vivarium', 'a UV lamp', 'a basking lamp'], corn_snake: ['a secure vivarium', 'a heat mat', 'hides'], tortoise: ['a tortoise table', 'a UV lamp', 'an outdoor run'],
+  chicken: ['a fox-proof coop', 'a feeder'], duck: ['a duck house', 'a small pond'], goat: ['a field shelter', 'a hay rack'], sheep: ['a field shelter'],
+  horse: ['a headcollar', 'rugs', 'grooming kit', 'tack'], pony: ['a headcollar', 'rugs', 'grooming kit', 'tack'], donkey: ['a headcollar', 'a field shelter'],
+};
+const KIT_COST = { small: 120, room: 220, yard: 300, land: 900 };
+/** Sets a new animal up at home: the kit is bought once and goes in the player's things. */
+export function setUpHome(a, state = store.state) {
+  const p = state.player; const c = COUNTRIES[p.countryId];
+  const items = KIT[a.speciesId] ?? ['what it needs'];
+  const cost = localCost(KIT_COST[speciesOf(a.speciesId).space] ?? 200, c);
+  const tx = pay(state, Math.min(cost, Math.max(0, p.finance.cash)), 'supplies', a.id, `kit|${a.id}`);
+  if (!(p.inventory ?? []).some((x) => x.forAnimal === a.id)) (p.inventory ??= []).push({ id: `kit_${a.id}`, name: `${cap(list(items))}, for ${a.name}`, kind: 'animal', value: 0, forAnimal: a.id });
+  a.kit = items;
+  return tx.amount;
 }
 
 // ---------- Money ----------
@@ -242,6 +320,16 @@ export function adoptionCheck(animalId, { foster = false, state = store.state } 
   if (space && SPACES.indexOf(space) < SPACES.indexOf(need)) problems.push(`${a.name} needs ${SPACE_WORDS[need]}. Where you live now does not have it.`);
   const capNow = careCapacity(state);
   if (capNow.free < loadOf(a)) problems.push('Your household already has as many animals as it can look after properly.');
+  if (sp.permit.includes(p.countryId) && !foster) notes.push(`Keeping ${an(sp.name)} ${sp.name} in ${theCountry(c.name)} needs a licence: ${fmtMoney(localCost(PERMIT_FEE, c), c)}, applied for with the adoption.`);
+  if (sp.group === 'reptile') notes.push(`${cap(sp.name)}s need heat and light all their lives, and a vet who knows reptiles.${a.speciesId === 'tortoise' ? ' A tortoise may well outlive you: someone will need to take it on.' : ''}`);
+  const lease = rentalPolicy(state);
+  if (lease && ['companion', 'reptile'].includes(speciesOf(a.speciesId).group)) {
+    if (lease.kind === 'none') problems.push('Your tenancy does not allow animals. The landlord would not budge.');
+    else if (lease.kind === 'small' && !SMALL_OK(a)) problems.push(`Your landlord allows cats and caged animals only. ${a.name} would not be allowed.`);
+    else if (!foster && !(state.animals?.ledger ?? []).some((t) => t.k === `deposit|${lease.key}`)) notes.push(`Your landlord asks for a pet deposit of ${fmtMoney(localCost(PET_DEPOSIT, c), c)}.`);
+  }
+  const partner = T.livingBy(state, ['spouse', 'partner']).find((n) => n.flags.livesTogether || n.role === 'spouse');
+  if (partner && T.seeded(`objects:${partner.id}`).chance(0.25)) notes.push(`${partner.firstName} is not keen on another animal in the house, and will say so.`);
   if (!foster && p.finance.cash < fee + Math.round(yearly / 2)) problems.push(`You could not cover the ${fmtMoney(fee, c)} fee and the first months of food and supplies.`);
   for (const o of outlook(a, state)) notes.push(o.text);
   if (speciesOf(a.speciesId).group === 'equine') notes.push(`${a.name} would be a companion on your land, not a riding horse: ${zoo.pronoun(a)} needs shelter, a farrier and another equine for company.`);
@@ -275,11 +363,19 @@ export function adopt(animalId, state = store.state) {
   const p = state.player; const c = COUNTRIES[p.countryId];
   const sp = speciesOf(a.speciesId);
   pay(state, check.fee, 'adoption', a.id, `adoption|${a.id}|${state.year}`);
+  if (sp.permit.includes(p.countryId)) { pay(state, localCost(PERMIT_FEE, c), 'permit', a.id, `permit|${a.id}`); a.permit = { year: state.year, countryId: p.countryId }; }
+  const lease = rentalPolicy(state);
+  if (lease && lease.kind !== 'none' && speciesOf(a.speciesId).group === 'companion') pay(state, localCost(PET_DEPOSIT, c), 'deposit', null, `deposit|${lease.key}`);
   const npc = makeHandle(state, a, firstBondWith(a));
   const text = `You signed the papers at ${check.shelter.name} and came home with ${a.name}, ${an(zoo.stageOf(a, state))} ${zoo.stageOf(a, state)}${zoo.stageOf(a, state).includes(sp.name) ? '' : ` ${sp.name}`}. The fee was ${fmtMoney(check.fee, c)}.`;
   zoo.register(npc, { state, origin: 'shelter', fee: check.fee, shelterName: check.shelter.name, storyEntry: say(state, text, 'good') });
   a.adoptedFrom = check.shelter.id;
   introduce(state, a);
+  setUpHome(a, state);
+  meetStaff(check.shelter, 2, state); // the person who handles adoptions
+  // A partner who did not want another animal says so, once.
+  const partner = T.livingBy(state, ['spouse', 'partner']).find((n) => n.flags.livesTogether || n.role === 'spouse');
+  if (partner && T.seeded(`objects:${partner.id}`).chance(0.25)) { partner.meters.relationship = clamp(partner.meters.relationship - 6); say(state, `${partner.firstName} had said not yet. Now there is ${a.name}, and a conversation still to finish.`, 'bad'); }
   p.stats.mood = clamp(p.stats.mood + 8);
   return result(true, text, 'good', { animalId: a.id });
 }
@@ -328,6 +424,7 @@ export function foster(animalId, state = store.state) {
   const npc = makeHandle(state, a, firstBondWith(a));
   const text = `You agreed to foster ${a.name} for ${check.shelter.name}: a home for now, until a permanent one is found.`;
   zoo.register(npc, { state, foster: check.shelter, storyEntry: say(state, text, 'good') });
+  meetStaff(check.shelter, 2, state);
   state.player.flags.animalExperience = true;
   introduce(state, a);
   return result(true, text, 'good', { animalId: a.id });
@@ -453,7 +550,9 @@ export function vetVisit(animalId, serviceId, state = store.state) {
   const cl = clinic(state);
   const npc = state.npcs[a.id];
   const tx = pay(state, svc.price, 'vet', a.id, `vet|${a.id}|${svc.id}|${state.year}`);
-  const vet = cl.vets[T.hash(`${a.id}:${state.year}`) % 2];
+  const vi = a.vetIndex ??= T.hash(a.id) % 2; // an animal is seen by the same vet, year after year
+  const vet = cl.vets[vi];
+  meetStaff(cl, vi, state);
   const roll = T.seeded(`${a.id}:${svc.id}:${state.year}`);
   let note = { wellness: 'Yearly check-up. Nothing to worry about.', vaccination: 'Vaccinations given.', dental: 'Teeth checked and cleaned.', senior: 'Senior health screen. Results as expected for the age.' }[svc.id];
   let more = '';
@@ -629,6 +728,8 @@ export function tickCare(state = store.state) {
       if (p.finance.cash >= a.insurance.premium) { spent += pay(state, a.insurance.premium, 'insurance', a.id, `insurance|${a.id}|${state.year}`).amount; a.insurance.paidUntil = state.year; } else { delete a.insurance; say(state, `You could not pay ${a.name}'s insurance. The policy has lapsed.`, 'bad'); }
     }
   }
+  const lease = rentalPolicy(state);
+  if (lease?.premium && mine.some((a) => zoo.livesWithPlayer(a.id, state) && speciesOf(a.speciesId).group === 'companion')) spent += pay(state, Math.min(localCost(PET_RENT, c), Math.max(0, p.finance.cash)), 'pet rent', null, `petrent|${lease.key}|${state.year}`).amount;
   if (spent > 0) say(state, `Looking after ${list(mine.filter((a) => paysFor(a, state) || a.foster).map((a) => a.name))} cost ${fmtMoney(spent, c)} this year.`);
   if (short.length) say(state, `Money was too short to look after ${list(short.map((a) => a.name))} as well as you wanted. A food bank and the low-cost clinic made up some of the difference.`, 'bad');
 
@@ -707,7 +808,8 @@ export function auditCare(state = store.state) {
     keys.add(t.k); ids.add(t.id);
     if (!t.currency) bad.push(`${t.id}: no currency`);
     if (t.refOf) { const of = A.ledger.find((x) => x.id === t.refOf); if (!of) bad.push(`${t.id}: pays back a bill that does not exist`); else if (-t.amount > of.amount && t.kind !== 'prize') bad.push(`${t.id}: pays back more than the bill`); }
-    else if (t.amount < 0) bad.push(`${t.id}: money from nowhere`);
+    else if (t.amount < 0 && t.kind !== 'sale') bad.push(`${t.id}: money from nowhere`);
+    if (t.kind === 'sale' && ledgerOf(t.animalId, state).filter((x) => x.kind === 'sale').length > 1) bad.push(`${t.id}: the same animal sold twice`);
     if (t.kind === 'prize' && -t.amount > 400 * COUNTRIES[state.player.countryId].currency.scale * 3) bad.push(`${t.id}: a prize larger than any class pays`);
   }
   for (const pr of Object.values(A.pairs ?? {})) if (pr.value > pr.top) bad.push(`${pr.a}|${pr.b}: closer than they could be`);

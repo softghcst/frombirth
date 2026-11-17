@@ -17,6 +17,8 @@ const { saveGame, loadGame } = await import('../js/save.js');
 const { SPECIES, VET_SERVICES } = await import('../js/data/animals.js');
 const zoo = await import('../js/engine/animals.js');
 const care = await import('../js/engine/animalCare.js');
+/** A landlord who allows animals: most checks here are about something else. */
+const petFriendly = () => { const l = care.rentalPolicy(); if (l) l.kind = 'any'; };
 
 rng.seed(424242);
 const problems = []; const ok = [];
@@ -33,7 +35,7 @@ function adult(age = 30, cash = 200000, country = 'us') {
   const p = P(); p.age = age; p.birthYear = S().year; S().year += age;
   for (const n of Object.values(S().npcs)) n.age += age;
   p.flags.livesWithParents = false; p.education.enrolled = false; p.finance.cash = cash; p.finance.loans = [];
-  zoo.reconcile();
+  zoo.reconcile(); petFriendly();
   return p;
 }
 /** Gives the player a home of a given kind. */
@@ -100,8 +102,10 @@ let r = care.adopt(dog.id);
 let a = zoo.animalById(dog.id);
 check(r.ok && a === dog && S().npcs[dog.id]?.role === 'pet' && S().npcs[dog.id].firstName === before.name && S().npcs[dog.id].species === 'dog', 'the adopted animal is the one that was chosen: same record, same id');
 check(snap(a.appearance) === before.looks && snap(a.temperament) === before.temper && a.born === before.born, 'its looks, temperament and age did not change on the way home');
-check(cash0 - p.finance.cash === fee && care.ledgerOf(a.id).length === 1 && care.ledgerOf(a.id)[0].kind === 'adoption' && care.ledgerOf(a.id)[0].currency === 'USD', 'the fee is taken once, and is in the ledger with its currency');
-check(!care.adopt(dog.id).ok && cash0 - p.finance.cash === fee, 'it cannot be adopted, or paid for, twice');
+const paid = cash0 - p.finance.cash;
+check(paid === (S().animals.ledger ?? []).filter((t) => t.year === S().year).reduce((s, t) => s + t.amount, 0) && care.ledgerOf(a.id).filter((t) => t.kind === 'adoption').length === 1 && care.ledgerOf(a.id).find((t) => t.kind === 'adoption').amount === fee && care.ledgerOf(a.id).every((t) => t.currency === 'USD'), 'the fee is taken once, and everything paid is in the ledger with its currency');
+check(care.ledgerOf(a.id).some((t) => t.kind === 'supplies') && P().inventory.some((x) => x.forAnimal === a.id) && a.kit.length >= 2, 'a bed, bowls and the rest are bought once and kept in the player\'s things');
+check(!care.adopt(dog.id).ok && cash0 - p.finance.cash === paid, 'it cannot be adopted, or paid for, twice');
 check(a.family === true && zoo.ownerOf(a).id === p.id && zoo.primaryOf(a).id === p.id && zoo.livesWithPlayer(a.id) && a.ownerships[0].who.org && a.ownerships[0].to === S().year, 'it is the player\'s now; its time at the shelter is history');
 check(!care.shelterAnimals().some((x) => x.id === a.id) && zoo.albumAnimals().some((x) => x.id === a.id), 'it has left the shelter and joined the album');
 check(!!lastOf('adopted', a.id) && S().journal.some((j) => j.animal?.ev === lastOf('adopted', a.id).id) && lastOf('adopted', a.id).text.includes(care.shelter().name), 'the adoption is on record, told in the life story, naming the shelter');

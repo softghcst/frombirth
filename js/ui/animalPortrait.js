@@ -121,9 +121,30 @@ function ferret(ap, c1, c2, dark, eyes, old) {
     <ellipse cx="32" cy="43" rx="8" ry="7" fill="#f4efe6"/>${old ? '<ellipse cx="32" cy="43" rx="8" ry="7" fill="#fff" opacity=".4"/>' : ''}
     ${eye(24.500, 30, eyes, 2.400)}${eye(39.500, 30, eyes, 2.400)}<ellipse cx="32" cy="40" rx="2.400" ry="1.800" fill="#d98a8a"/><path d="M32 41.800v2.200" stroke="#3a302a" stroke-width="1.100" stroke-linecap="round"/>`;
 }
+function lizard(ap, c1, c2, dark, eyes, old, kind) {
+  const beard = kind === 'bearded_dragon' ? `<path d="M14 40 9 44l7 1-4 5 8-1-1 6 7-4 2 6 4-6 3 6 3-6 3 5 2-6 6 4-1-6 8 1-4-5 7-1-5-4z" fill="${dark}"/>` : '';
+  const spots = ap.pattern === 'patched' ? [[24, 22], [38, 20], [31, 30], [20, 32], [42, 31]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.400" fill="${shade(c1, -0.45)}"/>`).join('') : '';
+  return `${beard}<path d="M10 34c0-13 10-22 22-22s22 9 22 22c0 6-5 10-22 10S10 40 10 34z" fill="${c1}"/>${spots}
+    <path d="M14 38c6 3 30 3 36 0" stroke="${shade(c1, -0.3)}" stroke-width="1.400" fill="none" stroke-linecap="round"/>
+    ${eye(21, 27, eyes, 3.600, true)}${eye(43, 27, eyes, 3.600, true)}<circle cx="29" cy="35" r=".9" fill="#2a2420"/><circle cx="35" cy="35" r=".9" fill="#2a2420"/>`;
+}
+function snake(ap, c1, c2, dark, eyes) {
+  const band = ap.pattern !== 'solid' ? `<path d="M12 46c6-4 10-4 14 0M38 46c6-4 10-4 14 0M24 20c4-3 12-3 16 0" stroke="${c2}" stroke-width="4" fill="none" stroke-linecap="round"/>` : '';
+  return `<path d="M6 52c8-10 22-10 26-2s18 8 26-2" stroke="${c1}" stroke-width="12" fill="none" stroke-linecap="round"/>${band}
+    <ellipse cx="32" cy="26" rx="15" ry="11" fill="${c1}"/><path d="M22 20c4-3 16-3 20 0" stroke="${shade(c1, -0.3)}" stroke-width="1.500" fill="none"/>
+    ${eye(26, 25, eyes, 2.600, true)}${eye(38, 25, eyes, 2.600, true)}<path d="M32 36v4m0 0-2 3m2-3 2 3" stroke="#c8382c" stroke-width="1.200" fill="none" stroke-linecap="round"/>`;
+}
+function tortoise(ap, c1, c2, dark, eyes, old) {
+  const shell = shade(c1, -0.25);
+  const plates = [[32, 38], [22, 42], [42, 42], [27, 48], [37, 48]].map(([x, y]) => `<path d="M${x - 5} ${y}l5-4 5 4-2 5h-6z" fill="${shade(c1, 0.15)}" stroke="${shade(c1, -0.5)}" stroke-width=".8"/>`).join('');
+  return `<ellipse cx="32" cy="46" rx="22" ry="14" fill="${shell}"/>${plates}
+    <path d="M24 30c0-9 4-15 8-15s8 6 8 15c0 3-4 5-8 5s-8-2-8-5z" fill="#9a8f6e"/>${old ? '<path d="M24 30c0-9 4-15 8-15s8 6 8 15" fill="#fff" opacity=".2"/>' : ''}
+    <circle cx="28.500" cy="23" r="1.800" fill="#151210"/><circle cx="35.500" cy="23" r="1.800" fill="#151210"/><path d="M29 29c2 1.500 4 1.500 6 0" stroke="#3a302a" stroke-width="1.100" fill="none" stroke-linecap="round"/>`;
+}
 const as = (fn, kind) => (...args) => fn(...args, kind);
 const DRAW = { dog, cat, rabbit, parrot, hamster, guinea_pig: hamster, rat: hamster, budgie: parrot, ferret, fish, horse: as(horse, 'horse'), pony: as(horse, 'pony'), donkey: as(horse, 'donkey'),
-  chicken: as(fowl, 'chicken'), duck: as(fowl, 'duck'), goat, sheep };
+  chicken: as(fowl, 'chicken'), duck: as(fowl, 'duck'), goat, sheep, mouse: hamster,
+  leopard_gecko: as(lizard, 'gecko'), bearded_dragon: as(lizard, 'bearded_dragon'), corn_snake: snake, tortoise };
 const SCALE = { small: 0.86, medium: 0.94, large: 1 };
 
 /**

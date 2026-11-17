@@ -427,3 +427,4 @@ div.row { cursor: default; }
 .zoo-ped strong, .zoo-ped small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zoo-ped small { color: var(--muted); font-size: 0.75rem; }
 .zoo-modal .dyn-head, .zoo-modal .zoo-tabs, .zoo-modal .zoo-foot { flex: none; }
+.zoo-modal .row .main small { white-space: normal; }

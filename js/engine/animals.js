@@ -156,7 +156,27 @@ const homeWith = (state, r) => {
 };
 
 /** How close an animal and a person are, 0–100. Each pair has its own. */
-function setBond(a, r, value) { if (r?.id) a.bonds[r.id] = { name: r.name, value: Math.round(clamp(value)) }; }
+/**
+ * Each person's bond with an animal has three sides:
+ *   value    attachment: how much the animal loves them (the number shown as a percentage)
+ *   trust    whether it feels safe with them: built by gentle handling, lost to fear and anger
+ *   comfort  familiarity: how used it is to them, which comes from living together
+ */
+function setBond(a, r, value) {
+  if (!r?.id) return;
+  const had = a.bonds[r.id];
+  const v = Math.round(clamp(value));
+  a.bonds[r.id] = { name: r.name, value: v, trust: had?.trust ?? Math.round(clamp(v - 5)), comfort: had?.comfort ?? 30 };
+}
+/** Moves one or more sides of a bond. Creates the bond if there was none. */
+export function nudgeBond(a, id, d = {}) {
+  if (!id) return;
+  const b = a.bonds[id] ?? (a.bonds[id] = { name: id === store.state?.player.id ? fullName(store.state.player) : store.state?.npcs[id] ? fullName(store.state.npcs[id]) : '', value: 40, trust: 35, comfort: 30 });
+  b.trust ??= Math.round(clamp(b.value - 5)); b.comfort ??= 30;
+  for (const k of ['value', 'trust', 'comfort']) if (d[k]) b[k] = Math.round(clamp(b[k] + d[k]));
+  if (d.value && store.state?.player.id === id && store.state.npcs[a.id]) store.state.npcs[a.id].meters.relationship = b.value;
+}
+export const bondDetail = (a, id) => (a.bonds[id] ? { value: a.bonds[id].value, trust: a.bonds[id].trust ?? a.bonds[id].value, comfort: a.bonds[id].comfort ?? 30 } : null);
 function firstBond(a, r, lean = 0) {
   if (!r?.id || a.bonds[r.id]) return;
   const roll = seeded(`${a.id}:${r.id}`);
@@ -495,12 +515,13 @@ export function leaveToOrg(state, a, o = {}) {
   const p = state.player;
   const last = a.homes[a.homes.length - 1];
   const org = a.foster ? { id: null, org: a.foster.org, name: a.foster.name } : o.org ?? (ownerOf(a)?.org ? ownerOf(a) : { id: null, name: 'a rescue organisation' });
-  const keeper = o.placed ? { id: null, name: 'an adoptive family' } : org;
+  const keeper = o.keeper ?? (o.placed ? { id: null, name: 'an adoptive family' } : org);
   const sp = speciesOf(a.speciesId);
   const people = [ownerOf(a), primaryOf(a), ...helpersOf(a)].filter((r) => r?.id);
-  closeOpen(a.ownerships, state.year, o.why); a.ownerships.push({ who: keeper, from: state.year, to: null, how: o.placed ? 'adopted by a new family' : 'given into its care' });
+  // (a horse coming back from a lease is still the yard's: its ownership does not change)
+  if (!(keeper && keeper === ownerOf(a))) { closeOpen(a.ownerships, state.year, o.why); a.ownerships.push({ who: keeper, from: state.year, to: null, how: o.how ?? (o.placed ? 'adopted by a new family' : 'given into its care') }); }
   closeOpen(a.care, state.year, o.why); a.care.push({ who: keeper, role: 'primary', from: state.year, to: null, why: o.why });
-  setHome(state, a, o.placed ? { hh: 'elsewhere', key: 'elsewhere', label: 'A permanent home with a new family', city: last?.city ?? p.city, countryId: last?.countryId ?? p.countryId }
+  setHome(state, a, o.home ? { ...o.home } : o.placed ? { hh: 'elsewhere', key: 'elsewhere', label: o.homeLabel ?? 'A permanent home with a new family', city: last?.city ?? p.city, countryId: last?.countryId ?? p.countryId }
     : { hh: 'shelter', key: org.org ?? 'rescue', label: org.name.replace(/^a /, 'A '), city: last?.city ?? p.city, countryId: last?.countryId ?? p.countryId });
   if (a.foster) { a.fostered = { ...a.foster, until: state.year }; delete a.foster; }
   delete a.insurance; delete a.board;
@@ -518,7 +539,9 @@ export function settleOnDeath(state = store.state) {
   for (const a of allAnimals(state)) {
     if (a.status !== 'living') continue;
     // A fostered animal goes back to the organisation it belongs to, which finds it somewhere else.
-    if (a.foster && primaryOf(a)?.id === p.id) leaveToOrg(state, a, { why: 'death', text: `After ${fullName(p)}'s death, ${a.name} went back into the care of ${a.foster.name}.` });
+    // A leased horse goes back to the yard that owns it.
+    if (a.lease && primaryOf(a)?.id === p.id) { const l = a.lease; delete a.lease; leaveToOrg(state, a, { why: 'death', org: { id: null, org: l.yard, name: l.name }, keeper: ownerOf(a), how: 'back from lease', home: { hh: 'stable', key: l.yard, label: l.name, city: l.city, countryId: l.countryId }, sig: 2, text: `After ${fullName(p)}'s death, ${a.name} went back to ${l.name}.` }); a.forSale = true; }
+    else if (a.foster && primaryOf(a)?.id === p.id) leaveToOrg(state, a, { why: 'death', text: `After ${fullName(p)}'s death, ${a.name} went back into the care of ${a.foster.name}.` });
     else if (ownerOf(a)?.id === p.id || primaryOf(a)?.id === p.id) arrangeCare(state, a, p.id, 'death', true);
     else for (const c of a.care) if (c.to == null && c.who.id === p.id) { c.to = state.year; c.ended = 'death'; }
   }
@@ -620,6 +643,11 @@ export function tickAnimals(state = store.state) {
   A.tickYear = state.year;
   for (const a of Object.values(A.byId)) {
     if (a.status !== 'living') continue;
+    // Living under one roof makes an animal used to people.
+    for (const [id, b] of Object.entries(a.bonds)) {
+      const lives = id === state.player.id ? livesWithPlayer(a.id, state) : a.care.some((c) => c.to == null && c.who.id === id);
+      if (lives) b.comfort = Math.min(100, (b.comfort ?? 30) + 5);
+    }
     // The people who look after an animal grow closer to it, slowly.
     for (const c of a.care) {
       if (c.to != null || !c.who.id || isPlayer(state, c.who.id) || !a.bonds[c.who.id]) continue;
@@ -638,9 +666,13 @@ export function tickAnimals(state = store.state) {
 
 // ---------- Things done together ----------
 
+const CLASS_ONLY = { agility: { name: 'Agility course', learned: 'runs an agility course clear', difficulty: 3 }, scent: { name: 'Finding a hidden scent', learned: 'finds a hidden scent', difficulty: 2 } };
+
 /** What can be taught, and how far each has got. */
 export function trainingOf(a) {
-  return speciesOf(a.speciesId).training.map((s) => ({ ...s, progress: a.training[s.id]?.progress ?? 0, sessions: a.training[s.id]?.sessions ?? 0,
+  // Skills only a class teaches show once the animal has started on them.
+  const extra = Object.entries(CLASS_ONLY).filter(([k]) => a.training[k]).map(([id, x]) => ({ id, ...x, classOnly: true }));
+  return [...speciesOf(a.speciesId).training, ...extra].map((s) => ({ ...s, progress: a.training[s.id]?.progress ?? 0, sessions: a.training[s.id]?.sessions ?? 0,
     learnedYear: a.training[s.id]?.learnedYear ?? null, by: a.training[s.id]?.by ?? null }));
 }
 /** What the player can do with this animal now, beyond what they can do with anyone. */
@@ -650,7 +682,7 @@ export function animalActions(id, state = store.state) {
   const n = a && handle(state, a);
   if (!a || a.status !== 'living' || !n?.alive) return [];
   const out = [];
-  if (p.age >= 6 && trainingOf(a).some((s) => s.progress < 100)) out.push({ id: 'train', label: 'Practise training' });
+  if (p.age >= 6 && trainingOf(a).some((s) => s.progress < 100 && !s.classOnly)) out.push({ id: 'train', label: 'Practise training' });
   return out;
 }
 
@@ -675,8 +707,9 @@ export function train(id, skillId, state = store.state) {
   const temper = a.temperament.trainability ?? (100 - (a.temperament.independence ?? 50));
   // A horse is taught by someone who knows horses. Without that, it goes slowly.
   const handler = speciesOf(a.speciesId).group === 'equine' ? ((p.riding?.skills.handling ?? 10) - 45) * 0.3 : 0;
+  const trusts = ((bondDetail(a, p.id)?.trust ?? 50) - 50) * 0.15; // an animal learns from someone it trusts
   const gain = Math.max(8, Math.round(rng.int(28, 46) + (temper - 50) * 0.3 + (n.meters.relationship - 50) * 0.2 - skill.difficulty * 7
-    + (stage === 'senior' ? -6 : stage === 'adult' ? 0 : 5) + (p.age < 12 ? -6 : 0) + handler));
+    + (stage === 'senior' ? -6 : stage === 'adult' ? 0 : 5) + (p.age < 12 ? -6 : 0) + handler + trusts));
   t.progress = Math.min(100, t.progress + gain);
   t.sessions += 1; t.lastYear = state.year; t.by = ref(state, p.id);
   n.meters.relationship = clamp(n.meters.relationship + rng.int(2, 5));

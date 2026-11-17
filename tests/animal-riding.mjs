@@ -36,7 +36,7 @@ function person(age, cash = 400000) {
   const p = P(); p.age = age; p.birthYear = S().year; S().year += age;
   for (const n of Object.values(S().npcs)) n.age += age;
   p.flags.livesWithParents = age < 18; p.education.enrolled = false; p.finance.cash = cash; p.finance.loans = [];
-  zoo.reconcile();
+  zoo.reconcile(); const l = care.rentalPolicy(); if (l) l.kind = 'any';
   return p;
 }
 const house = (catalogId) => { const a = { id: `asset_${catalogId}`, kind: 'property', catalogId, name: `Test ${catalogId}`, value: 1, purchasePrice: 1, condition: 80 }; P().assets.push(a); P().homeId = a.id; zoo.reconcile(); };
@@ -180,7 +180,7 @@ clean('land and moving');
   check(!care.adoptionCheck(g.id).ok && q, 'a goat is not rehomed to a flat'); }
 p = person(35); house('country');
 const fr = care.farmRescue(); const farm = care.shelterAnimals(fr);
-check(fr.farm && farm.length >= 4 && farm.every((a) => ['farm', 'equine'].includes(SPECIES[a.speciesId].group)) && !care.shelterAnimals(care.shelter()).some((a) => SPECIES[a.speciesId].group !== 'companion'), 'the farm rescue holds farm animals; the pet shelter does not');
+check(fr.farm && farm.length >= 4 && farm.every((a) => ['farm', 'equine'].includes(SPECIES[a.speciesId].group)) && !care.shelterAnimals(care.shelter()).some((a) => !['companion', 'reptile'].includes(SPECIES[a.speciesId].group)), 'the farm rescue holds farm animals; the pet shelter does not');
 const hen = farm.find((a) => SPECIES[a.speciesId].space === 'yard') ?? farm[0];
 check(care.adoptionCheck(hen.id).ok && care.adopt(hen.id).ok && zoo.livesWithPlayer(hen.id), 'with the land for it, a farm animal can be taken on');
 check(!zoo.trainingOf(hen).some((s) => ['sit', 'stay', 'leash'].includes(s.id)) && care.yearlyCost(hen).total > 0, 'it is not trained like a dog, and it costs something to keep');

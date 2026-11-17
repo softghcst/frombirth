@@ -296,10 +296,12 @@ export function horseActions(a, state = store.state) {
   const npc = state.npcs[a.id];
   if (!isEquine(a) || a.status !== 'living' || !npc?.alive) return [];
   const out = [];
-  const mine = care.paysFor(a, state);
+  const mine = care.paysFor(a, state) || leasedBy(a, state);
   const far = zoo.homeOf(a)?.city !== p.city || zoo.homeOf(a)?.countryId !== p.countryId;
   if (mine && !far && backed(a) && a.speciesId !== 'donkey' && riderLevel(state) >= 25 && p.riding?.lastRideAge !== p.age) out.push({ id: 'ride', label: `Ride ${a.name}` });
-  if (mine && (far || (care.homeSpace(state) === 'land' && zoo.homeOf(a)?.hh === 'stable'))) out.push({ id: 'moveHorse', label: far ? `Bring ${a.name} to where you live now` : `Bring ${a.name} home to your own land` });
+  if (leasedBy(a, state)) out.push({ id: 'endLease', label: `End the lease on ${a.name}` });
+  if (care.paysFor(a, state) && sellable(a, state).ok) out.push({ id: 'sellHorse', label: `Sell ${a.name}` });
+  if (care.paysFor(a, state) && (far || (care.homeSpace(state) === 'land' && zoo.homeOf(a)?.hh === 'stable'))) out.push({ id: 'moveHorse', label: far ? `Bring ${a.name} to where you live now` : `Bring ${a.name} home to your own land` });
   return out;
 }
 /** What an old horse should be spared. */
@@ -333,6 +335,91 @@ export function ride(animalId, discipline = 'hacking', state = store.state) {
   return result(true, text, 'good');
 }
 
+// ---------- Leasing and selling ----------
+
+/** Whether the player rides this horse on a lease: it is the yard's, the player looks after it and rides it. */
+export const leasedBy = (a, state = store.state) => !!a?.lease && a.status === 'living' && zoo.primaryOf(a)?.id === state.player.id;
+/** What a year's lease costs: a share of the horse's price, plus its keep at the yard. */
+export const leaseFee = (a, state = store.state) => localCost(Math.round((a.price ?? 3000) * 0.18) + LIVERY_COST * stable(state).feeK, COUNTRIES[state.player.countryId]);
+/**
+ * Leases a horse that is for sale at the yard, a year at a time. The horse stays the yard's and lives
+ * there; the player rides it and looks after it. A way to have a horse without buying one.
+ */
+export function leaseHorse(animalId, state = store.state) {
+  const a = zoo.animalById(animalId, state);
+  const p = state.player; const c = COUNTRIES[p.countryId];
+  if (!a?.forSale || a.inCircle) return result(false, 'That horse is not available.', 'neutral');
+  const chk = horseCheck(animalId, state);
+  const blocking = chk.problems.filter((x) => !/costs/.test(x));
+  if (blocking.length) return result(false, blocking[0], 'neutral');
+  const fee = leaseFee(a, state);
+  if (p.finance.cash < fee) return result(false, `A year's lease on ${a.name} is ${fmtMoney(fee, c)}. You do not have it.`, 'neutral');
+  const st = stable(state);
+  care.pay(state, fee, 'lease', a.id, `lease|${a.id}|${state.year}`);
+  delete a.forSale;
+  const npc = makeNpc({ role: 'pet', countryId: p.countryId, lastName: p.lastName, age: zoo.ageOf(a, state), firstName: a.name, relationship: 35 });
+  npc.id = a.id; npc.species = a.speciesId; npc.lifespan = a.lifespan; if (a.sex) npc.gender = a.sex; delete npc.traits; delete npc.orientation;
+  state.npcs[npc.id] = npc; p.npcIds.push(npc.id);
+  a.family = true; a.inCircle = true; a.riders = true;
+  a.lease = { yard: st.id, name: st.name, city: st.city, countryId: st.countryId, since: state.year, fee };
+  const me = T.ref(state, p.id);
+  T.closeOpen(a.care, state.year, 'leased'); a.care.push({ who: me, role: 'primary', from: state.year, to: null, why: 'leased' });
+  T.setBond(a, me, 35);
+  if (chk.mismatch) a.mismatch = true;
+  const text = `You took ${a.name} on a year's lease from ${st.name}: ${fmtMoney(fee, c)}, livery included. ${cap(zoo.pronoun(a))} is still the yard's; for this year, ${zoo.pronoun(a)} is yours to ride.`;
+  T.record(state, { type: 'joined', animalId: a.id, people: [me], sig: 2, key: `lease:${p.id}`, storyEntry: say(state, text, 'good'), text: `${me.name} began leasing ${a.name} from ${st.name}.` });
+  care.meetStaff(st, 0, state);
+  return result(true, text, 'good', { animalId: a.id });
+}
+export function endLease(animalId, state = store.state) {
+  const a = zoo.animalById(animalId, state);
+  const p = state.player;
+  if (!leasedBy(a, state)) return result(false, 'You are not leasing that horse.', 'neutral');
+  const l = a.lease; delete a.lease;
+  const bond = state.npcs[a.id].meters.relationship;
+  const text = `The lease on ${a.name} ended, and ${zoo.pronoun(a)} stayed at ${l.name}.${bond >= 60 ? ` You still go and see ${zoo.pronoun(a, 'them')} with a pocket full of mints.` : ''}`;
+  zoo.leaveToOrg(state, a, { why: 'lease ended', org: { id: null, org: l.yard, name: l.name }, keeper: zoo.ownerOf(a), how: 'back from lease', home: { hh: 'stable', key: l.yard, label: l.name, city: l.city, countryId: l.countryId }, sig: 2, story: text,
+    text: `${a.name}'s lease to ${T.fullName(p)} ended; ${zoo.pronoun(a)} stayed at ${l.name}.` });
+  a.forSale = true;
+  return result(true, text, 'neutral');
+}
+
+/** What a horse would fetch from a private buyer now: less with age, more for schooling and results. */
+export function horseValue(a, state = store.state) {
+  const sp = speciesOf(a.speciesId);
+  const vals = Object.values(a.schooling ?? {}); const school = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+  const wins = (a.competitions ?? []).filter((x) => x.place <= 3).length;
+  const age = zoo.ageOf(a, state);
+  const base = (sp.fee * 3 + school * 70 + Math.min(wins, 5) * 200) * (age > 18 ? 0.3 : age > 14 ? 0.55 : age < 5 ? 0.7 : 1) * (backed(a) ? 1 : 0.6);
+  return localCost(Math.round(base / 50) * 50, COUNTRIES[state.player.countryId]);
+}
+export function sellable(a, state = store.state) {
+  if (!care.paysFor(a, state) || !isEquine(a)) return { ok: false, why: 'That is not yours to sell.' };
+  const bought = a.ownerships.find((o) => o.who.id === state.player.id)?.from ?? state.year;
+  if (state.year - bought < 1) return { ok: false, why: `You have only just got ${a.name}.` };
+  if (zoo.stageOf(a, state) === 'senior') return { ok: false, why: `Nobody buys a horse of ${a.name}'s age to ride. ${cap(zoo.pronoun(a))} has earned a quiet retirement.` };
+  // A buyer pays for what the horse is now, and a dealer's margin comes off. Selling never recovers more than was paid,
+  // with a little for real progress in its schooling: there is no living in buying horses to sell them.
+  const paid = care.ledgerOf(a.id, state).find((t) => t.kind === 'purchase')?.amount;
+  const value = Math.round(horseValue(a, state) * 0.8);
+  return { ok: true, price: paid != null ? Math.min(value, Math.round(paid * 0.9)) : value };
+}
+/** Sells a horse to a private buyer. The money comes once; the horse leaves the player's life and stays on the record. */
+export function sellHorse(animalId, state = store.state) {
+  const a = zoo.animalById(animalId, state);
+  const s = sellable(a, state);
+  if (!s.ok) return result(false, s.why, 'neutral');
+  const p = state.player; const c = COUNTRIES[p.countryId];
+  const buyer = care.localName(p.countryId, `buyer:${a.id}`).name;
+  const bond = state.npcs[a.id].meters.relationship;
+  care.pay(state, -s.price, 'sale', a.id, `sale|${a.id}`);
+  const text = `You sold ${a.name} to ${buyer} for ${fmtMoney(s.price, c)}.${bond >= 70 ? ' You did not stay to watch the trailer leave.' : ''}`;
+  zoo.leaveToOrg(state, a, { placed: true, why: 'sold', keeper: { id: null, name: buyer }, how: 'bought', homeLabel: `${buyer}'s yard`, story: text, tone: 'neutral', sig: 3,
+    text: `${T.fullName(p)} sold ${a.name} to ${buyer}.`, memories: bond >= 70 ? [T.memory(T.ref(state, p.id), `Selling ${a.name} was sensible. You still look for ${zoo.pronoun(a, 'them')} at shows.`, `${p.firstName} sold ${a.name}, and missed ${zoo.pronoun(a, 'them')}.`)] : [] });
+  p.stats.mood = clamp(p.stats.mood - Math.round(bond / 15));
+  return result(true, text, 'neutral');
+}
+
 // ---------- Competitions ----------
 
 /** The year's competitions near the player. Made once for each year; a class that has been run keeps its result. */
@@ -358,7 +445,7 @@ const showById = (id, state) => Object.values(care.places(state).shows).flatMap(
 /** The horses the player could take into a class: their own, or, at introductory level, the school horse they ride. */
 export function mounts(state = store.state) {
   const p = state.player;
-  const own = zoo.allAnimals(state).filter((a) => isEquine(a) && a.speciesId !== 'donkey' && care.paysFor(a, state) && backed(a) && zoo.homeOf(a)?.city === p.city);
+  const own = zoo.allAnimals(state).filter((a) => isEquine(a) && a.speciesId !== 'donkey' && (care.paysFor(a, state) || leasedBy(a, state)) && backed(a) && zoo.homeOf(a)?.city === p.city);
   const lesson = p.riding?.schoolHorse ? zoo.animalById(p.riding.schoolHorse, state) : null;
   return [...own, ...(lesson && lesson.status === 'living' && lesson.school === school(state).id ? [lesson] : [])];
 }
@@ -428,6 +515,12 @@ export function tickEquestrian(state = store.state) {
   A.horseYear = state.year;
   const p = state.player;
   // A horse left at a yard in a place the player has moved away from is still there, and still theirs.
+  // A lease runs a year at a time: renewed if there is the money, ended if not.
+  for (const a of zoo.allAnimals(state)) {
+    if (!leasedBy(a, state) || a.lease.since === state.year) continue;
+    const fee = leaseFee(a, state);
+    if (p.finance.cash >= fee) { care.pay(state, fee, 'lease', a.id, `lease|${a.id}|${state.year}`); a.lease.fee = fee; } else { endLease(a.id, state); say(state, `You could not renew the lease on ${a.name}.`, 'bad'); }
+  }
   for (const a of zoo.allAnimals(state)) {
     if (!isEquine(a) || a.status !== 'living' || !state.npcs[a.id] || !a.board) continue;
     const at = zoo.homeOf(a);

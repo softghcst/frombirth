@@ -5,6 +5,9 @@ import { tickRelationships } from './relationships.js';
 import { tickAnimals } from './animals.js';
 import { tickCare } from './animalCare.js';
 import { tickEquestrian } from './equestrian.js';
+import { tickLife } from './animalLife.js';
+import { tickBusinesses } from './animalBusiness.js';
+import { tickArcs } from './animalArcs.js';
 import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
@@ -117,6 +120,9 @@ export function advanceYear() {
   tickBreeding(); // young that are due
   tickCare(); // then what the animals cost, how they fared, and anything that needs a decision
   tickEquestrian();
+  tickLife(); // behaviour that begins, and what families argue about
+  tickBusinesses();
+  tickArcs(); // stories that take years
 
   const cause = rollDeath();
   if (cause) { die(cause); return; }

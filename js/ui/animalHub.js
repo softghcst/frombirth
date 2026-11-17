@@ -13,6 +13,9 @@ import * as zoo from '../engine/animals.js';
 import * as care from '../engine/animalCare.js';
 import * as horse from '../engine/equestrian.js';
 import * as stud from '../engine/animalBreeding.js';
+import * as life from '../engine/animalLife.js';
+import * as biz from '../engine/animalBusiness.js';
+import { arcsOf, ARC_NAMES } from '../engine/animalArcs.js';
 import { extend, ui, animalFace, openScreen } from './animals.js';
 import { messageModal, pickModal, confirmModal } from './modals.js';
 
@@ -46,6 +49,8 @@ function hub() {
     ${here.length ? go('training', 'Training', 'What each animal has learned', '🎓') : ''}
     ${go('riding', 'Equestrian', horse.rides() ? `${horse.levelName(horse.riderLevel())} rider` : horse.school().name, '🏇')}
     ${here.length ? go('vet', 'Veterinary', care.clinic().name, '🩺') : ''}
+    ${here.length ? go('activities', 'Animal activities', 'Outings, classes and the local pet show', '🎾') : ''}
+    ${p.age >= 16 ? go('business', 'Animal businesses', biz.myBusinesses().length ? biz.myBusinesses().map((b) => b.name).join(', ') : 'Pet care, grooming, kennels, training, riding, a smallholding', '💼') : ''}
     ${go('album', 'Animal memories', 'Our Animal Family: the album and the timeline', '📖')}
     <p class="muted zoo-note">Feeding, water, walks and the everyday are seen to without being asked. ${esc(c.name)} prices.</p>` };
 }
@@ -124,6 +129,59 @@ function vet() {
   }).join('') + '<p class="muted zoo-note">Open an animal to book a visit. Illness and emergencies are dealt with as they come.</p>' : '<p class="empty">None of your animals needs a vet you can book.</p>' };
 }
 
+// ---------- Activities ----------
+
+function activities() {
+  const here = mine();
+  const show = life.petShow();
+  const rows = here.map((a) => {
+    const outs = life.outingsFor(a.id).filter((o) => !o.done);
+    const classes = life.coursesFor(a.id).filter((x) => !x.why);
+    const b = life.behaviourOf(a);
+    const bits = [outs.length ? `${outs.length} outing${outs.length > 1 ? 's' : ''}` : '', classes.length ? `${classes.length} class${classes.length > 1 ? 'es' : ''} open` : '', b ? `working on: ${b.name.toLowerCase()}` : '', show.entries[a.id] ? `pet show: ${show.entries[a.id].place === 1 ? 'won' : `placed ${show.entries[a.id].place}`}` : ''].filter(Boolean);
+    return row(a, bits.join(' · ') || 'Nothing more to do this year', '', `data-animal="${a.id}"`);
+  }).join('');
+  return { title: 'Animal activities', sub: 'Open an animal to go out, join a class, or enter the show.', body: `
+    ${rows || '<p class="empty">No animals.</p>'}
+    <div class="card"><h3>${esc(show.name)}</h3>${kv([['Judge', esc(show.judge)], ['Entry', money(localCost(5, C()))], ['Classes', 'Waggiest tail, best rescue, most handsome cat, small animals']])}
+      <p class="muted zoo-note">For fun. Rosettes, not prize money.</p></div>
+    <div class="card"><h3>${esc(life.club().name)}</h3>${kv(life.club().staff.map((x) => [x.role, esc(x.name)]))}</div>
+    ${(() => { const running = here.flatMap((a) => arcsOf(a.id).map((x) => ({ a, x }))); return running.length ? `<div class="section-label">Stories in progress</div>${running.map(({ a, x }) => `<div class="kv"><span>${esc(a.name)}: ${esc(ARC_NAMES[x.type])}</span><span>${x.done ? `done ${x.done}` : `since ${x.started}`}</span></div>`).join('')}` : ''; })()}` };
+}
+
+// ---------- Businesses ----------
+
+function business() {
+  const c = C();
+  const mineB = biz.myBusinesses();
+  const past = Object.values(biz.businesses()).filter((b) => b.closed && b.owner.id === player().id);
+  return { title: 'Animal businesses', sub: 'Run with its own money, apart from yours.', body: `
+    ${mineB.map((b) => `<button class="row" data-do="go" data-screen="firm" data-id="${b.id}"><div class="avatar glyph">💼</div><div class="main"><strong>${esc(b.name)}</strong><small>${esc(biz.KINDS[b.kind].name)} · since ${b.founded} · reputation ${b.reputation}</small></div><div class="side">${money(b.cash)}</div></button>`).join('')}
+    <div class="section-label">Start something</div>
+    ${Object.entries(biz.KINDS).map(([k, x]) => { const can = biz.canStart(k); return `<button class="row" data-do="startBiz" data-kind="${k}" ${can.ok ? '' : 'disabled'}><div class="avatar glyph">${{ petcare: '🦮', grooming: '✂️', boarding: '🏠', training: '🎓', riding: '🏇', farm: '🐓' }[k]}</div>
+      <div class="main"><strong>${esc(x.name)}</strong><small>${can.ok ? `${money(localCost(x.start, c))} to open${x.premises ? `, ${money(localCost(x.premises, c))} a year in premises` : ''}` : esc(can.why)}</small></div></button>`; }).join('')}
+    ${past.length ? `<div class="section-label">In the past</div>${past.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${b.founded}–${b.closed.year}${b.closed.why !== 'closed' ? `: ${esc(b.closed.why)}` : ''}</span></div>`).join('')}` : ''}
+    <p class="muted zoo-note">A business keeps what it earns. You take money out as income, and pay tax on it.</p>` };
+}
+function firm(step) {
+  const b = biz.businesses()[step.params.id];
+  if (!b || b.closed) return { title: 'Closed', body: '<p class="empty">This business has closed.</p>' };
+  const c = C(); const k = biz.KINDS[b.kind];
+  const last = b.books.at(-1);
+  return { title: b.name, sub: `${k.name}, since ${b.founded}`, body: `
+    <div class="card">${kv([['In the business', money(b.cash)], ['Reputation', String(b.reputation)], k.farm ? ['Welfare of the animals', `${b.welfare}`] : ['Clients', String(b.clients)], ['Staff besides you', String(b.staff)], ['Pace', esc(biz.EFFORT[b.effort].name)]])}</div>
+    ${b.livestock ? `<div class="section-label">The animals</div>${Object.entries(b.livestock).map(([kind, n]) => `<div class="kv"><span>${esc(cap(biz.LIVESTOCK[kind].name))}</span><span>${n} <button class="btn small" data-do="stock" data-id="${b.id}" data-kind="${kind}" data-n="-1" ${n ? '' : 'disabled'} style="display:inline-flex">−</button> <button class="btn small" data-do="stock" data-id="${b.id}" data-kind="${kind}" data-n="1" style="display:inline-flex">+</button></span></div>`).join('')}` : ''}
+    ${b.books.length ? `<div class="section-label">The books</div>${[...b.books].reverse().slice(0, 6).map((y) => `<div class="kv"><span>${y.year}</span><span>${money(y.revenue)} in · ${money(y.costs)} out · <strong>${y.profit >= 0 ? '' : '−'}${money(Math.abs(y.profit))}</strong></span></div>`).join('')}` : '<p class="muted zoo-note">Its first year is still to come.</p>'}
+    <div class="btn-stack" style="margin-top:10px">
+      <button class="btn" data-do="pace" data-id="${b.id}">Change the pace</button>
+      <button class="btn" data-do="staff" data-id="${b.id}">Staff</button>
+      <button class="btn" data-do="drawBiz" data-id="${b.id}" ${b.cash > 0 ? '' : 'disabled'}>Take money out</button>
+      <button class="btn" data-do="investBiz" data-id="${b.id}">Put money in</button>
+      <button class="btn danger" data-do="closeBiz" data-id="${b.id}">Close the business</button>
+    </div>
+    ${last ? '' : ''}` };
+}
+
 // ---------- Riding ----------
 
 function riding(step) {
@@ -169,7 +227,8 @@ function horseForSale(step) {
     ${Object.entries(a.schooling ?? {}).map(([d, v]) => `<div class="kv"><span>${esc(DISCIPLINES[d].name)}</span><span>${v}</span></div>`).join('')}
     <div class="section-label">Buying</div>${kv([['Price', money(chk.price)], ['A year\'s keep', `about ${money(chk.yearly)}`]])}
     ${chk.problems.length ? `<div class="zoo-warn">${notes(chk.problems)}</div>` : ''}${notes(chk.notes)}
-    ${chk.ok ? `<div class="btn-stack"><button class="btn primary" data-do="buy" data-id="${a.id}">Buy ${esc(a.name)} (${money(chk.price)})</button></div>` : ''}` };
+    <div class="btn-stack">${chk.ok ? `<button class="btn primary" data-do="buy" data-id="${a.id}">Buy ${esc(a.name)} (${money(chk.price)})</button>` : ''}
+      ${!chk.problems.filter((x) => !/costs/.test(x)).length ? `<button class="btn" data-do="lease" data-id="${a.id}">Lease ${esc(a.name)} for a year (${money(horse.leaseFee(a))}, livery included)</button>` : ''}</div>` };
 }
 
 // ---------- Pedigree ----------
@@ -199,7 +258,7 @@ async function after(r, screenIfOk) {
 }
 
 extend({
-  screens: { hub, mine: myAnimals, adopt, waiting, care: careScreen, training, vet, riding, horse: horseForSale, pedigree: pedigreeScreen },
+  screens: { hub, mine: myAnimals, adopt, waiting, care: careScreen, training, vet, riding, horse: horseForSale, pedigree: pedigreeScreen, activities, business, firm },
   doers: {
     go: (d) => { ui.note(); if (d.screen === 'album') ui.nav.open('album'); else ui.nav.open(d.screen, d.id ? { id: d.id } : {}); ui.show(); },
     adopt: async (d) => {
@@ -233,10 +292,64 @@ extend({
       return after(horse.buyHorse(d.id), 'profile');
     },
     volunteer: async () => { ui.note(); ui.shut(); await tell(care.volunteer()); ui.show(); },
+    lease: async (d) => {
+      const a = zoo.animalById(d.id);
+      ui.shut();
+      const yes = await confirmModal({ title: `Lease ${a.name}?`, body: `${money(horse.leaseFee(a))} for a year, livery included. ${a.name} stays the yard's: you ride ${zoo.pronoun(a, 'them')} and look after ${zoo.pronoun(a, 'them')}. It renews each year until you end it.`, yes: 'Lease' });
+      if (!yes) return ui.show();
+      return after(horse.leaseHorse(d.id), 'profile');
+    },
+    startBiz: async (d) => {
+      const k = biz.KINDS[d.kind];
+      ui.shut();
+      const yes = await confirmModal({ title: `Open a ${k.name.toLowerCase()}?`, body: `${money(localCost(k.start, C()))} to set up, from your own money. After that it runs on what it earns. Some years it will not.`, yes: 'Open it' });
+      if (!yes) return ui.show();
+      ui.note(); const r = biz.start(d.kind); await tell(r);
+      if (r.ok) ui.nav.open('firm', { id: r.id });
+      return ui.show();
+    },
+    pace: async (d) => {
+      ui.shut();
+      const v = await pickModal({ title: 'How hard to work it', options: Object.entries(biz.EFFORT).map(([k, x]) => ({ value: k, label: x.name, sub: { easy: 'Fewer clients, slipping reputation. Suits someone with a job.', steady: 'A fair week of work.', push: 'More clients and a better name. It will wear you out.' }[k] })) });
+      if (v) await tell(biz.setEffort(d.id, v));
+      return ui.show();
+    },
+    staff: async (d) => {
+      ui.shut();
+      const v = await pickModal({ title: 'Staff', body: `Each person costs about ${money(localCost(22000, C()))} a year, and lets the business take on more.`, options: [0, 1, 2, 3, 4].map((n) => ({ value: String(n), label: n ? `${n} ${n === 1 ? 'person' : 'people'}` : 'Just you' })) });
+      if (v != null) await tell(biz.setStaff(d.id, Number(v)));
+      return ui.show();
+    },
+    drawBiz: async (d) => {
+      const b = biz.businesses()[d.id];
+      ui.shut();
+      const v = await pickModal({ title: 'Take money out', body: `${b.name} has ${money(b.cash)}. What you take is taxed as income.`, options: [0.25, 0.5, 1].map((f) => ({ value: String(Math.floor(b.cash * f)), label: `${f === 1 ? 'All of it' : `${f * 100}%`}: ${money(Math.floor(b.cash * f))}` })) });
+      if (v) await tell(biz.draw(d.id, Number(v)));
+      return ui.show();
+    },
+    investBiz: async (d) => {
+      ui.shut();
+      const cash = player().finance.cash;
+      const v = await pickModal({ title: 'Put money in', options: [0.05, 0.1, 0.25].map((f) => ({ value: String(Math.floor(cash * f)), label: money(Math.floor(cash * f)), disabled: cash <= 0 })) });
+      if (v) await tell(biz.invest(d.id, Number(v)));
+      return ui.show();
+    },
+    closeBiz: async (d) => {
+      ui.shut();
+      const yes = await confirmModal({ title: 'Close the business?', body: 'Whatever is left is paid out to you, taxed as income. This cannot be undone.', yes: 'Close it', danger: true });
+      if (!yes) return ui.show();
+      await tell(biz.close(d.id));
+      ui.nav.back(); return ui.show();
+    },
+    stock: async (d) => { ui.note(); const r = biz.stock(d.id, d.kind, Number(d.n)); if (!r.ok) { ui.shut(); await tell(r); } ui.show(); },
     enter: async (d) => { ui.note(); ui.shut(); await tell(horse.enterShow(d.show, d.id)); ui.show(); },
   },
   actions: (a) => [
     ...horse.horseActions(a),
+    ...(life.outingsFor(a.id).some((o) => !o.done) ? [{ id: 'outing', label: 'Go out together' }] : []),
+    ...(life.coursesFor(a.id).length ? [{ id: 'classes', label: 'Classes at the training club' }] : []),
+    ...(life.behaviourOf(a) && a.behaviour.helpedYear !== store.state.year && player().age >= 14 ? [{ id: 'behaviour', label: `Help with: ${life.behaviourOf(a).name.toLowerCase()}` }] : []),
+    ...(zoo.livesWithPlayer(a.id) && speciesOf(a.speciesId).group === 'companion' && a.speciesId !== 'fish' && !life.petShow().entries[a.id] ? [{ id: 'petshow', label: 'Enter the local pet show' }] : []),
     ...(stud.BREEDING[a.speciesId] && a.sex === 'female' && care.paysFor(a) && !a.pregnancy && player().age >= 18 ? [{ id: 'breed', label: `Breed from ${a.name}` }] : []),
     ...(a.pregnancy ? [{ id: 'expecting', label: `${a.name} is expecting, due ${a.pregnancy.due}` }] : []),
     ...(stud.parentage(a) !== 'unknown' || stud.offspringOf(a.id).length ? [{ id: 'pedigree', label: 'Family tree' }] : []),
@@ -247,6 +360,19 @@ extend({
       return d ? horse.ride(a.id, d) : null;
     },
     moveHorse: async (a) => horse.moveHorse(a.id),
+    endLease: async (a) => ((await confirmModal({ title: `End the lease on ${a.name}?`, body: `${a.name} stays at ${a.lease.name}.`, yes: 'End it' })) ? horse.endLease(a.id) : null),
+    sellHorse: async (a) => { const s = horse.sellable(a); return (await confirmModal({ title: `Sell ${a.name}?`, body: `A private buyer would pay about ${money(s.price)}. ${a.name} would leave your life.`, yes: `Sell ${a.name}`, danger: true })) ? horse.sellHorse(a.id) : null; },
+    outing: async (a) => { const o = await pickModal({ title: `Out with ${a.name}`, options: life.outingsFor(a.id).map((x) => ({ value: x.id, label: x.label, disabled: x.done, sub: x.done ? 'Done this year' : '' })) }); return o ? life.outing(a.id, o) : null; },
+    classes: async (a) => {
+      const k = await pickModal({ title: life.club().name, body: `Run by ${life.club().staff[0].name}. A year of weekly classes.`, options: life.coursesFor(a.id).map((x) => ({ value: x.id, label: `${x.name} (${money(x.price)})`, sub: x.why || x.blurb, disabled: !x.ok })) });
+      return k ? life.enrol(a.id, k) : null;
+    },
+    behaviour: async (a) => {
+      const b = life.behaviourOf(a);
+      const h = await pickModal({ title: b.name, body: `${a.name} ${b.text}. About ${b.progress}% of the way past it.`, options: Object.entries(life.HELP).map(([k, x]) => ({ value: k, label: x.name, sub: x.cost ? money(localCost(x.cost, C())) : k === 'scold' ? 'It will feel better for a moment.' : 'Free, and slow.' })) });
+      return h ? life.helpWith(a.id, h) : null;
+    },
+    petshow: async (a) => life.enterPetShow(a.id),
     breed: async (a) => {
       const sires = stud.sires(a.id);
       const id = await pickModal({ title: `A sire for ${a.name}`, body: 'Young that cannot stay will go to homes chosen with care. Nothing is sold.',

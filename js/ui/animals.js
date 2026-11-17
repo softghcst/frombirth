@@ -191,7 +191,9 @@ function profile(step) {
       const carers = zoo.caregiversOf(a);
       const others = Object.entries(a.bonds).filter(([id]) => !carers.some((c) => c.who.id === id)).map(([id, b]) => ({ who: { id, name: b.name }, bond: b.value, other: true }));
       const row = (c) => {
-        const what = c.other ? 'Family' : [owner?.id && c.who.id === owner.id ? (alive ? 'Owner' : 'Owner at the end') : '', c.role === 'primary' ? (c.current ? 'Main caregiver' : 'Was the main caregiver') : c.current ? 'Helps with care' : 'Helped with care', c.current ? '' : span(c)].filter(Boolean).join(' · ');
+        const d = c.who.id ? zoo.bondDetail(a, c.who.id) : null;
+        const what = [c.other ? 'Family' : [owner?.id && c.who.id === owner.id ? (alive ? 'Owner' : 'Owner at the end') : '', c.role === 'primary' ? (c.current ? 'Main caregiver' : 'Was the main caregiver') : c.current ? 'Helps with care' : 'Helped with care', c.current ? '' : span(c)].filter(Boolean).join(' · '),
+          d ? `trust ${d.trust} · used to them ${d.comfort}` : ''].filter(Boolean).join(' · ');
         const inner = `${personFace(c.who)}<div class="main"><strong>${you(c.who) ? 'You' : esc(c.who.name)}</strong><small>${esc(what)}</small></div>
           ${c.bond != null ? `<div class="side">${c.bond}%<div class="mini"><i class="fill ${band(c.bond)}" style="width:${c.bond}%"></i></div></div>` : ''}`;
         return known(c.who) ? `<button class="row" data-person="${c.who.id}">${inner}</button>` : `<div class="row">${inner}</div>`;
@@ -207,6 +209,10 @@ function profile(step) {
     alive && zoo.helpersOf(a).length ? ['Also helping', `<span class="chips end">${zoo.helpersOf(a).map((r) => personChip(r)).join('')}</span>`] : null,
     [alive ? 'Lives at' : 'Last home', home ? `${esc(home.label)}${place(home) ? `, ${esc(place(home))}` : ''}` : '']])}
       <p class="muted zoo-note">Who owns an animal, who looks after it day to day, and where it lives are kept as three separate things.</p>
+      ${a.kit?.length ? `<div class="kv"><span>At home</span><span>${esc(cap(a.kit.join(', ')))}</span></div>` : ''}
+      ${a.permit ? `<div class="kv"><span>Licence</span><span>Held since ${a.permit.year}</span></div>` : ''}
+      ${a.lease ? `<div class="kv"><span>Leased from</span><span>${esc(a.lease.name)} · ${fmtMoney(a.lease.fee, COUNTRIES[player().countryId])} a year</span></div>` : ''}
+      ${a.visits ? `<div class="kv"><span>Also sees</span><span>${esc(a.visits.who.name)}, every other weekend</span></div>` : ''}
       ${home && home.key !== 'rescue' && !home.key.startsWith('with:') ? `<div class="btn-stack"><button class="btn" data-chronicle="${esc(home.key)}">The chronicle of this house</button></div>` : ''}
       ${(() => {
     const c = COUNTRIES[player().countryId];
@@ -273,7 +279,11 @@ function profile(step) {
   } else if (!alive && !a.memorial && player().age >= 5) acts.push({ id: 'memorial', label: 'Make a memorial' });
   const away = alive && !npc ? `<p class="muted zoo-note">${esc(a.name)} is no longer in your life. ${esc(cap(zoo.pronoun(a)))} is with ${esc(main?.name ?? 'someone else')} now.</p>` : '';
 
-  return { title: `${alive ? '' : '† '}${a.name}`, sub: '', tabs: TABS, tab, body: `${head}${(sections[tab] ?? sections.overview)()}
+  // A horse with a show record has a page for it.
+  sections.shows = () => `${(a.competitions ?? []).length ? [...a.competitions].reverse().map((e) => `<div class="kv"><span>${e.year} · ${esc(e.rider?.name ?? '')}</span><span>${e.place} of ${e.of}: ${esc(e.name)}</span></div>`).join('') : '<p class="empty">No shows yet.</p>'}
+    ${a.retired ? `<p class="muted zoo-note">Retired from competition in ${a.retired}.</p>` : ''}`;
+  const tabs = (a.competitions ?? []).length ? [...TABS, ['shows', 'Competitions']] : TABS;
+  return { title: `${alive ? '' : '† '}${a.name}`, sub: '', tabs, tab, body: `${head}${(sections[tab] ?? sections.overview)()}
     ${away}${acts.length ? `<div class="section-label">${alive ? 'Together' : 'Remembering'}</div><div class="btn-stack">${acts.map((x) => `<button class="btn ${x.danger ? 'danger' : ''}" data-act="${x.id}">${esc(x.label)}</button>`).join('')}</div>` : ''}` };
 }
 

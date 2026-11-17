@@ -50,5 +50,5 @@ export function backLabel(step, nameOf = () => '') {
   return { archive: 'Back to the family archive', album: 'Back to Our Animal Family', chronicle: 'Back to the house chronicle', story: 'Back to the life story',
     profile: `Back to ${nameOf(step.params.animalId) || 'the profile'}`, hub: 'Back to Pets & Animals', mine: 'Back to My animals', adopt: 'Back to Adopt & rescue',
     waiting: 'Back to the shelter', care: 'Back to Animal care', training: 'Back to Training', vet: 'Back to the vet', riding: 'Back to Equestrian', horse: 'Back to the horse',
-    pedigree: 'Back to the family tree' }[step.screen] ?? 'Back';
+    pedigree: 'Back to the family tree', activities: 'Back to Animal activities', business: 'Back to Animal businesses', firm: 'Back to the business' }[step.screen] ?? 'Back';
 }

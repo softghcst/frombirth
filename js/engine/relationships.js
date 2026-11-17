@@ -136,6 +136,11 @@ const PET_TIME = {
   duck: ['Sit out with them', 'You refilled the pool. {name} approved, loudly.'],
   goat: ['Spend time together', '{name} stood on something to be level with you, and ate your sleeve.'],
   sheep: ['Spend time together', '{name} let you scratch the one place a sheep cannot reach.'],
+  mouse: ['Sit with them', '{name} ran up your sleeve and out of your collar, twice.'],
+  leopard_gecko: ['Spend a quiet hour', '{name} sat on your hand, warmed up, and licked your thumb thoughtfully.'],
+  bearded_dragon: ['Spend a quiet hour', '{name} lay along your arm under the lamp like a small, judgemental pharaoh.'],
+  corn_snake: ['Spend a quiet hour', '{name} explored the length of both your arms, very slowly.'],
+  tortoise: ['Sit out with them', 'You and {name} spent the afternoon in the garden. {name} covered almost a metre.'],
   other: ['Spend time together', 'You spent time with {name}.'],
 };
 

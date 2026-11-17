@@ -5,6 +5,10 @@ import { st, hid, rel, any, need, addNpc } from './helpers.js';
 
 /** A choice carried out by the care engine: see sceneChoice in engine/animalCare.js. */
 const animal = (value) => ({ type: 'animal', value });
+/** A choice carried out by engine/animalLife.js. */
+const life = (value) => ({ type: 'animalLife', value });
+/** A choice in a story that takes years (engine/animalArcs.js). */
+const arc = (value) => ({ type: 'animalArc', value });
 
 export default [
   {
@@ -80,6 +84,76 @@ export default [
     choices: [
       { label: 'Stop and talk', outcomes: [any('It turns out {walker} lives two streets away. You fall into walking the same way round.', 'good', addNpc('friend', 'walker', { ageOffset: 2 }), st('mood', 4))] },
       { label: 'Nod and keep walking', outcomes: [any('{pet} looks back over a shoulder all the way to the gate.', 'neutral')] },
+    ],
+  },
+  {
+    id: 'animal_behaviour', category: 'animals', ageRange: [14, 120], queuedOnly: true, cooldown: 0, cast: { pet: 'pet' },
+    text: '{pet} {problem}. It is not spite: something is wrong for {pet}, and it is not going away on its own.',
+    choices: [
+      { label: 'Book a qualified behaviourist ({$220})', requires: [need('cashBase', '>=', 220)], outcomes: [any('The behaviourist watches for an hour and gives you a plan. Most of it is about you.', 'good', life({ do: 'behaviour', how: 'trainer' }))] },
+      { label: 'Ask the vet whether something hurts ({$90})', requires: [need('cashBase', '>=', 90)], outcomes: [any('The vet checks {pet} over properly.', 'neutral', life({ do: 'behaviour', how: 'vet' }))] },
+      { label: 'Change the house: a safe space, a routine, more to do', outcomes: [any('You rearrange a corner, set the days to a pattern, and find {pet} more to do.', 'good', life({ do: 'behaviour', how: 'environment' }))] },
+      { label: 'Tell {pet} off', outcomes: [any('You lose your temper.', 'bad', life({ do: 'behaviour', how: 'scold' }))] },
+    ],
+  },
+  {
+    id: 'animal_custody', category: 'animals', ageRange: [18, 120], queuedOnly: true, cooldown: 0, cast: { pet: 'pet', ex: 'ex' },
+    text: 'You and {ex} have split everything else. That leaves {pet}, who loves you both and does not know anything has changed.',
+    choices: [
+      { label: '{pet} stays with you', outcomes: [any('You say it before {ex} can.', 'neutral', life({ do: 'custody', choice: 'keep' }))] },
+      { label: '{pet} stays with you, and sees {ex} every other weekend', outcomes: [any('You suggest it carefully. {ex} says yes before you have finished.', 'good', life({ do: 'custody', choice: 'share' }))] },
+      { label: 'Let {pet} go with {ex}', outcomes: [any('You look at {pet}, and then at {ex}, and say it.', 'neutral', life({ do: 'custody', choice: 'give' }))] },
+    ],
+  },
+  {
+    id: 'arc_first_pet', category: 'animals', ageRange: [6, 15], queuedOnly: true, cooldown: 0, cast: { pet: 'pet' },
+    text: '{pet} has been part of the house for a year. Somebody has to fill the water bowl every morning, and it has been your mother more often than you.',
+    choices: [
+      { label: 'Make it your job, every day', outcomes: [any('You set an alarm. {pet} starts waiting for you instead.', 'good', arc({ do: 'first', how: 'chores' }), hid('discipline', 2))] },
+      { label: 'Help when you remember', outcomes: [any('You help when you remember, which is some of the time.', 'neutral', arc({ do: 'first', how: 'sometimes' }))] },
+    ],
+  },
+  {
+    id: 'arc_rescue_nervous', category: 'animals', ageRange: [12, 120], queuedOnly: true, cooldown: 0, cast: { pet: 'pet' },
+    text: 'A year on, {pet} still flinches at sudden sounds and watches you from doorways. Whatever happened before, it has not quite let go.',
+    choices: [
+      { label: 'Give {pet} space, and let them come to you', outcomes: [any('You stop reaching out and start sitting still. It takes weeks. Then one evening {pet} is beside you.', 'good', arc({ do: 'settle', how: 'space' }))] },
+      { label: 'Keep every day exactly the same', outcomes: [any('Breakfast at seven. Walk at eight. {pet} begins to trust the shape of the day, and then you.', 'good', arc({ do: 'settle', how: 'routine' }))] },
+      { label: 'Keep trying to cuddle them', outcomes: [any('{pet} tolerates it, mostly.', 'neutral', arc({ do: 'settle', how: 'fuss' }))] },
+    ],
+  },
+  {
+    id: 'arc_retire_horse', category: 'animals', ageRange: [16, 120], queuedOnly: true, cooldown: 0, cast: { pet: 'pet' },
+    text: '{pet} took the last fence carefully, as if thinking about it. The vet says there is nothing wrong. Just years.',
+    choices: [
+      { label: 'Retire {pet} from competing: hacking and grazing from now on', outcomes: [any('You tell the yard. {pet} does not seem to mind at all.', 'good', arc({ do: 'retire', how: 'retire' }))] },
+      { label: 'One more season, gently', outcomes: [any('You enter fewer classes and lower fences.', 'neutral', arc({ do: 'retire', how: 'keep' }))] },
+    ],
+  },
+  {
+    id: 'arc_remembrance', category: 'animals', ageRange: [6, 120], queuedOnly: true, cooldown: 0, cast: {},
+    text: 'It is a year since {pet} died. The house has got used to the quiet, mostly. You have not, entirely.',
+    choices: [
+      { label: 'Make a small memorial for {pet}', outcomes: [any('You find the right photograph and the right place for it.', 'good', arc({ do: 'remember', how: 'memorial' }))] },
+      { label: 'Go through the photographs', outcomes: [any('There are more of them than you thought, and most are blurred, because {pet} never sat still.', 'good', arc({ do: 'remember', how: 'photos' }))] },
+      { label: 'Walk the old routes', outcomes: [any('You walk the way the two of you always went.', 'good', arc({ do: 'remember', how: 'walk' }))] },
+    ],
+  },
+  {
+    id: 'arc_instructor_suggests', category: 'animals', ageRange: [8, 120], queuedOnly: true, cooldown: 0, cast: { teacher: 'mentor' },
+    text: 'After your lesson {teacher} leans on the fence and says you are ready for the show ring. Introductory level, on a school horse, at the show this year.',
+    choices: [
+      { label: 'Say yes before you can talk yourself out of it', outcomes: [any('{teacher} has the horse plaited and gleaming before you arrive.', 'good', arc({ do: 'compete', how: 'yes' }), rel('teacher', 4))] },
+      { label: 'Not this year', outcomes: [any('{teacher} shrugs. The offer stands.', 'neutral', arc({ do: 'compete', how: 'no' }))] },
+    ],
+  },
+  {
+    id: 'whose_turn', category: 'animals', ageRange: [9, 17], queuedOnly: true, cooldown: 4, cast: { pet: 'pet', sib: 'sibling' },
+    text: '{pet} is sitting by the door with the lead in their mouth, and you and {sib} are arguing about whose turn it is.',
+    choices: [
+      { label: 'Take {pet} yourself', outcomes: [any('You go. The argument can wait.', 'good', life({ do: 'chores', who: 'me' }))] },
+      { label: 'Make a rota and stick it on the fridge', outcomes: [any('You draw up a rota with columns and everything.', 'good', life({ do: 'chores', who: 'rota' }))] },
+      { label: 'Insist it is {sib}\'s turn', outcomes: [any('You win the argument.', 'neutral', life({ do: 'chores', who: 'sib' }))] },
     ],
   },
 ];

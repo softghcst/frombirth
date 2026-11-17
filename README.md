@@ -40,6 +40,7 @@ node tests/legislature.mjs     # votes in the legislature: majorities, rebels, d
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
 node tests/animal-care.mjs     # shelters, adoption, costs, the vet, insurance, fostering, rehoming, moving abroad, careers
 node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, breeding and pedigrees
+node tests/animal-life.mjs     # staff, classes, behaviour, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
@@ -72,6 +73,9 @@ life ends, each animal that depended on the player gets a keeper, and the whole 
 | Shelters, adoption checks, yearly costs, the vet, insurance, fostering, rehoming, volunteering, moving abroad | `js/engine/animalCare.js` |
 | Riding schools and instructors, lessons, livery yards, buying and riding a horse, shows | `js/engine/equestrian.js` |
 | Breeding (vet-checked, unrelated, limited, never for profit), parentage and pedigrees | `js/engine/animalBreeding.js` |
+| Classes and trainers, behaviour problems, outings, the local pet show, custody after a split, siblings' chores | `js/engine/animalLife.js` |
+| Businesses with their own books: pet care, grooming, kennels, training, a riding school, a smallholding | `js/engine/animalBusiness.js` |
+| Stories that take years: first pet, a nervous rescue settling, training, lifelong bonds, remembrance, the show ring, an older horse | `js/engine/animalArcs.js` |
 | Scenes: illness, emergencies, foster reviews, settling in, a child asking for a pet, visiting the family dog | `js/data/events/animals.js` |
 | Screens: album, timeline, profiles, chronicle / the hub / portraits / the way back | `js/ui/animals.js`, `js/ui/animalHub.js`, `js/ui/animalPortrait.js`, `js/ui/animalNav.js` |
 
@@ -81,11 +85,15 @@ show class is ridden once and its result survives a reload; prizes never cover a
 make the family money; parentage is never invented and no animal is its own ancestor.
 
 Careers with animals (animal care, dog training, grooming, horses and riding, farming, and veterinary medicine) are in
-`js/data/careers.js`; fostering, volunteering and riding well open their doors.
+`js/data/careers.js`; fostering, volunteering and riding well open their doors. The people at shelters, vets, yards and
+training clubs become people in the player's life the first time they deal with them, and stay the same people.
+Landlords set rules about animals; some species need a licence and some are banned. Each person's bond with an animal
+has three sides: attachment, trust and comfort. Horses can be leased or sold (never for more than they cost); Pursuits
+→ Riding leads to the same screens.
 
 Not built, because the rest of the game does not have it yet: historical eras (every life starts in the present
-day), a business engine (so no riding schools or farms to run as a business), and a story director beyond the
-scenes listed above. Farm animals are kept, not farmed.
+day, so there is nothing for era rules to change). The businesses above are a small engine of their own, since the
+game has no general one; a smallholding's animals are a counted flock whose welfare the business answers for.
 
 ## Avatars
 

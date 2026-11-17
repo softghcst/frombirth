@@ -21,6 +21,8 @@ const { saveGame, loadGame } = await import('../js/save.js');
 const { addNpc, animalHealth } = await import('../js/data/events/helpers.js');
 const { SPECIES, EVENT_TYPES, BREEDS } = await import('../js/data/animals.js');
 const zoo = await import('../js/engine/animals.js');
+const care = await import('../js/engine/animalCare.js');
+const petFriendly = () => { const l = care.rentalPolicy(); if (l) l.kind = 'any'; };
 const { createNav, backLabel } = await import('../js/ui/animalNav.js');
 const { animalPortraitSvg } = await import('../js/ui/animalPortrait.js');
 
@@ -52,7 +54,7 @@ function grown(age = 30, withPets = false) {
   zoo.reconcile();
   return p;
 }
-const adopt = () => { const before = pets().length; const r = getPet(); check(r.ok && pets().length === before + 1, `adopting should work: ${r.text}`); return zoo.animalById(pets().at(-1).id); };
+const adopt = () => { petFriendly(); const before = pets().length; const r = getPet(); check(r.ok && pets().length === before + 1, `adopting should work: ${r.text}`); return zoo.animalById(pets().at(-1).id); };
 const addKin = (role, age, extra = {}) => { const n = makeNpc({ role, countryId: P().countryId, age, lastName: P().lastName, ...extra }); S().npcs[n.id] = n; P().npcIds.push(n.id); return n; };
 /** An animal's homes with the family, and the people (not organisations) who owned it. */
 const ownHomes = (x) => x.homes.filter((h) => h.hh !== 'shelter');
@@ -107,7 +109,7 @@ check(zoo.familyLink(a).includes('partly yours'), `the album says whose it is ($
 p = grown(30);
 let cash = p.finance.cash;
 a = adopt();
-check(cash - p.finance.cash === a.origin.fee && a.origin.fee > 0 && a.origin.how === 'shelter', 'the adoption fee is taken once and recorded');
+check(cash - p.finance.cash === (S().animals.ledger ?? []).filter((t) => t.year === S().year).reduce((s, t) => s + t.amount, 0) && care.ledgerOf(a.id).find((t) => t.kind === 'adoption').amount === a.origin.fee && a.origin.fee > 0 && a.origin.how === 'shelter', 'the adoption fee is taken once and recorded');
 check(zoo.ownerOf(a).id === p.id && zoo.primaryOf(a).id === p.id && zoo.homeOf(a).hh === 'player', 'the adopter owns it, keeps it, and it lives with them');
 const adopted = lastOf('adopted', a.id);
 check(!!adopted && S().journal.at(-1).animal?.ev === adopted.id && adopted.people.some((r) => r.id === p.id), 'the adoption is a moment on record, told in the life story');

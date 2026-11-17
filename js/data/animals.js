@@ -133,6 +133,24 @@ Object.assign(SPECIES, {
     temperament: dims('activity', 'confidence'), training: [], activities: [], coats: ['golden', 'scarlet', 'blue', 'white', 'black', 'yellow'], patterns: ['solid', 'patched'], eyes: ['dark'], sexes: 'unknown' },
 });
 
+Object.assign(SPECIES, {
+  mouse: small('mouse', 'mouse', 'pup', { lifespan: [1, 3], social: true, housing: 'A tank with deep bedding to burrow in, a wheel, and other mice: they live in groups.',
+    needs: ['Seed mix, a little fresh food, water', 'Deep bedding and places to hide', 'Company of their own kind'], coats: ['white', 'brown', 'black', 'grey', 'cream'] }),
+});
+const reptile = (id, name, young, lifespan, o) => ({ id, name, young, group: 'reptile', lifespan, stages: [[young, 0], ['adult', 0.15], ['old', 0.75]], housing: o.housing, needs: o.needs,
+  health: ['Shedding', 'Bones (needs proper UV light)', 'Weight'], temperament: dims('curiosity', 'confidence', 'activity'), training: o.training ?? [], activities: [],
+  coats: o.coats, patterns: o.patterns ?? ['solid', 'patched'], eyes: ['amber', 'dark', 'gold'], sexes: 'unknown' });
+Object.assign(SPECIES, {
+  leopard_gecko: reptile('leopard_gecko', 'leopard gecko', 'hatchling', [12, 20], { housing: 'A heated vivarium with a warm end and a cool end, and somewhere damp to shed.',
+    needs: ['Live insects, dusted with calcium', 'A warm end and a cool end', 'A damp hide for shedding', 'Handling kept gentle and short'], coats: ['yellow', 'cream', 'tan'], patterns: ['patched'] }),
+  bearded_dragon: reptile('bearded_dragon', 'bearded dragon', 'hatchling', [8, 14], { housing: 'A large vivarium with a basking spot and strong UV light, kept properly hot.',
+    needs: ['Insects and greens', 'A basking spot and UV light, every day', 'Room to move', 'A vet who knows reptiles'], coats: ['tan', 'golden', 'red', 'cream'], patterns: ['solid', 'patched'],
+    training: [{ id: 'handling', name: 'Sitting calmly on a hand', learned: 'sits calmly on a hand', difficulty: 1 }] }),
+  corn_snake: reptile('corn_snake', 'corn snake', 'hatchling', [15, 20], { housing: 'A secure, escape-proof vivarium with a warm end, hides and something to climb.',
+    needs: ['A suitable frozen-thawed meal every week or two', 'An escape-proof lid', 'A warm end and a cool end', 'Somewhere to hide'], coats: ['red', 'ginger', 'cream', 'tan'], patterns: ['patched', 'saddle'] }),
+  tortoise: reptile('tortoise', 'tortoise', 'hatchling', [50, 80], { housing: 'An indoor table with UV light, and a secure outdoor run in warm weather. A commitment of decades.',
+    needs: ['Weeds, greens and flowers: not fruit', 'UV light and warmth', 'Room to roam', 'A careful plan for hibernation, if the species does it'], coats: ['brown', 'tan', 'golden'], patterns: ['patched'] }),
+});
 const equine = (id, name, young, lifespan, coats) => ({ id, name, young, group: 'equine', lifespan,
   housing: 'A stable or shelter, daily turnout on pasture, and the company of other equines. Never a garden.',
   stages: [[young, 0], [`young ${name}`, 0.04], ['adult', 0.15], ['senior', 0.7]],
@@ -173,6 +191,11 @@ Object.assign(SPECIES, {
  *   names  what people call them
  */
 const KEEPING = {
+  mouse: { load: 0.2, cost: 120, space: 'small', exam: 40, insure: 0, fee: 10, names: ['Pip', 'Squeak', 'Button', 'Whisker', 'Crumb'] },
+  leopard_gecko: { load: 0.25, cost: 220, space: 'small', exam: 80, insure: 0, fee: 40, names: ['Gecko', 'Mango', 'Freckle', 'Sunny'] },
+  bearded_dragon: { load: 0.4, cost: 420, space: 'room', exam: 90, insure: 0, fee: 60, permit: ['au'], names: ['Spike', 'Ziggy', 'Rex', 'Pancake'] },
+  corn_snake: { load: 0.25, cost: 180, space: 'small', exam: 80, insure: 0, fee: 40, banned: ['nz', 'ie', 'ae'], permit: ['au'], names: ['Noodle', 'Maize', 'Copper', 'Slinky'] },
+  tortoise: { load: 0.3, cost: 260, space: 'yard', exam: 90, insure: 0, fee: 120, permit: ['uk', 'za', 'au'], names: ['Shelly', 'Methuselah', 'Turbo', 'Sir Reginald'] },
   dog: { load: 1, cost: 900, space: 'room', exam: 90, insure: 320, fee: 150, names: ['Biscuit', 'Juno', 'Pepper', 'Moose', 'Olive', 'Daisy', 'Rufus', 'Maple', 'Scout', 'Bramble', 'Otis', 'Poppy'] },
   cat: { load: 0.7, cost: 600, space: 'room', exam: 80, insure: 220, fee: 100, names: ['Miso', 'Pickle', 'Shadow', 'Clementine', 'Figaro', 'Mog', 'Juniper', 'Sprat', 'Tansy', 'Bartleby'] },
   rabbit: { load: 0.5, cost: 420, space: 'room', exam: 70, insure: 140, fee: 50, names: ['Clover', 'Thistle', 'Button', 'Bracken', 'Parsley', 'Hazel'] },
@@ -191,7 +214,9 @@ const KEEPING = {
   goat: { load: 0.8, cost: 500, space: 'land', exam: 90, insure: 0, fee: 80, names: ['Nettle', 'Billy', 'Clover', 'Gruff', 'Mabel'] },
   sheep: { load: 0.7, cost: 380, space: 'land', exam: 80, insure: 0, fee: 60, names: ['Bo', 'Woolly', 'Bramble', 'Dolly', 'Tup'] },
 };
-for (const [id, k] of Object.entries(KEEPING)) Object.assign(SPECIES[id], { banned: [], ...k });
+for (const [id, k] of Object.entries(KEEPING)) Object.assign(SPECIES[id], { banned: [], permit: [], ...k });
+/** What a permit to keep a regulated species costs, where one is needed (base units, once). */
+export const PERMIT_FEE = 90;
 /** Rooms, smallest first: what a home offers, and what an animal needs at the least. */
 export const SPACES = ['small', 'room', 'yard', 'land'];
 /** How an owner can choose to look after an animal day to day. `k` multiplies the yearly cost. */
@@ -305,6 +330,9 @@ export const EVENT_TYPES = {
   competition: { label: 'Competition', glyph: '🏆' },
   born: { label: 'Born', glyph: '🌱' },
   emergency: { label: 'Emergency', glyph: '🚑' },
+  settled: { label: 'Settled in', glyph: '🛋️' },
+  bond: { label: 'Lifelong bond', glyph: '💛' },
+  retired: { label: 'Retired', glyph: '🌾' },
   died: { label: 'Passed away', glyph: '🕯️' },
   memorial: { label: 'Memorial', glyph: '🌿' },
 };
