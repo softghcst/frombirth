@@ -13,6 +13,7 @@ import { tickMarket } from './market.js';
 import { tickCrime } from './justice.js';
 import { tickPrison } from './prison.js';
 import { tickDigital } from './digital/tick.js';
+import { tickEra } from './eras.js';
 import { tickIdentity } from './identity.js';
 import { tickLiving } from './living.js';
 import { tickRoyalty } from './royalty.js';
@@ -61,6 +62,7 @@ export function advanceYear() {
   if (p.age === 100) { milestone('Turned 100.', 'life'); log('You are 100 years old. A card arrives from the head of state, and the local paper sends a photographer.', 'system', 'good'); }
   if (p.age === 110) milestone('Turned 110.', 'life');
   state.year += 1;
+  tickEra(); // Historical Eras: the new year's era, money, laws and events (engine/eras.js)
   if (BIRTHDAYS[p.age]) log(BIRTHDAYS[p.age]);
 
   tickRelationships();

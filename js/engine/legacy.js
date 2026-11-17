@@ -252,6 +252,8 @@ export function continueAs(npcId) {
 
   // The schools of the world are the same schools: the next generation may sit in the same classrooms.
   passOn(old, next);
+  // The eras carry on with the year: the heir's money is already in this year's terms.
+  if (old.era) next.era = { ...old.era, applied: { year: old.year, countryId: next.player.countryId } };
   // The family's digital world carries on too: the dead player's accounts become their memorial and archive.
   carryOver(old, next, npcId, ancestor.id);
   if (old.schools) next.schools = old.schools;

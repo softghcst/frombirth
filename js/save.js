@@ -4,6 +4,7 @@ import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
 import { migrateDigital } from './engine/digital/tick.js';
+import { ensureEra } from './engine/eras.js';
 
 export const SCHEMA_VERSION = 1;
 const K_INDEX = 'pathways.index';
@@ -60,6 +61,8 @@ function migrate(state) {
   for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
   // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.
   migrateDigital(state);
+  // Historical Eras: a life saved before eras keeps its money as it was (see engine/eras.js).
+  ensureEra(state, { legacy: true });
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }
