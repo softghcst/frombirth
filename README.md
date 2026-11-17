@@ -239,6 +239,12 @@ bill costs nothing and has no committee stage; it counts as one of the year's tw
 it; where one person rules, it is a decree. The world's own reforms in a country your life has a government for now need a
 government that wants them.
 
+**Regional law.** In countries whose regions make law (the federations, and the United Kingdom's devolved nations), the head
+of a region can change the laws a region controls, one a year, through the regional assembly: the drinking, driving and
+gambling ages, bans on gambling or alcohol, and the death penalty. It applies to everyone living in that region (Texas, Ontario,
+Bavaria; where the game records no states, the area around the city). Between a regional and a national change to the same
+law, the more recent one stands.
+
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
 ### Cities and regions that differ

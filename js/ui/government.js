@@ -1,5 +1,6 @@
 // Governing, on screen: choosing a cabinet, taking a bill through the
 // legislature, and presenting the budget. Rules: engine/government.js.
+import * as local from '../engine/local.js';
 import { player } from '../state.js';
 import { esc } from '../util.js';
 import * as gov from '../engine/government.js';
@@ -67,6 +68,26 @@ async function reformFlow(api) {
   api.changed();
   if (r.tally) await tallyModal(r.ok ? 'The bill passes' : r.tally.for >= r.tally.need ? 'Passed, but not law' : 'The bill is defeated', r.tally);
   return messageModal({ body: r.text, tone: r.tone });
+}
+
+/** The head of a region changing one of the laws a region controls. */
+export async function regionalLawFlow(api) {
+  const p = player();
+  if (p.politics?.regionalLawAge === p.age) return messageModal({ body: 'The assembly has dealt with your law for this year.' });
+  const r = local.myRegion();
+  const options = local.regionalLawOptions();
+  if (!options.length) return messageModal({ body: local.regionalLawBlock() || 'There is nothing here the region can change.' });
+  const pick = await pickModal({ title: `The law of ${r.name}`, cancel: 'Back',
+    body: 'A region can set its own ages for drinking, driving and gambling, ban or allow gambling and alcohol, and decide on the death penalty. A national law made later overrides it.',
+    options: options.map((o, i) => ({ value: i, label: o.name, sub: o.outlook })) });
+  if (pick == null) return undefined;
+  const c = options[pick];
+  const move = await pushModal('The vote', local.voteOptions(), `To ${c.name.charAt(0).toLowerCase()}${c.name.slice(1)}. ${c.outlook} How hard will you push?`);
+  if (!move) return undefined;
+  const res = local.putRegionalLaw(c.rule, c.value, move);
+  api.changed();
+  if (res.tally) await tallyModal(res.ok ? 'The law passes' : 'The law is defeated', res.tally);
+  return messageModal({ body: res.text, tone: res.tone });
 }
 
 /** A bill: bring it in, get it through committee, and put it to the vote. */

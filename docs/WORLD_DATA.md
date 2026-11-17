@@ -124,8 +124,9 @@ shown on its profile.
 - Legal rules (`js/data/rules.js`) hold one value per place for fourteen questions. Ages are the common adult case and ignore
   exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
   the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A head of government can change them through the legislature; public
-  opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional laws cannot
-  be changed by a mayor or governor. School-leaving age is the same everywhere.
+  opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional law can be changed by the head of a region,
+  for six regional matters, in the countries listed in `REGIONAL_COUNTRIES`; which matters belong to regions in each real
+  country is simplified to one list. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
   permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
   New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
@@ -145,7 +146,6 @@ In rough order of value:
 
 1. **Check what is still unchecked** (listed above): the remaining ages, residence years and the free-movement lists.
 2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
-3. **Regional law-making**: a governor or mayor changing the law of their own region.
 4. **A housing index per country**, and mortgages and rent abroad kept in local money.
 5. **Regions with governments and taxes of their own**, and visas for family members other than a spouse.
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.

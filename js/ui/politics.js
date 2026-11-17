@@ -7,7 +7,7 @@ import { meterHtml } from './meter.js';
 import { messageModal, pickModal, confirmModal } from './modals.js';
 import * as world from '../engine/polity.js';
 import { openPolity } from './polity.js';
-import { openCabinet, lawFlow, budgetFlow, governButtons, foreignFlow } from './government.js';
+import { openCabinet, lawFlow, budgetFlow, governButtons, foreignFlow, regionalLawFlow } from './government.js';
 import * as lead from '../engine/leadership.js';
 import * as kin from '../engine/kin.js';
 import * as cause from '../engine/activism.js';
@@ -61,6 +61,7 @@ export function politicsCard() {
       <div class="btn-stack" style="margin-top:10px">
         <button class="btn" data-pol="govern">Govern <small>${pol.actionsLeft()} left this year</small></button>
         ${k.officeId === 'head' ? governButtons() : ''}
+        ${k.officeId === 'region' && !local.regionalLawBlock() ? `<button class="btn" data-pol="regionalLaw">Change the law of ${esc(local.myRegion().name)} <small>${k.regionalLawAge === p.age ? 'done this year' : 'one law a year'}</small></button>` : ''}
         ${local.runsPlace() ? `<button class="btn" data-pol="localBudget">${k.officeId === 'region' ? 'The region\'s budget' : 'The city\'s budget'} <small>${local.budgetView().presented ? 'presented for this year' : 'not yet presented'}</small></button>` : ''}
         ${leadBtn}
         ${worldBtn}
@@ -167,6 +168,7 @@ export async function politicsAction(id, api) {
   if (id === 'foreign') return foreignFlow(api);
   if (id === 'budget') return budgetFlow(api);
   if (id === 'localBudget') return budgetFlow(api, local);
+  if (id === 'regionalLaw') return regionalLawFlow(api);
   if (id === 'run') return run(api);
   if (id === 'govern') return govern(api);
   if (id === 'resign') {
