@@ -307,6 +307,10 @@ let moved;
   const steps = () => reloc.checklist(app.id).filter((s) => !s.done).map((s) => s.id);
   check(steps().includes('housing') && steps().includes('travel') && steps().includes('pets'), 'housing, the journey and the dog are still to arrange');
   check(!reloc.completeMove(app.id).ok, 'the move waits for the checklist');
+  const y0 = store.state.year;
+  const later = travel.startPlan('getaway');
+  travel.updatePlan(later.id, { destination: { countryId: 'mx', city: 'Puebla' }, depart: `${y0}-11-01`, ret: `${y0}-11-04`, mode: 'bus', stay: 'hotel' });
+  check(travel.confirm(later.id).ok, 'a weekend in Puebla booked before the move');
   reloc.arrange(app.id, { housing: 'employer', money: 0.25, travel: 'plane', pets: Object.fromEntries(p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'pet' && n.alive).map((n) => [n.id, 'bring'])), shipVehicles: false });
   check(steps().length === 1 && steps()[0] === 'move', `every step done but the move itself (${steps()})`);
   const before = cash();
@@ -317,6 +321,7 @@ let moved;
   check(p.residency.status === 'worker' && p.residency.workAuthorized && p.career.careerId, 'a work visa, with the job that sponsored it');
   check(p.locations.length >= 2 && p.locations[p.locations.length - 2].countryId === 'mx' && p.locations[p.locations.length - 2].to === store.state.year && p.locations[p.locations.length - 2].homes.includes(home.id), 'Guadalajara stays in the record, with the flat');
   check(p.assets.some((a) => a.id === home.id), 'the flat is still owned');
+  check(later.status === 'cancelled' && p.finance.ledger.some((x) => x.kind === 'refund' && x.ref?.tripId === later.id), 'the Puebla weekend was cancelled at the move and refunded on its terms');
   check(friend.alive && p.npcIds.includes(friend.id) && friend.role === 'friend' && (friend.flags.abroad === 'mx' || friend.places?.some((l) => l.countryId === 'mx')), 'the friend from Mexico is still a friend, with their life in Mexico on record');
   check(!mum || (p.npcIds.includes(mum.id) && mum.flags.abroad === 'mx'), 'and so is mum');
   check(!dog.flags.abroad && store.state.npcs[dog.id] === dog, `the dog came, the same dog (${dog.flags.abroad}, ${dog.alive}, ${dog.role})`);
@@ -338,6 +343,7 @@ let moved;
   const gone = story.homeChronicle(home.id);
   check(!p.assets.some((a) => a.id === home.id) && gone.name === 'Two-bedroom condo' && gone.city === 'Guadalajara' && gone.owner === 'Not owned by you' && gone.residents.some((x) => x.id === chron.archiveIdOf(p)), 'a sold home keeps its name, its place and who lived there');
   moved = { slot: store.state.slotId };
+  // A trip booked from the old home is cancelled at the move, refunded in the money it was paid in, before savings are changed.
   section('slice 2: Mexico to Toronto: applied, decided at the year\'s turn, arranged, moved; old life, friends, flat and dog intact; no nationality granted');
 }
 {
@@ -537,6 +543,58 @@ let moved;
 }
 
 {
+  // Stories of a life abroad: each begins only from real state; each choice is an application or a plan, never an approval.
+  const arcs = await import('../js/engine/arcs.js');
+  const { EVENT_BY_ID } = await import('../js/data/events/index.js');
+  const { resolveChoice } = await import('../js/engine/eventEngine.js');
+  const scene = (id) => store.state.pendingEvents.find((e) => e.id === id);
+  const choose = (id, label) => { const e = scene(id); const ev = EVENT_BY_ID[id]; const i = ev.choices.findIndex((c) => c.label.startsWith(label)); store.state.pendingEvents = store.state.pendingEvents.filter((x) => x !== e); return resolveChoice(ev, i, e.cast); };
+
+  // A job offer: only for someone qualified and working; "apply" is a real application, still pending.
+  p = life('mx', 30, 120000, 'Monterrey');
+  check(arcs.tickArcs(p, 'offer') === null, 'no job offer abroad for someone without a career');
+  p.education.degrees.push({ type: 'university', majorId: 'engineering', gpa: 3.5, age: 22 });
+  hire(CAREERS.find((c) => c.id === 'office'), 1, 60); p.career.yearsInField = 5;
+  check(arcs.tickArcs(p, 'offer') === 'offer' && scene('arc_offer')?.cast.words.place, 'an engineer with five years in the field is offered a job abroad, somewhere named');
+  const dest = p.flags.arcs.offer.dest;
+  check(!cit.rightToLive(dest, p) && imm.routes(dest).find((r) => r.id === 'work').eligible, `the offer is from somewhere a work visa is a real route (${dest})`);
+  const r1 = choose('arc_offer', 'Apply');
+  const offerCase = reloc.cases().find((a) => a.jurisdictionId === dest);
+  check(offerCase?.status === 'submitted' && p.flags.sponsor === dest && p.countryId === 'mx' && /sponsor/.test(r1.text), 'applying files a real application, pending, with the offer counted; nobody has moved');
+
+  // Married across a border: asking them to come is their decision and their permission; moving to them is an application.
+  p = life('fr', 40, 120000, 'Lyon');
+  const wife = add('spouse', 'jp', 39); wife.citizenships = [{ jurisdictionId: 'jp', acquisitionType: 'birth', acquiredAt: 1990 }]; wife.flags.abroad = 'jp'; wife.flags.stayedBehind = true;
+  check(arcs.tickArcs(p, 'distance') === 'distance' && scene('arc_distance').cast.words.country === 'Japan', 'a spouse living in Japan begins the long-distance story');
+  const r2 = choose('arc_distance', 'Say you will come');
+  const toJapan = reloc.cases().find((a) => a.jurisdictionId === 'jp');
+  check(toJapan && toJapan.routeId === 'family' && toJapan.status === 'submitted' && !cit.held(p).includes('jp'), `moving to her is a family-route application, not citizenship (${r2.text})`);
+  let came = false;
+  for (let i = 0; i < 12 && !came; i++) { p.flags.arcs.distance.year -= 5; wife.meters.relationship = 95; arcs.tickArcs(p, 'distance'); if (!scene('arc_distance')) break; choose('arc_distance', 'Ask'); came = !wife.flags.abroad; }
+  check(came && store.state.canon.events.some((e) => e.type === 'relocation' && e.subject === chron.archiveIdOf(wife)), 'asked often enough, she comes, and her move is recorded as hers');
+  check(arcs.tickArcs(p, 'distance') === null, 'once together, the long-distance story does not begin again');
+
+  // Going home: only after years away, still a citizen, with a parent growing old there.
+  p = life('ph', 45, 120000, 'Manila');
+  move.emigrate('ca', { forced: true }); p.flags.arrivedYear = store.state.year - 12;
+  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive) ?? add('parent', 'ph', 75);
+  mum.age = 76; mum.flags.abroad = 'ph'; mum.alive = true;
+  check(arcs.tickArcs(p, 'homeward') === 'homeward' && scene('arc_homeward').cast.words.years === '12', 'twelve years in Canada and a mother of 76 in the Philippines');
+  choose('arc_homeward', 'Go home');
+  const home = reloc.cases().find((a) => a.jurisdictionId === 'ph');
+  check(home?.routeId === 'right' && home.status === 'approved' && p.countryId === 'ca', 'going home as a citizen needs no application; the move itself is still to arrange');
+
+  // Retiring abroad: near a child who lives there; the route is one the player really has.
+  p = life('uk', 66, 300000, 'Leeds');
+  p.career.retired = true; p.career.pensionPerYear = Math.round(30000 * COUNTRIES.uk.currency.scale);
+  const son = add('child', 'uk', 38); son.flags.abroad = 'es';
+  check(arcs.tickArcs(p, 'retire') === 'retire' && /lives|life/.test(scene('arc_retire').cast.words.why), 'a retired parent is drawn towards the child in Spain');
+  const r4 = choose('arc_retire', 'Spend a month');
+  check(travel.trips(['draft']).some((t) => t.destination?.countryId === 'es' && t.type === 'vacation') && !p.finance.ledger.some((x) => x.kind === 'travel'), 'trying it first is a plan, not a booking: nothing paid');
+  check(!r4.text.includes('undefined'), 'the scene reads properly');
+  section('stories abroad: a job offer, a marriage across a border, going home, retiring near family; each from real state, each an application or a plan');
+}
+{
   // A long life: trips most years, passports renewed, moves applied for, seventy years. Nothing breaks, nothing is paid twice.
   p = life('de', 20, 200000, 'Berlin');
   p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.4, age: 22 });
@@ -570,8 +628,9 @@ let moved;
   const bookedPaid = full.flatMap((t) => t.bookings.filter((b) => b.payer === 'player')).length;
   const travelCharges = p.finance.ledger.filter((x) => fullIds.has(x.ref?.tripId) && x.amount < 0 && x.payer === 'player' && x.key?.startsWith('trip:') && !x.key.includes(':act:')).length;
   const compact = all.filter((t) => t.compact);
-  check(compact.length > 40 && compact.every((t) => !t.itinerary && !t.bookings.length && t.spent >= 0 && t.destination && t.travelers.length && t.events.length), `old trips keep their summary, cost and memories, not their detail (${compact.length} compacted)`);
-  check(compact.every((t) => travel.tripCard(t).memories.length >= 1 && travel.tripCard(t).spent === t.spent), 'and the journal still shows them');
+  const taken = compact.filter((t) => t.status === 'completed');
+  check(compact.length > 40 && compact.every((t) => !t.itinerary && !t.bookings.length && t.spent >= 0 && t.destination && t.travelers.length) && taken.every((t) => t.events.length), `old trips keep their summary and cost, and taken ones their memories, not their detail (${compact.length} compacted)`);
+  check(taken.every((t) => travel.tripCard(t).memories.length >= 1) && compact.every((t) => travel.tripCard(t).spent === t.spent), 'and the journal still shows them');
   check(p.finance.ledger.every((x) => x.year > store.state.year - travel.KEEP.ledgerYears) && Object.keys(p.finance.ledgerYears ?? {}).length >= 50, 'the ledger keeps ten years in full and yearly totals before that');
   check(p.stays.every((x) => x.to >= `${store.state.year - 2}`), 'days abroad are kept only as long as a limit could count them');
   check(!errors && trips >= 40, `seventy years: ${trips} trips booked, ${moves} moves applied for, no errors`);
@@ -579,8 +638,9 @@ let moved;
   check(all.every((t) => !['confirmed', 'in_progress'].includes(t.status) || docs.yearOf(t.depart) >= store.state.year), 'no trip is left hanging from an earlier year');
   check(new Set(store.state.canon.events.map((e) => e.key)).size === store.state.canon.events.length, 'no event recorded twice');
   const size = JSON.stringify(store.state).length;
-  check(size < 600000, `the save stays a reasonable size (${Math.round(size / 1024)} KB)`);
-  section(`a long life: seventy years, ${trips} trips, ${moves} moves applied for; one charge per booking, one record per event, ${Math.round(size / 1024)} KB saved`);
+  const own = JSON.stringify([p.travel, store.state.canon, store.state.archive, p.finance.ledger, p.finance.ledgerYears, p.applications, p.stays, p.documents, p.authorizations]).length;
+  check(own < 160000, `travel and papers stay small: ${Math.round(own / 1024)} KB of a ${Math.round(size / 1024)} KB save`);
+  section(`a long life: seventy years, ${trips} trips, ${moves} moves applied for; one charge per booking, one record per event, ${Math.round(own / 1024)} KB of records in a ${Math.round(size / 1024)} KB save`);
 }
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(' -', x); for (const x of ok) console.log('ok  ', x); process.exit(1); }

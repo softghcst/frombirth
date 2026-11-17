@@ -6,6 +6,7 @@ import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
 import { decide as schoolChoice } from './schoollife.js';
 import { decide as abroadChoice } from './diplomacy.js';
+import { decide as arcChoice } from './arcs.js';
 import { decide as kinChoice } from './kin.js';
 import { decide as scandalChoice } from './scandal.js';
 import { resignLeadership, faceTheParty, standForVacancy } from './leadership.js';
@@ -171,6 +172,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'parent': ctx.note = parentChoice(e.value, ctx.cast); break;
       case 'royalEd': ctx.note = royalEdChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;
+      case 'global': ctx.note = arcChoice(e.value, ctx.cast); break;
       case 'leader': ctx.note = e.value === 'resign' ? resignLeadership().text : e.value === 'stand' ? standForVacancy() : faceTheParty(); break;
       case 'ousted': pol.removed(e.value); break;
       case 'resignOffice': pol.resign(); break;

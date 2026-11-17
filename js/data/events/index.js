@@ -29,7 +29,8 @@ import schoolLife from './schoolLife.js';
 import campusLife from './campusLife.js';
 import parenting from './parenting.js';
 import career from './career.js';
+import arcs from './arcs.js';
 
 /** @type {import('../../types.js').GameEvent[]} */
-export const EVENTS = [...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career];
+export const EVENTS = [...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...arcs];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));

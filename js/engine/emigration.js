@@ -20,6 +20,7 @@ import { routes, bestRoute, spouseAnswer } from './immigration.js';
 import { charge, recordEvent, archiveIdOf, rememberHome } from './chronicle.js';
 import { placeName } from './geo.js';
 import { syncNpcPlaces } from './globalLife.js';
+import { cancel as cancelTrip } from './travel.js';
 import { uid } from '../util.js';
 import { PET_TRAVEL } from '../data/travel.js';
 
@@ -238,6 +239,11 @@ export function emigrate(countryId, opts = {}) {
     }
   }
 
+  // Trips booked to leave from the old home are cancelled now, on their refund terms, not missed later.
+  for (const t of (p.travel?.trips ?? []).filter((x) => x.status === 'confirmed' && x.origin.countryId !== to.id)) {
+    const c = cancelTrip(t.id);
+    if (c.ok) log(`The move meant cancelling your trip to ${COUNTRIES[t.destination.countryId].name}: it was to leave from ${t.origin.city ?? COUNTRIES[t.origin.countryId].name}. ${c.refunded ? `${fmtMoney(c.refunded, from)} came back.` : 'Nothing could be refunded.'}`, 'system', 'neutral');
+  }
   // Money follows, at today's rate, except whatever the player chose to leave in the old currency.
   const leftBehind = setAside(opts.keep, from.currency.code);
   convertMoney(rate(from.currency.code, to.currency.code));
