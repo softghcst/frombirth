@@ -129,8 +129,8 @@ shown on its profile.
   country is simplified to one list. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
   permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
-  New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
-  is no deportation for crime, no overstaying, and no visa needed for a short visit.
+  New Zealand) are simplified lists and unverified. Family members hold dependant status on the player's visa, simplified to one rule for every country; there is no
+  deportation for crime, no overstaying, and no visa needed for a short visit.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
   is valued in its own country's money and shown at today's rate, with its mortgage and rent kept in the currency they were
   agreed in. Each country has its own housing index, moved by its economy; the numbers are invented, not house-price data. No
@@ -146,7 +146,7 @@ In rough order of value:
 
 1. **Check what is still unchecked** (listed above): the remaining ages, residence years and the free-movement lists.
 2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
-5. **Regions with governments and taxes of their own**, and visas for family members other than a spouse.
+5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
 
 ## Adding a place

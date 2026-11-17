@@ -32,7 +32,7 @@ import { tickFx } from './currency.js';
 import { tickRules } from './rules.js';
 import { tickCover } from './systems.js';
 import { tickEconomy, tickMoves, familyLeaves, ties } from './economy.js';
-import { tickStatus, tickApart } from './immigration.js';
+import { tickStatus, tickApart, tickFamilyStatus } from './immigration.js';
 import { emigrate } from './emigration.js';
 import { tickSchoolFunding } from './edlegacy.js';
 import { tickRoyalEducation } from './royaled.js';
@@ -101,6 +101,7 @@ export function advanceYear() {
   tickMoves();
   { const to = familyLeaves(); if (to) emigrate(to, { forced: true, family: true }); }
   tickApart();
+  tickFamilyStatus();
   { const back = tickStatus(); if (back) emigrate(back, { forced: true }); }
   tickSchoolFunding();
   tickKids();

@@ -205,6 +205,12 @@ Routes that are closed are shown with the reason. A temporary status is renewed 
 crisis at home), becomes permanent after five years, and otherwise ends: one year's warning, then the return home. A graduate
 gets two years to find a sponsor. Citizenship is for permanent residents.
 
+Family who move with you hold a status of their own: citizens of the place need none, and anyone else is your
+**dependant**, for as long as your own permission lasts and permanently once yours is. A child who turns eighteen on a
+dependant visa needs a status of their own (a course, a job, or a year to leave), and a dependant whose sponsor leaves must go
+too. When you become a citizen your children under eighteen become citizens with you; a husband or wife applies in their own
+right. The passport lists your household and how each of them stands.
+
 A husband or wife now decides for themselves whether to come. If they stay, the marriage continues across a border: it wears
 with distance, and a strong one often ends with them following.
 
