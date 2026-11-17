@@ -109,6 +109,8 @@ export function startBlock(type) {
   if (n.experience && !n.programme && !Object.entries(n.experience).some(([id, y]) => (c.experience[id] ?? 0) >= y)) {
     return `Needs experience first: ${Object.entries(n.experience).slice(0, 3).map(([id, y]) => `${y} years in ${CAREER_BY_ID[id].name.toLowerCase()}`).join(', or ')}.`;
   }
+  if (n.land && !['country', 'mansion'].includes(p.assets.find((a) => a.id === p.homeId)?.catalogId)) return 'Needs land of your own: a country property you live in.';
+  if (n.flag && !p.flags[n.flag]) return n.flagText ?? 'You are not ready for this yet.';
   if (n.experienceTotal && Object.values(c.experience).reduce((a, b) => a + b, 0) < n.experienceTotal) return `Clients want ${n.experienceTotal} years of working life behind you.`;
   if (openBusinesses().length >= 3) return 'Three businesses is as many as one person can keep hold of.';
   return '';

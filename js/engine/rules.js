@@ -120,13 +120,13 @@ export function enact(placeId, id, value, by = 'the legislature') {
 function describe(placeId, id, was, value) {
   const name = theCountry(COUNTRIES[placeId].name).replace(/^the/, 'The');
   const lines = {
-    sameSexMarriage: value ? `${name} legalised same-sex marriage.` : `${name} ended same-sex marriage. Existing marriages stand.`,
+    sameSexMarriage: value ? `${name} legalized same-sex marriage.` : `${name} ended same-sex marriage. Existing marriages stand.`,
     lgbt: RULES.lgbt.levels.indexOf(value) > RULES.lgbt.levels.indexOf(was) ? `${name} passed a law protecting gay and transgender people.` : `${name} rolled back its protections for gay and transgender people.`,
     deathPenalty: value ? `${name} brought back the death penalty.` : `${name} abolished the death penalty.`,
     conscription: value ? `${name} brought in compulsory military service.` : `${name} ended compulsory military service.`,
-    gambling: value ? `${name} legalised gambling.` : `${name} banned gambling.`,
+    gambling: value ? `${name} legalized gambling.` : `${name} banned gambling.`,
     alcohol: value ? `${name} lifted its ban on alcohol.` : `${name} banned alcohol.`,
-    divorce: value ? `${name} legalised divorce.` : `${name} abolished divorce.`,
+    divorce: value ? `${name} legalized divorce.` : `${name} abolished divorce.`,
   };
   return lines[id] ?? `${name} changed its ${RULES[id].name.toLowerCase()} from ${WORDS(RULES[id], was)} to ${WORDS(RULES[id], value)}.`;
 }
@@ -144,16 +144,16 @@ export function choices(placeId = here(), opts = {}) {
   const climate = { equal: 2, limited: 0, hostile: -3 }[r('lgbt')];
   const out = [];
   const add = (id, value, name, wants, liked) => { if (r(id) !== value) out.push({ rule: id, value, name, wants, liked }); };
-  if (!r('sameSexMarriage')) add('sameSexMarriage', true, 'legalise same-sex marriage', { open: 1 }, climate);
+  if (!r('sameSexMarriage')) add('sameSexMarriage', true, 'legalize same-sex marriage', { open: 1 }, climate);
   else add('sameSexMarriage', false, 'end same-sex marriage', { open: -1 }, -climate);
   const at = RULES.lgbt.levels.indexOf(r('lgbt'));
   if (at < 2) add('lgbt', RULES.lgbt.levels[at + 1], at === 0 ? 'stop treating gay and transgender people as criminals' : 'protect gay and transgender people in law', { open: 1 }, at === 0 ? -2 : climate);
   if (at > 0) add('lgbt', RULES.lgbt.levels[at - 1], 'roll back protections for gay and transgender people', { open: -1 }, -climate - 1);
   if (r('deathPenalty')) add('deathPenalty', false, 'abolish the death penalty', { order: -1, open: 1 }, -1); else add('deathPenalty', true, 'bring back the death penalty', { order: 1, open: -1 }, 0);
   if (r('conscription')) add('conscription', false, 'end compulsory military service', { order: -1, open: 1 }, 2); else add('conscription', true, 'bring in compulsory military service', { order: 1, open: -1 }, -4);
-  if (r('gambling')) add('gambling', false, 'ban gambling', { order: 1, open: -1 }, -1); else add('gambling', true, 'legalise gambling', { open: 1 }, 1);
+  if (r('gambling')) add('gambling', false, 'ban gambling', { order: 1, open: -1 }, -1); else add('gambling', true, 'legalize gambling', { open: 1 }, 1);
   if (r('alcohol')) add('alcohol', false, 'ban alcohol', { order: 1, open: -1 }, -5); else add('alcohol', true, 'lift the ban on alcohol', { open: 1 }, climate);
-  if (!r('divorce')) add('divorce', true, 'legalise divorce', { open: 1 }, 1);
+  if (!r('divorce')) add('divorce', true, 'legalize divorce', { open: 1 }, 1);
   if (r('votingAge') > 16) add('votingAge', 16, 'lower the voting age to 16', { open: 1 }, 0); else add('votingAge', 18, 'raise the voting age to 18', { open: -1 }, -1);
   if (r('drinkingAge') > 18) add('drinkingAge', 18, 'lower the drinking age to 18', { open: 1, order: -1 }, 1); else add('drinkingAge', 21, 'raise the drinking age to 21', { order: 1 }, -2);
   if (r('retirementAge') < 72) add('retirementAge', r('retirementAge') + 1, `raise the pension age to ${r('retirementAge') + 1}`, { services: -1, tax: -1 }, -4);
@@ -222,7 +222,7 @@ export function enactRegional(placeId, region, id, value, regionName, by = 'the 
   const was = rule(id, placeId, { region });
   const b = book();
   ((b.regions ??= {})[`${placeId}/${region}`] ??= {})[id] = { value, year: store.state.year, by };
-  const text = describe(placeId, id, was, value).replace(/^(The )?[A-Z][^ ]*( [A-Z][a-z]+)*?( (legalised|banned|brought|abolished|lifted|changed|ended|rolled|passed))/, `${regionName}$3`);
+  const text = describe(placeId, id, was, value).replace(/^(The )?[A-Z][^ ]*( [A-Z][a-z]+)*?( (legalized|banned|brought|abolished|lifted|changed|ended|rolled|passed))/, `${regionName}$3`);
   const entry = { placeId, region, id, from: was, to: value, year: store.state.year, by, text };
   const list = (b.history ??= []);
   list.push(entry);

@@ -37,7 +37,7 @@ const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 const K = 1000;
 export const STAT_NAMES = { 'stats.health': 'Health', 'stats.intellect': 'Intellect', 'stats.charm': 'Charm',
   'talents.acting': 'Acting', 'talents.singing': 'Singing', 'talents.dance': 'Dance', 'talents.sports': 'Sports',
-  'talents.music': 'Music', tripleThreat: 'Triple-threat score', 'social.followers': 'Followers', 'hidden.discipline': 'Discipline' };
+  'talents.music': 'Music', tripleThreat: 'Triple-threat score', 'social.followers': 'Followers', 'hidden.discipline': 'Discipline', 'flags.riderAdvanced': 'Riding at an advanced level' };
 
 /** Per-year action counters; reset when the age changes. */
 function acts() {
@@ -101,7 +101,7 @@ export function unmet(career, o = {}) {
   }
   if (r.programme && !hasDegree(r.programme)) {
     out.push({ medical: 'Needs a medical degree.', law: 'Needs a law degree.',
-      cosmetology: 'Needs a hair and makeup licence.' }[r.programme] ?? `Needs you to have finished ${PROGRAMMES[r.programme].label.toLowerCase()}.`);
+      cosmetology: 'Needs a hair and makeup license.' }[r.programme] ?? `Needs you to have finished ${PROGRAMMES[r.programme].label.toLowerCase()}.`);
   } else if (r.programme && licenceFor(r.programme) && !licensed(licenceFor(r.programme)) && !vouched) {
     // The degree is not the right to practise.
     out.push(`Needs you to pass the ${examName(licenceFor(r.programme))}.`);
@@ -520,7 +520,7 @@ export function promote() {
   log(`You were promoted to ${c.title.toLowerCase()}, on ${fmtMoney(c.salary, country())} a year.`, 'system', 'good');
   if (c.level === career.levels.length - 1) milestone(`Reached the top of the profession: ${c.title.toLowerCase()}.`, 'career');
   if (career.fame && c.level === career.fame.from) {
-    log(`People are starting to recognise you. You are becoming known as a ${career.fame.label.toLowerCase()}.`, 'system', 'good');
+    log(`People are starting to recognize you. You are becoming known as a ${career.fame.label.toLowerCase()}.`, 'system', 'good');
   }
   return true;
 }
@@ -571,7 +571,7 @@ export function gigOptions() {
   return GIGS.map((g) => {
     let reason = '';
     if (p.age < g.minAge) reason = `You need to be ${g.minAge}.`;
-    else if (g.programme && !hasDegree(g.programme)) reason = 'Needs a hair and makeup licence.';
+    else if (g.programme && !hasDegree(g.programme)) reason = 'Needs a hair and makeup license.';
     else {
       const short = Object.entries(g.req).find(([path, min]) => (Number(resolve(path)) || 0) < min);
       if (short) reason = `Needs ${STAT_NAMES[short[0]]} of ${short[1]}.`;

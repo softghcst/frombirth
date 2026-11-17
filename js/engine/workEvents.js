@@ -96,7 +96,7 @@ export function workChoice(value, cast = {}) {
       const benefit = rate > 0 ? { amount: Math.round(c.salary * rate), yearsLeft: 1 } : null;
       fire('laid off');
       c.benefit = benefit;
-      return `The cheque is ${fmtMoney(amount, cty)}, on top of the usual severance.`;
+      return `The check is ${fmtMoney(amount, cty)}, on top of the usual severance.`;
     }
     case 'biz': {
       const biz = mainBusiness();

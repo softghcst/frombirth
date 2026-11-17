@@ -26,6 +26,10 @@ import * as pol from './politics.js';
 import * as courtLife from './court.js';
 import * as fame from './reputation.js';
 import * as throne from './reign.js';
+import { register as registerAnimal, recordHealth } from './animals.js';
+import { sceneChoice as animalChoice } from './animalCare.js';
+import { lifeChoice } from './animalLife.js';
+import { arcChoice } from './animalArcs.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -74,7 +78,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'addNpc': {
         const spec = e.value;
         const npc = spec.role === 'pet'
-          ? makePet(p.countryId, p.lastName)
+          ? makePet(p.countryId, p.lastName, undefined, spec.species)
           : makeNpc({ countryId: p.countryId, age: p.age + (spec.ageOffset ?? 0),
             ...(spec.attracted ? { gender: p.flags.interestedIn === 'men' ? 'male' : p.flags.interestedIn === 'women' ? 'female' : undefined } : {}), ...spec });
         store.state.npcs[npc.id] = npc;
@@ -82,6 +86,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         npc.lastInteractionAge = p.age;
         if (spec.tag) { npc.flags.tag = spec.tag; npc.flags.title = spec.title; }
         if (spec.memory) remember(npc, spec.memory[0], spec.memory[1]);
+        // An animal taken in goes on the family's record; the line that tells it is written when the scene ends.
+        if (spec.role === 'pet') registerAnimal(npc, { origin: 'found', pending: true });
         if (e.target) ctx.cast[e.target] = npc.id;
         break;
       }
@@ -91,6 +97,10 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         delete store.state.npcs[id];
         break;
       }
+      case 'animalHealth': recordHealth(ctx.cast[e.target], e.value); break;
+      case 'animal': ctx.note = animalChoice(e.value, ctx.cast); break;
+      case 'animalLife': ctx.note = lifeChoice(e.value, ctx.cast); break;
+      case 'animalArc': ctx.note = arcChoice(e.value, ctx.cast); break;
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;

@@ -35,14 +35,14 @@ export default [
     text: 'Someone at the gym you see every week nods at you, and asks whether you want to train together.',
     choices: [
       { label: 'Say yes', outcomes: [any('{pal} turns out to be a hard taskmaster and very good company.', 'good', addNpc('friend', 'pal'), st('health', 3), st('mood', 4))] },
-      { label: 'Say you prefer to train alone', outcomes: [any('They nod, no offence taken, and go back to their set.', 'neutral')] },
+      { label: 'Say you prefer to train alone', outcomes: [any('They nod, no offense taken, and go back to their set.', 'neutral')] },
     ],
   },
   {
     id: 'post_backlash', category: 'online', ageRange: [13, 80], cooldown: 6, requires: [need('social.followers', '>=', 5000)],
     text: 'Something you posted years ago has been dug up, and a great many strangers have opinions about it this morning.',
     choices: [
-      { label: 'Apologise plainly', check: chk(0.6, { 'stats.charm': 0.5 }), outcomes: [
+      { label: 'Apologize plainly', check: chk(0.6, { 'stats.charm': 0.5 }), outcomes: [
         ok('Short, direct, no excuses. It blows over in a week, and some people like you more.', audience(0.97), st('mood', -2), hid('karma', 2)),
         bad('The apology gets taken apart line by line.', audience(0.8), st('mood', -7)),
       ] },

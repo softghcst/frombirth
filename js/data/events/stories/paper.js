@@ -39,7 +39,7 @@ export default [
         mem('adviser', 'publishedHard', 'You published the hardest story the paper ever ran.'),
         ms('Published an investigation in the school paper.'))] },
       { label: 'Take it to {teacher} first', check: chk(0.45, { 'cast.teacher.relationship': 0.9 }), outcomes: [
-        ok('{teacher} goes grey and asks for one day. The next morning they report themselves, and give you a statement. The story runs with their own words in it.',
+        ok('{teacher} goes gray and asks for one day. The next morning they report themselves, and give you a statement. The story runs with their own words in it.',
           flag('paperRoute', 'fair'), hid('karma', 5), st('intellect', 2), rel('teacher', -5), rel('adviser', 8),
           mem('teacher', 'gaveChance', 'You came to them first and let them answer before you printed.'),
           mem('adviser', 'fairStory', 'You ran a hard story and gave its subject a fair hearing.'),

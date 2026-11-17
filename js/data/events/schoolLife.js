@@ -59,7 +59,7 @@ export default [
     ['Leave it, then cram', 'You put the books back on the shelf.', 'examCram'],
     ['Carry on as usual', 'You do not change a thing.', 'examTrust'],
   ]),
-  scene('graduation_day', [17, 19], 'The last day of school. {honours}The hall is too hot, the speeches are too long, and half the people you have sat beside for years you may never see again.', [
+  scene('graduation_day', [17, 19], 'The last day of school. {honors}The hall is too hot, the speeches are too long, and half the people you have sat beside for years you may never see again.', [
     ['Go to the party with your class', 'You find your friends in the crowd.', 'gradParty'],
     ['Celebrate with your family', 'You find your family by the doors.', 'gradFamily'],
     ['Slip away quietly', 'You leave before the photographs.', 'gradQuiet'],

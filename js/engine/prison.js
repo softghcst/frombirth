@@ -185,7 +185,7 @@ export function tickPrison() {
     if (rng.chance(0.22)) {
       const owed = p.flags.fugitive.owed + RECAPTURE_PENALTY;
       p.flags.fugitive = null;
-      log(`You were recognised and recaptured. You are going back inside, with ${RECAPTURE_PENALTY} years added.`, 'system', 'bad');
+      log(`You were recognized and recaptured. You are going back inside, with ${RECAPTURE_PENALTY} years added.`, 'system', 'bad');
       imprison(owed, 3);
     } else {
       p.legal.heat = Math.max(p.legal.heat, 60);

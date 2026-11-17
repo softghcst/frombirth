@@ -73,7 +73,7 @@ for (const c of CAREERS) {
   for (let i = 1; i < c.levels.length; i++) check(c.levels[i].pay[1] >= c.levels[i - 1].pay[0], `${c.id}: ${c.levels[i].title} pays less than the rung below`);
   const r = c.req ?? {};
   for (const m of r.majors ?? []) check(!!MAJOR_BY_ID[m], `${c.id}: unknown major ${m}`);
-  for (const pr of [r.programme, r.altProgramme, ...(r.programmes ?? [])].filter(Boolean)) check(!!PROGRAMMES[pr], `${c.id}: unknown programme ${pr}`);
+  for (const pr of [r.programme, r.altProgramme, ...(r.programmes ?? [])].filter(Boolean)) check(!!PROGRAMMES[pr], `${c.id}: unknown program ${pr}`);
   if (r.trade) check(!!TRADE_BY_ID[r.trade], `${c.id}: unknown trade ${r.trade}`);
   if (r.altCert) check(!!CERT_BY_ID[r.altCert], `${c.id}: unknown certificate ${r.altCert}`);
   for (const id of Object.keys(r.experience ?? {})) check(!!CAREER_BY_ID[id], `${c.id}: experience in an unknown career ${id}`);
@@ -310,7 +310,7 @@ check(!!next, 'an heir carries on');
 if (next) {
   check((next.careerRecord ?? []).some((r) => r.name === name && r.jobs.length), 'the parent\'s working life is in the family record');
   check(!!next.jobs?.employers[firm], 'the employers of the world are the same employers');
-  check(!(next.player.flags.licences ?? []).includes('medicine'), 'a child does not inherit a licence');
+  check(!(next.player.flags.licences ?? []).includes('medicine'), 'a child does not inherit a license');
   check(record.familyCareers().length >= 2, 'the heir can read the family\'s careers');
 }
 section('records: milestones from verified years, and working lives that outlive the worker');

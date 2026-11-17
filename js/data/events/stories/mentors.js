@@ -24,7 +24,7 @@ export default [
     text: 'Your essay comes back with no mark on it. Just two words in red: "See me."',
     choices: [
       { label: 'Go and see them', outcomes: [any(
-        '{teacher} is not angry. "You finished this in twenty minutes, didn\'t you? You are coasting." They hand you a reading list meant for students three years older, and a leaflet for a summer programme you have never heard of.',
+        '{teacher} is not angry. "You finished this in twenty minutes, didn\'t you? You are coasting." They hand you a reading list meant for students three years older, and a leaflet for a summer program you have never heard of.',
         'good', flag('hasTeacherMentor'), st('intellect', 4), hid('discipline', 2),
         teacher('sawTalent', 'They noticed your work was years ahead of the class.'))] },
       { label: 'Pretend you did not see it', outcomes: [any('The teacher does not raise it again. You keep getting top marks for half-effort.', 'neutral', hid('discipline', -2))] },

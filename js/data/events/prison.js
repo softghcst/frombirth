@@ -53,7 +53,7 @@ export default [
       { label: 'Leave it for someone else', outcomes: [any('The list fills up without you.', 'neutral')] },
     ]),
   scene('card_school', {},
-    'There is a card game on the landing every evening, played for phone credit and favours.', [
+    'There is a card game on the landing every evening, played for phone credit and favors.', [
       { label: 'Play straight', check: chk(0.45, { 'stats.intellect': 0.6 }), outcomes: [
         ok('You win more than you lose, and you win it politely.', cash(120), inside('respect', 4)),
         bad('You are out of credit by Thursday.', cash(-60), st('mood', -2)),

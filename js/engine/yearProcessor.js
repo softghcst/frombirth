@@ -2,6 +2,12 @@
 // systems run, then the death check, then this year's scenarios are queued.
 import { store, player, log, milestone, prunePending } from '../state.js';
 import { tickRelationships } from './relationships.js';
+import { tickAnimals } from './animals.js';
+import { tickCare } from './animalCare.js';
+import { tickEquestrian } from './equestrian.js';
+import { tickLife } from './animalLife.js';
+import { tickArcs } from './animalArcs.js';
+import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
 import { tickChildren } from './children.js';
@@ -110,6 +116,12 @@ export function advanceYear() {
   for (const n of tickLocal()) log(n.text, 'system', n.tone);
   tickActivism();
   tickCrime();
+  tickAnimals(); // last, so the record sees the year as it ended: who died, who moved, who is left to care
+  tickBreeding(); // young that are due
+  tickCare(); // then what the animals cost, how they fared, and anything that needs a decision
+  tickEquestrian();
+  tickLife(); // behaviour that begins, and what families argue about
+  tickArcs(); // stories that take years
 
   const cause = rollDeath();
   if (cause) { die(cause); return; }

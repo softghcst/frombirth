@@ -33,7 +33,7 @@ const OC = 'Oceania';
 const ROWS = {
   // ---------- North America (16) ----------
   aw: ['AW', 'ABW', 'territory', 'nl', NA, 'Americas', 'Oranjestad', ['Dutch', 'Papiamento'], 'America/Aruba', 'Parliamentary democracy within a kingdom',
-    'A constituent country of the Kingdom of the Netherlands: self-governing at home, with defence and foreign affairs handled by the Kingdom. Its people hold Dutch nationality.'],
+    'A constituent country of the Kingdom of the Netherlands: self-governing at home, with defense and foreign affairs handled by the Kingdom. Its people hold Dutch nationality.'],
   bs: ['BS', 'BHS', 'country', null, NA, 'Americas', 'Nassau', ['English'], 'America/Nassau', 'Parliamentary constitutional monarchy'],
   bz: ['BZ', 'BLZ', 'country', null, NA, 'Americas', 'Belmopan', ['English', 'Spanish', 'Belizean Creole'], 'America/Belize', 'Parliamentary constitutional monarchy'],
   ca: ['CA', 'CAN', 'country', null, NA, 'Americas', 'Ottawa', ['English', 'French'], 'America/Toronto', 'Federal parliamentary constitutional monarchy'],
@@ -100,7 +100,7 @@ const ROWS = {
   ao: ['AO', 'AGO', 'country', null, AF, 'Africa', 'Luanda', ['Portuguese'], 'Africa/Luanda', 'Presidential republic'],
   dj: ['DJ', 'DJI', 'country', null, AF, 'Africa', 'Djibouti City', ['French', 'Arabic', 'Somali', 'Afar'], 'Africa/Djibouti', 'Presidential republic'],
   cd: ['CD', 'COD', 'country', null, AF, 'Africa', 'Kinshasa', ['French', 'Lingala', 'Swahili', 'Kikongo', 'Tshiluba'], 'Africa/Kinshasa', 'Semi-presidential republic',
-    'The Democratic Republic of the Congo (capital Kinshasa). Not to be confused with its neighbour the Republic of the Congo (capital Brazzaville), which is a different country.'],
+    'The Democratic Republic of the Congo (capital Kinshasa). Not to be confused with its neighbor the Republic of the Congo (capital Brazzaville), which is a different country.'],
   eg: ['EG', 'EGY', 'country', null, AF, 'Africa', 'Cairo', ['Arabic'], 'Africa/Cairo', 'Semi-presidential republic'],
   et: ['ET', 'ETH', 'country', null, AF, 'Africa', 'Addis Ababa', ['Amharic', 'Oromo', 'Tigrinya', 'Somali'], 'Africa/Addis_Ababa', 'Federal parliamentary republic'],
   ke: ['KE', 'KEN', 'country', null, AF, 'Africa', 'Nairobi', ['Swahili', 'English'], 'Africa/Nairobi', 'Presidential republic'],

@@ -63,7 +63,7 @@ function acts() {
 export const actsLeft = () => (mine() ? ACTS_PER_YEAR - acts().done : 0);
 export function rank() {
   const m = mine();
-  return !m ? '' : m.standing >= 70 ? 'its public face' : m.standing >= 40 ? 'an organiser' : m.standing >= 15 ? 'a regular' : 'a new member';
+  return !m ? '' : m.standing >= 70 ? 'its public face' : m.standing >= 40 ? 'an organizer' : m.standing >= 15 ? 'a regular' : 'a new member';
 }
 export const actions = () => {
   const m = mine();

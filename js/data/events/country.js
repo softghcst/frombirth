@@ -65,7 +65,7 @@ export default [
     text: 'The power has been off for six days. The food in the fridge has gone, and the nights are very dark.',
     choices: [
       { label: 'Buy a generator', requires: [has(900)], outcomes: [any('It roars like a lorry and smells of petrol, and you have light. Half the street runs a cable to it.', 'good', cash(-900), st('mood', 5), hid('karma', 3))] },
-      { label: 'Cook outside with the neighbours', outcomes: [any('Everyone brings what was about to spoil. It is the best meal of the year, eaten by candlelight in the yard.', 'good', st('mood', 5), st('charm', 2))] },
+      { label: 'Cook outside with the neighbors', outcomes: [any('Everyone brings what was about to spoil. It is the best meal of the year, eaten by candlelight in the yard.', 'good', st('mood', 5), st('charm', 2))] },
       { label: 'Sit it out', outcomes: [any('You go to bed when it gets dark and get up when it gets light, like your great-grandparents did.', 'neutral', st('mood', -4))] },
     ],
   },
@@ -137,7 +137,7 @@ export default [
       { label: 'Go to the public shelter', outcomes: [any('A school gym, four hundred camp beds, and a baby that never stops crying. Everyone comes out of it alive.', 'neutral', st('mood', -5), hid('karma', 1))] },
       { label: 'Board up the windows and stay', check: chk(0.6, { 'stats.health': 0.2 }), outcomes: [
         ok('The roof holds. The noise is like nothing you have ever heard, and then it is morning.', hid('willpower', 5)),
-        bad('The roof goes at three in the morning. You are pulled out of the water by a neighbour with a boat.', st('health', -20), st('mood', -12)),
+        bad('The roof goes at three in the morning. You are pulled out of the water by a neighbor with a boat.', st('health', -20), st('mood', -12)),
       ] },
     ],
   },
@@ -158,8 +158,8 @@ export default [
     text: 'It has been over forty degrees for nine days. The night never cools, and the old and the poor are filling the hospitals.',
     choices: [
       { label: 'Run the air conditioning day and night', requires: [has(300)], outcomes: [any('The bill is frightening. You sleep, which is more than most of the city can say.', 'neutral', cash(-300), st('health', 1))] },
-      { label: 'Sleep on the roof like everyone else', outcomes: [any('A whole neighbourhood under the stars, with wet sheets and a radio. You remember it almost fondly.', 'neutral', st('health', -3), st('charm', 1))] },
-      { label: 'Carry water to the neighbours who cannot get out', outcomes: [any('Four flights, eleven flats, twice a day. One of them would not have lasted the week without you.', 'good', hid('karma', 9), st('health', -3), st('mood', 4))] },
+      { label: 'Sleep on the roof like everyone else', outcomes: [any('A whole neighborhood under the stars, with wet sheets and a radio. You remember it almost fondly.', 'neutral', st('health', -3), st('charm', 1))] },
+      { label: 'Carry water to the neighbors who cannot get out', outcomes: [any('Four flights, eleven flats, twice a day. One of them would not have lasted the week without you.', 'good', hid('karma', 9), st('health', -3), st('mood', 4))] },
     ],
   },
   {

@@ -163,7 +163,7 @@ export const TRAIL = [
   { id: 'babies', name: 'Kiss babies and eat local food', boost: [1, 3], factor: 'charm', text: 'You eat nine regional delicacies in one day and smile through all of them.' },
   { id: 'target', name: 'Court one group of voters', group: true, text: '' },
   { id: 'adverts', name: 'Buy advertising', boost: [3, 6], cost: 1.5, text: 'Your face is on every bus shelter, looking trustworthy.' },
-  { id: 'fundraise', name: 'Raise money from supporters', raise: [0.6, 1.4], boost: [1, 1], text: 'Raffles, dinners and a great many small cheques.' },
+  { id: 'fundraise', name: 'Raise money from supporters', raise: [0.6, 1.4], boost: [1, 1], text: 'Raffles, dinners and a great many small checks.' },
   { id: 'donors', name: 'Dine with wealthy donors', raise: [2.5, 5], karma: -2, strings: true, text: 'The wine is excellent, and everybody at the table wants something.' },
   { id: 'poll', name: 'Commission a private poll', cost: 0.5, poll: true, text: '' },
   { id: 'smear', name: 'Run attack adverts', boost: [-5, 8], cost: 1, dirty: true, karma: -6, text: 'Your opponent\'s worst photograph is on every channel.' },
@@ -225,7 +225,7 @@ export const CAUSE_ACTIONS = [
   { id: 'petition', name: 'Collect signatures', gain: [3, 6], rise: 3, sub: 'A clipboard, a high street, and a thick skin.', text: 'You stand outside a supermarket for six Saturdays with a clipboard.' },
   { id: 'march', name: 'March', gain: [5, 11], rise: 5, factor: 'charm', sub: 'Loud, visible, and not without risk.', text: 'Thousands of you fill the streets, and the evening news has to show it.' },
   { id: 'donate', name: 'Give money', gain: [4, 7], rise: 2, cost: 2000, sub: 'Placards and coaches are not free.', text: 'Your money pays for placards, coaches and a great many sandwiches.' },
-  { id: 'organise', name: 'Organise a local branch', gain: [8, 13], rise: 8, exp: 1, standing: 15, factor: 'intellect', sub: 'Meetings, rotas and other people\'s arguments. It counts as experience.', text: 'You run a branch: the meetings, the rotas, and the falling-out over the banner.' },
+  { id: 'organise', name: 'Organize a local branch', gain: [8, 13], rise: 8, exp: 1, standing: 15, factor: 'intellect', sub: 'Meetings, rotas and other people\'s arguments. It counts as experience.', text: 'You run a branch: the meetings, the rotas, and the falling-out over the banner.' },
   { id: 'speak', name: 'Speak for the movement', gain: [6, 14], rise: 10, exp: 1, standing: 40, factor: 'charm', sub: 'A microphone and a crowd. It makes you known.', text: 'You speak from the back of a lorry, and people quote it afterwards.' },
   { id: 'lobby', name: 'Take it to a minister', gain: [0, 3], rise: 4, standing: 40, strength: 40, sub: 'If the movement is strong enough, the government may give way.', text: '' },
 ];

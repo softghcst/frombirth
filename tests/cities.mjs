@@ -28,7 +28,7 @@ const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 // 1. Data: every hand-written row names a real city; every region with its own law has a city.
 for (const [id, rows] of Object.entries(CITY_ROWS)) {
   check(!!COUNTRIES[id] && !!REGION_WORD[id], `city rows for an unknown place, or one with no word for its regions: ${id}`);
-  for (const name of COUNTRIES[id].cities) check(!!rows[name], `${id}: ${name} has no row, though its neighbours do`);
+  for (const name of COUNTRIES[id].cities) check(!!rows[name], `${id}: ${name} has no row, though its neighbors do`);
   for (const [name, r] of Object.entries(rows)) {
     check(COUNTRIES[id].cities.includes(name), `${id}: row for a city that is not in the game: ${name}`);
     check(r.housing >= 0.4 && r.housing <= 2.2 && r.pay >= 0.7 && r.pay <= 1.4 && r.region && r.regionId, `${id}/${name}: out of range`);

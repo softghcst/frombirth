@@ -66,9 +66,9 @@ export default [
 
   scene('grandchild_born', 'their life',
     '{kid} has had a baby, {baby}, and has not slept properly in four days.', [
-      { label: 'Go and stay for a fortnight', outcomes: [any(
+      { label: 'Go and stay for two weeks', outcomes: [any(
         'You cook, you wash, you walk the hallway at three in the morning with {baby} on your shoulder. {kid} sleeps.', 'good',
-        rel('kid', 12), rel('baby', 12), st('mood', 9), st('health', -2), mem('kid', 'cameToHelp', 'When their baby was born, you came and stayed for a fortnight.'))] },
+        rel('kid', 12), rel('baby', 12), st('mood', 9), st('health', -2), mem('kid', 'cameToHelp', 'When their baby was born, you came and stayed for two weeks.'))] },
       { label: 'Send a hamper ({$200})', requires: [need('cashBase', '>=', 200)], outcomes: [any('{kid} sends a photo of {baby} asleep next to the biscuits.', 'good', cash(-200), rel('kid', 4), st('mood', 4))] },
       { label: 'Ring to say congratulations', outcomes: [any('{kid} can barely keep their eyes open on the call.', 'neutral', rel('kid', -1), st('mood', 3))] },
     ]),

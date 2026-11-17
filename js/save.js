@@ -4,6 +4,7 @@ import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
+import { reconcile as reconcileAnimals } from './engine/animals.js';
 
 export const SCHEMA_VERSION = 1;
 const K_INDEX = 'pathways.index';
@@ -70,6 +71,18 @@ function migrate(state) {
   ensureCareer(state.player.career);
   state.player.businesses ??= [];
   if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
+  for (const a of Object.values(state.animals?.byId ?? {})) for (const h of a.homes) rename(h, h.countryId);
+  for (const e of state.animals?.events ?? []) if (e.place) rename(e.place, e.place.countryId);
+  // Lives saved before the family's animals had a record of their own: each is entered once, as it stands,
+  // with nothing made up about a past that was never written down.
+  reconcileAnimals(state);
+  // Animal businesses once had books of their own, before they joined the shared business system (engine/business.js).
+  // Any still open in an old save are wound up: what was in them is paid to their owner, once.
+  for (const b of Object.values(state.animals?.businesses ?? {})) {
+    if (!b.closed && b.owner?.id === state.player.id && b.cash > 0) state.player.finance.cash += b.cash;
+    if (!b.closed) b.closed = { year: state.year, why: 'wound up when businesses were brought together' };
+    b.cash = 0;
+  }
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

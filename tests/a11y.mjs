@@ -32,7 +32,7 @@ for (const [name, t] of [['light', light], ['dark', dark]]) {
     worst.push(r);
     check(r >= 4.5, `${name} theme: --${fg} on --${bg} is ${r.toFixed(2)}:1, below 4.5:1`);
   }
-  check(ratio(t['accent-ink'], t.accent) >= 4.5, `${name} theme: button text on the accent colour is ${ratio(t['accent-ink'], t.accent).toFixed(2)}:1`);
+  check(ratio(t['accent-ink'], t.accent) >= 4.5, `${name} theme: button text on the accent color is ${ratio(t['accent-ink'], t.accent).toFixed(2)}:1`);
 }
 section(`contrast: text meets WCAG AA in both themes (lowest ${Math.min(...worst).toFixed(2)}:1)`);
 
@@ -50,10 +50,10 @@ for (const f of ['js/ui/screens/title.js', 'js/ui/screens/creator.js', 'js/ui/sc
 const shell = read('js/ui/shell.js');
 check((shell.match(/<main\b/g) ?? []).length === 1, 'the game screen has exactly one <main>');
 check(/data-journal role="log"[^>]*tabindex="0"/.test(shell), 'the journal is a log reachable by keyboard');
-check(/<nav aria-label=/.test(shell), 'the tab bar is a labelled navigation landmark');
+check(/<nav aria-label=/.test(shell), 'the tab bar is a labeled navigation landmark');
 check(/aria-labelledby="panel-title"/.test(shell), 'the open panel is a named region');
 check(/keepFocus/.test(shell), 'focus returns to the age-up button after a year');
-section('landmarks: one main per screen, a labelled navigation, a keyboard-reachable journal');
+section('landmarks: one main per screen, a labeled navigation, a keyboard-reachable journal');
 
 // 5. Motion: animations respect the reduced-motion setting.
 const layout = read('css/layout.css') + read('css/components.css');

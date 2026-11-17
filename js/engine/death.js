@@ -14,6 +14,7 @@ import { heirs } from './legacy.js';
 import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
+import { settleOnDeath as settleAnimals } from './animals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -283,6 +284,7 @@ export function die(cause) {
   const p = player();
   const c = country();
   if (!p.alive) return store.lastObituary;
+  settleAnimals(state); // every animal that depended on them is given a keeper before the life is closed
   settleEstate(); // money held in other currencies is counted once, in one currency
   const plan = estatePlan(); // settled before anything else changes
   const summary = lifeSummary(p, plan);

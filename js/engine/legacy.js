@@ -22,6 +22,7 @@ import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
 import { attractedTo } from './identity.js';
 import { passOn } from './edlegacy.js';
+import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
@@ -103,8 +104,8 @@ function newRoles(old, h) {
 
   for (const n of all) {
     let role = null;
-    if (n.role === 'pet') role = 'pet';
-    else if (n.role === 'inlaw' && n.flags.partnerOf === h.id) role = n.flags.former ? 'ex' : h.life.married ? 'spouse' : 'partner';
+    if (n.role === 'pet') continue; // decided below, by who keeps them now
+    if (n.role === 'inlaw' && n.flags.partnerOf === h.id) role = n.flags.former ? 'ex' : h.life.married ? 'spouse' : 'partner';
     else if (mine(n)) role = 'child';
     else if ((n.parentIds ?? []).some((id) => myKids.has(id))) role = 'grandchild';
     else if (h.role === 'child') {
@@ -128,6 +129,9 @@ function newRoles(old, h) {
   for (const n of all) {
     if (roles[n.id] === 'inlaw' && !['sibling', 'child'].includes(roles[n.flags.partnerOf])) delete roles[n.id];
   }
+  // An animal stays in the heir's life only if the heir, or someone still in their family, is the one keeping it.
+  // The rest are not lost: the family's record of them goes across whole (animals.handOver).
+  for (const n of all) if (n.role === 'pet' && n.alive && staysInFamily(old, n.id, h.id, roles)) roles[n.id] = 'pet';
   return roles;
 }
 
@@ -152,6 +156,7 @@ export function continueAs(npcId) {
   if (!h?.alive || !heirs(old).some((n) => n.id === npcId)) return null;
   ensureLife(h);
   const L = h.life;
+  settleAnimals(old); // already done when the life ended; this covers lives that ended before animals had a record
   const roles = newRoles(old, h);
   const lost = h.role === 'child' ? byGender(op, 'father', 'mother', 'parent') : byGender(op, 'grandfather', 'grandmother', 'grandparent');
 
@@ -186,6 +191,7 @@ export function continueAs(npcId) {
   const debt = L.savings < 0 ? -L.savings : 0;
   const rolled = () => clamp(Math.round(rng.around(50, 30)));
 
+  const assetIds = {}; // an inherited house is the same house: what happened in it stays attached to it
   /** @type {import('../types.js').Character} */
   const player = {
     id: uid('pc'), firstName: h.firstName, lastName: h.lastName, gender: h.gender, age: h.age,
@@ -203,7 +209,7 @@ export function continueAs(npcId) {
       pensionPerYear: L.retired ? L.pension ?? 0 : 0, military: null },
     finance: { cash: Math.max(0, L.savings), pension: 0, lifetimeEarned: 0, lifetimeTaxPaid: 0,
       loans: debt ? [{ id: uid('loan'), kind: 'personal', principal: debt, rate: 0.08, yearsLeft: 8 }] : [] },
-    assets: (h.inheritance?.assets ?? []).map((a) => ({ ...a, id: uid('asset') })), inventory: [], homeId: null,
+    assets: (h.inheritance?.assets ?? []).map((a) => { const id = uid('asset'); assetIds[a.id] = id; return { ...a, id }; }), inventory: [], homeId: null,
     npcIds: Object.keys(npcs),
     legal: { record: [], incarceration: null, heat: 0 },
     social: { handle: null, followers: 0, posts: 0, viral: 0, boughtFollowers: 0 },
@@ -230,6 +236,7 @@ export function continueAs(npcId) {
     rngSeed: rng.state(), settings: old.settings ?? { theme: 'auto' },
   };
   store.state = next;
+  handOverAnimals(old, next, { ancestorId: ancestor.id, heirId: h.id, assetIds });
   const firmLines = carryCareers(old, next, h); // the family's working history, the same employers, and any business left to this heir
 
   // An heir who was living in another country carries on there.

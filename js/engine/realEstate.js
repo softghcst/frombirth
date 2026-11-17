@@ -242,6 +242,7 @@ export function evict(id) {
 }
 
 export function moveOut() {
+  player().flags.rentalSince = store.state.year; // a new tenancy, and a new landlord's rules about animals
   const p = player();
   const a = home();
   if (!a) return result(false, 'You do not live in a place you own.', 'neutral');

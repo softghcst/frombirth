@@ -19,6 +19,7 @@ import * as last from '../../engine/death.js';
 import * as money from '../../engine/currency.js';
 import { openCurrencies } from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
+import { householdAnimalsHtml, openAnimalProfile, openHouseChronicle } from '../animals.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
 const pct = (x) => `${x >= 0 ? '+' : ''}${Math.round(x * 100)}%`;
@@ -352,6 +353,7 @@ export default {
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}
       </div>
       ${actions.length ? `<div class="btn-stack" style="margin-bottom:14px">${actions.map(([id, label]) => `<button class="btn" data-go="${id}">${esc(label)}</button>`).join('')}</div>` : ''}
+      ${householdAnimalsHtml()}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
       ${invs ? `<div class="section-label">Investments</div>${invs}` : ''}
@@ -361,6 +363,9 @@ export default {
 
     el.onclick = (e) => {
       const go = e.target.closest('[data-go]')?.dataset.go;
+      const animal = e.target.closest('[data-animal]')?.dataset.animal;
+      if (animal) return openAnimalProfile(api, animal);
+      if (go === 'chronicle') return openHouseChronicle(api);
       if (go) {
         return { currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
           borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => report(api, cars.takeDrivingTest()), flying: () => report(api, cars.learnToFly()) }[go]();
