@@ -2,18 +2,22 @@
 // new currency, and who comes with you.
 import { rightToLive, held, settle } from './citizenship.js';
 import { rate, setAside, absorb } from './currency.js';
-import { visaEdge, fluency } from './languages.js';
+import { fluency } from './languages.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
-import { quitCareer } from './career.js';
+import { quitCareer, hire, unmet } from './career.js';
+import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
 import { leaveForPrison } from './education.js';
 import { sellProperty, properties } from './realEstate.js';
 import { sellVehicle, vehicles } from './vehicles.js';
 import { market, priceOf } from './market.js';
 import { EMIGRATION } from '../data/activities.js';
 import { mayLeave } from './living.js';
+import { routes, bestRoute, spouseAnswer } from './immigration.js';
+
+export { routes };
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -21,25 +25,11 @@ export const canEmigrate = () => {
   const p = player();
   return p.age >= EMIGRATION.minAge && !p.legal.incarceration && !p.legal.pending && !p.flags.fugitive;
 };
+/** The cost of an ordinary application. Each route has its own (immigration.routes). */
 export const emigrationFee = () => localMoney(EMIGRATION.fee, country());
 
 // Who may live where as of right, and what nationality anyone holds, is engine/citizenship.js.
 export { rightToLive, held as nationalities };
-
-/** How likely a country is to let the player in. */
-function visaChance(countryId) {
-  const p = player();
-  const has = (t) => p.education.degrees.some((d) => d.type === t);
-  let chance = 0.45;
-  if (has('university')) chance += 0.2;
-  if (has('medical') || has('law') || has('graduate')) chance += 0.1;
-  if (has('apprenticeship') || has('cosmetology')) chance += 0.1;
-  if (p.career.careerId) chance += 0.1;
-  if (p.legal.record.some((r) => r.convicted && !r.juvenile)) chance -= 0.4;
-  if (countryId) chance += visaEdge(countryId, p); // speaking the language counts
-  if (countryId && (p.flags.studiedIn ?? []).includes(countryId)) chance += 0.1; // and so does having lived there as a student
-  return clamp(chance, 0.05, 0.95);
-}
 
 /** Countries the player could move to, with how the move looks. */
 export function destinations() {
@@ -50,18 +40,24 @@ export function destinations() {
     living: c.living, family: kin(c.id), ownsHome: properties().some((a) => a.countryId === c.id),
     language: fluency(c.id, p),
     right: rightToLive(c.id, p),
-    outlook: rightToLive(c.id, p) ? 'You are a citizen: no visa is needed.' : visaChance(c.id) >= 0.7 ? 'Your application looks strong.' : visaChance(c.id) >= 0.4 ? 'Your application could go either way.' : 'This is a long shot.' }));
+    route: bestRoute(c.id)?.name ?? null,
+    outlook: rightToLive(c.id, p) ? 'You are a citizen: no visa is needed.' : bestRoute(c.id)?.outlook ?? 'No route is open to you.' }));
 }
 
 /** People who come without being asked: a spouse, a committed partner, children at home, and pets. */
 const comesAnyway = (n) => n.role === 'spouse' || n.role === 'pet' || (n.role === 'child' && n.age < 18)
   || (n.role === 'partner' && (n.flags.livesTogether || n.flags.engaged || n.meters.relationship >= 75));
 
-/** Everyone who would make the move: the household, plus anyone who has agreed to come this year. */
-export function household() {
+/**
+ * Everyone who would make the move: the household, plus anyone who has agreed to come this year.
+ * Given a destination, a husband or wife makes up their own mind (immigration.spouseAnswer).
+ */
+export function household(destId) {
   const p = player();
-  return livingNpcs().filter((n) => comesAnyway(n) || n.flags.willComeAge === p.age);
+  return livingNpcs().filter((n) => (comesAnyway(n) && !(destId && n.role === 'spouse' && !n.flags.abroad && !spouseAnswer(n, destId))) || n.flags.willComeAge === p.age);
 }
+/** A husband or wife who has decided not to come. */
+export const stayingBehind = (destId) => livingNpcs().filter((n) => n.role === 'spouse' && !n.flags.abroad && !spouseAnswer(n, destId));
 
 /** Relatives who usually stay behind but can be asked: parents, grandparents, grown children, siblings. */
 export function askable() {
@@ -133,7 +129,7 @@ export function convertMoney(rate) {
  * Property is kept (it can be sold or let from anywhere, and lived in again
  * if the player moves back). Vehicles are shipped, or sold if the player prefers.
  * @param {string} countryId
- * @param {{shipVehicles?:boolean}} [opts]
+ * @param {{shipVehicles?:boolean, keep?:number, route?:string, forced?:boolean}} [opts]  route: an id from immigration.routes()
  */
 export function emigrate(countryId, opts = {}) {
   const p = player();
@@ -141,18 +137,22 @@ export function emigrate(countryId, opts = {}) {
   const to = COUNTRIES[countryId];
   const ship = opts.shipVehicles !== false;
   const shipping = ship ? shippingCost() : 0;
-  const fee = emigrationFee();
+  // `route` is how the player is applying; without one, as a citizen where possible, otherwise the settlement programme.
+  const open = opts.forced ? [] : routes(countryId);
+  const route = opts.forced ? null : open.find((r) => r.id === opts.route) ?? (opts.route ? null : open.find((r) => r.eligible && ['right', 'free'].includes(r.id)) ?? open.find((r) => r.id === 'settle'));
+  const fee = route ? route.fee : 0;
   // `forced` is exile: no application, no fee, no waiting.
   if (!to || to.id === from.id) return result(false, 'You cannot move there now.', 'neutral');
   if (!opts.forced) {
     if (!canEmigrate()) return result(false, 'You cannot move there now.', 'neutral');
     if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
+    if (!route?.eligible) return result(false, route?.why || 'That route is not open to you.', 'neutral');
     if (p.flags.visaAge === p.age) return result(false, 'You have already applied this year. Try again next year.', 'neutral');
     if (p.finance.cash < fee + shipping) return result(false, `Visas, lawyers and shipping come to ${fmtMoney(fee + shipping, from)}. You do not have it.`, 'neutral');
     p.flags.visaAge = p.age;
     p.finance.cash -= Math.round(fee * 0.2); // the application fee is gone either way
-    if (!rightToLive(to.id, p) && !rng.chance(visaChance(to.id))) {
-      const text = `${theCountry(to.name).replace(/^the/, 'The')} turned down your visa application. You can apply again next year.`;
+    if (!rng.chance(route.chance)) {
+      const text = `${theCountry(to.name).replace(/^the/, 'The')} turned down your ${{ work: 'work visa', study: 'student visa', family: 'family visa', invest: 'investor visa', protection: 'claim for protection' }[route.id] ?? 'visa application'}. You can apply again next year.`;
       log(text, 'system', 'bad');
       return result(false, text);
     }
@@ -164,13 +164,21 @@ export function emigrate(countryId, opts = {}) {
   for (const a of kept) a.countryId ??= from.id;
   const shipped = ship ? vehicles().length : 0;
   if (!ship) for (const a of [...vehicles()]) sellVehicle(a.id);
+  const field = p.career.careerId ?? p.career.lastField; // what a sponsoring employer would hire them for
+  const rung = p.career.careerId ? p.career.level : Math.max(0, (p.career.lastLevel ?? 0) - 1);
   if (p.career.careerId) quitCareer();
   if (p.career.partTime) p.career.partTime = null;
   leaveForPrison();
-  const coming = new Set(household().map((n) => n.id));
+  const there = new Set(livingNpcs().filter((n) => n.flags.abroad === to.id).map((n) => n.id)); // already living where the player is going
+  const coming = new Set(household(opts.forced ? null : to.id).map((n) => n.id));
   for (const n of livingNpcs()) {
-    if (coming.has(n.id)) { if (n.flags.abroad === to.id) n.flags.abroad = false; continue; }
-    if (n.role === 'partner') {
+    if (coming.has(n.id)) { if (n.flags.abroad === to.id) n.flags.abroad = false; delete n.flags.stayedBehind; continue; }
+    if (n.role === 'spouse' && !n.flags.abroad) {
+      // They would not come. The marriage goes on, at a distance.
+      n.flags.abroad = from.id; n.flags.stayedBehind = true;
+      n.meters.relationship = clamp(n.meters.relationship - 12);
+      log(`${n.firstName} would not leave ${theCountry(from.name)}. You are still married, in two countries.`, 'system', 'bad');
+    } else if (n.role === 'partner') {
       n.role = 'ex';
       log(`${n.firstName} would not come with you. It is over.`, 'system', 'bad');
     } else if (['boss', 'coworker', 'classmate'].includes(n.role)) {
@@ -193,7 +201,8 @@ export function emigrate(countryId, opts = {}) {
   p.countryId = to.id;
   p.flags.arrivedYear = store.state.year; // newcomers wait five years before they can vote
   p.city = rng.pick(to.cities);
-  settle(to.id, p.city);
+  settle(to.id, p.city, route?.status === 'citizen' ? 'permanent_resident' : route?.status ?? 'permanent_resident');
+  if (p.residency && route) { p.residency.route = route.id; if (route.years) p.residency.until = store.state.year + route.years; }
   p.homeId = null;
   p.flags.livesWithParents = false;
   p.flags.emigratedAge = p.age;
@@ -203,10 +212,21 @@ export function emigrate(countryId, opts = {}) {
   for (const a of p.assets.filter((x) => x.kind === 'security')) a.value = priceOf(a.catalogId);
   p.stats.mood = clamp(p.stats.mood + 4);
 
-  const who = [...coming].map((id) => store.state.npcs[id].firstName);
+  // A work visa comes with the job that sponsored it: the old field one rung down, or whatever they qualify for.
+  let job = '';
+  if (route?.id === 'work') {
+    const old = CAREER_BY_ID[field];
+    const career = old?.type === 'fulltime' && !unmet(old).length ? old : CAREERS.find((k) => k.type === 'fulltime' && k.category === 'professional' && !unmet(k).length) ?? CAREERS.find((k) => k.type === 'fulltime' && !unmet(k).length);
+    if (career) { hire(career, career === old ? Math.min(Math.max(0, rung - 1), career.levels.length - 1) : 0, 55, 'Your sponsor was as good as their word.'); job = `You start work as ${p.career.title.toLowerCase()}. `; }
+  }
+  const who = [...coming].filter((id) => !there.has(id)).map((id) => store.state.npcs[id].firstName);
+  const met = [...there].map((id) => store.state.npcs[id]).filter((n) => n?.alive && ['spouse', 'partner', 'parent', 'child', 'sibling'].includes(n.role)).map((n) => n.firstName);
   const back = kept.filter((a) => a.countryId === to.id).length;
   const left = kept.length - back;
-  const text = `${opts.forced ? '' : rightToLive(to.id, p) ? 'As a citizen you needed no visa. ' : 'Your visa came through. '}You moved to ${p.city}, ${theCountry(to.name)}${who.length ? `, with ${who.join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}. `
+  const granted = { free: 'You needed no visa. ', family: 'Your family visa came through. ', work: `An employer sponsored you: a work visa for ${route?.years} years. `, study: `Your student visa came through, for ${route?.years} years. You may not work full-time on it. `,
+    invest: 'Your investor visa came through. ', protection: `You were given protection for ${route?.years} years. ` }[route?.id] ?? 'Your visa came through. ';
+  const text = `${opts.forced ? '' : rightToLive(to.id, p) ? 'As a citizen you needed no visa. ' : granted}You moved to ${p.city}, ${theCountry(to.name)}${who.length ? `, with ${who.join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}. `
+    + `${met.length ? `${met.join(', ').replace(/, ([^,]*)$/, ' and $1')} ${met.length === 1 ? 'was' : 'were'} there to meet you. ` : ''}${job}`
     + `${shipped ? `Your ${shipped === 1 ? 'vehicle is' : `${shipped} vehicles are`} on a ship behind you. ` : ''}`
     + `${left ? `You still own ${left === 1 ? 'your property' : `${left} properties`} in ${theCountry(from.name)}: let it, sell it, or stay there when you visit. ` : ''}`
     + `${back ? 'You own a home here already, and can move straight in. ' : ''}`

@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps)
 ```
@@ -169,9 +170,37 @@ in the old currency. Net worth and estates count every currency once. Rates are 
 cent a year around a fixed starting rate. Amounts are whole units and every conversion rounds down, so exchanging never
 creates money.
 
-Still to come in the Living World engine, in order: immigration routes (work, study, family) and travel; a shared legal rule
-engine; states, provinces and cities that differ from each other; an economy and news that move without you.
-`docs/WORLD_DATA.md` lists the gaps.
+### Routes into a country, and visas that run out
+
+`js/engine/immigration.js`, numbers in `js/data/immigration.js`. Moving abroad is a choice between routes, each with its own
+conditions, cost, odds and the status it gives:
+
+| Route | For | You arrive as |
+|---|---|---|
+| As a citizen | citizens, including of a territory's parent state | citizen |
+| Free movement | citizens of a country in the same free-movement area | permanent resident |
+| To join family | a spouse who is a citizen there, or close family living there | permanent resident |
+| Sponsored by an employer | a degree or a trade; comes with the job | work visa, 4 years |
+| As a student | a school-leaving qualification and a year's funds | student visa, 4 years, no full-time work |
+| As an investor | a large sum | permanent resident |
+| Settlement programme | points for education, work, age and language | permanent resident |
+| Seeking protection | people whose own country is in crisis; no fee | temporary, 3 years |
+
+Routes that are closed are shown with the reason. A temporary status is renewed while its reason holds (a job, a course, a
+crisis at home), becomes permanent after five years, and otherwise ends: one year's warning, then the return home. A graduate
+gets two years to find a sponsor. Citizenship is for permanent residents.
+
+A husband or wife now decides for themselves whether to come. If they stay, the marriage continues across a border: it wears
+with distance, and a strong one often ends with them following.
+
+Flights abroad have a purpose (a holiday, seeing family, or looking with a move in mind, which helps a later application),
+give a little practice in a language you have begun, and are listed on the passport. A criminal record can get a visitor
+turned back at the border.
+
+All of this is gameplay configuration, the same shape for every country, and describes no real visa.
+
+Still to come in the Living World engine, in order: a shared legal rule engine; states, provinces and cities that differ from
+each other; an economy and news that move without you. `docs/WORLD_DATA.md` lists the gaps.
 
 ## Layout
 

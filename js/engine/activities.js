@@ -1,5 +1,7 @@
 // Things to do with your time: the gym, the library, meditation, holidays
 // and nights out. Each can be done once a year.
+import { rightToLive } from './citizenship.js';
+import { practise } from './languages.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
@@ -121,7 +123,7 @@ const names = (list) => list.map((n) => n.firstName).join(', ').replace(/, ([^,]
  * Takes a holiday. For a flight abroad pass { countryId, cabin } and id 'flight'.
  * @param {string} id  a HOLIDAYS id, or 'flight'
  * @param {boolean} bringFamily
- * @param {{countryId?:string, cabin?:string}} [trip]
+ * @param {{countryId?:string, cabin?:string, purpose?:'holiday'|'family'|'scouting'}} [trip]
  */
 export function holiday(id, bringFamily, trip = {}) {
   const p = player();
@@ -137,6 +139,17 @@ export function holiday(id, bringFamily, trip = {}) {
   const cost = Math.round((flying ? localMoney(cabin.cost, c) : tripCost(h)) * (1 + party.length * 0.6) * (ownPlace ? 0.6 : 1));
   if (p.finance.cash < cost) return result(false, 'You cannot afford it.', 'neutral');
   if (!once('holiday')) return result(false, 'You have had your holiday this year.', 'neutral');
+  const purpose = flying ? (trip.purpose ?? 'holiday') : 'holiday';
+  // The border. Gameplay configuration: a criminal record can get a visitor turned round.
+  if (flying && !rightToLive(dest.id, p) && p.legal.record.some((r) => r.convicted && !r.juvenile) && rng.chance(0.2)) {
+    const lost = Math.round(cost / 2);
+    p.finance.cash -= lost;
+    p.stats.mood = clamp(p.stats.mood - 6);
+    (p.trips ??= []).push({ countryId: dest.id, year: store.state.year, age: p.age, purpose, refused: true });
+    const text = `At the border in ${theCountry(dest.name)} they looked at your record, and put you on the next flight home. You lost ${fmtMoney(lost, c)} of the fare.`;
+    log(text, 'system', 'bad');
+    return result(false, text);
+  }
   p.finance.cash -= cost;
   p.counters.holidays = (p.counters.holidays ?? 0) + 1;
   p.stats.mood = clamp(p.stats.mood + h.mood);
@@ -155,15 +168,20 @@ export function holiday(id, bringFamily, trip = {}) {
     remember(n, 'visited', 'You flew over to see them.');
   }
   if (kin.length) p.stats.mood = clamp(p.stats.mood + 4);
+  if (purpose === 'family') for (const n of kin) n.meters.relationship = clamp(n.meters.relationship + 6);
+  if (purpose === 'scouting') p.stats.mood = clamp(p.stats.mood - Math.round(h.mood / 2)); // less of a rest
+  const spoke = flying ? practise(dest.id, p) : null;
   let text = `${h.name}${party.length ? `, with ${names(party)}` : ''}. `
     + `${flying ? (ownPlace ? `You stayed in your own ${ownPlace.name.charAt(0).toLowerCase() + ownPlace.name.slice(1)}. ` : `You based yourself in ${where}. `) : ''}`
     + `${kin.length ? `You saw ${names(kin)}, and it was as if you had never been away. ` : ''}`
-    + `${rng.pick(TRIP_STORIES[h.thrill ? 'thrill' : h.kind])} It cost ${fmtMoney(cost, c)}.`;
+    + `${purpose === 'scouting' ? `You spent it looking at flats, schools and the price of bread, and talked to people who had made the move. It will count when you apply. ` : rng.pick(TRIP_STORIES[h.thrill ? 'thrill' : h.kind]) + ' '}`
+    + `${spoke ? `Your ${spoke} got some use. ` : ''}It cost ${fmtMoney(cost, c)}.`;
   let tone = 'good';
   const smallest = party.filter((n) => n.role === 'child').sort((a, b) => a.age - b.age)[0];
 
   if (flying) {
     stamp(dest.id, 'visit');
+    (p.trips ??= []).push({ countryId: dest.id, city: ownPlace ? null : where, year: store.state.year, age: p.age, purpose, cabin: cabin.id, with: party.length, saw: kin.length });
     const seen = p.flags.visited ?? (p.flags.visited = []);
     if (!seen.includes(dest.id)) {
       seen.push(dest.id);
@@ -247,4 +265,10 @@ export function nightOut() {
   }
   log(text, 'system', tone);
   return result(tone !== 'bad', text, tone);
+}
+
+/** Trips abroad, newest first, for the passport. */
+export function trips(p = player()) {
+  const WORD = { holiday: 'Holiday', family: 'Visiting family', scouting: 'Looking with a move in mind' };
+  return [...(p.trips ?? [])].reverse().map((t) => ({ ...t, name: COUNTRIES[t.countryId]?.name ?? t.countryId, flag: COUNTRIES[t.countryId]?.flag ?? '', what: t.refused ? 'Refused entry' : WORD[t.purpose] ?? 'Holiday' }));
 }

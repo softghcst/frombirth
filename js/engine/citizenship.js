@@ -111,6 +111,7 @@ export function naturalisation(p = player()) {
   let why = '';
   if (p.age < 18) why = 'You must be an adult to apply.';
   else if (base >= 90) why = `${nameOf(here).replace(/^the/, 'The')} does not, in practice, naturalise people who move there.`;
+  else if (['student', 'worker', 'temporary_resident'].includes(residency(p).status)) why = 'Citizenship is for permanent residents. Your visa is temporary.';
   else if (lived < needs) why = `You need ${needs} years of residence${spouse ? ' (fewer, as you are married to a citizen)' : ''}. You have ${lived}.`;
   else if (convicted) why = 'A criminal conviction rules the application out.';
   else if (p.flags.natAge === p.age) why = 'You have applied this year. The next sitting is next year.';
