@@ -5,6 +5,8 @@
 // Each person keeps a `life` record and a `life.history` timeline. Big moments
 // in close family also reach the player's journal, and a few ask the player
 // to respond (see data/events/familyLives.js).
+import { careerBlock, careerExists, eraTitle, worldYear, majorOpen, universityAccess, secondaryShare } from './history.js';
+import { rule as lawRule } from './rules.js';
 import { rng } from '../rng.js';
 import { spouseFactor } from './couple.js';
 import * as kid from './kidschool.js';
@@ -111,12 +113,14 @@ function careersFor(npc) {
   if ((t.singing ?? 0) >= 78) stage.push('singer');
   if ((t.sports ?? 0) >= 82 && npc.age <= 26) stage.push('athlete');
   const wantsIt = npc.life.aspiration?.id === 'stage' || e.majorId === 'musical_theatre' || e.majorId === 'theatre';
-  if (stage.length && rng.chance(wantsIt ? 0.85 : 0.06)) return stage.map((id) => CAREER_BY_ID[id]);
+  const stageOpen = stage.filter((id) => careerExists(id, worldYear()));
+  if (stageOpen.length && rng.chance(wantsIt ? 0.85 : 0.06)) return stageOpen.map((id) => CAREER_BY_ID[id]);
 
   const has = (d) => e.degrees.includes(d);
   const usesTrade = (c) => c.req?.trade === e.trade || (c.doors ?? []).some((d) => d.trade && d.trade === e.trade);
   const open = CAREERS.filter((c) => {
     const r = c.req ?? {};
+    if (careerBlock(c, npc, worldYear(), (id) => lawRule(id, typeof npc.flags?.abroad === 'string' ? npc.flags.abroad : store.state.player.countryId))) return false;
     if (c.category === 'performing') return false;
     if (c.branchOnly || r.experience || r.programmes || c.agesOut) return false; // reached from inside a career, not hired into cold
     if (r.altOnly && !rng.chance(0.15)) return false; // needs a certificate few people have
@@ -157,7 +161,7 @@ function startJob(npc, quiet = false) {
   const career = back ?? rng.pick(options);
   const rung = back ? Math.max(0, last.level - 1) : career.type === 'fulltime' && career.doors?.some((d) => d.trade === npc.life.edu.trade) ? 1 : 0;
   const level = career.levels[rung];
-  npc.life.job = { careerId: career.id, level: rung, title: level.title, salary: bandPay(level, rng.next() * 0.6), years: 0 };
+  npc.life.job = { careerId: career.id, level: rung, title: eraTitle(career.id, rung, worldYear()) ?? level.title, salary: bandPay(level, rng.next() * 0.6), years: 0 };
   // Someone the player knows works somewhere real, in the player's city unless they live abroad.
   if (!quiet && !npc.flags.abroad && store.state?.player) {
     const e = placeAt(career.id, store.state.player.countryId, store.state.player.city);
@@ -189,7 +193,7 @@ function tickJob(npc, quiet = false) {
   // A spouse's chances follow the household plan agreed with the player (engine/couple.js).
   if (next && able && job.years >= level.years && rng.chance((0.18 + npc.meters.intellect / 500) * spouseFactor(npc))) {
     job.level += 1;
-    job.title = next.title;
+    job.title = eraTitle(job.careerId, job.level, worldYear()) ?? next.title;
     job.salary = Math.max(Math.round(job.salary * 1.08), bandPay(next, 0.2));
     job.years = 0;
     npc.occupation = next.title.toLowerCase();
@@ -220,15 +224,16 @@ function chooseMajor(npc) {
   if ((t.acting ?? 0) >= 70) return 'theatre';
   if ((t.music ?? 0) >= 70) return 'music';
   const gpa = npc.life.edu.gpa;
-  const open = MAJORS.filter((m) => !m.audition && gpa >= m.minGpa);
-  return rng.pick(open.length ? open : MAJORS.filter((m) => !m.audition && m.minGpa <= 2.2)).id;
+  const open = MAJORS.filter((m) => !m.audition && gpa >= m.minGpa && majorOpen(m.id, worldYear()));
+  return rng.pick(open.length ? open : MAJORS.filter((m) => !m.audition && m.minGpa <= 2.2 && majorOpen(m.id, worldYear()))).id;
 }
 
 /** What they do at 18. The player's advice (flags set by a scene) can tilt it. */
 function choosePath(npc, quiet) {
   const e = npc.life.edu;
   const f = npc.flags;
-  let uni = clamp((e.gpa - 2) / 2 * 0.8 + (npc.meters.intellect - 50) / 120 + kid.familyPull(npc), 0.05, 0.92);
+  // In earlier eras university was for few (Historical Eras): the same people, far fewer places.
+  let uni = clamp((e.gpa - 2) / 2 * 0.8 + (npc.meters.intellect - 50) / 120 + kid.familyPull(npc), 0.05, 0.92) * universityAccess(worldYear());
   if (f.pushUniversity) uni = clamp(uni + 0.3, 0, 0.97);
   if (f.pushWork) uni = clamp(uni - 0.3, 0.02, 1);
   e.degrees.push('high');
@@ -261,6 +266,14 @@ function tickEducation(npc, quiet = false) {
   if (a === 5) { e.stage = 'elementary'; e.gpa = clamp(npc.meters.intellect / 25 + rng.around(0, 0.4), 0.8, 4); if (!quiet) note(npc, 'started school', close); }
   if (a === 11) { e.stage = 'middle'; if (!quiet) note(npc, 'moved up to middle school'); }
   if (a === 14) { e.stage = 'high'; if (!quiet) note(npc, 'started high school'); }
+  // Historical Eras: in earlier years most children left school at the leaving age and went to work.
+  const leaving = lawRule('schoolLeavingAge', typeof npc.flags?.abroad === 'string' ? npc.flags.abroad : store.state.player.countryId);
+  if (a === leaving && leaving < 18 && ['elementary', 'middle', 'high'].includes(e.stage) && !rng.chance(secondaryShare(worldYear()))) {
+    e.stage = 'done';
+    e.leftAt = a;
+    if (!quiet) note(npc, `left school at ${a} and went to work`, close);
+    return;
+  }
   if (a >= 6 && a <= 17) {
     // A child of the player's: the school they are at, and this year's help at home, tell too.
     const k = npc.role === 'child' ? kid.edge(npc) : { steady: 0, once: 0 };

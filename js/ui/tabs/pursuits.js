@@ -1,4 +1,4 @@
-// Pursuits tab: things to do, social media, gambling, crime, moving abroad,
+// Pursuits tab: things to do, Digital Life, gambling, crime, moving abroad,
 // and, when it goes wrong, life inside.
 import { cityLine } from '../../engine/cities.js';
 import { store, player, country } from '../../state.js';
@@ -14,7 +14,8 @@ import { playBlackjack, playHorses, playLottery } from '../minigames/casino.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
-import * as net from '../../engine/social.js';
+import { openDigitalLife, digitalCard } from '../digital.js';
+import * as bc from '../../engine/digital/broadcast.js';
 import { canEmigrate } from '../../engine/emigration.js';
 import * as leisure from '../leisure.js';
 import { openExplore } from '../globalLife.js';
@@ -74,24 +75,6 @@ async function joinGang(api) {
   if (id) await report(api, jail.joinGang(id));
 }
 
-function socialCard() {
-  const p = player();
-  const s = p.social;
-  if (!net.canUseSocial()) return '';
-  if (!net.hasAccount()) {
-    return '<div class="card"><h3>Social media</h3><p class="muted" style="margin-bottom:10px">You are not online yet.</p><button class="btn" data-go="account">Open an account</button></div>';
-  }
-  const left = net.postsLeft();
-  return `<div class="card"><h3>Social media</h3>
-    <div class="kv"><span>Account</span><span>@${esc(s.handle)}</span></div>
-    <div class="kv"><span>Followers</span><span>${Math.round(s.followers).toLocaleString('en-US')}</span></div>
-    <div class="kv"><span>Posts</span><span>${s.posts}${s.viral ? ` (${s.viral} went viral)` : ''}</span></div>
-    <div class="btn-stack" style="margin-top:10px">
-      <button class="btn" data-do="post" ${left <= 0 ? 'disabled' : ''}>Post something (${left} left this year)</button>
-      <button class="btn" data-go="followers">Buy followers</button>
-    </div></div>`;
-}
-
 export default {
   id: 'pursuits', title: 'Pursuits', short: 'Pursuits',
   icon: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
@@ -126,9 +109,10 @@ export default {
           <button class="btn danger" data-crime style="margin-top:10px">Commit a crime</button>
         </div>` : ''}
         ${legalCard()}
-        ${socialCard()}
         <div class="card"><h3>Travel</h3><p class="muted" style="margin-bottom:10px">Trips at home and abroad, your papers, and the places you have been.</p><div class="btn-stack"><button class="btn" data-go="travel">Explore the World</button></div></div>
         ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Riding</h3><p class="muted" style="margin-bottom:10px">${p.riding ? `${esc(riding.levelName(riding.riderLevel()))} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : 'Lessons, horses and the show ring.'}</p><button class="btn" data-go="riding">Equestrian</button></div>` : ''}
+        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><p class="muted" style="margin-bottom:10px">Once a year. With others at home, it is time together.</p><div class="btn-stack">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
+        ${digitalCard()}
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
     }
     el.onclick = (e) => {
@@ -137,12 +121,23 @@ export default {
       const game = e.target.closest('[data-play]')?.dataset.play;
       if (game) return ({ blackjack: playBlackjack, horses: playHorses, lottery: playLottery })[game](api);
       if (e.target.closest('[data-crime]')) return commitCrime(api);
+      if (e.target.closest('[data-digital]')) return openDigitalLife(api);
+      const buyset = e.target.closest('[data-buyset]')?.dataset.buyset;
+      if (buyset) return import('../../engine/digital/tech.js').then((t) => report(api, t.buyDevice(buyset)));
+      const tune = e.target.closest('[data-tune]')?.dataset.tune;
+      if (tune) {
+        const opt = bc.broadcastOptions().find((o) => o.id === tune);
+        return pickModal({ title: tune === 'radio' ? 'What do you listen to?' : 'What do you watch?', options: opt.programmes.map((x) => ({ value: x.id, label: x.label })) })
+          .then((pick) => (pick ? report(api, bc.tuneIn(tune, pick)) : undefined));
+      }
       const todo = e.target.closest('[data-do]')?.dataset.do;
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;
       if (go === 'riding') return openScreen(api, 'riding');
       if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a) })[go](api);
       return undefined;
+      if (go) return ({ abroad: leisure.moveAbroad, city: leisure.moveCity })[go]?.(api);
+      const act = e.target.closest('[data-prison]')?.dataset.prison;
     };
   },
 };

@@ -42,6 +42,11 @@ export const RULES = {
   prisonEducation: { name: 'Education in prisons', kind: 'level', default: 'standard', levels: ['minimal', 'standard', 'extensive'],
     derive: (id) => { const s = systemFor(id).schooling; return s >= 0.7 ? 'extensive' : s < 0.4 ? 'minimal' : 'standard'; },
     words: { minimal: 'Little on offer', standard: 'Some courses', extensive: 'Courses up to degree level' } },
+  // Historical Eras: laws that today are settled everywhere in the game, but once were not (see data/history.js).
+  womenVote: { name: 'Women\'s vote', kind: 'flag', default: true, words: ['Men only', 'Everyone'] },
+  marriageBar: { name: 'Married women in teaching and public service', kind: 'flag', default: false, words: ['Allowed', 'Must leave on marrying'] },
+  womenInLaw: { name: 'Women in the legal profession', kind: 'flag', default: true, words: ['Not admitted', 'Admitted'] },
+  womenInUniform: { name: 'Women in the police, fire service and armed forces', kind: 'flag', default: true, words: ['Not taken', 'Taken'] },
 };
 
 /**

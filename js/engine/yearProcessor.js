@@ -20,7 +20,8 @@ import { tickCivil } from './civil.js';
 import { tickKinCases } from './kinCases.js';
 import { checkCare } from './guardianship.js';
 import { tickPrison } from './prison.js';
-import { tickSocial } from './social.js';
+import { tickDigital } from './digital/tick.js';
+import { tickEra } from './eras.js';
 import { tickIdentity } from './identity.js';
 import { tickLiving } from './living.js';
 import { tickRoyalty } from './royalty.js';
@@ -81,6 +82,7 @@ export function advanceYear() {
   if (p.age === 100) { milestone('Turned 100.', 'life'); log('You are 100 years old. A card arrives from the head of state, and the local paper sends a photographer.', 'system', 'good'); }
   if (p.age === 110) milestone('Turned 110.', 'life');
   state.year += 1;
+  tickEra(); // Historical Eras: the new year's era, money, laws and events (engine/eras.js)
   if (BIRTHDAYS[p.age]) log(BIRTHDAYS[p.age]);
   openGlobalYear();
 
@@ -110,7 +112,7 @@ export function advanceYear() {
   tickTrusts();
   booked('health', 'Health', tickHealth);
   booked('legal', 'Prison', tickPrison);
-  booked('auto', 'Friends and followers', tickSocial);
+  booked('auto', 'Digital life', tickDigital); // the Digital World: platforms, people's digital lives, creators, reputation (engine/digital)
   booked('health', 'Health and identity', tickIdentity);
   booked('losses', 'Rising prices and losses', tickLiving);
   booked('auto', 'The royal household', tickRoyalty);

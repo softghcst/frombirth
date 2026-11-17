@@ -28,6 +28,7 @@ import { attractedTo } from './identity.js';
 import { passOn } from './edlegacy.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
+import { carryOver } from './digital/legacy.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -322,6 +323,10 @@ export function continueAs(npcId) {
 
   // The schools of the world are the same schools: the next generation may sit in the same classrooms.
   passOn(old, next);
+  // The eras carry on with the year: the heir's money is already in this year's terms.
+  if (old.era) next.era = { ...old.era, applied: { year: old.year, countryId: next.player.countryId } };
+  // The family's digital world carries on too: the dead player's accounts become their memorial and archive.
+  carryOver(old, next, npcId, ancestor.id);
   if (old.schools) next.schools = old.schools;
   if (old.universities) next.universities = old.universities;
   if (player.education.enrolled && !PROGRAMMES[player.education.stage]) ensureSchool();

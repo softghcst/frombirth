@@ -102,6 +102,8 @@ function archive() {
       <div class="side">${n || ''}</div></button>
     <button class="row" data-go="tree"><div class="avatar glyph">🌳</div>
       <div class="main"><strong>Family tree</strong><small>Every relative, living or dead.</small></div></button>
+    <button class="row" data-go="digital"><div class="avatar glyph">📜</div>
+      <div class="main"><strong>Life stories and records</strong><small>The people the family came from, and what they left behind.</small></div></button>
     <button class="row" data-go="story"><div class="avatar glyph">🌍</div>
       <div class="main"><strong>Our Global Story</strong><small>Where the family has been born, lived, moved and traveled.</small></div></button>` };
 }
@@ -387,6 +389,7 @@ async function onClick(e) {
   if ((el = hit('data-go'))) {
     if (el.dataset.go === 'album') { note(); nav.open('album'); return show(); }
     if (el.dataset.go === 'story') return openGlobalStory(api);
+    if (el.dataset.go === 'digital') return import('./digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
     note(); shut();
     return openFamilyTree((npc) => hooks.openPerson?.(npc, api, () => show()));
   }

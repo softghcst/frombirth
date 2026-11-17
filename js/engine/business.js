@@ -690,7 +690,7 @@ export function markPaid(p = player()) { for (const b of p.businesses ?? []) b.p
  * make them its manager: whoever ran it still does, until they decide.
  * @returns {string[]} what happened, for the heir's journal
  */
-export function inherit(oldPlayer, newPlayer, heirNpc, npcs) {
+export function inherit(oldPlayer, newPlayer, heirNpc, npcs, oldNpcs = {}) {
   const out = [];
   newPlayer.businesses = [];
   for (const b of oldPlayer.businesses ?? []) {
@@ -698,7 +698,9 @@ export function inherit(oldPlayer, newPlayer, heirNpc, npcs) {
     if (!mine) continue;
     const copy = JSON.parse(JSON.stringify(b));
     const worked = copy.staff.some((s) => s.id === heirNpc.id);
-    copy.staff = copy.staff.filter((s) => s.id !== heirNpc.id && npcs[s.id]?.alive);
+    // The people who work there go on working there: the same people, carried into the new life if the family tree did not bring them.
+    copy.staff = copy.staff.filter((s) => s.id !== heirNpc.id && (npcs[s.id] ?? oldNpcs[s.id])?.alive);
+    for (const s of copy.staff) npcs[s.id] ??= oldNpcs[s.id];
     copy.others += b.staff.length - copy.staff.length - (worked ? 1 : 0);
     copy.others = Math.max(0, copy.others);
     copy.partners = copy.partners.filter((x) => npcs[x.id]?.alive);

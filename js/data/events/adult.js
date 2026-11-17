@@ -134,7 +134,7 @@ export default [
         ok('By midnight half the room believes you run a vineyard.', st('mood', 5), hid('karma', -3)),
         bad('Someone looks you up on their phone at the table.', st('mood', -7), st('charm', -2)),
       ] },
-      { label: 'Stay home', outcomes: [any('You look at the photos online afterwards. Everyone got old.', 'neutral', st('mood', -1))] },
+      { label: 'Stay home', outcomes: [any('You look at the photos online afterwards. Everyone got old.', 'neutral', st('mood', -1)), any('Someone sends you the group photograph afterwards. Everyone got old.', 'neutral', st('mood', -1))] },
     ],
   },
   {
