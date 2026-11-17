@@ -62,7 +62,7 @@ const born = (opts) => { do { store.state = createLife(opts); } while (!opts.bir
 const year = (n = 1) => { for (let i = 0; i < n; i++) { if (store.state.player.alive === false) { died = true; return; } try { advanceYear(); } catch (err) { problems.push(`${current}: a year failed: ${err.message}`); return; } store.state.pendingEvents = []; const p = store.state.player; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90; } };
 const adult = (opts, age, cash = 150000) => { const p = born(opts); p.age = age; p.birthYear = store.state.year; store.state.year += age; p.flags.livesWithParents = false; p.education.enrolled = false; p.education.stage = 'none';
   p.education.degrees = [{ type: 'high', gpa: 3.4, age: 18 }]; p.finance.cash = Math.round(cash * COUNTRIES[opts.countryId].currency.scale); for (const n of Object.values(store.state.npcs)) { n.age += age; if (n.role === 'spouse' || n.role === 'partner') n.role = 'ex'; } return p; };
-const job = (id = 'office', level = 0) => hire(CAREERS.find((c) => c.id === id), level, 65);
+const job = (id = 'office', level = 0) => hire(CAREERS.find((c) => c.id === id), level, 65, 'You were taken on.');
 const go = (dest, opts) => { const p = store.state.player; for (let i = 0; i < 80 && p.countryId !== dest; i++) { p.flags.visaAge = null; move.emigrate(dest, opts); } return p.countryId === dest; };
 const journal = () => store.state.journal.map((j) => j.text).join(' | ');
 
@@ -112,13 +112,16 @@ play('C', () => {
   check(go('ca', { route: 'study', city: 'Toronto' }) && p.city === 'Toronto' && p.residency.status === 'student', 'arrived in Toronto on a student visa');
   check(unmet(CAREERS.find((c) => c.id === 'retail')).some((x) => /student visa/.test(x)), 'may not work full-time');
   check(p.finance.cash > 0 && !p.homeId, 'rents somewhere to live');
-  p.education.enrolled = true; p.education.stage = 'university'; year(3);
+  // An ordinary student: decent grades and effort. (A student whose grades collapse is asked to leave, and the visa goes with it: that is a different story.)
+  p.education.enrolled = true; p.education.stage = 'university'; p.education.gpa = 3.2; p.education.effort = 70; p.stats.intellect = Math.max(p.stats.intellect, 60); year(3);
   check(p.countryId === 'ca' && p.residency.status === 'student', 'stays while enrolled');
   p.education.enrolled = false; p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.3, age: p.age }); year(1);
   check(p.residency?.postStudy && p.residency.workAuthorized, 'after graduating, may stay and work');
-  for (let i = 0; i < 4 && p.residency?.status === 'student'; i++) { if (!p.career.careerId) job(); year(1); }
+  // A worker set on staying keeps their performance up: good performers are the last to be laid off in a downturn.
+  const steady = () => { if (!p.career.careerId) job(); p.career.performance = Math.max(p.career.performance, 85); };
+  for (let i = 0; i < 4 && p.residency?.status === 'student'; i++) { steady(); year(1); }
   check(p.countryId === 'ca' && p.residency.status === 'worker', 'a job turns the student visa into a work visa');
-  for (let i = 0; i < 6 && p.residency?.status !== 'permanent_resident'; i++) { if (!p.career.careerId) job(); year(1); }
+  for (let i = 0; i < 6 && p.residency?.status !== 'permanent_resident'; i++) { steady(); year(1); }
   check(p.residency?.status === 'permanent_resident', 'and years of work make it permanent');
   check(Object.values(store.state.npcs).some((n) => ['boss', 'coworker'].includes(n.role)), 'with colleagues there');
   done('India to Canada: student visa, study, post-study work, sponsorship, permanence');

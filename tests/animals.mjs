@@ -80,8 +80,8 @@ check(animalPortraitSvg(a) === animalPortraitSvg(JSON.parse(before)) && animalPo
   const temper = new Set(); const looks = new Set();
   for (let i = 0; i < 40; i++) { const n = makePet('us', 'Test'); n.species = 'dog'; const r = zoo.register(n, { origin: 'family' }); temper.add(snap(r.temperament)); looks.add(snap(r.appearance)); delete S().animals.byId[n.id]; }
   check(temper.size >= 38 && looks.size >= 10, `forty dogs are forty individuals (${temper.size} temperaments, ${looks.size} looks)`);
-  const labs = []; for (let i = 0; i < 4000 && labs.length < 12; i++) { const n = makePet('us', 'T'); n.species = 'dog'; const r = zoo.register(n, { origin: 'family' }); if (r.breedId === 'labrador') labs.push(r.temperament.sociability); delete S().animals.byId[n.id]; }
-  check(labs.length >= 6 && Math.max(...labs) - Math.min(...labs) > 25, 'breed does not decide temperament');
+  const labs = []; for (let i = 0; i < 20000 && labs.length < 30; i++) { const n = makePet('us', 'T'); n.species = 'dog'; const r = zoo.register(n, { origin: 'family' }); if (r.breedId === 'labrador') labs.push(r.temperament.sociability); delete S().animals.byId[n.id]; }
+  check(labs.length >= 20 && Math.max(...labs) - Math.min(...labs) > 25, 'breed does not decide temperament');
   check(Object.values(BREEDS).every((list) => list.some((b) => b.mix)), 'every species with breeds has animals of no particular breed');
   S().animals = JSON.parse(keep); S().journal = JSON.parse(lines);
   a = zoo.animalById(pet.id);

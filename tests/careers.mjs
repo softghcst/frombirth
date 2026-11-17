@@ -202,6 +202,7 @@ career.hire(CAREER_BY_ID.marketing, 0, 60, 'Test.');
 const firstEmployer = work.career().employerId;
 const team1 = place.team();
 const mateIds = team1.coworkers.map((n) => n.id);
+const knewIds = [team1.boss.id, ...mateIds]; // everyone the player worked with there, the boss included
 check(!!team1.boss && mateIds.length >= 2, 'a job comes with a boss and coworkers');
 for (let i = 0; i < 3; i++) year();
 check(mateIds.every((id) => store.state.npcs[id]), 'coworkers persist from year to year');
@@ -212,8 +213,8 @@ check(stayed.every((id) => store.state.npcs[id] && p.npcIds.includes(id)), 'leav
 check(stayed.every((id) => ['colleague', 'friend', 'spouse', 'partner'].includes(store.state.npcs[id].role)), 'they become former colleagues, or friends');
 career.hire(CAREER_BY_ID.marketing, 0, 60, 'Test.', { employerId: firstEmployer });
 const back = place.team();
-const familiar = [back.boss, ...back.coworkers].filter((n) => mateIds.includes(n?.id)).length;
-check(familiar >= 1 || stayed.every((id) => store.state.npcs[id]?.life?.job?.employerId !== firstEmployer), 'going back to an employer, the same people are still there');
+const familiar = [back.boss, ...back.coworkers].filter((n) => knewIds.includes(n?.id)).length;
+check(familiar >= 1 || [team1.boss.id, ...stayed].every((id) => store.state.npcs[id]?.life?.job?.employerId !== firstEmployer), 'going back to an employer, the same people are still there');
 // A boss who leaves is replaced.
 const b = place.team().boss;
 b.life.job = null; b.life.retired = true;

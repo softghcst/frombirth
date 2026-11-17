@@ -53,7 +53,7 @@ section(`profiles: all ${n} cities have one`);
 const priceIn = (id, city) => { life(id, city); const all = []; for (let i = 0; i < 60; i++) { store.state.market.listings = null; for (const l of estate.listings()) all.push(l.price); } all.sort((a, b) => a - b); return all[Math.floor(all.length / 2)]; }; // the median: one mansion does not move it
 const ny = priceIn('us', 'New York'); const atl = priceIn('us', 'Atlanta');
 check(ny / atl > 1.4 && ny / atl < 2.8, `homes in New York cost far more than in Atlanta (ratio ${(ny / atl).toFixed(2)})`);
-const payIn = (id, city) => { const all = []; for (let i = 0; i < 25; i++) { const p = life(id, city); hire(CAREERS.find((c) => c.id === 'office'), 0, 60); all.push(p.career.salary); } return mean(all); };
+const payIn = (id, city) => { const all = []; for (let i = 0; i < 100; i++) { const p = life(id, city); hire(CAREERS.find((c) => c.id === 'office'), 0, 60); all.push(p.career.salary); } return mean(all); };
 const ldn = payIn('uk', 'London'); const car = payIn('uk', 'Cardiff');
 check(ldn / car > 1.2 && ldn / car < 1.5, `the same job pays more in London than in Cardiff (ratio ${(ldn / car).toFixed(2)})`);
 section('money: listings and salaries follow the city');
