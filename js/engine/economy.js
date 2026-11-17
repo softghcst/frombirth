@@ -11,7 +11,7 @@ import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { LIVING, BASE_LIVING, dynamic } from '../data/living.js';
 import { SPOKEN } from '../data/skills.js';
 import { FREE_MOVEMENT } from '../data/immigration.js';
-import { PHASES, TURN, WORLD_DOWNTURN, CRISIS_END, CRISIS_START, CRISIS_FX, MOVES, ROOTS, NEWS_MAX } from '../data/economy.js';
+import { PHASES, TURN, WORLD_DOWNTURN, CRISIS_END, CRISIS_START, WAR_START, CRISIS_FX, MOVES, ROOTS, NEWS_MAX } from '../data/economy.js';
 import { SINGLE } from '../data/citizenship.js';
 import { surnameFor } from '../data/countries.js';
 
@@ -125,6 +125,10 @@ export function tickEconomy() {
         if (was === 'inflation' || was === 'collapse') entry(c.id).inflation = BASE_LIVING[c.id].inflation === 'extreme' ? 'high' : BASE_LIVING[c.id].inflation;
         post(c.id, 'crisis', line.replace('{place}', the(c.id)), 'good');
       }
+    } else if (L.stability < WAR_START.below && rng.chance(WAR_START.chance)) {
+      Object.assign(entry(c.id), { crisis: 'war', crisisSince: year });
+      turn(c.id, 'slump', true);
+      post(c.id, 'crisis', WAR_START.text.replace('{place}', the(c.id)), 'bad');
     } else if (L.stability < CRISIS_START.below && rng.chance(CRISIS_START.chance)) {
       const kind = rng.pick(Object.keys(CRISIS_START.kinds));
       Object.assign(entry(c.id), { crisis: kind, crisisSince: year });

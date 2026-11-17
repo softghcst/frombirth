@@ -108,6 +108,32 @@ check(back + near >= 1, `and some come back (${back} home, ${near} to be near)`)
 check(minors === 0, 'small children do not emigrate on their own');
 section(`people: ${left} moved away, ${back} came home, ${near} moved nearer`);
 
+// 8. Wars can begin, rarely, and only in a deeply unstable country; never as one named country against another.
+{
+  const { WAR_START } = await import('../js/data/economy.js');
+  const { COUNTRY_LIST: ALL } = await import('../js/data/countries.js');
+  p = life('pl', 30);
+  const saved = WAR_START.chance; WAR_START.chance = 0.25;
+  for (let i = 0; i < 12; i++) econ.tickEconomy();
+  WAR_START.chance = saved;
+  const begun = store.state.world.news.filter((n) => n.kind === 'crisis' && /Armed conflict has broken out/.test(n.text));
+  check(begun.length > 0, 'with the odds raised, wars begin');
+  for (const n of begun) {
+    check(LIVING[n.placeId] && BASE_LIVING[n.placeId] && (LIVING[n.placeId].stability ?? 100) < WAR_START.below, `a war began somewhere stable: ${n.placeId}`);
+    const others = ALL.filter((c) => c.id !== n.placeId && n.text.includes(c.name));
+    check(!others.length, `a war's report names another country: ${n.text}`);
+  }
+  // At war: men of fighting age may not leave, and the protection route opens for the country's citizens.
+  const at = begun[0]?.placeId;
+  if (at) {
+    p = life(at, 30); p.gender = 'male'; p.flags.bornAs = 'male'; p.finance.cash = 1e9;
+    store.state.world = { places: { [at]: { phase: 'slump', since: store.state.year, crisis: 'war', crisisSince: store.state.year } }, news: [] };
+    check(!mayLeave().ok, 'men of fighting age may not leave a country at war');
+    const prot = routes('pl').find((r) => r.id === 'protection'); check(prot?.eligible, 'and its citizens may seek protection abroad');
+  }
+  section(`war: ${begun.length} began in twelve years at raised odds, each in an unstable country, none naming an enemy`);
+}
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 25)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('The world turns.');
