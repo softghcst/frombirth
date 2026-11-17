@@ -448,7 +448,8 @@ function familyRows() {
   if (!list.length) return '';
   return `<div class="section-label">How your family are doing</div>${list.map((n) => {
     const f = n.life.fin;
-    const bits = [roleLabel(n), f.home ? (f.home.mortgage ? 'owns a home, with a mortgage' : 'owns their home outright') : 'renting', ...(f.debt > 0 ? [`owes ${fmtMoney(f.debt, c)}`] : [])];
+    const bits = [roleLabel(n), f.home ? (f.home.mortgage ? 'owns a home, with a mortgage' : 'owns their home outright') : 'renting', ...(n.life.retired ? ['retired'] : []),
+      ...(f.card?.balance > 0 ? [`${fmtMoney(f.card.balance, c)} on a card`] : []), ...(f.debt > 0 ? [`owes ${fmtMoney(f.debt, c)}`] : [])];
     return personRow(n, bits.join(' · '), fmtMoney(npcWorth(n), c));
   }).join('')}<p class="muted mm-note" style="margin-top:0">Their money is theirs. Tap anyone to see their life.</p>`;
 }

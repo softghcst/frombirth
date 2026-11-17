@@ -13,6 +13,7 @@ import { fmtMoney, localCost, clamp } from '../util.js';
 import { rng } from '../rng.js';
 import { FAMILY_LAW, FAMILY_LAW_OF, decimalsOf, PETS, SUPPORT } from '../data/money.js';
 import { recordLoss } from './insurance.js';
+import { familyHelp, spendable, takeFrom } from './npcMoney.js';
 import { book, ledgerOf, toMinor, fromMinor } from './ledger.js';
 import { move, banksHere, accounts, rateAt, shareOf } from './banking.js';
 
@@ -20,8 +21,9 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const home = () => country().currency.code;
 const npc = (id) => store.state.npcs[id];
 const spouse = () => npcsByRole('spouse')[0] ?? null;
-const savingsOf = (n) => (n.life ? n.life.savings : n.savings ?? 0);
-const addSavings = (n, d) => { if (n.life) n.life.savings += d; else n.savings = (n.savings ?? 0) + d; };
+// Someone's money: what they have to hand and, for those closest, in the bank too (engine/npcMoney.js).
+const savingsOf = (n) => spendable(n);
+const addSavings = (n, d) => { if (d < 0) takeFrom(n, -d); else if (n.life) n.life.savings += d; else n.savings = (n.savings ?? 0) + d; };
 const earns = (n) => n?.life?.job?.salary ?? n?.life?.pension ?? 0;
 
 export const familyLawOf = (countryId = player().countryId) => FAMILY_LAW_OF[countryId] ?? 'equal';
@@ -268,6 +270,13 @@ function tickPets() {
 export function tickFamilyMoney() {
   const p = player();
   tickPets();
+  // Someone close who can spare it may help when the player is in trouble (engine/npcMoney.js).
+  const help = familyHelp();
+  if (help) {
+    log(`${help.npc.firstName} heard things were hard and sent you ${fmtMoney(help.amount, country())}. "Pay me back when you can. Or don't."`, 'system', 'good');
+    help.npc.lastInteractionAge = p.age;
+    book({ cat: 'giftIn', src: 'year', desc: `Help from ${help.npc.firstName}` });
+  }
   for (const a of jointAccounts()) {
     const s = npc(a.joint);
     if (!s?.alive || s.role !== 'spouse') continue;

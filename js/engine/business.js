@@ -13,6 +13,7 @@
 //             founded, manager: 'you'|'hired', payout: 0|0.5|1, scale, lossYears, profits: [], takings }
 import { store, player, country, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
+import { spendable, takeFrom } from './npcMoney.js';
 import { uid, fmtMoney, localCost, clamp } from '../util.js';
 import { rng } from '../rng.js';
 import { BUSINESS_TYPES, BUSINESS } from '../data/money.js';
@@ -116,10 +117,10 @@ export function buyersFor(id, fraction) {
   const a = businessById(id);
   if (!a) return [];
   const price = stakePrice(a, fraction);
-  return player().npcIds.map((x) => store.state.npcs[x]).filter((n) => n?.alive && n.age >= 21 && n.role !== 'pet' && (n.life?.savings ?? n.savings ?? 0) >= price);
+  return player().npcIds.map((x) => store.state.npcs[x]).filter((n) => n?.alive && n.age >= 21 && n.role !== 'pet' && spendable(n) >= price);
 }
-const savingsOf = (n) => n.life?.savings ?? n.savings ?? 0;
-const spend = (n, d) => { if (n.life) n.life.savings -= d; else n.savings = (n.savings ?? 0) - d; };
+const savingsOf = (n) => spendable(n);
+const spend = (n, d) => takeFrom(n, d);
 const earn = (n, d) => { if (n.life) n.life.savings += d; else n.savings = (n.savings ?? 0) + d; };
 
 /**

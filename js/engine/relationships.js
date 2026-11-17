@@ -8,6 +8,7 @@ import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
 import { book } from './ledger.js';
+import { settleNpc } from './npcMoney.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -66,7 +67,9 @@ export const removeNpc = (npc) => {
 export function inheritFrom(npc) {
   const p = player();
   const c = country();
-  const savings = Math.max(0, Math.round(npc.role === 'spouse' ? npc.life?.savings ?? 0 : npc.savings ?? npc.life?.savings ?? 0));
+  // Everything they leave, once their own debts and card are paid (engine/npcMoney.js); emptied, so it passes once.
+  if (npc.role !== 'spouse' && npc.role !== 'parent' && npc.role !== 'grandparent') return;
+  const savings = settleNpc(npc);
   if (!savings) return;
   const record = (amount, text) => {
     p.finance.cash += amount;
@@ -75,7 +78,6 @@ export function inheritFrom(npc) {
     book({ cat: 'inheritance', src: 'year', desc: `Inherited from ${npc.firstName} ${npc.lastName}` });
   };
   if (npc.role === 'spouse') {
-    if (npc.life) npc.life.savings = 0;
     return record(savings, `${npc.firstName}'s savings, ${fmtMoney(savings, c)}, came to you.`);
   }
   if (npc.role !== 'parent' && npc.role !== 'grandparent') return;

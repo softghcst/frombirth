@@ -68,7 +68,9 @@ function person(role, age, { relationship = 80, savings = 5000, salary = 0 } = {
   ensureLife(n);
   if (!n.life) { n.savings = Math.round(savings * COUNTRIES[p.countryId].currency.scale); return n; } // a child's parents keep simpler books
   n.life.savings = Math.round(savings * COUNTRIES[p.countryId].currency.scale);
+  n.life.fin = null; // a fresh start: their past, caught up when they arrived, would otherwise bring a bank balance and a card
   n.life.job = salary ? { careerId: office.id, level: 0, title: 'Clerk', salary: Math.round(salary * COUNTRIES[p.countryId].currency.scale), years: 0 } : null;
+  if (salary) n.life.retired = false; // working again, whatever their past held
   if (role === 'spouse') { n.marriedAtAge = p.age - 2; n.prenup = false; }
   return n;
 }
@@ -633,7 +635,7 @@ section('pets cost money, and pet and business insurance pay what they should, w
   for (let i = 0; i < 30 && !bought; i++) bought = tickNpcMoney(bro) === 'bought';
   check(bought && f.home && f.home.mortgage > 0 && f.home.mortgage <= bro.life.job.salary * 4.5, 'with a deposit saved, and an income a lender will accept, they buy a home with a mortgage');
   const w1 = npcWorth(bro);
-  check(w1 === Math.round(bro.life.savings + f.invested + f.home.value - f.home.mortgage - f.debt), 'their worth is savings, investments and home, less what they owe');
+  check(w1 === Math.round(bro.life.savings + (f.bank?.bal ?? 0) + f.invested + f.home.value - f.home.mortgage - f.debt - (f.card?.balance ?? 0)), 'their worth is savings, bank, investments and home, less what they owe');
   const poor = person('sibling', 30, { savings: 1000000, salary: 0 }); fresh(poor);
   for (let i = 0; i < 10; i++) tickNpcMoney(poor);
   check(!finOf(poor).home, 'nobody buys a home with no income, whatever they have saved');
@@ -750,6 +752,7 @@ const spousal = sup.find((x) => x.kind === 'spousal'); const childS = sup.find((
 check(spousal && spousal.dir === 'pay' && spousal.amount === Math.round((120000 - 20000) * 0.2) && spousal.until === store.state.year + 6, 'spousal support to a former spouse who earned much less, for half the length of the marriage');
 check(childS && childS.dir === 'receive' && childS.until === store.state.year + 10, 'and child support from them until the youngest is grown');
 bookAction(); sound('after a divorce with a pension and a business');
+for (const n of Object.values(store.state.npcs)) n.flags.helpedYear = store.state.year + 1; // nobody steps in with help this year, so the support alone can be counted
 const c21 = p.finance.cash; store.state.year += 1; fam.tickFamilyMoney();
 check(Math.abs(p.finance.cash - (c21 - spousal.amount + childS.amount)) <= 1, 'each year the support is paid and received');
 check((yearTotals(store.state.ledger, store.state.year, 'USD').expense.supportOut ?? 0) > 0 && (yearTotals(store.state.ledger, store.state.year, 'USD').income.supportIn ?? 0) > 0, 'and recorded as support paid and received');
@@ -832,6 +835,60 @@ resolveChoice(getEvent('parent_money_help'), 0, { par: mum25.id });
 check((mum25.savings ?? mum25.life?.savings) === ms + 2000, 'helping a parent with their bills really reaches them');
 bookAction(); sound('after the new scenes');
 section('new scenes: weddings, babies, careers, parents, university, grandparents, all with real money');
+
+// ---------- 26. Fuller books for close family ----------
+{
+  const nm = await import('../js/engine/npcMoney.js');
+  p = life('us', { cash: 1000 });
+  const sis = person('sibling', 22, { savings: 60000, salary: 50000 }); sis.life.fin = null; // too young to be buying a home with it
+  const f = nm.finOf(sis); f.style = 'balanced';
+  nm.tickNpcMoney(sis);
+  check(f.bank && f.bank.bal > 0 && sis.life.savings >= 0 && sis.life.savings <= 60000, 'spare money goes into a savings account of their own');
+  const w0 = nm.npcWorth(sis); const bal0 = f.bank.bal;
+  check(w0 === Math.round(sis.life.savings + f.bank.bal + f.invested + (f.home ? f.home.value - f.home.mortgage : 0) - f.debt - (f.card?.balance ?? 0)), 'their worth counts the bank, investments and home, less the card and debts');
+  sis.life.savings = -bal0 / 2; f.invested = 0; nm.tickNpcMoney(sis);
+  check(f.bank.bal < bal0 && f.debt === 0, 'in a hard year the bank account is drawn on before anything is borrowed');
+  // A card: paid in full by the sensible, carried by the easy-going, cancelled after two missed years.
+  f.card = { bankId: 'meridian', limit: 10000, balance: 0, rateBp: 1900, missed: 0, opened: store.state.year };
+  sis.life.savings = 20000; nm.tickNpcMoney(sis);
+  check(f.card && f.card.balance === 0, 'a sensible person pays their card off each year');
+  const bro = person('sibling', 22, { savings: 20000, salary: 50000 }); bro.life.fin = null; const g = nm.finOf(bro); g.style = 'bold';
+  g.card = { bankId: 'meridian', limit: 10000, balance: 0, rateBp: 2400, missed: 0, opened: store.state.year };
+  nm.tickNpcMoney(bro);
+  check(g.card.balance > 0, 'an easy-going one carries a balance');
+  bro.life.savings = 0; bro.life.job = null; if (g.bank) g.bank.bal = 0; g.invested = 0; g.card.balance = 9000;
+  nm.tickNpcMoney(bro); nm.tickNpcMoney(bro);
+  check(!g.card && g.defaulted === store.state.year && g.debt > 9000, 'two missed years and the card is cancelled; what was owed becomes their debt, not the player\'s');
+  check(p.finance.cash === 1000, 'none of it touched the player\'s money');
+  // Early retirement, on what they have put by.
+  const rich = person('sibling', 60, { savings: 0, salary: 60000 }); rich.life.fin = null; const r = nm.finOf(rich);
+  r.bank = { bankId: 'meridian', name: 'Meridian Bank', bal: 5_000_000, rateBp: 100, opened: 2000 }; rich.life.yearsWorked = 35;
+  let gone = false; for (let i = 0; i < 6 && !gone; i++) gone = nm.tickNpcMoney(rich) === 'retired';
+  check(gone && rich.life.retired && !rich.life.job && rich.life.pension > 0, 'someone with plenty put by may retire early, on a pension from their years of work');
+  const poorer = person('sibling', 60, { savings: 0, salary: 60000 }); poorer.life.fin = null; nm.finOf(poorer);
+  for (let i = 0; i < 5; i++) nm.tickNpcMoney(poorer);
+  check(!poorer.life.retired, 'someone without it keeps working');
+  // When the player is in trouble, a generous relative with money to spare may step in, and it comes out of their money.
+  p = life('us', { cash: 0 }); p.finance.cash = -3000; book({ cat: 'losses', desc: 'test' });
+  for (const n of Object.values(store.state.npcs)) n.meters.generosity = 0; // only the aunt is in a position to help
+  const aunt = person('sibling', 50, { savings: 200000, relationship: 90 }); aunt.meters.generosity = 90;
+  let help = null; for (let i = 0; i < 20 && !help; i++) help = nm.familyHelp();
+  const had = 200000;
+  check(help && help.npc === aunt && help.amount >= 1500 && p.finance.cash === -3000 + help.amount && nm.spendable(aunt) === had - help.amount, 'a generous relative helps, from their own money');
+  check(nm.familyHelp() === null, 'and not again the next year');
+  const mean = person('sibling', 50, { savings: 200000, relationship: 90 }); mean.meters.generosity = 10;
+  aunt.flags.helpedYear = store.state.year;
+  let h2 = null; for (let i = 0; i < 20 && !h2; i++) h2 = nm.familyHelp();
+  check(!h2, 'someone who is not generous does not');
+  // A spouse's estate: everything they had, less their own debts, once.
+  p = life('us', { cash: 0 });
+  const w = person('spouse', 60, { savings: 10000 }); w.life.fin = null; const wf = nm.finOf(w);
+  wf.bank = { bankId: 'meridian', name: 'Meridian', bal: 30000, rateBp: 100, opened: 2000 }; wf.invested = 20000; wf.card = { limit: 5000, balance: 4000, rateBp: 1900, missed: 0 }; wf.debt = 6000;
+  w.alive = false; inheritFrom(w);
+  check(p.finance.cash === 10000 + 30000 + 20000 - 4000 - 6000 && nm.settleNpc(w) === 0, 'a spouse leaves what they had, less their own debts, and it passes once');
+  sound('after family finances');
+}
+section('close family keep fuller books: a bank account, a card used their own way, early retirement, help in hard times');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

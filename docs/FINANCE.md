@@ -258,12 +258,36 @@ their money milestones, their property, and who got what. Their transactions are
   off, adding up to exactly the year. The year is still booked as one transaction.
 - **Ancestors' life stories** open from the Family legacy section.
 
+## Fuller books for close family
+
+`engine/npcMoney.js`. The spouse or partner, grown children and brothers and sisters now keep:
+
+- **a savings account** at a bank where they live. Money beyond what they keep to hand goes in, up to what
+  they like to have put by (the careful keep twice as much). It earns interest, after tax. In a hard year it
+  is drawn on before investments are sold, and only then do they borrow. A house deposit can come from it.
+- **a credit card**, for some of them. Whether to have one is a choice made every ten years or so, weighted
+  by temperament (most of the easy-going, few of the careful) and by how lenders keep records where they
+  live. Some of their spending goes on it; the careful and sensible pay it off, the easy-going pay the
+  minimum and carry the rest, with interest. Two missed years and it is cancelled, the balance becomes their
+  debt, and no new card is offered for six years.
+- **early retirement**, from 58, if what they have put by would carry them, on a pension from their years
+  of work.
+
+When the player is in trouble (overdrawn, or living on benefits), someone close who is fond of them,
+generous, and able to spare three times what is needed may send money. It comes out of their own money,
+and each person helps at most once every four years.
+
+When a spouse, parent or grandparent dies, what they leave is everything they had to hand, in the bank and
+invested, less their own debts and card. It is emptied as it passes, so it can pass only once.
+
+Everyone further away still has the single savings figure they always had.
+
 ## Not built
 
 These were in the brief and are **not** in the game:
 
-- **Other people's accounts in detail.** The closest family have a home, a mortgage, debts and investments,
-  but not bank accounts or cards of their own, and there is no shared household ledger.
+- **A shared household ledger.** Each person close to the player keeps their own books; the household's
+  combined money is not one ledger, and relatives' transactions are not itemised the way the player's are.
 - **Beneficiary rules by country** beyond the reserved share for children; **deposit protection and bank failure.**
 - **Pay by pay period.** Payslips show the year month by month, but pay, bills and statements are still
   posted once a year. A year in Pathways is lived as one step: something bought during a year is paid for from the next tick on, so a mortgage taken out is never
