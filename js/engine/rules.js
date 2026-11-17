@@ -75,7 +75,7 @@ export function may(action, opts = {}) {
   const no = (why) => ({ ok: false, why });
   const age = (ruleId, what) => (p.age < rule(ruleId, id) ? no(`You have to be ${rule(ruleId, id)} to ${what} in ${name}.`) : null);
   switch (action) {
-    case 'vote': return age('votingAge', 'vote') ?? { ok: true, why: '' };
+    case 'vote': return age('votingAge', 'vote') ?? ((p.flags?.trueGender ?? p.gender) === 'female' && !rule('womenVote', id) ? no(`Women cannot vote in ${name} yet.`) : { ok: true, why: '' });
     case 'drive': return age('drivingAge', 'drive') ?? { ok: true, why: '' };
     case 'drink': return !rule('alcohol', id) ? no(`Alcohol is banned in ${name}.`) : age('drinkingAge', 'drink') ?? { ok: true, why: '' };
     case 'gamble': return !rule('gambling', id) ? no(`Gambling is against the law in ${name}.`) : age('gamblingAge', 'gamble') ?? { ok: true, why: '' };

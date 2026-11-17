@@ -203,6 +203,59 @@ section('Money');
   check(COUNTRIES.fr.currency.scale === H.modernCurrency('fr').scale, 'year after year');
 }
 
+// ---------- Phase 5: laws ----------
+section('Laws');
+{
+  const R = await import('../js/engine/rules.js');
+  const at = (year, countryId = 'us', gender = 'female') => { let s; do { s = createLife({ countryId, year: year - 30, gender }); } while (s.player.royal); store.state = s; s.year = year; s.player.age = 30; H.syncWorld(year); return s.player; };
+  at(1915);
+  check(!R.may('vote').ok && /Women cannot vote/.test(R.may('vote').why), 'an American woman cannot vote in 1915');
+  at(1921);
+  check(R.may('vote').ok, 'and can in 1921');
+  at(1965, 'ch');
+  check(!R.may('vote').ok, 'a Swiss woman cannot vote in 1965');
+  at(1972, 'ch');
+  check(R.may('vote').ok, 'and can in 1972');
+  at(1915, 'us', 'male');
+  check(R.may('vote').ok, 'men could vote in 1915 (at 21 and over)');
+  check(R.rule('votingAge', 'us') === 21, 'the voting age in 1915 was 21');
+  at(1975, 'us', 'male');
+  check(R.rule('votingAge', 'us') === 18, 'and 18 after 1971');
+  const p = at(2010);
+  const her = makeNpc({ role: 'partner', countryId: 'us', age: 30, gender: 'female' });
+  check(!R.may('marry', { partner: her }).ok, 'two women could not marry in the United States in 2010');
+  at(2016);
+  check(R.may('marry', { partner: her }).ok, 'and could in 2016');
+  at(1960, 'it');
+  check(!R.may('divorce').ok, 'no divorce in Italy in 1960');
+  at(1971, 'it');
+  check(R.may('divorce').ok, 'divorce in Italy from 1970');
+  at(1925, 'us', 'male');
+  check(!R.may('drink').ok && /banned/.test(R.may('drink').why), 'Prohibition: no alcohol in the United States in 1925');
+  at(1935, 'us', 'male');
+  check(R.may('drink').ok, 'and alcohol again by 1935');
+  at(1950);
+  check(R.rule('conscription', 'us') === true, 'the draft in the United States in 1950');
+  at(1975);
+  check(R.rule('conscription', 'us') === false, 'and none after 1973');
+  const { LAW_HISTORY } = await import('../js/data/history.js');
+  const unrecorded = Object.keys(COUNTRIES).find((id) => !LAW_HISTORY.womenVote[id] && !COUNTRIES[id].place?.parentId);
+  at(1930, unrecorded);
+  check(R.rule('womenVote', unrecorded) === false && R.sheet(unrecorded).find((x) => x.id === 'womenVote').note === 'the usual law of the period', 'where a country\'s own history is not recorded, the period\'s usual law applies, and says so');
+  at(2026);
+  const modern = R.sheet('us').map((x) => `${x.id}=${x.value}`).join();
+  check(!R.sheet('us').some((x) => ['history', 'era'].includes(x.source)) && !R.sheet('de').some((x) => ['history', 'era'].includes(x.source)), 'in the present, every law is today\'s law');
+  check(modern.includes('votingAge=18') && modern.includes('womenVote=true'), 'as before');
+}
+{
+  // A law that changes during a life is written in the journal, once.
+  const p = life({ born: 1900, age: 0, countryId: 'us', gender: 'female' });
+  grow(22);
+  const said = store.state.journal.filter((j) => /Women in the United States have won the right to vote/.test(j.text));
+  check(said.length === 1, 'the year women won the vote is written in the journal, once');
+  check(store.state.journal.some((j) => /Alcohol has been banned/.test(j.text)), 'and so is Prohibition');
+}
+
 console.log(`${passed.length} checks passed.`);
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(` - ${x}`); process.exit(1); }
 console.log('The eras hold together.');

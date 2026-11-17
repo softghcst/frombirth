@@ -4,6 +4,8 @@
 import { store, player, log, milestone } from '../state.js';
 import { getEra, getEraTransition, syncWorld, currencyFor, MODERN_YEAR } from './history.js';
 import { convertMoney } from './emigration.js';
+import { rule } from './rules.js';
+import { LAW_HISTORY } from '../data/history.js';
 import { COUNTRIES } from '../data/countries.js';
 import { theCountry, fmtMoney } from '../util.js';
 
@@ -73,16 +75,42 @@ function revalue(state) {
   return k;
 }
 
+const LAW_NEWS = {
+  womenVote: (v, place) => (v ? `Women in ${place} have won the right to vote.` : null),
+  votingAge: (v, place) => `The voting age in ${place} is now ${v}.`,
+  sameSexMarriage: (v, place) => (v ? `Same-sex couples in ${place} can marry now.` : null),
+  divorce: (v, place) => (v ? `Divorce is legal in ${place} now.` : null),
+  deathPenalty: (v, place) => (v ? null : `${place.replace(/^the/, 'The')} has abolished the death penalty.`),
+  conscription: (v, place) => (v ? `${place.replace(/^the/, 'The')} has brought in compulsory military service.` : `Compulsory military service in ${place} has ended.`),
+  alcohol: (v, place) => (v ? `Alcohol is legal again in ${place}.` : `Alcohol has been banned in ${place}.`),
+  lgbt: (v, place) => ({ limited: `Being gay is no longer a crime in ${place}.`, equal: `${place.replace(/^the/, 'The')} now protects gay and transgender people in law.` }[v] ?? null),
+  schoolLeavingAge: (v, place) => `Children in ${place} now stay at school until ${v}.`,
+  marriageBar: (v, place) => (v ? null : `Married women in ${place} may now keep their jobs in teaching and public service.`),
+  womenInLaw: (v, place) => (v ? `Women in ${place} may now practise law.` : null),
+  womenInUniform: (v, place) => (v ? `The police, fire service and armed forces in ${place} are open to women now.` : null),
+};
+const lawsNow = (countryId) => Object.fromEntries(Object.keys(LAW_HISTORY).map((id) => [id, rule(id, countryId)]));
+
 /** The eras' part of the year. Runs right after the world's year has moved on. */
 export function tickEra() {
   const state = store.state;
   const e = ensureEra(state);
   // The world's currencies as this life's amounts are kept, then into the new year.
   syncWorld(e.applied?.year ?? state.year - 1, e.money);
+  const here = player().countryId;
+  const lawsBefore = lawsNow(here);
   noteTransition(state);
   revalue(state);
-  e.applied = { year: state.year, countryId: player().countryId };
+  e.applied = { year: state.year, countryId: here };
   syncWorld(state.year, e.money);
+  // A law that changed this year where the player lives, as history changed it.
+  const lawsAfter = lawsNow(here);
+  const place = theCountry(COUNTRIES[here].name);
+  for (const [id, v] of Object.entries(lawsAfter)) {
+    if (v === lawsBefore[id] || player().age < 8) continue;
+    const line = LAW_NEWS[id]?.(v, place);
+    if (line && e.laws[`${here}:${id}:${state.year}`] == null) { e.laws[`${here}:${id}:${state.year}`] = v; log(line, 'system', 'neutral'); }
+  }
 }
 
 export { getEra };
