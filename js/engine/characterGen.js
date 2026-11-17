@@ -1,5 +1,6 @@
 // Creates a brand-new life: the player, their family and the opening journal.
 import { atBirth, held } from './citizenship.js';
+import { bornKnown } from './fame.js';
 import { fromAbroad, rollsRoots } from './economy.js';
 import { rng } from '../rng.js';
 import { bornInto, birthKind, titleOf, dress } from './royalty.js';
@@ -174,6 +175,7 @@ export function createLife(opts = {}) {
       par.savings = Math.max(par.savings, Math.round(par.savings * 6));
     }
     player.hidden.fame = royalBlood ? 70 : 15;
+    bornKnown(player, player.hidden.fame, royalBlood ? 'royal' : 'aristocrat'); // engine/fame.js: a royal is publicly known; an aristocrat has a known name
     const what = royalBlood ? 'a member of the royal family' : 'a landed aristocrat';
     for (const e of journal) {
       if (/^Your (mother|father) is /.test(e.text)) e.text = e.text.replace(/, an? [^,]+, age/, `, ${what}, age`);

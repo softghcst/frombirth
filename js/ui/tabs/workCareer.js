@@ -7,6 +7,8 @@ import * as job from '../../engine/partTime.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { openOccupation } from '../occupation.js';
+import { openFame } from '../fame.js';
+import { workOf } from '../../engine/entertainment.js';
 import { employer } from '../../engine/employers.js';
 import { workLaw, weeklyLoad, career as careerState } from '../../engine/worklife.js';
 import { offers } from '../../engine/hiring.js';
@@ -72,6 +74,8 @@ export function careerButtons() {
   }
   if (k.partTime) list.push(['cover', 'Cover an extra shift']);
   if (career.canGig()) list.push(['gigs', 'Quick one-off gigs']);
+  // My Fame: for anyone with a performer's skills, credits, or a name people know.
+  if (p.age >= 5 && (Math.max(p.talents.acting, p.talents.singing, p.talents.dance) >= 25 || workOf(p).credits.length || career.fame() >= 5)) list.push(['myfame', 'My Fame: auditions, work, press and awards']);
   if (career.fame() >= 10) list.push(['fame', 'Use your fame']);
   if (career.canRetire()) list.push(['retire', 'Retire']);
   if (cur) list.push(['quitcareer', 'Quit your job']);
@@ -195,6 +199,7 @@ async function quit(api) {
 /** Handlers keyed by button id. */
 export const careerHandlers = (api) => ({
   hub: () => openOccupation(api),
+  myfame: () => openFame(api),
   findwork: () => (player().age >= workLaw().workAge ? openOccupation(api, 'find') : findWork(api)),
   harder: () => report(api, career.workHarder()),
   slack: () => report(api, career.slackOffAtWork()),

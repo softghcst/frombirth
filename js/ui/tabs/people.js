@@ -209,7 +209,7 @@ function editPerson(api, npc) {
   });
 }
 
-function openNpc(npc, api) {
+export function openNpc(npc, api) {
   lives.ensureLife(npc);
   const m = npc.meters;
   const isPet = npc.role === 'pet';

@@ -1,6 +1,7 @@
 // Social media: an account, posting, going viral, buying followers (and
 // being found out), and the sponsorship money a big following brings.
 import { rng } from '../rng.js';
+import { gain, regard } from './fame.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { SOCIAL_AGE, POSTS_PER_YEAR, FOLLOWER_PACKS, FOLLOWER_MILESTONES } from '../data/activities.js';
@@ -53,7 +54,7 @@ export function post() {
     s.followers += gained;
     s.viral += 1;
     p.stats.mood = clamp(p.stats.mood + 10);
-    p.hidden.fame = clamp(p.hidden.fame + 2);
+    gain({ audience: 'digital', amount: 3, why: 'a post that went viral' });
     text = `Your post went viral. You woke up to ${count(gained)} new followers and a phone too hot to hold.`;
     if (s.viral === 1) milestone('Went viral for the first time.', 'fame');
   } else if (roll < 0.06) {
@@ -112,7 +113,7 @@ export function tickSocial() {
     s.followers -= purged;
     s.boughtFollowers = 0;
     p.stats.mood = clamp(p.stats.mood - 8);
-    p.hidden.fame = clamp(p.hidden.fame - 2);
+    regard({ favour: -6, why: 'bought followers, found out' });
     log(`Someone ran the numbers on your account and posted the results. ${count(purged)} fake followers vanished overnight, and everyone saw.`, 'system', 'bad');
   }
 
