@@ -46,6 +46,7 @@ node tests/cities.mjs          # cities and regions: prices, pay, regional law, 
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
+node tests/health.mjs          # conditions and diagnosis, therapy and DBT, medication trials and switching, access, heredity, privacy, old saves
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 
@@ -336,6 +337,42 @@ twenty-five years away. A scenario whose character dies early of something unrel
 The Living World engine is complete as a first version. `docs/WORLD_DATA.md` lists what is simplified, unverified or not
 modelled, which is where further work would go.
 
+## Health, mental health and accessibility
+
+**My Health** (Self tab) holds a character's health record: how they have been
+sleeping, their energy, stress and pain, what they have been experiencing,
+their diagnoses, appointments, therapy, medicines, supports, medical history and
+goals, with a **Treatment Journey** and a **DBT Journey** of their own.
+
+- **Conditions are not diagnoses.** Depression, anxiety, BPD, bipolar disorder,
+  ADHD, autism, dyslexia, deafness, epilepsy and thirty more can be present for
+  a long time before anyone names them. Experiences have several possible
+  explanations; an assessment can diagnose, refer, wait, or find nothing.
+  Diagnoses can be revised, and a second opinion is always open.
+- **Care happens week by week.** Clinics and clinicians persist in each city;
+  clinicians are people in your life who age, move and retire. Appointments
+  take time and money (once). "Let the weeks pass" moves care on inside the
+  year.
+- **Medicine is a decision with a prescriber.** Trials unfold over weeks and go
+  differently for different people. Follow-ups lead to a proposal you accept or
+  decline: carry on, adjust, switch (supervised, with the old trial kept) or
+  reduce gradually. A rule registry checks every prescription. No doses appear
+  anywhere.
+- **Therapy builds skills.** CBT, individual DBT, a DBT skills group (four
+  modules, a standing group with its own facilitators), and more. Skills open
+  new choices in everyday scenes without deciding how they go.
+- **Accessibility removes barriers, not people's traits.** Needs (with or
+  without a diagnosis), equipment, school and work accommodations, and home
+  adaptations. Asking shares the need, never the diagnosis.
+- **Families share genes, not diagnoses.** Predisposition is inherited from
+  biological parents and makes things more or less likely, never certain.
+  Family medical history shows only what relatives chose to share.
+- **Private by default.** Health milestones are hidden from the obituary and
+  from descendants unless shared.
+
+The design, the sources, and what has not yet been clinically reviewed are in
+[`docs/HEALTH.md`](docs/HEALTH.md).
+
 ## Layout
 
 ```
@@ -347,8 +384,8 @@ js/save.js      save slots and graveyard
 js/rng.js       seeded RNG (state is saved with the game)
 js/types.js     master schemas (JSDoc)
 js/engine/      year processor, event engine, effects, conditions, generation,
-                health, education, finance, relationships, death
-js/data/        countries, traits, birthConditions, illnesses, events/
+                health (and health/: the health engine), education, finance, relationships, death
+js/data/        countries, traits, birthConditions, illnesses, health/, events/
 js/avatar/      portrait parts, catalogue, renderer, inheritance, live editor
 js/ui/          shell, modals, screens/, tabs/
 avatar-lab.html a workbench for avatar artwork
@@ -941,8 +978,10 @@ legacy, and a final pass that brought the game to over 200 scenes, rebalanced mo
 and promotions, and checked the layout at iPad and phone sizes. Since then: a modular
 avatar system with a live editor, wills with named heirs, skills to practise,
 orientation and gender identity, living conditions by country, royalty with a living royal house and a dynasty journal,
-politics, a list of people you know who are written into your lives, and
-moving saves between devices with a transfer code or cloud saves.
+politics, a list of people you know who are written into your lives,
+moving saves between devices with a transfer code or cloud saves, and a health
+engine for mental and physical health, therapy, medication, disability and
+accessibility (not yet clinically reviewed: see `docs/HEALTH.md`).
 
 The layout has been checked in a desktop browser emulating iPad and phone
 screens (portrait and landscape). It has not been run on a physical iPad.

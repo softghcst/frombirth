@@ -18,9 +18,10 @@ import * as who from '../../engine/identity.js';
 import { openDynasty } from '../dynasty.js';
 import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
+import { careRelationship, openFamilyHistory } from '../health/hub.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
-  'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
+  'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
@@ -28,7 +29,8 @@ const GROUPS = [
   ['Friends', ['friend', 'classmate']],
   ['Your household', ['staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
-  ['Others', ['ex', 'enemy', 'cellmate']],
+  ['Your care team', ['clinician']],
+  ['Others', ['ex', 'enemy', 'cellmate', 'groupmate']],
 ];
 
 const portrait = (npc) => (npc.role === 'pet'
@@ -209,7 +211,11 @@ function editPerson(api, npc) {
   });
 }
 
-function openNpc(npc, api) {
+/**
+ * Someone's profile. onClose, when given, runs when it is closed (the health
+ * screens use it to return to exactly where the player was).
+ */
+export function openNpc(npc, api, onClose) {
   lives.ensureLife(npc);
   const m = npc.meters;
   const isPet = npc.role === 'pet';
@@ -218,7 +224,7 @@ function openNpc(npc, api) {
     : [['Relationship', m.relationship], ['Money', m.money], ['Intellect', m.intellect],
       ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy]]
       .map(([n, v]) => meterHtml(n, v, true)).join('');
-  const detail = [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : '', npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
+  const detail = npc.flags.clinician ? '' : [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : '', npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
     .filter(Boolean).map((x) => ` · ${esc(x)}`).join('');
   const owns = (npc.holdings ?? []).length ? `<p class="muted" style="margin-top:8px">Owns: ${esc(npc.holdings.join(', '))}.</p>` : '';
   const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
@@ -254,27 +260,29 @@ function openNpc(npc, api) {
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
-    ...(npc.alive ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
+    ...(npc.alive && !npc.flags.clinician ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
   ];
   // Friendly things first, destructive things last.
   actions.sort((a, b) => Number(!!a.danger) - Number(!!b.danger));
 
+  // A clinician's profile is a professional one: their work and your care with them, no personal meters.
+  const clinic = npc.flags.clinician ? careRelationship(npc) : '';
   const modal = openModal(`
     <div class="row" style="border:0;padding:0;background:none">
       ${portrait(npc)}
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
         <small>${esc(rel.roleLabel(npc))} · ${npc.alive ? `age ${npc.age}` : `died at ${npc.age}`}${detail}</small></div>
     </div>
-    ${traitChips}${owns}${feudNote}${expecting}
-    <div style="margin:12px 0 16px">${meters}</div>
+    ${clinic || `${traitChips}${owns}${feudNote}${expecting}
+    <div style="margin:12px 0 16px">${meters}</div>`}
     ${lifeCard}${history}${timeline}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
-      <button class="btn" data-close>Close</button>
-    </div>`, { dismissable: true });
+      <button class="btn" data-close>${onClose ? 'Back' : 'Close'}</button>
+    </div>`, { dismissable: true, onDismiss: onClose });
 
   modal.el.addEventListener('click', async (e) => {
-    if (e.target.closest('[data-close]')) return modal.close();
+    if (e.target.closest('[data-close]')) { modal.close(); return onClose?.(); }
     const id = e.target.closest('[data-act]')?.dataset.act;
     if (!id) return undefined;
     modal.close();
@@ -357,7 +365,7 @@ export default {
       const row = e.target.closest('[data-npc]');
       if (row) return openNpc(store.state.npcs[row.dataset.npc], api);
       const id = e.target.closest('[data-top]')?.dataset.top;
-      if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api));
+      if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
       if (id === 'love') return lookForLove(api);
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

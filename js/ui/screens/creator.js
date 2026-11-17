@@ -11,6 +11,8 @@ import { randomAppearance } from '../../avatar/inherit.js';
 import { ORIENTATIONS } from '../../engine/identity.js';
 import { summary } from '../../engine/living.js';
 import { MONARCHIES } from '../../data/royalty.js';
+import { BIRTH_CHOICES } from '../../engine/health/index.js';
+import { CONDITION_BY_ID } from '../../data/health/conditions.js';
 
 const TALENTS = { singing: 'Singing', dance: 'Dance', acting: 'Acting', music: 'Music', sports: 'Sports', crime: 'Mischief' };
 
@@ -55,7 +57,7 @@ const named = (map) => Object.entries(map).map(([value, label]) => ({ value, lab
  * @param {{onCreate:(opts:object)=>void, onCancel:Function}} hooks
  */
 export function renderCreator(app, hooks) {
-  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '', birthRank: '' };
+  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '', birthRank: '', health: '' };
   let look = null; // a designed appearance, or null to inherit one
   const sample = randomAppearance();
 
@@ -100,6 +102,8 @@ export function renderCreator(app, hooks) {
         <div class="card"><h3>Start in life</h3>
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
+          ${picker('health', 'Born with', 'Random', [{ value: 'none', label: 'Nothing in particular' }, ...BIRTH_CHOICES.map((id) => ({ value: id, label: CONDITION_BY_ID[id].name }))])}
+          <p class="muted" style="margin:-4px 0 10px">Only things present from birth. Most will be noticed as you grow; none decides who you become.</p>
           <div data-rank-field hidden>
             ${picker('birthRank', 'Born into', 'Random', named({ commoner: 'Commoners', noble: 'The nobility', royal: 'The royal family' }))}
             <p class="muted" data-rank-note></p>
@@ -222,6 +226,7 @@ export function renderCreator(app, hooks) {
       talent: choice.talent || undefined,
       background: choice.background || undefined,
       birthRank: choice.birthRank || undefined,
+      health: choice.health === '' ? undefined : { conditions: choice.health === 'none' ? [] : [choice.health] },
     });
   });
 

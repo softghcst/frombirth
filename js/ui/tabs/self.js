@@ -18,6 +18,7 @@ import { identityRows, openIdentity, skillsCard, openPractice } from '../identit
 import { messageModal } from '../modals.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
+import { openHealth } from '../health/hub.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -30,8 +31,10 @@ export default {
     const conditions = p.conditions.length
       ? p.conditions.map((c) => `<div class="kv"><span>${esc(c.name.charAt(0).toUpperCase() + c.name.slice(1))}</span><span>since age ${c.sinceAge}${c.treated ? ', under treatment' : ''}</span></div>`).join('')
       : '<p class="muted">You are in good health.</p>';
-    const milestones = p.milestones.map((m) =>
-      `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('');
+    // Health milestones are private: shown here with a lock, and they open the Treatment Journey.
+    const milestones = p.milestones.map((m, i) => (m.kind === 'health'
+      ? `<button class="kv hl-milestone" data-milestone="${i}"><span>Age ${m.age}</span><span>${esc(m.text)} <span class="hl-lock" title="Private">🔒</span></span></button>`
+      : `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`)).join('');
 
     el.innerHTML = `
       <div class="card"><h3>Wellbeing</h3>
@@ -64,6 +67,7 @@ export default {
       </div>` : ''}
       <div class="card"><h3>Conditions</h3>${conditions}</div>
       <div class="btn-stack" style="margin-bottom:14px">
+        <button class="btn primary" data-health>My Health</button>
         <button class="btn ${med.treatable().some((x) => !x.managed && !x.seen) ? 'primary' : ''}" data-doctor>See a doctor</button>
         ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
         ${salon.canVisitSalon() ? '<button class="btn" data-salon>Beauty salon</button>' : ''}
@@ -81,6 +85,8 @@ export default {
 
     bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
+    el.querySelector('[data-health]').onclick = () => openHealth(api);
+    el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
     el.querySelector('[data-passport]').onclick = () => openPassport(api);
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practise]')) el.querySelector('[data-practise]').onclick = () => openPractice(api);

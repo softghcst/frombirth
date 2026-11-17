@@ -65,8 +65,12 @@ export function passWeeks(n, p = player()) {
 export function nextCareWeek(p = player()) {
   const h = healthOf(p);
   const w = now(p);
+  const live = h.trials.filter((t) => ['active', 'adjusted', 'under_review', 'tapering'].includes(t.status));
   const dates = [...h.appointments.filter((a) => a.status === 'booked').map((a) => a.wk),
-    ...h.therapies.filter((c) => c.status === 'active').map((c) => c.nextWk)].filter((x) => x >= w);
+    ...h.therapies.filter((c) => c.status === 'active').map((c) => c.nextWk),
+    // Follow-ups and checks that are planned but not yet booked (they are booked a week ahead).
+    ...live.map((t) => t.nextReviewWk), ...live.map((t) => t.nextMonitorWk), ...live.filter((t) => t.status === 'tapering').map((t) => t.taperEnd)]
+    .filter((x) => x != null && x >= w);
   return dates.length ? Math.min(...dates) - w : null;
 }
 
