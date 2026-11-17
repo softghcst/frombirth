@@ -1,3 +1,4 @@
+import { NEW_PLACES } from './worldNew.js';
 // What it is like to live in each country: pay, prices, safety, health
 // care, how reliable the power and water are, how stable things are, the
 // weather and ground underfoot, the law, and any crisis under way.
@@ -85,6 +86,12 @@ export const LIVING = {
   qa: row(1.00, 0.95, 92, 86, 97, 86, 25, 'low', ['heat'], law(N, 'hostile', N, Y, N)),
   my: row(0.28, 0.42, 72, 76, 86, 72, 40, 'low', ['flood', 'heat'], law(N, 'hostile', Y, Y, N)),
 };
+// The places added by the Living World engine (data/worldNew.js).
+for (const [id, r] of Object.entries(NEW_PLACES)) {
+  const [wage, cost, safety, health, infra, stability, graft, inflation, hazards, l, crisis] = r[6];
+  LIVING[id] = row(wage, cost, safety, health, infra, stability, graft, inflation, hazards, law(...l), crisis);
+}
+
 
 /** Natural hazards: how often they strike in a year, and how they read in the journal. */
 export const HAZARDS = {

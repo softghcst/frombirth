@@ -90,7 +90,11 @@ export function createLife(opts = {}) {
     npcIds: family.map((n) => n.id),
     legal: { record: [], incarceration: null, heat: 0 },
     social: { handle: null, followers: 0, posts: 0, viral: 0, boughtFollowers: 0 },
-    flags: { livesWithParents: true, parentsStatus: fam.status, longevity: 0 },
+    flags: { livesWithParents: true, parentsStatus: fam.status, longevity: 0,
+      // People born in a territory ordinarily hold the nationality of the state it belongs to.
+      ...(c.place?.nationalityOf ? { citizenOf: [c.place.nationalityOf] } : {}) },
+    // Citizenship is its own record: birthplace, residence and nationality are three different things.
+    citizenships: [{ jurisdictionId: c.place?.nationalityOf ?? c.id, acquisitionType: 'birth', acquiredAt: year }],
     milestones: [{ age: 0, text: `Born in ${city}, ${c.name}.`, kind: 'life' }],
     counters: { crimes: 0, kills: 0, donated: 0, gambled: 0, yearsJailed: 0, escapes: 0,
       livesSaved: 0, spouses: 0, jobsHeld: 0, countriesLived: 1 },

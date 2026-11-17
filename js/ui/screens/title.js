@@ -1,4 +1,5 @@
 // Title screen: start a life, resume a saved life, or visit the graveyard.
+import { openWorld } from '../world.js';
 import { openSettings, cloudLine } from '../settings.js';
 import * as cloud from '../../sync/cloud.js';
 import { esc, fmtMoney } from '../../util.js';
@@ -57,6 +58,7 @@ export function renderTitle(app, hooks) {
       <div class="btn-stack">
         <button class="btn primary" data-random>Begin a random life</button>
         <button class="btn" data-design>Design a life</button>
+        <button class="btn" data-world>The world</button>
         <button class="btn" data-settings>Settings</button>
       </div>
       ${cloud.signedIn() ? `<p class="muted sync-line" data-sync-line>${esc(cloudLine())}</p>` : ''}
@@ -76,6 +78,7 @@ export function renderTitle(app, hooks) {
     const del = e.target.closest('[data-delete]');
     const grave = e.target.closest('[data-grave]');
     if (e.target.closest('[data-epitaphs]')) return openEpitaphCollection();
+    if (e.target.closest('[data-world]')) return openWorld({ choose: 'Begin a life here', onChoose: (id) => hooks.onPlay(createLife({ countryId: id })) });
     if (e.target.closest('[data-settings]')) return openSettings({ onChange: () => renderTitle(app, hooks) }).then(() => renderTitle(app, hooks));
     if (load) {
       const state = loadGame(load.dataset.load);

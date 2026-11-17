@@ -4,6 +4,8 @@ import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel, surnameFor } from '../../dat
 import { BACKGROUNDS } from '../../data/traits.js';
 import { avatarSvg } from '../../avatar/render.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
+import { openWorld } from '../world.js';
+import { browse } from '../../engine/world.js';
 import { randomAppearance } from '../../avatar/inherit.js';
 import { ORIENTATIONS } from '../../engine/identity.js';
 import { summary } from '../../engine/living.js';
@@ -80,11 +82,12 @@ export function renderCreator(app, hooks) {
         <div class="card"><h3>Birthplace</h3>
           <div class="field"><label for="f-country">Country</label>
             <select id="f-country"><option value="">Random</option>
-              ${[...COUNTRY_LIST].sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}
+              ${browse().map((g) => `<optgroup label="${esc(g.group)}">${[...g.places].sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>`).join('')}
             </select></div>
           <div class="field"><label for="f-city">City</label>
             <select id="f-city"><option value="">Random</option></select></div>
           <p class="muted" data-country-info>Each country has its own currency and taxes.</p>
+          <div class="btn-stack"><button type="button" class="btn" data-browse-world>Explore the world</button></div>
         </div>
         <div class="card"><h3>Appearance</h3>
           <p class="muted" data-look-note style="margin-bottom:10px">Left alone, you will take after your parents.</p>
@@ -137,6 +140,8 @@ export function renderCreator(app, hooks) {
     });
   });
 
+  q('[data-browse-world]').addEventListener('click', () => openWorld({ start: q('#f-country').value || undefined, choose: 'Be born here',
+    onChoose: (id) => { q('#f-country').value = id; q('#f-country').dispatchEvent(new Event('change')); } }));
   q('#f-country').addEventListener('change', (e) => {
     const c = COUNTRIES[e.target.value];
     q('#f-city').innerHTML = '<option value="">Random</option>'
@@ -150,7 +155,7 @@ export function renderCreator(app, hooks) {
       q('[data-rank-note]').textContent = `${c.name} is a monarchy: ${crown.ranks.map((r) => (r[1] === r[2] ? r[1] : `${r[1]} or ${r[2]}`)).filter((t, i, a) => a.indexOf(t) === i).join(', ')}.${crown.maleOnly ? ' Only men inherit the throne.' : ''} Left on Random, a royal birth is very rare.`;
     }
     q('[data-country-info]').textContent = c
-      ? `Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, estate tax ${Math.round(c.estateTax * 100)}%, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'} ${summary(c).short}.`
+      ? `${c.place?.status ? `${c.place.status} ` : ''}Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, estate tax ${Math.round(c.estateTax * 100)}%, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'} ${summary(c).short}.`
       : 'Each country has its own currency and taxes.';
   });
 

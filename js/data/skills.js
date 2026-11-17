@@ -66,11 +66,11 @@ export const LEVELS = [[0, 'Beginner'], [20, 'Getting somewhere'], [40, 'Compete
 
 /** Where each language is the one daily life is lived in. A country in no list needs none. */
 export const SPOKEN = {
-  spanish: ['es', 'mx', 'ar', 'co', 'cl', 'pe', 'do', 've', 'cu'],
-  french: ['fr', 'be', 'mc', 'ma'],
+  spanish: ['es', 'mx', 'ar', 'co', 'cl', 'pe', 'do', 've', 'cu', 'cr', 'sv', 'gt', 'ni', 'pa', 'pr', 'bo', 'ec', 'py', 'uy'],
+  french: ['fr', 'be', 'mc', 'ma', 'ht', 'dj', 'cd', 'dz', 'tn'],
   japanese: ['jp'],
-  mandarin: ['cn', 'sg'],
-  german: ['de', 'ch'],
+  mandarin: ['cn', 'sg', 'tw'],
+  german: ['de', 'ch', 'at'],
   korean: ['kr'],
-  arabic: ['sa', 'ae', 'qa', 'kw', 'eg', 'jo', 'ma'],
+  arabic: ['sa', 'ae', 'qa', 'kw', 'eg', 'jo', 'ma', 'dz', 'tn', 'iq', 'lb', 'sy', 'dj'],
 };

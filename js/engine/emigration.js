@@ -21,6 +21,21 @@ export const canEmigrate = () => {
 };
 export const emigrationFee = () => localMoney(EMIGRATION.fee, country());
 
+/** The jurisdictions whose nationality the player holds. Lives begun before citizenship was recorded count their birthplace. */
+export function nationalities(p = player()) {
+  const born = COUNTRIES[p.birthCountryId]?.place?.nationalityOf ?? p.birthCountryId;
+  return [...new Set([...(p.citizenships ?? []).filter((c) => !c.lostAt).map((c) => c.jurisdictionId), ...(p.citizenships ? [] : [born]), ...(p.flags.citizenOf ?? [])])];
+}
+/**
+ * Whether the player may settle somewhere as of right: it is their own country, or a territory of it,
+ * or the state their territory belongs to. No application, no refusal.
+ */
+export function rightToLive(countryId, p = player()) {
+  const mine = nationalities(p);
+  const there = COUNTRIES[countryId]?.place;
+  return mine.includes(countryId) || (!!there?.nationalityOf && mine.includes(there.nationalityOf));
+}
+
 /** How likely a country is to let the player in. */
 function visaChance(countryId) {
   const p = player();
@@ -44,7 +59,8 @@ export function destinations() {
     currency: c.currency.code, incomeTax: c.incomeTax, propertyTax: c.propertyTax, freeHealthcare: c.freeHealthcare,
     living: c.living, family: kin(c.id), ownsHome: properties().some((a) => a.countryId === c.id),
     language: fluency(c.id, p),
-    outlook: visaChance(c.id) >= 0.7 ? 'Your application looks strong.' : visaChance(c.id) >= 0.4 ? 'Your application could go either way.' : 'This is a long shot.' }));
+    right: rightToLive(c.id, p),
+    outlook: rightToLive(c.id, p) ? 'You are a citizen: no visa is needed.' : visaChance(c.id) >= 0.7 ? 'Your application looks strong.' : visaChance(c.id) >= 0.4 ? 'Your application could go either way.' : 'This is a long shot.' }));
 }
 
 /** People who come without being asked: a spouse, a committed partner, children at home, and pets. */
@@ -145,7 +161,7 @@ export function emigrate(countryId, opts = {}) {
     if (p.finance.cash < fee + shipping) return result(false, `Visas, lawyers and shipping come to ${fmtMoney(fee + shipping, from)}. You do not have it.`, 'neutral');
     p.flags.visaAge = p.age;
     p.finance.cash -= Math.round(fee * 0.2); // the application fee is gone either way
-    if (!rng.chance(visaChance(to.id))) {
+    if (!rightToLive(to.id, p) && !rng.chance(visaChance(to.id))) {
       const text = `${theCountry(to.name).replace(/^the/, 'The')} turned down your visa application. You can apply again next year.`;
       log(text, 'system', 'bad');
       return result(false, text);
@@ -196,7 +212,7 @@ export function emigrate(countryId, opts = {}) {
   const who = [...coming].map((id) => store.state.npcs[id].firstName);
   const back = kept.filter((a) => a.countryId === to.id).length;
   const left = kept.length - back;
-  const text = `Your visa came through. You moved to ${p.city}, ${theCountry(to.name)}${who.length ? `, with ${who.join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}. `
+  const text = `${opts.forced ? '' : rightToLive(to.id, p) ? 'As a citizen you needed no visa. ' : 'Your visa came through. '}You moved to ${p.city}, ${theCountry(to.name)}${who.length ? `, with ${who.join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}. `
     + `${shipped ? `Your ${shipped === 1 ? 'vehicle is' : `${shipped} vehicles are`} on a ship behind you. ` : ''}`
     + `${left ? `You still own ${left === 1 ? 'your property' : `${left} properties`} in ${theCountry(from.name)}: let it, sell it, or stay there when you visit. ` : ''}`
     + `${back ? 'You own a home here already, and can move straight in. ' : ''}`

@@ -12,6 +12,7 @@
 // seat:   what a member of the national legislature is called
 // head:   what the head of government is called
 // nativeOnly: only someone born in the country may hold the top office
+import { NEW_PLACES } from './worldNew.js';
 const P = (head, seat, region, extra = {}) => ({ kind: 'presidential', head, seat, region, limit: 2, ...extra });
 const M = (head, seat, region, extra = {}) => ({ kind: 'parliamentary', head, seat, region, ...extra });
 const MP = 'Member of Parliament';
@@ -76,6 +77,12 @@ export const SYSTEMS = {
   kw: M('Prime Minister', 'Member of the National Assembly', 'Governor'),
   my: M('Prime Minister', MP, 'Chief Minister'),
 };
+// The places added by the Living World engine (data/worldNew.js).
+for (const [id, r] of Object.entries(NEW_PLACES)) {
+  const [kind, head, seat, region, extra] = r[8];
+  SYSTEMS[id] = kind === 'P' ? P(head, seat, region, extra) : kind === 'M' ? M(head, seat, region, extra) : kind === 'party' ? { kind: 'party', head, seat, region } : { kind: 'none' };
+}
+
 
 /**
  * The ladder. tier: how high the office is. base: how hard it is for an
