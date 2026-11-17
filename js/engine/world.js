@@ -6,6 +6,10 @@
 //   reference   real-world facts about the place (data/world.js)
 //   game        how the game models living there (data/countries.js, living.js): estimates, not statistics
 //   yourWorld   what has happened there in this save (the political world, engine/polity.js): fiction
+import { SOURCES } from '../data/worldVerification.js';
+const SOURCE_LINE = `ISO 3166-1, ISO 4217 and the Unicode CLDR, the IANA time-zone database (${SOURCES.tzdata}) and GeoNames`;
+const CHECK_NAME = { codes: 'ISO codes', name: 'Name', currency: 'Currency', timeZone: 'Time zone', capital: 'Capital', unRegion: 'UN region', languages: 'Official languages', cities: 'Cities', regions: 'Regions of cities' };
+const CHECK_WORD = { ok: 'Confirmed', review: 'Differs on purpose', unconfirmed: 'Not confirmed', mismatch: 'Disagrees with the source' };
 import { healthLine, taxLine } from './systems.js';
 import { outlook } from './economy.js';
 import { cityLine } from './cities.js';
@@ -116,7 +120,10 @@ export function profile(id) {
   const dyn = store.state?.dynasties?.[id];
   if (dyn && yourWorld) yourWorld.lines.push(['Royal house', `${dyn.name}${dyn.status === 'abolished' ? ' (the monarchy was abolished)' : ''}`]);
   return { id, name: c.name, flag: c.flag, typeLabel: p.typeLabel, status: p.status, reference, game, school, politics, cityLines: c.cities.map((n) => [n, cityLine(id, n)]), laws, lawChanges: store.state ? reforms(id).slice(0, 5).map((e) => `${e.year}: ${e.text}`) : [], cities: c.cities, capital: p.capital, spoken, yourWorld,
-    notes: ['Reference facts were compiled by hand and have not yet been checked line by line against official sources.',
+    checks: Object.entries(p.checked ?? {}).sort(([a], [b]) => Object.keys(CHECK_NAME).indexOf(a) - Object.keys(CHECK_NAME).indexOf(b)).filter(([, v]) => v.status !== 'unchecked').map(([k, v]) => [CHECK_NAME[k] ?? k, CHECK_WORD[v.status] + (v.status === 'ok' || !v.note ? '' : `: ${v.note}`)]),
+    notes: [p.verification === 'verified' ? `Reference facts were checked against ${SOURCE_LINE}. ${p.status ? 'Form of government and status are' : 'Form of government is'} written by hand.`
+      : p.verification === 'partly verified' ? `Most reference facts were checked against ${SOURCE_LINE}; anything marked "not confirmed" was not. ${p.status ? 'Form of government and status are' : 'Form of government is'} written by hand.`
+        : 'Reference facts were compiled by hand and have not been checked against official sources.',
       'Pay, prices, taxes, scores and the laws listed are simplified for play. They are not statistics or legal information.'] };
 }
 
