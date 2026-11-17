@@ -54,11 +54,24 @@ node tests/business.mjs        # owning a business: starting, staff, the account
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
+node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
+node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
+
+## Money
+
+Every movement of the player's money is written in one double-entry ledger (`js/engine/ledger.js`), in whole
+numbers of each currency's smallest unit. **My Money** (tap the amount at the top of the game, or Holdings →
+My Money) shows accounts, a budget of what was actually earned and spent, debts and standing with lenders,
+savings goals, the household, retirement, the estate and the history. Bank accounts, goals and
+budgets are in `js/engine/banking.js`; cards, insurance, pension plans, family money and trusts each have an engine of their own beside it. The banks, insurers and their terms are invented
+(`js/data/money.js`).
+
+How it works, what is fiction, and what is not built yet: [docs/FINANCE.md](docs/FINANCE.md).
 
 ## The family's animals
 

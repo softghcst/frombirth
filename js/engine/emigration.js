@@ -16,6 +16,7 @@ import { sellVehicle, vehicles } from './vehicles.js';
 import { market, priceOf } from './market.js';
 import { EMIGRATION } from '../data/activities.js';
 import { mayLeave } from './living.js';
+import { book } from './ledger.js';
 import { routes, bestRoute, spouseAnswer, settleFamily } from './immigration.js';
 import { livesWithPlayer, reconcile as reconcileAnimals } from './animals.js';
 import { travelPlan, prepareMove } from './animalCare.js';
@@ -109,7 +110,12 @@ export function convertMoney(rate) {
   f.lifetimeEarned = x(f.lifetimeEarned);
   f.lifetimeTaxPaid = x(f.lifetimeTaxPaid);
   for (const l of f.loans) l.principal = x(l.principal);
+  for (const k of f.cards ?? []) { k.limit = x(k.limit); k.balance = x(k.balance); k.statements = []; }
+  for (const l of f.lent ?? []) { l.amount = x(l.amount); l.left = x(l.left); }
+  for (const pol of f.policies ?? []) { pol.premium = x(pol.premium); pol.excess = x(pol.excess); pol.cover = x(pol.cover); }
   p.career.pensionPerYear = x(p.career.pensionPerYear);
+  if (p.flags.statePension) p.flags.statePension = null; // a state pension is paid by the country you live in: it is worked out again there
+  for (const s of f.support ?? []) s.amount = x(s.amount);
   for (const a of p.assets) {
     a.purchasePrice = x(a.purchasePrice);
     if (a.costBasis != null) a.costBasis = x(a.costBasis);
@@ -211,12 +217,14 @@ export function emigrate(countryId, opts = {}) {
   prunePending(); // scenes about people who are not coming
   // Money follows, at today's rate, except whatever the player chose to leave in the old currency.
   for (const a of p.assets) if (a.kind === 'property') { if (a.mortgage) a.mortgage.code ??= from.currency.code; if (a.tenant) a.tenant.code ??= from.currency.code; }
+  book({ cat: 'travel', src: 'action', desc: `Moving to ${to.name}: visas, lawyers and shipping` });
   const leftBehind = setAside(opts.keep, from.currency.code);
   convertMoney(rate(from.currency.code, to.currency.code));
   absorb(to.currency.code);
   // Those who came will be paid at the new country's level from now on.
   for (const id of coming) { const job = store.state.npcs[id].life?.job; if (job) job.salary = Math.round(job.salary * to.living.wageK / from.living.wageK); }
   p.countryId = to.id;
+  book({ cat: 'exchange', src: 'action', desc: `Moved to ${to.name}: money and debts are now in ${to.currency.code}` });
   p.flags.arrivedYear = store.state.year; // newcomers wait five years before they can vote
   p.city = opts.city && to.cities.includes(opts.city) ? opts.city : rng.pick(to.cities);
   settle(to.id, p.city, route?.status === 'citizen' ? 'permanent_resident' : route?.status ?? 'permanent_resident');

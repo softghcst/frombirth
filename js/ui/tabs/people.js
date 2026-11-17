@@ -35,7 +35,7 @@ const GROUPS = [
   ['Others', ['ex', 'enemy', 'cellmate']],
 ];
 
-const portrait = (npc) => (npc.role === 'pet'
+export const portrait = (npc) => (npc.role === 'pet'
   ? (animalById(npc.id) ? zooUi.animalFace(animalById(npc.id)) : `<div class="avatar glyph">${petGlyph(npc.species)}</div>`)
   : `<div class="avatar">${avatarSvg({ age: npc.age, gender: npc.gender, appearance: npc.appearance, seed: npc.id, mood: npc.meters.relationship, royal: royalDress(npc.flags.royal?.rank), label: npc.firstName })}</div>`);
 
@@ -217,7 +217,7 @@ function editPerson(api, npc, done = () => openNpc(npc, api)) {
  * @param {Function} [back]  where this was opened from, when not from the list: called when the profile is left,
  *                           so that screen can come back as it was
  */
-function openNpc(npc, api, back) {
+export function openNpc(npc, api, back) {
   // An animal has a profile of its own, kept for good in the family's record.
   if (npc.role === 'pet' && animalById(npc.id)) return zooUi.openAnimalProfile(api, npc.id);
   lives.ensureLife(npc);

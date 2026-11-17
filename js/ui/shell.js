@@ -16,6 +16,8 @@ import { meterHtml } from './meter.js';
 import { eventModal, outcomeModal, confirmModal } from './modals.js';
 import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
+import { openMoney } from './tabs/holdings.js';
+import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
 
 function occupationLine(p) {
@@ -45,7 +47,7 @@ export function mountGame(app, hooks) {
       <div class="idcard">
         <div class="avatar" data-avatar></div>
         <div class="who"><h1 data-name></h1><p data-line1></p><p data-line2></p></div>
-        <div class="purse"><div class="label">Bank</div><div class="amount num" data-cash></div></div>
+        <button class="purse" data-purse aria-label="Open My Money"><div class="label">My Money</div><div class="amount num" data-cash></div></button>
       </div>
       <div class="meters" data-meters></div>
       <div class="sheet-area">
@@ -78,7 +80,8 @@ export function mountGame(app, hooks) {
   const panelBody = $('[data-panel-body]');
   const yearBtn = $('[data-year]');
 
-  const persist = () => { if (player().alive) saveGame(store.state); };
+  // Whatever the last action did to the player's money is written in the ledger before the life is saved.
+  const persist = () => { if (player().alive) { bookAction(); saveGame(store.state); } };
 
   const tabApi = {
     /** Call after a tab action changes state. */
@@ -216,6 +219,7 @@ export function mountGame(app, hooks) {
     if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }
   });
   $('[data-panel-close]').addEventListener('click', closePanel);
+  $('[data-purse]').addEventListener('click', () => { if (!busy && player().alive) openMoney(tabApi); });
   $('[data-story-back]').addEventListener('click', () => {
     const back = storyReturn;
     leaveStory();

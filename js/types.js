@@ -114,6 +114,23 @@
  * @property {number} pension
  * @property {number} lifetimeEarned
  * @property {number} lifetimeTaxPaid
+ * @property {Object<string, number>} [accounts]  money held in other currencies, whole units by currency code (engine/currency.js)
+ * @property {SavingsGoal[]} [goals]  engine/banking.js
+ * @property {{limits:Object<string, number>}} [budget]  the most the player means to spend a year, by category
+ * @property {{marks:{year:number, age:number, kind:string}[], onTime:number, since:?number}} [credit]  what lenders remember (engine/credit.js)
+ * @property {object[]} [cards]  credit cards (engine/cards.js)
+ * @property {object[]} [policies]  insurance policies, and [losses] that can be claimed for (engine/insurance.js)
+ * @property {{accountId:string, rate:number}} [plan]  the pension plan (engine/retirement.js)
+ * @property {object[]} [lent]  money lent to people the player knows (engine/family.js)
+ * @typedef {{id:string, kind:string, name:string, target:number, cur:string, accountId:string, deadlineAge:?number,
+ *            status:'active'|'paused'|'completed'|'abandoned', createdYear:number, createdAge:number, doneYear?:number, doneAge?:number}} SavingsGoal  target is in minor units
+ *
+ * The ledger (state.ledger, engine/ledger.js). Amounts are whole numbers of the currency's smallest unit.
+ * @typedef {{v:number, seq:number, home:string, accounts:Object<string, LedgerAccount>, tx:LedgerTx[], keys:Object<string, number>,
+ *            years:Object<number, Object<string, Object<string, [number, number]>>>, closedThrough:?number}} Ledger
+ * @typedef {{id:string, kind:'wallet'|'bank'|'debt'|'nominal'|'clearing', cur:string, bal:number, name?:string, cat?:string,
+ *            bankId?:string, product?:string, rateBp?:number, owners?:{id:string, role:'owner'|'custodian'}[], opened?:number, closed?:number, matures?:number}} LedgerAccount
+ * @typedef {{id:string, year:number, age:number, cat:string, desc:string, src:string, status:'posted', key?:string, entries:[string, number][]}} LedgerTx
  * @typedef {{id:string, kind:'student'|'bank'|'personal', principal:number, rate:number, yearsLeft:number}} Loan
  *
  * @typedef {Object} Career  catalog entry (data/careers.js, Phase 4)

@@ -213,7 +213,9 @@ check(stayed.every((id) => ['colleague', 'friend', 'spouse', 'partner'].includes
 career.hire(CAREER_BY_ID.marketing, 0, 60, 'Test.', { employerId: firstEmployer });
 const back = place.team();
 const familiar = [back.boss, ...back.coworkers].filter((n) => mateIds.includes(n?.id)).length;
-check(familiar >= 1 || stayed.every((id) => store.state.npcs[id]?.life?.job?.employerId !== firstEmployer), 'going back to an employer, the same people are still there');
+// Former colleagues who are still there, at a level that puts them on the same team (within one of the player's), are on it.
+const sameTeam = (id) => { const j = store.state.npcs[id]?.life?.job; return j?.employerId === firstEmployer && Math.abs(j.level - 0) <= 1 && store.state.npcs[id].id !== back.boss?.id; };
+check(familiar >= 1 || !stayed.some(sameTeam), 'going back to an employer, the same people are still there');
 // A boss who leaves is replaced.
 const b = place.team().boss;
 b.life.job = null; b.life.retired = true;

@@ -19,6 +19,8 @@ import * as last from '../../engine/death.js';
 import * as money from '../../engine/currency.js';
 import { openCurrencies } from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
+import { openMyMoney } from '../money.js';
+import { bankWorth } from '../../engine/banking.js';
 import { householdAnimalsHtml, openAnimalProfile, openHouseChronicle } from '../animals.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
@@ -76,7 +78,7 @@ async function assignKeepsakes(api) {
 function willCard(c) {
   if (!last.canWriteWill()) return '';
   const e = last.estatePlan();
-  const things = (s) => (s.items.length ? ` + ${s.items.map((it) => it.name.charAt(0).toLowerCase() + it.name.slice(1)).join(', ')}` : '');
+  const things = (s) => (s.items.length ? ` + ${s.items.map((it) => (it.kind === 'business' ? it.name : it.name.charAt(0).toLowerCase() + it.name.slice(1))).join(', ')}` : '');
   const rows = e.gross <= 0 && !e.shares.length ? [['If you died today', 'There would be nothing to leave']]
     : [['Estate tax if you died today', fmtMoney(e.tax, c)],
       ...e.shares.map((s) => [`${s.name} (${s.role.toLowerCase()})`, `${fmtMoney(s.amount, c)}${things(s)}`]),
@@ -221,7 +223,7 @@ async function browseVehicles(api) {
     options: [
       { value: 'cash', label: `Pay ${fmtMoney(listing.price, c)} in cash`, disabled: p.finance.cash < listing.price },
       ...(p.age >= 18 ? [{ value: 'loan', label: 'Buy it on finance', disabled: !listing.finance.approved,
-        sub: listing.finance.approved ? `${fmtMoney(listing.finance.payment, c)} a year for ${BANK_LOAN.years} years.` : listing.finance.reason }] : []),
+        sub: listing.finance.approved ? `${fmtMoney(listing.finance.payment, c)} a year for ${BANK_LOAN.years} years, at a lower rate because it is secured on the vehicle. Miss the payments and it can be taken back.` : listing.finance.reason }] : []),
     ],
   });
   return how ? report(api, cars.buyVehicle(listing.id, how)) : undefined;
@@ -231,12 +233,12 @@ function openVehicle(a, api) {
   const c = country();
   const m = openModal(`
     <h2>${GLYPH[a.vehicleClass]} ${esc(a.name)}</h2>
-    ${kv([['Worth', fmtMoney(a.value, c)], ['You paid', fmtMoney(a.purchasePrice, c)], ['Age', `${a.age} ${a.age === 1 ? 'year' : 'years'}`]])}
+    ${kv([['Worth', fmtMoney(a.value, c)], ['You paid', fmtMoney(a.purchasePrice, c)], ['Age', `${a.age} ${a.age === 1 ? 'year' : 'years'}`], ...(cars.loanOn(a) ? [['Still owed on it', `${fmtMoney(cars.loanOn(a).principal, c)}: the lender can take it back if the loan goes unpaid`]] : [])])}
     <div style="margin:12px 0 16px">${meterHtml('Condition', a.condition, true)}</div>
     <div class="btn-stack">
       <button class="btn" data-act="out">Take it out</button>
       ${a.condition < 95 ? `<button class="btn" data-act="service">Service it (${fmtMoney(cars.serviceCost(a), c)})</button>` : ''}
-      <button class="btn danger" data-act="sell">Sell for ${fmtMoney(a.value, c)}</button>
+      <button class="btn danger" data-act="sell">Sell for ${fmtMoney(a.value, c)}${cars.loanOn(a) ? ` (${cars.saleNet(a) >= 0 ? `${fmtMoney(cars.saleNet(a), c)} after the loan` : `${fmtMoney(-cars.saleNet(a), c)} short of the loan`})` : ''}</button>
       <button class="btn" data-close>Close</button>
     </div>`, { dismissable: true });
   m.el.addEventListener('click', (e) => {
@@ -303,6 +305,9 @@ async function borrowMoney(api) {
   return amount ? report(api, bank.borrow(amount)) : undefined;
 }
 
+/** My Money, with the screens it leads on to. Also opened from the purse at the top of the game. */
+export const openMoney = (api) => openMyMoney(api, { invest: browseMarket, borrow: borrowMoney, will: changeWill });
+
 export default {
   id: 'holdings', title: 'Holdings', short: 'Holdings',
   icon: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
@@ -310,7 +315,7 @@ export default {
     const p = player();
     const c = country();
     const f = p.finance;
-    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + estate.owedOn(a), 0);
+    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + estate.owedOn(a), 0) + (f.cards ?? []).reduce((s, k) => s + k.balance, 0);
     const home = estate.home();
     const living = home ? `In your ${home.name.charAt(0).toLowerCase() + home.name.slice(1)}` : p.flags.livesWithParents ? 'With your family'
       : p.education.enrolled && p.age >= 18 ? 'Student housing' : p.age >= 18 ? 'Renting' : 'With your family';
@@ -340,18 +345,19 @@ export default {
       <div class="kv"><span>${esc(l.kind.charAt(0).toUpperCase() + l.kind.slice(1))} loan, ${l.yearsLeft} yr left</span>
         <span>${fmtMoney(l.principal, c)} ${l.kind !== 'student' || !p.education.enrolled ? `<button class="btn small" data-repay="${l.id}" ${f.cash < l.principal ? 'disabled' : ''} style="display:inline-flex;margin-left:6px">Pay off</button>` : ''}</span></div>`).join('');
 
-    const earned = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0);
+    const earned = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0) + (p.flags.statePension ?? 0);
     const taxOn = earned > 0 ? sys.taxBreakdown(earned, c) : null;
     el.innerHTML = `
       <div class="card">
         <h3>Money</h3>
-        ${kv([['Cash', fmtMoney(f.cash, c)], ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
+        ${kv([['Cash', fmtMoney(f.cash, c)], ...(bankWorth() ? [['In the bank', fmtMoney(bankWorth(), c)]] : []), ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
         <div class="kv"><span>Net worth</span><span><strong>${fmtMoney(netWorth(store.state), c)}</strong></span></div>
         ${kv([['Where you live', living], ['Lifetime earnings', fmtMoney(f.lifetimeEarned, c)], ['Lifetime tax paid', fmtMoney(f.lifetimeTaxPaid, c)],
     [`Income tax (${c.name})`, taxLine(c)], ...(taxOn ? [['On what you earn now', `${Math.round(taxOn.effective * 100)}% overall, ${Math.round(taxOn.marginal * 100)}% on anything more you earn`]] : []), ['Health care', `${sys.cover().model.name}${sys.cover().covered ? '' : ' (you are not covered)'}`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
     ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}
       </div>
+      <div class="btn-stack" style="margin-bottom:10px"><button class="btn primary" data-go="mymoney">My Money<small style="display:block;font-weight:400;opacity:.85">Accounts, budget, goals, debts and history</small></button></div>
       ${actions.length ? `<div class="btn-stack" style="margin-bottom:14px">${actions.map(([id, label]) => `<button class="btn" data-go="${id}">${esc(label)}</button>`).join('')}</div>` : ''}
       ${householdAnimalsHtml()}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
@@ -367,7 +373,7 @@ export default {
       if (animal) return openAnimalProfile(api, animal);
       if (go === 'chronicle') return openHouseChronicle(api);
       if (go) {
-        return { currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
+        return { mymoney: () => openMoney(api), currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
           borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => report(api, cars.takeDrivingTest()), flying: () => report(api, cars.learnToFly()) }[go]();
       }
       const repay = e.target.closest('[data-repay]')?.dataset.repay;
