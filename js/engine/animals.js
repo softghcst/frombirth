@@ -208,8 +208,10 @@ export function register(npc, o = {}) {
   const state = o.state ?? store.state;
   const A = ensure(state);
   // An animal already on record only as one waiting in a shelter is taken into the family: the same record, carried on.
+  // That includes one the family itself once gave up, if someone comes back for it.
   const had = A.byId[npc.id];
-  if (had && (had.family !== false || o.stock)) return had;
+  const waiting = !!had && !o.stock && had.status === 'living' && !had.inCircle && homeOf(had)?.hh === 'shelter';
+  if (had && !waiting) return had;
   const p = state.player;
   const origin = o.origin ?? 'unknown';
   const sp = speciesOf(npc.species);

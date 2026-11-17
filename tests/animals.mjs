@@ -181,7 +181,8 @@ clean('death and reload');
 section('death: the profile, history and memories are kept, and survive a save and reload');
 
 // ---------- 5. The household: leaving home, moving, a keeper dying ----------
-p = born(true); p.age = 18; S().year += 18; for (const n of Object.values(S().npcs)) n.age = Math.min(n.age + 3, (n.lifespan ?? 99) - 2);
+do { p = born(true); } while (P().npcIds.filter((i) => S().npcs[i].role === 'parent').length < 2); // two parents, so care has somewhere to go
+p.age = 18; S().year += 18; for (const n of Object.values(S().npcs)) n.age = Math.min(n.age + 3, (n.lifespan ?? 99) - 2);
 zoo.reconcile();
 a = zoo.animalById(pets()[0].id);
 p.flags.livesWithParents = false; zoo.reconcile();

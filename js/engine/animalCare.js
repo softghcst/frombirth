@@ -256,7 +256,7 @@ export function adopt(animalId, state = store.state) {
   if (!check.ok) return result(false, check.problems[0], 'neutral');
   const p = state.player; const c = COUNTRIES[p.countryId];
   const sp = speciesOf(a.speciesId);
-  pay(state, check.fee, 'adoption', a.id, `adoption|${a.id}`);
+  pay(state, check.fee, 'adoption', a.id, `adoption|${a.id}|${state.year}`);
   const npc = makeHandle(state, a, firstBondWith(a));
   const text = `You signed the papers at ${check.shelter.name} and came home with ${a.name}, ${an(zoo.stageOf(a, state))} ${zoo.stageOf(a, state)}${zoo.stageOf(a, state).includes(sp.name) ? '' : ` ${sp.name}`}. The fee was ${fmtMoney(check.fee, c)}.`;
   zoo.register(npc, { state, origin: 'shelter', fee: check.fee, shelterName: check.shelter.name, storyEntry: say(state, text, 'good') });
@@ -331,7 +331,7 @@ export function fosterDecision(animalId, what, state = store.state) {
     const fee = localCost((sp.fee ?? 50) * (sh?.feeK ?? 1), c);
     if (p.age < 18) return result(false, 'You are too young to sign for an animal.', 'neutral');
     if (p.finance.cash < fee) return result(false, `The adoption fee is ${fmtMoney(fee, c)}. You do not have it.`, 'neutral');
-    pay(state, fee, 'adoption', a.id, `adoption|${a.id}`);
+    pay(state, fee, 'adoption', a.id, `adoption|${a.id}|${state.year}`);
     const me = T.ref(state, p.id);
     a.fostered = { ...a.foster, until: state.year, adopted: true }; delete a.foster;
     T.setOwner(state, a, me, 'adopted');

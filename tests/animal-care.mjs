@@ -229,6 +229,10 @@ check(!care.rehomeOptions(a.id).length && !care.rehome(a.id, 'shelter').ok, 'som
 const cat2 = waiting('cat'); care.adopt(cat2.id); const karma = p.hidden.karma;
 r = care.rehome(cat2.id, 'shelter');
 check(r.ok && !S().npcs[cat2.id] && zoo.animalById(cat2.id).status === 'living' && care.shelterAnimals().some((x) => x.id === cat2.id) && zoo.albumAnimals().some((x) => x.id === cat2.id) && p.hidden.karma < karma, 'given to a rescue: it waits there for a new home, the family keeps the record, and it weighs on the one who did it');
+// Coming back for it: the same animal, the same record, adopted again.
+{ S().year += 1; p.age += 1; const n = care.ledgerOf(cat2.id).length; const again = care.adopt(cat2.id); const rec = zoo.animalById(cat2.id);
+  check(again.ok && S().npcs[cat2.id] && rec.inCircle && zoo.ownerOf(rec).id === p.id && care.ledgerOf(cat2.id).length === n + 1 && zoo.eventsOf(cat2.id).filter((e) => e.type === 'adopted').length >= 1, 'an animal once given up can be taken back: the same record carries on');
+  clean('taken back'); care.rehome(cat2.id, 'shelter'); }
 S().year += 8; care.shelterAnimals();
 check(zoo.animalById(cat2.id) && (zoo.animalById(cat2.id).status === 'deceased' || !care.shelterAnimals().some((x) => x.id === cat2.id) || zoo.homeOf(zoo.animalById(cat2.id))), 'years later its record is still there, wherever it went');
 clean('rehoming');
@@ -239,6 +243,8 @@ let asked = 0; let got = 0;
 for (let i = 0; i < 30; i++) {
   for (;;) { store.state = createLife({ countryId: 'us' }); if (!P().royal && !P().npcIds.some((id) => S().npcs[id].role === 'pet')) break; }
   p = P(); p.age = 9; S().year += 9; zoo.reconcile(); rng.seed(700 + i);
+  // Half the families are hard up, half are comfortable: the answer follows from that.
+  for (const n of Object.values(S().npcs)) if (n.role === 'parent') { n.wealth = i % 2 ? 60 : 10; n.meters.money = n.wealth; }
   const res = care.familyAdopts(); asked += 1;
   if (res.ok) {
     got += 1; a = zoo.animalById(res.animalId);
