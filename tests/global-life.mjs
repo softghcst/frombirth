@@ -552,6 +552,44 @@ let moved;
 }
 
 {
+  // Scenario P, and the eras: a life born in 1800 travels and settles by what existed then.
+  const eraLife = (countryId, year, age, city) => {
+    do { store.state = createLife({ countryId, year }); } while (store.state.player.royal);
+    const q = store.state.player;
+    for (let i = 0; i < age; i++) { q.stats.health = 95; advanceYear(); store.state.pendingEvents = []; q.legal.pending = null; q.alive = true; }
+    if (city) q.city = city;
+    q.finance.cash = Math.max(q.finance.cash, Math.round(4000 * COUNTRIES[countryId].currency.scale)); q.flags.livesWithParents = false; q.education.enrolled = false; q.legal.record = [];
+    return q;
+  };
+  p = eraLife('uk', 1800, 25, 'London');
+  check(store.state.year === 1825, `born in 1800, now ${store.state.year}`);
+  check(docs.entryRule(p, 'fr').kind === 'none' && !docs.passportQuote(p, 'uk').possible, 'in 1825 no border asks for papers, and there is no passport to apply for');
+  const t = travel.startPlan('vacation');
+  travel.updatePlan(t.id, { destination: { countryId: 'fr', city: 'Paris' }, depart: '1825-05-01', ret: '1825-06-15', stay: 'inn' });
+  const ms = travel.modesFor(t.origin, t.destination, 1825).map((m) => m.id);
+  check(ms.includes('sail') && !ms.some((m) => ['jet', 'prop_air', 'rail', 'car', 'bus', 'steamship', 'ferry'].includes(m)), `London to Paris in 1825: under sail (${ms})`);
+  travel.updatePlan(t.id, { mode: 'sail' });
+  check(travel.problems(t).length === 0, `a trip to Paris in 1825 can be booked (${travel.problems(t)})`);
+  check(travel.confirm(t.id).ok && travel.depart(t.id).ok && travel.comeHome(t.id).ok && p.countryId === 'uk', 'and taken, and home again');
+  const routes1825 = imm.routes('au');
+  check(routes1825.length === 1 && routes1825[0].id === 'free' && routes1825[0].eligible && !routes1825.some((r) => ['work', 'study', 'invest', 'retire'].includes(r.id)), 'no visas to settle in 1825: you go');
+  const app = reloc.applyToMove('au', 'free', 'Sydney').app;
+  check(app?.status === 'approved', 'no application to wait for');
+  reloc.arrange(app.id, { housing: 'rent', money: 0, travel: 'sailing ship', animals: 'leave' });
+  const mv = reloc.completeMove(app.id);
+  check(mv.ok && p.countryId === 'au' && !cit.held(p).includes('au') && cit.held(p).includes('uk'), `settled in Sydney, still British (${mv.text.slice(0, 80)})`);
+  const here = story.placesLived().at(-1);
+  check(here.jurisdiction.name === 'Australian colonies (British)' && story.placesLived()[0].jurisdiction.name === 'United Kingdom', `the record names the place as it was in 1825 (${here.jurisdiction.name})`);
+  const sail = travel.journey({ countryId: 'uk', city: 'London' }, { countryId: 'au', city: 'Sydney' }, (await import('../js/data/travel.js')).MODE_BY_ID.sail, '1825-01-01');
+  check(sail.hours / 24 > 60, `London to Sydney under sail takes months (${Math.round(sail.hours / 24)} days)`);
+  // War: in 1916 France takes no visitors; a citizen may still go home.
+  p = eraLife('us', 1890, 26, 'New York');
+  check(store.state.year === 1916 && docs.entryRule(p, 'fr', 'visit').kind === 'closed' && !docs.readiness(p, 'fr', 'visit', '1916-06-01', '1916-06-10').ok, 'in 1916 France, at war, admits no visitors');
+  check(docs.entryRule(p, 'es', 'visit').kind !== 'closed', 'Spain, neutral, is open');
+  check(story.globalStory({}).markers.length > 0, 'and the family map works in any year');
+  section('Scenario P and the eras: 1825 under sail and without papers, settling in the Australian colonies, wartime borders in 1916');
+}
+{
   // Stories of a life abroad: each begins only from real state; each choice is an application or a plan, never an approval.
   const arcs = await import('../js/engine/abroadArcs.js');
   const { EVENT_BY_ID } = await import('../js/data/events/index.js');

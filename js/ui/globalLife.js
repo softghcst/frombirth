@@ -23,6 +23,7 @@ import { languagesOf, fluency } from '../engine/languages.js';
 import { placeName, project, coords, capitalCity, jurisdictionAt } from '../engine/geo.js';
 import { avatarSvg } from './avatar.js';
 import { cover as healthCover } from '../engine/systems.js';
+import { getEra } from '../engine/history.js';
 import { COORDINATES } from '../data/coordinates.js';
 
 const SECTIONS = [
@@ -86,7 +87,8 @@ export function openExplore(api, start = {}) {
         ${isRoot ? '' : btn('← Back', 'data-back', 'small')}
         <h2 style="margin:6px 0 0">${v.view === 'story' ? 'Our Global Story' : 'Explore the World'}</h2>
         <p class="muted" style="margin:0">${v.view === 'story' ? 'How the family has lived across places and generations.' : 'Every destination has a story waiting for you.'}</p>
-        <p class="gl-where">${where.away ? `✈ Away: ${esc(where.name)}. Home is still ${esc(placeName(p.countryId, p.city))}.` : `At home in ${esc(where.name)} · ${esc(docs.today())}`}</p>
+        <p class="gl-where">${where.away ? `✈ Away: ${esc(where.name)}. Home is still ${esc(placeName(p.countryId, p.city, store.state.year))}.` : `At home in ${esc(placeName(p.countryId, p.city, store.state.year))} · ${esc(docs.today())}`}</p>
+        ${(() => { const era = getEra(store.state.year); if (era.id === 'now') return ''; const papers = { open: 'No passports or visas are asked for, and anyone may go and settle where they like.', controls: 'Passports are required, and most borders want a visa.', modern: 'Passports and visas as in the modern world, by the rules of the time.' }[docs.eraOf().id]; return `<p class="muted gl-era">${esc(era.name)} (${esc(era.short)}). ${esc(papers)} Travel is by what exists in ${store.state.year}.</p>`; })()}
       </div>
       ${v.view === 'story' ? '' : `<nav class="world-groups gl-nav" aria-label="Sections">${SECTIONS.map(([id, label]) => chip(label, rootOf(v.view) === id, `data-section="${id}"`)).join('')}</nav>`}
       <div class="section-label">${esc(TITLES[v.view] ?? '')}</div>

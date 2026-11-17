@@ -27,6 +27,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { FREE_MOVEMENT, WANTED, ROUTE } from '../data/immigration.js';
 import { held, issuer, rightToLive, residency } from './citizenship.js';
 import { visaEdge } from './languages.js';
+import { eraOf } from './documents.js';
 
 const has = (p, t) => p.education.degrees.some((d) => d.type === t);
 const convicted = (p) => hasRecord(p, { sealed: true });
@@ -53,6 +54,11 @@ export function routes(destId, p = player()) {
 
   if (rightToLive(destId, p)) {
     add('right', 'As a citizen', 'It is your country. You may simply go.', { eligible: true, chance: 1, fee: 0.3, status: 'citizen' });
+    return out;
+  }
+  // Before 1914 most countries asked nothing of people who came to settle (simplified): no visa, no application.
+  if (eraOf(store.state.year).id === 'open') {
+    add('free', 'Settling (no papers needed)', 'In this period most countries ask nothing of a newcomer who comes to live and work. You go, and you stay.', { eligible: p.age >= 16, why: 'You are too young to go alone.', chance: 1, fee: 0.15, status: 'permanent_resident' });
     return out;
   }
   const area = areaOf(destId);

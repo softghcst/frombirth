@@ -611,3 +611,4 @@ button.dl-card { cursor: pointer; }
 .era-note { margin-top: 6px; display: grid; gap: 4px; font-size: 0.9rem; }
 .era-note details summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
 .era-list { margin: 4px 0 0 18px; display: grid; gap: 3px; }
+.gl-era { font-size: 0.85rem; margin: 4px 0 0; }

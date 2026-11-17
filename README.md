@@ -465,6 +465,10 @@ they hold, which passports they carry, what a border asks of them, and whether t
 - **A move cancels trips** booked to leave from the old home, on their refund terms, before savings change currency.
 - **Long lives stay small**: a finished trip older than three years keeps its summary, cost and memories and drops its journey legs and
   booking lines; ledger entries older than ten years become yearly totals; days abroad are kept only as long as a limit could count them.
+- **Any year from 1800** (Historical Eras): transport is what existed then (sail, stagecoach, then railways, steamships, cars,
+  propeller planes, jets), before 1914 no border asks for papers and anyone may go and settle, between the wars passports and visas
+  return, and a country at war admits no visitors. Places are named as they were (the Australian colonies in 1825, Leipzig in East
+  Germany in 1980). Prices follow the era's money, like every other price in the game.
 - **Older saves** gain empty records: no passports, visas, trips or events are invented for them, and old trips stay as they were
   recorded (country and year).
 

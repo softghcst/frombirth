@@ -31,6 +31,7 @@ import { FREE_MOVEMENT } from '../data/immigration.js';
 import { PASSPORT, DOCUMENT_ERAS, ENTRY, DEFAULT_ENTRY, LIBERAL, ON_ARRIVAL, VISIT_AREAS, DECISION } from '../data/travel.js';
 import { held, issuer, rightToLive, residency } from './citizenship.js';
 import { charge, refund, recordEvent, archiveIdOf } from './chronicle.js';
+import { atWar } from './history.js';
 
 const nameOf = (id) => theCountry(COUNTRIES[id]?.name ?? id);
 const Name = (id) => nameOf(id).replace(/^the /, 'The ');
@@ -162,6 +163,8 @@ export function entryRule(person, destId, purpose = 'visit', year = store.state.
   const dest = issuer(destId);
   const base = { days: null, rolling: null, zone: null, passport: true };
   if (rightToLive(destId, person)) return { ...base, kind: 'right', name: 'Your own country', nationality: dest, why: 'Citizens may always enter.' };
+  // A country at war in that year (Historical Eras, data/history.js) admits no visitors.
+  if (atWar(dest, year) && purpose !== 'study') return { ...base, kind: 'closed', name: 'Closed to visitors: at war', nationality: null, why: `${Name(destId)} is at war. Visitors are not being admitted.` };
   const res = isPlayer(person) ? player().residency : null;
   if (res && res.jurisdictionId === destId && player().countryId === destId) return { ...base, kind: 'resident', name: 'Your residence permit', nationality: null, why: 'You are permitted to live there.' };
   const options = [];
@@ -232,6 +235,7 @@ export function readiness(person, destId, purpose, from, to) {
   const rule = entryRule(person, destId, purpose, yearOf(from), daysBetween(from, to));
   const problems = [];
   let needs = null;
+  if (rule.kind === 'closed') return { ok: false, rule, problems: [rule.why], needs: null };
   if (rule.passport && !validPassport(person, from, to)) {
     problems.push(passports(person).some((d) => d.status === 'valid') ? `${who === 'You' ? 'Your' : `${who}'s`} passport runs out before the journey ends.` : `${who} ${who === 'You' ? 'have' : 'has'} no valid passport.`);
     needs = 'passport';
