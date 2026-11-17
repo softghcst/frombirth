@@ -254,9 +254,9 @@ export function whyNot(prod, r, p = player()) {
   const k = PRODUCTION_KINDS[prod.kind];
   if (!exists(k.medium)) return `There is no ${k.name.toLowerCase()} yet.`;
   if (p.legal.incarceration) return 'Not from a cell.';
+  if (prod.cast.some((x) => x.who === 'player') || f.contracts.some((c) => c.productionId === prod.id && ['offered', 'signed'].includes(c.status))) return 'You are already in this production, or have an offer from it.';
   if (p.age < r.ages[0] - 2 || p.age > r.ages[1] + 4) return `They are casting someone of about ${r.ages[0]}–${r.ages[1]}.`;
   if (p.age < 6) return 'Too young to work.';
-  if (prod.cast.some((x) => x.who === 'player') || f.contracts.some((c) => c.productionId === prod.id && ['offered', 'signed'].includes(c.status))) return 'You are already in this production, or have an offer from it.';
   if (p.age < 16 && !guardianConsents(p)) return 'A parent or guardian has to agree to a child working, and yours have not.';
   if (proCredits(p) < tier.minCredits && !(f.agent && tier.minCredits <= 2)) return `They see people with ${tier.minCredits} professional credits or an agent.`;
   if (['studio', 'blockbuster', 'major_stage'].includes(prod.tier) && !f.agent && recognitionIn(p.countryId, p) < 40) return 'Parts at this level go through agents.';
