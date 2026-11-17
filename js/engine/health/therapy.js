@@ -15,7 +15,7 @@ import { PROFESSIONS } from '../../data/health/providers.js';
 import { healthOf, presentConditions, lifeNote } from './record.js';
 import { canOffer } from './rules.js';
 import { facility, facilitiesHere, facilityDef, clinicianAt, clinicianName, joinCareTeam, addComponent, setComponent, waitWeeks, turnsUp } from './care.js';
-import { now, seeded, charge, priceOf, rel, hashOf } from './util.js';
+import { now, seeded, charge, priceOf, hashOf } from './util.js';
 import { healthMilestone } from './story.js';
 import { rehabProgress, inHospital, admit } from './hospital.js';
 import { cancerOutcome } from './course.js';
@@ -145,7 +145,7 @@ export function startTherapy({ therapyId, facilityId, providerId, dxId, need }, 
   if (group) { for (const id of group.facilitatorIds) joinCareTeam(store.state.npcs[id], p); }
   addComponent('therapy', course.id, t.name, conditionId ?? (recIds[0] ? h.conditions.find((c) => c.id === recIds[0])?.conditionId : null), dx?.id ?? null, p);
   const first = t.dbt && t.format !== 'group' ? 'The first sessions are about what you want from your life and whether DBT is the right fit.' : group ? `The group meets on ${group.day} ${group.evening ? 'evenings' : 'afternoons'}.` : '';
-  const text = `${t.name} is arranged${doc ? ` with ${clinicianName(doc)}` : ''} at ${f.name}, starting ${rel(course.nextWk)}. ${first}`.trim();
+  const text = `${t.name} is arranged${doc ? ` with ${clinicianName(doc)}` : ''} at ${f.name}. It becomes part of your year: the sessions happen as you live it. ${first}`.trim();
   log(text, 'system', 'good');
   if (!h.therapies.some((c) => c !== course && THERAPY_BY_ID[c.therapyId].kind === 'therapy')) healthMilestone(`Began ${t.name.toLowerCase()}.`, { type: 'therapy', id: course.id }, p);
   else if (t.id === 'dbt_group') healthMilestone('Started DBT skills training.', { type: 'therapy', id: course.id }, p);
@@ -165,7 +165,7 @@ export function resumeTherapy(id, p = player()) {
   if (!c.providerId && !c.groupId) return result(false, 'You need a new therapist first.', 'neutral');
   c.status = 'active'; c.nextWk = now(p) + 1; c.history.push({ wk: now(p), text: 'Resumed.' });
   setComponent(c.id, 'active', 'Resumed.', p);
-  return result(true, `Back on the calendar from ${rel(c.nextWk)}.`, 'good');
+  return result(true, 'Resumed: the sessions carry on through the year.', 'good');
 }
 export function endTherapy(id, why = 'Ended by choice.', p = player()) {
   const c = healthOf(p).therapies.find((x) => x.id === id && ['active', 'paused'].includes(x.status));
@@ -245,7 +245,7 @@ function session(c, t, doc, p) {
   const sk = h.skills;
   const up = (k, amt) => { sk[k] = Math.round(clamp(sk[k] + amt * (1 - sk[k] / 100) * engage) * 10) / 10; };
   if (t.id === 'dbt_group' && mod) { up(mod.id, mod.id === 'mindfulness' ? 3.2 : 4.6); }
-  else if (t.id === 'dbt') { for (const k of DBT4) up(k, 1); const weakest = DBT4.reduce((a, b) => (sk[a] <= sk[b] ? a : b)); up(weakest, 1.2); }
+  else if (t.id === 'dbt') { for (const k of DBT4) up(k, 1); const focus = DBT4.includes(c.focus) ? c.focus : DBT4.reduce((a, b) => (sk[a] <= sk[b] ? a : b)); up(focus, 1.2); }
   else for (const k of t.builds) up(k, 3);
   s.note = sessionNote(c, t, mod, p);
   if (c.rehabGoals) { const g = rehabProgress(c, engage, p); const next = c.rehabGoals.find((x) => !x.metWk); s.note = g ? `Goal reached: ${g.text.toLowerCase()}.` : next ? `Working on: ${next.text.toLowerCase()}.` : s.note; }
@@ -350,3 +350,12 @@ export function dbtState(p = player()) {
 }
 
 export const groupOf = (id) => world().groups[id];
+
+/** Individual DBT: the skills module to spend extra time on this year (null: whichever is weakest). */
+export function setDbtFocus(module, p = player()) {
+  const c = healthOf(p).therapies.find((x) => x.therapyId === 'dbt' && ['active', 'paused'].includes(x.status));
+  if (!c) return result(false, 'You are not in individual DBT.', 'neutral');
+  c.focus = DBT4.includes(module) ? module : null;
+  c.history.push({ wk: now(p), text: c.focus ? `Focus agreed: ${MODULE_BY_ID[module].name.toLowerCase()}.` : 'Focus: whichever skills need it most.' });
+  return result(true, c.focus ? `You and your therapist agree to put extra time into ${MODULE_BY_ID[module].name.toLowerCase()} this year.` : 'Your therapist will put extra time where you need it most.', 'good');
+}

@@ -18,6 +18,7 @@ import { now, seeded, charge, rel, hashOf } from './util.js';
 import { healthMilestone } from './story.js';
 import { findProviders, startTherapy } from './therapy.js';
 import { setRehabGoals } from './hospital.js';
+import { seeNow } from './index.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const LIVE = ['active', 'adjusted', 'under_review', 'tapering'];
@@ -134,7 +135,7 @@ export function startTrial({ medId, dxId, prescriberId, replacing, reason }, p =
   const first = t.nextReviewWk;
   bookReview(t, first, p);
   if (med.monitoring) book('monitoring', { facilityId: doc.flags.clinician.facilityId, providerId: doc.id, ref: t.id, wk: t.nextMonitorWk }, p);
-  const text = `You start ${med.name.toLowerCase()}. ${clinicianName(doc)} explains that it usually takes ${med.onset[1] >= 4 ? 'several weeks' : 'a little while'} to know whether it helps, and that side effects, if any, often ease. A follow-up is booked ${rel(first)}.`;
+  const text = `You start ${med.name.toLowerCase()}. ${clinicianName(doc)} explains that it usually takes ${med.onset[1] >= 4 ? 'several weeks' : 'a little while'} to know whether it helps, and that side effects, if any, often ease. Follow-ups happen as the year goes on.`;
   log(text, 'system', 'neutral');
   return result(true, text, 'good', { trial: t });
 }
@@ -302,7 +303,8 @@ export function discussMedication(dxId, p = player()) {
   if (h.appointments.some((a) => a.ref === `start:${dx.id}` && a.status === 'booked')) return result(false, 'You already have that appointment.', 'neutral');
   const f = facility(doc.flags.clinician.facilityId);
   const appt = book('review', { facilityId: f.id, providerId: doc.id, ref: `start:${dx.id}`, wait: Math.min(3, f.public ? 3 : 1) }, p);
-  return result(true, `You are seeing ${clinicianName(doc)} ${rel(appt.wk)} to talk about whether medicine might help.`, 'good');
+  const said = seeNow(appt, p);
+  return result(true, `You see ${clinicianName(doc)} to talk about whether medicine might help. ${said}`, 'good');
 }
 
 /** The appointment where starting a medicine is discussed. */
@@ -347,7 +349,7 @@ export function decide(propId, optionId, p = player()) {
     }
     case 'decline': prop.status = 'declined'; return result(true, 'You decide not to, for now. That is a reasonable choice, and the door stays open.', 'neutral');
     case 'later': prop.status = 'declined'; bookReview(t, now(p) + 2, p); return result(true, 'You take some time. Another appointment is booked.', 'neutral');
-    case 'continue': t.history.push({ wk: now(p), text: 'Reviewed: carrying on.' }); return done(`You carry on with ${MED_BY_ID[t.medicationId].name.toLowerCase()}. Next review ${rel(t.nextReviewWk)}.`, 'neutral');
+    case 'continue': t.history.push({ wk: now(p), text: 'Reviewed: carrying on.' }); return done(`You carry on with ${MED_BY_ID[t.medicationId].name.toLowerCase()}. It is reviewed again later in the year.`, 'neutral');
     case 'adjust': {
       t.adjusted = true;
       const r = seeded('adjust', t.id);
@@ -407,7 +409,7 @@ function switchTo(t, medId, doc, prop, rev, p) {
   r.trial.replaces = t.id;
   prop.status = 'accepted'; prop.chosen = 'switch';
   if (rev) rev.decision = 'switch';
-  const text = `${clinicianName(doc)} sets out the change: ${old.name.toLowerCase()} is reduced over two weeks while ${MED_BY_ID[medId].name.toLowerCase()} begins. Your notes keep a record of both. A follow-up is booked ${rel(r.trial.nextReviewWk)}.`;
+  const text = `${clinicianName(doc)} sets out the change: ${old.name.toLowerCase()} is reduced over two weeks while ${MED_BY_ID[medId].name.toLowerCase()} begins. Your notes keep a record of both, and the new one is reviewed as the year goes on.`;
   log(text, 'system', 'neutral');
   return result(true, text, 'good', { trial: r.trial });
 }
@@ -459,7 +461,10 @@ export function reportSideEffects(trialId, p = player()) {
   t.nextReviewWk = now(p) + (urgent ? 0 : 1);
   h.appointments.filter((a) => a.ref === t.id && a.kind === 'review' && a.status === 'booked').forEach((a) => { a.wk = Math.min(a.wk, t.nextReviewWk); });
   if (!h.appointments.some((a) => a.ref === t.id && a.kind === 'review' && a.status === 'booked')) bookReview(t, t.nextReviewWk, p);
-  return result(true, urgent ? 'You call the clinic. With a rash like this they want to see you this week.' : `The clinic brings your follow-up forward to ${rel(t.nextReviewWk)}. In the meantime, keep taking it as prescribed unless they say otherwise.`, 'neutral');
+  // You raised it, so it is looked at now.
+  const appt = h.appointments.find((a) => a.ref === t.id && a.kind === 'review' && a.status === 'booked');
+  const said = appt ? seeNow(appt, p) : '';
+  return result(true, `${urgent ? 'With a rash like this the clinic sees you straight away.' : 'You talk it through with your prescriber.'} ${said}`, 'neutral');
 }
 
 /** Ask to talk about how it is going: limited improvement, doubts, preferences. */
@@ -467,10 +472,10 @@ export function discussResponse(trialId, p = player()) {
   const h = healthOf(p);
   const t = h.trials.find((x) => x.id === trialId && isLive(x));
   if (!t) return result(false, 'That medicine is not current.', 'neutral');
-  if (h.appointments.some((a) => a.ref === t.id && a.kind === 'review' && a.status === 'booked' && a.wk <= now(p) + 2)) return result(false, 'You already have a follow-up coming up soon.', 'neutral');
   t.nextReviewWk = now(p) + 1;
-  bookReview(t, t.nextReviewWk, p);
-  return result(true, `A follow-up is booked ${rel(t.nextReviewWk)} to talk it through.`, 'neutral');
+  const appt = bookReview(t, t.nextReviewWk, p);
+  const said = seeNow(appt, p);
+  return result(true, `You talk it through with your prescriber. ${said}`, 'neutral');
 }
 
 /** The trials for a diagnosis, oldest first: the full history, switched ones included. */

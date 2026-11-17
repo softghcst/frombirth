@@ -14,6 +14,7 @@ import { mayDiagnose, professionExists, canOffer, optionsFor } from './rules.js'
 import { now, seeded, charge, priceOf, rel, when, hashOf } from './util.js';
 import { dailyFunctioning } from './course.js';
 import { inHospital } from './hospital.js';
+import { seeNow } from './index.js';
 import { healthMilestone } from './story.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -206,13 +207,31 @@ export function resolveAppointments(p = player()) {
       if (a.kind === 'monitoring') (h.trials.find((t) => t.id === a.ref) ?? {}).monitorMissed = ((h.trials.find((t) => t.id === a.ref)?.monitorMissed) ?? 0) + 1;
       continue;
     }
-    a.status = 'attended';
-    a.paid = charge(`appt:${a.id}`, VISIT_COST[a.kind === 'specialist' ? 'assessment' : a.kind] ?? VISIT_COST.review, { fee: a.fee, what: `${a.kind} with ${clinicianName(npc)}` });
-    npc.lastInteractionAge = p.age;
-    npc.meters.relationship = Math.min(100, npc.meters.relationship + 2);
-    out.push(a);
+    out.push(attended(a, npc, p));
   }
   return out;
+}
+
+function attended(a, npc, p) {
+  a.status = 'attended';
+  a.paid = charge(`appt:${a.id}`, VISIT_COST[a.kind === 'specialist' ? 'assessment' : a.kind] ?? VISIT_COST.review, { fee: a.fee, what: `${a.kind} with ${clinicianName(npc)}` });
+  npc.lastInteractionAge = p.age;
+  npc.meters.relationship = Math.min(100, npc.meters.relationship + 2);
+  return a;
+}
+
+/**
+ * An appointment the player chose to go to happens now, in this year: Pathways
+ * moves a year at a time, so asking for an assessment or a talk with a
+ * prescriber resolves straight away (the wait is part of the story, not
+ * something to sit through). Follow-ups and checks that come round on their own
+ * still happen through the year, when it is lived (Age Up).
+ */
+export function attendNow(a, p = player()) {
+  const npc = store.state.npcs[a.providerId];
+  if (!npc?.alive || a.status !== 'booked') return null;
+  a.wk = Math.max(a.booked ?? 0, now(p));
+  return attended(a, npc, p);
 }
 
 // ---------- Seeking care ----------
@@ -257,8 +276,10 @@ export function seekAssessment(concern, facilityId, profession, p = player()) {
   const ref = (h.referrals ?? []).find((r) => r.concern === concern && r.profession === profession && r.status === 'open');
   if (ref) ref.status = 'used';
   for (const rec of presentConditions(h)) if (rec.dx === 'none' && CONCERNS[concern].groups.includes(CONDITION_BY_ID[rec.conditionId].group)) rec.dx = 'under_assessment';
-  const who = p.age < 16 ? 'Your parents booked you' : 'You are booked';
-  return result(true, `${who} in with ${clinicianName(doc)}, ${PROFESSIONS[profession].name.toLowerCase()} at ${f.name}, ${rel(appt.wk)} (${when(appt.wk)}).`, 'good', { appt });
+  const wait = appt.wk - now(p);
+  const who = p.age < 16 ? 'Your parents take you to see' : 'You see';
+  const outcome = seeNow(appt, p);
+  return result(true, `${who} ${clinicianName(doc)}, ${PROFESSIONS[profession].name.toLowerCase()} at ${f.name}${wait > 2 ? `, after a wait of ${wait} weeks` : ''}. ${outcome}`, 'good', { appt });
 }
 
 // ---------- Assessment and diagnosis ----------
@@ -369,7 +390,8 @@ export function secondOpinion(dxId, p = player()) {
   if (!f) return result(false, 'There is nobody else nearby who can give one.', 'neutral');
   const doc = clinicianAt(f, pro, { exclude: first ? [first.id] : [], another: true });
   const appt = book('review', { facilityId: f.id, providerId: doc.id, ref: `second:${dx.id}`, wait: waitWeeks(f) }, p);
-  return result(true, `You are seeing ${clinicianName(doc)} at ${f.name} ${rel(appt.wk)} for a second opinion. Asking is ordinary; good clinicians expect it.`, 'good');
+  const said = seeNow(appt, p);
+  return result(true, `You see ${clinicianName(doc)} at ${f.name} for a second opinion. Asking is ordinary; good clinicians expect it. ${said}`, 'good');
 }
 
 /** Resolves a second-opinion visit: agree, or revise, by what is actually there. */

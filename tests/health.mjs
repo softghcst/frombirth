@@ -276,8 +276,11 @@ section('DBT in daily life: skills shape choices, sessions use real events, setb
   t1.fit.ceiling = 0.32; t1.fit.lag = 2; t1.fit.effects = [{ id: 'nausea', label: 'Upset stomach', cat: 'gastro', sev: 2, until: null }];
   until(() => meds.weeksOn(t1) >= 3);
   check(meds.benefitAt(t1) > 0 && meds.benefitAt(t1) < 0.32, 'benefit builds gradually');
+  const reviewsBefore = t1.reviews.length;
   meds.reportSideEffects(t1.id);
-  check(h.appointments.some((a) => a.ref === t1.id && a.kind === 'review' && a.status === 'booked' && a.wk <= now() + 1), 'reporting side effects brings a follow-up forward');
+  check(t1.reviews.length === reviewsBefore + 1 && t1.reviews.at(-1).wk === now(), 'reporting side effects is looked at by the prescriber straight away');
+  // That early look is not the decision point: an open proposal from it is cleared so the trial runs on to its fair length.
+  for (const x of h.proposals) if (x.trialId === t1.id && x.status === 'open') { x.status = 'declined'; }
   until(() => t1.reviews.some((x) => meds.weeksOn(t1) >= MED_BY_ID.escitalopram.adequate && x.weeks >= MED_BY_ID.escitalopram.adequate), 40);
   const rev = t1.reviews.at(-1);
   check(rev.weeks >= 6 && ['partial', 'poorly_tolerated'].includes(rev.state), `after an adequate trial the review sees a partial response (${rev.state})`);
@@ -570,12 +573,15 @@ section('long lives: conditions are part of some lives, the calendar and the led
   const doc = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'primary'), 'gp');
   const dx = { id: 'dx_n', conditionId: 'mdd', underlyingId: rec.id, status: 'active', wk: now(), providerId: doc.id, name: 'Major depressive disorder', history: [] };
   R.healthOf().diagnoses.push(dx);
-  meds.discussMedication('dx_n');
-  const appt = R.healthOf().appointments.find((a) => a.status === 'booked');
+  // A follow-up the year brings round on its own: noticed only when it is due.
+  const appt = care.book('review', { facilityId: doc.flags.clinician.facilityId, providerId: doc.id, ref: 'x', wk: now() + 6 });
   check(careWaiting() === null || careWaiting().decision === false, 'an appointment weeks away is not urgent');
   appt.wk = now();
   check(careWaiting()?.decision === false && /this week/.test(careWaiting().text), 'an appointment this week is noticed');
-  until(() => R.healthOf().proposals.some((x) => x.status === 'open'));
+  appt.status = 'cancelled';
+  // Asking about medicine is answered straight away, as a decision for the player.
+  const said = meds.discussMedication('dx_n');
+  check(said.ok && R.healthOf().proposals.some((x) => x.status === 'open'), 'asking a prescriber about medicine is answered in the same year, straight away');
   check(careWaiting()?.decision === true && /waiting/.test(careWaiting().text), 'a waiting decision is put in front of the player');
   // Telling a partner, in a scene.
   const love = makeNpc({ role: 'partner', countryId: 'uk', age: 31, relationship: 70 }); store.state.npcs[love.id] = love; p.npcIds.push(love.id);

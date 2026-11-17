@@ -14,7 +14,7 @@ import { store, player, log } from '../../state.js';
 import { CONDITION_BY_ID } from '../../data/health/conditions.js';
 import { healthOf, startCondition, migrateHealth, absorbLegacy } from './record.js';
 import { WEEKS, now } from './util.js';
-import { resolveAppointments, assess, resolveSecondOpinion, tickClinicians, checkGoals, clinicianName } from './care.js';
+import { resolveAppointments, assess, resolveSecondOpinion, tickClinicians, checkGoals, clinicianName, attendNow } from './care.js';
 import { medWeek, review, considerStart, attendMonitoring, noticeBetterFit } from './meds.js';
 import { therapyWeek, setbacks } from './therapy.js';
 import { weekCourse, weekWellbeing, rollOnset, yearMood, yearBody } from './course.js';
@@ -28,17 +28,7 @@ export function careWeek(p = player()) {
   const h = healthOf(p);
   const seen = [];
   hospitalWeek(p);
-  for (const a of resolveAppointments(p)) {
-    let text = '';
-    if (a.kind === 'assessment') text = assess(a, p).text;
-    else if (a.kind === 'review' && a.ref?.startsWith('start:')) text = considerStart(a, p);
-    else if (a.kind === 'review' && a.ref?.startsWith('second:')) text = resolveSecondOpinion(a, p);
-    else if (a.kind === 'review') text = review(a, p);
-    else if (a.kind === 'monitoring') text = attendMonitoring(a, p);
-    a.outcome = text || a.outcome;
-    if (text && a.kind !== 'assessment') log(text, 'system', 'neutral');
-    seen.push(a);
-  }
+  for (const a of resolveAppointments(p)) { decideVisit(a, p); seen.push(a); }
   therapyWeek(p);
   medWeek(p);
   setbacks(p);
@@ -48,6 +38,25 @@ export function careWeek(p = player()) {
   noticeBetterFit(p);
   h.week = Math.min(WEEKS, (h.week ?? 0) + 1);
   return seen;
+}
+
+/** What an attended appointment decides: an assessment, a review, a check. */
+function decideVisit(a, p) {
+  let text = '';
+  if (a.kind === 'assessment') text = assess(a, p).text;
+  else if (a.kind === 'review' && a.ref?.startsWith('start:')) text = considerStart(a, p);
+  else if (a.kind === 'review' && a.ref?.startsWith('second:')) text = resolveSecondOpinion(a, p);
+  else if (a.kind === 'review') text = review(a, p);
+  else if (a.kind === 'monitoring') text = attendMonitoring(a, p);
+  a.outcome = text || a.outcome;
+  if (text && a.kind !== 'assessment') log(text, 'system', 'neutral');
+  return a.outcome ?? '';
+}
+
+/** An appointment the player chose, attended now. Returns what came of it. */
+export function seeNow(appt, p = player()) {
+  if (!attendNow(appt, p)) return '';
+  return decideVisit(appt, p);
 }
 
 /**

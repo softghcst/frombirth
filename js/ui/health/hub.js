@@ -24,7 +24,6 @@ import * as ther from '../../engine/health/therapy.js';
 import * as course from '../../engine/health/course.js';
 import * as access from '../../engine/health/access.js';
 import * as story from '../../engine/health/story.js';
-import { passWeeks, nextCareWeek } from '../../engine/health/index.js';
 import { now, when, rel, priceOf } from '../../engine/health/util.js';
 import * as ins from '../../engine/health/insurance.js';
 import * as hosp from '../../engine/health/hospital.js';
@@ -48,6 +47,8 @@ const bar = (label, v, goodHigh = true) => `<div class="hl-meter"><span>${esc(la
 const muted = (t) => `<p class="muted">${t}</p>`;
 const money = (v) => (v ? fmtMoney(v, country()) : 'Free');
 const npcOf = (id) => store.state.npcs[id];
+/** A date in plain year terms: a player lives a year at a time, not a week at a time. */
+const later = (wk) => (wk <= now() ? 'now' : Math.floor(wk / 52) === store.state.year ? 'later this year' : 'next year');
 
 function words(label, v) {
   if (label === 'Stress') return v < 30 ? 'Low' : v < 55 ? 'Some' : v < 75 ? 'High' : 'Very high';
@@ -99,20 +100,18 @@ function overview(p, h) {
   const open = h.proposals.filter((x) => x.status === 'open');
   const next = care.upcoming(h).slice(0, 3);
   const sessions = h.therapies.filter((c) => c.status === 'active');
-  const wait = nextCareWeek(p);
   return `
     <p class="hl-sub">Your health. Your choices. Your life.</p>
     ${open.map(proposalCard).join('')}
     ${card('How things are', `${bar('Sleep', w.sleep)}${bar('Energy', w.energy)}${bar('Stress', w.stress, false)}${bar('Pain', w.pain, false)}
       ${kv('Physical health', words('Health', p.stats.health))}${kv('Day-to-day life', esc(course.functioningWords(f)))}
-      ${muted('These move with your life, week by week. None of them is a verdict on you.')}`)}
+      ${muted('These move with your life through the year. None of them is a verdict on you.')}`)}
     ${card('Coming up', `${next.length ? next.map(apptLine).join('') : muted('Nothing booked.')}
-      ${sessions.map((c) => kv(THERAPY_BY_ID[c.therapyId].short, `Next session ${esc(rel(c.nextWk))}`)).join('')}
+      ${sessions.map((c) => kv(THERAPY_BY_ID[c.therapyId].short, 'Sessions through the year')).join('')}
       <div class="btn-stack" style="margin-top:10px">
-        ${wait != null && h.week < 51 ? btn(wait <= 0 ? 'Go to this week\'s appointments' : `Let the weeks pass to the next one (${wait} week${wait === 1 ? '' : 's'})`, 'pass', { primary: true }) : ''}
-        ${h.week < 51 ? btn('Let a month pass', 'month') : muted('The year is nearly over: the rest of it passes with "Live another year".')}
+
       </div>
-      ${muted(`It is ${esc(when(now(p)))}, week ${h.week + 1} of the year.`)}`)}
+      ${muted('Your care carries on as you live the year: sessions, follow-ups and checks happen when you age up, and anything that needs you comes back to you.')}`)}
     ${card('Getting help', `<div class="btn-stack">${btn('Talk to someone about how I have been feeling', 'seek', { arg: 'mental' })}${btn('Other kinds of assessment', 'seekOther')}${btn('My Treatment Journey', 'journey')}</div>`)}
     ${card('Preferences', `${kv('After a review', h.settings.follow ? 'Go with my clinician\'s recommendation' : 'Ask me each time')}
       ${kv('Hard storylines', h.settings.sensitive === 'full' ? 'Shown' : 'Reduced')}
@@ -123,7 +122,7 @@ function overview(p, h) {
 function apptLine(a) {
   const n = npcOf(a.providerId);
   const what = { assessment: 'Assessment', review: 'Follow-up', monitoring: 'Health check', checkup: 'Check-up', specialist: 'Specialist' }[a.kind] ?? 'Appointment';
-  return `<div class="kv"><span>${esc(what)} with ${esc(care.clinicianName(n))}</span><span>${esc(rel(a.wk))} · ${esc(when(a.wk))}</span></div>`;
+  return `<div class="kv"><span>${esc(what)} with ${esc(care.clinicianName(n))}</span><span>${esc(later(a.wk))} · ${esc(when(a.wk))}</span></div>`;
 }
 
 function proposalCard(prop) {
@@ -139,7 +138,7 @@ function physical(p, h) {
   const known = body.filter((r) => diagnosisFor(r, h) || ['sensory', 'mobility'].includes(CONDITION_BY_ID[r.conditionId].group));
   const away = hosp.inHospital(p);
   const rehab = h.therapies.filter((c) => c.rehabGoals && (['active', 'paused'].includes(c.status) || now(p) - (c.endWk ?? 0) <= 26));
-  return `${away ? card('In hospital', `${kv('Since', esc(when(away.startWk)))}${kv('Expected home', esc(rel(away.endWk)))}${muted('Appointments and sessions wait for you.')}`) : ''}
+  return `${away ? card('In hospital', `${kv('Since', esc(when(away.startWk)))}${kv('Expected home', esc(later(away.endWk)))}${muted('Appointments and sessions wait for you.')}`) : ''}
     ${card('Your body', `${bar('Health', p.stats.health)}${bar('Pain', h.wellbeing.pain, false)}${bar('Energy', h.wellbeing.energy)}`)}
     ${card('Long-term conditions', `${known.map((r) => { const d = diagnosisFor(r, h); return d ? `<button class="row hl-cond" data-cond="${esc(d.id)}"><div class="main"><strong>${esc(conditionName(r, h))}</strong><small>${esc(r.status === 'in_remission' ? 'In remission' : `${course.burdenWords(r.burden)}${r.effect ? ', treatment is helping' : ''}`)}</small></div><div class="side">›</div></button>` : kv(conditionName(r, h), 'Part of your life'); }).join('')}
       ${legacy ? `<div class="section-label">Short-term</div>${legacy}` : ''}${!legacy && !known.length ? muted('Nothing on record. Regular check-ups find some things early.') : ''}`)}
@@ -158,7 +157,7 @@ function cover(p, h) {
       ${k.canBuy && !k.bought && !k.covered ? btn(`Take out health insurance (${money(k.price)} a year)`, 'insure', { primary: true }) : ''}${k.bought ? btn('Cancel your health insurance', 'uninsure', { small: true }) : ''}`)}
     ${card('Bills and claims', `${kv('Billed, all told', money(c.totals.billed))}${kv('Paid by cover', money(c.totals.insurer))}${kv('Paid by you', money(c.totals.you))}
       ${c.claims.length ? `<div class="section-label">Recent</div>${c.claims.slice(0, 15).map((x) => `<div class="kv"><span>${esc(when(x.wk))}: ${esc(x.what)}</span><span>${money(x.patientPaid)} ${pill(x.status, ['paid', 'paid on appeal'].includes(x.status) ? 'good' : '')}</span></div>${x.status === 'refused' && !x.appealed ? btn('Appeal this decision', 'appeal', { arg: x.id, small: true }) : ''}`).join('')}` : muted('No bills yet.')}`)}
-    ${card('Hospital stays', stays.length ? stays.map((a) => kv(`${when(a.startWk)}: ${a.label}`, esc(a.status === 'in' ? `In hospital, home ${rel(a.endWk)}` : `${a.endWk - a.startWk} week${a.endWk - a.startWk === 1 ? '' : 's'}`))).join('') : muted('None.'))}
+    ${card('Hospital stays', stays.length ? stays.map((a) => kv(`${when(a.startWk)}: ${a.label}`, esc(a.status === 'in' ? `In hospital, home ${later(a.endWk)}` : `${a.endWk - a.startWk} week${a.endWk - a.startWk === 1 ? '' : 's'}`))).join('') : muted('None.'))}
     ${c.policies.length > 1 ? card('Earlier cover', c.policies.filter((x) => x.endWk).map((x) => kv(x.name, esc(`${when(x.startWk)} to ${when(x.endWk)}`))).join('')) : ''}`;
 }
 
@@ -238,7 +237,7 @@ function conditionPage(p, h, dxId) {
 function appointments(p, h) {
   const up = care.upcoming(h);
   const past = h.appointments.filter((a) => a.status !== 'booked').slice(-15).reverse();
-  return `${card('Booked', `${up.length ? up.map((a) => `${apptLine(a)}<div class="btn-row" style="margin:4px 0 8px">${btn('Move back two weeks', 'resched', { arg: a.id, small: true })}${btn('Cancel', 'cancel', { arg: a.id, small: true })}</div>`).join('') : muted('Nothing booked.')}
+  return `${card('Booked', `${up.length ? up.map((a) => `${apptLine(a)}<div class="btn-row" style="margin:4px 0 8px">${btn('Cancel', 'cancel', { arg: a.id, small: true })}</div>`).join('') : muted('Nothing booked.')}
       <div class="btn-stack">${btn('Book an assessment', 'seekOther')}</div>`)}
     ${card('Earlier', past.length ? past.map((a) => `<div class="kv"><span>${esc(when(a.wk))}: ${esc(a.kind)} with ${esc(care.clinicianName(npcOf(a.providerId)))}</span><span>${pill(a.status, a.status === 'attended' ? 'good' : '')}</span></div>${a.outcome ? `<p class="muted hl-note">${esc(a.outcome)}</p>` : ''}`).join('') : muted('None yet.'))}`;
 }
@@ -251,7 +250,7 @@ function therapyCard(c, h) {
   return card(esc(t.name), `${n ? clinicianRow(n, esc(`${t.short}${g ? `, ${g.day} ${g.evening ? 'evenings' : 'afternoons'}` : ''}`)) : ''}
     ${kv('Status', pill(c.status, c.status === 'active' ? 'good' : ''))}
     ${kv('Sessions', `${c.attended} attended${c.missed ? `, ${c.missed} missed` : ''}`)}
-    ${c.status === 'active' ? kv('Next', esc(rel(c.nextWk))) : ''}
+    ${c.status === 'active' ? kv('Next', esc(later(c.nextWk))) : ''}
     ${mod ? kv('This module', `${esc(MODULE_BY_ID[mod.id].name)}, week ${mod.weekIn} of ${mod.of}`) : ''}
     ${c.sessions.length ? kv('Last session', esc(c.sessions.at(-1).note)) : ''}
     ${c.rehabGoals ? `<div class="section-label">Goals</div>${c.rehabGoals.map((g) => (g.metWk ? kv(g.text, pill('Reached', 'good')) : bar(g.text.length > 28 ? `${g.text.slice(0, 26)}…` : g.text, g.progress))).join('')}` : ''}
@@ -267,7 +266,7 @@ function therapy(p, h) {
   const past = h.therapies.filter((c) => !['active', 'paused'].includes(c.status));
   const dbt = h.therapies.some((c) => THERAPY_BY_ID[c.therapyId].dbt) || activeDiagnoses(h).some((d) => d.conditionId === 'bpd');
   return `${current.length ? current.map((c) => therapyCard(c, h)).join('') : card('', muted('You are not in therapy at the moment. It is there if you want it.'))}
-    ${card('', `<div class="btn-stack">${btn('Find a therapist or group', 'findTherapy', { primary: !current.length })}${dbt ? btn('My DBT Journey', 'dbt') : ''}${btn('My Treatment Journey', 'journey')}${current.length ? btn('Let the weeks pass to the next session', 'pass') : ''}</div>`)}
+    ${card('', `<div class="btn-stack">${btn('Find a therapist or group', 'findTherapy', { primary: !current.length })}${dbt ? btn('My DBT Journey', 'dbt') : ''}${btn('My Treatment Journey', 'journey')}</div>`)}
     ${past.length ? card('Earlier therapy', past.map((c) => kv(THERAPY_BY_ID[c.therapyId].name, esc(`${c.status}, ${c.attended} sessions, ${when(c.startWk)}`))).join('')) : ''}`;
 }
 
@@ -285,8 +284,8 @@ function trialCard(t, h, full = false) {
       ${kv('Status', pill(meds.RESPONSE_WORDS[t.responseState] ?? t.responseState, ['adequate', 'improving'].includes(t.responseState) ? 'good' : ''))}
       ${t.reported ? kv('What you reported', esc(t.reported.benefit)) : ''}
       ${live && fx.length ? kv('Side effects now', esc(fx.map((e) => e.label).join(', '))) : ''}
-      ${live && t.status !== 'tapering' && t.nextReviewWk ? kv('Next follow-up', esc(rel(t.nextReviewWk))) : ''}
-      ${t.status === 'tapering' ? kv('Reduction ends', esc(rel(t.taperEnd))) : ''}
+      ${live && t.status !== 'tapering' && t.nextReviewWk ? kv('Next follow-up', esc(later(t.nextReviewWk))) : ''}
+      ${t.status === 'tapering' ? kv('Reduction ends', esc(later(t.taperEnd))) : ''}
       ${live && med.monitoring ? kv('Checks', esc(`${med.monitoring.what}${meds.monitoringOverdue(t) ? ' (overdue)' : ''}`)) : ''}
       ${t.changeReason ? kv('Why it changed', esc(t.changeReason)) : ''}
       ${t.replaces ? kv('Came after', esc(MED_BY_ID[h.trials.find((x) => x.id === t.replaces)?.medicationId]?.name ?? '')) : ''}
@@ -396,8 +395,8 @@ function dbtPage(p, h) {
   const done = s.groupCourses.flatMap((c) => Object.keys(c.moduleDone ?? {}));
   const hasBpd = activeDiagnoses(h).some((d) => d.conditionId === 'bpd');
   return `<button class="btn hl-back" data-back>← Back</button><h3 class="hl-page">My DBT Journey</h3>
-    <p class="hl-sub">Skills for a life worth living, practised a week at a time.</p>
-    ${card('Individual DBT', ind ? `${clinicianRow(npcOf(ind.providerId))}${kv('Sessions', `${ind.attended} attended${ind.missed ? `, ${ind.missed} missed` : ''}`)}${ind.status === 'active' ? kv('Next', esc(rel(ind.nextWk))) : kv('Status', esc(ind.status))}${ind.sessions.length ? kv('Last session', esc(ind.sessions.at(-1).note)) : ''}`
+    <p class="hl-sub">Skills for a life worth living, practised through the year.</p>
+    ${card('Individual DBT', ind ? `${clinicianRow(npcOf(ind.providerId))}${kv('Sessions', `${ind.attended} attended${ind.missed ? `, ${ind.missed} missed` : ''}`)}${ind.status === 'active' ? kv('Next', esc(later(ind.nextWk))) : kv('Status', esc(ind.status))}${ind.sessions.length ? kv('Last session', esc(ind.sessions.at(-1).note)) : ''}${['active', 'paused'].includes(ind.status) ? `${kv('Focus this year', esc(ind.focus ? MODULE_BY_ID[ind.focus].name : 'Whatever you need most'))}${btn('Change the focus', 'dbtFocus', { small: true })}` : ''}`
       : `${muted('Weekly sessions with a DBT-trained therapist.')}${btn('Find a DBT therapist', 'findTherapy', { arg: 'dbt' })}`)}
     ${card('DBT skills group', g ? `${g.facilitatorIds.map((id) => clinicianRow(npcOf(id), 'Facilitator')).join('')}${kv('Meets', `${esc(g.day)} ${g.evening ? 'evenings' : 'afternoons'}`)}
         ${s.module ? kv('Teaching now', `${esc(MODULE_BY_ID[s.module.id].name)}, week ${s.module.weekIn} of ${s.module.of}`) : ''}${kv('Your attendance', `${grpCourse.attended} of ${grpCourse.attended + grpCourse.missed}`)}
@@ -478,20 +477,9 @@ export function openHealth(api, to = {}) {
     return after(care.seekAssessment(concern, list[pick].facilityId, list[pick].profession, p));
   }
 
-  async function pass(weeks) {
-    const h = healthOf(p);
-    const n = weeks ?? Math.max(1, (nextCareWeek(p) ?? 4) + 1);
-    const r = passWeeks(n, p);
-    api.changed();
-    const lines = r.appointments.filter((a) => a.outcome).map((a) => a.outcome);
-    const open = h.proposals.filter((x) => x.status === 'open').length;
-    await messageModal({ title: `${r.weeks} week${r.weeks === 1 ? '' : 's'} later`, body: [lines.join(' '), open ? 'There is a decision waiting for you.' : '', r.weeks < n ? 'The year is nearly over.' : ''].filter(Boolean).join(' ') || 'The weeks pass. Sessions go on as planned.' });
-    if (open) { nav.section = 'overview'; nav.page = null; }
-    return draw();
-  }
-
   const flows = {
-    pass: () => pass(), month: () => pass(4), seek: (arg) => seek(arg), seekOther: () => seek(null), doctor: async () => { await seeDoctor(api); draw(true); },
+    dbtFocus: async () => { const m = await pickModal({ title: 'Your DBT focus this year', body: 'Your therapist will put extra time into it. The group goes on through all four modules.', options: [{ value: 'auto', label: 'Whatever I need most', sub: 'Your therapist decides as the year goes.' }, ...DBT_MODULES.map((x) => ({ value: x.id, label: x.name, sub: x.blurb }))] }); return m ? after(ther.setDbtFocus(m === 'auto' ? null : m)) : draw(true); },
+    seek: (arg) => seek(arg), seekOther: () => seek(null), doctor: async () => { await seeDoctor(api); draw(true); },
     journey: () => { nav.page = 'journey'; draw(); }, dbt: () => { nav.page = 'dbt'; draw(); },
     follow: () => { const h = healthOf(p); h.settings.follow = !h.settings.follow; api.changed(); draw(true); },
     sensitive: () => { const h = healthOf(p); h.settings.sensitive = h.settings.sensitive === 'full' ? 'reduced' : 'full'; api.changed(); draw(true); },
