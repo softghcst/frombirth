@@ -788,6 +788,38 @@ export function closeYear(p = player()) {
   t.trips = t.trips.filter((x) => !(x.status === 'draft' && x.createdYear < year()));
   return out;
 }
+/** Years after which a finished trip keeps only its summary, and the ledger only yearly totals. */
+export const KEEP = { tripDetail: 3, ledgerYears: 10, stayDays: 400 };
+
+/**
+ * Keeps saves small in long, well-travelled lives. A finished trip older than
+ * a few years keeps where, when, who, what was done, its memories and what it
+ * cost; the journey's legs and the booking lines go (the ledger kept the
+ * money). Ledger entries older than ten years become yearly totals by kind.
+ * Days abroad older than any rolling window are dropped. Idempotent.
+ */
+export function compactHistory(p = player()) {
+  const yr = year();
+  const done = ['completed', 'cancelled', 'disrupted'];
+  for (const t of travelState(p).trips) {
+    if (!done.includes(t.status) || t.compact || yearOf(t.depart) > yr - KEEP.tripDetail) continue;
+    t.spent = -(p.finance.ledger ?? []).filter((x) => x.ref?.tripId === t.id && x.payer === 'player').reduce((s2, x) => s2 + x.amount, 0);
+    t.bookingCount = t.bookings.length;
+    delete t.itinerary; t.bookings = []; t.activities = [];
+    delete t.cabin; delete t.insurance; delete t.payment;
+    t.compact = true;
+  }
+  const ledger = p.finance.ledger ?? [];
+  const old = ledger.filter((x) => x.year <= yr - KEEP.ledgerYears);
+  if (old.length) {
+    const years = (p.finance.ledgerYears ??= {});
+    for (const x of old) { const y = (years[x.year] ??= {}); const k = `${x.kind}${x.payer === 'player' ? '' : `:${x.payer === 'employer' || x.payer === 'parent' ? x.payer : 'others'}`}`; y[k] = (y[k] ?? 0) + x.amount; }
+    p.finance.ledger = ledger.filter((x) => x.year > yr - KEEP.ledgerYears);
+  }
+  const cutoff = addDays(`${yr}-01-01`, -KEEP.stayDays);
+  for (const person of [p, ...Object.values(store.state.npcs).filter((n) => n.stays?.length)]) if (person.stays?.length) person.stays = person.stays.filter((x) => x.to >= cutoff);
+}
+
 /** After the year turns: the calendar starts again on 1 January. */
 export function openYear() { store.state.today = `${store.state.year}-01-01`; }
 
@@ -802,7 +834,7 @@ export function whereabouts(p = player()) {
 /** A trip, ready to show: its people, money, memories and dates. */
 export function tripCard(trip, p = player()) {
   const people = trip.travelers.map((x) => ({ ...x, person: personById(x.id) })).filter((x) => x.person);
-  const spent = -(p.finance.ledger ?? []).filter((x) => x.ref?.tripId === trip.id && x.payer === 'player').reduce((s, x) => s + x.amount, 0);
+  const spent = trip.compact ? trip.spent : -(p.finance.ledger ?? []).filter((x) => x.ref?.tripId === trip.id && x.payer === 'player').reduce((s, x) => s + x.amount, 0);
   const memories = events((e) => e.tripId === trip.id);
   return {
     id: trip.id, status: trip.status, type: TRIP_TYPE_BY_ID[trip.type]?.name ?? trip.type, group: TRIP_TYPE_BY_ID[trip.type]?.group,

@@ -565,14 +565,21 @@ let moved;
     } catch (err) { errors += 1; problems.push(`long life, year ${i}: ${err.stack.split('\n').slice(0, 3).join(' ')}`); break; }
   }
   const all = travel.trips();
-  const bookedPaid = all.flatMap((t) => t.bookings.filter((b) => b.payer === 'player')).length;
-  const travelCharges = p.finance.ledger.filter((x) => x.ref?.tripId && x.amount < 0 && x.payer === 'player' && x.key?.startsWith('trip:') && !x.key.includes(':act:')).length;
+  const full = all.filter((t) => !t.compact);
+  const fullIds = new Set(full.map((t) => t.id));
+  const bookedPaid = full.flatMap((t) => t.bookings.filter((b) => b.payer === 'player')).length;
+  const travelCharges = p.finance.ledger.filter((x) => fullIds.has(x.ref?.tripId) && x.amount < 0 && x.payer === 'player' && x.key?.startsWith('trip:') && !x.key.includes(':act:')).length;
+  const compact = all.filter((t) => t.compact);
+  check(compact.length > 40 && compact.every((t) => !t.itinerary && !t.bookings.length && t.spent >= 0 && t.destination && t.travelers.length && t.events.length), `old trips keep their summary, cost and memories, not their detail (${compact.length} compacted)`);
+  check(compact.every((t) => travel.tripCard(t).memories.length >= 1 && travel.tripCard(t).spent === t.spent), 'and the journal still shows them');
+  check(p.finance.ledger.every((x) => x.year > store.state.year - travel.KEEP.ledgerYears) && Object.keys(p.finance.ledgerYears ?? {}).length >= 50, 'the ledger keeps ten years in full and yearly totals before that');
+  check(p.stays.every((x) => x.to >= `${store.state.year - 2}`), 'days abroad are kept only as long as a limit could count them');
   check(!errors && trips >= 40, `seventy years: ${trips} trips booked, ${moves} moves applied for, no errors`);
   check(bookedPaid === travelCharges, `every booking charged exactly once (${bookedPaid} bookings, ${travelCharges} charges)`);
   check(all.every((t) => !['confirmed', 'in_progress'].includes(t.status) || docs.yearOf(t.depart) >= store.state.year), 'no trip is left hanging from an earlier year');
   check(new Set(store.state.canon.events.map((e) => e.key)).size === store.state.canon.events.length, 'no event recorded twice');
   const size = JSON.stringify(store.state).length;
-  check(size < 1500000, `the save stays a reasonable size (${Math.round(size / 1024)} KB)`);
+  check(size < 600000, `the save stays a reasonable size (${Math.round(size / 1024)} KB)`);
   section(`a long life: seventy years, ${trips} trips, ${moves} moves applied for; one charge per booking, one record per event, ${Math.round(size / 1024)} KB saved`);
 }
 
