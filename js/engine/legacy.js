@@ -23,7 +23,6 @@ import { cloneAppearance } from '../avatar/inherit.js';
 import { attractedTo } from './identity.js';
 import { passOn } from './edlegacy.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
-import { passOn as passOnBusinesses } from './animalBusiness.js';
 import { passOn as carryCareers } from './careerRecord.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
@@ -238,7 +237,6 @@ export function continueAs(npcId) {
   };
   store.state = next;
   handOverAnimals(old, next, { ancestorId: ancestor.id, heirId: h.id, assetIds });
-  passOnBusinesses(old, next, h.id, ancestor.id);
   const firmLines = carryCareers(old, next, h); // the family's working history, the same employers, and any business left to this heir
 
   // An heir who was living in another country carries on there.

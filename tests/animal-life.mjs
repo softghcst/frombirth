@@ -20,7 +20,8 @@ const zoo = await import('../js/engine/animals.js');
 const care = await import('../js/engine/animalCare.js');
 const horse = await import('../js/engine/equestrian.js');
 const life = await import('../js/engine/animalLife.js');
-const biz = await import('../js/engine/animalBusiness.js');
+const biz = await import('../js/engine/business.js');
+const { BUSINESS_BY_ID } = await import('../js/data/business.js');
 const arcs = await import('../js/engine/animalArcs.js');
 const { incomeTax } = await import('../js/engine/finance.js');
 const { tickRelationships } = await import('../js/engine/relationships.js');
@@ -31,7 +32,7 @@ const problems = []; const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const S = () => store.state; const P = () => store.state.player;
-const audits = () => [...zoo.audit(), ...care.auditCare(), ...horse.auditRiding(), ...biz.auditBusinesses()];
+const audits = () => [...zoo.audit(), ...care.auditCare(), ...horse.auditRiding()];
 const clean = (where) => { const bad = audits(); check(!bad.length, `${where}: unsound: ${bad.slice(0, 5).join('; ')}`); };
 const addKin = (role, age, extra = {}) => { const n = makeNpc({ role, countryId: P().countryId, age, lastName: P().lastName, ...extra }); S().npcs[n.id] = n; P().npcIds.push(n.id); return n; };
 const lastOf = (type, id) => zoo.eventsOf(id).filter((e) => e.type === type).at(-1);
@@ -204,43 +205,37 @@ check(!horse.sellHorse(h.id).ok && care.ledgerOf(h.id).filter((t) => t.kind === 
 clean('leasing and selling');
 section('horses: leased a year at a time, sold once and for less than they cost');
 
-// ---------- 8. Businesses ----------
-p = adult(30, 200000);
-check(!biz.canStart('riding').ok && !biz.canStart('boarding').ok && !biz.canStart('grooming').ok && biz.canStart('petcare').ok, 'a riding school, kennels or salon need the right experience and land; pet sitting does not');
-cash = p.finance.cash; r = biz.start('petcare');
-let firm = biz.businesses()[r.id];
-check(r.ok && cash - p.finance.cash === biz.canStart('grooming').cost || (r.ok && cash > p.finance.cash), 'opening costs the owner the start-up money');
-check(!biz.start('petcare').ok, 'one of each kind');
-const before = p.finance.cash;
-let total = 0; let drawn = 0;
-for (let i = 0; i < 12; i++) { year(); biz.tickBusinesses(); biz.tickBusinesses(); if (firm.closed) break; if (firm.cash > 0) { const take = firm.cash; drawn += take; biz.draw(firm.id, take); } }
-total = firm.books.reduce((s, y) => s + y.profit, 0);
-check(firm.books.length >= 3 && new Set(firm.books.map((y) => y.year)).size === firm.books.length, 'the business has one set of books a year, once');
-check(firm.books.every((y) => y.profit <= y.revenue * 0.6) && firm.books.every((y) => !y.clients || y.clients <= 12 * (1 + firm.staff)), 'margins are modest and clients are limited by the hands available');
-check(p.finance.cash - before <= drawn && (firm.draws ?? []).length > 0 && firm.draws.every((x) => x.tax === incomeTax(x.amount)), 'money reaches the owner only by drawing it, and each draw is taxed as income');
-// Running it into the ground.
-p = adult(30, 0); house('country'); p.flags.animalExperience = true; p.finance.cash = 100000;
-r = biz.start('boarding'); firm = biz.businesses()[r.id]; p.finance.cash = 0; biz.setStaff(firm.id, 4); biz.setEffort(firm.id, 'easy');
-for (let i = 0; i < 6 && !firm.closed; i++) { year(); biz.tickBusinesses(); }
-check(firm.closed && /ran out of money/.test(firm.closed.why) && firm.cash === 0, 'a business that cannot pay its way, and is not rescued, closes');
-check(S().npcs[firm.staffNpc] && /Used to work/.test(S().npcs[firm.staffNpc].flags.title), 'the person who worked there is still someone the player knows');
-// A smallholding: its animals are a flock, and it lives or dies by their welfare.
-p = adult(35, 300000); house('country'); r = biz.start('farm'); firm = biz.businesses()[r.id]; biz.invest(firm.id, 20000);
-check(firm.livestock.hens > 0 && !zoo.allAnimals().length, 'a smallholding\'s flock is counted, not kept as pets');
-check(!biz.stock(firm.id, 'goats', 50).ok, 'the land carries only so many');
-biz.stock(firm.id, 'goats', 6);
-for (let i = 0; i < 5; i++) { year(); biz.tickBusinesses(); }
-const goodWelfare = firm.books.at(-1).welfare;
-biz.stock(firm.id, 'sheep', 30); biz.stock(firm.id, 'hens', 48); biz.setEffort(firm.id, 'easy');
-for (let i = 0; i < 4 && !firm.closed; i++) { year(); biz.tickBusinesses(); }
-const after = firm.books.at(-1);
-check(after.welfare < goodWelfare, `overstocked and neglected, the animals fare worse (${goodWelfare} → ${after.welfare})`);
-// Inheritance.
-p = adult(60, 300000); const kid = addKin('child', 30); r = biz.start('petcare'); firm = biz.businesses()[r.id]; year(); biz.tickBusinesses();
-die('old age'); store.state = continueAs(kid.id);
-check(biz.businesses()[firm.id].owner.id === P().id && !biz.businesses()[firm.id].closed && biz.myBusinesses().length === 1, 'an adult heir inherits the business');
+// ---------- 8. Businesses: the shared business system, with animal businesses in it ----------
+{
+  const ids = ['pet_care', 'grooming_salon', 'kennels', 'training_school', 'riding_school', 'smallholding', 'vet_practice', 'farm'];
+  check(ids.every((id) => BUSINESS_BY_ID[id]), 'the business system has pet care, grooming, kennels, a training school, a riding school, a smallholding, a vet practice and a farm');
+  p = adult(30, 3e6);
+  const block = (id) => biz.startBlock(BUSINESS_BY_ID[id]);
+  check(!block('pet_care'), 'anyone grown up can start pet sitting');
+  check(/experience/i.test(block('grooming_salon')) && /experience/i.test(block('training_school')), 'a salon or a training school needs years in the work');
+  check(/land/i.test(block('kennels')) || /experience/i.test(block('kennels')), 'kennels need land and experience');
+  P().career.experience = { ...(P().career.experience ?? {}), equestrian: 5, animal_care: 5 };
+  check(/land/i.test(block('riding_school')) && /land/i.test(block('kennels')) && /land/i.test(block('smallholding')), 'with the experience but no land: kennels, a riding school and a smallholding wait for land');
+  house('country');
+  check(!block('kennels') && !block('smallholding') && /advanced level/.test(block('riding_school')), 'with land, kennels and a smallholding can open; a riding school still needs a rider who rides well');
+  P().flags.riderAdvanced = true;
+  check(!block('riding_school'), 'and then it can open');
+  const before = biz.openBusinesses().length; const r2 = biz.start('pet_care', 'Test Pet Care');
+  check(r2.ok && biz.openBusinesses().length === before + 1 && biz.openBusinesses().some((b) => b.typeId === 'pet_care'), 'a pet-care business opens in the shared system, alongside any other');
+  check(!zoo.ensure().businesses || Object.keys(zoo.ensure().businesses).length === 0, 'there is no second set of business books for animals');
+}
+{
+  // An old save with an animal business of the old kind: it is wound up, its money paid out once.
+  p = adult(40, 1000);
+  zoo.ensure().businesses = { old: { id: 'old', kind: 'petcare', name: 'Old Pet Care', owner: { id: P().id, name: 'x' }, cash: 5000, closed: null, books: [] } };
+  saveGame(S()); store.state = loadGame(S().slotId);
+  const was = zoo.ensure().businesses.old;
+  check(was.closed && was.cash === 0 && P().finance.cash === 6000, 'an animal business from an old save is wound up and its money paid to its owner');
+  saveGame(S()); store.state = loadGame(S().slotId);
+  check(P().finance.cash === 6000, 'once');
+}
 clean('businesses');
-section('businesses: their own books, modest margins, owner draws taxed, closure when they fail, welfare matters, inherited');
+section('businesses: animal businesses live in the one shared business system, with land and riding where they need them');
 
 // ---------- 9. Bonds ----------
 p = adult(); a = own('dog'); const w2 = addKin('spouse', 30); zoo.reconcile();
@@ -304,8 +299,7 @@ for (let i = 0; i < 4; i++) {
         if (life.behaviourOf(x) && rng.chance(0.5)) life.helpWith(x.id, 'environment');
         if (rng.chance(0.2)) life.enterPetShow(x.id);
       }
-      if (pl.age === 35 && biz.canStart('petcare').ok) { biz.start('petcare'); firms += 1; }
-      for (const b of biz.myBusinesses()) if (b.cash > 0 && rng.chance(0.5)) biz.draw(b.id, Math.floor(b.cash / 2));
+      if (pl.age === 35 && !biz.startBlock(BUSINESS_BY_ID.pet_care)) { if (biz.start('pet_care').ok) firms += 1; }
     }
     const bad = audits();
     if (bad.length) { check(false, `life ${i}, year ${S().year}: ${bad.slice(0, 4).join('; ')}`); break; }

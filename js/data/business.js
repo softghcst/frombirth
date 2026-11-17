@@ -10,6 +10,8 @@
 //   track     the career track whose experience running it counts towards (and whose staff it hires)
 //   needs     what the owner must have: trade, programme (with its licence), cert, or years in any of `experience`
 //   solo      can be run with no staff at all
+//   needs.land  the owner must have land of their own (a country house or larger)
+//   needs.flag  a player flag the owner must have, with needs.flagText saying why
 const B = (id, name, family, startup, perHead, cogs, rent, wage, track, needs = {}, o = {}) => ({ id, name, family, startup, perHead, cogs, rent, wage, track, needs, ...o });
 
 export const BUSINESS_TYPES = [
@@ -42,6 +44,13 @@ export const BUSINESS_TYPES = [
   B('photo_studio', 'Photography studio', 'media', 24000, 60000, 0.1, 12000, 30000, 'photography', {}, { solo: true }),
   B('events_co', 'Events company', 'hospitality', 25000, 72000, 0.3, 8000, 34000, 'events', { experience: { events: 3, hotel: 4, front_house: 4 } }, { solo: true }),
   B('haulage', 'Haulage firm', 'transport', 90000, 92000, 0.34, 14000, 44000, 'driver', { experience: { driver: 4, logistics: 3, warehouse: 5 } }),
+  // Working with animals (the animals themselves are in engine/animals.js; these are the businesses).
+  B('pet_care', 'Pet sitting and dog walking', 'land', 2000, 30000, 0.12, 0, 22000, 'animal_care', {}, { solo: true }),
+  B('grooming_salon', 'Pet grooming salon', 'land', 30000, 52000, 0.16, 16000, 26000, 'grooming', { experience: { grooming: 2, animal_care: 3 } }, { solo: true }),
+  B('kennels', 'Boarding kennels and cattery', 'land', 60000, 58000, 0.2, 6000, 25000, 'animal_care', { experience: { animal_care: 2, grooming: 3, vet: 1 }, land: true }),
+  B('training_school', 'Dog training school', 'land', 12000, 56000, 0.06, 9000, 30000, 'animal_training', { experience: { animal_training: 3 } }, { solo: true }),
+  B('riding_school', 'Riding school', 'land', 120000, 62000, 0.22, 4000, 26000, 'equestrian', { experience: { equestrian: 3 }, land: true, flag: 'riderAdvanced', flagText: 'You need to ride at an advanced level to teach.' }),
+  B('smallholding', 'Smallholding', 'land', 30000, 40000, 0.38, 2000, 24000, 'farming', { land: true }, { solo: true }),
   B('farm', 'Farm', 'land', 150000, 68000, 0.4, 16000, 27000, 'farming', { experience: { farming: 3, ranching: 3, agri_science: 2 } }),
   B('funeral_home', 'Funeral home', 'novelty', 90000, 85000, 0.22, 24000, 38000, 'funeral', { experience: { funeral: 4 } }),
   B('pi_agency', 'Investigations agency', 'novelty', 15000, 70000, 0.06, 8000, 40000, 'pi', { experience: { pi: 3, police: 6, detective: 3 } }, { solo: true }),

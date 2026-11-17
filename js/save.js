@@ -76,6 +76,13 @@ function migrate(state) {
   // Lives saved before the family's animals had a record of their own: each is entered once, as it stands,
   // with nothing made up about a past that was never written down.
   reconcileAnimals(state);
+  // Animal businesses once had books of their own, before they joined the shared business system (engine/business.js).
+  // Any still open in an old save are wound up: what was in them is paid to their owner, once.
+  for (const b of Object.values(state.animals?.businesses ?? {})) {
+    if (!b.closed && b.owner?.id === state.player.id && b.cash > 0) state.player.finance.cash += b.cash;
+    if (!b.closed) b.closed = { year: state.year, why: 'wound up when businesses were brought together' };
+    b.cash = 0;
+  }
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

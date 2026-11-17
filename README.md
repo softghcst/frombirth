@@ -77,7 +77,6 @@ life ends, each animal that depended on the player gets a keeper, and the whole 
 | Riding schools and instructors, lessons, livery yards, buying and riding a horse, shows | `js/engine/equestrian.js` |
 | Breeding (vet-checked, unrelated, limited, never for profit), parentage and pedigrees | `js/engine/animalBreeding.js` |
 | Classes and trainers, behavior problems, outings, the local pet show, custody after a split, siblings' chores | `js/engine/animalLife.js` |
-| Businesses with their own books: pet care, grooming, kennels, training, a riding school, a smallholding | `js/engine/animalBusiness.js` |
 | Stories that take years: first pet, a nervous rescue settling, training, lifelong bonds, remembrance, the show ring, an older horse | `js/engine/animalArcs.js` |
 | Scenes: illness, emergencies, foster reviews, settling in, a child asking for a pet, visiting the family dog | `js/data/events/animals.js` |
 | Screens: album, timeline, profiles, chronicle / the hub / portraits / the way back | `js/ui/animals.js`, `js/ui/animalHub.js`, `js/ui/animalPortrait.js`, `js/ui/animalNav.js` |
@@ -94,9 +93,13 @@ Landlords set rules about animals; some species need a license and some are bann
 has three sides: attachment, trust and comfort. Horses can be leased or sold (never for more than they cost); Pursuits
 → Riding leads to the same screens.
 
+Animal businesses (pet sitting, a grooming salon, kennels, a dog training school, a riding school, a smallholding) are
+kinds of business in the shared business system (`js/data/business.js`), started and run from the Work screen like any
+other; the Pets & Animals hub links there. Kennels, a riding school and a smallholding need land of one's own, and a
+riding school needs a rider who rides at an advanced level.
+
 Not built, because the rest of the game does not have it yet: historical eras (every life starts in the present
-day, so there is nothing for era rules to change). The businesses above are a small engine of their own, since the
-game has no general one; a smallholding's animals are a counted flock whose welfare the business answers for.
+day, so there is nothing for era rules to change).
 
 ## Avatars
 
