@@ -82,3 +82,28 @@ export const NAME_WORDS = ['Corner', 'Little', 'Golden', 'Harbour', 'Old Mill', 
 
 /** Interest on money the business borrows, and how long it has to repay. */
 export const BUSINESS_LOAN = { rate: 0.08, years: 7, most: 1.5 };
+
+/**
+ * Tax on a business's profit, by country. GAMEPLAY CONFIGURATION, SIMPLIFIED AND UNVERIFIED: one headline
+ * rate, and a lower rate on small profits where the country has one. Real systems have allowances,
+ * regional taxes, credits and exceptions that are not modelled. Nothing here is tax advice.
+ *   rate   the headline rate on profit
+ *   small  the rate on the first slice of profit (up to SMALL_PROFIT typical wages), where lower
+ * Places not listed use DEFAULT_PROFIT_TAX.
+ */
+export const DEFAULT_PROFIT_TAX = { rate: 0.22 };
+export const SMALL_PROFIT = 3; // typical wages (engine/systems.js typicalWage)
+export const PROFIT_TAX = {
+  us: { rate: 0.21 }, ca: { rate: 0.26, small: 0.12 }, mx: { rate: 0.3 }, br: { rate: 0.34, small: 0.15 }, ar: { rate: 0.35, small: 0.25 },
+  cl: { rate: 0.27, small: 0.25 }, co: { rate: 0.35 }, pe: { rate: 0.295 },
+  uk: { rate: 0.25, small: 0.19 }, ie: { rate: 0.125 }, fr: { rate: 0.25, small: 0.15 }, de: { rate: 0.3 }, it: { rate: 0.24 }, es: { rate: 0.25, small: 0.23 },
+  pt: { rate: 0.21, small: 0.17 }, nl: { rate: 0.258, small: 0.19 }, be: { rate: 0.25, small: 0.2 }, ch: { rate: 0.15 }, at: { rate: 0.23 }, se: { rate: 0.206 },
+  no: { rate: 0.22 }, dk: { rate: 0.22 }, fi: { rate: 0.2 }, pl: { rate: 0.19, small: 0.09 }, cz: { rate: 0.21 }, hu: { rate: 0.09 }, ro: { rate: 0.16 },
+  gr: { rate: 0.22 }, ee: { rate: 0.2 }, hr: { rate: 0.18, small: 0.1 }, ua: { rate: 0.18 }, ru: { rate: 0.25 }, tr: { rate: 0.25 }, ge: { rate: 0.15 },
+  jp: { rate: 0.3, small: 0.22 }, kr: { rate: 0.24, small: 0.09 }, cn: { rate: 0.25, small: 0.05 }, hk: { rate: 0.165, small: 0.0825 }, tw: { rate: 0.2 },
+  sg: { rate: 0.17 }, my: { rate: 0.24, small: 0.15 }, th: { rate: 0.2, small: 0.15 }, vn: { rate: 0.2 }, id: { rate: 0.22, small: 0.11 }, ph: { rate: 0.25, small: 0.2 },
+  in: { rate: 0.25 }, pk: { rate: 0.29 }, bd: { rate: 0.275 }, au: { rate: 0.3, small: 0.25 }, nz: { rate: 0.28 },
+  ae: { rate: 0.09, small: 0 }, sa: { rate: 0.2 }, qa: { rate: 0.1 }, kw: { rate: 0.15 }, il: { rate: 0.23 }, eg: { rate: 0.225 }, jo: { rate: 0.2 },
+  ng: { rate: 0.3, small: 0 }, ke: { rate: 0.3 }, za: { rate: 0.27 }, gh: { rate: 0.25 }, ma: { rate: 0.2, small: 0.1 }, et: { rate: 0.3 },
+  mc: { rate: 0.25 }, bs: { rate: 0 }, aw: { rate: 0.25 },
+};

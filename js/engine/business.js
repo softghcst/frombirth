@@ -19,21 +19,25 @@
 //     rivals,                    competitors nearby, each taking a share of the custom; success attracts them
 //     pricing, ownerHours, draw, the owner's standing decisions
 //     overdrawn,                 years in a row the account has been below zero
+//     lossCarry, taxPaid         losses not yet set against profit; all the tax it has paid
 //     last: { revenue, wages, rent, supplies, overhead, interest, profit, drawn, heads, demand },
 //     payout, payoutPaid,        what is owed to the owner this year, paid once by payroll
 //     candidates,                this year's applicants for a job there
 //     history: [{ year, text }], heirId, ownerNpcId (when a relative runs it)
 //   }
 //
-// The company's profit is not taxed separately here: what the owner takes out
-// is income, taxed with the rest of their pay. That is a simplification.
+// The company pays tax on its profit where it is based (profitTax), after any
+// losses from earlier years are set against it (lossCarry). A sole trader (working
+// alone, no partners) pays none: their profit is their income. What the owner then
+// takes out is income, taxed with the rest of their pay.
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, localCost, niceRound, uid } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { PROGRAMMES, TRADE_BY_ID } from '../data/schools.js';
-import { BUSINESS_TYPES, BUSINESS_BY_ID, FROM_SERVICE, PRICING, DRAWS, BUSINESS_NAMES, NAME_WORDS, BUSINESS_LOAN } from '../data/business.js';
+import { BUSINESS_TYPES, BUSINESS_BY_ID, FROM_SERVICE, PRICING, DRAWS, BUSINESS_NAMES, NAME_WORDS, BUSINESS_LOAN, PROFIT_TAX, DEFAULT_PROFIT_TAX, SMALL_PROFIT } from '../data/business.js';
+import { typicalWage } from './systems.js';
 import { makeNpc } from './npcFactory.js';
 import { ensureLife } from './npcLives.js';
 import { cityOf } from './cities.js';
@@ -58,6 +62,26 @@ const typeOf = (b) => BUSINESS_BY_ID[b.typeId];
 const placeOf = (b) => COUNTRIES[b.countryId];
 const acts = (b) => { const p = player(); if (b.acts?.age !== p.age) b.acts = { age: p.age, done: {} }; return b.acts.done; };
 const note = (b, text) => { b.history.push({ year: store.state.year, text }); if (b.history.length > 30) b.history.shift(); chronicle(employer(b.employerId), text); };
+
+/** The tax rates on business profit where a business is based. */
+export function profitTaxOf(countryId) {
+  const t = PROFIT_TAX[countryId] ?? DEFAULT_PROFIT_TAX;
+  return { rate: t.rate, small: t.small ?? t.rate };
+}
+
+/**
+ * The tax on a year's profit, after earlier losses are set against it.
+ * @returns {{tax:number, taxable:number, carry:number}} carry: losses still to set against later profit
+ */
+export function profitTax(profit, countryId, lossCarry = 0) {
+  if (profit <= 0) return { tax: 0, taxable: 0, carry: lossCarry - profit };
+  const taxable = Math.max(0, profit - lossCarry);
+  const carry = Math.max(0, lossCarry - profit);
+  const { rate, small } = profitTaxOf(countryId);
+  const band = typicalWage(COUNTRIES[countryId]) * SMALL_PROFIT;
+  const tax = Math.round(Math.min(taxable, band) * small + Math.max(0, taxable - band) * rate);
+  return { tax, taxable, carry };
+}
 
 /** Money figures for a kind of business, in a place. */
 export function figures(type, countryId = player().countryId, city = player().city) {
@@ -135,7 +159,7 @@ export function start(typeId, name, o = {}) {
   const rep = opt.fromService ? c.freelance.services[opt.fromService].rep : 28;
   const b = { id: uid('biz'), typeId, name: title, countryId: p.countryId, city: p.city, employerId: e.id, founded: store.state.year, foundedAge: p.age, years: 0,
     status: 'open', stake: 1, partners: [], cash: Math.round(Math.max(opt.startup * 0.15, opt.wage * 0.5)), debt: borrow, debtYears: borrow ? BUSINESS_LOAN.years : 0, sites: 1, staff: [], others: 0,
-    reputation: rep, quality: 50, marketing: 1, pricing: 'standard', ownerHours: 45, draw: 'half', overdrawn: 0, last: null, payout: 0, payoutPaid: true, candidates: null,
+    reputation: rep, quality: 50, marketing: 1, pricing: 'standard', ownerHours: 45, draw: opt.solo ? 'most' : 'half', overdrawn: 0, last: null, payout: 0, payoutPaid: true, candidates: null,
     history: [], heirId: null, ownerNpcId: null };
   businesses(p).push(b);
   if (!fitHours(b, 45)) b.ownerHours = fitHours(b, 25) ? 25 : 10;
@@ -364,7 +388,7 @@ export function expand(b) {
 
 /** What the whole business is worth to a buyer. */
 export function valuation(b) {
-  const profit = b.last?.profit ?? 0;
+  const profit = b.last?.afterTax ?? b.last?.profit ?? 0;
   const goodwill = Math.max(0, profit) * (1.5 + b.reputation / 40);
   const fittings = figures(typeOf(b), b.countryId, b.city).startup * 0.35 * b.sites;
   return Math.max(0, Math.round(b.cash + fittings + goodwill - b.debt));
@@ -548,19 +572,26 @@ function runYear(b) {
   const principal = b.debt > 0 ? Math.min(b.debt, Math.round(b.debt / Math.max(1, b.debtYears))) : 0;
   b.debt -= principal;
   b.debtYears = Math.max(0, b.debtYears - 1);
-  b.cash += profit - principal;
+  // Tax on the profit, where the business is, after earlier losses. Someone working alone, with no partners,
+  // is a sole trader: the profit is simply their income, taxed once when it reaches them.
+  const soleTrader = !headcount(b) && !b.partners.length;
+  const taxed = soleTrader ? { tax: 0, taxable: 0, carry: 0 } : profitTax(profit, b.countryId, b.lossCarry ?? 0);
+  b.lossCarry = taxed.carry;
+  b.taxPaid = (b.taxPaid ?? 0) + taxed.tax;
+  const afterTax = profit - taxed.tax;
+  b.cash += afterTax - principal;
 
-  // What the owners take. Never more than is there.
+  // What the owners take, from what is left after tax. Never more than is there.
   let drawn = 0;
-  if (profit > 0 && b.cash > 0) {
-    const out = Math.min(b.cash, Math.round(profit * DRAWS[b.draw].share));
+  if (afterTax > 0 && b.cash > 0) {
+    const out = Math.min(b.cash, Math.round(afterTax * DRAWS[b.draw].share));
     drawn = Math.round(out * b.stake);
     b.cash -= out;
     for (const pt of b.partners) { const n = store.state.npcs[pt.id]; if (n?.life) n.life.savings += Math.round(out * pt.stake); }
   }
   b.payout = (b.payoutPaid ? 0 : b.payout) + drawn; // with anything taken out during the year
   b.payoutPaid = b.payout <= 0;
-  b.last = { revenue, wages, rent, supplies, overhead, interest, profit, drawn, heads: Math.round(heads * 10) / 10, demand: Math.round(demand * 10) / 10 };
+  b.last = { revenue, wages, rent, supplies, overhead, interest, profit, tax: taxed.tax, afterTax, drawn, heads: Math.round(heads * 10) / 10, demand: Math.round(demand * 10) / 10 };
 
   // The name the place has.
   const stretched = demand > heads * 1.25;
@@ -588,7 +619,7 @@ function runYear(b) {
   const e = employer(b.employerId);
   if (e) e.health = Math.round(clamp(50 + (profit / Math.max(1, revenue)) * 150 + (b.cash > 0 ? 10 : -20)));
 
-  lines.unshift(`${b.name}: took ${fmtMoney(revenue, cty)}, ${profit >= 0 ? `made ${fmtMoney(profit, cty)}` : `lost ${fmtMoney(-profit, cty)}`}.${drawn ? ` You took ${fmtMoney(drawn, cty)} out.` : ''}${stretched ? ' You turned custom away: more staff would pay for themselves.' : idle && headcount(b) ? ' There was not enough work for everyone.' : ''}`);
+  lines.unshift(`${b.name}: took ${fmtMoney(revenue, cty)}, ${profit >= 0 ? `made ${fmtMoney(profit, cty)}${taxed.tax ? ` and paid ${fmtMoney(taxed.tax, cty)} in tax on it` : taxed.taxable === 0 && profit > 0 ? ', untaxed: earlier losses were set against it' : ''}` : `lost ${fmtMoney(-profit, cty)}`}.${drawn ? ` You took ${fmtMoney(drawn, cty)} out.` : ''}${stretched ? ' You turned custom away: more staff would pay for themselves.' : idle && headcount(b) ? ' There was not enough work for everyone.' : ''}`);
 
   // An account below zero cannot go on.
   if (b.cash < 0) {

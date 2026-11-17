@@ -9,7 +9,7 @@ import { makeNpc } from '../js/engine/npcFactory.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
 import { FAMILY_BY_ID } from '../js/data/occupations.js';
 import { PROGRAMMES, TRADE_BY_ID } from '../js/data/schools.js';
-import { BUSINESS_TYPES, BUSINESS_BY_ID, FROM_SERVICE } from '../js/data/business.js';
+import { BUSINESS_TYPES, BUSINESS_BY_ID, FROM_SERVICE, DRAWS } from '../js/data/business.js';
 import { SERVICE_BY_ID } from '../js/data/freelance.js';
 import * as biz from '../js/engine/business.js';
 import * as work from '../js/engine/worklife.js';
@@ -97,6 +97,50 @@ if (spare > 100) {
 }
 section('money: the company has its own account, and the owner is paid from profit, once, with tax');
 
+// 3b. Tax on profit, by country, with losses carried forward.
+{
+  const { PROFIT_TAX } = await import('../js/data/business.js');
+  const { typicalWage } = await import('../js/engine/systems.js');
+  const { COUNTRIES } = await import('../js/data/countries.js');
+  for (const id of Object.keys(PROFIT_TAX)) check(!!COUNTRIES[id] && PROFIT_TAX[id].rate >= 0 && PROFIT_TAX[id].rate < 0.5 && (PROFIT_TAX[id].small ?? 0) <= PROFIT_TAX[id].rate, `profit tax for ${id} is out of range`);
+  const band = typicalWage(COUNTRIES.uk) * 3;
+  const big = biz.profitTax(band * 4, 'uk');
+  check(big.tax === Math.round(band * 0.19 + band * 3 * 0.25), `a large British profit pays the small rate on the first slice and the main rate on the rest (${big.tax})`);
+  check(biz.profitTax(1000, 'ae').tax === 0 && biz.profitTax(-5000, 'us').tax === 0, 'small profits in the Emirates, and losses anywhere, pay nothing');
+  const loss = biz.profitTax(-30000, 'us', 0);
+  check(loss.carry === 30000, 'a loss is carried forward');
+  const next = biz.profitTax(50000, 'us', loss.carry);
+  check(next.taxable === 20000 && next.tax === Math.round(20000 * 0.21) && next.carry === 0, `and set against the next profit (${next.taxable} taxable)`);
+  const part = biz.profitTax(10000, 'us', 30000);
+  check(part.tax === 0 && part.carry === 20000, 'a profit smaller than the losses carried pays nothing, and uses some of them up');
+  // In the accounts.
+  p = life();
+  biz.start('cafe', 'Taxed Café');
+  b = biz.openBusinesses()[0];
+  staffUp(b, 2);
+  let paidSome = false;
+  for (let i = 0; i < 6 && b.status === 'open'; i++) {
+    const carry = b.lossCarry ?? 0;
+    year();
+    if (!b.last) continue;
+    const expect = biz.profitTax(b.last.profit, b.countryId, carry);
+    check(b.last.tax === expect.tax && b.lossCarry === expect.carry, `year ${i}: the business paid the tax its accounts owe (${b.last.tax} against ${expect.tax})`);
+    check(b.last.drawn <= Math.max(0, b.last.afterTax), 'the owner is paid only from what is left after tax');
+    if (b.last.tax > 0) paidSome = true;
+  }
+  check(paidSome || b.status !== 'open', 'a profitable business pays tax');
+  // A sole trader is taxed once, as income.
+  p = life();
+  p.education.degrees.push({ type: 'apprenticeship', majorId: 'electrician', gpa: 3, age: 21 });
+  work.career().experience.electrician = 8;
+  biz.start('electrical', 'Solo Sparks');
+  const solo = biz.openBusinesses()[0];
+  year(); year();
+  check(solo.last && solo.last.tax === 0 && solo.draw === 'most', 'someone working alone pays no profit tax, and takes most of the profit as income');
+  check(b.taxPaid >= 0, 'the business keeps a record of the tax it has paid');
+}
+section('tax: profit is taxed where the business is, at a small-profit rate first, after earlier losses; the owner takes what is left');
+
 // 4. Staff are people.
 p = life();
 biz.start('cafe', 'The Test Café');
@@ -149,7 +193,7 @@ for (let i = 0; i < 20 && !partnered; i++) { b.acts = null; partnered = biz.take
 check(partnered && b.stake === 0.75 && b.partners[0].id === rich.id, 'a friend can buy a quarter of it');
 const outBefore = b.last?.drawn;
 year();
-check(b.last.drawn <= Math.round(b.last.profit * 0.5 * 0.75) + 1 || b.last.profit <= 0, `the owner's share of what is paid out follows their stake (${b.last.drawn} of ${b.last.profit}, was ${outBefore})`);
+check(b.last.drawn <= Math.round(Math.max(0, b.last.afterTax) * DRAWS[b.draw].share * 0.75) + 1, `the owner's share of what is paid out follows their stake (${b.last.drawn} of ${b.last.afterTax}, was ${outBefore})`);
 let sold = false;
 const before = p.finance.cash;
 for (let i = 0; i < 30 && !sold; i++) { b.acts = null; sold = biz.sell(b).ok; }
@@ -167,7 +211,9 @@ biz.start('bakery', 'The Family Bakery');
 b = biz.openBusinesses()[0];
 staffUp(b, 2);
 biz.setManager(b, biz.staffOf(b)[0].id);
+b.cash += 200000; // well funded: this is a test of inheritance, not of trading
 for (let i = 0; i < 2; i++) year();
+check(b.status === 'open', `the bakery is still trading when its owner dies (${b.status})`);
 const kid = makeNpc({ role: 'child', countryId: p.countryId, age: 38, relationship: 90 }); store.state.npcs[kid.id] = kid; p.npcIds.push(kid.id);
 const other = makeNpc({ role: 'child', countryId: p.countryId, age: 35, relationship: 90 }); store.state.npcs[other.id] = other; p.npcIds.push(other.id);
 check(biz.heirsFor(b).length === 2, 'grown children can be considered');
@@ -184,7 +230,7 @@ if (next) {
   check(!!got && (!next.npcs[managerId]?.alive || got.staff.some((s) => s.manager && s.id === managerId)), 'whoever ran it is still running it');
   check((next.careerRecord ?? []).some((rec) => (rec.businesses ?? []).some((x) => x.name === bizName)), 'the family record remembers who founded it');
   year();
-  check(got.years >= 3 && got.last, 'and it trades on under the new owner');
+  check(got?.years >= 3 && got?.last, 'and it trades on under the new owner');
 }
 // A child who was not named gets nothing by default when another was.
 p = life('us', 70);
