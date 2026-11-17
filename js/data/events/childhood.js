@@ -93,7 +93,7 @@ export default [
     text: 'A scruffy stray has followed you all the way home and is sitting on the doorstep.',
     choices: [
       { label: 'Beg to keep it', check: chk(0.4, { 'stats.charm': 0.5, 'hidden.karma': 0.3 }), outcomes: [
-        ok('{father} holds out for nearly a minute. You name your new pet {pet}.', addNpc('pet', 'pet'), st('mood', 10), rel('father', 3)),
+        ok('{father} holds out for nearly a minute. You name your new pet {pet}.', addNpc('pet', 'pet', { species: 'dog' }), st('mood', 10), rel('father', 3)),
         bad('{father} says no and drives it to the shelter. You do not speak at dinner.', st('mood', -6), rel('father', -4)),
       ] },
       { label: 'Feed it and say goodbye', outcomes: [any('It eats your sandwich, licks your hand, and trots off.', 'good', hid('karma', 4), st('mood', 2))] },

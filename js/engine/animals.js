@@ -63,7 +63,10 @@ export function ensure(state = store.state) {
   return state.animals;
 }
 export const animalById = (id, state = store.state) => ensure(state).byId[id] ?? null;
-export const allAnimals = (state = store.state) => Object.values(ensure(state).byId);
+/** Every animal on record, including those waiting in a shelter that no family has taken in. */
+export const everyAnimal = (state = store.state) => Object.values(ensure(state).byId);
+/** The family's animals: every one that has shared its life, living or dead. */
+export const allAnimals = (state = store.state) => everyAnimal(state).filter((a) => a.family !== false);
 const handle = (state, a) => state.npcs[a.id] ?? null;
 
 const fullName = (x) => `${x.firstName} ${x.lastName}`.trim();
@@ -127,6 +130,7 @@ function setOwner(state, a, who, how) {
   if (ownerOf(a)?.id === who.id && who.id) return;
   closeOpen(a.ownerships, state.year, how);
   a.ownerships.push({ who, from: state.year, to: null, how });
+  delete a.insurance; // a policy is the old owner's: it does not pass with the animal
 }
 function setPrimary(state, a, who, why) {
   if (primaryOf(a)?.id === who.id && who.id) return;
@@ -173,7 +177,7 @@ function drawLooks(npc, sp, roll, origin) {
   return {
     breedId: breed?.id ?? null,
     appearance: { coat, second, pattern, eyes: roll.pick(breed?.eyes ?? sp.eyes), size: breed?.size ?? 'small', ears: breed?.ears ?? 'up', length: breed?.length ?? 'short',
-      mark: sp.id === 'parrot' || sp.id === 'hamster' ? null : mark },
+      mark: ['dog', 'cat', 'rabbit', 'horse', 'pony', 'donkey', 'goat'].includes(sp.id) ? mark : null },
   };
 }
 function drawTemperament(sp, roll) {
@@ -190,7 +194,10 @@ const livingBy = (state, roles) => state.player.npcIds.map((id) => state.npcs[id
 /**
  * Puts an animal on the family's record. Safe to call twice: the second call changes nothing.
  * @param {object} npc    the animal's entry among the people the player knows
- * @param {{origin?:'family'|'shelter'|'found'|'unknown', fee?:number, storyEntry?:object, pending?:boolean, state?:object}} [o]
+ * @param {{origin?:'family'|'shelter'|'found'|'unknown'|'bought'|'born', fee?:number, storyEntry?:object, pending?:boolean, state?:object,
+ *          stock?:object, foster?:object, shelterName?:string, quiet?:boolean, history?:string}} [o]
+ *   stock   the organisation holding an animal that is waiting for a home: recorded, but not yet the family's
+ *   foster  the organisation the player is fostering it for      quiet  the caller records the moment itself
  *   storyEntry  the line in the life story that tells it, if it is already written
  *   pending     the scene engine is about to write that line (see claimStory)
  *   origin  'family'  it was already in the household when the player was born
@@ -200,7 +207,9 @@ const livingBy = (state, roles) => state.player.npcIds.map((id) => state.npcs[id
 export function register(npc, o = {}) {
   const state = o.state ?? store.state;
   const A = ensure(state);
-  if (A.byId[npc.id]) return A.byId[npc.id];
+  // An animal already on record only as one waiting in a shelter is taken into the family: the same record, carried on.
+  const had = A.byId[npc.id];
+  if (had && (had.family !== false || o.stock)) return had;
   const p = state.player;
   const origin = o.origin ?? 'unknown';
   const sp = speciesOf(npc.species);
@@ -208,7 +217,7 @@ export function register(npc, o = {}) {
   const looks = drawLooks(npc, sp, roll, origin);
   const alive = npc.alive !== false;
   const known = origin !== 'unknown';
-  const a = {
+  const fresh = {
     id: npc.id, name: npc.firstName, speciesId: sp.id === 'other' ? (npc.species ?? 'other') : sp.id,
     breedId: looks.breedId,
     // A breed is on record only where someone would know it. Otherwise it is a guess, and shown as one.
@@ -221,9 +230,35 @@ export function register(npc, o = {}) {
     origin: { how: origin, year: known ? state.year : null, city: known ? p.city : null, countryId: known ? p.countryId : null,
       ...(o.fee ? { fee: o.fee, currency: COUNTRIES[p.countryId].currency.code } : {}) },
     ownerships: [], care: [], homes: [], bonds: {}, training: {}, health: [],
-    inCircle: true, memorial: null, firstSeenYear: state.year, firstSeenGen: p.generation ?? 1,
+    inCircle: true, family: true, memorial: null, firstSeenYear: state.year, firstSeenGen: p.generation ?? 1,
   };
+  const a = had ? Object.assign(had, { family: true, inCircle: true, origin: { ...fresh.origin, from: had.origin?.from }, firstSeenYear: state.year, firstSeenGen: p.generation ?? 1 }) : fresh;
   A.byId[a.id] = a;
+  if (o.stock) {
+    // Waiting for a home: it belongs to the organisation that took it in, and is nobody's family yet.
+    const org = { id: null, org: o.stock.id, name: o.stock.name };
+    Object.assign(a, { family: false, inCircle: false, origin: { how: 'stock', year: state.year, city: o.stock.city, countryId: o.stock.countryId, from: o.stock.name, history: o.history ?? null } });
+    a.ownerships.push({ who: org, from: state.year, to: null, how: 'taken in' });
+    a.care.push({ who: org, role: 'primary', from: state.year, to: null });
+    a.homes.push({ hh: 'shelter', key: o.stock.id, label: o.stock.name, city: o.stock.city, countryId: o.stock.countryId, from: state.year, to: null });
+    return a;
+  }
+  if (had) for (const list of [a.ownerships, a.care, a.homes]) closeOpen(list, state.year, 'left the shelter');
+  if (o.foster) {
+    // Fostering: the animal lives with the player, who looks after it. It still belongs to the organisation.
+    const me0 = ref(state, p.id);
+    a.origin.how = 'foster';
+    a.foster = { org: o.foster.id, name: o.foster.name, since: state.year, review: state.year + 1 };
+    a.ownerships.push({ who: { id: null, org: o.foster.id, name: o.foster.name }, from: state.year, to: null, how: 'in foster care' });
+    a.care.push({ who: me0, role: 'primary', from: state.year, to: null, why: 'fostering' });
+    for (const n of livingBy(state, ['spouse'])) a.care.push({ who: ref(state, n.id), role: 'helper', from: state.year, to: null });
+    a.homes.push({ ...playerHome(state), from: state.year, to: null });
+    setBond(a, me0, npc.meters.relationship);
+    record(state, { type: 'fostered', animalId: a.id, people: [me0, ...helpersOf(a)], sig: 2, storyEntry: o.storyEntry,
+      text: `${fullName(p)} began fostering ${a.name}, a ${describeAge(a, state)} ${sp.name}, for ${o.foster.name}.`,
+      memories: [memory(me0, `You told yourself ${a.name} was only staying for a while.`, `${p.firstName} told everyone ${a.name} was only staying for a while.`)] });
+    return a;
+  }
 
   // Who it belongs to, and who looks after it. A child does not own the family dog.
   const parents = parentsOf(state);
@@ -232,7 +267,7 @@ export function register(npc, o = {}) {
   const me = ref(state, p.id);
   const owner = mine ? me : ref(state, parents[0].id);
   const from = known ? state.year : null;
-  const how = { family: 'already theirs', shelter: 'adopted', found: 'taken in', unknown: 'unknown' }[origin];
+  const how = { family: 'already theirs', shelter: 'adopted', found: 'taken in', unknown: 'unknown', bought: 'bought', born: 'born to the household' }[origin] ?? origin;
   // The family's animal lives in the family home, whoever in it the player is.
   const home = mine ? playerHome(state) : { ...playerHome(state), hh: 'parents', key: 'family-home', label: `The ${p.lastName} family home` };
   // An animal that had already died when the record began: what is known is how old it was, not when.
@@ -254,7 +289,7 @@ export function register(npc, o = {}) {
     firstBond(a, ref(state, n.id), n.id === owner.id ? 12 : 0);
   }
 
-  if (!known || !alive) return a;
+  if (!known || !alive || o.quiet) return a;
   const kind = `${sp.name}`;
   const where = `${p.city}, ${theCountry(COUNTRIES[p.countryId].name)}`;
   const kinOwner = whoPhrase(state, owner);
@@ -264,7 +299,7 @@ export function register(npc, o = {}) {
       memories: [memory(me, `You cannot remember a time before ${a.name}.`, `${p.firstName} could not remember a time before ${a.name}.`)] });
   } else if (origin === 'shelter') {
     record(state, { type: 'adopted', animalId: a.id, people: [owner, ...helpersOf(a)], sig: 3, storyEntry: o.storyEntry,
-      text: `${owner.name} adopted ${a.name}, a ${describeAge(a, state)} ${kind}, from a shelter in ${where}.`,
+      text: `${owner.name} adopted ${a.name}, a ${describeAge(a, state)} ${kind}, from ${o.shelterName ?? 'a shelter'} in ${where}.`,
       memories: [memory(me, `The day ${a.name} came home from the shelter.`, `${p.firstName} brought ${a.name} home from the shelter.`), ...firstImpressions(state, a, me.id)] });
   } else {
     record(state, { type: 'joined', animalId: a.id, people: [owner, ...helpersOf(a)], sig: 3, storyEntry: o.storyEntry, pending: !!o.pending,
@@ -353,6 +388,7 @@ export function animalDied(npc, state = store.state) {
   const owner = ownerOf(a);
   setBond(a, ref(state, p.id), npc.meters.relationship);
   a.status = 'deceased'; a.died = state.year; a.ageAtDeath = npc.age;
+  delete a.insurance;
   const since = a.homes[0]?.from;
   const yours = isPlayer(state, owner?.id);
   const close = Object.entries(a.bonds).filter(([id, b]) => id !== p.id && b.value >= 60 && aliveHuman(state, id)).sort((x, y) => y[1].value - x[1].value).slice(0, 3);
@@ -429,7 +465,7 @@ function arrangeCare(state, a, goneId, why, quiet = false) {
     return null;
   }
   const who = ref(state, next);
-  const wasOwner = ownerOf(a)?.id === goneId || !aliveHuman(state, ownerOf(a)?.id);
+  const wasOwner = ownerOf(a)?.id === goneId || (!!ownerOf(a)?.id && !aliveHuman(state, ownerOf(a).id));
   if (wasOwner) setOwner(state, a, who, why === 'death' ? 'inherited' : 'transferred');
   setPrimary(state, a, who, why);
   for (const c of a.care) if (c.to == null && c.who.id === goneId) { c.to = state.year; c.ended = why; }
@@ -447,13 +483,40 @@ function arrangeCare(state, a, goneId, why, quiet = false) {
   return who;
 }
 
+/**
+ * An animal leaves the player's life for an organisation's care, or through one to a new family.
+ * Used when a foster placement ends and when an owner gives an animal up. The record keeps it.
+ * @param {{placed?:boolean, why?:string, story?:?string, text?:string}} o  placed: it has gone to a permanent home
+ */
+export function leaveToOrg(state, a, o = {}) {
+  const p = state.player;
+  const last = a.homes[a.homes.length - 1];
+  const org = a.foster ? { id: null, org: a.foster.org, name: a.foster.name } : o.org ?? (ownerOf(a)?.org ? ownerOf(a) : { id: null, name: 'a rescue organisation' });
+  const keeper = o.placed ? { id: null, name: 'an adoptive family' } : org;
+  const sp = speciesOf(a.speciesId);
+  const people = [ownerOf(a), primaryOf(a), ...helpersOf(a)].filter((r) => r?.id);
+  closeOpen(a.ownerships, state.year, o.why); a.ownerships.push({ who: keeper, from: state.year, to: null, how: o.placed ? 'adopted by a new family' : 'given into its care' });
+  closeOpen(a.care, state.year, o.why); a.care.push({ who: keeper, role: 'primary', from: state.year, to: null, why: o.why });
+  setHome(state, a, o.placed ? { hh: 'elsewhere', key: 'elsewhere', label: 'A permanent home with a new family', city: last?.city ?? p.city, countryId: last?.countryId ?? p.countryId }
+    : { hh: 'shelter', key: org.org ?? 'rescue', label: org.name.replace(/^a /, 'A '), city: last?.city ?? p.city, countryId: last?.countryId ?? p.countryId });
+  if (a.foster) { a.fostered = { ...a.foster, until: state.year }; delete a.foster; }
+  delete a.insurance;
+  record(state, { type: o.placed ? 'placed' : 'rehomed', animalId: a.id, people, sig: 3, key: o.placed ? 'placed' : `rehomed:${state.year}`, story: o.story ?? null, tone: o.tone,
+    text: o.text ?? (o.placed ? `${a.name} the ${sp.name} went to a permanent home with a new family.` : `${a.name} the ${sp.name} went into the care of ${org.name}.`), memories: o.memories ?? [] });
+  if (state.npcs[a.id]) { a.lastBond = state.npcs[a.id].meters.relationship; delete state.npcs[a.id]; p.npcIds = p.npcIds.filter((id) => id !== a.id); }
+  a.inCircle = false;
+  return keeper;
+}
+
 /** The player has died: every animal that depended on them is given a keeper. Called before the life is closed. */
 export function settleOnDeath(state = store.state) {
   const p = state.player;
   reconcile(state);
   for (const a of allAnimals(state)) {
     if (a.status !== 'living') continue;
-    if (ownerOf(a)?.id === p.id || primaryOf(a)?.id === p.id) arrangeCare(state, a, p.id, 'death', true);
+    // A fostered animal goes back to the organisation it belongs to, which finds it somewhere else.
+    if (a.foster && primaryOf(a)?.id === p.id) leaveToOrg(state, a, { why: 'death', text: `After ${fullName(p)}'s death, ${a.name} went back into the care of ${a.foster.name}.` });
+    else if (ownerOf(a)?.id === p.id || primaryOf(a)?.id === p.id) arrangeCare(state, a, p.id, 'death', true);
     else for (const c of a.care) if (c.to == null && c.who.id === p.id) { c.to = state.year; c.ended = 'death'; }
   }
 }
@@ -560,7 +623,7 @@ export function tickAnimals(state = store.state) {
       a.bonds[c.who.id].value = Math.round(clamp(a.bonds[c.who.id].value + seeded(`${a.id}:${c.who.id}:${state.year}`).int(0, c.role === 'primary' ? 3 : 2), 0, 97));
     }
     // An animal that has left the player's life still grows old, where it is.
-    if (!a.inCircle && a.born != null && state.year - a.born >= a.lifespan) {
+    if (a.family !== false && !a.inCircle && a.born != null && state.year - a.born >= a.lifespan) {
       a.status = 'deceased'; a.died = state.year; a.ageAtDeath = state.year - a.born;
       const keeper = primaryOf(a);
       record(state, { type: 'died', animalId: a.id, people: [ownerOf(a), keeper], sig: 2,
@@ -861,3 +924,6 @@ export function audit(state = store.state) {
   for (const a of Object.values(A.byId)) for (const h of a.health) if (h.eventId && !seen.has(h.eventId)) bad.push(`${a.name}: a health record points at a moment that is not on record`);
   return bad;
 }
+
+/** For the engines that build on the record (care, shelters, riding, breeding): the same tools this file uses. */
+export const tools = { record, ref, seeded, hash, setOwner, setPrimary, addHelper, setHome, closeOpen, memory, firstBond, setBond, arrangeCare, handle, homeWith, livingBy, isPlayer, fullName, describeAge };

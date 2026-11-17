@@ -54,6 +54,9 @@ function grown(age = 30, withPets = false) {
 }
 const adopt = () => { const before = pets().length; const r = getPet(); check(r.ok && pets().length === before + 1, `adopting should work: ${r.text}`); return zoo.animalById(pets().at(-1).id); };
 const addKin = (role, age, extra = {}) => { const n = makeNpc({ role, countryId: P().countryId, age, lastName: P().lastName, ...extra }); S().npcs[n.id] = n; P().npcIds.push(n.id); return n; };
+/** An animal's homes with the family, and the people (not organisations) who owned it. */
+const ownHomes = (x) => x.homes.filter((h) => h.hh !== 'shelter');
+const people = (xs) => xs.filter((o) => o.who.id);
 const lastOf = (type, id) => zoo.eventsOf(id).filter((e) => e.type === type).at(-1);
 
 // ---------- 1. Identity: one record per animal, the same on every load ----------
@@ -75,7 +78,7 @@ check(animalPortraitSvg(a) === animalPortraitSvg(JSON.parse(before)) && animalPo
   const temper = new Set(); const looks = new Set();
   for (let i = 0; i < 40; i++) { const n = makePet('us', 'Test'); n.species = 'dog'; const r = zoo.register(n, { origin: 'family' }); temper.add(snap(r.temperament)); looks.add(snap(r.appearance)); delete S().animals.byId[n.id]; }
   check(temper.size >= 38 && looks.size >= 10, `forty dogs are forty individuals (${temper.size} temperaments, ${looks.size} looks)`);
-  const labs = []; for (let i = 0; i < 400 && labs.length < 12; i++) { const n = makePet('us', 'T'); n.species = 'dog'; const r = zoo.register(n, { origin: 'family' }); if (r.breedId === 'labrador') labs.push(r.temperament.sociability); delete S().animals.byId[n.id]; }
+  const labs = []; for (let i = 0; i < 4000 && labs.length < 12; i++) { const n = makePet('us', 'T'); n.species = 'dog'; const r = zoo.register(n, { origin: 'family' }); if (r.breedId === 'labrador') labs.push(r.temperament.sociability); delete S().animals.byId[n.id]; }
   check(labs.length >= 6 && Math.max(...labs) - Math.min(...labs) > 25, 'breed does not decide temperament');
   check(Object.values(BREEDS).every((list) => list.some((b) => b.mix)), 'every species with breeds has animals of no particular breed');
   S().animals = JSON.parse(keep); S().journal = JSON.parse(lines);
@@ -204,12 +207,12 @@ clean('household');
 // Moving house and country with one's own animal.
 p = grown(35); a = adopt();
 p.city = 'Boston'; zoo.reconcile();
-check(zoo.homeOf(a).city === 'Boston' && a.homes.length === 2 && lastOf('moved', a.id)?.sig === 2, 'an animal moves city with its household, and the old home is kept as history');
+check(zoo.homeOf(a).city === 'Boston' && ownHomes(a).length === 2 && lastOf('moved', a.id)?.sig === 2, 'an animal moves city with its household, and the old home is kept as history');
 cash = p.finance.cash; rng.seed(11);
 const went = emigrate('ca', { forced: true });
 zoo.reconcile();
 check(went.ok && zoo.homeOf(a).countryId === 'ca' && lastOf('moved', a.id).sig === 3 && S().npcs[a.id].flags.abroad !== 'us', 'it comes abroad with the household');
-check(a.id === pets()[0].id && zoo.allAnimals().length === 1 && a.homes.length === 3, 'the same animal, not a new one, with three homes on record');
+check(a.id === pets()[0].id && zoo.allAnimals().length === 1 && ownHomes(a).length === 3, 'the same animal, not a new one, with three homes on record');
 p = born(true); p.age = 25; S().year += 25; p.finance.cash = 1e6; for (const n of Object.values(S().npcs)) if (n.role === 'pet') n.age = 3;
 zoo.reconcile(); p.flags.livesWithParents = false; zoo.reconcile();
 a = zoo.animalById(pets()[0].id);
@@ -243,13 +246,13 @@ check(!!next && snap(zoo.allAnimals().map((x) => x.id).sort()) === snap(was.ids)
 check(S().animals.events.length >= was.events && new Set(S().animals.events.map((e) => e.id)).size === S().animals.events.length, 'no moment is lost or repeated');
 const ancestor = Object.values(S().npcs).find((n) => !n.alive && n.firstName === was.playerName.split(' ')[0] && n.role === 'parent');
 const gOld = zoo.animalById(old.id); const gYoung = zoo.animalById(young.id); const gMine = zoo.animalById(mine.id);
-check(!!ancestor && gOld.status === 'deceased' && !S().npcs[old.id] && gOld.ownerships[0].who.id === ancestor.id && gOld.ownerships[0].who.name === was.playerName, 'the animal that died keeps its profile; its owner is now the heir\'s late parent');
+check(!!ancestor && gOld.status === 'deceased' && !S().npcs[old.id] && people(gOld.ownerships)[0].who.id === ancestor.id && people(gOld.ownerships)[0].who.name === was.playerName && gOld.ownerships[0].who.org, 'the animal that died keeps its profile; its owner is now the heir\'s late parent');
 check(gOld.ageAtDeath === JSON.parse(was.oldSnap).ageAtDeath && gOld.died === JSON.parse(was.oldSnap).died && snap(gOld.appearance) === snap(JSON.parse(was.oldSnap).appearance), 'its dates and looks are unchanged');
 check(zoo.eventsOf(old.id).every((e) => e.gen === was.gen && e.narrator.id === ancestor.id) && zoo.storyOfGeneration(was.gen).length === was.stories, 'its moments still belong to the life they were lived in, and the lines that told them are kept');
 check(zoo.eventsOf(old.id).some((e) => e.memories.some((m) => m.who.id === ancestor.id)), 'what the parent remembered is still theirs');
 check(zoo.ownerOf(gMine).id === p.id && S().npcs[mine.id]?.role === 'pet' && zoo.livesWithPlayer(mine.id) && S().npcs[mine.id].meters.relationship === was.bondSon && zoo.bondOf(gMine, p.id) === was.bondSon, 'the animal that came to the heir is theirs now, with the bond they already had');
 check(zoo.ownerOf(gYoung).id === spouse.id && S().npcs[young.id]?.role === 'pet' && !zoo.livesWithPlayer(young.id) && zoo.bondOf(gYoung, spouse.id) === was.bondSpouse, 'the animal that stayed with the surviving parent is not handed to the heir: it is still theirs, and still in the heir\'s life');
-check(gMine.ownerships.length === 2 && gMine.ownerships[0].who.id === ancestor.id && gMine.ownerships[0].to != null && gMine.training && Object.keys(gMine.training).length === 1, 'ownership, care and training history cross over intact');
+check(people(gMine.ownerships).length === 2 && people(gMine.ownerships)[0].who.id === ancestor.id && people(gMine.ownerships)[0].to != null && gMine.training && Object.keys(gMine.training).length === 1, 'ownership, care and training history cross over intact');
 check(zoo.familyLink(gOld).includes(ancestor.firstName) && zoo.healthAccess(old.id) === 'summary' && zoo.healthAccess(mine.id) === 'full', `a descendant sees whose animal it was (${zoo.familyLink(gOld)}), and only a summary of health records that were never theirs`);
 check(zoo.storyIndex(zoo.eventsOf(old.id)[0].id) === -1, 'moments from the earlier life are read from that life\'s story, not the heir\'s');
 clean('after the generation changed');

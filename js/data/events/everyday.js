@@ -72,7 +72,7 @@ export default [
     choices: [
       { label: 'Take it back and refuse the reward', outcomes: [any('A child opens the door and cannot speak for crying. Worth more than the money.', 'good', hid('karma', 8), st('mood', 6))] },
       { label: 'Take it back and accept the reward', outcomes: [any('They press the envelope on you. Everyone is happy, the dog most of all.', 'good', hid('karma', 4), cash(200))] },
-      { label: 'Keep the dog', outcomes: [any('You call it {pet}. You take the long way round for walks, away from the posters.', 'bad', addNpc('pet', 'pet'), hid('karma', -8))] },
+      { label: 'Keep the dog', outcomes: [any('You call it {pet}. You take the long way round for walks, away from the posters.', 'bad', addNpc('pet', 'pet', { species: 'dog' }), hid('karma', -8))] },
     ],
   },
   {

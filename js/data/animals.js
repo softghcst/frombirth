@@ -111,6 +111,105 @@ export const SPECIES = {
   },
 };
 
+const small = (id, name, young, o) => ({ id, name, young, group: 'companion', lifespan: o.lifespan, stages: [[young, 0], ['adult', 0.12], ['senior', 0.7]],
+  housing: o.housing, needs: o.needs, health: o.health ?? ['Teeth', 'Weight'], temperament: dims('curiosity', 'confidence', 'activity', 'sensitivity', ...(o.social ? ['sociability'] : [])),
+  training: o.training ?? [], activities: [], coats: o.coats, patterns: o.patterns ?? ['solid', 'patched'], eyes: o.eyes ?? ['dark'], sexes: o.sexes ?? 'both' });
+Object.assign(SPECIES, {
+  guinea_pig: small('guinea_pig', 'guinea pig', 'pup', { lifespan: [4, 8], social: true, housing: 'A large floor pen, hay, hiding places, and another guinea pig: one alone is lonely.',
+    needs: ['Hay, always; fresh vegetables daily', 'Vitamin C in the diet', 'A companion of their own kind', 'Floor time out of the pen'], coats: ['brown', 'white', 'ginger', 'black', 'cream'],
+    training: [{ id: 'handling', name: 'Being picked up without panic', learned: 'sits calmly in a lap', difficulty: 2 }] }),
+  rat: small('rat', 'rat', 'pup', { lifespan: [2, 3], social: true, housing: 'A tall cage with shelves, time out of it every day, and another rat for company.',
+    needs: ['Rat pellets, fresh food and water', 'Another rat for company', 'Daily time out of the cage', 'Things to climb and chew'], coats: ['white', 'grey', 'brown', 'black', 'fawn'],
+    training: [{ id: 'name', name: 'Coming to their name', learned: 'comes when called', difficulty: 1 }, { id: 'handling', name: 'Riding on a shoulder', learned: 'rides on a shoulder', difficulty: 2 }] }),
+  ferret: small('ferret', 'ferret', 'kit', { lifespan: [5, 9], social: true, housing: 'A large cage for sleeping and hours of supervised freedom in a ferret-proofed room.',
+    needs: ['A meat-based diet', 'Hours out of the cage daily', 'Tunnels and things to steal', 'Vaccinations and yearly checks'], coats: ['sable', 'white', 'cream', 'chocolate'], patterns: ['solid', 'blaze'],
+    training: [{ id: 'litter', name: 'Using a litter tray', learned: 'uses the litter tray, mostly', difficulty: 2 }, { id: 'name', name: 'Coming to their name', learned: 'comes when called', difficulty: 2 }] }),
+  budgie: { id: 'budgie', name: 'budgerigar', young: 'chick', group: 'companion', housing: 'A wide cage, daily flight in a safe room, and company: their own kind or a great deal of yours.',
+    lifespan: [5, 12], stages: [['chick', 0], ['adult', 0.1], ['senior', 0.7]], needs: ['Seed, pellets and fresh greens', 'Daily flight out of the cage', 'Company', 'Things to shred'], health: ['Feathers', 'Beak and nails'],
+    temperament: dims('sociability', 'curiosity', 'confidence', 'activity', 'sensitivity'), training: [{ id: 'stepup', name: 'Stepping up onto a finger', learned: 'steps up onto a finger', difficulty: 1 }],
+    activities: [], coats: ['green', 'blue', 'yellow', 'white'], patterns: ['solid', 'blaze'], eyes: ['dark'], sexes: 'both' },
+  fish: { id: 'fish', name: 'fish', young: 'fry', group: 'companion', housing: 'A filtered, heated tank of the right size, cycled before anything lives in it.',
+    lifespan: [3, 10], stages: [['young', 0], ['adult', 0.15], ['old', 0.75]], needs: ['A filtered tank of the right size', 'Water tested and changed regularly', 'The right food, and not too much', 'Plants and places to hide'], health: ['Water quality'],
+    temperament: dims('activity', 'confidence'), training: [], activities: [], coats: ['golden', 'scarlet', 'blue', 'white', 'black', 'yellow'], patterns: ['solid', 'patched'], eyes: ['dark'], sexes: 'unknown' },
+});
+
+const equine = (id, name, young, lifespan, coats) => ({ id, name, young, group: 'equine', lifespan,
+  housing: 'A stable or shelter, daily turnout on pasture, and the company of other equines. Never a garden.',
+  stages: [[young, 0], [`young ${name}`, 0.04], ['adult', 0.15], ['senior', 0.7]],
+  needs: ['Forage through the day, and clean water', 'Daily turnout and movement', 'The company of other equines', 'A farrier every six to eight weeks', 'Teeth, vaccinations and a yearly check'],
+  health: ['Feet', 'Teeth', 'Digestion', 'Soundness'], temperament: dims('sociability', 'curiosity', 'confidence', 'activity', 'sensitivity', 'adaptability', 'trainability', 'affection'),
+  training: [
+    { id: 'halter', name: 'Leading quietly in a halter', learned: 'leads quietly', difficulty: 1 },
+    { id: 'feet', name: 'Standing for the farrier', learned: 'stands for the farrier', difficulty: 2 },
+    { id: 'groundwork', name: 'Groundwork: yielding, backing, standing', learned: 'works calmly from the ground', difficulty: 2 },
+    { id: 'load', name: 'Loading into a trailer', learned: 'loads into a trailer without a fight', difficulty: 3 },
+    ...(id === 'donkey' ? [] : [{ id: 'saddle', name: 'Carrying a rider calmly', learned: 'carries a rider calmly at every pace', difficulty: 3 }]),
+  ],
+  activities: [], coats, patterns: ['solid', 'blaze', 'socks', 'patched'], eyes: ['brown', 'dark'], sexes: 'both' });
+Object.assign(SPECIES, {
+  horse: equine('horse', 'horse', 'foal', [24, 32], ['brown', 'chocolate', 'black', 'grey', 'red', 'golden', 'white']),
+  pony: equine('pony', 'pony', 'foal', [26, 36], ['brown', 'grey', 'black', 'red', 'cream', 'white']),
+  donkey: equine('donkey', 'donkey', 'foal', [27, 40], ['grey', 'brown', 'charcoal', 'white']),
+});
+
+const farm = (id, name, young, lifespan, coats, needs, housing, extra = {}) => ({ id, name, young, group: 'farm', lifespan, housing,
+  stages: [[young, 0], ['adult', 0.12], ['old', 0.75]], needs, health: extra.health ?? ['Feet', 'Parasites'],
+  temperament: dims('sociability', 'curiosity', 'confidence', 'activity'), training: extra.training ?? [], activities: [], coats, patterns: extra.patterns ?? ['solid', 'patched'], eyes: ['dark', 'amber'], sexes: 'both' });
+Object.assign(SPECIES, {
+  chicken: farm('chicken', 'chicken', 'chick', [5, 10], ['red', 'white', 'black', 'golden', 'grey'], ['Layers\' feed, grit and water', 'A fox-proof coop at night', 'Ground to scratch and dust-bathe in', 'A flock: never one alone'], 'A secure coop and a run, with a flock of their own.', { health: ['Mites', 'Feet'] }),
+  duck: farm('duck', 'duck', 'duckling', [6, 12], ['white', 'brown', 'black', 'grey'], ['Feed and clean water deep enough to dip the head', 'A fox-proof house at night', 'Somewhere to dabble', 'A flock'], 'A secure house, a run, and water to dabble in.', { health: ['Feet'] }),
+  goat: farm('goat', 'goat', 'kid', [11, 16], ['white', 'brown', 'black', 'fawn', 'grey'], ['Hay and browse', 'Fencing that actually holds a goat', 'Shelter from rain', 'Another goat', 'Feet trimmed, and a vet who knows goats'], 'A fenced paddock with shelter and at least one other goat.',
+    { training: [{ id: 'halter', name: 'Leading in a halter', learned: 'leads in a halter', difficulty: 2 }, { id: 'feet', name: 'Standing to have feet trimmed', learned: 'stands to have feet trimmed', difficulty: 2 }] }),
+  sheep: farm('sheep', 'sheep', 'lamb', [9, 13], ['white', 'cream', 'black', 'brown'], ['Pasture and hay', 'Shearing once a year', 'Feet checked regularly', 'A flock'], 'Pasture, shelter, and a flock.', { patterns: ['solid'] }),
+});
+
+/**
+ * What keeping one costs and asks of a household. Money is in base units a year.
+ *   load   how much of a household's capacity to care it takes up
+ *   cost   food, bedding, supplies and the ordinary things, a year
+ *   space  the least room it can properly live in: 'small' (a shelf or a corner) | 'room' | 'yard' | 'land'
+ *   exam   a routine visit to the vet         insure  a year's insurance premium, where insurance is sold
+ *   fee    what a rescue asks                 banned  countries where keeping one is against the law
+ *   names  what people call them
+ */
+const KEEPING = {
+  dog: { load: 1, cost: 900, space: 'room', exam: 90, insure: 320, fee: 150, names: ['Biscuit', 'Juno', 'Pepper', 'Moose', 'Olive', 'Daisy', 'Rufus', 'Maple', 'Scout', 'Bramble', 'Otis', 'Poppy'] },
+  cat: { load: 0.7, cost: 600, space: 'room', exam: 80, insure: 220, fee: 100, names: ['Miso', 'Pickle', 'Shadow', 'Clementine', 'Figaro', 'Mog', 'Juniper', 'Sprat', 'Tansy', 'Bartleby'] },
+  rabbit: { load: 0.5, cost: 420, space: 'room', exam: 70, insure: 140, fee: 50, names: ['Clover', 'Thistle', 'Button', 'Bracken', 'Parsley', 'Hazel'] },
+  parrot: { load: 0.9, cost: 700, space: 'room', exam: 110, insure: 0, fee: 250, names: ['Captain', 'Mango', 'Echo', 'Admiral', 'Kiwi'] },
+  hamster: { load: 0.25, cost: 150, space: 'small', exam: 45, insure: 0, fee: 15, names: ['Nugget', 'Peanut', 'Gizmo', 'Truffle', 'Crumb'] },
+  guinea_pig: { load: 0.3, cost: 300, space: 'small', exam: 55, insure: 0, fee: 25, names: ['Pumpkin', 'Fudge', 'Wheek', 'Toffee', 'Nutmeg'] },
+  rat: { load: 0.25, cost: 200, space: 'small', exam: 50, insure: 0, fee: 15, names: ['Remy', 'Pip', 'Sesame', 'Domino', 'Fig'] },
+  ferret: { load: 0.6, cost: 450, space: 'room', exam: 85, insure: 0, fee: 80, banned: ['nz', 'pr'], names: ['Bandit', 'Noodle', 'Weasel', 'Tumble'] },
+  budgie: { load: 0.3, cost: 180, space: 'small', exam: 60, insure: 0, fee: 20, names: ['Pippin', 'Sky', 'Chirp', 'Lemon', 'Bluebell'] },
+  fish: { load: 0.15, cost: 120, space: 'small', exam: 0, insure: 0, fee: 5, names: ['Bubbles', 'Finn', 'Comet', 'Marble', 'Ripple'] },
+  horse: { load: 2, cost: 2600, space: 'land', exam: 220, insure: 900, fee: 900, names: ['Juniper', 'Atlas', 'Willow', 'Storm', 'Clementine', 'Sorrel', 'Kestrel', 'Bramble', 'Fable', 'Tempo'] },
+  pony: { load: 1.6, cost: 1800, space: 'land', exam: 200, insure: 600, fee: 600, names: ['Pebble', 'Tinker', 'Hobnob', 'Bracken', 'Merrylegs', 'Conker'] },
+  donkey: { load: 1.5, cost: 1300, space: 'land', exam: 180, insure: 0, fee: 300, names: ['Dusty', 'Clementine', 'Barnaby', 'Thistle'] },
+  chicken: { load: 0.2, cost: 110, space: 'yard', exam: 40, insure: 0, fee: 10, names: ['Henrietta', 'Dot', 'Pepper', 'Marigold', 'Queenie', 'Speckle'] },
+  duck: { load: 0.25, cost: 130, space: 'yard', exam: 40, insure: 0, fee: 10, names: ['Puddle', 'Waddle', 'Jemima', 'Drake'] },
+  goat: { load: 0.8, cost: 500, space: 'land', exam: 90, insure: 0, fee: 80, names: ['Nettle', 'Billy', 'Clover', 'Gruff', 'Mabel'] },
+  sheep: { load: 0.7, cost: 380, space: 'land', exam: 80, insure: 0, fee: 60, names: ['Bo', 'Woolly', 'Bramble', 'Dolly', 'Tup'] },
+};
+for (const [id, k] of Object.entries(KEEPING)) Object.assign(SPECIES[id], { banned: [], ...k });
+/** Rooms, smallest first: what a home offers, and what an animal needs at the least. */
+export const SPACES = ['small', 'room', 'yard', 'land'];
+/** How an owner can choose to look after an animal day to day. `k` multiplies the yearly cost. */
+export const ROUTINES = {
+  standard: { name: 'Standard care', blurb: 'Fed, clean, exercised and seen to.', k: 1 },
+  enriched: { name: 'Extra enrichment', blurb: 'Better food, more toys, more to do. Good for body and mood.', k: 1.35 },
+  senior: { name: 'Senior care', blurb: 'Softer beds, gentler exercise, food for an older body.', k: 1.25 },
+};
+/** What a vet's surgery offers, with prices in base units before the surgery's own level. */
+export const VET_SERVICES = [
+  { id: 'wellness', name: 'Yearly check-up', blurb: 'A nose-to-tail look, a weigh-in, and a chance to catch things early.', k: 1 },
+  { id: 'vaccination', name: 'Vaccinations', blurb: 'The first course, or this year\'s boosters.', k: 0.7, only: ['dog', 'cat', 'rabbit', 'ferret', 'horse', 'pony', 'donkey'] },
+  { id: 'dental', name: 'Dental check and clean', blurb: 'Teeth looked at properly, and cleaned if they need it.', k: 2.4, only: ['dog', 'cat', 'rabbit', 'ferret', 'guinea_pig', 'horse', 'pony', 'donkey'] },
+  { id: 'senior', name: 'Senior health screen', blurb: 'Bloods and a longer look, for an animal in later life.', k: 2, senior: true },
+];
+/** Insurance, where it is sold: what it pays back on illness and injury, never on routine care. */
+export const INSURANCE = { deductible: 250, rate: 0.8, yearCap: 6000 };
+
 /** Animals recorded before this catalogue knew their species. */
 export const UNKNOWN_SPECIES = {
   id: 'other', name: 'animal', young: 'young one', group: 'companion', housing: 'Somewhere suited to what they are.',
@@ -155,6 +254,22 @@ export const BREEDS = {
     { id: 'lop', name: 'Lop-eared rabbit', mix: true, size: 'small', ears: 'drop', length: 'short', weight: 4 },
   ],
 };
+Object.assign(BREEDS, {
+  horse: [
+    { id: 'crossbred', name: 'Crossbred horse', mix: true, size: 'large', ears: 'up', length: 'short', weight: 20 },
+    { id: 'thoroughbred', name: 'Thoroughbred', size: 'large', ears: 'up', length: 'short', coats: ['brown', 'chocolate', 'red', 'grey'], weight: 8 },
+    { id: 'quarter', name: 'Quarter Horse', size: 'large', ears: 'up', length: 'short', coats: ['red', 'brown', 'golden'], weight: 8 },
+    { id: 'arabian', name: 'Arabian', size: 'medium', ears: 'up', length: 'short', coats: ['grey', 'red', 'brown'], weight: 5 },
+    { id: 'warmblood', name: 'Warmblood', size: 'large', ears: 'up', length: 'short', coats: ['brown', 'chocolate', 'black', 'grey'], weight: 6 },
+    { id: 'cob', name: 'Cob', size: 'large', ears: 'up', length: 'medium', coats: ['black', 'brown', 'white'], patterns: ['patched', 'socks', 'blaze'], weight: 6 },
+  ],
+  pony: [
+    { id: 'crossbred', name: 'Crossbred pony', mix: true, size: 'small', ears: 'up', length: 'medium', weight: 20 },
+    { id: 'welsh', name: 'Welsh Pony', size: 'small', ears: 'up', length: 'medium', coats: ['grey', 'brown', 'red'], weight: 8 },
+    { id: 'shetland', name: 'Shetland Pony', size: 'small', ears: 'up', length: 'long', coats: ['black', 'brown', 'cream'], weight: 6 },
+    { id: 'connemara', name: 'Connemara', size: 'medium', ears: 'up', length: 'medium', coats: ['grey', 'cream', 'brown'], weight: 5 },
+  ],
+});
 export const breedOf = (speciesId, breedId) => (BREEDS[speciesId] ?? []).find((b) => b.id === breedId) ?? null;
 
 /** What the two ends of each temperament dimension look like in an animal. */
@@ -183,6 +298,13 @@ export const EVENT_TYPES = {
   recovery: { label: 'Veterinary recovery', glyph: '🩺' },
   care: { label: 'Care passed on', glyph: '🤝' },
   rehomed: { label: 'Rehomed', glyph: '🤝' },
+  fostered: { label: 'Fostered', glyph: '🧡' },
+  placed: { label: 'Found a permanent home', glyph: '🏡' },
+  companions: { label: 'Animal friendship', glyph: '🐾' },
+  lesson: { label: 'Riding milestone', glyph: '🏇' },
+  competition: { label: 'Competition', glyph: '🏆' },
+  born: { label: 'Born', glyph: '🌱' },
+  emergency: { label: 'Emergency', glyph: '🚑' },
   died: { label: 'Passed away', glyph: '🕯️' },
   memorial: { label: 'Memorial', glyph: '🌿' },
 };

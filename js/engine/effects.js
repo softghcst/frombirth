@@ -26,6 +26,7 @@ import * as courtLife from './court.js';
 import * as fame from './reputation.js';
 import * as throne from './reign.js';
 import { register as registerAnimal, recordHealth } from './animals.js';
+import { sceneChoice as animalChoice } from './animalCare.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -74,7 +75,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'addNpc': {
         const spec = e.value;
         const npc = spec.role === 'pet'
-          ? makePet(p.countryId, p.lastName)
+          ? makePet(p.countryId, p.lastName, undefined, spec.species)
           : makeNpc({ countryId: p.countryId, age: p.age + (spec.ageOffset ?? 0),
             ...(spec.attracted ? { gender: p.flags.interestedIn === 'men' ? 'male' : p.flags.interestedIn === 'women' ? 'female' : undefined } : {}), ...spec });
         store.state.npcs[npc.id] = npc;
@@ -94,6 +95,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       }
       case 'animalHealth': recordHealth(ctx.cast[e.target], e.value); break;
+      case 'animal': ctx.note = animalChoice(e.value, ctx.cast); break;
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;
