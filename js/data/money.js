@@ -177,7 +177,8 @@ export const GOAL_KINDS = [
 
 // ---------- Credit cards ----------
 // Invented terms. `since` is the first year cards exist in the game at all.
-export const CARDS = { since: 1960, max: 2, minAge: 18, minPay: 0.1, minPayFloor: 300, lateFee: 40, advanceFee: 0.03, reward: 0.01,
+// The least a statement asks for is the year's interest plus `minPay` of what is owed, so paying it always brings the balance down.
+export const CARDS = { since: 1960, max: 2, minAge: 18, minPay: 0.03, minPayFloor: 300, lateFee: 40, advanceFee: 0.03, reward: 0.01,
   tiers: [ // by standing with lenders: share of yearly income offered as a limit, and the yearly rate in basis points
     { min: 80, limit: 0.3, rateBp: 1500, name: 'Platinum card' },
     { min: 65, limit: 0.2, rateBp: 1900, name: 'Classic card' },

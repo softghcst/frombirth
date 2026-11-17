@@ -196,9 +196,11 @@ function tickCard(npc, f, earns, s, quiet) {
   // Spending goes on the card rather than out of their pocket.
   const spend = Math.min(Math.max(0, k.limit - k.balance), Math.round(earns * { cautious: 0.04, balanced: 0.08, bold: 0.14 }[f.style]));
   k.balance += spend; L.savings += spend;
-  const min = Math.min(k.balance, Math.max(Math.round(k.balance * CARDS.minPay), localCost(CARDS.minPayFloor, c)));
+  const r = k.rateBp / 10000;
+  const min = Math.min(k.balance, Math.max(Math.round(k.balance * (r + CARDS.minPay) / (1 + r)), localCost(CARDS.minPayFloor, c)));
   const want = f.style === 'bold' ? min : k.balance;
-  const pay = Math.max(0, Math.min(want, Math.floor(L.savings + (f.bank?.bal ?? 0))));
+  // They will sell investments before they miss a payment.
+  const pay = Math.max(0, Math.min(want, Math.floor(L.savings + (f.bank?.bal ?? 0) + (f.invested ?? 0))));
   if (pay < min) {
     k.missed += 1; k.balance += localCost(CARDS.lateFee, c);
     if (k.missed >= 2) {
@@ -209,7 +211,9 @@ function tickCard(npc, f, earns, s, quiet) {
   } else k.missed = 0;
   const fromHand = Math.min(pay, Math.max(0, L.savings));
   L.savings -= fromHand;
-  if (pay > fromHand) f.bank.bal -= pay - fromHand;
+  const fromBank = Math.min(pay - fromHand, f.bank?.bal ?? 0);
+  if (fromBank) f.bank.bal -= fromBank;
+  f.invested -= pay - fromHand - fromBank;
   k.balance -= pay;
 }
 
@@ -218,9 +222,11 @@ function tickRetire(npc, f, earns, quiet) {
   const L = npc.life;
   if (!L.job || L.retired || npc.age < 58 || npc.age >= 66) return false;
   const liquid = L.savings + (f.bank?.bal ?? 0) + f.invested - f.debt - (f.card?.balance ?? 0);
-  const pension = Math.round(L.job.salary * Math.min(0.6, (L.yearsWorked ?? 0) * 0.015));
-  const needs = earns * 0.7; // what a year costs them, roughly
-  if (liquid < (needs - pension * 0.8) * (66 - npc.age + 15) || !rng.chance(0.5)) return false;
+  // A pension taken early is smaller: a twentieth less for each year before 66.
+  const pension = Math.round(L.job.salary * Math.min(0.6, (L.yearsWorked ?? 0) * 0.015) * (1 - 0.05 * (66 - npc.age)));
+  const needs = earns * 0.8; // what a year costs them, roughly
+  // Enough to live on in full until the state would pay, and to make up the pension's shortfall for twenty years after.
+  if (liquid < needs * (67 - npc.age) + Math.max(0, needs - pension) * 20 || !rng.chance(0.35)) return false;
   L.pension = pension;
   if (!quiet) note(f, npc.age, `Retired early, at ${npc.age}, on what they had put by.`);
   npc.occupation = `retired ${npc.occupation ?? ''}`.trim();

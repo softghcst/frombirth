@@ -282,6 +282,35 @@ invested, less their own debts and card. It is emptied as it passes, so it can p
 
 Everyone further away still has the single savings figure they always had.
 
+## Balance
+
+`scripts/money-playtest.mjs` lives many lives with a simple auto-player and prints distributions, in years of
+an ordinary local wage. From a run of 72 lives in 12 countries, three seeds:
+
+| | Plain player | Careless player |
+|---|---|---|
+| Net worth at 40, median | about 5 years of wage | about 3 |
+| Net worth at 55, median | about 14 to 15 | about 10 |
+| Ever insolvent | 1 to 8% | about a third |
+| Years carrying a card balance, median | 0 | 12 |
+
+The player's careers pay a median of about 2.3 times an ordinary wage, which is why these look high in
+"years of wage"; measured against their own pay, players and their relatives end up with similar wealth
+(about six or seven years of their own salary by their mid-fifties). Insolvency for a plain player is no more
+common than before the money systems were added, and pets make no measurable difference to it.
+
+Fixed as a result of the playtest:
+
+- the minimum card payment did not cover the interest, so a card paid at the minimum grew for ever; it is now
+  the year's interest plus 3% of the balance (for the player and for relatives);
+- relatives missed card payments while holding investments; they now sell investments first;
+- relatives retired early far too easily; it now needs enough to live on until the state pension, and to make
+  up a smaller early pension for twenty years;
+- "Became free of debt" was recorded as a milestone every time a debt was cleared; it is now once per life.
+
+Not money, but noticed: an auto-player that never sees a doctor dies at a median age of about 60, the same
+as before these changes.
+
 ## Not built
 
 These were in the brief and are **not** in the game:

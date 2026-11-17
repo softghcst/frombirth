@@ -890,6 +890,30 @@ section('new scenes: weddings, babies, careers, parents, university, grandparent
 }
 section('close family keep fuller books: a bank account, a card used their own way, early retirement, help in hard times');
 
+// ---------- 27. Found in the balance playtest ----------
+// The minimum payment once fell short of the interest, so a card paid at the minimum grew for ever.
+p = life('us', { cash: 100000 });
+cards.applyForCard(); const k27 = cards.cards()[0]; cards.setCard(k27.id, { autopay: 'min', everyday: false });
+k27.balance = k27.limit; book({ cat: 'borrowing', desc: 'test' });
+const owes = [];
+for (let i = 0; i < 12; i++) { moneyYear(); owes.push(k27.balance); }
+check(owes.every((x, i) => i === 0 || x <= owes[i - 1]) && owes.at(-1) < k27.limit * 0.9, `paying only the minimum still brings a card balance down, year after year (${owes.slice(0, 4).join(', ')} ...)`);
+for (const rate of [1500, 1900, 2400]) { const t = { balance: 10000 * (1 + rate / 10000), rateBp: rate }; check(cards.minimumDue(t) > 10000 * rate / 10000, `at ${rate / 100}% the minimum is more than the interest`); }
+// "Free of debt" is a milestone once; clearing debts again later is a line in the journal.
+p = life('us', { cash: 100000 });
+for (let i = 0; i < 3; i++) { loans.borrow(loans.loanOptions().find((x) => x.approved).amount); bookAction(); bank.tickMoneyReview(); loans.repayLoan(p.finance.loans[0].id); bookAction(); bank.tickMoneyReview(); }
+check(p.milestones.filter((m) => m.text === 'Became free of debt.').length === 1, 'becoming free of debt is a milestone once, however often it happens');
+// Relatives sell investments rather than miss a card payment.
+{
+  const nm = await import('../js/engine/npcMoney.js');
+  const r27 = person('sibling', 40, { savings: 0, salary: 0 }); const f27 = nm.finOf(r27); f27.style = 'bold';
+  f27.invested = 50000; f27.card = { bankId: 'meridian', limit: 10000, balance: 8000, rateBp: 2400, missed: 0, opened: 2000 };
+  nm.tickNpcMoney(r27);
+  check(f27.card && f27.card.missed === 0 && f27.invested < 50000 + 50000 * 0.2, 'a relative with investments sells some rather than miss a card payment');
+}
+sound('after the playtest fixes');
+section('playtest fixes: card minimums cover interest; one debt-free milestone; investments before a missed payment');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Wealth, debt and what is passed on all add up.');

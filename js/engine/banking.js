@@ -376,7 +376,12 @@ export function tickMoneyReview() {
   // Debt cleared is a thing that happened, not a thing that is claimed: it is read from what is owed.
   const owes = p.finance.loans.length > 0 || p.assets.some((a) => a.mortgage);
   if (owes) p.flags.hadDebt = true;
-  else if (p.flags.hadDebt) { p.flags.hadDebt = false; milestone('Became free of debt.', 'money'); log('You owe nobody anything. Every debt is paid.', 'system', 'good'); }
+  else if (p.flags.hadDebt) {
+    p.flags.hadDebt = false;
+    // A milestone the first time; after that, a line in the journal is enough.
+    if (!p.milestones.some((m) => m.text === 'Became free of debt.')) milestone('Became free of debt.', 'money');
+    log('You owe nobody anything. Every debt is paid.', 'system', 'good');
+  }
   // What the player was worth at the end of each year, in the money of the place they lived: for the chart in My Money.
   const o = overview();
   (L().worth ??= {})[store.state.year] = { cur: o.cur, v: o.netWorth, age: p.age };

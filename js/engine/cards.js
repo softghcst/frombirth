@@ -22,8 +22,14 @@ export const available = (k) => Math.max(0, k.limit - k.balance);
 export const cardDebt = (p = player()) => (p.finance.cards ?? []).reduce((s, k) => s + k.balance, 0);
 /** How much of all card limits is in use, 0 to 1. */
 export const utilisation = () => { const open = cards(); const lim = open.reduce((s, k) => s + k.limit, 0); return lim ? open.reduce((s, k) => s + k.balance, 0) / lim : 0; };
-/** The least a statement asks for. */
-export const minimumDue = (k) => Math.min(k.balance, Math.max(Math.round(k.balance * CARDS.minPay), localMoney(CARDS.minPayFloor, country())));
+/**
+ * The least a statement asks for: the year's interest on what is owed, plus a small part of it. The
+ * balance has already had the interest added, so paying the minimum always brings it down.
+ */
+export const minimumDue = (k) => {
+  const r = k.rateBp / 10000;
+  return Math.min(k.balance, Math.max(Math.round(k.balance * (r + CARDS.minPay) / (1 + r)), localMoney(CARDS.minPayFloor, country())));
+};
 
 const tierFor = (s) => (s.standing == null ? CARDS.starter : CARDS.tiers.find((t) => s.standing >= t.min) ?? null);
 
