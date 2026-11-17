@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
@@ -222,6 +223,14 @@ conscription. An answer is built in layers, the last one winning:
 So at nineteen you can go to a bar in the United Kingdom and not in the United States, vote at sixteen in Brazil, and find
 that the Philippines has annulment and no divorce. Now and then a country somewhere changes one of its laws; you hear of it
 when it is where you live or a country you are a citizen of, and the World Explorer lists the change.
+
+**Changing the law in office.** A head of government can put these laws to the legislature (Work → Bring in a law → The
+law of the land): marriage, protection in law, the death penalty, military service, gambling, alcohol, divorce, and the
+voting, drinking and pension ages. Parties vote on them by their views on freedoms, order and public provision, so a bill
+your own party dislikes brings rebels. The public has a view as well, which starts from the law the country already has. A
+bill costs nothing and has no committee stage; it counts as one of the year's two bills; a crown with real power can refuse
+it; where one person rules, it is a decree. The world's own reforms in a country your life has a government for now need a
+government that wants them.
 
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
