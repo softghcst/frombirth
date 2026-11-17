@@ -811,6 +811,44 @@ function framedBy(offenseId, reliability = 0.85) {
   section('care: grandparents, family or foster care while no parent can, home when one can, out at eighteen');
 }
 
+// ---------- Bugs found by clicking through ----------
+{
+  // The player as defense counsel is not paid a fee by the client on top of their salary.
+  let p = adult('pt', 34);
+  p.career.careerId = 'lawyer';
+  const cash = p.finance.cash;
+  const brief = jobs.openCourtBrief('defend');
+  check(brief && p.finance.cash === cash && !k.paymentsFor(brief.id).some((t) => t.payee === p.id), 'counsel paid by salary, not by a client fee');
+  check(brief.hearings.some((h) => h.text === 'You appear for the defense.'), 'the hearing says "You appear", not "you appears"');
+  // A referral is always possible once the evidence is strong enough.
+  p = adult('jm', 30);
+  p.career.careerId = 'police';
+  const inv = jobs.openInvestigationBrief();
+  inv.stage = 'referred';
+  inv.suspectIds = inv.suspectIds.length ? inv.suspectIds : [k.J().incidents[inv.incidentId].truth.perpetratorId];
+  check(jobs.detectiveOptions(inv).some((o) => o.id.startsWith('charge:')), 'a referred file still offers the referral');
+  // What people say is never "unlawfully obtained"; only what is searched for or seized.
+  const inc = k.createIncident({ offenseId: 'theft', perpetratorId: p.id, countryId: 'jm' });
+  let statements = 0;
+  for (let i = 0; i < 300; i++) if (!k.addEvidence(inc, rng.pick(['witness', 'victim', 'officer', 'character']), p.id).lawful) statements += 1;
+  check(statements === 0, 'statements are always lawful');
+  // A civil lawyer never costs more than the claim is worth (above a small minimum).
+  p = adult('ua', 30);
+  p.homeId = null; p.flags.livesWithParents = false; p.finance.cash = 10000000;
+  const claim = civil.bringClaim('deposit').claim;
+  check(claim && civil.civilFee(claim) <= Math.max(claim.claim, 150 * 40), `a civil lawyer is in proportion to the claim (${civil.civilFee(claim)} for ${claim.claim})`);
+  // Diversion replaces prosecution: never after a contested trial.
+  let afterTrial = 0;
+  for (let i = 0; i < 40; i++) {
+    const q = adult('uk', 19);
+    const { c } = caughtFor('shoplifting');
+    k.bailHearing(c); k.appoint(c, 'self', q.id); k.enterPlea(c, 'notGuilty');
+    if (c.stage === 'sentenced' && k.J().sentences[c.sentenceId].type === 'diversion') afterTrial += 1;
+  }
+  check(afterTrial === 0, 'no diversion after a trial');
+  section('fixes from the click-through: no double pay, referrals always open, lawful statements, fair civil fees, no diversion after trial');
+}
+
 // ---------- A long life ----------
 {
   const p = adult('us', 18);
