@@ -13,6 +13,7 @@ import { messageModal, pickModal, confirmModal, inputModal, openModal } from './
 import { openAppearanceEditor } from '../avatar/editor.js';
 import * as papersOf from '../engine/citizenship.js';
 import * as money from '../engine/currency.js';
+import { statusLine } from '../engine/immigration.js';
 
 async function report(api, r) {
   api.changed();
@@ -83,7 +84,17 @@ export async function takeHoliday(api) {
     const cabin = await pickModal({ title: 'Which seat?', body: 'The price covers the flights and a fortnight there, for one.',
       options: fun.cabinOptions().map((k) => ({ value: k.id, label: k.name, sub: `${k.blurb} ${fmtMoney(k.cost, c)}.`, disabled: !k.affordable })) });
     if (!cabin) return undefined;
-    id = 'flight'; trip = { countryId, cabin };
+    const d = fun.flightDestinations().find((x) => x.id === countryId);
+    let purpose = 'holiday';
+    if (!move.rightToLive(countryId, player()) || d.family.length) {
+      purpose = await pickModal({ title: 'What is the trip for?', options: [
+        { value: 'holiday', label: 'A holiday', sub: 'Rest, and see the place.' },
+        ...(d.family.length ? [{ value: 'family', label: `To see ${d.family.join(', ')}`, sub: 'Most of the fortnight with them. Brings you closer.' }] : []),
+        ...(move.rightToLive(countryId, player()) ? [] : [{ value: 'scouting', label: 'To look, with a move in mind', sub: 'Less of a rest. Helps a later application to live there.' }]),
+      ] });
+      if (!purpose) return undefined;
+    }
+    id = 'flight'; trip = { countryId, cabin, purpose };
   } else {
     id = await pickModal({ title: fun.holidayKinds().find((k) => k.id === kind).name,
       options: fun.holidayOptions(kind).map((h) => ({ value: h.id, label: h.name, sub: `${fmtMoney(h.cost, c)} for one. ${h.note}`, disabled: !h.affordable })) });
@@ -121,19 +132,36 @@ export async function moveAbroad(api) {
   const pct = (x) => `${Math.round(x * 100)}%`;
   const id = await pickModal({
     title: 'Move abroad',
-    body: `Visas and lawyers cost ${fmtMoney(move.emigrationFee(), c)}. You leave your job. Property you own stays yours, and your vehicles can be shipped.`,
+    body: 'There is more than one way in: as a citizen, through family, work, study, investment or a settlement programme. You leave your job. Property you own stays yours, and your vehicles can be shipped.',
     options: move.destinations().map((d) => ({ value: d.id, label: `${d.flag} ${d.name}`,
       sub: `${d.currency} · income tax ${pct(d.incomeTax)} · property tax ${propertyTaxLabel(d)} · ${d.freeHealthcare ? 'public' : 'private'} health care`
-        + ` · ${summary(COUNTRIES[d.id]).short.toLowerCase()}${d.family ? ` · ${d.family} of your family live${d.family === 1 ? 's' : ''} here` : ''}${d.ownsHome ? ' · you own a home here' : ''}${d.language ? ` · ${d.language}` : ''}` })),
+        + ` · ${summary(COUNTRIES[d.id]).short.toLowerCase()}${d.family ? ` · ${d.family} of your family live${d.family === 1 ? 's' : ''} here` : ''}${d.ownsHome ? ' · you own a home here' : ''}${d.language ? ` · ${d.language}` : ''}${d.route ? ` · best route: ${d.route.toLowerCase()}` : ''}` })),
   });
   if (!id) return undefined;
   const dest = move.destinations().find((d) => d.id === id);
+
+  // How: every route, with the ones that are closed and why.
+  const ways = move.routes(id);
+  let route = ways[0];
+  if (ways.length > 1) {
+    const pick = await pickModal({ title: `How will you move to ${theCountry(dest.name)}?`, body: 'One application a year. Each route has its own conditions, and gives a different status when you arrive.',
+      options: ways.map((r) => ({ value: r.id, label: r.name, disabled: !r.eligible,
+        sub: r.eligible ? `${r.blurb} ${r.outlook} ${r.fee ? fmtMoney(r.fee, c) : 'No fee'}${r.years ? ` · ${r.years} years, then it must be renewed` : ' · no end date'}.` : `${r.blurb} ${r.why}` })) });
+    if (!pick) return undefined;
+    route = ways.find((r) => r.id === pick);
+  }
+  const staying = move.stayingBehind(id);
+  if (staying.length) {
+    const go = await confirmModal({ title: `${staying[0].firstName} will not come`, yes: 'Go anyway', no: 'Stay',
+      body: `${staying[0].firstName} has thought about it and is not leaving ${theCountry(c.name)}. If you go, you will be married in two countries. They may follow later, or the distance may wear at it.` });
+    if (!go) return undefined;
+  }
 
   // Parents, grandparents, grown children and siblings stay unless asked.
   for (;;) {
     const list = move.askable();
     if (!list.length) break;
-    const coming = move.household().map((n) => n.firstName);
+    const coming = move.household(id).map((n) => n.firstName);
     const who = await pickModal({
       title: 'Who comes with you?',
       body: `${coming.length ? `Coming: ${coming.join(', ')}.` : 'So far, you would go alone.'} Others usually stay, but you can ask.`,
@@ -160,16 +188,16 @@ export async function moveAbroad(api) {
   }
   // Money: take it all, or leave some behind in the old currency.
   let keep = 0;
-  if (player().finance.cash > move.emigrationFee() * 3 && dest.currency !== c.currency.code) {
+  if (player().finance.cash > route.fee * 3 + 1 && dest.currency !== c.currency.code) {
     const k = await pickModal({ title: 'Your money', body: `Your savings are in ${c.currency.code}. In ${dest.name} everyday money is ${dest.currency}. What you take is changed at today's rate; what you leave stays in ${c.currency.code} in an account you can change later.`,
       options: [{ value: '0', label: `Change all of it into ${dest.currency}` }, { value: '0.25', label: `Leave a quarter in ${c.currency.code}` }, { value: '0.5', label: `Leave half in ${c.currency.code}` }] });
     if (k == null) return undefined;
     keep = Number(k);
   }
-  const total = move.emigrationFee() + (shipVehicles ? shipping : 0);
+  const total = route.fee + (shipVehicles ? shipping : 0);
   const sure = await confirmModal({ title: `Apply to move to ${theCountry(dest.name)}?`,
-    body: `${dest.outlook} It comes to ${fmtMoney(total, c)} in all. A fifth of the visa cost is gone even if they say no.`, yes: 'Apply' });
-  return sure ? report(api, move.emigrate(id, { shipVehicles, keep })) : undefined;
+    body: `${route.name}. ${route.outlook} It comes to ${fmtMoney(total, c)} in all.${route.chance < 1 && route.fee ? ' A fifth of the visa cost is gone even if they say no.' : ''}`, yes: route.chance >= 1 ? 'Move' : 'Apply' });
+  return sure ? report(api, move.emigrate(id, { shipVehicles, keep, route: route.id })) : undefined;
 }
 
 /** The passport: every country lived in or visited. */
@@ -184,9 +212,12 @@ export function openPassport(api) {
     ${doc.citizenships.map((c) => kvRow(c.lost ? 'Former citizen of' : 'Citizen of', `${c.flag} ${c.name}, ${c.how}${c.lost ? ` (until ${c.lost})` : ''}`)).join('')}
     ${kvRow('Lives in', `${doc.residency.flag} ${doc.residency.name}`)}
     ${kvRow('Status there', `${doc.residency.word}${doc.residency.status === 'citizen' ? '' : ` since ${doc.residency.since}`}`)}
+    ${statusLine(p) ? kvRow('Permission', statusLine(p)) : ''}
     ${doc.residency.status === 'citizen' ? '' : `<p class="muted" style="margin-top:6px">${esc(nat.possible ? `You can apply for citizenship. ${nat.outlook}` : nat.why)}</p>`}
     ${nat.possible ? '<div class="btn-stack" style="margin-top:8px"><button class="btn primary" data-naturalise>Apply for citizenship</button></div>' : ''}</div>
     ${doc.locations.length > 1 ? `<div class="card"><h3>Where you have lived</h3>${doc.locations.map((l) => kvRow(`${l.from ?? ''}${l.to ? `–${l.to}` : l.from ? ' to now' : ''}`, `${l.flag} ${l.city ? `${l.city}, ` : ''}${l.name}`)).join('')}</div>` : ''}`;
+  const journeys = fun.trips(p);
+  const tripCard = journeys.length ? `<div class="card"><h3>Trips abroad</h3>${journeys.slice(0, 12).map((t) => kvRow(`${t.year} · ${t.what}`, `${t.flag} ${t.city ? `${t.city}, ` : ''}${t.name}`)).join('')}${journeys.length > 12 ? `<p class="muted">and ${journeys.length - 12} earlier.</p>` : ''}</div>` : '';
   const when = (e) => (e.first.age == null ? '' : `, first at age ${e.first.age}`);
   const stamps = book.countries.map((e, i) => `
     <div class="stamp ${e.lived ? 'lived' : ''}" style="transform:rotate(${[-3, 2, -1, 3, -2, 1][i % 6]}deg)">
@@ -199,6 +230,7 @@ export function openPassport(api) {
     <p class="body muted">${esc(p.firstName)} ${esc(p.lastName)} · ${book.countries.length} of ${book.total} countries</p>
     ${papers}
     <div class="passport">${stamps}</div>
+    ${tripCard}
     <button class="btn" data-close style="margin-top:14px">Close</button>`, { dismissable: true });
   m.el.querySelector('[data-close]').addEventListener('click', () => m.close());
   m.el.querySelector('[data-naturalise]')?.addEventListener('click', async () => {

@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { residency } from './citizenship.js';
 import { licenceFor, licensed, examName } from './adulted.js';
 import { PROGRAMMES } from '../data/schools.js';
 import { hiringEdge } from './languages.js';
@@ -48,6 +49,7 @@ export function unmet(career) {
   const r = career.req ?? {};
   const out = [];
   if (p.legal.incarceration) out.push('Not from a cell.');
+  if (career.type !== 'freelance' && !residency(p).workAuthorized) out.push('Your student visa does not allow full-time work.');
   if (p.career.careerId === career.id) out.push('This is your current job.');
   if (p.education.enrolled && p.education.stage !== 'none' && career.type !== 'freelance' && !p.education.partTime) {
     out.push('Finish or leave your course first.');
@@ -226,7 +228,7 @@ function recordJob(exit) {
   c.history.push({ careerId: c.careerId, title: c.title, from: player().age - c.yearsInRole, to: player().age, exit });
 }
 
-function hire(career, level, performance, how) {
+export function hire(career, level, performance, how) {
   const p = player();
   const c = p.career;
   const cty = country();

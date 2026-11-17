@@ -66,5 +66,13 @@ export function tickLanguages() {
   return null;
 }
 
+/** A fortnight somewhere is practice for a language already begun. Returns its name if it improved. */
+export function practise(countryId, p = player()) {
+  const id = languagesOf(countryId).filter((x) => level(p, x) > 0 && level(p, x) < 85).sort((a, b) => level(p, b) - level(p, a))[0];
+  if (!id) return null;
+  p.skills[id] = clamp(level(p, id) + 2);
+  return SKILL_BY_ID[id].name;
+}
+
 /** What a leader's own languages are worth in dealings with a country, 0 or a small bonus. */
 export const envoyEdge = (countryId, p = player()) => { const s = speaks(countryId, p); return s != null && p.birthCountryId !== countryId && s >= 50 ? 1 : 0; };

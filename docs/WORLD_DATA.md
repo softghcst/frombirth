@@ -58,7 +58,10 @@ shown on its profile.
 - Citizenship rules (`js/data/citizenship.js`) are three yes-or-no lists and a table of years: which places grant citizenship by
   birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
   conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.
-- There is one kind of visa. Work, study and family routes, and temporary statuses, are not built yet.
+- Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
+  permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
+  New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
+  is no deportation for crime, no overstaying, and no visa needed for a short visit.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property and
   loans are still valued in the everyday currency and converted when you move. Exchange rates are fictional and only drift within
   bounds: they do not follow each country's inflation.
