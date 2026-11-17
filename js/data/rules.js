@@ -127,6 +127,14 @@ export const REGION_RULES = {
   'ae/sharjah': { alcohol: false },
 };
 
+/**
+ * Laws a state, province or other region may set for itself, where the country lets its regions
+ * make law (REGIONAL_COUNTRIES). Everything else is national.
+ */
+export const REGIONAL_RULES = ['drinkingAge', 'gamblingAge', 'drivingAge', 'gambling', 'alcohol', 'deathPenalty'];
+/** Countries whose regions make some of their own law: the federations, and the United Kingdom's devolved nations. */
+export const REGIONAL_COUNTRIES = ['us', 'ca', 'au', 'de', 'at', 'ch', 'be', 'mx', 'br', 'ar', 've', 'in', 'pk', 'my', 'ae', 'ru', 'ng', 'et', 'uk', 'es', 'it'];
+
 /** Changes the world may make by itself over the years (engine/rules.js tickRules). */
 export const REFORM = {
   chance: 0.06,     // a year in which one place changes one law
