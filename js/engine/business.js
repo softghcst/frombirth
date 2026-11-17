@@ -84,6 +84,13 @@ export function profitTax(profit, countryId, lossCarry = 0) {
 }
 
 /** Money figures for a kind of business, in a place. */
+/** A celebrity brand sells on its owner's name, and on whether people like them. 1 is an ordinary business. */
+export function starPull(p = player()) {
+  const name = p.hidden?.fame ?? 0;
+  const favour = p.fame?.favour ?? 50;
+  return clamp(0.45 + name / 45 * (0.4 + favour / 80), 0.3, 2.6);
+}
+
 export function figures(type, countryId = player().countryId, city = player().city) {
   const c = COUNTRIES[countryId];
   const k = cityOf(countryId, city);
@@ -110,6 +117,7 @@ export function startBlock(type) {
     return `Needs experience first: ${Object.entries(n.experience).slice(0, 3).map(([id, y]) => `${y} years in ${CAREER_BY_ID[id].name.toLowerCase()}`).join(', or ')}.`;
   }
   if (n.experienceTotal && Object.values(c.experience).reduce((a, b) => a + b, 0) < n.experienceTotal) return `Clients want ${n.experienceTotal} years of working life behind you.`;
+  if (n.fame && (p.hidden.fame ?? 0) < n.fame) return 'A brand like this sells on a famous name, and yours is not famous enough yet.';
   if (openBusinesses().length >= 3) return 'Three businesses is as many as one person can keep hold of.';
   return '';
 }
@@ -559,7 +567,7 @@ function runYear(b) {
   const price = PRICING[b.pricing];
   const priceFit = b.pricing === 'premium' ? clamp(price.demand + (b.reputation - 55) / 120 + (b.quality - 50) / 200, 0.4, 1.1) : price.demand;
   const rivals = Math.pow(0.8, b.rivals ?? 0);
-  const demand = b.sites * (t.solo ? 2.6 : 5) * (0.3 + b.reputation / 62) * priceFit * (1 + phase(b.countryId).hiring * 2) * b.marketing * rivals * rng.around(1, 0.15);
+  const demand = b.sites * (t.solo ? 2.6 : 5) * (0.3 + b.reputation / 62) * priceFit * (1 + phase(b.countryId).hiring * 2) * b.marketing * rivals * (t.celebrity ? starPull(p) : 1) * rng.around(1, 0.15);
   const sold = Math.max(0, Math.min(heads, demand));
 
   const revenue = Math.round(sold * f.perHead * price.k * (0.9 + b.quality / 500));

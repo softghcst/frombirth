@@ -9,8 +9,9 @@
 import { rng } from '../rng.js';
 import { store, player, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { AWARD_BODIES, NOMINEES, MUSIC_AWARD } from '../data/fame.js';
+import { AWARD_BODIES, NOMINEES, MUSIC_AWARD, BOOK_AWARD } from '../data/fame.js';
 import { act, release } from './music.js';
+import { book } from './publishing.js';
 import { ent, production, article } from './entertainment.js';
 import { gain, regard } from './fame.js';
 
@@ -84,6 +85,29 @@ export function holdMusicSeason(forYear) {
   return season;
 }
 
+/** The book prize, in a country: books that came out there that year, judged mostly on the reviews. */
+export function holdBookSeason(countryId, forYear) {
+  const E = ent();
+  const body = BOOK_AWARD;
+  const id = `${body.id}:${countryId}:${forYear}`;
+  if (E.seasons[id]) return E.seasons[id];
+  if (forYear < body.founded || !E.books) return null;
+  const eligible = Object.values(E.books).filter((b) => b.released === forYear && b.countryId === countryId && b.critics != null);
+  const season = { id, bodyId: body.id, scope: countryId, year: forYear, ceremony: forYear + 1, categories: {} };
+  for (const [catId, name, kinds] of body.categories) {
+    const pool = eligible.filter((b) => (kinds === 'first' ? b.first : kinds.includes(b.kind))).map((b) => ({ who: b.author, name: b.authorName, bookId: b.id, productionId: null, title: b.title, idx: null,
+      score: b.critics + Math.log10(Object.values(b.units).reduce((s, n) => s + n, 0) + 1) * 2 }));
+    if (pool.length < 2) continue;
+    const nominees = pool.sort((a, b) => b.score - a.score).slice(0, NOMINEES).map((n) => ({ ...n, score: Math.round(n.score) }));
+    const floor = nominees[nominees.length - 1].score;
+    const winner = nominees[rng.weighted(nominees.map((n, i) => ({ i, w: Math.max(1, n.score - floor + 6) })), (x) => x.w).i];
+    season.categories[catId] = { name, nominees, winner: { who: winner.who, bookId: winner.bookId, productionId: null, idx: null } };
+    for (const n of nominees) { const b = book(n.bookId); if (b) { b.awards.push({ seasonId: id, catId, won: n === winner }); if (n === winner) b.keep = true; } }
+  }
+  E.seasons[id] = season;
+  return season;
+}
+
 /** Once a year: every body that exists holds its season for last year's work. @returns {string[]} */
 export function tickAwards() {
   const p = player();
@@ -123,7 +147,34 @@ export function tickAwards() {
     regard({ credibility: won ? 8 : 3, why: cat.name }, p);
     article({ kind: won ? 'award' : 'nomination', about: 'player', accuracy: 'verified', text });
   }
+  const bkey = `${BOOK_AWARD.id}:${p.countryId}:${forYear}`;
+  const bBefore = !!ent().seasons[bkey];
+  const bs = holdBookSeason(p.countryId, forYear);
+  if (bs && !bBefore) for (const cat of Object.values(bs.categories)) {
+    const mine = cat.nominees.find((n) => n.who === 'player');
+    if (!mine) continue;
+    const won = cat.winner.bookId === mine.bookId;
+    const text = won ? `${mine.title} won the ${BOOK_AWARD.name} for ${cat.name}.` : `${mine.title} was shortlisted for the ${BOOK_AWARD.name} for ${cat.name}.`;
+    lines.push(text);
+    milestone(text, 'fame');
+    gain({ audience: 'literary', amount: won ? 12 : 5, lasting: won ? 0.9 : 0.4, reach: 0.5, why: `${won ? 'winning' : 'a shortlisting for'} the ${BOOK_AWARD.name}` }, p);
+    regard({ credibility: won ? 10 : 4, why: BOOK_AWARD.name }, p);
+    article({ kind: won ? 'award' : 'nomination', about: 'player', accuracy: 'verified', text });
+  }
+  forget(p);
   return lines;
+}
+
+/** Old ceremonies are forgotten unless the family was in them: the player, or anyone on the family record. */
+function forget(p) {
+  const E = ent();
+  const family = new Set(['player', ...(store.state.careerRecord ?? []).map((r) => r.npcId).filter(Boolean),
+    ...p.npcIds.filter((id) => ['parent', 'grandparent', 'child', 'grandchild', 'spouse', 'sibling'].includes(store.state.npcs[id]?.role))]);
+  for (const [id, s] of Object.entries(E.seasons)) {
+    if (s.year >= year() - 6) continue;
+    if (Object.values(s.categories).some((c) => c.nominees.some((n) => family.has(n.who)))) continue;
+    delete E.seasons[id];
+  }
 }
 
 /** Every nomination and win the player has had, newest first. */
@@ -131,7 +182,7 @@ export function myAwards(p = player()) {
   const out = [];
   for (const s of Object.values(ent().seasons)) for (const [catId, cat] of Object.entries(s.categories)) {
     const n = cat.nominees.find((x) => x.who === 'player');
-    if (n) out.push({ season: s, catId, cat, productionId: n.productionId, releaseId: n.releaseId ?? null, title: n.title, won: n.releaseId ? cat.winner.releaseId === n.releaseId : cat.winner.who === 'player', body: [...AWARD_BODIES, MUSIC_AWARD].find((b) => b.id === s.bodyId) });
+    if (n) out.push({ season: s, catId, cat, productionId: n.productionId, releaseId: n.releaseId ?? null, bookId: n.bookId ?? null, title: n.title, won: n.releaseId ? cat.winner.releaseId === n.releaseId : n.bookId ? cat.winner.bookId === n.bookId : cat.winner.who === 'player', body: [...AWARD_BODIES, MUSIC_AWARD, BOOK_AWARD].find((b) => b.id === s.bodyId) });
   }
   return out.sort((a, b) => b.season.year - a.season.year);
 }

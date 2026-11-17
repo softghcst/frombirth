@@ -649,6 +649,7 @@ export function carryWorld(old, next, ancestorId) {
   for (const x of Object.values(E.productions)) for (const r of x.cast) r.who = who(r.who);
   for (const s of Object.values(E.seasons)) for (const cat of Object.values(s.categories)) { for (const n of cat.nominees) n.who = who(n.who); cat.winner.who = who(cat.winner.who); }
   for (const a of E.articles) if (a.about === 'player') a.about = ancestorId ?? null;
+  for (const b of Object.values(E.books ?? {})) if (b.author === 'player') { b.author = ancestorId ?? null; b.keep = true; }
   // Music: the parent's acts carry on in the world (or rest), as theirs; the heir starts with none of their own.
   for (const a of Object.values(E.acts ?? {})) {
     if (!a.members.some((m) => m.who === 'player')) continue;

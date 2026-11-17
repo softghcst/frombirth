@@ -4,6 +4,10 @@ import { hiringClimate, layoffChance } from './economy.js';
 import { tickEntertainment } from './entertainment.js';
 import { tickAwards } from './awards.js';
 import { tickMusic } from './music.js';
+import { tickSports } from './sports.js';
+import { tickModelling } from './modelling.js';
+import { tickPublishing } from './publishing.js';
+import { tickCelebs } from './celebs.js';
 import { tickPress } from './press.js';
 import { tickFameProfile } from './fame.js';
 import { gain, regard } from './fame.js';
@@ -647,12 +651,13 @@ export function doFameAction(id) {
  */
 export function tickWork() {
   const p = player();
+  const played = tickSports(); // the season just played counts before the year's reviews and layoffs, and feeds the review
   tickEmployers();
   tickOffers();
   const death = tickCareer();
   if (death) return death;
   // The entertainment world has its year (productions, awards, the press) before payroll pays for the work in it.
-  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile()];
+  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...played, ...tickModelling(), ...tickPublishing(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile(), ...tickCelebs()];
   for (const l of lines) log(l);
   queueWorkScenes();
   if (p.age >= 14) checkAchievements(p);
@@ -786,7 +791,8 @@ export function tickCareer() {
   }
 
   // Fame comes with the top of certain careers, to the audience that work reaches; it fades in the profile.
-  if (career.fame && c.level >= career.fame.from) {
+  // Sport, modelling and books make their own fame, from results, bookings and books (engine/sports.js, modelling.js, publishing.js).
+  if (career.fame && c.level >= career.fame.from && !['athlete', 'modelling', 'author'].includes(career.id)) {
     gain({ audience: AUDIENCE_OF[career.id] ?? 'public', amount: (c.level - career.fame.from + 1) * 3 + c.performance / 30, lasting: 0.2, why: c.title.toLowerCase() });
   }
 

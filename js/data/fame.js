@@ -185,3 +185,50 @@ export const MUSIC_DEAL = { royalty: [0.14, 0.22], unitValue: 0.9, independent: 
 /** The music award body, which judges releases. */
 export const MUSIC_AWARD = { id: 'disc', name: 'Silver Disc Awards', founded: 1959, scope: 'international', medium: 'music',
   categories: [['album', 'Album of the Year', 'album'], ['song', 'Song of the Year', 'single'], ['new_act', 'Best New Act', 'first']] };
+
+// ---------- Sport ----------
+// Fame from sport comes only from results the game has simulated: seasons, matches, tournaments.
+
+/** team: a league of clubs; otherwise an individual sport with events through the year. founded: the first year it is played professionally. */
+export const SPORTS = {
+  football: { name: 'Football', team: true, teams: 12, rounds: 2, stat: 'goals', statName: 'Goals', founded: 1888, league: '{N} Premier League' },
+  basketball: { name: 'Basketball', team: true, teams: 10, rounds: 4, stat: 'points', statName: 'Points', founded: 1946, league: '{N} Basketball League' },
+  tennis: { name: 'Tennis', team: false, events: 8, stat: 'titles', statName: 'Titles', founded: 1877, field: 32 },
+  athletics: { name: 'Athletics', team: false, events: 6, stat: 'wins', statName: 'Wins', founded: 1896, field: 8 },
+};
+export const TEAM_WORDS = ['Rovers', 'United', 'Athletic', 'City', 'Wanderers', 'Rangers', 'Lions', 'Falcons', 'Comets', 'Harriers', 'Royals', 'Stars'];
+export const EVENT_WORDS = ['Open', 'Classic', 'Masters', 'Championships', 'Invitational', 'Cup'];
+/** The international games held every four years. Fictional. */
+export const WORLD_GAMES = { name: 'World Games', founded: 1896, every: 4 };
+
+// ---------- Modelling ----------
+
+export const MODEL_AGENCY_NAMES = ['{W} Models', '{S} Management', '{C} Faces', '{W} Model Agency'];
+export const FASHION_HOUSES = ['Maison Verel', 'Atelier Corvane', 'Lisle & Marr', 'Ondine', 'Haversham', 'Studio Petrova', 'Calloway', 'Beaumarché'];
+export const MAGAZINES = ['Silhouette', 'Lustre', 'The Edit', 'Vantage', 'Modern Muse', 'Gloss'];
+/** Kinds of booking: prestige (0–100), how hard it is to get, and where it can take place. */
+export const BOOKINGS = {
+  catalogue: { name: 'Catalogue shoot', prestige: 10, bar: 45 },
+  ecommerce: { name: 'Online store shoot', prestige: 8, bar: 40 },
+  editorial: { name: 'Magazine editorial', prestige: 40, bar: 62 },
+  runway: { name: 'Runway show', prestige: 55, bar: 66, abroad: true },
+  campaign: { name: 'Advertising campaign', prestige: 65, bar: 72 },
+  cover: { name: 'Magazine cover', prestige: 85, bar: 82 },
+};
+/** Cities that hold the big fashion weeks, by country id. */
+export const FASHION_CAPITALS = { fr: 'Paris', it: 'Milan', us: 'New York', uk: 'London' };
+
+// ---------- Books ----------
+
+export const BOOK_GENRES = ['literary fiction', 'crime', 'romance', 'fantasy', 'science fiction', 'history', 'memoir', 'poetry', 'thriller', "children's"];
+/** Sessions of work a manuscript needs, by kind. */
+export const BOOK_KINDS = { novel: { name: 'Novel', sessions: 4 }, nonfiction: { name: 'Non-fiction book', sessions: 3 }, poetry: { name: 'Poetry collection', sessions: 2 }, memoir: { name: 'Memoir', sessions: 2 } };
+export const PUBLISHER_NAMES = ['{W} Books', '{S} & {S2}', '{W} Press', '{C} House'];
+export const BOOK_WORDS = { a: ['The Quiet', 'A House of', 'The Long', 'Under the', 'The Last', 'All the', 'The Salt', 'Winter', 'The Glass', 'Small', 'The Borrowed', 'Before the', 'After the', 'The Hidden'],
+  b: ['Hours', 'Daughters', 'Rivers', 'Lanterns', 'Orchard', 'Shore', 'Letters', 'Country', 'Sons', 'Gardens', 'Weather', 'Harbour', 'Kingdoms', 'Maps'], c: ['Again', 'and After', 'Remembered', 'a Novel'] };
+export const BOOK_DEAL = { royalty: [0.08, 0.15], unitValue: 4, selfShare: 0.6 };
+export const BOOK_AWARD = { id: 'lantern', name: 'Lantern Prize', founded: 1969, scope: 'national', medium: 'literary',
+  categories: [['fiction', 'Fiction', ['novel']], ['nonfiction', 'Non-fiction', ['nonfiction', 'memoir']], ['debut', 'First Book', 'first']] };
+
+// ---------- Celebrity businesses ----------
+// Added to the business engine (data/business.js) as kinds of business that need a known name.

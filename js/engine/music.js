@@ -457,7 +457,7 @@ export function tickMusic() {
   const p = player();
   const E = M();
   const lines = [];
-  if (!exists('concert')) return lines;
+  if (!exists('concert') || !(p.fame?.acts ?? []).length) return lines; // the music world is made when the player first makes music
   rivals(p.countryId);
   // Releases recorded last year come out.
   for (const r of Object.values(E.releases)) {
