@@ -1,6 +1,7 @@
 // Education: compulsory school by age, effort and attendance, tutors, cliques,
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
+import { majorOpen } from './history.js';
 import { forgetNpc } from './digital/core.js';
 import { rule, may } from './rules.js';
 import { tuitionFactor } from './policy.js';
@@ -673,6 +674,23 @@ export const canDropOut = () => {
   return p.education.enrolled && (isHigher(p.education.stage) || may('leaveSchool').ok);
 };
 
+/**
+ * Leaving school at the leaving age to go to work, as most children did before secondary school was
+ * for everyone (Historical Eras). Unlike dropping out, nobody holds it against the child.
+ */
+export function leaveForWork() {
+  const p = player();
+  const e = p.education;
+  if (!e.enrolled || isHigher(e.stage)) return result(false, 'You are not at school.', 'neutral');
+  if (!canDropOut()) return result(false, `You have to stay in school until you are ${rule('schoolLeavingAge')}.`);
+  leaveSchool('left');
+  p.flags.leftSchoolAt = p.age;
+  const text = `You left school at ${p.age}, as most children your age did, and went out to work.`;
+  log(text, 'system', 'neutral');
+  milestone(`Left school at ${p.age} to work.`, 'education');
+  return result(true, text, 'neutral');
+}
+
 export function dropOut() {
   const p = player();
   const e = p.education;
@@ -927,7 +945,7 @@ export function enrol(progId, subjectId, funding, living = {}, school = null) {
 export function switchOptions() {
   const e = player().education;
   const gpa = e.gpa || entryGpa();
-  return MAJORS.filter((m) => m.id !== e.majorId).map((m) => ({ id: m.id, name: m.name, audition: !!m.audition,
+  return MAJORS.filter((m) => m.id !== e.majorId && majorOpen(m.id)).map((m) => ({ id: m.id, name: m.name, audition: !!m.audition,
     allowed: gpa >= m.minGpa, minGpa: m.minGpa,
     chance: m.audition ? admissionChance('university', m.id) : 1 }));
 }

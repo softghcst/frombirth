@@ -5,7 +5,7 @@
 // Each person keeps a `life` record and a `life.history` timeline. Big moments
 // in close family also reach the player's journal, and a few ask the player
 // to respond (see data/events/familyLives.js).
-import { careerBlock, careerExists, eraTitle, worldYear, majorOpen, universityAccess } from './history.js';
+import { careerBlock, careerExists, eraTitle, worldYear, majorOpen, universityAccess, secondaryShare } from './history.js';
 import { rule as lawRule } from './rules.js';
 import { rng } from '../rng.js';
 import * as kid from './kidschool.js';
@@ -202,15 +202,16 @@ function chooseMajor(npc) {
   if ((t.acting ?? 0) >= 70) return 'theatre';
   if ((t.music ?? 0) >= 70) return 'music';
   const gpa = npc.life.edu.gpa;
-  const open = MAJORS.filter((m) => !m.audition && gpa >= m.minGpa);
-  return rng.pick(open.length ? open : MAJORS.filter((m) => !m.audition && m.minGpa <= 2.2)).id;
+  const open = MAJORS.filter((m) => !m.audition && gpa >= m.minGpa && majorOpen(m.id, worldYear()));
+  return rng.pick(open.length ? open : MAJORS.filter((m) => !m.audition && m.minGpa <= 2.2 && majorOpen(m.id, worldYear()))).id;
 }
 
 /** What they do at 18. The player's advice (flags set by a scene) can tilt it. */
 function choosePath(npc, quiet) {
   const e = npc.life.edu;
   const f = npc.flags;
-  let uni = clamp((e.gpa - 2) / 2 * 0.8 + (npc.meters.intellect - 50) / 120 + kid.familyPull(npc), 0.05, 0.92);
+  // In earlier eras university was for few (Historical Eras): the same people, far fewer places.
+  let uni = clamp((e.gpa - 2) / 2 * 0.8 + (npc.meters.intellect - 50) / 120 + kid.familyPull(npc), 0.05, 0.92) * universityAccess(worldYear());
   if (f.pushUniversity) uni = clamp(uni + 0.3, 0, 0.97);
   if (f.pushWork) uni = clamp(uni - 0.3, 0.02, 1);
   e.degrees.push('high');
@@ -243,6 +244,14 @@ function tickEducation(npc, quiet = false) {
   if (a === 5) { e.stage = 'elementary'; e.gpa = clamp(npc.meters.intellect / 25 + rng.around(0, 0.4), 0.8, 4); if (!quiet) note(npc, 'started school', close); }
   if (a === 11) { e.stage = 'middle'; if (!quiet) note(npc, 'moved up to middle school'); }
   if (a === 14) { e.stage = 'high'; if (!quiet) note(npc, 'started high school'); }
+  // Historical Eras: in earlier years most children left school at the leaving age and went to work.
+  const leaving = lawRule('schoolLeavingAge', typeof npc.flags?.abroad === 'string' ? npc.flags.abroad : store.state.player.countryId);
+  if (a === leaving && leaving < 18 && ['elementary', 'middle', 'high'].includes(e.stage) && !rng.chance(secondaryShare(worldYear()))) {
+    e.stage = 'done';
+    e.leftAt = a;
+    if (!quiet) note(npc, `left school at ${a} and went to work`, close);
+    return;
+  }
   if (a >= 6 && a <= 17) {
     // A child of the player's: the school they are at, and this year's help at home, tell too.
     const k = npc.role === 'child' ? kid.edge(npc) : { steady: 0, once: 0 };

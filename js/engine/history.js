@@ -13,7 +13,7 @@ import { clamp } from '../util.js';
 import { store, player, log, milestone } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { ERAS, ERA_BY_ID, MONEY_ANCHORS, CURRENCY_HISTORY, LAW_HISTORY, CAREER_ERAS, PARENT_OCCUPATIONS, MODERN_OCCUPATIONS,
-  MAJOR_FROM, UNIVERSITY_ACCESS, HEALTH, TREATMENT_HISTORY, PROCEDURE_FROM, EVENTS } from '../data/history.js';
+  MAJOR_FROM, UNIVERSITY_ACCESS, SECONDARY, HEALTH, TREATMENT_HISTORY, PROCEDURE_FROM, EVENTS } from '../data/history.js';
 import { OCCUPATIONS } from '../data/traits.js';
 import { techAvailable } from './digital/tech.js';
 
@@ -187,7 +187,8 @@ export function parentOccupations(year) {
 
 // ---------- Schooling ----------
 
-export const universityAccess = (year = store.state?.year ?? MODERN_YEAR) => UNIVERSITY_ACCESS[getEra(year).id];
+export const universityAccess = (year = syncedYear) => UNIVERSITY_ACCESS[getEra(year).id];
+export const secondaryShare = (year = syncedYear) => SECONDARY[getEra(year).id];
 
 // ---------- Health ----------
 

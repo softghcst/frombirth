@@ -2,7 +2,7 @@
 // has moved. It records crossing into a new era (once), and from later phases
 // applies what the era changes. The rules themselves are in engine/history.js.
 import { store, player, log, milestone } from '../state.js';
-import { getEra, getEraTransition, syncWorld, currencyFor, MODERN_YEAR } from './history.js';
+import { getEra, getEraTransition, syncWorld, currencyFor, secondaryShare, MODERN_YEAR } from './history.js';
 import { convertMoney } from './emigration.js';
 import { rule } from './rules.js';
 import { LAW_HISTORY } from '../data/history.js';
@@ -110,6 +110,20 @@ export function tickEra() {
     if (v === lawsBefore[id] || player().age < 8) continue;
     const line = LAW_NEWS[id]?.(v, place);
     if (line && e.laws[`${here}:${id}:${state.year}`] == null) { e.laws[`${here}:${id}:${state.year}`] = v; log(line, 'system', 'neutral'); }
+  }
+  offerScenes(state);
+}
+
+/** Era scenes found in what is actually happening, queued like any other scene. */
+function offerScenes(state) {
+  const p = state.player;
+  const queue = (id, cast = {}) => { if (!state.pendingEvents.some((x) => x.id === id)) state.pendingEvents.push({ id, cast }); };
+  // The leaving age, in a time when most children left school then.
+  const ed = p.education;
+  const leaving = rule('schoolLeavingAge', p.countryId);
+  if (ed?.enrolled && ['elementary', 'middle', 'high'].includes(ed.stage) && p.age === leaving && leaving < 18 && secondaryShare(state.year) < 0.95 && !state.era.seen.leaveSchool) {
+    state.era.seen.leaveSchool = state.year;
+    queue('era_leave_school', { words: { age: String(p.age) } });
   }
 }
 

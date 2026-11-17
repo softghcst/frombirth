@@ -250,6 +250,8 @@ export const MAJOR_FROM = { computer_science: 1965, psychology: 1900, criminal_j
 
 /** [estimate] How many young people go on to university in each era, relative to today (NPC paths and the player's odds). */
 export const UNIVERSITY_ACCESS = { early: 0.08, interwar: 0.15, midcentury: 0.35, late20c: 0.7, now: 1 };
+/** [estimate] How many children stay at school past the leaving age, by era (the rest go to work). */
+export const SECONDARY = { early: 0.2, interwar: 0.35, midcentury: 0.65, late20c: 0.9, now: 1 };
 
 // ---------- Health ----------
 

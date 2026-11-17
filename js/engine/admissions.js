@@ -49,6 +49,9 @@ export function assess(a, inst, major, luck = 0) {
   if (inst.legacy && a.legacy) { score += 0.08; reasons.push('Your family\'s history there was noticed.'); }
   if (inst.sport && a.athlete) { score += 0.7; reasons.push('The coach asked for you.'); }
   if (a.transfer) { score += 0.1; reasons.push('Two finished years of college count for something.'); }
+  // Historical Eras: in earlier years universities took far fewer students.
+  const access = a.access ?? 1;
+  if (access < 1) { score -= (1 - access) * 0.45; reasons.push('Universities take very few students in these years.'); }
   score = Math.round((score - (inst.squeeze ?? 0) + luck) * 100) / 100;
   if ((inst.squeeze ?? 0) >= 0.2 && score < 0.12 && a.mark >= inst.bar) reasons.push('It turns away far more good applicants than it takes.');
   if (luck <= -0.1) reasons.push('It had far more applicants than places this year.');

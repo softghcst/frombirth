@@ -256,6 +256,48 @@ section('Laws');
   check(store.state.journal.some((j) => /Alcohol has been banned/.test(j.text)), 'and so is Prohibition');
 }
 
+// ---------- Phase 6: schooling ----------
+section('Schooling');
+{
+  const R = await import('../js/engine/rules.js');
+  const { assess } = await import('../js/engine/admissions.js');
+  const edu = await import('../js/engine/education.js');
+  const { ensureLife } = await import('../js/engine/npcLives.js');
+  const at = (year, countryId = 'uk') => { H.syncWorld(year); return R.rule('schoolLeavingAge', countryId); };
+  check(at(1910) === 12 && at(1930) === 14 && at(1955) === 15, `school-leaving age in Britain: 12 in 1910, 14 in 1930, 15 in 1955 (${at(1910)}, ${at(1930)}, ${at(1955)})`);
+  check(at(1980) === at(2026), 'and today\'s after 1972');
+  H.syncWorld(2026);
+  check(H.majorOpen('computer_science', 1930) === false && H.majorOpen('computer_science', 1970) && H.majorOpen('history', 1850), 'no computer science degrees before the 1960s; history always');
+  const applicant = { mark: 3.6, advanced: 1, recs: 1, activities: 50, statement: 1, need: 0 };
+  const inst = { bar: 3.2, squeeze: 0 };
+  const major = { minGpa: 3 };
+  const then = assess({ ...applicant, access: 0.08 }, inst, major, 0);
+  const now = assess({ ...applicant }, inst, major, 0);
+  check(now.outcome === 'accepted' && then.score < now.score && then.reasons.some((r) => /very few students/.test(r)), `universities took far fewer students in 1910 (${then.outcome} against ${now.outcome})`);
+  // Most children leave school at the leaving age in the early era.
+  const p = life({ born: 1890, age: 0, countryId: 'uk' });
+  const kids = [];
+  for (let i = 0; i < 40; i++) { const k = makeNpc({ role: 'sibling', countryId: 'uk', age: 6 }); ensureLife(k); store.state.npcs[k.id] = k; p.npcIds.push(k.id); kids.push(k); }
+  grow(13);
+  const left = kids.filter((k) => k.alive && k.life.edu.leftAt);
+  const alive = kids.filter((k) => k.alive);
+  check(left.length >= alive.length * 0.5, `most children around 1900 left school at the leaving age (${left.length} of ${alive.length})`);
+  const mates = alive.filter((k) => !k.life.edu.leftAt);
+  check(alive.length > 0, 'children are growing up');
+  // The player is offered the same choice, once.
+  const q = life({ born: 1900, age: 0, countryId: 'uk' });
+  let offered = false;
+  for (let i = 0; i < 14 && !offered; i++) { q.stats.health = 95; advanceYear(); offered = store.state.pendingEvents.some((x) => x.id === 'era_leave_school'); if (!offered) store.state.pendingEvents = []; }
+  check(offered && q.age === 12, `at 12 in 1912 the player can leave school to work (offered at ${q.age})`);
+  const r = edu.leaveForWork();
+  check(r.ok && !q.education.enrolled && !q.education.droppedOut, 'leaving at the leaving age is not dropping out');
+  check(q.milestones.some((m) => /Left school at 12/.test(m.text)), 'and is kept in the life story');
+  const m = life({ born: 2026, age: 0 });
+  let modern = false;
+  for (let i = 0; i < 18; i++) { m.stats.health = 95; advanceYear(); if (store.state.pendingEvents.some((x) => x.id === 'era_leave_school')) modern = true; store.state.pendingEvents = []; }
+  check(!modern, 'a life in the present is never offered it');
+}
+
 console.log(`${passed.length} checks passed.`);
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(` - ${x}`); process.exit(1); }
 console.log('The eras hold together.');

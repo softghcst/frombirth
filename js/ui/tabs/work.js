@@ -1,6 +1,7 @@
 // Work & School tab: where you stand, what you have committed to, who can
 // open doors for you, and every school, housing and part-time-job action.
 // Full careers arrive in Phase 4.
+import { majorOpen } from '../../engine/history.js';
 import * as adult from '../../engine/adulted.js';
 import { CERTS } from '../../data/schools.js';
 import * as campusLife from '../../engine/campus.js';
@@ -163,7 +164,7 @@ function pickMajor(progId) {
     body: community
       ? 'Community college takes everyone. Pick the subject you mean to carry on with.'
       : `Your school marks: ${sch.mark(gpa)}. Harder subjects want better grades.`,
-    options: MAJORS.filter((m) => !(community && m.audition)).map((m) => ({
+    options: MAJORS.filter((m) => !(community && m.audition) && majorOpen(m.id)).map((m) => ({
       value: m.id, label: m.name, disabled: !community && gpa < m.minGpa,
       sub: m.audition
         ? `${m.blurb} Entry by audition (your triple-threat score is ${tripleThreat(p)}): about ${Math.round(edu.admissionChance('university', m.id) * 100)}% at a typical school.`
