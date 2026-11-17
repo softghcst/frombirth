@@ -26,10 +26,14 @@ import * as access from '../../engine/health/access.js';
 import * as story from '../../engine/health/story.js';
 import { passWeeks, nextCareWeek } from '../../engine/health/index.js';
 import { now, when, rel, priceOf } from '../../engine/health/util.js';
+import * as ins from '../../engine/health/insurance.js';
+import * as hosp from '../../engine/health/hospital.js';
+import * as sys from '../../engine/systems.js';
 
+const SKILLS_NAMES = new Set(Object.values(SKILLS));
 const SECTIONS = [
   ['overview', 'Overview'], ['physical', 'Physical'], ['mental', 'Mental health'], ['conditions', 'My conditions'], ['appointments', 'Appointments'],
-  ['therapy', 'Therapy'], ['medications', 'Medications'], ['supports', 'Accessibility'], ['history', 'History'], ['goals', 'Goals'],
+  ['therapy', 'Therapy'], ['medications', 'Medications'], ['supports', 'Accessibility'], ['cover', 'Cover & hospital'], ['history', 'History'], ['goals', 'Goals'],
 ];
 const JOURNEY = [['overview', 'Overview'], ['medications', 'Medications'], ['therapy', 'Therapy'], ['appointments', 'Appointments'], ['plans', 'Treatment plans'], ['history', 'History']];
 
@@ -48,6 +52,7 @@ const npcOf = (id) => store.state.npcs[id];
 function words(label, v) {
   if (label === 'Stress') return v < 30 ? 'Low' : v < 55 ? 'Some' : v < 75 ? 'High' : 'Very high';
   if (label === 'Pain') return v < 10 ? 'None' : v < 30 ? 'A little' : v < 60 ? 'Some' : 'A lot';
+  if (!['Sleep', 'Energy', 'Health', 'Practice'].includes(label) && !SKILLS_NAMES.has(label)) return v >= 75 ? 'Nearly there' : v >= 40 ? 'Halfway' : v > 0 ? 'Started' : 'Not yet';
   return v >= 70 ? 'Good' : v >= 50 ? 'Fair' : v >= 30 ? 'Low' : 'Very low';
 }
 
@@ -130,10 +135,31 @@ function proposalCard(prop) {
 
 function physical(p, h) {
   const legacy = p.conditions.map((c) => kv(c.name.charAt(0).toUpperCase() + c.name.slice(1), `since age ${c.sinceAge}${c.treated ? ', managed' : ''}`)).join('');
-  const recs = presentConditions(h).filter((r) => !MENTAL.includes(CONDITION_BY_ID[r.conditionId].group) && CONDITION_BY_ID[r.conditionId].group !== 'neurodev' && (diagnosisFor(r, h) || ['sensory', 'mobility'].includes(CONDITION_BY_ID[r.conditionId].group)));
-  return `${card('Your body', `${bar('Health', p.stats.health)}${bar('Pain', h.wellbeing.pain, false)}${bar('Energy', h.wellbeing.energy)}`)}
-    ${card('Conditions', `${legacy}${recs.map((r) => kv(conditionName(r, h), esc(course.burdenWords(r.burden)))).join('')}${!legacy && !recs.length ? muted('Nothing on record.') : ''}`)}
-    ${card('The doctor', `<div class="btn-stack">${btn('See a doctor, have a check-up, or sort out insurance', 'doctor', { primary: true })}${btn('See a specialist', 'seek', { arg: 'body' })}${btn('Hearing or sight', 'seek', { arg: 'senses' })}</div>`)}`;
+  const body = presentConditions(h).filter((r) => !MENTAL.includes(CONDITION_BY_ID[r.conditionId].group) && CONDITION_BY_ID[r.conditionId].group !== 'neurodev');
+  const known = body.filter((r) => diagnosisFor(r, h) || ['sensory', 'mobility'].includes(CONDITION_BY_ID[r.conditionId].group));
+  const away = hosp.inHospital(p);
+  const rehab = h.therapies.filter((c) => c.rehabGoals && (['active', 'paused'].includes(c.status) || now(p) - (c.endWk ?? 0) <= 26));
+  return `${away ? card('In hospital', `${kv('Since', esc(when(away.startWk)))}${kv('Expected home', esc(rel(away.endWk)))}${muted('Appointments and sessions wait for you.')}`) : ''}
+    ${card('Your body', `${bar('Health', p.stats.health)}${bar('Pain', h.wellbeing.pain, false)}${bar('Energy', h.wellbeing.energy)}`)}
+    ${card('Long-term conditions', `${known.map((r) => { const d = diagnosisFor(r, h); return d ? `<button class="row hl-cond" data-cond="${esc(d.id)}"><div class="main"><strong>${esc(conditionName(r, h))}</strong><small>${esc(r.status === 'in_remission' ? 'In remission' : `${course.burdenWords(r.burden)}${r.effect ? ', treatment is helping' : ''}`)}</small></div><div class="side">›</div></button>` : kv(conditionName(r, h), 'Part of your life'); }).join('')}
+      ${legacy ? `<div class="section-label">Short-term</div>${legacy}` : ''}${!legacy && !known.length ? muted('Nothing on record. Regular check-ups find some things early.') : ''}`)}
+    ${rehab.map((c) => therapyCard(c, h)).join('')}
+    ${card('The doctor', `<div class="btn-stack">${btn('Have a check-up, see a doctor, or sort out insurance', 'doctor', { primary: true })}${btn('See a specialist', 'seek', { arg: 'body' })}${btn('Hearing or sight', 'seek', { arg: 'senses' })}${body.some((r) => r.conditionId === 'back_pain') || p.age >= 40 ? btn('Ask for physiotherapy', 'physio') : ''}</div>`)}`;
+}
+
+function cover(p, h) {
+  const c = ins.coverSummary(p);
+  const k = sys.cover(p);
+  const stays = hosp.admissions(p).slice().reverse();
+  const cur = c.now;
+  return `<p class="hl-sub">Who pays, and where you have stayed.</p>
+    ${card('Your cover', `${kv('Now', esc(cur.name))}${kv('Health system', esc(cur.system))}${kv('You pay', `${Math.round(cur.share * 100)}% of a bill`)}${cur.premium ? kv('It costs', `${money(cur.premium)} a year`) : ''}
+      ${muted(esc(c.how))}
+      ${k.canBuy && !k.bought && !k.covered ? btn(`Take out health insurance (${money(k.price)} a year)`, 'insure', { primary: true }) : ''}${k.bought ? btn('Cancel your health insurance', 'uninsure', { small: true }) : ''}`)}
+    ${card('Bills and claims', `${kv('Billed, all told', money(c.totals.billed))}${kv('Paid by cover', money(c.totals.insurer))}${kv('Paid by you', money(c.totals.you))}
+      ${c.claims.length ? `<div class="section-label">Recent</div>${c.claims.slice(0, 15).map((x) => `<div class="kv"><span>${esc(when(x.wk))}: ${esc(x.what)}</span><span>${money(x.patientPaid)} ${pill(x.status, ['paid', 'paid on appeal'].includes(x.status) ? 'good' : '')}</span></div>${x.status === 'refused' && !x.appealed ? btn('Appeal this decision', 'appeal', { arg: x.id, small: true }) : ''}`).join('')}` : muted('No bills yet.')}`)}
+    ${card('Hospital stays', stays.length ? stays.map((a) => kv(`${when(a.startWk)}: ${a.label}`, esc(a.status === 'in' ? `In hospital, home ${rel(a.endWk)}` : `${a.endWk - a.startWk} week${a.endWk - a.startWk === 1 ? '' : 's'}`))).join('') : muted('None.'))}
+    ${c.policies.length > 1 ? card('Earlier cover', c.policies.filter((x) => x.endWk).map((x) => kv(x.name, esc(`${when(x.startWk)} to ${when(x.endWk)}`))).join('')) : ''}`;
 }
 
 function conditionName(r, h = healthOf()) {
@@ -228,6 +254,7 @@ function therapyCard(c, h) {
     ${c.status === 'active' ? kv('Next', esc(rel(c.nextWk))) : ''}
     ${mod ? kv('This module', `${esc(MODULE_BY_ID[mod.id].name)}, week ${mod.weekIn} of ${mod.of}`) : ''}
     ${c.sessions.length ? kv('Last session', esc(c.sessions.at(-1).note)) : ''}
+    ${c.rehabGoals ? `<div class="section-label">Goals</div>${c.rehabGoals.map((g) => (g.metWk ? kv(g.text, pill('Reached', 'good')) : bar(g.text.length > 28 ? `${g.text.slice(0, 26)}…` : g.text, g.progress))).join('')}` : ''}
     <div class="btn-row" style="margin-top:8px;flex-wrap:wrap">
       ${c.status === 'active' ? btn('Pause', 'pause', { arg: c.id, small: true }) : c.status === 'paused' ? btn('Resume', 'resume', { arg: c.id, small: true }) : ''}
       ${['active', 'paused'].includes(c.status) && !c.groupId && t.kind !== 'peer' ? btn('Change therapist', 'change', { arg: c.id, small: true }) : ''}
@@ -407,7 +434,7 @@ export function openHealth(api, to = {}) {
     const h = healthOf(p);
     const top = keepScroll ? body.scrollTop : 0;
     m.el.querySelectorAll('[data-tab]').forEach((b) => { const on = !nav.page && b.dataset.tab === nav.section; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
-    const pages = { overview, physical, mental, conditions, appointments, therapy, medications, supports, history, goals };
+    const pages = { overview, physical, mental, conditions, appointments, therapy, medications, supports, cover, history, goals };
     body.innerHTML = nav.page === 'journey' ? journey(p, h) : nav.page === 'dbt' ? dbtPage(p, h) : nav.page?.startsWith('cond:') ? conditionPage(p, h, nav.page.slice(5)) : pages[nav.section](p, h);
     body.scrollTop = keepScroll ? top : nav.scroll && nav.restore ? nav.scroll : 0;
     nav.restore = false;
@@ -495,6 +522,9 @@ export function openHealth(api, to = {}) {
     adapt: async () => { const list = Object.entries(HOME_FEATURES).filter(([id]) => access.homeFeatureAvailable(id) && !access.homeRecord(p).features.includes(id)); const id = await pickModal({ title: 'Adapt your home', options: list.map(([k, f]) => ({ value: k, label: f.name, sub: money(priceOf(f.cost)) })) }); return id ? after(access.adaptHome(id)) : draw(true); },
     addNeed: async () => { const id = await pickModal({ title: 'Something that helps you', body: 'No diagnosis needed.', options: Object.entries(NEEDS).map(([k, n]) => ({ value: k, label: n.name })) }); return id ? after(access.addNeed(id)) : draw(true); },
     gene: async (arg) => ((await confirmModal({ title: 'Genetic counselling and testing', body: 'A counsellor talks it through with you first. Some people want to know; many decide not to. The result is yours alone.', yes: 'Go ahead', no: 'Not now' })) ? after(story.geneTest(arg)) : draw(true)),
+    insure: async () => after(sys.setCover(true)), uninsure: async () => after(sys.setCover(false)),
+    appeal: (arg) => after(ins.appeal(arg)),
+    physio: () => after(hosp.requestRehab('back')),
     goals: async () => { const list = Object.entries(care.GOALS); const id = await pickModal({ title: 'Choose a goal', options: list.map(([k, g]) => ({ value: k, label: g.text })) }); if (id) care.setGoals([id]); api.changed(); return draw(true); },
   };
 

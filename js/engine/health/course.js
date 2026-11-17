@@ -17,6 +17,8 @@ import { trialBenefit } from './meds.js';
 import { therapyEffect, skillsEffect } from './therapy.js';
 import { supportEffect } from './access.js';
 import { healthMilestone } from './story.js';
+import { admit } from './hospital.js';
+import { foundByDoctor } from './care.js';
 
 // ---------- Onset ----------
 
@@ -53,7 +55,16 @@ export function begin(def, p = player(), o = {}) {
   const rec = startCondition(def.id, { severity: sev, onsetWk: now(p) - r.int(0, 20), ...o }, p);
   if (def.id === 'bipolar_1' || def.id === 'bipolar_2') rec.episode = { kind: 'depression', startWk: rec.onsetWk, endWk: rec.onsetWk + r.int(8, 22) };
   // Most conditions are not announced: a person notices how life feels, not a name.
-  if (def.group === 'mobility' && def.acquired) log('An accident has changed how you get around. It will take time, and support, to find your way with it.', 'system', 'bad');
+  if (def.group === 'mobility' && def.acquired) {
+    log('An accident has changed how you get around. It will take time, and support, to find your way with it.', 'system', 'bad');
+    if (!o.noAdmit) { admit('spinal', { conditionId: def.id }, p); foundByDoctor(rec, 'hospital', 'doctor', p); }
+  }
+  // Heart disease is often first found in an emergency.
+  if (def.id === 'heart_disease' && !o.noAdmit && (o.attack || r.chance(0.4))) {
+    rec.burden = sev;
+    admit('heart', { conditionId: def.id }, p);
+    foundByDoctor(rec, 'hospital', 'cardiologist', p);
+  }
   return rec;
 }
 
@@ -93,6 +104,8 @@ export function treatmentEffect(rec, p = player()) {
   if (s > 0) keep *= 1 - s;
   const k = skillsEffect(rec, p);
   if (k > 0) keep *= 1 - k;
+  // Treatment from before the health record existed keeps working until a plan replaces it.
+  if (rec.legacyManaged && !h.trials.some((t) => t.underlyingId === rec.id)) keep *= 0.4;
   return clamp(1 - keep, 0, 0.95);
 }
 
@@ -108,6 +121,13 @@ export function weekCourse(p = player()) {
       // Untreated, many conditions still ease with time, at their own pace; treatment speeds it.
       if (rec.status === 'active' && rng.chance((def.remit ?? 0) / WEEKS)) rec.severity = Math.round(rec.severity * 0.75);
     }
+    // Cancer grows until it is treated; how early it is found matters most.
+    if (def.id === 'cancer' && rec.status === 'active') {
+      const treated = healthOf(p).therapies.some((c) => c.therapyId === 'cancer_treatment' && c.status === 'active' && c.conditionIds.includes(rec.id));
+      rec.sevF = Math.min(95, (rec.sevF ?? rec.severity) + (treated ? 0 : 0.22));
+      rec.severity = Math.round(rec.sevF);
+      base = rec.severity;
+    }
     // A hard week adds to it for a while, then passes.
     base = Math.min(100, base + (rec.spike ?? 0));
     if (rec.spike) rec.spike = Math.floor(rec.spike * 0.7);
@@ -116,7 +136,7 @@ export function weekCourse(p = player()) {
     // Change is gradual: a week moves part of the way.
     rec.burden = Math.round(rec.burden + (target - rec.burden) * 0.2);
     rec.effect = Math.round(eff * 100);
-    if (def.neurotype || ['sensory', 'mobility', 'genetic'].includes(def.group)) continue; // lifelong; supports change the impact, not the person
+    if (def.neurotype || ['sensory', 'mobility', 'genetic'].includes(def.group) || def.id === 'cancer' || def.course === 'progressive') continue; // lifelong, or resolved only by treatment
     remission(rec, def, p);
   }
 }
@@ -250,3 +270,42 @@ export function yearMood(p = player()) {
   if (f >= 80 && healthOf(p).conditions.length) p.stats.mood = clamp(p.stats.mood + 1);
 }
 
+
+/**
+ * Once a year, long-term physical conditions take their toll on the body, in
+ * proportion to how much they are affecting the person after treatment.
+ */
+export function yearBody(p = player()) {
+  for (const rec of presentConditions(healthOf(p))) {
+    const def = CONDITION_BY_ID[rec.conditionId];
+    if (!def.harm || rec.status !== 'active') continue;
+    p.stats.health = clamp(p.stats.health - Math.round(def.harm * rec.burden / 60));
+  }
+}
+
+/**
+ * When a course of cancer treatment ends: remission is likelier the earlier
+ * the cancer was found. Decided once, from the person and the course.
+ */
+export function cancerOutcome(rec, course, p = player()) {
+  const stage = rec.stage ?? 2;
+  const chance = [0, 0.9, 0.75, 0.5, 0.2][stage] * (0.7 + course.fit * 0.4) * (course.attended / THERAPY_SESSIONS(course));
+  if (seeded('cancer', p.id, rec.id, course.id).chance(chance)) {
+    rec.status = 'in_remission'; rec.remissionWk = now(p); rec.severity = 5; rec.sevF = 5;
+    note(rec, 'In remission after treatment.');
+    healthMilestone('Finished cancer treatment, and heard the word remission.', { type: 'remission', id: rec.id }, p, { shareable: true });
+    return true;
+  }
+  rec.severity = Math.max(30, Math.round(rec.severity * 0.7)); rec.sevF = rec.severity;
+  note(rec, 'Treatment finished; the cancer is still there. The team talks about what comes next.');
+  return false;
+}
+const THERAPY_SESSIONS = (c) => Math.max(1, c.attended + c.missed);
+
+/** The most serious physical condition, for a cause of death. */
+export function seriousCondition(p = player()) {
+  if (!p.health) return null;
+  const list = presentConditions(p.health).filter((c) => c.status === 'active' && CONDITION_BY_ID[c.conditionId].harm >= 3)
+    .map((c) => ({ name: CONDITION_BY_ID[c.conditionId].short, severity: c.burden + (CONDITION_BY_ID[c.conditionId].deadly ? 20 : 0) }));
+  return list.sort((a, b) => b.severity - a.severity)[0] ?? null;
+}

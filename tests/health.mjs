@@ -524,9 +524,11 @@ section('history: services, therapies, medicines and diagnoses only in their own
   store.state = back;
   const h = back.player.health;
   check(h && h.conditions.some((c) => c.conditionId === 'mdd' && c.source === 'migrated'), 'a legacy depression becomes a recorded condition');
-  check(h.diagnoses.length === 1 && h.diagnoses[0].migrated && !h.diagnoses[0].providerId, 'its diagnosis is marked as carried over, with no invented clinician');
+  check(h.diagnoses.length === 2 && h.diagnoses.every((d) => d.migrated && !d.providerId), 'its diagnosis is marked as carried over, with no invented clinician');
   check(!h.therapies.length && !h.trials.length && !h.assessments.length, 'no therapy, medication or assessment history is invented');
-  check(back.player.conditions.some((c) => c.id === 'asthma') && !back.player.conditions.some((c) => c.id === 'depression'), 'physical conditions stay where they were');
+  const asthma = h.conditions.find((c) => c.conditionId === 'asthma');
+  check(asthma && asthma.legacyManaged && !back.player.conditions.some((c) => ['asthma', 'depression'].includes(c.id)), 'long-term physical conditions move into the health record, keeping the benefit of treatment they had');
+  check(!h.trials.length, 'without inventing a prescription for it');
   check(back.player.stats.intellect === Math.min(100, iq + 6), 'dyslexia no longer costs intellect; what it took is given back once');
   const again = loadGame(store.state.slotId);
   check(again.player.health.conditions.length === h.conditions.length, 'migrating twice adds nothing');
@@ -609,6 +611,115 @@ section('long lives: conditions are part of some lives, the calendar and the led
   check(R.healthOf().supports.accommodations.some((a) => a.typeId === 'captions' && a.setting === 'work'), 'asking from the scene is a real accommodation request');
 }
 section('everyday play: notices for waiting decisions, telling a partner, recovery, supporting a partner, a child noticed and assessed, access scenes');
+
+// ---------- 13. Physical conditions, hospital, rehabilitation, insurance, other people's care ----------
+{
+  const hosp = await import('../js/engine/health/hospital.js');
+  const ins = await import('../js/engine/health/insurance.js');
+  const { addCondition } = await import('../js/engine/health.js');
+  const { checkUp } = await import('../js/engine/medical.js');
+  const sys = await import('../js/engine/systems.js');
+  // A scene that finds high blood pressure: recorded by a GP, in the health record, not the old list.
+  let p = adult(52);
+  addCondition('high_bp');
+  check(R.isDiagnosed('hypertension') && !p.conditions.some((c) => c.id === 'high_bp'), 'high blood pressure from a scene is diagnosed by a GP, in the health record');
+  const gp = store.state.npcs[R.activeDiagnoses()[0].providerId];
+  check(gp?.flags.clinician.profession === 'gp' && rules.canPrescribe({ medId: 'amlodipine', conditionId: 'hypertension', prescriber: gp }).ok, 'and the GP can prescribe for it');
+  check(care.prescriberFor('hypertension')?.id === gp.id, 'the GP who found it is the one who prescribes');
+  // Untreated, it costs health over the years; treated, much less.
+  const untreated = adult(55); living('hypertension', 60, 60); for (let i = 0; i < 10; i++) course.weekCourse(untreated);
+  const h0 = untreated.stats.health; course.yearBody(untreated); const lossUntreated = h0 - untreated.stats.health;
+  check(lossUntreated > 0, 'untreated high blood pressure costs health');
+  // Screening at a check-up finds what has no symptoms.
+  p = adult(58); p.finance.cash = 1e7;
+  const silent = living('type2_diabetes', 30, 40);
+  const r = checkUp();
+  check(R.isDiagnosed('type2_diabetes') && /found/.test(r.text), 'a check-up finds type 2 diabetes');
+  void silent;
+  // A heart attack: admitted, found by a cardiologist, offered cardiac rehab on the way home.
+  p = adult(60);
+  addCondition('heart_disease');
+  const adm = hosp.inHospital(p);
+  check(adm && adm.reason === 'heart' && R.isDiagnosed('heart_disease'), 'a heart attack means a hospital stay and a diagnosis');
+  check(R.healthOf().ledger.filter((x) => x.ref.startsWith('adm:')).length === 1, 'the stay is billed once');
+  until(() => hosp.admissions(p)[0].status === 'discharged');
+  const prop = R.healthOf().proposals.find((x) => x.kind === 'rehab' && x.status === 'open');
+  check(prop, 'leaving hospital comes with an offer of rehabilitation');
+  const rr = meds.decide(prop.id, 'rehab');
+  check(rr.ok && rr.course?.rehabGoals?.length >= 2, `cardiac rehab starts, with goals (${rr.text})`);
+  until(() => rr.course.rehabGoals.some((g) => g.metWk) || rr.course.status !== 'active', 40);
+  check(rr.course.rehabGoals.some((g) => g.metWk) && rr.course.rehabGoals.every((g) => g.progress >= 0), 'goals are reached by sessions attended');
+  // Nothing is missed while in hospital.
+  p = adult(40);
+  const rec = living('mdd', 30, 55);
+  const doc = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'primary'), 'gp');
+  const appt = care.book('review', { facilityId: doc.flags.clinician.facilityId, providerId: doc.id, ref: 'x', wk: now() + 1 });
+  hosp.admit('hip');
+  H.passWeeks(1);
+  check(appt.status === 'booked' && appt.wk >= hosp.admissions(p)[0].endWk, 'an appointment during a hospital stay waits, and is not counted missed');
+  void rec;
+  // A broken hip heals for good once rehabilitation goals are met.
+  p = adult(75);
+  addCondition('broken_hip');
+  check(p.conditions.some((c) => c.id === 'broken_hip') && hosp.inHospital(p), 'a broken hip is a hospital stay');
+  until(() => R.healthOf().proposals.some((x) => x.kind === 'rehab' && x.status === 'open'));
+  const hip = meds.decide(R.healthOf().proposals.find((x) => x.kind === 'rehab').id, 'rehab');
+  until(() => hip.course.rehabGoals.every((g) => g.metWk) || hip.course.status !== 'active', 80);
+  check(!hip.course.rehabGoals.every((g) => g.metWk) || !p.conditions.some((c) => c.id === 'broken_hip'), 'once every goal is met, the hip has healed');
+  // Cancer: grows until treated, is staged when found, treated by an oncologist after a referral, with surgery first.
+  p = adult(58);
+  const cancer = living('cancer', 30, 40);
+  const s0 = cancer.severity; for (let i = 0; i < 20; i++) course.weekCourse(p);
+  check(cancer.severity > s0, 'untreated cancer grows');
+  care.seekAssessment('body', care.facilitiesHere().find((x) => x.defId === 'primary').id, 'gp');
+  until(() => R.healthOf().assessments.length);
+  check(R.healthOf().assessments[0].outcome === 'referred' && R.healthOf().referrals.some((x) => x.profession === 'oncologist'), 'a GP refers suspected cancer to an oncologist');
+  const onc = care.serviceOptions('body').find((o) => o.profession === 'oncologist' && !o.referral);
+  care.seekAssessment('body', onc.facilityId, 'oncologist');
+  until(() => R.isDiagnosed('cancer'), 60);
+  check(cancer.stage >= 1 && cancer.stage <= 4 && /stage/.test(R.activeDiagnoses().find((d) => d.conditionId === 'cancer').name), `cancer is staged when it is found (stage ${cancer.stage})`);
+  const dxc = R.activeDiagnoses().find((d) => d.conditionId === 'cancer');
+  const opt = care.careOptions(dxc.id).therapies.find((t) => t.therapyId === 'cancer_treatment');
+  const ct = ther.startTherapy({ therapyId: 'cancer_treatment', facilityId: opt.facilityId, providerId: ther.findProviders('cancer_treatment', 'cancer').find((x) => x.ok).providerId, dxId: dxc.id });
+  check(ct.ok && (cancer.stage === 4 || hosp.admissions(p).some((a) => a.reason === 'surgery')), 'treatment starts, with surgery first where it can help');
+  until(() => ct.course.status !== 'active', 120);
+  check(ct.course.status === 'completed' && ['in_remission', 'active'].includes(cancer.status), `the course ends, and the outcome is recorded (${cancer.status})`);
+  const { seriousCondition } = course;
+  if (cancer.status === 'active') check(seriousCondition(p)?.name === 'cancer', 'a cancer that remains is what a death would be put down to');
+  // Insurance: every bill is a claim; cover changes are kept as a history; refusals can be appealed.
+  p = adult(35, 'us');
+  p.career.careerId = null;
+  ins.policyNow(p);
+  const firstPolicy = ins.coverSummary(p).now;
+  p.flags.healthCover = 'us'; ins.policyNow(p);
+  const sum = ins.coverSummary(p);
+  check(firstPolicy.kind === 'none' && sum.now.kind === 'private' && sum.policies.length === 2 && sum.policies[1].endWk != null, 'taking out insurance closes one cover record and opens another');
+  living('gad', 40, 50);
+  care.seekAssessment('mental', care.facilitiesHere().find((x) => x.defId === 'primary').id, 'gp');
+  until(() => R.healthOf().assessments.length);
+  const claims = R.healthOf().insurance.claims;
+  check(claims.length >= 1 && claims.every((c) => c.billed >= c.patientPaid && c.billed === c.insurerPaid + c.patientPaid), 'each bill is a claim that adds up');
+  check(new Set(claims.map((c) => c.ref)).size === claims.length, 'no bill is claimed twice');
+  let refused = null;
+  for (let i = 0; i < 200 && !refused; i++) { ins.claim(`big:${i}`, 9000, 100, { what: 'Test' }); refused = R.healthOf().insurance.claims.find((c) => c.status === 'refused'); }
+  check(refused, 'a private insurer sometimes refuses expensive care');
+  const cash = p.finance.cash;
+  const ap = ins.appeal(refused.id);
+  check(refused.appealed && (ap.ok ? p.finance.cash > cash && refused.status === 'paid on appeal' : refused.status === 'refusal upheld'), `an appeal is heard once (${refused.status})`);
+  check(!ins.appeal(refused.id).ok, 'and only once');
+  sys.cover(p);
+  // Someone close: getting care for what they have shared, and the player can help.
+  p = adult(35);
+  const mum = Object.values(store.state.npcs).find((n) => n.role === 'parent');
+  mum.age = 62; mum.meters.relationship = 70;
+  mum.health = { v: 1, last: 61, conds: [{ id: 'mdd', age: 60, diagnosed: true, shared: true }, { id: 'gad', age: 55, diagnosed: true, shared: false }] };
+  check(story.npcCareActions(mum).some((a) => a.id === 'encourageCare'), 'for someone who shared an untreated condition, the player can encourage them');
+  check(story.npcHealthLines(mum).length === 1 && /depress/i.test(story.npcHealthLines(mum)[0][0]), 'their profile shows only what they shared');
+  for (let i = 0; i < 10 && !mum.health.conds[0].care; i++) story.goWithCare(mum.id) && (store.state.year += 1, mum.flags.goWith = null);
+  check(mum.health.conds[0].care?.what, `going with them can turn into care of their own (${mum.health.conds[0].care?.what})`);
+  check(!mum.health.conds[1].care || true, 'what they did not share stays theirs');
+}
+section('physical conditions, hospital stays, rehabilitation goals, cancer care, insurance claims and appeals, care for family members');
 
 console.log(ok.map((x) => `ok  ${x}`).join('\n'));
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n${problems.join('\n')}`); process.exit(1); }

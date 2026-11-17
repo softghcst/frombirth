@@ -336,6 +336,57 @@ export const CONDITIONS = [
     remit: 0.05, recur: 0.01,
     sources: ['NHS: Migraine'] },
 
+  // ---------- Long-term physical conditions (moved here from the older yearly illness list) ----------
+  // harm: health lost in a year at full burden, before treatment (game tuning). screen: found at a check-up.
+  { id: 'asthma', name: 'Asthma', short: 'asthma', group: 'chronic', course: 'persistent',
+    named: [[1800, 'asthma']],
+    onset: { kind: 'hazard', ages: [2, 45], rate: 0.004 },
+    features: ['breathing'],
+    diagnose: { by: ['gp', 'doctor'], weeks: 4 },
+    care: { therapies: [], meds: 'asthma' },
+    remit: 0.04, recur: 0.02, harm: 2,
+    sources: ['NICE NG80 (2017, updated 2021)', 'NHS: Asthma'] },
+  { id: 'hypertension', name: 'High blood pressure', short: 'high blood pressure', group: 'chronic', course: 'persistent',
+    named: [[1896, 'high blood pressure'], [1950, 'hypertension']],
+    onset: { kind: 'hazard', ages: [35, 120], rate: 0.012 },
+    features: ['silent'],
+    diagnose: { by: ['gp', 'cardiologist', 'doctor'], weeks: 0, screen: true },
+    care: { therapies: [], meds: 'blood_pressure' },
+    remit: 0, recur: 0, harm: 2,
+    sources: ['NICE NG136 (2019, updated 2023)', 'WHO: Hypertension'] },
+  { id: 'type2_diabetes', name: 'Type 2 diabetes', short: 'type 2 diabetes', group: 'chronic', course: 'persistent',
+    named: [[1800, 'diabetes'], [1979, 'type 2 diabetes']],
+    onset: { kind: 'hazard', ages: [30, 120], rate: 0.006 },
+    features: ['thirst_tired'],
+    diagnose: { by: ['gp', 'doctor'], weeks: 0, screen: true },
+    care: { therapies: ['diabetes_education'], meds: 'diabetes' },
+    remit: 0.02, recur: 0.05, harm: 3,
+    sources: ['NICE NG28 (2015, updated 2022)', 'WHO: Diabetes'] },
+  { id: 'heart_disease', name: 'Coronary heart disease', short: 'heart disease', group: 'chronic', course: 'persistent', deadly: true,
+    named: [[1800, 'angina pectoris'], [1912, 'coronary heart disease']],
+    onset: { kind: 'hazard', ages: [40, 120], rate: 0.008 },
+    features: ['chest_pain', 'breathless'],
+    diagnose: { by: ['cardiologist', 'doctor'], weeks: 0 },
+    care: { therapies: ['cardiac_rehab'], meds: 'cardiac' },
+    remit: 0, recur: 0, harm: 5, admit: { weeks: 1, rehab: 'cardiac_rehab' },
+    sources: ['NICE CG172 (secondary prevention)', 'NHS: Coronary heart disease'] },
+  { id: 'cancer', name: 'Cancer', short: 'cancer', group: 'chronic', course: 'progressive', deadly: true,
+    named: [[1800, 'cancer']],
+    onset: { kind: 'hazard', ages: [30, 120], rate: 0.005 },
+    features: ['body_change', 'low_energy'],
+    diagnose: { by: ['oncologist', 'doctor'], weeks: 0, screen: 50 },
+    care: { therapies: ['cancer_treatment'], meds: null },
+    remit: 0, recur: 0.03, harm: 10,
+    sources: ['NHS: Cancer', 'WHO: Cancer'] },
+  { id: 'back_pain', name: 'Chronic back pain', short: 'back pain', group: 'chronic', course: 'persistent',
+    named: [[1800, 'lumbago'], [1950, 'chronic back pain']],
+    onset: { kind: 'hazard', ages: [25, 120], rate: 0.01 },
+    features: ['back_ache'],
+    diagnose: { by: ['gp', 'doctor'], weeks: 12 },
+    care: { therapies: ['physio', 'pain_course'], meds: null },
+    remit: 0.15, recur: 0.03, harm: 1,
+    sources: ['NICE NG59 (2016, updated 2020)', 'NHS: Back pain'] },
+
   // ---------- Single-gene conditions (engine/health/heredity.js decides who has them) ----------
   { id: 'cystic_fibrosis', name: 'Cystic fibrosis', short: 'cystic fibrosis', group: 'genetic', course: 'persistent', gene: 'cf',
     named: [[1938, 'cystic fibrosis']],
@@ -405,4 +456,6 @@ export function nameIn(def, year) {
 }
 
 /** Old event ids (data/illnesses.js) that are now part of this catalog. */
-export const LEGACY_IDS = { depression: 'mdd', anxiety: 'gad' };
+export const LEGACY_IDS = { depression: 'mdd', anxiety: 'gad', asthma: 'asthma', high_bp: 'hypertension', diabetes: 'type2_diabetes', heart_disease: 'heart_disease', cancer: 'cancer', back_pain: 'back_pain' };
+/** Physical conditions moved over from the older list: an event that brings one on means a doctor has found it. */
+export const PHYSICAL_LEGACY = ['asthma', 'hypertension', 'type2_diabetes', 'heart_disease', 'cancer', 'back_pain'];

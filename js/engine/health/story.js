@@ -18,8 +18,12 @@ import { GENES } from '../../data/health/genetics.js';
 import { healthOf, lifeNote, presentConditions, diagnosisFor } from './record.js';
 import { genomeOf, hazardMultiplier, bornWith, isBiological, carrierOf, affected } from './heredity.js';
 import { now, seeded, charge, priceOf } from './util.js';
+import { clamp } from '../../util.js';
+import { THERAPY_BY_ID } from '../../data/health/therapies.js';
+import { MED_BY_ID } from '../../data/health/medications.js';
 import { serviceOptions, seekAssessment } from './care.js';
 import { requestAccommodation } from './access.js';
+import { admit } from './hospital.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
@@ -122,6 +126,7 @@ export function tickPeopleHealth(p = player()) {
     if (!h || h.last >= n.age) continue;
     h.last = n.age;
     const g = genomeOf(n);
+    npcCareYear(n, h);
     const queue = (id, cast) => { if (!store.state.pendingEvents.some((e) => e.id === id)) store.state.pendingEvents.push({ id, cast }); };
     // A child of the player's begins to show a difference present from birth: their parent notices first.
     if (n.role === 'child' && n.age < 18) {
@@ -155,6 +160,90 @@ export function tickPeopleHealth(p = player()) {
       }
     }
   }
+}
+
+// ---------- Care for the people around the player ----------
+
+/** What care someone could get for a condition this year, in a few words, or null if none existed yet. */
+function careFor(def) {
+  const year = store.state.year;
+  const t = (def.care?.therapies ?? []).map((id) => THERAPY_BY_ID[id]).find((x) => x && year >= x.from && x.kind !== 'peer');
+  const m = Object.values(MED_BY_ID).find((x) => x.uses[def.id] && year >= (x.fromFor?.[def.id] ?? x.from));
+  if (!t && !m) return null;
+  return [t?.name.toLowerCase(), m ? (def.group === 'chronic' ? 'medicine' : 'medication') : null].filter(Boolean).join(' and ');
+}
+
+/**
+ * A year of someone else's health: whether they get care for what they have,
+ * and what it does. Encouragement from the player (or going with them) makes
+ * seeking care likelier; it is always their decision.
+ */
+function npcCareYear(n, h) {
+  const year = store.state.year;
+  for (const c of begun(n)) {
+    const def = CONDITION_BY_ID[c.id];
+    if (!c.diagnosed || c.remitted || def.neurotype || ['sensory', 'mobility'].includes(def.group)) continue;
+    if (!c.care) {
+      const what = careFor(def);
+      const push = (n.flags.encouraged >= year - 1 ? 0.25 : 0) + (n.flags.goWith === year ? 0.4 : 0);
+      if (what && rng.chance(0.3 + push)) {
+        c.care = { since: year, what };
+        if (c.shared && push) log(`${n.firstName} has started ${what} for their ${def.short}.`, 'system', 'good');
+      }
+    }
+    const care = !!c.care;
+    if (MENTAL.includes(def.group) && rng.chance((def.remit ?? 0.2) * (care ? 1.6 : 0.6))) { c.remitted = year; continue; }
+    if (def.id === 'cancer') {
+      if (care && rng.chance(0.45)) { c.remitted = year; if (c.shared) log(`${n.firstName}'s cancer treatment has worked: they are in remission.`, 'system', 'good'); continue; }
+      n.meters.health = clamp(n.meters.health - (care ? 3 : 8));
+    } else if (def.harm) n.meters.health = clamp(n.meters.health - Math.round(def.harm * (care ? 0.25 : 0.8)));
+  }
+}
+
+/** Things the player can do for someone who has shared a condition they are not getting help with. */
+export function npcCareActions(npc) {
+  if (!npc?.alive || !npc.health?.v) return [];
+  const untreated = knownHealth(npc).some((c) => c.diagnosed && !c.care && !c.remitted && careFor(CONDITION_BY_ID[c.id]));
+  if (!untreated) return [];
+  const out = [{ id: 'encourageCare', label: 'Encourage them to get support' }];
+  if (npc.meters.relationship >= 50 && player().age >= 16) out.push({ id: 'goWithCare', label: 'Offer to go with them to an appointment' });
+  return out;
+}
+
+export function encourageCare(npcId) {
+  const n = store.state.npcs[npcId];
+  const year = store.state.year;
+  if (!n?.alive) return result(false, 'Not possible.', 'neutral');
+  if (n.flags.encouraged === year) return result(false, `You have already talked to ${n.firstName} about it this year.`, 'neutral');
+  n.flags.encouraged = year;
+  const well = n.meters.relationship >= 45;
+  n.meters.relationship = clamp(n.meters.relationship + (well ? 2 : -3));
+  return result(true, well ? `${n.firstName} listens, and says they will think about it. It is their decision; you have made it easier.` : `${n.firstName} bristles a little. Maybe another time, and another way.`, well ? 'good' : 'neutral');
+}
+
+export function goWithCare(npcId) {
+  const n = store.state.npcs[npcId];
+  const year = store.state.year;
+  if (!n?.alive) return result(false, 'Not possible.', 'neutral');
+  if (n.flags.goWith === year) return result(false, 'You have already offered.', 'neutral');
+  n.flags.goWith = year; n.flags.encouraged = year;
+  n.meters.relationship = clamp(n.meters.relationship + 4);
+  // Going together often turns "one day" into an appointment this year.
+  for (const c of knownHealth(n)) {
+    const what = careFor(CONDITION_BY_ID[c.id]);
+    if (c.diagnosed && !c.care && !c.remitted && what && rng.chance(0.6)) { c.care = { since: year, what }; return result(true, `You sit with ${n.firstName} in the waiting room. They come out with a plan: ${what}.`, 'good'); }
+  }
+  return result(true, `${n.firstName} is touched that you offered. They are not ready yet, and say so.`, 'neutral');
+}
+
+/** What the player may see of someone's health on their profile: only what they have shared. */
+export function npcHealthLines(npc) {
+  return knownHealth(npc).map((c) => {
+    const def = CONDITION_BY_ID[c.id];
+    const name = nameIn(def, store.state.year) ?? def.name;
+    const state = c.remitted ? 'In remission' : c.care ? `Getting ${c.care.what} since ${c.care.since}` : c.diagnosed ? (def.neurotype ? 'Part of who they are' : 'Not getting support at the moment') : 'Not diagnosed';
+    return [name.charAt(0).toUpperCase() + name.slice(1), state];
+  });
 }
 
 /** What the player knows of an NPC's health: only what has been shared. */
@@ -269,6 +358,7 @@ export function healthEffect(v, ctx = {}) {
       tell(npc.id, dx.id, p);
       return '';
     }
+    case 'admit': admit(v.reason, {}, p); return '';
     case 'accommodate': {
       const r = requestAccommodation(v.setting, v.type, v.need, p);
       return r.ok ? '' : r.text;

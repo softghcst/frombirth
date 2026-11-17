@@ -2,6 +2,7 @@
 // randomness that belongs to one person and never changes on reload.
 import { store, player, country } from '../../state.js';
 import { careCost } from '../medical.js';
+import { claim } from './insurance.js';
 
 export const WEEKS = 52;
 
@@ -79,7 +80,9 @@ export function charge(ref, base, opts = {}) {
   const p = player();
   const h = p.health;
   if (h.ledger.some((x) => x.ref === ref)) return 0;
-  const amount = base <= 0 ? 0 : Math.round(careCost(base) * (opts.fee ?? 1));
+  const share = base <= 0 ? 0 : Math.round(careCost(base) * (opts.fee ?? 1));
+  // Every bill is a claim: what was billed, what the insurer paid, what the patient paid.
+  const amount = base <= 0 ? 0 : claim(ref, base, share, opts);
   h.ledger.push({ ref, wk: now(), amount, what: opts.what ?? ref });
   if (h.ledger.length > 600) h.ledger.splice(0, h.ledger.length - 600);
   p.finance.cash -= amount;

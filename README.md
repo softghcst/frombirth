@@ -369,6 +369,11 @@ goals, with a **Treatment Journey** and a **DBT Journey** of their own.
   Family medical history shows only what relatives chose to share.
 - **Private by default.** Health milestones are hidden from the obituary and
   from descendants unless shared.
+- **The body too.** Asthma, high blood pressure, diabetes, heart disease, cancer
+  and back pain are found at check-ups and assessments and managed over years;
+  hospital stays lead to rehabilitation with goals; every bill is an insurance
+  claim you can see (and appeal, if a private insurer refuses it); family
+  members can get care of their own.
 - **Part of everyday life.** A dot on Self when care needs you, and scenes that
   follow the health record: telling a partner, a child's assessment, supporting
   someone you love, access at work and with friends.

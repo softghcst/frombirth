@@ -19,6 +19,7 @@ import { openDynasty } from '../dynasty.js';
 import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
 import { careRelationship, openFamilyHistory } from '../health/hub.js';
+import { npcHealthLines, npcCareActions, encourageCare, goWithCare } from '../../engine/health/story.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
@@ -249,12 +250,17 @@ export function openNpc(npc, api, onClose) {
     ? `<div class="section-label" style="margin-top:0">What has happened to them</div>
        ${npc.life.history.slice(-14).reverse().map((h) => `<div class="kv"><span>Age ${h.age}</span><span>${esc(h.text.charAt(0).toUpperCase() + h.text.slice(1))}.</span></div>`).join('')}
        <div style="height:14px"></div>` : '';
+  const shared = npc.flags.clinician ? [] : npcHealthLines(npc);
+  const healthCard = shared.length ? `<div class="section-label" style="margin-top:0">What they have shared about their health</div>
+    ${shared.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+    <div style="height:14px"></div>` : '';
   const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
 
   const actions = [
     ...(npc.alive ? love.romanceActions(npc) : []),
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
+    ...npcCareActions(npc),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
@@ -275,7 +281,7 @@ export function openNpc(npc, api, onClose) {
     </div>
     ${clinic || `${traitChips}${owns}${feudNote}${expecting}
     <div style="margin:12px 0 16px">${meters}</div>`}
-    ${lifeCard}${history}${timeline}
+    ${lifeCard}${healthCard}${history}${timeline}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
       <button class="btn" data-close>${onClose ? 'Back' : 'Close'}</button>
@@ -297,6 +303,8 @@ export function openNpc(npc, api, onClose) {
       hookUp: () => report(api, love.hookUp(npc.id)),
       baby: () => report(api, kids.tryForBaby(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
+      encourageCare: () => report(api, encourageCare(npc.id)),
+      goWithCare: () => report(api, goWithCare(npc.id)),
       homework: async () => {
         const how = await pickModal({ title: `${npc.firstName}'s homework`, body: 'How you help matters, and what works depends on the child.', options: kid.HOMEWORK.map((h) => ({ value: h.id, label: h.label, sub: h.sub })) });
         if (how) await report(api, kid.homework(npc.id, how));

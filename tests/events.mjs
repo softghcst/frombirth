@@ -29,7 +29,7 @@ for (const ev of EVENTS) {
         if (!EFFECTS.has(e.type)) at(`unknown effect "${e.type}"`);
         if (e.type === 'condition' && !ILLNESS_BY_ID[e.value]) at(`unknown condition "${e.value}"`);
         if (e.type === 'queue' && !allIds.has(e.value)) at(`queues unknown scene "${e.value}"`);
-        if (e.type === 'health' && !['note', 'skill', 'stress', 'seek', 'sensitive', 'tell', 'accommodate', 'childAssess'].includes(e.value?.do)) at(`unknown health action "${e.value?.do}"`);
+        if (e.type === 'health' && !['note', 'skill', 'stress', 'seek', 'sensitive', 'tell', 'accommodate', 'childAssess', 'admit'].includes(e.value?.do)) at(`unknown health action "${e.value?.do}"`);
       }
       for (const [, key] of `${ev.text} ${c.label} ${o.text}`.matchAll(/\{([a-zA-Z]+)\}/g)) {
         if (!ev.queuedOnly && !ev.castGiven && !['name', 'city', 'pm', 'pmTitle', 'law'].includes(key) && !cast.has(key) && !added.has(key)) at(`text uses {${key}} with nobody cast as it`);

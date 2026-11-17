@@ -185,23 +185,62 @@ diagnosis marked as carried over, with no clinician, assessment, therapy or
 medication history invented. Dyslexia used to cost six points of intellect; the
 points are given back once.
 
+### Long-term physical conditions
+
+Asthma, high blood pressure, type 2 diabetes, coronary heart disease, cancer
+and chronic back pain have moved from the older yearly illness list into the
+health record. They begin by age-related likelihood (shaped by inheritance where
+relevant), are found at an assessment, in hospital, by a scene where a doctor
+finds them, or at a check-up (blood pressure and blood sugar on routine tests;
+from fifty, some cancers on screening, as a referral to an oncologist). They
+are treated with medicines through the same trials, reviews and rule registry as
+everything else (salbutamol and beclometasone, metformin, amlodipine, ramipril,
+atorvastatin), and with cardiac rehabilitation, a diabetes education course,
+physiotherapy or a pain programme. Each year an untreated condition costs
+physical health in proportion to how much it is affecting the person. Cancer
+grows until it is treated, is staged when it is found, and a course of
+treatment (usually with surgery first) ends in remission or not, likelier the
+earlier it was found. Older saves keep the benefit of treatment they already
+had until a care plan replaces it. Short illnesses and injuries (flu, a broken
+arm) stay in the older list and are treated through "See a doctor".
+
+### Hospital stays and rehabilitation
+
+A heart attack, a broken hip, a spinal cord injury, surgery at the start of
+cancer treatment, or (only by the player's choice) a short voluntary stay in a
+very hard stretch are admissions: weeks on the care calendar, billed once,
+during which appointments and sessions wait rather than count as missed. Coming
+home can lead to rehabilitation with goals worked through in order and reached
+by sessions attended: walking and stairs after a hip fracture; transfers, the
+wheelchair and daily life after a spinal cord injury (adapting, not "recovering");
+strength and routine after heart problems or cancer. A broken hip heals for
+good once its goals are met.
+
+### Insurance
+
+Every health bill is a claim on the cover the player has at that moment: what
+was billed, what cover paid, what the player paid. The cover record keeps each
+period of cover (public system, through work, private, as a child, none) with
+its dates. Private and employer insurers check expensive care first and now and
+then refuse it; a refusal can be appealed once. The rules of who is covered come
+from the existing per-country model in `engine/systems.js`.
+
+### Other people's care
+
+Family members and partners can get care of their own for what they have: a
+therapy or medicine that existed in their year, which makes recovery likelier
+(and, for cancer and heart disease, slows the toll on their health). The player
+sees only what they have shared, and can encourage them, or offer to go with
+them to an appointment; the decision stays theirs.
+
 ## Not built yet
 
 - **Historical eras** do not exist in the game (every life starts in the present
   year). Every service, therapy, medicine, device and diagnosis carries the year
   it became available and its period names, and the checks prove the 1800 case,
   so the health engine is ready for eras when they come.
-- **Physical health** keeps the older yearly illness model alongside the new
-  record: common illnesses, injuries and the existing chronic conditions are
-  treated through "See a doctor" as before. Epilepsy, migraine, cystic fibrosis
-  and haemophilia have the new model; diabetes, heart disease and cancer have
-  not been moved over.
-- **Insurance** reuses the existing cover model (who pays what share); there is
-  no separate health insurance policy record, claims or prior authorisation.
-- **NPC health** is lighter than the player's: important people have
-  conditions, diagnoses and what they have shared, but no treatment of their own.
 - **Workplace and school discrimination** are not modelled beyond accommodations
   being refused where there is no law requiring them.
-- **Hospital stays, crisis services and rehabilitation goals** are present as
-  services and scenes, not as their own systems.
+- **Other people's care** is lighter than the player's: no individual trials,
+  sessions or clinicians of their own.
 - **Clinical review**, as above.

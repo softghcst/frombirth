@@ -2,6 +2,7 @@
 // who inherits, and the epitaphs the life earned.
 import { COUNTRIES } from '../data/countries.js';
 import { publicMilestones } from './health/story.js';
+import { seriousCondition } from './health/course.js';
 import { settleEstate } from './currency.js';
 import { rng } from '../rng.js';
 import { styledName } from './royalty.js';
@@ -51,7 +52,8 @@ const ACCIDENTS = ['a traffic accident', 'a fall', 'a house fire', 'drowning', '
 /** Rolls the yearly death check. @returns {?string} cause, or null if alive */
 export function rollDeath() {
   const p = player();
-  const worst = [...p.conditions].sort((a, b) => b.severity - a.severity)[0];
+  // The most serious condition, from the older illness list or the health record.
+  const worst = [...p.conditions, ...[seriousCondition(p)].filter(Boolean)].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
   if (p.legal.incarceration?.deathRow && p.legal.incarceration.served >= 2 && rng.chance(0.1)) return 'execution';
   if (!rng.chance(mortalityChance(p.age, p.stats.health, (p.flags.longevity ?? 0) + careShift(p)))) return null;

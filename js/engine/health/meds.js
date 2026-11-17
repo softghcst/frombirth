@@ -16,6 +16,8 @@ import { canPrescribe, optionsFor } from './rules.js';
 import { book, clinicianName, prescriberFor, addComponent, setComponent, facility, joinCareTeam, reviseDiagnosis as reviseDx } from './care.js';
 import { now, seeded, charge, rel, hashOf } from './util.js';
 import { healthMilestone } from './story.js';
+import { findProviders, startTherapy } from './therapy.js';
+import { setRehabGoals } from './hospital.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const LIVE = ['active', 'adjusted', 'under_review', 'tapering'];
@@ -379,6 +381,16 @@ export function decide(propId, optionId, p = player()) {
     case 'stop': taper(t, 4, 'Agreed to stop, with a gradual reduction.', p);
       return done(`${clinicianName(doc)} sets out a gradual reduction over about a month, rather than stopping at once.`, 'neutral');
     case 'bipolar_revision': return bipolarRevision(t, doc, prop, p);
+    case 'rehab': {
+      const where = findProviders(opt.act.therapyId, opt.act.conditionId ?? null, p).find((x) => x.ok);
+      if (!where) return result(false, 'There is no rehabilitation service nearby that can take you.', 'neutral');
+      const dx = h.diagnoses.find((d) => d.status === 'active' && d.conditionId === opt.act.conditionId);
+      const r = startTherapy({ therapyId: opt.act.therapyId, facilityId: where.facilityId, providerId: where.providerId, dxId: dx?.id, need: 'rehabilitation' }, p);
+      if (!r.ok) return r;
+      setRehabGoals(r.course, opt.act.goals);
+      prop.status = 'accepted'; prop.chosen = optionId;
+      return r;
+    }
     default: return result(false, 'Unknown option.', 'neutral');
   }
 }

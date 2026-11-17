@@ -7,11 +7,13 @@ import { makeNpc } from '../npcFactory.js';
 import { FACILITIES, FACILITY_BY_ID, PROFESSIONS, APPROACHES, VISIT_COST } from '../../data/health/providers.js';
 import { CONDITION_BY_ID, MENTAL, nameIn } from '../../data/health/conditions.js';
 import { THERAPY_BY_ID } from '../../data/health/therapies.js';
+import { MED_BY_ID } from '../../data/health/medications.js';
 import { SYMPTOMS } from '../../data/health/symptoms.js';
 import { healthOf, presentConditions, diagnosisFor, note, activeDiagnoses } from './record.js';
 import { mayDiagnose, professionExists, canOffer, optionsFor } from './rules.js';
 import { now, seeded, charge, priceOf, rel, when, hashOf } from './util.js';
 import { dailyFunctioning } from './course.js';
+import { inHospital } from './hospital.js';
 import { healthMilestone } from './story.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
@@ -189,8 +191,10 @@ export function careHours(p = player()) {
 export function resolveAppointments(p = player()) {
   const h = healthOf(p);
   const out = [];
+  const away = inHospital(p);
   for (const a of h.appointments) {
     if (a.status !== 'booked' || a.wk > now(p)) continue;
+    if (away) { a.wk = away.endWk; continue; } // it waits until they are home
     const npc = store.state.npcs[a.providerId];
     if (!npc?.alive) { a.status = 'cancelled'; a.note = 'The clinician was no longer available.'; continue; }
     if (!turnsUp(p, a.kind === 'assessment' ? 0.04 : 0)) {
@@ -220,7 +224,7 @@ export const CONCERNS = {
   development: { label: 'Communication, senses and routines', groups: ['neurodev'], services: [['mental', 'psychologist'], ['private', 'psychologist'], ['hospital', 'paediatrician'], ['rehab', 'speech_therapist']] },
   learning: { label: 'Reading, writing or numbers', groups: ['neurodev'], services: [['learning', 'educational_psychologist'], ['private', 'psychologist']] },
   senses: { label: 'Hearing or sight', groups: ['sensory', 'genetic'], services: [['hospital', 'audiologist'], ['hospital', 'ophthalmologist']] },
-  body: { label: 'A physical health problem', groups: ['chronic', 'mobility', 'genetic'], services: [['primary', 'gp'], ['hospital', 'neurologist'], ['hospital', 'doctor']] },
+  body: { label: 'A physical health problem', groups: ['chronic', 'mobility', 'genetic'], services: [['primary', 'gp'], ['hospital', 'cardiologist'], ['hospital', 'oncologist'], ['hospital', 'neurologist'], ['hospital', 'doctor']] },
 };
 
 /** Where a concern can be taken now, with the wait and the price. */
@@ -297,8 +301,9 @@ export function assess(appt, p = player()) {
   const results = [];
   for (const { rec, label } of found) {
     const def = CONDITION_BY_ID[label];
+    stage(rec);
     const dx = { id: `dx_${appt.id}_${rec.conditionId}`, conditionId: label, underlyingId: rec.id, status: 'active', wk: now(p), providerId: doc.id,
-      name: nameIn(def, year), certainty: label !== rec.conditionId ? 'probable' : 'confirmed', reviewWk: now(p) + 26,
+      name: dxName(def, rec, year), certainty: label !== rec.conditionId ? 'probable' : 'confirmed', reviewWk: now(p) + 26,
       history: [{ wk: now(p), text: `Diagnosed by ${clinicianName(doc)} after an assessment.` }] };
     h.diagnoses.push(dx);
     rec.dx = 'diagnosed';
@@ -316,7 +321,8 @@ export function assess(appt, p = player()) {
       + (CONDITION_BY_ID[results[0].conditionId].neurotype ? ' It is a description of how your mind works, not something wrong with you.' : '');
     for (const d of results) healthMilestone(`Received a diagnosis: ${d.name}.`, { type: 'diagnosis', id: d.id }, p);
   } else if (refer.length) {
-    const to = refer.some((x) => ['bpd', 'bipolar_1', 'bipolar_2', 'schizophrenia', 'adhd', 'autism'].includes(x.conditionId)) ? 'psychiatrist' : 'psychologist';
+    const want = refer.map((x) => CONDITION_BY_ID[x.conditionId].diagnose.by.find((b) => b !== pro && professionExists(b) && b !== 'gp'))[0];
+    const to = want ?? (refer.some((x) => ['bpd', 'bipolar_1', 'bipolar_2', 'schizophrenia', 'adhd', 'autism'].includes(x.conditionId)) ? 'psychiatrist' : 'psychologist');
     (h.referrals ??= []).push({ concern: appt.concern, profession: to, wk: now(p), by: doc.id, status: 'open' });
     text = `${clinicianName(doc)} thinks this needs a specialist and has referred you to a ${PROFESSIONS[to].name.toLowerCase()}. You can book that now.`;
   } else if (wait.length) {
@@ -379,6 +385,60 @@ export function resolveSecondOpinion(appt, p = player()) {
   }
   dx.history.push({ wk: now(p), text: `Second opinion from ${clinicianName(doc)}: agreed.` });
   return `${clinicianName(doc)} agrees with the diagnosis, and says why. It helps to hear it twice.`;
+}
+
+/** A cancer's stage is fixed when it is found: the longer it went unnoticed, the further on. */
+function stage(rec) {
+  if (rec.conditionId !== 'cancer' || rec.stage) return;
+  rec.stage = Math.max(1, Math.min(4, 1 + Math.floor((now() - rec.onsetWk) / 45)));
+}
+const dxName = (def, rec, year) => `${nameIn(def, year)}${rec.stage ? ` (stage ${rec.stage})` : ''}`;
+
+/**
+ * A condition found by a clinician outside a booked assessment: in hospital
+ * after an emergency, by a GP after a scene, or at a check-up. Recorded with the
+ * clinician who found it.
+ */
+export function foundByDoctor(rec, defId, profession, p = player(), how = 'found') {
+  const h = healthOf(p);
+  if (diagnosisFor(rec, h)) return null;
+  const f = facilitiesHere(p).find((x) => x.defId === defId) ?? facilitiesHere(p).find((x) => x.defId === 'hospital');
+  const doc = f && (clinicianAt(f, profession) ?? clinicianAt(f, 'doctor') ?? clinicianAt(f, 'gp'));
+  const def = CONDITION_BY_ID[rec.conditionId];
+  if (!doc || !nameIn(def, store.state.year)) return null;
+  stage(rec);
+  const dx = { id: `dx_f_${rec.id}`, conditionId: rec.conditionId, underlyingId: rec.id, status: 'active', wk: now(p), providerId: doc.id,
+    name: dxName(def, rec, store.state.year), certainty: 'confirmed', reviewWk: now(p) + 26, history: [{ wk: now(p), text: `${how === 'screen' ? 'Found at a check-up' : 'Found'} by ${clinicianName(doc)}.` }] };
+  h.diagnoses.push(dx);
+  rec.dx = 'diagnosed';
+  note(rec, `Diagnosed as ${dx.name}.`);
+  joinCareTeam(doc, p);
+  return dx;
+}
+
+/**
+ * Screening at a check-up: high blood pressure and diabetes show up on routine
+ * tests; from fifty, some cancers are found early by screening programmes.
+ * Things a check-up finds that need a specialist become a referral.
+ * @returns {string[]} what was found, in plain words
+ */
+export function screen(p = player()) {
+  const h = healthOf(p);
+  const found = [];
+  for (const rec of presentConditions(h)) {
+    const def = CONDITION_BY_ID[rec.conditionId];
+    const s = def.diagnose.screen;
+    if (!s || diagnosisFor(rec, h) || (typeof s === 'number' && p.age < s) || store.state.year < 1960) continue;
+    if (rec.conditionId === 'cancer') {
+      if (!seeded('screen', p.id, rec.id, store.state.year).chance(0.45)) continue;
+      (h.referrals ??= []).push({ concern: 'body', profession: 'oncologist', wk: now(p), status: 'open' });
+      found.push('something on a screening test that a specialist should look at');
+      continue;
+    }
+    const dx = foundByDoctor(rec, 'primary', 'gp', p, 'screen');
+    if (dx) found.push(dx.name.toLowerCase());
+  }
+  return found;
 }
 
 // ---------- The care plan ----------
@@ -473,10 +533,12 @@ export function careOptions(dxId, p = player()) {
 /** A clinician who can prescribe for this condition: someone already caring for the player if possible. */
 export function prescriberFor(conditionId, p = player()) {
   const h = healthOf(p);
-  const need = conditionId === 'adhd' && p.age < 18 ? ['psychiatrist', 'paediatrician'] : ['bipolar_1', 'bipolar_2', 'schizophrenia', 'adhd'].includes(conditionId) ? ['psychiatrist']
-    : ['epilepsy'].includes(conditionId) ? ['neurologist'] : ['cystic_fibrosis', 'haemophilia_a'].includes(conditionId) ? ['doctor'] : ['psychiatrist', 'gp'];
+  // Professions that can prescribe something used for this condition; a child's ADHD is a specialist's.
+  const usable = Object.values(MED_BY_ID).filter((m) => m.uses[conditionId]);
+  let need = [...new Set(usable.flatMap((m) => m.by.filter((b) => (PROFESSIONS[b]?.prescribes ?? []).includes(m.family))))];
+  if (conditionId === 'adhd' && p.age < 18) need = need.filter((b) => b !== 'gp');
   const team = h.careTeam.map((id) => store.state.npcs[id]).filter((n) => n?.alive && !n.flags.clinician?.retired && need.includes(n.flags.clinician?.profession));
   if (team.length) return team[0];
-  for (const f of facilitiesHere(p)) for (const pro of need) { const d = clinicianAt(f, pro); if (d) return d; }
+  for (const pro of need) for (const f of facilitiesHere(p)) { const d = clinicianAt(f, pro); if (d) return d; }
   return null;
 }

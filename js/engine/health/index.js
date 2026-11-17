@@ -12,19 +12,22 @@
 // review, and an ended prescription is never charged again.
 import { store, player, log } from '../../state.js';
 import { CONDITION_BY_ID } from '../../data/health/conditions.js';
-import { healthOf, startCondition, migrateHealth } from './record.js';
+import { healthOf, startCondition, migrateHealth, absorbLegacy } from './record.js';
 import { WEEKS, now } from './util.js';
 import { resolveAppointments, assess, resolveSecondOpinion, tickClinicians, checkGoals, clinicianName } from './care.js';
 import { medWeek, review, considerStart, attendMonitoring, noticeBetterFit } from './meds.js';
 import { therapyWeek, setbacks } from './therapy.js';
-import { weekCourse, weekWellbeing, rollOnset, yearMood } from './course.js';
+import { weekCourse, weekWellbeing, rollOnset, yearMood, yearBody } from './course.js';
 import { tickPeopleHealth, legacySummary } from './story.js';
 import { genomeOf, bornWith } from './heredity.js';
+import { hospitalWeek } from './hospital.js';
+import { policyNow } from './insurance.js';
 
 /** One week of care for the player. */
 export function careWeek(p = player()) {
   const h = healthOf(p);
   const seen = [];
+  hospitalWeek(p);
   for (const a of resolveAppointments(p)) {
     let text = '';
     if (a.kind === 'assessment') text = assess(a, p).text;
@@ -78,6 +81,8 @@ export function nextCareWeek(p = player()) {
 export function finishCareYear(p = player()) {
   const h = healthOf(p);
   while (h.week < WEEKS) careWeek(p);
+  // The year turns straight after this (engine/yearProcessor.js): the calendar restarts at its first week.
+  h.week = 0;
 }
 
 /** After the year has turned: the calendar starts again, and the year's slower changes happen. */
@@ -86,8 +91,10 @@ export function healthYear(p = player()) {
   h.week = 0;
   rollOnset(p);
   yearMood(p);
+  yearBody(p);
   tickClinicians(p);
   tickPeopleHealth(p);
+  policyNow(p);
   const open = h.proposals.filter((x) => x.status === 'open');
   if (open.length) log(`${clinicianName(store.state.npcs[open[0].providerId])} is waiting to hear what you would like to do about your treatment. It is in My Health.`, 'system', 'neutral');
 }
@@ -106,6 +113,7 @@ export function healthAtBirth(state, custom) {
   try {
     const p = state.player;
     healthOf(p);
+    absorbLegacy(p); // born with weak lungs: asthma, in the health record
     for (const id of p.npcIds) genomeOf(state.npcs[id]);
     const g = genomeOf(p);
     const chosen = (custom?.conditions ?? []).filter((id) => BIRTH_CHOICES.includes(id));

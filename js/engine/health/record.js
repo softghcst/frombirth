@@ -15,7 +15,7 @@ export const SKILL_KEYS = ['mindfulness', 'distress', 'regulation', 'interperson
 /** A blank record. */
 export function blankHealth() {
   return {
-    v: 1, week: 0,
+    v: 2, week: 0,
     conditions: [], diagnoses: [], assessments: [], appointments: [], plans: [], therapies: [], trials: [], proposals: [],
     skills: Object.fromEntries(SKILL_KEYS.map((k) => [k, 0])),
     wellbeing: { stress: 30, sleep: 70, energy: 70, pain: 5 },
@@ -113,26 +113,41 @@ export const weekOfYear = () => healthOf().week ?? 0;
  */
 export function migrateHealth(state) {
   const p = state.player;
-  const fresh = !p.health;
-  if (!fresh && p.health.v >= 1) return;
+  if (p.health && p.health.v >= 2) return;
   const keep = store.state;
   store.state = state;
   try {
+    const first = !p.health;
     const h = healthOf(p);
-    for (const c of [...(p.conditions ?? [])]) {
-      const id = LEGACY_IDS[c.id];
-      if (!id) continue;
-      const rec = startCondition(id, { onsetAge: c.sinceAge, onsetWk: (p.birthYear + c.sinceAge) * WEEKS, severity: c.severity ?? 35, source: 'migrated',
-        note: 'Recorded before this save had a health record.' }, p);
-      h.diagnoses.push({ id: `dx_m_${rec.id}`, conditionId: id, underlyingId: rec.id, status: 'active', wk: rec.onsetWk, providerId: null,
-        name: CONDITION_BY_ID[id].name, certainty: 'recorded', migrated: true, history: [{ wk: rec.onsetWk, text: 'Carried over from an older save. No assessment details were kept.' }] });
-      rec.dx = 'diagnosed';
-      p.conditions = p.conditions.filter((x) => x !== c);
-    }
-    if ((p.birth ?? []).includes('dyslexia') && !p.flags.dyslexiaRestored) {
+    absorbLegacy(p);
+    if (first && (p.birth ?? []).includes('dyslexia') && !p.flags.dyslexiaRestored) {
       p.stats.intellect = Math.min(100, p.stats.intellect + 6);
       p.flags.dyslexiaRestored = true;
       startCondition('dyslexia', { onsetAge: 0, onsetWk: p.birthYear * WEEKS, showsAge: 6, severity: 35, source: 'migrated', note: 'Recorded at birth in an older save.' }, p);
     }
+    h.v = 2;
   } finally { store.state = keep; }
+}
+
+/**
+ * Moves conditions from the older yearly illness list into the health record:
+ * each becomes a recorded condition with a diagnosis marked as carried over (no
+ * clinician, assessment or treatment history is invented). One that was being
+ * treated keeps the benefit of that treatment until a care plan replaces it.
+ */
+export function absorbLegacy(p) {
+  const h = healthOf(p);
+  for (const c of [...(p.conditions ?? [])]) {
+    const id = LEGACY_IDS[c.id];
+    if (!id) continue;
+    const rec = startCondition(id, { onsetAge: c.sinceAge, onsetWk: (p.birthYear + c.sinceAge) * WEEKS, severity: c.severity ?? 35, source: 'migrated',
+      note: 'Recorded before this save had a health record.' }, p);
+    if (c.treated) rec.legacyManaged = true;
+    if (!h.diagnoses.some((d) => d.underlyingId === rec.id)) {
+      h.diagnoses.push({ id: `dx_m_${rec.id}`, conditionId: id, underlyingId: rec.id, status: 'active', wk: rec.onsetWk, providerId: null,
+        name: CONDITION_BY_ID[id].name, certainty: 'recorded', migrated: true, history: [{ wk: rec.onsetWk, text: `Carried over from before the health record.${c.treated ? ' It was being treated; the details were not kept.' : ''}` }] });
+    }
+    rec.dx = 'diagnosed';
+    p.conditions = p.conditions.filter((x) => x !== c);
+  }
 }

@@ -143,6 +143,16 @@ export default [
     ],
   },
   {
+    id: 'body_signs', category: 'health', ageRange: [18, 110], cooldown: 3, weight: 3,
+    requires: [need('healthSigns', 'has', 'chronic')],
+    text: 'Something about your body has not been right for a while: getting out of breath on the stairs, a tiredness that will not lift, or a change that has not gone away.',
+    choices: [
+      { label: 'Book an appointment with your doctor', outcomes: [any('You book it. The receptionist says you did the right thing calling.', 'good', health({ do: 'seek', concern: 'body' }))] },
+      { label: 'Mention it to someone close, who nags you into going', outcomes: [any('They nag. You go.', 'good', health({ do: 'seek', concern: 'body' }), st('mood', 2))] },
+      { label: 'Put it down to getting older', outcomes: [any('You carry on. It does not go away on its own.', 'neutral')] },
+    ],
+  },
+  {
     id: 'worry_signs', category: 'health', ageRange: [12, 95], cooldown: 4, weight: 3,
     requires: [need('healthSigns', 'has', 'anxiety')],
     text: 'The worry is there when you wake up and still there at night. You have started avoiding things, just in case.',
@@ -194,6 +204,8 @@ export default [
       { label: 'Reach out to someone you trust', outcomes: [any('You send the message. They call straight back.', 'good', st('mood', 6), health({ do: 'stress', delta: -8 }))] },
       { label: 'Use the plan you made for moments like this', requires: [need('inCare', '==', true)], outcomes: [any('You get the plan out, and do the first thing on it, then the next.', 'good',
         skill('distress', 'safety_plan', 'using your plan for hard moments', 2), st('mood', 4))] },
+      { label: 'Accept a short, voluntary stay in hospital if your team offers one', requires: [need('inCare', '==', true)], outcomes: [any('You pack a bag. It is calmer there than you expected, and people check on you without making a fuss.', 'good',
+        health({ do: 'admit', reason: 'voluntary' }), health({ do: 'stress', delta: -12 }))] },
       { label: 'Contact a crisis line', outcomes: [any('The person who answers is calm, and in no hurry. It helps more than you expected.', 'good', health({ do: 'stress', delta: -6 }))] },
     ],
   },

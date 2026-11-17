@@ -17,6 +17,8 @@ import { canOffer } from './rules.js';
 import { facility, facilitiesHere, facilityDef, clinicianAt, clinicianName, joinCareTeam, addComponent, setComponent, waitWeeks, turnsUp } from './care.js';
 import { now, seeded, charge, priceOf, rel, hashOf } from './util.js';
 import { healthMilestone } from './story.js';
+import { rehabProgress, inHospital, admit } from './hospital.js';
+import { cancerOutcome } from './course.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 export const DBT4 = DBT_MODULES.map((m) => m.id);
@@ -138,6 +140,8 @@ export function startTherapy({ therapyId, facilityId, providerId, dxId, need }, 
   };
   h.therapies.push(course);
   if (doc) joinCareTeam(doc, p);
+  // Most cancer treatment begins with surgery: a short planned stay.
+  if (t.id === 'cancer_treatment' && (h.conditions.find((x) => x.id === recIds[0])?.stage ?? 2) <= 3) { course.nextWk = Math.max(course.nextWk, now(p) + 2); admit('surgery', { conditionId: 'cancer' }, p); }
   if (group) { for (const id of group.facilitatorIds) joinCareTeam(store.state.npcs[id], p); }
   addComponent('therapy', course.id, t.name, conditionId ?? (recIds[0] ? h.conditions.find((c) => c.id === recIds[0])?.conditionId : null), dx?.id ?? null, p);
   const first = t.dbt && t.format !== 'group' ? 'The first sessions are about what you want from your life and whether DBT is the right fit.' : group ? `The group meets on ${group.day} ${group.evening ? 'evenings' : 'afternoons'}.` : '';
@@ -197,6 +201,7 @@ export function changeTherapist(id, p = player()) {
 export function therapyWeek(p = player()) {
   const h = healthOf(p);
   const w = now(p);
+  if (inHospital(p)) return; // sessions wait until they are home
   for (const c of h.therapies) {
     if (c.status !== 'active' || w < c.nextWk) continue;
     const t = THERAPY_BY_ID[c.therapyId];
@@ -243,6 +248,7 @@ function session(c, t, doc, p) {
   else if (t.id === 'dbt') { for (const k of DBT4) up(k, 1); const weakest = DBT4.reduce((a, b) => (sk[a] <= sk[b] ? a : b)); up(weakest, 1.2); }
   else for (const k of t.builds) up(k, 3);
   s.note = sessionNote(c, t, mod, p);
+  if (c.rehabGoals) { const g = rehabProgress(c, engage, p); const next = c.rehabGoals.find((x) => !x.metWk); s.note = g ? `Goal reached: ${g.text.toLowerCase()}.` : next ? `Working on: ${next.text.toLowerCase()}.` : s.note; }
   c.sessions.push(s);
   trim(c);
   // Module milestones: once a group has taught a module the player mostly attended, it is theirs.
@@ -256,6 +262,7 @@ function session(c, t, doc, p) {
   }
   if (c.attended >= t.sessions && c.status === 'active') {
     c.status = 'completed'; c.endWk = w;
+    if (t.id === 'cancer_treatment') for (const id of c.conditionIds) { const rec = h.conditions.find((x) => x.id === id); if (rec) cancerOutcome(rec, c, p); }
     c.history.push({ wk: w, text: 'Completed the course.' });
     setComponent(c.id, 'completed', 'Course completed.', p);
     log(`You finished ${t.name.toLowerCase()}${doc ? ` with ${clinicianName(doc)}` : ''}. What you practised there goes with you.`, 'system', 'good');

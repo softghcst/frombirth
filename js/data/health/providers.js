@@ -10,8 +10,8 @@
 
 export const PROFESSIONS = {
   gp: { name: 'General practitioner', title: 'Dr', from: 1800, career: 'Family doctor',
-    diagnoses: ['mood', 'anxiety', 'eating', 'chronic', 'sensory'], only: ['mdd', 'gad', 'panic', 'migraine', 'hearing_loss', 'low_vision', 'anorexia', 'bulimia', 'bed'],
-    prescribes: ['antidepressant', 'migraine'], qual: 'Medical degree, general practice training' },
+    diagnoses: ['mood', 'anxiety', 'eating', 'chronic', 'sensory'], only: ['mdd', 'gad', 'panic', 'migraine', 'hearing_loss', 'low_vision', 'anorexia', 'bulimia', 'bed', 'asthma', 'hypertension', 'type2_diabetes', 'back_pain'],
+    prescribes: ['antidepressant', 'migraine', 'asthma', 'diabetes', 'blood_pressure', 'cardiac'], qual: 'Medical degree, general practice training' },
   psychiatrist: { name: 'Psychiatrist', title: 'Dr', from: 1808, career: 'Psychiatrist',
     diagnoses: ['mood', 'anxiety', 'trauma', 'ocd', 'personality', 'eating', 'psychotic', 'neurodev'],
     prescribes: ['antidepressant', 'mood_stabiliser', 'antipsychotic', 'adhd'], qual: 'Medical degree, specialist psychiatry training' },
@@ -22,12 +22,16 @@ export const PROFESSIONS = {
     qual: 'Accredited psychotherapy training' },
   counsellor: { name: 'Counsellor', title: '', from: 1942, career: 'Counsellor', diagnoses: [], prescribes: [], qual: 'Counselling diploma' },
   social_worker: { name: 'Clinical social worker', title: '', from: 1920, career: 'Social worker', diagnoses: [], prescribes: [], qual: 'Social work degree, clinical licence' },
+  nurse: { name: 'Practice nurse', title: '', from: 1900, career: 'Nurse', diagnoses: [], prescribes: [], qual: 'Nursing degree' },
   psychiatric_nurse: { name: 'Mental health nurse', title: '', from: 1890, career: 'Nurse', diagnoses: [], prescribes: [], qual: 'Nursing degree, mental health specialism' },
   paediatrician: { name: 'Paediatrician', title: 'Dr', from: 1860, career: 'Paediatrician', diagnoses: ['neurodev', 'mobility', 'genetic'],
     prescribes: ['adhd'], qual: 'Medical degree, paediatric training' },
   neurologist: { name: 'Neurologist', title: 'Dr', from: 1860, career: 'Neurologist', diagnoses: ['chronic', 'mobility', 'genetic', 'neurodev'], only: ['epilepsy', 'migraine', 'tourette', 'cerebral_palsy', 'huntingtons'],
     prescribes: ['antiseizure', 'migraine', 'mood_stabiliser'], qual: 'Medical degree, neurology training' },
-  doctor: { name: 'Hospital doctor', title: 'Dr', from: 1800, career: 'Doctor', diagnoses: ['mobility', 'genetic', 'chronic'], prescribes: ['cf', 'factor'],
+  cardiologist: { name: 'Cardiologist', title: 'Dr', from: 1920, career: 'Cardiologist', diagnoses: ['chronic'], only: ['heart_disease', 'hypertension'],
+    prescribes: ['cardiac', 'blood_pressure'], qual: 'Medical degree, cardiology training' },
+  oncologist: { name: 'Oncologist', title: 'Dr', from: 1950, career: 'Oncologist', diagnoses: ['chronic'], only: ['cancer'], prescribes: [], qual: 'Medical degree, oncology training' },
+  doctor: { name: 'Hospital doctor', title: 'Dr', from: 1800, career: 'Doctor', diagnoses: ['mobility', 'genetic', 'chronic'], prescribes: ['cf', 'factor', 'asthma', 'diabetes', 'blood_pressure', 'cardiac'],
     qual: 'Medical degree' },
   educational_psychologist: { name: 'Educational psychologist', title: 'Dr', from: 1913, career: 'Educational psychologist',
     diagnoses: ['neurodev'], only: ['dyslexia', 'dyscalculia', 'dysgraphia'], prescribes: [], qual: 'Doctorate in educational psychology' },
@@ -53,7 +57,7 @@ export const APPROACHES = ['Warm and practical', 'Structured and goal-focused', 
  */
 export const FACILITIES = [
   { id: 'primary', name: (city) => `${city} Medical Practice`, kind: 'Primary care clinic', from: 1800, public: true,
-    staff: ['gp'], services: ['checkup', 'assessment', 'prescribing'], access: 0.7 },
+    staff: ['gp', 'nurse'], services: ['checkup', 'assessment', 'prescribing'], access: 0.7 },
   { id: 'mental', name: (city) => `${city} Community Mental Health Service`, kind: 'Mental health clinic', from: 1963, public: true,
     staff: ['psychiatrist', 'psychologist', 'psychiatric_nurse', 'therapist'], services: ['assessment', 'therapy', 'groups', 'prescribing'], access: 0.8, waits: 8 },
   { id: 'dbt', name: (city) => `${city} DBT Programme`, kind: 'DBT programme', from: 1995, public: true,
@@ -63,7 +67,7 @@ export const FACILITIES = [
   { id: 'psychiatry', name: (city) => `${city} Psychiatry Clinic`, kind: 'Psychiatry practice', from: 1900, public: false,
     staff: ['psychiatrist'], services: ['assessment', 'prescribing'], access: 0.6, fee: 1.5 },
   { id: 'hospital', name: (city) => `${city} General Hospital`, kind: 'Hospital', from: 1800, public: true,
-    staff: ['doctor', 'neurologist', 'paediatrician', 'ophthalmologist', 'ent', 'audiologist'], services: ['assessment', 'prescribing', 'specialist'], access: 0.9 },
+    staff: ['doctor', 'neurologist', 'paediatrician', 'ophthalmologist', 'ent', 'audiologist', 'cardiologist', 'oncologist'], services: ['assessment', 'prescribing', 'specialist', 'admission'], access: 0.9 },
   { id: 'rehab', name: (city) => `${city} Rehabilitation Centre`, kind: 'Rehabilitation centre', from: 1945, public: true,
     staff: ['physiotherapist', 'occupational_therapist', 'speech_therapist'], services: ['therapy'], access: 1 },
   { id: 'learning', name: (city) => `${city} Learning Support Service`, kind: 'Educational assessment service', from: 1950, public: true,
@@ -74,4 +78,4 @@ export const FACILITIES = [
 export const FACILITY_BY_ID = Object.fromEntries(FACILITIES.map((f) => [f.id, f]));
 
 /** What a single appointment costs before cover, in base units. */
-export const VISIT_COST = { assessment: 350, review: 120, monitoring: 90, checkup: 200, prescription: 25 };
+export const VISIT_COST = { assessment: 350, review: 120, monitoring: 90, checkup: 200, prescription: 25, hospitalWeek: 3500 };
