@@ -39,6 +39,7 @@ import { tickRoyalEducation } from './royaled.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
+import { finishCareYear, healthYear } from './health/index.js';
 import { rollDeath, die } from './death.js';
 import { drawEvents } from './eventEngine.js';
 
@@ -57,6 +58,8 @@ export function advanceYear() {
   const p = player();
   if (!p.alive) return;
 
+  // The care calendar runs out the weeks left in this year before it turns.
+  finishCareYear(p);
   p.age += 1;
   if (p.age === 100) { milestone('Turned 100.', 'life'); log('You are 100 years old. A card arrives from the head of state, and the local paper sends a photographer.', 'system', 'good'); }
   if (p.age === 110) milestone('Turned 110.', 'life');
@@ -77,6 +80,7 @@ export function advanceYear() {
   if (roadDeath) { die(roadDeath); return; }
   tickFinance();
   tickHealth();
+  healthYear(p);
   tickPrison();
   tickSocial();
   tickIdentity();

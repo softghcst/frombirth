@@ -2,6 +2,7 @@
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
 import { rule, may } from './rules.js';
+import { studyBarrier } from './health/access.js';
 import { tuitionFactor } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, uid, localWage, localCost } from '../util.js';
@@ -258,6 +259,8 @@ function yearGpa(p) {
   const marked = SCHOOL.includes(e.stage) ? sch.markYear() : null;
   const raw = p.stats.intellect * 0.55 + p.hidden.discipline * 0.15 + e.effort * 0.3;
   let g = marked ?? raw / 25 + rng.around(0, 0.3) - e.absences * 0.12;
+  // Barriers, not ability: unmet support needs and a hard stretch for concentration. Accommodations remove them.
+  if (marked == null) g -= studyBarrier(p);
   if (hasMajor(e.stage)) g -= (MAJOR_BY_ID[e.majorId]?.difficulty ?? 0.3) * (e.stage === 'community' ? 0.5 : 1);
   if (e.stage === 'university' && uniOf(e.schoolId)?.strong.includes(e.majorId)) g += 0.1;
   if (!isHigher(e.stage) && p.age >= 12) g += PRIORITY_BY_ID[e.priority]?.gpa ?? 0;

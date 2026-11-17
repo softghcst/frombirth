@@ -1,6 +1,7 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
 import { hiringClimate, layoffChance } from './economy.js';
+import { workBarrier } from './health/access.js';
 import { payK } from './cities.js';
 import { rule, may } from './rules.js';
 import { residency } from './citizenship.js';
@@ -565,7 +566,7 @@ export function tickCareer() {
   // How the year went
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : 0;
   c.performance = clamp(Math.round(c.performance + (55 - c.performance) * 0.25
-    + (p.hidden.discipline - 50) / 12 + craft + rng.int(-6, 6)));
+    + (p.hidden.discipline - 50) / 12 + craft + rng.int(-6, 6) - workBarrier(p)));
   if (career.skill === 'tripleThreat') for (const k of ['singing', 'dance', 'acting']) p.talents[k] = clamp(p.talents[k] + 1);
   else if (career.skill?.startsWith('talents.')) { const k = career.skill.slice(8); p.talents[k] = clamp(p.talents[k] + 1); }
   p.stats.mood = clamp(p.stats.mood - Math.round(career.stress * 1.5));

@@ -13,6 +13,7 @@ import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, rollBir
   applyMods, unknownParent } from './genetics.js';
 import { SCHEMA_VERSION } from '../save.js';
 import { rollLongevity } from './death.js';
+import { healthAtBirth } from './health/index.js';
 import { normalize, skinDepth, INHERITED_KEYS } from '../avatar/catalog.js';
 import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
 import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
@@ -204,5 +205,7 @@ export function createLife(opts = {}) {
     ...(seat ? { dynasties: { [c.id]: seat.dynasty } } : {}),
   };
   if (seat) dress(seat.dynasty, state);
+  // Genomes for the family and the child, and what the child is born with (not yet recognised by anyone).
+  healthAtBirth(state, opts.health);
   return state;
 }

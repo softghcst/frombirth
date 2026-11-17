@@ -1,6 +1,7 @@
 // Mortality maths and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
 import { COUNTRIES } from '../data/countries.js';
+import { publicMilestones } from './health/story.js';
 import { settleEstate } from './currency.js';
 import { rng } from '../rng.js';
 import { styledName } from './royalty.js';
@@ -321,7 +322,7 @@ export function die(cause) {
     spouseName: spouse ? `${spouse.firstName} ${spouse.lastName}` : null,
     lifetimeEarned: p.finance.lifetimeEarned,
     estate: plan,
-    milestones: p.milestones,
+    milestones: publicMilestones(p.milestones),
     counters: p.counters,
     generation: p.generation,
     continuedAs: null,

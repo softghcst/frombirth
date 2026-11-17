@@ -22,6 +22,9 @@ import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
 import { attractedTo } from './identity.js';
 import { passOn } from './edlegacy.js';
+import { genomeOf } from './health/heredity.js';
+import { npcHealth } from './health/story.js';
+import { heirHealth, legacySummary } from './health/index.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -73,7 +76,9 @@ function asAncestor(old, role, year) {
     alive: false, role, meters: { relationship: 80, money: 50, crazy: old.hidden.crazy, intellect: old.stats.intellect,
       charm: old.stats.charm, health: 0, generosity: 50 },
     appearance: cloneAppearance(old.appearance), traits: [...old.traits], occupation: (old.career.title ?? 'retired').toLowerCase(),
-    talents: { ...old.talents }, lastInteractionAge: -1, flags: { diedYear: year } };
+    talents: { ...old.talents }, lastInteractionAge: -1, flags: { diedYear: year, ancestor: true },
+    // What a descendant may know of their health: shared conditions and inherited ones, never notes or prescriptions.
+    genome: old.genome, health: legacySummary(old) };
 }
 
 /** Turns someone with a life of their own into a parent of the heir. */
@@ -85,7 +90,7 @@ function asParent(n, step) {
   n.strictness ??= rng.int(25, 75);
   n.occupation ??= 'retired';
   delete n.life;
-  if (step) n.flags.title = byGender(n, 'Stepfather', 'Stepmother', 'Step-parent');
+  if (step) { n.flags.title = byGender(n, 'Stepfather', 'Stepmother', 'Step-parent'); n.flags.step = true; }
 }
 
 /**
@@ -156,6 +161,8 @@ export function continueAs(npcId) {
 
   // Family, re-drawn around the heir.
   const npcs = {};
+  // Genomes and health are worked out in the old life, where the family is known.
+  genomeOf(op); genomeOf(h); npcHealth(h);
   const ancestor = asAncestor(op, h.role === 'child' ? 'parent' : 'grandparent', old.year);
   npcs[ancestor.id] = ancestor;
   for (const [id, role] of Object.entries(roles)) {
@@ -229,6 +236,7 @@ export function continueAs(npcId) {
     rngSeed: rng.state(), settings: old.settings ?? { theme: 'auto' },
   };
   store.state = next;
+  heirHealth(next, h);
 
   // An heir who was living in another country carries on there.
   const abroad = typeof h.flags.abroad === 'string' && COUNTRIES[h.flags.abroad] ? h.flags.abroad : null;

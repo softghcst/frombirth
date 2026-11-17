@@ -8,6 +8,7 @@ import { rule, may } from './rules.js';
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
+import { HEALTH_PATHS } from './health/story.js';
 
 /** Singing, dance and acting together. The weakest of the three drags it down. */
 export function tripleThreat(p = player()) {
@@ -75,6 +76,7 @@ export function remember(npc, key, text) {
 export function resolve(path, cast = {}) {
   const p = player();
   if (SPECIAL[path]) return SPECIAL[path](p);
+  if (HEALTH_PATHS[path]) return HEALTH_PATHS[path](p);
   const parts = path.split('.');
   if (SPECIAL[parts[0]]) return parts.slice(1).reduce((o, k) => (o == null ? undefined : o[k]), SPECIAL[parts[0]](p)) ?? null;
   if (parts[0] === 'cast' || parts[0] === 'memory') {

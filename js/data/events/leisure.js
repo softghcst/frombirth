@@ -25,7 +25,7 @@ export default [
       { label: 'Tell someone how bad it is', outcomes: [any('Saying it out loud does not fix it. It does make it something two people know about.', 'good', st('mood', 9), hid('willpower', 2))] },
       { label: 'Push through on your own', check: chk(0.35, { 'hidden.willpower': 0.8 }), outcomes: [
         ok('Slowly, without any one day you could point to, it lifts.', st('mood', 6)),
-        bad('It settles in. A doctor would call it depression.', cond('depression'), st('mood', -5)),
+        bad('It settles in, and it does not lift.', cond('depression'), st('mood', -5)),
       ] },
       { label: 'Stay in bed', outcomes: [any('The days run together.', 'bad', cond('depression'), st('health', -3))] },
     ],

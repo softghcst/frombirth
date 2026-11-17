@@ -39,12 +39,14 @@ export function roleLabel(npc) {
       : byGender(npc, 'Boyfriend', 'Girlfriend', 'Partner');
     case 'ex': return npc.flags.wasSpouse ? byGender(npc, 'Ex-husband', 'Ex-wife', 'Ex-spouse') : 'Ex';
     case 'pet': return `Pet ${npc.species}`;
+    case 'clinician': return npc.occupation ?? 'Clinician';
+    case 'groupmate': return 'From your group';
     default: return npc.role.charAt(0).toUpperCase() + npc.role.slice(1);
   }
 }
 
 const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 3,
-  spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3 };
+  spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2 };
 
 export const removeNpc = (npc) => {
   const p = player();
@@ -131,6 +133,8 @@ export function basicActions(npc) {
   const a = [];
   if (p.age >= 3) a.push({ id: 'spendTime', label: npc.role === 'pet' ? 'Play together' : 'Spend time' });
   if (npc.role === 'pet') { if (p.age >= 4) a.push({ id: 'treat', label: 'Give a treat' }); return a; }
+  // A clinician is a professional relationship: care happens in My Health, not over coffee.
+  if (npc.role === 'clinician') return [];
   if (p.age >= 4 && npc.age >= 2) a.push({ id: 'talk', label: 'Have a conversation' });
   if (p.age >= 5 && npc.age >= 3) a.push({ id: 'compliment', label: 'Compliment' });
   if (p.age >= 6) a.push({ id: 'gift', label: 'Give a gift' });

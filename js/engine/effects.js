@@ -14,6 +14,7 @@ import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { addCondition, cureCondition } from './health.js';
+import { healthEffect } from './health/story.js';
 import { remember } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
 import { hitProperty } from './realEstate.js';
@@ -184,6 +185,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (p.career.partTime) p.career.partTime.salary = Math.round(p.career.partTime.salary * e.delta);
         break;
       case 'condition': addCondition(e.value); break;
+      case 'health': { const n = healthEffect(e.value, ctx); if (n) ctx.note = ctx.note ? `${ctx.note} ${n}` : n; break; }
       case 'cure': cureCondition(e.value); break;
       case 'gpa':
         p.education.gpa = Math.round(clamp(p.education.gpa + e.delta, 0, 4) * 100) / 100;

@@ -6,7 +6,7 @@ import { ILLNESS_BY_ID } from '../js/data/illnesses.js';
 
 const EFFECTS = new Set(['parent', 'royalEd', 'campus', 'school', 'abroad', 'kin', 'govt', 'scandal', 'leader', 'stat', 'hidden', 'talent', 'cash', 'relationship', 'flag', 'addNpc', 'removeNpc', 'condition', 'cure',
   'gpa', 'legal', 'followers', 'counter', 'milestone', 'death', 'memory', 'queue', 'partTimeScale', 'tag', 'feud', 'perf', 'pay',
-  'fired', 'promoted', 'npcSet', 'moveCity', 'property', 'vehicle', 'sellInvestments', 'prison', 'giveVehicle', 'npcTransition', 'image', 'meetRoyal', 'honour', 'approval', 'reelect', 'ousted', 'resignOffice', 'rivalry', 'rivalEnd', 'family', 'press', 'story', 'coolStory', 'kinOut', 'support', 'vote', 'exile', 'restore', 'abdicate']);
+  'fired', 'promoted', 'npcSet', 'moveCity', 'property', 'vehicle', 'sellInvestments', 'prison', 'giveVehicle', 'npcTransition', 'image', 'meetRoyal', 'honour', 'approval', 'reelect', 'ousted', 'resignOffice', 'rivalry', 'rivalEnd', 'family', 'press', 'story', 'coolStory', 'kinOut', 'support', 'vote', 'exile', 'restore', 'abdicate', 'health']);
 const problems = [];
 const ids = new Set();
 const allIds = new Set(EVENTS.map((e) => e.id));
@@ -29,6 +29,7 @@ for (const ev of EVENTS) {
         if (!EFFECTS.has(e.type)) at(`unknown effect "${e.type}"`);
         if (e.type === 'condition' && !ILLNESS_BY_ID[e.value]) at(`unknown condition "${e.value}"`);
         if (e.type === 'queue' && !allIds.has(e.value)) at(`queues unknown scene "${e.value}"`);
+        if (e.type === 'health' && !['note', 'skill', 'stress', 'seek', 'sensitive'].includes(e.value?.do)) at(`unknown health action "${e.value?.do}"`);
       }
       for (const [, key] of `${ev.text} ${c.label} ${o.text}`.matchAll(/\{([a-zA-Z]+)\}/g)) {
         if (!ev.queuedOnly && !ev.castGiven && !['name', 'city', 'pm', 'pmTitle', 'law'].includes(key) && !cast.has(key) && !added.has(key)) at(`text uses {${key}} with nobody cast as it`);

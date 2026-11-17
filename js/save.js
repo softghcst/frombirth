@@ -3,6 +3,7 @@ import { rng } from './rng.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
+import { migrateHealth } from './engine/health/record.js';
 
 export const SCHEMA_VERSION = 1;
 const K_INDEX = 'pathways.index';
@@ -57,6 +58,8 @@ function migrate(state) {
   rename(pl, pl.countryId);
   for (const l of pl.locations ?? []) rename(l, l.countryId);
   for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
+  // Lives saved before the health record: conditions carried over, nothing invented.
+  migrateHealth(state);
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

@@ -1,0 +1,73 @@
+// Experiences, in the words of the person having them. A symptom is never a
+// diagnosis: each lists the different things it can come from, and the
+// assessment engine has to tell them apart (engine/health/care.js).
+//
+// `domains` say which part of daily life the experience bears on. The same
+// experience arising from two conditions is counted once (engine/health/course.js).
+
+/** Explanations that are not conditions at all. */
+export const ORDINARY = {
+  sleep_debt: 'not getting enough sleep',
+  stress: 'a stressful stretch of life',
+  grief: 'grief',
+  physical: 'a physical health problem',
+};
+
+export const SYMPTOMS = {
+  low_mood: { label: 'Feeling low most days', domains: ['mood'], from: ['mdd', 'pdd', 'bipolar_1', 'bipolar_2', 'bed', 'grief', 'stress'] },
+  lost_interest: { label: 'Little pleasure in things you used to enjoy', domains: ['mood', 'social'], from: ['mdd', 'pdd', 'schizophrenia'] },
+  sleep_change: { label: 'Sleep that has changed', domains: ['sleep'], from: ['mdd', 'pdd', 'gad', 'ptsd', 'bipolar_1', 'bipolar_2', 'sleep_debt', 'stress'] },
+  low_energy: { label: 'Very little energy', domains: ['energy'], from: ['mdd', 'pdd', 'anorexia', 'schizophrenia', 'cystic_fibrosis', 'sleep_debt', 'physical'] },
+  poor_concentration: { label: 'Finding it hard to concentrate', domains: ['focus'], from: ['mdd', 'gad', 'adhd', 'schizophrenia', 'huntingtons', 'sleep_debt', 'stress'] },
+  appetite_change: { label: 'Eating more or less than usual', domains: ['energy'], from: ['mdd', 'stress'] },
+  self_critical: { label: 'Being very hard on yourself', domains: ['mood'], from: ['mdd', 'pdd'] },
+  racing_thoughts: { label: 'Thoughts that will not slow down', domains: ['sleep', 'focus'], from: ['bipolar_1', 'bipolar_2', 'gad'] },
+  mood_episodes: { label: 'Long stretches of very different moods', domains: ['mood', 'sleep'], from: ['bipolar_1', 'bipolar_2'] },
+  worry: { label: 'Worry that is hard to put down', domains: ['mood', 'sleep'], from: ['gad', 'panic', 'ocd', 'agoraphobia', 'stress'] },
+  restlessness: { label: 'Restlessness', domains: ['focus'], from: ['gad', 'adhd'] },
+  tension: { label: 'Feeling tense', domains: ['pain'], from: ['gad', 'social_anxiety', 'stress'] },
+  social_fear: { label: 'Dreading being watched or judged', domains: ['social'], from: ['social_anxiety'] },
+  avoidance: { label: 'Avoiding places or situations', domains: ['social'], from: ['social_anxiety', 'panic', 'agoraphobia', 'specific_phobia', 'ptsd'] },
+  panic_attacks: { label: 'Sudden waves of intense fear', domains: ['mood'], from: ['panic', 'agoraphobia'] },
+  specific_fear: { label: 'A strong fear of one particular thing', domains: ['social'], from: ['specific_phobia'] },
+  intrusive_memories: { label: 'Memories that arrive uninvited', domains: ['sleep', 'mood'], from: ['ptsd'] },
+  on_edge: { label: 'Being on edge', domains: ['sleep'], from: ['ptsd', 'gad'] },
+  intrusive_thoughts: { label: 'Unwanted thoughts that will not leave', domains: ['focus', 'mood'], from: ['ocd'] },
+  compulsions: { label: 'Things that feel as though they have to be done', domains: ['focus'], from: ['ocd'] },
+  emotional_intensity: { label: 'Feelings that arrive strongly and fast', domains: ['mood'], from: ['bpd'] },
+  regulation_difficulty: { label: 'Finding strong feelings hard to settle', domains: ['mood', 'social'], from: ['bpd'] },
+  abandonment_fear: { label: 'Fear of being left', domains: ['social'], from: ['bpd'] },
+  self_image_shifts: { label: 'A sense of self that shifts', domains: ['mood'], from: ['bpd'] },
+  impulsivity: { label: 'Acting quickly, then wishing you had waited', domains: ['focus'], from: ['bpd', 'adhd'] },
+  relationship_strain: { label: 'Relationships that feel intense', domains: ['social'], from: ['bpd'] },
+  food_preoccupation: { label: 'Thinking about food a great deal', domains: ['energy', 'mood'], from: ['anorexia', 'bulimia', 'bed'] },
+  body_image_distress: { label: 'Distress about your body', domains: ['mood'], from: ['anorexia', 'bulimia'] },
+  shame: { label: 'Shame', domains: ['mood'], from: ['bulimia', 'bed'] },
+  unusual_perceptions: { label: 'Perceptions other people do not share', domains: ['focus', 'social'], from: ['schizophrenia'] },
+  withdrawal: { label: 'Pulling back from people', domains: ['social'], from: ['schizophrenia', 'mdd'] },
+  attention_regulation: { label: 'Attention that goes where it likes', domains: ['focus'], from: ['adhd', 'sleep_debt'] },
+  executive_load: { label: 'Plans, deadlines and paperwork that pile up', domains: ['focus'], from: ['adhd', 'mdd'] },
+  time_blindness: { label: 'Time that slips away', domains: ['focus'], from: ['adhd'] },
+  sensory_differences: { label: 'Noise, light or textures that are a lot', domains: ['sensory'], from: ['autism'] },
+  social_communication_difference: { label: 'A different way of communicating', domains: ['social'], from: ['autism'] },
+  routine_preference: { label: 'Things going better when they are predictable', domains: ['focus'], from: ['autism'] },
+  deep_interests: { label: 'Deep, absorbing interests', domains: [], from: ['autism'] },
+  reading_effort: { label: 'Reading taking more effort than for others', domains: ['study'], from: ['dyslexia'] },
+  number_effort: { label: 'Numbers taking more effort than for others', domains: ['study'], from: ['dyscalculia'] },
+  writing_effort: { label: 'Handwriting taking more effort than for others', domains: ['study'], from: ['dysgraphia'] },
+  language_effort: { label: 'Finding words and following talk taking effort', domains: ['study', 'social'], from: ['dld'] },
+  learning_pace: { label: 'Learning at your own pace', domains: ['study'], from: ['intellectual'] },
+  daily_living_support: { label: 'Some everyday tasks going better with help', domains: ['access'], from: ['intellectual'] },
+  tics: { label: 'Tics', domains: ['social'], from: ['tourette'] },
+  hearing: { label: 'Hearing differently', domains: ['access'], from: ['deaf', 'hearing_loss'] },
+  sight: { label: 'Seeing differently', domains: ['access'], from: ['blind', 'low_vision', 'lhon'] },
+  mobility: { label: 'Getting around on wheels or with support', domains: ['access'], from: ['cerebral_palsy', 'spinal_cord_injury'] },
+  mobility_some: { label: 'Doing some things differently with your body', domains: ['access'], from: ['limb_difference'] },
+  seizures: { label: 'Seizures', domains: ['energy'], from: ['epilepsy'] },
+  headaches: { label: 'Severe headaches', domains: ['pain'], from: ['migraine'] },
+  breathing: { label: 'Breathing that takes work', domains: ['energy'], from: ['cystic_fibrosis'] },
+  movement: { label: 'Movements that are hard to control', domains: ['access'], from: ['huntingtons'] },
+  bleeding: { label: 'Bleeding that is slow to stop', domains: ['pain'], from: ['haemophilia_a'] },
+  colours: { label: 'Some colours looking alike', domains: [], from: ['colour_vision'] },
+  reach: { label: 'A world built for taller people', domains: ['access'], from: ['achondroplasia'] },
+};

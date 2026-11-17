@@ -18,6 +18,7 @@
 // People: classmates are NPCs with role 'classmate' and flags.schoolId. Teachers are NPCs
 // with role 'mentor', flags.tag 'teacher', flags.teaches (a subject), flags.style and flags.skill.
 import { rng } from '../rng.js';
+import { studyBarrier } from './health/access.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -365,6 +366,8 @@ export function markYear() {
   const tutored = p.flags.tutorAge === p.age - 1;
   const weakest = tutored ? live.reduce((w, sub) => ((e.subjects[sub.id].g ?? 2) < (e.subjects[w.id].g ?? 2) ? sub : w), live[0]) : null;
   const staff = teachers();
+  // What gets in the way of showing what a pupil knows (never what they are able to learn).
+  const barrier = studyBarrier(p);
   let sum = 0;
   const done = [];
   for (const sub of live) {
@@ -375,7 +378,7 @@ export function markYear() {
     const club = (sub.club ?? []).some((id) => e.clubs.includes(id));
     const f = { ability: clamp(natural + (e.aptitude[sub.id] ?? 0)), effort: e.effort, discipline: p.hidden.discipline, interest: rec.interest, absences: e.absences,
       teaching: kind.teach + (kind.favours?.includes(sub.id) ? 0.15 : 0) + (s.kind === 'public' ? s.funding ?? funding(s.countryId) : 0) + (t ? (t.flags.skill - 50) / 200 + (t.meters.relationship - 50) / 400 : 0),
-      focus: e.focus === sub.id ? 1 : 0, support: (weakest?.id === sub.id ? 0.5 : 0) + exam.add - advancedPenalty(sub.id), luck: (rng.next() * 2 - 1) * 0.25 };
+      focus: e.focus === sub.id ? 1 : 0, support: (weakest?.id === sub.id ? 0.5 : 0) + exam.add - advancedPenalty(sub.id) - barrier, luck: (rng.next() * 2 - 1) * 0.25 };
     const y = yearMark(f);
     rec.y = y;
     rec.g = carry(rec.g, y);
