@@ -280,6 +280,8 @@ The multipliers are rough estimates for play, not statistics.
 - **Crises end, and new ones begin.** A war can end in a ceasefire, a collapsed economy can recover, and an unstable country
   can slide into rationing or runaway prices. Everything that read a country's crisis before (the ban on leaving a country at
   war, the protection route, prices, approval of the government) now reads the world as it is in this life.
+  Rarely, armed conflict breaks out in a country that is already deeply unstable. It is reported as conflict within that
+  country, never as one named country attacking another: the game does not invent wars between real nations.
 - **The news** records all of it, with changes of law. **World news** (Self tab) lists what touches you first: where you
   live, where you were born, countries you are a citizen of, and where your family and property are. Only those reach the
   journal.

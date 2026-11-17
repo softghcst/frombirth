@@ -117,7 +117,7 @@ shown on its profile.
   birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
   conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.
 - The moving world (`js/data/economy.js`) is fiction with invented odds. An economy has three states and no numbers behind
-  them (no growth, unemployment or interest rates). Wars can end but never begin. Stability, safety and the other living
+  them (no growth, unemployment or interest rates). Wars can end, and can begin (rarely, and only within a country whose stability is very low; no war is ever between two named countries). Stability, safety and the other living
   scores do not change. Only the player's country of residence feels its economy; other countries' phases are news, and
   nudge where people move and what currencies do. Elections abroad are not simulated. People who move are named in the
   journal but have no city, visa or job search of their own.
