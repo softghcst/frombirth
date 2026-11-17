@@ -216,6 +216,7 @@ function employ(b, n, wageK) {
   n.occupation = car.levels[0].title.toLowerCase();
   if (n.role === 'colleague') n.flags.title = `Works for you at ${b.name}`;
   n.flags.employeeOf = b.id;
+  if (b.countryId !== p.countryId) n.flags.abroad = b.countryId; // they live where the business is
   n.flags.workedWith = b.name;
   n.lastInteractionAge = p.age;
   if (!e.staff.includes(n.id)) e.staff.push(n.id);
@@ -668,9 +669,10 @@ export function tickBusinesses() {
  * without them, and pays out across the border; one without is wound up.
  * @returns {string[]} journal lines
  */
-export function onEmigrate() {
+export function onEmigrate(destId = null) {
   const lines = [];
   for (const b of openBusinesses()) {
+    if (b.countryId === destId) { lines.push(`You are moving to where ${b.name} is. You can work in it yourself again.`); continue; }
     if (managerOf(b)) { b.ownerHours = 0; lines.push(`${managerOf(b).firstName} will run ${b.name} while you are abroad. What it pays you will be changed into the money of wherever you live.`); }
     else lines.push(close(b).text);
   }

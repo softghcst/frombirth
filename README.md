@@ -462,6 +462,11 @@ they hold, which passports they carry, what a border asks of them, and whether t
   country (ask them to come, which is their decision and their permission; move to them, which is your application; visit; let it be);
   going home after ten years away when a parent there is growing old; retiring near a child abroad, or somewhere warmer and cheaper.
   A "yes" is an application or a draft trip, never an approval.
+- **Businesses abroad** (`js/engine/businessAbroad.js`, on the business engine): start a business in another country without moving
+  (a manager runs it from the start; the money is changed at today's rate), or open a branch of an established business abroad,
+  paid from its own account. Each keeps its accounts in local money and pays its tax there; what it pays the owner is changed and
+  taxed where the owner lives, once. Owning one gives no right to live there: after a year of trading with staff, the business-owner
+  route opens (an application; a permission renewed while the business trades, permanent after five years).
 - **Qualifications abroad** (`js/engine/credentials.js`): sixteen regulated careers (medicine, dentistry, pharmacy, nursing and
   midwifery, physiotherapy, veterinary work, law, teaching, chartered accountancy and engineering, electrical and plumbing work,
   airline flying) are practiced only where the qualification is recognized. Where someone trained, or has practiced, counts; anywhere

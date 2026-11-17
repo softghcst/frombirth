@@ -25,6 +25,8 @@ import { avatarSvg } from './avatar.js';
 import { cover as healthCover } from '../engine/systems.js';
 import { getEra } from '../engine/history.js';
 import * as creds from '../engine/credentials.js';
+import * as bizAbroad from '../engine/businessAbroad.js';
+import * as bizEngine from '../engine/business.js';
 const regFor = (q) => creds.REGULATED[q.careerId] ?? {};
 import { COORDINATES } from '../data/coordinates.js';
 
@@ -273,6 +275,25 @@ export function openExplore(api, start = {}) {
             ${q.here ? '' : `<small>${esc(q.open ? (q.open.status === 'pending' ? `With ${q.body}: decided when the year turns.` : `Adaptation year with ${q.body}.`) : q.mutual ? `Under the ${q.mutual}, ${q.body} registers it on application.` : `${q.body.replace(/^./, (x) => x.toUpperCase())} decides: a full license, a supervised year${regFor(q).exam ? ' and an exam' : ''}, or a refusal. ${q.language.needed ? `They ask for the language at level ${q.language.needed}; you have ${Math.round(q.language.have)}.` : ''}`)}</small>
             ${q.open ? '' : btn(`Apply for recognition (${money(q.fee)})`, `data-recognize="${q.profession}"`, 'small')}`}</div>`).join('')}
             <p class="muted">Game rules, the same everywhere; real recognition differs by profession and country.</p>` : ''; })()}</div>
+        ${(() => {
+          const mine = bizAbroad.businessesAbroad();
+          const types = bizEngine.startOptions().filter((t) => !t.solo);
+          const bt = ui.bizType ?? types.find((t) => !t.block)?.id ?? types[0]?.id;
+          const bc = ui.bizCountry ?? null;
+          const city = bc ? (ui.bizCity && COUNTRIES[bc].cities.includes(ui.bizCity) ? ui.bizCity : capitalCity(bc)) : null;
+          const block = bc ? bizAbroad.abroadBlock(bt, bc) : '';
+          const q = bc && !block ? bizAbroad.quoteAbroad(bt, bc, city) : null;
+          const home = bizEngine.openBusinesses().filter((b) => b.countryId === p.countryId && b.reputation >= 60 && bizEngine.managerOf(b));
+          return `<div class="card"><h3>Business abroad</h3>
+            ${mine.length ? mine.map((b) => kvt(`${b.name}, ${b.city}`, `${nameOf(b.countryId)} · ${b.staff} staff${b.manager ? ` · run by ${b.manager}` : ''}${b.profit != null ? ` · last year ${b.profit >= 0 ? 'profit' : 'loss'} ${fmtMoney(Math.abs(b.profit), COUNTRIES[b.countryId])}` : ''}`)).join('') : '<p class="muted">You own no business abroad.</p>'}
+            <div class="section-label">Start one in another country</div>
+            <label class="field">Kind <select data-bizf="bizType">${types.map((t) => `<option value="${t.id}" ${t.id === bt ? 'selected' : ''} ${t.block ? 'disabled' : ''}>${esc(t.name)}${t.block ? ` (${esc(t.block)})` : ''}</option>`).join('')}</select></label>
+            <label class="field">Country <select data-bizf="bizCountry"><option value="">Choose…</option>${COUNTRY_LIST.filter((c) => c.id !== p.countryId).sort((a, b2) => a.name.localeCompare(b2.name)).map((c) => `<option value="${c.id}" ${bc === c.id ? 'selected' : ''}>${c.flag} ${esc(c.name)}</option>`).join('')}</select></label>
+            ${bc ? `<label class="field">City <select data-bizf="bizCity">${COUNTRIES[bc].cities.map((c) => `<option ${c === city ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>` : ''}
+            ${block ? `<p class="muted">${esc(block)}</p>` : q ? `<p class="muted">About ${esc(money(q.fromCash))} of your money (${esc(fmtMoney(q.total, COUNTRIES[bc]))} there): the premises, the registration, and a manager's first months. Its accounts are kept and taxed there. It gives no right to live there.</p>${btn('Open it', `data-bizstart="${bt}" data-bizcountry="${bc}" data-bizcity="${esc(city)}"`, 'small')}` : ''}
+            ${home.length ? `<div class="section-label">A branch abroad</div>${home.map((b) => `<p>${esc(b.name)}: ${bc ? btn(`Open a branch in ${city}`, `data-bizbranch="${b.id}" data-bizcountry="${bc}" data-bizcity="${esc(city)}"`, 'small') : '<small class="muted">Choose a country above.</small>'}</p>`).join('')}` : ''}
+            <p class="muted">Owning a business abroad gives no right to live there. After a year of trading with staff, the business-owner route opens: an application like any other.</p></div>`;
+        })()}
         <div class="card"><h3>Citizenship pathways</h3><p class="muted">${esc(cit.naturalisation(p).possible ? 'You can apply for citizenship where you live (Passport & Documents).' : cit.naturalisation(p).why)} Permanent residence is not citizenship; marriage shortens the wait and grants nothing by itself.</p></div>
         ${cases.filter((a) => !live.includes(a)).length ? `<div class="card"><h3>Earlier applications</h3>${cases.filter((a) => !live.includes(a)).map((a) => kvt(`${nameOf(a.jurisdictionId)}, ${a.submittedYear}`, `${a.routeName}: ${STATUS[a.used ? 'used' : a.status]}`)).join('')}</div>` : ''}`;
     },
@@ -470,6 +491,8 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-applymove]'))) { const r = reloc.applyToMove(ui.dest, x.dataset.applymove); return tell(r); }
       if ((x = t('[data-ask]'))) return tell(move.askToCome(x.dataset.ask));
       if ((x = t('[data-recognize]'))) return tell(creds.applyRecognition(x.dataset.recognize));
+      if ((x = t('[data-bizstart]'))) { if (await confirmModal({ title: 'Open a business abroad?', body: 'The money goes now. A manager runs it; you own it from here.', yes: 'Open it' })) return tell(bizAbroad.startAbroad(x.dataset.bizstart, x.dataset.bizcountry, x.dataset.bizcity)); return undefined; }
+      if ((x = t('[data-bizbranch]'))) return tell(bizAbroad.openBranchAbroad(x.dataset.bizbranch, x.dataset.bizcountry, x.dataset.bizcity));
       if ((x = t('[data-complete]'))) { if (await confirmModal({ title: 'Make the move?', body: 'This is the move itself: your home changes, and your old life stays where it is.', yes: 'Move' })) return tell(reloc.completeMove(x.dataset.complete)); return undefined; }
       if ((x = t('[data-residence]'))) return go('residence', { id: x.dataset.residence });
       if (t('[data-story]')) return go('story', {});
@@ -508,6 +531,7 @@ export function openExplore(api, start = {}) {
         else if (el.value) reloc.arrange(id, { [arr]: el.value });
         return changed();
       }
+      if (el.dataset.bizf) { ui[el.dataset.bizf] = el.value || null; return render(modal.el.scrollTop); }
       const sf = el.dataset.sf;
       if (sf) { ui[sf] = el.value === '' ? null : (['from', 'to'].includes(sf) ? Number(el.value) : el.value); ui.marker = null; return render(modal.el.scrollTop); }
       return undefined;

@@ -27,6 +27,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { FREE_MOVEMENT, WANTED, ROUTE } from '../data/immigration.js';
 import { held, issuer, rightToLive, residency } from './citizenship.js';
 import { visaEdge } from './languages.js';
+import { ownerRoute } from './businessAbroad.js';
 import { eraOf } from './documents.js';
 
 const has = (p, t) => p.education.degrees.some((d) => d.type === t);
@@ -98,6 +99,11 @@ export function routes(destId, p = player()) {
     eligible: p.age >= 18, why: 'You must be an adult.',
     chance: 0.3 + (has(p, 'university') ? 0.2 : 0) + (['medical', 'law', 'graduate', 'doctorate'].some((t) => has(p, t)) ? 0.1 : 0) + (has(p, 'apprenticeship') || has(p, 'cosmetology') ? 0.1 : 0)
       + (p.career.careerId ? 0.1 : 0) + (p.age <= 35 ? 0.05 : p.age >= 50 ? -0.1 : 0) + lang + crime, status: 'permanent_resident' });
+
+  // Owning a business there: only through this route, an application like any other (engine/businessAbroad.js).
+  const owner = ownerRoute(destId, p);
+  add('business', 'As a business owner', 'For owners of a business there that has traded for a year and employs people. You may work in your own business. Owning one gives no right to live there by itself.', {
+    eligible: p.age >= 18 && owner.eligible, why: owner.why, chance: 0.8 + lang + crime, status: 'worker', years: 3 });
 
   // Retirement: for people with a pension or savings to live on, who will not work there.
   const income = (p.career.pensionPerYear ?? 0) + (p.finance.pension ?? 0) / 20;
@@ -173,6 +179,9 @@ export function tickStatus() {
   if (r.status === 'student') {
     if (p.education.enrolled) return renew(1, 'Your student visa was extended while you finish your course.');
     if (p.career.careerId) { r.status = 'worker'; r.workAuthorized = true; delete r.postStudy; return renew(ROUTE.workYears - 1, 'Your employer sponsored you: your student visa became a work visa.'); }
+  } else if (r.status === 'worker' && r.route === 'business') {
+    // A business owner's permission lasts while the business trades; after five years it can become permanent, like work.
+    if (ownerRoute(p.countryId, p).eligible) return lived >= ROUTE.settledAfter ? permanent(`After ${lived} years running your business here you qualified to stay for good.`) : renew(3, 'Your business-owner permission was renewed.');
   } else if (r.status === 'worker') {
     if (p.career.careerId) return lived >= ROUTE.settledAfter ? permanent(`After ${lived} years of work here you qualified to stay for good.`) : renew(3, 'Your work visa was renewed.');
   } else if (r.status === 'retiree') {

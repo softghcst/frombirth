@@ -204,7 +204,7 @@ export function emigrate(countryId, opts = {}) {
   if (p.career.careerId) quitCareer();
   if (p.career.partTime) p.career.partTime = null;
   if (p.career.sides) p.career.sides = []; // part-time work is local
-  for (const l of leaveBusinesses()) log(l); // a business with a manager carries on; one without is wound up
+  for (const l of leaveBusinesses(to.id)) log(l); // a business with a manager carries on; one without is wound up
   leaveForPrison();
   const there = new Set(livingNpcs().filter((n) => n.flags.abroad === to.id).map((n) => n.id)); // already living where the player is going
   const coming = new Set(household(opts.forced ? null : to.id).map((n) => n.id));
@@ -281,7 +281,7 @@ export function emigrate(countryId, opts = {}) {
   const met = [...there].map((id) => store.state.npcs[id]).filter((n) => n?.alive && ['spouse', 'partner', 'parent', 'child', 'sibling'].includes(n.role)).map((n) => n.firstName);
   const back = kept.filter((a) => a.countryId === to.id).length;
   const left = kept.length - back;
-  const granted = { retire: `Your retirement visa came through, for ${route?.years} years. It does not allow work. `, free: 'You needed no visa. ', family: 'Your family visa came through. ', work: `An employer sponsored you: a work visa for ${route?.years} years. `, study: `Your student visa came through, for ${route?.years} years. You may not work full-time on it. `,
+  const granted = { business: `Your business-owner permission came through, for ${route?.years} years: you may live here and work in your own business. `, retire: `Your retirement visa came through, for ${route?.years} years. It does not allow work. `, free: 'You needed no visa. ', family: 'Your family visa came through. ', work: `An employer sponsored you: a work visa for ${route?.years} years. `, study: `Your student visa came through, for ${route?.years} years. You may not work full-time on it. `,
     invest: 'Your investor visa came through. ', protection: `You were given protection for ${route?.years} years. ` }[route?.id] ?? 'Your visa came through. ';
   const text = `${opts.family ? 'Your parents had decided, and that was that. ' : opts.forced ? '' : rightToLive(to.id, p) ? 'As a citizen you needed no visa. ' : granted}${opts.family ? 'The family moved to' : 'You moved to'} ${p.city}, ${theCountry(to.name)}${who.length ? `, with ${who.join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}. `
     + `${met.length ? `${met.join(', ').replace(/, ([^,]*)$/, ' and $1')} ${met.length === 1 ? 'was' : 'were'} there to meet you. ` : ''}${job}`

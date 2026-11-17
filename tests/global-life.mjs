@@ -552,6 +552,47 @@ let moved;
 }
 
 {
+  // Part 34: a business abroad. Owning one gives no right to live there; the business-owner route is an application.
+  const ba = await import('../js/engine/businessAbroad.js');
+  const bz = await import('../js/engine/business.js');
+  p = life('us', 40, 400000, 'Austin');
+  const fx = (p.finance.fxLog ?? []).length;
+  const r1 = ba.startAbroad('cafe', 'mx', 'Guadalajara', 'Café Austin');
+  const cafe = bz.business(r1.business?.id);
+  check(r1.ok && cafe.countryId === 'mx' && cafe.ownerHours === 0 && bz.managerOf(cafe) && p.countryId === 'us', `a café opened in Guadalajara from Austin, run by a manager (${r1.text.slice(0, 60)})`);
+  check((p.finance.fxLog ?? []).length === fx + 1, 'paid for at today\'s rate, with the exchange written down');
+  check(bz.managerOf(cafe).flags.abroad === 'mx', 'its manager lives in Mexico');
+  check(!cit.rightToLive('mx', p) && docs.entryRule(p, 'mx').kind !== 'resident' && !imm.routes('mx').find((r) => r.id === 'business').eligible, 'owning it gives no right to live there, and the owner route waits for a year of trading');
+  check(!ba.startAbroad('cleaning', 'mx').ok, 'a business that is the owner\'s own work cannot be run from abroad');
+  bz.hire(cafe, 0);
+  for (let i = 0; i < 2; i++) { cafe.cash += 200000; year(); p.finance.cash += 1e6; }
+  check(cafe.status === 'open' && cafe.years >= 1, `the café trades (${cafe.status}, ${cafe.years} years)`);
+  const pays = bz.payouts().find((x) => x.source === `biz:${cafe.id}`);
+  check(!pays || pays.gross < cafe.payout || COUNTRIES.mx.currency.scale <= COUNTRIES.us.currency.scale, 'what it pays its owner arrives changed into dollars');
+  if (bz.headcount(cafe) < 2) bz.hire(cafe, null);
+  const route = imm.routes('mx').find((r) => r.id === 'business');
+  check(route.eligible && route.status === 'worker', `after a year with staff, the business-owner route opens (${route.why})`);
+  let app;
+  for (let i = 0; i < 10 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); const a = reloc.applyToMove('mx', 'business', 'Guadalajara'); if (a.ok) app = a.app; year(); p.finance.cash += 1e6; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); }
+  check(app?.status === 'approved', 'the application is approved');
+  reloc.arrange(app.id, { housing: 'rent', money: 0, travel: 'plane', animals: 'leave' });
+  docs.applyPassport(p.id, 'us');
+  const mv = reloc.completeMove(app.id);
+  check(mv.ok && p.residency?.route === 'business' && p.residency.workAuthorized && !cit.held(p).includes('mx'), `moved to run it: a business-owner permission, not citizenship (${mv.text.slice(0, 60)})`);
+  check(bz.business(cafe.id).countryId === p.countryId, 'the café is a business at home now');
+  // A branch abroad, paid from the business's own money.
+  p = life('fr', 45, 400000, 'Lyon');
+  bz.start('bakery', 'Maison Lyon');
+  const bk = bz.openBusinesses()[0];
+  bz.hire(bk, 0); bz.setManager(bk, bz.staffOf(bk)[0].npc.id); bk.reputation = 70; bk.cash += 3000000;
+  const before = bk.cash;
+  const br = ba.openBranchAbroad(bk.id, 'jp', 'Tokyo');
+  const branch = br.business;
+  check(br.ok && branch.countryId === 'jp' && branch.parentId === bk.id && bk.cash < before && branch.cash > 0, 'Maison Lyon opens in Tokyo, paid from its own account');
+  check(bz.openBusinesses().filter((b) => b.name.startsWith('Maison Lyon')).length === 2 && !cit.rightToLive('jp', p), 'two businesses, two sets of accounts, and still no right to live in Japan');
+  section('Part 34: a café in Guadalajara owned from Austin, a branch in Tokyo; owning gives no papers, the owner route is an application');
+}
+{
   // Part 33: a regulated profession needs its qualification recognized where it is practiced.
   const cred = await import('../js/engine/credentials.js');
   const { unmet } = await import('../js/engine/career.js');

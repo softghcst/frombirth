@@ -179,7 +179,7 @@ export function completeMove(caseId, p = player()) {
   if (open.length) return result(false, `Not yet: ${open[0].label.toLowerCase()}.`, 'neutral');
   const a = app.arrangements;
   const r = emigrate(app.jurisdictionId, { route: app.routeId, city: app.city, keep: a.money ?? 0, shipVehicles: a.shipVehicles !== false, animals: a.animals ?? 'bring', grant: app,
-    reason: { work: 'for a job', study: 'to study', family: 'to be with family', invest: 'to invest', settle: 'to settle', retire: 'to retire', right: 'home, as a citizen', free: 'under free movement', protection: 'for protection' }[app.routeId] });
+    reason: { business: 'to run the business', work: 'for a job', study: 'to study', family: 'to be with family', invest: 'to invest', settle: 'to settle', retire: 'to retire', right: 'home, as a citizen', free: 'under free movement', protection: 'for protection' }[app.routeId] });
   if (!r.ok) return r;
   app.used = true;
   app.movedYear = store.state.year;
