@@ -8,6 +8,7 @@
 //
 // The world also changes its own laws, slowly (tickRules), so a long life
 // does not end under the laws it began with.
+import { pastLaw, historyHolds, worldYear } from './history.js';
 import { rng } from '../rng.js';
 import { theCountry } from '../util.js';
 import { store, player } from '../state.js';
@@ -33,6 +34,14 @@ export function source(id, placeId = here(), opts = {}) {
   if (!def) throw new Error(`Unknown rule: ${id}`);
   const enacted = book()[placeId]?.[id];
   if (enacted) return { value: enacted.value, source: 'enacted', year: enacted.year, by: enacted.by };
+  const now = modernSource(id, placeId, opts, def);
+  // Historical Eras: before a law changed, the old law applies (data/history.js).
+  const past = pastLaw(id, placeId, worldYear(), now.value);
+  return past ? { value: past.value, source: past.note } : now;
+}
+
+/** Today's law, through its layers (default, parent state, place, region). */
+function modernSource(id, placeId, opts, def) {
   const me = store.state?.player;
   const region = opts.region !== undefined ? opts.region : placeId === me?.countryId ? me.regionId ?? regionOf(placeId, me.city) : null;
   const local = region ? REGION_RULES[`${placeId}/${region}`]?.[id] : undefined;
@@ -91,7 +100,7 @@ export function sheet(placeId = here(), opts = {}) {
     const s = source(id, placeId, opts);
     const up = parentOf(placeId);
     return { id, name: def.name, value: s.value, text: WORDS(def, s.value), source: s.source,
-      note: s.source === 'enacted' ? `changed in ${s.year}` : s.source === 'parent' ? `as in ${theCountry(COUNTRIES[up].name)}` : s.source === 'region' ? 'local law' : '' };
+      note: s.source === 'enacted' ? `changed in ${s.year}` : s.source === 'parent' ? `as in ${theCountry(COUNTRIES[up].name)}` : s.source === 'region' ? 'local law' : s.source === 'history' ? 'the law of the time' : s.source === 'era' ? 'the usual law of the period' : '' };
   });
 }
 
@@ -185,7 +194,9 @@ export function tickRules() {
   const placeId = rng.chance(REFORM.homeBias) ? p.countryId : rng.pick(COUNTRY_LIST).id;
   const options = reformsFor(placeId);
   if (!options.length) return null;
-  const [id, value] = rng.pick(options);
+  const open = options.filter(([id]) => !historyHolds(id, placeId));
+  if (!open.length) return null;
+  const [id, value] = rng.pick(open);
   // Where this life has a political world for the country, a government does not pass what it opposes.
   const w = store.state.polities?.[placeId];
   const lead = w?.parties?.find((x) => x.id === w.govt?.lead);

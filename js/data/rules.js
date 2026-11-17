@@ -32,6 +32,11 @@ export const RULES = {
     words: { equal: 'Protected in law', limited: 'Limited protection', hostile: 'Against the law, or close to it' } },
   deathPenalty: { name: 'Death penalty', kind: 'flag', default: false, from: 'deathPenalty', words: ['Not used', 'In use'] },
   conscription: { name: 'Military service', kind: 'flag', default: false, from: 'conscription', words: ['Voluntary', 'Compulsory'] },
+  // Historical Eras: laws that today are settled everywhere in the game, but once were not (see data/history.js).
+  womenVote: { name: 'Women\'s vote', kind: 'flag', default: true, words: ['Men only', 'Everyone'] },
+  marriageBar: { name: 'Married women in teaching and public service', kind: 'flag', default: false, words: ['Allowed', 'Must leave on marrying'] },
+  womenInLaw: { name: 'Women in the legal profession', kind: 'flag', default: true, words: ['Not admitted', 'Admitted'] },
+  womenInUniform: { name: 'Women in the police, fire service and armed forces', kind: 'flag', default: true, words: ['Not taken', 'Taken'] },
 };
 
 /** Where a place differs from the default. Unverified. */

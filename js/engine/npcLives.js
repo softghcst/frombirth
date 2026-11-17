@@ -5,6 +5,8 @@
 // Each person keeps a `life` record and a `life.history` timeline. Big moments
 // in close family also reach the player's journal, and a few ask the player
 // to respond (see data/events/familyLives.js).
+import { careerBlock, careerExists, eraTitle, worldYear, majorOpen, universityAccess } from './history.js';
+import { rule as lawRule } from './rules.js';
 import { rng } from '../rng.js';
 import * as kid from './kidschool.js';
 import { showMark } from './grades.js';
@@ -108,12 +110,14 @@ function careersFor(npc) {
   if ((t.singing ?? 0) >= 78) stage.push('singer');
   if ((t.sports ?? 0) >= 82 && npc.age <= 26) stage.push('athlete');
   const wantsIt = npc.life.aspiration?.id === 'stage' || e.majorId === 'musical_theatre' || e.majorId === 'theatre';
-  if (stage.length && rng.chance(wantsIt ? 0.85 : 0.06)) return stage.map((id) => CAREER_BY_ID[id]);
+  const stageOpen = stage.filter((id) => careerExists(id, worldYear()));
+  if (stageOpen.length && rng.chance(wantsIt ? 0.85 : 0.06)) return stageOpen.map((id) => CAREER_BY_ID[id]);
 
   const has = (d) => e.degrees.includes(d);
   const usesTrade = (c) => c.req?.trade === e.trade || (c.doors ?? []).some((d) => d.trade && d.trade === e.trade);
   const open = CAREERS.filter((c) => {
     const r = c.req ?? {};
+    if (careerBlock(c, npc, worldYear(), (id) => lawRule(id, typeof npc.flags?.abroad === 'string' ? npc.flags.abroad : store.state.player.countryId))) return false;
     if (c.category === 'performing') return false;
     if (c.type === 'military' && !rng.chance(0.08)) return false;
     if (r.programme && !has(r.programme)) return false;
@@ -144,7 +148,7 @@ function startJob(npc, quiet = false) {
   const career = back ?? rng.pick(options);
   const rung = back ? Math.max(0, last.level - 1) : career.type === 'fulltime' && career.doors?.some((d) => d.trade === npc.life.edu.trade) ? 1 : 0;
   const level = career.levels[rung];
-  npc.life.job = { careerId: career.id, level: rung, title: level.title, salary: bandPay(level, rng.next() * 0.6), years: 0 };
+  npc.life.job = { careerId: career.id, level: rung, title: eraTitle(career.id, rung, worldYear()) ?? level.title, salary: bandPay(level, rng.next() * 0.6), years: 0 };
   npc.occupation = level.title.toLowerCase();
   if (!quiet) note(npc, `started work as ${an(npc.occupation)}`, npc.life.worked ? false : true);
   npc.life.worked = true;
@@ -167,7 +171,7 @@ function tickJob(npc, quiet = false) {
   });
   if (next && able && job.years >= level.years && rng.chance(0.18 + npc.meters.intellect / 500)) {
     job.level += 1;
-    job.title = next.title;
+    job.title = eraTitle(job.careerId, job.level, worldYear()) ?? next.title;
     job.salary = Math.max(Math.round(job.salary * 1.08), bandPay(next, 0.2));
     job.years = 0;
     npc.occupation = next.title.toLowerCase();

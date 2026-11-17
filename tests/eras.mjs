@@ -90,6 +90,64 @@ section('Transitions');
   check(store.state.era.transitions.some((t) => t.to === 'now'), 'and lives on into Modern Day');
 }
 
+// ---------- Phase 3: careers ----------
+section('Careers');
+{
+  const { CAREER_BY_ID, CAREERS } = await import('../js/data/careers.js');
+  const { unmet, hire } = await import('../js/engine/career.js');
+  const { OCCUPATIONS } = await import('../js/data/traits.js');
+  const ready = (p) => { p.education.enrolled = false; p.education.stage = 'none'; p.education.degrees = [{ type: 'high', gpa: 3.5, age: 18 }, { type: 'university', majorId: 'computer_science', gpa: 3.5, age: 22 }]; p.stats.intellect = 90; p.flags.livesWithParents = false; };
+  const p = life({ born: 1878, age: 22 });
+  ready(p);
+  check(store.state.year === 1900 && unmet(CAREER_BY_ID.software).includes('There is no such job yet.'), 'no software engineers in 1900');
+  check(unmet(CAREER_BY_ID.influencer).some((x) => /does not exist|no such job/.test(x)), 'no social media career in 1900');
+  check(!unmet(CAREER_BY_ID.office).some((x) => /no such job/.test(x)) && !unmet(CAREER_BY_ID.teacher).some((x) => /no such job/.test(x)), 'clerks and teachers exist');
+  hire(CAREER_BY_ID.office, 0, 60);
+  check(p.career.title === 'Junior clerk', `an office job in 1900 is a clerk's job (${p.career.title})`);
+  const parentJobs = Object.values(store.state.npcs).filter((n) => n.role === 'parent').map((n) => n.occupation);
+  check(!parentJobs.includes('software engineer'), `parents had jobs of their time (${parentJobs.join(', ')})`);
+  grow(25); // 1925
+  check(store.state.year === 1925 && unmet(CAREER_BY_ID.software).includes('There is no such job yet.'), 'still no programmers in 1925');
+  const kept = p.career.history.concat(p.career.careerId ? [{ title: p.career.title }] : []).map((h) => h.title);
+  check(kept.some((t) => /clerk/i.test(t)), 'a clerk taken on in 1900 keeps the title it had');
+  grow(37); // 1962
+  check(!unmet(CAREER_BY_ID.software).includes('There is no such job yet.'), 'computer jobs exist by the 1960s');
+  const npcJobs = Object.values(store.state.npcs).map((n) => n.life?.job).filter(Boolean);
+  check(npcJobs.length > 0, `people in this life have jobs (${npcJobs.length})`);
+}
+{
+  const { CAREER_BY_ID } = await import('../js/data/careers.js');
+  const { unmet } = await import('../js/engine/career.js');
+  const p = life({ born: 1880, age: 0, countryId: 'us' });
+  grow(20); // 1900
+  const old = Object.values(store.state.npcs).filter((n) => n.life?.job).map((n) => n.life.job.careerId);
+  check(!old.includes('software') && !old.includes('influencer'), 'nobody around a life in 1900 works in software or social media');
+  check(old.every((id) => id !== 'bridal' && id !== 'sfx'), 'or in jobs invented later');
+}
+{
+  const { CAREER_BY_ID } = await import('../js/data/careers.js');
+  const { unmet } = await import('../js/engine/career.js');
+  const p = life({ born: 1880, age: 30, countryId: 'uk', gender: 'female' });
+  p.education.enrolled = false; p.education.degrees = [{ type: 'high', gpa: 3.5, age: 18 }, { type: 'university', majorId: 'english', gpa: 3.5, age: 22 }, { type: 'law', gpa: 3.5, age: 25 }];
+  check(store.state.year === 1910 && unmet(CAREER_BY_ID.lawyer).some((x) => /not admitted to practise law/.test(x)), 'in 1910 a British woman could not practise law');
+  const husband = makeNpc({ role: 'spouse', countryId: 'uk', age: 32 }); store.state.npcs[husband.id] = husband; p.npcIds.push(husband.id);
+  check(unmet(CAREER_BY_ID.teacher).some((x) => /married women are not allowed/.test(x)), 'and a married woman could not keep a teaching post');
+  check(!unmet(CAREER_BY_ID.office).some((x) => /married women|admitted/.test(x)), 'but other work was open to her');
+  grow(15); // 1925
+  check(!unmet(CAREER_BY_ID.lawyer).some((x) => /not admitted/.test(x)), 'by 1925 women could practise law in the UK');
+  grow(25); // 1950
+  check(!unmet(CAREER_BY_ID.teacher).some((x) => /married women/.test(x)), 'and after 1945 married women could teach');
+}
+{
+  const { OCCUPATIONS } = await import('../js/data/traits.js');
+  check(H.parentOccupations(2026) === OCCUPATIONS, 'in the present, parents\' occupations are exactly today\'s list');
+  const modern = life({ born: 2026, age: 0 });
+  const { CAREERS } = await import('../js/data/careers.js');
+  const { unmet } = await import('../js/engine/career.js');
+  modern.age = 30; modern.education.degrees = [{ type: 'high', gpa: 3, age: 18 }];
+  check(CAREERS.every((c) => !unmet(c).includes('There is no such job yet.')), 'in Modern Day every career exists, as before');
+}
+
 console.log(`${passed.length} checks passed.`);
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(` - ${x}`); process.exit(1); }
 console.log('The eras hold together.');

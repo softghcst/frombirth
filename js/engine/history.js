@@ -99,12 +99,16 @@ export function currencyFor(countryId, year, money = 'era') {
  * Sets every country's currency for a year. Amounts in the game are always in the
  * money of the year being played; this keeps formatting and prices in step.
  */
+let syncedYear = MODERN_YEAR;
+/** The year the world's currencies were last set for (character creation reads it before a life exists). */
+export const worldYear = () => syncedYear;
 export function syncWorld(year, money = 'era') {
+  syncedYear = year;
   for (const c of COUNTRY_LIST) c.currency = currencyFor(c.id, year, money);
   hooks.onSync?.();
 }
 /** Back to today's money (for the title screen, where saves of different years are listed). */
-export function resetWorld() { for (const c of COUNTRY_LIST) c.currency = { ...MODERN[c.id], historical: false }; hooks.onSync?.(); }
+export function resetWorld() { syncedYear = MODERN_YEAR; for (const c of COUNTRY_LIST) c.currency = { ...MODERN[c.id], historical: false }; hooks.onSync?.(); }
 /** Lets the currency module know when currencies change (it keeps its own table of codes). */
 export const hooks = { onSync: null };
 
@@ -117,7 +121,7 @@ const AT_MOST_MODERN = new Set(['schoolLeavingAge']);
  * What the law was in a place in a year, if history says it differed from today's;
  * undefined when today's law applies. `modern` is today's value (for defaults that only
  * apply to some modern values).
- * @returns {{value:any, note:'history'|'default'}|undefined}
+ * @returns {{value:any, note:'history'|'era'}|undefined}
  */
 export function pastLaw(ruleId, placeId, year, modern) {
   if (year >= MODERN_YEAR) return undefined;
@@ -132,7 +136,7 @@ export function pastLaw(ruleId, placeId, year, modern) {
   // The shared default for being gay only makes things harsher than today, never kinder.
   if (ruleId === 'lgbt' && !own && ['hostile', 'limited', 'equal'].indexOf(hit.value) > ['hostile', 'limited', 'equal'].indexOf(modern)) return undefined;
   if (AT_MOST_MODERN.has(ruleId) && hit.value > modern) return undefined;
-  return { value: hit.value, note: own ? 'history' : 'default' };
+  return { value: hit.value, note: own ? 'history' : 'era' };
 }
 /** True while history fixes this law for the place: the world's own reforms leave it alone until then. */
 export const historyHolds = (ruleId, placeId, year = store.state?.year ?? MODERN_YEAR) => pastLaw(ruleId, placeId, year, null) !== undefined;
