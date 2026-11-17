@@ -56,6 +56,7 @@ export const SKILLS = [
   { id: 'mandarin', group: 'language', name: 'Mandarin', minAge: 5, stat: 'intellect' },
   { id: 'german', group: 'language', name: 'German', minAge: 5, stat: 'intellect' },
   { id: 'korean', group: 'language', name: 'Korean', minAge: 5, stat: 'intellect' },
+  { id: 'portuguese', group: 'language', name: 'Portuguese', minAge: 5, stat: 'intellect' },
   { id: 'arabic', group: 'language', name: 'Arabic', minAge: 5, stat: 'intellect' },
   { id: 'sign_language', group: 'language', name: 'Sign language', minAge: 5, stat: 'intellect' },
 ];
@@ -72,5 +73,6 @@ export const SPOKEN = {
   mandarin: ['cn', 'sg', 'tw'],
   german: ['de', 'ch', 'at'],
   korean: ['kr'],
+  portuguese: ['pt', 'br', 'ao'],
   arabic: ['sa', 'ae', 'qa', 'kw', 'eg', 'jo', 'ma', 'dz', 'tn', 'iq', 'lb', 'sy', 'dj'],
 };

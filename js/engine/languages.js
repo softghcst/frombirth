@@ -21,6 +21,8 @@ export function speaks(countryId, p = player()) {
   const list = languagesOf(countryId);
   if (!list.length) return null;
   if (p.birthCountryId === countryId) return 100;
+  // The same language is spoken where they were born: a Brazilian in Portugal, an Austrian in Germany.
+  if (list.some((id) => languagesOf(p.birthCountryId).includes(id))) return 100;
   return Math.max(...list.map((id) => level(p, id)));
 }
 /** In words, for the screens. */

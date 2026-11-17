@@ -15,7 +15,7 @@ const C = (id, name, flag, code, symbol, scale, incomeTax, estateTax, cities, m 
 
 const LIST = [
   C('us', 'United States', '🇺🇸', 'USD', '$', 1, 0.24, 0.20,
-    ['New York', 'Chicago', 'Austin', 'Seattle', 'Atlanta', 'Denver'],
+    ['New York', 'Chicago', 'Austin', 'Seattle', 'Atlanta', 'Denver', 'Orlando'],
     'James Marcus Ethan Caleb Diego Tyler Owen Andre Noah Wesley',
     'Olivia Hannah Maya Jasmine Claire Sofia Naomi Paige Riley Tessa',
     'Carter Nguyen Brooks Ramirez Sullivan Patel Hayes Coleman Whitfield Ortiz Bennett Okafor'),

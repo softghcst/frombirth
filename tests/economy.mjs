@@ -1,4 +1,5 @@
 // Checks the world that moves by itself: economies, crises, news, and people who move. Run with: node tests/economy.mjs
+import { ROOTS } from '../js/data/economy.js';
 import { store } from '../js/state.js';
 import { rng } from '../js/rng.js';
 import { createLife } from '../js/engine/characterGen.js';
@@ -14,6 +15,7 @@ import { makeNpc } from '../js/engine/npcFactory.js';
 import { profile } from '../js/engine/world.js';
 
 rng.seed(90210);
+ROOTS.parentFromAbroad = 0; // these checks are about plain families; families with roots abroad are tested in world-scenarios.mjs
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
@@ -92,7 +94,7 @@ section('news: everything is recorded; the journal carries only what touches the
 
 // 7. People move.
 let left = 0; let back = 0; let near = 0; let minors = 0;
-for (let k = 0; k < 12; k++) {
+for (let k = 0; k < 30; k++) {
   p = life(k % 2 ? 've' : 'pl', 30);
   for (let i = 0; i < 6; i++) { const n = makeNpc({ role: i % 2 ? 'friend' : 'sibling', countryId: p.countryId, age: 25 + i }); n.meters.relationship = 80; store.state.npcs[n.id] = n; p.npcIds.push(n.id); }
   const kid = makeNpc({ role: 'child', countryId: p.countryId, age: 3 }); store.state.npcs[kid.id] = kid; p.npcIds.push(kid.id);
@@ -101,7 +103,7 @@ for (let k = 0; k < 12; k++) {
   left += (j.match(/has moved to (?!.*nearer)/g) ?? []).length; back += (j.match(/has come home/g) ?? []).length; near += (j.match(/nearer to you/g) ?? []).length;
   for (const n of Object.values(store.state.npcs)) check(!n.flags.abroad || (typeof n.flags.abroad === 'string' && !!COUNTRIES[n.flags.abroad] && n.flags.abroad !== p.countryId), 'someone is abroad in the country the player lives in, or nowhere');
 }
-check(left >= 6 && left <= 60, `some brothers, sisters and friends move abroad (${left} in twelve lives of fourteen years)`);
+check(left >= 6 && left <= 150, `some brothers, sisters and friends move abroad (${left} in thirty lives of fourteen years)`);
 check(back + near >= 1, `and some come back (${back} home, ${near} to be near)`);
 check(minors === 0, 'small children do not emigrate on their own');
 section(`people: ${left} moved away, ${back} came home, ${near} moved nearer`);
