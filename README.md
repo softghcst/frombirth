@@ -140,7 +140,8 @@ Pathways has 103 places to live: the 102 on the reference list (16 in North Amer
 says so: Puerto Rico and Aruba are territories, Hong Kong is a special administrative region, Taiwan is a self-governing
 jurisdiction whose status is disputed. Each has its own currency code, languages, cities, pay and prices, taxes, school
 system and form of government. Codes, names, currencies, languages, time zones, capitals, regions and cities are checked
-against published sources; laws and citizenship rules are not yet (see `docs/WORLD_DATA.md`).
+against published sources, and so are the main laws, legal ages, citizenship rules and forms of government (see
+`docs/WORLD_DATA.md`).
 
 | What | Where |
 |---|---|
@@ -151,6 +152,7 @@ against published sources; laws and citizenship rules are not yet (see `docs/WOR
 | The World Explorer | `js/ui/world.js` |
 | What is real, what is game, and what is unverified | [`docs/WORLD_DATA.md`](docs/WORLD_DATA.md) |
 | Checking the reference data against ISO, CLDR, IANA and GeoNames; the results | `scripts/verify-world.py`, `js/data/worldVerification.js` (generated) |
+| Checking laws, ages, citizenship and government against pinned Wikipedia revisions; the results | `scripts/verify-laws.py`, `js/data/lawVerification.js` (generated) |
 
 **The World Explorer** opens from the title screen (**The world**), from **Design a life** (**Explore the world**) and from
 the **Self** tab. Search by country, city, language, currency or code (accents are ignored: "turkiye", "sao paulo"), filter by

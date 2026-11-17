@@ -46,9 +46,39 @@ python3 -m venv .venv && .venv/bin/pip install pycountry babel tzdata geonamesca
 
 The packages are for checking only; the game itself still has no dependencies.
 
-**Not checked, because no machine-readable source was available:** form of government, the status sentences, and everything
-in the next sections (law flags and legal ages, citizenship rules, free-movement lists, health and tax models). Those remain
-the author's compiled understanding.
+### Laws, ages, citizenship and government
+
+`scripts/verify-laws.py` checks these against English Wikipedia's comparison articles, each fetched at a pinned revision
+(listed in `SOURCES` in the script), so a check can be repeated against exactly the same text. Wikipedia is a secondary
+source; it is used because it gathers one table per question for every country, and its rows cite the primary sources
+(ILGA World, Amnesty International, national statutes). Every disagreement was decided by a person and the reason written in
+`DECIDED`; nothing was copied across automatically. Results are in `js/data/lawVerification.js` (generated), shown in the World
+Explorer under "How the law was checked", and `node tests/rules.mjs` fails if anything disagrees unexplained.
+
+| Question | Source article | Test used |
+|---|---|---|
+| Death penalty | Capital punishment by country | in use = an execution in the last ten years |
+| Same-sex marriage | Same-sex marriage (timeline of legalisations) | legal nationwide |
+| LGBT people | LGBTQ rights in Africa / Asia / Europe / the Americas / Oceania | hostile = activity criminalised; protected = civil unions or marriage, and anti-discrimination law |
+| Military service | Conscription (by-country table) | compulsory in law, even where selective |
+| Voting, drinking, pension ages; alcohol bans | Voting age; Legal drinking age; Retirement age | pension age = the men's age, or the standard age where a range is given |
+| Divorce | Divorce law by country | |
+| Citizenship by birth | Jus soli | unconditional, allowing for a diplomats' exception or a registration step |
+| One nationality only | Multiple citizenship, and 13 national nationality-law articles | |
+| Form of government | List of countries by system of government | |
+
+What changed as a result: four countries no longer execute (the Bahamas, DR Congo, Ethiopia, Uganda); six gained "protected"
+status (Bolivia, Czechia, Croatia, Italy, Monaco, Nepal); conscription was added in twelve countries and removed in Syria;
+voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries and an alcohol ban for Pakistan; pension ages
+for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
+nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
+
+Still not checked: driving, gambling, marriage and school-leaving ages; residence years for naturalisation (other than
+Malaysia and Singapore); gambling bans; the free-movement lists; tax and health-care models; the status sentences. Where a
+source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
+
+Re-run with `python3 scripts/verify-laws.py --write` (needs access to en.wikipedia.org; pages are cached in `.cache/`).
+
 
 No city coordinates, populations or statistics are stored.
 
@@ -56,9 +86,8 @@ No city coordinates, populations or statistics are stored.
 
 - **`currency.scale` is a fictional simulation rate**, roughly the order of magnitude of each currency against a base unit so that
   prices read naturally. It is not a market quote and does not move with real exchange rates.
-- **Law flags and legal ages** (same-sex marriage, LGBT protection, gambling, the death penalty, conscription, and the ages and
-  bans in `js/data/rules.js`) are the author's best understanding of
-  the mid-2020s for the 48 newest places and have not been checked against legislation. They configure the game; they are not legal
+- **Law flags and legal ages** are checked against published summaries (above) but are one value per country: real law has
+  exceptions, regional variation and dates of effect that are not modelled. They configure the game; they are not legal
   information. Laws change, and in a long game the simulation changes them too.
 - **"Free health care" and "free university"** are yes-or-no simplifications of systems that are neither.
 - **Browsing groups follow a game convention**, not strict geography: Georgia and Turkey are listed under "Middle East", and Central
@@ -114,8 +143,7 @@ shown on its profile.
 
 In rough order of value:
 
-1. **Verify the law flags, legal ages, citizenship rules and free-movement lists.** The reference metadata is checked (above);
-   these are not, and need a legal source per country that is current and citable.
+1. **Check what is still unchecked** (listed above): the remaining ages, residence years and the free-movement lists.
 2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
 3. **Regional law-making**: a governor or mayor changing the law of their own region.
 4. **A housing index per country**, and mortgages and rent abroad kept in local money.
