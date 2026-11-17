@@ -47,6 +47,7 @@ node tests/rules.mjs           # the legal rule engine: layers, overrides, what 
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
 node tests/digital.mjs         # the Digital World: technology by era, accounts and privacy, posts, messaging, creators and money, reputation, legacy, saves; the Digital Life brief's scenarios A to L
+node tests/eras.mjs            # Historical Eras: careers, money and currencies, laws, schooling, health and events by era; lives born 1800–today; a German family 1900 → today
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 
@@ -361,6 +362,26 @@ js/ui/          shell, modals, screens/, tabs/
 avatar-lab.html a workbench for avatar artwork
 tests/          checks that run on Node alone
 ```
+
+## Historical Eras
+
+A life can begin in any year from 1800 (the character creator's year of birth), and the world's year decides what life
+is like: five eras (Early Era to 1918, Between the Wars, Mid-Century, Late 20th Century, Modern Day from 2000) in one
+registry, `js/data/history.js`, answered by `js/engine/history.js`. The year processor's era step (`js/engine/eras.js`)
+runs as each year begins. From 2025 on, every answer is today's game unchanged.
+
+| What changes | How |
+|---|---|
+| Careers | Jobs exist from when they did (no programmers in 1900), with the titles of the time, kept by a job once taken; some were closed to women by law then (the marriage bar, law, uniformed services), through the rule engine. Parents' occupations and NPCs' jobs are of their time |
+| Money | Wages and prices move together on a price-level and real-wage index ([estimate]); old currencies (marks, francs, lire, pesetas and others) and their change to the euro at the official rates, applied once, through the same conversion as emigrating |
+| Laws | A historical layer in the rule engine: women's vote by country, the voting age, same-sex marriage, divorce, Prohibition, conscription, the law on being gay, the death penalty, school-leaving age. Dated facts carry a source note; places without their own record use the period's usual law, marked as such |
+| Schooling | Most children leave school at the leaving age in earlier eras (the player is offered it, and it is not dropping out); university is rarer; degree subjects exist from when they did |
+| Health | Shorter lives in earlier eras, extra risk at working ages, young children in the family who may not survive (never the player as a baby), the danger of childbirth, the 1918 influenza; treatments as medicine then could give them |
+| Events | The world wars (with each country's year of entry), the Depression, the postwar boom, the oil crisis, the end of the Cold War, independence: news, economies held in a slump or boom, the call-up for young men where the law conscripted, losses in the family. No battles, no real leaders |
+| Screens | The creator names the era of a birth year; the Self tab, Digital History and the Family Archive show the times |
+
+`docs/HISTORICAL_ERAS.md` maps where each system meets the eras, and what is a fact and what an estimate. Lives saved
+before eras keep their money as it was; lives in the present are unaffected.
 
 ## Digital Life
 

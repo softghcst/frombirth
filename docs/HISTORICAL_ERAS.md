@@ -38,3 +38,23 @@ in a country, the euro's conversion rates) carry a short source note in
 built from a handful of anchors, and are marked as such. Where a country's
 history is not recorded, the shared era default applies and is marked as a default,
 never presented as that country's own law.
+
+## What was built (Phases 2–10)
+
+All ten phases are in: the registry and migration, careers, money and currencies, laws, schooling, health, events,
+the screens, and validation (`tests/eras.mjs`, with lives born in 1800, 1900, 1930, 1960, 1985, 2005 and today, and a
+seeded German family carried by heirs from 1900 to today, saved and reloaded every twenty years; the browser test
+`tests/digital-ui.mjs` checks the creator, the Self tab and Digital History at phone width).
+
+## Known limits
+
+- Money is one index for the world, scaled into each country's currency: real differences in living standards
+  between countries in the past are not modelled, and a few old currencies' values are gameplay rates (noted in
+  the data). Currencies outside the euro area and its predecessors are today's (no réis, cruzeiros, old pesos,
+  pre-decimal shillings).
+- Laws: only the rules listed in `LAW_HISTORY` change with history; others are today's in every year. Racial
+  restrictions on voting (the US South before 1965, apartheid South Africa) are mentioned in source notes but not
+  modelled, because the game does not record race.
+- Countries keep today's borders and names; empires and colonies appear only as independence news.
+- Vehicles, property types and most consumer goods are today's catalogues, priced in the era's money.
+- Scenes written for the present day that do not mention technology can still appear in earlier eras.
