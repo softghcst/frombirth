@@ -14,6 +14,7 @@ import { openAppearanceEditor } from '../avatar/editor.js';
 import * as papersOf from '../engine/citizenship.js';
 import * as money from '../engine/currency.js';
 import { statusLine } from '../engine/immigration.js';
+import * as towns from '../engine/cities.js';
 
 async function report(api, r) {
   api.changed();
@@ -150,6 +151,13 @@ export async function moveAbroad(api) {
     if (!pick) return undefined;
     route = ways.find((r) => r.id === pick);
   }
+  // Where: cities differ in what homes cost and what work pays.
+  let city;
+  if (COUNTRIES[id].cities.length > 1) {
+    city = await pickModal({ title: `Where in ${theCountry(dest.name)}?`, body: 'Compared with the country as a whole.',
+      options: COUNTRIES[id].cities.map((n) => ({ value: n, label: n, sub: towns.cityLine(id, n) })) });
+    if (!city) return undefined;
+  }
   const staying = move.stayingBehind(id);
   if (staying.length) {
     const go = await confirmModal({ title: `${staying[0].firstName} will not come`, yes: 'Go anyway', no: 'Stay',
@@ -197,7 +205,21 @@ export async function moveAbroad(api) {
   const total = route.fee + (shipVehicles ? shipping : 0);
   const sure = await confirmModal({ title: `Apply to move to ${theCountry(dest.name)}?`,
     body: `${route.name}. ${route.outlook} It comes to ${fmtMoney(total, c)} in all.${route.chance < 1 && route.fee ? ' A fifth of the visa cost is gone even if they say no.' : ''}`, yes: route.chance >= 1 ? 'Move' : 'Apply' });
-  return sure ? report(api, move.emigrate(id, { shipVehicles, keep, route: route.id })) : undefined;
+  return sure ? report(api, move.emigrate(id, { shipVehicles, keep, route: route.id, city })) : undefined;
+}
+
+/** Moving to another city in the same country. */
+export async function moveCity(api) {
+  const c = country();
+  const block = towns.moveBlock();
+  if (block) return messageModal({ body: block });
+  const now = towns.hereCity();
+  const name = await pickModal({ title: 'Move to another city',
+    body: `You live in ${now.name}${now.region && now.region !== now.name ? `, ${now.region}` : ''}: homes ${now.housingWord}, pay ${now.payWord}. Moving costs ${fmtMoney(towns.moveCost(), c)}. Your job comes too if your employer has a place for you there.`,
+    options: towns.moveOptions().map((k) => ({ value: k.name, label: k.name, sub: `${k.line}. ${k.versus}${k.ownsHome ? ' You own a home here.' : ''}${k.lawDiffers ? ' Some laws differ.' : ''}` })) });
+  if (!name) return undefined;
+  const sure = await confirmModal({ title: `Move to ${name}?`, body: `It costs ${fmtMoney(towns.moveCost(), c)}. Property you own stays where it is.`, yes: 'Move' });
+  return sure ? report(api, towns.relocate(name)) : undefined;
 }
 
 /** The passport: every country lived in or visited. */

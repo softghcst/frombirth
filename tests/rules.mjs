@@ -53,7 +53,7 @@ check(law.source('drinkingAge', 'mx').source === 'default' && law.rule('drinking
 check(law.rule('drinkingAge', 'us') === 21 && law.source('drinkingAge', 'us').source === 'place', 'a place overrides the default');
 check(law.rule('drivingAge', 'pr') === 16 && law.source('drivingAge', 'pr').source === 'parent', 'a territory starts from the state it belongs to');
 check(law.rule('drinkingAge', 'pr') === 18 && law.source('drinkingAge', 'pr').source === 'place', 'and overrides it where it differs');
-check(law.rule('sameSexMarriage', 'jp') === LIVING.jp.laws.marriage && law.rule('deathPenalty', 'us') === LIVING.us.laws.deathPenalty, 'the five older flags still come from living data');
+check(law.rule('sameSexMarriage', 'jp') === LIVING.jp.laws.marriage && law.rule('deathPenalty', 'us', { region: null }) === LIVING.us.laws.deathPenalty, 'the five older flags still come from living data');
 check(law.lawsOf('ng').lgbt === 'hostile', 'older code gets the shape it expects');
 REGION_RULES['us/test'] = { gamblingAge: 18, gambling: false };
 check(law.rule('gamblingAge', 'us', { region: 'test' }) === 18 && law.rule('gambling', 'us', { region: 'test' }) === false && law.rule('gamblingAge', 'us') === 21, 'a region overrides its place, for that region only');

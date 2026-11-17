@@ -1,5 +1,6 @@
 // Annual money flow: income, tax, living costs, loan payments, and settling
 // up if the account ends the year in the red.
+import { housingK } from './cities.js';
 import { foreignWorth } from './currency.js';
 import { taxShift, rentFactor } from './policy.js';
 import { store, player, country, npcsByRole, log } from '../state.js';
@@ -82,7 +83,7 @@ export function tickFinance() {
     const partner = npcsByRole('spouse')[0];
     const share = !partner ? 1 : partner.life?.job || partner.life?.pension ? 0.55 : 1.15;
     const housed = p.royal && !p.royal.waiting && ['monarch', 'heir', 'royal'].includes(p.royal.rank);
-    let base = housed ? 0 : Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share * (p.homeId ? 1 : rentFactor(c.id)));
+    let base = housed ? 0 : Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share * (p.homeId ? 1 : rentFactor(c.id) * (0.5 + 0.5 * housingK()))); // rent is about half of it, and follows the city
     const lifestyle = lifestyleCost(gross, c);
     // Where pay is low against rents, people on ordinary wages do not live alone: they share.
     const takeHome = gross - incomeTax(gross, c);

@@ -56,7 +56,7 @@ export function openWorld(o = {}) {
           ${cmp.rows.map(([k, x, y]) => `<span>${esc(k)}</span><span>${esc(x)}</span><span>${esc(y)}</span>`).join('')}</div>
         <p class="muted" style="margin-top:6px">Neither is better: it depends on the life.</p></div>` : ''}
       <div class="card"><h3>About the place</h3>${kv(p.reference)}</div>
-      <div class="card"><h3>Cities you can live in</h3><p>${p.cities.map(esc).join(' · ')}</p></div>
+      <div class="card"><h3>Cities you can live in</h3>${kv(p.cityLines)}<p class="muted" style="margin-top:6px">Compared with the country as a whole. Rough estimates for play.</p></div>
       <div class="card"><h3>Living here</h3>${kv(p.game)}</div>
       <div class="card"><h3>School</h3>${kv(p.school)}</div>
       <div class="card"><h3>Government</h3>${kv(p.politics)}</div>

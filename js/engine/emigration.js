@@ -129,7 +129,7 @@ export function convertMoney(rate) {
  * Property is kept (it can be sold or let from anywhere, and lived in again
  * if the player moves back). Vehicles are shipped, or sold if the player prefers.
  * @param {string} countryId
- * @param {{shipVehicles?:boolean, keep?:number, route?:string, forced?:boolean}} [opts]  route: an id from immigration.routes()
+ * @param {{shipVehicles?:boolean, keep?:number, route?:string, city?:string, forced?:boolean}} [opts]  route: an id from immigration.routes()
  */
 export function emigrate(countryId, opts = {}) {
   const p = player();
@@ -200,7 +200,7 @@ export function emigrate(countryId, opts = {}) {
   for (const id of coming) { const job = store.state.npcs[id].life?.job; if (job) job.salary = Math.round(job.salary * to.living.wageK / from.living.wageK); }
   p.countryId = to.id;
   p.flags.arrivedYear = store.state.year; // newcomers wait five years before they can vote
-  p.city = rng.pick(to.cities);
+  p.city = opts.city && to.cities.includes(opts.city) ? opts.city : rng.pick(to.cities);
   settle(to.id, p.city, route?.status === 'citizen' ? 'permanent_resident' : route?.status ?? 'permanent_resident');
   if (p.residency && route) { p.residency.route = route.id; if (route.years) p.residency.until = store.state.year + route.years; }
   p.homeId = null;

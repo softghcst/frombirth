@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { payK } from './cities.js';
 import { rule, may } from './rules.js';
 import { residency } from './citizenship.js';
 import { licenceFor, licensed, examName } from './adulted.js';
@@ -105,7 +106,7 @@ function doorBonus(career) {
   return bonus + hiringEdge(p); // languages: an asset anywhere, and a barrier where you cannot speak the one in use
 }
 
-const payBand = (level) => level.pay.map((k) => localWage(k * K, country()));
+const payBand = (level) => level.pay.map((k) => Math.round(localWage(k * K, country()) * payK())); // what the work pays in this city
 /** The most a level will ever pay, however many raises you collect. */
 const payCeiling = (level) => Math.round(payBand(level)[1] * 1.25);
 const capSalary = () => {

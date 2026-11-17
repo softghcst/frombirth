@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
@@ -219,8 +220,25 @@ when it is where you live or a country you are a citizen of, and the World Explo
 
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
-Still to come in the Living World engine, in order: states, provinces and cities that differ from each other; an economy and
-news that move without you. `docs/WORLD_DATA.md` lists the gaps.
+### Cities and regions that differ
+
+`js/engine/cities.js`, rows in `js/data/cities.js`. A city is no longer only a name. Each has a profile against its country
+as a whole: what homes cost to buy and rent, and what work pays. Twelve countries (the United States, the United Kingdom,
+Canada, Mexico, Brazil, France, Germany, Japan, India, South Korea, Australia and the United Arab Emirates) have a row for
+every city, with the state, province or region it is in. Everywhere else the capital and the first-listed city get a generic
+profile and are marked as estimates.
+
+- Property listings, rent and salaries follow the city. A house keeps the value of the city it stands in.
+- **Moving** (Pursuits) lets you move to another city without leaving the country: a moving cost, a job that transfers if
+  the employer has a place for you, a home that stays where it is, and an entry in the record of where you have lived.
+- When you emigrate you choose the city you arrive in.
+- A region can have its own law, through the rule engine: the death penalty by American state, the drinking age by Canadian
+  province, alcohol by emirate.
+
+The multipliers are rough estimates for play, not statistics.
+
+Still to come in the Living World engine, in order: an economy and news that move without you, and people you know moving
+away; buying property across currencies; tax and inheritance by place. `docs/WORLD_DATA.md` lists the gaps.
 
 ## Layout
 
