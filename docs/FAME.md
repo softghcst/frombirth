@@ -41,11 +41,33 @@ node tests/fame2.mjs   # sport played match by match with fame only from results
 node tests/music.mjs   # bands as people, songs, releases judged once, royalties paid once, deals and advances, tours, charts and music awards, leaving, saves, heirs, eras
 ```
 
+## Lives in the past
+
+The new-life screen offers a birth year back to 1920 (`js/data/eras.js`). What had not been invented does
+not exist: careers (`CAREER_ERAS`: no software before 1955, no influencers before 2006), freelance services
+(`SERVICE_ERAS`), kinds of business (`BUSINESS_ERAS`), social media (`SOCIAL_FROM`), dating apps (personal
+ads before 2009), and every medium, sport and award by its founding year (`MEDIA_ERAS`, `SPORTS`, award
+bodies). Women's professional leagues begin in their own years. Countries, laws and prices are today's,
+and money is shown at today's values throughout: a constant-price world, chosen over inflating every stored
+salary and price.
+
+## Also in the engines
+
+- **Sport**: football, basketball, rugby and cricket leagues (men's and women's, from their own founding years);
+  tennis, athletics, golf and swimming circuits; boxing with fights, a ranking and a world title (nobody is number
+  one without the belt). Injuries by age, fitness and contact cost games and leave marks on the record. A coach
+  (career `coaching`) takes charge of a club, is judged on its real position, and is let go after two seasons at
+  the bottom.
+- **Modelling**: each casting has a brief; how the model plays it (poised, energetic, warm, strange) changes the
+  odds (`castingOdds`).
+- **Books**: literary agents (15%, better reads and advances), translation deals, film options, and films made of
+  the book (a real production with a cast to audition for), which send readers back to it.
+- **Celebrity brands**: one product launch a year; hit, steady or flop, from the product and the owner's name.
+- **Music**: music videos (from 1981), songs written for other acts with a writer's share, session work.
+
 ## Not built yet
 
-- **Historical-era starts**: era gating works (no league before the sport existed, no records before recording, no films before film), but the game cannot start a life in the past, so it is only exercised by tests.
-- Sport: no injuries as events, no coaching or management careers built on the sports engine, no women's/men's separate leagues, and only four sports.
-- Modelling: no runway walks or shoots as playable scenes; castings are a single decision.
-- Books: no literary agents, translations as deals of their own, or screen adaptations of a player's book.
-- Celebrity brands use the existing business engine; they have no product launches of their own.
-- Music: no music videos, songwriting for other acts, or session work.
+- Prices and wages do not change with the era (see above); historical events (wars, depressions) are not modelled
+  beyond the economy engine's own cycles; countries and borders are today's.
+- Sport: no transfers between countries, no Olympic-style team events, no management of a squad.
+- Session work and songwriting do not make credits on other acts' albums beyond the single written.

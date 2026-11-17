@@ -11,6 +11,7 @@ import { randomAppearance } from '../../avatar/inherit.js';
 import { ORIENTATIONS } from '../../engine/identity.js';
 import { summary } from '../../engine/living.js';
 import { MONARCHIES } from '../../data/royalty.js';
+import { START_YEARS } from '../../data/eras.js';
 
 const TALENTS = { singing: 'Singing', dance: 'Dance', acting: 'Acting', music: 'Music', sports: 'Sports', crime: 'Mischief' };
 
@@ -55,7 +56,7 @@ const named = (map) => Object.entries(map).map(([value, label]) => ({ value, lab
  * @param {{onCreate:(opts:object)=>void, onCancel:Function}} hooks
  */
 export function renderCreator(app, hooks) {
-  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '', birthRank: '' };
+  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '', birthRank: '', era: '' };
   let look = null; // a designed appearance, or null to inherit one
   const sample = randomAppearance();
 
@@ -100,6 +101,8 @@ export function renderCreator(app, hooks) {
         <div class="card"><h3>Start in life</h3>
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
+          ${picker('era', 'The year you are born', 'This year', START_YEARS.filter(Boolean).map((y) => ({ value: String(y), label: String(y) })))}
+          <p class="muted" style="margin-top:-4px">An earlier year means what has not been invented yet does not exist: no internet before the 1990s, no television before 1950. Money is shown at today's values.</p>
           <div data-rank-field hidden>
             ${picker('birthRank', 'Born into', 'Random', named({ commoner: 'Commoners', noble: 'The nobility', royal: 'The royal family' }))}
             <p class="muted" data-rank-note></p>
@@ -222,6 +225,7 @@ export function renderCreator(app, hooks) {
       talent: choice.talent || undefined,
       background: choice.background || undefined,
       birthRank: choice.birthRank || undefined,
+      startYear: choice.era ? Number(choice.era) : undefined,
     });
   });
 

@@ -51,6 +51,7 @@ node tests/worklife.mjs        # every outcome of every working-life scene playe
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
 node tests/fame.mjs            # the fame profile, the entertainment world, acting from audition to credit, press, awards once, eras, child performers (see docs/FAME.md)
 node tests/fame2.mjs           # sport played match by match (fame from results only), modelling, books, celebrity brands, famous lives, comebacks, the family record
+node tests/fame3.mjs           # lives started in the past, newer sports, injuries, women's leagues, coaching, casting choices, literary agents and rights, brand launches, music videos and songwriting
 node tests/music.mjs           # bands, releases, charts, royalties paid once, record deals, tours, music awards, heirs
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source

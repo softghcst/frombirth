@@ -195,7 +195,16 @@ export const SPORTS = {
   basketball: { name: 'Basketball', team: true, teams: 10, rounds: 4, stat: 'points', statName: 'Points', founded: 1946, league: '{N} Basketball League' },
   tennis: { name: 'Tennis', team: false, events: 8, stat: 'titles', statName: 'Titles', founded: 1877, field: 32 },
   athletics: { name: 'Athletics', team: false, events: 6, stat: 'wins', statName: 'Wins', founded: 1896, field: 8 },
+  rugby: { name: 'Rugby', team: true, teams: 10, rounds: 2, stat: 'tries', statName: 'Tries', founded: 1895, league: '{N} Rugby Championship', womenFrom: 1995, contact: true },
+  cricket: { name: 'Cricket', team: true, teams: 8, rounds: 2, stat: 'runs', statName: 'Runs', founded: 1890, league: '{N} County Championship', womenFrom: 1973 },
+  golf: { name: 'Golf', team: false, events: 7, stat: 'wins', statName: 'Wins', founded: 1900, field: 30, womenFrom: 1950 },
+  swimming: { name: 'Swimming', team: false, events: 5, stat: 'wins', statName: 'Wins', founded: 1908, field: 8 },
+  boxing: { name: 'Boxing', team: false, events: 4, stat: 'wins', statName: 'Fights won', founded: 1890, field: 0, womenFrom: 1995, contact: true, fights: true },
 };
+// Women's professional leagues began later in some sports.
+SPORTS.football.womenFrom = 1991;
+SPORTS.basketball.womenFrom = 1997;
+SPORTS.tennis.womenFrom = 1884;
 export const TEAM_WORDS = ['Rovers', 'United', 'Athletic', 'City', 'Wanderers', 'Rangers', 'Lions', 'Falcons', 'Comets', 'Harriers', 'Royals', 'Stars'];
 export const EVENT_WORDS = ['Open', 'Classic', 'Masters', 'Championships', 'Invitational', 'Cup'];
 /** The international games held every four years. Fictional. */

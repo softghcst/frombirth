@@ -4,6 +4,7 @@ import { hiringClimate, layoffChance } from './economy.js';
 import { tickEntertainment } from './entertainment.js';
 import { tickAwards } from './awards.js';
 import { tickMusic } from './music.js';
+import { careerExists } from '../data/eras.js';
 import { tickSports } from './sports.js';
 import { tickModelling } from './modelling.js';
 import { tickPublishing } from './publishing.js';
@@ -79,6 +80,7 @@ export function unmet(career, o = {}) {
   const p = player();
   const r = career.req ?? {};
   const out = [];
+  if (!careerExists(career.id, store.state.year)) out.push(`There is no such work in ${store.state.year}.`);
   if (p.legal.incarceration) out.push('Not from a cell.');
   if (career.type !== 'freelance' && !residency(p).workAuthorized) out.push('Your student visa does not allow full-time work.');
   if (p.career.careerId === career.id && !o.ignoreCurrent) out.push('This is your current job.');

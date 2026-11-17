@@ -3,7 +3,8 @@
 import { rng } from '../rng.js';
 import { gain, regard } from './fame.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
-import { player, country, log, milestone } from '../state.js';
+import { store, player, country, log, milestone } from '../state.js';
+import { SOCIAL_FROM } from '../data/eras.js';
 import { SOCIAL_AGE, POSTS_PER_YEAR, FOLLOWER_PACKS, FOLLOWER_MILESTONES } from '../data/activities.js';
 
 const MAX_FOLLOWERS = 400000000;
@@ -17,7 +18,7 @@ function acts() {
   return p.flags.socialActs;
 }
 
-export const canUseSocial = () => player().age >= SOCIAL_AGE && !player().legal.incarceration;
+export const canUseSocial = () => store.state.year >= SOCIAL_FROM && player().age >= SOCIAL_AGE && !player().legal.incarceration;
 export const hasAccount = () => !!social().handle;
 export const postsLeft = () => POSTS_PER_YEAR - acts().posts;
 

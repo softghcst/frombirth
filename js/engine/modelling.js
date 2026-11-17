@@ -75,14 +75,38 @@ export function castings(p = player()) {
     const abroad = b.abroad && rng.chance(rep / 100) ? rng.pick(Object.keys(FASHION_CAPITALS).filter((c) => COUNTRIES[c])) : null;
     const client = kind === 'editorial' || kind === 'cover' ? rng.pick(MAGAZINES) : kind === 'runway' ? rng.pick(FASHION_HOUSES) : rng.pick([...BRANDS, ...FASHION_HOUSES]);
     const countryId = abroad ?? p.countryId;
-    return { id: `cast_${(ent().seq += 1).toString(36)}`, kind, client, countryId, city: abroad ? FASHION_CAPITALS[abroad] : COUNTRIES[p.countryId].cities[0], prestige: b.prestige, bar: b.bar, status: 'open' };
+    const wants = rng.pick(Object.keys(APPROACHES));
+    return { id: `cast_${(ent().seq += 1).toString(36)}`, kind, client, countryId, city: abroad ? FASHION_CAPITALS[abroad] : COUNTRIES[p.countryId].cities[0], prestige: b.prestige, bar: b.bar, status: 'open',
+      wants, brief: rng.pick(BRIEFS[wants]) };
   });
   m.castings = { age: p.age, list, went: 0 };
   return list;
 }
 
-/** Goes to a casting. Three a year at most around everything else. */
-export function attendCasting(id) {
+/** How a model can play a casting. The client's brief hints at what they want; it does not say. */
+export const APPROACHES = {
+  poise: { label: 'Poised and still', sub: 'Let the clothes do the talking.' },
+  energy: { label: 'All energy', sub: 'Movement, attitude, a big walk.' },
+  warmth: { label: 'Warm and open', sub: 'Smile; be someone people would like to know.' },
+  edge: { label: 'Something strange', sub: 'An unusual angle, a look nobody expects.' },
+};
+const BRIEFS = {
+  poise: ['"Quiet luxury. Nothing should move that does not need to."', '"We want stillness. A portrait, not a performance."'],
+  energy: ['"It is a sportswear story. Make us believe you could run in it."', '"Big, loud, joyful. Summer."'],
+  warmth: ['"Family brand. The woman next door, the man next door, at their best."', '"We need someone the customer trusts."'],
+  edge: ['"The designer hates pretty."', '"Make it strange. We have seen beautiful."'],
+};
+
+/** The chance of being booked: the look against the client's bar, the agency, the book, and reading the brief right. */
+export function castingOdds(c, approach, p = player()) {
+  const m = modelOf(p);
+  const ag = ent().orgs[m.agencyId];
+  const read = approach ? (approach === c.wants ? 0.2 : -0.12) : 0; // reading the brief right is half the job
+  return clamp(0.35 + (look(p) - c.bar) / 30 + (ag ? (ag.reputation - 50) / 200 : -0.1) + Math.min(0.15, book(m) / 1500) + read, 0.04, 0.92);
+}
+
+/** Goes to a casting and plays it one way. Three a year at most around everything else. */
+export function attendCasting(id, approach = null) {
   const p = player();
   const m = modelOf(p);
   if (!isModel(p)) return result(false, 'You need to be working as a model.', 'neutral');
@@ -91,10 +115,12 @@ export function attendCasting(id) {
   if (m.castings.went >= 3) return result(false, 'You have been to all the castings you can this year.', 'neutral');
   m.castings.went += 1;
   const ag = ent().orgs[m.agencyId];
-  const odds = clamp(0.35 + (look(p) - c.bar) / 30 + (ag ? (ag.reputation - 50) / 200 : -0.1) + Math.min(0.15, book(m) / 1500), 0.04, 0.9);
+  const odds = castingOdds(c, approach, p);
+  c.played = approach;
   if (!rng.chance(odds)) {
     c.status = 'lost';
-    return result(false, rng.pick(['They went with someone else.', 'You wait three hours, walk for ninety seconds, and hear nothing.', '"Not quite the look this season."']));
+    const miss = approach && approach !== c.wants ? ` Afterwards your booker says they wanted something more ${APPROACHES[c.wants].label.toLowerCase()}.` : '';
+    return result(false, `${rng.pick(['They went with someone else.', 'You wait three hours, walk for ninety seconds, and hear nothing.', '"Not quite the look this season."'])}${miss}`);
   }
   c.status = 'booked';
   const entry = { year: year(), kind: c.kind, client: c.client, city: c.city, countryId: c.countryId, prestige: c.prestige };

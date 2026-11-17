@@ -44,7 +44,8 @@ const busy = () => {
 let p = life();
 const ms = music.musicians('uk');
 check(ms.length >= 8 && ms.every((n) => n.flags.star?.skill.music), 'there are musicians looking for a band');
-check(!music.writeSong().ok, 'nobody writes songs for an act that does not exist');
+check(music.writeSong().ok, 'songs can be written without an act, to offer to others');
+music.musicOf().musicActs.writes = 0; music.musicOf().songs = [];
 check(music.formAct('band', { with: [ms[0].id, ms[1].id, ms[2].id] }).ok, 'a band can be formed');
 const a = music.myAct();
 check(a && music.members(a).length === 4 && p.npcIds.includes(ms[0].id), 'the band is the player and three people they now know');

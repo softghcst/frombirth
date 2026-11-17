@@ -18,7 +18,7 @@ import { store, player, country, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { BOOK_GENRES, BOOK_KINDS, PUBLISHER_NAMES, BOOK_WORDS, BOOK_DEAL, ORG_WORDS } from '../data/fame.js';
 import { levelOf } from './skills.js';
-import { ent, workOf, article } from './entertainment.js';
+import { ent, workOf, article, makeProduction, production } from './entertainment.js';
 import { gain, regard, fameOf, exists } from './fame.js';
 import { registerEmployer } from './employers.js';
 import { makeNpc } from './npcFactory.js';
@@ -99,6 +99,35 @@ export function writeSession() {
   return result(true, `${b.title} is finished. ${quality >= 75 ? 'It is good, and you know it.' : quality >= 55 ? 'It is a real book.' : 'It is finished, which is something.'}`);
 }
 
+// ---------- Literary agents ----------
+
+const LIT_AGENCIES = ['{S} Literary', '{W} Literary Agency', '{S} & {S2} Associates'];
+export const AGENT_SHARE = 0.15;
+
+/** Asks literary agents to take you on, with a finished manuscript to show them. */
+export function queryAgents(bookId) {
+  const p = player();
+  const w = writingOf(p);
+  const b = book(bookId);
+  if (w.agent) return result(false, `${w.agent.name} already represents you.`, 'neutral');
+  if (!b || b.author !== 'player' || b.status !== 'manuscript') return result(false, 'Agents want to read a finished manuscript.', 'neutral');
+  if (w.acts.queries >= 2) return result(false, 'You have sent enough letters this year.', 'neutral');
+  w.acts.queries += 1;
+  const name = (fameOf(p).audiences.literary ?? 0) * 0.5 + (b.kind === 'memoir' ? (p.hidden.fame ?? 0) * 0.6 : 0);
+  if (!rng.chance(clamp(0.15 + (b.quality + name - 58) / 35, 0.03, 0.85))) return result(false, rng.pick(['Form rejections. One says "not for us at this time".', 'Nothing back at all from most of them.', 'One asks for the full manuscript, then passes.']));
+  const c = COUNTRIES[p.countryId];
+  const n = makeNpc({ role: 'colleague', countryId: p.countryId, age: rng.int(30, 62), relationship: 55 });
+  n.occupation = 'literary agent';
+  n.flags.title = 'Your literary agent';
+  store.state.npcs[n.id] = n;
+  p.npcIds.push(n.id);
+  const agency = rng.pick(LIT_AGENCIES).replace('{W}', rng.pick(ORG_WORDS)).replace('{S}', rng.pick(c.names.last)).replace('{S2}', rng.pick(c.names.last));
+  w.agent = { npcId: n.id, name: `${n.firstName} ${n.lastName}`, agency, since: year() };
+  milestone(`Signed with a literary agent: ${n.firstName} ${n.lastName}.`, 'career');
+  return result(true, `${n.firstName} ${n.lastName} of ${agency} loves it and will represent you. They take ${Math.round(AGENT_SHARE * 100)}% of what your books earn, and get you better deals.`);
+}
+export function dropAgent() { const w = writingOf(); if (!w.agent) return result(false, 'You have no agent.', 'neutral'); w.agent = null; return result(true, 'You go it alone.', 'neutral'); }
+
 /** Sends a finished manuscript out. Publishers answer on the book, and on the name on it. */
 export function submit(bookId) {
   const p = player();
@@ -107,14 +136,16 @@ export function submit(bookId) {
   if (!b || b.author !== 'player' || b.status !== 'manuscript') return result(false, 'There is nothing to send.', 'neutral');
   if (w.acts.queries >= 2) return result(false, 'You have sent it out twice this year; the answers take time.', 'neutral');
   w.acts.queries += 1;
+  const agent = w.agent;
   const f = fameOf(p);
   const name = b.kind === 'memoir' ? Math.max(f.headline ?? p.hidden.fame ?? 0, 0) : (f.audiences.literary ?? 0) * 0.6 + (p.hidden.fame ?? 0) * 0.2;
   const c = COUNTRIES[p.countryId];
   b.offers = publishers(p.countryId).filter((pub) => {
-    const bar = pub.tier === 'big' ? 66 : 50;
+    const bar = (pub.tier === 'big' ? 66 : 50) - (agent ? 8 : 0); // an agent gets the book read by the right people
     return rng.chance(clamp(0.2 + (b.quality + name * 0.5 - bar) / 40, 0.02, 0.92));
-  }).map((pub) => ({ publisherId: pub.id, advance: Math.round(localWage((pub.tier === 'big' ? 9000 : 2500) * (1 + Math.max(0, b.quality - 55) / 15 + name / 12) * rng.around(1, 0.2), c)),
+  }).map((pub) => ({ publisherId: pub.id, advance: Math.round(localWage((pub.tier === 'big' ? 9000 : 2500) * (1 + Math.max(0, b.quality - 55) / 15 + name / 12) * (agent ? 1.4 : 1) * rng.around(1, 0.2), c)),
     royalty: Math.round((BOOK_DEAL.royalty[0] + rng.next() * (BOOK_DEAL.royalty[1] - BOOK_DEAL.royalty[0])) * 100) / 100 }));
+  b.agented = !!agent;
   if (!b.offers.length) return result(false, b.kind === 'memoir' && name < 25 ? 'Every publisher says the same, more kindly or less: who are you?' : 'Rejections, all of them. Some are kind.');
   b.status = 'offered';
   return result(true, `${b.offers.length} ${b.offers.length === 1 ? 'publisher wants' : 'publishers want'} ${b.title}.`);
@@ -209,10 +240,69 @@ export function tickPublishing() {
   const fresh = Object.values(E.books).filter((b) => b.released === year() && b.countryId === p.countryId).sort((a, b) => units(b) - units(a));
   fresh.slice(0, 10).forEach((b, i) => { b.list = i + 1; });
   for (const b of fresh.filter((x) => x.author === 'player' && x.list)) { lines.push(`${b.title} reached number ${b.list} on the bestseller list.`); milestone(`${b.title}: number ${b.list} on the bestseller list.`, 'fame'); }
+  lines.push(...rights(p));
   for (const id of w.books) { const b = book(id); if (b?.released != null) earn(b); }
   // Forget rivals' books after a few years, unless an award keeps their names on the record (seasons hold them).
   const mine = new Set(w.books);
   for (const [id, b] of Object.entries(E.books)) if (!mine.has(id) && !b.keep && b.released != null && b.released < year() - 3) delete E.books[id];
+  return lines;
+}
+
+// ---------- Rights: translations and the screen ----------
+
+/** A year in the life of the player's books' rights: foreign editions, film options, films made. */
+function rights(p) {
+  const lines = [];
+  const w = writingOf(p);
+  for (const b of w.books.map(book).filter((x) => x?.released != null && x.released < year())) {
+    const n = units(b);
+    // Foreign editions: an agent sells them for a book people liked.
+    if (w.agent && b.agented && b.critics >= 60 && year() - b.released <= 4 && rng.chance(year() - b.released === 1 ? 0.85 : 0.4)) {
+      const have = new Set([b.countryId, ...(b.foreign ?? []).map((x) => x.countryId)]);
+      const cc = rng.pick(Object.keys(COUNTRIES).filter((x) => !have.has(x)));
+      const adv = Math.round(localWage(800 + b.critics * 40 + Math.sqrt(n) * 10, COUNTRIES[p.countryId]));
+      (b.foreign ??= []).push({ countryId: cc, advance: adv, year: year() - 1, paid: false });
+      b.units[cc] = (b.units[cc] ?? 0) + Math.round(n * rng.around(0.12, 0.06));
+      lines.push(`${b.title} has been sold for translation in ${COUNTRIES[cc].name}.`);
+      if (b.foreign.length === 1) milestone(`${b.title} translated for ${COUNTRIES[cc].name}.`, 'career');
+    }
+    // A studio options the book for the screen.
+    b.options ??= [];
+    const live = b.options.find((o) => o.until >= year() && !o.made);
+    if (!live && !b.options.some((o) => o.made) && (n >= 20000 || b.critics >= 75) && rng.chance(clamp(n / 100000 + (b.critics - 60) / 50, 0.1, 0.6))) { // the bigger the book, the likelier
+      const studio = rng.pick(Object.values(ent().orgs).filter((o) => o.kind === 'studio' && o.countryId === p.countryId));
+      if (studio) {
+        const o = { orgId: studio.id, fee: Math.round(localWage(4000 + Math.sqrt(n) * 30, COUNTRIES[p.countryId])), feeYear: year() - 1, feePaid: false, purchase: 0, until: year() + 2, made: null };
+        b.options.push(o);
+        lines.push(`${studio.name} has optioned ${b.title} for the screen. Most options never become films.`);
+        milestone(`${b.title} optioned for film by ${studio.name}.`, 'career');
+      }
+    } else if (live && rng.chance(0.3)) {
+      const tier = n >= 80000 ? 'studio' : n >= 20000 ? 'network' : 'indie';
+      const prod = makeProduction('film', tier, p.countryId);
+      if (prod) {
+        prod.title = b.title;
+        prod.basedOn = { bookId: b.id, author: b.authorName };
+        prod.keep = true;
+        live.made = prod.id;
+        live.purchase = Math.round(live.fee * 3);
+        live.purchaseYear = year() - 1;
+        lines.push(`${b.title} is being made into a film. Casting has begun.`);
+        milestone(`${b.title} is being made into a film.`, 'fame');
+      }
+    }
+    // The film comes out: the book sells again.
+    const made = b.options.find((o) => o.made && !o.boosted);
+    const prod = made ? production(made.made) : null;
+    if (prod?.reception && prod.reception.year < year()) {
+      made.boosted = true;
+      const bump = Math.round(n * (0.2 + prod.reception.audience / 150));
+      b.units[b.countryId] += bump;
+      lines.push(`The film of ${b.title} sends readers back to the book: ${bump.toLocaleString('en-US')} more copies.`);
+      gain({ audience: 'literary', amount: 6, lasting: 0.4, why: `the film of ${b.title}` }, p);
+      gain({ audience: 'film', amount: 2, why: `the film of ${b.title}` }, p);
+    }
+  }
   return lines;
 }
 
@@ -223,9 +313,12 @@ export function bookLines(p = player()) {
   for (const id of writingOf(p).books) {
     const b = book(id);
     if (!b) continue;
-    if (b.publisherId && !b.advancePaid && b.signed === lived) out.push({ source: `badv:${b.id}`, label: `Advance for ${b.title}`, gross: b.advance, kind: 'advance' });
+    const net = (g) => Math.round(g * (b.agented ? 1 - AGENT_SHARE : 1)); // the agent's share comes off the top
+    if (b.publisherId && !b.advancePaid && b.signed === lived) out.push({ source: `badv:${b.id}`, label: `Advance for ${b.title}`, gross: net(b.advance), kind: 'advance' });
     const e = b.revenue.find((x) => x.year === lived);
-    if (e?.toAuthor > 0 && !b.paid.includes(lived)) out.push({ source: `book:${b.id}:${lived}`, label: `Royalties: ${b.title}`, gross: e.toAuthor, book: b.id });
+    if (e?.toAuthor > 0 && !b.paid.includes(lived)) out.push({ source: `book:${b.id}:${lived}`, label: `Royalties: ${b.title}`, gross: net(e.toAuthor), book: b.id });
+    for (const fr of b.foreign ?? []) if (fr.year === lived && !fr.paid) out.push({ source: `trans:${b.id}:${fr.countryId}`, label: `${COUNTRIES[fr.countryId]?.name} rights: ${b.title}`, gross: net(fr.advance), kind: 'rights' });
+    for (const o of b.options ?? []) for (const [k, amt] of [['fee', o.fee], ['purchase', o.purchase]]) if (amt && o[`${k}Year`] === lived && !o[`${k}Paid`]) out.push({ source: `opt:${b.id}:${o.orgId}:${k}`, label: `${k === 'fee' ? 'Film option' : 'Film rights'}: ${b.title}`, gross: net(amt), kind: 'rights' });
   }
   return out;
 }
@@ -235,6 +328,8 @@ export function markBooksPaid(p = player()) {
     const b = book(id);
     if (!b) continue;
     if (b.signed === lived) b.advancePaid = true;
+    for (const fr of b.foreign ?? []) if (fr.year === lived) fr.paid = true;
+    for (const o of b.options ?? []) { if (o.feeYear === lived) o.feePaid = true; if (o.purchaseYear === lived) o.purchasePaid = true; }
     if (b.revenue.some((x) => x.year === lived) && !b.paid.includes(lived)) b.paid.push(lived);
   }
 }

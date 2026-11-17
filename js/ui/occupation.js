@@ -256,6 +256,7 @@ const VIEWS = {
           ${btn('bizhire', 'Take someone on', { arg })}${biz.hireable(b).length ? btn('bizknown', 'Offer a job to someone you know', { arg }) : ''}${b.others ? btn('bizcut', 'Let one of the other staff go', { arg }) : ''}
           ${btn('bizhours', 'Your hours', { arg })}${btn('bizprice', 'Prices', { arg })}${btn('bizdraw', 'What you take out each year', { arg })}
           ${btn('bizinvest', 'Spend on the business', { arg, sub: 'Marketing, equipment, training.' })}
+          ${biz.LAUNCHES[b.typeId] ? btn('bizlaunch', 'Launch a product', { arg, sub: 'Once a year. It sells on the product, and on your name.' }) : ''}
           ${btn('bizmoney', 'Money in and out', { arg, sub: `Could spare ${money(biz.spareCash(b), cty)} · could borrow ${money(biz.borrowRoom(b), cty)}` })}
           ${btn('bizexpand', 'Open another site', { arg })}
           ${biz.partnerOptions(b).length && b.stake > 0.5 ? btn('bizpartner', 'Take on a partner', { arg, sub: 'A quarter of the business, for money put into it.' }) : ''}
@@ -571,6 +572,11 @@ const ACTIONS = {
   async bizdraw(id, x) {
     const v = await pickModal({ title: 'What you take out each year', body: 'What you leave in pays for bad years, new sites and new people.', options: Object.entries(DRAWS).map(([k, o]) => ({ value: k, label: o.label })) });
     if (v) await x.say(biz.setDraw(biz.business(id), v));
+  },
+  async bizlaunch(id, x) {
+    const b = biz.business(id);
+    const v = await pickModal({ title: 'Launch', options: biz.LAUNCHES[b.typeId].map((n) => ({ value: n, label: n[0].toUpperCase() + n.slice(1) })) });
+    if (v) await x.say(biz.launchProduct(b, v));
   },
   async bizinvest(id, x) {
     const v = await pickModal({ title: 'Spend on the business', options: [{ value: 'marketing', label: 'Marketing', sub: 'More custom for a year or two, and a little more name.' }, { value: 'equipment', label: 'Equipment and premises', sub: 'Better work. A good name follows good work.' }, { value: 'training', label: 'Training the staff', sub: 'Better work, and people who feel invested in.' }] });

@@ -64,7 +64,7 @@ export function meetingPlaces() {
   const adult = player().age >= ADULT;
   return [
     { id: 'friends', name: 'Through friends', desc: 'Someone a friend thinks you would like.' },
-    ...(adult ? [{ id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' },
+    ...(adult ? [store.state.year >= 2009 ? { id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' } : { id: 'app', name: 'A personal ad in the paper', desc: 'Forty words about yourself, and a box number.' },
       { id: 'out', name: 'A night out', desc: 'Whoever catches your eye across the room.' }]
       : [{ id: 'school', name: 'Around school', desc: 'Someone from a different class.' }]),
   ];

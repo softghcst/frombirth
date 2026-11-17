@@ -1,4 +1,5 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { EARLIEST_START } from '../data/eras.js';
 import { atBirth, held } from './citizenship.js';
 import { bornKnown } from './fame.js';
 import { fromAbroad, rollsRoots } from './economy.js';
@@ -47,7 +48,7 @@ export function createLife(opts = {}) {
   const firstName = opts.firstName?.trim()
     || rng.pick(c.names[gender] ?? [...c.names.male, ...c.names.female]);
   const city = opts.city && c.cities.includes(opts.city) ? opts.city : rng.pick(c.cities);
-  const year = new Date().getFullYear();
+  const year = Math.max(EARLIEST_START, Math.min(new Date().getFullYear(), opts.startYear ?? new Date().getFullYear())); // a past start (data/eras.js)
 
   // Family first, then the child is derived from the parents.
   // A designed face: the family is built to resemble it.
