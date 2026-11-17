@@ -140,8 +140,8 @@ export function doorBonus(career) {
 }
 
 export const payBand = (level) => level.pay.map((k) => Math.round(localWage(k * K, country()) * payK())); // what the work pays in this city
-/** The most a level will ever pay, however many raises you collect. */
-const payCeiling = (level) => Math.round(payBand(level)[1] * 1.25);
+/** The most a level will ever pay at this employer, however many raises you collect: a little over the top of its band. */
+const payCeiling = (level) => Math.round((currentLevel() === level && player().career.bandHi ? player().career.bandHi : payBand(level)[1]) * 1.1);
 const capSalary = () => {
   const c = player().career;
   const level = currentLevel();

@@ -155,6 +155,28 @@ government they must stand apart from. A royal with a profession of their own is
 - **Royal household staff** as an employer is not modelled.
 - **The business tax**: a company's profit is not taxed separately; what the owner takes out is taxed as income.
 
+## Balance
+
+Two simulations in `scripts/balance/` play many lives quickly and print the shape of the results. They are not
+pass/fail tests; re-run them after changing pay, hiring or business figures.
+
+```bash
+node scripts/balance/careers.mjs 17 32 typical   # whole working lives, a player who takes any job they qualify for
+node scripts/balance/careers.mjs 17 32 best      # the same, always going for the best-paid job
+node scripts/balance/business.mjs 23 12          # every kind of business over fifteen years, competent full-time owner
+```
+
+What they showed after tuning (and what the tuning was):
+
+| Measure | Result | Changed to get there |
+|---|---|---|
+| Pay, typical player, ages 25–64 | median 1.15× the national average; bottom tenth 0.7×, top tenth 2.1× | Senior posts need most of the usual years in that line of work itself; related fields count a quarter, not half |
+| Pay, ambitious player | median about 2.4× | Raises stop 10% above the employer's band (was 25%); every rung up has more competition |
+| Graduates against non-graduates | about 30% more | Office, technical and public employers prefer a degree where it is not required, more so higher up |
+| Employed, ages 25–64 | about 95% of years for a player who keeps applying; about one layoff a life | — |
+| Business failure in fifteen years | restaurants, shops and boutiques 40–50%; cafés, bakeries, garages 15–35%; low-overhead practices rarely | Rivals open where a business does well and take a share of custom; rare serious setbacks (a fire, a lawsuit, a lost client) |
+| Owner's take | 1–3× a staff wage a year | Medical, dental and veterinary practices earned too much, and were cut; bookshops could not survive, and were helped |
+
 ## Source audit
 
 The three BitLife wiki pages named in the brief (Careers, Careers/Jobs, Careers/Occupation) and Career

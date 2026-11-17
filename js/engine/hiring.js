@@ -29,24 +29,27 @@ const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 
 // ---------- The résumé ----------
 
-/** Years of experience that count towards a track: its own, and related work at half. */
-export function experienceFor(careerId, c = careerState()) {
+/**
+ * Years of experience that count towards a track: its own (and any track it branches from) in full, other work
+ * in the same field at a quarter. o.ownOnly: only the track's own line of work.
+ */
+export function experienceFor(careerId, c = careerState(), o = {}) {
   const car = CAREER_BY_ID[careerId];
   let own = c.experience[careerId] ?? 0;
   let related = 0;
   for (const [id, y] of Object.entries(c.experience)) {
     if (id === careerId || !CAREER_BY_ID[id]) continue;
     const other = CAREER_BY_ID[id];
-    // A track this one branches from counts in full; the same family counts at half.
+    // A track this one branches from counts in full; the same field counts at a quarter.
     if ((car.from ?? []).some((f) => f.career === id)) own += y;
-    else if (other.family === car.family) related += y * 0.5;
+    else if (other.family === car.family) related += y * 0.25;
   }
   const interned = (player().flags.internships ?? []).filter((i) => i.careerId === careerId).length * 0.5;
-  return Math.round((own + related + interned) * 10) / 10;
+  return Math.round((own + (o.ownOnly ? 0 : related) + interned) * 10) / 10;
 }
 
 /** Years of experience a level of a track usually asks for. */
-export const yearsExpected = (car, level) => Math.round(car.levels.slice(0, level).reduce((s, l) => s + l.years, 0) * 0.7);
+export const yearsExpected = (car, level) => Math.round(car.levels.slice(0, level).reduce((s, l) => s + l.years, 0) * (level <= 1 ? 0.7 : 1));
 
 /** The player's résumé, built from the life. */
 export function resume(p = player()) {
@@ -92,8 +95,9 @@ export function postingView(id) {
   const have = experienceFor(car.id);
   const want = yearsExpected(car, post.level);
   const stretch = Math.max(0, want - have);
-  // A stretch is allowed; a leap is not. Senior posts want at least half the usual experience.
-  if (stretch > 4 || (post.level >= 2 && have < want / 2)) reasons.push(`They want about ${yrs(want)} of relevant experience. You have ${have}.`);
+  // A stretch is allowed; a leap is not. Senior posts want most of the usual years, in this line of work itself.
+  const own = experienceFor(car.id, careerState(), { ownOnly: true });
+  if (stretch > 3 || (post.level >= 2 && own < want * 0.6)) reasons.push(`They want about ${yrs(want)} of experience${post.level >= 2 ? ` as ${car.levels[post.level - 1].title.toLowerCase()} or similar` : ''}. You have ${post.level >= 2 ? own : have}.`);
   const hours = post.partTime ? canFit(post.hours, { kind: 'parttime' }) : canFit(post.hours + 0, { kind: 'job', replacesMain: !!p.career.careerId });
   if (!hours.ok) reasons.push(hours.text);
   return { post, employer: e, career: car, eligible: !reasons.length, reasons, stretch, have, want, culture: cultureOf(e),
@@ -142,9 +146,15 @@ export function decide(id, answers = [], o = {}) {
   if (!view?.eligible) return result(false, view?.reasons[0] ?? 'That opening has closed.', 'neutral');
   yearActs().applied[id] = true;
   const { post, career: car, employer: e } = view;
-  const bonus = doorBonus(car) + (o.bonus ?? 0) + (p.flags.veteran && ['safety', 'government', 'transport'].includes(car.family) ? 0.1 : 0);
+  const bonus0 = doorBonus(car) + (o.bonus ?? 0) + (p.flags.veteran && ['safety', 'government', 'transport'].includes(car.family) ? 0.1 : 0);
+  // Employers in office, technical and public work prefer a degree even where it is not required, and more so higher up.
+  const graduate = p.education.degrees.some((d) => ['university', 'graduate', 'doctorate', 'business', 'law', 'medical'].includes(d.type));
+  const deskWork = ['corporate', 'tech', 'government', 'science', 'media', 'law', 'education', 'health'].includes(car.family);
+  const degreeEdge = deskWork && !car.req?.degree && !car.req?.programme ? (graduate ? 0.04 + post.level * 0.03 : -post.level * 0.05) : 0;
+  const bonus = bonus0 + degreeEdge;
   const stretch = view.stretch * 0.07;
-  const crowd = (post.level === 0 ? 0.04 : 0) + Math.max(0, -hiringClimate()) * 0.5; // more people go for junior jobs, and in a slump
+  // More people go for junior jobs, and in a slump; and every rung up, the field is stronger.
+  const crowd = (post.level === 0 ? 0.04 : 0) + post.level * 0.06 + Math.max(0, -hiringClimate()) * 0.5;
   let score;
   let chance;
   let how;

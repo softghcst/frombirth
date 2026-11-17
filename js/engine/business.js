@@ -16,6 +16,7 @@
 //     others,                    further staff who are not named
 //     reputation, quality,       0–100
 //     marketing,                 this year's boost to custom (decays)
+//     rivals,                    competitors nearby, each taking a share of the custom; success attracts them
 //     pricing, ownerHours, draw, the owner's standing decisions
 //     overdrawn,                 years in a row the account has been below zero
 //     last: { revenue, wages, rent, supplies, overhead, interest, profit, drawn, heads, demand },
@@ -488,7 +489,6 @@ const EVENTS = [
   { text: (b) => `${b.name} won a big order.`, tone: 'good', fx: (b, f) => { b.cash += Math.round(f.perHead * 0.3); b.reputation = clamp(b.reputation + 2); } },
   { text: (b) => `A bad review of ${b.name} went round.`, tone: 'bad', fx: (b) => { b.reputation = clamp(b.reputation - 5); } },
   { text: (b) => `Something expensive broke at ${b.name}.`, tone: 'bad', fx: (b, f) => { b.cash -= Math.round(f.startup * 0.05); b.quality = clamp(b.quality - 4); } },
-  { text: (b) => `A rival opened near ${b.name}.`, tone: 'bad', fx: (b) => { b.marketing = Math.min(b.marketing, 0.88); } },
   { text: (b) => `The local paper ran a kind piece about ${b.name}.`, tone: 'good', fx: (b) => { b.reputation = clamp(b.reputation + 5); } },
   { text: (b) => `A regular of ${b.name} sent three friends, who sent theirs.`, tone: 'good', fx: (b) => { b.reputation = clamp(b.reputation + 3); } },
 ];
@@ -534,7 +534,8 @@ function runYear(b) {
   // What custom there is: the name, the price, the times, and luck.
   const price = PRICING[b.pricing];
   const priceFit = b.pricing === 'premium' ? clamp(price.demand + (b.reputation - 55) / 120 + (b.quality - 50) / 200, 0.4, 1.1) : price.demand;
-  const demand = b.sites * (t.solo ? 2.6 : 5) * (0.3 + b.reputation / 62) * priceFit * (1 + phase(b.countryId).hiring * 1.5) * b.marketing * rng.around(1, 0.12);
+  const rivals = Math.pow(0.8, b.rivals ?? 0);
+  const demand = b.sites * (t.solo ? 2.6 : 5) * (0.3 + b.reputation / 62) * priceFit * (1 + phase(b.countryId).hiring * 2) * b.marketing * rivals * rng.around(1, 0.15);
   const sold = Math.max(0, Math.min(heads, demand));
 
   const revenue = Math.round(sold * f.perHead * price.k * (0.9 + b.quality / 500));
@@ -570,6 +571,18 @@ function runYear(b) {
   b.quality = Math.round(clamp(b.quality - (b.quality > 45 ? 1 : 0)));
   b.marketing = 1 + (b.marketing - 1) * 0.4;
   if (rng.chance(0.25)) { const ev = rng.pick(EVENTS); ev.fx(b, f); lines.push(ev.text(b)); }
+  // Competition: a business that does well is noticed, and copied. Rivals come and, some of them, go.
+  const margin = profit / Math.max(1, revenue);
+  if (rng.chance(clamp(0.05 + margin * 0.5 + (b.sites - 1) * 0.03, 0.03, 0.3))) { b.rivals = (b.rivals ?? 0) + 1; lines.push(`A competitor opened near ${b.name}${margin > 0.2 ? ': someone has noticed how well you are doing' : ''}.`); }
+  if ((b.rivals ?? 0) > 0 && rng.chance(0.1 * b.rivals)) b.rivals -= 1;
+  // Now and then something goes badly wrong, whoever is running it: a fire, a lawsuit, the client who was half the work.
+  if (rng.chance(0.04)) {
+    const hit = Math.round(revenue * (0.3 + rng.next() * 0.5));
+    b.cash -= hit;
+    b.reputation = clamp(b.reputation - rng.int(3, 10));
+    lines.push(rng.pick([`A fire closed ${b.name} for months. The insurance covered less than you hoped: it cost ${fmtMoney(hit, cty)}.`,
+      `${b.name} was sued, and lost. It cost ${fmtMoney(hit, cty)}.`, `${b.name} lost the customer who was most of its work, and ${fmtMoney(hit, cty)} with them.`]));
+  }
   if (b.ownerHours > 0) c.experience[t.track] = Math.round(((c.experience[t.track] ?? 0) + Math.min(1, b.ownerHours / 40)) * 10) / 10;
   for (const s of staff) s.npc.meters.relationship = clamp(s.npc.meters.relationship + (s.wageK > (s.asked ?? 1) ? 2 : 1) + (profit < 0 ? -2 : 0));
   const e = employer(b.employerId);
