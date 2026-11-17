@@ -18,6 +18,9 @@ import * as who from '../../engine/identity.js';
 import { openDynasty } from '../dynasty.js';
 import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
+import { eventsOf } from '../../engine/digital/core.js';
+import { accountsOf } from '../../engine/digital/accounts.js';
+import { PLATFORM_BY_ID } from '../../data/digital.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
@@ -209,7 +212,8 @@ function editPerson(api, npc) {
   });
 }
 
-function openNpc(npc, api) {
+/** The character profile. Exported so other screens (Digital Life) open the same person, never a copy. */
+export function openNpc(npc, api) {
   lives.ensureLife(npc);
   const m = npc.meters;
   const isPet = npc.role === 'pet';
@@ -243,6 +247,13 @@ function openNpc(npc, api) {
     ? `<div class="section-label" style="margin-top:0">What has happened to them</div>
        ${npc.life.history.slice(-14).reverse().map((h) => `<div class="kv"><span>Age ${h.age}</span><span>${esc(h.text.charAt(0).toUpperCase() + h.text.slice(1))}.</span></div>`).join('')}
        <div style="height:14px"></div>` : '';
+  // Their digital life, as far as the player can see it: accounts by name, and the moments the two of you share.
+  const online = store.state.digital ? accountsOf(npc.id).filter((a) => a.status !== 'deleted') : [];
+  const shared = store.state.digital ? eventsOf(npc.id).filter((e) => e.charIds.includes(player().id) && e.visibility !== 'private').slice(0, 8) : [];
+  const digitalCard = online.length || shared.length ? `<div class="section-label" style="margin-top:0">Online</div>
+    ${online.map((a) => `<div class="kv"><span>${esc(PLATFORM_BY_ID[a.platformId].name)}</span><span>@${esc(a.handle)}${a.status === 'active' ? '' : ` · ${esc(a.status)}`}</span></div>`).join('')}
+    ${shared.map((e) => `<div class="kv"><span>${e.year}</span><span>${esc(e.summary)}</span></div>`).join('')}
+    <div style="height:14px"></div>` : '';
   const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
 
   const actions = [
@@ -267,7 +278,7 @@ function openNpc(npc, api) {
     </div>
     ${traitChips}${owns}${feudNote}${expecting}
     <div style="margin:12px 0 16px">${meters}</div>
-    ${lifeCard}${history}${timeline}
+    ${lifeCard}${history}${timeline}${digitalCard}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
       <button class="btn" data-close>Close</button>

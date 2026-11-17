@@ -46,7 +46,8 @@ export function createLife(opts = {}) {
   const firstName = opts.firstName?.trim()
     || rng.pick(c.names[gender] ?? [...c.names.male, ...c.names.female]);
   const city = opts.city && c.cities.includes(opts.city) ? opts.city : rng.pick(c.cities);
-  const year = new Date().getFullYear();
+  // A life starts in the present unless told otherwise (tests start lives in other eras: the Digital World follows the year).
+  const year = Number.isInteger(opts.year) ? opts.year : new Date().getFullYear();
 
   // Family first, then the child is derived from the parents.
   // A designed face: the family is built to resemble it.

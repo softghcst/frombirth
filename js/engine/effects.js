@@ -1,5 +1,6 @@
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
 import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
@@ -10,6 +11,7 @@ import { decide as scandalChoice } from './scandal.js';
 import { resignLeadership, faceTheParty, standForVacancy } from './leadership.js';
 import { defend } from './campaign.js';
 import { decide } from './government.js';
+import { decide as digitalChoice } from './digital/stories.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
@@ -86,8 +88,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       }
       case 'removeNpc': {
         const id = ctx.cast[e.target];
-        p.npcIds = p.npcIds.filter((n) => n !== id);
-        delete store.state.npcs[id];
+        forgetNpc(id);
         break;
       }
       case 'memory':
@@ -191,6 +192,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'legal':
         p.legal.heat = clamp(p.legal.heat + e.delta);
         break;
+      case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;

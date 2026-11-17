@@ -1,5 +1,6 @@
 // Romance: meeting people, dating, engagement, weddings (with or without a
 // prenup), break-ups and divorce.
+import { platformOpen } from './digital/tech.js';
 import { fromAbroad, rollsRoots } from './economy.js';
 import { may } from './rules.js';
 import { rng } from '../rng.js';
@@ -62,9 +63,11 @@ function ageFits(npc) {
 /** Where the player can go looking, by age. */
 export function meetingPlaces() {
   const adult = player().age >= ADULT;
+  // Dating apps exist only once the technology does, where the player lives (the Digital World registry decides).
+  const apps = platformOpen('kindling');
   return [
     { id: 'friends', name: 'Through friends', desc: 'Someone a friend thinks you would like.' },
-    ...(adult ? [{ id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' },
+    ...(adult ? [...(apps ? [{ id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' }] : []),
       { id: 'out', name: 'A night out', desc: 'Whoever catches your eye across the room.' }]
       : [{ id: 'school', name: 'Around school', desc: 'Someone from a different class.' }]),
   ];

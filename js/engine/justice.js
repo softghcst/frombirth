@@ -1,5 +1,6 @@
 // Crime and the courts: committing a crime, police heat, arrest, choosing a
 // lawyer, pleading, the verdict, and being sent down.
+import { forgetNpc } from './digital/core.js';
 import { rule, may } from './rules.js';
 import { policingShift } from './policy.js';
 import { rng } from '../rng.js';
@@ -265,7 +266,7 @@ export function release(how = 'You served your sentence and walked out of the ga
   const p = player();
   for (const mate of npcsByRole('cellmate')) {
     if (mate.meters.relationship >= 60) mate.role = 'friend';
-    else { p.npcIds = p.npcIds.filter((id) => id !== mate.id); delete store.state.npcs[mate.id]; }
+    else forgetNpc(mate.id);
   }
   p.legal.incarceration = null;
   p.stats.mood = clamp(p.stats.mood + 15);

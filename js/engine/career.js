@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { forgetNpc } from './digital/core.js';
 import { hiringClimate, layoffChance } from './economy.js';
 import { payK } from './cities.js';
 import { rule, may } from './rules.js';
@@ -221,7 +222,7 @@ function leaveColleagues() {
   if (b) { b.flags.tag = null; b.flags.title = 'Former boss'; }
   for (const n of npcsByRole('coworker')) {
     if (n.meters.relationship >= 60 || n.flags.tag) n.role = 'friend';
-    else { p.npcIds = p.npcIds.filter((id) => id !== n.id); delete store.state.npcs[n.id]; }
+    else forgetNpc(n.id);
   }
 }
 

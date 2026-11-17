@@ -12,7 +12,7 @@ import { tickFinance } from './finance.js';
 import { tickMarket } from './market.js';
 import { tickCrime } from './justice.js';
 import { tickPrison } from './prison.js';
-import { tickSocial } from './social.js';
+import { tickDigital } from './digital/tick.js';
 import { tickIdentity } from './identity.js';
 import { tickLiving } from './living.js';
 import { tickRoyalty } from './royalty.js';
@@ -78,7 +78,7 @@ export function advanceYear() {
   tickFinance();
   tickHealth();
   tickPrison();
-  tickSocial();
+  tickDigital(); // the Digital World: platforms, people's digital lives, creators, reputation (engine/digital)
   tickIdentity();
   tickLiving();
   tickRoyalty();

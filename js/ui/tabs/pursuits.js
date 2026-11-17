@@ -1,4 +1,4 @@
-// Pursuits tab: things to do, social media, gambling, crime, moving abroad,
+// Pursuits tab: things to do, Digital Life, gambling, crime, moving abroad,
 // and, when it goes wrong, life inside.
 import { cityLine } from '../../engine/cities.js';
 import { store, player, country } from '../../state.js';
@@ -13,7 +13,7 @@ import { playEscape } from '../minigames/escape.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
-import * as net from '../../engine/social.js';
+import { openDigitalLife, digitalCard } from '../digital.js';
 import { canEmigrate } from '../../engine/emigration.js';
 import * as leisure from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
@@ -83,24 +83,6 @@ async function escape(api) {
   await report(api, jail.finishEscape(out));
 }
 
-function socialCard() {
-  const p = player();
-  const s = p.social;
-  if (!net.canUseSocial()) return '';
-  if (!net.hasAccount()) {
-    return '<div class="card"><h3>Social media</h3><p class="muted" style="margin-bottom:10px">You are not online yet.</p><button class="btn" data-go="account">Open an account</button></div>';
-  }
-  const left = net.postsLeft();
-  return `<div class="card"><h3>Social media</h3>
-    <div class="kv"><span>Account</span><span>@${esc(s.handle)}</span></div>
-    <div class="kv"><span>Followers</span><span>${Math.round(s.followers).toLocaleString('en-US')}</span></div>
-    <div class="kv"><span>Posts</span><span>${s.posts}${s.viral ? ` (${s.viral} went viral)` : ''}</span></div>
-    <div class="btn-stack" style="margin-top:10px">
-      <button class="btn" data-do="post" ${left <= 0 ? 'disabled' : ''}>Post something (${left} left this year)</button>
-      <button class="btn" data-go="followers">Buy followers</button>
-    </div></div>`;
-}
-
 function prisonCard() {
   const k = jail.cell();
   const g = jail.gang();
@@ -154,17 +136,18 @@ export default {
           ${p.flags.fugitive ? '<div class="kv"><span>Status</span><span>On the run</span></div>' : ''}
           <button class="btn danger" data-crime style="margin-top:10px">Commit a crime</button>
         </div>` : ''}
-        ${socialCard()}
+        ${digitalCard()}
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
     }
     el.onclick = (e) => {
       const game = e.target.closest('[data-play]')?.dataset.play;
       if (game) return ({ blackjack: playBlackjack, horses: playHorses, lottery: playLottery })[game](api);
       if (e.target.closest('[data-crime]')) return commitCrime(api);
+      if (e.target.closest('[data-digital]')) return openDigitalLife(api);
       const todo = e.target.closest('[data-do]')?.dataset.do;
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;
-      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: leisure.moveAbroad, city: leisure.moveCity })[go](api);
+      if (go) return ({ abroad: leisure.moveAbroad, city: leisure.moveCity })[go]?.(api);
       const act = e.target.closest('[data-prison]')?.dataset.prison;
       if (!act) return undefined;
       if (act === 'gang') return joinGang(api);

@@ -1,5 +1,6 @@
 // Emigrating: applying to move, selling up, converting everything into the
 // new currency, and who comes with you.
+import { forgetNpc } from './digital/core.js';
 import { rightToLive, held, settle } from './citizenship.js';
 import { rate, setAside, absorb } from './currency.js';
 import { fluency } from './languages.js';
@@ -184,8 +185,7 @@ export function emigrate(countryId, opts = {}) {
       n.role = 'ex';
       log(`${n.firstName} would not come with you. It is over.`, 'system', 'bad');
     } else if (['boss', 'coworker', 'classmate'].includes(n.role)) {
-      p.npcIds = p.npcIds.filter((id) => id !== n.id);
-      delete store.state.npcs[n.id];
+      forgetNpc(n.id);
     } else {
       if (n.flags.abroad === to.id) { n.flags.abroad = false; continue; }
       if (n.flags.abroad) continue;

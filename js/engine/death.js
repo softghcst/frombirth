@@ -11,6 +11,7 @@ import { addToGraveyard, deleteSlot, saveGame } from '../save.js';
 import { stageLabel } from './education.js';
 import { roleLabel } from './relationships.js';
 import { heirs } from './legacy.js';
+import { onDeath as digitalLegacy } from './digital/legacy.js';
 import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
@@ -287,6 +288,7 @@ export function die(cause) {
   const plan = estatePlan(); // settled before anything else changes
   const summary = lifeSummary(p, plan);
   p.alive = false;
+  digitalLegacy(state); // accounts become memorials; nothing new is posted in their name
   log(`You died of ${cause} at age ${p.age}.`, 'system', 'bad');
 
   for (const s of plan.shares) {

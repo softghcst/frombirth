@@ -1,6 +1,7 @@
 // Education: compulsory school by age, effort and attendance, tutors, cliques,
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
+import { forgetNpc } from './digital/core.js';
 import { rule, may } from './rules.js';
 import { tuitionFactor } from './policy.js';
 import { rng } from '../rng.js';
@@ -80,7 +81,9 @@ function turnOverClassmates(addNew) {
   const p = player();
   for (const n of npcsByRole('classmate')) {
     if (n.meters.relationship >= 60 || n.flags.tag) n.role = 'friend';
-    else { p.npcIds = p.npcIds.filter((id) => id !== n.id); delete store.state.npcs[n.id]; }
+    // Classmates you got on with are not deleted from the world: they may turn up again years later.
+    else if (n.meters.relationship >= 35) { p.npcIds = p.npcIds.filter((id) => id !== n.id); n.flags.drifted = { year: store.state.year, age: p.age, role: n.role }; }
+    else forgetNpc(n.id);
   }
   if (!addNew) return;
   const taken = new Set(p.npcIds.map((id) => store.state.npcs[id]?.firstName));

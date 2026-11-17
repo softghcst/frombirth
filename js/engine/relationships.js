@@ -7,6 +7,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js';
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
+import { forgetNpc } from './digital/core.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -47,9 +48,8 @@ const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, cla
   spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3 };
 
 export const removeNpc = (npc) => {
-  const p = player();
-  p.npcIds = p.npcIds.filter((id) => id !== npc.id);
-  delete store.state.npcs[npc.id];
+  // Gone from the player's life; kept in the save only if their digital life is part of the record.
+  forgetNpc(npc.id);
 };
 
 /** A parent's estate goes to the other parent if living, otherwise to the children. */
@@ -106,7 +106,9 @@ export function tickRelationships() {
     }
     if ((npc.role === 'friend' || npc.role === 'classmate') && npc.meters.relationship < 10 && !npc.flags.tag) {
       log(`You and ${npc.firstName} drifted apart.`);
-      removeNpc(npc);
+      // They leave the player's life but not the world: years later they may turn up again (engine/digital/stories.js).
+      p.npcIds = p.npcIds.filter((id) => id !== npc.id);
+      npc.flags.drifted = { year: store.state.year, age: p.age, role: npc.role };
     }
   }
 }
