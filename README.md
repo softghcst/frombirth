@@ -46,7 +46,7 @@ node tests/cities.mjs          # cities and regions: prices, pay, regional law, 
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
-node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps)
+node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
@@ -136,7 +136,8 @@ Pathways has 103 places to live: the 102 on the reference list (16 in North Amer
 13 in Africa, 12 under "Middle East", 18 in Asia, 4 in Oceania) and Ghana. Not all are sovereign states, and the game
 says so: Puerto Rico and Aruba are territories, Hong Kong is a special administrative region, Taiwan is a self-governing
 jurisdiction whose status is disputed. Each has its own currency code, languages, cities, pay and prices, taxes, school
-system and form of government.
+system and form of government. Codes, names, currencies, languages, time zones, capitals, regions and cities are checked
+against published sources; laws and citizenship rules are not yet (see `docs/WORLD_DATA.md`).
 
 | What | Where |
 |---|---|
@@ -146,6 +147,7 @@ system and form of government.
 | Profiles, search and comparison (one source for every screen) | `js/engine/world.js` |
 | The World Explorer | `js/ui/world.js` |
 | What is real, what is game, and what is unverified | [`docs/WORLD_DATA.md`](docs/WORLD_DATA.md) |
+| Checking the reference data against ISO, CLDR, IANA and GeoNames; the results | `scripts/verify-world.py`, `js/data/worldVerification.js` (generated) |
 
 **The World Explorer** opens from the title screen (**The world**), from **Design a life** (**Explore the world**) and from
 the **Self** tab. Search by country, city, language, currency or code (accents are ignored: "turkiye", "sao paulo"), filter by

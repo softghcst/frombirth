@@ -156,7 +156,7 @@ const LIST = [
   C('pe', 'Peru', '🇵🇪', 'PEN', 'S/', 3.8, 0.17, 0,
     ['Lima', 'Arequipa', 'Cusco', 'Trujillo', 'Piura', 'Iquitos']),
   C('do', 'Dominican Republic', '🇩🇴', 'DOP', 'RD$', 58, 0.17, 0.03,
-    ['Santo Domingo', 'Santiago', 'Punta Cana', 'La Romana', 'Puerto Plata', 'San Pedro']),
+    ['Santo Domingo', 'Santiago', 'Punta Cana', 'La Romana', 'Puerto Plata', 'San Pedro de Macorís']),
   C('cu', 'Cuba', '🇨🇺', 'CUP', '$', 120, 0.15, 0,
     ['Havana', 'Santiago de Cuba', 'Camagüey', 'Holguín', 'Trinidad', 'Cienfuegos']),
   C('gh', 'Ghana', '🇬🇭', 'GHS', 'GH₵', 12, 0.18, 0,

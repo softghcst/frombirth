@@ -55,7 +55,7 @@ export function openWorld(o = {}) {
         <div class="world-compare"><span></span><strong>${esc(cmp.a.name)}</strong><strong>${esc(cmp.b.name)}</strong>
           ${cmp.rows.map(([k, x, y]) => `<span>${esc(k)}</span><span>${esc(x)}</span><span>${esc(y)}</span>`).join('')}</div>
         <p class="muted" style="margin-top:6px">Neither is better: it depends on the life.</p></div>` : ''}
-      <div class="card"><h3>About the place</h3>${kv(p.reference)}</div>
+      <div class="card"><h3>About the place</h3>${kv(p.reference)}${p.checks.length ? `<details style="margin-top:8px"><summary class="muted">How this was checked</summary>${kv(p.checks)}</details>` : ''}</div>
       <div class="card"><h3>Cities you can live in</h3>${kv(p.cityLines)}<p class="muted" style="margin-top:6px">Compared with the country as a whole. Rough estimates for play.</p></div>
       <div class="card"><h3>Living here</h3>${kv(p.game)}</div>
       <div class="card"><h3>School</h3>${kv(p.school)}</div>
