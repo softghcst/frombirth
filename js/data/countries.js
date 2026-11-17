@@ -234,6 +234,8 @@ for (const c of LIST) c.place = PLACES[c.id] ?? null;
 for (const c of LIST) {
   const L = LIVING[c.id];
   c.living = { ...L, wageK: Math.round(L.wage ** 0.6 * 1000) / 1000, costK: Math.round(L.cost ** 0.85 * 1000) / 1000 };
+  // Crisis and inflation can change during a life: read them through the living row, which knows (see data/living.js).
+  for (const key of ['crisis', 'inflation']) Object.defineProperty(c.living, key, { enumerable: true, configurable: true, get: () => L[key] });
 }
 
 /** "1.1% a year" or "none", for display. */

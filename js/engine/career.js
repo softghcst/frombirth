@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { hiringClimate, layoffChance } from './economy.js';
 import { payK } from './cities.js';
 import { rule, may } from './rules.js';
 import { residency } from './citizenship.js';
@@ -103,7 +104,7 @@ function doorBonus(career) {
   let bonus = (career.doors ?? []).filter((d) => !d.guaranteed && doorOpen(d)).reduce((s, d) => s + d.bonus, 0);
   if (career.focus && p.flags.cosmoFocus === career.focus) bonus += 0.25;
   if ((p.flags.internships ?? []).some((i) => i.careerId === career.id)) bonus += 0.2; // they have done the work before
-  return bonus + hiringEdge(p); // languages: an asset anywhere, and a barrier where you cannot speak the one in use
+  return bonus + hiringEdge(p) + hiringClimate(); // the economy; and languages: an asset anywhere, and a barrier where you cannot speak the one in use
 }
 
 const payBand = (level) => level.pay.map((k) => Math.round(localWage(k * K, country()) * payK())); // what the work pays in this city
@@ -602,7 +603,7 @@ export function tickCareer() {
   if (career.type !== 'freelance') log(`Your annual review as ${an(c.title.toLowerCase())}: ${rating}.`, 'system', rating === 'poor' ? 'bad' : 'neutral');
 
   if (career.type !== 'freelance' && c.performance < 25 && rng.chance(0.5)) { fire(c.military ? 'discharged' : 'fired'); return null; }
-  if (career.type === 'fulltime' && rng.chance(0.012)) { fire('laid off'); return null; }
+  if (career.type === 'fulltime' && rng.chance(layoffChance())) { fire('laid off'); return null; }
 
   // Moving up
   const next = career.levels[c.level + 1];

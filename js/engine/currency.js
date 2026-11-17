@@ -12,6 +12,7 @@
 // simulation rates, not market quotes, and the game never presents them as
 // real. Amounts are whole units; every conversion rounds down, so money is
 // never created by exchanging it.
+import { fxBias } from './economy.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
@@ -42,7 +43,7 @@ export function tickFx() {
   const fx = (store.state.fx ??= {});
   for (const code of Object.keys(BY_CODE)) {
     const now = fx[code] ?? 1;
-    const next = clamp(now * (1 + rng.around(0, 0.025)) + (1 - now) * 0.08, 0.7, 1.4);
+    const next = clamp(now * (1 + rng.around(0, 0.025)) + (1 + fxBias(code) - now) * 0.08, 0.7, 1.6); // pulled towards its usual rate, or a weaker one in bad times
     fx[code] = Math.round(next * 10000) / 10000;
   }
 }

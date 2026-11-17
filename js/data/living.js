@@ -92,6 +92,20 @@ for (const [id, r] of Object.entries(NEW_PLACES)) {
   LIVING[id] = row(wage, cost, safety, health, infra, stability, graft, inflation, hazards, law(...l), crisis);
 }
 
+/**
+ * The world changes during a life: crises begin and end (engine/economy.js).
+ * Those changes live in the save. `crisis` and `inflation` on each row read
+ * through this hook first, so every reader sees the world as it now is, and
+ * fall back to the values written above. BASE_LIVING keeps the originals.
+ */
+export const dynamic = { read: null };
+export const BASE_LIVING = {};
+for (const [id, r] of Object.entries(LIVING)) {
+  BASE_LIVING[id] = { crisis: r.crisis, inflation: r.inflation };
+  for (const key of ['crisis', 'inflation']) {
+    Object.defineProperty(r, key, { enumerable: true, configurable: true, get() { const v = dynamic.read?.(id, key); return v === undefined ? BASE_LIVING[id][key] : v; } });
+  }
+}
 
 /** Natural hazards: how often they strike in a year, and how they read in the journal. */
 export const HAZARDS = {

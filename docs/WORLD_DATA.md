@@ -62,6 +62,11 @@ shown on its profile.
 - Citizenship rules (`js/data/citizenship.js`) are three yes-or-no lists and a table of years: which places grant citizenship by
   birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
   conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.
+- The moving world (`js/data/economy.js`) is fiction with invented odds. An economy has three states and no numbers behind
+  them (no growth, unemployment or interest rates). Wars can end but never begin. Stability, safety and the other living
+  scores do not change. Only the player's country of residence feels its economy; other countries' phases are news, and
+  nudge where people move and what currencies do. Elections abroad are not simulated. People who move are named in the
+  journal but have no city, visa or job search of their own.
 - Legal rules (`js/data/rules.js`) hold one value per place for fourteen questions. Ages are the common adult case and ignore
   exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
   the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A player in office cannot yet propose these laws:
@@ -71,8 +76,8 @@ shown on its profile.
   New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
   is no deportation for crime, no overstaying, and no visa needed for a short visit.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property and
-  loans are still valued in the everyday currency and converted when you move. Exchange rates are fictional and only drift within
-  bounds: they do not follow each country's inflation.
+  loans are still valued in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
+  bounds and are pulled weaker by a recession or a crisis, without following measured inflation.
 
 ## Adding a place
 

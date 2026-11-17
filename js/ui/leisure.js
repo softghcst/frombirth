@@ -1,5 +1,6 @@
 // Flows for health care, cosmetic surgery, holidays, social media and
 // emigrating. The Self and Pursuits tabs call into these.
+import * as econ from '../engine/economy.js';
 import { player, country } from '../state.js';
 import { fmtMoney, theCountry, esc } from '../util.js';
 import { propertyTaxLabel, COUNTRIES } from '../data/countries.js';
@@ -304,4 +305,25 @@ export async function openCurrencies(api) {
     sub: `About ${money.fmt(Math.floor(money.convert(Math.floor(have * f), pickFrom, to) * (1 - money.FX_FEE)), to)} after the fee.`, disabled: Math.floor(have * f) < 1 })) });
   if (!part) return undefined;
   return report(api, money.exchange(pickFrom, to, Math.floor(have * Number(part))));
+}
+
+/** World news: what has happened in the world during this life, with what touches the player first. */
+export function openNews() {
+  const c = country();
+  const o = econ.outlook();
+  const all = econ.news(60);
+  const row = (n) => `<div class="dyn-event"><span class="num">${n.year}</span><span>${n.flag} ${esc(n.text)}</span></div>`;
+  const yours = all.filter((n) => n.yours).slice(0, 12);
+  const rest = all.filter((n) => !n.yours).slice(0, 20);
+  const m = openModal(`
+    <h2>World news</h2>
+    <div class="card"><h3>${esc(c.flag)} ${esc(c.name)}</h3>
+      <div class="kv"><span>The economy</span><span><strong>${esc(o.name)}</strong>${o.since ? ` since ${o.since}` : ''}</span></div>
+      <p class="muted" style="margin-top:6px">${esc(o.line)}</p></div>
+    <div class="card"><h3>Where you have ties</h3>${yours.length ? yours.map(row).join('') : '<p class="muted">Nothing to report yet.</p>'}
+      <p class="muted" style="margin-top:6px">Where you live, where you were born, countries you are a citizen of, and where your family and property are.</p></div>
+    <div class="card"><h3>Elsewhere</h3>${rest.length ? rest.map(row).join('') : '<p class="muted">A quiet world, so far.</p>'}</div>
+    <p class="muted">This is the story of your game, not the real world.</p>
+    <button class="btn" data-close style="margin-top:14px">Close</button>`, { dismissable: true });
+  m.el.querySelector('[data-close]').addEventListener('click', () => m.close());
 }
