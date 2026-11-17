@@ -9,6 +9,16 @@ const j = (value) => ({ type: 'justice', value });
 /** @type {import('../../types.js').GameEvent[]} */
 export default [
   {
+    // Sent by engine/kinCases.js when a relative is charged. The case runs to its end with the choice made here.
+    id: 'kin_charged', category: 'family', ageRange: [10, 120], queuedOnly: true,
+    text: 'A phone call you will remember: {kin} has been charged with {offense}. {bail} They say they need you.',
+    choices: [
+      { label: 'Pay for a good lawyer for them', outcomes: [any('You make the calls, and you pay.', 'neutral', j('kin_lawyer'))] },
+      { label: 'Be there: post bail if there is any, and sit in court every day', outcomes: [any('You are in the public gallery at every hearing.', 'good', j('kin_court'))] },
+      { label: 'Keep your distance', outcomes: [any('You do not go. You hear about it from others.', 'bad', j('kin_distance'))] },
+    ],
+  },
+  {
     id: 'witness_incident', category: 'everyday', ageRange: [14, 90], cooldown: 8, weight: 0.6,
     text: 'Waiting at a bus stop, you see a man snatch a bag from a woman outside the chemist and run. You saw his face, for a second or two.',
     choices: [

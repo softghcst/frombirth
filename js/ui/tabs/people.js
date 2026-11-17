@@ -1,5 +1,6 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
+import * as kinCase from '../../engine/kinCases.js';
 import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
 import * as rel from '../../engine/relationships.js';
@@ -271,6 +272,7 @@ export function openNpc(npc, api, o = {}) {
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
+    ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
     ...(npc.alive ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
@@ -332,6 +334,8 @@ export function openNpc(npc, api, o = {}) {
       },
       talkIdentity: () => report(api, who.talkItThrough(npc.id)),
       edit: () => editPerson(api, npc),
+      visitInside: () => report(api, kinCase.visitKin(npc.id)),
+      writeInside: () => report(api, kinCase.writeToKin(npc.id)),
       dynasty: () => openDynasty(npc.flags.houseId),
       breakUp: async () => {
         const yes = await confirmModal({ title: `End things with ${npc.firstName}?`, body: 'They will become an ex.', yes: 'End it', danger: true });

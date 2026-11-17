@@ -46,7 +46,7 @@ node tests/cities.mjs          # cities and regions: prices, pay, regional law, 
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
-node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves
+node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 

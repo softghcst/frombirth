@@ -19,11 +19,31 @@ import { clamp, localMoney } from '../util.js';
 import { store, player } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { makeNpc } from './npcFactory.js';
+import { rule } from './rules.js';
 import { LAWYERS } from '../data/crimes.js';
 import {
   OFFENSE_BY_ID, SYSTEMS, systemFor, courtFor, courtsFor, policeName, EVIDENCE, EVIDENCE_FROM, LEADS,
   APPEAL_GROUNDS, COLD_AFTER, responsibilityAge,
 } from '../data/justice.js';
+
+/**
+ * The procedure in force in a country now: its family of procedure, as changed
+ * by any law passed since (engine/rules.js). A case keeps the law of the day it
+ * was charged.
+ */
+export function lawAt(countryId) {
+  const base = systemFor(countryId);
+  const r = (id) => rule(id, countryId, { region: null });
+  const jury = r('juryTrials');
+  const ed = r('prisonEducation');
+  return { ...base, factFinder: jury ? 'jury' : base.factFinder === 'jury' ? 'judge' : base.factFinder,
+    juryFrom: jury ? (base.factFinder === 'jury' ? base.juryFrom : 3) : 9, bail: r('cashBail') ? 'money' : 'conditions',
+    sealAfter: r('recordSealing') ? base.sealAfter ?? [5, 12] : null,
+    schooling: ed === 'minimal' ? Math.min(base.schooling, 0.35) : ed === 'extensive' ? Math.max(base.schooling, 0.75) : clamp(base.schooling, 0.4, 0.69),
+    sentencing: r('sentencing'), severity: { lenient: 0.75, standard: 1, tough: 1.3 }[r('sentencing')] };
+}
+/** The procedure a case is heard under. */
+export const procedure = (c) => c.law ?? SYSTEMS[c.systemId];
 
 /** How sure a fact-finder must be to convict. */
 export const BURDEN = 0.78;
@@ -315,7 +335,7 @@ export const openCaseFor = (inv, defendantId) => { inv.stage = 'charged'; inv.ou
 function openCase(inc, inv, defendantId) {
   const off = OFFENSE_BY_ID[inc.offenseId];
   const age = ageOf(defendantId) ?? 30;
-  const sys = systemFor(inc.countryId);
+  const sys = lawAt(inc.countryId);
   const juvenile = age < sys.adultAge;
   const b = bench(inc.countryId);
   const prosecutor = pick(b.prosecutors);
@@ -324,7 +344,7 @@ function openCase(inc, inv, defendantId) {
     systemId: sys.id, court: courtFor(inc.countryId, off.severity, juvenile), juvenile, defendantId, year: year(), age,
     charges: [{ offenseId: off.id, lesser: off.lesser ?? null }], prosecutorId: prosecutor.id, judgeId: judge.id,
     defenceId: null, defenceTier: null, evidenceIds: [...inv.evidenceIds], stage: 'charged', hearings: [],
-    bail: null, remand: false, offer: null, plea: null, trials: 0, verdict: null, sentenceId: null, appealIds: [], fresh: null, rulings: [] };
+    bail: null, remand: false, offer: null, plea: null, trials: 0, verdict: null, sentenceId: null, appealIds: [], fresh: null, rulings: [], law: lawAt(inc.countryId) };
   c.hearings.push({ year: year(), stage: 'charged', court: c.court, text: `Charged with ${off.name.toLowerCase()}.` });
   J().cases[c.id] = c;
   for (const id of [prosecutor.id, judge.id]) person(id)?.flags?.justice?.caseIds.push(c.id);
@@ -343,7 +363,7 @@ const BAIL_BASE = [0, 500, 2500, 10000, 50000];
  */
 export function bailHearing(c) {
   if (c.bail) return c.bail;
-  const sys = SYSTEMS[c.systemId];
+  const sys = procedure(c);
   const off = OFFENSE_BY_ID[c.charges[0].offenseId];
   const country = COUNTRIES[c.countryId];
   let out;
@@ -445,7 +465,7 @@ export function advice(c) {
 /** The prosecution's offer, where offers are made. Made once, and kept. */
 export function offer(c) {
   if (c.offer !== null) return c.offer.status === 'open' ? c.offer : null;
-  const sys = SYSTEMS[c.systemId];
+  const sys = procedure(c);
   const s = strength(c.evidenceIds, c.defendantId, { admissibleOnly: true });
   if (sys.plea !== 'bargain' || s < 0.4 || c.juvenile) { c.offer = { status: 'none' }; return null; }
   const charge = c.charges[0];
@@ -457,7 +477,7 @@ export function offer(c) {
 
 /** What pleading guilty means where this case is heard. */
 export function pleaTerms(c) {
-  const sys = SYSTEMS[c.systemId];
+  const sys = procedure(c);
   return sys.plea === 'limited' ? 'An admission is taken into account, but the court still examines the case before deciding.'
     : `Pleading guilty means no trial and a conviction. ${Math.round(sys.pleaCredit * 100)}% comes off any custodial term.`;
 }
@@ -468,7 +488,7 @@ export function pleaTerms(c) {
  */
 export function enterPlea(c, plea) {
   if (c.stage !== 'plea') return { stage: c.stage, lines: [] };
-  const sys = SYSTEMS[c.systemId];
+  const sys = procedure(c);
   const lines = [];
   if (plea === 'deal') {
     const o = offer(c);
@@ -503,7 +523,7 @@ export function enterPlea(c, plea) {
 
 /** Who decides guilt in this case. */
 export function factFinder(c) {
-  const sys = SYSTEMS[c.systemId];
+  const sys = procedure(c);
   if (c.juvenile) return 'judge';
   if (sys.factFinder === 'jury') return OFFENSE_BY_ID[c.charges[0].offenseId].severity >= sys.juryFrom ? 'jury' : 'judge';
   return sys.factFinder;
@@ -518,7 +538,7 @@ export function factFinder(c) {
  */
 export function trial(c, o = {}) {
   if (c.stage !== 'trial') return { stage: c.stage, lines: [], verdict: null };
-  const sys = SYSTEMS[c.systemId];
+  const sys = procedure(c);
   const lines = [];
   const counsel = clamp((c.defenceId ? skillOf(c.defenceId) : 15) + (c.effort ?? 0));
   const pros = skillOf(c.prosecutorId);
@@ -620,12 +640,13 @@ export function lawfulRange(offenseId) {
  */
 export function sentence(c, offenseId, how, ruling = null) {
   const off = OFFENSE_BY_ID[offenseId];
-  const sys = SYSTEMS[c.systemId];
+  const sys = procedure(c);
   const judge = person(c.judgeId);
   const n = priors(c.defendantId, c.id);
   const plea = how === 'guilty plea' || how === 'plea agreement';
   let score = off.severity * 18 + Math.min(n, 3) * 9 + ((judge?.flags.justice?.strict ?? 50) - 50) / 5 - (n === 0 ? 8 : 0) - (c.juvenile ? 12 : 0) + rng.int(-6, 6);
   if (plea) score -= 6;
+  score += { lenient: -6, standard: 0, tough: 6 }[sys.sentencing ?? 'standard'];
   const ladder = off.ladder;
   let type = ladder[clamp(Math.floor((score - 10) / 15), 0, ladder.length - 1)];
   if (type === 'diversion' && (n > 0 || c.age >= sys.adultAge + 7)) type = ladder[Math.min(1, ladder.length - 1)];
@@ -636,7 +657,8 @@ export function sentence(c, offenseId, how, ruling = null) {
     years = lo + (hi - lo) * f;
     if (plea) years *= 1 - sys.pleaCredit;
     if (how === 'plea agreement' && c.offer?.cap) years = Math.min(years, lo + (hi - lo) * c.offer.cap);
-    years = Math.max(lo === 0 ? 1 : Math.round(lo * (plea ? 1 - sys.pleaCredit : 1)), Math.round(years));
+    years *= sys.severity ?? 1;
+    years = Math.min(hi, Math.max(lo === 0 ? 1 : Math.round(lo * (plea ? 1 - sys.pleaCredit : 1)), Math.round(years)));
   }
   if (ruling) {
     // A player judge chooses, but only from what the law allows.

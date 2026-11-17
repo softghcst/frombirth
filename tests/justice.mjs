@@ -509,6 +509,130 @@ function framedBy(offenseId, reliability = 0.85) {
   section('older saves: an open case resumes where it was');
 }
 
+// ---------- The law changes, and the courts follow it ----------
+{
+  const rules = await import('../js/engine/rules.js');
+  let p = adult('uk', 30);
+  check(rules.rule('juryTrials', 'uk') === true && rules.rule('juryTrials', 'de') === false && rules.rule('cashBail', 'us') === true, 'each country starts from its own procedure');
+  check(['juryTrials', 'cashBail', 'recordSealing', 'sentencing', 'prisonEducation'].every((id) => rules.choices('uk').some((x) => x.rule === id)), 'every justice law can be put to a legislature');
+  const before = caughtFor('armed_robbery').c;
+  check(before.law.factFinder === 'jury', 'a case charged under jury trial');
+  rules.enact('uk', 'juryTrials', false, 'a test');
+  check(k.lawAt('uk').factFinder === 'judge' && before.law.factFinder === 'jury', 'the law changes; the case already charged keeps its law');
+  law.legal().pending = null;
+  const after = caughtFor('armed_robbery').c;
+  check(after.law.factFinder === 'judge' && k.factFinder(after) === 'judge', 'a new case follows the new law');
+  rules.enact('de', 'cashBail', true, 'a test');
+  check(k.lawAt('de').bail === 'money', 'money bail where it was brought in');
+  // Sentencing laws move sentences, never past the lawful range.
+  const avg = (level) => {
+    let total = 0;
+    for (let i = 0; i < 25; i++) {
+      const q = adult('fr', 30);
+      rules.enact('fr', 'sentencing', level, 'a test');
+      const { c } = caughtFor('burglary');
+      k.bailHearing(c); k.appoint(c, 'self', q.id); k.enterPlea(c, 'notGuilty');
+      const s = k.J().sentences[c.sentenceId];
+      if (s) { check(s.type !== 'custody' || (s.years >= 1 && s.years <= OFFENSE_BY_ID.burglary.custody[1]), 'within the lawful range'); total += s.type === 'custody' ? s.years : 0; }
+    }
+    return total;
+  };
+  const soft = avg('lenient');
+  const hard = avg('tough');
+  check(hard > soft, `tougher sentencing law, longer sentences (${soft} vs ${hard} years over 25 cases)`);
+  p = adult('se', 30);
+  rules.enact('se', 'prisonEducation', 'minimal', 'a test');
+  law.imprison(5, 2, {});
+  check(jail.programmeOptions().find((x) => x.id === 'degree').why === 'Not offered in prisons here.', 'cutting prison education closes courses');
+  law.release();
+  p = adult('uk', 30);
+  rules.enact('uk', 'recordSealing', false, 'a test');
+  p.legal.record.push({ caseId: 'x', crimeId: 'theft', offense: 'Theft', age: 20, year: store.state.year - 10, convicted: true, outcome: 'convicted', sentenceYears: 0 });
+  check(law.sealOptions()[0].why === 'Records are not sealed here.', 'where sealing is abolished, nothing can be sealed');
+  section('politics: justice laws can be changed; new cases follow them, old cases keep theirs');
+}
+
+// ---------- A relative's case ----------
+{
+  const kin = await import('../js/engine/kinCases.js');
+  let done = null;
+  for (let i = 0; i < 30 && !done; i++) {
+    const p = adult('uk', 40);
+    const sib = makeNpc({ role: 'sibling', countryId: 'uk', age: 36, relationship: 60 });
+    store.state.npcs[sib.id] = sib; p.npcIds.push(sib.id);
+    store.state.pendingEvents = [];
+    const c = kin.charge(sib, { offenseId: 'robbery', innocent: false });
+    if (!c) continue;
+    check(store.state.pendingEvents.some((e) => e.id === 'kin_charged' && e.cast.kin === sib.id), 'the player hears, in a scene');
+    const rel0 = sib.meters.relationship;
+    p.finance.cash = 200000;
+    const text = justiceScene('kin_court', { kin: sib.id });
+    check(text && ['sentenced', 'acquitted', 'dismissed'].includes(c.stage) && !sib.flags.openCaseId, 'the case runs to its end');
+    check(sib.meters.relationship > rel0 - 1, 'standing by them counts');
+    check(p.legal.history.some((h) => h.kind === 'family' && h.caseId === c.id) && !p.legal.record.length, 'it is in the player\'s history, not their record');
+    check((sib.flags.legalHistory ?? []).some((h) => h.kind === 'charged'), 'the relative has their own legal history');
+    if (kin.inside(sib)) done = { p, sib, c };
+  }
+  check(!!done, 'a relative can be sent to prison');
+  if (done) {
+    const { p, sib } = done;
+    const f = k.J().facilities[sib.flags.inmate.facilityId];
+    check(f.inmateIds.includes(sib.id) && sib.role === 'sibling', 'they serve at a real facility, and are still a sibling');
+    sib.meters.relationship = 60;
+    const r0 = sib.meters.relationship;
+    check(kin.visitKin(sib.id).ok && sib.meters.relationship > r0, 'the player can visit');
+    check(!kin.visitKin(sib.id).ok, 'once a year');
+    const age0 = sib.age;
+    for (let i = 0; i < 30 && kin.inside(sib); i++) year();
+    check(!kin.inside(sib) && p.npcIds.includes(sib.id) && sib.role === 'sibling' && sib.age > age0, 'they come home, older, and still family');
+    check(!f.inmateIds.includes(sib.id), 'and leave the facility');
+  }
+  section('family: a relative charged, a choice to stand by them, a sentence served, visits, a return home');
+}
+
+// ---------- Royalty ----------
+{
+  let p;
+  for (let i = 0; i < 40; i++) { store.state = createLife({ countryId: 'uk', birthRank: 'royal' }); if (store.state.player.royal) break; }
+  p = store.state.player;
+  check(!!p.royal, 'a royal life');
+  if (p.royal) {
+    p.age = 40; store.state.year += 40; p.stats.health = 90;
+    p.royal.reigning = true;
+    const { inv, c } = caughtFor('fraud');
+    check(!c && inv.outcome === 'sovereign immunity' && p.legal.history.some((h) => h.kind === 'immunity'), 'a reigning monarch is not prosecuted');
+    check(!hasRecord(p), 'and has no record');
+    p.royal.reigning = false;
+    year();
+    check(inv.outcome !== 'sovereign immunity', 'after the reign, the file can be reopened');
+    const q = adult('uk', 30);
+    q.royal = { rank: 'royal', countryId: 'uk', reigning: false };
+    check(!!caughtFor('fraud').c, 'other royals are prosecuted like anyone else');
+  }
+  section('royalty: immunity for the reigning monarch only, and only while they reign');
+}
+
+// ---------- Transfers ----------
+{
+  const p = adult('uk', 30);
+  law.imprison(12, 4, {});
+  const c = jail.cell();
+  check(c.security === 'max', 'a serious sentence starts in high security');
+  check(!jail.requestTransfer().ok, 'an early application is refused, with a reason');
+  c.conduct = 95;
+  const first = jail.facility().id;
+  for (let i = 0; i < 6 && c.security === 'max' && jail.cell(); i++) { c.conduct = 95; year(); }
+  check(jail.cell() ? c.security === 'med' && jail.facility().id !== first && c.transfers.length === 1 : true, 'a good record earns a move to lower security');
+  check(p.legal.history.some((h) => h.kind === 'transfer') || !jail.cell(), 'the move is on the record');
+  if (jail.cell()) {
+    c.conduct = 5;
+    c.discipline.push({ year: store.state.year, allegation: 'Fighting', finding: 'proven', penalty: null });
+    year();
+    check(!jail.cell() || c.security === 'max', 'a bad one, back up');
+  }
+  section('transfers: earned down, lost up, always recorded');
+}
+
 // ---------- A long life ----------
 {
   const p = adult('us', 18);

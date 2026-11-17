@@ -49,7 +49,7 @@ export async function runJustice(api) {
 async function bail(c, api) {
   const b = k.bailHearing(c);
   api.changed();
-  const sys = SYSTEMS[c.systemId];
+  const sys = k.procedure(c);
   await messageModal({ eyebrow: `${c.court} · first hearing`, title: `Charged with ${offName(c).toLowerCase()}`,
     body: `${b.text} Being charged is not being guilty: that is for the court to decide. Cases here are decided ${sys.factFinder === 'jury' ? 'by a jury for serious charges, by a judge otherwise' : sys.factFinder === 'mixed' ? 'by professional and lay judges together' : 'by judges'}.` });
   if (b.decision !== 'bail') { if (b.decision === 'remand') k.remand(c); api.changed(); return; }
@@ -77,7 +77,7 @@ async function counsel(c, api) {
 }
 
 async function plead(c, api) {
-  const sys = SYSTEMS[c.systemId];
+  const sys = k.procedure(c);
   const file = k.caseFile(c);
   const lines = file.map((e) => `• ${e.kind}${e.against ? '' : ' (points elsewhere)'}: ${e.reliability}.`).join(' ');
   const view = await pickModal({ title: 'Your case', body: `${k.advice(c)} Evidence: ${lines}`, cancel: 'Back',
@@ -113,7 +113,7 @@ export function openCaseFile(caseId, api) {
   const c = k.J().cases[caseId];
   if (!c) return messageModal({ body: 'This record is older than the court records: only the outcome was kept.' });
   const s = k.J().sentences[c.sentenceId];
-  const sys = SYSTEMS[c.systemId];
+  const sys = k.procedure(c);
   const mine = c.defendantId === player().id;
   const grounds = mine ? k.appealGrounds(c) : [];
   const c2 = cty();

@@ -164,7 +164,7 @@ export function openCourtBrief(side) {
 
 /** Choices for the player as counsel. */
 export function counselChoices(c) {
-  const sys = SYSTEMS[c.systemId];
+  const sys = k.procedure(c);
   if (c.defenceId === player().id) {
     const out = [{ id: 'trial', label: 'Fight it at trial', sub: 'Test every piece of evidence.' },
       { id: 'challenge', label: 'Fight it, and challenge how the evidence was gathered', sub: 'More work. It matters only if something was done wrong.' }];
@@ -235,7 +235,7 @@ export function openBench() {
 
 /** Evidence the judge must rule on: unlawfully obtained items, and whether the law leaves any choice. */
 export function rulingsNeeded(c) {
-  const sys = SYSTEMS[c.systemId];
+  const sys = k.procedure(c);
   return c.evidenceIds.map((id) => k.J().evidence[id]).filter((e) => !e.lawful && e.admissible === null).map((e) => ({
     id: e.id, kind: EVIDENCE[e.kind].name, summary: e.summary, mustExclude: sys.exclusion === 'strict',
   }));
@@ -246,7 +246,7 @@ export function rulingsNeeded(c) {
  * ruling to admit is not something a judge can make.
  */
 export function hear(c, admit) {
-  const sys = SYSTEMS[c.systemId];
+  const sys = k.procedure(c);
   const rulings = {};
   for (const r of rulingsNeeded(c)) rulings[r.id] = sys.exclusion === 'strict' ? false : !!admit[r.id];
   // The judge's ruling stands whether or not the defence raised it.

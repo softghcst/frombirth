@@ -6,10 +6,12 @@ import { store, player, milestone } from '../state.js';
 import * as k from './cases.js';
 import { freshCase } from './legalCareers.js';
 import { bringClaim } from './civil.js';
+import { standBy } from './kinCases.js';
 
 /** @returns {string} a line added to the scene's outcome, or '' */
-export function justiceScene(value) {
+export function justiceScene(value, cast = {}) {
   const p = player();
+  if (value.startsWith('kin_')) return standBy(value, cast.kin);
   if (value.startsWith('witness_')) {
     const perp = k.civilian(p.countryId, { age: rng.int(17, 40) });
     const victim = k.civilian(p.countryId);

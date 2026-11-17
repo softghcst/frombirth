@@ -178,7 +178,7 @@ export function programmeOptions() {
   const f = facility();
   const c = cell();
   if (!f || !c) return [];
-  const sys = systemFor(f.countryId);
+  const sys = k.lawAt(f.countryId);
   const sec = f.kind === 'juvenile' ? 'min' : f.kind;
   return PROGRAMMES.map((x) => {
     let why = '';
@@ -243,7 +243,7 @@ export function jobOptions() {
   const c = cell();
   if (!f || !c) return [];
   const sec = f.kind === 'juvenile' ? 'min' : f.kind;
-  const pay = systemFor(f.countryId).wage;
+  const pay = k.lawAt(f.countryId).wage;
   return PRISON_JOBS.map((j) => {
     const why = j.security && RANK[sec] > RANK[j.security] ? 'Only in open conditions.' : j.needs && !held(j.needs) ? 'Needs a school-leaving certificate.' : '';
     return { ...j, ok: !why, why, pay: localMoney(pay * j.pay, country()), now: c.job?.id === j.id };
@@ -266,7 +266,7 @@ function work(c) {
   const j = PRISON_JOB_BY_ID[c.job.id];
   const f = facility();
   const full = c.routine === 'work' ? 1.3 : 1;
-  const pay = Math.round(localMoney(systemFor(f.countryId).wage * j.pay, country()) * full);
+  const pay = Math.round(localMoney(k.lawAt(f.countryId).wage * j.pay, country()) * full);
   k.pay({ key: `wage:${c.id}:${year()}`, kind: 'prison_wage', amount: pay, payer: 'state', payee: p.id, caseId: c.caseId });
   if (j.skill) (p.skills ??= {})[j.skill] = clamp((p.skills[j.skill] ?? 0) + 6 * full);
   if (j.stat) p.stats[j.stat] = clamp(p.stats[j.stat] + 1);
@@ -609,7 +609,7 @@ export function finishEscape(escaped) {
 export function releaseOutlook() {
   const c = cell();
   if (!c) return null;
-  const sys = systemFor(player().countryId);
+  const sys = k.lawAt(player().countryId);
   if (c.deathRow) return { text: 'Sentenced to death. Appeals are the only road out.', at: null };
   if (c.total >= LIFE_SENTENCE) return { text: `A life sentence. The parole board can first consider release after ${Math.max(0, 15 - c.served)} more year${15 - c.served === 1 ? '' : 's'}.`, at: null };
   const at = Math.ceil(c.total * sys.releaseAt);
@@ -668,7 +668,7 @@ function tickFacilities() {
   for (const f of Object.values(J.facilities)) {
     for (const id of [...f.inmateIds]) {
       const n = store.state.npcs[id];
-      if (!n?.alive) { f.inmateIds = f.inmateIds.filter((x) => x !== id); continue; }
+      if (!n?.alive || !n.flags.inmate) { f.inmateIds = f.inmateIds.filter((x) => x !== id); continue; }
       const i = n.flags.inmate;
       i.yearsLeft -= 1;
       if (i.yearsLeft > 0) continue;
@@ -676,9 +676,14 @@ function tickFacilities() {
       f.released.push({ id, year: year() });
       i.released = year();
       i.facilityId = null;
-      n.flags.justice.kind = 'released';
+      if (n.flags.justice) n.flags.justice.kind = 'released';
       (n.flags.legalHistory ??= []).push({ year: year(), age: n.age, kind: 'released', text: `Released from ${f.name}.` });
-      const friend = p.npcIds.includes(id);
+      if (i.kin) {
+        // Family stays family.
+        if (p.npcIds.includes(id)) log(`${n.firstName} has been released from ${f.name}${p.legal.incarceration ? '' : ', and comes home'}.`, 'system', 'good');
+        continue;
+      }
+      const friend = p.npcIds.includes(id) && n.role === 'cellmate';
       if (friend && n.meters.relationship >= 50) {
         n.role = 'friend';
         n.flags.title = 'Friend (met inside)';
@@ -736,6 +741,13 @@ export function tickPrison() {
     log('There was trouble on the landing, and you got caught up in it. You could ask staff for help, or for a move.', 'system', 'bad');
   }
 
+  // A good record earns a move to lower security; a bad one, a move up.
+  if (!isJuvenile() && !c.deathRow) {
+    const why = transferCase(c);
+    if (why.down) transfer(DOWN[c.security], why.text);
+    else if (why.up) transfer(UP[c.security], 'A string of proven offences inside: you are moved to tighter security.');
+  }
+
   // Coming of age inside: the rest of the term is served somewhere else.
   if (isJuvenile() && p.age >= systemFor(p.countryId).adultAge) {
     if (c.yearsLeft <= 0) return release('You were released from youth detention. Your juvenile record is sealed.');
@@ -747,7 +759,7 @@ export function tickPrison() {
   }
   if (c.yearsLeft <= 0) return release();
   // Release before the end of the term, as the law here provides.
-  const sys = systemFor(p.countryId);
+  const sys = k.lawAt(p.countryId);
   const life = c.total >= LIFE_SENTENCE;
   const at = life ? 15 : Math.ceil(c.total * sys.releaseAt);
   if (!c.deathRow && c.served >= at) {
@@ -759,6 +771,53 @@ export function tickPrison() {
     }
   }
   return undefined;
+}
+
+// ---------- Transfers ----------
+
+const DOWN = { max: 'med', med: 'min' };
+const UP = { min: 'med', med: 'max' };
+
+/** Whether a move is due, and why or why not. */
+function transferCase(c) {
+  const recent = c.discipline.filter((d) => d.finding === 'proven' && year() - d.year <= 2).length;
+  const life = c.total >= LIFE_SENTENCE;
+  const enough = c.served >= (life ? 10 : Math.max(2, Math.ceil(c.total / 3)));
+  if (UP[c.security] && c.conduct <= 15 && recent >= 1) return { up: true };
+  if (!DOWN[c.security]) return { text: 'You are already in open conditions.' };
+  if (!enough) return { text: `Not yet: you must serve ${life ? 10 : Math.max(2, Math.ceil(c.total / 3))} years first.` };
+  if (recent) return { text: 'Not with a proven offence inside in the last two years.' };
+  if (c.gangId) return { text: 'Not while you are in a gang.' };
+  if (c.conduct < 75) return { text: 'Your conduct record needs to be better.' };
+  return { down: true, text: c.security === 'med' ? 'Your record inside has earned a move to open conditions.' : 'Your record inside has earned a move to lower security.' };
+}
+
+/** Moves the player to another facility. Friends stay friends; the cell and the cellmate change. */
+function transfer(security, why) {
+  const p = player();
+  const c = cell();
+  const from = facility();
+  const f = facilityFor(p.countryId, security);
+  for (const mate of npcsByRole('cellmate')) if (mate.flags.inmate?.facilityId === from?.id && mate.meters.relationship < 60) p.npcIds = p.npcIds.filter((id) => id !== mate.id);
+  c.security = security;
+  c.facilityId = f.id;
+  (c.transfers ??= []).push({ year: year(), from: from?.id ?? null, to: f.id, why });
+  if (c.job && !jobOptions().find((j) => j.id === c.job.id)?.ok) c.job = null;
+  const mate = rng.pick(f.inmateIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && !p.npcIds.includes(n.id)));
+  if (mate) { mate.role = 'cellmate'; mate.meters.relationship = rng.int(30, 55); p.npcIds.push(mate.id); }
+  k.note(p.id, 'transfer', `Moved to ${f.name}.`, c.caseId);
+  log(`${why} You are moved to ${f.name}.${mate ? ` Your new cellmate is ${mate.firstName} ${mate.lastName}.` : ''}`, 'system', UP[from?.kind] === security ? 'bad' : 'good');
+}
+
+/** Applying for a move to lower security. The record decides. */
+export function requestTransfer() {
+  const c = cell();
+  if (!c || isJuvenile()) return result(false, 'There is nowhere to move you.', 'neutral');
+  if (!once('transfer')) return result(false, 'You have already applied this year.', 'neutral');
+  const why = transferCase(c);
+  if (!why.down) return result(false, `Your application was refused. ${why.text}`, 'neutral');
+  transfer(DOWN[c.security], why.text);
+  return result(true, `Your application was granted. You are now at ${facility().name}.`);
 }
 
 /** Recaptured after an escape: back to custody, and a new charge. */

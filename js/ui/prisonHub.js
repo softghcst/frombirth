@@ -122,6 +122,8 @@ const BODY = {
       <p style="margin-top:8px">${esc(out.text)}</p>
       ${c.reviews.length ? `<div class="section-label">Parole reviews</div>${c.reviews.map((r) => `<div class="kv"><span>${r.year}</span><span>${r.granted ? 'Granted' : 'Refused'}: ${esc(r.reasons.join(', '))}</span></div>`).join('')}` : ''}
       ${jail.paroleDue() ? '<button class="btn primary" data-hub-act="parole" style="margin-top:10px">Prepare for your parole review</button>' : ''}
+      ${c.security !== 'min' && c.facility !== 'juvenile' ? '<button class="btn" data-hub-act="transfer" style="margin-top:10px">Apply to move to lower security</button>' : ''}
+      ${(c.transfers ?? []).map((t) => `<div class="kv"><span>${t.year}</span><span>Moved: ${esc(t.why)}</span></div>`).join('')}
       <p class="muted" style="margin-top:10px">On release you go to family if they will have you, or to a hostel, with a release grant. Work and study can pick up where they left off.</p></div>`;
   },
 };
@@ -191,7 +193,7 @@ export function hubClick(e, api, joinGang) {
   const act = t.closest('[data-hub-act]')?.dataset.hubAct;
   if (act) {
     if (act === 'parole') parole(api);
-    else report(api, { healthcare: jail.healthcare, counselling: jail.counselling, course: jail.joinCourse, leaveCourse: jail.leaveCourse }[act]());
+    else report(api, { healthcare: jail.healthcare, counselling: jail.counselling, course: jail.joinCourse, leaveCourse: jail.leaveCourse, transfer: jail.requestTransfer }[act]());
     return true;
   }
   const pr = t.closest('[data-prison]')?.dataset.prison;

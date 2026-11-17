@@ -17,6 +17,8 @@ import { OFFENSE_BY_ID, OFFENSES, systemFor, responsibilityAge, WRONGFUL_SUSPICI
 import * as k from './cases.js';
 import { convictionsOf } from './records.js';
 import { admit, facilityFor } from './prison.js';
+import { shiftImage } from './royalty.js';
+import { addStory } from './reputation.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -174,6 +176,15 @@ function arrestFor(inv, onTheSpot) {
     inv.stage = 'closed'; inv.outcome = 'below the age of responsibility';
     for (const parent of npcsByRole('parent')) parent.meters.relationship = clamp(parent.meters.relationship - 6);
     return 'You are too young to be charged. The police take you home, and your parents hear all about it.';
+  }
+  // A reigning monarch cannot be tried in their own courts. The file is closed, not forgotten.
+  if (p.royal?.reigning) {
+    inv.stage = 'suspended'; inv.outcome = 'sovereign immunity';
+    inv.events.push({ year: store.state.year, text: 'Suspended: the suspect is the reigning monarch.' });
+    k.note(p.id, 'immunity', `Investigated over ${off.name.toLowerCase()}; immune from prosecution as the reigning monarch.`);
+    shiftImage(-25, 'an accusation the courts cannot hear');
+    addStory(`the ${off.name.toLowerCase()} the monarch cannot be tried for`, true, 75);
+    return 'As the reigning monarch you cannot be prosecuted in your own courts. The police close the file. The newspapers do not.';
   }
   k.note(p.id, 'arrested', `Arrested on suspicion of ${off.name.toLowerCase()}.`);
   if (!p.flags.everArrested) { p.flags.everArrested = true; milestone('Arrested for the first time.', 'crime'); }
@@ -442,6 +453,13 @@ export function tickCrime() {
     }
   }
 
+  // Immunity ends with the reign: files closed for it can be opened again.
+  if (!p.royal?.reigning) {
+    for (const inv of Object.values(J.investigations)) {
+      if (inv.outcome === 'sovereign immunity' && inv.stage === 'suspended') { inv.stage = 'active'; inv.outcome = null; inv.events.push({ year: store.state.year, text: 'Reopened: the suspect no longer reigns.' }); }
+    }
+  }
+
   // A conviction of someone who did not do it: sometimes the truth surfaces.
   for (const c of k.casesOf(p.id)) {
     if (k.seekFreshEvidence(c, isJailed() ? 0.12 : 0.05)) {
@@ -515,7 +533,7 @@ function wronglySuspected() {
 /** Records that a court could now seal, with when each becomes eligible. */
 export function sealOptions() {
   const p = player();
-  const sys = systemFor(p.countryId);
+  const sys = k.lawAt(p.countryId);
   return legal().record.filter((r) => r.convicted && !r.sealed && !r.juvenile && !r.exonerated).map((r) => {
     const off = OFFENSE_BY_ID[r.crimeId];
     const s = Object.values(k.J().sentences).find((x) => x.caseId === r.caseId);
