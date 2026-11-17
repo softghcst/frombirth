@@ -72,7 +72,7 @@ export function tryForBaby(npcId) {
   return result(true, text);
 }
 
-function newborn(other) {
+export function newborn(other) {
   const p = player();
   const me = playerGenes();
   const them = other?.appearance ? npcGenes(other) : me;

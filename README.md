@@ -40,6 +40,8 @@ node tests/legislature.mjs     # votes in the legislature: majorities, rebels, d
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
 node tests/animal-care.mjs     # shelters, adoption, costs, the vet, insurance, fostering, rehoming, moving abroad, careers
 node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, breeding and pedigrees
+node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
+node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
@@ -47,7 +49,7 @@ node tests/cities.mjs          # cities and regions: prices, pay, regional law, 
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
-node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps)
+node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
@@ -169,7 +171,8 @@ Pathways has 103 places to live: the 102 on the reference list (16 in North Amer
 13 in Africa, 12 under "Middle East", 18 in Asia, 4 in Oceania) and Ghana. Not all are sovereign states, and the game
 says so: Puerto Rico and Aruba are territories, Hong Kong is a special administrative region, Taiwan is a self-governing
 jurisdiction whose status is disputed. Each has its own currency code, languages, cities, pay and prices, taxes, school
-system and form of government.
+system and form of government. Codes, names, currencies, languages, time zones, capitals, regions and cities are checked
+against published sources; laws and citizenship rules are not yet (see `docs/WORLD_DATA.md`).
 
 | What | Where |
 |---|---|
@@ -179,6 +182,7 @@ system and form of government.
 | Profiles, search and comparison (one source for every screen) | `js/engine/world.js` |
 | The World Explorer | `js/ui/world.js` |
 | What is real, what is game, and what is unverified | [`docs/WORLD_DATA.md`](docs/WORLD_DATA.md) |
+| Checking the reference data against ISO, CLDR, IANA and GeoNames; the results | `scripts/verify-world.py`, `js/data/worldVerification.js` (generated) |
 
 **The World Explorer** opens from the title screen (**The world**), from **Design a life** (**Explore the world**) and from
 the **Self** tab. Search by country, city, language, currency or code (accents are ignored: "turkiye", "sao paulo"), filter by
@@ -255,6 +259,14 @@ conscription. An answer is built in layers, the last one winning:
 So at nineteen you can go to a bar in the United Kingdom and not in the United States, vote at sixteen in Brazil, and find
 that the Philippines has annulment and no divorce. Now and then a country somewhere changes one of its laws; you hear of it
 when it is where you live or a country you are a citizen of, and the World Explorer lists the change.
+
+**Changing the law in office.** A head of government can put these laws to the legislature (Work → Bring in a law → The
+law of the land): marriage, protection in law, the death penalty, military service, gambling, alcohol, divorce, and the
+voting, drinking and pension ages. Parties vote on them by their views on freedoms, order and public provision, so a bill
+your own party dislikes brings rebels. The public has a view as well, which starts from the law the country already has. A
+bill costs nothing and has no committee stage; it counts as one of the year's two bills; a crown with real power can refuse
+it; where one person rules, it is a decree. The world's own reforms in a country your life has a government for now need a
+government that wants them.
 
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
@@ -336,8 +348,28 @@ Private cover is bought and cancelled at the doctor's, lapses if it cannot be pa
 These are shapes for play. The thresholds are multiples of a typical wage in the game, not real brackets, and which country
 gets which shape or model is unverified.
 
-Still to come in the Living World engine: the brief's scenarios A to J replayed end to end as a final check.
-`docs/WORLD_DATA.md` lists the gaps.
+### Families and couples that cross borders
+
+- One new family in ten has a parent who came from another country: they have that country's name and nationality (and the
+  local one too, where both allow it), their own parents still live there, and the child is born with whatever both parents
+  and the place give. The country is drawn evenly from the whole world.
+- Now and then a child's family emigrates, far more often from a country in crisis. The parents and young brothers and
+  sisters come; grandparents and friends stay, and can be visited.
+- Some of the people an adult meets grew up abroad. Marrying one opens the family route to their country, shortens the wait
+  for its citizenship, and grants nothing by itself.
+- Politics goes on in countries you have left and still have ties to, so a country you return to has moved on.
+- Portuguese is a language of its own in the game now (Portugal, Brazil, Angola), and someone born where the same language is
+  spoken arrives already speaking it.
+
+### The brief's ten scenarios
+
+`node tests/world-scenarios.mjs` plays the Living World brief's scenarios A to J through the engine: born in Orlando; a
+Brazilian childhood moved to Portugal; India to Canada as a student; a marriage between Japan and the United Kingdom; a royal
+child; a mayor's budget; dollars, pesos and a house in Mexico; three generations across three countries; a recession; and
+twenty-five years away. A scenario whose character dies early of something unrelated is played again.
+
+The Living World engine is complete as a first version. `docs/WORLD_DATA.md` lists what is simplified, unverified or not
+modelled, which is where further work would go.
 
 ## Layout
 

@@ -5,11 +5,11 @@
 // knowing it by name. Gameplay numbers (pay, prices, taxes) are elsewhere:
 // data/countries.js, data/living.js.
 //
-// PROVENANCE. Compiled by hand from general reference knowledge of ISO 3166-1
-// (codes), ISO 4217 (currencies, in countries.js), the UN M49 regions and the
-// IANA time-zone names. It was NOT machine-imported from those sources, so
-// each row carries verification: 'compiled' until someone checks it against
-// the source. docs/WORLD_DATA.md lists what to check and how.
+// PROVENANCE. Written by hand, then checked field by field against ISO 3166-1,
+// ISO 4217 and the Unicode CLDR, the IANA time-zone database and GeoNames by
+// scripts/verify-world.py. The results are in data/worldVerification.js (generated);
+// each place's `checked` says what was confirmed. Form of government and the status
+// sentences have no machine-readable source and remain hand-written.
 //
 // `group` is the reference grouping used for browsing (it follows a common
 // game convention: Georgia and Turkey sit under "Middle East", and Central
@@ -20,6 +20,8 @@
 //   type: 'country' | 'territory' | 'special_administrative_region' | 'jurisdiction'
 //   parent: the place it is constitutionally tied to, if any
 //   status: one neutral sentence, for places that are not ordinary sovereign states
+import { CHECKED } from './worldVerification.js';
+
 const NA = 'North America';
 const SA = 'South America';
 const EU = 'Europe';
@@ -55,7 +57,7 @@ const ROWS = {
   br: ['BR', 'BRA', 'country', null, SA, 'Americas', 'Brasília', ['Portuguese'], 'America/Sao_Paulo', 'Federal presidential republic'],
   cl: ['CL', 'CHL', 'country', null, SA, 'Americas', 'Santiago', ['Spanish'], 'America/Santiago', 'Presidential republic'],
   co: ['CO', 'COL', 'country', null, SA, 'Americas', 'Bogotá', ['Spanish'], 'America/Bogota', 'Presidential republic'],
-  ec: ['EC', 'ECU', 'country', null, SA, 'Americas', 'Quito', ['Spanish'], 'America/Guayaquil', 'Presidential republic'],
+  ec: ['EC', 'ECU', 'country', null, SA, 'Americas', 'Quito', ['Spanish', 'Kichwa'], 'America/Guayaquil', 'Presidential republic'],
   gy: ['GY', 'GUY', 'country', null, SA, 'Americas', 'Georgetown', ['English', 'Guyanese Creole'], 'America/Guyana', 'Presidential republic with a parliament'],
   py: ['PY', 'PRY', 'country', null, SA, 'Americas', 'Asunción', ['Spanish', 'Guaraní'], 'America/Asuncion', 'Presidential republic'],
   pe: ['PE', 'PER', 'country', null, SA, 'Americas', 'Lima', ['Spanish', 'Quechua'], 'America/Lima', 'Presidential republic'],
@@ -141,7 +143,7 @@ const ROWS = {
   sg: ['SG', 'SGP', 'country', null, AS, 'Asia', 'Singapore', ['English', 'Malay', 'Mandarin', 'Tamil'], 'Asia/Singapore', 'Parliamentary republic'],
   kr: ['KR', 'KOR', 'country', null, AS, 'Asia', 'Seoul', ['Korean'], 'Asia/Seoul', 'Presidential republic'],
   th: ['TH', 'THA', 'country', null, AS, 'Asia', 'Bangkok', ['Thai'], 'Asia/Bangkok', 'Parliamentary constitutional monarchy'],
-  tw: ['TW', 'TWN', 'jurisdiction', null, AS, 'Asia', 'Taipei', ['Mandarin', 'Taiwanese Hokkien'], 'Asia/Taipei', 'Semi-presidential republic',
+  tw: ['TW', 'TWN', 'jurisdiction', null, AS, 'Asia', 'Taipei', ['Mandarin', 'Taiwanese Hokkien', 'Hakka'], 'Asia/Taipei', 'Semi-presidential republic',
     'Governed separately, with its own elected government, laws, currency and passports. Its political status is disputed; the game lists it as a distinct place to live without taking a position on that.'],
   vn: ['VN', 'VNM', 'country', null, AS, 'Asia', 'Hanoi', ['Vietnamese'], 'Asia/Ho_Chi_Minh', 'One-party socialist republic'],
 
@@ -168,6 +170,13 @@ export const REFERENCE = {
 export const GROUPS = [NA, SA, EU, AF, ME, AS, OC];
 const REFERENCE_IDS = new Set(Object.values(REFERENCE).flat());
 
+/** One word for a place's checks: every covered field confirmed, some not, or never checked. */
+function verdict(c) {
+  if (!c) return 'compiled';
+  const covered = Object.values(c).filter((v) => v.status !== 'unchecked');
+  if (covered.some((v) => v.status === 'mismatch')) return 'compiled';
+  return covered.every((v) => v.status === 'ok' || v.status === 'review') ? 'verified' : 'partly verified';
+}
 const TYPE_LABEL = { country: 'Country', territory: 'Territory', special_administrative_region: 'Special administrative region', jurisdiction: 'Self-governing jurisdiction' };
 
 /**
@@ -187,13 +196,14 @@ const TYPE_LABEL = { country: 'Country', territory: 'Territory', special_adminis
  * @property {string} government    form of government (reference; who governs in a save is simulation)
  * @property {?string} status       a neutral sentence for places that are not ordinary sovereign states
  * @property {boolean} reference    one of the 102 reference places
- * @property {'compiled'|'verified'} verification
+ * @property {'verified'|'partly verified'|'compiled'} verification  every field a source covers agrees ('verified'), or some could not be confirmed
+ * @property {Object<string,{status:string, note?:string}>} checked  field by field, from scripts/verify-world.py
  */
 /** @type {Object<string, Place>} */
 export const PLACES = Object.fromEntries(Object.entries(ROWS).map(([id, r]) => [id, {
   id, iso2: r[0], iso3: r[1], type: r[2], typeLabel: TYPE_LABEL[r[2]], parentId: r[3], nationalityOf: r[2] === 'territory' || r[2] === 'special_administrative_region' ? r[3] : null,
   group: r[4], unRegion: r[5], capital: r[6], languages: r[7], timeZone: r[8], government: r[9], status: r[10] ?? null,
-  reference: REFERENCE_IDS.has(id), verification: 'compiled', metadataVersion: 1,
+  reference: REFERENCE_IDS.has(id), checked: CHECKED[id] ?? {}, verification: verdict(CHECKED[id]), metadataVersion: 1,
 }]));
 
 export const place = (id) => PLACES[id] ?? null;

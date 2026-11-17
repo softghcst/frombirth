@@ -15,17 +15,42 @@ The World Explorer shows them in separate sections and says which is which.
 
 ## Sources and verification
 
-Nothing here was machine-imported. The reference rows were written from general knowledge of these standards:
+The reference rows were written by hand, then checked field by field by `scripts/verify-world.py` against:
 
-- **Codes and regions**: ISO 3166-1 alpha-2 and alpha-3; UN M49 regions (<https://unstats.un.org/unsd/methodology/m49/overview/>).
-- **Currency codes**: ISO 4217 (<https://www.iso.org/iso-4217-currency-codes.html>).
-- **Time zones**: IANA tz database names (<https://www.iana.org/time-zones>). One principal zone per place.
+| Field | Source |
+|---|---|
+| ISO codes, standard name | ISO 3166-1, via [pycountry](https://pypi.org/project/pycountry/) |
+| Currency in use | ISO 4217 as used by the [Unicode CLDR](https://cldr.unicode.org/), via [babel](https://pypi.org/project/babel/) |
+| Official languages | Unicode CLDR territory data, via babel |
+| Time zone | the [IANA time-zone database](https://www.iana.org/time-zones), via [tzdata](https://pypi.org/project/tzdata/) |
+| Capital, continent (as a check on the UN M49 region), cities, the states of American cities | [GeoNames](https://www.geonames.org/) (CC BY 4.0), via [geonamescache](https://pypi.org/project/geonamescache/) |
 
-Every row in `world.js` therefore carries `verification: 'compiled'`. To verify a place: check its row against the sources
-above, then set `verification: 'verified'` for it. `node tests/world.mjs --report` lists what is unverified or thin, place by place.
+The script reads the game's data through Node, so the JavaScript stays the only copy. It writes the results to
+`js/data/worldVerification.js` (generated: do not edit it), and each place carries them as `checked`. The World Explorer shows
+them under "How this was checked". Each field is one of:
 
-No city coordinates, populations or statistics are stored: none could be sourced with a clear licence in this pass, and inventing
-them was not an option.
+- **confirmed**: the source agrees;
+- **differs on purpose**: the source disagrees and a person decided the game's value stands. The reason is in `REVIEWED` in the
+  script. Examples: Taiwan is named "Taiwan" rather than ISO's "Taiwan, Province of China"; Astana is the capital of Kazakhstan
+  although the GeoNames extract still says Nur-Sultan; Ukrainian is Ukraine's only official language although CLDR adds Russian;
+- **not confirmed**: the source has no answer. Ten towns in nine places are absent from the GeoNames extract, which is
+  incomplete (it lacks El Alto, a city of nearly a million), so this is not evidence that they do not exist.
+
+As of this pass, 94 places are fully confirmed and 9 partly, and nothing disagrees with a source unexplained. `node
+tests/world.mjs` fails if anything does. To re-check after changing the data:
+
+```
+python3 -m venv .venv && .venv/bin/pip install pycountry babel tzdata geonamescache
+.venv/bin/python scripts/verify-world.py --write
+```
+
+The packages are for checking only; the game itself still has no dependencies.
+
+**Not checked, because no machine-readable source was available:** form of government, the status sentences, and everything
+in the next sections (law flags and legal ages, citizenship rules, free-movement lists, health and tax models). Those remain
+the author's compiled understanding.
+
+No city coordinates, populations or statistics are stored.
 
 ## Things that are deliberately not what they look like
 
@@ -69,8 +94,9 @@ shown on its profile.
   journal but have no city, visa or job search of their own.
 - Legal rules (`js/data/rules.js`) hold one value per place for fourteen questions. Ages are the common adult case and ignore
   exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
-  the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A player in office cannot yet propose these laws:
-  they change only by the world's own slow reforms. School-leaving age is the same everywhere.
+  the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A head of government can change them through the legislature; public
+  opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional laws cannot
+  be changed by a mayor or governor. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
   permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
   New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
@@ -83,6 +109,18 @@ shown on its profile.
   not real brackets, and with no social contributions, credits or regional taxes. Health care is one of six models; which
   country has which is unverified, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
   bounds and are pulled weaker by a recession or a crisis, without following measured inflation.
+
+## Where further work would go
+
+In rough order of value:
+
+1. **Verify the law flags, legal ages, citizenship rules and free-movement lists.** The reference metadata is checked (above);
+   these are not, and need a legal source per country that is current and citable.
+2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
+3. **Regional law-making**: a governor or mayor changing the law of their own region.
+4. **A housing index per country**, and mortgages and rent abroad kept in local money.
+5. **Regions with governments and taxes of their own**, and visas for family members other than a spouse.
+6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
 
 ## Adding a place
 

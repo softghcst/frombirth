@@ -13,7 +13,7 @@
 
 /** [city, region, housing, pay] */
 const ROWS = {
-  us: [['New York', 'New York', 1.7, 1.2], ['Chicago', 'Illinois', 1.0, 1.05], ['Austin', 'Texas', 1.05, 1.02], ['Seattle', 'Washington', 1.45, 1.15], ['Atlanta', 'Georgia', 0.9, 1.0], ['Denver', 'Colorado', 1.15, 1.03]],
+  us: [['New York', 'New York', 1.7, 1.2], ['Chicago', 'Illinois', 1.0, 1.05], ['Austin', 'Texas', 1.05, 1.02], ['Seattle', 'Washington', 1.45, 1.15], ['Atlanta', 'Georgia', 0.9, 1.0], ['Denver', 'Colorado', 1.15, 1.03], ['Orlando', 'Florida', 0.95, 0.95]],
   uk: [['London', 'England', 1.8, 1.25], ['Manchester', 'England', 0.9, 0.98], ['Leeds', 'England', 0.8, 0.95], ['Bristol', 'England', 1.1, 1.0], ['Glasgow', 'Scotland', 0.75, 0.95], ['Cardiff', 'Wales', 0.8, 0.93]],
   ca: [['Toronto', 'Ontario', 1.5, 1.1], ['Vancouver', 'British Columbia', 1.7, 1.05], ['Montreal', 'Quebec', 1.0, 0.97], ['Calgary', 'Alberta', 0.95, 1.08], ['Halifax', 'Nova Scotia', 0.85, 0.92], ['Winnipeg', 'Manitoba', 0.7, 0.93]],
   mx: [['Mexico City', 'Mexico City', 1.5, 1.2], ['Guadalajara', 'Jalisco', 1.05, 1.02], ['Monterrey', 'Nuevo León', 1.15, 1.2], ['Puebla', 'Puebla', 0.8, 0.9], ['Mérida', 'Yucatán', 0.85, 0.88], ['Oaxaca', 'Oaxaca', 0.75, 0.8]],

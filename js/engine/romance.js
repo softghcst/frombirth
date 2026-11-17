@@ -1,5 +1,6 @@
 // Romance: meeting people, dating, engagement, weddings (with or without a
 // prenup), break-ups and divorce.
+import { fromAbroad, rollsRoots } from './economy.js';
 import { may } from './rules.js';
 import { rng } from '../rng.js';
 import * as crown from './royalty.js';
@@ -88,6 +89,7 @@ export function meetSomeone(place) {
     lastName: rng.pick(surnames) });
   // Someone who would go out with the player is, by definition, drawn to people like them.
   npc.orientation = npc.gender === p.gender ? rng.pick(['gay', 'gay', 'bisexual', 'pansexual']) : rng.pick(['straight', 'straight', 'straight', 'bisexual']);
+  if (p.age >= ADULT && rollsRoots('partnerFromAbroad')) fromAbroad(npc, p.countryId);
   if (place === 'app') npc.meters.charm = clamp(npc.meters.charm - rng.int(0, 15)); // profiles flatter
   ensureLife(npc);
   const m = npc.meters;

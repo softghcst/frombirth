@@ -35,7 +35,7 @@ import { tickKids } from './kidschool.js';
 import { tickFx } from './currency.js';
 import { tickRules } from './rules.js';
 import { tickCover } from './systems.js';
-import { tickEconomy, tickMoves } from './economy.js';
+import { tickEconomy, tickMoves, familyLeaves, ties } from './economy.js';
 import { tickStatus, tickApart } from './immigration.js';
 import { emigrate } from './emigration.js';
 import { tickSchoolFunding } from './edlegacy.js';
@@ -91,6 +91,8 @@ export function advanceYear() {
   // The country's politics move on whether or not the player takes any part. The news reaches those old enough to follow it.
   const happened = tickPolity(polity(p.countryId)).sort((a, b) => b.weight - a.weight).slice(0, 3);
   if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
+  // Politics also goes on in countries the player has lived in and still has ties to: the results are there when they look, or go back.
+  for (const id of ties()) if (id !== p.countryId && store.state.polities?.[id]) tickPolity(store.state.polities[id]);
   afterGeneral();
   tickKin();
   tickAlumni();
@@ -101,6 +103,7 @@ export function advanceYear() {
   tickRules();
   tickEconomy();
   tickMoves();
+  { const to = familyLeaves(); if (to) emigrate(to, { forced: true, family: true }); }
   tickApart();
   { const back = tickStatus(); if (back) emigrate(back, { forced: true }); }
   tickSchoolFunding();

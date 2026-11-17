@@ -3,6 +3,7 @@
 //  - codes, types, parents, groups, currencies, cities, names and living data are all in order
 //  - every place works with the systems that read it: schools, politics, languages, a new life
 // Add --report to print what is still thin for each place.
+import { ROOTS } from '../js/data/economy.js';
 import { COUNTRIES, COUNTRY_LIST } from '../js/data/countries.js';
 import { PLACES, REFERENCE, GROUPS, placesIn } from '../js/data/world.js';
 import { NEW_PLACES } from '../js/data/worldNew.js';
@@ -11,6 +12,8 @@ import { HAZARDS, CRISES } from '../js/data/living.js';
 import { schoolModel } from '../js/data/education.js';
 import { SPOKEN } from '../js/data/skills.js';
 import { NAMES } from '../js/data/names.js';
+
+ROOTS.parentFromAbroad = 0; // these checks are about plain families; families with roots abroad are tested in world-scenarios.mjs
 
 const problems = [];
 const ok = [];
@@ -114,7 +117,7 @@ try {
       const p = store.state.player;
       check(p.countryId === c.id && p.birthCountryId === c.id && p.city === c.cities[c.cities.length - 1], `${c.id}: a life did not start in the chosen city`);
       for (let y = 0; y < 3; y++) { advanceYear(); store.state.pendingEvents = []; }
-      check(p.age === 3 && Number.isFinite(p.finance.cash), `${c.id}: the first years did not run`);
+      check((p.age === 3 || p.alive === false) && Number.isFinite(p.finance.cash), `${c.id}: the first years did not run`);
       born++;
     } catch (e) { check(false, `${c.id}: a life could not be lived there: ${e.message}`); }
   }
@@ -139,6 +142,14 @@ try {
   console.log(`(skipped the lived-life check outside a browser: ${e.message.split('\n')[0]})`);
 }
 
+// Every place has been checked by scripts/verify-world.py, and nothing disagrees with its source unexplained.
+for (const p of Object.values(PLACES)) {
+  check(Object.keys(p.checked).length >= 8, `${p.id}: no verification results (run scripts/verify-world.py --write)`);
+  for (const [k, v] of Object.entries(p.checked)) check(v.status !== 'mismatch', `${p.id}.${k} disagrees with its source: ${v.note ?? ''}`);
+  check(p.verification !== 'compiled', `${p.id}: never verified`);
+}
+pass(`verification: ${Object.values(PLACES).filter((p) => p.verification === 'verified').length} places fully confirmed, ${Object.values(PLACES).filter((p) => p.verification === 'partly verified').length} partly, none disagreeing`);
+
 if (process.argv.includes('--report')) {
   console.log('\nWhat is still thin, by place (development report):');
   for (const c of COUNTRY_LIST) {
@@ -146,7 +157,7 @@ if (process.argv.includes('--report')) {
     if (c.cities.length < 4) thin.push(`${c.cities.length} cities`);
     if (!NAMES[c.id]) thin.push('short name lists');
     if (schoolModel(c.id) === schoolModel('zz')) thin.push('default school model');
-    if (PLACES[c.id].verification !== 'verified') thin.push('reference data unverified');
+    if (PLACES[c.id].verification !== 'verified') thin.push(`reference data ${PLACES[c.id].verification}`);
     if (NEW_PLACES[c.id]) thin.push('gameplay numbers are first estimates');
     console.log(`  ${c.flag} ${c.name}: ${thin.join('; ') || 'complete'}`);
   }

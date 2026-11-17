@@ -15,7 +15,7 @@ const C = (id, name, flag, code, symbol, scale, incomeTax, estateTax, cities, m 
 
 const LIST = [
   C('us', 'United States', '🇺🇸', 'USD', '$', 1, 0.24, 0.20,
-    ['New York', 'Chicago', 'Austin', 'Seattle', 'Atlanta', 'Denver'],
+    ['New York', 'Chicago', 'Austin', 'Seattle', 'Atlanta', 'Denver', 'Orlando'],
     'James Marcus Ethan Caleb Diego Tyler Owen Andre Noah Wesley',
     'Olivia Hannah Maya Jasmine Claire Sofia Naomi Paige Riley Tessa',
     'Carter Nguyen Brooks Ramirez Sullivan Patel Hayes Coleman Whitfield Ortiz Bennett Okafor'),
@@ -156,7 +156,7 @@ const LIST = [
   C('pe', 'Peru', '🇵🇪', 'PEN', 'S/', 3.8, 0.17, 0,
     ['Lima', 'Arequipa', 'Cusco', 'Trujillo', 'Piura', 'Iquitos']),
   C('do', 'Dominican Republic', '🇩🇴', 'DOP', 'RD$', 58, 0.17, 0.03,
-    ['Santo Domingo', 'Santiago', 'Punta Cana', 'La Romana', 'Puerto Plata', 'San Pedro']),
+    ['Santo Domingo', 'Santiago', 'Punta Cana', 'La Romana', 'Puerto Plata', 'San Pedro de Macorís']),
   C('cu', 'Cuba', '🇨🇺', 'CUP', '$', 120, 0.15, 0,
     ['Havana', 'Santiago de Cuba', 'Camagüey', 'Holguín', 'Trinidad', 'Cienfuegos']),
   C('gh', 'Ghana', '🇬🇭', 'GHS', 'GH₵', 12, 0.18, 0,

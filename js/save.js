@@ -52,6 +52,14 @@ function migrate(state) {
   // chosen from the character's id so it is the same on every load.
   state.player.appearance = normalize(state.player.appearance, state.player.id);
   for (const n of Object.values(state.npcs)) if (n.role !== 'pet') n.appearance = normalize(n.appearance, n.id);
+  // Cities renamed when the world data was checked against its sources: older saves keep working.
+  const RENAMED = { do: { 'San Pedro': 'San Pedro de Macorís' } };
+  const rename = (o, countryId) => { const to = RENAMED[countryId]?.[o?.city]; if (to) o.city = to; };
+  rename(pl, pl.countryId);
+  for (const l of pl.locations ?? []) rename(l, l.countryId);
+  for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
+  for (const a of Object.values(state.animals?.byId ?? {})) for (const h of a.homes) rename(h, h.countryId);
+  for (const e of state.animals?.events ?? []) if (e.place) rename(e.place, e.place.countryId);
   // Lives saved before the family's animals had a record of their own: each is entered once, as it stands,
   // with nothing made up about a past that was never written down.
   reconcileAnimals(state);

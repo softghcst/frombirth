@@ -53,10 +53,33 @@ export async function openCabinet(api) {
 /** Choosing how hard to push before a vote. */
 const pushModal = (title, options, body) => pickModal({ title, cancel: 'Not yet', body, options: options.map((o) => ({ value: o.id, label: o.name, sub: o.sub })) });
 
+/** A change in the law of the land: marriage, the death penalty, what may be bought and at what age. */
+async function reformFlow(api) {
+  const options = gov.reformOptions();
+  const pick = await pickModal({ title: 'Change the law', cancel: 'Back',
+    body: 'These cost the treasury nothing, and are won or lost on the floor. Each counts as one of the year\'s bills.',
+    options: options.map((o, i) => ({ value: i, label: o.name, sub: `${o.outlook} ${o.public}` })) });
+  if (pick == null) return undefined;
+  const c = options[pick];
+  const move = await pushModal('The vote', gov.voteOptions(), `To ${c.name.charAt(0).toLowerCase()}${c.name.slice(1)}. ${c.outlook} ${c.public} How hard will you push?`);
+  if (!move) return undefined;
+  const r = gov.putReform(c.rule, c.value, move);
+  api.changed();
+  if (r.tally) await tallyModal(r.ok ? 'The bill passes' : r.tally.for >= r.tally.need ? 'Passed, but not law' : 'The bill is defeated', r.tally);
+  return messageModal({ body: r.text, tone: r.tone });
+}
+
 /** A bill: bring it in, get it through committee, and put it to the vote. */
 export async function lawFlow(api) {
   const w = world.polity(player().countryId);
   if (!gov.bill()) {
+    if (gov.billsLeft() > 0) {
+      const kind = await pickModal({ title: 'Bring in a law', cancel: 'Back', options: [
+        { value: 'money', label: 'Tax and spending', sub: 'Taxes, universities, health, housing, policing. Goes through committee.' },
+        { value: 'social', label: 'The law of the land', sub: 'Marriage, the death penalty, military service, what may be bought and at what age.' }] });
+      if (!kind) return undefined;
+      if (kind === 'social') return reformFlow(api);
+    }
     if (gov.billsLeft() <= 0) return messageModal({ body: 'The legislature has no more time for your bills this year.' });
     const mine = world.membership(w.countryId);
     const seats = mine ? w.seats[mine.id] ?? 0 : 0;

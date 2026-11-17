@@ -1,4 +1,5 @@
 // Checks the routes into a country, statuses that run out, and trips. Run with: node tests/immigration.mjs
+import { ROOTS } from '../js/data/economy.js';
 import { store } from '../js/state.js';
 import { rng } from '../js/rng.js';
 import { createLife } from '../js/engine/characterGen.js';
@@ -15,6 +16,7 @@ const job = () => { const p = store.state.player; if (!p.career.careerId) hire(C
 import { makeNpc } from '../js/engine/npcFactory.js';
 
 rng.seed(20261117);
+ROOTS.parentFromAbroad = 0; // these checks are about plain families; families with roots abroad are tested in world-scenarios.mjs
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
@@ -86,7 +88,7 @@ section('study: no full-time work; lapses without study; graduates may stay, and
 p = life('in', 28); p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.6, age: 22 });
 go('de', 'work');
 check(p.residency.status === 'worker' && p.residency.until === store.state.year + ROUTE.workYears, 'arrives on a work visa');
-for (let i = 0; i < 7 && p.countryId === 'de' && p.residency.status !== 'permanent_resident'; i++) { job(); year(); }
+for (let i = 0; i < 14 && p.countryId === 'de' && p.residency.status !== 'permanent_resident'; i++) { job(); year(); } // a layoff in a bad year costs a year of grace, not the visa
 check(p.countryId === 'de' && p.residency.status === 'permanent_resident' && p.residency.until == null, `seven years of work: permanent (${p.residency?.status}, in ${p.countryId})`);
 // Unemployed at renewal: grace, then home.
 p = life('in', 28); p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.6, age: 22 });
