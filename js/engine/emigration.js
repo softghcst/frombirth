@@ -17,6 +17,10 @@ import { market, priceOf } from './market.js';
 import { EMIGRATION } from '../data/activities.js';
 import { mayLeave } from './living.js';
 import { routes, bestRoute, spouseAnswer } from './immigration.js';
+import { charge, recordEvent, archiveIdOf } from './chronicle.js';
+import { placeName } from './geo.js';
+import { uid } from '../util.js';
+import { PET_TRAVEL } from '../data/travel.js';
 
 export { routes };
 
@@ -130,7 +134,10 @@ export function convertMoney(rate) {
  * Property is kept (it can be sold or let from anywhere, and lived in again
  * if the player moves back). Vehicles are shipped, or sold if the player prefers.
  * @param {string} countryId
- * @param {{shipVehicles?:boolean, keep?:number, route?:string, city?:string, forced?:boolean, family?:boolean}} [opts]  family: a child's family is moving (use with forced)  route: an id from immigration.routes()
+ * @param {{shipVehicles?:boolean, keep?:number, route?:string, city?:string, forced?:boolean, family?:boolean, grant?:object, pets?:Object<string,'bring'|'leave'>, reason?:string}} [opts]
+ *   family: a child's family is moving (use with forced)  route: an id from immigration.routes()
+ *   grant: an approved relocation case (engine/relocation.js): the decision is already made and part of the fee paid
+ *   pets: for each pet, whether it travels (with its papers and transport, paid for) or stays with family
  */
 export function emigrate(countryId, opts = {}) {
   const p = player();
@@ -140,25 +147,45 @@ export function emigrate(countryId, opts = {}) {
   const shipping = ship ? shippingCost() : 0;
   // `route` is how the player is applying; without one, as a citizen where possible, otherwise the settlement programme.
   const open = opts.forced ? [] : routes(countryId);
-  const route = opts.forced ? null : open.find((r) => r.id === opts.route) ?? (opts.route ? null : open.find((r) => r.eligible && ['right', 'free'].includes(r.id)) ?? open.find((r) => r.id === 'settle'));
-  const fee = route ? route.fee : 0;
+  const found = opts.forced ? null : open.find((r) => r.id === opts.route) ?? (opts.route ? null : open.find((r) => r.eligible && ['right', 'free'].includes(r.id)) ?? open.find((r) => r.id === 'settle'));
+  // A case decided earlier keeps the status it was granted, whatever the routes look like today.
+  const route = opts.grant ? { ...(found ?? {}), id: opts.grant.routeId, name: opts.grant.routeName, status: opts.grant.status_on_arrival, years: opts.grant.years } : found;
+  const fee = opts.grant ? opts.grant.remaining ?? 0 : route ? route.fee : 0;
+  // Pets travel only with an arrangement: papers and transport, paid for; or they stay with family.
+  const petPlan = livingNpcs().filter((n) => n.role === 'pet' && !n.flags.abroad).map((n) => {
+    const rule = PET_TRAVEL[n.species] ?? { cost: 800, papers: 'a health certificate' };
+    const banned = rule.restricted?.includes(countryId);
+    const choice = banned ? 'leave' : opts.pets?.[n.id] ?? 'bring';
+    return { n, choice, cost: choice === 'bring' && !opts.forced ? localMoney(rule.cost, from) : 0, banned, rule };
+  });
+  const petCost = petPlan.reduce((s, x) => s + x.cost, 0);
   // `forced` is exile: no application, no fee, no waiting.
   if (!to || to.id === from.id) return result(false, 'You cannot move there now.', 'neutral');
-  if (!opts.forced) {
+  const moveId = opts.grant?.id ?? uid('move');
+  if (opts.grant) {
+    // The application was decided earlier (engine/relocation.js). What is left is paying for the grant, the shipping and the pets.
+    if (!canEmigrate()) return result(false, 'You cannot move there now.', 'neutral');
+    if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
+    if (p.finance.cash < fee + shipping + petCost) return result(false, `The visa, shipping and moving the animals come to ${fmtMoney(fee + shipping + petCost, from)}. You do not have it.`, 'neutral');
+    if (fee) charge({ amount: fee, kind: 'relocation', memo: `The rest of the visa fee: ${to.name}`, key: `move:${moveId}:grant`, ref: { moveId } });
+  } else if (!opts.forced) {
     if (!canEmigrate()) return result(false, 'You cannot move there now.', 'neutral');
     if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
     if (!route?.eligible) return result(false, route?.why || 'That route is not open to you.', 'neutral');
     if (p.flags.visaAge === p.age) return result(false, 'You have already applied this year. Try again next year.', 'neutral');
-    if (p.finance.cash < fee + shipping) return result(false, `Visas, lawyers and shipping come to ${fmtMoney(fee + shipping, from)}. You do not have it.`, 'neutral');
+    if (p.finance.cash < fee + shipping + petCost) return result(false, `Visas, lawyers and shipping come to ${fmtMoney(fee + shipping + petCost, from)}. You do not have it.`, 'neutral');
     p.flags.visaAge = p.age;
-    p.finance.cash -= Math.round(fee * 0.2); // the application fee is gone either way
+    // The application fee is gone either way.
+    charge({ amount: Math.round(fee * 0.2), kind: 'visa_fee', memo: `Application to move to ${to.name}`, key: `move:${moveId}:apply`, ref: { moveId } });
     if (!rng.chance(route.chance)) {
       const text = `${theCountry(to.name).replace(/^the/, 'The')} turned down your ${{ work: 'work visa', study: 'student visa', family: 'family visa', invest: 'investor visa', protection: 'claim for protection' }[route.id] ?? 'visa application'}. You can apply again next year.`;
       log(text, 'system', 'bad');
       return result(false, text);
     }
-    p.finance.cash -= Math.round(fee * 0.8) + shipping;
+    charge({ amount: Math.round(fee * 0.8), kind: 'relocation', memo: `Visa granted: ${to.name}`, key: `move:${moveId}:grant`, ref: { moveId } });
   }
+  if (!opts.forced && shipping) charge({ amount: shipping, kind: 'relocation', memo: 'Shipping vehicles', key: `move:${moveId}:ship`, ref: { moveId } });
+  if (petCost) charge({ amount: petCost, kind: 'relocation', memo: 'Moving the animals: papers and transport', key: `move:${moveId}:pets`, ref: { moveId } });
 
   // Leave work and study. The house stays where it is; the vehicles follow, or are sold.
   const kept = properties();
@@ -176,6 +203,12 @@ export function emigrate(countryId, opts = {}) {
   const coming = new Set(household(opts.forced ? null : to.id).map((n) => n.id));
   // A child does not move alone: it is the family that is moving.
   if (opts.family) for (const n of livingNpcs()) if ((n.role === 'parent' && !n.flags.abroad) || (n.role === 'sibling' && n.age < 18 && !n.flags.abroad)) coming.add(n.id);
+  for (const x of petPlan) if (x.choice === 'leave') {
+    coming.delete(x.n.id);
+    const carer = livingNpcs().find((k) => ['parent', 'sibling', 'child', 'grandparent'].includes(k.role) && !k.flags.abroad && !coming.has(k.id));
+    x.n.flags.caredBy = carer?.id ?? null;
+  }
+  const homeBefore = p.homeId;
   for (const n of livingNpcs()) {
     if (coming.has(n.id)) { if (n.flags.abroad === to.id) n.flags.abroad = false; delete n.flags.stayedBehind; continue; }
     if (n.role === 'spouse' && !n.flags.abroad) {
@@ -193,6 +226,8 @@ export function emigrate(countryId, opts = {}) {
       // People from work stay people the player knows, at a distance.
       if (n.role !== 'colleague') { n.role = 'colleague'; n.flags.tag = null; n.flags.title = n.flags.mentor ? 'Mentor' : 'Former colleague'; }
       if (!n.flags.abroad) n.flags.abroad = from.id;
+    } else if (n.role === 'pet') {
+      n.flags.abroad = from.id; // staying with family, or rehomed: never teleported
     } else {
       if (n.flags.abroad === to.id) { n.flags.abroad = false; continue; }
       if (n.flags.abroad) continue;
@@ -210,7 +245,14 @@ export function emigrate(countryId, opts = {}) {
   p.countryId = to.id;
   p.flags.arrivedYear = store.state.year; // newcomers wait five years before they can vote
   p.city = opts.city && to.cities.includes(opts.city) ? opts.city : rng.pick(to.cities);
-  settle(to.id, p.city, route?.status === 'citizen' ? 'permanent_resident' : route?.status ?? 'permanent_resident');
+  const returning = (p.locations ?? []).some((l) => l.countryId === to.id && l.to != null && store.state.year - l.to >= 5);
+  const ev = recordEvent({ key: `move:${moveId}`, type: 'relocation', international: true, returning, moveId,
+    title: `${opts.family ? 'The family moved' : 'Moved'} to ${placeName(to.id, opts.city && to.cities.includes(opts.city) ? opts.city : null)}`,
+    text: `From ${placeName(from.id, p.city)}${opts.reason ? `, ${opts.reason}` : route ? `: ${route.name.toLowerCase()}` : opts.forced ? '' : ''}.`,
+    place: { countryId: to.id, city: opts.city && to.cities.includes(opts.city) ? opts.city : null }, from: { countryId: from.id, city: p.city },
+    people: [...coming].map((id) => archiveIdOf(store.state.npcs[id])), significance: 3, privacy: 'family', propertyId: homeBefore ?? null });
+  settle(to.id, p.city, route?.status === 'citizen' ? 'permanent_resident' : route?.status ?? 'permanent_resident', { reason: opts.reason ?? (opts.family ? 'the family moved' : opts.forced ? 'had to leave' : route?.name ?? null), moveId, eventId: ev.id, homeBefore });
+  ev.place.city = p.city;
   if (p.residency && route) { p.residency.route = route.id; if (route.years) p.residency.until = store.state.year + route.years; }
   p.homeId = null;
   p.flags.livesWithParents = !!opts.family;
@@ -232,7 +274,7 @@ export function emigrate(countryId, opts = {}) {
   const met = [...there].map((id) => store.state.npcs[id]).filter((n) => n?.alive && ['spouse', 'partner', 'parent', 'child', 'sibling'].includes(n.role)).map((n) => n.firstName);
   const back = kept.filter((a) => a.countryId === to.id).length;
   const left = kept.length - back;
-  const granted = { free: 'You needed no visa. ', family: 'Your family visa came through. ', work: `An employer sponsored you: a work visa for ${route?.years} years. `, study: `Your student visa came through, for ${route?.years} years. You may not work full-time on it. `,
+  const granted = { retire: `Your retirement visa came through, for ${route?.years} years. It does not allow work. `, free: 'You needed no visa. ', family: 'Your family visa came through. ', work: `An employer sponsored you: a work visa for ${route?.years} years. `, study: `Your student visa came through, for ${route?.years} years. You may not work full-time on it. `,
     invest: 'Your investor visa came through. ', protection: `You were given protection for ${route?.years} years. ` }[route?.id] ?? 'Your visa came through. ';
   const text = `${opts.family ? 'Your parents had decided, and that was that. ' : opts.forced ? '' : rightToLive(to.id, p) ? 'As a citizen you needed no visa. ' : granted}${opts.family ? 'The family moved to' : 'You moved to'} ${p.city}, ${theCountry(to.name)}${who.length ? `, with ${who.join(', ').replace(/, ([^,]*)$/, ' and $1')}` : ''}. `
     + `${met.length ? `${met.join(', ').replace(/, ([^,]*)$/, ' and $1')} ${met.length === 1 ? 'was' : 'were'} there to meet you. ` : ''}${job}`
@@ -242,7 +284,11 @@ export function emigrate(countryId, opts = {}) {
     + `Your money is now in ${to.currency.code}${leftBehind ? `, apart from what you left in ${from.currency.code}` : ''}.`;
   log(text, 'system', 'good');
   milestone(`Emigrated from ${theCountry(from.name)} to ${theCountry(to.name)}.`, 'life');
-  return result(true, text);
+  p.flags.settling = { since: store.state.year, countryId: to.id };
+  const leftPets = petPlan.filter((x) => x.choice === 'leave');
+  const petLine = leftPets.length ? ` ${leftPets.map((x) => x.n.firstName).join(' and ')} stayed behind${leftPets[0].banned ? ': the rules there do not allow the animal in' : ''}, with family.` : petPlan.length ? ` ${petPlan.map((x) => x.n.firstName).join(' and ')} came too, with ${petPlan[0].rule.papers}.` : '';
+  if (petLine) log(petLine.trim(), 'system', 'neutral');
+  return result(true, text + petLine, 'good', { moveId, eventId: ev.id });
 }
 
 // ---------- The passport ----------

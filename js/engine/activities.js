@@ -10,6 +10,7 @@ import { stamp } from './emigration.js';
 import { makeNpc } from './npcFactory.js';
 import { addCondition } from './health.js';
 import { remember } from './conditions.js';
+import { readiness, today, addDays } from './documents.js';
 import { GYM_COST, NIGHT_OUT_COST, HOLIDAYS, HOLIDAY_KINDS, CABINS, TRIP_STORIES } from '../data/activities.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 
@@ -138,6 +139,12 @@ export function holiday(id, bringFamily, trip = {}) {
   const party = bringFamily ? companions() : [];
   const ownPlace = flying ? homeIn(dest.id) : null; // no hotel to pay for
   const cost = Math.round((flying ? localMoney(cabin.cost, c) : tripCost(h)) * (1 + party.length * 0.6) * (ownPlace ? 0.6 : 1));
+  // A border on the way: a passport, and whatever the destination asks of a visitor (engine/documents.js).
+  const abroadTo = flying ? dest.id : h.home && h.home !== p.countryId ? h.home : null;
+  if (abroadTo) {
+    const r = readiness(p, abroadTo, 'visit', today(), addDays(today(), 14));
+    if (!r.ok) return result(false, `${r.problems[0]} Sort out the papers first (Explore the World, Passport & Documents).`, 'neutral');
+  }
   if (p.finance.cash < cost) return result(false, 'You cannot afford it.', 'neutral');
   if (!once('holiday')) return result(false, 'You have had your holiday this year.', 'neutral');
   const purpose = flying ? (trip.purpose ?? 'holiday') : 'holiday';

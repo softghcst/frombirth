@@ -69,18 +69,18 @@ export function residency(p = player()) {
   const r = p.residency?.jurisdictionId === here ? p.residency : null;
   return r ?? { jurisdictionId: here, status: 'permanent_resident', since: p.flags.arrivedYear ?? store.state.year, workAuthorized: true, studyAuthorized: true };
 }
-export const STATUS_WORDS = { citizen: 'Citizen', permanent_resident: 'Permanent resident', temporary_resident: 'Temporary resident', student: 'Student visa', worker: 'Work visa' };
+export const STATUS_WORDS = { citizen: 'Citizen', permanent_resident: 'Permanent resident', temporary_resident: 'Temporary resident', student: 'Student visa', worker: 'Work visa', retiree: 'Retirement visa' };
 
 /** Called when the player settles somewhere: the old chapter of their address closes, a new one opens. */
-export function settle(placeId, city, status = 'permanent_resident') {
+export function settle(placeId, city, status = 'permanent_resident', meta = {}) {
   const p = player();
   const year = store.state.year;
-  const list = (p.locations ??= [{ countryId: p.birthCountryId, city: null, from: p.birthYear ?? year - p.age }]);
+  const list = (p.locations ??= [{ countryId: p.birthCountryId, city: p.birthCity ?? null, from: p.birthYear ?? year - p.age, reason: 'born' }]);
   const last = list[list.length - 1];
-  if (last && last.to == null) last.to = year;
-  list.push({ countryId: placeId, city, from: year });
+  if (last && last.to == null) { last.to = year; if (meta.homeBefore && !(last.homes ??= []).includes(meta.homeBefore)) last.homes.push(meta.homeBefore); }
+  list.push({ countryId: placeId, city, from: year, reason: meta.reason ?? null, moveId: meta.moveId ?? null, eventId: meta.eventId ?? null, homes: [] });
   p.residency = rightToLive(placeId, p) ? null
-    : { jurisdictionId: placeId, status, since: year, workAuthorized: status !== 'student', studyAuthorized: true };
+    : { jurisdictionId: placeId, status, since: year, workAuthorized: !['student', 'retiree'].includes(status), studyAuthorized: true };
 }
 /** Everywhere the player has lived, oldest first. Lives from before this was kept show birthplace and home. */
 export function locations(p = player()) {
@@ -111,7 +111,7 @@ export function naturalisation(p = player()) {
   let why = '';
   if (p.age < 18) why = 'You must be an adult to apply.';
   else if (base >= 90) why = `${nameOf(here).replace(/^the/, 'The')} does not, in practice, naturalise people who move there.`;
-  else if (['student', 'worker', 'temporary_resident'].includes(residency(p).status)) why = 'Citizenship is for permanent residents. Your visa is temporary.';
+  else if (['student', 'worker', 'temporary_resident', 'retiree'].includes(residency(p).status)) why = 'Citizenship is for permanent residents. Your visa is temporary.';
   else if (lived < needs) why = `You need ${needs} years of residence${spouse ? ' (fewer, as you are married to a citizen)' : ''}. You have ${lived}.`;
   else if (convicted) why = 'A criminal conviction rules the application out.';
   else if (p.flags.natAge === p.age) why = 'You have applied this year. The next sitting is next year.';

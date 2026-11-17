@@ -1,5 +1,6 @@
 // Creates a brand-new life: the player, their family and the opening journal.
 import { atBirth, held } from './citizenship.js';
+import { ensureGlobal } from './globalLife.js';
 import { fromAbroad, rollsRoots } from './economy.js';
 import { rng } from '../rng.js';
 import { bornInto, birthKind, titleOf, dress } from './royalty.js';
@@ -204,5 +205,7 @@ export function createLife(opts = {}) {
     ...(seat ? { dynasties: { [c.id]: seat.dynasty } } : {}),
   };
   if (seat) dress(seat.dynasty, state);
+  player.birthCity = player.city;
+  ensureGlobal(state);
   return state;
 }

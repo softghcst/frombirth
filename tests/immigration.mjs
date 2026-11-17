@@ -11,6 +11,7 @@ import * as cit from '../js/engine/citizenship.js';
 import * as imm from '../js/engine/immigration.js';
 import * as move from '../js/engine/emigration.js';
 import * as fun from '../js/engine/activities.js';
+import * as docs from '../js/engine/documents.js';
 import { unmet, hire, quitCareer } from '../js/engine/career.js';
 const job = () => { const p = store.state.player; if (!p.career.careerId) hire(CAREERS.find((c) => c.id === 'office'), 0, 60); p.career.performance = 70; };
 import { makeNpc } from '../js/engine/npcFactory.js';
@@ -119,6 +120,9 @@ section('family: a spouse may refuse, stays married at a distance, and may follo
 // 5. Trips are recorded, with their purpose; looking first helps the application.
 p = life('us', 30); p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.4, age: 22 });
 const c0 = by('settle', 'jp').chance;
+r = fun.holiday('flight', false, { countryId: 'jp', cabin: 'economy', purpose: 'scouting' });
+check(!r.ok && /passport/i.test(r.text), 'no passport, no flight abroad');
+check(docs.applyPassport(p.id, 'us').ok, 'a citizen can get a passport');
 r = fun.holiday('flight', false, { countryId: 'jp', cabin: 'economy', purpose: 'scouting' });
 check(r.ok && p.trips.length === 1 && p.trips[0].purpose === 'scouting' && p.trips[0].countryId === 'jp', 'a trip is recorded with where and why');
 check(by('settle', 'jp').chance > c0, 'having gone to look improves a later application');

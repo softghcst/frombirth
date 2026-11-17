@@ -41,6 +41,8 @@ import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
 import { rollDeath, die } from './death.js';
 import { drawEvents } from './eventEngine.js';
+import { closeYear } from './travel.js';
+import { openGlobalYear, tickGlobalLife } from './globalLife.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -57,11 +59,14 @@ export function advanceYear() {
   const p = player();
   if (!p.alive) return;
 
+  // Trips booked for the year that is ending are taken, and anyone away comes home, before the year turns.
+  if (p.travel) closeYear();
   p.age += 1;
   if (p.age === 100) { milestone('Turned 100.', 'life'); log('You are 100 years old. A card arrives from the head of state, and the local paper sends a photographer.', 'system', 'good'); }
   if (p.age === 110) milestone('Turned 110.', 'life');
   state.year += 1;
   if (BIRTHDAYS[p.age]) log(BIRTHDAYS[p.age]);
+  openGlobalYear();
 
   tickRelationships();
   tickFamily();
@@ -109,6 +114,7 @@ export function advanceYear() {
   for (const n of tickLocal()) log(n.text, 'system', n.tone);
   tickActivism();
   tickCrime();
+  tickGlobalLife();
 
   const cause = rollDeath();
   if (cause) { die(cause); return; }

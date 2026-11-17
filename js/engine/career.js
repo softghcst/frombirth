@@ -69,7 +69,7 @@ export function unmet(career, o = {}) {
   const r = career.req ?? {};
   const out = [];
   if (p.legal.incarceration) out.push('Not from a cell.');
-  if (career.type !== 'freelance' && !residency(p).workAuthorized) out.push('Your student visa does not allow full-time work.');
+  if (career.type !== 'freelance' && !residency(p).workAuthorized) out.push(residency(p).status === 'retiree' ? 'Your retirement visa does not allow work.' : 'Your student visa does not allow full-time work.');
   if (p.career.careerId === career.id && !o.ignoreCurrent) out.push('This is your current job.');
   if (career.type === 'military' && !rightToLive(p.countryId, p)) out.push('The armed forces here take citizens only.');
   if (p.age < workLaw().workAge && !career.agesOut) out.push(`You must be ${workLaw().workAge} to work here.`);

@@ -4,6 +4,7 @@ import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
+import { ensureGlobal } from './engine/globalLife.js';
 
 export const SCHEMA_VERSION = 1;
 const K_INDEX = 'pathways.index';
@@ -70,6 +71,8 @@ function migrate(state) {
   ensureCareer(state.player.career);
   state.player.businesses ??= [];
   if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
+  // Travel, papers, residence history and the family's shared record (engine/globalLife.js). Nothing is invented for older lives.
+  ensureGlobal(state);
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }
