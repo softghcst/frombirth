@@ -65,7 +65,7 @@ function person(role, age, { relationship = 80, savings = 5000, salary = 0 } = {
   ensureLife(n);
   if (!n.life) { n.savings = Math.round(savings * COUNTRIES[p.countryId].currency.scale); return n; } // a child's parents keep simpler books
   n.life.savings = Math.round(savings * COUNTRIES[p.countryId].currency.scale);
-  n.life.job = salary ? { title: 'Clerk', salary: Math.round(salary * COUNTRIES[p.countryId].currency.scale) } : null;
+  n.life.job = salary ? { careerId: office.id, level: 0, title: 'Clerk', salary: Math.round(salary * COUNTRIES[p.countryId].currency.scale), years: 0 } : null;
   if (role === 'spouse') { n.marriedAtAge = p.age - 2; n.prenup = false; }
   return n;
 }
@@ -163,6 +163,7 @@ p = life('us', { cash: 900000 });
 estate.buyProperty(estate.listings()[0].id, estate.listings()[0].price);
 const house = p.assets.find((a) => a.kind === 'property');
 check(!!house, 'a house to insure');
+house.condition = 100; estate.damageProperty(house, 0); // start from sound, so that damage always shows
 estate.damageProperty(house, 10);
 check(ins.openLosses().length === 0, 'damage to something uninsured leaves nothing to claim for');
 const q = ins.quote('home', { asset: house });
@@ -178,6 +179,7 @@ check(ins.claim(loss.id).ok && p.finance.cash === cashB + a4.pay, 'the claim is 
 check(!ins.claim(loss.id).ok && p.finance.cash === cashB + a4.pay, 'and cannot be paid twice');
 check(txs().at(-1).cat === 'claim', 'it is in the book as an insurance payout');
 ins.policies()[0].excess = Math.round(house.value); // an excess larger than any damage that follows
+house.condition = 60; estate.damageProperty(house, 0);
 estate.damageProperty(house, 5);
 const small = ins.openLosses()[0];
 check(small && !ins.claim(small.id).ok && small.claimed, 'a loss smaller than the excess is refused, and cannot be sent in again');

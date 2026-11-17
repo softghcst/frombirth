@@ -118,6 +118,10 @@
  * @property {SavingsGoal[]} [goals]  engine/banking.js
  * @property {{limits:Object<string, number>}} [budget]  the most the player means to spend a year, by category
  * @property {{marks:{year:number, age:number, kind:string}[], onTime:number, since:?number}} [credit]  what lenders remember (engine/credit.js)
+ * @property {object[]} [cards]  credit cards (engine/cards.js)
+ * @property {object[]} [policies]  insurance policies, and [losses] that can be claimed for (engine/insurance.js)
+ * @property {{accountId:string, rate:number}} [plan]  the pension plan (engine/retirement.js)
+ * @property {object[]} [lent]  money lent to people the player knows (engine/family.js)
  * @typedef {{id:string, kind:string, name:string, target:number, cur:string, accountId:string, deadlineAge:?number,
  *            status:'active'|'paused'|'completed'|'abandoned', createdYear:number, createdAge:number, doneYear?:number, doneAge?:number}} SavingsGoal  target is in minor units
  *

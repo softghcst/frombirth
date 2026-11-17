@@ -329,6 +329,9 @@ export function tickBanking() {
     if (interest > 0) {
       move(`Interest for the year at ${(acct.rateBp / 100).toFixed(2)}%: ${lower(a.name)}`, [[a.id, interest]], { cat: 'interestIncome', key: `interest:${a.id}:${year}`, nominal: [['interestIncome', a.cur, -interest]] });
       if (a.cur === home()) earned += interest;
+      // Interest is income, and is taxed as it is paid, at half the income-tax rate (as gains on investments are). Once.
+      const tax = a.cur === home() ? Math.floor(interest * country().incomeTax * 0.5) : 0;
+      if (tax > 0) { move(`Tax on interest: ${lower(a.name)}`, [[a.id, -tax]], { cat: 'tax', key: `inttax:${a.id}:${year}`, nominal: [['tax', a.cur, tax]] }); p.finance.lifetimeTaxPaid += fromMinor(tax, a.cur); }
     }
     const fee = Math.min(acct.feeMinor ?? 0, acct.bal);
     if (fee > 0) move(`Yearly charge: ${lower(a.name)}, ${a.bank.name}`, [[a.id, -fee]], { cat: 'fees', key: `fee:${a.id}:${year}`, nominal: [['fees', a.cur, fee]] });

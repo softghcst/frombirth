@@ -45,6 +45,7 @@ node tests/rules.mjs           # the legal rule engine: layers, overrides, what 
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
+node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, businesses, money scenes
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps)
 ```
 
@@ -56,8 +57,10 @@ node tests/world.mjs           # the 102 reference places: codes, kinds, currenc
 Every movement of the player's money is written in one double-entry ledger (`js/engine/ledger.js`), in whole
 numbers of each currency's smallest unit. **My Money** (tap the amount at the top of the game, or Holdings →
 My Money) shows accounts, a budget of what was actually earned and spent, debts and standing with lenders,
-savings goals, retirement, the estate and the history. Bank accounts, goals and budgets are in
-`js/engine/banking.js`; the banks and their rates are invented (`js/data/money.js`).
+savings goals, the household, businesses, retirement, the estate and the history. Bank accounts, goals and
+budgets are in `js/engine/banking.js`; cards, insurance, pension plans, family money, trusts and businesses
+each have an engine of their own beside it. The banks, insurers and their terms are invented
+(`js/data/money.js`).
 
 How it works, what is fiction, and what is not built yet: [docs/FINANCE.md](docs/FINANCE.md).
 

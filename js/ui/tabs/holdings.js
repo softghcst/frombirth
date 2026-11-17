@@ -77,7 +77,7 @@ async function assignKeepsakes(api) {
 function willCard(c) {
   if (!last.canWriteWill()) return '';
   const e = last.estatePlan();
-  const things = (s) => (s.items.length ? ` + ${s.items.map((it) => it.name.charAt(0).toLowerCase() + it.name.slice(1)).join(', ')}` : '');
+  const things = (s) => (s.items.length ? ` + ${s.items.map((it) => (it.kind === 'business' ? it.name : it.name.charAt(0).toLowerCase() + it.name.slice(1))).join(', ')}` : '');
   const rows = e.gross <= 0 && !e.shares.length ? [['If you died today', 'There would be nothing to leave']]
     : [['Estate tax if you died today', fmtMoney(e.tax, c)],
       ...e.shares.map((s) => [`${s.name} (${s.role.toLowerCase()})`, `${fmtMoney(s.amount, c)}${things(s)}`]),
@@ -314,7 +314,7 @@ export default {
     const p = player();
     const c = country();
     const f = p.finance;
-    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + (a.mortgage?.principal ?? 0), 0);
+    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + (a.mortgage?.principal ?? 0), 0) + (f.cards ?? []).reduce((s, k) => s + k.balance, 0);
     const home = estate.home();
     const living = home ? `In your ${home.name.charAt(0).toLowerCase() + home.name.slice(1)}` : p.flags.livesWithParents ? 'With your family'
       : p.education.enrolled && p.age >= 18 ? 'Student housing' : p.age >= 18 ? 'Renting' : 'With your family';
