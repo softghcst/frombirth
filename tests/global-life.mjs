@@ -187,6 +187,7 @@ let p = life('us', 30, 80000, 'New York');
   check(p.stays.some((s) => s.tripId === plan.id && s.countryId === 'jp') && sp.stays?.some((s) => s.tripId === plan.id), 'days in Japan are counted for both');
   const card = travel.tripCard(plan);
   check(card.travelers.some((x) => x.id === sp.id && x.relation) && card.memories.length >= 1 && card.spent > 0, 'the journal card has the travellers, the memories and the money');
+  check(card.itinerary.out[0].from.city === 'New York' && card.itinerary.back.at(-1).to.city === 'New York' && /^\d{2}:\d{2}$/.test(card.itinerary.out[0].arrive.time), 'the journey is kept: there and back, with local times');
   const spent = cash();
   const events = store.state.canon.events.length;
   p = reload();
@@ -533,6 +534,46 @@ let moved;
   const A = loadGame(sa); const B = loadGame(sb);
   check(A.player.documents.length === 1 && B.player.documents.length === 0 && A.canon !== B.canon, 'saved lives keep their own papers and records');
   section('isolation: separate saved lives never share papers or events');
+}
+
+{
+  // A long life: trips most years, passports renewed, moves applied for, seventy years. Nothing breaks, nothing is paid twice.
+  p = life('de', 20, 200000, 'Berlin');
+  p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.4, age: 22 });
+  let trips = 0; let moves = 0; let errors = 0;
+  for (let i = 0; i < 70 && p.alive; i++) {
+    try {
+      p.stats.health = 90; p.finance.cash = Math.max(p.finance.cash, 150000 * COUNTRIES[p.countryId].currency.scale);
+      const mine = cit.held(p).find((j) => !docs.validPassport(p, undefined, `${store.state.year}-12-31`, j));
+      if (mine) docs.applyPassport(p.id, mine);
+      const y = store.state.year;
+      const dest = ['fr', 'jp', 'us', 'br', 'au', 'it', 'ke', p.countryId][i % 8];
+      const t = travel.startPlan('vacation');
+      const city = COUNTRIES[dest].cities.find((c) => c !== p.city) ?? COUNTRIES[dest].cities[0];
+      travel.updatePlan(t.id, { destination: { countryId: dest, city }, depart: `${y}-0${1 + (i % 8)}-10`, ret: `${y}-0${1 + (i % 8)}-17`, stay: 'hotel', activities: ['sights', 'museum'] });
+      const m = travel.modesFor(t.origin, t.destination, y)[0];
+      if (m) travel.updatePlan(t.id, { mode: m.id });
+      for (const e of travel.entryCheck(t)) if (e.needs && e.needs !== 'passport' && e.you) docs.applyEntry(p.id, dest, { from: t.depart, to: t.ret, purpose: 'visit' });
+      if (travel.confirm(t.id).ok) trips += 1; else travel.discardPlan(t.id);
+      if (i % 15 === 7) { p.flags.visaAge = null; if (reloc.applyToMove(['ca', 'nz', 'pt'][Math.floor(i / 15) % 3], 'settle').ok) moves += 1; }
+      for (const a of reloc.cases().filter((x) => x.status === 'approved' && !x.used)) {
+        reloc.arrange(a.id, { housing: 'rent', money: 0, travel: 'plane', pets: Object.fromEntries(p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.role === 'pet' && n.alive && !n.flags.abroad).map((n) => [n.id, 'leave'])) });
+        for (const x of [p, ...move.household(a.jurisdictionId).filter((n) => n.role === 'child' && n.age < 18)]) for (const j of cit.held(x)) if (!docs.validPassport(x)) docs.applyPassport(x.id, j);
+        reloc.completeMove(a.id);
+      }
+      year();
+    } catch (err) { errors += 1; problems.push(`long life, year ${i}: ${err.stack.split('\n').slice(0, 3).join(' ')}`); break; }
+  }
+  const all = travel.trips();
+  const bookedPaid = all.flatMap((t) => t.bookings.filter((b) => b.payer === 'player')).length;
+  const travelCharges = p.finance.ledger.filter((x) => x.ref?.tripId && x.amount < 0 && x.payer === 'player' && x.key?.startsWith('trip:') && !x.key.includes(':act:')).length;
+  check(!errors && trips >= 40, `seventy years: ${trips} trips booked, ${moves} moves applied for, no errors`);
+  check(bookedPaid === travelCharges, `every booking charged exactly once (${bookedPaid} bookings, ${travelCharges} charges)`);
+  check(all.every((t) => !['confirmed', 'in_progress'].includes(t.status) || docs.yearOf(t.depart) >= store.state.year), 'no trip is left hanging from an earlier year');
+  check(new Set(store.state.canon.events.map((e) => e.key)).size === store.state.canon.events.length, 'no event recorded twice');
+  const size = JSON.stringify(store.state).length;
+  check(size < 1500000, `the save stays a reasonable size (${Math.round(size / 1024)} KB)`);
+  section(`a long life: seventy years, ${trips} trips, ${moves} moves applied for; one charge per booking, one record per event, ${Math.round(size / 1024)} KB saved`);
 }
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(' -', x); for (const x of ok) console.log('ok  ', x); process.exit(1); }

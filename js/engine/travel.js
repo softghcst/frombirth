@@ -22,7 +22,7 @@ import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { CABINS } from '../data/activities.js';
 import { MODES, MODE_BY_ID, STAYS, STAY_BY_ID, ACTIVITIES, ACTIVITY_BY_ID, TRIP_TYPES, TRIP_TYPE_BY_ID, REFUNDS, INSURANCE_RATE, DAILY, CABIN_FARE, HUBS, NONSTOP_KM } from '../data/travel.js';
 import { SKILL_BY_ID } from '../data/skills.js';
-import { distanceKm, overland, coastal, regionOf, localTime, instantAt, season, climate, placeName, capitalCity } from './geo.js';
+import { distanceKm, overland, coastal, regionOf, localTime, instantAt, season, climate, placeName, capitalCity, placeId, parsePlace } from './geo.js';
 import { today, addDays, daysBetween, yearOf, readiness, addStay, ensureOwnPassport, personById, entryRule, needsAuthorization, eraOf } from './documents.js';
 import { charge, refund, recordEvent, hasEvent, archiveIdOf, events } from './chronicle.js';
 import { languagesOf, speaks } from './languages.js';
@@ -544,7 +544,7 @@ export function depart(tripId, p = player()) {
   store.state.today = trip.depart;
   const m = MODE_BY_ID[trip.mode];
   const there = journey(trip.origin, trip.destination, m, trip.depart, trip.cabin);
-  trip.itinerary = { out: there.legs, back: journey(trip.destination, trip.origin, m, trip.ret, trip.cabin).legs };
+  trip.itinerary = { out: there.legs.map(packLeg), back: journey(trip.destination, trip.origin, m, trip.ret, trip.cabin).legs.map(packLeg) };
   trip.status = 'in_progress';
   trip.arrived = there.arriveDate;
   travelState(p).whereabouts = { countryId: trip.destination.countryId, city: trip.destination.city, tripId: trip.id, since: there.arriveDate };
@@ -552,6 +552,17 @@ export function depart(tripId, p = player()) {
   const text = `You set off for ${placeName(trip.destination.countryId, trip.destination.city)} by ${m.name.toLowerCase()}${there.legs.length > 1 ? `, changing in ${there.legs[0].to.city}` : ''}. You arrived on ${leg.arrive.date} at ${leg.arrive.time}, local time.${trip.notes.length ? ` ${trip.notes.join(' ')}` : ''}`;
   log(text, 'system', 'good');
   return result(true, text, 'good', { trip });
+}
+
+/** A leg as it is kept in the save: places by id, local times as text. */
+const packLeg = (l) => ({ from: placeId(l.from.countryId, l.from.city), to: placeId(l.to.countryId, l.to.city), mode: l.mode, km: l.km, hours: l.hours,
+  depart: `${l.depart.date} ${l.depart.time}`, arrive: `${l.arrive.date} ${l.arrive.time}` });
+/** A kept leg, ready to show. */
+export function legView(l) {
+  if (typeof l.from !== 'string') return l;
+  const a = parsePlace(l.from); const b = parsePlace(l.to);
+  const [dd, dt] = l.depart.split(' '); const [ad, at] = l.arrive.split(' ');
+  return { ...l, from: a, to: b, depart: { date: dd, time: dt }, arrive: { date: ad, time: at } };
 }
 
 /** Days left at the destination, after what has been done. */
@@ -801,7 +812,7 @@ export function tripCard(trip, p = player()) {
     travelers: people.map((x) => ({ id: x.id, name: x.person.firstName, you: x.id === p.id, status: x.status, reason: x.reason, role: x.person.role, relation: x.id === p.id ? 'You' : roleLabel(x.person) })),
     mode: MODE_BY_ID[trip.mode]?.name ?? null, stay: STAY_BY_ID[trip.stay]?.name ?? null,
     done: trip.done.map((d) => ({ ...d, name: ACTIVITY_BY_ID[d.id]?.name })), planned: trip.activities.map((id) => ACTIVITY_BY_ID[id]?.name).filter(Boolean),
-    spent, bookings: trip.bookings, memories, notes: trip.notes, itinerary: trip.itinerary ?? null,
+    spent, bookings: trip.bookings, memories, notes: trip.notes, itinerary: trip.itinerary ? { out: trip.itinerary.out.map(legView), back: trip.itinerary.back.map(legView) } : null,
   };
 }
 

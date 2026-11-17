@@ -44,8 +44,10 @@ export function charge(o, p = player()) {
   const payer = o.payer ?? 'player';
   if (payer === 'player' && p.finance.cash < amount) return { ok: false, why: 'Not enough money.' };
   if (payer === 'player') p.finance.cash -= amount;
-  const tx = { id: uid('tx'), year: store.state.year, date: store.state.today ?? null, kind: o.kind, amount: -amount, currency: o.currency ?? null,
-    memo: o.memo, ref: o.ref ?? null, key: o.key ?? null, payer };
+  const tx = { id: uid('tx'), year: store.state.year, date: store.state.today ?? null, kind: o.kind, amount: -amount, memo: o.memo, payer };
+  if (o.currency) tx.currency = o.currency;
+  if (o.ref) tx.ref = o.ref;
+  if (o.key) tx.key = o.key;
   ledger.push(tx);
   return { ok: true, tx };
 }
@@ -58,7 +60,8 @@ export function refund(txId, fraction, memo, p = player()) {
   if (ledger.some((t) => t.refundOf === txId)) return { ok: false, why: 'Already refunded.' };
   const back = Math.floor(-tx.amount * Math.max(0, Math.min(1, fraction)));
   if (tx.payer === 'player') p.finance.cash += back;
-  const r = { id: uid('tx'), year: store.state.year, date: store.state.today ?? null, kind: 'refund', amount: back, currency: tx.currency, memo, ref: tx.ref, refundOf: txId, payer: tx.payer };
+  const r = { id: uid('tx'), year: store.state.year, date: store.state.today ?? null, kind: 'refund', amount: back, memo, refundOf: txId, payer: tx.payer };
+  if (tx.ref) r.ref = tx.ref;
   ledger.push(r);
   return { ok: true, tx: r, amount: back };
 }
