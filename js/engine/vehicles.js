@@ -1,12 +1,13 @@
 // Vehicles: licences, what is for sale, buying, servicing, selling, and the
 // yearly depreciation, running costs and crash risk.
+import { rule, may } from './rules.js';
 import { rng } from '../rng.js';
 import { uid, clamp, localMoney, fmtMoney } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { resolve } from './conditions.js';
 import { market } from './market.js';
 import { borrow, loanOffer } from './loans.js';
-import { VEHICLE_TYPES, VEHICLE_BY_ID, COLOURS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST, VEHICLE_AGE } from '../data/vehicles.js';
+import { VEHICLE_TYPES, VEHICLE_BY_ID, COLOURS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
 
 /** Lower-cases a name's first letter, unless it starts with an acronym (BMX, SUV). */
 const lower = (name) => (/^[A-Z]{2}/.test(name) ? name : name.charAt(0).toLowerCase() + name.slice(1));
@@ -88,7 +89,7 @@ export function listings() {
   const m = market();
   if (m.listings?.age !== p.age || !m.listings.vehicle) {
     // What is on offer suits the buyer's age: children see bikes and boards.
-    const fits = (t) => p.age >= (t.minAge ?? VEHICLE_AGE) && p.age <= (t.maxAge ?? 200);
+    const fits = (t) => p.age >= (t.minAge ?? rule('drivingAge')) && p.age <= (t.maxAge ?? 200);
     const open = VEHICLE_TYPES.filter(fits);
     const road = open.filter((t) => t.cls === 'car' || t.cls === 'bike');
     const cycles = open.filter((t) => t.cls === 'cycle');
@@ -118,7 +119,7 @@ export function buyVehicle(listingId, how = 'cash') {
   const l = market().listings?.vehicle.find((x) => x.id === listingId);
   if (!l) return result(false, 'That one has gone.', 'neutral');
   const type = VEHICLE_BY_ID[l.typeId];
-  if (p.age < (type.minAge ?? VEHICLE_AGE)) return result(false, 'You are too young for that.', 'neutral');
+  if (p.age < (type.minAge ?? rule('drivingAge'))) return result(false, type.minAge ? 'You are too young for that.' : may('drive').why, 'neutral');
   if (how === 'loan' && p.age < 18) return result(false, 'Nobody lends money to a child.', 'neutral');
   if (how === 'loan') {
     const lent = borrow(l.price, 'car');

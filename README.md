@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps)
@@ -199,8 +200,27 @@ turned back at the border.
 
 All of this is gameplay configuration, the same shape for every country, and describes no real visa.
 
-Still to come in the Living World engine, in order: a shared legal rule engine; states, provinces and cities that differ from
-each other; an economy and news that move without you. `docs/WORLD_DATA.md` lists the gaps.
+### One place to ask what the law is
+
+`js/engine/rules.js`, values in `js/data/rules.js`. Every legal question the game asks goes through `rule(id, place)` or
+`may(action)`: the ages for voting, driving, drinking, gambling, marrying, leaving school and drawing a pension; whether
+alcohol, gambling, divorce and same-sex marriage are legal; how the law treats gay and transgender people; the death penalty;
+conscription. An answer is built in layers, the last one winning:
+
+1. the default;
+2. the state a territory belongs to (Puerto Rico starts from the United States);
+3. the place itself;
+4. a region inside it (the table is ready; regions arrive with states and provinces);
+5. anything changed during this life, which is kept in the save and never written back to the reference data.
+
+So at nineteen you can go to a bar in the United Kingdom and not in the United States, vote at sixteen in Brazil, and find
+that the Philippines has annulment and no divorce. Now and then a country somewhere changes one of its laws; you hear of it
+when it is where you live or a country you are a citizen of, and the World Explorer lists the change.
+
+The values are hand-compiled, one per place, and unverified. They are not legal information.
+
+Still to come in the Living World engine, in order: states, provinces and cities that differ from each other; an economy and
+news that move without you. `docs/WORLD_DATA.md` lists the gaps.
 
 ## Layout
 

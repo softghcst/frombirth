@@ -2,7 +2,8 @@
 // and, when it goes wrong, life inside.
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
-import { canGamble, gamblingLegal, GAMBLING_AGE } from '../../engine/gambling.js';
+import { canGamble } from '../../engine/gambling.js';
+import { may } from '../../engine/rules.js';
 import * as law from '../../engine/justice.js';
 import * as jail from '../../engine/prison.js';
 import { CRIME_BY_ID, LIFE_SENTENCE } from '../../data/crimes.js';
@@ -144,7 +145,7 @@ export default {
                <button class="btn" data-play="lottery">Lottery tickets</button>
              </div>
              ${gambled ? `<div class="kv" style="margin-top:10px"><span>Staked in your lifetime</span><span>${esc(fmtMoney(gambled, c))}</span></div>` : ''}`
-    : `<p class="muted">${gamblingLegal() ? `You have to be ${GAMBLING_AGE} to gamble.` : `Gambling is against the law in ${esc(c.name)}.`}</p>`}
+    : `<p class="muted">${esc(may('gamble').why || 'Not from where you are.')}</p>`}
         </div>
         ${law.canCommitCrimes() ? `<div class="card"><h3>Crime</h3>
           <div class="kv"><span>Police attention</span><span>${p.legal.heat >= 60 ? 'They are looking for you' : p.legal.heat >= 25 ? 'You are known to them' : 'None'}</span></div>

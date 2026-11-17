@@ -1,18 +1,20 @@
 // Gambling: blackjack, the horses and the lottery. The house always has an
 // edge. Stakes leave your account the moment you place them.
+import { rule, may } from './rules.js';
 import { rng } from '../rng.js';
 import { localMoney, fmtMoney, clamp } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
-export const GAMBLING_AGE = 18;
+/** How old the law says a gambler must be, where the player lives. */
+export const gamblingAge = () => rule('gamblingAge');
 /** Stakes offered, in base units. */
 export const STAKES = [10, 50, 250, 1000, 5000, 25000];
 export const LOTTERY_TICKET = 2;
 
-export const gamblingLegal = () => country().living.laws.gambling;
-export const canGamble = () => player().age >= GAMBLING_AGE && !player().legal.incarceration && gamblingLegal();
+export const gamblingLegal = () => rule('gambling');
+export const canGamble = () => !player().legal.incarceration && may('gamble').ok;
 export const stakes = () => STAKES.map((s) => localMoney(s, country())).map((amount) => ({ amount, affordable: player().finance.cash >= amount }));
 
 function stake(amount) {

@@ -10,6 +10,7 @@
 //   p.flags.trueGender   set at birth for a transgender character: who they really are
 //   p.flags.identity     { knows, outOrientation, outGender, hrtAge, top, bottom, legal, names:[...] }
 // On each person:  npc.flags.acceptance  0–100, and npc.flags.stubborn (never changes)
+import { rule, may } from './rules.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
@@ -63,7 +64,7 @@ export function acceptanceOf(npc) {
     if (npc.orientation && npc.orientation !== 'straight') score += 30;
     if (npc.flags.trans) score += 30;
     // Where the law itself is against it, fewer people feel free to be on your side.
-    score += { equal: 6, limited: -4, hostile: -24 }[country().living.laws.lgbt];
+    score += { equal: 6, limited: -4, hostile: -24 }[rule('lgbt')];
     npc.flags.acceptance = Math.round(clamp(score));
     // Some people will not be moved, whatever happens.
     npc.flags.stubborn = npc.flags.acceptance < 35 ? rng.chance(0.5) : npc.flags.acceptance < 62 && rng.chance(0.15);
@@ -179,7 +180,7 @@ export function changeName(name) {
 }
 
 /** In some countries none of this is available, by law. */
-export const hostileHere = () => country().living.laws.lgbt === 'hostile';
+export const hostileHere = () => rule('lgbt') === 'hostile';
 export const canChangeLegalGender = () => player().age >= AGES.legal && isTrans() && !ident().legal && !hostileHere();
 export function changeLegalGender() {
   const p = player();

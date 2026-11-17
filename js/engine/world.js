@@ -6,6 +6,7 @@
 //   reference   real-world facts about the place (data/world.js)
 //   game        how the game models living there (data/countries.js, living.js): estimates, not statistics
 //   yourWorld   what has happened there in this save (the political world, engine/polity.js): fiction
+import { sheet, reforms } from './rules.js';
 import { store } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel } from '../data/countries.js';
 import { PLACES, GROUPS, placesIn } from '../data/world.js';
@@ -89,13 +90,7 @@ export function profile(id) {
     ...(sys.nativeOnly ? [['Top office', 'Open only to people born here']] : []),
     ...(crown ? [['Crown', `A ${crown.type} monarchy you can be born into or marry into`]] : []),
   ];
-  const laws = [
-    ['Same-sex marriage', L.laws.marriage ? 'Legal' : 'Not available'],
-    ['LGBT people', { equal: 'Protected in law', limited: 'Limited protection', hostile: 'Against the law, or close to it' }[L.laws.lgbt]],
-    ['Gambling', L.laws.gambling ? 'Legal' : 'Banned'],
-    ['Death penalty', L.laws.deathPenalty ? 'In use' : 'Not used'],
-    ['Military service', L.laws.conscription ? 'Compulsory' : 'Voluntary'],
-  ];
+  const laws = sheet(id, { region: null }).map((r) => [r.name, r.note ? `${r.text} (${r.note})` : r.text]);
   const spoken = Object.entries(SPOKEN).filter(([, ids]) => ids.includes(id)).map(([k]) => k);
   // What has happened here in this save, if anything has: never invents a government just because the page was opened.
   let yourWorld = null;
@@ -115,7 +110,7 @@ export function profile(id) {
   }
   const dyn = store.state?.dynasties?.[id];
   if (dyn && yourWorld) yourWorld.lines.push(['Royal house', `${dyn.name}${dyn.status === 'abolished' ? ' (the monarchy was abolished)' : ''}`]);
-  return { id, name: c.name, flag: c.flag, typeLabel: p.typeLabel, status: p.status, reference, game, school, politics, laws, cities: c.cities, capital: p.capital, spoken, yourWorld,
+  return { id, name: c.name, flag: c.flag, typeLabel: p.typeLabel, status: p.status, reference, game, school, politics, laws, lawChanges: store.state ? reforms(id).slice(0, 5).map((e) => `${e.year}: ${e.text}`) : [], cities: c.cities, capital: p.capital, spoken, yourWorld,
     notes: ['Reference facts were compiled by hand and have not yet been checked line by line against official sources.',
       'Pay, prices, taxes, scores and the laws listed are simplified for play. They are not statistics or legal information.'] };
 }
