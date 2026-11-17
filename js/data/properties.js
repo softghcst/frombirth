@@ -26,3 +26,6 @@ export const BUYING_FEE = 0.02;
 /** Yearly living costs in base units: renting somewhere, versus bills in a home you own. */
 export const RENT_AND_BILLS = 12000;
 export const BILLS_ONLY = 5000;
+
+/** What a buyer who does not live in the country pays on top: lawyers, translation, registration. Gameplay figure. */
+export const FOREIGN_BUYER_FEE = 0.03;

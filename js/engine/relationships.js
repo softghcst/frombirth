@@ -2,7 +2,8 @@
 // decay, and the everyday interactions. Romance is in romance.js and
 // children in children.js.
 import { rng } from '../rng.js';
-import { clamp, localMoney, fmtMoney } from '../util.js';
+import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
+import { COUNTRIES } from '../data/countries.js';
 import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js';
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
@@ -64,9 +65,11 @@ function inheritFrom(npc) {
   }
   const heirs = npcsByRole('sibling').length + 1;
   const gross = Math.round(npc.savings / heirs);
-  const tax = Math.round(gross * c.estateTax);
+  // An estate is taxed where the person who died lived.
+  const where = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad] : c;
+  const tax = Math.round(gross * where.estateTax);
   p.finance.cash += gross - tax;
-  log(`You inherited ${fmtMoney(gross - tax, c)} from ${npc.firstName}'s estate${tax ? ` after ${fmtMoney(tax, c)} in estate tax` : ''}${heirs > 1 ? `, split ${heirs} ways` : ''}.`, 'system', 'good');
+  log(`You inherited ${fmtMoney(gross - tax, c)} from ${npc.firstName}'s estate${tax ? ` after ${fmtMoney(tax, c)} in estate tax${where !== c ? ` in ${theCountry(where.name)}` : ''}` : ''}${heirs > 1 ? `, split ${heirs} ways` : ''}.`, 'system', 'good');
 }
 
 export function tickRelationships() {
