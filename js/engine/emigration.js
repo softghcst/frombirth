@@ -1,6 +1,7 @@
 // Emigrating: applying to move, selling up, converting everything into the
 // new currency, and who comes with you.
 import { rightToLive, held, settle } from './citizenship.js';
+import { onEmigrate as leaveBusinesses } from './business.js';
 import { rate, setAside, absorb } from './currency.js';
 import { fluency } from './languages.js';
 import { rng } from '../rng.js';
@@ -169,6 +170,7 @@ export function emigrate(countryId, opts = {}) {
   if (p.career.careerId) quitCareer();
   if (p.career.partTime) p.career.partTime = null;
   if (p.career.sides) p.career.sides = []; // part-time work is local
+  for (const l of leaveBusinesses()) log(l); // a business with a manager carries on; one without is wound up
   leaveForPrison();
   const there = new Set(livingNpcs().filter((n) => n.flags.abroad === to.id).map((n) => n.id)); // already living where the player is going
   const coming = new Set(household(opts.forced ? null : to.id).map((n) => n.id));

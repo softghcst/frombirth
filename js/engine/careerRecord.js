@@ -16,6 +16,7 @@ import { CAREER_BY_ID } from '../data/careers.js';
 import { FAMILY_BY_ID } from '../data/occupations.js';
 import { ensureCareer } from './worklife.js';
 import { employer } from './employers.js';
+import { inherit } from './business.js';
 
 const MANAGER = /manager|director|head |head$|chief|lead\b|supervisor|principal|captain|foreman|partner|superintendent|dean|governor|postmaster|chair/i;
 const OWNER = /owner|contractor|founder|agency head|firm owner/i;
@@ -93,7 +94,11 @@ export const ACHIEVEMENTS = [
       && (y.government || y.safety || y.military || y.education) && 'Twenty-five years in public service.';
   } },
   { id: 'creative_breakthrough', name: 'Creative Breakthrough', test: (p) => jobsOf(p).some((j) => { const car = CAREER_BY_ID[j.careerId]; return ['arts', 'media'].includes(car.family) && car.fame && j.level >= car.fame.from; }) && 'Your creative work made your name.' },
-  { id: 'entrepreneur', name: 'Entrepreneurial Spirit', test: (p) => jobsOf(p).some((j) => OWNER.test(j.title)) && 'Ran a business of your own.' },
+  { id: 'entrepreneur', name: 'Entrepreneurial Spirit', test: (p) => (jobsOf(p).some((j) => OWNER.test(j.title)) || (p.businesses ?? []).some((b) => b.years >= 3 && b.foundedAge != null)) && 'Ran a business of your own.' },
+  { id: 'employer', name: 'On the Payroll', test: (p) => (p.businesses ?? []).some((b) => b.status === 'open' && b.staff.length + b.others >= 8) && 'Your business gives eight people their living.' },
+  { id: 'sold_up', name: 'Sold Up', test: (p) => (p.businesses ?? []).some((b) => b.status === 'sold' && b.years >= 3) && 'Built a business and sold it.' },
+  { id: 'family_firm', name: 'The Family Firm', test: (p) => (p.businesses ?? []).some((b) => b.status === 'family' || b.history.some((h) => /passed to/.test(h.text))) && 'A business passed from one generation to the next.' },
+  { id: 'second_wind', name: 'Second Wind', test: (p) => (p.businesses ?? []).some((b) => b.status === 'failed') && (p.businesses ?? []).some((b) => b.status === 'open' && b.years >= 2 && (b.last?.profit ?? 0) > 0) && 'Lost one business, and made a success of the next.' },
   { id: 'independent', name: 'Independent Professional', test: (p, c) => (c.freelance?.done ?? 0) >= 25 && 'Completed twenty-five freelance contracts.' },
   { id: 'mentor', name: 'Mentor', test: (p, c) => c.mentees.filter((m) => m.promoted).length >= 3 && 'Helped three junior colleagues move up.' },
   { id: 'second_career', name: 'Second Career', test: (p, c) => c.unretired && 'Went back to work after retiring.' },
@@ -157,13 +162,16 @@ export function record(p = player(), st = store.state) {
     .filter((n) => (n.meters?.relationship ?? 0) >= 70).slice(0, 5).map((n) => `${n.firstName} ${n.lastName}`);
   const top = [...jobs].sort((a, b) => (CAREER_BY_ID[b.careerId]?.levels.findIndex((l) => l.title === b.title) ?? 0) - (CAREER_BY_ID[a.careerId]?.levels.findIndex((l) => l.title === a.title) ?? 0))[0];
   return { name: `${p.firstName} ${p.lastName}`, gen: p.generation ?? 1, born, died: p.alive === false ? st.year : null, jobs,
+    businesses: (p.businesses ?? []).map((b) => ({ name: b.name, from: b.founded, years: b.years, status: b.status })),
     achievements: c.achievements.map((a) => a.name), topTitle: top?.title ?? null, retired: !!c.retired, colleagues };
 }
 
 /** Written when the story passes on (engine/legacy.js). */
-export function passOn(old, next) {
+export function passOn(old, next, heir) {
   next.careerRecord = [...(old.careerRecord ?? []), record(old.player, old)].slice(-12);
   next.jobs = old.jobs; // the employers, and their histories, are the same world
+  // A business goes to the heir who was named, or to a child. Ownership, not the manager's chair.
+  return heir ? inherit(old.player, next.player, heir, next.npcs) : [];
 }
 
 /** The family's working history, with the living player last. */

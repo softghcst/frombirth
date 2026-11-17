@@ -27,6 +27,7 @@ import { WORK_LAW, DEFAULT, LOAD, STUDY_HOURS, COMMUTE } from '../data/workLaw.j
 import { CULTURES } from '../data/employers.js';
 import { employer } from './employers.js';
 import { hereCity } from './cities.js';
+import { payouts, markPaid } from './business.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -98,12 +99,13 @@ export function weeklyLoad(p = player(), age = p.age) {
   for (const s of c.sides) rows.push({ label: s.title, hours: s.hours, kind: 'parttime' });
   const fl = freelanceHours(c);
   if (fl) rows.push({ label: 'Freelance work', hours: fl, kind: 'freelance' });
+  for (const b of (p.businesses ?? []).filter((x) => x.status === 'open' && x.ownerHours > 0)) rows.push({ label: `Running ${b.name}`, hours: b.ownerHours, kind: 'business' });
   const study = studyHours(p);
   if (study) rows.push({ label: p.education.stage === 'high' || p.age < 18 ? 'School' : 'Studying', hours: study, kind: 'study' });
   const travel = commute(c, p);
   if (travel) rows.push({ label: 'Getting to work', hours: travel, kind: 'commute' });
   const total = rows.reduce((s, r) => s + r.hours, 0);
-  const paid = rows.filter((r) => ['job', 'parttime', 'freelance'].includes(r.kind)).reduce((s, r) => s + r.hours, 0);
+  const paid = rows.filter((r) => ['job', 'parttime', 'freelance', 'business'].includes(r.kind)).reduce((s, r) => s + r.hours, 0);
   const word = total >= LOAD.crushing ? 'Crushing' : total >= LOAD.heavy ? 'Heavy' : total >= LOAD.comfortable ? 'Full' : total > 0 ? 'Manageable' : 'Free';
   return { rows, total, paid, word };
 }
@@ -372,6 +374,7 @@ export function payLines(p = player()) {
   for (const s of c.sides) lines.push({ source: `side:${s.id}`, label: s.title, gross: s.salary });
   for (const k of c.freelance.contracts) if (k.status === 'done' && !k.paid) lines.push({ source: `gig:${k.id}`, label: `${k.serviceName} for ${k.client}`, gross: k.fee });
   for (const k of c.freelance.contracts) if (k.status === 'failed' && !k.paid && k.partial) lines.push({ source: `gig:${k.id}`, label: `Part payment: ${k.serviceName}`, gross: k.partial });
+  lines.push(...payouts(p)); // what the player's businesses paid out to their owner
   if (c.pensionDrawn && c.pensionPerYear) lines.push({ source: 'pension', label: 'Pension', gross: c.pensionPerYear });
   if (c.benefit?.yearsLeft > 0 && !car) lines.push({ source: 'benefit', label: 'Unemployment benefit', gross: c.benefit.amount });
   return lines;
@@ -388,6 +391,7 @@ export function runPayroll(p = player()) {
   const lines = payLines(p);
   c.paidYear = store.state.year;
   for (const k of c.freelance.contracts) if (['done', 'failed'].includes(k.status)) k.paid = true;
+  markPaid(p);
   const main = lines.find((l) => l.source === 'main');
   if (main) c.pensionPot = Math.round(c.pensionPot + main.gross * pensionRate(c));
   if (c.benefit) { c.benefit.yearsLeft -= 1; if (c.benefit.yearsLeft <= 0 || c.careerId) c.benefit = null; }

@@ -230,7 +230,7 @@ export function continueAs(npcId) {
     rngSeed: rng.state(), settings: old.settings ?? { theme: 'auto' },
   };
   store.state = next;
-  carryCareers(old, next); // the family's working history, and the same employers
+  const firmLines = carryCareers(old, next, h); // the family's working history, the same employers, and any business left to this heir
 
   // An heir who was living in another country carries on there.
   const abroad = typeof h.flags.abroad === 'string' && COUNTRIES[h.flags.abroad] ? h.flags.abroad : null;
@@ -266,6 +266,7 @@ export function continueAs(npcId) {
   );
   if (atHome && !parentsAlive) next.journal.push(entry('With no parent left, relatives have taken you in.', 'bad'));
   if ((op.flags.offices ?? []).some((o) => o.tier >= 3) || (op.politics?.tier ?? 0) >= 3 || op.flags.politicalFamily) player.flags.politicalFamily = true;
+  for (const l of firmLines) next.journal.push(entry(l, 'good'));
   leaveName(op, player);
   const crownLine = inheritStanding(old, h);
   if (crownLine) next.journal.push(entry(crownLine, 'good'));

@@ -26,6 +26,7 @@ import { tickFreelance } from './freelance.js';
 import { tickRecruiters } from './recruiters.js';
 import { tickOffers } from './hiring.js';
 import { checkAchievements } from './careerRecord.js';
+import { tickBusinesses } from './business.js';
 import { rightToLive } from './citizenship.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -625,7 +626,7 @@ export function tickWork() {
   tickOffers();
   const death = tickCareer();
   if (death) return death;
-  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickWorkLife(), ...tickRecruiters()];
+  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickWorkLife(), ...tickRecruiters()];
   for (const l of lines) log(l);
   if (p.age >= 14) checkAchievements(p);
   return null;

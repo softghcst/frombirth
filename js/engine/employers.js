@@ -123,13 +123,28 @@ export function cityEmployers(countryId, city) {
     }
   }
   J.seen[key] = now;
-  return J.cities[key].map((id) => J.employers[id]).filter((e) => e && !e.closed);
+  return J.cities[key].map((id) => J.employers[id]).filter((e) => e && !e.closed && !e.owned);
+}
+
+/**
+ * Puts a business the player owns on the map as an employer, so the people who
+ * work there have a real place of work. It is run by engine/business.js, not
+ * by the yearly employer tick: no openings appear on the board for it.
+ */
+export function registerEmployer({ name, family, tracks, countryId, city }) {
+  cityEmployers(countryId, city);
+  const id = nextId('emp');
+  const e = { id, name, family, tracks, countryId, city, size: 'small', culture: 'supportive', payK: 1, health: 60, remote: false,
+    founded: store.state.year, closed: null, staff: [], history: [], owned: true };
+  jobs().employers[id] = e;
+  jobs().cities[`${countryId}/${city}`].push(id);
+  return e;
 }
 
 /** Employers the player has a connection to: worked there, or knows someone who does. Their stories are kept in detail. */
 function connected(e) {
   const p = player();
-  return e.id === p.career.employerId || (p.career.sides ?? []).some((s) => s.employerId === e.id) || p.career.history.some((h) => h.employerId === e.id) || e.staff.length > 0;
+  return e.owned || e.id === p.career.employerId || (p.career.sides ?? []).some((s) => s.employerId === e.id) || p.career.history.some((h) => h.employerId === e.id) || e.staff.length > 0;
 }
 
 /** Every employer that exists in a country (only cities that have been looked at). */
@@ -263,7 +278,7 @@ export function tickEmployers() {
   // Lighten the records of employers nobody is connected to.
   for (const e of Object.values(J.employers)) if (!connected(e) && e.history.length > 3) e.history = e.history.slice(-3);
   for (const e of Object.values(J.employers)) {
-    if (e.closed) continue;
+    if (e.closed || e.owned) continue; // a business the player owns is run by engine/business.js
     const local = e.countryId === p.countryId ? ph : { hiring: 0, layoff: 0.03 };
     const detailed = connected(e);
     const live = (J.seen[`${e.countryId}/${e.city}`] ?? -99) >= now - 1 || detailed; // markets being watched

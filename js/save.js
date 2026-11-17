@@ -54,6 +54,7 @@ function migrate(state) {
   for (const n of Object.values(state.npcs)) if (n.role !== 'pet') n.appearance = normalize(n.appearance, n.id);
   // Careers before employers, side jobs and the time budget: fill in what the save lacks. Nothing is re-paid.
   ensureCareer(state.player.career);
+  state.player.businesses ??= [];
   if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
   state.schemaVersion = SCHEMA_VERSION;
   return state;

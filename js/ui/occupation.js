@@ -9,7 +9,9 @@ import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
 import { FAMILIES, FAMILY_BY_ID } from '../data/occupations.js';
 import { CERTS } from '../data/schools.js';
 import { RATES, AVAILABILITY } from '../data/freelance.js';
-import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
+import { openModal, messageModal, pickModal, confirmModal, inputModal } from './modals.js';
+import { PRICING, OWNER_HOURS, DRAWS, BUSINESS_BY_ID } from '../data/business.js';
+import * as biz from '../engine/business.js';
 import { meterHtml } from './meter.js';
 import { avatarSvg } from './avatar.js';
 import * as career from '../engine/career.js';
@@ -37,7 +39,7 @@ const person = (n, side = '') => `<button type="button" class="row world-row" da
 
 const SECTIONS = [
   ['now', 'Current jobs'], ['workplace', 'Workplace'], ['find', 'Find a job'], ['offers', 'Offers & recruiters'], ['parttime', 'Part-time'],
-  ['freelance', 'Freelance'], ['special', 'Special careers'], ['military', 'Military'], ['quals', 'Qualifications'], ['history', 'History'], ['retire', 'Retirement'],
+  ['freelance', 'Freelance'], ['business', 'Business'], ['special', 'Special careers'], ['military', 'Military'], ['quals', 'Qualifications'], ['history', 'History'], ['retire', 'Retirement'],
 ];
 
 /** Which sections make sense for this person now. */
@@ -49,6 +51,7 @@ function sectionsFor(p) {
     if (['find', 'offers'].includes(id)) return p.age >= law.workAge;
     if (id === 'parttime') return p.age >= Math.min(law.workAge, 15);
     if (id === 'freelance') return p.age >= 12;
+    if (id === 'business') return p.age >= 18 || biz.businesses(p).length > 0;
     if (id === 'military') return p.age >= 16;
     if (id === 'retire') return p.age >= 45 || c.retired;
     if (id === 'special') return p.age >= 5;
@@ -226,6 +229,42 @@ const VIEWS = {
     sub: s.block && !s.offered ? s.block : s.offered ? `${money(s.hourly)}/hour · reputation ${s.rep}% · ${s.done} done · ${s.clients} regular clients` : `Going rate about ${money(free.hourly(s, 'market'))} an hour.` })).join('')}
       <div class="section-label">One-off gigs</div>
       ${career.canGig() ? btn('gigs', 'Quick one-off jobs', { sub: 'A couple a year, paid on the day.' }) : '<p class="muted">Not yet.</p>'}`;
+  },
+
+  business(p) {
+    const open = biz.openBusinesses();
+    const past = biz.businesses().filter((b) => b.status !== 'open');
+    const card = (b) => {
+      const cty = COUNTRIES[b.countryId];
+      const staff = biz.staffOf(b);
+      const L = b.last;
+      const arg = b.id;
+      return `<div class="card"><h3>${esc(b.name)}</h3>
+        ${kv([['Where', `${b.city}${b.sites > 1 ? ` · ${b.sites} sites` : ''}`], ['You own', `${Math.round(b.stake * 100)}%${b.partners.length ? ` (with ${b.partners.map((x) => store.state.npcs[x.id]?.firstName).filter(Boolean).join(', ')})` : ''}`],
+    ['In the bank', money(b.cash, cty)], ...(b.debt ? [['Owes', `${money(b.debt, cty)} over ${years(b.debtYears)}`]] : []), ['Worth, to a buyer', money(biz.valuation(b), cty)],
+    ['Staff', `${biz.headcount(b)}${biz.managerOf(b) ? ` · run day to day by ${biz.managerOf(b).firstName}` : ''}`], ['Your hours', `${b.ownerHours} a week`], ['Prices', PRICING[b.pricing].label], ['You take', DRAWS[b.draw].label]])}
+        <div style="margin-top:8px">${meterHtml('Reputation', b.reputation, true)}${meterHtml('Quality', b.quality, true)}</div>
+        ${L ? `<div class="section-label">Last year</div>${kv([['Takings', money(L.revenue, cty)], ['Wages', money(L.wages, cty)], ['Premises', money(L.rent, cty)], ['Stock and supplies', money(L.supplies + L.overhead, cty)], ...(L.interest ? [['Interest', money(L.interest, cty)]] : []),
+    [L.profit >= 0 ? 'Profit' : 'Loss', money(Math.abs(L.profit), cty)], ['Paid to you', money(L.drawn, cty)], ['Custom against capacity', L.demand > L.heads * 1.25 ? 'More custom than you could serve' : L.heads > L.demand * 1.4 ? 'More staff than there was work for' : 'About right']])}` : '<p class="muted" style="margin-top:6px">The first year\'s accounts come at the end of the year.</p>'}
+        ${b.overdrawn ? '<p class="world-status">The account is overdrawn. Put money in, cut costs or borrow: another year like this and it closes.</p>' : ''}
+        ${staff.length ? `<div class="section-label">People</div>${staff.map((x) => `<button type="button" class="row world-row" data-act="bizstaff" data-arg="${arg}:${x.id}">${face(x.npc)}<div class="main"><strong>${esc(x.npc.firstName)} ${esc(x.npc.lastName)}${x.manager ? ' (manager)' : ''}</strong><small>${money(x.wage, cty)} a year · since age ${x.since}</small></div><div class="side">${Math.round(x.npc.meters.relationship)}%</div></button>`).join('')}` : ''}
+        ${b.others ? `<p class="muted">And ${b.others} other staff.</p>` : ''}
+        <div class="btn-stack" style="margin-top:8px">
+          ${btn('bizhire', 'Take someone on', { arg })}${biz.hireable(b).length ? btn('bizknown', 'Offer a job to someone you know', { arg }) : ''}${b.others ? btn('bizcut', 'Let one of the other staff go', { arg }) : ''}
+          ${btn('bizhours', 'Your hours', { arg })}${btn('bizprice', 'Prices', { arg })}${btn('bizdraw', 'What you take out each year', { arg })}
+          ${btn('bizinvest', 'Spend on the business', { arg, sub: 'Marketing, equipment, training.' })}
+          ${btn('bizmoney', 'Money in and out', { arg, sub: `Could spare ${money(biz.spareCash(b), cty)} · could borrow ${money(biz.borrowRoom(b), cty)}` })}
+          ${btn('bizexpand', 'Open another site', { arg })}
+          ${biz.partnerOptions(b).length && b.stake > 0.5 ? btn('bizpartner', 'Take on a partner', { arg, sub: 'A quarter of the business, for money put into it.' }) : ''}
+          ${biz.heirsFor(b).length ? btn('bizheir', 'The next generation', { arg, sub: b.heirId ? `Named: ${store.state.npcs[b.heirId]?.firstName ?? ''}` : 'Name who should have it, or hand it over now.' }) : ''}
+          ${btn('bizsell', 'Put it up for sale', { arg })}${btn('bizclose', 'Close it down', { arg, cls: 'danger' })}
+        </div>
+        ${b.history.length ? `<div class="section-label">Its story</div>${b.history.slice(-5).reverse().map((h) => `<p style="margin:3px 0">${h.year}: ${esc(h.text)}</p>`).join('')}` : ''}</div>`;
+    };
+    return `<p class="muted" style="margin:0 0 6px">A business has its own money. It pays its staff, its rent and its debts first; you are paid from what is left.</p>
+      ${open.map(card).join('')}
+      ${btn('bizstart', open.length ? 'Start another business' : 'Start a business', { cls: open.length ? '' : 'primary' })}
+      ${past.length ? `<div class="card" style="margin-top:10px"><h3>Before</h3>${kv(past.map((b) => [b.name, `${b.founded}–${b.founded + b.years} · ${{ sold: 'sold', closed: 'closed', failed: 'went under', family: `run by ${store.state.npcs[b.ownerNpcId]?.firstName ?? 'family'}` }[b.status]}`]))}</div>` : ''}`;
   },
 
   special(p) {
@@ -452,6 +491,106 @@ const ACTIONS = {
   async fame(_, x) {
     const id = await pickModal({ title: `Fame: ${career.fame()}%`, body: 'The more famous you are, the more these pay. They can go wrong in public.', options: career.fameOptions().map((a) => ({ value: a.id, label: a.name, disabled: !a.available, sub: a.reason })) });
     if (id) await x.say(career.doFameAction(id));
+  },
+  async bizstart(_, x) {
+    const c = country();
+    const opts = biz.startOptions();
+    const id = await pickModal({ title: 'Start a business', body: 'What it costs to open the doors here. Some need a trade, a licence, or years in the work first.',
+      options: opts.map((o) => ({ value: o.id, label: o.name, disabled: !!o.block, sub: o.block || `${money(o.startup, c)} to open${o.fromService ? ' (less, because your freelance clients come with you)' : ''}. Staff cost about ${money(o.wage, c)} a year each.${o.solo ? ' Can be run alone.' : ''}` })) });
+    if (!id) return;
+    const o = opts.find((y) => y.id === id);
+    const name = await inputModal({ title: 'What is it called?', label: 'Name', value: biz.suggestName(o), maxLength: 36 });
+    if (!name) return;
+    const half = Math.round(o.startup * 0.5);
+    const how = await pickModal({ title: 'How will you pay for it?', body: `It costs ${money(o.startup, c)}. You have ${money(player().finance.cash, c)}.`,
+      options: [{ value: 0, label: 'From your savings', disabled: player().finance.cash < o.startup }, { value: half, label: `Borrow half (${money(half, c)})`, sub: 'The business repays it over seven years, at 8%.', disabled: player().finance.cash < o.startup - half },
+        { value: Math.round(o.startup * 0.7), label: `Borrow as much as the bank allows (${money(Math.round(o.startup * 0.7), c)})`, disabled: player().finance.cash < o.startup * 0.3 }] });
+    if (how == null) return;
+    await x.say(biz.start(id, name, { borrow: how }));
+  },
+  async bizhire(id, x) {
+    const b = biz.business(id);
+    const cty = COUNTRIES[b.countryId];
+    const f = biz.figures(BUSINESS_BY_ID[b.typeId], b.countryId, b.city);
+    const named = biz.staffOf(b).length < 5;
+    const list = named ? biz.candidates(b) : [];
+    const i = await pickModal({ title: 'Take someone on', body: named ? 'Three people answered the advertisement.' : 'Your named team is full; further staff are taken on as general staff.',
+      options: [...list.map((cnd, k) => ({ value: k, label: `${cnd.npc.firstName} ${cnd.npc.lastName}, ${cnd.npc.age}`, sub: `${cnd.skill >= 75 ? 'Excellent' : cnd.skill >= 55 ? 'Capable' : cnd.skill >= 40 ? 'Willing, and green' : 'Not much to recommend them'} · ${years(cnd.years)} of experience · wants ${money(Math.round(f.wage * cnd.wageK), cty)} a year` })),
+        ...(named ? [] : [{ value: -1, label: 'General staff', sub: `${money(f.wage, cty)} a year.` }])] });
+    if (i == null) return;
+    await x.say(biz.hire(b, i === -1 ? null : i));
+  },
+  async bizknown(id, x) {
+    const b = biz.business(id);
+    const n = await pickModal({ title: 'Offer a job to…', options: biz.hireable(b).slice(0, 14).map((y) => ({ value: y.id, label: `${y.firstName} ${y.lastName}`, sub: `${roleLabel(y)}${y.occupation ? ` · ${y.occupation}` : ''}` })) });
+    if (n) await x.say(biz.hireKnown(b, n));
+  },
+  bizcut: (id, x) => x.say(biz.letGo(biz.business(id))),
+  async bizstaff(arg, x) {
+    const [id, npcId] = arg.split(':');
+    const b = biz.business(id);
+    const s = biz.staffOf(b).find((y) => y.id === npcId);
+    if (!s) return;
+    const what = await pickModal({ title: `${s.npc.firstName} ${s.npc.lastName}`, body: `${s.manager ? 'Manager' : 'Staff'} at ${b.name} since you were ${s.since}. Relationship ${Math.round(s.npc.meters.relationship)}%.`,
+      options: [{ value: 'raise', label: 'Give them a raise' }, s.manager ? { value: 'unmanage', label: 'Take back the running of it yourself' } : { value: 'manage', label: 'Put them in charge day to day', sub: 'On a manager\'s wage. Needed for a second site, or to step back.' }, { value: 'go', label: 'Let them go' }] });
+    if (what === 'raise') await x.say(biz.giveRaise(b, npcId));
+    if (what === 'manage') await x.say(biz.setManager(b, npcId));
+    if (what === 'unmanage') await x.say(biz.setManager(b, null));
+    if (what === 'go' && await confirmModal({ title: `Let ${s.npc.firstName} go?`, body: 'They will remember it.', yes: 'Let them go', danger: true })) await x.say(biz.letGo(b, npcId));
+  },
+  async bizhours(id, x) {
+    const h = await pickModal({ title: 'Your hours', options: OWNER_HOURS.map((o) => ({ value: o.hours, label: o.label, sub: o.sub })) });
+    if (h != null) await x.say(biz.setHours(biz.business(id), h));
+  },
+  async bizprice(id, x) {
+    const v = await pickModal({ title: 'Prices', body: 'Premium prices need the name and the quality to carry them.', options: Object.entries(PRICING).map(([k, o]) => ({ value: k, label: o.label })) });
+    if (v) await x.say(biz.setPricing(biz.business(id), v));
+  },
+  async bizdraw(id, x) {
+    const v = await pickModal({ title: 'What you take out each year', body: 'What you leave in pays for bad years, new sites and new people.', options: Object.entries(DRAWS).map(([k, o]) => ({ value: k, label: o.label })) });
+    if (v) await x.say(biz.setDraw(biz.business(id), v));
+  },
+  async bizinvest(id, x) {
+    const v = await pickModal({ title: 'Spend on the business', options: [{ value: 'marketing', label: 'Marketing', sub: 'More custom for a year or two, and a little more name.' }, { value: 'equipment', label: 'Equipment and premises', sub: 'Better work. A good name follows good work.' }, { value: 'training', label: 'Training the staff', sub: 'Better work, and people who feel invested in.' }] });
+    if (v) await x.say(biz.invest(biz.business(id), v));
+  },
+  async bizmoney(id, x) {
+    const b = biz.business(id);
+    const cty = COUNTRIES[b.countryId];
+    const spare = biz.spareCash(b);
+    const room = biz.borrowRoom(b);
+    const mine = player().finance.cash;
+    const v = await pickModal({ title: 'Money in and out', options: [
+      { value: ['out', Math.round(spare / 2)], label: `Take out ${money(Math.round(spare / 2), cty)}`, disabled: spare < 2, sub: 'Arrives with this year\'s pay, taxed as income.' },
+      { value: ['out', spare], label: `Take out all it can spare (${money(spare, cty)})`, disabled: spare < 1 },
+      { value: ['in', Math.round(mine / 4)], label: `Put in ${money(Math.round(mine / 4))} of your own`, disabled: mine < 4 },
+      { value: ['in', Math.round(mine / 2)], label: `Put in ${money(Math.round(mine / 2))} of your own`, disabled: mine < 2 },
+      { value: ['loan', Math.round(room / 2)], label: `Borrow ${money(Math.round(room / 2), cty)}`, disabled: room < 2, sub: 'The business repays it.' }] });
+    if (!v) return;
+    await x.say(v[0] === 'out' ? biz.withdraw(b, v[1]) : v[0] === 'in' ? biz.inject(b, v[1]) : biz.borrow(b, v[1]));
+  },
+  bizexpand: (id, x) => x.say(biz.expand(biz.business(id))),
+  async bizpartner(id, x) {
+    const b = biz.business(id);
+    const n = await pickModal({ title: 'Take on a partner', body: `A quarter of ${b.name} for about ${money(Math.round(biz.valuation(b) * 0.25), COUNTRIES[b.countryId])}, paid into the business. They share in what it pays out from then on.`,
+      options: biz.partnerOptions(b).slice(0, 12).map((y) => ({ value: y.id, label: `${y.firstName} ${y.lastName}`, sub: `${roleLabel(y)}${y.flags.workedWith ? ` · you worked together at ${y.flags.workedWith}` : ''}` })) });
+    if (n) await x.say(biz.takePartner(b, n));
+  },
+  async bizheir(id, x) {
+    const b = biz.business(id);
+    const who = await pickModal({ title: 'The next generation', body: 'Owning it would not make them good at running it. That is for them to learn, and for you to judge.', options: biz.heirsFor(b).map((y) => ({ value: y.id, label: `${y.firstName} ${y.lastName}, ${y.age}`, sub: `${roleLabel(y)}${b.staff.some((s) => s.id === y.id) ? ' · works in the business' : ''}` })) });
+    if (!who) return;
+    const what = await pickModal({ title: store.state.npcs[who].firstName, options: [{ value: 'name', label: 'Name them to have it after you' }, { value: 'give', label: 'Hand it over to them now', sub: 'They own it and run it. You step away.' }] });
+    if (what === 'name') await x.say(biz.nameHeir(b, who));
+    if (what === 'give' && await confirmModal({ title: 'Hand it over?', body: `${b.name} would be theirs from today.`, yes: 'Hand it over' })) await x.say(biz.handOver(b, who));
+  },
+  async bizsell(id, x) {
+    const b = biz.business(id);
+    if (await confirmModal({ title: `Sell ${b.name}?`, body: `A buyer might pay around ${money(Math.round(biz.valuation(b) * b.stake), COUNTRIES[b.countryId])} for your share, if one can be found. The staff would stay on.`, yes: 'Put it on the market' })) await x.say(biz.sell(b));
+  },
+  async bizclose(id, x) {
+    const b = biz.business(id);
+    if (await confirmModal({ title: `Close ${b.name}?`, body: 'The staff lose their jobs. What is left after its debts comes back to you; if it owes more than it has, half the shortfall is yours.', yes: 'Close it', danger: true })) await x.say(biz.close(b));
   },
   special: (id, x) => specialApply(id, x),
   enlist: (id, x) => specialApply(id, x),
