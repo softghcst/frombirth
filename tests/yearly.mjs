@@ -164,6 +164,31 @@ section('plans: hobby, savings, pet care and traditions carry on by themselves, 
 }
 section('the yearly summary: from saved outcomes, major events first, routine left out, quiet years allowed');
 
+// ---------- 4b. Years inside, and the law in the summary ----------
+{
+  const { imprison } = await import('../js/engine/justice.js');
+  const p = adult(30);
+  const before = snapshot();
+  imprison(4, 1);
+  check(p.legal.incarceration && plans.setPrisonPriority('rehabilitation').ok, 'inside, a priority for the years is chosen once');
+  const mum = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.alive);
+  const k = p.legal.incarceration;
+  const conduct = k.conduct;
+  const lines = plans.livePlans(p);
+  check(lines.some((l) => /rehabilitation/.test(l)) && k.conduct > conduct, 'the year inside goes into it without clicking');
+  const s = summarize(before, store.state, lines);
+  check(s.sections.flatMap((x) => x.lines).some((l) => /sent to prison/.test(l)), 'the yearly update reports going to prison');
+  plans.setPrisonPriority('family');
+  ageUp();
+  if (mum && p.legal.incarceration) {
+    const rel0 = mum.meters.relationship;
+    ageUp();
+    check(p.age === 32 && (mum.meters.relationship >= rel0 - 2 || !p.legal.incarceration), 'family contact keeps people close while inside, and the years still pass');
+  }
+  check(store.state.year >= before.year + 2 && p.legal.incarceration?.served >= 1 || !p.legal.incarceration, 'time served counts year by year');
+}
+section('prison: a yearly priority chosen once, family contact while inside, and the summary reports it');
+
 // ---------- 5. The full year: many things at once, one Age Up ----------
 {
   const p = adult(30);

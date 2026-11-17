@@ -12,7 +12,7 @@ const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
 const { saveGame, loadGame } = await import('../js/save.js');
 const { getEvent, resolveChoice, choiceStates } = await import('../js/engine/eventEngine.js');
-const { CONDITIONS, CONDITION_BY_ID } = await import('../js/data/health/conditions.js');
+const { CONDITIONS, CONDITION_BY_ID, MENTAL: MENTAL_GROUPS } = await import('../js/data/health/conditions.js');
 const { SYMPTOMS } = await import('../js/data/health/symptoms.js');
 const { MEDICATIONS, MED_BY_ID } = await import('../js/data/health/medications.js');
 const { THERAPIES, THERAPY_BY_ID } = await import('../js/data/health/therapies.js');
@@ -548,7 +548,7 @@ section('old saves: migrated, nothing invented, nothing duplicated');
     const p = store.state.player;
     while (p.alive && p.age < 60) { advanceYear(); store.state.pendingEvents = []; }
     lives++;
-    if (p.health.conditions.length) {
+    if (p.health.conditions.some((c) => MENTAL_GROUPS.includes(CONDITION_BY_ID[c.conditionId].group))) {
       diagnosedLives++;
       if (p.stats.mood >= 50) goodYears++;
       if (Object.values(store.state.npcs).some((n) => n.role === 'spouse')) married++;
@@ -557,7 +557,7 @@ section('old saves: migrated, nothing invented, nothing duplicated');
     check(ledgerOk(p.health), 'a long life charges nothing twice');
     check(p.health.week === 0, 'the care calendar starts each year at week 0');
   }
-  check(diagnosedLives > 0 && diagnosedLives < lives, `some lives include a health condition, not all (${diagnosedLives}/${lives})`);
+  check(diagnosedLives > 0 && diagnosedLives < lives, `some lives include a mental health condition, not all (${diagnosedLives}/${lives})`);
 }
 section('long lives: conditions are part of some lives, the calendar and the ledger stay sound');
 

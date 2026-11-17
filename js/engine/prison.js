@@ -2,7 +2,7 @@
 // parole, and breaking out.
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
-import { player, country, log, milestone } from '../state.js';
+import { player, country, log, milestone, livingNpcs } from '../state.js';
 import { release, imprison } from './justice.js';
 import { GANGS, ESCAPE_PENALTY, RECAPTURE_PENALTY, LIFE_SENTENCE } from '../data/crimes.js';
 import { LAYOUTS } from '../data/prisonLayouts.js';
@@ -224,4 +224,48 @@ export function tickPrison() {
     return release(`The parole board looked at your record inside and let you out ${k.yearsLeft} year${k.yearsLeft === 1 ? '' : 's'} early.`);
   }
   return undefined;
+}
+
+// ---------- A priority for the years inside ----------
+
+/**
+ * What someone puts their years inside into. Chosen once, it carries on every
+ * year until changed (engine/plans.js lives it), so nobody has to click through
+ * the same prison routine year after year. Each uses that year's own allowance:
+ * a year already spent in the library by hand is not counted twice.
+ */
+export const PRIORITIES = {
+  education: { name: 'Education', blurb: 'Classes and the library: intellect and a better record.' },
+  work: { name: 'Work', blurb: 'A work detail: a little money and discipline.' },
+  rehabilitation: { name: 'Rehabilitation', blurb: 'Programmes and courses: the strongest record for parole.' },
+  family: { name: 'Family contact', blurb: 'Letters, calls and visits: the people outside stay close.' },
+  fitness: { name: 'Personal development', blurb: 'The yard and the gym: health, and respect inside.' },
+};
+
+/** Lives a year of the chosen priority. @returns {string} one line for the yearly update */
+export function livePriority(id) {
+  const p = player();
+  if (!cell() || !PRIORITIES[id]) return '';
+  switch (id) {
+    case 'education':
+      if (once('read')) { p.stats.intellect = clamp(p.stats.intellect + 3); bump('conduct', 5); }
+      return 'You spent the year on classes and books.';
+    case 'work':
+      if (once('job')) { p.finance.cash += localMoney(300, country()); p.hidden.discipline = clamp(p.hidden.discipline + 2); bump('conduct', 3); }
+      return 'You worked your detail all year.';
+    case 'rehabilitation':
+      if (once('programme')) { bump('conduct', 8); p.hidden.karma = clamp(p.hidden.karma + 2); p.stats.mood = clamp(p.stats.mood + 2); }
+      return 'You went through the rehabilitation programmes on offer.';
+    case 'family': {
+      if (!once('family')) return '';
+      const fam = livingNpcs().filter((n) => ['parent', 'sibling', 'spouse', 'partner', 'child', 'grandparent'].includes(n.role));
+      for (const n of fam) { n.meters.relationship = clamp(n.meters.relationship + 3); n.lastInteractionAge = p.age; }
+      p.stats.mood = clamp(p.stats.mood + 3);
+      return fam.length ? 'You kept in touch with your family all year: letters, calls and visits.' : 'You wrote letters, though there was nobody left to send most of them to.';
+    }
+    case 'fitness':
+      if (once('workout')) { p.stats.health = clamp(p.stats.health + 5); bump('respect', 4); }
+      return 'You trained in the yard all year.';
+    default: return '';
+  }
 }

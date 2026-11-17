@@ -279,9 +279,11 @@ const trim = (c) => { if (c.sessions.length > 80) c.sessions.splice(0, c.session
  */
 function sessionNote(c, t, mod, p) {
   const h = healthOf(p);
-  const recent = h.lifeNotes.find((x) => !x.discussed && now(p) - x.wk <= 10);
-  if (recent && t.kind === 'therapy') recent.discussed = true;
-  const topic = recent && t.kind === 'therapy' ? ` Talked through ${recent.text}` : '';
+  // Only one-to-one sessions take up what happened in the person's own life; a group works on the skills.
+  const personal = t.kind === 'therapy' && t.format === 'individual';
+  const recent = personal ? h.lifeNotes.find((x) => !x.discussed && now(p) - x.wk <= 10) : null;
+  if (recent) recent.discussed = true;
+  const topic = recent ? ` Talked through ${recent.text}` : '';
   if (t.id === 'dbt') return `Diary card review.${topic || ' Looked at the week\'s hardest moment and what might help next time.'}`;
   if (t.id === 'dbt_group' && mod) return `${MODULE_BY_ID[mod.id].name}, week ${mod.weekIn} of ${mod.of}: ${MODULE_BY_ID[mod.id].skills[(mod.weekIn - 1) % MODULE_BY_ID[mod.id].skills.length]}. Homework set.`;
   if (t.kind === 'peer') return 'Went along, listened, and said a little.';

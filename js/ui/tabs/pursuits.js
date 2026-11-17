@@ -18,6 +18,7 @@ import { canEmigrate } from '../../engine/emigration.js';
 import * as leisure from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
 import { thisYearCard, thisYearAction } from '../thisYear.js';
+import * as plans from '../../engine/plans.js';
 
 async function report(api, r) {
   api.changed();
@@ -115,6 +116,8 @@ function prisonCard() {
       ${k.facility === 'prison' ? `<div class="kv"><span>Gang</span><span>${esc(g?.name ?? 'None')}</span></div>` : ''}
       <div style="margin-top:10px">${meterHtml('Respect', k.respect, true)}${meterHtml('Conduct', k.conduct, true)}</div>
       <p class="muted" style="margin-top:8px">Respect keeps you safe inside. Good conduct gets you parole.</p>
+      <div class="kv" style="margin-top:8px"><span>Your years go into</span><span>${esc(plans.PRIORITIES[plans.plansOf().prison]?.name ?? 'Nothing in particular')}</span></div>
+      <button class="btn" data-prison-plan style="margin-top:8px">Choose a priority</button>
     </div>
     <div class="btn-stack">
       ${jail.prisonActions().map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-prison="${a.id}">${esc(a.label)}</button>`).join('')}
@@ -160,6 +163,10 @@ export default {
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
     }
     el.onclick = (e) => {
+      if (e.target.closest('[data-prison-plan]')) {
+        return pickModal({ title: 'Your years inside', body: 'It carries on every year until you change it.', options: Object.entries(plans.PRIORITIES).map(([k, x]) => ({ value: k, label: x.name, sub: x.blurb })) })
+          .then((id) => (id ? report(api, plans.setPrisonPriority(id)) : undefined));
+      }
       const plan = e.target.closest('[data-year-plan]')?.dataset.yearPlan;
       if (plan) return thisYearAction(plan, api);
       const game = e.target.closest('[data-play]')?.dataset.play;

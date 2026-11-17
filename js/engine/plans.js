@@ -21,6 +21,9 @@ import { remember } from './conditions.js';
 import { SKILL_BY_ID } from '../data/skills.js';
 import { practise, sessionsLeft, levelOf, canPractise } from './skills.js';
 import { post, postsLeft, hasAccount } from './social.js';
+import { PRIORITIES, livePriority } from './prison.js';
+
+export { PRIORITIES };
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
@@ -84,6 +87,14 @@ export function setOnline(level, p = player()) {
 // ---------- Savings ----------
 
 export const SAVINGS_RATE = 0.02;
+
+/** In prison: what the years inside are put into, until it is changed. */
+export function setPrisonPriority(id, p = player()) {
+  if (!p.legal.incarceration) return result(false, 'You are not inside.', 'neutral');
+  if (!PRIORITIES[id]) return result(false, 'Unknown priority.', 'neutral');
+  plansOf(p).prison = id;
+  return result(true, `Your years inside go into ${PRIORITIES[id].name.toLowerCase()} now.`, 'good');
+}
 
 /** A savings goal: a target, and how much to set aside each year. */
 export function setSavings(target, yearly, p = player()) {
@@ -198,6 +209,9 @@ export function livePlans(p = player()) {
   const c = country();
   const free = !p.legal.incarceration;
 
+  // Inside: the year goes into the priority chosen for it.
+  if (p.legal.incarceration && pl.prison) { const line = livePriority(pl.prison); if (line) lines.push(line); }
+
   // A main passion gets most of the year's practice; a second interest some of it.
   if (pl.hobby && free && canPractise()) {
     for (const [id, times] of [[pl.hobby.main, 2], [pl.hobby.second, 1]]) {
@@ -279,6 +293,7 @@ export function ongoing(p = player()) {
   const out = [];
   if (pl.hobby) out.push(['Hobby', `${SKILL_BY_ID[pl.hobby.main].name}${pl.hobby.second ? ` and ${SKILL_BY_ID[pl.hobby.second].name.toLowerCase()}` : ''}`]);
   if (pl.online) out.push(['Online', ONLINE[pl.online.level].name]);
+  if (pl.prison && p.legal.incarceration) out.push(['Inside', PRIORITIES[pl.prison].name]);
   if (pl.savings) out.push(['Savings', `${fmtMoney(p.finance.savings ?? 0, country())} of ${fmtMoney(pl.savings.target, country())}`]);
   const h = p.health;
   if (h) {

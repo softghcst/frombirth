@@ -37,7 +37,8 @@ does not exist yet.
 | Saving money | Not modelled beyond cash | A savings goal: set aside each year, small interest, in net worth and the estate |
 | Pets | Bought, aged, no routine care | A care routine for each animal, paid every year; there is no "no care" option |
 | Celebrations and traditions | Not modelled | Celebrations once per occasion per year; traditions that come round by themselves and pass to heirs |
-| Yearly summary | Journal only | The yearly life update |
+| Prison | Each activity clicked once a year | A priority for the years inside (education, work, rehabilitation, family contact, personal development), chosen once and lived every year |
+| Yearly summary | Journal only | The yearly life update, including convictions, prison, moves, new citizenship and a crisis starting or ending |
 
 ## Status
 
@@ -46,7 +47,7 @@ does not exist yet.
 - Health on the yearly model (the internal weekly simulation stays, so medicines
   still take weeks to act and therapy still builds session by session).
 - Long-running plans: hobby focus, posting routine, savings goal, pet care,
-  family traditions; celebrations as once-a-year actions.
+  family traditions, a prison priority; celebrations as once-a-year actions.
 - The yearly life update, the "Your life this year" card (Pursuits tab).
 - Tests: `tests/yearly.mjs` (one year per Age Up, steps run once, limits,
   plans, the summary, the full-year scenario, three generations) and

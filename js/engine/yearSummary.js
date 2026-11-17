@@ -9,6 +9,7 @@ import { store, player, country } from '../state.js';
 import { fmtMoney } from '../util.js';
 import { netWorth } from './finance.js';
 import { roleLabel } from './relationships.js';
+import { summary as livingSummary } from './living.js';
 
 /** What the year starts from. Small: ids, numbers and counts, nothing copied wholesale. */
 export function snapshot(state = store.state) {
@@ -24,7 +25,9 @@ export function snapshot(state = store.state) {
     dx: h ? h.diagnoses.filter((d) => d.status === 'active').map((d) => d.id) : [],
     sessions: h ? h.therapies.reduce((s, c) => s + c.attended, 0) : 0,
     trials: h ? h.trials.map((t) => `${t.id}:${t.status}`) : [],
-    crisis: state.world?.crisis ?? null, countryId: p.countryId,
+    countryId: p.countryId, city: p.city, crisis: livingSummary().crisis?.name ?? null,
+    jailed: !!p.legal.incarceration, yearsLeft: p.legal.incarceration?.yearsLeft ?? 0, convictions: p.legal.record.filter((r) => r.convicted).length,
+    citizenships: (p.citizenships ?? []).length, prisonPlan: p.plans?.prison ?? null,
   };
 }
 
@@ -70,6 +73,18 @@ export function summarize(before, state = store.state, planLines = []) {
   if (now.degrees > before.degrees) major.push(`You graduated: ${p.education.degrees.at(-1).type.replace(/_/g, ' ')}.`);
   else if (now.stage !== before.stage && now.enrolled) work.push(`You moved up to ${now.stage.replace(/_/g, ' ')}.`);
 
+  // The law, and where life is lived.
+  if (now.convictions > before.convictions) major.push('You were convicted.');
+  if (now.jailed && !before.jailed) major.push(`You were sent to prison${now.yearsLeft ? ` (${now.yearsLeft} year${now.yearsLeft === 1 ? '' : 's'} to serve)` : ''}.`);
+  else if (!now.jailed && before.jailed) major.push('You were released.');
+  else if (now.jailed) work.push(`Another year inside: ${now.yearsLeft} left.`);
+  if (now.countryId !== before.countryId) major.push(`You moved to ${country().name}.`);
+  else if (now.city !== before.city) family.push(`You moved to ${now.city}.`);
+  if (now.citizenships > before.citizenships) major.push('You became a citizen of another country.');
+  const world = [];
+  if (now.crisis && now.crisis !== before.crisis) world.push(`${now.crisis} in ${country().name}.`);
+  else if (!now.crisis && before.crisis && now.countryId === before.countryId) world.push(`The ${before.crisis.toLowerCase()} in ${country().name} is over.`);
+
   // Money: totals, not transactions.
   const earned = now.earned - before.earned;
   if (earned > 0) money.push(`Earned ${fmtMoney(earned, c)}, and paid ${fmtMoney(now.tax - before.tax, c)} in tax.`);
@@ -100,7 +115,7 @@ export function summarize(before, state = store.state, planLines = []) {
   const newMilestones = p.milestones.slice(before.milestones).filter((m) => m.kind !== 'health').map((m) => m.text);
   for (const m of newMilestones) if (![...major, ...work, ...family].some((x) => x.includes(m))) life.push(m);
 
-  const sections = [['Big moments', major], ['Family and friends', family], ['Work and study', work], ['Money', money], ['Health', health], ['Your year', life]]
+  const sections = [['Big moments', major], ['Family and friends', family], ['Work and study', work], ['Money', money], ['Health', health], ['Your year', life], ['The world', world]]
     .map(([title, lines]) => ({ title, lines: [...new Set(lines)].slice(0, 5) })).filter((s) => s.lines.length);
   return { id: `year_${p.id}_${now.year}`, from: before.age, to: now.age, year: now.year, sections, quiet: !sections.length };
 }
