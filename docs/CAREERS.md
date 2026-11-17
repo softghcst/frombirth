@@ -89,21 +89,71 @@ re-paid: payroll is guarded by `paidYear`. When a life passes to an heir, `caree
 working life and the employers carry over (`passOn` in `js/engine/careerRecord.js`, called from
 `js/engine/legacy.js`). Licences are never inherited.
 
+## Owning a business
+
+`js/data/business.js` (32 kinds) and `js/engine/business.js`. A business is a company, not a job: it has its own
+account, borrowing, premises (`sites`), reputation and quality, and the player owns a share of it (`stake`).
+It is also an employer on the map (`owned: true`), so the people who work there have a real place of work; the
+yearly employer tick leaves it alone and it never advertises on the job board.
+
+- **Starting** needs the money (or part of it borrowed by the business), age 18, and for some kinds a trade,
+  a licence, a degree or years in the work. A freelancer with a strong name in the same line starts cheaper,
+  with their clients. A contract that forbids outside work forbids this too; so does high office, and the crown.
+- **The year** (`tickBusinesses`, before payroll): capacity comes from the staff (their skill, loyalty and
+  time there), the owner's hours and skill, and whether anyone is steering (a manager, or the owner). Custom
+  comes from reputation, price, the economy, marketing and luck. Wages, rent, supplies, overheads and interest
+  come first. The owner is paid from profit (`draw`), through payroll, once, taxed as income; partners get
+  their share. Reputation moves slowly towards what the place deserves.
+- **Failure**: two years in a row overdrawn and it closes. Half of any debts it cannot cover fall on the owner.
+  Its record stays.
+- **Staff** are NPCs with lives of their own; they leave for better pay, if the place is struggling, or because
+  life moves them on. Friends and family can be offered jobs. A manager is needed to step back, or to open a
+  second site.
+- **Ending it**: sell (a buyer must be found; the staff stay on under the new owner), close, hand it to a
+  grown child in life, or name an heir. On the owner's death the named heir (or a child, if nobody was named)
+  owns it: they inherit the ownership, not the manager's chair. Abroad, a business with a manager carries on and
+  pays out across the border; one without is wound up.
+
+## Scenes of working life
+
+`js/data/events/career.js`, with their effects in `js/engine/workEvents.js` (the `work` effect type):
+
+- **Work and home**: a school show against a deadline, going part-time for childcare, a promotion in another
+  city when a spouse's work is here, an argument about what all the work is for, a trip over an anniversary.
+- **The life of a workplace**: a new manager, the company being bought, a bonus, a project cancelled, a
+  colleague's retirement, a secondment.
+- **By field**: health, education, technology, hospitality, trades, retail, government, science, transport,
+  public safety, media, law, the land, business and sport each have their own. There are deliberately none for
+  acting, music or other entertainment careers: productions, tours and releases are left for their own system.
+- **Owning a business**: a cash-in-hand offer, a struggling member of staff, a big customer who wants more.
+- **A relationship at work** uses the ordinary romance system. Someone who reports to the player cannot be
+  asked out. A relationship with a colleague is noticed sooner or later (`work_romance_noticed`); one where one
+  partner has a say over the other's work is raised as a conflict (`work_romance_conflict`) until one of them
+  moves.
+- **A child's curiosity** (`kid_asks_work`): taking them to work can inspire them (`flags.inspiredBy`);
+  telling them to find their own way means they are never steered (`flags.ownPath`). Children lean towards a
+  parent's field where they qualify, and are never made to follow it (`npcLives.careersFor`).
+
+## Royals at work
+
+The monarch and the heir serve the crown and, at most, the armed forces, and do not go into trade. Other members
+of the royal family may hold a profession (a princess who trained as a doctor is a doctor), except inside the
+government they must stand apart from. A royal with a profession of their own is thought the better of
+(`royalWorkBlock` in `js/engine/career.js`).
+
 ## What is not here yet
 
-- **Business ownership** as a company the player owns, with payroll and staff of their own. "Owner" and
-  "contractor" rungs exist at the top of some tracks and count as running a business for the milestones, but
-  there is no separate company ledger. Freelancers cannot yet hire.
-- **Workplace romance** uses the existing romance system as it stands; there are no workplace-specific power
-  and policy rules yet.
-- **Spouses' career events** (a spouse's overseas offer, negotiating childcare between two careers) use the
-  existing family and NPC-life events; there is no dedicated two-career negotiation.
+- **Entertainment careers with their own gameplay** (productions, tours, albums, contracts between projects,
+  awards). Actors, singers, dancers and models get in by audition and climb a ladder; the rest is left for a
+  separate fame system.
+- **Workplace scenes about spouses' careers** go through the existing NPC-life events (a spouse's job in
+  another city, for instance). There is no shared household plan between two careers beyond those.
 - **Criminal careers** (organised crime, dealing, street hustling) are not employment and are not in the
   catalog: they belong to the crime system (`js/engine/justice.js`), with its own consequences.
 - **Elected office** is not a job posting: it goes through the elections and politics systems. Holding high
   office rules out other paid work.
-- **Royal household staff** as an employer is not modelled; royals in line may take military service only, as
-  before.
+- **Royal household staff** as an employer is not modelled.
+- **The business tax**: a company's profit is not taxed separately; what the owner takes out is taxed as income.
 
 ## Source audit
 
