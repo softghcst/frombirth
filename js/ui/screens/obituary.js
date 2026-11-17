@@ -15,7 +15,8 @@ function estateCard(g, c) {
   const shares = e.shares ?? [];
   if (e.gross <= 0 && !shares.some((s) => s.items?.length)) return '<div class="card"><h3>The estate</h3><p class="muted">There was nothing to leave. The debts were written off.</p></div>';
   const rows = [['Everything they owned', fmtMoney(e.gross, c)]];
-  if (e.tax) rows.push([`Estate tax (${Math.round(c.estateTax * 100)}%)`, `− ${fmtMoney(e.tax, c)}`]);
+  if (e.tax && e.taxBy?.length > 1) for (const t of e.taxBy) rows.push([`Estate tax, ${t.name} (${Math.round(t.rate * 100)}%)`, `− ${fmtMoney(t.amount, c)}`]);
+  else if (e.tax) rows.push([`Estate tax (${Math.round((e.taxBy?.[0]?.rate ?? c.estateTax) * 100)}%)`, `− ${fmtMoney(e.tax, c)}`]);
   if (e.charity) rows.push(['Left to charity', fmtMoney(e.charity, c)]);
   for (const s of shares) {
     rows.push([`${s.name} (${s.role.toLowerCase()})`, fmtMoney(s.amount, c)]);

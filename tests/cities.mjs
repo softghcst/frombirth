@@ -48,7 +48,7 @@ check(profile('ca').cityLines.length === COUNTRIES.ca.cities.length && /Ontario/
 section(`profiles: all ${n} cities have one`);
 
 // 3. Homes and pay follow the city.
-const priceIn = (id, city) => { life(id, city); const all = []; for (let i = 0; i < 12; i++) { store.state.market.listings = null; for (const l of estate.listings()) all.push(l.price); } return mean(all); };
+const priceIn = (id, city) => { life(id, city); const all = []; for (let i = 0; i < 60; i++) { store.state.market.listings = null; for (const l of estate.listings()) all.push(l.price); } all.sort((a, b) => a - b); return all[Math.floor(all.length / 2)]; }; // the median: one mansion does not move it
 const ny = priceIn('us', 'New York'); const atl = priceIn('us', 'Atlanta');
 check(ny / atl > 1.5 && ny / atl < 2.4, `homes in New York cost far more than in Atlanta (ratio ${(ny / atl).toFixed(2)})`);
 const payIn = (id, city) => { const all = []; for (let i = 0; i < 25; i++) { const p = life(id, city); hire(CAREERS.find((c) => c.id === 'office'), 0, 60); all.push(p.career.salary); } return mean(all); };

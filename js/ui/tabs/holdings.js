@@ -1,5 +1,6 @@
 // Holdings tab: money, where you live, property, vehicles, investments and
 // loans, with everything you can do about each.
+import { cityLine } from '../../engine/cities.js';
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import { netWorth } from '../../engine/finance.js';
@@ -9,7 +10,7 @@ import * as mkt from '../../engine/market.js';
 import * as bank from '../../engine/loans.js';
 import { INVEST_AMOUNTS, BANK_LOAN, SECURITY_KINDS } from '../../data/securities.js';
 import { localMoney } from '../../util.js';
-import { propertyTaxLabel } from '../../data/countries.js';
+import { propertyTaxLabel, COUNTRIES, COUNTRY_LIST } from '../../data/countries.js';
 import { meterHtml } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal } from '../modals.js';
 import * as last from '../../engine/death.js';
@@ -93,6 +94,11 @@ async function browseProperty(api) {
   const c = country();
   const p = player();
   if (p.age < 18) return messageModal({ body: 'You need to be 18 to buy property.' });
+  const where = await pickModal({ title: 'Browse property', options: [
+    { value: 'here', label: `In ${p.city}`, sub: `Where you live. A mortgage is possible. Prices in ${c.currency.code}.` },
+    { value: 'abroad', label: 'In another country', sub: 'Paid outright, in that country\'s money. Taxed there. Somewhere to stay when you visit, or to let.' }] });
+  if (!where) return undefined;
+  if (where === 'abroad') return browseAbroad(api);
   const list = estate.listings();
   const listing = await pickModal({
     title: 'Property for sale',
@@ -126,17 +132,41 @@ async function browseProperty(api) {
   return report(api, estate.buyProperty(listing.id, deposit));
 }
 
+/** Buying in another country: pick the place, see prices in its money, pay from an account in it or by changing money. */
+async function browseAbroad(api) {
+  const c = country();
+  const p = player();
+  const held = money.balances().filter((b) => !b.home);
+  const id = await pickModal({ title: 'Which country?', body: held.length ? `You hold ${held.map((b) => money.fmt(b.amount, b.code)).join(', ')} as well as ${fmtMoney(p.finance.cash, c)}.` : `You have ${fmtMoney(p.finance.cash, c)}. It will be changed at today's rate, less the bank's fee.`,
+    options: COUNTRY_LIST.filter((k) => k.id !== p.countryId).sort((a, b) => a.name.localeCompare(b.name)).map((k) => ({ value: k.id, label: `${k.flag} ${k.name}`,
+      sub: `${k.currency.code} · property tax ${propertyTaxLabel(k)} · inheritance tax ${k.estateTax ? `${Math.round(k.estateTax * 100)}%` : 'none'}${(p.flags.visited ?? []).includes(k.id) ? ' · you have been there' : ''}` })) });
+  if (!id) return undefined;
+  const at = COUNTRIES[id];
+  const city = at.cities.length > 1 ? await pickModal({ title: `Where in ${at.name}?`, body: 'Compared with the country as a whole.', options: at.cities.map((n) => ({ value: n, label: n, sub: cityLine(id, n) })) }) : at.cities[0];
+  if (!city) return undefined;
+  const list = estate.listingsAbroad(id, city);
+  const l = await pickModal({ title: `For sale in ${city}`,
+    body: `Prices in ${at.currency.code}. Fees are 5% for a buyer who does not live there. No lender there will give you a mortgage.`,
+    options: list.map((x) => ({ value: x, disabled: !x.quote.ok, label: `${x.name}: ${money.fmt(x.price, x.code)}`,
+      sub: `Condition: ${x.state} (${x.condition}%). With fees it would take ${[x.quote.fromAccount ? `${money.fmt(x.quote.fromAccount, x.code)} from your account` : '', x.quote.fromCash ? fmtMoney(x.quote.fromCash, c) : ''].filter(Boolean).join(' and ')}.` })) });
+  if (!l) return undefined;
+  const sure = await confirmModal({ title: `Buy the ${l.name.charAt(0).toLowerCase() + l.name.slice(1)}?`, yes: 'Buy',
+    body: `${money.fmt(l.price, l.code)} plus ${money.fmt(l.fees, l.code)} in fees. ${l.quote.fromAccount ? `${money.fmt(l.quote.fromAccount, l.code)} comes from your ${l.code} account. ` : ''}${l.quote.fromCash ? `${fmtMoney(l.quote.fromCash, c)} is changed at today's rate; the bank keeps ${fmtMoney(l.quote.fee, c)}. ` : ''}Property tax and tax on any rent are paid in ${at.name}, and it is taxed there when you die.` });
+  return sure ? report(api, estate.buyAbroad(l.id)) : undefined;
+}
+
 function openProperty(a, api) {
   const c = country();
   const p = player();
   const isHome = p.homeId === a.id;
   const rows = [
-    ['Worth', fmtMoney(a.value, c)],
+    ['Worth', estate.isAbroad(a) ? `${fmtMoney(a.value, c)} at today's rate` : fmtMoney(a.value, c)],
     ['You paid', `${fmtMoney(a.purchasePrice, c)} at age ${a.boughtAtAge}`],
     ['Mortgage', a.mortgage ? `${fmtMoney(a.mortgage.principal, c)} left, ${fmtMoney(a.mortgage.payment, c)} a year for ${a.mortgage.yearsLeft} more years` : 'None'],
     ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${fmtMoney(a.tenant.rent, c)} a year` : 'Standing empty'],
     ['Running costs', `${fmtMoney(Math.round(a.value * estate.propertyTypeOf(a).upkeep), c)} a year`],
     ['Where', `${a.city ? `${a.city}, ` : ''}${estate.placeOf(a).name}`],
+    ...(estate.isAbroad(a) ? [['Tax on rent', `${Math.round(estate.placeOf(a).incomeTax * 100)}%, paid in ${estate.placeOf(a).name}`], ['When you die', estate.placeOf(a).estateTax ? `Taxed at ${Math.round(estate.placeOf(a).estateTax * 100)}% in ${estate.placeOf(a).name}` : `No inheritance tax in ${estate.placeOf(a).name}`]] : []),
     ['Property tax', estate.propertyTaxOn(a) ? `${fmtMoney(estate.propertyTaxOn(a), c)} a year (${propertyTaxLabel(estate.placeOf(a))})` : `None in ${estate.placeOf(a).name}`],
   ];
   const acts = [];
@@ -162,7 +192,7 @@ function openProperty(a, api) {
     if (!id) return undefined;
     m.close();
     if (id === 'sell') {
-      const yes = await confirmModal({ title: `Sell the ${a.name.charAt(0).toLowerCase() + a.name.slice(1)}?`, body: `After fees${a.mortgage ? ' and the mortgage' : ''} you would keep ${fmtMoney(estate.saleProceeds(a), c)}.`, yes: 'Sell', danger: true });
+      const yes = await confirmModal({ title: `Sell the ${a.name.charAt(0).toLowerCase() + a.name.slice(1)}?`, body: `${estate.isAbroad(a) ? `It is paid in ${estate.currencyOfProperty(a)}, into your account in that currency. ` : ''}After fees${a.mortgage ? ' and the mortgage' : ''} you would keep ${fmtMoney(estate.saleProceeds(a), c)}.`, yes: 'Sell', danger: true });
       return yes ? report(api, estate.sellProperty(a.id)) : undefined;
     }
     const run = { movein: () => estate.moveIn(a.id), moveout: () => estate.moveOut(), let: () => estate.letOut(a.id),
@@ -313,7 +343,8 @@ export default {
         ${kv([['Cash', fmtMoney(f.cash, c)], ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
         <div class="kv"><span>Net worth</span><span><strong>${fmtMoney(netWorth(store.state), c)}</strong></span></div>
         ${kv([['Where you live', living], ['Lifetime earnings', fmtMoney(f.lifetimeEarned, c)], ['Lifetime tax paid', fmtMoney(f.lifetimeTaxPaid, c)],
-    [`Income tax (${c.name})`, `${Math.round(c.incomeTax * 100)}%`], ['Property tax', propertyTaxLabel(c)],
+    [`Income tax (${c.name})`, `${Math.round(c.incomeTax * 100)}%`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
+    ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}
       </div>
       ${actions.length ? `<div class="btn-stack" style="margin-bottom:14px">${actions.map(([id, label]) => `<button class="btn" data-go="${id}">${esc(label)}</button>`).join('')}</div>` : ''}

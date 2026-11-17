@@ -37,6 +37,7 @@ node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candida
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
+node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
@@ -257,8 +258,24 @@ The multipliers are rough estimates for play, not statistics.
 
 All of it is fiction, kept in the save. The reference data is never rewritten, so each new life starts from the same world.
 
-Still to come in the Living World engine, in order: buying property across currencies; tax and inheritance by place;
-deeper data for the twelve main countries. `docs/WORLD_DATA.md` lists the gaps.
+### Property across borders, and tax by place
+
+`js/engine/realEstate.js`, with `quoteForeign`, `payForeign` and `receiveForeign` in `js/engine/currency.js`.
+
+- **Buying abroad** (Holdings → Browse property → In another country): choose a country and a city, and see that year's
+  listings in the local currency. A purchase is outright (no lender there will lend to someone who does not live there), with
+  5% in fees. It is paid from your account in that currency first, and the rest from everyday money at today's rate, less the
+  bank's fee. The exchange is written in the currency record.
+- **Owning it**: a property is valued where it stands and brought home at today's rate, so what it is worth to you moves with
+  the currency as well as the market. It can be let, and stayed in when you visit. If you move to that country it becomes a
+  home in local money, at the same worth.
+- **Selling it** pays in the money of the place, into your account in that currency.
+- **Tax by place**: property tax and tax on rent are charged by the country the property is in. At death, property abroad is
+  taxed by the country it stands in and everything else by the country you lived in; the obituary lists each. An inheritance
+  from someone who lived abroad is taxed there.
+
+Still to come in the Living World engine: deeper data for the twelve main countries (tax bands, health-care models), and the
+brief's scenarios A to J replayed end to end. `docs/WORLD_DATA.md` lists the gaps.
 
 ## Layout
 

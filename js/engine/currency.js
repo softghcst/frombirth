@@ -115,3 +115,43 @@ export function settleEstate() {
   if (worth > 0) { p.finance.cash += worth; p.finance.accounts = {}; }
   return worth;
 }
+
+/**
+ * What it would take to pay an amount in another currency: the account in
+ * that currency first, then everyday money changed at today's rate, with the bank's fee.
+ * @returns {{code, amount, fromAccount:number, fromCash:number, fee:number, ok:boolean}} fromCash and fee are in everyday money
+ */
+export function quoteForeign(code, amount) {
+  const p = player();
+  const h = home();
+  amount = Math.ceil(amount);
+  if (code === h) return { code, amount, fromAccount: 0, fromCash: amount, fee: 0, ok: p.finance.cash >= amount };
+  const fromAccount = Math.min(p.finance.accounts?.[code] ?? 0, amount);
+  const rest = amount - fromAccount;
+  const plain = rest / rate(h, code);
+  const fromCash = rest > 0 ? Math.ceil(plain / (1 - FX_FEE)) : 0;
+  return { code, amount, fromAccount, fromCash, fee: rest > 0 ? fromCash - Math.floor(plain) : 0, ok: p.finance.cash >= fromCash };
+}
+/** Pays it. Returns the quote that was used, or null if the money was not there. */
+export function payForeign(code, amount, what = 'a payment') {
+  const p = player();
+  const q = quoteForeign(code, amount);
+  if (!q.ok) return null;
+  if (q.fromAccount) { accounts()[code] -= q.fromAccount; if (accounts()[code] <= 0) delete accounts()[code]; }
+  if (q.fromCash) {
+    p.finance.cash -= q.fromCash;
+    if (code !== home()) {
+      (p.finance.fxLog ??= []).push({ year: store.state.year, from: home(), to: code, paid: q.fromCash, received: q.amount - q.fromAccount, rate: Math.round(rate(home(), code) * 1e6) / 1e6, fee: q.fee, what });
+      if (p.finance.fxLog.length > LOG_MAX) p.finance.fxLog.shift();
+    }
+  }
+  return q;
+}
+/** Money arriving in another currency goes into the account in that currency, unchanged. */
+export function receiveForeign(code, amount) {
+  const p = player();
+  amount = Math.floor(amount);
+  if (amount <= 0) return 0;
+  if (code === home()) p.finance.cash += amount; else accounts()[code] = (accounts()[code] ?? 0) + amount;
+  return amount;
+}

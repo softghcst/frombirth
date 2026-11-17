@@ -75,8 +75,11 @@ shown on its profile.
   permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
   New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
   is no deportation for crime, no overstaying, and no visa needed for a short visit.
-- Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property and
-  loans are still valued in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
+- Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
+  is valued in its own country's money and shown at today's rate; its mortgage (if it was bought while living there), rent and
+  running costs are still kept in everyday money. There is one housing index for the whole world, not one per country. No
+  country restricts foreign buyers, and there are no tax treaties: nothing is taxed twice, and nothing is credited. Income tax is
+  one rate per country with one higher band, not real schedules. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
   bounds and are pulled weaker by a recession or a crisis, without following measured inflation.
 
 ## Adding a place

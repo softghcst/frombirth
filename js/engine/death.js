@@ -1,5 +1,6 @@
 // Mortality maths and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
+import { COUNTRIES } from '../data/countries.js';
 import { settleEstate } from './currency.js';
 import { rng } from '../rng.js';
 import { styledName } from './royalty.js';
@@ -200,7 +201,16 @@ export function estatePlan() {
   if (gross <= 0 && !kept.length) return plan;
   if (will.mode === 'charity') return { ...plan, net: gross, charity: Math.max(0, gross), given: kept.map(item) }; // gifts to charity are not taxed
   if (will.mode === 'buried') return { ...plan, lost: Math.max(0, liquid), ...(kept.length ? distribute(plan, familyShares(), kept, will, 0, item) : {}) };
-  plan.tax = Math.max(0, Math.min(liquid, Math.round(Math.max(0, gross - localMoney(ESTATE_ALLOWANCE, c)) * c.estateTax)));
+  // Estate tax by place: property abroad is taxed by the country it stands in; everything else where the player lived.
+  const away = {};
+  for (const a of kept) if (a.kind === 'property' && a.countryId && a.countryId !== c.id && COUNTRIES[a.countryId]) away[a.countryId] = (away[a.countryId] ?? 0) + Math.max(0, equity(a));
+  const abroad = Object.values(away).reduce((s, v) => s + v, 0);
+  const due = [{ countryId: c.id, rate: c.estateTax, amount: Math.round(Math.max(0, gross - abroad - localMoney(ESTATE_ALLOWANCE, c)) * c.estateTax) },
+    ...Object.entries(away).map(([id, v]) => ({ countryId: id, rate: COUNTRIES[id].estateTax, amount: Math.round(v * COUNTRIES[id].estateTax) }))].filter((d) => d.amount > 0);
+  const owed = due.reduce((s, d) => s + d.amount, 0);
+  plan.tax = Math.max(0, Math.min(liquid, owed));
+  // Paid from cash and investments only; if that does not cover it, each country takes its share of what there is.
+  plan.taxBy = due.map((d) => ({ ...d, name: COUNTRIES[d.countryId].name, amount: owed > plan.tax ? Math.round(d.amount * plan.tax / owed) : d.amount }));
   plan.net = gross - plan.tax;
   const split = willHeirs();
   if (!split.length) return { ...plan, toState: plan.net, given: kept.map(item) };
