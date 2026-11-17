@@ -27,6 +27,7 @@ import { tickRecruiters } from './recruiters.js';
 import { tickOffers } from './hiring.js';
 import { checkAchievements } from './careerRecord.js';
 import { tickBusinesses } from './business.js';
+import { queueWorkScenes } from './workEvents.js';
 import { rightToLive } from './citizenship.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -168,9 +169,8 @@ export const categories = () => CAREER_CATEGORIES;
 export function startApplication(id) {
   const career = CAREER_BY_ID[id];
   const pr = player().royal;
-  if (pr && !pr.waiting && ['monarch', 'heir', 'royal'].includes(pr.rank) && career.type !== 'military') {
-    return { kind: 'blocked', text: 'Members of the royal family do not take jobs. The armed forces are the one exception; otherwise you would have to give up your place first.' };
-  }
+  const royalNo = royalWorkBlock(career);
+  if (royalNo) return { kind: 'blocked', text: royalNo };
   if (player().politics && player().politics.tier >= 2) return { kind: 'blocked', text: `Being ${player().politics.title} is a full-time job. You would have to resign first.` };
   if (unmet(career).length) return { kind: 'blocked', text: unmet(career)[0] };
   const offer = standingOffer(career);
@@ -267,6 +267,20 @@ export function localTitle(career, level, branch = null) {
   return (generic && ranks[generic]?.[level]) ?? career.titlesBy?.[player().countryId]?.[level] ?? career.levels[level].title;
 }
 
+/**
+ * What a royal may not do for a living, or ''. The monarch and the heir serve the crown and, at most, the
+ * armed forces. Other members of the family may have a profession of their own (a princess who is a doctor
+ * is a doctor), but not one inside the government they must stand apart from.
+ */
+export function royalWorkBlock(career) {
+  const pr = player().royal;
+  if (!pr || pr.waiting || !['monarch', 'heir', 'royal'].includes(pr.rank)) return '';
+  if (career.type === 'military') return '';
+  if (['monarch', 'heir'].includes(pr.rank)) return `${pr.rank === 'monarch' ? 'The monarch does' : 'The heir to the throne does'} not take a job. The armed forces are the one exception.`;
+  if (career.family === 'government') return 'A member of the royal family stands apart from the government, and cannot work inside it.';
+  return '';
+}
+
 /** The service branches of the country the player lives in. */
 export const branchesHere = () => MILITARY_BRANCHES[player().countryId] ?? MILITARY_BRANCHES.default;
 
@@ -311,6 +325,8 @@ export function hire(career, level, performance, how, o = {}) {
   c.leave = null;
   c.military = career.type === 'military' ? { rank: level, branch, deployments: 0 } : null;
   if (career.type === 'military') p.flags.served = true;
+  // A royal with a profession of their own: the public notices, mostly kindly.
+  if (p.royal && !p.royal.waiting && p.royal.rank === 'royal' && career.type !== 'military' && typeof p.royal.image === 'number') p.royal.image = clamp(p.royal.image + (['health', 'education', 'science', 'safety', 'land'].includes(career.family) ? 4 : 1));
   p.counters.jobsHeld += 1;
 
   let people = '';
@@ -628,6 +644,7 @@ export function tickWork() {
   if (death) return death;
   const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickWorkLife(), ...tickRecruiters()];
   for (const l of lines) log(l);
+  queueWorkScenes();
   if (p.age >= 14) checkAchievements(p);
   return null;
 }

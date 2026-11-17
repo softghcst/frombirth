@@ -57,6 +57,7 @@ const SPECIAL = {
   // Working life (engine/worklife.js, business.js): the field of the main job, whether the player manages people or owns a business, and the week.
   workFamily: (p) => CAREER_BY_ID[p.career.careerId]?.family ?? null,
   salaried: (p) => !!p.career.careerId && CAREER_BY_ID[p.career.careerId].type === 'fulltime',
+  single: (p) => !p.npcIds.some((id) => { const n = store.state.npcs[id]; return n?.alive && ['partner', 'spouse'].includes(n.role); }),
   ownsBusiness: (p) => (p.businesses ?? []).some((b) => b.status === 'open'),
   yearsInRole: (p) => p.career.yearsInRole ?? 0,
   workStress: (p) => p.career.stress ?? 0,

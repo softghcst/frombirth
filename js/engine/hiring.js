@@ -16,7 +16,7 @@ import { GENERAL, PRACTICAL, MILITARY, AUDITION_PIECES, FAMILY_QUESTIONS } from 
 import { MAJOR_BY_ID } from '../data/majors.js';
 import { TRADE_BY_ID, CERT_BY_ID, PROGRAMMES } from '../data/schools.js';
 import { resolve } from './conditions.js';
-import { unmet, hire, doorBonus } from './career.js';
+import { unmet, hire, doorBonus, royalWorkBlock } from './career.js';
 import { employer, posting, isOpen, fillPosting, cultureOf } from './employers.js';
 import { career as careerState, canFit, benefits } from './worklife.js';
 import { takeSide } from './sideJobs.js';
@@ -122,10 +122,8 @@ export function apply(id) {
   const p = player();
   const view = postingView(id);
   if (!view) return { kind: 'blocked', text: 'That opening no longer exists.' };
-  const pr = p.royal;
-  if (pr && !pr.waiting && ['monarch', 'heir', 'royal'].includes(pr.rank) && view.career.type !== 'military') {
-    return { kind: 'blocked', text: 'Members of the royal family in line or on the throne do not take ordinary jobs. The armed forces are the exception.' };
-  }
+  const royalNo = royalWorkBlock(view.career);
+  if (royalNo) return { kind: 'blocked', text: royalNo };
   if (p.politics && p.politics.tier >= 2 && !view.post.partTime) return { kind: 'blocked', text: `Being ${p.politics.title} is a full-time job. You would have to resign first.` };
   if (!view.eligible) return { kind: 'blocked', text: view.reasons[0] };
   if (view.career.hire === 'audition') return { kind: 'audition', pieces: AUDITION_PIECES[view.career.skill] ?? AUDITION_PIECES['talents.acting'], view };

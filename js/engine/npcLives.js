@@ -131,6 +131,14 @@ function careersFor(npc) {
   // Someone with a trade, a profession or a subject works in it nine times in ten.
   const own = open.filter((c) => (e.trade && usesTrade(c)) || (c.req?.programme && has(c.req.programme))
     || (c.req?.majors && has('university')));
+  // A child may lean towards a parent's line of work (more so if they were shown it and liked it), where they
+  // qualify for it. Never forced: one told to find their own way does not lean at all.
+  if (npc.role === 'child' && !npc.flags.ownPath && store.state?.player) {
+    const mine = store.state.player.career;
+    const fam = npc.flags.inspiredBy ?? CAREER_BY_ID[mine.careerId ?? mine.lastField]?.family;
+    const same = fam ? open.filter((c) => c.family === fam) : [];
+    if (same.length && rng.chance(npc.flags.inspiredBy ? 0.6 : 0.1)) { npc.flags.followed = fam; return same; }
+  }
   if (own.length && rng.chance(0.9)) return own;
   return open.filter((c) => !c.req?.majors && !c.req?.programme && !c.req?.trade);
 }
