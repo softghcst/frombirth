@@ -105,6 +105,19 @@ for (let k = 0; k < 6; k++) {
 check(changes >= 3 && changes <= 60, `over six sixty-year lives the world changed its laws a believable number of times (${changes})`);
 section(`change: enacted law is kept in the save; ${changes} reforms across six lives, all well formed`);
 
+// 6. Every law is checked against its source (scripts/verify-laws.py), and nothing disagrees unexplained.
+{
+  const { LAW_CHECKED } = await import('../js/data/lawVerification.js');
+  const { COUNTRY_LIST: ALL } = await import('../js/data/countries.js');
+  let ok = 0; let review = 0;
+  for (const c of ALL) {
+    const r = LAW_CHECKED[c.id];
+    check(!!r && Object.keys(r).length >= 10, `${c.id}: no law verification (run scripts/verify-laws.py --write)`);
+    for (const [k, v] of Object.entries(r ?? {})) { check(v.status !== 'mismatch', `${c.id}.${k} disagrees with its source: ${v.note ?? ''}`); if (v.status === 'ok') ok += 1; if (v.status === 'review') review += 1; }
+  }
+  section(`verification: ${ok} laws confirmed against sources, ${review} differ for recorded reasons, none disagree unexplained`);
+}
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('The law is in order.');
