@@ -1,6 +1,6 @@
 // The annual tick. Order matters: the world ages first, then the player's own
 // systems run, then the death check, then this year's scenarios are queued.
-import { store, player, log, milestone } from '../state.js';
+import { store, player, log, milestone, prunePending } from '../state.js';
 import { tickRelationships } from './relationships.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
@@ -114,5 +114,6 @@ export function advanceYear() {
   const cause = rollDeath();
   if (cause) { die(cause); return; }
 
+  prunePending(); // a scene queued earlier in the year may name someone the year has since taken away
   drawEvents();
 }

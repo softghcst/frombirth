@@ -188,7 +188,8 @@ play('G', () => {
   check(p.finance.cash === usd0 - house.quote.fromCash && (p.finance.accounts.MXN ?? 0) === mxn0 - house.quote.fromAccount, 'each account lost exactly its own share');
   const feeUsd = fx.convert(house.fees, 'MXN', 'USD') + house.quote.fee;
   check(Math.abs((w0 - netWorth(store.state)) - feeUsd) <= Math.max(5, feeUsd * 0.05), 'net worth fell by the fees alone: nothing was counted twice or lost');
-  fx.exchange('USD', 'MXN', 10000); year(5);
+  fx.exchange('USD', 'MXN', 60000); const pesosBefore = p.finance.accounts.MXN; year(5);
+  check(p.countryId !== 'us' || (p.finance.accounts.MXN ?? 0) < pesosBefore, 'the house\'s upkeep and tax were paid from the peso account');
   check(p.countryId !== 'us' || (p.finance.accounts.MXN > 0 && Number.isInteger(p.finance.accounts.MXN) && Number.isFinite(p.finance.cash) && fx.balances().find((b) => b.code === 'MXN' && !b.home)), `five years on: dollars and pesos are still separate balances (${JSON.stringify(fx.balances())})`);
   check(estate.propertyTaxOn(a) === Math.round(a.value * COUNTRIES.mx.propertyTax), 'the house is taxed by Mexico');
   done('dollars, pesos and a house in Mexico, never confused');

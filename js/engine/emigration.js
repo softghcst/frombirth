@@ -6,7 +6,7 @@ import { rate, setAside, absorb } from './currency.js';
 import { fluency } from './languages.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
-import { store, player, country, livingNpcs, log, milestone } from '../state.js';
+import { store, player, country, livingNpcs, log, milestone, prunePending } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { quitCareer, hire, unmet } from './career.js';
 import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
@@ -202,6 +202,7 @@ export function emigrate(countryId, opts = {}) {
     }
   }
 
+  prunePending(); // scenes about people who are not coming
   // Money follows, at today's rate, except whatever the player chose to leave in the old currency.
   for (const a of p.assets) if (a.kind === 'property') { if (a.mortgage) a.mortgage.code ??= from.currency.code; if (a.tenant) a.tenant.code ??= from.currency.code; }
   const leftBehind = setAside(opts.keep, from.currency.code);

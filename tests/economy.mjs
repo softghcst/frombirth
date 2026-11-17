@@ -134,6 +134,28 @@ section(`people: ${left} moved away, ${back} came home, ${near} moved nearer`);
   section(`war: ${begun.length} began in twelve years at raised odds, each in an unstable country, none naming an enemy`);
 }
 
+// 9. A family that moves takes no half-finished scenes about the people it left behind.
+{
+  const { renderText } = await import('../js/engine/eventEngine.js');
+  const { EVENT_BY_ID } = await import('../js/data/events/index.js');
+  const { ROOTS } = await import('../js/data/economy.js');
+  const was = ROOTS.familyLeaves; ROOTS.familyLeaves = 0.5;
+  let scenes = 0; let blank = 0; let moved = 0;
+  for (let k = 0; k < 16; k++) {
+    store.state = createLife({ countryId: ['us', 'br', 'pl', 'in'][k % 4] });
+    const start = store.state.player.countryId;
+    for (let y = 0; y < 8; y++) {
+      advanceYear();
+      for (const e of store.state.pendingEvents) { const ev = EVENT_BY_ID[e.id]; if (!ev) continue; scenes += 1; if (/\{[a-z]+\}/.test(renderText(ev.text, e.cast))) blank += 1; }
+      store.state.pendingEvents = [];
+    }
+    if (store.state.player.countryId !== start) moved += 1;
+  }
+  ROOTS.familyLeaves = was;
+  check(moved > 3 && blank === 0, `no scene names someone who is gone (${blank} of ${scenes} scenes, in ${moved} families that moved)`);
+  section(`moves: ${moved} families moved; none of ${scenes} scenes named someone left behind`);
+}
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 25)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('The world turns.');
