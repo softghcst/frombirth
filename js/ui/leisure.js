@@ -15,7 +15,7 @@ import { messageModal, pickModal, confirmModal, inputModal, openModal } from './
 import { openAppearanceEditor } from '../avatar/editor.js';
 import * as papersOf from '../engine/citizenship.js';
 import * as money from '../engine/currency.js';
-import { statusLine } from '../engine/immigration.js';
+import { statusLine, household as householdStatus } from '../engine/immigration.js';
 import * as towns from '../engine/cities.js';
 
 async function report(api, r) {
@@ -244,6 +244,8 @@ export function openPassport(api) {
     ${doc.residency.status === 'citizen' ? '' : `<p class="muted" style="margin-top:6px">${esc(nat.possible ? `You can apply for citizenship. ${nat.outlook}` : nat.why)}</p>`}
     ${nat.possible ? '<div class="btn-stack" style="margin-top:8px"><button class="btn primary" data-naturalise>Apply for citizenship</button></div>' : ''}</div>
     ${doc.locations.length > 1 ? `<div class="card"><h3>Where you have lived</h3>${doc.locations.map((l) => kvRow(`${l.from ?? ''}${l.to ? `–${l.to}` : l.from ? ' to now' : ''}`, `${l.flag} ${l.city ? `${l.city}, ` : ''}${l.name}`)).join('')}</div>` : ''}`;
+  const house = householdStatus(p).filter((h) => !h.citizen || doc.residency.status !== 'citizen');
+  const houseCard = house.length ? `<div class="card"><h3>Your household here</h3>${house.map((h) => kvRow(`${h.name}${h.role === 'child' ? `, ${h.age}` : ''}`, h.status)).join('')}</div>` : '';
   const journeys = fun.trips(p);
   const tripCard = journeys.length ? `<div class="card"><h3>Trips abroad</h3>${journeys.slice(0, 12).map((t) => kvRow(`${t.year} · ${t.what}`, `${t.flag} ${t.city ? `${t.city}, ` : ''}${t.name}`)).join('')}${journeys.length > 12 ? `<p class="muted">and ${journeys.length - 12} earlier.</p>` : ''}</div>` : '';
   const when = (e) => (e.first.age == null ? '' : `, first at age ${e.first.age}`);
@@ -257,6 +259,7 @@ export function openPassport(api) {
     <h2>Passport</h2>
     <p class="body muted">${esc(p.firstName)} ${esc(p.lastName)} · ${book.countries.length} of ${book.total} countries</p>
     ${papers}
+    ${houseCard}
     <div class="passport">${stamps}</div>
     ${tripCard}
     <button class="btn" data-close style="margin-top:14px">Close</button>`, { dismissable: true });

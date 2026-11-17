@@ -16,7 +16,7 @@ import { sellVehicle, vehicles } from './vehicles.js';
 import { market, priceOf } from './market.js';
 import { EMIGRATION } from '../data/activities.js';
 import { mayLeave } from './living.js';
-import { routes, bestRoute, spouseAnswer } from './immigration.js';
+import { routes, bestRoute, spouseAnswer, settleFamily } from './immigration.js';
 
 export { routes };
 
@@ -214,6 +214,7 @@ export function emigrate(countryId, opts = {}) {
   p.city = opts.city && to.cities.includes(opts.city) ? opts.city : rng.pick(to.cities);
   settle(to.id, p.city, route?.status === 'citizen' ? 'permanent_resident' : route?.status ?? 'permanent_resident');
   if (p.residency && route) { p.residency.route = route.id; if (route.years) p.residency.until = store.state.year + route.years; }
+  settleFamily(to.id, [...coming]);
   p.homeId = null;
   p.flags.livesWithParents = !!opts.family;
   p.flags.emigratedAge = p.age;
