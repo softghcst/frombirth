@@ -298,6 +298,62 @@ section('Schooling');
   check(!modern, 'a life in the present is never offered it');
 }
 
+// ---------- Phase 7: health ----------
+section('Health');
+{
+  const { mortalityChance } = await import('../js/engine/death.js');
+  const { ensureLife } = await import('../js/engine/npcLives.js');
+  const med = await import('../js/engine/medical.js');
+  const at = (year) => { store.state.year = year; H.syncWorld(year); };
+  life({ born: 1900, age: 0 });
+  at(1900);
+  const m1900 = [mortalityChance(35, 80), mortalityChance(75, 70)];
+  const surv1900 = Array.from({ length: 50 }, (_, i) => 1 - mortalityChance(20 + i, 75)).reduce((a, b) => a * b, 1);
+  at(2026);
+  const m2026 = [mortalityChance(35, 80), mortalityChance(75, 70)];
+  const surv2026 = Array.from({ length: 50 }, (_, i) => 1 - mortalityChance(20 + i, 75)).reduce((a, b) => a * b, 1);
+  check(m1900[0] > m2026[0] && m1900[1] > m2026[1], 'adults were more likely to die in a year in 1900 than now');
+  check(surv1900 > 0.3 && surv1900 < surv2026, `but most who reached 20 lived to 70 in neither era's worst case (${Math.round(surv1900 * 100)}% then, ${Math.round(surv2026 * 100)}% now)`);
+  check(H.eraMortality(40, 2026).shift === 0 && H.eraMortality(40, 2026).extra === 0 && H.childRisk(2026) === 0, 'nothing changes in the present');
+  check(H.childRisk(1900) > H.childRisk(1950) && H.childRisk(1950) > H.childRisk(1990), 'child mortality falls era by era, and is kept apart from adult mortality');
+  check(H.childbirthRisk(1900) > H.childbirthRisk(1960) && H.childbirthRisk(1960) > H.childbirthRisk(2026), 'and so does the danger of childbirth');
+  check(H.eraMortality(30, 1918).extra > H.eraMortality(30, 1913).extra, 'the 1918 influenza raised everyone\'s risk');
+  // Young children in the family sometimes died; the player never does as a baby.
+  const p = life({ born: 1900, age: 0 });
+  const babies = [];
+  for (let i = 0; i < 100; i++) { const k = makeNpc({ role: 'sibling', countryId: 'us', age: 0 }); ensureLife(k); store.state.npcs[k.id] = k; p.npcIds.push(k.id); babies.push(k); }
+  for (let i = 0; i < 5; i++) { p.stats.health = 95; advanceYear(); store.state.pendingEvents = []; }
+  const lost = babies.filter((k) => !k.alive).length;
+  check(lost >= 3 && lost <= 40 && p.alive, `around 1900 some young children in the family died (${lost} of 100); the player did not`);
+  const q = life({ born: 2026, age: 0 });
+  const modern = [];
+  for (let i = 0; i < 100; i++) { const k = makeNpc({ role: 'sibling', countryId: 'us', age: 0 }); ensureLife(k); store.state.npcs[k.id] = k; q.npcIds.push(k.id); modern.push(k); }
+  for (let i = 0; i < 5; i++) { q.stats.health = 95; advanceYear(); store.state.pendingEvents = []; }
+  check(modern.every((k) => k.alive), 'today, none of the hundred did');
+  // What a doctor could do.
+  check(H.treatmentIn('diabetes', 1915).manage === false && H.treatmentIn('diabetes', 1930).manage === true, 'diabetes could not be managed before insulin (1922)');
+  check(H.treatmentIn('flu', 1930).chance < H.treatmentIn('flu', 1950).chance, 'infections were harder to treat before antibiotics');
+  check(H.treatmentIn('cancer', 2026).chance === 1 && H.treatmentIn('depression', 2026).chance === 1, 'today\'s treatments are as before');
+  const r = life({ born: 1880, age: 35 });
+  r.conditions.push({ id: 'diabetes', name: 'diabetes', severity: 40, chronic: true, sinceAge: 30, treated: false });
+  r.finance.cash = 1e6;
+  const t = med.treatable().find((x) => x.id === 'diabetes');
+  check(t && t.limited && !t.manage, 'in 1915 a doctor can do little for diabetes, and the screen says so');
+  med.seeDoctor('diabetes');
+  check(!r.conditions.find((c) => c.id === 'diabetes').treated, 'and it cannot be brought under control');
+  check(!med.surgeryOptions().some((s) => s.id === 'lipo') && /no such thing/.test(med.therapy().text) === false, 'no liposuction in 1915; talking therapy existed by then');
+  // Outcomes do not change on reload: the dice are saved with the life.
+  const s = life({ born: 1910, age: 30 });
+  save.saveGame(store.state);
+  const slot = store.state.slotId;
+  grow(10);
+  const first = `${store.state.player.alive}:${store.state.journal.length}:${Object.values(store.state.npcs).filter((n) => !n.alive).length}`;
+  store.state = save.loadGame(slot);
+  grow(10);
+  const second = `${store.state.player.alive}:${store.state.journal.length}:${Object.values(store.state.npcs).filter((n) => !n.alive).length}`;
+  check(first === second, 'reloading and living the same years gives the same deaths and illnesses');
+}
+
 console.log(`${passed.length} checks passed.`);
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(` - ${x}`); process.exit(1); }
 console.log('The eras hold together.');

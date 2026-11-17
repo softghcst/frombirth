@@ -2,7 +2,10 @@
 // has moved. It records crossing into a new era (once), and from later phases
 // applies what the era changes. The rules themselves are in engine/history.js.
 import { store, player, log, milestone } from '../state.js';
-import { getEra, getEraTransition, syncWorld, currencyFor, secondaryShare, MODERN_YEAR } from './history.js';
+import { getEra, getEraTransition, syncWorld, currencyFor, secondaryShare, childRisk, MODERN_YEAR } from './history.js';
+import { rng } from '../rng.js';
+import { clamp } from '../util.js';
+import { roleLabel } from './relationships.js';
 import { convertMoney } from './emigration.js';
 import { rule } from './rules.js';
 import { LAW_HISTORY } from '../data/history.js';
@@ -111,7 +114,27 @@ export function tickEra() {
     const line = LAW_NEWS[id]?.(v, place);
     if (line && e.laws[`${here}:${id}:${state.year}`] == null) { e.laws[`${here}:${id}:${state.year}`] = v; log(line, 'system', 'neutral'); }
   }
+  childMortality(state);
   offerScenes(state);
+}
+
+/**
+ * Young children in the family who do not survive: in earlier eras a real part of family life.
+ * The player themself is spared (a life does not end before it starts); nobody is, in the present.
+ */
+function childMortality(state) {
+  const risk = childRisk(state.year);
+  if (!risk) return;
+  const p = state.player;
+  for (const id of p.npcIds) {
+    const n = state.npcs[id];
+    if (!n?.alive || n.age >= 5 || !['child', 'sibling', 'grandchild', 'greatgrandchild', 'niece'].includes(n.role)) continue;
+    if (!rng.chance(risk)) continue;
+    n.alive = false;
+    n.flags.diedYear = state.year;
+    log(`Your ${roleLabel(n).toLowerCase()} ${n.firstName} died of an illness at ${n.age}. In these years, many families lost a child.`, 'system', 'bad');
+    p.stats.mood = clamp(p.stats.mood - (n.role === 'child' ? 25 : 12));
+  }
 }
 
 /** Era scenes found in what is actually happening, queued like any other scene. */

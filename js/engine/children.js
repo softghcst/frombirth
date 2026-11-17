@@ -1,6 +1,7 @@
 // Children: pregnancy, birth, adoption, growing up, and grandchildren. Also
 // getting a pet. Children carry their own stats and talents so a later phase
 // can let the player continue as one of them.
+import { childbirthRisk } from './history.js';
 import { atBirth, held } from './citizenship.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
@@ -103,6 +104,11 @@ function birth() {
     ? `${p.gender === 'female' ? 'You gave birth to' : `${other?.firstName ?? 'Your partner'} gave birth to`} twins: ${babies[0].firstName} and ${babies[1].firstName}.`
     : `${p.gender === 'female' ? 'You gave birth to' : `${other?.firstName ?? 'Your partner'} gave birth to`} a baby ${kind(babies[0])}, ${babies[0].firstName}.`;
   log(`${text} You can change the name from the People tab.`, 'system', 'good');
+  // Historical Eras: in earlier years childbirth was dangerous for the mother (engine/history.js).
+  if (rng.chance(childbirthRisk())) {
+    if (p.gender === 'female') p.flags.birthDeath = true;
+    else if (other?.alive) { other.alive = false; other.flags.diedYear = store.state.year; log(`${other.firstName} did not survive the birth. The midwife did everything she could.`, 'system', 'bad'); p.stats.mood = clamp(p.stats.mood - 30); }
+  }
   milestone(babies.length === 2 ? `Twins ${babies[0].firstName} and ${babies[1].firstName} were born.` : `${babies[0].firstName} was born.`, 'family');
   p.stats.mood = clamp(p.stats.mood + 14);
   if (other?.alive && (other.role === 'spouse' || other.role === 'partner')) {

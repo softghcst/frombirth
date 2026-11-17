@@ -1,5 +1,6 @@
 // Mortality maths and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
+import { eraMortality } from './history.js';
 import { COUNTRIES } from '../data/countries.js';
 import { settleEstate } from './currency.js';
 import { rng } from '../rng.js';
@@ -24,7 +25,10 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
  * the constitution they were born with, plus how they look after themselves.
  */
 export function mortalityChance(age, health, shift = 0) {
-  const base = 0.0004 + Math.min(0.6, Math.exp((age - 95.5 - shift) / 8.5) * 0.3);
+  // Historical Eras: earlier eras shorten old age and add risk at working ages (engine/history.js). Nothing in the present.
+  const era = eraMortality(age);
+  shift += era.shift;
+  const base = 0.0004 + era.extra + Math.min(0.6, Math.exp((age - 95.5 - shift) / 8.5) * 0.3);
   return Math.min(0.95, base * (1.75 - health / 100 * 1.1));
 }
 
@@ -54,6 +58,7 @@ export function rollDeath() {
   const worst = [...p.conditions].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
   if (p.legal.incarceration?.deathRow && p.legal.incarceration.served >= 2 && rng.chance(0.1)) return 'execution';
+  if (p.flags.birthDeath) { delete p.flags.birthDeath; return 'complications after childbirth'; }
   if (!rng.chance(mortalityChance(p.age, p.stats.health, (p.flags.longevity ?? 0) + careShift(p)))) return null;
   if (worst && worst.severity >= 45 && rng.chance(0.7)) return worst.name.replace(/^an? /, '');
   return p.age >= 100 ? 'great old age' : p.age >= 70 ? 'old age' : rng.pick(ACCIDENTS);
