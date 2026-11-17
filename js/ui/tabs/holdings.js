@@ -164,8 +164,8 @@ function openProperty(a, api) {
   const rows = [
     ['Worth', estate.isAbroad(a) ? `${fmtMoney(a.value, c)} at today's rate` : fmtMoney(a.value, c)],
     ['You paid', `${fmtMoney(a.purchasePrice, c)} at age ${a.boughtAtAge}`],
-    ['Mortgage', a.mortgage ? `${fmtMoney(a.mortgage.principal, c)} left, ${fmtMoney(a.mortgage.payment, c)} a year for ${a.mortgage.yearsLeft} more years` : 'None'],
-    ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${fmtMoney(a.tenant.rent, c)} a year` : 'Standing empty'],
+    ['Mortgage', a.mortgage ? `${money.fmt(a.mortgage.principal, a.mortgage.code ?? c.currency.code)} left${a.mortgage.code && a.mortgage.code !== c.currency.code ? ` (about ${fmtMoney(estate.owedOn(a), c)})` : ''}, ${money.fmt(a.mortgage.payment, a.mortgage.code ?? c.currency.code)} a year for ${a.mortgage.yearsLeft} more years` : 'None'],
+    ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${money.fmt(a.tenant.rent, a.tenant.code ?? c.currency.code)} a year${a.tenant.code && a.tenant.code !== c.currency.code ? ` (about ${fmtMoney(estate.rentAtHome(a), c)})` : ''}` : 'Standing empty'],
     ['Running costs', `${fmtMoney(Math.round(a.value * estate.propertyTypeOf(a).upkeep), c)} a year`],
     ['Where', `${a.city ? `${a.city}, ` : ''}${estate.placeOf(a).name}`],
     ...(estate.isAbroad(a) ? [['Tax on rent', `${Math.round(estate.placeOf(a).incomeTax * 100)}%, paid in ${estate.placeOf(a).name}`], ['When you die', estate.placeOf(a).estateTax ? `Taxed at ${Math.round(estate.placeOf(a).estateTax * 100)}% in ${estate.placeOf(a).name}` : `No inheritance tax in ${estate.placeOf(a).name}`]] : []),
@@ -177,7 +177,7 @@ function openProperty(a, api) {
   if (isHome) acts.push(['moveout', 'Move out and rent somewhere']);
   if (a.tenant) acts.push(['evict', 'Give the tenant notice']);
   if (a.condition < 95) acts.push(['renovate', `Renovate (${fmtMoney(estate.renovationCost(a.id), c)})`]);
-  if (a.mortgage) acts.push(['payoff', `Pay off the mortgage (${fmtMoney(a.mortgage.principal, c)})`]);
+  if (a.mortgage) acts.push(['payoff', `Pay off the mortgage (${money.fmt(a.mortgage.principal, a.mortgage.code ?? c.currency.code)})`]);
   acts.push(['sell', `Sell (you would keep ${fmtMoney(estate.saleProceeds(a), c)})`]);
 
   const m = openModal(`
@@ -309,7 +309,7 @@ export default {
     const p = player();
     const c = country();
     const f = p.finance;
-    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + (a.mortgage?.principal ?? 0), 0);
+    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + estate.owedOn(a), 0);
     const home = estate.home();
     const living = home ? `In your ${home.name.charAt(0).toLowerCase() + home.name.slice(1)}` : p.flags.livesWithParents ? 'With your family'
       : p.education.enrolled && p.age >= 18 ? 'Student housing' : p.age >= 18 ? 'Renting' : 'With your family';

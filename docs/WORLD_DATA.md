@@ -132,8 +132,8 @@ shown on its profile.
   New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
   is no deportation for crime, no overstaying, and no visa needed for a short visit.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
-  is valued in its own country's money and shown at today's rate; its mortgage (if it was bought while living there), rent and
-  running costs are still kept in everyday money. There is one housing index for the whole world, not one per country. No
+  is valued in its own country's money and shown at today's rate, with its mortgage and rent kept in the currency they were
+  agreed in. Each country has its own housing index, moved by its economy; the numbers are invented, not house-price data. No
   country restricts foreign buyers, and there are no tax treaties: nothing is taxed twice, and nothing is credited. Income tax is
   each country's headline rate through one of four shapes (`js/data/systems.js`) with thresholds in multiples of a typical wage:
   not real brackets, and with no social contributions, credits or regional taxes. Health care is one of six models; which
@@ -146,7 +146,6 @@ In rough order of value:
 
 1. **Check what is still unchecked** (listed above): the remaining ages, residence years and the free-movement lists.
 2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
-4. **A housing index per country**, and mortgages and rent abroad kept in local money.
 5. **Regions with governments and taxes of their own**, and visas for family members other than a spouse.
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
 

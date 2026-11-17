@@ -155,3 +155,20 @@ export function receiveForeign(code, amount) {
   if (code === home()) p.finance.cash += amount; else accounts()[code] = (accounts()[code] ?? 0) + amount;
   return amount;
 }
+
+/** An amount held in some currency, in everyday money at today's rate. `code` missing means it is already everyday money. */
+export const atHome = (amount, code) => (!code || code === home() ? amount : convert(amount, code, home()));
+/**
+ * Pays a bill in another currency: from the account in that currency, then from everyday money at today's rate.
+ * If there is not enough, the shortfall comes out of everyday money anyway (it may go negative; debts are settled at the year's end).
+ * @returns {number} what it cost in everyday money
+ */
+export function payIn(code, amount, what = 'a payment') {
+  const p = player();
+  if (!code || code === home()) { p.finance.cash -= amount; return amount; }
+  const q = payForeign(code, amount, what);
+  if (q) return q.fromCash + (q.fromAccount ? convert(q.fromAccount, code, home()) : 0);
+  const cost = Math.ceil(amount / rate(home(), code));
+  p.finance.cash -= cost;
+  return cost;
+}

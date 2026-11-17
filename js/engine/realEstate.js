@@ -5,10 +5,10 @@ import { rng } from '../rng.js';
 import { COUNTRIES } from '../data/countries.js';
 import { uid, clamp, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
-import { market } from './market.js';
+import { market, housingIndex } from './market.js';
 import { householdIncome, isBankrupt, yearlyPayment } from './loans.js';
 import { PROPERTY_TYPES, PROPERTY_BY_ID, STREETS, MORTGAGE, SELLING_FEE, BUYING_FEE, FOREIGN_BUYER_FEE } from '../data/properties.js';
-import { rate, fmt, quoteForeign, payForeign, receiveForeign } from './currency.js';
+import { rate, fmt, quoteForeign, payForeign, receiveForeign, atHome, payIn, convert } from './currency.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 /** "Family house on Elm Street" -> "family house on Elm Street". */
@@ -28,7 +28,7 @@ export const home = () => assetOf(player().homeId);
 function nativeWorth(typeId, quality, condition, city, countryId) {
   const at = COUNTRIES[countryId] ?? country();
   const type = PROPERTY_BY_ID[typeId];
-  return Math.round(type.price * at.currency.scale * (at.living?.costK ?? 1) * market().housing * housingK(city ?? '', at.id) * quality * (0.6 + 0.4 * condition / 100));
+  return Math.round(type.price * at.currency.scale * (at.living?.costK ?? 1) * housingIndex(at.id) * housingK(city ?? '', at.id) * quality * (0.6 + 0.4 * condition / 100));
 }
 /**
  * What a property is worth in the player's everyday money. A property abroad
@@ -42,6 +42,10 @@ function worth(typeId, quality, condition, city = player().city, countryId = pla
 }
 /** The currency of the country a property stands in. */
 export const currencyOfProperty = (a) => placeOf(a).currency.code;
+/** What is left on a property's mortgage, in everyday money at today's rate. A mortgage is held in the currency it was taken out in. */
+export const owedOn = (a) => (a.mortgage ? atHome(a.mortgage.principal, a.mortgage.code) : 0);
+/** A tenant's yearly rent, in everyday money. Rent is paid in the money of the place. */
+export const rentAtHome = (a) => (a.tenant ? atHome(a.tenant.rent, a.tenant.code) : 0);
 
 const describe = (condition) => (condition >= 85 ? 'immaculate' : condition >= 65 ? 'in good order'
   : condition >= 45 ? 'tired' : condition >= 25 ? 'needs work' : 'close to derelict');
@@ -129,7 +133,7 @@ export function buyAbroad(listingId) {
  */
 export function mortgageTerms(price) {
   const p = player();
-  const owed = properties().reduce((s, a) => s + (a.mortgage?.principal ?? 0), 0);
+  const owed = properties().reduce((s, a) => s + owedOn(a), 0);
   const years = Math.min(MORTGAGE.years, MORTGAGE.maxEndAge - p.age);
   const maxLoan = Math.max(0, Math.round(householdIncome() * MORTGAGE.incomeMultiple - owed));
   let reason = '';
@@ -158,7 +162,7 @@ export function buyProperty(listingId, deposit) {
     if (!t.available) return result(false, t.reason, 'neutral');
     if (deposit < t.minDeposit) return result(false, `The lender wants a deposit of at least ${fmtMoney(t.minDeposit, c)}.`, 'neutral');
     if (loan > t.maxLoan) return result(false, `On your income the most a lender will offer is ${fmtMoney(t.maxLoan, c)}. You would need a bigger deposit.`, 'neutral');
-    mortgage = { principal: loan, rate: t.rate, yearsLeft: t.years, payment: yearlyPayment(loan, t.rate, t.years) };
+    mortgage = { principal: loan, rate: t.rate, yearsLeft: t.years, payment: yearlyPayment(loan, t.rate, t.years), code: c.currency.code };
   }
   p.finance.cash -= deposit + fees;
   const first = !properties().length && !p.flags.ownedProperty;
@@ -219,8 +223,10 @@ export function letOut(id) {
   if (a.tenant) return result(false, 'It is already let.', 'neutral');
   if (p.homeId === id) return result(false, 'You live there. Move out first.', 'neutral');
   if (a.condition < 25) return result(false, 'Nobody will rent it in this state. Renovate it first.', 'neutral');
-  a.tenant = { rent: Math.round(rentFor(a) * rng.around(1, 0.08)), quality: rng.int(15, 100), sinceAge: p.age };
-  const text = `You found a tenant for the ${lower(a.name)} at ${fmtMoney(a.tenant.rent, country())} a year.`;
+  const code = currencyOfProperty(a);
+  const yearly = Math.round(rentFor(a) * rng.around(1, 0.08));
+  a.tenant = { rent: code === country().currency.code ? yearly : convert(yearly, country().currency.code, code), code, quality: rng.int(15, 100), sinceAge: p.age };
+  const text = `You found a tenant for the ${lower(a.name)} at ${code === country().currency.code ? fmtMoney(yearly, country()) : `${fmt(a.tenant.rent, code)} (about ${fmtMoney(yearly, country())})`} a year.`;
   log(text, 'system', 'good');
   return result(true, text);
 }
@@ -249,9 +255,10 @@ export function payOffMortgage(id) {
   const p = player();
   const a = assetOf(id);
   if (!a.mortgage) return result(false, 'There is no mortgage on it.', 'neutral');
-  if (p.finance.cash < a.mortgage.principal) return result(false, 'You do not have enough to clear it.', 'neutral');
-  p.finance.cash -= a.mortgage.principal;
-  const text = `You paid off the mortgage on the ${lower(a.name)}: ${fmtMoney(a.mortgage.principal, country())}. It is yours outright.`;
+  const code = a.mortgage.code ?? country().currency.code;
+  if (!quoteForeign(code, a.mortgage.principal).ok) return result(false, 'You do not have enough to clear it.', 'neutral');
+  const paid = payIn(code, a.mortgage.principal, `the mortgage on the ${lower(a.name)}`);
+  const text = `You paid off the mortgage on the ${lower(a.name)}: ${code === country().currency.code ? fmtMoney(paid, country()) : `${fmt(a.mortgage.principal, code)}, which cost ${fmtMoney(paid, country())}`}. It is yours outright.`;
   a.mortgage = null;
   log(text, 'system', 'good');
   milestone('Paid off a mortgage.', 'money');
@@ -260,7 +267,7 @@ export function payOffMortgage(id) {
 
 /** What selling would leave in the player's hands after fees and the mortgage. */
 export const saleProceeds = (a, discount = 1) =>
-  Math.round(a.value * discount * (1 - SELLING_FEE) - (a.mortgage?.principal ?? 0));
+  Math.round(a.value * discount * (1 - SELLING_FEE) - owedOn(a));
 
 function remove(a) {
   const p = player();
@@ -318,20 +325,25 @@ export function tickProperties() {
   let rent = 0;
   let taxPaid = 0;
   let rentTax = 0;
+  let rentAbroad = 0;
+  let taxAbroad = 0;
   for (const a of properties()) {
     const type = PROPERTY_BY_ID[a.catalogId];
     const hard = a.tenant && a.tenant.quality < 35;
     a.condition = clamp(a.condition - rng.int(0, 2) - (hard ? rng.int(1, 4) : 0));
     a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined, a.countryId ?? undefined);
-    f.cash -= Math.round(a.value * type.upkeep);
+    const code = currencyOfProperty(a);
+    const local = (n) => (code === c.currency.code ? n : convert(n, c.currency.code, code));
+    payIn(code, local(Math.round(a.value * type.upkeep)), `upkeep on the ${lower(a.name)}`);
     const due = propertyTaxOn(a);
-    if (due) { f.cash -= due; f.lifetimeTaxPaid += due; taxPaid += due; }
+    if (due) { payIn(code, local(due), `property tax on the ${lower(a.name)}`); f.lifetimeTaxPaid += due; taxPaid += due; }
 
     if (a.mortgage) {
       const m = a.mortgage;
+      m.code ??= c.currency.code; // older saves: a mortgage was always in everyday money
       const interest = Math.round(m.principal * m.rate);
       const pay = Math.min(m.payment, m.principal + interest);
-      f.cash -= pay;
+      payIn(m.code, pay, `the mortgage on the ${lower(a.name)}`);
       m.principal = m.principal + interest - pay;
       m.yearsLeft -= 1;
       if (m.principal <= 1 || m.yearsLeft <= 0) {
@@ -346,8 +358,12 @@ export function tickProperties() {
       if (t.quality < 35 && rng.chance(0.18)) {
         log(`Your tenant at the ${lower(a.name)} paid no rent this year.`, 'system', 'bad');
       } else {
-        rent += t.rent;
-        rentTax += Math.round(t.rent * placeOf(a).incomeTax); // taxed where the property is
+        t.code ??= c.currency.code; // older saves: rent was always in everyday money
+        const tax = Math.round(t.rent * placeOf(a).incomeTax); // taxed where the property is, in its money
+        if (t.code === c.currency.code) { rent += t.rent; rentTax += tax; } else {
+          receiveForeign(t.code, t.rent - tax);
+          rentAbroad += atHome(t.rent, t.code); taxAbroad += atHome(tax, t.code);
+        }
         t.rent = Math.round(t.rent * 1.02);
       }
       if (rng.chance(0.08)) {
@@ -363,6 +379,11 @@ export function tickProperties() {
     f.lifetimeEarned += rent;
     f.lifetimeTaxPaid += tax;
     log(`Your tenants paid ${fmtMoney(rent, c)} in rent. You paid ${fmtMoney(tax, c)} tax on it.`, 'system', 'good');
+  }
+  if (rentAbroad) {
+    f.lifetimeEarned += rentAbroad;
+    f.lifetimeTaxPaid += taxAbroad;
+    log(`Rent from your property abroad came to about ${fmtMoney(rentAbroad, c)}, paid into your account there after ${fmtMoney(taxAbroad, c)} of local tax.`, 'system', 'good');
   }
   const h = home();
   if (h) p.stats.mood = clamp(p.stats.mood + Math.round(PROPERTY_BY_ID[h.catalogId].comfort / 3));

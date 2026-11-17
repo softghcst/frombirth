@@ -34,6 +34,8 @@ export const hiringClimate = () => phase().hiring;
 export const layoffChance = () => phase().layoff;
 /** What it adds to this year's move in house prices. */
 export const housingDrift = () => phase().housing;
+/** The same, for any country. */
+export const housingDriftIn = (id) => PHASES[phaseOf(id)].housing;
 /** Where a currency is being pulled, as an offset from its usual rate: weaker in a slump or a crisis. */
 export function fxBias(code) {
   if (!store.state?.world) return 0;

@@ -295,6 +295,12 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
   the currency as well as the market. It can be let, and stayed in when you visit. If you move to that country it becomes a
   home in local money, at the same worth.
 - **Selling it** pays in the money of the place, into your account in that currency.
+- **One housing market per country.** Each country's prices move with its own economy (and now and then slump), so a home in
+  Mexico and one in Canada no longer rise and fall together.
+- **Loans and rent keep their currency.** A mortgage is held in the currency it was taken out in, and a tenancy is paid in
+  the money of the place: moving abroad no longer converts them. Payments, upkeep and local tax on a property abroad come
+  from your account in that currency first, then from everyday money at today's rate; rent abroad is paid into that
+  account. Net worth, debts and estates count each loan at today's rate.
 - **Tax by place**: property tax and tax on rent are charged by the country the property is in. At death, property abroad is
   taxed by the country it stands in and everything else by the country you lived in; the obituary lists each. An inheritance
   from someone who lived abroad is taxed there.
