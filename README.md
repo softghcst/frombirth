@@ -462,6 +462,10 @@ they hold, which passports they carry, what a border asks of them, and whether t
   country (ask them to come, which is their decision and their permission; move to them, which is your application; visit; let it be);
   going home after ten years away when a parent there is growing old; retiring near a child abroad, or somewhere warmer and cheaper.
   A "yes" is an application or a draft trip, never an approval.
+- **Moving with children** (`js/engine/familyMove.js`): a child under 18 whose other parent is alive and not coming moves only with
+  that parent's agreement or a court's permission (which weighs the child's age, who they are close to, and why the family is
+  moving); otherwise the child stays with that parent. Children who move start at the local school in the new town and settle in at
+  their own pace (younger and easy-going children sooner; a new language and a worrier later). Game rules, not family law.
 - **Businesses abroad** (`js/engine/businessAbroad.js`, on the business engine): start a business in another country without moving
   (a manager runs it from the start; the money is changed at today's rate), or open a branch of an established business abroad,
   paid from its own account. Each keeps its accounts in local money and pays its tax there; what it pays the owner is changed and

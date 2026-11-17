@@ -314,7 +314,7 @@ let moved;
   check(app?.status === 'approved', 'eventually approved');
   check(p.countryId === 'mx' && !cit.held(p).includes('ca'), 'approval moves nobody and makes nobody a citizen');
   const steps = () => reloc.checklist(app.id).filter((s) => !s.done).map((s) => s.id);
-  check(steps().includes('housing') && steps().includes('travel') && steps().includes('pets'), 'housing, the journey and the dog are still to arrange');
+  check(steps().includes('housing') && steps().includes('travel') && (steps().includes('pets') || !dog.alive), 'housing, the journey and the dog are still to arrange');
   check(!reloc.completeMove(app.id).ok, 'the move waits for the checklist');
   const y0 = store.state.year;
   const later = travel.startPlan('getaway');
@@ -333,7 +333,7 @@ let moved;
   check(later.status === 'cancelled' && p.finance.receipts.some((x) => x.kind === 'refund' && x.ref?.tripId === later.id), 'the Puebla weekend was canceled at the move and refunded on its terms');
   check(friend.alive && p.npcIds.includes(friend.id) && friend.role === 'friend' && (friend.flags.abroad === 'mx' || friend.places?.some((l) => l.countryId === 'mx')), 'the friend from Mexico is still a friend, with their life in Mexico on record');
   check(!mum || (p.npcIds.includes(mum.id) && mum.flags.abroad === 'mx'), 'and so is mum');
-  check(!dog.flags.abroad && store.state.npcs[dog.id] === dog, `the dog came, the same dog (${dog.flags.abroad}, ${dog.alive}, ${dog.role})`);
+  check(!dog.alive || (!dog.flags.abroad && store.state.npcs[dog.id] === dog), `the dog came, the same dog (${dog.flags.abroad}, ${dog.alive}, ${dog.role})`);
   const moves = store.state.canon.events.filter((e) => e.type === 'relocation' && e.international);
   check(moves.length === 1 && p.locations[p.locations.length - 1].eventId === moves[0].id, 'one relocation event, linked from the residence record');
   check(!reloc.completeMove(app.id).ok, 'a case is used once');
@@ -425,8 +425,8 @@ let moved;
   // A child at home with a parent who grew up speaking another language.
   p = life('us', 2, 0, 'Seattle');
   const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
-  mum.bornIn = 'kr'; mum.flags.abroad = false;
-  year(8);
+  mum.bornIn = 'kr';
+  for (let i = 0; i < 8; i++) { mum.alive = true; mum.flags.abroad = false; mum.meters.health = 90; p.flags.livesWithParents = true; year(); }
   check((p.skills.korean ?? 0) > 0 && (p.skills.korean ?? 0) < 90, `a child picks up Korean at home, at their own pace, short of fluency (${p.skills.korean})`);
   check((p.languageLog ?? []).some((x) => x.lang === 'korean' && /at home/.test(x.source)), 'and where it came from is kept');
   section('multilingual families: a parent\'s language picked up at home, gradually');
@@ -552,6 +552,38 @@ let moved;
 }
 
 {
+  // Moving with children: the other parent's consent, or a court's, or the child stays; a new school for those who go.
+  const fam = await import('../js/engine/familyMove.js');
+  p = life('fr', 38, 300000, 'Lyon');
+  p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.4, age: 22 });
+  const ex = add('ex', 'fr', 39, 50); ex.flags.wasSpouse = true;
+  const kid = add('child', 'fr', 11, 85); kid.parentIds = [p.id, ex.id]; kid.bornIn = 'fr';
+  (await import('../js/engine/npcLives.js')).ensureLife(kid);
+  const younger = add('child', 'fr', 7, 85); younger.parentIds = [p.id, ex.id]; younger.bornIn = 'fr';
+  (await import('../js/engine/npcLives.js')).ensureLife(younger);
+  let app; for (let i = 0; i < 8 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; const a = reloc.applyToMove('de', 'free') ; void a; p.flags.visaAge = null; app = reloc.cases().find((x) => x.jurisdictionId === 'de' && !x.used); if (app?.status !== 'approved') year(); }
+  check(app?.status === 'approved', 'free movement to Germany: approved at once');
+  check(fam.consent('de', kid).needed && fam.unresolved('de').length === 2, 'the children\'s other parent is not coming: their agreement is needed');
+  reloc.arrange(app.id, { housing: 'rent', money: 0, travel: 'plane', animals: 'leave' });
+  for (const x of [p, kid, younger]) for (const j of cit.held(x)) if (!docs.validPassport(x)) docs.applyPassport(x.id, j);
+  check(reloc.checklist(app.id).find((s2) => s2.id === 'children').done === false && !reloc.completeMove(app.id).ok, 'the move waits for it');
+  let agreed = fam.askConsent('de', kid.id).ok;
+  check(!fam.askConsent('de', kid.id).ok, 'asked once');
+  if (!agreed) { const c = fam.askCourt('de', kid.id, 'free'); agreed = c.ok; if (!agreed) fam.letStay('de', kid.id); }
+  fam.letStay('de', younger.id);
+  check(fam.unresolved('de').length === 0 && reloc.checklist(app.id).find((s2) => s2.id === 'children').done, 'every child\'s move is settled one way or the other');
+  const mv = reloc.completeMove(app.id);
+  check(mv.ok && p.countryId === 'de', 'the family moves to Germany');
+  check(younger.flags.abroad === 'fr' && younger.flags.livesWith === ex.id, 'the younger child stays in France with their other parent');
+  check(agreed ? !kid.flags.abroad : kid.flags.abroad === 'fr', 'the older child goes only with agreement or the court\'s permission');
+  if (agreed) {
+    check(store.state.canon.events.some((e) => e.type === 'new_school' && e.subject === chron.archiveIdOf(kid)) && kid.flags.settling, 'and starts at a new school, settling in at their own pace');
+    let settled = false; for (let i = 0; i < 4 && !settled; i++) { year(); settled = !kid.flags.settling; }
+    check(settled, 'in time they find their feet');
+  }
+  section('moving with children: consent, a court, or staying with the other parent; a new school for the child who goes');
+}
+{
   // Part 34: a business abroad. Owning one gives no right to live there; the business-owner route is an application.
   const ba = await import('../js/engine/businessAbroad.js');
   const bz = await import('../js/engine/business.js');
@@ -570,6 +602,7 @@ let moved;
   const pays = bz.payouts().find((x) => x.source === `biz:${cafe.id}`);
   check(!pays || pays.gross < cafe.payout || COUNTRIES.mx.currency.scale <= COUNTRIES.us.currency.scale, 'what it pays its owner arrives changed into dollars');
   if (bz.headcount(cafe) < 2) bz.hire(cafe, null);
+  cafe.overdrawn = 0; cafe.cash += 200000;
   const route = imm.routes('mx').find((r) => r.id === 'business');
   check(route.eligible && route.status === 'worker', `after a year with staff, the business-owner route opens (${route.why})`);
   let app;

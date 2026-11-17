@@ -26,6 +26,7 @@ import { cover as healthCover } from '../engine/systems.js';
 import { getEra } from '../engine/history.js';
 import * as creds from '../engine/credentials.js';
 import * as bizAbroad from '../engine/businessAbroad.js';
+import * as fam from '../engine/familyMove.js';
 import * as bizEngine from '../engine/business.js';
 const regFor = (q) => creds.REGULATED[q.careerId] ?? {};
 import { COORDINATES } from '../data/coordinates.js';
@@ -262,6 +263,10 @@ export function openExplore(api, start = {}) {
               <label class="field">Money <select data-arr="money" data-case="${a.id}"><option value="">Choose…</option>${[['0', 'Change it all'], ['0.25', 'Leave a quarter behind'], ['0.5', 'Leave half behind']].map(([v2, l]) => `<option value="${v2}" ${a.arrangements.money != null && String(a.arrangements.money) === v2 ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
               ${pets.length ? `<label class="field">Your animals (${esc(pets.map((t) => t.a.name).join(', '))}) <select data-arr="animals" data-case="${a.id}"><option value="">Choose…</option>${pets.some((t) => t.ok) ? `<option value="bring" ${a.arrangements.animals === 'bring' ? 'selected' : ''}>Bring those who can come (${money(pets.reduce((s2, t) => s2 + t.cost, 0))})</option>` : ''}<option value="leave" ${a.arrangements.animals === 'leave' ? 'selected' : ''}>Find them homes here</option></select></label>` : ''}
               <label class="field">Journey <select data-arr="travel" data-case="${a.id}"><option value="">Choose…</option>${travel.modesFor({ countryId: p.countryId, city: p.city }, { countryId: a.jurisdictionId, city: a.city }, store.state.year).map((m) => `<option value="${esc(m.name.toLowerCase())}" ${a.arrangements.travel === m.name.toLowerCase() ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
+              ${fam.childrenMoving(a.jurisdictionId).map((c) => ({ c, s: fam.consent(a.jurisdictionId, c) })).filter((x) => x.s.needed).map(({ c, s }) => `<div class="gl-route"><strong>${esc(c.firstName)}, ${c.age}</strong><small>${esc(s.otherParent.firstName)} is ${esc(c.firstName)}'s other parent and is not coming. A child does not move country without their agreement or a court's.</small>
+                ${s.status === 'unasked' ? btn(`Ask ${s.otherParent.firstName}`, `data-consent="${c.id}" data-dest="${a.jurisdictionId}"`, 'small') : ''}
+                ${s.status === 'refused' ? btn(`Ask a court (${money(Math.round(fam.COURT_COST * country().currency.scale))})`, `data-court="${c.id}" data-dest="${a.jurisdictionId}" data-reason="${a.routeId}"`, 'small') : ''}
+                ${['refused', 'court_refused', 'unasked'].includes(s.status) ? btn(`${c.firstName} stays with ${s.otherParent.firstName}`, `data-staychild="${c.id}" data-dest="${a.jurisdictionId}"`, 'small') : `<small>${esc({ agreed: 'Agreed.', court_allowed: 'The court allowed it.', staying: `Staying with ${s.otherParent.firstName}.` }[s.status] ?? '')}</small>`}</div>`).join('')}
               <div class="btn-stack">${btn('Complete the move', `data-complete="${a.id}"`, 'primary')}</div>` : ''}</div>`;
         }).join('')}
         <div class="card"><h3>Explore countries</h3><select data-dest aria-label="Country"><option value="">Choose a country…</option>${COUNTRY_LIST.filter((c) => c.id !== p.countryId).sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}" ${dest === c.id ? 'selected' : ''}>${c.flag} ${esc(c.name)}</option>`).join('')}</select>
@@ -490,6 +495,9 @@ export function openExplore(api, start = {}) {
       if (t('[data-naturalize]')) { const n = cit.naturalisation(); if (await confirmModal({ title: 'Apply for citizenship?', yes: 'Apply', body: `The fee is ${money(n.fee)}, and there is a test. ${n.outlook}` })) return tell(cit.naturalise()); return undefined; }
       if ((x = t('[data-applymove]'))) { const r = reloc.applyToMove(ui.dest, x.dataset.applymove); return tell(r); }
       if ((x = t('[data-ask]'))) return tell(move.askToCome(x.dataset.ask));
+      if ((x = t('[data-consent]'))) return tell(fam.askConsent(x.dataset.dest, x.dataset.consent));
+      if ((x = t('[data-court]'))) { if (await confirmModal({ title: 'Ask a court?', body: 'The court decides on the child\'s interests. Lawyers cost money, and the other parent will not thank you.', yes: 'Apply to the court' })) return tell(fam.askCourt(x.dataset.dest, x.dataset.court, x.dataset.reason)); return undefined; }
+      if ((x = t('[data-staychild]'))) return tell(fam.letStay(x.dataset.dest, x.dataset.staychild));
       if ((x = t('[data-recognize]'))) return tell(creds.applyRecognition(x.dataset.recognize));
       if ((x = t('[data-bizstart]'))) { if (await confirmModal({ title: 'Open a business abroad?', body: 'The money goes now. A manager runs it; you own it from here.', yes: 'Open it' })) return tell(bizAbroad.startAbroad(x.dataset.bizstart, x.dataset.bizcountry, x.dataset.bizcity)); return undefined; }
       if ((x = t('[data-bizbranch]'))) return tell(bizAbroad.openBranchAbroad(x.dataset.bizbranch, x.dataset.bizcountry, x.dataset.bizcity));

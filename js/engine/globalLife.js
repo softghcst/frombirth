@@ -27,6 +27,7 @@ import { openYear, earn, travelState, compactHistory } from './travel.js';
 import { placeName } from './geo.js';
 import { remember } from './conditions.js';
 import { tickAbroadArcs } from './abroadArcs.js';
+import { tickChildrenSettling } from './familyMove.js';
 
 const nameOf = (id) => theCountry(COUNTRIES[id]?.name ?? id);
 const hash = (s) => { let h = 7; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) % 100003; return h; };
@@ -165,6 +166,7 @@ export function tickGlobalLife() {
   lines.push(...tickVisits(p));
   const h = tickHeritage(p);
   if (h) lines.push({ text: h, tone: 'good' });
+  lines.push(...tickChildrenSettling(p));
   const s = tickSettling(p);
   if (s) lines.push(s);
   for (const name of earn(p)) lines.push({ text: `Achievement: ${name}.`, tone: 'good' });

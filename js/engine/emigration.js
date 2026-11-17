@@ -25,6 +25,7 @@ import { charge, recordEvent, archiveIdOf, rememberHome } from './chronicle.js';
 import { placeName } from './geo.js';
 import { syncNpcPlaces } from './globalLife.js';
 import { cancel as cancelTrip } from './travel.js';
+import { childrenStaying, afterMove } from './familyMove.js';
 
 export { routes };
 export { travelPlan };
@@ -210,6 +211,9 @@ export function emigrate(countryId, opts = {}) {
   const coming = new Set(household(opts.forced ? null : to.id).map((n) => n.id));
   // A child does not move alone: it is the family that is moving.
   if (opts.family) for (const n of livingNpcs()) if ((n.role === 'parent' && !n.flags.abroad) || (n.role === 'sibling' && n.age < 18 && !n.flags.abroad)) coming.add(n.id);
+  // A child whose other parent did not agree, and whom no court allowed to go, stays with that parent (engine/familyMove.js).
+  const stayers = opts.forced ? [] : opts.grant ? childrenStaying(countryId) : (opts.childrenStay ?? []).map((id) => ({ id, with: null }));
+  for (const s of stayers) { coming.delete(s.id); const n = store.state.npcs[s.id]; if (n) { n.flags.livesWith = s.with; } }
   for (const n of livingNpcs()) {
     if (coming.has(n.id)) { if (n.flags.abroad === to.id) n.flags.abroad = false; delete n.flags.stayedBehind; continue; }
     if (n.role === 'spouse' && !n.flags.abroad) {
@@ -294,6 +298,8 @@ export function emigrate(countryId, opts = {}) {
   milestone(`Emigrated from ${theCountry(from.name)} to ${theCountry(to.name)}.`, 'life');
   reconcileAnimals(); // the animals that came are recorded in their new home at once
   p.flags.settling = { since: store.state.year, countryId: to.id };
+  for (const l of afterMove([...coming], to.id)) log(l, 'system', 'neutral'); // the children's new schools
+  for (const s of stayers) { const n = store.state.npcs[s.id]; const w = s.with && store.state.npcs[s.with]; if (n) log(`${n.firstName} stayed in ${theCountry(from.name)}${w ? ` with ${w.firstName}` : ''}. You will see each other in the holidays.`, 'system', 'neutral'); }
   syncNpcPlaces(p); // who moved with them, and who stayed, is written down in the year it happened
   return result(true, text, 'good', { moveId, eventId: ev.id });
 }

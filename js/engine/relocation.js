@@ -24,6 +24,7 @@ import { charge } from './chronicle.js';
 import { validPassport, today, eraOf } from './documents.js';
 import { capitalCity, distanceKm } from './geo.js';
 import { healthOnArrival } from './systems.js';
+import * as fam from './familyMove.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const nameOf = (id) => theCountry(COUNTRIES[id]?.name ?? id);
@@ -164,6 +165,9 @@ export function checklist(caseId, p = player()) {
     { id: 'health', label: 'Health care there', done: true, note: healthOnArrival(app.jurisdictionId, app.status_on_arrival) },
     { id: 'money', label: 'Review finances', done: a.money != null, note: a.money != null ? (a.money ? `Leaving ${Math.round(a.money * 100)}% in ${country().currency.code}.` : `Changing everything into ${COUNTRIES[app.jurisdictionId].currency.code}.`) : '' },
     { id: 'papers', label: 'Family documents', done: !missing.length, note: missing.length ? `Without a valid passport: ${missing.map((x) => x.firstName).join(', ')}.` : needPapers ? 'Everyone has a valid passport.' : 'No documents needed in this period.' },
+    (() => { const kids = fam.childrenMoving(app.jurisdictionId).map((c) => ({ c, s: fam.consent(app.jurisdictionId, c, p) })).filter((x) => x.s.needed);
+      const open = fam.unresolved(app.jurisdictionId, p);
+      return { id: 'children', label: 'Consent for the children', done: !open.length, note: kids.length ? kids.map(({ c, s }) => `${c.firstName}: ${{ unasked: `${s.otherParent.firstName} not yet asked`, refused: `${s.otherParent.firstName} said no`, agreed: `${s.otherParent.firstName} agreed`, court_allowed: 'the court allowed it', court_refused: 'the court refused', staying: `staying with ${s.otherParent.firstName}` }[s.status]}`).join('; ') : 'No other parent needs to agree.' }; })(),
     { id: 'pets', label: 'Arrangements for animals', done: !plan.length || !!a.animals, note: !plan.length ? 'No animals.'
       : `${a.animals === 'bring' ? 'Coming: ' : a.animals === 'leave' ? 'Homes found here for: ' : 'Not decided: '}${plan.map((t) => `${t.a.name}${t.ok ? (t.quarantine ? ' (quarantine on arrival)' : '') : ` (cannot come: ${t.why})`}`).join('; ')}.` },
     { id: 'travel', label: 'Plan the journey', done: !!a.travel, note: a.travel ? `By ${a.travel}.` : '' },
