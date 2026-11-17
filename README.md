@@ -462,6 +462,12 @@ they hold, which passports they carry, what a border asks of them, and whether t
   country (ask them to come, which is their decision and their permission; move to them, which is your application; visit; let it be);
   going home after ten years away when a parent there is growing old; retiring near a child abroad, or somewhere warmer and cheaper.
   A "yes" is an application or a draft trip, never an approval.
+- **Qualifications abroad** (`js/engine/credentials.js`): sixteen regulated careers (medicine, dentistry, pharmacy, nursing and
+  midwifery, physiotherapy, veterinary work, law, teaching, chartered accountancy and engineering, electrical and plumbing work,
+  airline flying) are practiced only where the qualification is recognized. Where someone trained, or has practiced, counts; anywhere
+  else they apply to the professional body (a fee, the language at the level the profession asks, a decision when the year turns: a
+  license, a supervised adaptation year and an exam, or a refusal). Inside a recognition area (the European free-movement area,
+  Trans-Tasman) it is a registration. A job offer does not license anyone. Game rules, the same everywhere.
 - **A move cancels trips** booked to leave from the old home, on their refund terms, before savings change currency.
 - **Long lives stay small**: a finished trip older than three years keeps its summary, cost and memories and drops its journey legs and
   booking lines; ledger entries older than ten years become yearly totals; days abroad are kept only as long as a limit could count them.

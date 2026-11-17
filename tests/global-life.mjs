@@ -552,6 +552,46 @@ let moved;
 }
 
 {
+  // Part 33: a regulated profession needs its qualification recognized where it is practiced.
+  const cred = await import('../js/engine/credentials.js');
+  const { unmet } = await import('../js/engine/career.js');
+  const doctor = CAREERS.find((c) => c.id === 'doctor');
+  const medic = (countryId, city) => { const q = life(countryId, 32, 200000, city); q.education.degrees.push({ type: 'university', majorId: 'biology', gpa: 3.6, age: 22 }, { type: 'medical', gpa: 3.5, age: 27 }); return q; };
+  p = medic('jp', 'Osaka');
+  check(!unmet(doctor).some((x) => /recognized/.test(x)), 'a doctor trained at home practices at home');
+  p = medic('ng', 'Lagos');
+  move.emigrate('uk', { forced: true });
+  check(unmet(doctor).some((x) => /not recognized in the United Kingdom/.test(x)), 'trained in Nigeria, in London: not yet a doctor here');
+  const q0 = cred.qualifications().find((x) => x.profession === 'medicine');
+  check(q0 && q0.practice.includes('ng') && !q0.here, 'the qualification is known, and where it counts');
+  let licensed = false; let sawConditional = false;
+  for (let i = 0; i < 10 && !licensed; i++) {
+    const r = cred.applyRecognition('medicine');
+    if (r.ok) check(!cred.licensedIn(p, 'doctor') && unmet(doctor).some((x) => /decision comes/.test(x)), 'pending is not a license');
+    year(); p.stats.health = 95;
+    sawConditional ||= p.credentials.some((c) => c.status === 'conditional');
+    if (p.credentials.some((c) => c.status === 'conditional')) year();
+    licensed = cred.licensedIn(p, 'doctor');
+  }
+  check(licensed && !unmet(doctor).some((x) => /recognized|adaptation|decision/.test(x)), 'in the end the medical council recognizes it');
+  check(p.credentials.every((c) => c.history.length >= 2), 'each application keeps its history');
+  // Language: German at the level the nursing council asks.
+  p = life('br', 30, 100000, 'Recife'); p.education.degrees.push({ type: 'university', majorId: 'nursing', gpa: 3.4, age: 23 });
+  move.emigrate('de', { forced: true }); p.skills.german = 10;
+  check(cred.applyRecognition('nursing').ok, 'a Brazilian nurse applies in Germany');
+  year();
+  const ref = p.credentials.find((c) => c.profession === 'nursing');
+  check(ref.status === 'refused' && /language/.test(ref.reason), 'and is refused without the German');
+  // A recognition area: registration.
+  p = medic('fr', 'Lyon');
+  move.emigrate('de', { forced: true });
+  const r3 = cred.applyRecognition('medicine');
+  check(r3.ok && cred.licensedIn(p, 'doctor') && /European free movement/.test(r3.text), 'a French doctor in Germany registers under free movement, at once');
+  // Not regulated: nothing to recognize.
+  check(!cred.regulation('office') && !unmet(CAREERS.find((c) => c.id === 'office')).some((x) => /recognized/.test(x)), 'an office job needs no license');
+  section('Part 33: a doctor trained in Nigeria is not a doctor in London until the council says so; language counts; a recognition area registers');
+}
+{
   // Scenario P, and the eras: a life born in 1800 travels and settles by what existed then.
   const eraLife = (countryId, year, age, city) => {
     do { store.state = createLife({ countryId, year }); } while (store.state.player.royal);

@@ -1,6 +1,7 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
 import { hasRecord } from './records.js';
+import { licenseBlock } from './credentials.js';
 import { careerBlock, eraTitle, worldYear } from './history.js';
 import { LAW_WORDS } from '../data/history.js';
 import { rule as lawRule } from './rules.js';
@@ -81,6 +82,8 @@ export function unmet(career, o = {}) {
   const barred = careerBlock(career, p, worldYear(), (id) => lawRule(id, p.countryId));
   if (barred) out.push(LAW_WORDS[barred] ? LAW_WORDS[barred](theCountry(COUNTRIES[p.countryId].name)) : barred);
   if (career.type !== 'freelance' && !residency(p).workAuthorized) out.push(residency(p).status === 'retiree' ? 'Your retirement visa does not allow work.' : 'Your student visa does not allow full-time work.');
+  // A regulated profession needs its qualification recognized here (engine/credentials.js). A job offer does not do it.
+  { const lic = licenseBlock(career.id, p); if (lic) out.push(lic); }
   if (p.career.careerId === career.id && !o.ignoreCurrent) out.push('This is your current job.');
   if (career.type === 'military' && !rightToLive(p.countryId, p)) out.push('The armed forces here take citizens only.');
   if (p.age < workLaw().workAge && !career.agesOut) out.push(`You must be ${workLaw().workAge} to work here.`);

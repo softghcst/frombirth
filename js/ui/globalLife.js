@@ -24,6 +24,8 @@ import { placeName, project, coords, capitalCity, jurisdictionAt } from '../engi
 import { avatarSvg } from './avatar.js';
 import { cover as healthCover } from '../engine/systems.js';
 import { getEra } from '../engine/history.js';
+import * as creds from '../engine/credentials.js';
+const regFor = (q) => creds.REGULATED[q.careerId] ?? {};
 import { COORDINATES } from '../data/coordinates.js';
 
 const SECTIONS = [
@@ -265,7 +267,12 @@ export function openExplore(api, start = {}) {
             ${r.eligible ? btn(['right', 'free'].includes(r.id) ? 'Start arranging the move' : `Apply (${money(Math.round(r.fee * 0.2))} now)`, `data-applymove="${r.id}"`, 'small') : ''}</div>`).join('')}
             <div class="section-label">Family relocation</div><p>Coming: ${esc(move.household(dest).map((n) => n.firstName).join(', ') || 'only you')}.</p>
             ${move.askable().map((x) => `<button type="button" class="tree-row" data-ask="${x.npc.id}" ${x.asked ? 'disabled' : ''}><strong>Ask ${esc(x.npc.firstName)}</strong><small>${x.coming ? 'Has said yes' : x.asked ? 'Has said no' : 'They decide for themselves'}</small></button>`).join('')}` : ''}</div>
-        <div class="card"><h3>Work and study abroad</h3><p class="muted">A job offer is not permission to work: the work route is an application, tied to the job. A student visa does not allow full-time work. A semester abroad is a trip (Plan a Trip → University semester abroad) with a student visa.</p></div>
+        <div class="card"><h3>Work and study abroad</h3><p class="muted">A job offer is not permission to work: the work route is an application, tied to the job. A student visa does not allow full-time work. A semester abroad is a trip (Plan a Trip → University semester abroad) with a student visa.</p>
+          ${(() => { const qs = creds.qualifications(); return qs.length ? `<div class="section-label">Your qualifications</div>${qs.map((q) => `<div class="gl-route ${q.here ? '' : 'closed'}"><strong>${esc(q.name)}</strong>
+            <small>${esc(q.here ? `Recognized in ${nameOf(p.countryId)}: you can practice here.` : `Recognized in ${q.practice.map(nameOf).join(', ') || 'nowhere yet'}; not yet in ${nameOf(p.countryId)}.`)}</small>
+            ${q.here ? '' : `<small>${esc(q.open ? (q.open.status === 'pending' ? `With ${q.body}: decided when the year turns.` : `Adaptation year with ${q.body}.`) : q.mutual ? `Under the ${q.mutual}, ${q.body} registers it on application.` : `${q.body.replace(/^./, (x) => x.toUpperCase())} decides: a full license, a supervised year${regFor(q).exam ? ' and an exam' : ''}, or a refusal. ${q.language.needed ? `They ask for the language at level ${q.language.needed}; you have ${Math.round(q.language.have)}.` : ''}`)}</small>
+            ${q.open ? '' : btn(`Apply for recognition (${money(q.fee)})`, `data-recognize="${q.profession}"`, 'small')}`}</div>`).join('')}
+            <p class="muted">Game rules, the same everywhere; real recognition differs by profession and country.</p>` : ''; })()}</div>
         <div class="card"><h3>Citizenship pathways</h3><p class="muted">${esc(cit.naturalisation(p).possible ? 'You can apply for citizenship where you live (Passport & Documents).' : cit.naturalisation(p).why)} Permanent residence is not citizenship; marriage shortens the wait and grants nothing by itself.</p></div>
         ${cases.filter((a) => !live.includes(a)).length ? `<div class="card"><h3>Earlier applications</h3>${cases.filter((a) => !live.includes(a)).map((a) => kvt(`${nameOf(a.jurisdictionId)}, ${a.submittedYear}`, `${a.routeName}: ${STATUS[a.used ? 'used' : a.status]}`)).join('')}</div>` : ''}`;
     },
@@ -462,6 +469,7 @@ export function openExplore(api, start = {}) {
       if (t('[data-naturalize]')) { const n = cit.naturalisation(); if (await confirmModal({ title: 'Apply for citizenship?', yes: 'Apply', body: `The fee is ${money(n.fee)}, and there is a test. ${n.outlook}` })) return tell(cit.naturalise()); return undefined; }
       if ((x = t('[data-applymove]'))) { const r = reloc.applyToMove(ui.dest, x.dataset.applymove); return tell(r); }
       if ((x = t('[data-ask]'))) return tell(move.askToCome(x.dataset.ask));
+      if ((x = t('[data-recognize]'))) return tell(creds.applyRecognition(x.dataset.recognize));
       if ((x = t('[data-complete]'))) { if (await confirmModal({ title: 'Make the move?', body: 'This is the move itself: your home changes, and your old life stays where it is.', yes: 'Move' })) return tell(reloc.completeMove(x.dataset.complete)); return undefined; }
       if ((x = t('[data-residence]'))) return go('residence', { id: x.dataset.residence });
       if (t('[data-story]')) return go('story', {});

@@ -22,6 +22,7 @@ import { held } from './citizenship.js';
 import { recordEvent, archiveIdOf, rememberHome } from './chronicle.js';
 import { tickPapers, entryRule, needsAuthorization, ensureOwnPassport, today, addDays } from './documents.js';
 import { tickRelocation } from './relocation.js';
+import { tickCredentials } from './credentials.js';
 import { openYear, earn, travelState, compactHistory } from './travel.js';
 import { placeName } from './geo.js';
 import { remember } from './conditions.js';
@@ -151,6 +152,7 @@ export function openGlobalYear() {
   const lines = [];
   for (const t of tickPapers()) lines.push({ text: t, tone: /refused|expired/.test(t) ? 'bad' : /granted/.test(t) ? 'good' : 'neutral' });
   for (const t of tickRelocation()) lines.push({ text: t, tone: /approved/.test(t) ? 'good' : /refused|lapsed/.test(t) ? 'bad' : 'neutral' });
+  lines.push(...tickCredentials());
   for (const l of lines) log(l.text, 'system', l.tone);
   return lines;
 }

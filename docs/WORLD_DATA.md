@@ -138,6 +138,9 @@ shown on its profile.
   names are the common ones. Real rules depend on far more than nationality (purpose, previous travel, the document held,
   exemptions and reciprocity), change often, and are not modelled. Fees, processing times and the odds of a decision are invented
   (`DECISION`), and a decision never depends on nationality. This is not travel or immigration advice.
+- Professional recognition (`REGULATED`, `RECOGNITION` in `js/engine/credentials.js`) is one simplified process for every country:
+  which careers are regulated, the language level each asks, the fee, and the odds of a license, an adaptation year or a refusal are
+  game numbers. Real recognition differs by profession and country, and is often much slower.
 - Passports are valid ten years (five for children under sixteen) everywhere; real terms vary. A passport is issued only to a
   national of the issuing place, and expiring, being lost or being replaced never changes citizenship.
 - Transport (`MODES`) uses broad global dates (the first railways around 1830, liners from 1840, scheduled airlines from 1919,
