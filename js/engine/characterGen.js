@@ -1,4 +1,5 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { atBirth, issuer } from './citizenship.js';
 import { rng } from '../rng.js';
 import { bornInto, birthKind, titleOf, dress } from './royalty.js';
 import { seatFamily, nameOf, monarchOf, bloodParent, relationToMonarch } from './dynasty.js';
@@ -94,7 +95,8 @@ export function createLife(opts = {}) {
       // People born in a territory ordinarily hold the nationality of the state it belongs to.
       ...(c.place?.nationalityOf ? { citizenOf: [c.place.nationalityOf] } : {}) },
     // Citizenship is its own record: birthplace, residence and nationality are three different things.
-    citizenships: [{ jurisdictionId: c.place?.nationalityOf ?? c.id, acquisitionType: 'birth', acquiredAt: year }],
+    citizenships: atBirth(c.id, [[issuer(c.id)], [issuer(c.id)]], year),
+    locations: [{ countryId: c.id, city, from: year }],
     milestones: [{ age: 0, text: `Born in ${city}, ${c.name}.`, kind: 'life' }],
     counters: { crimes: 0, kills: 0, donated: 0, gambled: 0, yearsJailed: 0, escapes: 0,
       livesSaved: 0, spouses: 0, jobsHeld: 0, countriesLived: 1 },

@@ -1,5 +1,6 @@
 // Mortality maths and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
+import { settleEstate } from './currency.js';
 import { rng } from '../rng.js';
 import { styledName } from './royalty.js';
 import { uid, localMoney } from '../util.js';
@@ -272,6 +273,7 @@ export function die(cause) {
   const p = player();
   const c = country();
   if (!p.alive) return store.lastObituary;
+  settleEstate(); // money held in other currencies is counted once, in one currency
   const plan = estatePlan(); // settled before anything else changes
   const summary = lifeSummary(p, plan);
   p.alive = false;

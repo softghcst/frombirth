@@ -1,6 +1,7 @@
 // Children: pregnancy, birth, adoption, growing up, and grandchildren. Also
 // getting a pet. Children carry their own stats and talents so a later phase
 // can let the player continue as one of them.
+import { atBirth, held } from './citizenship.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
@@ -86,6 +87,8 @@ function newborn(other) {
   child.meters.charm = born.stats.charm;
   child.meters.health = born.stats.health;
   child.parentIds = other ? [other.id] : [];
+  // Nationality: each parent's, and the place's own where being born there is enough.
+  child.citizenships = atBirth(p.countryId, [held(p), other ? held(other) : []], store.state.year);
   return addNpc(child);
 }
 

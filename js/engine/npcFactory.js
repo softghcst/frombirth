@@ -64,6 +64,7 @@ export function makeNpc(o) {
     age: Math.max(0, Math.round(o.age)),
     alive: true,
     role: o.role,
+    bornIn: o.countryId, // where they are from: their nationality follows from it unless recorded otherwise
     meters: {
       relationship: Math.round(clamp(o.relationship ?? rng.around(60, 25))),
       money: meter(45), crazy: meter(30), intellect: meter(), charm: meter(),

@@ -55,9 +55,13 @@ shown on its profile.
 
 - The 48 newest places use the default school model, short name lists (8–10 names each) and first-estimate gameplay numbers.
 - No subdivisions (states, provinces) or city-level differences yet: a city is a name within its country.
-- Citizenship is recorded at birth (`player.citizenships`) but is not yet computed from parents, and does not yet gate anything
-  beyond what the game already did.
-- Money is still a single balance in the currency of the country of residence.
+- Citizenship rules (`js/data/citizenship.js`) are three yes-or-no lists and a table of years: which places grant citizenship by
+  birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
+  conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.
+- There is one kind of visa. Work, study and family routes, and temporary statuses, are not built yet.
+- Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property and
+  loans are still valued in the everyday currency and converted when you move. Exchange rates are fictional and only drift within
+  bounds: they do not follow each country's inflation.
 
 ## Adding a place
 

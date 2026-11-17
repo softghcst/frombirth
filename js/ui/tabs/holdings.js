@@ -13,6 +13,8 @@ import { propertyTaxLabel } from '../../data/countries.js';
 import { meterHtml } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal } from '../modals.js';
 import * as last from '../../engine/death.js';
+import * as money from '../../engine/currency.js';
+import { openCurrencies } from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
@@ -281,7 +283,7 @@ export default {
       : p.education.enrolled && p.age >= 18 ? 'Student housing' : p.age >= 18 ? 'Renting' : 'With your family';
 
     const actions = [];
-    if (p.age >= 18) actions.push(['property', 'Browse property'], ['market', 'Invest'], ['borrow', 'Borrow money']);
+    if (p.age >= 18) actions.push(['property', 'Browse property'], ['market', 'Invest'], ['borrow', 'Borrow money'], ['currencies', 'Currencies']);
     if (p.age >= 3) actions.push(['vehicles', p.age >= 16 ? 'Browse vehicles' : 'Browse bikes and boards']);
     if (cars.canTakeDrivingTest()) actions.push(['driving', 'Take driving lessons and the test']);
     if (cars.canLearnToFly() && p.age >= 21) actions.push(['flying', 'Learn to fly']);
@@ -308,7 +310,7 @@ export default {
     el.innerHTML = `
       <div class="card">
         <h3>Money</h3>
-        ${kv([['Cash', fmtMoney(f.cash, c)], ['Debts', fmtMoney(debt, c)]])}
+        ${kv([['Cash', fmtMoney(f.cash, c)], ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
         <div class="kv"><span>Net worth</span><span><strong>${fmtMoney(netWorth(store.state), c)}</strong></span></div>
         ${kv([['Where you live', living], ['Lifetime earnings', fmtMoney(f.lifetimeEarned, c)], ['Lifetime tax paid', fmtMoney(f.lifetimeTaxPaid, c)],
     [`Income tax (${c.name})`, `${Math.round(c.incomeTax * 100)}%`], ['Property tax', propertyTaxLabel(c)],
@@ -325,7 +327,7 @@ export default {
     el.onclick = (e) => {
       const go = e.target.closest('[data-go]')?.dataset.go;
       if (go) {
-        return { property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
+        return { currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
           borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => report(api, cars.takeDrivingTest()), flying: () => report(api, cars.learnToFly()) }[go]();
       }
       const repay = e.target.closest('[data-repay]')?.dataset.repay;
