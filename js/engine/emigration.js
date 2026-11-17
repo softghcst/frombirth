@@ -16,7 +16,7 @@ import { sellVehicle, vehicles } from './vehicles.js';
 import { market, priceOf } from './market.js';
 import { EMIGRATION } from '../data/activities.js';
 import { mayLeave } from './living.js';
-import { routes, bestRoute, spouseAnswer } from './immigration.js';
+import { routes, bestRoute, spouseAnswer, settleFamily } from './immigration.js';
 
 export { routes };
 
@@ -111,8 +111,9 @@ export function convertMoney(rate) {
     a.purchasePrice = x(a.purchasePrice);
     if (a.costBasis != null) a.costBasis = x(a.costBasis);
     if (a.kind !== 'security') a.value = x(a.value);
-    if (a.mortgage) { a.mortgage.principal = x(a.mortgage.principal); a.mortgage.payment = x(a.mortgage.payment); }
-    if (a.tenant) a.tenant.rent = x(a.tenant.rent);
+    // A mortgage and a tenancy are in the money they were agreed in (they are given a currency before the move).
+    if (a.mortgage && !a.mortgage.code) { a.mortgage.principal = x(a.mortgage.principal); a.mortgage.payment = x(a.mortgage.payment); }
+    if (a.tenant && !a.tenant.code) a.tenant.rent = x(a.tenant.rent);
   }
   for (const n of Object.values(store.state.npcs)) {
     if (n.savings != null) n.savings = x(n.savings);
@@ -202,6 +203,7 @@ export function emigrate(countryId, opts = {}) {
   }
 
   // Money follows, at today's rate, except whatever the player chose to leave in the old currency.
+  for (const a of p.assets) if (a.kind === 'property') { if (a.mortgage) a.mortgage.code ??= from.currency.code; if (a.tenant) a.tenant.code ??= from.currency.code; }
   const leftBehind = setAside(opts.keep, from.currency.code);
   convertMoney(rate(from.currency.code, to.currency.code));
   absorb(to.currency.code);
@@ -212,6 +214,7 @@ export function emigrate(countryId, opts = {}) {
   p.city = opts.city && to.cities.includes(opts.city) ? opts.city : rng.pick(to.cities);
   settle(to.id, p.city, route?.status === 'citizen' ? 'permanent_resident' : route?.status ?? 'permanent_resident');
   if (p.residency && route) { p.residency.route = route.id; if (route.years) p.residency.until = store.state.year + route.years; }
+  settleFamily(to.id, [...coming]);
   p.homeId = null;
   p.flags.livesWithParents = !!opts.family;
   p.flags.emigratedAge = p.age;

@@ -3,7 +3,7 @@
 import { housingK } from './cities.js';
 import { careCost } from './couple.js';
 import { runPayroll } from './worklife.js';
-import { foreignWorth } from './currency.js';
+import { foreignWorth, atHome } from './currency.js';
 import { rentFactor } from './policy.js';
 import { taxBreakdown } from './systems.js';
 import { store, player, country, npcsByRole, log } from '../state.js';
@@ -34,7 +34,7 @@ export function lifestyleCost(gross, c = country()) {
 export function netWorth(state) {
   const p = state.player;
   const assets = p.assets.reduce(
-    (sum, a) => sum + a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0), 0);
+    (sum, a) => sum + a.value * (a.units ?? 1) - (a.mortgage ? (state === store.state ? atHome(a.mortgage.principal, a.mortgage.code) : a.mortgage.principal) : 0), 0);
   const debt = p.finance.loans.reduce((sum, l) => sum + l.principal, 0);
   return Math.round(p.finance.cash + (state === store.state ? foreignWorth(p) : 0) + assets - debt);
 }

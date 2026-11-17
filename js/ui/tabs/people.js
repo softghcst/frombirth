@@ -1,5 +1,6 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
+import { familyStatus } from '../../engine/immigration.js';
 import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
 import * as rel from '../../engine/relationships.js';
@@ -218,7 +219,7 @@ export function openNpc(npc, api) {
     : [['Relationship', m.relationship], ['Money', m.money], ['Intellect', m.intellect],
       ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy]]
       .map(([n, v]) => meterHtml(n, v, true)).join('');
-  const detail = [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : '', npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
+  const detail = [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : familyStatus(npc).toLowerCase(), npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
     .filter(Boolean).map((x) => ` · ${esc(x)}`).join('');
   const owns = (npc.holdings ?? []).length ? `<p class="muted" style="margin-top:8px">Owns: ${esc(npc.holdings.join(', '))}.</p>` : '';
   const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
