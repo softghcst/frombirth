@@ -612,3 +612,5 @@ button.dl-card { cursor: pointer; }
 .era-note details summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
 .era-list { margin: 4px 0 0 18px; display: grid; gap: 3px; }
 .gl-era { font-size: 0.85rem; margin: 4px 0 0; }
+.gl-mark:focus-visible circle { stroke: var(--ink); stroke-width: 1.2; }
+.gl-mark:focus { outline: none; }

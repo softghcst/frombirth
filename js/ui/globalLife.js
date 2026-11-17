@@ -222,7 +222,7 @@ export function openExplore(api, start = {}) {
       const d = docs.documentsView();
       const p = player();
       const paper = cit.papers(p);
-      const nat = paper.naturalization;
+      const nat = paper.naturalisation;
       const tab = ui.tab ?? 'citizenship';
       const tabs = [['citizenship', 'Citizenship'], ['passports', 'Passports'], ['visas', 'Visas'], ['residence', 'Residence'], ['applications', 'Applications'], ['history', 'Immigration history']];
       let body = '';
@@ -457,7 +457,7 @@ export function openExplore(api, start = {}) {
       return seg(a, { x: edge === W ? W : 0, y }) + seg({ x: edge === W ? 0 : W, y }, b);
     }).join('');
     const marks = pts.map((m) => `<g class="gl-mark ${ui.marker === m.key ? 'on' : ''} ${m.approx ? 'approx' : ''}" data-marker="${esc(m.key)}" tabindex="0" role="button" aria-label="${esc(m.name)}"><circle cx="${m.x}" cy="${m.y}" r="${Math.min(4.5, 2.2 + m.items.length * 0.3) * k}" stroke-width="${0.7 * k}"/><title>${esc(m.name)}: ${m.items.length}</title></g>`).join('');
-    return `<div class="gl-mapwrap"><svg class="gl-map" viewBox="${vb.join(' ')}" role="img" aria-label="Map of places in the family's history"><rect x="0" y="0" width="${W}" height="${H}" class="gl-sea"/><g class="gl-grid">${grid.join('')}</g>${context}${lines}${marks}</svg>
+    return `<div class="gl-mapwrap"><svg class="gl-map" viewBox="${vb.join(' ')}" role="group" aria-label="Map of places in the family's history. The same places are listed in the timeline below."><rect x="0" y="0" width="${W}" height="${H}" class="gl-sea"/><g class="gl-grid">${grid.join('')}</g>${context}${lines}${marks}</svg>
       <div class="btn-row" style="margin-top:6px">${btn(ui.zoom ? 'Whole world' : 'Fit to our places', 'data-zoom', 'small')}</div></div>
       <div class="gl-legend muted">${pts.length ? `${pts.length} ${pts.length === 1 ? 'place' : 'places'}. Tap one to see what happened there.` : 'No places match.'}</div>`;
   }
@@ -515,6 +515,11 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-gen]'))) { ui.generation = x.dataset.gen === '' ? null : Number(x.dataset.gen); ui.person = null; ui.marker = null; return render(modal.el.scrollTop); }
       if ((x = t('[data-kind]'))) { const all = ['born', 'lived', 'visited', 'moved']; const cur = ui.kinds?.length ? ui.kinds : all; const k = x.dataset.kind; ui.kinds = cur.includes(k) ? cur.filter((y) => y !== k) : [...cur, k]; if (!ui.kinds.length || ui.kinds.length === all.length) ui.kinds = []; ui.marker = null; return render(modal.el.scrollTop); }
       return undefined;
+    };
+    // Markers on the map work from the keyboard too: Enter or Space, like a button.
+    root.onkeydown = (e) => {
+      const m = e.target.closest?.('[data-marker]');
+      if (m && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ui.marker = ui.marker === m.dataset.marker ? null : m.dataset.marker; render(modal.el.scrollTop); }
     };
     root.onchange = (e) => {
       const el = e.target;

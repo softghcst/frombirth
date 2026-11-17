@@ -55,7 +55,15 @@ check(/aria-labelledby="panel-title"/.test(shell), 'the open panel is a named re
 check(/keepFocus/.test(shell), 'focus returns to the age-up button after a year');
 section('landmarks: one main per screen, a labeled navigation, a keyboard-reachable journal');
 
-// 5. Motion: animations respect the reduced-motion setting.
+// 5. Explore the World: the map is a labeled group with a text alternative, and its markers work from the keyboard.
+const hub = read('js/ui/globalLife.js');
+check(/class="gl-map"[^>]*role="group" aria-label="[^"]+"/.test(hub), 'the family map is a labeled group');
+check(/role="button" aria-label=/.test(hub) && /tabindex="0"/.test(hub), 'map markers are named buttons in the tab order');
+check(/onkeydown[\s\S]{0,200}data-marker[\s\S]{0,120}'Enter'/.test(hub), 'map markers open with Enter or Space');
+check(/openModal\(/.test(hub), 'the hub is a dialog, named and focused like every other');
+section('Explore the World: a labeled map, keyboard markers, the shared dialog');
+
+// 6. Motion: animations respect the reduced-motion setting.
 const layout = read('css/layout.css') + read('css/components.css');
 check(/prefers-reduced-motion: reduce/.test(layout), 'animations ignore the reduced-motion setting');
 section('motion: reduced-motion is respected');
