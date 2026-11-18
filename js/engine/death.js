@@ -18,7 +18,8 @@ import { roleLabel } from './relationships.js';
 import { heirs } from './legacy.js';
 import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
+import { EPITAPHS } from '../data/epitaphs.js';
+import { estateTax, relationOf } from './inheritance.js';
 import { settleOnDeath as settleAnimals } from './animals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -224,8 +225,16 @@ export function estatePlan() {
   const away = {};
   for (const a of kept) if (a.kind === 'property' && a.countryId && a.countryId !== c.id && COUNTRIES[a.countryId]) away[a.countryId] = (away[a.countryId] ?? 0) + Math.max(0, equity(a));
   const abroad = Object.values(away).reduce((s, v) => s + v, 0);
-  const due = [{ countryId: c.id, rate: c.estateTax, amount: Math.round(Math.max(0, gross - abroad - localMoney(ESTATE_ALLOWANCE, c)) * c.estateTax) },
-    ...Object.entries(away).map(([id, v]) => ({ countryId: id, rate: COUNTRIES[id].estateTax, amount: Math.round(v * COUNTRIES[id].estateTax) }))].filter((d) => d.amount > 0);
+  // Who inherits decides the tax where it is charged by heir (data/inheritance.js): a spouse, children, or others.
+  const kids = living('child');
+  const takers = (will.mode === 'charity' ? kids.map((k) => [k, reservedShare() / kids.length]) : willHeirs())
+    .map(([n, share]) => ({ relation: relationOf(n.role), share }));
+  // Property abroad is valued in this country's money here; each country's scale is applied in its own.
+  const there = (id, v) => { const k = COUNTRIES[id]; const own = v * (k.currency.scale / c.currency.scale); return Math.round(estateTax(own, k, takers) * (c.currency.scale / k.currency.scale)); };
+  const due = [{ countryId: c.id, amount: estateTax(Math.max(0, gross - abroad), c, takers) },
+    ...Object.entries(away).map(([id, v]) => ({ countryId: id, amount: there(id, v) }))]
+    .map((d) => ({ ...d, rate: d.amount && (d.countryId === c.id ? gross - abroad : away[d.countryId]) > 0 ? d.amount / (d.countryId === c.id ? gross - abroad : away[d.countryId]) : 0 }))
+    .filter((d) => d.amount > 0);
   const owed = due.reduce((s, d) => s + d.amount, 0);
   plan.tax = Math.max(0, Math.min(liquid, owed));
   // Paid from cash and investments only; if that does not cover it, each country takes its share of what there is.
