@@ -117,7 +117,8 @@ export const TWEAK_STEP = { size: 0.09, gap: 4, height: 5 };
 const EYE_APART = 3;
 
 // Younger faces: features a little smaller for the size of the head, and set a little lower.
-const STAGE_FEATURES = { baby: { k: 0.74, drop: 0.05, mouth: 0.8 }, toddler: { k: 0.82, drop: 0.04, mouth: 0.86 }, kid: { k: 0.94, drop: 0.02 } };
+// k: how big the features are; eyes: how much bigger again the eyes are (a little one's eyes are big for the face).
+const STAGE_FEATURES = { baby: { k: 0.74, drop: 0.05, mouth: 0.8, eyes: 1.4 }, toddler: { k: 0.82, drop: 0.04, mouth: 0.86, eyes: 1.22 }, kid: { k: 0.94, drop: 0.02 } };
 const n1 = (v) => Math.round(v * 100) / 100;
 
 /**
@@ -140,7 +141,8 @@ export function fitTransforms(headId, stage, tweaks = {}) {
   const s = Math.sqrt(wr * hr) * young.k;
   // Eyes and brows sit side by side, so the face's width counts for more than its height: on a long, narrow face
   // they are kept from crowding its sides.
-  const eyeBase = wr ** 0.75 * hr ** 0.25 * young.k;
+  const eyeBase = wr ** 0.75 * hr ** 0.25 * young.k * (young.eyes ?? 1);
+  const browBase = wr ** 0.75 * hr ** 0.25 * young.k * Math.sqrt(young.eyes ?? 1); // brows grow a little with the eyes
   const at = (ay) => fit.top + (ay - T.face.top) * hr + young.drop * faceH;
   const feature = (ay, scale = s) => move(256, ay, fit.cx, at(ay), scale);
   // A person's own proportions: each step is a small, fixed change (see TWEAKS).
@@ -154,8 +156,8 @@ export function fitTransforms(headId, stage, tweaks = {}) {
   const crown = move(256, T.face.top, fit.cx, fit.top, wr);
   return {
     eyesL: eyeAt(T.anchor.eyes, eyeS, -1), eyesR: eyeAt(T.anchor.eyes, eyeS, 1),
-    browsL: eyeAt(T.anchor.eyebrows, eyeBase, -1), browsR: eyeAt(T.anchor.eyebrows, eyeBase, 1),
-    eyes: feature(T.anchor.eyes, eyeBase), eyebrows: feature(T.anchor.eyebrows, eyeBase),
+    browsL: eyeAt(T.anchor.eyebrows, browBase, -1), browsR: eyeAt(T.anchor.eyebrows, browBase, 1),
+    eyes: feature(T.anchor.eyes, eyeBase), eyebrows: feature(T.anchor.eyebrows, browBase),
     nose: feature(T.anchor.nose, s * (1 + step('noseSize') * TWEAK_STEP.size)), lips: feature(T.anchor.lips, s * (young.mouth ?? 1) * (1 + step('lipSize') * TWEAK_STEP.size)),
     makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes, eyeBase),
     glasses: feature(T.anchor.eyes, wr * young.k), facialHair: feature(T.anchor.lips, wr),
