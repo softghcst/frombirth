@@ -207,6 +207,8 @@ check(bank.goalList()[0].status === 'completed' && goalsDone() === 1, 'the goal 
 bank.checkGoals(); bank.withdraw(acct.id, 500);
 check(bank.goalList()[0].status === 'completed' && goalsDone() === 1, 'a goal once met stays met, and is recorded once');
 // 14-18. another year; balances, history and net worth.
+// Enough cash for a costly year, so the bills never have to empty the bank account this check counts.
+p.finance.cash += 200000; book({ cat: 'giftIn', desc: 'For the test' });
 const cashWas = p.finance.cash; const txWas = txs().length;
 advanceYear();
 check(txs().length > txWas && p.finance.cash !== cashWas, 'a year of income and bills moved the money');

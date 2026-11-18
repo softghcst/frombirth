@@ -21,7 +21,9 @@ const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const life = (id, age = 25) => { do { store.state = createLife({ countryId: id }); } while (store.state.player.royal); const p = store.state.player; p.age = age; p.birthYear = store.state.year; store.state.year += age; p.flags.livesWithParents = false; p.education.enrolled = false; return p; };
-const year = () => { advanceYear(); store.state.pendingEvents = []; const p = store.state.player; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90; };
+// The world only turns while the player lives (advanceYear returns for the dead): a death on the road or at work would
+// freeze it for the rest of a long run, so the test life is brought back.
+const year = () => { if (!store.state.player.alive) { store.state.player.alive = true; store.state.over = false; } advanceYear(); store.state.pendingEvents = []; const p = store.state.player; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90; };
 
 // 1. Tables.
 for (const [from, o] of Object.entries(TURN)) { check(!!PHASES[from], `unknown phase ${from}`); for (const [to, ch] of Object.entries(o)) check(!!PHASES[to] && ch > 0 && ch < 1, `bad turn ${from}→${to}`); }
