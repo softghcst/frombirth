@@ -1786,7 +1786,8 @@ function appeal(g, who, y) {
   else {
     const fi = npc(who)?.flags.idol;
     if (!fi) return 20;
-    fi.appeal ??= Math.round(clamp(35 + (fi.sk.camera + fi.sk.stage) / 6 + rng.around(0, 10), 25, 85));
+    // Fans' favorites are not evenly spread: in most groups one or two members are far more wanted than the rest.
+    fi.appeal ??= Math.round(clamp(30 + (fi.sk.camera + fi.sk.stage) / 6 + rng.around(0, 20), 15, 95));
     a = fi.appeal + (fi.pop ?? 0) * 0.5;
   }
   // An ending fairy that year, a solo release, a hiatus.
@@ -1804,16 +1805,17 @@ export function cardValues(g, y = year()) {
   k.cards ??= {};
   const c = (k.cards[g.id] ??= { year: null, values: {}, history: [] });
   if (c.year === y) return c.values;
-  const scale = clamp(Math.log10(g.fandom.size + 10) - 3, 0.3, 3);
+  // A bigger fandom means more buyers but also more cards in circulation: prices rise with it, slowly.
+  const scale = 5.2 * clamp(Math.log10(g.fandom.size + 10) - 3, 0.3, 3.6) ** 1.1;
   const now = current(g, y).map((m) => m.who);
   const former = g.members.filter((m) => m.to != null && m.to < y).map((m) => m.who);
   const ap = Object.fromEntries([...now, ...former].map((w) => [w, appeal(g, w, y)]));
   const mean = now.reduce((t, w) => t + ap[w], 0) / Math.max(1, now.length);
   const values = {};
   for (const w of Object.keys(ap)) {
-    const share = ap[w] / Math.max(1, mean);
+    const share = clamp(ap[w] / Math.max(1, mean), 0.3, 2.2);
     const old = former.includes(w) ? (g.status === 'disbanded' ? 0.9 : 0.6) : 1; // a former member's cards: fewer buyers, some nostalgia
-    values[w] = Math.max(1, Math.round(2 * scale * share ** 1.5 * old * rng.around(1, 0.1) * 10) / 10);
+    values[w] = Math.max(1, Math.round(scale * share ** 3 * old * rng.around(1, 0.1) * 10) / 10); // demand bunches on the favorites
   }
   if (c.year != null) { c.history.push({ year: c.year, values: c.values }); if (c.history.length > 12) c.history.shift(); }
   c.year = y; c.values = values;
@@ -1885,9 +1887,10 @@ export function myCard(g = myGroup()) {
 export const ALBUM_PRICE = 18; // base units
 export const ALBUMS_PER_YEAR = 30;
 export const TRADES_PER_YEAR = 8;
+export const SALES_PER_YEAR = 30;
 export function fanOf(p = player()) {
   const f = p.fan;
-  if (f && f.acts?.age !== p.age) f.acts = { age: p.age, albums: 0, trades: 0 };
+  if (f && f.acts?.age !== p.age) f.acts = { age: p.age, albums: 0, trades: 0, sales: 0 };
   return f ?? null;
 }
 const local = (v, p = player()) => Math.round(localCost(v, COUNTRIES[p.countryId]));
@@ -2021,7 +2024,10 @@ export function sellCard(id) {
   const f = fanOf(p);
   if (!f?.cards[id]) return result(false, 'You do not have that card.', 'neutral');
   const c = cardParts(id);
-  const price = Math.max(1, local(cardValue(id) * rng.around(0.85, 0.1), p));
+  if ((f.acts.sales ?? 0) >= SALES_PER_YEAR) return result(false, `${SALES_PER_YEAR} sales a year: buyers for the rest will wait.`, 'neutral');
+  f.acts.sales = (f.acts.sales ?? 0) + 1;
+  // Postage, fees and haggling: a seller gets a little under the going price.
+  const price = Math.max(1, local(cardValue(id) * rng.around(0.8, 0.1), p));
   take(id);
   earn(price, `Sold a photocard: ${full(c.who)}`, p);
   if (c.rare) flog(`Sold a rare ${full(c.who)} card.`);
