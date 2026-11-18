@@ -178,7 +178,7 @@ scenario('F/G. recruiting interest from an eligible university, and a scholarshi
   edu.enroll('university', 'business', 'self', {}, { id: inst.id, name: inst.name, aid: help });
   const full = edu.currentTuition();
   check(p.education.aid >= offer.fraction && Math.round(full * (1 - p.education.aid)) < full, 'G: the tuition charged is the tuition less the scholarship');
-  year({ agent: 'no', contract: 'no', turnPro: 'no', academy: 'no' });
+  year({ agent: 'no', contract: 'no', turnPro: 'no', academy: 'no', portal: 'stay', redshirt: 'no' });
   const e = sp.entryOf('soccer');
   check(sp.orgOf(e.orgId)?.kind === 'college' && sp.orgOf(e.orgId).uniId === inst.id, 'G: the player is on that university\'s team');
   const before = p.education.aid;

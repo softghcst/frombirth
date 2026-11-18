@@ -130,13 +130,14 @@ export const COLLEGE_ANSWERS = {
     const u = catalog(p.countryId).find((x) => x.id === choice);
     if (!o || !u || !e?.college) return { ...result(false, 'That program has moved on.', 'neutral'), close: true };
     const from = sp.orgOf(e.college.orgId, state)?.name;
+    // Off the old team first (that ends the old scholarship), then onto the new program's.
+    sp.internals.leaveOrg(e, state, `transferred to ${u.name}`);
     // A transfer keeps the year of study and the credits; the scholarship is the new program's.
     const ed = p.education;
     ed.schoolId = u.id; ed.schoolName = u.name; ed.tuitionMult = u.tuitionMult ?? ed.tuitionMult;
     ed.aidParts = [...(ed.aidParts ?? []).filter((x) => x.kind !== 'athletic'), ...(o.fraction ? [{ kind: 'athletic', fraction: o.fraction }] : [])];
     ed.aid = Math.min(1, ed.aidParts.reduce((s, x) => s + x.fraction, 0));
     p.flags.sportOffers = (p.flags.sportOffers ?? []).filter((x) => x.sportId !== d.sportId).concat([{ instId: u.id, name: u.name, fraction: o.fraction, sportId: d.sportId, accepted: true, division: o.division }]);
-    sp.internals.leaveOrg(e, state, `transferred to ${u.name}`);
     e.college.transfers.push({ year: state.year, from, to: u.name });
     const text = `You transferred from ${from} to ${u.name} (${DIVISIONS[o.division].name}).`;
     log(text, 'system', 'good');
