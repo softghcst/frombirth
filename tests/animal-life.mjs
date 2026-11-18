@@ -82,7 +82,7 @@ const trainer = S().npcs[life.club().met?.[0]];
 check(r.ok && cash - p.finance.cash === offers.find((x) => x.id === 'puppy').price && ['name', 'sit', 'come'].every((k) => a.training[k]?.progress > 0) && trainer, 'a year of puppy class moves several skills on at once, is paid once, and the trainer is someone the player now knows');
 check(!life.enrol(a.id, 'puppy').ok && cash - p.finance.cash === offers.find((x) => x.id === 'puppy').price, 'one year of a course at a time');
 for (let i = 0; i < 4 && !['name', 'sit', 'come'].every((k) => a.training[k].progress >= 100); i++) { year(); life.enrol(a.id, 'puppy'); }
-check(['name', 'sit', 'come'].every((k) => a.training[k].progress >= 100) && lastOf('trained', a.id), 'finishing a course is a milestone');
+check(['name', 'sit', 'come'].every((k) => a.training[k].progress >= 100) && lastOf('trained', a.id), `finishing a course is a milestone (${['name', 'sit', 'come'].map((k) => `${k} ${a.training[k].progress}`).join(', ')}; alive ${a.alive !== false}; cash ${Math.round(p.finance.cash)}; can enrol: ${life.enrol(a.id, 'puppy').text})`);
 for (let i = 0; i < 6 && !(a.training.come.progress >= 100 && a.training.stay?.progress >= 100); i++) { year(); life.enrol(a.id, 'obedience'); }
 year(); S().npcs[a.id].age = 3; r = life.enrol(a.id, 'agility');
 check(r.ok && a.training.agility?.progress > 0 && zoo.trainingOf(a).some((s) => s.id === 'agility' && s.classOnly) && !zoo.train(a.id, 'agility').ok, 'agility is learned in a class, not at home, and shows among what the dog is learning');
