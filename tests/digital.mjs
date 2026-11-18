@@ -591,7 +591,16 @@ section('Creator economy');
   const post = content.publish({ accountId: ch.id, format: 'short_video', topic: 'music', source: { type: 'project', key: proj.id, text: proj.title } }).post;
   post.quality = 0.9; post.metrics.views = 5000;
   let lic = null;
-  for (let i = 0; i < 25 && !lic; i++) { grow(1); lic = core.world().offers.find((o) => o.kind === 'license' && o.status === 'open'); }
+  // The offer is a matter of luck each year; what it needs is kept true while it is awaited (over the years a channel
+  // can be suspended, or a post taken down, and that is not what this checks).
+  for (let i = 0; i < 40 && !lic; i++) {
+    ch.status = 'active';
+    core.world().posts[post.id] = post;
+    if (!ch.postIds.includes(post.id)) ch.postIds.push(post.id);
+    Object.assign(post, { removed: false, audience: 'public', quality: 0.9 }); post.metrics.views = Math.max(post.metrics.views, 5000);
+    grow(1);
+    lic = core.world().offers.find((o) => o.kind === 'license' && o.status === 'open');
+  }
   check(lic, `a good, well-seen piece draws a licensing offer (${JSON.stringify({ removed: post.removed, audience: post.audience, quality: post.quality, views: post.metrics?.views, listed: ch.postIds.includes(post.id), age: p.age, alive: p.alive, account: { status: ch.status, closed: ch.closed, banned: ch.banned, suspended: ch.suspended, monetized: ch.creator?.monetized }, offers: core.world().offers.filter((o) => o.kind === 'license').map((o) => o.status) })})`);
   if (lic) { creator.answerLicense(lic.id, true); creator.answerLicense(lic.id, true); check(creator.ledgerOf().filter((x) => x.ref === `license:${lic.id}`).length === 1, 'licensing pays once'); }
   // Portfolio
