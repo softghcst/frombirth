@@ -80,26 +80,90 @@ export function hairFit(hairId, headId) {
   const hair = PART_BY_ID[hairId]?.edge;
   const head = PART_BY_ID[headId];
   let out = null;
-  // A baby's hair is a tuft set on top of the head, with no opening for the face to fit: it is placed, and made
-  // bigger to cover a little one's broad, round crown (BABY_HAIR).
+  // A baby's hair is set on the head, with no opening for the face to fit: its own outline is laid on the head's (fitTuft).
   const tuft = PART_BY_ID[hairId]?.tags?.age === 'baby';
-  if (head?.fit) out = hair && head.edge && !tuft ? solve(hair, head.edge, head.fit, LIMITS, frameFor(headId).y) : plain(head.fit, tuft ? BABY_HAIR[headId] : null);
+  if (head?.fit) out = tuft && hair?.XL && head.edge ? fitTuft(hair, head.edge, head.fit, YOUNG_DROP[headId] ?? 0) : hair && head.edge && !tuft ? solve(hair, head.edge, head.fit, LIMITS, frameFor(headId).y) : plain(head.fit);
   cache.set(key, out);
   return out;
 }
 
+const plain = (fit) => ({ sx: fit.w / T.face.w, sy: fit.w / T.face.w, tx: fit.cx, ty: fit.top, squash: 1, line: fit.top });
+
+/** How far down the face a little one's features sit (STAGE_FEATURES.drop in CharacterAvatar.js), for finding their brows. */
+const YOUNG_DROP = { head_00_baby: 0.05, head_00_toddler: 0.04 };
+/** What fitTuft aims for, in frame units: hair laps this far outside the head, ends this far below the eye line at most, and its fringe stays this far above the brows. */
+export const TUFT = { lap: 2, eye: 6, fringe: 16 };
+
 /**
- * Baby hair on the little ones' heads. A baby's head is far wider than a grown-up's but only a little taller, so the
- * hair follows the head's width across and its height down (scaled by width both ways, it hung past the eyes), sitting
- * on the top of the head; and it is a little wider again, to cover the broad round crown: BABY_HAIR[head] is that.
+ * Sets a baby's hairstyle on a head. The styles are drawn to one width whatever they are (a cap of hair, or a small
+ * cap between two wide puffs), on a head shaped unlike the game's, so no one scale suits them all: each is laid
+ * against this head's outline instead. Row by row down the style, its silhouette should reach the edge of the head
+ * (no strip of scalp between hair and outline, at the crown or the temples) and lap just over it; what stands above
+ * the head (a curl, a fountain, puffs) is free. The hair ends by the brows and its fringe stays clear of them, and it
+ * keeps its drawn proportions as far as that allows. A pure function of the two measurements, like solve().
  */
-export const BABY_HAIR = { head_00_baby: 1.08, head_00_toddler: 1.06 };
-const plain = (fit, wider) => {
+function fitTuft(hair, head, fit, drop) {
+  const faceH = fit.chin - fit.top;
+  const hr = faceH / (T.face.chin - T.face.top);
+  const browY = fit.top + (T.anchor.eyebrows - T.face.top) * hr + drop * faceH;
+  const eyeY = fit.top + (T.anchor.eyes - T.face.top) * hr + drop * faceH;
+  const rows = hair.XL.length;
+  const tall = hair.bottom - hair.X0;
+  const cap = hair.X0 + tall * 0.45;
   const w = fit.w / T.face.w;
-  if (wider == null) return { sx: w, sy: w, tx: fit.cx, ty: fit.top, squash: 1, line: fit.top };
-  const h = (fit.chin - fit.top) / (T.face.chin - T.face.top);
-  return { sx: w * wider, sy: h, tx: fit.cx, ty: fit.top, squash: 1, line: fit.top };
-};
+  const cost = (sx, sy, ty) => {
+    let c = 0;
+    let side = 0;
+    let n = 0;
+    for (let i = 0; i < rows; i++) {
+      const ay = hair.X0 + i * hair.XS;
+      const y = ty + sy * (ay - T.face.top);
+      if (y < fit.top || y > fit.earTop - 6) continue; // above the head, anything goes; below the ear's top, the ear is in the way
+      const weight = ay > hair.bottom - tall * 0.2 ? 0.15 : 1; // the ends of the hair taper in
+      const l = at(head.L, R0, RSTEP, y);
+      const r = at(head.R, R0, RSTEP, y);
+      for (const [reach, edge] of [[hair.XL[i], fit.cx - l], [hair.XR[i], r - fit.cx]]) {
+        if (reach == null) continue;
+        const gap = edge + TUFT.lap - sx * reach;
+        side += gap > 0 ? weight * gap * gap : 0.08 * Math.min(-gap, 14) ** 2;
+        n += weight;
+      }
+    }
+    // The average over the rows that lie on the head, so that a style is not squashed to have fewer of them.
+    if (n) c += 30 * side / n;
+    else c += 1e6; // nothing on the head at all
+    // The hair sits down on the scalp: wherever it has an under-edge over the head, that edge is on the skin, not above it.
+    for (let j = 0; j < CN; j++) {
+      if (hair.T?.[j] == null || hair.T[j] < cap) continue; // not what stands up above the head (a fountain's tips)
+      const x = fit.cx + sx * (C0 + j * CSTEP - 256);
+      const over = Math.abs(x - fit.cx);
+      // Over the brows and eyes, the hair's under-edge (a fringe, a lock) stays clear of the brows.
+      if (over < fit.w * 0.3) { const d = ty + sy * (hair.T[j] - T.face.top) - (browY - TUFT.fringe); if (d > 0) c += 6 * d * d; }
+      if (over > fit.w * 0.22) continue; // further out, puffs and pigtails hang free of the head
+      const skull = at(head.T, C0, CSTEP, x);
+      if (skull == null) continue;
+      const d = skull + OVERLAP - (ty + sy * (hair.T[j] - T.face.top));
+      if (d > 0) c += 2 * d * d;
+    }
+    // Side locks may come down beside the eyes, no further.
+    const low = ty + sy * (hair.bottom - T.face.top) - (eyeY + TUFT.eye);
+    if (low > 0) c += 3 * low * low;
+    // Keep the style's own proportions: a little wider than tall suits a little one's head, not flattened.
+    return c + 6000 * Math.log(sx / sy / 1.08) ** 2;
+  };
+  let best = null;
+  const search = (a0, a1, b0, b1, y0, y1, step, dy) => {
+    for (let sx = a0; sx <= a1 + 1e-9; sx += step) for (let sy = b0; sy <= b1 + 1e-9; sy += step) for (let ty = y0; ty <= y1; ty += dy) {
+      const c = cost(sx, sy, ty);
+      if (!best || c < best.c - 1e-9) best = { sx, sy, ty, c };
+    }
+  };
+  // Within reason: a style is never drawn more than about a quarter bigger or smaller than the head's own scale.
+  search(w * 0.95, w * 1.28, w * 0.8, w * 1.28, fit.top - 100, fit.top + 12, 0.03, 3);
+  search(Math.max(w * 0.95, best.sx - 0.03), Math.min(w * 1.28, best.sx + 0.03), Math.max(w * 0.8, best.sy - 0.03), Math.min(w * 1.28, best.sy + 0.03), best.ty - 3, best.ty + 3, 0.01, 1);
+  const r3 = (v) => Math.round(v * 1000) / 1000;
+  return { sx: r3(best.sx), sy: r3(best.sy), tx: fit.cx, ty: r3(best.ty), squash: 1, line: fit.top };
+}
 
 function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {
   const base = plain(fit);

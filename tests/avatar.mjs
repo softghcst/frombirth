@@ -12,7 +12,7 @@ import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManife
 import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
 import { dressFor, filesFor, ageStage, fitTransforms, deepness, characterAvatarSvg } from '../js/CharacterAvatar.js';
-import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS, BABY_HAIR } from '../js/avatar/hairFit.js';
+import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS } from '../js/avatar/hairFit.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
 import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
@@ -297,12 +297,28 @@ check(hairFit('hair_boy_updo_15_headband_puff', 'head_18_long_rect').squash < 1 
 // The two repaired files, and the stray marks, stay repaired.
 for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/avatars/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
 check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy_medium_03', 'head_00_kid').top <= 2, 'the arch styles show background over the forehead again');
-// A baby's tuft is not refitted like grown-up hair: it sits on top of the head, following the head's width across and
-// its height down (a little one's head is far wider than it is taller), a little wider again to cover the round crown.
+// A baby's hairstyle is laid against the outline of the little one's head (fitTuft): it sits down on the scalp
+// (not floating above it), reaches the edge of the head at the crown and temples, keeps clear of the brows, and
+// is not squashed or blown up.
 for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) {
-  const f = hairFit(h.id, head), fit = PART_BY_ID[head].fit;
-  const w = fit.w / AVATAR_TEMPLATE.face.w, tall = (fit.chin - fit.top) / (AVATAR_TEMPLATE.face.chin - AVATAR_TEMPLATE.face.top);
-  check(Math.abs(f.sx - w * BABY_HAIR[head]) < 1e-9 && Math.abs(f.sy - tall) < 1e-9 && f.ty === fit.top && BABY_HAIR[head] >= 1, `${h.id} on ${head}: a baby's hair does not follow the head`);
+  const f = hairFit(h.id, head), e = h.edge, H = PART_BY_ID[head], fit = H.fit;
+  const [r0, rs] = AVATAR_TEMPLATE.profile.rows, [c0, cs, cn] = AVATAR_TEMPLATE.profile.cols;
+  const edgeAt = (col, y) => { const k = Math.max(0, Math.min(col.length - 1, Math.round((y - r0) / rs))); return col[k]; };
+  const w = fit.w / AVATAR_TEMPLATE.face.w;
+  check(f.sx >= w * 0.94 && f.sx <= w * 1.29 && f.sy >= w * 0.79 && f.sy <= w * 1.29 && f.sx / f.sy < 1.45, `${h.id} on ${head}: a baby's hair is squashed or blown up (${f.sx} x ${f.sy})`);
+  // Over the middle of the head, the hair's under-edge is on the skin (a parting or a knot may sit higher: the lowest counts).
+  const under = Math.max(...e.T.filter((v, j) => v != null && Math.abs(f.sx * (c0 + j * cs - 256)) < fit.w * 0.22));
+  check(f.ty + f.sy * (under - AVATAR_TEMPLATE.face.top) >= fit.top + 3, `${h.id} on ${head}: a baby's hair floats above the head`);
+  // Down the upper part of the style, where it lies on the head, the strip of scalp left at either side is small on average.
+  let gap = 0, n = 0;
+  for (let i = 0; i < e.XL.length; i++) {
+    const ay = e.X0 + i * e.XS, y = f.ty + f.sy * (ay - AVATAR_TEMPLATE.face.top);
+    if (y < fit.top + 6 || y > fit.earTop - 6 || ay > e.bottom - (e.bottom - e.X0) * 0.2) continue;
+    gap += Math.max(0, fit.cx - edgeAt(H.edge.L, y) - f.sx * e.XL[i]) + Math.max(0, edgeAt(H.edge.R, y) - fit.cx - f.sx * e.XR[i]); n += 2;
+  }
+  const mean = n ? gap / n : 0;
+  const top = ['hair_baby_05_twin_puffs', 'hair_baby_07_mini_pigtails'].includes(h.id); // worn on top of the head: the sides are bare by design
+  check(n > 0 && mean < (top ? 30 : 9), `${h.id} on ${head}: a baby's hair leaves ${mean.toFixed(1)} of scalp at its sides on average`);
 }
 // The reference faces: hair that already sat well is left very nearly as drawn.
 const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_02', 'head_17_dimple_oval'] };
