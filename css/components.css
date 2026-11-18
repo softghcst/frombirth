@@ -53,6 +53,9 @@
 }
 .age-head::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .age-head small { font-family: var(--sans); font-weight: 400; font-size: 0.75rem; color: var(--muted); }
+/* A part of the year, when turns are shorter than a year (engine/turns.js). */
+.season-head { margin: 14px 0 6px; font: 600 0.78rem var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.season-head small { font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 6px; }
 .entry { padding: 3px 0 3px 12px; border-left: 2px solid transparent; margin: 2px 0; }
 .entry.event { margin-top: 10px; font-family: var(--serif); font-size: 1.02rem; }
 .entry.choice { color: var(--muted); font-style: italic; }
