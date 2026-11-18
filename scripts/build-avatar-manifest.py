@@ -957,8 +957,13 @@ TEETH = {
 
 
 # Eyes drawn without a pupil, given one so they match the rest: a black disc in the middle of each iris, about this
-# share of its width, clipped to the iris as drawn (so it never shows above a lowered lid) and under the highlights.
-PUPILS = {'eyes_19': 0.45, 'eyes_26': 0.45}
+# share of its width. 'plain' eyes have a round iris of their own: the pupil is clipped to it (so it never shows above
+# a lowered lid) and drawn under the highlights. 'shaded' eyes are drawn the other way about, a dark shape over the top
+# of the iris with the highlights cut out of it: the pupil is kept inside the eye's opening, and the highlights are
+# painted back over it.
+PUPILS = {'eyes_18': (0.45, 'plain'), 'eyes_19': (0.45, 'plain'), 'eyes_20': (0.45, 'plain'), 'eyes_25': (0.45, 'plain'),
+          'eyes_26': (0.45, 'plain'), 'eyes_8': (0.45, 'shaded'), 'eyes_9': (0.45, 'shaded'), 'eyes_10': (0.45, 'shaded'),
+          'eyes_14': (0.45, 'shaded'), 'eyes_16': (0.45, 'shaded')}
 
 
 def clip_convex(subject, clip):
@@ -990,34 +995,65 @@ def clip_convex(subject, clip):
 def add_pupils():
     """Gives the eyes in PUPILS a pupil. Once per file. -> the names changed"""
     done = []
-    for name, share in PUPILS.items():
+    side_of = lambda poly: 'L' if sum(x for x, _ in poly) / len(poly) < 256 else 'R'
+    for name, (share, kind) in PUPILS.items():
         path = os.path.join(ASSETS, 'eyes', name + '.svg')
         if not os.path.exists(path):
             continue
         text = open(path, encoding='utf-8').read()
         if 'data-pupils="1"' in text:
             continue
-        irises = list(re.finditer(r'<path style="fill:var\(--eye-color[^"]*"[^>]*?\sd="([^"]*)"[^>]*/>', text))
-        sides = {}
+        shapes = list(re.finditer(r'<path style="fill:([^";]*)[^"]*"[^>]*?\sd="([^"]*)"[^>]*/>', text))
+        iris_kind = lambda fill: fill.startswith('var(--eye-color') or (kind == 'shaded' and 'var(--eye-color' in fill)
+        irises = [m for m in shapes if iris_kind(m.group(1))]
+        if not irises:
+            continue
+        polys = {'L': [], 'R': []}
         for m in irises:
-            for poly in flatten(parse_path(m.group(1))):
-                side = 'L' if sum(x for x, _ in poly) / len(poly) < 256 else 'R'
-                if side not in sides or abs(poly_area(poly)) > abs(poly_area(sides[side])):
-                    sides[side] = poly
-        parts = []
-        for poly in sides.values():
-            xs = [x for x, _ in poly]
+            for poly in flatten(parse_path(m.group(2))):
+                polys[side_of(poly)].append(poly)
+        whites = {'L': [], 'R': []}
+        for m in shapes:
+            if m.group(1).startswith('var(--eye-white'):
+                for poly in flatten(parse_path(m.group(2))):
+                    whites[side_of(poly)].append(poly)
+        dark = [m for m in shapes if 'line-ink' in m.group(0)]  # the outline: its holes are the highlights, not the iris's texture
+        parts, shines = [], []
+        for side in ('L', 'R'):
+            if not polys[side]:
+                continue
+            biggest = max(polys[side], key=poly_area)
+            pts = [pt for poly in (polys[side] if kind == 'shaded' else [biggest]) for pt in poly]
+            xs = [x for x, _ in pts]
             r = (max(xs) - min(xs)) / 2
-            cx, cy = (max(xs) + min(xs)) / 2, max(y for _, y in poly) - r  # the iris is round: its lowest point is a radius below the centre
+            cx, cy = (max(xs) + min(xs)) / 2, max(y for _, y in pts) - r  # the iris is round: its lowest point is a radius below the centre
             disc = [(cx + share * r * math.cos(2 * math.pi * k / 48), cy + share * r * math.sin(2 * math.pi * k / 48)) for k in range(48)]
-            # The part of the iris (any shape) inside the disc (convex, wound the way clip_convex expects).
-            pupil = clip_convex(poly, disc)
+            if kind == 'plain':
+                # The part of the iris (any shape) inside the disc (convex, wound the way clip_convex expects).
+                pupil = clip_convex(biggest, disc)
+            else:
+                # The disc, kept within the box of the eye's opening (its whites and iris).
+                wpts = [pt for poly in whites[side] for pt in poly] + pts
+                x0, y0 = min(x for x, _ in wpts), min(y for _, y in wpts)
+                x1, y1 = max(x for x, _ in wpts), max(y for _, y in wpts)
+                pupil = clip_convex(disc, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+                # The highlights: small holes in the dark shapes, near the iris centre, that the pupil would cover.
+                for m in dark:
+                    for poly in flatten(parse_path(m.group(2))):
+                        a = poly_area(poly)
+                        mx, my = sum(x for x, _ in poly) / len(poly), sum(y for _, y in poly) / len(poly)
+                        if side_of(poly) == side and 20 < a < 0.6 * math.pi * r * r and math.hypot(mx - cx, my - cy) < r:
+                            shines.append(poly)
             if len(pupil) > 2:
-                parts.append('M' + 'L'.join(f'{fmt(x)} {fmt(y)}' for x, y in pupil) + 'Z')
+                parts.append(pupil)
         if not parts:
             continue
+        d = lambda ps: ''.join('M' + 'L'.join(f'{fmt(x)} {fmt(y)}' for x, y in q) + 'Z' for q in ps)
+        add = f'<path style="fill:#000000" d="{d(parts)}"/>'
+        if shines:
+            add += f'<path style="fill:var(--eye-white,#ffffff)" d="{d(shines)}"/>'
         last = irises[-1]
-        text = text[:last.end()] + f'<path style="fill:#000000" d="{"".join(parts)}"/>' + text[last.end():]
+        text = text[:last.end()] + add + text[last.end():]
         text = text.replace('data-pathways="1"', 'data-pathways="1" data-pupils="1"', 1)
         with open(path, 'w', encoding='utf-8') as out:
             out.write(text)

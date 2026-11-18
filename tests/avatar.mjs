@@ -135,6 +135,11 @@ check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inh
   const saved = cloneAppearance(mum);
   check(ensureStyled(saved, 'male').inherited.eyes === 'eyes_16', 'a saved face had its eyes changed');
 }
+// Every open eye has a black pupil (the closed ones, 7 and 24, have no iris to put one in).
+for (const e of AVATAR_MANIFEST.eyes) {
+  const art = readFileSync(new URL(`assets/avatars/${e.file}`, root), 'utf8');
+  if (/var\(--eye-color/.test(art)) check(/fill:#000000/.test(art), `${e.id} has no pupil`);
+}
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
 const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_16', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
   314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };
