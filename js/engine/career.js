@@ -28,6 +28,7 @@ import { tickFreelance } from './freelance.js';
 import { tickRecruiters } from './recruiters.js';
 import { tickOffers } from './hiring.js';
 import { checkAchievements } from './careerRecord.js';
+import { firstPay } from './finance.js';
 import { tickBusinesses } from './business.js';
 import { queueWorkScenes } from './workEvents.js';
 import { rightToLive } from './citizenship.js';
@@ -466,6 +467,7 @@ export function fire(reason = 'fired') {
     p.finance.cash += pay;
     p.finance.lifetimeEarned += pay;
     log(`You were given ${fmtMoney(pay, country())} in severance.`);
+    if (pay > 0) firstPay(); // pay for work done, even if the job ended before the year's pay came
     // Where the law provides it, a share of the old wage while looking for the next job.
     const rate = workLaw().unemployment;
     if (rate > 0) {

@@ -11,6 +11,7 @@ const { store } = await import('../js/state.js');
 const { rng } = await import('../js/rng.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
+const { fire: careerFire } = await import('../js/engine/career.js');
 const { COUNTRIES } = await import('../js/data/countries.js');
 const { CAREERS } = await import('../js/data/careers.js');
 const { book, bookAction, audit, yearTotals, ledgerOf, toMinor } = await import('../js/engine/ledger.js');
@@ -437,6 +438,16 @@ check(ach.moneySense() <= 100 && ach.moneySense() > sense0, 'money sense grows w
 const before1 = ach.moneySense(); ach.learn(5, 'same');
 check(ach.moneySense() - before1 < 1, 'the same lesson teaches less each time');
 section('achievements: from what happened, never from a balance alone; money sense within range');
+{
+  // A job that ends in a layoff before the year's pay comes still paid for the work done: the severance is a first wage.
+  p = life('us', { cash: 1000, job: false });
+  p.finance.lifetimeEarned = 0; delete p.flags.firstPay;
+  hire(office, 2, 60, 'Hired.');
+  careerFire('laid off');
+  const fp = ach.achievements().find((x) => x.id === 'first_pay');
+  check(p.flags.firstPay && p.flags.firstPayAge === p.age && fp.earned && fp.age === p.age, 'severance from a job that ended is noticed as a first wage');
+}
+section('a first wage: a layoff before the year\'s pay still counts');
 
 // ---------- 11. Scenes move real money ----------
 p = life('us', { cash: 800, age: 17, job: false });
@@ -781,7 +792,8 @@ section('new scenes: weddings, babies, careers, parents, university, grandparent
   // Early retirement, on what they have put by.
   const rich = person('sibling', 60, { savings: 0, salary: 60000 }); rich.life.fin = null; const r = nm.finOf(rich);
   r.bank = { bankId: 'meridian', name: 'Meridian Bank', bal: 5_000_000, rateBp: 100, opened: 2000 }; rich.life.yearsWorked = 35;
-  let gone = false; for (let i = 0; i < 6 && !gone; i++) gone = nm.tickNpcMoney(rich) === 'retired';
+  // Each year they may choose to (a 35% chance), so give it long enough that they surely have: 0.65^40 is about 3 in 100 million.
+  let gone = false; for (let i = 0; i < 40 && !gone; i++) gone = nm.tickNpcMoney(rich) === 'retired';
   check(gone && rich.life.retired && !rich.life.job && rich.life.pension > 0, 'someone with plenty put by may retire early, on a pension from their years of work');
   const poorer = person('sibling', 60, { savings: 0, salary: 60000 }); poorer.life.fin = null; nm.finOf(poorer);
   for (let i = 0; i < 5; i++) nm.tickNpcMoney(poorer);

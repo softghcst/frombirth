@@ -53,16 +53,18 @@ export function defaultStyle(inherited, gender) {
 /** A complete appearance for someone with no known parents. */
 /**
  * Some eyes are for women and girls only (WOMEN_EYES in curation.js), some for men and boys only (MEN_EYES).
- * A son who would inherit a women's shape gets its men's version, so he still takes after his mother. A face made
- * at random is drawn evenly from the shapes for its gender: women from all but the men's, everyone else from all
- * but the women's.
+ * A face made at random is drawn evenly from the shapes for its gender: women from all but the men's, everyone else
+ * from all but the women's. Inherited eyes: a son who would take a women's shape gets its men's version, so he still
+ * takes after his mother; a daughter who would take a men's shape keeps it half the time, and otherwise gets the
+ * nearest women's shape.
  */
-const forWomen = (id) => !MEN_EYES.includes(id);
+const forWomen = (id) => !MEN_EYES[id];
 const forOthers = (id) => !WOMEN_EYES[id];
 export const suitEyes = (inherited, gender, random = false) => {
   const fits = gender === 'female' ? forWomen : forOthers;
   if (random && !fits(inherited.eyes)) inherited.eyes = rng.pick(pool('eyes').filter((x) => fits(x.id))).id;
-  else if (gender !== 'female' && WOMEN_EYES[inherited.eyes]) inherited.eyes = WOMEN_EYES[inherited.eyes];
+  else if (!random && gender !== 'female' && WOMEN_EYES[inherited.eyes]) inherited.eyes = WOMEN_EYES[inherited.eyes];
+  else if (!random && gender === 'female' && MEN_EYES[inherited.eyes] && rng.chance(0.5)) inherited.eyes = MEN_EYES[inherited.eyes];
   return inherited;
 };
 

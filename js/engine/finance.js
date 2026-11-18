@@ -36,6 +36,19 @@ export function payCategory(source) {
 }
 const WORK = new Set(['salary', 'partTime', 'gigs']);
 
+/**
+ * Marks the first money the player earned by working: the year's pay from a job, or severance from one that
+ * ended before the year's pay came. Once in a life.
+ */
+export function firstPay() {
+  const p = player();
+  if (p.flags.firstPay) return;
+  p.flags.firstPay = true;
+  p.flags.firstPayAge = p.age;
+  milestone('Received a first paycheck.', 'money');
+  log('Your first pay. Money you earned yourself.', 'system', 'good');
+}
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 /**
  * The year's pay as twelve monthly payslips: what was earned, the tax and the
@@ -108,12 +121,7 @@ export function tickFinance() {
       split: [['tax', toMinor(tax, cur)], ...Object.entries(sources).filter(([k, v]) => k !== first && v > 0).map(([k, v]) => [k, -toMinor(v, cur)])] });
     const into = contribute(); // the player's own pension plan takes its share of the year's pay
     f.payslips = payslips({ year: store.state.year, cur, gross, tax, plan: into, employer: 0, sources });
-    if (pay.lines.some((l) => WORK.has(payCategory(l.source))) && !p.flags.firstPay) {
-      p.flags.firstPay = true;
-      p.flags.firstPayAge = p.age;
-      milestone('Received a first paycheck.', 'money');
-      log('Your first pay. Money you earned yourself.', 'system', 'good');
-    }
+    if (pay.lines.some((l) => WORK.has(payCategory(l.source)))) firstPay();
   }
 
   // With no income at all, the state covers what your savings cannot.

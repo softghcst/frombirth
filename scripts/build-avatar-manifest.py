@@ -956,6 +956,75 @@ TEETH = {
 }
 
 
+# Eyes drawn without a pupil, given one so they match the rest: a black disc in the middle of each iris, about this
+# share of its width, clipped to the iris as drawn (so it never shows above a lowered lid) and under the highlights.
+PUPILS = {'eyes_19': 0.45, 'eyes_26': 0.45}
+
+
+def clip_convex(subject, clip):
+    """Sutherland-Hodgman: the part of polygon `subject` inside convex polygon `clip` (counter-clockwise)."""
+    def inside(p, a, b):
+        return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]) >= 0
+    def cross(p, q, a, b):
+        x1, y1, x2, y2, x3, y3, x4, y4 = *p, *q, *a, *b
+        den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+        t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den
+        return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
+    out = list(subject)
+    for i in range(len(clip)):
+        a, b = clip[i], clip[(i + 1) % len(clip)]
+        src, out = out, []
+        for j in range(len(src)):
+            p, q = src[j], src[(j + 1) % len(src)]
+            if inside(q, a, b):
+                if not inside(p, a, b):
+                    out.append(cross(p, q, a, b))
+                out.append(q)
+            elif inside(p, a, b):
+                out.append(cross(p, q, a, b))
+        if not out:
+            break
+    return out
+
+
+def add_pupils():
+    """Gives the eyes in PUPILS a pupil. Once per file. -> the names changed"""
+    done = []
+    for name, share in PUPILS.items():
+        path = os.path.join(ASSETS, 'eyes', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-pupils="1"' in text:
+            continue
+        irises = list(re.finditer(r'<path style="fill:var\(--eye-color[^"]*"[^>]*?\sd="([^"]*)"[^>]*/>', text))
+        sides = {}
+        for m in irises:
+            for poly in flatten(parse_path(m.group(1))):
+                side = 'L' if sum(x for x, _ in poly) / len(poly) < 256 else 'R'
+                if side not in sides or abs(poly_area(poly)) > abs(poly_area(sides[side])):
+                    sides[side] = poly
+        parts = []
+        for poly in sides.values():
+            xs = [x for x, _ in poly]
+            r = (max(xs) - min(xs)) / 2
+            cx, cy = (max(xs) + min(xs)) / 2, max(y for _, y in poly) - r  # the iris is round: its lowest point is a radius below the centre
+            disc = [(cx + share * r * math.cos(2 * math.pi * k / 48), cy + share * r * math.sin(2 * math.pi * k / 48)) for k in range(48)]
+            # The part of the iris (any shape) inside the disc (convex, wound the way clip_convex expects).
+            pupil = clip_convex(poly, disc)
+            if len(pupil) > 2:
+                parts.append('M' + 'L'.join(f'{fmt(x)} {fmt(y)}' for x, y in pupil) + 'Z')
+        if not parts:
+            continue
+        last = irises[-1]
+        text = text[:last.end()] + f'<path style="fill:#000000" d="{"".join(parts)}"/>' + text[last.end():]
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-pupils="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        done.append(name)
+    return done
+
+
 def fill_teeth():
     """Applies TEETH to any listed file that has not had it. -> the names filled."""
     done = []
@@ -1336,6 +1405,8 @@ def main(argv):
     lined = weigh_lines() + weigh_lines('eyes', recolor=False) + weigh_lines('lips', recolor=False)
     if lined:
         print(f'made the lines of {len(lined)} part(s) adjustable')
+    for name in add_pupils():
+        print(f'gave {name} pupils')
     for name in fill_teeth():
         print(f'filled the teeth of {name}')
     repaired = refit_hair()

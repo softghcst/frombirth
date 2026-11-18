@@ -42,7 +42,7 @@ export const TEXTURES = ['straight', 'wavy', 'curly', 'coily'];
 export const RESTING = {
   // one family of eyes, so faces drawn at random look like they belong to the same world
   eyes: ['eyes_8', 'eyes_9', 'eyes_10', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_25', 'eyes_26',
-    'eyes_35', 'eyes_36', 'eyes_37', 'eyes_38', 'eyes_39', 'eyes_40', 'eyes_41'],
+    'eyes_27', 'eyes_28', 'eyes_29', 'eyes_30', 'eyes_31', 'eyes_32', 'eyes_35', 'eyes_36', 'eyes_37', 'eyes_38', 'eyes_39', 'eyes_40', 'eyes_41'],
   // neutral or pleasant mouths only
   lips: ['lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_14'],
   noses: ['nose_6', 'nose_7', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
@@ -58,8 +58,14 @@ export const RESTING = {
  * creator, and saved faces are never changed.
  */
 export const WOMEN_EYES = { eyes_8: 'eyes_27', eyes_10: 'eyes_28', eyes_16: 'eyes_29', eyes_18: 'eyes_30', eyes_20: 'eyes_31', eyes_25: 'eyes_32' };
-/** Masculine eyes, given at random only to men and boys (a woman made at random draws from the rest instead). */
-export const MEN_EYES = ['eyes_35', 'eyes_36', 'eyes_37', 'eyes_38', 'eyes_39', 'eyes_40', 'eyes_41'];
+/**
+ * Men's eyes, given at random only to men and boys (a woman made at random draws from the rest instead). Each names
+ * its nearest women's shape: a daughter who would inherit one keeps it half the time, and otherwise gets that one.
+ */
+export const MEN_EYES = {
+  eyes_27: 'eyes_8', eyes_28: 'eyes_10', eyes_29: 'eyes_16', eyes_30: 'eyes_18', eyes_31: 'eyes_20', eyes_32: 'eyes_25',
+  eyes_35: 'eyes_10', eyes_36: 'eyes_20', eyes_37: 'eyes_16', eyes_38: 'eyes_25', eyes_39: 'eyes_8', eyes_40: 'eyes_18', eyes_41: 'eyes_8',
+};
 /** The soft, thin brows every baby and toddler has, whatever they grow into. */
 export const BABY_BROWS = 'brows_8';
 /** Expressions the renderer can borrow for a mood. */

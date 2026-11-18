@@ -126,6 +126,12 @@ check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inh
   check(!sons.some((e) => e in CUR.WOMEN_EYES), 'a son was given one of the women\'s eyes');
   check(sons.filter((e) => e === 'eyes_29').length > 160 && daughters.filter((e) => e === 'eyes_16').length > 160,
     'sons should mostly take the nearest of the men\'s eyes to their mother\'s, and daughters her own');
+  // A daughter who would take her father's men's eyes keeps them about half the time, and otherwise gets the nearest women's shape.
+  const dad = randomAppearance(3, 'male'); dad.inherited.eyes = 'eyes_35';
+  const girls = Array.from({ length: 400 }, () => ensureStyled(inheritAppearance(dad, cloneAppearance(dad)), 'female').inherited.eyes);
+  const kept = girls.filter((e) => e === 'eyes_35').length, hers = girls.filter((e) => e === CUR.MEN_EYES.eyes_35).length;
+  check(kept > 130 && hers > 130 && kept + hers > 360, `daughters of a father with eyes_35: ${kept} kept them, ${hers} got ${CUR.MEN_EYES.eyes_35}`);
+  check(Object.entries(CUR.MEN_EYES).every(([m, w]) => CUR.RESTING.eyes.includes(m) && w in CUR.WOMEN_EYES), 'a men\'s eye names a women\'s version that is not one');
   const saved = cloneAppearance(mum);
   check(ensureStyled(saved, 'male').inherited.eyes === 'eyes_16', 'a saved face had its eyes changed');
 }
@@ -305,7 +311,7 @@ const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 
   'eyes_35', 'eyes_36', 'eyes_37', 'eyes_38', 'eyes_39', 'eyes_40', 'eyes_41', 'eyes_7', 'eyes_8', 'eyes_9'];
 check(AVATAR_MANIFEST.eyes.map((e) => e.id).join() === EYES.join(), 'the eye shapes in the manifest have changed');
 check(CATALOG.eyes.map((e) => e.id).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
-check(CUR.RESTING.eyes.join() === 'eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_25,eyes_26,eyes_35,eyes_36,eyes_37,eyes_38,eyes_39,eyes_40,eyes_41', 'the eyes given out at random have changed');
+check(CUR.RESTING.eyes.join() === 'eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_25,eyes_26,eyes_27,eyes_28,eyes_29,eyes_30,eyes_31,eyes_32,eyes_35,eyes_36,eyes_37,eyes_38,eyes_39,eyes_40,eyes_41', 'the eyes given out at random have changed');
 for (const [key, folder] of [['eyes', 'eyes'], ['lips', 'lips'], ['nose', 'noses']]) {
   for (const [gone, kept] of Object.entries(CUR.WITHDRAWN[key])) {
     check(!PART_BY_ID[gone] && !existsSync(new URL(`assets/avatars/${folder}/${gone}.svg`, root)), `${gone} is still in the game`);
@@ -330,7 +336,7 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   for (const gender of ['female', 'male']) {
     const seen = {};
     for (let i = 0; i < 4000; i++) { const e = randomAppearance(i % 12, gender).inherited.eyes; seen[e] = (seen[e] ?? 0) + 1; }
-    const want = CUR.RESTING.eyes.filter((e) => (gender === 'female' ? !CUR.MEN_EYES.includes(e) : !(e in CUR.WOMEN_EYES)));
+    const want = CUR.RESTING.eyes.filter((e) => (gender === 'female' ? !(e in CUR.MEN_EYES) : !(e in CUR.WOMEN_EYES)));
     check(Object.keys(seen).sort().join() === [...want].sort().join(), `random ${gender} faces draw on a different set of eyes`);
     check(Math.max(...Object.values(seen)) / Math.min(...Object.values(seen)) < 1.5, 'some eye shapes are now given out more often than others');
   }
