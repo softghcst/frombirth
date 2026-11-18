@@ -15,10 +15,11 @@
 // hours offered, and every accepted contract uses those hours.
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, uid } from '../util.js';
-import { player, country, log } from '../state.js';
+import { store, player, country, log } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { speaks, languagesOf } from './languages.js';
 import { SERVICES, SERVICE_BY_ID, RATES } from '../data/freelance.js';
+import { serviceExists } from '../data/eras.js';
 import { resolve } from './conditions.js';
 import { career as careerState, canFit, freelanceHours, weeklyLoad, workLaw } from './worklife.js';
 import { hereCity } from './cities.js';
@@ -32,6 +33,7 @@ const fl = () => careerState().freelance;
 export function serviceBlock(s) {
   const p = player();
   const c = careerState();
+  if (!serviceExists(s.id, store.state.year)) return `Nobody does this for a living in ${store.state.year}.`;
   if (p.age < Math.max(s.minAge, Math.min(workLaw().workAge, s.minAge + 2))) return `You need to be ${s.minAge}.`;
   const short = Object.entries(s.req).find(([path, min]) => (Number(resolve(path)) || 0) < min);
   if (short) return 'You are not good enough at it yet to charge for it.';

@@ -33,6 +33,7 @@
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, localCost, niceRound, uid } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
+import { businessExists } from '../data/eras.js';
 import { COUNTRIES } from '../data/countries.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { PROGRAMMES, TRADE_BY_ID } from '../data/schools.js';
@@ -84,6 +85,13 @@ export function profitTax(profit, countryId, lossCarry = 0) {
 }
 
 /** Money figures for a kind of business, in a place. */
+/** A celebrity brand sells on its owner's name, and on whether people like them. 1 is an ordinary business. */
+export function starPull(p = player()) {
+  const name = p.hidden?.fame ?? 0;
+  const favour = p.fame?.favour ?? 50;
+  return clamp(0.45 + name / 45 * (0.4 + favour / 80), 0.3, 2.6);
+}
+
 export function figures(type, countryId = player().countryId, city = player().city) {
   const c = COUNTRIES[countryId];
   const k = cityOf(countryId, city);
@@ -99,6 +107,7 @@ export function startBlock(type) {
   const c = careerState();
   const n = type.needs;
   const has = (t) => p.education.degrees.some((d) => d.type === t);
+  if (!businessExists(type.id, store.state.year)) return `There is no such business in ${store.state.year}.`;
   if (p.age < Math.max(18, n.minAge ?? 18)) return `You need to be ${Math.max(18, n.minAge ?? 18)}.`;
   if (p.legal.incarceration) return 'Not from a cell.';
   if (p.royal && !p.royal.waiting && ['monarch', 'heir'].includes(p.royal.rank)) return 'The crown does not go into trade.';
@@ -112,6 +121,7 @@ export function startBlock(type) {
   if (n.land && !['country', 'mansion'].includes(p.assets.find((a) => a.id === p.homeId)?.catalogId)) return 'Needs land of your own: a country property you live in.';
   if (n.flag && !p.flags[n.flag]) return n.flagText ?? 'You are not ready for this yet.';
   if (n.experienceTotal && Object.values(c.experience).reduce((a, b) => a + b, 0) < n.experienceTotal) return `Clients want ${n.experienceTotal} years of working life behind you.`;
+  if (n.fame && (p.hidden.fame ?? 0) < n.fame) return 'A brand like this sells on a famous name, and yours is not famous enough yet.';
   if (openBusinesses().length >= 3) return 'Three businesses is as many as one person can keep hold of.';
   return '';
 }
@@ -330,6 +340,42 @@ export function invest(b, what) {
   if (what === 'training') { b.quality = clamp(b.quality + 6); for (const s of staffOf(b)) s.npc.meters.relationship = clamp(s.npc.meters.relationship + 3); }
   return result(true, { marketing: 'Leaflets, a new sign, a few paid posts. People who had never heard of you have now.', equipment: 'New equipment. The work is better, and so is the mood.',
     training: 'You send the staff on a course. They come back with ideas and certificates.' }[what]);
+}
+
+/** What a celebrity brand can launch, and what each needs. */
+export const LAUNCHES = {
+  fashion_label: ['a capsule collection', 'a line of trainers', 'a winter collection'],
+  beauty_brand: ['a fragrance', 'a skincare line', 'a lipstick range'],
+  record_label: ['a compilation', 'a new signing', 'a reissue series'],
+  production_co: ['a documentary', 'a short-film slate', 'a podcast series'],
+};
+
+/**
+ * A celebrity brand launches a product, once a year: it costs the business, and how it sells
+ * depends on the product (the business's quality), the owner's name, and whether people like them.
+ */
+export function launchProduct(b, name) {
+  const t = typeOf(b);
+  if (!t.celebrity) return result(false, 'Only a brand built on a name launches products like this.', 'neutral');
+  if (acts(b).launch) return result(false, 'One launch a year.', 'neutral');
+  const f = figures(t, b.countryId, b.city);
+  const cost = Math.round(f.startup * 0.2);
+  if (b.cash < cost) return result(false, `A launch costs ${fmtMoney(cost, placeOf(b))}; the business has ${fmtMoney(b.cash, placeOf(b))}.`, 'neutral');
+  acts(b).launch = true;
+  b.cash -= cost;
+  const pull = starPull();
+  const score = b.quality / 100 + pull / 2 + rng.around(0, 0.35);
+  const outcome = score >= 1.3 ? 'hit' : score >= 0.85 ? 'steady' : 'flop';
+  const take = Math.round(cost * { hit: rng.around(3, 0.6), steady: rng.around(1.2, 0.3), flop: rng.around(0.35, 0.15) }[outcome]);
+  b.cash += take;
+  b.reputation = clamp(b.reputation + { hit: 8, steady: 2, flop: -5 }[outcome]);
+  if (outcome === 'hit') b.marketing = Math.max(b.marketing, 1.35);
+  (b.launches ??= []).push({ year: store.state.year, name, outcome, cost, take });
+  note(b, `Launched ${name}: ${outcome === 'hit' ? 'a hit' : outcome === 'steady' ? 'it sold steadily' : 'it flopped'}.`);
+  if (outcome === 'hit') milestone(`${b.name} launched ${name}, and it sold out.`, 'career');
+  return result(outcome !== 'flop', { hit: `${name[0].toUpperCase()}${name.slice(1)} sells out in a week. ${fmtMoney(take, placeOf(b))} back on ${fmtMoney(cost, placeOf(b))} spent.`,
+    steady: `${name[0].toUpperCase()}${name.slice(1)} sells steadily: ${fmtMoney(take, placeOf(b))} back on ${fmtMoney(cost, placeOf(b))}.`,
+    flop: `${name[0].toUpperCase()}${name.slice(1)} sits on the shelves. ${fmtMoney(take, placeOf(b))} back on ${fmtMoney(cost, placeOf(b))}.` }[outcome], outcome === 'steady' ? 'neutral' : undefined);
 }
 
 /** Puts the owner's own money into the business, or (negative) takes spare cash out as income. */
@@ -562,7 +608,7 @@ function runYear(b) {
   const price = PRICING[b.pricing];
   const priceFit = b.pricing === 'premium' ? clamp(price.demand + (b.reputation - 55) / 120 + (b.quality - 50) / 200, 0.4, 1.1) : price.demand;
   const rivals = Math.pow(0.8, b.rivals ?? 0);
-  const demand = b.sites * (t.solo ? 2.6 : 5) * (0.3 + b.reputation / 62) * priceFit * (1 + phase(b.countryId).hiring * 2) * b.marketing * rivals * rng.around(1, 0.15);
+  const demand = b.sites * (t.solo ? 2.6 : 5) * (0.3 + b.reputation / 62) * priceFit * (1 + phase(b.countryId).hiring * 2) * b.marketing * rivals * (t.celebrity ? starPull(p) : 1) * rng.around(1, 0.15);
   const sold = Math.max(0, Math.min(heads, demand));
 
   const revenue = Math.round(sold * f.perHead * price.k * (0.9 + b.quality / 500));

@@ -52,6 +52,11 @@ export const BUSINESS_TYPES = [
   B('riding_school', 'Riding school', 'land', 120000, 62000, 0.22, 4000, 26000, 'equestrian', { experience: { equestrian: 3 }, land: true, flag: 'riderAdvanced', flagText: 'You need to ride at an advanced level to teach.' }),
   B('smallholding', 'Smallholding', 'land', 30000, 40000, 0.38, 2000, 24000, 'farming', { land: true }, { solo: true }),
   B('farm', 'Farm', 'land', 150000, 68000, 0.4, 16000, 27000, 'farming', { experience: { farming: 3, ranching: 3, agri_science: 2 } }),
+  // Celebrity brands: they need a name people know, and sell on it (engine/business.js starPull).
+  B('fashion_label', 'Fashion label', 'arts', 60000, 90000, 0.4, 24000, 34000, 'fashion_design', { fame: 35 }, { celebrity: true }),
+  B('beauty_brand', 'Beauty brand', 'beauty', 50000, 95000, 0.35, 18000, 32000, 'marketing', { fame: 35 }, { celebrity: true }),
+  B('record_label', 'Record label', 'arts', 40000, 80000, 0.3, 16000, 34000, 'music_prod', { fame: 30 }, { celebrity: true }),
+  B('production_co', 'Production company', 'arts', 80000, 110000, 0.35, 24000, 40000, 'production', { fame: 30 }, { celebrity: true }),
   B('funeral_home', 'Funeral home', 'novelty', 90000, 85000, 0.22, 24000, 38000, 'funeral', { experience: { funeral: 4 } }),
   B('pi_agency', 'Investigations agency', 'novelty', 15000, 70000, 0.06, 8000, 40000, 'pi', { experience: { pi: 3, police: 6, detective: 3 } }, { solo: true }),
 ];

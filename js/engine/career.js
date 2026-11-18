@@ -9,6 +9,18 @@ import { techAvailable } from './digital/tech.js';
 import { forgetNpc } from './digital/core.js';
 import { hiringClimate, layoffChance } from './economy.js';
 import { workBarrier } from './health/access.js';
+import { tickEntertainment } from './entertainment.js';
+import { tickAwards } from './awards.js';
+import { tickMusic } from './music.js';
+import { careerExists } from '../data/eras.js';
+import { tickSports } from './sports.js';
+import { tickModelling } from './modelling.js';
+import { tickPublishing } from './publishing.js';
+import { tickCelebs } from './celebs.js';
+import { tickPress } from './press.js';
+import { tickFameProfile } from './fame.js';
+import { gain, regard } from './fame.js';
+import { AUDIENCE_OF } from '../data/fame.js';
 import { leadFactor, tickCouple } from './couple.js';
 import { payK } from './cities.js';
 import { rule, may } from './rules.js';
@@ -77,6 +89,7 @@ export function unmet(career, o = {}) {
   const p = player();
   const r = career.req ?? {};
   const out = [];
+  if (!careerExists(career.id, store.state.year)) out.push(`There is no such work in ${store.state.year}.`);
   if (p.legal.incarceration) out.push('Not from a cell.');
   if (career.id === 'influencer' && !techAvailable('social')) out.push('There is no such job yet: social media does not exist here.');
   // Historical Eras: jobs that do not exist yet, and jobs the law of the time closed to some people.
@@ -638,7 +651,8 @@ export function doFameAction(id) {
   const pay = localMoney(a.cash * (0.5 + fame() / 40) * (went ? 1 : 0.3), country());
   p.finance.cash += pay;
   p.finance.lifetimeEarned += pay;
-  p.hidden.fame = clamp(p.hidden.fame + (went ? a.fame : a.risky ? -8 : -1));
+  if (went) gain({ audience: id === 'book' ? 'literary' : id === 'talk_show' ? 'tv' : 'public', amount: a.fame, why: a.name.toLowerCase() });
+  regard({ favour: went ? 1 : a.risky ? -6 : -1, why: a.name.toLowerCase() });
   if (a.karma) p.hidden.karma = clamp(p.hidden.karma + a.karma);
   p.stats.mood = clamp(p.stats.mood + (went ? 6 : -6));
   const text = `${went ? a.ok : a.fail} You were paid ${fmtMoney(pay, country())}.`;
@@ -657,11 +671,13 @@ export function doFameAction(id) {
  */
 export function tickWork() {
   const p = player();
+  const played = tickSports(); // the season just played counts before the year's reviews and layoffs, and feeds the review
   tickEmployers();
   tickOffers();
   const death = tickCareer();
   if (death) return death;
-  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickWorkLife(), ...tickRecruiters()];
+  // The entertainment world has its year (productions, awards, the press) before payroll pays for the work in it.
+  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...played, ...tickModelling(), ...tickPublishing(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile(), ...tickCelebs()];
   for (const l of lines) log(l);
   queueWorkScenes();
   if (p.age >= 14) checkAchievements(p);
@@ -674,10 +690,7 @@ export function tickCareer() {
   const c = p.career;
   const career = currentCareer();
   const cty = country();
-  if (!career) {
-    p.hidden.fame = clamp(p.hidden.fame - 3);
-    return null;
-  }
+  if (!career) return null; // recognition fades in the fame profile (engine/fame.js), not here
   // Child performers grow up. What they did as a child follows them.
   if (career.agesOut && p.age >= career.agesOut) {
     const was = c.title.toLowerCase();
@@ -750,7 +763,7 @@ export function tickCareer() {
     if (roll < 0.1) { log('Your mission was cut short by a fault, and you came home early, safely. The investigation clears your crew.', 'system', 'neutral'); c.performance = clamp(c.performance + 3); }
     else {
       c.performance = clamp(c.performance + 10);
-      p.hidden.fame = clamp(p.hidden.fame + 6);
+      gain({ audience: 'public', amount: 6, lasting: 0.5, why: 'a space mission' });
       log(rng.pick(['You flew a mission to the space station and ran experiments for months.', 'You launched, docked, and spent your nights watching the Earth turn below you.',
         'You walked in space to repair a failing panel. The pictures went round the world.']), 'system', 'good');
       milestone(c.missions === 1 ? 'Went to space.' : `Flew space mission number ${c.missions}.`, 'career');
@@ -797,11 +810,10 @@ export function tickCareer() {
     }
   }
 
-  // Fame comes with the top of certain careers, and fades without them.
-  if (career.fame && c.level >= career.fame.from) {
-    p.hidden.fame = clamp(p.hidden.fame + (c.level - career.fame.from + 1) * 4 + c.performance / 25);
-  } else {
-    p.hidden.fame = clamp(p.hidden.fame - 2);
+  // Fame comes with the top of certain careers, to the audience that work reaches; it fades in the profile.
+  // Sport, modelling and books make their own fame, from results, bookings and books (engine/sports.js, modelling.js, publishing.js).
+  if (career.fame && c.level >= career.fame.from && !['athlete', 'modelling', 'author'].includes(career.id)) {
+    gain({ audience: AUDIENCE_OF[career.id] ?? 'public', amount: (c.level - career.fame.from + 1) * 3 + c.performance / 30, lasting: 0.2, why: c.title.toLowerCase() });
   }
 
   // Bodies and careers both have limits.

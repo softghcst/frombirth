@@ -20,6 +20,11 @@
 //   paidYear, lastPay                    the year last paid; what that payslip said
 //   achievements                         career milestones earned (engine/careerRecord.js)
 import { rng } from '../rng.js';
+import { workHours, contractLines, markContractsPaid } from './entertainment.js';
+import { dealLines, markDealsPaid } from './press.js';
+import { musicLines, markMusicPaid, tourWeeks } from './music.js';
+import { bookLines, markBooksPaid, published } from './publishing.js';
+import { comebackLines, markComebacksPaid } from './celebs.js';
 import { careHours } from './couple.js';
 import { clamp, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
@@ -101,6 +106,10 @@ export function weeklyLoad(p = player(), age = p.age) {
   const fl = freelanceHours(c);
   if (fl) rows.push({ label: 'Freelance work', hours: fl, kind: 'freelance' });
   for (const b of (p.businesses ?? []).filter((x) => x.status === 'open' && x.ownerHours > 0)) rows.push({ label: `Running ${b.name}`, hours: b.ownerHours, kind: 'business' });
+  const stage = workHours(store.state.year - (p.age - age), p); // productions signed for (engine/entertainment.js)
+  if (stage) rows.push({ label: 'Productions you are in', hours: stage, kind: 'freelance' });
+  const touring = tourWeeks(store.state.year - (p.age - age), p); // engine/music.js
+  if (touring) rows.push({ label: 'On tour', hours: Math.round(touring * 50 / 48), kind: 'freelance' });
   const care = careHours(p);
   if (care) rows.push({ label: 'Looking after the children', hours: care, kind: 'care' });
   const study = studyHours(p);
@@ -371,6 +380,7 @@ export function payLines(p = player()) {
     if (leave === 'sabbatical') gross = 0;
     else if (leave === 'sick' && !law.sickPay) gross = Math.round(gross * 0.4); // paid for the part of the year worked
     else if (leave === 'parental') gross = Math.round(gross * (1 - Math.max(0, 52 - law.parentalWeeks) / 52 * 0.6));
+    if (car.id === 'author' && published(p).length) gross = 0; // a published author is paid by their books (bookLines)
     if (gross > 0) lines.push({ source: 'main', label: c.title, gross });
   }
   if (c.partTime?.salary) lines.push({ source: 'parttime', label: c.partTime.title, gross: c.partTime.salary });
@@ -378,6 +388,7 @@ export function payLines(p = player()) {
   for (const k of c.freelance.contracts) if (k.status === 'done' && !k.paid) lines.push({ source: `gig:${k.id}`, label: `${k.serviceName} for ${k.client}`, gross: k.fee });
   for (const k of c.freelance.contracts) if (k.status === 'failed' && !k.paid && k.partial) lines.push({ source: `gig:${k.id}`, label: `Part payment: ${k.serviceName}`, gross: k.partial });
   lines.push(...payouts(p)); // what the player's businesses paid out to their owner
+  lines.push(...contractLines(p), ...dealLines(p), ...musicLines(p), ...bookLines(p), ...comebackLines(p)); // performance contracts and brand deals, each year once
   if (c.pensionDrawn && c.pensionPerYear) lines.push({ source: 'pension', label: 'Pension', gross: c.pensionPerYear });
   if (c.benefit?.yearsLeft > 0 && !car) lines.push({ source: 'benefit', label: 'Unemployment benefit', gross: c.benefit.amount });
   if (p.flags.statePension) lines.push({ source: 'state', label: 'State pension', gross: p.flags.statePension }); // engine/retirement.js
@@ -396,6 +407,11 @@ export function runPayroll(p = player()) {
   c.paidYear = store.state.year;
   for (const k of c.freelance.contracts) if (['done', 'failed'].includes(k.status)) k.paid = true;
   markPaid(p);
+  markContractsPaid(p);
+  markDealsPaid(p);
+  markMusicPaid(p);
+  markBooksPaid(p);
+  markComebacksPaid(p);
   const main = lines.find((l) => l.source === 'main');
   if (main) c.pensionPot = Math.round(c.pensionPot + main.gross * pensionRate(c));
   if (c.benefit) { c.benefit.yearsLeft -= 1; if (c.benefit.yearsLeft <= 0 || c.careerId) c.benefit = null; }

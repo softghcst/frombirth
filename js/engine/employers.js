@@ -131,11 +131,11 @@ export function cityEmployers(countryId, city) {
  * work there have a real place of work. It is run by engine/business.js, not
  * by the yearly employer tick: no openings appear on the board for it.
  */
-export function registerEmployer({ name, family, tracks, countryId, city }) {
+export function registerEmployer({ name, family, tracks, countryId, city, owned = true }) {
   cityEmployers(countryId, city);
   const id = nextId('emp');
   const e = { id, name, family, tracks, countryId, city, size: 'small', culture: 'supportive', payK: 1, health: 60, remote: false,
-    founded: store.state.year, closed: null, staff: [], history: [], owned: true };
+    founded: store.state.year, closed: null, staff: [], history: [], owned };
   jobs().employers[id] = e;
   jobs().cities[`${countryId}/${city}`].push(id);
   return e;

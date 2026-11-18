@@ -1,5 +1,6 @@
 // localStorage persistence: multiple save slots plus the graveyard.
 import { rng } from './rng.js';
+import { fameOf } from './engine/fame.js';
 import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
@@ -77,6 +78,7 @@ function migrate(state) {
   // Careers before employers, side jobs and the time budget: fill in what the save lacks. Nothing is re-paid.
   ensureCareer(state.player.career);
   state.player.businesses ??= [];
+  fameOf(state.player); // a save's single fame figure becomes a fame profile, with where it came from noted; nothing is invented
   if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
   for (const a of Object.values(state.animals?.byId ?? {})) for (const h of a.homes) rename(h, h.countryId);
   for (const e of state.animals?.events ?? []) if (e.place) rename(e.place, e.place.countryId);

@@ -3,6 +3,8 @@ import { syncWorld } from './history.js';
 import { ensureEra } from './eras.js';
 import { atBirth, held } from './citizenship.js';
 import { ensureGlobal } from './globalLife.js';
+import { bornKnown } from './fame.js';
+import { EARLIEST_START } from '../data/eras.js';
 import { fromAbroad, rollsRoots } from './economy.js';
 import { rng } from '../rng.js';
 import { bornInto, birthKind, titleOf, dress } from './royalty.js';
@@ -53,7 +55,8 @@ export function createLife(opts = {}) {
     || rng.pick(c.names[gender] ?? [...c.names.male, ...c.names.female]);
   const city = opts.city && c.cities.includes(opts.city) ? opts.city : rng.pick(c.cities);
   // A life starts in the present unless told otherwise (tests start lives in other eras: the Digital World follows the year).
-  const year = Number.isInteger(opts.year) ? opts.year : new Date().getFullYear();
+  const asked = opts.year ?? opts.startYear; // one way to start in the past: any year the eras cover
+  const year = Number.isInteger(asked) ? Math.max(EARLIEST_START, Math.min(new Date().getFullYear(), asked)) : new Date().getFullYear();
   // Money, prices and currencies of the year the life begins in (engine/history.js).
   syncWorld(year);
 
@@ -185,6 +188,7 @@ export function createLife(opts = {}) {
       par.savings = Math.max(par.savings, Math.round(par.savings * 6));
     }
     player.hidden.fame = royalBlood ? 70 : 15;
+    bornKnown(player, player.hidden.fame, royalBlood ? 'royal' : 'aristocrat'); // engine/fame.js: a royal is publicly known; an aristocrat has a known name
     const what = royalBlood ? 'a member of the royal family' : 'a landed aristocrat';
     for (const e of journal) {
       if (/^Your (mother|father) is /.test(e.text)) e.text = e.text.replace(/, an? [^,]+, age/, `, ${what}, age`);

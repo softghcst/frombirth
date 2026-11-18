@@ -13,6 +13,7 @@ import { openModal, messageModal, pickModal, confirmModal, inputModal } from './
 import { PRICING, OWNER_HOURS, DRAWS, BUSINESS_BY_ID } from '../data/business.js';
 import * as biz from '../engine/business.js';
 import * as couple from '../engine/couple.js';
+import { openFame } from './fame.js';
 import { meterHtml } from './meter.js';
 import { avatarSvg } from './avatar.js';
 import * as career from '../engine/career.js';
@@ -255,6 +256,7 @@ const VIEWS = {
           ${btn('bizhire', 'Take someone on', { arg })}${biz.hireable(b).length ? btn('bizknown', 'Offer a job to someone you know', { arg }) : ''}${b.others ? btn('bizcut', 'Let one of the other staff go', { arg }) : ''}
           ${btn('bizhours', 'Your hours', { arg })}${btn('bizprice', 'Prices', { arg })}${btn('bizdraw', 'What you take out each year', { arg })}
           ${btn('bizinvest', 'Spend on the business', { arg, sub: 'Marketing, equipment, training.' })}
+          ${biz.LAUNCHES[b.typeId] ? btn('bizlaunch', 'Launch a product', { arg, sub: 'Once a year. It sells on the product, and on your name.' }) : ''}
           ${btn('bizmoney', 'Money in and out', { arg, sub: `Could spare ${money(biz.spareCash(b), cty)} · could borrow ${money(biz.borrowRoom(b), cty)}` })}
           ${btn('bizexpand', 'Open another site', { arg })}
           ${biz.partnerOptions(b).length && b.stake > 0.5 ? btn('bizpartner', 'Take on a partner', { arg, sub: 'A quarter of the business, for money put into it.' }) : ''}
@@ -303,6 +305,7 @@ const VIEWS = {
     const mine = work.career().careerId === t.id;
     return btn('special', `${t.name}: ${t.levels[0].title}`, { arg: t.id, disabled: mine || !!why.length, sub: mine ? 'Your current work.' : why.length ? why[0] : { audition: 'By audition.', portfolio: 'Show your work.', interview: 'Selection interview.' }[t.hire] ?? '' });
   }).join('')}`).join('')}
+      ${btn('castingboard', 'Casting notices: film, television, stage and voice', { cls: 'primary', sub: 'Real parts in real productions, in My Fame.' })}
       <div class="section-label">Politics</div><p class="muted">${esc(pol)}</p>
       ${career.fame() >= 10 ? btn('fame', `Use your fame (${career.fame()}%)`) : ''}`;
   },
@@ -570,6 +573,11 @@ const ACTIONS = {
     const v = await pickModal({ title: 'What you take out each year', body: 'What you leave in pays for bad years, new sites and new people.', options: Object.entries(DRAWS).map(([k, o]) => ({ value: k, label: o.label })) });
     if (v) await x.say(biz.setDraw(biz.business(id), v));
   },
+  async bizlaunch(id, x) {
+    const b = biz.business(id);
+    const v = await pickModal({ title: 'Launch', options: biz.LAUNCHES[b.typeId].map((n) => ({ value: n, label: n[0].toUpperCase() + n.slice(1) })) });
+    if (v) await x.say(biz.launchProduct(b, v));
+  },
   async bizinvest(id, x) {
     const v = await pickModal({ title: 'Spend on the business', options: [{ value: 'marketing', label: 'Marketing', sub: 'More custom for a year or two, and a little more name.' }, { value: 'equipment', label: 'Equipment and premises', sub: 'Better work. A good name follows good work.' }, { value: 'training', label: 'Training the staff', sub: 'Better work, and people who feel invested in.' }] });
     if (v) await x.say(biz.invest(biz.business(id), v));
@@ -626,6 +634,7 @@ const ACTIONS = {
     if (couple.spouse()) await x.say(couple.proposePlan({ childcare: v }));
     else { couple.plan().childcare = v; await x.say({ ok: true, text: v === 'paid' ? `You arrange childcare: about ${money(couple.careCost(), c)} a year.` : 'You will look after them yourself.', tone: 'neutral' }); }
   },
+  castingboard: (_, x) => { x.close(); openFame(x.api, 'casting'); },
   special: (id, x) => specialApply(id, x),
   enlist: (id, x) => specialApply(id, x),
   gotofind: (_, x) => { x.st.section = 'find'; x.render(); },

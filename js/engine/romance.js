@@ -69,7 +69,7 @@ export function meetingPlaces() {
   const apps = platformOpen('kindling');
   return [
     { id: 'friends', name: 'Through friends', desc: 'Someone a friend thinks you would like.' },
-    ...(adult ? [...(apps ? [{ id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' }] : []),
+    ...(adult ? [...(apps ? [{ id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' }] : [{ id: 'app', name: 'A personal ad in the paper', desc: 'Forty words about yourself, and a box number.' }]),
       { id: 'out', name: 'A night out', desc: 'Whoever catches your eye across the room.' }]
       : [{ id: 'school', name: 'Around school', desc: 'Someone from a different class.' }]),
   ];
@@ -137,7 +137,7 @@ export function romanceActions(npc) {
   const adults = p.age >= ADULT && npc.age >= ADULT;
   const a = [];
   // Not someone who reports to you: a manager asking is not a free question.
-  if (['friend', 'classmate', 'coworker', 'ex'].includes(npc.role) && !npc.flags.report && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
+  if (['friend', 'classmate', 'coworker', 'colleague', 'ex'].includes(npc.role) && !npc.flags.report && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
     a.push({ id: 'askOut', label: 'Ask out' });
   }
   if ((npc.role === 'partner' || npc.role === 'spouse') && !p.legal.incarceration) {
