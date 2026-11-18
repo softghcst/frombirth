@@ -20,7 +20,8 @@ import { tickCivil } from './civil.js';
 import { tickKinCases } from './kinCases.js';
 import { checkCare } from './guardianship.js';
 import { tickPrison } from './prison.js';
-import { tickSocial } from './social.js';
+import { tickDigital } from './digital/tick.js';
+import { tickEra } from './eras.js';
 import { tickIdentity } from './identity.js';
 import { tickLiving } from './living.js';
 import { tickRoyalty } from './royalty.js';
@@ -52,6 +53,8 @@ import { rollDeath, die } from './death.js';
 import { livePlans } from './plans.js';
 import { snapshot } from './yearSummary.js';
 import { drawEvents } from './eventEngine.js';
+import { closeYear } from './travel.js';
+import { openGlobalYear, tickGlobalLife } from './globalLife.js';
 import { book, booked } from './ledger.js';
 import { tickBanking, tickMoneyReview } from './banking.js';
 import { tickPlan, tickStatePension } from './retirement.js';
@@ -78,6 +81,7 @@ const BIRTHDAYS = {
  */
 export const YEARLY = [
   // Anything the player did with money since the last year is written down before this one begins.
+  ['openWorldYear', openGlobalYear], // the world's own year opens first (engine/globalLife.js)
   ['openBooks', () => { book({ cat: 'auto', src: 'action' }); }],
   // Each part of the year books what it did to the player's money under its own heading (engine/ledger.js).
   ['relationships', () => booked('auto', 'Family and friends', tickRelationships)],
@@ -95,7 +99,7 @@ export const YEARLY = [
   ['illness', () => booked('health', 'Health', tickHealth)],
   ['health', () => booked('health', 'Health care', () => healthYear(player()))],
   ['prison', () => booked('legal', 'Prison', tickPrison)],
-  ['social', () => booked('auto', 'Friends and followers', tickSocial)],
+  ['digital', () => booked('auto', 'Digital life', tickDigital)], // platforms, people's digital lives, creators, reputation (engine/digital)
   ['identity', () => booked('health', 'Health and identity', tickIdentity)],
   ['living', () => booked('losses', 'Rising prices and losses', tickLiving)],
   ['royalty', () => booked('auto', 'The royal household', tickRoyalty)],
@@ -131,6 +135,7 @@ export const YEARLY = [
   ['equestrian', tickEquestrian],
   ['animalLife', tickLife], // behaviour that begins, and what families argue about
   ['animalArcs', tickArcs], // stories that take years
+  ['travel', () => booked('travel', 'Travel, papers and life abroad', tickGlobalLife)],
   ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],
   ['sense', tickSense], ['moneyReview', tickMoneyReview],
 ];
@@ -165,10 +170,13 @@ export function advanceYear() {
   const planLines = booked('auto', 'Your plans for the year', () => livePlans(p));
   // The care calendar runs out the weeks left in this year before it turns.
   booked('health', 'Health care through the year', () => finishCareYear(p));
+  // Trips booked for the year that is ending are taken, and anyone away comes home, before the year turns.
+  if (p.travel) closeYear();
   p.age += 1;
   if (p.age === 100) { milestone('Turned 100.', 'life'); log('You are 100 years old. A card arrives from the head of state, and the local paper sends a photographer.', 'system', 'good'); }
   if (p.age === 110) milestone('Turned 110.', 'life');
   state.year += 1;
+  tickEra(); // Historical Eras: the new year's era, money, laws and events (engine/eras.js)
   if (BIRTHDAYS[p.age]) log(BIRTHDAYS[p.age]);
   state.yearReport = { before, planLines, year: state.year };
 

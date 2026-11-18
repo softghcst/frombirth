@@ -27,6 +27,8 @@ import { COUNTRIES } from '../data/countries.js';
 import { FREE_MOVEMENT, WANTED, ROUTE } from '../data/immigration.js';
 import { held, issuer, rightToLive, residency } from './citizenship.js';
 import { visaEdge } from './languages.js';
+import { ownerRoute } from './businessAbroad.js';
+import { eraOf } from './documents.js';
 
 const has = (p, t) => p.education.degrees.some((d) => d.type === t);
 const convicted = (p) => hasRecord(p, { sealed: true });
@@ -53,6 +55,11 @@ export function routes(destId, p = player()) {
 
   if (rightToLive(destId, p)) {
     add('right', 'As a citizen', 'It is your country. You may simply go.', { eligible: true, chance: 1, fee: 0.3, status: 'citizen' });
+    return out;
+  }
+  // Before 1914 most countries asked nothing of people who came to settle (simplified): no visa, no application.
+  if (eraOf(store.state.year).id === 'open') {
+    add('free', 'Settling (no papers needed)', 'In this period most countries ask nothing of a newcomer who comes to live and work. You go, and you stay.', { eligible: p.age >= 16, why: 'You are too young to go alone.', chance: 1, fee: 0.15, status: 'permanent_resident' });
     return out;
   }
   const area = areaOf(destId);
@@ -92,6 +99,19 @@ export function routes(destId, p = player()) {
     eligible: p.age >= 18, why: 'You must be an adult.',
     chance: 0.3 + (has(p, 'university') ? 0.2 : 0) + (['medical', 'law', 'graduate', 'doctorate'].some((t) => has(p, t)) ? 0.1 : 0) + (has(p, 'apprenticeship') || has(p, 'cosmetology') ? 0.1 : 0)
       + (p.career.careerId ? 0.1 : 0) + (p.age <= 35 ? 0.05 : p.age >= 50 ? -0.1 : 0) + lang + crime, status: 'permanent_resident' });
+
+  // Owning a business there: only through this route, an application like any other (engine/businessAbroad.js).
+  const owner = ownerRoute(destId, p);
+  add('business', 'As a business owner', 'For owners of a business there that has traded for a year and employs people. You may work in your own business. Owning one gives no right to live there by itself.', {
+    eligible: p.age >= 18 && owner.eligible, why: owner.why, chance: 0.8 + lang + crime, status: 'worker', years: 3 });
+
+  // Retirement: for people with a pension or savings to live on, who will not work there.
+  const income = (p.career.pensionPerYear ?? 0) + (p.finance.pension ?? 0) / 20;
+  const enough = localMoney(ROUTE.retireIncome, here);
+  add('retire', 'To retire', `For people of ${ROUTE.retireAge} or over with a pension, or savings, of ${fmtMoney(enough, here)} a year to live on. Work is not allowed; it is renewed while the money lasts.`, {
+    eligible: p.age >= ROUTE.retireAge && (income >= enough || p.finance.cash >= enough * 10),
+    why: p.age < ROUTE.retireAge ? `From age ${ROUTE.retireAge}.` : `You would need ${fmtMoney(enough, here)} a year, or ten years of it saved.`,
+    chance: 0.85 + crime, status: 'retiree', years: ROUTE.retireYears });
 
   // Protection
   const crisis = here.living.crisis;
@@ -152,15 +172,21 @@ export function tickStatus() {
     }
     r.until = Math.min(r.until, year);
   }
-  if (year === r.until - 1) log(`Your ${{ student: 'student visa', worker: 'work visa', temporary_resident: 'protection' }[r.status] ?? 'visa'} in ${theCountry(c.name)} runs out next year.`, 'system', 'neutral');
+  if (year === r.until - 1) log(`Your ${{ student: 'student visa', worker: 'work visa', temporary_resident: 'protection', retiree: 'retirement visa' }[r.status] ?? 'visa'} in ${theCountry(c.name)} runs out next year.`, 'system', 'neutral');
   if (year < r.until) return null;
   const permanent = (why) => { r.status = 'permanent_resident'; r.until = null; r.workAuthorized = true; log(`${why} You are a permanent resident of ${theCountry(c.name)} now.`, 'system', 'good'); return null; };
   const renew = (years, why) => { r.until = year + years; delete r.grace; log(why, 'system', 'neutral'); return null; };
   if (r.status === 'student') {
     if (p.education.enrolled) return renew(1, 'Your student visa was extended while you finish your course.');
     if (p.career.careerId) { r.status = 'worker'; r.workAuthorized = true; delete r.postStudy; return renew(ROUTE.workYears - 1, 'Your employer sponsored you: your student visa became a work visa.'); }
+  } else if (r.status === 'worker' && r.route === 'business') {
+    // A business owner's permission lasts while the business trades; after five years it can become permanent, like work.
+    if (ownerRoute(p.countryId, p).eligible) return lived >= ROUTE.settledAfter ? permanent(`After ${lived} years running your business here you qualified to stay for good.`) : renew(3, 'Your business-owner permission was renewed.');
   } else if (r.status === 'worker') {
     if (p.career.careerId) return lived >= ROUTE.settledAfter ? permanent(`After ${lived} years of work here you qualified to stay for good.`) : renew(3, 'Your work visa was renewed.');
+  } else if (r.status === 'retiree') {
+    // Renewed while there is money to live on. It does not turn into permanent residence by itself.
+    if ((p.career.pensionPerYear ?? 0) > 0 || p.finance.cash >= localMoney(ROUTE.retireIncome, c) * 2) return renew(ROUTE.retireYears, 'Your retirement visa was renewed.');
   } else if (r.status === 'temporary_resident') {
     if (lived >= ROUTE.settledAfter) return permanent(`After ${lived} years here you were allowed to stay for good.`);
     if (COUNTRIES[homeOf(p)]?.living.crisis) return renew(ROUTE.protectionYears, 'Your protection was renewed: it is still not safe to go back.');
@@ -177,7 +203,7 @@ export function tickStatus() {
 export function statusLine(p = player()) {
   const r = residency(p);
   if (r.status === 'citizen' || !r.until) return '';
-  return `Valid until ${r.until}${r.postStudy ? '. You may work while you look for a sponsor.' : r.status === 'student' ? '. Full-time work is not allowed.' : r.status === 'worker' ? '. Renewed while you are employed.' : '.'}`;
+  return `Valid until ${r.until}${r.postStudy ? '. You may work while you look for a sponsor.' : r.status === 'student' ? '. Full-time work is not allowed.' : r.status === 'worker' ? '. Renewed while you are employed.' : r.status === 'retiree' ? '. Work is not allowed; renewed while you have money to live on.' : '.'}`;
 }
 
 // ---------- Married across a border ----------

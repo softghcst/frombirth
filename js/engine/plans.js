@@ -7,7 +7,6 @@
 //
 //   hobby       a main passion and a second interest, practised from the year's
 //               practice sessions (engine/skills.js)
-//   online      a posting routine: casual, consistent or creator (engine/social.js)
 //   savings     a standing deposit into one of the player's bank accounts (engine/banking.js)
 //   traditions  family traditions that come round every year, and outlive the player
 //
@@ -19,13 +18,12 @@ import { clamp, localCost, fmtMoney } from '../util.js';
 import { remember } from './conditions.js';
 import { SKILL_BY_ID } from '../data/skills.js';
 import { practise, sessionsLeft, levelOf, canPractise } from './skills.js';
-import { post, postsLeft, hasAccount } from './social.js';
 import { accountById, deposit } from './banking.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
 export function plansOf(p = player()) {
-  p.plans ??= { hobby: null, online: null, savings: null, traditions: [], done: {}, lastYear: null };
+  p.plans ??= { hobby: null, savings: null, traditions: [], done: {}, lastYear: null };
   p.plans.traditions ??= [];
   p.plans.done ??= {};
   return p.plans;
@@ -56,12 +54,6 @@ export const doneThisYear = (key) => plansOf().done?.year === store.state.year &
 
 // ---------- Hobby focus ----------
 
-export const ONLINE = {
-  casual: { name: 'Casual', posts: 2, blurb: 'Now and then, when you feel like it.' },
-  consistent: { name: 'Consistent', posts: 5, blurb: 'Regularly, all year.' },
-  creator: { name: 'Creator', posts: 99, blurb: 'As much as a year allows. It is close to a job.' },
-};
-
 export function setHobby(main, second = null, p = player()) {
   const pl = plansOf(p);
   if (!main) { pl.hobby = null; return result(true, 'No hobby plan. You can still practise whenever you like.', 'neutral'); }
@@ -69,15 +61,6 @@ export function setHobby(main, second = null, p = player()) {
   if (!ok(main) || (second && (!ok(second) || second === main))) return result(false, 'That is not something you can take up yet.', 'neutral');
   pl.hobby = { main, second, since: store.state.year };
   return result(true, `${SKILL_BY_ID[main].name} is your main passion${second ? `, with ${SKILL_BY_ID[second].name.toLowerCase()} on the side` : ''}. You will practise through the year.`, 'good');
-}
-
-export function setOnline(level, p = player()) {
-  const pl = plansOf(p);
-  if (!level) { pl.online = null; return result(true, 'You will post only when you choose to.', 'neutral'); }
-  if (!ONLINE[level]) return result(false, 'Unknown routine.', 'neutral');
-  if (!hasAccount()) return result(false, 'You do not have an account.', 'neutral');
-  pl.online = { level, since: store.state.year };
-  return result(true, `Your posting routine is now ${ONLINE[level].name.toLowerCase()}.`, 'good');
 }
 
 // ---------- Savings ----------
@@ -187,15 +170,6 @@ export function livePlans(p = player()) {
     }
   }
 
-  // A posting routine, from the year's own posts.
-  if (pl.online && hasAccount() && free) {
-    const s = p.social;
-    const before = s.followers;
-    let n = 0;
-    while (n < ONLINE[pl.online.level].posts && postsLeft() > 0) { quietly(() => post()); n++; }
-    if (n) lines.push(`You posted ${n} time${n === 1 ? '' : 's'}: ${before.toLocaleString()} to ${s.followers.toLocaleString()} followers.`);
-  }
-
   // The standing deposit, if the money is there: through the bank, like any deposit.
   const f = p.finance;
   if (pl.savings && free) {
@@ -230,7 +204,7 @@ export function livePlans(p = player()) {
 /** What carries on to the next generation: the family's traditions. */
 export function inheritPlans(old, heir) {
   const traditions = (old.plans?.traditions ?? []).filter((t) => t.active).map((t) => ({ ...t, inherited: true }));
-  heir.plans = { hobby: null, online: null, savings: null, traditions, done: {}, lastYear: null };
+  heir.plans = { hobby: null, savings: null, traditions, done: {}, lastYear: null };
 }
 
 /** Everything that is carrying on by itself, for the This Year card. */
@@ -238,7 +212,6 @@ export function ongoing(p = player()) {
   const pl = plansOf(p);
   const out = [];
   if (pl.hobby) out.push(['Hobby', `${SKILL_BY_ID[pl.hobby.main].name}${pl.hobby.second ? ` and ${SKILL_BY_ID[pl.hobby.second].name.toLowerCase()}` : ''}`]);
-  if (pl.online) out.push(['Online', ONLINE[pl.online.level].name]);
   if (pl.savings) out.push(['Saving', `${fmtMoney(pl.savings.yearly, country())} a year into your ${accountById(pl.savings.accountId)?.name.toLowerCase() ?? 'account'}`]);
   const h = p.health;
   if (h) {

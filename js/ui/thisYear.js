@@ -5,7 +5,6 @@ import { esc, fmtMoney, localMoney } from '../util.js';
 import { messageModal, pickModal, confirmModal } from './modals.js';
 import * as plans from '../engine/plans.js';
 import { skillOptions } from '../engine/skills.js';
-import { hasAccount } from '../engine/social.js';
 import { accounts } from '../engine/banking.js';
 
 const kv = (a, b) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
@@ -18,7 +17,6 @@ export function thisYearCard() {
   const celebrate = plans.occasions(p).filter((o) => !o.done);
   const buttons = [
     ['hobby', plans.plansOf(p).hobby ? 'Change your hobby focus' : 'Choose a hobby focus'],
-    ...(hasAccount() ? [['online', 'Posting routine']] : []),
     ...(p.age >= 16 ? [['savings', plans.plansOf(p).savings ? 'Change your yearly saving' : 'Save something every year']] : []),
     ...(celebrate.length ? [['celebrate', 'Celebrate something']] : []),
     ...(p.age >= 18 ? [['traditions', 'Family traditions']] : []),
@@ -43,11 +41,6 @@ export async function thisYearAction(id, api) {
     if (main === '__none') return say(api, plans.setHobby(null));
     const second = await pickModal({ title: 'Something on the side?', cancel: 'Just the one', options: opts.filter((s) => s.id !== main).map((s) => ({ value: s.id, label: s.name })) });
     return say(api, plans.setHobby(main, second));
-  }
-  if (id === 'online') {
-    const level = await pickModal({ title: 'How often you post', body: 'Your posts happen through the year. You can still post by hand whenever you like.', options: [...Object.entries(plans.ONLINE).map(([k, o]) => ({ value: k, label: o.name, sub: o.blurb })), { value: '__none', label: 'Only when I choose to' }] });
-    if (!level) return undefined;
-    return say(api, plans.setOnline(level === '__none' ? null : level));
   }
   if (id === 'savings') {
     const list = accounts().filter((a) => a.closed == null && a.matures == null && !a.locked);

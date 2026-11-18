@@ -216,6 +216,7 @@ function employ(b, n, wageK) {
   n.occupation = car.levels[0].title.toLowerCase();
   if (n.role === 'colleague') n.flags.title = `Works for you at ${b.name}`;
   n.flags.employeeOf = b.id;
+  if (b.countryId !== p.countryId) n.flags.abroad = b.countryId; // they live where the business is
   n.flags.workedWith = b.name;
   n.lastInteractionAge = p.age;
   if (!e.staff.includes(n.id)) e.staff.push(n.id);
@@ -668,9 +669,10 @@ export function tickBusinesses() {
  * without them, and pays out across the border; one without is wound up.
  * @returns {string[]} journal lines
  */
-export function onEmigrate() {
+export function onEmigrate(destId = null) {
   const lines = [];
   for (const b of openBusinesses()) {
+    if (b.countryId === destId) { lines.push(`You are moving to where ${b.name} is. You can work in it yourself again.`); continue; }
     if (managerOf(b)) { b.ownerHours = 0; lines.push(`${managerOf(b).firstName} will run ${b.name} while you are abroad. What it pays you will be changed into the money of wherever you live.`); }
     else lines.push(close(b).text);
   }
@@ -690,7 +692,7 @@ export function markPaid(p = player()) { for (const b of p.businesses ?? []) b.p
  * make them its manager: whoever ran it still does, until they decide.
  * @returns {string[]} what happened, for the heir's journal
  */
-export function inherit(oldPlayer, newPlayer, heirNpc, npcs) {
+export function inherit(oldPlayer, newPlayer, heirNpc, npcs, oldNpcs = {}) {
   const out = [];
   newPlayer.businesses = [];
   for (const b of oldPlayer.businesses ?? []) {
@@ -698,7 +700,9 @@ export function inherit(oldPlayer, newPlayer, heirNpc, npcs) {
     if (!mine) continue;
     const copy = JSON.parse(JSON.stringify(b));
     const worked = copy.staff.some((s) => s.id === heirNpc.id);
-    copy.staff = copy.staff.filter((s) => s.id !== heirNpc.id && npcs[s.id]?.alive);
+    // The people who work there go on working there: the same people, carried into the new life if the family tree did not bring them.
+    copy.staff = copy.staff.filter((s) => s.id !== heirNpc.id && (npcs[s.id] ?? oldNpcs[s.id])?.alive);
+    for (const s of copy.staff) npcs[s.id] ??= oldNpcs[s.id];
     copy.others += b.staff.length - copy.staff.length - (worked ? 1 : 0);
     copy.others = Math.max(0, copy.others);
     copy.partners = copy.partners.filter((x) => npcs[x.id]?.alive);

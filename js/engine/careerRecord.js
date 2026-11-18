@@ -171,7 +171,7 @@ export function passOn(old, next, heir) {
   next.careerRecord = [...(old.careerRecord ?? []), record(old.player, old)].slice(-12);
   next.jobs = old.jobs; // the employers, and their histories, are the same world
   // A business goes to the heir who was named, or to a child. Ownership, not the manager's chair.
-  return heir ? inherit(old.player, next.player, heir, next.npcs) : [];
+  return heir ? inherit(old.player, next.player, heir, next.npcs, old.npcs) : [];
 }
 
 /** The family's working history, with the living player last. */

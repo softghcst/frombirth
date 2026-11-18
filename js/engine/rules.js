@@ -8,6 +8,7 @@
 //
 // The world also changes its own laws, slowly (tickRules), so a long life
 // does not end under the laws it began with.
+import { pastLaw, historyHolds, worldYear } from './history.js';
 import { rng } from '../rng.js';
 import { theCountry } from '../util.js';
 import { store, player } from '../state.js';
@@ -34,6 +35,15 @@ const book = () => (store.state ? (store.state.rules ??= {}) : {});
 export function source(id, placeId = here(), opts = {}) {
   const def = RULES[id];
   if (!def) throw new Error(`Unknown rule: ${id}`);
+  const now = modernSource(id, placeId, opts, def);
+  // A law made during this life stands. Otherwise, before a law changed, the old law applies (Historical Eras, data/history.js).
+  if (now.source === 'enacted' || now.source === 'enacted region') return now;
+  const past = pastLaw(id, placeId, worldYear(), now.value);
+  return past ? { value: past.value, source: past.note } : now;
+}
+
+/** Today's law, through its layers (laws made in this life, region, place, parent state, default). */
+function modernSource(id, placeId, opts, def) {
   const me = store.state?.player;
   const region = opts.region !== undefined ? opts.region : placeId === me?.countryId ? me.regionId ?? lawRegion(placeId, me.city) : null;
   // Law made during this life: national, or by the region. Whichever was made more recently stands.
@@ -73,7 +83,7 @@ export function may(action, opts = {}) {
   const no = (why) => ({ ok: false, why });
   const age = (ruleId, what) => (p.age < rule(ruleId, id) ? no(`You have to be ${rule(ruleId, id)} to ${what} in ${name}.`) : null);
   switch (action) {
-    case 'vote': return age('votingAge', 'vote') ?? { ok: true, why: '' };
+    case 'vote': return age('votingAge', 'vote') ?? ((p.flags?.trueGender ?? p.gender) === 'female' && !rule('womenVote', id) ? no(`Women cannot vote in ${name} yet.`) : { ok: true, why: '' });
     case 'drive': return age('drivingAge', 'drive') ?? { ok: true, why: '' };
     case 'drink': return !rule('alcohol', id) ? no(`Alcohol is banned in ${name}.`) : age('drinkingAge', 'drink') ?? { ok: true, why: '' };
     case 'gamble': return !rule('gambling', id) ? no(`Gambling is against the law in ${name}.`) : age('gamblingAge', 'gamble') ?? { ok: true, why: '' };
@@ -98,7 +108,7 @@ export function sheet(placeId = here(), opts = {}) {
     const s = source(id, placeId, opts);
     const up = parentOf(placeId);
     return { id, name: def.name, value: s.value, text: WORDS(def, s.value), source: s.source,
-      note: s.source === 'enacted' ? `changed in ${s.year}` : s.source === 'enacted region' ? `changed by the region in ${s.year}` : s.source === 'parent' ? `as in ${theCountry(COUNTRIES[up].name)}` : s.source === 'region' ? 'local law' : '' };
+      note: s.source === 'enacted' ? `changed in ${s.year}` : s.source === 'enacted region' ? `changed by the region in ${s.year}` : s.source === 'parent' ? `as in ${theCountry(COUNTRIES[up].name)}` : s.source === 'region' ? 'local law' : s.source === 'history' ? 'the law of the time' : s.source === 'era' ? 'the usual law of the period' : '' };
   });
 }
 
@@ -210,7 +220,9 @@ export function tickRules() {
   const placeId = rng.chance(REFORM.homeBias) ? p.countryId : rng.pick(COUNTRY_LIST).id;
   const options = reformsFor(placeId);
   if (!options.length) return null;
-  const [id, value] = rng.pick(options);
+  const open = options.filter(([id]) => !historyHolds(id, placeId));
+  if (!open.length) return null;
+  const [id, value] = rng.pick(open);
   // Where this life has a political world for the country, a government does not pass what it opposes.
   const w = store.state.polities?.[placeId];
   const lead = w?.parties?.find((x) => x.id === w.govt?.lead);

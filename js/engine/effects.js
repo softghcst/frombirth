@@ -1,17 +1,21 @@
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
 import { workChoice } from './workEvents.js';
 import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
 import { decide as schoolChoice } from './schoollife.js';
 import { decide as abroadChoice } from './diplomacy.js';
+import { decide as abroadArcChoice } from './abroadArcs.js';
 import { decide as kinChoice } from './kin.js';
 import { decide as scandalChoice } from './scandal.js';
 import { justiceScene } from './justiceScenes.js';
 import { resignLeadership, faceTheParty, standForVacancy } from './leadership.js';
 import { defend } from './campaign.js';
 import { decide } from './government.js';
+import { decide as digitalChoice } from './digital/stories.js';
+import { decide as eraChoice } from './eraScenes.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
@@ -96,8 +100,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       }
       case 'removeNpc': {
         const id = ctx.cast[e.target];
-        p.npcIds = p.npcIds.filter((n) => n !== id);
-        delete store.state.npcs[id];
+        forgetNpc(id);
         break;
       }
       case 'animalHealth': recordHealth(ctx.cast[e.target], e.value); break;
@@ -185,6 +188,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'parent': ctx.note = parentChoice(e.value, ctx.cast); break;
       case 'royalEd': ctx.note = royalEdChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;
+      case 'global': ctx.note = abroadArcChoice(e.value, ctx.cast); break;
       case 'leader': ctx.note = e.value === 'resign' ? resignLeadership().text : e.value === 'stand' ? standForVacancy() : faceTheParty(); break;
       case 'ousted': pol.removed(e.value); break;
       case 'resignOffice': pol.resign(); break;
@@ -208,6 +212,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'legal':
         p.legal.heat = clamp(p.legal.heat + e.delta);
         break;
+      case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
+      case 'era': ctx.note = eraChoice(e.value, ctx.cast); break;
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;

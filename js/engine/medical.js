@@ -1,4 +1,5 @@
 // Doctors, check-ups, therapy and cosmetic surgery.
+import { treatmentIn, procedureOpen } from './history.js';
 import { cover } from './systems.js';
 import { normalize, cleanTweaks } from '../avatar/catalog.js';
 import { healthFactor } from './policy.js';
@@ -32,7 +33,8 @@ export function treatable() {
   return p.conditions.filter((c) => TREATMENTS[c.id]).map((c) => {
     const t = TREATMENTS[c.id];
     const cost = careCost(t.cost);
-    return { id: c.id, name: c.name, cost, manage: !!t.manage, managed: !!c.treated,
+    const era = treatmentIn(c.id);
+    return { id: c.id, name: c.name, cost, manage: !!t.manage && era.manage, managed: !!c.treated, limited: era.limited,
       seen: !!acts().seen[c.id], affordable: p.finance.cash >= cost };
   });
 }
@@ -51,10 +53,18 @@ export function seeDoctor(conditionId) {
   const paid = cost ? ` It cost ${fmtMoney(cost, c)}.` : '';
   const plain = cond.name.replace(/^an? /, '');
 
-  if (!rng.chance(t.chance * (0.72 + careQuality() / 320))) {
+  // Historical Eras: what medicine could do then (insulin from 1922, antibiotics from the mid-1940s, and so on).
+  const era = treatmentIn(conditionId);
+  if (!rng.chance(t.chance * era.chance * (0.72 + careQuality() / 320))) {
     const text = `The treatment for your ${plain} did not take. The doctor wants to try again next year.${paid}`;
     log(text, 'system', 'bad');
     return result(false, text);
+  }
+  if (t.manage && !era.manage) {
+    p.stats.health = clamp(p.stats.health + 2);
+    const text = `The doctor did what could be done for your ${plain} in these years, which is not much. There is no lasting treatment yet.${paid}`;
+    log(text, 'system', 'neutral');
+    return result(false, text, 'neutral');
   }
   if (t.manage) {
     cond.treated = true;
@@ -94,6 +104,7 @@ export function checkUp() {
 
 export function therapy() {
   const p = player();
+  if (!procedureOpen('therapy')) return result(false, 'There is no such thing as talking therapy here yet.', 'neutral');
   const c = country();
   const cost = careCost(THERAPY_COST);
   if (acts().therapy) return result(false, 'You have a standing appointment already this year.', 'neutral');
@@ -113,7 +124,7 @@ export function therapy() {
 /** Procedures open to the player, priced for each kind of surgeon. */
 export function surgeryOptions() {
   const p = player();
-  return SURGERIES.filter((s) => p.age >= s.minAge);
+  return SURGERIES.filter((s) => p.age >= s.minAge && procedureOpen(s.id));
 }
 export function surgeonOptions(procedureId) {
   const p = player();

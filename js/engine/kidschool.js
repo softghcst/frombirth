@@ -75,6 +75,12 @@ function place(n, kindId, quiet = false) {
   return text;
 }
 
+/** After the family moves to a new town: a place at the local state school there. @returns {string} what happened */
+export function newTown(n) {
+  if (!n?.life?.edu || !stageOf(n)) return '';
+  return place(n, 'public', true);
+}
+
 /** Yearly, for each child at school: a school when a stage begins, fees, and the scenes a parent is asked to deal with. */
 export function tickKids() {
   const p = player();

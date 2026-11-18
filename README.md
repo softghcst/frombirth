@@ -60,7 +60,16 @@ node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
+node tests/global-life.mjs     # travel, passports, borders, relocation, children born abroad, generations; the three vertical slices (SEED=n to vary)
+node tests/digital.mjs         # the Digital World: technology by era, accounts and privacy, posts, messaging, creators and money, reputation, legacy, saves; the Digital Life brief's scenarios A to L
+node tests/eras.mjs            # Historical Eras: careers, money and currencies, laws, schooling, health and events by era; lives born 1800–today; a German family 1900 → today
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
+```
+
+One check runs in a real browser and needs Playwright with Chromium (it skips itself where Playwright is not installed):
+
+```bash
+node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
@@ -263,6 +272,7 @@ conditions, cost, odds and the status it gives:
 | As an investor | a large sum | permanent resident |
 | Settlement program | points for education, work, age and language | permanent resident |
 | Seeking protection | people whose own country is in crisis; no fee | temporary, 3 years |
+| To retire | 55 or over, with a pension or savings to live on | retirement visa, 5 years, renewed while the money lasts; no work |
 
 Routes that are closed are shown with the reason. A temporary status is renewed while its reason holds (a job, a course, a
 crisis at home), becomes permanent after five years, and otherwise ends: one year's warning, then the return home. A graduate
@@ -419,6 +429,74 @@ gets which shape or model is unverified.
 - Portuguese is a language of its own in the game now (Portugal, Brazil, Angola), and someone born where the same language is
   spoken arrives already speaking it.
 
+### Travel, immigration and living abroad
+
+**Explore the World** (Self tab; Pursuits → Travel; People → Family archive) is one hub over the Global Life engine. Each part
+keeps apart things that are easy to confuse: where someone was born, where they are now, where they live, which nationalities
+they hold, which passports they carry, what a border asks of them, and whether they may live, study or work somewhere.
+
+| Engine | What it keeps |
+|---|---|
+| `js/engine/geo.js` | a stable id for every city (`jp/Kyoto`), its GeoNames position, landmass, time zone, season, and the jurisdiction it belonged to in a given year (Leipzig in 1980 was East Germany) |
+| `js/engine/documents.js` | passports (issued only to nationals; expiring or being lost never touches citizenship), what each border asks of each nationality, ETAs and e-visas decided at once, visitor and student visas decided when the year turns, days spent abroad and the Schengen 90-in-180 count |
+| `js/engine/travel.js` | trips: plan, invite (each person decides for themselves, once), choose transport by era (no planes in 1800, a change of planes at a hub on long flights, local arrival times across the date line), stay, things to do, pay once, cancel by the terms, set off, do things there, come home |
+| `js/engine/relocation.js` | moving abroad as a case: apply, a decision when the year turns, then a checklist read from saved state (housing, money, the family's passports, the pets, the journey) before the move itself |
+| `js/engine/chronicle.js` | the ledger (every payment once, every refund once), canonical life events (one per thing that happened, with a stable id) and the archive of past lives |
+| `js/engine/globalLife.js` | the year's turn: decisions due, papers that run out, everyone's residence history, relatives abroad who visit, a parent's language picked up at home, settling in after a move, births abroad |
+| `js/engine/globalStory.js` | the views: Places I've Lived, Our Global Story (map and timeline by generation, person, country, period and kind), the House Chronicle, a person's geography |
+
+- **A trip is not a move.** Taking a trip changes where the player is, never where they live. Days away are counted at the border.
+  A one-tap holiday is recorded as a trip too, so the Travel Journal sees every trip.
+- **Time.** The world clock moves a year at a time. Inside a year a calendar date moves forward only as journeys take people away
+  and back, and starts again on 1 January; nobody ages on a trip. A trip booked for a year and not taken is taken as planned before
+  the year turns. Applications that take time are decided at the turn of the year, once, and the decision is kept.
+- **Moving** never grants a nationality or permanent residence by itself; marriage and owning property grant neither; a work visa
+  becomes permanent residence only through the route's own conditions; citizenship only by applying. The old home, friends, family
+  and property stay where they are, in the records. Pets travel only with an arrangement, or stay with family.
+- **Children born abroad** get the nationalities the place and each parent give (`js/data/citizenship.js`): Mexican parents in Japan
+  give a Mexican child; a Korean and a Spanish parent in Canada give a Canadian and Spanish child. No child inherits a visa.
+- **Generations.** When an heir carries on, the life that ended is archived with its places, trips and papers; every event carries
+  over with its id; homes keep their ids. Our Global Story shows all of it; an ancestor's papers stay private.
+- **Health care follows status** (`VISA_HEALTH` in `js/data/systems.js`, a gameplay rule): where care is for everyone, work and
+  student visa holders pay a yearly health charge and are covered like residents (unpaid, they pay in full); a retirement visa gives
+  no public care, so private cover is bought or the whole bill paid. The moving checklist says what care will look like on arrival.
+- **Stories of a life abroad** (`js/engine/abroadArcs.js`, scenes in `js/data/events/abroadArcs.js`), each begun only from the save: a job offer
+  abroad for someone qualified and established (apply, go and meet them, talk it over, or say no); a husband or wife living in another
+  country (ask them to come, which is their decision and their permission; move to them, which is your application; visit; let it be);
+  going home after ten years away when a parent there is growing old; retiring near a child abroad, or somewhere warmer and cheaper;
+  a teenager's first trip abroad with the family (to family abroad if there is any, somewhere no visa is needed); an exchange
+  semester for a university student; a child growing up with a parent's language at home (spoken at home, weekend school, or let
+  go); and an established family business opening a branch abroad, near a relative who lives there.
+  A "yes" is an application or a draft trip, never an approval.
+- **Moving with children** (`js/engine/familyMove.js`): a child under 18 whose other parent is alive and not coming moves only with
+  that parent's agreement or a court's permission (which weighs the child's age, who they are close to, and why the family is
+  moving); otherwise the child stays with that parent. Children who move start at the local school in the new town and settle in at
+  their own pace (younger and easy-going children sooner; a new language and a worrier later). Game rules, not family law.
+- **Businesses abroad** (`js/engine/businessAbroad.js`, on the business engine): start a business in another country without moving
+  (a manager runs it from the start; the money is changed at today's rate), or open a branch of an established business abroad,
+  paid from its own account. Each keeps its accounts in local money and pays its tax there; what it pays the owner is changed and
+  taxed where the owner lives, once. Owning one gives no right to live there: after a year of trading with staff, the business-owner
+  route opens (an application; a permission renewed while the business trades, permanent after five years).
+- **Qualifications abroad** (`js/engine/credentials.js`): sixteen regulated careers (medicine, dentistry, pharmacy, nursing and
+  midwifery, physiotherapy, veterinary work, law, teaching, chartered accountancy and engineering, electrical and plumbing work,
+  airline flying) are practiced only where the qualification is recognized. Where someone trained, or has practiced, counts; anywhere
+  else they apply to the professional body (a fee, the language at the level the profession asks, a decision when the year turns: a
+  license, a supervised adaptation year and an exam, or a refusal). Inside a recognition area (the European free-movement area,
+  Trans-Tasman) it is a registration. A job offer does not license anyone. Game rules, the same everywhere.
+- **A move cancels trips** booked to leave from the old home, on their refund terms, before savings change currency.
+- **Long lives stay small**: a finished trip older than three years keeps its summary, cost and memories and drops its journey legs and
+  booking lines; ledger entries older than ten years become yearly totals; days abroad are kept only as long as a limit could count them.
+- **Any year from 1800** (Historical Eras): transport is what existed then (sail, stagecoach, then railways, steamships, cars,
+  propeller planes, jets), before 1914 no border asks for papers and anyone may go and settle, between the wars passports and visas
+  return, and a country at war admits no visitors. Places are named as they were (the Australian colonies in 1825, Leipzig in East
+  Germany in 1980). Prices follow the era's money, like every other price in the game.
+- **Older saves** gain empty records: no passports, visas, trips or events are invented for them, and old trips stay as they were
+  recorded (country and year).
+
+The visit rules, visa names, passport terms, transport dates and earlier jurisdictions are simplified and unverified gameplay
+configuration (`js/data/travel.js`); positions are from GeoNames (`scripts/build-coordinates.py`). See `docs/WORLD_DATA.md`. None of
+it is travel or immigration advice.
+
 ### The brief's ten scenarios
 
 `node tests/world-scenarios.mjs` plays the Living World brief's scenarios A to J through the engine: born in Orlando; a
@@ -501,6 +579,80 @@ avatar-lab.html a workbench for avatar artwork
 tests/          checks that run on Node alone
 ```
 
+## Historical Eras
+
+A life can begin in any year from 1800 (the character creator's year of birth), and the world's year decides what life
+is like: five eras (Early Era to 1918, Between the Wars, Mid-Century, Late 20th Century, Modern Day from 2000) in one
+registry, `js/data/history.js`, answered by `js/engine/history.js`. The year processor's era step (`js/engine/eras.js`)
+runs as each year begins. From 2025 on, every answer is today's game unchanged.
+
+| What changes | How |
+|---|---|
+| Careers | Jobs exist from when they did (no programmers in 1900), with the titles of the time, kept by a job once taken; some were closed to women by law then (the marriage bar, law, uniformed services), through the rule engine. Parents' occupations and NPCs' jobs are of their time |
+| Money | Wages and prices move together on a price-level and real-wage index ([estimate]); old currencies (marks, francs, lire, pesetas, Australian and New Zealand pounds and others) and their change to the euro at the official rates, applied once, through the same conversion as emigrating |
+| Laws | A historical layer in the rule engine: women's vote by country, the voting age, same-sex marriage, divorce, Prohibition, conscription, the law on being gay, the death penalty, school-leaving age. Dated facts carry a source note; places without their own record use the period's usual law, marked as such |
+| Schooling | Most children leave school at the leaving age in earlier eras (the player is offered it, and it is not dropping out); university is rarer; degree subjects exist from when they did |
+| Health | Shorter lives in earlier eras, extra risk at working ages, young children in the family who may not survive (never the player as a baby), the danger of childbirth, the 1918 influenza; treatments as medicine then could give them |
+| Events | The world wars (with each country's year of entry), the Depression, the postwar boom, the oil crisis, the end of the Cold War, independence: news, economies held in a slump or boom, the call-up for young men where the law conscripted, losses in the family. No battles, no real leaders |
+| Scenes | Present-day scenes stay in the present (by the technology they mention, or a reviewed first year); a modern choice in an older scene is hidden. About thirty scenes belong to their decades, from the railway reaching town to the millennium |
+| Screens | The creator names the era of a birth year; the Self tab, Digital History and the Family Archive show the times |
+
+`docs/HISTORICAL_ERAS.md` maps where each system meets the eras, and what is a fact and what an estimate. Lives saved
+before eras keep their money as it was; lives in the present are unaffected.
+
+## Digital Life
+
+Pursuits → **Digital Life** (*Your connections, your creativity, your world.*): the character's accounts, feed,
+messages and group chats, friends and connections, online communities, posts, Creator Studio, online reputation,
+digital memories and digital history — or, before there is an online world, the letters, visits and telephone calls
+of the time. It is one engine, the **Digital World Engine**, in `js/engine/digital/`, with its registry in
+`js/data/digital.js`; the year processor runs it with the rest of the world (`tickDigital`).
+
+| Part | Where | What it does |
+|---|---|---|
+| Registry | `js/data/digital.js` | Communication technologies (letters to shared presence) with first year, spread and infrastructure needed; devices; places to get online; the game's own platforms (Corkboard, Chatterbox, Inkwell, Guildhall, Hearth, Vista, Murmur, Glimmer, Beacon, Kindling, Spinnet, Lumen) with launch, decline and closing years, age limits, formats, privacy settings, rules and pay; topics, communities, sponsors, trends, project kinds |
+| Core | `core.js` | `state.digital` (one per saved life), stable ids, spare hours a year, life events (the Life Story and Family Archive read these), the one reputation record per character |
+| Technology | `tech.js` | The only place a year becomes "does this exist yet": adoption by year and country infrastructure, platform status, devices, school/library/work access |
+| Accounts | `accounts.js` | Accounts always owned by a real character; guardian consent for young teenagers, decided once a year; handles that change while the account stays the same; `canSee`, the single privacy rule every screen uses; follows, requests, blocks, mutes |
+| Posts | `content.js` | Posting (format, topic, real source, audience, time); the audience's response worked out once and kept; comments and moderation; the feed, with disposable "around the platform" background posts kept apart from anything that happened to anyone |
+| Messaging | `messaging.js` | Letters, telegrams, calls, texts, email, video calls and direct messages, by era and by what both people have; group chats; replies drawn from the other person's real life; protections for young players |
+| Communities | `community.js` | Communities with a few real, persistent members and a member count; friendships that move into the Relationship engine; online dating that hands a first date to the Romance engine |
+| Creators | `creator.js` | Channels, stages earned by circumstance, projects with checked transitions, livestreams, collaborations with real people, sponsorships that pay only when delivered, a ledger (gross, platform fee, costs, tax, net) paid through the Finance engine, at most once per key; going full-time through the Occupation engine's creator career |
+| Professional | `professional.js` | A profile that is the real résumé; referrals from contacts at their actual employers and recruiter messages, which feed the career engine's existing hiring odds |
+| Reputation | `reputation.js` | Recognition, credibility and loyalty kept apart; controversies that record what really happened; safety problems and sensible responses; breaks, notifications and a small, personal effect on mood |
+| People | `npc.js` | Close family and friends join platforms (or never do), follow people they know, share news that really happened to them, move on when a platform fades |
+| Stories | `stories.js` + `js/data/events/stories/digital.js` | The Story Director's digital scenes, found in saved state: an old friend to reconnect with, a teenager's first video, an ancestor's archive, a controversy, bullying |
+| Legacy | `legacy.js` | Accounts become memorials at death; the digital world passes to the heir; descendants see public and family-shared posts, never private messages |
+| Year | `tick.js` | The yearly order of work; migration of older saves (the old handle and follower count become one account, with no posts invented); the old `player.social` numbers kept in step |
+
+The screen is `js/ui/digital.js`. Portraits anywhere in it open the person's own profile (the same one the People
+tab opens); where the player is — section, filters, the open post or conversation, scroll position — is kept while
+they visit a profile, and when Digital Life is closed and opened again.
+
+More of it, by part:
+
+| Part | Where | What it does |
+|---|---|---|
+| Public life | `civic.js` | Office-holders, candidates and royals speak through official accounts (kept apart from personal ones): a statement nudges approval in office or a campaign's appeal by a capped amount, or a royal's public image, and the country's press reports it. Elections are still counted by the Politics engine. Being widely known brings interviews and panels, a loss of privacy, and — for something the player really did and was never caught for — an allegation, which is not a conviction |
+| Study | `school.js` | The school's own systems by era (paper, email, a portal with marks), online study groups with real classmates (a small effect on marks; followers count for nothing), a portfolio of finished work (which helps in creative careers), digital skills |
+| More messaging | `messaging.js` | Plans and invitations that really happen the next year (and are remembered), photos, anniversary wishes, talking about the relationship (which can clear the air or start a row), venting (the only thing a leak can ever be made of), birthday messages from family (three a year at most), helping an older relative get online |
+| More creators | `creator.js` | Optional posting routines; merchandise (with the cost of making it), labelled affiliate links, licensing offers for good work, paid collaborations paid on publication; livestreams scheduled for later with chosen equipment; project work counts as practice for the matching skill |
+| Other people | `npc.js` | Gifted friends start channels of their own; people join communities for their hobbies; an online friend who ends up in the player's field becomes a colleague; a few well-known creators on each platform to follow, who are strangers, not friends |
+| Radio and television | `broadcast.js` | Once a year, an evening's listening or viewing (news, music, plays, sport, serials, cartoons) with whoever is at home, or at a neighbour's when there is no set; the first set in the house as a life moment; now and then a broadcast the whole household remembers. Sets are household devices like any other |
+| Story arcs | `stories.js` | Also: a creator's crossroads (make it a job, keep it on the side, step back), burnout after two heavy years, stopping decades later; life after going viral; a bigger creator reaching out; a recruiter; an invitation to moderate; meeting an online friend; a partner abroad; old posts decades on (shared with the family, they join the archive); a child's school photography project |
+
+Also: the character creator can start a life in any year from 1800; scenes that mention modern technology, and the
+creator career, only appear once the registry says that technology exists where the player lives; the feed carries
+the country's real news; trips the player took and homes they bought or renovated can be posted about (a trip names
+the place visited, never the home); profile pictures (portrait, initials, a pet, a symbol — never someone else) and
+links to one's own other accounts; devices are belongings with a condition; a self-set limit on screen time; locked
+accounts can be recovered; neighbourhood groups follow a move; a university's community is made of real classmates;
+dating has preferences (ages, distance, what one is looking for); the Family Archive opens from the People tab too.
+
+Still not built: business partnerships (there is no business system in the game for an online friend to join);
+content projects live in
+the Digital World because the game has no separate hobby-project system.
+
 ## Where to edit content
 
 | To change | Edit |
@@ -528,6 +680,9 @@ tests/          checks that run on Node alone
 | Political scenes (class president, polling day, scandals, removal votes, uprisings) | `js/data/events/politics.js` |
 | Royal and noble scenes (palace invitation, honors, scandal, protocol) | `js/data/events/royal.js` |
 | Moving abroad: who comes, how likely relatives are to say yes, shipping costs, the passport | `js/engine/emigration.js` |
+| Transport by era, places to stay, things to do on a trip, kinds of trip, refund terms, passports, visit rules by destination, pets moving, earlier jurisdictions | `js/data/travel.js` |
+| City coordinates (generated from GeoNames: run `scripts/build-coordinates.py --write`) | `js/data/coordinates.js` |
+| The land outline on the family map (generated from Natural Earth: see `scripts/build-land.py`) | `js/data/land.js` |
 | Escape puzzle maps (run `node tests/escape-layouts.mjs` after editing) | `js/data/prisonLayouts.js` |
 | Treatment costs and success rates, surgeries and surgeons, activity and holiday prices, follower packs, emigration fee | `js/data/activities.js` |
 | Trips: getaways, theme parks, cruises, flight classes, and the stories told about them | `js/data/activities.js` (`HOLIDAYS`, `CABINS`, `TRIP_STORIES`) |

@@ -6,7 +6,7 @@
 // Which shape a country gets, and which health-care model, is the author's
 // coarse understanding of the mid-2020s and is unverified. Real systems
 // have credits, deductions, contributions, regional taxes, co-payments and
-// exceptions that are not modelled. Nothing here is tax or medical advice.
+// exceptions that are not modeled. Nothing here is tax or medical advice.
 
 /**
  * allowance: income below this is untaxed. bands: [up to, multiple of the headline rate].
@@ -52,4 +52,19 @@ export const HEALTH_MODEL_OF = {
   de: 'insurance', fr: 'insurance', jp: 'insurance', kr: 'insurance', nl: 'insurance', ch: 'insurance',
   mx: 'mixed', in: 'mixed',
   ae: 'employer',
+};
+
+/**
+ * Health care for people on a temporary visa, where care is for everyone
+ * (public, compulsory insurance, mixed). GAMEPLAY RULE, unverified, the same
+ * in every such country:
+ *   charge   holders of these statuses pay a yearly visa health charge (a
+ *            multiple of the typical wage) and are then covered like residents
+ *   private  holders must buy private cover; without it they pay the whole bill
+ * Permanent residents, citizens and people given protection are covered as residents.
+ */
+export const VISA_HEALTH = {
+  worker: { kind: 'charge', rate: 0.03 },
+  student: { kind: 'charge', rate: 0.02 },
+  retiree: { kind: 'private', rate: 0.1 },
 };

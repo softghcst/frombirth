@@ -365,6 +365,7 @@ export default {
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
       ${invs ? `<div class="section-label">Investments</div>${invs}` : ''}
       ${loans ? `<div class="card" style="margin-top:14px"><h3>Loans</h3>${loans}</div>` : ''}
+      ${(p.inventory ?? []).length ? `<div class="section-label">Belongings</div>${p.inventory.map((it) => `<div class="kv"><span>${esc(it.name)}</span><span>${fmtMoney(it.value, c)}${it.condition != null ? ` · ${it.condition}% condition` : ''}</span></div>`).join('')}` : ''}
       ${!props && !vehs && !invs ? '<p class="empty">You do not own any property, vehicles or investments.</p>' : ''}
       ${willCard(c)}`;
 

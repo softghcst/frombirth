@@ -11,6 +11,9 @@ import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
+import { openExplore } from '../globalLife.js';
+import { archiveIdOf } from '../../engine/chronicle.js';
+import { placeName } from '../../engine/geo.js';
 import { avatarSvg, petGlyph, royalDress } from '../avatar.js';
 import { animalById, reconcile as reconcileAnimals } from '../../engine/animals.js';
 import * as zooUi from '../animals.js';
@@ -25,6 +28,9 @@ import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
 import { careRelationship, openFamilyHistory } from '../health/hub.js';
 import { npcHealthLines, npcCareActions, npcCareHistory, encourageCare, goWithCare, askCare, helpCare, visitCare } from '../../engine/health/story.js';
+import { eventsOf } from '../../engine/digital/core.js';
+import { accountsOf } from '../../engine/digital/accounts.js';
+import { PLATFORM_BY_ID } from '../../data/digital.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
@@ -217,6 +223,16 @@ function editPerson(api, npc, done = () => openNpc(npc, api)) {
   });
 }
 
+/** Where someone was born, lives, and has lived: from the same records as Places I've Lived. */
+function geoLine(npc) {
+  if (npc.role === 'pet') return '';
+  const born = npc.bornIn && COUNTRIES[npc.bornIn] ? placeName(npc.bornIn, npc.birthCity ?? null, store.state.year - npc.age) : null;
+  const now = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad].name : COUNTRIES[player().countryId].name;
+  const lived = new Set((npc.places ?? []).map((l) => l.countryId)).size;
+  const home = npc.flags.homeLanguage?.pace ? ` Growing up with ${npc.flags.homeLanguage.lang.replace(/^./, (c) => c.toUpperCase()).replace('_', ' ')} at home.` : '';
+  return `<p class="muted" style="margin-top:8px">${born ? `Born in ${esc(born)}. ` : ''}${npc.alive ? `Lives in ${esc(now)}.` : ''}${lived > 1 ? ` Has lived in ${lived} countries.` : ''}${esc(home)}</p>`;
+}
+
 /** What the courts recorded about someone, as far as it is public. */
 function courtRecord(npc) {
   const rows = (npc.flags.legalHistory ?? []).filter((h) => h.kind !== 'sealed');
@@ -231,7 +247,7 @@ function courtRecord(npc) {
 }
 
 /**
- * The profile of anyone in the world. People who are not part of the player's
+ * The profile of anyone in the world: the same person on every screen (Digital Life opens it too), never a copy. People who are not part of the player's
  * life (a judge, a witness, an inmate on another landing) are shown without
  * the actions that need a relationship.
  *
@@ -276,10 +292,17 @@ export function openNpc(npc, api, back, o = {}) {
     ? `<div class="section-label" style="margin-top:0">What has happened to them</div>
        ${npc.life.history.slice(-14).reverse().map((h) => `<div class="kv"><span>Age ${h.age}</span><span>${esc(h.text.charAt(0).toUpperCase() + h.text.slice(1))}.</span></div>`).join('')}
        <div style="height:14px"></div>` : '';
-  const shared = npc.flags.clinician ? [] : npcHealthLines(npc);
-  const healthCard = shared.length ? `<div class="section-label" style="margin-top:0">What they have shared about their health</div>
-    ${shared.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+  const sharedHealth = npc.flags.clinician ? [] : npcHealthLines(npc);
+  const healthCard = sharedHealth.length ? `<div class="section-label" style="margin-top:0">What they have shared about their health</div>
+    ${sharedHealth.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
     ${npcCareHistory(npc).slice(0, 6).map(([y, t]) => `<div class="kv"><span>${y}</span><span>${esc(t.charAt(0).toUpperCase() + t.slice(1))}</span></div>`).join('')}
+    <div style="height:14px"></div>` : '';
+  // Their digital life, as far as the player can see it: accounts by name, and the moments the two of you share.
+  const online = store.state.digital ? accountsOf(npc.id).filter((a) => a.status !== 'deleted') : [];
+  const shared = store.state.digital ? eventsOf(npc.id).filter((e) => e.charIds.includes(player().id) && e.visibility !== 'private').slice(0, 8) : [];
+  const digitalCard = online.length || shared.length ? `<div class="section-label" style="margin-top:0">Online</div>
+    ${online.map((a) => `<div class="kv"><span>${esc(PLATFORM_BY_ID[a.platformId].name)}</span><span>@${esc(a.handle)}${a.status === 'active' ? '' : ` · ${esc(a.status)}`}</span></div>`).join('')}
+    ${shared.map((e) => `<div class="kv"><span>${e.year}</span><span>${esc(e.summary)}</span></div>`).join('')}
     <div style="height:14px"></div>` : '';
   const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
 
@@ -294,6 +317,7 @@ export function openNpc(npc, api, back, o = {}) {
     ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
+    ...(npc.role !== 'pet' ? [{ id: 'places', label: 'Places they have lived' }] : []),
     ...(npc.alive && !npc.flags.clinician ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
   ];
   // Friendly things first, destructive things last.
@@ -307,9 +331,9 @@ export function openNpc(npc, api, back, o = {}) {
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
         <small>${esc(rel.roleLabel(npc))} · ${npc.alive ? `age ${npc.age}` : `died at ${npc.age}`}${detail}</small></div>
     </div>
-    ${clinic || `${traitChips}${owns}${feudNote}${expecting}
+    ${clinic || `${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
     <div style="margin:12px 0 16px">${meters}</div>`}
-    ${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}
+    ${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
@@ -363,6 +387,7 @@ export function openNpc(npc, api, back, o = {}) {
       visitInside: () => report(api, kinCase.visitKin(npc.id)),
       writeInside: () => report(api, kinCase.writeToKin(npc.id)),
       dynasty: () => openDynasty(npc.flags.houseId),
+      places: () => openExplore(api, { view: 'person', params: { id: archiveIdOf(npc) } }),
       breakUp: async () => {
         const yes = await confirmModal({ title: `End things with ${npc.firstName}?`, body: 'They will become an ex.', yes: 'End it', danger: true });
         if (yes) await report(api, love.breakUp(npc.id));
@@ -413,6 +438,7 @@ export default {
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
+      if (id === 'archive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

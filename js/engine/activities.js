@@ -11,6 +11,9 @@ import { stamp } from './emigration.js';
 import { makeNpc } from './npcFactory.js';
 import { addCondition } from './health.js';
 import { remember } from './conditions.js';
+import { readiness, today, addDays } from './documents.js';
+import { charge } from './chronicle.js';
+import { recordQuickTrip } from './travel.js';
 import { GYM_COST, NIGHT_OUT_COST, HOLIDAYS, HOLIDAY_KINDS, CABINS, TRIP_STORIES } from '../data/activities.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 
@@ -139,20 +142,27 @@ export function holiday(id, bringFamily, trip = {}) {
   const party = bringFamily ? companions() : [];
   const ownPlace = flying ? homeIn(dest.id) : null; // no hotel to pay for
   const cost = Math.round((flying ? localMoney(cabin.cost, c) : tripCost(h)) * (1 + party.length * 0.6) * (ownPlace ? 0.6 : 1));
+  // A border on the way: a passport, and whatever the destination asks of a visitor (engine/documents.js).
+  const abroadTo = flying ? dest.id : h.home && h.home !== p.countryId ? h.home : null;
+  if (abroadTo) {
+    const r = readiness(p, abroadTo, 'visit', today(), addDays(today(), 14));
+    if (!r.ok) return result(false, `${r.problems[0]} Sort out the papers first (Explore the World, Passport & Documents).`, 'neutral');
+  }
   if (p.finance.cash < cost) return result(false, 'You cannot afford it.', 'neutral');
   if (!once('holiday')) return result(false, 'You have had your holiday this year.', 'neutral');
   const purpose = flying ? (trip.purpose ?? 'holiday') : 'holiday';
   // The border. Gameplay configuration: a criminal record can get a visitor turned round.
   if (flying && !rightToLive(dest.id, p) && hasRecord(p, { sealed: true }) && rng.chance(0.2)) {
     const lost = Math.round(cost / 2);
-    p.finance.cash -= lost;
+    charge({ amount: Math.min(lost, p.finance.cash), kind: 'travel', memo: `Turned back at the border: half the fare to ${dest.name}` });
     p.stats.mood = clamp(p.stats.mood - 6);
     (p.trips ??= []).push({ countryId: dest.id, year: store.state.year, age: p.age, purpose, refused: true });
     const text = `At the border in ${theCountry(dest.name)} they looked at your record, and put you on the next flight home. You lost ${fmtMoney(lost, c)} of the fare.`;
     log(text, 'system', 'bad');
     return result(false, text);
   }
-  p.finance.cash -= cost;
+  const paid = charge({ amount: cost, kind: 'travel', memo: h.name, ref: { holiday: h.id } });
+  if (!paid.ok) return result(false, 'You cannot afford it.', 'neutral');
   p.counters.holidays = (p.counters.holidays ?? 0) + 1;
   p.stats.mood = clamp(p.stats.mood + h.mood);
   for (const k of ['health', 'intellect', 'charm']) if (h[k]) p.stats[k] = clamp(p.stats[k] + h[k]);
@@ -181,9 +191,14 @@ export function holiday(id, bringFamily, trip = {}) {
   let tone = 'good';
   const smallest = party.filter((n) => n.role === 'child').sort((a, b) => a.age - b.age)[0];
 
+  // One trip record for every holiday, whichever way it was booked (engine/travel.js).
+  const quick = recordQuickTrip({ countryId: flying ? dest.id : h.home ?? p.countryId, city: flying ? (ownPlace ? ownPlace.city ?? null : where) : null, nights: flying ? 14 : h.kind === 'cruise' ? 10 : 5,
+    people: party, name: h.name, txId: paid.tx.id, amount: cost, purpose: flying ? purpose : 'holiday' });
+  paid.tx.ref = { tripId: quick.trip.id };
+  if (quick.notes.length) text += ` ${quick.notes.join(' ')}`;
   if (flying) {
     stamp(dest.id, 'visit');
-    (p.trips ??= []).push({ countryId: dest.id, city: ownPlace ? null : where, year: store.state.year, age: p.age, purpose, cabin: cabin.id, with: party.length, saw: kin.length });
+    (p.trips ??= []).push({ countryId: dest.id, city: ownPlace ? null : where, year: store.state.year, age: p.age, purpose, cabin: cabin.id, with: party.length, saw: kin.length, tripId: quick.trip.id });
     const seen = p.flags.visited ?? (p.flags.visited = []);
     if (!seen.includes(dest.id)) {
       seen.push(dest.id);

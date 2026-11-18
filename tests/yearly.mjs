@@ -195,7 +195,9 @@ section('prison: the routine is chosen once and carries on; time served counts y
 
 // ---------- 5. The full year: many things at once, one Age Up ----------
 {
-  const p = adult(30);
+  // Adoption depends on the home and the shelter: start from a life where the shelter says yes.
+  let p; let adopted;
+  do { p = adult(30); adopted = kids.getPet(); } while (!adopted.ok);
   const job = CAREERS.find((c) => c.id === 'office');
   career.hire(job, 0, 60);
   const acct = openAccount();
@@ -205,7 +207,6 @@ section('prison: the routine is chosen once and carries on; time served counts y
   plans.setHobby('painting');
   // The game has no separate sports-club engine: a sport as the main practice focus stands in for it.
   plans.plansOf().hobby.second = 'swimming';
-  kids.getPet();
   const pet = npcsByRole('pet').at(-1);
   const petAge = pet.age;
   // A treatment plan: a diagnosed condition, and therapy that runs through the year.
@@ -218,9 +219,7 @@ section('prison: the routine is chosen once and carries on; time served counts y
   const started = where ? ther.startTherapy({ therapyId: 'cbt', facilityId: where.facilityId, providerId: where.providerId, dxId: dx.id }) : null;
   check(seen.ok && dx && started?.ok, `the assessment happened now, and therapy began (${seen.text.slice(0, 80)}…)`);
   const sessionsBefore = R.healthOf().therapies[0]?.attended ?? 0;
-  social.createAccount('fullyear');
-  plans.setOnline('consistent');
-  const followers = p.social.followers;
+  const online = social.createAccount('fullyear');
   const party = plans.celebrate('birthday', [friend.id], 'generous');
   check(party.ok, 'a birthday party happens now');
   const year = store.state.year;
@@ -238,7 +237,7 @@ section('prison: the routine is chosen once and carries on; time served counts y
   check((p.skills.painting ?? 0) > paint, 'the hobby progressed');
   check(pet.age === petAge + 1 && pet.meters.relationship > 0, 'the pet aged, and was looked after');
   check(h.therapies[0].attended > sessionsBefore && h.therapies[0].attended <= 52, `therapy went on through the year (${h.therapies[0].attended} sessions)`);
-  check(p.social.followers !== followers || p.social.posts > 0, 'the posting routine happened');
+  check(!online.ok || social.hasAccount(), 'the online account is still there after the year (Digital Life ran its year)');
   check(new Set(h.ledger.map((x) => x.ref)).size === h.ledger.length && h.ledger.length > ledger, 'care was paid for, and nothing twice');
   check(store.state.yearReport?.planLines?.length >= 3, 'the year\'s plans are in the yearly report');
   const summary = summarize(store.state.yearReport.before, store.state, store.state.yearReport.planLines);
