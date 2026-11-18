@@ -17,8 +17,9 @@ import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, wageIn, uid } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { MUSIC_GENRES, BAND_WORDS, SONG_WORDS, RELEASE_TYPES, VENUES, LABEL_NAMES, MUSIC_DEAL, ORG_WORDS } from '../data/fame.js';
+import { BAND_WORDS, SONG_WORDS, RELEASE_TYPES, VENUES, LABEL_NAMES, MUSIC_DEAL, ORG_WORDS } from '../data/fame.js';
 import { makeNpc } from './npcFactory.js';
+import { POSITIONS, GENRES, GENRE_BY_ID, genreOf, genresIn, LABEL_KINDS, LABEL_SOUNDS, LABEL_SOUND_WORDS, BAND_SEARCH } from '../data/music.js';
 import { resolve } from './conditions.js';
 import { levelOf } from './skills.js';
 import { ent, workOf, orgsOf, article, commitments } from './entertainment.js';
@@ -28,7 +29,7 @@ import { registerEmployer } from './employers.js';
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
 const K = (base, c = country()) => Math.round(localWage(base, c));
-const M = () => { const E = ent(); E.acts ??= {}; E.releases ??= {}; E.tours ??= {}; E.musicians ??= {}; E.labels ??= {}; return E; };
+const M = () => { const E = ent(); E.acts ??= {}; E.releases ??= {}; E.tours ??= {}; E.musicians ??= {}; E.labels ??= {}; E.openings ??= {}; E.heat ??= {}; return E; };
 const nextId = (prefix) => `${prefix}_${(ent().seq += 1).toString(36)}`;
 export const act = (id) => M().acts[id] ?? null;
 export const release = (id) => M().releases[id] ?? null;
@@ -52,12 +53,57 @@ export const myAct = (p = player()) => musicOf(p).acts.map(act).find((a) => a &&
 /** How well someone writes songs, and performs them. */
 export const songwriting = (p = player()) => Math.round(p.talents.music * 0.5 + levelOf('writing') * 0.3 + p.talents.singing * 0.2);
 export const performing = (p = player()) => Math.round(Math.max(p.talents.singing, p.talents.music) * 0.7 + Math.min(p.talents.singing, p.talents.music) * 0.3);
-const npcPerf = (n) => { const s = n?.flags.star?.skill ?? {}; return Math.round(((s.singing ?? 50) + (s.music ?? s.acting ?? 50)) / 2); };
+const npcPerf = (n, pos = null) => {
+  const s = n?.flags.star?.skill ?? {};
+  if (pos && n?.flags.star?.plays?.[pos] != null) return n.flags.star.plays[pos];
+  return Math.round(((s.singing ?? 50) + (s.music ?? s.acting ?? 50)) / 2);
+};
+
+/** How well the player plays a position in a band: the instrument (or voice) practiced, and the talent behind it. */
+export function positionSkill(pos, p = player()) {
+  const P = POSITIONS[pos];
+  if (!P) return performing(p);
+  const talent = p.talents[P.talent] ?? 50;
+  if (pos === 'rapper') return Math.round(clamp(levelOf('writing') * 0.45 + p.stats.charm * 0.3 + talent * 0.25));
+  const practiced = levelOf(P.skill);
+  return Math.round(clamp(Math.max(practiced * 0.65 + talent * 0.35, talent * 0.7)));
+}
+/** The positions the player plays best, best first. */
+export const bestPositions = (p = player(), n = 3) => Object.keys(POSITIONS).map((k) => ({ pos: k, skill: positionSkill(k, p) })).sort((a, b) => b.skill - a.skill).slice(0, n);
+
+const memberSkill = (m) => (m.who === 'player' ? positionSkill(POSITIONS[m.role] ? m.role : 'vocals') : npcPerf(store.state.npcs[m.who], m.role));
 function actPerf(a) {
   const ms = members(a);
   if (!ms.length) return 40;
-  return Math.round(ms.reduce((s, m) => s + (m.who === 'player' ? performing() : npcPerf(store.state.npcs[m.who])), 0) / ms.length);
+  return Math.round(ms.reduce((s, m) => s + memberSkill(m), 0) / ms.length);
 }
+
+/** How well an act suits its genre: each genre wants something different (singing, playing, writing, presence). */
+export function genreFit(a) {
+  const g = genreOf(a.genre);
+  const ms = members(a);
+  if (!ms.length) return 50;
+  const sing = Math.max(...ms.filter((m) => ['vocals', 'backing', 'solo'].includes(m.role)).map(memberSkill), 30);
+  const playing = ms.filter((m) => !['vocals', 'backing', 'solo', 'rapper'].includes(m.role)).map(memberSkill);
+  const play = playing.length ? playing.reduce((x, y) => x + y, 0) / playing.length : (a.members.some((m) => m.who === 'player') ? player().talents.music : 45);
+  const write = a.members.some((m) => m.who === 'player' && m.to == null) ? songwriting() : npcPerf(store.state.npcs[ms[0].who]);
+  const presence = a.members.some((m) => m.who === 'player' && m.to == null) ? player().stats.charm : 55;
+  const st = g.style;
+  return Math.round((st.singing ?? 0) * sing + (st.playing ?? 0) * play + (st.writing ?? 0) * write + (st.presence ?? 0) * presence);
+}
+
+/** How popular each genre is this year: tastes drift, and some genres are bigger in some countries. */
+export function heat(genreId) {
+  const E = M();
+  if (E.heatYear !== year()) {
+    for (const g of genresIn(year())) E.heat[g.id] = Math.round(clamp((E.heat[g.id] ?? 1) + rng.around(0, 0.12) + (1 - (E.heat[g.id] ?? 1)) * 0.15, 0.5, 1.7) * 100) / 100;
+    E.heatYear = year();
+  }
+  return E.heat[genreId] ?? 1;
+}
+const popularIn = (genreId, countryId) => genreOf(genreId).pull * heat(genreOf(genreId).id) * (genreOf(genreId).strong.includes(countryId) ? 1.4 : 1);
+/** Genres doing best this year, for the charts' talk. */
+export const trending = (n = 3) => genresIn(year()).map((g) => ({ g, k: heat(g.id) })).sort((a, b) => b.k - a.k).slice(0, n).map((x) => x.g);
 
 // ---------- People and labels ----------
 
@@ -65,8 +111,14 @@ function musician(countryId, o = {}) {
   const age = o.age ?? rng.int(18, 50);
   const n = makeNpc({ role: 'performer', countryId, age, relationship: rng.int(40, 60) });
   const base = clamp(rng.around(o.level ?? 55, 15), 20, 96);
-  n.flags.star = { skill: { singing: Math.round(clamp(base + rng.int(-15, 10))), music: Math.round(clamp(base + rng.int(-8, 8))), acting: 40, dance: 40, charm: Math.round(base) },
-    born: year() - age, fame: 0, credits: [], kind: 'musician' };
+  // What they play: one position they are good at, maybe a second; and the music they love.
+  const pos = o.position ?? rng.pick(['vocals', 'lead_guitar', 'rhythm_guitar', 'bass', 'drums', 'drums', 'bass', 'keys', 'producer', 'rapper', 'sax', 'violin']);
+  const second = rng.chance(0.4) ? rng.pick(Object.keys(POSITIONS).filter((k) => k !== pos)) : null;
+  const plays = { [pos]: Math.round(clamp(base + rng.int(-4, 8))) };
+  if (second) plays[second] = Math.round(clamp(base - rng.int(5, 20)));
+  const loves = genresIn(year()).filter((g) => g.lineup.includes(pos) || !g.band).sort(() => rng.next() - 0.5).slice(0, 3).map((g) => g.id);
+  n.flags.star = { skill: { singing: Math.round(clamp(pos === 'vocals' ? base + 5 : base + rng.int(-15, 10))), music: Math.round(clamp(base + rng.int(-8, 8))), acting: 40, dance: 40, charm: Math.round(base) },
+    plays, loves, born: year() - age, fame: 0, credits: [], kind: 'musician' };
   n.occupation = 'musician';
   store.state.npcs[n.id] = n;
   return n;
@@ -74,27 +126,195 @@ function musician(countryId, o = {}) {
 /** Musicians looking for a band, in a country. */
 export function musicians(countryId) {
   const E = M();
-  const alive = (E.musicians[countryId] ?? []).filter((id) => store.state.npcs[id]?.alive);
+  const taken = new Set(Object.values(E.acts).filter((a) => a.status !== 'split').flatMap((a) => members(a).map((m) => m.who)));
+  const alive = (E.musicians[countryId] ?? []).filter((id) => store.state.npcs[id]?.alive && !taken.has(id)); // someone in a band is not looking for one
   while (alive.length < 14) alive.push(musician(countryId).id);
   E.musicians[countryId] = alive;
   return alive.map((id) => store.state.npcs[id]);
 }
-/** A country's record labels, made once. */
+/** How much a family of genres sells in a country: what is big here counts far more than what is big elsewhere. */
+const localTaste = (sound, countryId) => Math.max(...sound.map((id) => GENRE_BY_ID[id]).filter(Boolean).map((g) => g.pull * (g.strong.includes(countryId) ? 1.6 : 0.6)));
+
+/** A country's record labels, made once: two majors that sign anything, and independents that keep to a sound. */
 export function labels(countryId) {
   const E = M();
-  if (!E.labels[countryId]) {
-    const c = COUNTRIES[countryId];
-    E.labels[countryId] = ['major', 'major', 'indie', 'indie'].map((tier, i) => {
-      const city = i < 2 ? (c.place?.capital ?? c.cities[0]) : rng.pick(c.cities);
-      const name = rng.pick(LABEL_NAMES).replace('{W}', rng.pick(ORG_WORDS)).replace('{C}', city).replace('{S}', rng.pick(c.names.last));
-      const e = registerEmployer({ name, family: 'arts', tracks: ['music_prod', 'marketing'], countryId, city, owned: false });
-      const o = { id: nextId('org'), kind: 'label', name, countryId, city, tier, founded: year() - rng.int(3, 60), reputation: tier === 'major' ? rng.int(65, 90) : rng.int(35, 70), employerId: e.id, staff: [], history: [] };
-      E.orgs[o.id] = o;
-      (E.byCountry[countryId] ??= []).push(o.id);
-      return o.id;
-    });
-  }
+  const c = COUNTRIES[countryId];
+  const make = (tier, sound) => {
+    const city = tier === 'major' ? (c.place?.capital ?? c.cities[0]) : rng.pick(c.cities);
+    let word = sound ? LABEL_SOUND_WORDS[sound[0]] ?? rng.pick(ORG_WORDS) : rng.pick(ORG_WORDS);
+    const taken = new Set(Object.values(E.orgs).filter((x) => x.countryId === countryId).map((x) => x.name));
+    let name;
+    do name = rng.pick(LABEL_NAMES).replace('{W}', word).replace('{C}', city).replace('{S}', rng.pick(c.names.last)); while (taken.has(name) && (word = rng.pick(ORG_WORDS), true));
+    const e = registerEmployer({ name, family: 'arts', tracks: ['music_prod', 'marketing'], countryId, city, owned: false });
+    const K2 = LABEL_KINDS[tier];
+    const o = { id: nextId('org'), kind: 'label', name, countryId, city, tier, founded: year() - rng.int(3, 60), reputation: tier === 'major' ? rng.int(65, 90) : rng.int(35, 70), employerId: e.id, staff: [], history: [],
+      sound: sound ?? null, terms: { royalty: K2.royalty, advance: Math.round(K2.advance * rng.around(1, 0.15) * 100) / 100, albums: K2.albums } };
+    E.orgs[o.id] = o;
+    (E.byCountry[countryId] ??= []).push(o.id);
+    return o.id;
+  };
+  if (!E.labels[countryId]) E.labels[countryId] = ['major', 'major'].map((t) => make(t, null));
+  // Labels made before sounds existed are given one; there are always independents for several sounds.
+  const have = E.labels[countryId].map((id) => ent().orgs[id]);
+  for (const l of have) { if (l.tier !== 'major' && !l.sound) l.sound = rng.pick(LABEL_SOUNDS); l.terms ??= { ...LABEL_KINDS[l.tier], advance: LABEL_KINDS[l.tier].advance }; }
+  const indies = have.filter((l) => l.tier !== 'major').length;
+  // The sounds that sell here get their own labels first.
+  const sounds = [...LABEL_SOUNDS].filter((snd) => snd.some((g) => GENRE_BY_ID[g] && year() >= GENRE_BY_ID[g].from)).filter((snd) => !have.some((l) => l.sound?.[0] === snd[0]))
+    .sort((x, y) => localTaste(y, countryId) - localTaste(x, countryId) + rng.around(0, 0.1));
+  for (let i = indies; i < 8; i++) E.labels[countryId].push(make('indie', sounds[i - indies] ?? rng.pick(LABEL_SOUNDS)));
   return E.labels[countryId].map((id) => ent().orgs[id]);
+}
+/** The acts a label has signed: who you would be alongside. */
+export const roster = (labelId) => Object.values(M().acts).filter((a) => a.labelId === labelId || a.deal?.labelId === labelId).sort((x, y) => fanTotal(y) - fanTotal(x));
+export const labelSound = (l) => (l.sound ? l.sound.map((id) => GENRE_BY_ID[id]?.name ?? id).join(', ') : 'Every kind of music');
+
+// ---------- Bands looking for people ----------
+
+const posLow = (k) => (k === 'producer' ? 'DJ and producer' : POSITIONS[k]?.name.toLowerCase() ?? k);
+const searchOf = (p = player()) => { const f = musicOf(p); if (f.bandSearch?.age !== p.age) f.bandSearch = { age: p.age, auditions: 0, demos: 0, ads: {} }; return f.bandSearch; };
+export const auditionsLeft = () => BAND_SEARCH.auditions - searchOf().auditions;
+export const demosLeft = () => BAND_SEARCH.demos - searchOf().demos;
+
+/**
+ * This year's notices from bands looking for someone: a place in the line-up, the band's sound, how good
+ * they are and how far along. Some are established acts replacing someone; most are new bands.
+ */
+export function openings(countryId = player().countryId) {
+  const E = M();
+  const key = `${countryId}:${year()}`;
+  if (!E.openings[key]) {
+    for (const k of Object.keys(E.openings)) if (!k.endsWith(`:${year()}`)) delete E.openings[k];
+    rivals(countryId);
+    const list = [];
+    const established = Object.values(E.acts).filter((a) => a.npc && a.kind === 'band' && genreOf(a.genre).band && a.countryId === countryId && a.status === 'active' && !a.members.some((m) => m.who === 'player'));
+    for (const a of established.sort(() => rng.next() - 0.5).slice(0, 2)) {
+      const g = genreOf(a.genre);
+      list.push({ id: nextId('open'), actId: a.id, name: a.name, genre: g.id, position: rng.pick(g.lineup.filter((x) => x !== a.members[0].role)) ?? g.lineup.at(-1), bar: Math.round(npcPerf(store.state.npcs[a.members[0].who]) - 4), fans: fanTotal(a), labelId: a.labelId ?? null, status: 'open' });
+    }
+    const pool = musicians(countryId);
+    for (const n of pool) delete n.flags.star.bandOpening; // last year's notices are gone
+    while (list.length < BAND_SEARCH.openings) {
+      const g = rng.weighted(genresIn(year()).filter((x) => x.band), (x) => popularIn(x.id, countryId));
+      const position = rng.pick(g.lineup);
+      const bar = rng.pick([35, 45, 55, 65, 75]);
+      const crew = pool.filter((n) => !n.flags.star.bandOpening).sort(() => rng.next() - 0.5).slice(0, Math.min(g.lineup.length - 1, rng.int(2, 3)));
+      for (const n of crew) n.flags.star.bandOpening = true;
+      list.push({ id: nextId('open'), actId: null, name: actName(), genre: g.id, position, bar, fans: Math.round(bar ** 2 / 10 * rng.around(1, 0.4)), labelId: null, crew: crew.map((n) => n.id), status: 'open' });
+    }
+    E.openings[key] = list;
+  }
+  return E.openings[key];
+}
+
+/** Auditions for a band's opening, playing the position. Three auditions a year. */
+export function auditionForBand(openingId) {
+  const p = player();
+  const o = openings(p.countryId).find((x) => x.id === openingId);
+  if (!o || o.status !== 'open') return result(false, 'That place has been filled.', 'neutral');
+  if (myAct(p)) return result(false, `You are already in ${myAct(p).name}.`, 'neutral');
+  const S2 = searchOf(p);
+  if (S2.auditions >= BAND_SEARCH.auditions) return result(false, 'You have auditioned as often as you can this year.', 'neutral');
+  S2.auditions += 1;
+  const skill = positionSkill(o.position, p);
+  const odds = clamp(0.4 + (skill - o.bar) / 25 + (p.stats.charm - 50) / 300, 0.03, 0.92);
+  if (!rng.chance(odds)) {
+    o.status = 'lost';
+    return result(false, skill < o.bar - 10 ? `They let you finish the song. They are looking for a ${posLow(o.position)} who is further along.` : `It was close. They went with someone they already knew.`);
+  }
+  o.status = 'joined';
+  const E = M();
+  let a = o.actId ? act(o.actId) : null;
+  if (!a) {
+    a = { id: nextId('act'), name: o.name, genre: o.genre, kind: 'band', countryId: p.countryId, formed: year() - rng.int(0, 2), members: [], status: 'active', fans: { [p.countryId]: o.fans }, deal: null, releases: [], tours: [], history: [{ year: year(), text: `${o.name} was formed.` }], npc: false };
+    const open = [...GENRE_BY_ID[o.genre].lineup];
+    open.splice(open.indexOf(o.position), 1);
+    for (const id of o.crew ?? []) {
+      const n = store.state.npcs[id];
+      if (!n) continue;
+      const theirs = Object.keys(n.flags.star.plays ?? {});
+      const role = theirs.find((k) => open.includes(k)) ?? open[0] ?? theirs[0];
+      if (open.includes(role)) open.splice(open.indexOf(role), 1);
+      n.flags.star.plays[role] ??= Math.round(o.bar + rng.int(-5, 5));
+      a.members.push({ who: id, role, from: year(), to: null });
+    }
+    E.acts[a.id] = a;
+  }
+  else {
+    // An established band is more than its singer: the rest of the line-up are real people too.
+    const open = [...genreOf(a.genre).lineup];
+    for (const m of members(a)) if (open.includes(m.role)) open.splice(open.indexOf(m.role), 1);
+    open.splice(open.indexOf(o.position) >= 0 ? open.indexOf(o.position) : open.length, 1);
+    for (const role of open.slice(0, 4)) { const n = musician(p.countryId, { position: role, level: o.bar + 4 }); a.members.push({ who: n.id, role, from: Math.max(a.formed, year() - rng.int(0, 6)), to: null }); }
+  }
+  a.npc = false;
+  a.members.push({ who: 'player', role: o.position, from: year(), to: null });
+  for (const m of members(a)) if (m.who !== 'player') bringIn(store.state.npcs[m.who], a);
+  musicOf(p).acts.push(a.id);
+  if (a.labelId && !a.deal) a.deal = { labelId: a.labelId, royalty: 0.16, albumsOwed: 2, advance: 0, unrecouped: 0, signed: year(), advancePaid: true };
+  a.history.push({ year: year(), text: `${p.firstName} ${p.lastName} joined as ${posLow(o.position)}.` });
+  milestone(`Joined ${a.name} as their ${posLow(o.position)}.`, 'fame');
+  return result(true, `You are the new ${posLow(o.position)} in ${a.name}, a ${genreOf(a.genre).name.toLowerCase()} band${a.labelId ? ` signed to ${ent().orgs[a.labelId]?.name}` : ''}.`);
+}
+
+/** Your band puts up a notice for a position: three musicians answer it, and you choose. Once a year per position. */
+export function advertise(position) {
+  const p = player();
+  const a = myAct(p);
+  if (!a || a.kind !== 'band') return result(false, 'You need a band first.', 'neutral');
+  if (!POSITIONS[position]) return result(false, 'Not a place in a band.', 'neutral');
+  if (members(a).length >= 7) return result(false, 'The band is big enough.', 'neutral');
+  const S2 = searchOf(p);
+  if (S2.ads[position]) return { ...result(true, 'Your notice is already up.', 'neutral'), candidates: S2.ads[position].map((id) => store.state.npcs[id]).filter(Boolean) };
+  const level = clamp(actPerf(a) + Math.log10(fanTotal(a) + 1) * 3 - 5, 30, 90);
+  const found = musicians(p.countryId).filter((n) => (n.flags.star.plays?.[position] ?? 0) > 0 && !a.members.some((m) => m.who === n.id));
+  while (found.length < 3) { const n = musician(p.countryId, { position, level }); M().musicians[p.countryId].push(n.id); found.push(n); }
+  S2.ads[position] = found.sort(() => rng.next() - 0.5).slice(0, 3).map((n) => n.id);
+  return { ...result(true, `Three ${posLow(position)}s answer the notice.`, 'neutral'), candidates: S2.ads[position].map((id) => store.state.npcs[id]) };
+}
+
+/** Takes on one of the musicians who answered, in the position advertised. */
+export function hireMember(npcId, position) {
+  const a = myAct();
+  if (!a) return result(false, 'You need a band first.', 'neutral');
+  const n = store.state.npcs[npcId];
+  if (!n?.alive || !(searchOf().ads[position] ?? []).includes(npcId)) return result(false, 'They are not available.', 'neutral');
+  n.flags.star.plays ??= {};
+  n.flags.star.plays[position] ??= npcPerf(n);
+  a.members.push({ who: n.id, role: position, from: year(), to: null });
+  bringIn(n, a);
+  searchOf().ads[position] = [];
+  a.history.push({ year: year(), text: `${n.firstName} ${n.lastName} joined as ${posLow(position)}.` });
+  return result(true, `${n.firstName} ${n.lastName} is your new ${posLow(position)}.`);
+}
+
+/** Sends a demo to a label. Twice a year. They listen for the songs, the band, the following and their own sound. */
+export function sendDemo(labelId) {
+  const p = player();
+  const a = myAct(p);
+  if (!a || a.status !== 'active') return result(false, 'You need an active act.', 'neutral');
+  if (a.deal) return result(false, `${a.name} is already signed.`, 'neutral');
+  const l = labels(p.countryId).find((x) => x.id === labelId);
+  if (!l) return result(false, 'That label is not taking demos.', 'neutral');
+  const S2 = searchOf(p);
+  if (S2.demos >= BAND_SEARCH.demos) return result(false, 'You have sent two demos this year. Labels need time to listen.', 'neutral');
+  S2.demos += 1;
+  const songs = musicOf(p).songs.sort((x, y) => y.q - x.q).slice(0, 3);
+  const songQ = songs.length ? songs.reduce((s2, x) => s2 + x.q, 0) / songs.length : 30;
+  const fits = !l.sound || l.sound.includes(genreOf(a.genre).id);
+  const score = songQ * 0.45 + actPerf(a) * 0.25 + genreFit(a) * 0.15 + Math.log10(fanTotal(a) + 1) * 4 + (fits ? 6 : -15) - (l.tier === 'major' ? 18 : 0);
+  if (!rng.chance(clamp((score - 45) / 25, 0.02, 0.85))) return result(false, !fits ? `${l.name} sends it back: "Not our sound."` : rng.pick(['No reply.', `${l.name} passes, politely.`, '"Keep us posted." Which means no.']));
+  offerFrom(a, l);
+  return result(true, `${l.name} wants to sign ${a.name}.`);
+}
+
+/** A label's offer, on that label's own terms. */
+function offerFrom(a, l) {
+  const c = COUNTRIES[a.countryId];
+  const t = l.terms ?? LABEL_KINDS[l.tier];
+  const fans = fanTotal(a);
+  a.offer = { labelId: l.id, advance: Math.round(localWage(Math.min(400000, 3000 + fans * 0.9) * (t.advance ?? 1), c)), royalty: Math.round((t.royalty[0] + rng.next() * (t.royalty[1] - t.royalty[0])) * 100) / 100,
+    albums: rng.int(t.albums[0], t.albums[1]), year: year(), asked: false, lawyer: false };
+  a.history.push({ year: year(), text: `${l.name} offered a record deal.` });
 }
 
 // ---------- Acts ----------
@@ -109,9 +329,20 @@ export function formAct(kind, o = {}) {
   if (p.age < 12) return result(false, 'You are too young to form an act.', 'neutral');
   if (myAct(p)) return result(false, `You are already in ${myAct(p).name}.`, 'neutral');
   const E = M();
-  const a = { id: nextId('act'), name: kind === 'solo' ? `${p.firstName} ${p.lastName}` : (o.name || actName()).slice(0, 40), genre: o.genre ?? rng.pick(MUSIC_GENRES), kind, countryId: p.countryId,
-    formed: year(), members: [{ who: 'player', role: kind === 'solo' ? 'solo' : 'vocals', from: year(), to: null }], status: 'active', fans: { [p.countryId]: 20 }, deal: null, releases: [], tours: [], history: [], npc: false };
-  for (const id of o.with ?? []) a.members.push({ who: id, role: rng.pick(['guitar', 'bass', 'drums', 'keys']), from: year(), to: null });
+  const genre = genreOf(o.genre ?? rng.pick(genresIn(year())).id).id;
+  const mine = kind === 'solo' ? 'solo' : POSITIONS[o.position] ? o.position : bestPositions(p, 1)[0].pos;
+  const a = { id: nextId('act'), name: kind === 'solo' ? `${p.firstName} ${p.lastName}` : (o.name || actName()).slice(0, 40), genre, kind, countryId: p.countryId,
+    formed: year(), members: [{ who: 'player', role: mine, from: year(), to: null }], status: 'active', fans: { [p.countryId]: 20 }, deal: null, releases: [], tours: [], history: [], npc: false };
+  // Each musician takes the place in the line-up they play best that is still open.
+  const open = [...GENRE_BY_ID[genre].lineup];
+  open.splice(open.indexOf(mine) >= 0 ? open.indexOf(mine) : open.length, 1);
+  for (const id of o.with ?? []) {
+    const n = store.state.npcs[id];
+    const theirs = Object.entries(n?.flags.star?.plays ?? {}).sort((x, y) => y[1] - x[1]).map(([k]) => k);
+    const role = theirs.find((k) => open.includes(k)) ?? theirs[0] ?? 'rhythm_guitar';
+    if (open.includes(role)) open.splice(open.indexOf(role), 1);
+    a.members.push({ who: id, role, from: year(), to: null });
+  }
   for (const m of a.members) if (m.who !== 'player') bringIn(store.state.npcs[m.who], a);
   E.acts[a.id] = a;
   f.acts.push(a.id);
@@ -137,7 +368,8 @@ export function addMember(npcId) {
   if (members(a).length >= 6) return result(false, 'The band is big enough.', 'neutral');
   const n = store.state.npcs[npcId];
   if (!n?.alive) return result(false, 'They are not available.', 'neutral');
-  a.members.push({ who: n.id, role: rng.pick(['guitar', 'bass', 'drums', 'keys', 'backing vocals']), from: year(), to: null });
+  const role = Object.entries(n.flags.star?.plays ?? {}).sort((x, y) => y[1] - x[1])[0]?.[0] ?? 'rhythm_guitar';
+  a.members.push({ who: n.id, role, from: year(), to: null });
   bringIn(n, a);
   a.history.push({ year: year(), text: `${n.firstName} ${n.lastName} joined.` });
   return result(true, `${n.firstName} ${n.lastName} joins ${a.name}.`);
@@ -173,8 +405,9 @@ export function reunite(actId) {
   const willing = old.filter((n) => rng.chance(clamp(0.3 + (n.meters.relationship - 50) / 80, 0.05, 0.9)));
   if (a.kind === 'band' && willing.length < 1) return result(false, 'You ring round. Nobody is interested.');
   a.status = 'active';
-  a.members.push({ who: 'player', role: a.kind === 'solo' ? 'solo' : 'vocals', from: year(), to: null });
-  for (const n of willing) a.members.push({ who: n.id, role: 'band', from: year(), to: null });
+  const was = (who) => [...a.members].reverse().find((m) => m.who === who)?.role ?? 'vocals';
+  a.members.push({ who: 'player', role: a.kind === 'solo' ? 'solo' : was('player'), from: year(), to: null });
+  for (const n of willing) a.members.push({ who: n.id, role: was(n.id), from: year(), to: null });
   a.history.push({ year: year(), text: `${a.name} got back together.` });
   milestone(`${a.name} reunited.`, 'fame');
   return result(true, `${a.name} is back${willing.length ? `, with ${willing.map((n) => n.firstName).join(' and ')}` : ''}.`);
@@ -219,7 +452,7 @@ export function record(type, o = {}) {
   if (p.finance.cash < cost) return result(false, `Recording it yourself costs ${fmtMoney(cost, country())}.`, 'neutral');
   p.finance.cash -= cost;
   const songs = f.songs.sort((x, y) => y.q - x.q).splice(0, t.songs);
-  const quality = Math.round(songs.reduce((s, x) => s + x.q, 0) / songs.length * 0.65 + actPerf(a) * 0.35);
+  const quality = Math.round(songs.reduce((s, x) => s + x.q, 0) / songs.length * 0.55 + actPerf(a) * 0.3 + genreFit(a) * 0.15);
   const r = { id: nextId('rel'), title: freshTitle(a, type !== 'single'), actId: a.id, type, songs: t.songs, quality,
     made: year(), released: null, labelId: label?.id ?? null, units: {}, critics: null, chart: null, revenue: [], paid: [], first: !a.releases.length, share: 1 / Math.max(1, members(a).length), video };
   M().releases[r.id] = r;
@@ -349,11 +582,9 @@ function maybeDealOffer(a) {
   const fans = fanTotal(a);
   if (fans < 2500 || !rng.chance(clamp(fans / 60000, 0.05, 0.6))) return;
   const ls = labels(a.countryId);
-  const l = fans > 40000 ? ls.find((x) => x.tier === 'major') : rng.pick(ls);
-  const c = COUNTRIES[a.countryId];
-  a.offer = { labelId: l.id, advance: Math.round(localWage(Math.min(400000, 3000 + fans * 0.9), c)), royalty: Math.round((MUSIC_DEAL.royalty[0] + rng.next() * (MUSIC_DEAL.royalty[1] - MUSIC_DEAL.royalty[0])) * 100) / 100,
-    albums: rng.int(2, 3), year: year(), asked: false, lawyer: false };
-  a.history.push({ year: year(), text: `${l.name} offered a record deal.` });
+  const g = genreOf(a.genre).id;
+  const l = fans > 40000 ? ls.find((x) => x.tier === 'major') : rng.pick(ls.filter((x) => x.tier === 'major' || x.sound?.includes(g)).concat(ls[0]));
+  offerFrom(a, l);
 }
 
 /** A lawyer reads the offer: what it means, and whether it is ordinary. */
@@ -386,6 +617,7 @@ export function signDeal() {
   if (!a?.offer) return result(false, 'There is no offer.', 'neutral');
   const o = a.offer;
   a.deal = { labelId: o.labelId, royalty: o.royalty, albumsOwed: o.albums, advance: o.advance, unrecouped: o.advance, signed: year(), advancePaid: false };
+  a.labelId = o.labelId;
   a.offer = null;
   const l = ent().orgs[o.labelId];
   a.history.push({ year: year(), text: `Signed to ${l.name}.` });
@@ -445,10 +677,12 @@ function releaseNow(r) {
   const fans = fanTotal(a);
   const push = label ? (label.tier === 'major' ? 2.2 : 1.4) : 1;
   const typeK = { single: 0.6, ep: 0.8, album: 1 }[r.type];
-  const reach = label?.tier === 'major' ? COUNTRIES[a.countryId] && Object.keys(COUNTRIES).filter((c) => c !== a.countryId).sort(() => rng.next() - 0.5).slice(0, rng.int(2, 8)) : [];
-  const home = Math.round((fans * (0.2 + r.quality / 200) + Math.max(0, r.quality - 35) ** 2 * 2.5 * push) * typeK * (r.video ? 1.25 : 1) * rng.around(1, 0.3)); // a video reaches people radio does not
+  const g = genreOf(a.genre);
+  // Majors take records abroad; a genre's own heartlands come first.
+  const reach = label?.tier === 'major' ? [...new Set([...g.strong.filter((c) => COUNTRIES[c] && c !== a.countryId), ...Object.keys(COUNTRIES).filter((c) => c !== a.countryId).sort(() => rng.next() - 0.5)])].slice(0, rng.int(2, 8)) : [];
+  const home = Math.round((fans * (0.2 + r.quality / 200) + Math.max(0, r.quality - 35) ** 2 * 2.5 * push) * typeK * (r.video ? 1.25 : 1) * popularIn(g.id, a.countryId) * rng.around(1, 0.3)); // a video reaches people radio does not
   r.units = { [a.countryId]: home };
-  for (const c of reach) r.units[c] = Math.round(home * (0.05 + rng.next() * 0.2) * (r.quality / 80));
+  for (const c of reach) r.units[c] = Math.round(home * (0.05 + rng.next() * 0.2) * (r.quality / 80) * popularIn(g.id, c) / popularIn(g.id, a.countryId));
   for (const [c, n] of Object.entries(r.units)) a.fans[c] = Math.round((a.fans[c] ?? 0) + n * 0.35);
   return reach;
 }
@@ -478,8 +712,11 @@ function rivals(countryId) {
     const level = rng.pick([50, 58, 66, 74, 82, 90]);
     const lead = musician(countryId, { level });
     const solo = rng.chance(0.4);
-    const a = { id: nextId('act'), name: solo ? `${lead.firstName} ${lead.lastName}` : actName(), genre: rng.pick(MUSIC_GENRES), kind: solo ? 'solo' : 'band', countryId, formed: year() - rng.int(0, 15),
-      members: [{ who: lead.id, role: solo ? 'solo' : 'vocals', from: year(), to: null }], status: 'active', fans: { [countryId]: Math.round(10 ** rng.around(2.5 + level / 25, 0.6)) }, deal: null, releases: [], tours: [], history: [], npc: true };
+    const g = rng.weighted(genresIn(year()), (x) => popularIn(x.id, countryId));
+    const a = { id: nextId('act'), name: solo ? `${lead.firstName} ${lead.lastName}` : actName(), genre: g.id, kind: solo ? 'solo' : 'band', countryId, formed: year() - rng.int(0, 15),
+      members: [{ who: lead.id, role: solo ? 'solo' : g.lineup[0], from: year(), to: null }], status: 'active', fans: { [countryId]: Math.round(10 ** rng.around(2.5 + level / 25, 0.6)) }, deal: null, releases: [], tours: [], history: [], npc: true };
+    const fit = labels(countryId).filter((l) => l.tier === 'major' ? a.fans[countryId] > 20000 : (l.sound ?? []).includes(g.id));
+    if (fit.length && rng.chance(0.7)) a.labelId = rng.pick(fit).id;
     E.acts[a.id] = a;
     theirs.push(a);
   }
@@ -492,7 +729,7 @@ function rivals(countryId) {
     if (!lead) { a.status = 'split'; continue; }
     const q = Math.round(clamp(npcPerf(store.state.npcs[lead.who]) + rng.around(0, 10)));
     const big = fanTotal(a) > 50000;
-    const r = { id: nextId('rel'), title: freshTitle(a, type !== 'single'), actId: a.id, type, songs: RELEASE_TYPES[type].songs, quality: q, made: year() - 1, released: null, labelId: big || rng.chance(0.5) ? labels(countryId)[big ? 0 : rng.int(0, 3)].id : null,
+    const r = { id: nextId('rel'), title: freshTitle(a, type !== 'single'), actId: a.id, type, songs: RELEASE_TYPES[type].songs, quality: q, made: year() - 1, released: null, labelId: a.labelId ?? (big ? labels(countryId)[0].id : null),
       units: {}, critics: null, chart: null, revenue: [], paid: [], first: !a.releases.length, share: 1 };
     E.releases[r.id] = r;
     a.releases.push(r.id);

@@ -163,6 +163,39 @@ store.state.year = 1850;
 check(!music.record('single').ok, 'there is no recording in 1850');
 section('eras: no records before recording existed');
 
+// 10. Bands looking for people, genres, and labels with a sound.
+const { GENRES, GENRE_BY_ID, POSITIONS } = await import('../js/data/music.js');
+p = life('uk', 22);
+p.talents.music = 85; p.skills = { drums: 80 };
+check(GENRES.length >= 30 && ['rock', 'pop', 'punk', 'metal', 'hip_hop', 'jazz', 'country', 'emo', 'kpop'].every((id) => GENRE_BY_ID[id]), 'many genres, rock, pop, punk, metal and more');
+check(GENRES.every((g) => g.lineup.every((pos) => POSITIONS[pos])), 'every genre\'s line-up is made of real positions');
+const notices = music.openings('uk');
+check(notices.length >= 6 && notices.every((o) => POSITIONS[o.position] && GENRE_BY_ID[o.genre] && o.genre && GENRE_BY_ID[o.genre].band), 'bands put up notices for a position, in a band genre');
+check(music.openings('uk') === notices, 'the same notices all year');
+check(music.positionSkill('drums') > music.positionSkill('violin'), 'a drummer plays drums better than violin');
+let joined = null;
+for (const o of [...notices].sort((x, y) => x.bar - y.bar)) { if (music.auditionsLeft() <= 0) break; const r = music.auditionForBand(o.id); if (r.ok) { joined = o; break; } }
+check(music.auditionsLeft() >= 0 && music.auditionsLeft() <= 2, 'auditions are counted, three a year');
+if (joined) {
+  const band = music.myAct();
+  check(band && band.genre === joined.genre && band.members.find((m) => m.who === 'player').role === joined.position, 'joining puts you in the band, in the position you auditioned for');
+  check(band.members.filter((m) => m.who !== 'player').every((m) => POSITIONS[m.role] && store.state.npcs[m.who]), 'everyone else in it is a real musician with a position');
+  const ad = music.advertise('keys');
+  check(ad.candidates?.length === 3 && ad.candidates.every((n) => n.flags.star.plays?.keys), 'an advert brings three keyboard players');
+  check(music.hireMember(ad.candidates[0].id, 'keys').ok && music.members(band).some((m) => m.who === ad.candidates[0].id && m.role === 'keys'), 'and one joins on keys');
+  const ls = music.labels('uk');
+  check(ls.filter((l) => l.tier === 'major').length === 2 && ls.filter((l) => l.sound).length >= 6, 'two majors, and independents with their own sound');
+  check(new Set(ls.map((l) => l.name)).size === ls.length, 'every label has its own name');
+  if (!band.deal) {
+    const other = ls.find((l) => l.sound && !l.sound.includes(band.genre));
+    if (other) { const r = music.sendDemo(other.id); check(!r.ok || /sign/.test(r.text), 'a label hears every demo'); }
+    music.sendDemo(ls[0].id);
+    check(!music.sendDemo(ls[1].id).ok && music.demosLeft() === 0, 'two demos a year');
+  }
+}
+check(GENRE_BY_ID.kpop.from > 1960 && !music.openings('uk').some((o) => GENRE_BY_ID[o.genre].from > store.state.year), 'no genre before it existed');
+section(`bands: ${notices.length} notices, ${joined ? `joined ${GENRE_BY_ID[joined.genre].name.toLowerCase()} as ${POSITIONS[joined.position].name.toLowerCase()}` : 'no audition went well'}, labels with their own sounds`);
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('Encore.');

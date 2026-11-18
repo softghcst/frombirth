@@ -69,6 +69,23 @@ bodies). Women's professional leagues begin in their own years. Countries, laws 
 and money is shown at today's values throughout: a constant-price world, chosen over inflating every stored
 salary and price.
 
+## Bands, genres and labels
+
+`js/data/music.js` and `js/engine/music.js`.
+
+- **Genres**: 39 of them, from blues and jazz to punk, metal, emo, grime, drill, K-pop and afrobeats, each from the year
+  it began. Each has a usual line-up, wants something different (singing, playing, writing, presence: `genreFit`),
+  is more or less popular worldwide and bigger in its heartlands, and goes in and out of fashion year by year (`heat`).
+- **Positions**: vocalist, lead and rhythm guitar, bass, drums, keys, backing vocals, rapper, DJ and producer, sax,
+  trumpet, violin, cello. How well the player plays one comes from the instrument they practice and their talent
+  (`positionSkill`). Musicians in the world play one or two positions and love a few genres.
+- **Bands looking for members**: each year there are notices from new bands and established ones (with their fans
+  and their label) wanting a specific position. Three auditions a year; get in and you are in the band, in that
+  position, alongside real people. Your own band can advertise for any position and choose from those who answer.
+- **Labels**: two majors that sign anything, and independents that keep to a sound, chosen by what sells in that
+  country (punk and metal labels in the UK, Latin labels in Mexico). Each has its own terms and a roster you can look
+  through. Send demos (two a year); a label that is not into your sound will tell you.
+
 ## Agents
 
 `js/engine/agents.js`. Every agent (talent agents at agencies, literary agents) is a person with their own
