@@ -16,6 +16,8 @@ export function niceRound(v) {
 
 /** Convert a base (USD-like) amount into the country's local money. */
 export const localMoney = (base, country) => niceRound(base * country.currency.scale);
+/** What a sum earned in one country (at its wage level) is worth in another's money: for sales and shows abroad paid at home. */
+export const wageIn = (base, where, payIn) => base * (where.living?.wageK ?? 1) * payIn.currency.scale;
 /** Pay: a base amount at the country's wage level. Use for salaries, stipends and anything earned locally. */
 export const localWage = (base, country) => niceRound(base * country.currency.scale * (country.living?.wageK ?? 1));
 /** Local prices: rent, bills, services, tuition, houses. Imported things (cars, flights) use localMoney. */

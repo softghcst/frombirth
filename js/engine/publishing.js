@@ -13,7 +13,7 @@
 // each a payroll line paid once. A writer whose career is 'author' is paid by
 // their books once they have one out; the career's own salary stops then.
 import { rng } from '../rng.js';
-import { clamp, fmtMoney, localWage } from '../util.js';
+import { clamp, fmtMoney, localWage, wageIn } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { BOOK_GENRES, BOOK_KINDS, PUBLISHER_NAMES, BOOK_WORDS, BOOK_DEAL, ORG_WORDS } from '../data/fame.js';
@@ -262,7 +262,7 @@ function release(b) {
 
 function earn(b) {
   const age = year() - b.released;
-  const total = Object.entries(b.units).reduce((s, [cc, n]) => s + localWage(BOOK_DEAL.unitValue, COUNTRIES[cc]) * n, 0);
+  const total = Object.entries(b.units).reduce((s, [cc, n]) => s + wageIn(BOOK_DEAL.unitValue, COUNTRIES[cc], COUNTRIES[b.countryId]) * n, 0); // in the author's own money
   const gross = Math.round(total * (age === 0 ? 1 : 0.3 * Math.pow(0.65, age - 1)));
   if (age > 0 && gross < localWage(20, COUNTRIES[b.countryId])) return;
   let toAuthor = Math.round(gross * (b.publisherId ? b.royalty : BOOK_DEAL.selfShare));

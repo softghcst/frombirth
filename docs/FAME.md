@@ -33,6 +33,24 @@ award bodies, venues, release types, deal terms). Everything named there is fict
 - **Children.** Under-18s need a guardian's agreement; a share of their pay is held in trust and released at 18. A famous parent gives family recognition, not credits, skill or an audience.
 - **Generations.** When a life continues as a child, the world carries over: the parent's productions, awards and bands are remembered as the parent's (an NPC id), and the heir starts with none of their own.
 
+## Balance
+
+`node scripts/balance/fame.mjs [seed] [lives] [years]` plays whole public careers in each field at three levels of
+talent, with a keen player who practises every year, and reports peak fame, lasting fame, what they earned against
+the country's average wage, how many became nationally and internationally known, and the save size. After the
+balance pass (seed 7, six lives each, 20 years), roughly:
+
+| Field | Peak fame | Earned (× average wage) | Notes |
+| --- | --- | --- | --- |
+| Acting | 65–70 | 3.5–4.5 | the quickest road to international fame, for someone who auditions constantly |
+| Music | 30–47 | up to ~1 | touring is where the money is; most acts stay national at best |
+| Sport | 25–42 | 1–20 | stars are paid like stars; fame follows results |
+| Modeling | 22–32 | 1–2 | a steady living, rarely a household name |
+| Books | ~45 | ~1–1.4 | bestselling authors; wealth is rare |
+
+Practice matters more than starting talent: after twenty keen years most players are near the top of their craft.
+The pass also fixed sales and shows abroad being counted in the other country's currency (`wageIn` in util.js).
+
 ## Tests
 
 ```

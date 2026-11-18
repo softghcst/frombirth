@@ -502,7 +502,7 @@ function creditPlayer(prod) {
   const R = prod.reception;
   const size = ROLE_KINDS[r.kind].weight;
   const reach = TIERS[prod.tier].reach;
-  const amount = 30 * reach * size * (0.4 + R.audience / 80) + (r.score >= 80 ? 4 : 0);
+  const amount = 22 * reach * size * (0.4 + R.audience / 100) + (r.score >= 80 ? 3 : 0); // balance: scripts/balance/fame.mjs
   gain({ audience: k.audience, amount, abroad: prod.abroad, reach, lasting: 0.3 + (R.critics >= 75 ? 0.2 : 0), why: `${prod.title}` }, p);
   const acclaim = (r.score - 60) / 8;
   regard({ credibility: acclaim * (0.5 + size), why: `your performance in ${prod.title}` }, p);

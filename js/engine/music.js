@@ -14,7 +14,7 @@
 // is paid through payroll, once per source per year. A label's advance is paid
 // once, and the act's royalties go to paying it back before anything more is paid.
 import { rng } from '../rng.js';
-import { clamp, fmtMoney, localWage, uid } from '../util.js';
+import { clamp, fmtMoney, localWage, wageIn, uid } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { MUSIC_GENRES, BAND_WORDS, SONG_WORDS, RELEASE_TYPES, VENUES, LABEL_NAMES, MUSIC_DEAL, ORG_WORDS } from '../data/fame.js';
@@ -329,7 +329,7 @@ function runTour(t) {
     const perCity = here / Math.max(1, t.dates.filter((x) => x.countryId === d.countryId).length);
     const want = perCity * (0.08 + rng.next() * 0.1) + rng.int(0, 60);
     d.sold = Math.round(Math.min(d.capacity, want));
-    d.gross = Math.round(localWage(v.price, COUNTRIES[d.countryId]) * d.sold);
+    d.gross = Math.round(wageIn(v.price, COUNTRIES[d.countryId], COUNTRIES[a.countryId]) * d.sold); // in the act's own money
     gross += Math.round(d.gross * (COUNTRIES[t.dates[0].countryId] === COUNTRIES[d.countryId] ? 1 : 1));
     a.fans[d.countryId] = Math.round(here + d.sold * 0.35);
   }
@@ -446,10 +446,10 @@ function releaseNow(r) {
   const push = label ? (label.tier === 'major' ? 2.2 : 1.4) : 1;
   const typeK = { single: 0.6, ep: 0.8, album: 1 }[r.type];
   const reach = label?.tier === 'major' ? COUNTRIES[a.countryId] && Object.keys(COUNTRIES).filter((c) => c !== a.countryId).sort(() => rng.next() - 0.5).slice(0, rng.int(2, 8)) : [];
-  const home = Math.round((fans * (0.2 + r.quality / 200) + (r.quality ** 2) * 0.6 * push) * typeK * (r.video ? 1.25 : 1) * rng.around(1, 0.3)); // a video reaches people radio does not
+  const home = Math.round((fans * (0.2 + r.quality / 200) + Math.max(0, r.quality - 35) ** 2 * 2.5 * push) * typeK * (r.video ? 1.25 : 1) * rng.around(1, 0.3)); // a video reaches people radio does not
   r.units = { [a.countryId]: home };
   for (const c of reach) r.units[c] = Math.round(home * (0.05 + rng.next() * 0.2) * (r.quality / 80));
-  for (const [c, n] of Object.entries(r.units)) a.fans[c] = Math.round((a.fans[c] ?? 0) + n * 0.25);
+  for (const [c, n] of Object.entries(r.units)) a.fans[c] = Math.round((a.fans[c] ?? 0) + n * 0.35);
   return reach;
 }
 
@@ -457,7 +457,7 @@ function releaseNow(r) {
 function earn(r) {
   const a = act(r.actId);
   const age = year() - r.released;
-  const total = Object.entries(r.units).reduce((s, [c, n]) => s + localWage(MUSIC_DEAL.unitValue, COUNTRIES[c]) * n, 0);
+  const total = Object.entries(r.units).reduce((s, [c, n]) => s + wageIn(MUSIC_DEAL.unitValue, COUNTRIES[c], COUNTRIES[a.countryId]) * n, 0);
   const gross = Math.round(total * (age === 0 ? 1 : 0.35 * Math.pow(0.6, age - 1)));
   if (gross < localWage(20, COUNTRIES[a.countryId]) && age > 0) return; // the catalog's tail, too small to count
   let toAct = r.labelId ? Math.round(gross * (a.deal?.royalty ?? 0.16)) : Math.round(gross * MUSIC_DEAL.independent);
@@ -571,7 +571,7 @@ export function tickMusic() {
     if (!r || r.released == null || r.released > year()) continue;
     if (r.released === year() && !c.announced) { c.announced = true; lines.push(`${act(r.actId)?.name} released ${r.title}, a song you wrote${r.chart ? `; it reached number ${r.chart}` : ''}.`); if (r.chart && r.chart <= 10) milestone(`Wrote a top-ten song: ${r.title}.`, 'fame'); gain({ audience: 'music', amount: Math.min(8, Math.sqrt(Object.values(r.units).reduce((a, b) => a + b, 0)) / 30), lasting: 0.3, why: `writing ${r.title}` }, p); }
     const age = year() - r.released;
-    const total = Object.entries(r.units).reduce((s2, [cc, n]) => s2 + localWage(MUSIC_DEAL.unitValue, COUNTRIES[cc]) * n, 0);
+    const total = Object.entries(r.units).reduce((s2, [cc, n]) => s2 + wageIn(MUSIC_DEAL.unitValue, COUNTRIES[cc], COUNTRIES[p.countryId]) * n, 0);
     const amount = Math.round(total * (age === 0 ? 1 : 0.35 * Math.pow(0.6, age - 1)) * SONGWRITER_SHARE);
     if (amount >= localWage(20, COUNTRIES[r.countryId ?? p.countryId] ?? country()) || age === 0) (c.revenue ??= []).push({ year: year() - 1, amount });
   }
