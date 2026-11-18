@@ -16,7 +16,7 @@ import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { BIRTHRIGHT, SINGLE, RESIDENCE_YEARS, DEFAULT_YEARS, SPOUSE_YEARS, NATURALISATION_FEE } from '../data/citizenship.js';
+import { BIRTHRIGHT, SINGLE, RESIDENCE_YEARS, DEFAULT_YEARS, SPOUSE_YEARS, SPOUSE_YEARS_IN, NATURALISATION_FEE } from '../data/citizenship.js';
 import { speaks } from './languages.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -102,7 +102,7 @@ export function naturalisation(p = player()) {
   if (mine.includes(here)) return { possible: false, why: `You are already a citizen of ${nameOf(here)}.` };
   const spouse = livingNpcs().some((n) => n.role === 'spouse' && held(n).includes(here));
   const base = RESIDENCE_YEARS[here] ?? DEFAULT_YEARS;
-  const needs = spouse ? Math.min(base, Math.max(SPOUSE_YEARS, Math.ceil(base / 2))) : base;
+  const needs = spouse ? Math.min(base, SPOUSE_YEARS_IN[here] ?? Math.max(SPOUSE_YEARS, Math.ceil(base / 2))) : base;
   const lived = year - (residency(p).since ?? year);
   const fee = localMoney(NATURALISATION_FEE, c);
   // Taking a single-nationality citizenship means giving up the rest; and some of the rest give you up.

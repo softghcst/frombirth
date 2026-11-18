@@ -22,5 +22,11 @@ export const RESIDENCE_YEARS = { ch: 10, at: 10, it: 10, es: 10, dk: 8, jp: 5, d
 export const DEFAULT_YEARS = 5;
 /** Married to a citizen: fewer years, never none. Marriage alone confers nothing. */
 export const SPOUSE_YEARS = 3;
+/**
+ * Where the law gives a spouse of a citizen its own shorter wait (checked against "Naturalization" rev 1384638556; see
+ * scripts/verify-laws.py). Marriage still grants nothing by itself: there is an application, and a test. Thailand waives
+ * the residence requirement for spouses; the Philippines' reduced wait is for the husband of a Filipina.
+ */
+export const SPOUSE_YEARS_IN = { br: 1, fi: 5, ie: 3, it: 2, jp: 3, kr: 3, mx: 2, ph: 5, pt: 3, ru: 3, th: 0, us: 3, uy: 3 };
 /** The application fee, in base units. */
 export const NATURALISATION_FEE = 1200;
