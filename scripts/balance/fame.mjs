@@ -24,7 +24,7 @@ const YEARS = Number(process.argv[4] ?? 20);
 const LEVELS = { ordinary: 66, good: 78, great: 90 };
 const PLACES = ['us', 'uk', 'de', 'br', 'jp', 'ng'];
 
-// A keen player practises their craft every year; a talented one has practiced since childhood.
+// A keen player practices their craft every year; a talented one has practiced since childhood.
 const PRACTICE = { acting: ['acting', 'acting', 'singing'], music: ['writing', 'singing', 'music_theory'], modeling: ['dance', 'yoga', 'dance'], books: ['writing', 'writing', 'writing'] };
 const FIELDS = {
   acting: {

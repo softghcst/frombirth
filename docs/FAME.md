@@ -36,7 +36,7 @@ award bodies, venues, release types, deal terms). Everything named there is fict
 ## Balance
 
 `node scripts/balance/fame.mjs [seed] [lives] [years]` plays whole public careers in each field at three levels of
-talent, with a keen player who practises every year, and reports peak fame, lasting fame, what they earned against
+talent, with a keen player who practices every year, and reports peak fame, lasting fame, what they earned against
 the country's average wage, how many became nationally and internationally known, and the save size. After the
 balance pass (seed 7, six lives each, 20 years), roughly:
 

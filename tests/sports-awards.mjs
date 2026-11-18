@@ -70,13 +70,14 @@ section('every team sport names its own awards: a best player, a newcomer, its s
     const mvp = s.awards.find((a) => a.id === 'mvp');
     check(mvp?.winner, `${s.year}: there is an MVP`);
     const first = s.awards.find((a) => a.kind === 'team');
-    check(first.team.length === 5 && new Set(first.team.map((x) => x.who)).size === 5, `${s.year}: the All-League First Team is five different players`);
+    check(first.team.length === 5 && new Set(first.team.map((x) => x.who)).size === 5, `${s.year}: the All-League First Team is five different players (${first.team.map((x) => `${x.pos}:${x.name}:${x.who}`).join(', ')})`);
     const scoring = s.awards.find((a) => a.id === 'scoring');
     if (scoring.winner?.who === 'player') check(Math.abs(scoring.winner.value - Math.round((e.stats[s.year].points / s.fixtures.concat(s.playoffs).filter((f) => f.me?.played).length) * 10) / 10) < 0.11, `${s.year}: the scoring title is the points the player actually scored`);
     // Asked again, a season's awards do not change.
     const before = JSON.stringify(s.awards);
     check(aw.seasonAwards(store.state, s, e, sp.teamOf(s.playerTeamId)).length === 0 && JSON.stringify(s.awards) === before, `${s.year}: awards are named once`);
   }
+  check(Object.values(store.state.sports.teams).every((t) => new Set(t.roster.map((x) => x.id)).size === t.roster.length), 'everyone on a roster has their own id, year after year of newcomers');
   const mine = e.awards ?? [];
   check(mine.every((a) => { const s = store.state.sports.seasons[a.seasonId]; const x = s?.awards.find((y) => y.id === a.id); return x && (x.winner?.who === 'player' || x.team?.some((t) => t.who === 'player')); }), 'every award on the player\'s record is one they won');
   check(new Set(mine.map((a) => a.key)).size === mine.length, 'no award is recorded twice');
@@ -118,7 +119,31 @@ section('soccer: a reload names the same winners; the Team of the Season is an e
 }
 section('the women\'s game and university sport name their awards their own way');
 
-// ---------- 5. Individual sports: the year's honors ----------
+// ---------- 5. Baseball: the glove, the bat, the leaders and the playoffs ----------
+{
+  const names = awardsFor(SPORTS.baseball).map((a) => a.name);
+  check(['Gold Glove', 'Platinum Glove', 'Silver Slugger', 'Hitter of the Year', 'Reliever of the Year', 'Home Run Leader', 'RBI Leader', 'Strikeout Leader', 'ERA Title', 'Championship Series MVP', 'Pitcher of the Year', 'Batting Title']
+    .every((n) => names.includes(n)), 'baseball names its Gold Gloves, Silver Sluggers, leaders and the Championship Series MVP');
+  check(['Finals MVP', 'Playoff MVP', 'Championship Game MVP'].every((n) => [...awardsFor(SPORTS.basketball), ...awardsFor(SPORTS.ice_hockey), ...awardsFor(SPORTS.american_football)].some((a) => a.name === n)), 'basketball, hockey and football name a playoff MVP');
+  const p = pro('baseball', 'us', { gender: 'male' });
+  const e = sp.entryOf('baseball');
+  for (let y = 0; y < 4 && p.alive; y++) year();
+  for (const s of seasonsOf('baseball')) {
+    const A = Object.fromEntries(s.awards.map((a) => [a.id, a]));
+    check(A.glove.team.length === 9 && A.glove.team.filter((x) => x.pos === 'pitcher').length === 1 && A.glove.team.filter((x) => x.pos === 'infield').length === 4 && A.glove.team.filter((x) => x.pos === 'outfield').length === 3, `${s.year}: a Gold Glove at every place on the field`);
+    check(A.slugger.team.length === 8 && !A.slugger.team.some((x) => x.pos === 'pitcher'), `${s.year}: a Silver Slugger at every batting place, none for pitchers`);
+    check(A.glove.team.some((x) => x.who === A.platinum.winner.who), `${s.year}: the Platinum Glove goes to a Gold Glove winner`);
+    check(!A.era.winner || A.era.winner.value > 0 && A.era.winner.value < 9, `${s.year}: the ERA Title is an earned run average (${A.era.winner?.value})`);
+    check(!A.final.winner || A.final.winner.teamId === s.champion, `${s.year}: the Championship Series MVP plays for the champions`);
+    for (const id of ['homers', 'rbi', 'batting', 'hitter', 'mvp']) check(!A[id].winner || !s.teamIds.length || A[id].winner.who === 'player' ? e.position !== 'pitcher' : true, `${s.year}: ${A[id].name} goes to a position player`);
+    for (const id of ['strikeouts', 'era', 'reliever', 'pitcher']) check(!A[id].winner || A[id].winner.who !== 'player' || e.position === 'pitcher', `${s.year}: ${A[id].name} goes to a pitcher`);
+  }
+  const st = Object.values(e.stats);
+  check(st.every((x) => !x.games || (e.position === 'pitcher' ? x.earned != null : x.rbi != null)), 'the player\'s games count runs batted in, or the runs a pitcher gave up');
+}
+section('baseball: Gold Glove and Silver Slugger by position, Platinum Glove, the leaders, ERA, the Championship Series MVP');
+
+// ---------- 6. Individual sports: the year's honors ----------
 {
   pro('tennis', 'us', { star: true });
   const e = sp.entryOf('tennis');

@@ -36,7 +36,9 @@ const life = (id = 'uk', age = 22, o = {}) => {
   p.age = age; p.education.enrolled = false; p.education.stage = 'none'; p.flags.livesWithParents = false; p.finance.cash = 80000;
   return p;
 };
-const year = () => { advanceYear(); store.state.pendingEvents = []; const p = store.state.player; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = Math.max(p.stats.health, 85); };
+// These sections are about careers and work, not how a life ends: health is kept up through the year, and a life cut short by
+// an accident carries on (as tests/eras.mjs does), so a book or a season is not judged on a life that stopped.
+const year = () => { const q = store.state.player; q.stats.health = Math.max(q.stats.health, 85); advanceYear(); store.state.pendingEvents = []; const p = store.state.player; if (!p.alive) p.alive = true; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = Math.max(p.stats.health, 85); };
 
 // 1. A life in the past.
 let p = life('uk', 0, { startYear: 1950 });
