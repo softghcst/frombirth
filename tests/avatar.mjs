@@ -297,13 +297,12 @@ check(hairFit('hair_boy_updo_15_headband_puff', 'head_18_long_rect').squash < 1 
 // The two repaired files, and the stray marks, stay repaired.
 for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/avatars/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
 check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy_medium_03', 'head_00_kid').top <= 2, 'the arch styles show background over the forehead again');
-// A baby's tuft is not refitted like grown-up hair: it is placed, made bigger to cover a little one's round crown
-// (wider than it is taller), and grows up and out from the brow line, so it never comes down over the eyes.
+// A baby's tuft is not refitted like grown-up hair: it sits on top of the head, following the head's width across and
+// its height down (a little one's head is far wider than it is taller), a little wider again to cover the round crown.
 for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) {
-  const f = hairFit(h.id, head), p = plainFit(head), [gx, gy] = BABY_HAIR[head];
-  check(Math.abs(f.sx - p.sx * gx) < 1e-9 && Math.abs(f.sy - p.sy * gy) < 1e-9 && gx > gy && gy >= 1, `${h.id} on ${head}: a baby's hair is not made bigger`);
-  const brow = (fit) => fit.ty + (250 - AVATAR_TEMPLATE.face.top) * fit.sy;
-  check(Math.abs(brow(f) - brow(p)) < 1e-9, `${h.id} on ${head}: a baby's hair moves at the brow line`);
+  const f = hairFit(h.id, head), fit = PART_BY_ID[head].fit;
+  const w = fit.w / AVATAR_TEMPLATE.face.w, tall = (fit.chin - fit.top) / (AVATAR_TEMPLATE.face.chin - AVATAR_TEMPLATE.face.top);
+  check(Math.abs(f.sx - w * BABY_HAIR[head]) < 1e-9 && Math.abs(f.sy - tall) < 1e-9 && f.ty === fit.top && BABY_HAIR[head] >= 1, `${h.id} on ${head}: a baby's hair does not follow the head`);
 }
 // The reference faces: hair that already sat well is left very nearly as drawn.
 const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_02', 'head_17_dimple_oval'] };

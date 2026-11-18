@@ -89,15 +89,16 @@ export function hairFit(hairId, headId) {
 }
 
 /**
- * How much bigger baby hair is drawn on the little ones' heads: [wider, taller]. It grows up and out from the brow
- * line (template y BABY_HAIR_ANCHOR), so a fringe never comes down over the eyes.
+ * Baby hair on the little ones' heads. A baby's head is far wider than a grown-up's but only a little taller, so the
+ * hair follows the head's width across and its height down (scaled by width both ways, it hung past the eyes), sitting
+ * on the top of the head; and it is a little wider again, to cover the broad round crown: BABY_HAIR[head] is that.
  */
-export const BABY_HAIR = { head_00_baby: [1.25, 1.12], head_00_toddler: [1.24, 1.1] };
-const BABY_HAIR_ANCHOR = 250;
-const plain = (fit, grow) => {
+export const BABY_HAIR = { head_00_baby: 1.08, head_00_toddler: 1.06 };
+const plain = (fit, wider) => {
   const w = fit.w / T.face.w;
-  const [gx, gy] = grow ?? [1, 1];
-  return { sx: w * gx, sy: w * gy, tx: fit.cx, ty: fit.top + (BABY_HAIR_ANCHOR - T.face.top) * w * (1 - gy), squash: 1, line: fit.top };
+  if (wider == null) return { sx: w, sy: w, tx: fit.cx, ty: fit.top, squash: 1, line: fit.top };
+  const h = (fit.chin - fit.top) / (T.face.chin - T.face.top);
+  return { sx: w * wider, sy: h, tx: fit.cx, ty: fit.top, squash: 1, line: fit.top };
 };
 
 function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {
