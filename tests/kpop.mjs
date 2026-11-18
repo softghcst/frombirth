@@ -313,6 +313,72 @@ if (g) {
 }
 section(`the vertical slice: ${g ? `${g.name}: debut, stages, an ending fairy, a comeback, pay once, a reload, a hiatus, solo, renewal, the next generation` : 'a trainee who did not debut in eight years'}`);
 
+// 7. The rest of an idol life: subunits, Japan, acting and hosting, merchandise, dating, health, moving, the story.
+{
+  rng.seed(77);
+  p = life('br', 19);
+  check(kp.arcs(p).every((a) => a.status === 'not begun'), 'a new life has no idol story to tell yet');
+  kp.world();
+  const a = kp.agencies().find((x) => x.countryId === 'kr');
+  // Into a group through the engine's own path: a trainee place, then a line-up the player is in.
+  const app = { id: 'app_t', auditionId: null, agencyId: a.id, category: 'multi', year: store.state.year, prepared: true, stage: 'offered', scores: {}, offer: { kind: 'trainee', agencyId: a.id, review: 2, costs: 'covered', allowance: 0, housing: 'dorm', rules: [], exit: 'notice' } };
+  k().apps[app.id] = app; kp.idolOf().apps.push(app.id); kp.idolOf().guardianOk = true;
+  check(kp.acceptOffer(app.id).ok, 'a trainee again');
+  const lineup = ['player', ...a.trainees.filter((id) => store.state.npcs[id]?.gender === 'female').slice(0, 4)];
+  for (const id of lineup.slice(1)) store.state.npcs[id].gender = 'female';
+  k().projects.pr_t = { id: 'pr_t', agencyId: a.id, year: store.state.year, gender: 'female', size: lineup.length, concept: a.concepts[0], lineup, status: 'announced' };
+  kp.idolOf().debutOffer = 'pr_t';
+  check(kp.acceptDebut().ok && kp.debut().ok, 'chosen, and debuted');
+  const grp = kp.myGroup();
+  // Moving to Korea properly.
+  const r = await kp.relocate();
+  check(r.ok && p.countryId === 'kr' && (p.residency?.status === 'worker' && p.residency.sponsor === a.name), 'a Brazilian idol moves to Seoul on a work visa the agency sponsors');
+  // Subunits keep the group.
+  grp.debut.year = store.state.year - 3;
+  kp.idolOf().pop = 60;
+  let unit = null;
+  for (let t2 = 0; t2 < 8 && !unit; t2++) { const u = kp.formSubunit([kp.current(grp).find((m) => m.who !== 'player').who]); if (u.ok) unit = kp.subunits(grp)[0]; }
+  if (unit) check(unit.parentId === grp.id && kp.current(grp).some((m) => m.who === 'player') && unit.members.length === 2 && unit.releases.length === 1, 'a subunit: two members, its own release, the group intact');
+  // Japan.
+  grp.fandom.regions.jp = 5000;
+  const jp = kp.japaneseRelease();
+  check(jp.ok && k().releases[grp.releases.at(-1)].market === 'jp' && !kp.japaneseRelease().ok, 'one Japanese release a year, for fans in Japan');
+  // Acting and hosting.
+  let acted = null;
+  for (let t2 = 0; t2 < 10 && !acted; t2++) { kp.idolOf().acts.did.acting = false; const ao = await kp.actingOffer(); if (ao.ok) acted = ao; }
+  if (acted) check(p.fame.contracts.some((c) => c.direct && c.status === 'offered'), 'a drama offers a part without an audition, as an ordinary contract');
+  p.skills.public_speaking = 90; p.stats.charm = 85;
+  let hosted = false;
+  for (let t2 = 0; t2 < 10 && !hosted; t2++) { kp.idolOf().mc = null; hosted = kp.hostShow().ok; }
+  check(hosted && kp.idolOf().mc.show, 'a year as a music show MC');
+  // Merchandise.
+  grp.fandom.size = 60000; grp.fandom.core = 9000;
+  check(kp.designLightstick('star', 'coral').text && grp.merch.lightstick && !kp.designLightstick('orb', 'gold').ok, 'one official lightstick');
+  check(kp.launchFanclub().ok && grp.merch.fanclub.members > 0, 'an official fan club');
+  // Dating: the rule, and a rumor answered honestly.
+  check(['none', 'discouraged', 'early_years'].includes(kp.datingRule(grp)) && kp.datingRuleText(grp), 'the contract says what it says about dating');
+  kp.idolOf().rumors = [{ year: store.state.year, true: false, about: null, text: 'A rumor.', answered: null }];
+  check(!kp.answerRumor('confirm').ok && kp.answerRumor('deny').ok, 'a false rumor can be denied, not confirmed');
+  kp.idolOf().rumors.push({ year: store.state.year, true: true, about: null, text: 'Photos.', answered: null });
+  check(!kp.answerRumor('deny').ok && kp.answerRumor('confirm').ok && kp.myGroup()?.id === grp.id, 'a true one is not denied; confirming it ends nothing');
+  // Health: a break records and treats the condition, and coming back clears it.
+  p.stats.health = 40;
+  check(kp.startHiatus('health').ok && p.conditions.some((c) => c.id === 'exhaustion' && c.treated) && kp.idolOf().hiatus.conditions.includes('exhaustion'), 'a health break: a real health record, under care');
+  check(/health reasons/.test(kp.idolOf().hiatus.public) && !/exhaustion/.test(grp.history.at(-1).text), 'the public hears only "health reasons"');
+  year();
+  check(kp.endHiatus().ok && !p.conditions.some((c) => c.id === 'exhaustion'), 'and returning clears it');
+  // A year: merchandise in the accounts, the hosting fee paid once.
+  year();
+  const lived = store.state.year - 1;
+  check(grp.merch.sales[lived] && grp.ledger.years[lived]?.merch > 0, 'merchandise is settled into the group\'s accounts');
+  p.career.paidYear = null;
+  check(!work.payLines(p).some((l) => l.source === `idolmc:${lived - 1}`), 'the hosting fee is paid once');
+  // The story, from what happened.
+  const story = Object.fromEntries(kp.arcs(p).map((x) => [x.name, x.status]));
+  check(story['Chosen to debut'] === 'lived' && story['The first stage'] === 'lived' && story['Taking a hiatus'] === 'lived' && story['The reunion'] === 'not begun', 'the story arcs read what happened, and nothing else');
+}
+section('the rest: moving to Seoul, a subunit, Japan, acting and hosting, a lightstick and fan club, dating and rumors, health records, the story');
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('Debut, and everything after.');

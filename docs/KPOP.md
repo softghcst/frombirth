@@ -80,12 +80,34 @@ The modern idol system from 1996; online auditions from 2005; global casting fro
 global groups from joint labels from 2020; fan platforms from 2015; fan calls from 2020. Agencies open in their own
 founding years.
 
+## And the rest of an idol life
+
+- **Subunits** (`formSubunit`): two or three members, two years after debut, if the agency agrees; a group of its own
+  with its own release and contracts, while everyone stays in the main group. Subunits wind down after a while.
+- **Japanese releases** (`japaneseRelease`): for groups with fans in Japan; physical singles sell well there; Japanese
+  lessons help; the Japanese fanbase grows.
+- **Acting and hosting** (`actingOffer`, `hostShow`): dramas cast popular idols without an audition: the offer arrives as
+  an ordinary acting contract in My Fame (`castDirect` in the entertainment engine). A year as a music show's MC needs
+  media training, builds it, and is paid once.
+- **Lightstick, fan club, merchandise** (`designLightstick`, `launchFanclub`): a lightstick designed once (with the
+  members, if the agency asks them); an official fan club renewed each year by the devoted core; merchandise each year
+  goes into the group's accounts before the members' share.
+- **Dating** (`datingRule`, `answerRumor`): each agency's contract says nothing, discourages public relationships, or asks
+  for none in the first three years. Rumors come up, sometimes true, sometimes not (kept apart); a false one can be
+  denied, a true one confirmed or left unanswered, never lied about. Fans react; the company may grumble; nothing is
+  ended over a relationship.
+- **Health records**: a hard year at a demanding agency can bring exhaustion or a dance injury (health conditions of
+  their own, never from the yearly roll). A health break records the conditions it is for, treats them, and clears them
+  on return; the public hears only "health reasons".
+- **Moving to Korea** (`relocate`): an adult trainee or idol can move properly, through the emigration system, onto a
+  four-year work visa sponsored by the agency.
+- **The story** (`arcs`): the first audition, trainee life, evaluations, the survival academy, debut, the first stage,
+  the ending fairy, the first win, pressure, hiatus, solo debut, renewal, reunion: each read from what actually happened,
+  not begun, under way or lived.
+
 ## Not built
 
-- Subunits; Japanese releases; idol acting and hosting as their own routes (the acting and press systems still apply).
-- Dating rules in contracts and dating rumors specific to idols.
-- Merchandise, lightsticks and fan clubs as products.
-- A separate story-arc engine: the arcs happen through the systems above, the career history and life milestones.
-- Health records for idol hiatuses (health and mood improve; no medical condition is recorded).
-- Moving the player's legal residence to Korea: trainees live in the agency's city on a sponsored visa recorded in the
-  idol record.
+- Fan products beyond the lightstick, fan club and general merchandise (no photocard trading, no pop-up stores).
+- Idol hosting of variety shows as a separate career from appearances.
+- A family member following their parent into the same agency is possible through ordinary auditions; there is no
+  special legacy route.

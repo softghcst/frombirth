@@ -367,6 +367,23 @@ export function audition(productionId, idx, prep = 'study', approach = 'restrain
   return { ...result(true, text), contract };
 }
 
+/**
+ * A part offered without an audition: producers cast a known face directly (an idol in a drama, a star in a cameo).
+ * The offer is an ordinary contract, accepted, negotiated or turned down like any other.
+ */
+export function castDirect(prod, idx, why = '') {
+  const p = player();
+  const f = workOf(p);
+  const r = prod?.cast[idx];
+  if (!r || r.who) return null;
+  const local = COUNTRIES[prod.countryId];
+  const fee = K(r.fee * (1 + recognitionIn(p.countryId, p) / 150), local);
+  const contract = { id: uid('con'), productionId: prod.id, idx, fee, weeks: weeksOf(prod), hours: PRODUCTION_KINDS[prod.kind].hours, years: prod.runYears,
+    status: 'offered', age: p.age, asked: false, perf: Math.round(playerSkill(SKILLS_FOR[prod.kind])), paidYears: [], agent: f.agent ? { ...f.agent } : null, direct: why || true };
+  f.contracts.push(contract);
+  return contract;
+}
+
 /** Asks for more. A single try; the production may stand firm, and rarely withdraws. */
 export function negotiate(contractId) {
   const f = workOf();

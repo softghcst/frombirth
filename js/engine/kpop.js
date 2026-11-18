@@ -22,6 +22,7 @@ import { levelOf } from './skills.js';
 import { gain, regard, fameOf } from './fame.js';
 import { hasRecord } from './records.js';
 import { rightToLive } from './citizenship.js';
+import { addCondition, cureCondition } from './health.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 const year = () => store.state.year;
@@ -1036,6 +1037,7 @@ export function startHiatus(kind = 'rest') {
   if (g) g.history.push({ year: year(), text: `${full('player')} paused activities ${i.hiatus.public}.` });
   p.stats.health = clamp(p.stats.health + (kind === 'health' ? 8 : 4));
   p.stats.mood = clamp((p.stats.mood ?? 50) + 6);
+  healthRecord(kind);
   note(`Paused activities ${i.hiatus.public}.`);
   return result(true, `You step back ${i.hiatus.public}. ${g ? `${g.name} carries on without you for now; you are still a member.` : 'Your place as a trainee is kept.'}`, 'neutral');
 }
@@ -1046,6 +1048,7 @@ export function endHiatus() {
   if (i.hiatus.kind === 'service' && year() - i.hiatus.since < 2) return result(false, 'Military service is not finished yet.', 'neutral');
   const g = myGroup(p);
   if (g) g.history.push({ year: year(), text: `${full('player')} returned to activities.` });
+  healthReturn();
   note(`Returned to activities after ${year() - i.hiatus.since || 'less than a'} ${year() - i.hiatus.since === 1 ? 'year' : 'years'}.`);
   i.hiatus = null;
   return result(true, 'You come back gradually: a lighter schedule at first. The fans have been waiting.');
@@ -1172,6 +1175,8 @@ export function idolLines(p = player()) {
     const s = g?.ledger.years[lived];
     if (s?.perMember?.player > 0 && !s.paid) out.push({ source: `idol:${gid}:${lived}`, label: `${g.name}: your share of the year's earnings`, gross: s.perMember.player });
   }
+  const mc = idolOf(p).mc;
+  if (mc?.year === lived && !mc.paid) out.push({ source: `idolmc:${lived}`, label: `Hosting ${mc.show}`, gross: Math.round(wageIn(mc.fee, COUNTRIES.kr ?? COUNTRIES[p.countryId], COUNTRIES[p.countryId])) });
   for (const cid of idolOf(p).contracts ?? []) {
     const c = k.contracts[cid];
     if (c?.kind === 'trainee' && c.allowance > 0 && c.start <= lived && (c.status === 'active' || (c.ended?.year ?? 0) > lived) && !(c.paid ?? []).includes(lived)) {
@@ -1185,6 +1190,7 @@ export function markIdolPaid(p = player()) {
   const k = store.state.kpop;
   if (!k) return;
   for (const gid of idolOf(p).groups ?? []) { const s = k.groups[gid]?.ledger.years[lived]; if (s) s.paid = true; }
+  if (idolOf(p).mc?.year === lived) idolOf(p).mc.paid = true;
   for (const cid of idolOf(p).contracts ?? []) { const c = k.contracts[cid]; if (c?.kind === 'trainee') (c.paid ??= []).includes(lived) || c.paid.push(lived); }
 }
 
@@ -1339,6 +1345,8 @@ export function tickKpop() {
   if (i.hiatus?.kind === 'service' && year() - i.hiatus.since >= 2) { lines.push('Your military service is over.'); endHiatus(); }
   // Promotions are hard work: health pays for a heavy year at a demanding agency, unless rest was asked for.
   if (g0 && (i.workload ?? 0) >= 2 && !i.hiatus) { const a = agency(g0.agencyId); p.stats.health = clamp(p.stats.health - Math.max(0, (100 - a.welfare) / 15 - (i.lighter === p.age - 1 ? 2 : 0))); if (p.stats.health < 45) lines.push('The schedule is wearing you down. You can ask for rest or take a break: it will not cost you your place.'); }
+  i.workloadLast = i.workload ?? 0;
+  yearExtras(p, lived, lines);
   i.workload = 0;
   yearAwards(lived);
   rivalReleases();
@@ -1402,4 +1410,285 @@ export function summary(p = player(), st = store.state) {
   const k = st.kpop;
   const gs = (i.groups ?? []).map((id) => k?.groups[id]).filter(Boolean);
   return { groups: gs.map((g) => g.name), debut: gs[0]?.debut?.year ?? null, wins: gs.reduce((t, g) => t + g.wins.length, 0), fairies: i.fairies.length, solo: i.solo.length, trained: i.trainee ? (i.trainee.ended?.year ?? st.year) - i.trainee.since : 0 };
+}
+
+// ---------- Subunits ----------
+
+/** A subunit: two or three members release music as a smaller group. The main group carries on. */
+export function formSubunit(memberIds, concept = null) {
+  const p = player();
+  const g = myGroup(p);
+  if (!g?.debut) return result(false, 'Your group has to debut first.', 'neutral');
+  if (year() - g.debut.year < 2) return result(false, 'The company wants the full group established first.', 'neutral');
+  const ids = [...new Set(['player', ...memberIds])].filter((w) => current(g).some((m) => m.who === w));
+  if (ids.length < 2 || ids.length > 3) return result(false, 'A subunit is two or three members.', 'neutral');
+  if (Object.values(K().groups).some((x) => x.parentId === g.id && x.status === 'active')) return result(false, `${g.name} already has an active subunit.`, 'neutral');
+  if (!rng.chance(clamp(agency(g.agencyId).welfare / 100 + idolOf().pop / 100, 0.3, 0.9))) return result(false, `${agency(g.agencyId).name} says not this year.`, 'neutral');
+  const u = makeGroup({ agencyId: g.agencyId, name: `${g.name} ${rng.pick(['U', 'UNIT', 'S', 'DUO', 'TRIO'])}`.replace(/DUO$/, ids.length === 2 ? 'DUO' : 'TRIO'), members: ids, gender: g.gender, concept: concept && CONCEPTS[concept] ? concept : g.concept, debutYear: year(), npc: false });
+  u.parentId = g.id;
+  u.fandom = { name: g.fandom.name, size: Math.round(g.fandom.size * 0.5), core: Math.round(g.fandom.core * 0.6), regions: { ...g.fandom.regions }, engagement: g.fandom.engagement, history: [] };
+  const r = makeRelease(u, 'mini', u.concept, { title: songTitle() });
+  receive(r, u);
+  const n = promote(r, u);
+  u.debut = { year: year(), releaseId: r.id, performanceId: n.performances[0]?.id ?? null };
+  for (const w of ids) signArtist(u, w);
+  idolOf(p).groups.push(u.id);
+  g.history.push({ year: year(), text: `The subunit ${u.name} debuted with ${r.title}.` });
+  milestone(`Debuted in the subunit ${u.name}.`, 'fame');
+  note(`Debuted in ${g.name}'s subunit ${u.name}, still a member of ${g.name}.`);
+  return result(true, `${u.name} debuts with ${r.title}: ${r.reception}${n.wins.length ? `, with ${n.wins.length} music show ${n.wins.length === 1 ? 'win' : 'wins'}` : ''}. You are still in ${g.name}.`);
+}
+export const subunits = (g) => Object.values(K().groups).filter((x) => x.parentId === g.id);
+
+// ---------- Japanese releases ----------
+
+/** A Japanese release: for a group with fans in Japan; better received if the members speak Japanese. */
+export function japaneseRelease() {
+  const p = player();
+  const g = myGroup(p);
+  if (!g?.debut) return result(false, 'Debut first.', 'neutral');
+  if (year() < 2000) return result(false, 'Korean groups are not yet releasing in Japan.', 'neutral');
+  if ((g.fandom.regions.jp ?? 0) < 2000 && g.fandom.size < 50000) return result(false, 'There are not yet enough fans in Japan for a Japanese release.', 'neutral');
+  if (g.releases.some((id) => K().releases[id]?.market === 'jp' && K().releases[id].year === year())) return result(false, 'One Japanese release a year.', 'neutral');
+  const r = makeRelease(g, 'single_album', g.concept, { title: `${songTitle()} (Japanese ver.)` });
+  r.market = 'jp';
+  const jp = Math.round(levelOf('japanese') / 10);
+  r.quality = Math.round(clamp(r.quality + jp - 3));
+  const base = { ...g, fandom: { ...g.fandom, size: Math.round((g.fandom.regions.jp ?? 0) * 2 + g.fandom.size * 0.15), core: Math.round((g.fandom.regions.jp ?? 0) * 0.4) } };
+  receive(r, base);
+  r.units.physical = Math.round(r.units.physical * 1.6); // physical singles still matter a great deal in Japan
+  g.fandom.regions.jp = Math.round((g.fandom.regions.jp ?? 0) + r.units.physical * 0.3 + r.units.digital * 0.05);
+  g.fandom.size = Math.round(g.fandom.size + r.units.physical * 0.2);
+  gain({ audience: 'music', amount: 2, abroad: ['jp'], reach: 0.6, why: `${g.name}'s Japanese release` }, p);
+  g.history.push({ year: year(), text: `Released ${r.title} in Japan.` });
+  if (!g.releases.some((id) => id !== r.id && K().releases[id]?.market === 'jp')) milestone(`${g.name}'s Japanese debut: ${r.title}.`, 'fame');
+  return result(true, `${r.title} comes out in Japan: ${r.units.physical.toLocaleString('en-US')} copies sold${jp >= 4 ? '; your Japanese in the interviews helps' : ''}.`);
+}
+
+// ---------- Acting and hosting ----------
+
+/** Producers cast known idols in dramas directly. An offer arrives as an ordinary acting contract (My Fame). */
+export async function actingOffer() {
+  const p = player();
+  const g = myGroup(p);
+  const i = idolOf(p);
+  if (!g?.debut) return result(false, 'Debut first.', 'neutral');
+  if (i.acts.did.acting) return result(false, 'You have already asked about acting this year.', 'neutral');
+  i.acts.did.acting = true;
+  const ent = await import('./entertainment.js');
+  const want = clamp((i.pop + (p.talents.acting ?? 30) / 2 + (fameOf(p).headline ?? p.hidden.fame ?? 0) / 2 - 40) / 60, 0.05, 0.8);
+  if (!rng.chance(want)) return result(false, 'Your manager puts the word out. No drama is casting an idol this year.', 'neutral');
+  const prod = ent.makeProduction('tv', 'network', agency(g.agencyId).countryId === 'kr' ? 'kr' : p.countryId);
+  if (!prod) return result(false, 'There is no television to act in yet.', 'neutral');
+  const idx = prod.cast.findIndex((r) => !r.who && ['supporting', 'lead'].includes(r.kind)) ;
+  const c = idx >= 0 ? ent.castDirect(prod, idx, 'cast as an idol') : null;
+  if (!c) return result(false, 'The casting falls through.', 'neutral');
+  note(`Offered a part in the drama ${prod.title} without an audition.`);
+  return result(true, `${prod.title}, a television drama, wants you for a ${prod.cast[idx].kind} part, no audition needed. The offer is waiting under My Fame → Current work.`);
+}
+
+/** A year as a music show's MC: weekly live hosting, good for media skills and recognition. */
+export function hostShow() {
+  const p = player();
+  const g = myGroup(p);
+  const i = idolOf(p);
+  if (!g?.debut) return result(false, 'Debut first.', 'neutral');
+  if (i.mc?.year === year()) return result(false, 'You are already hosting this year.', 'neutral');
+  const s = skillsOf();
+  if (s.media < 55) return result(false, 'Live hosting needs more media training first.', 'neutral');
+  if (!rng.chance(clamp((s.media - 50) / 40 + i.pop / 80, 0.1, 0.85))) return result(false, 'The show picks someone else as MC this year.', 'neutral');
+  const show = rng.pick(MUSIC_SHOWS.filter((x) => year() >= x.from));
+  i.mc = { year: year(), show: show.name, fee: 40000 };
+  raise('player', 'media', 4);
+  i.pop = clamp(i.pop + 3);
+  gain({ audience: 'tv', amount: 4, why: `hosting ${show.name}` }, p);
+  if (!(i.mcYears ?? []).length) milestone(`Became an MC of ${show.name}.`, 'fame');
+  (i.mcYears ??= []).push(year());
+  note(`Hosted ${show.name} for a year.`);
+  return result(true, `You are an MC of ${show.name} this year: every week, live.`);
+}
+
+// ---------- Merchandise, lightsticks, the fan club ----------
+
+export const LIGHTSTICK_SHAPES = ['star', 'crescent', 'heart', 'prism', 'orb', 'crown'];
+export const LIGHTSTICK_COLORS = ['coral', 'mint', 'lavender', 'gold', 'sky blue', 'rose', 'silver', 'ember red'];
+/** The official lightstick: designed once, with the members' input if the agency asks for it. */
+export function designLightstick(shape, color) {
+  const g = myGroup();
+  if (!g?.debut) return result(false, 'Debut first.', 'neutral');
+  g.merch ??= { lightstick: null, fanclub: null, sales: {} };
+  if (g.merch.lightstick) return result(false, `${g.name} already has its lightstick.`, 'neutral');
+  if (g.fandom.size < 15000) return result(false, 'There are not yet the fans for an official lightstick.', 'neutral');
+  if (!LIGHTSTICK_SHAPES.includes(shape) || !LIGHTSTICK_COLORS.includes(color)) return result(false, 'Not a design.', 'neutral');
+  const asked = rng.chance(agency(g.agencyId).welfare / 100 + 0.2);
+  g.merch.lightstick = { shape: asked ? shape : rng.pick(LIGHTSTICK_SHAPES), color: asked ? color : rng.pick(LIGHTSTICK_COLORS), year: year(), byMembers: asked };
+  g.history.push({ year: year(), text: `The official lightstick: a ${g.merch.lightstick.color} ${g.merch.lightstick.shape}.` });
+  return result(asked, asked ? `The lightstick is yours: a ${color} ${shape}.` : `The company had its own design in mind: a ${g.merch.lightstick.color} ${g.merch.lightstick.shape}.`, asked ? 'good' : 'neutral');
+}
+/** The official fan club: membership, renewed each year by the devoted core. */
+export function launchFanclub() {
+  const g = myGroup();
+  if (!g?.debut) return result(false, 'Debut first.', 'neutral');
+  g.merch ??= { lightstick: null, fanclub: null, sales: {} };
+  if (g.merch.fanclub) return result(false, 'The fan club is already open.', 'neutral');
+  if (g.fandom.size < 20000) return result(false, 'There are not yet enough fans for an official club.', 'neutral');
+  g.merch.fanclub = { since: year(), members: Math.round(g.fandom.core * 0.6), generations: 1 };
+  g.history.push({ year: year(), text: `The official fan club${g.fandom.name ? `, ${g.fandom.name},` : ''} opened.` });
+  return result(true, `The official fan club opens: ${g.merch.fanclub.members.toLocaleString('en-US')} members in the first days.`);
+}
+/** A year's merchandise: lightsticks, albums' photocards, fan-club memberships. Into the group's accounts. */
+function merchYear(g, y) {
+  const m = g.merch;
+  if (!m) return 0;
+  const ls = m.lightstick ? Math.round(g.fandom.core * 0.25 * 45) : 0;
+  const fc = m.fanclub ? Math.round((m.fanclub.members = Math.round(g.fandom.core * 0.6)) * 25) : 0;
+  const goods = Math.round(g.fandom.size * 0.6);
+  m.sales[y] = { lightsticks: ls, fanclub: fc, goods };
+  if (m.fanclub && y > m.fanclub.since) m.fanclub.generations = y - m.fanclub.since + 1;
+  return ls + fc + goods;
+}
+
+// ---------- Dating: the contract's rule, the private life, the rumors ----------
+
+/** What the agency's contract says about dating: some say nothing, some discourage it, a few ask for none in the first years. */
+export const datingRule = (g) => { const a = agency(g.agencyId); return a.datingRule ?? (a.welfare >= 70 ? 'none' : a.welfare >= 55 ? 'discouraged' : 'early_years'); };
+const DATING_RULES = { none: 'The contract says nothing about dating.', discouraged: 'The company discourages public relationships, but it is not in the contract.', early_years: 'The contract asks members not to date publicly in their first three years after debut.' };
+export const datingRuleText = (g) => DATING_RULES[datingRule(g)];
+
+/** A rumor about the player's love life, which may or may not be true; the player answers it. */
+function maybeRumor(p, g) {
+  const i = idolOf(p);
+  const partner = p.npcIds.map((id) => npc(id)).find((n) => n?.alive && ['partner', 'spouse'].includes(n.role));
+  const watched = g.fandom.size / 200000 + i.pop / 200;
+  if (!rng.chance(clamp(watched * (partner ? 0.6 : 0.25), 0, 0.5))) return null;
+  const real = !!partner && rng.chance(0.6);
+  const who = real ? partner : null;
+  const r = { year: year(), true: real, about: who?.id ?? null, text: real ? `Photos of ${p.firstName} with ${who.firstName}, ${['at a café', 'leaving a restaurant', 'on a quiet street'][rng.int(0, 2)]}.` : `A rumor says ${p.firstName} is dating ${rng.pick(['a member of another group', 'an actor', 'a stylist'])}.`, answered: null };
+  (i.rumors ??= []).push(r);
+  return r;
+}
+/** Answers the latest rumor: confirm (only if true), deny (only if false: lying is not an option), or say nothing. */
+export function answerRumor(how) {
+  const p = player();
+  const i = idolOf(p);
+  const g = myGroup(p);
+  const r = (i.rumors ?? []).find((x) => !x.answered);
+  if (!r || !g) return result(false, 'There is nothing to answer.', 'neutral');
+  if (how === 'confirm' && !r.true) return result(false, 'There is nothing to confirm.', 'neutral');
+  if (how === 'deny' && r.true) return result(false, 'It is true. You can confirm it, or say nothing.', 'neutral');
+  r.answered = how;
+  const rule = datingRule(g);
+  const early = rule === 'early_years' && year() - (g.debut?.year ?? year()) < 3;
+  if (how === 'confirm') {
+    // Legally your life is your own: the company may be unhappy, but it cannot end anything over it.
+    const warmth = rng.chance(0.55);
+    g.fandom.engagement = clamp(g.fandom.engagement + (warmth ? 1 : -4));
+    i.pop = clamp(i.pop + (warmth ? 1 : -2));
+    regard({ favour: warmth ? 3 : -2, why: 'a relationship confirmed' }, p);
+    note(`Confirmed a relationship publicly.`);
+    return result(true, `${warmth ? 'Most fans are happy for you.' : 'Some fans take it badly; most move on.'}${early ? ' Your manager reminds you of the contract\'s early-years clause; nothing more comes of it.' : ''}`, warmth ? 'good' : 'neutral');
+  }
+  if (how === 'deny') { regard({ credibility: 1, why: 'a false rumor denied' }, p); return result(true, 'The company issues a statement: the rumor is not true. It fades.', 'neutral'); }
+  return result(true, 'You say nothing. The rumor runs for a week, then something else replaces it.', 'neutral');
+}
+export const openRumor = (p = player()) => (idolOf(p).rumors ?? []).find((x) => !x.answered) ?? null;
+
+// ---------- Moving to Korea properly ----------
+
+/** A trainee or idol living in the agency's city can move there for good: a sponsored work visa through the immigration system. */
+export async function relocate() {
+  const p = player();
+  const i = idolOf(p);
+  const a = trainee(p)?.agency ?? agency(myGroup(p)?.agencyId);
+  if (!a) return result(false, 'There is no agency to move for.', 'neutral');
+  if (p.countryId === a.countryId) return result(false, 'You already live there.', 'neutral');
+  if (p.age < 18) return result(false, 'Under eighteen, you live in the dorm on the trainee visa; the family stays where it is.', 'neutral');
+  if (hasRecord(p, { sealed: true })) return result(false, 'The visa is refused because of your record.');
+  const { emigrate } = await import('./emigration.js');
+  const { settle } = await import('./citizenship.js');
+  const r = emigrate(a.countryId, { forced: true, city: a.city });
+  if (!r.ok) return r;
+  if (!rightToLive(a.countryId, p)) { settle(a.countryId, a.city, 'worker'); if (p.residency) { p.residency.route = 'work'; p.residency.until = year() + 4; p.residency.sponsor = a.name; } }
+  i.residence = null;
+  note(`Moved to ${a.city} for good, on a work visa sponsored by ${a.name}.`);
+  return result(true, `You move to ${a.city} properly: ${rightToLive(a.countryId, p) ? 'as a citizen' : `a work visa, sponsored by ${a.name}, for four years`}.`);
+}
+
+// ---------- The story so far ----------
+
+/**
+ * The idol life as arcs, read from what actually happened (never invented to fit): each arc is not begun,
+ * under way, or lived, with the year it was.
+ */
+export function arcs(p = player()) {
+  const i = idolOf(p);
+  const k = store.state.kpop ?? K();
+  const has = (re) => i.history.find((h) => re.test(h.text));
+  const gs = (i.groups ?? []).map((id) => k.groups[id]).filter(Boolean);
+  const main = gs.find((g) => !g.parentId);
+  const out = [
+    ['The first audition', has(/Applied to|Called back/), null],
+    ['Life as a trainee', has(/trainee agreement|Became a trainee|trainee place/), has(/Left the trainee|did not renew the trainee|Chosen for the debut/)],
+    ['Evaluation pressure', (i.trainee?.evals ?? []).length ? { year: k.evals[i.trainee.evals[0]]?.year } : null, (i.trainee?.evals ?? []).length >= 2 ? { year: k.evals[i.trainee.evals.at(-1)]?.year } : null],
+    ['The survival academy', has(/Cast as a contestant/), has(/reached the final|eliminated|debut line-up on/)],
+    ['Chosen to debut', has(/Chosen for the debut line-up|Chosen to debut/), main?.debut ? { year: main.debut.year } : null],
+    ['The first stage', main?.debut ? { year: main.debut.year } : null, main?.debut ? { year: main.debut.year } : null],
+    ['An ending fairy moment', i.fairies.length ? { year: k.performances[i.fairies[0]]?.year } : null, i.fairies.length ? { year: k.performances[i.fairies[0]]?.year } : null],
+    ['The first win', main?.firstWin ? { year: k.wins.find((w) => w.id === main.firstWin)?.year } : null, main?.firstWin ? { year: k.wins.find((w) => w.id === main.firstWin)?.year } : null],
+    ['Agency pressure', has(/Paused activities|lighter/), has(/Returned to activities/)],
+    ['Taking a hiatus', has(/Paused activities/), has(/Returned to activities/)],
+    ['Solo debut', i.solo.length ? { year: k.releases[i.solo[0]]?.year } : null, i.solo.length ? { year: k.releases[i.solo[0]]?.year } : null],
+    ['Contract renewal', has(/Renewed with|Left .* at the end of the contract|but kept doing/), has(/Renewed with|Left .* at the end of the contract|but kept doing/)],
+    ['The reunion', has(/Reunited with/), has(/Reunited with/)],
+  ];
+  return out.map(([name, begun, done]) => ({ name, status: done ? 'lived' : begun ? 'under way' : 'not begun', year: (done ?? begun)?.year ?? null }));
+}
+
+// ---------- The rest of the year ----------
+
+/** Called from tickKpop: subunits and merchandise settle, health from a hard year, rumors, hosting fees. */
+function yearExtras(p, lived, lines) {
+  const k = K();
+  const i = idolOf(p);
+  for (const g of Object.values(k.groups)) {
+    if (g.parentId && g.status === 'active' && g.debut && year() - g.debut.year >= 2 && rng.chance(0.4)) { g.status = 'inactive'; g.history.push({ year: year(), text: `${g.name} wound down; the members went back to the main group.` }); }
+    if (g.merch && g.ledger?.years?.[lived]) {
+      const extra = merchYear(g, lived);
+      const s = g.ledger.years[lived];
+      if (!s.paid && extra) {
+        const share = agency(g.agencyId).artist.artistShare;
+        const ids = Object.keys(s.perMember);
+        const add = Math.round(extra * share / Math.max(1, ids.length));
+        for (const w of ids) s.perMember[w] += w === 'player' ? Math.round(wageIn(add, COUNTRIES[agency(g.agencyId).countryId], COUNTRIES[p.countryId])) : add;
+        s.merch = extra;
+      }
+    }
+  }
+  const g = myGroup(p);
+  // A hard year shows in the body: a health record, which a break and care can clear.
+  if (g && (i.workloadLast ?? 0) >= 2 && !i.hiatus) {
+    const a = agency(g.agencyId);
+    if (rng.chance(clamp((100 - a.welfare) / 250 + (p.stats.health < 50 ? 0.15 : 0), 0.02, 0.4))) {
+      const cond = rng.chance(0.5) ? 'exhaustion' : 'dance_injury';
+      if (addCondition(cond)) { lines.push(cond === 'exhaustion' ? 'The schedule has caught up with you: a doctor tells you that you are exhausted, and need rest.' : 'You have hurt yourself in rehearsal. It needs rest to heal.'); note(cond === 'exhaustion' ? 'Diagnosed with exhaustion after a hard year.' : 'Injured in rehearsal.'); }
+    }
+  }
+  if (g?.debut) { const r = maybeRumor(p, g); if (r) lines.push(`A story in the press: ${r.text}`); }
+  if (i.mc?.year === lived && !i.mc.paid) i.mc.due = true;
+}
+
+/** A health break records the condition it is for, and care while on the break clears it. */
+function healthRecord(kind) {
+  const p = player();
+  const i = idolOf(p);
+  const idolConds = (p.conditions ?? []).filter((c) => ['exhaustion', 'dance_injury', 'anxiety', 'depression'].includes(c.id));
+  if (kind !== 'health') return;
+  if (!idolConds.length && p.stats.health < 60) addCondition('exhaustion');
+  i.hiatus.conditions = (p.conditions ?? []).filter((c) => ['exhaustion', 'dance_injury', 'anxiety', 'depression'].includes(c.id)).map((c) => c.id);
+  for (const c of p.conditions ?? []) if (i.hiatus.conditions.includes(c.id)) c.treated = true; // care while on the break
+}
+function healthReturn() {
+  const p = player();
+  const h = idolOf(p).hiatus;
+  for (const id of h?.conditions ?? []) if (['exhaustion', 'dance_injury'].includes(id)) cureCondition(id);
 }

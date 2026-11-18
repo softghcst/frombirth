@@ -96,6 +96,7 @@ const VIEWS = {
         <div class="section-label">With</div>${offer.lineup.filter((w) => w !== 'player').map((w) => row('person', w, name(w), `${COUNTRIES[npc(w)?.bornIn]?.name ?? ''} · readiness ${kp.readiness(w)}`, '', npc(w))).join('')}
         <div class="btn-stack">${btn('debutyes', 'Accept: debut with them', { cls: 'primary' })}${btn('debutno', 'Turn it down')}</div></div>` : ''}
       ${fairies.length ? `<div class="card"><h3>You're this week's ending fairy!</h3><p class="muted" style="margin:0">${esc(fairies[0].show)}, ${esc(fairies[0].song)}. The producer has chosen you for the final close-up.</p><div class="btn-stack">${btn('fairy', 'Choose how to finish', { arg: fairies[0].id, cls: 'primary' })}</div></div>` : ''}
+      ${kp.openRumor(p) ? `<div class="card"><h3>In the press</h3><p>${esc(kp.openRumor(p).text)}</p><div class="btn-stack">${btn('rumor', 'Confirm it', { arg: 'confirm', disabled: !kp.openRumor(p).true })}${btn('rumor', 'Deny it', { arg: 'deny', disabled: kp.openRumor(p).true, sub: kp.openRumor(p).true ? 'It is true: you will not lie about it.' : '' })}${btn('rumor', 'Say nothing', { arg: 'silence' })}</div></div>` : ''}
       ${renew ? `<div class="card"><h3>Your contract is up</h3><div class="btn-stack">${btn('renew', 'Decide', { cls: 'primary' })}</div></div>` : ''}`;
     if (g) {
       const a = kp.agency(g.agencyId);
@@ -234,6 +235,9 @@ const VIEWS = {
     const g = kp.myGroup(p);
     const rels = g.releases.map((id) => K().releases[id]).filter(Boolean).reverse();
     return `<div class="card"><h3>Plan a comeback</h3><p class="muted" style="margin:0">A new release, promoted on the shows. Up to two a year. Not every comeback wins.</p><div class="btn-stack">${Object.entries(RELEASE_KINDS).map(([k, r]) => btn('comeback', r.name, { arg: k })).join('')}</div></div>
+      <div class="card"><h3>More music</h3><div class="btn-stack">${btn('subunit', 'Propose a subunit', { sub: 'Two or three of you, a smaller group. The main group carries on.' })}${btn('japan', 'A Japanese release', { sub: 'For your fans in Japan. Japanese lessons help.' })}</div>
+        ${kp.subunits(g).map((u) => row('groupview', u.id, u.name, `${u.formed} · ${u.status}`)).join('')}</div>
+      <div class="card"><h3>Beyond music</h3><div class="btn-stack">${btn('acting', 'Look for acting work', { sub: 'Dramas cast known idols without an audition.' })}${btn('host', 'Host a music show', { sub: 'A year as a weekly live MC.' })}</div></div>
       <div class="card"><h3>Solo work</h3><p class="muted" style="margin:0">${esc(kp.soloOk(p) || 'You can release solo music and stay in the group.')}</p><div class="btn-stack">${btn('solo', 'Release a solo single', { disabled: !!kp.soloOk(p) })}</div></div>
       <div class="section-label">Discography</div>${rels.map((r) => `<div class="kv"><span>${r.year} · ${esc(r.title)}${r.solo ? ' (solo)' : ''}</span><span>${esc(RELEASE_KINDS[r.kind]?.name ?? 'Special')} · ${esc(r.reception ?? '')}${r.wins.length ? ` · ${r.wins.length} wins` : ''}</span></div>`).join('')}`;
   },
@@ -244,6 +248,9 @@ const VIEWS = {
     const regions = Object.entries(f.regions).sort((a2, b2) => b2[1] - a2[1]).slice(0, 6);
     return `<div class="card"><h3>${esc(f.name ?? 'Your fans')}</h3>${kv([['Fans, roughly', f.size.toLocaleString('en-US')], ['The devoted core', f.core.toLocaleString('en-US')], ['Engagement', `${f.engagement}/100`], ['Where they are', regions.map(([c]) => COUNTRIES[c]?.name).filter(Boolean).join(', ') || '—'], ['Fans of you in particular', String(Math.round(kp.idolOf(p).pop))]])}
       ${!f.name && g.debut ? btn('fandomname', 'Suggest a fandom name') : ''}</div>
+      <div class="card"><h3>Lightstick and fan club</h3>${kv([['Lightstick', g.merch?.lightstick ? `A ${g.merch.lightstick.color} ${g.merch.lightstick.shape}${g.merch.lightstick.byMembers ? ', designed with the members' : ''}` : 'None yet'], ['Fan club', g.merch?.fanclub ? `${g.merch.fanclub.members.toLocaleString('en-US')} members, generation ${g.merch.fanclub.generations}` : 'Not open']])}
+        ${(() => { const y = Object.keys(g.merch?.sales ?? {}).at(-1); const m = y ? g.merch.sales[y] : null; return m ? `<p class="muted" style="margin:4px 0">${y}: merchandise brought the group ${(m.lightsticks + m.fanclub + m.goods).toLocaleString('en-US')} (in its accounts, before the members' share).</p>` : ''; })()}
+        <div class="btn-stack">${!g.merch?.lightstick ? btn('lightstick', 'Design the lightstick', { disabled: f.size < 15000, sub: f.size < 15000 ? 'Needs about 15,000 fans' : '' }) : ''}${!g.merch?.fanclub ? btn('fanclub', 'Open the official fan club', { disabled: f.size < 20000, sub: f.size < 20000 ? 'Needs about 20,000 fans' : '' }) : ''}</div></div>
       <div class="card"><h3>Out in public</h3><div class="btn-stack">${[['interview', 'Interview'], ['variety', 'Variety show'], ['radio', 'Radio'], ['fanmeeting', 'Fan meeting'], ['fansign', 'Fansign'], ['fancall', 'Fan call'], ['livestream', 'Livestream']].map(([k, l]) => btn('appear', l, { arg: k })).join('')}</div></div>
       <div class="card"><h3>Touring</h3><div class="btn-stack">${Object.entries(kp.TOURS).map(([k, t]) => btn('tour', t.name, { arg: k, disabled: f.size < t.fans, sub: f.size < t.fans ? `Needs about ${t.fans.toLocaleString('en-US')} fans` : `${t.shows} shows` })).join('')}</div>
       ${g.tours.slice(-4).reverse().map((t) => `<div class="kv"><span>${t.year} · ${esc(t.name)}</span><span>${t.sold ? `${t.sold.toLocaleString('en-US')} tickets` : 'Booked'}</span></div>`).join('')}</div>`;
@@ -253,6 +260,8 @@ const VIEWS = {
     const i = kp.idolOf(p);
     const cs = i.contracts.map((id) => K().contracts[id]).filter(Boolean).reverse();
     return `${cs.map((c) => `<div class="card"><h3>${c.kind === 'trainee' ? 'Trainee agreement' : 'Exclusive artist agreement'}: ${esc(kp.agency(c.agencyId).name)}</h3>${kv([['From', String(c.start)], ['Status', c.status], ...(c.kind === 'trainee' ? [['Review', `every ${c.review} ${c.review === 1 ? 'year' : 'years'}`], ['Training costs', c.costs], ['Housing', c.housing]] : [['Ends', String(c.ends)], ['Your share', `${Math.round(c.artistShare * 100)}% of what is left after costs, split between members`], ['Solo work', c.soloAllowed ? 'Allowed' : 'Not allowed']]), ...(c.ended ? [['Ended', `${c.ended.year}: ${c.ended.how}`]] : [])])}</div>`).join('')}
+      ${kp.myGroup(p) ? `<div class="card"><h3>Your private life</h3><p class="muted" style="margin:0">${esc(kp.datingRuleText(kp.myGroup(p)))} Whatever a contract says, your life is your own.</p></div>` : ''}
+      ${(kp.trainee(p) || kp.myGroup(p)) && p.countryId !== (kp.trainee(p)?.agency ?? kp.agency(kp.myGroup(p)?.agencyId))?.countryId ? `<div class="btn-stack">${btn('relocate', 'Move there properly', { sub: p.age >= 18 ? 'A work visa, sponsored by the agency.' : 'From eighteen.' , disabled: p.age < 18 })}</div>` : ''}
       <div class="btn-stack">${kp.trainee(p) ? btn('leave', 'Leave the trainee program', { cls: 'danger', sub: 'With notice. Nothing is charged back.' }) : ''}${btn('rest', 'Discuss your workload')}</div>`;
   },
 
@@ -260,6 +269,7 @@ const VIEWS = {
     const i = kp.idolOf(p);
     const fairies = i.fairies.map((id) => K().performances[id]).filter(Boolean);
     return `${fairies.length ? `<div class="section-label">Ending fairy archive</div>${fairies.reverse().map((x) => row('perf', x.id, `${x.song}, ${x.show}`, `${x.year} · ${FAIRY_STYLES[x.fairyStyle]?.name ?? ''} · ${x.fairyResult}`)).join('')}` : ''}
+      <div class="section-label">Your story</div>${kp.arcs(p).filter((a) => a.status !== 'not begun').map((a) => `<div class="kv"><span>${esc(a.name)}</span><span>${a.status}${a.year ? `, ${a.year}` : ''}</span></div>`).join('') || '<p class="empty">Your story has not begun.</p>'}
       <div class="section-label">Your idol life</div>${i.history.slice().reverse().map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.text)}</span></div>`).join('')}
       ${i.groups.length ? `<div class="section-label">Groups</div>${i.groups.map((id) => kp.group(id)).filter(Boolean).map((g) => row('groupview', g.id, g.name, `${g.formed} · ${g.status}`)).join('')}` : ''}`;
   },
@@ -328,4 +338,28 @@ const ACTIONS = {
   tour: (k, x) => x.say(kp.planTour(k)),
   renew: async (_, x) => { const v = await pickModal({ title: 'Your contract is up', body: 'Every member decides for themselves.', options: [{ value: 'renew', label: 'Renew with the agency' }, { value: 'keep_group', label: 'Leave the agency, keep doing group activities', sub: 'If they agree.' }, { value: 'leave', label: 'Leave' }] }); if (v) await x.say(kp.decideRenewal(v)); },
   reunion: (id, x) => x.say(kp.proposeReunion(id)),
+  rumor: (how, x) => x.say(kp.answerRumor(how)),
+  async subunit(_, x) {
+    const g = kp.myGroup();
+    const picked = [];
+    for (let n = 0; n < 2; n++) {
+      const v = await pickModal({ title: n ? 'And one more?' : 'Who with?', cancel: n ? 'Just the two of us' : 'Cancel', options: kp.current(g).filter((m) => m.who !== 'player' && !picked.includes(m.who)).map((m) => ({ value: m.who, label: name(m.who), sub: (g.positions[m.who] ?? []).map((l) => POSITIONS[l].name).join(' · ') })) });
+      if (!v) break;
+      picked.push(v);
+    }
+    if (!picked.length) return undefined;
+    return x.say(kp.formSubunit(picked));
+  },
+  japan: (_, x) => x.say(kp.japaneseRelease()),
+  acting: async (_, x) => x.say(await kp.actingOffer()),
+  host: (_, x) => x.say(kp.hostShow()),
+  async lightstick(_, x) {
+    const shape = await pickModal({ title: 'The shape', options: kp.LIGHTSTICK_SHAPES.map((v) => ({ value: v, label: v })) });
+    if (!shape) return undefined;
+    const color = await pickModal({ title: 'The color', options: kp.LIGHTSTICK_COLORS.map((v) => ({ value: v, label: v })) });
+    if (color) await x.say(kp.designLightstick(shape, color));
+    return undefined;
+  },
+  fanclub: (_, x) => x.say(kp.launchFanclub()),
+  relocate: async (_, x) => { if (await confirmModal({ title: 'Move there for good?', body: 'You move your life: your home, your money into the local currency, your status to a sponsored work visa.', yes: 'Move' })) await x.say(await kp.relocate()); },
 };
