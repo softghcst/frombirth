@@ -494,6 +494,12 @@ div.row { cursor: default; }
 .person-link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
 .btn.stacked { flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; }
 .btn.stacked small { font-weight: 400; opacity: 0.8; }
+
+/* ---------- My Moments ---------- */
+.mo-guests { max-height: 55vh; overflow-y: auto; }
+.mo-guest { cursor: pointer; }
+.mo-guest input { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }
+.row.mo-done { opacity: 0.6; }
 /* ---------- Digital Life ---------- */
 .dl-modal { max-width: 620px; }
 .dl-sub { margin: -4px 0 6px; font-size: 0.88rem; }

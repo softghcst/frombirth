@@ -130,6 +130,7 @@ export function saveGame(state) {
     slotId: state.slotId,
     name: `${p.firstName} ${p.lastName}`,
     age: p.age,
+    month: state.month ?? 0, // a turn partway through a year (engine/turns.js)
     gender: p.gender,
     appearance: p.appearance,
     countryId: p.countryId,
@@ -168,7 +169,7 @@ export function forkGame(state, note) {
   const have = timelinesOf(root).length || 1;
   if (have >= MAX_TIMELINES) return { ok: false, text: `This life already has ${MAX_TIMELINES} timelines. Delete one from the title screen to keep another.` };
   const p = state.player;
-  const at = { age: p.age, year: state.year, note };
+  const at = { age: p.age, month: state.month ?? 0, year: state.year, note };
   state.rngSeed = rng.state();
   const copy = JSON.parse(JSON.stringify(state));
   copy.slotId = `life_${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -218,12 +219,20 @@ export function pushUndo(state) {
   try { for (const key of Object.keys(localStorage)) if (key.startsWith(K_UNDO) && key !== K_UNDO + state.slotId) localStorage.removeItem(key); } catch { /* storage unavailable */ }
   const list = read(K_UNDO + state.slotId, []);
   list.push(JSON.stringify(state));
-  while (list.length > UNDO_YEARS) list.shift();
+  // Three years back, however long a turn is (engine/turns.js): four turns a year with three-month turns.
+  const perYear = 12 / ([6, 3].includes(state.settings?.step) ? state.settings.step : 12);
+  while (list.length > UNDO_YEARS * perYear) list.shift();
   while (list.length && !write(K_UNDO + state.slotId, list)) list.shift();
 }
-/** How many years can be taken back for this life. */
+/** Where taking back the last turn would return to: { age, month }, or null. */
+export function peekUndo(slotId) {
+  const list = read(K_UNDO + slotId, []);
+  if (!list.length) return null;
+  try { const s = JSON.parse(list[list.length - 1]); return { age: s.player.age, month: s.month ?? 0 }; } catch { return null; }
+}
+/** How many turns can be taken back for this life. */
 export const undoDepth = (slotId) => read(K_UNDO + slotId, []).length;
-/** Takes back the most recent year: returns the life as it was before it, or null. */
+/** Takes back the most recent turn (a year, or six or three months of one): returns the life as it was before it, or null. */
 export function popUndo(slotId) {
   const list = read(K_UNDO + slotId, []);
   const raw = list.pop();

@@ -7,7 +7,7 @@ import * as cloud from '../sync/cloud.js';
 import { openModal, pickModal, confirmModal, messageModal, inputModal } from './modals.js';
 import { store } from '../state.js';
 import { forkGame, timelinesOf, MAX_TIMELINES, saveGame } from '../save.js';
-import { STEPS, STEP_NAMES, stepOf, setStep, monthOf } from '../engine/turns.js';
+import { STEPS, STEP_NAMES, stepOf, setStep, monthOf, ageLabel } from '../engine/turns.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
 export function ago(t) {
@@ -68,7 +68,7 @@ export async function openSettings(hooks = {}) {
     if (!pick) return;
     if (pick === 'whatif') {
       const note = await inputModal({ title: 'What if?', label: 'What is the decision? (a few words)', value: '', maxLength: 60 });
-      if (note != null) { const r = forkGame(store.state, note || `Age ${store.state.player.age}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
+      if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
     }
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();

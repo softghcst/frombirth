@@ -209,6 +209,8 @@ export function createLife(opts = {}) {
     player, npcs: Object.fromEntries(family.map((n) => [n.id, n])),
     journal, market: { prices: {}, history: {}, cycle: 0 },
     eventHistory: [], pendingEvents: [], rngSeed: rng.state(),
+    // This year's occasions and the family's traditions (engine/moments.js): made here, so a life is built the same way whatever the turn length.
+    moments: { year, done: {}, social: 0, bonds: {}, invites: [], log: [] }, traditions: [],
     settings: { theme: 'auto' },
     ...(seat ? { dynasties: { [c.id]: seat.dynasty } } : {}),
   };

@@ -163,7 +163,7 @@ export default [
     ],
   },
   {
-    id: 'long_dark_winter', category: 'the weather', ageRange: [14, 90], cooldown: 8, requires: [hazard('winter')],
+    id: 'long_dark_winter', timing: { seasons: ['winter'] }, category: 'the weather', ageRange: [14, 90], cooldown: 8, requires: [hazard('winter')],
     text: 'The sun came up at ten and was gone by two. It has been like this for a month, and the snow is over the windowsills.',
     choices: [
       { label: 'Get outside every day regardless', check: chk(0.6, { 'hidden.discipline': 0.6 }), outcomes: [

@@ -251,6 +251,8 @@ section('C. Reconnection');
   freshHours();
   join('hearth', 'grownup.me');
   store.state.npcs[id].flags.drifted.year = store.state.year - 10;
+  // Only this old friend has been out of touch long enough to be looked for.
+  for (const n of Object.values(store.state.npcs)) if (n.id !== id && n.flags.drifted) n.flags.drifted.year = store.state.year;
   store.state.pendingEvents = [];
   core.world().arcs.lastYear = null;
   let queued = null;

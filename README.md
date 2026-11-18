@@ -59,6 +59,7 @@ node tests/business.mjs        # owning a business: starting, staff, the account
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
+node tests/moments.mjs         # living moments: occasions marked once in their year, Age Up never repeats them, traditions passed down
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
@@ -75,6 +76,13 @@ node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; and that the eye shapes on offer are unchanged.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
+
+## Living moments
+
+People → **My Moments** lists what this year holds: birthdays, school dances and proms, family occasions,
+holidays, the family's traditions, invitations and evenings with friends. Choose one and it happens at once;
+Age Up keeps the traditions nobody organized. No calendar: Pathways is still lived a year at a time.
+Details: [docs/MOMENTS.md](docs/MOMENTS.md).
 
 ## Money
 
@@ -96,8 +104,10 @@ ways and compares). The turns in between move the calendar on, show the age in m
 the year in the life story, and may bring one of about thirty scenes written for that season and that turn length
 (`js/data/events/seasons.js`: summer holidays, exam season, the dark of winter, a first scan, a baby's first smile,
 preseason training), and perhaps one of the year's ordinary scenes as well: about 1.8 scenes a year with one-year turns,
-3.7 with six-month turns and 5.8 with three-month turns. Story beats stay with the turn of the year. Seasons run the
-other way round in the southern hemisphere. Those turns draw on luck of their own
+3.7 with six-month turns and 5.8 with three-month turns. Story beats stay with the turn of the year. Each country has
+its own climate (`js/engine/calendar.js`): four seasons in the north or the south, rainy and dry seasons in the tropics,
+long and short rains near the equator, the monsoon in South Asia, a hot season in the desert. Scenes follow it, and the
+school scenes follow each country's school year. Those turns draw on luck of their own
 (`engine/eventEngine.js` drawBetween), never on the game's dice. A change partway through a year starts from the next.
 
 ## Sports and athletics
