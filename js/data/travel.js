@@ -128,7 +128,7 @@ export const TRIP_TYPES = [
   { id: 'visiting', group: 'Personal', name: 'Visiting relatives', purpose: 'visit', needs: 'kinThere' },
   { id: 'scouting', group: 'Personal', name: 'Relocation scouting visit', purpose: 'visit', minAge: 18 },
   { id: 'wedding', group: 'Personal', name: 'Family wedding', purpose: 'visit', needs: 'wedding', maxDays: 14 },
-  { id: 'funeral', group: 'Personal', name: 'Going to a funeral', purpose: 'visit', needs: 'funeral', maxDays: 10 },
+  { id: 'funeral', group: 'Personal', name: 'Funeral', purpose: 'visit', needs: 'funeral', maxDays: 10 },
   { id: 'business', group: 'Professional', name: 'Business trip', purpose: 'business', needs: 'job', maxDays: 14 },
   { id: 'conference', group: 'Professional', name: 'Work conference', purpose: 'business', needs: 'professional', maxDays: 7 },
   { id: 'interview', group: 'Professional', name: 'Job interview abroad', purpose: 'business', needs: 'offer', maxDays: 5 },
