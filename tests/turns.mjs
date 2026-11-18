@@ -107,15 +107,26 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   for (let i = 0; i < 40 && P().alive; i++) { turns.advanceTurn(); for (const pe of S().pendingEvents) ids.add(pe.id); S().pendingEvents = []; }
   check(![...ids].some((id) => EVENT_BY_ID[id]?.between), 'with year-long turns there are no in-between scenes');
   // Three-month turns do, and each fits the life and the season.
-  const got = new Map();
+  const got = new Map(); const everyday = new Map();
   for (let t = 0; t < 6; t++) {
     life(t % 2 ? 'au' : 'us', t % 2 ? 'Sydney' : 'Chicago');
     turns.setStep(3);
     for (let i = 0; i < 4 * 45 && P().alive; i++) {
       const before = turns.monthOf();
       turns.advanceTurn();
+      const between = turns.monthOf() !== 0;
       for (const pe of S().pendingEvents.splice(0)) {
         const ev = EVENT_BY_ID[pe.id];
+        if (ev && !ev.between && between) {
+          // One of the year's ordinary scenes, on a turn between years: more chances with shorter turns.
+          everyday.set(pe.id, (everyday.get(pe.id) ?? 0) + 1);
+          check(!ev.priority && !ev.queuedOnly, `${pe.id}: only ordinary scenes come between years, not the year's story beats`);
+          check(P().age >= ev.ageRange[0] && P().age <= ev.ageRange[1], `${pe.id} fits the age`);
+          const dice = rng.state();
+          resolveChoice(ev, ev.choices.findIndex((c) => !c.requires?.length), pe.cast);
+          check(rng.state() === dice, `${pe.id}: choosing it between years leaves the game's dice alone`);
+          continue;
+        }
         if (!ev?.between) continue;
         got.set(pe.id, (got.get(pe.id) ?? 0) + 1);
         const end = turns.monthOf() || 12;
@@ -130,9 +141,12 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
         resolveChoice(ev, 0, pe.cast);
         check(rng.state() === dice, `${pe.id}: choosing leaves the game's dice alone`);
       }
+      S().pendingEvents = []; // follow-ups queued by a choice are their own scenes, not the turn's draw
     }
   }
-  check(got.size >= 15, `many different scenes come up over six lives (${got.size})`);
+  check(got.size >= 15, `many different seasonal scenes come up over six lives (${got.size})`);
+  const ordinaryCount = [...everyday.values()].reduce((a, b) => a + b, 0);
+  check(ordinaryCount >= 6 * 40 && everyday.size >= 30, `ordinary scenes come up between years as well (${ordinaryCount} times, ${everyday.size} different)`);
   const winterUS = [...got.keys()].some((id) => EVENT_BY_ID[id].between.seasons?.includes('winter'));
   check(winterUS, 'winter scenes come up too (the last part of the year has its season)');
   section('scenes between years: only with shorter turns, in their season and hemisphere, fitting the life, on their own luck', n);

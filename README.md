@@ -86,7 +86,9 @@ one-year turns, so money and records come out the same in every mode (`tests/tur
 ways and compares). The turns in between move the calendar on, show the age in months, put a heading for each part of
 the year in the life story, and may bring one of about thirty scenes written for that season and that turn length
 (`js/data/events/seasons.js`: summer holidays, exam season, the dark of winter, a first scan, a baby's first smile,
-preseason training). Seasons run the other way round in the southern hemisphere. Those turns draw on luck of their own
+preseason training), and perhaps one of the year's ordinary scenes as well: about 1.8 scenes a year with one-year turns,
+3.7 with six-month turns and 5.8 with three-month turns. Story beats stay with the turn of the year. Seasons run the
+other way round in the southern hemisphere. Those turns draw on luck of their own
 (`engine/eventEngine.js` drawBetween), never on the game's dice. A change partway through a year starts from the next.
 
 ## Sports and athletics

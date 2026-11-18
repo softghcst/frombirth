@@ -72,10 +72,11 @@ function apart(key, fn) {
  * Drawn on luck of its own, so it never changes what the game's dice would have done.
  * @param {number} step  months a turn is (6 or 3)
  * @param {string[]} seasons  the seasons the turn covered where the player lives: 'winter' | 'spring' | 'summer' | 'fall'
- * @param {number} [chance]  how likely a scene is at all
- * @returns {?string} the scene queued
+ * @param {number} [chance]  how likely a seasonal scene is at all
+ * @param {number} [everyday]  how likely one of the year's ordinary scenes is as well: shorter turns, more chances
+ * @returns {string[]} the scenes queued
  */
-export function drawBetween(step, seasons, chance = 0.8) {
+export function drawBetween(step, seasons, chance = 0.8, everyday = 0) {
   const state = store.state;
   return apart(`between/${state.year}/${state.month}/${chance}`, () => {
     const pool = [];
@@ -85,10 +86,29 @@ export function drawBetween(step, seasons, chance = 0.8) {
       const cast = eligibleCast(ev, true);
       if (cast) pool.push({ ev, cast });
     }
-    if (!pool.length || !rng.chance(chance)) return null;
-    const pick = rng.weighted(pool, (x) => x.ev.weight ?? 1);
-    state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast });
-    return pick.ev.id;
+    const queued = [];
+    if (pool.length && rng.chance(chance)) {
+      const pick = rng.weighted(pool, (x) => x.ev.weight ?? 1);
+      state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast });
+      queued.push(pick.ev.id);
+    }
+    // One of the ordinary scenes of a year can happen between years too. Story beats (priority scenes) stay with the
+    // turn of the year, where the systems that call for them run; cooldowns still count in years.
+    if (everyday && rng.chance(everyday)) {
+      const waiting = new Set(state.pendingEvents.map((e) => e.id));
+      const ordinary = [];
+      for (const ev of EVENTS) {
+        if (ev.priority || (ev.weight ?? 1) <= 0 || waiting.has(ev.id)) continue;
+        const cast = eligibleCast(ev, false);
+        if (cast) ordinary.push({ ev, cast });
+      }
+      if (ordinary.length) {
+        const pick = rng.weighted(ordinary, (x) => x.ev.weight ?? 1);
+        state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast });
+        queued.push(pick.ev.id);
+      }
+    }
+    return queued;
   });
 }
 
@@ -168,8 +188,8 @@ function variantsFor(outcomes, on, cast) {
  * @returns {{text:string, tone:'good'|'bad'|'neutral', changes:Array, death?:string}}
  */
 export function resolveChoice(ev, choiceIndex, cast) {
-  // A scene between years plays out on its own luck too (see drawBetween).
-  if (ev.between) return apart(`choice/${store.state.year}/${store.state.month ?? 0}/${ev.id}/${choiceIndex}`, () => resolveNow(ev, choiceIndex, cast));
+  // A scene between years, or any scene met on a turn between years, plays out on its own luck too (see drawBetween).
+  if (ev.between || store.state.month) return apart(`choice/${store.state.year}/${store.state.month ?? 0}/${ev.id}/${choiceIndex}`, () => resolveNow(ev, choiceIndex, cast));
   return resolveNow(ev, choiceIndex, cast);
 }
 function resolveNow(ev, choiceIndex, cast) {

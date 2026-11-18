@@ -17,6 +17,8 @@ import { drawBetween } from './eventEngine.js';
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
 export const STEPS = [12, 6, 3];
+/** How likely one of the year's ordinary scenes is on a turn between years: a little under the year's own rate, per turn. */
+export const EVERYDAY = { 6: 0.6, 3: 0.45 };
 export const STEP_NAMES = { 12: 'A year', 6: 'Six months', 3: 'Three months' };
 export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -98,6 +100,7 @@ export function advanceTurn(state = store.state) {
   state.month = next;
   const seasons = turnSeasons(next, step, p.countryId);
   log(`${cap(seasons[0])}.`, 'season');
-  drawBetween(step, seasons);
+  // Shorter turns, more chances: a scene for the season, and perhaps one of the year's ordinary scenes as well.
+  drawBetween(step, seasons, 0.8, EVERYDAY[step]);
   return { year: false, season: seasons[0] };
 }
