@@ -47,6 +47,8 @@ export function catalog(countryId = player().countryId) {
   const cities = [...c.cities].sort(() => rng.next() - 0.5);
   const taken = new Set();
   const plan = ['ancient', 'research', 'research', 'technical', 'regional', 'regional', 'college', 'conservatoire', 'open'];
+  // Where universities run big sports programs, there are many more of them to recruit and be recruited by.
+  if (['us', 'ca'].includes(countryId)) plan.push('research', 'research', 'research', 'research', 'regional', 'regional', 'regional', 'college', 'college', 'college');
   plan.forEach((kindId, i) => {
     const kind = UNIVERSITY_KIND_BY_ID[kindId];
     const city = cities[i % cities.length];

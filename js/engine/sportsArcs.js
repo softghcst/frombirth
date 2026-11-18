@@ -139,8 +139,12 @@ export function tickSportsArcs(state = store.state, started = []) {
     }
     // C and G — real offers, waiting in the hub.
     for (const d of S.decisions.filter((x) => x.status === 'open' && x.year === state.year)) {
-      if (d.kind === 'scholarship') tries.unshift(() => {
-        const best = d.offers.slice().sort((x, y) => y.fraction - x.fraction)[0];
+      // The big scholarship: the first time college offers are on the table (engine/recruiting.js).
+      if (['commit', 'sign'].includes(d.kind)) tries.unshift(() => {
+        const live = (sp.entryOf(d.sportId, p.id, state)?.recruit?.offers ?? []).filter((o) => !o.pulled).map((o) => ({ instId: o.id, name: o.name, fraction: o.fraction }));
+        d.offers = live;
+        const best = live.slice().sort((x, y) => y.fraction - x.fraction)[0];
+        if (!best) return null;
         const arc = begin(state, 'C', `C/${d.id}`, d.sportId, { decisionId: d.id, instId: best.instId, people: [] }, `${d.offers.length === 1 ? best.name : `${d.offers.length} universities, ${best.name} among them,`} offered an athletic scholarship.`);
         return arc && queue('sport_arc_scholarship', { words: { uni: best.name, share: `${Math.round(best.fraction * 100)}%`, sport: sportOf(d.sportId).name.toLowerCase() } });
       });

@@ -10,6 +10,10 @@ import { sportOf, PLANS, LOADS, LEVEL_NAMES, INJURIES } from '../data/sports.js'
 import * as sp from '../engine/sports.js';
 import * as life from '../engine/sportsLife.js';
 import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
+import { decommit, gradeOf, GRADE_NAMES } from '../engine/recruiting.js';
+import * as draft from '../engine/draft.js';
+import { classOf, eligibility as collegeLeft } from '../engine/college.js';
+import { DIVISIONS } from '../data/sports.js';
 import { jerseySvg, jerseyDot, inkOn } from './jersey.js';
 import { fmtMark } from '../engine/sportsPlay.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
@@ -176,12 +180,87 @@ function rankings() {
     </div>`).join('')}`;
 }
 
+/** College, the draft and the minors: where the player stands, what the mock drafts say, and the drafts they were in. */
+function draftSection() {
+  const st = store.state;
+  const p = player();
+  const out = [];
+  for (const e of sp.activeSports()) {
+    const D = draft.draftOf(st, e.id);
+    const sport = sportOf(e.id);
+    if (e.college && sp.orgOf(e.orgId)?.kind === 'college') {
+      const left = collegeLeft(st, e);
+      out.push(`${label(`College ${sport.name.toLowerCase()}`)}${kv('Class', esc(classOf(st, e)))}${kv('Division', esc(DIVISIONS[e.college.division]?.name ?? e.college.division))}${kv('Eligibility', `${left.seasons} ${left.seasons === 1 ? 'season' : 'seasons'} left, ${left.years} ${left.years === 1 ? 'year' : 'years'} on the clock`)}${e.college.nil.length ? kv('NIL deals', esc(money(e.college.nil.reduce((s, x) => s + x.amount, 0)))) : ''}`);
+    }
+    if (e.intl) out.push(intlSection(st, e));
+    if (e.youth && (e.youth.scholar || e.youth.released)) out.push(`${label(`${sport.name}: the academy`)}${e.youth.scholar ? kv(p.countryId === 'uk' ? 'Scholarship' : 'Youth contract', `${e.youth.scholar.from}–${e.youth.scholar.until}`) : kv('Released', String(e.youth.released))}`);
+    if (e.asia && D && (e.proYear || e.asia.service || e.asia.served || e.asia.exempt)) {
+      const n = e.proYear ? st.year - e.proYear : 0;
+      const sv = e.asia.service ? `${e.asia.service.kind === 'sangmu' ? 'Serving, with Sangmu' : 'Serving'} until ${e.asia.service.until}` : e.asia.served ? 'Served' : e.asia.exempt ? `Exempt: ${e.asia.exempt}` : p.countryId === 'kr' && p.gender === 'male' ? 'Due before 28' : '';
+      out.push(`${label(`${D.name}: the way abroad`)}${e.proYear ? kv('Seasons as a professional', String(n)) : ''}
+        ${kv('Posting', D.posting ? `After ${D.posting} seasons, with the club's consent` : "With the club's consent")}
+        ${kv('Free agency abroad', `After ${D.freeAgency} seasons`)}
+        ${e.asia.posted.map((x) => kv(`Posting, ${x.year}`, x.to ? `Signed with ${esc(x.to)}` : x.consent ? 'Posted' : 'The club said no')).join('')}
+        ${sv ? kv('Military service', esc(sv)) : ''}`);
+    }
+    if (!D) continue;
+    const el = draft.eligible(st, e, D);
+    const grade = draft.draftGrade(st, e);
+    const pick = draft.projectedPick(grade);
+    const drafts = Object.values(st.sports?.drafts ?? {}).filter((d) => d.sport === e.id && d.player).sort((a, b) => b.year - a.year);
+    const size = drafts[0]?.size ?? 30;
+    out.push(`${label(`${sport.name} draft`)}
+      ${e.contractId ? '' : kv('Eligible', el.ok ? `Yes${el.declare ? ', if you declare' : ''}` : esc(el.why))}
+      ${e.contractId ? '' : kv('Mock drafts', pick <= D.rounds * size ? `Round ${draft.roundOf(pick, size)}, around pick ${pick}` : 'Not projected to be picked')}
+      ${e.draft?.rights ? kv('Rights held by', `${esc(e.draft.rights.club)} until ${e.draft.rights.until}`) : ''}
+      ${e.minor ? kv('Minor leagues', `${esc((e.minor.ladder ?? D.minors)[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}
+      ${drafts.map((d) => `<details class="card"><summary><strong>${d.year} draft</strong> · ${d.player.undrafted ? 'not picked' : `you went in round ${d.player.round}, pick ${d.player.pick}, to ${esc(sp.teamOf(d.player.teamId)?.name ?? '')}`}</summary>
+        ${d.lottery.length ? `<p class="muted">Lottery: ${d.lottery.map((x) => `${esc(sp.teamOf(x.teamId)?.name ?? '')} ${x.from}→${x.to}`).join(', ')}</p>` : ''}
+        ${draft.draftBoard(st, d, 1).map((x) => `<div class="kv"><span>${x.pick}. ${x.mine ? '<strong>You</strong>' : esc(x.name)} <small class="muted">${x.mine ? '' : esc([x.pos, x.school].filter(Boolean).join(' · '))}</small></span><span>${esc(x.team)}</span></div>`).join('')}</details>`).join('')}`);
+  }
+  return out.join('');
+}
+
+/** An international signing (engine/international.js): the trainer, the handshake deal, the bonus, the minors. */
+function intlSection(st, e) {
+  const X = e.intl;
+  const p = player();
+  const T = X.trainer;
+  return `${label(`${sportOf(e.id).name}: international signing`)}
+    ${X.signed ? kv('Signed', `${esc(X.signed.club)}, ${X.signed.year} · ${money(X.signed.bonus)} bonus${X.signed.toTrainer ? ` (${money(X.signed.toTrainer)} to your trainer)` : ''}`)
+      : kv('Can sign', p.countryId === 'cu' && !X.left ? 'Only after leaving Cuba' : p.age < 16 ? 'From January 15 after you turn 16' : 'Now, as a free agent')}
+    ${T ? kv('Trainer', `${esc(T.name)} since ${T.since} · ${T.fullTime ? 'full time' : 'around school'} · takes ${Math.round(T.cut * 100)}% of the bonus`) : ''}
+    ${X.deal ? kv('Handshake deal', `${esc(X.deal.club)}: ${money(X.deal.amount)} (not binding)`) : ''}
+    ${X.fellThrough.map((f) => kv(`Fell through, ${f.year}`, esc(f.why))).join('')}
+    ${e.minor?.ladder ? kv('Minor leagues', `${esc(e.minor.ladder[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}`;
+}
+
+/** Recruiting: how the services rate the player, who has offered, and where they are committed or signed. */
+function recruitingSection() {
+  const p = player();
+  const list = sp.activeSports().filter((e) => e.recruit && (e.recruit.stars || e.recruit.offers.length));
+  if (!list.length) return '';
+  return list.map((e) => {
+    const R = e.recruit;
+    const g = gradeOf(p);
+    const pr = (o) => `${DIVISIONS[o.division]?.name ?? o.division} · ${o.fraction >= 1 ? 'full scholarship' : o.fraction > 0 ? `${Math.round(o.fraction * 100)}% of tuition` : 'no athletic scholarship'}`;
+    return `${label(`Recruiting: ${sportOf(e.id).name}`)}
+      ${kv('Rating', R.stars ? `${'★'.repeat(R.stars)} · number ${R.rank} in your class` : 'Not rated yet')}
+      ${g ? kv('Year', `${GRADE_NAMES[g]} (grade ${g})`) : ''}
+      ${kv('Status', R.signed ? `Signed with ${esc(R.offers.find((o) => o.id === R.signed)?.name ?? '')}` : R.commit ? `Committed to ${esc(R.offers.find((o) => o.id === R.commit)?.name ?? '')} (not binding)` : 'Uncommitted')}
+      ${R.offers.length ? R.offers.map((o) => kv(esc(o.name), `${esc(pr(o))}${o.pulled ? ' · withdrawn' : ''}${R.visits.includes(o.id) ? ' · visited' : ''}`)).join('') : empty('No offers yet. Coaches can offer from junior year.')}
+      ${R.commit && !R.signed ? `<div class="btn-stack"><button class="btn" data-decommit="${e.id}">Decommit</button></div>` : ''}`;
+  }).join('');
+}
+
 function career() {
   const dec = life.openDecisions();
   const ks = life.contractsOf();
   const p = player();
   const a = sp.myAthlete();
   return `${label('Decisions')}${dec.length ? dec.map((d) => `<div class="card"><p>${esc(d.text)}</p><div class="btn-stack">${d.options.map((o) => `<button class="btn" data-answer="${d.id}:${o.id}">${esc(o.label)}</button>`).join('')}</div></div>`).join('') : empty('Nothing waiting.')}
+    ${recruitingSection()}
+    ${draftSection()}
     ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.kind === 'agent' && k.share ? ` · takes ${Math.round(k.share * 100)}%` : ''}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
     ${agentSection()}
     ${label('Division')}
@@ -400,6 +479,7 @@ async function onClick(e) {
   if ((el = hit('data-take'))) return report(sp.takeUp(el.dataset.take));
   if ((el = hit('data-tryout'))) return report(sp.tryOut(el.dataset.tryout));
   if ((el = hit('data-leave'))) return report(sp.leaveClub(el.dataset.leave));
+  if ((el = hit('data-decommit'))) { shut(); if (!await confirmModal({ title: 'Decommit?', body: 'Coaches move on quickly: the offer may not be there if you change your mind again.', yes: 'Decommit' })) return show(); await messageModal({ body: decommit(el.dataset.decommit, store.state).text }); return show(); }
   if ((el = hit('data-quitcollege'))) { shut(); if (!await confirmModal({ title: 'Leave the team?', body: 'An athletic scholarship is paid for playing. Leave the team and that part of your tuition is yours to pay from next year.', yes: 'Leave', danger: true })) return show(); return report(life.quitCollegeTeam(el.dataset.quitcollege)); }
   if ((el = hit('data-pair'))) return report(sp.findPartner(el.dataset.pair));
   if ((el = hit('data-unpair'))) return report(sp.endPartnership(el.dataset.unpair));

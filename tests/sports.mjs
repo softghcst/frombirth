@@ -272,7 +272,11 @@ let soccerLife;
     for (let i = 0; i < 11 && !committed; i++) {
       advanceYear(); quiet();
       for (const d of life.openDecisions()) {
-        if (d.kind === 'scholarship') { life.answer(d.id, d.offers[0].instId); committed = d.offers[0]; } else life.answer(d.id, d.kind === 'academy' ? 'yes' : 'no');
+        // Recruiting (engine/recruiting.js): camps, a commitment, then signing day with a university that pays a share.
+        const e = sp.entryOf('soccer');
+        const paying = (e.recruit?.offers ?? []).find((o) => !o.pulled && o.fraction > 0 && !o.id.startsWith('juco:'));
+        if (d.kind === 'sign' && paying && d.options.some((o) => o.id === paying.id)) { const r = life.answer(d.id, paying.id); if (r.ok) committed = { instId: paying.id, fraction: paying.fraction }; }
+        else life.answer(d.id, d.kind === 'academy' ? 'yes' : d.kind === 'camp' ? 'showcase' : d.kind === 'commit' && paying ? paying.id : d.options.some((o) => o.id === 'no') ? 'no' : d.options.at(-1).id);
       }
     }
   }
@@ -280,7 +284,7 @@ let soccerLife;
   if (committed) {
     const p = P();
     const inst = catalog(p.countryId).find((u) => u.id === committed.instId);
-    check(!!inst && inst.sport, 'the offer comes from a real university of the country that runs teams');
+    check(!!inst && !!sp.ensure().divisions?.[inst.id], 'the offer comes from a real university of the country that runs teams');
     const a = applicant(null, inst);
     check(a.athlete && a.athleticFraction === committed.fraction, 'the application carries the coach\'s backing and the offered share');
     const help = aid(a, inst, {}, 0.3);
@@ -291,7 +295,7 @@ let soccerLife;
   // Countries without university recruiting do not get offers.
   const q = grownTo(7, 'uk', 'London'); q.talents.sports = 95; sp.takeUp('soccer'); sp.setPlan('soccer', 'technical', 10);
   let ukOffer = false;
-  for (let i = 0; i < 11; i++) { advanceYear(); quiet(); for (const d of life.openDecisions()) { if (d.kind === 'scholarship' && q.countryId === 'uk') ukOffer = true; /* the family may emigrate somewhere that does recruit */ life.answer(d.id, d.kind === 'academy' ? 'yes' : 'no'); } }
+  for (let i = 0; i < 11; i++) { advanceYear(); quiet(); for (const d of life.openDecisions()) { if (['commit', 'sign'].includes(d.kind) && q.countryId === 'uk') ukOffer = true; /* the family may emigrate somewhere that does recruit */ life.answer(d.id, d.kind === 'academy' ? 'yes' : 'no'); } }
   check(!ukOffer, 'there are no university athletic scholarships where universities do not recruit');
   sound('recruiting');
   section('recruiting: real universities, offers carried into admissions and tuition, only where they exist');

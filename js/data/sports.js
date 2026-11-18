@@ -45,13 +45,13 @@ export const SPORTS_LIST = [
     positions: [['guard', 'Guard', { handling: 0.35, shooting: 0.3, passing: 0.25, awareness: 0.1 }], ['forward', 'Forward', { shooting: 0.35, rebounding: 0.25, defense: 0.25, handling: 0.15 }],
       ['center', 'Center', { rebounding: 0.4, defense: 0.4, shooting: 0.2 }]],
     popular: k('us', 'es', 'lt', 'rs', 'gr', 'ph', 'au', 'cn', 'tr', 'ar'), college: k('us', 'ca'), teamSize: 5 }),
-  S('baseball', 'Baseball', 'team', 'baseball', { womenProFrom: 1943, womenProUntil: 1954, founded: 1845, proFrom: 1869, season: 20, pro: 'draft', draftIn: k('us', 'ca'), lesson: 450, kit: 250,
+  S('baseball', 'Baseball', 'team', 'baseball', { womenProFrom: 1943, womenProUntil: 1954, founded: 1845, proFrom: 1869, season: 20, pro: 'draft', draftIn: k('us', 'ca', 'jp', 'kr'), lesson: 450, kit: 250,
     skills: [['contact', 'Contact'], ['power', 'Power'], ['discipline', 'Plate discipline'], ['fielding', 'Fielding'], ['throwing', 'Throwing'], ['baserunning', 'Baserunning'],
       ['control', 'Pitching control'], ['stuff', 'Pitch quality'], ['stamina', 'Pitching stamina']],
     attrs: { 'talents.sports': 0.5, 'stats.health': 0.2, 'stats.intellect': 0.15, 'hidden.discipline': 0.15 },
     positions: [['pitcher', 'Pitcher', { control: 0.35, stuff: 0.4, stamina: 0.25 }], ['catcher', 'Catcher', { fielding: 0.4, throwing: 0.3, contact: 0.3 }],
       ['infield', 'Infielder', { fielding: 0.35, throwing: 0.2, contact: 0.3, baserunning: 0.15 }], ['outfield', 'Outfielder', { power: 0.3, contact: 0.3, fielding: 0.2, baserunning: 0.2 }]],
-    popular: k('us', 'jp', 'kr', 'do', 'cu', 'ven', 'mx', 'pr', 'tw'), college: k('us', 'ca'), teamSize: 9 }),
+    popular: k('us', 'jp', 'kr', 'do', 'cu', 've', 'mx', 'pr', 'tw'), college: k('us', 'ca'), teamSize: 9 }),
   S('softball', 'Softball', 'team', 'baseball', { womenProFrom: 1997, founded: 1887, proFrom: 1997, season: 18, lesson: 400, kit: 220,
     skills: [['contact', 'Contact'], ['power', 'Power'], ['discipline', 'Plate discipline'], ['fielding', 'Fielding'], ['throwing', 'Throwing'], ['baserunning', 'Baserunning'],
       ['control', 'Pitching control'], ['stuff', 'Pitch quality'], ['stamina', 'Pitching stamina']],
@@ -302,6 +302,105 @@ export const REHAB = {
 export const SPONSORS = ['Northline Athletic', 'Kestrel Sportswear', 'Brightwater Drinks', 'Summit Timepieces', 'Vela Motors', 'Harbor Bank', 'Ember Nutrition', 'Lark Optics'];
 /** Invented words for team and club names; {C} is the city. */
 export const TEAM_WORDS = ['Rovers', 'United', 'Athletic', 'City', 'Wanderers', 'Comets', 'Falcons', 'Harriers', 'Lions', 'Royals', 'Pioneers', 'Rangers', 'Storm', 'Thunder', 'Mariners', 'Wolves'];
+/**
+ * How many teams a league has. Most leagues in the game have 8 (a conference, a regional league, a country's top
+ * flight); the big professional leagues of the countries with a draft have their real number of clubs, so the draft has
+ * real rounds and picks. Women's leagues there are smaller, as they are.
+ */
+export const LEAGUE_TEAMS = { baseball: 30, basketball: 30, american_football: 32, ice_hockey: 32 };
+export const WOMEN_LEAGUE_TEAMS = { basketball: 12, ice_hockey: 8, softball: 8 };
+/** Japan's professional league has 12 clubs, Korea's 10. */
+export const COUNTRY_LEAGUE_TEAMS = { jp: { baseball: 12 }, kr: { baseball: 10 } };
+export function leagueSize(sport, level, countryId, div = null) {
+  if (level !== 'pro' || !(sport.draftIn ?? []).includes(countryId)) return 8;
+  if (COUNTRY_LEAGUE_TEAMS[countryId]) return (div === 'women' ? null : COUNTRY_LEAGUE_TEAMS[countryId][sport.id]) ?? 8;
+  return (div === 'women' ? WOMEN_LEAGUE_TEAMS[sport.id] : LEAGUE_TEAMS[sport.id]) ?? 8;
+}
+
+// ---------- The drafts (where proPath is 'draft') ----------
+//
+// Each league's own draft, as the real ones are run (the numbers are the real ones as of the mid-2020s):
+//   rounds    how many rounds              lottery   the worst `teams` draw for the first `picks` picks
+//   rule      who is eligible (engine/draft.js eligible)
+//   declare   underclassmen must declare (and lose their college eligibility); `test` they may test the waters and withdraw
+//   combine   a combine before the draft, where stock rises and falls
+//   deal      'bonus' a signing bonus by the pick's slot · 'scale' a rookie wage scale · 'entry' an entry-level contract
+//   minors    the levels below the top league, lowest first (engine/draft.js minorsYear)
+export const DRAFTS = {
+  baseball: { rounds: 20, lottery: { teams: 18, picks: 6 }, rule: 'baseball', declare: false, combine: true, deal: 'bonus', years: 6,
+    minors: ['Rookie ball', 'Single-A', 'High-A', 'Double-A', 'Triple-A'] },
+  american_football: { rounds: 7, lottery: null, rule: 'football', declare: true, combine: true, deal: 'scale', years: 4, minors: ['Practice squad'] },
+  basketball: { rounds: 2, lottery: { teams: 14, picks: 4 }, rule: 'basketball', declare: true, test: true, combine: true, deal: 'scale', years: 4, minors: ['G League'] },
+  ice_hockey: { rounds: 7, lottery: { teams: 16, picks: 2 }, rule: 'hockey', declare: false, combine: true, deal: 'entry', years: 3, minors: ['AHL'], rights: 4 },
+};
+/**
+ * Japan's and Korea's drafts. Japan (NPB, 12 clubs, each October): high school and university players must first file a
+ * declaration that they want to turn professional; high school graduates in the industrial (company) leagues are
+ * eligible three years on, university graduates two. In the first round every club names a player at once, and where
+ * several name the same one, lots are drawn. A drafted player who will not sign goes to university or a company team.
+ * Contracts run a year at a time, the club holding the player until free agency (nine seasons to go abroad); before
+ * that, the club may post him to the big leagues (engine/asiaBaseball.js). Korea (KBO, 10 clubs, 11 rounds each
+ * September): high school and university seniors; posting after seven seasons, and military service before 28.
+ */
+export const COUNTRY_DRAFTS = {
+  jp: { baseball: { name: 'NPB', rounds: 7, lottery: null, bids: true, rule: 'npb', declare: true, combine: false, deal: 'npb', years: 1, minors: ['Farm team'], posting: 3, freeAgency: 9 } },
+  kr: { baseball: { name: 'KBO', rounds: 11, lottery: null, rule: 'kbo', declare: false, combine: false, deal: 'kbo', years: 1, minors: ['Futures League'], posting: 7, freeAgency: 9 } },
+};
+/** The women's leagues' drafts: basketball takes players at 22 or once college is done; hockey after college. */
+/** What the big leagues of the draft countries pay, against an ordinary professional league (their real averages run to millions). */
+export const BIG_LEAGUE_PAY = { basketball: 6, baseball: 4, american_football: 2.5, ice_hockey: 2.5 };
+/** Japan's and Korea's professional baseball pay well, if far less than the big leagues. */
+export const COUNTRY_LEAGUE_PAY = { jp: { baseball: 1.8 }, kr: { baseball: 1.3 } };
+export const WOMEN_DRAFTS = {
+  basketball: { rounds: 3, lottery: { teams: 4, picks: 4 }, rule: 'women', declare: true, combine: false, deal: 'scale', years: 3, minors: [] },
+  ice_hockey: { rounds: 7, lottery: null, rule: 'women', declare: true, combine: false, deal: 'entry', years: 2, minors: [] },
+};
+
+// ---------- International amateur signings (baseball) ----------
+//
+// Players from outside the draft countries are not drafted: big league clubs sign them as international amateurs. The
+// signing period opens on January 15, and a player may sign once they are 16. Each club has a bonus pool for the year
+// (about $5–7.6 million in the mid-2020s). Most of these players come up through a trainer (in the Dominican Republic a
+// "buscón") who takes them in at 12 to 14, trains them, often houses and feeds them, shows them to the clubs' scouts, and
+// takes a share of the bonus (usually 20–35%). Clubs and players agree handshake deals years early, against the rules and
+// binding no one: some fall through. A signed player goes to the club's academy in the Dominican Republic and the
+// Dominican Summer League (Venezuela's own summer league closed in 2015), then to the United States and the minors.
+// Cuban players must first leave Cuba and settle in a third country; those 23 or over with five seasons in Cuba's top
+// league are signed outside the bonus pools, as professionals.
+export const INTL_SIGNING = {
+  sports: ['baseball'],
+  countries: ['do', 've', 'cu', 'mx', 'pa', 'co', 'ni', 'cr', 'aw', 'bs', 'gt', 'sv', 'br', 'au', 'nz', 'za', 'nl', 'it', 'de', 'uk', 'cn', 'ph', 'tw'],
+  trainers: ['do', 've', 'pa', 'co', 'ni', 'cu', 'mx', 'cr', 'aw', 'bs'], // where trainers run programs for boys of 12 to 14
+  from: 1977, // the year big league clubs began running academies in the Dominican Republic (the Toronto club's first)
+  poolsFrom: 2012, // international bonus pools
+  pool: [5100000, 7600000],
+  cut: [0.2, 0.35],
+  ladder: ['Dominican Summer League', 'Rookie ball', 'Single-A', 'High-A', 'Double-A', 'Triple-A'],
+};
+
+// ---------- College sport (the United States and Canada) ----------
+//
+// Divisions, as the real ones work: Division I and II give athletic scholarships (II mostly partial ones), Division
+// III gives none (aid comes from need and merit), the Ivy-style old universities play Division I but give no athletic
+// scholarships either, NAIA colleges give partial ones, and junior colleges (two-year community colleges) give full or
+// partial ones and send players on to four-year programs or straight to the draft.
+// minGpa: the high school GPA a recruit needs to be eligible as a freshman (core courses; D1 2.3, D2 2.2).
+export const DIVISIONS = {
+  D1: { name: 'Division I', aid: 'full', minGpa: 2.3, rank: 1 },
+  IVY: { name: 'Division I (Ivy)', aid: 'none', minGpa: 2.3, rank: 2 },
+  D2: { name: 'Division II', aid: 'partial', minGpa: 2.2, rank: 3 },
+  NAIA: { name: 'NAIA', aid: 'partial', minGpa: 2.0, rank: 4 },
+  JUCO: { name: 'Junior college', aid: 'full', minGpa: 0, rank: 5 },
+  D3: { name: 'Division III', aid: 'none', minGpa: 0, rank: 6 },
+};
+/**
+ * Headcount sports give whole scholarships; the rest (equivalency sports) share a few out among the roster, so most
+ * players get part of one (baseball: 11.7 shared by a roster of more than thirty).
+ */
+export const HEADCOUNT = ['basketball', 'american_football', 'volleyball'];
+/** Recruiting stars, from a prospect's grade (see engine/recruiting.js). */
+export const STARS = [[80, 5], [71, 4], [62, 3], [53, 2]];
+
 /** Team nicknames, by the kind of names each sport's clubs tend to have (made up; any can be renamed in Settings). */
 export const MASCOTS = {
   soccer: ['United', 'City', 'Athletic', 'Rovers', 'Wanderers', 'Albion', 'Town', 'Rangers', 'Harriers', 'Villa', 'Argyle', 'Dynamo', 'Sporting', 'Olympic', 'Victoria', 'Corinthians'],
