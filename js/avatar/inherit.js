@@ -6,7 +6,7 @@
 // or restyled parent passes on what they were born with.
 import { rng } from '../rng.js';
 import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, HAIR_STYLES, TWEAKS } from './catalog.js';
-import { RESTING, OUTFITS, HAIR_COVERS_FACE, LASHED } from './curation.js';
+import { RESTING, OUTFITS, HAIR_COVERS_FACE, WOMEN_EYES } from './curation.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
 const toneAt = (depth) => SKIN_TONES.find((t) => t.depth === clampDepth(depth)).id;
@@ -52,12 +52,12 @@ export function defaultStyle(inherited, gender) {
 
 /** A complete appearance for someone with no known parents. */
 /**
- * Lashed eyes are for women and girls only (LASHED in curation.js). Anyone else inherits the nearest plain shape,
- * so a son still takes after his mother; a face made at random is drawn evenly from the plain shapes instead.
+ * Some eyes are for women and girls only (WOMEN_EYES in curation.js). Anyone else inherits the nearest of the
+ * men's eyes, so a son still takes after his mother; a face made at random is drawn evenly from the men's eyes instead.
  */
 export const suitEyes = (inherited, gender, random = false) => {
-  if (gender !== 'female' && LASHED[inherited.eyes]) {
-    inherited.eyes = random ? rng.pick(pool('eyes').filter((x) => !LASHED[x.id])).id : LASHED[inherited.eyes];
+  if (gender !== 'female' && WOMEN_EYES[inherited.eyes]) {
+    inherited.eyes = random ? rng.pick(pool('eyes').filter((x) => !WOMEN_EYES[x.id])).id : WOMEN_EYES[inherited.eyes];
   }
   return inherited;
 };

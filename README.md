@@ -202,8 +202,8 @@ white of the eye gains it. From chestnut downward, in step with depth (`deepness
 `js/CharacterAvatar.js`): the whites are toned slightly toward the skin, the outlines of eyes and mouth (only the outlines, never the whites, irises or teeth) gain a little
 weight; brows are left exactly as drawn. A nose's skin is always the face's own skin color; on deeper tones only its lines get darker and heavier. Shapes, skin tones and everyone's own colors are unchanged;
 lighter faces are untouched.
-Eyes drawn with lashes at the outer corner (`LASHED` in `js/avatar/curation.js`) are given only to women and girls, at random
-or by inheritance; anyone else gets the nearest plain shape. Anyone can still pick them in the creator.
+Women's eyes (`WOMEN_EYES` in `js/avatar/curation.js`: those with lashes at the outer corner, and eyes 8 and 18) are given only to
+women and girls, at random or by inheritance; anyone else gets one of the men's eyes (9 and 19), a son the nearest to his mother's. Anyone can still pick them in the creator.
 
 **Personal proportions.** Each person also has `inherited.tweaks`: eye spacing, eye size, eye height, nose size
 and mouth size, each from -2 to 2 steps (`TWEAKS` in `js/avatar/catalog.js`, step sizes in `TWEAK_STEP` in
