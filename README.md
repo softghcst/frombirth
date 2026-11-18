@@ -168,7 +168,7 @@ chooses only the size.
 **Reading faces on every skin tone.** All linework is one dark ink, which loses contrast as skin deepens while the
 white of the eye gains it. From chestnut downward, in step with depth (`deepness`, `READABLE` in
 `js/CharacterAvatar.js`): the whites are toned slightly toward the skin, the lines of eyes and mouth gain a little
-weight, and brows and nose get a faint lighter edge. Shapes, skin tones and everyone's own colors are unchanged;
+weight, and brows get a faint lighter edge. Noses are never adjusted: they are always the face's own skin color. Shapes, skin tones and everyone's own colors are unchanged;
 lighter faces are untouched.
 
 **Personal proportions.** Each person also has `inherited.tweaks`: eye spacing, eye size, eye height, nose size

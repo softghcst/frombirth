@@ -182,12 +182,12 @@ export const deepness = (skin) => Math.max(0, Math.min(1, (DEEP.from - luminance
  * What is done about it, at full strength (each is scaled by deepness, so lighter faces are untouched):
  *   white   how far the white of the eye is toned towards the skin
  *   line    extra weight on the dark lines of the eyes and mouth (frame units)
- *   rim     how much lighter than the skin the edge given to brows and nose is
+ *   rim     how much lighter than the skin the edge given to the brows is
  *   edge    how wide that edge is (frame units)
- *   nose    how far the nose is lifted above the skin around it
- * The shapes of the features are not changed, and nobody's own colours are.
+ * The shapes of the features are not changed, and nobody's own colours are. The nose is never adjusted:
+ * it is the skin itself, so it is drawn in exactly the face's skin colour on every tone.
  */
-export const READABLE = { white: 0.2, line: 1.4, rim: 0.2, edge: 3, nose: 0.07, ink: '#170b06' };
+export const READABLE = { white: 0.2, line: 1.4, rim: 0.2, edge: 3, ink: '#170b06' };
 
 function colorVars(look, ctx) {
   const c = look.colors ?? {};
@@ -244,10 +244,9 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // reads as clearly as a lighter one (see READABLE). Stroke is inherited by the artwork a <use> draws.
   const deep = deepness(look.colors?.skin);
   const light = deep ? mixHex(look.colors.skin, '#ffe9d6', READABLE.rim * deep) : null;
-  // Dark lines gain weight; brows and nose gain a faint lighter edge, drawn under their own shapes.
+  // Dark lines gain weight; brows gain a faint lighter edge, drawn under their own shapes. The nose is left alone.
   const weigh = (w) => (deep ? ` style="stroke:${READABLE.ink};stroke-width:${n1(w * deep)};stroke-linejoin:round"` : '');
   const rim = (w, extra = '') => (deep ? ` style="${extra}stroke:${light};stroke-width:${n1(w * deep)};stroke-linejoin:round;paint-order:stroke"` : '');
-  const noseStyle = deep ? rim(READABLE.edge, `--skin-color:${mixHex(look.colors.skin, '#ffe9d6', READABLE.nose * deep)};`) : '';
   const kind = (j) => PART_BY_ID[j]?.tags?.kind;
   const necklaces = d.jewelry.filter((j) => kind(j) === 'necklace');
   const earrings = d.jewelry.filter((j) => kind(j) === 'ears');
@@ -260,7 +259,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     // Lines of age stay on the face: on a narrow head they would otherwise run out over the hair.
     d.aging.length ? `<g clip-path="url(#pw-face-${n})">${d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join('')}</g>` : '',
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
-    use(d.nose, `${f.nose ?? ''}${noseStyle}`),
+    use(d.nose, f.nose),
     // The mouth is drawn over a beard or moustache, not under it: a full beard would otherwise swallow it.
     d.facialHair ? use(d.facialHair, f.facialHair) : '',
     use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
