@@ -91,7 +91,7 @@ One check runs in a real browser and needs Playwright with Chromium (it skips it
 node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
 ```
 
-`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; and that the eye shapes on offer are unchanged.
+`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; that the eye shapes on offer are unchanged; and that every nose is clear of every pair of eyes on every face shape.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
 
 ## Living moments
@@ -221,6 +221,7 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 | Notes the filenames cannot carry (hair textures, resting faces, uniforms, royal dress) | `js/avatar/curation.js` |
 | The renderer: layers, ages, auto-dress | `js/CharacterAvatar.js` |
 | How each hairstyle is fitted to each head, and how each head is framed | `js/avatar/hairFit.js` |
+| How each nose is kept clear of the eyes it is worn with | `js/avatar/featureFit.js` |
 | How saved appearances are read, and old saves converted | `js/avatar/catalog.js` |
 | How children take after their parents | `js/avatar/inherit.js` |
 | The character creator and salon editor | `js/avatar/editor.js` |
@@ -239,6 +240,14 @@ shoulders; stored as `fit` in the manifest), and the renderer moves each layer f
 head: features keep their place between forehead and chin, hair and hats follow the top and width of the head,
 earrings hang from that head's ears, clothes sit under its chin. Babies, toddlers and children get slightly smaller,
 lower-set features. Eyes drawn as an empty outline are given whites by filling the opening.
+
+**Fitting a nose to the eyes.** Every nose and every pair of eyes is drawn to fill the same box on the template face,
+so some pairs crowd each other: a broad nose under eyes whose inner corners sweep down, a tall bridge between eyes
+set close. The script measures the outline of each, row by row (`shape` in the manifest), and
+`js/avatar/featureFit.js` finds, for one face, the smallest change that leaves a clear gap: the nose up to a fifth
+smaller, a little lower, or each eye up to three units further out (`NOSE_FIT`). A pair that is already clear is
+drawn exactly as before. It works from the measurements and the person's own proportions, so nothing is listed pair
+by pair: a new nose or pair of eyes only needs measuring (run the script).
 
 **Fitting hair.** The script also measures every hairstyle and head row by row and column by column (`edge` in the
 manifest): the inner edges of the hair either side of the face, its hairline, the outline of its crown, and the

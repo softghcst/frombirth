@@ -7,6 +7,7 @@
 //  - portraits render at every age and in every situation, using only files that exist
 //  - hair fits every head it can be worn on; faces are framed alike; features read on every skin tone
 //  - the eye shapes on offer, and who is given which, are exactly as they were
+//  - every nose is clear of every pair of eyes on every face shape
 import { readFileSync, existsSync } from 'node:fs';
 import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManifest.js';
 import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
@@ -14,6 +15,7 @@ import { avatarSvg } from '../js/avatar/render.js';
 import { dressFor, filesFor, ageStage, fitTransforms, deepness, characterAvatarSvg } from '../js/CharacterAvatar.js';
 import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS } from '../js/avatar/hairFit.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
+import { noseFit, noseGap, NOSE_FIT } from '../js/avatar/featureFit.js';
 import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
 
@@ -336,6 +338,33 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const cut = Number(svg.match(/<clipPath id="pw-front-\d+"><rect x="-400" y="-2000" width="1312" height="(\d+)"/)[1]) - 2000;
   const f = hairFit('hair_girl_long_04', 'head_13_athletic');
   check(Math.abs(f.ty + f.sy * (cut - T.face.top) - (PART_BY_ID.head_13_athletic.fit.chin - 2)) <= 1.5, 'hair in front of the face does not end at the chin');
+}
+
+// 12. Every nose with every pair of eyes on every face shape: none touches the eyes, a pair that was
+// already clear is left exactly as drawn, and no nose is changed beyond the limits.
+{
+  const T = AVATAR_TEMPLATE;
+  let changed = 0, faces = 0;
+  for (const h of AVATAR_MANIFEST.heads.filter((x) => x.tags?.age === 'adult')) {
+    const hr = (h.fit.chin - h.fit.top) / (T.face.chin - T.face.top), s = Math.sqrt((h.fit.w / T.face.w) * hr);
+    const at = (ay) => h.fit.top + (ay - T.face.top) * hr;
+    const g = { s, eyeS: s, noseS: s, eyeY: at(T.anchor.eyes), noseY: at(T.anchor.nose), apart: 3 };
+    for (const e of AVATAR_MANIFEST.eyes) for (const n of AVATAR_MANIFEST.noses) {
+      const f = noseFit(e.id, n.id, g), before = noseGap(e.id, n.id, g), after = noseGap(e.id, n.id, g, f);
+      faces++;
+      const touched = f.k !== 1 || f.drop !== 0 || f.apart !== 0;
+      if (touched) changed++;
+      check(after >= 1, `${n.id} touches ${e.id} on ${h.id} (${after.toFixed(1)})`);
+      check(after >= before - 0.01, `${n.id} with ${e.id} on ${h.id} was made worse`);
+      check(!(before >= NOSE_FIT.gap * s + 1) || !touched, `${n.id} with ${e.id} on ${h.id} was clear and has been changed`);
+      check(f.k >= Math.min(...NOSE_FIT.shrink) && f.drop <= Math.max(...NOSE_FIT.drop) * s + 0.01 && f.apart <= Math.max(...NOSE_FIT.apart), `${n.id} with ${e.id} on ${h.id} is changed beyond the limits`);
+    }
+  }
+  check(faces === 7 * AVATAR_MANIFEST.eyes.length * AVATAR_MANIFEST.noses.length && changed > 0, 'the noses were not checked against every pair of eyes on every face');
+  // The renderer applies it: a broad nose under low inner corners is drawn smaller, a clear pair as before.
+  const plain = fitTransforms('head_17_dimple_oval', 'adult', {});
+  check(fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_20', nose: 'nose_15' }).nose !== plain.nose, 'a crowded nose is not adjusted in the portrait');
+  check(fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose: 'nose_10' }).nose === plain.nose, 'a clear nose is adjusted in the portrait');
 }
 
 if (problems.length) {
