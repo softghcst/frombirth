@@ -1065,7 +1065,8 @@ def add_pupils():
 # centre (the outline thickens or thins with it); then, with a gap, the two are moved apart or together so the space
 # between their inner corners is that (most eyes sit about EYE_GAP apart).
 EYE_GAP = 27.5
-RESIZE_EYES = {'eyes_29': (0.78, EYE_GAP),
+RESIZE_EYES = {'eyes_27': (0.85, EYE_GAP), 'eyes_28': (0.85, EYE_GAP), 'eyes_30': (0.85, EYE_GAP), 'eyes_31': (0.85, EYE_GAP),
+               'eyes_32': (0.85, EYE_GAP), 'eyes_29': (0.78, EYE_GAP),
                'eyes_43': (0.91, EYE_GAP), 'eyes_44': (1.15, EYE_GAP), 'eyes_45': (1.06, EYE_GAP), 'eyes_46': (1.15, EYE_GAP),
                'eyes_47': (1.15, EYE_GAP), 'eyes_48': (1.06, EYE_GAP), 'eyes_49': (1.15, EYE_GAP), 'eyes_50': (1.06, EYE_GAP)}
 
@@ -1151,6 +1152,32 @@ def fix_creases():
         with open(path, 'w', encoding='utf-8') as out:
             out.write(changed)
         done.append(name)
+    return done
+
+
+# Eye outlines (lids, lashes, creases) are black: the artwork drew them in dark browns. Only the outline's own shade
+# (the one weigh_lines gave a line to) is changed; darker browns inside the iris are shading and stay as drawn.
+EYE_INK = '#000000'
+
+
+def ink_eyes():
+    """Recolours each eye's outline to EYE_INK. Once per file. -> the names changed"""
+    done = []
+    d = os.path.join(ASSETS, 'eyes')
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        path = os.path.join(d, f)
+        text = open(path, encoding='utf-8').read()
+        if not f.endswith('.svg') or 'data-ink="1"' in text or 'data-lines="1"' not in text:
+            continue
+        shades = set(re.findall(r'style="fill:(#[0-9a-fA-F]{6});stroke:var\(--line-ink', text))
+        if not shades:
+            continue
+        for h in shades:
+            text = text.replace(f'fill:{h}', f'fill:{EYE_INK}')
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-ink="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        done.append(f[:-4])
     return done
 
 
@@ -1534,6 +1561,9 @@ def main(argv):
     lined = weigh_lines() + weigh_lines('eyes', recolor=False) + weigh_lines('lips', recolor=False)
     if lined:
         print(f'made the lines of {len(lined)} part(s) adjustable')
+    inked = ink_eyes()
+    if inked:
+        print(f'drew the outlines of {len(inked)} eye shape(s) in black')
     for name in fix_creases():
         print(f'fixed the creases of {name}')
     for name in resize_eyes():

@@ -160,6 +160,30 @@ for (const e of AVATAR_MANIFEST.eyes) {
     check(tall < 45, `${id}: the eyes are ${tall.toFixed(1)} tall, far bigger than the rest`);
   }
 }
+// Every eye given at random sits well on every adult face, as the renderer places it: not too wide for the face,
+// not crowding its sides, the two eyes neither touching nor far apart. Measured against the face's width at the
+// temple (just above the ear), as shares of it. 10 and 26 have lids that reach past their whites, so their whites
+// alone sit further apart than they look.
+{
+  const place = (t) => { const n = t.match(/-?[\d.]+/g).map(Number); return ([x, y]) => [n[0] + n[2] * (x - 256 + (n[5] ?? 0)), n[1] + n[2] * (y - n[4])]; };
+  const temple = (head, side) => { const [y0, step] = AVATAR_TEMPLATE.profile.rows; const col = head.edge[side]; let k = Math.floor((head.fit.earTop - 4 - y0) / step); while (k > 0 && col[k] == null) k -= 1; return col[k]; };
+  const art = Object.fromEntries(CUR.RESTING.eyes.map((id) => [id, [...readFileSync(new URL(`assets/avatars/${PART_BY_ID[id].file}`, root), 'utf8')
+    .matchAll(/<path style="([^"]*)"[^>]*?\sd="([^"]*)"/g)].map(([, style, d]) => { const n = d.match(/-?[\d.]+/g).map(Number); const pts = []; for (let i = 0; i + 1 < n.length; i += 2) pts.push([n[i], n[i + 1]]); return { eye: /eye-white|eye-color/.test(style), pts }; })]));
+  let worst = { margin: 1, size: 0 };
+  for (const head of AVATAR_MANIFEST.heads.filter((h) => h.tags?.age === 'adult')) {
+    const f = fitTransforms(head.id, 'adult', {}), at = { L: place(f.eyesL), R: place(f.eyesR) };
+    const fl = temple(head, 'L'), fr = temple(head, 'R'), fw = fr - fl;
+    for (const id of CUR.RESTING.eyes) {
+      const box = (sel, side) => { const b = [1e9, -1e9]; for (const s of art[id]) if (sel(s)) for (const p of s.pts) if ((p[0] < 256) === (side === 'L')) { const [x] = at[side](p); b[0] = Math.min(b[0], x); b[1] = Math.max(b[1], x); } return b; };
+      const oL = box((s) => s.eye, 'L'), oR = box((s) => s.eye, 'R'), aL = box(() => true, 'L'), aR = box(() => true, 'R');
+      const size = ((oL[1] - oL[0]) + (oR[1] - oR[0])) / 2 / fw, gap = (oR[0] - oL[1]) / fw, margin = Math.min(aL[0] - fl, fr - aR[1]) / fw;
+      if (margin < worst.margin) worst = { ...worst, margin, at: `${id} on ${head.id}` };
+      check(size < 0.3, `${id} is too wide for ${head.id} (${(size * 100).toFixed(1)}% of the face)`);
+      check(margin > 0.05, `${id} crowds the sides of ${head.id} (${(margin * 100).toFixed(1)}% left at the edge)`);
+      if (!['eyes_10', 'eyes_26'].includes(id)) check(gap > 0.1 && gap < 0.2, `${id} on ${head.id}: the eyes are ${(gap * 100).toFixed(1)}% of the face apart`);
+    }
+  }
+}
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
 const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_16', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
   314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };

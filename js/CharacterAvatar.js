@@ -136,11 +136,14 @@ export function fitTransforms(headId, stage, tweaks = {}) {
   const young = STAGE_FEATURES[stage] ?? { k: 1, drop: 0 };
   const move = (ax, ay, x, y, s) => ` transform="translate(${n1(x)} ${n1(y)}) scale(${n1(s)}) translate(${-ax} ${-ay})"`;
   const s = Math.sqrt(wr * hr) * young.k;
+  // Eyes and brows sit side by side, so the face's width counts for more than its height: on a long, narrow face
+  // they are kept from crowding its sides.
+  const eyeBase = wr ** 0.75 * hr ** 0.25 * young.k;
   const at = (ay) => fit.top + (ay - T.face.top) * hr + young.drop * faceH;
   const feature = (ay, scale = s) => move(256, ay, fit.cx, at(ay), scale);
   // A person's own proportions: each step is a small, fixed change (see TWEAKS).
   const step = (k) => Math.max(-2, Math.min(2, Number(tweaks[k]) || 0));
-  const eyeS = s * (1 + step('eyeSize') * TWEAK_STEP.size);
+  const eyeS = eyeBase * (1 + step('eyeSize') * TWEAK_STEP.size);
   const eyeUp = step('eyeY') * TWEAK_STEP.height * hr;
   const apart = EYE_APART + step('eyeGap') * TWEAK_STEP.gap; // template units, each eye moves this far outwards
   const eyeAt = (ay, scale, side) => `${move(256, ay, fit.cx, at(ay) - eyeUp, scale).slice(0, -1)} translate(${side * apart} 0)"`;
@@ -149,10 +152,10 @@ export function fitTransforms(headId, stage, tweaks = {}) {
   const crown = move(256, T.face.top, fit.cx, fit.top, wr);
   return {
     eyesL: eyeAt(T.anchor.eyes, eyeS, -1), eyesR: eyeAt(T.anchor.eyes, eyeS, 1),
-    browsL: eyeAt(T.anchor.eyebrows, s, -1), browsR: eyeAt(T.anchor.eyebrows, s, 1),
-    eyes: feature(T.anchor.eyes), eyebrows: feature(T.anchor.eyebrows),
+    browsL: eyeAt(T.anchor.eyebrows, eyeBase, -1), browsR: eyeAt(T.anchor.eyebrows, eyeBase, 1),
+    eyes: feature(T.anchor.eyes, eyeBase), eyebrows: feature(T.anchor.eyebrows, eyeBase),
     nose: feature(T.anchor.nose, s * (1 + step('noseSize') * TWEAK_STEP.size)), lips: feature(T.anchor.lips, s * (young.mouth ?? 1) * (1 + step('lipSize') * TWEAK_STEP.size)),
-    makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes),
+    makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes, eyeBase),
     glasses: feature(T.anchor.eyes, wr * young.k), facialHair: feature(T.anchor.lips, wr),
     hair: crown, hat: crown,
     ears: move(256, T.ear.lobe, (fit.earL + fit.earR) / 2, fit.lobe, earS),
@@ -187,7 +190,7 @@ export const deepness = (skin) => Math.max(0, Math.min(1, (DEEP.from - luminance
  * with no edge of their own. The nose's skin is never
  * adjusted: it is drawn in exactly the face's skin colour on every tone; only its lines get heavier.
  */
-export const READABLE = { white: 0.2, line: 1.4, nose: 1.2, ink: '#170b06', noseInk: '#1a0c06' };
+export const READABLE = { white: 0.2, line: 1.4, nose: 1.2, ink: '#170b06', eyeInk: '#000000', noseInk: '#1a0c06' };
 
 function colorVars(look, ctx) {
   const c = look.colors ?? {};
@@ -246,7 +249,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // Dark lines gain weight; brows are left as drawn. Only the line shapes
   // take the stroke (weigh_lines in the build script: an eye's or mouth's outline, a nose's lines), so whites,
   // irises, highlights and teeth stay clean. A nose's lines are also made a little darker.
-  const weigh = (w) => (deep ? ` style="--line-ink:${READABLE.ink};--line-width:${n1(w * deep)}"` : '');
+  const weigh = (w, ink = READABLE.ink) => (deep ? ` style="--line-ink:${ink};--line-width:${n1(w * deep)}"` : '');
   const kind = (j) => PART_BY_ID[j]?.tags?.kind;
   const necklaces = d.jewelry.filter((j) => kind(j) === 'necklace');
   const earrings = d.jewelry.filter((j) => kind(j) === 'ears');
@@ -258,7 +261,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m, f.makeup)).join('')}</g>` : '',
     // Lines of age stay on the face: on a narrow head they would otherwise run out over the hair.
     d.aging.length ? `<g clip-path="url(#pw-face-${n})">${d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join('')}</g>` : '',
-    pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, f.eyebrows),
+    pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line, READABLE.eyeInk)), use(d.eyebrows, f.eyebrows),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     // The mouth is drawn over a beard or moustache, not under it: a full beard would otherwise swallow it.
     d.facialHair ? use(d.facialHair, f.facialHair) : '',
