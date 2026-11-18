@@ -37,13 +37,13 @@ export function serviceBlock(s) {
   if (p.age < Math.max(s.minAge, Math.min(workLaw().workAge, s.minAge + 2))) return `You need to be ${s.minAge}.`;
   const short = Object.entries(s.req).find(([path, min]) => (Number(resolve(path)) || 0) < min);
   if (short) return 'You are not good enough at it yet to charge for it.';
-  if (s.programme && !p.education.degrees.some((d) => d.type === s.programme)) return 'Needs a hair and makeup licence.';
+  if (s.programme && !p.education.degrees.some((d) => d.type === s.programme)) return 'Needs a hair and makeup license.';
   if (s.languages) {
     const own = new Set(languagesOf(p.birthCountryId));
     const second = COUNTRY_LIST.some((x) => languagesOf(x.id).some((l) => !own.has(l)) && (speaks(x.id, p) ?? 0) >= 60);
     if (!second) return 'You need a second language, spoken well.';
   }
-  if (s.licence === 'driving' && p.age < 21) return 'You need to be 21 and have a licence.';
+  if (s.licence === 'driving' && p.age < 21) return 'You need to be 21 and have a license.';
   if (s.experience && Object.values(c.experience).reduce((a, b) => a + b, 0) < s.experience) return `Clients want ${s.experience} years of experience first.`;
   return '';
 }

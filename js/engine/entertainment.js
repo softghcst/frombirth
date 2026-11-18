@@ -1,4 +1,4 @@
-// The entertainment world: studios, networks, theatre companies, agencies and
+// The entertainment world: studios, networks, theater companies, agencies and
 // media outlets; the performers, directors and agents who work in them; and the
 // productions they make, from casting to release, with their casts kept for
 // good. The player is one performer among many: they audition for real parts
@@ -102,7 +102,7 @@ export function directors(countryId) {
 /** A performer's age, from when they were born. */
 const ageOf = (n) => (n.flags.star?.born != null ? year() - n.flags.star.born : n.age);
 
-// ---------- Organisations ----------
+// ---------- Organizations ----------
 
 function nameFor(kind, countryId, city) {
   const names = COUNTRIES[countryId].names.last;

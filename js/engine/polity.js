@@ -52,7 +52,7 @@ export const party = (w, id) => w.parties.find((p) => p.id === id) ?? null;
 export const figure = (w, id) => w.figures[id] ?? null;
 const head = (w) => w.figures[w.govt.headId] ?? null;
 /** "the National Union", "the Greens": a party's name as it reads in a sentence. */
-export const the = (p) => (/^The /.test(p.name) ? `the ${p.name.slice(4)}` : /(Party|Union|Alliance|League|Front|Movement|Centre|Democrats)$/.test(p.name) ? `the ${p.name}` : p.name);
+export const the = (p) => (/^The /.test(p.name) ? `the ${p.name.slice(4)}` : /(Party|Union|Alliance|League|Front|Movement|Centre|Center|Democrats)$/.test(p.name) ? `the ${p.name}` : p.name);
 
 /** Whether the count here leans towards those already in power. */
 export const rigged = (countryId) => !!SYSTEMS[countryId]?.rigged;

@@ -35,3 +35,14 @@ export function log(text, kind = 'system', tone = 'neutral') {
 export function milestone(text, kind = 'life') {
   player().milestones.push({ age: player().age, text, kind });
 }
+
+/**
+ * Drops queued scenes that name someone who is no longer in the player's life (left behind on a move, gone from the
+ * save). A scene about a classmate the family has moved away from would otherwise open with a blank where the name was.
+ */
+export function prunePending(state = store.state) {
+  if (!state?.pendingEvents?.length) return 0;
+  const before = state.pendingEvents.length;
+  state.pendingEvents = state.pendingEvents.filter((e) => Object.values(e.cast ?? {}).every((v) => typeof v !== 'string' || !v.startsWith('npc_') || state.npcs[v]?.alive));
+  return before - state.pendingEvents.length;
+}

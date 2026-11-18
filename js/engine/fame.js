@@ -4,7 +4,7 @@
 // another's record of what was actually done.
 //
 //   p.fame = {
-//     audiences: { theatre, film, tv, music, sports, literary, fashion, digital, public },  0–100 among each, at home
+//     audiences: { theater, film, tv, music, sports, literary, fashion, digital, public },  0–100 among each, at home
 //     regions:   { countryId: 0–100 },   how known they are in each country, all audiences together
 //     attention: 0–100   the present noise; falls quickly without new work
 //     legacy:    0–100   what lasts; rises with real achievements, falls slowly, never below what was earned
@@ -154,9 +154,9 @@ export function tickFameProfile(p = player()) {
 export const SCOPES = [
   { id: 'unknown', name: 'Unknown' },
   { id: 'emerging', name: 'Emerging' },
-  { id: 'local', name: 'Locally recognised' },
-  { id: 'national', name: 'Nationally recognised' },
-  { id: 'international', name: 'Internationally recognised' },
+  { id: 'local', name: 'Locally recognized' },
+  { id: 'national', name: 'Nationally recognized' },
+  { id: 'international', name: 'Internationally recognized' },
   { id: 'historic', name: 'Historically influential' },
 ];
 export function scope(p = player()) {

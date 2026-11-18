@@ -53,7 +53,7 @@ export const HEADLINES = {
     kind: ['{last} must answer these claims, and quickly.'],
     harsh: ['REVEALED: {last} and {what}.', 'The {last} files: {what}.'] },
   confessed: { tone: 'neutral',
-    plain: ['{name} admits to {what} and apologises.'],
+    plain: ['{name} admits to {what} and apologizes.'],
     kind: ['An honest mistake, honestly owned.'],
     harsh: ['{last} confesses. Why is {last} still in the job?'] },
   cleared: { tone: 'good',

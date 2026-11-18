@@ -25,7 +25,7 @@ for (const [folder, list] of Object.entries(AVATAR_MANIFEST)) {
     const file = new URL(`assets/avatars/${p.file}`, root);
     if (!existsSync(file)) { check(false, `missing file ${p.file}`); continue; }
     const svg = readFileSync(file, 'utf8');
-    check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-pathways="1"') && svg.includes('<g id="art">'), `${p.file} is not normalised`);
+    check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-pathways="1"') && svg.includes('<g id="art">'), `${p.file} is not normalized`);
     if (folder === 'heads') check(svg.includes('id="skin"'), `${p.file} has no skin path for the make-up clip`);
     check(!/<rect[^>]*fill="#fff/i.test(svg), `${p.file} still has a white background`);
   }
@@ -105,7 +105,7 @@ for (const [label, saved] of Object.entries(cases)) {
 }
 const fromV2 = normalize(v2, 'x');
 check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green' && fromV2.style.hairDye === 'teal' && fromV2.inherited.head === 'head_18_long_rect'
-  && fromV2.style.glasses && fromV2.style.facialHair && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colours, dye, face shape or accessories');
+  && fromV2.style.glasses && fromV2.style.facialHair && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or accessories');
 // Two relatives who shared an old nose still share one.
 check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inherited.nose, 'old shared nose no longer shared');
 

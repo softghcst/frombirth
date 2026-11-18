@@ -35,7 +35,8 @@ export function openModal(html, opts = {}) {
   card._returnTo = returnTo;
   nameDialog(card);
   card.setAttribute('tabindex', '-1');
-  (card.querySelector('button:not([disabled]), [href], input, select, textarea, summary') ?? card).focus({ preventScroll: true });
+  // Only things that can take focus: an SVG <use href> inside a portrait matches [href] but cannot.
+  (card.querySelector('button:not([disabled]), a[href], input, select, textarea, summary') ?? card).focus({ preventScroll: true });
   return { el: card, close };
 }
 

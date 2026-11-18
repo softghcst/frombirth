@@ -459,7 +459,7 @@ function earn(r) {
   const age = year() - r.released;
   const total = Object.entries(r.units).reduce((s, [c, n]) => s + localWage(MUSIC_DEAL.unitValue, COUNTRIES[c]) * n, 0);
   const gross = Math.round(total * (age === 0 ? 1 : 0.35 * Math.pow(0.6, age - 1)));
-  if (gross < localWage(20, COUNTRIES[a.countryId]) && age > 0) return; // the catalogue's tail, too small to count
+  if (gross < localWage(20, COUNTRIES[a.countryId]) && age > 0) return; // the catalog's tail, too small to count
   let toAct = r.labelId ? Math.round(gross * (a.deal?.royalty ?? 0.16)) : Math.round(gross * MUSIC_DEAL.independent);
   if (r.labelId && a.deal && a.deal.unrecouped > 0) { const back = Math.min(a.deal.unrecouped, toAct); a.deal.unrecouped -= back; toAct -= back; }
   r.revenue.push({ year: year() - 1, gross, toAct });

@@ -114,6 +114,23 @@
  * @property {number} pension
  * @property {number} lifetimeEarned
  * @property {number} lifetimeTaxPaid
+ * @property {Object<string, number>} [accounts]  money held in other currencies, whole units by currency code (engine/currency.js)
+ * @property {SavingsGoal[]} [goals]  engine/banking.js
+ * @property {{limits:Object<string, number>}} [budget]  the most the player means to spend a year, by category
+ * @property {{marks:{year:number, age:number, kind:string}[], onTime:number, since:?number}} [credit]  what lenders remember (engine/credit.js)
+ * @property {object[]} [cards]  credit cards (engine/cards.js)
+ * @property {object[]} [policies]  insurance policies, and [losses] that can be claimed for (engine/insurance.js)
+ * @property {{accountId:string, rate:number}} [plan]  the pension plan (engine/retirement.js)
+ * @property {object[]} [lent]  money lent to people the player knows (engine/family.js)
+ * @typedef {{id:string, kind:string, name:string, target:number, cur:string, accountId:string, deadlineAge:?number,
+ *            status:'active'|'paused'|'completed'|'abandoned', createdYear:number, createdAge:number, doneYear?:number, doneAge?:number}} SavingsGoal  target is in minor units
+ *
+ * The ledger (state.ledger, engine/ledger.js). Amounts are whole numbers of the currency's smallest unit.
+ * @typedef {{v:number, seq:number, home:string, accounts:Object<string, LedgerAccount>, tx:LedgerTx[], keys:Object<string, number>,
+ *            years:Object<number, Object<string, Object<string, [number, number]>>>, closedThrough:?number}} Ledger
+ * @typedef {{id:string, kind:'wallet'|'bank'|'debt'|'nominal'|'clearing', cur:string, bal:number, name?:string, cat?:string,
+ *            bankId?:string, product?:string, rateBp?:number, owners?:{id:string, role:'owner'|'custodian'}[], opened?:number, closed?:number, matures?:number}} LedgerAccount
+ * @typedef {{id:string, year:number, age:number, cat:string, desc:string, src:string, status:'posted', key?:string, entries:[string, number][]}} LedgerTx
  * @typedef {{id:string, kind:'student'|'bank'|'personal', principal:number, rate:number, yearsLeft:number}} Loan
  *
  * @typedef {Object} Career  catalog entry (data/careers.js, Phase 4)
@@ -169,12 +186,18 @@
  * @property {boolean} droppedOut
  *
  * @typedef {Object} LegalState
- * @property {{crimeId:string, age:number, convicted:boolean, sentenceYears:number}[]} record
+ * @property {{caseId:string, crimeId:string, offense?:string, age:number, year?:number, convicted:boolean, outcome:string, sentenceYears:number,
+ *             sentenceType?:string, juvenile:boolean, sealed?:boolean, exonerated?:boolean, pardoned?:boolean, legacy?:boolean}[]} record
+ *           one entry per case: its outcome. The case itself is in state.justice (engine/cases.js)
+ * @property {{year:number, age:number, kind:string, text:string, caseId:?string}[]} [history]  every legal event, in order
+ * @property {string[]} [counselIds]  lawyers who have acted for the player
+ * @property {?{kind:string, sentenceId:string, caseId:string, from:number, until:number, conditions:string[]}} [supervision]  probation, parole and the like
+ * @property {{id:string, facilityId:string, from:number, to:number, served:number, how:string}[]} [custodyHistory]
  * @property {?{facility:'juvenile'|'prison', security:'min'|'med'|'max', yearsLeft:number,
  *              respect:number, gangId:?string, escapeAttempts:number}} incarceration
  * @property {number} heat
- * @property {{crimeId:string, age:number, victim?:string}[]} [unsolved]  crimes the police have not pinned on you yet
- * @property {?{crimeId:string, age:number, evidence:number, lawyer:?string, skill:number}} [pending]  an open court case
+ * @property {{crimeId:string, age:number, victim?:string}[]} [unsolved]  older saves only: becomes investigations on load
+ * @property {?{caseId:string}} [pending]  the open criminal case (older saves held {crimeId, evidence, lawyer} until upgraded)
  *
  * @typedef {{handle:?string, followers:number, posts:number, viral:number, boughtFollowers:number}} SocialMedia
  *
@@ -199,7 +222,7 @@
  * @typedef {{on:'success'|'fail'|'always', weight?:number, text:string, effects:Effect[], requires?:Requirement[]}} Outcome
  * @typedef {{path:string, op:'>='|'<='|'=='|'!='|'in'|'has'|'lacks', value:any}} Requirement
  * @typedef {{type:'stat'|'hidden'|'talent'|'cash'|'relationship'|'flag'|'addNpc'|'removeNpc'
- *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity'|'property'|'vehicle'|'sellInvestments'|'prison'|'giveVehicle'|'npcTransition',
+ *            |'condition'|'cure'|'gpa'|'legal'|'death'|'milestone'|'counter'|'followers'|'memory'|'queue'|'partTimeScale'|'tag'|'feud'|'perf'|'pay'|'fired'|'promoted'|'npcSet'|'moveCity'|'property'|'vehicle'|'sellInvestments'|'prison'|'giveVehicle'|'npcTransition'|'animalHealth'|'animal'|'animalLife'|'animalArc',
  *            target?:string, value?:any, delta?:number}} Effect
  *
  * @typedef {Object} GraveyardEntry
@@ -234,9 +257,10 @@
  * @property {{prices:Object<string,number>, history:Object<string,number[]>, housing:number, listings?:object}} market  prices in base units
  * @property {{id:string, lastAge:number}[]} eventHistory
  * @property {{id:string, cast:Object<string,string>}[]} pendingEvents  modal queue; survives reload
+ * @property {object} [animals]  the family's animals, their keepers and their moments, kept across generations (engine/animals.js)
  * @property {number} rngSeed
  * @property {{theme:'auto'|'light'|'dark'}} settings
- * @typedef {{age:number, text:string, kind:'event'|'choice'|'outcome'|'system', tone:'good'|'bad'|'neutral'}} JournalEntry
+ * @typedef {{age:number, text:string, kind:'event'|'choice'|'outcome'|'system', tone:'good'|'bad'|'neutral', animal?:{id:string, ev:string}}} JournalEntry  `animal` marks a line that tells a moment in an animal's life
  *
  * @typedef {{slotId:string, name:string, age:number, gender:string, countryId:string,
  *            netWorth:number, updatedAt:number}} SaveSlotMeta

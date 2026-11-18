@@ -1,4 +1,4 @@
-// Modelling. A model is represented by an agency, goes to castings, and is
+// Modeling. A model is represented by an agency, goes to castings, and is
 // booked or not; every booking goes into a portfolio, and the portfolio, not
 // a number, is what the next client looks at. The model's pay is the career's
 // (engine/career.js, 'modelling'); bookings shape performance and fame, and are

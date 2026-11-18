@@ -37,7 +37,7 @@ const kindName = (prod) => `${TIERS[prod.tier].name} ${PRODUCTION_KINDS[prod.kin
 const row = (act, arg, main, sub, side = '', n = null) => `<button type="button" class="row world-row" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
   <div class="main"><strong>${esc(main)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>`;
 
-const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modelling', 'Modelling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
+const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modelling', 'Modeling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
   ['awards', 'Awards'], ['connections', 'Connections'], ['archive', 'Archive'], ['family', 'Family']];
 
 function tabsFor(p) {
@@ -142,7 +142,7 @@ const VIEWS = {
     ...(f.provenance ? [['Carried over', `${f.provenance.migratedFrom}, from before this record was kept`]] : [])])}
       <div style="margin-top:8px">${meterHtml('In the news now', f.attention, true)}${meterHtml('What lasts', f.legacy, true)}${meterHtml('Public regard', f.favour, true)}${meterHtml('Standing in the industry', f.credibility, true)}</div></div>
       <div class="card"><h3>Your craft</h3>${kv([['Acting', `${act} (${skills.levelName(act)})`], ['Singing', `${sing} (${skills.levelName(sing)})`], ['Dance', `${dance} (${skills.levelName(dance)})`],
-    ['Professional credits', String(ent.proCredits(p))]])}<p class="muted" style="margin-top:6px">Practise on the Pursuits tab: skill is what gets you the part, not fame.</p></div>
+    ['Professional credits', String(ent.proCredits(p))]])}<p class="muted" style="margin-top:6px">Practice on the Pursuits tab: skill is what gets you the part, not fame.</p></div>
       ${upcoming.length ? `<div class="card"><h3>Signed for</h3>${upcoming.map((x) => row('production', x.id, x.title, `${kindName(x)} · ${x.workYear > store.state.year ? 'starts next year' : 'now'}`)).join('')}</div>` : ''}
       ${recent.length ? `<div class="card"><h3>Recent work</h3>${recent.map((x) => row('production', x.id, x.title, `${kindName(x)} · ${x.workYear}`)).join('')}</div>` : ''}
       ${(() => { const offers = celebs.comebackOffers(p); const phase = celebs.phaseName(p);
@@ -227,7 +227,7 @@ const VIEWS = {
     const records = disc.length ? `<div class="section-label">Records</div>${disc.map((r) => row('release', r.id, r.title, `${r.released} · ${RELEASE_TYPES[r.type].name} · ${music.act(r.actId)?.name ?? ''}${r.chart ? ` · chart #${r.chart}` : ''}`, (r.awards ?? []).some((a) => a.won) ? '★' : '')).join('')}` : '';
     const books = pub.bibliography(p);
     const shelf = books.length ? `<div class="section-label">Books</div>${books.map((b) => row('bookview', b.id, b.title, `${b.released} · ${BOOK_KINDS[b.kind].name}${b.list ? ` · bestseller #${b.list}` : ''}`, b.awards.some((x) => x.won) ? '★' : '')).join('')}` : '';
-    return `${group(['film'], 'Films')}${group(['tv'], 'Television')}${group(['stage', 'musical'], 'Theatre')}${group(['voice'], 'Voice work')}${group(['commercial'], 'Commercials')}${records}${shelf}
+    return `${group(['film'], 'Films')}${group(['tv'], 'Television')}${group(['stage', 'musical'], 'Theater')}${group(['voice'], 'Voice work')}${group(['commercial'], 'Commercials')}${records}${shelf}
       ${school ? `<div class="section-label">At school and university</div>${school}` : ''}${!credits.length && !school && !disc.length && !books.length ? '<p class="empty">No credits yet.</p>' : ''}`;
   },
 
@@ -333,7 +333,7 @@ const VIEWS = {
     const can = modelling.isModel(p);
     const list = can ? modelling.castings(p) : [];
     const willing = can && !ag ? modelling.agenciesWilling(p) : [];
-    return `<div class="card"><h3>Modelling</h3>${kv([['Agency', ag?.name ?? 'None'], ['Your look', String(modelling.look(p))], ['Bookings', String(m.portfolio.length)]])}${can ? '' : '<p class="muted">You are not working as a model now.</p>'}</div>
+    return `<div class="card"><h3>Modeling</h3>${kv([['Agency', ag?.name ?? 'None'], ['Your look', String(modelling.look(p))], ['Bookings', String(m.portfolio.length)]])}${can ? '' : '<p class="muted">You are not working as a model now.</p>'}</div>
       ${willing.length ? `<div class="section-label">Agencies that would take you</div><div class="btn-stack">${willing.map((a) => btn('agency', a.name, { arg: a.id, sub: `Reputation ${a.reputation}` })).join('')}</div>` : ''}
       ${list.length ? `<div class="section-label">Castings this year (${3 - m.castings.went} you can still go to)</div>${list.map((c) => (c.status === 'open' ? row('casting2', c.id, `${BOOKINGS[c.kind].name}: ${c.client}`, `${c.city}`, '') : `<div class="kv"><span>${esc(BOOKINGS[c.kind].name)}: ${esc(c.client)}</span><span>${c.status === 'booked' ? 'Booked' : 'Not this time'}</span></div>`)).join('')}` : ''}
       ${m.portfolio.length ? `<div class="section-label">Portfolio</div>${modelling.portfolio(p).map((x) => `<div class="kv"><span>${x.year} · ${esc(BOOKINGS[x.kind].name)}</span><span>${esc(x.client)}, ${esc(x.city)}</span></div>`).join('')}` : ''}`;

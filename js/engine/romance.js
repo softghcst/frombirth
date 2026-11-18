@@ -13,6 +13,8 @@ import { spendAction, roleLabel } from './relationships.js';
 import { conceive, canConceive } from './children.js';
 import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
+import { splitJoint, familyLawOf, payDivorce, setSupport } from './family.js';
+import { stakesWorth } from './business.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -218,7 +220,7 @@ export function propose(npcId, ringId) {
     p.finance.cash += Math.round(cost * 0.6); // the jeweller takes it back, at a loss
     bump(npc, -15);
     p.stats.mood = clamp(p.stats.mood - 12);
-    const text = `You got down on one knee. ${npc.firstName} said they were not ready. The jeweller gave you some of the money back.`;
+    const text = `You got down on one knee. ${npc.firstName} said they were not ready. The jeweler gave you some of the money back.`;
     log(text, 'system', 'bad');
     return result(false, text);
   }
@@ -304,26 +306,34 @@ export function breakUp(npcId) {
 /** What a divorce would move between the two of you. Positive means you pay. */
 export function settlement(npcId) {
   const npc = npcOf(npcId);
-  if (npc.prenup) return 0;
-  return Math.round((Math.max(0, netWorth(store.state)) - theirWealth(npc)) / 2);
+  // Where each keeps their own, nothing changes hands but what was held jointly (engine/family.js).
+  if (npc.prenup || familyLawOf() === 'separate') return 0;
+  // A business is counted too: it is not in net worth, but it is part of what the two of them have (engine/business.js).
+  return Math.round((Math.max(0, netWorth(store.state) + stakesWorth()) - theirWealth(npc)) / 2);
 }
 
 function endMarriage(npc, yours) {
   const p = player();
   const c = country();
+  const joint = splitJoint(npc.id); // what was held in both names is divided first
   const owed = settlement(npc.id);
   const fee = localMoney(DIVORCE_FEE, c);
-  p.finance.cash -= owed + fee;
-  if (npc.life) npc.life.savings += owed;
+  if (p.flags.moneyWith) p.flags.moneyWith = 'separate';
+  p.finance.cash -= fee;
+  // What is owed is paid from everyday money, then the pension plan, then a share of a business (engine/family.js).
+  const paid = owed > 0 ? payDivorce(npc.id, owed) : null;
+  if (owed < 0) { p.finance.cash -= owed; if (npc.life) npc.life.savings += owed; }
+  const support = setSupport(npc.id);
   npc.role = 'ex';
   npc.flags.wasSpouse = true;
   npc.meters.relationship = Math.min(npc.meters.relationship, 15);
   p.stats.mood = clamp(p.stats.mood - 15);
   for (const kid of npcsByRole('child')) if (kid.age < 18) bump(kid, -8);
-  const money = npc.prenup ? 'The prenup held: you each kept what was yours.'
-    : owed > 0 ? `Everything was split down the middle: you paid ${fmtMoney(owed, c)}.`
-      : owed < 0 ? `Everything was split down the middle: you received ${fmtMoney(-owed, c)}.` : 'There was nothing to split.';
-  const text = `${yours ? `You divorced ${npc.firstName}` : `${npc.firstName} divorced you`}. ${money} The lawyers took ${fmtMoney(fee, c)}.${crown.afterDivorce(npc)}`;
+  const money = `${joint ? `Your share of the joint account came to ${fmtMoney(joint, c)}. ` : ''}${npc.prenup ? 'The prenup held: you each kept what was yours.' : familyLawOf() === 'separate' ? 'As the law here has it, you each kept what was yours.'
+    : owed > 0 ? `Everything was split down the middle: you paid ${fmtMoney(owed, c)}${paid?.pension ? `, ${fmtMoney(paid.pension, c)} of it from your pension plan` : ''}${paid?.stake ? `, and ${npc.firstName} now owns ${Math.round(paid.stake.share * 100)}% of ${paid.stake.name}` : ''}.`
+      : owed < 0 ? `Everything was split down the middle: you received ${fmtMoney(-owed, c)}.` : 'There was nothing to split.'}`;
+  const supportLine = support.map((s) => ` You will ${s.dir === 'pay' ? 'pay' : 'receive'} ${fmtMoney(s.amount, c)} a year in ${s.kind === 'child' ? 'child' : 'spousal'} support until ${s.until}.`).join('');
+  const text = `${yours ? `You divorced ${npc.firstName}` : `${npc.firstName} divorced you`}. ${money} The lawyers took ${fmtMoney(fee, c)}.${supportLine}${crown.afterDivorce(npc)}`;
   log(text, 'system', 'bad');
   milestone(`Divorced ${npc.firstName} ${npc.lastName}.`, 'family');
   return text;

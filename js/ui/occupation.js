@@ -120,7 +120,7 @@ function jobCard(p) {
     ['Hours', `${c.hours}${c.extra > 0 ? ` + ${c.extra} overtime` : c.extra < 0 ? ` − ${-c.extra}` : ''} a week · ${car.schedule.replace('_', '-')}${c.remote !== 'none' ? ` · ${c.remote === 'remote' ? 'from home' : 'hybrid'}` : ''}`],
     ['In this role', years(c.yearsInRole)],
     ...(away ? [['On leave', away]] : []),
-    ...(c.military ? [['Service', `${c.military.branch} · ${c.military.deployments} deployments${c.military.honours ? ` · ${c.military.honours} honours` : ''}`]] : []),
+    ...(c.military ? [['Service', `${c.military.branch} · ${c.military.deployments} deployments${c.military.honours ? ` · ${c.military.honours} honors` : ''}`]] : []),
     ...(c.missions ? [['Space missions', String(c.missions)]] : []),
     ['Next step', step ? `${step.title}${step.missing.length ? `: needs ${step.missing.join(' and ')}` : step.yearsLeft > 0 ? `, in about ${years(step.yearsLeft)} with good reviews` : ', when a seat opens and a good review lands'}` : 'You are at the top.'],
   ])}
@@ -294,7 +294,7 @@ const VIEWS = {
       ['Acting', ['child_actor', 'actor', 'mt_performer', 'voice', 'stunts', 'casting', 'directing']],
       ['Music and dance', ['singer', 'orchestra', 'music_prod', 'dance']],
       ['Sport', ['athlete', 'coaching']],
-      ['Modelling and media', ['modelling', 'influencer', 'broadcast']],
+      ['Modeling and media', ['modelling', 'influencer', 'broadcast']],
       ['Writing', ['author', 'screenwriting']],
       ['Space', ['astronaut']],
     ];
@@ -315,7 +315,7 @@ const VIEWS = {
     const branches = career.branchesHere();
     const conscript = rule('conscription', p.countryId);
     const ranks = (id) => CAREER_BY_ID[id].levels.map((_, i) => career.localTitle(CAREER_BY_ID[id], i, c.military?.branch ?? branches[0])).join(' → ');
-    return `${c.military ? `<div class="card"><h3>Your service</h3>${kv([['Branch', c.military.branch], ['Rank', c.title], ['Years served', String(c.yearsInField)], ['Deployments', String(c.military.deployments)], ['Honours', String(c.military.honours ?? 0)],
+    return `${c.military ? `<div class="card"><h3>Your service</h3>${kv([['Branch', c.military.branch], ['Rank', c.title], ['Years served', String(c.yearsInField)], ['Deployments', String(c.military.deployments)], ['Honors', String(c.military.honours ?? 0)],
       ['Pension', CAREER_BY_ID[c.careerId].pensionAfter ? `After ${CAREER_BY_ID[c.careerId].pensionAfter} years' service` : '—']])}</div>` : ''}
       ${p.flags.veteran ? '<p class="muted">You are a veteran. Some employers in public safety, government and logistics look on that kindly.</p>' : ''}
       <div class="card"><h3>The armed forces of ${esc(country().name)}</h3>${kv([['Branches', branches.join(', ')], ['Service', conscript ? 'Compulsory' : 'Voluntary'], ['Enlisted ranks', ranks('enlisted')], ['Officer ranks', ranks('officer')]])}</div>
@@ -329,7 +329,7 @@ const VIEWS = {
     const r = hiring.resume();
     return `<div class="card"><h3>Your résumé</h3>${kv([
       ...r.education.map((x) => ['Education', x]), ...r.licences.map((x) => ['Licensed', x]), ...r.internships.map((x) => ['Internship', x]),
-      ...r.jobs.map((x) => ['Experience', x]), ...r.service.map((x) => ['Service', x]), ...r.honours.map((x) => ['Honour', x]),
+      ...r.jobs.map((x) => ['Experience', x]), ...r.service.map((x) => ['Service', x]), ...r.honours.map((x) => ['Honor', x]),
       ['Strengths', r.strengths.join(', ') || '—']])}</div>
       <div class="card"><h3>What it opens</h3><p style="margin:0">You meet the requirements for ${open} of ${CAREERS.filter((t) => !t.branchOnly && t.type !== 'military').length} kinds of work that hire from outside.</p>
       ${certs.length ? `<div class="section-label">A one-year certificate would open</div>${kv(certs.map((x) => [x.name, CAREER_BY_ID[x.opens]?.name ?? x.opens]))}` : ''}
@@ -518,7 +518,7 @@ const ACTIONS = {
   async bizstart(_, x) {
     const c = country();
     const opts = biz.startOptions();
-    const id = await pickModal({ title: 'Start a business', body: 'What it costs to open the doors here. Some need a trade, a licence, or years in the work first.',
+    const id = await pickModal({ title: 'Start a business', body: 'What it costs to open the doors here. Some need a trade, a license, or years in the work first.',
       options: opts.map((o) => ({ value: o.id, label: o.name, disabled: !!o.block, sub: o.block || `${money(o.startup, c)} to open${o.fromService ? ' (less, because your freelance clients come with you)' : ''}. Staff cost about ${money(o.wage, c)} a year each.${o.solo ? ' Can be run alone.' : ''}` })) });
     if (!id) return;
     const o = opts.find((y) => y.id === id);

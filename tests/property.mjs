@@ -44,6 +44,7 @@ check((p.finance.accounts.MXN ?? 0) === acct - l.quote.fromAccount && p.finance.
 check(near(a.value, fx.convert(l.price, 'MXN', 'USD'), 0.01), 'it is worth, in dollars, what was paid in pesos');
 const lost = worth0 - netWorth(store.state); const feesUsd = fx.convert(l.fees, 'MXN', 'USD') + l.quote.fee;
 check(near(lost, feesUsd, 0.03) && lost > 0, `net worth fell by the fees and nothing else (${lost} against ${feesUsd})`);
+// Money is changed only when the peso account does not cover it all; when it does, there is no exchange to record.
 check(l.quote.fromCash === 0 || (p.finance.fxLog.at(-1).what && p.finance.fxLog.at(-1).received === total - l.quote.fromAccount), 'any money changed for it is in the record');
 check(!estate.buyAbroad(l.id).ok, 'a listing can be bought once');
 p.finance.cash = 10; store.state.market.abroad = null; list = estate.listingsAbroad('jp', 'Tokyo');
@@ -86,7 +87,7 @@ let plan = estatePlan();
 const jp = plan.taxBy?.find((t) => t.countryId === 'jp'); const us = plan.taxBy?.find((t) => t.countryId === 'us');
 check(!!jp && near(jp.amount, j.value * COUNTRIES.jp.estateTax, 0.01) && jp.rate === COUNTRIES.jp.estateTax, 'the house in Japan is taxed by Japan, at Japan\'s rate');
 check(!!us && us.rate === COUNTRIES.us.estateTax && plan.tax === plan.taxBy.reduce((s, t) => s + t.amount, 0), 'the rest is taxed where the owner lived, and the parts add up');
-check(plan.net === plan.gross - plan.tax && plan.tax <= plan.liquid, 'tax never exceeds what can be paid without selling');
+check(plan.net === plan.gross - plan.tax - (plan.probate ?? 0) && plan.tax + (plan.probate ?? 0) <= plan.liquid, 'tax, and the cost of winding up the estate, never exceed what can be paid without selling');
 const noAbroad = (() => { const keep = p.assets; p.assets = []; p.finance.cash += j.value; const t = estatePlan().tax; p.assets = keep; p.finance.cash -= j.value; return t; })();
 check(COUNTRIES.jp.estateTax > COUNTRIES.us.estateTax ? plan.tax > noAbroad : plan.tax <= noAbroad, 'holding it abroad changes the bill in the direction the two rates say');
 p.finance.cash = 100; plan = estatePlan(); check(plan.tax <= Math.max(0, plan.liquid) && plan.taxBy.reduce((s, t) => s + t.amount, 0) <= plan.tax + 2, 'with no cash, each country takes a share of what little there is');
@@ -106,9 +107,10 @@ for (let i = 0; i < 15; i++) m.tickMarket();
 const idx = store.state.market.housingBy;
 check(Object.keys(idx).length >= 100 && new Set(Object.values(idx).map((v) => v.toFixed(3))).size > 20, 'housing markets move separately from country to country');
 check(store.state.market.housing === m.housingIndex('us'), 'the old single figure follows the country the player lives in');
-store.state.market.abroad = null; const before = estate.listingsAbroad('mx', 'Mérida').reduce((s, l) => s + l.price / l.quality, 0);
-store.state.market.housingBy.mx = m.housingIndex('mx') * 2; store.state.market.abroad = null;
-const doubled = estate.listingsAbroad('mx', 'Mérida').reduce((s, l) => s + l.price / l.quality, 0);
+const avgPrice = () => { let t = 0; let n = 0; for (let i = 0; i < 40; i++) { store.state.market.abroad = null; for (const l of estate.listingsAbroad('mx', 'Mérida')) { t += l.price; n += 1; } } return t / n; };
+const before = avgPrice();
+store.state.market.housingBy.mx = m.housingIndex('mx') * 2;
+const doubled = avgPrice();
 check(doubled > before * 1.3, 'a Mexican boom raises Mexican prices');
 p = life('us', 'Chicago'); { const { hire } = await import('../js/engine/career.js'); const { CAREERS } = await import('../js/data/careers.js'); hire(CAREERS.find((c) => c.id === 'office'), 2, 70); }
 store.state.market.listings = null; const l2 = estate.listings()[1];

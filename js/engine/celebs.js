@@ -167,7 +167,7 @@ export function takeComeback(kind) {
   if (kind === 'tribute') {
     gain({ audience: 'public', amount: 6, lasting: 0.9, why: 'a tribute evening' }, p);
     regard({ credibility: 6, favour: 5, why: 'a tribute' }, p);
-    milestone('Honoured at a tribute evening.', 'fame');
+    milestone('Honored at a tribute evening.', 'fame');
     return result(true, 'An evening of clips and speeches about your work. You do not quite know where to look.');
   }
   return result(false, 'That is done another way.', 'neutral');

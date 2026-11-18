@@ -21,7 +21,7 @@ export const GREY_HAIR = '#dcd8d0';
 
 export const EYE_COLORS = ['#3b2416', '#6b4024', '#8f6c30', '#b47c2a', '#4f8248', '#3f76b6', '#7d8996'];
 export const EYE_COLOR_IDS = ['dark_brown', 'brown', 'hazel', 'amber', 'green', 'blue', 'gray'];
-export const EYE_COLOR_NAMES = ['Dark brown', 'Brown', 'Hazel', 'Amber', 'Green', 'Blue', 'Grey'];
+export const EYE_COLOR_NAMES = ['Dark brown', 'Brown', 'Hazel', 'Amber', 'Green', 'Blue', 'Gray'];
 
 /** Lip colours (make-up). With none chosen, lips are a natural shade worked out from the skin. */
 export const LIP_COLORS = ['#c96a7b', '#b6222f', '#7e2b4e', '#e27c60', '#bd8777', '#2b2226'];

@@ -58,8 +58,8 @@ Explorer under "How the law was checked", and `node tests/rules.mjs` fails if an
 | Question | Source article | Test used |
 |---|---|---|
 | Death penalty | Capital punishment by country | in use = an execution in the last ten years |
-| Same-sex marriage | Same-sex marriage (timeline of legalisations) | legal nationwide |
-| LGBT people | LGBTQ rights in Africa / Asia / Europe / the Americas / Oceania | hostile = activity criminalised; protected = civil unions or marriage, and anti-discrimination law |
+| Same-sex marriage | Same-sex marriage (timeline of legalizations) | legal nationwide |
+| LGBT people | LGBTQ rights in Africa / Asia / Europe / the Americas / Oceania | hostile = activity criminalized; protected = civil unions or marriage, and anti-discrimination law |
 | Military service | Conscription (by-country table) | compulsory in law, even where selective |
 | Voting, drinking, pension ages; alcohol bans | Voting age; Legal drinking age; Retirement age | pension age = the men's age, or the standard age where a range is given |
 | Divorce | Divorce law by country | |
@@ -73,7 +73,7 @@ voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries
 for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
 nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
 
-Still not checked: driving, gambling, marriage and school-leaving ages; residence years for naturalisation (other than
+Still not checked: driving, gambling, marriage and school-leaving ages; residence years for naturalization (other than
 Malaysia and Singapore); gambling bans; the free-movement lists; tax and health-care models; the status sentences. Where a
 source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
 
@@ -87,7 +87,7 @@ No city coordinates, populations or statistics are stored.
 - **`currency.scale` is a fictional simulation rate**, roughly the order of magnitude of each currency against a base unit so that
   prices read naturally. It is not a market quote and does not move with real exchange rates.
 - **Law flags and legal ages** are checked against published summaries (above) but are one value per country: real law has
-  exceptions, regional variation and dates of effect that are not modelled. They configure the game; they are not legal
+  exceptions, regional variation and dates of effect that are not modeled. They configure the game; they are not legal
   information. Laws change, and in a long game the simulation changes them too.
 - **"Free health care" and "free university"** are yes-or-no simplifications of systems that are neither.
 - **Browsing groups follow a game convention**, not strict geography: Georgia and Turkey are listed under "Middle East", and Central
@@ -95,7 +95,7 @@ No city coordinates, populations or statistics are stored.
 
 ## Places that are not ordinary sovereign states
 
-| Place | Modelled as | Tied to | Nationality at birth |
+| Place | Modeled as | Tied to | Nationality at birth |
 |---|---|---|---|
 | Puerto Rico | territory | United States | United States |
 | Aruba | territory (constituent country of the Kingdom of the Netherlands) | Netherlands | Dutch |
@@ -112,7 +112,7 @@ shown on its profile.
 - City profiles (`js/data/cities.js`) are two multipliers, housing and pay, guessed by the author for twelve countries and
   generic elsewhere (the capital, and the first city listed, assumed to be dearer and better paid). They come from no dataset.
   Region names are real and unverified. Regions exist only where a city in the game sits in one; they have no government,
-  taxes or budget of their own. Safety, schools and health care do not vary by city. People the player knows are not paid by city.
+  taxes or budget of their own. Safety, schools and health care vary only by kind of city (capital, largest, other), by a rule in `SERVICES`, not by data about any place. People the player knows are not paid by city.
 - Citizenship rules (`js/data/citizenship.js`) are three yes-or-no lists and a table of years: which places grant citizenship by
   birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
   conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.
@@ -128,7 +128,7 @@ shown on its profile.
   for six regional matters, in the countries listed in `REGIONAL_COUNTRIES`; which matters belong to regions in each real
   country is simplified to one list. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
-  permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
+  permanence. Real systems differ by country and are not modeled. The free-movement areas (a European area, and Australia with
   New Zealand) are simplified lists and unverified. Family members hold dependant status on the player's visa, simplified to one rule for every country; there is no
   deportation for crime, no overstaying, and no visa needed for a short visit.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
@@ -145,7 +145,7 @@ shown on its profile.
 In rough order of value:
 
 1. **Check what is still unchecked** (listed above): the remaining ages, residence years and the free-movement lists.
-2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
+2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
 5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
 

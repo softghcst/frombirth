@@ -1,5 +1,5 @@
 // Fame and the entertainment world: who can know a person, through what, from
-// when, and the fictional organisations, award bodies and media outlets of the
+// when, and the fictional organizations, award bodies and media outlets of the
 // game. Every name here is invented. GAMEPLAY CONFIGURATION: fees and audience
 // sizes are in base units and stylised, not industry figures.
 
@@ -9,7 +9,7 @@
  * weight: how much of the general public each audience is (for the headline figure).
  */
 export const AUDIENCES = {
-  theatre: { name: 'Theatre audiences', weight: 0.25 },
+  theatre: { name: 'Theater audiences', weight: 0.25 },
   film: { name: 'Film audiences', weight: 0.9 },
   tv: { name: 'Television viewers', weight: 1 },
   music: { name: 'Music listeners', weight: 0.9 },
@@ -56,7 +56,7 @@ export const TIERS = {
   community: { name: 'Community', reach: 0.05, budget: 20000, fee: 0, field: 3, stage: true, minCredits: 0 },
   student: { name: 'Student and short film', reach: 0.04, budget: 15000, fee: 400, field: 4, screen: true, minCredits: 0 },
   indie: { name: 'Independent', reach: 0.25, budget: 1500000, fee: 18000, field: 8, screen: true, minCredits: 0 },
-  regional: { name: 'Regional theatre', reach: 0.15, budget: 400000, fee: 22000, field: 7, stage: true, minCredits: 0 },
+  regional: { name: 'Regional theater', reach: 0.15, budget: 400000, fee: 22000, field: 7, stage: true, minCredits: 0 },
   touring: { name: 'Touring company', reach: 0.3, budget: 2000000, fee: 38000, field: 9, stage: true, minCredits: 1 },
   network: { name: 'Network', reach: 0.6, budget: 4000000, fee: 60000, field: 12, screen: true, minCredits: 1 },
   studio: { name: 'Studio', reach: 0.75, budget: 40000000, fee: 120000, field: 16, screen: true, minCredits: 2 },
@@ -93,12 +93,12 @@ export const SKILLS_FOR = {
   commercial: { 'stats.charm': 0.6, 'talents.acting': 0.4 },
 };
 
-/** Organisations: what each kind is called. {C} city, {S} surname, {W} word. */
+/** Organizations: what each kind is called. {C} city, {S} surname, {W} word. */
 export const ORG_NAMES = {
   studio: ['{W} Pictures', '{W} Films', '{S} Brothers Pictures', '{C} Film Company', '{W} Studios'],
   network: ['{W} Television', 'Channel {N}', '{C} Broadcasting', '{W} Network'],
-  theatre: ['The {C} Playhouse', '{W} Theatre Company', 'The {S} Theatre', '{C} Repertory Company', 'The {W} Stage'],
-  community: ['{C} Community Players', 'The {C} Amateur Dramatic Society', '{W} Little Theatre'],
+  theatre: ['The {C} Playhouse', '{W} Theater Company', 'The {S} Theater', '{C} Repertory Company', 'The {W} Stage'],
+  community: ['{C} Community Players', 'The {C} Amateur Dramatic Society', '{W} Little Theater'],
   agency: ['{S} Talent', '{W} Artists Agency', '{S} & {S2} Management', '{C} Talent Group'],
   outlet: ['The {C} {M}', '{W} {M}', 'Spotlight {M}', 'The {M}'],
 };
@@ -119,7 +119,7 @@ export const GENRES = {
   voice: ['animated series', 'animated film', 'video game', 'audiobook'],
   commercial: ['advertisement'],
 };
-export const CHARACTER_WORDS = ['the eldest sister', 'a widowed lighthouse keeper', 'the new teacher', 'a disgraced surgeon', 'the best friend', 'a travelling musician', 'the detective', 'a young heir', 'the landlady', 'a returning soldier', 'the mayor', 'a stubborn grandmother', 'the rival', 'a scientist', 'the chef'];
+export const CHARACTER_WORDS = ['the eldest sister', 'a widowed lighthouse keeper', 'the new teacher', 'a disgraced surgeon', 'the best friend', 'a traveling musician', 'the detective', 'a young heir', 'the landlady', 'a returning soldier', 'the mayor', 'a stubborn grandmother', 'the rival', 'a scientist', 'the chef'];
 
 /**
  * Award bodies. founded: the first year it exists. scope: 'national' (one per country, by the country's name)
@@ -139,8 +139,8 @@ export const AWARD_BODIES = [
       ['lead_musical', 'Best Lead Performance in a Musical', ['musical'], ['lead'], ['major_stage', 'touring']],
       ['support_stage', 'Best Supporting Performance on Stage', ['stage', 'musical'], ['supporting'], ['major_stage', 'touring']],
       ['best_musical', 'Best Musical', ['musical'], 'production', ['major_stage', 'touring']]] },
-  { id: 'curtain', name: 'Curtain Call Regional Theatre Awards', founded: 1972, scope: 'national', medium: 'stage',
-    categories: [['regional_lead', 'Outstanding Performance in Regional Theatre', ['stage', 'musical'], ['lead', 'supporting'], ['regional']],
+  { id: 'curtain', name: 'Curtain Call Regional Theater Awards', founded: 1972, scope: 'national', medium: 'stage',
+    categories: [['regional_lead', 'Outstanding Performance in Regional Theater', ['stage', 'musical'], ['lead', 'supporting'], ['regional']],
       ['regional_show', 'Outstanding Regional Production', ['stage', 'musical'], 'production', ['regional']]] },
 ];
 export const NOMINEES = 5;
@@ -175,7 +175,7 @@ export const RELEASE_TYPES = { single: { name: 'Single', songs: 1, cost: 1500 },
 export const VENUES = {
   bar: { name: 'Bars and pubs', capacity: 120, price: 10, cost: 300, fans: 0 },
   club: { name: 'Clubs', capacity: 500, price: 20, cost: 1800, fans: 4000 },
-  theatre: { name: 'Theatres and halls', capacity: 2500, price: 40, cost: 14000, fans: 40000 },
+  theatre: { name: 'Theaters and halls', capacity: 2500, price: 40, cost: 14000, fans: 40000 },
   arena: { name: 'Arenas', capacity: 15000, price: 70, cost: 110000, fans: 400000 },
   stadium: { name: 'Stadiums', capacity: 55000, price: 90, cost: 500000, fans: 3000000 },
 };
@@ -210,14 +210,14 @@ export const EVENT_WORDS = ['Open', 'Classic', 'Masters', 'Championships', 'Invi
 /** The international games held every four years. Fictional. */
 export const WORLD_GAMES = { name: 'World Games', founded: 1896, every: 4 };
 
-// ---------- Modelling ----------
+// ---------- Modeling ----------
 
 export const MODEL_AGENCY_NAMES = ['{W} Models', '{S} Management', '{C} Faces', '{W} Model Agency'];
 export const FASHION_HOUSES = ['Maison Verel', 'Atelier Corvane', 'Lisle & Marr', 'Ondine', 'Haversham', 'Studio Petrova', 'Calloway', 'Beaumarché'];
 export const MAGAZINES = ['Silhouette', 'Lustre', 'The Edit', 'Vantage', 'Modern Muse', 'Gloss'];
 /** Kinds of booking: prestige (0–100), how hard it is to get, and where it can take place. */
 export const BOOKINGS = {
-  catalogue: { name: 'Catalogue shoot', prestige: 10, bar: 45 },
+  catalogue: { name: 'Catalog shoot', prestige: 10, bar: 45 },
   ecommerce: { name: 'Online store shoot', prestige: 8, bar: 40 },
   editorial: { name: 'Magazine editorial', prestige: 40, bar: 62 },
   runway: { name: 'Runway show', prestige: 55, bar: 66, abroad: true },

@@ -19,6 +19,7 @@
 // reason holds, become permanent after five years, and end otherwise.
 // Everything here is gameplay configuration: no route promises anything
 // about a real visa.
+import { hasRecord } from './records.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log } from '../state.js';
@@ -28,7 +29,7 @@ import { held, issuer, rightToLive, residency } from './citizenship.js';
 import { visaEdge } from './languages.js';
 
 const has = (p, t) => p.education.degrees.some((d) => d.type === t);
-const convicted = (p) => p.legal.record.some((r) => r.convicted && !r.juvenile);
+const convicted = (p) => hasRecord(p, { sealed: true });
 /** The free-movement area a place belongs to, if any. */
 const areaOf = (id) => FREE_MOVEMENT.find((a) => a.members.includes(id)) ?? null;
 
@@ -87,7 +88,7 @@ export function routes(destId, p = player()) {
     eligible: p.age >= 18 && p.finance.cash >= stake, why: `You would need ${fmtMoney(stake, here)}.`, chance: 0.92 + crime, fee: 3, status: 'permanent_resident' });
 
   // Settlement programme
-  add('settle', 'Settlement programme', 'Points for education, work, age and language. Slow, but it gives permanent residence.', {
+  add('settle', 'Settlement program', 'Points for education, work, age and language. Slow, but it gives permanent residence.', {
     eligible: p.age >= 18, why: 'You must be an adult.',
     chance: 0.3 + (has(p, 'university') ? 0.2 : 0) + (['medical', 'law', 'graduate', 'doctorate'].some((t) => has(p, t)) ? 0.1 : 0) + (has(p, 'apprenticeship') || has(p, 'cosmetology') ? 0.1 : 0)
       + (p.career.careerId ? 0.1 : 0) + (p.age <= 35 ? 0.05 : p.age >= 50 ? -0.1 : 0) + lang + crime, status: 'permanent_resident' });

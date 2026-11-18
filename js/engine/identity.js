@@ -191,7 +191,7 @@ export function changeLegalGender() {
   p.finance.cash -= fee;
   ident().legal = true;
   p.stats.mood = clamp(p.stats.mood + 8);
-  const text = `A clerk stamps a form, and your passport, your licence and your birth certificate now say what you have always known. It cost ${fmtMoney(fee, c)}.`;
+  const text = `A clerk stamps a form, and your passport, your license and your birth certificate now say what you have always known. It cost ${fmtMoney(fee, c)}.`;
   log(text, 'system', 'good');
   milestone('Changed legal gender.', 'life');
   return result(true, text);

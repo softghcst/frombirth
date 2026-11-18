@@ -23,7 +23,7 @@ export default [
     castRequires: [need('cast.kid.age', '<=', 12), need('cast.kid.age', '>=', 4)], cooldown: 5,
     text: '{kid} has a part in the school show tonight, and has talked about nothing else for a month. At four o\'clock {boss} calls everyone in: something has gone wrong, and it has to be fixed before morning.',
     choices: [
-      { label: 'Stay and fix it', outcomes: [any('You get home after ten. {kid} is asleep in the costume. The programme is on the kitchen table, with your name written on the front in felt pen.', 'bad',
+      { label: 'Stay and fix it', outcomes: [any('You get home after ten. {kid} is asleep in the costume. The program is on the kitchen table, with your name written on the front in felt pen.', 'bad',
         perf(7), rel('kid', -10), st('mood', -6), rel('boss', 5), mem('kid', 'missedShow', 'You missed their school show for work.'))] },
       { label: 'Tell {boss} you have to be somewhere at six, and will be back online at nine', check: chk(0.6, { 'cast.boss.relationship': 0.6, 'stats.charm': 0.3 }), outcomes: [
         ok('{boss} looks at you, then at the clock. "Go. Nine o\'clock." You are in the second row when {kid} comes on, and at your desk until two.', perf(3), rel('kid', 8), st('mood', 4), wk('stress:4'),
@@ -43,7 +43,7 @@ export default [
         bad('"The role is full-time." {boss} is sorry, and does not change the answer.', st('mood', -5), rel('boss', -4)),
       ] },
       { label: 'Pay for a nanny and keep your hours', requires: [need('cashBase', '>=', 9000)], outcomes: [any('It costs {$9000} a year and it works. You try not to count what you miss.', 'neutral', cash(-9000), wk('stress:-4'))] },
-      { label: 'Patch it together: grandparents, neighbours, favours', outcomes: [any('It holds, in the way a thing held together with tape holds. You are tired all the time.', 'neutral', wk('stress:10'), st('mood', -4))] },
+      { label: 'Patch it together: grandparents, neighbors, favors', outcomes: [any('It holds, in the way a thing held together with tape holds. You are tired all the time.', 'neutral', wk('stress:10'), st('mood', -4))] },
     ],
   },
   {
@@ -58,14 +58,14 @@ export default [
       { label: 'Turn it down', outcomes: [any('{boss} nods, and gives it to someone else within the month. {love} does not say thank you, and does not need to.', 'neutral', perf(-3), rel('love', 10), wk('satisfaction:-6'),
         mem('love', 'stayedForMe', 'You turned down a promotion so they could keep the work they loved.'))] },
       { label: 'Ask whether the job could be done from here', check: chk(0.3, { 'career.performance': 0.8, 'cast.boss.relationship': 0.4 }), outcomes: [
-        ok('It takes {boss} a fortnight of arguing upstairs, and it is agreed: the job, and two days a month in the other office.', promoted(), rel('love', 6), rel('boss', 4)),
+        ok('It takes {boss} two weeks of arguing upstairs, and it is agreed: the job, and two days a month in the other office.', promoted(), rel('love', 6), rel('boss', 4)),
         bad('"It needs someone on the ground." The job goes to someone else.', perf(-2), rel('love', 4)),
       ] },
     ],
   },
   {
     id: 'wf_money_talk', category: 'family', ageRange: [24, 70], requires: [need('workStress', '>=', 55)], cast: { love: 'spouse' }, cooldown: 9,
-    text: 'Sunday evening. {love} has the bank statement in one hand. "You are never here, and I am not sure what it is for. What are we working this hard towards?"',
+    text: 'Sunday evening. {love} has the bank statement in one hand. "You are never here, and I am not sure what it is for. What are we working this hard toward?"',
     choices: [
       { label: 'Sit down and go through it together: what you earn, what you need', outcomes: [any('It takes two hours and a bottle of wine. You find you need less than you thought, and agree what "enough" would look like.', 'good', rel('love', 9), wk('stress:-8'), st('mood', 4))] },
       { label: 'Say it is for the family, and it will ease off soon', outcomes: [any('{love} has heard "soon" before.', 'neutral', rel('love', -6))] },
@@ -99,7 +99,7 @@ export default [
         addNpc('coworker', 'newcomer', { ageOffset: 6, relationship: 48 }), wk('newBoss'))] },
       { label: 'Tell the new manager plainly what is not working here', check: chk(0.5, { 'stats.intellect': 0.5, 'stats.charm': 0.4 }), outcomes: [
         ok('{newcomer} takes notes. Two of your suggestions happen. You are someone whose opinion is asked now.', addNpc('coworker', 'newcomer', { ageOffset: 6, relationship: 62 }), wk('newBoss'), perf(7)),
-        bad('{newcomer} thanks you for your candour in a way that means the opposite.', addNpc('coworker', 'newcomer', { ageOffset: 6, relationship: 36 }), wk('newBoss'), perf(-4)),
+        bad('{newcomer} thanks you for your candor in a way that means the opposite.', addNpc('coworker', 'newcomer', { ageOffset: 6, relationship: 36 }), wk('newBoss'), perf(-4)),
       ] },
     ],
   },
@@ -107,12 +107,12 @@ export default [
     id: 'wp_acquired', category: 'work', ageRange: [22, 64], requires: [salaried, inField('corporate', 'tech', 'media', 'retail', 'hospitality', 'transport', 'science')], cast: { mate: 'coworker' }, cooldown: 20,
     text: 'The email arrives at nine: the company has been bought. By ten, {mate} has heard that a third of the jobs will go, that nobody\'s will, and that the new owners are moving everything to another country.',
     choices: [
-      { label: 'Carry on working, and wait for facts', outcomes: [any('The facts, when they come, are duller than the rumours. Your job is safe for now. The place feels different.', 'neutral', wk('acquired'), wk('stress:5'))] },
+      { label: 'Carry on working, and wait for facts', outcomes: [any('The facts, when they come, are duller than the rumors. Your job is safe for now. The place feels different.', 'neutral', wk('acquired'), wk('stress:5'))] },
       { label: 'Volunteer for the team joining the two companies together', check: chk(0.5, { 'stats.intellect': 0.5, 'career.performance': 0.5 }), outcomes: [
         ok('Six months of spreadsheets and difficult meetings, and at the end of it the new owners know your name.', wk('acquired'), perf(10), wk('stress:8'), pay(1.05)),
         bad('You are put on it, and it is thankless. Both sides blame the people in the middle.', wk('acquired'), perf(-3), wk('stress:10')),
       ] },
-      { label: 'Take the voluntary redundancy on offer', outcomes: [any('You sign the form. On the last Friday, {mate} organises the drinks.', 'neutral', wk('voluntary'), rel('mate', 5))] },
+      { label: 'Take the voluntary redundancy on offer', outcomes: [any('You sign the form. On the last Friday, {mate} organizes the drinks.', 'neutral', wk('voluntary'), rel('mate', 5))] },
     ],
   },
   {
@@ -129,7 +129,7 @@ export default [
   },
   {
     id: 'wp_project_fails', category: 'work', ageRange: [22, 64], requires: [salaried, need('yearsInRole', '>=', 1)], cast: { boss: 'tag:boss', mate: 'coworker' }, cooldown: 10,
-    text: 'The project you and {mate} have given most of a year to is cancelled in a ten-minute meeting. {boss} wants to know, before it goes upstairs, what went wrong.',
+    text: 'The project you and {mate} have given most of a year to is canceled in a ten-minute meeting. {boss} wants to know, before it goes upstairs, what went wrong.',
     choices: [
       { label: 'Say what you would do differently, starting with yourself', outcomes: [any('{boss} writes it down almost word for word. What goes upstairs is a report on lessons learned, with your name on it as the author.', 'good', perf(4), rel('boss', 5), rel('mate', 3), st('mood', -3))] },
       { label: 'Say the deadline was never possible, and you said so at the time', check: chk(0.5, { 'stats.intellect': 0.4, 'cast.boss.relationship': 0.4 }), outcomes: [
@@ -148,12 +148,12 @@ export default [
         bad('It is too long, and a joke lands badly. The retiree is kind about it.', rel('mate', -2), st('mood', -3)),
       ] },
       { label: 'Put {$40} in the envelope and sign the card', outcomes: [any('You write "all the best". So did eleven other people.', 'neutral', cash(-40))] },
-      { label: 'Say you are no good at speeches, but help {mate} organise it', outcomes: [any('You book the room and order the cake. {mate} gives the speech, and thanks you in it.', 'good', rel('mate', 7))] },
+      { label: 'Say you are no good at speeches, but help {mate} organize it', outcomes: [any('You book the room and order the cake. {mate} gives the speech, and thanks you in it.', 'good', rel('mate', 7))] },
     ],
   },
   {
     id: 'wp_offered_secondment', category: 'work', ageRange: [22, 58], requires: [salaried, need('career.performance', '>=', 60)], cast: { boss: 'tag:boss' }, cooldown: 12,
-    text: '{boss} has been asked to lend someone to another part of the organisation for a year: different work, a steep hill to climb, and no promise your old desk will be waiting.',
+    text: '{boss} has been asked to lend someone to another part of the organization for a year: different work, a steep hill to climb, and no promise your old desk will be waiting.',
     choices: [
       { label: 'Go', check: chk(0.6, { 'stats.intellect': 0.5, 'hidden.discipline': 0.3 }), outcomes: [
         ok('It is the hardest year you have worked, and the one you learn most in. You come back knowing how the place actually runs.', perf(9), wk('stress:8'), wk('satisfaction:8'), ms('Took a year\'s secondment, and came back knowing the whole business.')),
@@ -259,7 +259,7 @@ export default [
     text: 'The customer wants the job done by Friday and done cheap. They have worked out that if you leave out one step, the one nobody will ever see behind the wall, it can be both.',
     choices: [
       { label: 'Explain what that step is for, and quote for the job done right', check: chk(0.6, { 'stats.charm': 0.5 }), outcomes: [
-        ok('They grumble, and pay. Two years later they ring to say the neighbour\'s went wrong and theirs did not, and can you do the neighbour\'s.', perf(5), hid('karma', 2), cash(300)),
+        ok('They grumble, and pay. Two years later they ring to say the neighbor\'s went wrong and theirs did not, and can you do the neighbor\'s.', perf(5), hid('karma', 2), cash(300)),
         bad('They find someone who will do it their way. You lose the job.', perf(-1), hid('karma', 2)),
       ] },
       { label: 'Do it properly anyway and take the hit on the price', outcomes: [any('You are out of pocket and you sleep fine.', 'neutral', cash(-250), hid('karma', 3), wk('satisfaction:4'))] },
@@ -331,7 +331,7 @@ export default [
     text: 'A call like the others, until it is not. Afterwards, back at the station, {mate} is washing their hands for the third time and not saying anything.',
     choices: [
       { label: 'Sit with {mate}, and say you are not all right either', outcomes: [any('You talk until the next shift comes on. It does not fix it. It means neither of you carries it alone.', 'good', rel('mate', 12), wk('stress:-6'), st('mood', 2))] },
-      { label: 'Suggest you both see the counsellor the service offers', check: chk(0.6, { 'cast.mate.relationship': 0.6 }), outcomes: [
+      { label: 'Suggest you both see the counselor the service offers', check: chk(0.6, { 'cast.mate.relationship': 0.6 }), outcomes: [
         ok('{mate} goes because you went. Months later they tell you it was the thing that kept them in the job.', rel('mate', 10), wk('stress:-10'), hid('karma', 2)),
         bad('"I am fine." {mate} is not fine, and will not hear it today.', rel('mate', -2)),
       ] },
@@ -368,7 +368,7 @@ export default [
         bad('You save most of it. Most is not all, and you will both remember which part you did not reach.', perf(2), rel('mate', 5), st('health', -2)),
       ] },
       { label: 'Save what matters most, and let the rest go', outcomes: [any('You choose well. The losses are the ones that can be borne.', 'neutral', perf(4))] },
-      { label: 'Ring round the neighbours for help, and owe them', outcomes: [any('Six people turn up with torches. It is done by midnight. You will be returning the favour for years, and glad to.', 'good', perf(6), hid('karma', 2), st('mood', 4))] },
+      { label: 'Ring round the neighbors for help, and owe them', outcomes: [any('Six people turn up with torches. It is done by midnight. You will be returning the favor for years, and glad to.', 'good', perf(6), hid('karma', 2), st('mood', 4))] },
     ],
   },
   {
@@ -394,7 +394,7 @@ export default [
         ok('It is an awkward conversation and the right one. They ease off, see someone, and come back in the spring looking like themselves.', perf(4), hid('karma', 4), wk('satisfaction:8')),
         bad('They hear it as criticism, and find another trainer who will push them harder.', perf(-2), hid('karma', 2)),
       ] },
-      { label: 'Change the programme so it is impossible to overdo', outcomes: [any('Rest days go in, in writing. They follow the plan because it is a plan.', 'good', perf(3), hid('karma', 2))] },
+      { label: 'Change the program so it is impossible to overdo', outcomes: [any('Rest days go in, in writing. They follow the plan because it is a plan.', 'good', perf(3), hid('karma', 2))] },
       { label: 'They are an adult; it is their body', outcomes: [any('They get injured in March, and you both know it was coming.', 'bad', perf(-4), hid('karma', -3))] },
     ],
   },
@@ -417,7 +417,7 @@ export default [
   },
   {
     id: 'biz_staff_trouble', category: 'work', ageRange: [18, 80], requires: [owner], cooldown: 7,
-    text: 'Your longest-serving member of staff has been late every day for a fortnight and short with customers. The others are covering, and starting to resent it.',
+    text: 'Your longest-serving member of staff has been late every day for two weeks and short with customers. The others are covering, and starting to resent it.',
     choices: [
       { label: 'Ask them what is going on', outcomes: [any('A parent is ill, and they have been driving across the city before every shift. You change their hours for a few months. The others, once they know, stop minding.', 'good', wk('biz:staff:6'), wk('biz:rep:1'), hid('karma', 3))] },
       { label: 'Give a formal warning', outcomes: [any('The lateness stops. So does the extra they used to give without being asked.', 'neutral', wk('biz:staff:-5'), wk('biz:quality:-2'))] },
@@ -469,7 +469,7 @@ export default [
       { label: 'One of you will look for a job elsewhere', outcomes: [any('{love} says it should be them, and finds something within the year. It costs them some ground; they say it was worth it.', 'neutral', wk('romance:move'), rel('love', -2))] },
       { label: 'Carry on, and keep the two things apart', check: chk(0.35, {}), outcomes: [
         ok('For now, it holds. You both know it cannot go on like this.', wk('stress:8')),
-        bad('A complaint is made about favouritism. It is investigated. You are both moved, and not gently.', perf(-12), wk('romance:move'), rel('love', -8), wk('stress:10')),
+        bad('A complaint is made about favoritism. It is investigated. You are both moved, and not gently.', perf(-12), wk('romance:move'), rel('love', -8), wk('stress:10')),
       ] },
     ]),
 
@@ -510,7 +510,7 @@ export default [
 
   // ---------- A child's curiosity ----------
   queued('kid_asks_work', 'their life',
-    '{kid} has been asked at school what their parents do, and realised they are not sure. "What do you actually do all day?"', [
+    '{kid} has been asked at school what their parents do, and realized they are not sure. "What do you actually do all day?"', [
       { label: 'Take them in with you for a day', outcomes: [any('{kid} is given a lanyard and a swivel chair, and asks everyone you work with more questions than you have in years. On the way home: "I could do that."', 'good',
         rel('kid', 10), wk('inspire:yes'), mem('kid', 'cameToWork', 'You took them to work for a day when they asked what you did.'))] },
       { label: 'Explain it properly, the good and the dull', outcomes: [any('{kid} listens to all of it. "So it is mostly meetings." It is mostly meetings.', 'neutral', rel('kid', 5))] },

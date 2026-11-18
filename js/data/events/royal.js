@@ -28,7 +28,7 @@ export default [
   },
   {
     id: 'honours_letter', category: 'royalty', ageRange: [30, 110], queuedOnly: true, once: true,
-    text: 'A letter arrives marked "In Confidence". The crown wishes to honour you for what you have done for the country, and asks whether you would accept.',
+    text: 'A letter arrives marked "In Confidence". The crown wishes to honor you for what you have done for the country, and asks whether you would accept.',
     choices: [
       { label: 'Accept', outcomes: [any('You kneel on a velvet stool, a sword touches your shoulder, and you rise with a longer name than you came in with.', 'good', honour(), st('mood', 14), hid('fame', 10))] },
       { label: 'Decline, quietly', outcomes: [any('You write back that you did none of it for a title. Nobody ever knows, which is how you wanted it.', 'neutral', hid('karma', 4), st('mood', 2))] },
@@ -139,7 +139,7 @@ export default [
         ok('You tell three people three different stories and wait to see which is printed. Your private secretary clears his desk by lunchtime.', image(2), st('mood', 3), hid('willpower', 3)),
         bad('You accuse the wrong person, who has served the family for forty years. She resigns in tears, and that is printed too.', image(-7), hid('karma', -5), st('mood', -6)),
       ] },
-      { label: 'Apologise to the relative', outcomes: [any('It is an uncomfortable tea. You are forgiven, more or less.', 'neutral', image(1), st('mood', -3), hid('karma', 3))] },
+      { label: 'Apologize to the relative', outcomes: [any('It is an uncomfortable tea. You are forgiven, more or less.', 'neutral', image(1), st('mood', -3), hid('karma', 3))] },
       { label: 'Deny you ever said it', outcomes: [
         { on: 'always', weight: 0.5, tone: 'neutral', text: 'The denial holds. Nobody has a recording.', effects: [hid('karma', -3)] },
         { on: 'always', weight: 0.5, tone: 'bad', text: 'Somebody has a recording.', effects: [image(-12), hid('karma', -4), st('mood', -8)] },
@@ -152,7 +152,7 @@ export default [
     choices: [
       { label: 'Stay in', outcomes: [any('You watch television in a room with forty-one clocks in it.', 'neutral', st('mood', -5), hid('discipline', 2))] },
       { label: 'Go, and behave', check: chk(0.6, { 'hidden.discipline': 0.6 }), outcomes: [
-        ok('Two drinks, a great deal of laughing, home by midnight. Nobody even recognised you in the hat.', st('mood', 9)),
+        ok('Two drinks, a great deal of laughing, home by midnight. Nobody even recognized you in the hat.', st('mood', 9)),
         bad('Two drinks became several. There is a photograph of you leaving, and you do not remember it being taken.', image(-9), st('mood', 2), st('health', -2)),
       ] },
       { label: 'Go, and do not behave', outcomes: [any('It is the best night of your year and the worst front page of your life.', 'bad', image(-16), st('mood', 10), st('health', -4))] },
@@ -162,7 +162,7 @@ export default [
     id: 'royal_childhood_cameras', category: 'royalty', ageRange: [5, 12], once: true, requires: [royal],
     text: 'It is your first day at a new school. There are forty photographers at the gate, and your shoes are too new.',
     choices: [
-      { label: 'Wave, the way you were shown', outcomes: [any('You give the small wave you practised. It is on the front of every newspaper, and your grandmother keeps the cutting.', 'good', image(4), st('mood', 3))] },
+      { label: 'Wave, the way you were shown', outcomes: [any('You give the small wave you practiced. It is on the front of every newspaper, and your grandmother keeps the cutting.', 'good', image(4), st('mood', 3))] },
       { label: 'Stick your tongue out', outcomes: [any('It is on the front of every newspaper. The country finds it delightful. Your parents do not.', 'neutral', image(3), st('mood', 6), hid('discipline', -2))] },
       { label: 'Hide behind your mother', outcomes: [any('You hold on to her coat and look at the ground until it is over.', 'neutral', st('mood', -3))] },
     ],
@@ -219,7 +219,7 @@ export default [
     id: 'title_at_the_door', category: 'royalty', ageRange: [18, 95], cooldown: 12, requires: [need('titled', '==', true), need('isRoyal', '==', false)],
     text: 'A restaurant with no tables free finds one the moment it hears your name with the title in front of it. A family that was waiting is asked to wait longer.',
     choices: [
-      { label: 'Take the table', outcomes: [any('The food is very good. You do not look towards the door.', 'neutral', st('mood', 3), hid('karma', -3))] },
+      { label: 'Take the table', outcomes: [any('The food is very good. You do not look toward the door.', 'neutral', st('mood', 3), hid('karma', -3))] },
       { label: 'Give it to the family', outcomes: [any('You say there has been a mistake, and wait at the bar like everyone else.', 'good', hid('karma', 5), st('mood', 4))] },
     ],
   },
@@ -233,7 +233,7 @@ export default [
         { on: 'always', weight: 0.8, tone: 'good', text: 'You wait three hours for a car that passes in six seconds. Somebody inside it waves, perhaps at you.', effects: [st('mood', 4)] },
         { on: 'always', weight: 0.2, tone: 'good', text: 'The car stops. A hand is held out, and it is your hand that is shaken. You tell the story for years.', effects: [st('mood', 10), hid('fame', 1)] },
       ] },
-      { label: 'Stay at home', outcomes: [any('You watch it on the local news and recognise half the crowd.', 'neutral')] },
+      { label: 'Stay at home', outcomes: [any('You watch it on the local news and recognize half the crowd.', 'neutral')] },
       { label: 'Hold up a sign asking what they cost', outcomes: [any('A policeman asks you, quite politely, to stand somewhere else.', 'neutral', hid('willpower', 2), st('mood', 1))] },
     ],
   },
@@ -241,7 +241,7 @@ export default [
     id: 'royal_wedding_on_tv', category: 'royalty', ageRange: [8, 100], cooldown: 20, requires: [need('monarchy', '==', true), need('isRoyal', '==', false)],
     text: 'There is a royal wedding today. The whole country has the day off and every street has a party.',
     choices: [
-      { label: 'Go to the street party', outcomes: [any('Paper plates, bunting, and a neighbour you have never spoken to who turns out to be wonderful company.', 'good', st('mood', 7), st('charm', 1))] },
+      { label: 'Go to the street party', outcomes: [any('Paper plates, bunting, and a neighbor you have never spoken to who turns out to be wonderful company.', 'good', st('mood', 7), st('charm', 1))] },
       { label: 'Watch every minute on television', outcomes: [any('You have opinions about the dress, the hats and the uncle. So does everyone.', 'good', st('mood', 4))] },
       { label: 'Use the day off to do nothing royal at all', outcomes: [any('The roads are empty and the hills are quiet. A fine day.', 'good', st('mood', 5), st('health', 1))] },
     ],

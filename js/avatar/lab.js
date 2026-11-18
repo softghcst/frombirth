@@ -30,7 +30,7 @@ function newFamily() {
     { label: 'Child, 9', ...child('female', 9) }, { label: 'Child, 16', ...child('male', 16) }] };
 }
 
-const FEATURES = [['head', 'Face'], ['skin', 'Skin'], ['eyes', 'Eyes'], ['eyeColor', 'Eye colour'], ['brows', 'Brows'], ['nose', 'Nose'],
+const FEATURES = [['head', 'Face'], ['skin', 'Skin'], ['eyes', 'Eyes'], ['eyeColor', 'Eye color'], ['brows', 'Brows'], ['nose', 'Nose'],
   ['lips', 'Lips'], ['hairColor', 'Natural hair'], ['hairTexture', 'Texture']];
 
 function showFamily(family, note = '') {

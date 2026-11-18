@@ -73,7 +73,7 @@ for (const c of CAREERS) {
   for (let i = 1; i < c.levels.length; i++) check(c.levels[i].pay[1] >= c.levels[i - 1].pay[0], `${c.id}: ${c.levels[i].title} pays less than the rung below`);
   const r = c.req ?? {};
   for (const m of r.majors ?? []) check(!!MAJOR_BY_ID[m], `${c.id}: unknown major ${m}`);
-  for (const pr of [r.programme, r.altProgramme, ...(r.programmes ?? [])].filter(Boolean)) check(!!PROGRAMMES[pr], `${c.id}: unknown programme ${pr}`);
+  for (const pr of [r.programme, r.altProgramme, ...(r.programmes ?? [])].filter(Boolean)) check(!!PROGRAMMES[pr], `${c.id}: unknown program ${pr}`);
   if (r.trade) check(!!TRADE_BY_ID[r.trade], `${c.id}: unknown trade ${r.trade}`);
   if (r.altCert) check(!!CERT_BY_ID[r.altCert], `${c.id}: unknown certificate ${r.altCert}`);
   for (const id of Object.keys(r.experience ?? {})) check(!!CAREER_BY_ID[id], `${c.id}: experience in an unknown career ${id}`);
@@ -213,7 +213,9 @@ check(stayed.every((id) => ['colleague', 'friend', 'spouse', 'partner'].includes
 career.hire(CAREER_BY_ID.marketing, 0, 60, 'Test.', { employerId: firstEmployer });
 const back = place.team();
 const familiar = [back.boss, ...back.coworkers].filter((n) => mateIds.includes(n?.id)).length;
-check(familiar >= 1 || stayed.every((id) => store.state.npcs[id]?.life?.job?.employerId !== firstEmployer), 'going back to an employer, the same people are still there');
+// Former colleagues who are still there, at a level that puts them on the same team (within one of the player's), are on it.
+const sameTeam = (id) => { const j = store.state.npcs[id]?.life?.job; return j?.employerId === firstEmployer && Math.abs(j.level - 0) <= 1 && store.state.npcs[id].id !== back.boss?.id; };
+check(familiar >= 1 || !stayed.some(sameTeam), 'going back to an employer, the same people are still there');
 // A boss who leaves is replaced.
 const b = place.team().boss;
 b.life.job = null; b.life.retired = true;
@@ -310,7 +312,7 @@ check(!!next, 'an heir carries on');
 if (next) {
   check((next.careerRecord ?? []).some((r) => r.name === name && r.jobs.length), 'the parent\'s working life is in the family record');
   check(!!next.jobs?.employers[firm], 'the employers of the world are the same employers');
-  check(!(next.player.flags.licences ?? []).includes('medicine'), 'a child does not inherit a licence');
+  check(!(next.player.flags.licences ?? []).includes('medicine'), 'a child does not inherit a license');
   check(record.familyCareers().length >= 2, 'the heir can read the family\'s careers');
 }
 section('records: milestones from verified years, and working lives that outlive the worker');

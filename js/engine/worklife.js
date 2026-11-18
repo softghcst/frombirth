@@ -391,6 +391,7 @@ export function payLines(p = player()) {
   lines.push(...contractLines(p), ...dealLines(p), ...musicLines(p), ...bookLines(p), ...comebackLines(p)); // performance contracts and brand deals, each year once
   if (c.pensionDrawn && c.pensionPerYear) lines.push({ source: 'pension', label: 'Pension', gross: c.pensionPerYear });
   if (c.benefit?.yearsLeft > 0 && !car) lines.push({ source: 'benefit', label: 'Unemployment benefit', gross: c.benefit.amount });
+  if (p.flags.statePension) lines.push({ source: 'state', label: 'State pension', gross: p.flags.statePension }); // engine/retirement.js
   return lines;
 }
 

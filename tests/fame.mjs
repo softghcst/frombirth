@@ -78,7 +78,7 @@ section('profile: audiences, countries, attention and legacy are separate; old s
 // 3. The world.
 p = life();
 const orgs = ent.orgsOf('uk');
-check(['studio', 'network', 'theatre', 'community', 'agency', 'outlet'].every((k) => orgs.some((o) => o.kind === k)), 'a country has studios, networks, theatres, community companies, agencies and press');
+check(['studio', 'network', 'theatre', 'community', 'agency', 'outlet'].every((k) => orgs.some((o) => o.kind === k)), 'a country has studios, networks, theaters, community companies, agencies and press');
 check(ent.orgsOf('uk').length === orgs.length && ent.orgsOf('uk')[0].id === orgs[0].id, 'and keeps them: they are not remade');
 const pool = ent.pool('uk');
 check(pool.length >= 30 && ent.pool('uk')[0].id === pool[0].id, 'working actors are persistent people');
@@ -86,7 +86,7 @@ ent.slate('uk');
 const made = Object.values(ent.ent().productions).length;
 ent.slate('uk');
 check(Object.values(ent.ent().productions).length === made, 'a year\'s productions are announced once');
-section(`world: ${orgs.length} organisations and ${pool.length} working actors in the United Kingdom, made once`);
+section(`world: ${orgs.length} organizations and ${pool.length} working actors in the United Kingdom, made once`);
 
 // 4. The vertical slice: train, find a part, audition, sign, work, be paid, be released, be credited, be interviewed, reload.
 p = life('uk', 24);
@@ -192,9 +192,9 @@ section(`awards: ${seasons.length} seasons held once each, winners from the nomi
 p = life('uk', 25);
 store.state.year = 1800;
 check(!ent.makeProduction('film', 'studio', 'uk') && !ent.makeProduction('tv', 'network', 'uk'), 'in 1800 there are no films and no television');
-check(!!ent.makeProduction('stage', 'regional', 'uk'), 'but there is theatre');
+check(!!ent.makeProduction('stage', 'regional', 'uk'), 'but there is theater');
 check(!fame.exists('digital', 1990) && fame.exists('digital', 2015), 'and the internet arrives when it arrives');
-section('eras: what can be made depends on the year: theatre always, film and television later, the internet later still');
+section('eras: what can be made depends on the year: theater always, film and television later, the internet later still');
 
 // 9. Press: truth is not what is printed.
 p = life('uk', 30);

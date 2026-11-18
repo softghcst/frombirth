@@ -1,3 +1,4 @@
+import { systemFor } from './justice.js';
 // The legal rules the game asks about, and where they differ.
 //
 // GAMEPLAY CONFIGURATION, COMPILED BY HAND AND UNVERIFIED. These are the
@@ -32,6 +33,15 @@ export const RULES = {
     words: { equal: 'Protected in law', limited: 'Limited protection', hostile: 'Against the law, or close to it' } },
   deathPenalty: { name: 'Death penalty', kind: 'flag', default: false, from: 'deathPenalty', words: ['Not used', 'In use'] },
   conscription: { name: 'Military service', kind: 'flag', default: false, from: 'conscription', words: ['Voluntary', 'Compulsory'] },
+  // Justice. Where a place has no value of its own, these follow the procedure it uses (data/justice.js): `derive`.
+  juryTrials: { name: 'Jury trials', kind: 'flag', default: false, derive: (id) => systemFor(id).factFinder === 'jury', words: ['Judges decide', 'Juries for serious charges'] },
+  cashBail: { name: 'Money bail', kind: 'flag', default: false, derive: (id) => systemFor(id).bail === 'money', words: ['Release on conditions', 'Release can depend on money'] },
+  recordSealing: { name: 'Sealing old records', kind: 'flag', default: true, derive: (id) => systemFor(id).sealAfter !== null, words: ['Records stay for good', 'Old records can be sealed'] },
+  sentencing: { name: 'Sentencing', kind: 'level', default: 'standard', levels: ['lenient', 'standard', 'tough'],
+    words: { lenient: 'Shorter sentences', standard: 'Ordinary sentences', tough: 'Longer sentences' } },
+  prisonEducation: { name: 'Education in prisons', kind: 'level', default: 'standard', levels: ['minimal', 'standard', 'extensive'],
+    derive: (id) => { const s = systemFor(id).schooling; return s >= 0.7 ? 'extensive' : s < 0.4 ? 'minimal' : 'standard'; },
+    words: { minimal: 'Little on offer', standard: 'Some courses', extensive: 'Courses up to degree level' } },
 };
 
 /**
@@ -100,7 +110,7 @@ export const PLACE_RULES = {
   tw: { votingAge: 20 },
   ua: { retirementAge: 60 },
   uk: { drivingAge: 17, retirementAge: 66 },
-  us: { drivingAge: 16, drinkingAge: 21, gamblingAge: 21, retirementAge: 67 },
+  us: { drivingAge: 16, drinkingAge: 21, gamblingAge: 21, retirementAge: 67, sentencing: 'tough' },
   ve: { retirementAge: 60 },
   vn: { retirementAge: 61 },
   ws: { votingAge: 21, drinkingAge: 21 },

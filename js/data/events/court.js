@@ -50,7 +50,7 @@ export default [
         bad('Your answer is called thin-skinned. Now it is a feud, with two camps and a great many columns.', image(-7), rivalry(14)),
       ] },
       { label: 'Have the palace cut their allowance', outcomes: [any('It is within your power, and everyone can see whose hand it was.', 'bad', rivalry(24), rel('rival', -20), image(-4), hid('karma', -6))] },
-      { label: 'Say nothing at all', outcomes: [any('The palace has no comment. The story runs for a fortnight on what the silence might mean.', 'neutral', image(-3), rivalry(5))] },
+      { label: 'Say nothing at all', outcomes: [any('The palace has no comment. The story runs for two weeks on what the silence might mean.', 'neutral', image(-3), rivalry(5))] },
     ],
   },
   {
@@ -74,11 +74,11 @@ export default [
     choices: [
       { label: 'Address the country', check: chk(0.3, { 'royal.image': 1.0, 'stats.charm': 0.3 }), outcomes: [
         ok('You speak for six minutes, without notes. By morning the government has declared its confidence, and parliament has removed {rival} from the line of succession.', rivalEnd('removed'), image(10), st('mood', 10)),
-        bad('It does not land. The polls move against you, and {rival} is asked on to every programme to say what they would do differently.', rivalEnd('lost'), image(-18), st('mood', -14)),
+        bad('It does not land. The polls move against you, and {rival} is asked on to every program to say what they would do differently.', rivalEnd('lost'), image(-18), st('mood', -14)),
       ] },
       { label: 'Give {rival} a real place at your side', outcomes: [any('You make them your representative abroad, with a household of their own. It costs you some pride and ends the crisis in an afternoon.', 'good', rivalEnd('peace'), image(3), hid('karma', 5))] },
       { label: 'Ask the government to deal with it', outcomes: [
-        { on: 'always', weight: 0.55, tone: 'neutral', text: 'The prime minister has a quiet word. {rival} takes a long holiday. You owe the government a favour now, and it will be collected.', effects: [rivalEnd('cold'), image(-2)] },
+        { on: 'always', weight: 0.55, tone: 'neutral', text: 'The prime minister has a quiet word. {rival} takes a long holiday. You owe the government a favor now, and it will be collected.', effects: [rivalEnd('cold'), image(-2)] },
         { on: 'always', weight: 0.45, tone: 'bad', text: 'The prime minister says it is a family matter. You look weak for having asked.', effects: [rivalEnd('lost'), image(-10), st('mood', -8)] },
       ] },
     ],
@@ -107,7 +107,7 @@ export default [
     text: 'Twice a week a very upright woman teaches you how to sit, how to stand, how to eat an artichoke, and how to say a great deal without saying anything.',
     choices: [
       { label: 'Learn it all', outcomes: [any('By the summer you can keep a conversation going with an ambassador for ten minutes about nothing whatever. It is a real skill, and you will use it all your life.', 'good', st('charm', 4), hid('discipline', 5), st('mood', -2))] },
-      { label: 'Learn it, and practise the opposite on your cousins', outcomes: [any('You can do the curtsey and the impression of the woman who teaches it. Both are much admired.', 'good', st('charm', 3), st('mood', 5))] },
+      { label: 'Learn it, and practice the opposite on your cousins', outcomes: [any('You can do the curtsey and the impression of the woman who teaches it. Both are much admired.', 'good', st('charm', 3), st('mood', 5))] },
       { label: 'Put a frog in her handbag', outcomes: [any('She does not scream. She removes the frog, sets it on the lawn, and adds an hour to Thursdays.', 'neutral', st('mood', 4), hid('discipline', -3), hid('willpower', 2))] },
     ],
   },
@@ -116,7 +116,7 @@ export default [
     text: 'Your first public engagement: opening a children\'s ward. There is a ribbon, a pair of scissors too big for your hands, and a row of cameras.',
     choices: [
       { label: 'Do exactly as you were told', outcomes: [any('You cut the ribbon, say your one line, and shake eleven hands. The matron says you are a credit to your family.', 'good', image(4), hid('discipline', 3))] },
-      { label: 'Stop and talk to a boy with his leg in plaster', outcomes: [any('You sit on his bed for twenty minutes comparing scars, and the whole programme runs late. The photograph of the two of you is the one everybody keeps.', 'good', image(9), hid('karma', 4), st('mood', 5))] },
+      { label: 'Stop and talk to a boy with his leg in plaster', outcomes: [any('You sit on his bed for twenty minutes comparing scars, and the whole program runs late. The photograph of the two of you is the one everybody keeps.', 'good', image(9), hid('karma', 4), st('mood', 5))] },
       { label: 'Freeze', outcomes: [any('The scissors will not cut and your line will not come. A nurse puts a hand on your shoulder, and the two of you do it together.', 'neutral', image(1), st('mood', -5))] },
     ],
   },
@@ -162,7 +162,7 @@ export default [
     text: 'A friend from school comes to tea. There is a policeman in the corridor, a footman behind each chair, and your friend, who is never quiet, has not said a word in twenty minutes.',
     choices: [
       { label: 'Take them to the kitchens instead', outcomes: [any('The cook gives you both bread and dripping at the scrubbed table, and your friend comes back to life. You are there until dark.', 'good', st('mood', 8), st('charm', 2))] },
-      { label: 'Show them the armoury', outcomes: [any('Four hundred years of swords will loosen anybody\'s tongue. You are both told off, and it is worth it.', 'good', st('mood', 6), hid('discipline', -2))] },
+      { label: 'Show them the armory', outcomes: [any('Four hundred years of swords will loosen anybody\'s tongue. You are both told off, and it is worth it.', 'good', st('mood', 6), hid('discipline', -2))] },
       { label: 'Carry on with tea', outcomes: [any('Your friend goes home after an hour, very polite. At school on Monday it is not quite the same.', 'bad', st('mood', -6))] },
     ],
   },

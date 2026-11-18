@@ -7,6 +7,9 @@ import { COUNTRIES } from '../data/countries.js';
 import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js';
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
+import { book } from './ledger.js';
+import { settleNpc } from './npcMoney.js';
+import { animalDied } from './animals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -53,23 +56,51 @@ export const removeNpc = (npc) => {
 };
 
 /** A parent's estate goes to the other parent if living, otherwise to the children. */
-function inheritFrom(npc) {
+/**
+ * Someone close has died: what they leave to whom. A parent's or a
+ * grandparent's money goes first to the partner who survives them, and
+ * otherwise is shared between the player and their brothers and sisters, after
+ * estate tax where the person lived. A spouse's money comes to the player,
+ * without estate tax, as between married people almost everywhere. Anyone they
+ * were not on speaking terms with may be left out.
+ * Amounts arrive in everyday money and are written down as an inheritance (engine/ledger.js).
+ */
+export function inheritFrom(npc) {
   const p = player();
   const c = country();
-  if (npc.role !== 'parent' || !npc.savings) return;
-  const other = npcsByRole('parent').find((n) => n.id !== npc.id);
-  if (other) { other.savings = (other.savings ?? 0) + npc.savings; return; }
+  // Everything they leave, once their own debts and card are paid (engine/npcMoney.js); emptied, so it passes once.
+  if (npc.role !== 'spouse' && npc.role !== 'parent' && npc.role !== 'grandparent') return;
+  const savings = settleNpc(npc);
+  if (!savings) return;
+  const record = (amount, text) => {
+    p.finance.cash += amount;
+    log(text, 'system', 'neutral');
+    p.milestones.push({ age: p.age, text: `Inherited from ${npc.firstName}.`, kind: 'money' });
+    book({ cat: 'inheritance', src: 'year', desc: `Inherited from ${npc.firstName} ${npc.lastName}` });
+  };
+  if (npc.role === 'spouse') {
+    return record(savings, `${npc.firstName}'s savings, ${fmtMoney(savings, c)}, came to you.`);
+  }
+  if (npc.role !== 'parent' && npc.role !== 'grandparent') return;
+  const partner = npcsByRole(npc.role).find((n) => n.id !== npc.id && (npc.role === 'parent' || n.flags.side === npc.flags.side));
+  if (partner) { partner.savings = (partner.savings ?? 0) + savings; npc.savings = 0; return; }
+  // A grandparent's money goes to their own child first, if that child is living.
+  if (npc.role === 'grandparent') {
+    const child = npcsByRole(npc.flags.side === 'maternal' ? 'mother' : npc.flags.side === 'paternal' ? 'father' : 'parent')[0];
+    if (child) { child.savings = (child.savings ?? 0) + savings; npc.savings = 0; log(`${npc.firstName} left what they had to your ${roleLabel(child).toLowerCase()}.`); return; }
+  }
   if (npc.meters.relationship < 15) {
     log(`${npc.firstName} left you out of the will.`, 'system', 'bad');
     return;
   }
   const heirs = npcsByRole('sibling').length + 1;
-  const gross = Math.round(npc.savings / heirs);
+  const gross = Math.round(savings / heirs);
   // An estate is taxed where the person who died lived.
   const where = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad] : c;
   const tax = Math.round(gross * where.estateTax);
-  p.finance.cash += gross - tax;
-  log(`You inherited ${fmtMoney(gross - tax, c)} from ${npc.firstName}'s estate${tax ? ` after ${fmtMoney(tax, c)} in estate tax${where !== c ? ` in ${theCountry(where.name)}` : ''}` : ''}${heirs > 1 ? `, split ${heirs} ways` : ''}.`, 'system', 'good');
+  npc.savings = 0;
+  for (const sib of npcsByRole('sibling')) { if (sib.life) sib.life.savings += gross - tax; else sib.savings = (sib.savings ?? 0) + gross - tax; }
+  record(gross - tax, `You inherited ${fmtMoney(gross - tax, c)} from ${npc.firstName}'s estate${tax ? ` after ${fmtMoney(tax, c)} in estate tax${where !== c ? ` in ${theCountry(where.name)}` : ''}` : ''}${heirs > 1 ? `, a ${heirs === 2 ? 'half' : `1/${heirs}`} share with your ${heirs === 2 ? 'sibling' : 'siblings'}` : ''}.`);
 }
 
 export function tickRelationships() {
@@ -85,8 +116,9 @@ export function tickRelationships() {
       : !spared && rng.chance(mortalityChance(npc.age, npc.meters.health));
     if (dies) {
       npc.alive = false;
-      const who = `${roleLabel(npc).toLowerCase()} ${npc.firstName}`;
-      log(`Your ${who} died at age ${npc.age}.`, 'system', 'bad');
+      // An animal's death is written into the family's record, which tells it in the life story.
+      if (npc.role === 'pet') animalDied(npc);
+      else log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}.`, 'system', 'bad');
       p.stats.mood = clamp(p.stats.mood - Math.round(8 + npc.meters.relationship / 5));
       inheritFrom(npc);
       continue;
@@ -100,7 +132,7 @@ export function tickRelationships() {
     const away = npc.role === 'parent' && npc.gender === 'male' && p.flags.parentsStatus === 'separated';
     const family = npc.role === 'parent' || npc.role === 'sibling';
     const atHome = (p.flags.livesWithParents && !away && family)
-      || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18);
+      || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || p.flags.care?.guardianId === npc.id;
     if (neglected && !atHome) {
       npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad ? 2 : 0));
     }
@@ -114,6 +146,33 @@ export function tickRelationships() {
 // ---------- Everyday interactions ----------
 
 const GIVERS = ['parent', 'grandparent', 'sibling', 'spouse', 'partner', 'friend', 'child', 'grandchild'];
+
+/** Time spent with an animal: what the button says, and what happened. */
+const PET_TIME = {
+  dog: ['Play together', 'You spent the afternoon with {name}. Tail-level approval.'],
+  cat: ['Play together', 'You ran a piece of string across the floor until {name} lay flat, furious and happy.'],
+  ferret: ['Play together', '{name} stole your sock, hid it, and came back for the other one.'],
+  rat: ['Play together', '{name} rode round the house on your shoulder, supervising.'],
+  parrot: ['Spend time together', 'You and {name} took a cardboard box to pieces, with great care.'],
+  budgie: ['Spend time together', 'You let {name} out to fly, and were landed on.'],
+  rabbit: ['Sit with them', 'You sat on the floor until {name} decided you were furniture, and then something better.'],
+  guinea_pig: ['Sit with them', '{name} sat in your lap and made the noise that means more parsley.'],
+  hamster: ['Sit with them', 'You built {name} a cardboard maze. It was solved, then eaten.'],
+  fish: ['Watch the tank', 'You sat and watched {name} for a while. It is more calming than it has any right to be.'],
+  horse: ['Groom and spend time', 'You spent an hour grooming {name}, who leaned into the brush and sighed.'],
+  pony: ['Groom and spend time', 'You spent an hour grooming {name}, who searched every pocket you own.'],
+  donkey: ['Groom and spend time', 'You scratched {name} behind the ears until your arm ached.'],
+  chicken: ['Sit out with them', '{name} followed you round the garden, commenting.'],
+  duck: ['Sit out with them', 'You refilled the pool. {name} approved, loudly.'],
+  goat: ['Spend time together', '{name} stood on something to be level with you, and ate your sleeve.'],
+  sheep: ['Spend time together', '{name} let you scratch the one place a sheep cannot reach.'],
+  mouse: ['Sit with them', '{name} ran up your sleeve and out of your collar, twice.'],
+  leopard_gecko: ['Spend a quiet hour', '{name} sat on your hand, warmed up, and licked your thumb thoughtfully.'],
+  bearded_dragon: ['Spend a quiet hour', '{name} lay along your arm under the lamp like a small, judgemental pharaoh.'],
+  corn_snake: ['Spend a quiet hour', '{name} explored the length of both your arms, very slowly.'],
+  tortoise: ['Sit out with them', 'You and {name} spent the afternoon in the garden. {name} covered almost a meter.'],
+  other: ['Spend time together', 'You spent time with {name}.'],
+};
 
 /** Gift tiers, in base units. */
 export const GIFTS = [
@@ -129,8 +188,14 @@ export const GIFTS = [
 export function basicActions(npc) {
   const p = player();
   const a = [];
-  if (p.age >= 3) a.push({ id: 'spendTime', label: npc.role === 'pet' ? 'Play together' : 'Spend time' });
-  if (npc.role === 'pet') { if (p.age >= 4) a.push({ id: 'treat', label: 'Give a treat' }); return a; }
+  if (npc.role === 'pet') {
+    // What suits the animal. Nobody plays fetch with a fish.
+    const how = PET_TIME[npc.species] ?? PET_TIME.other;
+    if (p.age >= 3) a.push({ id: 'spendTime', label: how[0] });
+    if (p.age >= 4 && npc.species !== 'fish') a.push({ id: 'treat', label: 'Give a treat' });
+    return a;
+  }
+  if (p.age >= 3) a.push({ id: 'spendTime', label: 'Spend time' });
   if (p.age >= 4 && npc.age >= 2) a.push({ id: 'talk', label: 'Have a conversation' });
   if (p.age >= 5 && npc.age >= 3) a.push({ id: 'compliment', label: 'Compliment' });
   if (p.age >= 6) a.push({ id: 'gift', label: 'Give a gift' });
@@ -186,7 +251,7 @@ export function interact(npcId, action, option) {
     case 'spendTime': {
       bump(npc, rng.int(3, 9));
       p.stats.mood = clamp(p.stats.mood + rng.int(1, 4));
-      text = npc.role === 'pet' ? `You spent the afternoon with ${name}. Tail-level approval.` : `You spent time with ${name}.`;
+      text = npc.role === 'pet' ? (PET_TIME[npc.species] ?? PET_TIME.other)[1].replace('{name}', name) : `You spent time with ${name}.`;
       break;
     }
     case 'treat':

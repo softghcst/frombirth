@@ -8,7 +8,7 @@
 export const NAME_PATTERNS = {
   corporate: ['{S} & {S2}', '{C} Holdings', '{W} Group', '{S} Partners', '{W} Capital', '{C} Mutual'],
   tech: ['{W} Technologies', '{W} Systems', '{W}soft', '{W} Labs', '{S} Engineering', '{W} Digital'],
-  health: ['{C} General Hospital', '{S} Medical Centre', '{C} Community Clinic', 'St {S2}\'s Hospital', '{W} Health'],
+  health: ['{C} General Hospital', '{S} Medical Center', '{C} Community Clinic', 'St {S2}\'s Hospital', '{W} Health'],
   law: ['{S}, {S2} & Co.', '{S} Legal', '{C} Courts Service', '{C} Public Defender\'s Office', '{S} Law Chambers'],
   education: ['{C} Academy', '{S} School', '{C} College', '{W} Learning', 'University of {C}'],
   hospitality: ['The {W} Kitchen', '{S}\'s', 'Hotel {C}', 'The {W} Room', '{W} Café', '{C} Grand Hotel'],
@@ -18,17 +18,17 @@ export const NAME_PATTERNS = {
   transport: ['{C} Transit', '{W} Logistics', '{W} Airways', '{C} Freight', '{S} Haulage'],
   safety: ['{C} Fire Service', '{C} Police', '{C} Ambulance Service', '{W} Security'],
   media: ['The {C} {W}', '{W} Media', '{S} Publishing', '{C} Broadcasting', '{W} Studio'],
-  arts: ['{W} Pictures', '{C} Theatre Company', '{W} Records', '{S} Agency', '{C} Philharmonic', '{W} Studios'],
+  arts: ['{W} Pictures', '{C} Theater Company', '{W} Records', '{S} Agency', '{C} Philharmonic', '{W} Studios'],
   beauty: ['{W} Salon', '{S} Hair & Beauty', '{W} Studio'],
   government: ['{C} City Council', 'Department of {W}', '{C} Revenue Office', 'Ministry of {W}', '{C} Post Office'],
   land: ['{S} Farm', '{C} Wildlife Trust', '{W} Fisheries', '{C} Zoo', '{S} Ranch', '{C} Parks'],
-  sport: ['{W} Fitness', '{C} Leisure Centre', '{C} Athletic Club', '{W} Gym'],
+  sport: ['{W} Fitness', '{C} Leisure Center', '{C} Athletic Club', '{W} Gym'],
   novelty: ['{W} Water Park', '{C} Funland', '{S} Funeral Home', '{W} Services'],
   military: ['{C} Garrison'],
 };
 
 export const WORDS = {
-  corporate: ['Meridian', 'Harbour', 'Summit', 'Keystone', 'Northgate', 'Lantern', 'Granite'],
+  corporate: ['Meridian', 'Harbor', 'Summit', 'Keystone', 'Northgate', 'Lantern', 'Granite'],
   tech: ['Northstar', 'Quanta', 'Brightline', 'Kestrel', 'Lumen', 'Vector', 'Cobalt', 'Ember'],
   health: ['Willow', 'Hearth', 'Lifespring', 'Meadow'],
   education: ['Beacon', 'Oakfield', 'Riverside', 'Bright Futures'],

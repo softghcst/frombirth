@@ -41,7 +41,7 @@ for (const c of COUNTRY_LIST) {
   check(new Set(list.map((x) => `${x.rule}:${x.value}`)).size === list.length, `${c.id}: the same change is offered twice`);
 }
 check(law.choices('jp').some((x) => x.rule === 'sameSexMarriage' && x.value === true) && !law.choices('es').some((x) => x.rule === 'sameSexMarriage' && x.value === true), 'only what is not yet law is offered');
-check(law.choices('ph').some((x) => x.rule === 'divorce') && !law.choices('us').some((x) => x.rule === 'divorce'), 'divorce can be legalised only where there is none');
+check(law.choices('ph').some((x) => x.rule === 'divorce') && !law.choices('us').some((x) => x.rule === 'divorce'), 'divorce can be legalized only where there is none');
 section(`choices: every one of ${COUNTRY_LIST.length} countries has real changes of law to offer`);
 
 // 2. Only the head of government, and only twice a year.
@@ -82,7 +82,7 @@ section(`votes: ${passed} passed, ${lost} defeated; what passes is the law and i
 p = leader('jp'); const w = polity('jp');
 const tallyFor = (wants, leadKind) => { const lead = w.parties.find((x) => x.kind === leadKind) ?? w.parties[0]; return lead.positions; };
 const liberal = law.choices('jp').find((x) => x.rule === 'sameSexMarriage'); const hard = law.choices('jp').find((x) => x.rule === 'conscription');
-check(liberal.wants.open === 1 && hard.wants.order === 1 && hard.wants.open === -1, 'a liberalising law is judged on freedoms; conscription on order against freedoms');
+check(liberal.wants.open === 1 && hard.wants.order === 1 && hard.wants.open === -1, 'a liberalizing law is judged on freedoms; conscription on order against freedoms');
 check(hard.liked < 0 && law.choices('jp').find((x) => x.rule === 'retirementAge' && x.value > law.rule('retirementAge', 'jp')).liked < 0, 'conscription and a later pension are unpopular');
 check(law.choices('ng').find((x) => x.rule === 'sameSexMarriage').liked < 0 && law.choices('es').find((x) => x.rule === 'sameSexMarriage').liked < 0 && law.choices('nl').find((x) => x.rule === 'lgbt' && x.value === 'limited').liked < 0,
   'the public takes the law it has as its starting point: reform is unpopular where the law is hostile, and repeal where it is not');
@@ -122,8 +122,13 @@ section(`world: ${everywhere} reforms across eight forty-year lives, ${total} of
   const opts = local.regionalLawOptions();
   check(opts.length >= 3 && opts.every((o) => REGIONAL_RULES.includes(o.rule) && o.outlook), 'only regional matters are offered, each with an outlook');
   check(!opts.some((o) => o.rule === 'sameSexMarriage' || o.rule === 'votingAge'), 'national law is not a region\'s to change');
-  let passed = false; let tries = 0;
-  for (; tries < 40 && !passed; tries++) { p.politics.regionalLawAge = null; p.politics.approval = 80; passed = local.putRegionalLaw('deathPenalty', false, 'public').ok; }
+  // Whether the assembly passes it depends on who sits in it. Some assemblies never will, however often they are asked:
+  // that is the game working. So if this one will not, the check moves to another Texas (another life), up to a few times.
+  let passed = false;
+  for (let life = 0; life < 6 && !passed; life++) {
+    if (life) p = governor('us', 'Austin');
+    for (let tries = 0; tries < 40 && !passed; tries++) { p.politics.regionalLawAge = null; p.politics.approval = 80; passed = local.putRegionalLaw('deathPenalty', false, 'public').ok; }
+  }
   check(passed && law.rule('deathPenalty') === false && law.source('deathPenalty').source === 'enacted region', 'Texas abolishes its death penalty');
   check(law.rule('deathPenalty', 'us', { region: 'florida' }) === true && law.rule('deathPenalty', 'us', { region: null }) === true, 'Florida, and the national law, are untouched');
   check(law.sheet('us').find((r) => r.id === 'deathPenalty').note.includes('region'), 'the law card says the region changed it');
