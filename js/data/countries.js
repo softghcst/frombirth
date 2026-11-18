@@ -151,7 +151,7 @@ const LIST = [
     ['Athens', 'Thessaloniki', 'Patras', 'Heraklion', 'Larissa', 'Rhodes']),
   C('ru', 'Russia', '🇷🇺', 'RUB', '₽', 90, 0.13, 0,
     ['Moscow', 'Saint Petersburg', 'Novosibirsk', 'Kazan', 'Yekaterinburg', 'Sochi']),
-  C('ua', 'Ukraine', '🇺🇦', 'UAH', '₴', 40, 0.19, 0,
+  C('ua', 'Ukraine', '🇺🇦', 'UAH', '₴', 40, 0.18, 0,
     ['Kyiv', 'Lviv', 'Odesa', 'Kharkiv', 'Dnipro', 'Chernivtsi']),
   C('pe', 'Peru', '🇵🇪', 'PEN', 'S/', 3.8, 0.17, 0,
     ['Lima', 'Arequipa', 'Cusco', 'Trujillo', 'Piura', 'Iquitos']),

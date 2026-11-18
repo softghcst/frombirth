@@ -386,7 +386,8 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
 **Income tax** is the country's headline rate run through a schedule: an allowance, then bands. There are four shapes: none
 (the United Arab Emirates and others that charge nothing), one flat rate (Russia, Ukraine, Hungary and others), rising bands
 (the default, and the United States), and steeply rising bands (much of western Europe, Japan, South Korea, Canada,
-Australia). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
+Australia). The top band is each country's real top rate, from "List of countries by tax rates" (`TAX_TOP`; for the
+United States the federal 37%). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
 anything more you earn.
 
 **Health care** has six models:

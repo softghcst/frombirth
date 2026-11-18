@@ -52,6 +52,8 @@ SOURCES = {
     'naturalization': ('Naturalization', 1384638556),
     'eu': ('Member state of the European Union', 1386331027),
     'tasman': ('Trans-Tasman Travel Arrangement', 1386322832),
+    'healthCare': ('Universal health care', 1385246824),
+    'taxTop': ('List of countries by tax rates', 1385796804),
     'schoolLeavingAge': ('School-leaving age', 1380468003),
 }
 
@@ -103,6 +105,11 @@ DECIDED.update({
     ('eg', 'gambling'): 'Casinos are open to foreigners only; for citizens the game treats gambling as banned.',
     ('ws', 'gambling'): 'Casinos are open to foreigners only; for citizens the game treats gambling as banned.',
     ('in', 'gambling'): 'Gambling is illegal under national law except in a few states (Goa, Sikkim) and state lotteries; the game treats it as banned.',
+    ('ph', 'spouseWait'): 'The note lists several reductions; for the husband of a Filipina it is five years, which the game uses.',
+    ('us', 'taxTop'): 'The table gives New York City\'s combined 51.8%; the game uses the federal 37%, since state income tax varies from none to about 13%.',
+    ('bo', 'taxTop'): "The table's 25% is not the personal income tax; Bolivia taxes wages through the RC-IVA at a flat 13%, which the game uses.",
+    ('ee', 'taxTop'): "The table's 23.6% is an effective figure for 2024; Estonia's flat income tax is 22% from 2025, which the game uses.",
+    ('ro', 'taxTop'): "The table's 45% adds social and health contributions; Romania's income tax is a flat 10%, which the game uses.",
     ('my', 'naturalization'): "The table gives 12 years; Malaysia's nationality-law article gives 10 years' residence, which the game uses.",
 })
 
@@ -136,11 +143,15 @@ def game():
       const { PLACES } = await import('./js/data/world.js');
       const law = await import('./js/engine/rules.js');
       const cit = await import('./js/data/citizenship.js');
+      const { HEALTH_MODEL_OF } = await import('./js/data/systems.js');
       const out = {};
       for (const c of COUNTRY_LIST) {
         const row = { name: c.name, iso3: PLACES[c.id].iso3, gov: PLACES[c.id].government };
         for (const r of law.sheet(c.id, { region: null })) row[r.id] = r.value;
+        row.taxTop = (await import('./js/engine/systems.js')).taxBreakdown((await import('./js/engine/systems.js')).typicalWage(c) * 200, c).marginal;
+        row.health = HEALTH_MODEL_OF[c.id] ?? (c.freeHealthcare ? 'public' : 'pocket');
         row.birthright = cit.BIRTHRIGHT.has(c.id); row.single = cit.SINGLE.has(c.id); row.years = cit.RESIDENCE_YEARS[c.id] ?? cit.DEFAULT_YEARS;
+        row.spouseYears = Math.min(row.years, cit.SPOUSE_YEARS_IN?.[c.id] ?? Math.max(cit.SPOUSE_YEARS, Math.ceil(row.years / 2)));
         row.marriageAgeWomen = law.rule('marriageAgeWomen', c.id, { region: null });
         out[c.id] = row;
       }
@@ -466,6 +477,15 @@ def main():
         if not c or len(c) < 4: put(pid, 'naturalization', False, 'not covered by the source', covered=False); continue
         years = first_int(c[1])
         put(pid, 'naturalization', (years is not None and years == g['years']) or (g['years'] >= 90 and years is None), f'source: {c[1][:60]}')
+        # A spouse's shorter wait, where the note states one.
+        sm = re.search(r'(?:spouse|married|marriage)[^.]{0,80}?\b(\d+|one|two|three|four|five)\s+years?|\b(\d+|one|two|three|four|five)\s+years?[^.]{0,60}(?:spouse|married|marriage)|waived for spouses', c[2], re.I)
+        if sm:
+            word = (sm.group(1) or sm.group(2) or '0').lower()
+            n = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5}.get(word, None)
+            n = int(word) if n is None else n
+            put(pid, 'spouseWait', g['spouseYears'] == n, f'source: {c[2][:90]}')
+        else:
+            put(pid, 'spouseWait', False, 'the source gives no separate wait for spouses', covered=False)
         multi = True if '{{yes}}' in c[3] else False if '{{no}}' in c[3] else None
         if multi is not None and results[pid].get('single', {}).get('status') != 'ok':
             put(pid, 'single', g['single'] == (not multi), f'source: "Naturalization", multiple citizenship {c[3][:20]}')
@@ -482,6 +502,25 @@ def main():
         v = first_int(school.get(pid)) if pid in school else None
         if v is None: put(pid, 'schoolLeavingAge', False, 'not covered by the source', covered=False)
         else: put(pid, 'schoolLeavingAge', g['schoolLeavingAge'] == v, f'source: {school[pid][:40]}')
+
+    # Health care: a country the source lists as having universal care must not leave the patient with the whole bill.
+    # The list gives start dates for only some countries, so a country missing from it is not evidence of anything.
+    w = page('healthCare'); t = table_at(w, w.find('wikitable')); universal = {}
+    for r in rows(t):
+        m = re.search(r'\{\{flagg\|[^}]*?\|([^|{}]+)\}\}', r)
+        pid = place_of('{{flag|' + m.group(1) + '}}') if m else None
+        if pid: universal[pid] = (re.findall(r'\n\|\s*(\d{4})', r) or ['?'])[0]
+    for pid, g in G.items():
+        if pid in universal: put(pid, 'healthCare', g['health'] not in ('pocket', 'private'), f'source: universal health care since {universal[pid]}; the game charges the whole bill')
+        else: put(pid, 'healthCare', False, 'not in the source\'s list of start dates', covered=False)
+
+    # The top rate of income tax, from the "Highest" column.
+    taxes = first_rows('taxTop')
+    for pid, g in G.items():
+        c = taxes.get(pid)
+        m = re.search(r'(\d+(?:\.\d+)?)\s*%', c[3]) if c and len(c) > 3 else None
+        if not m: put(pid, 'taxTop', False, 'not covered by the source', covered=False); continue
+        put(pid, 'taxTop', abs(g['taxTop'] - min(0.65, float(m.group(1)) / 100)) < 0.0051, f'source: {c[3][:60]}')
 
     # The free-movement lists: the European area is the EU members in the game, plus Norway (EEA) and Switzerland (agreements).
     eu = set()
