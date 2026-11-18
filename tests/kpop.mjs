@@ -379,6 +379,101 @@ section(`the vertical slice: ${g ? `${g.name}: debut, stages, an ending fairy, a
 }
 section('the rest: moving to Seoul, a subunit, Japan, acting and hosting, a lightstick and fan club, dating and rumors, health records, the story');
 
+// 8. Fan products, variety as a career of its own, and a child following a parent into the same agency.
+{
+  rng.seed(88);
+  p = life('kr', 19);
+  kp.world();
+  const a = kp.agencies().find((x) => x.countryId === 'kr' && x.founded <= store.state.year);
+  const app = { id: 'app_f', auditionId: null, agencyId: a.id, category: 'multi', year: store.state.year, prepared: true, stage: 'offered', scores: {}, offer: { kind: 'trainee', agencyId: a.id, review: 2, costs: 'covered', allowance: 0, housing: 'dorm', rules: [], exit: 'notice' } };
+  k().apps[app.id] = app; kp.idolOf().apps.push(app.id); kp.idolOf().guardianOk = true;
+  kp.acceptOffer(app.id);
+  const lineup = ['player', ...a.trainees.slice(0, 4)];
+  for (const id of lineup.slice(1)) store.state.npcs[id].gender = 'female';
+  k().projects.pr_f = { id: 'pr_f', agencyId: a.id, year: store.state.year, gender: 'female', size: lineup.length, concept: a.concepts[0], lineup, status: 'announced' };
+  kp.idolOf().debutOffer = 'pr_f';
+  check(kp.acceptDebut().ok && kp.debut().ok, 'debuted (fan products)');
+  const grp = kp.myGroup();
+  // Fan products: their own years, fan counts, once a year (a character line once ever), money in the accounts.
+  grp.fandom.size = 5000; grp.fandom.core = 800;
+  check(/fans/.test(kp.whyNotProduct('photobook')), 'too few fans for a photobook');
+  grp.fandom.size = 120000; grp.fandom.core = 20000; grp.fandom.regions.jp = 30000;
+  check(/tour/.test(kp.whyNotProduct('concert_film')), 'a concert film needs a tour to film');
+  const pb = kp.launchProduct('photobook');
+  check(pb.ok && grp.merch.products.at(-1).units > 0 && !kp.launchProduct('photobook').ok, 'a photobook, once a year');
+  const pop = kp.launchProduct('popup', { where: 'jp' });
+  check(pop.ok && grp.merch.products.at(-1).where === 'jp', 'a pop-up store where the fans are');
+  check(kp.popupPlaces(grp)[0] === 'kr' && kp.popupPlaces(grp).includes('jp'), 'pop-ups at home, or where the fans are');
+  const ch = kp.launchProduct('characters', { character: 'quokka' });
+  check(ch.ok && grp.merch.products.at(-1).character === 'quokka', 'the player draws their own character');
+  check(kp.launchProduct('seasons_greetings').ok && kp.launchProduct('cafe').ok, "season's greetings and a café collaboration");
+  const sold = grp.merch.products.filter((x) => x.year === store.state.year).reduce((t, x) => t + x.revenue, 0);
+  year();
+  const lived = store.state.year - 1;
+  check(grp.merch.sales[lived]?.products === sold && grp.ledger.years[lived]?.merch >= sold, "the year's products are in the group's accounts");
+  check(kp.myCard(grp) && kp.myCard(grp).of === kp.current(grp).length, 'photocards: the most wanted cards, counted each year');
+  check(kp.whyNotProduct('characters') === 'Already made.' && kp.launchProduct('photobook').ok, 'a character line once; a new photobook a new year');
+  year();
+  check(grp.merch.sales[store.state.year - 1].products > 0, 'the character line keeps selling');
+
+  // Variety: offers, a guest spot, a regular seat, ratings, pay once, and a career after the group.
+  p.skills.public_speaking = 85; p.stats.charm = 85; kp.idolOf().pop = 55;
+  check(kp.varietyOpen(p), 'a debuted idol is offered variety');
+  let offers = kp.varietyOffers();
+  check(offers.length > 0, 'producers call');
+  const guest = offers.find((o) => o.role === 'guest');
+  if (guest) check(kp.takeVariety(guest.id).ok && kp.varietyOf().guests.length === 1, 'a guest spot, done at once');
+  let seat = null;
+  for (let t2 = 0; t2 < 12 && !seat; t2++) {
+    const o = kp.varietyOffers().find((x) => x.role !== 'guest');
+    if (o) { const r = kp.takeVariety(o.id); if (r.ok) seat = kp.myShows()[0]; }
+    else kp.varietyOf().offers = null; // a different year's producers
+  }
+  check(!!seat && seat.feeIn > 0, 'a regular seat on a show, paid a year');
+  const rep0 = kp.varietyOf().rep;
+  year();
+  const l2 = store.state.year - 1;
+  check(seat.ratings.some((x) => x.year === l2) || seat.ended, 'the show has a year of ratings');
+  check(seat.ratings.every((x) => x.year !== l2) || kp.varietyOf().paid.includes(`${seat.id}:${l2}`), 'the year on the show was paid with the year\'s pay');
+  p.career.paidYear = null;
+  check(!kp.idolLines(p).some((l) => l.source === `variety:${seat.id}:${l2}`), 'and paid once');
+  check(kp.varietyOf().rep !== rep0 || seat.ended, 'a year on air changes the standing in variety');
+  // The group ends; variety goes on.
+  grp.status = 'disbanded'; grp.disbanded = store.state.year;
+  check(kp.varietyOpen(p), 'variety stays open after the group');
+  check(kp.summary(p).variety && Array.isArray(kp.summary(p).variety.shows), 'the record keeps the variety career');
+
+  // The family route: the heir of an idol is seen privately by that agency, and can still audition anywhere.
+  p.age = 45;
+  const heir = makeNpc({ role: 'child', countryId: 'kr', age: 16, gender: 'female' });
+  store.state.npcs[heir.id] = heir; p.npcIds.push(heir.id);
+  die('natural causes');
+  const next = continueAs(heir.id);
+  check(!!next, 'the heir continues');
+  const q = store.state.player;
+  q.age = 16; q.talents.singing = 80; q.talents.dance = 80; q.stats.charm = 70;
+  const routes = kp.legacyRoutes(q);
+  check(routes.some((o) => o.agencyId === a.id && o.relation === 'parent'), "the parent's agency is the family route");
+  check(kp.auditions().some((au) => !kp.whyNotApply(au, q)), 'and ordinary auditions are open too');
+  const fr = kp.legacyAudition(a.id);
+  const fapp = k().apps[kp.idolOf(q).apps.at(-1)];
+  check(fapp.legacy && fapp.scores.application == null && fapp.scores.callback != null, 'no open call: straight to the callback and assessment');
+  check(/privately/.test(fr.text) && !kp.legacyAudition(a.id).ok, 'once a year');
+  // Not a guarantee: across many tries, some children are turned away.
+  let offered = 0; let turned = 0;
+  for (let t2 = 0; t2 < 30; t2++) {
+    kp.idolOf(q).acts.did[`legacy:${a.id}`] = false; kp.idolOf(q).acts.apps = 0; kp.idolOf(q).traineeId = null;
+    kp.legacyAudition(a.id);
+    const x = k().apps[kp.idolOf(q).apps.at(-1)];
+    if (x.stage === 'offered') offered++; else turned++;
+  }
+  check(offered > 0 && turned > 0, `the family route helps but promises nothing (${offered} offered, ${turned} not)`);
+  const off = kp.idolOf(q).apps.map((id) => k().apps[id]).find((x) => x.stage === 'offered' && x.legacy);
+  kp.idolOf(q).guardianOk = true;
+  check(off && kp.acceptOffer(off.id).ok && kp.idolOf(q).legacy?.relation === 'parent' && kp.trainee(q).agency.id === a.id, 'a trainee at the same agency as the parent');
+}
+section('fan products, variety as a career, and the family route');
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('Debut, and everything after.');

@@ -25,7 +25,7 @@ import { dealLines, markDealsPaid } from './press.js';
 import { musicLines, markMusicPaid, tourWeeks } from './music.js';
 import { bookLines, markBooksPaid, published } from './publishing.js';
 import { comebackLines, markComebacksPaid } from './celebs.js';
-import { idolLines, markIdolPaid, trainee as idolTrainee, myGroup as idolGroup } from './kpop.js';
+import { idolLines, markIdolPaid, trainee as idolTrainee, myGroup as idolGroup, myShows as varietyShows } from './kpop.js';
 import { careHours } from './couple.js';
 import { clamp, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
@@ -118,6 +118,7 @@ export function weeklyLoad(p = player(), age = p.age) {
   if (stage) rows.push({ label: 'Productions you are in', hours: stage, kind: 'freelance' });
   // Idol training, or a group's schedule (engine/kpop.js).
   if (store.state.kpop && p.idol && !p.idol.hiatus && (age === p.age)) { if (idolTrainee(p)) rows.push({ label: 'Idol training', hours: 40, kind: 'freelance' }); else if (idolGroup(p)) rows.push({ label: 'Group schedule', hours: 45, kind: 'freelance' }); }
+  if (store.state.kpop && p.idol?.variety && age === p.age) for (const sh of varietyShows(p)) rows.push({ label: sh.name, hours: sh.role === 'host' ? 14 : 10, kind: 'freelance' });
   const touring = tourWeeks(store.state.year - (p.age - age), p); // engine/music.js
   if (touring) rows.push({ label: 'On tour', hours: Math.round(touring * 50 / 48), kind: 'freelance' });
   const care = careHours(p);

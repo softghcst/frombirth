@@ -62,7 +62,7 @@ node tests/careers.mjs         # the occupation catalog, employers and openings,
 node tests/fame.mjs            # the fame profile, the entertainment world, acting from audition to credit, press, awards once, eras, child performers (see docs/FAME.md)
 node tests/fame2.mjs           # modeling, books, celebrity brands, famous lives, comebacks, the family record
 node tests/fame3.mjs           # lives started in the past, casting choices, every kind of agent, literary agents and rights, brand launches, music videos and songwriting
-node tests/kpop.mjs            # the K-pop idol life: auditions, trainees, survival programs, positions (one or two each), music shows, ending fairies, contracts, hiatus, generations (see docs/KPOP.md)
+node tests/kpop.mjs            # the K-pop idol life: auditions, trainees, survival programs, positions (one or two each), music shows, ending fairies, contracts, hiatus, fan products, variety careers, the family route, generations (see docs/KPOP.md)
 node tests/history.mjs         # lives in the past: prices at the level of their year, the Depression, wars and call-ups, conscription, the news
 node tests/music.mjs           # bands, releases, charts, royalties paid once, record deals, tours, music awards, heirs
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)

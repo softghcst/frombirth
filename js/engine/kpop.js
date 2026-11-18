@@ -16,7 +16,7 @@ import { clamp, fmtMoney, localWage, wageIn } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { KPOP_ERAS, AGENCIES, AGENCY_BY_ID, FOCUSES, CONCEPTS, POSITIONS, MAX_POSITIONS, MUSIC_SHOWS, PROMO_WEEKS, SURVIVAL_FORMATS, MISSIONS, APPROACHES,
-  FAIRY_STYLES, RELEASE_KINDS, KPOP_AWARDS, GROUP_WORDS, SONG_WORDS, FANDOM_WORDS } from '../data/kpop.js';
+  FAIRY_STYLES, RELEASE_KINDS, KPOP_AWARDS, GROUP_WORDS, SONG_WORDS, FANDOM_WORDS, FAN_PRODUCTS, CHARACTER_KINDS, VARIETY_FORMATS, VARIETY_ROLES, VARIETY_WORDS, VARIETY_NOUNS, VARIETY_AWARDS } from '../data/kpop.js';
 import { makeNpc } from './npcFactory.js';
 import { levelOf } from './skills.js';
 import { gain, regard, fameOf } from './fame.js';
@@ -225,7 +225,7 @@ function auditionScore(app, stage) {
   const potential = clamp((22 - p.age) * 2, -6, 10); // agencies look for room to grow
   const coachable = ((p.hidden?.discipline ?? 50) - 50) / 10;
   const presence = stage === 'application' ? 0 : (s.stage + s.camera) / 2 * 0.2;
-  const score = by * 0.75 + presence + potential + coachable + (app.prepared ? 4 : 0) + rng.around(0, 7);
+  const score = by * 0.75 + presence + potential + coachable + (app.prepared ? 4 : 0) + (app.legacy ? 3 : 0) + rng.around(0, 7);
   // What the company needs this year and how many are applying set the bar.
   const bar = { application: 40, callback: 50, assessment: 58 }[stage] + (a.reputation - 60) * 0.3 + (a.global ? 3 : 0) + rng.around(0, 4);
   return { score: Math.round(score), bar: Math.round(bar) };
@@ -306,6 +306,13 @@ export function acceptOffer(appId) {
   i.residence = a.countryId !== p.countryId ? { countryId: a.countryId, city: a.city, visa: rightToLive(a.countryId, p) ? 'none needed' : 'trainee visa, sponsored by the agency', since: year() } : null;
   if (a.dorm && (c.housing === 'dorm')) a.dorm.residents.push('player');
   for (const id of a.trainees.slice(0, 4)) { const n = npc(id); if (n && !p.npcIds.includes(n.id)) { p.npcIds.push(n.id); n.role = 'colleague'; n.flags.title = `Trainee at ${a.name}`; n.lastInteractionAge = p.age; } }
+  if (app.legacy) {
+    // Everyone will know whose child this is: some fans are curious, some say it was handed over.
+    i.legacy = { agencyId: a.id, ...app.legacy, since: year() };
+    i.pop = clamp((i.pop ?? 0) + 4);
+    regard({ credibility: -1, why: 'following family into the same agency' }, p);
+    note(`Followed your ${app.legacy.relation}, ${app.legacy.name}, into ${a.name}.`);
+  }
   milestone(`Became a trainee at ${a.name}.`, 'career');
   note(`Signed a trainee agreement with ${a.name}${i.residence ? `, moving to ${a.city}` : ''}.`);
   return result(true, `You are a trainee at ${a.name}${i.residence ? `. You move into ${c.housing === 'dorm' ? 'the trainee dorm' : 'a room'} in ${a.city}` : ''}. Nobody has promised you a debut.`);
@@ -1177,6 +1184,13 @@ export function idolLines(p = player()) {
   }
   const mc = idolOf(p).mc;
   if (mc?.year === lived && !mc.paid) out.push({ source: `idolmc:${lived}`, label: `Hosting ${mc.show}`, gross: Math.round(wageIn(mc.fee, COUNTRIES.kr ?? COUNTRIES[p.countryId], COUNTRIES[p.countryId])) });
+  const v = p.idol?.variety;
+  if (v) {
+    const paid = new Set(v.paid ?? []);
+    for (const sh of v.shows) if (sh.due === lived && !paid.has(`${sh.id}:${lived}`)) out.push({ source: `variety:${sh.id}:${lived}`, label: `${sh.name}: ${VARIETY_ROLES[sh.role].name.toLowerCase().replace('dj', 'DJ')}`, gross: sh.feeIn ?? sh.fee });
+    const guests = v.guests.filter((x) => x.year === lived && !x.paid);
+    if (guests.length) out.push({ source: `varietyguest:${lived}`, label: `Guest spots on variety shows (${guests.length})`, gross: Math.round(wageIn(guests.reduce((t, x) => t + x.fee, 0), COUNTRIES.kr ?? COUNTRIES[p.countryId], COUNTRIES[p.countryId])) });
+  }
   for (const cid of idolOf(p).contracts ?? []) {
     const c = k.contracts[cid];
     if (c?.kind === 'trainee' && c.allowance > 0 && c.start <= lived && (c.status === 'active' || (c.ended?.year ?? 0) > lived) && !(c.paid ?? []).includes(lived)) {
@@ -1191,6 +1205,8 @@ export function markIdolPaid(p = player()) {
   if (!k) return;
   for (const gid of idolOf(p).groups ?? []) { const s = k.groups[gid]?.ledger.years[lived]; if (s) s.paid = true; }
   if (idolOf(p).mc?.year === lived) idolOf(p).mc.paid = true;
+  const v = p.idol?.variety;
+  if (v) { v.paid ??= []; for (const sh of v.shows) if (sh.due === lived && !v.paid.includes(`${sh.id}:${lived}`)) v.paid.push(`${sh.id}:${lived}`); for (const x of v.guests) if (x.year === lived) x.paid = true; if (v.paid.length > 60) v.paid = v.paid.slice(-60); }
   for (const cid of idolOf(p).contracts ?? []) { const c = k.contracts[cid]; if (c?.kind === 'trainee') (c.paid ??= []).includes(lived) || c.paid.push(lived); }
 }
 
@@ -1400,16 +1416,18 @@ export function carryKpop(old, next, ancestorId) {
   for (const pr of Object.values(k.projects)) pr.lineup = pr.lineup.map(who);
   for (const a of Object.values(k.agencies)) { if (a.dorm) a.dorm.residents = a.dorm.residents.filter((x) => x !== 'player'); for (const id of [...a.trainees, ...Object.values(a.staff)]) keep.add(id); }
   for (const id of keep) if (id && !next.npcs[id] && old.npcs[id]) next.npcs[id] = old.npcs[id];
-  next.idolAncestors = [...(old.idolAncestors ?? []), ...(old.player.idol ? [{ npcId: ancestorId ?? null, name: `${old.player.firstName} ${old.player.lastName}`, groups: old.player.idol.groups, history: old.player.idol.history }] : [])];
+  next.idolAncestors = [...(old.idolAncestors ?? []), ...(old.player.idol ? [{ npcId: ancestorId ?? null, name: `${old.player.firstName} ${old.player.lastName}`, groups: old.player.idol.groups, history: old.player.idol.history,
+    agencies: [...new Set([...(old.player.idol.groups ?? []).map((gid) => k.groups[gid]?.agencyId), ...(old.player.idol.contracts ?? []).map((cid) => k.contracts[cid]?.agencyId)].filter(Boolean))], variety: old.player.idol.variety ? { rep: old.player.idol.variety.rep, shows: old.player.idol.variety.shows.map((x) => x.name), awards: old.player.idol.variety.awards.length } : null }] : [])];
 }
 
 /** A short record of an idol life, for the family's records. */
 export function summary(p = player(), st = store.state) {
   const i = p.idol;
-  if (!i || (!i.groups?.length && !i.apps?.length)) return null;
+  if (!i || (!i.groups?.length && !i.apps?.length && !i.variety?.shows?.length)) return null;
   const k = st.kpop;
   const gs = (i.groups ?? []).map((id) => k?.groups[id]).filter(Boolean);
-  return { groups: gs.map((g) => g.name), debut: gs[0]?.debut?.year ?? null, wins: gs.reduce((t, g) => t + g.wins.length, 0), fairies: i.fairies.length, solo: i.solo.length, trained: i.trainee ? (i.trainee.ended?.year ?? st.year) - i.trainee.since : 0 };
+  return { groups: gs.map((g) => g.name), debut: gs[0]?.debut?.year ?? null, wins: gs.reduce((t, g) => t + g.wins.length, 0), fairies: i.fairies.length, solo: i.solo.length, trained: i.trainee ? (i.trainee.ended?.year ?? st.year) - i.trainee.since : 0,
+    variety: i.variety ? { shows: i.variety.shows.map((x) => x.name), awards: i.variety.awards.length } : null, legacy: i.legacy ? { relation: i.legacy.relation, name: i.legacy.name } : null };
 }
 
 // ---------- Subunits ----------
@@ -1543,9 +1561,11 @@ function merchYear(g, y) {
   const ls = m.lightstick ? Math.round(g.fandom.core * 0.25 * 45) : 0;
   const fc = m.fanclub ? Math.round((m.fanclub.members = Math.round(g.fandom.core * 0.6)) * 25) : 0;
   const goods = Math.round(g.fandom.size * 0.6);
-  m.sales[y] = { lightsticks: ls, fanclub: fc, goods };
+  const products = productsYear(g, y);
+  photocardYear(g, y);
+  m.sales[y] = { lightsticks: ls, fanclub: fc, goods, products };
   if (m.fanclub && y > m.fanclub.since) m.fanclub.generations = y - m.fanclub.since + 1;
-  return ls + fc + goods;
+  return ls + fc + goods + products;
 }
 
 // ---------- Dating: the contract's rule, the private life, the rumors ----------
@@ -1652,6 +1672,7 @@ function yearExtras(p, lived, lines) {
   const i = idolOf(p);
   for (const g of Object.values(k.groups)) {
     if (g.parentId && g.status === 'active' && g.debut && year() - g.debut.year >= 2 && rng.chance(0.4)) { g.status = 'inactive'; g.history.push({ year: year(), text: `${g.name} wound down; the members went back to the main group.` }); }
+    if (g.debut && g.ledger?.years?.[lived] && !g.npc) g.merch ??= { lightstick: null, fanclub: null, sales: {} };
     if (g.merch && g.ledger?.years?.[lived]) {
       const extra = merchYear(g, lived);
       const s = g.ledger.years[lived];
@@ -1675,6 +1696,7 @@ function yearExtras(p, lived, lines) {
   }
   if (g?.debut) { const r = maybeRumor(p, g); if (r) lines.push(`A story in the press: ${r.text}`); }
   if (i.mc?.year === lived && !i.mc.paid) i.mc.due = true;
+  varietyYear(p, lived, lines);
 }
 
 /** A health break records the condition it is for, and care while on the break clears it. */
@@ -1691,4 +1713,270 @@ function healthReturn() {
   const p = player();
   const h = idolOf(p).hiatus;
   for (const id of h?.conditions ?? []) if (['exhaustion', 'dance_injury'].includes(id)) cureCondition(id);
+}
+
+// ---------- Fan products ----------
+
+/** Why the group cannot launch a fan product this year, or ''. */
+export function whyNotProduct(kind, g = myGroup()) {
+  const d = FAN_PRODUCTS[kind];
+  if (!d) return 'Not a product.';
+  if (!g?.debut) return 'Debut first.';
+  if (year() < d.from) return `Not yet: from ${d.from}.`;
+  if (g.fandom.size < d.fans) return `Needs about ${d.fans.toLocaleString('en-US')} fans.`;
+  const done = (g.merch?.products ?? []).filter((x) => x.kind === kind);
+  if (d.once && done.length) return 'Already made.';
+  if (done.some((x) => x.year === year())) return 'Once a year.';
+  if (d.needsTour && !g.tours.some((t) => t.status === 'done')) return 'Needs a tour to film first.';
+  return '';
+}
+/** Where a pop-up store could open: the agency's city, and the countries with the most fans. */
+export function popupPlaces(g = myGroup()) {
+  if (!g) return [];
+  const home = agency(g.agencyId).countryId;
+  return [home, ...Object.entries(g.fandom.regions).sort((x, y) => y[1] - x[1]).map(([c]) => c).filter((c) => c !== home && COUNTRIES[c])].slice(0, 4);
+}
+/**
+ * Launches a fan product for the year: sales from the core and the wider fandom; a pop-up store sells best where the
+ * fans are; a character line keeps selling every year after. @param o { where, character }
+ */
+export function launchProduct(kind, o = {}) {
+  const g = myGroup();
+  const why = whyNotProduct(kind, g);
+  if (why) return result(false, why, 'neutral');
+  const d = FAN_PRODUCTS[kind];
+  g.merch ??= { lightstick: null, fanclub: null, sales: {} };
+  g.merch.products ??= [];
+  const f = g.fandom;
+  let reach = 1;
+  let where = null;
+  if (d.where) {
+    where = popupPlaces(g).includes(o.where) ? o.where : agency(g.agencyId).countryId;
+    const local = where === agency(g.agencyId).countryId ? Math.max(f.size * 0.4, f.regions[where] ?? 0) : f.regions[where] ?? 0;
+    reach = clamp(local / Math.max(1, f.size) * 2.2, 0.2, 1.3);
+  }
+  const units = Math.round((f.core * d.perCore + f.size * d.perFan) * reach * (0.7 + f.engagement / 200) * rng.around(1, 0.15));
+  const x = { kind, year: year(), name: `${g.name} ${d.name}${where ? `, ${COUNTRIES[where].cities?.[0] ?? COUNTRIES[where].name}` : ''}`, units, revenue: Math.round(units * d.price), where };
+  if (kind === 'characters') x.character = CHARACTER_KINDS.includes(o.character) ? o.character : rng.pick(CHARACTER_KINDS);
+  g.merch.products.push(x);
+  f.engagement = clamp(f.engagement + 1);
+  idolOf().pop = clamp(idolOf().pop + (kind === 'characters' ? 2 : 0.5));
+  g.history.push({ year: year(), text: `${x.name}: ${units.toLocaleString('en-US')} sold.` });
+  if (kind === 'characters') note(`Designed a ${x.character} character for ${g.name}'s character line.`);
+  const what = { photobook: 'copies', concert_film: 'copies', seasons_greetings: 'sets', cafe: 'drinks', popup: 'visitors bought something', characters: 'items in the first year' }[kind];
+  return result(true, `${x.name}: ${units.toLocaleString('en-US')} ${what}${kind === 'characters' ? `. Your character is a ${x.character}` : ''}.`);
+}
+/**
+ * Photocards: every album comes with a random member's card, and fans trade for the ones they want. Each year the most
+ * wanted cards follow each member's own following, with a little chance. Kept per year.
+ */
+function photocardYear(g, y) {
+  if (!g.debut || y < 1999) return null;
+  const ms = current(g, y).map((m) => m.who);
+  if (ms.length < 2) return null;
+  const pop = (w) => (w === 'player' ? idolOf().pop : npc(w)?.flags.idol?.pop ?? 20) + rng.around(0, 6);
+  const order = ms.map((w) => [w, pop(w)]).sort((a, b) => b[1] - a[1]).map(([w]) => w);
+  g.merch ??= { lightstick: null, fanclub: null, sales: {} };
+  (g.merch.cards ??= {})[y] = { order, top: order[0] };
+  if (order[0] === 'player' && !g.merch.cards.topNoted) { g.merch.cards.topNoted = y; note(`Your photocard was the most wanted of ${g.name}'s in ${y}.`); }
+  return g.merch.cards[y];
+}
+/** The player's photocard's place among the group's in the latest year counted. */
+export function myCard(g = myGroup()) {
+  const ys = Object.keys(g?.merch?.cards ?? {}).filter((k) => /^\d+$/.test(k));
+  const y = ys.at(-1);
+  if (!y) return null;
+  const c = g.merch.cards[y];
+  return { year: Number(y), rank: c.order.indexOf('player') + 1, of: c.order.length, top: c.top };
+}
+/** A year's fan products: what was launched that year, and a character line that keeps selling. */
+function productsYear(g, y) {
+  let total = 0;
+  for (const x of g.merch?.products ?? []) {
+    if (x.year === y) total += x.revenue;
+    else if (x.kind === 'characters' && x.year < y) total += Math.round(x.revenue * 0.35);
+  }
+  return total;
+}
+
+// ---------- Variety and hosting: a career of its own ----------
+//   p.idol.variety = { rep, shows:[{ id, name, format, role, from, to, ratings:[{year, rating, you}], fee, ended }],
+//                      guests:[{year, name, fee, paid}], offers:{ year, list }, awards:[], paid:[] }
+
+export function varietyOf(p = player()) {
+  const i = idolOf(p);
+  i.variety ??= { rep: 0, shows: [], guests: [], offers: null, awards: [], paid: [] };
+  return i.variety;
+}
+/** Whether variety producers call: a debuted idol, a former one, or anyone known for variety already. */
+export function varietyOpen(p = player()) {
+  if (!available()) return false;
+  const v = p.idol?.variety;
+  if (v && (v.rep >= 10 || v.shows.some((s) => !s.ended))) return true;
+  return (p.idol?.groups ?? []).some((id) => K().groups[id]?.debut);
+}
+/** How good the player is on a variety set: quick, warm, at ease in front of a camera, and known. */
+export function varietyScore(p = player()) {
+  const s = skillsOf();
+  const v = varietyOf(p);
+  return Math.round(s.media * 0.45 + (p.stats.charm ?? 50) * 0.2 + s.camera * 0.1 + idolOf(p).pop * 0.15 + v.rep * 0.2);
+}
+const activeShows = (p = player()) => varietyOf(p).shows.filter((s) => !s.ended);
+export const myShows = activeShows;
+function showName(fmt) { return `${rng.pick(VARIETY_WORDS)} ${rng.pick(VARIETY_NOUNS[fmt])}`; }
+/** This year's offers from producers: a few, each a show and a role the player is good enough for. */
+export function varietyOffers(p = player()) {
+  const v = varietyOf(p);
+  if (!varietyOpen(p)) return [];
+  if (v.offers?.year !== year()) {
+    const score = varietyScore(p);
+    const list = [];
+    const fmts = Object.entries(VARIETY_FORMATS).filter(([, f]) => year() >= f.from);
+    for (let n = 0; n < 4; n++) {
+      const [fid, f] = rng.pick(fmts);
+      // Producers go by standing in variety, and an idol's own following counts for something too.
+      const known = v.rep + idolOf(p).pop * 0.3;
+      const roles = f.roles.filter((r) => VARIETY_ROLES[r].bar <= score + rng.int(-5, 5) && VARIETY_ROLES[r].rep <= known);
+      if (!roles.length) continue;
+      const role = roles.at(-1) !== 'guest' && rng.chance(0.6) ? roles.at(-1) : rng.pick(roles);
+      list.push({ id: `vo_${year()}_${n}`, format: fid, role, name: showName(fid), fee: VARIETY_ROLES[role].fee, taken: false });
+    }
+    v.offers = { year: year(), list };
+  }
+  return v.offers.list.filter((o) => !o.taken);
+}
+/** Takes a variety offer: a guest spot is done at once; a regular role, panel, DJ or host seat runs from this year. */
+export function takeVariety(offerId) {
+  const p = player();
+  const v = varietyOf(p);
+  const o = (v.offers?.list ?? []).find((x) => x.id === offerId && !x.taken);
+  if (!o || v.offers.year !== year()) return result(false, 'That offer has gone.', 'neutral');
+  const role = VARIETY_ROLES[o.role];
+  const kr = COUNTRIES.kr ?? COUNTRIES[p.countryId];
+  if (o.role === 'guest') {
+    if (v.guests.filter((x) => x.year === year()).length >= 6) return result(false, 'Six guest spots this year is plenty.', 'neutral');
+    o.taken = true;
+    const good = varietyScore(p) + rng.around(0, 12) >= 50;
+    v.rep = clamp(v.rep + (good ? role.builds : 1));
+    idolOf(p).pop = clamp(idolOf(p).pop + (good ? 1.5 : 0.3));
+    raise('player', 'media', 1.5);
+    v.guests.push({ year: year(), name: o.name, fee: o.fee, good });
+    gain({ audience: 'tv', amount: good ? 1.5 : 0.5, why: `a guest spot on ${o.name}` }, p);
+    return result(true, good ? `You guest on ${o.name}, and the clip of you is everywhere the next day.` : `You guest on ${o.name}. It airs; nobody talks about it much.`, good ? 'good' : 'neutral');
+  }
+  if (activeShows(p).length >= 2) return result(false, 'Two shows at once is all a schedule can hold. Leave one first.', 'neutral');
+  if (idolOf(p).hiatus) return result(false, 'Not while on a break.', 'neutral');
+  o.taken = true;
+  const show = { id: `vs_${(K().seq += 1).toString(36)}`, name: o.name, format: o.format, role: o.role, from: year(), to: null, ratings: [], fee: o.fee, feeIn: Math.round(wageIn(o.fee, kr, COUNTRIES[p.countryId])) };
+  v.shows.push(show);
+  if (o.role === 'host' && !v.shows.some((s) => s !== show && s.role === 'host')) milestone(`Became the main host of ${o.name}.`, 'fame');
+  else if (v.shows.length === 1) milestone(`Joined ${o.name} as a ${role.name.toLowerCase().replace('dj', 'DJ')}.`, 'fame');
+  note(`Joined ${o.name} (${VARIETY_FORMATS[o.format].name.toLowerCase()}) as ${role.name.toLowerCase().replace('dj', 'DJ')}.`);
+  return result(true, `You are ${o.role === 'host' ? 'the main host' : `a ${role.name.toLowerCase().replace('dj', 'DJ')}`} of ${o.name} from this year: ${fmtMoney(show.feeIn, COUNTRIES[p.countryId])} a year.`);
+}
+export function leaveVariety(showId) {
+  const s = varietyOf().shows.find((x) => x.id === showId && !x.ended);
+  if (!s) return result(false, 'You are not on that show.', 'neutral');
+  s.ended = { year: year(), how: 'left' }; s.to = year();
+  note(`Left ${s.name}.`);
+  return result(true, `You leave ${s.name}. They throw you a goodbye episode.`, 'neutral');
+}
+/** The variety year: ratings for every show the player is on, what it builds, renewals and cancellations, the awards. */
+function varietyYear(p, lived, lines) {
+  const v = p.idol?.variety;
+  if (!v) return;
+  const score = varietyScore(p);
+  let best = null;
+  for (const s of v.shows.filter((x) => !x.ended && x.from <= lived)) {
+    const you = Math.round(clamp(score + rng.around(0, 10)));
+    const rating = Math.round(clamp(3 + (you - 45) / 6 + rng.around(0, 2.5), 0.5, 20) * 10) / 10;
+    s.ratings.push({ year: lived, rating, you });
+    s.due = lived;
+    v.rep = clamp(v.rep + VARIETY_ROLES[s.role].builds * (you >= 55 ? 1 : you >= 40 ? 0.5 : -0.3));
+    raise('player', 'media', 2);
+    idolOf(p).pop = clamp(idolOf(p).pop + (you >= 55 ? 1.5 : 0.3));
+    gain({ audience: 'tv', amount: s.role === 'host' ? 3 : 2, why: s.name }, p);
+    if (!best || you > best.you) best = { s, you };
+    if (rating < 2.2 && rng.chance(0.6)) { s.ended = { year: year(), how: 'cancelled' }; s.to = lived; lines.push(`${s.name} has been cancelled after weak ratings.`); note(`${s.name} was cancelled.`); }
+    else if (you < 35 && s.role !== 'guest' && rng.chance(0.5)) { s.ended = { year: year(), how: 'let go' }; s.to = lived; lines.push(`${s.name}'s producers are changing the line-up: you are not in the new season.`); note(`Let go from ${s.name}.`); }
+  }
+  // The year-end awards: rookie, excellence, top excellence, the grand prize for a main host with a great year.
+  if (best && lived >= VARIETY_AWARDS.from) {
+    const first = v.shows.every((s) => s.from >= lived);
+    const cat = best.s.role === 'host' && best.you >= 78 && v.rep >= 70 && rng.chance(0.5) ? 'grand' : best.you >= 70 && rng.chance(0.5) ? 'top_excellence' : best.you >= 58 && rng.chance(0.5) ? 'excellence' : first && best.you >= 45 && rng.chance(0.5) ? 'rookie' : null;
+    if (cat) {
+      const label = { grand: 'the Grand Prize', top_excellence: 'a Top Excellence Award', excellence: 'an Excellence Award', rookie: 'Rookie of the Year' }[cat];
+      v.awards.push({ year: lived, category: cat, show: best.s.name, award: VARIETY_AWARDS.name });
+      v.rep = clamp(v.rep + (cat === 'grand' ? 10 : 4));
+      milestone(`Won ${label} at the ${VARIETY_AWARDS.name} for ${best.s.name}.`, 'fame');
+      lines.push(`At the ${VARIETY_AWARDS.name}, you win ${label} for ${best.s.name}.`);
+    }
+  }
+}
+/** The player's title in variety, for the screen and the record. */
+export function varietyTitle(p = player()) {
+  const v = p.idol?.variety;
+  if (!v) return null;
+  const now = v.shows.filter((s) => !s.ended);
+  if (now.some((s) => s.role === 'host')) return 'TV host';
+  if (now.some((s) => s.role === 'dj')) return 'Radio DJ';
+  if (now.length) return 'Variety entertainer';
+  return null;
+}
+
+// ---------- The family route ----------
+
+/**
+ * Relatives who were idols or trainees, and the agencies they were with: a parent's or grandparent's agency will see
+ * their child privately, without the open call (straight to a callback). Nothing more is promised: the assessment and
+ * the company's decision are the same as anyone's, and ordinary auditions stay open too.
+ */
+export function legacyRoutes(p = player()) {
+  if (!available()) return [];
+  const st = store.state;
+  const out = [];
+  const rel = (id) => { const n = st.npcs[id]; return n && ['parent', 'grandparent'].includes(n.role) && p.npcIds.includes(id) ? n.role : null; };
+  for (const x of st.idolAncestors ?? []) {
+    const relation = x.npcId ? rel(x.npcId) : null;
+    if (!relation) continue;
+    const ags = new Set(x.agencies ?? (x.groups ?? []).map((gid) => K().groups[gid]?.agencyId).filter(Boolean));
+    for (const aid of ags) out.push({ agencyId: aid, who: x.npcId, name: x.name, relation, groups: (x.groups ?? []).map((gid) => K().groups[gid]).filter((g) => g?.agencyId === aid && g.debut).map((g) => g.name) });
+  }
+  // A parent who is an idol in this world (an NPC), too.
+  for (const id of p.npcIds) {
+    const n = st.npcs[id];
+    const fi = n?.flags?.idol;
+    if (!fi?.agencyId || !rel(id) || out.some((o) => o.who === id)) continue;
+    out.push({ agencyId: fi.agencyId, who: id, name: `${n.firstName} ${n.lastName}`, relation: rel(id), groups: fi.groupId && K().groups[fi.groupId]?.debut ? [K().groups[fi.groupId].name] : [] });
+  }
+  return out.filter((o) => { const a = agency(o.agencyId); return a && a.founded <= year(); });
+}
+export function whyNotLegacy(agencyId, p = player()) {
+  const i = idolOf(p);
+  if (!legacyRoutes(p).some((o) => o.agencyId === agencyId)) return 'No one in your family was with this agency.';
+  if (p.age < 12 || p.age > 23) return 'The agency sees family members between twelve and twenty-three.';
+  if (trainee(p)) return 'You are already a trainee.';
+  if (myGroup(p)) return 'You are already in a group.';
+  if (i.acts.did[`legacy:${agencyId}`]) return 'Once a year.';
+  if (i.acts.apps >= 3) return 'You have applied to three auditions this year; that is enough to prepare properly for.';
+  if (p.legal?.incarceration) return 'Not from a cell.';
+  return '';
+}
+/** A private audition at a parent's (or grandparent's) agency: no open call, straight to the callback and assessment. */
+export function legacyAudition(agencyId, category = null) {
+  const p = player();
+  const why = whyNotLegacy(agencyId, p);
+  if (why) return result(false, why, 'neutral');
+  const i = idolOf(p);
+  const s = skillsOf();
+  const cat = category && ['vocal', 'dance', 'rap', 'multi'].includes(category) ? category : s.vocal >= s.dance + 10 ? 'vocal' : s.dance >= s.vocal + 10 ? 'dance' : 'multi';
+  const route = legacyRoutes(p).find((o) => o.agencyId === agencyId);
+  i.acts.apps += 1;
+  i.acts.did[`legacy:${agencyId}`] = true;
+  const app = { id: nextId('app'), auditionId: null, agencyId, category: cat, year: year(), prepared: true, stage: 'callback', scores: {}, outcome: null, legacy: { who: route.who, relation: route.relation, name: route.name } };
+  K().apps[app.id] = app;
+  i.apps.push(app.id);
+  note(`Invited to a private audition at ${agency(agencyId).name}, where your ${route.relation} ${route.name} was.`);
+  const r = attendCallback(app.id);
+  return { ...r, text: `${agency(agencyId).name} sees you privately: ${route.name}'s ${p.gender === 'female' ? 'daughter' : p.gender === 'male' ? 'son' : 'child'}${route.relation === 'grandparent' ? `'s child` : ''}, they know. ${r.text}` };
 }

@@ -105,9 +105,28 @@ founding years.
   the ending fairy, the first win, pressure, hiatus, solo debut, renewal, reunion: each read from what actually happened,
   not begun, under way or lived.
 
+- **Fan products** (`launchProduct`, `whyNotProduct`): a photobook (from 1998), a concert film once there has been a
+  tour (2000), season's greetings (2008), a café collaboration (2012), a pop-up store in a city the player chooses among
+  the places with the most fans (2016), and a character line the members design themselves (2018, once; it keeps
+  selling every year after). Each needs enough fans and is made at most once a year; sales come from the devoted core
+  and the wider fandom and go into the group's accounts before the members' share. **Photocards** come with every
+  album: each year the most wanted cards follow each member's own following (`myCard`).
+- **Variety and hosting, a career of its own** (`varietyOffers`, `takeVariety`, `leaveVariety`): producers call a
+  debuted idol (or a former one, or anyone with a standing in variety) with offers on fictional shows: talk, game,
+  radio, fixed-cast variety, travel, cooking and web formats, each from its own year. Roles: a guest spot (one
+  episode), panelist, regular cast member, radio DJ, and main host (which needs a real standing in variety). At most two
+  shows at once. Each year on air has ratings; good years build media skill, the player's following and their standing;
+  weak ones can end in cancellation or a new line-up without them. A year-end *Broadcast Entertainment Awards* (rookie,
+  excellence, top excellence, grand prize). Fees are paid once a year, in the player's money; the shows go on after the
+  group ends. Separate from a year as a music show's MC (`hostShow`).
+- **The family route** (`legacyRoutes`, `legacyAudition`): a child or grandchild of an idol or trainee (a parent or
+  grandparent in this life's family) can be seen privately by that relative's agency, from twelve to twenty-three:
+  no open call, straight to the callback and live assessment, with a small edge. The decision is the same as anyone's
+  (in the tests, some are turned away), it counts as one of the year's three applications, and ordinary auditions stay
+  open. Taking the place makes the player a little better known from the start, and costs a little standing: some say
+  it was handed to them.
+
 ## Not built
 
-- Fan products beyond the lightstick, fan club and general merchandise (no photocard trading, no pop-up stores).
-- Idol hosting of variety shows as a separate career from appearances.
-- A family member following their parent into the same agency is possible through ordinary auditions; there is no
-  special legacy route.
+- Fan products are made by the group, not traded: there is no market for photocards between fans.
+- Variety shows are one record each (ratings, the player's year); their other cast members are not people.

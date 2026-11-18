@@ -3,9 +3,9 @@
 // performances and ending fairies, comebacks, the fandom, the agency and its
 // contracts, and the whole idol history. Tabs appear only when they apply.
 import { player, store } from '../state.js';
-import { esc } from '../util.js';
+import { esc, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { FOCUSES, CONCEPTS, POSITIONS, APPROACHES, FAIRY_STYLES, RELEASE_KINDS, MISSIONS } from '../data/kpop.js';
+import { FOCUSES, CONCEPTS, POSITIONS, APPROACHES, FAIRY_STYLES, RELEASE_KINDS, MISSIONS, FAN_PRODUCTS, CHARACTER_KINDS, VARIETY_FORMATS, VARIETY_ROLES } from '../data/kpop.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { avatarSvg } from './avatar.js';
 import { openNpc } from './tabs/people.js';
@@ -22,7 +22,7 @@ const badges = (g, who) => (g.positions[who] ?? []).map((l) => `<span class="av-
 const K = () => store.state.kpop;
 
 const TABS = [['overview', 'Overview'], ['auditions', 'Auditions'], ['training', 'Training'], ['evaluations', 'Evaluations'], ['survival', 'Survival Academy'], ['group', 'My Group'],
-  ['positions', 'Positions'], ['performances', 'Performances'], ['comebacks', 'Comebacks'], ['fandom', 'Fandom'], ['agency', 'Agency & Contracts'], ['history', 'Idol Career History']];
+  ['positions', 'Positions'], ['performances', 'Performances'], ['comebacks', 'Comebacks'], ['fandom', 'Fandom'], ['agency', 'Agency & Contracts'], ['variety', 'Variety & Hosting'], ['history', 'Idol Career History']];
 
 function tabsFor(p) {
   const i = kp.idolOf(p);
@@ -38,6 +38,7 @@ function tabsFor(p) {
     comebacks: !!kp.myGroup(p)?.debut,
     fandom: !!g?.debut,
     agency: (i.contracts ?? []).length > 0,
+    variety: kp.varietyOpen(p),
     history: i.history.length > 0,
   }[id] ?? true));
 }
@@ -137,7 +138,10 @@ const VIEWS = {
     if (!kp.available()) return '<p class="empty">There are no idol auditions yet.</p>';
     const list = kp.auditions();
     const mine = kp.idolOf(p).apps.map((id) => K().apps[id]).filter(Boolean).reverse();
-    return `<p class="muted">Each agency runs its own calls. Passing the first round is not a place: there is a callback, an assessment, and the company's decision.</p>
+    const fam = kp.legacyRoutes(p);
+    const famCard = fam.length ? `<div class="card"><h3>The family route</h3><p class="muted" style="margin:0">Your family's agency will see you privately: no open call, straight to a callback and the live assessment. The decision is the same as anyone's.</p>
+      ${fam.map((o) => { const why = kp.whyNotLegacy(o.agencyId, p); return btn('legacy', `${kp.agency(o.agencyId).name}: your ${o.relation}'s agency`, { arg: o.agencyId, disabled: !!why, sub: why || `${o.name}${o.groups.length ? `, of ${o.groups.join(' and ')}` : ''}` }); }).join('')}</div>` : '';
+    return `${famCard}<p class="muted">Each agency runs its own calls. Passing the first round is not a place: there is a callback, an assessment, and the company's decision.</p>
       ${list.map((au) => { const why = kp.whyNotApply(au, p); const a = kp.agency(au.agencyId); return row('audition', au.id, `${a.name}: ${{ online: 'Online audition', in_person: 'In-person audition', global_casting: 'Global casting' }[au.format]}`, `Ages ${au.ages[0]}–${au.ages[1]} · ${au.lineup === 'any' ? 'any line-up' : au.lineup === 'female' ? 'girl group' : 'boy group'} · ${au.places === 'worldwide' ? 'open worldwide' : `in ${COUNTRIES[au.places[0]].name}`}${why ? ` · ${why}` : ''}`, why ? '' : 'Open'); }).join('')}
       ${mine.length ? `<div class="section-label">My applications</div>${mine.map((app) => row('application', app.id, kp.agency(app.agencyId).name, `${app.year} · ${app.category} · ${app.stage === 'callback' ? 'Callback waiting' : app.stage === 'offered' ? 'Offer waiting' : app.outcome ?? app.stage}`, app.stage === 'callback' || app.stage === 'offered' ? '!' : '')).join('')}` : ''}`;
   },
@@ -251,9 +255,26 @@ const VIEWS = {
       <div class="card"><h3>Lightstick and fan club</h3>${kv([['Lightstick', g.merch?.lightstick ? `A ${g.merch.lightstick.color} ${g.merch.lightstick.shape}${g.merch.lightstick.byMembers ? ', designed with the members' : ''}` : 'None yet'], ['Fan club', g.merch?.fanclub ? `${g.merch.fanclub.members.toLocaleString('en-US')} members, generation ${g.merch.fanclub.generations}` : 'Not open']])}
         ${(() => { const y = Object.keys(g.merch?.sales ?? {}).at(-1); const m = y ? g.merch.sales[y] : null; return m ? `<p class="muted" style="margin:4px 0">${y}: merchandise brought the group ${(m.lightsticks + m.fanclub + m.goods).toLocaleString('en-US')} (in its accounts, before the members' share).</p>` : ''; })()}
         <div class="btn-stack">${!g.merch?.lightstick ? btn('lightstick', 'Design the lightstick', { disabled: f.size < 15000, sub: f.size < 15000 ? 'Needs about 15,000 fans' : '' }) : ''}${!g.merch?.fanclub ? btn('fanclub', 'Open the official fan club', { disabled: f.size < 20000, sub: f.size < 20000 ? 'Needs about 20,000 fans' : '' }) : ''}</div></div>
+      <div class="card"><h3>Fan products</h3><p class="muted" style="margin:0">Made with the company, sold to the fans; the money goes into the group's accounts.</p>
+        ${(() => { const c = kp.myCard(g); return c ? kv([[`Photocards, ${c.year}`, c.rank === 1 ? 'Yours was the most wanted card' : `Yours was ${c.rank} of ${c.of} in demand${c.top !== 'player' ? `; ${name(c.top)}'s was the most wanted` : ''}`]]) : ''; })()}
+        <div class="btn-stack">${Object.entries(FAN_PRODUCTS).filter(([, d]) => store.state.year >= d.from).map(([k, d]) => { const why = kp.whyNotProduct(k, g); return btn('product', d.name, { arg: k, disabled: !!why, sub: why || d.about }); }).join('')}</div>
+        ${(g.merch?.products ?? []).slice(-5).reverse().map((x) => `<div class="kv"><span>${x.year} · ${esc(x.name)}</span><span>${x.units.toLocaleString('en-US')} sold${x.character ? ` · your ${esc(x.character)}` : ''}</span></div>`).join('')}</div>
       <div class="card"><h3>Out in public</h3><div class="btn-stack">${[['interview', 'Interview'], ['variety', 'Variety show'], ['radio', 'Radio'], ['fanmeeting', 'Fan meeting'], ['fansign', 'Fansign'], ['fancall', 'Fan call'], ['livestream', 'Livestream']].map(([k, l]) => btn('appear', l, { arg: k })).join('')}</div></div>
       <div class="card"><h3>Touring</h3><div class="btn-stack">${Object.entries(kp.TOURS).map(([k, t]) => btn('tour', t.name, { arg: k, disabled: f.size < t.fans, sub: f.size < t.fans ? `Needs about ${t.fans.toLocaleString('en-US')} fans` : `${t.shows} shows` })).join('')}</div>
       ${g.tours.slice(-4).reverse().map((t) => `<div class="kv"><span>${t.year} · ${esc(t.name)}</span><span>${t.sold ? `${t.sold.toLocaleString('en-US')} tickets` : 'Booked'}</span></div>`).join('')}</div>`;
+  },
+
+  variety(p) {
+    const v = kp.varietyOf(p);
+    const C = COUNTRIES[p.countryId];
+    const shows = kp.myShows(p);
+    const offers = kp.varietyOffers(p);
+    const past = v.shows.filter((x) => x.ended).slice(-6).reverse();
+    return `<div class="card"><h3>${esc(kp.varietyTitle(p) ?? 'Variety and hosting')}</h3><p class="muted" style="margin:0">A career of its own: it can go on long after a group's last stage.</p>
+      ${kv([['Standing in variety', `${Math.round(v.rep)}/100`], ['On camera', String(kp.varietyScore(p))], ['Guest spots', String(v.guests.length)], ['Awards', v.awards.length ? v.awards.map((a) => `${a.year} ${{ grand: 'Grand Prize', top_excellence: 'Top Excellence', excellence: 'Excellence', rookie: 'Rookie' }[a.category]}`).join(', ') : 'None yet']])}</div>
+      <div class="section-label">Your shows</div>${shows.length ? shows.map((x) => `<div class="card"><h3>${esc(x.name)}</h3>${kv([['Format', VARIETY_FORMATS[x.format].name], ['You are', VARIETY_ROLES[x.role].name], ['Since', String(x.from)], ['A year', fmtMoney(x.feeIn ?? x.fee, C)], ['Last ratings', x.ratings.length ? `${x.ratings.at(-1).rating}%` : 'Not yet aired']])}<div class="btn-stack">${btn('varietyleave', 'Leave the show', { arg: x.id })}</div></div>`).join('') : '<p class="empty">None at the moment.</p>'}
+      <div class="section-label">Offers this year</div>${offers.length ? offers.map((o) => btn('varietytake', `${o.name}: ${VARIETY_ROLES[o.role].name.toLowerCase().replace('dj', 'DJ')}`, { arg: o.id, sub: `${VARIETY_FORMATS[o.format].name}${o.role === 'guest' ? ' · one episode' : ' · a year, every week'}` })).join('') : '<p class="empty">No producer is calling right now. Media training and a bigger following help.</p>'}
+      ${past.length ? `<div class="section-label">Before</div>${past.map((x) => `<div class="kv"><span>${x.from}–${x.to} · ${esc(x.name)}</span><span>${esc(VARIETY_ROLES[x.role].name)} · ${esc(x.ended.how)}</span></div>`).join('')}` : ''}`;
   },
 
   agency(p) {
@@ -361,5 +382,14 @@ const ACTIONS = {
     return undefined;
   },
   fanclub: (_, x) => x.say(kp.launchFanclub()),
+  async product(kind, x) {
+    const o = {};
+    if (kind === 'popup') { const where = await pickModal({ title: 'Where?', body: 'A pop-up sells best where the fans are.', cancel: 'Back', options: kp.popupPlaces().map((c) => ({ value: c, label: COUNTRIES[c].cities?.[0] ?? COUNTRIES[c].name, sub: COUNTRIES[c].name })) }); if (!where) return; o.where = where; }
+    if (kind === 'characters') { const c = await pickModal({ title: 'Your character', body: 'Each member draws their own. What is yours?', cancel: 'Back', options: CHARACTER_KINDS.map((k) => ({ value: k, label: k[0].toUpperCase() + k.slice(1) })) }); if (!c) return; o.character = c; }
+    await x.say(kp.launchProduct(kind, o));
+  },
+  varietytake: (id, x) => x.say(kp.takeVariety(id)),
+  async varietyleave(id, x) { if (await confirmModal({ title: 'Leave the show?', body: 'The seat goes to someone else.', yes: 'Leave' })) await x.say(kp.leaveVariety(id)); },
+  legacy: (id, x) => x.say(kp.legacyAudition(id)),
   relocate: async (_, x) => { if (await confirmModal({ title: 'Move there for good?', body: 'You move your life: your home, your money into the local currency, your status to a sponsored work visa.', yes: 'Move' })) await x.say(await kp.relocate()); },
 };

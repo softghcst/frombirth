@@ -138,3 +138,46 @@ export const KPOP_AWARDS = { id: 'golden_wave', name: 'Golden Wave Music Awards'
 export const GROUP_WORDS = ['LUMEN', 'NOVA', 'ORBIT', 'VELA', 'AURA', 'ECLIPSE', 'HALO', 'SOLARA', 'PRISM', 'ZENITH', 'KAIRO', 'ODYSSEY', 'IRIS', 'TEMPO', 'ASTRA', 'VERVE', 'NOIR', 'BLOOM'];
 export const SONG_WORDS = { a: ['Midnight', 'Electric', 'Paper', 'Golden', 'Silver', 'Starlight', 'Velvet', 'Neon', 'Crystal', 'Summer', 'Wild', 'Echo'], b: ['Heart', 'Signal', 'Runway', 'Dream', 'Rush', 'Bloom', 'Wave', 'Code', 'Fever', 'Mirror', 'Sky', 'Pulse'] };
 export const FANDOM_WORDS = ['Lumi', 'Orbiters', 'Halos', 'Blooms', 'Wavers', 'Stars', 'Sparks', 'Petals', 'Comets', 'Echoes'];
+
+/**
+ * Fan products beyond the lightstick, the fan club and general merchandise. Each is launched by the group (with the
+ * company), at most once a year (`once`: once ever), from its year, once there are enough fans. Sales come from the
+ * devoted core (perCore) and the wider fandom (perFan), at a base price; the money goes into the group's accounts.
+ */
+export const FAN_PRODUCTS = {
+  photobook: { name: 'Photobook', from: 1998, fans: 8000, perCore: 0.25, perFan: 0.01, price: 35, about: 'A book of photographs from a shoot abroad.' },
+  concert_film: { name: 'Concert film', from: 2000, fans: 30000, perCore: 0.2, perFan: 0.005, price: 40, needsTour: true, about: 'The last tour, filmed: on disc, and later streamed.' },
+  seasons_greetings: { name: "Season's greetings", from: 2008, fans: 10000, perCore: 0.35, perFan: 0.01, price: 30, about: 'A desk calendar, a diary and photos for the year ahead.' },
+  cafe: { name: 'Café collaboration', from: 2012, fans: 20000, perCore: 0.3, perFan: 0.02, price: 12, about: 'A month of themed drinks and cup sleeves at a café chain.' },
+  popup: { name: 'Pop-up store', from: 2016, fans: 40000, perCore: 0.45, perFan: 0.02, price: 25, where: true, about: 'A shop for a few weeks, in a city with many fans.' },
+  characters: { name: 'Character line', from: 2018, fans: 60000, perCore: 0.3, perFan: 0.03, price: 18, once: true, about: 'Each member designs a character: plush toys, stickers, and an animated short.' },
+};
+/** The animals and things members draw their characters as. */
+export const CHARACTER_KINDS = ['rabbit', 'puppy', 'cat', 'fox', 'bear', 'quokka', 'penguin', 'hamster', 'dinosaur', 'cloud', 'star', 'peach'];
+
+/**
+ * Variety and hosting as a career of its own: formats on fictional broadcasters, the roles in them, and what a year
+ * pays (base units in Korea, converted for the player). A guest spot is one episode; the other roles are a year.
+ */
+export const VARIETY_FORMATS = {
+  talk: { name: 'Talk show', from: 1996, roles: ['guest', 'panel', 'host'] },
+  game: { name: 'Game show', from: 1996, roles: ['guest', 'regular', 'host'] },
+  radio: { name: 'Radio show', from: 1996, roles: ['guest', 'dj'] },
+  fixed: { name: 'Fixed-cast variety', from: 2005, roles: ['guest', 'regular'] },
+  travel: { name: 'Travel reality', from: 2007, roles: ['regular'] },
+  cooking: { name: 'Cooking show', from: 2014, roles: ['guest', 'regular', 'host'] },
+  web: { name: 'Web variety', from: 2015, roles: ['guest', 'regular', 'host'] },
+};
+/** Roles: how good one has to be (score), how well known in variety (rep), the fee, and how much it builds. */
+export const VARIETY_ROLES = {
+  guest: { name: 'Guest', bar: 0, rep: 0, fee: 3000, builds: 2 },
+  panel: { name: 'Panelist', bar: 42, rep: 8, fee: 50000, builds: 4 },
+  regular: { name: 'Regular cast member', bar: 45, rep: 10, fee: 60000, builds: 5 },
+  dj: { name: 'Radio DJ', bar: 50, rep: 15, fee: 45000, builds: 4 },
+  host: { name: 'Main host', bar: 68, rep: 40, fee: 140000, builds: 6 },
+};
+export const VARIETY_WORDS = ['Sunday', 'Midnight', 'Pocket', 'Weekend', 'Bright', 'Happy', 'Open', 'Rooftop', 'Neighborhood', 'Pajama', 'Lucky', 'Full Moon', 'Snack', 'Road Trip'];
+export const VARIETY_NOUNS = { talk: ['Talk', 'Sofa', 'Night Chat', 'Couch'], game: ['Challenge', 'Quiz', 'Games', 'Showdown'], radio: ['Radio', 'On Air', 'Frequency'], fixed: ['Club', 'House', 'Crew', 'Village'],
+  travel: ['Journey', 'Backpackers', 'Getaway'], cooking: ['Kitchen', 'Table', 'Recipe'], web: ['Live', 'Log', 'Channel'] };
+/** A broadcaster's year-end entertainment awards (fictional). */
+export const VARIETY_AWARDS = { name: 'Broadcast Entertainment Awards', from: 2000 };

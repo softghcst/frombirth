@@ -22,6 +22,8 @@ function grownTo(age, gender, countryId = 'uk', city = 'London', setup = () => {
   for (;;) {
     store.state = createLife({ countryId, city, gender });
     if (P().royal) continue;
+    // createLife can make a transgender character, whose gender is worked out in childhood: these lives are cisgender.
+    P().gender = gender; P().flags.bornAs = gender;
     setup(P());
     for (let i = 0; i < age && P().alive; i++) year({ integrity: 'refuse' });
     if (P().alive && P().age === age && !P().legal?.incarceration) return P();

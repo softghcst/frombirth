@@ -962,7 +962,7 @@ export function findSportsAgent(state = store.state) {
   if (r.error) return result(false, r.error, 'neutral');
   if (r.none) return result(false, 'No sports agent will take you on yet. Results, and being known, change that.', 'neutral');
   const g = r.agent.flags.agent;
-  return result(true, `${fullName(r.agent)} of ${g.agency} would represent you, for ${Math.round(g.commission * 100)}% of what you earn from sport. See them under Representation.`, 'neutral');
+  return result(true, `${fullName(r.agent)} of ${g.agency} would represent you, for ${Math.round(g.commission * 100)}% of what you earn from sport.`, 'neutral');
 }
 export function passOnSportsAgent() { clearOffer('sports'); return result(true, 'You say no.', 'neutral'); }
 export function signSportsAgent(state = store.state) {
