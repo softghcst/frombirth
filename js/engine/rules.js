@@ -18,7 +18,7 @@ import { regionOf } from '../data/cities.js';
 
 /** The region whose law applies in a city: a recorded state or province, or else the area around the city itself. */
 export const lawRegion = (placeId, city) => (city ? regionOf(placeId, city) ?? `around:${city}` : null);
-import { RULES, PLACE_RULES, REGION_RULES, REFORM, REGIONAL_RULES, REGIONAL_COUNTRIES } from '../data/rules.js';
+import { RULES, PLACE_RULES, REGION_RULES, REFORM, REGIONAL_POWERS } from '../data/rules.js';
 
 const here = () => player().countryId;
 const parentOf = (placeId) => COUNTRIES[placeId]?.place?.parentId ?? null;
@@ -234,17 +234,19 @@ export const reforms = (placeId) => [...(book().history ?? [])].filter((e) => !p
 // ---------- Regional law ----------
 
 /** Whether the regions of a country make any of their own law. */
-export const regionsLegislate = (placeId) => REGIONAL_COUNTRIES.includes(placeId);
+export const regionsLegislate = (placeId) => (REGIONAL_POWERS[placeId]?.length ?? 0) > 0;
+/** The laws this country's regions may make for themselves. */
+export const regionalPowers = (placeId) => REGIONAL_POWERS[placeId] ?? [];
 
 /** The changes of law a regional government could make now, for its own region. */
 export function regionalChoices(placeId, region) {
   if (!regionsLegislate(placeId) || !region) return [];
-  return choices(placeId, { region }).filter((c) => REGIONAL_RULES.includes(c.rule));
+  return choices(placeId, { region }).filter((c) => regionalPowers(placeId).includes(c.rule));
 }
 
 /** Records a regional change of law. Applies to people living in that region only. */
 export function enactRegional(placeId, region, id, value, regionName, by = 'the regional assembly') {
-  if (!REGIONAL_RULES.includes(id) || !regionsLegislate(placeId)) throw new Error(`${id} is not regional law in ${placeId}`);
+  if (!regionalPowers(placeId).includes(id)) throw new Error(`${id} is not regional law in ${placeId}`);
   const was = rule(id, placeId, { region });
   const b = book();
   ((b.regions ??= {})[`${placeId}/${region}`] ??= {})[id] = { value, year: store.state.year, by };

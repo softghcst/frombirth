@@ -79,7 +79,7 @@ voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries
 for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
 nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
 
-Still not checked: the tax and health-care models, the spouse's shorter wait for citizenship (one rule everywhere), and the
+Still not checked: which laws each country leaves to its regions (`REGIONAL_POWERS`), the tax and health-care models, the spouse's shorter wait for citizenship (one rule everywhere), and the
 status sentences. Where a
 source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
 
@@ -131,8 +131,8 @@ shown on its profile.
   exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
   the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A head of government can change them through the legislature; public
   opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional law can be changed by the head of a region,
-  for six regional matters, in the countries listed in `REGIONAL_COUNTRIES`; which matters belong to regions in each real
-  country is simplified to one list. Mayors make no law. School-leaving age is the same everywhere.
+  for the matters `REGIONAL_POWERS` gives each country: compiled by hand from each country's division of powers and not yet
+  checked against sources. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
   permanence. Real systems differ by country and are not modeled. The free-movement areas (a European area, and Australia with
   New Zealand) are simplified lists and unverified. Family members hold dependant status on the player's visa, simplified to one rule for every country; there is no
