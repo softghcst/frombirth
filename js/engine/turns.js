@@ -13,9 +13,9 @@ import { cap } from '../util.js';
 import { advanceYear } from './yearProcessor.js';
 import { book } from './ledger.js';
 import { drawBetween } from './eventEngine.js';
-import { seasonAt, turnSeasons } from './calendar.js';
+import { seasonAt, turnSeasons, seasonName } from './calendar.js';
 
-export { seasonAt, turnSeasons };
+export { seasonAt, turnSeasons, seasonName };
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -44,7 +44,7 @@ export function nextTurnText(state = store.state) {
   const step = stepOf(state);
   const m = monthOf(state) + step;
   if (m >= 12) return { label: step === 12 ? 'Live another year' : `${step === 3 ? 'Three' : 'Six'} more months`, sub: `→ age ${p.age + 1}` };
-  return { label: step === 3 ? 'Three more months' : 'Six more months', sub: `→ ${turnSeasons(m, step, p.countryId)[0]}` };
+  return { label: step === 3 ? 'Three more months' : 'Six more months', sub: `→ ${seasonName(turnSeasons(m, step, p.countryId)[0])}` };
 }
 
 /**
@@ -85,7 +85,7 @@ export function advanceTurn(state = store.state) {
   book({ state, cat: 'auto', src: 'action' });
   state.month = next;
   const seasons = turnSeasons(next, step, p.countryId);
-  log(`${cap(seasons[0])}.`, 'season');
+  log(`${cap(seasonName(seasons[0]))}.`, 'season');
   // Shorter turns, more chances: a scene for the season, and perhaps one of the year's ordinary scenes as well.
   drawBetween(step, seasons, 0.8, EVERYDAY[step]);
   return { year: false, season: seasons[0] };

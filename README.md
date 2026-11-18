@@ -88,8 +88,10 @@ ways and compares). The turns in between move the calendar on, show the age in m
 the year in the life story, and may bring one of about thirty scenes written for that season and that turn length
 (`js/data/events/seasons.js`: summer holidays, exam season, the dark of winter, a first scan, a baby's first smile,
 preseason training), and perhaps one of the year's ordinary scenes as well: about 1.8 scenes a year with one-year turns,
-3.7 with six-month turns and 5.8 with three-month turns. Story beats stay with the turn of the year. Seasons run the
-other way round in the southern hemisphere. Those turns draw on luck of their own
+3.7 with six-month turns and 5.8 with three-month turns. Story beats stay with the turn of the year. Each country has
+its own climate (`js/engine/calendar.js`): four seasons in the north or the south, rainy and dry seasons in the tropics,
+long and short rains near the equator, the monsoon in South Asia, a hot season in the desert. Scenes follow it, and the
+school scenes follow each country's school year. Those turns draw on luck of their own
 (`engine/eventEngine.js` drawBetween), never on the game's dice. A change partway through a year starts from the next.
 
 ## Sports and athletics

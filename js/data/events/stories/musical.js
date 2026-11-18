@@ -75,9 +75,9 @@ const NOT_YET = [flag('auditionFailed'), ...triple(2), st('mood', -6)];
 export default [
   // ---------- Building history with the director (ages 14–16) ----------
   {
-    id: 'mt_callbacks', timing: { seasons: ['fall', 'winter'] }, category: 'musical theater', ageRange: [13, 16], once: true, weight: 5,
+    id: 'mt_callbacks', category: 'musical theater', ageRange: [13, 16], once: true, weight: 5,
     requires: [inCompany], cast: { director: 'tag:director' },
-    text: 'Callbacks for the winter show. {director} has it down to you and one other student for the solo.',
+    text: 'Callbacks for the end-of-year show. {director} has it down to you and one other student for the solo.',
     choices: [
       { label: 'Go all out for it', check: chk(0.45, { 'talents.singing': 0.7, 'talents.acting': 0.3 }), outcomes: [
         ok('You get the solo. {rival}, who did not, stops speaking to you in the corridor.', tal('singing', 4), st('mood', 6), rel('director', 5),
@@ -96,7 +96,7 @@ export default [
       { label: 'Step back and run the backstage crew', outcomes: [any(
         'You spend the show in blacks with a headset, calling every cue. {director} tells the cast the show ran because of you.',
         'good', hid('discipline', 4), rel('director', 9),
-        mem('director', 'ranBackstage', 'You ran the backstage crew for the winter show.'))] },
+        mem('director', 'ranBackstage', 'You ran the backstage crew for the end-of-year show.'))] },
     ],
   },
   {

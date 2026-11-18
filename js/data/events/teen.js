@@ -60,8 +60,8 @@ export default [
     ],
   },
   {
-    id: 'summer_work', timing: { seasons: ['spring', 'summer'] }, category: 'teen', ageRange: [14, 17], cooldown: 2,
-    text: 'A neighbor offers to pay you to clear and paint their fence over the summer.',
+    id: 'summer_work', timing: { seasons: ['spring', 'summer', 'hot', 'dry'] }, category: 'teen', ageRange: [14, 17], cooldown: 2,
+    text: 'A neighbor offers to pay you to clear and paint their fence over the school holidays.',
     choices: [
       { label: 'Take it and do it properly', outcomes: [any('Six blistered weeks later you are handed {$400}.', 'good', cash(400), hid('discipline', 5), st('health', 2))] },
       { label: 'Take it and rush it', check: chk(0.5, { 'stats.charm': 0.4 }), outcomes: [
