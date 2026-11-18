@@ -1,3 +1,4 @@
+import { rng } from '../rng.js';
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
 import { forgetNpc } from './digital/core.js';
@@ -137,7 +138,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       }
       case 'moveCity': {
         const others = c.cities.filter((x) => x !== p.city);
-        p.city = others[Math.floor(Math.random() * others.length)] ?? p.city;
+        p.city = others.length ? rng.pick(others) : p.city;
         break;
       }
       case 'property': hitProperty(e.target, e.value); break;

@@ -33,6 +33,11 @@ globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), se
 const save = await import('../js/save.js');
 
 rng.seed(20261117);
+// These scenarios are about one life's digital world, where it is set: a family that emigrates during a childhood, or roots
+// abroad, would move it into another country's technology. Moves the scenarios make themselves (B, Canada) still happen.
+const { ROOTS } = await import('../js/data/economy.js');
+ROOTS.familyLeaves = 0; ROOTS.parentFromAbroad = 0;
+(await import('../js/util.js')).countedIds(); // ids from a counter: the same run makes the same people
 const problems = [];
 const passed = [];
 let where = '';
@@ -40,9 +45,11 @@ const check = (cond, text) => { if (cond) passed.push(`${where}: ${text}`); else
 const section = (name) => { where = name; };
 
 /** A life born in a given year and country, grown up to `age` by living the years. */
+// Each life comes from the next seed in a fixed sequence, so a run is the same run every time (SEED=n tries another).
+let lifeSeed = Number(process.env.SEED ?? 20261117);
 function life(o = {}) {
   let s;
-  do { s = createLife({ countryId: o.countryId ?? 'us', year: o.born ?? 2000, ...(o.gender ? { gender: o.gender } : {}) }); } while (s.player.royal);
+  do { s = createLife({ countryId: o.countryId ?? 'us', year: o.born ?? 2000, seed: lifeSeed++, ...(o.gender ? { gender: o.gender } : {}) }); } while (s.player.royal);
   store.state = s;
   grow(o.age ?? 0);
   return s.player;
@@ -251,6 +258,11 @@ section('C. Reconnection');
   freshHours();
   join('hearth', 'grownup.me');
   store.state.npcs[id].flags.drifted.year = store.state.year - 10;
+  // The friend is alive and on the same network (some people never join one, and the years can take anyone): this scenario is about finding them.
+  store.state.npcs[id].alive = true;
+  if (!acc.accountsOf(id).some((x) => x.platformId === 'hearth')) acc.makeAccount(id, 'hearth', 'old.friend', { visibility: 'public' });
+  // School life brings other childhood friends who also drift: this scenario is about this one.
+  for (const n of Object.values(store.state.npcs)) if (n.id !== id && n.flags?.drifted) delete n.flags.drifted;
   store.state.pendingEvents = [];
   core.world().arcs.lastYear = null;
   let queued = null;
@@ -377,7 +389,7 @@ section('H. Online community');
   join('corkboard', 'bookworm25');
   const c = comm.communities().find((x) => x.topic === 'books');
   check(comm.join(c.id).ok && c.keyMembers.length >= 3, 'joining a community introduces a few real members');
-  const npcsBefore = Object.keys(store.state.npcs).length;
+  const members = new Set(c.keyMembers); // the people met there, by id
   let made = null;
   for (let y = 0; y < 6 && !made; y++) {
     freshHours();
@@ -387,7 +399,8 @@ section('H. Online community');
     if (!made) grow(1);
   }
   check(made && made.role === 'friend' && made.flags.metOnline, 'a member became a real friend');
-  check(Object.keys(store.state.npcs).length === npcsBefore, 'the friend is the same person, not a copy');
+  // The years that pass bring other people into the world (births, colleagues); what matters is that this friend is the member met, not a new copy.
+  check(made && members.has(made.id) && store.state.npcs[made.id] === made && Object.values(store.state.npcs).filter((n) => n.firstName === made.firstName && n.lastName === made.lastName).length === 1, 'the friend is the same person, not a copy');
   check(core.eventsOf(p.id).some((e) => e.kind === 'online_friend'), 'the friendship is a life event');
   check(c.memberCount > c.keyMembers.length * 10, 'the rest of the community is a count, not people');
 }
@@ -482,8 +495,12 @@ section('Public life');
 }
 {
   const civic = await import('../js/engine/digital/civic.js');
-  let s; do { s = createLife({ countryId: 'uk', year: 1990, birthRank: 'royal' }); } while (!s.player.royal);
-  store.state = s; grow(30);
+  // Royal status can end over thirty years (abdication, deposition): take a life where it lasts.
+  for (let tries = 0; tries < 20; tries++) {
+    let s; do { s = createLife({ countryId: 'uk', year: 1990, birthRank: 'royal', seed: lifeSeed++ }); } while (!s.player.royal);
+    store.state = s; grow(30);
+    if (store.state.player.royal) break;
+  }
   const p = store.state.player;
   phone();
   const off = join('glimmer', 'royal.office', { visibility: 'public', kind: 'official' }).account;
@@ -575,7 +592,8 @@ section('Creator economy');
   check(school.addToPortfolio(pro.id, proj.id).ok && school.portfolio(pro.id).length === 1, 'finished work goes into a portfolio');
   // Streams: scheduled for next year, with equipment
   const live = join('beacon', 'routine.live', { visibility: 'public' }).account;
-  freshHours();
+  freshHours(); rich();
+  ['camera', 'microphone', 'webcam'].forEach((d) => tech.buyDevice(d)); // years have passed: older gear may have worn out
   const plan = creator.planStream({ accountId: live.id, topic: 'music', equipment: creator.streamGear().map((d) => d.id), when: 'next' });
   check(plan.ok && plan.stream.scheduledYear === store.state.year + 1 && plan.stream.equipment.length >= 2, 'a stream can be scheduled for next year with chosen equipment');
   check(!creator.broadcast(plan.stream.id).ok, 'and cannot go out early');
@@ -706,8 +724,10 @@ section('Other people online');
   star.talents = { ...(star.talents ?? {}), music: 95 };
   acc.makeAccount(star.id, 'glimmer', 'star.friend', { visibility: 'public' });
   const starAcc = acc.accountsOf(star.id).find((a) => a.platformId === 'glimmer');
-  for (let i = 0; i < 40 && !starAcc.creator; i++) { star.alive = true; star.meters.health = 90; star.meters.relationship = 80; if (!p.npcIds.includes(star.id)) p.npcIds.push(star.id); if (starAcc.status === 'deactivated') starAcc.status = 'active'; grow(1); }
-  check(starAcc.creator?.pathway === 'music', 'a gifted friend starts a channel of their own');
+  // A 6% chance a year (engine/digital/npc.js): given time, a gifted friend starts one. They are kept young, alive and online for it.
+  const channelOf = () => acc.accountsOf(star.id).find((a) => a.creator); // on Glimmer, or another public platform they joined since
+  for (let i = 0; i < 150 && !channelOf(); i++) { star.alive = true; star.age = 26; star.meters.health = 90; star.meters.relationship = 80; if (!p.npcIds.includes(star.id)) p.npcIds.push(star.id); if (starAcc.status !== 'active') starAcc.status = 'active'; grow(1); }
+  check(channelOf()?.creator.pathway === 'music', 'a gifted friend starts a channel of their own');
 }
 
 // ---------- Story Director arcs ----------
@@ -758,6 +778,7 @@ section('Radio and television');
   const ids = bc.broadcastOptions().map((o) => o.id);
   check(ids.includes('radio') && !ids.includes('tv'), `in 1930 there is radio and no television (${ids.join(', ')})`);
   const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'parent');
+  if (mum) mum.meters.relationship = 60; // room to grow, whatever the childhood rolled
   const before = mum?.meters.relationship;
   const r = bc.tuneIn('radio', 'drama');
   check(r.ok && (bc.setFor('radio') === 'elsewhere' || mum?.meters.relationship > before), 'an evening round the family radio brings the household closer');
@@ -812,12 +833,12 @@ section('Saves');
   const t = Object.values(back.digital.threads).find((x) => x.participants.includes(f.id));
   check(t && back.npcs[f.id] && t.messages.every((m) => m.from === back.player.id || m.from === f.id), 'messages stay linked to the right people');
   // A second life is a separate world.
-  const other = createLife({ countryId: 'uk', year: 1850 });
+  const other = createLife({ countryId: 'uk', year: 1850, seed: lifeSeed++ });
   check(!other.digital || Object.keys(other.digital.accounts).length === 0, 'another saved life does not share this one\'s accounts');
 }
 {
   // An old save, from before the Digital World.
-  const old = createLife({ countryId: 'us', year: 1998 });
+  const old = createLife({ countryId: 'us', year: 1998, seed: lifeSeed++ });
   old.year = 2024; old.player.age = 26;
   delete old.digital;
   old.player.social = { handle: 'oldtimer', followers: 12345, posts: 40, viral: 1, boughtFollowers: 0 };

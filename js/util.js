@@ -1,7 +1,14 @@
 export const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
-export const uid = (prefix = 'id') =>
-  `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+let idCounter = null;
+export const uid = (prefix = 'id') => (idCounter == null
+  ? `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+  : `${prefix}_t${(idCounter++).toString(36)}`);
+/**
+ * For tests: ids from a counter instead of the clock, so a seeded run makes the same ids, and anything decided from an
+ * id (a face, a pace) comes out the same every time. The game never calls this.
+ */
+export const countedIds = (from = 1) => { idCounter = from; };
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);

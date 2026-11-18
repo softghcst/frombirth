@@ -36,10 +36,11 @@ import { register as registerAnimal, reconcile as reconcileAnimals } from './ani
  * @param {string} [opts.orientation]  one of ORIENTATIONS in engine/identity.js
  * @param {'commoner'|'noble'|'royal'} [opts.birthRank]  only matters in a monarchy; left out, a title at birth is rare
  * @param {boolean} [opts.trans]  whether `gender` differs from the one registered at birth
+ * @param {number} [opts.seed]  for tests: the same seed makes the same life, and the same years after it. The game leaves it out.
  * @returns {import('../types.js').GameState}
  */
 export function createLife(opts = {}) {
-  rng.seed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
+  rng.seed(Number.isInteger(opts.seed) ? opts.seed >>> 0 : (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
 
   const c = COUNTRIES[opts.countryId] ?? rng.pick(COUNTRY_LIST);
   // `identityGender` is who they are. A transgender character is registered as something else at birth.
