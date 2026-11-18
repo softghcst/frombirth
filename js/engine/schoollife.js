@@ -319,7 +319,7 @@ function audition(bold) {
 /** After leaving school with a qualification: the day itself. */
 export function graduationDay(gpa) {
   const top = gpa >= 3.7;
-  pend('graduation_day', { words: { honours: top ? 'Your name is read out first, with the prize for the year. ' : '' } });
+  pend('graduation_day', { words: { honors: top ? 'Your name is read out first, with the prize for the year. ' : '' } });
 }
 
 /** The data for the Activities page of the school book. */
