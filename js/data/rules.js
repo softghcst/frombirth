@@ -22,7 +22,10 @@ export const RULES = {
   drivingAge: { name: 'Driving age', kind: 'age', default: 18 },
   drinkingAge: { name: 'Drinking age', kind: 'age', default: 18 },
   gamblingAge: { name: 'Gambling age', kind: 'age', default: 18 },
+  // The game never lets anyone marry before 18, whatever the law of the place allows (engine/rules.js MARRIAGE_FLOOR).
   marriageAge: { name: 'Marriage age', kind: 'age', default: 18 },
+  // Where the law sets a different age for women. Shown with marriageAge, not as a line of its own.
+  marriageAgeWomen: { name: 'Marriage age for women', kind: 'age', default: null, hidden: true },
   schoolLeavingAge: { name: 'School-leaving age', kind: 'age', default: 16 },
   retirementAge: { name: 'State pension age', kind: 'age', default: 65 },
   alcohol: { name: 'Alcohol', kind: 'flag', default: true, words: ['Banned', 'Legal'] },
@@ -49,71 +52,106 @@ export const RULES = {
  * Checked against Wikipedia, at these revisions (see docs/WORLD_DATA.md and scripts/verify-laws.py):
  *   voting ages: "Voting age" rev 1386001635 · drinking ages and alcohol bans: "Legal drinking age" rev 1381514309
  *   pension ages: "Retirement age" rev 1383117283 (the men's age, or the standard full-pension age where a range is given;
- *   countries the table does not cover keep the default). Driving and gambling ages are not yet checked.
+ *   countries the table does not cover keep the default) · marriage ages: "Marriageable age" rev 1382980745 (without parental or
+ *   judicial consent; a separate age for women where the law sets one) · driving: "List of minimum driving ages" rev 1383563696 (the
+ *   youngest age to drive a car, supervised or with consent) · gambling: "Gambling age" rev 1385344433 (the casino age where several are given) ·
+ *   school-leaving ages: "School-leaving age" rev 1380468003 (the end of compulsory schooling).
  */
 export const PLACE_RULES = {
-  af: { alcohol: false },
-  ar: { votingAge: 16 },
-  at: { votingAge: 16, drinkingAge: 16 },
-  au: { drivingAge: 17, retirementAge: 67 },
-  bd: { drinkingAge: 21, retirementAge: 59 },
-  be: { drinkingAge: 16, retirementAge: 66 },
-  br: { votingAge: 16 },
+  ae: { drivingAge: 17, gamblingAge: 21, schoolLeavingAge: 18 },
+  af: { schoolLeavingAge: 13, alcohol: false },
+  ao: { schoolLeavingAge: 12 },
+  ar: { votingAge: 16, drivingAge: 17, schoolLeavingAge: 18 },
+  at: { votingAge: 16, drivingAge: 17, drinkingAge: 16, schoolLeavingAge: 15 },
+  au: { drivingAge: 17, schoolLeavingAge: 17, retirementAge: 67 },
+  bd: { drinkingAge: 21, marriageAge: 21, marriageAgeWomen: 18, schoolLeavingAge: 10, retirementAge: 59 },
+  be: { drinkingAge: 16, gamblingAge: 21, schoolLeavingAge: 18, retirementAge: 66 },
+  br: { votingAge: 16, schoolLeavingAge: 18 },
+  bs: { drivingAge: 17 },
+  bz: { schoolLeavingAge: 14 },
   ca: { drivingAge: 16, drinkingAge: 19 },
-  ch: { drinkingAge: 16 },
-  cn: { retirementAge: 63 },
-  co: { retirementAge: 62 },
+  ch: { drivingAge: 17, drinkingAge: 16, schoolLeavingAge: 15 },
+  cl: { drivingAge: 17, schoolLeavingAge: 18 },
+  cn: { marriageAge: 22, marriageAgeWomen: 20, retirementAge: 63 },
+  co: { drivingAge: 16, schoolLeavingAge: 15, retirementAge: 62 },
+  cr: { schoolLeavingAge: 17 },
   cu: { votingAge: 16, drinkingAge: 16 },
   cz: { retirementAge: 64 },
   de: { drinkingAge: 16 },
-  dk: { retirementAge: 67 },
+  dk: { drivingAge: 17, retirementAge: 67 },
+  do: { schoolLeavingAge: 18 },
+  dz: { marriageAge: 19 },
   ec: { votingAge: 16 },
-  ee: { retirementAge: 64 },
-  eg: { drinkingAge: 21, retirementAge: 60 },
+  ee: { gamblingAge: 21, schoolLeavingAge: 15, retirementAge: 64 },
+  eg: { drinkingAge: 21, gamblingAge: 21, schoolLeavingAge: 14, retirementAge: 60 },
   es: { retirementAge: 66 },
+  et: { gamblingAge: 21 },
   fr: { drivingAge: 17, retirementAge: 64 },
-  gr: { votingAge: 17, retirementAge: 67 },
-  hk: { retirementAge: 65 },
-  id: { votingAge: 17, drinkingAge: 21, retirementAge: 59 },
+  ge: { drivingAge: 17, gamblingAge: 25, schoolLeavingAge: 14 },
+  gh: { schoolLeavingAge: 15 },
+  gr: { votingAge: 17, drivingAge: 17, gamblingAge: 21, schoolLeavingAge: 15, retirementAge: 67 },
+  gt: { drivingAge: 16 },
+  gy: { drivingAge: 17, schoolLeavingAge: 15 },
+  hk: { marriageAge: 21, marriageAgeWomen: 21, retirementAge: 65 },
+  hr: { schoolLeavingAge: 15 },
+  hu: { drivingAge: 17 },
+  id: { votingAge: 17, drivingAge: 17, drinkingAge: 21, marriageAge: 21, schoolLeavingAge: 15, retirementAge: 59 },
   ie: { drivingAge: 17, retirementAge: 67 },
-  il: { retirementAge: 67 },
-  in: { drinkingAge: 21, retirementAge: 60 },
+  il: { drivingAge: 17, retirementAge: 67 },
+  in: { drinkingAge: 21, gamblingAge: 21, marriageAge: 21, marriageAgeWomen: 18, schoolLeavingAge: 14, retirementAge: 60 },
   iq: { retirementAge: 60 },
-  ir: { retirementAge: 60, alcohol: false },
-  it: { retirementAge: 67 },
-  jp: { drinkingAge: 20 },
-  kr: { drinkingAge: 19, retirementAge: 60 },
-  kw: { votingAge: 21, alcohol: false },
-  kz: { drinkingAge: 21, retirementAge: 63 },
-  lb: { votingAge: 21, retirementAge: 64 },
-  ma: { retirementAge: 63 },
-  my: { retirementAge: 60 },
+  ir: { schoolLeavingAge: 15, retirementAge: 60, alcohol: false },
+  it: { drivingAge: 17, retirementAge: 67 },
+  jm: { schoolLeavingAge: 14 },
+  jp: { drinkingAge: 20, gamblingAge: 20, schoolLeavingAge: 15 },
+  ke: { gamblingAge: 21 },
+  kr: { drinkingAge: 19, gamblingAge: 19, marriageAge: 19, schoolLeavingAge: 15, retirementAge: 60 },
+  kw: { votingAge: 21, schoolLeavingAge: 15, alcohol: false },
+  kz: { drinkingAge: 21, gamblingAge: 21, retirementAge: 63 },
+  lb: { votingAge: 21, gamblingAge: 21, schoolLeavingAge: 12, retirementAge: 64 },
+  ma: { schoolLeavingAge: 13, retirementAge: 63 },
+  mn: { schoolLeavingAge: 17 },
+  mx: { drivingAge: 16, schoolLeavingAge: 15 },
+  my: { drivingAge: 17, gamblingAge: 21, marriageAge: 21, retirementAge: 60 },
+  ng: { schoolLeavingAge: 15 },
   ni: { votingAge: 16 },
-  nl: { retirementAge: 67 },
+  nl: { drivingAge: 17, retirementAge: 67 },
   no: { retirementAge: 67 },
-  np: { votingAge: 16 },
-  nz: { drivingAge: 16 },
+  np: { votingAge: 16, gamblingAge: 21, marriageAge: 20 },
+  nz: { drivingAge: 16, gamblingAge: 20 },
+  pa: { drivingAge: 16 },
   pe: { retirementAge: 60 },
-  ph: { retirementAge: 60, divorce: false },
-  pk: { retirementAge: 60, alcohol: false },
-  pr: { drinkingAge: 18, gamblingAge: 18 },
-  pt: { retirementAge: 66 },
+  pg: { marriageAge: 21 },
+  ph: { drivingAge: 17, gamblingAge: 21, marriageAge: 21, schoolLeavingAge: 18, retirementAge: 60, divorce: false },
+  pk: { schoolLeavingAge: 10, retirementAge: 60, alcohol: false },
+  pl: { schoolLeavingAge: 18 },
+  pr: { drivingAge: 18, drinkingAge: 18, gamblingAge: 18, marriageAge: 21 },
+  pt: { schoolLeavingAge: 18, retirementAge: 66 },
+  py: { schoolLeavingAge: 14 },
   qa: { drinkingAge: 21 },
-  ru: { retirementAge: 64 },
-  sa: { retirementAge: 60, alcohol: false },
-  se: { retirementAge: 66 },
-  sg: { votingAge: 21, gamblingAge: 21, retirementAge: 63 },
-  sk: { retirementAge: 62 },
-  th: { drinkingAge: 20, retirementAge: 60 },
+  ro: { schoolLeavingAge: 18 },
+  rs: { schoolLeavingAge: 14 },
+  ru: { schoolLeavingAge: 15, retirementAge: 64 },
+  sa: { drivingAge: 17, schoolLeavingAge: 15, retirementAge: 60, alcohol: false },
+  se: { gamblingAge: 20, retirementAge: 66 },
+  sg: { votingAge: 21, gamblingAge: 21, marriageAge: 21, retirementAge: 63 },
+  sk: { drivingAge: 17, retirementAge: 62 },
+  sv: { drivingAge: 15 },
+  sy: { schoolLeavingAge: 15 },
+  th: { drinkingAge: 20, schoolLeavingAge: 15, retirementAge: 60 },
   tn: { retirementAge: 62 },
   tr: { retirementAge: 62 },
-  tw: { votingAge: 20 },
-  ua: { retirementAge: 60 },
+  tw: { votingAge: 20, gamblingAge: 20, schoolLeavingAge: 15 },
+  ua: { gamblingAge: 21, schoolLeavingAge: 17, retirementAge: 60 },
+  ug: { gamblingAge: 25, marriageAge: 21, marriageAgeWomen: 18 },
   uk: { drivingAge: 17, retirementAge: 66 },
   us: { drivingAge: 16, drinkingAge: 21, gamblingAge: 21, retirementAge: 67, sentencing: 'tough' },
-  ve: { retirementAge: 60 },
-  vn: { retirementAge: 61 },
-  ws: { votingAge: 21, drinkingAge: 21 },
+  uy: { schoolLeavingAge: 14 },
+  ve: { schoolLeavingAge: 14, retirementAge: 60 },
+  vn: { gamblingAge: 21, marriageAge: 20, marriageAgeWomen: 18, schoolLeavingAge: 18, retirementAge: 61 },
+  ws: { votingAge: 21, drinkingAge: 21, gamblingAge: 21, marriageAge: 21 },
+  za: { schoolLeavingAge: 15 },
+  zw: { drivingAge: 16 },
 };
 
 /**
@@ -138,12 +176,42 @@ export const REGION_RULES = {
 };
 
 /**
- * Laws a state, province or other region may set for itself, where the country lets its regions
- * make law (REGIONAL_COUNTRIES). Everything else is national.
+ * Which of the game's laws each country leaves to its states, provinces or other regions. A country not listed makes
+ * all of them nationally. Compiled by hand from each country's division of powers, simplified to these six matters,
+ * and NOT YET CHECKED against sources: treat it as the author's understanding.
+ *   United States: criminal law (the death penalty), gambling and licensing ages are state law; the drinking age is
+ *     state law, though federal highway money keeps it at 21.
+ *   Canada: gambling, liquor and driving licences are provincial; criminal law, the death penalty included, is federal.
+ *   Australia: gambling and driving licences are state matters; the Commonwealth has forbidden the death penalty everywhere.
+ *   Germany: gambling is regulated by the Länder; youth protection (alcohol) and driving are federal.
+ *   Austria and Switzerland: youth protection, including the age for alcohol, is set by the Länder and cantons.
+ *   Mexico: states issue driving licences.  Argentina: provinces run gambling.
+ *   India: alcohol (some states ban it), the drinking age and gambling are state subjects.
+ *   Malaysia: gambling is restricted by some states.  Nigeria: northern states ban alcohol and regulate gambling.
+ *   United Arab Emirates: each emirate sets its own rules on alcohol and gambling.
+ *   United Kingdom: licensing is devolved to Scotland and Northern Ireland.  Spain: autonomous communities set the
+ *     drinking age and regulate gambling.
  */
-export const REGIONAL_RULES = ['drinkingAge', 'gamblingAge', 'drivingAge', 'gambling', 'alcohol', 'deathPenalty'];
-/** Countries whose regions make some of their own law: the federations, and the United Kingdom's devolved nations. */
-export const REGIONAL_COUNTRIES = ['us', 'ca', 'au', 'de', 'at', 'ch', 'be', 'mx', 'br', 'ar', 've', 'in', 'pk', 'my', 'ae', 'ru', 'ng', 'et', 'uk', 'es', 'it'];
+export const REGIONAL_POWERS = {
+  us: ['deathPenalty', 'gambling', 'gamblingAge', 'drivingAge', 'drinkingAge'],
+  ca: ['gambling', 'gamblingAge', 'drivingAge', 'drinkingAge'],
+  au: ['gambling', 'gamblingAge', 'drivingAge'],
+  de: ['gambling', 'gamblingAge'],
+  at: ['drinkingAge'],
+  ch: ['drinkingAge'],
+  mx: ['drivingAge'],
+  ar: ['gambling', 'gamblingAge'],
+  in: ['alcohol', 'drinkingAge', 'gambling', 'gamblingAge'],
+  my: ['gambling'],
+  ng: ['alcohol', 'gambling'],
+  ae: ['alcohol', 'drinkingAge', 'gambling', 'gamblingAge'],
+  uk: ['drinkingAge'],
+  es: ['drinkingAge', 'gambling', 'gamblingAge'],
+};
+/** Every law some region somewhere can make. */
+export const REGIONAL_RULES = [...new Set(Object.values(REGIONAL_POWERS).flat())];
+/** Countries whose regions make some of their own law. */
+export const REGIONAL_COUNTRIES = Object.keys(REGIONAL_POWERS);
 
 /** Changes the world may make by itself over the years (engine/rules.js tickRules). */
 export const REFORM = {

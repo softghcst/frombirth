@@ -41,6 +41,9 @@ node tests/animals.mjs         # the family's animals: one record each, owners a
 node tests/animal-care.mjs     # shelters, adoption, costs, the vet, insurance, fostering, rehoming, moving abroad, careers
 node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, breeding and pedigrees
 node tests/animal-life.mjs     # staff, classes, behaviour, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
+node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
+node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
+node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
@@ -73,6 +76,34 @@ budgets are in `js/engine/banking.js`; cards, insurance, pension plans, family m
 (`js/data/money.js`).
 
 How it works, what is fiction, and what is not built yet: [docs/FINANCE.md](docs/FINANCE.md).
+
+## Sports and athletics
+
+Pursuits → **My Athletics** is the hub: ten sections (overview, sports, training, teams and clubs, competitions,
+rankings, career and offers, health and mind, money and fame, legacy), with profiles for each sport, team, coach,
+season, event and family athlete. Family archive → **Athletic legacy** opens the same record from the People tab.
+
+One engine plays every sport; the sports themselves are data. Soccer, tennis and pickleball (with doubles partners)
+are modeled in full; the other twenty-odd sports use shared scoring for goals, points, runs, sets, rally games,
+strokes, times, judged scores and bouts. Sport skills are separate from the character's talents and grow towards a
+fixed ceiling, with diminishing returns per training hour. Coaches, key teammates, doubles partners and agents are
+real people. Results come from keyed, seeded luck and are stored once, so a reload never re-rolls them; standings
+and champions are counted from completed games only. Clubs, leagues and the Pathways Rating (PR) are invented.
+
+| What | Where |
+|---|---|
+| The registry: sports, skills, positions, founding years, routes to going pro, injuries, plans | `js/data/sports.js` |
+| How a match, race or routine comes out, and the rating | `js/engine/sportsPlay.js` |
+| Profiles, eligibility, training, clubs and tryouts, coaches, rosters, leagues and seasons, draws and meets, doubles | `js/engine/sports.js` |
+| The year in sport, money, injuries and rehab, recruiting and scholarships, contracts, sponsors, fame, arcs, generations | `js/engine/sportsLife.js` |
+| Stories with scenes, A to I: first team, a coach who believes in you, the scholarship, the championship season, the doubles partnership, injury and recovery, the professional dream, the comeback, a new generation | `js/engine/sportsArcs.js`, `js/data/events/sports.js` |
+| Sport in the family: parents' and grandparents' past, siblings and children who choose their own sport, parents at games | `js/engine/sportsFamily.js` |
+| My Athletics; lines in the life story open the season, event, team or coach they are about | `js/ui/sports.js` |
+
+Not built: there is no wider disability system (adaptive sports key off `flags.wheelchair` or a matching condition),
+no historical eras beyond each sport's founding and first-professional year, and the shared adapters do not model
+substitutions, set plays or per-event schedules. Relatives' records are light: the level reached, seasons and titles,
+not every game.
 
 ## The family's animals
 
@@ -327,11 +358,13 @@ bill costs nothing and has no committee stage; it counts as one of the year's tw
 it; where one person rules, it is a decree. The world's own reforms in a country your life has a government for now need a
 government that wants them.
 
-**Regional law.** In countries whose regions make law (the federations, and the United Kingdom's devolved nations), the head
-of a region can change the laws a region controls, one a year, through the regional assembly: the drinking, driving and
-gambling ages, bans on gambling or alcohol, and the death penalty. It applies to everyone living in that region (Texas, Ontario,
-Bavaria; where the game records no states, the area around the city). Between a regional and a national change to the same
-law, the more recent one stands.
+**Regional law.** Where a country leaves some of these laws to its states, provinces or emirates, the head of a region
+can change them, one a year, through the regional assembly. Which ones depends on the country: an American state can set
+the death penalty, gambling and the driving, drinking and gambling ages; a Canadian province the same except the death
+penalty, which is federal; a German Land only gambling; an Indian state or an emirate can ban alcohol; in Brazil, France,
+Italy or Russia none of these are regional (`REGIONAL_POWERS` in `js/data/rules.js`, not yet checked against sources). A law
+applies to everyone living in the region (where the game records no states, the area around the city). Between a regional
+and a national change to the same law, the more recent one stands.
 
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
@@ -406,7 +439,8 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
 **Income tax** is the country's headline rate run through a schedule: an allowance, then bands. There are four shapes: none
 (the United Arab Emirates and others that charge nothing), one flat rate (Russia, Ukraine, Hungary and others), rising bands
 (the default, and the United States), and steeply rising bands (much of western Europe, Japan, South Korea, Canada,
-Australia). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
+Australia). The top band is each country's real top rate, from "List of countries by tax rates" (`TAX_TOP`; for the
+United States the federal 37%). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
 anything more you earn.
 
 **Health care** has six models:

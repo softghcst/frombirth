@@ -113,14 +113,15 @@ section(`world: ${everywhere} reforms across eight forty-year lives, ${total} of
 // 7. The head of a region changes the laws a region controls, for that region only.
 {
   const local = await import('../js/engine/local.js');
-  const { REGIONAL_RULES } = await import('../js/data/rules.js');
+  const { REGIONAL_POWERS } = await import('../js/data/rules.js');
   const governor = (id, city) => { do { store.state = createLife({ countryId: id, city }); } while (store.state.player.royal); const q = store.state.player; q.age = 50; q.birthYear = store.state.year; store.state.year += 50;
     q.flags.livesWithParents = false; q.education.enrolled = false; const w = polity(id); if (w.parties.length) joinParty([...w.parties].sort((x, y) => (w.seats[y.id] ?? 0) - (w.seats[x.id] ?? 0))[0].id);
     politics.takeOffice(politics.offices().find((o) => o.id === 'region'), 60, true); return q; };
   p = governor('us', 'Austin');
   check(local.myRegion().name === 'Texas' && !local.regionalLawBlock(), 'the governor of Texas governs Texas');
   const opts = local.regionalLawOptions();
-  check(opts.length >= 3 && opts.every((o) => REGIONAL_RULES.includes(o.rule) && o.outlook), 'only regional matters are offered, each with an outlook');
+  check(opts.length >= 3 && opts.every((o) => REGIONAL_POWERS.us.includes(o.rule) && o.outlook), 'only what American states decide is offered, each with an outlook');
+  check(/death penalty/.test(local.regionalPowersLine()), 'and the screen says what a state can decide');
   check(!opts.some((o) => o.rule === 'sameSexMarriage' || o.rule === 'votingAge'), 'national law is not a region\'s to change');
   // Whether the assembly passes it depends on who sits in it. Some assemblies never will, however often they are asked:
   // that is the game working. So if this one will not, the check moves to another Texas (another life), up to a few times.
@@ -144,7 +145,11 @@ section(`world: ${everywhere} reforms across eight forty-year lives, ${total} of
   p = governor('fr', 'Lyon');
   check(/nationally/.test(local.regionalLawBlock()) && !local.regionalLawOptions().length, 'in France, regions do not make this law');
   p = governor('br', 'Recife');
-  check(local.myRegion().name === 'Pernambuco' && local.regionalLawOptions().length > 0, 'in Brazil, a state governor can');
+  check(/nationally/.test(local.regionalLawBlock()), 'in Brazil these laws are federal: a state governor cannot change them');
+  p = governor('ca', 'Montreal');
+  check(local.myRegion().name === 'Quebec' && local.regionalLawOptions().length > 0 && !local.regionalLawOptions().some((o) => o.rule === 'deathPenalty'), 'a Canadian premier can change provincial law, but not the death penalty, which is federal');
+  p = governor('in', 'Mumbai');
+  check(local.regionalLawOptions().some((o) => o.rule === 'alcohol'), 'an Indian state can ban alcohol, as some do');
   p = governor('ng', COUNTRY_LIST.find((c) => c.id === 'ng').cities[0]);
   check(/^the area around /.test(local.myRegion().name) && local.myRegion().id.startsWith('around:'), 'where the game has no states recorded, the region is the area around the city');
   section('regions: a governor changes regional law for that region only; national and regional law take turns by date');

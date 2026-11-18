@@ -46,6 +46,15 @@ SOURCES = {
     'birthright': ('Jus soli', 1384581062),
     'single': ('Multiple citizenship', 1383418957),
     'government': ('List of countries by system of government', 1385845870),
+    'marriageAge': ('Marriageable age', 1382980745),
+    'drivingAge': ('List of minimum driving ages', 1383563696),
+    'gamblingAge': ('Gambling age', 1385344433),
+    'naturalization': ('Naturalization', 1384638556),
+    'eu': ('Member state of the European Union', 1386331027),
+    'tasman': ('Trans-Tasman Travel Arrangement', 1386322832),
+    'healthCare': ('Universal health care', 1385246824),
+    'taxTop': ('List of countries by tax rates', 1385796804),
+    'schoolLeavingAge': ('School-leaving age', 1380468003),
 }
 
 # Where the game's value stands although the source reads differently, and why.
@@ -70,6 +79,39 @@ DECIDED = {
     ('gy', 'single'): 'The source lists dual citizenship as restricted in Guyana without detail; the game allows it, unverified.',
     ('at', 'single'): 'Dual citizenship only with special permission or from birth; the game treats Austria as single-nationality.',
 }
+
+# Decided while checking the second round: marriage, driving and gambling ages, naturalization.
+DECIDED.update({
+    ('au', 'drivingAge'): 'The table lists Victoria (18) first; most states license at 17, which the game uses.',
+    ('es', 'drivingAge'): 'The ages the table lists first are for mopeds and motorcycles; a car license is at 18.',
+    ('iq', 'drivingAge'): 'The table lists motorcycles first; cars are 18.',
+    ('jm', 'drivingAge'): 'A learner can drive at 16 or 17 under supervision; the game uses 18, the age of a full license.',
+    ('jp', 'drivingAge'): 'The table lists small motorcycles first; ordinary cars are 18.',
+    ('np', 'drivingAge'): 'The table lists two-wheelers first; four-wheelers are 18.',
+    ('vn', 'drivingAge'): 'The table lists small motorcycles first; cars are 18.',
+    ('uk', 'marriageAge'): 'The table gives 16 for Scotland and Northern Ireland; the game never lets anyone marry before 18.',
+    ('ir', 'marriageAge'): 'The law allows women to marry at 15; the game never lets anyone marry before 18.',
+    ('pk', 'marriageAge'): 'The law allows women to marry at 16 in some provinces; the game never lets anyone marry before 18.',
+    ('ca', 'drivingAge'): 'Set by each province, 16 in most, which the game uses.',
+    ('il', 'drivingAge'): 'The table cell lists motorcycles and supervised driving first; a car license is at 17, which the game uses.',
+    ('nz', 'drivingAge'): 'The age is 16 and a half; the game counts whole years.',
+    ('au', 'schoolLeavingAge'): 'The table gives 15 or 17; school or training is compulsory to 17 in most states, which the game uses.',
+    ('cr', 'schoolLeavingAge'): 'The table gives 17 or 18; the game uses 17.',
+    ('pl', 'schoolLeavingAge'): 'Compulsory education lasts to 18 (the table gives a range); the game uses 18.',
+    ('tr', 'schoolLeavingAge'): 'The table gives 14 to 16, uncertain; the game uses 16.',
+    ('sg', 'naturalization'): 'There is no fixed residence period; the game uses the ten years given in Singapore\'s nationality-law article.',
+    ('pt', 'gamblingAge'): 'Some casinos admit from 25 and others from 18; the game uses 18.',
+    ('br', 'gambling'): 'Casinos are illegal, but lotteries and (since 2023) fixed-odds betting are legal; the game counts that as legal.',
+    ('eg', 'gambling'): 'Casinos are open to foreigners only; for citizens the game treats gambling as banned.',
+    ('ws', 'gambling'): 'Casinos are open to foreigners only; for citizens the game treats gambling as banned.',
+    ('in', 'gambling'): 'Gambling is illegal under national law except in a few states (Goa, Sikkim) and state lotteries; the game treats it as banned.',
+    ('ph', 'spouseWait'): 'The note lists several reductions; for the husband of a Filipina it is five years, which the game uses.',
+    ('us', 'taxTop'): 'The table gives New York City\'s combined 51.8%; the game uses the federal 37%, since state income tax varies from none to about 13%.',
+    ('bo', 'taxTop'): "The table's 25% is not the personal income tax; Bolivia taxes wages through the RC-IVA at a flat 13%, which the game uses.",
+    ('ee', 'taxTop'): "The table's 23.6% is an effective figure for 2024; Estonia's flat income tax is 22% from 2025, which the game uses.",
+    ('ro', 'taxTop'): "The table's 45% adds social and health contributions; Romania's income tax is a flat 10%, which the game uses.",
+    ('my', 'naturalization'): "The table gives 12 years; Malaysia's nationality-law article gives 10 years' residence, which the game uses.",
+})
 
 # Retirement: where the table gives a range, the standard full-pension age.
 RETIRE_STANDARD = {'us': 67, 'ca': 65, 'hk': 65, 'sg': 63, 'it': 67, 'fi': 65, 'se': 66, 'no': 67, 'uy': 65, 'dk': 67, 'be': 66}
@@ -101,20 +143,31 @@ def game():
       const { PLACES } = await import('./js/data/world.js');
       const law = await import('./js/engine/rules.js');
       const cit = await import('./js/data/citizenship.js');
+      const { HEALTH_MODEL_OF } = await import('./js/data/systems.js');
       const out = {};
       for (const c of COUNTRY_LIST) {
         const row = { name: c.name, iso3: PLACES[c.id].iso3, gov: PLACES[c.id].government };
         for (const r of law.sheet(c.id, { region: null })) row[r.id] = r.value;
-        row.birthright = cit.BIRTHRIGHT.has(c.id); row.single = cit.SINGLE.has(c.id);
+        row.taxTop = (await import('./js/engine/systems.js')).taxBreakdown((await import('./js/engine/systems.js')).typicalWage(c) * 200, c).marginal;
+        row.health = HEALTH_MODEL_OF[c.id] ?? (c.freeHealthcare ? 'public' : 'pocket');
+        row.birthright = cit.BIRTHRIGHT.has(c.id); row.single = cit.SINGLE.has(c.id); row.years = cit.RESIDENCE_YEARS[c.id] ?? cit.DEFAULT_YEARS;
+        row.spouseYears = Math.min(row.years, cit.SPOUSE_YEARS_IN?.[c.id] ?? Math.max(cit.SPOUSE_YEARS, Math.ceil(row.years / 2)));
+        row.marriageAgeWomen = law.rule('marriageAgeWomen', c.id, { region: null });
         out[c.id] = row;
       }
-      console.log(JSON.stringify(out));
+      const { FREE_MOVEMENT } = await import('./js/data/immigration.js');
+      console.log(JSON.stringify({ out, free: FREE_MOVEMENT }));
     """
     r = subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT, capture_output=True, text=True, check=True)
-    return json.loads(r.stdout)
+    d = json.loads(r.stdout)
+    FREE_EUROPE[:] = next(a['members'] for a in d['free'] if a['id'] == 'europe')
+    TASMAN[:] = next(a['members'] for a in d['free'] if a['id'] == 'tasman')
+    return d['out']
 
 
 G = None
+FREE_EUROPE = []
+TASMAN = []
 BY3 = {}
 BYNAME = {}
 ALIAS = {'united states of america': 'us', 'united kingdom': 'uk', 'south korea': 'kr', 'democratic republic of the congo': 'cd', 'czech republic': 'cz', 'czechia': 'cz',
@@ -144,6 +197,29 @@ def clean(s):
     s = re.sub(r'\{\{(?:tooltip|abbr)\|([^|}]+)\|[^}]*\}\}', r'\1', s)
     s = re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]+)\]\]', r'\1', s)
     return re.sub(r"'''?", '', s)
+
+
+def cells_of(r):
+    """The cells of a table row as plain text; a cell spanning n columns is repeated n times."""
+    body = re.sub(r'<ref[^>]*/>|<ref[^>]*>.*?</ref>', '', r, flags=re.S).replace('\n!', '\n|')
+    out = []
+    for c in re.split(r'\|\||\n\|', '\n' + body.strip('\n')):
+        if not c.strip(): continue
+        span = re.match(r'\s*colspan="?(\d)"?', c)
+        c2 = re.sub(r'^\s*(?:(?:style|align|colspan|rowspan|data-sort-value|class)\s*=\s*"?[^|"]*"?\s*;?"?\s*)+\|', '', c)
+        c2 = re.sub(r'\{\{(?:center|nowrap|small)\|([^{}]*)\}\}', r'\1', c2)
+        out.extend([clean(c2).strip()] * (int(span.group(1)) if span else 1))
+    return out
+
+
+def car_license_age(cell):
+    parts = re.split(r'<br\s*/?>|,|;|\n|\s(?=\d{2}\s)', cell.replace('&nbsp;', ' '))
+    cars = [p for p in parts if re.search(r'\bcars?\b|ordinary|four-wheel|non-professional', p, re.I)]
+    for p in cars + parts:
+        if re.search(r'moped|motorcycle|scooter|two-wheel|tractor|quad|bus|truck|heavy|professional (?:licen|driv)|supervis|teacher|learner|permit|attendant', p, re.I) and p not in cars: continue
+        m = re.search(r'\b(1[4-9]|2[0-1])\b', p)
+        if m: return int(m.group(1))
+    return None
 
 
 def table_at(w, start):
@@ -353,6 +429,113 @@ def main():
         if pid in SAYS_SINGLE and SAYS_SINGLE[pid] in multi: put(pid, 'single', g['single'], f'source: "{SAYS_SINGLE[pid]}"')
         elif pid in SAYS_MULTI and SAYS_MULTI[pid] in multi: put(pid, 'single', not g['single'] if pid not in ('pa', 'gy') else g['single'], f'source: "{SAYS_MULTI[pid]}"')
         else: put(pid, 'single', False, 'not covered by the source', covered=False)
+
+    # Marriage, driving and gambling ages; residence before naturalization; single nationality from the same table.
+    def first_rows(key):
+        seen = {}
+        w = page(key)
+        for m in re.finditer('wikitable', w):
+            for r in rows(table_at(w, m.start())):
+                pid = place_of(r)
+                if pid and pid not in seen: seen[pid] = cells_of(r)
+        return seen
+    def first_int(x):
+        m = re.search(r'\b(\d{1,2})\b', x or ''); return int(m.group(1)) if m else None
+
+    marriage = first_rows('marriageAge')
+    for pid, g in G.items():
+        c = marriage.get(pid)
+        men = first_int(c[1]) if c and len(c) > 1 else None
+        women = first_int(c[2]) if c and len(c) > 2 else None
+        if men is None: put(pid, 'marriageAge', False, 'not covered by the source', covered=False); continue
+        game_women = g.get('marriageAgeWomen') if g.get('marriageAgeWomen') is not None else g['marriageAge']
+        put(pid, 'marriageAge', g['marriageAge'] == men and (women is None or game_women == women), f'source: men {c[1][:40]}, women {c[2][:40] if len(c) > 2 else "?"}')
+
+    driving = first_rows('drivingAge')
+    for pid, g in G.items():
+        c = driving.get(pid)
+        if not c or len(c) < 2: put(pid, 'drivingAge', False, 'not covered by the source', covered=False); continue
+        # The youngest age to hold a car license (conditions allowed), skipping mopeds, motorcycles and supervised learners.
+        best = car_license_age(c[1])
+        put(pid, 'drivingAge', best == g['drivingAge'], f'source: {c[1][:90]}')
+
+    gambling = first_rows('gamblingAge')
+    for pid, g in G.items():
+        c = gambling.get(pid)
+        if not c or len(c) < 2:
+            put(pid, 'gambling', False, 'not covered by the source', covered=False); put(pid, 'gamblingAge', False, 'not covered by the source', covered=False); continue
+        illegal = bool(re.match(r'\s*Illegal', c[1]))
+        put(pid, 'gambling', g['gambling'] == (not illegal), f'source: {c[1][:90]}')
+        v = None if illegal else first_int(c[1])
+        if not g['gambling']: put(pid, 'gamblingAge', True, '')
+        elif v is None: put(pid, 'gamblingAge', False, 'no age given', covered=False)
+        else: put(pid, 'gamblingAge', g['gamblingAge'] == v, f'source: {c[1][:90]}')
+
+    nat = first_rows('naturalization')
+    for pid, g in G.items():
+        c = nat.get(pid)
+        if not c or len(c) < 4: put(pid, 'naturalization', False, 'not covered by the source', covered=False); continue
+        years = first_int(c[1])
+        put(pid, 'naturalization', (years is not None and years == g['years']) or (g['years'] >= 90 and years is None), f'source: {c[1][:60]}')
+        # A spouse's shorter wait, where the note states one.
+        sm = re.search(r'(?:spouse|married|marriage)[^.]{0,80}?\b(\d+|one|two|three|four|five)\s+years?|\b(\d+|one|two|three|four|five)\s+years?[^.]{0,60}(?:spouse|married|marriage)|waived for spouses', c[2], re.I)
+        if sm:
+            word = (sm.group(1) or sm.group(2) or '0').lower()
+            n = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5}.get(word, None)
+            n = int(word) if n is None else n
+            put(pid, 'spouseWait', g['spouseYears'] == n, f'source: {c[2][:90]}')
+        else:
+            put(pid, 'spouseWait', False, 'the source gives no separate wait for spouses', covered=False)
+        multi = True if '{{yes}}' in c[3] else False if '{{no}}' in c[3] else None
+        if multi is not None and results[pid].get('single', {}).get('status') != 'ok':
+            put(pid, 'single', g['single'] == (not multi), f'source: "Naturalization", multiple citizenship {c[3][:20]}')
+
+    # School-leaving ages: this table names countries in plain text.
+    w = page('schoolLeavingAge'); school = {}
+    for m in re.finditer('wikitable', w):
+        for r in rows(table_at(w, m.start())):
+            c = cells_of(r)
+            for i, x in enumerate(c[:3]):
+                pid = BYNAME.get(norm(x)) or ALIAS.get(norm(x))
+                if pid: school.setdefault(pid, c[i + 1] if i + 1 < len(c) else ''); break
+    for pid, g in G.items():
+        v = first_int(school.get(pid)) if pid in school else None
+        if v is None: put(pid, 'schoolLeavingAge', False, 'not covered by the source', covered=False)
+        else: put(pid, 'schoolLeavingAge', g['schoolLeavingAge'] == v, f'source: {school[pid][:40]}')
+
+    # Health care: a country the source lists as having universal care must not leave the patient with the whole bill.
+    # The list gives start dates for only some countries, so a country missing from it is not evidence of anything.
+    w = page('healthCare'); t = table_at(w, w.find('wikitable')); universal = {}
+    for r in rows(t):
+        m = re.search(r'\{\{flagg\|[^}]*?\|([^|{}]+)\}\}', r)
+        pid = place_of('{{flag|' + m.group(1) + '}}') if m else None
+        if pid: universal[pid] = (re.findall(r'\n\|\s*(\d{4})', r) or ['?'])[0]
+    for pid, g in G.items():
+        if pid in universal: put(pid, 'healthCare', g['health'] not in ('pocket', 'private'), f'source: universal health care since {universal[pid]}; the game charges the whole bill')
+        else: put(pid, 'healthCare', False, 'not in the source\'s list of start dates', covered=False)
+
+    # The top rate of income tax, from the "Highest" column.
+    taxes = first_rows('taxTop')
+    for pid, g in G.items():
+        c = taxes.get(pid)
+        m = re.search(r'(\d+(?:\.\d+)?)\s*%', c[3]) if c and len(c) > 3 else None
+        if not m: put(pid, 'taxTop', False, 'not covered by the source', covered=False); continue
+        put(pid, 'taxTop', abs(g['taxTop'] - min(0.65, float(m.group(1)) / 100)) < 0.0051, f'source: {c[3][:60]}')
+
+    # The free-movement lists: the European area is the EU members in the game, plus Norway (EEA) and Switzerland (agreements).
+    eu = set()
+    w = page('eu')
+    for m in re.finditer('wikitable', w):
+        for r in rows(table_at(w, m.start())):
+            pid = place_of(r)
+            if pid: eu.add(pid)
+    eu.discard('uk')  # listed among former members: it left in 2020
+    area = set(FREE_EUROPE)
+    tasman = 'free movement of citizens' in clean(page('tasman')[:4000])
+    for pid in G:
+        if pid in ('no', 'ch'): put(pid, 'freeMovement', pid in area, 'Norway (EEA) and Switzerland (bilateral agreements) belong to the area')
+        elif pid in ('au', 'nz'): put(pid, 'freeMovement', tasman and pid in TASMAN, 'source: Trans-Tasman Travel Arrangement')
+        else: put(pid, 'freeMovement', (pid in eu) == (pid in area), 'source: EU member' if pid in eu else 'source: not an EU member')
 
     gov = src_government(page('government'))
     for pid, g in G.items():

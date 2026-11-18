@@ -78,7 +78,7 @@ export async function regionalLawFlow(api) {
   const options = local.regionalLawOptions();
   if (!options.length) return messageModal({ body: local.regionalLawBlock() || 'There is nothing here the region can change.' });
   const pick = await pickModal({ title: `The law of ${r.name}`, cancel: 'Back',
-    body: 'A region can set its own ages for drinking, driving and gambling, ban or allow gambling and alcohol, and decide on the death penalty. A national law made later overrides it.',
+    body: `Here a region can decide ${local.regionalPowersLine()}. A national law made later overrides it.`,
     options: options.map((o, i) => ({ value: i, label: o.name, sub: o.outlook })) });
   if (pick == null) return undefined;
   const c = options[pick];

@@ -21,6 +21,7 @@ import { roleLabel } from '../../engine/relationships.js';
 import { openScreen } from '../animals.js';
 import '../animalHub.js';
 import * as riding from '../../engine/equestrian.js';
+import { athleticsCard, openAthletics } from '../sports.js';
 
 async function report(api, r) {
   api.changed();
@@ -125,6 +126,7 @@ export default {
           <button class="btn danger" data-crime style="margin-top:10px">Commit a crime</button>
         </div>` : ''}
         ${legalCard()}
+        ${law.isJailed() ? '' : athleticsCard()}
         ${socialCard()}
         ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Riding</h3><p class="muted" style="margin-bottom:10px">${p.riding ? `${esc(riding.levelName(riding.riderLevel()))} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : 'Lessons, horses and the show ring.'}</p><button class="btn" data-go="riding">Equestrian</button></div>` : ''}
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
@@ -139,6 +141,7 @@ export default {
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;
       if (go === 'riding') return openScreen(api, 'riding');
+      if (go === 'athletics') return openAthletics(api);
       if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: leisure.moveAbroad, city: leisure.moveCity })[go](api);
       return undefined;
     };

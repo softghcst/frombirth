@@ -301,6 +301,7 @@ export function hire(career, level, performance, how, o = {}) {
     c.partTime = null;
   }
   if (c.careerId) { recordJob('left for another job'); leaveColleagues(); }
+  c.sportContract = null; // a sports contract is held with its job: a new job ends it (engine/sportsLife.js, at the turn of the year)
   if (c.retired) c.unretired = true; // back to work after retiring: the pension goes on being paid
   const sameField = c.lastField === career.id;
   const e = career.type === 'freelance' ? null : employer(o.employerId) ?? placeAt(career.id, p.countryId, p.city);
@@ -426,8 +427,9 @@ export function askForRaise() {
   return result(false, text);
 }
 
-function endJob(exit) {
+export function endJob(exit) {
   const c = player().career;
+  c.sportContract = null; // a professional sports contract is held with the job (engine/sportsLife.js)
   if (c.military && c.yearsInField >= 2) player().flags.veteran = true;
   recordJob(exit);
   leaveColleagues();
@@ -684,6 +686,9 @@ export function tickCareer() {
     p.education.gpa = Math.max(0, Math.round((p.education.gpa - career.schoolCost * (1 + c.level * 0.5)) * 100) / 100);
   }
   c.totalYears = (c.totalYears ?? 0) + 1;
+  // A professional athlete's year is the sports season: their role in the side and their contract are settled there
+  // (engine/sportsLife.js), not by an annual review.
+  if (c.sportContract && career.id === 'athlete') return null;
 
   // How the year went: skill, discipline, a mentor, how stretched or bored, and luck.
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : (p.stats.intellect - 55) / 15;
