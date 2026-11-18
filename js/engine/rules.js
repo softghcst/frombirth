@@ -58,6 +58,9 @@ export const rule = (id, placeId, opts) => source(id, placeId, opts).value;
 export const lawsOf = (placeId = here()) => ({ marriage: rule('sameSexMarriage', placeId), lgbt: rule('lgbt', placeId), gambling: rule('gambling', placeId),
   deathPenalty: rule('deathPenalty', placeId), conscription: rule('conscription', placeId) });
 
+/** Whatever a place's law allows, nobody marries before this age in the game. */
+export const MARRIAGE_FLOOR = 18;
+
 const WORDS = (def, v) => (def.kind === 'age' ? String(v) : def.kind === 'flag' ? def.words[v ? 1 : 0] : def.words[v]);
 
 /**
@@ -81,7 +84,10 @@ export function may(action, opts = {}) {
     case 'divorce': return rule('divorce', id) ? { ok: true, why: '' } : no(`There is no divorce in ${name}. A marriage can only be annulled, and that is slow and rare.`);
     case 'marry': {
       const o = opts.partner;
-      if (age('marriageAge', 'marry')) return age('marriageAge', 'marry');
+      const women = rule('marriageAgeWomen', id);
+      const key = p.gender === 'female' && women != null ? 'marriageAgeWomen' : 'marriageAge';
+      if (age(key, 'marry')) return age(key, 'marry');
+      if (p.age < MARRIAGE_FLOOR) return no(`You have to be ${MARRIAGE_FLOOR} to marry.`);
       if (o && o.gender === p.gender && !rule('sameSexMarriage', id)) return no(`Two ${p.gender === 'male' ? 'men' : p.gender === 'female' ? 'women' : 'people of the same gender'} cannot marry in ${name}.`);
       return { ok: true, why: '' };
     }
@@ -94,10 +100,11 @@ export function may(action, opts = {}) {
  * @returns {{id, name, value, text:string, source:string, note:string}[]}
  */
 export function sheet(placeId = here(), opts = {}) {
-  return Object.entries(RULES).map(([id, def]) => {
+  return Object.entries(RULES).filter(([, def]) => !def.hidden).map(([id, def]) => {
     const s = source(id, placeId, opts);
+    const women = id === 'marriageAge' ? source('marriageAgeWomen', placeId, opts).value : null;
     const up = parentOf(placeId);
-    return { id, name: def.name, value: s.value, text: WORDS(def, s.value), source: s.source,
+    return { id, name: def.name, value: s.value, text: women != null && women !== s.value ? `${s.value} for men, ${women} for women` : WORDS(def, s.value), source: s.source,
       note: s.source === 'enacted' ? `changed in ${s.year}` : s.source === 'enacted region' ? `changed by the region in ${s.year}` : s.source === 'parent' ? `as in ${theCountry(COUNTRIES[up].name)}` : s.source === 'region' ? 'local law' : '' };
   });
 }
