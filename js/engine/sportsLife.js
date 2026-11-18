@@ -25,6 +25,7 @@ import { familyPast, tickRelatives, parentsYear } from './sportsFamily.js';
 import { tickSportsArcs } from './sportsArcs.js';
 import { seasonAwards, yearAwards } from './sportsAwards.js';
 import { recruitYear, RECRUIT_ANSWERS, divisionOf } from './recruiting.js';
+import { beforeSeason, afterSeason, COLLEGE_ANSWERS } from './college.js';
 
 const { nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, playSeason, playEvent, overall, rec, EVENTS_A_YEAR, fullName, seeded } = sp.internals;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -428,7 +429,7 @@ function collegeTeam(state, a, e) {
     const id = signed?.instId ?? `juco:${p.city}`;
     if (!signed && overall(e, p) < 55) return null;
     const org = findOrg(state, sport, 'college', { key: `college/${e.id}/${id}`, name: `${signed?.name ?? `${p.city} Community College`} ${sport.name}` });
-    org.division = 'JUCO';
+    sp.setCollegeDivision(org, 'JUCO');
     if (e.orgId !== org.id && !e.contractId) { joinOrg(org, state); log(`You joined the ${org.name} program${signed ? ' on your scholarship' : ' as a walk-on'}.`, 'system', 'good'); }
     return org;
   }
@@ -437,7 +438,7 @@ function collegeTeam(state, a, e) {
   if (!offer && !walkOn) return null;
   if (e.leftCollege === p.education.schoolId) return null; // left this university's team: not put back on it
   const org = findOrg(state, sport, 'college', { key: `college/${e.id}/${p.education.schoolId}`, name: `${p.education.schoolName} ${sport.name}`, uniId: p.education.schoolId });
-  org.division ??= (uniOf(p.education.schoolId) && divisionOf(state, uniOf(p.education.schoolId))) ?? 'D1';
+  sp.setCollegeDivision(org, (uniOf(p.education.schoolId) && divisionOf(state, uniOf(p.education.schoolId))) ?? 'D1');
   if (e.orgId !== org.id && !e.contractId) {
     joinOrg(org, state);
     log(`You joined the ${org.name} program${offer ? ' on your scholarship' : ' as a walk-on'}.`, 'system', 'good');
@@ -765,8 +766,10 @@ function yearIn(state, a, e) {
   const sport = sportOf(e.id);
   if (e.banUntil > state.year) { log(`You are banned from ${sport.name.toLowerCase()} until ${e.banUntil}.`, 'system', 'bad'); e.plan.hours = Math.min(e.plan.hours, 5); sp.internals.trainYear(state, p, a, e); return; }
   // University: the program, if the player plays for one.
-  if (p.education.stage === 'university') collegeTeam(state, a, e);
+  if (['university', 'community'].includes(p.education.stage)) collegeTeam(state, a, e);
   sp.internals.checkSchoolTeam(state, e);
+  // College: a redshirt year, grades below the line, or eligibility used up keep the player out of the games (engine/college.js).
+  const sitOut = beforeSeason(state, a, e);
   if (!e.orgId) joinOrg(rec(state, sport), state, { quiet: true });
   sp.internals.regroup(state, e);
   sp.internals.trainYear(state, p, a, e);
@@ -778,11 +781,13 @@ function yearIn(state, a, e) {
     const teams = [e.teamId, e.schoolTeamId].filter(Boolean).map((id) => sp.teamOf(id, state)).filter(Boolean);
     for (const team of teams) {
       const open = a.injuries.find((x) => x.status === 'out' && x.sportId === e.id);
-      const season = playSeason(state, e, team, { injury: outWindow(open, sport.season ?? 14) });
+      const benched = sitOut && sp.orgOf(team.orgId, state)?.kind === 'college' ? { from: 0, to: 9999 } : null;
+      const season = playSeason(state, e, team, { injury: benched ?? outWindow(open, sport.season ?? 14) });
       if (!e.seasons.includes(season.id)) e.seasons.push(season.id);
       const table = sp.standings(season);
       const place = table.findIndex((x) => x.teamId === team.id) + 1;
       const mine = [...season.fixtures, ...season.playoffs].filter((f) => f.me?.played);
+      sum.role = season.role; sum.games = (sum.games ?? 0) + mine.length;
       for (const f of mine) {
         games.push(f.me.rating);
         yearStats.games += 1; if (f.me.start) yearStats.starts += 1;
@@ -832,7 +837,8 @@ function yearIn(state, a, e) {
   } else {
     const n = sp.internals.EVENTS_A_YEAR[e.level] ?? 2;
     const out = a.injuries.find((x) => x.status === 'out' && x.sportId === e.id);
-    const can = out ? Math.max(0, Math.floor(n * (1 - Math.min(1, out.left)))) : n;
+    const can = sitOut ? 0 : out ? Math.max(0, Math.floor(n * (1 - Math.min(1, out.left)))) : n;
+    sum.games = can; sum.role = 'starter';
     const pair = sp.currentPartnership(e.id, state);
     for (let i = 0; i < can; i++) {
       const doubles = pair && i % 2 === 1;
@@ -905,6 +911,7 @@ function yearIn(state, a, e) {
   if (e.contractId) contractYear(state, a, e);
   mindYear(state, a, e, sum);
   fameYear(state, a, e, sum);
+  afterSeason(state, a, e, sum); // college: the season used, NIL money, the transfer portal
   integrityYear(state, a, e);
   // The body says when: a professional in their thirties is asked whether this is the last year.
   if (p.age >= 33 && (e.level === 'pro' || e.level === 'elite') && overall(e, p) < 70) decide(state, { kind: 'retire', sportId: e.id, key: `retire/${e.id}/${state.year}`, text: `You are ${p.age}. The game is getting faster and you are not. Is it time?`,
@@ -1018,7 +1025,7 @@ export function audit(state = store.state) {
 }
 
 export { LEVEL_NAMES };
-Object.assign(ANSWERS, RECRUIT_ANSWERS);
+Object.assign(ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS);
 /** For the parts of the athletic life kept in their own files (engine/recruiting.js, engine/draft.js). */
 export const internals = { decide: (...x) => decide(...x), money: (...x) => money(...x), fmt: (...x) => fmt(...x), proClub: (...x) => proClub(...x),
   offerFor: (...x) => offerFor(...x), signPro: (...x) => signPro(...x), endContract: (...x) => endContract(...x), ANSWERS: () => ANSWERS };

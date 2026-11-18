@@ -24,7 +24,8 @@
 import { store, player, log, milestone, livingNpcs } from '../state.js';
 import { clamp, cap, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS, mascotsFor, JERSEY_COLORS, leagueSize } from '../data/sports.js';
+import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS, mascotsFor, JERSEY_COLORS, leagueSize, DIVISIONS } from '../data/sports.js';
+const DIVISION_NAMES = { D1: 'Division I', IVY: 'Ivy', D2: 'Division II', D3: 'Division III', NAIA: 'NAIA', JUCO: 'National' };
 import { makeNpc } from './npcFactory.js';
 import { remember } from './conditions.js';
 import { school as currentSchool, atSchool } from './schooling.js';
@@ -417,6 +418,16 @@ function orgName(r, kind, sport, city) {
 /** Strength of an org's teams, by level: what a typical player there is like. */
 const LEVEL_STRENGTH = { recreational: 28, club: 45, school: 42, academy: 60, college: 64, pro: 76, elite: 80 };
 
+/** How strong a college division's teams are, against the usual college level: Division I is the best. */
+const DIVISION_STRENGTH = { D1: 4, IVY: -4, D2: -6, JUCO: -8, NAIA: -10, D3: -14 };
+/** Puts a college program in its division, once: its strength follows. */
+export function setCollegeDivision(org, division) {
+  if (!org || org.division) return org;
+  org.division = division;
+  org.strength = Math.round(org.strength + (DIVISION_STRENGTH[division] ?? 0));
+  return org;
+}
+
 /** The org of a kind for a sport in the player's city, made once and found again after. */
 function findOrg(state, sport, level, o = {}) {
   const S = ensure(state);
@@ -434,6 +445,7 @@ function findOrg(state, sport, level, o = {}) {
   const org = { id, key, kind, level, div: division, sportId: sport.id, name, countryId: p.countryId, city,
     founded: Math.max(sport.founded, state.year - r.int(5, 90)), strength: Math.round(LEVEL_STRENGTH[level] + r.int(-6, 6) + (o.strength ?? 0)),
     coachId: null, teamIds: [], leagueId: null, history: [], uniId: o.uniId ?? null, tier: o.tier ?? null };
+  if (o.division) setCollegeDivision(org, o.division);
   S.orgs[id] = org;
   return org;
 }
@@ -748,14 +760,15 @@ export function leftSchoolTeam(name, state = store.state) {
 function leagueFor(state, org, team) {
   const S = ensure(state);
   const sport = sportOf(org.sportId);
-  const key = `league/${org.level}/${sport.id}/${org.countryId}/${team.group}/${org.tier ?? 0}${org.div === 'women' ? '/women' : ''}`;
+  const key = `league/${org.level}/${sport.id}/${org.countryId}/${team.group}/${org.tier ?? 0}${org.div === 'women' ? '/women' : ''}${org.level === 'college' && org.division ? `/${org.division}` : ''}`;
   let lg = Object.values(S.orgs).find((x) => x.key === key);
   if (!lg) {
     const r = seeded(key);
     const id = nextId(S, 'org');
     const cities = COUNTRIES[org.countryId].cities ?? [org.city];
     lg = { id, key, kind: 'league', level: org.level, div: org.div ?? null, sportId: sport.id, countryId: org.countryId, city: org.city, teamIds: [],
-      name: `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
+      // A college league is a conference within the program's division.
+      name: org.level === 'college' && org.division ? `${DIVISION_NAMES[org.division] ?? org.division} ${r.pick(['Mountain', 'Coastal', 'Valley', 'Great Lakes', 'Sun', 'Prairie', 'Atlantic', 'Pacific', 'Heartland', 'Metro'])} ${org.division === 'JUCO' ? 'Junior College ' : ''}Conference` : `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
       founded: Math.max(sport.founded, state.year - r.int(10, 80)), history: [] };
     S.orgs[id] = lg;
     // Every team in a league has a name of its own: the place, and a club name nobody else in the league has.
@@ -767,7 +780,7 @@ function leagueFor(state, org, team) {
       const nick = sport.kind === 'team' ? mascotsFor(sport) : TEAM_WORDS;
       for (let t = 0; t < 20 && (!name || taken.has(name)); t++) name = org.level === 'pro' ? `${city} ${r.pick(nick)}` : t < 10 ? `${city} ${r.pick(nick)}` : `${r.pick(CLUB_WORDS)} ${r.pick(nick)}`;
       taken.add(name);
-      const rival = findOrg(state, sport, org.level, { key: `${key}/rival/${i}`.replace(/\/women\//, '/'), city, strength: r.int(-8, 8), tier: org.tier, name, div: org.div ?? 'mixed' });
+      const rival = findOrg(state, sport, org.level, { division: org.division, key: `${key}/rival/${i}`.replace(/\/women\//, '/'), city, strength: r.int(-8, 8), tier: org.tier, name, div: org.div ?? 'mixed' });
       lg.teamIds.push(teamFor(state, rival).id);
     }
   }
