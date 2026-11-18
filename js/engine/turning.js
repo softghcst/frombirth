@@ -11,7 +11,7 @@ const TURNING = new Set(`research_offer part_time_offer headhunter headhunter_ca
   brand_offer set_or_school kid_comes_out kid_is_trans call_up_papers everyone_is_leaving exam_answers hot_tip market_panic informant
   seen_something palace_invitation coronation_day heirs_dilemma tell_all_offer monarch_signs_law royal_secret_love royal_love_found_out
   heir_refuses_training child_wants_other_life child_wants_to_renounce heir_marries_for_love referendum_crown after_the_crown
-  restoration_offer palace_coup_whisper pol_term_ends dip_crisis kin_wants_politics scandal_rumour scandal_story pol_leadership_open
+  restoration_offer palace_coup_whisper pol_term_ends dip_crisis kin_wants_politics scandal_rumor scandal_story pol_leadership_open
   pol_leader_defeated pol_removal_vote pol_uprising mt_callbacks musical_must_choose summer_two_offers the_audition cosmo_focus
   editor_calls`.split(/\s+/));
 

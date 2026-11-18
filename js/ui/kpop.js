@@ -116,7 +116,7 @@ const VIEWS = {
         <div class="card"><h3>Your skills</h3>${skills}</div>`;
     }
     return `${urgent}<div class="card"><h3>Become a K-pop Idol</h3><p class="muted" style="margin:0">Audition. Train. Debut. Find your spotlight.</p></div>
-      <div class="btn-stack">${btn('tab', 'View global auditions', { arg: 'auditions' })}${btn('tab', 'Explore agencies', { arg: 'agencies' })}${btn('tab', 'Survival programs', { arg: 'survival' })}${btn('tab', 'Collect photocards', { arg: 'photocards' })}${btn('practise', 'Improve audition skills', { sub: 'Singing, dance, rap: on the Pursuits tab.' })}${btn('about', 'Learn about trainee life')}</div>
+      <div class="btn-stack">${btn('tab', 'View global auditions', { arg: 'auditions' })}${btn('tab', 'Explore agencies', { arg: 'agencies' })}${btn('tab', 'Survival programs', { arg: 'survival' })}${btn('tab', 'Collect photocards', { arg: 'photocards' })}${btn('practice', 'Improve audition skills', { sub: 'Singing, dance, rap: on the Pursuits tab.' })}${btn('about', 'Learn about trainee life')}</div>
       <div class="card"><h3>Your skills</h3>${skills}</div>`;
   },
 
@@ -307,7 +307,7 @@ const VIEWS = {
     for (const r of albums) {
       out += `<div class="card"><h3>${esc(r.title)} (${r.year})</h3><div class="btn-stack">${[1, 5, 10].map((n) => btn('albums', `Buy ${n === 1 ? 'an album' : `${n} albums`}`, { arg: `${r.id}:${n}`, sub: m(price * n) })).join('')}</div>
         ${f.sets.includes(r.id) ? '<p class="muted" style="margin:4px 0">Full set!</p>' : ''}
-        ${cards(r).map((id) => { const c = kp.cardParts(id); const n = f.cards[id] ?? 0; return row('card', id, `${name(c.who)}${c.rare ? ' · rare' : ''}${c.who === f.bias ? ' ♥' : ''}`, `${n ? `You have ${n}` : 'Missing'} · worth about ${m(local(kp.cardValue(id)))}`, n > 1 ? 'spare' : ''); }).join('')}</div>`;
+        ${cards(r).map((id) => { const c = kp.cardParts(id); const n = f.cards[id] ?? 0; return row('card', id, `${name(c.who)}${c.rare ? ' · rare' : ''}${c.who === f.bias ? ' ♥' : ''}`, `${n ? `You have ${n}` : 'Missing'} · worth about ${m(local(kp.cardValue(id)))}`, n > 1 && c.who !== f.bias ? 'spare' : ''); }).join('')}</div>`;
     }
     if (owned.length) out += `<div class="section-label">Other cards you have</div>${owned.map((id) => { const c = kp.cardParts(id); return row('card', id, `${name(c.who)}${c.rare ? ' · rare' : ''}`, `${c.release.title} · ${f.cards[id]} · worth about ${m(local(kp.cardValue(id)))}`); }).join('')}`;
     if (f.log.length) out += `<div class="section-label">Collecting history</div>${f.log.slice(-8).reverse().map((x) => `<div class="kv"><span>${x.year}</span><span>${esc(x.text)}</span></div>`).join('')}`;
@@ -338,8 +338,8 @@ const VIEWS = {
 const ACTIONS = {
   none: () => {},
   tab: (id, x) => x.go(id),
-  about: () => messageModal({ title: 'Trainee life', body: 'Trainees practise singing, dance and sometimes rap, learn Korean and media skills, and are evaluated regularly. Some debut within a year; many train for several; many never debut. A trainee agreement is not a debut contract, and leaving is allowed. Agencies differ a great deal in how they treat their trainees.' }),
-  practise: () => messageModal({ body: 'Singing, dance, rapping and public speaking are practised on the Pursuits tab, like any other skill.' }),
+  about: () => messageModal({ title: 'Trainee life', body: 'Trainees practice singing, dance and sometimes rap, learn Korean and media skills, and are evaluated regularly. Some debut within a year; many train for several; many never debut. A trainee agreement is not a debut contract, and leaving is allowed. Agencies differ a great deal in how they treat their trainees.' }),
+  practice: () => messageModal({ body: 'Singing, dance, rapping and public speaking are practiced on the Pursuits tab, like any other skill.' }),
   agencyview: (id, x) => x.go('agencyview', id),
   groupview: (id, x) => x.go('groupview', id),
   person: (id, x) => { const n = npc(id); if (n) openNpc(n, x.api); },

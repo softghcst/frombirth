@@ -75,8 +75,21 @@ p = life('ae'); check(sys.cover().covered && /citizen/.test(sys.cover().how), 'a
 p = life('in'); p.countryId = 'ae'; check(!sys.cover().covered && !sys.cover().canBuy, 'an expatriate in the United Arab Emirates without a job: no cover, and none to buy'); job(); check(sys.cover().covered, 'with one: covered');
 p = life('mx'); check(sys.cover().share === 0.4, 'Mexico: public clinics, and a good part paid by the patient');
 p = life('us'); sys.setCover(true); p.countryId = 'ca'; sys.tickCover(); check(!p.flags.healthCover, 'private cover does not travel: it ends on moving abroad');
+// On a visa: a health charge for workers and students where care is public; retirees need private cover.
+const visa = (id, status, home = 'in') => { const q = life(id); q.citizenships = [{ jurisdictionId: home, acquisitionType: 'birth', acquiredAt: 2000 }]; q.residency = { jurisdictionId: id, status, since: store.state.year, workAuthorized: status === 'worker', studyAuthorized: true }; q.flags.coverPaidAge = null; return q; };
+p = visa('uk', 'worker'); k = sys.cover();
+check(k.covered && k.visaCharge && k.premium > 0, 'a work visa in the United Kingdom: covered, with a yearly health charge');
+const c5 = p.finance.cash; sys.tickCover(); check(p.finance.cash === c5 - k.premium, 'charged once a year, earning or not');
+p.flags.coverPaidAge = null; p.finance.cash = 1; sys.tickCover(); check(!sys.cover().covered && sys.cover().share === 1, 'unpaid, care costs the whole bill');
+p.finance.cash = 1e9; p.flags.coverPaidAge = null; sys.tickCover(); check(sys.cover().covered, 'paid again, covered again');
+p = visa('de', 'student'); check(sys.cover().visaCharge && sys.cover().premium < Math.round(0.03 * sys.typicalWage()), 'a student pays a smaller charge');
+p = visa('uk', 'retiree'); k = sys.cover();
+check(!k.covered && k.canBuy && k.share === 1, 'a retirement visa gives no public care: private cover or the whole bill');
+r = sys.setCover(true); check(r.ok && sys.cover().covered && sys.cover().bought, 'and private cover can be bought');
+p = visa('uk', 'permanent_resident'); check(sys.cover().covered && !sys.cover().visaCharge && sys.cover().premium === 0, 'a permanent resident is covered like anyone else');
+p = visa('us', 'worker'); check(!sys.cover().visaCharge, 'where care comes through a job or a policy, the visa changes nothing');
 for (const c of COUNTRY_LIST) check(!!sys.healthModelOf(c) && sys.healthLine(c).length > 10, `${c.id}: no health model`);
-section('health care: public, compulsory insurance, private, employer and mixed systems each cover who they should');
+section('health care: public, compulsory insurance, private, employer and mixed systems each cover who they should; visas change the terms');
 
 // 5. Lives still work: a run of years in four systems.
 for (const id of ['us', 'de', 'ae', 'ru']) {

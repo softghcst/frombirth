@@ -14,7 +14,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '
 const ZOOM = { eyes: '146 214 220 160', brows: '146 196 220 140', nose: '196 290 120 110', lips: '186 336 140 100', glasses: '126 214 260 170',
   makeup: '126 206 260 230', marks: '126 206 260 230', facialHair: '116 250 280 260', jewelry: '70 220 372 330', outfit: '20 360 472 220', hat: '40 -10 432 380' };
 
-// kind: 'thumb' draws a small portrait for each option; 'swatch' a colour dot; 'chip' a word.
+// kind: 'thumb' draws a small portrait for each option; 'swatch' a color dot; 'chip' a word.
 // half: which half of the appearance the key lives in. none: the control has a "none" option.
 // multi: several can be on at once. minAge: hidden for younger characters.
 const CONTROLS = {
@@ -80,7 +80,7 @@ export function mountAppearanceEditor(el, o = {}) {
     const c = CONTROLS[key];
     if (c.multi) next[c.half][key] = value == null ? [] : [value];
     else next[c.half][key] = value;
-    // A thumbnail for a hat shows the hat; for glasses, make-up or jewellery, nothing hides it.
+    // A thumbnail for a hat shows the hat; for glasses, make-up or jewelry, nothing hides it.
     if (key !== 'hat') next.style.hat = null;
     return next;
   };

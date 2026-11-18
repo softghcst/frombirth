@@ -93,7 +93,7 @@ function lives(p) {
       const what = rng.pick(['a row on set', 'unpaid taxes', 'a secret affair', 'a drunken night out', 'treating staff badly']);
       s.fame = Math.min(100, (s.fame ?? 0) + 5);
       text = `Reports of ${what} involving ${full(n)}.`;
-      tell(n, real ? `${text}` : `${text} (denied)`, { accuracy: real ? 'confirmed' : 'rumour', true: real, headline: text });
+      tell(n, real ? `${text}` : `${text} (denied)`, { accuracy: real ? 'confirmed' : 'rumor', true: real, headline: text });
       if (!real && rng.chance(0.5)) (s.story).push({ year: year(), text: 'The reports were later shown to be false.' });
     }
     if (text && known) lines.push(text);
@@ -160,13 +160,13 @@ export function takeComeback(kind) {
     (a.paid ??= []).push({ year: year(), fee: o.fee });
     gain({ audience: 'tv', amount: 14, reach: 0.3, lasting: 0.05, why: 'a reality show' }, p);
     gain({ audience: 'public', amount: 10, lasting: 0.05, why: 'a reality show' }, p);
-    regard({ credibility: -6, favour: rng.chance(0.5) ? 6 : -6, why: 'a reality show' }, p);
+    regard({ credibility: -6, favor: rng.chance(0.5) ? 6 : -6, why: 'a reality show' }, p);
     milestone('Went on a reality show.', 'fame');
     return result(true, `Ten weeks in a house with cameras. Everyone has an opinion about you again. The fee, ${fmtMoney(o.fee, country())}, comes with this year's income.`, 'neutral');
   }
   if (kind === 'tribute') {
     gain({ audience: 'public', amount: 6, lasting: 0.9, why: 'a tribute evening' }, p);
-    regard({ credibility: 6, favour: 5, why: 'a tribute' }, p);
+    regard({ credibility: 6, favor: 5, why: 'a tribute' }, p);
     milestone('Honored at a tribute evening.', 'fame');
     return result(true, 'An evening of clips and speeches about your work. You do not quite know where to look.');
   }

@@ -179,7 +179,7 @@ export function tickLiving() {
   // People adapt. Hard conditions wear a mood down, but on their own they do not grind it to nothing.
   if (p.stats.mood < 32 && p.stats.mood < moodBefore) p.stats.mood = Math.min(moodBefore, 32);
 
-  // Sanctions and mobilisation: a call-up paper, for men of the right age.
+  // Sanctions and mobilization: a call-up paper, for men of the right age.
   if (k?.callUp && p.gender === 'male' && p.age >= 18 && p.age <= 50 && !p.flags.calledUp && rng.chance(k.callUp)) {
     p.flags.calledUp = true;
     store.state.pendingEvents.push({ id: 'call_up_papers', cast: {} });

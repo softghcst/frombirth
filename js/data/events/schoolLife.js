@@ -25,12 +25,12 @@ export default [
     ['Take {two}\'s side', 'You say what you think.', 'sideTwo'],
     ['Try to bring them back together', 'You refuse to choose.', 'sideNone'],
   ]),
-  scene('school_rumour', [11, 18], 'There is a story going round about you. It is not true, and it is not kind, and you are fairly sure it started with {mate}.', [
-    ['Ask {mate} about it, face to face', 'You wait by the lockers.', 'rumourConfront'],
-    ['Say nothing and let it die', 'You keep your head up.', 'rumourIgnore'],
-    ['Tell a teacher', 'You stay behind after a lesson.', 'rumourTell'],
+  scene('school_rumor', [11, 18], 'There is a story going round about you. It is not true, and it is not kind, and you are fairly sure it started with {mate}.', [
+    ['Ask {mate} about it, face to face', 'You wait by the lockers.', 'rumorConfront'],
+    ['Say nothing and let it die', 'You keep your head up.', 'rumorIgnore'],
+    ['Tell a teacher', 'You stay behind after a lesson.', 'rumorTell'],
   ]),
-  scene('school_bullied', [7, 16], '{again}{bully} has started on you: your bag in the bin, your name said in a certain voice, a shove on the stairs when nobody is looking. It is every day now.', [
+  scene('school_bullied', [7, 16], '{again}{bully} has started on you: your bag in the trash, your name said in a certain voice, a shove on the stairs when nobody is looking. It is every day now.', [
     ['Tell a teacher', 'You knock on the staffroom door.', 'bullyTeacher'],
     ['Tell them at home', 'You wait until after dinner.', 'bullyParents'],
     ['Stand up to {bully}', 'You stop walking away.', 'bullyStand'],

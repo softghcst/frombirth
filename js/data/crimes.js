@@ -54,7 +54,7 @@ export const CRIMES = [
 /**
  * Strangers who might be chosen as a victim. A few are offered at a time.
  * guard: how much harder they are to get to (taken off the chance of success).
- * heat: extra police attention afterwards. loot: what they were carrying.
+ * heat: extra police attention afterward. loot: what they were carrying.
  */
 export const STRANGERS = [
   { id: 'rodeo_clown', name: 'a rodeo clown', guard: 0.05 },

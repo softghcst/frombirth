@@ -61,7 +61,7 @@ export const CULTURES = {
   supportive: { label: 'Supportive', stress: -6, satisfaction: 8, growth: 0.05, blurb: 'People look out for each other here.' },
   demanding: { label: 'Demanding', stress: 8, satisfaction: -2, growth: 0.12, blurb: 'High standards and long hours; people who do well move up fast.' },
   relaxed: { label: 'Relaxed', stress: -4, satisfaction: 4, growth: -0.04, blurb: 'Steady, friendly, not in a hurry.' },
-  chaotic: { label: 'Disorganised', stress: 6, satisfaction: -6, growth: 0, blurb: 'Nobody is quite sure who decides what.' },
+  chaotic: { label: 'Disorganized', stress: 6, satisfaction: -6, growth: 0, blurb: 'Nobody is quite sure who decides what.' },
   traditional: { label: 'Traditional', stress: 0, satisfaction: 0, growth: 0.02, blurb: 'Things are done the way they have always been done.' },
   creative: { label: 'Creative', stress: 2, satisfaction: 6, growth: 0.04, blurb: 'Ideas are welcome, deadlines are a suggestion.' },
 };
@@ -94,5 +94,5 @@ export const FAMILY_BASE = {
   safety: 1.5, media: 2, arts: 2, beauty: 2, government: 2, land: 2, sport: 2, novelty: 1.5,
 };
 
-/** Tracks that most large organisations of any kind employ. */
-export const EVERYWHERE = ['admin_support', 'office', 'hr', 'it', 'accountant', 'marketing', 'corporate', 'maintenance', 'security', 'contact_centre'];
+/** Tracks that most large organizations of any kind employ. */
+export const EVERYWHERE = ['admin_support', 'office', 'hr', 'it', 'accountant', 'marketing', 'corporate', 'maintenance', 'security', 'contact_center'];

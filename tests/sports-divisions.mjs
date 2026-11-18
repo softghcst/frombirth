@@ -37,7 +37,7 @@ caseOf('a woman plays in the women\'s division: her own clubs, team, teammates a
   check(sp.divisionOf() === 'women', 'her division follows her gender');
   sp.takeUp('soccer');
   const clubs = sp.clubsFor('soccer');
-  check(clubs.length && clubs.every((c) => c.org.division === 'women'), 'the clubs she can try for are women\'s clubs');
+  check(clubs.length && clubs.every((c) => c.org.div === 'women'), 'the clubs she can try for are women\'s clubs');
   check(clubs.every((c) => / Women$/.test(c.org.name)), `women's clubs are named as such (${clubs.map((c) => c.org.name).join(', ')})`);
   const { teamFor, joinOrg, leagueFor } = sp.internals;
   const org = clubs[0].org;
@@ -45,11 +45,11 @@ caseOf('a woman plays in the women\'s division: her own clubs, team, teammates a
   const mates = t.roster.filter((x) => x.npcId).map((x) => S().npcs[x.npcId]);
   check(mates.length >= 1 && mates.every((n) => n.gender === 'female'), 'the teammates she meets are women');
   const lg = leagueFor(S(), org, teamFor(S(), org));
-  check(/Women's/.test(lg.name) && lg.division === 'women', `the league is a women's league (${lg.name})`);
+  check(/Women's/.test(lg.name) && lg.div === 'women', `the league is a women's league (${lg.name})`);
   const rivals = lg.teamIds.map((id) => S().sports.teams[id]).map((x) => S().sports.orgs[x.orgId]).filter((o) => o.id !== org.id);
-  check(rivals.length >= 7 && rivals.every((o) => o.division === 'women'), 'every other team in it is a women\'s team');
+  check(rivals.length >= 7 && rivals.every((o) => o.div === 'women'), 'every other team in it is a women\'s team');
   const rec = sp.internals.findOrg(S(), sportOf('soccer'), 'recreational');
-  check(rec.division === 'mixed', 'recreational play is open to everyone');
+  check(rec.div === 'mixed', 'recreational play is open to everyone');
 });
 
 caseOf('a man in the same city plays for different clubs, in a different league', () => {
@@ -60,7 +60,7 @@ caseOf('a man in the same city plays for different clubs, in a different league'
   P().gender = 'male';
   check(sp.divisionOf() === 'men', 'his division follows his gender');
   const mens = sp.clubsFor('soccer').map((c) => c.org);
-  check(mens.every((o) => o.division === 'men'), 'men\'s clubs');
+  check(mens.every((o) => o.div === 'men'), 'men\'s clubs');
   check(mens.every((o) => !womens.some((w) => w.id === o.id)), 'no club is both');
   const { teamFor, leagueFor } = sp.internals;
   const lg = leagueFor(S(), mens[0], teamFor(S(), mens[0]));
@@ -72,7 +72,7 @@ caseOf('events: women\'s draws are women, with women\'s names on the draw', () =
   sp.takeUp('tennis');
   const e = sp.entryOf('tennis'); maxOut(e, 60);
   const ev = sp.internals.playEvent(S(), e, 'club', 0);
-  check(ev.division === 'women' && /Women's/.test(ev.name), `a women's event (${ev.name})`);
+  check(ev.div === 'women' && /Women's/.test(ev.name), `a women's event (${ev.name})`);
 });
 
 caseOf('women\'s professional play begins in its own years, and can end', () => {
@@ -94,7 +94,7 @@ caseOf('a non-binary player chooses their division, between clubs', () => {
   const before = sp.divisionOf();
   const other = before === 'women' ? 'men' : 'women';
   check(sp.setDivision(other).ok && sp.divisionOf() === other, 'they can choose the other');
-  check(sp.clubsFor('soccer').every((c) => c.org.division === other), 'and the clubs follow');
+  check(sp.clubsFor('soccer').every((c) => c.org.div === other), 'and the clubs follow');
   sp.internals.joinOrg(sp.clubsFor('soccer')[0].org, S(), { quiet: true });
   check(!sp.setDivision(before).ok, 'not while with a club');
   P().gender = 'female'; P().flags.bornAs = 'female';
@@ -114,7 +114,7 @@ function pro(gender) {
 caseOf('a woman turns professional with a women\'s club', () => {
   const e = pro('female');
   const org = sp.orgOf(e.orgId);
-  check(org.level === 'pro' && org.division === 'women', `signed for a women's professional club (${org.name})`);
+  check(org.level === 'pro' && org.div === 'women', `signed for a women's professional club (${org.name})`);
 });
 
 caseOf('sports agents: shopped one at a time, two looks a year, each with their own cut and clients', () => {

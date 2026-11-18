@@ -18,13 +18,16 @@ import * as press from '../engine/press.js';
 import * as awards from '../engine/awards.js';
 import * as skills from '../engine/skills.js';
 import * as music from '../engine/music.js';
-import * as modelling from '../engine/modelling.js';
+import * as athletics from '../engine/sports.js';
+import * as sportsLife from '../engine/sportsLife.js';
+import { openAthletics } from './sports.js';
+import * as modeling from '../engine/modeling.js';
 import * as pub from '../engine/publishing.js';
 import * as celebs from '../engine/celebs.js';
 import * as agents from '../engine/agents.js';
-import * as sportsLife from '../engine/sportsLife.js';
-import { POSITIONS, GENRES, genreOf, genresIn } from '../data/music.js';
 import { BOOKINGS, BOOK_KINDS, BOOK_GENRES, BOOK_AWARD } from '../data/fame.js';
+import { SPORTS, LEVEL_NAMES } from '../data/sports.js';
+import { POSITIONS, GENRES, genreOf, genresIn } from '../data/music.js';
 
 const BODIES = [...AWARD_BODIES, MUSIC_AWARD, BOOK_AWARD];
 const aRelease = (k) => ({ single: 'a single', ep: 'an EP', album: 'an album' }[k]);
@@ -38,7 +41,7 @@ const kindName = (prod) => `${TIERS[prod.tier].name} ${PRODUCTION_KINDS[prod.kin
 const row = (act, arg, main, sub, side = '', n = null) => `<button type="button" class="row world-row" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
   <div class="main"><strong>${esc(main)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>`;
 
-const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['modelling', 'Modeling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
+const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modeling', 'Modeling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
   ['awards', 'Awards'], ['connections', 'Connections'], ['archive', 'Archive'], ['family', 'Family']];
 
 function tabsFor(p) {
@@ -47,7 +50,8 @@ function tabsFor(p) {
     if (id === 'work') return ent.activeWork(p).length > 0 || f.contracts.some((c) => c.status === 'signed');
     if (id === 'representation') return p.age >= 12;
     if (id === 'music') return p.age >= 12 && fame.exists('concert');
-    if (id === 'modelling') return modelling.isModel(p) || modelling.portfolio(p).length > 0;
+    if (id === 'sport') return sportsLife.needsSport(store.state) || Object.values(store.state.sports?.athletes?.[p.id]?.sports ?? {}).some((e) => ['pro', 'elite', 'college'].includes(e.level) || e.legacySeasons);
+    if (id === 'modeling') return modeling.isModel(p) || modeling.portfolio(p).length > 0;
     if (id === 'writing') return p.age >= 14 && fame.exists('publishing');
     if (id === 'family') return (store.state.careerRecord ?? []).length > 0;
     if (id === 'awards') return awards.myAwards(p).length > 0;
@@ -89,7 +93,7 @@ export function openFame(api, start = 'overview') {
     const b = tt.closest('[data-act]');
     if (!b || b.disabled) return undefined;
     const fn = ACTIONS[b.dataset.act];
-    if (fn) await fn(b.dataset.arg, { st, say, refresh, render, go, api });
+    if (fn) await fn(b.dataset.arg, { st, say, refresh, render, go, api, close: () => modal.close() });
     return undefined;
   });
   render();
@@ -170,7 +174,7 @@ const VIEWS = {
     ['Where', regions.length ? regions.map(([c, v]) => `${COUNTRIES[c]?.name ?? c} ${Math.round(v)}`).join(', ') : '—'],
     ...(f.family ? [['Through your family', `${Math.round(f.family)}: people know the name, not your work`]] : []),
     ...(f.provenance ? [['Carried over', `${f.provenance.migratedFrom}, from before this record was kept`]] : [])])}
-      <div style="margin-top:8px">${meterHtml('In the news now', f.attention, true)}${meterHtml('What lasts', f.legacy, true)}${meterHtml('Public regard', f.favour, true)}${meterHtml('Standing in the industry', f.credibility, true)}</div></div>
+      <div style="margin-top:8px">${meterHtml('In the news now', f.attention, true)}${meterHtml('What lasts', f.legacy, true)}${meterHtml('Public regard', f.favor, true)}${meterHtml('Standing in the industry', f.credibility, true)}</div></div>
       <div class="card"><h3>Your craft</h3>${kv([['Acting', `${act} (${skills.levelName(act)})`], ['Singing', `${sing} (${skills.levelName(sing)})`], ['Dance', `${dance} (${skills.levelName(dance)})`],
     ['Professional credits', String(ent.proCredits(p))]])}<p class="muted" style="margin-top:6px">Practice on the Pursuits tab: skill is what gets you the part, not fame.</p></div>
       ${upcoming.length ? `<div class="card"><h3>Signed for</h3>${upcoming.map((x) => row('production', x.id, x.title, `${kindName(x)} · ${x.workYear > store.state.year ? 'starts next year' : 'now'}`)).join('')}</div>` : ''}
@@ -178,7 +182,7 @@ const VIEWS = {
       ${(() => { const offers = celebs.comebackOffers(p); const phase = celebs.phaseName(p);
     const say = { reality: ['A reality show', 'Ten weeks on camera. The money is good; the respect is not.'], tribute: ['A tribute evening', 'Your work, celebrated.'], memoir: ['Write your memoir', 'Publishers want your story. Starts a memoir on the Writing tab.'], reunion: ['Get the band back together', 'One more time.'] };
     return phase || offers.length ? `<div class="card"><h3>${esc(phase ?? 'Your story')}</h3>${offers.length ? `<p class="muted" style="margin:0 0 6px">People have stopped asking about you. Some ways back:</p><div class="btn-stack">${offers.map((o) => btn('comeback', say[o.kind][0], { arg: o.kind, sub: say[o.kind][1] })).join('')}</div>` : ''}</div>` : ''; })()}
-      ${celebs.news(5).length ? `<div class="card"><h3>Celebrity news</h3>${celebs.news(5).map((a) => { const n = store.state.npcs[a.about]; return row('person', n.id, a.text, `${a.year}${a.accuracy === 'rumour' ? ' · unconfirmed' : ''}`, '', n); }).join('')}</div>` : ''}
+      ${celebs.news(5).length ? `<div class="card"><h3>Celebrity news</h3>${celebs.news(5).map((a) => { const n = store.state.npcs[a.about]; return row('person', n.id, a.text, `${a.year}${a.accuracy === 'rumor' ? ' · unconfirmed' : ''}`, '', n); }).join('')}</div>` : ''}
       ${f.log.length ? `<div class="card"><h3>Why people know you</h3>${f.log.slice(-5).reverse().map((l) => `<p style="margin:3px 0">${l.year}: ${esc(l.why || l.audience)} (${l.delta > 0 ? '+' : ''}${l.delta} ${esc(l.audience)})</p>`).join('')}</div>` : ''}`;
   },
 
@@ -230,7 +234,7 @@ const VIEWS = {
     const items = ent.myPress(p).slice(0, 25);
     const invites = (w.offers ?? []).filter((o) => o.status === 'open');
     const deals = (w.deals ?? []).filter((d) => ['offered', 'signed'].includes(d.status));
-    return `<div class="card"><h3>How you are seen</h3><div>${meterHtml('Public regard', f.favour, true)}${meterHtml('Standing in the industry', f.credibility, true)}${meterHtml('In the news now', f.attention, true)}</div>
+    return `<div class="card"><h3>How you are seen</h3><div>${meterHtml('Public regard', f.favor, true)}${meterHtml('Standing in the industry', f.credibility, true)}${meterHtml('In the news now', f.attention, true)}</div>
       ${kv([['Privacy', { open: 'You talk about your life freely', guarded: 'Your work, not your life', private: 'Your private life is private' }[f.privacy]]])}${btn('privacy', 'Change how much you share')}</div>
       ${invites.length ? `<div class="section-label">Invitations</div>${invites.map((o) => `<div class="card"><p style="margin:0">${esc(press.APPEARANCES[o.kind].name)}${o.productionId ? `: ${esc(ent.production(o.productionId)?.title ?? '')}` : ent.org(o.outletId) ? `, ${esc(ent.org(o.outletId).name)}` : ''}</p>
         <div class="btn-stack" style="margin-top:6px">${btn('attend', 'Accept', { cls: 'primary', arg: o.id })}${btn('noattend', 'Decline', { arg: o.id })}</div></div>`).join('')}` : ''}
@@ -334,16 +338,33 @@ const VIEWS = {
       ${past.length ? `<div class="section-label">Acts you were in</div>${past.map((x) => row('act', x.id, x.name, `${x.formed}`, x.status === 'split' ? 'Split' : 'Without you')).join('')}` : ''}`;
   },
 
-  modelling(p) {
-    const m = modelling.modelOf(p);
+  sport(p) {
+    // One sports system (engine/sports.js, engine/sportsLife.js): this is the public side of it; the rest is in Sport.
+    const st = store.state;
+    const a = st.sports?.athletes?.[p.id];
+    const entries = a ? Object.values(a.sports).filter((e) => e.status === 'active' || (e.seasonsPlayed ?? 0) + (e.legacySeasons ?? 0) > 0) : [];
+    const choose = sportsLife.needsSport(st) ? `<div class="card"><h3>Your sport</h3><p class="muted" style="margin:0">You were taken on as a professional athlete. Choose the sport you play: a team sport means a club, its league and a contract; an individual sport means the tour, where prize money and sponsors are the pay.</p></div>
+      <div class="btn-stack">${sportsLife.proSports(st).map((x) => btn('sport', x.name, { arg: x.id, sub: x.kind === 'team' ? 'A club, a league, a season' : 'The tour' })).join('')}</div>` : '';
+    const cards = entries.map((e) => {
+      const club = athletics.orgOf(e.orgId, st);
+      const seasons = (e.seasonsPlayed ?? 0) + (e.legacySeasons ?? 0);
+      return `<div class="card"><h3>${esc(SPORTS[e.id]?.name ?? e.id)}${club ? `: ${esc(club.name)}` : ''}</h3>${kv([['Status', e.status === 'active' ? LEVEL_NAMES[e.level] ?? e.level : `Retired${e.retiredYear ? ` in ${e.retiredYear}` : ''}`], ['Pathways Rating', String(e.pr)], ['Seasons', String(seasons)], ['Titles', String(e.titles.length)],
+        ...(e.caps ? [['International caps', String(e.caps)]] : []), ...((e.awards ?? []).length ? [['Awards', e.awards.filter((a) => a.kind !== 'team').map((a) => `${a.name} (${a.year})`).join(', ') || `${e.awards.length} team-of-the-season places`]] : []), ...((e.medals ?? []).length ? [['Medals', e.medals.map((m) => `${m.medal} (${m.year})`).join(', ')]] : [])])}</div>`;
+    }).join('');
+    const known = a?.fame >= 1 ? `<p class="muted">Sports fans know your name from your results: ${Math.round(a.fame)}/100.</p>` : '';
+    return `${choose}${cards}${known}<div class="btn-stack">${btn('athletics', 'Open Sport', { sub: 'Training, clubs, seasons, contracts and coaching' })}</div>`;
+  },
+
+  modeling(p) {
+    const m = modeling.modelOf(p);
     const ag = m.agencyId ? ent.org(m.agencyId) : null;
-    const can = modelling.isModel(p);
-    const list = can ? modelling.castings(p) : [];
-    return `<div class="card"><h3>Modeling</h3>${kv([['Agency', ag?.name ?? 'None'], ['Your look', String(modelling.look(p))], ['Bookings', String(m.portfolio.length)]])}${can ? '' : '<p class="muted">You are not working as a model now.</p>'}</div>
+    const can = modeling.isModel(p);
+    const list = can ? modeling.castings(p) : [];
+    return `<div class="card"><h3>Modeling</h3>${kv([['Agency', ag?.name ?? 'None'], ['Your look', String(modeling.look(p))], ['Bookings', String(m.portfolio.length)]])}${can ? '' : '<p class="muted">You are not working as a model now.</p>'}</div>
       ${can || m.agencyId ? repCard({ title: 'Agency', holder: m.agencyId && m.terms ? { ...m.terms, agency: ag?.name } : null, about: 'A modeling agency sends you to castings, books the jobs, and takes its cut of what you earn. The better ones get you seen by better clients.',
-    offer: modelling.agencyOnOffer(), left: modelling.agencyTriesLeft(), find: 'findagency', sign: 'signagency', pass: 'passagency', drop: 'leaveagency', ask: 'model' }) : ''}
+    offer: modeling.agencyOnOffer(), left: modeling.agencyTriesLeft(), find: 'findagency', sign: 'signagency', pass: 'passagency', drop: 'leaveagency', ask: 'model' }) : ''}
       ${list.length ? `<div class="section-label">Castings this year (${3 - m.castings.went} you can still go to)</div>${list.map((c) => (c.status === 'open' ? row('casting2', c.id, `${BOOKINGS[c.kind].name}: ${c.client}`, `${c.city}`, '') : `<div class="kv"><span>${esc(BOOKINGS[c.kind].name)}: ${esc(c.client)}</span><span>${c.status === 'booked' ? 'Booked' : 'Not this time'}</span></div>`)).join('')}` : ''}
-      ${m.portfolio.length ? `<div class="section-label">Portfolio</div>${modelling.portfolio(p).map((x) => `<div class="kv"><span>${x.year} · ${esc(BOOKINGS[x.kind].name)}</span><span>${esc(x.client)}, ${esc(x.city)}</span></div>`).join('')}` : ''}`;
+      ${m.portfolio.length ? `<div class="section-label">Portfolio</div>${modeling.portfolio(p).map((x) => `<div class="kv"><span>${x.year} · ${esc(BOOKINGS[x.kind].name)}</span><span>${esc(x.client)}, ${esc(x.city)}</span></div>`).join('')}` : ''}`;
   },
 
   writing(p) {
@@ -387,6 +408,7 @@ const VIEWS = {
       ${credits.length ? `<div class="section-label">Credits</div>${credits.map((c) => row('production', c.production.id, c.production.title, `${c.production.workYear} · ${ROLE_KINDS[c.role.kind].name}`)).join('')}` : (r.credits?.length ? `<p class="muted">${r.credits.length} credits.</p>` : '')}
       ${acts.length ? `<div class="section-label">Music</div>${acts.map((a) => row('act', a.id, a.name, `${a.formed} · ${a.releases.length} records`)).join('')}` : ''}
       ${books.length ? `<div class="section-label">Books</div>${books.map((b) => row('bookview', b.id, b.title, `${b.released ?? ''}`)).join('')}` : ''}
+      ${sp ? `<div class="section-label">Sport</div><div class="kv"><span>${esc(SPORTS[sp.sport]?.name ?? ({ football: 'Football', athletics: 'Athletics', boxing: 'Boxing' })[sp.sport] ?? '')}</span><span>${sp.seasons} seasons, ${sp.titles} titles${sp.medals.length ? `, medals: ${sp.medals.join(', ')}` : ''}${sp.caps ? `, ${sp.caps} caps` : ''}${sp.awards?.length ? `, ${sp.awards.join(', ')}` : ''}</span></div>` : ''}
       ${wins.length ? `<div class="section-label">Awards</div>${wins.map((x) => row('season', x.s.id, `${x.won ? 'Won' : 'Nominated'}: ${x.c.name}`, `${x.s.ceremony}`)).join('')}` : ''}
       ${(r.businesses ?? []).length ? `<div class="section-label">Businesses</div>${r.businesses.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>from ${b.from}</span></div>`).join('')}` : ''}
       ${n ? row('person', n.id, 'Their page', 'Family and relationships', '', n) : ''}</div>`;
@@ -474,13 +496,15 @@ const ACTIONS = {
   release: (id, x) => x.go('release', id),
   act: (id, x) => x.go('act', id),
   bookview: (id, x) => x.go('bookview', id),
-  agency: (id, x) => x.say(modelling.joinAgency(id)),
+  sport: (k, x) => x.say(sportsLife.goPro(k)),
+  athletics: (_, x) => { x.close(); openAthletics(x.api); },
+  agency: (id, x) => x.say(modeling.joinAgency(id)),
   async casting2(id, x) {
-    const c = modelling.castings().find((y) => y.id === id);
+    const c = modeling.castings().find((y) => y.id === id);
     if (!c) return undefined;
     const v = await pickModal({ title: `${BOOKINGS[c.kind].name}: ${c.client}`, body: `${c.city}. The brief: ${c.brief ?? '(none given)'}`, cancel: 'Back',
-      options: Object.entries(modelling.APPROACHES).map(([k, a]) => ({ value: k, label: a.label, sub: a.sub })) });
-    if (v) await x.say(modelling.attendCasting(id, v));
+      options: Object.entries(modeling.APPROACHES).map(([k, a]) => ({ value: k, label: a.label, sub: a.sub })) });
+    if (v) await x.say(modeling.attendCasting(id, v));
     return undefined;
   },
   async draft(_, x) {
@@ -499,7 +523,7 @@ const ACTIONS = {
   findagent: (_, x) => x.say(press.findAgent()),
   signagent: async (_, x) => { const n = press.agentOnOffer(); if (n && await confirmModal({ title: `Sign with ${n.firstName} ${n.lastName}?`, body: ent.workOf().agent ? 'They replace your current agent. Contracts already signed still pay the old one.' : `They take ${Math.round(n.flags.agent.commission * 100)}% of what you earn through them.`, yes: 'Sign' })) await x.say(press.signAgent(n.id)); },
   passagent: (_, x) => x.say(press.passOnAgent()),
-  askcut: (kind, x) => x.say({ talent: press.askAgentCut, literary: pub.askLitAgentCut, music: music.askManagerCut, model: modelling.askAgencyCut, sports: () => sportsLife.askSportsAgentCut() }[kind]()),
+  askcut: (kind, x) => x.say({ talent: press.askAgentCut, literary: pub.askLitAgentCut, music: music.askManagerCut, model: modeling.askAgencyCut, sports: () => sportsLife.askSportsAgentCut() }[kind]()),
   findsportsagent: (_, x) => x.say(sportsLife.findSportsAgent()),
   signsportsagent: async (_, x) => { if (await confirmModal({ title: 'Sign with this agent?', body: 'They take their cut of your salary, prize money and sponsorship from now on.', yes: 'Sign' })) await x.say(sportsLife.signSportsAgent()); },
   passsportsagent: (_, x) => x.say(sportsLife.passOnSportsAgent()),
@@ -508,10 +532,10 @@ const ACTIONS = {
   signmanager: async (_, x) => { if (await confirmModal({ title: 'Sign with this manager?', body: 'They take their cut of what your music earns from now on.', yes: 'Sign' })) await x.say(music.signManager()); },
   passmanager: (_, x) => x.say(music.passOnManager()),
   dropmanager: (_, x) => x.say(music.dropManager()),
-  findagency: (_, x) => x.say(modelling.findModelAgency()),
-  signagency: async (_, x) => { if (await confirmModal({ title: 'Sign with this agency?', body: 'They take their cut of what you earn modeling from now on.', yes: 'Sign' })) await x.say(modelling.signOfferedAgency()); },
-  passagency: (_, x) => x.say(modelling.passOnAgency()),
-  leaveagency: (_, x) => x.say(modelling.leaveAgency()),
+  findagency: (_, x) => x.say(modeling.findModelAgency()),
+  signagency: async (_, x) => { if (await confirmModal({ title: 'Sign with this agency?', body: 'They take their cut of what you earn modeling from now on.', yes: 'Sign' })) await x.say(modeling.signOfferedAgency()); },
+  passagency: (_, x) => x.say(modeling.passOnAgency()),
+  leaveagency: (_, x) => x.say(modeling.leaveAgency()),
   dropagent: async (_, x) => { if (await confirmModal({ title: 'Part ways with your agent?', body: 'Books already sold stay as they are.', yes: 'Part ways' })) await x.say(pub.dropAgent()); },
   selfpub: async (id, x) => { if (await confirmModal({ title: 'Publish it yourself?', body: 'You keep more of each sale, and sell far fewer.', yes: 'Publish' })) await x.say(pub.selfPublish(id)); },
   bookoffer: (arg, x) => { const [b, o] = arg.split(':'); return x.say(pub.acceptOffer(b, o)); },
@@ -614,7 +638,7 @@ const ACTIONS = {
     const prep = await pickModal({ title: 'Preparing', options: [{ value: 'study', label: 'Learn the sides and make choices', sub: 'Free. Time well spent.' }, { value: 'coach', label: 'Work with a coach', sub: `About ${money(Math.round(600 * country().currency.scale))}.` }, { value: 'none', label: 'Go in fresh' }] });
     if (!prep) return undefined;
     const approach = await pickModal({ title: 'In the room', body: 'How do you play it? Directors see parts their own way; there is no one right answer.',
-      options: [{ value: 'restrained', label: 'Quietly, from the inside' }, { value: 'bold', label: 'Big and brave' }, { value: 'playful', label: 'With a light touch, finding the humour' }] });
+      options: [{ value: 'restrained', label: 'Quietly, from the inside' }, { value: 'bold', label: 'Big and brave' }, { value: 'playful', label: 'With a light touch, finding the humor' }] });
     if (!approach) return undefined;
     await x.say(ent.audition(pid, Number(idx), prep, approach));
     return undefined;

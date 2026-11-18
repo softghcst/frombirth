@@ -1,5 +1,5 @@
 // Screens for identity (orientation, gender, name, transition) and for
-// practising skills. The Self tab opens these.
+// practicing skills. The Self tab opens these.
 import { player, country } from '../state.js';
 import { fmtMoney, esc } from '../util.js';
 import * as who from '../engine/identity.js';
@@ -71,7 +71,7 @@ export async function openIdentity(api) {
 /** The Skills card on the Self tab. */
 export function skillsCard() {
   if (!skill.canPractise()) return '';
-  const mine = skill.practised();
+  const mine = skill.practiced();
   const left = skill.sessionsLeft();
   return `<div class="card"><h3>Skills</h3>
     ${mine.length ? mine.map((s) => meterHtml(`${s.name} · ${s.levelName}`, s.level, true)).join('') : '<p class="muted">You have not taken anything up yet.</p>'}
@@ -97,7 +97,7 @@ export async function openPractice(api) {
     { value: 'self', label: 'Practice on your own', sub: 'Free.' },
     { value: 'lesson', label: 'Take lessons', sub: p.age < 16 ? 'Your family pays. You learn half as much again.' : `${fmtMoney(skill.lessonCost(), c)}. You learn half as much again.` },
   ] });
-  return how ? report(api, skill.practise(id, how === 'lesson')) : undefined;
+  return how ? report(api, skill.practice(id, how === 'lesson')) : undefined;
 }
 
 export { esc };

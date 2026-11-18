@@ -188,7 +188,7 @@ export const FACILITY_KINDS = {
  *   security  the highest security level that offers it
  *   schooling the least prison-schooling (SYSTEMS) a country needs to offer it
  */
-export const PROGRAMMES = [
+export const PROGRAMS = [
   { id: 'literacy', name: 'Reading and writing', years: 1, needs: null, security: 'max', schooling: 0, stat: 'intellect',
     blurb: 'Small classes with a volunteer tutor. No qualification, but everything else starts here.' },
   { id: 'equivalency', name: 'School-leaving certificate', years: 1, needs: null, notHeld: 'high', security: 'max', schooling: 0.3,
@@ -204,7 +204,7 @@ export const PROGRAMMES = [
   { id: 'degree', name: 'University degree by distance learning', years: 4, needs: 'high', security: 'med', schooling: 0.6,
     gives: { type: 'university', majorId: 'business' }, blurb: 'Course packs by post and an exam room once a term. A full degree.' },
 ];
-export const PROGRAMME_BY_ID = Object.fromEntries(PROGRAMMES.map((x) => [x.id, x]));
+export const PROGRAM_BY_ID = Object.fromEntries(PROGRAMS.map((x) => [x.id, x]));
 
 /** Work inside. skill: a real skill (data/skills.js) the work trains. */
 export const PRISON_JOBS = [
@@ -223,7 +223,7 @@ export const ROUTINES = [
   { id: 'work', name: 'Work', blurb: 'A full work detail, and the pay that goes with it.' },
   { id: 'fitness', name: 'Fitness', blurb: 'The gym and the yard.' },
   { id: 'family', name: 'Family', blurb: 'Every letter answered, every phone slot used.' },
-  { id: 'programmes', name: 'Rehabilitation', blurb: 'Courses, counseling and the chaplaincy.' },
+  { id: 'programs', name: 'Rehabilitation', blurb: 'Courses, counseling and the chaplaincy.' },
 ];
 
 /** Interests and goals that make the people inside people. */
@@ -238,7 +238,7 @@ export const STAFF_ROLES = [
   { id: 'governor', name: 'Governor' },
   { id: 'officer', name: 'Wing officer' },
   { id: 'teacher', name: 'Education officer' },
-  { id: 'counsellor', name: 'Counselor' },
+  { id: 'counselor', name: 'Counselor' },
   { id: 'nurse', name: 'Healthcare' },
   { id: 'caseworker', name: 'Release caseworker' },
 ];

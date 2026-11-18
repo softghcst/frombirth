@@ -11,6 +11,7 @@
 //     application: { instId, outcome, score, condition, reasons, aid, tuition }
 //     held: { instId, until }  a place kept open for a year
 //   p.education.aid / aidKeep / aidParts   the share of tuition waived while enrolled, and the mark that keeps it
+import { universityAccess } from './history.js';
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
 import { store, player, npcsByRole, livingNpcs, log } from '../state.js';
@@ -32,14 +33,14 @@ const noise = (n) => (rng.next() * 2 - 1) * n;
 const all = () => (store.state.universities ??= {});
 
 /** The subjects at school that bear on a degree: advanced courses in them count with admissions. */
-const RELEVANT = { engineering: ['maths', 'science'], mathematics: ['maths'], computer_science: ['maths', 'technology'], chemistry: ['science'], biology: ['science'], nursing: ['science'],
-  english: ['literature'], journalism: ['literature'], communications: ['literature'], history: ['history'], political_science: ['government', 'history'], finance: ['economics', 'maths'], business: ['economics'],
-  psychology: ['science'], education: ['literature'], criminal_justice: ['government'], art: ['art'], music: ['music'], theatre: ['theatre'], musical_theatre: ['theatre', 'music'], musical_theatre_bfa: ['theatre', 'music'] };
+const RELEVANT = { engineering: ['math', 'science'], mathematics: ['math'], computer_science: ['math', 'technology'], chemistry: ['science'], biology: ['science'], nursing: ['science'],
+  english: ['literature'], journalism: ['literature'], communications: ['literature'], history: ['history'], political_science: ['government', 'history'], finance: ['economics', 'math'], business: ['economics'],
+  psychology: ['science'], education: ['literature'], criminal_justice: ['government'], art: ['art'], music: ['music'], theater: ['theater'], musical_theater: ['theater', 'music'], musical_theater_bfa: ['theater', 'music'] };
 
 // ---------- The institutions ----------
 
 /** The universities of a country, made the first time they are needed and then kept. */
-export function catalogue(countryId = player().countryId) {
+export function catalog(countryId = player().countryId) {
   const have = Object.values(all()).filter((u) => u.countryId === countryId);
   if (have.length) return have.map(view);
   const c = COUNTRIES[countryId];
@@ -63,7 +64,7 @@ export function catalogue(countryId = player().countryId) {
 }
 /** An institution with everything its kind gives it. */
 function view(u) { return { ...UNIVERSITY_KIND_BY_ID[u.kind], ...u, kindId: u.kind }; }
-/** The institution by id. Lives begun before the catalogue existed attended one of three kinds of school: those still resolve. */
+/** The institution by id. Lives begun before the catalog existed attended one of three kinds of school: those still resolve. */
 export function uniOf(id) {
   if (!id) return null;
   const u = all()[id];
@@ -79,7 +80,7 @@ function hasDegree(n) {
   const job = OCCUPATIONS.find((j) => j.title === n.occupation);
   if (job) return job.income >= 70000;
   const title = String(n.occupation ?? '').toLowerCase();
-  return !!title && CAREERS.some((c) => (c.req?.degree === 'university' || c.req?.majors || ['medical', 'law'].includes(c.req?.programme)) && c.levels.some((l) => l.title.toLowerCase() === title));
+  return !!title && CAREERS.some((c) => (c.req?.degree === 'university' || c.req?.majors || ['medical', 'law'].includes(c.req?.program)) && c.levels.some((l) => l.title.toLowerCase() === title));
 }
 /** Whether the player would be the first in their family to go to university: neither parent went, nor any family name is on an alumni roll. */
 export function firstInFamily() {
@@ -115,6 +116,7 @@ export function profile(majorId, inst = null) {
   const parents = npcsByRole('parent');
   const surname = p.lastName;
   return {
+    access: universityAccess(), // Historical Eras: how many students universities took in these years
     mark: school ? e.gpa : edu.entryGpa(), predicted: school, advanced, recs, activities,
     statement: plan?.statementValue ?? 0,
     audition: major?.audition ? Math.round(clamp(tripleThreat(p) + (p.flags.directorRec ? 8 : 0) + Math.min(10, (p.flags.performances?.length ?? 0) * 2))) : null,
@@ -143,13 +145,13 @@ export function costs(instId) {
 const barWord = (u) => (u.open ? 'Open to anyone' : u.bar >= 3.3 ? 'Very hard to get into' : u.bar >= 2.8 ? 'Hard to get into' : u.bar >= 2.4 ? 'Takes good students' : 'Takes most who apply');
 const repWord = (u) => (u.rep >= 90 ? 'Famous everywhere' : u.rep >= 78 ? 'Very well regarded' : u.rep >= 62 ? 'Well regarded' : u.rep >= 50 ? 'Solid, and known locally' : 'Little known');
 
-/** The catalogue as the planner shows it, for the subject the player has in mind. */
+/** The catalog as the planner shows it, for the subject the player has in mind. */
 export function browse() {
   const p = player();
   const plan = p.education.apps;
   const majorId = plan?.majorId ?? null;
   const major = MAJOR_BY_ID[majorId];
-  return catalogue(p.countryId).map((u) => {
+  return catalog(p.countryId).map((u) => {
     const c = costs(u.id);
     return { id: u.id, name: u.name, label: u.label, city: u.city, founded: u.founded, blurb: u.blurb, reputation: repWord(u), entry: barWord(u), tuition: c.tuition, living: c.living,
       strong: major ? u.strong.includes(majorId) : false, taught: !major || teaches(u, majorId), chances: !major ? '' : teaches(u, majorId) ? outlook(profile(majorId, u), u, major) : 'Not taught here', nearHome: u.city === p.city, family: u.alumni.filter((n) => n.endsWith(` ${p.lastName}`)),
@@ -311,7 +313,7 @@ export function accept(instId, funding, living = {}) {
   if (!a || a.outcome !== 'accepted' || atSchool() || e.enrolled) return result(false, 'You cannot take up that place now.', 'neutral');
   const u = uniOf(instId);
   const fraction = a.aid?.fraction ?? 0;
-  edu.enrol('university', r.majorId, fraction >= 1 ? 'scholarship' : funding, { ...living, housingAid: !!a.aid?.housing }, { id: u.id, name: u.name, aid: a.aid });
+  edu.enroll('university', r.majorId, fraction >= 1 ? 'scholarship' : funding, { ...living, housingAid: !!a.aid?.housing }, { id: u.id, name: u.name, aid: a.aid });
   e.apps = null;
   arriveAt(u.name);
   return result(true, `You are going to ${u.name}.`);

@@ -1,4 +1,4 @@
-// Skills the player can practise, up to PRACTICE_PER_YEAR sessions a year.
+// Skills the player can practice, up to PRACTICE_PER_YEAR sessions a year.
 // talent: the session trains one of the six inherited talents directly
 //         (the progress bar is the talent itself).
 // helps:  a talent that makes this skill come faster, and that grows a

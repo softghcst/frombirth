@@ -36,7 +36,7 @@ import { store, player, country, livingNpcs, log, milestone } from '../state.js'
 import { businessExists } from '../data/eras.js';
 import { COUNTRIES } from '../data/countries.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { PROGRAMMES, TRADE_BY_ID } from '../data/schools.js';
+import { PROGRAMS, TRADE_BY_ID } from '../data/schools.js';
 import { BUSINESS_TYPES, BUSINESS_BY_ID, FROM_SERVICE, PRICING, DRAWS, BUSINESS_NAMES, NAME_WORDS, BUSINESS_LOAN, PROFIT_TAX, DEFAULT_PROFIT_TAX, SMALL_PROFIT } from '../data/business.js';
 import { typicalWage } from './systems.js';
 import { makeNpc } from './npcFactory.js';
@@ -45,7 +45,7 @@ import { cityOf } from './cities.js';
 import { phase } from './economy.js';
 import { registerEmployer, employer, chronicle } from './employers.js';
 import { career as careerState, canFit, workLaw } from './worklife.js';
-import { licenceFor, licensed, examName } from './adulted.js';
+import { licenseFor, licensed, examName } from './adulted.js';
 import { convert } from './currency.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -88,8 +88,8 @@ export function profitTax(profit, countryId, lossCarry = 0) {
 /** A celebrity brand sells on its owner's name, and on whether people like them. 1 is an ordinary business. */
 export function starPull(p = player()) {
   const name = p.hidden?.fame ?? 0;
-  const favour = p.fame?.favour ?? 50;
-  return clamp(0.45 + name / 45 * (0.4 + favour / 80), 0.3, 2.6);
+  const favor = p.fame?.favor ?? 50;
+  return clamp(0.45 + name / 45 * (0.4 + favor / 80), 0.3, 2.6);
 }
 
 export function figures(type, countryId = player().countryId, city = player().city) {
@@ -112,10 +112,10 @@ export function startBlock(type) {
   if (p.legal.incarceration) return 'Not from a cell.';
   if (p.royal && !p.royal.waiting && ['monarch', 'heir'].includes(p.royal.rank)) return 'The crown does not go into trade.';
   if (n.trade && !p.education.degrees.some((d) => d.type === 'apprenticeship' && d.majorId === n.trade)) return `Needs a completed ${TRADE_BY_ID[n.trade].name.toLowerCase()} apprenticeship.`;
-  if (n.programme && !has(n.programme)) return `Needs you to have finished ${PROGRAMMES[n.programme].label.toLowerCase()}.`;
-  if (n.programme && licenceFor(n.programme) && !licensed(licenceFor(n.programme))) return `Needs you to pass the ${examName(licenceFor(n.programme))}.`;
+  if (n.program && !has(n.program)) return `Needs you to have finished ${PROGRAMS[n.program].label.toLowerCase()}.`;
+  if (n.program && licenseFor(n.program) && !licensed(licenseFor(n.program))) return `Needs you to pass the ${examName(licenseFor(n.program))}.`;
   if (n.degree && !has(n.degree)) return 'Needs a university degree.';
-  if (n.experience && !n.programme && !Object.entries(n.experience).some(([id, y]) => (c.experience[id] ?? 0) >= y)) {
+  if (n.experience && !n.program && !Object.entries(n.experience).some(([id, y]) => (c.experience[id] ?? 0) >= y)) {
     return `Needs experience first: ${Object.entries(n.experience).slice(0, 3).map(([id, y]) => `${y} years in ${CAREER_BY_ID[id].name.toLowerCase()}`).join(', or ')}.`;
   }
   if (n.land && !['country', 'mansion'].includes(p.assets.find((a) => a.id === p.homeId)?.catalogId)) return 'Needs land of your own: a country property you live in.';
@@ -226,6 +226,7 @@ function employ(b, n, wageK) {
   n.occupation = car.levels[0].title.toLowerCase();
   if (n.role === 'colleague') n.flags.title = `Works for you at ${b.name}`;
   n.flags.employeeOf = b.id;
+  if (b.countryId !== p.countryId) n.flags.abroad = b.countryId; // they live where the business is
   n.flags.workedWith = b.name;
   n.lastInteractionAge = p.age;
   if (!e.staff.includes(n.id)) e.staff.push(n.id);
@@ -343,7 +344,7 @@ export function invest(b, what) {
 
 /** What a celebrity brand can launch, and what each needs. */
 export const LAUNCHES = {
-  fashion_label: ['a capsule collection', 'a line of trainers', 'a winter collection'],
+  fashion_label: ['a capsule collection', 'a line of sneakers', 'a winter collection'],
   beauty_brand: ['a fragrance', 'a skincare line', 'a lipstick range'],
   record_label: ['a compilation', 'a new signing', 'a reissue series'],
   production_co: ['a documentary', 'a short-film slate', 'a podcast series'],
@@ -719,9 +720,10 @@ export function tickBusinesses() {
  * without them, and pays out across the border; one without is wound up.
  * @returns {string[]} journal lines
  */
-export function onEmigrate() {
+export function onEmigrate(destId = null) {
   const lines = [];
   for (const b of openBusinesses()) {
+    if (b.countryId === destId) { lines.push(`You are moving to where ${b.name} is. You can work in it yourself again.`); continue; }
     if (managerOf(b)) { b.ownerHours = 0; lines.push(`${managerOf(b).firstName} will run ${b.name} while you are abroad. What it pays you will be changed into the money of wherever you live.`); }
     else lines.push(close(b).text);
   }
@@ -741,7 +743,7 @@ export function markPaid(p = player()) { for (const b of p.businesses ?? []) b.p
  * make them its manager: whoever ran it still does, until they decide.
  * @returns {string[]} what happened, for the heir's journal
  */
-export function inherit(oldPlayer, newPlayer, heirNpc, npcs) {
+export function inherit(oldPlayer, newPlayer, heirNpc, npcs, oldNpcs = {}) {
   const out = [];
   newPlayer.businesses = [];
   for (const b of oldPlayer.businesses ?? []) {
@@ -749,7 +751,9 @@ export function inherit(oldPlayer, newPlayer, heirNpc, npcs) {
     if (!mine) continue;
     const copy = JSON.parse(JSON.stringify(b));
     const worked = copy.staff.some((s) => s.id === heirNpc.id);
-    copy.staff = copy.staff.filter((s) => s.id !== heirNpc.id && npcs[s.id]?.alive);
+    // The people who work there go on working there: the same people, carried into the new life if the family tree did not bring them.
+    copy.staff = copy.staff.filter((s) => s.id !== heirNpc.id && (npcs[s.id] ?? oldNpcs[s.id])?.alive);
+    for (const s of copy.staff) npcs[s.id] ??= oldNpcs[s.id];
     copy.others += b.staff.length - copy.staff.length - (worked ? 1 : 0);
     copy.others = Math.max(0, copy.others);
     copy.partners = copy.partners.filter((x) => npcs[x.id]?.alive);

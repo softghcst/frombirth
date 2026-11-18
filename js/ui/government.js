@@ -15,7 +15,7 @@ function tallyModal(title, t) {
     const m = openModal(`<div class="eyebrow">The vote</div><h2>${esc(title)}</h2>
       <div class="pol-night"><strong>For ${t.for}</strong><span>Against ${t.against}</span></div>
       <p class="muted">${t.need} needed to pass.</p>
-      ${t.rows.map((r) => `<div class="pol-result"><span>${esc(r.name)}</span><span class="pol-track"><i style="width:${Math.round(r.for / Math.max(1, r.for + r.against) * 100)}%;background:${r.colour}"></i></span><span class="num">${r.for}</span><span class="num">${r.against} no</span></div>`).join('')}
+      ${t.rows.map((r) => `<div class="pol-result"><span>${esc(r.name)}</span><span class="pol-track"><i style="width:${Math.round(r.for / Math.max(1, r.for + r.against) * 100)}%;background:${r.color}"></i></span><span class="num">${r.for}</span><span class="num">${r.against} no</span></div>`).join('')}
       <button class="btn primary" data-ok style="margin-top:14px">Continue</button>`);
     m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
   });
@@ -78,7 +78,7 @@ export async function regionalLawFlow(api) {
   const options = local.regionalLawOptions();
   if (!options.length) return messageModal({ body: local.regionalLawBlock() || 'There is nothing here the region can change.' });
   const pick = await pickModal({ title: `The law of ${r.name}`, cancel: 'Back',
-    body: `Here a region can decide ${local.regionalPowersLine()}. A national law made later overrides it.`,
+    body: `Here a region can decide ${local.regionalPowersLine()}. These are the regions' to decide: the national government cannot change them.`,
     options: options.map((o, i) => ({ value: i, label: o.name, sub: o.outlook })) });
   if (pick == null) return undefined;
   const c = options[pick];

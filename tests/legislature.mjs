@@ -12,8 +12,8 @@ function seeded(seed) { let s = seed; const next = () => { s = (s * 1664525 + 10
 
 const left = { id: 'left', positions: { tax: 2, services: 2, order: -1 } };
 const right = { id: 'right', positions: { tax: -2, services: -1, order: 2 } };
-const centre = { id: 'centre', positions: { tax: 0, services: 1, order: 0 } };
-const all = [left, right, centre];
+const center = { id: 'center', positions: { tax: 0, services: 1, order: 0 } };
+const all = [left, right, center];
 const spend = { wants: { services: 1 } };
 const cutTax = { wants: { tax: -1 } };
 
@@ -21,16 +21,16 @@ eq('a bill goes a party\'s way by as much as the party wants it', [lean(left, sp
 eq('a bill touching two issues is judged on both', lean(left, { wants: { tax: 1, order: 1 } }), 0.5);
 
 {
-  const t = tally(all, { left: 55, right: 30, centre: 15 }, spend, { lead: 'left' });
+  const t = tally(all, { left: 55, right: 30, center: 15 }, spend, { lead: 'left' });
   yes('a majority government passes what its own side wants', t.passes && t.for >= 55);
   eq('every seat votes one way or the other', t.for + t.against, 100);
   eq('the tally by party adds up to the whole', Object.values(t.byParty).reduce((s, v) => s + v.for, 0), t.for);
 }
 {
-  const seats = { left: 40, right: 45, centre: 15 };
+  const seats = { left: 40, right: 45, center: 15 };
   const t = tally(all, seats, spend, { lead: 'left' });
   yes('a minority government needs votes it does not own', t.need === 51 && t.for < 51 + 15 && !tally(all, seats, { wants: { tax: 1 } }, { lead: 'left' }).passes);
-  yes('a deal with another party can make the difference', tally(all, seats, { wants: { tax: 1 } }, { lead: 'left', deals: { centre: 0.9 } }).passes);
+  yes('a deal with another party can make the difference', tally(all, seats, { wants: { tax: 1 } }, { lead: 'left', deals: { center: 0.9 } }).passes);
 }
 {
   const seats = { left: 52, right: 48 };
@@ -40,11 +40,11 @@ eq('a bill touching two issues is judged on both', lean(left, { wants: { tax: 1,
   yes('the other side votes for a bill that goes its way', against.byParty.right.for > against.byParty.right.against / 2);
 }
 {
-  const seats = { left: 30, right: 40, centre: 30 };
-  const alone = tally(all, seats, spend, { lead: 'centre' });
-  const together = tally(all, seats, spend, { lead: 'centre', partners: ['left'] });
+  const seats = { left: 30, right: 40, center: 30 };
+  const alone = tally(all, seats, spend, { lead: 'center' });
+  const together = tally(all, seats, spend, { lead: 'center', partners: ['left'] });
   yes('a coalition partner votes with the government more than an outsider does', together.byParty.left.for >= alone.byParty.left.for && together.passes);
-  const hated = tally(all, seats, { wants: { tax: -1, services: -1 } }, { lead: 'centre', partners: ['left'] });
+  const hated = tally(all, seats, { wants: { tax: -1, services: -1 } }, { lead: 'center', partners: ['left'] });
   yes('but not for something it cannot stomach', hated.byParty.left.for < together.byParty.left.for);
 }
 eq('two thirds overrides a veto; less does not', [overrides({ for: 67, total: 100 }), overrides({ for: 66, total: 100 }), overrides({ for: 0, total: 0 })], [true, false, false]);
@@ -55,9 +55,9 @@ eq('an empty chamber passes nothing', tally(all, {}, spend, { lead: 'left' }).pa
     const n = seeded(s);
     const a = 20 + Math.round(Math.abs(n(40)));
     const b = 20 + Math.round(Math.abs(n(40)));
-    const seats = { left: a, right: b, centre: 120 - a - b > 0 ? 120 - a - b : 1 };
-    const t = tally(all, seats, s % 2 ? spend : cutTax, { lead: ['left', 'right', 'centre'][s % 3], partners: s % 4 ? [] : ['centre'], whip: Math.abs(n(0.1)), sway: n(0.1), noise: n });
-    const total = seats.left + seats.right + seats.centre;
+    const seats = { left: a, right: b, center: 120 - a - b > 0 ? 120 - a - b : 1 };
+    const t = tally(all, seats, s % 2 ? spend : cutTax, { lead: ['left', 'right', 'center'][s % 3], partners: s % 4 ? [] : ['center'], whip: Math.abs(n(0.1)), sway: n(0.1), noise: n });
+    const total = seats.left + seats.right + seats.center;
     if (t.for + t.against !== total || t.for < 0 || t.against < 0 || t.passes !== (t.for >= Math.floor(total / 2) + 1) || Object.values(t.byParty).some((v) => v.for < 0 || v.against < 0)) bad += 1;
   }
   eq('300 random votes: every one adds up', bad, 0);

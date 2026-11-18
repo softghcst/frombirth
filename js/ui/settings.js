@@ -7,7 +7,7 @@ import * as cloud from '../sync/cloud.js';
 import { openModal, pickModal, confirmModal, messageModal, inputModal } from './modals.js';
 import { store } from '../state.js';
 import { forkGame, timelinesOf, MAX_TIMELINES, saveGame } from '../save.js';
-import { STEPS, STEP_NAMES, stepOf, setStep, monthOf } from '../engine/turns.js';
+import { STEPS, STEP_NAMES, stepOf, setStep, monthOf, ageLabel } from '../engine/turns.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
 export function ago(t) {
@@ -62,14 +62,16 @@ export async function openSettings(hooks = {}) {
         { value: 'transfer', label: 'Transfer saves', sub: 'Move your lives to another device with a code or a file, no account needed.' },
         { value: 'people', label: 'People you know', sub: people ? `${people} on your list.` : 'Put people from your own life into the game.' },
         // Only while a life is being played: keep this moment, and live it two ways.
+        ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === false ? 'Off. Turn it on to see what each year changed.' : 'On: after each year, what it changed.' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Keep this moment as a second timeline, before a decision you are about to make. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used.` }] : []),
       ],
     });
     if (!pick) return;
     if (pick === 'whatif') {
       const note = await inputModal({ title: 'What if?', label: 'What is the decision? (a few words)', value: '', maxLength: 60 });
-      if (note != null) { const r = forkGame(store.state, note || `Age ${store.state.player.age}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
+      if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
     }
+    if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary === false }; }
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();
     if (pick === 'transfer') await openTransfer(hooks);

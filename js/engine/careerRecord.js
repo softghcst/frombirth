@@ -167,8 +167,19 @@ export function record(p = player(), st = store.state) {
   return { name: `${p.firstName} ${p.lastName}`, gen: p.generation ?? 1, born, died: p.alive === false ? st.year : null, jobs,
     businesses: (p.businesses ?? []).map((b) => ({ name: b.name, from: b.founded, years: b.years, status: b.status })),
     credits: (p.fame?.credits ?? []).map((c) => ({ productionId: c.productionId, year: c.year })), fame: p.fame ? { legacy: p.fame.legacy, scope: null } : null,
-    idol: idolSummary(p, st), books: (p.fame?.writing?.books ?? []).length, acts: (p.fame?.acts ?? []).length, portfolio: (p.fame?.model?.portfolio ?? []).length,
+    idol: idolSummary(p, st), sport: sportSummary(p, st), books: (p.fame?.writing?.books ?? []).length, acts: (p.fame?.acts ?? []).length, portfolio: (p.fame?.model?.portfolio ?? []).length,
     achievements: c.achievements.map((a) => a.name), topTitle: top?.title ?? null, retired: !!c.retired, colleagues };
+}
+
+/** What a family remembers of an athlete: their main sport, from the one sports system (engine/sports.js). */
+function sportSummary(p, st) {
+  const a = st.sports?.athletes?.[p.id];
+  const played = a ? Object.values(a.sports).filter((e) => (e.seasonsPlayed ?? 0) + (e.legacySeasons ?? 0) > 0) : [];
+  if (!played.length) return null;
+  const main = a.sports[a.primary] && played.includes(a.sports[a.primary]) ? a.sports[a.primary] : played[0];
+  return { sport: main.id, seasons: (main.seasonsPlayed ?? 0) + (main.legacySeasons ?? 0), titles: main.titles.length,
+    medals: (main.medals ?? []).map((m) => `${m.medal} ${m.year}`), caps: main.caps ?? 0, level: main.level,
+    awards: (main.awards ?? []).filter((a) => a.kind !== 'team').map((a) => `${a.name} ${a.year}`) };
 }
 
 /** Written when the story passes on (engine/legacy.js). */
@@ -187,7 +198,7 @@ export function passOn(old, next, heir) {
   delete next.player.fame;
   startWithFamilyName(next.player, fromFamily);
   // A business goes to the heir who was named, or to a child. Ownership, not the manager's chair.
-  return heir ? inherit(old.player, next.player, heir, next.npcs) : [];
+  return heir ? inherit(old.player, next.player, heir, next.npcs, old.npcs) : [];
 }
 
 /** The family's working history, with the living player last. */

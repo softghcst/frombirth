@@ -49,7 +49,7 @@ for (const id of COUNTRY_IDS) for (let k = 0; k < PER; k++) {
     }
     if (CARELESS) {
       if (p.age === 21) { cards.applyForCard(); cards.applyForCard(); for (const k of cards.cards()) cards.setCard(k.id, { autopay: 'min' }); }
-      if (p.age === 24) { p.flags.licence = true; p.flags.drivingLicence = true; const l = cars.listings().filter((x) => !x.blocked && x.finance.approved).sort((a, b) => b.price - a.price)[0]; if (l) cars.buyVehicle(l.id, 'loan'); }
+      if (p.age === 24) { p.flags.license = true; p.flags.drivingLicense = true; const l = cars.listings().filter((x) => !x.blocked && x.finance.approved).sort((a, b) => b.price - a.price)[0]; if (l) cars.buyVehicle(l.id, 'loan'); }
       if (p.age === 30 && !p.homeId) { const L = estateE.listings().sort((a, b) => b.price - a.price); for (const l of L) { const t = estateE.mortgageTerms(l.price); const dep = Math.max(t.minDeposit, l.price - t.maxLoan); if (t.available && dep + l.fees <= p.finance.cash) { if (estateE.buyProperty(l.id, dep).ok) { estateE.moveIn(p.assets.at(-1).id); r.bought = true; } break; } } }
       if (p.age === 32 && p.finance.cash > 1000) mkt.buy('voltaic', Math.floor(p.finance.cash * 0.8));
       if (p.age % 5 === 0 && p.age >= 25 && p.age <= 55) { const o = (await import(R + 'engine/loans.js')).loanOptions().filter((x) => x.approved).at(-1); if (o) (await import(R + 'engine/loans.js')).borrow(o.amount); }

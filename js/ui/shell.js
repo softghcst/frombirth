@@ -4,8 +4,8 @@ import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
-import { saveGame, pushUndo, popUndo, undoDepth } from '../save.js';
-import { advanceTurn, ageText, nextTurnText } from '../engine/turns.js';
+import { saveGame, pushUndo, popUndo, undoDepth, peekUndo } from '../save.js';
+import { advanceTurn, ageText, nextTurnText, stepOf, monthOf } from '../engine/turns.js';
 import { getEvent, resolveChoice } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
@@ -13,9 +13,12 @@ import { styledName, standing } from '../engine/royalty.js';
 import { ROYAL_RANKS } from '../data/royalty.js';
 import { avatarSvg, dressOfPlayer } from './avatar.js';
 import { meterHtml } from './meter.js';
-import { eventModal, outcomeModal, confirmModal } from './modals.js';
+import { eventModal, outcomeModal, confirmModal, openModal } from './modals.js';
+import { summarize } from '../engine/yearSummary.js';
 import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
+import { openHealth } from './health/hub.js';
+import { careWaiting } from '../engine/health/index.js';
 import { openMoney } from './tabs/holdings.js';
 import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
@@ -132,6 +135,10 @@ export function mountGame(app, hooks) {
     const undo = $('[data-undo]');
     undo.disabled = busy || !undoDepth(store.state.slotId);
     undo.hidden = p.age === 0 && !undoDepth(store.state.slotId);
+    // With turns shorter than a year, undo takes back a turn, not a year.
+    const byTurn = stepOf() !== 12 || monthOf() !== 0;
+    undo.querySelector('small').textContent = byTurn ? 'Go back' : 'Age down';
+    undo.setAttribute('aria-label', byTurn ? 'Go back: take back the last turn' : 'Age down: take back the last year');
   }
 
   function renderJournal() {
@@ -164,6 +171,10 @@ export function mountGame(app, hooks) {
   function renderPanel() {
     app.querySelectorAll('.tab-btn').forEach((b) =>
       b.classList.toggle('active', b.dataset.tab === activeTab));
+    // A dot on Self when care needs the player: a decision to make, or an appointment this week.
+    const waiting = player().alive ? careWaiting() : null;
+    const self = app.querySelector('.tab-btn[data-tab="self"]');
+    if (self) { self.classList.toggle('badge', !!waiting); self.setAttribute('aria-label', waiting ? `Self (${waiting.short})` : 'Self'); }
     const tab = TABS.find((t) => t.id === activeTab);
     panelEl.hidden = !tab;
     if (!tab) return;
@@ -220,12 +231,45 @@ export function mountGame(app, hooks) {
     render();
     await runPending();
     if (player().alive && player().legal.pending) await tabApi.justice();
+    await yearUpdate();
+    await healthNotice();
+  }
+
+  /** The yearly life update: what this year changed, from the saved state. Shown once per year. */
+  async function yearUpdate() {
+    const state = store.state;
+    const r = state.yearReport;
+    if (!r || r.shown || !player().alive || state.settings?.yearSummary === false) return;
+    r.shown = true;
+    persist();
+    const s = summarize(r.before, state, r.planLines);
+    await new Promise((resolve) => {
+      const m = openModal(`
+        <div class="eyebrow">${s.year}</div>
+        <h2>Age ${s.from} → ${s.to}</h2>
+        ${s.quiet ? '<p class="body">A quiet year. Those count too.</p>' : s.sections.map((x) => `<div class="section-label">${esc(x.title)}</div>${x.lines.map((l) => `<p class="yu-line">${esc(l)}</p>`).join('')}`).join('')}
+        <div class="btn-row" style="margin-top:14px"><button class="btn" data-off>Stop showing these</button><button class="btn primary" data-ok>Continue</button></div>`, { dismissable: true, onDismiss: resolve });
+      m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+      m.el.querySelector('[data-off]').addEventListener('click', () => { state.settings = { ...(state.settings ?? {}), yearSummary: false }; persist(); m.close(); resolve(); });
+    });
+  }
+
+  /** After a year, a care decision that is waiting is put in front of the player, once. */
+  async function healthNotice() {
+    const w = player().alive ? careWaiting() : null;
+    if (!w?.decision || busy) return;
+    const go = await confirmModal({ title: 'Your care', body: w.text, yes: 'Open My Health', no: 'Later' });
+    if (go) openHealth(tabApi, { section: 'overview' });
   }
 
   yearBtn.addEventListener('click', nextYear);
   $('[data-undo]').addEventListener('click', async () => {
     if (busy) return;
-    const sure = await confirmModal({ title: `Go back to age ${player().age - 1}?`, body: 'Everything that happened this year is undone. You can go back up to three years, one at a time.', yes: 'Age down' });
+    const to = peekUndo(store.state.slotId);
+    if (!to) return;
+    const where = to.month ? `${to.age === 0 ? '' : `${to.age} ${to.age === 1 ? 'year' : 'years'}, `}${to.month} months` : `age ${to.age}`;
+    const turnWord = to.month || store.state.month ? 'turn' : 'year';
+    const sure = await confirmModal({ title: `Go back to ${where}?`, body: `Everything that happened since then is undone. You can go back up to three years, one ${turnWord} at a time.`, yes: turnWord === 'year' ? 'Age down' : 'Go back' });
     if (!sure) return;
     const earlier = popUndo(store.state.slotId);
     if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }

@@ -72,7 +72,7 @@ eq('male only: men, through fathers', lineOfSuccession(base(), 'edward', MALE), 
   eq('abdication hands the throne to the first in line', next, 'amelia');
   eq('a living former monarch is not in the new line', lineOfSuccession(p, 'amelia', ABS), ['rose', 'leo', 'henry', 'max', 'clara']);
 }
-{ // A monarch with no children abdicates in favour of a cousin, and stays out of the line.
+{ // A monarch with no children abdicates in favor of a cousin, and stays out of the line.
   const p = family([['old', 'male', 1900, [], { died: 1970 }], ['a', 'female', 1930, ['old'], { abdicated: 1990 }], ['b', 'male', 1933, ['old'], { died: 1985 }], ['c', 'male', 1960, ['b']], ['d', 'female', 1990, ['c']]]);
   eq('someone who abdicated never returns to the line', lineOfSuccession(p, 'c', ABS), ['d']);
 }

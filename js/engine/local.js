@@ -109,7 +109,7 @@ export function presentBudget(changes, move = 'none') {
     if (!t.passes) {
       k.approval = Math.round(clamp(k.approval - 4));
       return result(false, `Your budget is voted down by the ${body}, ${t.for} to ${t.against}. Last year's figures stand, and the local paper enjoys itself.`, 'bad',
-        { tally: { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, colour: q.colour, ...t.byParty[q.id] })) } });
+        { tally: { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, color: q.color, ...t.byParty[q.id] })) } });
     }
   }
   let liked = 0;
@@ -124,7 +124,7 @@ export function presentBudget(changes, move = 'none') {
   k.approval = Math.round(clamp(k.approval + liked * 2));
   post(w, `${k.title} ${p.firstName} ${p.lastName} of ${p.city} has ${done.join('; ')}.`, { you: true });
   return result(true, `${t ? `The ${body} passes your budget, ${t.for} to ${t.against}.` : 'Your budget is adopted.'} You have ${done.join('; ')}. ${Object.entries(LOCAL_LEVERS).filter(([id]) => list.some(([q]) => q === id)).map(([id, L]) => L.feel(x[id])).join(' ')}`, 'good',
-    { tally: t ? { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, colour: q.colour, ...t.byParty[q.id] })) } : null });
+    { tally: t ? { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, color: q.color, ...t.byParty[q.id] })) } : null });
 }
 
 /** Yearly, for whoever runs a place: books that do not balance catch up with them, and well-run places are noticed. */
@@ -197,13 +197,13 @@ export function putRegionalLaw(ruleId, value, move = 'none') {
     if (!t.passes) {
       k.approval = Math.round(clamp(k.approval - 3));
       return result(false, `The assembly of ${r.name} voted down your law to ${c.name}, ${t.for} to ${t.against}.`, 'bad',
-        { tally: { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, colour: q.colour, ...t.byParty[q.id] })) } });
+        { tally: { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, color: q.color, ...t.byParty[q.id] })) } });
     }
   }
   const e = law.enactRegional(p.countryId, r.id, c.rule, c.value, cap(r.name), `${p.firstName} ${p.lastName}`);
   econPost(p.countryId, 'law', e.text, 'neutral', false);
   post(w, `${k.title} ${p.firstName} ${p.lastName}: ${e.text}`, { you: true });
   k.approval = Math.round(clamp(k.approval + c.liked));
-  const shown = t ? { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, colour: q.colour, ...t.byParty[q.id] })) } : null;
+  const shown = t ? { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, color: q.color, ...t.byParty[q.id] })) } : null;
   return result(true, `${t ? `By ${t.for} votes to ${t.against}, the` : 'The'} assembly passed it: ${e.text} It is the law for everyone living in ${r.name}.${c.liked <= -3 ? ' It is not popular.' : c.liked >= 2 ? ' People here are pleased.' : ''}`, 'good', { tally: shown });
 }

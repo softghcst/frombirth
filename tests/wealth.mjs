@@ -197,11 +197,11 @@ check(p.finance.cash === c5, 'and only once a year');
 p.finance.cash = 0; book({ cat: 'losses', desc: 'test' }); store.state.year += 1; ins.tickInsurance();
 check(pol.status === 'lapsed' && ins.policies().length === 0, 'a policy that cannot be paid for lapses');
 estate.damageProperty(house, 20);
-check(ins.openLosses().length === 0, 'and covers nothing afterwards');
+check(ins.openLosses().length === 0, 'and covers nothing afterward');
 // A vehicle, written off.
 p = life('us', { cash: 200000 });
 const listing = cars.listings().find((l) => !l.blocked && l.cls === 'car') ?? cars.listings().find((l) => !l.blocked);
-p.flags.licence = true; p.flags.drivingLicence = true;
+p.flags.license = true; p.flags.drivingLicense = true;
 cars.buyVehicle(listing.id, 'cash');
 const car = p.assets.find((a) => a.kind === 'vehicle');
 if (car) {
@@ -429,7 +429,8 @@ let list = ach.achievements();
 check(list.length === 10 && list.every((x) => !x.earned), 'a life that has done none of it has earned none of it');
 p.finance.cash = 5_000_000; book({ cat: 'giftIn', desc: 'a windfall' });
 check(ach.achievements().filter((x) => x.earned).length === 0, 'having money, on its own, earns nothing');
-hire(office, 2, 60, 'Hired.'); advanceYear();
+// A layoff before payday leaves a year with severance and benefit but no wage, which does not count: so hire again until a wage is paid.
+for (let i = 0; i < 6 && !ach.achievements().find((x) => x.id === 'first_pay').earned; i++) { if (!p.career.careerId) hire(office, 2, 60, 'Hired.'); advanceYear(); store.state.pendingEvents = []; }
 check(ach.achievements().find((x) => x.id === 'first_pay').earned && ach.achievements().find((x) => x.id === 'first_pay').age === p.age, 'the first wage is noticed in the year it happens');
 const sense0 = ach.moneySense();
 for (let i = 0; i < 400; i++) ach.learn(5, 'same');
@@ -500,7 +501,7 @@ section('whole lives using cards, plans, insurance, businesses, loans and trusts
 // ---------- 13. A car bought on finance ----------
 {
   p = life('us', { cash: 2000 });
-  p.flags.licence = true; p.flags.drivingLicence = true;
+  p.flags.license = true; p.flags.drivingLicense = true;
   /** A vehicle for sale that a lender would finance. Listings are random, so look until there is one. */
   const financeable = () => { for (let i = 0; i < 40; i++) { store.state.market.listings = null; const l = cars.listings().find((x) => !x.blocked && x.finance.approved && x.price > 5000); if (l) return l; } return null; };
   const lst = financeable();
@@ -520,7 +521,7 @@ section('whole lives using cards, plans, insurance, businesses, loans and trusts
     check(cars.sellVehicle(v.id).ok && !p.finance.loans.includes(loan) && p.finance.cash === c0 + v.value - owed, 'selling it pays off the loan first');
     bookAction(); sound('after selling a financed vehicle');
     // Repossession: the lender is paid first, and only the rest reaches the owner.
-    p = life('us', { cash: 2000 }); p.flags.licence = true; p.flags.drivingLicence = true;
+    p = life('us', { cash: 2000 }); p.flags.license = true; p.flags.drivingLicense = true;
     const l2 = financeable();
     check(!!l2, 'and another, to be taken back');
     if (l2) {
@@ -587,13 +588,13 @@ const ys = Object.keys(hist).map(Number);
 check(ys.length >= 4 && ys.every((y) => hist[y].cur === 'USD') && hist[store.state.year].v === netWorth(store.state) - (netWorth(store.state) - bank.overview().netWorth), 'each year\'s net worth is recorded as it stood, with its currency');
 section('net worth is recorded at the end of every year');
 
-// ---------- 18. Payslips ----------
+// ---------- 18. Pay stubs ----------
 {
   const { payslips } = await import('../js/engine/finance.js');
   const ps = payslips({ year: 2030, cur: 'JPY', gross: 5000001, tax: 900007, plan: 300001, employer: 150000, sources: { salary: 1 } });
   const sum = (k) => ps.months.reduce((t, x) => t + x[k], 0);
-  check(ps.months.length === 12 && sum('gross') === 5000001 && sum('tax') === 900007 && sum('plan') === 300001 && sum('net') === 5000001 - 900007 - 300001, 'twelve payslips add up to exactly the year, even in yen');
-  check(ps.months.every((m) => m.net === m.gross - m.tax - m.plan), 'each payslip is its pay less what was taken from it');
+  check(ps.months.length === 12 && sum('gross') === 5000001 && sum('tax') === 900007 && sum('plan') === 300001 && sum('net') === 5000001 - 900007 - 300001, 'twelve pay stubs add up to exactly the year, even in yen');
+  check(ps.months.every((m) => m.net === m.gross - m.tax - m.plan), 'each pay stub is its pay less what was taken from it');
   p = life('us', { cash: 5000 }); ret.openPlan(0.06);
   moneyYear();
   const slips = p.finance.payslips;
@@ -648,7 +649,7 @@ if (h20) {
 }
 section('mortgages can be moved to a cheaper rate, for a fee, when the record allows');
 
-// ---------- 21. Divorce: a pension, a business, and support afterwards ----------
+// ---------- 21. Divorce: a pension, a business, and support afterward ----------
 p = life('us', { cash: 1000 });
 p.career.salary = 120000;
 const sp21 = person('spouse', 40, { salary: 20000, savings: 0 }); sp21.marriedAtAge = p.age - 12;
@@ -702,23 +703,23 @@ section('a state pension from 67, by years worked and by country');
 // ---------- 23. Inheriting from family ----------
 p = life('us', { cash: 1000 });
 for (const n of Object.values(store.state.npcs)) if (['parent', 'grandparent', 'sibling'].includes(n.role)) n.alive = false;
-const mum = person('parent', 70); mum.gender = 'female'; mum.savings = 90000; mum.meters.relationship = 70;
+const mom = person('parent', 70); mom.gender = 'female'; mom.savings = 90000; mom.meters.relationship = 70;
 const sib23 = person('sibling', 35, { savings: 0 });
 const c23 = p.finance.cash;
-mum.alive = false; inheritFrom(mum);
+mom.alive = false; inheritFrom(mom);
 const tax23 = 0; // far below the US federal exemption
-check(p.finance.cash === c23 + 45000 - tax23 && sib23.life.savings === 45000 - tax23 && mum.savings === 0, 'a parent\'s savings are shared between the player and their sibling, after estate tax, and are not left behind as well');
-check(yearTotals(store.state.ledger, store.state.year, 'USD').income.inheritance === toMinor(45000 - tax23, 'USD') && p.milestones.some((m) => m.text === 'Inherited from ' + mum.firstName + '.'), 'it is recorded as an inheritance, and remembered');
-const dad = person('parent', 72); dad.gender = 'male'; dad.savings = 50000; const mum2 = person('parent', 70); mum2.gender = 'female'; mum2.savings = 1000;
+check(p.finance.cash === c23 + 45000 - tax23 && sib23.life.savings === 45000 - tax23 && mom.savings === 0, 'a parent\'s savings are shared between the player and their sibling, after estate tax, and are not left behind as well');
+check(yearTotals(store.state.ledger, store.state.year, 'USD').income.inheritance === toMinor(45000 - tax23, 'USD') && p.milestones.some((m) => m.text === 'Inherited from ' + mom.firstName + '.'), 'it is recorded as an inheritance, and remembered');
+const dad = person('parent', 72); dad.gender = 'male'; dad.savings = 50000; const mom2 = person('parent', 70); mom2.gender = 'female'; mom2.savings = 1000;
 const c23b = p.finance.cash; dad.alive = false; inheritFrom(dad);
-check(p.finance.cash === c23b && mum2.savings === 51000, 'with a parent still living, it goes to them first');
-const gp = person('grandparent', 92); gp.flags.side = 'maternal'; gp.savings = 30000; const m2 = mum2.savings;
+check(p.finance.cash === c23b && mom2.savings === 51000, 'with a parent still living, it goes to them first');
+const gp = person('grandparent', 92); gp.flags.side = 'maternal'; gp.savings = 30000; const m2 = mom2.savings;
 gp.alive = false; inheritFrom(gp);
-check(mum2.savings === m2 + 30000 && p.finance.cash === c23b, 'a grandparent leaves what they have to their own child');
+check(mom2.savings === m2 + 30000 && p.finance.cash === c23b, 'a grandparent leaves what they have to their own child');
 const wife23 = person('spouse', 60, { savings: 40000 }); const c23c = p.finance.cash;
 wife23.alive = false; inheritFrom(wife23);
 check(p.finance.cash === c23c + 40000 && wife23.life.savings === 0, 'a spouse\'s savings come to the player, without estate tax');
-const cold23 = person('parent', 80); cold23.savings = 20000; cold23.meters.relationship = 5; mum2.alive = false;
+const cold23 = person('parent', 80); cold23.savings = 20000; cold23.meters.relationship = 5; mom2.alive = false;
 const c23d = p.finance.cash; cold23.alive = false; inheritFrom(cold23);
 check(p.finance.cash === c23d, 'a parent the player had fallen out with can leave them out');
 sound('after inheriting');
@@ -747,10 +748,10 @@ p.career.salary = 200000; // enough for a card limit that covers a wedding
 const ck = cards.applyForCard(); const kk = cards.cards()[0];
 check(ck.ok && kk.limit >= 8000, 'a card with room for a wedding');
 if (ck.ok && kk.limit >= 8000) { const c25 = p.finance.cash; resolveChoice(getEvent('wedding_budget'), 3, { love: love25.id }); check(kk.balance === 8000 && p.finance.cash === c25, 'a wedding on the card is owed on the card'); }
-const mum25 = person('parent', 78, { savings: 100 }); mum25.meters.money = 10;
-const ms = mum25.savings ?? mum25.life?.savings ?? 0;
-resolveChoice(getEvent('parent_money_help'), 0, { par: mum25.id });
-check((mum25.savings ?? mum25.life?.savings) === ms + 2000, 'helping a parent with their bills really reaches them');
+const mom25 = person('parent', 78, { savings: 100 }); mom25.meters.money = 10;
+const ms = mom25.savings ?? mom25.life?.savings ?? 0;
+resolveChoice(getEvent('parent_money_help'), 0, { par: mom25.id });
+check((mom25.savings ?? mom25.life?.savings) === ms + 2000, 'helping a parent with their bills really reaches them');
 bookAction(); sound('after the new scenes');
 section('new scenes: weddings, babies, careers, parents, university, grandparents, all with real money');
 
@@ -781,7 +782,9 @@ section('new scenes: weddings, babies, careers, parents, university, grandparent
   // Early retirement, on what they have put by.
   const rich = person('sibling', 60, { savings: 0, salary: 60000 }); rich.life.fin = null; const r = nm.finOf(rich);
   r.bank = { bankId: 'meridian', name: 'Meridian Bank', bal: 5_000_000, rateBp: 100, opened: 2000 }; rich.life.yearsWorked = 35;
-  let gone = false; for (let i = 0; i < 6 && !gone; i++) gone = nm.tickNpcMoney(rich) === 'retired';
+  // Each year carries a 35% chance (engine/npcMoney.js), so give it enough years; a job lost along the way is given back.
+  const job = rich.life.job;
+  let gone = false; for (let i = 0; i < 40 && !gone; i++) { if (!rich.life.job) rich.life.job = job; gone = nm.tickNpcMoney(rich) === 'retired'; }
   check(gone && rich.life.retired && !rich.life.job && rich.life.pension > 0, 'someone with plenty put by may retire early, on a pension from their years of work');
   const poorer = person('sibling', 60, { savings: 0, salary: 60000 }); poorer.life.fin = null; nm.finOf(poorer);
   for (let i = 0; i < 5; i++) nm.tickNpcMoney(poorer);

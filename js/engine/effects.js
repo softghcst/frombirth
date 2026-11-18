@@ -1,21 +1,26 @@
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
 import { workChoice } from './workEvents.js';
 import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
 import { decide as schoolChoice } from './schoollife.js';
 import { decide as abroadChoice } from './diplomacy.js';
+import { decide as abroadArcChoice } from './abroadArcs.js';
 import { decide as kinChoice } from './kin.js';
 import { decide as scandalChoice } from './scandal.js';
 import { justiceScene } from './justiceScenes.js';
 import { resignLeadership, faceTheParty, standForVacancy } from './leadership.js';
 import { defend } from './campaign.js';
 import { decide } from './government.js';
+import { decide as digitalChoice } from './digital/stories.js';
+import { decide as eraChoice } from './eraScenes.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { addCondition, cureCondition } from './health.js';
+import { healthEffect } from './health/story.js';
 import { remember } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
 import { hitProperty } from './realEstate.js';
@@ -28,6 +33,7 @@ import * as courtLife from './court.js';
 import * as fame from './reputation.js';
 import * as throne from './reign.js';
 import { moneyEffect } from './moneyEffects.js';
+import { sceneChoice as momentChoice } from './moments.js';
 import { register as registerAnimal, recordHealth } from './animals.js';
 import { sceneChoice as animalChoice } from './animalCare.js';
 import { lifeChoice } from './animalLife.js';
@@ -96,8 +102,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       }
       case 'removeNpc': {
         const id = ctx.cast[e.target];
-        p.npcIds = p.npcIds.filter((n) => n !== id);
-        delete store.state.npcs[id];
+        forgetNpc(id);
         break;
       }
       case 'animalHealth': recordHealth(ctx.cast[e.target], e.value); break;
@@ -156,7 +161,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (e.target) ctx.cast[e.target] = npc.id;
         break;
       }
-      case 'honour': crown.honour(p.flags.honourRank ?? 'knight'); break;
+      case 'honor': crown.honor(p.flags.honorRank ?? 'knight'); break;
       case 'family': { const d = fame.shift('family', e.delta, ctx.why); if (d) shown.push({ label: 'Family approval', delta: d }); break; }
       case 'press': { const d = fame.shift('press', e.delta, ctx.why); if (d) shown.push({ label: 'The press', delta: d }); break; }
       case 'story': fame.addStory(e.value.label, e.value.truth, e.value.heat); break;
@@ -186,6 +191,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'parent': ctx.note = parentChoice(e.value, ctx.cast); break;
       case 'royalEd': ctx.note = royalEdChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;
+      case 'global': ctx.note = abroadArcChoice(e.value, ctx.cast); break;
       case 'leader': ctx.note = e.value === 'resign' ? resignLeadership().text : e.value === 'stand' ? standForVacancy() : faceTheParty(); break;
       case 'ousted': pol.removed(e.value); break;
       case 'resignOffice': pol.resign(); break;
@@ -201,6 +207,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (p.career.partTime) p.career.partTime.salary = Math.round(p.career.partTime.salary * e.delta);
         break;
       case 'condition': addCondition(e.value); break;
+      case 'health': { const n = healthEffect(e.value, ctx); if (n) ctx.note = ctx.note ? `${ctx.note} ${n}` : n; break; }
       case 'cure': cureCondition(e.value); break;
       case 'gpa':
         p.education.gpa = Math.round(clamp(p.education.gpa + e.delta, 0, 4) * 100) / 100;
@@ -208,6 +215,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'legal':
         p.legal.heat = clamp(p.legal.heat + e.delta);
         break;
+      case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
+      case 'era': ctx.note = eraChoice(e.value, ctx.cast); break;
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;
@@ -215,6 +224,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         p.counters[e.target] = (p.counters[e.target] ?? 0) + (e.delta ?? 1);
         break;
       case 'money': shown.push(...moneyEffect(e, ctx)); break;
+      case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'milestone': milestone(e.value); break;
       case 'death': ctx.death = e.value; break;
       default: console.warn('Unknown effect', e);

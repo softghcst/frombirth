@@ -132,7 +132,7 @@ section('riding: horse, rider and their partnership improve together; old horses
 // ---------- 4. Competitions ----------
 p = person(30); learn(50, 'dressage'); h = forSale(); horse.buyHorse(h.id);
 const list = horse.shows();
-check(list.length === 4 && list.every((s) => DISCIPLINES[s.discipline].show && SHOW_LEVELS[s.level] && s.judge && s.organiser && s.entrants >= 7) && horse.shows() === list, 'the year has its shows, each with a discipline, a level, a judge and a field, and they are the same on every look');
+check(list.length === 4 && list.every((s) => DISCIPLINES[s.discipline].show && SHOW_LEVELS[s.level] && s.judge && s.organizer && s.entrants >= 7) && horse.shows() === list, 'the year has its shows, each with a discipline, a level, a judge and a field, and they are the same on every look');
 for (const s of list) for (const k of Object.keys(p.riding.disciplines)) p.riding.disciplines[k] = p.riding.disciplines[k]; // (no-op: the rider is as they are)
 p.riding.disciplines = Object.fromEntries(Object.keys(DISCIPLINES).map((k) => [k, 60])); for (const k of Object.keys(p.riding.skills)) p.riding.skills[k] = 60;
 const open = list.find((s) => s.level === 'open'); const intro = list.find((s) => s.level === 'intro');

@@ -46,7 +46,7 @@ export const HEADLINES = {
   fell: { tone: 'bad',
     plain: ['The government has fallen. An election will follow.'],
     harsh: ['{last}\'s gamble fails. Pack your bags, {office}.'] },
-  rumour: { tone: 'bad',
+  rumor: { tone: 'bad',
     harsh: ['Questions for {last}: what does the {office} know about {what}?'] },
   story: { tone: 'bad',
     plain: ['{name} faces questions over {what}.'],

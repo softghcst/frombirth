@@ -14,9 +14,9 @@ import * as fame from '../../js/engine/fame.js';
 import * as ent from '../../js/engine/entertainment.js';
 import * as press from '../../js/engine/press.js';
 import * as music from '../../js/engine/music.js';
-import * as modelling from '../../js/engine/modelling.js';
+import * as modeling from '../../js/engine/modeling.js';
 import * as pub from '../../js/engine/publishing.js';
-import { practise } from '../../js/engine/skills.js';
+import { practice } from '../../js/engine/skills.js';
 
 rng.seed(Number(process.argv[2] ?? 7));
 const LIVES = Number(process.argv[3] ?? 6);
@@ -24,7 +24,7 @@ const YEARS = Number(process.argv[4] ?? 20);
 const LEVELS = { ordinary: 66, good: 78, great: 90 };
 const PLACES = ['us', 'uk', 'de', 'br', 'jp', 'ng'];
 
-// A keen player practises their craft every year; a talented one has practised since childhood.
+// A keen player practises their craft every year; a talented one has practiced since childhood.
 const PRACTICE = { acting: ['acting', 'acting', 'singing'], music: ['writing', 'singing', 'music_theory'], modeling: ['dance', 'yoga', 'dance'], books: ['writing', 'writing', 'writing'] };
 const FIELDS = {
   acting: {
@@ -50,17 +50,17 @@ const FIELDS = {
       if (a?.offer) music.signDeal();
       const n = music.musicOf(p).songs.length;
       music.record(n >= 10 ? 'album' : n >= 4 ? 'ep' : 'single', { video: true });
-      if (a) for (const sc of ['stadium', 'arena', 'theatre', 'club']) { if (music.planTour(sc, music.tourPlaces(a, sc)).ok) break; }
+      if (a) for (const sc of ['stadium', 'arena', 'theater', 'club']) { if (music.planTour(sc, music.tourPlaces(a, sc)).ok) break; }
     },
   },
   modeling: {
     audience: 'fashion',
     setup(p, t) { p.stats.charm = t; p.talents.dance = t - 10; },
     year(p) {
-      if (!modelling.isModel(p) && p.age <= 36) hire(CAREER_BY_ID.modelling, 0, 60, 'offer');
-      if (!modelling.isModel(p)) return;
-      if (!modelling.modelOf(p).agencyId && modelling.agenciesWilling(p).length) modelling.joinAgency(modelling.agenciesWilling(p)[0].id);
-      for (const c of modelling.castings(p).slice(0, 3)) modelling.attendCasting(c.id, rng.pick(Object.keys(modelling.APPROACHES)));
+      if (!modeling.isModel(p) && p.age <= 36) hire(CAREER_BY_ID.modeling, 0, 60, 'offer');
+      if (!modeling.isModel(p)) return;
+      if (!modeling.modelOf(p).agencyId && modeling.agenciesWilling(p).length) modeling.joinAgency(modeling.agenciesWilling(p)[0].id);
+      for (const c of modeling.castings(p).slice(0, 3)) modeling.attendCasting(c.id, rng.pick(Object.keys(modeling.APPROACHES)));
     },
   },
   books: {
@@ -94,7 +94,7 @@ for (const [field, F] of Object.entries(FIELDS)) {
       const earned0 = p.finance.lifetimeEarned ?? 0;
       let peak = 0;
       for (let y = 0; y < YEARS && p.alive; y++) {
-        try { for (const k of PRACTICE[field]) practise(k); F.year(p); advanceYear(); } catch (e) { console.log(`${field}/${level} ${cid} year ${y}: ${e.stack.split('\n').slice(0, 2).join(' ')}`); break; }
+        try { for (const k of PRACTICE[field]) practice(k); F.year(p); advanceYear(); } catch (e) { console.log(`${field}/${level} ${cid} year ${y}: ${e.stack.split('\n').slice(0, 2).join(' ')}`); break; }
         store.state.pendingEvents = []; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = Math.max(p.stats.health, 80);
         peak = Math.max(peak, p.hidden.fame ?? 0);
         if (y === 4) R.fameAt5.push(p.hidden.fame ?? 0);

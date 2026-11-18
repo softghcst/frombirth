@@ -6,7 +6,7 @@
 //   p.fame.deals:      [{ id, brand, years, fee, from, status, paidYears[] }]   endorsements
 //
 // The press can be wrong. Each story keeps whether it is true (a fact about the
-// world) and how it was reported (verified, rumour, speculation). Nothing the
+// world) and how it was reported (verified, rumor, speculation). Nothing the
 // player or a publicist does changes what is true: they can only answer it.
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, uid } from '../util.js';
@@ -165,7 +165,7 @@ export function attend(offerId) {
   const prod = production(o.productionId);
   const audience = o.kind === 'premiere' ? (prod?.kind === 'tv' ? 'tv' : 'film') : o.kind === 'talk_show' || o.kind === 'convention' ? 'tv' : o.kind === 'podcast' ? 'digital' : 'public';
   gain({ audience, amount: went ? (o.kind === 'talk_show' ? 4 : 2) : 1, why: a.name.toLowerCase() }, p);
-  regard({ favour: went ? 1 : -2, why: a.name.toLowerCase() }, p);
+  regard({ favor: went ? 1 : -2, why: a.name.toLowerCase() }, p);
   const outlet = org(o.outletId);
   const who = `${p.firstName} ${p.lastName}`;
   const where = a.name.toLowerCase().replace(/^an? /, '');
@@ -190,13 +190,13 @@ export function declineOffer(offerId) {
   return result(true, 'You say no, politely. Nobody is owed your time.', 'neutral');
 }
 
-// ---------- Rumours, and answering them ----------
+// ---------- Rumors, and answering them ----------
 
 /**
  * Now and then the press prints something about a known person that may or may not be true.
  * What is true is decided by the state of the world, not by the story.
  */
-export function maybeRumour(p = player()) {
+export function maybeRumor(p = player()) {
   const known = recognitionIn(p.countryId, p);
   if (known < 25 || !rng.chance(clamp(known / 250 + fameOf(p).attention / 300, 0, 0.3))) return null;
   const partner = livingNpcs().find((n) => ['partner', 'spouse'].includes(n.role));
@@ -208,7 +208,7 @@ export function maybeRumour(p = player()) {
   const [kind, text, isTrue] = rng.pick(kinds);
   // Privacy matters: a private person's life is reported on less, and never as fact.
   if (fameOf(p).privacy === 'private' && kind === 'romance' && rng.chance(0.6)) return null;
-  return article({ kind: 'rumour', about: 'player', accuracy: kind === 'casting' ? 'speculation' : 'rumor', true: isTrue, text, topic: kind });
+  return article({ kind: 'rumor', about: 'player', accuracy: kind === 'casting' ? 'speculation' : 'rumor', true: isTrue, text, topic: kind });
 }
 
 /** Answers a story: a clarification, or a request for a correction. Neither changes what is true. */
@@ -224,12 +224,12 @@ export function answer(articleId, how) {
     if (a.true) return result(false, 'The outlet stands by the story: it is accurate. You cannot have a true story corrected.');
     a.corrected = true;
     article({ kind: 'correction', outletId: a.outletId, about: 'player', accuracy: 'correction', text: `Correction: an earlier report about ${p.firstName} ${p.lastName} was not accurate.` });
-    regard({ favour: 3, why: 'a false story corrected' }, p);
+    regard({ favor: 3, why: 'a false story corrected' }, p);
     return result(true, 'The outlet prints a correction. Fewer people read it than read the story, but it is there.');
   }
   // A clarification: an honest one helps; a denial of something true is remembered when it comes out.
-  if (a.true) { regard({ favour: -3, why: 'a denial of something true' }, p); a.denied = true; return result(false, 'You deny it. It is true, and some people know it; that will matter later.'); }
-  regard({ favour: rng.chance(0.6 + skilled) ? 3 : 1, why: 'a clear answer to a false story' }, p);
+  if (a.true) { regard({ favor: -3, why: 'a denial of something true' }, p); a.denied = true; return result(false, 'You deny it. It is true, and some people know it; that will matter later.'); }
+  regard({ favor: rng.chance(0.6 + skilled) ? 3 : 1, why: 'a clear answer to a false story' }, p);
   return result(true, 'You say, plainly, that it is not true. Most people believe you.');
 }
 
@@ -248,8 +248,8 @@ export function maybeDeal(p = player()) {
   const known = recognitionIn(p.countryId, p);
   const rep = bestRep(p);
   const clout = rep?.clout ?? 0;
-  if (known < 30 - clout * 10 || fameOf(p).favour < 45 || f.dealYear === year() || !exists('commercial')) return null;
-  if (!rng.chance(clamp((known - 25) / 120 + (fameOf(p).favour - 50) / 200 + clout * 0.08, 0.03, 0.6))) return null;
+  if (known < 30 - clout * 10 || fameOf(p).favor < 45 || f.dealYear === year() || !exists('commercial')) return null;
+  if (!rng.chance(clamp((known - 25) / 120 + (fameOf(p).favor - 50) / 200 + clout * 0.08, 0.03, 0.6))) return null;
   f.dealYear = year();
   const d = { id: uid('deal'), brand: rng.pick(BRANDS), years: rng.int(1, 3), fee: K((4000 + known * known * 6) * (1 + clout * 0.25)), from: year() + 1, status: 'offered', paidYears: [], hours: 3,
     via: rep ? { npcId: rep.npcId, kind: rep.kind, commission: rep.commission } : null };
@@ -296,7 +296,7 @@ export function tickPress(p = player()) {
   }
   for (const o of f.offers) if (o.status === 'open' && o.year < year()) o.status = 'lapsed';
   makeOffers(p);
-  const r = maybeRumour(p);
+  const r = maybeRumor(p);
   if (r) lines.push(`A story in the press: "${r.text}" (${ACCURACY[r.accuracy].toLowerCase()})`);
   const d = maybeDeal(p);
   if (d) lines.push(`${d.brand} would like you as the face of their brand${d.via ? `; your ${d.via.kind} brought them to you` : ''}.`);

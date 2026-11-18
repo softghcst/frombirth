@@ -113,8 +113,8 @@ function nameFor(kind, countryId, city) {
 function makeOrg(kind, countryId, city, tier) {
   const id = nextId('org');
   const name = nameFor(kind, countryId, city);
-  const family = { studio: 'arts', network: 'media', theatre: 'arts', community: 'arts', agency: 'arts', outlet: 'media' }[kind];
-  const tracks = { studio: ['production', 'actor'], network: ['broadcast', 'production', 'actor'], theatre: ['stage_tech', 'mt_performer'], community: ['stage_tech'], agency: ['talent_agency'], outlet: ['journalist', 'publishing'] }[kind];
+  const family = { studio: 'arts', network: 'media', theater: 'arts', community: 'arts', agency: 'arts', outlet: 'media' }[kind];
+  const tracks = { studio: ['production', 'actor'], network: ['broadcast', 'production', 'actor'], theater: ['stage_tech', 'mt_performer'], community: ['stage_tech'], agency: ['talent_agency'], outlet: ['journalist', 'publishing'] }[kind];
   const e = kind === 'community' ? null : registerEmployer({ name, family, tracks, countryId, city, owned: false });
   const o = { id, kind, name, countryId, city, tier, founded: year() - rng.int(3, 80), reputation: rng.int(35, 80), employerId: e?.id ?? null, staff: [], history: [] };
   ent().orgs[id] = o;
@@ -135,10 +135,10 @@ export function orgsOf(countryId) {
     makeOrg('studio', countryId, rng.pick(cities), 'indie');
     makeOrg('network', countryId, big, 'network');
     makeOrg('network', countryId, rng.pick(cities), 'network');
-    makeOrg('theatre', countryId, big, 'major_stage');
-    makeOrg('theatre', countryId, big, 'major_stage');
-    makeOrg('theatre', countryId, rng.pick(cities), 'touring');
-    for (const city of cities.slice(0, 4)) makeOrg('theatre', countryId, city, 'regional');
+    makeOrg('theater', countryId, big, 'major_stage');
+    makeOrg('theater', countryId, big, 'major_stage');
+    makeOrg('theater', countryId, rng.pick(cities), 'touring');
+    for (const city of cities.slice(0, 4)) makeOrg('theater', countryId, city, 'regional');
     for (const city of cities) makeOrg('community', countryId, city, 'community');
     makeOrg('agency', countryId, big, 'top');
     makeOrg('agency', countryId, big, 'mid');
@@ -185,7 +185,7 @@ export function makeProduction(kind, tier, countryId, o = {}) {
   const k = PRODUCTION_KINDS[kind];
   if (!exists(k.medium)) return null;
   const orgs = orgsOf(countryId);
-  const by = orgs.filter((x) => x.kind === (tier === 'community' ? 'community' : k.org === 'theatre' ? 'theatre' : k.org) && (x.tier === tier || ['student', 'indie'].includes(tier)));
+  const by = orgs.filter((x) => x.kind === (tier === 'community' ? 'community' : k.org === 'theater' ? 'theater' : k.org) && (x.tier === tier || ['student', 'indie'].includes(tier)));
   const home = o.org ?? (tier === 'community' ? by.find((x) => x.city === (o.city ?? player().city)) : null) ?? rng.pick(by.length ? by : orgs.filter((x) => x.kind === 'studio'));
   if (!home) return null;
   const performers = pool(countryId).filter((n) => ageOf(n) >= 16);
@@ -494,7 +494,7 @@ function receive(prod) {
   const audience = Math.round(clamp(critics * 0.45 + 22 + (Math.max(0, ...stars) / 3) + rng.around(0, 16)));
   const gross = Math.round(prod.budget * (0.3 + audience / 55) * rng.around(1, 0.25));
   prod.reception = { critics, audience, gross, profit: gross - prod.budget, year: year() };
-  // Where it travelled: the bigger the release, the more countries; always the same ones once chosen.
+  // Where it traveled: the bigger the release, the more countries; always the same ones once chosen.
   const reach = TIERS[prod.tier].reach;
   const n = Math.round(reach * reach * 12 * (audience / 60));
   prod.abroad = COUNTRY_LIST.filter((c) => c.id !== prod.countryId).sort(() => rng.next() - 0.5).slice(0, n).map((c) => c.id);

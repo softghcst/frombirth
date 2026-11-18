@@ -1,5 +1,6 @@
 // Romance: meeting people, dating, engagement, weddings (with or without a
 // prenup), break-ups and divorce.
+import { platformOpen } from './digital/tech.js';
 import { fromAbroad, rollsRoots } from './economy.js';
 import { may } from './rules.js';
 import { rng } from '../rng.js';
@@ -64,9 +65,11 @@ function ageFits(npc) {
 /** Where the player can go looking, by age. */
 export function meetingPlaces() {
   const adult = player().age >= ADULT;
+  // Dating apps exist only once the technology does, where the player lives (the Digital World registry decides).
+  const apps = platformOpen('kindling');
   return [
     { id: 'friends', name: 'Through friends', desc: 'Someone a friend thinks you would like.' },
-    ...(adult ? [store.state.year >= 2009 ? { id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' } : { id: 'app', name: 'A personal ad in the paper', desc: 'Forty words about yourself, and a box number.' },
+    ...(adult ? [...(apps ? [{ id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' }] : [{ id: 'app', name: 'A personal ad in the paper', desc: 'Forty words about yourself, and a box number.' }]),
       { id: 'out', name: 'A night out', desc: 'Whoever catches your eye across the room.' }]
       : [{ id: 'school', name: 'Around school', desc: 'Someone from a different class.' }]),
   ];
@@ -217,7 +220,7 @@ export function propose(npcId, ringId) {
   p.finance.cash -= cost;
   const chance = clamp((npc.meters.relationship - 45) / 45 + ring.bonus, 0.02, 0.97);
   if (!rng.chance(chance)) {
-    p.finance.cash += Math.round(cost * 0.6); // the jeweller takes it back, at a loss
+    p.finance.cash += Math.round(cost * 0.6); // the jeweler takes it back, at a loss
     bump(npc, -15);
     p.stats.mood = clamp(p.stats.mood - 12);
     const text = `You got down on one knee. ${npc.firstName} said they were not ready. The jeweler gave you some of the money back.`;

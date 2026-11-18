@@ -49,7 +49,7 @@ export default [
     id: 'found_wallet', category: 'childhood', ageRange: [6, 12],
     text: 'On the walk home you find a wallet in the gutter with {$40} inside.',
     choices: [
-      { label: 'Keep the money', outcomes: [any('You pocket the cash and drop the wallet in a bin.', 'neutral', cash(40), hid('karma', -8))] },
+      { label: 'Keep the money', outcomes: [any('You pocket the cash and drop the wallet in a trash can.', 'neutral', cash(40), hid('karma', -8))] },
       { label: 'Hand it in', outcomes: [
         { on: 'always', weight: 2, tone: 'good', text: 'The owner is so relieved they give you {$10} as a reward.', effects: [cash(10), hid('karma', 8), st('mood', 5)] },
         { on: 'always', weight: 1, tone: 'good', text: 'You hand it in at the police station. Nobody thanks you, but it feels right.', effects: [hid('karma', 8), st('mood', 2)] },
@@ -157,11 +157,11 @@ export default [
     ],
   },
   {
-    id: 'birthday_money', category: 'childhood', ageRange: [5, 12], cooldown: 4,
+    id: 'birthday_money', timing: { yearTurn: true }, category: 'childhood', ageRange: [5, 12], cooldown: 4,
     text: 'A relative has tucked {$25} into your birthday card.',
     choices: [
       { label: 'Save it', outcomes: [any('It goes in the jar on your shelf.', 'good', cash(25), hid('discipline', 3))] },
-      { label: 'Spend it all on sweets', outcomes: [any('A glorious afternoon, then a stomach ache.', 'neutral', st('mood', 6), st('health', -2))] },
+      { label: 'Spend it all on candy', outcomes: [any('A glorious afternoon, then a stomach ache.', 'neutral', st('mood', 6), st('health', -2))] },
       { label: 'Give it to charity', outcomes: [any('You drop it in the collection tin at the supermarket.', 'good', hid('karma', 8), st('mood', 3), count('donated', 25))] },
     ],
   },

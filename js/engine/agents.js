@@ -28,7 +28,7 @@ export function rollTerms(tier, kind = 'talent') {
   const t = TERMS[tier] ?? TERMS.mid;
   const [lo, hi] = CUTS[kind] ?? CUTS.talent;
   const span = hi - lo;
-  // Where in the kind's range this agent sits: the leading agencies towards the top of it.
+  // Where in the kind's range this agent sits: the leading agencies toward the top of it.
   const at = { top: [0.5, 1], mid: [0.25, 0.75], small: [0, 0.5] }[tier] ?? [0, 1];
   const k = at[0] + rng.next() * (at[1] - at[0]);
   return { commission: Math.round((lo + span * k) * 100) / 100, clout: Math.round(clamp(t.clout + rng.around(0, 0.15), 0.5, 1.6) * 100) / 100 };

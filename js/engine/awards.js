@@ -128,7 +128,7 @@ export function tickAwards() {
         const text = won ? `You won ${cat.name} at the ${bodyName(body, scope)} for ${prod.title}.` : `You were nominated for ${cat.name} at the ${bodyName(body, scope)} for ${prod.title}.`;
         lines.push(text);
         milestone(won ? `Won ${cat.name}, ${bodyName(body, scope)}, for ${prod.title}.` : `Nominated for ${cat.name}, ${bodyName(body, scope)}, for ${prod.title}.`, 'fame');
-        gain({ audience: body.medium === 'stage' ? 'theatre' : body.medium, amount: won ? 10 : 4, lasting: won ? 0.9 : 0.4, abroad: body.scope === 'international' ? prod.abroad : [], reach: 0.5, why: `${won ? 'winning' : 'a nomination for'} ${cat.name}` }, p);
+        gain({ audience: body.medium === 'stage' ? 'theater' : body.medium, amount: won ? 10 : 4, lasting: won ? 0.9 : 0.4, abroad: body.scope === 'international' ? prod.abroad : [], reach: 0.5, why: `${won ? 'winning' : 'a nomination for'} ${cat.name}` }, p);
         regard({ credibility: won ? 8 : 3, why: cat.name }, p);
         article({ kind: won ? 'award' : 'nomination', productionId: prod.id, about: 'player', accuracy: 'verified', text });
       }

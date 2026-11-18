@@ -27,7 +27,7 @@ export function justiceScene(value, cast = {}) {
       if (mine) mine.reliability = Math.round(clamp(0.45 + p.stats.intellect / 250 + rng.next() * 0.15, 0.3, 0.9) * 100) / 100;
       k.note(p.id, 'witness', `Gave a statement to the police about a robbery in ${p.city}.`);
       const right = mine?.pointsTo === perp.id;
-      return right ? '' : 'Afterwards, you are not quite as sure of the face as you were when you said it.';
+      return right ? '' : 'Afterward, you are not quite as sure of the face as you were when you said it.';
     }
     return '';
   }

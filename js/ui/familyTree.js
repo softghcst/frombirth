@@ -31,7 +31,7 @@ const section = (title, html) => (html ? `<div class="section-label">${esc(title
 /**
  * @param {(npc:object) => void} onPick  called when a relative is tapped
  */
-export function openFamilyTree(onPick) {
+export function openFamilyTree(onPick, onHistory) {
   const p = player();
   const people = all();
   const of = (role) => people.filter((n) => n.role === role).sort((a, b) => b.age - a.age);
@@ -49,9 +49,11 @@ export function openFamilyTree(onPick) {
     <h2>Family tree</h2>
     <p class="body muted">Tap anyone to see their life.</p>
     <div class="tree">${html || '<p class="empty">You have no family on record.</p>'}</div>
+    ${onHistory ? '<button class="btn" data-history style="margin-top:14px">Family medical history</button>' : ''}
     <button class="btn" data-close style="margin-top:14px">Close</button>`, { dismissable: true });
   m.el.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) return m.close();
+    if (e.target.closest('[data-history]')) { m.close(); return onHistory(); }
     const id = e.target.closest('[data-tree]')?.dataset.tree;
     if (!id) return undefined;
     m.close();

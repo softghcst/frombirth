@@ -775,8 +775,8 @@ function partsFor(g, ids) {
   parts[climax].climax = true;
   const breaker = [...ids].sort((x, y) => S[y].dance - S[x].dance).find((w) => labelsOf(g, w).includes('main_dancer')) ?? [...ids].sort((x, y) => S[y].dance - S[x].dance)[0];
   parts[breaker].danceBreak = true;
-  const centre = ids.find((w) => labelsOf(g, w).includes('center')) ?? rng.pick(ids);
-  parts[centre].center = true;
+  const center = ids.find((w) => labelsOf(g, w).includes('center')) ?? rng.pick(ids);
+  parts[center].center = true;
   for (const w of ids) delete parts[w].weight;
   return parts;
 }
@@ -1607,7 +1607,7 @@ export function answerRumor(how) {
     const warmth = rng.chance(0.55);
     g.fandom.engagement = clamp(g.fandom.engagement + (warmth ? 1 : -4));
     i.pop = clamp(i.pop + (warmth ? 1 : -2));
-    regard({ favour: warmth ? 3 : -2, why: 'a relationship confirmed' }, p);
+    regard({ favor: warmth ? 3 : -2, why: 'a relationship confirmed' }, p);
     note(`Confirmed a relationship publicly.`);
     return result(true, `${warmth ? 'Most fans are happy for you.' : 'Some fans take it badly; most move on.'}${early ? ' Your manager reminds you of the contract\'s early-years clause; nothing more comes of it.' : ''}`, warmth ? 'good' : 'neutral');
   }
@@ -2159,7 +2159,7 @@ function varietyYear(p, lived, lines) {
     idolOf(p).pop = clamp(idolOf(p).pop + (you >= 55 ? 1.5 : 0.3));
     gain({ audience: 'tv', amount: s.role === 'host' ? 3 : 2, why: s.name }, p);
     if (!best || you > best.you) best = { s, you };
-    if (rating < 2.2 && rng.chance(0.6)) { s.ended = { year: year(), how: 'cancelled' }; s.to = lived; lines.push(`${s.name} has been cancelled after weak ratings.`); note(`${s.name} was cancelled.`); }
+    if (rating < 2.2 && rng.chance(0.6)) { s.ended = { year: year(), how: 'canceled' }; s.to = lived; lines.push(`${s.name} has been canceled after weak ratings.`); note(`${s.name} was canceled.`); }
     else if (you < 35 && s.role !== 'guest' && rng.chance(0.5)) { s.ended = { year: year(), how: 'let go' }; s.to = lived; lines.push(`${s.name}'s producers are changing the line-up: you are not in the new season.`); note(`Let go from ${s.name}.`); }
   }
   // The year-end awards: rookie, excellence, top excellence, the grand prize for a main host with a great year.

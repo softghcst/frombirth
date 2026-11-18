@@ -12,6 +12,7 @@
 // simulation rates, not market quotes, and the game never presents them as
 // real. Amounts are whole units; every conversion rounds down, so money is
 // never created by exchanging it.
+import { hooks, moneyIndex, worldYear } from './history.js';
 import { fxBias } from './economy.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney } from '../util.js';
@@ -25,7 +26,20 @@ const LOG_MAX = 40;
 
 /** One record per currency: the first place that uses it stands for it. */
 const BY_CODE = {};
-for (const c of COUNTRY_LIST) BY_CODE[c.currency.code] ??= { code: c.currency.code, symbol: c.currency.symbol, scale: c.currency.scale, home: c };
+for (const c of COUNTRY_LIST) BY_CODE[c.currency.code] ??= { code: c.currency.code, symbol: c.currency.symbol, scale: c.currency.scale, base: c.currency.scale, home: c };
+// Historical Eras: money is worth what it was in the year being played, and some countries used
+// other currencies (engine/history.js sets each country's currency for the year). A currency's
+// rate is its home country's current scale when that country still uses it; otherwise its
+// today's rate, in the year's money.
+hooks.onSync = () => {
+  for (const c of COUNTRY_LIST) {
+    const cur = c.currency;
+    if (!BY_CODE[cur.code]) BY_CODE[cur.code] = { code: cur.code, symbol: cur.symbol, base: cur.scale / moneyIndex(worldYear()), home: c, historical: true };
+    const rec = BY_CODE[cur.code];
+    if (rec.home === c || rec.home.currency.code !== cur.code) { rec.home = c; rec.symbol = cur.symbol; }
+  }
+  for (const rec of Object.values(BY_CODE)) rec.scale = rec.home.currency.code === rec.code ? rec.home.currency.scale : rec.base * moneyIndex(worldYear());
+};
 export const currencyOf = (code) => BY_CODE[code] ?? null;
 export const currencies = () => Object.values(BY_CODE).sort((a, b) => a.code.localeCompare(b.code));
 /** Formats an amount in any currency. */
@@ -38,12 +52,15 @@ export const rate = (from, to) => unitsPerBase(to) / unitsPerBase(from);
 /** An amount in one currency, in another, at today's rate. Rounds down. */
 export const convert = (amount, from, to) => (from === to ? Math.floor(amount) : Math.floor(amount * rate(from, to)));
 
-/** Yearly: currencies drift a little, and are pulled back towards where they started. */
+/** Yearly: currencies drift a little, and are pulled back toward where they started. */
 export function tickFx() {
   const fx = (store.state.fx ??= {});
-  for (const code of Object.keys(BY_CODE)) {
+  // The currencies in use this year, and any this life already has a rate for: decided by the save alone (the table
+  // above also remembers currencies from other years and lives), in a fixed order, so a reload rolls the same dice.
+  const codes = [...new Set([...COUNTRY_LIST.map((c) => c.currency.code), ...Object.keys(fx)])].filter((c) => BY_CODE[c]).sort();
+  for (const code of codes) {
     const now = fx[code] ?? 1;
-    const next = clamp(now * (1 + rng.around(0, 0.025)) + (1 + fxBias(code) - now) * 0.08, 0.7, 1.6); // pulled towards its usual rate, or a weaker one in bad times
+    const next = clamp(now * (1 + rng.around(0, 0.025)) + (1 + fxBias(code) - now) * 0.08, 0.7, 1.6); // pulled toward its usual rate, or a weaker one in bad times
     fx[code] = Math.round(next * 10000) / 10000;
   }
 }

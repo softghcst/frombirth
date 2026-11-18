@@ -39,7 +39,7 @@ export default [
     text: 'The Pride march goes right past the end of your road this year. You can hear the drums from the kitchen.',
     choices: [
       { label: 'Go, and march', outcomes: [any('You walk in the middle of ten thousand people and are, for an afternoon, completely unremarkable. It is wonderful.', 'good', st('mood', 10), hid('willpower', 3))] },
-      { label: 'Watch from the pavement', outcomes: [any('A stranger hands you a small flag. You keep it on the bookshelf.', 'good', st('mood', 5))] },
+      { label: 'Watch from the sidewalk', outcomes: [any('A stranger hands you a small flag. You keep it on the bookshelf.', 'good', st('mood', 5))] },
       { label: 'Stay in. It is not really your thing', outcomes: [any('You turn the radio up and get on with the washing. There is more than one way to be who you are.', 'neutral', st('mood', 1))] },
     ],
   },

@@ -217,8 +217,8 @@ const livingBy = (state, roles) => state.player.npcIds.map((id) => state.npcs[id
  * @param {object} npc    the animal's entry among the people the player knows
  * @param {{origin?:'family'|'shelter'|'found'|'unknown'|'bought'|'born', fee?:number, storyEntry?:object, pending?:boolean, state?:object,
  *          stock?:object, foster?:object, shelterName?:string, quiet?:boolean, history?:string}} [o]
- *   stock   the organisation holding an animal that is waiting for a home: recorded, but not yet the family's
- *   foster  the organisation the player is fostering it for      quiet  the caller records the moment itself
+ *   stock   the organization holding an animal that is waiting for a home: recorded, but not yet the family's
+ *   foster  the organization the player is fostering it for      quiet  the caller records the moment itself
  *   storyEntry  the line in the life story that tells it, if it is already written
  *   pending     the scene engine is about to write that line (see claimStory)
  *   origin  'family'  it was already in the household when the player was born
@@ -258,7 +258,7 @@ export function register(npc, o = {}) {
   const a = had ? Object.assign(had, { family: true, inCircle: true, origin: { ...fresh.origin, from: had.origin?.from }, firstSeenYear: state.year, firstSeenGen: p.generation ?? 1 }) : fresh;
   A.byId[a.id] = a;
   if (o.stock) {
-    // Waiting for a home: it belongs to the organisation that took it in, and is nobody's family yet.
+    // Waiting for a home: it belongs to the organization that took it in, and is nobody's family yet.
     const org = { id: null, org: o.stock.id, name: o.stock.name };
     Object.assign(a, { family: false, inCircle: false, origin: { how: 'stock', year: state.year, city: o.stock.city, countryId: o.stock.countryId, from: o.stock.name, history: o.history ?? null } });
     a.ownerships.push({ who: org, from: state.year, to: null, how: 'taken in' });
@@ -268,7 +268,7 @@ export function register(npc, o = {}) {
   }
   if (had) for (const list of [a.ownerships, a.care, a.homes]) closeOpen(list, state.year, 'left the shelter');
   if (o.foster) {
-    // Fostering: the animal lives with the player, who looks after it. It still belongs to the organisation.
+    // Fostering: the animal lives with the player, who looks after it. It still belongs to the organization.
     const me0 = ref(state, p.id);
     a.origin.how = 'foster';
     a.foster = { org: o.foster.id, name: o.foster.name, since: state.year, review: state.year + 1 };
@@ -507,7 +507,7 @@ function arrangeCare(state, a, goneId, why, quiet = false) {
 }
 
 /**
- * An animal leaves the player's life for an organisation's care, or through one to a new family.
+ * An animal leaves the player's life for an organization's care, or through one to a new family.
  * Used when a foster placement ends and when an owner gives an animal up. The record keeps it.
  * @param {{placed?:boolean, why?:string, story?:?string, text?:string}} o  placed: it has gone to a permanent home
  */
@@ -538,7 +538,7 @@ export function settleOnDeath(state = store.state) {
   reconcile(state);
   for (const a of allAnimals(state)) {
     if (a.status !== 'living') continue;
-    // A fostered animal goes back to the organisation it belongs to, which finds it somewhere else.
+    // A fostered animal goes back to the organization it belongs to, which finds it somewhere else.
     // A leased horse goes back to the yard that owns it.
     if (a.lease && primaryOf(a)?.id === p.id) { const l = a.lease; delete a.lease; leaveToOrg(state, a, { why: 'death', org: { id: null, org: l.yard, name: l.name }, keeper: ownerOf(a), how: 'back from lease', home: { hh: 'stable', key: l.yard, label: l.name, city: l.city, countryId: l.countryId }, sig: 2, text: `After ${fullName(p)}'s death, ${a.name} went back to ${l.name}.` }); a.forSale = true; }
     else if (a.foster && primaryOf(a)?.id === p.id) leaveToOrg(state, a, { why: 'death', text: `After ${fullName(p)}'s death, ${a.name} went back into the care of ${a.foster.name}.` });
@@ -842,10 +842,10 @@ export function describeLooks(a) {
   const sp = speciesOf(a.speciesId);
   const b = breedOf(a.speciesId, a.breedId);
   const ap = a.appearance;
-  // Colours are stored by name, and some names are spelled as they always were in saves ('grey'); they are shown as players read them.
-  const word = (c) => ({ grey: 'gray' }[c] ?? c);
+  // Colors are stored by name, and some names are spelled as they always were in saves ('gray'); they are shown as players read them.
+  const word = (c) => ({ gray: 'gray' }[c] ?? c);
   const coat = ap.pattern === 'solid' || !ap.second ? word(ap.coat) : `${word(ap.coat)} and ${word(ap.second)}`;
-  const pat = { solid: '', patched: 'patched', saddle: 'with a dark saddle', socks: 'with pale socks', blaze: 'with a pale blaze', tabby: 'tabby', bicolour: 'two-coloured', tortoiseshell: 'tortoiseshell', calico: 'calico', pointed: 'with dark points' }[ap.pattern] ?? '';
+  const pat = { solid: '', patched: 'patched', saddle: 'with a dark saddle', socks: 'with pale socks', blaze: 'with a pale blaze', tabby: 'tabby', bicolor: 'two-colored', tortoiseshell: 'tortoiseshell', calico: 'calico', pointed: 'with dark points' }[ap.pattern] ?? '';
   return [`${cap(ap.size)}, ${ap.length}-coated ${sp.name}`, `${cap(coat)}${pat ? `, ${pat}` : ''}`, `${cap(ap.eyes)} eyes`, ...(sp.id === 'dog' || sp.id === 'rabbit' ? [{ up: 'Upright ears', drop: 'Drop ears', half: 'Half-pricked ears', tuft: 'Tufted ears' }[ap.ears]] : []),
     ...(ap.mark ? [cap(ap.mark)] : []), ...(b && !a.breedKnown ? [`Looks like a ${b.name}; nobody knows for certain`] : [])];
 }

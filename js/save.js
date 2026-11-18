@@ -5,8 +5,14 @@ import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
+import { migrateHealth } from './engine/health/record.js';
+import { ensureGlobal } from './engine/globalLife.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
+import { migrateDigital } from './engine/digital/tick.js';
+import { ensureEra, alignWorld } from './engine/eras.js';
+import { adoptOldSport } from './engine/sportsLife.js';
+import { americanize } from './engine/spelling.js';
 
 export const SCHEMA_VERSION = 2;
 const K_INDEX = 'pathways.index';
@@ -33,6 +39,8 @@ function write(key, value) {
 
 /** Bring older saves up to the current schema. */
 function migrate(state) {
+  // Saves from when the game was written in British English: their ids, keys and text, in American spelling.
+  americanize(state);
   state.pendingEvents ??= [];
   state.eventHistory ??= [];
   state.player.birth ??= [];
@@ -61,6 +69,8 @@ function migrate(state) {
   rename(pl, pl.countryId);
   for (const l of pl.locations ?? []) rename(l, l.countryId);
   for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
+  // Lives saved before the health record: conditions carried over, nothing invented.
+  migrateHealth(state);
   // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
   for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
   for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);
@@ -93,7 +103,7 @@ function migrate(state) {
     ledgerOf(state, { desc: 'What you had when the books were opened (from an earlier version of the game)' });
   }
   // Lives saved before the justice records: each record entry is kept as it was,
-  // marked as older, with its offence named in today's terms. Nothing is invented:
+  // marked as older, with its offense named in today's terms. Nothing is invented:
   // open cases, unsolved crimes and sentences are upgraded the first time they are
   // used (engine/justice.js upgradeLegacy), with no trial history made up for them.
   const legal = pl.legal;
@@ -110,6 +120,14 @@ function migrate(state) {
     r.outcome ??= r.convicted ? 'convicted' : 'acquitted';
     r.year ??= pl.birthYear + r.age;
   }
+  // Travel, papers, residence history and the family's shared record (engine/globalLife.js). Nothing is invented for older lives.
+  ensureGlobal(state);
+  // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.
+  migrateDigital(state);
+  // Historical Eras: a life saved before eras keeps its money as it was (see engine/eras.js).
+  ensureEra(state, { legacy: true });
+  // One sports system: a professional career kept under the old separate system becomes the player's sports record.
+  if (state.proSport || state.player?.sport?.seasons) adoptOldSport(state);
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }
@@ -126,6 +144,7 @@ export function saveGame(state) {
     slotId: state.slotId,
     name: `${p.firstName} ${p.lastName}`,
     age: p.age,
+    month: state.month ?? 0, // a turn partway through a year (engine/turns.js)
     gender: p.gender,
     appearance: p.appearance,
     countryId: p.countryId,
@@ -164,7 +183,7 @@ export function forkGame(state, note) {
   const have = timelinesOf(root).length || 1;
   if (have >= MAX_TIMELINES) return { ok: false, text: `This life already has ${MAX_TIMELINES} timelines. Delete one from the title screen to keep another.` };
   const p = state.player;
-  const at = { age: p.age, year: state.year, note };
+  const at = { age: p.age, month: state.month ?? 0, year: state.year, note };
   state.rngSeed = rng.state();
   const copy = JSON.parse(JSON.stringify(state));
   copy.slotId = `life_${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -194,6 +213,9 @@ export function loadGame(slotId) {
   if (!state) return null;
   migrate(state);
   rng.seed(state.rngSeed);
+  // The loaded life is the one being played: the world's money and currencies are its year's (Historical Eras), so
+  // that living the same years again costs the same as it did the first time.
+  alignWorld(state);
   return state;
 }
 
@@ -214,12 +236,20 @@ export function pushUndo(state) {
   try { for (const key of Object.keys(localStorage)) if (key.startsWith(K_UNDO) && key !== K_UNDO + state.slotId) localStorage.removeItem(key); } catch { /* storage unavailable */ }
   const list = read(K_UNDO + state.slotId, []);
   list.push(JSON.stringify(state));
-  while (list.length > UNDO_YEARS) list.shift();
+  // Three years back, however long a turn is (engine/turns.js): four turns a year with three-month turns.
+  const perYear = 12 / ([6, 3].includes(state.settings?.step) ? state.settings.step : 12);
+  while (list.length > UNDO_YEARS * perYear) list.shift();
   while (list.length && !write(K_UNDO + state.slotId, list)) list.shift();
 }
-/** How many years can be taken back for this life. */
+/** Where taking back the last turn would return to: { age, month }, or null. */
+export function peekUndo(slotId) {
+  const list = read(K_UNDO + slotId, []);
+  if (!list.length) return null;
+  try { const s = JSON.parse(list[list.length - 1]); return { age: s.player.age, month: s.month ?? 0 }; } catch { return null; }
+}
+/** How many turns can be taken back for this life. */
 export const undoDepth = (slotId) => read(K_UNDO + slotId, []).length;
-/** Takes back the most recent year: returns the life as it was before it, or null. */
+/** Takes back the most recent turn (a year, or six or three months of one): returns the life as it was before it, or null. */
 export function popUndo(slotId) {
   const list = read(K_UNDO + slotId, []);
   const raw = list.pop();
@@ -227,6 +257,7 @@ export function popUndo(slotId) {
   write(K_UNDO + slotId, list);
   const state = migrate(JSON.parse(raw));
   rng.seed(state.rngSeed);
+  alignWorld(state); // a year taken back has that year's prices again
   return state;
 }
 /** Removes a grave, when the death it records is taken back. */

@@ -6,9 +6,13 @@ import { store } from '../js/state.js';
 import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
+import { SPORTS } from '../js/data/sports.js';
 import { EARLIEST_START } from '../js/data/eras.js';
 import { hire, unmet } from '../js/engine/career.js';
-import * as modelling from '../js/engine/modelling.js';
+import * as athletics from '../js/engine/sports.js';
+import { saveGame, loadGame } from '../js/save.js';
+import * as sportsLife from '../js/engine/sportsLife.js';
+import * as modeling from '../js/engine/modeling.js';
 import * as pub from '../js/engine/publishing.js';
 import * as music from '../js/engine/music.js';
 import * as fame from '../js/engine/fame.js';
@@ -19,6 +23,8 @@ import * as social from '../js/engine/social.js';
 import * as freelance from '../js/engine/freelance.js';
 import { meetingPlaces } from '../js/engine/romance.js';
 
+const mem = new Map();
+globalThis.localStorage ??= { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
@@ -51,17 +57,71 @@ for (let i = 0; i < 45 && p.alive; i++) { try { year(); } catch (e) { crashed = 
 check(!crashed, `a life from 1960 plays on (${crashed})`);
 section(`eras: lives from ${EARLIEST_START}; what was not invented does not exist; a 1960 life plays through`);
 
+// 2. Women's and men's sport, newer sports, injuries: one sports system (engine/sports.js).
+const decide = () => { for (const d of sportsLife.openDecisions()) sportsLife.answer(d.id, d.kind === 'retire' ? 'no' : d.kind === 'integrity' ? 'refuse' : (d.options.find((o) => o.id === 'yes') ?? d.options[0]).id); };
+p = life('uk', 20, { gender: 'female' });
+p.gender = 'female';
+p.talents.sports = 86;
+hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
+check(athletics.divOf(p) === 'women' && sportsLife.goPro('rugby').ok, 'a woman plays in the women\'s league');
+let e = athletics.entryOf('rugby');
+const club = athletics.orgOf(e.orgId);
+check(club.div === 'women' && / Women$/.test(club.name), 'the women\'s game has its own clubs');
+check(athletics.teamOf(e.teamId).roster.length > 0 && store.state.sports.teams[e.teamId].roster.every((x) => x.id === p.id || !!x.name), 'its teams have their own players');
+const man = { ...p, gender: 'male', flags: {} };
+check(athletics.proFromFor(SPORTS.soccer, p) > 1985 && athletics.proFromFor(SPORTS.soccer, man) <= 1985, 'women\'s professional soccer began later than men\'s');
+for (let y = 0; y < 6; y++) { year(); decide(); }
+const lg = athletics.orgOf(club.leagueId);
+check(/Women's/.test(lg?.name ?? '') && lg.teamIds.every((id) => athletics.orgOf(store.state.sports.teams[id]?.orgId)?.div === 'women'), `the women's league is women's clubs (${lg?.name})`);
+check(!sportsLife.audit().length, 'every rugby game counted was played');
+const a = athletics.myAthlete();
+check(a.injuries.every((x) => x.name && x.year && x.sportId), 'injuries are on the record');
+section(`women's sport and rugby: ${e.seasonsPlayed} seasons, ${a.injuries.length} injuries recorded`);
+
+p = life('uk', 22);
+p.talents.sports = 84;
+hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
+check(sportsLife.goPro('martial_arts').ok, 'a fighter turns professional');
+e = athletics.entryOf('martial_arts');
+for (let y = 0; y < 6; y++) { year(); decide(); }
+const bouts = e.events.map((id) => store.state.sports.events[id]).flatMap((x) => x.rounds);
+check(bouts.length > 0 && bouts.every((x) => typeof x.won === 'boolean'), 'every bout is won or lost');
+check(e.wins + e.losses >= bouts.length, 'the record counts every bout');
+section('combat sport: bouts, a record');
+
+// A life saved when professional sport was a separate system: the record comes across, and play carries on.
+p = life('uk', 28);
+p.talents.sports = 85;
+hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
+const y0 = store.state.year;
+p.sport = { sport: 'football', div: 'men', teamId: 't1', leagueId: 'uk:football', since: y0 - 5, seasons: [1, 2, 3, 4, 5].map((i) => ({ year: y0 - i, stat: 3 })), titles: [{ year: y0 - 2, name: 'Old League champions' }], medals: [], caps: 12, retiredYear: null, offer: null };
+store.state.proSport = { seq: 1, leagues: {}, circuits: {} };
+saveGame(store.state); store.state = loadGame(store.state.slotId); p = store.state.player;
+const old = athletics.entryOf('soccer');
+check(!p.sport && !store.state.proSport && old?.legacySeasons === 5 && old.caps === 12 && old.titles.some((t) => t.name === 'Old League champions'), 'an old save\'s sporting record comes across whole');
+year(); decide();
+check(p.career.sportContract && athletics.entryOf('soccer').level === 'pro', 'and the player carries on at a club, in the same sport');
+section('old saves: one sports record');
+
+// 3. Coaching is the same system's (engine/sportsLife.js becomeCoach; tests/sports-scenarios.mjs follows a coach).
+p = life('uk', 40);
+p.talents.sports = 70;
+athletics.pastEntry('soccer', { level: 'pro', since: store.state.year - 20 });
+athletics.entryOf('soccer').status = 'retired'; athletics.entryOf('soccer').seasonsPlayed = 12;
+check(sportsLife.becomeCoach('soccer').ok && p.career.careerId === 'coaching' && athletics.coachOf(p.id)?.self, 'a former player can coach, as a job and on the sports record');
+section('coaching: a job, and a coach\'s record');
+
 // 4. Castings are a choice.
 p = life('uk', 21);
 p.stats.charm = 75;
-hire(CAREER_BY_ID.modelling, 1, 60, 'offer');
-const c0 = modelling.castings(p)[0];
-const other = Object.keys(modelling.APPROACHES).find((k) => k !== c0.wants);
-c0.bar = modelling.look(p); // a casting at the model's own level, away from the limits
-check(modelling.castingOdds(c0, c0.wants, p) - modelling.castingOdds(c0, other, p) > 0.25, 'reading the brief right matters');
+hire(CAREER_BY_ID.modeling, 1, 60, 'offer');
+const c0 = modeling.castings(p)[0];
+const other = Object.keys(modeling.APPROACHES).find((k) => k !== c0.wants);
+c0.bar = modeling.look(p); // a casting at the model's own level, away from the limits
+check(modeling.castingOdds(c0, c0.wants, p) - modeling.castingOdds(c0, other, p) > 0.25, 'reading the brief right matters');
 let booked = 0;
-for (const c of modelling.castings(p)) if (modelling.attendCasting(c.id, c.wants).ok) booked += 1;
-check(modelling.portfolio(p).length === booked, 'every booking is in the portfolio');
+for (const c of modeling.castings(p)) if (modeling.attendCasting(c.id, c.wants).ok) booked += 1;
+check(modeling.portfolio(p).length === booked, 'every booking is in the portfolio');
 section('castings: the brief, the choice, and what it costs to read it wrong');
 
 // 5. Literary agents, translations, the screen.
@@ -85,8 +145,10 @@ const advLine = (store.state.journal ?? []).length >= 0;
 check(advLine && b.advancePaid, 'the advance is paid');
 // Force the rights conditions to check the bookkeeping.
 b.critics = 80; b.units[b.countryId] = 60000;
-for (let y = 0; y < 8; y++) year();
-check((b.foreign ?? []).length > 0, 'an agented book people liked is sold for translation');
+// A sale is likely, never certain (85% the year after release, 40% after): the book is kept a year from release until
+// one comes, so this checks the bookkeeping rather than the odds of one life.
+for (let y = 0; y < 8; y++) { if (!(b.foreign ?? []).length) b.released = store.state.year; year(); }
+check((b.foreign ?? []).length > 0, `an agented book people liked is sold for translation${(b.foreign ?? []).length ? '' : ` (agent ${!!pub.writingOf(p).agent}, agented ${b.agented}, critics ${b.critics}, released ${b.released}, now ${store.state.year}, alive ${p.alive}, author ${b.author})`}`);
 check((b.foreign ?? []).every((x) => x.paid), 'each translation advance is paid once');
 check((b.options ?? []).length > 0, 'a well-reviewed book is optioned for the screen');
 const made = (b.options ?? []).find((o) => o.made);
@@ -168,12 +230,12 @@ section(`brands: launches, recorded (${brand.launches[0].outcome})`);
   // A model agency's cut, and a brand deal through a representative.
   p = life('uk', 21);
   p.stats.charm = 85;
-  hire(CAREER_BY_ID.modelling, 1, 60, 'offer');
-  const ags = modelling.agencies('uk').map(modelling.booker);
+  hire(CAREER_BY_ID.modeling, 1, 60, 'offer');
+  const ags = modeling.agencies('uk').map(modeling.booker);
   check(ags.every((b) => b.flags.agent.commission >= CUTS.model[0] && b.flags.agent.commission <= CUTS.model[1] && b.flags.agent.clients.length > 0), 'agencies take 15% to 25%, and have models on their books');
-  modelling.findModelAgency();
-  if (modelling.agencyOnOffer()) {
-    modelling.signOfferedAgency();
+  modeling.findModelAgency();
+  if (modeling.agencyOnOffer()) {
+    modeling.signOfferedAgency();
     p.career.paidYear = null;
     const main = work.payLines(p).find((l) => l.source === 'main');
     check(main && /agency/.test(main.label) && main.gross < p.career.salary, 'a model is paid after the agency\'s cut');

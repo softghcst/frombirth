@@ -263,11 +263,12 @@ function sportProfile(step) {
       <p class="muted">A relative's record keeps what they reached, not every game.</p>` };
   }
   return { title: sport.name, sub: `${levelName(e.level)} · since ${e.since} · PR ${e.pr}`, body: `
-    ${label('Skills')}<p class="muted">Each skill can grow towards a ceiling that comes from natural talent. Training moves it closer; it never goes past.</p>
+    ${label('Skills')}<p class="muted">Each skill can grow toward a ceiling that comes from natural talent. Training moves it closer; it never goes past.</p>
     ${sport.skills.map(([k, n]) => kv(n, `${sp.skillWord(e.skills[k])} (${Math.round(e.skills[k])})${mine ? ` <small class="muted">of ${e.ceiling[k]}</small>` : ''}`)).join('')}
     ${label('Seasons by year')}
     ${Object.entries(e.stats).sort((x, y) => y[0] - x[0]).map(([y, st]) => kv(y, esc(Object.entries(st).filter(([, v]) => v).map(([k, v]) => `${v} ${k}`).join(', ') || '—'))).join('') || empty('Nothing recorded yet.')}
     ${label('Titles')}${e.titles.length ? e.titles.map((t) => kv(String(t.year), esc(t.name))).join('') : empty('None yet.')}
+    ${label('Awards')}${(e.awards ?? []).length ? e.awards.map((a) => (a.seasonId ? `<a href="#" class="kv" data-season="${a.seasonId}"><span>${a.year}</span><span>${esc(a.kind === 'team' ? `${a.league}: ${a.name}` : a.name)}</span></a>` : kv(String(a.year), esc(a.name)))).join('') : empty('None yet.')}
     ${label('Clubs')}${e.history.map((h) => kv(`${h.year}${h.to ? `–${h.to}` : ''}`, esc(h.name))).join('') || empty('None.')}
     ${shared(sp.momentsOf(step.params.personId ?? player().id).filter((m) => m.sportId === e.id && m.sig >= 2))}
     ${mine && e.status === 'active' ? `<div class="btn-stack" style="margin-top:10px">${sp.myAthlete().primary !== e.id ? `<button class="btn" data-primary="${e.id}">Make this your main sport</button>` : ''}<button class="btn danger" data-giveup="${e.id}">Stop playing</button></div>` : ''}` };
@@ -305,6 +306,7 @@ function seasonProfile(step) {
   return { title: s.name, sub: s.champion ? `Champions: ${name(s.champion)}` : 'No champion', body: `
     ${label('Table')}<p class="muted">Counted from completed games.</p>
     ${t.map((x, i) => `<div class="kv"><span>${i + 1}. ${x.teamId === s.playerTeamId ? `<strong>${esc(name(x.teamId))}</strong>` : esc(name(x.teamId))}</span><span>${x.w}–${x.d ? `${x.d}–` : ''}${x.l} · ${x.pts} pts</span></div>`).join('')}
+    ${s.awards ? `${label('Season awards')}${s.awards.map((a) => (a.team ? kv(a.name, esc(a.team.map((x) => (x.who === player().id || x.who === 'player' ? 'You' : x.name)).join(', '))) : kv(a.name, a.winner ? `${a.winner.who === 'player' ? '<strong>You</strong>' : esc(a.winner.name)}${a.winner.teamId ? ` <small class="muted">${esc(name(a.winner.teamId))}</small>` : ''}${a.winner.value != null ? ` · ${a.winner.value}${a.per ? ' a game' : ''}` : ''}` : 'Not awarded'))).join('')}` : ''}
     ${label('Playoffs')}${s.playoffs.map((f) => kv(f.round, `${esc(name(f.home))} ${f.score[0]}–${f.score[1]} ${esc(name(f.away))}${f.decider ? ' (after a decider)' : ''}`)).join('') || empty('None.')}
     ${label('Your games')}${mineF.map((f) => kv(`Round ${f.round}`, `${esc(name(f.home))} ${f.score[0]}–${f.score[1]} ${esc(name(f.away))}${f.me?.played ? ` · rated ${f.me.rating}` : ' · did not play'}`)).join('')}` };
 }

@@ -52,15 +52,15 @@ section('data: kinds of production, parts, audiences, eras and award categories 
 // 2. The fame profile.
 let p = life();
 check(p.hidden.fame === 0 && fame.scope(p).id === 'unknown', 'a new adult is unknown');
-fame.gain({ audience: 'theatre', amount: 30, why: 'test' }, p);
+fame.gain({ audience: 'theater', amount: 30, why: 'test' }, p);
 const f = fame.fameOf(p);
-check(f.audiences.theatre > f.audiences.film && f.audiences.film === 0, 'recognition is by audience: a stage name is not a film name');
+check(f.audiences.theater > f.audiences.film && f.audiences.film === 0, 'recognition is by audience: a stage name is not a film name');
 check(Object.keys(f.regions).length === 1 && f.regions.uk > 0, 'and by country: being known at home is not being known abroad');
 p.talents.acting = 90;
 check(fame.recognitionIn('uk', p) < 90 && skills.levelOf('acting') === 90, 'skill and recognition are different things');
 const before = f.legacy;
 for (let i = 0; i < 6; i++) fame.tickFameProfile(p);
-check(f.attention < 5 && f.legacy <= before && f.audiences.theatre >= before * 0.69, 'attention fades fast; what was earned fades slowly');
+check(f.attention < 5 && f.legacy <= before && f.audiences.theater >= before * 0.69, 'attention fades fast; what was earned fades slowly');
 // Other systems still nudge hidden.fame directly: the change is credited, with a cause.
 const h0 = p.hidden.fame;
 p.hidden.fame += 20;
@@ -78,7 +78,7 @@ section('profile: audiences, countries, attention and legacy are separate; old s
 // 3. The world.
 p = life();
 const orgs = ent.orgsOf('uk');
-check(['studio', 'network', 'theatre', 'community', 'agency', 'outlet'].every((k) => orgs.some((o) => o.kind === k)), 'a country has studios, networks, theaters, community companies, agencies and press');
+check(['studio', 'network', 'theater', 'community', 'agency', 'outlet'].every((k) => orgs.some((o) => o.kind === k)), 'a country has studios, networks, theaters, community companies, agencies and press');
 check(ent.orgsOf('uk').length === orgs.length && ent.orgsOf('uk')[0].id === orgs[0].id, 'and keeps them: they are not remade');
 const pool = ent.pool('uk');
 check(pool.length >= 30 && ent.pool('uk')[0].id === pool[0].id, 'working actors are persistent people');
@@ -92,7 +92,7 @@ section(`world: ${orgs.length} organizations and ${pool.length} working actors i
 p = life('uk', 24);
 p.talents.acting = 70;
 const actBefore = skills.levelOf('acting');
-for (let i = 0; i < 3; i++) skills.practise?.('acting');
+for (let i = 0; i < 3; i++) skills.practice?.('acting');
 check(skills.levelOf('acting') >= actBefore, 'acting is trained through the existing practice system');
 p.talents.acting = Math.max(p.talents.acting, 76); p.talents.singing = 60; p.talents.dance = 55;
 const contract = bookA(['film', 'tv'], p, { tier: ['student', 'indie', 'network'] });
@@ -199,21 +199,21 @@ section('eras: what can be made depends on the year: theater always, film and te
 // 9. Press: truth is not what is printed.
 p = life('uk', 30);
 fame.gain({ audience: 'tv', amount: 60, why: 'test' }, p);
-let rumour = null;
-for (let i = 0; i < 40 && !rumour; i++) rumour = press.maybeRumour(p);
-check(!!rumour && ['rumor', 'speculation'].includes(rumour.accuracy), 'the press prints rumours about known people, marked as rumours');
-if (rumour) {
-  const truth = rumour.true;
+let rumor = null;
+for (let i = 0; i < 40 && !rumor; i++) rumor = press.maybeRumor(p);
+check(!!rumor && ['rumor', 'speculation'].includes(rumor.accuracy), 'the press prints rumors about known people, marked as rumors');
+if (rumor) {
+  const truth = rumor.true;
   press.hirePublicist();
-  press.answer(rumour.id, 'correction');
-  check(rumour.true === truth, 'nothing anyone says changes whether it is true');
-  check(truth ? !rumour.corrected : rumour.corrected, 'only a false story can be corrected');
+  press.answer(rumor.id, 'correction');
+  check(rumor.true === truth, 'nothing anyone says changes whether it is true');
+  check(truth ? !rumor.corrected : rumor.corrected, 'only a false story can be corrected');
 }
 const partner = makeNpc({ role: 'partner', countryId: 'uk', age: 30, relationship: 80 }); store.state.npcs[partner.id] = partner; p.npcIds.push(partner.id);
 press.setPrivacy('private');
 for (let i = 0; i < 10; i++) press.tickPress(p);
 check(!ent.myPress(p).some((a) => a.kind === 'relationship'), 'a private person\'s relationship is not reported as news');
-section('press: rumours are rumours, corrections only for false stories, and privacy is respected');
+section('press: rumors are rumors, corrections only for false stories, and privacy is respected');
 
 // 10. Children: protected, and not credited with their parents' work.
 p = life('uk', 10);
@@ -256,7 +256,7 @@ for (let y = 0; y < 25 && p.alive; y++) {
   if (!ent.workOf(p).agent && press.agentsWilling(p).length) press.signAgent(press.agentsWilling(p)[0].npc.id);
   try { year(); } catch (err) { problems.push(`year ${y}: ${err.stack.split('\n').slice(0, 3).join(' ')}`); break; }
   const ff = fame.fameOf(p);
-  check(Object.values(ff.audiences).every((v) => v >= 0 && v <= 100) && ff.favour >= 0 && ff.favour <= 100 && Number.isFinite(p.finance.cash), `year ${y}: figures out of range`);
+  check(Object.values(ff.audiences).every((v) => v >= 0 && v <= 100) && ff.favor >= 0 && ff.favor <= 100 && Number.isFinite(p.finance.cash), `year ${y}: figures out of range`);
 }
 const size = JSON.stringify(store.state).length;
 check(size < 1_200_000, `a long acting life stays a reasonable size (${Math.round(size / 1024)} KB)`);

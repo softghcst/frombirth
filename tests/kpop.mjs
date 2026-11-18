@@ -249,8 +249,8 @@ if (g) {
   check(!kp.debut().ok, 'once');
   const perfs = g.performances.map((id) => k().performances[id]);
   check(perfs.every((x) => x.members.includes(x.fairy) && k().releases[x.releaseId]), 'every ending fairy is a member, on a real performance');
-  const centre = kp.current(g).find((m) => g.positions[m.who]?.includes('center'))?.who;
-  if (centre) check(perfs.some((x) => x.fairy !== centre), 'the center is not always the ending fairy');
+  const center = kp.current(g).find((m) => g.positions[m.who]?.includes('center'))?.who;
+  if (center) check(perfs.some((x) => x.fairy !== center), 'the center is not always the ending fairy');
   const mine = kp.pendingFairies();
   if (mine.length) {
     const res = kp.chooseFairy(mine[0].id, 'confident');

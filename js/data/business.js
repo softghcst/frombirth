@@ -7,8 +7,8 @@
 //   cogs      the share of revenue that goes on stock, materials and supplies
 //   rent      premises a year, for one site
 //   wage      what an ordinary member of staff is paid a year
-//   track     the career track whose experience running it counts towards (and whose staff it hires)
-//   needs     what the owner must have: trade, programme (with its licence), cert, or years in any of `experience`
+//   track     the career track whose experience running it counts toward (and whose staff it hires)
+//   needs     what the owner must have: trade, program (with its license), cert, or years in any of `experience`
 //   solo      can be run with no staff at all
 //   needs.land  the owner must have land of their own (a country house or larger)
 //   needs.flag  a player flag the owner must have, with needs.flagText saying why
@@ -22,7 +22,7 @@ export const BUSINESS_TYPES = [
   B('shop', 'Shop', 'retail', 40000, 62000, 0.5, 20000, 24000, 'retail'),
   B('boutique', 'Clothes boutique', 'retail', 50000, 66000, 0.48, 26000, 25000, 'fashion_retail'),
   B('bookshop', 'Bookshop', 'retail', 35000, 60000, 0.5, 18000, 24000, 'retail'),
-  B('salon', 'Hair and beauty salon', 'beauty', 38000, 55000, 0.14, 20000, 28000, 'hair_stylist', { programme: 'cosmetology' }),
+  B('salon', 'Hair and beauty salon', 'beauty', 38000, 55000, 0.14, 20000, 28000, 'hair_stylist', { program: 'cosmetology' }),
   B('electrical', 'Electrical contractor', 'trades', 28000, 82000, 0.22, 8000, 46000, 'electrician', { trade: 'electrician' }, { solo: true }),
   B('plumbing', 'Plumbing firm', 'trades', 26000, 80000, 0.22, 8000, 45000, 'plumber', { trade: 'plumber' }, { solo: true }),
   B('joinery', 'Carpentry workshop', 'trades', 32000, 74000, 0.26, 12000, 42000, 'carpenter', { trade: 'carpenter' }, { solo: true }),
@@ -35,10 +35,10 @@ export const BUSINESS_TYPES = [
   B('agency', 'Marketing agency', 'corporate', 30000, 95000, 0.08, 16000, 52000, 'marketing', { experience: { marketing: 4, pr: 4, copywriting: 4, social_media: 3 } }, { remote: true }),
   B('accountancy', 'Accountancy practice', 'corporate', 25000, 100000, 0.04, 14000, 58000, 'accountant', { experience: { accountant: 4, audit: 4 } }, { solo: true }),
   B('consultancy', 'Consultancy', 'corporate', 15000, 140000, 0.05, 10000, 85000, 'consulting', { experienceTotal: 10 }, { solo: true, remote: true }),
-  B('law_firm', 'Law practice', 'law', 45000, 170000, 0.04, 26000, 60000, 'lawyer', { programme: 'law', experience: { lawyer: 4, prosecutor: 4, defender: 4 } }, { solo: true }),
-  B('clinic', 'Medical practice', 'health', 140000, 150000, 0.12, 36000, 52000, 'doctor', { programme: 'medical', experience: { doctor: 4 } }),
-  B('dental_practice', 'Dental practice', 'health', 160000, 140000, 0.16, 32000, 50000, 'dentist', { programme: 'dental' }),
-  B('vet_practice', 'Veterinary practice', 'land', 130000, 115000, 0.2, 30000, 44000, 'vet', { programme: 'veterinary' }),
+  B('law_firm', 'Law practice', 'law', 45000, 170000, 0.04, 26000, 60000, 'lawyer', { program: 'law', experience: { lawyer: 4, prosecutor: 4, defender: 4 } }, { solo: true }),
+  B('clinic', 'Medical practice', 'health', 140000, 150000, 0.12, 36000, 52000, 'doctor', { program: 'medical', experience: { doctor: 4 } }),
+  B('dental_practice', 'Dental practice', 'health', 160000, 140000, 0.16, 32000, 50000, 'dentist', { program: 'dental' }),
+  B('vet_practice', 'Veterinary practice', 'land', 130000, 115000, 0.2, 30000, 44000, 'vet', { program: 'veterinary' }),
   B('gym', 'Fitness studio', 'sport', 70000, 60000, 0.08, 34000, 28000, 'fitness'),
   B('tutoring', 'Tutoring center', 'education', 18000, 56000, 0.05, 12000, 34000, 'research_asst', { degree: 'university' }, { solo: true }),
   B('photo_studio', 'Photography studio', 'media', 24000, 60000, 0.1, 12000, 30000, 'photography', {}, { solo: true }),
@@ -100,7 +100,7 @@ export const BUSINESS_LOAN = { rate: 0.08, years: 7, most: 1.5 };
 /**
  * Tax on a business's profit, by country. GAMEPLAY CONFIGURATION, SIMPLIFIED AND UNVERIFIED: one headline
  * rate, and a lower rate on small profits where the country has one. Real systems have allowances,
- * regional taxes, credits and exceptions that are not modelled. Nothing here is tax advice.
+ * regional taxes, credits and exceptions that are not modeled. Nothing here is tax advice.
  *   rate   the headline rate on profit
  *   small  the rate on the first slice of profit (up to SMALL_PROFIT typical wages), where lower
  * Places not listed use DEFAULT_PROFIT_TAX.

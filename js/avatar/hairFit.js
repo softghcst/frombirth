@@ -42,7 +42,7 @@ const cache = new Map();
 
 /** The picture every portrait is drawn in unless a screen asks for its own: [x, y, size] of the 512 frame. */
 export const FRAME = { x: -14, y: T.frameTop, size: 540 };
-/** How far a narrow or broad adult face may be brought towards the average, as zoom. */
+/** How far a narrow or broad adult face may be brought toward the average, as zoom. */
 const ZOOM = [0.95, 1.07];
 const faceArea = (fit) => fit.w * (fit.chin - fit.top);
 const ADULTS = Object.values(PART_BY_ID).filter((p) => p.fit && p.tags?.age === 'adult');
@@ -50,9 +50,9 @@ const AVERAGE_FACE = ADULTS.reduce((s, p) => s + faceArea(p.fit), 0) / Math.max(
 
 /**
  * The picture for one head. Adult heads differ a good deal in size (the narrowest is a fifth
- * narrower than the broadest), so each is zoomed a little towards the average: faces then fill
+ * narrower than the broadest), so each is zoomed a little toward the average: faces then fill
  * the same share of a portrait, and differ in shape, not in how far away they seem. The eye line
- * and the centre of the face stay exactly where they are. Children keep the plain picture, so a
+ * and the center of the face stay exactly where they are. Children keep the plain picture, so a
  * toddler's head stays bigger than a ten-year-old's.
  * @returns {{x:number, y:number, size:number}}
  */
@@ -103,8 +103,8 @@ function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {
   const cols = [];
   for (let j = 0; j < CN; j++) if (hair.T[j] != null && hair.T[j] <= 250) cols.push(j);
   const mid = Math.floor(CN / 2);
-  const centre = [mid - 3, mid - 2, mid - 1, mid, mid + 1, mid + 2, mid + 3].map((j) => hair.T[j]).filter((v) => v != null);
-  const hairline = centre.length ? Math.min(...centre) : null;
+  const center = [mid - 3, mid - 2, mid - 1, mid, mid + 1, mid + 2, mid + 3].map((j) => hair.T[j]).filter((v) => v != null);
+  const hairline = center.length ? Math.min(...center) : null;
 
   // How far the scalp shows above the hair, over the crown.
   const crown = [];

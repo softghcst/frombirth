@@ -14,7 +14,7 @@ export default [
         ok('"I can walk everyone through how I built that." You can, and you do. {boss} notices who knows the detail.', perf(8), rel('mate', -12), rel('boss', 5)),
         bad('It comes out sharper than you meant. The room goes quiet and {boss} moves the meeting on.', perf(-3), rel('mate', -15), rel('boss', -4)),
       ] },
-      { label: 'Talk to {mate} afterwards', check: chk(0.5, { 'cast.mate.relationship': 0.7 }), outcomes: [
+      { label: 'Talk to {mate} afterward', check: chk(0.5, { 'cast.mate.relationship': 0.7 }), outcomes: [
         ok('{mate} goes red and emails {boss} a correction before lunch.', perf(5), rel('mate', 4)),
         bad('{mate} says "we are all one team" and walks off.', rel('mate', -10), st('mood', -4)),
       ] },
@@ -125,7 +125,7 @@ export default [
   },
   {
     id: 'burnout', category: 'work', ageRange: [26, 60], requires: [employed, need('career.performance', '>=', 70)], cooldown: 8,
-    text: 'You have been excellent for a long time, and this morning you sat in the car park for forty minutes, unable to go in.',
+    text: 'You have been excellent for a long time, and this morning you sat in the parking lot for forty minutes, unable to go in.',
     choices: [
       { label: 'Take two weeks off', outcomes: [any('You sleep for most of the first one. By the second you remember what you like doing.', 'good', perf(-4), st('mood', 14), st('health', 5))] },
       { label: 'Go in and push through', check: chk(0.4, { 'hidden.willpower': 0.7 }), outcomes: [

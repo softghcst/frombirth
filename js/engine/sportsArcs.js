@@ -218,7 +218,7 @@ export function sportArcChoice(v, cast = {}, state = store.state) {
       if (v.how === 'lead') bump(child, 4);
       if (v.how === 'steer') {
         bump(child, -6);
-        // Pushing a child towards a parent's sport rarely works: they keep their own choice, and like it a little less.
+        // Pushing a child toward a parent's sport rarely works: they keep their own choice, and like it a little less.
         if (entry) entry.talent = clamp((entry.talent ?? 50) - 3);
         return `${child?.firstName ?? 'Your child'} sticks with ${sportOf(arc.sportId).name.toLowerCase()}, and stops telling you about it.`;
       }

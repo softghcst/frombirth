@@ -82,13 +82,6 @@ export function outlook(id = player().countryId) {
 
 // ---------- The year ----------
 
-/** Sets a country's economy and crisis from outside (engine/history.js): history decides, not the dice. */
-export function setPlace(id, { phase, crisis } = {}) {
-  if (!COUNTRIES[id]) return;
-  if (phase) turn(id, phase, true);
-  if (crisis !== undefined) Object.assign(entry(id), { crisis, crisisSince: crisis ? store.state.year : null });
-}
-
 function turn(id, to, quiet) {
   const e = entry(id);
   if (e.phase === to) return;
@@ -98,17 +91,28 @@ function turn(id, to, quiet) {
   if (!quiet && (ties().has(id) || rng.chance(0.05))) post(id, 'economy', `${The(id)}: ${PHASES[to].start.charAt(0).toLowerCase()}${PHASES[to].start.slice(1)}`, to === 'slump' ? 'bad' : to === 'boom' ? 'good' : 'neutral', to !== 'steady');
 }
 
+/**
+ * Holds a country's economy in a phase until a year (Historical Eras: the Depression, a postwar boom).
+ * The ordinary turns leave it alone until then.
+ */
+export function holdPhase(id, to, until) {
+  const e = entry(id);
+  if (e.phase !== to) { e.phase = to; e.since = store.state.year; }
+  e.heldUntil = Math.max(e.heldUntil ?? 0, until);
+}
+
 /** Yearly: economies turn, crises begin and end. */
 export function tickEconomy() {
   const year = store.state.year;
   // Now and then trouble crosses every border at once.
   if (rng.chance(WORLD_DOWNTURN.chance)) {
     let n = 0;
-    for (const c of COUNTRY_LIST) if (phaseOf(c.id) !== 'slump' && rng.chance(WORLD_DOWNTURN.share)) { turn(c.id, 'slump', true); n += 1; }
+    for (const c of COUNTRY_LIST) if (phaseOf(c.id) !== 'slump' && (store.state.world?.places?.[c.id]?.heldUntil ?? 0) < year && rng.chance(WORLD_DOWNTURN.share)) { turn(c.id, 'slump', true); n += 1; }
     if (n) post(null, 'economy', `A financial crisis has spread around the world. ${n} economies are in recession${phaseOf() === 'slump' ? `, ${the(player().countryId)} among them` : ''}.`, 'bad');
     return;
   }
   for (const c of COUNTRY_LIST) {
+    if ((store.state.world?.places?.[c.id]?.heldUntil ?? 0) >= year) continue; // an era holds it (engine/eras.js)
     const now = phaseOf(c.id);
     const settled = year - (store.state.world?.places?.[c.id]?.since ?? -99) >= 2; // nothing turns twice in two years
     const roll = rng.next();
@@ -214,8 +218,8 @@ export function fromAbroad(n, hereId, { settled = false, keepSurname = false, ye
   if (!keepSurname) n.lastName = surnameFor(from, rng.pick(COUNTRIES[from].names.last), n.gender);
   n.flags.from = from;
   n.citizenships = [{ jurisdictionId: issuerOf(from), acquisitionType: 'birth', acquiredAt: year - n.age }];
-  // Someone long settled has usually naturalised, unless either country allows only one nationality.
-  if (settled && !SINGLE.has(issuerOf(from)) && !SINGLE.has(issuerOf(hereId))) n.citizenships.push({ jurisdictionId: issuerOf(hereId), acquisitionType: 'naturalisation', acquiredAt: year - Math.min(10, Math.max(1, n.age - 20)) });
+  // Someone long settled has usually naturalized, unless either country allows only one nationality.
+  if (settled && !SINGLE.has(issuerOf(from)) && !SINGLE.has(issuerOf(hereId))) n.citizenships.push({ jurisdictionId: issuerOf(hereId), acquisitionType: 'naturalization', acquiredAt: year - Math.min(10, Math.max(1, n.age - 20)) });
   return from;
 }
 /** Whether a newly made family, or someone newly met, has roots abroad. */
