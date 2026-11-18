@@ -14,6 +14,8 @@ import { MODEL_AGENCY_NAMES, FASHION_HOUSES, MAGAZINES, BOOKINGS, FASHION_CAPITA
 import { ent, workOf } from './entertainment.js';
 import { gain, regard } from './fame.js';
 import { registerEmployer } from './employers.js';
+import { makeNpc } from './npcFactory.js';
+import { rollTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -40,8 +42,30 @@ export function agencies(countryId) {
       return o.id;
     });
   }
-  return E.modelAgencies[countryId].map((id) => ent().orgs[id]);
+  const list = E.modelAgencies[countryId].map((id) => ent().orgs[id]);
+  // Each agency is run by a head booker with their own cut and pull, and has models on its books.
+  for (const o of list) {
+    if (o.bookerId && store.state.npcs[o.bookerId]) continue;
+    const tier = o.reputation >= 75 ? 'top' : o.reputation >= 50 ? 'mid' : 'small';
+    const b = makeNpc({ role: 'performer', countryId, age: rng.int(30, 60), relationship: rng.int(40, 55) });
+    b.occupation = 'model booker';
+    b.flags.agent = { kind: 'model', orgId: o.id, agency: o.name, tier, standard: o.reputation - 10, clients: [], ...rollTerms(tier, 'model') };
+    for (let k = 0; k < rng.int(2, 4); k++) {
+      const m = makeNpc({ role: 'performer', countryId, age: rng.int(18, 34) });
+      m.occupation = 'model';
+      m.flags.star = { kind: 'model', fame: Math.round(clamp(rng.around(o.reputation - 30, 12))), born: year() - m.age, credits: [], skill: {}, agentId: b.id,
+        covers: [rng.pick(MAGAZINES)], campaigns: [rng.pick([...BRANDS, ...FASHION_HOUSES])] };
+      store.state.npcs[m.id] = m;
+      b.flags.agent.clients.push(m.id);
+    }
+    store.state.npcs[b.id] = b;
+    o.bookerId = b.id;
+  }
+  return list;
 }
+export const booker = (o) => (o?.bookerId ? store.state.npcs[o.bookerId] : null);
+/** The cut the player's agency takes of their modeling pay, and its pull. */
+export const agencyTerms = (p = player()) => { const m = p.fame?.model; return m?.agencyId ? m.terms ?? null : null; };
 
 /** How a model reads in a casting: presence, and how they carry themselves. */
 export const look = (p = player()) => Math.round(clamp(p.stats.charm * 0.6 + p.stats.health * 0.2 + (p.talents.dance ?? 50) * 0.2 - Math.max(0, p.age - 28) * 1.2));
@@ -58,10 +82,40 @@ export function joinAgency(orgId) {
   if (!isModel(p)) return result(false, 'You need to be working as a model.', 'neutral');
   const a = agenciesWilling(p).find((x) => x.id === orgId);
   if (!a) return result(false, 'They pass. Not now.');
-  modelOf(p).agencyId = a.id;
+  const b = booker(a);
+  const m = modelOf(p);
+  m.agencyId = a.id;
+  m.terms = { npcId: b?.id ?? null, commission: b?.flags.agent.commission ?? 0.2, clout: b?.flags.agent.clout ?? 1, since: year() };
+  if (b) { b.flags.agent.clients.push('player'); if (!p.npcIds.includes(b.id)) { p.npcIds.push(b.id); b.role = 'colleague'; } b.flags.title = `Your booker at ${a.name}`; }
+  clearOffer('model', p);
   milestone(`Signed with ${a.name}.`, 'career');
-  return result(true, `${a.name} will represent you. Castings come through them now.`);
+  return result(true, `${a.name} will represent you, for ${Math.round(m.terms.commission * 100)}% of what you earn modeling. Castings come through them now.`);
 }
+
+/** Looks for an agency: one at a time, with their cut and their models, twice a year. */
+export function findModelAgency() {
+  const p = player();
+  if (!isModel(p)) return result(false, 'You need to be working as a model.', 'neutral');
+  const willing = agenciesWilling(p).filter((o) => o.id !== modelOf(p).agencyId).map(booker).filter(Boolean);
+  const r = lookFor('model', willing, p);
+  if (r.error) return result(false, r.error, 'neutral');
+  if (r.none) return result(false, 'No agency will take you on yet. A stronger book changes that.', 'neutral');
+  return result(true, `${r.agent.flags.agent.agency} would represent you, for ${Math.round(r.agent.flags.agent.commission * 100)}%.`, 'neutral');
+}
+export const agencyOnOffer = () => offered('model');
+export const agencyTriesLeft = () => triesLeft('model');
+export function passOnAgency() { clearOffer('model'); return result(true, 'You say no.', 'neutral'); }
+export function signOfferedAgency() { const n = offered('model'); if (!n) return result(false, 'No agency is on offer.', 'neutral'); if (modelOf().agencyId) leaveAgency(); return joinAgency(n.flags.agent.orgId); }
+export function leaveAgency() {
+  const p = player();
+  const m = modelOf(p);
+  if (!m.agencyId) return result(false, 'You have no agency.', 'neutral');
+  const b = store.state.npcs[m.terms?.npcId];
+  if (b?.flags.agent) b.flags.agent.clients = b.flags.agent.clients.filter((c) => c !== 'player');
+  m.agencyId = null; m.terms = null;
+  return result(true, 'You leave the agency.', 'neutral');
+}
+export const askAgencyCut = () => { const p = player(); const r = askLowerCut('model', modelOf(p).terms, book(modelOf(p)) / 8, p); if (r.dropped) leaveAgency(); return r; };
 
 /** This year's castings: what the agency sends, and what is open to anyone. */
 export function castings(p = player()) {
@@ -102,7 +156,7 @@ export function castingOdds(c, approach, p = player()) {
   const m = modelOf(p);
   const ag = ent().orgs[m.agencyId];
   const read = approach ? (approach === c.wants ? 0.2 : -0.12) : 0; // reading the brief right is half the job
-  return clamp(0.35 + (look(p) - c.bar) / 30 + (ag ? (ag.reputation - 50) / 200 : -0.1) + Math.min(0.15, book(m) / 1500) + read, 0.04, 0.92);
+  return clamp(0.35 + (look(p) - c.bar) / 30 + (ag ? (ag.reputation - 50) / 200 + ((m.terms?.clout ?? 1) - 1) * 0.1 : -0.1) + Math.min(0.15, book(m) / 1500) + read, 0.04, 0.92);
 }
 
 /** Goes to a casting and plays it one way. Three a year at most around everything else. */
@@ -140,11 +194,11 @@ export function tickModeling() {
   const lines = [];
   const m = p.fame?.model;
   if (!m) return lines;
-  if (!isModel(p) && m.agencyId) { m.agencyId = null; return lines; }
+  if (!isModel(p) && m.agencyId) { leaveAgency(); return lines; }
   const recent = m.portfolio.filter((x) => x.year >= year() - 2);
   if (m.agencyId && m.portfolio.length && !recent.length) {
     lines.push(`${ent().orgs[m.agencyId]?.name} has let you go: no bookings in two years.`);
-    m.agencyId = null;
+    leaveAgency();
   }
   if (recent.some((x) => x.kind === 'cover' || x.kind === 'campaign')) regard({ favor: 1, why: 'a face people like' }, p);
   return lines;

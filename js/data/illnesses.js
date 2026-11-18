@@ -39,4 +39,7 @@ for (const [id, name, severity, health] of [['strain', 'a muscle strain', 12, -1
   ['fracture', 'a fracture', 35, -3], ['concussion', 'a concussion', 40, -3], ['ligament', 'a torn knee ligament', 60, -4]]) {
   ILLNESSES.push({ id: `sport_${id}`, name, ages: [0, 120], chance: 0, severity, yearly: { health, mood: -2 }, recover: 0, sport: true });
 }
+// An idol's workload (engine/kpop.js): never drawn by the yearly roll; they come of a hard year, and ease with rest.
+ILLNESSES.push({ id: 'exhaustion', name: 'exhaustion from overwork', ages: [12, 120], chance: 0, severity: 25, yearly: { health: -2, mood: -5 }, recover: 0.5, idol: true });
+ILLNESSES.push({ id: 'dance_injury', name: 'a dance injury', ages: [10, 120], chance: 0, severity: 20, yearly: { health: -2, mood: -2 }, recover: 0.4, idol: true });
 export const ILLNESS_BY_ID = Object.fromEntries(ILLNESSES.map((i) => [i.id, i]));

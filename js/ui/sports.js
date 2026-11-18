@@ -36,6 +36,15 @@ const glyph = (sportId) => (sportId === 'pickleball' ? '🏓' : sportId === 'bas
   : sportId === 'american_football' ? '🏈' : sportId === 'ice_hockey' ? '🏒' : sportId === 'cricket' ? '🏏' : sportId === 'swimming' || sportId === 'para_swimming' ? '🏊' : sportId === 'volleyball' ? '🏐' : sportId === 'cycling' ? '🚴' : GLYPH[sportOf(sportId)?.kind] ?? '🏅');
 const seg = (key, value, options) => `<div class="chips zoo-filter" role="group">${options.map(([v, t]) => `<button class="chip ${String(v) === String(value) ? 'on' : ''}" aria-pressed="${String(v) === String(value)}" data-set="${key}:${v}">${esc(t)}</button>`).join('')}</div>`;
 const bar = (v) => `<div class="mini" style="width:100%"><i class="fill ${v >= 68 ? 'good' : v >= 40 ? 'ok' : 'low'}" style="width:${Math.max(2, Math.min(100, v))}%"></i></div>`;
+/** Why nobody in the player's division can be paid to play a sport this year. */
+function proClosed(sport) {
+  const div = sp.divisionOf();
+  const y = sp.proYears(sport, div);
+  const who = div === 'women' && sport.womenProFrom !== undefined ? 'No woman' : 'Nobody';
+  if (y.from == null) return `${who} is paid to play it: there is no professional league for the ${sp.DIVISION_NAME[div].toLowerCase()} game.`;
+  if (y.until && store.state.year > y.until) return `The women's professional league closed in ${y.until}. Nobody has started another.`;
+  return `${who} is paid to play it yet (from ${y.from}).`;
+}
 const levelName = (l) => LEVEL_NAMES[l] ?? (l === 'elite' ? 'National squad' : l);
 const ordinal = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 
@@ -171,13 +180,37 @@ function career() {
   const p = player();
   const a = sp.myAthlete();
   return `${label('Decisions')}${dec.length ? dec.map((d) => `<div class="card"><p>${esc(d.text)}</p><div class="btn-stack">${d.options.map((o) => `<button class="btn" data-answer="${d.id}:${o.id}">${esc(o.label)}</button>`).join('')}</div></div>`).join('') : empty('Nothing waiting.')}
-    ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
+    ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.kind === 'agent' && k.share ? ` · takes ${Math.round(k.share * 100)}%` : ''}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
+    ${agentSection()}
+    ${label('Division')}
+    ${kv('You play in', `${esc(sp.DIVISION_NAME[sp.divisionOf()])} competition`)}
+    <p class="muted">Clubs' teams, leagues, tours and events above recreational play each have a women's and a men's division.</p>
+    ${sp.choosesDivision(p) ? `<div class="btn-stack">${['women', 'men'].filter((d) => d !== sp.divisionOf()).map((d) => `<button class="btn" data-division="${d}">Compete in the ${esc(sp.DIVISION_NAME[d].toLowerCase())} division</button>`).join('')}</div>` : ''}
     ${label('The way up')}
-    ${sp.activeSports().map((e) => { const sport = sportOf(e.id); const route = sp.proPath(sport, p.countryId); return kv(sport.name, esc(store.state.year < sp.proFromFor(sport, p) ? `Nobody is paid to play it yet (from ${sp.proFromFor(sport, p)}).` : route === 'draft' ? 'Professional teams draft from school and university.' : route === 'tour' ? 'Professionals play a tour for prize money.' : route === 'none' ? 'No professional league: the best compete for their country.' : 'Clubs sign players, often from their academies.') + (sp.hasCollegeSport(sport, p.countryId) ? ' Universities here recruit, with scholarships.' : '')); }).join('')}
+    ${sp.activeSports().map((e) => { const sport = sportOf(e.id); const route = sp.proPath(sport, p.countryId); return kv(sport.name, esc(!sp.proYears(sport).open ? proClosed(sport) : route === 'draft' ? 'Professional teams draft from school and university.' : route === 'tour' ? 'Professionals play a tour for prize money.' : route === 'none' ? 'No professional league: the best compete for their country.' : 'Clubs sign players, often from their academies.') + (sp.hasCollegeSport(sport, p.countryId) ? ' Universities here recruit, with scholarships.' : '')); }).join('')}
     ${label('After playing')}
     <div class="btn-stack">${sp.activeSports().map((e) => `<button class="btn" data-retire="${e.id}">Retire from ${esc(sportOf(e.id).name.toLowerCase())}</button>`).join('')}
       ${p.age >= 18 && !a.coaching ? Object.values(a.sports).map((e) => `<button class="btn" data-coachjob="${e.id}">Coach ${esc(sportOf(e.id).name.toLowerCase())}</button>`).join('') : ''}</div>
     ${a.coaching ? kv('Coaching', `${esc(sportOf(a.coaching.sportId).name)} since ${a.coaching.since}`) : ''}`;
+}
+
+/** The player's sports agent, or the search for one: the same agents as under My Fame → Representation. */
+function agentSection() {
+  if (!life.wantsSportsAgent()) return '';
+  const mine = life.myAgent();
+  const n = mine ? store.state.npcs[mine.npcId] : null;
+  const offer = life.sportsAgentOnOffer();
+  const left = life.sportsAgentTriesLeft();
+  const pull = (c) => (c >= 1.25 ? 'a lot of pull' : c >= 0.9 ? 'some pull' : 'not much pull');
+  const books = (x) => { const list = (x.flags.agent?.clients ?? []).map((id) => store.state.npcs[id]).filter((c) => c && c.alive !== false).slice(0, 4);
+    return list.length ? `<p class="muted">Also represents: ${list.map((c) => esc(`${c.firstName} ${c.lastName} (${c.occupation ?? 'athlete'})`)).join(', ')}.</p>` : ''; };
+  return `${label('Agent')}
+    ${n ? `${kv(`${n.firstName} ${n.lastName}`, esc(`${mine.agency ? `${mine.agency} · ` : ''}takes ${Math.round(mine.commission * 100)}% · ${pull(mine.clout)}`))}${books(n)}
+      <div class="btn-stack"><button class="btn" data-sagent="cut">Ask for a smaller cut</button><button class="btn" data-sagent="drop">Part ways</button></div>`
+      : '<p class="muted">An agent negotiates contracts and finds sponsors, for their own cut (three to ten per cent). Each one is different: shop around.</p>'}
+    ${offer ? `<div class="card"><h3>${esc(`${offer.firstName} ${offer.lastName}`)}</h3>${kv('Agency', esc(offer.flags.agent.agency))}${kv('Their cut', `${Math.round(offer.flags.agent.commission * 100)}%`)}${kv('Pull with clubs and brands', pull(offer.flags.agent.clout))}${books(offer)}
+      <div class="btn-stack"><button class="btn primary" data-sagent="sign">Sign with them</button><button class="btn" data-sagent="find" ${left <= 0 ? 'disabled' : ''}>Look for another (${left} left this year)</button><button class="btn" data-sagent="pass">Say no</button></div></div>`
+      : `<div class="btn-stack"><button class="btn" data-sagent="find" ${left <= 0 ? 'disabled' : ''}>${n ? 'Look for a different agent' : 'Look for an agent'} (${left > 0 ? `${left} ${left === 1 ? 'look' : 'looks'} left this year` : 'none left this year'})</button></div>`}`;
 }
 
 function health() {
@@ -370,6 +403,8 @@ async function onClick(e) {
   if ((el = hit('data-primary'))) return report(sp.setPrimary(el.dataset.primary));
   if ((el = hit('data-giveup'))) { shut(); if (!await confirmModal({ title: 'Stop playing?', body: 'Your record is kept. You can take it up again later, though skills fade.', yes: 'Stop', danger: true })) return show(); return report(sp.giveUp(el.dataset.giveup)); }
   if ((el = hit('data-retire'))) { shut(); if (!await confirmModal({ title: 'Retire?', body: 'This ends your playing career in this sport, and any contract with it.', yes: 'Retire', danger: true })) return show(); return report(life.retire(el.dataset.retire)); }
+  if ((el = hit('data-sagent'))) return report({ find: life.findSportsAgent, sign: life.signSportsAgent, pass: life.passOnSportsAgent, drop: life.dropSportsAgent, cut: life.askSportsAgentCut }[el.dataset.sagent]());
+  if ((el = hit('data-division'))) return report(sp.setDivision(el.dataset.division));
   if ((el = hit('data-coachjob'))) return report(life.becomeCoach(el.dataset.coachjob));
   if ((el = hit('data-answer'))) { const [id, choice] = el.dataset.answer.split(':'); return report(life.answer(id, choice)); }
   if ((el = hit('data-decide'))) { note({ tab: 'career', scroll: 0 }); return show(); }

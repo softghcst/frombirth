@@ -36,6 +36,8 @@ export const SKILLS = [
   { id: 'acting', group: 'performing', name: 'Acting', talent: 'acting', minAge: 4 },
   { id: 'music_theory', group: 'performing', name: 'Music theory', talent: 'music', minAge: 6 },
   { id: 'magic', group: 'performing', name: 'Magic tricks', helps: 'acting', minAge: 7 },
+  { id: 'rap', group: 'performing', name: 'Rapping', helps: 'music', minAge: 8 },
+  { id: 'public_speaking', group: 'performing', name: 'Public speaking', minAge: 8, stat: 'charm' },
 
   { id: 'sports', group: 'body', name: 'Sport', talent: 'sports', minAge: 4 },
   { id: 'martial_arts', group: 'body', name: 'Martial arts', helps: 'sports', minAge: 5, stat: 'health' },

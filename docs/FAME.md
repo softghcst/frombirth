@@ -33,6 +33,23 @@ award bodies, venues, release types, deal terms). Everything named there is fict
 - **Children.** Under-18s need a guardian's agreement; a share of their pay is held in trust and released at 18. A famous parent gives family recognition, not credits, skill or an audience.
 - **Generations.** When a life continues as a child, the world carries over: the parent's productions, awards and bands are remembered as the parent's (an NPC id), and the heir starts with none of their own.
 
+## Balance
+
+`node scripts/balance/fame.mjs [seed] [lives] [years]` plays whole public careers in each field at three levels of
+talent, with a keen player who practices every year, and reports peak fame, lasting fame, what they earned against
+the country's average wage, how many became nationally and internationally known, and the save size. After the
+balance pass (seed 7, six lives each, 20 years), roughly:
+
+| Field | Peak fame | Earned (× average wage) | Notes |
+| --- | --- | --- | --- |
+| Acting | 65–70 | 3.5–4.5 | the quickest road to international fame, for someone who auditions constantly |
+| Music | 30–47 | up to ~1 | touring is where the money is; most acts stay national at best |
+| Modeling | 22–32 | 1–2 | a steady living, rarely a household name |
+| Books | ~45 | ~1–1.4 | bestselling authors; wealth is rare |
+
+Practice matters more than starting talent: after twenty keen years most players are near the top of their craft.
+The pass also fixed sales and shows abroad being counted in the other country's currency (`wageIn` in util.js).
+
 ## Tests
 
 ```
@@ -51,6 +68,23 @@ bodies). Women's professional leagues begin in their own years. Countries, laws 
 and money is shown at today's values throughout: a constant-price world, chosen over inflating every stored
 salary and price.
 
+## Bands, genres and labels
+
+`js/data/music.js` and `js/engine/music.js`.
+
+- **Genres**: 39 of them, from blues and jazz to punk, metal, emo, grime, drill, K-pop and afrobeats, each from the year
+  it began. Each has a usual line-up, wants something different (singing, playing, writing, presence: `genreFit`),
+  is more or less popular worldwide and bigger in its heartlands, and goes in and out of fashion year by year (`heat`).
+- **Positions**: vocalist, lead and rhythm guitar, bass, drums, keys, backing vocals, rapper, DJ and producer, sax,
+  trumpet, violin, cello. How well the player plays one comes from the instrument they practice and their talent
+  (`positionSkill`). Musicians in the world play one or two positions and love a few genres.
+- **Bands looking for members**: each year there are notices from new bands and established ones (with their fans
+  and their label) wanting a specific position. Three auditions a year; get in and you are in the band, in that
+  position, alongside real people. Your own band can advertise for any position and choose from those who answer.
+- **Labels**: two majors that sign anything, and independents that keep to a sound, chosen by what sells in that
+  country (punk and metal labels in the UK, Latin labels in Mexico). Each has its own terms and a roster you can look
+  through. Send demos (two a year); a label that is not into your sound will tell you.
+
 ## Agents
 
 `js/engine/agents.js`. Every agent (talent agents at agencies, literary agents) is a person with their own
@@ -60,6 +94,19 @@ clients who are real people in the world (actors with their credits, authors wit
 names are with the leading agencies). Looking for an agent shows one at a time; you can sign, say no, or look
 again, but only twice a year for each kind. Signing a new agent replaces the old one; work already signed keeps
 the terms it was signed on (each contract and book records its agent's cut).
+
+### Every kind of representative
+
+The same rules hold for music managers (10–25%, `music.js`) and modeling
+agencies' head bookers (15–25%, `modeling.js`), as well as talent and literary agents. Each has clients you can look
+through (athletes with their ratings, acts with their fans, models with their covers), is shopped for one at a time
+twice a year, and takes their cut of what they help earn: an athlete's or model's wage is paid after it, a manager
+takes theirs from advances, royalties and tours. What they do for it: managers bring labels, bigger advances and bigger crowds; agencies get better castings.
+
+Over time: any representative can be asked for a smaller cut once a year (a client worth it gets it; pushing without
+the name can end it), can be let go, and lets go a client who stops working (two years without a job through a
+talent agent, four without a book sold, a manager with nothing new in three years, an athlete who stops playing).
+The best-connected representative brings brand deals, bigger ones, and takes their cut of those too.
 
 ## Also in the engines
 

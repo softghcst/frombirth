@@ -108,7 +108,7 @@ export function tickEconomy() {
   if (rng.chance(WORLD_DOWNTURN.chance)) {
     let n = 0;
     for (const c of COUNTRY_LIST) if (phaseOf(c.id) !== 'slump' && (store.state.world?.places?.[c.id]?.heldUntil ?? 0) < year && rng.chance(WORLD_DOWNTURN.share)) { turn(c.id, 'slump', true); n += 1; }
-    post(null, 'economy', `A financial crisis has spread around the world. ${n} economies are in recession${phaseOf() === 'slump' ? `, ${the(player().countryId)} among them` : ''}.`, 'bad');
+    if (n) post(null, 'economy', `A financial crisis has spread around the world. ${n} economies are in recession${phaseOf() === 'slump' ? `, ${the(player().countryId)} among them` : ''}.`, 'bad');
     return;
   }
   for (const c of COUNTRY_LIST) {

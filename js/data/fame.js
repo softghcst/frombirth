@@ -181,7 +181,7 @@ export const VENUES = {
 };
 export const LABEL_NAMES = ['{W} Records', '{W} Recordings', '{C} Sound', '{S} Music Group', '{W} Discs'];
 /** A record deal's usual terms: royalty share to the act, and what a label pays for each unit sold (base units). */
-export const MUSIC_DEAL = { royalty: [0.14, 0.22], unitValue: 0.9, independent: 0.7 };
+export const MUSIC_DEAL = { royalty: [0.14, 0.22], unitValue: 1.6, independent: 0.7 };
 /** The music award body, which judges releases. */
 export const MUSIC_AWARD = { id: 'disc', name: 'Silver Disc Awards', founded: 1959, scope: 'international', medium: 'music',
   categories: [['album', 'Album of the Year', 'album'], ['song', 'Song of the Year', 'single'], ['new_act', 'Best New Act', 'first']] };

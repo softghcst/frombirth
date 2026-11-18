@@ -13,7 +13,7 @@
 // each a payroll line paid once. A writer whose career is 'author' is paid by
 // their books once they have one out; the career's own salary stops then.
 import { rng } from '../rng.js';
-import { clamp, fmtMoney, localWage } from '../util.js';
+import { clamp, fmtMoney, localWage, wageIn } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { BOOK_GENRES, BOOK_KINDS, PUBLISHER_NAMES, BOOK_WORDS, BOOK_DEAL, ORG_WORDS } from '../data/fame.js';
@@ -21,7 +21,7 @@ import { levelOf } from './skills.js';
 import { ent, workOf, article, makeProduction, production } from './entertainment.js';
 import { gain, regard, fameOf, exists } from './fame.js';
 import { registerEmployer } from './employers.js';
-import { rollTerms, look, offered, clearOffer, triesLeft, search } from './agents.js';
+import { rollTerms, look, offered, clearOffer, triesLeft, search, askLowerCut } from './agents.js';
 import { makeNpc } from './npcFactory.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -115,7 +115,7 @@ export function litAgents(countryId) {
       const agency = LIT_AGENCIES[i % LIT_AGENCIES.length].replace('{W}', rng.pick(ORG_WORDS)).replace('{S}', rng.pick(c.names.last)).replace('{S2}', rng.pick(c.names.last));
       const n = makeNpc({ role: 'performer', countryId, age: rng.int(32, 66), relationship: rng.int(40, 55) });
       n.occupation = 'literary agent';
-      n.flags.agent = { kind: 'literary', agency, tier, standard: { top: 70, mid: 58, small: 45 }[tier] + rng.int(-4, 4), clients: [], ...rollTerms(tier) };
+      n.flags.agent = { kind: 'literary', agency, tier, standard: { top: 70, mid: 58, small: 45 }[tier] + rng.int(-4, 4), clients: [], ...rollTerms(tier, 'literary') };
       // Their authors: real people with books to their names, the best known with the leading agents.
       for (let k = 0; k < rng.int(2, 4); k++) {
         const au = makeNpc({ role: 'performer', countryId, age: rng.int(30, 78) });
@@ -171,6 +171,12 @@ export function signLitAgent() {
   clearOffer('literary', p);
   milestone(`Signed with a literary agent: ${n.firstName} ${n.lastName}.`, 'career');
   return result(true, `${n.firstName} ${n.lastName} of ${a.agency} represents you now, for ${Math.round(a.commission * 100)}%. Books already sold keep the terms they were sold on.`);
+}
+export function askLitAgentCut() {
+  const p = player();
+  const r = askLowerCut('literary', writingOf(p).agent, (fameOf(p).audiences.literary ?? 0) + bibliography(p).filter((b) => b.list).length * 5 - 15, p);
+  if (r.dropped) dropAgent();
+  return r;
 }
 export function dropAgent() {
   const w = writingOf();
@@ -262,7 +268,7 @@ function release(b) {
 
 function earn(b) {
   const age = year() - b.released;
-  const total = Object.entries(b.units).reduce((s, [cc, n]) => s + localWage(BOOK_DEAL.unitValue, COUNTRIES[cc]) * n, 0);
+  const total = Object.entries(b.units).reduce((s, [cc, n]) => s + wageIn(BOOK_DEAL.unitValue, COUNTRIES[cc], COUNTRIES[b.countryId]) * n, 0); // in the author's own money
   const gross = Math.round(total * (age === 0 ? 1 : 0.3 * Math.pow(0.65, age - 1)));
   if (age > 0 && gross < localWage(20, COUNTRIES[b.countryId])) return;
   let toAuthor = Math.round(gross * (b.publisherId ? b.royalty : BOOK_DEAL.selfShare));
@@ -295,6 +301,11 @@ export function tickPublishing() {
   fresh.slice(0, 10).forEach((b, i) => { b.list = i + 1; });
   for (const b of fresh.filter((x) => x.author === 'player' && x.list)) { lines.push(`${b.title} reached number ${b.list} on the bestseller list.`); milestone(`${b.title}: number ${b.list} on the bestseller list.`, 'fame'); }
   lines.push(...rights(p));
+  // A literary agent who has sold nothing for you in four years moves on.
+  if (w.agent && w.agent.since <= year() - 4 && !w.books.some((id) => (book(id)?.signed ?? 0) >= year() - 4 && book(id)?.agented)) {
+    lines.push(`${w.agent.name} has stopped representing you: four years without a book to sell.`);
+    dropAgent();
+  }
   for (const id of w.books) { const b = book(id); if (b?.released != null) earn(b); }
   // Forget rivals' books after a few years, unless an award keeps their names on the record (seasons hold them).
   const mine = new Set(w.books);

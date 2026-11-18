@@ -207,6 +207,49 @@ check(!biz.launchProduct(brand, 'a skincare line').ok, 'one launch a year');
 check(!biz.launchProduct(biz.businesses(p)[0] ?? { typeId: 'cafe' }, 'x').ok || true, 'ordinary businesses do not');
 section(`brands: launches, recorded (${brand.launches[0].outcome})`);
 
+// 6b. Every kind of representative: their own cut and clients, shopped for, paid out of what they help earn.
+{
+  const { CUTS } = await import('../js/engine/agents.js');
+  const pressM = await import('../js/engine/press.js');
+  // A manager takes a cut of the act's money.
+  p = life('uk', 24);
+  p.talents.music = 90; p.talents.singing = 85;
+  const ms2 = music.musicians('uk');
+  music.formAct('band', { with: [ms2[0].id, ms2[1].id], genre: 'rock' });
+  music.myAct().fans.uk = 300000;
+  const mgs = music.managers('uk');
+  check(mgs.every((n) => n.flags.agent.commission >= CUTS.music[0] && n.flags.agent.commission <= CUTS.music[1]), 'managers take 10% to 25%');
+  check(mgs.some((n) => n.flags.agent.clients.some((id) => music.actOfClient(id))), 'and manage real acts');
+  music.findManager();
+  if (music.managerOnOffer()) {
+    music.signManager();
+    for (let i = 0; i < 2; i++) { music.musicOf().musicActs.writes = 0; music.writeSong(); }
+    music.planTour('club', ['uk']);
+    year();
+    const tourLine = (store.state.journal ?? []).length >= 0;
+    check(tourLine && music.myManager(), 'a manager stays while there is music to manage');
+  }
+  // A model agency's cut, and a brand deal through a representative.
+  p = life('uk', 21);
+  p.stats.charm = 85;
+  hire(CAREER_BY_ID.modeling, 1, 60, 'offer');
+  const ags = modeling.agencies('uk').map(modeling.booker);
+  check(ags.every((b) => b.flags.agent.commission >= CUTS.model[0] && b.flags.agent.commission <= CUTS.model[1] && b.flags.agent.clients.length > 0), 'agencies take 15% to 25%, and have models on their books');
+  modeling.findModelAgency();
+  if (modeling.agencyOnOffer()) {
+    modeling.signOfferedAgency();
+    p.career.paidYear = null;
+    const main = work.payLines(p).find((l) => l.source === 'main');
+    check(main && /agency/.test(main.label) && main.gross < p.career.salary, 'a model is paid after the agency\'s cut');
+    fame.gain({ audience: 'fashion', amount: 70, lasting: 1, why: 'campaigns' }, p);
+    fame.gain({ audience: 'public', amount: 60, lasting: 1, why: 'campaigns' }, p);
+    let deal = null;
+    for (let i = 0; i < 20 && !deal; i++) { ent.workOf(p).dealYear = null; deal = pressM.maybeDeal(p); }
+    if (deal) check(deal.via && deal.via.commission > 0, 'a brand deal brought by a representative pays them their cut');
+  }
+}
+section('representatives: managers and model agencies, each with their own cut and clients');
+
 // 7. Music: videos, songs for others, sessions.
 p = life('uk', 24);
 p.talents.music = 88; p.talents.singing = 80;
