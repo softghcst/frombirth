@@ -119,7 +119,7 @@ export function tickRelationships() {
       npc.flags.diedYear = store.state.year;
       // An animal's death is written into the family's record, which tells it in the life story.
       if (npc.role === 'pet') animalDied(npc);
-      else log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}.`, 'system', 'bad');
+      else log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}.${typeof npc.flags.abroad === 'string' && npc.meters.relationship >= 20 ? ` The funeral is in ${theCountry(COUNTRIES[npc.flags.abroad]?.name ?? npc.flags.abroad)}; you could travel for it (Explore the World).` : ''}`, 'system', 'bad');
       p.stats.mood = clamp(p.stats.mood - Math.round(8 + npc.meters.relationship / 5));
       inheritFrom(npc);
       continue;

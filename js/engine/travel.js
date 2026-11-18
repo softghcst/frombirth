@@ -49,6 +49,24 @@ const LIVE = ['confirmed', 'in_progress'];
 
 const recentlyMarried = (p) => livingNpcs().find((n) => n.role === 'spouse' && p.age - (n.marriedAtAge ?? p.age) <= 1 && !hasEvent(`honeymoon:${n.id}`));
 const kinAbroad = (destId) => livingNpcs().filter((n) => n.role !== 'pet' && n.flags.abroad === destId);
+/** Where someone lives, as a country: abroad if they moved, otherwise the player's own country. */
+const homeOf = (n, p = player()) => (typeof n.flags.abroad === 'string' ? n.flags.abroad : p.countryId);
+/**
+ * Family occasions worth the journey, read from what really happened: someone close who married this
+ * year, or someone who died this year or last. Each can be traveled for once.
+ */
+export function occasions(kind, destId = null, p = player()) {
+  const all = (p.npcIds ?? []).map((id) => store.state.npcs[id]).filter((n) => n && n.role !== 'pet');
+  const found = kind === 'wedding'
+    ? all.filter((n) => n.alive && n.flags.weddingYear === year() && !hasEvent(`wedding-trip:${n.id}`))
+    : all.filter((n) => !n.alive && n.flags.diedYear != null && year() - n.flags.diedYear <= 1 && (n.meters?.relationship ?? 0) >= 20 && !hasEvent(`funeral-trip:${n.id}`));
+  return found.filter((n) => !destId || homeOf(n, p) === destId).map((n) => ({ npc: n, countryId: homeOf(n, p) }));
+}
+const occasionText = (kind, p) => {
+  const o = occasions(kind, null, p);
+  if (!o.length) return kind === 'wedding' ? 'For a wedding in the family this year.' : 'For the funeral of someone close, this year or last.';
+  return `For ${list(o.slice(0, 2).map((x) => `${x.npc.firstName}'s ${kind}`))}, in ${list([...new Set(o.map((x) => COUNTRIES[x.countryId].name))])}.`;
+};
 
 /** Why a kind of trip is not open, or '' if it is. Checked against the real state of the life. */
 export function typeBlock(typeId, destId = null, p = player()) {
@@ -62,6 +80,8 @@ export function typeBlock(typeId, destId = null, p = player()) {
     case 'partner': return livingNpcs().some((n) => ['spouse', 'partner'].includes(n.role)) ? '' : 'You need a partner to take.';
     case 'newlywed': return recentlyMarried(p) ? '' : 'For a wedding in the last year, and only once.';
     case 'married': return livingNpcs().some((n) => n.role === 'spouse' && p.age - (n.marriedAtAge ?? p.age) >= 1) ? '' : 'For a marriage of at least a year.';
+    case 'wedding': case 'funeral':
+      return (destId ? occasions(t.needs, destId, p).length : occasions(t.needs, null, p).length) ? '' : occasionText(t.needs, p);
     case 'kinThere': return destId && kinAbroad(destId).length ? '' : destId ? 'Nobody you know lives there.' : 'Family or friends who live elsewhere.';
     case 'job': return p.career.careerId && !p.career.retired ? '' : 'You need a job that would send you.';
     case 'professional': return p.career.careerId && (p.career.level ?? 0) >= 1 ? '' : 'For people a few years into a career.';
@@ -235,6 +255,7 @@ export function startPlan(typeId = 'vacation', p = player()) {
     travelers: [{ id: p.id, status: 'organizer', pays: 'self' }], mode: null, cabin: 'economy', stay: null, activities: [], done: [],
     insurance: false, payment: 'organizer', bookings: [], events: [], notes: [] };
   t.trips.push(trip);
+  if (['wedding', 'funeral'].includes(typeId)) updatePlan(trip.id, { type: typeId }, p); // straight to where it is
   return trip;
 }
 
@@ -242,7 +263,11 @@ export function startPlan(typeId = 'vacation', p = player()) {
 export function updatePlan(id, changes, p = player()) {
   const trip = tripById(id, p);
   if (!trip || trip.status !== 'draft') return result(false, 'Only a plan not yet booked can be changed.', 'neutral');
-  if (changes.type && TRIP_TYPE_BY_ID[changes.type]) trip.type = changes.type;
+  if (changes.type && TRIP_TYPE_BY_ID[changes.type]) {
+    trip.type = changes.type;
+    const o = ['wedding', 'funeral'].includes(trip.type) && !changes.destination ? occasions(trip.type, null, p)[0] : null;
+    if (o && trip.destination?.countryId !== o.countryId) { trip.destination = { countryId: o.countryId, city: o.npc.city && COUNTRIES[o.countryId].cities.includes(o.npc.city) ? o.npc.city : capitalCity(o.countryId) }; trip.mode = null; trip.stay = null; trip.activities = []; }
+  }
   if (changes.destination) {
     const { countryId, city } = changes.destination;
     if (!COUNTRIES[countryId] || (city && !COUNTRIES[countryId].cities.includes(city))) return result(false, 'There is no such place.', 'neutral');
@@ -644,6 +669,20 @@ export function comeHome(tripId, p = player()) {
   const comfort = STAY_BY_ID[trip.stay]?.comfort ?? 3;
   p.stats.mood = clamp(p.stats.mood + Math.min(8, 2 + Math.round(days / 4)) + (comfort >= 4 ? 2 : 0) + (m.cabins ? (CABINS.find((k) => k.id === trip.cabin)?.mood ?? 10) - 10 : 0));
   if (trip.type === 'scouting') p.stats.mood = clamp(p.stats.mood - 3);
+  // The occasion itself: a wedding brings people closer; a funeral is a goodbye, not a holiday.
+  let occasion = '';
+  const occ = ['wedding', 'funeral'].includes(trip.type) ? occasions(trip.type, trip.destination.countryId, p)[0]?.npc : null;
+  if (occ && trip.type === 'wedding') {
+    const spouse = store.state.npcs[occ.life?.partnerId];
+    for (const n of [occ, spouse].filter((x) => x?.alive)) { n.meters.relationship = clamp(n.meters.relationship + 10); n.lastInteractionAge = p.age; }
+    remember(occ, 'cameToWedding', `You came all the way to ${placeName(trip.destination.countryId, trip.destination.city)} for their wedding.`);
+    if (Array.isArray(occ.memories)) occ.memories = occ.memories.filter((m) => m.key !== 'missedWedding');
+    occasion = ` You were there when ${occ.firstName} got married.`;
+  } else if (occ) {
+    p.stats.mood = clamp(p.stats.mood - Math.min(8, 2 + Math.round(days / 4)) + 2); // no holiday lift; only the small comfort of having said goodbye
+    for (const n of kinAbroad(trip.destination.countryId)) { n.meters.relationship = clamp(n.meters.relationship + 6); n.lastInteractionAge = p.age; }
+    occasion = ` You said goodbye to ${occ.firstName}.`;
+  }
   if (abroad) for (const x of people) addStay(x, trip.destination.countryId, trip.arrived ?? trip.depart, trip.ret, trip.id);
   for (const n of people.filter((x) => x !== p)) {
     n.meters.relationship = clamp(n.meters.relationship + rng.int(4, 9));
@@ -673,18 +712,18 @@ export function comeHome(tripId, p = player()) {
   for (const b of trip.bookings) if (b.status === 'confirmed') b.status = 'used';
   if (abroad) {
     stamp(trip.destination.countryId, 'visit');
-    (p.trips ??= []).push({ countryId: trip.destination.countryId, city: trip.destination.city, year: year(), age: p.age, purpose: trip.type === 'scouting' ? 'scouting' : trip.type === 'visiting' ? 'family' : 'holiday', with: people.length - 1, tripId: trip.id });
+    (p.trips ??= []).push({ countryId: trip.destination.countryId, city: trip.destination.city, year: year(), age: p.age, purpose: trip.type === 'scouting' ? 'scouting' : ['visiting', 'wedding', 'funeral'].includes(trip.type) ? 'family' : 'holiday', with: people.length - 1, tripId: trip.id });
     const seen = (p.flags.visited ??= []);
     if (!seen.includes(trip.destination.countryId)) seen.push(trip.destination.countryId);
   }
-  const notes = milestones(trip, p);
+  const notes = milestones(trip, p, occ);
   const others = people.filter((x) => x !== p).map((n) => n.firstName);
   const ev = recordEvent({ key: `trip:${trip.id}`, type: 'trip', title: `${TRIP_TYPE_BY_ID[trip.type].name}: ${placeName(trip.destination.countryId, trip.destination.city, year())}`, date: trip.depart, tripId: trip.id,
     place: { countryId: trip.destination.countryId, city: trip.destination.city }, people: people.filter((x) => x !== p).map(archiveIdOf), significance: notes.length ? 2 : 1, privacy: 'family',
     text: `${days} days${others.length ? ` with ${list(others)}` : ''}.` });
   trip.events.unshift(ev.id);
   earn(p);
-  const text = `Home from ${placeName(trip.destination.countryId, trip.destination.city)}${others.length ? ` with ${list(others)}` : ''}.${study} ${notes.join(' ')}`.trim();
+  const text = `Home from ${placeName(trip.destination.countryId, trip.destination.city)}${others.length ? ` with ${list(others)}` : ''}.${occasion}${study} ${notes.join(' ')}`.trim();
   log(text, 'system', 'good');
   return result(true, text, 'good', { trip });
 }
@@ -705,7 +744,7 @@ function disrupt(trip, why, p = player()) {
 }
 
 /** The first times, written down once each, from what really happened. */
-function milestones(trip, p) {
+function milestones(trip, p, occ = null) {
   const aid = archiveIdOf(p);
   const notes = [];
   const people = goingPeople(trip).filter((x) => x !== p);
@@ -723,6 +762,8 @@ function milestones(trip, p) {
   if (!people.length && p.age >= 16) first(`first-solo:${aid}`, 'First trip alone', `To ${placeName(place.countryId, place.city)}.`);
   if (people.some((n) => ['child', 'parent', 'sibling'].includes(n.role)) && leisure) first(`first-family-holiday:${aid}`, 'First family vacation', `With ${list(people.map((n) => n.firstName))}.`);
   if (trip.type === 'honeymoon') { const s = people.find((n) => n.role === 'spouse'); if (s) first(`honeymoon:${s.id}`, `Honeymoon with ${s.firstName}`, `In ${placeName(place.countryId, place.city)}.`, 3); }
+  if (occ && trip.type === 'wedding') first(`wedding-trip:${occ.id}`, `At ${occ.firstName}'s wedding`, `In ${placeName(place.countryId, place.city)}.`, 3);
+  if (occ && trip.type === 'funeral') first(`funeral-trip:${occ.id}`, `${occ.firstName}'s funeral`, `In ${placeName(place.countryId, place.city)}. Family came from wherever they were.`, 3);
   if (trip.type === 'anniversary') { const s = people.find((n) => n.role === 'spouse'); if (s) first(`anniversary:${s.id}:${year()}`, `An anniversary in ${place.city ?? COUNTRIES[place.countryId].name}`, `With ${s.firstName}.`); }
   if (trip.done.some((d) => d.id === 'landmark')) first(`landmark:${aid}:${place.countryId}`, `Saw the great sights of ${place.city ?? COUNTRIES[place.countryId].name}`, '', 1);
   const kin = kinAbroad(place.countryId);
