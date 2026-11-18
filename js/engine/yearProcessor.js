@@ -8,6 +8,7 @@ import { tickEquestrian } from './equestrian.js';
 import { tickLife } from './animalLife.js';
 import { tickArcs } from './animalArcs.js';
 import { tickSports } from './sportsLife.js';
+import { tickDisasters } from './disasters.js';
 import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
@@ -111,6 +112,7 @@ export function advanceYear() {
   booked('auto', 'Friends and followers', tickSocial);
   booked('health', 'Health and identity', tickIdentity);
   booked('losses', 'Rising prices and losses', tickLiving);
+  booked('losses', 'Storms, floods and other disasters', () => tickDisasters());
   booked('auto', 'The royal household', tickRoyalty);
   booked('auto', 'Politics', tickPolitics);
   booked('auto', 'Scandal', tickScandal);

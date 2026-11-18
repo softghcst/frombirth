@@ -25,7 +25,8 @@ import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel } from '../data/countries.js'
 import { PLACES, GROUPS, placesIn } from '../data/world.js';
 import { SYSTEMS } from '../data/politics.js';
 import { MONARCHIES } from '../data/royalty.js';
-import { HAZARDS, CRISES } from '../data/living.js';
+import { CRISES } from '../data/living.js';
+import { KINDS, countryHazards } from '../data/disasters.js';
 import { schoolModel } from '../data/education.js';
 import { SPOKEN } from '../data/skills.js';
 
@@ -85,7 +86,7 @@ export function profile(id) {
     ['Power, water, roads', level(L.infra, ['Reliable', 'Mostly reliable', 'Patchy', 'Unreliable', 'Failing'])],
     ['Stability', level(L.stability, ['Very stable', 'Stable', 'Tense', 'Unstable', 'In turmoil'])],
     ['Prices over time', { low: 'Steady', high: 'Rising fast', extreme: 'Out of control' }[L.inflation]],
-    ...(L.hazards.length ? [['Natural hazards', L.hazards.map((h) => HAZARDS[h].name ?? h).join(', ')]] : []),
+    ...(countryHazards(id, L).length ? [['Natural hazards', countryHazards(id, L).map((h) => KINDS[h].plural).join(', ')]] : []),
     ...(L.crisis ? [['Ongoing', CRISES[L.crisis].name]] : []),
     ...(store.state ? [['Economy now', outlook(id).name]] : []),
   ];

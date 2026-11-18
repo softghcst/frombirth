@@ -14,6 +14,7 @@ import { advanceYear } from './yearProcessor.js';
 import { book } from './ledger.js';
 import { drawBetween } from './eventEngine.js';
 import { seasonAt, turnSeasons, seasonName } from './calendar.js';
+import { disastersBetween } from './disasters.js';
 
 export { seasonAt, turnSeasons, seasonName };
 
@@ -78,7 +79,7 @@ export function advanceTurn(state = store.state) {
     if (state.settings?.nextStep) { state.settings.step = state.settings.nextStep; delete state.settings.nextStep; }
     advanceYear();
     // With shorter turns, the last part of the year has its season too: perhaps a scene for it, beside the year's own.
-    if (step !== 12 && p.alive) drawBetween(step, turnSeasons(12, step, p.countryId), 0.45);
+    if (step !== 12 && p.alive) { drawBetween(step, turnSeasons(12, step, p.countryId), 0.45); disastersBetween(state, 12, step); }
     return { year: true };
   }
   // Anything the player did with money since the last turn is written down before the season changes.
@@ -87,6 +88,7 @@ export function advanceTurn(state = store.state) {
   const seasons = turnSeasons(next, step, p.countryId);
   log(`${cap(seasonName(seasons[0]))}.`, 'season');
   // Shorter turns, more chances: a scene for the season, and perhaps one of the year's ordinary scenes as well.
+  disastersBetween(state, next, step); // storms as they strike, and forecasts of what is coming
   drawBetween(step, seasons, 0.8, EVERYDAY[step]);
   return { year: false, season: seasons[0] };
 }
