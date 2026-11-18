@@ -22,7 +22,7 @@ const badges = (g, who) => (g.positions[who] ?? []).map((l) => `<span class="av-
 const K = () => store.state.kpop;
 
 const TABS = [['overview', 'Overview'], ['auditions', 'Auditions'], ['training', 'Training'], ['evaluations', 'Evaluations'], ['survival', 'Survival Academy'], ['group', 'My Group'],
-  ['positions', 'Positions'], ['performances', 'Performances'], ['comebacks', 'Comebacks'], ['fandom', 'Fandom'], ['agency', 'Agency & Contracts'], ['variety', 'Variety & Hosting'], ['history', 'Idol Career History']];
+  ['positions', 'Positions'], ['performances', 'Performances'], ['comebacks', 'Comebacks'], ['fandom', 'Fandom'], ['agency', 'Agency & Contracts'], ['variety', 'Variety & Hosting'], ['photocards', 'Photocards'], ['history', 'Idol Career History']];
 
 function tabsFor(p) {
   const i = kp.idolOf(p);
@@ -39,6 +39,7 @@ function tabsFor(p) {
     fandom: !!g?.debut,
     agency: (i.contracts ?? []).length > 0,
     variety: kp.varietyOpen(p),
+    photocards: kp.available() && store.state.year >= 1999,
     history: i.history.length > 0,
   }[id] ?? true));
 }
@@ -115,7 +116,7 @@ const VIEWS = {
         <div class="card"><h3>Your skills</h3>${skills}</div>`;
     }
     return `${urgent}<div class="card"><h3>Become a K-pop Idol</h3><p class="muted" style="margin:0">Audition. Train. Debut. Find your spotlight.</p></div>
-      <div class="btn-stack">${btn('tab', 'View global auditions', { arg: 'auditions' })}${btn('tab', 'Explore agencies', { arg: 'agencies' })}${btn('tab', 'Survival programs', { arg: 'survival' })}${btn('practise', 'Improve audition skills', { sub: 'Singing, dance, rap: on the Pursuits tab.' })}${btn('about', 'Learn about trainee life')}</div>
+      <div class="btn-stack">${btn('tab', 'View global auditions', { arg: 'auditions' })}${btn('tab', 'Explore agencies', { arg: 'agencies' })}${btn('tab', 'Survival programs', { arg: 'survival' })}${btn('tab', 'Collect photocards', { arg: 'photocards' })}${btn('practise', 'Improve audition skills', { sub: 'Singing, dance, rap: on the Pursuits tab.' })}${btn('about', 'Learn about trainee life')}</div>
       <div class="card"><h3>Your skills</h3>${skills}</div>`;
   },
 
@@ -277,6 +278,42 @@ const VIEWS = {
       ${past.length ? `<div class="section-label">Before</div>${past.map((x) => `<div class="kv"><span>${x.from}–${x.to} · ${esc(x.name)}</span><span>${esc(VARIETY_ROLES[x.role].name)} · ${esc(x.ended.how)}</span></div>`).join('')}` : ''}`;
   },
 
+  photocards(p) {
+    const C = COUNTRIES[p.countryId];
+    const m = (v) => fmtMoney(v, C);
+    const local = (v) => Math.round(v * C.currency.scale * (C.living?.costK ?? 1));
+    const g = kp.myGroup(p);
+    let out = '';
+    if (g?.debut) {
+      const v = kp.cardValues(g);
+      const order = kp.cardRanking(g);
+      const pol = g.cardPolicy ?? 'modest';
+      out += `<div class="card"><h3>${esc(g.name)}: your cards on the market</h3><p class="muted" style="margin:0">What fans pay each other for each member's card. It pays you nothing directly; it sells albums, and everyone can see it.</p>
+        ${kv(order.map((w, n) => [`${n + 1}. ${name(w)}`, m(local(v[w]))]))}
+        ${kv([['Rare cards', pol === 'generous' ? 'Plenty: albums sell more, fans grumble' : 'Few'], ['Albums sold because of the cards', `+${Math.round((kp.cardBoost(g) - 1) * 100)}%`]])}
+        <div class="btn-stack">${pol === 'generous' ? btn('cardpolicy', 'Ask for fewer rare cards', { arg: 'modest' }) : btn('cardpolicy', 'Ask for more rare cards', { arg: 'generous', sub: 'More sales; some fans will feel squeezed.' })}</div></div>`;
+    }
+    const f = kp.fanOf(p);
+    if (!f) return `${out}<div class="card"><h3>Collect photocards</h3><p class="muted" style="margin:0">Pick a group and a favorite member, buy albums for the random card inside, trade your spares with other fans, and chase a full set.</p>
+      <div class="btn-stack">${btn('fan', 'Choose a group to follow', { disabled: p.age < 8, sub: p.age < 8 ? 'From age eight' : '' })}</div></div>`;
+    const fg = kp.group(f.groupId);
+    const albums = fg?.status === 'active' ? kp.albumsOf(fg) : [];
+    const price = local(kp.ALBUM_PRICE);
+    const cards = (r) => r.performers.flatMap((w) => [`${r.id}|${w}|n`, ...(f.cards[`${r.id}|${w}|r`] ? [`${r.id}|${w}|r`] : [])]);
+    const owned = Object.keys(f.cards).filter((id) => kp.cardParts(id).release && !albums.some((r) => r.id === kp.cardParts(id).releaseId));
+    out += `<div class="card"><h3>Your collection</h3>${kv([['Following', `${fg?.name ?? 'A group'}${fg?.status === 'disbanded' ? ' (disbanded)' : ''}`], ['Favorite member', name(f.bias)], ['Cards', String(Object.values(f.cards).reduce((t, n) => t + n, 0))], ['Full sets', String(f.sets.length)],
+      ['Worth, at today\'s prices', m(kp.collectionValue(f))], ['Spent this year', m(f.spent[store.state.year] ?? 0)], ['Albums left this year', String(kp.ALBUMS_PER_YEAR - f.acts.albums)], ['Trades left this year', String(kp.TRADES_PER_YEAR - f.acts.trades)]])}
+      <div class="btn-stack">${btn('fan', 'Follow a different group, or change favorite')}</div></div>`;
+    for (const r of albums) {
+      out += `<div class="card"><h3>${esc(r.title)} (${r.year})</h3><div class="btn-stack">${[1, 5, 10].map((n) => btn('albums', `Buy ${n === 1 ? 'an album' : `${n} albums`}`, { arg: `${r.id}:${n}`, sub: m(price * n) })).join('')}</div>
+        ${f.sets.includes(r.id) ? '<p class="muted" style="margin:4px 0">Full set!</p>' : ''}
+        ${cards(r).map((id) => { const c = kp.cardParts(id); const n = f.cards[id] ?? 0; return row('card', id, `${name(c.who)}${c.rare ? ' · rare' : ''}${c.who === f.bias ? ' ♥' : ''}`, `${n ? `You have ${n}` : 'Missing'} · worth about ${m(local(kp.cardValue(id)))}`, n > 1 ? 'spare' : ''); }).join('')}</div>`;
+    }
+    if (owned.length) out += `<div class="section-label">Other cards you have</div>${owned.map((id) => { const c = kp.cardParts(id); return row('card', id, `${name(c.who)}${c.rare ? ' · rare' : ''}`, `${c.release.title} · ${f.cards[id]} · worth about ${m(local(kp.cardValue(id)))}`); }).join('')}`;
+    if (f.log.length) out += `<div class="section-label">Collecting history</div>${f.log.slice(-8).reverse().map((x) => `<div class="kv"><span>${x.year}</span><span>${esc(x.text)}</span></div>`).join('')}`;
+    return out;
+  },
+
   agency(p) {
     const i = kp.idolOf(p);
     const cs = i.contracts.map((id) => K().contracts[id]).filter(Boolean).reverse();
@@ -389,6 +426,28 @@ const ACTIONS = {
     await x.say(kp.launchProduct(kind, o));
   },
   varietytake: (id, x) => x.say(kp.takeVariety(id)),
+  cardpolicy: (pol, x) => x.say(kp.setCardPolicy(pol)),
+  async fan(_, x) {
+    const groups = kp.fanGroups();
+    if (!groups.length) return x.say({ text: 'No group has debuted yet.', tone: 'neutral' });
+    const gid = await pickModal({ title: 'Which group?', body: 'The groups putting out albums now, best known first.', cancel: 'Back', options: groups.map((g) => ({ value: g.id, label: g.name, sub: `${kp.agency(g.agencyId).name} · about ${g.fandom.size.toLocaleString('en-US')} fans` })) });
+    if (!gid) return undefined;
+    const g = kp.group(gid);
+    const who = await pickModal({ title: 'Your favorite member', body: 'Whose cards you want most.', cancel: 'Back', options: kp.current(g).map((mm) => mm.who).filter((w) => w !== 'player').map((w) => ({ value: w, label: name(w) })) });
+    if (!who) return undefined;
+    return x.say(kp.becomeFan(gid, who));
+  },
+  albums: (arg, x) => { const [rel, n] = arg.split(':'); return x.say(kp.buyAlbums(Number(n), rel)); },
+  async card(id, x) {
+    const f = kp.fanOf();
+    const have = f?.cards[id] ?? 0;
+    const opts = [{ value: 'trade', label: 'Trade spares for it', sub: `${kp.TRADES_PER_YEAR - f.acts.trades} trades left this year` }, { value: 'buy', label: 'Buy one from another fan' }, ...(have ? [{ value: 'sell', label: 'Sell one' }] : [])];
+    const what = await pickModal({ title: name(kp.cardParts(id).who), body: `${kp.cardParts(id).release?.title ?? ''}${kp.cardParts(id).rare ? ' · a rare card' : ''}. You have ${have}.`, cancel: 'Back', options: opts });
+    if (what === 'trade') return x.say(kp.tradeFor(id));
+    if (what === 'buy') return x.say(kp.buyCard(id));
+    if (what === 'sell' && await confirmModal({ title: 'Sell it?', body: 'Another fan buys it at about the going price.', yes: 'Sell' })) return x.say(kp.sellCard(id));
+    return undefined;
+  },
   async varietyleave(id, x) { if (await confirmModal({ title: 'Leave the show?', body: 'The seat goes to someone else.', yes: 'Leave' })) await x.say(kp.leaveVariety(id)); },
   legacy: (id, x) => x.say(kp.legacyAudition(id)),
   relocate: async (_, x) => { if (await confirmModal({ title: 'Move there for good?', body: 'You move your life: your home, your money into the local currency, your status to a sponsored work visa.', yes: 'Move' })) await x.say(await kp.relocate()); },

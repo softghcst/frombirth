@@ -474,6 +474,97 @@ section('the rest: moving to Seoul, a subunit, Japan, acting and hosting, a ligh
 }
 section('fan products, variety as a career, and the family route');
 
+// 9. Photocards: a market, what it does to idols, and collecting as anyone's hobby.
+{
+  rng.seed(99);
+  p = life('kr', 19);
+  kp.world();
+  const a = kp.agencies().find((x) => x.countryId === 'kr' && x.founded <= store.state.year);
+  const app = { id: 'app_c', auditionId: null, agencyId: a.id, category: 'multi', year: store.state.year, prepared: true, stage: 'offered', scores: {}, offer: { kind: 'trainee', agencyId: a.id, review: 2, costs: 'covered', allowance: 0, housing: 'dorm', rules: [], exit: 'notice' } };
+  k().apps[app.id] = app; kp.idolOf().apps.push(app.id); kp.idolOf().guardianOk = true;
+  kp.acceptOffer(app.id);
+  const lineup = ['player', ...a.trainees.slice(0, 4)];
+  for (const id of lineup.slice(1)) store.state.npcs[id].gender = 'female';
+  k().projects.pr_c = { id: 'pr_c', agencyId: a.id, year: store.state.year, gender: 'female', size: lineup.length, concept: a.concepts[0], lineup, status: 'announced' };
+  kp.idolOf().debutOffer = 'pr_c';
+  check(kp.acceptDebut().ok && kp.debut().ok, 'debuted (photocards)');
+  const grp = kp.myGroup();
+  grp.fandom.size = 200000; grp.fandom.core = 30000;
+  // The market: every member's card has a price; the dearest follow the members' followings.
+  kp.idolOf().pop = 100;
+  const v = kp.cardValues(grp);
+  check(kp.current(grp).every((m) => v[m.who] > 0), 'every member\'s card has a going price');
+  check(kp.cardRanking(grp)[0] === 'player', 'a member everyone loves has the dearest card');
+  // A small fandom's cards are cheap; a huge one's dear.
+  const small = Object.values(k().groups).find((g) => g.npc && g.debut && g.fandom.size < 50000) ?? null;
+  if (small) check(Math.max(...Object.values(kp.cardValues(small))) < Math.max(...Object.values(v)) * 3, 'prices follow the size of the fandom');
+  // The effect on albums: more members, more copies; more rare cards, more still.
+  const modest = kp.cardBoost(grp);
+  check(modest > 1, 'the cards sell albums');
+  let set = false;
+  for (let t2 = 0; t2 < 15 && !set; t2++) { kp.idolOf().acts.did.cardPolicy = false; set = kp.setCardPolicy('generous').ok; }
+  check(set && kp.cardBoost(grp) > modest && grp.cardPolicy === 'generous', 'asking for more rare cards sells more');
+  const eng = grp.fandom.engagement;
+  // Lowest in the group two years running: the player feels it.
+  kp.idolOf().pop = 0;
+  for (const w of lineup.slice(1)) store.state.npcs[w].flags.idol.appeal = 85;
+  // This year's prices were set while the player was everyone's favorite: it takes two more years to show.
+  year(); year(); year();
+  check(grp.fandom.engagement < eng, 'fans grumble about all the rare cards');
+  const mc = kp.myCard(grp);
+  check(mc && mc.rank === mc.of && mc.low && kp.idolOf().history.some((h) => /traded lowest/.test(h.text)), 'the lowest card two years running weighs on the player');
+}
+{
+  // A fan in Britain: buys albums, pulls cards, trades spares, sells, completes a set.
+  rng.seed(123);
+  p = life('uk', 16);
+  p.finance.cash = 5000;
+  kp.world();
+  for (let y2 = 0; y2 < 2; y2++) year();
+  const gs = kp.fanGroups();
+  check(gs.length > 0, 'there are groups to follow');
+  const g = gs[0];
+  const bias = kp.current(g)[0].who;
+  check(!kp.becomeFan(g.id, 'player').ok && kp.becomeFan(g.id, bias).ok && kp.fanOf().bias === bias, 'a fan with a favorite member');
+  const r = kp.albumsOf(g)[0];
+  check(!!r, 'the group has an album out');
+  const cash0 = p.finance.cash;
+  const buy = kp.buyAlbums(10, r.id);
+  const n = Object.values(kp.fanOf().cards).reduce((t, x) => t + x, 0);
+  check(buy.ok && n === 10 && p.finance.cash < cash0 && kp.fanOf().spent[store.state.year] === cash0 - p.finance.cash, 'ten albums, ten random cards, paid for');
+  check(Object.keys(kp.fanOf().cards).every((id) => r.performers.includes(kp.cardParts(id).who)), 'the cards are of the members on that album');
+  kp.buyAlbums(20, r.id);
+  check(!kp.buyAlbums(1, r.id).ok, 'thirty albums a year at most');
+  // Trading spares for a missing card.
+  const missing = r.performers.map((w) => `${r.id}|${w}|n`).find((id) => !kp.fanOf().cards[id]);
+  const spare0 = kp.spares().length;
+  if (missing) {
+    const tr = kp.tradeFor(missing);
+    check(tr.text && (tr.ok ? kp.fanOf().cards[missing] === 1 : true), 'a trade for a missing card');
+  }
+  check(kp.spares().length <= spare0, 'spares go in trades');
+  // Buying and selling single cards at the going price.
+  const want = r.performers.map((w) => `${r.id}|${w}|n`).find((id) => !kp.fanOf().cards[id]);
+  if (want) check(kp.buyCard(want).ok && kp.fanOf().cards[want] === 1, 'buying one card outright');
+  for (const w of r.performers) { const id = `${r.id}|${w}|n`; if (!kp.fanOf().cards[id]) kp.buyCard(id); }
+  check(kp.fanOf().sets.includes(r.id), 'every member\'s card from one album: a full set');
+  const sellId = Object.keys(kp.fanOf().cards)[0];
+  const before = p.finance.cash;
+  check(kp.sellCard(sellId).ok && p.finance.cash > before, 'selling a card brings money in');
+  check(kp.collectionValue() > 0, 'a collection has a value');
+  // Prices move with the years; the group's albums stay in the world while the fan collects.
+  const price0 = kp.cardValue(Object.keys(kp.fanOf().cards)[0]);
+  for (let y2 = 0; y2 < 4; y2++) year();
+  check(Object.keys(kp.fanOf().cards).every((id) => kp.cardParts(id).release), 'collected cards keep their albums, years later');
+  check(k().cards[g.id].year === store.state.year && k().cards[g.id].history.length >= 2 && price0 > 0, 'prices are worked out again each year, and the old ones kept');
+  // Spending too much shows.
+  kp.fanOf().spent[store.state.year] = 100000; p.finance.cash = 1000;
+  const mood = p.stats.mood;
+  year();
+  check(p.stats.mood <= mood || store.state.journal.some((j) => /more than you meant to/.test(j.text)), 'spending more than meant to shows');
+}
+section('photocards: a market for every member, rare cards and albums, the lowest card, and collecting as a hobby');
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('Debut, and everything after.');

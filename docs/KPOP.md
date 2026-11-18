@@ -126,7 +126,24 @@ founding years.
   open. Taking the place makes the player a little better known from the start, and costs a little standing: some say
   it was handed to them.
 
+- **Photocards** (`cardValues`, `cardRanking`, `cardBoost`, `setCardPolicy`): every album holds one random member's
+  card (from 1999). Each year every member's card has a going price among fans, from their own following, an ending
+  fairy or a solo release that year, a hiatus, and the size of the fandom; former members' cards trade lower, and a
+  disbanded group's hold up. Trading pays the idols nothing. It matters through albums (more members, more copies
+  bought to find the one you want: up to a fifth more physical sales) and through a price everyone can see: the player
+  feels it when theirs is the dearest, and when it is the cheapest two years running. The player can ask the company
+  for more rare cards (pre-order, lucky draw, fansign): about a tenth more sales, and fans grumble (engagement falls
+  each year); or for fewer. The company decides.
+- **Collecting, for any character** (`becomeFan`, `buyAlbums`, `tradeFor`, `buyCard`, `sellCard`): from age eight, from
+  Pursuits → K-pop fandom or My Idol Life → Photocards. Follow a group with a favorite member; buy albums (thirty a
+  year) for the random card inside, now and then a rare one; trade spares with other fans for a card you are missing
+  (eight trades a year; about one in twenty-five posted trades never comes back); buy or sell single cards at about
+  the going price; complete a set (every member's card from one album). Money moves both ways and is booked under
+  leisure; spending a large part of what one has in a year shows. The cards keep their albums in the world for as
+  long as they are collected; old cards are worth a little more. A character who later debuts finds their own cards on
+  the same market.
+
 ## Not built
 
-- Fan products are made by the group, not traded: there is no market for photocards between fans.
+- The fans the player trades with are not people: a trade is with "another fan".
 - Variety shows are one record each (ratings, the player's year); their other cast members are not people.

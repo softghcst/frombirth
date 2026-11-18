@@ -12,8 +12,9 @@
 //              fairies:[], hiatus, solo:[], acts:{ age, ... }, pop, trust }
 //   npc.flags.idol = { agencyId, since, sk:{vocal,dance,rap,stage,camera,media,korean}, born:{year,day}, status, groupId, pop, history:[] }
 import { rng } from '../rng.js';
-import { clamp, fmtMoney, localWage, wageIn } from '../util.js';
+import { clamp, fmtMoney, localWage, localCost, wageIn } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
+import { book } from './ledger.js';
 import { COUNTRIES } from '../data/countries.js';
 import { KPOP_ERAS, AGENCIES, AGENCY_BY_ID, FOCUSES, CONCEPTS, POSITIONS, MAX_POSITIONS, MUSIC_SHOWS, PROMO_WEEKS, SURVIVAL_FORMATS, MISSIONS, APPROACHES,
   FAIRY_STYLES, RELEASE_KINDS, KPOP_AWARDS, GROUP_WORDS, SONG_WORDS, FANDOM_WORDS, FAN_PRODUCTS, CHARACTER_KINDS, VARIETY_FORMATS, VARIETY_ROLES, VARIETY_WORDS, VARIETY_NOUNS, VARIETY_AWARDS } from '../data/kpop.js';
@@ -801,7 +802,7 @@ function receive(r, g) {
   const q = r.quality;
   const buzz = (fans.size ** 0.5) * (0.5 + fans.engagement / 100);
   const push = (agency(g.agencyId)?.reputation ?? 60) ** 2 * 4; // the agency's promotion: playlists, advertising, broadcast slots
-  r.units = { digital: Math.round((fans.size * 0.4 + (q - 35) ** 2 * 12 + push) * rng.around(1, 0.35)), physical: Math.round((fans.core * 0.9 + fans.size * 0.05) * rng.around(1, 0.25)), social: Math.round(buzz * rng.around(1, 0.4)) };
+  r.units = { digital: Math.round((fans.size * 0.4 + (q - 35) ** 2 * 12 + push) * rng.around(1, 0.35)), physical: Math.round((fans.core * 0.9 + fans.size * 0.05) * cardBoost(g) * rng.around(1, 0.25)), social: Math.round(buzz * rng.around(1, 0.4)) };
   r.chartPeak = Math.max(1, Math.round(120 - Math.log10(r.units.digital + 10) * 22 + rng.around(0, 8)));
   r.reception = r.chartPeak <= 10 ? 'a hit' : r.chartPeak <= 40 ? 'did well' : q >= 70 && r.chartPeak > 40 ? 'loved by critics, slow to find listeners' : 'performed modestly';
   return r;
@@ -1374,7 +1375,9 @@ export function tickKpop() {
 function forget(p) {
   const k = K();
   const known = new Set(p.npcIds);
-  const mine = new Set(idolOf(p).groups ?? []);
+  const mine = new Set([...(idolOf(p).groups ?? []), ...(p.fan ? [p.fan.groupId] : [])]);
+  const collected = new Set(Object.keys(p.fan?.cards ?? {}).map((id) => id.split('|')[0]));
+  for (const id of collected) if (k.releases[id]) mine.add(k.releases[id].groupId);
   const keepRel = new Set(Object.values(k.groups).filter((g) => mine.has(g.id) || g.members.some((m) => known.has(m.who))).flatMap((g) => g.releases));
   for (const w of k.wins) { keepRel.add(w.releaseId); }
   for (const [id, r] of Object.entries(k.releases)) if (!keepRel.has(id) && r.year < year() - 2) delete k.releases[id];
@@ -1697,6 +1700,7 @@ function yearExtras(p, lived, lines) {
   if (g?.debut) { const r = maybeRumor(p, g); if (r) lines.push(`A story in the press: ${r.text}`); }
   if (i.mc?.year === lived && !i.mc.paid) i.mc.due = true;
   varietyYear(p, lived, lines);
+  fanYear(p, lived, lines);
 }
 
 /** A health break records the condition it is for, and care while on the break clears it. */
@@ -1766,28 +1770,280 @@ export function launchProduct(kind, o = {}) {
   const what = { photobook: 'copies', concert_film: 'copies', seasons_greetings: 'sets', cafe: 'drinks', popup: 'visitors bought something', characters: 'items in the first year' }[kind];
   return result(true, `${x.name}: ${units.toLocaleString('en-US')} ${what}${kind === 'characters' ? `. Your character is a ${x.character}` : ''}.`);
 }
-/**
- * Photocards: every album comes with a random member's card, and fans trade for the ones they want. Each year the most
- * wanted cards follow each member's own following, with a little chance. Kept per year.
- */
+// ---------- Photocards: the market, and what it does to idols ----------
+//   state.kpop.cards[groupId] = { year, values:{ who: base units }, history:[{ year, values }] }   a member's card's going price
+//   g.cardPolicy = 'modest' | 'generous'   how many rare cards (pre-order, lucky draw, fansign) the company puts out
+// Fans trading among themselves pays the idols nothing: the market matters to them through album sales (fans buy
+// several copies to pull the member they love) and through a price everyone can see.
+
+export const RARE_MULTIPLE = 8;
+const CARD_FROM = 1999;
+/** How appealing a member is to collectors: their own following, plus moments that get people talking. */
+function appeal(g, who, y) {
+  const k = K();
+  let a;
+  if (who === 'player') a = 30 + idolOf().pop * 0.7;
+  else {
+    const fi = npc(who)?.flags.idol;
+    if (!fi) return 20;
+    fi.appeal ??= Math.round(clamp(35 + (fi.sk.camera + fi.sk.stage) / 6 + rng.around(0, 10), 25, 85));
+    a = fi.appeal + (fi.pop ?? 0) * 0.5;
+  }
+  // An ending fairy that year, a solo release, a hiatus.
+  const perf = g.performances.map((id) => k.performances[id]).filter((x) => x?.year === y);
+  if (perf.some((x) => x.fairy === who)) a += 6;
+  if (Object.values(k.releases).some((r) => r.year === y && r.solo === who)) a += 8;
+  const hi = who === 'player' ? idolOf().hiatus : npc(who)?.flags.idol?.hiatus;
+  if (hi) a -= 6;
+  return Math.max(5, a);
+}
+/** The going price of each member's ordinary card in a group this year (base units), worked out once a year. */
+export function cardValues(g, y = year()) {
+  if (!g?.debut || y < CARD_FROM) return {};
+  const k = K();
+  k.cards ??= {};
+  const c = (k.cards[g.id] ??= { year: null, values: {}, history: [] });
+  if (c.year === y) return c.values;
+  const scale = clamp(Math.log10(g.fandom.size + 10) - 3, 0.3, 3);
+  const now = current(g, y).map((m) => m.who);
+  const former = g.members.filter((m) => m.to != null && m.to < y).map((m) => m.who);
+  const ap = Object.fromEntries([...now, ...former].map((w) => [w, appeal(g, w, y)]));
+  const mean = now.reduce((t, w) => t + ap[w], 0) / Math.max(1, now.length);
+  const values = {};
+  for (const w of Object.keys(ap)) {
+    const share = ap[w] / Math.max(1, mean);
+    const old = former.includes(w) ? (g.status === 'disbanded' ? 0.9 : 0.6) : 1; // a former member's cards: fewer buyers, some nostalgia
+    values[w] = Math.max(1, Math.round(2 * scale * share ** 1.5 * old * rng.around(1, 0.1) * 10) / 10);
+  }
+  if (c.year != null) { c.history.push({ year: c.year, values: c.values }); if (c.history.length > 12) c.history.shift(); }
+  c.year = y; c.values = values;
+  return values;
+}
+/** The members by what their cards fetch, dearest first. */
+export function cardRanking(g, y = year()) {
+  const v = cardValues(g, y);
+  return current(g, y).map((m) => m.who).filter((w) => v[w] != null).sort((a, b) => v[b] - v[a]);
+}
+/** How much more of an album a group sells because of the cards inside: more members, more copies to find yours. */
+export function cardBoost(g) {
+  if (!g?.debut || year() < CARD_FROM) return 1;
+  return 1 + Math.min(0.2, 0.02 * current(g).length) + (g.cardPolicy === 'generous' ? 0.1 : 0);
+}
+/** The player asks the company to put out more rare cards (or fewer): more sales, at the price of what fans say. */
+export function setCardPolicy(policy) {
+  const g = myGroup();
+  if (!g?.debut) return result(false, 'Debut first.', 'neutral');
+  if (!['modest', 'generous'].includes(policy)) return result(false, 'Not a policy.', 'neutral');
+  if ((g.cardPolicy ?? 'modest') === policy) return result(false, 'That is already how it is.', 'neutral');
+  if (idolOf().acts.did.cardPolicy) return result(false, 'You raised it this year already.', 'neutral');
+  idolOf().acts.did.cardPolicy = true;
+  const a = agency(g.agencyId);
+  // The company decides. It likes the money; a careful company worries about the fans.
+  const yes = policy === 'generous' ? rng.chance(clamp(0.8 - (a.welfare - 50) / 100, 0.3, 0.9)) : rng.chance(clamp(0.3 + (a.welfare - 50) / 80 + idolOf().pop / 200, 0.15, 0.85));
+  if (!yes) return result(false, policy === 'generous' ? `${a.name} would rather not flood the market.` : `${a.name} likes the sales too much to cut back.`, 'neutral');
+  g.cardPolicy = policy;
+  g.history.push({ year: year(), text: policy === 'generous' ? 'More rare cards in every release: pre-orders, lucky draws, fansign cards.' : 'Fewer rare cards from now on.' });
+  return result(true, policy === 'generous' ? 'More rare cards from the next release: sales will rise, and some fans will grumble about the cost.' : 'Fewer rare cards from now on. Fans notice, and are glad.');
+}
+/** Once a year: the market for the player's groups and the groups they collect, and what it does to the player. */
 function photocardYear(g, y) {
-  if (!g.debut || y < 1999) return null;
-  const ms = current(g, y).map((m) => m.who);
-  if (ms.length < 2) return null;
-  const pop = (w) => (w === 'player' ? idolOf().pop : npc(w)?.flags.idol?.pop ?? 20) + rng.around(0, 6);
-  const order = ms.map((w) => [w, pop(w)]).sort((a, b) => b[1] - a[1]).map(([w]) => w);
+  if (!g.debut || y < CARD_FROM) return null;
+  const order = cardRanking(g, y);
+  if (order.length < 2) return null;
   g.merch ??= { lightstick: null, fanclub: null, sales: {} };
   (g.merch.cards ??= {})[y] = { order, top: order[0] };
-  if (order[0] === 'player' && !g.merch.cards.topNoted) { g.merch.cards.topNoted = y; note(`Your photocard was the most wanted of ${g.name}'s in ${y}.`); }
+  if (g.cardPolicy === 'generous') g.fandom.engagement = clamp(g.fandom.engagement - 2);
+  if (!current(g, y).some((m) => m.who === 'player')) return g.merch.cards[y];
+  const p = player();
+  const i = idolOf(p);
+  if (order[0] === 'player') {
+    p.stats.mood = clamp(p.stats.mood + 3);
+    if (!g.merch.cards.topNoted) { g.merch.cards.topNoted = y; note(`Your photocard was the most wanted of ${g.name}'s in ${y}.`); }
+  }
+  const last = order.at(-1) === 'player';
+  i.cardLow = last ? (i.cardLow ?? 0) + 1 : 0;
+  if (i.cardLow >= 2) {
+    p.stats.mood = clamp(p.stats.mood - 5);
+    g.merch.cards[y].low = true;
+    if (i.cardLow === 2) note('Your card traded lowest in the group for a second year. Fans post the prices; you read them.');
+  }
   return g.merch.cards[y];
 }
-/** The player's photocard's place among the group's in the latest year counted. */
+/** The player's photocard's place among the group's in the latest year counted, and its price. */
 export function myCard(g = myGroup()) {
   const ys = Object.keys(g?.merch?.cards ?? {}).filter((k) => /^\d+$/.test(k));
   const y = ys.at(-1);
   if (!y) return null;
   const c = g.merch.cards[y];
-  return { year: Number(y), rank: c.order.indexOf('player') + 1, of: c.order.length, top: c.top };
+  return { year: Number(y), rank: c.order.indexOf('player') + 1, of: c.order.length, top: c.top, low: !!c.low };
+}
+
+// ---------- Collecting: any character can be a fan ----------
+//   p.fan = { groupId, bias, since, cards:{ cardId: count }, spent:{ year: amount }, earned, sets:[releaseId], acts:{ age, albums, trades }, log:[] }
+//   cardId = 'releaseId|who|n' (an ordinary card) or 'releaseId|who|r' (a rare one)
+
+export const ALBUM_PRICE = 18; // base units
+export const ALBUMS_PER_YEAR = 30;
+export const TRADES_PER_YEAR = 8;
+export function fanOf(p = player()) {
+  const f = p.fan;
+  if (f && f.acts?.age !== p.age) f.acts = { age: p.age, albums: 0, trades: 0 };
+  return f ?? null;
+}
+const local = (v, p = player()) => Math.round(localCost(v, COUNTRIES[p.countryId]));
+const flog = (text) => { const f = fanOf(); f.log.push({ year: year(), text }); if (f.log.length > 40) f.log.shift(); };
+export const cardParts = (id) => { const [rel, who, kind] = id.split('|'); return { releaseId: rel, who, rare: kind === 'r', release: K().releases[rel] ?? null }; };
+/** The groups a fan can follow: those that have debuted and are still releasing, best known first. */
+export function fanGroups() {
+  if (!available() || year() < CARD_FROM) return [];
+  world();
+  return Object.values(K().groups).filter((g) => g.debut && g.status === 'active' && !g.parentId).sort((a, b) => b.fandom.size - a.fandom.size).slice(0, 15);
+}
+/** A group's albums a fan can still buy: the latest few. A group with nothing out yet puts something out. */
+export function albumsOf(g) {
+  if (!g.releases.some((id) => K().releases[id] && !K().releases[id].solo)) {
+    const r = makeRelease(g, 'mini', g.concept);
+    r.songs = [{ title: r.title, title_track: true }];
+    receive(r, g);
+  }
+  return g.releases.map((id) => K().releases[id]).filter((r) => r && !r.solo && r.performers.length).slice(-4).reverse();
+}
+/** Becomes a fan of a group, with a favorite member (the one whose cards they want most). */
+export function becomeFan(groupId, bias) {
+  const p = player();
+  if (p.age < 8) return result(false, 'A little young for collecting.', 'neutral');
+  const g = group(groupId);
+  if (!g?.debut || g.status !== 'active') return result(false, 'That group is not putting out albums.', 'neutral');
+  if (!current(g).some((m) => m.who === bias) || bias === 'player') return result(false, 'Pick one of the members.', 'neutral');
+  const had = p.fan;
+  p.fan = { groupId, bias, since: had?.since ?? year(), cards: had?.cards ?? {}, spent: had?.spent ?? {}, earned: had?.earned ?? 0, sets: had?.sets ?? [], acts: had?.acts ?? null, log: had?.log ?? [] };
+  fanOf(p);
+  flog(`Became a fan of ${g.name}; favorite member ${full(bias)}.`);
+  return result(true, `You are a fan of ${g.name} now. Your favorite: ${full(bias)}.`);
+}
+/** What a card is worth this year (base units). */
+export function cardValue(id) {
+  const c = cardParts(id);
+  if (!c.release) return 0;
+  const g = group(c.release.groupId);
+  const v = cardValues(g)[c.who] ?? 0.5;
+  const age = year() - c.release.year;
+  return Math.round(v * (c.rare ? RARE_MULTIPLE : 1) * (age >= 5 ? 1.3 : 1) * 10) / 10; // an old card is rarer now
+}
+const spend = (amount, why, p = player()) => {
+  const f = fanOf(p);
+  p.finance.cash -= amount;
+  f.spent[year()] = (f.spent[year()] ?? 0) + amount;
+  book({ cat: 'leisure', desc: why, src: 'action' });
+};
+const earn = (amount, why, p = player()) => {
+  const f = fanOf(p);
+  p.finance.cash += amount;
+  f.earned += amount;
+  book({ cat: 'leisure', desc: why, src: 'action' });
+};
+const give = (id, n = 1) => { const f = fanOf(); f.cards[id] = (f.cards[id] ?? 0) + n; checkSet(cardParts(id).release); };
+const take = (id) => { const f = fanOf(); f.cards[id] -= 1; if (f.cards[id] <= 0) delete f.cards[id]; };
+/** Every member's ordinary card from one album: a full set. */
+function checkSet(r) {
+  const f = fanOf();
+  if (!r || f.sets.includes(r.id)) return;
+  if (r.performers.every((w) => f.cards[`${r.id}|${w}|n`] || f.cards[`${r.id}|${w}|r`])) {
+    f.sets.push(r.id);
+    flog(`Completed the full set of ${r.title}.`);
+    if (f.sets.length === 1) milestone(`Completed a full photocard set: ${group(r.groupId)?.name}, ${r.title}.`, 'personal');
+  }
+}
+/** Buys albums: each comes with one random member's card, now and then a rare one. */
+export function buyAlbums(n, releaseId = null) {
+  const p = player();
+  const f = fanOf(p);
+  if (!f) return result(false, 'Pick a group to follow first.', 'neutral');
+  const g = group(f.groupId);
+  const albums = g ? albumsOf(g) : [];
+  const r = albums.find((x) => x.id === releaseId) ?? albums[0];
+  if (!r) return result(false, 'There is no album to buy.', 'neutral');
+  n = Math.max(1, Math.min(n, ALBUMS_PER_YEAR - f.acts.albums));
+  if (f.acts.albums >= ALBUMS_PER_YEAR) return result(false, `${ALBUMS_PER_YEAR} albums in a year is enough for anyone's shelves.`, 'neutral');
+  const each = local(ALBUM_PRICE, p);
+  if (p.finance.cash < each * n) return result(false, p.age < 18 ? 'You do not have the money. Maybe next birthday.' : 'You cannot afford that many.', 'neutral');
+  spend(each * n, `${n} ${n === 1 ? 'copy' : 'copies'} of ${r.title}`, p);
+  f.acts.albums += n;
+  const rareP = g.cardPolicy === 'generous' ? 0.07 : 0.03;
+  const got = [];
+  for (let k2 = 0; k2 < n; k2++) { const who = rng.pick(r.performers); const rare = rng.chance(rareP); const id = `${r.id}|${who}|${rare ? 'r' : 'n'}`; give(id); got.push({ who, rare }); }
+  const bias = got.filter((x) => x.who === f.bias).length;
+  const rares = got.filter((x) => x.rare);
+  const text = `${n === 1 ? 'One album' : `${n} albums`} of ${r.title}: ${got.map((x) => `${full(x.who).split(' ')[0]}${x.rare ? ' (rare!)' : ''}`).join(', ')}.${bias ? ` ${bias === 1 ? 'A' : bias} ${full(f.bias).split(' ')[0]} card${bias === 1 ? '' : 's'}!` : ` No ${full(f.bias).split(' ')[0]}.`}`;
+  if (rares.length) flog(`Pulled a rare ${full(rares[0].who)} card from ${r.title}.`);
+  return result(true, text, bias || rares.length ? 'good' : 'neutral');
+}
+/** Duplicates the fan could trade away, cheapest first. */
+export const spares = (f = fanOf()) => Object.entries(f?.cards ?? {}).filter(([id, n]) => n > (cardParts(id).who === f.bias ? 99 : 1) && cardParts(id).release).map(([id]) => id).sort((a, b) => cardValue(a) - cardValue(b));
+/**
+ * Trades spare cards for one the fan wants: other fans take duplicates worth about as much. Now and then a trade by post
+ * goes wrong: the cards sent never come back.
+ */
+export function tradeFor(id) {
+  const f = fanOf();
+  if (!f) return result(false, 'You do not collect.', 'neutral');
+  const c = cardParts(id);
+  if (!c.release) return result(false, 'That card is not out there.', 'neutral');
+  if (f.acts.trades >= TRADES_PER_YEAR) return result(false, `${TRADES_PER_YEAR} trades a year is plenty.`, 'neutral');
+  const want = cardValue(id) * rng.around(1, 0.15);
+  const offer = [];
+  let sum = 0;
+  for (const s2 of spares(f).filter((x) => x !== id)) { if (sum >= want) break; offer.push(s2); sum += cardValue(s2); }
+  if (sum < want) return result(false, `Nobody will give up ${full(c.who).split(' ')[0]}'s card for the spares you have. More duplicates, or buy it.`, 'neutral');
+  f.acts.trades += 1;
+  for (const s2 of offer) take(s2);
+  if (rng.chance(0.04)) { flog(`Sent ${offer.length} ${offer.length === 1 ? 'card' : 'cards'} in a trade; nothing came back.`); return result(false, 'You post your cards. Nothing comes back, and the account that offered the trade is gone.'); }
+  give(id);
+  flog(`Traded ${offer.length} ${offer.length === 1 ? 'card' : 'cards'} for ${full(c.who)}'s${c.rare ? ' rare' : ''} card from ${c.release.title}.`);
+  return result(true, `Traded ${offer.map((x) => full(cardParts(x).who).split(' ')[0]).join(', ')} for ${full(c.who).split(' ')[0]}${c.rare ? ' (rare)' : ''}.`);
+}
+/** Buys one card outright from another fan, at the going price and a little more. */
+export function buyCard(id) {
+  const p = player();
+  const f = fanOf(p);
+  if (!f) return result(false, 'You do not collect.', 'neutral');
+  const c = cardParts(id);
+  if (!c.release) return result(false, 'That card is not out there.', 'neutral');
+  const price = Math.max(1, local(cardValue(id) * 1.15, p));
+  if (p.finance.cash < price) return result(false, 'You cannot afford it.', 'neutral');
+  spend(price, `A photocard: ${full(c.who)}`, p);
+  give(id);
+  return result(true, `Bought ${full(c.who).split(' ')[0]}'s${c.rare ? ' rare' : ''} card from ${c.release.title} for ${fmtMoney(price, COUNTRIES[p.countryId])}.`);
+}
+/** Sells one card to another fan, at about the going price. */
+export function sellCard(id) {
+  const p = player();
+  const f = fanOf(p);
+  if (!f?.cards[id]) return result(false, 'You do not have that card.', 'neutral');
+  const c = cardParts(id);
+  const price = Math.max(1, local(cardValue(id) * rng.around(0.85, 0.1), p));
+  take(id);
+  earn(price, `Sold a photocard: ${full(c.who)}`, p);
+  if (c.rare) flog(`Sold a rare ${full(c.who)} card.`);
+  return result(true, `Sold ${full(c.who).split(' ')[0]}'s${c.rare ? ' rare' : ''} card for ${fmtMoney(price, COUNTRIES[p.countryId])}.`);
+}
+/** What a collection is worth this year, in the player's money. */
+export function collectionValue(f = fanOf()) {
+  if (!f) return 0;
+  return local(Object.entries(f.cards).reduce((t, [id, n]) => t + cardValue(id) * n, 0));
+}
+/** The year in collecting: prices move; spending more than meant to shows. */
+function fanYear(p, lived, lines) {
+  const f = p.fan;
+  if (!f) return;
+  const g = group(f.groupId);
+  if (g?.debut) cardValues(g);
+  const spent = f.spent[lived] ?? 0;
+  if (spent > local(400, p) && spent > 0.25 * (Math.max(0, p.finance.cash) + spent)) {
+    p.stats.mood = clamp(p.stats.mood - 3);
+    lines.push(`You spent ${fmtMoney(spent, COUNTRIES[p.countryId])} on albums and cards last year: more than you meant to.`);
+  }
+  if (g && g.status === 'disbanded' && !f.endedNoted) { f.endedNoted = true; lines.push(`${g.name} has disbanded. Your cards are all there is now: they may be worth more one day.`); }
 }
 /** A year's fan products: what was launched that year, and a character line that keeps selling. */
 function productsYear(g, y) {
