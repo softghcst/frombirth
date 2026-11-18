@@ -15,6 +15,7 @@ import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, PROGRAMMES, HOUSING, CLIQUES, CLIQUE
 import { MAJORS, MAJOR_BY_ID } from '../data/majors.js';
 import * as sch from './schooling.js';
 import { graduationDay } from './schoollife.js';
+import { leftSchoolTeam } from './sports.js';
 import { uniOf, onResults, remember as rememberAlumnus } from './university.js';
 import * as campus from './campus.js';
 import * as adult from './adulted.js';
@@ -654,6 +655,7 @@ export function quitClub(id) {
   const e = player().education;
   if (!e.clubs.includes(id)) return result(false, 'You are not a member.');
   e.clubs = e.clubs.filter((c) => c !== id);
+  if (id === 'sports_team') leftSchoolTeam(e.sport);
   const text = `You left the ${CLUB_BY_ID[id].name.toLowerCase()}.`;
   log(text);
   return result(true, text, 'neutral');

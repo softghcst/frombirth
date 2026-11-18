@@ -190,7 +190,7 @@ let y2 = null;   // a year in work (people are sometimes laid off: try again)
 for (let i = 0; i < 8 && !(y2?.income.salary > 0 && y2?.expense.tax > 0); i++) { if (!p.career.careerId) hire(office, 0, 60, 'Hired.'); advanceYear(); y2 = yearTotals(store.state.ledger, store.state.year, 'USD'); }
 check((y2.expense.housing ?? 0) > 0 && (y2.expense.living ?? 0) > 0, 'rent and everyday spending were paid and recorded');
 check((y2.income.salary ?? 0) > 0 && (y2.expense.tax ?? 0) > 0, 'salary and the tax on it are recorded separately');
-check(y2.in - (y2.income.salary ?? 0) - (y2.income.partTime ?? 0) - (y2.income.interestIncome ?? 0) - (y2.income.giftIn ?? 0) - (y2.income.otherIncome ?? 0) - (y2.income.gigs ?? 0) - (y2.income.winnings ?? 0) - (y2.income.rentIncome ?? 0) - (y2.income.pension ?? 0) === 0, 'income is made of real sources only');
+check(y2.in - (y2.income.salary ?? 0) - (y2.income.partTime ?? 0) - (y2.income.interestIncome ?? 0) - (y2.income.giftIn ?? 0) - (y2.income.otherIncome ?? 0) - (y2.income.gigs ?? 0) - (y2.income.winnings ?? 0) - (y2.income.rentIncome ?? 0) - (y2.income.pension ?? 0) - (y2.income.benefits ?? 0) - (y2.income.prizeMoney ?? 0) - (y2.income.sponsorship ?? 0) === 0, 'income is made of real sources only');
 // 11-13. a goal, money saved toward it, progress.
 p.finance.cash += 0;
 const acct = bank.accounts()[0];
@@ -207,6 +207,8 @@ check(bank.goalList()[0].status === 'completed' && goalsDone() === 1, 'the goal 
 bank.checkGoals(); bank.withdraw(acct.id, 500);
 check(bank.goalList()[0].status === 'completed' && goalsDone() === 1, 'a goal once met stays met, and is recorded once');
 // 14-18. another year; balances, history and net worth.
+// Enough cash for a costly year, so the bills never have to empty the bank account this check counts.
+p.finance.cash += 200000; book({ cat: 'giftIn', desc: 'For the test' });
 const cashWas = p.finance.cash; const txWas = txs().length;
 advanceYear();
 check(txs().length > txWas && p.finance.cash !== cashWas, 'a year of income and bills moved the money');

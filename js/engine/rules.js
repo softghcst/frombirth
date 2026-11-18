@@ -14,11 +14,11 @@ import { store, player } from '../state.js';
 import { post } from './economy.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { LIVING } from '../data/living.js';
-import { regionOf } from '../data/cities.js';
+import { regionOf, CITY_ROWS } from '../data/cities.js';
 
 /** The region whose law applies in a city: a recorded state or province, or else the area around the city itself. */
 export const lawRegion = (placeId, city) => (city ? regionOf(placeId, city) ?? `around:${city}` : null);
-import { RULES, PLACE_RULES, REGION_RULES, REFORM, REGIONAL_RULES, REGIONAL_COUNTRIES } from '../data/rules.js';
+import { RULES, PLACE_RULES, REGION_RULES, REFORM, REGIONAL_POWERS } from '../data/rules.js';
 
 const here = () => player().countryId;
 const parentOf = (placeId) => COUNTRIES[placeId]?.place?.parentId ?? null;
@@ -58,6 +58,9 @@ export const rule = (id, placeId, opts) => source(id, placeId, opts).value;
 export const lawsOf = (placeId = here()) => ({ marriage: rule('sameSexMarriage', placeId), lgbt: rule('lgbt', placeId), gambling: rule('gambling', placeId),
   deathPenalty: rule('deathPenalty', placeId), conscription: rule('conscription', placeId) });
 
+/** Whatever a place's law allows, nobody marries before this age in the game. */
+export const MARRIAGE_FLOOR = 18;
+
 const WORDS = (def, v) => (def.kind === 'age' ? String(v) : def.kind === 'flag' ? def.words[v ? 1 : 0] : def.words[v]);
 
 /**
@@ -81,7 +84,10 @@ export function may(action, opts = {}) {
     case 'divorce': return rule('divorce', id) ? { ok: true, why: '' } : no(`There is no divorce in ${name}. A marriage can only be annulled, and that is slow and rare.`);
     case 'marry': {
       const o = opts.partner;
-      if (age('marriageAge', 'marry')) return age('marriageAge', 'marry');
+      const women = rule('marriageAgeWomen', id);
+      const key = p.gender === 'female' && women != null ? 'marriageAgeWomen' : 'marriageAge';
+      if (age(key, 'marry')) return age(key, 'marry');
+      if (p.age < MARRIAGE_FLOOR) return no(`You have to be ${MARRIAGE_FLOOR} to marry.`);
       if (o && o.gender === p.gender && !rule('sameSexMarriage', id)) return no(`Two ${p.gender === 'male' ? 'men' : p.gender === 'female' ? 'women' : 'people of the same gender'} cannot marry in ${name}.`);
       return { ok: true, why: '' };
     }
@@ -94,10 +100,11 @@ export function may(action, opts = {}) {
  * @returns {{id, name, value, text:string, source:string, note:string}[]}
  */
 export function sheet(placeId = here(), opts = {}) {
-  return Object.entries(RULES).map(([id, def]) => {
+  return Object.entries(RULES).filter(([, def]) => !def.hidden).map(([id, def]) => {
     const s = source(id, placeId, opts);
+    const women = id === 'marriageAge' ? source('marriageAgeWomen', placeId, opts).value : null;
     const up = parentOf(placeId);
-    return { id, name: def.name, value: s.value, text: WORDS(def, s.value), source: s.source,
+    return { id, name: def.name, value: s.value, text: women != null && women !== s.value ? `${s.value} for men, ${women} for women` : WORDS(def, s.value), source: s.source,
       note: s.source === 'enacted' ? `changed in ${s.year}` : s.source === 'enacted region' ? `changed by the region in ${s.year}` : s.source === 'parent' ? `as in ${theCountry(COUNTRIES[up].name)}` : s.source === 'region' ? 'local law' : '' };
   });
 }
@@ -108,6 +115,7 @@ export function sheet(placeId = here(), opts = {}) {
 export function enact(placeId, id, value, by = 'the legislature') {
   const def = RULES[id];
   if (!def || !COUNTRIES[placeId]) throw new Error(`Cannot enact ${id} in ${placeId}`);
+  if (regionalPowers(placeId).includes(id)) throw new Error(`${id} is left to the regions in ${placeId}: a national law cannot change it`);
   const was = rule(id, placeId, { region: null });
   const b = book();
   (b[placeId] ??= {})[id] = { value, year: store.state.year, by };
@@ -146,7 +154,14 @@ function describe(placeId, id, was, value) {
  * @returns {{rule:string, value:any, name:string, wants:Object<string,number>, liked:number}[]}
  */
 export function choices(placeId = here(), opts = {}) {
-  const r = (id) => rule(id, placeId, { region: opts.region ?? null });
+  const all = lawOptions(placeId, opts.region ?? null);
+  // Nationally, the matters left to the regions are not on offer: they are each region's to decide (REGIONAL_POWERS).
+  return opts.region ? all : all.filter((c) => !regionalPowers(placeId).includes(c.rule));
+}
+
+/** Every change of law that could be made, judged by the law in force in `region` (or nationally). */
+function lawOptions(placeId, region) {
+  const r = (id) => rule(id, placeId, { region });
   const climate = { equal: 2, limited: 0, hostile: -3 }[r('lgbt')];
   const out = [];
   const add = (id, value, name, wants, liked) => { if (r(id) !== value) out.push({ rule: id, value, name, wants, liked }); };
@@ -178,10 +193,10 @@ export function choices(placeId = here(), opts = {}) {
 }
 
 /** The reforms a place is ripe for, given how settled it is. */
-function reformsFor(placeId) {
+function reformsFor(placeId, region = null) {
   const L = LIVING[placeId];
   if (!L) return [];
-  const r = (id) => rule(id, placeId, { region: null });
+  const r = (id) => rule(id, placeId, { region });
   const out = [];
   if (!r('sameSexMarriage') && (r('lgbt') === 'equal' || (r('lgbt') === 'limited' && L.stability >= 62))) out.push(['sameSexMarriage', true]);
   if (r('lgbt') === 'limited' && L.stability >= 60) out.push(['lgbt', 'equal']);
@@ -208,7 +223,10 @@ export function tickRules() {
   if (!rng.chance(REFORM.chance)) return null;
   const p = player();
   const placeId = rng.chance(REFORM.homeBias) ? p.countryId : rng.pick(COUNTRY_LIST).id;
-  const options = reformsFor(placeId);
+  // A country whose regions make some law: now and then one of them changes one of those laws instead.
+  const regions = [...new Set((COUNTRIES[placeId]?.cities ?? []).map((c) => lawRegion(placeId, c)).filter(Boolean))];
+  if (regionsLegislate(placeId) && regions.length && rng.chance(0.4)) return regionalReform(placeId, rng.pick(regions));
+  const options = reformsFor(placeId).filter(([id]) => !regionalPowers(placeId).includes(id));
   if (!options.length) return null;
   const [id, value] = rng.pick(options);
   // Where this life has a political world for the country, a government does not pass what it opposes.
@@ -221,23 +239,39 @@ export function tickRules() {
   return e;
 }
 
+/** A region changes one of the laws it controls, where it is ripe for it. */
+function regionalReform(placeId, region) {
+  const options = reformsFor(placeId, region).filter(([id]) => regionalPowers(placeId).includes(id));
+  if (!options.length) return null;
+  const [id, value] = rng.pick(options);
+  const city = (COUNTRIES[placeId]?.cities ?? []).find((c) => lawRegion(placeId, c) === region);
+  const name = CITY_ROWS[placeId]?.[city]?.region ?? `The area around ${city}`;
+  const e = enactRegional(placeId, region, id, value, name);
+  const p = player();
+  const mine = placeId === p.countryId && (p.regionId ?? lawRegion(placeId, p.city)) === region;
+  post(placeId, 'law', `${e.text}${mine ? ' It is the law where you live now.' : ''}`);
+  return e;
+}
+
 /** Changes of law in this life, newest first; for one place, or everywhere. */
 export const reforms = (placeId) => [...(book().history ?? [])].filter((e) => !placeId || e.placeId === placeId).reverse();
 
 // ---------- Regional law ----------
 
 /** Whether the regions of a country make any of their own law. */
-export const regionsLegislate = (placeId) => REGIONAL_COUNTRIES.includes(placeId);
+export const regionsLegislate = (placeId) => (REGIONAL_POWERS[placeId]?.length ?? 0) > 0;
+/** The laws this country's regions may make for themselves. */
+export const regionalPowers = (placeId) => REGIONAL_POWERS[placeId] ?? [];
 
 /** The changes of law a regional government could make now, for its own region. */
 export function regionalChoices(placeId, region) {
   if (!regionsLegislate(placeId) || !region) return [];
-  return choices(placeId, { region }).filter((c) => REGIONAL_RULES.includes(c.rule));
+  return choices(placeId, { region }).filter((c) => regionalPowers(placeId).includes(c.rule));
 }
 
 /** Records a regional change of law. Applies to people living in that region only. */
 export function enactRegional(placeId, region, id, value, regionName, by = 'the regional assembly') {
-  if (!REGIONAL_RULES.includes(id) || !regionsLegislate(placeId)) throw new Error(`${id} is not regional law in ${placeId}`);
+  if (!regionalPowers(placeId).includes(id)) throw new Error(`${id} is not regional law in ${placeId}`);
   const was = rule(id, placeId, { region });
   const b = book();
   ((b.regions ??= {})[`${placeId}/${region}`] ??= {})[id] = { value, year: store.state.year, by };

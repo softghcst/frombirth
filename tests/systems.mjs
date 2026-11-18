@@ -37,7 +37,7 @@ for (const c of COUNTRY_LIST) {
     const g = Math.round(T * m); const b = sys.taxBreakdown(g, c);
     check(b.tax >= last && b.tax <= g && g - b.tax >= lastNet, `${c.id}: tax or take-home goes the wrong way at ${m} times the typical wage`);
     check(b.tax === b.bands.reduce((s, x) => s + x.taxed * x.rate, 0) || Math.abs(b.tax - b.bands.reduce((s, x) => s + x.taxed * x.rate, 0)) < 1, `${c.id}: the bands do not add up`);
-    check(b.marginal <= 0.62 + 1e-9, `${c.id}: marginal rate above the cap`);
+    check(b.marginal <= 0.65 + 1e-9, `${c.id}: marginal rate above the cap`);
     last = b.tax; lastNet = g - b.tax;
   }
   const one = sys.taxBreakdown(T + 1, c).tax - sys.taxBreakdown(T, c).tax; check(one >= 0 && one <= 1, `${c.id}: a jump in tax for one more unit earned`);
@@ -49,8 +49,9 @@ section(`income tax: ${COUNTRY_LIST.length} countries, monotonic, continuous, ne
 
 // 3. The shapes differ in the way their names say.
 const eff = (id, m) => sys.taxBreakdown(sys.typicalWage(COUNTRIES[id]) * m, COUNTRIES[id]).effective / COUNTRIES[id].incomeTax;
-check(eff('fr', 10) > eff('us', 10) && eff('us', 10) > eff('ru', 10), 'on ten times a typical wage: steep bands take most, rising bands less, a flat rate least');
-check(Math.abs(eff('ru', 0.3) - eff('ru', 30)) < 1e-6, 'a flat tax is the same share of any income');
+check(eff('fr', 10) > eff('fr', 1) && eff('us', 10) > eff('us', 1) && Math.abs(eff('hu', 10) - eff('hu', 1)) < 1e-6, 'banded taxes take a larger share of a large income; a flat tax does not');
+{ const { TAX_TOP } = await import('../js/data/systems.js'); for (const id of ['de', 'nl', 'cn', 'cl', 'uk']) check(Math.abs(sys.taxBreakdown(sys.typicalWage(COUNTRIES[id]) * 200, COUNTRIES[id]).marginal - TAX_TOP[id]) < 1e-9, `${id}: the top band is the country's published top rate`); }
+check(Math.abs(eff('hu', 0.3) - eff('hu', 30)) < 1e-6, 'a flat tax is the same share of any income');
 check(eff('fr', 0.3) < eff('fr', 1) && eff('us', 0.3) < eff('us', 1), 'the low paid pay a smaller share where bands rise');
 check(sys.taxBreakdown(1e9, COUNTRIES.ae).tax === 0 && /No income tax/.test(sys.taxLine(COUNTRIES.ae)), 'the United Arab Emirates takes nothing');
 check(profile('de').game.some(([k, v]) => k === 'How income is taxed' && /Steeply/.test(v)) && profile('us').game.some(([k, v]) => k === 'Health care' && /Private insurance/.test(v)), 'the world explorer says how each works');
@@ -70,7 +71,8 @@ p.legal.incarceration = { yearsLeft: 2 }; check(careCost(1000) === 0, 'prison ca
 p = life('uk'); check(sys.cover().covered && sys.cover().premium === 0 && careCost(1000) < full, 'United Kingdom: covered, no premium');
 p = life('de'); k = sys.cover(); check(k.covered && k.share === 0.2 && k.premium > 0 && !k.canBuy, 'Germany: everyone insured, a contribution and a share of each bill');
 const c3 = p.finance.cash; sys.tickCover(); check(p.finance.cash === c3, 'no contribution from someone with no income'); job(); p.flags.coverPaidAge = null; const c4 = p.finance.cash; sys.tickCover(); check(p.finance.cash === c4 - sys.cover().premium, 'and one from someone who earns');
-p = life('ae'); check(!sys.cover().covered && !sys.cover().canBuy, 'United Arab Emirates without a job: no cover, and none to buy'); job(); check(sys.cover().covered, 'with one: covered');
+p = life('ae'); check(sys.cover().covered && /citizen/.test(sys.cover().how), 'an Emirati is covered by the national scheme, job or no job');
+p = life('in'); p.countryId = 'ae'; check(!sys.cover().covered && !sys.cover().canBuy, 'an expatriate in the United Arab Emirates without a job: no cover, and none to buy'); job(); check(sys.cover().covered, 'with one: covered');
 p = life('mx'); check(sys.cover().share === 0.4, 'Mexico: public clinics, and a good part paid by the patient');
 p = life('us'); sys.setCover(true); p.countryId = 'ca'; sys.tickCover(); check(!p.flags.healthCover, 'private cover does not travel: it ends on moving abroad');
 for (const c of COUNTRY_LIST) check(!!sys.healthModelOf(c) && sys.healthLine(c).length > 10, `${c.id}: no health model`);

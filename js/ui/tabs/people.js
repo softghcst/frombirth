@@ -14,6 +14,7 @@ import { openFamilyTree } from '../familyTree.js';
 import { avatarSvg, petGlyph, royalDress } from '../avatar.js';
 import { animalById, reconcile as reconcileAnimals } from '../../engine/animals.js';
 import * as zooUi from '../animals.js';
+import * as sportsUi from '../sports.js';
 import { openAnimalHub } from '../animalHub.js';
 import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
@@ -26,7 +27,7 @@ import { MONARCHIES } from '../../data/royalty.js';
 import { openMoments } from '../moments.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
-  'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
+  'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'ex', 'enemy', 'cellmate'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
@@ -34,6 +35,7 @@ const GROUPS = [
   ['Friends', ['friend', 'classmate']],
   ['Your household', ['staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
+  ['Sport', ['coach', 'teammate', 'agent']],
   ['Others', ['ex', 'enemy', 'cellmate']],
 ];
 
@@ -360,6 +362,7 @@ export function openNpc(npc, api, back, o = {}) {
   });
 }
 zooUi.connect({ openPerson: openNpc, editStats: editPerson });
+sportsUi.connect({ openPerson: openNpc });
 
 export default {
   id: 'people', title: 'People', short: 'People',

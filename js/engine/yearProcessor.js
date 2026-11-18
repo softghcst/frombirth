@@ -7,6 +7,7 @@ import { tickCare } from './animalCare.js';
 import { tickEquestrian } from './equestrian.js';
 import { tickLife } from './animalLife.js';
 import { tickArcs } from './animalArcs.js';
+import { tickSports } from './sportsLife.js';
 import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
@@ -146,6 +147,7 @@ export function advanceYear() {
   tickEquestrian();
   tickLife(); // behaviour that begins, and what families argue about
   tickArcs(); // stories that take years
+  booked('sport', 'Sport', () => tickSports()); // the athletic year: training, seasons and events, and what they cost and paid
   book({ cat: 'auto', src: 'year', desc: 'The rest of the year' });
   tickSense();
   tickMoneyReview();
