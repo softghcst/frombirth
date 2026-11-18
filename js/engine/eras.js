@@ -13,6 +13,7 @@ import { rule } from './rules.js';
 import { LAW_HISTORY } from '../data/history.js';
 import { COUNTRIES } from '../data/countries.js';
 import { theCountry, fmtMoney } from '../util.js';
+import { book, post as postTx, toMinor, fromMinor } from './ledger.js';
 
 /**
  * The era record of a life, created once. `money` says how this life's amounts are
@@ -67,6 +68,14 @@ function revalue(state) {
   const k = to.scale / from.scale;
   convertMoney(k);
   const x = (n) => Math.round((n ?? 0) * k);
+  // A business's own books, openings advertised in the year's money, and the bank and trust accounts the ledger keeps.
+  for (const b of p.businesses ?? []) for (const f of ['cash', 'debt', 'payout']) if (typeof b[f] === 'number') b[f] = x(b[f]);
+  const was = e.applied?.year ?? state.year;
+  for (const job of Object.values(state.jobs?.postings ?? {})) {
+    const a = currencyFor(job.countryId, was, e.money); const b = currencyFor(job.countryId, state.year, e.money);
+    if (a && b && a.scale !== b.scale && Array.isArray(job.pay)) job.pay = job.pay.map((n) => Math.round(n * b.scale / a.scale));
+  }
+  revalueAccounts(state, from.code, to.code, k);
   p.career.salary = x(p.career.salary);
   if (p.career.partTime) p.career.partTime.salary = x(p.career.partTime.salary);
   if (p.politics?.salary) p.politics.salary = x(p.politics.salary);
@@ -78,6 +87,22 @@ function revalue(state) {
     }
   }
   return k;
+}
+
+/** Accounts that exist only in the ledger (bank, trust), in the old home currency: restated against the revaluation heading. */
+function revalueAccounts(state, fromCode, toCode, k) {
+  const L = state.ledger;
+  if (!L) return;
+  const nominal = (cur) => (L.accounts[`n:revaluation:${cur}`] ??= { id: `n:revaluation:${cur}`, bal: 0, kind: 'nominal', cat: 'revaluation', cur }).id;
+  const t = (entries) => postTx(L, { year: state.year, age: state.player.age, cat: 'revaluation', src: 'era', desc: 'Money restated in the year\'s terms', entries });
+  for (const a of Object.values(L.accounts)) {
+    if (!['bank', 'trust'].includes(a.kind) || a.cur !== fromCode || a.closed != null) continue;
+    const now = toMinor(Math.round(fromMinor(a.bal, fromCode) * k), toCode);
+    if (fromCode === toCode) { if (now !== a.bal) t([[a.id, now - a.bal], [nominal(fromCode), a.bal - now]]); continue; }
+    if (a.bal) t([[a.id, -a.bal], [nominal(fromCode), a.bal]]);
+    a.cur = toCode;
+    if (now) t([[a.id, now], [nominal(toCode), -now]]);
+  }
 }
 
 const LAW_NEWS = {
@@ -108,6 +133,8 @@ export function tickEra() {
   revalue(state);
   e.applied = { year: state.year, countryId: here };
   syncWorld(state.year, e.money);
+  // What the change did to the player's balances, booked under its own heading.
+  book({ cat: 'revaluation', src: 'era', desc: 'Money restated in the year\'s terms' });
   // A law that changed this year where the player lives, as history changed it.
   const lawsAfter = lawsNow(here);
   const place = theCountry(COUNTRIES[here].name);

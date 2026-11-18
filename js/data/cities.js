@@ -40,6 +40,18 @@ export const CITY_ROWS = Object.fromEntries(Object.entries(ROWS).map(([id, rows]
 export const regionOf = (countryId, name) => CITY_ROWS[countryId]?.[name]?.regionId ?? null;
 
 /** The generic profiles used everywhere else. */
+/**
+ * How a city differs from its country's safety, schools and hospitals, in points on the 0-100 national scores.
+ * A ROUGH RULE BY KIND OF CITY, not data about any particular place: the capital and the largest city have the big
+ * hospitals and more specialist schools, and a little more crime; smaller cities are safer and further from specialist care.
+ */
+export const SERVICES = {
+  capital: { safety: -3, schools: 3, health: 8 },
+  largest: { safety: -4, schools: 2, health: 6 },
+  city: { safety: 3, schools: 0, health: -4 },
+  only: { safety: 0, schools: 0, health: 0 },
+};
+
 export const GENERIC = {
   capital: { housing: 1.3, pay: 1.1 },
   largest: { housing: 1.2, pay: 1.08 },

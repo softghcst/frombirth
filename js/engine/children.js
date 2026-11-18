@@ -9,6 +9,7 @@ import { store, player, country, npcsByRole, log, milestone } from '../state.js'
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats } from './genetics.js';
 import { spendAction, PET_PRICE, canGetPet } from './relationships.js';
+import { quickAdopt } from './animalCare.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -157,18 +158,9 @@ export function renameChild(npcId, name) {
   return result(true, text, 'neutral');
 }
 
+/** Adopts the first animal at the local shelter that the household can properly take (engine/animalCare.js). */
 export function getPet() {
-  const p = player();
-  const c = country();
-  const price = localMoney(PET_PRICE, c);
-  if (!canGetPet()) return result(false, 'You cannot take on another animal.', 'neutral');
-  if (p.finance.cash < price) return result(false, 'You cannot afford the adoption fee.', 'neutral');
-  p.finance.cash -= price;
-  const pet = addNpc(makePet(p.countryId, p.lastName, rng.int(55, 75)));
-  p.stats.mood = clamp(p.stats.mood + 8);
-  const text = `You came home from the shelter with a ${pet.species} called ${pet.firstName}.`;
-  log(text, 'system', 'good');
-  return result(true, text);
+  return quickAdopt();
 }
 
 /** What the children cost this year, in local money. */

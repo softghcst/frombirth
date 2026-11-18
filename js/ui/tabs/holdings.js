@@ -1,7 +1,9 @@
 // Holdings tab: money, where you live, property, vehicles, investments and
 // loans, with everything you can do about each.
+import { careLine } from '../../engine/guardianship.js';
 import * as sys from '../../engine/systems.js';
 import { taxLine } from '../../engine/systems.js';
+import { inheritanceLine, inheritanceShort, lawOf } from '../../engine/inheritance.js';
 import { cityLine } from '../../engine/cities.js';
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
@@ -19,6 +21,9 @@ import * as last from '../../engine/death.js';
 import * as money from '../../engine/currency.js';
 import { openCurrencies } from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
+import { openMyMoney } from '../money.js';
+import { bankWorth } from '../../engine/banking.js';
+import { householdAnimalsHtml, openAnimalProfile, openHouseChronicle } from '../animals.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
 const pct = (x) => `${x >= 0 ? '+' : ''}${Math.round(x * 100)}%`;
@@ -75,7 +80,7 @@ async function assignKeepsakes(api) {
 function willCard(c) {
   if (!last.canWriteWill()) return '';
   const e = last.estatePlan();
-  const things = (s) => (s.items.length ? ` + ${s.items.map((it) => it.name.charAt(0).toLowerCase() + it.name.slice(1)).join(', ')}` : '');
+  const things = (s) => (s.items.length ? ` + ${s.items.map((it) => (it.kind === 'business' ? it.name : it.name.charAt(0).toLowerCase() + it.name.slice(1))).join(', ')}` : '');
   const rows = e.gross <= 0 && !e.shares.length ? [['If you died today', 'There would be nothing to leave']]
     : [['Estate tax if you died today', fmtMoney(e.tax, c)],
       ...e.shares.map((s) => [`${s.name} (${s.role.toLowerCase()})`, `${fmtMoney(s.amount, c)}${things(s)}`]),
@@ -141,7 +146,7 @@ async function browseAbroad(api) {
   const held = money.balances().filter((b) => !b.home);
   const id = await pickModal({ title: 'Which country?', body: held.length ? `You hold ${held.map((b) => money.fmt(b.amount, b.code)).join(', ')} as well as ${fmtMoney(p.finance.cash, c)}.` : `You have ${fmtMoney(p.finance.cash, c)}. It will be changed at today's rate, less the bank's fee.`,
     options: COUNTRY_LIST.filter((k) => k.id !== p.countryId).sort((a, b) => a.name.localeCompare(b.name)).map((k) => ({ value: k.id, label: `${k.flag} ${k.name}`,
-      sub: `${k.currency.code} · property tax ${propertyTaxLabel(k)} · inheritance tax ${k.estateTax ? `${Math.round(k.estateTax * 100)}%` : 'none'}${(p.flags.visited ?? []).includes(k.id) ? ' · you have been there' : ''}` })) });
+      sub: `${k.currency.code} · property tax ${propertyTaxLabel(k)} · inheritance tax ${inheritanceShort(k)}${(p.flags.visited ?? []).includes(k.id) ? ' · you have been there' : ''}` })) });
   if (!id) return undefined;
   const at = COUNTRIES[id];
   const city = at.cities.length > 1 ? await pickModal({ title: `Where in ${at.name}?`, body: 'Compared with the country as a whole.', options: at.cities.map((n) => ({ value: n, label: n, sub: cityLine(id, n) })) }) : at.cities[0];
@@ -164,11 +169,11 @@ function openProperty(a, api) {
   const rows = [
     ['Worth', estate.isAbroad(a) ? `${fmtMoney(a.value, c)} at today's rate` : fmtMoney(a.value, c)],
     ['You paid', `${fmtMoney(a.purchasePrice, c)} at age ${a.boughtAtAge}`],
-    ['Mortgage', a.mortgage ? `${fmtMoney(a.mortgage.principal, c)} left, ${fmtMoney(a.mortgage.payment, c)} a year for ${a.mortgage.yearsLeft} more years` : 'None'],
-    ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${fmtMoney(a.tenant.rent, c)} a year` : 'Standing empty'],
+    ['Mortgage', a.mortgage ? `${money.fmt(a.mortgage.principal, a.mortgage.code ?? c.currency.code)} left${a.mortgage.code && a.mortgage.code !== c.currency.code ? ` (about ${fmtMoney(estate.owedOn(a), c)})` : ''}, ${money.fmt(a.mortgage.payment, a.mortgage.code ?? c.currency.code)} a year for ${a.mortgage.yearsLeft} more years` : 'None'],
+    ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${money.fmt(a.tenant.rent, a.tenant.code ?? c.currency.code)} a year${a.tenant.code && a.tenant.code !== c.currency.code ? ` (about ${fmtMoney(estate.rentAtHome(a), c)})` : ''}` : 'Standing empty'],
     ['Running costs', `${fmtMoney(Math.round(a.value * estate.propertyTypeOf(a).upkeep), c)} a year`],
     ['Where', `${a.city ? `${a.city}, ` : ''}${estate.placeOf(a).name}`],
-    ...(estate.isAbroad(a) ? [['Tax on rent', `${Math.round(estate.placeOf(a).incomeTax * 100)}%, paid in ${estate.placeOf(a).name}`], ['When you die', estate.placeOf(a).estateTax ? `Taxed at ${Math.round(estate.placeOf(a).estateTax * 100)}% in ${estate.placeOf(a).name}` : `No inheritance tax in ${estate.placeOf(a).name}`]] : []),
+    ...(estate.isAbroad(a) ? [['Tax on rent', `${Math.round(estate.placeOf(a).incomeTax * 100)}%, paid in ${estate.placeOf(a).name}`], ['When you die', lawOf(estate.placeOf(a).id).kind === 'none' ? `No inheritance tax in ${estate.placeOf(a).name}` : `Taxed in ${estate.placeOf(a).name}: ${inheritanceLine(estate.placeOf(a))}`]] : []),
     ['Property tax', estate.propertyTaxOn(a) ? `${fmtMoney(estate.propertyTaxOn(a), c)} a year (${propertyTaxLabel(estate.placeOf(a))})` : `None in ${estate.placeOf(a).name}`],
   ];
   const acts = [];
@@ -177,7 +182,7 @@ function openProperty(a, api) {
   if (isHome) acts.push(['moveout', 'Move out and rent somewhere']);
   if (a.tenant) acts.push(['evict', 'Give the tenant notice']);
   if (a.condition < 95) acts.push(['renovate', `Renovate (${fmtMoney(estate.renovationCost(a.id), c)})`]);
-  if (a.mortgage) acts.push(['payoff', `Pay off the mortgage (${fmtMoney(a.mortgage.principal, c)})`]);
+  if (a.mortgage) acts.push(['payoff', `Pay off the mortgage (${money.fmt(a.mortgage.principal, a.mortgage.code ?? c.currency.code)})`]);
   acts.push(['sell', `Sell (you would keep ${fmtMoney(estate.saleProceeds(a), c)})`]);
 
   const m = openModal(`
@@ -220,7 +225,7 @@ async function browseVehicles(api) {
     options: [
       { value: 'cash', label: `Pay ${fmtMoney(listing.price, c)} in cash`, disabled: p.finance.cash < listing.price },
       ...(p.age >= 18 ? [{ value: 'loan', label: 'Buy it on finance', disabled: !listing.finance.approved,
-        sub: listing.finance.approved ? `${fmtMoney(listing.finance.payment, c)} a year for ${BANK_LOAN.years} years.` : listing.finance.reason }] : []),
+        sub: listing.finance.approved ? `${fmtMoney(listing.finance.payment, c)} a year for ${BANK_LOAN.years} years, at a lower rate because it is secured on the vehicle. Miss the payments and it can be taken back.` : listing.finance.reason }] : []),
     ],
   });
   return how ? report(api, cars.buyVehicle(listing.id, how)) : undefined;
@@ -230,12 +235,12 @@ function openVehicle(a, api) {
   const c = country();
   const m = openModal(`
     <h2>${GLYPH[a.vehicleClass]} ${esc(a.name)}</h2>
-    ${kv([['Worth', fmtMoney(a.value, c)], ['You paid', fmtMoney(a.purchasePrice, c)], ['Age', `${a.age} ${a.age === 1 ? 'year' : 'years'}`]])}
+    ${kv([['Worth', fmtMoney(a.value, c)], ['You paid', fmtMoney(a.purchasePrice, c)], ['Age', `${a.age} ${a.age === 1 ? 'year' : 'years'}`], ...(cars.loanOn(a) ? [['Still owed on it', `${fmtMoney(cars.loanOn(a).principal, c)}: the lender can take it back if the loan goes unpaid`]] : [])])}
     <div style="margin:12px 0 16px">${meterHtml('Condition', a.condition, true)}</div>
     <div class="btn-stack">
       <button class="btn" data-act="out">Take it out</button>
       ${a.condition < 95 ? `<button class="btn" data-act="service">Service it (${fmtMoney(cars.serviceCost(a), c)})</button>` : ''}
-      <button class="btn danger" data-act="sell">Sell for ${fmtMoney(a.value, c)}</button>
+      <button class="btn danger" data-act="sell">Sell for ${fmtMoney(a.value, c)}${cars.loanOn(a) ? ` (${cars.saleNet(a) >= 0 ? `${fmtMoney(cars.saleNet(a), c)} after the loan` : `${fmtMoney(-cars.saleNet(a), c)} short of the loan`})` : ''}</button>
       <button class="btn" data-close>Close</button>
     </div>`, { dismissable: true });
   m.el.addEventListener('click', (e) => {
@@ -302,6 +307,9 @@ async function borrowMoney(api) {
   return amount ? report(api, bank.borrow(amount)) : undefined;
 }
 
+/** My Money, with the screens it leads on to. Also opened from the purse at the top of the game. */
+export const openMoney = (api) => openMyMoney(api, { invest: browseMarket, borrow: borrowMoney, will: changeWill });
+
 export default {
   id: 'holdings', title: 'Holdings', short: 'Holdings',
   icon: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
@@ -309,10 +317,10 @@ export default {
     const p = player();
     const c = country();
     const f = p.finance;
-    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + (a.mortgage?.principal ?? 0), 0);
+    const debt = f.loans.reduce((s, l) => s + l.principal, 0) + p.assets.reduce((s, a) => s + estate.owedOn(a), 0) + (f.cards ?? []).reduce((s, k) => s + k.balance, 0);
     const home = estate.home();
-    const living = home ? `In your ${home.name.charAt(0).toLowerCase() + home.name.slice(1)}` : p.flags.livesWithParents ? 'With your family'
-      : p.education.enrolled && p.age >= 18 ? 'Student housing' : p.age >= 18 ? 'Renting' : 'With your family';
+    const living = careLine() ?? (home ? `In your ${home.name.charAt(0).toLowerCase() + home.name.slice(1)}` : p.flags.livesWithParents ? 'With your family'
+      : p.education.enrolled && p.age >= 18 ? 'Student housing' : p.age >= 18 ? 'Renting' : 'With your family');
 
     const actions = [];
     if (p.age >= 18) actions.push(['property', 'Browse property'], ['market', 'Invest'], ['borrow', 'Borrow money'], ['currencies', 'Currencies']);
@@ -339,19 +347,21 @@ export default {
       <div class="kv"><span>${esc(l.kind.charAt(0).toUpperCase() + l.kind.slice(1))} loan, ${l.yearsLeft} yr left</span>
         <span>${fmtMoney(l.principal, c)} ${l.kind !== 'student' || !p.education.enrolled ? `<button class="btn small" data-repay="${l.id}" ${f.cash < l.principal ? 'disabled' : ''} style="display:inline-flex;margin-left:6px">Pay off</button>` : ''}</span></div>`).join('');
 
-    const earned = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0);
+    const earned = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0) + (p.flags.statePension ?? 0);
     const taxOn = earned > 0 ? sys.taxBreakdown(earned, c) : null;
     el.innerHTML = `
       <div class="card">
         <h3>Money</h3>
-        ${kv([['Cash', fmtMoney(f.cash, c)], ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
+        ${kv([['Cash', fmtMoney(f.cash, c)], ...(bankWorth() ? [['In the bank', fmtMoney(bankWorth(), c)]] : []), ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
         <div class="kv"><span>Net worth</span><span><strong>${fmtMoney(netWorth(store.state), c)}</strong></span></div>
         ${kv([['Where you live', living], ['Lifetime earnings', fmtMoney(f.lifetimeEarned, c)], ['Lifetime tax paid', fmtMoney(f.lifetimeTaxPaid, c)],
-    [`Income tax (${c.name})`, taxLine(c)], ...(taxOn ? [['On what you earn now', `${Math.round(taxOn.effective * 100)}% overall, ${Math.round(taxOn.marginal * 100)}% on anything more you earn`]] : []), ['Health care', `${sys.cover().model.name}${sys.cover().covered ? '' : ' (you are not covered)'}`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
+    [`Income tax (${c.name})`, taxLine(c)], ...(taxOn ? [['On what you earn now', `${Math.round(taxOn.effective * 100)}% overall, ${Math.round(taxOn.marginal * 100)}% on anything more you earn`]] : []), ['Health care', `${sys.cover().model.name}${sys.cover().covered ? '' : ' (you are not covered)'}`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', inheritanceLine(c)],
     ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}
       </div>
+      <div class="btn-stack" style="margin-bottom:10px"><button class="btn primary" data-go="mymoney">My Money<small style="display:block;font-weight:400;opacity:.85">Accounts, budget, goals, debts and history</small></button></div>
       ${actions.length ? `<div class="btn-stack" style="margin-bottom:14px">${actions.map(([id, label]) => `<button class="btn" data-go="${id}">${esc(label)}</button>`).join('')}</div>` : ''}
+      ${householdAnimalsHtml()}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
       ${invs ? `<div class="section-label">Investments</div>${invs}` : ''}
@@ -362,8 +372,11 @@ export default {
 
     el.onclick = (e) => {
       const go = e.target.closest('[data-go]')?.dataset.go;
+      const animal = e.target.closest('[data-animal]')?.dataset.animal;
+      if (animal) return openAnimalProfile(api, animal);
+      if (go === 'chronicle') return openHouseChronicle(api);
       if (go) {
-        return { currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
+        return { mymoney: () => openMoney(api), currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
           borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => report(api, cars.takeDrivingTest()), flying: () => report(api, cars.learnToFly()) }[go]();
       }
       const repay = e.target.closest('[data-repay]')?.dataset.repay;

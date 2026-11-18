@@ -19,6 +19,8 @@ globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), se
 const save = await import('../js/save.js');
 
 rng.seed(19001);
+// These lives are about their times, not about emigrating: families stay where they are (tests/economy.mjs covers moving).
+(await import('../js/data/economy.js')).ROOTS.familyLeaves = 0;
 const problems = [];
 const passed = [];
 let where = '';
@@ -160,11 +162,13 @@ section('Money');
   check(w2026.wage === localWage(50000, COUNTRIES.us) && COUNTRIES.us.currency.scale === 1, 'in the present, money is exactly as before');
   check(w1900.wage < w2026.wage / 50 && w1900.rent < w2026.rent / 50, `a 1900 wage and rent are a small fraction of today's (${w1900.wage} and ${w1900.rent} against ${w2026.wage} and ${w2026.rent})`);
   check(Math.abs(w1900.rent / w1900.wage - w2026.rent / w2026.wage) < 0.02, 'and stand in the same proportion to each other, so a life then is as affordable as now');
+  const midOf = () => { const h = estate.listings().map((x) => x.price).sort((a, b) => a - b); return h[Math.floor(h.length / 2)]; };
   const p = life({ born: 1900, age: 30 });
   p.flags.livesWithParents = false; p.finance.cash = localMoney(500000, COUNTRIES.us);
+  const today = (() => { const keep = store.state; const t = createLife({ countryId: 'us' }); t.player.age = 30; t.player.city = p.city; t.player.regionId = p.regionId; t.player.flags.livesWithParents = false; store.state = t; H.syncWorld(t.year); const m = midOf(); store.state = keep; H.syncWorld(keep.era.applied.year, keep.era.money); return m; })();
   const homes = estate.listings();
   const mid = homes.map((h) => h.price).sort((a, b) => a - b)[Math.floor(homes.length / 2)];
-  check(homes.length && mid < 20000, `houses in 1930 cost what they did then (a middling one: ${mid})`);
+  check(homes.length && mid < today / 10, `houses in 1930 cost what they did then (a middling one: ${mid}, against ${today} today)`);
   // The yearly change moves every amount together: no money is made or lost by it.
   const cash = p.finance.cash;
   const before = H.currencyFor('us', store.state.year).scale;

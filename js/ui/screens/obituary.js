@@ -16,7 +16,7 @@ function estateCard(g, c) {
   if (e.gross <= 0 && !shares.some((s) => s.items?.length)) return '<div class="card"><h3>The estate</h3><p class="muted">There was nothing to leave. The debts were written off.</p></div>';
   const rows = [['Everything they owned', fmtMoney(e.gross, c)]];
   if (e.tax && e.taxBy?.length > 1) for (const t of e.taxBy) rows.push([`Estate tax, ${t.name} (${Math.round(t.rate * 100)}%)`, `− ${fmtMoney(t.amount, c)}`]);
-  else if (e.tax) rows.push([`Estate tax (${Math.round((e.taxBy?.[0]?.rate ?? c.estateTax) * 100)}%)`, `− ${fmtMoney(e.tax, c)}`]);
+  else if (e.tax) rows.push([`Estate tax (${Math.round((e.taxBy?.[0]?.rate ?? 0) * 100)}% of the estate)`, `− ${fmtMoney(e.tax, c)}`]);
   if (e.charity) rows.push(['Left to charity', fmtMoney(e.charity, c)]);
   for (const s of shares) {
     rows.push([`${s.name} (${s.role.toLowerCase()})`, fmtMoney(s.amount, c)]);
@@ -72,7 +72,7 @@ export function renderObituary(app, g, hooks) {
   const heirs = hooks.heirs ?? [];
 
   app.innerHTML = `
-    <section class="title-screen">
+    <main class="title-screen">
       <div class="stone">
         <p class="muted">In memory of</p>
         <h1>${esc(g.fullName)}</h1>
@@ -98,7 +98,7 @@ export function renderObituary(app, g, hooks) {
         <button class="btn" data-epitaphs>Epitaphs earned</button>
         <button class="btn primary" data-done>${heirs.length ? 'End the story here' : 'Return to title'}</button>
       </div>
-    </section>`;
+    </main>`;
   app.scrollTop = 0;
   window.scrollTo(0, 0);
   app.querySelector('[data-done]').addEventListener('click', () => hooks.onDone());

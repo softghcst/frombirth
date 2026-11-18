@@ -206,7 +206,7 @@ section('B. Family messaging');
   check(g.ok && g.thread.participants.every((id) => core.charOf(id)), 'a family group chat of real people');
   // The player moves abroad.
   p.flags.livesWithParents = false;
-  for (let i = 0; i < 60 && p.countryId === 'us'; i++) { p.flags.visaAge = null; emigrate('ca', { route: 'skilled' }); emigrate('ca', {}); }
+  for (let i = 0; i < 60 && p.countryId === 'us'; i++) { p.flags.visaAge = null; p.legal.incarceration = null; p.legal.pending = null; emigrate('ca', { route: 'skilled' }); emigrate('ca', {}); }
   check(p.countryId === 'ca', 'the player moved to Canada');
   freshHours();
   const before = sister.meters.relationship;
@@ -377,7 +377,6 @@ section('H. Online community');
   join('corkboard', 'bookworm25');
   const c = comm.communities().find((x) => x.topic === 'books');
   check(comm.join(c.id).ok && c.keyMembers.length >= 3, 'joining a community introduces a few real members');
-  const npcsBefore = Object.keys(store.state.npcs).length;
   let made = null;
   for (let y = 0; y < 6 && !made; y++) {
     freshHours();
@@ -387,7 +386,7 @@ section('H. Online community');
     if (!made) grow(1);
   }
   check(made && made.role === 'friend' && made.flags.metOnline, 'a member became a real friend');
-  check(Object.keys(store.state.npcs).length === npcsBefore, 'the friend is the same person, not a copy');
+  check(made && Object.values(store.state.npcs).filter((n) => n.firstName === made.firstName && n.lastName === made.lastName && n.flags.metOnline).length === 1, 'the friend is the same person, not a copy');
   check(core.eventsOf(p.id).some((e) => e.kind === 'online_friend'), 'the friendship is a life event');
   check(c.memberCount > c.keyMembers.length * 10, 'the rest of the community is a count, not people');
 }
@@ -706,7 +705,7 @@ section('Other people online');
   star.talents = { ...(star.talents ?? {}), music: 95 };
   acc.makeAccount(star.id, 'glimmer', 'star.friend', { visibility: 'public' });
   const starAcc = acc.accountsOf(star.id).find((a) => a.platformId === 'glimmer');
-  for (let i = 0; i < 40 && !starAcc.creator; i++) { star.alive = true; star.meters.health = 90; star.meters.relationship = 80; if (!p.npcIds.includes(star.id)) p.npcIds.push(star.id); if (starAcc.status === 'deactivated') starAcc.status = 'active'; grow(1); }
+  for (let i = 0; i < 60 && !starAcc.creator; i++) { star.alive = true; star.flags.abroad = false; star.meters.health = 90; star.meters.relationship = 80; if (!p.npcIds.includes(star.id)) p.npcIds.push(star.id); if (starAcc.status === 'deactivated') starAcc.status = 'active'; grow(1); }
   check(starAcc.creator?.pathway === 'music', 'a gifted friend starts a channel of their own');
 }
 

@@ -7,6 +7,9 @@
 //     each level runs from -2 to 2, moved one step at a time, as national policy does
 // The levels stay when the office-holder goes: the next one inherits them.
 // What they do to daily life is read through engine/policy.js.
+import * as law from './rules.js';
+import { cityOf } from './cities.js';
+import { post as econPost } from './economy.js';
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
 import { store, player } from '../state.js';
@@ -136,4 +139,71 @@ export function tickLocal() {
   const cared = ['services', 'safety', 'housing'].filter((id) => x[id] > 0).length;
   k.approval = Math.round(clamp(k.approval + cared - neglected * 1.5));
   return lines;
+}
+
+// ---------- Regional law ----------
+// The head of a region can change the laws a region controls (data/rules.js REGIONAL_POWERS: which ones depends on the country), in countries whose
+// regions make law. The regional assembly votes as it does on the budget. What passes applies to everyone living
+// in the region, until the region or the nation changes it again.
+
+/** The region the player governs: its id for the rule engine, and its name. */
+export function myRegion(p = player()) {
+  if (p.politics?.officeId !== 'region') return null;
+  const id = law.lawRegion(p.countryId, p.city);
+  const name = cityOf(p.countryId, p.city).region ?? `the area around ${p.city}`;
+  return { id, name };
+}
+/** What a region of the player's country may decide, in words. */
+export function regionalPowersLine(p = player()) {
+  const W = { deathPenalty: 'the death penalty', gambling: 'whether gambling is allowed', gamblingAge: 'the gambling age', drivingAge: 'the driving age', drinkingAge: 'the drinking age', alcohol: 'whether alcohol is allowed' };
+  const list = law.regionalPowers(p.countryId).map((id) => W[id] ?? id);
+  return list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] ?? 'nothing';
+}
+/** Whether the player can change regional law now, and if not, why. */
+export function regionalLawBlock(p = player()) {
+  if (p.politics?.officeId !== 'region') return 'Only the head of a region can change its laws.';
+  if (!law.regionsLegislate(p.countryId)) return 'In this country the law is made nationally; regions cannot change it.';
+  return '';
+}
+/** What could be changed, with how the vote looks. */
+export function regionalLawOptions() {
+  const p = player();
+  const r = myRegion(p);
+  if (!r || regionalLawBlock(p)) return [];
+  const w = world.polity(p.countryId);
+  const mine = world.membership(p.countryId);
+  return law.regionalChoices(p.countryId, r.id).map((c) => {
+    const t = w.parties.length ? tally(w.parties, chamber(w, mine), { wants: c.wants }, { lead: mine?.id ?? null, partners: [], noise: () => 0, sway: 0.22 + (mine ? 0 : 0.12) }) : null;
+    return { ...c, name: cap(c.name), outlook: !t ? 'Yours to decide.' : t.for >= t.need + 4 ? 'The assembly looks likely to pass it.' : t.for >= t.need - 4 ? 'It would be close.' : 'The assembly is against it.' };
+  });
+}
+/** Puts a regional law to the assembly. One a year. */
+export function putRegionalLaw(ruleId, value, move = 'none') {
+  const p = player();
+  const k = p.politics;
+  const block = regionalLawBlock(p);
+  if (block) return result(false, block, 'neutral');
+  if (k.regionalLawAge === p.age) return result(false, 'The assembly has dealt with your law for this year.', 'neutral');
+  const r = myRegion(p);
+  const c = law.regionalChoices(p.countryId, r.id).find((x) => x.rule === ruleId && x.value === value);
+  if (!c) return result(false, 'That is already the law here.', 'neutral');
+  k.regionalLawAge = p.age;
+  const w = world.polity(p.countryId);
+  const mine = world.membership(p.countryId);
+  let t = null;
+  if (w.kind !== 'party' && w.kind !== 'none' && w.parties.length) {
+    t = tally(w.parties, chamber(w, mine), { wants: c.wants }, { lead: mine?.id ?? null, partners: [], noise, whip: move === 'whip' ? 0.1 : 0, sway: 0.22 + (move === 'public' ? (k.approval - 50) / 150 : 0) + (mine ? 0 : 0.12) });
+    if (move === 'whip') k.approval = Math.round(clamp(k.approval - 1));
+    if (!t.passes) {
+      k.approval = Math.round(clamp(k.approval - 3));
+      return result(false, `The assembly of ${r.name} voted down your law to ${c.name}, ${t.for} to ${t.against}.`, 'bad',
+        { tally: { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, colour: q.colour, ...t.byParty[q.id] })) } });
+    }
+  }
+  const e = law.enactRegional(p.countryId, r.id, c.rule, c.value, cap(r.name), `${p.firstName} ${p.lastName}`);
+  econPost(p.countryId, 'law', e.text, 'neutral', false);
+  post(w, `${k.title} ${p.firstName} ${p.lastName}: ${e.text}`, { you: true });
+  k.approval = Math.round(clamp(k.approval + c.liked));
+  const shown = t ? { for: t.for, against: t.against, need: t.need, rows: w.parties.filter((q) => t.byParty[q.id]).map((q) => ({ name: q.name, colour: q.colour, ...t.byParty[q.id] })) } : null;
+  return result(true, `${t ? `By ${t.for} votes to ${t.against}, the` : 'The'} assembly passed it: ${e.text} It is the law for everyone living in ${r.name}.${c.liked <= -3 ? ' It is not popular.' : c.liked >= 2 ? ' People here are pleased.' : ''}`, 'good', { tally: shown });
 }

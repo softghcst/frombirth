@@ -5,7 +5,13 @@ import { esc, fmtMoney } from '../../util.js';
 import * as career from '../../engine/career.js';
 import * as job from '../../engine/partTime.js';
 import { meterHtml } from '../meter.js';
+import { dutyButtons, runDuty } from '../justice.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
+import { openOccupation } from '../occupation.js';
+import { employer } from '../../engine/employers.js';
+import { workLaw, weeklyLoad, career as careerState } from '../../engine/worklife.js';
+import { offers } from '../../engine/hiring.js';
+import { leads } from '../../engine/recruiters.js';
 
 const kv = (rows) => rows.map(([a, b]) =>
   `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
@@ -26,8 +32,10 @@ export function careerCard() {
   if (cur) {
     const step = career.nextStep();
     const b = career.boss();
+    const e = employer(careerState().employerId);
     body = kv([
       ['Role', k.title],
+      ...(e ? [['Employer', `${e.name}, ${e.city}`]] : []),
       ['Field', cur.name + (k.military ? ` (${k.military.branch})` : '')],
       [cur.type === 'freelance' ? 'Earnings this year' : 'Salary', `${fmtMoney(k.salary, c)} / year`],
       ['Years in role', String(k.yearsInRole)],
@@ -35,7 +43,8 @@ export function careerCard() {
       ...(k.military ? [['Deployments', String(k.military.deployments)]] : []),
       ...(step ? [['Next step', `${step.title}${step.missing.length ? `: needs ${step.missing.join(' and ')}` : step.yearsLeft > 0 ? `, in about ${step.yearsLeft} ${step.yearsLeft === 1 ? 'year' : 'years'} with good reviews` : ', when a good review lands'}`]]
         : [['Next step', 'You are at the top.']]),
-    ]) + `<div style="margin-top:10px">${meterHtml('Performance', k.performance, true)}</div>`;
+      ['Your week', `${weeklyLoad().total} hours, all told`],
+    ]) + `<div style="margin-top:10px">${meterHtml('Performance', k.performance, true)}${meterHtml('Satisfaction', careerState().satisfaction, true)}${meterHtml('Stress', careerState().stress, true)}</div>`;
   } else if (k.partTime) {
     body = kv([['Part-time', k.partTime.title], ['Pay', `${fmtMoney(k.partTime.salary, c)} / year`], ['Since', `Age ${k.partTime.since}`]]);
   } else if (k.retired) {
@@ -54,14 +63,17 @@ export function careerButtons() {
   const k = p.career;
   const cur = career.currentCareer();
   const list = [];
-  if (p.age >= 15) list.push(['findwork', cur ? 'Look for a different job' : 'Find work']);
+  const waiting = offers().length + leads().length;
+  if (p.age >= Math.min(15, workLaw().workAge)) list.push(['hub', `Work: jobs, people, freelancing, history${waiting ? ` (${waiting} waiting)` : ''}`]);
+  if (p.age >= workLaw().workAge) list.push(['findwork', cur ? 'Look for a different job' : 'Find work']);
   else if (p.age >= 5) list.push(['findwork', cur ? 'Look for other acting work' : 'Audition for acting work']);
   if (cur) {
+    list.push(...dutyButtons().map(([id, label]) => [id, label]));
     list.push(['harder', 'Work harder'], ['slack', 'Slack off']);
     if (cur.type !== 'freelance') list.push(['raise', 'Ask for a raise']);
   }
   if (k.partTime) list.push(['cover', 'Cover an extra shift']);
-  if (career.canGig()) list.push(['gigs', 'Freelance gigs']);
+  if (career.canGig()) list.push(['gigs', 'Quick one-off gigs']);
   if (career.fame() >= 10) list.push(['fame', 'Use your fame']);
   if (career.canRetire()) list.push(['retire', 'Retire']);
   if (cur) list.push(['quitcareer', 'Quit your job']);
@@ -184,7 +196,8 @@ async function quit(api) {
 
 /** Handlers keyed by button id. */
 export const careerHandlers = (api) => ({
-  findwork: () => findWork(api),
+  hub: () => openOccupation(api),
+  findwork: () => (player().age >= workLaw().workAge ? openOccupation(api, 'find') : findWork(api)),
   harder: () => report(api, career.workHarder()),
   slack: () => report(api, career.slackOffAtWork()),
   raise: () => report(api, career.askForRaise()),
@@ -192,4 +205,9 @@ export const careerHandlers = (api) => ({
   fame: () => fame(api),
   retire: () => retire(api),
   quitcareer: () => quit(api),
+  'duty:investigate': () => runDuty('investigate', api),
+  'duty:defend': () => runDuty('defend', api),
+  'duty:prosecute': () => runDuty('prosecute', api),
+  'duty:preside': () => runDuty('preside', api),
+  'duty:shift': () => runDuty('shift', api),
 });

@@ -19,6 +19,7 @@
 // reason holds, become permanent after five years, and end otherwise.
 // Everything here is gameplay configuration: no route promises anything
 // about a real visa.
+import { hasRecord } from './records.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log } from '../state.js';
@@ -28,7 +29,7 @@ import { held, issuer, rightToLive, residency } from './citizenship.js';
 import { visaEdge } from './languages.js';
 
 const has = (p, t) => p.education.degrees.some((d) => d.type === t);
-const convicted = (p) => p.legal.record.some((r) => r.convicted && !r.juvenile);
+const convicted = (p) => hasRecord(p, { sealed: true });
 /** The free-movement area a place belongs to, if any. */
 const areaOf = (id) => FREE_MOVEMENT.find((a) => a.members.includes(id)) ?? null;
 
@@ -71,7 +72,7 @@ export function routes(destId, p = player()) {
   add('work', 'Sponsored by an employer', 'An employer there offers you a job and applies for you. The permission is tied to working.', {
     eligible: p.age >= 18 && qualified, why: p.age < 18 ? 'You must be an adult.' : 'Employers sponsor people with a degree or a trade.',
     chance: 0.3 + (has(p, 'university') ? 0.15 : 0.08) + (['medical', 'law', 'graduate', 'doctorate'].some((t) => has(p, t)) ? 0.1 : 0) + Math.min(0.2, (p.career.yearsInField ?? 0) / 25)
-      + (wanted ? 0.15 : 0) + (p.career.careerId ? 0.05 : 0) + lang + crime, status: 'worker', years: ROUTE.workYears });
+      + (wanted ? 0.15 : 0) + (p.career.careerId ? 0.05 : 0) + (p.flags.sponsor === destId ? 0.35 : 0) + lang + crime, status: 'worker', years: ROUTE.workYears }); // sponsor: a job offer in hand (engine/recruiters.js)
 
   // Study
   const funds = localMoney(ROUTE.studyFunds, here);
@@ -87,7 +88,7 @@ export function routes(destId, p = player()) {
     eligible: p.age >= 18 && p.finance.cash >= stake, why: `You would need ${fmtMoney(stake, here)}.`, chance: 0.92 + crime, fee: 3, status: 'permanent_resident' });
 
   // Settlement programme
-  add('settle', 'Settlement programme', 'Points for education, work, age and language. Slow, but it gives permanent residence.', {
+  add('settle', 'Settlement program', 'Points for education, work, age and language. Slow, but it gives permanent residence.', {
     eligible: p.age >= 18, why: 'You must be an adult.',
     chance: 0.3 + (has(p, 'university') ? 0.2 : 0) + (['medical', 'law', 'graduate', 'doctorate'].some((t) => has(p, t)) ? 0.1 : 0) + (has(p, 'apprenticeship') || has(p, 'cosmetology') ? 0.1 : 0)
       + (p.career.careerId ? 0.1 : 0) + (p.age <= 35 ? 0.05 : p.age >= 50 ? -0.1 : 0) + lang + crime, status: 'permanent_resident' });
@@ -198,6 +199,94 @@ export function tickApart() {
     } else {
       n.meters.relationship = clamp(n.meters.relationship - 4);
       if (rng.chance(0.4)) log(`You and ${n.firstName} are still married across a border. The calls are getting shorter.`, 'system', 'neutral');
+    }
+  }
+}
+
+// ---------- Family members' own permission ----------
+// Someone who moves with the player holds a status of their own. Citizens of the place need none. Anyone else is the
+// player's dependant: their permission lasts as long as the player's, and becomes permanent when the player's does.
+// A child on a dependant visa who grows up needs a status of their own: a course, a job, or a year to leave.
+
+const FAMILY = ['spouse', 'partner', 'child', 'parent', 'sibling', 'grandparent', 'grandchild'];
+const npcHome = (n) => held(n).find((j) => COUNTRIES[j]) ?? n.bornIn ?? null;
+const STATUS_LINE = { citizen: 'Citizen', permanent_resident: 'Permanent resident', dependant: 'Dependant on your visa', student: 'Student visa', worker: 'Work visa', temporary_resident: 'Temporary resident' };
+
+/** Gives everyone who has just moved with the player a status in the new country. Called by emigrate(). */
+export function settleFamily(placeId, ids) {
+  const p = player();
+  const year = store.state.year;
+  const mine = residency(p);
+  for (const id of ids) {
+    const n = store.state.npcs[id];
+    if (!n || !FAMILY.includes(n.role)) continue;
+    if (rightToLive(placeId, n)) { n.residency = null; continue; }
+    const permanent = mine.status === 'citizen' || mine.status === 'permanent_resident';
+    n.residency = { jurisdictionId: placeId, status: permanent ? 'permanent_resident' : 'dependant', since: year, until: permanent ? null : mine.until ?? p.residency?.until ?? null };
+  }
+}
+
+/** A family member's standing where the player lives, in a few words (or '' if it does not apply). */
+export function familyStatus(n, p = player()) {
+  if (!n?.alive || n.flags?.abroad || !FAMILY.includes(n.role)) return '';
+  if (rightToLive(p.countryId, n)) return '';
+  const r = n.residency?.jurisdictionId === p.countryId ? n.residency : null;
+  if (!r) return '';
+  return `${STATUS_LINE[r.status] ?? r.status}${r.until ? ` until ${r.until}` : ''}`;
+}
+
+/** Everyone in the household who is not a citizen here, with their status. For the passport. */
+export function household(p = player()) {
+  return livingNpcs().filter((n) => FAMILY.includes(n.role) && !n.flags.abroad && n.role !== 'pet').map((n) => {
+    const citizen = rightToLive(p.countryId, n);
+    const r = n.residency?.jurisdictionId === p.countryId ? n.residency : null;
+    return { id: n.id, name: `${n.firstName} ${n.lastName}`, role: n.role, age: n.age, citizen,
+      status: citizen ? 'Citizen' : r ? `${STATUS_LINE[r.status] ?? r.status}${r.until ? ` until ${r.until}` : ''}` : 'Permanent resident' };
+  });
+}
+
+/**
+ * Yearly: family members' permission follows the player's, children who come of age find a status of their own,
+ * and anyone whose permission has ended goes back to the country they are a citizen of.
+ */
+export function tickFamilyStatus() {
+  const p = player();
+  const year = store.state.year;
+  const mine = residency(p);
+  for (const n of livingNpcs()) {
+    const r = n.residency;
+    if (!r || !FAMILY.includes(n.role)) continue;
+    // Living elsewhere now, or a citizen now: nothing to track.
+    if (rightToLive(r.jurisdictionId, n)) { n.residency = null; continue; }
+    const withPlayer = !n.flags.abroad && p.countryId === r.jurisdictionId;
+    if (r.status === 'dependant') {
+      if (!withPlayer) { // the person whose visa it was has gone
+        r.until = Math.min(r.until ?? year + 1, year + 1);
+      } else if (mine.status === 'citizen' || mine.status === 'permanent_resident') {
+        r.status = 'permanent_resident'; r.until = null;
+        log(`${n.firstName} is a permanent resident now, as you are.`, 'system', 'good');
+        continue;
+      } else {
+        r.until = mine.until ?? r.until;
+        // A child who grows up needs a status of their own.
+        if (n.role === 'child' && n.age >= 18) {
+          if (n.life?.edu?.yearsLeft > 0) { r.status = 'student'; r.until = year + ROUTE.studyYears; log(`${n.firstName} turned eighteen and is on a student visa of their own now.`, 'system', 'neutral'); continue; }
+          if (n.life?.job) { r.status = 'worker'; r.until = year + ROUTE.workYears; log(`${n.firstName} turned eighteen; their employer sponsored a work visa of their own.`, 'system', 'neutral'); continue; }
+          if (!r.agedOut) { r.agedOut = true; r.until = year + 1; log(`${n.firstName} is eighteen, and no longer covered by your visa. They have a year to find a course or a job here.`, 'system', 'bad'); continue; }
+        }
+      }
+    } else if (r.status === 'student' || r.status === 'worker') {
+      if (year - r.since >= ROUTE.settledAfter && (n.life?.job || n.life?.edu?.yearsLeft > 0)) { r.status = 'permanent_resident'; r.until = null; continue; }
+      if (r.until && year >= r.until && (r.status === 'student' ? n.life?.edu?.yearsLeft > 0 : n.life?.job)) { r.until = year + 3; continue; }
+    }
+    if (r.until && year >= r.until) {
+      const home = npcHome(n);
+      if (home && home !== p.countryId && COUNTRIES[home]) {
+        n.flags.abroad = home;
+        n.residency = null;
+        n.meters.relationship = clamp(n.meters.relationship - 4);
+        log(`${n.firstName}'s permission to stay in ${theCountry(COUNTRIES[r.jurisdictionId].name)} ran out, and they went back to ${theCountry(COUNTRIES[home].name)}.`, 'system', 'bad');
+      } else { r.status = 'permanent_resident'; r.until = null; }
     }
   }
 }

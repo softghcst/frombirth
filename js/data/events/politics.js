@@ -152,7 +152,7 @@ export default [
     id: 'pol_hot_mic', category: 'politics', ageRange: [21, 110], cooldown: 10, requires: [office],
     text: 'After a visit to a market, you get back in the car and say what you really thought of a woman you met there. Your microphone is still on.',
     choices: [
-      { label: 'Go back and apologise to her face', check: chk(0.6, { 'stats.charm': 0.4, 'hidden.karma': 0.2 }), outcomes: [
+      { label: 'Go back and apologize to her face', check: chk(0.6, { 'stats.charm': 0.4, 'hidden.karma': 0.2 }), outcomes: [
         ok('She makes you a cup of tea and tells you exactly what she thinks of you. You are both rather pleased with how it goes.', approval(3), hid('karma', 3)),
         bad('She does not open the door. Forty cameras record her not opening it.', approval(-9)),
       ] },
@@ -192,7 +192,7 @@ export default [
   },
   {
     id: 'pol_gunman', category: 'politics', ageRange: [30, 110], cooldown: 20, weight: 0.3, requires: [office, tier(5)],
-    text: 'You are shaking hands along a barrier when a man in a grey coat reaches inside it, and what he brings out is not a camera.',
+    text: 'You are shaking hands along a barrier when a man in a gray coat reaches inside it, and what he brings out is not a camera.',
     choices: [
       { label: 'Throw yourself to the ground', outcomes: [
         { on: 'always', weight: 0.75, tone: 'good', text: 'Two shots go over you. Your bodyguards are on him before the third. You finish the visit with gravel in your hands.', effects: [approval(12), st('mood', -8)] },
@@ -248,7 +248,7 @@ export default [
     id: 'kin_wants_politics', category: 'family', ageRange: [30, 120], queuedOnly: true,
     text: 'Your {rel} {kin} has something to tell you, and takes most of dinner to get to it: {kin} wants to go into politics.',
     choices: [
-      { label: 'Back them, and write a cheque ({cost})', outcomes: [any('You say you could not be prouder.', 'good', kin('back'))] },
+      { label: 'Back them, and write a check ({cost})', outcomes: [any('You say you could not be prouder.', 'good', kin('back'))] },
       { label: 'Say it is their life', outcomes: [any('You say you will be there either way.', 'neutral', kin('neutral'))] },
       { label: 'Tell them what it really costs', outcomes: [any('You tell the truth about the hours, the letters, and what it does to a family.', 'neutral', kin('discourage'))] },
     ],
@@ -284,14 +284,14 @@ export default [
     choices: [
       { label: 'Tell it yourself, before she can', outcomes: [any('You ask for ten minutes to think, and use them.', 'neutral', scandal('confess'))] },
       { label: 'Deny everything', outcomes: [any('"There is no truth in it whatever."', 'neutral', scandal('deny'))] },
-      { label: 'Lean on her editor ({hush})', requires: [has(80000)], outcomes: [any('You make a call to a man who owes you a favour, and offer him another.', 'neutral', scandal('kill'))] },
+      { label: 'Lean on her editor ({hush})', requires: [has(80000)], outcomes: [any('You make a call to a man who owes you a favor, and offer him another.', 'neutral', scandal('kill'))] },
     ],
   },
   {
     id: 'scandal_story', category: 'politics', ageRange: [18, 120], queuedOnly: true,
     text: 'It is on every front page: {what}. Your telephone has not stopped, your colleagues are suddenly hard to reach, and there are cameras at the end of the road.',
     choices: [
-      { label: 'Apologise', outcomes: [any('You face the cameras.', 'neutral', scandal('apologise'))] },
+      { label: 'Apologize', outcomes: [any('You face the cameras.', 'neutral', scandal('apologise'))] },
       { label: 'Let an aide take the blame', outcomes: [any('You have a quiet word with someone junior, loyal, and expendable.', 'neutral', scandal('aide'))] },
       { label: 'Call an independent inquiry', outcomes: [any('"I have nothing to hide, and I want that established."', 'neutral', scandal('inquiry'))] },
       { label: 'Resign', requires: [need('inOffice', '==', true)], outcomes: [any('A short statement on the steps, and a car with the engine running.', 'neutral', resignOffice(), st('mood', -6))] },

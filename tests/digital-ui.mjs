@@ -237,7 +237,7 @@ async function extras() {
   await page.click('.dl-modal [data-close]');
   // The Family Archive, from the People tab.
   await page.click('.tab-btn[data-tab="people"]');
-  await page.click('[data-top="archive"]');
+  await page.click('[data-top="digitalArchive"]');
   await page.waitForSelector('.dl-modal');
   check((await page.locator('.dl-body').innerText()).includes('Family Archive'), 'the Family Archive opens from the People tab');
   await page.click('.dl-modal [data-close]');

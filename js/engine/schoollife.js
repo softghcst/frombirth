@@ -20,6 +20,7 @@ import { CLUB_BY_ID } from '../data/schools.js';
 import { LEAVING_AGE } from '../data/education.js';
 import { INTERESTS, CIRCLES, SPORTS, ELECTIVES, CORE_HIGH, PLAYS, CLUB_KIND, CLUB_INTEREST, SUBJECT_BY_ID } from '../data/education.js';
 import * as sch from './schooling.js';
+import { schoolSeason } from './sports.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const mates = () => npcsByRole('classmate').filter((n) => n.flags.schoolId);
@@ -87,6 +88,10 @@ function season(id, life) {
   e.sport ??= sportsHere()[0];
   const a = (p.flags.athlete ??= { sport: e.sport, seasons: 0, best: 0, captain: false, awards: [] });
   a.sport = e.sport;
+  // Sports the athletic engine knows are played through it: the school's team, coach, league and record are kept
+  // (engine/sports.js), and the season itself is played with the rest of the athletic year.
+  const engine = schoolSeason(e.sport);
+  if (engine != null) { life.record.push({ age: p.age, text: `${e.sport} season`, rating: engine }); return engine; }
   const skill = p.talents.sports;
   const rating = Math.round(clamp(skill * 0.7 + p.stats.health * 0.15 + p.hidden.discipline * 0.15 + rng.int(-10, 10)));
   const games = 10;
@@ -260,7 +265,7 @@ export function decide(what, cast = {}) {
       return say('You stay out of it. Both of them think you should have taken their side.');
     }
     case 'rumourConfront': if (rng.chance(0.35 + p.stats.charm / 200)) { if (n) rel(n, 6); e.standing = clamp((e.standing ?? 50) + 4); return say(`You ask ${n?.firstName} about it, quietly, face to face. It stops.`); } if (n) rel(n, -8); e.standing = clamp((e.standing ?? 50) - 3); return say('It turns into a scene in the corridor, and now everyone has heard it.');
-    case 'rumourIgnore': mood(-4); return say('You say nothing. In a fortnight the school is talking about something else.');
+    case 'rumourIgnore': mood(-4); return say('You say nothing. In two weeks the school is talking about something else.');
     case 'rumourTell': { const t = sch.teachers()[0]; if (t && t.flags.skill >= 45) { if (t) rel(t, 4); return say(`${t.firstName} ${t.lastName} deals with it without making it worse. That is rarer than it should be.`); } mood(-3); return say('A teacher gives the whole class a talk about kindness. Everybody knows why.'); }
     case 'bullyTeacher': { const t = sch.teachers().sort((a, b) => b.flags.skill - a.flags.skill)[0]; delete e.bullied; if (t) rel(t, 6); mood(4); return say(`${t ? `${t.firstName} ${t.lastName}` : 'A teacher'} listens to all of it, writes it down, and acts: parents are called in, seats are moved, and someone checks on you every week. It stops.`); }
     case 'bullyParents': { delete e.bullied; for (const par of npcsByRole('parent')) rel(par, 5); mood(3); return say('You tell them at the kitchen table. They are angrier than you expected, on your behalf. They go to the school the next morning, and things change.'); }
@@ -268,7 +273,7 @@ export function decide(what, cast = {}) {
     case 'bullyEndure': e.bullied = { id: n?.id }; mood(-10); p.stats.health = clamp(p.stats.health - 2); return say('You tell nobody. You find routes through the building that avoid them. It goes on.');
     case 'teacherYes': if (n) { rel(n, 10); n.flags.believed = true; n.flags.wouldRecommend = true; const s = e.subjects?.[n.flags.teaches]; if (s) s.interest = clamp(s.interest + 12); } p.stats.intellect = clamp(p.stats.intellect + 2); return say(`You take the extra work. ${n?.firstName} ${n?.lastName} treats you like someone who might be good at this, and it turns out you might.`);
     case 'teacherNo': if (n) n.flags.believed = true; return say('You say you are too busy. The offer is not made twice.');
-    case 'cheatCalm': if (n && rng.chance(0.4 + n.flags.skill / 150)) { rel(n, 3); return say(`You show your working, line by line. ${n.firstName} ${n.lastName} apologises, in front of the class.`); } e.absences += 1; mood(-6); return say('You explain. You are not believed, and the mark is struck out. Later the real culprit is found, and nobody says sorry.');
+    case 'cheatCalm': if (n && rng.chance(0.4 + n.flags.skill / 150)) { rel(n, 3); return say(`You show your working, line by line. ${n.firstName} ${n.lastName} apologizes, in front of the class.`); } e.absences += 1; mood(-6); return say('You explain. You are not believed, and the mark is struck out. Later the real culprit is found, and nobody says sorry.');
     case 'cheatAngry': if (n) rel(n, -10); mood(-4); return say('You say exactly what you think. You are right, and you are in detention.');
     case 'cheatAccept': mood(-8); p.hidden.willpower = clamp(p.hidden.willpower - 2); return say('You take the punishment for something you did not do, because arguing seemed worse.');
     case 'danceAsk': {
@@ -319,7 +324,7 @@ function audition(bold) {
 /** After leaving school with a qualification: the day itself. */
 export function graduationDay(gpa) {
   const top = gpa >= 3.7;
-  pend('graduation_day', { words: { honours: top ? 'Your name is read out first, with the prize for the year. ' : '' } });
+  pend('graduation_day', { words: { honors: top ? 'Your name is read out first, with the prize for the year. ' : '' } });
 }
 
 /** The data for the Activities page of the school book. */

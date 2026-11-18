@@ -6,11 +6,17 @@
 //   reference   real-world facts about the place (data/world.js)
 //   game        how the game models living there (data/countries.js, living.js): estimates, not statistics
 //   yourWorld   what has happened there in this save (the political world, engine/polity.js): fiction
+import { LAW_CHECKED, LAW_SOURCES } from '../data/lawVerification.js';
 import { SOURCES } from '../data/worldVerification.js';
 const SOURCE_LINE = `ISO 3166-1, ISO 4217 and the Unicode CLDR, the IANA time-zone database (${SOURCES.tzdata}) and GeoNames`;
 const CHECK_NAME = { codes: 'ISO codes', name: 'Name', currency: 'Currency', timeZone: 'Time zone', capital: 'Capital', unRegion: 'UN region', languages: 'Official languages', cities: 'Cities', regions: 'Regions of cities' };
+const LAW_NAME = { sameSexMarriage: 'Same-sex marriage', lgbt: 'LGBT people', deathPenalty: 'Death penalty', conscription: 'Military service', alcohol: 'Alcohol', divorce: 'Divorce',
+  votingAge: 'Voting age', drinkingAge: 'Drinking age', drivingAge: 'Driving age', marriageAge: 'Marriage age', gambling: 'Gambling', gamblingAge: 'Gambling age',
+  schoolLeavingAge: 'School-leaving age', retirementAge: 'Pension age', birthright: 'Citizenship by birth', single: 'Dual citizenship', naturalization: 'Years before citizenship', spouseWait: 'Wait for a citizen\'s spouse', healthCare: 'Health care', taxTop: 'Top rate of income tax', inheritance: 'Estate and inheritance tax',
+  freeMovement: 'Free movement', government: 'Form of government' };
 const CHECK_WORD = { ok: 'Confirmed', review: 'Differs on purpose', unconfirmed: 'Not confirmed', mismatch: 'Disagrees with the source' };
 import { healthLine, taxLine } from './systems.js';
+import { inheritanceLine } from './inheritance.js';
 import { outlook } from './economy.js';
 import { cityLine } from './cities.js';
 import { sheet, reforms } from './rules.js';
@@ -69,7 +75,7 @@ export function profile(id) {
     ['Typical pay', `${times(L.wage)} pay in the United States`],
     ['Local prices', `${times(L.cost)} prices in the United States`],
     ['Income tax', `${Math.round(c.incomeTax * 100)}%`],
-    ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
+    ['Inheritance tax', inheritanceLine(c)],
     ['Property tax', propertyTaxLabel(c)],
     ['Health care', healthLine(c)],
     ['How income is taxed', taxLine(c)],
@@ -95,11 +101,19 @@ export function profile(id) {
     ...(sys.head ? [['Head of government', sys.head]] : []),
     ...(sys.seat ? [['National legislator', sys.seat]] : []),
     ...(sys.region ? [['Regional leader', sys.region]] : []),
-    ...(sys.rigged ? [['Elections', 'Held, but the count leans towards those in power']] : []),
+    ...(sys.rigged ? [['Elections', 'Held, but the count leans toward those in power']] : []),
     ...(sys.nativeOnly ? [['Top office', 'Open only to people born here']] : []),
     ...(crown ? [['Crown', `A ${crown.type} monarchy you can be born into or marry into`]] : []),
   ];
   const laws = sheet(id, { region: null }).map((r) => [r.name, r.note ? `${r.text} (${r.note})` : r.text]);
+  // How the law was checked: only for laws not changed in this life, which are no longer the reference law.
+  const lc = LAW_CHECKED[id] ?? {};
+  const lawChecks = Object.entries(LAW_NAME).filter(([k]) => lc[k] && !(store.state?.rules?.[id]?.[k])).map(([k, name]) => {
+    const v = lc[k];
+    const src = LAW_SOURCES[{ alcohol: 'drinkingAge', gambling: 'gamblingAge', freeMovement: 'eu', spouseWait: 'naturalization' }[k] ?? k];
+    const cite = Array.isArray(src) ? 'Wikipedia, regional articles' : src?.site ? `${src.site}, "${src.page}"` : src ? `Wikipedia, "${src.page}"` : '';
+    return [name, `${CHECK_WORD[v.status]}${v.status === 'ok' ? ` (${cite})` : v.note ? `: ${v.note}` : ''}`];
+  });
   const spoken = Object.entries(SPOKEN).filter(([, ids]) => ids.includes(id)).map(([k]) => k);
   // What has happened here in this save, if anything has: never invents a government just because the page was opened.
   let yourWorld = null;
@@ -119,12 +133,12 @@ export function profile(id) {
   }
   const dyn = store.state?.dynasties?.[id];
   if (dyn && yourWorld) yourWorld.lines.push(['Royal house', `${dyn.name}${dyn.status === 'abolished' ? ' (the monarchy was abolished)' : ''}`]);
-  return { id, name: c.name, flag: c.flag, typeLabel: p.typeLabel, status: p.status, reference, game, school, politics, cityLines: c.cities.map((n) => [n, cityLine(id, n)]), laws, lawChanges: store.state ? reforms(id).slice(0, 5).map((e) => `${e.year}: ${e.text}`) : [], cities: c.cities, capital: p.capital, spoken, yourWorld,
+  return { id, name: c.name, flag: c.flag, typeLabel: p.typeLabel, status: p.status, reference, game, school, politics, cityLines: c.cities.map((n) => [n, cityLine(id, n)]), laws, lawChecks, lawChanges: store.state ? reforms(id).slice(0, 5).map((e) => `${e.year}: ${e.text}`) : [], cities: c.cities, capital: p.capital, spoken, yourWorld,
     checks: Object.entries(p.checked ?? {}).sort(([a], [b]) => Object.keys(CHECK_NAME).indexOf(a) - Object.keys(CHECK_NAME).indexOf(b)).filter(([, v]) => v.status !== 'unchecked').map(([k, v]) => [CHECK_NAME[k] ?? k, CHECK_WORD[v.status] + (v.status === 'ok' || !v.note ? '' : `: ${v.note}`)]),
-    notes: [p.verification === 'verified' ? `Reference facts were checked against ${SOURCE_LINE}. ${p.status ? 'Form of government and status are' : 'Form of government is'} written by hand.`
-      : p.verification === 'partly verified' ? `Most reference facts were checked against ${SOURCE_LINE}; anything marked "not confirmed" was not. ${p.status ? 'Form of government and status are' : 'Form of government is'} written by hand.`
+    notes: [p.verification === 'verified' ? `Reference facts were checked against ${SOURCE_LINE}. ${p.status ? 'The status sentence is written by hand.' : ''}`
+      : p.verification === 'partly verified' ? `Most reference facts were checked against ${SOURCE_LINE}; anything marked "not confirmed" was not. ${p.status ? 'The status sentence is written by hand.' : ''}`
         : 'Reference facts were compiled by hand and have not been checked against official sources.',
-      'Pay, prices, taxes, scores and the laws listed are simplified for play. They are not statistics or legal information.'] };
+      'The laws are checked against published summaries (see "How the law was checked"), but are simplified to one value each and are not legal information. Pay, prices, taxes and scores are simplified for play, not statistics.'] };
 }
 
 /** Two places side by side on the things that differ most. No ranking: what suits one life does not suit another. */

@@ -8,7 +8,8 @@ import { BUYING_FEE, FOREIGN_BUYER_FEE } from '../js/data/properties.js';
 import * as estate from '../js/engine/realEstate.js';
 import * as fx from '../js/engine/currency.js';
 import { netWorth } from '../js/engine/finance.js';
-import { estatePlan } from '../js/engine/death.js';
+import { estatePlan, willHeirs } from '../js/engine/death.js';
+import { estateTax, relationOf } from '../js/engine/inheritance.js';
 import { emigrate } from '../js/engine/emigration.js';
 
 rng.seed(31337);
@@ -44,6 +45,7 @@ check((p.finance.accounts.MXN ?? 0) === acct - l.quote.fromAccount && p.finance.
 check(near(a.value, fx.convert(l.price, 'MXN', 'USD'), 0.01), 'it is worth, in dollars, what was paid in pesos');
 const lost = worth0 - netWorth(store.state); const feesUsd = fx.convert(l.fees, 'MXN', 'USD') + l.quote.fee;
 check(near(lost, feesUsd, 0.03) && lost > 0, `net worth fell by the fees and nothing else (${lost} against ${feesUsd})`);
+// Money is changed only when the peso account does not cover it all; when it does, there is no exchange to record.
 check(l.quote.fromCash === 0 || (p.finance.fxLog.at(-1).what && p.finance.fxLog.at(-1).received === total - l.quote.fromAccount), 'any money changed for it is in the record');
 check(!estate.buyAbroad(l.id).ok, 'a listing can be bought once');
 p.finance.cash = 10; store.state.market.abroad = null; list = estate.listingsAbroad('jp', 'Tokyo');
@@ -56,11 +58,12 @@ check(!estate.moveIn(b.id).ok, 'it cannot be lived in from another country');
 check(estate.propertyTaxOn(b) === Math.round(b.value * COUNTRIES.mx.propertyTax), 'property tax is Mexico\'s');
 const v0 = b.value; store.state.fx = { ...(store.state.fx ?? {}), MXN: (store.state.fx?.MXN ?? 1) * 1.25 }; estate.damageProperty(b, 0);
 check(near(b.value, v0 / 1.25, 0.03), `when the peso weakens by a quarter, the house is worth a fifth less in dollars (${b.value} against ${v0})`);
-estate.letOut(b.id); b.tenant.quality = 100; const rent = b.tenant.rent; const c1 = p.finance.cash; const t1 = p.finance.lifetimeTaxPaid;
-const up = Math.round; estate.tickProperties();
+estate.letOut(b.id); b.tenant.quality = 100; const rent = b.tenant.rent; const t1 = p.finance.lifetimeTaxPaid;
+check(b.tenant.code === 'MXN' && Number.isInteger(rent), 'the rent is agreed in pesos');
+const pesos0 = p.finance.accounts?.MXN ?? 0; estate.tickProperties();
 const taxOnRent = Math.round(rent * COUNTRIES.mx.incomeTax);
-check(p.finance.lifetimeTaxPaid - t1 >= taxOnRent && store.state.journal.some((j) => j.text.includes('in rent')), 'rent came in and was taxed');
-check(COUNTRIES.mx.incomeTax !== COUNTRIES.us.incomeTax && store.state.journal.at(-1).text.includes(String(taxOnRent).slice(0, 2)), 'at Mexico\'s rate, not the rate where the owner lives');
+check(p.finance.lifetimeTaxPaid > t1 && store.state.journal.some((j) => /Rent from your property abroad/.test(j.text)), 'rent came in and was taxed');
+check((p.finance.accounts?.MXN ?? 0) - pesos0 <= rent - taxOnRent, `at Mexico's rate, into the peso account, less local costs (${(p.finance.accounts?.MXN ?? 0) - pesos0} of ${rent - taxOnRent})`);
 section('owning abroad: local value and tax, exposure to the currency');
 
 // 4. Selling abroad pays into the account in that currency.
@@ -80,14 +83,16 @@ estate.damageProperty(h, 0); check(near(h.value, before, 0.05), 'revaluing it do
 section('moving to it: the same house, now at home');
 
 // 6. Inheritance tax by place.
-p = life('us', 'Chicago', 4e6); l = estate.listingsAbroad('jp', 'Osaka')[2]; estate.buyAbroad(l.id); const j = p.assets.find((x) => x.kind === 'property');
+p = life('us', 'Chicago', 20e6); l = estate.listingsAbroad('jp', 'Osaka')[2]; estate.buyAbroad(l.id); const j = p.assets.find((x) => x.kind === 'property'); j.value = 2e6; // above Japan's allowance, so both countries charge something
 let plan = estatePlan();
 const jp = plan.taxBy?.find((t) => t.countryId === 'jp'); const us = plan.taxBy?.find((t) => t.countryId === 'us');
-check(!!jp && near(jp.amount, j.value * COUNTRIES.jp.estateTax, 0.01) && jp.rate === COUNTRIES.jp.estateTax, 'the house in Japan is taxed by Japan, at Japan\'s rate');
-check(!!us && us.rate === COUNTRIES.us.estateTax && plan.tax === plan.taxBy.reduce((s, t) => s + t.amount, 0), 'the rest is taxed where the owner lived, and the parts add up');
-check(plan.net === plan.gross - plan.tax && plan.tax <= plan.liquid, 'tax never exceeds what can be paid without selling');
+const takers = willHeirs().map(([n, share]) => ({ relation: relationOf(n.role), share }));
+const fxj = COUNTRIES.jp.currency.scale / COUNTRIES.us.currency.scale;
+check(!!jp && near(jp.amount, estateTax(j.value * fxj, COUNTRIES.jp, takers) / fxj, 0.01), `the house in Japan is taxed by Japan, under Japan's scale (${jp?.amount})`);
+check(!!us && near(us.amount, 0.4 * (plan.gross - j.value - 15e6), 0.01) && plan.tax === plan.taxBy.reduce((s, t) => s + t.amount, 0), 'the rest is taxed where the owner lived (40% above the US exemption), and the parts add up');
+check(plan.net === plan.gross - plan.tax - (plan.probate ?? 0) && plan.tax + (plan.probate ?? 0) <= plan.liquid, 'tax, and the cost of winding up the estate, never exceed what can be paid without selling');
 const noAbroad = (() => { const keep = p.assets; p.assets = []; p.finance.cash += j.value; const t = estatePlan().tax; p.assets = keep; p.finance.cash -= j.value; return t; })();
-check(COUNTRIES.jp.estateTax > COUNTRIES.us.estateTax ? plan.tax > noAbroad : plan.tax <= noAbroad, 'holding it abroad changes the bill in the direction the two rates say');
+check(near(plan.tax, noAbroad - 0.4 * j.value + jp.amount, 0.01), 'holding it abroad moves that part of the bill from the US to Japan');
 p.finance.cash = 100; plan = estatePlan(); check(plan.tax <= Math.max(0, plan.liquid) && plan.taxBy.reduce((s, t) => s + t.amount, 0) <= plan.tax + 2, 'with no cash, each country takes a share of what little there is');
 section('inheritance: property abroad is taxed where it stands, the rest where the owner lived');
 
@@ -96,6 +101,37 @@ p = life('uk', 'Leeds'); l = estate.listingsAbroad('es', 'Madrid')[0]; estate.bu
 for (let i = 0; i < 25; i++) { try { advanceYear(); } catch (err) { problems.push(`year ${i}: ${err.message}`); break; } store.state.pendingEvents = []; p.legal.pending = null; p.stats.health = 90; const pr = p.assets.find((x) => x.kind === 'property'); if (pr) check(Number.isFinite(pr.value) && pr.value > 0, 'value went bad'); }
 check(Number.isFinite(netWorth(store.state)) && Number.isFinite(p.finance.cash), 'money stayed finite over twenty-five years');
 section('twenty-five years as a landlord abroad');
+
+// 8. Each country has its own housing market, and loans keep their currency across a move.
+{
+const m = await import('../js/engine/market.js');
+p = life('us', 'Chicago');
+for (let i = 0; i < 15; i++) m.tickMarket();
+const idx = store.state.market.housingBy;
+check(Object.keys(idx).length >= 100 && new Set(Object.values(idx).map((v) => v.toFixed(3))).size > 20, 'housing markets move separately from country to country');
+check(store.state.market.housing === m.housingIndex('us'), 'the old single figure follows the country the player lives in');
+const avgPrice = () => { let t = 0; let n = 0; for (let i = 0; i < 40; i++) { store.state.market.abroad = null; for (const l of estate.listingsAbroad('mx', 'Mérida')) { t += l.price; n += 1; } } return t / n; };
+const before = avgPrice();
+store.state.market.housingBy.mx = m.housingIndex('mx') * 2;
+const doubled = avgPrice();
+check(doubled > before * 1.3, 'a Mexican boom raises Mexican prices');
+p = life('us', 'Chicago'); { const { hire } = await import('../js/engine/career.js'); const { CAREERS } = await import('../js/data/careers.js'); hire(CAREERS.find((c) => c.id === 'office'), 2, 70); }
+store.state.market.listings = null; const l2 = estate.listings()[1];
+const terms = estate.mortgageTerms(l2.price); const dep = Math.max(terms.minDeposit, l2.price - terms.maxLoan);
+const bought = estate.buyProperty(l2.id, dep);
+const hm = p.assets.find((x) => x.kind === 'property');
+if (bought.ok && hm.mortgage) {
+  check(hm.mortgage.code === 'USD', 'a mortgage records its currency');
+  const principal = hm.mortgage.principal; const owedUsd = estate.owedOn(hm);
+  for (let i = 0; i < 60 && p.countryId === 'us'; i++) { p.flags.visaAge = null; emigrate('mx', { city: 'Guadalajara' }); }
+  check(p.countryId === 'mx' && hm.mortgage.principal === principal && hm.mortgage.code === 'USD', 'after moving to Mexico the mortgage is still in dollars, unchanged');
+  check(Math.abs(estate.owedOn(hm) - fx.convert(owedUsd, 'USD', 'MXN')) <= Math.max(5, estate.owedOn(hm) * 0.01), 'and counted in pesos at today\'s rate');
+  estate.tickProperties();
+  check(hm.mortgage == null || hm.mortgage.principal < principal, 'payments keep going down in dollars');
+  check(Number.isFinite(netWorth(store.state)), 'net worth stays sound');
+} else problems.push(`the test mortgage could not be taken out: ${bought.text}`);
+section('markets: one housing market per country; mortgages and rent stay in the money they were agreed in');
+}
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)]) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);

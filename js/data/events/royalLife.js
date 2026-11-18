@@ -32,16 +32,16 @@ export default [
     text: 'A magazine has a blurred photograph of you leaving a restaurant, and a headline about a "mystery companion". The companion is your cousin\'s accountant, and you were discussing a charity.',
     choices: [
       { label: 'Laugh, and name the charity', outcomes: [any('You thank the magazine for the publicity and give the charity\'s address. Donations double.', 'good', image(4), press(3), hid('karma', 2))] },
-      { label: 'Deny it', outcomes: [any('It is not true, and you say so. The magazine prints the denial on page nineteen.', 'neutral', story('a rumoured romance', false, 16))] },
-      { label: 'Ignore it', outcomes: [any('The accountant is rather flattered. Nobody else remembers it by the weekend.', 'neutral', story('a rumoured romance', false, 8))] },
+      { label: 'Deny it', outcomes: [any('It is not true, and you say so. The magazine prints the denial on page nineteen.', 'neutral', story('a rumored romance', false, 16))] },
+      { label: 'Ignore it', outcomes: [any('The accountant is rather flattered. Nobody else remembers it by the weekend.', 'neutral', story('a rumored romance', false, 8))] },
     ],
   },
   {
     id: 'press_spending', category: 'royalty', ageRange: [21, 95], cooldown: 8, requires: [royal, has(400000)],
     text: 'A newspaper has added up what you spent this year: the clothes, the travel, the redecorated rooms. The figure is accurate, and it is on the front page beside a photograph of a food bank.',
     choices: [
-      { label: 'Give a large sum away, quietly', requires: [has(600000)], outcomes: [any('You say nothing and write a cheque. It comes out anyway, a month later, and does you more good than any statement.', 'good', cash(-200000), image(6), hid('karma', 8), story('your spending', true, 14))] },
-      { label: 'Apologise, and promise to cut back', outcomes: [any('A short statement: they have a point, and you will do better. The family thinks you gave in too easily. The public does not.', 'good', image(3), family(-4), press(4), story('your spending', true, 18))] },
+      { label: 'Give a large sum away, quietly', requires: [has(600000)], outcomes: [any('You say nothing and write a check. It comes out anyway, a month later, and does you more good than any statement.', 'good', cash(-200000), image(6), hid('karma', 8), story('your spending', true, 14))] },
+      { label: 'Apologize, and promise to cut back', outcomes: [any('A short statement: they have a point, and you will do better. The family thinks you gave in too easily. The public does not.', 'good', image(3), family(-4), press(4), story('your spending', true, 18))] },
       { label: 'Say it is your own money', outcomes: [any('It is your own money, and saying so is a mistake. The photograph of the food bank is printed again.', 'bad', image(-8), press(-6), story('your spending', true, 45))] },
       { label: 'Deny the figures', outcomes: [any('The newspaper prints the receipts.', 'bad', image(-10), press(-10), story('your spending, and your denial of it', true, 60), hid('karma', -4))] },
     ],
@@ -64,10 +64,10 @@ export default [
     choices: [
       { label: 'Say nothing, ever', outcomes: [any('You do not read it, or say you do not. It is the dignified thing, and it costs you a bad week.', 'neutral', image(-3), story('an ex telling all', true, 30), st('mood', -6), family(2))] },
       { label: 'Telephone {ex}', check: chk(0.4, { 'stats.charm': 0.4, 'cast.ex.relationship': 0.6 }), outcomes: [
-        ok('It was the money, {ex} says, and they are sorry. The second instalment never appears.', coolStory(-25), rel('ex', 8), st('mood', 2)),
+        ok('It was the money, {ex} says, and they are sorry. The second installment never appears.', coolStory(-25), rel('ex', 8), st('mood', 2)),
         bad('The call itself is in next Sunday\'s paper.', image(-6), press(-5), story('an ex telling all', true, 50), st('mood', -8)),
       ] },
-      { label: 'Have the lawyers stop the next instalment', requires: [has(60000)], outcomes: [any('An injunction, granted at midnight. Everyone now wants to know what was in it.', 'bad', cash(-60000), press(-8), story('what the court would not let be printed', true, 45))] },
+      { label: 'Have the lawyers stop the next installment', requires: [has(60000)], outcomes: [any('An injunction, granted at midnight. Everyone now wants to know what was in it.', 'bad', cash(-60000), press(-8), story('what the court would not let be printed', true, 45))] },
     ],
   },
 

@@ -99,7 +99,7 @@ export function double(hand) {
 
 // ---------- The horses ----------
 
-const HORSES = ['Midnight Ledger', 'Paper Lantern', 'Cold Harbour', 'Marmalade Sky', 'Second Wind', 'Biscuit Tin',
+const HORSES = ['Midnight Ledger', 'Paper Lantern', 'Cold Harbor', 'Marmalade Sky', 'Second Wind', 'Biscuit Tin',
   'Quiet Thunder', 'Tin Whistle', 'Lucky Sixpence', 'Sunday Driver', 'Gravel Road', 'Small Mercy'];
 
 /** The share of stakes the bookmaker pays back, on average. */

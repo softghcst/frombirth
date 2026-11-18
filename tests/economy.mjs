@@ -21,7 +21,9 @@ const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
 const section = (msg) => { if (!problems.length) ok.push(msg); };
 const life = (id, age = 25) => { do { store.state = createLife({ countryId: id }); } while (store.state.player.royal); const p = store.state.player; p.age = age; p.birthYear = store.state.year; store.state.year += age; p.flags.livesWithParents = false; p.education.enrolled = false; return p; };
-const year = () => { advanceYear(); store.state.pendingEvents = []; const p = store.state.player; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90; };
+// The world only turns while the player lives (advanceYear returns for the dead): a death on the road or at work would
+// freeze it for the rest of a long run, so the test life is brought back.
+const year = () => { if (!store.state.player.alive) { store.state.player.alive = true; store.state.over = false; } advanceYear(); store.state.pendingEvents = []; const p = store.state.player; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90; };
 
 // 1. Tables.
 for (const [from, o] of Object.entries(TURN)) { check(!!PHASES[from], `unknown phase ${from}`); for (const [to, ch] of Object.entries(o)) check(!!PHASES[to] && ch > 0 && ch < 1, `bad turn ${from}→${to}`); }
@@ -107,6 +109,54 @@ check(left >= 6 && left <= 150, `some brothers, sisters and friends move abroad 
 check(back + near >= 1, `and some come back (${back} home, ${near} to be near)`);
 check(minors === 0, 'small children do not emigrate on their own');
 section(`people: ${left} moved away, ${back} came home, ${near} moved nearer`);
+
+// 8. Wars can begin, rarely, and only in a deeply unstable country; never as one named country against another.
+{
+  const { WAR_START } = await import('../js/data/economy.js');
+  const { COUNTRY_LIST: ALL } = await import('../js/data/countries.js');
+  p = life('pl', 30);
+  const saved = WAR_START.chance; WAR_START.chance = 0.25;
+  for (let i = 0; i < 12; i++) econ.tickEconomy();
+  WAR_START.chance = saved;
+  const begun = store.state.world.news.filter((n) => n.kind === 'crisis' && /Armed conflict has broken out/.test(n.text));
+  check(begun.length > 0, 'with the odds raised, wars begin');
+  for (const n of begun) {
+    check(LIVING[n.placeId] && BASE_LIVING[n.placeId] && (LIVING[n.placeId].stability ?? 100) < WAR_START.below, `a war began somewhere stable: ${n.placeId}`);
+    const others = ALL.filter((c) => c.id !== n.placeId && n.text.includes(c.name));
+    check(!others.length, `a war's report names another country: ${n.text}`);
+  }
+  // At war: men of fighting age may not leave, and the protection route opens for the country's citizens.
+  const at = begun[0]?.placeId;
+  if (at) {
+    p = life(at, 30); p.gender = 'male'; p.flags.bornAs = 'male'; p.finance.cash = 1e9;
+    store.state.world = { places: { [at]: { phase: 'slump', since: store.state.year, crisis: 'war', crisisSince: store.state.year } }, news: [] };
+    check(!mayLeave().ok, 'men of fighting age may not leave a country at war');
+    const prot = routes('pl').find((r) => r.id === 'protection'); check(prot?.eligible, 'and its citizens may seek protection abroad');
+  }
+  section(`war: ${begun.length} began in twelve years at raised odds, each in an unstable country, none naming an enemy`);
+}
+
+// 9. A family that moves takes no half-finished scenes about the people it left behind.
+{
+  const { renderText } = await import('../js/engine/eventEngine.js');
+  const { EVENT_BY_ID } = await import('../js/data/events/index.js');
+  const { ROOTS } = await import('../js/data/economy.js');
+  const was = ROOTS.familyLeaves; ROOTS.familyLeaves = 0.5;
+  let scenes = 0; let blank = 0; let moved = 0;
+  for (let k = 0; k < 16; k++) {
+    store.state = createLife({ countryId: ['us', 'br', 'pl', 'in'][k % 4] });
+    const start = store.state.player.countryId;
+    for (let y = 0; y < 8; y++) {
+      advanceYear();
+      for (const e of store.state.pendingEvents) { const ev = EVENT_BY_ID[e.id]; if (!ev) continue; scenes += 1; if (/\{[a-z]+\}/.test(renderText(ev.text, e.cast))) blank += 1; }
+      store.state.pendingEvents = [];
+    }
+    if (store.state.player.countryId !== start) moved += 1;
+  }
+  ROOTS.familyLeaves = was;
+  check(moved > 3 && blank === 0, `no scene names someone who is gone (${blank} of ${scenes} scenes, in ${moved} families that moved)`);
+  section(`moves: ${moved} families moved; none of ${scenes} scenes named someone left behind`);
+}
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 25)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);

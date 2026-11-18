@@ -2,7 +2,12 @@
 // who inherits, and the epitaphs the life earned.
 import { eraMortality } from './history.js';
 import { COUNTRIES } from '../data/countries.js';
-import { settleEstate } from './currency.js';
+import { settleEstate, atHome } from './currency.js';
+import { closeForEstate } from './banking.js';
+import { trustsAtDeath } from './trusts.js';
+import { settleLife } from './insurance.js';
+import { RESERVED_SHARE_OF } from '../data/money.js';
+import { book } from './ledger.js';
 import { rng } from '../rng.js';
 import { styledName } from './royalty.js';
 import { uid, localMoney } from '../util.js';
@@ -15,7 +20,9 @@ import { heirs } from './legacy.js';
 import { onDeath as digitalLegacy } from './digital/legacy.js';
 import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
+import { EPITAPHS } from '../data/epitaphs.js';
+import { estateTax, relationOf } from './inheritance.js';
+import { settleOnDeath as settleAnimals } from './animals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -101,7 +108,8 @@ export function currentWill() {
   let w = player().flags.will;
   if (typeof w === 'string') w = { mode: w === 'charity' ? 'charity' : w === 'buried' ? 'buried' : 'family' };
   if (w?.mode === 'person') w = { mode: 'named', heirs: [w.npcId] };
-  w = { mode: w?.mode ?? 'family', heirs: (w?.heirs ?? []).filter((id) => store.state.npcs[id]?.alive), items: { ...(w?.items ?? {}) } };
+  w = { mode: w?.mode ?? 'family', heirs: (w?.heirs ?? []).filter((id) => store.state.npcs[id]?.alive), items: { ...(w?.items ?? {}) },
+    executor: store.state.npcs[w?.executor]?.alive ? w.executor : null };
   if (w.mode === 'named' && !w.heirs.length) w.mode = 'family';
   return w;
 }
@@ -123,8 +131,20 @@ function familyShares() {
 export function willHeirs() {
   const w = currentWill();
   if (w.mode === 'charity' || w.mode === 'buried') return [];
-  if (w.mode === 'named') return w.heirs.map((id) => [store.state.npcs[id], 1 / w.heirs.length]);
+  if (w.mode === 'named') return reserve(w.heirs.map((id) => [store.state.npcs[id], 1 / w.heirs.length]));
   return familyShares();
+}
+
+/** The share of an estate the law here keeps for the player's children, whatever the will says (data/money.js). */
+export const reservedShare = () => (living('child').length ? RESERVED_SHARE_OF[player().countryId] ?? 0 : 0);
+/** Applies it: the children share the reserved part; the will governs the rest. */
+function reserve(split) {
+  const r = reservedShare();
+  if (!r) return split;
+  const kids = living('child');
+  const out = new Map(split.map(([n, part]) => [n, part * (1 - r)]));
+  for (const k of kids) out.set(k, (out.get(k) ?? 0) + r / kids.length);
+  return [...out.entries()];
 }
 
 export function willSummary() {
@@ -187,7 +207,7 @@ export function assignItem(assetId, npcId) {
 
 /** Property and vehicles: the things that are handed on as they are. */
 export const keepsakes = () => player().assets.filter((a) => a.kind === 'property' || a.kind === 'vehicle');
-const equity = (a) => a.value * (a.units ?? 1) - (a.mortgage?.principal ?? 0);
+const equity = (a) => a.value * (a.units ?? 1) - (a.mortgage ? atHome(a.mortgage.principal, a.mortgage.code) : 0);
 
 /**
  * What would happen to everything the player owns if they died today.
@@ -206,22 +226,57 @@ export function estatePlan() {
   const will = currentWill();
   const item = (a) => ({ id: a.id, name: a.name, kind: a.kind, value: equity(a) });
   if (gross <= 0 && !kept.length) return plan;
-  if (will.mode === 'charity') return { ...plan, net: gross, charity: Math.max(0, gross), given: kept.map(item) }; // gifts to charity are not taxed
+  if (will.mode === 'charity' && !reservedShare()) return { ...plan, net: gross, charity: Math.max(0, gross), given: kept.map(item) }; // gifts to charity are not taxed
   if (will.mode === 'buried') return { ...plan, lost: Math.max(0, liquid), ...(kept.length ? distribute(plan, familyShares(), kept, will, 0, item) : {}) };
   // Estate tax by place: property abroad is taxed by the country it stands in; everything else where the player lived.
   const away = {};
   for (const a of kept) if (a.kind === 'property' && a.countryId && a.countryId !== c.id && COUNTRIES[a.countryId]) away[a.countryId] = (away[a.countryId] ?? 0) + Math.max(0, equity(a));
   const abroad = Object.values(away).reduce((s, v) => s + v, 0);
-  const due = [{ countryId: c.id, rate: c.estateTax, amount: Math.round(Math.max(0, gross - abroad - localMoney(ESTATE_ALLOWANCE, c)) * c.estateTax) },
-    ...Object.entries(away).map(([id, v]) => ({ countryId: id, rate: COUNTRIES[id].estateTax, amount: Math.round(v * COUNTRIES[id].estateTax) }))].filter((d) => d.amount > 0);
+  // Who inherits decides the tax where it is charged by heir (data/inheritance.js): a spouse, children, or others.
+  const kids = living('child');
+  const takers = (will.mode === 'charity' ? kids.map((k) => [k, reservedShare() / kids.length]) : willHeirs())
+    .map(([n, share]) => ({ relation: relationOf(n.role), share }));
+  // Property abroad is valued in this country's money here; each country's scale is applied in its own.
+  const there = (id, v) => { const k = COUNTRIES[id]; const own = v * (k.currency.scale / c.currency.scale); return Math.round(estateTax(own, k, takers) * (c.currency.scale / k.currency.scale)); };
+  const due = [{ countryId: c.id, amount: estateTax(Math.max(0, gross - abroad), c, takers) },
+    ...Object.entries(away).map(([id, v]) => ({ countryId: id, amount: there(id, v) }))]
+    .map((d) => ({ ...d, rate: d.amount && (d.countryId === c.id ? gross - abroad : away[d.countryId]) > 0 ? d.amount / (d.countryId === c.id ? gross - abroad : away[d.countryId]) : 0 }))
+    .filter((d) => d.amount > 0);
   const owed = due.reduce((s, d) => s + d.amount, 0);
   plan.tax = Math.max(0, Math.min(liquid, owed));
   // Paid from cash and investments only; if that does not cover it, each country takes its share of what there is.
   plan.taxBy = due.map((d) => ({ ...d, name: COUNTRIES[d.countryId].name, amount: owed > plan.tax ? Math.round(d.amount * plan.tax / owed) : d.amount }));
-  plan.net = gross - plan.tax;
+  // Winding the estate up costs something, from the cash, after the tax (see PROBATE).
+  plan.probate = Math.max(0, Math.min(liquid - plan.tax, probateCost(gross - plan.tax)));
+  plan.executor = executor() ? `${executor().firstName} ${executor().lastName}` : null;
+  plan.net = gross - plan.tax - plan.probate;
+  // Everything to charity, where children cannot be left out: they take their reserved share, and charity the rest.
+  if (will.mode === 'charity') {
+    const kids = living('child'); const r = reservedShare(); const cash = Math.max(0, liquid - plan.tax);
+    return { ...plan, charity: Math.round((cash - plan.probate) * (1 - r)), ...distribute(plan, kids.map((k) => [k, r / kids.length]), kept, will, cash - plan.probate, item) };
+  }
   const split = willHeirs();
   if (!split.length) return { ...plan, toState: plan.net, given: kept.map(item) };
-  return { ...plan, ...distribute(plan, split, kept, will, Math.max(0, liquid - plan.tax), item) };
+  return { ...plan, ...distribute(plan, split, kept, will, Math.max(0, liquid - plan.tax - plan.probate), item) };
+}
+
+// ---------- Probate ----------
+// A game rule, not any country's law: what passes under a will (or with no
+// will) costs a share of itself to wind up, paid from the cash before anything
+// is shared out. Someone named to see to it (an executor) halves the cost;
+// what passes outside the will (joint accounts, named accounts, life cover,
+// trusts) costs nothing.
+export const PROBATE = { rate: 0.03, withExecutor: 0.015, min: 500 };
+export const executor = () => { const id = currentWill().executor; return id ? store.state.npcs[id] : null; };
+export const probateCost = (net) => (net <= 0 ? 0 : Math.round(Math.max(localMoney(PROBATE.min, country()), net * (executor() ? PROBATE.withExecutor : PROBATE.rate))));
+
+/** Names who will see to the estate, or with null nobody. */
+export function nameExecutor(npcId) {
+  const n = npcId ? store.state.npcs[npcId] : null;
+  if (npcId && !(n?.alive && n.age >= 18)) return { ok: false, text: 'Choose a living adult.', tone: 'neutral' };
+  const w = currentWill();
+  player().flags.will = { ...w, executor: n ? n.id : null };
+  return { ok: true, text: n ? `${n.firstName} ${n.lastName} will see to your estate.` : 'Nobody is named to see to your estate.', tone: 'neutral' };
 }
 
 /** Shares out the cash by fraction, and each property and vehicle to one heir. */
@@ -251,7 +306,7 @@ function lifeSummary(p, plan) {
   return {
     age: p.age, worth: plan.gross / scale, donated: k.donated, gambled: k.gambled, leftToCharity: plan.charity / scale,
     fame: p.hidden.fame, karma: p.hidden.karma, intellect: p.stats.intellect,
-    crimes: k.crimes, kills: k.kills, convictions: p.legal.record.filter((r) => r.convicted).length,
+    crimes: k.crimes, kills: k.kills, convictions: p.legal.record.filter((r) => r.convicted && !r.exonerated).length, exonerated: p.legal.record.some((r) => r.exonerated),
     yearsJailed: k.yearsJailed, escapes: k.escapes, diedInside: !!p.legal.incarceration,
     spouses: k.spouses, everMarried: k.spouses > 0, exes: all.filter((n) => n.role === 'ex').length,
     marriedYears: Math.max(0, ...married.map((n) => p.age - n.marriedAtAge)),
@@ -290,8 +345,16 @@ export function die(cause) {
   const p = player();
   const c = country();
   if (!p.alive) return store.lastObituary;
+  // What passes outside the will: joint accounts, accounts and policies with someone named on them, and trusts.
+  const outside = [...closeForEstate(), ...trustsAtDeath()];
+  const life = settleLife();
+  if (life?.to) outside.push(life);
+  settleAnimals(state); // every animal that depended on them is given a keeper before the life is closed
   settleEstate(); // money held in other currencies is counted once, in one currency
+  book({ cat: 'exchange', src: 'estate', desc: 'The estate counted in one currency' });
   const plan = estatePlan(); // settled before anything else changes
+  plan.outside = outside;
+  if (life && !life.to) plan.lifeCover = life.amount;
   const summary = lifeSummary(p, plan);
   p.alive = false;
   digitalLegacy(state); // accounts become memorials; nothing new is posted in their name

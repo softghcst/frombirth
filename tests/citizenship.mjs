@@ -44,13 +44,13 @@ check(mayVote('pt') !== '', 'a resident who is not a citizen should not be able 
 check(!cit.naturalisation(p).possible && /years of residence/.test(cit.naturalisation(p).why), 'citizenship should need years of residence first');
 // Marrying a citizen shortens the wait and confers nothing by itself.
 const spouse = makeNpc({ role: 'spouse', countryId: 'pt', age: 30 }); store.state.npcs[spouse.id] = spouse; p.npcIds.push(spouse.id);
-check(cit.held(p).join() === 'br' && cit.naturalisation(p).spouse && cit.naturalisation(p).needs === 3, 'marriage should shorten the wait to three years and grant nothing');
+{ const base = (await import('../js/data/citizenship.js')).RESIDENCE_YEARS.pt ?? 5; const n = cit.naturalisation(p); check(cit.held(p).join() === 'br' && n.spouse && n.needs < base && n.needs >= 3, `marriage should shorten the wait (${n.needs} of ${base} years) and grant nothing`); }
 for (let i = 0; i < 6; i++) year();
 const n = cit.naturalisation(p);
 check(n.possible && n.mustRenounce.length === 0, `after six years a spouse should be eligible (${n.why})`);
 for (let i = 0; i < 12 && !cit.held(p).includes('pt'); i++) { p.flags.natAge = null; p.finance.cash += 5000; cit.naturalise(); }
-check(cit.held(p).sort().join() === 'br,pt' && cit.residency(p).status === 'citizen' && mayVote('pt') === '', 'naturalised: both citizenships, citizen status, and a vote');
-section('moving, residency, marriage and naturalisation keep birthplace, residence and citizenship apart');
+check(cit.held(p).sort().join() === 'br,pt' && cit.residency(p).status === 'citizen' && mayVote('pt') === '', 'naturalized: both citizenships, citizen status, and a vote');
+section('moving, residency, marriage and naturalization keep birthplace, residence and citizenship apart');
 
 // 3. Single-nationality places.
 p = life('fr', 40); p.countryId = 'jp'; p.flags.arrivedYear = store.state.year - 9; p.finance.cash = 9e6;
@@ -61,7 +61,7 @@ check(cit.held(p).join() === 'jp' && p.citizenships.find((c) => c.jurisdictionId
 p = life('in', 40); p.countryId = 'ca'; p.flags.arrivedYear = store.state.year - 5; p.finance.cash = 1e5;
 nat = cit.naturalisation(p);
 check(nat.possible && nat.willLose.join() === 'in' && nat.mustRenounce.length === 0, 'an Indian citizen who becomes Canadian loses Indian citizenship by India\'s rule');
-section('places that allow one nationality are honoured in both directions');
+section('places that allow one nationality are honored in both directions');
 
 // 4. Money in several currencies: nothing is created, and what was done is written down.
 p = life('us', 35); p.finance.cash = 100000; p.flags.livesWithParents = false;

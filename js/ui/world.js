@@ -60,7 +60,7 @@ export function openWorld(o = {}) {
       <div class="card"><h3>Living here</h3>${kv(p.game)}</div>
       <div class="card"><h3>School</h3>${kv(p.school)}</div>
       <div class="card"><h3>Government</h3>${kv(p.politics)}</div>
-      <div class="card"><h3>The law</h3>${kv(p.laws)}${p.lawChanges.length ? `<div class="section-label">Changed in your world</div>${p.lawChanges.map((n) => `<p style="margin:4px 0">${esc(n)}</p>`).join('')}` : ''}</div>
+      <div class="card"><h3>The law</h3>${kv(p.laws)}${p.lawChecks.length ? `<details style="margin-top:8px"><summary class="muted">How the law was checked</summary>${kv(p.lawChecks)}</details>` : ''}${p.lawChanges.length ? `<div class="section-label">Changed in your world</div>${p.lawChanges.map((n) => `<p style="margin:4px 0">${esc(n)}</p>`).join('')}` : ''}</div>
       ${p.yourWorld ? `<div class="card"><h3>In your world</h3>${kv(p.yourWorld.lines) || '<p class="muted">Nothing of note yet.</p>'}
         ${p.yourWorld.news.length ? `<div class="section-label">Recently</div>${p.yourWorld.news.map((n) => `<p style="margin:4px 0">${esc(n)}</p>`).join('')}` : ''}
         <p class="muted" style="margin-top:6px">This part is the story of your game, not the real world.</p></div>` : ''}

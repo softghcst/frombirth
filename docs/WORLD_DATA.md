@@ -46,9 +46,70 @@ python3 -m venv .venv && .venv/bin/pip install pycountry babel tzdata geonamesca
 
 The packages are for checking only; the game itself still has no dependencies.
 
-**Not checked, because no machine-readable source was available:** form of government, the status sentences, and everything
-in the next sections (law flags and legal ages, citizenship rules, free-movement lists, health and tax models). Those remain
-the author's compiled understanding.
+### Laws, ages, citizenship and government
+
+`scripts/verify-laws.py` checks these against English Wikipedia's comparison articles, each fetched at a pinned revision
+(listed in `SOURCES` in the script), so a check can be repeated against exactly the same text. Wikipedia is a secondary
+source; it is used because it gathers one table per question for every country, and its rows cite the primary sources
+(ILGA World, Amnesty International, national statutes). Every disagreement was decided by a person and the reason written in
+`DECIDED`; nothing was copied across automatically. Results are in `js/data/lawVerification.js` (generated), shown in the World
+Explorer under "How the law was checked", and `node tests/rules.mjs` fails if anything disagrees unexplained.
+
+| Question | Source article | Test used |
+|---|---|---|
+| Death penalty | Capital punishment by country | in use = an execution in the last ten years |
+| Same-sex marriage | Same-sex marriage (timeline of legalizations) | legal nationwide |
+| LGBT people | LGBTQ rights in Africa / Asia / Europe / the Americas / Oceania | hostile = activity criminalized; protected = civil unions or marriage, and anti-discrimination law |
+| Military service | Conscription (by-country table) | compulsory in law, even where selective |
+| Voting, drinking, pension ages; alcohol bans | Voting age; Legal drinking age; Retirement age | pension age = the men's age, or the standard age where a range is given |
+| Divorce | Divorce law by country | |
+| Citizenship by birth | Jus soli | unconditional, allowing for a diplomats' exception or a registration step |
+| One nationality only | Multiple citizenship, and 13 national nationality-law articles | |
+| Form of government | List of countries by system of government | |
+| Marriage age | Marriageable age | without parental or judicial consent; a separate age for women where the law sets one. The game never lets anyone marry before 18 |
+| Driving age | List of minimum driving ages | the youngest age to hold a car license, conditions allowed; not mopeds, motorcycles or supervised learners |
+| Gambling age, and whether gambling is legal | Gambling age | the casino age where several are given; legal where lotteries or betting are open to citizens |
+| School-leaving age | School-leaving age | the end of compulsory schooling |
+| Residence before naturalization; dual nationality | Naturalization | |
+| Free movement | Member state of the European Union; Trans-Tasman Travel Arrangement | the European area is the EU members in the game, plus Norway (EEA) and Switzerland |
+
+What changed as a result: four countries no longer execute (the Bahamas, DR Congo, Ethiopia, Uganda); six gained "protected"
+status (Bolivia, Czechia, Croatia, Italy, Monaco, Nepal); conscription was added in twelve countries and removed in Syria;
+voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries and an alcohol ban for Pakistan; pension ages
+for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
+nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
+
+Also checked now: the top rate of income tax ("List of countries by tax rates"; 92 agree, and four differ for reasons recorded in
+the script: the United States uses the federal 37%, and Bolivia, Estonia and Romania use their flat income tax where the table adds
+other charges), health-care models ("Universal health care": no country the source lists as universal is out of pocket or
+private in the game), and the spouse's shorter wait for citizenship, now set per country where the "Naturalization" notes give it
+(`SPOUSE_YEARS_IN`; elsewhere the old rule: half the usual wait, at least three years).
+
+Estate and inheritance tax (`js/data/inheritance.js`) is now by heir: a spouse, a child, or anyone else, each with their own
+tax-free amount and scale, from PwC Worldwide Tax Summaries (pages reviewed in 2026) and Wikipedia's "Inheritance tax". The
+script checks every country against PwC's chart of headline rates: 73 agree, 6 differ for recorded reasons (Brazil uses São
+Paulo's 4%; Chile, Spain and Japan include the surcharge on heirs outside the family; Tunisia and Ukraine), and 24 are not
+confirmed: 15 are not in the chart, and 9 have no figure there (Belgium, Switzerland, Finland, Poland and Venezuela give only
+words; Guatemala, Kenya, Morocco and Peru are "not provided"). Each entry's `src` says whether its rates and allowances are
+stated by a source, partly sourced (the range or top rate is, the bands between are the author's), or the author's alone.
+
+Regional law is now checked by hand against Wikipedia ("Capital punishment in the United States", "Gambling age", "Legal
+drinking age", "Alcohol laws of India", "Gambling in India", "Sharia in Nigeria" and the driving-licence articles for the United
+States, Canada and Australia). Each claim in `REGIONAL_POWERS` is marked in `js/data/rules.js` as confirmed or as the author's
+understanding. This added the casino age by state and province (19 in Ontario, British Columbia and Nova Scotia; 18 in Georgia,
+New York and Washington; 21 in Bavaria and Baden-Württemberg), a drinking age of 25 in Delhi and 18 in Karnataka, 21 in Dubai,
+Abu Dhabi and Ajman, and the ban on alcohol around Kano. It let Australian and Mexican states set their own drinking age, and
+corrected Malaysia's drinking age to 21 and Paraguay's to 20. The script's drinking-age check had let these pass, because it
+accepted an age mentioned anywhere in a row, including a former age in its notes. It now reads only the age columns and skips
+ages that were changed. Not confirmed: the regional gambling powers in Argentina, Malaysia, Nigeria, Spain, Canada,
+Australia and Germany (Wikipedia has no articles on most of them), Austria's drinking age, and the United Arab Emirates'
+gambling, which a federal regulator set up in 2023 may have made national.
+
+Still not checked: which countries get a flat, rising or steep income-tax schedule, and the status sentences. Where a
+source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
+
+Re-run with `python3 scripts/verify-laws.py --write` (needs access to en.wikipedia.org; pages are cached in `.cache/`).
+
 
 No city coordinates, populations or statistics are stored.
 
@@ -56,9 +117,8 @@ No city coordinates, populations or statistics are stored.
 
 - **`currency.scale` is a fictional simulation rate**, roughly the order of magnitude of each currency against a base unit so that
   prices read naturally. It is not a market quote and does not move with real exchange rates.
-- **Law flags and legal ages** (same-sex marriage, LGBT protection, gambling, the death penalty, conscription, and the ages and
-  bans in `js/data/rules.js`) are the author's best understanding of
-  the mid-2020s for the 48 newest places and have not been checked against legislation. They configure the game; they are not legal
+- **Law flags and legal ages** are checked against published summaries (above) but are one value per country: real law has
+  exceptions, regional variation and dates of effect that are not modeled. They configure the game; they are not legal
   information. Laws change, and in a long game the simulation changes them too.
 - **"Free health care" and "free university"** are yes-or-no simplifications of systems that are neither.
 - **Browsing groups follow a game convention**, not strict geography: Georgia and Turkey are listed under "Middle East", and Central
@@ -66,7 +126,7 @@ No city coordinates, populations or statistics are stored.
 
 ## Places that are not ordinary sovereign states
 
-| Place | Modelled as | Tied to | Nationality at birth |
+| Place | Modeled as | Tied to | Nationality at birth |
 |---|---|---|---|
 | Puerto Rico | territory | United States | United States |
 | Aruba | territory (constituent country of the Kingdom of the Netherlands) | Netherlands | Dutch |
@@ -83,43 +143,42 @@ shown on its profile.
 - City profiles (`js/data/cities.js`) are two multipliers, housing and pay, guessed by the author for twelve countries and
   generic elsewhere (the capital, and the first city listed, assumed to be dearer and better paid). They come from no dataset.
   Region names are real and unverified. Regions exist only where a city in the game sits in one; they have no government,
-  taxes or budget of their own. Safety, schools and health care do not vary by city. People the player knows are not paid by city.
+  taxes or budget of their own. Safety, schools and health care vary only by kind of city (capital, largest, other), by a rule in `SERVICES`, not by data about any place. People the player knows are not paid by city.
 - Citizenship rules (`js/data/citizenship.js`) are three yes-or-no lists and a table of years: which places grant citizenship by
   birth, which allow only one nationality, and how long a resident waits. They are unverified simplifications of laws that have
   conditions and exceptions. Grandchildren and people the game invents have a nationality inferred from where they are from.
 - The moving world (`js/data/economy.js`) is fiction with invented odds. An economy has three states and no numbers behind
-  them (no growth, unemployment or interest rates). Wars can end but never begin. Stability, safety and the other living
+  them (no growth, unemployment or interest rates). Wars can end, and can begin (rarely, and only within a country whose stability is very low; no war is ever between two named countries). Stability, safety and the other living
   scores do not change. Only the player's country of residence feels its economy; other countries' phases are news, and
   nudge where people move and what currencies do. Elections abroad are not simulated. People who move are named in the
   journal but have no city, visa or job search of their own.
 - Legal rules (`js/data/rules.js`) hold one value per place for fourteen questions. Ages are the common adult case and ignore
   exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
   the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A head of government can change them through the legislature; public
-  opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional laws cannot
-  be changed by a mayor or governor. School-leaving age is the same everywhere.
+  opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional law can be changed by the head of a region,
+  for the matters `REGIONAL_POWERS` gives each country: compiled by hand from each country's division of powers and not yet
+  checked against sources. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
-  permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
-  New Zealand) are simplified lists and unverified. Family members other than a spouse do not hold visas of their own, and there
-  is no deportation for crime, no overstaying, and no visa needed for a short visit.
+  permanence. Real systems differ by country and are not modeled. The free-movement areas (a European area, and Australia with
+  New Zealand) are simplified lists and unverified. Family members hold dependant status on the player's visa, simplified to one rule for every country; there is no
+  deportation for crime, no overstaying, and no visa needed for a short visit.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
-  is valued in its own country's money and shown at today's rate; its mortgage (if it was bought while living there), rent and
-  running costs are still kept in everyday money. There is one housing index for the whole world, not one per country. No
+  is valued in its own country's money and shown at today's rate, with its mortgage and rent kept in the currency they were
+  agreed in. Each country has its own housing index, moved by its economy; the numbers are invented, not house-price data. No
   country restricts foreign buyers, and there are no tax treaties: nothing is taxed twice, and nothing is credited. Income tax is
   each country's headline rate through one of four shapes (`js/data/systems.js`) with thresholds in multiples of a typical wage:
-  not real brackets, and with no social contributions, credits or regional taxes. Health care is one of six models; which
-  country has which is unverified, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
+  not real brackets, and with no social contributions, credits or regional taxes. The top band is the country's real top rate (`TAX_TOP`), checked. Health care is one of six models; that no
+  universal-care country is modelled as out of pocket or private is checked, but the finer choice among models is not, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
   bounds and are pulled weaker by a recession or a crisis, without following measured inflation.
 
 ## Where further work would go
 
 In rough order of value:
 
-1. **Verify the law flags, legal ages, citizenship rules and free-movement lists.** The reference metadata is checked (above);
-   these are not, and need a legal source per country that is current and citable.
-2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
-3. **Regional law-making**: a governor or mayor changing the law of their own region.
-4. **A housing index per country**, and mortgages and rent abroad kept in local money.
-5. **Regions with governments and taxes of their own**, and visas for family members other than a spouse.
+1. **Check what is still unchecked** (listed above): the unconfirmed regional powers, the bands between the top rates of inheritance tax that are
+   the author's, the shape of each tax schedule, and the status sentences.
+2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
+5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
 
 ## Adding a place
