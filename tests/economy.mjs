@@ -20,7 +20,10 @@ const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
 const section = (msg) => { if (!problems.length) ok.push(msg); };
-const life = (id, age = 25) => { do { store.state = createLife({ countryId: id }); } while (store.state.player.royal); const p = store.state.player; p.age = age; p.birthYear = store.state.year; store.state.year += age; p.flags.livesWithParents = false; p.education.enrolled = false; return p; };
+// Each life lives by its own fixed seed, so the whole file plays out the same on every run (createLife would otherwise
+// reseed from the clock, and the seventy-year checks below would judge a different random history each time).
+let lives = 0;
+const life = (id, age = 25) => { do { store.state = createLife({ countryId: id, seed: 90210 + ++lives }); } while (store.state.player.royal); const p = store.state.player; p.age = age; p.birthYear = store.state.year; store.state.year += age; p.flags.livesWithParents = false; p.education.enrolled = false; return p; };
 const year = () => { advanceYear(); store.state.pendingEvents = []; const p = store.state.player; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = 90; };
 
 // 1. Tables.
@@ -42,7 +45,9 @@ const startCrises = COUNTRY_LIST.filter((c) => LIVING[c.id].crisis).length;
 const seen = { boom: 0, steady: 0, slump: 0 };
 for (let i = 0; i < 70; i++) { try { year(); } catch (err) { problems.push(`year ${i} failed: ${err.message}`); break; } for (const c of COUNTRY_LIST) seen[econ.phaseOf(c.id)] += 1; }
 const total = seen.boom + seen.steady + seen.slump;
-check(seen.steady / total > 0.45 && seen.boom / total > 0.08 && seen.slump / total > 0.06 && seen.slump / total < 0.35, `most years are steady, with booms and recessions (${JSON.stringify(seen)})`);
+// One seventy-year history swings a lot (a few worldwide downturns more or less), so here only a sanity check: the
+// shares themselves are measured over a thousand years in section 10.
+check(seen.steady / total > 0.4 && seen.boom / total > 0.05 && seen.slump / total > 0.04 && seen.slump / total < 0.45, `the world keeps moving: neither stuck nor never turning (${JSON.stringify(seen)})`);
 const w = store.state.world;
 const kinds = w.news.reduce((m, n) => ({ ...m, [n.kind]: (m[n.kind] ?? 0) + 1 }), {});
 check(w.news.length > 30 && w.news.length <= 150, `news was kept, and capped (${w.news.length})`);
@@ -142,7 +147,7 @@ section(`people: ${left} moved away, ${back} came home, ${near} moved nearer`);
   const was = ROOTS.familyLeaves; ROOTS.familyLeaves = 0.5;
   let scenes = 0; let blank = 0; let moved = 0;
   for (let k = 0; k < 16; k++) {
-    store.state = createLife({ countryId: ['us', 'br', 'pl', 'in'][k % 4] });
+    store.state = createLife({ countryId: ['us', 'br', 'pl', 'in'][k % 4], seed: 90310 + k });
     const start = store.state.player.countryId;
     for (let y = 0; y < 8; y++) {
       advanceYear();
@@ -154,6 +159,20 @@ section(`people: ${left} moved away, ${back} came home, ${near} moved nearer`);
   ROOTS.familyLeaves = was;
   check(moved > 3 && blank === 0, `no scene names someone who is gone (${blank} of ${scenes} scenes, in ${moved} families that moved)`);
   section(`moves: ${moved} families moved; none of ${scenes} scenes named someone left behind`);
+}
+
+// 10. Over a long run, most years are steady, with booms and recessions in believable shares. Only the economy turns
+// here (no lives are lived), so a thousand years take a moment and chance evens out: across seeds the shares stay
+// within a point or two of 16% boom, 61% steady, 23% recession.
+{
+  life('us', 30);
+  const long = { boom: 0, steady: 0, slump: 0 };
+  for (let i = 0; i < 1000; i++) { store.state.year += 1; econ.tickEconomy(); for (const c of COUNTRY_LIST) long[econ.phaseOf(c.id)] += 1; }
+  const n = long.boom + long.steady + long.slump;
+  const [boom, steady, slump] = [long.boom / n, long.steady / n, long.slump / n];
+  check(steady > 0.52 && steady < 0.7 && boom > 0.1 && boom < 0.22 && slump > 0.16 && slump < 0.3,
+    `most years are steady, with booms and recessions (over a thousand years: ${(boom * 100).toFixed(1)}% boom, ${(steady * 100).toFixed(1)}% steady, ${(slump * 100).toFixed(1)}% recession)`);
+  section(`a thousand years of economies: ${(boom * 100).toFixed(1)}% boom, ${(steady * 100).toFixed(1)}% steady, ${(slump * 100).toFixed(1)}% recession`);
 }
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 25)) console.log(' -', x); process.exit(1); }
