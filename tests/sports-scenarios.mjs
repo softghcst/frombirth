@@ -160,16 +160,18 @@ scenario('F/G. recruiting interest from an eligible university, and a scholarshi
     sp.takeUp('soccer'); const e = sp.entryOf('soccer'); maxOut(e, 66); sp.setPlan('soccer', 'technical', 10);
     for (let i = 0; i < 5 && !offer; i++) {
       advanceYear(); playScenes();
-      d = life.openDecisions().find((x) => x.kind === 'scholarship');
-      if (d) { offer = d.offers[0]; life.answer(d.id, offer.instId); }
-      for (const x of life.openDecisions()) life.answer(x.id, 'no');
+      // Recruiting (engine/recruiting.js): a commitment, then signing day with a university that pays a share.
+      const paying = (sp.entryOf('soccer').recruit?.offers ?? []).find((o) => !o.pulled && o.fraction > 0 && !o.id.startsWith('juco:'));
+      d = life.openDecisions().find((x) => x.kind === 'sign');
+      if (d && paying && d.options.some((o) => o.id === paying.id) && life.answer(d.id, paying.id).ok) offer = { instId: paying.id, fraction: paying.fraction };
+      for (const x of life.openDecisions()) life.answer(x.id, x.kind === 'commit' && paying ? paying.id : x.kind === 'camp' ? 'showcase' : x.options.some((o) => o.id === 'no') ? 'no' : x.options.at(-1).id);
     }
   }
   check(!!offer, 'F: a recruited high-school player in the United States has an offer');
   if (!offer) return;
   const p = P();
   const inst = catalog(p.countryId).find((u) => u.id === offer.instId);
-  check(inst?.sport && inst.countryId === p.countryId, 'F: from a real university of the country that runs teams');
+  check(inst && sp.ensure().divisions?.[inst.id] && inst.countryId === p.countryId, 'F: from a real university of the country that runs teams');
   const help = aid(applicant(null, inst), inst, {}, 0.3);
   check(help.parts.some((x) => x.kind === 'athletic' && x.fraction === offer.fraction), 'G: the admissions aid carries the offered share');
   p.education.enrolled = false; p.education.stage = 'none';

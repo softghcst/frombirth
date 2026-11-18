@@ -314,6 +314,29 @@ export function leagueSize(sport, level, countryId, div = null) {
   return (div === 'women' ? WOMEN_LEAGUE_TEAMS[sport.id] : LEAGUE_TEAMS[sport.id]) ?? 8;
 }
 
+// ---------- College sport (the United States and Canada) ----------
+//
+// Divisions, as the real ones work: Division I and II give athletic scholarships (II mostly partial ones), Division
+// III gives none (aid comes from need and merit), the Ivy-style old universities play Division I but give no athletic
+// scholarships either, NAIA colleges give partial ones, and junior colleges (two-year community colleges) give full or
+// partial ones and send players on to four-year programs or straight to the draft.
+// minGpa: the high school GPA a recruit needs to be eligible as a freshman (core courses; D1 2.3, D2 2.2).
+export const DIVISIONS = {
+  D1: { name: 'Division I', aid: 'full', minGpa: 2.3, rank: 1 },
+  IVY: { name: 'Division I (Ivy)', aid: 'none', minGpa: 2.3, rank: 2 },
+  D2: { name: 'Division II', aid: 'partial', minGpa: 2.2, rank: 3 },
+  NAIA: { name: 'NAIA', aid: 'partial', minGpa: 2.0, rank: 4 },
+  JUCO: { name: 'Junior college', aid: 'full', minGpa: 0, rank: 5 },
+  D3: { name: 'Division III', aid: 'none', minGpa: 0, rank: 6 },
+};
+/**
+ * Headcount sports give whole scholarships; the rest (equivalency sports) share a few out among the roster, so most
+ * players get part of one (baseball: 11.7 shared by a roster of more than thirty).
+ */
+export const HEADCOUNT = ['basketball', 'american_football', 'volleyball'];
+/** Recruiting stars, from a prospect's grade (see engine/recruiting.js). */
+export const STARS = [[80, 5], [71, 4], [62, 3], [53, 2]];
+
 /** Team nicknames, by the kind of names each sport's clubs tend to have (made up; any can be renamed in Settings). */
 export const MASCOTS = {
   soccer: ['United', 'City', 'Athletic', 'Rovers', 'Wanderers', 'Albion', 'Town', 'Rangers', 'Harriers', 'Villa', 'Argyle', 'Dynamo', 'Sporting', 'Olympic', 'Victoria', 'Corinthians'],

@@ -16,7 +16,7 @@ import { book } from './ledger.js';
 import { addCondition, cureCondition } from './health.js';
 import { hire, endJob } from './career.js';
 import { registerEmployer, payAt, employer } from './employers.js';
-import { catalog } from './university.js';
+import { catalog, uniOf } from './university.js';
 import { makeNpc } from './npcFactory.js';
 import { rng } from '../rng.js';
 import { makeAgents, ensureTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
@@ -24,6 +24,7 @@ import * as sp from './sports.js';
 import { familyPast, tickRelatives, parentsYear } from './sportsFamily.js';
 import { tickSportsArcs } from './sportsArcs.js';
 import { seasonAwards, yearAwards } from './sportsAwards.js';
+import { recruitYear, RECRUIT_ANSWERS, divisionOf } from './recruiting.js';
 
 const { nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, playSeason, playEvent, overall, rec, EVENTS_A_YEAR, fullName, seeded } = sp.internals;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -414,33 +415,29 @@ function outWindow(inj, games) {
 // ---------- Recruiting, scholarships and the way into paid sport ----------
 
 /** University coaches, where universities recruit. Offers name real universities of the country and what they pay. */
-function recruiting(state, a, e, rating) {
-  const p = state.player;
-  const sport = sportOf(e.id);
-  if (!sp.hasCollegeSport(sport, p.countryId) || p.age < 16 || p.age > 18 || (p.flags.sportOffers ?? []).some((o) => o.accepted)) return;
-  if (!p.education.enrolled || p.education.stage !== 'high') return;
-  const o = overall(e, p);
-  if (o < 58 || rating < 6.4) return;
-  const r = seeded(`recruit/${p.id}/${e.id}/${state.year}`);
-  const unis = catalog(p.countryId).filter((u) => u.sport);
-  if (!unis.length) return;
-  const n = o >= 72 ? 3 : o >= 65 ? 2 : 1;
-  const offers = r.shuffle(unis).slice(0, n).map((u) => ({ instId: u.id, name: u.name, fraction: o >= 74 ? 1 : o >= 66 ? 0.75 : 0.5 }));
-  decide(state, { kind: 'scholarship', sportId: e.id, text: `University coaches have been watching. ${offers.length === 1 ? 'One has' : `${offers.length} have`} offered you an athletic scholarship. Committing means the coach backs your application and the scholarship pays part of the tuition, for as long as you play.`,
-    offers, options: [...offers.map((x) => ({ id: x.instId, label: `${x.name}: ${Math.round(x.fraction * 100)}% of tuition` })), { id: 'no', label: 'Not now' }] });
-  sp.say(state, `University ${sport.name.toLowerCase()} coaches have been in touch.`, 'good', { screen: 'hub', id: 'career' });
-}
 /** At university: the program the player plays for, kept, with the scholarship tied to it. */
 function collegeTeam(state, a, e) {
   const p = state.player;
-  if (!p.education.enrolled || p.education.stage !== 'university' || !p.education.schoolId) return null;
+  const juco = p.education.enrolled && p.education.stage === 'community';
+  if (!p.education.enrolled || (p.education.stage !== 'university' && !juco) || (!juco && !p.education.schoolId)) return null;
   const sport = sportOf(e.id);
   if (!sp.hasCollegeSport(sport, p.countryId)) return null;
+  // Junior college: the community college the player signed with, or the one in their own city.
+  if (juco) {
+    const signed = (p.flags.sportOffers ?? []).find((o) => o.accepted && o.sportId === e.id && o.instId?.startsWith('juco:'));
+    const id = signed?.instId ?? `juco:${p.city}`;
+    if (!signed && overall(e, p) < 55) return null;
+    const org = findOrg(state, sport, 'college', { key: `college/${e.id}/${id}`, name: `${signed?.name ?? `${p.city} Community College`} ${sport.name}` });
+    org.division = 'JUCO';
+    if (e.orgId !== org.id && !e.contractId) { joinOrg(org, state); log(`You joined the ${org.name} program${signed ? ' on your scholarship' : ' as a walk-on'}.`, 'system', 'good'); }
+    return org;
+  }
   const offer = (p.flags.sportOffers ?? []).find((o) => o.accepted && o.sportId === e.id && o.instId === p.education.schoolId);
   const walkOn = !offer && overall(e, p) >= 60;
   if (!offer && !walkOn) return null;
   if (e.leftCollege === p.education.schoolId) return null; // left this university's team: not put back on it
   const org = findOrg(state, sport, 'college', { key: `college/${e.id}/${p.education.schoolId}`, name: `${p.education.schoolName} ${sport.name}`, uniId: p.education.schoolId });
+  org.division ??= (uniOf(p.education.schoolId) && divisionOf(state, uniOf(p.education.schoolId))) ?? 'D1';
   if (e.orgId !== org.id && !e.contractId) {
     joinOrg(org, state);
     log(`You joined the ${org.name} program${offer ? ' on your scholarship' : ' as a walk-on'}.`, 'system', 'good');
@@ -903,7 +900,7 @@ function yearIn(state, a, e) {
   }
   // A coach who sees something says so: an academy calls.
   scouting(state, a, e, sum);
-  recruiting(state, a, e, sum.rating);
+  recruitYear(state, a, e); // high school: stars, camps, offers, visits, commitment, signing day (engine/recruiting.js)
   proRoutes(state, a, e);
   if (e.contractId) contractYear(state, a, e);
   mindYear(state, a, e, sum);
@@ -1021,6 +1018,10 @@ export function audit(state = store.state) {
 }
 
 export { LEVEL_NAMES };
+Object.assign(ANSWERS, RECRUIT_ANSWERS);
+/** For the parts of the athletic life kept in their own files (engine/recruiting.js, engine/draft.js). */
+export const internals = { decide: (...x) => decide(...x), money: (...x) => money(...x), fmt: (...x) => fmt(...x), proClub: (...x) => proClub(...x),
+  offerFor: (...x) => offerFor(...x), signPro: (...x) => signPro(...x), endContract: (...x) => endContract(...x), ANSWERS: () => ANSWERS };
 
 // ---------- Sports agents, shopped for ----------
 // Each country has its own sports agents (engine/agents.js): people at agencies, each with their own cut (3–10%), pull

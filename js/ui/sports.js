@@ -10,6 +10,8 @@ import { sportOf, PLANS, LOADS, LEVEL_NAMES, INJURIES } from '../data/sports.js'
 import * as sp from '../engine/sports.js';
 import * as life from '../engine/sportsLife.js';
 import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
+import { decommit, gradeOf, GRADE_NAMES } from '../engine/recruiting.js';
+import { DIVISIONS } from '../data/sports.js';
 import { jerseySvg, jerseyDot, inkOn } from './jersey.js';
 import { fmtMark } from '../engine/sportsPlay.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
@@ -176,12 +178,31 @@ function rankings() {
     </div>`).join('')}`;
 }
 
+/** Recruiting: how the services rate the player, who has offered, and where they are committed or signed. */
+function recruitingSection() {
+  const p = player();
+  const list = sp.activeSports().filter((e) => e.recruit && (e.recruit.stars || e.recruit.offers.length));
+  if (!list.length) return '';
+  return list.map((e) => {
+    const R = e.recruit;
+    const g = gradeOf(p);
+    const pr = (o) => `${DIVISIONS[o.division]?.name ?? o.division} · ${o.fraction >= 1 ? 'full scholarship' : o.fraction > 0 ? `${Math.round(o.fraction * 100)}% of tuition` : 'no athletic scholarship'}`;
+    return `${label(`Recruiting: ${sportOf(e.id).name}`)}
+      ${kv('Rating', R.stars ? `${'★'.repeat(R.stars)} · number ${R.rank} in your class` : 'Not rated yet')}
+      ${g ? kv('Year', `${GRADE_NAMES[g]} (grade ${g})`) : ''}
+      ${kv('Status', R.signed ? `Signed with ${esc(R.offers.find((o) => o.id === R.signed)?.name ?? '')}` : R.commit ? `Committed to ${esc(R.offers.find((o) => o.id === R.commit)?.name ?? '')} (not binding)` : 'Uncommitted')}
+      ${R.offers.length ? R.offers.map((o) => kv(esc(o.name), `${esc(pr(o))}${o.pulled ? ' · withdrawn' : ''}${R.visits.includes(o.id) ? ' · visited' : ''}`)).join('') : empty('No offers yet. Coaches can offer from junior year.')}
+      ${R.commit && !R.signed ? `<div class="btn-stack"><button class="btn" data-decommit="${e.id}">Decommit</button></div>` : ''}`;
+  }).join('');
+}
+
 function career() {
   const dec = life.openDecisions();
   const ks = life.contractsOf();
   const p = player();
   const a = sp.myAthlete();
   return `${label('Decisions')}${dec.length ? dec.map((d) => `<div class="card"><p>${esc(d.text)}</p><div class="btn-stack">${d.options.map((o) => `<button class="btn" data-answer="${d.id}:${o.id}">${esc(o.label)}</button>`).join('')}</div></div>`).join('') : empty('Nothing waiting.')}
+    ${recruitingSection()}
     ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.kind === 'agent' && k.share ? ` · takes ${Math.round(k.share * 100)}%` : ''}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
     ${agentSection()}
     ${label('Division')}
@@ -400,6 +421,7 @@ async function onClick(e) {
   if ((el = hit('data-take'))) return report(sp.takeUp(el.dataset.take));
   if ((el = hit('data-tryout'))) return report(sp.tryOut(el.dataset.tryout));
   if ((el = hit('data-leave'))) return report(sp.leaveClub(el.dataset.leave));
+  if ((el = hit('data-decommit'))) { shut(); if (!await confirmModal({ title: 'Decommit?', body: 'Coaches move on quickly: the offer may not be there if you change your mind again.', yes: 'Decommit' })) return show(); await messageModal({ body: decommit(el.dataset.decommit, store.state).text }); return show(); }
   if ((el = hit('data-quitcollege'))) { shut(); if (!await confirmModal({ title: 'Leave the team?', body: 'An athletic scholarship is paid for playing. Leave the team and that part of your tuition is yours to pay from next year.', yes: 'Leave', danger: true })) return show(); return report(life.quitCollegeTeam(el.dataset.quitcollege)); }
   if ((el = hit('data-pair'))) return report(sp.findPartner(el.dataset.pair));
   if ((el = hit('data-unpair'))) return report(sp.endPartnership(el.dataset.unpair));
