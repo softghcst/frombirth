@@ -301,10 +301,11 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
 
 // 10. The faces on offer: the withdrawn eyes, mouths and noses are gone, saves that used them land on the nearest kept,
 // and the rest are offered and drawn at random exactly as before.
-const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_24', 'eyes_25', 'eyes_26', 'eyes_27', 'eyes_28', 'eyes_29', 'eyes_30', 'eyes_31', 'eyes_32', 'eyes_7', 'eyes_8', 'eyes_9'];
+const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_24', 'eyes_25', 'eyes_26', 'eyes_27', 'eyes_28', 'eyes_29', 'eyes_30', 'eyes_31', 'eyes_32',
+  'eyes_35', 'eyes_36', 'eyes_37', 'eyes_38', 'eyes_39', 'eyes_40', 'eyes_41', 'eyes_7', 'eyes_8', 'eyes_9'];
 check(AVATAR_MANIFEST.eyes.map((e) => e.id).join() === EYES.join(), 'the eye shapes in the manifest have changed');
 check(CATALOG.eyes.map((e) => e.id).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
-check(CUR.RESTING.eyes.join() === 'eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_25,eyes_26', 'the eyes given out at random have changed');
+check(CUR.RESTING.eyes.join() === 'eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_25,eyes_26,eyes_35,eyes_36,eyes_37,eyes_38,eyes_39,eyes_40,eyes_41', 'the eyes given out at random have changed');
 for (const [key, folder] of [['eyes', 'eyes'], ['lips', 'lips'], ['nose', 'noses']]) {
   for (const [gone, kept] of Object.entries(CUR.WITHDRAWN[key])) {
     check(!PART_BY_ID[gone] && !existsSync(new URL(`assets/avatars/${folder}/${gone}.svg`, root)), `${gone} is still in the game`);
@@ -324,12 +325,12 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(JSON.stringify(a) === JSON.stringify(old('hooded')) && !CUR.WITHDRAWN.eyes[a.eyes] && !CUR.WITHDRAWN.nose[a.nose] && !CUR.WITHDRAWN.lips[a.lips], 'an older save converts to a withdrawn shape, or differently each time');
 }
 {
-  // Women draw on every resting eye shape evenly; men only on the men's eyes.
+  // Women draw evenly on every resting eye shape but the men's; men on every one but the women's.
   rng.seed(7);
   for (const gender of ['female', 'male']) {
     const seen = {};
     for (let i = 0; i < 4000; i++) { const e = randomAppearance(i % 12, gender).inherited.eyes; seen[e] = (seen[e] ?? 0) + 1; }
-    const want = CUR.RESTING.eyes.filter((e) => gender === 'female' || !(e in CUR.WOMEN_EYES));
+    const want = CUR.RESTING.eyes.filter((e) => (gender === 'female' ? !CUR.MEN_EYES.includes(e) : !(e in CUR.WOMEN_EYES)));
     check(Object.keys(seen).sort().join() === [...want].sort().join(), `random ${gender} faces draw on a different set of eyes`);
     check(Math.max(...Object.values(seen)) / Math.min(...Object.values(seen)) < 1.5, 'some eye shapes are now given out more often than others');
   }
