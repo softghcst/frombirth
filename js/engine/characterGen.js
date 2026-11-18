@@ -55,8 +55,11 @@ export function createLife(opts = {}) {
     || rng.pick(c.names[gender] ?? [...c.names.male, ...c.names.female]);
   const city = opts.city && c.cities.includes(opts.city) ? opts.city : rng.pick(c.cities);
   // A life starts in the present unless told otherwise (tests start lives in other eras: the Digital World follows the year).
-  const asked = opts.year ?? opts.startYear; // one way to start in the past: any year the eras cover
-  const year = Number.isInteger(asked) ? Math.max(EARLIEST_START, Math.min(new Date().getFullYear(), asked)) : new Date().getFullYear();
+  // Two ways to start in the past. `startYear` is the player's choice on the new-life screen, kept within the years
+  // the eras cover; `year` is the engine's own (tests start lives anywhere history goes, e.g. 1790).
+  const now = new Date().getFullYear();
+  const year = Number.isInteger(opts.year) ? Math.min(now, opts.year)
+    : Number.isInteger(opts.startYear) ? Math.max(EARLIEST_START, Math.min(now, opts.startYear)) : now;
   // Money, prices and currencies of the year the life begins in (engine/history.js).
   syncWorld(year);
 

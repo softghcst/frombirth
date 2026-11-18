@@ -206,7 +206,8 @@ section('B. Family messaging');
   check(g.ok && g.thread.participants.every((id) => core.charOf(id)), 'a family group chat of real people');
   // The player moves abroad.
   p.flags.livesWithParents = false;
-  for (let i = 0; i < 60 && p.countryId === 'us'; i++) { p.flags.visaAge = null; emigrate('ca', { route: 'skilled' }); emigrate('ca', {}); }
+  // Some families have already moved abroad by now (global life), so the move is to Canada from wherever they are.
+  for (let i = 0; i < 60 && p.countryId !== 'ca'; i++) { p.flags.visaAge = null; emigrate('ca', { route: 'skilled' }); emigrate('ca', {}); }
   check(p.countryId === 'ca', 'the player moved to Canada');
   freshHours();
   const before = sister.meters.relationship;
@@ -377,7 +378,7 @@ section('H. Online community');
   join('corkboard', 'bookworm25');
   const c = comm.communities().find((x) => x.topic === 'books');
   check(comm.join(c.id).ok && c.keyMembers.length >= 3, 'joining a community introduces a few real members');
-  const npcsBefore = Object.keys(store.state.npcs).length;
+  const membersBefore = [...c.keyMembers];
   let made = null;
   for (let y = 0; y < 6 && !made; y++) {
     freshHours();
@@ -387,7 +388,9 @@ section('H. Online community');
     if (!made) grow(1);
   }
   check(made && made.role === 'friend' && made.flags.metOnline, 'a member became a real friend');
-  check(Object.keys(store.state.npcs).length === npcsBefore, 'the friend is the same person, not a copy');
+  // A year passing adds other people to the world (colleagues, a care team, rivals), so count only copies of this one.
+  const twins = made ? Object.values(store.state.npcs).filter((n) => n.firstName === made.firstName && n.lastName === made.lastName && n.age === made.age) : [];
+  check(made && membersBefore.includes(made.id) && twins.length === 1, 'the friend is the same person, not a copy');
   check(core.eventsOf(p.id).some((e) => e.kind === 'online_friend'), 'the friendship is a life event');
   check(c.memberCount > c.keyMembers.length * 10, 'the rest of the community is a count, not people');
 }
@@ -486,13 +489,15 @@ section('Public life');
   store.state = s; grow(30);
   const p = store.state.player;
   phone();
-  const off = join('glimmer', 'royal.office', { visibility: 'public', kind: 'official' }).account;
+  const opened = join('glimmer', 'royal.office', { visibility: 'public', kind: 'official' });
+  const off = opened.account;
   if (off && p.royal && ['monarch', 'heir', 'royal'].includes(p.royal.rank)) {
     freshHours();
     const img = p.royal.image;
     const r = civic.statement(off.id, 'royal_charity');
     check(r.ok && p.royal.image !== img, 'a royal official post moves the royal reputation');
-  } else check(!!off, 'a royal can open an official account');
+  } else if (!p.royal) check(!off, 'someone who has lost a royal title (the monarchy abolished, a divorce) cannot open an official account');
+  else check(!!off, `a royal can open an official account${off ? '' : ` (${opened.text}; alive ${p.alive}, age ${p.age})`}`);
   const other = Object.values(store.state.npcs).find((n) => n.alive && n.role !== 'pet');
   core.world().threads.th_x = { id: 'th_x', kind: 'dm', participants: [other.id, 'someone_else'], messages: [{ from: other.id, text: 'private' }], lastYear: store.state.year };
   check(!msg.inbox().some((t) => t.id === 'th_x'), 'a royal title does not open anyone else\'s private messages');
@@ -702,11 +707,20 @@ section('Other people online');
   check(figs.length === 3 && figs.every((f) => acc.followerCount(f) > 100000 && !p.npcIds.includes(f.ownerId)), 'there are well-known accounts to follow, who are not friends');
   check(acc.follow(mine.id, figs[0].id).ok && !p.npcIds.includes(figs[0].ownerId), 'following a public figure does not make them part of your life');
   check(npcMod.publicFigures('glimmer')[0].id === figs[0].id, 'they are the same people next time');
-  const star = friend({ relationship: 80 });
-  star.talents = { ...(star.talents ?? {}), music: 95 };
-  acc.makeAccount(star.id, 'glimmer', 'star.friend', { visibility: 'public' });
-  const starAcc = acc.accountsOf(star.id).find((a) => a.platformId === 'glimmer');
-  for (let i = 0; i < 40 && !starAcc.creator; i++) { star.alive = true; star.meters.health = 90; star.meters.relationship = 80; if (!p.npcIds.includes(star.id)) p.npcIds.push(star.id); if (starAcc.status === 'deactivated') starAcc.status = 'active'; grow(1); }
+  // Each gifted friend has a small chance a year of starting a channel, so one alone might never do it in 40
+  // years (about one life in twelve). Three gifted friends: one of them does.
+  const stars = [0, 1, 2].map((i) => {
+    const star = friend({ relationship: 80 });
+    star.talents = { ...(star.talents ?? {}), music: 95 };
+    acc.makeAccount(star.id, 'glimmer', `star.friend${i}`, { visibility: 'public' });
+    return [star, acc.accountsOf(star.id).find((a) => a.platformId === 'glimmer')];
+  });
+  const started = () => stars.find(([, a]) => a.creator);
+  for (let i = 0; i < 40 && !started(); i++) {
+    for (const [star, starAcc] of stars) { star.alive = true; star.meters.health = 90; star.meters.relationship = 80; if (!p.npcIds.includes(star.id)) p.npcIds.push(star.id); if (starAcc.status === 'deactivated') starAcc.status = 'active'; }
+    grow(1);
+  }
+  const [star, starAcc] = started() ?? stars[0];
   check(starAcc.creator?.pathway === 'music', 'a gifted friend starts a channel of their own');
 }
 

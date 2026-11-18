@@ -72,7 +72,8 @@ p.talents.sports = 92;
 hire(CAREER_BY_ID.athlete, 3, 70, 'offer');
 sports.chooseSport('tennis');
 for (let y = 0; y < 5; y++) year();
-const C = store.state.proSport.circuits.tennis;
+// Women play their own circuit (key 'tennis:women'); the player's gender is random.
+const C = store.state.proSport.circuits[p.sport.div === 'women' ? 'tennis:women' : 'tennis'];
 check(C.seasons.every((s) => s.events.length >= SPORTS.tennis.events && s.ranking.length > 0), 'a tennis year is its events and a ranking');
 check(C.seasons.every((s) => !!s.games === (s.year % WORLD_GAMES.every === 0)), 'the World Games come every four years, and only then');
 check(p.sport.titles.every((t) => C.seasons.some((s) => s.events.some((e) => e.name === t.name && e.winner.who === 'player'))), 'every title the player holds is an event they won');
