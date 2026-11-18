@@ -313,10 +313,11 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
 // 10. The faces on offer: the withdrawn eyes, mouths and noses are gone, saves that used them land on the nearest kept,
 // and the rest are offered and drawn at random exactly as before.
 const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_24', 'eyes_25', 'eyes_26', 'eyes_27', 'eyes_28', 'eyes_29', 'eyes_30', 'eyes_31', 'eyes_32',
-  'eyes_35', 'eyes_36', 'eyes_37', 'eyes_38', 'eyes_39', 'eyes_40', 'eyes_41', 'eyes_7', 'eyes_8', 'eyes_9'];
+  'eyes_35', 'eyes_36', 'eyes_37', 'eyes_38', 'eyes_39', 'eyes_40', 'eyes_41', 'eyes_43', 'eyes_44', 'eyes_45', 'eyes_46', 'eyes_47', 'eyes_48', 'eyes_49', 'eyes_50',
+  'eyes_7', 'eyes_8', 'eyes_9'];
 check(AVATAR_MANIFEST.eyes.map((e) => e.id).join() === EYES.join(), 'the eye shapes in the manifest have changed');
 check(CATALOG.eyes.map((e) => e.id).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
-check(CUR.RESTING.eyes.join() === 'eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_25,eyes_26,eyes_27,eyes_28,eyes_29,eyes_30,eyes_31,eyes_32,eyes_35,eyes_36,eyes_37,eyes_38,eyes_39,eyes_40,eyes_41', 'the eyes given out at random have changed');
+check(CUR.RESTING.eyes.join() === 'eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_25,eyes_26,eyes_27,eyes_28,eyes_29,eyes_30,eyes_31,eyes_32,eyes_35,eyes_36,eyes_37,eyes_38,eyes_39,eyes_40,eyes_41,eyes_43,eyes_44,eyes_45,eyes_46,eyes_47,eyes_48,eyes_49,eyes_50', 'the eyes given out at random have changed');
 for (const [key, folder] of [['eyes', 'eyes'], ['lips', 'lips'], ['nose', 'noses']]) {
   for (const [gone, kept] of Object.entries(CUR.WITHDRAWN[key])) {
     check(!PART_BY_ID[gone] && !existsSync(new URL(`assets/avatars/${folder}/${gone}.svg`, root)), `${gone} is still in the game`);
