@@ -10,6 +10,7 @@ import { tickSports } from './sports.js';
 import { tickModelling } from './modelling.js';
 import { tickPublishing } from './publishing.js';
 import { tickCelebs } from './celebs.js';
+import { tickKpop } from './kpop.js';
 import { tickPress } from './press.js';
 import { tickFameProfile } from './fame.js';
 import { gain, regard } from './fame.js';
@@ -660,7 +661,7 @@ export function tickWork() {
   const death = tickCareer();
   if (death) return death;
   // The entertainment world has its year (productions, awards, the press) before payroll pays for the work in it.
-  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...played, ...tickModelling(), ...tickPublishing(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile(), ...tickCelebs()];
+  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...played, ...tickModelling(), ...tickPublishing(), ...tickKpop(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile(), ...tickCelebs()];
   for (const l of lines) log(l);
   queueWorkScenes();
   if (p.age >= 14) checkAchievements(p);

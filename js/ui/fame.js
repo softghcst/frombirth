@@ -301,6 +301,7 @@ const VIEWS = {
       return `<div class="card"><h3>Your music</h3><p class="muted" style="margin:0">Songwriting ${music.songwriting(p)} · performing ${music.performing(p)}. Start on your own, or find people to play with.</p></div>
         <div class="btn-stack">${btn('solo', 'Perform as a solo artist', { sub: 'Choose your sound' })}${btn('band', 'Start a band', { sub: 'Choose your sound, your place in it, and who plays with you.' })}</div>
         ${VIEWS.bandboard(p)}
+        ${store.state.year >= 1996 ? `<div class="btn-stack">${btn('idol', 'Idol opportunities', { sub: 'K-pop auditions, training and debut' })}</div>` : ''}
         ${VIEWS.songcraft(p)}
         ${past.length ? `<div class="section-label">Acts you were in</div>${past.map((x) => row('act', x.id, x.name, `${x.kind === 'solo' ? 'Solo' : 'Band'} · ${x.formed}–${x.status === 'split' ? (x.history.at(-1)?.year ?? '') : 'still going'}`, x.status === 'split' ? 'Split' : 'Without you')).join('')}` : ''}`;
     }
@@ -639,6 +640,7 @@ const ACTIONS = {
   reunite: (id, x) => x.say(music.reunite(id)),
   season: (id, x) => x.go('season', id),
   none: () => {},
+  idol: async (_, x) => { const { openIdol } = await import('./kpop.js'); openIdol(x.api); },
   person: (id, x) => { const n = store.state.npcs[id]; if (n) openNpc(n, x.api); },
   async notice(arg, x) {
     const [pid, idx] = arg.split(':');
