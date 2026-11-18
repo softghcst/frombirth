@@ -1,5 +1,7 @@
 // Cities that differ: what a home costs, what work pays, which region's law
 // applies, and moving between them without leaving the country.
+import { recordEvent } from './chronicle.js';
+import { syncNpcPlaces } from './globalLife.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, log } from '../state.js';
@@ -120,13 +122,16 @@ export function relocate(cityName) {
 
   // The record of where they have lived. Papers do not change: it is the same country.
   const year = store.state.year;
-  const list = (p.locations ??= [{ countryId: p.birthCountryId, city: null, from: p.birthYear ?? year - p.age }]);
+  const list = (p.locations ??= [{ countryId: p.birthCountryId, city: p.birthCity ?? null, from: p.birthYear ?? year - p.age, reason: 'born' }]);
   const last = list[list.length - 1];
-  if (last && last.to == null) last.to = year;
-  list.push({ countryId: p.countryId, city: cityName, from: year });
+  if (last && last.to == null) { last.to = year; if (home && !(last.homes ??= []).includes(home.id)) last.homes.push(home.id); }
+  const ev = recordEvent({ key: `move:city:${p.id}:${year}:${cityName}`, type: 'relocation', international: false, title: `Moved to ${cityName}`, text: `From ${from.name}.`,
+    place: { countryId: p.countryId, city: cityName }, from: { countryId: p.countryId, city: from.name }, significance: 2, privacy: 'family', propertyId: home?.id ?? null });
+  list.push({ countryId: p.countryId, city: cityName, from: year, reason: 'moved within the country', eventId: ev.id, homes: [] });
 
   p.city = cityName;
   p.flags.livesWithParents = false;
+  syncNpcPlaces(p);
   if (store.state.market) store.state.market.listings = null; // a different market
   p.stats.mood = clamp(p.stats.mood + 2);
   const law = lawDiffers(p.countryId, to.regionId, from.regionId) ? `Some laws are different in ${to.region ?? cityName}. ` : '';

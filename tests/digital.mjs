@@ -201,12 +201,13 @@ section('B. Family messaging');
   const sister = friend({ role: 'sibling', age: 28, relationship: 75 });
   acc.makeAccount(sister.id, 'murmur', 'sis.here');
   const mother = store.state.player.npcIds.map((id) => store.state.npcs[id]).find((n) => n.alive && n.role === 'parent');
-  if (mother && !acc.accountOn(mother.id, 'murmur')) acc.makeAccount(mother.id, 'murmur', 'mum.here');
+  if (mother && !acc.accountOn(mother.id, 'murmur')) acc.makeAccount(mother.id, 'murmur', 'mom.here');
   const g = msg.createGroup({ platformId: 'murmur', name: 'Family', type: 'family', memberIds: [sister.id, ...(mother ? [mother.id] : [])] });
   check(g.ok && g.thread.participants.every((id) => core.charOf(id)), 'a family group chat of real people');
   // The player moves abroad.
   p.flags.livesWithParents = false;
-  for (let i = 0; i < 60 && p.countryId === 'us'; i++) { p.flags.visaAge = null; p.legal.incarceration = null; p.legal.pending = null; emigrate('ca', { route: 'skilled' }); emigrate('ca', {}); }
+  // Some families have already moved abroad by now (global life), so the move is to Canada from wherever they are.
+  for (let i = 0; i < 60 && p.countryId !== 'ca'; i++) { p.flags.visaAge = null; p.legal.incarceration = null; p.legal.pending = null; emigrate('ca', { route: 'skilled' }); emigrate('ca', {}); }
   check(p.countryId === 'ca', 'the player moved to Canada');
   freshHours();
   const before = sister.meters.relationship;
@@ -257,11 +258,15 @@ section('C. Reconnection');
   core.world().arcs.lastYear = null;
   let queued = null;
   for (let i = 0; i < 30 && !queued; i++) { core.world().arcs.lastYear = null; stories.tickStories(); queued = store.state.pendingEvents.find((e) => e.id === 'digital_reconnect'); store.state.pendingEvents = store.state.pendingEvents.filter((e) => e.id === 'digital_reconnect'); }
-  check(queued?.cast.friend === id, 'the Story Director finds the old friend from saved state');
-  const note = stories.decide('reconnect:message', queued.cast);
-  const back = store.state.npcs[id];
-  check(back && p.npcIds.includes(id) && back.role === 'friend' && back.id === id, `they are back in the player's life as the same person (${note})`);
-  check(core.eventsOf(p.id).some((e) => e.kind === 'reconnection' && e.charIds.includes(id)), 'the reconnection is a life event');
+  // Other childhood friends drift away over those years too; the Story Director may pick any of them. It must be
+  // someone real who drifted out of the player's life, not someone made up for the story.
+  const found = queued && store.state.npcs[queued.cast.friend];
+  check(found && found.flags.drifted && !p.npcIds.includes(found.id), 'the Story Director finds an old friend from saved state');
+  const them = found?.id ?? id;
+  const note = queued ? stories.decide('reconnect:message', queued.cast) : '';
+  const back = store.state.npcs[them];
+  check(back && p.npcIds.includes(them) && back.role === 'friend' && back.id === them, `they are back in the player's life as the same person (${note})`);
+  check(core.eventsOf(p.id).some((e) => e.kind === 'reconnection' && e.charIds.includes(them)), 'the reconnection is a life event');
 }
 
 // ---------- Scenario D: private account ----------
@@ -379,6 +384,7 @@ section('H. Online community');
   join('corkboard', 'bookworm25');
   const c = comm.communities().find((x) => x.topic === 'books');
   check(comm.join(c.id).ok && c.keyMembers.length >= 3, 'joining a community introduces a few real members');
+  const membersBefore = [...c.keyMembers];
   let made = null;
   for (let y = 0; y < 6 && !made; y++) {
     freshHours();
@@ -388,7 +394,9 @@ section('H. Online community');
     if (!made) grow(1);
   }
   check(made && made.role === 'friend' && made.flags.metOnline, 'a member became a real friend');
-  check(made && Object.values(store.state.npcs).filter((n) => n.firstName === made.firstName && n.lastName === made.lastName && n.flags.metOnline).length === 1, 'the friend is the same person, not a copy');
+  // A year passing adds other people to the world (colleagues, a care team, rivals), so count only copies of this one.
+  const twins = made ? Object.values(store.state.npcs).filter((n) => n.firstName === made.firstName && n.lastName === made.lastName && n.age === made.age) : [];
+  check(made && membersBefore.includes(made.id) && twins.length === 1, 'the friend is the same person, not a copy');
   check(core.eventsOf(p.id).some((e) => e.kind === 'online_friend'), 'the friendship is a life event');
   check(c.memberCount > c.keyMembers.length * 10, 'the rest of the community is a count, not people');
 }
@@ -487,13 +495,15 @@ section('Public life');
   store.state = s; grow(30);
   const p = store.state.player;
   phone();
-  const off = join('glimmer', 'royal.office', { visibility: 'public', kind: 'official' }).account;
+  const opened = join('glimmer', 'royal.office', { visibility: 'public', kind: 'official' });
+  const off = opened.account;
   if (off && p.royal && ['monarch', 'heir', 'royal'].includes(p.royal.rank)) {
     freshHours();
     const img = p.royal.image;
     const r = civic.statement(off.id, 'royal_charity');
     check(r.ok && p.royal.image !== img, 'a royal official post moves the royal reputation');
-  } else check(!!off, 'a royal can open an official account');
+  } else if (!p.royal) check(!off, 'someone who has lost a royal title (the monarchy abolished, a divorce) cannot open an official account');
+  else check(!!off, `a royal can open an official account${off ? '' : ` (${opened.text}; alive ${p.alive}, age ${p.age})`}`);
   const other = Object.values(store.state.npcs).find((n) => n.alive && n.role !== 'pet');
   core.world().threads.th_x = { id: 'th_x', kind: 'dm', participants: [other.id, 'someone_else'], messages: [{ from: other.id, text: 'private' }], lastYear: store.state.year };
   check(!msg.inbox().some((t) => t.id === 'th_x'), 'a royal title does not open anyone else\'s private messages');
@@ -529,7 +539,7 @@ section('Education');
   const local0 = comm.communities().find((x) => x.place === city0);
   p.city = COUNTRIES[p.countryId].cities.find((x) => x !== city0);
   const local1 = comm.communities().find((x) => x.place === p.city);
-  check(local0 && local1 && local0.id !== local1.id && core.world().communities[local0.id], 'moving brings a new neighbourhood group; the old one stays in the record');
+  check(local0 && local1 && local0.id !== local1.id && core.world().communities[local0.id], 'moving brings a new neighborhood group; the old one stays in the record');
 }
 
 // ---------- Creators: routines, money, streams, portfolio ----------
@@ -555,7 +565,7 @@ section('Creator economy');
   content.publish({ accountId: ch.id, format: 'short_video', topic: 'music', affiliate: true });
   grow(1);
   const kinds = new Set(creator.ledgerOf().map((x) => x.kind));
-  check(kinds.has('merch') && kinds.has('affiliate'), `merchandise and labelled affiliate income arrive through the ledger (${[...kinds].join(', ')})`);
+  check(kinds.has('merch') && kinds.has('affiliate'), `merchandise and labeled affiliate income arrive through the ledger (${[...kinds].join(', ')})`);
   const merch = creator.ledgerOf().find((x) => x.kind === 'merch');
   check(merch.expenses > 0 && merch.net === merch.gross - merch.platformFee - merch.expenses - merch.tax, 'merchandise counts the cost of making it');
   grow(1);
@@ -577,8 +587,10 @@ section('Creator economy');
   // Streams: scheduled for next year, with equipment
   const live = join('beacon', 'routine.live', { visibility: 'public' }).account;
   freshHours();
+  // Years can pass above while a license offer is awaited, and kit wears out: replace what no longer works.
+  rich(); ['camera', 'microphone', 'webcam'].forEach((d) => tech.buyDevice(d));
   const plan = creator.planStream({ accountId: live.id, topic: 'music', equipment: creator.streamGear().map((d) => d.id), when: 'next' });
-  check(plan.ok && plan.stream.scheduledYear === store.state.year + 1 && plan.stream.equipment.length >= 2, 'a stream can be scheduled for next year with chosen equipment');
+  check(plan.ok && plan.stream.scheduledYear === store.state.year + 1 && plan.stream.equipment.length >= 2, `a stream can be scheduled for next year with chosen equipment${plan.ok && plan.stream.equipment.length >= 2 ? '' : ` (${plan.text}; gear ${creator.streamGear().map((d) => d.id).join(', ')})`}`);
   check(!creator.broadcast(plan.stream.id).ok, 'and cannot go out early');
   grow(1); freshHours();
   check(creator.broadcast(plan.stream.id).ok, 'it goes out in its year');
@@ -703,11 +715,20 @@ section('Other people online');
   check(figs.length === 3 && figs.every((f) => acc.followerCount(f) > 100000 && !p.npcIds.includes(f.ownerId)), 'there are well-known accounts to follow, who are not friends');
   check(acc.follow(mine.id, figs[0].id).ok && !p.npcIds.includes(figs[0].ownerId), 'following a public figure does not make them part of your life');
   check(npcMod.publicFigures('glimmer')[0].id === figs[0].id, 'they are the same people next time');
-  const star = friend({ relationship: 80 });
-  star.talents = { ...(star.talents ?? {}), music: 95 };
-  acc.makeAccount(star.id, 'glimmer', 'star.friend', { visibility: 'public' });
-  const starAcc = acc.accountsOf(star.id).find((a) => a.platformId === 'glimmer');
-  for (let i = 0; i < 60 && !starAcc.creator; i++) { star.alive = true; star.flags.abroad = false; star.meters.health = 90; star.meters.relationship = 80; if (!p.npcIds.includes(star.id)) p.npcIds.push(star.id); if (starAcc.status === 'deactivated') starAcc.status = 'active'; grow(1); }
+  // Each gifted friend has a small chance a year of starting a channel, so one alone might never do it in 40
+  // years (about one life in twelve). Three gifted friends: one of them does.
+  const stars = [0, 1, 2].map((i) => {
+    const star = friend({ relationship: 80 });
+    star.talents = { ...(star.talents ?? {}), music: 95 };
+    acc.makeAccount(star.id, 'glimmer', `star.friend${i}`, { visibility: 'public' });
+    return [star, acc.accountsOf(star.id).find((a) => a.platformId === 'glimmer')];
+  });
+  const started = () => stars.find(([, a]) => a.creator);
+  for (let i = 0; i < 40 && !started(); i++) {
+    for (const [star, starAcc] of stars) { star.alive = true; star.meters.health = 90; star.meters.relationship = 80; if (!p.npcIds.includes(star.id)) p.npcIds.push(star.id); if (starAcc.status === 'deactivated') starAcc.status = 'active'; }
+    grow(1);
+  }
+  const [star, starAcc] = started() ?? stars[0];
   check(starAcc.creator?.pathway === 'music', 'a gifted friend starts a channel of their own');
 }
 
@@ -758,10 +779,10 @@ section('Radio and television');
   const p = life({ born: 1922, age: 8 });
   const ids = bc.broadcastOptions().map((o) => o.id);
   check(ids.includes('radio') && !ids.includes('tv'), `in 1930 there is radio and no television (${ids.join(', ')})`);
-  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'parent');
-  const before = mum?.meters.relationship;
+  const mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'parent');
+  const before = mom?.meters.relationship;
   const r = bc.tuneIn('radio', 'drama');
-  check(r.ok && (bc.setFor('radio') === 'elsewhere' || mum?.meters.relationship > before), 'an evening round the family radio brings the household closer');
+  check(r.ok && (bc.setFor('radio') === 'elsewhere' || mom?.meters.relationship > before), 'an evening round the family radio brings the household closer');
   check(!bc.tuneIn('radio', 'news').ok, 'once a year');
   grow(30);
   check(bc.broadcastOptions().some((o) => o.id === 'tv'), 'by 1960 there is television too');

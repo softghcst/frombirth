@@ -1,18 +1,30 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
-import { careerBlock, eraTitle, worldYear } from './history.js';
+import { hasRecord } from './records.js';
+import { licenseBlock } from './credentials.js';
+import { careerBlock, careerExists, eraTitle, worldYear } from './history.js';
 import { LAW_WORDS } from '../data/history.js';
 import { rule as lawRule } from './rules.js';
 import { techAvailable } from './digital/tech.js';
 import { forgetNpc } from './digital/core.js';
-import { hasRecord } from './records.js';
 import { hiringClimate, layoffChance } from './economy.js';
+import { workBarrier } from './health/access.js';
+import { tickEntertainment } from './entertainment.js';
+import { tickAwards } from './awards.js';
+import { tickMusic } from './music.js';
+import { tickModeling } from './modeling.js';
+import { tickPublishing } from './publishing.js';
+import { tickCelebs } from './celebs.js';
+import { tickPress } from './press.js';
+import { tickFameProfile } from './fame.js';
+import { gain, regard } from './fame.js';
+import { AUDIENCE_OF } from '../data/fame.js';
 import { leadFactor, tickCouple } from './couple.js';
 import { payK } from './cities.js';
 import { rule, may } from './rules.js';
 import { residency } from './citizenship.js';
-import { licenceFor, licensed, examName } from './adulted.js';
-import { PROGRAMMES } from '../data/schools.js';
+import { licenseFor, licensed, examName } from './adulted.js';
+import { PROGRAMS } from '../data/schools.js';
 import { hiringEdge } from './languages.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localWage, theCountry } from '../util.js';
@@ -75,12 +87,15 @@ export function unmet(career, o = {}) {
   const p = player();
   const r = career.req ?? {};
   const out = [];
+  if (!careerExists(career.id, store.state.year)) out.push(`There is no such work in ${store.state.year}.`);
   if (p.legal.incarceration) out.push('Not from a cell.');
   if (career.id === 'influencer' && !techAvailable('social')) out.push('There is no such job yet: social media does not exist here.');
   // Historical Eras: jobs that do not exist yet, and jobs the law of the time closed to some people.
   const barred = careerBlock(career, p, worldYear(), (id) => lawRule(id, p.countryId));
   if (barred) out.push(LAW_WORDS[barred] ? LAW_WORDS[barred](theCountry(COUNTRIES[p.countryId].name)) : barred);
-  if (career.type !== 'freelance' && !residency(p).workAuthorized) out.push('Your student visa does not allow full-time work.');
+  if (career.type !== 'freelance' && !residency(p).workAuthorized) out.push(residency(p).status === 'retiree' ? 'Your retirement visa does not allow work.' : 'Your student visa does not allow full-time work.');
+  // A regulated profession needs its qualification recognized here (engine/credentials.js). A job offer does not do it.
+  { const lic = licenseBlock(career.id, p); if (lic) out.push(lic); }
   if (p.career.careerId === career.id && !o.ignoreCurrent) out.push('This is your current job.');
   if (career.type === 'military' && !rightToLive(p.countryId, p)) out.push('The armed forces here take citizens only.');
   if (p.age < workLaw().workAge && !career.agesOut) out.push(`You must be ${workLaw().workAge} to work here.`);
@@ -92,7 +107,7 @@ export function unmet(career, o = {}) {
     const from = (career.from ?? []).map((f) => CAREER_BY_ID[f.career]?.levels[f.level]?.title.toLowerCase()).filter(Boolean);
     out.push(from.length ? `Reached from inside a career: as ${from.slice(0, 3).join(', or as ')}, ask to move across.` : 'Reached only from inside a career.');
   }
-  for (const prog of r.programmes ?? []) if (!hasDegree(prog)) out.push(`Needs you to have finished ${PROGRAMMES[prog].label.toLowerCase()}.`);
+  for (const prog of r.programs ?? []) if (!hasDegree(prog)) out.push(`Needs you to have finished ${PROGRAMS[prog].label.toLowerCase()}.`);
   if (p.education.enrolled && p.education.stage !== 'none' && career.type !== 'freelance' && !p.education.partTime) {
     out.push('Finish or leave your course first.');
   }
@@ -101,7 +116,7 @@ export function unmet(career, o = {}) {
   else if (r.altOnly && r.altCert && !degrees().some((d) => d.type === 'certificate' && d.majorId === r.altCert)) out.push(`Needs a ${CERT_BY_ID[r.altCert]?.name.toLowerCase() ?? 'professional'} certificate.`);
   // Some careers have another way in: a certificate in the skill, or a vocational school.
   else if ((r.altCert && degrees().some((d) => d.type === 'certificate' && d.majorId === r.altCert)) || (r.altProgramme && hasDegree(r.altProgramme))) {
-    const l = r.altProgramme ? licenceFor(r.altProgramme) : null;
+    const l = r.altProgramme ? licenseFor(r.altProgramme) : null;
     if (l && !licensed(l)) out.push(`Needs you to pass the ${examName(l)}.`);
   }
   else if (r.degree === 'high' && !degrees().length) out.push('Needs a high-school diploma.');
@@ -110,12 +125,12 @@ export function unmet(career, o = {}) {
     const names = r.majors.slice(0, 3).map((m) => MAJOR_BY_ID[m].name);
     out.push(`Needs a degree in ${names.join(', ')}${r.majors.length > 3 ? ' or similar' : ''}.`);
   }
-  if (r.programme && !hasDegree(r.programme)) {
+  if (r.program && !hasDegree(r.program)) {
     out.push({ medical: 'Needs a medical degree.', law: 'Needs a law degree.',
-      cosmetology: 'Needs a hair and makeup license.' }[r.programme] ?? `Needs you to have finished ${PROGRAMMES[r.programme].label.toLowerCase()}.`);
-  } else if (r.programme && licenceFor(r.programme) && !licensed(licenceFor(r.programme)) && !vouched) {
-    // The degree is not the right to practise.
-    out.push(`Needs you to pass the ${examName(licenceFor(r.programme))}.`);
+      cosmetology: 'Needs a hair and makeup license.' }[r.program] ?? `Needs you to have finished ${PROGRAMS[r.program].label.toLowerCase()}.`);
+  } else if (r.program && licenseFor(r.program) && !licensed(licenseFor(r.program)) && !vouched) {
+    // The degree is not the right to practice.
+    out.push(`Needs you to pass the ${examName(licenseFor(r.program))}.`);
   }
   if (r.trade && !hasTrade(r.trade)) out.push(`Needs a completed ${TRADE_BY_ID[r.trade].name.toLowerCase()} apprenticeship.`);
   if (r.minAge && p.age < r.minAge) out.push(`You need to be ${r.minAge}.`);
@@ -146,11 +161,11 @@ export function doorBonus(career) {
   let bonus = (career.doors ?? []).filter((d) => !d.guaranteed && doorOpen(d)).reduce((s, d) => s + d.bonus, 0);
   if (career.focus && p.flags.cosmoFocus === career.focus) bonus += 0.25;
   if ((p.flags.internships ?? []).some((i) => i.careerId === career.id)) bonus += 0.2; // they have done the work before
+  if (career.req?.altCert && degrees().some((d) => d.type === 'certificate' && d.majorId === career.req.altCert)) bonus += 0.1; // a certificate in exactly this
+  if (livingNpcs().some((n) => n.flags.mentor && n.meters.relationship >= 60)) bonus += 0.05; // a word from a mentor
   const referred = p.flags.referrals?.[career.id];
   if (referred != null && p.age - referred <= 1) bonus += 0.2;
   if (['performing', 'beauty'].includes(career.category) && (p.flags.portfolio ?? 0) >= 0.55) bonus += 0.1; // a portfolio of good finished work (engine/digital/school.js) // someone there vouched for them, or a recruiter put them forward (engine/digital/professional.js)
-  if (career.req?.altCert && degrees().some((d) => d.type === 'certificate' && d.majorId === career.req.altCert)) bonus += 0.1; // a certificate in exactly this
-  if (livingNpcs().some((n) => n.flags.mentor && n.meters.relationship >= 60)) bonus += 0.05; // a word from a mentor
   return bonus + hiringEdge(p) + hiringClimate(); // the economy; and languages: an asset anywhere, and a barrier where you cannot speak the one in use
 }
 
@@ -369,7 +384,7 @@ export function hire(career, level, performance, how, o = {}) {
 export function takeOverJob(job, yearsWorked = 0) {
   const p = player();
   const career = CAREER_BY_ID[job?.careerId];
-  if (!career) return;
+  if (!career || !careerExists(career.id, store.state.year)) return; // a job from before its time is not carried on
   const lvl = career.levels[job.level];
   const c = ensureCareer(p.career);
   const e = career.type === 'freelance' ? null : employer(job.employerId) ?? placeAt(career.id, p.countryId, p.city);
@@ -587,7 +602,7 @@ export function gigOptions() {
   return GIGS.map((g) => {
     let reason = '';
     if (p.age < g.minAge) reason = `You need to be ${g.minAge}.`;
-    else if (g.programme && !hasDegree(g.programme)) reason = 'Needs a hair and makeup license.';
+    else if (g.program && !hasDegree(g.program)) reason = 'Needs a hair and makeup license.';
     else {
       const short = Object.entries(g.req).find(([path, min]) => (Number(resolve(path)) || 0) < min);
       if (short) reason = `Needs ${STAT_NAMES[short[0]]} of ${short[1]}.`;
@@ -636,7 +651,8 @@ export function doFameAction(id) {
   const pay = localMoney(a.cash * (0.5 + fame() / 40) * (went ? 1 : 0.3), country());
   p.finance.cash += pay;
   p.finance.lifetimeEarned += pay;
-  p.hidden.fame = clamp(p.hidden.fame + (went ? a.fame : a.risky ? -8 : -1));
+  if (went) gain({ audience: id === 'book' ? 'literary' : id === 'talk_show' ? 'tv' : 'public', amount: a.fame, why: a.name.toLowerCase() });
+  regard({ favor: went ? 1 : a.risky ? -6 : -1, why: a.name.toLowerCase() });
   if (a.karma) p.hidden.karma = clamp(p.hidden.karma + a.karma);
   p.stats.mood = clamp(p.stats.mood + (went ? 6 : -6));
   const text = `${went ? a.ok : a.fail} You were paid ${fmtMoney(pay, country())}.`;
@@ -659,7 +675,8 @@ export function tickWork() {
   tickOffers();
   const death = tickCareer();
   if (death) return death;
-  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickWorkLife(), ...tickRecruiters()];
+  // The entertainment world has its year (productions, awards, the press) before payroll pays for the work in it.
+  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...tickModeling(), ...tickPublishing(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile(), ...tickCelebs()];
   for (const l of lines) log(l);
   queueWorkScenes();
   if (p.age >= 14) checkAchievements(p);
@@ -672,10 +689,7 @@ export function tickCareer() {
   const c = p.career;
   const career = currentCareer();
   const cty = country();
-  if (!career) {
-    p.hidden.fame = clamp(p.hidden.fame - 3);
-    return null;
-  }
+  if (!career) return null; // recognition fades in the fame profile (engine/fame.js), not here
   // Child performers grow up. What they did as a child follows them.
   if (career.agesOut && p.age >= career.agesOut) {
     const was = c.title.toLowerCase();
@@ -710,7 +724,7 @@ export function tickCareer() {
   const heart = (c.satisfaction - 55) / 20;
   const away = c.leave && c.leave.age === p.age - 1 ? -3 : 0;
   c.performance = clamp(Math.round(c.performance + (55 - c.performance) * 0.25
-    + (p.hidden.discipline - 50) / 12 + craft + mentor + strain + heart + away + rng.int(-6, 6)));
+    + (p.hidden.discipline - 50) / 12 + craft + mentor + strain + heart + away + rng.int(-6, 6) - workBarrier(p)));
   if (career.skill === 'tripleThreat') for (const k of ['singing', 'dance', 'acting']) p.talents[k] = clamp(p.talents[k] + 1);
   else if (career.skill?.startsWith('talents.')) { const k = career.skill.slice(8); p.talents[k] = clamp(p.talents[k] + 1); }
   // How the work wears on mood and health is worked out in worklife.js (stress, satisfaction, burnout).
@@ -736,7 +750,7 @@ export function tickCareer() {
       c.performance = clamp(c.performance + 15);
       log('You were deployed overseas and decorated for what you did there.', 'system', 'good');
       milestone('Decorated on deployment.', 'career');
-      c.military.honours = (c.military.honours ?? 0) + 1;
+      c.military.honors = (c.military.honors ?? 0) + 1;
     } else {
       c.performance = clamp(c.performance + 5);
       log('You were deployed overseas. You came home in one piece.');
@@ -751,7 +765,7 @@ export function tickCareer() {
     if (roll < 0.1) { log('Your mission was cut short by a fault, and you came home early, safely. The investigation clears your crew.', 'system', 'neutral'); c.performance = clamp(c.performance + 3); }
     else {
       c.performance = clamp(c.performance + 10);
-      p.hidden.fame = clamp(p.hidden.fame + 6);
+      gain({ audience: 'public', amount: 6, lasting: 0.5, why: 'a space mission' });
       log(rng.pick(['You flew a mission to the space station and ran experiments for months.', 'You launched, docked, and spent your nights watching the Earth turn below you.',
         'You walked in space to repair a failing panel. The pictures went round the world.']), 'system', 'good');
       milestone(c.missions === 1 ? 'Went to space.' : `Flew space mission number ${c.missions}.`, 'career');
@@ -798,11 +812,10 @@ export function tickCareer() {
     }
   }
 
-  // Fame comes with the top of certain careers, and fades without them.
-  if (career.fame && c.level >= career.fame.from) {
-    p.hidden.fame = clamp(p.hidden.fame + (c.level - career.fame.from + 1) * 4 + c.performance / 25);
-  } else {
-    p.hidden.fame = clamp(p.hidden.fame - 2);
+  // Fame comes with the top of certain careers, to the audience that work reaches; it fades in the profile.
+  // Sport, modeling and books make their own fame, from results, bookings and books (engine/sports.js, modeling.js, publishing.js).
+  if (career.fame && c.level >= career.fame.from && !['athlete', 'modeling', 'author'].includes(career.id)) {
+    gain({ audience: AUDIENCE_OF[career.id] ?? 'public', amount: (c.level - career.fame.from + 1) * 3 + c.performance / 30, lasting: 0.2, why: c.title.toLowerCase() });
   }
 
   // Bodies and careers both have limits.

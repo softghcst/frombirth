@@ -107,7 +107,7 @@ function openPerson(id, api, rerender) {
 // ---------- Small form helper ----------
 
 /**
- * A form in a modal. Resolves with the values, or null if cancelled.
+ * A form in a modal. Resolves with the values, or null if canceled.
  * @param {{title:string, body?:string, submit?:string, fields:{name:string, label:string, type?:string, value?:any, options?:{value:string,label:string,disabled?:boolean}[], max?:number}[]}} o
  */
 function formModal({ title, body, submit = 'Save', fields }) {
@@ -182,7 +182,7 @@ function postCard(x, o = {}) {
   return `<article class="dl-card dl-post" style="--pl:${pl(x.platformId).accent}">
     <div class="dl-post-head">${a ? accountFace(a, 'sm') : face(x.authorId, 'sm')}<div class="dl-post-who">${who(x.authorId)}<small>@${esc(a?.handle ?? '')} · ${esc(pl(x.platformId).name)} · ${x.year}${x.format !== 'text' ? ` · ${esc(FORMATS[x.format].name.toLowerCase())}` : ''}</small></div>${visChip(x.audience)}</div>
     <p>${esc(x.text)}</p>
-    <div class="chips">${tag}${outcome ? `<span class="dl-tag">${esc(outcome)}</span>` : ''}${x.contractId ? `<span class="dl-tag">${x.disclosed ? 'Paid partnership' : 'Sponsored (not labelled)'}</span>` : ''}${x.location ? `<span class="dl-tag">📍 ${esc(x.location)}</span>` : ''}</div>
+    <div class="chips">${tag}${outcome ? `<span class="dl-tag">${esc(outcome)}</span>` : ''}${x.contractId ? `<span class="dl-tag">${x.disclosed ? 'Paid partnership' : 'Sponsored (not labeled)'}</span>` : ''}${x.location ? `<span class="dl-tag">📍 ${esc(x.location)}</span>` : ''}</div>
     ${metrics(x)}
     ${o.full ? '' : `<button class="btn small" data-open-post="${x.id}">${x.comments.filter((c) => !c.hidden || core.isPlayer(x.authorId)).length} comments · open</button>`}
   </article>`;
@@ -757,7 +757,7 @@ async function compose(api, rerender, o = {}) {
     { name: 'familyShared', label: 'Keep it for the family archive', type: 'check', value: false },
     ...(a.locationSharing ? [{ name: 'shareLocation', label: `Add your city (${p.city})`, type: 'check', value: false }] : []),
     ...(o.contractId ? [{ name: 'disclosed', label: 'Label it as a paid partnership', type: 'check', value: true }] : []),
-    ...(a.creator?.monetized && !o.contractId ? [{ name: 'affiliate', label: 'Include affiliate links (always labelled as such)', type: 'check', value: false }] : []),
+    ...(a.creator?.monetized && !o.contractId ? [{ name: 'affiliate', label: 'Include affiliate links (always labeled as such)', type: 'check', value: false }] : []),
   ] });
   if (!v) return;
   const [stype, skey] = v.source ? v.source.split('|') : [];

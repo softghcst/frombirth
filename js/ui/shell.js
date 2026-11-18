@@ -13,9 +13,12 @@ import { styledName, standing } from '../engine/royalty.js';
 import { ROYAL_RANKS } from '../data/royalty.js';
 import { avatarSvg, dressOfPlayer } from './avatar.js';
 import { meterHtml } from './meter.js';
-import { eventModal, outcomeModal, confirmModal } from './modals.js';
+import { eventModal, outcomeModal, confirmModal, openModal } from './modals.js';
+import { summarize } from '../engine/yearSummary.js';
 import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
+import { openHealth } from './health/hub.js';
+import { careWaiting } from '../engine/health/index.js';
 import { openMoney } from './tabs/holdings.js';
 import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
@@ -168,6 +171,10 @@ export function mountGame(app, hooks) {
   function renderPanel() {
     app.querySelectorAll('.tab-btn').forEach((b) =>
       b.classList.toggle('active', b.dataset.tab === activeTab));
+    // A dot on Self when care needs the player: a decision to make, or an appointment this week.
+    const waiting = player().alive ? careWaiting() : null;
+    const self = app.querySelector('.tab-btn[data-tab="self"]');
+    if (self) { self.classList.toggle('badge', !!waiting); self.setAttribute('aria-label', waiting ? `Self (${waiting.short})` : 'Self'); }
     const tab = TABS.find((t) => t.id === activeTab);
     panelEl.hidden = !tab;
     if (!tab) return;
@@ -224,6 +231,35 @@ export function mountGame(app, hooks) {
     render();
     await runPending();
     if (player().alive && player().legal.pending) await tabApi.justice();
+    await yearUpdate();
+    await healthNotice();
+  }
+
+  /** The yearly life update: what this year changed, from the saved state. Shown once per year. */
+  async function yearUpdate() {
+    const state = store.state;
+    const r = state.yearReport;
+    if (!r || r.shown || !player().alive || state.settings?.yearSummary === false) return;
+    r.shown = true;
+    persist();
+    const s = summarize(r.before, state, r.planLines);
+    await new Promise((resolve) => {
+      const m = openModal(`
+        <div class="eyebrow">${s.year}</div>
+        <h2>Age ${s.from} → ${s.to}</h2>
+        ${s.quiet ? '<p class="body">A quiet year. Those count too.</p>' : s.sections.map((x) => `<div class="section-label">${esc(x.title)}</div>${x.lines.map((l) => `<p class="yu-line">${esc(l)}</p>`).join('')}`).join('')}
+        <div class="btn-row" style="margin-top:14px"><button class="btn" data-off>Stop showing these</button><button class="btn primary" data-ok>Continue</button></div>`, { dismissable: true, onDismiss: resolve });
+      m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+      m.el.querySelector('[data-off]').addEventListener('click', () => { state.settings = { ...(state.settings ?? {}), yearSummary: false }; persist(); m.close(); resolve(); });
+    });
+  }
+
+  /** After a year, a care decision that is waiting is put in front of the player, once. */
+  async function healthNotice() {
+    const w = player().alive ? careWaiting() : null;
+    if (!w?.decision || busy) return;
+    const go = await confirmModal({ title: 'Your care', body: w.text, yes: 'Open My Health', no: 'Later' });
+    if (go) openHealth(tabApi, { section: 'overview' });
   }
 
   yearBtn.addEventListener('click', nextYear);

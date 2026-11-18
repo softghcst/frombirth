@@ -3,10 +3,10 @@
 //
 //   p.flags.secrets  [{ id, kind, year, evidence }]
 //     evidence  0–100: how much there is to find. It fades as the years pass.
-//   p.flags.inquiry  { secretId, stage: 'rumour' | 'story' | 'inquiry', denied }
-//     One at a time. A rumour may die or become a story; a story may be
+//   p.flags.inquiry  { secretId, stage: 'rumor' | 'story' | 'inquiry', denied }
+//     One at a time. A rumor may die or become a story; a story may be
 //     survived, or go to an inquiry; an inquiry clears or condemns.
-// The scenes are in data/events/politics.js (scandal_rumour, scandal_story,
+// The scenes are in data/events/politics.js (scandal_rumor, scandal_story,
 // scandal_verdict), and each choice comes back here through decide().
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
@@ -69,9 +69,9 @@ export function tickScandal() {
   for (const s of secrets()) {
     if (s.year === year) continue;
     if (!rng.chance(clamp(s.evidence / 400 * keen, 0, 0.4))) continue;
-    p.flags.inquiry = { secretId: s.id, stage: 'rumour', denied: false };
-    tell('rumour', s);
-    pend.push({ id: 'scandal_rumour', cast: { words: { ...words(s), hush: fmtMoney(localMoney(HUSH, c), c) } } });
+    p.flags.inquiry = { secretId: s.id, stage: 'rumor', denied: false };
+    tell('rumor', s);
+    pend.push({ id: 'scandal_rumor', cast: { words: { ...words(s), hush: fmtMoney(localMoney(HUSH, c), c) } } });
     break;
   }
 }
@@ -84,7 +84,7 @@ export function decide(what) {
   const s = q ? find(q.secretId) : null;
   if (!q || !s) return '';
   const end = () => { delete p.flags.inquiry; };
-  if (q.stage === 'rumour') {
+  if (q.stage === 'rumor') {
     if (what === 'confess') { shift(-8); p.hidden.karma = clamp(p.hidden.karma + 6); drop(s.id); end(); tell('confessed', s); return 'You call the cameras in and tell it yourself, all of it. It hurts, and then it is over.'; }
     if (what === 'kill') {
       const cost = localMoney(HUSH, c);
@@ -101,7 +101,7 @@ export function decide(what) {
     return 'You deny it flatly. The reporter thanks you, and goes on digging.';
   }
   if (q.stage === 'story') {
-    if (what === 'apologise') { shift(q.denied ? 1 : 4); drop(s.id); end(); tell('confessed', s); return q.denied ? 'You apologize. It would have counted for more if you had not denied it first.' : 'You apologize, plainly and without excuses. Some people even believe you.'; }
+    if (what === 'apologize') { shift(q.denied ? 1 : 4); drop(s.id); end(); tell('confessed', s); return q.denied ? 'You apologize. It would have counted for more if you had not denied it first.' : 'You apologize, plainly and without excuses. Some people even believe you.'; }
     if (what === 'aide') {
       p.hidden.karma = clamp(p.hidden.karma - 8);
       if (s.evidence < 60 && rng.chance(0.6)) { end(); s.evidence = Math.max(0, s.evidence - 20); tell('aide', s); return 'A junior aide resigns with a statement taking full responsibility. You wish them well in a short letter. The story moves on.'; }

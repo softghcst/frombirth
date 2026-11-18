@@ -18,7 +18,7 @@ export function onDeath(state = store.state) {
     if (acc.ownerId !== p.id) continue;
     if (acc.status === 'active' || acc.status === 'deactivated') { acc.status = 'memorial'; acc.memorialYear = state.year; }
   }
-  for (const s of d.streams) if (s.ownerId === p.id && s.status === 'scheduled') s.status = 'cancelled';
+  for (const s of d.streams) if (s.ownerId === p.id && s.status === 'scheduled') s.status = 'canceled';
   for (const c of Object.values(d.contracts)) if (c.ownerId === p.id && ['offered', 'negotiating', 'active'].includes(c.status)) c.status = 'ended';
   for (const x of Object.values(d.projects)) if (x.ownerId === p.id && !['published', 'archived'].includes(x.status)) x.unfinished = true;
 }

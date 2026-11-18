@@ -168,6 +168,17 @@ export const SPORTS_LIST = [
 for (const id of ['soccer', 'basketball', 'baseball', 'softball', 'american_football', 'volleyball', 'ice_hockey', 'cricket', 'rugby', 'tennis', 'pickleball', 'badminton',
   'track', 'running', 'gymnastics', 'figure_skating', 'martial_arts', 'wrestling']) SPORTS_LIST.find((s) => s.id === id).standing = false;
 
+// Women's professional game, where it began later than the men's (the years the fame work used).
+for (const [id, from] of [['soccer', 1991], ['basketball', 1997], ['cricket', 1973], ['golf', 1950], ['rugby', 1995], ['tennis', 1926], ['martial_arts', 1995]]) {
+  const sp = SPORTS_LIST.find((x) => x.id === id); if (sp) sp.womenProFrom = Math.max(sp.proFrom, from);
+}
+
+/** The international games for individual sports, every four years, from the first modern games. */
+export const WORLD_GAMES = { name: 'World Games', founded: 1896, every: 4 };
+export const isGamesYear = (y) => y >= WORLD_GAMES.founded && y % WORLD_GAMES.every === 0;
+/** What a finish at the games is worth: a medal for the first three, whichever way the event is decided. */
+export const MEDAL_FOR = { Champion: 'gold', Final: 'silver', '2nd': 'silver', Semifinal: 'bronze', '3rd': 'bronze' };
+
 export const SPORTS = Object.fromEntries(SPORTS_LIST.map((s) => [s.id, s]));
 export const sportOf = (id) => SPORTS[id] ?? null;
 

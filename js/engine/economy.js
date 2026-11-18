@@ -218,8 +218,8 @@ export function fromAbroad(n, hereId, { settled = false, keepSurname = false, ye
   if (!keepSurname) n.lastName = surnameFor(from, rng.pick(COUNTRIES[from].names.last), n.gender);
   n.flags.from = from;
   n.citizenships = [{ jurisdictionId: issuerOf(from), acquisitionType: 'birth', acquiredAt: year - n.age }];
-  // Someone long settled has usually naturalised, unless either country allows only one nationality.
-  if (settled && !SINGLE.has(issuerOf(from)) && !SINGLE.has(issuerOf(hereId))) n.citizenships.push({ jurisdictionId: issuerOf(hereId), acquisitionType: 'naturalisation', acquiredAt: year - Math.min(10, Math.max(1, n.age - 20)) });
+  // Someone long settled has usually naturalized, unless either country allows only one nationality.
+  if (settled && !SINGLE.has(issuerOf(from)) && !SINGLE.has(issuerOf(hereId))) n.citizenships.push({ jurisdictionId: issuerOf(hereId), acquisitionType: 'naturalization', acquiredAt: year - Math.min(10, Math.max(1, n.age - 20)) });
   return from;
 }
 /** Whether a newly made family, or someone newly met, has roots abroad. */

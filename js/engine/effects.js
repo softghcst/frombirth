@@ -7,6 +7,7 @@ import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
 import { decide as schoolChoice } from './schoollife.js';
 import { decide as abroadChoice } from './diplomacy.js';
+import { decide as abroadArcChoice } from './abroadArcs.js';
 import { decide as kinChoice } from './kin.js';
 import { decide as scandalChoice } from './scandal.js';
 import { justiceScene } from './justiceScenes.js';
@@ -19,6 +20,7 @@ import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { addCondition, cureCondition } from './health.js';
+import { healthEffect } from './health/story.js';
 import { remember } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
 import { hitProperty } from './realEstate.js';
@@ -159,7 +161,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (e.target) ctx.cast[e.target] = npc.id;
         break;
       }
-      case 'honour': crown.honour(p.flags.honourRank ?? 'knight'); break;
+      case 'honor': crown.honor(p.flags.honorRank ?? 'knight'); break;
       case 'family': { const d = fame.shift('family', e.delta, ctx.why); if (d) shown.push({ label: 'Family approval', delta: d }); break; }
       case 'press': { const d = fame.shift('press', e.delta, ctx.why); if (d) shown.push({ label: 'The press', delta: d }); break; }
       case 'story': fame.addStory(e.value.label, e.value.truth, e.value.heat); break;
@@ -189,6 +191,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'parent': ctx.note = parentChoice(e.value, ctx.cast); break;
       case 'royalEd': ctx.note = royalEdChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;
+      case 'global': ctx.note = abroadArcChoice(e.value, ctx.cast); break;
       case 'leader': ctx.note = e.value === 'resign' ? resignLeadership().text : e.value === 'stand' ? standForVacancy() : faceTheParty(); break;
       case 'ousted': pol.removed(e.value); break;
       case 'resignOffice': pol.resign(); break;
@@ -204,6 +207,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (p.career.partTime) p.career.partTime.salary = Math.round(p.career.partTime.salary * e.delta);
         break;
       case 'condition': addCondition(e.value); break;
+      case 'health': { const n = healthEffect(e.value, ctx); if (n) ctx.note = ctx.note ? `${ctx.note} ${n}` : n; break; }
       case 'cure': cureCondition(e.value); break;
       case 'gpa':
         p.education.gpa = Math.round(clamp(p.education.gpa + e.delta, 0, 4) * 100) / 100;

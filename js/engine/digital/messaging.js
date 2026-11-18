@@ -135,7 +135,7 @@ const OPEN = {
   birthday: ['Happy birthday! Hope this year is a good one.', 'Many happy returns!'],
   support: ['How are you really doing? You can tell me.', 'You have been on my mind. Everything all right?'],
   romance: ['Thinking about you.', 'Cannot wait to see you tonight.', 'Still the best thing that ever happened to me.'],
-  anniversary: ['Happy anniversary. I would choose you again.', 'Another year. Still my favourite person.'],
+  anniversary: ['Happy anniversary. I would choose you again.', 'Another year. Still my favorite person.'],
   us: ['Can we talk about us? I feel like we have drifted a bit.', 'I just want to make sure we are all right.'],
   photo: ['Look what I saw today!', 'Thought you would like this one.', 'Found this old photo of us.'],
   vent: ['I cannot stand some of the people I deal with. Honestly.', 'Can I just complain for a minute? Everyone is driving me up the wall.'],

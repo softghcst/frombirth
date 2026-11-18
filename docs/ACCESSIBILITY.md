@@ -23,12 +23,28 @@ After the fixes ax reports no violations on any of those screens, in either them
 with focus always where it should be. The audit also turned up an unrelated crash (an NPC's job pointing past the top of a
 career ladder), fixed in `js/engine/npcLives.js`.
 
+## Explore the World
+
+The travel hub (`js/ui/globalLife.js`) was audited the same way with `scripts/a11y-explore.cjs`: axe-core 4.10.2 on all 31 of
+its screens (Discover, a destination, a full trip plan, My Trips and a trip, every Passport & Documents tab, Immigration with an
+approved move and its checklist, Places I've Lived and a residence, Languages & Culture, every Travel Memories tab, Our Global
+Story with a marker open, a life event and a House Chronicle), at 390×844 in the light and the dark theme, then a keyboard pass.
+
+| Found | Fixed |
+|---|---|
+| The family map was marked as an image while its markers could take focus | The map is a labeled group; its text alternative is the timeline beneath it |
+| Map markers took focus but did nothing from the keyboard | Enter or Space opens a marker, with a visible focus ring |
+| The Passport & Documents screen failed to open (a field renamed during a merge) | Fixed; the audit now opens every tab |
+
+After the fixes axe reports no violations on any of the 31 screens in either theme. Focus moves into the hub when it opens,
+Tab reaches every control in order (39 in the first screen), and Escape closes it.
+
 ## What this does not cover
 
 - No screen reader has been used (VoiceOver, TalkBack, NVDA). Names, roles and live regions are set as the specifications
   say, but how they read aloud has not been heard.
 - Nothing has been tested on a real phone, including iOS Safari's handling of zoom and focus.
-- Only the screens listed above were audited; rarely seen screens (the court, the cabinet, campaigns) were not opened.
+- Only the screens listed above were audited (the Explore the World screens are listed in their own section); rarely seen screens (the court, the cabinet, campaigns) were not opened.
 - The avatar art has no text alternative beyond the character's name beside it.
 
 ## Checking again

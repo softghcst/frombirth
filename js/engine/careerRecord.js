@@ -12,6 +12,8 @@
 // merged before years are counted, so a job recorded twice, or two jobs at
 // once, never count double.
 import { store, player, livingNpcs, log, milestone } from '../state.js';
+import { carryWorld } from './entertainment.js';
+import { inherited, startWithFamilyName } from './fame.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { FAMILY_BY_ID } from '../data/occupations.js';
 import { ensureCareer } from './worklife.js';
@@ -163,15 +165,37 @@ export function record(p = player(), st = store.state) {
   const top = [...jobs].sort((a, b) => (CAREER_BY_ID[b.careerId]?.levels.findIndex((l) => l.title === b.title) ?? 0) - (CAREER_BY_ID[a.careerId]?.levels.findIndex((l) => l.title === a.title) ?? 0))[0];
   return { name: `${p.firstName} ${p.lastName}`, gen: p.generation ?? 1, born, died: p.alive === false ? st.year : null, jobs,
     businesses: (p.businesses ?? []).map((b) => ({ name: b.name, from: b.founded, years: b.years, status: b.status })),
+    credits: (p.fame?.credits ?? []).map((c) => ({ productionId: c.productionId, year: c.year })), fame: p.fame ? { legacy: p.fame.legacy, scope: null } : null,
+    sport: sportSummary(p, st), books: (p.fame?.writing?.books ?? []).length, acts: (p.fame?.acts ?? []).length, portfolio: (p.fame?.model?.portfolio ?? []).length,
     achievements: c.achievements.map((a) => a.name), topTitle: top?.title ?? null, retired: !!c.retired, colleagues };
+}
+
+/** What a family remembers of an athlete: their main sport, from the one sports system (engine/sports.js). */
+function sportSummary(p, st) {
+  const a = st.sports?.athletes?.[p.id];
+  const played = a ? Object.values(a.sports).filter((e) => (e.seasonsPlayed ?? 0) + (e.legacySeasons ?? 0) > 0) : [];
+  if (!played.length) return null;
+  const main = a.sports[a.primary] && played.includes(a.sports[a.primary]) ? a.sports[a.primary] : played[0];
+  return { sport: main.id, seasons: (main.seasonsPlayed ?? 0) + (main.legacySeasons ?? 0), titles: main.titles.length,
+    medals: (main.medals ?? []).map((m) => `${m.medal} ${m.year}`), caps: main.caps ?? 0, level: main.level };
 }
 
 /** Written when the story passes on (engine/legacy.js). */
 export function passOn(old, next, heir) {
-  next.careerRecord = [...(old.careerRecord ?? []), record(old.player, old)].slice(-12);
   next.jobs = old.jobs; // the employers, and their histories, are the same world
+  next.careerRecord = [...(old.careerRecord ?? []), record(old.player, old)].slice(-12);
+  // The entertainment world carries on; the old player's credits become an ancestor's (engine/entertainment.js).
+  const ancestor = Object.values(next.npcs).find((n) => !n.alive && ['parent', 'grandparent'].includes(n.role) && n.firstName === old.player.firstName && n.lastName === old.player.lastName);
+  carryWorld(old, next, ancestor?.id);
+  next.careerRecord.at(-1).npcId = ancestor?.id ?? null;
+  if (ancestor) ancestor.flags.fame = { legacy: old.player.fame?.legacy ?? 0, headline: old.player.hidden?.fame ?? 0 };
+  // The heir is known for their family's name, not for any work of their own.
+  const fromFamily = inherited(old.player.fame?.legacy ?? 0, old.player.hidden?.fame ?? 0);
+  next.player.hidden.fame = 0;
+  delete next.player.fame;
+  startWithFamilyName(next.player, fromFamily);
   // A business goes to the heir who was named, or to a child. Ownership, not the manager's chair.
-  return heir ? inherit(old.player, next.player, heir, next.npcs) : [];
+  return heir ? inherit(old.player, next.player, heir, next.npcs, old.npcs) : [];
 }
 
 /** The family's working history, with the living player last. */

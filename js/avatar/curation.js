@@ -46,7 +46,7 @@ export const RESTING = {
   lips: ['lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_14'],
   noses: ['nose_6', 'nose_7', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
     'nose_19', 'nose_20', 'nose_23'],
-  // relaxed brows: nothing angry, sceptical or comic
+  // relaxed brows: nothing angry, skeptical or comic
   eyebrows: ['brows_02', 'brows_03', 'brows_10', 'brows_12', 'brows_14', 'brows_15', 'brows_16_feathered', 'brows_17_puppy', 'brows_19_glam_arch', 'brows_6', 'brows_8'],
 };
 /** The soft, thin brows every baby and toddler has, whatever they grow into. */

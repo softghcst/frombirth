@@ -116,7 +116,7 @@ const LAW_NEWS = {
   lgbt: (v, place) => ({ limited: `Being gay is no longer a crime in ${place}.`, equal: `${place.replace(/^the/, 'The')} now protects gay and transgender people in law.` }[v] ?? null),
   schoolLeavingAge: (v, place) => `Children in ${place} now stay at school until ${v}.`,
   marriageBar: (v, place) => (v ? null : `Married women in ${place} may now keep their jobs in teaching and public service.`),
-  womenInLaw: (v, place) => (v ? `Women in ${place} may now practise law.` : null),
+  womenInLaw: (v, place) => (v ? `Women in ${place} may now practice law.` : null),
   womenInUniform: (v, place) => (v ? `The police, fire service and armed forces in ${place} are open to women now.` : null),
 };
 const lawsNow = (countryId) => Object.fromEntries(Object.keys(LAW_HISTORY).map((id) => [id, rule(id, countryId)]));

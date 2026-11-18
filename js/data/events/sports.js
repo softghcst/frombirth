@@ -64,6 +64,6 @@ export default [
   scene('sport_arc_new_generation', [18, 110], {}, '{child} has taken up {sport}. Nobody suggested it: they saw it, wanted it, and asked.', [
     { label: 'Pay for lessons, and drive them to every game', outcomes: [any('You become one of the parents on the sideline with a flask and a folding chair.', 'good', arc({ arc: 'I', how: 'support' }))] },
     { label: 'Encourage them, and let them lead', outcomes: [any('You ask questions and let {child} decide how serious it gets.', 'good', arc({ arc: 'I', how: 'lead' }))] },
-    { label: 'Point them towards {mine} instead', outcomes: [any('{child} listens politely.', 'bad', arc({ arc: 'I', how: 'steer' }))] },
+    { label: 'Point them toward {mine} instead', outcomes: [any('{child} listens politely.', 'bad', arc({ arc: 'I', how: 'steer' }))] },
   ]),
 ];

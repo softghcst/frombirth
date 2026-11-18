@@ -1,13 +1,18 @@
 // localStorage persistence: multiple save slots plus the graveyard.
 import { rng } from './rng.js';
+import { fameOf } from './engine/fame.js';
 import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
-import { migrateDigital } from './engine/digital/tick.js';
-import { ensureEra } from './engine/eras.js';
+import { migrateHealth } from './engine/health/record.js';
+import { ensureGlobal } from './engine/globalLife.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
+import { migrateDigital } from './engine/digital/tick.js';
+import { ensureEra, alignWorld } from './engine/eras.js';
+import { adoptOldSport } from './engine/sportsLife.js';
+import { americanize } from './engine/spelling.js';
 
 export const SCHEMA_VERSION = 2;
 const K_INDEX = 'pathways.index';
@@ -34,6 +39,8 @@ function write(key, value) {
 
 /** Bring older saves up to the current schema. */
 function migrate(state) {
+  // Saves from when the game was written in British English: their ids, keys and text, in American spelling.
+  americanize(state);
   state.pendingEvents ??= [];
   state.eventHistory ??= [];
   state.player.birth ??= [];
@@ -62,6 +69,8 @@ function migrate(state) {
   rename(pl, pl.countryId);
   for (const l of pl.locations ?? []) rename(l, l.countryId);
   for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
+  // Lives saved before the health record: conditions carried over, nothing invented.
+  migrateHealth(state);
   // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
   for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
   for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);
@@ -73,6 +82,7 @@ function migrate(state) {
   // Careers before employers, side jobs and the time budget: fill in what the save lacks. Nothing is re-paid.
   ensureCareer(state.player.career);
   state.player.businesses ??= [];
+  fameOf(state.player); // a save's single fame figure becomes a fame profile, with where it came from noted; nothing is invented
   if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
   for (const a of Object.values(state.animals?.byId ?? {})) for (const h of a.homes) rename(h, h.countryId);
   for (const e of state.animals?.events ?? []) if (e.place) rename(e.place, e.place.countryId);
@@ -93,7 +103,7 @@ function migrate(state) {
     ledgerOf(state, { desc: 'What you had when the books were opened (from an earlier version of the game)' });
   }
   // Lives saved before the justice records: each record entry is kept as it was,
-  // marked as older, with its offence named in today's terms. Nothing is invented:
+  // marked as older, with its offense named in today's terms. Nothing is invented:
   // open cases, unsolved crimes and sentences are upgraded the first time they are
   // used (engine/justice.js upgradeLegacy), with no trial history made up for them.
   const legal = pl.legal;
@@ -110,10 +120,14 @@ function migrate(state) {
     r.outcome ??= r.convicted ? 'convicted' : 'acquitted';
     r.year ??= pl.birthYear + r.age;
   }
+  // Travel, papers, residence history and the family's shared record (engine/globalLife.js). Nothing is invented for older lives.
+  ensureGlobal(state);
   // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.
   migrateDigital(state);
   // Historical Eras: a life saved before eras keeps its money as it was (see engine/eras.js).
   ensureEra(state, { legacy: true });
+  // One sports system: a professional career kept under the old separate system becomes the player's sports record.
+  if (state.proSport || state.player?.sport?.seasons) adoptOldSport(state);
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }
@@ -199,6 +213,9 @@ export function loadGame(slotId) {
   if (!state) return null;
   migrate(state);
   rng.seed(state.rngSeed);
+  // The loaded life is the one being played: the world's money and currencies are its year's (Historical Eras), so
+  // that living the same years again costs the same as it did the first time.
+  alignWorld(state);
   return state;
 }
 
@@ -240,6 +257,7 @@ export function popUndo(slotId) {
   write(K_UNDO + slotId, list);
   const state = migrate(JSON.parse(raw));
   rng.seed(state.rngSeed);
+  alignWorld(state); // a year taken back has that year's prices again
   return state;
 }
 /** Removes a grave, when the death it records is taken back. */

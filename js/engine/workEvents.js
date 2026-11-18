@@ -87,7 +87,7 @@ export function workChoice(value, cast = {}) {
       return `Under its new owners the place is ${CULTURES[e.culture].label.toLowerCase()}: ${CULTURES[e.culture].blurb.toLowerCase()}`;
     }
     case 'voluntary': {
-      // Voluntary redundancy: a bigger cheque than a layoff brings, and the same door.
+      // Voluntary redundancy: a bigger check than a layoff brings, and the same door.
       if (!c.careerId) return '';
       const amount = Math.round(c.salary * (0.4 + Math.min(0.6, c.yearsInRole * 0.05)));
       p.finance.cash += amount;

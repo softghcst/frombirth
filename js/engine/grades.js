@@ -29,13 +29,13 @@ export function yearMark(f) {
   return clamp(Math.round(g * 100) / 100, 0, 4);
 }
 
-/** A running mark: mostly what it was, moved towards this year's. A first year stands as it is. */
+/** A running mark: mostly what it was, moved toward this year's. A first year stands as it is. */
 export const carry = (before, year) => (before == null ? year : Math.round((before * 0.55 + year * 0.45) * 100) / 100);
 
 /** How interest in a subject moves in a year: success and good teaching feed it, failure and dull lessons starve it. */
 export function nextInterest(interest, mark, o = {}) {
   let n = interest + (mark - 2.2) * 3 + (o.teacher ?? 0) + (o.club ? 5 : 0) + (o.focus ? 2 : 0);
-  // Interests drift back towards the middle unless something keeps feeding them.
+  // Interests drift back toward the middle unless something keeps feeding them.
   n += (50 - n) * 0.04;
   return clamp(Math.round(n), 0, 100);
 }
@@ -74,7 +74,7 @@ export function showMark(g, grading) {
 export function showDegree(g, scheme) {
   if (g == null) return '';
   switch (scheme) {
-    case 'honours': return g >= 3.6 ? 'First' : g >= 3.2 ? '2:1' : g >= 2.7 ? '2:2' : g >= 2.2 ? 'Third' : 'Pass';
+    case 'honors': return g >= 3.6 ? 'First' : g >= 3.2 ? '2:1' : g >= 2.7 ? '2:2' : g >= 2.2 ? 'Third' : 'Pass';
     case 'twenty': return `${(Math.round(Math.max(0, 10 + (g - 2) * 2.5) * 2) / 2).toString().replace('.', ',')}/20`; // a 14 is a very good degree
     case 'german': return (Math.round((5 - g) * 10) / 10).toFixed(1).replace(/^(\d)\.(\d)$/, '$1,$2'); // 1,0 is the best, 4,0 a pass
     case 'italy': return `${Math.min(110, Math.round(66 + g * 11))}/110`;

@@ -1,5 +1,5 @@
 // The Story Director's digital arcs. Each is found in saved state — a friend
-// who drifted away years ago, a teenager who has been practising, an
+// who drifted away years ago, a teenager who has been practicing, an
 // ancestor's old channel — and offered as an ordinary scene, at most one a
 // year. The choices are resolved here, against the same engines the rest of
 // Digital Life uses.
@@ -60,7 +60,7 @@ function reconnectCandidate() {
   return null;
 }
 
-/** A teenager who has been practising music, with a way to film it and somewhere to put it. */
+/** A teenager who has been practicing music, with a way to film it and somewhere to put it. */
 function firstVideoCandidate() {
   const p = player();
   if (p.age < 13 || p.age > 19 || arcs().firstVideo) return null;

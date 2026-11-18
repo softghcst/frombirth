@@ -73,7 +73,7 @@ export function tickSense() {
   const f = p.finance;
   if (p.age >= 8 && p.age < 18 && f.cash > 0) learn(1, 'pocket');
   if (p.education.enrolled && p.age >= 14) learn(1, 'school');
-  if (p.education.enrolled && p.age === 15 && !p.flags.moneyClass) { p.flags.moneyClass = true; learn(4, 'class'); log('At school this year there was a term of lessons on money: budgets, interest, and what a payslip says.', 'system', 'neutral'); }
+  if (p.education.enrolled && p.age === 15 && !p.flags.moneyClass) { p.flags.moneyClass = true; learn(4, 'class'); log('At school this year there was a semester of lessons on money: budgets, interest, and what a pay stub says.', 'system', 'neutral'); }
   if (p.career.careerId || p.career.partTime) learn(1.5, 'work');
   if (Object.keys(f.budget?.limits ?? {}).length) learn(2, 'budget');
   if (goalList().some((g) => g.status === 'active')) learn(1.5, 'goal');

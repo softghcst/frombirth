@@ -1,6 +1,6 @@
 // Crime and the courts, from where the player stands: choosing to break the
 // law (or not), being investigated, arrested and charged, the case itself,
-// the sentence, supervision afterwards, and the record that remains.
+// the sentence, supervision afterward, and the record that remains.
 //
 // The records themselves (incidents, evidence, cases, sentences) are kept by
 // engine/cases.js. This file applies their consequences to the player's life.
@@ -131,6 +131,7 @@ export function commitCrime(crimeId, targetId, how = {}) {
     let text = crime.done;
     if (crime.target) {
       victim.alive = false;
+      victim.flags.diedYear ??= store.state.year;
       p.counters.kills += 1;
       text = `${method.done.replace(/\{v\}/g, who).replace(/([,a-z] )The /g, '$1the ')} ${crime.done}`;
     }
@@ -505,7 +506,7 @@ function ageOfficials() {
     if (!n?.alive || mine.has(id)) continue;
     n.age += 1;
     const role = n.flags.justice;
-    if (role && !role.retired && ['judge', 'prosecutor', 'defence', 'detective', 'officer', 'staff'].includes(role.kind)) {
+    if (role && !role.retired && ['judge', 'prosecutor', 'defense', 'detective', 'officer', 'staff'].includes(role.kind)) {
       role.skill = clamp((role.skill ?? 50) + (rng.chance(0.5) ? 1 : 0));
       if (n.age >= (role.kind === 'judge' ? 70 : 66) && rng.chance(0.4)) { role.retired = store.state.year; n.occupation = `Retired ${n.occupation.toLowerCase()}`; }
     }

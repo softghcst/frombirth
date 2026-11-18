@@ -23,7 +23,7 @@ const playsTeamSport = (p, s) => Object.values(s.sports?.athletes?.[p.id]?.sport
 
 export default [
   // ---------- Any time of year, any length ----------
-  scene('between_rainy_day', [4, 110], { steps: both }, 'A grey, wet stretch of weeks. Everyone indoors, everyone a little short-tempered.', [
+  scene('between_rainy_day', [4, 110], { steps: both }, 'A gray, wet stretch of weeks. Everyone indoors, everyone a little short-tempered.', [
     { label: 'Find something new to do inside', outcomes: [any('You end up with a half-finished puzzle and a strangely good mood.', 'good', st('mood', 4))] },
     { label: 'Go out in it anyway', outcomes: [any('You come back soaked and laughing.', 'good', st('mood', 3), st('health', 1))] },
     { label: 'Wait it out', outcomes: [any('It passes, as weather does.', 'neutral')] },

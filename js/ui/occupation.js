@@ -13,6 +13,7 @@ import { openModal, messageModal, pickModal, confirmModal, inputModal } from './
 import { PRICING, OWNER_HOURS, DRAWS, BUSINESS_BY_ID } from '../data/business.js';
 import * as biz from '../engine/business.js';
 import * as couple from '../engine/couple.js';
+import { openFame } from './fame.js';
 import { meterHtml } from './meter.js';
 import { avatarSvg } from './avatar.js';
 import * as career from '../engine/career.js';
@@ -119,7 +120,7 @@ function jobCard(p) {
     ['Hours', `${c.hours}${c.extra > 0 ? ` + ${c.extra} overtime` : c.extra < 0 ? ` − ${-c.extra}` : ''} a week · ${car.schedule.replace('_', '-')}${c.remote !== 'none' ? ` · ${c.remote === 'remote' ? 'from home' : 'hybrid'}` : ''}`],
     ['In this role', years(c.yearsInRole)],
     ...(away ? [['On leave', away]] : []),
-    ...(c.military ? [['Service', `${c.military.branch} · ${c.military.deployments} deployments${c.military.honours ? ` · ${c.military.honours} honors` : ''}`]] : []),
+    ...(c.military ? [['Service', `${c.military.branch} · ${c.military.deployments} deployments${c.military.honors ? ` · ${c.military.honors} honors` : ''}`]] : []),
     ...(c.missions ? [['Space missions', String(c.missions)]] : []),
     ['Next step', step ? `${step.title}${step.missing.length ? `: needs ${step.missing.join(' and ')}` : step.yearsLeft > 0 ? `, in about ${years(step.yearsLeft)} with good reviews` : ', when a seat opens and a good review lands'}` : 'You are at the top.'],
   ])}
@@ -158,7 +159,7 @@ const VIEWS = {
       ${sides.length ? `<div class="card"><h3>Part-time</h3>${kv(sides.map((s) => [s.title, `${s.place ? `${s.place} · ` : ''}${s.hours ?? 12} h/week · ${money(s.salary)} a year`]))}</div>` : ''}
       ${fl.services ? `<div class="card"><h3>Freelance</h3>${kv([['Services offered', String(fl.services)], ['Active contracts', `${fl.active.length} (${fl.hours} h/week)`], ['Due on completion', money(fl.due)], ['Completed, ever', String(fl.done)]])}</div>` : ''}
       <div class="card"><h3>Your week: ${esc(load.word.toLowerCase())}</h3>${load.rows.length ? kv(load.rows.map((r) => [r.label, `${r.hours} h`])) + kv([['Total', `${load.total} hours a week`]]) : '<p class="muted">Nothing booked.</p>'}
-        ${p.age < 18 && p.age >= work.workLaw().workAge ? `<p class="muted" style="margin-top:6px">Under 18, the law here allows ${work.workLaw().minorHours} hours of paid work a week in term time.</p>` : ''}</div>
+        ${p.age < 18 && p.age >= work.workLaw().workAge ? `<p class="muted" style="margin-top:6px">Under 18, the law here allows ${work.workLaw().minorHours} hours of paid work a week during the school year.</p>` : ''}</div>
       ${last?.lines?.length ? `<div class="card"><h3>Last year's pay</h3>${kv(last.lines.map((l) => [l.label, money(l.gross)]))}${kv([['Gross', money(last.gross)], ...(last.tax != null ? [['Tax', money(last.tax)], ['Take-home', money(last.gross - last.tax)]] : [])])}</div>` : ''}`;
   },
 
@@ -255,6 +256,7 @@ const VIEWS = {
           ${btn('bizhire', 'Take someone on', { arg })}${biz.hireable(b).length ? btn('bizknown', 'Offer a job to someone you know', { arg }) : ''}${b.others ? btn('bizcut', 'Let one of the other staff go', { arg }) : ''}
           ${btn('bizhours', 'Your hours', { arg })}${btn('bizprice', 'Prices', { arg })}${btn('bizdraw', 'What you take out each year', { arg })}
           ${btn('bizinvest', 'Spend on the business', { arg, sub: 'Marketing, equipment, training.' })}
+          ${biz.LAUNCHES[b.typeId] ? btn('bizlaunch', 'Launch a product', { arg, sub: 'Once a year. It sells on the product, and on your name.' }) : ''}
           ${btn('bizmoney', 'Money in and out', { arg, sub: `Could spare ${money(biz.spareCash(b), cty)} · could borrow ${money(biz.borrowRoom(b), cty)}` })}
           ${btn('bizexpand', 'Open another site', { arg })}
           ${biz.partnerOptions(b).length && b.stake > 0.5 ? btn('bizpartner', 'Take on a partner', { arg, sub: 'A quarter of the business, for money put into it.' }) : ''}
@@ -292,7 +294,7 @@ const VIEWS = {
       ['Acting', ['child_actor', 'actor', 'mt_performer', 'voice', 'stunts', 'casting', 'directing']],
       ['Music and dance', ['singer', 'orchestra', 'music_prod', 'dance']],
       ['Sport', ['athlete', 'coaching']],
-      ['Modeling and media', ['modelling', 'influencer', 'broadcast']],
+      ['Modeling and media', ['modeling', 'influencer', 'broadcast']],
       ['Writing', ['author', 'screenwriting']],
       ['Space', ['astronaut']],
     ];
@@ -303,6 +305,7 @@ const VIEWS = {
     const mine = work.career().careerId === t.id;
     return btn('special', `${t.name}: ${t.levels[0].title}`, { arg: t.id, disabled: mine || !!why.length, sub: mine ? 'Your current work.' : why.length ? why[0] : { audition: 'By audition.', portfolio: 'Show your work.', interview: 'Selection interview.' }[t.hire] ?? '' });
   }).join('')}`).join('')}
+      ${btn('castingboard', 'Casting notices: film, television, stage and voice', { cls: 'primary', sub: 'Real parts in real productions, in My Fame.' })}
       <div class="section-label">Politics</div><p class="muted">${esc(pol)}</p>
       ${career.fame() >= 10 ? btn('fame', `Use your fame (${career.fame()}%)`) : ''}`;
   },
@@ -312,7 +315,7 @@ const VIEWS = {
     const branches = career.branchesHere();
     const conscript = rule('conscription', p.countryId);
     const ranks = (id) => CAREER_BY_ID[id].levels.map((_, i) => career.localTitle(CAREER_BY_ID[id], i, c.military?.branch ?? branches[0])).join(' → ');
-    return `${c.military ? `<div class="card"><h3>Your service</h3>${kv([['Branch', c.military.branch], ['Rank', c.title], ['Years served', String(c.yearsInField)], ['Deployments', String(c.military.deployments)], ['Honors', String(c.military.honours ?? 0)],
+    return `${c.military ? `<div class="card"><h3>Your service</h3>${kv([['Branch', c.military.branch], ['Rank', c.title], ['Years served', String(c.yearsInField)], ['Deployments', String(c.military.deployments)], ['Honors', String(c.military.honors ?? 0)],
       ['Pension', CAREER_BY_ID[c.careerId].pensionAfter ? `After ${CAREER_BY_ID[c.careerId].pensionAfter} years' service` : '—']])}</div>` : ''}
       ${p.flags.veteran ? '<p class="muted">You are a veteran. Some employers in public safety, government and logistics look on that kindly.</p>' : ''}
       <div class="card"><h3>The armed forces of ${esc(country().name)}</h3>${kv([['Branches', branches.join(', ')], ['Service', conscript ? 'Compulsory' : 'Voluntary'], ['Enlisted ranks', ranks('enlisted')], ['Officer ranks', ranks('officer')]])}</div>
@@ -325,8 +328,8 @@ const VIEWS = {
     const certs = CERTS.filter((x) => !degrees.some((d) => d.type === 'certificate' && d.majorId === x.id));
     const r = hiring.resume();
     return `<div class="card"><h3>Your résumé</h3>${kv([
-      ...r.education.map((x) => ['Education', x]), ...r.licences.map((x) => ['Licensed', x]), ...r.internships.map((x) => ['Internship', x]),
-      ...r.jobs.map((x) => ['Experience', x]), ...r.service.map((x) => ['Service', x]), ...r.honours.map((x) => ['Honor', x]),
+      ...r.education.map((x) => ['Education', x]), ...r.licenses.map((x) => ['Licensed', x]), ...r.internships.map((x) => ['Internship', x]),
+      ...r.jobs.map((x) => ['Experience', x]), ...r.service.map((x) => ['Service', x]), ...r.honors.map((x) => ['Honor', x]),
       ['Strengths', r.strengths.join(', ') || '—']])}</div>
       <div class="card"><h3>What it opens</h3><p style="margin:0">You meet the requirements for ${open} of ${CAREERS.filter((t) => !t.branchOnly && t.type !== 'military').length} kinds of work that hire from outside.</p>
       ${certs.length ? `<div class="section-label">A one-year certificate would open</div>${kv(certs.map((x) => [x.name, CAREER_BY_ID[x.opens]?.name ?? x.opens]))}` : ''}
@@ -410,7 +413,7 @@ const ACTIONS = {
   },
   async leave(_, x) {
     const k = await pickModal({ title: 'Take leave', body: 'What you are owed depends on where you live and who you work for.',
-      options: [{ value: 'vacation', label: 'Use your holiday' }, { value: 'sick', label: 'Sick leave' }, { value: 'parental', label: 'Parental leave' }, { value: 'sabbatical', label: 'A year\'s sabbatical (unpaid)' }] });
+      options: [{ value: 'vacation', label: 'Use your vacation days' }, { value: 'sick', label: 'Sick leave' }, { value: 'parental', label: 'Parental leave' }, { value: 'sabbatical', label: 'A year\'s sabbatical (unpaid)' }] });
     if (k) await x.say(work.takeLeave(k));
   },
   async values(_, x) {
@@ -570,6 +573,11 @@ const ACTIONS = {
     const v = await pickModal({ title: 'What you take out each year', body: 'What you leave in pays for bad years, new sites and new people.', options: Object.entries(DRAWS).map(([k, o]) => ({ value: k, label: o.label })) });
     if (v) await x.say(biz.setDraw(biz.business(id), v));
   },
+  async bizlaunch(id, x) {
+    const b = biz.business(id);
+    const v = await pickModal({ title: 'Launch', options: biz.LAUNCHES[b.typeId].map((n) => ({ value: n, label: n[0].toUpperCase() + n.slice(1) })) });
+    if (v) await x.say(biz.launchProduct(b, v));
+  },
   async bizinvest(id, x) {
     const v = await pickModal({ title: 'Spend on the business', options: [{ value: 'marketing', label: 'Marketing', sub: 'More custom for a year or two, and a little more name.' }, { value: 'equipment', label: 'Equipment and premises', sub: 'Better work. A good name follows good work.' }, { value: 'training', label: 'Training the staff', sub: 'Better work, and people who feel invested in.' }] });
     if (v) await x.say(biz.invest(biz.business(id), v));
@@ -626,6 +634,7 @@ const ACTIONS = {
     if (couple.spouse()) await x.say(couple.proposePlan({ childcare: v }));
     else { couple.plan().childcare = v; await x.say({ ok: true, text: v === 'paid' ? `You arrange childcare: about ${money(couple.careCost(), c)} a year.` : 'You will look after them yourself.', tone: 'neutral' }); }
   },
+  castingboard: (_, x) => { x.close(); openFame(x.api, 'casting'); },
   special: (id, x) => specialApply(id, x),
   enlist: (id, x) => specialApply(id, x),
   gotofind: (_, x) => { x.st.section = 'find'; x.render(); },

@@ -124,7 +124,7 @@ export function confirmModal({ title, body, yes = 'Confirm', no = 'Cancel', dang
 }
 
 /**
- * A list of options to pick from. Resolves with the chosen value, or null if cancelled.
+ * A list of options to pick from. Resolves with the chosen value, or null if canceled.
  * @param {{title:string, body?:string, cancel?:string,
  *          options:{value:any, label:string, sub?:string, disabled?:boolean}[]}} o
  */
@@ -150,7 +150,7 @@ export function pickModal({ title, body, options, cancel = 'Cancel' }) {
 }
 
 /**
- * Asks for a short piece of text. Resolves the trimmed text, or null if cancelled.
+ * Asks for a short piece of text. Resolves the trimmed text, or null if canceled.
  * @param {{title:string, label:string, value?:string, maxLength?:number}} o
  */
 export function inputModal({ title, label, value = '', maxLength = 24 }) {

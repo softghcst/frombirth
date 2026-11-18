@@ -51,6 +51,8 @@ async function run(viewport) {
     p.finance.cash = 50000;
     p.education.enrolled = false;
     const f = makeNpc({ role: 'friend', countryId: 'us', age: p.age, relationship: 60 });
+    // A name nobody else in the world has: the steps below find the friend by name (a random one is sometimes shared).
+    f.firstName = 'Marisol'; f.lastName = 'Quennell';
     f.lastInteractionAge = p.age; ensureLife(f);
     s.npcs[f.id] = f; p.npcIds.push(f.id);
     for (const pl of ['hearth', 'murmur', 'glimmer']) acc.makeAccount(f.id, pl, `${f.firstName.toLowerCase()}.${pl}`, { visibility: 'public' });

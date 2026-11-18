@@ -35,14 +35,14 @@ const book = () => (store.state ? (store.state.rules ??= {}) : {});
 export function source(id, placeId = here(), opts = {}) {
   const def = RULES[id];
   if (!def) throw new Error(`Unknown rule: ${id}`);
-  const s = modernSource(id, placeId, opts, def);
-  if (s.source === 'enacted' || s.source === 'enacted region') return s;
-  // Historical Eras: before a law changed, the old law applies (data/history.js).
-  const past = pastLaw(id, placeId, worldYear(), s.value);
-  return past ? { value: past.value, source: past.note } : s;
+  const now = modernSource(id, placeId, opts, def);
+  // A law made during this life stands. Otherwise, before a law changed, the old law applies (Historical Eras, data/history.js).
+  if (now.source === 'enacted' || now.source === 'enacted region') return now;
+  const past = pastLaw(id, placeId, worldYear(), now.value);
+  return past ? { value: past.value, source: past.note } : now;
 }
 
-/** Today's law, through its layers (enacted, default, parent state, place, region). */
+/** Today's law, through its layers (laws made in this life, region, place, parent state, default). */
 function modernSource(id, placeId, opts, def) {
   const me = store.state?.player;
   const region = opts.region !== undefined ? opts.region : placeId === me?.countryId ? me.regionId ?? lawRegion(placeId, me.city) : null;

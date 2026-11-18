@@ -43,7 +43,7 @@ export const COMM_TECH = [
   { id: 'social', name: 'Social networks', from: 2004, span: 6, infra: 45, devices: ['desktop', 'laptop', 'smartphone', 'tablet'], activities: ['post', 'follow', 'feed'], cost: 0, digital: true, blurb: 'Everyone you know, and what they are up to.' },
   { id: 'smartphone', name: 'Smartphones', from: 2007, span: 7, infra: 35, devices: ['smartphone'], activities: ['post', 'photo', 'video', 'message'], cost: 300, digital: true, blurb: 'The internet in your pocket, with a camera attached.' },
   { id: 'video_call', name: 'Video calls', from: 2008, span: 8, infra: 50, devices: ['laptop', 'smartphone', 'tablet', 'desktop'], activities: ['video_call'], cost: 0, digital: true, blurb: 'Faces, not just voices, across any distance.' },
-  { id: 'video_share', name: 'Online video', from: 2005, span: 6, infra: 50, devices: ['desktop', 'laptop', 'smartphone', 'tablet'], activities: ['video', 'watch'], cost: 0, digital: true, blurb: 'Anyone can make a programme, and anyone can watch it.' },
+  { id: 'video_share', name: 'Online video', from: 2005, span: 6, infra: 50, devices: ['desktop', 'laptop', 'smartphone', 'tablet'], activities: ['video', 'watch'], cost: 0, digital: true, blurb: 'Anyone can make a program, and anyone can watch it.' },
   { id: 'livestream', name: 'Livestreaming', from: 2011, span: 6, infra: 55, devices: ['desktop', 'laptop', 'smartphone'], activities: ['stream'], cost: 0, digital: true, blurb: 'Live, to whoever turns up.' },
   { id: 'presence', name: 'Shared presence', from: 2036, span: 10, infra: 60, devices: ['presence_set'], activities: ['presence'], cost: 200, digital: true, blurb: 'A room you share with people who are far away.' },
 ];
@@ -74,7 +74,7 @@ export const DEVICES = [
   { id: 'home_phone', name: 'Home telephone', tech: 'landline', cost: 60, life: 20, quality: 0, can: ['call'] },
   { id: 'desktop', name: 'Desktop computer', tech: 'pc', cost: 900, life: 6, quality: 0.5, can: ['web', 'edit', 'game'] },
   { id: 'laptop', name: 'Laptop', tech: 'pc', cost: 1000, life: 5, quality: 0.5, can: ['web', 'edit', 'video', 'game'] },
-  { id: 'mobile_phone', name: 'Mobile phone', tech: 'mobile', cost: 120, life: 4, quality: 0.05, can: ['call', 'text'], minAge: 9 },
+  { id: 'mobile_phone', name: 'Cell phone', tech: 'mobile', cost: 120, life: 4, quality: 0.05, can: ['call', 'text'], minAge: 9 },
   { id: 'smartphone', name: 'Smartphone', tech: 'smartphone', cost: 500, life: 3, quality: 0.4, can: ['call', 'text', 'web', 'photo', 'video', 'stream'], minAge: 9 },
   { id: 'tablet', name: 'Tablet', tech: 'smartphone', cost: 400, life: 4, quality: 0.3, can: ['web', 'photo', 'video'], minAge: 4 },
   { id: 'camera', name: 'Good camera', tech: 'pc', cost: 800, life: 8, quality: 0.9, can: ['photo', 'video'] },
@@ -211,17 +211,17 @@ export const TOPIC_BY_ID = Object.fromEntries(TOPICS.map((t) => [t.id, t]));
 export const COMMUNITIES = [
   { id: 'c_games', topic: 'gaming', name: 'The Save Point', platform: 'corkboard', rules: 'No spoilers without a warning.', size: 40000 },
   { id: 'c_music', topic: 'music', name: 'Open Mic Night', platform: 'corkboard', rules: 'Be kind about other people\'s recordings.', size: 18000 },
-  { id: 'c_books', topic: 'books', name: 'Dog-Eared Pages', platform: 'corkboard', rules: 'Every book is somebody\'s favourite.', size: 22000 },
+  { id: 'c_books', topic: 'books', name: 'Dog-Eared Pages', platform: 'corkboard', rules: 'Every book is somebody\'s favorite.', size: 22000 },
   { id: 'c_cook', topic: 'cooking', name: 'Second Helpings', platform: 'corkboard', rules: 'Post the recipe, not just the photo.', size: 30000 },
   { id: 'c_art', topic: 'art', name: 'The Sketchbook', platform: 'corkboard', rules: 'Credit the artist.', size: 15000 },
   { id: 'c_sport', topic: 'sports', name: 'Sunday League', platform: 'corkboard', rules: 'Rivalry is fine. Abuse is not.', size: 50000 },
   { id: 'c_tech', topic: 'education', name: 'How Things Work', platform: 'corkboard', rules: 'There are no stupid questions.', size: 26000 },
   { id: 'c_garden', topic: 'life', name: 'Green Thumbs', platform: 'hearth', rules: 'Pests may be discussed. People may not be.', size: 12000 },
-  { id: 'c_theatre', topic: 'acting', name: 'Stage Door', platform: 'hearth', rules: 'Break a leg, figuratively.', size: 9000 },
+  { id: 'c_theater', topic: 'acting', name: 'Stage Door', platform: 'hearth', rules: 'Break a leg, figuratively.', size: 9000 },
   { id: 'c_style', topic: 'fashion', name: 'Thread Count', platform: 'glimmer', rules: 'Critique the clothes, not the body.', size: 35000 },
   { id: 'c_travel', topic: 'travel', name: 'Wanderlist', platform: 'hearth', rules: 'Never post anyone\'s home address.', size: 28000 },
   { id: 'c_study', topic: 'education', name: 'Study Hall', platform: 'corkboard', rules: 'Help with understanding, never with cheating.', size: 24000, academic: true },
-  { id: 'c_neighbours', topic: 'life', name: 'Neighbours', platform: 'hearth', rules: 'Local news, lost cats, and no feuds.', size: 0, local: true },
+  { id: 'c_neighbors', topic: 'life', name: 'Neighbors', platform: 'hearth', rules: 'Local news, lost cats, and no feuds.', size: 0, local: true },
 ];
 export const COMMUNITY_BY_ID = Object.fromEntries(COMMUNITIES.map((c) => [c.id, c]));
 
@@ -245,7 +245,7 @@ export const TRENDS = [
   { id: 't_before', name: 'Before and after', topics: ['art', 'fashion', 'life'], text: 'showing the work in progress next to the finished thing' },
   { id: 't_speedrun', name: 'Slow run', topics: ['gaming'], text: 'playing a fast game as slowly and thoroughly as possible' },
   { id: 't_explain', name: 'Explain it in a minute', topics: ['education', 'work', 'books'], text: 'explaining something complicated in sixty seconds' },
-  { id: 't_walk', name: 'Walk with me', topics: ['travel', 'life'], text: 'a walk through your neighbourhood, without saying where it is' },
+  { id: 't_walk', name: 'Walk with me', topics: ['travel', 'life'], text: 'a walk through your neighborhood, without saying where it is' },
   { id: 't_trickshot', name: 'Trick shot', topics: ['sports'], text: 'one improbable shot, filmed once it finally worked' },
   { id: 't_duet', name: 'Duet a stranger', topics: ['music', 'singing', 'acting'], text: 'answering someone else\'s video with your own half' },
 ];

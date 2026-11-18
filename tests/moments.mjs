@@ -203,9 +203,11 @@ section('what is on offer follows the year, the country and the age');
 
 // ---------- 10. Whole lives: never duplicated, always balanced ----------
 for (const id of ['us', 'uk', 'in', 'mx']) {
+  // A child can die young; the checks here are about a life's occasions, so a life that ends before five starts again.
+  for (let attempt = 0; attempt < 6; attempt++) {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
   p = store.state.player;
-  const seen = new Set();
+  var seen = new Set();
   while (p.alive && p.age < 90) {
     for (const x of mo.thisYear().filter((y) => !y.done && y.ok && !y.inviteId && !y.traditionId)) {
       const guests = mo.suggestedGuests(x);
@@ -221,6 +223,8 @@ for (const id of ['us', 'uk', 'in', 'mx']) {
     bookAction();
     const bad = audit(); if (bad.length) { problems.push(`${id}, age ${p.age}: ${bad[0]}`); break; }
     seen.add(store.state.year);
+  }
+  if (seen.size >= 5 || problems.length) break;
   }
   check(seen.size >= 5, `${id}: some years were lived`);
 }

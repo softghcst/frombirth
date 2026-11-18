@@ -72,7 +72,7 @@ export function floorVote(w, lever, dir, o = {}) {
     { lead: w.govt.lead, partners: w.govt.partners, noise, skill: m ? (skillOf(m) - 50) / 400 : -0.04, ...o });
 }
 /** The tally as the screens show it: one row for each party. */
-const rows = (w, t) => w.parties.filter((p) => t.byParty[p.id]).map((p) => ({ name: p.name, colour: p.colour, ...t.byParty[p.id] }));
+const rows = (w, t) => w.parties.filter((p) => t.byParty[p.id]).map((p) => ({ name: p.name, color: p.color, ...t.byParty[p.id] }));
 
 // ---------- The yearly round ----------
 

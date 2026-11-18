@@ -1,7 +1,9 @@
-// Mortality maths and the end of a life: the will, the estate and its tax,
+// Mortality math and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
 import { eraMortality } from './history.js';
 import { COUNTRIES } from '../data/countries.js';
+import { publicMilestones } from './health/story.js';
+import { seriousCondition } from './health/course.js';
 import { settleEstate, atHome } from './currency.js';
 import { closeForEstate } from './banking.js';
 import { trustsAtDeath } from './trusts.js';
@@ -62,7 +64,8 @@ const ACCIDENTS = ['a traffic accident', 'a fall', 'a house fire', 'drowning', '
 /** Rolls the yearly death check. @returns {?string} cause, or null if alive */
 export function rollDeath() {
   const p = player();
-  const worst = [...p.conditions].sort((a, b) => b.severity - a.severity)[0];
+  // The most serious condition, from the older illness list or the health record.
+  const worst = [...p.conditions, ...[seriousCondition(p)].filter(Boolean)].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
   if (p.legal.incarceration?.deathRow && p.legal.incarceration.served >= 2 && rng.chance(0.1)) return 'execution';
   if (p.flags.birthDeath) { delete p.flags.birthDeath; return 'complications after childbirth'; }
@@ -326,7 +329,7 @@ function lifeSummary(p, plan) {
     neverMoved: k.countriesLived === 1 && !(p.flags.visited ?? []).length, holidays: k.holidays ?? 0,
     surgeries: k.surgeries ?? 0, mood: p.stats.mood, health: p.stats.health,
     reigned: !!p.flags.reigned, abdicated: !!p.flags.abdicated, consort: p.royal?.by === 'marriage' && ['monarch', 'heir', 'royal'].includes(p.royal.rank),
-    bornTitled: p.royal?.by === 'birth', honoured: !!p.flags.honouredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
+    bornTitled: p.royal?.by === 'birth', honored: !!p.flags.honoredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
     marriedRoyal: !!p.flags.marriedRoyal, image: p.royal?.image ?? 0,
     topOffice: Math.max(0, p.politics?.tier ?? 0, ...(p.flags.offices ?? []).map((o) => o.tier)), yearsInOffice: k.yearsInOffice ?? 0,
     electionsWon: k.electionsWon ?? 0, electionsLost: k.electionsLost ?? 0, ruledAlone: !!p.flags.ruledAlone,
@@ -392,7 +395,7 @@ export function die(cause) {
     spouseName: spouse ? `${spouse.firstName} ${spouse.lastName}` : null,
     lifetimeEarned: p.finance.lifetimeEarned,
     estate: plan,
-    milestones: p.milestones,
+    milestones: publicMilestones(p.milestones),
     counters: p.counters,
     generation: p.generation,
     continuedAs: null,

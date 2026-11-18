@@ -19,7 +19,7 @@ import * as edu from '../../engine/education.js';
 import * as job from '../../engine/partTime.js';
 import { roleLabel } from '../../engine/relationships.js';
 import { tripleThreat } from '../../engine/conditions.js';
-import { PROGRAMMES, HOUSING, CLIQUE_BY_ID, CLUB_BY_ID, MAX_CLUBS, TRADES, PRIORITY_BY_ID } from '../../data/schools.js';
+import { PROGRAMS, HOUSING, CLIQUE_BY_ID, CLUB_BY_ID, MAX_CLUBS, TRADES, PRIORITY_BY_ID } from '../../data/schools.js';
 import { MAJORS, MAJOR_BY_ID } from '../../data/majors.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
@@ -223,13 +223,13 @@ function chooseOffer(offers) {
   });
 }
 
-/** What comes next: programme → subject → decision(s) → funding → housing → enrol. */
+/** What comes next: program → subject → decision(s) → funding → housing → enroll. */
 async function applyFlow(api) {
   const c = country();
   const progId = await pickModal({
     title: 'What comes next?',
     body: 'Compare what each route costs, what it pays, and how long it takes.',
-    options: edu.programmeOptions().map((o) => ({
+    options: edu.programOptions().map((o) => ({
       value: o.id, label: o.label, disabled: !o.eligible,
       sub: o.eligible
         ? `${o.blurb} ${years(o.years)}, ${o.stipend ? `pays ${fmtMoney(o.stipend, c)} a year` : o.tuition ? `from ${fmtMoney(o.tuition, c)} a year` : 'no tuition'}.`
@@ -237,7 +237,7 @@ async function applyFlow(api) {
     })),
   });
   if (!progId) return;
-  const prog = PROGRAMMES[progId];
+  const prog = PROGRAMS[progId];
 
   // Apprenticeship: pick a trade, get taken on, start. Paid, living at home.
   if (progId === 'apprenticeship') {
@@ -246,7 +246,7 @@ async function applyFlow(api) {
     const d = edu.applyTo(progId, trade);
     api.changed();
     await messageModal({ eyebrow: 'Apprenticeship', body: d.text, tone: d.accepted ? 'good' : 'bad' });
-    if (d.accepted) { edu.enrol(progId, trade, 'public', {}); api.changed(); }
+    if (d.accepted) { edu.enroll(progId, trade, 'public', {}); api.changed(); }
     return;
   }
 
@@ -301,7 +301,7 @@ async function applyFlow(api) {
   if (!funding) return;
   const housingAid = funding === 'scholarship' && offer.housingAid;
   const living = partTime ? { partTime: true } : await chooseHousing(housingAid) ?? {};
-  edu.enrol(progId, subjectId, funding, { ...living, housingAid }, school);
+  edu.enroll(progId, subjectId, funding, { ...living, housingAid }, school);
   api.changed();
 }
 
@@ -339,7 +339,7 @@ function educationCard(p, c) {
   const e = p.education;
   if (e.stage === 'none') return '<p class="muted">You have not started school yet.</p>';
   const status = e.enrolled
-    ? `Enrolled, year ${e.yearInStage + 1}${edu.isHigher(e.stage) ? ` of ${PROGRAMMES[e.stage].years}` : ''}`
+    ? `Enrolled, year ${e.yearInStage + 1}${edu.isHigher(e.stage) ? ` of ${PROGRAMS[e.stage].years}` : ''}`
     : e.expelled ? 'Expelled' : e.droppedOut ? 'Dropped out' : 'Not enrolled';
   const loan = edu.studentLoan();
   const rows = [
@@ -350,7 +350,7 @@ function educationCard(p, c) {
     ...(e.enrolled && edu.isHigher(e.stage) ? [['Tuition', `${FUNDING[e.funding] ?? '—'}${e.aid > 0 && e.aid < 1 ? ` · ${Math.round(e.aid * 100)}% waived` : ''}`]] : []),
     ...(e.enrolled && e.partTime ? [['Pace', 'Part-time, alongside work']] : []),
     ...(e.thesis ? [['Thesis', `${e.thesis.progress}% written${e.thesis.published ? ` · ${e.thesis.published} published` : ''}`]] : []),
-    ...((p.flags.licences ?? []).length ? [['Licensed in', p.flags.licences.join(', ')]] : []),
+    ...((p.flags.licenses ?? []).length ? [['Licensed in', p.flags.licenses.join(', ')]] : []),
     ...(loan ? [['Student loan', fmtMoney(loan.principal, c)]] : []),
     ...e.degrees.map((d) => ['Completed', d.type === 'high' ? `${d.school ?? 'School'}${d.award ? `: ${d.award}` : ''}, ${sch.mark(d.gpa, d.countryId ?? p.countryId)}` : `${degreeLabel(d)}, ${sch.degreeMark(d.gpa, d.countryId ?? p.countryId)}`]),
   ];

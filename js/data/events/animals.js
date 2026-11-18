@@ -79,7 +79,7 @@ export default [
     ],
   },
   {
-    id: 'walk_neighbour', category: 'animals', ageRange: [16, 120], queuedOnly: true, cooldown: 0, cast: { pet: 'pet' },
+    id: 'walk_neighbor', category: 'animals', ageRange: [16, 120], queuedOnly: true, cooldown: 0, cast: { pet: 'pet' },
     text: 'The same person is at the park every evening you take {pet} out, with a dog of their own. The dogs have clearly decided the matter between themselves.',
     choices: [
       { label: 'Stop and talk', outcomes: [any('It turns out {walker} lives two streets away. You fall into walking the same way round.', 'good', addNpc('friend', 'walker', { ageOffset: 2 }), st('mood', 4))] },
@@ -87,13 +87,13 @@ export default [
     ],
   },
   {
-    id: 'animal_behaviour', category: 'animals', ageRange: [14, 120], queuedOnly: true, cooldown: 0, cast: { pet: 'pet' },
+    id: 'animal_behavior', category: 'animals', ageRange: [14, 120], queuedOnly: true, cooldown: 0, cast: { pet: 'pet' },
     text: '{pet} {problem}. It is not spite: something is wrong for {pet}, and it is not going away on its own.',
     choices: [
-      { label: 'Book a qualified behaviorist ({$220})', requires: [need('cashBase', '>=', 220)], outcomes: [any('The behaviorist watches for an hour and gives you a plan. Most of it is about you.', 'good', life({ do: 'behaviour', how: 'trainer' }))] },
-      { label: 'Ask the vet whether something hurts ({$90})', requires: [need('cashBase', '>=', 90)], outcomes: [any('The vet checks {pet} over properly.', 'neutral', life({ do: 'behaviour', how: 'vet' }))] },
-      { label: 'Change the house: a safe space, a routine, more to do', outcomes: [any('You rearrange a corner, set the days to a pattern, and find {pet} more to do.', 'good', life({ do: 'behaviour', how: 'environment' }))] },
-      { label: 'Tell {pet} off', outcomes: [any('You lose your temper.', 'bad', life({ do: 'behaviour', how: 'scold' }))] },
+      { label: 'Book a qualified behaviorist ({$220})', requires: [need('cashBase', '>=', 220)], outcomes: [any('The behaviorist watches for an hour and gives you a plan. Most of it is about you.', 'good', life({ do: 'behavior', how: 'trainer' }))] },
+      { label: 'Ask the vet whether something hurts ({$90})', requires: [need('cashBase', '>=', 90)], outcomes: [any('The vet checks {pet} over properly.', 'neutral', life({ do: 'behavior', how: 'vet' }))] },
+      { label: 'Change the house: a safe space, a routine, more to do', outcomes: [any('You rearrange a corner, set the days to a pattern, and find {pet} more to do.', 'good', life({ do: 'behavior', how: 'environment' }))] },
+      { label: 'Tell {pet} off', outcomes: [any('You lose your temper.', 'bad', life({ do: 'behavior', how: 'scold' }))] },
     ],
   },
   {

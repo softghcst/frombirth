@@ -73,7 +73,7 @@ export default [
   },
   {
     id: 'driving_lesson', category: 'teen', ageRange: [16, 17], once: true, weight: 2, cast: { father: 'father' },
-    text: '{father} takes you to an empty car park and hands you the keys.',
+    text: '{father} takes you to an empty parking lot and hands you the keys.',
     choices: [
       { label: 'Take it slow', outcomes: [any('You stall eleven times, then drive a full lap. {father} claps.', 'good', rel('father', 6), st('mood', 5), flag('canDrive'))] },
       { label: 'Show off', check: chk(0.35, { 'stats.intellect': 0.3, 'talents.sports': 0.3 }), outcomes: [
@@ -143,7 +143,7 @@ export default [
         ok('Raw talent carries you through.', tal('sports', 5), st('mood', 7)),
         bad('You are sick behind the goal after the warm-up laps.', st('mood', -5), st('health', -1)),
       ] },
-      { label: 'Give it a miss', outcomes: [any('You watch from the stands with a bag of crisps.', 'neutral', st('mood', 1))] },
+      { label: 'Give it a miss', outcomes: [any('You watch from the stands with a bag of chips.', 'neutral', st('mood', 1))] },
     ],
   },
   {

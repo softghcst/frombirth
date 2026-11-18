@@ -15,7 +15,7 @@ const FOLDER = { eyes: 'eyes', brows: 'eyebrows', nose: 'noses', lips: 'lips' };
 /** The options a random face is drawn from: resting faces only, never expressions. */
 const pool = (key) => (FOLDER[key] ? CATALOG[key].filter((x) => RESTING[FOLDER[key]].includes(x.id)) : CATALOG[key]);
 
-/** A face with no parents to take after. Hair and eye colour lean with skin depth. */
+/** A face with no parents to take after. Hair and eye color lean with skin depth. */
 export function randomInherited(skinDepthHint) {
   const depth = skinDepthHint == null ? rng.int(0, SKIN_TONES.length - 1) : clampDepth(skinDepthHint + rng.int(-1, 1));
   const g = {};
@@ -82,7 +82,7 @@ export function inheritAppearance(a, b) {
   const [lo, hi] = [Math.min(depthOf(pa), depthOf(pb)), Math.max(depthOf(pa), depthOf(pb))];
   const between = (depthOf(pa) + depthOf(pb)) / 2 + (rng.chance(0.35) ? rng.pick([-1, 1]) : rng.chance(0.5) ? 0.5 : -0.5) * (lo === hi ? 0.6 : 1);
   g.skin = toneAt(Math.max(lo - 1, Math.min(hi + 1, between)));
-  // Hair and eye colour and texture never appear from nowhere as often as shapes do.
+  // Hair and eye color and texture never appear from nowhere as often as shapes do.
   for (const key of ['hairColor', 'hairTexture', 'eyeColor']) if (!rng.chance(0.04)) g[key] = rng.pick([pa[key], pb[key]]);
   // Proportions run in families too.
   g.tweaks = Object.fromEntries(TWEAKS.map((k) => [k.id, rng.pick([pa.tweaks?.[k.id] ?? 0, pb.tweaks?.[k.id] ?? 0])]));

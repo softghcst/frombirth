@@ -3,13 +3,15 @@
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
 import { held } from './citizenship.js';
+import { archivePerson, archiveIdOf } from './chronicle.js';
+import { ensureGlobal } from './globalLife.js';
 import { leaveName, carryCareer } from './kin.js';
 import { rng } from '../rng.js';
 import { inheritStanding } from './royalty.js';
 import { uid, clamp, theCountry } from '../util.js';
 import { store } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { SCHOOL_STAGES, PROGRAMMES } from '../data/schools.js';
+import { SCHOOL_STAGES, PROGRAMS } from '../data/schools.js';
 import { ensureLife } from './npcLives.js';
 import { takeOverJob } from './career.js';
 import { ensure as ensureSchool } from './schooling.js';
@@ -25,6 +27,9 @@ import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
 import { attractedTo } from './identity.js';
 import { passOn } from './edlegacy.js';
+import { genomeOf } from './health/heredity.js';
+import { npcHealth } from './health/story.js';
+import { heirHealth, legacySummary } from './health/index.js';
 import { carryOver } from './digital/legacy.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
@@ -63,11 +68,11 @@ function schooling(h, atHome) {
     if (e.schoolId) edu.joinSchoolId = e.schoolId;
     return edu;
   }
-  if (e.yearsLeft > 0 && PROGRAMMES[e.stage]) {
+  if (e.yearsLeft > 0 && PROGRAMS[e.stage]) {
     return Object.assign(edu, { stage: e.stage, enrolled: true,
-      yearInStage: Math.max(0, PROGRAMMES[e.stage].years - e.yearsLeft),
+      yearInStage: Math.max(0, PROGRAMS[e.stage].years - e.yearsLeft),
       majorId: e.stage === 'apprenticeship' ? e.trade : e.majorId,
-      funding: PROGRAMMES[e.stage].tuition ? 'loan' : null, housing: atHome ? 'home' : 'dorm' });
+      funding: PROGRAMS[e.stage].tuition ? 'loan' : null, housing: atHome ? 'home' : 'dorm' });
   }
   if (!degrees.some((d) => d.type === 'high')) degrees.unshift({ type: 'high', gpa, age: 18, award: leaving });
   edu.stage = degrees[degrees.length - 1].type;
@@ -80,7 +85,13 @@ function asAncestor(old, role, year) {
     alive: false, role, meters: { relationship: 80, money: 50, crazy: old.hidden.crazy, intellect: old.stats.intellect,
       charm: old.stats.charm, health: 0, generosity: 50 },
     appearance: cloneAppearance(old.appearance), traits: [...old.traits], occupation: (old.career.title ?? 'retired').toLowerCase(),
-    talents: { ...old.talents }, lastInteractionAge: -1, flags: { diedYear: year, wasPlayer: old.id, ...publicRecord(old) } };
+    talents: { ...old.talents }, lastInteractionAge: -1, flags: { diedYear: year, ancestor: true, wasPlayer: old.id, archiveId: archiveIdOf(old), ...publicRecord(old) },
+    // The same person, for the family's history: where they were born and lived.
+    bornIn: old.birthCountryId, birthCity: old.birthCity ?? null,
+    places: (old.locations ?? []).map((l) => ({ countryId: l.countryId, city: l.city ?? null, from: l.from ?? null, to: l.to ?? year, homes: [...(l.homes ?? [])] })),
+    citizenships: (old.citizenships ?? []).map((c) => ({ ...c })),
+    // What a descendant may know of their health: shared conditions and inherited ones, never notes or prescriptions.
+    genome: old.genome, health: legacySummary(old) };
 }
 
 /**
@@ -104,7 +115,7 @@ function asParent(n, step) {
   n.strictness ??= rng.int(25, 75);
   n.occupation ??= 'retired';
   delete n.life;
-  if (step) n.flags.title = byGender(n, 'Stepfather', 'Stepmother', 'Step-parent');
+  if (step) { n.flags.title = byGender(n, 'Stepfather', 'Stepmother', 'Step-parent'); n.flags.step = true; }
 }
 
 /**
@@ -179,6 +190,8 @@ export function continueAs(npcId) {
 
   // Family, re-drawn around the heir.
   const npcs = {};
+  // Genomes and health are worked out in the old life, where the family is known.
+  genomeOf(op); genomeOf(h); npcHealth(h);
   const ancestor = asAncestor(op, h.role === 'child' ? 'parent' : 'grandparent', old.year);
   npcs[ancestor.id] = ancestor;
   for (const [id, role] of Object.entries(roles)) {
@@ -226,7 +239,8 @@ export function continueAs(npcId) {
       pensionPerYear: L.retired ? L.pension ?? 0 : 0, military: null },
     finance: { cash: Math.max(0, L.savings), pension: 0, lifetimeEarned: 0, lifetimeTaxPaid: 0,
       loans: debt ? [{ id: uid('loan'), kind: 'personal', principal: debt, rate: 0.08, yearsLeft: 8 }] : [] },
-    assets: (h.inheritance?.assets ?? []).map((a) => { const id = uid('asset'); assetIds[a.id] = id; return { ...a, id }; }), inventory: [], homeId: null,
+    // A home keeps its identity from one owner to the next: the family's history (and its animals) point at it.
+    assets: (h.inheritance?.assets ?? []).map((a) => { const id = a.id ?? uid('asset'); assetIds[a.id] = id; return { ...a, id }; }), inventory: [], homeId: null,
     npcIds: Object.keys(npcs),
     legal: { record: [], incarceration: null, heat: 0 },
     social: { handle: null, followers: 0, posts: 0, viral: 0, boughtFollowers: 0 },
@@ -237,6 +251,13 @@ export function continueAs(npcId) {
     alive: true, generation: (op.generation ?? 1) + 1,
     orientation: h.orientation ?? 'straight', skills: {},
   };
+  // Who the heir is in the family's history: the same person they were as a relative.
+  player.archiveId = archiveIdOf(h);
+  player.birthCity = h.birthCity ?? null;
+  player.documents = (h.documents ?? []).map((d) => ({ ...d, holderId: player.id }));
+  player.authorizations = (h.authorizations ?? []).map((a) => ({ ...a, personId: player.id }));
+  player.stays = (h.stays ?? []).map((x) => ({ ...x }));
+  if (h.places?.length) player.locations = h.places.map((l) => ({ countryId: l.countryId, city: l.city ?? null, from: l.from ?? null, ...(l.to != null ? { to: l.to } : {}), reason: null, derived: !!l.derived, homes: [] }));
   player.flags.bornAs = h.flags.bornAs ?? h.gender;
   player.flags.interestedIn = attractedTo(player.orientation, h.gender);
   player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 70).map(([k]) => k);
@@ -248,11 +269,20 @@ export function continueAs(npcId) {
 
   const entry = (text, tone = 'neutral') => ({ age: h.age, text, kind: 'system', tone });
   const next = {
-    schemaVersion: SCHEMA_VERSION, slotId: uid('life'), createdAt: Date.now(), updatedAt: Date.now(), year: old.year,
+    schemaVersion: SCHEMA_VERSION, spelling: 'us', slotId: uid('life'), createdAt: Date.now(), updatedAt: Date.now(), year: old.year,
     player, npcs, journal: pastEntries(h), market: old.market, eventHistory: [], pendingEvents: [],
     rngSeed: rng.state(), settings: old.settings ?? { theme: 'auto' },
   };
+  // The family's shared record goes on: every event, and the person whose life has ended, archived with their places and papers.
+  next.canon = old.canon ?? { events: [] };
+  next.archive = old.archive ?? { people: {} };
+  next.today = `${old.year}-01-01`;
+  archivePerson(op, { died: old.year, parents: op.archiveParents ?? [], more: {
+    trips: (op.travel?.trips ?? []).filter((t) => t.status === 'completed').map((t) => ({ id: t.id, type: t.type, countryId: t.destination.countryId, city: t.destination.city, depart: t.depart, ret: t.ret })),
+    languages: Object.entries(op.skills ?? {}).filter(([k, v]) => ['spanish', 'french', 'japanese', 'mandarin', 'german', 'korean', 'portuguese', 'arabic', 'sign_language'].includes(k) && v >= 40).map(([k]) => k) } });
+  player.archiveParents = [archiveIdOf(op)];
   store.state = next;
+  heirHealth(next, h);
   handOverAnimals(old, next, { ancestorId: ancestor.id, heirId: h.id, assetIds });
   if (old.sports) handOverSports(old, next, { ancestorId: ancestor.id, heirId: h.id });
   // The people who work in the family's businesses are the same people: they carry on, outside the heir's own circle.
@@ -313,7 +343,7 @@ export function continueAs(npcId) {
   carryOver(old, next, npcId, ancestor.id);
   if (old.schools) next.schools = old.schools;
   if (old.universities) next.universities = old.universities;
-  if (player.education.enrolled && !PROGRAMMES[player.education.stage]) ensureSchool();
+  if (player.education.enrolled && !PROGRAMS[player.education.stage]) ensureSchool();
 
   const c = COUNTRIES[player.countryId];
   next.journal.push(
@@ -331,5 +361,6 @@ export function continueAs(npcId) {
   // An heir who was already in politics carries on from where they were.
   const officeLine = carryCareer(h);
   if (officeLine) next.journal.push(entry(officeLine, 'good'));
+  ensureGlobal(next);
   return next;
 }

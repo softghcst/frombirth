@@ -17,9 +17,10 @@
 //   p.education.history   [{ schoolId, name, kind, stage, stageName, from, to, how, mark }]
 // People: classmates are NPCs with role 'classmate' and flags.schoolId. Teachers are NPCs
 // with role 'mentor', flags.tag 'teacher', flags.teaches (a subject), flags.style and flags.skill.
-import { forgetNpc } from './digital/core.js';
 import { cityOf as cityProfile } from './cities.js';
+import { forgetNpc } from './digital/core.js';
 import { rng } from '../rng.js';
+import { studyBarrier } from './health/access.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -173,7 +174,7 @@ function fillClass(s) {
   if (s.kind === 'home' || s.onlyPupils) return;
   // Two teachers the child will actually remember: what they teach, and how.
   const list = subjectsAt(s.stage);
-  const first = kind.favours ? SUBJECT_BY_ID[rng.pick(kind.favours)] : rng.pick(list);
+  const first = kind.favors ? SUBJECT_BY_ID[rng.pick(kind.favors)] : rng.pick(list);
   const second = rng.pick(list.filter((x) => x.id !== first.id));
   for (const sub of [first, second]) {
     const t = add(makeNpc({ role: 'mentor', countryId: p.countryId, age: rng.int(26, 61), relationship: rng.int(38, 60) }));
@@ -191,7 +192,7 @@ function closeHistory(how) {
 }
 
 /** Puts the player in a school. `keep`: how much of the old class comes too. */
-function enrolAt(s, keep = 0) {
+function enrollAt(s, keep = 0) {
   const p = player();
   const e = p.education;
   const was = school();
@@ -226,11 +227,11 @@ export function enter(stage, chosenKind = null) {
   const s = findOrFound(kindId, stage, p.city, c.id);
   // Children from one school mostly go on to the next one together, unless this child is sent somewhere else.
   const together = was && was.kind === 'public' && kindId === 'public' ? 0.65 : 0.15;
-  enrolAt(s, together);
+  enrollAt(s, together);
   const kind = KIND_BY_ID[kindId];
   const been = s.family.filter((n) => n !== `${p.firstName} ${p.lastName}`);
   let text = kindId === 'home' ? `Your ${stageName(stage).toLowerCase()} years will be spent at the kitchen table: your family is teaching you at home.` : `You started at ${s.name}${kind.id === 'public' ? '' : `, a ${kind.name.toLowerCase()}`}.`;
-  if (kind.away) text += ' You will live there in term time, and come home for the holidays.';
+  if (kind.away) text += ' You will live there during the school year, and come home for the holidays.';
   if (been.length) text += ` ${been[been.length - 1]} went here before you.`;
   log(text);
   // The very first day of school is its own memory.
@@ -251,17 +252,17 @@ export function ensure() {
     // An heir carries on at the school they were already at.
     const want = schools()[e.joinSchoolId];
     delete e.joinSchoolId;
-    if (want && want.stage === e.stage) { enrolAt(want, 0); seedMarks(); return; }
+    if (want && want.stage === e.stage) { enrollAt(want, 0); seedMarks(); return; }
     enter(e.stage); return;
   }
   if (!KIND_BY_ID[s.kind].away && s.kind !== 'home' && (s.city !== p.city || s.countryId !== p.countryId)) {
     // The family has moved: a new school, and the old class left behind, though not the friends made there.
     const next = findOrFound(barred(KIND_BY_ID[s.kind], e.stage) ? 'public' : s.kind, e.stage, p.city, p.countryId);
-    enrolAt(next, 0);
+    enrollAt(next, 0);
     log(`With the move, you changed schools: you are at ${next.name} now, and everyone is new.`);
   } else if (barred(KIND_BY_ID[s.kind], e.stage) === 'The fees are beyond your family.') {
     const next = findOrFound('public', e.stage, p.city, p.countryId);
-    enrolAt(next, 0);
+    enrollAt(next, 0);
     log(`Your family can no longer afford ${s.name}. You have moved to ${next.name}.`, 'system', 'bad');
   }
 }
@@ -304,7 +305,7 @@ export function askToMove(kindId) {
   const close = parents.length ? parents.reduce((s, n) => s + n.meters.relationship, 0) / parents.length : 60;
   if (!rng.chance(clamp(0.45 + (close - 50) / 120 + (p.age >= 14 ? 0.2 : 0), 0.15, 0.95))) return result(false, 'Your family listens, and says no. You are staying where you are.');
   const s = findOrFound(kindId, e.stage, p.city, p.countryId);
-  enrolAt(s, 0);
+  enrollAt(s, 0);
   const text = `Your family agrees. You have moved to ${s.name}. The friends you made stay your friends; everyone else is new.`;
   log(text);
   return result(true, text);
@@ -366,6 +367,8 @@ export function markYear() {
   const tutored = p.flags.tutorAge === p.age - 1;
   const weakest = tutored ? live.reduce((w, sub) => ((e.subjects[sub.id].g ?? 2) < (e.subjects[w.id].g ?? 2) ? sub : w), live[0]) : null;
   const staff = teachers();
+  // What gets in the way of showing what a pupil knows (never what they are able to learn).
+  const barrier = studyBarrier(p);
   let sum = 0;
   const done = [];
   for (const sub of live) {
@@ -375,8 +378,8 @@ export function markYear() {
     const style = t ? TEACHING_STYLES.find((x) => x.id === t.flags.style) : null;
     const club = (sub.club ?? []).some((id) => e.clubs.includes(id));
     const f = { ability: clamp(natural + (e.aptitude[sub.id] ?? 0)), effort: e.effort, discipline: p.hidden.discipline, interest: rec.interest, absences: e.absences,
-      teaching: kind.teach + (kind.favours?.includes(sub.id) ? 0.15 : 0) + (s.kind === 'public' ? (s.funding ?? funding(s.countryId)) + cityProfile(s.countryId, s.city).schools / 100 : 0) + (t ? (t.flags.skill - 50) / 200 + (t.meters.relationship - 50) / 400 : 0),
-      focus: e.focus === sub.id ? 1 : 0, support: (weakest?.id === sub.id ? 0.5 : 0) + exam.add - advancedPenalty(sub.id), luck: (rng.next() * 2 - 1) * 0.25 };
+      teaching: kind.teach + (kind.favors?.includes(sub.id) ? 0.15 : 0) + (s.kind === 'public' ? (s.funding ?? funding(s.countryId)) + cityProfile(s.countryId, s.city).schools / 100 : 0) + (t ? (t.flags.skill - 50) / 200 + (t.meters.relationship - 50) / 400 : 0),
+      focus: e.focus === sub.id ? 1 : 0, support: (weakest?.id === sub.id ? 0.5 : 0) + exam.add - advancedPenalty(sub.id) - barrier, luck: (rng.next() * 2 - 1) * 0.25 };
     const y = yearMark(f);
     rec.y = y;
     rec.g = carry(rec.g, y);

@@ -15,7 +15,7 @@ import { OFFENSE_BY_ID, INMATE_LIVES, responsibilityAge } from '../data/justice.
 const FAMILY = ['parent', 'sibling', 'spouse', 'partner', 'child', 'grandchild', 'relative', 'inlaw', 'niece', 'grandparent'];
 /** A year's chance, for each grown relative. Kept low: most families never see a courtroom. */
 export const KIN_CHANCE = 0.003;
-const OFFENCES = ['theft', 'fraud', 'assault', 'vehicle_theft', 'burglary', 'embezzlement', 'criminal_damage'];
+const OFFENSES = ['theft', 'fraud', 'assault', 'vehicle_theft', 'burglary', 'embezzlement', 'criminal_damage'];
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
 
@@ -45,7 +45,7 @@ export function tickKinCases() {
  */
 export function charge(n, o = {}) {
   const p = player();
-  const off = OFFENSE_BY_ID[o.offenseId ?? rng.pick(OFFENCES)];
+  const off = OFFENSE_BY_ID[o.offenseId ?? rng.pick(OFFENSES)];
   const innocent = o.innocent ?? rng.chance(0.15);
   const doer = innocent ? k.civilian(p.countryId, { age: rng.int(18, 50) }) : n;
   const victim = off.victim ? k.civilian(p.countryId) : null;
@@ -77,7 +77,7 @@ export function standBy(choice, kinId) {
     const cost = localMoney(LAWYERS.find((x) => x.id === 'good').cost, country());
     const lawyer = k.counselOptions(c).find((x) => x.tier === 'good');
     if (lawyer && k.pay({ key: `kin_fee:${c.id}`, kind: 'legal_fee', amount: cost, payer: p.id, payee: lawyer.npcId, caseId: c.id })) {
-      c.defenceId = null;
+      c.defenseId = null;
       tier = 'good';
       // Paid by the player: the client still has the lawyer.
       k.J().ledger.push({ id: k.newId('tx'), key: `fee:${c.id}`, kind: 'legal_fee', amount: 0, currency: country().currency.code, caseId: c.id, payer: p.id, payee: lawyer.npcId, year: year(), status: `paid by ${p.firstName}` });

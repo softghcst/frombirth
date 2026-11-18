@@ -129,7 +129,7 @@ export function goFullTime(accountId) {
 
 /** Making something is practice: a session on a project moves the matching skill or talent a little. */
 const PRACTICE = { music: 'talents.music', singing: 'talents.singing', dance: 'talents.dance', acting: 'talents.acting', sports: 'talents.sports', cooking: 'skills.cooking', art: 'skills.photography', books: 'skills.writing', gaming: 'skills.coding' };
-function practise(p, topic) {
+function practice(p, topic) {
   const path = PRACTICE[topic];
   if (!path) return;
   const [group, key] = path.split('.');
@@ -180,7 +180,7 @@ export function workOn(projectId) {
   const q = qualityOf(p.id, x.topic, k.format);
   x.quality = Math.round(clamp((x.quality * (x.sessions - 1) + q) / x.sessions + gear + help, 0.02, 0.98) * 1000) / 1000;
   literacy(p.id, 1);
-  practise(p, x.topic);
+  practice(p, x.topic);
   if (x.sessions >= k.sessions) move(x, 'editing');
   return result(true, x.status === 'editing' ? `You finished the last session on ${x.title}. It needs editing.` : `A good session on ${x.title}.`, 'good');
 }
@@ -268,8 +268,8 @@ export function broadcast(streamId) {
 export function cancelStream(streamId) {
   const s = world().streams.find((x) => x.id === streamId && x.status === 'scheduled');
   if (!s) return result(false, 'There is no stream planned.');
-  s.status = 'cancelled';
-  return result(true, 'Stream cancelled.', 'neutral');
+  s.status = 'canceled';
+  return result(true, 'Stream canceled.', 'neutral');
 }
 
 // ---------- Collaborations ----------
@@ -384,7 +384,7 @@ export function acceptDeal(contractId) {
   c.acceptedYear = store.state.year;
   // The time to deliver runs from signing, not from when the offer arrived.
   c.deadline = Math.max(c.deadline, store.state.year + 1);
-  return result(true, `Deal signed with ${SPONSOR_BY_ID[c.sponsorId].name}: ${c.deliverables.posts} sponsored ${c.deliverables.posts === 1 ? 'post' : 'posts'}, labelled as paid, by the end of next year. ${fmtMoney(c.fee, country())} when they are done.`, 'good');
+  return result(true, `Deal signed with ${SPONSOR_BY_ID[c.sponsorId].name}: ${c.deliverables.posts} sponsored ${c.deliverables.posts === 1 ? 'post' : 'posts'}, labeled as paid, by the end of next year. ${fmtMoney(c.fee, country())} when they are done.`, 'good');
 }
 export function declineDeal(contractId) {
   const c = world().contracts[contractId];
@@ -485,7 +485,7 @@ export function tickCreators() {
       const units = Math.round(followerCount(acc) * 0.0015 * (reputation(p.id).loyalty / 50) * rng.around(1, 0.3));
       if (units > 0) pay({ accountId: acc.id, kind: 'merch', gross: localMoney(units * 25, country()), fee: 0.05, expenses: localMoney(units * 12, country()), ref: `merch:${acc.id}:${y - 1}` });
     }
-    // Affiliate links, always labelled: a small share of what the audience bought through last year's posts.
+    // Affiliate links, always labeled: a small share of what the audience bought through last year's posts.
     if (acc.creator.monetized && p.age >= 18) {
       const views = acc.postIds.map((id) => d.posts[id]).filter((x) => x?.affiliate && x.year === y - 1 && x.metrics).reduce((s, x) => s + x.metrics.views, 0);
       if (views > 0) pay({ accountId: acc.id, kind: 'affiliate', gross: localMoney(views * 0.004, country()), fee: 0, ref: `aff:${acc.id}:${y - 1}` });
@@ -517,7 +517,7 @@ export function tickCreators() {
         // Hidden advertising, found out: this is real conduct, so it is recorded as verified.
         const cvId = newId('cv');
         world().controversies[cvId] = { id: cvId, ref: `deal:${c.id}`, charId: p.id, kind: 'undisclosed_ad', status: 'verified', truth: true, year: y, response: null, resolvedYear: null, text: `People noticed that your posts for ${SPONSOR_BY_ID[c.sponsorId].name} were paid for and never said so.` };
-        adjustReputation(p.id, 'credibility', -8, 'Sponsored posts that were not labelled as ads');
+        adjustReputation(p.id, 'credibility', -8, 'Sponsored posts that were not labeled as ads');
         log(`People noticed that your posts for ${SPONSOR_BY_ID[c.sponsorId].name} were paid for and never said so.`, 'system', 'bad');
       }
     } else if (['active', 'offered'].includes(c.status) && y > c.deadline) {

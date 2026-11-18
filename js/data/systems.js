@@ -5,9 +5,9 @@
 // multiples of that country's typical wage in the game, not real brackets.
 // Which countries tax at one flat rate, the top rates and the health-care
 // models are checked by scripts/verify-laws.py; whether a banded country's
-// bands rise steeply or moderately is the author's judgement. Real systems
+// bands rise steeply or moderately is the author's judgment. Real systems
 // have credits, deductions, contributions, regional taxes, co-payments and
-// exceptions that are not modelled. Nothing here is tax or medical advice.
+// exceptions that are not modeled. Nothing here is tax or medical advice.
 
 /**
  * allowance: income below this is untaxed. bands: [up to, multiple of the headline rate].
@@ -64,6 +64,21 @@ export const HEALTH_MODEL_OF = {
   cn: 'insurance', id: 'insurance', sg: 'insurance', ee: 'insurance', pl: 'insurance', hr: 'insurance', rs: 'insurance',
   mx: 'mixed', in: 'mixed',
   ae: 'employer', // for expatriates: citizens are covered by the national scheme (engine/systems.js)
+};
+
+/**
+ * Health care for people on a temporary visa, where care is for everyone
+ * (public, compulsory insurance, mixed). GAMEPLAY RULE, unverified, the same
+ * in every such country:
+ *   charge   holders of these statuses pay a yearly visa health charge (a
+ *            multiple of the typical wage) and are then covered like residents
+ *   private  holders must buy private cover; without it they pay the whole bill
+ * Permanent residents, citizens and people given protection are covered as residents.
+ */
+export const VISA_HEALTH = {
+  worker: { kind: 'charge', rate: 0.03 },
+  student: { kind: 'charge', rate: 0.02 },
+  retiree: { kind: 'private', rate: 0.1 },
 };
 // China, Indonesia, Singapore, Ireland, Estonia, Poland, Croatia and Serbia checked against "Universal health care" (rev 1385246824)
 // and "List of countries with universal health care" (rev 1384547493); see scripts/verify-laws.py.

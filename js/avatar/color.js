@@ -1,4 +1,4 @@
-// Small colour helpers for the avatar system.
+// Small color helpers for the avatar system.
 
 const parse = (hex) => {
   const h = String(hex ?? '#000000').replace('#', '');
@@ -7,7 +7,7 @@ const parse = (hex) => {
 };
 const toHex = (rgb) => `#${rgb.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')}`;
 
-/** A colour part-way from a to b (t from 0 to 1). */
+/** A color part-way from a to b (t from 0 to 1). */
 export function mixHex(a, b, t) {
   const x = parse(a);
   const y = parse(b);

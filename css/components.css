@@ -359,6 +359,44 @@ button.dyn-event { cursor: pointer; }
 .pol-track { height: 9px; background: var(--line); border-radius: 5px; overflow: hidden; }
 .pol-track i { display: block; height: 100%; }
 
+/* My Health */
+.hl-modal { max-width: 600px; }
+.hl-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 4px; margin-bottom: 10px; background: var(--line); border-radius: 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch; flex: none; }
+.hl-tabs::-webkit-scrollbar { display: none; }
+.hl-tabs button { flex: none; border: 0; background: transparent; border-radius: 9px; padding: 9px 12px; font: inherit; font-size: 0.86rem; font-weight: 600; color: var(--muted); cursor: pointer; min-height: 40px; white-space: nowrap; }
+.hl-tabs button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+.hl-subtabs { background: var(--accent-soft); }
+.hl-sub { color: var(--muted); font-family: var(--serif); font-style: italic; margin: 0 0 10px; }
+.hl-page { font-family: var(--serif); font-size: 1.2rem; margin: 6px 0 2px; }
+.hl-back { margin-bottom: 8px; }
+.hl-card { margin-bottom: 12px; }
+.hl-card .btn-row { flex-wrap: wrap; }
+.hl-small { min-height: 36px; padding: 6px 12px; font-size: 0.85rem; }
+.hl-pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 0.78rem; background: var(--line); color: var(--ink); }
+.hl-pill.good { background: var(--accent-soft); color: var(--good); }
+.hl-meter { display: grid; grid-template-columns: 6.5em 1fr 5.5em; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.9rem; }
+.hl-meter span { color: var(--muted); }
+.hl-meter i { display: block; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.hl-meter b { display: block; height: 100%; background: var(--accent); }
+.hl-meter b.low { background: var(--bad); }
+.hl-meter b.mid { background: #c79a3b; }
+.hl-meter em { font-style: normal; text-align: right; font-size: 0.85rem; }
+.hl-person, .hl-cond { width: 100%; text-align: left; margin: 4px 0; }
+.hl-person .main small { white-space: normal; }
+.hl-decide { border-color: var(--accent); }
+.hl-rec { border-color: var(--accent); }
+.hl-trial-head { display: grid; grid-template-columns: 1fr auto; width: 100%; text-align: left; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; min-height: 44px; }
+.hl-trial-head small { grid-column: 1; color: var(--muted); }
+.hl-trial-head span { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--muted); }
+.hl-note { margin: -2px 0 8px; font-size: 0.85rem; }
+.hl-module { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.hl-module:last-of-type { border-bottom: 0; }
+.hl-milestone { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.hl-lock { font-size: 0.75rem; opacity: 0.7; }
+@media (max-width: 380px) { .hl-meter { grid-template-columns: 5.5em 1fr 4.5em; } }
+.tab-btn { position: relative; }
+.tab-btn.badge::after { content: ''; position: absolute; top: 6px; right: calc(50% - 16px); width: 9px; height: 9px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 2px var(--card); }
+.yu-line { margin: 2px 0 6px; padding-left: 12px; border-left: 3px solid var(--accent-soft); }
 /* The family's animals: album, timeline, profiles, the chronicle of a house */
 .zoo-modal .zoo-sub { font-family: var(--serif); font-style: italic; margin: -4px 0 10px; }
 .zoo-tabs { display: flex; gap: 4px; padding: 4px; margin-bottom: 10px; background: var(--line); border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -495,11 +533,45 @@ div.row { cursor: default; }
 .btn.stacked { flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; }
 .btn.stacked small { font-weight: 400; opacity: 0.8; }
 
-/* ---------- My Moments ---------- */
-.mo-guests { max-height: 55vh; overflow-y: auto; }
-.mo-guest { cursor: pointer; }
-.mo-guest input { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }
-.row.mo-done { opacity: 0.6; }
+/* Explore the World (js/ui/globalLife.js) */
+.gl-modal select, .gl-modal input[type="date"], .gl-modal input[type="number"] { width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: inherit; font: inherit; }
+.gl-modal label.field { font-size: 0.85rem; color: var(--muted); }
+.gl-head .gl-where { font-size: 0.85rem; margin: 6px 0 2px; padding: 6px 10px; border-radius: 8px; background: var(--accent-soft); }
+.gl-nav { position: sticky; top: -1px; z-index: 2; background: var(--card); padding-bottom: 6px; }
+.gl-step h3 { color: var(--accent); }
+.gl-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gl-radio { display: flex; gap: 8px; align-items: center; min-height: 40px; font-size: 0.93rem; }
+.gl-radio input { width: 20px; height: 20px; flex: none; }
+.gl-legs p { font-size: 0.85rem; margin: 4px 0; }
+.gl-entry { padding: 8px 0; border-top: 1px dashed var(--line); }
+.gl-entry small { display: block; color: var(--bad); font-size: 0.82rem; }
+.gl-entry.ok small { color: var(--muted); }
+.gl-entry .btn { margin-top: 6px; }
+.gl-problems { border-left: 3px solid var(--warn); }
+.gl-problems p { margin: 4px 0; font-size: 0.9rem; }
+.gl-route { padding: 8px 0; border-top: 1px dashed var(--line); }
+.gl-route small { display: block; color: var(--muted); font-size: 0.83rem; }
+.gl-route.closed { opacity: 0.6; }
+.gl-route .btn { margin-top: 6px; }
+.gl-check { margin: 4px 0; font-size: 0.92rem; }
+.gl-check.done { color: var(--good); }
+.gl-check small { display: block; margin-left: 18px; }
+.gl-mapwrap { margin: 8px 0; }
+.gl-map { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid var(--line); }
+.gl-sea { fill: var(--accent-soft); }
+.gl-grid line { stroke: var(--line); stroke-width: 0.3; }
+.gl-ctx { fill: var(--muted); opacity: 0.5; }
+.gl-land { fill: var(--card); stroke: var(--muted); stroke-linejoin: round; opacity: 0.95; }
+.gl-move { stroke: var(--accent); opacity: 0.85; }
+.gl-mark circle { fill: var(--bad); stroke: var(--card); cursor: pointer; }
+.gl-mark.approx circle { fill: var(--card); stroke: var(--bad); }
+.gl-mark.on circle { fill: var(--accent); stroke: var(--ink); }
+.gl-legend { font-size: 0.8rem; }
+.gl-tl { padding: 8px 4px; border-bottom: 1px dashed var(--line); font-size: 0.9rem; }
+.gl-tl summary { cursor: pointer; min-height: 32px; }
+.gl-modal .tree-row[disabled] { opacity: 0.5; }
+@media (max-width: 420px) { .gl-dates { grid-template-columns: 1fr; } }
+
 /* ---------- Digital Life ---------- */
 .dl-modal { max-width: 620px; }
 .dl-sub { margin: -4px 0 6px; font-size: 0.88rem; }
@@ -580,3 +652,11 @@ button.dl-card { cursor: pointer; }
 .era-note { margin-top: 6px; display: grid; gap: 4px; font-size: 0.9rem; }
 .era-note details summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; display: flex; align-items: center; }
 .era-list { margin: 4px 0 0 18px; display: grid; gap: 3px; }
+.gl-era { font-size: 0.85rem; margin: 4px 0 0; }
+.gl-mark:focus-visible circle { stroke: var(--ink); stroke-width: 1.2; }
+.gl-mark:focus { outline: none; }
+/* ---------- My Moments ---------- */
+.mo-guests { max-height: 55vh; overflow-y: auto; }
+.mo-guest { cursor: pointer; }
+.mo-guest input { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }
+.row.mo-done { opacity: 0.6; }

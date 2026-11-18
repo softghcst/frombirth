@@ -56,7 +56,7 @@ function grown(age = 30, withPets = false) {
 }
 const adopt = () => { petFriendly(); const before = pets().length; const r = getPet(); check(r.ok && pets().length === before + 1, `adopting should work: ${r.text}`); return zoo.animalById(pets().at(-1).id); };
 const addKin = (role, age, extra = {}) => { const n = makeNpc({ role, countryId: P().countryId, age, lastName: P().lastName, ...extra }); S().npcs[n.id] = n; P().npcIds.push(n.id); return n; };
-/** An animal's homes with the family, and the people (not organisations) who owned it. */
+/** An animal's homes with the family, and the people (not organizations) who owned it. */
 const ownHomes = (x) => x.homes.filter((h) => h.hh !== 'shelter');
 const people = (xs) => xs.filter((o) => o.who.id);
 const lastOf = (type, id) => zoo.eventsOf(id).filter((e) => e.type === type).at(-1);
@@ -75,7 +75,7 @@ zoo.reconcile(); zoo.reconcile();
 check(snap(zoo.animalById(pet.id)) === before, 'bringing the record up to date twice changes nothing');
 check(animalPortraitSvg(a) === animalPortraitSvg(JSON.parse(before)) && animalPortraitSvg(a).includes('<svg'), 'its portrait is drawn the same way every time');
 { // Same species and breed, different individuals.
-  // (these are drawn and thrown away: the record is put back as it was afterwards)
+  // (these are drawn and thrown away: the record is put back as it was afterward)
   const keep = JSON.stringify(S().animals); const lines = JSON.stringify(S().journal);
   const temper = new Set(); const looks = new Set();
   for (let i = 0; i < 40; i++) { const n = makePet('us', 'Test'); n.species = 'dog'; const r = zoo.register(n, { origin: 'family' }); temper.add(snap(r.temperament)); looks.add(snap(r.appearance)); delete S().animals.byId[n.id]; }

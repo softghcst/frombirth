@@ -4,7 +4,7 @@ import { systemFor } from './justice.js';
 // GAMEPLAY CONFIGURATION, COMPILED BY HAND AND UNVERIFIED. These are the
 // author's best understanding of the mid-2020s, simplified to one value per
 // place. Real law has conditions, exceptions and regional differences that
-// are not modelled, and it changes. Nothing here is legal information.
+// are not modeled, and it changes. Nothing here is legal information.
 //
 // A rule is looked up in layers (engine/rules.js), last one wins:
 //   1. DEFAULT        the value in RULES
@@ -202,12 +202,12 @@ export const REGION_RULES = {
  * all of them nationally. Simplified to these six matters. What each claim rests on:
  *   Confirmed by a source (Wikipedia; scripts/verify-laws.py does not check this list automatically):
  *     United States: the death penalty ("Capital punishment in the United States": legal in 27 states), gambling ("each
- *       state is free to regulate or prohibit"), its age (varies by state), driving licences (issued by each state).
- *     Canada: driving licences ("issued by each province or territory"), the gambling age (18 or 19 by province).
- *     Australia: driving licences and road rules ("managed by state and territory governments"); the drinking age
+ *       state is free to regulate or prohibit"), its age (varies by state), driving licenses (issued by each state).
+ *     Canada: driving licenses ("issued by each province or territory"), the gambling age (18 or 19 by province).
+ *     Australia: driving licenses and road rules ("managed by state and territory governments"); the drinking age
  *       ("all states restrict purchasing to over 18": state liquor law).
  *     Germany: the gambling age ("varies by state").  Mexico: the drinking age ("all Mexican states prohibit..."), and
- *       driving ("Driving licence in Mexico": each state sets "the minimum driving age").
+ *       driving ("Driving license in Mexico": each state sets "the minimum driving age").
  *     India: alcohol ("a subject in the State List") and gambling ("states are entitled to formulate their own laws").
  *     Nigeria: alcohol ("prohibited in northern states").  UAE: alcohol and its age ("Sharjah... banned"; 18 or 21).
  *     Spain: the drinking age (communities raised it to 18 at different times).  Switzerland: the drinking age (Ticino
@@ -217,7 +217,7 @@ export const REGION_RULES = {
  *       and the drinking age (18 or 19 by province).  Spain: gambling ("Autonomous communities of Spain": a shared power).
  *     Not regional: the United Arab Emirates' gambling, regulated federally since the General Commercial Gaming
  *       Regulatory Authority was set up in 2023 ("Ras Al Khaimah", "United Arab Emirates").
- *   The author's judgement, where no source fetched settles it (left as is):
+ *   The author's judgment, where no source fetched settles it (left as is):
  *     Australia's gambling (state casino and gaming law), Germany's gambling (the Länder's state treaty), Austria's
  *     drinking age (the Länder's youth-protection laws), Argentina's gambling (provincial), Malaysia's gambling (state-run
  *     lotteries in Sabah, and state Islamic law for Muslims), Nigeria's gambling (state lotteries).

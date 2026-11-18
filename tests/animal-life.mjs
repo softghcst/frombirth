@@ -1,6 +1,6 @@
 // Checks the rest of life with animals: the people at the shelter, the vet and the
-// club; classes; behaviour problems; landlords; outings and the pet show; custody
-// after a break-up; leasing and selling horses; reptiles and licences; the sides of
+// club; classes; behavior problems; landlords; outings and the pet show; custody
+// after a break-up; leasing and selling horses; reptiles and licenses; the sides of
 // a bond; businesses with books of their own; and stories that take years.
 // Run with: node tests/animal-life.mjs
 const disk = new Map();
@@ -72,46 +72,53 @@ clean('staff');
 section('staff: shelter, vet and club people are real, persistent people');
 
 // ---------- 2. Classes ----------
-p = adult(); a = own('dog', (x) => { x.born = S().year; });
+// An ordinarily trainable puppy: puppy class is only for puppies and young dogs, and a hard-to-train dog can
+// grow out of it before finishing (checked below), which is not what this part is about.
+p = adult(); a = own('dog', (x) => { x.born = S().year; x.temperament.trainability = 60; });
 let offers = life.coursesFor(a.id);
+{ // The same dog, had it grown up first: puppy class is closed to it, whatever it still has to learn.
+  const was = S().npcs[a.id].age; S().npcs[a.id].age = 6;
+  check(/Not for an adult/.test(life.coursesFor(a.id).find((x) => x.id === 'puppy')?.why ?? ''), 'a grown dog cannot go to puppy class, whatever it still has to learn');
+  S().npcs[a.id].age = was;
+}
 check(offers.find((x) => x.id === 'puppy') && !offers.find((x) => x.id === 'puppy').why && offers.find((x) => x.id === 'agility').why, 'a puppy can go to puppy class, not agility');
 check(!life.coursesFor(own('fish').id).length && life.coursesFor(own('cat').id).some((x) => x.id === 'clicker'), 'fish do not go to classes; cats can be clicker-trained');
 let cash = p.finance.cash;
-let r = life.enrol(a.id, 'puppy');
+let r = life.enroll(a.id, 'puppy');
 const trainer = S().npcs[life.club().met?.[0]];
 check(r.ok && cash - p.finance.cash === offers.find((x) => x.id === 'puppy').price && ['name', 'sit', 'come'].every((k) => a.training[k]?.progress > 0) && trainer, 'a year of puppy class moves several skills on at once, is paid once, and the trainer is someone the player now knows');
-check(!life.enrol(a.id, 'puppy').ok && cash - p.finance.cash === offers.find((x) => x.id === 'puppy').price, 'one year of a course at a time');
-for (let i = 0; i < 4 && !['name', 'sit', 'come'].every((k) => a.training[k].progress >= 100); i++) { year(); life.enrol(a.id, 'puppy'); }
+check(!life.enroll(a.id, 'puppy').ok && cash - p.finance.cash === offers.find((x) => x.id === 'puppy').price, 'one year of a course at a time');
+for (let i = 0; i < 4 && !['name', 'sit', 'come'].every((k) => a.training[k].progress >= 100); i++) { year(); life.enroll(a.id, 'puppy'); }
 check(['name', 'sit', 'come'].every((k) => a.training[k].progress >= 100) && lastOf('trained', a.id), 'finishing a course is a milestone');
-for (let i = 0; i < 6 && !(a.training.come.progress >= 100 && a.training.stay?.progress >= 100); i++) { year(); life.enrol(a.id, 'obedience'); }
-year(); S().npcs[a.id].age = 3; r = life.enrol(a.id, 'agility');
+for (let i = 0; i < 6 && !(a.training.come.progress >= 100 && a.training.stay?.progress >= 100); i++) { year(); life.enroll(a.id, 'obedience'); }
+year(); S().npcs[a.id].age = 3; r = life.enroll(a.id, 'agility');
 check(r.ok && a.training.agility?.progress > 0 && zoo.trainingOf(a).some((s) => s.id === 'agility' && s.classOnly) && !zoo.train(a.id, 'agility').ok, 'agility is learned in a class, not at home, and shows among what the dog is learning');
 clean('classes');
 section('classes: right for the age and species, several skills at once, paid once a year, with a real trainer');
 
-// ---------- 3. Behaviour ----------
-p = adult(); a = own('dog'); a.behaviour = { id: 'separation', since: S().year, progress: 0 };
+// ---------- 3. Behavior ----------
+p = adult(); a = own('dog'); a.behavior = { id: 'separation', since: S().year, progress: 0 };
 const trust0 = zoo.bondDetail(a, p.id).trust;
 r = life.helpWith(a.id, 'scold');
-check(r.ok && a.behaviour.progress === 0 && zoo.bondDetail(a, p.id).trust < trust0, 'telling an animal off makes it warier, and does not help');
+check(r.ok && a.behavior.progress === 0 && zoo.bondDetail(a, p.id).trust < trust0, 'telling an animal off makes it warier, and does not help');
 check(!life.helpWith(a.id, 'trainer').ok, 'one kind of help a year');
 let years2 = 0;
-while (!a.behaviour.resolved && years2 < 8) { year(); life.helpWith(a.id, 'trainer'); years2 += 1; }
-check(a.behaviour.resolved && years2 >= 2 && lastOf('trained', a.id)?.text.includes('Distress when left alone'.toLowerCase()), `with a behaviorist it gets better, over years (${years2}), and getting past it is recorded`);
-check(zoo.bondDetail(a, p.id).trust > trust0 - 12 && life.behaviourOf(a) === null, 'patient help rebuilds trust');
+while (!a.behavior.resolved && years2 < 8) { year(); life.helpWith(a.id, 'trainer'); years2 += 1; }
+check(a.behavior.resolved && years2 >= 2 && lastOf('trained', a.id)?.text.includes('Distress when left alone'.toLowerCase()), `with a behaviorist it gets better, over years (${years2}), and getting past it is recorded`);
+check(zoo.bondDetail(a, p.id).trust > trust0 - 12 && life.behaviorOf(a) === null, 'patient help rebuilds trust');
 // It starts from temperament, not at random.
 let started = 0; let wrong = 0;
 for (let i = 0; i < 40; i++) {
   p = adult(); const d = own('dog', (x) => { x.temperament.activity = 90; x.temperament.sociability = 90; x.temperament.affection = 30; x.temperament.confidence = 70; }); const c2 = own('cat', (x) => { x.temperament.activity = 20; x.temperament.confidence = 80; x.temperament.sensitivity = 20; });
   year(); S().pendingEvents = []; life.tickLife();
-  if (d.behaviour) started += 1; if (c2.behaviour) wrong += 1;
-  if (d.behaviour) check(S().pendingEvents.some((e) => e.id === 'animal_behaviour' && e.cast.pet === d.id && e.cast.words.problem), 'a new problem brings a scene that says what it is');
+  if (d.behavior) started += 1; if (c2.behavior) wrong += 1;
+  if (d.behavior) check(S().pendingEvents.some((e) => e.id === 'animal_behavior' && e.cast.pet === d.id && e.cast.words.problem), 'a new problem brings a scene that says what it is');
 }
 check(started > 5 && wrong === 0, `problems come from an animal's nature (${started} lively dogs, ${wrong} calm cats)`);
-clean('behaviour');
+clean('behavior');
 section('behavior: from temperament, kind help works slowly, anger makes it worse');
 
-// ---------- 4. Landlords, kit, licences ----------
+// ---------- 4. Landlords, kit, licenses ----------
 p = adult(); const lease = care.rentalPolicy(); lease.kind = 'none';
 let d = waiting('dog');
 check(!care.adoptionCheck(d.id).ok && /tenancy does not allow/.test(care.adoptionCheck(d.id).problems.join()), 'a landlord who allows no animals means no adoption');
@@ -295,8 +302,8 @@ for (let i = 0; i < 4; i++) {
       if (rng.chance(0.15)) { const s2 = care.shelterAnimals().find((x) => care.adoptionCheck(x.id).ok); if (s2) care.adopt(s2.id); }
       for (const x of zoo.allAnimals().filter((q) => q.status === 'living' && S().npcs[q.id])) {
         if (rng.chance(0.3)) { const o = life.outingsFor(x.id).find((q) => !q.done); if (o) life.outing(x.id, o.id); }
-        if (rng.chance(0.2)) { const c3 = life.coursesFor(x.id).find((q) => q.ok); if (c3) life.enrol(x.id, c3.id); }
-        if (life.behaviourOf(x) && rng.chance(0.5)) life.helpWith(x.id, 'environment');
+        if (rng.chance(0.2)) { const c3 = life.coursesFor(x.id).find((q) => q.ok); if (c3) life.enroll(x.id, c3.id); }
+        if (life.behaviorOf(x) && rng.chance(0.5)) life.helpWith(x.id, 'environment');
         if (rng.chance(0.2)) life.enterPetShow(x.id);
       }
       if (pl.age === 35 && !biz.startBlock(BUSINESS_BY_ID.pet_care)) { if (biz.start('pet_care').ok) firms += 1; }

@@ -271,7 +271,7 @@ export function simulate(post) {
     if (enjoys && owner.stats) owner.stats.mood = clamp(owner.stats.mood + 1);
     text = `${n(views)} views, ${n(likes)} likes, ${n(commentsN)} comments.${followerDelta > 0 ? ` ${n(followerDelta)} new followers.` : ''}`;
   }
-  if (post.contractId) adjustReputation(post.authorId, 'credibility', post.disclosed ? 0.5 : -3, post.disclosed ? 'A clearly labelled sponsored post' : 'A sponsored post that did not say so');
+  if (post.contractId) adjustReputation(post.authorId, 'credibility', post.disclosed ? 0.5 : -3, post.disclosed ? 'A clearly labeled sponsored post' : 'A sponsored post that did not say so');
   // A post that names relatives in public, when they are not keen on being posted about.
   for (const id of post.aboutIds) {
     const r = charOf(id);
@@ -287,7 +287,7 @@ function commentFrom(who, post) {
   const role = who.role;
   if (['parent', 'grandparent'].includes(role)) return rng.pick(['So proud of you.', 'Lovely! Call me this weekend.', 'Is this the thing you were telling me about?']);
   if (['sibling', 'relative', 'niece'].includes(role)) return rng.pick(['Show-off.', 'Ha, I remember this.', 'Love it.']);
-  if (['spouse', 'partner'].includes(role)) return rng.pick(['That\'s my favourite person.', 'Still proud of this.', '❤']);
+  if (['spouse', 'partner'].includes(role)) return rng.pick(['That\'s my favorite person.', 'Still proud of this.', '❤']);
   if (['coworker', 'boss', 'mentor'].includes(role)) return rng.pick(['Well done.', 'Great work.', 'Congratulations!']);
   if (post.topic === 'music' || post.topic === 'singing') return rng.pick(['That bridge though.', 'Play it again at the next party.', 'Goosebumps.']);
   return rng.pick(['This is great.', 'Ha! Love this.', 'Miss you, we should catch up.', 'Yes!']);
@@ -300,7 +300,7 @@ const CROWD = {
   cooking: ['Saving this recipe.', 'Tried it, it works!'],
   gaming: ['That last bit was clean.', 'Which difficulty?'],
   education: ['Finally someone explains it properly.', 'Thank you for this.'],
-  art: ['The colours!', 'How long did this take?'],
+  art: ['The colors!', 'How long did this take?'],
   sports: ['Great form.', 'Keep at it.'],
   fashion: ['Where is the jacket from?', 'Love the look.'],
   travel: ['Adding this to the list.', 'Looks peaceful.'],

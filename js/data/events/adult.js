@@ -102,7 +102,7 @@ export default [
       { label: 'Follow them', check: chk(0.5, { 'hidden.discipline': 0.5 }), outcomes: [
         ok('Two streets later you come to your senses and turn round.', hid('crazy', 3)),
         bad('They get out at the lights. So do you. You come home with a black eye.', st('health', -8), st('mood', -6), hid('crazy', 5), heat(10)),
-        { on: 'fail', weight: 0.08, text: 'You run a red light chasing them and a lorry does not see you.', effects: [death('a road rage collision')] },
+        { on: 'fail', weight: 0.08, text: 'You run a red light chasing them and a truck does not see you.', effects: [death('a road rage collision')] },
       ] },
     ],
   },
@@ -134,7 +134,7 @@ export default [
         ok('By midnight half the room believes you run a vineyard.', st('mood', 5), hid('karma', -3)),
         bad('Someone looks you up on their phone at the table.', st('mood', -7), st('charm', -2)),
       ] },
-      { label: 'Stay home', outcomes: [any('You look at the photos online afterwards. Everyone got old.', 'neutral', st('mood', -1)), any('Someone sends you the group photograph afterwards. Everyone got old.', 'neutral', st('mood', -1))] },
+      { label: 'Stay home', outcomes: [any('You look at the photos online afterward. Everyone got old.', 'neutral', st('mood', -1)), any('Someone sends you the group photograph afterward. Everyone got old.', 'neutral', st('mood', -1))] },
     ],
   },
   {
@@ -151,7 +151,7 @@ export default [
     ],
   },
   {
-    id: 'noisy_neighbour', category: 'adult', ageRange: [18, 85],
+    id: 'noisy_neighbor', category: 'adult', ageRange: [18, 85],
     text: 'Your neighbor has taken up the drums. They practice at midnight.',
     choices: [
       { label: 'Knock and ask nicely', check: chk(0.55, { 'stats.charm': 0.6 }), outcomes: [

@@ -77,7 +77,7 @@ What changed as a result: four countries no longer execute (the Bahamas, DR Cong
 status (Bolivia, Czechia, Croatia, Italy, Monaco, Nepal); conscription was added in twelve countries and removed in Syria;
 voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries and an alcohol ban for Pakistan; pension ages
 for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
-nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
+nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabeled.
 
 Also checked now: the top rate of income tax ("List of countries by tax rates"; 92 agree, and four differ for reasons recorded in
 the script: the United States uses the federal 37%, and Bolivia, Estonia and Romania use their flat income tax where the table adds
@@ -94,7 +94,7 @@ words; Guatemala, Kenya, Morocco and Peru are "not provided"). Each entry's `src
 stated by a source, partly sourced (the range or top rate is, the bands between are the author's), or the author's alone.
 
 Regional law is now checked by hand against Wikipedia ("Capital punishment in the United States", "Gambling age", "Legal
-drinking age", "Alcohol laws of India", "Gambling in India", "Sharia in Nigeria" and the driving-licence articles for the United
+drinking age", "Alcohol laws of India", "Gambling in India", "Sharia in Nigeria" and the driving-license articles for the United
 States, Canada and Australia). Each claim in `REGIONAL_POWERS` is marked in `js/data/rules.js` as confirmed or as the author's
 understanding. This added the casino age by state and province (19 in Ontario, British Columbia and Nova Scotia; 18 in Georgia,
 New York and Washington; 21 in Bavaria and Baden-Württemberg), a drinking age of 25 in Delhi and 18 in Karnataka, 21 in Dubai,
@@ -103,12 +103,12 @@ corrected Malaysia's drinking age to 21 and Paraguay's to 20. The script's drink
 accepted an age mentioned anywhere in a row, including a former age in its notes. It now reads only the age columns and skips
 ages that were changed. A second round confirmed Canada's and Spain's regional gambling and the US drinking age, and
 found the United Arab Emirates' gambling is now federal (a national regulator since 2023), so it is no longer the emirates'
-to decide. Left as the author's judgement, with no source found: regional gambling in Argentina, Malaysia, Nigeria,
+to decide. Left as the author's judgment, with no source found: regional gambling in Argentina, Malaysia, Nigeria,
 Australia and Germany, and Austria's drinking age. National governments cannot change what is left to the regions.
 
 Income tax: which countries tax at one flat rate is checked against the lowest and highest rates in "List of countries by
 tax rates" (92 agree; Bolivia, Estonia, Romania and Ukraine are flat taxes the table mixes with allowances or contributions;
-Belize was made flat, at its 25%). Whether a banded country's bands rise steeply or moderately is the author's judgement.
+Belize was made flat, at its 25%). Whether a banded country's bands rise steeply or moderately is the author's judgment.
 The six status sentences (Aruba, Puerto Rico, Andorra, the Democratic Republic of the Congo, Hong Kong, Taiwan) were read
 against the Wikipedia article on each place (revs 1384847800, 1386424195, 1384796794, 1385995928, 1386426160, 1386443146)
 and each claim in them is supported. Where a source does not cover a place (often a small country or a territory), the
@@ -164,28 +164,57 @@ shown on its profile.
   opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional law can be changed by the head of a region,
   for the matters `REGIONAL_POWERS` gives each country: compiled by hand from each country's division of powers and not yet
   checked against sources. Mayors make no law. School-leaving age is the same everywhere.
-- Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
-  permanence. Real systems differ by country and are not modeled. The free-movement areas (a European area, and Australia with
-  New Zealand) are simplified lists and unverified. Family members hold dependant status on the player's visa, simplified to one rule for every country; there is no
-  deportation for crime, no overstaying, and no visa needed for a short visit.
+- Immigration routes (`js/data/immigration.js`) are the same nine everywhere (the eight above and a retirement route), with the
+  same fees, terms and five-year path to permanence. Real systems differ by country and are not modeled. The free-movement areas
+  (a European area, and Australia with New Zealand) are simplified lists and unverified. Family members hold dependant status on the
+  player's visa, simplified to one rule for every country; there is no deportation for crime and no overstaying. Moving abroad is a case decided
+  when the year turns (`js/engine/relocation.js`); the odds of a decision are invented gameplay parameters.
+- Visits (`js/data/travel.js`, `ENTRY`, `VISIT_AREAS`, `LIBERAL`, `ON_ARRIVAL`) are a hand-compiled, **unverified** picture of the
+  mid-2020s: which nationalities visit which places without a visa, need an electronic authorization (ESTA, the UK's ETA, eTA,
+  K-ETA, NZeTA, Australia's ETA) or need a visitor visa, the longest stay, and the Schengen area's 90 days in any 180. The visa
+  names are the common ones. Real rules depend on far more than nationality (purpose, previous travel, the document held,
+  exemptions and reciprocity), change often, and are not modeled. Fees, processing times and the odds of a decision are invented
+  (`DECISION`), and a decision never depends on nationality. This is not travel or immigration advice.
+- Professional recognition (`REGULATED`, `RECOGNITION` in `js/engine/credentials.js`) is one simplified process for every country:
+  which careers are regulated, the language level each asks, the fee, and the odds of a license, an adaptation year or a refusal are
+  game numbers. Real recognition differs by profession and country, and is often much slower.
+- Passports are valid ten years (five for children under sixteen) everywhere; real terms vary. A passport is issued only to a
+  national of the issuing place, and expiring, being lost or being replaced never changes citizenship.
+- Transport (`MODES`) uses broad global dates (the first railways around 1830, liners from 1840, scheduled airlines from 1919,
+  jets from 1958); real availability varied by country and route. Overland travel follows landmasses (`LANDMASS`, `ISLANDS`,
+  the Channel Tunnel from 1994); every coastal place is assumed to have a port and every place an airport. `LANDLOCKED` is
+  factual. Speeds and fares are game numbers. Before 1914 no passports or visas are asked for (simplified: some states did).
+- Earlier jurisdictions (`JURISDICTIONS`) go back to 1800: well-known dates of independence, unification, partition and
+  renaming, hand-compiled for the places in the game and **unverified**; wartime occupations are not shown. Only the name shown
+  changes: nationality is not re-derived through successor-state rules. A life can begin in any year from 1800 (Historical Eras,
+  `docs/HISTORICAL_ERAS.md`); travel follows it: what transport existed, the three document eras, settling abroad without papers
+  before 1914, and countries at war (from the eras' events in `data/history.js`) closed to visitors.
+- Coordinates (`js/data/coordinates.js`) come from GeoNames through `scripts/build-coordinates.py`: 570 of the game's cities.
+  Seventeen are not in that extract and are left out (the game uses the capital's position for them, marked approximate). The
+  family map draws real positions only, on Natural Earth's 1:110m land outline (public domain, generated by
+  `scripts/build-land.py`), and draws lines only along moves that were recorded.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
   is valued in its own country's money and shown at today's rate, with its mortgage and rent kept in the currency they were
   agreed in. Each country has its own housing index, moved by its economy; the numbers are invented, not house-price data. No
   country restricts foreign buyers, and there are no tax treaties: nothing is taxed twice, and nothing is credited. Income tax is
   each country's headline rate through one of four shapes (`js/data/systems.js`) with thresholds in multiples of a typical wage:
   not real brackets, and with no social contributions, credits or regional taxes. The top band is the country's real top rate (`TAX_TOP`), checked. Health care is one of six models; that no
-  universal-care country is modelled as out of pocket or private is checked, but the finer choice among models is not, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
+  universal-care country is modeled as out of pocket or private is checked, but the finer choice among models is not, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
   bounds and are pulled weaker by a recession or a crisis, without following measured inflation.
 
 ## Where further work would go
 
 In rough order of value:
 
-1. **Find sources for what is still the author's judgement** (listed above): the bands between the top rates of
+1. **Find sources for what is still the author's judgment** (listed above): the bands between the top rates of
    inheritance tax, steep or moderate income-tax bands, and the regional powers no source settled.
 2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
 5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
+7. **Check the visit rules** (`ENTRY` in `js/data/travel.js`) against each government's published list, place by place, as the
+   laws were checked; add study and work visas that differ by country; historical document regimes beyond the three broad eras.
+8. **A historical start**: a life begun in an earlier year, with the jurisdiction table driving nationality through
+   configured successor-state rules.
 
 ## Adding a place
 

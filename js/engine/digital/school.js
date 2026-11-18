@@ -16,7 +16,7 @@ export function schoolSystems(p = player()) {
   const portal = techAvailable('web') && techAvailable('email');
   const email = techAvailable('email');
   if (!email) return { kind: 'paper', text: 'School news comes home on paper, in the bottom of a bag.' };
-  return { kind: portal ? 'portal' : 'email', text: portal ? 'The school portal has your marks, homework and messages from teachers.' : 'The school emails home about trips and term dates.', gpa: p.education.gpa, absences: p.education.absences };
+  return { kind: portal ? 'portal' : 'email', text: portal ? 'The school portal has your marks, homework and messages from teachers.' : 'The school emails home about trips and the school calendar.', gpa: p.education.gpa, absences: p.education.absences };
 }
 
 /** Classmates who could study together online. */

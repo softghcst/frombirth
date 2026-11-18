@@ -14,6 +14,8 @@ import { randomAppearance } from '../../avatar/inherit.js';
 import { ORIENTATIONS } from '../../engine/identity.js';
 import { summary } from '../../engine/living.js';
 import { MONARCHIES } from '../../data/royalty.js';
+import { BIRTH_CHOICES } from '../../engine/health/index.js';
+import { CONDITION_BY_ID } from '../../data/health/conditions.js';
 
 const TALENTS = { singing: 'Singing', dance: 'Dance', acting: 'Acting', music: 'Music', sports: 'Sports', crime: 'Mischief' };
 
@@ -24,9 +26,9 @@ function picker(key, label, autoLabel, options) {
       <div class="picker" data-pick="${key}" role="radiogroup" aria-label="${esc(label)}">
         <button type="button" class="pick on" data-value="" role="radio" aria-checked="true">${esc(autoLabel)}</button>
         ${options.map((o) => `
-          <button type="button" class="pick ${o.colour ? 'swatch' : ''}" data-value="${esc(o.value)}" role="radio"
-            aria-checked="false" aria-label="${esc(o.label)}" ${o.colour ? `style="background:${o.colour}"` : ''}>
-            ${o.colour ? '' : esc(o.label)}</button>`).join('')}
+          <button type="button" class="pick ${o.color ? 'swatch' : ''}" data-value="${esc(o.value)}" role="radio"
+            aria-checked="false" aria-label="${esc(o.label)}" ${o.color ? `style="background:${o.color}"` : ''}>
+            ${o.color ? '' : esc(o.label)}</button>`).join('')}
       </div>
     </div>`;
 }
@@ -58,7 +60,7 @@ const named = (map) => Object.entries(map).map(([value, label]) => ({ value, lab
  * @param {{onCreate:(opts:object)=>void, onCancel:Function}} hooks
  */
 export function renderCreator(app, hooks) {
-  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '', birthRank: '' };
+  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '', birthRank: '', health: '' };
   let look = null; // a designed appearance, or null to inherit one
   const sample = randomAppearance();
 
@@ -103,6 +105,8 @@ export function renderCreator(app, hooks) {
         <div class="card"><h3>Start in life</h3>
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
+          ${picker('health', 'Born with', 'Random', [{ value: 'none', label: 'Nothing in particular' }, ...BIRTH_CHOICES.map((id) => ({ value: id, label: CONDITION_BY_ID[id].name }))])}
+          <p class="muted" style="margin:-4px 0 10px">Only things present from birth. Most will be noticed as you grow; none decides who you become.</p>
           <div class="field"><label for="f-year">Year of birth</label>
             <input id="f-year" type="number" inputmode="numeric" min="1800" max="${new Date().getFullYear()}" placeholder="${new Date().getFullYear()} (now)">
             <div class="era-note" data-era-note aria-live="polite"></div></div>
@@ -228,6 +232,7 @@ export function renderCreator(app, hooks) {
       talent: choice.talent || undefined,
       background: choice.background || undefined,
       birthRank: choice.birthRank || undefined,
+      health: choice.health === '' ? undefined : { conditions: choice.health === 'none' ? [] : [choice.health] },
       year: (() => { const y = Math.round(Number(q('#f-year').value)); return y >= 1800 && y <= new Date().getFullYear() ? y : undefined; })(),
     });
   });

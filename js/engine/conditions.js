@@ -9,6 +9,7 @@ import { CAREER_BY_ID } from '../data/careers.js';
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
+import { HEALTH_PATHS } from './health/story.js';
 import { hasRecord } from './records.js';
 
 /** Singing, dance and acting together. The weakest of the three drags it down. */
@@ -25,7 +26,7 @@ const SPECIAL = {
   conscription: () => rule('conscription'),
   inCrisis: () => !!country().living.crisis,
   // Royalty: monarchy (the country has a crown), isRoyal (in the royal family), isNoble (holds a noble title),
-  // reigning, royalBy ('birth' | 'marriage' | 'honour' | null). The public's opinion is plain 'royal.image'.
+  // reigning, royalBy ('birth' | 'marriage' | 'honor' | null). The public's opinion is plain 'royal.image'.
   monarchy: () => !!MONARCHIES[country().id] && store.state.dynasties?.[country().id]?.status !== 'abolished',
   // Whether the crown the player wears governs (executive or absolute), or only advises.
   crownGoverns: (p) => { const cid = p.royal?.countryId; const d = store.state.dynasties?.[cid]; return ['executive', 'absolute'].includes(d?.type ?? MONARCHIES[cid]?.type); },
@@ -97,6 +98,7 @@ export function remember(npc, key, text) {
 export function resolve(path, cast = {}) {
   const p = player();
   if (SPECIAL[path]) return SPECIAL[path](p);
+  if (HEALTH_PATHS[path]) return HEALTH_PATHS[path](p);
   const parts = path.split('.');
   if (SPECIAL[parts[0]]) return parts.slice(1).reduce((o, k) => (o == null ? undefined : o[k]), SPECIAL[parts[0]](p)) ?? null;
   if (parts[0] === 'cast' || parts[0] === 'memory') {

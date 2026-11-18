@@ -1,7 +1,21 @@
 export const clamp = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
 
-export const uid = (prefix = 'id') =>
-  `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+/**
+ * A new id. While a life is being played, ids come from a counter saved with that life (with a tag for its save slot,
+ * so they never meet ids from another life or the random ids of older saves): living the same year again after a
+ * reload makes the same people with the same ids, and so the same luck. Otherwise, a random id.
+ */
+let idSource = () => null;
+export const setIdSource = (fn) => { idSource = fn; };
+export const uid = (prefix = 'id') => {
+  const t = idSource();
+  if (t?.slotId) {
+    t.idSeq = (t.idSeq ?? 0) + 1;
+    let h = 0; for (const ch of t.slotId) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0;
+    return `${prefix}_q${h.toString(36).slice(0, 5)}${t.idSeq.toString(36)}`;
+  }
+  return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+};
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);

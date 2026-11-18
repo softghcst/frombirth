@@ -1,5 +1,5 @@
 // The rest of life with animals: classes and the trainers who run them,
-// behaviour that needs patience, outings and the local pet show, and the
+// behavior that needs patience, outings and the local pet show, and the
 // disagreements animals cause in families.
 //
 // Everything here works on the family's record (engine/animals.js) and pays
@@ -66,7 +66,7 @@ export function coursesFor(id, state = store.state) {
 const an = (w) => (/^[aeiou]/i.test(w) ? 'an' : 'a');
 
 /** A year of weekly classes. Several skills move on at once, faster than at home, and the trainer gets to know them. */
-export function enrol(id, courseId, state = store.state) {
+export function enroll(id, courseId, state = store.state) {
   const a = zoo.animalById(id, state);
   const p = state.player; const c = COUNTRIES[p.countryId];
   const offer = coursesFor(id, state).find((x) => x.id === courseId);
@@ -101,13 +101,13 @@ export function enrol(id, courseId, state = store.state) {
   return result(true, text, 'good');
 }
 
-// ---------- Behaviour ----------
+// ---------- Behavior ----------
 
 /**
  * Things an animal can find hard. None makes it a bad animal; each gets better with the right help,
  * slowly, and worse if met with anger. `who` decides which animals can have it, from their temperament.
  */
-export const BEHAVIOURS = {
+export const BEHAVIORS = {
   separation: { name: 'Distress when left alone', text: 'howls and scratches at the door whenever the house is empty', species: ['dog'], who: (t) => (t.affection ?? 50) > 70 && (t.adaptability ?? 50) < 45 },
   chewing: { name: 'Chewing things', text: 'has chewed a chair leg, a shoe and the corner of a rug', species: ['dog'], young: true, who: (t) => (t.activity ?? 50) > 65 },
   scratching: { name: 'Scratching the furniture', text: 'has shredded the side of the sofa', species: ['cat'], who: (t) => (t.activity ?? 50) > 60 },
@@ -115,7 +115,7 @@ export const BEHAVIOURS = {
   handling: { name: 'Fear of being handled', text: 'panics when picked up, brushed or examined', species: ['dog', 'cat', 'rabbit', 'guinea_pig', 'ferret', 'parrot', 'horse', 'pony'], who: (t) => (t.confidence ?? 50) < 30 },
   biting: { name: 'Nipping when overwhelmed', text: 'has started nipping when things get too much', species: ['parrot', 'ferret', 'rabbit'], who: (t) => (t.sensitivity ?? 50) > 70 },
 };
-/** Help for a behaviour problem: how much it moves things on, what it costs, and whether it hurts trust. */
+/** Help for a behavior problem: how much it moves things on, what it costs, and whether it hurts trust. */
 export const HELP = {
   trainer: { name: 'A qualified behaviorist', gain: 45, cost: 220, trust: 4 },
   vet: { name: 'A vet\'s check for pain or illness behind it', gain: 25, cost: 90, trust: 2 },
@@ -123,34 +123,34 @@ export const HELP = {
   time: { name: 'Patience, and gentle practice', gain: 18, cost: 0, trust: 2 },
   scold: { name: 'Tell them off', gain: -15, cost: 0, trust: -12 },
 };
-/** An animal's behaviour problem, if it has one, as the player would see it. */
-export const behaviourOf = (a) => (a.behaviour && !a.behaviour.resolved ? { ...a.behaviour, ...BEHAVIOURS[a.behaviour.id] } : null);
-/** Help with a behaviour problem: chosen in the scene, or from the profile once a year. */
+/** An animal's behavior problem, if it has one, as the player would see it. */
+export const behaviorOf = (a) => (a.behavior && !a.behavior.resolved ? { ...a.behavior, ...BEHAVIORS[a.behavior.id] } : null);
+/** Help with a behavior problem: chosen in the scene, or from the profile once a year. */
 export function helpWith(id, how, state = store.state) {
   const a = zoo.animalById(id, state);
-  const b = a && behaviourOf(a);
+  const b = a && behaviorOf(a);
   const h = HELP[how];
   const p = state.player; const c = COUNTRIES[p.countryId];
   if (!b || !h) return result(false, 'There is nothing to help with.', 'neutral');
-  if (a.behaviour.helpedYear === state.year) return result(false, `You have already worked on this with ${a.name} this year.`, 'neutral');
+  if (a.behavior.helpedYear === state.year) return result(false, `You have already worked on this with ${a.name} this year.`, 'neutral');
   const cost = h.cost ? localCost(h.cost, c) : 0;
   if (cost && p.finance.cash < cost) return result(false, `That costs ${fmtMoney(cost, c)}. You do not have it.`, 'neutral');
-  if (cost) care.pay(state, cost, 'behaviour', a.id, `behaviour|${a.id}|${state.year}`);
+  if (cost) care.pay(state, cost, 'behavior', a.id, `behavior|${a.id}|${state.year}`);
   if (how === 'trainer') care.meetStaff(club(state), 0, state);
-  a.behaviour.helpedYear = state.year;
-  a.behaviour.progress = clamp(a.behaviour.progress + h.gain + rng.int(-5, 8));
-  (a.behaviour.tried ??= []).push({ year: state.year, how });
+  a.behavior.helpedYear = state.year;
+  a.behavior.progress = clamp(a.behavior.progress + h.gain + rng.int(-5, 8));
+  (a.behavior.tried ??= []).push({ year: state.year, how });
   zoo.nudgeBond(a, p.id, { trust: h.trust, value: h.trust > 0 ? 2 : -4 });
   if (state.npcs[a.id]) state.npcs[a.id].meters.relationship = clamp(state.npcs[a.id].meters.relationship + (h.trust > 0 ? 2 : -6));
   let text;
-  if (a.behaviour.progress >= 100) {
-    a.behaviour.resolved = state.year;
-    text = `${a.name} is past it. It took ${state.year - a.behaviour.since || 1} ${state.year - a.behaviour.since > 1 ? 'years' : 'year'}, and nobody remembers quite when it stopped.`;
-    T.record(state, { type: 'trained', animalId: a.id, people: [T.ref(state, p.id)], sig: 2, key: `behaviour:${a.behaviour.id}`, story: text, tone: 'good',
+  if (a.behavior.progress >= 100) {
+    a.behavior.resolved = state.year;
+    text = `${a.name} is past it. It took ${state.year - a.behavior.since || 1} ${state.year - a.behavior.since > 1 ? 'years' : 'year'}, and nobody remembers quite when it stopped.`;
+    T.record(state, { type: 'trained', animalId: a.id, people: [T.ref(state, p.id)], sig: 2, key: `behavior:${a.behavior.id}`, story: text, tone: 'good',
       text: `${a.name} got past ${b.name.toLowerCase()}, with ${HELP[how].name.toLowerCase()}.`,
       memories: [T.memory(T.ref(state, p.id), `How long it took ${a.name}, and how worth it it was.`, `${p.firstName} stuck with ${a.name} through it.`)] });
-  } else text = how === 'scold' ? `You told ${a.name} off. It did not help: ${zoo.pronoun(a)} is warier of you now, and no better.` : `${cap(h.name)}. ${a.name} is a little better: about ${a.behaviour.progress}% of the way.`;
-  if (!a.behaviour.resolved) say(state, text, how === 'scold' ? 'bad' : 'neutral');
+  } else text = how === 'scold' ? `You told ${a.name} off. It did not help: ${zoo.pronoun(a)} is warier of you now, and no better.` : `${cap(h.name)}. ${a.name} is a little better: about ${a.behavior.progress}% of the way.`;
+  if (!a.behavior.resolved) say(state, text, how === 'scold' ? 'bad' : 'neutral');
   return result(true, text, how === 'scold' ? 'bad' : 'neutral');
 }
 
@@ -276,7 +276,7 @@ export function custody(id, exId, choice, state = store.state) {
 /** A choice made in one of the scenes in data/events/animals.js that belongs to this file. */
 export function lifeChoice(v, cast, state = store.state) {
   if (v.do === 'custody') return custody(cast.pet, cast.ex, v.choice, state).text;
-  if (v.do === 'behaviour') return helpWith(cast.pet, v.how, state).text;
+  if (v.do === 'behavior') return helpWith(cast.pet, v.how, state).text;
   if (v.do === 'chores') {
     const a = zoo.animalById(cast.pet, state); const sib = state.npcs[cast.sib];
     const p = state.player;
@@ -291,7 +291,7 @@ export function lifeChoice(v, cast, state = store.state) {
 
 // ---------- The year ----------
 
-/** Yearly. Behaviour problems that begin, and scenes that a family's situation calls for. Runs once for each year. */
+/** Yearly. Behavior problems that begin, and scenes that a family's situation calls for. Runs once for each year. */
 export function tickLife(state = store.state) {
   const A = zoo.ensure(state);
   if (A.lifeYear === state.year) return;
@@ -303,13 +303,13 @@ export function tickLife(state = store.state) {
   for (const a of zoo.allAnimals(state)) {
     if (!mineToRun(a, state) || !zoo.livesWithPlayer(a.id, state)) continue;
     const roll = T.seeded(`${a.id}:behavior:${state.year}`);
-    // A behaviour problem starts at most once, early in an animal's time with the family, and only if its nature leans that way.
-    if (!a.behaviour && state.year - (a.homes.find((h) => h.hh !== 'shelter' && h.hh !== 'stable')?.from ?? state.year) <= 3) {
-      const fits = Object.entries(BEHAVIOURS).filter(([, b]) => b.species.includes(a.speciesId) && b.who(a.temperament) && (!b.young || ['puppy', 'young dog'].includes(zoo.stageOf(a, state))));
-      if (fits.length && roll.chance(0.45)) a.behaviour = { id: roll.pick(fits)[0], since: state.year, progress: 0 };
+    // A behavior problem starts at most once, early in an animal's time with the family, and only if its nature leans that way.
+    if (!a.behavior && state.year - (a.homes.find((h) => h.hh !== 'shelter' && h.hh !== 'stable')?.from ?? state.year) <= 3) {
+      const fits = Object.entries(BEHAVIORS).filter(([, b]) => b.species.includes(a.speciesId) && b.who(a.temperament) && (!b.young || ['puppy', 'young dog'].includes(zoo.stageOf(a, state))));
+      if (fits.length && roll.chance(0.45)) a.behavior = { id: roll.pick(fits)[0], since: state.year, progress: 0 };
     }
-    const b = behaviourOf(a);
-    if (b && b.since === state.year && p.age >= 14) queue('animal_behaviour', { pet: a.id, words: { problem: b.text } });
+    const b = behaviorOf(a);
+    if (b && b.since === state.year && p.age >= 14) queue('animal_behavior', { pet: a.id, words: { problem: b.text } });
   }
   // A break-up: someone has to decide about the animals they loved too.
   for (const a of zoo.allAnimals(state)) {

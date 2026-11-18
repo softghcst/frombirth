@@ -29,8 +29,8 @@ function bars(rec, mine, theirs, note = '') {
   const total = Math.max(1, mine + theirs);
   const a = Math.round(mine / total * 1000) / 10;
   const b = Math.round((100 - a) * 10) / 10;
-  return `<div class="pol-result"><span>You</span><span class="pol-track"><i style="width:${a}%;background:${rec.colour}"></i></span><span class="num">${a}%</span><span class="num">${num(mine)}</span></div>
-    <div class="pol-result"><span>${esc(rec.rival)}</span><span class="pol-track"><i style="width:${b}%;background:${rec.rivalColour}"></i></span><span class="num">${b}%</span><span class="num">${num(theirs)}</span></div>${note}`;
+  return `<div class="pol-result"><span>You</span><span class="pol-track"><i style="width:${a}%;background:${rec.color}"></i></span><span class="num">${a}%</span><span class="num">${num(mine)}</span></div>
+    <div class="pol-result"><span>${esc(rec.rival)}</span><span class="pol-track"><i style="width:${b}%;background:${rec.rivalColor}"></i></span><span class="num">${b}%</span><span class="num">${num(theirs)}</span></div>${note}`;
 }
 
 /** One screen of election night. Resolves when the player moves on. */
@@ -43,7 +43,7 @@ function nightStep(html, button) {
 
 /** A general election night: the exit poll, the seats as they are declared, and who will govern. */
 export async function generalNight(rec) {
-  const row = (x, n, of) => `<div class="pol-result"><span>${x.mine ? '<strong>' : ''}${esc(x.name)}${x.mine ? '</strong>' : ''}</span><span class="pol-track"><i style="width:${Math.round(n / of * 100)}%;background:${x.colour}"></i></span><span class="num">${n}</span><span class="num">${x.mine ? 'yours' : ''}</span></div>`;
+  const row = (x, n, of) => `<div class="pol-result"><span>${x.mine ? '<strong>' : ''}${esc(x.name)}${x.mine ? '</strong>' : ''}</span><span class="pol-track"><i style="width:${Math.round(n / of * 100)}%;background:${x.color}"></i></span><span class="num">${n}</span><span class="num">${x.mine ? 'yours' : ''}</span></div>`;
   await nightStep(`<div class="eyebrow">General election · ${rec.year}</div><h2>The polls have closed</h2>
     <p class="body">The last published poll had your party on ${rec.lastPoll ?? '?'}%. The exit poll says:</p>
     ${rec.exit.map((x) => `<div class="kv"><span>${x.mine ? '<strong>' : ''}${esc(x.name)}${x.mine ? ' (yours)</strong>' : ''}</span><span>${x.share}%</span></div>`).join('')}
@@ -59,7 +59,7 @@ export async function generalNight(rec) {
   }
   const kind = { majority: 'a majority government', coalition: 'a coalition', minority: 'a minority government' }[rec.govt.kind] ?? rec.govt.kind;
   await nightStep(`<div class="eyebrow">${rec.year} · General election</div><h2>${rec.won ? `You are ${esc(rec.title)}` : rec.inGovt ? 'In government, but not leading it' : 'Your party has lost'}</h2>
-    ${rec.parties.map((x) => `<div class="pol-result"><span>${x.mine ? '<strong>' : ''}${esc(x.name)}${x.mine ? '</strong>' : ''}</span><span class="pol-track"><i style="width:${x.share}%;background:${x.colour}"></i></span><span class="num">${x.share}%</span><span class="num">${x.seats} seats</span></div>`).join('')}
+    ${rec.parties.map((x) => `<div class="pol-result"><span>${x.mine ? '<strong>' : ''}${esc(x.name)}${x.mine ? '</strong>' : ''}</span><span class="pol-track"><i style="width:${x.share}%;background:${x.color}"></i></span><span class="num">${x.share}%</span><span class="num">${x.seats} seats</span></div>`).join('')}
     <div class="kv" style="margin-top:8px"><span>Votes cast</span><span>${num(rec.total)} (${rec.turnout}% turnout)</span></div>
     <div class="kv"><span>The government</span><span>${esc(rec.govt.head)}, ${esc(rec.govt.lead)}: ${kind}${rec.govt.partners.length ? ` with ${esc(rec.govt.partners.join(' and '))}` : ''}</span></div>`, 'Continue');
 }
