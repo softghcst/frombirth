@@ -1065,7 +1065,7 @@ def add_pupils():
 # centre (the outline thickens or thins with it); then, with a gap, the two are moved apart or together so the space
 # between their inner corners is that (most eyes sit about EYE_GAP apart).
 EYE_GAP = 27.5
-RESIZE_EYES = {'eyes_29': (0.74, EYE_GAP),
+RESIZE_EYES = {'eyes_29': (0.78, EYE_GAP),
                'eyes_43': (0.91, EYE_GAP), 'eyes_44': (1.15, EYE_GAP), 'eyes_45': (1.06, EYE_GAP), 'eyes_46': (1.15, EYE_GAP),
                'eyes_47': (1.15, EYE_GAP), 'eyes_48': (1.06, EYE_GAP), 'eyes_49': (1.15, EYE_GAP), 'eyes_50': (1.06, EYE_GAP)}
 
@@ -1114,6 +1114,42 @@ def resize_eyes():
         text = text.replace('data-pathways="1"', 'data-pathways="1" data-resized="1"', 1)
         with open(path, 'w', encoding='utf-8') as out:
             out.write(text)
+        done.append(name)
+    return done
+
+
+# Crease lines (a separate line above each eye, wholly above its opening): None removes them (eyes 25 has a crease in
+# its lid already, so the second one read as a double eyelid); a number moves them down by that much, nearer the lid.
+CREASES = {'eyes_25': None, 'eyes_18': 6}
+
+
+def fix_creases():
+    """Applies CREASES to any listed file that has not had it. -> the names changed"""
+    done = []
+    for name, down in CREASES.items():
+        path = os.path.join(ASSETS, 'eyes', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-creases="1"' in text:
+            continue
+        top = min(y for m in re.finditer(r'<path style="fill:var\(--eye-(?:white|color)[^"]*"[^>]*?\sd="([^"]*)"', text)
+                  for poly in flatten(parse_path(m.group(1))) for _, y in poly)
+
+        def crease(m):
+            polys = flatten(parse_path(m.group(2)))
+            if not polys or max(y for poly in polys for _, y in poly) >= top:
+                return m.group(0)  # part of the eye itself
+            if down is None:
+                return ''
+            moved = [(c, [v + down if i % 2 else v for i, v in enumerate(a)]) for c, a in parse_path(m.group(2))]
+            return m.group(1) + path_d(moved) + m.group(3)
+        changed = re.sub(r'(<path style="[^"]*"[^>]*?\sd=")([^"]*)("[^>]*/>)', crease, text)
+        if changed == text:
+            continue
+        changed = changed.replace('data-pathways="1"', 'data-pathways="1" data-creases="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(changed)
         done.append(name)
     return done
 
@@ -1498,6 +1534,8 @@ def main(argv):
     lined = weigh_lines() + weigh_lines('eyes', recolor=False) + weigh_lines('lips', recolor=False)
     if lined:
         print(f'made the lines of {len(lined)} part(s) adjustable')
+    for name in fix_creases():
+        print(f'fixed the creases of {name}')
     for name in resize_eyes():
         print(f'resized {name}')
     for name in add_pupils():

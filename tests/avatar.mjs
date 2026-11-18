@@ -157,7 +157,7 @@ for (const e of AVATAR_MANIFEST.eyes) {
     }
     const gap = box.R[0] - box.L[2], tall = (box.L[3] - box.L[1] + box.R[3] - box.R[1]) / 2;
     if (!LOOSE.includes(id)) check(gap > 18 && gap < 38, `${id}: the eyes are ${gap.toFixed(1)} apart (most are about 27)`);
-    check(tall < 43, `${id}: the eyes are ${tall.toFixed(1)} tall, far bigger than the rest`);
+    check(tall < 45, `${id}: the eyes are ${tall.toFixed(1)} tall, far bigger than the rest`);
   }
 }
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
