@@ -1120,7 +1120,7 @@ def resize_eyes():
 
 # Crease lines (a separate line above each eye, wholly above its opening): None removes them (eyes 25 has a crease in
 # its lid already, so the second one read as a double eyelid); a number moves them down by that much, nearer the lid.
-CREASES = {'eyes_25': None, 'eyes_18': 6}
+CREASES = {'eyes_25': None, 'eyes_18': 6, 'eyes_19': 7, 'eyes_20': 5}
 
 
 def fix_creases():
