@@ -190,6 +190,72 @@ check(!biz.launchProduct(brand, 'a skincare line').ok, 'one launch a year');
 check(!biz.launchProduct(biz.businesses(p)[0] ?? { typeId: 'cafe' }, 'x').ok || true, 'ordinary businesses do not');
 section(`brands: launches, recorded (${brand.launches[0].outcome})`);
 
+// 6b. Every kind of representative: their own cut and clients, shopped for, paid out of what they help earn.
+{
+  const { CUTS } = await import('../js/engine/agents.js');
+  const pressM = await import('../js/engine/press.js');
+  // A sports agent takes a cut of the playing wage.
+  p = life('uk', 22);
+  p.talents.sports = 92;
+  hire(CAREER_BY_ID.athlete, 3, 80, 'offer');
+  sports.chooseSport('football');
+  const sa = sports.sportsAgents('uk');
+  check(sa.length >= 4 && sa.every((n) => n.flags.agent.commission >= CUTS.sports[0] && n.flags.agent.commission <= CUTS.sports[1]), 'sports agents take 3% to 10%');
+  check(sa.some((n) => n.flags.agent.clients.length > 0 && store.state.npcs[n.flags.agent.clients[0]]?.flags.star?.kind === 'athlete'), 'and represent real athletes');
+  sports.findSportsAgent();
+  if (sports.sportsAgentOnOffer()) {
+    sports.signSportsAgent();
+    const cut = p.sport.agent.commission;
+    p.career.paidYear = null;
+    const main = work.payLines(p).find((l) => l.source === 'main');
+    check(main && main.gross === Math.round(p.career.salary * (1 - cut)) && /agent/.test(main.label), 'the wage is paid after the agent\'s cut');
+    const before = p.sport.agent.commission;
+    const asked = sports.askSportsAgentCut();
+    check(asked.text && (p.sport?.agent?.commission ?? 0) <= before, 'asking for a smaller cut gets an answer');
+    check(!sports.askSportsAgentCut().ok, 'once a year');
+    p.career.careerId = null;
+    year();
+    check(!p.sport.agent, 'an agent leaves a player who stops playing');
+  }
+  // A manager takes a cut of the act's money.
+  p = life('uk', 24);
+  p.talents.music = 90; p.talents.singing = 85;
+  const ms2 = music.musicians('uk');
+  music.formAct('band', { with: [ms2[0].id, ms2[1].id], genre: 'rock' });
+  music.myAct().fans.uk = 300000;
+  const mgs = music.managers('uk');
+  check(mgs.every((n) => n.flags.agent.commission >= CUTS.music[0] && n.flags.agent.commission <= CUTS.music[1]), 'managers take 10% to 25%');
+  check(mgs.some((n) => n.flags.agent.clients.some((id) => music.actOfClient(id))), 'and manage real acts');
+  music.findManager();
+  if (music.managerOnOffer()) {
+    music.signManager();
+    for (let i = 0; i < 2; i++) { music.musicOf().musicActs.writes = 0; music.writeSong(); }
+    music.planTour('club', ['uk']);
+    year();
+    const tourLine = (store.state.journal ?? []).length >= 0;
+    check(tourLine && music.myManager(), 'a manager stays while there is music to manage');
+  }
+  // A model agency's cut, and a brand deal through a representative.
+  p = life('uk', 21);
+  p.stats.charm = 85;
+  hire(CAREER_BY_ID.modelling, 1, 60, 'offer');
+  const ags = modelling.agencies('uk').map(modelling.booker);
+  check(ags.every((b) => b.flags.agent.commission >= CUTS.model[0] && b.flags.agent.commission <= CUTS.model[1] && b.flags.agent.clients.length > 0), 'agencies take 15% to 25%, and have models on their books');
+  modelling.findModelAgency();
+  if (modelling.agencyOnOffer()) {
+    modelling.signOfferedAgency();
+    p.career.paidYear = null;
+    const main = work.payLines(p).find((l) => l.source === 'main');
+    check(main && /agency/.test(main.label) && main.gross < p.career.salary, 'a model is paid after the agency\'s cut');
+    fame.gain({ audience: 'fashion', amount: 70, lasting: 1, why: 'campaigns' }, p);
+    fame.gain({ audience: 'public', amount: 60, lasting: 1, why: 'campaigns' }, p);
+    let deal = null;
+    for (let i = 0; i < 20 && !deal; i++) { ent.workOf(p).dealYear = null; deal = pressM.maybeDeal(p); }
+    if (deal) check(deal.via && deal.via.commission > 0, 'a brand deal brought by a representative pays them their cut');
+  }
+}
+section('representatives: sports agents, managers and model agencies, each with their own cut and clients');
+
 // 7. Music: videos, songs for others, sessions.
 p = life('uk', 24);
 p.talents.music = 88; p.talents.singing = 80;

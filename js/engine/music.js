@@ -19,6 +19,7 @@ import { store, player, country, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { BAND_WORDS, SONG_WORDS, RELEASE_TYPES, VENUES, LABEL_NAMES, MUSIC_DEAL, ORG_WORDS } from '../data/fame.js';
 import { makeNpc } from './npcFactory.js';
+import { makeAgents, ensureTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
 import { POSITIONS, GENRES, GENRE_BY_ID, genreOf, genresIn, LABEL_KINDS, LABEL_SOUNDS, LABEL_SOUND_WORDS, BAND_SEARCH } from '../data/music.js';
 import { resolve } from './conditions.js';
 import { levelOf } from './skills.js';
@@ -168,6 +169,64 @@ export function labels(countryId) {
 export const roster = (labelId) => Object.values(M().acts).filter((a) => a.labelId === labelId || a.deal?.labelId === labelId).sort((x, y) => fanTotal(y) - fanTotal(x));
 export const labelSound = (l) => (l.sound ? l.sound.map((id) => GENRE_BY_ID[id]?.name ?? id).join(', ') : 'Every kind of music');
 
+// ---------- Managers ----------
+
+/** A country's music managers: people with their own cut, their pull with labels and promoters, and acts on their books. */
+export function managers(countryId) {
+  const E = M();
+  E.managers ??= {};
+  if (!E.managers[countryId]) {
+    rivals(countryId);
+    const acts = Object.values(E.acts).filter((a) => a.npc && a.countryId === countryId && a.status === 'active').sort((x, y) => fanTotal(y) - fanTotal(x));
+    E.managers[countryId] = makeAgents('music', countryId, { country: COUNTRIES[countryId], makeNpc, words: ORG_WORDS, agencyNames: ['{S} Artist Management', '{W} Management', '{S} & {S2}', '{W} Music Management'],
+      clients: (tier) => (tier === 'top' ? acts.splice(0, 3) : acts.splice(rng.int(0, Math.max(0, acts.length - 3)), 2)).map((a) => { a.managerOf = true; return store.state.npcs[members(a)[0]?.who]; }).filter(Boolean) });
+  }
+  return E.managers[countryId].map((id) => store.state.npcs[id]).filter((n) => n?.alive !== false).map((n) => { ensureTerms(n); return n; });
+}
+/** The act a manager's client fronts, for showing who they manage. */
+export const actOfClient = (npcId) => Object.values(M().acts).find((a) => a.members.some((m) => m.who === npcId && m.to == null)) ?? null;
+const managerOf = (p = player()) => musicOf(p).manager ?? null;
+export const myManager = managerOf;
+export function managersWilling(p = player()) {
+  const a = myAct(p);
+  const worth = a ? actPerf(a) * 0.5 + Math.log10(fanTotal(a) + 1) * 8 : 0;
+  return managers(p.countryId).filter((n) => n.flags.agent.standard <= worth && n.id !== managerOf(p)?.npcId);
+}
+export function findManager() {
+  const p = player();
+  if (!myAct(p)) return result(false, 'Managers manage acts. Start or join one first.', 'neutral');
+  const r = lookFor('music', managersWilling(p), p);
+  if (r.error) return result(false, r.error, 'neutral');
+  if (r.none) return result(false, 'No manager will take you on yet. Fans and good songs change that.', 'neutral');
+  return result(true, `${r.agent.firstName} ${r.agent.lastName} of ${r.agent.flags.agent.agency} would manage you, for ${Math.round(r.agent.flags.agent.commission * 100)}% of what your music earns you.`, 'neutral');
+}
+export const managerOnOffer = () => offered('music');
+export const managerTriesLeft = () => triesLeft('music');
+export function passOnManager() { clearOffer('music'); return result(true, 'You say no.', 'neutral'); }
+export function signManager() {
+  const p = player();
+  const n = offered('music', p);
+  if (!n) return result(false, 'No manager is on offer.', 'neutral');
+  if (managerOf(p)) dropManager();
+  const a = n.flags.agent;
+  musicOf(p).manager = { npcId: n.id, agency: a.agency, commission: a.commission, clout: a.clout, since: year() };
+  a.clients.push('player');
+  if (!p.npcIds.includes(n.id)) { p.npcIds.push(n.id); n.role = 'colleague'; }
+  n.flags.title = 'Your manager';
+  clearOffer('music', p);
+  return result(true, `${n.firstName} ${n.lastName} manages you now: labels, promoters, and ${Math.round(a.commission * 100)}% of what your music earns you.`);
+}
+export function dropManager() {
+  const p = player();
+  const mg = managerOf(p);
+  if (!mg) return result(false, 'You have no manager.', 'neutral');
+  const n = store.state.npcs[mg.npcId];
+  if (n?.flags.agent) { n.flags.agent.clients = n.flags.agent.clients.filter((c) => c !== 'player'); n.flags.title = 'Your former manager'; }
+  musicOf(p).manager = null;
+  return result(true, 'You and your manager part ways.', 'neutral');
+}
+export const askManagerCut = () => { const p = player(); const a = myAct(p); const r = askLowerCut('music', managerOf(p), a ? Math.log10(fanTotal(a) + 1) * 12 - 10 : 0, p); if (r.dropped) dropManager(); return r; };
+
 // ---------- Bands looking for people ----------
 
 const posLow = (k) => (k === 'producer' ? 'DJ and producer' : POSITIONS[k]?.name.toLowerCase() ?? k);
@@ -301,7 +360,7 @@ export function sendDemo(labelId) {
   const songs = musicOf(p).songs.sort((x, y) => y.q - x.q).slice(0, 3);
   const songQ = songs.length ? songs.reduce((s2, x) => s2 + x.q, 0) / songs.length : 30;
   const fits = !l.sound || l.sound.includes(genreOf(a.genre).id);
-  const score = songQ * 0.45 + actPerf(a) * 0.25 + genreFit(a) * 0.15 + Math.log10(fanTotal(a) + 1) * 4 + (fits ? 6 : -15) - (l.tier === 'major' ? 18 : 0);
+  const score = songQ * 0.45 + actPerf(a) * 0.25 + genreFit(a) * 0.15 + Math.log10(fanTotal(a) + 1) * 4 + (fits ? 6 : -15) - (l.tier === 'major' ? 18 : 0) + (managerOf(p)?.clout ?? 0) * 6;
   if (!rng.chance(clamp((score - 45) / 25, 0.02, 0.85))) return result(false, !fits ? `${l.name} sends it back: "Not our sound."` : rng.pick(['No reply.', `${l.name} passes, politely.`, '"Keep us posted." Which means no.']));
   offerFrom(a, l);
   return result(true, `${l.name} wants to sign ${a.name}.`);
@@ -312,7 +371,8 @@ function offerFrom(a, l) {
   const c = COUNTRIES[a.countryId];
   const t = l.terms ?? LABEL_KINDS[l.tier];
   const fans = fanTotal(a);
-  a.offer = { labelId: l.id, advance: Math.round(localWage(Math.min(400000, 3000 + fans * 0.9) * (t.advance ?? 1), c)), royalty: Math.round((t.royalty[0] + rng.next() * (t.royalty[1] - t.royalty[0])) * 100) / 100,
+  const mg = a.members.some((m) => m.who === 'player' && m.to == null) ? managerOf() : null;
+  a.offer = { labelId: l.id, advance: Math.round(localWage(Math.min(400000, 3000 + fans * 0.9) * (t.advance ?? 1) * (1 + (mg?.clout ?? 0) * 0.25), c)), royalty: Math.round((t.royalty[0] + rng.next() * (t.royalty[1] - t.royalty[0])) * 100) / 100,
     albums: rng.int(t.albums[0], t.albums[1]), year: year(), asked: false, lawyer: false };
   a.history.push({ year: year(), text: `${l.name} offered a record deal.` });
 }
@@ -560,7 +620,8 @@ function runTour(t) {
   for (const d of t.dates) {
     const here = a.fans[d.countryId] ?? 0;
     const perCity = here / Math.max(1, t.dates.filter((x) => x.countryId === d.countryId).length);
-    const want = perCity * (0.08 + rng.next() * 0.1) + rng.int(0, 60);
+    const mine = a.members.some((m) => m.who === 'player' && m.to == null);
+    const want = (perCity * (0.08 + rng.next() * 0.1) + rng.int(0, 60)) * (mine ? 1 + (managerOf()?.clout ?? 0) * 0.12 : 1); // a manager gets the shows promoted
     d.sold = Math.round(Math.min(d.capacity, want));
     d.gross = Math.round(wageIn(v.price, COUNTRIES[d.countryId], COUNTRIES[a.countryId]) * d.sold); // in the act's own money
     gross += Math.round(d.gross * (COUNTRIES[t.dates[0].countryId] === COUNTRIES[d.countryId] ? 1 : 1));
@@ -580,7 +641,8 @@ function runTour(t) {
 function maybeDealOffer(a) {
   if (a.deal || a.npc || a.status !== 'active') return;
   const fans = fanTotal(a);
-  if (fans < 2500 || !rng.chance(clamp(fans / 60000, 0.05, 0.6))) return;
+  const mc = managerOf()?.clout ?? 0; // a manager brings labels to the act
+  if (fans < 2500 / (1 + mc) || !rng.chance(clamp(fans / 60000 * (1 + mc * 0.6), 0.05, 0.75))) return;
   const ls = labels(a.countryId);
   const g = genreOf(a.genre).id;
   const l = fans > 40000 ? ls.find((x) => x.tier === 'major') : rng.pick(ls.filter((x) => x.tier === 'major' || x.sound?.includes(g)).concat(ls[0]));
@@ -652,6 +714,9 @@ export function musicLines(p = player()) {
       out.push({ source: `tour:${t.id}`, label: `${t.title}`, gross: Math.round(t.net / Math.max(1, members(a, lived).length)), tour: t.id });
     }
   }
+  // A manager takes their cut of the act's money (not of songs written for others).
+  const mg = managerOf(p);
+  if (mg) for (const l of out) if (/^(adv|roy|tour):/.test(l.source)) { l.gross = Math.round(l.gross * (1 - mg.commission)); l.label += ` (after your manager's ${Math.round(mg.commission * 100)}%)`; }
   return out;
 }
 export function markMusicPaid(p = player()) {
@@ -798,6 +863,12 @@ export function tickMusic() {
     if (members(a).length < 2) { a.status = 'split'; a.history.push({ year: year(), text: `${a.name} split up.` }); lines.push(`${a.name} is finished. The records are still the records.`); }
   }
   if (a) maybeDealOffer(a);
+  // A manager with nothing to manage moves on.
+  const mg = managerOf(p);
+  if (mg && mg.since <= year() - 2 && (!a || !a.releases.some((id) => (release(id)?.made ?? 0) >= year() - 3))) {
+    lines.push(`${store.state.npcs[mg.npcId]?.firstName ?? 'Your manager'} has stopped managing you: nothing new in three years.`);
+    dropManager();
+  }
   // A deal ends when its albums are delivered.
   if (a?.deal && a.deal.albumsOwed <= 0) { a.history.push({ year: year(), text: `Finished the deal with ${ent().orgs[a.deal.labelId]?.name}.` }); a.deal = null; lines.push(`${a.name} has delivered every album the deal asked for, and is free.`); }
   // Old rival records are forgotten; the player's acts' are kept.

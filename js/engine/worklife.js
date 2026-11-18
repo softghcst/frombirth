@@ -381,7 +381,10 @@ export function payLines(p = player()) {
     else if (leave === 'sick' && !law.sickPay) gross = Math.round(gross * 0.4); // paid for the part of the year worked
     else if (leave === 'parental') gross = Math.round(gross * (1 - Math.max(0, 52 - law.parentalWeeks) / 52 * 0.6));
     if (car.id === 'author' && published(p).length) gross = 0; // a published author is paid by their books (bookLines)
-    if (gross > 0) lines.push({ source: 'main', label: c.title, gross });
+    // An athlete's agent and a model's agency take their cut of the wage they negotiated.
+    const cut = car.id === 'athlete' ? p.sport?.agent?.commission : car.id === 'modelling' ? (p.fame?.model?.agencyId ? p.fame.model.terms?.commission : null) : null;
+    if (cut && gross > 0) { gross = Math.round(gross * (1 - cut)); lines.push({ source: 'main', label: `${c.title} (after your ${car.id === 'athlete' ? 'agent' : 'agency'}'s ${Math.round(cut * 100)}%)`, gross }); }
+    else if (gross > 0) lines.push({ source: 'main', label: c.title, gross });
   }
   if (c.partTime?.salary) lines.push({ source: 'parttime', label: c.partTime.title, gross: c.partTime.salary });
   for (const s of c.sides) lines.push({ source: `side:${s.id}`, label: s.title, gross: s.salary });

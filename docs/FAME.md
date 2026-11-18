@@ -96,6 +96,20 @@ names are with the leading agencies). Looking for an agent shows one at a time; 
 again, but only twice a year for each kind. Signing a new agent replaces the old one; work already signed keeps
 the terms it was signed on (each contract and book records its agent's cut).
 
+### Every kind of representative
+
+The same rules hold for sports agents (3–10%, `sports.js`), music managers (10–25%, `music.js`) and modeling
+agencies' head bookers (15–25%, `modelling.js`), as well as talent and literary agents. Each has clients you can look
+through (athletes with their ratings, acts with their fans, models with their covers), is shopped for one at a time
+twice a year, and takes their cut of what they help earn: an athlete's or model's wage is paid after it, a manager
+takes theirs from advances, royalties and tours. What they do for it: sports agents find bigger clubs and negotiate
+a raise on every move; managers bring labels, bigger advances and bigger crowds; agencies get better castings.
+
+Over time: any representative can be asked for a smaller cut once a year (a client worth it gets it; pushing without
+the name can end it), can be let go, and lets go a client who stops working (two years without a job through a
+talent agent, four without a book sold, a manager with nothing new in three years, an athlete who stops playing).
+The best-connected representative brings brand deals, bigger ones, and takes their cut of those too.
+
 ## Also in the engines
 
 - **Sport**: football, basketball, rugby and cricket leagues (men's and women's, from their own founding years);

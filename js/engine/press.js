@@ -12,7 +12,7 @@ import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, uid } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { BRANDS, AGENT_COMMISSION, PUBLICIST_FEE, ACCURACY } from '../data/fame.js';
-import { ensureTerms, look, offered, clearOffer, triesLeft } from './agents.js';
+import { ensureTerms, look, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
 import { fameOf, gain, regard, recognitionIn, exists } from './fame.js';
 import { ent, org, orgsOf, production, workOf, proCredits, playerSkill, article, pool } from './entertainment.js';
 import { makeNpc } from './npcFactory.js';
@@ -71,6 +71,15 @@ export function signAgent(npcId) {
   const text = `${x.npc.firstName} ${x.npc.lastName} at ${x.org.name} represents you now, for ${Math.round(f.agent.commission * 100)}% of what you earn through them.`;
   log(text, 'system', 'good');
   return result(true, text);
+}
+
+/** Asks the agent for a smaller cut, once a year: a client who is worth it gets it. */
+export function askAgentCut() {
+  const p = player();
+  const f = pr(p);
+  const r = askLowerCut('talent', f.agent, standing(p) - 20, p);
+  if (r.dropped) endAgent();
+  return r;
 }
 
 export function endAgent() {
@@ -227,13 +236,23 @@ export function answer(articleId, how) {
 // ---------- Endorsements ----------
 
 /** A brand deal offered, when someone is known and liked enough. Once a year at most. */
+/** The best-connected of the player's representatives: agents, a sports agent, a manager, a modeling agency. They bring brand deals. */
+export function bestRep(p = player()) {
+  const reps = [pr(p).agent && { ...pr(p).agent, kind: 'agent' }, p.sport?.agent && { ...p.sport.agent, kind: 'sports agent' }, p.fame?.manager && { ...p.fame.manager, kind: 'manager' },
+    p.fame?.model?.agencyId && p.fame.model.terms && { ...p.fame.model.terms, kind: 'agency' }].filter(Boolean);
+  return reps.sort((a, b) => (b.clout ?? 1) - (a.clout ?? 1))[0] ?? null;
+}
+
 export function maybeDeal(p = player()) {
   const f = pr(p);
   const known = recognitionIn(p.countryId, p);
-  if (known < 30 || fameOf(p).favour < 45 || f.dealYear === year() || !exists('commercial')) return null;
-  if (!rng.chance(clamp((known - 25) / 120 + (fameOf(p).favour - 50) / 200, 0.03, 0.5))) return null;
+  const rep = bestRep(p);
+  const clout = rep?.clout ?? 0;
+  if (known < 30 - clout * 10 || fameOf(p).favour < 45 || f.dealYear === year() || !exists('commercial')) return null;
+  if (!rng.chance(clamp((known - 25) / 120 + (fameOf(p).favour - 50) / 200 + clout * 0.08, 0.03, 0.6))) return null;
   f.dealYear = year();
-  const d = { id: uid('deal'), brand: rng.pick(BRANDS), years: rng.int(1, 3), fee: K(4000 + known * known * 6), from: year() + 1, status: 'offered', paidYears: [], hours: 3 };
+  const d = { id: uid('deal'), brand: rng.pick(BRANDS), years: rng.int(1, 3), fee: K((4000 + known * known * 6) * (1 + clout * 0.25)), from: year() + 1, status: 'offered', paidYears: [], hours: 3,
+    via: rep ? { npcId: rep.npcId, kind: rep.kind, commission: rep.commission } : null };
   f.deals.push(d);
   return d;
 }
@@ -256,7 +275,7 @@ export function declineDeal(id) {
 export function dealLines(p = player()) {
   const lived = year() - 1;
   return pr(p).deals.filter((d) => d.status === 'signed' && lived >= d.from && lived < d.from + d.years && !d.paidYears.includes(lived))
-    .map((d) => ({ source: `deal:${d.id}:${lived}`, label: `${d.brand} (brand deal)`, gross: d.fee, deal: d.id, year: lived }));
+    .map((d) => ({ source: `deal:${d.id}:${lived}`, label: `${d.brand} (brand deal${d.via ? `, after your ${d.via.kind}'s ${Math.round(d.via.commission * 100)}%` : ''})`, gross: Math.round(d.fee * (1 - (d.via?.commission ?? 0))), deal: d.id, year: lived }));
 }
 export function markDealsPaid(p = player()) {
   const lived = year() - 1;
@@ -280,7 +299,13 @@ export function tickPress(p = player()) {
   const r = maybeRumour(p);
   if (r) lines.push(`A story in the press: "${r.text}" (${ACCURACY[r.accuracy].toLowerCase()})`);
   const d = maybeDeal(p);
-  if (d) lines.push(`${d.brand} would like you as the face of their brand.`);
+  if (d) lines.push(`${d.brand} would like you as the face of their brand${d.via ? `; your ${d.via.kind} brought them to you` : ''}.`);
+  // An agent whose client has not worked through them in two years lets them go.
+  if (f.agent && f.agent.since <= year() - 2 && !f.contracts.some((c) => ['signed', 'completed', 'done'].includes(c.status) && c.age >= p.age - 2)) {
+    const n = store.state.npcs[f.agent.npcId];
+    lines.push(`${n ? `${n.firstName} ${n.lastName}` : 'Your agent'} has dropped you: two years without a job through them.`);
+    endAgent();
+  }
   // A relationship becomes news only if the person lives openly, or sometimes if they are guarded.
   const partner = livingNpcs().find((n) => ['partner', 'spouse'].includes(n.role) && !n.flags.inThePress);
   if (partner && recognitionIn(p.countryId, p) >= 20 && (fameOf(p).privacy === 'open' || (fameOf(p).privacy === 'guarded' && rng.chance(0.25)))) {

@@ -17,6 +17,8 @@ import { SPORTS, TEAM_WORDS, EVENT_WORDS, WORLD_GAMES } from '../data/fame.js';
 import { makeNpc } from './npcFactory.js';
 import { gain, regard } from './fame.js';
 import { registerEmployer } from './employers.js';
+import { makeAgents, ensureTerms, look, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
+import { ORG_WORDS } from '../data/fame.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
@@ -119,6 +121,62 @@ function joinClub(p, t) {
   p.career.employerId = t.employerId;
 }
 
+// ---------- Sports agents ----------
+
+/** A country's sports agents: people with their own cut, pull, and athletes on their books. */
+export function sportsAgents(countryId) {
+  const st = S();
+  st.agents ??= {};
+  if (!st.agents[countryId]) {
+    const stars = Object.values(st.leagues).filter((L) => L.countryId === countryId).flatMap((L) => L.teams.map((t) => store.state.npcs[t.star])).filter(Boolean)
+      .concat(Array.from({ length: 10 }, () => athleteNpc(countryId, rng.around(76, 10))))
+      .sort((a, b) => npcRating(b.id) - npcRating(a.id));
+    st.agents[countryId] = makeAgents('sports', countryId, { country: COUNTRIES[countryId], makeNpc, words: ORG_WORDS, agencyNames: ['{S} Sports Management', '{W} Athletes', '{S} & {S2} Sport', 'Team {W} Management'],
+      clients: (tier) => (tier === 'top' ? stars.splice(0, 3) : stars.splice(rng.int(0, Math.max(0, stars.length - 3)), 2)) });
+  }
+  return st.agents[countryId].map((id) => store.state.npcs[id]).filter((n) => n?.alive !== false).map((n) => { ensureTerms(n); return n; });
+}
+/** Agents who would take on this athlete: their record has to clear the agent's standard. */
+export function sportsAgentsWilling(p = player()) {
+  const r = rating(p) * 0.5 + (p.sport?.titles.length ?? 0) * 4 + (p.career.level ?? 0) * 8;
+  return sportsAgents(p.countryId).filter((n) => n.flags.agent.standard <= r && n.id !== p.sport?.agent?.npcId);
+}
+export function findSportsAgent() {
+  const p = player();
+  if (!isAthlete(p)) return result(false, 'Agents represent professional athletes.', 'neutral');
+  const r = look('sports', sportsAgentsWilling(p), p);
+  if (r.error) return result(false, r.error, 'neutral');
+  if (r.none) return result(false, 'No agent will take you on yet. Results change that.', 'neutral');
+  const a = r.agent.flags.agent;
+  return result(true, `${r.agent.firstName} ${r.agent.lastName} of ${a.agency} would represent you, for ${Math.round(a.commission * 100)}% of your playing wage.`, 'neutral');
+}
+export const sportsAgentOnOffer = () => offered('sports');
+export const sportsTriesLeft = () => triesLeft('sports');
+export function passOnSportsAgent() { clearOffer('sports'); return result(true, 'You say no.', 'neutral'); }
+export function signSportsAgent() {
+  const p = player();
+  const n = offered('sports', p);
+  if (!n || !p.sport) return result(false, 'No agent is on offer.', 'neutral');
+  if (p.sport.agent) dropSportsAgent();
+  const a = n.flags.agent;
+  p.sport.agent = { npcId: n.id, agency: a.agency, commission: a.commission, clout: a.clout, since: year() };
+  a.clients.push('player');
+  if (!p.npcIds.includes(n.id)) { p.npcIds.push(n.id); n.role = 'colleague'; }
+  n.flags.title = 'Your sports agent';
+  clearOffer('sports', p);
+  return result(true, `${n.firstName} ${n.lastName} represents you now: transfers, contracts, and ${Math.round(a.commission * 100)}% of your wage.`);
+}
+export function dropSportsAgent() {
+  const p = player();
+  const ag = p.sport?.agent;
+  if (!ag) return result(false, 'You have no agent.', 'neutral');
+  const n = store.state.npcs[ag.npcId];
+  if (n?.flags.agent) { n.flags.agent.clients = n.flags.agent.clients.filter((c) => c !== 'player'); n.flags.title = 'Your former sports agent'; }
+  p.sport.agent = null;
+  return result(true, 'You and your agent part ways.', 'neutral');
+}
+export const askSportsAgentCut = () => { const p = player(); const r = askLowerCut('sports', p.sport?.agent, rating(p) - 40 + (p.sport?.titles.length ?? 0) * 5, p); if (r.dropped) dropSportsAgent(); return r; };
+
 export function acceptTransfer() {
   const p = player();
   const o = p.sport?.offer;
@@ -127,8 +185,12 @@ export function acceptTransfer() {
   p.sport.teamId = o.teamId;
   p.sport.offer = null;
   joinClub(p, t);
+  // An agent negotiates the move: a better wage at the new club.
+  const ag = p.sport.agent;
+  const rise = ag ? 0.1 + 0.1 * (ag.clout ?? 1) : 0.05;
+  p.career.salary = Math.round(p.career.salary * (1 + rise));
   milestone(`Transferred to ${t.name}.`, 'career');
-  return result(true, `You move to ${t.name}.`);
+  return result(true, `You move to ${t.name}${ag ? `; ${store.state.npcs[ag.npcId]?.firstName ?? 'your agent'} gets you a ${Math.round(rise * 100)}% raise` : ''}.`);
 }
 export function declineTransfer() { if (player().sport) player().sport.offer = null; return result(true, 'You stay where you are.', 'neutral'); }
 
@@ -383,6 +445,7 @@ function athleteYear(p) {
   const forYear = year() - 1;
   if (ps.retiredYear) return lines;
   if (!isAthlete(p)) {
+    if (ps.agent) { lines.push(`${store.state.npcs[ps.agent.npcId]?.firstName ?? 'Your agent'} stops representing you: there is no playing career to manage.`); dropSportsAgent(); }
     if (ps.seasons.length) { ps.retiredYear = forYear; milestone(`Retired from ${SPORTS[ps.sport].name.toLowerCase()} after ${ps.seasons.length} ${ps.seasons.length === 1 ? 'season' : 'seasons'}.`, 'career'); lines.push(`Your playing days are over: ${ps.seasons.length} seasons of ${SPORTS[ps.sport].name.toLowerCase()}.`); }
     else ps.retiredYear = forYear;
     return lines;
@@ -411,8 +474,10 @@ function athleteYear(p) {
       score += 4;
     }
     // A bigger club comes calling for a player better than their team.
-    const stronger = L.teams.filter((x) => x.strength > t.strength + 4 && x.strength <= rec.rating + 8);
-    if (stronger.length && rec.apps >= rec.games * 0.5 && rec.rating > t.strength + 3 && rng.chance(0.5)) {
+    const ag = ps.agent;
+    // An agent finds clubs a player would not have heard from, and more often.
+    const stronger = L.teams.filter((x) => x.strength > t.strength + 4 && x.strength <= rec.rating + 8 + (ag ? 4 * ag.clout : 0));
+    if (stronger.length && rec.apps >= rec.games * 0.5 && rec.rating > t.strength + 3 - (ag ? 3 : 0) && rng.chance(ag ? clamp(0.5 + 0.25 * ag.clout, 0.5, 0.9) : 0.5)) {
       const o = rng.pick(stronger);
       ps.offer = { teamId: o.id, year: year() };
       lines.push(`${o.name} want to sign you.`);
