@@ -183,6 +183,7 @@ function rankings() {
 /** College, the draft and the minors: where the player stands, what the mock drafts say, and the drafts they were in. */
 function draftSection() {
   const st = store.state;
+  const p = player();
   const out = [];
   for (const e of sp.activeSports()) {
     const D = draft.draftOf(st, e.id);
@@ -192,6 +193,16 @@ function draftSection() {
       out.push(`${label(`College ${sport.name.toLowerCase()}`)}${kv('Class', esc(classOf(st, e)))}${kv('Division', esc(DIVISIONS[e.college.division]?.name ?? e.college.division))}${kv('Eligibility', `${left.seasons} ${left.seasons === 1 ? 'season' : 'seasons'} left, ${left.years} ${left.years === 1 ? 'year' : 'years'} on the clock`)}${e.college.nil.length ? kv('NIL deals', esc(money(e.college.nil.reduce((s, x) => s + x.amount, 0)))) : ''}`);
     }
     if (e.intl) out.push(intlSection(st, e));
+    if (e.youth && (e.youth.scholar || e.youth.released)) out.push(`${label(`${sport.name}: the academy`)}${e.youth.scholar ? kv(p.countryId === 'uk' ? 'Scholarship' : 'Youth contract', `${e.youth.scholar.from}–${e.youth.scholar.until}`) : kv('Released', String(e.youth.released))}`);
+    if (e.asia && D && (e.proYear || e.asia.service || e.asia.served || e.asia.exempt)) {
+      const n = e.proYear ? st.year - e.proYear : 0;
+      const sv = e.asia.service ? `${e.asia.service.kind === 'sangmu' ? 'Serving, with Sangmu' : 'Serving'} until ${e.asia.service.until}` : e.asia.served ? 'Served' : e.asia.exempt ? `Exempt: ${e.asia.exempt}` : p.countryId === 'kr' && p.gender === 'male' ? 'Due before 28' : '';
+      out.push(`${label(`${D.name}: the way abroad`)}${e.proYear ? kv('Seasons as a professional', String(n)) : ''}
+        ${kv('Posting', D.posting ? `After ${D.posting} seasons, with the club's consent` : "With the club's consent")}
+        ${kv('Free agency abroad', `After ${D.freeAgency} seasons`)}
+        ${e.asia.posted.map((x) => kv(`Posting, ${x.year}`, x.to ? `Signed with ${esc(x.to)}` : x.consent ? 'Posted' : 'The club said no')).join('')}
+        ${sv ? kv('Military service', esc(sv)) : ''}`);
+    }
     if (!D) continue;
     const el = draft.eligible(st, e, D);
     const grade = draft.draftGrade(st, e);

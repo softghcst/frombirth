@@ -35,7 +35,7 @@ function bigLeague(state) {
   const org = findOrg(state, sport, 'pro', { key: 'pro/baseball/us/0', countryId: 'us', city: cities[0], tier: 1, strength: 4, div: 'men' });
   return leagueFor(state, org, teamFor(state, org));
 }
-function clubAt(state, n) {
+export function clubAt(state, n) {
   const lg = bigLeague(state);
   return clubOf(state, lg.teamIds[n % lg.teamIds.length]);
 }

@@ -23,18 +23,22 @@ const section = (msg) => ok.push(problems.length ? `(after failures) ${msg}` : m
 const S = () => store.state;
 const P = () => store.state.player;
 
-/** A boy in the United States, grown to `age`, playing `sport` well. */
+/** A boy in the United States, grown to `age`, playing `sport` well. A life that ends first (rarely, a child dies)
+ *  is begun again: these checks are about the ones who grow up. */
 function athlete(sport, age, boost = 30) {
-  let s; do { s = createLife({ countryId: 'us', gender: 'male' }); } while (s.player.royal);
-  store.state = s;
-  s.player.talents.sports = 92; s.player.stats.intellect = 74;
-  for (let i = 0; i < 13; i++) { s.player.stats.health = 95; advanceYear(); s.pendingEvents = []; }
-  sp.takeUp(sport);
-  const e = sp.entryOf(sport);
-  for (const k of Object.keys(e.skills)) e.skills[k] = Math.min(e.ceiling[k], e.skills[k] + boost);
-  e.plan = { type: 'balanced', hours: 14 };
-  while (s.player.age < age) year({});
-  return e;
+  for (;;) {
+    let s; do { s = createLife({ countryId: 'us', gender: 'male' }); } while (s.player.royal);
+    store.state = s;
+    s.player.talents.sports = 92; s.player.stats.intellect = 74;
+    for (let i = 0; i < 13; i++) { s.player.stats.health = 95; advanceYear(); s.pendingEvents = []; }
+    sp.takeUp(sport);
+    const e = sp.entryOf(sport);
+    if (!e) continue;
+    for (const k of Object.keys(e.skills)) e.skills[k] = Math.min(e.ceiling[k], e.skills[k] + boost);
+    e.plan = { type: 'balanced', hours: 14 };
+    for (let i = 0; i < 30 && s.player.alive && s.player.age < age; i++) year({});
+    if (s.player.alive && s.player.countryId === 'us') return e;
+  }
 }
 /** One year, with the decisions answered as `pick` says (a function of the decision), or the cautious default. */
 function year(pick = {}) {
@@ -115,6 +119,8 @@ section('college: conferences by division, class years, a redshirt year that kee
 // ---------- 3. Eligibility rules, league by league ----------
 {
   const e = athlete('baseball', 17);
+  // The rules, not this life's luck: a senior at high school (not one expelled or dropped out along the way).
+  Object.assign(P().education, { enrolled: true, stage: 'high', expelled: false, droppedOut: false });
   const D = dr.draftOf(S(), 'baseball');
   check(D && D.rounds === DRAFTS.baseball.rounds && rec.gradeOf(P()) === 12 && dr.eligible(S(), e, D).ok, 'baseball: a high school senior can be drafted');
   check(dr.draftOf(S(), 'american_football') && !dr.eligible(S(), { ...e, id: 'american_football' }, dr.draftOf(S(), 'american_football')).ok, 'football: not out of high school');

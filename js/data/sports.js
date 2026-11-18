@@ -45,7 +45,7 @@ export const SPORTS_LIST = [
     positions: [['guard', 'Guard', { handling: 0.35, shooting: 0.3, passing: 0.25, awareness: 0.1 }], ['forward', 'Forward', { shooting: 0.35, rebounding: 0.25, defense: 0.25, handling: 0.15 }],
       ['center', 'Center', { rebounding: 0.4, defense: 0.4, shooting: 0.2 }]],
     popular: k('us', 'es', 'lt', 'rs', 'gr', 'ph', 'au', 'cn', 'tr', 'ar'), college: k('us', 'ca'), teamSize: 5 }),
-  S('baseball', 'Baseball', 'team', 'baseball', { womenProFrom: 1943, womenProUntil: 1954, founded: 1845, proFrom: 1869, season: 20, pro: 'draft', draftIn: k('us', 'ca'), lesson: 450, kit: 250,
+  S('baseball', 'Baseball', 'team', 'baseball', { womenProFrom: 1943, womenProUntil: 1954, founded: 1845, proFrom: 1869, season: 20, pro: 'draft', draftIn: k('us', 'ca', 'jp', 'kr'), lesson: 450, kit: 250,
     skills: [['contact', 'Contact'], ['power', 'Power'], ['discipline', 'Plate discipline'], ['fielding', 'Fielding'], ['throwing', 'Throwing'], ['baserunning', 'Baserunning'],
       ['control', 'Pitching control'], ['stuff', 'Pitch quality'], ['stamina', 'Pitching stamina']],
     attrs: { 'talents.sports': 0.5, 'stats.health': 0.2, 'stats.intellect': 0.15, 'hidden.discipline': 0.15 },
@@ -309,8 +309,11 @@ export const TEAM_WORDS = ['Rovers', 'United', 'Athletic', 'City', 'Wanderers', 
  */
 export const LEAGUE_TEAMS = { baseball: 30, basketball: 30, american_football: 32, ice_hockey: 32 };
 export const WOMEN_LEAGUE_TEAMS = { basketball: 12, ice_hockey: 8, softball: 8 };
+/** Japan's professional league has 12 clubs, Korea's 10. */
+export const COUNTRY_LEAGUE_TEAMS = { jp: { baseball: 12 }, kr: { baseball: 10 } };
 export function leagueSize(sport, level, countryId, div = null) {
   if (level !== 'pro' || !(sport.draftIn ?? []).includes(countryId)) return 8;
+  if (COUNTRY_LEAGUE_TEAMS[countryId]) return (div === 'women' ? null : COUNTRY_LEAGUE_TEAMS[countryId][sport.id]) ?? 8;
   return (div === 'women' ? WOMEN_LEAGUE_TEAMS[sport.id] : LEAGUE_TEAMS[sport.id]) ?? 8;
 }
 
@@ -330,9 +333,24 @@ export const DRAFTS = {
   basketball: { rounds: 2, lottery: { teams: 14, picks: 4 }, rule: 'basketball', declare: true, test: true, combine: true, deal: 'scale', years: 4, minors: ['G League'] },
   ice_hockey: { rounds: 7, lottery: { teams: 16, picks: 2 }, rule: 'hockey', declare: false, combine: true, deal: 'entry', years: 3, minors: ['AHL'], rights: 4 },
 };
+/**
+ * Japan's and Korea's drafts. Japan (NPB, 12 clubs, each October): high school and university players must first file a
+ * declaration that they want to turn professional; high school graduates in the industrial (company) leagues are
+ * eligible three years on, university graduates two. In the first round every club names a player at once, and where
+ * several name the same one, lots are drawn. A drafted player who will not sign goes to university or a company team.
+ * Contracts run a year at a time, the club holding the player until free agency (nine seasons to go abroad); before
+ * that, the club may post him to the big leagues (engine/asiaBaseball.js). Korea (KBO, 10 clubs, 11 rounds each
+ * September): high school and university seniors; posting after seven seasons, and military service before 28.
+ */
+export const COUNTRY_DRAFTS = {
+  jp: { baseball: { name: 'NPB', rounds: 7, lottery: null, bids: true, rule: 'npb', declare: true, combine: false, deal: 'npb', years: 1, minors: ['Farm team'], posting: 3, freeAgency: 9 } },
+  kr: { baseball: { name: 'KBO', rounds: 11, lottery: null, rule: 'kbo', declare: false, combine: false, deal: 'kbo', years: 1, minors: ['Futures League'], posting: 7, freeAgency: 9 } },
+};
 /** The women's leagues' drafts: basketball takes players at 22 or once college is done; hockey after college. */
 /** What the big leagues of the draft countries pay, against an ordinary professional league (their real averages run to millions). */
 export const BIG_LEAGUE_PAY = { basketball: 6, baseball: 4, american_football: 2.5, ice_hockey: 2.5 };
+/** Japan's and Korea's professional baseball pay well, if far less than the big leagues. */
+export const COUNTRY_LEAGUE_PAY = { jp: { baseball: 1.8 }, kr: { baseball: 1.3 } };
 export const WOMEN_DRAFTS = {
   basketball: { rounds: 3, lottery: { teams: 4, picks: 4 }, rule: 'women', declare: true, combine: false, deal: 'scale', years: 3, minors: [] },
   ice_hockey: { rounds: 7, lottery: null, rule: 'women', declare: true, combine: false, deal: 'entry', years: 2, minors: [] },
