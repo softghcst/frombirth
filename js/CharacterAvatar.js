@@ -188,7 +188,7 @@ export const deepness = (skin) => Math.max(0, Math.min(1, (DEEP.from - luminance
  * The shapes of the features are not changed, and nobody's own colours are. The nose's skin is never
  * adjusted: it is drawn in exactly the face's skin colour on every tone; only its lines get heavier.
  */
-export const READABLE = { white: 0.2, line: 1.4, rim: 0.2, edge: 3, nose: 3.2, ink: '#170b06', noseInk: '#0b0503' };
+export const READABLE = { white: 0.2, line: 1.4, rim: 0.2, edge: 3, nose: 1.8, ink: '#170b06', noseInk: '#0b0503' };
 
 function colorVars(look, ctx) {
   const c = look.colors ?? {};
