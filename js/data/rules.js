@@ -176,12 +176,42 @@ export const REGION_RULES = {
 };
 
 /**
- * Laws a state, province or other region may set for itself, where the country lets its regions
- * make law (REGIONAL_COUNTRIES). Everything else is national.
+ * Which of the game's laws each country leaves to its states, provinces or other regions. A country not listed makes
+ * all of them nationally. Compiled by hand from each country's division of powers, simplified to these six matters,
+ * and NOT YET CHECKED against sources: treat it as the author's understanding.
+ *   United States: criminal law (the death penalty), gambling and licensing ages are state law; the drinking age is
+ *     state law, though federal highway money keeps it at 21.
+ *   Canada: gambling, liquor and driving licences are provincial; criminal law, the death penalty included, is federal.
+ *   Australia: gambling and driving licences are state matters; the Commonwealth has forbidden the death penalty everywhere.
+ *   Germany: gambling is regulated by the Länder; youth protection (alcohol) and driving are federal.
+ *   Austria and Switzerland: youth protection, including the age for alcohol, is set by the Länder and cantons.
+ *   Mexico: states issue driving licences.  Argentina: provinces run gambling.
+ *   India: alcohol (some states ban it), the drinking age and gambling are state subjects.
+ *   Malaysia: gambling is restricted by some states.  Nigeria: northern states ban alcohol and regulate gambling.
+ *   United Arab Emirates: each emirate sets its own rules on alcohol and gambling.
+ *   United Kingdom: licensing is devolved to Scotland and Northern Ireland.  Spain: autonomous communities set the
+ *     drinking age and regulate gambling.
  */
-export const REGIONAL_RULES = ['drinkingAge', 'gamblingAge', 'drivingAge', 'gambling', 'alcohol', 'deathPenalty'];
-/** Countries whose regions make some of their own law: the federations, and the United Kingdom's devolved nations. */
-export const REGIONAL_COUNTRIES = ['us', 'ca', 'au', 'de', 'at', 'ch', 'be', 'mx', 'br', 'ar', 've', 'in', 'pk', 'my', 'ae', 'ru', 'ng', 'et', 'uk', 'es', 'it'];
+export const REGIONAL_POWERS = {
+  us: ['deathPenalty', 'gambling', 'gamblingAge', 'drivingAge', 'drinkingAge'],
+  ca: ['gambling', 'gamblingAge', 'drivingAge', 'drinkingAge'],
+  au: ['gambling', 'gamblingAge', 'drivingAge'],
+  de: ['gambling', 'gamblingAge'],
+  at: ['drinkingAge'],
+  ch: ['drinkingAge'],
+  mx: ['drivingAge'],
+  ar: ['gambling', 'gamblingAge'],
+  in: ['alcohol', 'drinkingAge', 'gambling', 'gamblingAge'],
+  my: ['gambling'],
+  ng: ['alcohol', 'gambling'],
+  ae: ['alcohol', 'drinkingAge', 'gambling', 'gamblingAge'],
+  uk: ['drinkingAge'],
+  es: ['drinkingAge', 'gambling', 'gamblingAge'],
+};
+/** Every law some region somewhere can make. */
+export const REGIONAL_RULES = [...new Set(Object.values(REGIONAL_POWERS).flat())];
+/** Countries whose regions make some of their own law. */
+export const REGIONAL_COUNTRIES = Object.keys(REGIONAL_POWERS);
 
 /** Changes the world may make by itself over the years (engine/rules.js tickRules). */
 export const REFORM = {
