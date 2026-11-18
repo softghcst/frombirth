@@ -95,7 +95,7 @@ export default {
     el.querySelector('[data-world]').onclick = () => openWorld({ start: p.countryId, home: p.countryId });
     el.querySelector('[data-news]').onclick = () => openNews();
     if (el.querySelector('[data-surgery]')) el.querySelector('[data-surgery]').onclick = () => cosmeticSurgery(api);
-    el.querySelector('[data-settings]').onclick = () => openSettings();
+    el.querySelector('[data-settings]').onclick = () => openSettings().then(() => api.changed?.()); // the turn length shows on the button
     el.querySelector('[data-exit]').onclick = () => api.exitToTitle();
     el.querySelector('[data-end]').onclick = async () => {
       const sure = await confirmModal({
