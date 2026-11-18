@@ -6,7 +6,7 @@
 // or restyled parent passes on what they were born with.
 import { rng } from '../rng.js';
 import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, HAIR_STYLES, TWEAKS } from './catalog.js';
-import { RESTING, OUTFITS, HAIR_COVERS_FACE } from './curation.js';
+import { RESTING, OUTFITS, HAIR_COVERS_FACE, LASHED } from './curation.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
 const toneAt = (depth) => SKIN_TONES.find((t) => t.depth === clampDepth(depth)).id;
@@ -51,8 +51,19 @@ export function defaultStyle(inherited, gender) {
 }
 
 /** A complete appearance for someone with no known parents. */
+/**
+ * Lashed eyes are for women and girls only (LASHED in curation.js). Anyone else inherits the nearest plain shape,
+ * so a son still takes after his mother; a face made at random is drawn evenly from the plain shapes instead.
+ */
+export const suitEyes = (inherited, gender, random = false) => {
+  if (gender !== 'female' && LASHED[inherited.eyes]) {
+    inherited.eyes = random ? rng.pick(pool('eyes').filter((x) => !LASHED[x.id])).id : LASHED[inherited.eyes];
+  }
+  return inherited;
+};
+
 export function randomAppearance(skinDepthHint, gender) {
-  const inherited = randomInherited(skinDepthHint);
+  const inherited = suitEyes(randomInherited(skinDepthHint), gender, true);
   const style = defaultStyle(inherited, gender);
   if (rng.chance(0.14)) style.glasses = rng.pick(CATALOG.glasses.filter((g) => !/star|visor/.test(g.id))).id;
   if (gender === 'male' && rng.chance(0.3)) style.facialHair = rng.pick(CATALOG.facialHair).id;
@@ -97,6 +108,7 @@ export function inheritAppearance(a, b) {
 export function ensureStyled(appearance, gender) {
   if (appearance?.inherited && !appearance.style?.hair) {
     const kept = Object.fromEntries(Object.entries(appearance.style ?? {}).filter(([, v]) => v != null && !(Array.isArray(v) && !v.length)));
+    suitEyes(appearance.inherited, gender);
     appearance.style = { ...defaultStyle(appearance.inherited, gender), ...kept };
   }
   return appearance;

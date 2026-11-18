@@ -49,6 +49,12 @@ export const RESTING = {
   // relaxed brows: nothing angry, sceptical or comic
   eyebrows: ['brows_02', 'brows_03', 'brows_10', 'brows_12', 'brows_14', 'brows_15', 'brows_16_feathered', 'brows_17_puppy', 'brows_19_glam_arch', 'brows_6', 'brows_8'],
 };
+/**
+ * Eyes drawn with lashes at the outer corner read as feminine, so only women and girls are given them at random
+ * or by inheritance. Anyone else who would get one gets the nearest shape without lashes instead (so a son still
+ * takes after his mother). Anyone can still choose them in the creator, and saved faces are never changed.
+ */
+export const LASHED = { eyes_6: 'eyes_18', eyes_10: 'eyes_8', eyes_16: 'eyes_18', eyes_20: 'eyes_19', eyes_22: 'eyes_19', eyes_25: 'eyes_9' };
 /** The soft, thin brows every baby and toddler has, whatever they grow into. */
 export const BABY_BROWS = 'brows_8';
 /** Expressions the renderer can borrow for a mood. */

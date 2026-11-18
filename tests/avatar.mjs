@@ -111,6 +111,20 @@ check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green'
   && fromV2.style.glasses && fromV2.style.facialHair && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or accessories');
 // Two relatives who shared an old nose still share one.
 check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inherited.nose, 'old shared nose no longer shared');
+// Lashed eyes are given only to women and girls, at random or by inheritance; saved faces are never changed.
+{
+  const lashed = (x) => x.inherited.eyes in CUR.LASHED;
+  for (const gender of ['male', 'nonbinary', undefined]) {
+    check(!Array.from({ length: 1500 }, () => randomAppearance(undefined, gender)).some(lashed), `random ${gender} characters get lashed eyes`);
+  }
+  check(Array.from({ length: 600 }, () => randomAppearance(undefined, 'female')).filter(lashed).length > 150, 'women no longer get lashed eyes at random');
+  const mum = randomAppearance(3, 'female'); mum.inherited.eyes = 'eyes_6';
+  const son = ensureStyled(inheritAppearance(mum, cloneAppearance(mum)), 'male');
+  const daughter = ensureStyled(inheritAppearance(mum, cloneAppearance(mum)), 'female');
+  check(son.inherited.eyes === 'eyes_18' && daughter.inherited.eyes === 'eyes_6', `a son should take his mother's eyes without lashes: son ${son.inherited.eyes}, daughter ${daughter.inherited.eyes}`);
+  const saved = cloneAppearance(mum);
+  check(ensureStyled(saved, 'male').inherited.eyes === 'eyes_6', 'a saved face had its eyes changed');
+}
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
 const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_22', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
   314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };
@@ -306,11 +320,15 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(JSON.stringify(a) === JSON.stringify(old('hooded')) && !CUR.WITHDRAWN.eyes[a.eyes] && !CUR.WITHDRAWN.nose[a.nose] && !CUR.WITHDRAWN.lips[a.lips], 'an older save converts to a withdrawn shape, or differently each time');
 }
 {
-  const seen = {};
+  // Women draw on every resting eye shape evenly; men only on those without lashes.
   rng.seed(7);
-  for (let i = 0; i < 4000; i++) { const e = randomAppearance(i % 12, i % 2 ? 'female' : 'male').inherited.eyes; seen[e] = (seen[e] ?? 0) + 1; }
-  check(Object.keys(seen).sort().join() === [...CUR.RESTING.eyes].sort().join(), 'random faces draw on a different set of eyes');
-  check(Math.max(...Object.values(seen)) / Math.min(...Object.values(seen)) < 1.5, 'some eye shapes are now given out more often than others');
+  for (const gender of ['female', 'male']) {
+    const seen = {};
+    for (let i = 0; i < 4000; i++) { const e = randomAppearance(i % 12, gender).inherited.eyes; seen[e] = (seen[e] ?? 0) + 1; }
+    const want = CUR.RESTING.eyes.filter((e) => gender === 'female' || !(e in CUR.LASHED));
+    check(Object.keys(seen).sort().join() === [...want].sort().join(), `random ${gender} faces draw on a different set of eyes`);
+    check(Math.max(...Object.values(seen)) / Math.min(...Object.values(seen)) < 1.5, 'some eye shapes are now given out more often than others');
+  }
 }
 
 // 11. A saved face keeps its head, hair and eyes, and is drawn with those files.
