@@ -24,7 +24,7 @@
 import { store, player, log, milestone, livingNpcs } from '../state.js';
 import { clamp, cap, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS, mascotsFor, JERSEY_COLORS } from '../data/sports.js';
+import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS, mascotsFor, JERSEY_COLORS, leagueSize } from '../data/sports.js';
 import { makeNpc } from './npcFactory.js';
 import { remember } from './conditions.js';
 import { school as currentSchool, atSchool } from './schooling.js';
@@ -760,7 +760,8 @@ function leagueFor(state, org, team) {
     S.orgs[id] = lg;
     // Every team in a league has a name of its own: the place, and a club name nobody else in the league has.
     const taken = new Set([org.name]);
-    for (let i = 0; i < 7; i++) {
+    lg.size = leagueSize(sport, org.level, org.countryId, org.div);
+    for (let i = 0; i < lg.size - 1; i++) {
       const city = cities[i % cities.length];
       let name = '';
       const nick = sport.kind === 'team' ? mascotsFor(sport) : TEAM_WORDS;
@@ -770,7 +771,7 @@ function leagueFor(state, org, team) {
       lg.teamIds.push(teamFor(state, rival).id);
     }
   }
-  if (!lg.teamIds.includes(team.id)) lg.teamIds.splice(0, lg.teamIds.length >= 8 ? 1 : 0, team.id);
+  if (!lg.teamIds.includes(team.id)) lg.teamIds.splice(0, lg.teamIds.length >= (lg.size ?? 8) ? 1 : 0, team.id);
   org.leagueId = lg.id;
   return lg;
 }
@@ -818,8 +819,9 @@ function playSeason(state, e, team, o = {}) {
   const above = samePos.filter((x) => x > me).length;
   const role = above < slots ? 'starter' : above < slots + 2 ? 'rotation' : 'bench';
   const minutes = { starter: 0.9, rotation: 0.5, bench: 0.15 }[role];
-  const rounds = Math.max(1, Math.round((sport.season ?? 14) / 7));
   const teams = lg.teamIds;
+  // As many times round the league as the season is long: twice round eight teams, once round thirty.
+  const rounds = Math.max(1, Math.round((sport.season ?? 14) / Math.max(1, teams.length - 1)));
   const fixtures = [];
   // A round-robin, as many times as the season is long; home and away alternate.
   for (let rr = 0; rr < rounds; rr++) {
@@ -950,6 +952,13 @@ function playoffs(state, season, e, team, minutes, outFor) {
     return f.winner;
   };
   void sport;
+  // A big league takes its top eight to the playoffs, a small one its top four.
+  if (table.length >= 16) {
+    const s = table.slice(0, 8).map((x) => x.teamId);
+    const q = [tie(s[0], s[7], 0, 'Quarterfinal'), tie(s[3], s[4], 1, 'Quarterfinal'), tie(s[1], s[6], 2, 'Quarterfinal'), tie(s[2], s[5], 3, 'Quarterfinal')];
+    season.champion = tie(tie(q[0], q[1], 4, 'Semifinal'), tie(q[2], q[3], 5, 'Semifinal'), 6, 'Final');
+    return;
+  }
   const w1 = tie(a, d, 0, 'Semifinal');
   const w2 = tie(b, c, 1, 'Semifinal');
   const champion = tie(w1, w2, 2, 'Final');

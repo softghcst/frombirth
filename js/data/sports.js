@@ -302,6 +302,18 @@ export const REHAB = {
 export const SPONSORS = ['Northline Athletic', 'Kestrel Sportswear', 'Brightwater Drinks', 'Summit Timepieces', 'Vela Motors', 'Harbor Bank', 'Ember Nutrition', 'Lark Optics'];
 /** Invented words for team and club names; {C} is the city. */
 export const TEAM_WORDS = ['Rovers', 'United', 'Athletic', 'City', 'Wanderers', 'Comets', 'Falcons', 'Harriers', 'Lions', 'Royals', 'Pioneers', 'Rangers', 'Storm', 'Thunder', 'Mariners', 'Wolves'];
+/**
+ * How many teams a league has. Most leagues in the game have 8 (a conference, a regional league, a country's top
+ * flight); the big professional leagues of the countries with a draft have their real number of clubs, so the draft has
+ * real rounds and picks. Women's leagues there are smaller, as they are.
+ */
+export const LEAGUE_TEAMS = { baseball: 30, basketball: 30, american_football: 32, ice_hockey: 32 };
+export const WOMEN_LEAGUE_TEAMS = { basketball: 12, ice_hockey: 8, softball: 8 };
+export function leagueSize(sport, level, countryId, div = null) {
+  if (level !== 'pro' || !(sport.draftIn ?? []).includes(countryId)) return 8;
+  return (div === 'women' ? WOMEN_LEAGUE_TEAMS[sport.id] : LEAGUE_TEAMS[sport.id]) ?? 8;
+}
+
 /** Team nicknames, by the kind of names each sport's clubs tend to have (made up; any can be renamed in Settings). */
 export const MASCOTS = {
   soccer: ['United', 'City', 'Athletic', 'Rovers', 'Wanderers', 'Albion', 'Town', 'Rangers', 'Harriers', 'Villa', 'Argyle', 'Dynamo', 'Sporting', 'Olympic', 'Victoria', 'Corinthians'],
