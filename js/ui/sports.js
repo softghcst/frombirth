@@ -193,6 +193,7 @@ function draftSection() {
       out.push(`${label(`College ${sport.name.toLowerCase()}`)}${kv('Class', esc(classOf(st, e)))}${kv('Division', esc(DIVISIONS[e.college.division]?.name ?? e.college.division))}${kv('Eligibility', `${left.seasons} ${left.seasons === 1 ? 'season' : 'seasons'} left, ${left.years} ${left.years === 1 ? 'year' : 'years'} on the clock`)}${e.college.nil.length ? kv('NIL deals', esc(money(e.college.nil.reduce((s, x) => s + x.amount, 0)))) : ''}`);
     }
     if (e.intl) out.push(intlSection(st, e));
+    if (e.trades?.length) out.push(`${label(`${sport.name}: trades`)}${e.trades.map((t) => kv(String(t.year), `${esc(t.from)} → ${esc(t.to)}, for ${esc(t.for)}${t.vetoed ? ' · you refused' : ''}`)).join('')}`);
     if (e.youth && (e.youth.scholar || e.youth.released)) out.push(`${label(`${sport.name}: the academy`)}${e.youth.scholar ? kv(p.countryId === 'uk' ? 'Scholarship' : 'Youth contract', `${e.youth.scholar.from}–${e.youth.scholar.until}`) : kv('Released', String(e.youth.released))}`);
     if (e.asia && D && (e.proYear || e.asia.service || e.asia.served || e.asia.exempt)) {
       const n = e.proYear ? st.year - e.proYear : 0;

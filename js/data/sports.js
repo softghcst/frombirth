@@ -309,6 +309,13 @@ export const TEAM_WORDS = ['Rovers', 'United', 'Athletic', 'City', 'Wanderers', 
  */
 export const LEAGUE_TEAMS = { baseball: 30, basketball: 30, american_football: 32, ice_hockey: 32 };
 export const WOMEN_LEAGUE_TEAMS = { basketball: 12, ice_hockey: 8, softball: 8 };
+/**
+ * Countries whose players go into another country's draft: Puerto Rico's baseball players have been in the big
+ * leagues' draft since 1990, like any player in the United States.
+ */
+export const DRAFT_VIA = { baseball: { pr: 'us' } };
+/** The country whose league drafts players from `countryId` in this sport, or null. */
+export const draftCountry = (sport, countryId) => ((sport.draftIn ?? []).includes(countryId) ? countryId : DRAFT_VIA[sport.id]?.[countryId] ?? null);
 /** Japan's professional league has 12 clubs, Korea's 10. */
 export const COUNTRY_LEAGUE_TEAMS = { jp: { baseball: 12 }, kr: { baseball: 10 } };
 export function leagueSize(sport, level, countryId, div = null) {
