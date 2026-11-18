@@ -53,6 +53,7 @@ node tests/rules.mjs           # the legal rule engine: layers, overrides, what 
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
 node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
 node tests/yearly.mjs          # one Age Up is one year: steps run once, limits, plans, the yearly update, a full year, three generations
+node tests/generations-1900.mjs # one family from 1900 to the present, a year per Age Up, through every era: nothing before its time, heirs carry on, saves load
 node tests/yearly-ui.mjs       # the yearly screens in a real browser at phone and desktop widths (needs Playwright; skips without it)
 node tests/health.mjs          # conditions and diagnosis, therapy and DBT, medication trials and switching, access, heredity, privacy, old saves
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs

@@ -33,38 +33,44 @@ does not exist yet.
 | Age Up | One function calling about forty yearly steps in a fixed order | The same steps, in the same order, registered in `YEARLY` with once-per-year markers |
 | Everyday actions (work harder, study, spend time, dates, gym, practice, posting) | Already once a year, or a yearly allowance | Unchanged; covered by tests |
 | Health care (built in this branch) | A weekly care calendar the player moved through with "Let the weeks pass" | Assessments, prescriber talks, second opinions and side-effect reports resolve when chosen; therapy, medicines, checks and follow-ups are lived at Age Up; decisions come back to the player after the year; no week counts on screen |
-| Repeated choices (practising, posting) | Had to be clicked every year | Can be set once as a plan: hobby focus, posting routine |
-| Saving money | Not modelled beyond cash | A savings goal: set aside each year, small interest, in net worth and the estate |
-| Pets | Bought, aged, no routine care | A care routine for each animal, paid every year; there is no "no care" option |
-| Celebrations and traditions | Not modelled | Celebrations once per occasion per year; traditions that come round by themselves and pass to heirs |
-| Prison | Each activity clicked once a year | A priority for the years inside (education, work, rehabilitation, family contact, personal development), chosen once and lived every year |
+| Repeated choices (practising, posting) | Had to be clicked every year | A hobby focus is set once (`engine/plans.js`); posting is Digital Life's creator routine (`engine/digital/creator.js`, `setRoutine`) |
+| Saving money | Cash only | A standing yearly deposit into one of the player's bank accounts (`engine/banking.js`), through the ledger like any deposit |
+| Pets | Bought, aged, no routine care | The animal-care routine (`engine/animalCare.js`, `setRoutine`/`tickCare`), lived every year |
+| Celebrations and traditions | Not modelled | Living Moments (`engine/moments.js`): each occasion once a year; traditions that come round by themselves and pass to heirs |
+| Prison | Each activity clicked once a year | The prison routine (`engine/prison.js`, `setRoutine`), chosen once and lived every year |
 | Yearly summary | Journal only | The yearly life update, including convictions, prison, moves, new citizenship and a crisis starting or ending |
+
+When the work in other branches was merged (eras with Digital Life and travel,
+fame, sports, Living Moments), the simpler versions this branch had written of
+the same things were removed so that each exists once: the posting plan, the
+savings pot, pet care, the prison priority, and celebrations and traditions.
 
 ## Status
 
 **Complete**
-- One authoritative yearly clock, with registered steps and once-per-year markers.
+- One authoritative yearly clock, with registered steps and once-per-year markers,
+  including the merged systems: eras (`tickEra`), Digital Life (`tickDigital`),
+  travel and global life (`tickGlobalLife`), sports (`tickSports`), animals,
+  Living Moments (`finishYear`/`startYear`) and the ledger's books.
 - Health on the yearly model (the internal weekly simulation stays, so medicines
-  still take weeks to act and therapy still builds session by session).
-- Long-running plans: hobby focus, posting routine, savings goal, pet care,
-  family traditions, a prison priority; celebrations as once-a-year actions.
-- The yearly life update, the "Your life this year" card (Pursuits tab).
+  still take weeks to act and therapy still builds session by session), and
+  following the eras: nothing is offered before it existed.
+- Long-running plans: hobby focus and a standing bank deposit here; posting,
+  pet care, prison and traditions in their own systems, as above.
+- The yearly life update and the "Your life this year" card (Pursuits tab).
 - Tests: `tests/yearly.mjs` (one year per Age Up, steps run once, limits,
-  plans, the summary, the full-year scenario, three generations) and
-  `tests/yearly-ui.mjs` (phone and desktop widths in a real browser).
+  plans, the summary, the full-year scenario, three generations),
+  `tests/yearly-ui.mjs` (phone and desktop widths in a real browser) and
+  `tests/generations-1900.mjs` (one family from 1900 to the present through every
+  era: no gaps, steps once a year, nothing before its time, saves load).
 
-**Partly complete**
-- *Sports*: there is no sports-career engine. A sport can be the hobby focus
-  (practice through the year); school sports clubs exist already. No teams,
-  seasons, matches or rankings.
-- *Multigenerational test*: covers three generations in the present day. It
-  cannot start in 1900 (see below).
-
-**Not in this repository** (so not simplified, and not invented here)
-- Historical eras and an era registry; the health catalog carries years, but
-  every life still starts in the present.
-- Business and entrepreneurship.
-- Digital Life as a separate system (`js/data/digital.js`, `js/engine/digital/`,
-  `tests/digital-ui.mjs` do not exist); social media is the small system in
-  `engine/social.js`, now with a posting routine.
-- Equestrian life; fame as its own system beyond careers with fame actions.
+**Known overlaps and gaps**
+- *Two sports systems*: the athletics engine (`engine/sports.js`, from first
+  lessons to contracts) and the professional leagues and circuits that came with
+  fame (`engine/proSport.js`, `state.proSport`). They no longer interfere (an
+  athlete with an athletics contract is left to it), but they should become one.
+- *Fame and social media*: fame's own social hooks (fame from a viral post,
+  bought followers) were dropped in favour of Digital Life; fame from online
+  posting comes only from what Digital Life reports.
+- *Older treatments*: the health catalog holds today's medicines and therapies,
+  so lives before the 1980s are offered little (see docs/HEALTH.md).

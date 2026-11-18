@@ -246,10 +246,15 @@ that too; asking is allowed, and they may say no.
 
 ## Not built yet
 
-- **Historical eras** do not exist in the game (every life starts in the present
-  year). Every service, therapy, medicine, device and diagnosis carries the year
-  it became available and its period names, and the checks prove the 1800 case,
-  so the health engine is ready for eras when they come.
+- **Older treatments.** Historical eras are in the game now (`js/engine/eras.js`,
+  docs/HISTORICAL_ERAS.md), and health care follows the year: every service,
+  therapy, medicine, device and diagnosis carries the year it became available,
+  and nothing is offered before then (`tests/generations-1900.mjs` asks a
+  psychiatrist what they could offer for depression in each generation from 1900).
+  But the catalog holds today's treatments only. The earliest antidepressant in it
+  is from 1986, so a life in the 1950s to 1970s is offered no medicine for
+  depression, where in reality there were older ones (tricyclics, MAOIs), and
+  past practices such as asylums are not modelled.
 - **Workplace and school discrimination** are not modelled beyond accommodations
   being refused where there is no law requiring them.
 - **Other people's care** runs a year at a time rather than week by week, and
