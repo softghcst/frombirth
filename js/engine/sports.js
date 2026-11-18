@@ -742,11 +742,14 @@ function refreshRoster(state, t) {
   for (const x of t.roster) if (!x.player && !x.npcId) x.rating = Math.round(clamp(x.rating + r.normal(0.5, 2.5), 10, 97));
   // One or two move on each year, and new ones arrive. Known teammates stay while the player is there.
   const leaving = r.shuffle(t.roster.filter((x) => !x.player && !x.npcId && x.since < state.year)).slice(0, r.int(1, 2));
-  for (const x of leaving) {
+  // Rosters from before this fix could hold two newcomers with the same id (both counted from the roster's length).
+  const seen = new Set();
+  for (const x of t.roster) { if (seen.has(x.id)) x.id = `${x.id}_b`; seen.add(x.id); }
+  leaving.forEach((x, i) => {
     t.roster = t.roster.filter((y) => y !== x);
     const n = names.pop();
-    t.roster.push({ id: `r_${t.id}_${state.year}_${t.roster.length}`, name: n, pos: x.pos, rating: Math.round(clamp(org.strength + r.normal(0, 7), 10, 95)), since: state.year });
-  }
+    t.roster.push({ id: `r_${t.id}_${state.year}_n${i}`, name: n, pos: x.pos, rating: Math.round(clamp(org.strength + r.normal(0, 7), 10, 95)), since: state.year });
+  });
   for (const x of t.roster) if (x.npcId && state.npcs[x.npcId]) x.rating = Math.round(clamp(x.rating + r.normal(1, 2), 10, 97));
 }
 
@@ -861,6 +864,12 @@ function myGame(state, season, f, e, team, minutes) {
   }
   const won = us > them;
   s.rating = Math.round(clamp(6 + (skill - 55) / 18 + (won ? 0.5 : us === them ? 0 : -0.4) + (s.goals ?? 0) * 0.8 + (s.touchdowns ?? 0) * 0.5 + (s.tries ?? 0) * 0.6 + r.normal(0, 0.6), 3, 10) * 10) / 10;
+  // Baseball and softball also count runs batted in, and the runs a pitcher gave up (for the earned run average).
+  // Drawn after the rating, so the numbers above come out as they always did.
+  if (sport.adapter === 'baseball') {
+    if (e.position === 'pitcher') s.earned = r.poisson((s.innings ?? 0) / 9 * Math.max(0.8, 5.2 - k('stuff') * 2.4 - k('control') * 1.4));
+    else s.rbi = (s.homeRuns ?? 0) + r.poisson((s.hits ?? 0) * 0.45);
+  }
   return s;
 }
 

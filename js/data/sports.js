@@ -181,6 +181,10 @@ for (const [id, from] of [['soccer', 1991], ['basketball', 1997], ['cricket', 19
 //   pos       the best at a position (`pos`)                      bench    the best who came off the bench
 //   improved  the biggest step up from last season                comeback the best back from a long injury
 //   coach     the coach whose team did most beyond what was expected
+//   skill     the best at one side of the game (`by`: fielding or hitting), whatever their numbers
+//   posTeam   the best at one side of the game at each position (Gold Glove, Silver Slugger): one honor per place
+//   final     the most valuable player of the champions' playoff run
+//   `low`     a statistic where less is better (an earned run average)
 //   team      a team of the season: the best at each position (an honor shared by several)
 // `pos` limits who can win; `stat` names a number the game records for the player's own games (sports.js myGame).
 const A = (id, name, kind, o = {}) => ({ id, name, kind, ...o });
@@ -191,20 +195,30 @@ export const SEASON_AWARDS = {
     A('glove', 'Golden Glove', 'stat', { stat: 'clean', pos: ['gk'] }), A('coach', 'Manager of the Season', 'coach'), A('team', 'Team of the Season', 'team')],
   basketball: [A('mvp', 'Most Valuable Player', 'best'), A('rookie', 'Rookie of the Year', 'rookie'), A('dpoy', 'Defensive Player of the Year', 'stat', { stat: 'rebounds' }),
     A('sixth', 'Sixth Man of the Year', 'bench'), A('improved', 'Most Improved Player', 'improved'), A('scoring', 'Scoring Title', 'stat', { stat: 'points', per: true }),
-    A('coach', 'Coach of the Year', 'coach'), A('team', 'All-League First Team', 'team')],
+    A('coach', 'Coach of the Year', 'coach'), A('final', 'Finals MVP', 'final'), A('team', 'All-League First Team', 'team')],
   wheelchair_basketball: [A('mvp', 'Most Valuable Player', 'best'), A('rookie', 'Rookie of the Year', 'rookie'), A('scoring', 'Scoring Title', 'stat', { stat: 'points', per: true }),
     A('team', 'All-League First Team', 'team')],
   american_football: [A('mvp', 'Most Valuable Player', 'best'), A('opoy', 'Offensive Player of the Year', 'pos', { pos: ['qb', 'skill'] }),
     A('dpoy', 'Defensive Player of the Year', 'pos', { pos: ['defense', 'line'] }), A('rookie', 'Rookie of the Year', 'rookie'), A('comeback', 'Comeback Player of the Year', 'comeback'),
-    A('coach', 'Coach of the Year', 'coach'), A('team', 'All-League Team', 'team')],
+    A('coach', 'Coach of the Year', 'coach'), A('final', 'Championship Game MVP', 'final'), A('team', 'All-League Team', 'team')],
   baseball: [A('mvp', 'Most Valuable Player', 'best', { pos: ['catcher', 'infield', 'outfield'] }), A('pitcher', 'Pitcher of the Year', 'pos', { pos: ['pitcher'] }),
-    A('rookie', 'Rookie of the Year', 'rookie'), A('batting', 'Batting Title', 'stat', { stat: 'hits', per: true, pos: ['catcher', 'infield', 'outfield'] }),
-    A('comeback', 'Comeback Player of the Year', 'comeback'), A('coach', 'Manager of the Year', 'coach'), A('team', 'All-League Team', 'team')],
+    A('reliever', 'Reliever of the Year', 'bench', { pos: ['pitcher'] }), A('rookie', 'Rookie of the Year', 'rookie'),
+    A('hitter', 'Hitter of the Year', 'skill', { by: 'hitting', pos: ['catcher', 'infield', 'outfield'] }),
+    A('batting', 'Batting Title', 'stat', { stat: 'hits', per: true, pos: ['catcher', 'infield', 'outfield'] }),
+    A('homers', 'Home Run Leader', 'stat', { stat: 'homeRuns', pos: ['catcher', 'infield', 'outfield'] }), A('rbi', 'RBI Leader', 'stat', { stat: 'rbi', pos: ['catcher', 'infield', 'outfield'] }),
+    A('strikeouts', 'Strikeout Leader', 'stat', { stat: 'strikeouts', pos: ['pitcher'] }), A('era', 'ERA Title', 'stat', { stat: 'era', low: true, pos: ['pitcher'] }),
+    A('glove', 'Gold Glove', 'posTeam', { by: 'fielding' }), A('platinum', 'Platinum Glove', 'skill', { by: 'fielding' }),
+    A('slugger', 'Silver Slugger', 'posTeam', { by: 'hitting', pos: ['catcher', 'infield', 'outfield'] }),
+    A('comeback', 'Comeback Player of the Year', 'comeback'), A('coach', 'Manager of the Year', 'coach'),
+    A('final', 'Championship Series MVP', 'final'), A('team', 'All-League Team', 'team')],
   softball: [A('mvp', 'Most Valuable Player', 'best', { pos: ['infield', 'outfield'] }), A('pitcher', 'Pitcher of the Year', 'pos', { pos: ['pitcher'] }),
-    A('rookie', 'Rookie of the Year', 'rookie'), A('batting', 'Batting Title', 'stat', { stat: 'hits', per: true, pos: ['infield', 'outfield'] }), A('team', 'All-League Team', 'team')],
+    A('rookie', 'Rookie of the Year', 'rookie'), A('batting', 'Batting Title', 'stat', { stat: 'hits', per: true, pos: ['infield', 'outfield'] }),
+    A('homers', 'Home Run Leader', 'stat', { stat: 'homeRuns', pos: ['infield', 'outfield'] }), A('strikeouts', 'Strikeout Leader', 'stat', { stat: 'strikeouts', pos: ['pitcher'] }),
+    A('glove', 'Gold Glove', 'posTeam', { by: 'fielding' }), A('slugger', 'Silver Slugger', 'posTeam', { by: 'hitting', pos: ['infield', 'outfield'] }),
+    A('final', 'Championship Series MVP', 'final'), A('team', 'All-League Team', 'team')],
   ice_hockey: [A('mvp', 'Most Valuable Player', 'best'), A('rookie', 'Rookie of the Year', 'rookie'), A('goalie', 'Best Goaltender', 'pos', { pos: ['goalie'] }),
     A('defense', 'Best Defenseman', 'pos', { pos: ['defense'] }), A('scoring', 'Scoring Title', 'stat', { stat: 'points', pos: ['forward', 'defense'] }),
-    A('coach', 'Coach of the Year', 'coach'), A('team', 'All-League First Team', 'team')],
+    A('coach', 'Coach of the Year', 'coach'), A('final', 'Playoff MVP', 'final'), A('team', 'All-League First Team', 'team')],
   volleyball: [A('mvp', 'Most Valuable Player', 'best'), A('attacker', 'Best Attacker', 'stat', { stat: 'kills', pos: ['outside', 'middle'] }),
     A('libero', 'Best Libero', 'stat', { stat: 'digs', pos: ['libero'] }), A('setter', 'Best Setter', 'pos', { pos: ['setter'] }), A('rookie', 'Rookie of the Year', 'rookie'),
     A('team', 'All-League Team', 'team')],
@@ -215,6 +229,8 @@ export const SEASON_AWARDS = {
     A('coach', 'Coach of the Season', 'coach'), A('team', 'Team of the Season', 'team')],
 };
 /** A team of the season is a side: how many at each position, as the sport lines up. */
+/** Which skills make a fielder and a hitter, for the awards that judge one side of the game. */
+export const AWARD_SKILLS = { fielding: { fielding: 0.7, throwing: 0.3 }, hitting: { contact: 0.4, power: 0.4, discipline: 0.2 } };
 export const AWARD_LINEUPS = {
   soccer: { gk: 1, def: 4, mid: 4, fwd: 2 }, basketball: { guard: 2, forward: 2, center: 1 }, wheelchair_basketball: { guard: 2, forward: 3 },
   baseball: { pitcher: 1, catcher: 1, infield: 4, outfield: 3 }, softball: { pitcher: 1, infield: 5, outfield: 3 },

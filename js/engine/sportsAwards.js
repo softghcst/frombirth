@@ -10,7 +10,7 @@
 //   state.sports.yearAwards['sport/level/year'] = [...]        individual sports, the same shape
 import { store, milestone } from '../state.js';
 import { clamp } from '../util.js';
-import { sportOf, awardsFor, COLLEGE_NAMES, YEAR_AWARDS, AWARD_LINEUPS } from '../data/sports.js';
+import { sportOf, awardsFor, COLLEGE_NAMES, YEAR_AWARDS, AWARD_LINEUPS, AWARD_SKILLS } from '../data/sports.js';
 import * as sp from './sports.js';
 
 const { seeded, overall, coachFor } = sp.internals;
@@ -26,6 +26,9 @@ function perGame(sport, stat, pos, k) {
     case 'rebounds': return 6 * (0.5 + k) * (pos === 'center' ? 1.5 : pos === 'forward' ? 1.15 : 0.7);
     case 'clean': return clamp(0.12 + k * 0.3, 0, 0.6);
     case 'hits': return 4 * (0.15 + k * 0.2);
+    case 'homeRuns': return 0.12 + k * 0.2;
+    case 'rbi': return 4 * (0.15 + k * 0.2) * 0.45 + 0.12 + k * 0.2;
+    case 'strikeouts': return 6 * (0.6 + k) * (0.6 + k);
     case 'runs': return 25 * (0.4 + k) * (pos === 'bowler' ? 0.3 : 1);
     case 'wickets': return 1.6 * (0.4 + k) * (pos === 'allrounder' ? 0.6 : 1);
     case 'tries': return (pos === 'back' ? 0.6 : 0.3) * (0.6 + k);
@@ -35,6 +38,11 @@ function perGame(sport, stat, pos, k) {
   }
 }
 const statOf = (st, stat) => (stat === 'points' && st.points == null ? (st.goals ?? 0) + (st.assists ?? 0) : st[stat] ?? 0);
+/** A statistic's value for an award: a total, a rate a game, a batting average, or an earned run average. */
+const valueOf = (a, c) => (a.stat === 'era' ? (c.line.earned ?? 0) * 9 / Math.max(1, c.line.innings ?? 0)
+  : a.per ? (a.stat === 'hits' ? (c.line.hits ?? 0) / Math.max(1, c.line.atBats ?? 1) : (c.line[a.stat] ?? 0) / Math.max(1, c.games)) : c.line[a.stat] ?? 0);
+const qualifies = (a, c) => (a.stat === 'era' ? (c.line.innings ?? 0) >= 40 : a.per ? c.games >= 8 : true);
+const shown = (a, v) => (a.stat === 'era' ? Math.round(v * 100) / 100 : a.stat === 'hits' && a.per ? Math.round(v * 1000) / 1000 : a.per ? Math.round(v * 10) / 10 : Math.round(v));
 
 /**
  * Everyone in the league who could win, each with a score for the season and a season line. The player's line is the
@@ -67,7 +75,12 @@ function candidates(state, season, e, team) {
       const line = {};
       for (const a of awardsFor(sport)) if (a.stat) line[a.stat] = Math.round(perGame(sport, a.stat, x.pos, k) * g * share * r.normal(1, 0.18) * 10) / 10;
       if (line.hits != null) line.atBats = Math.round(4 * g * share);
+      if (line.era !== undefined) { line.innings = Math.round(6 * (0.6 + k) * g * share); line.earned = Math.round(line.innings / 9 * Math.max(0.8, 5.2 - k * 3.8) * r.normal(1, 0.15)); delete line.era; }
+      // Some are better with the glove than the bat, and some the other way: kept with the roster place, so it stays true of them.
+      x.lean ??= { fielding: Math.round(seeded(`lean/${x.id}`).normal(0, 7)), hitting: Math.round(seeded(`lean/${x.id}/bat`).normal(0, 7)) };
+      const side = (by) => x.rating + x.lean[by] + r.normal(0, 2.5) + share * 3;
       out.push({ who: x.npcId ?? x.id, name: x.name, teamId: tid, pos: x.pos, role, games: Math.round(g * share), line, age: state.year - x.born,
+        by: { fielding: side('fielding'), hitting: side('hitting') },
         rookie: (x.since ?? state.year) === state.year, rating: x.rating, prev: x.ratedLast ?? x.rating,
         score: x.rating * (0.55 + share * 0.45) + teamBonus(tid) + r.normal(0, 3.5) });
     }
@@ -79,6 +92,8 @@ function candidates(state, season, e, team) {
     const line = {};
     for (const a of awardsFor(sport)) if (a.stat) line[a.stat] = statOf(st, a.stat);
     if (line.hits != null) line.atBats = st.atBats ?? mine.length * 4;
+    if ('era' in line) { line.innings = st.innings ?? 0; line.earned = st.earned ?? 0; delete line.era; }
+    const skillOf = (by) => Object.entries(AWARD_SKILLS[by]).reduce((s, [k, w]) => s + (e.skills[k] ?? 0) * w, 0);
     const avg = mine.reduce((s, f) => s + f.me.rating, 0) / mine.length;
     const share = Math.min(1, mine.length / Math.max(1, games(team.id)));
     const earlier = Object.values(S.seasons).filter((s) => s.playerId === p.id && s.level === season.level && s.year < season.year && s.sportId === season.sportId);
@@ -86,6 +101,8 @@ function candidates(state, season, e, team) {
     out.push({ who: 'player', name: `${p.firstName} ${p.lastName}`, teamId: team.id, pos: e.position, role: season.role, games: mine.length, line, age: p.age,
       rookie: !earlier.length, rating: overall(e, p), prev: lastAvg == null ? null : lastAvg, avg,
       comeback: sp.myAthlete(state).injuries.some((i) => i.sportId === e.id && i.year === state.year - 1 && i.severity >= 35),
+      by: { fielding: skillOf('fielding') + share * 3, hitting: skillOf('hitting') + (avg - 6.5) * 3 + share * 3 },
+      final: [...season.playoffs].filter((f) => f.me?.played).map((f) => f.me.rating),
       score: (overall(e, p) + (avg - 6.5) * 6) * (0.55 + share * 0.45) + teamBonus(team.id) });
   }
   return { out, place, n, r };
@@ -121,10 +138,18 @@ export function seasonAwards(state, season, e, team) {
       const me = pool.find((c) => c.who === 'player' && c.comeback && c.score >= 70);
       winner = named(me ?? (r.chance(0.8) ? r.pick(pool.filter((c) => c.who !== 'player' && c.role === 'starter')) : null));
     } else if (a.kind === 'stat') {
-      const value = (c) => (a.per ? (a.stat === 'hits' ? (c.line.hits ?? 0) / Math.max(1, c.line.atBats ?? 1) : (c.line[a.stat] ?? 0) / Math.max(1, c.games)) : c.line[a.stat] ?? 0);
-      const eligible = a.per ? pool.filter((c) => c.games >= 8) : pool;
-      const w = top(eligible, value);
-      if (w) winner = named(w, a.per ? Math.round(value(w) * (a.stat === 'hits' ? 1000 : 10)) / (a.stat === 'hits' ? 1000 : 10) : Math.round(value(w)));
+      const w = top(pool.filter((c) => qualifies(a, c)), (c) => (a.low ? -valueOf(a, c) : valueOf(a, c)));
+      if (w) winner = named(w, shown(a, valueOf(a, w)));
+    } else if (a.kind === 'skill') {
+      winner = named(top(pool, (c) => c.by?.[a.by] ?? c.score));
+    } else if (a.kind === 'final') {
+      // The champions' playoff run: the player's own playoff games if they were in it, otherwise their best in form.
+      const champs = pool.filter((c) => c.teamId === season.champion);
+      winner = named(top(champs, (c) => (c.who === 'player' && c.final?.length ? (c.final.reduce((s, x) => s + x, 0) / c.final.length - 6.5) * 8 + c.score : c.score + r.normal(0, 4))));
+    } else if (a.kind === 'posTeam') {
+      // One for each place in the side, judged on that side of the game alone.
+      teamList = (sport.positions ?? [[null]]).filter(([pos]) => !a.pos || a.pos.includes(pos)).flatMap(([pos]) => out.filter((c) => c.pos === pos && c.games >= 3)
+        .sort((x, y) => (y.by?.[a.by] ?? y.score) - (x.by?.[a.by] ?? x.score)).slice(0, AWARD_LINEUPS[sport.id]?.[pos] ?? 1)).map((c) => ({ ...named(c), pos: c.pos }));
     } else if (a.kind === 'coach') {
       // Most beyond what was expected of them before the season; a title counts for a little more.
       const tid = top(season.teamIds, (t) => (season.preview[t] ?? 0) - place[t] + (season.champion === t ? 2 : 0) + r.next() * 0.1);
@@ -137,7 +162,7 @@ export function seasonAwards(state, season, e, team) {
       teamList = (sport.positions ?? [[null]]).flatMap(([pos]) => out.filter((c) => c.pos === pos && c.games >= 3).sort((x, y) => y.score - x.score).slice(0, AWARD_LINEUPS[sport.id]?.[pos] ?? even))
         .map((c) => ({ ...named(c), pos: c.pos }));
     }
-    awards.push({ id: a.id, name, kind: a.kind, ...(a.stat ? { stat: a.stat, per: !!a.per } : {}), winner, ...(teamList ? { team: teamList } : {}) });
+    awards.push({ id: a.id, name, kind: a.kind, ...(a.stat ? { stat: a.stat, per: !!a.per, ...(a.low ? { low: true } : {}) } : {}), winner, ...(teamList ? { team: teamList } : {}) });
   }
   season.awards = awards;
   // Ratings as they stood, so next year's "most improved" has something to measure from.
@@ -156,7 +181,8 @@ function record(state, e, awards, o) {
     if (e.awards.some((x) => x.key === key)) continue;
     e.awards.push({ key, year: state.year, id: a.id, name: a.name, kind: a.kind, seasonId: o.seasonId ?? null, league: o.league });
     const big = ['best', 'rookie', 'young'].includes(a.kind);
-    const what = a.kind === 'team' ? `Named in the ${o.league} ${a.name}` : `${a.name}, ${o.league}`;
+    const pos = a.kind === 'posTeam' ? sportOf(e.id).positions?.find((x) => x[0] === a.team.find((t) => t.who === 'player')?.pos)?.[1] : null;
+    const what = a.kind === 'team' ? `Named in the ${o.league} ${a.name}` : `${a.name}${pos ? ` (${pos.toLowerCase()})` : ''}, ${o.league}`;
     milestone(`${what}, ${state.year}.`, 'career');
     sp.moment(state, { type: 'award', sportId: e.id, text: `${what}.`, sig: big ? 3 : 2, seasonId: o.seasonId ?? null, key: `award/${key}` });
   }
