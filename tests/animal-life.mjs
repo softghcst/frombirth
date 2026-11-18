@@ -72,8 +72,15 @@ clean('staff');
 section('staff: shelter, vet and club people are real, persistent people');
 
 // ---------- 2. Classes ----------
-p = adult(); a = own('dog', (x) => { x.born = S().year; });
+// An ordinarily trainable puppy: puppy class is only for puppies and young dogs, and a hard-to-train dog can
+// grow out of it before finishing (checked below), which is not what this part is about.
+p = adult(); a = own('dog', (x) => { x.born = S().year; x.temperament.trainability = 60; });
 let offers = life.coursesFor(a.id);
+{ // The same dog, had it grown up first: puppy class is closed to it, whatever it still has to learn.
+  const was = S().npcs[a.id].age; S().npcs[a.id].age = 6;
+  check(/Not for an adult/.test(life.coursesFor(a.id).find((x) => x.id === 'puppy')?.why ?? ''), 'a grown dog cannot go to puppy class, whatever it still has to learn');
+  S().npcs[a.id].age = was;
+}
 check(offers.find((x) => x.id === 'puppy') && !offers.find((x) => x.id === 'puppy').why && offers.find((x) => x.id === 'agility').why, 'a puppy can go to puppy class, not agility');
 check(!life.coursesFor(own('fish').id).length && life.coursesFor(own('cat').id).some((x) => x.id === 'clicker'), 'fish do not go to classes; cats can be clicker-trained');
 let cash = p.finance.cash;
@@ -82,7 +89,7 @@ const trainer = S().npcs[life.club().met?.[0]];
 check(r.ok && cash - p.finance.cash === offers.find((x) => x.id === 'puppy').price && ['name', 'sit', 'come'].every((k) => a.training[k]?.progress > 0) && trainer, 'a year of puppy class moves several skills on at once, is paid once, and the trainer is someone the player now knows');
 check(!life.enrol(a.id, 'puppy').ok && cash - p.finance.cash === offers.find((x) => x.id === 'puppy').price, 'one year of a course at a time');
 for (let i = 0; i < 4 && !['name', 'sit', 'come'].every((k) => a.training[k].progress >= 100); i++) { year(); life.enrol(a.id, 'puppy'); }
-check(['name', 'sit', 'come'].every((k) => a.training[k].progress >= 100) && lastOf('trained', a.id), `finishing a course is a milestone (${['name', 'sit', 'come'].map((k) => `${k} ${a.training[k].progress}`).join(', ')}; alive ${a.alive !== false}; cash ${Math.round(p.finance.cash)}; can enrol: ${life.enrol(a.id, 'puppy').text})`);
+check(['name', 'sit', 'come'].every((k) => a.training[k].progress >= 100) && lastOf('trained', a.id), 'finishing a course is a milestone');
 for (let i = 0; i < 6 && !(a.training.come.progress >= 100 && a.training.stay?.progress >= 100); i++) { year(); life.enrol(a.id, 'obedience'); }
 year(); S().npcs[a.id].age = 3; r = life.enrol(a.id, 'agility');
 check(r.ok && a.training.agility?.progress > 0 && zoo.trainingOf(a).some((s) => s.id === 'agility' && s.classOnly) && !zoo.train(a.id, 'agility').ok, 'agility is learned in a class, not at home, and shows among what the dog is learning');
