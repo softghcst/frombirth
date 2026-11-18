@@ -284,7 +284,7 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
 
 // 10. The faces on offer: the withdrawn eyes, mouths and noses are gone, saves that used them land on the nearest kept,
 // and the rest are offered and drawn at random exactly as before.
-const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_24', 'eyes_25', 'eyes_26', 'eyes_6', 'eyes_7', 'eyes_8', 'eyes_9'];
+const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_25', 'eyes_26', 'eyes_6', 'eyes_7', 'eyes_8', 'eyes_9'];
 check(AVATAR_MANIFEST.eyes.map((e) => e.id).join() === EYES.join(), 'the eye shapes in the manifest have changed');
 check(CATALOG.eyes.map((e) => e.id).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
 check(CUR.RESTING.eyes.join() === 'eyes_6,eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_22,eyes_25', 'the eyes given out at random have changed');
@@ -348,8 +348,8 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   for (const h of AVATAR_MANIFEST.heads.filter((x) => x.tags?.age === 'adult')) {
     const hr = (h.fit.chin - h.fit.top) / (T.face.chin - T.face.top), s = Math.sqrt((h.fit.w / T.face.w) * hr);
     const at = (ay) => h.fit.top + (ay - T.face.top) * hr;
-    const g = { s, eyeS: s, noseS: s, eyeY: at(T.anchor.eyes), noseY: at(T.anchor.nose), apart: 3 };
     for (const e of AVATAR_MANIFEST.eyes) for (const n of AVATAR_MANIFEST.noses) {
+      const g = { s, eyeS: s, noseS: s * (CUR.PART_SCALE[n.id] ?? 1), eyeY: at(T.anchor.eyes), noseY: at(T.anchor.nose), apart: 3 };
       const f = noseFit(e.id, n.id, g), before = noseGap(e.id, n.id, g), after = noseGap(e.id, n.id, g, f);
       faces++;
       const touched = f.k !== 1 || f.drop !== 0 || f.apart !== 0;
@@ -363,8 +363,10 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(faces === 7 * AVATAR_MANIFEST.eyes.length * AVATAR_MANIFEST.noses.length && changed > 0, 'the noses were not checked against every pair of eyes on every face');
   // The renderer applies it: a broad nose under low inner corners is drawn smaller, a clear pair as before.
   const plain = fitTransforms('head_17_dimple_oval', 'adult', {});
-  check(fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_20', nose: 'nose_15' }).nose !== plain.nose, 'a crowded nose is not adjusted in the portrait');
-  check(fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose: 'nose_10' }).nose === plain.nose, 'a clear nose is adjusted in the portrait');
+  check(fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_20', nose: 'nose_20' }).nose !== plain.nose, 'a crowded nose is not adjusted in the portrait');
+  check(fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose: 'nose_12' }).nose === plain.nose, 'a clear nose is adjusted in the portrait');
+  check(/scale\(1\.0[4-9]\)/.test(fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose: 'nose_10' }).nose), 'the slight nose is not drawn larger');
+  for (const id of ['nose_15', 'nose_24', 'eyes_24']) check(!PART_BY_ID[id], `${id} has been withdrawn and is still listed`);
 }
 
 if (problems.length) {

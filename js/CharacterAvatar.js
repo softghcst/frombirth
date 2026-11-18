@@ -28,7 +28,7 @@ import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
 import { noseFit } from './avatar/featureFit.js';
-import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS } from './avatar/curation.js';
+import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/avatars/';
@@ -145,7 +145,7 @@ export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
   const step = (k) => Math.max(-2, Math.min(2, Number(tweaks[k]) || 0));
   const eyeS = s * (1 + step('eyeSize') * TWEAK_STEP.size);
   const eyeUp = step('eyeY') * TWEAK_STEP.height * hr;
-  const noseS = s * (1 + step('noseSize') * TWEAK_STEP.size);
+  const noseS = s * (1 + step('noseSize') * TWEAK_STEP.size) * (PART_SCALE[parts.nose] ?? 1);
   // This nose with these eyes on this head: a little smaller, lower, or the eyes a touch wider, where they would crowd.
   const nf = parts.eyes && parts.nose ? noseFit(parts.eyes, parts.nose, { s, eyeS, noseS, eyeY: at(T.anchor.eyes) - eyeUp, noseY: at(T.anchor.nose), apart: EYE_APART + step('eyeGap') * TWEAK_STEP.gap })
     : { k: 1, drop: 0, apart: 0 };
