@@ -714,8 +714,9 @@ export function tickCareer() {
   }
   c.totalYears = (c.totalYears ?? 0) + 1;
   // A professional athlete's year is the sports season: their role in the side and their contract are settled there
-  // (engine/sportsLife.js), not by an annual review.
-  if (c.sportContract && career.id === 'athlete') return null;
+  // (engine/sportsLife.js), not by an annual review. One hired as an athlete with no club yet is signed there too, at the
+  // sport's turn in the year, so the review does not let them go first.
+  if (career.id === 'athlete') return null;
 
   // How the year went: skill, discipline, a mentor, how stretched or bored, and luck.
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : (p.stats.intellect - 55) / 15;

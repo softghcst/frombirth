@@ -738,7 +738,7 @@ function refreshRoster(state, t) {
   t.refreshed = state.year;
   const org = orgOf(t.orgId, state);
   const r = seeded(`roster/${t.id}/${state.year}`);
-  const names = rosterNames(r, org.countryId, 3);
+  const names = rosterNames(r, org.countryId, 3, org.div === 'women' ? 'female' : org.div === 'men' ? 'male' : null);
   for (const x of t.roster) if (!x.player && !x.npcId) x.rating = Math.round(clamp(x.rating + r.normal(0.5, 2.5), 10, 97));
   // One or two move on each year, and new ones arrive. Known teammates stay while the player is there.
   const leaving = r.shuffle(t.roster.filter((x) => !x.player && !x.npcId && x.since < state.year)).slice(0, r.int(1, 2));
@@ -1179,7 +1179,7 @@ export const momentsOf = (personId = store.state.player.id, state = store.state)
 
 // ---------- Exports for the other sports modules ----------
 
-export const internals = { checkSchoolTeam, fillEntry, academyAffordable, regroup, nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, leagueFor, playSeason, playEvent, newEntry, newAthlete, trainYear,
+export const internals = { rosterNames, checkSchoolTeam, fillEntry, academyAffordable, regroup, nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, leagueFor, playSeason, playEvent, newEntry, newAthlete, trainYear,
   overall, meanSkill, rec, LEVEL_STRENGTH, EVENTS_A_YEAR, teamStrength, val, fullName, rivalNote, seeded, hash, ordinal };
 export { SPORTS, LEVEL_NAMES };
 void cap; void yearNow;
