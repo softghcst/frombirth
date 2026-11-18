@@ -6,10 +6,12 @@ import { store } from '../js/state.js';
 import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
-import { SPORTS } from '../js/data/fame.js';
+import { SPORTS } from '../js/data/sports.js';
 import { EARLIEST_START } from '../js/data/eras.js';
 import { hire, unmet } from '../js/engine/career.js';
-import * as sports from '../js/engine/proSport.js';
+import * as athletics from '../js/engine/sports.js';
+import { saveGame, loadGame } from '../js/save.js';
+import * as sportsLife from '../js/engine/sportsLife.js';
 import * as modelling from '../js/engine/modelling.js';
 import * as pub from '../js/engine/publishing.js';
 import * as music from '../js/engine/music.js';
@@ -21,6 +23,8 @@ import * as social from '../js/engine/social.js';
 import * as freelance from '../js/engine/freelance.js';
 import { meetingPlaces } from '../js/engine/romance.js';
 
+const mem = new Map();
+globalThis.localStorage ??= { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
 const problems = [];
 const ok = [];
 const check = (cond, msg) => { if (!cond) problems.push(msg); };
@@ -53,50 +57,59 @@ for (let i = 0; i < 45 && p.alive; i++) { try { year(); } catch (e) { crashed = 
 check(!crashed, `a life from 1960 plays on (${crashed})`);
 section(`eras: lives from ${EARLIEST_START}; what was not invented does not exist; a 1960 life plays through`);
 
-// 2. Women's and men's sport, newer sports, injuries.
+// 2. Women's and men's sport, newer sports, injuries: one sports system (engine/sports.js).
+const decide = () => { for (const d of sportsLife.openDecisions()) sportsLife.answer(d.id, d.kind === 'retire' ? 'no' : d.kind === 'integrity' ? 'refuse' : (d.options.find((o) => o.id === 'yes') ?? d.options[0]).id); };
 p = life('uk', 20, { gender: 'female' });
 p.gender = 'female';
 p.talents.sports = 86;
 hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
-check(sports.divOf(p) === 'women' && sports.chooseSport('rugby').ok, 'a woman plays in the women\'s league');
-const L = store.state.proSport.leagues[p.sport.leagueId];
-check(L.div === 'women' && /Women/.test(L.name) && L.teams.every((t) => store.state.npcs[t.star].gender === 'female'), 'the women\'s league has its own clubs and players');
-check(!sports.playedIn('rugby', 1980, 'women') && sports.playedIn('rugby', 1980, 'men'), 'women\'s professional rugby began later than men\'s');
-for (let y = 0; y < 6; y++) { if (!sports.isAthlete(p)) { hire(CAREER_BY_ID.athlete, 2, 70, 'offer'); sports.chooseSport('rugby'); } year(); }
-for (const s of L.seasons) {
-  const n = L.teams.length;
-  check(s.table.reduce((a, r) => a + r[1] + r[2] + r[3], 0) / 2 === n * (n - 1) / 2 * SPORTS.rugby.rounds, 'every rugby match is played once');
-  check(s.table.every((r) => r[6] === r[1] * 4 + r[2] * 2), 'rugby points are four for a win, two for a draw');
-}
-for (const x of p.sport.seasons.filter((y) => y.injury)) check(x.apps < x.games || x.injury.weeks < 4, 'an injury costs games');
-check((p.sport.injuries ?? []).every((x) => x.what && x.weeks > 0), 'injuries are on the record');
-section(`women's sport and rugby: ${L.seasons.length} seasons, ${(p.sport.injuries ?? []).length} injuries recorded`);
+check(athletics.divOf(p) === 'women' && sportsLife.goPro('rugby').ok, 'a woman plays in the women\'s league');
+let e = athletics.entryOf('rugby');
+const club = athletics.orgOf(e.orgId);
+check(club.div === 'women' && / Women$/.test(club.name), 'the women\'s game has its own clubs');
+check(athletics.teamOf(e.teamId).roster.length > 0 && store.state.sports.teams[e.teamId].roster.every((x) => x.id === p.id || !!x.name), 'its teams have their own players');
+const man = { ...p, gender: 'male', flags: {} };
+check(athletics.proFromFor(SPORTS.soccer, p) > 1985 && athletics.proFromFor(SPORTS.soccer, man) <= 1985, 'women\'s professional soccer began later than men\'s');
+for (let y = 0; y < 6; y++) { year(); decide(); }
+const lg = athletics.orgOf(club.leagueId);
+check(/Women's/.test(lg?.name ?? '') && lg.teamIds.every((id) => athletics.orgOf(store.state.sports.teams[id]?.orgId)?.div === 'women'), `the women's league is women's clubs (${lg?.name})`);
+check(!sportsLife.audit().length, 'every rugby game counted was played');
+const a = athletics.myAthlete();
+check(a.injuries.every((x) => x.name && x.year && x.sportId), 'injuries are on the record');
+section(`women's sport and rugby: ${e.seasonsPlayed} seasons, ${a.injuries.length} injuries recorded`);
 
 p = life('uk', 22);
 p.talents.sports = 84;
 hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
-sports.chooseSport('boxing');
-for (let y = 0; y < 6; y++) { if (!sports.isAthlete(p)) { hire(CAREER_BY_ID.athlete, 2, 70, 'offer'); sports.chooseSport('boxing'); } year(); }
-for (const x of p.sport.seasons) {
-  check(x.stat + x.losses === x.fights, 'every fight is won or lost');
-  check(x.rank !== 1 || x.title || p.sport.titles.length > 0, 'nobody is number one without the belt');
-}
-section('boxing: fights, a record, a title');
+check(sportsLife.goPro('martial_arts').ok, 'a fighter turns professional');
+e = athletics.entryOf('martial_arts');
+for (let y = 0; y < 6; y++) { year(); decide(); }
+const bouts = e.events.map((id) => store.state.sports.events[id]).flatMap((x) => x.rounds);
+check(bouts.length > 0 && bouts.every((x) => typeof x.won === 'boolean'), 'every bout is won or lost');
+check(e.wins + e.losses >= bouts.length, 'the record counts every bout');
+section('combat sport: bouts, a record');
 
-// 3. Coaching.
+// A life saved when professional sport was a separate system: the record comes across, and play carries on.
+p = life('uk', 28);
+p.talents.sports = 85;
+hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
+const y0 = store.state.year;
+p.sport = { sport: 'football', div: 'men', teamId: 't1', leagueId: 'uk:football', since: y0 - 5, seasons: [1, 2, 3, 4, 5].map((i) => ({ year: y0 - i, stat: 3 })), titles: [{ year: y0 - 2, name: 'Old League champions' }], medals: [], caps: 12, retiredYear: null, offer: null };
+store.state.proSport = { seq: 1, leagues: {}, circuits: {} };
+saveGame(store.state); store.state = loadGame(store.state.slotId); p = store.state.player;
+const old = athletics.entryOf('soccer');
+check(!p.sport && !store.state.proSport && old?.legacySeasons === 5 && old.caps === 12 && old.titles.some((t) => t.name === 'Old League champions'), 'an old save\'s sporting record comes across whole');
+year(); decide();
+check(p.career.sportContract && athletics.entryOf('soccer').level === 'pro', 'and the player carries on at a club, in the same sport');
+section('old saves: one sports record');
+
+// 3. Coaching is the same system's (engine/sportsLife.js becomeCoach; tests/sports-scenarios.mjs follows a coach).
 p = life('uk', 40);
-p.stats.intellect = 80; p.talents.sports = 70;
-hire(CAREER_BY_ID.coaching, 1, 60, 'offer');
-const jobs = sports.coachingJobs('football');
-check(jobs.length > 0 && sports.takeCoachingJob('football', jobs[0].team.id).ok, 'a coach can take charge of a club');
-let inCharge = 0;
-for (let y = 0; y < 4; y++) { const was = !!p.coach.teamId && sports.isCoach(p); year(); if (was) inCharge += 1; }
-check(p.coach.seasons.length >= Math.min(1, inCharge), 'each season in charge is recorded');
-for (const x of p.coach.seasons) {
-  const s = store.state.proSport.leagues[p.coach.leagueId].seasons.find((y) => y.year === x.year);
-  check(s && s.table.findIndex((r) => r[0] === x.teamId) + 1 === x.pos, 'the coach\'s record is the club\'s real position');
-}
-section('coaching: in charge of a club, judged on its results');
+p.talents.sports = 70;
+athletics.pastEntry('soccer', { level: 'pro', since: store.state.year - 20 });
+athletics.entryOf('soccer').status = 'retired'; athletics.entryOf('soccer').seasonsPlayed = 12;
+check(sportsLife.becomeCoach('soccer').ok && p.career.careerId === 'coaching' && athletics.coachOf(p.id)?.self, 'a former player can coach, as a job and on the sports record');
+section('coaching: a job, and a coach\'s record');
 
 // 4. Castings are a choice.
 p = life('uk', 21);

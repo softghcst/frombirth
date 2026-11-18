@@ -151,6 +151,25 @@ function fillEntry(state, p, e) {
   return e;
 }
 
+/**
+ * The player's entry in a sport, made without taking the sport up: for a record that exists already (a life saved
+ * before there was one sports system). Skills come from their talent and the level given, as for a relative.
+ */
+export function pastEntry(sportId, o = {}, state = store.state) {
+  const p = state.player;
+  const a = profile(state);
+  const sport = sportOf(sportId);
+  const e = a.sports[sportId] ?? newEntry(state, p, a, sport, o.since ?? state.year);
+  e.level = o.level ?? e.level;
+  e.peak = Math.max(e.peak ?? 0, LEVEL_STRENGTH[e.level] ?? 30);
+  return e;
+}
+
+/** Which side of professional sport someone plays in: the women's or the men's game. Non-binary players choose (flags.sportDiv). */
+export const divOf = (p = player()) => p.flags?.sportDiv ?? (p.gender === 'female' ? 'women' : 'men');
+/** The first year someone could be paid to play: later for women in some sports. */
+export const proFromFor = (sport, p = player()) => (divOf(p) === 'women' ? sport.womenProFrom ?? sport.proFrom : sport.proFrom);
+
 /** The character's athletic profile, made the first time it is needed. */
 export function profile(state = store.state) {
   const S = ensure(state);
@@ -370,7 +389,8 @@ function findOrg(state, sport, level, o = {}) {
   const r = seeded(`org/${key}`);
   const id = nextId(S, 'org');
   const kind = level === 'recreational' ? 'rec' : level;
-  const org = { id, key, kind, level, sportId: sport.id, name: o.name ?? orgName(r, kind, sport, city), countryId: p.countryId, city,
+  const div = level === 'pro' && sport.kind === 'team' ? o.div ?? null : null; // professional team sport is played in men's and women's leagues
+  const org = { id, key, kind, level, sportId: sport.id, name: `${o.name ?? orgName(r, kind, sport, city)}${div === 'women' ? ' Women' : ''}`, countryId: p.countryId, city, div,
     founded: Math.max(sport.founded, state.year - r.int(5, 90)), strength: Math.round(LEVEL_STRENGTH[level] + r.int(-6, 6) + (o.strength ?? 0)),
     coachId: null, teamIds: [], leagueId: null, history: [], uniId: o.uniId ?? null, tier: o.tier ?? null };
   S.orgs[id] = org;
@@ -410,10 +430,10 @@ export const COACH_STYLE = {
 };
 
 /** Invented names for the rest of a roster, from the country's own names. */
-function rosterNames(r, countryId, n) {
+function rosterNames(r, countryId, n, gender = null) {
   const names = COUNTRIES[countryId].names;
   const out = [];
-  for (let i = 0; i < n; i++) { const g = r.chance(0.5) ? 'male' : 'female'; out.push(`${r.pick(names[g] ?? names.female)} ${r.pick(names.last)}`); }
+  for (let i = 0; i < n; i++) { const g = gender ?? (r.chance(0.5) ? 'male' : 'female'); out.push(`${r.pick(names[g] ?? names.female)} ${r.pick(names.last)}`); }
   return out;
 }
 
@@ -428,7 +448,7 @@ function teamFor(state, org, p = state.player) {
   const id = nextId(S, 'team');
   const size = sport.kind === 'team' ? (sport.teamSize ?? 11) + 6 : 8;
   const positions = sport.positions ?? [[null, 'Member']];
-  const roster = rosterNames(r, org.countryId, size).map((name, i) => ({ id: `r_${id}_${i}`, name, pos: positions[i % positions.length][0],
+  const roster = rosterNames(r, org.countryId, size, org.div === 'women' ? 'female' : org.div === 'men' ? 'male' : null).map((name, i) => ({ id: `r_${id}_${i}`, name, pos: positions[i % positions.length][0],
     rating: Math.round(clamp(org.strength + r.normal(0, 7) - (group === 'senior' ? 0 : 4), 10, 95)), since: state.year - r.int(0, 3) }));
   const t = { id, orgId: org.id, sportId: sport.id, group, name: group === 'senior' ? org.name : `${org.name} ${group.toUpperCase()}`, roster, history: [], captainId: null };
   S.teams[id] = t;
@@ -632,14 +652,14 @@ export function leftSchoolTeam(name, state = store.state) {
 function leagueFor(state, org, team) {
   const S = ensure(state);
   const sport = sportOf(org.sportId);
-  const key = `league/${org.level}/${sport.id}/${org.countryId}/${team.group}/${org.tier ?? 0}`;
+  const key = `league/${org.level}/${sport.id}/${org.countryId}/${team.group}/${org.tier ?? 0}${org.div === 'women' ? '/women' : ''}`;
   let lg = Object.values(S.orgs).find((x) => x.key === key);
   if (!lg) {
     const r = seeded(key);
     const id = nextId(S, 'org');
     const cities = COUNTRIES[org.countryId].cities ?? [org.city];
     lg = { id, key, kind: 'league', level: org.level, sportId: sport.id, countryId: org.countryId, city: org.city, teamIds: [],
-      name: `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
+      name: `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`, div: org.div ?? null,
       founded: Math.max(sport.founded, state.year - r.int(10, 80)), history: [] };
     S.orgs[id] = lg;
     // Every team in a league has a name of its own: the place, and a club name nobody else in the league has.
@@ -649,7 +669,7 @@ function leagueFor(state, org, team) {
       let name = '';
       for (let t = 0; t < 20 && (!name || taken.has(name)); t++) name = org.level === 'pro' ? `${city} ${r.pick(TEAM_WORDS)}` : t < 10 && !taken.has(`${city} ${sport.kind === 'team' ? r.pick(TEAM_WORDS) : sport.name}`) ? `${city} ${r.pick(TEAM_WORDS)}` : `${r.pick(CLUB_WORDS)} ${r.pick(TEAM_WORDS)}`;
       taken.add(name);
-      const rival = findOrg(state, sport, org.level, { key: `${key}/rival/${i}`, city, strength: r.int(-8, 8), tier: org.tier, name });
+      const rival = findOrg(state, sport, org.level, { key: `${key}/rival/${i}`, city, strength: r.int(-8, 8), tier: org.tier, name, div: org.div });
       lg.teamIds.push(teamFor(state, rival).id);
     }
   }
@@ -875,7 +895,7 @@ function playEvent(state, e, level, n, o = {}) {
   const format = partner ? 'doubles' : 'singles';
   const names = EVENT_NAMES[level] ?? EVENT_NAMES.club;
   const where = level === 'pro' ? r.pick(COUNTRIES[p.countryId].cities ?? [cityOf(p)]) : cityOf(p);
-  const ev = { id, year: state.year, sportId: e.id, level, format, name: `${where} ${r.pick(names)}${format === 'doubles' ? ' (doubles)' : ''}`, playerId: p.id, partnershipId: partner?.id ?? null,
+  const ev = { id, year: state.year, sportId: e.id, level, format, name: o.name ?? `${where} ${r.pick(names)}${format === 'doubles' ? ' (doubles)' : ''}`, playerId: p.id, partnershipId: partner?.id ?? null,
     rounds: [], place: null, field: FIELD[level] ?? 16, prize: 0, prBefore: e.pr };
   S.events[id] = ev;
   if (sport.adapter === 'time' || sport.adapter === 'judged' || sport.adapter === 'strokes') return fieldEvent(state, ev, e, r);

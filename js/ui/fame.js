@@ -18,12 +18,15 @@ import * as press from '../engine/press.js';
 import * as awards from '../engine/awards.js';
 import * as skills from '../engine/skills.js';
 import * as music from '../engine/music.js';
-import * as sports from '../engine/proSport.js';
+import * as athletics from '../engine/sports.js';
+import * as sportsLife from '../engine/sportsLife.js';
+import { openAthletics } from './sports.js';
 import * as modelling from '../engine/modelling.js';
 import * as pub from '../engine/publishing.js';
 import * as celebs from '../engine/celebs.js';
 import * as agents from '../engine/agents.js';
-import { SPORTS, BOOKINGS, BOOK_KINDS, BOOK_GENRES, BOOK_AWARD } from '../data/fame.js';
+import { BOOKINGS, BOOK_KINDS, BOOK_GENRES, BOOK_AWARD } from '../data/fame.js';
+import { SPORTS, LEVEL_NAMES } from '../data/sports.js';
 
 const BODIES = [...AWARD_BODIES, MUSIC_AWARD, BOOK_AWARD];
 const aRelease = (k) => ({ single: 'a single', ep: 'an EP', album: 'an album' }[k]);
@@ -46,7 +49,7 @@ function tabsFor(p) {
     if (id === 'work') return ent.activeWork(p).length > 0 || f.contracts.some((c) => c.status === 'signed');
     if (id === 'representation') return p.age >= 12;
     if (id === 'music') return p.age >= 12 && fame.exists('concert');
-    if (id === 'sport') return sports.isAthlete(p) || sports.isCoach(p) || !!p.sport || !!p.coach;
+    if (id === 'sport') return sportsLife.needsSport(store.state) || Object.values(store.state.sports?.athletes?.[p.id]?.sports ?? {}).some((e) => ['pro', 'elite', 'college'].includes(e.level) || e.legacySeasons);
     if (id === 'modelling') return modelling.isModel(p) || modelling.portfolio(p).length > 0;
     if (id === 'writing') return p.age >= 14 && fame.exists('publishing');
     if (id === 'family') return (store.state.careerRecord ?? []).length > 0;
@@ -89,7 +92,7 @@ export function openFame(api, start = 'overview') {
     const b = tt.closest('[data-act]');
     if (!b || b.disabled) return undefined;
     const fn = ACTIONS[b.dataset.act];
-    if (fn) await fn(b.dataset.arg, { st, say, refresh, render, go, api });
+    if (fn) await fn(b.dataset.arg, { st, say, refresh, render, go, api, close: () => modal.close() });
     return undefined;
   });
   render();
@@ -294,37 +297,20 @@ const VIEWS = {
   },
 
   sport(p) {
-    const s = p.sport;
-    const coaching = sports.isCoach(p) || p.coach ? VIEWS.coaching(p) : '';
-    if (!sports.isAthlete(p) && !s?.seasons.length) return coaching;
-    if (!s || (s.retiredYear && !s.seasons.length) || (!s.seasons.length && sports.isAthlete(p))) {
-      const div = sports.divOf(p);
-      return `<div class="card"><h3>Your sport</h3><p class="muted" style="margin:0">You play professionally. Rating ${sports.rating(p)}. ${s ? `Now: ${SPORTS[s.sport].name}, ${div === 'women' ? "women's" : "men's"}. ` : ''}You can change before your first season. Results are played out over each year, and your name is made by them.</p></div>
-        <div class="btn-stack">${btn('sportdiv', div === 'women' ? "Compete in men's sport instead" : "Compete in women's sport instead", { sub: 'Whichever fits you' })}</div>
-        <div class="btn-stack">${Object.entries(SPORTS).map(([k, d]) => btn('sport', d.name, { arg: k, disabled: !sports.playedIn(k, store.state.year, div), sub: !sports.playedIn(k, store.state.year, div) ? 'Not played professionally yet' : d.team ? 'A club, a league, a season' : d.fights ? 'Fights, a ranking, a title' : 'Tournaments against the same rivals' })).join('')}</div>${coaching}`;
-    }
-    const d = SPORTS[s.sport];
-    const L = s.leagueId ? store.state.proSport?.leagues[s.leagueId] : null;
-    const t = L ? sports.team(L.id, s.teamId) : null;
-    const offer = s.offer ? sports.team(L.id, s.offer.teamId) : null;
-    const last = L?.seasons.at(-1);
-    return `<div class="card"><h3>${esc(d.name)}${t ? `: ${esc(t.name)}` : ''}</h3>${kv([['Status', s.retiredYear ? `Retired in ${s.retiredYear}` : 'Playing'], ['Rating', String(sports.rating(p))], ['Seasons', String(s.seasons.length)], ['Titles', String(s.titles.length)],
-      ...(s.caps ? [['International caps', String(s.caps)]] : []), ...(s.medals.length ? [['Medals', s.medals.map((m) => `${m.medal} (${m.year})`).join(', ')]] : [])])}</div>
-      ${offer ? `<div class="card"><h3>${esc(offer.name)} want you</h3><div class="btn-stack">${btn('transfer', `Move to ${offer.name}`, { cls: 'primary' })}${btn('notransfer', 'Stay')}</div></div>` : ''}
-      ${last ? `<div class="section-label">${esc(L.name)}, ${last.year}</div>${last.table.slice(0, 12).map((r, i) => { const tm = sports.team(L.id, r[0]); return `<div class="kv"><span>${i + 1}. ${tm.id === s.teamId ? '<strong>' : ''}${esc(tm.name)}${tm.id === s.teamId ? '</strong>' : ''}</span><span>${L.sport === 'football' ? `${r[1]}-${r[2]}-${r[3]} · ${r[6]} pts` : `${r[1]}-${r[3]}`}</span></div>`; }).join('')}
-        <p class="muted">Top scorer: ${esc(last.top.name)} (${last.top.value}). Player of the year: ${esc(last.best.name)}.</p>` : ''}
-      ${s.seasons.length ? `<div class="section-label">Your seasons</div>${[...s.seasons].reverse().map((x) => `<div class="kv"><span>${x.year}${x.team ? ` · ${esc(x.team)}` : ''}</span><span>${d.team ? `${x.apps} games, ${x.stat} ${d.statName.toLowerCase()}, ${x.pos}${x.champion ? ' ★' : ''}` : `${x.stat} won · ranked ${x.rank}${x.medal ? ` · ${x.medal}` : ''}`}</span></div>`).join('')}` : ''}
-      ${s.titles.length ? `<div class="section-label">Titles</div>${s.titles.map((x) => `<div class="kv"><span>${x.year}</span><span>${esc(x.name)}</span></div>`).join('')}` : ''}
-      ${(s.injuries ?? []).length ? `<div class="section-label">Injuries</div>${s.injuries.map((x) => `<div class="kv"><span>${x.year}</span><span>${esc(x.what)}, ${x.weeks} weeks</span></div>`).join('')}` : ''}${coaching}`;
-  },
-
-  coaching(p) {
-    const c = p.coach;
-    const sportId = c?.sport ?? p.sport?.sport ?? 'football';
-    const jobs = sports.isCoach(p) ? sports.coachingJobs(sportId, c?.div ?? sports.divOf(p), p) : [];
-    return `<div class="card"><h3>Coaching</h3>${kv([['Coaching ability', String(sports.coachSkill(p))], ['Club', c?.teamId ? c.clubs.at(-1)?.name ?? '' : 'None'], ['Seasons in charge', String(c?.seasons.length ?? 0)]])}</div>
-      ${!c?.teamId && jobs.length ? `<div class="section-label">Clubs looking for a head coach (${esc(SPORTS[sportId].name)})</div><div class="btn-stack">${jobs.map((j) => btn('coachjob', j.team.name, { arg: `${sportId}:${j.team.id}`, sub: j.league.name })).join('')}</div>` : ''}
-      ${c?.seasons.length ? `<div class="section-label">In charge</div>${[...c.seasons].reverse().map((x) => `<div class="kv"><span>${x.year} · ${esc(x.team)}</span><span>${x.pos} of ${x.of}${x.champion ? ' ★' : ''}</span></div>`).join('')}` : ''}`;
+    // One sports system (engine/sports.js, engine/sportsLife.js): this is the public side of it; the rest is in Sport.
+    const st = store.state;
+    const a = st.sports?.athletes?.[p.id];
+    const entries = a ? Object.values(a.sports).filter((e) => e.status === 'active' || (e.seasonsPlayed ?? 0) + (e.legacySeasons ?? 0) > 0) : [];
+    const choose = sportsLife.needsSport(st) ? `<div class="card"><h3>Your sport</h3><p class="muted" style="margin:0">You were taken on as a professional athlete. Choose the sport you play: a team sport means a club, its league and a contract; an individual sport means the tour, where prize money and sponsors are the pay.</p></div>
+      <div class="btn-stack">${sportsLife.proSports(st).map((x) => btn('sport', x.name, { arg: x.id, sub: x.kind === 'team' ? 'A club, a league, a season' : 'The tour' })).join('')}</div>` : '';
+    const cards = entries.map((e) => {
+      const club = athletics.orgOf(e.orgId, st);
+      const seasons = (e.seasonsPlayed ?? 0) + (e.legacySeasons ?? 0);
+      return `<div class="card"><h3>${esc(SPORTS[e.id]?.name ?? e.id)}${club ? `: ${esc(club.name)}` : ''}</h3>${kv([['Status', e.status === 'active' ? LEVEL_NAMES[e.level] ?? e.level : `Retired${e.retiredYear ? ` in ${e.retiredYear}` : ''}`], ['Pathways Rating', String(e.pr)], ['Seasons', String(seasons)], ['Titles', String(e.titles.length)],
+        ...(e.caps ? [['International caps', String(e.caps)]] : []), ...((e.medals ?? []).length ? [['Medals', e.medals.map((m) => `${m.medal} (${m.year})`).join(', ')]] : [])])}</div>`;
+    }).join('');
+    const known = a?.fame >= 1 ? `<p class="muted">Sports fans know your name from your results: ${Math.round(a.fame)}/100.</p>` : '';
+    return `${choose}${cards}${known}<div class="btn-stack">${btn('athletics', 'Open Sport', { sub: 'Training, clubs, seasons, contracts and coaching' })}</div>`;
   },
 
   modelling(p) {
@@ -381,7 +367,7 @@ const VIEWS = {
       ${credits.length ? `<div class="section-label">Credits</div>${credits.map((c) => row('production', c.production.id, c.production.title, `${c.production.workYear} · ${ROLE_KINDS[c.role.kind].name}`)).join('')}` : (r.credits?.length ? `<p class="muted">${r.credits.length} credits.</p>` : '')}
       ${acts.length ? `<div class="section-label">Music</div>${acts.map((a) => row('act', a.id, a.name, `${a.formed} · ${a.releases.length} records`)).join('')}` : ''}
       ${books.length ? `<div class="section-label">Books</div>${books.map((b) => row('bookview', b.id, b.title, `${b.released ?? ''}`)).join('')}` : ''}
-      ${sp ? `<div class="section-label">Sport</div><div class="kv"><span>${esc(SPORTS[sp.sport]?.name ?? '')}</span><span>${sp.seasons} seasons, ${sp.titles} titles${sp.medals.length ? `, medals: ${sp.medals.join(', ')}` : ''}${sp.caps ? `, ${sp.caps} caps` : ''}</span></div>` : ''}
+      ${sp ? `<div class="section-label">Sport</div><div class="kv"><span>${esc(SPORTS[sp.sport]?.name ?? ({ football: 'Football', athletics: 'Athletics', boxing: 'Boxing' })[sp.sport] ?? '')}</span><span>${sp.seasons} seasons, ${sp.titles} titles${sp.medals.length ? `, medals: ${sp.medals.join(', ')}` : ''}${sp.caps ? `, ${sp.caps} caps` : ''}</span></div>` : ''}
       ${wins.length ? `<div class="section-label">Awards</div>${wins.map((x) => row('season', x.s.id, `${x.won ? 'Won' : 'Nominated'}: ${x.c.name}`, `${x.s.ceremony}`)).join('')}` : ''}
       ${(r.businesses ?? []).length ? `<div class="section-label">Businesses</div>${r.businesses.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>from ${b.from}</span></div>`).join('')}` : ''}
       ${n ? row('person', n.id, 'Their page', 'Family and relationships', '', n) : ''}</div>`;
@@ -439,11 +425,8 @@ const ACTIONS = {
   release: (id, x) => x.go('release', id),
   act: (id, x) => x.go('act', id),
   bookview: (id, x) => x.go('bookview', id),
-  sport: (k, x) => x.say(sports.chooseSport(k, sports.divOf())),
-  sportdiv: (_, x) => { const p = player(); const div = sports.divOf(p) === 'women' ? 'men' : 'women'; p.flags.sportDiv = div; return x.say(p.sport ? sports.chooseSport(p.sport.sport, div) : { ok: true, text: `You will compete in ${div === 'women' ? "women's" : "men's"} sport.`, tone: 'neutral' }); },
-  coachjob: (arg, x) => { const [sp, id] = arg.split(':'); return x.say(sports.takeCoachingJob(sp, id)); },
-  transfer: (_, x) => x.say(sports.acceptTransfer()),
-  notransfer: (_, x) => x.say(sports.declineTransfer()),
+  sport: (k, x) => x.say(sportsLife.goPro(k)),
+  athletics: (_, x) => { x.close(); openAthletics(x.api); },
   agency: (id, x) => x.say(modelling.joinAgency(id)),
   async casting2(id, x) {
     const c = modelling.castings().find((y) => y.id === id);

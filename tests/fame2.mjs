@@ -6,9 +6,10 @@ import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { makeNpc } from '../js/engine/npcFactory.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
-import { SPORTS, WORLD_GAMES } from '../js/data/fame.js';
+import { isGamesYear } from '../js/data/sports.js';
 import { hire } from '../js/engine/career.js';
-import * as sports from '../js/engine/proSport.js';
+import * as athletics from '../js/engine/sports.js';
+import * as sportsLife from '../js/engine/sportsLife.js';
 import * as modelling from '../js/engine/modelling.js';
 import * as pub from '../js/engine/publishing.js';
 import * as celebs from '../js/engine/celebs.js';
@@ -32,64 +33,56 @@ const life = (id = 'uk', age = 22) => {
 };
 const year = () => { advanceYear(); store.state.pendingEvents = []; const p = store.state.player; p.legal.pending = null; p.legal.incarceration = null; p.stats.health = Math.max(p.stats.health, 88); };
 
-// 1. Sport: a league whose every match is played, and fame only from what happened.
+// 1. Sport is one system (engine/sports.js, engine/sportsLife.js). Someone hired as a professional athlete from the
+// jobs board plays in it like anyone who came up through it, and fame comes only from results.
+/** Answers the year's sports decisions the way a keen professional would. */
+const decide = () => { for (const d of sportsLife.openDecisions()) sportsLife.answer(d.id, d.kind === 'retire' ? 'no' : d.kind === 'integrity' ? 'refuse' : (d.options.find((o) => o.id === 'yes') ?? d.options[0]).id); };
+const sportYear = () => { year(); decide(); };
 let p = life('uk', 20);
-check(!sports.chooseSport('football').ok, 'only a professional athlete takes up a professional sport');
+check(!sportsLife.goPro('soccer').ok, 'only a professional athlete is signed as one');
 p.talents.sports = 90;
 hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
-check(sports.chooseSport('football').ok && p.sport.teamId, 'an athlete signs for a club');
+check(sportsLife.goPro('soccer').ok && p.career.sportContract && athletics.entryOf('soccer').level === 'pro', 'an athlete hired as one signs for a club, in the one sports system');
+let e = athletics.entryOf('soccer');
+check(store.state.jobs.employers[p.career.employerId]?.name === athletics.orgOf(e.orgId).name, 'the club is the employer');
 const f0 = fame.fameOf(p).audiences.sports;
-const before = sports.career(p).length;
 const careerFame = fame.fameOf(p).log.filter((l) => /starter|player/i.test(l.why)).length;
-let playing = 0;
-for (let y = 0; y < 5; y++) {
-  // Clubs lay players off; this one keeps finding another.
-  if (!sports.isAthlete(p)) { hire(CAREER_BY_ID.athlete, 2, 70, 'offer'); sports.chooseSport('football'); }
-  playing += 1;
-  year();
-  if (p.sport.offer) sports.acceptTransfer();
-}
-const L = store.state.proSport.leagues[p.sport.leagueId];
-check(sports.career(p).length === before + playing, `a season for every year played (${sports.career(p).length} of ${playing})`);
-check(store.state.jobs.employers[p.career.employerId]?.name === sports.team(L.id, p.sport.teamId)?.name || !sports.isAthlete(p), 'the club is the employer');
-for (const s of L.seasons) {
-  const games = s.table.reduce((n, r) => n + r[1] + r[2] + r[3], 0) / 2;
-  const n = L.teams.length;
-  check(games === n * (n - 1) / 2 * SPORTS.football.rounds, `every match in ${s.year} is played once (${games})`);
-  check(s.table.reduce((n, r) => n + r[4], 0) === s.table.reduce((n, r) => n + r[5], 0), 'goals for equal goals against');
-  check(s.champion === s.table[0][0], 'the champion tops the table');
-}
-check(new Set(L.seasons.map((s) => s.year)).size === L.seasons.length, 'no season is played twice');
+let played = 0;
+for (let y = 0; y < 5; y++) { if (e.contractId) played += 1; sportYear(); }
+check(played >= 1 && e.seasonsPlayed >= played, `a season for every year played (${e.seasonsPlayed} for ${played})`);
+check(!sportsLife.audit().length, `every game counted was played (${sportsLife.audit().slice(0, 2).join('; ')})`);
 check(fame.fameOf(p).audiences.sports > f0, 'playing makes a name with sports fans');
 check(fame.fameOf(p).log.every((l) => l.audience !== 'sports' || /season|caps|year/.test(l.why) || l.why === 'results'), 'every bit of sports fame comes from a season played');
 check(fame.fameOf(p).log.filter((l) => /starter|player/i.test(l.why)).length === careerFame, 'the career gives no fame of its own: only results do');
 check(!work.payLines(p).some((l) => /sport|season|team/i.test(l.source)), 'sport pays nothing extra: the club wage is the career\'s');
-section(`sport: ${L.seasons.length} seasons of the ${L.name}, every match played, fame only from results`);
+section(`sport: ${e.seasonsPlayed} seasons with ${athletics.orgOf(e.orgId)?.name ?? 'a club'}, every game played, fame only from results`);
 
-// Individual sports: events and the World Games every four years.
+// Individual sports: the tour, and the World Games every four years.
 p = life('us', 20);
 p.talents.sports = 92;
 hire(CAREER_BY_ID.athlete, 3, 70, 'offer');
-sports.chooseSport('tennis');
-for (let y = 0; y < 5; y++) year();
-// Women play their own circuit (key 'tennis:women'); the player's gender is random.
-const C = store.state.proSport.circuits[p.sport.div === 'women' ? 'tennis:women' : 'tennis'];
-check(C.seasons.every((s) => s.events.length >= SPORTS.tennis.events && s.ranking.length > 0), 'a tennis year is its events and a ranking');
-check(C.seasons.every((s) => !!s.games === (s.year % WORLD_GAMES.every === 0)), 'the World Games come every four years, and only then');
-check(p.sport.titles.every((t) => C.seasons.some((s) => s.events.some((e) => e.name === t.name && e.winner.who === 'player'))), 'every title the player holds is an event they won');
+check(sportsLife.goPro('tennis').ok && athletics.entryOf('tennis').level === 'pro' && p.career.careerId !== 'athlete', 'an individual sport is the tour: prize money and sponsors, not a salary');
+e = athletics.entryOf('tennis');
+const livedYears = [];
+for (let y = 0; y < 5; y++) { livedYears.push(store.state.year + 1); sportYear(); }
+const evs = e.events.map((id) => store.state.sports.events[id]);
+check(livedYears.every((y) => evs.some((x) => x.year === y)), 'a tennis year is its events');
+check(evs.filter((x) => x.games).every((x) => isGamesYear(x.year)), 'the World Games come every four years, and only then');
+check(livedYears.filter(isGamesYear).every((y) => evs.some((x) => x.games && x.year === y)), 'a professional at their level goes to the World Games when they fall');
+check(e.titles.filter((t) => t.eventId).every((t) => store.state.sports.events[t.eventId]?.place === 'Champion'), 'every title the player holds is an event they won');
+check((e.medals ?? []).every((m) => store.state.sports.events[m.eventId]?.games && store.state.sports.events[m.eventId].medal === m.medal), 'every medal is a finish at the games');
 // Retiring.
-p.career.careerId = null;
-year();
-check(p.sport.retiredYear != null, 'leaving the career ends the playing days, on the record');
-const seasonsDone = p.sport.seasons.length;
-year();
-check(p.sport.seasons.length === seasonsDone, 'a retired player plays no more seasons');
-section('individual sport: tournaments, rankings, World Games every four years, retirement');
+check(sportsLife.retire('tennis').ok, 'a player can retire');
+const done = e.events.length;
+sportYear();
+check(e.events.length === done && e.status === 'retired', 'a retired player plays no more events');
+section(`individual sport: ${evs.length} events, ${(e.medals ?? []).length} medals, World Games every four years, retirement`);
 
 // Before the sport existed.
+p = life('uk', 20);
 store.state.year = 1870;
-p.sport = null; p.career.careerId = 'athlete';
-check(!sports.chooseSport('football').ok && !sports.chooseSport('basketball').ok, 'no professional football or basketball in 1870');
+hire(CAREER_BY_ID.athlete, 1, 70, 'offer');
+check(!sportsLife.goPro('soccer').ok && !sportsLife.goPro('basketball').ok, 'no professional soccer or basketball in 1870');
 section('eras: no league before the sport was played professionally');
 
 // 2. Modelling: an agency, castings, a portfolio.

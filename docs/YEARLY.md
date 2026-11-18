@@ -65,10 +65,10 @@ savings pot, pet care, the prison priority, and celebrations and traditions.
   era: no gaps, steps once a year, nothing before its time, saves load).
 
 **Known overlaps and gaps**
-- *Two sports systems*: the athletics engine (`engine/sports.js`, from first
-  lessons to contracts) and the professional leagues and circuits that came with
-  fame (`engine/proSport.js`, `state.proSport`). They no longer interfere (an
-  athlete with an athletics contract is left to it), but they should become one.
+- *Sport is one system now*: the professional leagues and circuits that came with
+  fame were folded into the athletics engine (`engine/sports.js`,
+  `engine/sportsLife.js`), with its World Games, caps, women's leagues and the
+  route in from the jobs board; old saves are converted when loaded.
 - *Fame and social media*: fame's own social hooks (fame from a viral post,
   bought followers) were dropped in favour of Digital Life; fame from online
   posting comes only from what Digital Life reports.

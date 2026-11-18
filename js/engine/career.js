@@ -13,7 +13,6 @@ import { tickEntertainment } from './entertainment.js';
 import { tickAwards } from './awards.js';
 import { tickMusic } from './music.js';
 import { careerExists } from '../data/eras.js';
-import { tickSports } from './proSport.js';
 import { tickModelling } from './modelling.js';
 import { tickPublishing } from './publishing.js';
 import { tickCelebs } from './celebs.js';
@@ -672,13 +671,12 @@ export function doFameAction(id) {
  */
 export function tickWork() {
   const p = player();
-  const played = tickSports(); // the season just played counts before the year's reviews and layoffs, and feeds the review
   tickEmployers();
   tickOffers();
   const death = tickCareer();
   if (death) return death;
   // The entertainment world has its year (productions, awards, the press) before payroll pays for the work in it.
-  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...played, ...tickModelling(), ...tickPublishing(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile(), ...tickCelebs()];
+  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...tickModelling(), ...tickPublishing(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile(), ...tickCelebs()];
   for (const l of lines) log(l);
   queueWorkScenes();
   if (p.age >= 14) checkAchievements(p);

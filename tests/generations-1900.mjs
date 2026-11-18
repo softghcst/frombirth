@@ -116,13 +116,19 @@ while (generation < 6 && store.state.year < 2030) {
   }
   treatmentToday();
   const spouse = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.role === 'spouse' && n.alive);
-  const child = kids.newborn(spouse);
-  while (p.alive && store.state.npcs[child.id]?.alive && store.state.npcs[child.id].age < 20) liveYear();
+  // Children died young far more often in the early years. A family that lost one had another, as families did.
+  let child = kids.newborn(spouse);
+  const alive = (n) => store.state.npcs[n.id]?.alive;
+  while (p.alive && !(alive(child) && store.state.npcs[child.id].age >= 20)) {
+    if (!alive(child) && p.age < 45) child = kids.newborn(spouse);
+    else if (!alive(child)) break;
+    liveYear();
+  }
   treatmentToday();
-  if (!p.alive || !store.state.npcs[child.id]?.alive) break;
+  if (!alive(child)) break;
   const yearAtDeath = store.state.year;
   archive.push(`${p.firstName} ${p.lastName}`);
-  die('old age');
+  if (p.alive) die('old age');
   const heir = heirs().find((n) => n.id === child.id) ?? heirs().find((n) => n.role === 'child');
   if (!heir) break;
   const next = continueAs(heir.id);

@@ -186,29 +186,7 @@ export const MUSIC_DEAL = { royalty: [0.14, 0.22], unitValue: 0.9, independent: 
 export const MUSIC_AWARD = { id: 'disc', name: 'Silver Disc Awards', founded: 1959, scope: 'international', medium: 'music',
   categories: [['album', 'Album of the Year', 'album'], ['song', 'Song of the Year', 'single'], ['new_act', 'Best New Act', 'first']] };
 
-// ---------- Sport ----------
-// Fame from sport comes only from results the game has simulated: seasons, matches, tournaments.
-
-/** team: a league of clubs; otherwise an individual sport with events through the year. founded: the first year it is played professionally. */
-export const SPORTS = {
-  football: { name: 'Football', team: true, teams: 12, rounds: 2, stat: 'goals', statName: 'Goals', founded: 1888, league: '{N} Premier League' },
-  basketball: { name: 'Basketball', team: true, teams: 10, rounds: 4, stat: 'points', statName: 'Points', founded: 1946, league: '{N} Basketball League' },
-  tennis: { name: 'Tennis', team: false, events: 8, stat: 'titles', statName: 'Titles', founded: 1877, field: 32 },
-  athletics: { name: 'Athletics', team: false, events: 6, stat: 'wins', statName: 'Wins', founded: 1896, field: 8 },
-  rugby: { name: 'Rugby', team: true, teams: 10, rounds: 2, stat: 'tries', statName: 'Tries', founded: 1895, league: '{N} Rugby Championship', womenFrom: 1995, contact: true },
-  cricket: { name: 'Cricket', team: true, teams: 8, rounds: 2, stat: 'runs', statName: 'Runs', founded: 1890, league: '{N} County Championship', womenFrom: 1973 },
-  golf: { name: 'Golf', team: false, events: 7, stat: 'wins', statName: 'Wins', founded: 1900, field: 30, womenFrom: 1950 },
-  swimming: { name: 'Swimming', team: false, events: 5, stat: 'wins', statName: 'Wins', founded: 1908, field: 8 },
-  boxing: { name: 'Boxing', team: false, events: 4, stat: 'wins', statName: 'Fights won', founded: 1890, field: 0, womenFrom: 1995, contact: true, fights: true },
-};
-// Women's professional leagues began later in some sports.
-SPORTS.football.womenFrom = 1991;
-SPORTS.basketball.womenFrom = 1997;
-SPORTS.tennis.womenFrom = 1884;
-export const TEAM_WORDS = ['Rovers', 'United', 'Athletic', 'City', 'Wanderers', 'Rangers', 'Lions', 'Falcons', 'Comets', 'Harriers', 'Royals', 'Stars'];
-export const EVENT_WORDS = ['Open', 'Classic', 'Masters', 'Championships', 'Invitational', 'Cup'];
-/** The international games held every four years. Fictional. */
-export const WORLD_GAMES = { name: 'World Games', founded: 1896, every: 4 };
+// Sport is one system: engine/sports.js, with its data in data/sports.js (the World Games are there too).
 
 // ---------- Modelling ----------
 

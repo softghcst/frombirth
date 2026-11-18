@@ -11,6 +11,7 @@ import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
 import { migrateDigital } from './engine/digital/tick.js';
 import { ensureEra } from './engine/eras.js';
+import { adoptOldSport } from './engine/sportsLife.js';
 
 export const SCHEMA_VERSION = 2;
 const K_INDEX = 'pathways.index';
@@ -122,6 +123,8 @@ function migrate(state) {
   migrateDigital(state);
   // Historical Eras: a life saved before eras keeps its money as it was (see engine/eras.js).
   ensureEra(state, { legacy: true });
+  // One sports system: a professional career kept under the old separate system becomes the player's sports record.
+  if (state.proSport || state.player?.sport?.seasons) adoptOldSport(state);
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

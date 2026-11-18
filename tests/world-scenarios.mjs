@@ -262,7 +262,7 @@ play('J', () => {
   p.legal.pending = null; p.flags.fugitive = false; p.finance.cash = Math.max(p.finance.cash, 200000); if (p.politics) { politics.leave('stepped down', true); p.politics = null; }
   p.legal.incarceration = null; const home = go('pl', {});
   check(p.alive === false || (home && cit.residency(p).status === 'citizen' && mayVote() === ''), `came home as a citizen, with a vote (${p.alive === false ? 'died' : home ? mayVote() : `still in ${p.countryId}: ${move.emigrate('pl', {}).text}`})`);
-  check(p.alive === false || !home || p.locations.map((x) => x.countryId).join('>') === 'pl>de>pl' && Object.values(store.state.npcs).filter((n) => n.alive && n.flags.abroad === 'pl').length === 0, 'the record shows the years away, and the people who stayed are neighbors again');
+  check(p.alive === false || !home || p.locations.map((x) => x.countryId).join('>') === 'pl>de>pl' && Object.values(store.state.npcs).filter((n) => n.alive && n.flags.abroad === 'pl').length === 0, `the record shows the years away, and the people who stayed are neighbors again (${p.locations.map((x) => x.countryId).join('>')}; still abroad: ${Object.values(store.state.npcs).filter((n) => n.alive && n.flags.abroad === 'pl').map((n) => n.role).join(', ')})`);
   done('twenty-five years away, and a return to a country that kept moving');
 });
 
