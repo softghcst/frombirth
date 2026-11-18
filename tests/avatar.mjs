@@ -256,7 +256,9 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
   const places = (svg) => [...svg.matchAll(/transform="([^"]+)"/g)].map((m) => m[1]).join(' ');
   check(parts(light) === parts(deep) && places(light) === places(deep), 'the same features are not the same shapes in the same places on a deeper skin tone');
   check(!/eye-white|stroke/.test(light), 'a light face has been given extra weight');
-  check(/--eye-white:#[0-9a-f]{6}/.test(deep) && /stroke-width/.test(deep) && /paint-order:stroke/.test(deep), 'a deep face has not been made more readable');
+  check(/--eye-white:#[0-9a-f]{6}/.test(deep) && /--line-width/.test(deep), 'a deep face has not been made more readable');
+  // Brows are drawn as they are on every tone: no light edge around them.
+  for (const svg of [light, deep]) check(!/<use href="[^"]*brows\/[^"]*"[^>]*style=/.test(svg) && !/paint-order/.test(svg), 'the brows have been given an edge');
   check(deep.includes(`--skin-color:${tone('ebony')}`), 'the skin tone itself was changed');
   // The nose is the skin itself: on every tone its skin is the face's. On deeper tones only its lines are heavier.
   for (const t of part('skin', 'porcelain') ? CATALOG.skin : []) {
