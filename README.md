@@ -44,6 +44,7 @@ node tests/animal-life.mjs     # staff, classes, behaviour, landlords, outings, 
 node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
 node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
+node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
@@ -76,6 +77,17 @@ budgets are in `js/engine/banking.js`; cards, insurance, pension plans, family m
 (`js/data/money.js`).
 
 How it works, what is fiction, and what is not built yet: [docs/FINANCE.md](docs/FINANCE.md).
+
+## Time per turn
+
+Self → **Settings → Time per turn**: a year (the default), six months or three months. The year itself still happens
+once, at the turn of the year: pay, tax, school reports, seasons of sport, health and birthdays run exactly as with
+one-year turns, so money and records come out the same in every mode (`tests/turns.mjs` plays the same life all three
+ways and compares). The turns in between move the calendar on, show the age in months, put a heading for each part of
+the year in the life story, and may bring one of about thirty scenes written for that season and that turn length
+(`js/data/events/seasons.js`: summer holidays, exam season, the dark of winter, a first scan, a baby's first smile,
+preseason training). Seasons run the other way round in the southern hemisphere. Those turns draw on luck of their own
+(`engine/eventEngine.js` drawBetween), never on the game's dice. A change partway through a year starts from the next.
 
 ## Sports and athletics
 
