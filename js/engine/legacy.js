@@ -21,6 +21,7 @@ import { convertMoney } from './emigration.js';
 import { SCHEMA_VERSION, getGraveyard } from '../save.js';
 import { ledgerOf } from './ledger.js';
 import { carryTrust } from './trusts.js';
+import { carryTraditions } from './moments.js';
 import { rollLongevity } from './death.js';
 import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
@@ -29,7 +30,6 @@ import { passOn } from './edlegacy.js';
 import { genomeOf } from './health/heredity.js';
 import { npcHealth } from './health/story.js';
 import { heirHealth, legacySummary } from './health/index.js';
-import { inheritPlans } from './plans.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
 import { carryOver } from './digital/legacy.js';
@@ -283,7 +283,6 @@ export function continueAs(npcId) {
   player.archiveParents = [archiveIdOf(op)];
   store.state = next;
   heirHealth(next, h);
-  inheritPlans(op, player); // family traditions carry on
   handOverAnimals(old, next, { ancestorId: ancestor.id, heirId: h.id, assetIds });
   if (old.sports) handOverSports(old, next, { ancestorId: ancestor.id, heirId: h.id });
   const firmLines = carryCareers(old, next, h); // the family's working history, the same employers, and any business left to this heir
@@ -329,7 +328,8 @@ export function continueAs(npcId) {
   ledgerOf(next, { desc: `Your own savings, and what ${op.firstName} left you`,
     inheritance: Math.round(share * (moved ? COUNTRIES[abroad].currency.scale / COUNTRIES[op.countryId].currency.scale : 1)) });
   if (share > 0 || player.assets.length) player.milestones.push({ age: h.age, text: `Inherited from ${op.firstName}.`, kind: 'money' });
-  carryTrust(old, next, h.id, `${op.firstName} ${op.lastName}`); // a trust still being held for them stays held
+  carryTrust(old, next, h.id, `${op.firstName} ${op.lastName}`);
+  carryTraditions(old, next, h.id); // the family's traditions go on with the family // a trust still being held for them stays held
   if (h.flags.moneySense) player.flags.moneySense = h.flags.moneySense; // what allowance taught them
   if (player.finance.lifetimeEarned > 0 || player.career.salary) player.flags.firstPay = true;
 

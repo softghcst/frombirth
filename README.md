@@ -63,6 +63,7 @@ node tests/fame2.mjs           # sport played match by match (fame from results 
 node tests/fame3.mjs           # lives started in the past, newer sports, injuries, women's leagues, coaching, casting choices, literary agents and rights, brand launches, music videos and songwriting
 node tests/music.mjs           # bands, releases, charts, royalties paid once, record deals, tours, music awards, heirs
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
+node tests/moments.mjs         # living moments: occasions marked once in their year, Age Up never repeats them, traditions passed down
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
@@ -80,6 +81,13 @@ node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
+
+## Living moments
+
+People → **My Moments** lists what this year holds: birthdays, school dances and proms, family occasions,
+holidays, the family's traditions, invitations and evenings with friends. Choose one and it happens at once;
+Age Up keeps the traditions nobody organized. No calendar: Pathways is still lived a year at a time.
+Details: [docs/MOMENTS.md](docs/MOMENTS.md).
 
 ## Money
 

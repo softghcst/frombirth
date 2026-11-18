@@ -32,6 +32,7 @@ import { npcHealthLines, npcCareActions, npcCareHistory, encourageCare, goWithCa
 import { eventsOf } from '../../engine/digital/core.js';
 import { accountsOf } from '../../engine/digital/accounts.js';
 import { PLATFORM_BY_ID } from '../../data/digital.js';
+import { openMoments } from '../moments.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
@@ -413,7 +414,7 @@ export default {
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
-    const top = [['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree']];
+    const top = [['moments', 'My Moments: this year'], ['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree']];
     if (love.canLookForLove()) top.push(['love', 'Look for love']);
     if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
 
@@ -438,6 +439,7 @@ export default {
       const row = e.target.closest('[data-npc]');
       if (row) return openNpc(store.state.npcs[row.dataset.npc], api);
       const id = e.target.closest('[data-top]')?.dataset.top;
+      if (id === 'moments') return openMoments(api);
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));

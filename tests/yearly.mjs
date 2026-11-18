@@ -20,6 +20,7 @@ const kids = await import('../js/engine/children.js');
 const social = await import('../js/engine/social.js');
 const plans = await import('../js/engine/plans.js');
 const bank = await import('../js/engine/banking.js');
+const mo = await import('../js/engine/moments.js');
 const jail = await import('../js/engine/prison.js');
 /** Opens an ordinary account the player can pay into, at a bank that will have them. */
 function openAccount() {
@@ -136,25 +137,17 @@ section('actions resolve in the current year; work, closeness, practice and post
   const after = { cash: p.finance.cash, bal: bank.accountById(acct).units, swim: p.skills.swimming };
   check(plans.livePlans(p).length === 0 && JSON.stringify({ cash: p.finance.cash, bal: bank.accountById(acct).units, swim: p.skills.swimming }) === JSON.stringify(after), 'plans run once per year: a second call changes nothing');
   check(Math.abs(netWorth(store.state) - worth) < 1, 'moving money into the bank makes none and loses none');
-  // A celebration happens now, once per occasion per year.
+  // A celebration (Living Moments) happens now, once per occasion per year.
   const sis = makeNpc({ role: 'sibling', countryId: 'uk', age: 34, relationship: 50 }); store.state.npcs[sis.id] = sis; p.npcIds.push(sis.id);
-  const r = plans.celebrate('birthday', [sis.id], 'simple');
+  const r = mo.celebrate({ key: 'birthday:you', guests: [sis.id] });
   const warm = sis.meters.relationship;
-  check(r.ok && warm === 53 && !plans.celebrate('birthday', [sis.id], 'lavish').ok && sis.meters.relationship === warm, 'a birthday is celebrated once a year');
-  // Traditions come round every year without being asked, and pass on.
-  check(plans.startTradition('sunday', 'simple').ok && !plans.startTradition('sunday', 'simple').ok, 'a tradition is started once');
-  ageUp();
-  const t = p.plans.traditions[0];
-  check(t.years === 0, 'this year\'s plans had already run, so Age Up does not run them a second time');
-  ageUp();
-  check(t.years === 1, 'the next year, the tradition happens by itself');
-  ageUp();
-  check(t.years === 2, 'and again the year after, once');
+  check(r.ok && warm > 50 && !mo.celebrate({ key: 'birthday:you', guests: [sis.id] }).ok && sis.meters.relationship === warm, 'a birthday is celebrated once a year');
+  ageUp(); ageUp();
   // A plan survives a reload.
   const back = roundTrip();
-  check(back.plans.hobby.main === 'swimming' && back.plans.traditions[0].years === 2 && back.plans.savings.accountId === acct, 'plans survive a reload');
+  check(back.plans.hobby.main === 'swimming' && back.plans.savings.accountId === acct, 'plans survive a reload');
 }
-section('plans: hobby, a standing deposit and traditions carry on by themselves, once a year, and survive a reload');
+section('plans: a hobby focus and a standing deposit carry on by themselves, once a year, and survive a reload; celebrations are once a year');
 
 // ---------- 4. The yearly summary reports only what happened ----------
 {
@@ -220,7 +213,7 @@ section('prison: the routine is chosen once and carries on; time served counts y
   check(seen.ok && dx && started?.ok, `the assessment happened now, and therapy began (${seen.text.slice(0, 80)}…)`);
   const sessionsBefore = R.healthOf().therapies[0]?.attended ?? 0;
   const online = social.createAccount('fullyear');
-  const party = plans.celebrate('birthday', [friend.id], 'generous');
+  const party = mo.celebrate({ key: 'birthday:you', guests: [friend.id] });
   check(party.ok, 'a birthday party happens now');
   const year = store.state.year;
   const earned = p.finance.lifetimeEarned;
@@ -254,7 +247,8 @@ section('the full year: job, savings, a friend, a hobby and sport, a pet, therap
 {
   const p0 = adult(30);
   const spouse = makeNpc({ role: 'spouse', countryId: 'uk', age: 30, relationship: 80 }); store.state.npcs[spouse.id] = spouse; p0.npcIds.push(spouse.id);
-  plans.startTradition('summer', 'simple');
+  // A family tradition, as Living Moments keeps them: founded here, so there is something to pass on.
+  mo.traditions().push({ id: 'trad_test', occasion: 'family_reunion', holiday: null, name: 'A summer trip together', status: 'active', founded: store.state.year, founder: { id: p0.id, name: p0.firstName }, hostId: 'you', participants: ['you', ...p0.npcIds.filter((id) => ['child', 'partner', 'sibling'].includes(store.state.npcs[id]?.role))], count: 0, history: [] });
   const startYear = store.state.year;
   const archive = [];
   let generation = 1;
@@ -275,7 +269,7 @@ section('the full year: job, savings, a friend, a hobby and sport, a pet, therap
     generation++;
     const np = next.player;
     check(np.generation === generation, 'the generation count goes up by one');
-    check(np.plans?.traditions?.some((t) => t.idea === 'summer'), 'the family tradition carries on to the next generation');
+    check((next.traditions ?? []).some((t) => t.id === 'trad_test'), 'the family tradition carries on to the next generation');
     check(Object.values(next.npcs).some((n) => n.flags?.ancestor && `${n.firstName} ${n.lastName}` === archive.at(-1).name), 'the previous generation is kept, as an ancestor');
     np.age = Math.max(np.age, 25); np.flags.livesWithParents = false;
     const sp = makeNpc({ role: 'spouse', countryId: np.countryId, age: np.age, relationship: 80 }); next.npcs[sp.id] = sp; np.npcIds.push(sp.id);
@@ -283,7 +277,7 @@ section('the full year: job, savings, a friend, a hobby and sport, a pet, therap
   check(generation >= 3, `three generations lived (${generation})`);
   check(store.state.year >= startYear + 16, 'the world year moved on continuously');
   const back = roundTrip();
-  check(back.generation === generation && back.plans.traditions.length >= 1, 'the latest generation saves and loads with its inheritance');
+  check(back.generation === generation && (store.state.traditions ?? []).length >= 1, 'the latest generation saves and loads with its inheritance');
 }
 section('generations: heirs carry on in the same world year, traditions pass down, ancestors are kept, saves load');
 

@@ -56,6 +56,7 @@ import { snapshot } from './yearSummary.js';
 import { drawEvents } from './eventEngine.js';
 import { closeYear } from './travel.js';
 import { openGlobalYear, tickGlobalLife } from './globalLife.js';
+import { finishYear, startYear } from './moments.js';
 import { book, booked } from './ledger.js';
 import { tickBanking, tickMoneyReview } from './banking.js';
 import { tickPlan, tickStatePension } from './retirement.js';
@@ -174,6 +175,7 @@ export function advanceYear() {
   booked('health', 'Health care through the year', () => finishCareYear(p));
   // Trips booked for the year that is ending are taken, and anyone away comes home, before the year turns.
   if (p.travel) closeYear();
+  finishYear(); // the year just lived: traditions nobody organized, invitations nobody answered (engine/moments.js)
   p.age += 1;
   if (p.age === 100) { milestone('Turned 100.', 'life'); log('You are 100 years old. A card arrives from the head of state, and the local paper sends a photographer.', 'system', 'good'); }
   if (p.age === 110) milestone('Turned 110.', 'life');
@@ -189,5 +191,6 @@ export function advanceYear() {
   if (cause) { die(cause); return; }
 
   prunePending(); // a scene queued earlier in the year may name someone the year has since taken away
+  startYear(); // the new year's invitations
   drawEvents();
 }

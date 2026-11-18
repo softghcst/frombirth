@@ -33,6 +33,7 @@ import * as courtLife from './court.js';
 import * as fame from './reputation.js';
 import * as throne from './reign.js';
 import { moneyEffect } from './moneyEffects.js';
+import { sceneChoice as momentChoice } from './moments.js';
 import { register as registerAnimal, recordHealth } from './animals.js';
 import { sceneChoice as animalChoice } from './animalCare.js';
 import { lifeChoice } from './animalLife.js';
@@ -223,6 +224,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         p.counters[e.target] = (p.counters[e.target] ?? 0) + (e.delta ?? 1);
         break;
       case 'money': shown.push(...moneyEffect(e, ctx)); break;
+      case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'milestone': milestone(e.value); break;
       case 'death': ctx.death = e.value; break;
       default: console.warn('Unknown effect', e);

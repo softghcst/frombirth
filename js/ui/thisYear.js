@@ -6,6 +6,7 @@ import { messageModal, pickModal, confirmModal } from './modals.js';
 import * as plans from '../engine/plans.js';
 import { skillOptions } from '../engine/skills.js';
 import { accounts } from '../engine/banking.js';
+import { openMoments } from './moments.js';
 
 const kv = (a, b) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
 
@@ -14,12 +15,10 @@ export function thisYearCard() {
   const p = player();
   if (p.age < 5 || !p.alive) return '';
   const going = plans.ongoing(p);
-  const celebrate = plans.occasions(p).filter((o) => !o.done);
   const buttons = [
     ['hobby', plans.plansOf(p).hobby ? 'Change your hobby focus' : 'Choose a hobby focus'],
     ...(p.age >= 16 ? [['savings', plans.plansOf(p).savings ? 'Change your yearly saving' : 'Save something every year']] : []),
-    ...(celebrate.length ? [['celebrate', 'Celebrate something']] : []),
-    ...(p.age >= 18 ? [['traditions', 'Family traditions']] : []),
+    ['moments', 'Occasions, invitations and traditions'],
   ];
   return `<div class="card"><h3>Your life this year</h3>
     ${going.length ? going.map(([a, b]) => kv(a, b)).join('') : '<p class="muted">Nothing is carrying on by itself yet. Plans you set here go on every year until you change them.</p>'}
@@ -52,32 +51,7 @@ export async function thisYearAction(id, api) {
     const y = await pickModal({ title: 'How much each year?', options: [500, 2000, 5000, 15000].map((b) => localMoney(b, c)).map((v) => ({ value: v, label: `${fmtMoney(v, c)} a year` })) });
     return y ? say(api, plans.setSavings(acct, y)) : undefined;
   }
-  if (id === 'celebrate') {
-    const occ = await pickModal({ title: 'What are you celebrating?', options: plans.occasions(p).map((o) => ({ value: o.id, label: o.name, disabled: o.done, sub: o.done ? 'Already celebrated this year.' : '' })) });
-    if (!occ) return undefined;
-    const people = plans.guestsFor();
-    const fam = people.filter((n) => !['friend'].includes(n.role));
-    const friends = people.filter((n) => n.role === 'friend');
-    const g = await pickModal({ title: 'Who is coming?', options: [
-      { value: 'family', label: 'Family', sub: fam.map((n) => n.firstName).join(', ') || 'Nobody nearby', disabled: !fam.length },
-      { value: 'friends', label: 'Friends', sub: friends.map((n) => n.firstName).join(', ') || 'Nobody yet', disabled: !friends.length },
-      { value: 'all', label: 'Everyone', sub: `${people.length} people` }, { value: 'none', label: 'Just me', sub: 'Quietly, your way.' }] });
-    if (!g) return undefined;
-    const guests = (g === 'family' ? fam : g === 'friends' ? friends : g === 'all' ? people : []).map((n) => n.id);
-    const style = await pickModal({ title: 'What kind of celebration?', options: Object.entries(plans.STYLES).map(([k, s]) => ({ value: k, label: s.name, sub: p.age >= 18 ? fmtMoney(localMoney(s.cost, c), c) : 'Your family pays.' })) });
-    return style ? say(api, plans.celebrate(occ, guests, style)) : undefined;
-  }
-  if (id === 'traditions') {
-    const active = pl.traditions.filter((t) => t.active);
-    const pick = await pickModal({ title: 'Family traditions', body: 'They come round by themselves every year, and carry on after you.', options: [
-      ...active.map((t) => ({ value: `stop:${t.id}`, label: `Stop: ${t.name}`, sub: `${t.years} year${t.years === 1 ? '' : 's'}${t.inherited ? `, started by ${t.startedBy}` : ''}` })),
-      ...plans.TRADITION_IDEAS.filter(([k]) => !active.some((t) => t.idea === k)).map(([k, name]) => ({ value: `start:${k}`, label: `Start: ${name}` }))] });
-    if (!pick) return undefined;
-    const [what, key] = pick.split(':');
-    if (what === 'stop') return (await confirmModal({ title: 'Stop this tradition?', body: 'It stays in the family\'s history.', yes: 'Stop it' })) ? say(api, plans.stopTradition(key)) : undefined;
-    const style = await pickModal({ title: 'How do you keep it?', options: Object.entries(plans.STYLES).map(([k, s]) => ({ value: k, label: s.name, sub: `${fmtMoney(localMoney(s.cost, c), c)} a year` })) });
-    return style ? say(api, plans.startTradition(key, style)) : undefined;
-  }
+  if (id === 'moments') return openMoments(api);
   return undefined;
 }
 
