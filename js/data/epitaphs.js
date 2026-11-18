@@ -117,5 +117,3 @@ export const EPITAPHS = [
 
 export const EPITAPH_BY_ID = Object.fromEntries(EPITAPHS.map((e) => [e.id, e]));
 
-/** Estates below this (base units) pass to the family untaxed. */
-export const ESTATE_ALLOWANCE = 100000;
