@@ -27,6 +27,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS } from '../data/sports.js';
 import { makeNpc } from './npcFactory.js';
 import { remember } from './conditions.js';
+import { school as currentSchool, atSchool } from './schooling.js';
 import { seeded, hash, teamGame, tennisMatch, rallyMatch, bout, mark, better, fmtMark, judged, golfRound, prChange, prOfSkill, edge } from './sportsPlay.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -189,7 +190,7 @@ export function canPlay(sportId, p = player(), state = store.state) {
   const wheel = usesWheelchair(p);
   if (sport.adaptive && !wheel) return result(false, `${sport.name} is played by athletes who use a wheelchair.`, 'neutral');
   if (wheel && sport.standing === false) return result(false, `${sport.name} in its usual form is not played from a wheelchair. ${SPORTS_LIST.some((s) => s.adaptive?.of === sport.id) ? `Try ${SPORTS_LIST.find((s) => s.adaptive?.of === sport.id).name.toLowerCase()}.` : ''}`.trim(), 'neutral');
-  if (p.flags?.inPrison || p.prison?.serving) return result(false, 'Not while you are in prison.', 'neutral');
+  if (p.legal?.incarceration) return result(false, 'Not while you are in prison.', 'neutral');
   return result(true, '');
 }
 /** Every sport, with whether it can be taken up now. Popular sports where the player lives come first. */
@@ -381,8 +382,12 @@ const rec = (state, sport) => findOrg(state, sport, 'recreational');
 /** A coach for an org: a real person, kept, with their own way of coaching. */
 function coachFor(state, org) {
   const S = ensure(state);
-  if (org.coachId && S.coaches[org.coachId]) return S.coaches[org.coachId];
-  const r = seeded(`coach/${org.id}`);
+  const had = org.coachId ? S.coaches[org.coachId] : null;
+  // A coach is a person the player can know. One who is no longer among the people of this life (they died, or the
+  // story has passed to another generation and they were not carried over) has left the club: a new coach takes over.
+  if (had && state.npcs[had.id]?.alive) return had;
+  if (had) { had.history.push({ year: state.year, orgId: org.id, text: `Left ${org.name}.` }); had.until ??= state.year; }
+  const r = seeded(`coach/${org.id}/${had ? state.year : 0}`);
   const sport = sportOf(org.sportId);
   const npc = makeNpc({ role: 'coach', countryId: org.countryId, age: r.int(29, 62), relationship: 45 });
   npc.flags.title = org.kind === 'rec' ? `${sport.name} coach` : `Coach, ${org.name}`;
@@ -491,6 +496,21 @@ function regroup(state, e) {
   e.teamId = want.id;
   if (sportOf(org.sportId).kind === 'team') meetTeammates(state, want);
 }
+/**
+ * Off a university team, however it happens (leaving the team, giving up the sport, retiring, leaving the club): the
+ * athletic part of a scholarship goes with it, from the next year's fees. Returns whether there was one.
+ */
+export function dropAthleticAid(state, sportId) {
+  const p = state.player;
+  const edu = p.education;
+  p.flags.sportOffers = (p.flags.sportOffers ?? []).map((o) => (o.sportId === sportId && o.accepted ? { ...o, accepted: false, left: state.year } : o));
+  const athletic = (edu.aidParts ?? []).find((x) => x.kind === 'athletic');
+  if (!athletic) return false;
+  edu.aidParts = edu.aidParts.filter((x) => x !== athletic);
+  edu.aid = Math.max(0, Math.round(((edu.aid ?? 0) - athletic.fraction) * 100) / 100);
+  if (edu.funding === 'scholarship' && edu.aid < 1) edu.funding = 'loan';
+  return true;
+}
 function leaveOrg(e, state, why) {
   const t = teamOf(e.teamId, state);
   if (t) {
@@ -501,6 +521,8 @@ function leaveOrg(e, state, why) {
   if (last && !last.to) last.to = state.year;
   const n = state.npcs[e.coachId];
   if (n) n.flags.title = `Former coach (${sportOf(e.id).name.toLowerCase()})`;
+  const org = orgOf(e.orgId, state);
+  if (org?.kind === 'college') { e.leftCollege = org.uniId; dropAthleticAid(state, e.id); }
   e.orgId = null; e.teamId = null; e.coachId = null;
   if (e.level !== 'pro') e.level = 'recreational';
 }
@@ -578,9 +600,10 @@ export function leaveClub(sportId, state = store.state) {
   if (e.contractId) return result(false, 'You are under contract.', 'neutral');
   const org = orgOf(e.orgId, state);
   if (org.kind === 'school') return result(false, 'Leave the school team from your school activities.', 'neutral');
+  const scholarship = org.kind === 'college' && (state.player.education.aidParts ?? []).some((x) => x.kind === 'athletic');
   leaveOrg(e, state, 'left');
   joinOrg(rec(state, sportOf(sportId)), state, { quiet: true });
-  const text = `You left ${org.name}.`;
+  const text = `You left ${org.name}.${scholarship ? ' The athletic scholarship goes with it: from next year you pay that part of the tuition.' : ''}`;
   log(text);
   return result(true, text, 'neutral');
 }
@@ -608,22 +631,53 @@ export function schoolSeason(name, state = store.state) {
   const a = profile(state);
   const sport = sportOf(id);
   let e = a.sports[id];
+  // Playing for the school team is playing the sport: one given up is taken up again, within the three-sport limit.
+  if (e?.status !== 'active' && activeSports(p.id, state).length >= 3) return null;
   if (!e) e = newEntry(state, p, a, sport);
-  e.status = 'active';
-  const school = p.education.schoolName || 'your school';
+  if (e.status !== 'active') { fillEntry(state, p, e); e.status = 'active'; e.plan = { type: 'balanced', hours: Math.max(2, e.plan?.hours ?? 0) }; }
+  const school = schoolName(p);
   const org = findOrg(state, sport, 'school', { key: `school/${id}/${p.countryId}/${school}`, name: `${school} ${sport.name}` });
-  if (e.orgId !== org.id && !e.contractId && !['academy', 'college', 'pro'].includes(e.level)) joinOrg(org, state);
-  else if (e.orgId !== org.id) { // an academy player still plays for their school; the school team is a second team
+  e.schoolSport = name;
+  if (e.orgId !== org.id && !e.contractId && !['club', 'academy', 'college', 'pro', 'elite'].includes(e.level)) joinOrg(org, state);
+  else if (e.orgId !== org.id) { // a club or academy player still plays for their school; the school team is a second team
     e.schoolTeamId = teamFor(state, org).id;
     if (!teamOf(e.schoolTeamId, state).roster.some((x) => x.id === p.id)) teamOf(e.schoolTeamId, state).roster.push({ id: p.id, name: fullName(p), pos: e.position, rating: overall(e, p), since: state.year, player: true });
   }
   return e.lastRating ?? overall(e, p);
 }
+/** The name of the school the player attends, for its teams. */
+function schoolName(p) {
+  const s = atSchool(p) ? currentSchool() : null;
+  return s?.name ?? p.education.schoolName ?? 'School';
+}
+/**
+ * Once a year: a player no longer on the school team (they left it, left school, or changed school) is off its roster,
+ * and back to their club or to playing for fun. Returns whether anything changed.
+ */
+export function checkSchoolTeam(state, e) {
+  const p = state.player;
+  const onTeam = atSchool(p) && p.education.clubs?.includes('sports_team') && schoolSportId(p.education.sport, p.countryId) === e.id;
+  const org = orgOf(e.orgId, state);
+  const school = schoolName(p);
+  let changed = false;
+  if (org?.kind === 'school' && (!onTeam || !org.key.endsWith(`/${school}`))) {
+    leaveOrg(e, state, onTeam ? 'changed school' : 'left the school team');
+    // Still on the school sports team, at a new school: that school's team, straight away.
+    if (onTeam) schoolSeason(p.education.sport, state); else joinOrg(rec(state, sportOf(e.id)), state, { quiet: true });
+    changed = true;
+  }
+  const second = teamOf(e.schoolTeamId, state);
+  if (second && (!onTeam || !orgOf(second.orgId, state)?.key.endsWith(`/${school}`))) { second.roster = second.roster.filter((x) => x.id !== p.id); e.schoolTeamId = null; changed = true; }
+  return changed;
+}
 /** Called when the player leaves the school team (engine/education.js). */
 export function leftSchoolTeam(name, state = store.state) {
   const id = schoolSportId(name, state.player.countryId);
   const e = id ? entryOf(id, state.player.id, state) : null;
-  if (e && orgOf(e.orgId, state)?.kind === 'school') { leaveOrg(e, state, 'left the school team'); joinOrg(rec(state, sportOf(id)), state, { quiet: true }); }
+  if (!e) return;
+  if (orgOf(e.orgId, state)?.kind === 'school') { leaveOrg(e, state, 'left the school team'); joinOrg(rec(state, sportOf(id)), state, { quiet: true }); }
+  const second = teamOf(e.schoolTeamId, state);
+  if (second) { second.roster = second.roster.filter((x) => x.id !== state.player.id); e.schoolTeamId = null; }
 }
 
 // ---------- Leagues and seasons ----------
@@ -718,9 +772,12 @@ function playSeason(state, e, team, o = {}) {
   const pre = teams.map((t) => [t, teamStrength(S.teams[t])]).sort((a, b) => b[1] - a[1]);
   pre.forEach(([t], i) => { season.preview[t] = i + 1; });
   S.seasons[id] = season;
+  // An injury keeps the player out of a run of their own team's games (o.injury counts those), playoffs included.
   const injury = o.injury ?? null;
-  for (const f of fixtures) playFixture(state, season, f, e, team, { minutes, injury });
-  playoffs(state, season, e, team, minutes, injury);
+  let played = 0;
+  const outFor = (f) => { if (f.home !== team.id && f.away !== team.id) return false; const k = played++; return !!injury && k >= injury.from && k < injury.to; };
+  for (const f of fixtures) playFixture(state, season, f, e, team, { minutes, out: outFor(f) });
+  playoffs(state, season, e, team, minutes, outFor);
   return season;
 }
 
@@ -733,11 +790,10 @@ function sideStrength(state, season, tid, e, team, minutes, out) {
 }
 
 /** Plays one fixture: its score, and what the player did in it if they played. */
-function playFixture(state, season, f, e, team, { minutes, injury }) {
+function playFixture(state, season, f, e, team, { minutes, out = false }) {
   if (f.done) return;
   const sport = sportOf(season.sportId);
   const mineIn = f.home === team.id || f.away === team.id;
-  const out = mineIn && injury && f.n >= injury.from && f.n < injury.to;
   const a = sideStrength(state, season, f.home, e, team, minutes, out) + 1.5; // home advantage
   const b = sideStrength(state, season, f.away, e, team, minutes, out);
   f.score = teamGame(sport, a, b, `${season.id}/${f.n}`);
@@ -805,7 +861,7 @@ export function standings(season) {
 }
 
 /** The top four play off: semifinals, then a final. The champion is the winner of a completed final, and only that. */
-function playoffs(state, season, e, team, minutes, injury) {
+function playoffs(state, season, e, team, minutes, outFor) {
   if (season.playoffs.length) return;
   const sport = sportOf(season.sportId);
   const table = standings(season);
@@ -814,14 +870,14 @@ function playoffs(state, season, e, team, minutes, injury) {
   const n = season.fixtures.length;
   const tie = (home, away, i, round) => {
     const f = { n: n + i, round, home, away, done: false, playoff: true };
-    playFixture(state, season, f, e, team, { minutes, injury: null });
+    playFixture(state, season, f, e, team, { minutes, out: outFor(f) });
     // A playoff cannot end level: extra time, a shoot-out, or another inning settles it.
     if (f.score[0] === f.score[1]) { const r = seeded(`${season.id}/${f.n}/decider`); f.decider = true; f.score[r.chance(edge(1, 0)) ? 0 : 1] += 1; }
     f.winner = f.score[0] > f.score[1] ? f.home : f.away;
     season.playoffs.push(f);
     return f.winner;
   };
-  void sport; void injury;
+  void sport;
   const w1 = tie(a, d, 0, 'Semifinal');
   const w2 = tie(b, c, 1, 'Semifinal');
   const champion = tie(w1, w2, 2, 'Final');
@@ -1056,7 +1112,10 @@ export function findPartner(sportId, state = store.state) {
 export function currentPartnership(sportId, state = store.state) {
   const id = entryOf(sportId, state.player.id, state)?.partnershipId;
   const x = id ? ensure(state).partnerships[id] : null;
-  return x && !x.until ? x : null;
+  if (!x || x.until) return null;
+  // A partner who has died, or is no longer among the people of this life, ends the partnership.
+  if (!state.npcs[x.b]?.alive) { x.until = state.year; x.why = 'partner gone'; entryOf(sportId, state.player.id, state).partnershipId = null; return null; }
+  return x;
 }
 export function endPartnership(sportId, state = store.state) {
   const x = currentPartnership(sportId, state);
@@ -1100,7 +1159,7 @@ export const momentsOf = (personId = store.state.player.id, state = store.state)
 
 // ---------- Exports for the other sports modules ----------
 
-export const internals = { fillEntry, academyAffordable, regroup, nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, leagueFor, playSeason, playEvent, newEntry, newAthlete, trainYear,
+export const internals = { checkSchoolTeam, fillEntry, academyAffordable, regroup, nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, leagueFor, playSeason, playEvent, newEntry, newAthlete, trainYear,
   overall, meanSkill, rec, LEVEL_STRENGTH, EVENTS_A_YEAR, teamStrength, val, fullName, rivalNote, seeded, hash, ordinal };
 export { SPORTS, LEVEL_NAMES };
 void cap; void yearNow;

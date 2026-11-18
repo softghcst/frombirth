@@ -65,7 +65,7 @@ export function familyPast(state = store.state) {
     e.seasonsPlayed = r.int(3, e.level === 'pro' ? 14 : 9);
     e.status = 'retired';
     e.retiredYear = Math.min(state.year - 1, youth + e.seasonsPlayed);
-    if (r.chance(e.level === 'pro' ? 0.6 : 0.3)) e.titles.push({ year: youth + r.int(1, e.seasonsPlayed), name: `a ${sport.name.toLowerCase()} title at ${sp.LEVEL_NAMES[e.level]?.toLowerCase() ?? e.level} level`, past: true });
+    if (r.chance(e.level === 'pro' ? 0.6 : 0.3)) e.titles.push({ year: Math.min(e.retiredYear, youth + r.int(1, e.seasonsPlayed)), name: `a ${sport.name.toLowerCase()} title at ${sp.LEVEL_NAMES[e.level]?.toLowerCase() ?? e.level} level`, past: true });
     a.primary = sport.id;
     a.retired = { year: e.retiredYear, age: e.retiredYear - born };
     sp.moment(state, { personId: n.id, name: fullName(n), gen: a.gen, year: youth, age: youth - born, type: 'start', sportId: sport.id, sig: 2,

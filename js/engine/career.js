@@ -301,6 +301,7 @@ export function hire(career, level, performance, how, o = {}) {
     c.partTime = null;
   }
   if (c.careerId) { recordJob('left for another job'); leaveColleagues(); }
+  c.sportContract = null; // a sports contract is held with its job: a new job ends it (engine/sportsLife.js, at the turn of the year)
   if (c.retired) c.unretired = true; // back to work after retiring: the pension goes on being paid
   const sameField = c.lastField === career.id;
   const e = career.type === 'freelance' ? null : employer(o.employerId) ?? placeAt(career.id, p.countryId, p.city);

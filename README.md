@@ -43,6 +43,7 @@ node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, b
 node tests/animal-life.mjs     # staff, classes, behaviour, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
 node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
 node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
+node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models

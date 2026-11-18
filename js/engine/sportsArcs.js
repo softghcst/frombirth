@@ -27,8 +27,9 @@ export const ARC_LETTERS = {
 const arcs = (state) => (sp.ensure(state).storyArcs ??= {});
 export const storyArcs = (state = store.state) => Object.values(arcs(state));
 
-function begin(state, letter, key, sportId, refs, text) {
+function begin(state, letter, key0, sportId, refs, text) {
   const all = arcs(state);
+  const key = `${state.player.id}/${key0}`; // each person's own story: an heir can have a first team of their own
   if (all[key]) return null;
   all[key] = { key, letter, sportId, started: state.year, stage: 1, refs, choice: null, playerId: state.player.id };
   const a = sp.myAthlete(state);
@@ -193,9 +194,14 @@ export function sportArcChoice(v, cast = {}, state = store.state) {
     case 'F:patient': case 'F:rush': case 'F:study': {
       const inj = a?.injuries.find((x) => x.id === arc.refs.injuryId);
       if (!inj) return '';
-      const plan = v.how === 'rush' ? 'rush' : v.how === 'patient' && (p.age < 18 || p.finance.cash >= REHAB.physio.cost) ? 'physio' : 'rest';
+      const want = v.how === 'rush' ? 'rush' : v.how === 'patient' ? 'physio' : 'rest';
+      // The plan is set through the rehab decision, which charges for physiotherapy; with no decision open, a plan
+      // already chosen (and paid for) stands, and only a cheaper approach can replace it.
       const d = sp.ensure(state).decisions.find((x) => x.kind === 'rehab' && x.injuryId === inj.id && x.status === 'open');
-      if (d) { const r = answer(d.id, plan, state); if (!r.ok) inj.rehab = 'rest'; } else inj.rehab = plan;
+      let plan = want;
+      if (d) { const r = answer(d.id, want, state); if (!r.ok) { answer(d.id, 'rest', state); plan = 'rest'; } }
+      else if (want !== 'physio') inj.rehab = want;
+      else plan = inj.rehab ?? 'rest';
       if (v.how === 'study' && e) for (const k of Object.keys(e.skills)) if (['tactics', 'positioning', 'awareness', 'reading', 'course'].includes(k)) e.skills[k] = Math.min(e.ceiling[k], e.skills[k] + 1.5);
       return plan === 'physio' ? 'Physiotherapy it is.' : plan === 'rush' ? 'You will play through it.' : 'Rest, then.';
     }

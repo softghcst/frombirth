@@ -195,7 +195,9 @@ function health() {
 
 function moneySection() {
   const a = sp.myAthlete();
-  const paid = Object.entries(S().paid).filter(([, x]) => x.cat).sort((x, y) => y[1].year - x[1].year);
+  // This life's payments only, in this life's money: an earlier generation's are theirs.
+  const cur = C().currency.code;
+  const paid = Object.entries(S().paid).filter(([, x]) => x.cat && (x.personId ? x.personId === player().id : (x.gen ?? 1) === (player().generation ?? 1)) && x.cur === cur).sort((x, y) => y[1].year - x[1].year);
   const sum = (cat) => paid.filter(([, x]) => x.cat === cat).reduce((s, [, x]) => s + x.amount, 0);
   const name = { prizeMoney: 'Prize money', sponsorship: 'Sponsorship', sport: 'Fees, coaching, kit and agents', health: 'Treatment' };
   return `<p class="muted">A professional's wages are paid as a salary with the rest of your work. Prize money and sponsors are paid here. Each payment is made once.</p>
