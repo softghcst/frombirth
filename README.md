@@ -43,6 +43,7 @@ node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, b
 node tests/animal-life.mjs     # staff, classes, behaviour, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
 node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
 node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
+node tests/sports-divisions.mjs   # sports: women's and men's divisions, women's professional years, sports agents shopped for
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
@@ -110,6 +111,13 @@ strokes, times, judged scores and bouts. Sport skills are separate from the char
 fixed ceiling, with diminishing returns per training hour. Coaches, key teammates, doubles partners and agents are
 real people. Results come from keyed, seeded luck and are stored once, so a reload never re-rolls them; standings
 and champions are counted from completed games only. Clubs, leagues and the Pathways Rating (PR) are invented.
+
+Above recreational play, women and men compete in their own divisions: separate clubs' teams, leagues, tours and
+events, with names and teammates to match. Women's professional play starts in its own years (later than men's in
+most sports, none at all in some, and one league that closed again); non-binary and transgender players choose their
+division between clubs. Sports agents are shopped for like every other agent: one at a time, two looks a year, each
+with their own cut (3–10%), pull with clubs and brands, and athletes on their books (My Athletics → Career, or My
+Fame → Representation).
 
 | What | Where |
 |---|---|

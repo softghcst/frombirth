@@ -22,6 +22,7 @@ import * as modelling from '../engine/modelling.js';
 import * as pub from '../engine/publishing.js';
 import * as celebs from '../engine/celebs.js';
 import * as agents from '../engine/agents.js';
+import * as sportsLife from '../engine/sportsLife.js';
 import { POSITIONS, GENRES, genreOf, genresIn } from '../data/music.js';
 import { BOOKINGS, BOOK_KINDS, BOOK_GENRES, BOOK_AWARD } from '../data/fame.js';
 
@@ -217,6 +218,8 @@ const VIEWS = {
       ${offer ? agentOffer(offer, ent.org(offer.flags.agent.orgId)?.name ?? '', 'signagent', 'passagent', 'findagent', left) : `<div class="btn-stack">${btn('findagent', agent ? 'Look for a different agent' : 'Look for an agent', { disabled: left <= 0, sub: left > 0 ? `${left} ${left === 1 ? 'look' : 'looks'} left this year` : 'You have looked twice this year' })}</div>`}</div>
       ${music.myAct(p) || music.myManager(p) ? repCard({ title: 'Manager', holder: music.myManager(p), about: 'A manager brings labels and promoters to your act, gets better deals and bigger crowds, and takes a cut of what your music earns.',
     offer: music.managerOnOffer(), left: music.managerTriesLeft(), find: 'findmanager', sign: 'signmanager', pass: 'passmanager', drop: 'dropmanager', ask: 'music' }) : ''}
+      ${sportsLife.wantsSportsAgent() ? repCard({ title: 'Sports agent', holder: sportsLife.myAgent(), about: 'A sports agent negotiates your contracts and finds sponsors: the better connected get you more. Each takes their own cut (three to ten per cent) of your salary, prize money and sponsorship.',
+    offer: sportsLife.sportsAgentOnOffer(), left: sportsLife.sportsAgentTriesLeft(), find: 'findsportsagent', sign: 'signsportsagent', pass: 'passsportsagent', drop: 'dropsportsagent', ask: 'sports' }) : ''}
       <div class="card"><h3>Publicist</h3>${pub ? `${row('person', pub.id, `${pub.firstName} ${pub.lastName}`, `${money(w.publicist.fee)} a year`, '', pub)}${btn('nopub', 'Let them go')}` : btn('pub', 'Hire a publicist', { sub: 'Helps you say things well. Cannot change what happened.' })}</div>
       <p class="muted">Lawyers and accountants are separate professions; nothing here gives legal or financial representation.</p>`;
   },
@@ -496,7 +499,11 @@ const ACTIONS = {
   findagent: (_, x) => x.say(press.findAgent()),
   signagent: async (_, x) => { const n = press.agentOnOffer(); if (n && await confirmModal({ title: `Sign with ${n.firstName} ${n.lastName}?`, body: ent.workOf().agent ? 'They replace your current agent. Contracts already signed still pay the old one.' : `They take ${Math.round(n.flags.agent.commission * 100)}% of what you earn through them.`, yes: 'Sign' })) await x.say(press.signAgent(n.id)); },
   passagent: (_, x) => x.say(press.passOnAgent()),
-  askcut: (kind, x) => x.say({ talent: press.askAgentCut, literary: pub.askLitAgentCut, music: music.askManagerCut, model: modelling.askAgencyCut }[kind]()),
+  askcut: (kind, x) => x.say({ talent: press.askAgentCut, literary: pub.askLitAgentCut, music: music.askManagerCut, model: modelling.askAgencyCut, sports: () => sportsLife.askSportsAgentCut() }[kind]()),
+  findsportsagent: (_, x) => x.say(sportsLife.findSportsAgent()),
+  signsportsagent: async (_, x) => { if (await confirmModal({ title: 'Sign with this agent?', body: 'They take their cut of your salary, prize money and sponsorship from now on.', yes: 'Sign' })) await x.say(sportsLife.signSportsAgent()); },
+  passsportsagent: (_, x) => x.say(sportsLife.passOnSportsAgent()),
+  dropsportsagent: (_, x) => x.say(sportsLife.dropSportsAgent()),
   findmanager: (_, x) => x.say(music.findManager()),
   signmanager: async (_, x) => { if (await confirmModal({ title: 'Sign with this manager?', body: 'They take their cut of what your music earns from now on.', yes: 'Sign' })) await x.say(music.signManager()); },
   passmanager: (_, x) => x.say(music.passOnManager()),
