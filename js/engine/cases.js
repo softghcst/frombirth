@@ -167,7 +167,8 @@ export function addEvidence(incident, kind, pointsTo, o = {}) {
   const [lo, hi] = EVIDENCE[kind].reliability;
   const ev = { id: nextId('ev'), incidentId: incident.id, kind, sourceId: o.sourceId ?? null, year: year(),
     reliability: Math.round((o.reliability ?? lo + (hi - lo) * rng.next()) * 100) / 100,
-    pointsTo, lawful: o.lawful ?? rng.chance(0.93), admissible: null, summary: o.summary ?? summarise(kind, pointsTo, o.sourceId) };
+    // Only what is searched for or seized can be obtained unlawfully; what people say is not.
+    pointsTo, lawful: o.lawful ?? (SEIZED.includes(kind) ? rng.chance(0.92) : true), admissible: null, summary: o.summary ?? summarise(kind, pointsTo, o.sourceId) };
   J().evidence[ev.id] = ev;
   return ev;
 }
@@ -188,6 +189,7 @@ function summarise(kind, pointsTo, sourceId) {
     character: `${sourceId ? src(sourceId) : 'Someone'} speaks for ${who}'s character.`,
   }[kind];
 }
+const SEIZED = ['physical', 'digital', 'forensic', 'cctv', 'documents', 'financial'];
 const exists = (kind) => !EVIDENCE_FROM[kind] || year() >= EVIDENCE_FROM[kind];
 
 /**
@@ -431,7 +433,8 @@ export function counselOptions(c) {
 /** Appoints counsel. The fee is paid once per case. */
 export function appoint(c, tier, npcId) {
   if (c.defenceId) return false;
-  const cost = tier === 'self' || tier === 'public' ? 0 : localMoney(LAWYERS.find((x) => x.id === tier).cost, COUNTRIES[c.countryId]);
+  // The player as counsel is paid a salary by their employer, not a fee by the client.
+  const cost = tier === 'self' || tier === 'public' || npcId === player().id ? 0 : localMoney(LAWYERS.find((x) => x.id === tier).cost, COUNTRIES[c.countryId]);
   if (cost && !pay({ key: `fee:${c.id}`, kind: 'legal_fee', amount: cost, payer: c.defendantId, payee: npcId, caseId: c.id })) return false;
   c.defenceId = npcId;
   c.defenceTier = tier;
@@ -440,7 +443,7 @@ export function appoint(c, tier, npcId) {
     const list = c.defendantId === player().id ? (player().legal.counselIds ??= []) : (person(c.defendantId).flags.counselIds ??= []);
     if (!list.includes(npcId)) list.push(npcId);
   }
-  if (c.stage === 'pretrial') move(c, 'plea', tier === 'self' ? 'The defendant will speak for themselves.' : `${nameOf(npcId)} appears for the defense.`);
+  if (c.stage === 'pretrial') move(c, 'plea', tier === 'self' ? 'The defendant will speak for themselves.' : npcId === player().id ? 'You appear for the defense.' : `${nameOf(npcId)} appears for the defense.`);
   return true;
 }
 
@@ -649,7 +652,8 @@ export function sentence(c, offenseId, how, ruling = null) {
   score += { lenient: -6, standard: 0, tough: 6 }[sys.sentencing ?? 'standard'];
   const ladder = off.ladder;
   let type = ladder[clamp(Math.floor((score - 10) / 15), 0, ladder.length - 1)];
-  if (type === 'diversion' && (n > 0 || c.age >= sys.adultAge + 7)) type = ladder[Math.min(1, ladder.length - 1)];
+  // Diversion is instead of prosecution: for a first offense admitted early, never after a trial.
+  if (type === 'diversion' && (n > 0 || c.age >= sys.adultAge + 7 || !plea)) type = ladder[Math.min(1, ladder.length - 1)];
   let years = 0;
   if (type === 'custody') {
     const [lo, hi] = off.custody;
@@ -662,7 +666,7 @@ export function sentence(c, offenseId, how, ruling = null) {
   }
   if (ruling) {
     // A player judge chooses, but only from what the law allows.
-    if (ladder.includes(ruling.type)) type = ruling.type;
+    if (ladder.includes(ruling.type) && !(ruling.type === 'diversion' && !plea)) type = ruling.type;
     if (type === 'custody') years = clamp(Math.round(ruling.years ?? years), Math.max(1, off.custody[0]), off.custody[1]);
   }
   if (c.juvenile && type === 'custody') years = Math.max(1, Math.min(years, sys.adultAge + 3 - c.age));

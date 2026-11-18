@@ -84,7 +84,7 @@ export function openInvestigationBrief() {
 
 /** What an investigator can do with this file now. */
 export function detectiveOptions(inv) {
-  if (!['active', 'suspect'].includes(inv.stage)) return [];
+  if (!['active', 'suspect', 'referred'].includes(inv.stage)) return [];
   const used = inv.playerSteps ?? [];
   const out = [];
   if (!used.includes('leads')) out.push({ id: 'leads', label: 'Follow up the leads', sub: 'Records, footage, the laboratory.' });
@@ -110,7 +110,9 @@ export function detectiveAct(inv, act) {
     k.workInvestigation(inv, 0.6 + p.stats.intellect / 250);
     if (inv.evidenceIds.length === before) k.workInvestigation(inv, 0.8);
     const found = inv.evidenceIds.slice(before).map((id) => k.J().evidence[id]);
-    return result(true, found.length ? found.map((e) => e.summary).join(' ') : 'Nothing new. Every lead runs dry.', found.length ? 'good' : 'neutral');
+    const top = inv.stage === 'referred' ? k.leading(inv) : null;
+    const now = top ? ` The evidence now points clearly at ${k.nameOf(top.id)}: you can refer them to the prosecutor.` : '';
+    return result(true, `${found.length ? found.map((e) => e.summary).join(' ') : 'Nothing new. Every lead runs dry.'}${now}`, found.length ? 'good' : 'neutral');
   }
   if (act === 'reinterview') {
     const mistaken = inv.evidenceIds.map((id) => k.J().evidence[id]).filter((e) => ['witness', 'victim'].includes(e.kind) && e.pointsTo !== inc.truth.perpetratorId);
@@ -240,7 +242,8 @@ export function openBench() {
 /** Evidence the judge must rule on: unlawfully obtained items, and whether the law leaves any choice. */
 export function rulingsNeeded(c) {
   const sys = k.procedure(c);
-  return c.evidenceIds.map((id) => k.J().evidence[id]).filter((e) => !e.lawful && e.admissible === null).map((e) => ({
+  // Only evidence against the defendant needs a ruling: the rest cannot convict anyone.
+  return c.evidenceIds.map((id) => k.J().evidence[id]).filter((e) => !e.lawful && e.admissible === null && e.pointsTo === c.defendantId).map((e) => ({
     id: e.id, kind: EVIDENCE[e.kind].name, summary: e.summary, mustExclude: sys.exclusion === 'strict',
   }));
 }
@@ -262,7 +265,8 @@ export function hear(c, admit) {
 /** The sentences the law allows for this conviction. */
 export function sentencingRange(c) {
   const off = OFFENSE_BY_ID[c.verdict.offenseId];
-  return { ladder: off.ladder, custody: off.custody, offense: off };
+  // After a trial, diversion (which replaces prosecution) is no longer open.
+  return { ladder: off.ladder.filter((x) => x !== 'diversion' || c.plea === 'guilty'), custody: off.custody, offense: off };
 }
 
 /** Passes sentence. The law sets the limits. */

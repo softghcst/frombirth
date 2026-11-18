@@ -93,6 +93,9 @@ function respond(c) {
   } else c.history.push({ year: year(), text: `${k.nameOf(c.respondentId)} disputes the claim.` });
 }
 
+/** A lawyer for a civil claim: in proportion to what is at stake, so it is never more than the claim. */
+export const civilFee = (c) => Math.max(localMoney(150, country()), Math.round(c.claim * 0.2));
+
 /** What the player can do now in a case. */
 export function claimActions(c) {
   if (['decided', 'settled', 'withdrawn'].includes(c.stage)) return [];
@@ -100,7 +103,7 @@ export function claimActions(c) {
   const out = [];
   if (c.offer && c.offer.from !== player().id) out.push({ id: 'accept', label: `Accept the offer of ${fmtMoney(c.offer.amount, country())}` });
   if (!mine && !c.offer) out.push({ id: 'offer', label: `Offer to settle for ${fmtMoney(Math.round(c.claim * 0.5), country())}` });
-  if (!c.counsel[player().id]) out.push({ id: 'counsel', label: `Hire a lawyer (${fmtMoney(localMoney(LAWYERS.find((x) => x.id === 'good').cost / 6, country()), country())})` });
+  if (!c.counsel[player().id]) out.push({ id: 'counsel', label: `Hire a lawyer (${fmtMoney(civilFee(c), country())})` });
   out.push({ id: 'hearing', label: 'Let the court decide' });
   if (mine) out.push({ id: 'withdraw', label: 'Withdraw the claim', danger: true });
   return out;
@@ -113,7 +116,7 @@ export function actOnClaim(caseId, act) {
   if (!c || !claimActions(c).some((a) => a.id === act)) return result(false, 'That is not possible now.', 'neutral');
   const cty = country();
   if (act === 'counsel') {
-    const fee = localMoney(LAWYERS.find((x) => x.id === 'good').cost / 6, cty);
+    const fee = civilFee(c);
     if (!k.pay({ key: `civil_fee:${c.id}:${p.id}`, kind: 'legal_fee', amount: fee, payer: p.id, payee: 'counsel', caseId: c.id })) return result(false, 'You cannot afford a lawyer.', 'neutral');
     c.counsel[p.id] = true;
     c.history.push({ year: year(), text: 'You instructed a lawyer.' });

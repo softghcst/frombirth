@@ -66,6 +66,12 @@ Explorer under "How the law was checked", and `node tests/rules.mjs` fails if an
 | Citizenship by birth | Jus soli | unconditional, allowing for a diplomats' exception or a registration step |
 | One nationality only | Multiple citizenship, and 13 national nationality-law articles | |
 | Form of government | List of countries by system of government | |
+| Marriage age | Marriageable age | without parental or judicial consent; a separate age for women where the law sets one. The game never lets anyone marry before 18 |
+| Driving age | List of minimum driving ages | the youngest age to hold a car license, conditions allowed; not mopeds, motorcycles or supervised learners |
+| Gambling age, and whether gambling is legal | Gambling age | the casino age where several are given; legal where lotteries or betting are open to citizens |
+| School-leaving age | School-leaving age | the end of compulsory schooling |
+| Residence before naturalization; dual nationality | Naturalization | |
+| Free movement | Member state of the European Union; Trans-Tasman Travel Arrangement | the European area is the EU members in the game, plus Norway (EEA) and Switzerland |
 
 What changed as a result: four countries no longer execute (the Bahamas, DR Congo, Ethiopia, Uganda); six gained "protected"
 status (Bolivia, Czechia, Croatia, Italy, Monaco, Nepal); conscription was added in twelve countries and removed in Syria;
@@ -73,8 +79,15 @@ voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries
 for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
 nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
 
-Still not checked: driving, gambling, marriage and school-leaving ages; residence years for naturalization (other than
-Malaysia and Singapore); gambling bans; the free-movement lists; tax and health-care models; the status sentences. Where a
+Also checked now: the top rate of income tax ("List of countries by tax rates"; 92 agree, and four differ for reasons recorded in
+the script: the United States uses the federal 37%, and Bolivia, Estonia and Romania use their flat income tax where the table adds
+other charges), health-care models ("Universal health care": no country the source lists as universal is out of pocket or
+private in the game), and the spouse's shorter wait for citizenship, now set per country where the "Naturalization" notes give it
+(`SPOUSE_YEARS_IN`; elsewhere the old rule: half the usual wait, at least three years).
+
+Still not checked: which laws each country leaves to its regions (`REGIONAL_POWERS`), estate and inheritance tax (the source
+table does not parse reliably, and real rates depend on the heir), which countries get a flat, rising or steep schedule, and the
+status sentences. Where a
 source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
 
 Re-run with `python3 scripts/verify-laws.py --write` (needs access to en.wikipedia.org; pages are cached in `.cache/`).
@@ -125,8 +138,8 @@ shown on its profile.
   exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
   the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A head of government can change them through the legislature; public
   opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional law can be changed by the head of a region,
-  for six regional matters, in the countries listed in `REGIONAL_COUNTRIES`; which matters belong to regions in each real
-  country is simplified to one list. Mayors make no law. School-leaving age is the same everywhere.
+  for the matters `REGIONAL_POWERS` gives each country: compiled by hand from each country's division of powers and not yet
+  checked against sources. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
   permanence. Real systems differ by country and are not modeled. The free-movement areas (a European area, and Australia with
   New Zealand) are simplified lists and unverified. Family members hold dependant status on the player's visa, simplified to one rule for every country; there is no
@@ -136,15 +149,15 @@ shown on its profile.
   agreed in. Each country has its own housing index, moved by its economy; the numbers are invented, not house-price data. No
   country restricts foreign buyers, and there are no tax treaties: nothing is taxed twice, and nothing is credited. Income tax is
   each country's headline rate through one of four shapes (`js/data/systems.js`) with thresholds in multiples of a typical wage:
-  not real brackets, and with no social contributions, credits or regional taxes. Health care is one of six models; which
-  country has which is unverified, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
+  not real brackets, and with no social contributions, credits or regional taxes. The top band is the country's real top rate (`TAX_TOP`), checked. Health care is one of six models; that no
+  universal-care country is modelled as out of pocket or private is checked, but the finer choice among models is not, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
   bounds and are pulled weaker by a recession or a crisis, without following measured inflation.
 
 ## Where further work would go
 
 In rough order of value:
 
-1. **Check what is still unchecked** (listed above): the remaining ages, residence years and the free-movement lists.
+1. **Check what is still unchecked** (listed above): regional powers, estate tax, the shape of each tax schedule, and the status sentences.
 2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
 5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.

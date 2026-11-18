@@ -336,11 +336,13 @@ bill costs nothing and has no committee stage; it counts as one of the year's tw
 it; where one person rules, it is a decree. The world's own reforms in a country your life has a government for now need a
 government that wants them.
 
-**Regional law.** In countries whose regions make law (the federations, and the United Kingdom's devolved nations), the head
-of a region can change the laws a region controls, one a year, through the regional assembly: the drinking, driving and
-gambling ages, bans on gambling or alcohol, and the death penalty. It applies to everyone living in that region (Texas, Ontario,
-Bavaria; where the game records no states, the area around the city). Between a regional and a national change to the same
-law, the more recent one stands.
+**Regional law.** Where a country leaves some of these laws to its states, provinces or emirates, the head of a region
+can change them, one a year, through the regional assembly. Which ones depends on the country: an American state can set
+the death penalty, gambling and the driving, drinking and gambling ages; a Canadian province the same except the death
+penalty, which is federal; a German Land only gambling; an Indian state or an emirate can ban alcohol; in Brazil, France,
+Italy or Russia none of these are regional (`REGIONAL_POWERS` in `js/data/rules.js`, not yet checked against sources). A law
+applies to everyone living in the region (where the game records no states, the area around the city). Between a regional
+and a national change to the same law, the more recent one stands.
 
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
@@ -415,7 +417,8 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
 **Income tax** is the country's headline rate run through a schedule: an allowance, then bands. There are four shapes: none
 (the United Arab Emirates and others that charge nothing), one flat rate (Russia, Ukraine, Hungary and others), rising bands
 (the default, and the United States), and steeply rising bands (much of western Europe, Japan, South Korea, Canada,
-Australia). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
+Australia). The top band is each country's real top rate, from "List of countries by tax rates" (`TAX_TOP`; for the
+United States the federal 37%). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
 anything more you earn.
 
 **Health care** has six models:
