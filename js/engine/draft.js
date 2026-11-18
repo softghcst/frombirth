@@ -14,7 +14,7 @@
 import { log, milestone } from '../state.js';
 import { clamp } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { sportOf, DRAFTS, WOMEN_DRAFTS, COUNTRY_DRAFTS } from '../data/sports.js';
+import { sportOf, DRAFTS, WOMEN_DRAFTS, COUNTRY_DRAFTS, draftCountry } from '../data/sports.js';
 import { registerEmployer, employer } from './employers.js';
 import { gradeOf, programs } from './recruiting.js';
 import { eligibility } from './college.js';
@@ -136,7 +136,11 @@ export const roundOf = (pick, size) => Math.ceil(pick / size);
 
 /** The league the draft is for: the country's top professional league in the sport, with all its clubs. */
 function topLeague(state, sport) {
-  const org = life.proClub(state, sport, 0, 1);
+  const via = draftCountry(sport, state.player.countryId);
+  // Drafted into another country's league (Puerto Rico's baseball players, into the big leagues).
+  const org = via && via !== state.player.countryId
+    ? findOrg(state, sport, 'pro', { key: `pro/${sport.id}/${via}/0`, countryId: via, city: COUNTRIES[via].cities[0], tier: 1, strength: 4, div: 'men' })
+    : life.proClub(state, sport, 0, 1);
   return leagueFor(state, org, teamFor(state, org));
 }
 
@@ -187,9 +191,10 @@ export function clubOf(state, teamId) {
 export function classPick(state, d, n) {
   const sport = sportOf(d.sport);
   const r = seeded(`class/${d.sport}/${d.div}/${d.year}/${n}`);
-  const [name] = rosterNames(r, state.player.countryId, 1, d.div === 'women' ? 'female' : 'male');
+  const via = draftCountry(sport, state.player.countryId) ?? state.player.countryId;
+  const [name] = rosterNames(r, via, 1, d.div === 'women' ? 'female' : 'male');
   const progs = programs(state, sport);
-  const school = r.chance(d.sport === 'baseball' ? 0.35 : d.sport === 'ice_hockey' ? 0.5 : 0.05) ? `${r.pick(COUNTRIES[state.player.countryId].cities)} ${d.sport === 'ice_hockey' ? 'Juniors' : 'High School'}` : r.pick(progs)?.name ?? '';
+  const school = r.chance(d.sport === 'baseball' ? 0.35 : d.sport === 'ice_hockey' ? 0.5 : 0.05) ? `${r.pick(COUNTRIES[via].cities)} ${d.sport === 'ice_hockey' ? 'Juniors' : 'High School'}` : (progs.length ? r.pick(progs).name : '');
   return { name, school, pos: r.pick(sport.positions ?? [[null, '']])[1] };
 }
 

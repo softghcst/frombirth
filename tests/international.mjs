@@ -35,7 +35,7 @@ function boy(country, age, boost = 0, talent = 92) {
     for (const k of Object.keys(e.skills)) e.skills[k] = Math.min(e.ceiling[k], e.skills[k] + boost);
     e.plan = { type: 'balanced', hours: 10 };
     for (let i = 0; i < 30 && s.player.alive && s.player.age < age; i++) year({});
-    if (s.player.alive && s.player.countryId === country) return e;
+    if (s.player.alive && s.player.countryId === country && sp.divOf(s.player) === 'men') return e; // these are the men's leagues' rules
   }
 }
 /** One year; decisions answered as `pick` says (a value or a function of the decision), or the cautious default. */

@@ -29,6 +29,7 @@ import { beforeSeason, afterSeason, COLLEGE_ANSWERS } from './college.js';
 import { draftYear, minorsYear, leagueClub, DRAFT_ANSWERS } from './draft.js';
 import { intlYear, intlPath, INTL_ANSWERS } from './international.js';
 import { asiaYear, onService, ASIA_ANSWERS } from './asiaBaseball.js';
+import { tradeYear, TRADE_ANSWERS } from './trades.js';
 import { youthYear, firstProAge, maxYears, YOUTH_ANSWERS } from './youthContracts.js';
 
 const { nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, playSeason, playEvent, overall, rec, EVENTS_A_YEAR, fullName, seeded } = sp.internals;
@@ -278,18 +279,18 @@ function signPro(state, d, o = {}) {
   const id = nextId(S, 'k');
   const years = maxYears(p, d.sportId, d.years); // soccer: three years at most under 18 (FIFA)
   const k = { id, kind: 'pro', personId: p.id, sportId: d.sportId, orgId: org.id, employerId: org.employerId, name: org.name, from: state.year, to: state.year + years,
-    salary: d.salary, level: d.level, status: 'active', how: o.transfer ? 'transfer' : d.how ?? 'signing', history: [] };
+    salary: d.salary, level: d.level, status: 'active', how: o.trade ? 'trade' : o.transfer ? 'transfer' : d.how ?? 'signing', history: [] };
   S.contracts[id] = k;
   // The wages are a salary in the careers system: paid there, taxed there, and nowhere else.
-  hire(CAREER_BY_ID.athlete, d.level, 60, o.transfer ? `${org.name} signed you.` : d.how === 'draft' ? `${org.name} drafted you.` : `You signed for ${org.name}.`,
+  hire(CAREER_BY_ID.athlete, d.level, 60, o.trade ? `You were traded to ${org.name}.` : o.transfer ? `${org.name} signed you.` : d.how === 'draft' ? `${org.name} drafted you.` : `You signed for ${org.name}.`,
     { employerId: org.employerId, salary: d.salary, hours: 40 });
   p.career.sportContract = id;
   e.contractId = id;
   e.level = 'pro';
   e.proYear ??= state.year;
   joinOrg(org, state);
-  sp.moment(state, { type: o.transfer ? 'transfer' : 'signing', sportId: d.sportId, text: `${o.transfer ? 'Transferred to' : d.how === 'draft' ? `Drafted by` : 'Signed for'} ${org.name}.`, sig: 3, orgId: org.id });
-  milestone(`${o.transfer ? 'Transferred to' : d.how === 'draft' ? 'Drafted by' : 'Signed professionally with'} ${org.name}.`, 'career');
+  sp.moment(state, { type: o.transfer ? 'transfer' : 'signing', sportId: d.sportId, text: `${o.trade ? 'Traded to' : o.transfer ? 'Transferred to' : d.how === 'draft' ? `Drafted by` : 'Signed for'} ${org.name}.`, sig: 3, orgId: org.id });
+  milestone(`${o.trade ? 'Traded to' : o.transfer ? 'Transferred to' : d.how === 'draft' ? 'Drafted by' : 'Signed professionally with'} ${org.name}.`, 'career');
   if (p.age >= 25 && !o.transfer) arc(state, 'late_bloomer', d.sportId, 'Late bloomer', `A first professional contract at ${p.age}.`);
   if (!sp.myAthlete(state).agentId) decide(state, { kind: 'agent', sportId: d.sportId, text: 'An agent has been in touch: they would handle your contracts and sponsors for a share of what you earn.', options: [{ id: 'yes', label: 'Hear them out' }, { id: 'no', label: 'Handle it yourself' }] });
   return result(true, `You signed for ${org.name}.`);
@@ -541,6 +542,8 @@ function contractYear(state, a, e) {
     const fee = Math.round(k.salary * agentCut(a));
     settle(state, `agent/${k.id}/${state.year}`, -fee, 'sport', 'Your agent\'s share');
   }
+  // In the leagues with a draft, players are traded (engine/trades.js): the contract goes to another club as it stands.
+  if ((sportOf(e.id).draftIn ?? []).includes(sp.orgOf(k.orgId, state)?.countryId) && tradeYear(state, a, e, k)) return;
   if (state.year >= k.to) {
     const org = sp.orgOf(k.orgId, state);
     if (o >= 60 && p.age <= 35) {
@@ -553,7 +556,8 @@ function contractYear(state, a, e) {
   // The better the player, the more clubs ask; in the last year of a contract a bid competes with the offer to stay.
   // Not in the leagues with a draft (players move by trade there, not for fees), nor for a player at a club abroad.
   const club = sp.orgOf(k.orgId, state);
-  if (club && (sp.proPath(sportOf(e.id), club.countryId) === 'draft' || club.countryId !== p.countryId)) return;
+  if (club && (sportOf(e.id).draftIn ?? []).includes(club.countryId)) return; // traded instead (engine/trades.js), above
+  if (club && club.countryId !== p.countryId) return;
   const r = seeded(`bid/${k.id}/${state.year}`);
   if (k.status === 'active' && o >= 74 && r.chance(Math.min(0.45, 0.12 + (o - 74) / 55))) {
     const sport = sportOf(e.id);
@@ -1045,7 +1049,7 @@ export function audit(state = store.state) {
 }
 
 export { LEVEL_NAMES };
-Object.assign(ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS, ASIA_ANSWERS, YOUTH_ANSWERS);
+Object.assign(ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS, ASIA_ANSWERS, YOUTH_ANSWERS, TRADE_ANSWERS);
 /** For the parts of the athletic life kept in their own files (engine/recruiting.js, engine/draft.js). */
 export const internals = { decide: (...x) => decide(...x), money: (...x) => money(...x), fmt: (...x) => fmt(...x), proClub: (...x) => proClub(...x),
   offerFor: (...x) => offerFor(...x), signPro: (...x) => signPro(...x), endContract: (...x) => endContract(...x), ANSWERS: () => ANSWERS };

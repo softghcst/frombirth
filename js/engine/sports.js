@@ -24,7 +24,7 @@
 import { store, player, log, milestone, livingNpcs } from '../state.js';
 import { clamp, cap, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS, mascotsFor, JERSEY_COLORS, leagueSize, DIVISIONS } from '../data/sports.js';
+import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS, mascotsFor, JERSEY_COLORS, leagueSize, DIVISIONS, draftCountry } from '../data/sports.js';
 const DIVISION_NAMES = { D1: 'Division I', IVY: 'Ivy', D2: 'Division II', D3: 'Division III', NAIA: 'NAIA', JUCO: 'National' };
 import { makeNpc } from './npcFactory.js';
 import { remember } from './conditions.js';
@@ -259,7 +259,7 @@ export function sportsMenu(p = player(), state = store.state) {
 }
 /** The way into paid sport where the player lives. */
 export function proPath(sport, countryId = player().countryId) {
-  if (sport.pro === 'draft') return (sport.draftIn ?? []).includes(countryId) ? 'draft' : sport.proElse ?? 'signing';
+  if (sport.pro === 'draft') return draftCountry(sport, countryId) ? 'draft' : sport.proElse ?? 'signing';
   return sport.pro;
 }
 /** Whether universities in this country run teams that recruit, with scholarships. */

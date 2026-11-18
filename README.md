@@ -48,6 +48,7 @@ node tests/teams.mjs           # team names, jersey colors and shirt numbers: ma
 node tests/draft.mjs           # recruiting (stars, offers by division, signing day), college (redshirt, grades, portal, NIL), each league's draft rules, the minors
 node tests/international.mjs   # baseball signings outside the draft countries: trainers, handshake deals, signing at 16, the DSL, Cuba
 node tests/asia-youth.mjs      # Japan's and Korea's drafts, posting to the big leagues, Korean military service, soccer scholarships and youth contracts
+node tests/trades.mjs          # trades in the draft leagues (the contract moves as it stands, ten-and-five), Puerto Rico in the big leagues' draft
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season

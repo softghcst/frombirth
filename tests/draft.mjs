@@ -37,7 +37,7 @@ function athlete(sport, age, boost = 30) {
     for (const k of Object.keys(e.skills)) e.skills[k] = Math.min(e.ceiling[k], e.skills[k] + boost);
     e.plan = { type: 'balanced', hours: 14 };
     for (let i = 0; i < 30 && s.player.alive && s.player.age < age; i++) year({});
-    if (s.player.alive && s.player.countryId === 'us') return e;
+    if (s.player.alive && s.player.countryId === 'us' && sp.divOf(s.player) === 'men') return e; // these are the men's leagues' rules
   }
 }
 /** One year, with the decisions answered as `pick` says (a function of the decision), or the cautious default. */
