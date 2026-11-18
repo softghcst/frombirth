@@ -49,6 +49,7 @@ node tests/lawmaking.mjs       # a head of government changing the law of the la
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
+node tests/inheritance.mjs     # estate and inheritance tax: worked examples, and every country's scale
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
@@ -64,7 +65,7 @@ node tests/justice.mjs         # crime, courts and prison: incident to release a
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
 ```
 
-`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
+`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; and that the eye shapes on offer are unchanged.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
 
 ## Money
@@ -175,16 +176,17 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 | Skin, hair, eye, lip and outfit colors | `js/avatarPalettes.js` |
 | Notes the filenames cannot carry (hair textures, resting faces, uniforms, royal dress) | `js/avatar/curation.js` |
 | The renderer: layers, ages, auto-dress | `js/CharacterAvatar.js` |
+| How each hairstyle is fitted to each head, and how each head is framed | `js/avatar/hairFit.js` |
 | How saved appearances are read, and old saves converted | `js/avatar/catalog.js` |
 | How children take after their parents | `js/avatar/inherit.js` |
 | The character creator and salon editor | `js/avatar/editor.js` |
 | The salon's prices | `js/engine/salon.js` |
 
 **How a portrait is built.** Each layer is an SVG `<use>` of a part file, in this order: back hair, head, make-up
-(clipped to the head), age lines, eyes, eyebrows, nose, mouth, facial hair, clothes, necklaces, front hair,
-earrings and piercings, glasses, hat or crown, emotions. Hair is drawn twice — the whole style behind the head,
-and the part above the jaw again in front — so a fringe falls over the forehead while long hair falls behind the
-shoulders. A hat hides hair above the brim (bulky styles, above the ears). Colors are CSS variables on the portrait
+(clipped to the head), age lines (clipped to the head too), eyes, eyebrows, nose, facial hair, mouth, clothes,
+necklaces, front hair, earrings and piercings, glasses, hat or crown, emotions. The mouth is drawn over a beard, so
+a full beard does not swallow it. Hair is drawn twice — the whole style behind the head, and the part above that
+head's chin again in front — so a fringe falls over the forehead while long hair falls behind the shoulders. A hat hides hair above the brim (bulky styles, above the ears). Colors are CSS variables on the portrait
 (`--skin-color`, `--hair-color`, `--brow-color`, `--eye-color`, `--lip-color`, `--blush-color`, `--outfit-color`)
 that reach into the part files.
 
@@ -193,6 +195,27 @@ shoulders; stored as `fit` in the manifest), and the renderer moves each layer f
 head: features keep their place between forehead and chin, hair and hats follow the top and width of the head,
 earrings hang from that head's ears, clothes sit under its chin. Babies, toddlers and children get slightly smaller,
 lower-set features. Eyes drawn as an empty outline are given whites by filling the opening.
+
+**Fitting hair.** The script also measures every hairstyle and head row by row and column by column (`edge` in the
+manifest): the inner edges of the hair either side of the face, its hairline, the outline of its crown, and the
+outline of each head. From those, `js/avatar/hairFit.js` corrects the plain fit for each pair, within small limits:
+no background may show between hair and scalp, a fringe is lifted off the eyebrows where a small move does it, hair
+that covers the top of the head goes on covering it, and a style too tall for the picture is flattened a little
+above the crown. A style with a lock or sweep that hangs clear of the head on purpose is left alone. Babies' tufts
+are not refitted. Nothing is special-cased by person: a new hairstyle or head only needs measuring (run the script).
+A style placed so badly that the limits cannot save it is repaired in its file, once (`REFIT` in the script, with
+the reason); stray specks are removed from hair files (`remove_specks`).
+
+**Framing.** Adult heads differ in size by up to a fifth, so each is zoomed a little towards the average
+(`frameFor`): faces fill the same share of a portrait, with the eyes on one line, whatever the hairstyle. Children
+keep the plain picture. Every screen draws through `avatarSvg`, so a person is the same drawing everywhere; a screen
+chooses only the size.
+
+**Reading faces on every skin tone.** All linework is one dark ink, which loses contrast as skin deepens while the
+white of the eye gains it. From chestnut downward, in step with depth (`deepness`, `READABLE` in
+`js/CharacterAvatar.js`): the whites are toned slightly toward the skin, the outlines of eyes and mouth (only the outlines, never the whites, irises or teeth) gain a little
+weight, and brows get a faint lighter edge. A nose's skin is always the face's own skin color; on deeper tones only its lines get darker and heavier. Shapes, skin tones and everyone's own colors are unchanged;
+lighter faces are untouched.
 
 **Personal proportions.** Each person also has `inherited.tweaks`: eye spacing, eye size, eye height, nose size
 and mouth size, each from -2 to 2 steps (`TWEAKS` in `js/avatar/catalog.js`, step sizes in `TWEAK_STEP` in
@@ -434,6 +457,13 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
 Australia). The top band is each country's real top rate, from "List of countries by tax rates" (`TAX_TOP`; for the
 United States the federal 37%). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
 anything more you earn.
+
+**Estate and inheritance tax** (`js/engine/inheritance.js`, rules in `js/data/inheritance.js`) depends on who inherits. Some
+countries tax the estate as a whole before it is shared (the United States above USD 15 million, the United Kingdom at 40% above
+GBP 325,000, Japan, South Korea, Taiwan, South Africa, the Philippines); others tax each heir on what they receive, with a spouse
+usually exempt, a child paying little, and anyone else much more (Germany, France, Spain, Italy, Ireland, the Netherlands and
+others); many charge nothing. A will that leaves everything to friends costs more than one that leaves it to children, and
+charity is untaxed. Rates and allowances come from PwC Worldwide Tax Summaries and Wikipedia; see `docs/WORLD_DATA.md`.
 
 **Health care** has six models:
 

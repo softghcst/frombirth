@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION } from './curation.js';
+import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN } from './curation.js';
 import { mixHex } from './color.js';
 
 const named = (ids, hexes, names, extra = () => ({})) => ids.map((id, i) => ({ id, name: names[i], hex: hexes[i], ...extra(i) }));
@@ -111,8 +111,25 @@ const OLD_GLASSES = { round: 'glasses_1', square: 'glasses_3', cat_eye: 'glasses
 const OLD_BEARD = { stubble: 'facial_hair_06_stubble', moustache: 'facial_hair_02_handlebar_mustache', goatee: 'facial_hair_03_pointed_goatee',
   beard: 'facial_hair_01_shaped_beard', full_beard: 'facial_hair_04_bushy_full_beard' };
 const OLD_MAKEUP = { soft: 'makeup_01_soft_blush', defined: 'makeup_02_winged_eyeliner', bold: 'makeup_12_smoky_wing' };
-/** An old shape id always lands on the same new part, so relatives who shared it still do. */
-const fromOld = (key, oldId) => (oldId ? seeded(resting(key), oldId, key).id : null);
+/**
+ * The random pools as they were when the earlier avatar system's saves were first converted. An old shape
+ * id is converted from these, then moved off anything since withdrawn, so it always lands on the same part
+ * and relatives who shared it still do.
+ */
+const OLD_RESTING = {
+  eyes: ['eyes_6', 'eyes_8', 'eyes_9', 'eyes_10', 'eyes_11', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_22', 'eyes_25'],
+  lips: ['lips_1', 'lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_12', 'lips_14'],
+  nose: ['nose_3', 'nose_5', 'nose_6', 'nose_7', 'nose_8', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
+    'nose_18', 'nose_19', 'nose_20', 'nose_22', 'nose_23'],
+};
+/** A shape that has been withdrawn becomes the nearest one kept; any other id is left as it is. */
+export const current = (key, id) => WITHDRAWN[key]?.[id] ?? id;
+const fromOld = (key, oldId) => {
+  if (!oldId) return null;
+  // Sorted as the manifest lists them: the earlier pools were in that order, and the pick depends on it.
+  const pool = OLD_RESTING[key] ? [...OLD_RESTING[key]].sort().map((id) => ({ id })) : resting(key);
+  return current(key, seeded(pool, oldId, key).id);
+};
 
 /**
  * Returns a complete, valid appearance for whatever was saved: a current one
@@ -133,6 +150,7 @@ export function normalize(a, seed = 'x') {
   for (const key of INHERITED_KEYS) {
     let id = (v2 && legacy[key] !== undefined ? legacy[key] : src[key]) ?? legacy[key];
     if (key === 'head' && GONE_HEAD[id]) id = GONE_HEAD[id];
+    id = current(key, id);
     const pool = ['eyes', 'brows', 'nose', 'lips'].includes(key) ? resting(key) : CATALOG[key];
     inherited[key] = has(key, id) ? id : seeded(pool, seed, key).id;
   }

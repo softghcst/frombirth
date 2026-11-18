@@ -12,10 +12,11 @@ const SOURCE_LINE = `ISO 3166-1, ISO 4217 and the Unicode CLDR, the IANA time-zo
 const CHECK_NAME = { codes: 'ISO codes', name: 'Name', currency: 'Currency', timeZone: 'Time zone', capital: 'Capital', unRegion: 'UN region', languages: 'Official languages', cities: 'Cities', regions: 'Regions of cities' };
 const LAW_NAME = { sameSexMarriage: 'Same-sex marriage', lgbt: 'LGBT people', deathPenalty: 'Death penalty', conscription: 'Military service', alcohol: 'Alcohol', divorce: 'Divorce',
   votingAge: 'Voting age', drinkingAge: 'Drinking age', drivingAge: 'Driving age', marriageAge: 'Marriage age', gambling: 'Gambling', gamblingAge: 'Gambling age',
-  schoolLeavingAge: 'School-leaving age', retirementAge: 'Pension age', birthright: 'Citizenship by birth', single: 'Dual citizenship', naturalization: 'Years before citizenship', spouseWait: 'Wait for a citizen\'s spouse', healthCare: 'Health care', taxTop: 'Top rate of income tax',
+  schoolLeavingAge: 'School-leaving age', retirementAge: 'Pension age', birthright: 'Citizenship by birth', single: 'Dual citizenship', naturalization: 'Years before citizenship', spouseWait: 'Wait for a citizen\'s spouse', healthCare: 'Health care', taxTop: 'Top rate of income tax', inheritance: 'Estate and inheritance tax',
   freeMovement: 'Free movement', government: 'Form of government' };
 const CHECK_WORD = { ok: 'Confirmed', review: 'Differs on purpose', unconfirmed: 'Not confirmed', mismatch: 'Disagrees with the source' };
 import { healthLine, taxLine } from './systems.js';
+import { inheritanceLine } from './inheritance.js';
 import { outlook } from './economy.js';
 import { cityLine } from './cities.js';
 import { sheet, reforms } from './rules.js';
@@ -74,7 +75,7 @@ export function profile(id) {
     ['Typical pay', `${times(L.wage)} pay in the United States`],
     ['Local prices', `${times(L.cost)} prices in the United States`],
     ['Income tax', `${Math.round(c.incomeTax * 100)}%`],
-    ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
+    ['Inheritance tax', inheritanceLine(c)],
     ['Property tax', propertyTaxLabel(c)],
     ['Health care', healthLine(c)],
     ['How income is taxed', taxLine(c)],
@@ -110,7 +111,7 @@ export function profile(id) {
   const lawChecks = Object.entries(LAW_NAME).filter(([k]) => lc[k] && !(store.state?.rules?.[id]?.[k])).map(([k, name]) => {
     const v = lc[k];
     const src = LAW_SOURCES[{ alcohol: 'drinkingAge', gambling: 'gamblingAge', freeMovement: 'eu', spouseWait: 'naturalization' }[k] ?? k];
-    const cite = Array.isArray(src) ? 'Wikipedia, regional articles' : src ? `Wikipedia, "${src.page}"` : '';
+    const cite = Array.isArray(src) ? 'Wikipedia, regional articles' : src?.site ? `${src.site}, "${src.page}"` : src ? `Wikipedia, "${src.page}"` : '';
     return [name, `${CHECK_WORD[v.status]}${v.status === 'ok' ? ` (${cite})` : v.note ? `: ${v.note}` : ''}`];
   });
   const spoken = Object.entries(SPOKEN).filter(([, ids]) => ids.includes(id)).map(([k]) => k);

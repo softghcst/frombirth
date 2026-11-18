@@ -10,6 +10,7 @@ import { remember } from './conditions.js';
 import { book } from './ledger.js';
 import { settleNpc } from './npcMoney.js';
 import { animalDied } from './animals.js';
+import { estateTax } from './inheritance.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -42,6 +43,9 @@ export function roleLabel(npc) {
       : byGender(npc, 'Boyfriend', 'Girlfriend', 'Partner');
     case 'ex': return npc.flags.wasSpouse ? byGender(npc, 'Ex-husband', 'Ex-wife', 'Ex-spouse') : 'Ex';
     case 'pet': return `Pet ${npc.species}`;
+    // People met through the justice system: what they do, or where they are.
+    case 'official': return npc.flags.inmate && !npc.flags.inmate.released ? 'Inmate' : npc.flags.inmate ? 'Former inmate'
+      : npc.occupation ? npc.occupation.charAt(0).toUpperCase() + npc.occupation.slice(1) : 'Member of the public';
     default: return npc.role.charAt(0).toUpperCase() + npc.role.slice(1);
   }
 }
@@ -97,7 +101,10 @@ export function inheritFrom(npc) {
   const gross = Math.round(savings / heirs);
   // An estate is taxed where the person who died lived.
   const where = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad] : c;
-  const tax = Math.round(gross * where.estateTax);
+  // A parent's or grandparent's estate passes to a child or grandchild; anyone else's to an unrelated heir (data/inheritance.js).
+  const relation = ['parent', 'mother', 'father', 'grandparent'].includes(npc.role) ? 'child' : 'other';
+  const fx = where.currency.scale / c.currency.scale; // the scale is applied in that country's own money
+  const tax = Math.round(estateTax(savings * fx, where, Array.from({ length: heirs }, () => ({ relation, share: 1 / heirs }))) / fx / heirs);
   npc.savings = 0;
   for (const sib of npcsByRole('sibling')) { if (sib.life) sib.life.savings += gross - tax; else sib.savings = (sib.savings ?? 0) + gross - tax; }
   record(gross - tax, `You inherited ${fmtMoney(gross - tax, c)} from ${npc.firstName}'s estate${tax ? ` after ${fmtMoney(tax, c)} in estate tax${where !== c ? ` in ${theCountry(where.name)}` : ''}` : ''}${heirs > 1 ? `, a ${heirs === 2 ? 'half' : `1/${heirs}`} share with your ${heirs === 2 ? 'sibling' : 'siblings'}` : ''}.`);
