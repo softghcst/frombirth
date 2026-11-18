@@ -151,7 +151,8 @@ const b0 = S().npcs[a.id].meters.relationship;
 r = life.outing(a.id, 'park');
 check(r.ok && S().npcs[a.id].meters.relationship > b0 && !life.outing(a.id, 'park').ok, 'an outing brings them closer, once a year');
 let metSomeone = false;
-for (let i = 0; i < 12 && !metSomeone; i++) { year(); life.outing(a.id, 'park'); metSomeone = p.npcIds.some((x) => S().npcs[x]?.flags.tag === 'dogpark'); }
+// A 35% chance a year: thirty years (with a new dog when the old one is gone) leave no room for bad luck.
+for (let i = 0; i < 30 && !metSomeone; i++) { year(); if (!life.outing(a.id, 'park').ok && !life.outingsFor(a.id).length) a = own('dog'); metSomeone = p.npcIds.some((x) => S().npcs[x]?.flags.tag === 'dogpark'); }
 check(metSomeone && p.npcIds.filter((x) => S().npcs[x]?.flags.tag === 'dogpark').length === 1, 'sooner or later the dog park makes a friend, and only one');
 cash = p.finance.cash; r = life.enterPetShow(a.id);
 const show = life.petShow();

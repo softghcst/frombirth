@@ -11,6 +11,8 @@ import * as sp from '../engine/sports.js';
 import * as life from '../engine/sportsLife.js';
 import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
 import { decommit, gradeOf, GRADE_NAMES } from '../engine/recruiting.js';
+import * as draft from '../engine/draft.js';
+import { classOf, eligibility as collegeLeft } from '../engine/college.js';
 import { DIVISIONS } from '../data/sports.js';
 import { jerseySvg, jerseyDot, inkOn } from './jersey.js';
 import { fmtMark } from '../engine/sportsPlay.js';
@@ -178,6 +180,35 @@ function rankings() {
     </div>`).join('')}`;
 }
 
+/** College, the draft and the minors: where the player stands, what the mock drafts say, and the drafts they were in. */
+function draftSection() {
+  const st = store.state;
+  const out = [];
+  for (const e of sp.activeSports()) {
+    const D = draft.draftOf(st, e.id);
+    const sport = sportOf(e.id);
+    if (e.college && sp.orgOf(e.orgId)?.kind === 'college') {
+      const left = collegeLeft(st, e);
+      out.push(`${label(`College ${sport.name.toLowerCase()}`)}${kv('Class', esc(classOf(st, e)))}${kv('Division', esc(DIVISIONS[e.college.division]?.name ?? e.college.division))}${kv('Eligibility', `${left.seasons} ${left.seasons === 1 ? 'season' : 'seasons'} left, ${left.years} ${left.years === 1 ? 'year' : 'years'} on the clock`)}${e.college.nil.length ? kv('NIL deals', esc(money(e.college.nil.reduce((s, x) => s + x.amount, 0)))) : ''}`);
+    }
+    if (!D) continue;
+    const el = draft.eligible(st, e, D);
+    const grade = draft.draftGrade(st, e);
+    const pick = draft.projectedPick(grade);
+    const drafts = Object.values(st.sports?.drafts ?? {}).filter((d) => d.sport === e.id && d.player).sort((a, b) => b.year - a.year);
+    const size = drafts[0]?.size ?? 30;
+    out.push(`${label(`${sport.name} draft`)}
+      ${e.contractId ? '' : kv('Eligible', el.ok ? `Yes${el.declare ? ', if you declare' : ''}` : esc(el.why))}
+      ${e.contractId ? '' : kv('Mock drafts', pick <= D.rounds * size ? `Round ${draft.roundOf(pick, size)}, around pick ${pick}` : 'Not projected to be picked')}
+      ${e.draft?.rights ? kv('Rights held by', `${esc(e.draft.rights.club)} until ${e.draft.rights.until}`) : ''}
+      ${e.minor ? kv('Minor leagues', `${esc(D.minors[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}
+      ${drafts.map((d) => `<details class="card"><summary><strong>${d.year} draft</strong> · ${d.player.undrafted ? 'not picked' : `you went in round ${d.player.round}, pick ${d.player.pick}, to ${esc(sp.teamOf(d.player.teamId)?.name ?? '')}`}</summary>
+        ${d.lottery.length ? `<p class="muted">Lottery: ${d.lottery.map((x) => `${esc(sp.teamOf(x.teamId)?.name ?? '')} ${x.from}→${x.to}`).join(', ')}</p>` : ''}
+        ${draft.draftBoard(st, d, 1).map((x) => `<div class="kv"><span>${x.pick}. ${x.mine ? '<strong>You</strong>' : esc(x.name)} <small class="muted">${x.mine ? '' : esc([x.pos, x.school].filter(Boolean).join(' · '))}</small></span><span>${esc(x.team)}</span></div>`).join('')}</details>`).join('')}`);
+  }
+  return out.join('');
+}
+
 /** Recruiting: how the services rate the player, who has offered, and where they are committed or signed. */
 function recruitingSection() {
   const p = player();
@@ -203,6 +234,7 @@ function career() {
   const a = sp.myAthlete();
   return `${label('Decisions')}${dec.length ? dec.map((d) => `<div class="card"><p>${esc(d.text)}</p><div class="btn-stack">${d.options.map((o) => `<button class="btn" data-answer="${d.id}:${o.id}">${esc(o.label)}</button>`).join('')}</div></div>`).join('') : empty('Nothing waiting.')}
     ${recruitingSection()}
+    ${draftSection()}
     ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.kind === 'agent' && k.share ? ` · takes ${Math.round(k.share * 100)}%` : ''}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
     ${agentSection()}
     ${label('Division')}

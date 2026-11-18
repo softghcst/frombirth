@@ -314,6 +314,30 @@ export function leagueSize(sport, level, countryId, div = null) {
   return (div === 'women' ? WOMEN_LEAGUE_TEAMS[sport.id] : LEAGUE_TEAMS[sport.id]) ?? 8;
 }
 
+// ---------- The drafts (where proPath is 'draft') ----------
+//
+// Each league's own draft, as the real ones are run (the numbers are the real ones as of the mid-2020s):
+//   rounds    how many rounds              lottery   the worst `teams` draw for the first `picks` picks
+//   rule      who is eligible (engine/draft.js eligible)
+//   declare   underclassmen must declare (and lose their college eligibility); `test` they may test the waters and withdraw
+//   combine   a combine before the draft, where stock rises and falls
+//   deal      'bonus' a signing bonus by the pick's slot · 'scale' a rookie wage scale · 'entry' an entry-level contract
+//   minors    the levels below the top league, lowest first (engine/draft.js minorsYear)
+export const DRAFTS = {
+  baseball: { rounds: 20, lottery: { teams: 18, picks: 6 }, rule: 'baseball', declare: false, combine: true, deal: 'bonus', years: 6,
+    minors: ['Rookie ball', 'Single-A', 'High-A', 'Double-A', 'Triple-A'] },
+  american_football: { rounds: 7, lottery: null, rule: 'football', declare: true, combine: true, deal: 'scale', years: 4, minors: ['Practice squad'] },
+  basketball: { rounds: 2, lottery: { teams: 14, picks: 4 }, rule: 'basketball', declare: true, test: true, combine: true, deal: 'scale', years: 4, minors: ['G League'] },
+  ice_hockey: { rounds: 7, lottery: { teams: 16, picks: 2 }, rule: 'hockey', declare: false, combine: true, deal: 'entry', years: 3, minors: ['AHL'], rights: 4 },
+};
+/** The women's leagues' drafts: basketball takes players at 22 or once college is done; hockey after college. */
+/** What the big leagues of the draft countries pay, against an ordinary professional league (their real averages run to millions). */
+export const BIG_LEAGUE_PAY = { basketball: 6, baseball: 4, american_football: 2.5, ice_hockey: 2.5 };
+export const WOMEN_DRAFTS = {
+  basketball: { rounds: 3, lottery: { teams: 4, picks: 4 }, rule: 'women', declare: true, combine: false, deal: 'scale', years: 3, minors: [] },
+  ice_hockey: { rounds: 7, lottery: null, rule: 'women', declare: true, combine: false, deal: 'entry', years: 2, minors: [] },
+};
+
 // ---------- College sport (the United States and Canada) ----------
 //
 // Divisions, as the real ones work: Division I and II give athletic scholarships (II mostly partial ones), Division

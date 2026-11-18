@@ -45,6 +45,7 @@ node tests/sports.mjs          # sports: registry, skills, training limits, club
 node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
 node tests/sports-divisions.mjs   # sports: women's and men's divisions, women's professional years, sports agents shopped for
 node tests/teams.mjs           # team names, jersey colors and shirt numbers: made up, renamed, recolored, saved; teammates renamed everywhere
+node tests/draft.mjs           # recruiting (stars, offers by division, signing day), college (redshirt, grades, portal, NIL), each league's draft rules, the minors
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season

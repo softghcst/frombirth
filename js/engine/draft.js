@@ -1,0 +1,431 @@
+// The drafts of the leagues that have one (baseball, American football, basketball and hockey in the United States and
+// Canada; data/sports.js DRAFTS), run by each league's own rules: who is eligible and when, declaring early (and
+// testing the waters), the combine, an order from the standings with a lottery for the worst teams, rounds, what a
+// pick is paid, signing or going (back) to college, and undrafted free agents. Then the minor leagues: a drafted
+// baseball player climbs from rookie ball to Triple-A before the majors; hockey has the AHL, basketball the G League,
+// football the practice squad.
+//
+//   e.draft = { history: [{ year, pick, round, teamId, club, signed?, declined? }], declared: year|null, rights: { orgId, until }|null }
+//   e.minor = { clubId, level: index in DRAFTS[sport].minors, orgId } while the player is in the minors
+//   state.sports.drafts['sport/div/year'] = { sport, year, rounds, size, order: [teamId], lottery: [{ teamId, from, to }],
+//     player: { pick, round, teamId } | { undrafted: true } }
+//   Everyone else in a draft class is drawn when shown (classPick): a name, a school and a position, from the draft's
+//   own luck, so a class costs nothing to keep.
+import { log, milestone } from '../state.js';
+import { clamp } from '../util.js';
+import { COUNTRIES } from '../data/countries.js';
+import { sportOf, DRAFTS, WOMEN_DRAFTS } from '../data/sports.js';
+import { registerEmployer, employer } from './employers.js';
+import { gradeOf, programs } from './recruiting.js';
+import { eligibility } from './college.js';
+import * as sp from './sports.js';
+import { internals as life, settle } from './sportsLife.js';
+
+const { seeded, overall, findOrg, teamFor, leagueFor, joinOrg, rosterNames } = sp.internals;
+const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
+const ordinal = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+
+/** The draft this player would go into in this sport, if there is one where they live. */
+export function draftOf(state, sportId) {
+  const p = state.player;
+  const sport = sportOf(sportId);
+  if (sp.proPath(sport, p.countryId) !== 'draft') return null;
+  const women = sp.divOf(p) === 'women';
+  const rules = women ? WOMEN_DRAFTS[sportId] : DRAFTS[sportId];
+  if (!rules || state.year < sp.proFromFor(sport, p)) return null;
+  return { ...rules, sportId, div: women ? 'women' : 'men' };
+}
+
+/** The year the player finished high school, if they did. */
+function hsYear(state) {
+  const p = state.player;
+  const d = (p.education.degrees ?? []).find((x) => x.type === 'high');
+  if (d) return state.year - (p.age - d.age);
+  // No diploma on the record: left high school when college began, or at 18.
+  const e = Object.values(state.sports?.athletes?.[p.id]?.sports ?? {}).find((x) => x.college);
+  if (e) return e.college.start;
+  return p.age > 18 ? state.year - (p.age - 18) : null;
+}
+
+/**
+ * Whether the player may be drafted this year, by the league's rule, and whether they must declare to be.
+ * @returns {{ok:boolean, why:string, declare:boolean}}
+ */
+export function eligible(state, e, D = draftOf(state, e.id)) {
+  const p = state.player;
+  if (!D) return { ok: false, why: 'There is no draft here.', declare: false };
+  if (e.contractId || e.level === 'pro') return { ok: false, why: 'You are a professional already.', declare: false };
+  if (e.draft?.rights && state.year <= e.draft.rights.until) return { ok: false, why: `${e.draft.rights.club} hold your rights.`, declare: false };
+  if (p.age > 27) return { ok: false, why: 'Too old for the draft: clubs sign older players as free agents.', declare: false };
+  const g = gradeOf(p);
+  const hs = hsYear(state);
+  // Football, basketball and hockey seasons run through the winter: the draft after this season is next year's (the
+  // spring after a fall season). Baseball is played in the spring and drafts in July, the same year.
+  const ahead = D.rule === 'baseball' ? 0 : 1;
+  const age = p.age + ahead;
+  const since = hs == null ? (g === 12 ? ahead : -1) : state.year + ahead - hs;
+  const c = e.college;
+  const atCollege = c && sp.orgOf(e.orgId, state)?.kind === 'college';
+  const left = atCollege ? eligibility(state, e) : null;
+  const underclass = !!(atCollege && left && left.seasons > 0 && left.years > 1);
+  const no = (why) => ({ ok: false, why, declare: false });
+  switch (D.rule) {
+    case 'baseball':
+      // Drafted out of high school, did not sign, and went to a four-year college: not again until after junior year, or 21.
+      if (!atCollege && g !== 12 && e.draft.history.some((x) => x.pick && !x.signed) && e.recruit?.signed && !e.recruit.signed.startsWith('juco:') && p.age < 21) return no('Going to college: eligible again after your junior year.');
+      // High school graduates (seniors this spring) who have not gone to a four-year college; four-year college players
+      // after their junior year or at 21; junior college players in any year.
+      if (g === 12 || (hs != null && !atCollege)) return { ok: true, why: '', declare: false };
+      if (atCollege && c.division === 'JUCO') return { ok: true, why: '', declare: false };
+      if (atCollege) return state.year - c.start >= 2 || p.age >= 21 ? { ok: true, why: '', declare: false } : no('Four-year college players are eligible after their junior year, or at 21.');
+      return no('Eligible once out of high school.');
+    case 'football':
+      // Three years out of high school; an underclassman must declare, and gives up college football.
+      if (since < 3) return no('Eligible three years after high school.');
+      return { ok: true, why: '', declare: underclass };
+    case 'basketball':
+      // Nineteen in the draft year and a year out of high school; early entrants declare and may withdraw.
+      if (age < 19 || since < 1) return no('Eligible at 19, a year out of high school.');
+      return { ok: true, why: '', declare: underclass };
+    case 'hockey':
+      // Eighteen by the draft; first eligible at 18, last at 20. Drafted players often stay in college.
+      if (age < 18) return no('Eligible at 18.');
+      if (age > 20) return no('Past draft age: a free agent now.');
+      return { ok: true, why: '', declare: false };
+    case 'women':
+      if (age < 22 && underclass) return no('Eligible at 22, or when college is done.');
+      return { ok: true, why: '', declare: atCollege && underclass };
+    default: return no('There is no draft here.');
+  }
+}
+
+/** How the scouts grade the player for the draft: skill, the years still to grow, the season, the level played. */
+export function draftGrade(state, e) {
+  const p = state.player;
+  const o = overall(e, p);
+  const youth = Math.max(0, 22 - p.age) * 1.6;
+  const form = ((e.lastRating ?? 50) - 50) / 8;
+  const level = { D1: 2, IVY: -1, D2: -2, NAIA: -3, JUCO: -1, D3: -5 }[e.college?.division] ?? (e.level === 'academy' || e.level === 'elite' ? 1 : 0);
+  const r = seeded(`draftGrade/${p.id}/${e.id}/${state.year}`);
+  return Math.round(o + youth + form + level + (e.draft?.combine?.[state.year] ?? 0) + r.normal(0, 2));
+}
+/** Where a grade goes in a draft: the first pick at the top, a thousand down for an ordinary prospect. */
+export const projectedPick = (grade) => Math.max(1, Math.round(10 ** ((95 - grade) / 14)));
+export const roundOf = (pick, size) => Math.ceil(pick / size);
+
+/** The league the draft is for: the country's top professional league in the sport, with all its clubs. */
+function topLeague(state, sport) {
+  const org = life.proClub(state, sport, 0, 1);
+  return leagueFor(state, org, teamFor(state, org));
+}
+
+/** The order: the worst record first, a lottery among the worst for the first picks, and the champion last. */
+function order(state, lg, D, key) {
+  const S = sp.ensure(state);
+  const last = Object.values(S.seasons).filter((s) => s.leagueId === lg.id).sort((a, b) => b.year - a.year)[0];
+  const r = seeded(`order/${key}`);
+  let base = last ? sp.standings(last).map((x) => x.teamId).reverse() : r.shuffle([...lg.teamIds]);
+  if (last?.champion) base = [...base.filter((t) => t !== last.champion), last.champion];
+  const lottery = [];
+  if (D.lottery) {
+    // The worse the record, the better the odds; the rest keep their places behind the winners.
+    const pool = base.slice(0, D.lottery.teams);
+    const won = [];
+    for (let i = 0; i < D.lottery.picks && pool.length; i++) {
+      const w = pool.map((t) => D.lottery.teams - base.indexOf(t));
+      let roll = r.next() * w.reduce((x, y) => x + y, 0);
+      let j = 0;
+      while (j < pool.length - 1 && (roll -= w[j]) >= 0) j++;
+      won.push(pool[j]); pool.splice(j, 1);
+    }
+    for (const [i, t] of won.entries()) lottery.push({ teamId: t, from: base.indexOf(t) + 1, to: i + 1 });
+    base = [...won, ...base.filter((t) => !won.includes(t))];
+  }
+  return { order: base, lottery };
+}
+
+/** A professional club in the draft league: an employer too, so a contract with it is a job. */
+function clubOf(state, teamId) {
+  const t = sp.teamOf(teamId, state);
+  const org = sp.orgOf(t?.orgId, state);
+  if (org && (!org.employerId || !employer(org.employerId))) {
+    const e = registerEmployer({ name: org.name, family: 'sport', tracks: ['athlete', 'coaching'], countryId: org.countryId, city: org.city });
+    e.owned = false; e.sportClub = org.id; e.size = 'large';
+    org.employerId = e.id;
+  }
+  return org;
+}
+
+/** Someone else in a draft class, drawn when needed: the same every time it is shown. */
+export function classPick(state, d, n) {
+  const sport = sportOf(d.sport);
+  const r = seeded(`class/${d.sport}/${d.div}/${d.year}/${n}`);
+  const [name] = rosterNames(r, state.player.countryId, 1, d.div === 'women' ? 'female' : 'male');
+  const progs = programs(state, sport);
+  const school = r.chance(d.sport === 'baseball' ? 0.35 : d.sport === 'ice_hockey' ? 0.5 : 0.05) ? `${r.pick(COUNTRIES[state.player.countryId].cities)} ${d.sport === 'ice_hockey' ? 'Juniors' : 'High School'}` : r.pick(progs)?.name ?? '';
+  return { name, school, pos: r.pick(sport.positions ?? [[null, '']])[1] };
+}
+
+/** What a pick is paid: a slot bonus in baseball, a rookie scale in football and basketball, an entry-level deal in hockey. */
+function dealFor(state, D, pick, size) {
+  const m = (v) => life.money(state, Math.round(v));
+  if (D.deal === 'bonus') return { bonus: m(125000 + 10400000 * Math.exp(-(pick - 1) / 30)), salary: m(32000), years: D.years };
+  if (D.deal === 'entry') return { bonus: m(pick <= size ? 92000 : 30000), salary: m(950000), years: D.years };
+  if (D.sportId === 'basketball') {
+    if (D.div === 'women') return { bonus: 0, salary: m(pick <= 4 ? 78000 : 67000), years: D.years };
+    return pick <= size ? { bonus: 0, salary: m(2600000 + 10500000 * Math.exp(-(pick - 1) / 9)), years: D.years } : { bonus: 0, salary: m(580000), years: 2, twoWay: true };
+  }
+  return { bonus: m(pick <= size * 2 ? 1000000 * Math.exp(-(pick - 1) / 25) * 8 : 60000), salary: m(900000 + 9500000 * Math.exp(-(pick - 1) / 18)), years: D.years };
+}
+
+/**
+ * The player's draft year, after their season (engine/sportsLife.js yearIn): into this year's draft if they are
+ * eligible without declaring; a decision to declare if they must; nothing if they are not eligible.
+ */
+export function draftYear(state, a, e) {
+  const D = draftOf(state, e.id);
+  if (!D || e.contractId) return;
+  e.draft ??= { history: [], declared: null, rights: null, combine: {} };
+  if (e.draft.history.some((x) => x.year === state.year)) return;
+  // Hockey: a drafted player in college stays there while the club holds their rights, then signs or becomes free.
+  if (e.draft.rights) {
+    if (state.year > e.draft.rights.until) { log(`${e.draft.rights.club} let your rights lapse. You are free to sign with anyone.`, 'system', 'neutral'); e.draft.rights = null; }
+    else if (!e.college || !sp.orgOf(e.orgId, state) || sp.orgOf(e.orgId, state).kind !== 'college' || eligibility(state, e).seasons === 0) offerEntry(state, e, D);
+    return;
+  }
+  const el = eligible(state, e, D);
+  const p = state.player;
+  if (!el.ok) return;
+  const grade = draftGrade(state, e);
+  const projected = projectedPick(grade);
+  const size = topLeague(state, sportOf(e.id), D.div).teamIds.length;
+  const total = D.rounds * size;
+  // Nobody with no chance of being picked is asked to declare, or put through a draft.
+  if (projected > total * 1.6 && !(gradeOf(p) === 12 && D.rule === 'baseball' && projected <= total * 2)) return;
+  if (el.declare) {
+    const where = projected <= total ? `Mock drafts have you in the ${ordinal(roundOf(projected, size))} round, around pick ${projected}.` : 'Mock drafts do not have you being picked.';
+    life.decide(state, { kind: 'declare', sportId: e.id, key: `declare/${e.id}/${state.year}`, text: `The ${sportOf(e.id).name.toLowerCase()} draft is coming. You can declare and leave college early, or go back for another season. ${where}${D.test ? ' You can also test the waters: go to the combine, hear what teams think, and withdraw in time to go back.' : ' Declaring ends your college career.'}`,
+      options: [{ id: 'yes', label: 'Declare for the draft' }, ...(D.test ? [{ id: 'test', label: 'Test the waters' }] : []), { id: 'no', label: 'Go back to college' }] });
+    return;
+  }
+  hold(state, e, D);
+}
+
+/** The combine: measured, timed and interviewed. Stock moves with it. */
+function combine(state, e, D) {
+  if (!D.combine) return 0;
+  const p = state.player;
+  const r = seeded(`combine/${p.id}/${e.id}/${state.year}`);
+  const fit = (p.stats.health - 70) / 10 + ((e.skills.speed ?? e.skills.running ?? e.skills.skating ?? e.skills.athleticism ?? overall(e, p)) - 65) / 12;
+  const delta = Math.round(clamp(r.normal(fit, 2.2), -5, 5));
+  (e.draft.combine ??= {})[state.year] = delta;
+  log(`At the ${D.sportId === 'baseball' ? 'draft combine' : 'combine'}: ${delta >= 2 ? 'you tested among the best there, and teams noticed' : delta <= -2 ? 'the numbers were not kind, and some teams cooled' : 'nothing that changed many minds'}.`, 'system', delta >= 2 ? 'good' : delta <= -2 ? 'bad' : 'neutral');
+  return delta;
+}
+
+/** The draft itself: the order, the lottery, and where the player goes (or does not). */
+export function hold(state, e, D = draftOf(state, e.id)) {
+  const S = sp.ensure(state);
+  const p = state.player;
+  const sport = sportOf(e.id);
+  const key = `${e.id}/${D.div}/${state.year}`;
+  S.drafts ??= {};
+  if (S.drafts[key]?.player) return S.drafts[key];
+  combine(state, e, D);
+  const lg = topLeague(state, sport, D.div);
+  const size = lg.teamIds.length;
+  const total = D.rounds * size;
+  const { order: ord, lottery } = order(state, lg, D, key);
+  const r = seeded(`draft/${key}/${p.id}`);
+  const pick = Math.max(1, Math.round(projectedPick(draftGrade(state, e)) * r.normal(1, 0.18)));
+  const d = { sport: e.id, div: D.div, year: state.year, rounds: D.rounds, size, order: ord, lottery, leagueId: lg.id };
+  S.drafts[key] = d;
+  const name = `${state.year} ${sport.name} Draft`;
+  if (pick > total) {
+    d.player = { undrafted: true };
+    e.draft.history.push({ year: state.year, undrafted: true });
+    sp.say(state, `The ${name} came and went without your name being called.`, 'bad', { screen: 'hub', id: 'career' });
+    undrafted(state, e, D);
+    return d;
+  }
+  const round = roundOf(pick, size);
+  const teamId = ord[(pick - 1) % size];
+  const club = clubOf(state, teamId);
+  d.player = { pick, round, teamId };
+  e.draft.history.push({ year: state.year, pick, round, teamId, club: club.name });
+  milestone(`Drafted by ${club.name}: round ${round}, pick ${pick}, ${name}.`, 'career');
+  sp.moment(state, { type: 'drafted', sportId: e.id, text: `Drafted by ${club.name}, round ${round}, pick ${pick}.`, sig: 3, orgId: club.id });
+  sp.say(state, `${name}, round ${round}: with the ${ordinal(pick)} pick, ${club.name} select you.${pick === 1 ? ' The first pick of the draft.' : ''}`, 'good', { screen: 'hub', id: 'career' });
+  const deal = dealFor(state, { ...D, sportId: e.id }, pick, size);
+  const g = gradeOf(p);
+  const atCollege = e.college && sp.orgOf(e.orgId, state)?.kind === 'college' && eligibility(state, e).seasons > 0 && !e.draft.declared;
+  const committed = !!e.recruit?.signed && !e.college;
+  const stay = D.rule === 'baseball' && (g === 12 || atCollege || committed) ? (atCollege ? 'Go back to college' : 'Go to college instead') : D.rule === 'hockey' && (atCollege || committed) ? 'Play in college; they keep your rights' : null;
+  const ready = overall(e, p) >= ({ baseball: 76, ice_hockey: 70, basketball: 64, american_football: 60 }[e.id] ?? 60);
+  life.decide(state, { kind: 'draftSign', sportId: e.id, key: `draftSign/${key}`, orgId: club.id, orgName: club.name, pick, round, deal, how: 'draft',
+    text: `${club.name} drafted you in the ${ordinal(round)} round, ${ordinal(pick)} overall. ${deal.bonus ? `They offer a signing bonus of ${life.fmt(state, deal.bonus)}` : 'They offer'}${deal.twoWay ? ' a two-way contract: their G League team, and the big club when they call you up' : ` ${deal.years} years at ${life.fmt(state, deal.salary)} a year`}${D.minors.length && D.deal !== 'scale' && !ready ? `, starting in the ${D.minors[0] === 'AHL' ? 'AHL' : 'minor leagues'}` : ''}.`,
+    options: [{ id: 'sign', label: 'Sign' }, ...(stay ? [{ id: 'stay', label: stay }] : [])] });
+  return d;
+}
+
+/** Undrafted: where the sport takes them anyway. */
+function undrafted(state, e, D) {
+  const p = state.player;
+  const o = overall(e, p);
+  const r = seeded(`udfa/${p.id}/${e.id}/${state.year}`);
+  if (o < 58 || D.rule === 'hockey') return;
+  const lg = topLeague(state, sportOf(e.id), D.div);
+  const club = clubOf(state, r.pick(lg.teamIds));
+  const deal = D.sportId === 'basketball' || e.id === 'basketball' ? { bonus: 0, salary: life.money(state, 40000), years: 1, gLeague: true }
+    : e.id === 'baseball' ? { bonus: life.money(state, Math.round(r.int(1, 15) * 10000)), salary: life.money(state, 30000), years: 6 }
+      : { bonus: life.money(state, r.int(1, 25) * 1000), salary: life.money(state, 900000), years: 3 };
+  life.decide(state, { kind: 'draftSign', sportId: e.id, key: `udfa/${e.id}/${state.year}`, orgId: club.id, orgName: club.name, pick: null, round: null, deal, how: 'undrafted',
+    text: `Undrafted, but ${club.name} want you anyway: ${deal.gLeague ? 'a place on their G League team, a step from the big club' : `${deal.bonus ? `a ${life.fmt(state, deal.bonus)} signing bonus and ` : ''}a chance to make the team${e.id === 'baseball' ? ' in their minor leagues' : ''}`}.`,
+    options: [{ id: 'sign', label: 'Sign as an undrafted free agent' }, { id: 'no', label: 'Say no' }] });
+}
+
+/** Hockey: the club that holds the player's rights offers an entry-level contract when college is over. */
+function offerEntry(state, e, D) {
+  const org = sp.orgOf(e.draft.rights.orgId, state);
+  if (!org) return;
+  const deal = dealFor(state, { ...D, sportId: e.id }, e.draft.rights.pick ?? 100, 32);
+  life.decide(state, { kind: 'draftSign', sportId: e.id, key: `entry/${e.id}/${state.year}`, orgId: org.id, orgName: org.name, pick: e.draft.rights.pick, round: null, deal, how: 'rights',
+    text: `${org.name}, who hold your rights, offer an entry-level contract: ${deal.years} years at ${life.fmt(state, deal.salary)}.`,
+    options: [{ id: 'sign', label: 'Sign' }, { id: 'no', label: 'Wait' }] });
+}
+
+/** Signing: the bonus, the contract, and where the player starts (the minors, or the big club). */
+function sign(state, d, e) {
+  const p = state.player;
+  const D = draftOf(state, e.id);
+  const org = sp.orgOf(d.orgId, state);
+  if (!org) return { ...result(false, 'That club is gone.', 'neutral'), close: true };
+  clubOf(state, sp.teamOf(org.teamIds[0], state)?.id ?? null);
+  if (d.deal.bonus) settle(state, `bonus/${e.id}/${state.year}/${org.id}`, d.deal.bonus, 'sponsorship', `Signing bonus: ${org.name}`, 'action');
+  e.draft.declared = null; e.draft.rights = null;
+  const last = e.draft.history.find((x) => x.year === state.year && x.teamId); if (last) last.signed = true;
+  const o = overall(e, p);
+  const level = o >= 86 ? 3 : o >= 76 ? 2 : o >= 66 ? 1 : 0;
+  const r = life.signPro(state, { sportId: e.id, orgId: org.id, orgName: org.name, salary: d.deal.salary, years: d.deal.years, level, how: d.how === 'undrafted' ? 'signing' : 'draft' });
+  if (r.ok === false) return r;
+  // Straight to the big club: paid at least its minimum, not a minor league wage.
+  const major = { baseball: 760000, ice_hockey: 950000, basketball: 1200000, american_football: 900000 }[e.id];
+  if (major && !d.deal.twoWay && !d.deal.gLeague) p.career.salary = Math.max(p.career.salary, life.money(state, major));
+  // Where they start: baseball's draftees in the minors, by age and skill; a hockey prospect in the AHL unless ready; a
+  // basketball two-way or undrafted player in the G League; a football player who is not ready on the practice squad.
+  const ladder = D?.minors ?? [];
+  const ready = { baseball: 76, ice_hockey: 70, basketball: 64, american_football: 60 }[e.id] ?? 60;
+  if (ladder.length && (o < ready || d.deal.twoWay || d.deal.gLeague)) {
+    // Straight from high school: rookie ball, or Single-A for the best. From college: Single-A to Double-A, by how good.
+    const start = e.id === 'baseball' ? (p.age < 19 ? (o >= 74 ? 1 : 0) : clamp(Math.round((o - 60) / 5), 1, 3)) : 0;
+    toMinors(state, e, org, start);
+  }
+  return result(true, `You signed with ${org.name}.${e.minor ? ` You start in ${ladder[e.minor.level] === 'Practice squad' ? 'the practice squad' : ladder[e.minor.level]}.` : ''}`);
+}
+
+/** Sends the player to a level of the club's minor league system (its own team, in its own league). */
+function toMinors(state, e, club, level) {
+  const p = state.player;
+  const D = draftOf(state, e.id);
+  const name = D.minors[level];
+  const sport = sportOf(e.id);
+  const r = seeded(`affiliate/${club.id}/${level}`);
+  const city = r.pick(COUNTRIES[club.countryId].cities ?? [club.city]);
+  const org = findOrg(state, sport, 'pro', { key: `minor/${club.id}/${level}`, name: name === 'Practice squad' ? `${club.name} practice squad` : `${city} ${r.pick(['Bees', 'Mudcats', 'Rivercats', 'Sand Gnats', 'Firebirds', 'Hops', 'Trash Pandas', 'IronPigs', 'Storm Chasers', 'Flying Squirrels', 'Wranglers', 'Admirals'])}`,
+    tier: 2 + level, strength: -6 - (D.minors.length - 1 - level) * 4, city });
+  org.minorLevel = name; org.parentId = club.id;
+  e.minor = { clubId: club.id, level, orgId: org.id };
+  joinOrg(org, state);
+  p.career.salary = life.money(state, { 'Rookie ball': 26000, 'Single-A': 28000, 'High-A': 30000, 'Double-A': 35000, 'Triple-A': 46000, AHL: 90000, 'G League': 40000, 'Practice squad': 230000 }[name] ?? 30000);
+  log(`${club.name} sent you to ${name === 'Practice squad' ? 'their practice squad' : `${org.name} (${name})`}.`, 'system', 'neutral');
+}
+
+/**
+ * The minors, after each season: up a level for a player who is better than it, called up to the big club when ready,
+ * down again if they fall back. @param {object} sum the season (engine/sportsLife.js yearIn)
+ */
+export function minorsYear(state, a, e, sum) {
+  const m = e.minor;
+  if (!m || !e.contractId) return;
+  const p = state.player;
+  const D = draftOf(state, e.id);
+  if (!D) return;
+  const club = sp.orgOf(m.clubId, state);
+  const o = overall(e, p);
+  const ready = { baseball: 74, ice_hockey: 71, basketball: 66, american_football: 62 }[e.id] ?? 62;
+  const climb = (lvl) => 56 + lvl * 4;
+  if (o >= ready && (m.level === D.minors.length - 1 || o >= ready + 4) && (sum.rating ?? 6) >= 6.2) {
+    e.minor = null;
+    joinOrg(club, state);
+    p.career.salary = Math.max(p.career.salary, life.money(state, { baseball: 760000, ice_hockey: 950000, basketball: 1200000, american_football: 900000 }[e.id] ?? 800000));
+    const text = `Called up: ${club.name} want you with the big club.`;
+    sp.say(state, text, 'good', { screen: 'hub', id: 'career' });
+    milestone(`Called up to ${club.name}.`, 'career');
+    sp.moment(state, { type: 'callup', sportId: e.id, text: `Called up to ${club.name}.`, sig: 3, orgId: club.id });
+    return;
+  }
+  if (m.level < D.minors.length - 1 && o >= climb(m.level + 1) && (sum.rating ?? 6) >= 6.4) {
+    toMinors(state, e, club, m.level + 1);
+    sp.moment(state, { type: 'promoted', sportId: e.id, text: `Promoted to ${D.minors[e.minor.level]}.`, sig: 2 });
+  } else if (m.level > 0 && o < climb(m.level) - 6 && (sum.rating ?? 6) < 5.8) {
+    toMinors(state, e, club, m.level - 1);
+  }
+}
+
+export const DRAFT_ANSWERS = {
+  declare(state, d, choice) {
+    const e = sp.entryOf(d.sportId, state.player.id, state);
+    const D = draftOf(state, d.sportId);
+    if (!e || !D) return { ...result(false, 'There is no draft now.', 'neutral'), close: true };
+    if (choice === 'no') return result(true, 'You go back to college for another season.', 'neutral');
+    if (choice === 'test') {
+      const delta = combine(state, e, D);
+      const projected = projectedPick(draftGrade(state, e));
+      const size = topLeague(state, sportOf(e.id), D.div).teamIds.length;
+      life.decide(state, { kind: 'withdraw', sportId: e.id, key: `withdraw/${e.id}/${state.year}`, text: `Teams have had their look${delta >= 2 ? ', and liked it' : delta <= -2 ? ', and some are cooler on you' : ''}. ${projected <= D.rounds * size ? `They see you going around pick ${projected}.` : 'Most do not see you being picked.'} Stay in the draft, or withdraw before the deadline and go back to college?`,
+        options: [{ id: 'stay', label: 'Stay in the draft' }, { id: 'withdraw', label: 'Withdraw and go back' }] });
+      return result(true, 'You are testing the waters: the combine, and what teams think.', 'neutral');
+    }
+    e.draft.declared = state.year;
+    leaveCollege(state, e);
+    hold(state, e, D);
+    return result(true, 'You declared for the draft.', 'good');
+  },
+  withdraw(state, d, choice) {
+    const e = sp.entryOf(d.sportId, state.player.id, state);
+    const D = draftOf(state, d.sportId);
+    if (choice === 'withdraw') return result(true, 'You withdrew in time, and go back to college.', 'neutral');
+    e.draft.declared = state.year;
+    leaveCollege(state, e);
+    hold(state, e, D);
+    return result(true, 'You stayed in the draft.', 'good');
+  },
+  draftSign(state, d, choice) {
+    const e = sp.entryOf(d.sportId, state.player.id, state);
+    if (!e) return { ...result(false, 'That has passed.', 'neutral'), close: true };
+    if (choice === 'sign') return sign(state, d, e);
+    if (choice === 'stay' && d.how === 'draft' && draftOf(state, d.sportId)?.rule === 'hockey') {
+      e.draft.rights = { orgId: d.orgId, club: d.orgName, until: state.year + (draftOf(state, d.sportId).rights ?? 4), pick: d.pick };
+      return result(true, `${d.orgName} hold your rights while you play in college.`, 'neutral');
+    }
+    return result(true, d.how === 'draft' ? 'You did not sign. You can be drafted again when you are next eligible.' : 'You said no.', 'neutral');
+  },
+};
+/** Declaring early ends a college career (the athletic scholarship with it). */
+function leaveCollege(state, e) {
+  const org = sp.orgOf(e.orgId, state);
+  if (org?.kind === 'college') { sp.internals.leaveOrg(e, state, 'declared for the draft'); e.college.out[state.year + 1] = 'declared'; }
+}
+
+/** The pick-by-pick record of a draft, for My Athletics: every pick of the first round, and the player's own. */
+export function draftBoard(state, d, rounds = 1) {
+  const out = [];
+  const max = Math.min(d.rounds, rounds) * d.size;
+  for (let n = 1; n <= max; n++) {
+    const teamId = d.order[(n - 1) % d.size];
+    const mine = d.player?.pick === n;
+    out.push({ pick: n, round: roundOf(n, d.size), team: sp.teamOf(teamId, state)?.name ?? '', ...(mine ? { name: 'You', mine: true } : classPick(state, d, n)) });
+  }
+  if (d.player?.pick > max) out.push({ pick: d.player.pick, round: d.player.round, team: sp.teamOf(d.player.teamId, state)?.name ?? '', name: 'You', mine: true });
+  return out;
+}

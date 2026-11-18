@@ -1,5 +1,5 @@
 // A college athlete's years (United States and Canada): the class they are in, the eligibility clock (four seasons
-// to play in five years: a redshirt year, practising but not playing, does not use one), the grades that keep them
+// to play in five years: a redshirt year, practicing but not playing, does not use one), the grades that keep them
 // eligible, the transfer portal, and name-image-likeness money. The draft reads the record kept here (engine/draft.js).
 //
 //   e.college = { orgId, division, start, played: [year], redshirt: year|null, out: { year: why }, transfers: [{ year, from, to }],
@@ -26,10 +26,11 @@ export function collegeOf(e) { return e?.college ?? null; }
 export function classOf(state, e) {
   const c = e.college;
   if (!c) return null;
-  const year = state.year - c.start;
-  const name = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'][Math.min(4, year)];
-  return `${c.redshirt != null && c.redshirt < state.year ? 'Redshirt ' : ''}${name.toLowerCase()}`.replace(/^./, (x) => x.toUpperCase());
+  const year = state.year - c.start - (c.redshirt != null && c.redshirt < state.year ? 1 : 0);
+  const name = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'][clampIndex(year)];
+  return `${c.redshirt != null && c.redshirt <= state.year ? 'Redshirt ' : ''}${name.toLowerCase()}`.replace(/^./, (x) => x.toUpperCase());
 }
+const clampIndex = (n) => Math.max(0, Math.min(4, n));
 /** Seasons still to play, and years still on the clock. */
 export const eligibility = (state, e) => {
   const c = e.college;
@@ -52,7 +53,8 @@ export function beforeSeason(state, a, e) {
   let why = null;
   if (!el.seasons || !el.years) why = 'eligibility';
   else if (c.redshirt === state.year) why = 'redshirt';
-  else if (state.year > c.start && (p.education.gpa ?? 0) < 2.0 && c.division !== 'JUCO') why = 'grades';
+  // Grades: last year's (a term's marks decide the next season), under 2.0.
+  else if (state.year > c.start && (c.lastGpa ?? p.education.gpa ?? 0) < 2.0 && c.division !== 'JUCO') why = 'grades';
   if (why) {
     c.out[state.year] = why;
     log({ eligibility: `Your college eligibility is used up: four seasons, or five years. ${org.name} goes on without you.`,
@@ -71,6 +73,7 @@ export function afterSeason(state, a, e, sum) {
   const p = state.player;
   const c = e.college;
   if (!c || sp.orgOf(e.orgId, state)?.id !== c.orgId) return;
+  c.lastGpa = p.education.gpa ?? c.lastGpa;
   const played = !c.out[state.year] && (sum.games ?? 0) > 0;
   if (played && !c.played.includes(state.year)) c.played.push(state.year);
   const sport = sportOf(e.id);
