@@ -18,6 +18,7 @@ A field is 'ok' when the source agrees, 'review' when it differs and the reason 
 stands is written in DECIDED, 'unconfirmed' when the source does not cover the place, and
 'mismatch' when nobody has looked yet.
 """
+import html
 import json
 import os
 import re
@@ -110,6 +111,12 @@ DECIDED.update({
     ('bo', 'taxTop'): "The table's 25% is not the personal income tax; Bolivia taxes wages through the RC-IVA at a flat 13%, which the game uses.",
     ('ee', 'taxTop'): "The table's 23.6% is an effective figure for 2024; Estonia's flat income tax is 22% from 2025, which the game uses.",
     ('ro', 'taxTop'): "The table's 45% adds social and health contributions; Romania's income tax is a flat 10%, which the game uses.",
+    ('br', 'inheritance'): 'PwC gives the 8% ceiling on the state tax; the game uses the São Paulo rate of 4%.',
+    ('cl', 'inheritance'): 'PwC gives the scale\'s top of 25%; heirs outside the family pay 40% more, which the game includes (35%).',
+    ('es', 'inheritance'): 'PwC gives the state scale\'s top of 34%; the game multiplies it by 1.7 for heirs outside the family, as the law does.',
+    ('jp', 'inheritance'): 'PwC gives 55%; heirs who are not family pay a fifth more, which the game includes (66%).',
+    ('tn', 'inheritance'): 'PwC gives the 2.5% between ancestors and descendants; its summary gives up to 35% for others, which the game uses.',
+    ('ua', 'inheritance'): 'PwC gives the income tax scale up to 18% for non-residents; the game models residents: close family 0%, others 5%.',
     ('my', 'naturalization'): "The table gives 12 years; Malaysia's nationality-law article gives 10 years' residence, which the game uses.",
 })
 
@@ -144,11 +151,13 @@ def game():
       const law = await import('./js/engine/rules.js');
       const cit = await import('./js/data/citizenship.js');
       const { HEALTH_MODEL_OF } = await import('./js/data/systems.js');
+      const inh = await import('./js/engine/inheritance.js');
       const out = {};
       for (const c of COUNTRY_LIST) {
         const row = { name: c.name, iso3: PLACES[c.id].iso3, gov: PLACES[c.id].government };
         for (const r of law.sheet(c.id, { region: null })) row[r.id] = r.value;
         row.taxTop = (await import('./js/engine/systems.js')).taxBreakdown((await import('./js/engine/systems.js')).typicalWage(c) * 200, c).marginal;
+        row.inherit = { kind: inh.lawOf(c.id).kind, top: Math.max(inh.topRate(c, 'child'), inh.topRate(c, 'other')) };
         row.health = HEALTH_MODEL_OF[c.id] ?? (c.freeHealthcare ? 'public' : 'pocket');
         row.birthright = cit.BIRTHRIGHT.has(c.id); row.single = cit.SINGLE.has(c.id); row.years = cit.RESIDENCE_YEARS[c.id] ?? cit.DEFAULT_YEARS;
         row.spouseYears = Math.min(row.years, cit.SPOUSE_YEARS_IN?.[c.id] ?? Math.max(cit.SPOUSE_YEARS, Math.ceil(row.years / 2)));
@@ -166,6 +175,7 @@ def game():
 
 
 G = None
+PWC = {}
 FREE_EUROPE = []
 TASMAN = []
 BY3 = {}
@@ -371,6 +381,41 @@ GOV_WORDS = {
 }
 
 
+PWC_CHART = 'https://taxsummaries.pwc.com/quick-charts/inheritance-and-gift-tax-rates'
+PWC_NAMES = {'korea, republic of': 'kr', "china, people's republic of": 'cn', 'bahamas, the': 'bs', 'congo, democratic republic of the': 'cd',
+             'hong kong sar': 'hk', 'slovak republic': 'sk', 'czech republic': 'cz', 'puerto rico': 'pr', 'united states': 'us'}
+
+
+def pwc_inheritance():
+    """PwC's chart of headline inheritance tax rates: {place: (cell text, last reviewed)}. Cached in .cache/pwc/."""
+    d = os.path.join(ROOT, '.cache', 'pwc'); os.makedirs(d, exist_ok=True)
+    fn = os.path.join(d, 'inheritance-and-gift-tax-rates.html')
+    if not os.path.exists(fn):
+        with urllib.request.urlopen(urllib.request.Request(PWC_CHART, headers=UA), timeout=60) as r: open(fn, 'wb').write(r.read())
+    h = open(fn, encoding='utf-8').read()
+    t = h[h.find('<table'):]
+    out = {}
+    for r in re.findall(r'<tr.*?</tr>', t[:t.find('</table>')], re.S):
+        c = [' '.join(html.unescape(re.sub(r'<[^>]+>', ' ', x)).split()) for x in re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', r, re.S)]
+        m = re.match(r'(.*?)\s*\(Last reviewed ([^)]*)\)', c[0]) if c else None
+        if not m: continue
+        n = m.group(1).strip().lower()
+        pid = PWC_NAMES.get(n) or BYNAME.get(norm(n)) or ALIAS.get(norm(n))
+        if pid: out[pid] = (c[1], m.group(2))
+    return out
+
+
+def pwc_reading(cell):
+    """('none', None), ('rate', top rate), or ('text', None) when the cell gives no figure."""
+    low = cell.lower()
+    if cell.strip() in ('NA',) or 'however' not in low and re.search(r'^na at federal level|no inheritance tax|does not have an inheritance|not expressly|exempt from income tax|generally tax exempt|is not taxable', low):
+        return 'none', None
+    if cell.strip() == 'NP': return 'np', None
+    nums = [float(x) for x in re.findall(r'(?<![\d.])(\d+(?:\.\d+)?)\s*%?(?!\s*(?:million|years?|\d))', re.sub(r'(IQD|JMD|GBP|USD|EUR)\s*[\d,.]+(\s*million)?', '', cell))]
+    nums = [x for x in nums if 0 < x <= 80]
+    return ('rate', max(nums) / 100) if nums else ('text', None)
+
+
 def main():
     global G
     G = game()
@@ -378,6 +423,8 @@ def main():
         BY3[v['iso3']] = k
         BYNAME[norm(v['name'])] = k
     page = lambda key: fetch(*SOURCES[key])['wikitext']
+    global PWC
+    PWC = pwc_inheritance()
     results = {pid: {} for pid in G}
 
     def put(pid, field, ok, note, covered=True):
@@ -522,6 +569,17 @@ def main():
         if not m: put(pid, 'taxTop', False, 'not covered by the source', covered=False); continue
         put(pid, 'taxTop', abs(g['taxTop'] - min(0.65, float(m.group(1)) / 100)) < 0.0051, f'source: {c[3][:60]}')
 
+    # Estate and inheritance tax: PwC's headline rate is the top rate anyone pays (often an unrelated heir).
+    for pid, g in G.items():
+        cell = PWC.get(pid)
+        if not cell: put(pid, 'inheritance', False, 'not in PwC\'s chart', covered=False); continue
+        kind, top = pwc_reading(cell[0])
+        gi = g['inherit']
+        note = f'PwC (reviewed {cell[1]}): {cell[0][:110]}'
+        if kind == 'none': put(pid, 'inheritance', gi['kind'] == 'none', note)
+        elif kind == 'rate': put(pid, 'inheritance', gi['kind'] != 'none' and abs(gi['top'] - top) < 0.006, note + f' (game: top {gi["top"]:.4g})')
+        else: put(pid, 'inheritance', False, note, covered=gi['kind'] == 'none' and kind == 'np' and False)
+
     # The free-movement lists: the European area is the EU members in the game, plus Norway (EEA) and Switzerland (agreements).
     eu = set()
     w = page('eu')
@@ -558,6 +616,7 @@ def main():
 
     if '--write' in sys.argv:
         sources = {k: ([{'page': t, 'rev': r} for t, r in v] if isinstance(v, list) else {'page': v[0], 'rev': v[1]}) for k, v in SOURCES.items()}
+        sources['inheritance'] = {'site': 'PwC Worldwide Tax Summaries', 'page': 'Inheritance and gift tax rates', 'url': PWC_CHART}
         with open(os.path.join(ROOT, 'js', 'data', 'lawVerification.js'), 'w', encoding='utf-8') as f:
             f.write('// GENERATED by scripts/verify-laws.py. Do not edit by hand: change the data, or DECIDED in the script, and run it again.\n')
             f.write('// What each place\'s laws, ages, citizenship rules and form of government were checked against, and with what result.\n')

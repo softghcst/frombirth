@@ -236,9 +236,9 @@ export function answer(articleId, how) {
 // ---------- Endorsements ----------
 
 /** A brand deal offered, when someone is known and liked enough. Once a year at most. */
-/** The best-connected of the player's representatives: agents, a sports agent, a manager, a modeling agency. They bring brand deals. */
+/** The best-connected of the player's representatives: an agent, a manager, a modeling agency. They bring brand deals. */
 export function bestRep(p = player()) {
-  const reps = [pr(p).agent && { ...pr(p).agent, kind: 'agent' }, p.sport?.agent && { ...p.sport.agent, kind: 'sports agent' }, p.fame?.manager && { ...p.fame.manager, kind: 'manager' },
+  const reps = [pr(p).agent && { ...pr(p).agent, kind: 'agent' }, p.fame?.manager && { ...p.fame.manager, kind: 'manager' },
     p.fame?.model?.agencyId && p.fame.model.terms && { ...p.fame.model.terms, kind: 'agency' }].filter(Boolean);
   return reps.sort((a, b) => (b.clout ?? 1) - (a.clout ?? 1))[0] ?? null;
 }

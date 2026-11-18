@@ -121,6 +121,8 @@ section('money: the company has its own account, and the owner is paid from prof
   let paidSome = false;
   for (let i = 0; i < 6 && b.status === 'open'; i++) {
     const carry = b.lossCarry ?? 0;
+    // Staff now and then move on; like any owner, this one hires again, so it stays a company and not a sole trader.
+    if (biz.headcount(b) < 2) staffUp(b, 2 - biz.headcount(b));
     year();
     if (!b.last) continue;
     const expect = biz.profitTax(b.last.profit, b.countryId, carry);

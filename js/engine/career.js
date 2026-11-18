@@ -6,7 +6,6 @@ import { tickEntertainment } from './entertainment.js';
 import { tickAwards } from './awards.js';
 import { tickMusic } from './music.js';
 import { careerExists } from '../data/eras.js';
-import { tickSports } from './sports.js';
 import { tickModelling } from './modelling.js';
 import { tickPublishing } from './publishing.js';
 import { tickCelebs } from './celebs.js';
@@ -315,6 +314,7 @@ export function hire(career, level, performance, how, o = {}) {
     c.partTime = null;
   }
   if (c.careerId) { recordJob('left for another job'); leaveColleagues(); }
+  c.sportContract = null; // a sports contract is held with its job: a new job ends it (engine/sportsLife.js, at the turn of the year)
   if (c.retired) c.unretired = true; // back to work after retiring: the pension goes on being paid
   const sameField = c.lastField === career.id;
   const e = career.type === 'freelance' ? null : employer(o.employerId) ?? placeAt(career.id, p.countryId, p.city);
@@ -440,8 +440,9 @@ export function askForRaise() {
   return result(false, text);
 }
 
-function endJob(exit) {
+export function endJob(exit) {
   const c = player().career;
+  c.sportContract = null; // a professional sports contract is held with the job (engine/sportsLife.js)
   if (c.military && c.yearsInField >= 2) player().flags.veteran = true;
   recordJob(exit);
   leaveColleagues();
@@ -655,13 +656,12 @@ export function doFameAction(id) {
  */
 export function tickWork() {
   const p = player();
-  const played = tickSports(); // the season just played counts before the year's reviews and layoffs, and feeds the review
   tickEmployers();
   tickOffers();
   const death = tickCareer();
   if (death) return death;
   // The entertainment world has its year (productions, awards, the press) before payroll pays for the work in it.
-  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...played, ...tickModelling(), ...tickPublishing(), ...tickKpop(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile(), ...tickCelebs()];
+  const lines = [...tickSides(), ...tickWorkplace(), ...tickFreelance(), ...tickBusinesses(), ...tickCouple(), ...tickEntertainment(), ...tickMusic(), ...tickModelling(), ...tickPublishing(), ...tickKpop(), ...tickAwards(), ...tickPress(), ...tickWorkLife(), ...tickRecruiters(), ...tickFameProfile(), ...tickCelebs()];
   for (const l of lines) log(l);
   queueWorkScenes();
   if (p.age >= 14) checkAchievements(p);
@@ -698,6 +698,9 @@ export function tickCareer() {
     p.education.gpa = Math.max(0, Math.round((p.education.gpa - career.schoolCost * (1 + c.level * 0.5)) * 100) / 100);
   }
   c.totalYears = (c.totalYears ?? 0) + 1;
+  // A professional athlete's year is the sports season: their role in the side and their contract are settled there
+  // (engine/sportsLife.js), not by an annual review.
+  if (c.sportContract && career.id === 'athlete') return null;
 
   // How the year went: skill, discipline, a mentor, how stretched or bored, and luck.
   const craft = career.skill ? ((Number(resolve(career.skill)) || 0) - 60) / 6 : (p.stats.intellect - 55) / 15;
@@ -795,7 +798,7 @@ export function tickCareer() {
   }
 
   // Fame comes with the top of certain careers, to the audience that work reaches; it fades in the profile.
-  // Sport, modelling and books make their own fame, from results, bookings and books (engine/sports.js, modelling.js, publishing.js).
+  // Sport, modelling and books make their own fame, from results, bookings and books (engine/sportsLife.js, modelling.js, publishing.js).
   if (career.fame && c.level >= career.fame.from && !['athlete', 'modelling', 'author'].includes(career.id)) {
     gain({ audience: AUDIENCE_OF[career.id] ?? 'public', amount: (c.level - career.fame.from + 1) * 3 + c.performance / 30, lasting: 0.2, why: c.title.toLowerCase() });
   }

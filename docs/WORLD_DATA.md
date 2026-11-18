@@ -85,9 +85,16 @@ other charges), health-care models ("Universal health care": no country the sour
 private in the game), and the spouse's shorter wait for citizenship, now set per country where the "Naturalization" notes give it
 (`SPOUSE_YEARS_IN`; elsewhere the old rule: half the usual wait, at least three years).
 
-Still not checked: which laws each country leaves to its regions (`REGIONAL_POWERS`), estate and inheritance tax (the source
-table does not parse reliably, and real rates depend on the heir), which countries get a flat, rising or steep schedule, and the
-status sentences. Where a
+Estate and inheritance tax (`js/data/inheritance.js`) is now by heir: a spouse, a child, or anyone else, each with their own
+tax-free amount and scale, from PwC Worldwide Tax Summaries (pages reviewed in 2026) and Wikipedia's "Inheritance tax". The
+script checks every country against PwC's chart of headline rates: 73 agree, 6 differ for recorded reasons (Brazil uses São
+Paulo's 4%; Chile, Spain and Japan include the surcharge on heirs outside the family; Tunisia and Ukraine), and 24 are not
+confirmed: 15 are not in the chart, and 9 have no figure there (Belgium, Switzerland, Finland, Poland and Venezuela give only
+words; Guatemala, Kenya, Morocco and Peru are "not provided"). Each entry's `src` says whether its rates and allowances are
+stated by a source, partly sourced (the range or top rate is, the bands between are the author's), or the author's alone.
+
+Still not checked: which laws each country leaves to its regions (`REGIONAL_POWERS`), which countries get a flat, rising or
+steep schedule, and the status sentences. Where a
 source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
 
 Re-run with `python3 scripts/verify-laws.py --write` (needs access to en.wikipedia.org; pages are cached in `.cache/`).
@@ -157,7 +164,8 @@ shown on its profile.
 
 In rough order of value:
 
-1. **Check what is still unchecked** (listed above): regional powers, estate tax, the shape of each tax schedule, and the status sentences.
+1. **Check what is still unchecked** (listed above): regional powers, the bands between the top rates of inheritance tax that are
+   the author's, the shape of each tax schedule, and the status sentences.
 2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
 5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.

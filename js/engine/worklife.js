@@ -98,6 +98,13 @@ const commute = (c, p) => {
 };
 
 /** Every commitment that takes time, in hours a week, during a year of age (by default the current one). */
+/** Hours of training that are not a job (a professional's training is their job). Read from the sports record directly. */
+function sportHours(p) {
+  const a = store.state?.sports?.athletes?.[p.id];
+  if (!a) return 0;
+  return Object.values(a.sports).filter((e) => e.status === 'active' && !e.contractId).reduce((s, e) => s + (e.plan?.hours ?? 0), 0);
+}
+
 export function weeklyLoad(p = player(), age = p.age) {
   const c = ensureCareer(p.career);
   const rows = [];
@@ -117,6 +124,8 @@ export function weeklyLoad(p = player(), age = p.age) {
   if (care) rows.push({ label: 'Looking after the children', hours: care, kind: 'care' });
   const study = studyHours(p);
   if (study) rows.push({ label: p.education.stage === 'high' || p.age < 18 ? 'School' : 'Studying', hours: study, kind: 'study' });
+  const train = sportHours(p);
+  if (train) rows.push({ label: 'Training', hours: train, kind: 'sport' });
   const travel = commute(c, p);
   if (travel) rows.push({ label: 'Getting to work', hours: travel, kind: 'commute' });
   const total = rows.reduce((s, r) => s + r.hours, 0);
@@ -385,8 +394,9 @@ export function payLines(p = player()) {
     else if (leave === 'parental') gross = Math.round(gross * (1 - Math.max(0, 52 - law.parentalWeeks) / 52 * 0.6));
     if (car.id === 'author' && published(p).length) gross = 0; // a published author is paid by their books (bookLines)
     // An athlete's agent and a model's agency take their cut of the wage they negotiated.
-    const cut = car.id === 'athlete' ? p.sport?.agent?.commission : car.id === 'modelling' ? (p.fame?.model?.agencyId ? p.fame.model.terms?.commission : null) : null;
-    if (cut && gross > 0) { gross = Math.round(gross * (1 - cut)); lines.push({ source: 'main', label: `${c.title} (after your ${car.id === 'athlete' ? 'agent' : 'agency'}'s ${Math.round(cut * 100)}%)`, gross }); }
+    // A model's agency takes its cut of the wage it negotiated (a sports agent's share is settled in engine/sportsLife.js).
+    const cut = car.id === 'modelling' ? (p.fame?.model?.agencyId ? p.fame.model.terms?.commission : null) : null;
+    if (cut && gross > 0) { gross = Math.round(gross * (1 - cut)); lines.push({ source: 'main', label: `${c.title} (after your agency's ${Math.round(cut * 100)}%)`, gross }); }
     else if (gross > 0) lines.push({ source: 'main', label: c.title, gross });
   }
   if (c.partTime?.salary) lines.push({ source: 'parttime', label: c.partTime.title, gross: c.partTime.salary });

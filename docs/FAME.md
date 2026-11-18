@@ -13,12 +13,12 @@ the game sets; every gain has a cause, and the archive can show you where it cam
 | `js/engine/press.js` | Agents, publicists, privacy, public appearances, rumours (true or not, kept separately from how sure the outlet was), corrections, brand deals. |
 | `js/engine/awards.js` | Award bodies hold one season a year per place, judging work released that year. A season is decided once and stored. Music awards judge releases. |
 | `js/engine/music.js` | Solo acts and bands of persistent people, songwriting from skill, singles/EPs/albums, release reception and charts, rival acts, royalties with a catalog tail, record deals (lawyer, negotiation, advance, recoupment, albums owed), gigs, tours with dated shows per city, members leaving, hiatus, splits, reunions. |
-| `js/engine/sports.js` | Leagues of fictional clubs (football, basketball) whose every match is played each year, with tables, top scorers, players of the year, transfers and caps; individual circuits (tennis, athletics) with draws, finals, rankings and the World Games every four years. The club is the athlete's employer; the career pays the wage, the sport pays nothing. **Sports fame comes only from these results.** |
+| Sport | The athletic life is its own engine (`js/engine/sports.js`, `sportsLife.js`, **My Athletics**): seasons, events, contracts, agents and sports fame are there. The fame profile picks up its fame. |
 | `js/engine/modelling.js` | Model agencies, yearly castings (catalog to magazine covers, runway shows abroad), a portfolio of real bookings. Bookings are the modelling career's work, so they shape its performance and fame and are not paid twice. |
 | `js/engine/publishing.js` | Manuscripts written over seasons of work, publishers who judge the book and the name on it, self-publishing, release, reviews once, bestseller lists, advances earned back, royalties with a tail, the Lantern Prize. A published author is paid by their books instead of a salary. Memoirs sell on fame. |
 | `js/engine/celebs.js` | Famous NPCs' own lives (marriages recorded on both sides, separations, children, scandals reported apart from whether they were true, retirements, returns, deaths) and the player's arc: rising, peak, fading, faded, comeback, with comeback offers (reality show, tribute, memoir, band reunion). |
 | Celebrity brands | `fashion_label`, `beauty_brand`, `record_label`, `production_co` in the business engine: they need a known name to start and sell on the owner's fame and goodwill (`starPull`). |
-| `js/ui/fame.js` | **My Fame**: Overview (with your arc, comeback offers and celebrity news), Opportunities, Music, Sport, Modelling, Writing, Current work, Representation, Public image, Awards, Connections, Archive, Family (every generation's credits, records, books, sport and awards, linked). Records link to each other (credit → production → castmate; award → season → nominees; record → act → everyone who was in it), with Back. |
+| `js/ui/fame.js` | **My Fame**: Overview (with your arc, comeback offers and celebrity news), Opportunities, Music, Modeling, Writing, Current work, Representation, Public image, Awards, Connections, Archive, Family (every generation's credits, records, books, sport and awards, linked). Records link to each other (credit → production → castmate; award → season → nominees; record → act → everyone who was in it), with Back. |
 
 Data lives in `js/data/fame.js` (audiences, eras, kinds of production, tiers, roles,
 award bodies, venues, release types, deal terms). Everything named there is fictional.
@@ -44,7 +44,6 @@ balance pass (seed 7, six lives each, 20 years), roughly:
 | --- | --- | --- | --- |
 | Acting | 65–70 | 3.5–4.5 | the quickest road to international fame, for someone who auditions constantly |
 | Music | 30–47 | up to ~1 | touring is where the money is; most acts stay national at best |
-| Sport | 25–42 | 1–20 | stars are paid like stars; fame follows results |
 | Modeling | 22–32 | 1–2 | a steady living, rarely a household name |
 | Books | ~45 | ~1–1.4 | bestselling authors; wealth is rare |
 
@@ -55,7 +54,7 @@ The pass also fixed sales and shows abroad being counted in the other country's 
 
 ```
 node tests/fame.mjs    # profile, world, the acting vertical slice incl. reload, odds, schedules, awards once, eras, press truth, children, a 25-year career
-node tests/fame2.mjs   # sport played match by match with fame only from results, modelling, books, celebrity brands, famous lives, comebacks, the family record
+node tests/fame2.mjs   # modeling, books, celebrity brands, famous lives, comebacks, the family record
 node tests/music.mjs   # bands as people, songs, releases judged once, royalties paid once, deals and advances, tours, charts and music awards, leaving, saves, heirs, eras
 ```
 
@@ -64,8 +63,7 @@ node tests/music.mjs   # bands as people, songs, releases judged once, royalties
 The new-life screen offers a birth year back to 1920 (`js/data/eras.js`). What had not been invented does
 not exist: careers (`CAREER_ERAS`: no software before 1955, no influencers before 2006), freelance services
 (`SERVICE_ERAS`), kinds of business (`BUSINESS_ERAS`), social media (`SOCIAL_FROM`), dating apps (personal
-ads before 2009), and every medium, sport, genre and award by its founding year. Women's professional leagues
-begin in their own years.
+ads before 2009), and every medium, genre and award by its founding year.
 
 **Prices** (`js/data/history.js`, `fmtMoney` in `js/util.js`): money is kept at today's values underneath, so every
 system stays in proportion, and is *shown* at the prices of the game's year: a typical American wage reads $3,375 in
@@ -108,12 +106,11 @@ the terms it was signed on (each contract and book records its agent's cut).
 
 ### Every kind of representative
 
-The same rules hold for sports agents (3–10%, `sports.js`), music managers (10–25%, `music.js`) and modeling
+The same rules hold for music managers (10–25%, `music.js`) and modeling
 agencies' head bookers (15–25%, `modelling.js`), as well as talent and literary agents. Each has clients you can look
 through (athletes with their ratings, acts with their fans, models with their covers), is shopped for one at a time
 twice a year, and takes their cut of what they help earn: an athlete's or model's wage is paid after it, a manager
-takes theirs from advances, royalties and tours. What they do for it: sports agents find bigger clubs and negotiate
-a raise on every move; managers bring labels, bigger advances and bigger crowds; agencies get better castings.
+takes theirs from advances, royalties and tours. What they do for it: managers bring labels, bigger advances and bigger crowds; agencies get better castings.
 
 Over time: any representative can be asked for a smaller cut once a year (a client worth it gets it; pushing without
 the name can end it), can be let go, and lets go a client who stops working (two years without a job through a
@@ -122,11 +119,6 @@ The best-connected representative brings brand deals, bigger ones, and takes the
 
 ## Also in the engines
 
-- **Sport**: football, basketball, rugby and cricket leagues (men's and women's, from their own founding years);
-  tennis, athletics, golf and swimming circuits; boxing with fights, a ranking and a world title (nobody is number
-  one without the belt). Injuries by age, fitness and contact cost games and leave marks on the record. A coach
-  (career `coaching`) takes charge of a club, is judged on its real position, and is let go after two seasons at
-  the bottom.
 - **Modelling**: each casting has a brief; how the model plays it (poised, energetic, warm, strange) changes the
   odds (`castingOdds`).
 - **Books**: literary agents (15%, better reads and advances), translation deals, film options, and films made of
@@ -138,5 +130,4 @@ The best-connected representative brings brand deals, bigger ones, and takes the
 
 - One price index for every country; countries, borders and currencies are today's (no Deutsche Mark, no Soviet Union
   as a place to live).
-- Sport: no transfers between countries, no Olympic-style team events, no management of a squad.
 - Session work and songwriting do not make credits on other acts' albums beyond the single written.

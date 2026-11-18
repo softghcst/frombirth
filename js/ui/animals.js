@@ -29,7 +29,7 @@ const nav = createNav();
 let modal = null;
 let api = null;
 /** Set by the People tab: how to open a person's profile, and the stat editor. */
-const hooks = { openPerson: null, editStats: null };
+const hooks = { openPerson: null, editStats: null, openAthletics: null };
 export const connect = (h) => Object.assign(hooks, h);
 
 // ---------- Pieces ----------
@@ -99,6 +99,8 @@ function archive() {
     <button class="row" data-go="album"><div class="avatar glyph">🐾</div>
       <div class="main"><strong>Our Animal Family</strong><small>Every paw print leaves a memory.</small></div>
       <div class="side">${n || ''}</div></button>
+    <button class="row" data-go="athletics"><div class="avatar glyph">🏅</div>
+      <div class="main"><strong>Athletic legacy</strong><small>Every season, every title, every generation.</small></div></button>
     <button class="row" data-go="tree"><div class="avatar glyph">🌳</div>
       <div class="main"><strong>Family tree</strong><small>Every relative, living or dead.</small></div></button>` };
 }
@@ -383,6 +385,7 @@ async function onClick(e) {
   if ((el = hit('data-open'))) { note({ open: step.ui.open === el.dataset.open ? null : el.dataset.open }); return show(); }
   if ((el = hit('data-go'))) {
     if (el.dataset.go === 'album') { note(); nav.open('album'); return show(); }
+    if (el.dataset.go === 'athletics') { note(); shut(); return hooks.openAthletics?.(api, 'legacy', () => show()); }
     note(); shut();
     return openFamilyTree((npc) => hooks.openPerson?.(npc, api, () => show()));
   }

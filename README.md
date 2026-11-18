@@ -41,10 +41,14 @@ node tests/animals.mjs         # the family's animals: one record each, owners a
 node tests/animal-care.mjs     # shelters, adoption, costs, the vet, insurance, fostering, rehoming, moving abroad, careers
 node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, breeding and pedigrees
 node tests/animal-life.mjs     # staff, classes, behaviour, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
+node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
+node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
+node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
+node tests/inheritance.mjs     # estate and inheritance tax: worked examples, and every country's scale
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
@@ -54,8 +58,8 @@ node tests/business.mjs        # owning a business: starting, staff, the account
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
 node tests/fame.mjs            # the fame profile, the entertainment world, acting from audition to credit, press, awards once, eras, child performers (see docs/FAME.md)
-node tests/fame2.mjs           # sport played match by match (fame from results only), modelling, books, celebrity brands, famous lives, comebacks, the family record
-node tests/fame3.mjs           # lives started in the past, newer sports, injuries, women's leagues, coaching, casting choices, literary agents and rights, brand launches, music videos and songwriting
+node tests/fame2.mjs           # modeling, books, celebrity brands, famous lives, comebacks, the family record
+node tests/fame3.mjs           # lives started in the past, casting choices, every kind of agent, literary agents and rights, brand launches, music videos and songwriting
 node tests/kpop.mjs            # the K-pop idol life: auditions, trainees, survival programs, positions (one or two each), music shows, ending fairies, contracts, hiatus, generations (see docs/KPOP.md)
 node tests/history.mjs         # lives in the past: prices at the level of their year, the Depression, wars and call-ups, conscription, the news
 node tests/music.mjs           # bands, releases, charts, royalties paid once, record deals, tours, music awards, heirs
@@ -79,6 +83,34 @@ budgets are in `js/engine/banking.js`; cards, insurance, pension plans, family m
 (`js/data/money.js`).
 
 How it works, what is fiction, and what is not built yet: [docs/FINANCE.md](docs/FINANCE.md).
+
+## Sports and athletics
+
+Pursuits → **My Athletics** is the hub: ten sections (overview, sports, training, teams and clubs, competitions,
+rankings, career and offers, health and mind, money and fame, legacy), with profiles for each sport, team, coach,
+season, event and family athlete. Family archive → **Athletic legacy** opens the same record from the People tab.
+
+One engine plays every sport; the sports themselves are data. Soccer, tennis and pickleball (with doubles partners)
+are modeled in full; the other twenty-odd sports use shared scoring for goals, points, runs, sets, rally games,
+strokes, times, judged scores and bouts. Sport skills are separate from the character's talents and grow towards a
+fixed ceiling, with diminishing returns per training hour. Coaches, key teammates, doubles partners and agents are
+real people. Results come from keyed, seeded luck and are stored once, so a reload never re-rolls them; standings
+and champions are counted from completed games only. Clubs, leagues and the Pathways Rating (PR) are invented.
+
+| What | Where |
+|---|---|
+| The registry: sports, skills, positions, founding years, routes to going pro, injuries, plans | `js/data/sports.js` |
+| How a match, race or routine comes out, and the rating | `js/engine/sportsPlay.js` |
+| Profiles, eligibility, training, clubs and tryouts, coaches, rosters, leagues and seasons, draws and meets, doubles | `js/engine/sports.js` |
+| The year in sport, money, injuries and rehab, recruiting and scholarships, contracts, sponsors, fame, arcs, generations | `js/engine/sportsLife.js` |
+| Stories with scenes, A to I: first team, a coach who believes in you, the scholarship, the championship season, the doubles partnership, injury and recovery, the professional dream, the comeback, a new generation | `js/engine/sportsArcs.js`, `js/data/events/sports.js` |
+| Sport in the family: parents' and grandparents' past, siblings and children who choose their own sport, parents at games | `js/engine/sportsFamily.js` |
+| My Athletics; lines in the life story open the season, event, team or coach they are about | `js/ui/sports.js` |
+
+Not built: there is no wider disability system (adaptive sports key off `flags.wheelchair` or a matching condition),
+no historical eras beyond each sport's founding and first-professional year, and the shared adapters do not model
+substitutions, set plays or per-event schedules. Relatives' records are light: the level reached, seasons and titles,
+not every game.
 
 ## The family's animals
 
@@ -395,6 +427,13 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
 Australia). The top band is each country's real top rate, from "List of countries by tax rates" (`TAX_TOP`; for the
 United States the federal 37%). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
 anything more you earn.
+
+**Estate and inheritance tax** (`js/engine/inheritance.js`, rules in `js/data/inheritance.js`) depends on who inherits. Some
+countries tax the estate as a whole before it is shared (the United States above USD 15 million, the United Kingdom at 40% above
+GBP 325,000, Japan, South Korea, Taiwan, South Africa, the Philippines); others tax each heir on what they receive, with a spouse
+usually exempt, a child paying little, and anyone else much more (Germany, France, Spain, Italy, Ireland, the Netherlands and
+others); many charge nothing. A will that leaves everything to friends costs more than one that leaves it to children, and
+charity is untaxed. Rates and allowances come from PwC Worldwide Tax Summaries and Wikipedia; see `docs/WORLD_DATA.md`.
 
 **Health care** has six models:
 

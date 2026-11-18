@@ -25,8 +25,8 @@ export function celebrities(countryId = player().countryId) {
   const ids = new Set([
     ...(E.pool?.[countryId] ?? []),
     ...Object.values(E.acts ?? {}).filter((a) => a.npc && a.countryId === countryId).flatMap((a) => a.members.map((m) => m.who)),
-    ...Object.values(st.sports?.leagues ?? {}).filter((L) => L.countryId === countryId).flatMap((L) => L.teams.map((t) => t.star)),
-    ...Object.values(st.sports?.circuits ?? {}).flatMap((C) => C.rivals.slice(0, 10)),
+    // Athletes the sports engine has made known (engine/sports.js: athletes are kept by person id, with their fame).
+    ...Object.values(st.sports?.athletes ?? {}).filter((a) => a.fame >= 25 && a.countryId === countryId).map((a) => a.id),
   ]);
   return [...ids].map((id) => st.npcs[id]).filter((n) => n?.flags?.star && n.alive !== false && (n.flags.star.fame ?? 0) >= 25);
 }

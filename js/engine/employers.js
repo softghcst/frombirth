@@ -117,13 +117,13 @@ export function cityEmployers(countryId, city) {
     const r = seeded(`${key}/${now}`);
     for (const id of J.cities[key]) {
       const e = J.employers[id];
-      if (e.closed) continue;
+      if (e.closed || e.sportClub) continue;
       const n = Math.round(sizeOf(e).openings * 1.5 * (0.6 + e.health / 100) + r.next());
       for (let i = 0; i < n; i++) openPosting(e, { r, age: r.int(0, POSTING_LIFE - 1) });
     }
   }
   J.seen[key] = now;
-  return J.cities[key].map((id) => J.employers[id]).filter((e) => e && !e.closed && !e.owned);
+  return J.cities[key].map((id) => J.employers[id]).filter((e) => e && !e.closed && !e.owned && !e.sportClub);
 }
 
 /**
@@ -278,7 +278,7 @@ export function tickEmployers() {
   // Lighten the records of employers nobody is connected to.
   for (const e of Object.values(J.employers)) if (!connected(e) && e.history.length > 3) e.history = e.history.slice(-3);
   for (const e of Object.values(J.employers)) {
-    if (e.closed || e.owned) continue; // a business the player owns is run by engine/business.js
+    if (e.closed || e.owned || e.sportClub) continue; // a business the player owns is run by engine/business.js; a sports club by engine/sportsLife.js
     const local = e.countryId === p.countryId ? ph : { hiring: 0, layoff: 0.03 };
     const detailed = connected(e);
     const live = (J.seen[`${e.countryId}/${e.city}`] ?? -99) >= now - 1 || detailed; // markets being watched

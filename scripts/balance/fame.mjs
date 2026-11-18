@@ -14,7 +14,6 @@ import * as fame from '../../js/engine/fame.js';
 import * as ent from '../../js/engine/entertainment.js';
 import * as press from '../../js/engine/press.js';
 import * as music from '../../js/engine/music.js';
-import * as sports from '../../js/engine/sports.js';
 import * as modelling from '../../js/engine/modelling.js';
 import * as pub from '../../js/engine/publishing.js';
 import { practise } from '../../js/engine/skills.js';
@@ -26,7 +25,7 @@ const LEVELS = { ordinary: 66, good: 78, great: 90 };
 const PLACES = ['us', 'uk', 'de', 'br', 'jp', 'ng'];
 
 // A keen player practises their craft every year; a talented one has practised since childhood.
-const PRACTICE = { acting: ['acting', 'acting', 'singing'], music: ['writing', 'singing', 'music_theory'], sport: ['sports', 'sports', 'martial_arts'], modeling: ['dance', 'yoga', 'dance'], books: ['writing', 'writing', 'writing'] };
+const PRACTICE = { acting: ['acting', 'acting', 'singing'], music: ['writing', 'singing', 'music_theory'], modeling: ['dance', 'yoga', 'dance'], books: ['writing', 'writing', 'writing'] };
 const FIELDS = {
   acting: {
     audience: 'film',
@@ -52,14 +51,6 @@ const FIELDS = {
       const n = music.musicOf(p).songs.length;
       music.record(n >= 10 ? 'album' : n >= 4 ? 'ep' : 'single', { video: true });
       if (a) for (const sc of ['stadium', 'arena', 'theatre', 'club']) { if (music.planTour(sc, music.tourPlaces(a, sc)).ok) break; }
-    },
-  },
-  sport: {
-    audience: 'sports',
-    setup(p, t) { p.talents.sports = t; },
-    year(p) {
-      if (!sports.isAthlete(p) && p.age <= 30 && p.talents.sports >= 70) { hire(CAREER_BY_ID.athlete, p.talents.sports >= 86 ? 2 : p.talents.sports >= 78 ? 1 : 0, 65, 'offer'); sports.chooseSport(p.flags.balanceSport); }
-      if (p.sport?.offer) sports.acceptTransfer();
     },
   },
   modeling: {

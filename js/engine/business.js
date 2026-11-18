@@ -384,7 +384,10 @@ export function inject(b, amount) {
     if (p.finance.cash < amount) return result(false, 'You do not have that much.', 'neutral');
     p.finance.cash -= amount;
     b.cash += fromOwner(b, amount);
-    return result(true, `You put ${fmtMoney(amount, country())} of your own into ${b.name}.`, 'neutral');
+    // The warning said: put money in. An account brought back above zero has done what was asked; the strike is cleared.
+    const cleared = b.overdrawn > 0 && b.cash >= 0;
+    if (cleared) b.overdrawn = 0;
+    return result(true, `You put ${fmtMoney(amount, country())} of your own into ${b.name}.${cleared ? ' The account is back in credit.' : ''}`, 'neutral');
   }
   return result(false, 'Nothing to move.', 'neutral');
 }
@@ -414,6 +417,7 @@ export function borrow(b, amount) {
   b.debt += amount;
   b.debtYears = BUSINESS_LOAN.years;
   b.cash += amount;
+  if (b.overdrawn > 0 && b.cash >= 0) b.overdrawn = 0; // borrowing out of the overdraft does what the warning asked
   return result(true, `The business borrows ${fmtMoney(amount, placeOf(b))} at ${Math.round(BUSINESS_LOAN.rate * 100)}%, to be repaid over ${BUSINESS_LOAN.years} years.`, 'neutral');
 }
 
@@ -629,6 +633,15 @@ function runYear(b) {
   const afterTax = profit - taxed.tax;
   b.cash += afterTax - principal;
 
+  // Now and then something goes badly wrong, whoever is running it: a fire, a lawsuit, the client who was half the work.
+  // It comes out of the year's money before the owners take their share, so a good year can absorb it.
+  if (rng.chance(0.04)) {
+    const hit = Math.round(revenue * (0.3 + rng.next() * 0.5));
+    b.cash -= hit;
+    b.reputation = clamp(b.reputation - rng.int(3, 10));
+    lines.push(rng.pick([`A fire closed ${b.name} for months. The insurance covered less than you hoped: it cost ${fmtMoney(hit, cty)}.`,
+      `${b.name} was sued, and lost. It cost ${fmtMoney(hit, cty)}.`, `${b.name} lost the customer who was most of its work, and ${fmtMoney(hit, cty)} with them.`]));
+  }
   // What the owners take, from what is left after tax. Never more than is there.
   let drawn = 0;
   if (afterTax > 0 && b.cash > 0) {
@@ -654,14 +667,6 @@ function runYear(b) {
   const margin = profit / Math.max(1, revenue);
   if (rng.chance(clamp(0.05 + margin * 0.5 + (b.sites - 1) * 0.03, 0.03, 0.3))) { b.rivals = (b.rivals ?? 0) + 1; lines.push(`A competitor opened near ${b.name}${margin > 0.2 ? ': someone has noticed how well you are doing' : ''}.`); }
   if ((b.rivals ?? 0) > 0 && rng.chance(0.1 * b.rivals)) b.rivals -= 1;
-  // Now and then something goes badly wrong, whoever is running it: a fire, a lawsuit, the client who was half the work.
-  if (rng.chance(0.04)) {
-    const hit = Math.round(revenue * (0.3 + rng.next() * 0.5));
-    b.cash -= hit;
-    b.reputation = clamp(b.reputation - rng.int(3, 10));
-    lines.push(rng.pick([`A fire closed ${b.name} for months. The insurance covered less than you hoped: it cost ${fmtMoney(hit, cty)}.`,
-      `${b.name} was sued, and lost. It cost ${fmtMoney(hit, cty)}.`, `${b.name} lost the customer who was most of its work, and ${fmtMoney(hit, cty)} with them.`]));
-  }
   if (b.ownerHours > 0) c.experience[t.track] = Math.round(((c.experience[t.track] ?? 0) + Math.min(1, b.ownerHours / 40)) * 10) / 10;
   for (const s of staff) s.npc.meters.relationship = clamp(s.npc.meters.relationship + (s.wageK > (s.asked ?? 1) ? 2 : 1) + (profit < 0 ? -2 : 0));
   const e = employer(b.employerId);

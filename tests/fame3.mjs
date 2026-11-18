@@ -6,10 +6,8 @@ import { store } from '../js/state.js';
 import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
-import { SPORTS } from '../js/data/fame.js';
 import { EARLIEST_START } from '../js/data/eras.js';
 import { hire, unmet } from '../js/engine/career.js';
-import * as sports from '../js/engine/sports.js';
 import * as modelling from '../js/engine/modelling.js';
 import * as pub from '../js/engine/publishing.js';
 import * as music from '../js/engine/music.js';
@@ -52,51 +50,6 @@ let crashed = null;
 for (let i = 0; i < 45 && p.alive; i++) { try { year(); } catch (e) { crashed = e.stack.split('\n').slice(0, 3).join(' '); break; } }
 check(!crashed, `a life from 1960 plays on (${crashed})`);
 section(`eras: lives from ${EARLIEST_START}; what was not invented does not exist; a 1960 life plays through`);
-
-// 2. Women's and men's sport, newer sports, injuries.
-p = life('uk', 20, { gender: 'female' });
-p.gender = 'female';
-p.talents.sports = 86;
-hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
-check(sports.divOf(p) === 'women' && sports.chooseSport('rugby').ok, 'a woman plays in the women\'s league');
-const L = store.state.sports.leagues[p.sport.leagueId];
-check(L.div === 'women' && /Women/.test(L.name) && L.teams.every((t) => store.state.npcs[t.star].gender === 'female'), 'the women\'s league has its own clubs and players');
-check(!sports.playedIn('rugby', 1980, 'women') && sports.playedIn('rugby', 1980, 'men'), 'women\'s professional rugby began later than men\'s');
-for (let y = 0; y < 6; y++) { if (!sports.isAthlete(p)) { hire(CAREER_BY_ID.athlete, 2, 70, 'offer'); sports.chooseSport('rugby'); } year(); }
-for (const s of L.seasons) {
-  const n = L.teams.length;
-  check(s.table.reduce((a, r) => a + r[1] + r[2] + r[3], 0) / 2 === n * (n - 1) / 2 * SPORTS.rugby.rounds, 'every rugby match is played once');
-  check(s.table.every((r) => r[6] === r[1] * 4 + r[2] * 2), 'rugby points are four for a win, two for a draw');
-}
-for (const x of p.sport.seasons.filter((y) => y.injury)) check(x.apps < x.games || x.injury.weeks < 4, 'an injury costs games');
-check((p.sport.injuries ?? []).every((x) => x.what && x.weeks > 0), 'injuries are on the record');
-section(`women's sport and rugby: ${L.seasons.length} seasons, ${(p.sport.injuries ?? []).length} injuries recorded`);
-
-p = life('uk', 22);
-p.talents.sports = 84;
-hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
-sports.chooseSport('boxing');
-for (let y = 0; y < 6; y++) { if (!sports.isAthlete(p)) { hire(CAREER_BY_ID.athlete, 2, 70, 'offer'); sports.chooseSport('boxing'); } year(); }
-for (const x of p.sport.seasons) {
-  check(x.stat + x.losses === x.fights, 'every fight is won or lost');
-  check(x.rank !== 1 || x.title || p.sport.titles.length > 0, 'nobody is number one without the belt');
-}
-section('boxing: fights, a record, a title');
-
-// 3. Coaching.
-p = life('uk', 40);
-p.stats.intellect = 80; p.talents.sports = 70;
-hire(CAREER_BY_ID.coaching, 1, 60, 'offer');
-const jobs = sports.coachingJobs('football');
-check(jobs.length > 0 && sports.takeCoachingJob('football', jobs[0].team.id).ok, 'a coach can take charge of a club');
-let inCharge = 0;
-for (let y = 0; y < 4; y++) { const was = !!p.coach.teamId && sports.isCoach(p); year(); if (was) inCharge += 1; }
-check(p.coach.seasons.length >= Math.min(1, inCharge), 'each season in charge is recorded');
-for (const x of p.coach.seasons) {
-  const s = store.state.sports.leagues[p.coach.leagueId].seasons.find((y) => y.year === x.year);
-  check(s && s.table.findIndex((r) => r[0] === x.teamId) + 1 === x.pos, 'the coach\'s record is the club\'s real position');
-}
-section('coaching: in charge of a club, judged on its results');
 
 // 4. Castings are a choice.
 p = life('uk', 21);
@@ -194,29 +147,6 @@ section(`brands: launches, recorded (${brand.launches[0].outcome})`);
 {
   const { CUTS } = await import('../js/engine/agents.js');
   const pressM = await import('../js/engine/press.js');
-  // A sports agent takes a cut of the playing wage.
-  p = life('uk', 22);
-  p.talents.sports = 92;
-  hire(CAREER_BY_ID.athlete, 3, 80, 'offer');
-  sports.chooseSport('football');
-  const sa = sports.sportsAgents('uk');
-  check(sa.length >= 4 && sa.every((n) => n.flags.agent.commission >= CUTS.sports[0] && n.flags.agent.commission <= CUTS.sports[1]), 'sports agents take 3% to 10%');
-  check(sa.some((n) => n.flags.agent.clients.length > 0 && store.state.npcs[n.flags.agent.clients[0]]?.flags.star?.kind === 'athlete'), 'and represent real athletes');
-  sports.findSportsAgent();
-  if (sports.sportsAgentOnOffer()) {
-    sports.signSportsAgent();
-    const cut = p.sport.agent.commission;
-    p.career.paidYear = null;
-    const main = work.payLines(p).find((l) => l.source === 'main');
-    check(main && main.gross === Math.round(p.career.salary * (1 - cut)) && /agent/.test(main.label), 'the wage is paid after the agent\'s cut');
-    const before = p.sport.agent.commission;
-    const asked = sports.askSportsAgentCut();
-    check(asked.text && (p.sport?.agent?.commission ?? 0) <= before, 'asking for a smaller cut gets an answer');
-    check(!sports.askSportsAgentCut().ok, 'once a year');
-    p.career.careerId = null;
-    year();
-    check(!p.sport.agent, 'an agent leaves a player who stops playing');
-  }
   // A manager takes a cut of the act's money.
   p = life('uk', 24);
   p.talents.music = 90; p.talents.singing = 85;
@@ -254,7 +184,7 @@ section(`brands: launches, recorded (${brand.launches[0].outcome})`);
     if (deal) check(deal.via && deal.via.commission > 0, 'a brand deal brought by a representative pays them their cut');
   }
 }
-section('representatives: sports agents, managers and model agencies, each with their own cut and clients');
+section('representatives: managers and model agencies, each with their own cut and clients');
 
 // 7. Music: videos, songs for others, sessions.
 p = life('uk', 24);

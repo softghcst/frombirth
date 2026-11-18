@@ -13,7 +13,6 @@
 // once, never count double.
 import { store, player, livingNpcs, log, milestone } from '../state.js';
 import { carryWorld } from './entertainment.js';
-import { carrySports, summary as sportSummary } from './sports.js';
 import { carryKpop, summary as idolSummary } from './kpop.js';
 import { inherited, startWithFamilyName } from './fame.js';
 import { CAREER_BY_ID } from '../data/careers.js';
@@ -168,7 +167,7 @@ export function record(p = player(), st = store.state) {
   return { name: `${p.firstName} ${p.lastName}`, gen: p.generation ?? 1, born, died: p.alive === false ? st.year : null, jobs,
     businesses: (p.businesses ?? []).map((b) => ({ name: b.name, from: b.founded, years: b.years, status: b.status })),
     credits: (p.fame?.credits ?? []).map((c) => ({ productionId: c.productionId, year: c.year })), fame: p.fame ? { legacy: p.fame.legacy, scope: null } : null,
-    sport: sportSummary(p), idol: idolSummary(p, st), books: (p.fame?.writing?.books ?? []).length, acts: (p.fame?.acts ?? []).length, portfolio: (p.fame?.model?.portfolio ?? []).length,
+    idol: idolSummary(p, st), books: (p.fame?.writing?.books ?? []).length, acts: (p.fame?.acts ?? []).length, portfolio: (p.fame?.model?.portfolio ?? []).length,
     achievements: c.achievements.map((a) => a.name), topTitle: top?.title ?? null, retired: !!c.retired, colleagues };
 }
 
@@ -179,7 +178,6 @@ export function passOn(old, next, heir) {
   // The entertainment world carries on; the old player's credits become an ancestor's (engine/entertainment.js).
   const ancestor = Object.values(next.npcs).find((n) => !n.alive && ['parent', 'grandparent'].includes(n.role) && n.firstName === old.player.firstName && n.lastName === old.player.lastName);
   carryWorld(old, next, ancestor?.id);
-  carrySports(old, next, ancestor?.id);
   carryKpop(old, next, ancestor?.id);
   next.careerRecord.at(-1).npcId = ancestor?.id ?? null;
   if (ancestor) ancestor.flags.fame = { legacy: old.player.fame?.legacy ?? 0, headline: old.player.hidden?.fame ?? 0 };

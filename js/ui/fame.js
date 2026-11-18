@@ -18,13 +18,12 @@ import * as press from '../engine/press.js';
 import * as awards from '../engine/awards.js';
 import * as skills from '../engine/skills.js';
 import * as music from '../engine/music.js';
-import * as sports from '../engine/sports.js';
 import * as modelling from '../engine/modelling.js';
 import * as pub from '../engine/publishing.js';
 import * as celebs from '../engine/celebs.js';
 import * as agents from '../engine/agents.js';
 import { POSITIONS, GENRES, genreOf, genresIn } from '../data/music.js';
-import { SPORTS, BOOKINGS, BOOK_KINDS, BOOK_GENRES, BOOK_AWARD } from '../data/fame.js';
+import { BOOKINGS, BOOK_KINDS, BOOK_GENRES, BOOK_AWARD } from '../data/fame.js';
 
 const BODIES = [...AWARD_BODIES, MUSIC_AWARD, BOOK_AWARD];
 const aRelease = (k) => ({ single: 'a single', ep: 'an EP', album: 'an album' }[k]);
@@ -38,7 +37,7 @@ const kindName = (prod) => `${TIERS[prod.tier].name} ${PRODUCTION_KINDS[prod.kin
 const row = (act, arg, main, sub, side = '', n = null) => `<button type="button" class="row world-row" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
   <div class="main"><strong>${esc(main)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>`;
 
-const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modelling', 'Modeling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
+const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['modelling', 'Modeling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
   ['awards', 'Awards'], ['connections', 'Connections'], ['archive', 'Archive'], ['family', 'Family']];
 
 function tabsFor(p) {
@@ -47,7 +46,6 @@ function tabsFor(p) {
     if (id === 'work') return ent.activeWork(p).length > 0 || f.contracts.some((c) => c.status === 'signed');
     if (id === 'representation') return p.age >= 12;
     if (id === 'music') return p.age >= 12 && fame.exists('concert');
-    if (id === 'sport') return sports.isAthlete(p) || sports.isCoach(p) || !!p.sport || !!p.coach;
     if (id === 'modelling') return modelling.isModel(p) || modelling.portfolio(p).length > 0;
     if (id === 'writing') return p.age >= 14 && fame.exists('publishing');
     if (id === 'family') return (store.state.careerRecord ?? []).length > 0;
@@ -217,8 +215,6 @@ const VIEWS = {
       ${kv([['Their pull', clout(w.agent.clout)]])}${agentClients(agent)}<div class="btn-stack">${btn('askcut', 'Ask for a smaller cut', { arg: 'talent', sub: 'Once a year. Worth it only if you are worth it to them.' })}${btn('endagent', 'End the representation', { cls: 'danger' })}</div>`
     : '<p class="muted">An agent finds parts, puts you up for them, and negotiates. Each takes their own cut, and some carry more weight than others. They guarantee nothing.</p>'}
       ${offer ? agentOffer(offer, ent.org(offer.flags.agent.orgId)?.name ?? '', 'signagent', 'passagent', 'findagent', left) : `<div class="btn-stack">${btn('findagent', agent ? 'Look for a different agent' : 'Look for an agent', { disabled: left <= 0, sub: left > 0 ? `${left} ${left === 1 ? 'look' : 'looks'} left this year` : 'You have looked twice this year' })}</div>`}</div>
-      ${sports.isAthlete(p) || p.sport?.agent ? repCard({ title: 'Sports agent', holder: p.sport?.agent, about: 'A sports agent finds you clubs, negotiates your wage when you move, and takes a cut of it.',
-    offer: sports.sportsAgentOnOffer(), left: sports.sportsTriesLeft(), find: 'findsports', sign: 'signsports', pass: 'passsports', drop: 'dropsports', ask: 'sports' }) : ''}
       ${music.myAct(p) || music.myManager(p) ? repCard({ title: 'Manager', holder: music.myManager(p), about: 'A manager brings labels and promoters to your act, gets better deals and bigger crowds, and takes a cut of what your music earns.',
     offer: music.managerOnOffer(), left: music.managerTriesLeft(), find: 'findmanager', sign: 'signmanager', pass: 'passmanager', drop: 'dropmanager', ask: 'music' }) : ''}
       <div class="card"><h3>Publicist</h3>${pub ? `${row('person', pub.id, `${pub.firstName} ${pub.lastName}`, `${money(w.publicist.fee)} a year`, '', pub)}${btn('nopub', 'Let them go')}` : btn('pub', 'Hire a publicist', { sub: 'Helps you say things well. Cannot change what happened.' })}</div>
@@ -335,40 +331,6 @@ const VIEWS = {
       ${past.length ? `<div class="section-label">Acts you were in</div>${past.map((x) => row('act', x.id, x.name, `${x.formed}`, x.status === 'split' ? 'Split' : 'Without you')).join('')}` : ''}`;
   },
 
-  sport(p) {
-    const s = p.sport;
-    const coaching = sports.isCoach(p) || p.coach ? VIEWS.coaching(p) : '';
-    if (!sports.isAthlete(p) && !s?.seasons.length) return coaching;
-    if (!s || (s.retiredYear && !s.seasons.length) || (!s.seasons.length && sports.isAthlete(p))) {
-      const div = sports.divOf(p);
-      return `<div class="card"><h3>Your sport</h3><p class="muted" style="margin:0">You play professionally. Rating ${sports.rating(p)}. ${s ? `Now: ${SPORTS[s.sport].name}, ${div === 'women' ? "women's" : "men's"}. ` : ''}You can change before your first season. Results are played out over each year, and your name is made by them.</p></div>
-        <div class="btn-stack">${btn('sportdiv', div === 'women' ? "Compete in men's sport instead" : "Compete in women's sport instead", { sub: 'Whichever fits you' })}</div>
-        <div class="btn-stack">${Object.entries(SPORTS).map(([k, d]) => btn('sport', d.name, { arg: k, disabled: !sports.playedIn(k, store.state.year, div), sub: !sports.playedIn(k, store.state.year, div) ? 'Not played professionally yet' : d.team ? 'A club, a league, a season' : d.fights ? 'Fights, a ranking, a title' : 'Tournaments against the same rivals' })).join('')}</div>${coaching}`;
-    }
-    const d = SPORTS[s.sport];
-    const L = s.leagueId ? store.state.sports.leagues[s.leagueId] : null;
-    const t = L ? sports.team(L.id, s.teamId) : null;
-    const offer = s.offer ? sports.team(L.id, s.offer.teamId) : null;
-    const last = L?.seasons.at(-1);
-    return `<div class="card"><h3>${esc(d.name)}${t ? `: ${esc(t.name)}` : ''}</h3>${kv([['Status', s.retiredYear ? `Retired in ${s.retiredYear}` : 'Playing'], ['Rating', String(sports.rating(p))], ['Seasons', String(s.seasons.length)], ['Titles', String(s.titles.length)],
-      ...(s.caps ? [['International caps', String(s.caps)]] : []), ...(s.medals.length ? [['Medals', s.medals.map((m) => `${m.medal} (${m.year})`).join(', ')]] : [])])}</div>
-      ${offer ? `<div class="card"><h3>${esc(offer.name)} want you</h3><div class="btn-stack">${btn('transfer', `Move to ${offer.name}`, { cls: 'primary' })}${btn('notransfer', 'Stay')}</div></div>` : ''}
-      ${last ? `<div class="section-label">${esc(L.name)}, ${last.year}</div>${last.table.slice(0, 12).map((r, i) => { const tm = sports.team(L.id, r[0]); return `<div class="kv"><span>${i + 1}. ${tm.id === s.teamId ? '<strong>' : ''}${esc(tm.name)}${tm.id === s.teamId ? '</strong>' : ''}</span><span>${L.sport === 'football' ? `${r[1]}-${r[2]}-${r[3]} · ${r[6]} pts` : `${r[1]}-${r[3]}`}</span></div>`; }).join('')}
-        <p class="muted">Top scorer: ${esc(last.top.name)} (${last.top.value}). Player of the year: ${esc(last.best.name)}.</p>` : ''}
-      ${s.seasons.length ? `<div class="section-label">Your seasons</div>${[...s.seasons].reverse().map((x) => `<div class="kv"><span>${x.year}${x.team ? ` · ${esc(x.team)}` : ''}</span><span>${d.team ? `${x.apps} games, ${x.stat} ${d.statName.toLowerCase()}, ${x.pos}${x.champion ? ' ★' : ''}` : `${x.stat} won · ranked ${x.rank}${x.medal ? ` · ${x.medal}` : ''}`}</span></div>`).join('')}` : ''}
-      ${s.titles.length ? `<div class="section-label">Titles</div>${s.titles.map((x) => `<div class="kv"><span>${x.year}</span><span>${esc(x.name)}</span></div>`).join('')}` : ''}
-      ${(s.injuries ?? []).length ? `<div class="section-label">Injuries</div>${s.injuries.map((x) => `<div class="kv"><span>${x.year}</span><span>${esc(x.what)}, ${x.weeks} weeks</span></div>`).join('')}` : ''}${coaching}`;
-  },
-
-  coaching(p) {
-    const c = p.coach;
-    const sportId = c?.sport ?? p.sport?.sport ?? 'football';
-    const jobs = sports.isCoach(p) ? sports.coachingJobs(sportId, c?.div ?? sports.divOf(p), p) : [];
-    return `<div class="card"><h3>Coaching</h3>${kv([['Coaching ability', String(sports.coachSkill(p))], ['Club', c?.teamId ? c.clubs.at(-1)?.name ?? '' : 'None'], ['Seasons in charge', String(c?.seasons.length ?? 0)]])}</div>
-      ${!c?.teamId && jobs.length ? `<div class="section-label">Clubs looking for a head coach (${esc(SPORTS[sportId].name)})</div><div class="btn-stack">${jobs.map((j) => btn('coachjob', j.team.name, { arg: `${sportId}:${j.team.id}`, sub: j.league.name })).join('')}</div>` : ''}
-      ${c?.seasons.length ? `<div class="section-label">In charge</div>${[...c.seasons].reverse().map((x) => `<div class="kv"><span>${x.year} · ${esc(x.team)}</span><span>${x.pos} of ${x.of}${x.champion ? ' ★' : ''}</span></div>`).join('')}` : ''}`;
-  },
-
   modelling(p) {
     const m = modelling.modelOf(p);
     const ag = m.agencyId ? ent.org(m.agencyId) : null;
@@ -417,13 +379,11 @@ const VIEWS = {
     const acts = id ? Object.values(E.acts ?? {}).filter((a) => a.members.some((m) => m.who === id)) : [];
     const books = id ? Object.values(E.books ?? {}).filter((b) => b.author === id) : [];
     const wins = id ? Object.values(E.seasons).flatMap((s) => Object.values(s.categories).filter((c) => c.nominees.some((n) => n.who === id)).map((c) => ({ s, c, won: c.winner.who === id }))) : [];
-    const sp = r.sport;
     const n = id ? store.state.npcs[id] : null;
     return `<div class="card"><h3>${esc(r.name)}</h3><p class="muted" style="margin:0">Generation ${r.gen} · ${r.born}–${r.died ?? ''}${r.topTitle ? ` · ${esc(r.topTitle)}` : ''}${r.fame?.legacy ? ` · remembered ${Math.round(r.fame.legacy)}/100` : ''}</p>
       ${credits.length ? `<div class="section-label">Credits</div>${credits.map((c) => row('production', c.production.id, c.production.title, `${c.production.workYear} · ${ROLE_KINDS[c.role.kind].name}`)).join('')}` : (r.credits?.length ? `<p class="muted">${r.credits.length} credits.</p>` : '')}
       ${acts.length ? `<div class="section-label">Music</div>${acts.map((a) => row('act', a.id, a.name, `${a.formed} · ${a.releases.length} records`)).join('')}` : ''}
       ${books.length ? `<div class="section-label">Books</div>${books.map((b) => row('bookview', b.id, b.title, `${b.released ?? ''}`)).join('')}` : ''}
-      ${sp ? `<div class="section-label">Sport</div><div class="kv"><span>${esc(SPORTS[sp.sport]?.name ?? '')}</span><span>${sp.seasons} seasons, ${sp.titles} titles${sp.medals.length ? `, medals: ${sp.medals.join(', ')}` : ''}${sp.caps ? `, ${sp.caps} caps` : ''}</span></div>` : ''}
       ${wins.length ? `<div class="section-label">Awards</div>${wins.map((x) => row('season', x.s.id, `${x.won ? 'Won' : 'Nominated'}: ${x.c.name}`, `${x.s.ceremony}`)).join('')}` : ''}
       ${(r.businesses ?? []).length ? `<div class="section-label">Businesses</div>${r.businesses.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>from ${b.from}</span></div>`).join('')}` : ''}
       ${n ? row('person', n.id, 'Their page', 'Family and relationships', '', n) : ''}</div>`;
@@ -511,11 +471,6 @@ const ACTIONS = {
   release: (id, x) => x.go('release', id),
   act: (id, x) => x.go('act', id),
   bookview: (id, x) => x.go('bookview', id),
-  sport: (k, x) => x.say(sports.chooseSport(k, sports.divOf())),
-  sportdiv: (_, x) => { const p = player(); const div = sports.divOf(p) === 'women' ? 'men' : 'women'; p.flags.sportDiv = div; return x.say(p.sport ? sports.chooseSport(p.sport.sport, div) : { ok: true, text: `You will compete in ${div === 'women' ? "women's" : "men's"} sport.`, tone: 'neutral' }); },
-  coachjob: (arg, x) => { const [sp, id] = arg.split(':'); return x.say(sports.takeCoachingJob(sp, id)); },
-  transfer: (_, x) => x.say(sports.acceptTransfer()),
-  notransfer: (_, x) => x.say(sports.declineTransfer()),
   agency: (id, x) => x.say(modelling.joinAgency(id)),
   async casting2(id, x) {
     const c = modelling.castings().find((y) => y.id === id);
@@ -541,11 +496,7 @@ const ACTIONS = {
   findagent: (_, x) => x.say(press.findAgent()),
   signagent: async (_, x) => { const n = press.agentOnOffer(); if (n && await confirmModal({ title: `Sign with ${n.firstName} ${n.lastName}?`, body: ent.workOf().agent ? 'They replace your current agent. Contracts already signed still pay the old one.' : `They take ${Math.round(n.flags.agent.commission * 100)}% of what you earn through them.`, yes: 'Sign' })) await x.say(press.signAgent(n.id)); },
   passagent: (_, x) => x.say(press.passOnAgent()),
-  askcut: (kind, x) => x.say({ talent: press.askAgentCut, literary: pub.askLitAgentCut, sports: sports.askSportsAgentCut, music: music.askManagerCut, model: modelling.askAgencyCut }[kind]()),
-  findsports: (_, x) => x.say(sports.findSportsAgent()),
-  signsports: async (_, x) => { if (await confirmModal({ title: 'Sign with this agent?', body: 'They take their cut of your playing wage from now on.', yes: 'Sign' })) await x.say(sports.signSportsAgent()); },
-  passsports: (_, x) => x.say(sports.passOnSportsAgent()),
-  dropsports: (_, x) => x.say(sports.dropSportsAgent()),
+  askcut: (kind, x) => x.say({ talent: press.askAgentCut, literary: pub.askLitAgentCut, music: music.askManagerCut, model: modelling.askAgencyCut }[kind]()),
   findmanager: (_, x) => x.say(music.findManager()),
   signmanager: async (_, x) => { if (await confirmModal({ title: 'Sign with this manager?', body: 'They take their cut of what your music earns from now on.', yes: 'Sign' })) await x.say(music.signManager()); },
   passmanager: (_, x) => x.say(music.passOnManager()),
