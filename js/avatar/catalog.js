@@ -99,9 +99,10 @@ const OLD_SKIN = ['ivory', 'sand', 'golden', 'tan', 'chestnut', 'espresso'];
 const OLD_HAIR = ['black', 'brown', 'light_brown', 'blonde', 'auburn'];
 const OLD_EYES = ['dark_brown', 'blue', 'green', 'hazel'];
 const OLD_STYLE_NUM = ['short_crop', 'side_part', 'long_straight'];
-const OLD_FACE = { oval: 'head_17_dimple_oval', round: 'head_15_cherubic', square: 'head_13_athletic', heart: 'head_11_pixie', long: 'head_18_long_rect', diamond: 'head_16_angular' };
+const OLD_FACE = { oval: 'head_17_dimple_oval', round: 'head_15_cherubic', square: 'head_13_athletic', heart: 'head_11_pixie', long: 'head_12_sculpted', diamond: 'head_16_angular' };
 // Face shapes that have been withdrawn: anyone saved with one keeps the nearest shape that remains.
-const GONE_HEAD = { face_01_oval: 'head_17_dimple_oval', face_02_round: 'head_15_cherubic', face_03_square: 'head_13_athletic', face_04_heart: 'head_11_pixie', face_05_diamond: 'head_16_angular', face_06_pear: 'head_14_almond' };
+const GONE_HEAD = { face_01_oval: 'head_17_dimple_oval', face_02_round: 'head_15_cherubic', face_03_square: 'head_13_athletic', face_04_heart: 'head_11_pixie', face_05_diamond: 'head_16_angular', face_06_pear: 'head_14_almond',
+  head_18_long_rect: 'head_12_sculpted' };
 const OLD_HAIRSTYLE = {
   bald: 'bald', buzz: 'hair_boy_short_10', short_crop: 'hair_boy_short_06', side_part: 'hair_boy_short_02', pixie: 'hair_girl_short_02', waves: 'hair_boy_short_10',
   curls_tight: 'hair_boy_short_11', coils: 'hair_girl_short_14', braids: 'hair_girl_long_09', locs: 'hair_boy_medium_09', bob: 'hair_girl_short_01',

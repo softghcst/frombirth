@@ -67,6 +67,7 @@ check(eyesWithWhites >= AVATAR_MANIFEST.eyes.length - 2, `only ${eyesWithWhites}
 
 check(!CATALOG.eyes.some((e) => e.id === CUR.EXPRESSION.crying), 'crying eyes can be chosen as a resting face');
 check(!AVATAR_MANIFEST.heads.some((h) => /^face_0/.test(h.id)) && normalize({ v: 3, inherited: { head: 'face_02_round' } }, 'z').inherited.head === 'head_15_cherubic', 'withdrawn face shapes are not replaced');
+check(!AVATAR_MANIFEST.heads.some((h) => h.id === 'head_18_long_rect') && normalize({ v: 3, inherited: { head: 'head_18_long_rect' } }, 'z').inherited.head === 'head_12_sculpted', 'the withdrawn Rect face is not replaced by Sculpted');
 
 check(AVATAR_MANIFEST.hats.length === 0 && AVATAR_MANIFEST.crowns.length === 8, 'hats should be gone and crowns kept');
 for (let i = 0; i < 300; i++) check(!CUR.HAIR_COVERS_FACE.includes(randomAppearance(i % 12, i % 2 ? 'female' : 'male').style.hair), 'a face-covering hairstyle was handed out at random');
@@ -107,7 +108,7 @@ for (const [label, saved] of Object.entries(cases)) {
   check(JSON.stringify(a) === JSON.stringify(normalize(saved, `seed-${label}`)), `${label}: not stable between loads`);
 }
 const fromV2 = normalize(v2, 'x');
-check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green' && fromV2.style.hairDye === 'teal' && fromV2.inherited.head === 'head_18_long_rect'
+check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green' && fromV2.style.hairDye === 'teal' && fromV2.inherited.head === 'head_12_sculpted'
   && fromV2.style.glasses && fromV2.style.facialHair && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or accessories');
 // Two relatives who shared an old nose still share one.
 check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inherited.nose, 'old shared nose no longer shared');
@@ -206,7 +207,7 @@ for (const id of ['hair_boy_short_07', 'hair_boy_updo_15_headband_puff', 'hair_u
     check(y >= head.fit.top && y <= head.fit.top + (head.fit.chin - head.fit.top) * 0.45, `${id} on ${head.id}: the hairline is off the forehead (${Math.round(y)})`);
   }
 }
-check(hairFit('hair_boy_updo_15_headband_puff', 'head_18_long_rect').squash < 1 && hairFit('hair_boy_short_07', 'head_18_long_rect').squash === 1, 'only a tall style is flattened to fit the picture');
+check(hairFit('hair_boy_updo_15_headband_puff', 'head_12_sculpted').squash < 1 && hairFit('hair_boy_short_07', 'head_12_sculpted').squash === 1, 'only a tall style is flattened to fit the picture');
 // The two repaired files, and the stray marks, stay repaired.
 for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/avatars/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
 check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy_medium_03', 'head_00_kid').top <= 2, 'the arch styles show background over the forehead again');
@@ -313,12 +314,12 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
 
 // 11. A saved face keeps its head, hair and eyes, and is drawn with those files.
 {
-  const saved = JSON.parse(JSON.stringify({ v: 3, inherited: { head: 'head_18_long_rect', skin: 'umber', eyes: 'eyes_22', eyeColor: 'hazel', brows: 'brows_14', nose: 'nose_17', lips: 'lips_12', hairColor: 'black', hairTexture: 'coily', marks: [], tweaks: { eyeGap: 1 } },
+  const saved = JSON.parse(JSON.stringify({ v: 3, inherited: { head: 'head_16_angular', skin: 'umber', eyes: 'eyes_22', eyeColor: 'hazel', brows: 'brows_14', nose: 'nose_17', lips: 'lips_12', hairColor: 'black', hairTexture: 'coily', marks: [], tweaks: { eyeGap: 1 } },
     style: { hair: 'hair_boy_updo_15_headband_puff', jewelry: [], outfit: 'outfit_22_denim' } }));
   const a = normalize(saved, 'npc_saved');
-  check(a.inherited.head === 'head_18_long_rect' && a.style.hair === 'hair_boy_updo_15_headband_puff' && a.inherited.eyes === 'eyes_22' && a.inherited.tweaks.eyeGap === 1, 'a saved face lost its head, hair or eyes');
+  check(a.inherited.head === 'head_16_angular' && a.style.hair === 'hair_boy_updo_15_headband_puff' && a.inherited.eyes === 'eyes_22' && a.inherited.tweaks.eyeGap === 1, 'a saved face lost its head, hair or eyes');
   const svg = avatarSvg({ appearance: saved, seed: 'npc_saved', age: 40 });
-  for (const f of ['heads/head_18_long_rect.svg', 'hair/hair_boy_updo_15_headband_puff.svg', 'eyes/eyes_22.svg']) check(svg.includes(f), `a saved face is not drawn with ${f}`);
+  for (const f of ['heads/head_16_angular.svg', 'hair/hair_boy_updo_15_headband_puff.svg', 'eyes/eyes_22.svg']) check(svg.includes(f), `a saved face is not drawn with ${f}`);
   check(JSON.stringify(saved.inherited.tweaks) === '{"eyeGap":1}', 'drawing a face changed what was saved');
   // A face made today and one loaded from a save are fitted by the same rule.
   const fresh = randomAppearance(8, 'male');
