@@ -17,6 +17,7 @@ import { meetsAll, resolve } from './conditions.js';
 import { applyEffects } from './effects.js';
 import { EVENTS, EVENT_BY_ID } from '../data/events/index.js';
 import { claimStory } from './animals.js';
+import { turnSeasons } from './calendar.js';
 
 const DEFAULT_COOLDOWN = 10;
 
@@ -43,6 +44,7 @@ function eligibleCast(ev, between = false) {
   if (ev.queuedOnly) return null;
   // Scenes for the turns between years (data/events/seasons.js) are drawn only then, and yearly scenes never are.
   if (!!ev.between !== between) return null;
+  if (ev.timing && !inTime(ev.timing)) return null;
   if (!!ev.prison !== !!p.legal.incarceration) return null;
   if (p.age < ev.ageRange[0] || p.age > ev.ageRange[1]) return null;
   const seen = store.state.eventHistory.find((h) => h.id === ev.id);
@@ -52,6 +54,22 @@ function eligibleCast(ev, between = false) {
   if (!specs.every((spec) => npcsByRole(spec).length >= specs.filter((x) => x === spec).length)) return null;
   const cast = castFor(ev);
   return meetsAll(ev.castRequires, cast) ? cast : null;
+}
+
+/**
+ * Whether a scene tied to a moment fits now (`timing` on a scene): { yearTurn } only when the year turns (a birthday,
+ * New Year), { seasons } only in those seasons where the player lives. With year-long turns a turn covers every season.
+ */
+function inTime(t) {
+  const state = store.state;
+  const step = [6, 3].includes(state.settings?.step) ? state.settings.step : 12;
+  const month = state.month ?? 0;
+  if (t.yearTurn && month !== 0) return false;
+  if (t.seasons && step !== 12) {
+    const now = turnSeasons(month === 0 ? 12 : month, step, player().countryId);
+    if (!t.seasons.some((x) => now.includes(x))) return false;
+  }
+  return true;
 }
 
 /** A whole-number key from a string, for luck that belongs to one moment. */

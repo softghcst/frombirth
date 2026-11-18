@@ -4,8 +4,8 @@ import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
-import { saveGame, pushUndo, popUndo, undoDepth } from '../save.js';
-import { advanceTurn, ageText, nextTurnText } from '../engine/turns.js';
+import { saveGame, pushUndo, popUndo, undoDepth, peekUndo } from '../save.js';
+import { advanceTurn, ageText, nextTurnText, stepOf, monthOf } from '../engine/turns.js';
 import { getEvent, resolveChoice } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
@@ -132,6 +132,10 @@ export function mountGame(app, hooks) {
     const undo = $('[data-undo]');
     undo.disabled = busy || !undoDepth(store.state.slotId);
     undo.hidden = p.age === 0 && !undoDepth(store.state.slotId);
+    // With turns shorter than a year, undo takes back a turn, not a year.
+    const byTurn = stepOf() !== 12 || monthOf() !== 0;
+    undo.querySelector('small').textContent = byTurn ? 'Go back' : 'Age down';
+    undo.setAttribute('aria-label', byTurn ? 'Go back: take back the last turn' : 'Age down: take back the last year');
   }
 
   function renderJournal() {
@@ -225,7 +229,11 @@ export function mountGame(app, hooks) {
   yearBtn.addEventListener('click', nextYear);
   $('[data-undo]').addEventListener('click', async () => {
     if (busy) return;
-    const sure = await confirmModal({ title: `Go back to age ${player().age - 1}?`, body: 'Everything that happened this year is undone. You can go back up to three years, one at a time.', yes: 'Age down' });
+    const to = peekUndo(store.state.slotId);
+    if (!to) return;
+    const where = to.month ? `${to.age === 0 ? '' : `${to.age} ${to.age === 1 ? 'year' : 'years'}, `}${to.month} months` : `age ${to.age}`;
+    const turnWord = to.month || store.state.month ? 'turn' : 'year';
+    const sure = await confirmModal({ title: `Go back to ${where}?`, body: `Everything that happened since then is undone. You can go back up to three years, one ${turnWord} at a time.`, yes: turnWord === 'year' ? 'Age down' : 'Go back' });
     if (!sure) return;
     const earlier = popUndo(store.state.slotId);
     if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }

@@ -11,6 +11,8 @@ const { saveGame, loadGame } = await import('../js/save.js');
 const { EVENTS, EVENT_BY_ID } = await import('../js/data/events/index.js');
 const { resolveChoice, renderText } = await import('../js/engine/eventEngine.js');
 const turns = await import('../js/engine/turns.js');
+const cal = await import('../js/engine/calendar.js');
+const { COUNTRIES } = await import('../js/data/countries.js');
 
 rng.seed(20261118);
 const problems = []; const ok = [];
@@ -45,6 +47,14 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   check(!turns.setStep(5).ok, 'only the three lengths');
   // Seasons follow the hemisphere.
   check(turns.seasonAt(6, 'us') === 'summer' && turns.seasonAt(6, 'au') === 'winter' && turns.seasonAt(0, 'nz') === 'summer', 'seasons run the other way round in the south');
+  // Each country has its own climate: the tropics have rainy and dry seasons, South Asia the monsoon, the Gulf a hot season.
+  check(Object.keys(COUNTRIES).every((id) => cal.CLIMATE[id]), 'every country has a climate');
+  const at = (m, id) => turns.seasonAt(m, id);
+  check(at(7, 'in') === 'monsoon' && at(0, 'in') === 'cool' && at(4, 'pk') === 'hot', 'India and Pakistan: cool, hot, then the monsoon');
+  check(at(7, 'ng') === 'wet' && at(0, 'ng') === 'dry' && at(1, 'br') === 'wet' && at(7, 'br') === 'dry', 'the tropics: rainy and dry seasons, either way round');
+  check(at(3, 'ke') === 'wet' && at(7, 'ke') === 'dry' && at(10, 'ke') === 'wet' && at(0, 'ec') === 'dry', 'the equator: long rains, short rains, drier months between');
+  check(at(6, 'ae') === 'hot' && at(0, 'sa') === 'cool' && at(3, 'eg') === 'mild', 'the desert: a hot season, a cool one, mild months');
+  check(cal.schoolStart('us') === 8 && cal.schoolStart('jp') === 3 && cal.schoolStart('au') === 1 && cal.schoolStart('in') === 5, 'school years start when they do there');
   check(JSON.stringify(turns.turnSeasons(3, 3, 'us')) === JSON.stringify(['winter', 'spring']) && turns.turnSeasons(12, 6, 'us').includes('fall'), 'a turn covers the seasons of its months');
   // Saved and loaded partway through.
   saveGame(S()); const m = turns.monthOf(); store.state = loadGame(S().slotId);
@@ -99,7 +109,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   check(between.length >= 30, `about thirty scenes for the turns between years (${between.length})`);
   for (const e of between) {
     check(Array.isArray(e.between.steps) && e.between.steps.every((s) => [3, 6].includes(s)), `${e.id}: belongs to six- or three-month turns`);
-    check(!e.between.seasons || e.between.seasons.every((s) => ['winter', 'spring', 'summer', 'fall'].includes(s)), `${e.id}: real seasons`);
+    check(!e.between.seasons || e.between.seasons.every((s) => cal.SEASON_NAMES[s]), `${e.id}: real seasons`);
   }
   // Year-long turns never see them.
   life();
@@ -107,13 +117,15 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   for (let i = 0; i < 40 && P().alive; i++) { turns.advanceTurn(); for (const pe of S().pendingEvents) ids.add(pe.id); S().pendingEvents = []; }
   check(![...ids].some((id) => EVENT_BY_ID[id]?.between), 'with year-long turns there are no in-between scenes');
   // Three-month turns do, and each fits the life and the season.
-  const got = new Map(); const everyday = new Map();
-  for (let t = 0; t < 6; t++) {
-    life(t % 2 ? 'au' : 'us', t % 2 ? 'Sydney' : 'Chicago');
+  const got = new Map(); const everyday = new Map(); const lived = {};
+  const PLACES = [['us', 'Chicago'], ['au', 'Sydney'], ['in', 'Mumbai'], ['br', 'São Paulo'], ['ke', 'Nairobi'], ['eg', 'Cairo'], ['ng', 'Lagos'], ['uk', 'London']];
+  for (let t = 0; t < PLACES.length; t++) {
+    try { life(...PLACES[t]); } catch { life(PLACES[t][0], undefined); }
     turns.setStep(3);
     for (let i = 0; i < 4 * 45 && P().alive; i++) {
       const before = turns.monthOf();
       turns.advanceTurn();
+      if (!turns.monthOf()) lived[P().countryId] = (lived[P().countryId] ?? 0) + 1;
       const between = turns.monthOf() !== 0;
       for (const pe of S().pendingEvents.splice(0)) {
         const ev = EVENT_BY_ID[pe.id];
@@ -144,12 +156,48 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
       S().pendingEvents = []; // follow-ups queued by a choice are their own scenes, not the turn's draw
     }
   }
-  check(got.size >= 15, `many different seasonal scenes come up over six lives (${got.size})`);
+  check(got.size >= 20, `many different seasonal scenes come up over eight lives in seven climates (${got.size})`);
+  // Each of these needs a life long enough in the right climate to have seen it.
+  if ((lived.in ?? 0) >= 15) check(got.has('between_monsoon'), 'the monsoon comes in India');
+  if ((lived.ng ?? 0) + (lived.br ?? 0) + (lived.ke ?? 0) >= 15) check(got.has('between_rains_arrive'), 'the rains come in the tropics');
+  if ((lived.eg ?? 0) + (lived.in ?? 0) >= 15) check(got.has('between_hot_season'), 'the hot season comes in the desert and South Asia');
   const ordinaryCount = [...everyday.values()].reduce((a, b) => a + b, 0);
-  check(ordinaryCount >= 6 * 40 && everyday.size >= 30, `ordinary scenes come up between years as well (${ordinaryCount} times, ${everyday.size} different)`);
+  check(ordinaryCount >= 8 * 40 && everyday.size >= 30, `ordinary scenes come up between years as well (${ordinaryCount} times, ${everyday.size} different)`);
   const winterUS = [...got.keys()].some((id) => EVENT_BY_ID[id].between.seasons?.includes('winter'));
   check(winterUS, 'winter scenes come up too (the last part of the year has its season)');
   section('scenes between years: only with shorter turns, in their season and hemisphere, fitting the life, on their own luck', n);
+}
+
+// 4. Scenes tied to a moment, the undo button, and ages with months.
+{
+  const n = problems.length;
+  const timed = EVENTS.filter((e) => e.timing);
+  check(timed.some((e) => e.timing.yearTurn) && timed.some((e) => e.timing.seasons), 'birthday and New Year scenes, and season scenes, are marked');
+  // In many three-month lives: a birthday scene only when the year turns; a season scene only in its season.
+  for (let t = 0; t < 8; t++) {
+    life(t % 2 ? 'au' : 'uk', t % 2 ? 'Sydney' : 'London');
+    turns.setStep(t % 3 ? 3 : 6);
+    for (let i = 0; i < 4 * 40 && P().alive; i++) {
+      turns.advanceTurn();
+      const m = turns.monthOf();
+      const seasons = turns.turnSeasons(m || 12, turns.stepOf(), P().countryId);
+      for (const pe of S().pendingEvents.splice(0)) {
+        const ev = EVENT_BY_ID[pe.id];
+        if (!ev?.timing) continue;
+        if (ev.timing.yearTurn) check(m === 0, `${pe.id} comes only when the year turns (month ${m})`);
+        if (ev.timing.seasons) check(ev.timing.seasons.some((x) => seasons.includes(x)), `${pe.id} comes only in its season (${seasons.join('/')} in ${P().countryId})`);
+      }
+    }
+  }
+  // Undo reaches three years back whatever the turn length, and says where it goes.
+  const { pushUndo, peekUndo, undoDepth } = await import('../js/save.js');
+  life(); turns.setStep(3);
+  for (let i = 0; i < 16; i++) { pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; }
+  check(undoDepth(S().slotId) === 12, `three years of three-month turns can be taken back (${undoDepth(S().slotId)})`);
+  const to = peekUndo(S().slotId);
+  check(to && to.month === 9 && to.age === P().age - 1, `going back from the turn of a year lands on its last quarter (${JSON.stringify(to)})`);
+  check(turns.ageLabel(0, 3) === '3 months' && turns.ageLabel(1, 6) === '1 year, 6 months' && turns.ageLabel(40, 9) === '40 years, 9 months' && turns.ageLabel(7, 0) === '7', 'ages read naturally');
+  section('timing: birthdays at the turn of the year, season scenes in their season; undo by the turn, three years back', n);
 }
 
 for (const m of ok) console.log(`ok   ${m}`);
