@@ -51,11 +51,12 @@ export const RESTING = {
 };
 /**
  * Eyes only women and girls are given at random or by inheritance: those drawn with lashes at the outer corner,
- * and two more that read as feminine. Each names the shape anyone else gets instead, the nearest of the men's
- * eyes, so a son still takes after his mother; a man made at random draws evenly from the men's eyes (every
- * resting shape not listed here). Anyone can still choose any of them in the creator, and saved faces are never changed.
+ * and two more that read as feminine. Each names its men's version (eyes 27 to 32: the same eye, plainer), which
+ * a son who would inherit it gets instead, so he still takes after his mother. A man made at random draws evenly
+ * from the men's resting eyes (every shape in RESTING not listed here). Anyone can still choose any of them in the
+ * creator, and saved faces are never changed.
  */
-export const WOMEN_EYES = { eyes_8: 'eyes_19', eyes_10: 'eyes_19', eyes_16: 'eyes_9', eyes_18: 'eyes_9', eyes_20: 'eyes_19', eyes_25: 'eyes_9' };
+export const WOMEN_EYES = { eyes_8: 'eyes_27', eyes_10: 'eyes_28', eyes_16: 'eyes_29', eyes_18: 'eyes_30', eyes_20: 'eyes_31', eyes_25: 'eyes_32' };
 /** The soft, thin brows every baby and toddler has, whatever they grow into. */
 export const BABY_BROWS = 'brows_8';
 /** Expressions the renderer can borrow for a mood. */

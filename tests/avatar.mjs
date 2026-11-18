@@ -118,13 +118,13 @@ check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inh
     check(!Array.from({ length: 1500 }, () => randomAppearance(undefined, gender)).some(lashed), `random ${gender} characters get lashed eyes`);
   }
   check(Array.from({ length: 600 }, () => randomAppearance(undefined, 'female')).filter(lashed).length > 300, 'women no longer get their eyes at random');
-  check(Object.values(CUR.WOMEN_EYES).every((e) => CUR.RESTING.eyes.includes(e) && !(e in CUR.WOMEN_EYES)), 'a son is given eyes that are not one of the men\'s');
+  check(Object.values(CUR.WOMEN_EYES).every((e) => PART_BY_ID[e] && CATALOG.eyes.some((x) => x.id === e) && !(e in CUR.WOMEN_EYES)), 'a son is given eyes that are not one of the men\'s');
   const mum = randomAppearance(3, 'female'); mum.inherited.eyes = 'eyes_16';
   // Now and then a child gets a shape neither parent has, so look at many children.
   const kids = (gender) => Array.from({ length: 200 }, () => ensureStyled(inheritAppearance(mum, cloneAppearance(mum)), gender).inherited.eyes);
   const sons = kids('male'), daughters = kids('female');
   check(!sons.some((e) => e in CUR.WOMEN_EYES), 'a son was given one of the women\'s eyes');
-  check(sons.filter((e) => e === 'eyes_9').length > 160 && daughters.filter((e) => e === 'eyes_16').length > 160,
+  check(sons.filter((e) => e === 'eyes_29').length > 160 && daughters.filter((e) => e === 'eyes_16').length > 160,
     'sons should mostly take the nearest of the men\'s eyes to their mother\'s, and daughters her own');
   const saved = cloneAppearance(mum);
   check(ensureStyled(saved, 'male').inherited.eyes === 'eyes_16', 'a saved face had its eyes changed');
@@ -301,7 +301,7 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
 
 // 10. The faces on offer: the withdrawn eyes, mouths and noses are gone, saves that used them land on the nearest kept,
 // and the rest are offered and drawn at random exactly as before.
-const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_24', 'eyes_25', 'eyes_26', 'eyes_7', 'eyes_8', 'eyes_9'];
+const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_24', 'eyes_25', 'eyes_26', 'eyes_27', 'eyes_28', 'eyes_29', 'eyes_30', 'eyes_31', 'eyes_32', 'eyes_7', 'eyes_8', 'eyes_9'];
 check(AVATAR_MANIFEST.eyes.map((e) => e.id).join() === EYES.join(), 'the eye shapes in the manifest have changed');
 check(CATALOG.eyes.map((e) => e.id).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
 check(CUR.RESTING.eyes.join() === 'eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_25,eyes_26', 'the eyes given out at random have changed');

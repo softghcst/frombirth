@@ -1004,9 +1004,18 @@ def weigh_lines(folder='noses', recolor=True):
         ink = ';stroke:var(--line-ink,currentColor);stroke-width:var(--line-width,0);stroke-linejoin:round'
         fill = (lambda h: f'var(--line-ink,{h})') if recolor else (lambda h: h)
         dark = sorted({h for h in re.findall(r'style="fill:(#[0-9a-fA-F]{6})"', text) if lum(h) < INK}, key=lum)
-        # Eyes and lips: only the darkest shade is the outline. A second dark shade is a filled area (a shaded iris)
-        # that a stroke would blot.
-        lines = set(dark) if recolor else set(dark[:1])
+        if not recolor:
+            # Eyes and lips: only the outline. It reaches across the whole eye or mouth, so of the dark shades that
+            # span (nearly) the widest, the darkest. A dark shade that does not, a pupil or the shading in an iris,
+            # is a filled area that a stroke would blot.
+            span = {}
+            for h, shape in re.findall(r'style="fill:(#[0-9a-fA-F]{6})"[^>]*?\sd="([^"]*)"', text):
+                box = bbox_of([{'cmds': parse_path(shape)}])
+                if box and h in dark:
+                    span[h] = max(span.get(h, 0), box[2] - box[0])
+            widest = max(span.values(), default=0)
+            dark = [h for h in dark if span.get(h, 0) >= 0.9 * widest][:1]
+        lines = set(dark)
         text = re.sub(r'style="fill:(#[0-9a-fA-F]{6})"', lambda m: f'style="fill:{fill(m.group(1))}{ink}"' if m.group(1) in lines else m.group(0), text)
         text = text.replace('data-pathways="1"', 'data-pathways="1" data-lines="1"', 1)
         with open(path, 'w', encoding='utf-8') as out:
