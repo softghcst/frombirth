@@ -2,6 +2,7 @@
 // and, when it goes wrong, life inside.
 import { cityLine } from '../../engine/cities.js';
 import { store, player, country } from '../../state.js';
+import { openIdol } from '../kpop.js';
 import { esc, fmtMoney } from '../../util.js';
 import { canGamble } from '../../engine/gambling.js';
 import { may } from '../../engine/rules.js';
@@ -113,6 +114,7 @@ export default {
         </div>` : ''}
         ${legalCard()}
         ${law.isJailed() ? '' : athleticsCard()}
+        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? `<div class="card"><h3>K-pop fandom</h3><p class="muted" style="margin-bottom:10px">${p.fan ? `A fan of ${esc(store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group')} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : 'Follow a group, collect and trade photocards.'}</p><button class="btn" data-go="photocards">Photocards</button></div>` : ''}
         <div class="card"><h3>Travel</h3><p class="muted" style="margin-bottom:10px">Trips at home and abroad, your papers, and the places you have been.</p><div class="btn-stack"><button class="btn" data-go="travel">Explore the World</button></div></div>
         ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Riding</h3><p class="muted" style="margin-bottom:10px">${p.riding ? `${esc(riding.levelName(riding.riderLevel()))} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : 'Lessons, horses and the show ring.'}</p><button class="btn" data-go="riding">Equestrian</button></div>` : ''}
         ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><p class="muted" style="margin-bottom:10px">Once a year. With others at home, it is time together.</p><div class="btn-stack">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
@@ -141,6 +143,7 @@ export default {
       const go = e.target.closest('[data-go]')?.dataset.go;
       if (go === 'riding') return openScreen(api, 'riding');
       if (go === 'athletics') return openAthletics(api);
+      if (go === 'photocards') return openIdol(api, 'photocards');
       if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a) })[go](api);
       return undefined;
       if (go) return ({ abroad: leisure.moveAbroad, city: leisure.moveCity })[go]?.(api);

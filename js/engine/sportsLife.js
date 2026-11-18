@@ -18,6 +18,8 @@ import { hire, endJob } from './career.js';
 import { registerEmployer, payAt, employer } from './employers.js';
 import { catalog } from './university.js';
 import { makeNpc } from './npcFactory.js';
+import { rng } from '../rng.js';
+import { makeAgents, ensureTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
 import * as sp from './sports.js';
 import { familyPast, tickRelatives, parentsYear } from './sportsFamily.js';
 import { tickSportsArcs } from './sportsArcs.js';
@@ -162,18 +164,11 @@ const ANSWERS = {
   },
   agent(state, d, choice) {
     if (choice === 'no') return result(true, 'You handle your own deals.', 'neutral');
-    const S = sp.ensure(state);
     const a = sp.myAthlete(state);
-    const p = state.player;
     if (a.agentId && state.npcs[a.agentId]?.alive) return { ...result(false, 'You already have an agent.', 'neutral'), close: true };
-    const n = makeNpc({ role: 'agent', countryId: p.countryId, age: seeded(`agent/${p.id}/${state.year}`).int(32, 58), relationship: 50 });
-    n.flags.title = 'Sports agent';
-    state.npcs[n.id] = n; p.npcIds.push(n.id);
-    a.agentId = n.id;
-    S.contracts[`agent_${n.id}`] = { id: `agent_${n.id}`, kind: 'agent', personId: p.id, agentId: n.id, name: fullName(n), from: state.year, to: null, share: 0.05, status: 'active' };
-    const text = `${fullName(n)} is your agent now: five per cent of your playing income, and better deals for it.`;
-    log(text, 'system', 'good');
-    return result(true, text);
+    // An agent who calls is one of the country's real sports agents, with their own cut and clients: the player hears
+    // them out, and signs (or looks again) under Representation.
+    return findSportsAgent(state);
   },
   sponsor(state, d, choice) {
     if (choice === 'no') return result(true, 'You said no to the sponsor.', 'neutral');
@@ -252,7 +247,7 @@ function offerFor(state, e, org) {
   const emp = employer(org.employerId);
   const [lo, hi] = payAt(emp, career, level);
   const pop = sport.popular.includes(p.countryId) ? 1 : 0.45;
-  const agent = sp.myAthlete(state).agentId ? 1.1 : 1;
+  const agent = sp.myAthlete(state).agentId ? 1 + 0.1 * agentClout(sp.myAthlete(state)) : 1;
   const salary = Math.round((lo + (hi - lo) * clamp((o - 60) / 35, 0, 1)) * pop * agent);
   const r = seeded(`offer/${org.id}/${p.id}/${state.year}`);
   return { level, salary, years: r.int(1, 4) };
@@ -285,7 +280,7 @@ function signPro(state, d, o = {}) {
   sp.moment(state, { type: o.transfer ? 'transfer' : 'signing', sportId: d.sportId, text: `${o.transfer ? 'Transferred to' : d.how === 'draft' ? `Drafted by` : 'Signed for'} ${org.name}.`, sig: 3, orgId: org.id });
   milestone(`${o.transfer ? 'Transferred to' : d.how === 'draft' ? 'Drafted by' : 'Signed professionally with'} ${org.name}.`, 'career');
   if (p.age >= 25 && !o.transfer) arc(state, 'late_bloomer', d.sportId, 'Late bloomer', `A first professional contract at ${p.age}.`);
-  if (!sp.myAthlete(state).agentId) decide(state, { kind: 'agent', sportId: d.sportId, text: 'An agent has been in touch: they would handle your contracts and sponsors for a share of what you earn.', options: [{ id: 'yes', label: 'Take on the agent (5%)' }, { id: 'no', label: 'Handle it yourself' }] });
+  if (!sp.myAthlete(state).agentId) decide(state, { kind: 'agent', sportId: d.sportId, text: 'An agent has been in touch: they would handle your contracts and sponsors for a share of what you earn.', options: [{ id: 'yes', label: 'Hear them out' }, { id: 'no', label: 'Handle it yourself' }] });
   return result(true, `You signed for ${org.name}.`);
 }
 function endContract(state, k, why) {
@@ -308,7 +303,7 @@ export function needsSport(state = store.state) {
   return !sp.activeSports(p.id, state).some((e) => e.level === 'pro');
 }
 /** Sports a professional could play here this year. */
-export const proSports = (state = store.state) => SPORTS_LIST.filter((x) => x.kind !== 'fitness' && state.year >= sp.proFromFor(x, state.player) && sp.proPath(x, state.player.countryId) !== 'none' && sp.canPlay(x.id, state.player, state).ok);
+export const proSports = (state = store.state) => SPORTS_LIST.filter((x) => x.kind !== 'fitness' && sp.proYears(x, sp.divOf(state.player), state.year).open && sp.proPath(x, state.player.countryId) !== 'none' && sp.canPlay(x.id, state.player, state).ok);
 
 /**
  * Plays a sport professionally, for someone hired as a professional athlete. A team sport signs them with a club
@@ -471,7 +466,7 @@ export function quitCollegeTeam(sportId, state = store.state) {
 function proRoutes(state, a, e) {
   const p = state.player;
   const sport = sportOf(e.id);
-  if (e.contractId || e.level === 'pro' || p.age < 17 || state.year < sp.proFromFor(sport, p) || e.banUntil > state.year) return;
+  if (e.contractId || e.level === 'pro' || p.age < 17 || !sp.proYears(sport, sp.divisionOf(state), state.year).open || e.banUntil > state.year) return;
   if (Object.values(sp.ensure(state).contracts).some((k) => k.kind === 'pro' && k.status === 'active' && k.personId === p.id)) return; // under contract in another sport
   const route = sp.proPath(sport, p.countryId);
   const o = overall(e, p);
@@ -536,7 +531,7 @@ function contractYear(state, a, e) {
   }
   // Agents are paid their share of the year's playing income.
   if (a.agentId) {
-    const fee = Math.round(k.salary * 0.05);
+    const fee = Math.round(k.salary * agentCut(a));
     settle(state, `agent/${k.id}/${state.year}`, -fee, 'sport', 'Your agent\'s share');
   }
   if (state.year >= k.to) {
@@ -600,7 +595,7 @@ function fameYear(state, a, e, sum) {
     // The better known, the likelier a brand calls.
     if (r.chance(Math.min(0.9, 0.2 + a.fame / 100))) {
       const brand = r.pick(SPONSORS);
-      const amount = money(state, Math.round(a.fame * 900 * (a.agentId ? 1.15 : 1)));
+      const amount = money(state, Math.round(a.fame * 900 * (a.agentId ? 1 + 0.15 * agentClout(a) : 1)));
       decide(state, { kind: 'sponsor', sportId: e.id, brand, amount, years: r.int(1, 3), key: `sponsor/${state.year}`, text: `${brand} want you in their next campaign: ${fmt(state, amount)} a year.`,
         options: [{ id: 'yes', label: 'Sign' }, { id: 'no', label: 'Say no' }] });
     }
@@ -615,7 +610,7 @@ function paySponsors(state) {
     if (state.year > k.to) { k.status = 'ended'; continue; }
     settle(state, `sponsor/${k.id}/${state.year}`, k.amount, 'sponsorship', `Sponsorship: ${k.name}`);
     const a = sp.myAthlete(state);
-    if (a.agentId) settle(state, `agent/${k.id}/${state.year}`, -Math.round(k.amount * 0.05), 'sport', 'Your agent\'s share');
+    if (a.agentId) settle(state, `agent/${k.id}/${state.year}`, -Math.round(k.amount * agentCut(a)), 'sport', 'Your agent\'s share');
   }
 }
 /** Prize money for a professional event: by how far the player got. */
@@ -857,7 +852,7 @@ function yearIn(state, a, e) {
       if (prize && settle(state, `prize/${ev.id}`, prize, 'prizeMoney', `Prize money: ${ev.name}`)) {
         ev.prize = prize;
         yearStats.prize = (yearStats.prize ?? 0) + prize;
-        if (a.agentId) settle(state, `agent/${ev.id}`, -Math.round(prize * 0.05), 'sport', 'Your agent\'s share');
+        if (a.agentId) settle(state, `agent/${ev.id}`, -Math.round(prize * agentCut(a)), 'sport', 'Your agent\'s share');
       }
       if (sp.isTitle(ev.place)) {
         sum.title = true; sum.titleName = ev.name;
@@ -1026,3 +1021,108 @@ export function audit(state = store.state) {
 }
 
 export { LEVEL_NAMES };
+
+// ---------- Sports agents, shopped for ----------
+// Each country has its own sports agents (engine/agents.js): people at agencies, each with their own cut (3–10%), pull
+// with clubs and brands (clout: better contracts and sponsorships), and athletes on their books the player can look
+// through. Looking shows one agent at a time, twice a year. The agent's cut comes out of salary, prize money and
+// sponsorship. Older saves' agents, signed at a flat five per cent, keep those terms.
+
+const AGENCY_NAMES = ['{S} Sports Management', '{W} Sports', '{S} & {S2} Athlete Representation', '{W} Pro Management'];
+const AGENCY_WORDS = ['Summit', 'Victory', 'Apex', 'Baseline', 'Podium', 'Keystone', 'Northstar', 'Fullcourt', 'Clearwater', 'Ironside'];
+export const agentCut = (a) => (a?.agentId ? a.agent?.commission ?? 0.05 : 0);
+export const agentClout = (a) => (a?.agentId ? a.agent?.clout ?? 1 : 0);
+const athleteWord = (sport) => (sport.kind === 'team' || sport.kind === 'racket' ? `${sport.name} player` : sport.kind === 'golf' ? 'Golfer' : sport.kind === 'combat' ? `${sport.name} fighter` : `${sport.name} athlete`);
+
+/** Invented professional athletes on an agency's books: a mix of sports, women and men. */
+function clientAthletes(state, countryId, tier) {
+  const pool = SPORTS_LIST.filter((x) => x.pro !== 'none' && !x.adaptive && x.proFrom <= state.year);
+  const local = pool.filter((x) => x.popular.includes(countryId));
+  return Array.from({ length: tier === 'top' ? 3 : 2 }, () => {
+    const sport = rng.pick(local.length && rng.chance(0.7) ? local : pool);
+    const woman = rng.chance(0.4) && sp.proYears(sport, 'women', state.year).open;
+    const n = makeNpc({ role: 'performer', countryId, age: rng.int(19, 34), gender: woman ? 'female' : 'male', relationship: 30 });
+    n.occupation = `Professional ${athleteWord(sport).toLowerCase()}`;
+    n.flags.sport = sport.id;
+    n.flags.star = { kind: 'athlete', sport: sport.id, division: woman ? 'women' : 'men', fame: tier === 'top' ? rng.int(40, 85) : rng.int(8, 45), skill: { sports: tier === 'top' ? rng.int(82, 96) : rng.int(64, 84) } };
+    state.npcs[n.id] = n;
+    return n;
+  });
+}
+
+/** The country's sports agents, made the first time anyone looks. */
+export function sportsAgents(countryId = store.state.player.countryId, state = store.state) {
+  const S = sp.ensure(state);
+  S.agentPools ??= {};
+  S.agentPools[countryId] ??= makeAgents('sports', countryId, { country: COUNTRIES[countryId], makeNpc, words: AGENCY_WORDS, agencyNames: AGENCY_NAMES, clients: (tier) => clientAthletes(state, countryId, tier) });
+  return S.agentPools[countryId].map((id) => state.npcs[id]).filter((n) => n && n.alive !== false).map((n) => { ensureTerms(n); return n; });
+}
+
+/** What the player is worth to an agent: how good they are where it counts, and how well known. */
+export function athleteWorth(state = store.state) {
+  const a = sp.myAthlete(state);
+  if (!a) return 0;
+  const best = Math.max(0, ...Object.values(a.sports).filter((e) => e.status === 'active' && e.level !== 'recreational').map((e) => overall(e, state.player)));
+  return Math.round(Math.max(0, (best - 40) * 1.5) + (a.fame ?? 0) * 0.5);
+}
+const canHaveAgent = (state) => { const a = sp.myAthlete(state); return state.player.age >= 15 && a && Object.values(a.sports).some((e) => e.status === 'active' && e.level !== 'recreational'); };
+export const myAgent = (state = store.state) => { const a = sp.myAthlete(state); return a?.agentId ? { npcId: a.agentId, agency: a.agent?.agency ?? '', commission: agentCut(a), clout: agentClout(a), since: a.agent?.since ?? '' } : null; };
+export const sportsAgentOnOffer = () => offered('sports');
+export const sportsAgentTriesLeft = () => triesLeft('sports');
+export const wantsSportsAgent = (state = store.state) => canHaveAgent(state) || !!sp.myAthlete(state)?.agentId;
+
+/** One look for a sports agent: one of those who would take the player on, with their terms. */
+export function findSportsAgent(state = store.state) {
+  if (!canHaveAgent(state)) return result(false, 'Agents represent athletes who compete: join a club, team or tour first.', 'neutral');
+  const worth = athleteWorth(state);
+  const mine = sp.myAthlete(state).agentId;
+  const r = lookFor('sports', sportsAgents(state.player.countryId, state).filter((n) => n.flags.agent.standard <= worth && n.id !== mine));
+  if (r.error) return result(false, r.error, 'neutral');
+  if (r.none) return result(false, 'No sports agent will take you on yet. Results, and being known, change that.', 'neutral');
+  const g = r.agent.flags.agent;
+  return result(true, `${fullName(r.agent)} of ${g.agency} would represent you, for ${Math.round(g.commission * 100)}% of what you earn from sport.`, 'neutral');
+}
+export function passOnSportsAgent() { clearOffer('sports'); return result(true, 'You say no.', 'neutral'); }
+export function signSportsAgent(state = store.state) {
+  const n = offered('sports', state.player);
+  if (!n) return result(false, 'No agent is on offer.', 'neutral');
+  if (sp.myAthlete(state).agentId) dropSportsAgent(state, true);
+  const S = sp.ensure(state);
+  const a = sp.myAthlete(state);
+  const p = state.player;
+  const g = n.flags.agent;
+  a.agentId = n.id;
+  a.agent = { agency: g.agency, commission: g.commission, clout: g.clout, since: state.year };
+  if (!g.clients.includes('player')) g.clients.push('player');
+  if (!p.npcIds.includes(n.id)) p.npcIds.push(n.id);
+  n.flags.title = 'Your sports agent';
+  S.contracts[`agent_${n.id}`] = { id: `agent_${n.id}`, kind: 'agent', personId: p.id, agentId: n.id, name: fullName(n), from: state.year, to: null, share: g.commission, status: 'active' };
+  clearOffer('sports', p);
+  const text = `${fullName(n)} of ${g.agency} is your agent now: contracts, sponsors, and ${Math.round(g.commission * 100)}% of what you earn from sport.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+export function dropSportsAgent(state = store.state, quiet = false) {
+  const a = sp.myAthlete(state);
+  if (!a?.agentId) return result(false, 'You have no agent.', 'neutral');
+  const n = state.npcs[a.agentId];
+  if (n?.flags.agent) n.flags.agent.clients = n.flags.agent.clients.filter((c) => c !== 'player');
+  if (n) n.flags.title = 'Your former sports agent';
+  const k = sp.ensure(state).contracts[`agent_${a.agentId}`];
+  if (k?.status === 'active') { k.status = 'ended'; k.to = state.year; k.ended = state.year; }
+  a.agentId = null; a.agent = null;
+  if (!quiet) log('You and your agent part ways.', 'system', 'neutral');
+  return result(true, 'You and your agent part ways.', 'neutral');
+}
+export function askSportsAgentCut(state = store.state) {
+  const a = sp.myAthlete(state);
+  if (!a?.agentId) return result(false, 'You have no agent.', 'neutral');
+  a.agent ??= { agency: '', commission: 0.05, clout: 1, since: state.year };
+  const holder = { npcId: a.agentId, commission: a.agent.commission };
+  const r = askLowerCut('sports', holder, athleteWorth(state), state.player);
+  a.agent.commission = holder.commission;
+  const k = sp.ensure(state).contracts[`agent_${a.agentId}`];
+  if (k) k.share = holder.commission;
+  if (r.dropped) dropSportsAgent(state, true);
+  return r;
+}

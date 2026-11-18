@@ -43,6 +43,7 @@ node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, b
 node tests/animal-life.mjs     # staff, classes, behavior, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
 node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
 node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
+node tests/sports-divisions.mjs   # sports: women's and men's divisions, women's professional years, sports agents shopped for
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
@@ -67,6 +68,7 @@ node tests/careers.mjs         # the occupation catalog, employers and openings,
 node tests/fame.mjs            # the fame profile, the entertainment world, acting from audition to credit, press, awards once, eras, child performers (see docs/FAME.md)
 node tests/fame2.mjs           # sport played match by match (fame from results only), modeling, books, celebrity brands, famous lives, comebacks, the family record
 node tests/fame3.mjs           # lives started in the past, newer sports, injuries, women's leagues, coaching, casting choices, literary agents and rights, brand launches, music videos and songwriting
+node tests/kpop.mjs            # the K-pop idol life: auditions, trainees, survival programs, positions (one or two each), music shows, ending fairies, contracts, hiatus, fan products, photocards and collecting, variety careers, the family route, generations (see docs/KPOP.md)
 node tests/music.mjs           # bands, releases, charts, royalties paid once, record deals, tours, music awards, heirs
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
 node tests/moments.mjs         # living moments: occasions marked once in their year, Age Up never repeats them, traditions passed down
@@ -133,6 +135,13 @@ strokes, times, judged scores and bouts. Sport skills are separate from the char
 fixed ceiling, with diminishing returns per training hour. Coaches, key teammates, doubles partners and agents are
 real people. Results come from keyed, seeded luck and are stored once, so a reload never re-rolls them; standings
 and champions are counted from completed games only. Clubs, leagues and the Pathways Rating (PR) are invented.
+
+Above recreational play, women and men compete in their own divisions: separate clubs' teams, leagues, tours and
+events, with names and teammates to match. Women's professional play starts in its own years (later than men's in
+most sports, none at all in some, and one league that closed again); non-binary and transgender players choose their
+division between clubs. Sports agents are shopped for like every other agent: one at a time, two looks a year, each
+with their own cut (3–10%), pull with clubs and brands, and athletes on their books (My Athletics → Career, or My
+Fame → Representation).
 
 | What | Where |
 |---|---|

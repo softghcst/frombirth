@@ -75,9 +75,11 @@ export function gain(o, p = player()) {
   if (audience !== 'public') f.audiences.public = add(f.audiences.public, amount * AUDIENCES[audience].weight * 0.35);
   const home = o.countryId ?? p.countryId;
   f.regions[home] = add(f.regions[home] ?? 0, amount * (0.4 + AUDIENCES[audience].weight * 0.4));
-  for (const c of o.abroad ?? []) f.regions[c] = add(f.regions[c] ?? 0, amount * (o.reach ?? 0.3) * (0.3 + AUDIENCES[audience].weight * 0.3));
+  for (const c of o.abroad ?? []) f.regions[c] = add(f.regions[c] ?? 0, amount * (o.reach ?? 0.3) * (0.2 + AUDIENCES[audience].weight * 0.2)); // being known abroad is slower than at home
   f.attention = add(f.attention, amount * 0.8);
-  if (o.lasting) f.legacy = add(f.legacy, amount * o.lasting * 0.5);
+  // What lasts builds slowly, and more slowly the more there already is: "historic" takes a lifetime of work.
+  if (o.lasting && amount > 0) f.legacy = Math.round(clamp(f.legacy + amount * o.lasting * 0.4 * ((100 - f.legacy) / 100) ** 2) * 10) / 10;
+  else if (o.lasting) f.legacy = add(f.legacy, amount * o.lasting * 0.5);
   note(f, audience, amount, o.why ?? '');
   return refresh(p);
 }
