@@ -48,6 +48,7 @@ node tests/lawmaking.mjs       # a head of government changing the law of the la
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
+node tests/inheritance.mjs     # estate and inheritance tax: worked examples, and every country's scale
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
@@ -420,6 +421,13 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
 Australia). The top band is each country's real top rate, from "List of countries by tax rates" (`TAX_TOP`; for the
 United States the federal 37%). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
 anything more you earn.
+
+**Estate and inheritance tax** (`js/engine/inheritance.js`, rules in `js/data/inheritance.js`) depends on who inherits. Some
+countries tax the estate as a whole before it is shared (the United States above USD 15 million, the United Kingdom at 40% above
+GBP 325,000, Japan, South Korea, Taiwan, South Africa, the Philippines); others tax each heir on what they receive, with a spouse
+usually exempt, a child paying little, and anyone else much more (Germany, France, Spain, Italy, Ireland, the Netherlands and
+others); many charge nothing. A will that leaves everything to friends costs more than one that leaves it to children, and
+charity is untaxed. Rates and allowances come from PwC Worldwide Tax Summaries and Wikipedia; see `docs/WORLD_DATA.md`.
 
 **Health care** has six models:
 

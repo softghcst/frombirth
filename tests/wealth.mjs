@@ -706,7 +706,7 @@ const mum = person('parent', 70); mum.gender = 'female'; mum.savings = 90000; mu
 const sib23 = person('sibling', 35, { savings: 0 });
 const c23 = p.finance.cash;
 mum.alive = false; inheritFrom(mum);
-const tax23 = Math.round(45000 * COUNTRIES.us.estateTax);
+const tax23 = 0; // far below the US federal exemption
 check(p.finance.cash === c23 + 45000 - tax23 && sib23.life.savings === 45000 - tax23 && mum.savings === 0, 'a parent\'s savings are shared between the player and their sibling, after estate tax, and are not left behind as well');
 check(yearTotals(store.state.ledger, store.state.year, 'USD').income.inheritance === toMinor(45000 - tax23, 'USD') && p.milestones.some((m) => m.text === 'Inherited from ' + mum.firstName + '.'), 'it is recorded as an inheritance, and remembered');
 const dad = person('parent', 72); dad.gender = 'male'; dad.savings = 50000; const mum2 = person('parent', 70); mum2.gender = 'female'; mum2.savings = 1000;
