@@ -4,8 +4,10 @@ import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
+import { ledgerOf } from './engine/ledger.js';
+import { reconcile as reconcileAnimals } from './engine/animals.js';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 const K_INDEX = 'pathways.index';
 const K_SLOT = 'pathways.slot.';
 const K_GRAVE = 'pathways.graveyard';
@@ -70,6 +72,42 @@ function migrate(state) {
   ensureCareer(state.player.career);
   state.player.businesses ??= [];
   if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
+  for (const a of Object.values(state.animals?.byId ?? {})) for (const h of a.homes) rename(h, h.countryId);
+  for (const e of state.animals?.events ?? []) if (e.place) rename(e.place, e.place.countryId);
+  // Lives saved before the family's animals had a record of their own: each is entered once, as it stands,
+  // with nothing made up about a past that was never written down.
+  reconcileAnimals(state);
+  // Animal businesses once had books of their own, before they joined the shared business system (engine/business.js).
+  // Any still open in an old save are wound up: what was in them is paid to their owner, once.
+  for (const b of Object.values(state.animals?.businesses ?? {})) {
+    if (!b.closed && b.owner?.id === state.player.id && b.cash > 0) state.player.finance.cash += b.cash;
+    if (!b.closed) b.closed = { year: state.year, why: 'wound up when businesses were brought together' };
+    b.cash = 0;
+  }
+  // Lives saved before the ledger: what they have today becomes an opening balance. No past is invented,
+  // no bills are charged for years that were never recorded, and nobody is paid a "first" wage twice.
+  if (!state.ledger) {
+    if (pl.finance.lifetimeEarned > 0) pl.flags.firstPay ??= true;
+    ledgerOf(state, { desc: 'What you had when the books were opened (from an earlier version of the game)' });
+  }
+  // Lives saved before the justice records: each record entry is kept as it was,
+  // marked as older, with its offence named in today's terms. Nothing is invented:
+  // open cases, unsolved crimes and sentences are upgraded the first time they are
+  // used (engine/justice.js upgradeLegacy), with no trial history made up for them.
+  const legal = pl.legal;
+  legal.record ??= [];
+  legal.history ??= [];
+  legal.counselIds ??= [];
+  legal.supervision ??= null;
+  const OLD = { shoplift: 'shoplifting', pickpocket: 'theft', vandalism: 'criminal_damage', bike_theft: 'theft', burglary: 'burglary', mugging: 'robbery', car_theft: 'vehicle_theft', fraud: 'fraud', bank_robbery: 'armed_robbery', murder: 'homicide' };
+  for (const r of legal.record) {
+    if (r.caseId) continue;
+    r.caseId = `legacy_${legal.record.indexOf(r)}`;
+    r.legacy = true;
+    if (OLD[r.crimeId]) { r.oldCrimeId = r.crimeId; r.crimeId = OLD[r.crimeId]; }
+    r.outcome ??= r.convicted ? 'convicted' : 'acquitted';
+    r.year ??= pl.birthYear + r.age;
+  }
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

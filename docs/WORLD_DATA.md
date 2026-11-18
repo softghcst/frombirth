@@ -58,8 +58,8 @@ Explorer under "How the law was checked", and `node tests/rules.mjs` fails if an
 | Question | Source article | Test used |
 |---|---|---|
 | Death penalty | Capital punishment by country | in use = an execution in the last ten years |
-| Same-sex marriage | Same-sex marriage (timeline of legalisations) | legal nationwide |
-| LGBT people | LGBTQ rights in Africa / Asia / Europe / the Americas / Oceania | hostile = activity criminalised; protected = civil unions or marriage, and anti-discrimination law |
+| Same-sex marriage | Same-sex marriage (timeline of legalizations) | legal nationwide |
+| LGBT people | LGBTQ rights in Africa / Asia / Europe / the Americas / Oceania | hostile = activity criminalized; protected = civil unions or marriage, and anti-discrimination law |
 | Military service | Conscription (by-country table) | compulsory in law, even where selective |
 | Voting, drinking, pension ages; alcohol bans | Voting age; Legal drinking age; Retirement age | pension age = the men's age, or the standard age where a range is given |
 | Divorce | Divorce law by country | |
@@ -67,10 +67,10 @@ Explorer under "How the law was checked", and `node tests/rules.mjs` fails if an
 | One nationality only | Multiple citizenship, and 13 national nationality-law articles | |
 | Form of government | List of countries by system of government | |
 | Marriage age | Marriageable age | without parental or judicial consent; a separate age for women where the law sets one. The game never lets anyone marry before 18 |
-| Driving age | List of minimum driving ages | the youngest age to hold a car licence, conditions allowed; not mopeds, motorcycles or supervised learners |
+| Driving age | List of minimum driving ages | the youngest age to hold a car license, conditions allowed; not mopeds, motorcycles or supervised learners |
 | Gambling age, and whether gambling is legal | Gambling age | the casino age where several are given; legal where lotteries or betting are open to citizens |
 | School-leaving age | School-leaving age | the end of compulsory schooling |
-| Residence before naturalisation; dual nationality | Naturalization | |
+| Residence before naturalization; dual nationality | Naturalization | |
 | Free movement | Member state of the European Union; Trans-Tasman Travel Arrangement | the European area is the EU members in the game, plus Norway (EEA) and Switzerland |
 
 What changed as a result: four countries no longer execute (the Bahamas, DR Congo, Ethiopia, Uganda); six gained "protected"
@@ -93,7 +93,7 @@ No city coordinates, populations or statistics are stored.
 - **`currency.scale` is a fictional simulation rate**, roughly the order of magnitude of each currency against a base unit so that
   prices read naturally. It is not a market quote and does not move with real exchange rates.
 - **Law flags and legal ages** are checked against published summaries (above) but are one value per country: real law has
-  exceptions, regional variation and dates of effect that are not modelled. They configure the game; they are not legal
+  exceptions, regional variation and dates of effect that are not modeled. They configure the game; they are not legal
   information. Laws change, and in a long game the simulation changes them too.
 - **"Free health care" and "free university"** are yes-or-no simplifications of systems that are neither.
 - **Browsing groups follow a game convention**, not strict geography: Georgia and Turkey are listed under "Middle East", and Central
@@ -101,7 +101,7 @@ No city coordinates, populations or statistics are stored.
 
 ## Places that are not ordinary sovereign states
 
-| Place | Modelled as | Tied to | Nationality at birth |
+| Place | Modeled as | Tied to | Nationality at birth |
 |---|---|---|---|
 | Puerto Rico | territory | United States | United States |
 | Aruba | territory (constituent country of the Kingdom of the Netherlands) | Netherlands | Dutch |
@@ -134,7 +134,7 @@ shown on its profile.
   for six regional matters, in the countries listed in `REGIONAL_COUNTRIES`; which matters belong to regions in each real
   country is simplified to one list. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same eight everywhere, with the same fees, terms and five-year path to
-  permanence. Real systems differ by country and are not modelled. The free-movement areas (a European area, and Australia with
+  permanence. Real systems differ by country and are not modeled. The free-movement areas (a European area, and Australia with
   New Zealand) are simplified lists and unverified. Family members hold dependant status on the player's visa, simplified to one rule for every country; there is no
   deportation for crime, no overstaying, and no visa needed for a short visit.
 - Everyday money is one balance in the currency of the country of residence; other currencies are separate accounts. Property abroad
@@ -151,7 +151,7 @@ shown on its profile.
 In rough order of value:
 
 1. **Check what is still unchecked** (listed above): tax and health-care models, and the spouse's wait.
-2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
+2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
 5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.
 

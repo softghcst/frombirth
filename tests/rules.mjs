@@ -86,7 +86,7 @@ section('in play: ages and bans decide what is offered, with the reason');
 // 5. Laws change, are remembered, and never produce an illegal value.
 p = life('jp', 30);
 const e = law.enact('jp', 'sameSexMarriage', true);
-check(law.rule('sameSexMarriage', 'jp') === true && law.source('sameSexMarriage', 'jp').source === 'enacted' && /legalised same-sex marriage/.test(e.text), 'an enacted law overrides everything, and reads properly');
+check(law.rule('sameSexMarriage', 'jp') === true && law.source('sameSexMarriage', 'jp').source === 'enacted' && /legalized same-sex marriage/.test(e.text), 'an enacted law overrides everything, and reads properly');
 check(law.may('marry', { partner: { gender: p.gender } }).ok, 'and takes effect at once');
 check(profile('jp').lawChanges.length === 1 && profile('jp').laws.some(([k, v]) => k === 'Same-sex marriage' && /changed in/.test(v)), 'the world explorer shows the change');
 check(LIVING.jp.laws.marriage === false, 'the reference data is not rewritten: the change lives in the save');

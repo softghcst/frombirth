@@ -6,7 +6,7 @@ const inSchool = need('education.enrolled', '==', true);
 export default [
   {
     id: 'first_crush', category: 'teen', ageRange: [12, 16], requires: [inSchool],
-    text: 'You cannot stop looking at someone two rows over in maths. Today they looked back.',
+    text: 'You cannot stop looking at someone two rows over in math. Today they looked back.',
     choices: [
       { label: 'Ask them out', check: chk(0.45, { 'stats.charm': 0.8 }), outcomes: [
         ok('They say yes. You go for chips after school and talk for three hours.', st('mood', 10), st('charm', 2), flag('hadFirstDate')),
@@ -61,7 +61,7 @@ export default [
   },
   {
     id: 'summer_work', category: 'teen', ageRange: [14, 17], cooldown: 2,
-    text: 'A neighbour offers to pay you to clear and paint their fence over the summer.',
+    text: 'A neighbor offers to pay you to clear and paint their fence over the summer.',
     choices: [
       { label: 'Take it and do it properly', outcomes: [any('Six blistered weeks later you are handed {$400}.', 'good', cash(400), hid('discipline', 5), st('health', 2))] },
       { label: 'Take it and rush it', check: chk(0.5, { 'stats.charm': 0.4 }), outcomes: [
@@ -150,10 +150,10 @@ export default [
     id: 'curfew_row', category: 'teen', ageRange: [13, 17], cast: { mother: 'mother' },
     text: 'You come home forty minutes late. {mother} is waiting in the kitchen.',
     choices: [
-      { label: 'Apologise', outcomes: [any('She is still annoyed, but it blows over by breakfast.', 'good', rel('mother', 3), hid('karma', 2))] },
+      { label: 'Apologize', outcomes: [any('She is still annoyed, but it blows over by breakfast.', 'good', rel('mother', 3), hid('karma', 2))] },
       { label: 'Argue', outcomes: [any('Doors are slammed. Words are said. The house is quiet for days.', 'bad', rel('mother', -10), st('mood', -5), hid('willpower', 2))] },
       { label: 'Invent an excuse', check: chk(0.45, { 'talents.acting': 0.6, 'stats.intellect': 0.3 }), outcomes: [
-        ok('A flat tyre, a dead phone, a helpful stranger. She buys it.', tal('acting', 3), hid('karma', -3)),
+        ok('A flat tire, a dead phone, a helpful stranger. She buys it.', tal('acting', 3), hid('karma', -3)),
         bad('The story has three holes in it and she finds all of them.', rel('mother', -8), st('mood', -4), hid('karma', -3)),
       ] },
     ],

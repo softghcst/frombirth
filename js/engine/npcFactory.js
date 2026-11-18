@@ -96,8 +96,9 @@ export function makeNpc(o) {
   return npc;
 }
 
-export function makePet(countryId, lastName, relationship = 75) {
-  const kind = rng.pick(PETS);
+/** @param {string} [species]  one of the kinds in PETS; left out, any of them */
+export function makePet(countryId, lastName, relationship = 75, species) {
+  const kind = PETS.find((k) => k.species === species) ?? rng.pick(PETS);
   const pet = makeNpc({
     role: 'pet', countryId, lastName, age: rng.int(0, Math.min(4, kind.lifespan - 2)),
     firstName: rng.pick(kind.names), relationship,

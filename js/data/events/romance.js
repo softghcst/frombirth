@@ -43,7 +43,7 @@ export default [
   },
   {
     id: 'anniversary', category: 'marriage', ageRange: [20, 95], cooldown: 6, cast: { love: 'spouse' },
-    text: 'Your anniversary is on Saturday. You realise this on Friday.',
+    text: 'Your anniversary is on Saturday. You realize this on Friday.',
     choices: [
       { label: 'Book somewhere special ({$300})', requires: [need('cashBase', '>=', 300)], outcomes: [any(
         'A corner table, a bottle of something good, and the story of how you met, told badly by both of you.', 'good', cash(-300), rel('love', 10), st('mood', 6))] },

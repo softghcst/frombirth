@@ -76,7 +76,7 @@ export function summary() {
   const word = (v, hi, mid, lo, worst) => (v >= 72 ? hi : v >= 50 ? mid : v >= 30 ? lo : worst);
   return {
     meters: [
-      { id: 'image', name: NAMES.image, value: r.image, word: word(r.image, 'adored', 'liked well enough', 'out of favour', 'in disgrace') },
+      { id: 'image', name: NAMES.image, value: r.image, word: word(r.image, 'adored', 'liked well enough', 'out of favor', 'in disgrace') },
       { id: 'family', name: NAMES.family, value: r.family, word: word(r.family, 'the family is proud of you', 'the family is content', 'the family is uneasy about you', 'the family has closed ranks against you') },
       { id: 'press', name: NAMES.press, value: r.press, word: word(r.press, 'the newspapers are on your side', 'the newspapers are fair to you', 'the newspapers are looking for a story', 'the newspapers have turned on you') },
     ],

@@ -88,7 +88,7 @@ export async function takeHoliday(api) {
         sub: [d.family.length ? `${d.family.join(', ')} live${d.family.length === 1 ? 's' : ''} here.` : '', d.ownHome ? 'You have a place of your own to stay.' : '',
           d.visited ? 'You have been before.' : 'Somewhere new.'].filter(Boolean).join(' ') })) });
     if (!countryId) return undefined;
-    const cabin = await pickModal({ title: 'Which seat?', body: 'The price covers the flights and a fortnight there, for one.',
+    const cabin = await pickModal({ title: 'Which seat?', body: 'The price covers the flights and two weeks there, for one.',
       options: fun.cabinOptions().map((k) => ({ value: k.id, label: k.name, sub: `${k.blurb} ${fmtMoney(k.cost, c)}.`, disabled: !k.affordable })) });
     if (!cabin) return undefined;
     const d = fun.flightDestinations().find((x) => x.id === countryId);
@@ -96,7 +96,7 @@ export async function takeHoliday(api) {
     if (!move.rightToLive(countryId, player()) || d.family.length) {
       purpose = await pickModal({ title: 'What is the trip for?', options: [
         { value: 'holiday', label: 'A holiday', sub: 'Rest, and see the place.' },
-        ...(d.family.length ? [{ value: 'family', label: `To see ${d.family.join(', ')}`, sub: 'Most of the fortnight with them. Brings you closer.' }] : []),
+        ...(d.family.length ? [{ value: 'family', label: `To see ${d.family.join(', ')}`, sub: 'Most of the two weeks with them. Brings you closer.' }] : []),
         ...(move.rightToLive(countryId, player()) ? [] : [{ value: 'scouting', label: 'To look, with a move in mind', sub: 'Less of a rest. Helps a later application to live there.' }]),
       ] });
       if (!purpose) return undefined;
@@ -139,7 +139,7 @@ export async function moveAbroad(api) {
   const pct = (x) => `${Math.round(x * 100)}%`;
   const id = await pickModal({
     title: 'Move abroad',
-    body: 'There is more than one way in: as a citizen, through family, work, study, investment or a settlement programme. You leave your job. Property you own stays yours, and your vehicles can be shipped.',
+    body: 'There is more than one way in: as a citizen, through family, work, study, investment or a settlement program. You leave your job. Property you own stays yours, and your vehicles can be shipped.',
     options: move.destinations().map((d) => ({ value: d.id, label: `${d.flag} ${d.name}`,
       sub: `${d.currency} · income tax ${pct(d.incomeTax)} · property tax ${propertyTaxLabel(d)} · ${d.freeHealthcare ? 'public' : 'private'} health care`
         + ` · ${summary(COUNTRIES[d.id]).short.toLowerCase()}${d.family ? ` · ${d.family} of your family live${d.family === 1 ? 's' : ''} here` : ''}${d.ownsHome ? ' · you own a home here' : ''}${d.language ? ` · ${d.language}` : ''}${d.route ? ` · best route: ${d.route.toLowerCase()}` : ''}` })),
@@ -190,6 +190,20 @@ export async function moveAbroad(api) {
     await messageModal({ body: r.text, tone: r.tone });
   }
 
+  // The household's animals: papers, transport and quarantine, or a home here.
+  let animals = 'bring';
+  const plan = move.travelPlan(id);
+  if (plan.length) {
+    const can = plan.filter((t) => t.ok); const cant = plan.filter((t) => !t.ok);
+    const cost = can.reduce((s, t) => s + t.cost, 0);
+    const note = [can.some((t) => t.quarantine) ? `${theCountry(dest.name)} holds arriving animals in quarantine for a while.` : '', ...cant.map((t) => t.why)].filter(Boolean).join(' ');
+    const choice = await pickModal({ title: 'Your animals', body: note || undefined, options: [
+      ...(can.length ? [{ value: 'bring', label: `Bring ${can.map((t) => t.a.name).join(', ')} (${fmtMoney(cost, c)})`, sub: 'Identification, vaccinations, a health certificate and the journey.' }] : []),
+      { value: 'leave', label: can.length ? 'Find them all homes here' : 'Find them homes here', sub: 'Family first, if anyone can; otherwise a rescue. You will not see them again.' },
+    ] });
+    if (!choice) return undefined;
+    animals = choice;
+  }
   let shipVehicles = true;
   const shipping = move.shippingCost();
   if (shipping) {
@@ -208,10 +222,10 @@ export async function moveAbroad(api) {
     if (k == null) return undefined;
     keep = Number(k);
   }
-  const total = route.fee + (shipVehicles ? shipping : 0);
+  const total = route.fee + (shipVehicles ? shipping : 0) + (animals === 'bring' ? plan.filter((t) => t.ok).reduce((s, t) => s + t.cost, 0) : 0);
   const sure = await confirmModal({ title: `Apply to move to ${theCountry(dest.name)}?`,
     body: `${route.name}. ${route.outlook} It comes to ${fmtMoney(total, c)} in all.${route.chance < 1 && route.fee ? ' A fifth of the visa cost is gone even if they say no.' : ''}`, yes: route.chance >= 1 ? 'Move' : 'Apply' });
-  return sure ? report(api, move.emigrate(id, { shipVehicles, keep, route: route.id, city })) : undefined;
+  return sure ? report(api, move.emigrate(id, { shipVehicles, keep, route: route.id, city, animals })) : undefined;
 }
 
 /** Moving to another city in the same country. */
@@ -242,7 +256,7 @@ export function openPassport(api) {
     ${kvRow('Status there', `${doc.residency.word}${doc.residency.status === 'citizen' ? '' : ` since ${doc.residency.since}`}`)}
     ${statusLine(p) ? kvRow('Permission', statusLine(p)) : ''}
     ${doc.residency.status === 'citizen' ? '' : `<p class="muted" style="margin-top:6px">${esc(nat.possible ? `You can apply for citizenship. ${nat.outlook}` : nat.why)}</p>`}
-    ${nat.possible ? '<div class="btn-stack" style="margin-top:8px"><button class="btn primary" data-naturalise>Apply for citizenship</button></div>' : ''}</div>
+    ${nat.possible ? '<div class="btn-stack" style="margin-top:8px"><button class="btn primary" data-naturalize>Apply for citizenship</button></div>' : ''}</div>
     ${doc.locations.length > 1 ? `<div class="card"><h3>Where you have lived</h3>${doc.locations.map((l) => kvRow(`${l.from ?? ''}${l.to ? `–${l.to}` : l.from ? ' to now' : ''}`, `${l.flag} ${l.city ? `${l.city}, ` : ''}${l.name}`)).join('')}</div>` : ''}`;
   const house = householdStatus(p).filter((h) => !h.citizen || doc.residency.status !== 'citizen');
   const houseCard = house.length ? `<div class="card"><h3>Your household here</h3>${house.map((h) => kvRow(`${h.name}${h.role === 'child' ? `, ${h.age}` : ''}`, h.status)).join('')}</div>` : '';

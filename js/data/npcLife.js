@@ -24,7 +24,7 @@ export const ASPIRATIONS = [
 export const HOBBIES = {
   music: ['took up the piano', 'started learning the guitar', 'joined the school orchestra'],
   sports: ['joined a football team', 'started swimming competitively', 'took up athletics'],
-  acting: ['joined a youth theatre', 'got a part in the school play'],
+  acting: ['joined a youth theater', 'got a part in the school play'],
   singing: ['joined a choir', 'started singing lessons'],
   dance: ['started dance classes', 'joined a dance troupe'],
 };
@@ -54,7 +54,7 @@ export const ADULT_MOMENTS = [
   { text: 'got into serious debt', chance: 0.012, when: (n) => n.meters.crazy >= 50, trouble: 'debt', savings: -0.6 },
   { text: 'was arrested after a night out', chance: 0.008, when: (n) => n.meters.crazy >= 60 && n.age < 40, trouble: 'arrest' },
   { text: 'went back to studying in the evenings', chance: 0.012, when: (n) => n.age >= 28, meters: { intellect: 3 } },
-  { text: 'spent a year travelling', chance: 0.012, when: (n) => n.age <= 35 && !n.life.kids, meters: { charm: 2 } },
+  { text: 'spent a year traveling', chance: 0.012, when: (n) => n.age <= 35 && !n.life.kids, meters: { charm: 2 } },
   { text: 'adopted a dog', chance: 0.02 },
 ];
 

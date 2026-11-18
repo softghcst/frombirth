@@ -11,7 +11,9 @@ import { SOURCES } from '../data/worldVerification.js';
 const SOURCE_LINE = `ISO 3166-1, ISO 4217 and the Unicode CLDR, the IANA time-zone database (${SOURCES.tzdata}) and GeoNames`;
 const CHECK_NAME = { codes: 'ISO codes', name: 'Name', currency: 'Currency', timeZone: 'Time zone', capital: 'Capital', unRegion: 'UN region', languages: 'Official languages', cities: 'Cities', regions: 'Regions of cities' };
 const LAW_NAME = { sameSexMarriage: 'Same-sex marriage', lgbt: 'LGBT people', deathPenalty: 'Death penalty', conscription: 'Military service', alcohol: 'Alcohol', divorce: 'Divorce',
-  votingAge: 'Voting age', drinkingAge: 'Drinking age', retirementAge: 'Pension age', birthright: 'Citizenship by birth', single: 'Dual citizenship', government: 'Form of government' };
+  votingAge: 'Voting age', drinkingAge: 'Drinking age', drivingAge: 'Driving age', marriageAge: 'Marriage age', gambling: 'Gambling', gamblingAge: 'Gambling age',
+  schoolLeavingAge: 'School-leaving age', retirementAge: 'Pension age', birthright: 'Citizenship by birth', single: 'Dual citizenship', naturalization: 'Years before citizenship',
+  freeMovement: 'Free movement', government: 'Form of government' };
 const CHECK_WORD = { ok: 'Confirmed', review: 'Differs on purpose', unconfirmed: 'Not confirmed', mismatch: 'Disagrees with the source' };
 import { healthLine, taxLine } from './systems.js';
 import { outlook } from './economy.js';
@@ -98,7 +100,7 @@ export function profile(id) {
     ...(sys.head ? [['Head of government', sys.head]] : []),
     ...(sys.seat ? [['National legislator', sys.seat]] : []),
     ...(sys.region ? [['Regional leader', sys.region]] : []),
-    ...(sys.rigged ? [['Elections', 'Held, but the count leans towards those in power']] : []),
+    ...(sys.rigged ? [['Elections', 'Held, but the count leans toward those in power']] : []),
     ...(sys.nativeOnly ? [['Top office', 'Open only to people born here']] : []),
     ...(crown ? [['Crown', `A ${crown.type} monarchy you can be born into or marry into`]] : []),
   ];
@@ -107,7 +109,7 @@ export function profile(id) {
   const lc = LAW_CHECKED[id] ?? {};
   const lawChecks = Object.entries(LAW_NAME).filter(([k]) => lc[k] && !(store.state?.rules?.[id]?.[k])).map(([k, name]) => {
     const v = lc[k];
-    const src = LAW_SOURCES[{ alcohol: 'drinkingAge' }[k] ?? k];
+    const src = LAW_SOURCES[{ alcohol: 'drinkingAge', gambling: 'gamblingAge', freeMovement: 'eu' }[k] ?? k];
     const cite = Array.isArray(src) ? 'Wikipedia, regional articles' : src ? `Wikipedia, "${src.page}"` : '';
     return [name, `${CHECK_WORD[v.status]}${v.status === 'ok' ? ` (${cite})` : v.note ? `: ${v.note}` : ''}`];
   });

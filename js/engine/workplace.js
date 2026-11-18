@@ -83,7 +83,9 @@ export function joinWorkplace(e, careerId, level) {
   b.flags.title = car.type === 'military' ? 'Commanding officer' : 'Boss';
   b.flags.workedWith = e.name;
   // Coworkers: up to three who already work there, then new ones to make two.
-  const mates = staff.filter((n) => n.id !== b.id && Math.abs(n.life.job.level - level) <= 1).slice(0, 3);
+  // People the player already knows come first: going back to an old employer means familiar faces.
+  const mates = staff.filter((n) => n.id !== b.id && Math.abs(n.life.job.level - level) <= 1)
+    .sort((x, y) => Number(inLife(y)) - Number(inLife(x))).slice(0, 3);
   while (mates.length < 2) mates.push(newStaff(e, careerId, Math.max(0, level + rng.int(-1, 1)), clamp(p.age + rng.int(-4, 12), 18, 64), rng.int(35, 60)));
   for (const n of mates) {
     const known = inLife(n) && n.role !== 'coworker';

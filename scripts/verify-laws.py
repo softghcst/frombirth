@@ -49,7 +49,7 @@ SOURCES = {
     'marriageAge': ('Marriageable age', 1382980745),
     'drivingAge': ('List of minimum driving ages', 1383563696),
     'gamblingAge': ('Gambling age', 1385344433),
-    'naturalisation': ('Naturalization', 1384638556),
+    'naturalization': ('Naturalization', 1384638556),
     'eu': ('Member state of the European Union', 1386331027),
     'tasman': ('Trans-Tasman Travel Arrangement', 1386322832),
     'schoolLeavingAge': ('School-leaving age', 1380468003),
@@ -78,12 +78,12 @@ DECIDED = {
     ('at', 'single'): 'Dual citizenship only with special permission or from birth; the game treats Austria as single-nationality.',
 }
 
-# Decided while checking the second round: marriage, driving and gambling ages, naturalisation.
+# Decided while checking the second round: marriage, driving and gambling ages, naturalization.
 DECIDED.update({
     ('au', 'drivingAge'): 'The table lists Victoria (18) first; most states license at 17, which the game uses.',
-    ('es', 'drivingAge'): 'The ages the table lists first are for mopeds and motorcycles; a car licence is at 18.',
+    ('es', 'drivingAge'): 'The ages the table lists first are for mopeds and motorcycles; a car license is at 18.',
     ('iq', 'drivingAge'): 'The table lists motorcycles first; cars are 18.',
-    ('jm', 'drivingAge'): 'A learner can drive at 16 or 17 under supervision; the game uses 18, the age of a full licence.',
+    ('jm', 'drivingAge'): 'A learner can drive at 16 or 17 under supervision; the game uses 18, the age of a full license.',
     ('jp', 'drivingAge'): 'The table lists small motorcycles first; ordinary cars are 18.',
     ('np', 'drivingAge'): 'The table lists two-wheelers first; four-wheelers are 18.',
     ('vn', 'drivingAge'): 'The table lists small motorcycles first; cars are 18.',
@@ -91,19 +91,19 @@ DECIDED.update({
     ('ir', 'marriageAge'): 'The law allows women to marry at 15; the game never lets anyone marry before 18.',
     ('pk', 'marriageAge'): 'The law allows women to marry at 16 in some provinces; the game never lets anyone marry before 18.',
     ('ca', 'drivingAge'): 'Set by each province, 16 in most, which the game uses.',
-    ('il', 'drivingAge'): 'The table cell lists motorcycles and supervised driving first; a car licence is at 17, which the game uses.',
+    ('il', 'drivingAge'): 'The table cell lists motorcycles and supervised driving first; a car license is at 17, which the game uses.',
     ('nz', 'drivingAge'): 'The age is 16 and a half; the game counts whole years.',
     ('au', 'schoolLeavingAge'): 'The table gives 15 or 17; school or training is compulsory to 17 in most states, which the game uses.',
     ('cr', 'schoolLeavingAge'): 'The table gives 17 or 18; the game uses 17.',
     ('pl', 'schoolLeavingAge'): 'Compulsory education lasts to 18 (the table gives a range); the game uses 18.',
     ('tr', 'schoolLeavingAge'): 'The table gives 14 to 16, uncertain; the game uses 16.',
-    ('sg', 'naturalisation'): 'There is no fixed residence period; the game uses the ten years given in Singapore\'s nationality-law article.',
+    ('sg', 'naturalization'): 'There is no fixed residence period; the game uses the ten years given in Singapore\'s nationality-law article.',
     ('pt', 'gamblingAge'): 'Some casinos admit from 25 and others from 18; the game uses 18.',
     ('br', 'gambling'): 'Casinos are illegal, but lotteries and (since 2023) fixed-odds betting are legal; the game counts that as legal.',
     ('eg', 'gambling'): 'Casinos are open to foreigners only; for citizens the game treats gambling as banned.',
     ('ws', 'gambling'): 'Casinos are open to foreigners only; for citizens the game treats gambling as banned.',
     ('in', 'gambling'): 'Gambling is illegal under national law except in a few states (Goa, Sikkim) and state lotteries; the game treats it as banned.',
-    ('my', 'naturalisation'): "The table gives 12 years; Malaysia's nationality-law article gives 10 years' residence, which the game uses.",
+    ('my', 'naturalization'): "The table gives 12 years; Malaysia's nationality-law article gives 10 years' residence, which the game uses.",
 })
 
 # Retirement: where the table gives a range, the standard full-pension age.
@@ -201,7 +201,7 @@ def cells_of(r):
     return out
 
 
-def car_licence_age(cell):
+def car_license_age(cell):
     parts = re.split(r'<br\s*/?>|,|;|\n|\s(?=\d{2}\s)', cell.replace('&nbsp;', ' '))
     cars = [p for p in parts if re.search(r'\bcars?\b|ordinary|four-wheel|non-professional', p, re.I)]
     for p in cars + parts:
@@ -419,7 +419,7 @@ def main():
         elif pid in SAYS_MULTI and SAYS_MULTI[pid] in multi: put(pid, 'single', not g['single'] if pid not in ('pa', 'gy') else g['single'], f'source: "{SAYS_MULTI[pid]}"')
         else: put(pid, 'single', False, 'not covered by the source', covered=False)
 
-    # Marriage, driving and gambling ages; residence before naturalisation; single nationality from the same table.
+    # Marriage, driving and gambling ages; residence before naturalization; single nationality from the same table.
     def first_rows(key):
         seen = {}
         w = page(key)
@@ -444,8 +444,8 @@ def main():
     for pid, g in G.items():
         c = driving.get(pid)
         if not c or len(c) < 2: put(pid, 'drivingAge', False, 'not covered by the source', covered=False); continue
-        # The youngest age to hold a car licence (conditions allowed), skipping mopeds, motorcycles and supervised learners.
-        best = car_licence_age(c[1])
+        # The youngest age to hold a car license (conditions allowed), skipping mopeds, motorcycles and supervised learners.
+        best = car_license_age(c[1])
         put(pid, 'drivingAge', best == g['drivingAge'], f'source: {c[1][:90]}')
 
     gambling = first_rows('gamblingAge')
@@ -460,12 +460,12 @@ def main():
         elif v is None: put(pid, 'gamblingAge', False, 'no age given', covered=False)
         else: put(pid, 'gamblingAge', g['gamblingAge'] == v, f'source: {c[1][:90]}')
 
-    nat = first_rows('naturalisation')
+    nat = first_rows('naturalization')
     for pid, g in G.items():
         c = nat.get(pid)
-        if not c or len(c) < 4: put(pid, 'naturalisation', False, 'not covered by the source', covered=False); continue
+        if not c or len(c) < 4: put(pid, 'naturalization', False, 'not covered by the source', covered=False); continue
         years = first_int(c[1])
-        put(pid, 'naturalisation', (years is not None and years == g['years']) or (g['years'] >= 90 and years is None), f'source: {c[1][:60]}')
+        put(pid, 'naturalization', (years is not None and years == g['years']) or (g['years'] >= 90 and years is None), f'source: {c[1][:60]}')
         multi = True if '{{yes}}' in c[3] else False if '{{no}}' in c[3] else None
         if multi is not None and results[pid].get('single', {}).get('status') != 'ok':
             put(pid, 'single', g['single'] == (not multi), f'source: "Naturalization", multiple citizenship {c[3][:20]}')

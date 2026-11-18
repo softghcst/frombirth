@@ -11,6 +11,7 @@
 // Puerto Rico holds the United States' (data/world.js, nationalityOf).
 // The rules themselves are data (data/citizenship.js) and are gameplay
 // configuration, not legal information.
+import { hasRecord } from './records.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
@@ -107,10 +108,10 @@ export function naturalisation(p = player()) {
   // Taking a single-nationality citizenship means giving up the rest; and some of the rest give you up.
   const mustRenounce = SINGLE.has(here) ? mine : [];
   const willLose = SINGLE.has(here) ? [] : mine.filter((j) => SINGLE.has(j));
-  const convicted = p.legal.record.some((r) => r.convicted && !r.juvenile);
+  const convicted = hasRecord(p, { sealed: true });
   let why = '';
   if (p.age < 18) why = 'You must be an adult to apply.';
-  else if (base >= 90) why = `${nameOf(here).replace(/^the/, 'The')} does not, in practice, naturalise people who move there.`;
+  else if (base >= 90) why = `${nameOf(here).replace(/^the/, 'The')} does not, in practice, naturalize people who move there.`;
   else if (['student', 'worker', 'temporary_resident'].includes(residency(p).status)) why = 'Citizenship is for permanent residents. Your visa is temporary.';
   else if (lived < needs) why = `You need ${needs} years of residence${spouse ? ' (fewer, as you are married to a citizen)' : ''}. You have ${lived}.`;
   else if (convicted) why = 'A criminal conviction rules the application out.';
@@ -162,7 +163,7 @@ export function naturalise() {
 /** Everything the passport page shows about who the player is on paper. */
 export function papers(p = player()) {
   const flag = (j) => COUNTRIES[j]?.flag ?? '';
-  const how = { birth: 'by birth', descent: 'through a parent', naturalization: 'by naturalisation', restoration: 'restored' };
+  const how = { birth: 'by birth', descent: 'through a parent', naturalization: 'by naturalization', restoration: 'restored' };
   const records = p.citizenships ?? held(p).map((j) => ({ jurisdictionId: j, acquisitionType: 'birth', acquiredAt: p.birthYear }));
   const r = residency(p);
   return {

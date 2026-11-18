@@ -8,6 +8,7 @@ import { decide as schoolChoice } from './schoollife.js';
 import { decide as abroadChoice } from './diplomacy.js';
 import { decide as kinChoice } from './kin.js';
 import { decide as scandalChoice } from './scandal.js';
+import { justiceScene } from './justiceScenes.js';
 import { resignLeadership, faceTheParty, standForVacancy } from './leadership.js';
 import { defend } from './campaign.js';
 import { decide } from './government.js';
@@ -26,6 +27,11 @@ import * as pol from './politics.js';
 import * as courtLife from './court.js';
 import * as fame from './reputation.js';
 import * as throne from './reign.js';
+import { moneyEffect } from './moneyEffects.js';
+import { register as registerAnimal, recordHealth } from './animals.js';
+import { sceneChoice as animalChoice } from './animalCare.js';
+import { lifeChoice } from './animalLife.js';
+import { arcChoice } from './animalArcs.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -74,7 +80,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'addNpc': {
         const spec = e.value;
         const npc = spec.role === 'pet'
-          ? makePet(p.countryId, p.lastName)
+          ? makePet(p.countryId, p.lastName, undefined, spec.species)
           : makeNpc({ countryId: p.countryId, age: p.age + (spec.ageOffset ?? 0),
             ...(spec.attracted ? { gender: p.flags.interestedIn === 'men' ? 'male' : p.flags.interestedIn === 'women' ? 'female' : undefined } : {}), ...spec });
         store.state.npcs[npc.id] = npc;
@@ -82,6 +88,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         npc.lastInteractionAge = p.age;
         if (spec.tag) { npc.flags.tag = spec.tag; npc.flags.title = spec.title; }
         if (spec.memory) remember(npc, spec.memory[0], spec.memory[1]);
+        // An animal taken in goes on the family's record; the line that tells it is written when the scene ends.
+        if (spec.role === 'pet') registerAnimal(npc, { origin: 'found', pending: true });
         if (e.target) ctx.cast[e.target] = npc.id;
         break;
       }
@@ -91,6 +99,10 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         delete store.state.npcs[id];
         break;
       }
+      case 'animalHealth': recordHealth(ctx.cast[e.target], e.value); break;
+      case 'animal': ctx.note = animalChoice(e.value, ctx.cast); break;
+      case 'animalLife': ctx.note = lifeChoice(e.value, ctx.cast); break;
+      case 'animalArc': ctx.note = arcChoice(e.value, ctx.cast); break;
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;
@@ -164,6 +176,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'reelect': ctx.note = (p.politics && pol.isDemocracy() && !p.politics.ruler ? defend() : pol.reElection()).text; break;
       case 'govt': ctx.note = decide(e.value, ctx.cast); break;
       case 'scandal': ctx.note = scandalChoice(e.value); break;
+      case 'justice': ctx.note = justiceScene(e.value, ctx.cast); break;
       case 'kin': ctx.note = kinChoice(e.value, ctx.cast); break;
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
@@ -199,6 +212,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'counter':
         p.counters[e.target] = (p.counters[e.target] ?? 0) + (e.delta ?? 1);
         break;
+      case 'money': shown.push(...moneyEffect(e, ctx)); break;
       case 'milestone': milestone(e.value); break;
       case 'death': ctx.death = e.value; break;
       default: console.warn('Unknown effect', e);

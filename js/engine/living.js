@@ -70,7 +70,7 @@ export function summary(c = country()) {
       ['Rising prices', { low: 'steady', high: 'fast', extreme: 'out of control' }[L.inflation]],
       ['Natural hazards', L.hazards.map((h) => HAZARDS[h].name).join(', ') || 'few'],
       ...(MONARCHIES[c.id] ? [['Head of state', `a monarchy${MONARCHIES[c.id].maleOnly ? '; only men inherit the throne' : ''}`]] : []),
-      ['Same-sex marriage', rule('sameSexMarriage', c.id) ? 'legal' : 'not recognised'],
+      ['Same-sex marriage', rule('sameSexMarriage', c.id) ? 'legal' : 'not recognized'],
       ...(rule('lgbt', c.id) === 'hostile' ? [['Being gay or transgender', 'against the law, or treated as if it were']] : []),
       ['Gambling', rule('gambling', c.id) ? 'legal' : 'illegal'],
       ...(rule('alcohol', c.id) ? [] : [['Alcohol', 'banned']]),

@@ -5,6 +5,7 @@ import { esc, fmtMoney } from '../../util.js';
 import * as career from '../../engine/career.js';
 import * as job from '../../engine/partTime.js';
 import { meterHtml } from '../meter.js';
+import { dutyButtons, runDuty } from '../justice.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { openOccupation } from '../occupation.js';
 import { employer } from '../../engine/employers.js';
@@ -67,6 +68,7 @@ export function careerButtons() {
   if (p.age >= workLaw().workAge) list.push(['findwork', cur ? 'Look for a different job' : 'Find work']);
   else if (p.age >= 5) list.push(['findwork', cur ? 'Look for other acting work' : 'Audition for acting work']);
   if (cur) {
+    list.push(...dutyButtons().map(([id, label]) => [id, label]));
     list.push(['harder', 'Work harder'], ['slack', 'Slack off']);
     if (cur.type !== 'freelance') list.push(['raise', 'Ask for a raise']);
   }
@@ -203,4 +205,9 @@ export const careerHandlers = (api) => ({
   fame: () => fame(api),
   retire: () => retire(api),
   quitcareer: () => quit(api),
+  'duty:investigate': () => runDuty('investigate', api),
+  'duty:defend': () => runDuty('defend', api),
+  'duty:prosecute': () => runDuty('prosecute', api),
+  'duty:preside': () => runDuty('preside', api),
+  'duty:shift': () => runDuty('shift', api),
 });

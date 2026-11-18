@@ -49,8 +49,8 @@ for (let i = 0; i < 6; i++) year();
 const n = cit.naturalisation(p);
 check(n.possible && n.mustRenounce.length === 0, `after six years a spouse should be eligible (${n.why})`);
 for (let i = 0; i < 12 && !cit.held(p).includes('pt'); i++) { p.flags.natAge = null; p.finance.cash += 5000; cit.naturalise(); }
-check(cit.held(p).sort().join() === 'br,pt' && cit.residency(p).status === 'citizen' && mayVote('pt') === '', 'naturalised: both citizenships, citizen status, and a vote');
-section('moving, residency, marriage and naturalisation keep birthplace, residence and citizenship apart');
+check(cit.held(p).sort().join() === 'br,pt' && cit.residency(p).status === 'citizen' && mayVote('pt') === '', 'naturalized: both citizenships, citizen status, and a vote');
+section('moving, residency, marriage and naturalization keep birthplace, residence and citizenship apart');
 
 // 3. Single-nationality places.
 p = life('fr', 40); p.countryId = 'jp'; p.flags.arrivedYear = store.state.year - 9; p.finance.cash = 9e6;
@@ -61,7 +61,7 @@ check(cit.held(p).join() === 'jp' && p.citizenships.find((c) => c.jurisdictionId
 p = life('in', 40); p.countryId = 'ca'; p.flags.arrivedYear = store.state.year - 5; p.finance.cash = 1e5;
 nat = cit.naturalisation(p);
 check(nat.possible && nat.willLose.join() === 'in' && nat.mustRenounce.length === 0, 'an Indian citizen who becomes Canadian loses Indian citizenship by India\'s rule');
-section('places that allow one nationality are honoured in both directions');
+section('places that allow one nationality are honored in both directions');
 
 // 4. Money in several currencies: nothing is created, and what was done is written down.
 p = life('us', 35); p.finance.cash = 100000; p.flags.livesWithParents = false;

@@ -28,7 +28,7 @@ const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 // 1. Data: every hand-written row names a real city; every region with its own law has a city.
 for (const [id, rows] of Object.entries(CITY_ROWS)) {
   check(!!COUNTRIES[id] && !!REGION_WORD[id], `city rows for an unknown place, or one with no word for its regions: ${id}`);
-  for (const name of COUNTRIES[id].cities) check(!!rows[name], `${id}: ${name} has no row, though its neighbours do`);
+  for (const name of COUNTRIES[id].cities) check(!!rows[name], `${id}: ${name} has no row, though its neighbors do`);
   for (const [name, r] of Object.entries(rows)) {
     check(COUNTRIES[id].cities.includes(name), `${id}: row for a city that is not in the game: ${name}`);
     check(r.housing >= 0.4 && r.housing <= 2.2 && r.pay >= 0.7 && r.pay <= 1.4 && r.region && r.regionId, `${id}/${name}: out of range`);
@@ -53,7 +53,7 @@ section(`profiles: all ${n} cities have one`);
 const priceIn = (id, city) => { life(id, city); const all = []; for (let i = 0; i < 60; i++) { store.state.market.listings = null; for (const l of estate.listings()) all.push(l.price); } all.sort((a, b) => a - b); return all[Math.floor(all.length / 2)]; }; // the median: one mansion does not move it
 const ny = priceIn('us', 'New York'); const atl = priceIn('us', 'Atlanta');
 check(ny / atl > 1.4 && ny / atl < 2.8, `homes in New York cost far more than in Atlanta (ratio ${(ny / atl).toFixed(2)})`);
-const payIn = (id, city) => { const all = []; for (let i = 0; i < 25; i++) { const p = life(id, city); hire(CAREERS.find((c) => c.id === 'office'), 0, 60); all.push(p.career.salary); } return mean(all); };
+const payIn = (id, city) => { const all = []; for (let i = 0; i < 100; i++) { const p = life(id, city); hire(CAREERS.find((c) => c.id === 'office'), 0, 60); all.push(p.career.salary); } return mean(all); };
 const ldn = payIn('uk', 'London'); const car = payIn('uk', 'Cardiff');
 check(ldn / car > 1.2 && ldn / car < 1.5, `the same job pays more in London than in Cardiff (ratio ${(ldn / car).toFixed(2)})`);
 section('money: listings and salaries follow the city');

@@ -66,7 +66,7 @@ export const SUBJECTS = [
   { id: 'technology', name: 'Technology', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['coding'] },
   { id: 'art', name: 'Art', from: 'elementary', apt: { 'stats.intellect': 0.4, 'stats.charm': 0.6 }, club: ['art_club'] },
   { id: 'music', name: 'Music', from: 'elementary', apt: { 'talents.music': 0.7, 'talents.singing': 0.3 }, club: ['choir', 'band'] },
-  { id: 'theatre', name: 'Theatre', from: 'middle', apt: { 'talents.acting': 0.8, 'stats.charm': 0.2 }, club: ['drama', 'youth_theatre', 'musical_theatre'] },
+  { id: 'theatre', name: 'Theater', from: 'middle', apt: { 'talents.acting': 0.8, 'stats.charm': 0.2 }, club: ['drama', 'youth_theatre', 'musical_theatre'] },
   { id: 'pe', name: 'Physical education', from: 'elementary', apt: { 'talents.sports': 0.7, 'stats.health': 0.3 }, club: ['sports_team', 'dance_class'] },
   { id: 'economics', name: 'Economics', from: 'high', apt: { 'stats.intellect': 1 } },
   { id: 'government', name: 'Government', from: 'high', apt: { 'stats.intellect': 0.6, 'stats.charm': 0.4 }, club: ['council', 'debate'] },
@@ -88,7 +88,7 @@ export const SCHOOL_KINDS = [
   { id: 'public', name: 'State school', fee: 0, teach: 0, class: 6, suffix: ['{place} {stage}'],
     blurb: 'The local school. Free, mixed, and where most people go.' },
   { id: 'religious', name: 'Faith school', fee: 1500, teach: 0.05, class: 6, yearly: { hidden: { discipline: 1, karma: 1 } }, suffix: ['St {saint}\'s School', 'Holy Cross {stage}'],
-    blurb: 'Small fees, assemblies, and firm ideas about behaviour.' },
+    blurb: 'Small fees, assemblies, and firm ideas about behavior.' },
   { id: 'selective', name: 'Selective school', fee: 0, teach: 0.18, class: 6, from: 'middle', needs: { entry: { path: 'stats.intellect', min: 62 } }, yearly: { stats: { mood: -1 } }, suffix: ['{place} Grammar School', '{place} Academy'],
     blurb: 'Free, but there is an entrance test, and the work never lets up.' },
   { id: 'private', name: 'Private school', fee: 11000, teach: 0.15, class: 5, needs: { wealth: 'rich' }, yearly: { stats: { charm: 1 } }, suffix: ['{place} Hall', 'The {place} School'],
@@ -145,14 +145,14 @@ export const TEACHING_STYLES = [
 /** What a child may come to care about. Not fixed: interests move with what happens. */
 export const INTERESTS = [
   { id: 'science', name: 'Science' }, { id: 'maths', name: 'Mathematics' }, { id: 'writing', name: 'Writing' }, { id: 'music', name: 'Music' },
-  { id: 'theatre', name: 'Theatre' }, { id: 'art', name: 'Art' }, { id: 'sport', name: 'Sport' }, { id: 'technology', name: 'Technology' },
+  { id: 'theatre', name: 'Theater' }, { id: 'art', name: 'Art' }, { id: 'sport', name: 'Sport' }, { id: 'technology', name: 'Technology' },
   { id: 'politics', name: 'Politics' }, { id: 'history', name: 'History' }, { id: 'languages', name: 'Languages' }, { id: 'service', name: 'Helping out' }, { id: 'games', name: 'Games' },
 ];
 /** The circles a school sorts itself into: by what people care about, not by who they are. The last is for everyone else. */
 export const CIRCLES = [
   { id: 'academic', name: 'the ones who like the work', interests: ['science', 'maths', 'history', 'languages'] },
   { id: 'sport', name: 'the sports crowd', interests: ['sport'] },
-  { id: 'stage', name: 'the theatre and music lot', interests: ['theatre', 'music'] },
+  { id: 'stage', name: 'the theater and music lot', interests: ['theatre', 'music'] },
   { id: 'makers', name: 'the ones who build things', interests: ['technology', 'games'] },
   { id: 'creative', name: 'the artists and writers', interests: ['art', 'writing'] },
   { id: 'causes', name: 'the ones with a cause', interests: ['politics', 'service'] },

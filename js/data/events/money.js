@@ -22,7 +22,7 @@ export default [
   },
   {
     id: 'storm_damage', category: 'home', ageRange: [18, 95], cooldown: 10, requires: [need('ownsProperty', '==', true)],
-    text: 'A storm takes a row of tiles off the roof and puts your neighbour\'s trampoline through the fence.',
+    text: 'A storm takes a row of tiles off the roof and puts your neighbor\'s trampoline through the fence.',
     choices: [
       { label: 'Claim on the insurance', check: chk(0.6, { 'stats.intellect': 0.4, 'stats.charm': 0.2 }), outcomes: [
         ok('Forms, photographs, a man with a clipboard. They pay for all of it.', st('mood', 2)),

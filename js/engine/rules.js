@@ -45,6 +45,7 @@ export function source(id, placeId = here(), opts = {}) {
   if (local !== undefined) return { value: local, source: 'region' };
   if (PLACE_RULES[placeId]?.[id] !== undefined) return { value: PLACE_RULES[placeId][id], source: 'place' };
   if (def.from && LIVING[placeId]) return { value: LIVING[placeId].laws[def.from], source: 'place' };
+  if (def.derive && COUNTRIES[placeId]) return { value: def.derive(placeId), source: 'place' };
   const up = parentOf(placeId);
   if (up && PLACE_RULES[up]?.[id] !== undefined) return { value: PLACE_RULES[up][id], source: 'parent' };
   return { value: def.default, source: 'default' };
@@ -127,13 +128,18 @@ export function enact(placeId, id, value, by = 'the legislature') {
 function describe(placeId, id, was, value) {
   const name = theCountry(COUNTRIES[placeId].name).replace(/^the/, 'The');
   const lines = {
-    sameSexMarriage: value ? `${name} legalised same-sex marriage.` : `${name} ended same-sex marriage. Existing marriages stand.`,
+    sameSexMarriage: value ? `${name} legalized same-sex marriage.` : `${name} ended same-sex marriage. Existing marriages stand.`,
     lgbt: RULES.lgbt.levels.indexOf(value) > RULES.lgbt.levels.indexOf(was) ? `${name} passed a law protecting gay and transgender people.` : `${name} rolled back its protections for gay and transgender people.`,
     deathPenalty: value ? `${name} brought back the death penalty.` : `${name} abolished the death penalty.`,
     conscription: value ? `${name} brought in compulsory military service.` : `${name} ended compulsory military service.`,
-    gambling: value ? `${name} legalised gambling.` : `${name} banned gambling.`,
+    gambling: value ? `${name} legalized gambling.` : `${name} banned gambling.`,
     alcohol: value ? `${name} lifted its ban on alcohol.` : `${name} banned alcohol.`,
-    divorce: value ? `${name} legalised divorce.` : `${name} abolished divorce.`,
+    divorce: value ? `${name} legalized divorce.` : `${name} abolished divorce.`,
+    juryTrials: value ? `${name} brought in jury trials for serious crimes.` : `${name} ended jury trials: judges now decide.`,
+    cashBail: value ? `${name} made release before trial depend on money bail.` : `${name} ended money bail: release before trial now depends on conditions.`,
+    recordSealing: value ? `${name} now lets old criminal records be sealed.` : `${name} stopped the sealing of criminal records.`,
+    sentencing: RULES.sentencing.levels.indexOf(value) > RULES.sentencing.levels.indexOf(was) ? `${name} passed a law for longer prison sentences.` : `${name} passed a law for shorter prison sentences.`,
+    prisonEducation: RULES.prisonEducation.levels.indexOf(value) > RULES.prisonEducation.levels.indexOf(was) ? `${name} is putting more money into education in its prisons.` : `${name} cut education in its prisons.`,
   };
   return lines[id] ?? `${name} changed its ${RULES[id].name.toLowerCase()} from ${WORDS(RULES[id], was)} to ${WORDS(RULES[id], value)}.`;
 }
@@ -151,20 +157,30 @@ export function choices(placeId = here(), opts = {}) {
   const climate = { equal: 2, limited: 0, hostile: -3 }[r('lgbt')];
   const out = [];
   const add = (id, value, name, wants, liked) => { if (r(id) !== value) out.push({ rule: id, value, name, wants, liked }); };
-  if (!r('sameSexMarriage')) add('sameSexMarriage', true, 'legalise same-sex marriage', { open: 1 }, climate);
+  if (!r('sameSexMarriage')) add('sameSexMarriage', true, 'legalize same-sex marriage', { open: 1 }, climate);
   else add('sameSexMarriage', false, 'end same-sex marriage', { open: -1 }, -climate);
   const at = RULES.lgbt.levels.indexOf(r('lgbt'));
   if (at < 2) add('lgbt', RULES.lgbt.levels[at + 1], at === 0 ? 'stop treating gay and transgender people as criminals' : 'protect gay and transgender people in law', { open: 1 }, at === 0 ? -2 : climate);
   if (at > 0) add('lgbt', RULES.lgbt.levels[at - 1], 'roll back protections for gay and transgender people', { open: -1 }, -climate - 1);
   if (r('deathPenalty')) add('deathPenalty', false, 'abolish the death penalty', { order: -1, open: 1 }, -1); else add('deathPenalty', true, 'bring back the death penalty', { order: 1, open: -1 }, 0);
   if (r('conscription')) add('conscription', false, 'end compulsory military service', { order: -1, open: 1 }, 2); else add('conscription', true, 'bring in compulsory military service', { order: 1, open: -1 }, -4);
-  if (r('gambling')) add('gambling', false, 'ban gambling', { order: 1, open: -1 }, -1); else add('gambling', true, 'legalise gambling', { open: 1 }, 1);
+  if (r('gambling')) add('gambling', false, 'ban gambling', { order: 1, open: -1 }, -1); else add('gambling', true, 'legalize gambling', { open: 1 }, 1);
   if (r('alcohol')) add('alcohol', false, 'ban alcohol', { order: 1, open: -1 }, -5); else add('alcohol', true, 'lift the ban on alcohol', { open: 1 }, climate);
-  if (!r('divorce')) add('divorce', true, 'legalise divorce', { open: 1 }, 1);
+  if (!r('divorce')) add('divorce', true, 'legalize divorce', { open: 1 }, 1);
   if (r('votingAge') > 16) add('votingAge', 16, 'lower the voting age to 16', { open: 1 }, 0); else add('votingAge', 18, 'raise the voting age to 18', { open: -1 }, -1);
   if (r('drinkingAge') > 18) add('drinkingAge', 18, 'lower the drinking age to 18', { open: 1, order: -1 }, 1); else add('drinkingAge', 21, 'raise the drinking age to 21', { order: 1 }, -2);
   if (r('retirementAge') < 72) add('retirementAge', r('retirementAge') + 1, `raise the pension age to ${r('retirementAge') + 1}`, { services: -1, tax: -1 }, -4);
   if (r('retirementAge') > 58) add('retirementAge', r('retirementAge') - 1, `lower the pension age to ${r('retirementAge') - 1}`, { services: 1, tax: 1 }, 3);
+  // Justice. Every one has costs as well as benefits; no party is right about all of them.
+  if (r('juryTrials')) add('juryTrials', false, 'end jury trials and let judges decide', { order: 1, open: -1 }, -2); else add('juryTrials', true, 'bring in jury trials for serious crimes', { open: 1 }, 1);
+  if (r('cashBail')) add('cashBail', false, 'end money bail', { open: 1, order: -1 }, 0); else add('cashBail', true, 'make release before trial depend on money bail', { order: 1 }, -1);
+  if (r('recordSealing')) add('recordSealing', false, 'stop the sealing of criminal records', { order: 1, open: -1 }, 0); else add('recordSealing', true, 'let old criminal records be sealed', { open: 1, order: -1 }, 1);
+  const sen = RULES.sentencing.levels.indexOf(r('sentencing'));
+  if (sen < 2) add('sentencing', RULES.sentencing.levels[sen + 1], 'pass longer prison sentences', { order: 1, open: -1, tax: -1 }, 1);
+  if (sen > 0) add('sentencing', RULES.sentencing.levels[sen - 1], 'pass shorter prison sentences', { order: -1, open: 1 }, -1);
+  const edu = RULES.prisonEducation.levels.indexOf(r('prisonEducation'));
+  if (edu < 2) add('prisonEducation', RULES.prisonEducation.levels[edu + 1], 'pay for more education in prisons', { services: 1, tax: 1, order: -1 }, 0);
+  if (edu > 0) add('prisonEducation', RULES.prisonEducation.levels[edu - 1], 'cut education in prisons', { services: -1, tax: -1, order: 1 }, 0);
   return out;
 }
 
@@ -184,6 +200,9 @@ function reformsFor(placeId) {
   if (!r('gambling') && L.stability >= 60 && r('alcohol')) out.push(['gambling', true]);
   if (!r('divorce')) out.push(['divorce', true]);
   if (r('retirementAge') < 70 && L.wage >= 0.5) out.push(['retirementAge', r('retirementAge') + 1]);
+  if (!r('recordSealing') && L.stability >= 60) out.push(['recordSealing', true]);
+  if (r('prisonEducation') !== 'extensive' && L.stability >= 60 && L.wage >= 0.5) out.push(['prisonEducation', RULES.prisonEducation.levels[RULES.prisonEducation.levels.indexOf(r('prisonEducation')) + 1]]);
+  if (r('sentencing') !== 'tough' && L.crisis) out.push(['sentencing', RULES.sentencing.levels[RULES.sentencing.levels.indexOf(r('sentencing')) + 1]]);
   return out;
 }
 
@@ -229,7 +248,7 @@ export function enactRegional(placeId, region, id, value, regionName, by = 'the 
   const was = rule(id, placeId, { region });
   const b = book();
   ((b.regions ??= {})[`${placeId}/${region}`] ??= {})[id] = { value, year: store.state.year, by };
-  const text = describe(placeId, id, was, value).replace(/^(The )?[A-Z][^ ]*( [A-Z][a-z]+)*?( (legalised|banned|brought|abolished|lifted|changed|ended|rolled|passed))/, `${regionName}$3`);
+  const text = describe(placeId, id, was, value).replace(/^(The )?[A-Z][^ ]*( [A-Z][a-z]+)*?( (legalized|banned|brought|abolished|lifted|changed|ended|rolled|passed))/, `${regionName}$3`);
   const entry = { placeId, region, id, from: was, to: value, year: store.state.year, by, text };
   const list = (b.history ??= []);
   list.push(entry);

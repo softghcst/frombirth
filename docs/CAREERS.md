@@ -1,6 +1,6 @@
 # Careers, jobs and working life
 
-How work is modelled in Pathways: what an occupation, an employer, a job and a contract are; how people get
+How work is modeled in Pathways: what an occupation, an employer, a job and a contract are; how people get
 hired, paid, promoted and laid off; who they work with; how work fits around the rest of a life; and what the
 family remembers of it afterwards.
 
@@ -15,7 +15,7 @@ salaries or legal advice.
 | Career family | A field of work (19 of them: business, tech, health, law, education, hospitality, retail, trades, science, transport, public safety, media, entertainment, beauty, government, land and animals, sport, unusual work, military) | `js/data/occupations.js` `FAMILIES` |
 | Career track | A ladder of titles that belong together (Junior developer → … → App founder). 193 tracks, 714 titles | `js/data/careers.js` (the original 44) + `js/data/occupations.js` `TRACKS` |
 | Occupation | One title on a track; aliases are other names for the same work | each track's `levels` and `aliases` |
-| Employer | A persistent organisation in a city: name, size, culture, finances, staff, history | `js/engine/employers.js` |
+| Employer | A persistent organization in a city: name, size, culture, finances, staff, history | `js/engine/employers.js` |
 | Job posting | A real opening at an employer for a rung of a track, with pay, hours and an expiry | `state.jobs.postings` |
 | Offer | What an employer proposes after an interview; negotiable | `p.career.offers`, `js/engine/hiring.js` |
 | Contract | The job held: employer, title, level, salary, hours, overtime, remote, leave | `p.career` |
@@ -36,13 +36,13 @@ the top of that file; the ones from the original engine are described at the top
 `node tests/careers.mjs` checks that every requirement, branch, rank list, certificate and family names
 something real.
 
-- **Requirements** are occupation-specific: a degree in particular majors, a programme (medical, law, nursing…),
+- **Requirements** are occupation-specific: a degree in particular majors, a program (medical, law, nursing…),
   a trade apprenticeship, a certificate (`altCert`; `altOnly` when it is the only way in), years of experience in
   named tracks (`experience`), age, fitness, a clean record. University is never required by default.
 - **Branches** (`from`) let someone move across from a rung of one track into another at the same employer:
   senior developer → engineering management or the staff-engineer track; teacher → school leadership; police
   officer → detective. `branchOnly` tracks are reached that way, or by `experience`, never hired into cold.
-  Licences still apply: a nurse cannot branch into surgery.
+  Licenses still apply: a nurse cannot branch into surgery.
 - **Local titles** (`titlesBy`) rename the ranks in a country; service branches have their own rank names
   (`BRANCH_RANKS`). Military branches differ by country (`MILITARY_BRANCHES`).
 
@@ -87,7 +87,7 @@ and contracts that forbid outside work (judges, diplomats, intelligence, the mil
 experience in that track). `state.jobs` is created the first time a city's market is looked at. Nothing is
 re-paid: payroll is guarded by `paidYear`. When a life passes to an heir, `careerRecord` gains the parent's
 working life and the employers carry over (`passOn` in `js/engine/careerRecord.js`, called from
-`js/engine/legacy.js`). Licences are never inherited.
+`js/engine/legacy.js`). Licenses are never inherited.
 
 ## Owning a business
 
@@ -97,13 +97,13 @@ It is also an employer on the map (`owned: true`), so the people who work there 
 yearly employer tick leaves it alone and it never advertises on the job board.
 
 - **Starting** needs the money (or part of it borrowed by the business), age 18, and for some kinds a trade,
-  a licence, a degree or years in the work. A freelancer with a strong name in the same line starts cheaper,
+  a license, a degree or years in the work. A freelancer with a strong name in the same line starts cheaper,
   with their clients. A contract that forbids outside work forbids this too; so does high office, and the crown.
 - **The year** (`tickBusinesses`, before payroll): capacity comes from the staff (their skill, loyalty and
   time there), the owner's hours and skill, and whether anyone is steering (a manager, or the owner). Custom
   comes from reputation, price, the economy, marketing and luck. Wages, rent, supplies, overheads and interest
   come first. The owner is paid from profit (`draw`), through payroll, once, taxed as income; partners get
-  their share. Reputation moves slowly towards what the place deserves.
+  their share. Reputation moves slowly toward what the place deserves.
 - **Failure**: two years in a row overdrawn and it closes. Half of any debts it cannot cover fall on the owner.
   Its record stays.
 - **Staff** are NPCs with lives of their own; they leave for better pay, if the place is struggling, or because
@@ -146,7 +146,7 @@ while the children are small.
 
 - **Work and home**: a school show against a deadline, going part-time for childcare, a promotion in another
   city when a spouse's work is here, an argument about what all the work is for, a trip over an anniversary.
-- **The life of a workplace**: a new manager, the company being bought, a bonus, a project cancelled, a
+- **The life of a workplace**: a new manager, the company being bought, a bonus, a project canceled, a
   colleague's retirement, a secondment.
 - **By field**: health, education, technology, hospitality, trades, retail, government, science, transport,
   public safety, media, law, the land, business and sport each have their own. There are deliberately none for
@@ -157,7 +157,7 @@ while the children are small.
   partner has a say over the other's work is raised as a conflict (`work_romance_conflict`) until one of them
   moves.
 - **A child's curiosity** (`kid_asks_work`): taking them to work can inspire them (`flags.inspiredBy`);
-  telling them to find their own way means they are never steered (`flags.ownPath`). Children lean towards a
+  telling them to find their own way means they are never steered (`flags.ownPath`). Children lean toward a
   parent's field where they qualify, and are never made to follow it (`npcLives.careersFor`).
 
 ## Royals at work
@@ -172,13 +172,13 @@ government they must stand apart from. A royal with a profession of their own is
 - **Entertainment careers with their own gameplay** (productions, tours, albums, contracts between projects,
   awards). Actors, singers, dancers and models get in by audition and climb a ladder; the rest is left for a
   separate fame system.
-- **Criminal careers** (organised crime, dealing, street hustling) are not employment and are not in the
+- **Criminal careers** (organized crime, dealing, street hustling) are not employment and are not in the
   catalog: they belong to the crime system (`js/engine/justice.js`), with its own consequences.
 - **Elected office** is not a job posting: it goes through the elections and politics systems. Holding high
   office rules out other paid work.
-- **Royal household staff** as an employer is not modelled.
+- **Royal household staff** as an employer is not modeled.
 - **Pass-through and dividend rules**: an owner's draw is taxed as ordinary income everywhere; countries'
-  special treatment of dividends or small-business income is not modelled.
+  special treatment of dividends or small-business income is not modeled.
 
 ## Balance
 
@@ -216,7 +216,7 @@ purpose:
 
 | Named | Why it is not a catalog job |
 |---|---|
-| Apprentice electrician, plumber, carpenter, mechanic | An apprenticeship is part of the Education system (`apprenticeship` and `technical` programmes); finishing one opens the qualified rung of the trade track |
+| Apprentice electrician, plumber, carpenter, mechanic | An apprenticeship is part of the Education system (`apprenticeship` and `technical` programs); finishing one opens the qualified rung of the trade track |
 | Professional dog walker, Pet sitter | Freelance services (`dog_walking`, `pet_sitting`) and one-off gigs |
 | Politician | Elected office goes through the politics and elections systems |
 
