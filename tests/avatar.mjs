@@ -5,11 +5,14 @@
 //  - saves from both earlier avatar systems, missing data and unknown ids all load to a complete, stable face
 //  - children are built only from what their parents were born with
 //  - portraits render at every age and in every situation, using only files that exist
+//  - hair fits every head it can be worn on; faces are framed alike; features read on every skin tone
+//  - the eye shapes on offer, and who is given which, are exactly as they were
 import { readFileSync, existsSync } from 'node:fs';
 import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManifest.js';
 import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
-import { dressFor, filesFor, ageStage, fitTransforms } from '../js/CharacterAvatar.js';
+import { dressFor, filesFor, ageStage, fitTransforms, deepness, characterAvatarSvg } from '../js/CharacterAvatar.js';
+import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS } from '../js/avatar/hairFit.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
 import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
@@ -59,7 +62,7 @@ for (const h of AVATAR_MANIFEST.heads) {
     }
   }
 }
-const eyesWithWhites = AVATAR_MANIFEST.eyes.filter((e) => /fill:#ffffff/.test(readFileSync(new URL(`assets/avatars/${e.file}`, root), 'utf8'))).length;
+const eyesWithWhites = AVATAR_MANIFEST.eyes.filter((e) => /fill:(var\(--eye-white,)?#ffffff/.test(readFileSync(new URL(`assets/avatars/${e.file}`, root), 'utf8'))).length;
 check(eyesWithWhites >= AVATAR_MANIFEST.eyes.length - 2, `only ${eyesWithWhites} eye styles have whites`);
 
 check(!CATALOG.eyes.some((e) => e.id === CUR.EXPRESSION.crying), 'crying eyes can be chosen as a resting face');
@@ -157,9 +160,143 @@ for (const age of [0, 1, 3, 7, 12, 15, 30, 49, 55, 66, 80, 101]) {
   }
 }
 
+// 7. Hair fits the head. Every hairstyle and head is measured; the fit is worked out from the two.
+const hairs = AVATAR_MANIFEST.hair.filter((h) => !/baby/.test(h.id));
+const tufts = AVATAR_MANIFEST.hair.filter((h) => /baby/.test(h.id));
+const grown = AVATAR_MANIFEST.heads.filter((h) => !/baby|toddler/.test(h.id)); // the heads a hairstyle is worn on: adults, and the kid
+const [, , ROWS] = T.profile.rows;
+const [, , COLS] = T.profile.cols;
+for (const h of AVATAR_MANIFEST.hair) check(h.edge && h.edge.L.length === ROWS && h.edge.R.length === ROWS && h.edge.T.length === COLS && h.edge.O.length === COLS && Number.isFinite(h.edge.top), `${h.id} is not measured`);
+for (const h of AVATAR_MANIFEST.heads) check(h.edge && h.edge.L.length === ROWS && h.edge.T.length === COLS, `${h.id} is not measured`);
+// Styles drawn with a lock or a sweep that hangs clear of the head on purpose: the gap beside it is the style.
+const LOOSE = ['hair_boy_long_11', 'hair_girl_long_04'];
+let worstGap = 0;
+for (const h of hairs) {
+  for (const head of grown) {
+    const f = hairFit(h.id, head.id);
+    const base = plainFit(head.id);
+    check(f === hairFit(h.id, head.id), `${h.id} on ${head.id}: the fit is not the same twice`);
+    check(f.sx / base.sx >= LIMITS.scale[0] - 0.005 && f.sx / base.sx <= LIMITS.scale[1] + 0.005 && f.sy / base.sy >= LIMITS.scale[0] - 0.005 && f.sy / base.sy <= LIMITS.scale[1] + 0.005
+      && f.ty - base.ty >= -LIMITS.up - 0.5 && f.ty - base.ty <= LIMITS.down + 0.5 && Math.abs(f.tx - base.tx) <= LIMITS.across + 0.5, `${h.id} on ${head.id}: fitted beyond the limits`);
+    const g = fitGaps(h.id, head.id);
+    if (!LOOSE.includes(h.id)) {
+      worstGap = Math.max(worstGap, g.side, g.top);
+      check(g.side <= 2 && g.top <= 2, `${h.id} on ${head.id}: background shows between hair and scalp (${g.side} at the side, ${g.top} over the crown)`);
+    }
+    // No fit may bare a scalp the style covered as drawn.
+    check(crownBare(h.id, head.id) <= Math.max(0, crownBare(h.id, head.id, base)) + 1, `${h.id} on ${head.id}: the fit bares the top of the head`);
+    // A tall style stays inside the picture.
+    const top = f.line - (f.line - (f.ty + f.sy * (h.edge.top - T.face.top))) * f.squash;
+    check(f.squash >= 0.62 && (f.squash < 1 || top >= frameFor(head.id).y - 1), `${h.id} on ${head.id}: wrongly flattened`);
+  }
+}
+// A short style and a tall one, on every head: placed, and placed the same way each time.
+for (const id of ['hair_boy_short_07', 'hair_boy_updo_15_headband_puff', 'hair_updo_07']) {
+  for (const head of grown) {
+    const f = hairFit(id, head.id);
+    const hairline = Math.min(...PART_BY_ID[id].edge.T.slice(13, 20).filter((v) => v != null));
+    const y = f.ty + f.sy * (hairline - T.face.top);
+    check(y >= head.fit.top && y <= head.fit.top + (head.fit.chin - head.fit.top) * 0.45, `${id} on ${head.id}: the hairline is off the forehead (${Math.round(y)})`);
+  }
+}
+check(hairFit('hair_boy_updo_15_headband_puff', 'head_18_long_rect').squash < 1 && hairFit('hair_boy_short_07', 'head_18_long_rect').squash === 1, 'only a tall style is flattened to fit the picture');
+// The two repaired files, and the stray marks, stay repaired.
+for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/avatars/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
+check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy_medium_03', 'head_00_kid').top <= 2, 'the arch styles show background over the forehead again');
+// A baby's tuft is left where it was put.
+for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) check(JSON.stringify(hairFit(h.id, head)) === JSON.stringify(plainFit(head)), `${h.id} on ${head}: a baby's hair was refitted`);
+// The reference faces: hair that already sat well is left very nearly as drawn.
+const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_02', 'head_17_dimple_oval'] };
+for (const [who, [hair, head]] of Object.entries(REFERENCES)) {
+  const f = hairFit(hair, head);
+  const base = plainFit(head);
+  check(Math.abs(f.sx / base.sx - 1) <= 0.1 && Math.abs(f.sy / base.sy - 1) <= 0.1 && Math.abs(f.ty - base.ty) <= 18, `${who}: a reference look was moved a long way (${JSON.stringify(f)})`);
+  check(fitGaps(hair, head).side <= 2 && fitGaps(hair, head).top <= 2, `${who}: a reference look has a gap`);
+}
+
+// 8. Framing. Adults fill much the same share of a portrait, with eyes on the same line; children keep their own size.
+const adults = AVATAR_MANIFEST.heads.filter((h) => h.tags?.age === 'adult');
+const share = (h, fr) => h.fit.w * (h.fit.chin - h.fit.top) / (fr.size * fr.size);
+const eyeLine = (h, fr) => (h.fit.top + (T.anchor.eyes - T.face.top) * (h.fit.chin - h.fit.top) / (T.face.chin - T.face.top) - fr.y) / fr.size;
+const spread = (xs) => Math.max(...xs) / Math.min(...xs);
+check(spread(adults.map((h) => share(h, frameFor(h.id)))) < spread(adults.map((h) => share(h, FRAME))) - 0.05, 'adult faces are not brought closer in size');
+check(spread(adults.map((h) => share(h, frameFor(h.id)))) <= 1.08, `adult faces differ too much in size (${spread(adults.map((h) => share(h, frameFor(h.id)))).toFixed(3)})`);
+check(Math.max(...adults.map((h) => eyeLine(h, frameFor(h.id)))) - Math.min(...adults.map((h) => eyeLine(h, frameFor(h.id)))) < 0.002, 'adult eyes are not on one line');
+check(adults.every((h) => Math.abs(frameFor(h.id).x + frameFor(h.id).size / 2 - h.fit.cx) < 0.1), 'an adult face is not centred');
+for (const id of ['head_00_baby', 'head_00_toddler', 'head_00_kid']) check(frameFor(id) === FRAME, `${id} should keep the plain picture`);
+check(share(PART_BY_ID.head_00_toddler, FRAME) > share(PART_BY_ID.head_00_kid, FRAME), 'a toddler\'s head should be bigger in the picture than a child\'s');
+// Hair height does not move or resize the face: the same head has the same picture whatever is on it.
+const framed = (hair, age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair } }, seed: 'frame', age }).match(/viewBox="([^"]+)"/)[1];
+check(framed('hair_boy_short_07', 30) === framed('hair_updo_07', 30) && framed('bald', 30) === framed('hair_updo_07', 30), 'the picture changes with the hairstyle');
+check(framed('hair_boy_short_07', 3) === `${FRAME.x} ${FRAME.y} ${FRAME.size} ${FRAME.size}` && framed('hair_boy_short_07', 9) === framed('hair_boy_short_07', 3), 'a child\'s picture is not the plain one');
+// One person is drawn the same on every screen: screens differ only in the size they show it at.
+{
+  const who = { appearance: randomAppearance(9, 'female'), seed: 'same', age: 34, gender: 'female', mood: 60 };
+  const strip = (svg) => svg.replace(/pw-[a-z]+-\d+/g, 'id').replace(/ (width|height)="\d+"/g, '');
+  check(strip(avatarSvg(who)) === strip(avatarSvg({ ...who, size: 42 })) && strip(avatarSvg(who)) === strip(avatarSvg({ ...who, size: 96, label: undefined })), 'the same person is drawn differently at different sizes');
+}
+
+// 9. Features read on every skin tone. Light faces are untouched; deep ones get softer whites and firmer features.
+const tone = (id) => part('skin', id).hex;
+check(['porcelain', 'ivory', 'rose_beige', 'sand', 'golden', 'olive', 'tan'].every((id) => deepness(tone(id)) === 0), 'a light skin tone is being adjusted');
+check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepness(tone('chestnut')) > 0 && deepness(tone('chestnut')) < deepness(tone('umber')), 'deep skin tones are not adjusted in step with their depth');
+{
+  const face = (skin) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin, eyes: 'eyes_10', eyeColor: 'brown', brows: 'brows_10', nose: 'nose_8', lips: 'lips_6', hairColor: 'black', hairTexture: 'coily', marks: [] },
+    style: { hair: 'hair_boy_short_07', jewelry: [], outfit: 'outfit_01_tee' } }, seed: 'tone', age: 30 });
+  const light = face('sand');
+  const deep = face('ebony');
+  const parts = (svg) => [...svg.matchAll(/href="([^"#]+)#art"/g)].map((m) => m[1]).join(' ');
+  const places = (svg) => [...svg.matchAll(/transform="([^"]+)"/g)].map((m) => m[1]).join(' ');
+  check(parts(light) === parts(deep) && places(light) === places(deep), 'the same features are not the same shapes in the same places on a deeper skin tone');
+  check(!/eye-white|stroke/.test(light), 'a light face has been given extra weight');
+  check(/--eye-white:#[0-9a-f]{6}/.test(deep) && /stroke-width/.test(deep) && /paint-order:stroke/.test(deep), 'a deep face has not been made more readable');
+  check(deep.includes(`--skin-color:${tone('ebony')}`), 'the skin tone itself was changed');
+  const white = deep.match(/--eye-white:(#[0-9a-f]{6})/)[1];
+  check(parseInt(white.slice(1, 3), 16) >= 0xd0, `the white of the eye is no longer white (${white})`);
+}
+
+// 10. The eye shapes: every one still on offer, none added, none reweighted. (Whether to withdraw one is not this file's decision.)
+const EYES = ['eyes_10', 'eyes_11', 'eyes_12', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_24', 'eyes_25', 'eyes_26', 'eyes_6', 'eyes_7', 'eyes_8', 'eyes_9'];
+check(AVATAR_MANIFEST.eyes.map((e) => e.id).join() === EYES.join(), 'the eye shapes in the manifest have changed');
+check(CATALOG.eyes.map((e) => e.id).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
+check(CUR.RESTING.eyes.join() === 'eyes_6,eyes_8,eyes_9,eyes_10,eyes_11,eyes_16,eyes_18,eyes_19,eyes_22,eyes_25', 'the eyes given out at random have changed');
+{
+  const seen = {};
+  rng.seed(7);
+  for (let i = 0; i < 4000; i++) { const e = randomAppearance(i % 12, i % 2 ? 'female' : 'male').inherited.eyes; seen[e] = (seen[e] ?? 0) + 1; }
+  check(Object.keys(seen).sort().join() === [...CUR.RESTING.eyes].sort().join(), 'random faces draw on a different set of eyes');
+  check(Math.max(...Object.values(seen)) / Math.min(...Object.values(seen)) < 1.5, 'some eye shapes are now given out more often than others');
+}
+
+// 11. A saved face keeps its head, hair and eyes, and is drawn with those files.
+{
+  const saved = JSON.parse(JSON.stringify({ v: 3, inherited: { head: 'head_18_long_rect', skin: 'umber', eyes: 'eyes_22', eyeColor: 'hazel', brows: 'brows_14', nose: 'nose_17', lips: 'lips_12', hairColor: 'black', hairTexture: 'coily', marks: [], tweaks: { eyeGap: 1 } },
+    style: { hair: 'hair_boy_updo_15_headband_puff', jewelry: [], outfit: 'outfit_22_denim' } }));
+  const a = normalize(saved, 'npc_saved');
+  check(a.inherited.head === 'head_18_long_rect' && a.style.hair === 'hair_boy_updo_15_headband_puff' && a.inherited.eyes === 'eyes_22' && a.inherited.tweaks.eyeGap === 1, 'a saved face lost its head, hair or eyes');
+  const svg = avatarSvg({ appearance: saved, seed: 'npc_saved', age: 40 });
+  for (const f of ['heads/head_18_long_rect.svg', 'hair/hair_boy_updo_15_headband_puff.svg', 'eyes/eyes_22.svg']) check(svg.includes(f), `a saved face is not drawn with ${f}`);
+  check(JSON.stringify(saved.inherited.tweaks) === '{"eyeGap":1}', 'drawing a face changed what was saved');
+  // A face made today and one loaded from a save are fitted by the same rule.
+  const fresh = randomAppearance(8, 'male');
+  const again = JSON.parse(JSON.stringify(fresh));
+  check(avatarSvg({ appearance: fresh, seed: 'f', age: 30 }).replace(/pw-[a-z]+-\d+/g, '') === avatarSvg({ appearance: again, seed: 'f', age: 30 }).replace(/pw-[a-z]+-\d+/g, ''), 'a saved copy of a face is drawn differently');
+}
+
+// 12. Layers: the mouth over a beard, lines of age kept on the face, front hair cut at the chin.
+{
+  const look = resolveLook({ v: 3, inherited: { head: 'head_13_athletic', skin: 'golden' }, style: { hair: 'hair_girl_long_04', facialHair: 'facial_hair_04_bushy_full_beard' } }, 'layers', 'male');
+  const svg = characterAvatarSvg(look, { age: 70, gender: 'male' });
+  check(svg.indexOf(PART_BY_ID[look.lips].file) > svg.indexOf('facial_hair_04_bushy_full_beard'), 'a beard is drawn over the mouth');
+  check(/<g clip-path="url\(#pw-face-\d+\)"><use href="[^"]*aging/.test(svg), 'lines of age are not kept to the face');
+  const cut = Number(svg.match(/<clipPath id="pw-front-\d+"><rect x="-400" y="-2000" width="1312" height="(\d+)"/)[1]) - 2000;
+  const f = hairFit('hair_girl_long_04', 'head_13_athletic');
+  check(Math.abs(f.ty + f.sy * (cut - T.face.top) - (PART_BY_ID.head_13_athletic.fit.chin - 2)) <= 1.5, 'hair in front of the face does not end at the chin');
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);
   process.exit(1);
 }
-console.log(`The avatar system is sound: ${ids.length} parts, every save format loads, families hold together.`);
+console.log(`The avatar system is sound: ${ids.length} parts, every save format loads, families hold together; ${hairs.length} hairstyles fit ${grown.length} heads (widest gap ${worstGap}).`);
