@@ -41,7 +41,7 @@ export const TEXTURES = ['straight', 'wavy', 'curly', 'coily'];
 /** Eyes, mouths and noses that are a resting face (others are expressions, or gags, and are never picked at random). */
 export const RESTING = {
   // one family of eyes, so faces drawn at random look like they belong to the same world
-  eyes: ['eyes_8', 'eyes_9', 'eyes_10', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_25'],
+  eyes: ['eyes_8', 'eyes_9', 'eyes_10', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_25', 'eyes_26'],
   // neutral or pleasant mouths only
   lips: ['lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_14'],
   noses: ['nose_6', 'nose_7', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
