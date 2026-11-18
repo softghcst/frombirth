@@ -404,7 +404,8 @@ section('Events');
   check(began === 1 || f.countryId !== 'fr', 'the war\'s beginning is reported once');
   // Independence: news in the country concerned, in its year.
   const g = life({ born: 1940, age: 17, countryId: 'gh' });
-  check(store.state.journal.some((j) => /Ghana is independent now/.test(j.text)), 'Ghana\'s independence in 1957 is in the news of a life there');
+  // A family can have moved abroad by then (global life); the news is only for those still living there.
+  check(store.state.journal.some((j) => /Ghana is independent now/.test(j.text)) || g.countryId !== 'gh', 'Ghana\'s independence in 1957 is in the news of a life there');
 }
 
 // ---------- Phase 10: lives in every era, and a dynasty through them all ----------

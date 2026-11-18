@@ -256,11 +256,15 @@ section('C. Reconnection');
   core.world().arcs.lastYear = null;
   let queued = null;
   for (let i = 0; i < 30 && !queued; i++) { core.world().arcs.lastYear = null; stories.tickStories(); queued = store.state.pendingEvents.find((e) => e.id === 'digital_reconnect'); store.state.pendingEvents = store.state.pendingEvents.filter((e) => e.id === 'digital_reconnect'); }
-  check(queued?.cast.friend === id, 'the Story Director finds the old friend from saved state');
-  const note = stories.decide('reconnect:message', queued.cast);
-  const back = store.state.npcs[id];
-  check(back && p.npcIds.includes(id) && back.role === 'friend' && back.id === id, `they are back in the player's life as the same person (${note})`);
-  check(core.eventsOf(p.id).some((e) => e.kind === 'reconnection' && e.charIds.includes(id)), 'the reconnection is a life event');
+  // Other childhood friends drift away over those years too; the Story Director may pick any of them. It must be
+  // someone real who drifted out of the player's life, not someone made up for the story.
+  const found = queued && store.state.npcs[queued.cast.friend];
+  check(found && found.flags.drifted && !p.npcIds.includes(found.id), 'the Story Director finds an old friend from saved state');
+  const them = found?.id ?? id;
+  const note = queued ? stories.decide('reconnect:message', queued.cast) : '';
+  const back = store.state.npcs[them];
+  check(back && p.npcIds.includes(them) && back.role === 'friend' && back.id === them, `they are back in the player's life as the same person (${note})`);
+  check(core.eventsOf(p.id).some((e) => e.kind === 'reconnection' && e.charIds.includes(them)), 'the reconnection is a life event');
 }
 
 // ---------- Scenario D: private account ----------
@@ -581,8 +585,10 @@ section('Creator economy');
   // Streams: scheduled for next year, with equipment
   const live = join('beacon', 'routine.live', { visibility: 'public' }).account;
   freshHours();
+  // Years can pass above while a licence offer is awaited, and kit wears out: replace what no longer works.
+  rich(); ['camera', 'microphone', 'webcam'].forEach((d) => tech.buyDevice(d));
   const plan = creator.planStream({ accountId: live.id, topic: 'music', equipment: creator.streamGear().map((d) => d.id), when: 'next' });
-  check(plan.ok && plan.stream.scheduledYear === store.state.year + 1 && plan.stream.equipment.length >= 2, 'a stream can be scheduled for next year with chosen equipment');
+  check(plan.ok && plan.stream.scheduledYear === store.state.year + 1 && plan.stream.equipment.length >= 2, `a stream can be scheduled for next year with chosen equipment${plan.ok && plan.stream.equipment.length >= 2 ? '' : ` (${plan.text}; gear ${creator.streamGear().map((d) => d.id).join(', ')})`}`);
   check(!creator.broadcast(plan.stream.id).ok, 'and cannot go out early');
   grow(1); freshHours();
   check(creator.broadcast(plan.stream.id).ok, 'it goes out in its year');

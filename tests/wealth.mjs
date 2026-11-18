@@ -781,8 +781,9 @@ section('new scenes: weddings, babies, careers, parents, university, grandparent
   // Early retirement, on what they have put by.
   const rich = person('sibling', 60, { savings: 0, salary: 60000 }); rich.life.fin = null; const r = nm.finOf(rich);
   r.bank = { bankId: 'meridian', name: 'Meridian Bank', bal: 5_000_000, rateBp: 100, opened: 2000 }; rich.life.yearsWorked = 35;
-  let gone = false; for (let i = 0; i < 6 && !gone; i++) gone = nm.tickNpcMoney(rich) === 'retired';
-  check(gone && rich.life.retired && !rich.life.job && rich.life.pension > 0, 'someone with plenty put by may retire early, on a pension from their years of work');
+  // A 35% chance a year once they can afford it: six tries all miss about one time in thirteen, so allow twenty.
+  let gone = false; for (let i = 0; i < 20 && !gone; i++) gone = nm.tickNpcMoney(rich) === 'retired';
+  check(gone && rich.life.retired && !rich.life.job && rich.life.pension > 0, `someone with plenty put by may retire early, on a pension from their years of work${gone ? '' : ` (age ${rich.age}, job ${!!rich.life.job}, retired ${!!rich.life.retired}, bank ${r.bank?.bal}, debt ${r.debt}, savings ${rich.life.savings}, alive ${rich.alive})`}`);
   const poorer = person('sibling', 60, { savings: 0, salary: 60000 }); poorer.life.fin = null; nm.finOf(poorer);
   for (let i = 0; i < 5; i++) nm.tickNpcMoney(poorer);
   check(!poorer.life.retired, 'someone without it keeps working');
