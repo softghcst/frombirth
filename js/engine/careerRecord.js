@@ -177,7 +177,8 @@ function sportSummary(p, st) {
   if (!played.length) return null;
   const main = a.sports[a.primary] && played.includes(a.sports[a.primary]) ? a.sports[a.primary] : played[0];
   return { sport: main.id, seasons: (main.seasonsPlayed ?? 0) + (main.legacySeasons ?? 0), titles: main.titles.length,
-    medals: (main.medals ?? []).map((m) => `${m.medal} ${m.year}`), caps: main.caps ?? 0, level: main.level };
+    medals: (main.medals ?? []).map((m) => `${m.medal} ${m.year}`), caps: main.caps ?? 0, level: main.level,
+    awards: (main.awards ?? []).filter((a) => a.kind !== 'team').map((a) => `${a.name} ${a.year}`) };
 }
 
 /** Written when the story passes on (engine/legacy.js). */

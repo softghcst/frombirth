@@ -173,6 +173,61 @@ for (const [id, from] of [['soccer', 1991], ['basketball', 1997], ['cricket', 19
   const sp = SPORTS_LIST.find((x) => x.id === id); if (sp) sp.womenProFrom = Math.max(sp.proFrom, from);
 }
 
+// ---------- End-of-season awards ----------
+//
+// Each league names its awards when the season is over (engine/sportsAwards.js). Kinds:
+//   best      the most valuable player of the season              rookie   the best in their first season in the league
+//   young     the best aged 21 or under                           stat     the most of one statistic (`stat`, `per` = an average)
+//   pos       the best at a position (`pos`)                      bench    the best who came off the bench
+//   improved  the biggest step up from last season                comeback the best back from a long injury
+//   coach     the coach whose team did most beyond what was expected
+//   team      a team of the season: the best at each position (an honor shared by several)
+// `pos` limits who can win; `stat` names a number the game records for the player's own games (sports.js myGame).
+const A = (id, name, kind, o = {}) => ({ id, name, kind, ...o });
+const TEAM_DEFAULT = [A('mvp', 'Most Valuable Player', 'best'), A('rookie', 'Rookie of the Year', 'rookie'), A('improved', 'Most Improved Player', 'improved'),
+  A('coach', 'Coach of the Year', 'coach'), A('team', 'All-League First Team', 'team')];
+export const SEASON_AWARDS = {
+  soccer: [A('mvp', 'Player of the Season', 'best'), A('young', 'Young Player of the Season', 'young'), A('boot', 'Golden Boot', 'stat', { stat: 'goals', pos: ['fwd', 'mid', 'def'] }),
+    A('glove', 'Golden Glove', 'stat', { stat: 'clean', pos: ['gk'] }), A('coach', 'Manager of the Season', 'coach'), A('team', 'Team of the Season', 'team')],
+  basketball: [A('mvp', 'Most Valuable Player', 'best'), A('rookie', 'Rookie of the Year', 'rookie'), A('dpoy', 'Defensive Player of the Year', 'stat', { stat: 'rebounds' }),
+    A('sixth', 'Sixth Man of the Year', 'bench'), A('improved', 'Most Improved Player', 'improved'), A('scoring', 'Scoring Title', 'stat', { stat: 'points', per: true }),
+    A('coach', 'Coach of the Year', 'coach'), A('team', 'All-League First Team', 'team')],
+  wheelchair_basketball: [A('mvp', 'Most Valuable Player', 'best'), A('rookie', 'Rookie of the Year', 'rookie'), A('scoring', 'Scoring Title', 'stat', { stat: 'points', per: true }),
+    A('team', 'All-League First Team', 'team')],
+  american_football: [A('mvp', 'Most Valuable Player', 'best'), A('opoy', 'Offensive Player of the Year', 'pos', { pos: ['qb', 'skill'] }),
+    A('dpoy', 'Defensive Player of the Year', 'pos', { pos: ['defense', 'line'] }), A('rookie', 'Rookie of the Year', 'rookie'), A('comeback', 'Comeback Player of the Year', 'comeback'),
+    A('coach', 'Coach of the Year', 'coach'), A('team', 'All-League Team', 'team')],
+  baseball: [A('mvp', 'Most Valuable Player', 'best', { pos: ['catcher', 'infield', 'outfield'] }), A('pitcher', 'Pitcher of the Year', 'pos', { pos: ['pitcher'] }),
+    A('rookie', 'Rookie of the Year', 'rookie'), A('batting', 'Batting Title', 'stat', { stat: 'hits', per: true, pos: ['catcher', 'infield', 'outfield'] }),
+    A('comeback', 'Comeback Player of the Year', 'comeback'), A('coach', 'Manager of the Year', 'coach'), A('team', 'All-League Team', 'team')],
+  softball: [A('mvp', 'Most Valuable Player', 'best', { pos: ['infield', 'outfield'] }), A('pitcher', 'Pitcher of the Year', 'pos', { pos: ['pitcher'] }),
+    A('rookie', 'Rookie of the Year', 'rookie'), A('batting', 'Batting Title', 'stat', { stat: 'hits', per: true, pos: ['infield', 'outfield'] }), A('team', 'All-League Team', 'team')],
+  ice_hockey: [A('mvp', 'Most Valuable Player', 'best'), A('rookie', 'Rookie of the Year', 'rookie'), A('goalie', 'Best Goaltender', 'pos', { pos: ['goalie'] }),
+    A('defense', 'Best Defenseman', 'pos', { pos: ['defense'] }), A('scoring', 'Scoring Title', 'stat', { stat: 'points', pos: ['forward', 'defense'] }),
+    A('coach', 'Coach of the Year', 'coach'), A('team', 'All-League First Team', 'team')],
+  volleyball: [A('mvp', 'Most Valuable Player', 'best'), A('attacker', 'Best Attacker', 'stat', { stat: 'kills', pos: ['outside', 'middle'] }),
+    A('libero', 'Best Libero', 'stat', { stat: 'digs', pos: ['libero'] }), A('setter', 'Best Setter', 'pos', { pos: ['setter'] }), A('rookie', 'Rookie of the Year', 'rookie'),
+    A('team', 'All-League Team', 'team')],
+  cricket: [A('mvp', 'Player of the Season', 'best'), A('runs', 'Leading Run-Scorer', 'stat', { stat: 'runs', pos: ['batter', 'allrounder', 'keeper'] }),
+    A('wickets', 'Leading Wicket-Taker', 'stat', { stat: 'wickets', pos: ['bowler', 'allrounder'] }), A('young', 'Young Cricketer of the Year', 'young'),
+    A('team', 'Team of the Season', 'team')],
+  rugby: [A('mvp', 'Player of the Season', 'best'), A('tries', 'Top Try Scorer', 'stat', { stat: 'tries' }), A('young', 'Young Player of the Season', 'young'),
+    A('coach', 'Coach of the Season', 'coach'), A('team', 'Team of the Season', 'team')],
+};
+/** A team of the season is a side: how many at each position, as the sport lines up. */
+export const AWARD_LINEUPS = {
+  soccer: { gk: 1, def: 4, mid: 4, fwd: 2 }, basketball: { guard: 2, forward: 2, center: 1 }, wheelchair_basketball: { guard: 2, forward: 3 },
+  baseball: { pitcher: 1, catcher: 1, infield: 4, outfield: 3 }, softball: { pitcher: 1, infield: 5, outfield: 3 },
+  american_football: { qb: 1, skill: 4, line: 5, defense: 11 }, ice_hockey: { goalie: 1, defense: 2, forward: 3 },
+  volleyball: { setter: 1, outside: 2, middle: 2, libero: 1 }, cricket: { batter: 5, bowler: 4, allrounder: 1, keeper: 1 }, rugby: { forward: 8, back: 7 },
+};
+/** University leagues name two of them differently. */
+export const COLLEGE_NAMES = { mvp: 'Player of the Year', rookie: 'Freshman of the Year', young: 'Freshman of the Year', coach: 'Coach of the Year' };
+/** Individual sports: a year's honors on the tour or in national competition. */
+export const YEAR_AWARDS = [A('poy', 'Player of the Year', 'best'), A('newcomer', 'Newcomer of the Year', 'rookie'), A('comeback', 'Comeback Player of the Year', 'comeback')];
+/** Awards a league gives: its own list, or the usual one. */
+export const awardsFor = (sport) => SEASON_AWARDS[sport.id] ?? TEAM_DEFAULT;
+
 /** The international games for individual sports, every four years, from the first modern games. */
 export const WORLD_GAMES = { name: 'World Games', founded: 1896, every: 4 };
 export const isGamesYear = (y) => y >= WORLD_GAMES.founded && y % WORLD_GAMES.every === 0;

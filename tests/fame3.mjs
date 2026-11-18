@@ -145,8 +145,10 @@ const advLine = (store.state.journal ?? []).length >= 0;
 check(advLine && b.advancePaid, 'the advance is paid');
 // Force the rights conditions to check the bookkeeping.
 b.critics = 80; b.units[b.countryId] = 60000;
-for (let y = 0; y < 8; y++) year();
-check((b.foreign ?? []).length > 0, 'an agented book people liked is sold for translation');
+// A sale is likely, never certain (85% the year after release, 40% after): the book is kept a year from release until
+// one comes, so this checks the bookkeeping rather than the odds of one life.
+for (let y = 0; y < 8; y++) { if (!(b.foreign ?? []).length) b.released = store.state.year; year(); }
+check((b.foreign ?? []).length > 0, `an agented book people liked is sold for translation${(b.foreign ?? []).length ? '' : ` (agent ${!!pub.writingOf(p).agent}, agented ${b.agented}, critics ${b.critics}, released ${b.released}, now ${store.state.year}, alive ${p.alive}, author ${b.author})`}`);
 check((b.foreign ?? []).every((x) => x.paid), 'each translation advance is paid once');
 check((b.options ?? []).length > 0, 'a well-reviewed book is optioned for the screen');
 const made = (b.options ?? []).find((o) => o.made);

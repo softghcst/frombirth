@@ -21,6 +21,7 @@ import { makeNpc } from './npcFactory.js';
 import * as sp from './sports.js';
 import { familyPast, tickRelatives, parentsYear } from './sportsFamily.js';
 import { tickSportsArcs } from './sportsArcs.js';
+import { seasonAwards, yearAwards } from './sportsAwards.js';
 
 const { nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, playSeason, playEvent, overall, rec, EVENTS_A_YEAR, fullName, seeded } = sp.internals;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -149,6 +150,7 @@ const ANSWERS = {
     if (choice === 'no') return result(true, 'You stayed amateur for now.', 'neutral');
     const e = sp.entryOf(d.sportId, state.player.id, state);
     e.level = 'pro';
+    e.proYear ??= state.year;
     const org = findOrg(state, sportOf(d.sportId), 'pro', { key: `tour/${d.sportId}/${state.player.countryId}`, name: `${COUNTRIES[state.player.countryId].name} ${sportOf(d.sportId).name} Tour` });
     e.tourId = org.id;
     const text = `You turned professional. From now on you play for prize money, and pay your own way.`;
@@ -278,6 +280,7 @@ function signPro(state, d, o = {}) {
   p.career.sportContract = id;
   e.contractId = id;
   e.level = 'pro';
+  e.proYear ??= state.year;
   joinOrg(org, state);
   sp.moment(state, { type: o.transfer ? 'transfer' : 'signing', sportId: d.sportId, text: `${o.transfer ? 'Transferred to' : d.how === 'draft' ? `Drafted by` : 'Signed for'} ${org.name}.`, sig: 3, orgId: org.id });
   milestone(`${o.transfer ? 'Transferred to' : d.how === 'draft' ? 'Drafted by' : 'Signed professionally with'} ${org.name}.`, 'career');
@@ -581,7 +584,8 @@ function fameYear(state, a, e, sum) {
   const p = state.player;
   const watched = { recreational: 0, club: 0.3, school: 0.5, academy: 0.8, college: 2, pro: 4, elite: 3 }[e.level] ?? 0;
   const games = sum.medal === 'gold' ? 10 : sum.medal ? 5 : 0;
-  const up = watched * (1 + (sum.title ? 1.5 : 0) + (sum.rating >= 7.5 ? 0.6 : 0)) + games + (sum.caps ? 2 : 0) + (sp.myAthlete(state).integrity?.reported === state.year ? 2 : 0);
+  const honors = (sum.awards ?? []).reduce((s, a) => s + (['best', 'rookie', 'young'].includes(a.kind) ? 6 : a.kind === 'team' ? 2 : 3), 0);
+  const up = watched * (1 + (sum.title ? 1.5 : 0) + (sum.rating >= 7.5 ? 0.6 : 0)) + games + honors + (sum.caps ? 2 : 0) + (sp.myAthlete(state).integrity?.reported === state.year ? 2 : 0);
   const before = a.fame;
   a.fame = Math.round(clamp(a.fame * (watched >= 2 ? 0.97 : 0.88) + up) * 10) / 10;
   p.hidden.fame = clamp((p.hidden.fame ?? 0) + Math.max(0, Math.round((a.fame - before) / 2)));
@@ -811,6 +815,9 @@ function yearIn(state, a, e) {
       const goals = mine.reduce((s, f) => s + (f.me.goals ?? f.me.points ?? f.me.runs ?? f.me.touchdowns ?? f.me.tries ?? f.me.kills ?? f.me.hits ?? 0), 0);
       const unit = { goals: 'goals', points: sport.id.includes('basketball') ? 'points' : sport.id === 'american_football' ? 'touchdowns' : sport.id === 'rugby' ? 'tries' : 'kills', baseball: 'hits', cricket: 'runs' }[sport.adapter] ?? '';
       sp.say(state, `${team.name}, ${state.year}: ${place}${['th', 'st', 'nd', 'rd'][place] ?? 'th'} of ${table.length} in the ${season.name}${champ ? ', then won the playoffs. Champions.' : fin && (fin.home === team.id || fin.away === team.id) ? ', and beaten in the final.' : '.'} You played ${mine.length} ${mine.length === 1 ? 'game' : 'games'}${mine.length ? `, rated ${avg} on average${goals && unit ? `, with ${goals} ${unit}` : ''}` : ''}.`, champ ? 'good' : 'neutral', { screen: 'season', id: season.id });
+      // The league names its awards for the season (engine/sportsAwards.js).
+      const won = seasonAwards(state, season, e, team);
+      if (won.length) sum.awards = [...(sum.awards ?? []), ...won];
       // The school's own record of clubs.
       if (org.kind === 'school') { const f = (p.flags.athlete ??= { seasons: 0, best: 0, awards: [] }); f.sport = sport.name.toLowerCase(); f.seasons = (f.seasons ?? 0) + 1; if (avg >= 7.8) f.awards.push({ age: p.age, what: 'Player of the season' }); }
     }
@@ -883,6 +890,7 @@ function yearIn(state, a, e) {
       sp.say(state, `The ${ev.name}: ${medal ? `a ${medal} medal` : `you finished ${/^\d/.test(ev.place) ? ev.place : `in the ${ev.place.toLowerCase()}`}`}.`, medal ? 'good' : 'neutral', { screen: 'sport', id: e.id });
     }
     const titles = e.titles.filter((t) => t.year === state.year).length;
+    if (can) { const won = yearAwards(state, e, sum); if (won.length) sum.awards = [...(sum.awards ?? []), ...won]; }
     const best = can ? e.events.map((id) => S.events[id]).filter((x) => x.year === state.year).map((x) => x.place) : [];
     sum.rating = Math.round(clamp(6 + (sum.wins - sum.losses) / Math.max(4, sum.wins + sum.losses) * 3, 3, 10) * 10) / 10;
     e.lastRating = Math.round(clamp((sum.rating - 3) * 14));
