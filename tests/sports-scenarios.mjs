@@ -74,10 +74,11 @@ scenario('A. first sport: a child takes up a sport and has a skill profile of th
 scenario('B. school team: a tryout, an outcome, a persistent roster', () => {
   let joined = false;
   for (let t = 0; t < 15 && !joined; t++) {
-    const p = grownTo(12, 'us', 'Chicago', able);
+    const p = grownTo(14, 'us', 'Chicago', able); // starting high school: years left before leaving
     edu.setSport?.('soccer');
     p.education.sport = 'soccer';
-    for (let i = 0; i < 4 && !joined; i++) { const r = edu.joinClub('sports_team'); joined = r.ok; if (!joined) year(); }
+    // Two seasons are watched, so the team must be made by sixteen: at eighteen the player leaves school, and the team.
+    for (let i = 0; i < 2 && !joined; i++) { const r = edu.joinClub('sports_team'); joined = r.ok; if (!joined) year(); }
   }
   check(joined, 'a strong student makes the school team');
   if (!joined) return;
@@ -89,9 +90,11 @@ scenario('B. school team: a tryout, an outcome, a persistent roster', () => {
   const team = sp.teamOf(e.teamId);
   check(org?.kind === 'school' && team.roster.some((x) => x.id === P().id), 'the player is on the school team\'s roster');
   const names = team.roster.map((x) => x.name).sort().join();
+  const schoolBefore = P().education.place?.schoolId;
   year();
-  check(sp.teamOf(e.teamId).id === team.id || sp.teamOf(e.teamId).orgId === org.id, 'the same school team the next year');
-  check(team.roster.filter((x) => names.includes(x.name)).length >= team.roster.length - 4, 'most of the roster is the same people');
+  const nowOrg = sp.orgOf(sp.teamOf(e.teamId)?.orgId);
+  check(nowOrg?.kind === 'school' && (nowOrg.id === org.id || P().education.place?.schoolId !== schoolBefore), 'still on the school team the next year (the new school\'s, if the family moved schools)');
+  if (nowOrg?.id === org.id) check(team.roster.filter((x) => names.includes(x.name)).length >= team.roster.length - 4, 'most of the roster is the same people');
   check(e.seasons.length >= 2 && P().flags.athlete?.seasons >= 2, 'the seasons are on the athletic record and the school record');
   sound('B');
 });

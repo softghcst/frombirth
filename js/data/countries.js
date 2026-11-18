@@ -1,5 +1,6 @@
 // currency.scale converts base (USD-like) amounts into everyday local amounts.
-// incomeTax is an effective rate on annual income; estateTax applies at death.
+// incomeTax is an effective rate on annual income. The second number after it (once a flat estate tax) is no
+// longer used: estate and inheritance tax is in data/inheritance.js.
 import { NAMES } from './names.js';
 import { LIVING } from './living.js';
 import { NEW_PLACES } from './worldNew.js';
@@ -9,7 +10,7 @@ import { PLACES } from './world.js';
 const pool = (short, long = '') => [...new Set(`${short} ${long}`.split(' ').filter(Boolean).map((n) => n.replace(/_/g, ' ')))];
 
 const C = (id, name, flag, code, symbol, scale, incomeTax, estateTax, cities, m = '', f = '', s = '') => ({
-  id, name, flag, currency: { code, symbol, scale }, incomeTax, estateTax, cities,
+  id, name, flag, currency: { code, symbol, scale }, incomeTax, cities,
   names: { male: pool(m, NAMES[id]?.male), female: pool(f, NAMES[id]?.female), last: pool(s, NAMES[id]?.last) },
 });
 
@@ -151,7 +152,7 @@ const LIST = [
     ['Athens', 'Thessaloniki', 'Patras', 'Heraklion', 'Larissa', 'Rhodes']),
   C('ru', 'Russia', '🇷🇺', 'RUB', '₽', 90, 0.13, 0,
     ['Moscow', 'Saint Petersburg', 'Novosibirsk', 'Kazan', 'Yekaterinburg', 'Sochi']),
-  C('ua', 'Ukraine', '🇺🇦', 'UAH', '₴', 40, 0.19, 0,
+  C('ua', 'Ukraine', '🇺🇦', 'UAH', '₴', 40, 0.18, 0,
     ['Kyiv', 'Lviv', 'Odesa', 'Kharkiv', 'Dnipro', 'Chernivtsi']),
   C('pe', 'Peru', '🇵🇪', 'PEN', 'S/', 3.8, 0.17, 0,
     ['Lima', 'Arequipa', 'Cusco', 'Trujillo', 'Piura', 'Iquitos']),

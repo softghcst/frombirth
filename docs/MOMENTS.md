@@ -47,6 +47,12 @@ When the player ages up, before the age changes (`finishYear` in `engine/moments
 Then the world moves on as always, and the new year's invitations are dealt (`startYear`). Anything already done
 by hand is never done again by Age Up.
 
+### Shorter turns
+
+With six- or three-month turns (Settings → Time per turn), "this year" is still the calendar year: something
+marked in its first quarter stays done for the rest of it, and the year is finished once, at the turn of the year,
+by the same Age Up code (`engine/turns.js` calls `advanceYear` then).
+
 ## Traditions
 
 A holiday, a family reunion or visits to the grandparents can be made a family tradition (the player must be an

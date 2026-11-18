@@ -3,6 +3,7 @@
 import { careLine } from '../../engine/guardianship.js';
 import * as sys from '../../engine/systems.js';
 import { taxLine } from '../../engine/systems.js';
+import { inheritanceLine, inheritanceShort, lawOf } from '../../engine/inheritance.js';
 import { cityLine } from '../../engine/cities.js';
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
@@ -145,7 +146,7 @@ async function browseAbroad(api) {
   const held = money.balances().filter((b) => !b.home);
   const id = await pickModal({ title: 'Which country?', body: held.length ? `You hold ${held.map((b) => money.fmt(b.amount, b.code)).join(', ')} as well as ${fmtMoney(p.finance.cash, c)}.` : `You have ${fmtMoney(p.finance.cash, c)}. It will be changed at today's rate, less the bank's fee.`,
     options: COUNTRY_LIST.filter((k) => k.id !== p.countryId).sort((a, b) => a.name.localeCompare(b.name)).map((k) => ({ value: k.id, label: `${k.flag} ${k.name}`,
-      sub: `${k.currency.code} · property tax ${propertyTaxLabel(k)} · inheritance tax ${k.estateTax ? `${Math.round(k.estateTax * 100)}%` : 'none'}${(p.flags.visited ?? []).includes(k.id) ? ' · you have been there' : ''}` })) });
+      sub: `${k.currency.code} · property tax ${propertyTaxLabel(k)} · inheritance tax ${inheritanceShort(k)}${(p.flags.visited ?? []).includes(k.id) ? ' · you have been there' : ''}` })) });
   if (!id) return undefined;
   const at = COUNTRIES[id];
   const city = at.cities.length > 1 ? await pickModal({ title: `Where in ${at.name}?`, body: 'Compared with the country as a whole.', options: at.cities.map((n) => ({ value: n, label: n, sub: cityLine(id, n) })) }) : at.cities[0];
@@ -172,7 +173,7 @@ function openProperty(a, api) {
     ['Use', isHome ? 'You live here' : a.tenant ? `Let at ${money.fmt(a.tenant.rent, a.tenant.code ?? c.currency.code)} a year${a.tenant.code && a.tenant.code !== c.currency.code ? ` (about ${fmtMoney(estate.rentAtHome(a), c)})` : ''}` : 'Standing empty'],
     ['Running costs', `${fmtMoney(Math.round(a.value * estate.propertyTypeOf(a).upkeep), c)} a year`],
     ['Where', `${a.city ? `${a.city}, ` : ''}${estate.placeOf(a).name}`],
-    ...(estate.isAbroad(a) ? [['Tax on rent', `${Math.round(estate.placeOf(a).incomeTax * 100)}%, paid in ${estate.placeOf(a).name}`], ['When you die', estate.placeOf(a).estateTax ? `Taxed at ${Math.round(estate.placeOf(a).estateTax * 100)}% in ${estate.placeOf(a).name}` : `No inheritance tax in ${estate.placeOf(a).name}`]] : []),
+    ...(estate.isAbroad(a) ? [['Tax on rent', `${Math.round(estate.placeOf(a).incomeTax * 100)}%, paid in ${estate.placeOf(a).name}`], ['When you die', lawOf(estate.placeOf(a).id).kind === 'none' ? `No inheritance tax in ${estate.placeOf(a).name}` : `Taxed in ${estate.placeOf(a).name}: ${inheritanceLine(estate.placeOf(a))}`]] : []),
     ['Property tax', estate.propertyTaxOn(a) ? `${fmtMoney(estate.propertyTaxOn(a), c)} a year (${propertyTaxLabel(estate.placeOf(a))})` : `None in ${estate.placeOf(a).name}`],
   ];
   const acts = [];
@@ -354,7 +355,7 @@ export default {
         ${kv([['Cash', fmtMoney(f.cash, c)], ...(bankWorth() ? [['In the bank', fmtMoney(bankWorth(), c)]] : []), ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
         <div class="kv"><span>Net worth</span><span><strong>${fmtMoney(netWorth(store.state), c)}</strong></span></div>
         ${kv([['Where you live', living], ['Lifetime earnings', fmtMoney(f.lifetimeEarned, c)], ['Lifetime tax paid', fmtMoney(f.lifetimeTaxPaid, c)],
-    [`Income tax (${c.name})`, taxLine(c)], ...(taxOn ? [['On what you earn now', `${Math.round(taxOn.effective * 100)}% overall, ${Math.round(taxOn.marginal * 100)}% on anything more you earn`]] : []), ['Health care', `${sys.cover().model.name}${sys.cover().covered ? '' : ' (you are not covered)'}`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
+    [`Income tax (${c.name})`, taxLine(c)], ...(taxOn ? [['On what you earn now', `${Math.round(taxOn.effective * 100)}% overall, ${Math.round(taxOn.marginal * 100)}% on anything more you earn`]] : []), ['Health care', `${sys.cover().model.name}${sys.cover().covered ? '' : ' (you are not covered)'}`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', inheritanceLine(c)],
     ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}
       </div>

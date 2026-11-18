@@ -4,8 +4,8 @@ import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
 import { store, player, country } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
-import { saveGame, pushUndo, popUndo, undoDepth } from '../save.js';
-import { advanceYear } from '../engine/yearProcessor.js';
+import { saveGame, pushUndo, popUndo, undoDepth, peekUndo } from '../save.js';
+import { advanceTurn, ageText, nextTurnText, stepOf, monthOf } from '../engine/turns.js';
 import { getEvent, resolveChoice } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
@@ -122,29 +122,42 @@ export function mountGame(app, hooks) {
       age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id, mood: p.stats.mood, label: `${p.firstName} ${p.lastName}`, ...dressOfPlayer(p),
     });
     $('[data-name]').textContent = styledName(p);
-    $('[data-line1]').textContent = `Age ${p.age} · ${p.city}, ${c.name} ${c.flag}`;
+    $('[data-line1]').textContent = `Age ${ageText(p)} · ${p.city}, ${c.name} ${c.flag}`;
     $('[data-line2]').textContent = occupationLine(p);
     const cashEl = $('[data-cash]');
     cashEl.textContent = fmtMoney(p.finance.cash, c);
     cashEl.classList.toggle('neg', p.finance.cash < 0);
     $('[data-meters]').innerHTML = meterHtml('Mood', p.stats.mood) + meterHtml('Health', p.stats.health)
       + meterHtml('Intellect', p.stats.intellect) + meterHtml('Charm', p.stats.charm);
-    yearBtn.innerHTML = `Live another year <small>→ age ${p.age + 1}</small>`;
+    const turn = nextTurnText();
+    yearBtn.innerHTML = `${esc(turn.label)} <small>${esc(turn.sub)}</small>`;
     yearBtn.disabled = busy || !p.alive;
     const undo = $('[data-undo]');
     undo.disabled = busy || !undoDepth(store.state.slotId);
     undo.hidden = p.age === 0 && !undoDepth(store.state.slotId);
+    // With turns shorter than a year, undo takes back a turn, not a year.
+    const byTurn = stepOf() !== 12 || monthOf() !== 0;
+    undo.querySelector('small').textContent = byTurn ? 'Go back' : 'Age down';
+    undo.setAttribute('aria-label', byTurn ? 'Go back: take back the last turn' : 'Age down: take back the last year');
   }
 
   function renderJournal() {
     const p = player();
     let html = '';
     let age = -1;
+    let month = 0;
     for (const entry of store.state.journal) {
       if (entry.age !== age) {
         age = entry.age;
+        month = 0;
         html += `<h2 class="age-head">Age ${age} <small>${p.birthYear + age}</small></h2>`;
       }
+      // Turns shorter than a year: each part of the year under its own heading.
+      if ((entry.month ?? 0) !== month) {
+        month = entry.month ?? 0;
+        if (month) html += `<h3 class="season-head">${month} months <small>${esc(entry.kind === 'season' ? entry.text.replace(/\.$/, '') : '')}</small></h3>`;
+      }
+      if (entry.kind === 'season') continue; // the heading says it
       // A line that tells a moment in an animal's life opens that animal's profile, at that memory.
       const link = entry.animal ? ` linked" data-animal="${esc(entry.animal.id)}" data-ev="${esc(entry.animal.ev)}" role="button" tabindex="0`
         // A line about sport opens the page of My Athletics it is about: the season, the event, the team, the coach.
@@ -211,8 +224,8 @@ export function mountGame(app, hooks) {
     leaveStory();
     keepFocus = document.activeElement === yearBtn;
     closePanel();
-    pushUndo(store.state); // so this year can be taken back
-    advanceYear();
+    pushUndo(store.state); // so this turn can be taken back
+    advanceTurn(); // a year, or six or three months of one (engine/turns.js)
     if (!player().alive) return finish(store.lastObituary);
     persist();
     render();
@@ -252,7 +265,11 @@ export function mountGame(app, hooks) {
   yearBtn.addEventListener('click', nextYear);
   $('[data-undo]').addEventListener('click', async () => {
     if (busy) return;
-    const sure = await confirmModal({ title: `Go back to age ${player().age - 1}?`, body: 'Everything that happened this year is undone. You can go back up to three years, one at a time.', yes: 'Age down' });
+    const to = peekUndo(store.state.slotId);
+    if (!to) return;
+    const where = to.month ? `${to.age === 0 ? '' : `${to.age} ${to.age === 1 ? 'year' : 'years'}, `}${to.month} months` : `age ${to.age}`;
+    const turnWord = to.month || store.state.month ? 'turn' : 'year';
+    const sure = await confirmModal({ title: `Go back to ${where}?`, body: `Everything that happened since then is undone. You can go back up to three years, one ${turnWord} at a time.`, yes: turnWord === 'year' ? 'Age down' : 'Go back' });
     if (!sure) return;
     const earlier = popUndo(store.state.slotId);
     if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }

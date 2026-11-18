@@ -89,13 +89,16 @@ check(law.choices('ng').find((x) => x.rule === 'sameSexMarriage').liked < 0 && l
 section('politics: issues, parties and public opinion all bear on a bill');
 
 // 5. It takes effect in the life being lived.
-p = leader('us'); p.age = 19;
+p = leader('jp'); p.age = 19; // Japan's drinking age (20) is national law
 let done = false; for (let i = 0; i < 40 && !done; i++) { fresh(); done = gov.putReform('drinkingAge', 18, 'public').ok; }
 check(done ? law.may('drink').ok : !law.may('drink').ok, 'a nineteen-year-old may drink once the drinking age is lowered, and not before');
 // A decree shows the effect without depending on the arithmetic of one legislature.
 p.politics.ruler = true; fresh(); const d = gov.putReform('votingAge', 16); check(d.ok && law.rule('votingAge') === 16 && /decree/.test(d.text), `where one person rules, it is done by decree (${d.text})`); p.politics.ruler = false;
-p.age = 50; p.city = 'Austin'; done = false; for (let i = 0; i < 60 && !done; i++) { fresh(); done = gov.putReform('deathPenalty', false, 'public').ok; }
-check(!done || law.rule('deathPenalty') === false, 'abolishing the death penalty nationally ends it in Texas too');
+// What a country leaves to its regions is not the national government's to change.
+p = leader('us'); p.age = 50; p.city = 'Austin'; fresh();
+check(!gov.reformOptions().some((o) => ['deathPenalty', 'gambling', 'gamblingAge', 'drivingAge', 'drinkingAge'].includes(o.rule)) && gov.reformOptions().some((o) => o.rule === 'votingAge'), 'a US president is offered national law only: not the death penalty, gambling or licensing ages');
+check(!gov.putReform('deathPenalty', false, 'public').ok && law.rule('deathPenalty') === true, 'and cannot abolish the death penalty in Texas');
+let threw = false; try { law.enact('us', 'drinkingAge', 18); } catch { threw = true; } check(threw, 'no national law can be made on a regional matter');
 section('effect: a law passed changes what the game allows, at once');
 
 // 6. The world's own reforms respect the politics of a country this life knows.
@@ -113,14 +116,15 @@ section(`world: ${everywhere} reforms across eight forty-year lives, ${total} of
 // 7. The head of a region changes the laws a region controls, for that region only.
 {
   const local = await import('../js/engine/local.js');
-  const { REGIONAL_RULES } = await import('../js/data/rules.js');
+  const { REGIONAL_POWERS } = await import('../js/data/rules.js');
   const governor = (id, city) => { do { store.state = createLife({ countryId: id, city }); } while (store.state.player.royal); const q = store.state.player; q.age = 50; q.birthYear = store.state.year; store.state.year += 50;
     q.flags.livesWithParents = false; q.education.enrolled = false; const w = polity(id); if (w.parties.length) joinParty([...w.parties].sort((x, y) => (w.seats[y.id] ?? 0) - (w.seats[x.id] ?? 0))[0].id);
     politics.takeOffice(politics.offices().find((o) => o.id === 'region'), 60, true); return q; };
   p = governor('us', 'Austin');
   check(local.myRegion().name === 'Texas' && !local.regionalLawBlock(), 'the governor of Texas governs Texas');
   const opts = local.regionalLawOptions();
-  check(opts.length >= 3 && opts.every((o) => REGIONAL_RULES.includes(o.rule) && o.outlook), 'only regional matters are offered, each with an outlook');
+  check(opts.length >= 3 && opts.every((o) => REGIONAL_POWERS.us.includes(o.rule) && o.outlook), 'only what American states decide is offered, each with an outlook');
+  check(/death penalty/.test(local.regionalPowersLine()), 'and the screen says what a state can decide');
   check(!opts.some((o) => o.rule === 'sameSexMarriage' || o.rule === 'votingAge'), 'national law is not a region\'s to change');
   // Whether the assembly passes it depends on who sits in it. Some assemblies never will, however often they are asked:
   // that is the game working. So if this one will not, the check moves to another Texas (another life), up to a few times.
@@ -133,21 +137,22 @@ section(`world: ${everywhere} reforms across eight forty-year lives, ${total} of
   check(law.rule('deathPenalty', 'us', { region: 'florida' }) === true && law.rule('deathPenalty', 'us', { region: null }) === true, 'Florida, and the national law, are untouched');
   check(law.sheet('us').find((r) => r.id === 'deathPenalty').note.includes('region'), 'the law card says the region changed it');
   check(!local.putRegionalLaw('gambling', false).ok, 'one regional law a year');
-  // A national law made later overrides the region's.
-  store.state.year += 1; law.enact('us', 'deathPenalty', true, 'Congress');
-  check(law.rule('deathPenalty') === true && law.source('deathPenalty').source === 'enacted', 'a later national law overrides the region');
-  store.state.year += 1; p.politics.regionalLawAge = null;
-  passed = false; for (let i = 0; i < 40 && !passed; i++) { p.politics.regionalLawAge = null; p.politics.approval = 80; passed = local.putRegionalLaw('deathPenalty', false, 'public').ok; }
-  check(!passed || law.rule('deathPenalty') === false, 'and a later regional law overrides that in turn');
+  // Congress cannot undo it: the death penalty is each state's to decide.
+  let blocked = false; try { law.enact('us', 'deathPenalty', true, 'Congress'); } catch { blocked = true; }
+  check(blocked && law.rule('deathPenalty') === false, 'no national law can bring it back in Texas');
   // Moving away leaves the region's law behind.
   p.politics = null; p.city = 'Atlanta'; check(law.rule('deathPenalty') === true, 'someone living in Georgia is under Georgia\'s law');
   p = governor('fr', 'Lyon');
   check(/nationally/.test(local.regionalLawBlock()) && !local.regionalLawOptions().length, 'in France, regions do not make this law');
   p = governor('br', 'Recife');
-  check(local.myRegion().name === 'Pernambuco' && local.regionalLawOptions().length > 0, 'in Brazil, a state governor can');
+  check(/nationally/.test(local.regionalLawBlock()), 'in Brazil these laws are federal: a state governor cannot change them');
+  p = governor('ca', 'Montreal');
+  check(local.myRegion().name === 'Quebec' && local.regionalLawOptions().length > 0 && !local.regionalLawOptions().some((o) => o.rule === 'deathPenalty'), 'a Canadian premier can change provincial law, but not the death penalty, which is federal');
+  p = governor('in', 'Mumbai');
+  check(local.regionalLawOptions().some((o) => o.rule === 'alcohol'), 'an Indian state can ban alcohol, as some do');
   p = governor('ng', COUNTRY_LIST.find((c) => c.id === 'ng').cities[0]);
   check(/^the area around /.test(local.myRegion().name) && local.myRegion().id.startsWith('around:'), 'where the game has no states recorded, the region is the area around the city');
-  section('regions: a governor changes regional law for that region only; national and regional law take turns by date');
+  section('regions: a governor changes regional law for that region only; the national government cannot touch it');
 }
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 20)) console.log(' -', x); process.exit(1); }

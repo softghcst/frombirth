@@ -3,6 +3,7 @@ import { getEra } from '../../engine/history.js';
 import { technologies } from '../../engine/digital/tech.js';
 import { cityLine } from '../../engine/cities.js';
 import { esc } from '../../util.js';
+import { inheritanceShort } from '../../engine/inheritance.js';
 import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel, surnameFor } from '../../data/countries.js';
 import { BACKGROUNDS } from '../../data/traits.js';
 import { avatarSvg } from '../../avatar/render.js';
@@ -167,7 +168,7 @@ export function renderCreator(app, hooks) {
       q('[data-rank-note]').textContent = `${c.name} is a monarchy: ${crown.ranks.map((r) => (r[1] === r[2] ? r[1] : `${r[1]} or ${r[2]}`)).filter((t, i, a) => a.indexOf(t) === i).join(', ')}.${crown.maleOnly ? ' Only men inherit the throne.' : ''} Left on Random, a royal birth is very rare.`;
     }
     q('[data-country-info]').textContent = c
-      ? `${c.place?.status ? `${c.place.status} ` : ''}Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, estate tax ${Math.round(c.estateTax * 100)}%, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'} ${summary(c).short}.`
+      ? `${c.place?.status ? `${c.place.status} ` : ''}Currency: ${c.currency.code} (${c.currency.symbol}). Income tax ${Math.round(c.incomeTax * 100)}%, inheritance tax ${inheritanceShort(c)}, property tax ${propertyTaxLabel(c)}. ${c.freeHealthcare ? 'Public health care.' : 'Private health care.'} ${summary(c).short}.`
       : 'Each country has its own currency and taxes.';
   });
 

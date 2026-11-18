@@ -142,7 +142,7 @@ export function tickLocal() {
 }
 
 // ---------- Regional law ----------
-// The head of a region can change the laws a region controls (data/rules.js REGIONAL_RULES), in countries whose
+// The head of a region can change the laws a region controls (data/rules.js REGIONAL_POWERS: which ones depends on the country), in countries whose
 // regions make law. The regional assembly votes as it does on the budget. What passes applies to everyone living
 // in the region, until the region or the nation changes it again.
 
@@ -152,6 +152,12 @@ export function myRegion(p = player()) {
   const id = law.lawRegion(p.countryId, p.city);
   const name = cityOf(p.countryId, p.city).region ?? `the area around ${p.city}`;
   return { id, name };
+}
+/** What a region of the player's country may decide, in words. */
+export function regionalPowersLine(p = player()) {
+  const W = { deathPenalty: 'the death penalty', gambling: 'whether gambling is allowed', gamblingAge: 'the gambling age', drivingAge: 'the driving age', drinkingAge: 'the drinking age', alcohol: 'whether alcohol is allowed' };
+  const list = law.regionalPowers(p.countryId).map((id) => W[id] ?? id);
+  return list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] ?? 'nothing';
 }
 /** Whether the player can change regional law now, and if not, why. */
 export function regionalLawBlock(p = player()) {

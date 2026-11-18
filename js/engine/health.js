@@ -76,7 +76,7 @@ export function tickHealth() {
   const frailty = (1.6 - s.health / 100) * (p.flags.checkupAge === age - 1 ? 0.6 : 1) * (s.mood < 25 ? 1.3 : 1);
   for (const def of ILLNESSES) {
     if (LEGACY_IDS[def.id]) continue; // these now begin in engine/health/course.js
-    if (age < def.ages[0] || age > def.ages[1]) continue;
+    if (age < def.ages[0] || age > def.ages[1] || !def.chance) continue; // never drawn (sports injuries): no roll
     if (rng.chance(def.chance * frailty) && addCondition(def.id)) {
       log(`You came down with ${def.name}.`, 'system', 'bad');
       for (const [k, v] of Object.entries(def.yearly)) bump(s, k, v);

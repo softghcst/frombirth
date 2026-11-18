@@ -203,9 +203,11 @@ section('what is on offer follows the year, the country and the age');
 
 // ---------- 10. Whole lives: never duplicated, always balanced ----------
 for (const id of ['us', 'uk', 'in', 'mx']) {
+  // A child can die young; the checks here are about a life's occasions, so a life that ends before five starts again.
+  for (let attempt = 0; attempt < 6; attempt++) {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
   p = store.state.player;
-  const seen = new Set();
+  var seen = new Set();
   while (p.alive && p.age < 90) {
     for (const x of mo.thisYear().filter((y) => !y.done && y.ok && !y.inviteId && !y.traditionId)) {
       const guests = mo.suggestedGuests(x);
@@ -222,9 +224,33 @@ for (const id of ['us', 'uk', 'in', 'mx']) {
     const bad = audit(); if (bad.length) { problems.push(`${id}, age ${p.age}: ${bad[0]}`); break; }
     seen.add(store.state.year);
   }
+  if (seen.size >= 5 || problems.length) break;
+  }
   check(seen.size >= 5, `${id}: some years were lived`);
 }
 section('whole lives: nothing marked twice, traditions at most once a year, the books balanced');
+
+// ---------- 11. Shorter turns: the year is still the year ----------
+{
+  const turns = await import('../js/engine/turns.js');
+  for (const step of [6, 3]) {
+    p = life('us', 40, 100000);
+    const kin11 = [person('sibling', 42, 60), person('parent', 70, 60), person('sibling', 37, 60)];
+    turns.setStep(step);
+    const y11 = store.state.year;
+    check(mo.celebrate({ key: 'holiday:christmas', guests: kin11.map((n) => n.id), makeTradition: true }).ok, `${step}-month turns: an occasion can be marked`);
+    const t11 = mo.traditions()[0];
+    const cash11 = p.finance.cash;
+    let turnsInYear = 0;
+    while (store.state.year === y11 && turnsInYear < 12) { turns.advanceTurn(); store.state.pendingEvents = []; turnsInYear += 1;
+      if (store.state.year === y11) check(item('holiday:christmas') === undefined && item(`tradition:${t11.id}`).done && p.finance.cash === cash11, `${step}-month turns: still done, and nothing spent again, partway through the year`); }
+    check(turnsInYear === 12 / step, `${step}-month turns: the year takes ${12 / step} turns`);
+    check(t11.count === 1 && (p.momentsYears ?? []).filter((x) => x.year === y11).length === 1, `${step}-month turns: the year is finished once, at the turn of the year`);
+    for (let i = 0; i < 12 / step; i++) { turns.advanceTurn(); store.state.pendingEvents = []; }
+    check(t11.count === 2, `${step}-month turns: the tradition is kept once the next year`);
+  }
+}
+section('with six- or three-month turns, a year\'s occasions still happen once, and Age Up finishes the year once');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

@@ -36,7 +36,7 @@ const fmt = (state, v) => fmtMoney(v, COUNTRIES[state.player.countryId]);
 export function settle(state, key, amount, cat, desc, src = 'year') {
   const S = sp.ensure(state);
   if (!amount || S.paid[key]) return false;
-  S.paid[key] = { year: state.year, amount, cat, cur: COUNTRIES[state.player.countryId].currency.code };
+  S.paid[key] = { year: state.year, amount, cat, cur: COUNTRIES[state.player.countryId].currency.code, personId: state.player.id, gen: state.player.generation ?? 1 };
   state.player.finance.cash += amount;
   if (amount > 0) state.player.finance.lifetimeEarned = (state.player.finance.lifetimeEarned ?? 0) + amount;
   book({ state, cat, desc, key: `sport:${key}`, src });
@@ -97,6 +97,11 @@ const ANSWERS = {
   academy(state, d, choice) {
     if (choice === 'no') return result(true, 'You stayed where you were.', 'neutral');
     const org = sp.orgOf(d.orgId, state);
+    const e = sp.entryOf(d.sportId, state.player.id, state);
+    // The invitation is for a young player at a club or school; it lapses for anyone who has moved past that, or stopped.
+    if (!e || e.status !== 'active' || e.contractId || ['academy', 'college', 'pro', 'elite'].includes(e.level) || state.player.age > 18 || state.player.legal?.incarceration) {
+      return { ...result(false, 'That invitation no longer fits where you are.', 'neutral'), close: true };
+    }
     joinOrg(org, state);
     const text = `You joined ${org.name}.`;
     log(text, 'system', 'good');
@@ -122,7 +127,10 @@ const ANSWERS = {
   renew(state, d, choice) {
     const S = sp.ensure(state);
     const k = S.contracts[d.contractId];
-    if (k && k.status !== 'active') return { ...result(false, `You have already left ${k.name}.`, 'neutral'), close: true };
+    if (k && (k.status !== 'active' || state.player.career.sportContract !== k.id)) {
+      if (k.status === 'active') endContract(state, k, 'left the club');
+      return { ...result(false, `You have already left ${k.name}.`, 'neutral'), close: true };
+    }
     if (choice === 'no' || !k) { if (k) endContract(state, k, 'let the contract run out'); return result(true, 'You will look for a new club.', 'neutral'); }
     k.to = state.year + d.years; k.salary = d.salary;
     state.player.career.salary = d.salary;
@@ -155,11 +163,12 @@ const ANSWERS = {
     const S = sp.ensure(state);
     const a = sp.myAthlete(state);
     const p = state.player;
+    if (a.agentId && state.npcs[a.agentId]?.alive) return { ...result(false, 'You already have an agent.', 'neutral'), close: true };
     const n = makeNpc({ role: 'agent', countryId: p.countryId, age: seeded(`agent/${p.id}/${state.year}`).int(32, 58), relationship: 50 });
     n.flags.title = 'Sports agent';
     state.npcs[n.id] = n; p.npcIds.push(n.id);
     a.agentId = n.id;
-    S.contracts[nextId(S, 'k')] = { id: `agent_${n.id}`, kind: 'agent', personId: p.id, agentId: n.id, name: fullName(n), from: state.year, to: null, share: 0.05, status: 'active' };
+    S.contracts[`agent_${n.id}`] = { id: `agent_${n.id}`, kind: 'agent', personId: p.id, agentId: n.id, name: fullName(n), from: state.year, to: null, share: 0.05, status: 'active' };
     const text = `${fullName(n)} is your agent now: five per cent of your playing income, and better deals for it.`;
     log(text, 'system', 'good');
     return result(true, text);
@@ -251,7 +260,12 @@ function signPro(state, d, o = {}) {
   const p = state.player;
   const e = sp.entryOf(d.sportId, p.id, state);
   const org = sp.orgOf(d.orgId, state);
+  if (!e || e.status !== 'active' || e.banUntil > state.year || p.legal?.incarceration || !p.alive) {
+    return { ...result(false, `${org?.name ?? 'The club'} only signs players who are playing.`, 'neutral'), close: true };
+  }
   // One professional contract at a time: a transfer ends the old one before this; any other offer waits until it is over.
+  // A contract whose job has already gone (another job taken) is over now, not at the turn of the year.
+  for (const x of Object.values(S.contracts)) if (x.kind === 'pro' && x.status === 'active' && x.personId === p.id && p.career.sportContract !== x.id) endContract(state, x, 'left the club');
   const holding = Object.values(S.contracts).find((x) => x.kind === 'pro' && x.status === 'active' && x.personId === p.id);
   if (holding) return { ...result(false, `You are already under contract with ${holding.name}.`, 'neutral'), close: true };
   const id = nextId(S, 'k');
@@ -427,6 +441,7 @@ function collegeTeam(state, a, e) {
   const offer = (p.flags.sportOffers ?? []).find((o) => o.accepted && o.sportId === e.id && o.instId === p.education.schoolId);
   const walkOn = !offer && overall(e, p) >= 60;
   if (!offer && !walkOn) return null;
+  if (e.leftCollege === p.education.schoolId) return null; // left this university's team: not put back on it
   const org = findOrg(state, sport, 'college', { key: `college/${e.id}/${p.education.schoolId}`, name: `${p.education.schoolName} ${sport.name}`, uniId: p.education.schoolId });
   if (e.orgId !== org.id && !e.contractId) {
     joinOrg(org, state);
@@ -440,18 +455,11 @@ export function quitCollegeTeam(sportId, state = store.state) {
   const e = sp.entryOf(sportId, p.id, state);
   const org = sp.orgOf(e?.orgId, state);
   if (!org || org.kind !== 'college') return result(false, 'You are not on a university team.', 'neutral');
-  leaveOrg(e, state, 'left the program');
+  const had = (p.education.aidParts ?? []).some((x) => x.kind === 'athletic');
+  leaveOrg(e, state, 'left the program'); // the athletic part of the scholarship goes here (sports.dropAthleticAid)
   joinOrg(rec(state, sportOf(sportId)), state, { quiet: true });
-  const edu = p.education;
-  const athletic = (edu.aidParts ?? []).find((x) => x.kind === 'athletic');
   let text = `You left the ${org.name} team.`;
-  if (athletic) {
-    edu.aidParts = edu.aidParts.filter((x) => x !== athletic);
-    edu.aid = Math.max(0, Math.round((edu.aid - athletic.fraction) * 100) / 100);
-    if (edu.funding === 'scholarship' && edu.aid < 1) edu.funding = 'loan';
-    text += ' The athletic scholarship goes with it: from next year you pay that part of the tuition.';
-  }
-  p.flags.sportOffers = (p.flags.sportOffers ?? []).map((o) => (o.sportId === sportId ? { ...o, accepted: false, left: state.year } : o));
+  if (had) text += ' The athletic scholarship goes with it: from next year you pay that part of the tuition.';
   log(text, 'system', 'neutral');
   return result(true, text, 'neutral');
 }
@@ -474,7 +482,7 @@ function proRoutes(state, a, e) {
     return;
   }
   if (route === 'tour') {
-    if (e.pr >= 1300 && p.age <= 34) decide(state, { kind: 'turnPro', sportId: e.id, key: `turnPro/${e.id}`, text: `Your Pathways Rating is ${e.pr}. That is enough to enter professional events. Turning professional means playing for prize money and paying your own coach and travel.`,
+    if (e.pr >= 1300 && p.age <= 34) decide(state, { kind: 'turnPro', sportId: e.id, key: `turnPro/${p.id}/${e.id}/${state.year}`, text: `Your Pathways Rating is ${e.pr}. That is enough to enter professional events. Turning professional means playing for prize money and paying your own coach and travel.`,
       options: [{ id: 'yes', label: 'Turn professional' }, { id: 'no', label: 'Stay amateur for now' }] });
     return;
   }
@@ -519,8 +527,9 @@ function contractYear(state, a, e) {
   const level = o >= 86 ? 3 : o >= 76 ? 2 : o >= 66 ? 1 : 0;
   if (p.career.sportContract === k.id && p.career.level !== level) {
     const career = CAREER_BY_ID.athlete;
+    const was = p.career.level;
     p.career.level = level; p.career.title = career.levels[level].title; k.level = level;
-    log(`At ${k.name} you are a ${career.levels[level].title.toLowerCase()} now.`, 'system', level > (k.level ?? 0) ? 'good' : 'neutral');
+    log(`At ${k.name} you are ${/^[AEIOU]/i.test(career.levels[level].title) ? 'an' : 'a'} ${career.levels[level].title.toLowerCase()} now.`, 'system', level > was ? 'good' : 'neutral');
   }
   // Agents are paid their share of the year's playing income.
   if (a.agentId) {
@@ -688,7 +697,7 @@ function arc(state, id, sportId, title, text) {
   if (!a || a.arcs.some((x) => x.id === id && x.sportId === sportId)) return null;
   const x = { id, sportId, year: state.year, age: state.player.age, title, text };
   a.arcs.push(x);
-  sp.moment(state, { type: 'arc', sportId, text: `${title}: ${text}`, sig: 3, key: `arc/${id}/${sportId}` });
+  sp.moment(state, { type: 'arc', sportId, text: `${title}: ${text}`, sig: 3, key: `arc/${state.player.id}/${id}/${sportId}` });
   sp.say(state, `${title}. ${text}`, 'good', { screen: 'sport', id: sportId });
   return x;
 }
@@ -731,7 +740,17 @@ export function tickSports(state = store.state) {
     if (d.kind === 'rehab') { const inj = a.injuries.find((x) => x.id === d.injuryId); if (inj && !inj.rehab) inj.rehab = 'rest'; }
     if (d.kind === 'renew') { const k = S.contracts[d.contractId]; if (k?.status === 'active') endContract(state, k, 'let the contract run out'); }
   }
+  // A contract whose job is gone (another job taken, fired, sent to prison) is over.
+  for (const k of Object.values(S.contracts)) if (k.kind === 'pro' && k.status === 'active' && k.personId === p.id && p.career.sportContract !== k.id) endContract(state, k, 'left the club');
   healYear(state, a);
+  if (p.legal?.incarceration) {
+    // Prison: no competition, no sponsors. The record waits.
+    for (const k of Object.values(S.contracts)) if (k.kind === 'sponsor' && k.status === 'active' && k.personId === p.id) { k.status = 'ended'; k.why = 'dropped after a prison sentence'; }
+    for (const e of sp.activeSports(p.id, state)) e.plan.hours = 0;
+    parentsYear(state);
+    tickSportsArcs(state, started);
+    return;
+  }
   paySponsors(state);
   for (const e of sp.activeSports(p.id, state)) yearIn(state, a, e);
   // The old school record, kept up for the parts of the game that still read it.
@@ -751,6 +770,7 @@ function yearIn(state, a, e) {
   if (e.banUntil > state.year) { log(`You are banned from ${sport.name.toLowerCase()} until ${e.banUntil}.`, 'system', 'bad'); e.plan.hours = Math.min(e.plan.hours, 5); sp.internals.trainYear(state, p, a, e); return; }
   // University: the program, if the player plays for one.
   if (p.education.stage === 'university') collegeTeam(state, a, e);
+  sp.internals.checkSchoolTeam(state, e);
   if (!e.orgId) joinOrg(rec(state, sport), state, { quiet: true });
   sp.internals.regroup(state, e);
   sp.internals.trainYear(state, p, a, e);
@@ -841,7 +861,12 @@ function yearIn(state, a, e) {
       }
     }
     // The World Games, every four years: the country sends its best professionals and national-squad athletes.
-    if (can && isGamesYear(state.year) && ['pro', 'elite'].includes(e.level) && overall(e, p) >= 70) {
+    const gamesYear = can && isGamesYear(state.year) && ['pro', 'elite'].includes(e.level);
+    if (gamesYear && overall(e, p) < 70 && !(e.gamesMissed ?? []).includes(state.year)) {
+      (e.gamesMissed ??= []).push(state.year);
+      sp.say(state, `The ${WORLD_GAMES.name} ${state.year} went ahead without you: the selectors picked others.`, 'neutral', { screen: 'sport', id: e.id });
+    }
+    if (gamesYear && overall(e, p) >= 70) {
       const ev = playEvent(state, e, 'elite', 'games', { name: `${WORLD_GAMES.name} ${state.year}` });
       if (!e.events.includes(ev.id)) e.events.push(ev.id);
       ev.games = true;
@@ -911,7 +936,7 @@ function scouting(state, a, e, sum) {
   if (o < 52 || sum.rating < 6.6) return;
   const org = findOrg(state, sport, 'academy');
   if (e.orgId === org.id) return;
-  decide(state, { kind: 'academy', sportId: e.id, orgId: org.id, key: `academy/${e.id}`, text: `A scout from ${org.name} watched you play, and they would like you to join without a tryout.`,
+  decide(state, { kind: 'academy', sportId: e.id, orgId: org.id, key: `academy/${p.id}/${e.id}`, text: `A scout from ${org.name} watched you play, and they would like you to join without a tryout.`,
     options: [{ id: 'yes', label: 'Join the academy' }, { id: 'no', label: 'Stay where you are' }] });
 }
 
@@ -946,6 +971,8 @@ export function handOver(old, next, ids) {
     delete heir.light; heir.name = `${np.firstName} ${np.lastName}`;
     for (const e of Object.values(heir.sports)) sp.internals.fillEntry(next, np, e);
   }
+  S.acts = { year: null, extra: 0 }; // the last player's extra sessions were theirs
+  for (const a of Object.values(S.athletes)) if (a.light) a.relation = next.npcs[a.id]?.role ?? (a.id === ids.ancestorId ? 'parent' : 'family');
   S.tickYear = next.year;
   return S;
 }

@@ -66,9 +66,11 @@ e = athletics.entryOf('tennis');
 const livedYears = [];
 for (let y = 0; y < 5; y++) { livedYears.push(store.state.year + 1); sportYear(); }
 const evs = e.events.map((id) => store.state.sports.events[id]);
-check(livedYears.every((y) => evs.some((x) => x.year === y)), 'a tennis year is its events');
+// A year can be lost to an injury from that year or the one before (the game says so in the journal).
+const hurt = (y) => athletics.myAthlete().injuries.some((i) => i.sportId === 'tennis' && (i.year === y || i.year === y - 1));
+check(livedYears.every((y) => evs.some((x) => x.year === y) || hurt(y)), `a tennis year is its events (${livedYears.filter((y) => !evs.some((x) => x.year === y)).join(', ') || 'every year'})`);
 check(evs.filter((x) => x.games).every((x) => isGamesYear(x.year)), 'the World Games come every four years, and only then');
-check(livedYears.filter(isGamesYear).every((y) => evs.some((x) => x.games && x.year === y)), 'a professional at their level goes to the World Games when they fall');
+check(livedYears.filter(isGamesYear).every((y) => evs.some((x) => x.games && x.year === y) || (e.gamesMissed ?? []).includes(y)), 'in a World Games year a professional goes, or is told the selectors picked others');
 check(e.titles.filter((t) => t.eventId).every((t) => store.state.sports.events[t.eventId]?.place === 'Champion'), 'every title the player holds is an event they won');
 check((e.medals ?? []).every((m) => store.state.sports.events[m.eventId]?.games && store.state.sports.events[m.eventId].medal === m.medal), 'every medal is a finish at the games');
 // Retiring.

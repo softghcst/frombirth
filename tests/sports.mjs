@@ -291,7 +291,7 @@ let soccerLife;
   // Countries without university recruiting do not get offers.
   const q = grownTo(7, 'uk', 'London'); q.talents.sports = 95; sp.takeUp('soccer'); sp.setPlan('soccer', 'technical', 10);
   let ukOffer = false;
-  for (let i = 0; i < 11; i++) { advanceYear(); quiet(); for (const d of life.openDecisions()) { if (d.kind === 'scholarship') ukOffer = true; life.answer(d.id, d.kind === 'academy' ? 'yes' : 'no'); } }
+  for (let i = 0; i < 11; i++) { advanceYear(); quiet(); for (const d of life.openDecisions()) { if (d.kind === 'scholarship' && q.countryId === 'uk') ukOffer = true; /* the family may emigrate somewhere that does recruit */ life.answer(d.id, d.kind === 'academy' ? 'yes' : 'no'); } }
   check(!ukOffer, 'there are no university athletic scholarships where universities do not recruit');
   sound('recruiting');
   section('recruiting: real universities, offers carried into admissions and tuition, only where they exist');

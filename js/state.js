@@ -32,7 +32,9 @@ export const npcsByRole = (spec) => livingNpcs().filter((n) => npcMatches(n, spe
 
 /** Append a line to the journal under the player's current age. */
 export function log(text, kind = 'system', tone = 'neutral') {
-  store.state.journal.push({ age: player().age, text, kind, tone });
+  const e = { age: player().age, text, kind, tone };
+  if (store.state.month) e.month = store.state.month; // a turn partway through a year (engine/turns.js)
+  store.state.journal.push(e);
 }
 
 export function milestone(text, kind = 'life') {

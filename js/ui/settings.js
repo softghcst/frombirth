@@ -6,7 +6,8 @@ import { exportCode, importCode, collect, describe } from '../sync/bundle.js';
 import * as cloud from '../sync/cloud.js';
 import { openModal, pickModal, confirmModal, messageModal, inputModal } from './modals.js';
 import { store } from '../state.js';
-import { forkGame, timelinesOf, MAX_TIMELINES } from '../save.js';
+import { forkGame, timelinesOf, MAX_TIMELINES, saveGame } from '../save.js';
+import { STEPS, STEP_NAMES, stepOf, setStep, monthOf, ageLabel } from '../engine/turns.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
 export function ago(t) {
@@ -30,6 +31,20 @@ export function cloudLine(s = cloud.status()) {
   return `${s.email} · ${s.pending ? 'changes waiting to send' : `synced ${ago(s.syncedAt)}`}`;
 }
 
+/** Time per turn: a year (the default), six months or three months. */
+async function openTime(hooks) {
+  const now = stepOf();
+  const pick = await pickModal({
+    title: 'Time per turn',
+    body: `How far the calendar moves each time you live on. The year's pay, school reports, seasons of sport and birthdays still come once a year, at the turn of the year; shorter turns add the seasons in between, with scenes written for them.${monthOf() ? ' You are partway through a year: a change starts from next year.' : ''}`,
+    options: STEPS.map((s) => ({ value: String(s), label: `${STEP_NAMES[s]}${s === 12 ? ' (default)' : ''}${s === now ? ' · now' : ''}`, sub: s === 12 ? 'One turn is a whole year.' : s === 6 ? 'Two turns a year: the year, and its middle.' : 'Four turns a year: each season of it.' })),
+  });
+  if (!pick) return;
+  const r = setStep(Number(pick));
+  if (r.ok) { saveGame(store.state); hooks.onChange?.(); }
+  await messageModal({ body: r.text, tone: 'neutral' });
+}
+
 /**
  * Opens Settings. Resolves when it is closed.
  * @param {{onChange?:Function}} [hooks]  onChange: saves on this device changed (the title screen redraws)
@@ -41,6 +56,8 @@ export async function openSettings(hooks = {}) {
       title: 'Settings',
       cancel: 'Done',
       options: [
+        // Only while a life is being played: how far each turn moves the calendar.
+        ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()} from next year` : ''}. Shorter turns bring scenes for each season.` }] : []),
         { value: 'account', label: 'Cloud saves', sub: cloudLine() },
         { value: 'transfer', label: 'Transfer saves', sub: 'Move your lives to another device with a code or a file, no account needed.' },
         { value: 'people', label: 'People you know', sub: people ? `${people} on your list.` : 'Put people from your own life into the game.' },
@@ -52,9 +69,10 @@ export async function openSettings(hooks = {}) {
     if (!pick) return;
     if (pick === 'whatif') {
       const note = await inputModal({ title: 'What if?', label: 'What is the decision? (a few words)', value: '', maxLength: 60 });
-      if (note != null) { const r = forkGame(store.state, note || `Age ${store.state.player.age}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
+      if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
     }
     if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary === false }; }
+    if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();
     if (pick === 'transfer') await openTransfer(hooks);
     if (pick === 'account') await openAccount(hooks);
