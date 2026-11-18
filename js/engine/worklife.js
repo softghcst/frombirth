@@ -97,6 +97,13 @@ const commute = (c, p) => {
 };
 
 /** Every commitment that takes time, in hours a week, during a year of age (by default the current one). */
+/** Hours of training that are not a job (a professional's training is their job). Read from the sports record directly. */
+function sportHours(p) {
+  const a = store.state?.sports?.athletes?.[p.id];
+  if (!a) return 0;
+  return Object.values(a.sports).filter((e) => e.status === 'active' && !e.contractId).reduce((s, e) => s + (e.plan?.hours ?? 0), 0);
+}
+
 export function weeklyLoad(p = player(), age = p.age) {
   const c = ensureCareer(p.career);
   const rows = [];
@@ -114,6 +121,8 @@ export function weeklyLoad(p = player(), age = p.age) {
   if (care) rows.push({ label: 'Looking after the children', hours: care, kind: 'care' });
   const study = studyHours(p);
   if (study) rows.push({ label: p.education.stage === 'high' || p.age < 18 ? 'School' : 'Studying', hours: study, kind: 'study' });
+  const train = sportHours(p);
+  if (train) rows.push({ label: 'Training', hours: train, kind: 'sport' });
   const travel = commute(c, p);
   if (travel) rows.push({ label: 'Getting to work', hours: travel, kind: 'commute' });
   const total = rows.reduce((s, r) => s + r.hours, 0);

@@ -24,6 +24,7 @@ import { thisYearCard, thisYearAction } from '../thisYear.js';
 import { openScreen } from '../animals.js';
 import '../animalHub.js';
 import * as riding from '../../engine/equestrian.js';
+import { athleticsCard, openAthletics } from '../sports.js';
 
 async function report(api, r) {
   api.changed();
@@ -111,6 +112,7 @@ export default {
           <button class="btn danger" data-crime style="margin-top:10px">Commit a crime</button>
         </div>` : ''}
         ${legalCard()}
+        ${law.isJailed() ? '' : athleticsCard()}
         <div class="card"><h3>Travel</h3><p class="muted" style="margin-bottom:10px">Trips at home and abroad, your papers, and the places you have been.</p><div class="btn-stack"><button class="btn" data-go="travel">Explore the World</button></div></div>
         ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Riding</h3><p class="muted" style="margin-bottom:10px">${p.riding ? `${esc(riding.levelName(riding.riderLevel()))} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : 'Lessons, horses and the show ring.'}</p><button class="btn" data-go="riding">Equestrian</button></div>` : ''}
         ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><p class="muted" style="margin-bottom:10px">Once a year. With others at home, it is time together.</p><div class="btn-stack">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
@@ -138,6 +140,7 @@ export default {
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;
       if (go === 'riding') return openScreen(api, 'riding');
+      if (go === 'athletics') return openAthletics(api);
       if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a) })[go](api);
       return undefined;
       if (go) return ({ abroad: leisure.moveAbroad, city: leisure.moveCity })[go]?.(api);

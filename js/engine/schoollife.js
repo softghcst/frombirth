@@ -20,6 +20,7 @@ import { CLUB_BY_ID } from '../data/schools.js';
 import { LEAVING_AGE } from '../data/education.js';
 import { INTERESTS, CIRCLES, SPORTS, ELECTIVES, CORE_HIGH, PLAYS, CLUB_KIND, CLUB_INTEREST, SUBJECT_BY_ID } from '../data/education.js';
 import * as sch from './schooling.js';
+import { schoolSeason } from './sports.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const mates = () => npcsByRole('classmate').filter((n) => n.flags.schoolId);
@@ -87,6 +88,10 @@ function season(id, life) {
   e.sport ??= sportsHere()[0];
   const a = (p.flags.athlete ??= { sport: e.sport, seasons: 0, best: 0, captain: false, awards: [] });
   a.sport = e.sport;
+  // Sports the athletic engine knows are played through it: the school's team, coach, league and record are kept
+  // (engine/sports.js), and the season itself is played with the rest of the athletic year.
+  const engine = schoolSeason(e.sport);
+  if (engine != null) { life.record.push({ age: p.age, text: `${e.sport} season`, rating: engine }); return engine; }
   const skill = p.talents.sports;
   const rating = Math.round(clamp(skill * 0.7 + p.stats.health * 0.15 + p.hidden.discipline * 0.15 + rng.int(-10, 10)));
   const games = 10;

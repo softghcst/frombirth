@@ -120,13 +120,18 @@ export function profile(majorId, inst = null) {
     mark: school ? e.gpa : edu.entryGpa(), predicted: school, advanced, recs, activities,
     statement: plan?.statementValue ?? 0,
     audition: major?.audition ? Math.round(clamp(tripleThreat(p) + (p.flags.directorRec ? 8 : 0) + Math.min(10, (p.flags.performances?.length ?? 0) * 2))) : null,
-    athlete: !!p.flags.athlete?.recruited || (!!p.flags.coachRec && p.talents.sports >= 65),
+    // A university that offered an athletic scholarship (engine/sportsLife.js) backs the application, and pays what it offered.
+    athlete: !!sportOffer(p, inst) || (!!p.flags.athlete?.recruited && !p.flags.athlete.recruited.instId) || (!!p.flags.coachRec && p.talents.sports >= 65),
+    athleticFraction: sportOffer(p, inst)?.fraction,
     need: tier === 'poor' ? 2 : tier === 'middle' ? 1 : 0,
     firstInFamily: firstInFamily(),
     legacy: !!inst && inst.alumni.some((n) => n.endsWith(` ${surname}`)),
     transfer: edu.isTransfer(),
   };
 }
+
+/** The accepted athletic scholarship offer from this institution, if there is one. */
+const sportOffer = (p, inst) => (inst ? (p.flags.sportOffers ?? []).find((o) => o.accepted && o.instId === inst.id) : null);
 
 /** Whether an institution teaches a subject at all. */
 export const teaches = (u, majorId) => !u.only || u.strong.includes(majorId);

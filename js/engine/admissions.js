@@ -75,7 +75,7 @@ export const meets = (condition, finalMark, luck = 0) => finalMark >= condition 
 export function aid(a, inst, major, score) {
   const parts = [];
   if (inst.merit && score >= 0.45) parts.push({ kind: 'merit', fraction: score >= 0.8 ? inst.merit : inst.merit / 2 });
-  if (inst.sport && a.athlete) parts.push({ kind: 'athletic', fraction: 0.75 });
+  if (inst.sport && a.athlete) parts.push({ kind: 'athletic', fraction: a.athleticFraction ?? 0.75 });
   if (inst.arts && major.audition && (a.audition ?? 0) >= 80) parts.push({ kind: 'arts', fraction: 0.5 });
   // Only the largest award for what the applicant can do is given; help for need is on top of it.
   parts.sort((x, y) => y.fraction - x.fraction);

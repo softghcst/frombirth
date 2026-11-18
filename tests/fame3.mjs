@@ -9,7 +9,7 @@ import { CAREER_BY_ID } from '../js/data/careers.js';
 import { SPORTS } from '../js/data/fame.js';
 import { EARLIEST_START } from '../js/data/eras.js';
 import { hire, unmet } from '../js/engine/career.js';
-import * as sports from '../js/engine/sports.js';
+import * as sports from '../js/engine/proSport.js';
 import * as modelling from '../js/engine/modelling.js';
 import * as pub from '../js/engine/publishing.js';
 import * as music from '../js/engine/music.js';
@@ -59,7 +59,7 @@ p.gender = 'female';
 p.talents.sports = 86;
 hire(CAREER_BY_ID.athlete, 2, 70, 'offer');
 check(sports.divOf(p) === 'women' && sports.chooseSport('rugby').ok, 'a woman plays in the women\'s league');
-const L = store.state.sports.leagues[p.sport.leagueId];
+const L = store.state.proSport.leagues[p.sport.leagueId];
 check(L.div === 'women' && /Women/.test(L.name) && L.teams.every((t) => store.state.npcs[t.star].gender === 'female'), 'the women\'s league has its own clubs and players');
 check(!sports.playedIn('rugby', 1980, 'women') && sports.playedIn('rugby', 1980, 'men'), 'women\'s professional rugby began later than men\'s');
 for (let y = 0; y < 6; y++) { if (!sports.isAthlete(p)) { hire(CAREER_BY_ID.athlete, 2, 70, 'offer'); sports.chooseSport('rugby'); } year(); }
@@ -93,7 +93,7 @@ let inCharge = 0;
 for (let y = 0; y < 4; y++) { const was = !!p.coach.teamId && sports.isCoach(p); year(); if (was) inCharge += 1; }
 check(p.coach.seasons.length >= Math.min(1, inCharge), 'each season in charge is recorded');
 for (const x of p.coach.seasons) {
-  const s = store.state.sports.leagues[p.coach.leagueId].seasons.find((y) => y.year === x.year);
+  const s = store.state.proSport.leagues[p.coach.leagueId].seasons.find((y) => y.year === x.year);
   check(s && s.table.findIndex((r) => r[0] === x.teamId) + 1 === x.pos, 'the coach\'s record is the club\'s real position');
 }
 section('coaching: in charge of a club, judged on its results');

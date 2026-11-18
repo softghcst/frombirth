@@ -13,7 +13,7 @@
 // once, never count double.
 import { store, player, livingNpcs, log, milestone } from '../state.js';
 import { carryWorld } from './entertainment.js';
-import { carrySports, summary as sportSummary } from './sports.js';
+import { carrySports, summary as sportSummary } from './proSport.js';
 import { inherited, startWithFamilyName } from './fame.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { FAMILY_BY_ID } from '../data/occupations.js';

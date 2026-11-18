@@ -33,6 +33,7 @@ import { inheritPlans } from './plans.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
 import { carryOver } from './digital/legacy.js';
+import { handOver as handOverSports } from './sportsLife.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -284,6 +285,7 @@ export function continueAs(npcId) {
   heirHealth(next, h);
   inheritPlans(op, player); // family traditions carry on
   handOverAnimals(old, next, { ancestorId: ancestor.id, heirId: h.id, assetIds });
+  if (old.sports) handOverSports(old, next, { ancestorId: ancestor.id, heirId: h.id });
   const firmLines = carryCareers(old, next, h); // the family's working history, the same employers, and any business left to this heir
 
   // An heir who was living in another country carries on there.

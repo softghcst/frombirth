@@ -18,7 +18,7 @@ import * as press from '../engine/press.js';
 import * as awards from '../engine/awards.js';
 import * as skills from '../engine/skills.js';
 import * as music from '../engine/music.js';
-import * as sports from '../engine/sports.js';
+import * as sports from '../engine/proSport.js';
 import * as modelling from '../engine/modelling.js';
 import * as pub from '../engine/publishing.js';
 import * as celebs from '../engine/celebs.js';
@@ -304,7 +304,7 @@ const VIEWS = {
         <div class="btn-stack">${Object.entries(SPORTS).map(([k, d]) => btn('sport', d.name, { arg: k, disabled: !sports.playedIn(k, store.state.year, div), sub: !sports.playedIn(k, store.state.year, div) ? 'Not played professionally yet' : d.team ? 'A club, a league, a season' : d.fights ? 'Fights, a ranking, a title' : 'Tournaments against the same rivals' })).join('')}</div>${coaching}`;
     }
     const d = SPORTS[s.sport];
-    const L = s.leagueId ? store.state.sports.leagues[s.leagueId] : null;
+    const L = s.leagueId ? store.state.proSport?.leagues[s.leagueId] : null;
     const t = L ? sports.team(L.id, s.teamId) : null;
     const offer = s.offer ? sports.team(L.id, s.offer.teamId) : null;
     const last = L?.seasons.at(-1);

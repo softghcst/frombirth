@@ -8,7 +8,7 @@ import { makeNpc } from '../js/engine/npcFactory.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
 import { SPORTS, WORLD_GAMES } from '../js/data/fame.js';
 import { hire } from '../js/engine/career.js';
-import * as sports from '../js/engine/sports.js';
+import * as sports from '../js/engine/proSport.js';
 import * as modelling from '../js/engine/modelling.js';
 import * as pub from '../js/engine/publishing.js';
 import * as celebs from '../js/engine/celebs.js';
@@ -49,7 +49,7 @@ for (let y = 0; y < 5; y++) {
   year();
   if (p.sport.offer) sports.acceptTransfer();
 }
-const L = store.state.sports.leagues[p.sport.leagueId];
+const L = store.state.proSport.leagues[p.sport.leagueId];
 check(sports.career(p).length === before + playing, `a season for every year played (${sports.career(p).length} of ${playing})`);
 check(store.state.jobs.employers[p.career.employerId]?.name === sports.team(L.id, p.sport.teamId)?.name || !sports.isAthlete(p), 'the club is the employer');
 for (const s of L.seasons) {
@@ -72,7 +72,7 @@ p.talents.sports = 92;
 hire(CAREER_BY_ID.athlete, 3, 70, 'offer');
 sports.chooseSport('tennis');
 for (let y = 0; y < 5; y++) year();
-const C = store.state.sports.circuits.tennis;
+const C = store.state.proSport.circuits.tennis;
 check(C.seasons.every((s) => s.events.length >= SPORTS.tennis.events && s.ranking.length > 0), 'a tennis year is its events and a ranking');
 check(C.seasons.every((s) => !!s.games === (s.year % WORLD_GAMES.every === 0)), 'the World Games come every four years, and only then');
 check(p.sport.titles.every((t) => C.seasons.some((s) => s.events.some((e) => e.name === t.name && e.winner.who === 'player'))), 'every title the player holds is an event they won');
