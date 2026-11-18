@@ -26,7 +26,7 @@ const life = (id, age = 30) => { do { store.state = createLife({ countryId: id }
 // 1. The tables are well formed.
 for (const [id, def] of Object.entries(RULES)) {
   check(['age', 'flag', 'level'].includes(def.kind) && def.name, `rule ${id} is malformed`);
-  check(def.kind !== 'age' || Number.isInteger(def.default), `rule ${id}: an age must be a whole number`);
+  check(def.kind !== 'age' || Number.isInteger(def.default) || (def.hidden && def.default === null), `rule ${id}: an age must be a whole number`);
   check(def.kind !== 'level' || def.levels.includes(def.default), `rule ${id}: default is not one of its levels`);
   check(!def.from || Object.values(LIVING).every((L) => L.laws[def.from] !== undefined), `rule ${id}: living data lacks ${def.from}`);
 }
@@ -35,7 +35,7 @@ for (const [place, o] of Object.entries(PLACE_RULES)) {
   for (const [id, v] of Object.entries(o)) {
     const def = RULES[id];
     check(!!def && !def.from, `${place}.${id}: unknown rule, or one that belongs in living data`);
-    if (def?.kind === 'age') check(Number.isInteger(v) && v >= 12 && v <= 75, `${place}.${id}: not a sensible age (${v})`);
+    if (def?.kind === 'age') check(Number.isInteger(v) && v >= 10 && v <= 75, `${place}.${id}: not a sensible age (${v})`); // compulsory schooling ends at 10 in some countries
     if (def?.kind === 'flag') check(typeof v === 'boolean', `${place}.${id}: must be true or false`);
   }
 }
@@ -53,7 +53,7 @@ section(`coverage: ${COUNTRY_LIST.length} places answer all ${Object.keys(RULES)
 // 3. Layers: default, parent, place, region, enacted.
 check(law.source('drinkingAge', 'mx').source === 'default' && law.rule('drinkingAge', 'mx') === 18, 'no override: the default');
 check(law.rule('drinkingAge', 'us') === 21 && law.source('drinkingAge', 'us').source === 'place', 'a place overrides the default');
-check(law.rule('drivingAge', 'pr') === 16 && law.source('drivingAge', 'pr').source === 'parent', 'a territory starts from the state it belongs to');
+check(law.rule('retirementAge', 'pr') === law.rule('retirementAge', 'us') && law.source('retirementAge', 'pr').source === 'parent', 'a territory starts from the state it belongs to');
 check(law.rule('drinkingAge', 'pr') === 18 && law.source('drinkingAge', 'pr').source === 'place', 'and overrides it where it differs');
 check(law.rule('sameSexMarriage', 'jp') === LIVING.jp.laws.marriage && law.rule('deathPenalty', 'us', { region: null }) === LIVING.us.laws.deathPenalty, 'the five older flags still come from living data');
 check(law.lawsOf('ng').lgbt === 'hostile', 'older code gets the shape it expects');
@@ -78,6 +78,9 @@ check(!law.may('marry', { partner: { gender: 'female' } }).ok && law.may('marry'
 p = life('ph', 35); const s = makeNpc({ role: 'spouse', countryId: 'ph', age: 34 }); store.state.npcs[s.id] = s; p.npcIds.push(s.id); p.counters.spouses = 1;
 const r1 = divorce(s.id); const r2 = r1.ok ? null : divorce(s.id);
 check(r1.ok ? /annulled/.test(r1.text) : /no divorce/.test(r1.text) && /next year/.test(r2.text), 'no divorce in the Philippines: an annulment, once a year');
+p = life('in', 19); p.gender = 'female'; check(law.may('marry').ok, 'a woman of 19 may marry in India'); p.gender = 'male'; check(!law.may('marry').ok && /21/.test(law.may('marry').why), 'a man of 19 may not: the law sets 21 for men');
+check(/21 for men, 18 for women/.test(law.sheet('in').find((r) => r.id === 'marriageAge').text), 'and the law card says so');
+for (const c of COUNTRY_LIST) for (const g of ['male', 'female']) { p = store.state.player; p.countryId = c.id; p.gender = g; p.age = 17; check(!law.may('marry').ok, `${c.id}: nobody marries at 17 in the game, whatever the law allows`); }
 section('in play: ages and bans decide what is offered, with the reason');
 
 // 5. Laws change, are remembered, and never produce an illegal value.

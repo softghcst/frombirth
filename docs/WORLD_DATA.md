@@ -66,6 +66,12 @@ Explorer under "How the law was checked", and `node tests/rules.mjs` fails if an
 | Citizenship by birth | Jus soli | unconditional, allowing for a diplomats' exception or a registration step |
 | One nationality only | Multiple citizenship, and 13 national nationality-law articles | |
 | Form of government | List of countries by system of government | |
+| Marriage age | Marriageable age | without parental or judicial consent; a separate age for women where the law sets one. The game never lets anyone marry before 18 |
+| Driving age | List of minimum driving ages | the youngest age to hold a car licence, conditions allowed; not mopeds, motorcycles or supervised learners |
+| Gambling age, and whether gambling is legal | Gambling age | the casino age where several are given; legal where lotteries or betting are open to citizens |
+| School-leaving age | School-leaving age | the end of compulsory schooling |
+| Residence before naturalisation; dual nationality | Naturalization | |
+| Free movement | Member state of the European Union; Trans-Tasman Travel Arrangement | the European area is the EU members in the game, plus Norway (EEA) and Switzerland |
 
 What changed as a result: four countries no longer execute (the Bahamas, DR Congo, Ethiopia, Uganda); six gained "protected"
 status (Bolivia, Czechia, Croatia, Italy, Monaco, Nepal); conscription was added in twelve countries and removed in Syria;
@@ -73,8 +79,8 @@ voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries
 for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
 nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
 
-Still not checked: driving, gambling, marriage and school-leaving ages; residence years for naturalisation (other than
-Malaysia and Singapore); gambling bans; the free-movement lists; tax and health-care models; the status sentences. Where a
+Still not checked: the tax and health-care models, the spouse's shorter wait for citizenship (one rule everywhere), and the
+status sentences. Where a
 source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
 
 Re-run with `python3 scripts/verify-laws.py --write` (needs access to en.wikipedia.org; pages are cached in `.cache/`).
@@ -144,7 +150,7 @@ shown on its profile.
 
 In rough order of value:
 
-1. **Check what is still unchecked** (listed above): the remaining ages, residence years and the free-movement lists.
+1. **Check what is still unchecked** (listed above): tax and health-care models, and the spouse's wait.
 2. **Real city data** with a clear licence, to replace the guessed multipliers, and cities for more of each country.
 5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.

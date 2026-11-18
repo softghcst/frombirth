@@ -143,7 +143,7 @@ export const NEW_PLACES = {
     [0.12, 0.34, 34, 44, 40, 24, 80, 'low', ['heat', 'drought', 'flood'], [N, 'hostile', N, Y, N]], [Y, Y], ['M', 'Prime Minister', 'Member of the Council of Representatives', 'Governor']],
   il: ['Israel', '🇮🇱', ['ILS', '₪', 3.7], [0.28, 0, 0.004], ['Jerusalem', 'Tel Aviv', 'Haifa', 'Be\'er Sheva', 'Netanya', 'Eilat'],
     ['Noam David Yosef Ori Eitan Daniel Itai Omer', 'Tamar Noa Maya Shira Yael Talia Avigail Adi', 'Cohen Levi Mizrahi Peretz Biton Dahan Friedman Azoulay Katz Shapiro'],
-    [0.8, 1.05, 54, 90, 90, 36, 30, 'low', ['heat', 'drought', 'earthquake'], [N, 'equal', N, N, Y]], [Y, N], ['M', 'Prime Minister', 'Member of the Knesset', null]],
+    [0.8, 1.05, 54, 90, 90, 36, 30, 'low', ['heat', 'drought', 'earthquake'], [N, 'equal', Y, N, Y]], [Y, N], ['M', 'Prime Minister', 'Member of the Knesset', null]],
   lb: ['Lebanon', '🇱🇧', ['LBP', 'L£', 89500], [0.12, 0.05, 0.002], ['Beirut', 'Tripoli', 'Sidon', 'Tyre', 'Zahlé', 'Jounieh'],
     ['Elie Charbel Ali Hassan Georges Karim Rami Tony', 'Maya Rita Nour Lea Zeinab Christelle Yara Rana', 'Khoury Haddad Saad Nasser Hariri Aoun Karam Sleiman Fakhoury Daher'],
     [0.07, 0.42, 44, 56, 30, 22, 76, 'extreme', ['earthquake', 'wildfire', 'heat'], [N, 'hostile', Y, N, N], 'collapse'], [N, N], ['M', 'Prime Minister', MP, 'Governor']],
@@ -160,7 +160,7 @@ export const NEW_PLACES = {
     [0.05, 0.26, 52, 42, 44, 40, 74, 'high', ['flood', 'typhoon', 'heat'], [N, 'hostile', N, Y, N]], [N, N], ['M', 'Prime Minister', MP, null]],
   hk: ['Hong Kong', '🇭🇰', ['HKD', 'HK$', 7.8], [0.14, 0, 0.004], ['Central and Western', 'Kowloon City', 'Sha Tin', 'Tsuen Wan', 'Yuen Long'],
     ['Ka_Ho Chun_Kit Wai_Lok Tsz_Hin Ho_Yin Kin_Fung Jason Marco', 'Wing_Yan Hoi_Ching Tsz_Ching Ka_Yee Sze_Wing Yuen_Ting Karen Vivian', 'Chan Wong Lee Cheung Lau Ng Leung Ho Yeung Tsang'],
-    [0.85, 1.3, 94, 90, 98, 64, 16, 'low', ['typhoon', 'heat'], [N, 'limited', N, N, N]], [Y, N], ['party', 'Chief Executive', 'Member of the Legislative Council', null]],
+    [0.85, 1.3, 94, 90, 98, 64, 16, 'low', ['typhoon', 'heat'], [N, 'limited', Y, N, N]], [Y, N], ['party', 'Chief Executive', 'Member of the Legislative Council', null]],
   kz: ['Kazakhstan', '🇰🇿', ['KZT', '₸', 480], [0.1, 0, 0.002], ['Astana', 'Almaty', 'Shymkent', 'Karaganda', 'Aktobe', 'Atyrau'],
     ['Nursultan Alikhan Daniyar Yerlan Timur Arman Sanzhar Aibek', 'Aigerim Madina Dana Aruzhan Kamila Zarina Ainur Saule', 'Akhmetov Nurlanov Sadykov Omarov Suleimenov Zhakupov Kassymov Abenov Tulegenov Mukhametov'],
     [0.2, 0.4, 76, 62, 72, 56, 64, 'high', ['winter', 'drought', 'heat'], [N, 'limited', Y, N, Y]], [Y, N], ['P', 'President', 'Deputy of the Mazhilis', 'Akim', { rigged: true, limit: 1 }]],
@@ -172,7 +172,7 @@ export const NEW_PLACES = {
     [0.04, 0.26, 70, 42, 40, 44, 68, 'low', ['earthquake', 'flood', 'avalanche'], [N, 'equal', Y, N, N]], [N, N], ['M', 'Prime Minister', MP, 'Chief Minister']],
   tw: ['Taiwan', '🇹🇼', ['TWD', 'NT$', 32], [0.14, 0.1, 0.004], ['Taipei', 'Kaohsiung', 'Taichung', 'Tainan', 'Hsinchu', 'Hualien'],
     ['Chih-Wei Chia-Hao Yu-Hsiang Po-Han Tsung-Han Kuan-Yu Jay Kevin', 'Yi-Chun Ya-Ting Shu-Fen Pei-Shan Hsin-Yi Chia-Ling Emily Vivian', 'Chen Lin Huang Chang Lee Wang Wu Liu Tsai Yang'],
-    [0.5, 0.62, 92, 90, 94, 72, 20, 'low', ['typhoon', 'earthquake', 'heat'], [Y, 'equal', N, Y, Y]], [Y, N], ['P', 'President', 'Legislator', 'Mayor', {}]],
+    [0.5, 0.62, 92, 90, 94, 72, 20, 'low', ['typhoon', 'earthquake', 'heat'], [Y, 'equal', Y, Y, Y]], [Y, N], ['P', 'President', 'Legislator', 'Mayor', {}]],
 
   // ---------- Oceania ----------
   pg: ['Papua New Guinea', '🇵🇬', ['PGK', 'K', 4], [0.2, 0, 0], ['Port Moresby', 'Lae', 'Mount Hagen', 'Madang', 'Kokopo'],

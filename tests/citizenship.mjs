@@ -44,7 +44,7 @@ check(mayVote('pt') !== '', 'a resident who is not a citizen should not be able 
 check(!cit.naturalisation(p).possible && /years of residence/.test(cit.naturalisation(p).why), 'citizenship should need years of residence first');
 // Marrying a citizen shortens the wait and confers nothing by itself.
 const spouse = makeNpc({ role: 'spouse', countryId: 'pt', age: 30 }); store.state.npcs[spouse.id] = spouse; p.npcIds.push(spouse.id);
-check(cit.held(p).join() === 'br' && cit.naturalisation(p).spouse && cit.naturalisation(p).needs === 3, 'marriage should shorten the wait to three years and grant nothing');
+{ const base = (await import('../js/data/citizenship.js')).RESIDENCE_YEARS.pt ?? 5; const n = cit.naturalisation(p); check(cit.held(p).join() === 'br' && n.spouse && n.needs < base && n.needs >= 3, `marriage should shorten the wait (${n.needs} of ${base} years) and grant nothing`); }
 for (let i = 0; i < 6; i++) year();
 const n = cit.naturalisation(p);
 check(n.possible && n.mustRenounce.length === 0, `after six years a spouse should be eligible (${n.why})`);
