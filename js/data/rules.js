@@ -201,7 +201,8 @@ export const REGION_RULES = {
  *     Canada: driving licences ("issued by each province or territory"), the gambling age (18 or 19 by province).
  *     Australia: driving licences and road rules ("managed by state and territory governments"); the drinking age
  *       ("all states restrict purchasing to over 18": state liquor law).
- *     Germany: the gambling age ("varies by state").  Mexico: the drinking age ("all Mexican states prohibit...").
+ *     Germany: the gambling age ("varies by state").  Mexico: the drinking age ("all Mexican states prohibit..."), and
+ *       driving ("Driving licence in Mexico": each state sets "the minimum driving age").
  *     India: alcohol ("a subject in the State List") and gambling ("states are entitled to formulate their own laws").
  *     Nigeria: alcohol ("prohibited in northern states").  UAE: alcohol and its age ("Sharjah... banned"; 18 or 21).
  *     Spain: the drinking age (communities raised it to 18 at different times).  Switzerland: the drinking age (Ticino
