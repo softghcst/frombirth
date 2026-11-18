@@ -200,8 +200,8 @@ let p = life('us', 30, 80000, 'New York');
     L.book();
     const bad = L.audit();
     const code = COUNTRIES[p.countryId].currency.code;
-    const travelled = L.yearTotals(store.state.ledger, store.state.year, code).expense.travel ?? 0;
-    check(!bad.length && travelled > 0, `the game's ledger balances, with the trip filed under Travel (${bad.slice(0, 2).join('; ')})`);
+    const traveled = L.yearTotals(store.state.ledger, store.state.year, code).expense.travel ?? 0;
+    check(!bad.length && traveled > 0, `the game's ledger balances, with the trip filed under Travel (${bad.slice(0, 2).join('; ')})`);
   }
   year(2);
   check(p.finance.receipts.filter((x) => x.ref?.tripId === plan.id && x.amount < 0).length === n + 1, 'later years never charge for it again');
@@ -221,7 +221,7 @@ let p = life('us', 30, 80000, 'New York');
   travel.confirm(t.id);
   const paid = before - cash();
   const r = travel.cancel(t.id);
-  check(r.ok && r.refunded > 0 && r.refunded < paid && t.status === 'cancelled', `canceling early returns most, not all (${r.refunded} of ${paid})`);
+  check(r.ok && r.refunded > 0 && r.refunded < paid && t.status === 'canceled', `canceling early returns most, not all (${r.refunded} of ${paid})`);
   check(!travel.cancel(t.id).ok, 'and only once');
   // Dates.
   const bad = travel.startPlan('vacation');
@@ -293,7 +293,7 @@ let moved;
   hire(CAREERS.find((c) => c.id === 'office'), 1, 60);
   docs.applyPassport(p.id, 'mx');
   const friend = add('friend', 'mx', 29, 85);
-  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
+  const mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
   const dog = add('pet', 'mx', 3, 90); dog.species = 'dog'; dog.firstName = 'Biscuit';
   (await import('../js/engine/animals.js')).reconcile(); // the family's animals are registered with the animals engine
   const home = { id: 'asset_home_gdl', kind: 'property', catalogId: 'condo', name: 'Two-bedroom condo', purchasePrice: 100000, value: 100000, boughtAtAge: 26, condition: 80, quality: 1, mortgage: null, tenant: null, countryId: 'mx', city: 'Guadalajara' };
@@ -330,9 +330,9 @@ let moved;
   check(p.residency.status === 'worker' && p.residency.workAuthorized && p.career.careerId, 'a work visa, with the job that sponsored it');
   check(p.locations.length >= 2 && p.locations[p.locations.length - 2].countryId === 'mx' && p.locations[p.locations.length - 2].to === store.state.year && p.locations[p.locations.length - 2].homes.includes(home.id), 'Guadalajara stays in the record, with the flat');
   check(p.assets.some((a) => a.id === home.id), 'the flat is still owned');
-  check(later.status === 'cancelled' && p.finance.receipts.some((x) => x.kind === 'refund' && x.ref?.tripId === later.id), 'the Puebla weekend was canceled at the move and refunded on its terms');
+  check(later.status === 'canceled' && p.finance.receipts.some((x) => x.kind === 'refund' && x.ref?.tripId === later.id), 'the Puebla weekend was canceled at the move and refunded on its terms');
   check(friend.alive && p.npcIds.includes(friend.id) && friend.role === 'friend' && (friend.flags.abroad === 'mx' || friend.places?.some((l) => l.countryId === 'mx')), 'the friend from Mexico is still a friend, with their life in Mexico on record');
-  check(!mum || !mum.alive || (p.npcIds.includes(mum.id) && (mum.flags.abroad === 'mx' || mum.places?.some((l) => l.countryId === 'mx'))), 'and so is mum, with her life in Mexico on record');
+  check(!mom || !mom.alive || (p.npcIds.includes(mom.id) && (mom.flags.abroad === 'mx' || mom.places?.some((l) => l.countryId === 'mx'))), 'and so is mom, with her life in Mexico on record');
   check(!dog.alive || (!dog.flags.abroad && store.state.npcs[dog.id] === dog), `the dog came, the same dog (${dog.flags.abroad}, ${dog.alive}, ${dog.role})`);
   const moves = store.state.canon.events.filter((e) => e.type === 'relocation' && e.international);
   check(moves.length === 1 && p.locations[p.locations.length - 1].eventId === moves[0].id, 'one relocation event, linked from the residence record');
@@ -360,10 +360,10 @@ let moved;
   p = store.state.player;
   for (let i = 0; i < 10 && p.residency?.status === 'worker'; i++) { if (!p.career.careerId) hire(CAREERS.find((c) => c.id === 'office'), 0, 60); p.career.performance = 70; year(); }
   check(p.residency?.status === 'permanent_resident' && !cit.held(p).includes('ca'), 'permanent resident after years of work; still not a citizen');
-  check(!cit.naturalisation(p).possible || cit.naturalisation(p).lived >= cit.naturalisation(p).needs, 'naturalization only once the years are there');
-  for (let i = 0; i < 8 && !cit.naturalisation(p).possible; i++) year();
+  check(!cit.naturalization(p).possible || cit.naturalization(p).lived >= cit.naturalization(p).needs, 'naturalization only once the years are there');
+  for (let i = 0; i < 8 && !cit.naturalization(p).possible; i++) year();
   let got = false;
-  for (let i = 0; i < 6 && !got; i++) { p.flags.natAge = null; p.finance.cash += 100000; got = cit.naturalise().ok; if (!got) year(); }
+  for (let i = 0; i < 6 && !got; i++) { p.flags.natAge = null; p.finance.cash += 100000; got = cit.naturalize().ok; if (!got) year(); }
   check(got && cit.held(p).includes('ca') && p.birthCountryId === 'mx', 'naturalized: a Canadian born in Mexico');
   check(docs.applyPassport(p.id, 'ca').ok && docs.validPassport(p, undefined, undefined, 'ca'), 'a Canadian passport follows');
   check(cit.held(p).includes('mx') ? docs.passports(p).filter((d) => d.status === 'valid').length >= 1 : true, 'the Mexican passport is a separate document');
@@ -392,7 +392,7 @@ let moved;
   docs.applyPassport(p.id, 'uk');
   const m = reloc.completeMove(app.id);
   check(m.ok && p.residency?.status === 'retiree' && !p.residency.workAuthorized && !cit.held(p).includes('pt'), `retired to Porto on a retirement visa: no work, not Portuguese (${m.text})`);
-  check(cit.naturalisation(p).possible === false, 'and it is not a road to citizenship by itself');
+  check(cit.naturalization(p).possible === false, 'and it is not a road to citizenship by itself');
   year(5);
   check(p.countryId === 'pt' && p.residency?.status === 'retiree', 'renewed while the pension lasts');
   section('retirement abroad: its own status, renewed, no work, no citizenship');
@@ -424,9 +424,9 @@ let moved;
 {
   // A child at home with a parent who grew up speaking another language.
   p = life('us', 2, 0, 'Seattle');
-  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
-  mum.bornIn = 'kr';
-  for (let i = 0; i < 8; i++) { mum.alive = true; mum.flags.abroad = false; mum.meters.health = 90; p.flags.livesWithParents = true; year(); }
+  const mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
+  mom.bornIn = 'kr';
+  for (let i = 0; i < 8; i++) { mom.alive = true; mom.flags.abroad = false; mom.meters.health = 90; p.flags.livesWithParents = true; year(); }
   check((p.skills.korean ?? 0) > 0 && (p.skills.korean ?? 0) < 90, `a child picks up Korean at home, at their own pace, short of fluency (${p.skills.korean})`);
   check((p.languageLog ?? []).some((x) => x.lang === 'korean' && /at home/.test(x.source)), 'and where it came from is kept');
   section('multilingual families: a parent\'s language picked up at home, gradually');
@@ -739,8 +739,8 @@ let moved;
   // Going home: only after years away, still a citizen, with a parent growing old there.
   p = life('ph', 45, 120000, 'Manila');
   move.emigrate('ca', { forced: true }); p.flags.arrivedYear = store.state.year - 12;
-  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive) ?? add('parent', 'ph', 75);
-  mum.age = 76; mum.flags.abroad = 'ph'; mum.alive = true;
+  const mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive) ?? add('parent', 'ph', 75);
+  mom.age = 76; mom.flags.abroad = 'ph'; mom.alive = true;
   check(arcs.tickAbroadArcs(p, 'homeward') === 'homeward' && scene('abroad_homeward').cast.words.years === '12', 'twelve years in Canada and a mother of 76 in the Philippines');
   choose('abroad_homeward', 'Go home');
   const home = reloc.cases().find((a) => a.jurisdictionId === 'ph');
@@ -762,7 +762,7 @@ let moved;
   const ft = choose('abroad_firstTrip', 'Count down');
   check(chron.hasEvent(`first-abroad:${chron.archiveIdOf(p)}`) && travel.trips(['completed']).length === 1 && docs.validPassport(p), `the first trip abroad happens, with a passport, and is remembered (${ft.text.slice(0, 70)})`);
   check(arcs.tickAbroadArcs(p, 'firstTrip') === null, 'and is not offered again');
-  // A semester abroad: a plan, not an enrolment.
+  // A semester abroad: a plan, not an enrollment.
   p = life('us', 20, 50000, 'Chicago'); p.education.enrolled = true; p.education.stage = 'university';
   check(arcs.tickAbroadArcs(p, 'exchange') === 'exchange', 'a university student is offered an exchange semester');
   choose('abroad_exchange', 'Apply');

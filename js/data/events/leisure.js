@@ -11,7 +11,7 @@ export default [
     text: 'At a routine appointment, the doctor puts down the chart and says, kindly, that the next ten years depend on what you do in the next one.',
     choices: [
       { label: 'Change how you live', check: chk(0.5, { 'hidden.discipline': 0.7, 'hidden.willpower': 0.4 }), outcomes: [
-        ok('You walk every morning and stop pretending the biscuits do not count. By the next appointment the numbers have moved.', st('health', 10), st('mood', 4), hid('discipline', 4)),
+        ok('You walk every morning and stop pretending the cookies do not count. By the next appointment the numbers have moved.', st('health', 10), st('mood', 4), hid('discipline', 4)),
         bad('You manage three weeks. It is three weeks more than nothing.', st('health', 2)),
       ] },
       { label: 'Nod, and carry on', outcomes: [any('You have heard it before.', 'neutral', st('health', -4))] },

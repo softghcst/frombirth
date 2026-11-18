@@ -158,7 +158,7 @@ export function emigrate(countryId, opts = {}) {
   const shipping = ship ? shippingCost() : 0;
   // Animals that come need papers and a way to travel. Those left behind are found homes (opts.animals: 'bring' | 'leave').
   const pets = opts.forced || opts.animals === 'leave' ? 0 : travelPlan(countryId).reduce((s, t) => s + t.cost, 0);
-  // `route` is how the player is applying; without one, as a citizen where possible, otherwise the settlement programme.
+  // `route` is how the player is applying; without one, as a citizen where possible, otherwise the settlement program.
   const open = opts.forced ? [] : routes(countryId);
   const found = opts.forced ? null : open.find((r) => r.id === opts.route) ?? (opts.route ? null : open.find((r) => r.eligible && ['right', 'free'].includes(r.id)) ?? open.find((r) => r.id === 'settle'));
   // A case decided earlier keeps the status it was granted, whatever the routes look like today.
@@ -239,10 +239,10 @@ export function emigrate(countryId, opts = {}) {
   }
 
   prunePending(); // scenes about people who are not coming
-  // Trips booked to leave from the old home are cancelled now, on their refund terms, before savings change currency.
+  // Trips booked to leave from the old home are canceled now, on their refund terms, before savings change currency.
   for (const t of (p.travel?.trips ?? []).filter((x) => x.status === 'confirmed' && x.origin.countryId !== to.id)) {
     const c = cancelTrip(t.id);
-    if (c.ok) log(`The move meant cancelling your trip to ${COUNTRIES[t.destination.countryId].name}: it was to leave from ${t.origin.city ?? COUNTRIES[t.origin.countryId].name}. ${c.refunded ? `${fmtMoney(c.refunded, from)} came back.` : 'Nothing could be refunded.'}`, 'system', 'neutral');
+    if (c.ok) log(`The move meant canceling your trip to ${COUNTRIES[t.destination.countryId].name}: it was to leave from ${t.origin.city ?? COUNTRIES[t.origin.countryId].name}. ${c.refunded ? `${fmtMoney(c.refunded, from)} came back.` : 'Nothing could be refunded.'}`, 'system', 'neutral');
   }
   // Money follows, at today's rate, except whatever the player chose to leave in the old currency.
   for (const a of p.assets) if (a.kind === 'property') { if (a.mortgage) a.mortgage.code ??= from.currency.code; if (a.tenant) a.tenant.code ??= from.currency.code; }

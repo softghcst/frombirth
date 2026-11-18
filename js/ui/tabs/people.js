@@ -101,7 +101,7 @@ async function planWedding(api, npc) {
     // The palace said yes, and you are joining the family: the wedding is yours to shape.
     if (res.ok && !wasRoyal && player().royal?.by === 'marriage') {
       const picks = {};
-      for (const [key, title, body] of [['scale', 'The wedding', 'The crown pays. What kind of day will it be?'], ['media', 'The cameras', 'The whole country wants to watch.'], ['honeymoon', 'Afterwards', 'Where will the two of you go?']]) {
+      for (const [key, title, body] of [['scale', 'The wedding', 'The crown pays. What kind of day will it be?'], ['media', 'The cameras', 'The whole country wants to watch.'], ['honeymoon', 'Afterward', 'Where will the two of you go?']]) {
         picks[key] = await pickModal({ title, body, cancel: 'Let the palace decide', options: court.WEDDING[key].map((o) => ({ value: o.id, label: o.name, sub: o.sub })) }) ?? court.WEDDING[key][0].id;
       }
       await report(api, court.royalWedding(npc.id, picks));

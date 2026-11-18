@@ -87,7 +87,7 @@ for (const c of COUNTRY_LIST) {
 }
 if (!problems.length) pass(`${COUNTRY_LIST.length} places: codes, type, currency, cities, names, living data, politics and schools all in order`);
 
-// 3. Relationships that must be modelled, not flattened.
+// 3. Relationships that must be modeled, not flattened.
 const rel = (id, type, parent) => check(PLACES[id].type === type && PLACES[id].parentId === parent, `${id}: expected ${type} of ${parent}`);
 rel('pr', 'territory', 'us'); rel('aw', 'territory', 'nl'); rel('hk', 'special_administrative_region', 'cn');
 check(PLACES.tw.type === 'jurisdiction' && !PLACES.tw.parentId && COUNTRIES.tw.currency.code === 'TWD', 'Taiwan must be a distinct jurisdiction with its own currency');

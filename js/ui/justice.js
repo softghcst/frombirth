@@ -126,7 +126,7 @@ export function openCaseFile(caseId, api) {
     <div class="kv"><span>Defendant</span><span>${person(c.defendantId)}</span></div>
     <div class="kv"><span>Judge</span><span>${person(c.judgeId)}</span></div>
     <div class="kv"><span>Prosecutor</span><span>${person(c.prosecutorId)}</span></div>
-    <div class="kv"><span>Defense</span><span>${c.defenceTier === 'self' ? 'Represented themselves' : person(c.defenceId)}</span></div>
+    <div class="kv"><span>Defense</span><span>${c.defenseTier === 'self' ? 'Represented themselves' : person(c.defenseId)}</span></div>
     <div class="section-label">Evidence</div>${ev || '<p class="muted">None on file.</p>'}
     <div class="section-label">Hearings</div>
     ${c.hearings.map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.text)}</span></div>`).join('')}

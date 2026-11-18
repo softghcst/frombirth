@@ -21,7 +21,7 @@ import * as music from '../engine/music.js';
 import * as athletics from '../engine/sports.js';
 import * as sportsLife from '../engine/sportsLife.js';
 import { openAthletics } from './sports.js';
-import * as modelling from '../engine/modelling.js';
+import * as modeling from '../engine/modeling.js';
 import * as pub from '../engine/publishing.js';
 import * as celebs from '../engine/celebs.js';
 import * as agents from '../engine/agents.js';
@@ -40,7 +40,7 @@ const kindName = (prod) => `${TIERS[prod.tier].name} ${PRODUCTION_KINDS[prod.kin
 const row = (act, arg, main, sub, side = '', n = null) => `<button type="button" class="row world-row" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
   <div class="main"><strong>${esc(main)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>`;
 
-const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modelling', 'Modelling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
+const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modeling', 'Modeling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
   ['awards', 'Awards'], ['connections', 'Connections'], ['archive', 'Archive'], ['family', 'Family']];
 
 function tabsFor(p) {
@@ -50,7 +50,7 @@ function tabsFor(p) {
     if (id === 'representation') return p.age >= 12;
     if (id === 'music') return p.age >= 12 && fame.exists('concert');
     if (id === 'sport') return sportsLife.needsSport(store.state) || Object.values(store.state.sports?.athletes?.[p.id]?.sports ?? {}).some((e) => ['pro', 'elite', 'college'].includes(e.level) || e.legacySeasons);
-    if (id === 'modelling') return modelling.isModel(p) || modelling.portfolio(p).length > 0;
+    if (id === 'modeling') return modeling.isModel(p) || modeling.portfolio(p).length > 0;
     if (id === 'writing') return p.age >= 14 && fame.exists('publishing');
     if (id === 'family') return (store.state.careerRecord ?? []).length > 0;
     if (id === 'awards') return awards.myAwards(p).length > 0;
@@ -143,15 +143,15 @@ const VIEWS = {
     ['Where', regions.length ? regions.map(([c, v]) => `${COUNTRIES[c]?.name ?? c} ${Math.round(v)}`).join(', ') : '—'],
     ...(f.family ? [['Through your family', `${Math.round(f.family)}: people know the name, not your work`]] : []),
     ...(f.provenance ? [['Carried over', `${f.provenance.migratedFrom}, from before this record was kept`]] : [])])}
-      <div style="margin-top:8px">${meterHtml('In the news now', f.attention, true)}${meterHtml('What lasts', f.legacy, true)}${meterHtml('Public regard', f.favour, true)}${meterHtml('Standing in the industry', f.credibility, true)}</div></div>
+      <div style="margin-top:8px">${meterHtml('In the news now', f.attention, true)}${meterHtml('What lasts', f.legacy, true)}${meterHtml('Public regard', f.favor, true)}${meterHtml('Standing in the industry', f.credibility, true)}</div></div>
       <div class="card"><h3>Your craft</h3>${kv([['Acting', `${act} (${skills.levelName(act)})`], ['Singing', `${sing} (${skills.levelName(sing)})`], ['Dance', `${dance} (${skills.levelName(dance)})`],
-    ['Professional credits', String(ent.proCredits(p))]])}<p class="muted" style="margin-top:6px">Practise on the Pursuits tab: skill is what gets you the part, not fame.</p></div>
+    ['Professional credits', String(ent.proCredits(p))]])}<p class="muted" style="margin-top:6px">Practice on the Pursuits tab: skill is what gets you the part, not fame.</p></div>
       ${upcoming.length ? `<div class="card"><h3>Signed for</h3>${upcoming.map((x) => row('production', x.id, x.title, `${kindName(x)} · ${x.workYear > store.state.year ? 'starts next year' : 'now'}`)).join('')}</div>` : ''}
       ${recent.length ? `<div class="card"><h3>Recent work</h3>${recent.map((x) => row('production', x.id, x.title, `${kindName(x)} · ${x.workYear}`)).join('')}</div>` : ''}
       ${(() => { const offers = celebs.comebackOffers(p); const phase = celebs.phaseName(p);
     const say = { reality: ['A reality show', 'Ten weeks on camera. The money is good; the respect is not.'], tribute: ['A tribute evening', 'Your work, celebrated.'], memoir: ['Write your memoir', 'Publishers want your story. Starts a memoir on the Writing tab.'], reunion: ['Get the band back together', 'One more time.'] };
     return phase || offers.length ? `<div class="card"><h3>${esc(phase ?? 'Your story')}</h3>${offers.length ? `<p class="muted" style="margin:0 0 6px">People have stopped asking about you. Some ways back:</p><div class="btn-stack">${offers.map((o) => btn('comeback', say[o.kind][0], { arg: o.kind, sub: say[o.kind][1] })).join('')}</div>` : ''}</div>` : ''; })()}
-      ${celebs.news(5).length ? `<div class="card"><h3>Celebrity news</h3>${celebs.news(5).map((a) => { const n = store.state.npcs[a.about]; return row('person', n.id, a.text, `${a.year}${a.accuracy === 'rumour' ? ' · unconfirmed' : ''}`, '', n); }).join('')}</div>` : ''}
+      ${celebs.news(5).length ? `<div class="card"><h3>Celebrity news</h3>${celebs.news(5).map((a) => { const n = store.state.npcs[a.about]; return row('person', n.id, a.text, `${a.year}${a.accuracy === 'rumor' ? ' · unconfirmed' : ''}`, '', n); }).join('')}</div>` : ''}
       ${f.log.length ? `<div class="card"><h3>Why people know you</h3>${f.log.slice(-5).reverse().map((l) => `<p style="margin:3px 0">${l.year}: ${esc(l.why || l.audience)} (${l.delta > 0 ? '+' : ''}${l.delta} ${esc(l.audience)})</p>`).join('')}</div>` : ''}`;
   },
 
@@ -199,7 +199,7 @@ const VIEWS = {
     const items = ent.myPress(p).slice(0, 25);
     const invites = (w.offers ?? []).filter((o) => o.status === 'open');
     const deals = (w.deals ?? []).filter((d) => ['offered', 'signed'].includes(d.status));
-    return `<div class="card"><h3>How you are seen</h3><div>${meterHtml('Public regard', f.favour, true)}${meterHtml('Standing in the industry', f.credibility, true)}${meterHtml('In the news now', f.attention, true)}</div>
+    return `<div class="card"><h3>How you are seen</h3><div>${meterHtml('Public regard', f.favor, true)}${meterHtml('Standing in the industry', f.credibility, true)}${meterHtml('In the news now', f.attention, true)}</div>
       ${kv([['Privacy', { open: 'You talk about your life freely', guarded: 'Your work, not your life', private: 'Your private life is private' }[f.privacy]]])}${btn('privacy', 'Change how much you share')}</div>
       ${invites.length ? `<div class="section-label">Invitations</div>${invites.map((o) => `<div class="card"><p style="margin:0">${esc(press.APPEARANCES[o.kind].name)}${o.productionId ? `: ${esc(ent.production(o.productionId)?.title ?? '')}` : ent.org(o.outletId) ? `, ${esc(ent.org(o.outletId).name)}` : ''}</p>
         <div class="btn-stack" style="margin-top:6px">${btn('attend', 'Accept', { cls: 'primary', arg: o.id })}${btn('noattend', 'Decline', { arg: o.id })}</div></div>`).join('')}` : ''}
@@ -230,7 +230,7 @@ const VIEWS = {
     const records = disc.length ? `<div class="section-label">Records</div>${disc.map((r) => row('release', r.id, r.title, `${r.released} · ${RELEASE_TYPES[r.type].name} · ${music.act(r.actId)?.name ?? ''}${r.chart ? ` · chart #${r.chart}` : ''}`, (r.awards ?? []).some((a) => a.won) ? '★' : '')).join('')}` : '';
     const books = pub.bibliography(p);
     const shelf = books.length ? `<div class="section-label">Books</div>${books.map((b) => row('bookview', b.id, b.title, `${b.released} · ${BOOK_KINDS[b.kind].name}${b.list ? ` · bestseller #${b.list}` : ''}`, b.awards.some((x) => x.won) ? '★' : '')).join('')}` : '';
-    return `${group(['film'], 'Films')}${group(['tv'], 'Television')}${group(['stage', 'musical'], 'Theatre')}${group(['voice'], 'Voice work')}${group(['commercial'], 'Commercials')}${records}${shelf}
+    return `${group(['film'], 'Films')}${group(['tv'], 'Television')}${group(['stage', 'musical'], 'Theater')}${group(['voice'], 'Voice work')}${group(['commercial'], 'Commercials')}${records}${shelf}
       ${school ? `<div class="section-label">At school and university</div>${school}` : ''}${!credits.length && !school && !disc.length && !books.length ? '<p class="empty">No credits yet.</p>' : ''}`;
   },
 
@@ -313,16 +313,16 @@ const VIEWS = {
     return `${choose}${cards}${known}<div class="btn-stack">${btn('athletics', 'Open Sport', { sub: 'Training, clubs, seasons, contracts and coaching' })}</div>`;
   },
 
-  modelling(p) {
-    const m = modelling.modelOf(p);
+  modeling(p) {
+    const m = modeling.modelOf(p);
     const ag = m.agencyId ? ent.org(m.agencyId) : null;
-    const can = modelling.isModel(p);
-    const list = can ? modelling.castings(p) : [];
-    const willing = can && !ag ? modelling.agenciesWilling(p) : [];
-    return `<div class="card"><h3>Modelling</h3>${kv([['Agency', ag?.name ?? 'None'], ['Your look', String(modelling.look(p))], ['Bookings', String(m.portfolio.length)]])}${can ? '' : '<p class="muted">You are not working as a model now.</p>'}</div>
+    const can = modeling.isModel(p);
+    const list = can ? modeling.castings(p) : [];
+    const willing = can && !ag ? modeling.agenciesWilling(p) : [];
+    return `<div class="card"><h3>Modeling</h3>${kv([['Agency', ag?.name ?? 'None'], ['Your look', String(modeling.look(p))], ['Bookings', String(m.portfolio.length)]])}${can ? '' : '<p class="muted">You are not working as a model now.</p>'}</div>
       ${willing.length ? `<div class="section-label">Agencies that would take you</div><div class="btn-stack">${willing.map((a) => btn('agency', a.name, { arg: a.id, sub: `Reputation ${a.reputation}` })).join('')}</div>` : ''}
       ${list.length ? `<div class="section-label">Castings this year (${3 - m.castings.went} you can still go to)</div>${list.map((c) => (c.status === 'open' ? row('casting2', c.id, `${BOOKINGS[c.kind].name}: ${c.client}`, `${c.city}`, '') : `<div class="kv"><span>${esc(BOOKINGS[c.kind].name)}: ${esc(c.client)}</span><span>${c.status === 'booked' ? 'Booked' : 'Not this time'}</span></div>`)).join('')}` : ''}
-      ${m.portfolio.length ? `<div class="section-label">Portfolio</div>${modelling.portfolio(p).map((x) => `<div class="kv"><span>${x.year} · ${esc(BOOKINGS[x.kind].name)}</span><span>${esc(x.client)}, ${esc(x.city)}</span></div>`).join('')}` : ''}`;
+      ${m.portfolio.length ? `<div class="section-label">Portfolio</div>${modeling.portfolio(p).map((x) => `<div class="kv"><span>${x.year} · ${esc(BOOKINGS[x.kind].name)}</span><span>${esc(x.client)}, ${esc(x.city)}</span></div>`).join('')}` : ''}`;
   },
 
   writing(p) {
@@ -427,13 +427,13 @@ const ACTIONS = {
   bookview: (id, x) => x.go('bookview', id),
   sport: (k, x) => x.say(sportsLife.goPro(k)),
   athletics: (_, x) => { x.close(); openAthletics(x.api); },
-  agency: (id, x) => x.say(modelling.joinAgency(id)),
+  agency: (id, x) => x.say(modeling.joinAgency(id)),
   async casting2(id, x) {
-    const c = modelling.castings().find((y) => y.id === id);
+    const c = modeling.castings().find((y) => y.id === id);
     if (!c) return undefined;
     const v = await pickModal({ title: `${BOOKINGS[c.kind].name}: ${c.client}`, body: `${c.city}. The brief: ${c.brief ?? '(none given)'}`, cancel: 'Back',
-      options: Object.entries(modelling.APPROACHES).map(([k, a]) => ({ value: k, label: a.label, sub: a.sub })) });
-    if (v) await x.say(modelling.attendCasting(id, v));
+      options: Object.entries(modeling.APPROACHES).map(([k, a]) => ({ value: k, label: a.label, sub: a.sub })) });
+    if (v) await x.say(modeling.attendCasting(id, v));
     return undefined;
   },
   async draft(_, x) {
@@ -527,7 +527,7 @@ const ACTIONS = {
     const prep = await pickModal({ title: 'Preparing', options: [{ value: 'study', label: 'Learn the sides and make choices', sub: 'Free. Time well spent.' }, { value: 'coach', label: 'Work with a coach', sub: `About ${money(Math.round(600 * country().currency.scale))}.` }, { value: 'none', label: 'Go in fresh' }] });
     if (!prep) return undefined;
     const approach = await pickModal({ title: 'In the room', body: 'How do you play it? Directors see parts their own way; there is no one right answer.',
-      options: [{ value: 'restrained', label: 'Quietly, from the inside' }, { value: 'bold', label: 'Big and brave' }, { value: 'playful', label: 'With a light touch, finding the humour' }] });
+      options: [{ value: 'restrained', label: 'Quietly, from the inside' }, { value: 'bold', label: 'Big and brave' }, { value: 'playful', label: 'With a light touch, finding the humor' }] });
     if (!approach) return undefined;
     await x.say(ent.audition(pid, Number(idx), prep, approach));
     return undefined;

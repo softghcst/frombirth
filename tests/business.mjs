@@ -8,7 +8,7 @@ import { advanceYear } from '../js/engine/yearProcessor.js';
 import { makeNpc } from '../js/engine/npcFactory.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
 import { FAMILY_BY_ID } from '../js/data/occupations.js';
-import { PROGRAMMES, TRADE_BY_ID } from '../js/data/schools.js';
+import { PROGRAMS, TRADE_BY_ID } from '../js/data/schools.js';
 import { BUSINESS_TYPES, BUSINESS_BY_ID, FROM_SERVICE, DRAWS } from '../js/data/business.js';
 import { SERVICE_BY_ID } from '../js/data/freelance.js';
 import * as biz from '../js/engine/business.js';
@@ -44,7 +44,7 @@ for (const t of BUSINESS_TYPES) {
   check(t.startup > 0 && t.perHead > t.wage * (1 + t.cogs), `${t.id}: a member of staff could never pay for themselves`);
   check(t.cogs > 0 && t.cogs < 0.6, `${t.id}: odd cost of supplies`);
   if (t.needs.trade) check(!!TRADE_BY_ID[t.needs.trade], `${t.id}: unknown trade`);
-  if (t.needs.programme) check(!!PROGRAMMES[t.needs.programme], `${t.id}: unknown program`);
+  if (t.needs.program) check(!!PROGRAMS[t.needs.program], `${t.id}: unknown program`);
   for (const id of Object.keys(t.needs.experience ?? {})) check(!!CAREER_BY_ID[id], `${t.id}: experience in an unknown career ${id}`);
 }
 for (const [s, b] of Object.entries(FROM_SERVICE)) check(!!SERVICE_BY_ID[s] && !!BUSINESS_BY_ID[b], `freelance ${s} grows into an unknown business ${b}`);

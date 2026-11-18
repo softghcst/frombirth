@@ -123,7 +123,7 @@ export function startTrial({ medId, dxId, prescriberId, replacing, reason }, p =
   const t = {
     id, medicationId: medId, conditionId: dx.conditionId, diagnosisId: dx.id, underlyingId: dx.underlyingId, prescriberId: doc.id,
     startWk: now(p), status: 'active', responseState: 'not_yet_evaluated', fit: fitFor(p, med, rec), adherence: 0.92,
-    reviews: [], reported: null, nextReviewWk: now(p) + (p.age < 25 && med.family === 'antidepressant' ? 2 : med.family === 'mood_stabiliser' ? 4 : 4),
+    reviews: [], reported: null, nextReviewWk: now(p) + (p.age < 25 && med.family === 'antidepressant' ? 2 : med.family === 'mood_stabilizer' ? 4 : 4),
     nextMonitorWk: med.monitoring ? now(p) + 1 : null, lastMonitorWk: null, monitorMissed: 0,
     replaces: replacing ?? null, replacedBy: null, endWk: null, changeReason: null, startReason: reason ?? 'Agreed with the prescriber.',
     history: [{ wk: now(p), text: `Started, prescribed by ${clinicianName(doc)}.` }],
@@ -239,7 +239,7 @@ export function review(appt, p = player()) {
   const underlying = h.conditions.find((c) => c.id === t.underlyingId);
   if (dx?.flagged === 'high' && underlying?.seenHigh && ['bipolar_1', 'bipolar_2'].includes(underlying.conditionId) && doc.flags.clinician.profession === 'psychiatrist') {
     say = `${clinicianName(doc)} listens to what the last few weeks were like and says it changes things: this looks like ${CONDITION_BY_ID[underlying.conditionId].short}, not depression alone. An antidepressant on its own is not the right treatment for that.`;
-    add('rethink', 'Agree to a new plan', 'The diagnosis is revised. A mood stabiliser is started and the antidepressant is reduced gradually.', { kind: 'bipolar_revision' });
+    add('rethink', 'Agree to a new plan', 'The diagnosis is revised. A mood stabilizer is started and the antidepressant is reduced gradually.', { kind: 'bipolar_revision' });
     add('time', 'Ask for time to think', 'Nothing changes yet. Another appointment is booked.', { kind: 'later' });
     rec = 'rethink';
   } else if (state === 'under_review' && monitoringOverdue(t)) {
@@ -431,16 +431,16 @@ function taper(t, weeks, why, p) {
   setComponent(t.id, 'paused', 'Being reduced.', p);
 }
 
-/** Depression turns out to be bipolar disorder: revise, start a stabiliser, reduce the antidepressant. */
+/** Depression turns out to be bipolar disorder: revise, start a stabilizer, reduce the antidepressant. */
 function bipolarRevision(t, doc, prop, p) {
   const h = healthOf(p);
   const underlying = h.conditions.find((c) => c.id === t.underlyingId);
   const dx = h.diagnoses.find((d) => d.id === t.diagnosisId);
   const next = reviseDx(dx, underlying.conditionId, doc, 'A high episode showed this was bipolar disorder all along.', p);
-  // The antidepressant is reduced first; a stabiliser is started as its own trial for the revised diagnosis.
+  // The antidepressant is reduced first; a stabilizer is started as its own trial for the revised diagnosis.
   taper(t, 3, 'Diagnosis revised to bipolar disorder: an antidepressant on its own is not the right treatment.', p);
   prop.status = 'accepted'; prop.chosen = 'rethink';
-  const stab = optionsFor(next.conditionId, doc, p).find((m) => m.family === 'mood_stabiliser');
+  const stab = optionsFor(next.conditionId, doc, p).find((m) => m.family === 'mood_stabilizer');
   const r = stab ? startTrial({ medId: stab.id, dxId: next.id, prescriberId: doc.id, reason: 'Started after the diagnosis was revised.' }, p) : null;
   const text = `Your diagnosis is revised to ${next.name}. ${MED_BY_ID[t.medicationId].name} is reduced gradually${r?.ok ? `, and you start ${stab.name.toLowerCase()}, with regular checks` : ''}. Your earlier diagnosis and treatment stay in your record.`;
   log(text, 'system', 'neutral');

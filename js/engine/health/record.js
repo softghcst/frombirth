@@ -3,14 +3,14 @@
 //
 // Underlying conditions and diagnoses are kept apart on purpose:
 //   conditions  what is actually going on in this person (the simulation's truth),
-//               including things nobody has recognised yet
+//               including things nobody has recognized yet
 //   diagnoses   what a clinician has concluded, which can be uncertain, revised,
 //               or wrong, and which care plans are written against
 import { player, store } from '../../state.js';
 import { CONDITION_BY_ID, LEGACY_IDS } from '../../data/health/conditions.js';
 import { WEEKS, now } from './util.js';
 
-export const SKILL_KEYS = ['mindfulness', 'distress', 'regulation', 'interpersonal', 'coping', 'organisation', 'communication', 'independence', 'study'];
+export const SKILL_KEYS = ['mindfulness', 'distress', 'regulation', 'interpersonal', 'coping', 'organization', 'communication', 'independence', 'study'];
 
 /** A blank record. */
 export function blankHealth() {
@@ -49,7 +49,7 @@ export const hasCondition = (id, h = healthOf()) => presentConditions(h).some((c
 export const isDiagnosed = (id, h = healthOf()) => activeDiagnoses(h).some((d) => d.conditionId === id);
 
 /**
- * Starts a condition in this person. It is not recognised by anyone yet:
+ * Starts a condition in this person. It is not recognized by anyone yet:
  * that takes an assessment.
  * @param {object} [o] features: which of the condition's experiences this person has; severity 0–100
  */

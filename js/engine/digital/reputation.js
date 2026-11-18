@@ -15,7 +15,7 @@ import { FAMILY } from './messaging.js';
  */
 export const CONTROVERSY = {
   misunderstood: { name: 'A misunderstood post', status: 'rumor', truth: false },
-  rumor: { name: 'A rumour', status: 'rumor', truth: false },
+  rumor: { name: 'A rumor', status: 'rumor', truth: false },
   undisclosed_ad: { name: 'Hidden advertising', status: 'verified', truth: true },
   opinion: { name: 'An unpopular opinion', status: 'verified', truth: true },
   // A claim about something the player really did: an allegation, not a conviction. Courts are the Justice engine's business.
@@ -28,7 +28,7 @@ export const CONTROVERSY = {
 export const RESPONSES = [
   { id: 'clarify', label: 'Explain what you meant' },
   { id: 'correct', label: 'Correct the record with facts' },
-  { id: 'apologize', label: 'Apologise' },
+  { id: 'apologize', label: 'Apologize' },
   { id: 'silence', label: 'Say nothing and let it pass' },
   { id: 'advice', label: 'Get professional advice first', cost: 1500 },
   { id: 'remove', label: 'Take the post down' },
@@ -55,7 +55,7 @@ export function raise(kind, o = {}) {
 
 /**
  * The player's answer to a controversy. What works depends on what really
- * happened: denying something true backfires; apologising for something that
+ * happened: denying something true backfires; apologizing for something that
  * never happened costs a little; facts help when the facts are on your side.
  * Resolved controversies stay resolved.
  */
@@ -82,7 +82,7 @@ export function respond(cvId, responseId) {
       break;
     case 'apologize':
       if (t) { adjustReputation(p.id, 'credibility', 3, why('owned up')); adjustReputation(p.id, 'loyalty', 1, why('owned up')); text = 'A plain apology, without excuses. It did not make everyone happy, but it was the right thing and people could tell.'; }
-      else { adjustReputation(p.id, 'loyalty', -1, why('apologised for something that did not happen')); text = 'You apologised to make it stop. It stopped. Some people now think you did it.'; tone = 'neutral'; }
+      else { adjustReputation(p.id, 'loyalty', -1, why('apologized for something that did not happen')); text = 'You apologized to make it stop. It stopped. Some people now think you did it.'; tone = 'neutral'; }
       break;
     case 'silence':
       adjustReputation(p.id, 'credibility', t ? -1 : 0.5, why('said nothing'));
@@ -149,7 +149,7 @@ export const SAFETY = {
   unwanted: { name: 'Unwanted contact', text: 'A stranger keeps sending you messages, though you have never replied.' },
   impersonation: { name: 'Impersonation', text: 'An account is pretending to be you.' },
   signin: { name: 'Suspicious sign-in', text: 'Someone tried to sign in to your account from somewhere you have never been.' },
-  privacy: { name: 'Too much attention', text: 'People who recognise you online have started turning up where you go, and someone posted which neighbourhood you live in.' },
+  privacy: { name: 'Too much attention', text: 'People who recognize you online have started turning up where you go, and someone posted which neighborhood you live in.' },
 };
 
 export const openSafety = () => world().safety.filter((s) => s.charId === player().id && s.status === 'open');
@@ -160,7 +160,7 @@ export const SAFETY_ACTIONS = {
   unwanted: [['block', 'Block and report them'], ['restrict', 'Only accept messages from people you follow'], ['tell', 'Tell someone you trust']],
   impersonation: [['report', 'Report the fake account'], ['post', 'Tell your followers which account is really you']],
   signin: [['secure', 'Change your password and turn on two-step sign-in'], ['ignore', 'Ignore it']],
-  privacy: [['report', 'Report the post with your neighbourhood in it'], ['private', 'Make your accounts private for a while'], ['tell', 'Tell someone you trust'], ['break', 'Step back from posting']],
+  privacy: [['report', 'Report the post with your neighborhood in it'], ['private', 'Make your accounts private for a while'], ['tell', 'Tell someone you trust'], ['break', 'Step back from posting']],
 };
 
 export function handleSafety(safetyId, actionId) {
@@ -333,7 +333,7 @@ export function tickReputation() {
     const c = raise('leak', { text: 'Someone screenshotted a private message where you complained about people, and shared it.' });
     if (c) log(c.text, 'system', 'bad');
   } else if (r.recognition >= 35 && rng.chance(0.05)) {
-    const c = raise('rumor', { text: 'A rumour about you is going around online. It is not true.' });
+    const c = raise('rumor', { text: 'A rumor about you is going around online. It is not true.' });
     if (c) log(c.text, 'system', 'bad');
   }
   // Unanswered controversies settle on their own after a year, with a small, lasting cost.

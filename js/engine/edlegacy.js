@@ -5,14 +5,14 @@
 // The schools and universities themselves persist in state.schools and
 // state.universities; this keeps the family's side of them.
 //
-//   state.familyRecord   [{ name, gen, born, died, schools, degrees, honours, mentor, first }]
+//   state.familyRecord   [{ name, gen, born, died, schools, degrees, honors, mentor, first }]
 //     one entry per generation played, written when the story passes to an heir
 //   school.funding       how much better or worse a state school is taught than its kind, moved by policy
 //   p.flags.patronId     the politician whose office took the player on as an intern
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
 import { store, player, livingNpcs, log } from '../state.js';
-import { PROGRAMMES, TRADE_BY_ID } from '../data/schools.js';
+import { PROGRAMS, TRADE_BY_ID } from '../data/schools.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 
 const yearNow = () => store.state.year;
@@ -25,7 +25,7 @@ function degreeLabel(d) {
   if (d.type === 'university') return `${MAJOR_BY_ID[d.majorId]?.name ?? 'A degree'}${d.school ? `, ${d.school}` : ''}`;
   if (d.type === 'apprenticeship') return `${TRADE_BY_ID[d.majorId]?.name ?? 'A trade'}, ${d.via === 'technical' ? 'technical college' : 'apprenticeship'}`;
   if (d.type === 'doctorate') return `Doctorate${d.thesis ? `: "${d.thesis}"` : ''}`;
-  return PROGRAMMES[d.type]?.label ?? d.type;
+  return PROGRAMS[d.type]?.label ?? d.type;
 }
 
 /** One person's education, as the family will remember it. */
@@ -39,7 +39,7 @@ export function record(p = player(), st = store.state) {
     name: `${p.firstName} ${p.lastName}`, gen: p.generation ?? 1, born, died: p.alive === false ? st.year : null,
     schools: [...new Set((e.history ?? []).map((h) => h.name).filter((x) => x && x !== 'Home'))],
     degrees: e.degrees.map((d) => ({ label: degreeLabel(d), year: born + (d.age ?? 18), type: d.type, school: d.school ?? null })),
-    honours: (p.milestones ?? []).filter((x) => ROLL.test(x.text)).slice(0, 6).map((x) => x.text),
+    honors: (p.milestones ?? []).filter((x) => ROLL.test(x.text)).slice(0, 6).map((x) => x.text),
     mentor: m ? `${m.flags.title ?? 'A teacher'}: ${m.firstName} ${m.lastName}` : null,
     first: !!p.flags.firstGraduate,
   };
@@ -84,7 +84,7 @@ export function arriveAt(uniName) {
 // ---------- What policy does to schools ----------
 
 /**
- * Yearly: each state school's funding moves, a little at a time, towards
+ * Yearly: each state school's funding moves, a little at a time, toward
  * what national and local government now spend on it. The same decisions
  * the politics engine records (the education lever nationally, the
  * clinics-and-schools lever in a town) are the only inputs.

@@ -80,7 +80,7 @@ function noticed(rec, p) {
     tourette: 'You have started to have tics: movements and sounds that come on their own.',
     huntingtons: 'Small, uncontrolled movements have started, and concentrating is harder than it was.',
     lhon: 'Your sight has started to blur in the middle, first in one eye.',
-    colour_vision: 'You mix up some colours that other people find obvious.',
+    color_vision: 'You mix up some colors that other people find obvious.',
     cystic_fibrosis: 'A cough that will not go away, and chest infections one after another.',
   }[def.id];
   if (line) log(line, 'system', 'neutral');
@@ -163,7 +163,7 @@ function remission(rec, def, p) {
 
 /**
  * Bipolar disorder: episodes of depression, mania or hypomania with stable
- * stretches between, each lasting weeks or months. Mood stabilisers make
+ * stretches between, each lasting weeks or months. Mood stabilizers make
  * episodes less likely; they do not flatten ordinary feelings.
  */
 function episodeWeek(rec, def, p) {
@@ -203,7 +203,7 @@ function h_reviewOnHigh(rec, p) {
 /**
  * The experiences someone has this week, each counted once, with what might
  * explain it. Undiagnosed conditions show only as experiences: the game does
- * not name a condition nobody has recognised.
+ * not name a condition nobody has recognized.
  */
 export function experiences(p = player()) {
   const h = healthOf(p);

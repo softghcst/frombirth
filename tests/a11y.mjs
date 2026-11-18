@@ -1,4 +1,4 @@
-// Accessibility checks that need no browser: zoom, colour contrast, dialogs, landmarks.
+// Accessibility checks that need no browser: zoom, color contrast, dialogs, landmarks.
 // The full audit (axe-core in a browser, and a keyboard-only playthrough) is described in docs/ACCESSIBILITY.md.
 // Run with: node tests/a11y.mjs
 import { readFileSync } from 'node:fs';
@@ -17,7 +17,7 @@ check(viewport && !/user-scalable\s*=\s*(no|0)/.test(viewport) && !/maximum-scal
 check(/<html lang="[a-z]{2}/.test(html), 'the page declares its language');
 section('zoom: allowed, and the page language is declared');
 
-// 2. Colour contrast of the theme, in both light and dark (WCAG 2.1 AA: 4.5:1 for text).
+// 2. Color contrast of the theme, in both light and dark (WCAG 2.1 AA: 4.5:1 for text).
 const css = read('css/base.css');
 const block = (src) => Object.fromEntries([...src.matchAll(/--([a-z-]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
 const light = block(css.slice(0, css.indexOf('@media (prefers-color-scheme: dark)')));
@@ -45,7 +45,7 @@ check(/'Escape'/.test(modals), 'Escape closes a dismissable dialog');
 for (const f of ['js/ui/screens/title.js']) for (const m of read(f).matchAll(/role="dialog"[^>]*>/g)) check(/aria-label(ledby)?=/.test(m[0]), `${f}: a hand-built dialog has no name`);
 section('dialogs: named, focus managed, Escape works');
 
-// 4. Landmarks: each full screen is a <main>; the game has one <main>, a keyboard-reachable journal and a labelled nav.
+// 4. Landmarks: each full screen is a <main>; the game has one <main>, a keyboard-reachable journal and a labeled nav.
 for (const f of ['js/ui/screens/title.js', 'js/ui/screens/creator.js', 'js/ui/screens/obituary.js']) check(/app\.innerHTML = `\s*<main/.test(read(f)), `${f}: the screen is not a <main> landmark`);
 const shell = read('js/ui/shell.js');
 check((shell.match(/<main\b/g) ?? []).length === 1, 'the game screen has exactly one <main>');

@@ -4,7 +4,7 @@
 //   1. the genome (what was inherited)              person.genome
 //   2. predisposition (a likelihood, never a fate)  liability() and hazardMultiplier()
 //   3. onset (whether and when a condition begins)  engine/health/course.js
-//   4. diagnosis (whether anyone recognises it)     engine/health/care.js
+//   4. diagnosis (whether anyone recognizes it)     engine/health/care.js
 //
 // All genetic randomness is seeded from the person's own id, so a genome is the
 // same every time it is worked out, before or after a reload. Inheritance
@@ -124,7 +124,7 @@ export function liability(genome, conditionId) {
 
 /**
  * How much a genetic value scales the yearly chance of a later-onset condition.
- * Normalised so the population average is unchanged: exp(b·z − b²/2).
+ * Normalized so the population average is unchanged: exp(b·z − b²/2).
  */
 export function hazardMultiplier(genome, conditionId) {
   const def = CONDITION_BY_ID[conditionId];

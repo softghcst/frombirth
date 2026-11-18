@@ -16,11 +16,11 @@ export default [
   {
     id: 'paper_first_story', category: 'school paper', ageRange: [12, 16], once: true, weight: 5,
     requires: [onPaper], cast: { adviser: 'tag:adviser' },
-    text: '{adviser} needs four hundred words by Friday. You can look into why canteen prices went up twice this term, or write up the bake sale.',
+    text: '{adviser} needs four hundred words by Friday. You can look into why cafeteria prices went up twice this semester, or write up the bake sale.',
     choices: [
-      { label: 'Look into the canteen', check: chk(0.5, { 'stats.intellect': 0.7, 'hidden.discipline': 0.3 }), outcomes: [
+      { label: 'Look into the cafeteria', check: chk(0.5, { 'stats.intellect': 0.7, 'hidden.discipline': 0.3 }), outcomes: [
         ok('The supplier changed and nobody told the parents. Front page. The prices come back down.', st('intellect', 3), st('mood', 6), rel('adviser', 8),
-          mem('adviser', 'canteenScoop', 'Your first story got canteen prices cut.')),
+          mem('adviser', 'canteenScoop', 'Your first story got cafeteria prices cut.')),
         bad('You get a figure wrong and the paper prints a correction. {adviser} sits you down and shows you how to check a number three ways.', st('intellect', 3), st('mood', -3), rel('adviser', 3),
           mem('adviser', 'correction', 'Your first story needed a correction, and you learned to check everything after.')),
       ] },

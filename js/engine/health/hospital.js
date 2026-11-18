@@ -8,7 +8,7 @@
 // than counting as missed. The stay is billed once.
 //
 // Leaving hospital can lead to rehabilitation: a course with goals the person
-// works towards, met by sessions attended, not by the calendar. Some goals are
+// works toward, met by sessions attended, not by the calendar. Some goals are
 // about recovering what was there before; others (after a spinal cord injury)
 // are about living well in a new way. Full recovery is never required.
 import { store, player, log } from '../../state.js';
@@ -31,7 +31,7 @@ export const REHAB_GOALS = {
   mental: [['settle', 'Feel steady enough to go home'], ['plan', 'Have a plan for the next few weeks']],
   back: [['move', 'Move with less pain'], ['active', 'Get back to being active']],
 };
-/** What each reason for admission leads to afterwards. */
+/** What each reason for admission leads to afterward. */
 const AFTER = {
   heart: { rehab: 'cardiac_rehab', goals: 'cardiac', weeks: 1, label: 'a heart attack' },
   hip: { rehab: 'physio', goals: 'hip', weeks: 2, label: 'a broken hip' },
@@ -81,7 +81,7 @@ export function hospitalWeek(p = player()) {
     if (a.reason === 'voluntary' && doc) book('review', { facilityId: a.facilityId, providerId: doc.id, ref: `followup:${a.id}`, wait: 1 }, p);
     if (!how?.rehab || store.state.year < THERAPY_BY_ID[how.rehab].from) continue;
     h.proposals.push({ id: `prop_rehab_${a.id}`, kind: 'rehab', providerId: doc?.id ?? h.careTeam[0], wk: now(p), status: 'open', recommended: 'rehab',
-      summary: `Before you leave, ${doc ? clinicianName(doc) : 'the team'} suggests ${THERAPY_BY_ID[how.rehab].name.toLowerCase()}, with goals you work towards at your own pace.`,
+      summary: `Before you leave, ${doc ? clinicianName(doc) : 'the team'} suggests ${THERAPY_BY_ID[how.rehab].name.toLowerCase()}, with goals you work toward at your own pace.`,
       options: [{ id: 'rehab', label: `Start ${THERAPY_BY_ID[how.rehab].name.toLowerCase()}`, sub: REHAB_GOALS[how.goals].map((g) => g[1]).join(' · '), act: { kind: 'rehab', therapyId: how.rehab, goals: how.goals, conditionId: a.conditionId } },
         { id: 'decline', label: 'Not now', sub: 'You can ask for it later.', act: { kind: 'decline' } }] });
   }
@@ -115,7 +115,7 @@ export function rehabProgress(course, engage, p = player()) {
 /** Ask for rehabilitation without having been in hospital (back pain, an older injury). */
 export function requestRehab(set = 'back', p = player()) {
   const h = healthOf(p);
-  if (h.therapies.some((c) => c.rehabGoals && ['active', 'paused'].includes(c.status))) return result(false, 'You are already in a rehabilitation programme.', 'neutral');
+  if (h.therapies.some((c) => c.rehabGoals && ['active', 'paused'].includes(c.status))) return result(false, 'You are already in a rehabilitation program.', 'neutral');
   h.proposals.push({ id: `prop_rehab_self_${now(p)}`, kind: 'rehab', providerId: h.careTeam[0] ?? null, wk: now(p), status: 'open', recommended: 'rehab', summary: 'Physiotherapy with goals of your own.',
     options: [{ id: 'rehab', label: 'Start physiotherapy', sub: REHAB_GOALS[set].map((g) => g[1]).join(' · '), act: { kind: 'rehab', therapyId: 'physio', goals: set } }, { id: 'decline', label: 'Not now', sub: '', act: { kind: 'decline' } }] });
   return result(true, 'Physiotherapy is offered: decide in My Health.', 'neutral');

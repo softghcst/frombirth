@@ -4,13 +4,13 @@
 //
 // Breed shapes the body, never the temperament: two retrievers can be nothing alike.
 
-/** Coat and eye colours, as drawn in the portraits. */
-export const COAT_COLOURS = {
-  black: '#2b2724', charcoal: '#4a4744', grey: '#8d8c8a', silver: '#b9b7b2', white: '#f1ede4', cream: '#e9d8b4',
+/** Coat and eye colors, as drawn in the portraits. */
+export const COAT_COLORS = {
+  black: '#2b2724', charcoal: '#4a4744', gray: '#8d8c8a', silver: '#b9b7b2', white: '#f1ede4', cream: '#e9d8b4',
   golden: '#d9a441', fawn: '#c9a26b', red: '#b5562c', ginger: '#d98a3d', chocolate: '#5b3a26', brown: '#7b5637',
   tan: '#b98857', sable: '#8a6a45', blue: '#6f7f8f', green: '#4f9a52', yellow: '#e6c53a', scarlet: '#c8382c',
 };
-export const EYE_COLOURS = { brown: '#5a3b22', amber: '#b8791f', hazel: '#8a7a3a', green: '#5f8f4e', blue: '#5b8fc0', gold: '#c9a227', dark: '#1e1a17' };
+export const EYE_COLORS = { brown: '#5a3b22', amber: '#b8791f', hazel: '#8a7a3a', green: '#5f8f4e', blue: '#5b8fc0', gold: '#c9a227', dark: '#1e1a17' };
 
 const dims = (...ids) => ids;
 
@@ -48,7 +48,7 @@ export const SPECIES = {
       { id: 'settle', name: 'Settling on a mat', learned: 'settles on their mat', difficulty: 3 },
     ],
     activities: [{ id: 'walk', label: 'Go for a long walk', text: 'You took {name} the long way round. {They} read every lamp post on the route.' }],
-    coats: ['black', 'chocolate', 'golden', 'cream', 'white', 'fawn', 'red', 'grey', 'tan', 'sable'],
+    coats: ['black', 'chocolate', 'golden', 'cream', 'white', 'fawn', 'red', 'gray', 'tan', 'sable'],
     patterns: ['solid', 'patched', 'saddle', 'socks', 'blaze'], eyes: ['brown', 'amber', 'hazel', 'blue'], sexes: 'both',
   },
   cat: {
@@ -65,8 +65,8 @@ export const SPECIES = {
       { id: 'target', name: 'Touching a target for a treat', learned: 'touches a target on cue', difficulty: 3 },
     ],
     activities: [{ id: 'hunt', label: 'Play with the feather wand', text: 'You ran the feather wand until {name} lay flat and furious and happy.' }],
-    coats: ['black', 'grey', 'white', 'ginger', 'cream', 'brown', 'silver', 'charcoal'],
-    patterns: ['solid', 'tabby', 'bicolour', 'tortoiseshell', 'calico', 'pointed'], eyes: ['green', 'gold', 'amber', 'blue', 'hazel'], sexes: 'both',
+    coats: ['black', 'gray', 'white', 'ginger', 'cream', 'brown', 'silver', 'charcoal'],
+    patterns: ['solid', 'tabby', 'bicolor', 'tortoiseshell', 'calico', 'pointed'], eyes: ['green', 'gold', 'amber', 'blue', 'hazel'], sexes: 'both',
   },
   rabbit: {
     id: 'rabbit', name: 'rabbit', young: 'kit', group: 'companion',
@@ -81,7 +81,7 @@ export const SPECIES = {
       { id: 'handling', name: 'Being picked up without panic', learned: 'stays calm when picked up', difficulty: 3 },
     ],
     activities: [{ id: 'floor', label: 'Sit on the floor with them', text: 'You sat on the floor until {name} decided you were furniture, and then something better.' }],
-    coats: ['white', 'grey', 'brown', 'black', 'fawn', 'cream'], patterns: ['solid', 'patched', 'blaze'], eyes: ['brown', 'dark', 'blue'], sexes: 'both',
+    coats: ['white', 'gray', 'brown', 'black', 'fawn', 'cream'], patterns: ['solid', 'patched', 'blaze'], eyes: ['brown', 'dark', 'blue'], sexes: 'both',
   },
   parrot: {
     id: 'parrot', name: 'parrot', young: 'chick', group: 'companion',
@@ -96,7 +96,7 @@ export const SPECIES = {
       { id: 'cage', name: 'Going back into the cage when asked', learned: 'goes back into the cage when asked', difficulty: 3 },
     ],
     activities: [{ id: 'forage', label: 'Set up a foraging puzzle', text: 'You hid {name}\'s favorite things in a box of paper. It was destroyed with great care.' }],
-    coats: ['green', 'grey', 'blue', 'scarlet', 'yellow', 'white'], patterns: ['solid', 'blaze'], eyes: ['dark', 'gold'], sexes: 'unknown',
+    coats: ['green', 'gray', 'blue', 'scarlet', 'yellow', 'white'], patterns: ['solid', 'blaze'], eyes: ['dark', 'gold'], sexes: 'unknown',
   },
   hamster: {
     id: 'hamster', name: 'hamster', young: 'pup', group: 'companion',
@@ -107,7 +107,7 @@ export const SPECIES = {
     temperament: dims('curiosity', 'confidence', 'activity', 'sensitivity'),
     training: [{ id: 'handling', name: 'Taking food from a hand, then sitting in one', learned: 'climbs into an open hand', difficulty: 2 }],
     activities: [{ id: 'maze', label: 'Build a cardboard maze', text: 'You built {name} a cardboard maze. It was solved, then eaten.' }],
-    coats: ['golden', 'cream', 'grey', 'white', 'brown'], patterns: ['solid', 'patched'], eyes: ['dark'], sexes: 'both',
+    coats: ['golden', 'cream', 'gray', 'white', 'brown'], patterns: ['solid', 'patched'], eyes: ['dark'], sexes: 'both',
   },
 };
 
@@ -119,7 +119,7 @@ Object.assign(SPECIES, {
     needs: ['Hay, always; fresh vegetables daily', 'Vitamin C in the diet', 'A companion of their own kind', 'Floor time out of the pen'], coats: ['brown', 'white', 'ginger', 'black', 'cream'],
     training: [{ id: 'handling', name: 'Being picked up without panic', learned: 'sits calmly in a lap', difficulty: 2 }] }),
   rat: small('rat', 'rat', 'pup', { lifespan: [2, 3], social: true, housing: 'A tall cage with shelves, time out of it every day, and another rat for company.',
-    needs: ['Rat pellets, fresh food and water', 'Another rat for company', 'Daily time out of the cage', 'Things to climb and chew'], coats: ['white', 'grey', 'brown', 'black', 'fawn'],
+    needs: ['Rat pellets, fresh food and water', 'Another rat for company', 'Daily time out of the cage', 'Things to climb and chew'], coats: ['white', 'gray', 'brown', 'black', 'fawn'],
     training: [{ id: 'name', name: 'Coming to their name', learned: 'comes when called', difficulty: 1 }, { id: 'handling', name: 'Riding on a shoulder', learned: 'rides on a shoulder', difficulty: 2 }] }),
   ferret: small('ferret', 'ferret', 'kit', { lifespan: [5, 9], social: true, housing: 'A large cage for sleeping and hours of supervised freedom in a ferret-proofed room.',
     needs: ['A meat-based diet', 'Hours out of the cage daily', 'Tunnels and things to steal', 'Vaccinations and yearly checks'], coats: ['sable', 'white', 'cream', 'chocolate'], patterns: ['solid', 'blaze'],
@@ -135,7 +135,7 @@ Object.assign(SPECIES, {
 
 Object.assign(SPECIES, {
   mouse: small('mouse', 'mouse', 'pup', { lifespan: [1, 3], social: true, housing: 'A tank with deep bedding to burrow in, a wheel, and other mice: they live in groups.',
-    needs: ['Seed mix, a little fresh food, water', 'Deep bedding and places to hide', 'Company of their own kind'], coats: ['white', 'brown', 'black', 'grey', 'cream'] }),
+    needs: ['Seed mix, a little fresh food, water', 'Deep bedding and places to hide', 'Company of their own kind'], coats: ['white', 'brown', 'black', 'gray', 'cream'] }),
 });
 const reptile = (id, name, young, lifespan, o) => ({ id, name, young, group: 'reptile', lifespan, stages: [[young, 0], ['adult', 0.15], ['old', 0.75]], housing: o.housing, needs: o.needs,
   health: ['Shedding', 'Bones (needs proper UV light)', 'Weight'], temperament: dims('curiosity', 'confidence', 'activity'), training: o.training ?? [], activities: [],
@@ -165,18 +165,18 @@ const equine = (id, name, young, lifespan, coats) => ({ id, name, young, group: 
   ],
   activities: [], coats, patterns: ['solid', 'blaze', 'socks', 'patched'], eyes: ['brown', 'dark'], sexes: 'both' });
 Object.assign(SPECIES, {
-  horse: equine('horse', 'horse', 'foal', [24, 32], ['brown', 'chocolate', 'black', 'grey', 'red', 'golden', 'white']),
-  pony: equine('pony', 'pony', 'foal', [26, 36], ['brown', 'grey', 'black', 'red', 'cream', 'white']),
-  donkey: equine('donkey', 'donkey', 'foal', [27, 40], ['grey', 'brown', 'charcoal', 'white']),
+  horse: equine('horse', 'horse', 'foal', [24, 32], ['brown', 'chocolate', 'black', 'gray', 'red', 'golden', 'white']),
+  pony: equine('pony', 'pony', 'foal', [26, 36], ['brown', 'gray', 'black', 'red', 'cream', 'white']),
+  donkey: equine('donkey', 'donkey', 'foal', [27, 40], ['gray', 'brown', 'charcoal', 'white']),
 });
 
 const farm = (id, name, young, lifespan, coats, needs, housing, extra = {}) => ({ id, name, young, group: 'farm', lifespan, housing,
   stages: [[young, 0], ['adult', 0.12], ['old', 0.75]], needs, health: extra.health ?? ['Feet', 'Parasites'],
   temperament: dims('sociability', 'curiosity', 'confidence', 'activity'), training: extra.training ?? [], activities: [], coats, patterns: extra.patterns ?? ['solid', 'patched'], eyes: ['dark', 'amber'], sexes: 'both' });
 Object.assign(SPECIES, {
-  chicken: farm('chicken', 'chicken', 'chick', [5, 10], ['red', 'white', 'black', 'golden', 'grey'], ['Layers\' feed, grit and water', 'A fox-proof coop at night', 'Ground to scratch and dust-bathe in', 'A flock: never one alone'], 'A secure coop and a run, with a flock of their own.', { health: ['Mites', 'Feet'] }),
-  duck: farm('duck', 'duck', 'duckling', [6, 12], ['white', 'brown', 'black', 'grey'], ['Feed and clean water deep enough to dip the head', 'A fox-proof house at night', 'Somewhere to dabble', 'A flock'], 'A secure house, a run, and water to dabble in.', { health: ['Feet'] }),
-  goat: farm('goat', 'goat', 'kid', [11, 16], ['white', 'brown', 'black', 'fawn', 'grey'], ['Hay and browse', 'Fencing that actually holds a goat', 'Shelter from rain', 'Another goat', 'Feet trimmed, and a vet who knows goats'], 'A fenced paddock with shelter and at least one other goat.',
+  chicken: farm('chicken', 'chicken', 'chick', [5, 10], ['red', 'white', 'black', 'golden', 'gray'], ['Layers\' feed, grit and water', 'A fox-proof coop at night', 'Ground to scratch and dust-bathe in', 'A flock: never one alone'], 'A secure coop and a run, with a flock of their own.', { health: ['Mites', 'Feet'] }),
+  duck: farm('duck', 'duck', 'duckling', [6, 12], ['white', 'brown', 'black', 'gray'], ['Feed and clean water deep enough to dip the head', 'A fox-proof house at night', 'Somewhere to dabble', 'A flock'], 'A secure house, a run, and water to dabble in.', { health: ['Feet'] }),
+  goat: farm('goat', 'goat', 'kid', [11, 16], ['white', 'brown', 'black', 'fawn', 'gray'], ['Hay and browse', 'Fencing that actually holds a goat', 'Shelter from rain', 'Another goat', 'Feet trimmed, and a vet who knows goats'], 'A fenced paddock with shelter and at least one other goat.',
     { training: [{ id: 'halter', name: 'Leading in a halter', learned: 'leads in a halter', difficulty: 2 }, { id: 'feet', name: 'Standing to have feet trimmed', learned: 'stands to have feet trimmed', difficulty: 2 }] }),
   sheep: farm('sheep', 'sheep', 'lamb', [9, 13], ['white', 'cream', 'black', 'brown'], ['Pasture and hay', 'Shearing once a year', 'Feet checked regularly', 'A flock'], 'Pasture, shelter, and a flock.', { patterns: ['solid'] }),
 });
@@ -235,12 +235,12 @@ export const VET_SERVICES = [
 /** Insurance, where it is sold: what it pays back on illness and injury, never on routine care. */
 export const INSURANCE = { deductible: 250, rate: 0.8, yearCap: 6000 };
 
-/** Animals recorded before this catalogue knew their species. */
+/** Animals recorded before this catalog knew their species. */
 export const UNKNOWN_SPECIES = {
   id: 'other', name: 'animal', young: 'young one', group: 'companion', housing: 'Somewhere suited to what they are.',
   lifespan: [5, 15], stages: [['young', 0], ['adult', 0.15], ['senior', 0.7]], needs: ['Food, water, shelter and care suited to what they are'],
   health: [], temperament: dims('curiosity', 'confidence', 'activity'), training: [], activities: [],
-  coats: ['brown', 'grey', 'white'], patterns: ['solid'], eyes: ['dark'], sexes: 'unknown',
+  coats: ['brown', 'gray', 'white'], patterns: ['solid'], eyes: ['dark'], sexes: 'unknown',
 };
 export const speciesOf = (id) => SPECIES[id] ?? { ...UNKNOWN_SPECIES, name: id || 'animal' };
 
@@ -257,22 +257,22 @@ export const BREEDS = {
     { id: 'golden', name: 'Golden Retriever', size: 'large', ears: 'drop', length: 'long', coats: ['golden', 'cream'], patterns: ['solid'], eyes: ['brown'], weight: 7 },
     { id: 'shepherd', name: 'German Shepherd', size: 'large', ears: 'up', length: 'medium', coats: ['tan', 'sable', 'black'], patterns: ['saddle', 'solid'], eyes: ['brown'], weight: 6 },
     { id: 'beagle', name: 'Beagle', size: 'medium', ears: 'drop', length: 'short', coats: ['tan', 'brown'], patterns: ['saddle', 'patched'], eyes: ['brown', 'hazel'], weight: 5 },
-    { id: 'poodle', name: 'Poodle', size: 'medium', ears: 'drop', length: 'long', coats: ['white', 'black', 'cream', 'grey', 'chocolate'], patterns: ['solid'], eyes: ['brown'], weight: 5 },
-    { id: 'collie', name: 'Border Collie', size: 'medium', ears: 'half', length: 'medium', coats: ['black', 'red', 'grey'], patterns: ['blaze', 'socks', 'patched'], eyes: ['brown', 'blue'], weight: 5 },
+    { id: 'poodle', name: 'Poodle', size: 'medium', ears: 'drop', length: 'long', coats: ['white', 'black', 'cream', 'gray', 'chocolate'], patterns: ['solid'], eyes: ['brown'], weight: 5 },
+    { id: 'collie', name: 'Border Collie', size: 'medium', ears: 'half', length: 'medium', coats: ['black', 'red', 'gray'], patterns: ['blaze', 'socks', 'patched'], eyes: ['brown', 'blue'], weight: 5 },
     { id: 'dachshund', name: 'Dachshund', size: 'small', ears: 'drop', length: 'short', coats: ['red', 'chocolate', 'black'], patterns: ['solid', 'socks'], eyes: ['brown'], weight: 4 },
     { id: 'chihuahua', name: 'Chihuahua', size: 'small', ears: 'up', length: 'short', coats: ['fawn', 'cream', 'black', 'chocolate'], patterns: ['solid', 'patched'], eyes: ['brown'], weight: 4 },
-    { id: 'husky', name: 'Siberian Husky', size: 'large', ears: 'up', length: 'medium', coats: ['grey', 'black', 'red'], patterns: ['blaze', 'socks'], eyes: ['blue', 'brown'], weight: 4 },
+    { id: 'husky', name: 'Siberian Husky', size: 'large', ears: 'up', length: 'medium', coats: ['gray', 'black', 'red'], patterns: ['blaze', 'socks'], eyes: ['blue', 'brown'], weight: 4 },
     { id: 'corgi', name: 'Corgi', size: 'small', ears: 'up', length: 'medium', coats: ['red', 'fawn', 'sable'], patterns: ['blaze', 'socks'], eyes: ['brown'], weight: 4 },
   ],
   cat: [
     { id: 'dsh', name: 'Domestic Shorthair', mix: true, size: 'medium', ears: 'up', length: 'short', weight: 40 },
     { id: 'dlh', name: 'Domestic Longhair', mix: true, size: 'medium', ears: 'tuft', length: 'long', weight: 12 },
     { id: 'siamese', name: 'Siamese', size: 'medium', ears: 'up', length: 'short', coats: ['cream', 'white'], patterns: ['pointed'], eyes: ['blue'], weight: 4 },
-    { id: 'mainecoon', name: 'Maine Coon', size: 'large', ears: 'tuft', length: 'long', coats: ['brown', 'grey', 'ginger', 'black'], patterns: ['tabby', 'bicolour'], eyes: ['green', 'gold'], weight: 4 },
-    { id: 'persian', name: 'Persian', size: 'medium', ears: 'up', length: 'long', coats: ['white', 'cream', 'grey', 'ginger'], patterns: ['solid', 'bicolour'], eyes: ['amber', 'blue'], weight: 3 },
-    { id: 'ragdoll', name: 'Ragdoll', size: 'large', ears: 'up', length: 'long', coats: ['cream', 'white'], patterns: ['pointed', 'bicolour'], eyes: ['blue'], weight: 3 },
+    { id: 'mainecoon', name: 'Maine Coon', size: 'large', ears: 'tuft', length: 'long', coats: ['brown', 'gray', 'ginger', 'black'], patterns: ['tabby', 'bicolor'], eyes: ['green', 'gold'], weight: 4 },
+    { id: 'persian', name: 'Persian', size: 'medium', ears: 'up', length: 'long', coats: ['white', 'cream', 'gray', 'ginger'], patterns: ['solid', 'bicolor'], eyes: ['amber', 'blue'], weight: 3 },
+    { id: 'ragdoll', name: 'Ragdoll', size: 'large', ears: 'up', length: 'long', coats: ['cream', 'white'], patterns: ['pointed', 'bicolor'], eyes: ['blue'], weight: 3 },
     { id: 'bengal', name: 'Bengal', size: 'medium', ears: 'up', length: 'short', coats: ['brown', 'ginger', 'silver'], patterns: ['tabby'], eyes: ['green', 'gold'], weight: 3 },
-    { id: 'british', name: 'British Shorthair', size: 'medium', ears: 'up', length: 'short', coats: ['grey', 'cream', 'black'], patterns: ['solid'], eyes: ['amber', 'gold'], weight: 3 },
+    { id: 'british', name: 'British Shorthair', size: 'medium', ears: 'up', length: 'short', coats: ['gray', 'cream', 'black'], patterns: ['solid'], eyes: ['amber', 'gold'], weight: 3 },
   ],
   rabbit: [
     { id: 'upright', name: 'Upright-eared rabbit', mix: true, size: 'small', ears: 'up', length: 'short', weight: 6 },
@@ -282,17 +282,17 @@ export const BREEDS = {
 Object.assign(BREEDS, {
   horse: [
     { id: 'crossbred', name: 'Crossbred horse', mix: true, size: 'large', ears: 'up', length: 'short', weight: 20 },
-    { id: 'thoroughbred', name: 'Thoroughbred', size: 'large', ears: 'up', length: 'short', coats: ['brown', 'chocolate', 'red', 'grey'], weight: 8 },
+    { id: 'thoroughbred', name: 'Thoroughbred', size: 'large', ears: 'up', length: 'short', coats: ['brown', 'chocolate', 'red', 'gray'], weight: 8 },
     { id: 'quarter', name: 'Quarter Horse', size: 'large', ears: 'up', length: 'short', coats: ['red', 'brown', 'golden'], weight: 8 },
-    { id: 'arabian', name: 'Arabian', size: 'medium', ears: 'up', length: 'short', coats: ['grey', 'red', 'brown'], weight: 5 },
-    { id: 'warmblood', name: 'Warmblood', size: 'large', ears: 'up', length: 'short', coats: ['brown', 'chocolate', 'black', 'grey'], weight: 6 },
+    { id: 'arabian', name: 'Arabian', size: 'medium', ears: 'up', length: 'short', coats: ['gray', 'red', 'brown'], weight: 5 },
+    { id: 'warmblood', name: 'Warmblood', size: 'large', ears: 'up', length: 'short', coats: ['brown', 'chocolate', 'black', 'gray'], weight: 6 },
     { id: 'cob', name: 'Cob', size: 'large', ears: 'up', length: 'medium', coats: ['black', 'brown', 'white'], patterns: ['patched', 'socks', 'blaze'], weight: 6 },
   ],
   pony: [
     { id: 'crossbred', name: 'Crossbred pony', mix: true, size: 'small', ears: 'up', length: 'medium', weight: 20 },
-    { id: 'welsh', name: 'Welsh Pony', size: 'small', ears: 'up', length: 'medium', coats: ['grey', 'brown', 'red'], weight: 8 },
+    { id: 'welsh', name: 'Welsh Pony', size: 'small', ears: 'up', length: 'medium', coats: ['gray', 'brown', 'red'], weight: 8 },
     { id: 'shetland', name: 'Shetland Pony', size: 'small', ears: 'up', length: 'long', coats: ['black', 'brown', 'cream'], weight: 6 },
-    { id: 'connemara', name: 'Connemara', size: 'medium', ears: 'up', length: 'medium', coats: ['grey', 'cream', 'brown'], weight: 5 },
+    { id: 'connemara', name: 'Connemara', size: 'medium', ears: 'up', length: 'medium', coats: ['gray', 'cream', 'brown'], weight: 5 },
   ],
 });
 export const breedOf = (speciesId, breedId) => (BREEDS[speciesId] ?? []).find((b) => b.id === breedId) ?? null;

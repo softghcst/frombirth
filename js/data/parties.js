@@ -15,21 +15,21 @@ export const ISSUES = { tax: 'taxes', services: 'schools and hospitals', housing
 
 /** Kinds of party. A country gets the first two and one to three of the others. names: one is chosen. */
 export const PARTY_KINDS = [
-  { kind: 'labour', names: ['Workers\' Alliance', 'Social Democratic Union', 'People\'s Labour Front', 'Solidarity Party'], colour: '#c0392b',
+  { kind: 'labor', names: ['Workers\' Alliance', 'Social Democratic Union', 'People\'s Labor Front', 'Solidarity Party'], color: '#c0392b',
     positions: { tax: 1.5, services: 2, housing: 1, order: 0, green: 1, open: 1 }, says: 'Higher taxes on the well-off to pay for schools, hospitals and homes.' },
-  { kind: 'conservative', names: ['National Union', 'Conservative League', 'Heritage Party', 'Homeland Union'], colour: '#1f4e8c',
+  { kind: 'conservative', names: ['National Union', 'Conservative League', 'Heritage Party', 'Homeland Union'], color: '#1f4e8c',
     positions: { tax: -1.5, services: -0.5, housing: -1, order: 2, green: -1, open: -1 }, says: 'Lower taxes, firm policing, and caution about change.' },
-  { kind: 'liberal', names: ['Liberal Center', 'Free Democrats', 'Progress Party', 'Open Society Party'], colour: '#d4a017',
+  { kind: 'liberal', names: ['Liberal Center', 'Free Democrats', 'Progress Party', 'Open Society Party'], color: '#d4a017',
     positions: { tax: -1, services: 0, housing: -1, order: -1, green: 0, open: 2 }, says: 'Low taxes, open markets, open borders and personal freedom.' },
-  { kind: 'green', names: ['Green Future', 'Earth Alliance', 'The Greens'], colour: '#2e8b57',
+  { kind: 'green', names: ['Green Future', 'Earth Alliance', 'The Greens'], color: '#2e8b57',
     positions: { tax: 1, services: 1, housing: 1, order: -1, green: 2, open: 1 }, says: 'The environment first, paid for by those who pollute.' },
-  { kind: 'populist', names: ['Homeland Movement', 'Common Sense Front', 'People First'], colour: '#5d3a8e',
+  { kind: 'populist', names: ['Homeland Movement', 'Common Sense Front', 'People First'], color: '#5d3a8e',
     positions: { tax: -0.5, services: 1, housing: 0, order: 2, green: -2, open: -2 }, says: 'Closed borders, tough justice, and spending on our own.' },
-  { kind: 'agrarian', names: ['Country Party', 'Farmers and Towns', 'Center Union'], colour: '#8a6d1d',
+  { kind: 'agrarian', names: ['Country Party', 'Farmers and Towns', 'Center Union'], color: '#8a6d1d',
     positions: { tax: -1, services: 1, housing: 0, order: 1, green: -1, open: -1 }, says: 'The countryside and small towns before the capital.' },
 ];
 /** The one party of a one-party state. */
-export const RULING_PARTY = { kind: 'ruling', names: ['The Party'], colour: '#a01818', positions: { tax: 0.5, services: 1, housing: 1, order: 2, green: -1, open: -2 }, says: 'Order, growth and the leading role of the party.' };
+export const RULING_PARTY = { kind: 'ruling', names: ['The Party'], color: '#a01818', positions: { tax: 0.5, services: 1, housing: 1, order: 2, green: -1, open: -2 }, says: 'Order, growth and the leading role of the party.' };
 
 /** Groups of voters. share: part of the electorate; turnout: how many vote; cares: what decides their vote; wants: where they stand. */
 export const VOTERS = [

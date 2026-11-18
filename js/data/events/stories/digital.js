@@ -37,7 +37,7 @@ export default [
     text: '{what} How do you respond?',
     choices: [
       { label: 'Correct the record with facts', outcomes: out('You wrote it out carefully, with the facts.', d('cv:correct')) },
-      { label: 'Apologise', outcomes: out('You posted an apology.', d('cv:apologize')) },
+      { label: 'Apologize', outcomes: out('You posted an apology.', d('cv:apologize')) },
       { label: 'Get professional advice first', outcomes: out('You called someone who handles this for a living.', d('cv:advice')) },
       { label: 'Say nothing and let it pass', outcomes: out('You stayed off your phone for a week.', d('cv:silence')) },
     ],

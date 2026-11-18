@@ -1,11 +1,11 @@
 // Plans that carry on by themselves from year to year: set once, changed when
 // the player wants, and lived through at Age Up. They spare the player
-// repeating the same choice every year (practising the piano, posting online,
+// repeating the same choice every year (practicing the piano, posting online,
 // putting money aside, looking after a pet) without making anything free:
 // each still uses that year's own allowance, costs what it costs, and grows
 // with the same rules as doing it by hand.
 //
-//   hobby       a main passion and a second interest, practised from the year's
+//   hobby       a main passion and a second interest, practiced from the year's
 //               practice sessions (engine/skills.js)
 //   savings     a standing deposit into one of the player's bank accounts (engine/banking.js)
 //
@@ -15,7 +15,7 @@
 import { store, player, country } from '../state.js';
 import { fmtMoney } from '../util.js';
 import { SKILL_BY_ID } from '../data/skills.js';
-import { practise, sessionsLeft, levelOf, canPractise } from './skills.js';
+import { practice, sessionsLeft, levelOf, canPractise } from './skills.js';
 import { accountById, deposit } from './banking.js';
 import { traditions as familyTraditions } from './moments.js';
 
@@ -42,18 +42,18 @@ function quietly(fn) {
 
 export function setHobby(main, second = null, p = player()) {
   const pl = plansOf(p);
-  if (!main) { pl.hobby = null; return result(true, 'No hobby plan. You can still practise whenever you like.', 'neutral'); }
+  if (!main) { pl.hobby = null; return result(true, 'No hobby plan. You can still practice whenever you like.', 'neutral'); }
   const ok = (id) => SKILL_BY_ID[id] && p.age >= SKILL_BY_ID[id].minAge;
   if (!ok(main) || (second && (!ok(second) || second === main))) return result(false, 'That is not something you can take up yet.', 'neutral');
   pl.hobby = { main, second, since: store.state.year };
-  return result(true, `${SKILL_BY_ID[main].name} is your main passion${second ? `, with ${SKILL_BY_ID[second].name.toLowerCase()} on the side` : ''}. You will practise through the year.`, 'good');
+  return result(true, `${SKILL_BY_ID[main].name} is your main passion${second ? `, with ${SKILL_BY_ID[second].name.toLowerCase()} on the side` : ''}. You will practice through the year.`, 'good');
 }
 
 // ---------- Savings ----------
 
 /**
  * A standing deposit: each year, this much goes from the player's pocket into
- * one of their bank accounts (and so towards any goal that account is saving
+ * one of their bank accounts (and so toward any goal that account is saving
  * for). The money moves through the bank and the ledger like any deposit.
  */
 export function setSavings(accountId, yearly, p = player()) {
@@ -87,7 +87,7 @@ export function livePlans(p = player()) {
     for (const [id, times] of [[pl.hobby.main, 2], [pl.hobby.second, 1]]) {
       if (!id || !SKILL_BY_ID[id] || p.age < SKILL_BY_ID[id].minAge) continue;
       const before = levelOf(id);
-      for (let i = 0; i < times && sessionsLeft() > 0; i++) quietly(() => practise(id));
+      for (let i = 0; i < times && sessionsLeft() > 0; i++) quietly(() => practice(id));
       const after = levelOf(id);
       if (after > before) lines.push(`${SKILL_BY_ID[id].name}: ${before}% to ${after}%.`);
     }

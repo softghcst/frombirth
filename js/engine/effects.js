@@ -161,7 +161,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (e.target) ctx.cast[e.target] = npc.id;
         break;
       }
-      case 'honour': crown.honour(p.flags.honourRank ?? 'knight'); break;
+      case 'honor': crown.honor(p.flags.honorRank ?? 'knight'); break;
       case 'family': { const d = fame.shift('family', e.delta, ctx.why); if (d) shown.push({ label: 'Family approval', delta: d }); break; }
       case 'press': { const d = fame.shift('press', e.delta, ctx.why); if (d) shown.push({ label: 'The press', delta: d }); break; }
       case 'story': fame.addStory(e.value.label, e.value.truth, e.value.heat); break;

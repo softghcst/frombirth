@@ -112,7 +112,7 @@ export function healthYear(p = player()) {
  * At birth: the genomes of the family and the child, and what the child is
  * born with. Conditions present at birth are not diagnosed; most will be
  * noticed later, some never. A custom life may choose conditions present from
- * birth (validated), which are then recognised in the usual way.
+ * birth (validated), which are then recognized in the usual way.
  * @param {object} state  the new GameState (store.state may still be the old one)
  * @param {{conditions?:string[]}} [custom]
  */
@@ -137,7 +137,7 @@ export function healthAtBirth(state, custom) {
 }
 
 /** What a custom life can choose to be born with: things present from birth, never adult-onset conditions. */
-export const BIRTH_CHOICES = ['adhd', 'autism', 'dyslexia', 'dyscalculia', 'dysgraphia', 'dld', 'tourette', 'intellectual', 'deaf', 'blind', 'cerebral_palsy', 'limb_difference', 'cystic_fibrosis', 'haemophilia_a', 'achondroplasia'];
+export const BIRTH_CHOICES = ['adhd', 'autism', 'dyslexia', 'dyscalculia', 'dysgraphia', 'dld', 'tourette', 'intellectual', 'deaf', 'blind', 'cerebral_palsy', 'limb_difference', 'cystic_fibrosis', 'hemophilia_a', 'achondroplasia'];
 
 function hash(s) { let x = 0; for (const ch of s) x = (x * 31 + ch.charCodeAt(0)) | 0; return Math.abs(x); }
 

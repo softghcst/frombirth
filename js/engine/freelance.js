@@ -9,7 +9,7 @@
 //     contracts: [Contract],            active ones take time; finished ones are paid by payroll, once
 //     done                              contracts completed, all services
 //   }
-//   Contract: { id, service, serviceName, client, hours, fee, age, status:'active'|'done'|'failed'|'cancelled', paid, partial }
+//   Contract: { id, service, serviceName, client, hours, fee, age, status:'active'|'done'|'failed'|'canceled', paid, partial }
 //
 // Work cannot be conjured: inquiries come once a year, in proportion to the
 // hours offered, and every accepted contract uses those hours.
@@ -37,13 +37,13 @@ export function serviceBlock(s) {
   if (p.age < Math.max(s.minAge, Math.min(workLaw().workAge, s.minAge + 2))) return `You need to be ${s.minAge}.`;
   const short = Object.entries(s.req).find(([path, min]) => (Number(resolve(path)) || 0) < min);
   if (short) return 'You are not good enough at it yet to charge for it.';
-  if (s.programme && !p.education.degrees.some((d) => d.type === s.programme)) return 'Needs a hair and makeup license.';
+  if (s.program && !p.education.degrees.some((d) => d.type === s.program)) return 'Needs a hair and makeup license.';
   if (s.languages) {
     const own = new Set(languagesOf(p.birthCountryId));
     const second = COUNTRY_LIST.some((x) => languagesOf(x.id).some((l) => !own.has(l)) && (speaks(x.id, p) ?? 0) >= 60);
     if (!second) return 'You need a second language, spoken well.';
   }
-  if (s.licence === 'driving' && p.age < 21) return 'You need to be 21 and have a license.';
+  if (s.license === 'driving' && p.age < 21) return 'You need to be 21 and have a license.';
   if (s.experience && Object.values(c.experience).reduce((a, b) => a + b, 0) < s.experience) return `Clients want ${s.experience} years of experience first.`;
   return '';
 }
@@ -172,7 +172,7 @@ export function cancelContract(id) {
   const f = fl();
   const k = f.contracts.find((x) => x.id === id && x.status === 'active');
   if (!k) return result(false, 'There is no such contract.', 'neutral');
-  k.status = 'cancelled';
+  k.status = 'canceled';
   k.paid = true;
   const mine = f.services[k.service];
   if (mine) { mine.rep = clamp(mine.rep - 8); delete mine.clients[k.client]; }
@@ -219,7 +219,7 @@ export function tickFreelance() {
     if (f.services[k.service]) f.services[k.service] = mine;
   }
   if (done) lines.push(`You finished ${done} freelance ${done === 1 ? 'job' : 'jobs'} this year, for ${fmtMoney(earned, country())}.`);
-  // Keep the record short: paid contracts older than three years are summarised by the counts above.
+  // Keep the record short: paid contracts older than three years are summarized by the counts above.
   f.contracts = f.contracts.filter((k) => !k.paid || k.age >= p.age - 3);
   f.inquiries = [];
   return lines;

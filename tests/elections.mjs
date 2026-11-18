@@ -14,13 +14,13 @@ function seeded(seed) { let s = seed; const next = () => { s = (s * 1664525 + 10
 
 const left = { id: 'left', positions: { tax: 2, services: 2, order: -1 }, appeal: 0 };
 const right = { id: 'right', positions: { tax: -2, services: -1, order: 2 }, appeal: 0 };
-const centre = { id: 'centre', positions: { tax: 0, services: 1, order: 0 }, appeal: 0 };
+const center = { id: 'center', positions: { tax: 0, services: 1, order: 0 }, appeal: 0 };
 const workers = { id: 'workers', share: 0.5, turnout: 0.6, cares: { tax: 1, services: 2 }, wants: { tax: 2, services: 2 } };
 const owners = { id: 'owners', share: 0.5, turnout: 0.7, cares: { tax: 2, order: 1 }, wants: { tax: -2, order: 2 } };
 
 yes('a group is closer to the party that shares its wants', alignment(left, workers) > alignment(right, workers) && alignment(right, owners) > alignment(left, owners));
 {
-  const r = vote([left, right, centre], [workers, owners]);
+  const r = vote([left, right, center], [workers, owners]);
   eq('votes add up to the number cast, and shares to 100', auditResult(r), []);
   yes('each group leans to its own side', r.byGroup.workers.left > r.byGroup.workers.right && r.byGroup.owners.right > r.byGroup.owners.left);
   yes('turnout is a believable percentage', r.turnout > 50 && r.turnout < 80);
@@ -32,11 +32,11 @@ yes('a group is closer to the party that shares its wants', alignment(left, work
   yes('a popular leader moves votes, without deciding everything', r2.shares.left > r1.shares.left && r2.shares.left < 80);
 }
 { // Same inputs and the same seed give the same result: an election is never rerolled.
-  const a = vote([left, right, centre], [workers, owners], seeded(7));
-  const b = vote([left, right, centre], [workers, owners], seeded(7));
+  const a = vote([left, right, center], [workers, owners], seeded(7));
+  const b = vote([left, right, center], [workers, owners], seeded(7));
   eq('the same seed gives the same election', a, b);
   let bad = 0;
-  for (let s = 1; s <= 300; s++) { const r = vote([left, right, centre], [workers, owners], seeded(s), 100000 + s * 977); if (auditResult(r).length) bad += 1; }
+  for (let s = 1; s <= 300; s++) { const r = vote([left, right, center], [workers, owners], seeded(s), 100000 + s * 977); if (auditResult(r).length) bad += 1; }
   eq('300 random elections: every one adds up', bad, 0);
 }
 
@@ -51,12 +51,12 @@ eq('a party under the threshold gets nothing', proportional({ a: 600, b: 370, c:
 eq('over half in the first round: no run-off', firstRound({ a: 54, b: 30, c: 16 }), { leader: 'a', second: 'b', runoff: false });
 eq('nobody over half: a run-off between the top two', firstRound({ a: 41, b: 35, c: 24 }), { leader: 'a', second: 'b', runoff: true });
 
-yes('parties that agree are close; opposites are far', distance(left, centre) < distance(left, right));
-eq('a majority governs alone', formGovernment([left, right, centre], { left: 55, right: 30, centre: 15 }), { lead: 'left', partners: [], seats: 55, majority: true, kind: 'majority' });
-eq('no majority: the largest takes its nearest partner', formGovernment([left, right, centre], { left: 44, right: 40, centre: 16 }), { lead: 'left', partners: ['centre'], seats: 60, majority: true, kind: 'coalition' });
+yes('parties that agree are close; opposites are far', distance(left, center) < distance(left, right));
+eq('a majority governs alone', formGovernment([left, right, center], { left: 55, right: 30, center: 15 }), { lead: 'left', partners: [], seats: 55, majority: true, kind: 'majority' });
+eq('no majority: the largest takes its nearest partner', formGovernment([left, right, center], { left: 44, right: 40, center: 16 }), { lead: 'left', partners: ['center'], seats: 60, majority: true, kind: 'coalition' });
 eq('partners too far apart: a minority government', formGovernment([left, right], { left: 50, right: 50 }).kind, 'minority');
 eq('the larger of two governs when tied parties cannot agree', formGovernment([left, right], { left: 50, right: 50 }).partners, []);
-yes('a coalition never includes more partners than it needs', formGovernment([left, right, centre, { id: 'green', positions: { tax: 1, services: 2, order: -1 } }], { left: 40, right: 30, centre: 15, green: 15 }).partners.length === 1);
+yes('a coalition never includes more partners than it needs', formGovernment([left, right, center, { id: 'green', positions: { tax: 1, services: 2, order: -1 } }], { left: 40, right: 30, center: 15, green: 15 }).partners.length === 1);
 
 // A race between two candidates, and the count as it comes in.
 {

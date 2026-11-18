@@ -1,6 +1,6 @@
 // Stories of a life across borders. Each arc begins only from something that
 // is really so in the save: a career employers abroad want, a husband or wife
-// living in another country, ageing parents in the country left behind, a
+// living in another country, aging parents in the country left behind, a
 // child settled abroad when retirement comes. The scene names real people and
 // places; each choice goes back to the engines that do the work (relocation,
 // travel, immigration), so a "yes" is an application or a plan, never an
@@ -247,7 +247,7 @@ export function decide(what, cast = {}) {
 
   if (arc === 'firstTrip') {
     if (choice === 'stay') return 'You say you would rather stay at home this year. Your parents look at each other, and let it go.';
-    // The parents take the family: the papers first, then a fortnight there. Paid by them.
+    // The parents take the family: the papers first, then two weeks there. Paid by them.
     const parents = livingNpcs().filter((n) => n.role === 'parent' && !n.flags.abroad);
     const sibs = livingNpcs().filter((n) => n.role === 'sibling' && n.age < 18 && !n.flags.abroad);
     for (const x of [p, ...sibs]) if (!validPassport(x)) for (const j of held(x).slice(0, 1)) { if (x === p) applyPassport(p.id, j); else ensureOwnPassport(x, today(), addDays(today(), 30)); }
@@ -262,7 +262,7 @@ export function decide(what, cast = {}) {
     if (n && choice === 'kin') { n.meters.relationship = clamp(n.meters.relationship + 10); remember(n, `firstTrip_${a.year}`, 'You came to see them, the first time you went abroad.'); }
     for (const par of parents) remember(par, `firstTrip_${a.year}`, `You took ${p.firstName} abroad for the first time.`);
     if ((p.talents?.music ?? 0) >= 50 || (p.skills?.photography ?? 0) > 0) { p.skills ??= {}; p.skills.photography = clamp((p.skills.photography ?? 0) + 4); }
-    return `A fortnight in ${nameOf(a.dest)}${n && choice === 'kin' ? ` with ${n.firstName}` : ''}. Everything smelled different, and you came home with a list of places you mean to see. ${q.notes.join(' ')}`.trim();
+    return `Two weeks in ${nameOf(a.dest)}${n && choice === 'kin' ? ` with ${n.firstName}` : ''}. Everything smelled different, and you came home with a list of places you mean to see. ${q.notes.join(' ')}`.trim();
   }
 
   if (arc === 'exchange') {

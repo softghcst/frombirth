@@ -40,7 +40,7 @@ node tests/legislature.mjs     # votes in the legislature: majorities, rebels, d
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
 node tests/animal-care.mjs     # shelters, adoption, costs, the vet, insurance, fostering, rehoming, moving abroad, careers
 node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, breeding and pedigrees
-node tests/animal-life.mjs     # staff, classes, behaviour, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
+node tests/animal-life.mjs     # staff, classes, behavior, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
 node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
 node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
@@ -51,16 +51,17 @@ node tests/economy.mjs         # economies that turn, crises that begin and end,
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
-node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
+node tests/citizenship.mjs     # nationality at birth, residency, naturalization; exchanging money never creates it
 node tests/yearly.mjs          # one Age Up is one year: steps run once, limits, plans, the yearly update, a full year, three generations
 node tests/generations-1900.mjs # one family from 1900 to the present, a year per Age Up, through every era: nothing before its time, heirs carry on, saves load
+node tests/spelling.mjs        # American English throughout; old saves with British spellings are converted on load, names kept
 node tests/yearly-ui.mjs       # the yearly screens in a real browser at phone and desktop widths (needs Playwright; skips without it)
 node tests/health.mjs          # conditions and diagnosis, therapy and DBT, medication trials and switching, access, heredity, privacy, old saves
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
 node tests/fame.mjs            # the fame profile, the entertainment world, acting from audition to credit, press, awards once, eras, child performers (see docs/FAME.md)
-node tests/fame2.mjs           # sport played match by match (fame from results only), modelling, books, celebrity brands, famous lives, comebacks, the family record
+node tests/fame2.mjs           # sport played match by match (fame from results only), modeling, books, celebrity brands, famous lives, comebacks, the family record
 node tests/fame3.mjs           # lives started in the past, newer sports, injuries, women's leagues, coaching, casting choices, literary agents and rights, brand launches, music videos and songwriting
 node tests/music.mjs           # bands, releases, charts, royalties paid once, record deals, tours, music awards, heirs
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
@@ -109,7 +110,7 @@ season, event and family athlete. Family archive → **Athletic legacy** opens t
 
 One engine plays every sport; the sports themselves are data. Soccer, tennis and pickleball (with doubles partners)
 are modeled in full; the other twenty-odd sports use shared scoring for goals, points, runs, sets, rally games,
-strokes, times, judged scores and bouts. Sport skills are separate from the character's talents and grow towards a
+strokes, times, judged scores and bouts. Sport skills are separate from the character's talents and grow toward a
 fixed ceiling, with diminishing returns per training hour. Coaches, key teammates, doubles partners and agents are
 real people. Results come from keyed, seeded luck and are stored once, so a reload never re-rolls them; standings
 and champions are counted from completed games only. Clubs, leagues and the Pathways Rating (PR) are invented.
@@ -174,7 +175,7 @@ day, so there is nothing for era rules to change).
 ## Avatars
 
 Every portrait in the game is the **CharacterAvatar** system: hand-drawn SVG parts in `assets/avatars/`, stacked
-in layers and recoloured with CSS variables. There is no build step: the parts are plain files, and a short
+in layers and recolored with CSS variables. There is no build step: the parts are plain files, and a short
 Python script (standard library only) keeps them tidy and lists them for the game.
 
 | What | Where |
@@ -207,7 +208,7 @@ lower-set features. Eyes drawn as an empty outline are given whites by filling t
 **Personal proportions.** Each person also has `inherited.tweaks`: eye spacing, eye size, eye height, nose size
 and mouth size, each from -2 to 2 steps (`TWEAKS` in `js/avatar/catalog.js`, step sizes in `TWEAK_STEP` in
 `js/CharacterAvatar.js`). They are set in the creator, vary a little at random, and children take each from a parent. Cosmetic surgery
-(**Self** → **Cosmetic surgery** → *Facial reshaping*) changes them too, and children born afterwards can take after the new face. Anyone's whole look can be edited from **People** → a person →
+(**Self** → **Cosmetic surgery** → *Facial reshaping*) changes them too, and children born afterward can take after the new face. Anyone's whole look can be edited from **People** → a person →
 **Edit stats and talents** → **Edit their look**.
 
 **Ages and dress.** Babies and toddlers have their own heads, baby hair and baby clothes; children have the child
@@ -616,7 +617,7 @@ js/types.js     master schemas (JSDoc)
 js/engine/      year processor, event engine, effects, conditions, generation,
                 health (and health/: the health engine), education, finance, relationships, death
 js/data/        countries, traits, birthConditions, illnesses, health/, events/
-js/avatar/      portrait parts, catalogue, renderer, inheritance, live editor
+js/avatar/      portrait parts, catalog, renderer, inheritance, live editor
 js/ui/          shell, modals, screens/, tabs/
 avatar-lab.html a workbench for avatar artwork
 tests/          checks that run on Node alone
@@ -679,9 +680,9 @@ More of it, by part:
 | Public life | `civic.js` | Office-holders, candidates and royals speak through official accounts (kept apart from personal ones): a statement nudges approval in office or a campaign's appeal by a capped amount, or a royal's public image, and the country's press reports it. Elections are still counted by the Politics engine. Being widely known brings interviews and panels, a loss of privacy, and — for something the player really did and was never caught for — an allegation, which is not a conviction |
 | Study | `school.js` | The school's own systems by era (paper, email, a portal with marks), online study groups with real classmates (a small effect on marks; followers count for nothing), a portfolio of finished work (which helps in creative careers), digital skills |
 | More messaging | `messaging.js` | Plans and invitations that really happen the next year (and are remembered), photos, anniversary wishes, talking about the relationship (which can clear the air or start a row), venting (the only thing a leak can ever be made of), birthday messages from family (three a year at most), helping an older relative get online |
-| More creators | `creator.js` | Optional posting routines; merchandise (with the cost of making it), labelled affiliate links, licensing offers for good work, paid collaborations paid on publication; livestreams scheduled for later with chosen equipment; project work counts as practice for the matching skill |
+| More creators | `creator.js` | Optional posting routines; merchandise (with the cost of making it), labeled affiliate links, licensing offers for good work, paid collaborations paid on publication; livestreams scheduled for later with chosen equipment; project work counts as practice for the matching skill |
 | Other people | `npc.js` | Gifted friends start channels of their own; people join communities for their hobbies; an online friend who ends up in the player's field becomes a colleague; a few well-known creators on each platform to follow, who are strangers, not friends |
-| Radio and television | `broadcast.js` | Once a year, an evening's listening or viewing (news, music, plays, sport, serials, cartoons) with whoever is at home, or at a neighbour's when there is no set; the first set in the house as a life moment; now and then a broadcast the whole household remembers. Sets are household devices like any other |
+| Radio and television | `broadcast.js` | Once a year, an evening's listening or viewing (news, music, plays, sport, serials, cartoons) with whoever is at home, or at a neighbor's when there is no set; the first set in the house as a life moment; now and then a broadcast the whole household remembers. Sets are household devices like any other |
 | Story arcs | `stories.js` | Also: a creator's crossroads (make it a job, keep it on the side, step back), burnout after two heavy years, stopping decades later; life after going viral; a bigger creator reaching out; a recruiter; an invitation to moderate; meeting an online friend; a partner abroad; old posts decades on (shared with the family, they join the archive); a child's school photography project |
 
 Also: the character creator can start a life in any year from 1800; scenes that mention modern technology, and the
@@ -689,7 +690,7 @@ creator career, only appear once the registry says that technology exists where 
 the country's real news; trips the player took and homes they bought or renovated can be posted about (a trip names
 the place visited, never the home); profile pictures (portrait, initials, a pet, a symbol — never someone else) and
 links to one's own other accounts; devices are belongings with a condition; a self-set limit on screen time; locked
-accounts can be recovered; neighbourhood groups follow a move; a university's community is made of real classmates;
+accounts can be recovered; neighborhood groups follow a move; a university's community is made of real classmates;
 dating has preferences (ages, distance, what one is looking for); the Family Archive opens from the People tab too.
 
 Still not built: business partnerships (there is no business system in the game for an online friend to join);
@@ -877,7 +878,7 @@ and the press),
 the screens are in `js/ui/royalty.js` and `js/ui/dynasty.js`.
 Scenes can test `monarchy`, `isRoyal`, `isNoble`, `titled`, `reigning`,
 `royalBy` and `royal.image`, and use the `image()`, `meetRoyal()` and
-`honour()` effects.
+`honor()` effects.
 
 ## Politics
 

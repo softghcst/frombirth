@@ -4,7 +4,7 @@ import { systemFor } from './justice.js';
 // GAMEPLAY CONFIGURATION, COMPILED BY HAND AND UNVERIFIED. These are the
 // author's best understanding of the mid-2020s, simplified to one value per
 // place. Real law has conditions, exceptions and regional differences that
-// are not modelled, and it changes. Nothing here is legal information.
+// are not modeled, and it changes. Nothing here is legal information.
 //
 // A rule is looked up in layers (engine/rules.js), last one wins:
 //   1. DEFAULT        the value in RULES

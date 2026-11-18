@@ -1,15 +1,15 @@
 // STORYLINE: the senior-year musical.
 //
-// How it is reached: join the Musical theatre company (which introduces the
+// How it is reached: join the Musical theater company (which introduces the
 // drama director) and hold a part-time job (which introduces a manager). At 17
 // the lead role and your Saturday shifts collide.
 //
 // Story state lives in flags so later scenes can read it:
 //   musicalRoute   'role' | 'shifts' | 'both'
-//   directorRec    the director will vouch for you (helps Musical Theatre auditions)
+//   directorRec    the director will vouch for you (helps Musical Theater auditions)
 //   summerProgramme / internship   what you did the summer after graduating
 //   showcase       'original' | 'classic' | 'stageManaged'   (college project)
-//   theatreCredit / bridalClients / sfxPiece   (cosmetology placement)
+//   theaterCredit / bridalClients / sfxPiece   (cosmetology placement)
 //   auditionVia    'director' | 'producer' | 'notice'
 //   proDebut / proBackstage   how the age-25 opportunity ended
 //
@@ -21,7 +21,7 @@
 // flags and text, and register it in events/index.js.
 import { st, hid, tal, cash, rel, flag, ms, addNpc, ok, bad, any, chk, need, mem, queue, ptScale, when } from '../helpers.js';
 
-const inCompany = need('education.clubs', 'has', 'musical_theatre');
+const inCompany = need('education.clubs', 'has', 'musical_theater');
 const triple = (n) => [tal('singing', n), tal('dance', n), tal('acting', n)];
 
 // --- Shared outcomes for the senior-year decision ---
@@ -80,7 +80,7 @@ export default [
     text: 'Callbacks for the winter show. {director} has it down to you and one other student for the solo.',
     choices: [
       { label: 'Go all out for it', check: chk(0.45, { 'talents.singing': 0.7, 'talents.acting': 0.3 }), outcomes: [
-        ok('You get the solo. {rival}, who did not, stops speaking to you in the corridor.', tal('singing', 4), st('mood', 6), rel('director', 5),
+        ok('You get the solo. {rival}, who did not, stops speaking to you in the hallway.', tal('singing', 4), st('mood', 6), rel('director', 5),
           addNpc('enemy', 'rival', { tag: 'rival', title: 'Casting rival', relationship: 15 }),
           mem('director', 'wonSolo', 'You won the winter solo at callbacks.')),
         bad('{rival} gets the solo and makes sure you know it.', st('mood', -5), tal('singing', 2),
@@ -108,7 +108,7 @@ export default [
         'You are still holding a flat at two in the morning while {director} drives screws. Neither of you says much. It stands.',
         'good', st('health', -2), hid('willpower', 3), rel('director', 12),
         mem('director', 'stayedLate', 'You stayed until 2 a.m. rebuilding the set the night before opening.'))] },
-      { label: 'Stay for an hour', outcomes: [any('You do what you can before your lift arrives.', 'neutral', rel('director', 3))] },
+      { label: 'Stay for an hour', outcomes: [any('You do what you can before your ride arrives.', 'neutral', rel('director', 3))] },
       { label: 'Go home', outcomes: [any('You have a test tomorrow. {director} watches you leave.', 'neutral', rel('director', -6))] },
     ],
   },
@@ -185,7 +185,7 @@ export default [
   // ---------- Route scenes: college and trade school ----------
   {
     id: 'mt_showcase', category: 'university', ageRange: [19, 24], once: true, priority: true,
-    requires: [need('education.enrolled', '==', true), need('education.majorId', 'in', ['musical_theatre', 'musical_theatre_bfa']), need('education.stage', '==', 'university')],
+    requires: [need('education.enrolled', '==', true), need('education.majorId', 'in', ['musical_theater', 'musical_theater_bfa']), need('education.stage', '==', 'university')],
     text: 'Your year is staging a showcase for invited agents. The head of the program wants to know what you are bringing.',
     choices: [
       { label: 'A number you write yourself', check: chk(0.45, { 'stats.intellect': 0.4, 'talents.singing': 0.5, 'talents.music': 0.2 }), outcomes: [
@@ -219,7 +219,7 @@ export default [
     choices: [
       { label: 'The theater: wigs and quick changes', outcomes: [any(
         'Ninety seconds to turn a villager into a queen, in the dark, with pins in your mouth. {wigs}, the head of wigs, starts trusting you with the leads.',
-        'good', flag('theatreCredit'), hid('discipline', 4), st('charm', 2),
+        'good', flag('theaterCredit'), hid('discipline', 4), st('charm', 2),
         addNpc('mentor', 'wigs', { tag: 'wigmaster', title: 'Head of wigs', ageOffset: 22, relationship: 60,
           memory: ['quickChanges', 'You ran quick changes for a full cast on your placement.'] }),
         ms('Ran hair and makeup for a theater production on placement.'))] },
@@ -241,7 +241,7 @@ export default [
       { label: 'Bridal hair and makeup', outcomes: [any('Saturdays are now booked a year ahead.', 'good', flag('cosmoFocus', 'bridal'), ms('Chose to specialize in bridal hair and makeup.'))] },
       { label: 'Runway and print', outcomes: [any('You start assisting on shoots for nothing but the credit.', 'good', flag('cosmoFocus', 'editorial'), ms('Chose to specialize in runway and print makeup.'))] },
       { label: 'Special effects for film and shows', outcomes: [any('Your kitchen fills up with silicone and fake blood.', 'good', flag('cosmoFocus', 'sfx'), ms('Chose to specialize in special-effects makeup.'))] },
-      { label: 'Theater hair and makeup', outcomes: [any('You start turning up at stage doors with your kit.', 'good', flag('cosmoFocus', 'theatre'), ms('Chose to specialize in theater hair and makeup.'))] },
+      { label: 'Theater hair and makeup', outcomes: [any('You start turning up at stage doors with your kit.', 'good', flag('cosmoFocus', 'theater'), ms('Chose to specialize in theater hair and makeup.'))] },
     ],
   },
 
@@ -273,7 +273,7 @@ export default [
   },
   {
     id: 'open_call_wigs', category: 'a call from the past', ageRange: [20, 40], once: true, priority: true,
-    requires: [need('flags.theatreCredit', '==', true), need('degreeTypes', 'has', 'cosmetology')],
+    requires: [need('flags.theaterCredit', '==', true), need('degreeTypes', 'has', 'cosmetology')],
     cast: { wigs: 'tag:wigmaster' },
     text: '{wigs}, who ran wigs on your placement, is heading hair and makeup on a new musical in {city}: "I need an assistant who has done quick changes in the dark. I have only ever seen one student do it properly."',
     choices: [
@@ -288,7 +288,7 @@ export default [
     requires: [need('tripleThreat', '>=', 45), need('flags.heardOpenCall', '!=', true)],
     text: 'A notice goes round online: open auditions on Thursday for a new musical in {city}. Nobody has told you about it. Nobody is expecting you.',
     choices: [
-      { label: 'Turn up anyway', outcomes: [any('You join a queue that goes round the block.', 'neutral',
+      { label: 'Turn up anyway', outcomes: [any('You join a line that goes around the block.', 'neutral',
         flag('heardOpenCall'), flag('auditionVia', 'notice'), queue('the_audition'))] },
       { label: 'Scroll past', outcomes: [any('Thursday comes and goes.', 'neutral', flag('heardOpenCall'))] },
     ],
@@ -305,8 +305,8 @@ export default [
           when([need('flags.auditionVia', '==', 'producer')], ok('{producer} watches from the back row and does not say a word. They do not need to. You are in the company.', ...BOOKED)),
           ok('Nobody in the room knows your name when you walk in. They do when you walk out. You are in the company.', ...BOOKED),
           when([need('flags.auditionVia', '==', 'director')], bad('{director}\'s word got you into the room. It could not hold the top note for you. "Come back when the voice matches the letter," the panel says.', ...NOT_YET)),
-          when([need('flags.auditionVia', '==', 'producer')], bad('{producer} got your name on the list. The panel thanks you after eight bars. Afterwards {producer} says, kindly, that the office always has room for you.', ...NOT_YET)),
-          bad('"Thank you, that is all we need." You are back on the pavement in four minutes.', ...NOT_YET),
+          when([need('flags.auditionVia', '==', 'producer')], bad('{producer} got your name on the list. The panel thanks you after eight bars. Afterward {producer} says, kindly, that the office always has room for you.', ...NOT_YET)),
+          bad('"Thank you, that is all we need." You are back on the sidewalk in four minutes.', ...NOT_YET),
         ] },
       { label: 'Save yourself for the dance call',
         check: chk(0.25, { 'talents.dance': 0.8, 'talents.singing': 0.3, 'talents.acting': 0.3, 'flags.auditionEdge': 0.2 }),

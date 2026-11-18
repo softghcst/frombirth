@@ -106,9 +106,9 @@ section('one Age Up is exactly one year; every yearly step runs once; reloading 
   // School: a student is enrolled now; a degree takes years.
   const s = adult(18);
   s.education.degrees = [{ type: 'high', gpa: 3.4, age: 18 }];
-  const prog = edu.programmeOptions().find((o) => o.id === 'university' || o.stage === 'university');
+  const prog = edu.programOptions().find((o) => o.id === 'university' || o.stage === 'university');
   if (prog) {
-    edu.enrol(prog.id, prog.subjects?.[0]?.id ?? prog.majors?.[0]?.id, 'parents');
+    edu.enroll(prog.id, prog.subjects?.[0]?.id ?? prog.majors?.[0]?.id, 'parents');
     const degrees = s.education.degrees.length;
     check(s.education.degrees.length === degrees && !s.education.degrees.some((d) => d.type === 'university'), 'enrolling at university does not award a degree');
   }
@@ -131,7 +131,7 @@ section('actions resolve in the current year; work, closeness, practice and post
   const cash = p.finance.cash;
   const lines = plans.livePlans(p);
   check(lines.length >= 2, 'a year of plans: the hobby and the standing deposit each happen');
-  check((p.skills.swimming ?? 0) > swim, 'the hobby is practised');
+  check((p.skills.swimming ?? 0) > swim, 'the hobby is practiced');
   check(bank.accountById(acct).units === 1000 && p.finance.cash <= cash - 1000, 'the deposit went from the pocket into the bank');
   const worth = netWorth(store.state);
   const after = { cash: p.finance.cash, bal: bank.accountById(acct).units, swim: p.skills.swimming };
@@ -156,12 +156,12 @@ section('plans: a hobby focus and a standing deposit carry on by themselves, onc
   const quiet = summarize(before, store.state, []);
   check(quiet.quiet && !quiet.sections.length, 'a year in which nothing happened gives a quiet summary, with nothing invented');
   const baby = makeNpc({ role: 'child', countryId: 'uk', age: 0, relationship: 90 }); store.state.npcs[baby.id] = baby; p.npcIds.push(baby.id);
-  const mum = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.alive);
-  if (mum) mum.alive = false;
+  const mom = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.alive);
+  if (mom) mom.alive = false;
   career.hire(CAREERS.find((c) => c.id === 'office'), 0, 60);
   const s = summarize(before, store.state, ['Swimming: 10% to 18%.']);
   const all = s.sections.flatMap((x) => x.lines).join(' ');
-  check(all.includes(`${baby.firstName} was born`) && (!mum || all.includes(`${mum.firstName}`)) && /started work/.test(all) && /Swimming/.test(all), 'the summary reports births, deaths, work and plans that really happened');
+  check(all.includes(`${baby.firstName} was born`) && (!mom || all.includes(`${mom.firstName}`)) && /started work/.test(all) && /Swimming/.test(all), 'the summary reports births, deaths, work and plans that really happened');
   check(s.sections[0].title === 'Big moments', 'major life events come first');
   check(!/paycheck|fed|feeding/i.test(all), 'routine things are left out');
 }
@@ -206,7 +206,7 @@ section('prison: the routine is chosen once and carries on; time served counts y
   const rec = course.begin(CONDITION_BY_ID.gad, p, { severity: 55 }); rec.onsetWk = now() - 40;
   const gp = care.facilitiesHere().find((f) => f.defId === 'primary');
   const seen = care.seekAssessment('mental', gp.id, 'gp');
-  // An assessment can be inconclusive; for this fixture, the GP records what was found if it was.
+  // An assessment can be inconclusive; for this fixture, the primary care doctor records what was found if it was.
   const dx = R.activeDiagnoses().find((d) => d.conditionId === 'gad') ?? care.foundByDoctor(rec, 'primary', 'gp');
   const where = dx && ther.findProviders('cbt', 'gad').find((x) => x.ok);
   const started = where ? ther.startTherapy({ therapyId: 'cbt', facilityId: where.facilityId, providerId: where.providerId, dxId: dx.id }) : null;

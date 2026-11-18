@@ -12,7 +12,7 @@ import { hire, unmet } from '../js/engine/career.js';
 import * as athletics from '../js/engine/sports.js';
 import { saveGame, loadGame } from '../js/save.js';
 import * as sportsLife from '../js/engine/sportsLife.js';
-import * as modelling from '../js/engine/modelling.js';
+import * as modeling from '../js/engine/modeling.js';
 import * as pub from '../js/engine/publishing.js';
 import * as music from '../js/engine/music.js';
 import * as fame from '../js/engine/fame.js';
@@ -114,14 +114,14 @@ section('coaching: a job, and a coach\'s record');
 // 4. Castings are a choice.
 p = life('uk', 21);
 p.stats.charm = 75;
-hire(CAREER_BY_ID.modelling, 1, 60, 'offer');
-const c0 = modelling.castings(p)[0];
-const other = Object.keys(modelling.APPROACHES).find((k) => k !== c0.wants);
-c0.bar = modelling.look(p); // a casting at the model's own level, away from the limits
-check(modelling.castingOdds(c0, c0.wants, p) - modelling.castingOdds(c0, other, p) > 0.25, 'reading the brief right matters');
+hire(CAREER_BY_ID.modeling, 1, 60, 'offer');
+const c0 = modeling.castings(p)[0];
+const other = Object.keys(modeling.APPROACHES).find((k) => k !== c0.wants);
+c0.bar = modeling.look(p); // a casting at the model's own level, away from the limits
+check(modeling.castingOdds(c0, c0.wants, p) - modeling.castingOdds(c0, other, p) > 0.25, 'reading the brief right matters');
 let booked = 0;
-for (const c of modelling.castings(p)) if (modelling.attendCasting(c.id, c.wants).ok) booked += 1;
-check(modelling.portfolio(p).length === booked, 'every booking is in the portfolio');
+for (const c of modeling.castings(p)) if (modeling.attendCasting(c.id, c.wants).ok) booked += 1;
+check(modeling.portfolio(p).length === booked, 'every booking is in the portfolio');
 section('castings: the brief, the choice, and what it costs to read it wrong');
 
 // 5. Literary agents, translations, the screen.

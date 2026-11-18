@@ -56,7 +56,7 @@ const btn = (label, attrs, cls = '') => `<button type="button" class="btn ${cls}
 const money = (n) => fmtMoney(n, country());
 const flag = (id) => COUNTRIES[id]?.flag ?? '';
 const nameOf = (id) => COUNTRIES[id]?.name ?? id;
-const STATUS = { draft: 'Draft', confirmed: 'Booked', in_progress: 'Away now', completed: 'Completed', canceled: 'Cancelled', disrupted: 'Disrupted',
+const STATUS = { draft: 'Draft', confirmed: 'Booked', in_progress: 'Away now', completed: 'Completed', canceled: 'Canceled', disrupted: 'Disrupted',
   submitted: 'Submitted', under_review: 'Under review', review_requested: 'Review requested', approved: 'Approved', refused: 'Refused', withdrawn: 'Withdrawn', expired: 'Expired', used: 'Used' };
 const HOW = { birth: 'by birth', descent: 'through a parent', naturalization: 'by naturalization', restoration: 'restored' };
 
@@ -196,7 +196,7 @@ export function openExplore(api, start = {}) {
       const list = travel.trips();
       const group = (title, rows) => (rows.length ? `<div class="section-label">${esc(title)}</div>${rows.map((t) => { const c = travel.tripCard(t); return `<button type="button" class="row world-row" data-trip="${t.id}"><div class="world-flag">${c.flag}</div><div class="main"><strong>${esc(c.type)}: ${esc(c.where)}</strong><small>${esc(c.depart)} to ${esc(c.ret)} · ${esc(STATUS[c.status])}${c.travelers.length > 1 ? ` · with ${esc(c.travelers.filter((x) => !x.you && x.status === 'accepted').map((x) => x.name).join(', '))}` : ''}</small></div></button>`; }).join('')}` : '');
       return `${group('Away now', list.filter((t) => t.status === 'in_progress'))}${group('Booked', list.filter((t) => t.status === 'confirmed'))}${group('Plans', list.filter((t) => t.status === 'draft'))}
-        ${group('Past trips', list.filter((t) => ['completed', 'cancelled', 'disrupted'].includes(t.status)))}
+        ${group('Past trips', list.filter((t) => ['completed', 'canceled', 'disrupted'].includes(t.status)))}
         ${list.length ? '' : '<p class="empty">No trips yet.</p>'}<div class="btn-stack">${btn('Plan a trip', 'data-newplan', 'primary')}</div>`;
     },
 
@@ -222,7 +222,7 @@ export function openExplore(api, start = {}) {
       const d = docs.documentsView();
       const p = player();
       const paper = cit.papers(p);
-      const nat = paper.naturalisation;
+      const nat = paper.naturalization;
       const tab = ui.tab ?? 'citizenship';
       const tabs = [['citizenship', 'Citizenship'], ['passports', 'Passports'], ['visas', 'Visas'], ['residence', 'Residence'], ['applications', 'Applications'], ['history', 'Immigration history']];
       let body = '';
@@ -299,7 +299,7 @@ export function openExplore(api, start = {}) {
             ${home.length ? `<div class="section-label">A branch abroad</div>${home.map((b) => `<p>${esc(b.name)}: ${bc ? btn(`Open a branch in ${city}`, `data-bizbranch="${b.id}" data-bizcountry="${bc}" data-bizcity="${esc(city)}"`, 'small') : '<small class="muted">Choose a country above.</small>'}</p>`).join('')}` : ''}
             <p class="muted">Owning a business abroad gives no right to live there. After a year of trading with staff, the business-owner route opens: an application like any other.</p></div>`;
         })()}
-        <div class="card"><h3>Citizenship pathways</h3><p class="muted">${esc(cit.naturalisation(p).possible ? 'You can apply for citizenship where you live (Passport & Documents).' : cit.naturalisation(p).why)} Permanent residence is not citizenship; marriage shortens the wait and grants nothing by itself.</p></div>
+        <div class="card"><h3>Citizenship pathways</h3><p class="muted">${esc(cit.naturalization(p).possible ? 'You can apply for citizenship where you live (Passport & Documents).' : cit.naturalization(p).why)} Permanent residence is not citizenship; marriage shortens the wait and grants nothing by itself.</p></div>
         ${cases.filter((a) => !live.includes(a)).length ? `<div class="card"><h3>Earlier applications</h3>${cases.filter((a) => !live.includes(a)).map((a) => kvt(`${nameOf(a.jurisdictionId)}, ${a.submittedYear}`, `${a.routeName}: ${STATUS[a.used ? 'used' : a.status]}`)).join('')}</div>` : ''}`;
     },
 
@@ -492,7 +492,7 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-lost]'))) { if (await confirmModal({ title: 'Report this passport lost?', body: 'It can no longer be used. Your citizenship is not affected.', yes: 'Report it' })) return tell(docs.reportLost(x.dataset.lost, x.dataset.doc)); return undefined; }
       if ((x = t('[data-review]'))) return tell(docs.requestReview(x.dataset.review));
       if ((x = t('[data-withdraw]'))) return tell(docs.withdraw(x.dataset.withdraw));
-      if (t('[data-naturalize]')) { const n = cit.naturalisation(); if (await confirmModal({ title: 'Apply for citizenship?', yes: 'Apply', body: `The fee is ${money(n.fee)}, and there is a test. ${n.outlook}` })) return tell(cit.naturalise()); return undefined; }
+      if (t('[data-naturalize]')) { const n = cit.naturalization(); if (await confirmModal({ title: 'Apply for citizenship?', yes: 'Apply', body: `The fee is ${money(n.fee)}, and there is a test. ${n.outlook}` })) return tell(cit.naturalize()); return undefined; }
       if ((x = t('[data-applymove]'))) { const r = reloc.applyToMove(ui.dest, x.dataset.applymove); return tell(r); }
       if ((x = t('[data-ask]'))) return tell(move.askToCome(x.dataset.ask));
       if ((x = t('[data-consent]'))) return tell(fam.askConsent(x.dataset.dest, x.dataset.consent));

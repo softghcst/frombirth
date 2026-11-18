@@ -14,7 +14,7 @@ each country, before anyone describes it as clinically accurate. Until then:
 - the condition catalog, the rule registry and the medication catalog are
   presented in-game as a simulation, not as facts about real treatment;
 - every number in the data files is **game tuning**, chosen to sit near the
-  broad published picture, and labelled as such in the files themselves;
+  broad published picture, and labeled as such in the files themselves;
 - nothing is generated freely: conditions, medicines, therapies and the rules
   joining them are fixed, curated data (`js/data/health/`) that a reviewer can
   read line by line.
@@ -23,13 +23,13 @@ each country, before anyone describes it as clinically accurate. Until then:
 
 Conditions and their care:
 NICE guidance NG222 (depression), CG78 (borderline personality disorder),
-CG185 (bipolar disorder), NG87 (ADHD), CG113 (generalised anxiety and panic),
+CG185 (bipolar disorder), NG87 (ADHD), CG113 (generalized anxiety and panic),
 CG159 (social anxiety), CG31 (OCD), NG116 (PTSD), NG69 (eating disorders),
 CG178 (psychosis and schizophrenia), CG128/CG142 (autism), NG217 (epilepsy),
 NG62 (cerebral palsy), NG134 (depression in children);
 NIMH health topics for each mental health condition;
 NHS condition pages (dyslexia, dyscalculia, phobias, agoraphobia, Tourette's,
-migraine, hearing loss, counselling, peer support);
+migraine, hearing loss, counseling, peer support);
 WHO fact sheets (autism, epilepsy, deafness and hearing loss, blindness and
 vision impairment, spinal cord injury, rehabilitation) and ICD-11.
 
@@ -94,7 +94,7 @@ charged again.
 
 ### Truth and diagnosis
 
-A condition can be present and unrecognised for years. Symptoms are
+A condition can be present and unrecognized for years. Symptoms are
 experiences with several possible explanations; an assessment weighs how long
 things have gone on, what else could explain them and whether the clinician may
 diagnose that condition, and can end in a diagnosis, a referral, a review, or
@@ -109,7 +109,7 @@ Every prescription passes the rule registry: diagnosed condition, a use listed
 for that medicine, available in this year and country, the right age, a
 prescriber whose profession may prescribe that kind of medicine, nothing it is
 avoided with, no second antidepressant on top, and in bipolar disorder no
-antidepressant without a mood stabiliser. No medicine is listed as treating BPD.
+antidepressant without a mood stabilizer. No medicine is listed as treating BPD.
 
 How a medicine works for a person (how much it helps, how soon, which side
 effects, whether its effect fades later) is decided when the trial starts from
@@ -129,10 +129,10 @@ Clinicians are NPCs who stay with the player: they age, move clinics, retire and
 hand over, with the history kept. Groups are standing groups at a clinic with
 the same facilitators and members, running their own cycle. Individual DBT and
 the DBT skills group are separate courses. Progress comes from sessions attended
-and skills practised; a hard week is a setback, never a loss of skills; no
+and skills practiced; a hard week is a setback, never a loss of skills; no
 number of sessions cures anything. Skills open choices in everyday scenes (a
 disagreement with a partner offers a "say what you need" response to someone who
-has practised it) without deciding how they go. Session notes refer only to
+has practiced it) without deciding how they go. Session notes refer only to
 things that happened in the life.
 
 ### Disability and accessibility
@@ -147,7 +147,7 @@ prosthesis) and that preference is respected, not counted as an unmet need.
 ### Heredity
 
 Polygenic predisposition is inherited as the parents' average plus a fresh
-half; it scales the likelihood of later-onset conditions (normalised so the
+half; it scales the likelihood of later-onset conditions (normalized so the
 population average is unchanged) and decides, with the rest of the liability,
 which neurodevelopmental conditions a person is born with. Single-gene
 conditions follow dominant, recessive, X-linked and mitochondrial patterns, with
@@ -167,7 +167,7 @@ parent chooses) assessed, with the result recorded on the child; supporting a
 partner through their own hard stretch without becoming their therapist; an
 inaccessible venue; a loud party for someone with sensory needs; a meeting with
 no interpreter, where asking is a real accommodation request; a disagreement
-where practised DBT skills open new responses; and a support-focused scene for
+where practiced DBT skills open new responses; and a support-focused scene for
 hard stretches.
 
 ### Privacy
@@ -196,7 +196,7 @@ from fifty, some cancers on screening, as a referral to an oncologist). They
 are treated with medicines through the same trials, reviews and rule registry as
 everything else (salbutamol and beclometasone, metformin, amlodipine, ramipril,
 atorvastatin), and with cardiac rehabilitation, a diabetes education course,
-physiotherapy or a pain programme. Each year an untreated condition costs
+physiotherapy or a pain program. Each year an untreated condition costs
 physical health in proportion to how much it is affecting the person. Cancer
 grows until it is treated, is staged when it is found, and a course of
 treatment (usually with surgery first) ends in remission or not, likelier the
@@ -254,8 +254,8 @@ that too; asking is allowed, and they may say no.
   But the catalog holds today's treatments only. The earliest antidepressant in it
   is from 1986, so a life in the 1950s to 1970s is offered no medicine for
   depression, where in reality there were older ones (tricyclics, MAOIs), and
-  past practices such as asylums are not modelled.
-- **Workplace and school discrimination** are not modelled beyond accommodations
+  past practices such as asylums are not modeled.
+- **Workplace and school discrimination** are not modeled beyond accommodations
   being refused where there is no law requiring them.
 - **Other people's care** runs a year at a time rather than week by week, and
   their clinicians do not appear in the player's own care team.

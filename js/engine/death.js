@@ -1,4 +1,4 @@
-// Mortality maths and the end of a life: the will, the estate and its tax,
+// Mortality math and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
 import { eraMortality } from './history.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -320,7 +320,7 @@ function lifeSummary(p, plan) {
     neverMoved: k.countriesLived === 1 && !(p.flags.visited ?? []).length, holidays: k.holidays ?? 0,
     surgeries: k.surgeries ?? 0, mood: p.stats.mood, health: p.stats.health,
     reigned: !!p.flags.reigned, abdicated: !!p.flags.abdicated, consort: p.royal?.by === 'marriage' && ['monarch', 'heir', 'royal'].includes(p.royal.rank),
-    bornTitled: p.royal?.by === 'birth', honoured: !!p.flags.honouredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
+    bornTitled: p.royal?.by === 'birth', honored: !!p.flags.honoredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
     marriedRoyal: !!p.flags.marriedRoyal, image: p.royal?.image ?? 0,
     topOffice: Math.max(0, p.politics?.tier ?? 0, ...(p.flags.offices ?? []).map((o) => o.tier)), yearsInOffice: k.yearsInOffice ?? 0,
     electionsWon: k.electionsWon ?? 0, electionsLost: k.electionsLost ?? 0, ruledAlone: !!p.flags.ruledAlone,

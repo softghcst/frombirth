@@ -16,7 +16,7 @@ import { book } from './ledger.js';
 import { addCondition, cureCondition } from './health.js';
 import { hire, endJob } from './career.js';
 import { registerEmployer, payAt, employer } from './employers.js';
-import { catalogue } from './university.js';
+import { catalog } from './university.js';
 import { makeNpc } from './npcFactory.js';
 import * as sp from './sports.js';
 import { familyPast, tickRelatives, parentsYear } from './sportsFamily.js';
@@ -410,7 +410,7 @@ function recruiting(state, a, e, rating) {
   const o = overall(e, p);
   if (o < 58 || rating < 6.4) return;
   const r = seeded(`recruit/${p.id}/${e.id}/${state.year}`);
-  const unis = catalogue(p.countryId).filter((u) => u.sport);
+  const unis = catalog(p.countryId).filter((u) => u.sport);
   if (!unis.length) return;
   const n = o >= 72 ? 3 : o >= 65 ? 2 : 1;
   const offers = r.shuffle(unis).slice(0, n).map((u) => ({ instId: u.id, name: u.name, fraction: o >= 74 ? 1 : o >= 66 ? 0.75 : 0.5 }));

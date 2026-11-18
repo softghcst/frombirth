@@ -1,7 +1,7 @@
 // Checks the avatar system. Run with: node tests/avatar.mjs
-//  - every part in the manifest is on disk, normalised, and has the ids the renderer uses
+//  - every part in the manifest is on disk, normalized, and has the ids the renderer uses
 //  - every hand-curated id names a real part
-//  - colour ids that have shipped are still present (so existing saves keep their colours)
+//  - color ids that have shipped are still present (so existing saves keep their colors)
 //  - saves from both earlier avatar systems, missing data and unknown ids all load to a complete, stable face
 //  - children are built only from what their parents were born with
 //  - portraits render at every age and in every situation, using only files that exist
@@ -76,7 +76,7 @@ const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).fl
 for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
 for (const h of AVATAR_MANIFEST.hair) if (!/baby/.test(h.id)) check(!!CUR.HAIR_TYPE[h.id], `hairstyle without a texture: ${h.id}`);
 
-// 3. Colours that saves store by id.
+// 3. Colors that saves store by id.
 const SHIPPED = {
   skin: ['porcelain', 'ivory', 'rose_beige', 'sand', 'golden', 'olive', 'tan', 'bronze', 'chestnut', 'umber', 'espresso', 'ebony'],
   eyeColor: ['dark_brown', 'brown', 'hazel', 'amber', 'green', 'blue', 'gray'],
@@ -120,19 +120,19 @@ for (let i = 0; i < 400; i++) {
 }
 check(coily / deep > 0.7, `deep skin tones should mostly have curly or coily hair (${coily}/${deep})`);
 for (let i = 0; i < 200; i++) {
-  const mum = randomAppearance(rng.int(0, 11), 'female');
+  const mom = randomAppearance(rng.int(0, 11), 'female');
   const dad = randomAppearance(rng.int(0, 11), 'male');
-  mum.style.hairDye = 'pink'; dad.style.outfit = 'outfit_03_suit';
-  const kid = ensureStyled(inheritAppearance(mum, dad), i % 2 ? 'female' : 'male');
+  mom.style.hairDye = 'pink'; dad.style.outfit = 'outfit_03_suit';
+  const kid = ensureStyled(inheritAppearance(mom, dad), i % 2 ? 'female' : 'male');
   valid(normalize(kid, `k${i}`), `child ${i}`);
   check(kid.style.hairDye == null, 'a parent\'s dye reached a child');
   const before = JSON.stringify(kid);
-  mum.style.hair = 'bald'; dad.inherited.skin = 'porcelain';
+  mom.style.hair = 'bald'; dad.inherited.skin = 'porcelain';
   check(before === JSON.stringify(kid), 'a child changed when a parent did');
   check(JSON.stringify(cloneAppearance(kid)) === before, 'clone is not a copy');
   // Surgery becomes the face: it shows, and children can take after it.
-  mum.inherited.tweaks = { eyeGap: 2, eyeSize: 2, eyeY: 2, noseSize: -2, lipSize: 2 };
-  check(inheritAppearance(mum, mum).inherited.tweaks.eyeGap === 2 && resolveLook(mum, 'm').tweaks.eyeGap === 2, 'reshaped features are not passed on');
+  mom.inherited.tweaks = { eyeGap: 2, eyeSize: 2, eyeY: 2, noseSize: -2, lipSize: 2 };
+  check(inheritAppearance(mom, mom).inherited.tweaks.eyeGap === 2 && resolveLook(mom, 'm').tweaks.eyeGap === 2, 'reshaped features are not passed on');
   check(normalize({ v: 3, inherited: {}, style: { tweaks: { eyeGap: 1 } } }, 'q').inherited.tweaks.eyeGap === 1, 'surgery from an earlier save was lost');
 }
 

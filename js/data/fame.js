@@ -1,5 +1,5 @@
 // Fame and the entertainment world: who can know a person, through what, from
-// when, and the fictional organisations, award bodies and media outlets of the
+// when, and the fictional organizations, award bodies and media outlets of the
 // game. Every name here is invented. GAMEPLAY CONFIGURATION: fees and audience
 // sizes are in base units and stylised, not industry figures.
 
@@ -9,7 +9,7 @@
  * weight: how much of the general public each audience is (for the headline figure).
  */
 export const AUDIENCES = {
-  theatre: { name: 'Theatre audiences', weight: 0.25 },
+  theater: { name: 'Theater audiences', weight: 0.25 },
   film: { name: 'Film audiences', weight: 0.9 },
   tv: { name: 'Television viewers', weight: 1 },
   music: { name: 'Music listeners', weight: 0.9 },
@@ -22,8 +22,8 @@ export const AUDIENCES = {
 
 /** Which audience a career track's work reaches. */
 export const AUDIENCE_OF = {
-  actor: 'film', child_actor: 'tv', mt_performer: 'theatre', voice: 'tv', stunts: 'film', casting: 'film', directing: 'film', production: 'film',
-  screenwriting: 'film', broadcast: 'tv', singer: 'music', orchestra: 'music', music_prod: 'music', dance: 'theatre', modelling: 'fashion',
+  actor: 'film', child_actor: 'tv', mt_performer: 'theater', voice: 'tv', stunts: 'film', casting: 'film', directing: 'film', production: 'film',
+  screenwriting: 'film', broadcast: 'tv', singer: 'music', orchestra: 'music', music_prod: 'music', dance: 'theater', modeling: 'fashion',
   athlete: 'sports', coaching: 'sports', author: 'literary', publishing: 'literary', journalist: 'public', influencer: 'digital', social_media: 'digital',
   fine_dining: 'public', fashion_design: 'fashion', editorial: 'fashion', photography: 'public', astronaut: 'public', political_staff: 'public',
 };
@@ -42,8 +42,8 @@ export const MEDIA_ERAS = {
 export const PRODUCTION_KINDS = {
   film: { name: 'Film', medium: 'film', audience: 'film', org: 'studio', weeks: 10, hours: 55, verb: 'filmed' },
   tv: { name: 'Television series', medium: 'tv', audience: 'tv', org: 'network', weeks: 22, hours: 45, verb: 'filmed' },
-  stage: { name: 'Stage play', medium: 'stage', audience: 'theatre', org: 'theatre', weeks: 30, hours: 34, verb: 'performed' },
-  musical: { name: 'Musical', medium: 'stage', audience: 'theatre', org: 'theatre', weeks: 36, hours: 38, verb: 'performed' },
+  stage: { name: 'Stage play', medium: 'stage', audience: 'theater', org: 'theater', weeks: 30, hours: 34, verb: 'performed' },
+  musical: { name: 'Musical', medium: 'stage', audience: 'theater', org: 'theater', weeks: 36, hours: 38, verb: 'performed' },
   voice: { name: 'Animation and voice work', medium: 'voice', audience: 'tv', org: 'studio', weeks: 4, hours: 20, verb: 'recorded' },
   commercial: { name: 'Commercial', medium: 'commercial', audience: 'public', org: 'studio', weeks: 1, hours: 30, verb: 'shot' },
 };
@@ -56,7 +56,7 @@ export const TIERS = {
   community: { name: 'Community', reach: 0.05, budget: 20000, fee: 0, field: 3, stage: true, minCredits: 0 },
   student: { name: 'Student and short film', reach: 0.04, budget: 15000, fee: 400, field: 4, screen: true, minCredits: 0 },
   indie: { name: 'Independent', reach: 0.25, budget: 1500000, fee: 18000, field: 8, screen: true, minCredits: 0 },
-  regional: { name: 'Regional theatre', reach: 0.15, budget: 400000, fee: 22000, field: 7, stage: true, minCredits: 0 },
+  regional: { name: 'Regional theater', reach: 0.15, budget: 400000, fee: 22000, field: 7, stage: true, minCredits: 0 },
   touring: { name: 'Touring company', reach: 0.3, budget: 2000000, fee: 38000, field: 9, stage: true, minCredits: 1 },
   network: { name: 'Network', reach: 0.6, budget: 4000000, fee: 60000, field: 12, screen: true, minCredits: 1 },
   studio: { name: 'Studio', reach: 0.75, budget: 40000000, fee: 120000, field: 16, screen: true, minCredits: 2 },
@@ -93,22 +93,22 @@ export const SKILLS_FOR = {
   commercial: { 'stats.charm': 0.6, 'talents.acting': 0.4 },
 };
 
-/** Organisations: what each kind is called. {C} city, {S} surname, {W} word. */
+/** Organizations: what each kind is called. {C} city, {S} surname, {W} word. */
 export const ORG_NAMES = {
   studio: ['{W} Pictures', '{W} Films', '{S} Brothers Pictures', '{C} Film Company', '{W} Studios'],
   network: ['{W} Television', 'Channel {N}', '{C} Broadcasting', '{W} Network'],
-  theatre: ['The {C} Playhouse', '{W} Theatre Company', 'The {S} Theatre', '{C} Repertory Company', 'The {W} Stage'],
-  community: ['{C} Community Players', 'The {C} Amateur Dramatic Society', '{W} Little Theatre'],
+  theater: ['The {C} Playhouse', '{W} Theater Company', 'The {S} Theater', '{C} Repertory Company', 'The {W} Stage'],
+  community: ['{C} Community Players', 'The {C} Amateur Dramatic Society', '{W} Little Theater'],
   agency: ['{S} Talent', '{W} Artists Agency', '{S} & {S2} Management', '{C} Talent Group'],
   outlet: ['The {C} {M}', '{W} {M}', 'Spotlight {M}', 'The {M}'],
 };
-export const ORG_WORDS = ['Silver Gate', 'Lantern', 'Meridian', 'Harbour Light', 'Bluebird', 'Crescent', 'Northwind', 'Marquee', 'Velvet Rope', 'Starling', 'Paper Moon', 'Ember'];
+export const ORG_WORDS = ['Silver Gate', 'Lantern', 'Meridian', 'Harbor Light', 'Bluebird', 'Crescent', 'Northwind', 'Marquee', 'Velvet Rope', 'Starling', 'Paper Moon', 'Ember'];
 export const OUTLET_WORDS = ['Herald', 'Gazette', 'Screen Weekly', 'Stage Door', 'Courier', 'Spotlight', 'Review', 'Chronicle'];
 
 /** Words for fictional titles: "{A} {B}", "The {B} of {C}", and others. Original, invented combinations. */
 export const TITLE_PARTS = {
   a: ['Silent', 'Golden', 'Last', 'Broken', 'Northern', 'Paper', 'Midnight', 'Second', 'Hidden', 'Borrowed', 'Electric', 'Quiet', 'Burning', 'Winter', 'Glass'],
-  b: ['Harbour', 'Kingdom', 'Summer', 'Letters', 'Orchard', 'Tide', 'Signal', 'Lanterns', 'Garden', 'Avenue', 'Crossing', 'Promise', 'Inheritance', 'Weather', 'Station'],
+  b: ['Harbor', 'Kingdom', 'Summer', 'Letters', 'Orchard', 'Tide', 'Signal', 'Lanterns', 'Garden', 'Avenue', 'Crossing', 'Promise', 'Inheritance', 'Weather', 'Station'],
   c: ['Small Hours', 'the Lost Coast', 'the Long Road', 'Saint Agnes', 'the Marsh', 'Blue Hill', 'the Old Mill', 'Fortune', 'the Tall Ships', 'Morning'],
 };
 export const GENRES = {
@@ -119,7 +119,7 @@ export const GENRES = {
   voice: ['animated series', 'animated film', 'video game', 'audiobook'],
   commercial: ['advertisement'],
 };
-export const CHARACTER_WORDS = ['the eldest sister', 'a widowed lighthouse keeper', 'the new teacher', 'a disgraced surgeon', 'the best friend', 'a travelling musician', 'the detective', 'a young heir', 'the landlady', 'a returning soldier', 'the mayor', 'a stubborn grandmother', 'the rival', 'a scientist', 'the chef'];
+export const CHARACTER_WORDS = ['the eldest sister', 'a widowed lighthouse keeper', 'the new teacher', 'a disgraced surgeon', 'the best friend', 'a traveling musician', 'the detective', 'a young heir', 'the landlady', 'a returning soldier', 'the mayor', 'a stubborn grandmother', 'the rival', 'a scientist', 'the chef'];
 
 /**
  * Award bodies. founded: the first year it exists. scope: 'national' (one per country, by the country's name)
@@ -139,8 +139,8 @@ export const AWARD_BODIES = [
       ['lead_musical', 'Best Lead Performance in a Musical', ['musical'], ['lead'], ['major_stage', 'touring']],
       ['support_stage', 'Best Supporting Performance on Stage', ['stage', 'musical'], ['supporting'], ['major_stage', 'touring']],
       ['best_musical', 'Best Musical', ['musical'], 'production', ['major_stage', 'touring']]] },
-  { id: 'curtain', name: 'Curtain Call Regional Theatre Awards', founded: 1972, scope: 'national', medium: 'stage',
-    categories: [['regional_lead', 'Outstanding Performance in Regional Theatre', ['stage', 'musical'], ['lead', 'supporting'], ['regional']],
+  { id: 'curtain', name: 'Curtain Call Regional Theater Awards', founded: 1972, scope: 'national', medium: 'stage',
+    categories: [['regional_lead', 'Outstanding Performance in Regional Theater', ['stage', 'musical'], ['lead', 'supporting'], ['regional']],
       ['regional_show', 'Outstanding Regional Production', ['stage', 'musical'], 'production', ['regional']]] },
 ];
 export const NOMINEES = 5;
@@ -150,7 +150,7 @@ export const ACCURACY = {
   verified: 'Reported fact',
   allegation: 'Allegation, not proven',
   speculation: 'Speculation',
-  rumor: 'Rumour',
+  rumor: 'Rumor',
   correction: 'Correction',
 };
 
@@ -167,7 +167,7 @@ export const PUBLICIST_FEE = 18000;
 // ---------- Music ----------
 
 export const MUSIC_GENRES = ['pop', 'rock', 'folk', 'hip-hop', 'R&B', 'electronic', 'jazz', 'country', 'indie', 'classical crossover', 'soul', 'metal'];
-export const BAND_WORDS = { a: ['Paper', 'Velvet', 'Northern', 'Midnight', 'Glass', 'Copper', 'Electric', 'Quiet', 'Wild', 'Silver', 'Hollow', 'Lucky'], b: ['Foxes', 'Lanterns', 'Tides', 'Satellites', 'Harbours', 'Ravens', 'Engines', 'Orchards', 'Strangers', 'Signals', 'Comets', 'Wolves'] };
+export const BAND_WORDS = { a: ['Paper', 'Velvet', 'Northern', 'Midnight', 'Glass', 'Copper', 'Electric', 'Quiet', 'Wild', 'Silver', 'Hollow', 'Lucky'], b: ['Foxes', 'Lanterns', 'Tides', 'Satellites', 'Harbors', 'Ravens', 'Engines', 'Orchards', 'Strangers', 'Signals', 'Comets', 'Wolves'] };
 export const SONG_WORDS = { a: ['Slow', 'Golden', 'Late', 'Paper', 'Borrowed', 'Burning', 'Little', 'Wide', 'Blue', 'Summer', 'Last', 'Neon'], b: ['Hearts', 'Rooms', 'Rivers', 'Lights', 'Letters', 'Roads', 'Mornings', 'Windows', 'Ghosts', 'Promises', 'Streets', 'Skies'] };
 /** Kinds of release: how many songs, and what recording costs (base units) without a label. */
 export const RELEASE_TYPES = { single: { name: 'Single', songs: 1, cost: 1500 }, ep: { name: 'EP', songs: 4, cost: 6000 }, album: { name: 'Album', songs: 10, cost: 18000 } };
@@ -175,7 +175,7 @@ export const RELEASE_TYPES = { single: { name: 'Single', songs: 1, cost: 1500 },
 export const VENUES = {
   bar: { name: 'Bars and pubs', capacity: 120, price: 10, cost: 300, fans: 0 },
   club: { name: 'Clubs', capacity: 500, price: 20, cost: 1800, fans: 4000 },
-  theatre: { name: 'Theatres and halls', capacity: 2500, price: 40, cost: 14000, fans: 40000 },
+  theater: { name: 'Theaters and halls', capacity: 2500, price: 40, cost: 14000, fans: 40000 },
   arena: { name: 'Arenas', capacity: 15000, price: 70, cost: 110000, fans: 400000 },
   stadium: { name: 'Stadiums', capacity: 55000, price: 90, cost: 500000, fans: 3000000 },
 };
@@ -188,14 +188,14 @@ export const MUSIC_AWARD = { id: 'disc', name: 'Silver Disc Awards', founded: 19
 
 // Sport is one system: engine/sports.js, with its data in data/sports.js (the World Games are there too).
 
-// ---------- Modelling ----------
+// ---------- Modeling ----------
 
 export const MODEL_AGENCY_NAMES = ['{W} Models', '{S} Management', '{C} Faces', '{W} Model Agency'];
 export const FASHION_HOUSES = ['Maison Verel', 'Atelier Corvane', 'Lisle & Marr', 'Ondine', 'Haversham', 'Studio Petrova', 'Calloway', 'Beaumarché'];
-export const MAGAZINES = ['Silhouette', 'Lustre', 'The Edit', 'Vantage', 'Modern Muse', 'Gloss'];
+export const MAGAZINES = ['Silhouette', 'Luster', 'The Edit', 'Vantage', 'Modern Muse', 'Gloss'];
 /** Kinds of booking: prestige (0–100), how hard it is to get, and where it can take place. */
 export const BOOKINGS = {
-  catalogue: { name: 'Catalogue shoot', prestige: 10, bar: 45 },
+  catalog: { name: 'Catalog shoot', prestige: 10, bar: 45 },
   ecommerce: { name: 'Online store shoot', prestige: 8, bar: 40 },
   editorial: { name: 'Magazine editorial', prestige: 40, bar: 62 },
   runway: { name: 'Runway show', prestige: 55, bar: 66, abroad: true },
@@ -212,7 +212,7 @@ export const BOOK_GENRES = ['literary fiction', 'crime', 'romance', 'fantasy', '
 export const BOOK_KINDS = { novel: { name: 'Novel', sessions: 4 }, nonfiction: { name: 'Non-fiction book', sessions: 3 }, poetry: { name: 'Poetry collection', sessions: 2 }, memoir: { name: 'Memoir', sessions: 2 } };
 export const PUBLISHER_NAMES = ['{W} Books', '{S} & {S2}', '{W} Press', '{C} House'];
 export const BOOK_WORDS = { a: ['The Quiet', 'A House of', 'The Long', 'Under the', 'The Last', 'All the', 'The Salt', 'Winter', 'The Glass', 'Small', 'The Borrowed', 'Before the', 'After the', 'The Hidden'],
-  b: ['Hours', 'Daughters', 'Rivers', 'Lanterns', 'Orchard', 'Shore', 'Letters', 'Country', 'Sons', 'Gardens', 'Weather', 'Harbour', 'Kingdoms', 'Maps'], c: ['Again', 'and After', 'Remembered', 'a Novel'] };
+  b: ['Hours', 'Daughters', 'Rivers', 'Lanterns', 'Orchard', 'Shore', 'Letters', 'Country', 'Sons', 'Gardens', 'Weather', 'Harbor', 'Kingdoms', 'Maps'], c: ['Again', 'and After', 'Remembered', 'a Novel'] };
 export const BOOK_DEAL = { royalty: [0.08, 0.15], unitValue: 4, selfShare: 0.6 };
 export const BOOK_AWARD = { id: 'lantern', name: 'Lantern Prize', founded: 1969, scope: 'national', medium: 'literary',
   categories: [['fiction', 'Fiction', ['novel']], ['nonfiction', 'Non-fiction', ['nonfiction', 'memoir']], ['debut', 'First Book', 'first']] };

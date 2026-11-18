@@ -17,7 +17,7 @@ const { makeNpc } = await import('../js/engine/npcFactory.js');
 const { audit: ledgerAudit } = await import('../js/engine/ledger.js');
 const { weeklyLoad } = await import('../js/engine/worklife.js');
 const { aid } = await import('../js/engine/admissions.js');
-const { profile: applicant, catalogue } = await import('../js/engine/university.js');
+const { profile: applicant, catalog } = await import('../js/engine/university.js');
 const { SPORTS_LIST, SPORTS, PLANS, INJURIES } = await import('../js/data/sports.js');
 const { ILLNESS_BY_ID } = await import('../js/data/illnesses.js');
 const { CATEGORIES } = await import('../js/data/money.js');
@@ -279,13 +279,13 @@ let soccerLife;
   check(!!committed, 'a strong high-school player in the United States is recruited');
   if (committed) {
     const p = P();
-    const inst = catalogue(p.countryId).find((u) => u.id === committed.instId);
+    const inst = catalog(p.countryId).find((u) => u.id === committed.instId);
     check(!!inst && inst.sport, 'the offer comes from a real university of the country that runs teams');
     const a = applicant(null, inst);
     check(a.athlete && a.athleticFraction === committed.fraction, 'the application carries the coach\'s backing and the offered share');
     const help = aid(a, inst, {}, 0.3);
     check(help.parts.some((x) => x.kind === 'athletic' && x.fraction === committed.fraction) || help.parts[0].fraction > committed.fraction, 'the scholarship is what the tuition is reduced by');
-    const other = catalogue(p.countryId).find((u) => u.sport && u.id !== committed.instId);
+    const other = catalog(p.countryId).find((u) => u.sport && u.id !== committed.instId);
     if (other) check(!applicant(null, other).athleticFraction, 'another university does not inherit the offer');
   }
   // Countries without university recruiting do not get offers.

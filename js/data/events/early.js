@@ -45,14 +45,14 @@ export default [
   },
   {
     id: 'supermarket_meltdown', category: 'infancy', ageRange: [2, 4], cooldown: 3, cast: { mother: 'mother' },
-    text: 'The sweets are at exactly your eye level. {mother} has said no.',
+    text: 'The candy is at exactly your eye level. {mother} has said no.',
     choices: [
-      { label: 'Lie down in the aisle and howl', outcomes: [any('A crowd gathers. {mother} carries you out under one arm, sweets left behind.', 'bad', rel('mother', -4), hid('crazy', 2), st('mood', -3))] },
+      { label: 'Lie down in the aisle and howl', outcomes: [any('A crowd gathers. {mother} carries you out under one arm, candy left behind.', 'bad', rel('mother', -4), hid('crazy', 2), st('mood', -3))] },
       { label: 'Ask again, very nicely', check: chk(0.35, { 'stats.charm': 0.7 }), outcomes: [
         ok('Big eyes, a "please", and a small hand on her sleeve. {mother} folds.', st('charm', 3), st('mood', 5)),
         bad('"I said no." You have learned that charm has limits.', st('mood', -2)),
       ] },
-      { label: 'Accept it and move on', outcomes: [any('You hold the trolley and say nothing. {mother} buys you one at the till anyway.', 'good', hid('discipline', 4), rel('mother', 3))] },
+      { label: 'Accept it and move on', outcomes: [any('You hold the shopping cart and say nothing. {mother} buys you one at the till anyway.', 'good', hid('discipline', 4), rel('mother', 3))] },
     ],
   },
   {
@@ -80,8 +80,8 @@ export default [
 
   // ---------- Childhood ----------
   {
-    id: 'bike_without_stabilisers', category: 'childhood', ageRange: [5, 8], once: true, weight: 2,
-    text: 'The stabilizers are off. The pavement stretches away downhill.',
+    id: 'bike_without_stabilizers', category: 'childhood', ageRange: [5, 8], once: true, weight: 2,
+    text: 'The stabilizers are off. The sidewalk stretches away downhill.',
     choices: [
       { label: 'Push off and pedal', check: chk(0.55, { 'talents.sports': 0.6 }), outcomes: [
         ok('Wobble, wobble, and then you are simply riding. You do not stop until dark.', tal('sports', 4), st('mood', 8)),
@@ -98,7 +98,7 @@ export default [
       { label: 'Be the best tree anyone has seen', outcomes: [any('You sway. You rustle. A parent in the third row is seen to wipe an eye.', 'good', tal('acting', 4), hid('discipline', 2))] },
       { label: 'Add a line of your own on the night', check: chk(0.5, { 'stats.charm': 0.5, 'talents.acting': 0.4 }), outcomes: [
         ok('"I have seen things," says the tree. It gets the biggest laugh of the show.', tal('acting', 5), st('charm', 2)),
-        bad('You speak over the lead\'s big moment. The teacher has a word afterwards.', st('mood', -4), gpa(-0.05)),
+        bad('You speak over the lead\'s big moment. The teacher has a word afterward.', st('mood', -4), gpa(-0.05)),
       ] },
       { label: 'Ask for a bigger part', check: chk(0.3, { 'stats.charm': 0.6 }), outcomes: [
         ok('The teacher makes you Second Villager, with a line and a hat.', tal('acting', 3), st('mood', 4)),
@@ -112,7 +112,7 @@ export default [
     choices: [
       { label: 'Spend it all today', outcomes: [any('It is everything you hoped for, for nearly a week.', 'neutral', st('mood', 5), hid('discipline', -2))] },
       { label: 'Keep saving', outcomes: [any('The jar gets heavier. So do you, with pride.', 'good', cash(10), hid('discipline', 4))] },
-      { label: 'Buy sweets and sell them at school', check: chk(0.5, { 'stats.intellect': 0.4, 'stats.charm': 0.4 }), outcomes: [
+      { label: 'Buy candy and sell them at school', check: chk(0.5, { 'stats.intellect': 0.4, 'stats.charm': 0.4 }), outcomes: [
         ok('You double your money by Friday. A teacher shuts the operation down on Monday.', cash(20), st('intellect', 2), tal('crime', 1)),
         bad('You eat most of the stock yourself.', cash(-20), st('health', -1)),
       ] },
@@ -124,7 +124,7 @@ export default [
     choices: [
       { label: 'Tell ghost stories', outcomes: [any('Yours is so good that neither of you sleeps. A triumph, in its way.', 'good', rel('pal', 6), tal('acting', 2))] },
       { label: 'Raid the kitchen', check: chk(0.55, { 'talents.crime': 0.5 }), outcomes: [
-        ok('A whole packet of biscuits, eaten under a duvet by torchlight.', rel('pal', 5), st('mood', 4)),
+        ok('A whole packet of cookies, eaten under a duvet by torchlight.', rel('pal', 5), st('mood', 4)),
         bad('The fourth stair creaks. A parent is waiting at the bottom.', rel('pal', 2), st('mood', -2)),
       ] },
       { label: 'Actually go to sleep', outcomes: [any('{pal} is disappointed, but you are the only one awake for pancakes.', 'neutral', st('health', 1), rel('pal', -1))] },
@@ -165,7 +165,7 @@ export default [
         bad('What you say makes no sense at all. Take fourteen.', perf(-5), st('mood', -4)),
       ] },
       { label: 'Ask for the line', outcomes: [any('Someone calls it from the dark. You say it perfectly. Nobody minds; it happens to grown-ups too.', 'neutral', tal('acting', 1), hid('discipline', 2))] },
-      { label: 'Burst into tears', outcomes: [any('Everything stops for twenty minutes. A kind woman from wardrobe brings you a biscuit.', 'bad', perf(-6), st('mood', -5))] },
+      { label: 'Burst into tears', outcomes: [any('Everything stops for twenty minutes. A kind woman from wardrobe brings you a cookie.', 'bad', perf(-6), st('mood', -5))] },
     ],
   },
   {
@@ -181,7 +181,7 @@ export default [
     ],
   },
   {
-    id: 'recognised_at_school', category: 'on set', ageRange: [6, 17], cooldown: 5, requires: [onSet, need('career.level', '>=', 1)],
+    id: 'recognized_at_school', category: 'on set', ageRange: [6, 17], cooldown: 5, requires: [onSet, need('career.level', '>=', 1)],
     text: 'Someone at school has seen you on television. By lunchtime the whole playground is doing your line at you.',
     choices: [
       { label: 'Laugh along and do the line back', outcomes: [any('You do it properly, with the face. They love it. It gets old by Thursday, for them and for you.', 'good', st('charm', 3), followers(200), st('mood', 3))] },

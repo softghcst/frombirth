@@ -74,7 +74,7 @@ export async function takeHoliday(api) {
   const c = country();
   const family = fun.companions();
   const kind = await pickModal({
-    title: 'Take a holiday',
+    title: 'Take a vacation',
     body: `One a year. You have ${fmtMoney(player().finance.cash, c)}.`,
     options: fun.holidayKinds().map((k) => ({ value: k.id, label: k.name, sub: k.blurb })),
   });
@@ -93,7 +93,7 @@ export async function takeHoliday(api) {
     let purpose = 'holiday';
     if (!move.rightToLive(countryId, player()) || d.family.length) {
       purpose = await pickModal({ title: 'What is the trip for?', options: [
-        { value: 'holiday', label: 'A holiday', sub: 'Rest, and see the place.' },
+        { value: 'holiday', label: 'A vacation', sub: 'Rest, and see the place.' },
         ...(d.family.length ? [{ value: 'family', label: `To see ${d.family.join(', ')}`, sub: 'Most of the two weeks with them. Brings you closer.' }] : []),
         ...(move.rightToLive(countryId, player()) ? [] : [{ value: 'scouting', label: 'To look, with a move in mind', sub: 'Less of a rest. Helps a later application to live there.' }]),
       ] });

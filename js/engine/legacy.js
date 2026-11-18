@@ -11,7 +11,7 @@ import { inheritStanding } from './royalty.js';
 import { uid, clamp, theCountry } from '../util.js';
 import { store } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { SCHOOL_STAGES, PROGRAMMES } from '../data/schools.js';
+import { SCHOOL_STAGES, PROGRAMS } from '../data/schools.js';
 import { ensureLife } from './npcLives.js';
 import { takeOverJob } from './career.js';
 import { ensure as ensureSchool } from './schooling.js';
@@ -68,11 +68,11 @@ function schooling(h, atHome) {
     if (e.schoolId) edu.joinSchoolId = e.schoolId;
     return edu;
   }
-  if (e.yearsLeft > 0 && PROGRAMMES[e.stage]) {
+  if (e.yearsLeft > 0 && PROGRAMS[e.stage]) {
     return Object.assign(edu, { stage: e.stage, enrolled: true,
-      yearInStage: Math.max(0, PROGRAMMES[e.stage].years - e.yearsLeft),
+      yearInStage: Math.max(0, PROGRAMS[e.stage].years - e.yearsLeft),
       majorId: e.stage === 'apprenticeship' ? e.trade : e.majorId,
-      funding: PROGRAMMES[e.stage].tuition ? 'loan' : null, housing: atHome ? 'home' : 'dorm' });
+      funding: PROGRAMS[e.stage].tuition ? 'loan' : null, housing: atHome ? 'home' : 'dorm' });
   }
   if (!degrees.some((d) => d.type === 'high')) degrees.unshift({ type: 'high', gpa, age: 18, award: leaving });
   edu.stage = degrees[degrees.length - 1].type;
@@ -269,7 +269,7 @@ export function continueAs(npcId) {
 
   const entry = (text, tone = 'neutral') => ({ age: h.age, text, kind: 'system', tone });
   const next = {
-    schemaVersion: SCHEMA_VERSION, slotId: uid('life'), createdAt: Date.now(), updatedAt: Date.now(), year: old.year,
+    schemaVersion: SCHEMA_VERSION, spelling: 'us', slotId: uid('life'), createdAt: Date.now(), updatedAt: Date.now(), year: old.year,
     player, npcs, journal: pastEntries(h), market: old.market, eventHistory: [], pendingEvents: [],
     rngSeed: rng.state(), settings: old.settings ?? { theme: 'auto' },
   };
@@ -341,7 +341,7 @@ export function continueAs(npcId) {
   carryOver(old, next, npcId, ancestor.id);
   if (old.schools) next.schools = old.schools;
   if (old.universities) next.universities = old.universities;
-  if (player.education.enrolled && !PROGRAMMES[player.education.stage]) ensureSchool();
+  if (player.education.enrolled && !PROGRAMS[player.education.stage]) ensureSchool();
 
   const c = COUNTRIES[player.countryId];
   next.journal.push(

@@ -126,7 +126,7 @@ section(`catalogs: ${CONDITIONS.length} conditions, ${MEDICATIONS.length} medici
   care.seekAssessment('mental', care.facilitiesHere().find((x) => x.defId === 'primary').id, 'gp');
   until(() => R.healthOf().assessments.some((x) => x.outcome === 'diagnosed'));
   const ids = R.activeDiagnoses().map((d) => d.conditionId).sort();
-  check(ids.includes('mdd') || ids.includes('gad'), `co-occurring conditions are recognised (got ${ids.join(',')})`);
+  check(ids.includes('mdd') || ids.includes('gad'), `co-occurring conditions are recognized (got ${ids.join(',')})`);
   check(new Set(R.healthOf().conditions.map((c) => c.id)).size === R.healthOf().conditions.length, 'each condition has its own record');
 
   // Too short to call it: a review rather than a diagnosis.
@@ -136,12 +136,12 @@ section(`catalogs: ${CONDITIONS.length} conditions, ${MEDICATIONS.length} medici
   until(() => R.healthOf().assessments.length);
   check(R.healthOf().assessments[0].outcome === 'review', 'symptoms that are too recent get a review, not a diagnosis');
 
-  // BPD is out of a GP's scope: referral, never a GP diagnosis. Bipolar is not BPD.
+  // BPD is out of a primary care doctor's scope: referral, never a primary care doctor diagnosis. Bipolar is not BPD.
   p = adult(24);
   living('bpd', 60, 60);
   care.seekAssessment('mental', care.facilitiesHere().find((x) => x.defId === 'primary').id, 'gp');
   until(() => R.healthOf().assessments.length);
-  check(R.healthOf().assessments[0].outcome === 'referred' && !R.isDiagnosed('bpd') && !R.isDiagnosed('bipolar_1'), 'a GP refers BPD on, and diagnoses neither BPD nor bipolar disorder');
+  check(R.healthOf().assessments[0].outcome === 'referred' && !R.isDiagnosed('bpd') && !R.isDiagnosed('bipolar_1'), 'a primary care doctor refers BPD on, and diagnoses neither BPD nor bipolar disorder');
 
   // Bipolar disorder seen only when low looks like depression; a high episode revises it, and the old record stays.
   p = adult(27);
@@ -170,7 +170,7 @@ let bpdState;
   const p = adult(24);
   p.npcIds.push(...[makeNpc({ role: 'partner', countryId: 'uk', age: 25, relationship: 70 })].map((n) => { store.state.npcs[n.id] = n; return n.id; }));
   living('bpd', 60, 62);
-  // GP, then referral, then a psychiatrist.
+  // primary care doctor, then referral, then a psychiatrist.
   care.seekAssessment('mental', care.facilitiesHere().find((x) => x.defId === 'primary').id, 'gp');
   until(() => R.healthOf().assessments.length);
   const opt = care.serviceOptions('mental').find((o) => o.profession === 'psychiatrist' && !o.referral);
@@ -185,7 +185,7 @@ let bpdState;
   // An eligible DBT provider: DBT-trained.
   const ind = ther.findProviders('dbt', 'bpd').find((x) => x.ok);
   check(ind && store.state.npcs[ind.providerId].flags.clinician.dbt, 'the individual DBT therapist is DBT-trained');
-  const notDbt = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'private'), 'counsellor');
+  const notDbt = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'private'), 'counselor');
   check(!rules.canOffer('dbt', 'bpd', notDbt).ok, 'someone without DBT training cannot deliver DBT');
   const r1 = ther.startTherapy({ therapyId: 'dbt', facilityId: ind.facilityId, providerId: ind.providerId, dxId: dx.id });
   const grp = ther.findProviders('dbt_group', 'bpd').find((x) => x.ok);
@@ -220,7 +220,7 @@ let bpdState;
   const love = Object.values(store.state.npcs).find((n) => n.role === 'partner');
   const ev = getEvent('disagreement_partner');
   const states = choiceStates(ev, { love: love.id });
-  check(states[0].enabled && states[1].enabled, 'practised skills open skill-informed responses in a disagreement');
+  check(states[0].enabled && states[1].enabled, 'practiced skills open skill-informed responses in a disagreement');
   const lessSkilled = { ...h.skills }; h.skills.interpersonal = 5;
   check(!choiceStates(ev, { love: love.id })[0].enabled, 'without the practice, that response is not offered');
   h.skills.interpersonal = lessSkilled.interpersonal;
@@ -258,7 +258,7 @@ section('DBT in daily life: skills shape choices, sessions use real events, setb
   // Eligibility.
   const psychologist = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'private'), 'psychologist');
   check(!rules.canPrescribe({ medId: 'escitalopram', conditionId: 'mdd', prescriber: psychologist }).ok, 'a psychologist cannot prescribe');
-  check(rules.canPrescribe({ medId: 'escitalopram', conditionId: 'mdd', prescriber: gp }).ok, 'a GP can prescribe a first-line antidepressant for diagnosed depression');
+  check(rules.canPrescribe({ medId: 'escitalopram', conditionId: 'mdd', prescriber: gp }).ok, 'a primary care doctor can prescribe a first-line antidepressant for diagnosed depression');
   check(!rules.canPrescribe({ medId: 'lithium', conditionId: 'mdd', prescriber: gp }).ok, 'a medicine is refused for a condition it is not used for');
   check(!rules.canPrescribe({ medId: 'escitalopram', conditionId: 'gad', prescriber: gp }).ok, 'nothing is prescribed for an undiagnosed condition');
   // Through the clinician: a proposal, then a choice.
@@ -332,10 +332,10 @@ section('medication: eligible prescribers, clinician proposals, gradual benefit,
   check(!rules.canPrescribe({ medId: 'sertraline', conditionId: 'bipolar_1', prescriber: psych }).ok, 'an antidepressant is not prescribed for bipolar disorder');
   const rec2 = living('mdd', 30, 50);
   R.healthOf().diagnoses.push({ id: 'dx_mdd2', conditionId: 'mdd', underlyingId: rec2.id, status: 'active', wk: now(), providerId: psych.id, name: 'x', history: [] });
-  check(/mood stabiliser/.test(rules.canPrescribe({ medId: 'sertraline', conditionId: 'mdd', prescriber: psych }).why), 'with bipolar disorder an antidepressant alone is refused');
+  check(/mood stabilizer/.test(rules.canPrescribe({ medId: 'sertraline', conditionId: 'mdd', prescriber: psych }).why), 'with bipolar disorder an antidepressant alone is refused');
   const li = meds.startTrial({ medId: 'lithium', dxId: 'dx_bp', prescriberId: psych.id });
   check(li.ok && R.healthOf().appointments.some((a) => a.kind === 'monitoring' && a.ref === li.trial.id), 'lithium starts with monitoring booked');
-  check(rules.canPrescribe({ medId: 'sertraline', conditionId: 'mdd', prescriber: psych }).ok, 'alongside a mood stabiliser, a psychiatrist may consider it');
+  check(rules.canPrescribe({ medId: 'sertraline', conditionId: 'mdd', prescriber: psych }).ok, 'alongside a mood stabilizer, a psychiatrist may consider it');
   // Monitoring is enforced: overdue checks put the prescription under review.
   li.trial.lastMonitorWk = now() - 40; li.trial.monitorMissed = 2;
   check(meds.monitoringOverdue(li.trial), 'overdue monitoring is noticed');
@@ -348,13 +348,13 @@ section('medication: eligible prescribers, clinician proposals, gradual benefit,
   // ADHD: age, prescriber, heart.
   p = adult(5);
   const ad = living('adhd', 100, 50);
-  const paed = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'hospital'), 'paediatrician');
+  const paed = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'hospital'), 'pediatrician');
   R.healthOf().diagnoses.push({ id: 'dx_adhd', conditionId: 'adhd', underlyingId: ad.id, status: 'active', wk: now(), providerId: paed.id, name: 'ADHD', history: [] });
   check(!rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: paed }).ok, 'no stimulant at five');
   p.age = 9;
-  check(rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: paed }).ok, 'a paediatrician may prescribe for a child old enough');
+  check(rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: paed }).ok, 'a pediatrician may prescribe for a child old enough');
   const gpDoc = care.clinicianAt(care.facilitiesHere().find((x) => x.defId === 'primary'), 'gp');
-  check(!rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: gpDoc }).ok, 'a GP does not start ADHD medicine');
+  check(!rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: gpDoc }).ok, 'a primary care doctor does not start ADHD medicine');
   p.conditions.push({ id: 'heart_disease', name: 'heart disease' });
   check(!rules.canPrescribe({ medId: 'methylphenidate', conditionId: 'adhd', prescriber: paed }).ok, 'a heart condition needs a specialist opinion first');
   // History: no escitalopram before it existed.
@@ -424,7 +424,7 @@ section('disability and accessibility: needs, devices, home adaptations, school 
   check(JSON.stringify(gen.founderGenome('mother_x', 'female')) === JSON.stringify(m), 'a genome is the same every time it is worked out');
   const kids = Array.from({ length: 4000 }, (_, i) => gen.childGenome(m, f, `kid_${i}`, i % 2 ? 'male' : 'female'));
   const mean = kids.reduce((s, k) => s + k.g.neurodev, 0) / kids.length;
-  check(Math.abs(mean - (m.g.neurodev + f.g.neurodev) / 2) < 0.06, 'polygenic values centre on the parents\' average');
+  check(Math.abs(mean - (m.g.neurodev + f.g.neurodev) / 2) < 0.06, 'polygenic values center on the parents\' average');
   // Single-gene rules.
   const carrierM = { ...m, a: { ...m.a, cf: [1, 0], f8: [1, 0], hd: [0, 0] }, mt: { lhon: 0 } };
   const carrierF = { ...f, a: { ...f.a, cf: [1, 0], f8: [0], hd: [1, 0] }, mt: { lhon: 1 } };
@@ -435,8 +435,8 @@ section('disability and accessibility: needs, devices, home adaptations, school 
   const hd = share((k) => (k.a.hd ?? []).some(Boolean));
   check(hd > 0.45 && hd < 0.55, `one parent with a dominant variant: about half inherit it (${hd.toFixed(2)})`);
   const sons = born.filter((k) => k.sex === 'male'); const daughters = born.filter((k) => k.sex === 'female');
-  const haemSons = sons.filter((k) => gen.affected(k, 'f8')).length / sons.length;
-  check(haemSons > 0.44 && haemSons < 0.56 && daughters.every((k) => !gen.affected(k, 'f8')), `X-linked: half the sons of a carrier mother, none of the daughters with an unaffected father (${haemSons.toFixed(2)})`);
+  const hemSons = sons.filter((k) => gen.affected(k, 'f8')).length / sons.length;
+  check(hemSons > 0.44 && hemSons < 0.56 && daughters.every((k) => !gen.affected(k, 'f8')), `X-linked: half the sons of a carrier mother, none of the daughters with an unaffected father (${hemSons.toFixed(2)})`);
   check(born.every((k) => !k.mt.lhon), 'mitochondrial variants come from the mother, not the father');
   // Complex conditions: not copied, and not absent without affected parents.
   const parents = gen.founderGenome('p', 'female');
@@ -483,11 +483,11 @@ section('heredity: averages, dominant, recessive, X-linked and mitochondrial pat
   check(!JSON.stringify(story.legacySummary(p)).match(/therapy|trial|session|escitalopram|note/i), 'what passes down never includes therapy or prescriptions');
   check(story.publicMilestones(p.milestones).every((m) => !m.private), 'private milestones stay out of the obituary and the title screen');
   // Family history: what relatives have shared, and what is not known.
-  const mum = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.gender === 'female');
-  mum.age = 68;
-  mum.health = { v: 1, last: mum.age, conds: [{ id: 'bipolar_1', age: 30, diagnosed: true, shared: true }, { id: 'gad', age: 40, diagnosed: true, shared: false }] };
+  const mom = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.gender === 'female');
+  mom.age = 68;
+  mom.health = { v: 1, last: mom.age, conds: [{ id: 'bipolar_1', age: 30, diagnosed: true, shared: true }, { id: 'gad', age: 40, diagnosed: true, shared: false }] };
   const fh = story.familyHistory(p);
-  const row = fh.rows.find((r) => r.npcId === mum.id);
+  const row = fh.rows.find((r) => r.npcId === mom.id);
   check(row?.conds.some((c) => c.id === 'bipolar_1') && !row.conds.some((c) => c.id === 'gad'), 'family history shows what a relative shared, and nothing they did not');
   check(fh.screening.some((s) => s.condition === 'bipolar_1' && s.kind === 'awareness'), 'a family history can suggest an earlier assessment, without predicting anything');
   // Telling someone is a choice, one person at a time.
@@ -509,7 +509,7 @@ section('privacy: private by default, shared by choice, descendants see conditio
   const { nameIn } = await import('../js/data/health/conditions.js');
   check(nameIn(CONDITION_BY_ID.mdd, 1800) === 'melancholia' && nameIn(CONDITION_BY_ID.mdd, 2020) === 'major depressive disorder', 'the period has its own words');
   store.state.year = 2010;
-  check(care.facilitiesHere().some((f) => f.defId === 'dbt') && rules.therapyAvailable(THERAPY_BY_ID.dbt), 'by 2010 there is a DBT programme');
+  check(care.facilitiesHere().some((f) => f.defId === 'dbt') && rules.therapyAvailable(THERAPY_BY_ID.dbt), 'by 2010 there is a DBT program');
   void rec;
 }
 section('history: services, therapies, medicines and diagnoses only in their own time');
@@ -578,7 +578,7 @@ section('long lives: conditions are part of some lives, the calendar and the led
   check(careWaiting() === null || careWaiting().decision === false, 'an appointment weeks away is not urgent');
   appt.wk = now();
   check(careWaiting()?.decision === false && /this week/.test(careWaiting().text), 'an appointment this week is noticed');
-  appt.status = 'cancelled';
+  appt.status = 'canceled';
   // Asking about medicine is answered straight away, as a decision for the player.
   const said = meds.discussMedication('dx_n');
   check(said.ok && R.healthOf().proposals.some((x) => x.status === 'open'), 'asking a prescriber about medicine is answered in the same year, straight away');
@@ -627,13 +627,13 @@ section('everyday play: notices for waiting decisions, telling a partner, recove
   const { addCondition } = await import('../js/engine/health.js');
   const { checkUp } = await import('../js/engine/medical.js');
   const sys = await import('../js/engine/systems.js');
-  // A scene that finds high blood pressure: recorded by a GP, in the health record, not the old list.
+  // A scene that finds high blood pressure: recorded by a primary care doctor, in the health record, not the old list.
   let p = adult(52);
   addCondition('high_bp');
-  check(R.isDiagnosed('hypertension') && !p.conditions.some((c) => c.id === 'high_bp'), 'high blood pressure from a scene is diagnosed by a GP, in the health record');
+  check(R.isDiagnosed('hypertension') && !p.conditions.some((c) => c.id === 'high_bp'), 'high blood pressure from a scene is diagnosed by a primary care doctor, in the health record');
   const gp = store.state.npcs[R.activeDiagnoses()[0].providerId];
-  check(gp?.flags.clinician.profession === 'gp' && rules.canPrescribe({ medId: 'amlodipine', conditionId: 'hypertension', prescriber: gp }).ok, 'and the GP can prescribe for it');
-  check(care.prescriberFor('hypertension')?.id === gp.id, 'the GP who found it is the one who prescribes');
+  check(gp?.flags.clinician.profession === 'gp' && rules.canPrescribe({ medId: 'amlodipine', conditionId: 'hypertension', prescriber: gp }).ok, 'and the primary care doctor can prescribe for it');
+  check(care.prescriberFor('hypertension')?.id === gp.id, 'the primary care doctor who found it is the one who prescribes');
   // Untreated, it costs health over the years; treated, much less.
   const untreated = adult(55); living('hypertension', 60, 60); for (let i = 0; i < 10; i++) course.weekCourse(untreated);
   const h0 = untreated.stats.health; course.yearBody(untreated); const lossUntreated = h0 - untreated.stats.health;
@@ -681,7 +681,7 @@ section('everyday play: notices for waiting decisions, telling a partner, recove
   check(cancer.severity > s0, 'untreated cancer grows');
   care.seekAssessment('body', care.facilitiesHere().find((x) => x.defId === 'primary').id, 'gp');
   until(() => R.healthOf().assessments.length);
-  check(R.healthOf().assessments[0].outcome === 'referred' && R.healthOf().referrals.some((x) => x.profession === 'oncologist'), 'a GP refers suspected cancer to an oncologist');
+  check(R.healthOf().assessments[0].outcome === 'referred' && R.healthOf().referrals.some((x) => x.profession === 'oncologist'), 'a primary care doctor refers suspected cancer to an oncologist');
   const onc = care.serviceOptions('body').find((o) => o.profession === 'oncologist' && !o.referral);
   care.seekAssessment('body', onc.facilityId, 'oncologist');
   until(() => R.isDiagnosed('cancer'), 60);
@@ -718,13 +718,13 @@ section('everyday play: notices for waiting decisions, telling a partner, recove
   sys.cover(p);
   // Someone close: getting care for what they have shared, and the player can help.
   p = adult(35);
-  const mum = Object.values(store.state.npcs).find((n) => n.role === 'parent');
-  mum.age = 62; mum.meters.relationship = 70;
-  mum.health = { v: 1, last: 61, conds: [{ id: 'mdd', age: 60, diagnosed: true, shared: true }, { id: 'gad', age: 55, diagnosed: true, shared: false }] };
-  check(story.npcCareActions(mum).some((a) => a.id === 'encourageCare'), 'for someone who shared an untreated condition, the player can encourage them');
-  check(story.npcHealthLines(mum).length === 1 && /depress/i.test(story.npcHealthLines(mum)[0][0]), 'their profile shows only what they shared');
-  for (let i = 0; i < 10 && !mum.health.conds[0].care; i++) story.goWithCare(mum.id) && (store.state.year += 1, mum.flags.goWith = null);
-  check(mum.health.conds[0].care?.v === 2, 'going with them can turn into care of their own');
+  const mom = Object.values(store.state.npcs).find((n) => n.role === 'parent');
+  mom.age = 62; mom.meters.relationship = 70;
+  mom.health = { v: 1, last: 61, conds: [{ id: 'mdd', age: 60, diagnosed: true, shared: true }, { id: 'gad', age: 55, diagnosed: true, shared: false }] };
+  check(story.npcCareActions(mom).some((a) => a.id === 'encourageCare'), 'for someone who shared an untreated condition, the player can encourage them');
+  check(story.npcHealthLines(mom).length === 1 && /depress/i.test(story.npcHealthLines(mom)[0][0]), 'their profile shows only what they shared');
+  for (let i = 0; i < 10 && !mom.health.conds[0].care; i++) story.goWithCare(mom.id) && (store.state.year += 1, mom.flags.goWith = null);
+  check(mom.health.conds[0].care?.v === 2, 'going with them can turn into care of their own');
 }
 section('physical conditions, hospital stays, rehabilitation goals, cancer care, insurance claims and appeals, care for family members');
 

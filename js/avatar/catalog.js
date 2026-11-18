@@ -1,5 +1,5 @@
-// The parts catalogue: every piece of avatar artwork (from the generated
-// manifest, js/avatarManifest.js) and every colour (js/avatarPalettes.js),
+// The parts catalog: every piece of avatar artwork (from the generated
+// manifest, js/avatarManifest.js) and every color (js/avatarPalettes.js),
 // grouped by feature, plus the rules for turning whatever is in a save into
 // a complete appearance.
 //
@@ -108,7 +108,7 @@ const OLD_HAIRSTYLE = {
   long_straight: 'hair_girl_long_02', long_wavy: 'hair_girl_long_01', long_curly: 'hair_girl_long_07', ponytail: 'hair_boy_updo_11_high_ponytail', bun: 'hair_updo_03', puffs: 'hair_updo_09',
 };
 const OLD_GLASSES = { round: 'glasses_1', square: 'glasses_3', cat_eye: 'glasses_2', aviator: 'glasses_4' };
-const OLD_BEARD = { stubble: 'facial_hair_06_stubble', moustache: 'facial_hair_02_handlebar_mustache', goatee: 'facial_hair_03_pointed_goatee',
+const OLD_BEARD = { stubble: 'facial_hair_06_stubble', mustache: 'facial_hair_02_handlebar_mustache', goatee: 'facial_hair_03_pointed_goatee',
   beard: 'facial_hair_01_shaped_beard', full_beard: 'facial_hair_04_bushy_full_beard' };
 const OLD_MAKEUP = { soft: 'makeup_01_soft_blush', defined: 'makeup_02_winged_eyeliner', bold: 'makeup_12_smoky_wing' };
 /** An old shape id always lands on the same new part, so relatives who shared it still do. */
@@ -162,12 +162,12 @@ export function normalize(a, seed = 'x') {
 /** How deep a character's inherited skin tone is, 0 (lightest) upwards. */
 export const skinDepth = (appearance, seed) => part('skin', normalize(appearance, seed).inherited.skin).depth;
 
-/** The colour the hair shows as today: the dye if there is one, else the natural colour. */
+/** The color the hair shows as today: the dye if there is one, else the natural color. */
 export const hairHex = (appearance) => (INDEX.anyHair[appearance.style.hairDye] ?? INDEX.anyHair[appearance.inherited.hairColor]).hex;
 
 /**
  * Everything the renderer needs, from an appearance: which part fills each
- * layer, and the colours. Baby hair and baby clothes are chosen from the
+ * layer, and the colors. Baby hair and baby clothes are chosen from the
  * seed and the hair texture, so a baby grows into the same person.
  */
 export function resolveLook(appearance, seed = 'x', gender) {

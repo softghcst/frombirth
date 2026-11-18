@@ -140,7 +140,7 @@ export const canHaveSurgery = () => player().age >= 18 && !player().legal.incarc
 
 /**
  * @param {object} [tweaks] for 'reshape': the proportions asked for (eye spacing, sizes).
- *   They become the patient's face, and children born afterwards can take after it.
+ *   They become the patient's face, and children born afterward can take after it.
  */
 export function haveSurgery(procedureId, surgeonId, tweaks) {
   const p = player();

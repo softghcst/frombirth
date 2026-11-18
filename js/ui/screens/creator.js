@@ -25,9 +25,9 @@ function picker(key, label, autoLabel, options) {
       <div class="picker" data-pick="${key}" role="radiogroup" aria-label="${esc(label)}">
         <button type="button" class="pick on" data-value="" role="radio" aria-checked="true">${esc(autoLabel)}</button>
         ${options.map((o) => `
-          <button type="button" class="pick ${o.colour ? 'swatch' : ''}" data-value="${esc(o.value)}" role="radio"
-            aria-checked="false" aria-label="${esc(o.label)}" ${o.colour ? `style="background:${o.colour}"` : ''}>
-            ${o.colour ? '' : esc(o.label)}</button>`).join('')}
+          <button type="button" class="pick ${o.color ? 'swatch' : ''}" data-value="${esc(o.value)}" role="radio"
+            aria-checked="false" aria-label="${esc(o.label)}" ${o.color ? `style="background:${o.color}"` : ''}>
+            ${o.color ? '' : esc(o.label)}</button>`).join('')}
       </div>
     </div>`;
 }

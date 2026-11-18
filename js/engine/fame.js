@@ -4,11 +4,11 @@
 // another's record of what was actually done.
 //
 //   p.fame = {
-//     audiences: { theatre, film, tv, music, sports, literary, fashion, digital, public },  0–100 among each, at home
+//     audiences: { theater, film, tv, music, sports, literary, fashion, digital, public },  0–100 among each, at home
 //     regions:   { countryId: 0–100 },   how known they are in each country, all audiences together
 //     attention: 0–100   the present noise; falls quickly without new work
 //     legacy:    0–100   what lasts; rises with real achievements, falls slowly, never below what was earned
-//     favour:    0–100   how warmly the public regards them (50 is neutral)
+//     favor:    0–100   how warmly the public regards them (50 is neutral)
 //     credibility: 0–100 how the industry rates their work
 //     family:    0–100   recognition that comes only from relatives (a famous parent)
 //     privacy:   'open' | 'guarded' | 'private'
@@ -31,7 +31,7 @@ const AUD = Object.keys(AUDIENCES);
 export function fameOf(p = player()) {
   if (p.fame) return p.fame;
   const old = Math.round(p.hidden?.fame ?? 0);
-  p.fame = { audiences: Object.fromEntries(AUD.map((a) => [a, 0])), regions: {}, attention: 0, legacy: 0, favour: 50, credibility: 0, family: 0,
+  p.fame = { audiences: Object.fromEntries(AUD.map((a) => [a, 0])), regions: {}, attention: 0, legacy: 0, favor: 50, credibility: 0, family: 0,
     privacy: 'guarded', headline: old, provenance: null, log: [] };
   if (old > 0) {
     // No works are invented to explain it: it is recorded as recognition from before the profile existed.
@@ -83,11 +83,11 @@ export function gain(o, p = player()) {
 }
 
 /** How the public feels; how the industry rates the work. */
-export function regard({ favour = 0, credibility = 0, why = '' }, p = player()) {
+export function regard({ favor = 0, credibility = 0, why = '' }, p = player()) {
   const f = fameOf(p);
-  f.favour = Math.round(clamp(f.favour + favour) * 10) / 10;
+  f.favor = Math.round(clamp(f.favor + favor) * 10) / 10;
   f.credibility = Math.round(clamp(f.credibility + credibility * (credibility > 0 ? (100 - f.credibility) / 100 : 1)) * 10) / 10;
-  if (favour) note(f, 'favour', favour, why);
+  if (favor) note(f, 'favor', favor, why);
   if (credibility) note(f, 'credibility', credibility, why);
   return f;
 }
@@ -143,7 +143,7 @@ export function tickFameProfile(p = player()) {
   }
   f.legacy = Math.round(f.legacy * 0.995 * 10) / 10;
   f.family = Math.round(f.family * 0.96 * 10) / 10;
-  f.favour = Math.round((f.favour + (50 - f.favour) * 0.08) * 10) / 10; // feelings cool towards neutral
+  f.favor = Math.round((f.favor + (50 - f.favor) * 0.08) * 10) / 10; // feelings cool toward neutral
   refresh(p);
   const after = scope(p).id;
   if (before !== after && SCOPES.findIndex((s) => s.id === after) > SCOPES.findIndex((s) => s.id === before)) lines.push(`You are ${scope(p).name.toLowerCase()} now.`);
@@ -154,9 +154,9 @@ export function tickFameProfile(p = player()) {
 export const SCOPES = [
   { id: 'unknown', name: 'Unknown' },
   { id: 'emerging', name: 'Emerging' },
-  { id: 'local', name: 'Locally recognised' },
-  { id: 'national', name: 'Nationally recognised' },
-  { id: 'international', name: 'Internationally recognised' },
+  { id: 'local', name: 'Locally recognized' },
+  { id: 'national', name: 'Nationally recognized' },
+  { id: 'international', name: 'Internationally recognized' },
   { id: 'historic', name: 'Historically influential' },
 ];
 export function scope(p = player()) {

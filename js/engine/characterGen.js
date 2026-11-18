@@ -131,7 +131,7 @@ export function createLife(opts = {}) {
   player.flags.bornAs = gender;
   player.flags.interestedIn = attractedTo(orientation, identityGender);
   // A transgender child works out who they are some time in childhood.
-  if (trans) { player.flags.trueGender = identityGender; player.flags.realiseAge = rng.int(4, 14); }
+  if (trans) { player.flags.trueGender = identityGender; player.flags.realizeAge = rng.int(4, 14); }
   // Natural gifts make the matching skills come faster all life long.
   player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 65).map(([k]) => k);
   // Growing up around how their parents handle money gives a child a little to start from (engine/achievements.js).
@@ -213,7 +213,7 @@ export function createLife(opts = {}) {
   if (gift) journal.push(j(`Something about you hints at a gift for ${gift[0]}.`, 'good'));
 
   const state = {
-    schemaVersion: SCHEMA_VERSION, slotId: uid('life'),
+    schemaVersion: SCHEMA_VERSION, spelling: 'us', slotId: uid('life'),
     createdAt: Date.now(), updatedAt: Date.now(), year,
     player, npcs: Object.fromEntries(family.map((n) => [n.id, n])),
     journal, market: { prices: {}, history: {}, cycle: 0 },
@@ -222,7 +222,7 @@ export function createLife(opts = {}) {
     ...(seat ? { dynasties: { [c.id]: seat.dynasty } } : {}),
   };
   if (seat) dress(seat.dynasty, state);
-  // Genomes for the family and the child, and what the child is born with (not yet recognised by anyone).
+  // Genomes for the family and the child, and what the child is born with (not yet recognized by anyone).
   healthAtBirth(state, opts.health);
   // The family's animals were there first: they go on the family's record with the line that introduces them.
   for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => !e.animal && e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });

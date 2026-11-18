@@ -11,7 +11,7 @@ import { openModal, pickModal, messageModal, confirmModal } from './modals.js';
 const OUTCOME = { accepted: 'A place', conditional: 'A place, if your marks hold', waitlisted: 'On the waiting list', deferred: 'Asked to apply again next year', rejected: 'No place' };
 const TONE = { accepted: 'good', conditional: 'good', waitlisted: 'neutral', deferred: 'neutral', rejected: 'bad' };
 
-function pageCatalogue(r) {
+function pageCatalog(r) {
   const c = country();
   const major = MAJOR_BY_ID[r.majorId];
   return `<button class="btn ${major ? '' : 'primary'}" data-major style="width:100%;margin-bottom:10px">${major ? `Subject: ${esc(major.name)} <small>change</small>` : 'First, choose what you want to study'}</button>
@@ -66,8 +66,8 @@ function pageAnswers(r) {
  * @param {{funding:Function, housing:Function}} ask  the funding and housing pickers the Work tab already has
  */
 export function openUniversity(api, ask) {
-  const tabs = [['catalogue', 'Places'], ['applying', 'Applying'], ['answers', 'Answers']];
-  let tab = uni.plan()?.sent ? 'answers' : 'catalogue';
+  const tabs = [['catalog', 'Places'], ['applying', 'Applying'], ['answers', 'Answers']];
+  let tab = uni.plan()?.sent ? 'answers' : 'catalog';
   const m = openModal(`
     <div class="dyn-head"><div><div class="eyebrow">Education</div><h2>University</h2></div>
       <button class="icon-btn" data-close aria-label="Close">✕</button></div>
@@ -79,7 +79,7 @@ export function openUniversity(api, ask) {
     const r = uni.plan();
     const top = body.scrollTop;
     m.el.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
-    body.innerHTML = !r ? '<p class="muted">There is nothing to plan just now.</p>' : tab === 'catalogue' ? pageCatalogue(r) : tab === 'applying' ? pageApplying(r) : pageAnswers(r);
+    body.innerHTML = !r ? '<p class="muted">There is nothing to plan just now.</p>' : tab === 'catalog' ? pageCatalog(r) : tab === 'applying' ? pageApplying(r) : pageAnswers(r);
     body.scrollTop = keep ? top : 0;
   }
   const say = async (r) => { api.changed(); await messageModal({ body: r.text, tone: r.tone }); };
@@ -101,7 +101,7 @@ export function openUniversity(api, ask) {
       return draw(true);
     }
     if (e.target.closest('[data-send]')) {
-      if (!(await confirmModal({ title: 'Send them?', body: 'You can apply once a year, and nothing can be changed afterwards.', yes: 'Send' }))) return undefined;
+      if (!(await confirmModal({ title: 'Send them?', body: 'You can apply once a year, and nothing can be changed afterward.', yes: 'Send' }))) return undefined;
       await say(uni.send());
       tab = 'answers';
       return draw();

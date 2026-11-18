@@ -11,7 +11,7 @@ export default [
         ok('You fill four notebooks. The family has them bound.', st('mood', 10), st('intellect', 2), ms('Wrote a memoir for the family.')),
         bad('You get as far as age nine and lose the thread.', st('mood', -2)),
       ] },
-      { label: 'Say it was all rubbish and so is now', outcomes: [any('They nod politely and do not ask again.', 'neutral', st('mood', -3), st('charm', -1))] },
+      { label: 'Say it was all nonsense, and so is now', outcomes: [any('They nod politely and do not ask again.', 'neutral', st('mood', -3), st('charm', -1))] },
     ],
   },
   {

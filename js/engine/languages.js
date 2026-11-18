@@ -68,8 +68,8 @@ export function tickLanguages() {
   return null;
 }
 
-/** A fortnight somewhere is practice for a language already begun. Returns its name if it improved. */
-export function practise(countryId, p = player()) {
+/** Two weeks somewhere is practice for a language already begun. Returns its name if it improved. */
+export function practice(countryId, p = player()) {
   const id = languagesOf(countryId).filter((x) => level(p, x) > 0 && level(p, x) < 85).sort((a, b) => level(p, b) - level(p, a))[0];
   if (!id) return null;
   p.skills[id] = clamp(level(p, id) + 2);

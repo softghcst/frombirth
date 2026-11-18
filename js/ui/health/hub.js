@@ -81,10 +81,10 @@ export function careRelationship(npc) {
   const rapport = npc.meters.relationship;
   return `<div class="card hl-card" style="margin-top:12px">
     ${kv('Qualification', esc(c.qual))}
-    ${kv('Works at', esc(f?.name ?? 'No longer practising'))}
+    ${kv('Works at', esc(f?.name ?? 'No longer practicing'))}
     ${kv('Experience', `${store.state.year - c.since} years`)}
     ${kv('Approach', esc(c.approach))}
-    ${c.dbt ? kv('Training', 'Dialectical behaviour therapy') : ''}
+    ${c.dbt ? kv('Training', 'Dialectical behavior therapy') : ''}
     ${c.retired ? kv('Status', 'Retired') : ''}
     ${kv('Your care with them', now.length ? esc(now.join('; ')) : seen ? 'Earlier care' : 'Not at the moment')}
     ${kv('Appointments and sessions', String(seen))}
@@ -167,7 +167,7 @@ function conditionName(r, h = healthOf()) {
 }
 
 function mental(p, h) {
-  const ex = course.experiences(p).filter((e) => !['hearing', 'sight', 'mobility', 'mobility_some', 'reach', 'colours'].includes(e.id));
+  const ex = course.experiences(p).filter((e) => !['hearing', 'sight', 'mobility', 'mobility_some', 'reach', 'colors'].includes(e.id));
   const dx = activeDiagnoses(h).filter((d) => MENTAL.includes(CONDITION_BY_ID[d.conditionId].group) || CONDITION_BY_ID[d.conditionId].group === 'neurodev');
   const active = h.therapies.filter((c) => c.status === 'active');
   const skills = Object.entries(h.skills).filter(([, v]) => v >= 3);
@@ -178,7 +178,7 @@ function mental(p, h) {
     ${card('Care', `${active.length ? active.map((c) => kv(THERAPY_BY_ID[c.therapyId].name, esc(`${c.attended} session${c.attended === 1 ? '' : 's'}`))).join('') : muted('No current therapy.')}
       ${h.trials.filter(meds.isLive).map((t) => kv(MED_BY_ID[t.medicationId].name, esc(meds.RESPONSE_WORDS[t.responseState]))).join('')}
       <div class="btn-stack" style="margin-top:10px">${btn('Book an assessment', 'seek', { arg: 'mental' })}${btn('Find a therapist or group', 'findTherapy')}${h.therapies.some((c) => THERAPY_BY_ID[c.therapyId].dbt) ? btn('My DBT Journey', 'dbt') : ''}</div>`)}
-    ${skills.length ? card('Skills you have practised', skills.map(([k, v]) => bar(SKILLS[k], v)).join('') + muted('Built in sessions and in daily life. A hard week does not take them away.')) : ''}`;
+    ${skills.length ? card('Skills you have practiced', skills.map(([k, v]) => bar(SKILLS[k], v)).join('') + muted('Built in sessions and in daily life. A hard week does not take them away.')) : ''}`;
 }
 
 function dxLine(d, h) {
@@ -339,14 +339,14 @@ function familyCard(fam, h) {
   const rows = fam.rows.filter((r) => r.conds.length || r.step);
   return card('Family medical history', `${rows.length ? rows.map((r) => kv(r.who + (r.alive === false ? ' †' : ''), r.step ? 'Not a blood relative' : esc(r.conds.map((c) => c.name).join(', ')))).join('') : muted('Nobody in the family has shared anything relevant.')}
     ${fam.unknown.map((u) => kv(u, 'Not known')).join('')}
-    ${fam.screening.length ? `<div class="section-label">Worth knowing</div>${fam.screening.map((s) => `<p class="body">${esc(s.name)}: ${esc(s.text)}</p>${s.kind !== 'awareness' ? (s.done ? kv('Your result', esc(s.done)) : btn(`Genetic counselling and a ${s.kind} test (${money(story.testPrice())})`, 'gene', { arg: s.key, small: true })) : ''}`).join('')}` : ''}
+    ${fam.screening.length ? `<div class="section-label">Worth knowing</div>${fam.screening.map((s) => `<p class="body">${esc(s.name)}: ${esc(s.text)}</p>${s.kind !== 'awareness' ? (s.done ? kv('Your result', esc(s.done)) : btn(`Genetic counseling and a ${s.kind} test (${money(story.testPrice())})`, 'gene', { arg: s.key, small: true })) : ''}`).join('')}` : ''}
     ${muted('Only what relatives chose to share, and inherited conditions families usually know about. Nobody\'s therapy notes or prescriptions.')}`);
 }
 
 function goals(p, h) {
   const plan = h.plans.find((x) => x.status !== 'completed');
   const list = plan?.goals ?? [];
-  return `${card('Your goals', list.length ? list.map((g) => kv(g.text, pill(g.status === 'met' ? 'Reached' : 'Working on it', g.status === 'met' ? 'good' : ''))).join('') + muted('Goals are reached by how life goes, not by how many sessions you attend.') : muted('No goals set. Goals you choose shape what your care works towards.'))}
+  return `${card('Your goals', list.length ? list.map((g) => kv(g.text, pill(g.status === 'met' ? 'Reached' : 'Working on it', g.status === 'met' ? 'good' : ''))).join('') + muted('Goals are reached by how life goes, not by how many sessions you attend.') : muted('No goals set. Goals you choose shape what your care works toward.'))}
     ${card('', `<div class="btn-stack">${btn('Choose goals', 'goals')}</div>`)}`;
 }
 
@@ -395,7 +395,7 @@ function dbtPage(p, h) {
   const done = s.groupCourses.flatMap((c) => Object.keys(c.moduleDone ?? {}));
   const hasBpd = activeDiagnoses(h).some((d) => d.conditionId === 'bpd');
   return `<button class="btn hl-back" data-back>← Back</button><h3 class="hl-page">My DBT Journey</h3>
-    <p class="hl-sub">Skills for a life worth living, practised through the year.</p>
+    <p class="hl-sub">Skills for a life worth living, practiced through the year.</p>
     ${card('Individual DBT', ind ? `${clinicianRow(npcOf(ind.providerId))}${kv('Sessions', `${ind.attended} attended${ind.missed ? `, ${ind.missed} missed` : ''}`)}${ind.status === 'active' ? kv('Next', esc(later(ind.nextWk))) : kv('Status', esc(ind.status))}${ind.sessions.length ? kv('Last session', esc(ind.sessions.at(-1).note)) : ''}${['active', 'paused'].includes(ind.status) ? `${kv('Focus this year', esc(ind.focus ? MODULE_BY_ID[ind.focus].name : 'Whatever you need most'))}${btn('Change the focus', 'dbtFocus', { small: true })}` : ''}`
       : `${muted('Weekly sessions with a DBT-trained therapist.')}${btn('Find a DBT therapist', 'findTherapy', { arg: 'dbt' })}`)}
     ${card('DBT skills group', g ? `${g.facilitatorIds.map((id) => clinicianRow(npcOf(id), 'Facilitator')).join('')}${kv('Meets', `${esc(g.day)} ${g.evening ? 'evenings' : 'afternoons'}`)}
@@ -472,7 +472,7 @@ export function openHealth(api, to = {}) {
     const list = care.serviceOptions(concern, p);
     if (!list.length) { await messageModal({ body: 'There is nowhere nearby to go for this yet.' }); return draw(true); }
     const pick = await pickModal({ title: care.CONCERNS[concern].label, body: p.age < 16 ? 'Your parents will take you.' : 'Who would you like to see?',
-      options: list.map((o, i) => ({ value: i, disabled: o.referral, label: `${o.professionName}, ${o.facility}`, sub: o.referral ? 'By referral from your GP.' : `${money(o.cost)}. Wait: about ${o.wait} week${o.wait === 1 ? '' : 's'}.` })) });
+      options: list.map((o, i) => ({ value: i, disabled: o.referral, label: `${o.professionName}, ${o.facility}`, sub: o.referral ? 'By referral from your primary care doctor.' : `${money(o.cost)}. Wait: about ${o.wait} week${o.wait === 1 ? '' : 's'}.` })) });
     if (pick == null) return draw(true);
     return after(care.seekAssessment(concern, list[pick].facilityId, list[pick].profession, p));
   }
@@ -509,7 +509,7 @@ export function openHealth(api, to = {}) {
     },
     adapt: async () => { const list = Object.entries(HOME_FEATURES).filter(([id]) => access.homeFeatureAvailable(id) && !access.homeRecord(p).features.includes(id)); const id = await pickModal({ title: 'Adapt your home', options: list.map(([k, f]) => ({ value: k, label: f.name, sub: money(priceOf(f.cost)) })) }); return id ? after(access.adaptHome(id)) : draw(true); },
     addNeed: async () => { const id = await pickModal({ title: 'Something that helps you', body: 'No diagnosis needed.', options: Object.entries(NEEDS).map(([k, n]) => ({ value: k, label: n.name })) }); return id ? after(access.addNeed(id)) : draw(true); },
-    gene: async (arg) => ((await confirmModal({ title: 'Genetic counselling and testing', body: 'A counsellor talks it through with you first. Some people want to know; many decide not to. The result is yours alone.', yes: 'Go ahead', no: 'Not now' })) ? after(story.geneTest(arg)) : draw(true)),
+    gene: async (arg) => ((await confirmModal({ title: 'Genetic counseling and testing', body: 'A counselor talks it through with you first. Some people want to know; many decide not to. The result is yours alone.', yes: 'Go ahead', no: 'Not now' })) ? after(story.geneTest(arg)) : draw(true)),
     insure: async () => after(sys.setCover(true)), uninsure: async () => after(sys.setCover(false)),
     appeal: (arg) => after(ins.appeal(arg)),
     physio: () => after(hosp.requestRehab('back')),

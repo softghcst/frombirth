@@ -1,14 +1,14 @@
 // CharacterAvatar: a portrait stacked from the SVG parts in assets/avatars/.
 //
-// Every part file has been normalised onto one 512x512 frame by
+// Every part file has been normalized onto one 512x512 frame by
 // scripts/build-avatar-manifest.py, so parts are stacked without any
 // positioning here. Each layer is an SVG <use> pointing at the part's file
 // (`file.svg#art`): the browser fetches each file once and caches it, and
-// the colour variables set on the portrait (--skin-color, --hair-color, ...)
+// the color variables set on the portrait (--skin-color, --hair-color, ...)
 // reach into the referenced artwork.
 //
 // Layers, back to front:
-//   back hair, head, make-up (clipped to the head), ageing, eyes, eyebrows,
+//   back hair, head, make-up (clipped to the head), aging, eyes, eyebrows,
 //   nose, lips, facial hair, clothes, necklaces, front hair, earrings and
 //   piercings, glasses, hat or crown, emotions.
 // Hair is drawn twice: the whole style behind the head, and the part above
@@ -54,7 +54,7 @@ const AGING = [[55, 'aging_01_smile_lines'], [66, 'aging_02_crows_feet'], [78, '
 /**
  * What the portrait actually wears at this moment: work clothes, royal dress,
  * prison orange, or the person's own outfit; and what hair, make-up and
- * jewellery suit their age.
+ * jewelry suit their age.
  */
 export function dressFor(look, ctx = {}) {
   const age = ctx.age ?? 25;
@@ -160,15 +160,15 @@ export function fitTransforms(headId, stage, tweaks = {}) {
 }
 
 /**
- * The colours, as CSS custom properties. Hair greys with age unless dyed;
- * brows grey more slowly.
+ * The colors, as CSS custom properties. Hair grays with age unless dyed;
+ * brows gray more slowly.
  */
 function colorVars(look, ctx) {
   const c = look.colors ?? {};
   const age = ctx.age ?? 25;
-  const grey = c.dyed ? 0 : age >= 80 ? 0.9 : age >= 70 ? 0.72 : age >= 60 ? 0.45 : age >= 52 ? 0.18 : 0;
-  const hair = grey ? mixHex(c.hair, '#dcd8d0', grey) : c.hair;
-  const brow = c.brow ? mixHex(c.brow, '#d8d3c8', grey * 0.6) : mixHex(hair, '#1c1210', 0.25);
+  const gray = c.dyed ? 0 : age >= 80 ? 0.9 : age >= 70 ? 0.72 : age >= 60 ? 0.45 : age >= 52 ? 0.18 : 0;
+  const hair = gray ? mixHex(c.hair, '#dcd8d0', gray) : c.hair;
+  const brow = c.brow ? mixHex(c.brow, '#d8d3c8', gray * 0.6) : mixHex(hair, '#1c1210', 0.25);
   const vars = { 'skin-color': c.skin, 'hair-color': hair, 'brow-color': brow, 'eye-color': c.eye, 'lip-color': c.lip, 'blush-color': c.blush };
   if (c.outfit) vars['outfit-color'] = c.outfit;
   return Object.entries(vars).filter(([, v]) => v).map(([k, v]) => `--${k}:${v}`).join(';');

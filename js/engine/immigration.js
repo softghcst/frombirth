@@ -1,5 +1,5 @@
 // Ways of moving to another country, and what happens to the permission
-// afterwards. A move is no longer one application with one answer: there
+// afterward. A move is no longer one application with one answer: there
 // are routes, each with its own conditions, cost, odds and the status it
 // gives on arrival.
 //
@@ -12,7 +12,7 @@
 //   study      a school-leaving qualification and    student, 4 years, no full-time work
 //              the funds for a first year
 //   invest     a large sum to bring                  permanent resident
-//   settle     a points-style programme              permanent resident
+//   settle     a points-style program              permanent resident
 //   protection people leaving a country in crisis    temporary resident, 3 years
 //
 // Temporary statuses run out (tickStatus): they are renewed while their
@@ -94,7 +94,7 @@ export function routes(destId, p = player()) {
   add('invest', 'As an investor', `For people bringing ${fmtMoney(stake, here)} or more. Expensive, and quick.`, {
     eligible: p.age >= 18 && p.finance.cash >= stake, why: `You would need ${fmtMoney(stake, here)}.`, chance: 0.92 + crime, fee: 3, status: 'permanent_resident' });
 
-  // Settlement programme
+  // Settlement program
   add('settle', 'Settlement program', 'Points for education, work, age and language. Slow, but it gives permanent residence.', {
     eligible: p.age >= 18, why: 'You must be an adult.',
     chance: 0.3 + (has(p, 'university') ? 0.2 : 0) + (['medical', 'law', 'graduate', 'doctorate'].some((t) => has(p, t)) ? 0.1 : 0) + (has(p, 'apprenticeship') || has(p, 'cosmetology') ? 0.1 : 0)

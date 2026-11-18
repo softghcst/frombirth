@@ -26,7 +26,7 @@ const SPECIAL = {
   conscription: () => rule('conscription'),
   inCrisis: () => !!country().living.crisis,
   // Royalty: monarchy (the country has a crown), isRoyal (in the royal family), isNoble (holds a noble title),
-  // reigning, royalBy ('birth' | 'marriage' | 'honour' | null). The public's opinion is plain 'royal.image'.
+  // reigning, royalBy ('birth' | 'marriage' | 'honor' | null). The public's opinion is plain 'royal.image'.
   monarchy: () => !!MONARCHIES[country().id] && store.state.dynasties?.[country().id]?.status !== 'abolished',
   // Whether the crown the player wears governs (executive or absolute), or only advises.
   crownGoverns: (p) => { const cid = p.royal?.countryId; const d = store.state.dynasties?.[cid]; return ['executive', 'absolute'].includes(d?.type ?? MONARCHIES[cid]?.type); },

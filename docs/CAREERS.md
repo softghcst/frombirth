@@ -2,7 +2,7 @@
 
 How work is modeled in Pathways: what an occupation, an employer, a job and a contract are; how people get
 hired, paid, promoted and laid off; who they work with; how work fits around the rest of a life; and what the
-family remembers of it afterwards.
+family remembers of it afterward.
 
 Everything here is gameplay configuration. Pay bands, working-time law, benefits and rank names are simplified,
 unverified, and scaled by each country's wages (`localWage`) and each city's pay (`payK`). They are not real
@@ -65,9 +65,9 @@ something real.
 8. Recruiters and old mentors bring leads (`tickRecruiters`).
 9. Milestones are checked (`checkAchievements`).
 
-Payroll runs afterwards in `tickFinance`, through `runPayroll` (`js/engine/worklife.js`): every source (main job,
+Payroll runs afterward in `tickFinance`, through `runPayroll` (`js/engine/worklife.js`): every source (main job,
 part-time jobs, finished freelance contracts, pension, unemployment benefit) is listed, paid once per year
-(`paidYear`), taxed once, and kept as last year's payslip. Hourly work is paid by the hours worked, overtime at
+(`paidYear`), taxed once, and kept as last year's pay stub. Hourly work is paid by the hours worked, overtime at
 time and a half; commission and tips vary with performance and charm; failed freelance work pays a part at most.
 A job lost during the review is not paid for the following year.
 
@@ -294,7 +294,7 @@ salaries and promotion tables were not copied; every pay band and ladder here wa
 | Preschool teacher | `early_years (rung 2)` |
 | Elementary teacher | `primary (rung 2)` |
 | Secondary teacher | `teacher (alias)` |
-| Counselor | `counsellor (alias) as "school counselor"` |
+| Counselor | `counselor (alias) as "school counselor"` |
 | School administrator | `school_admin (alias)` |
 | Principal | `consulting (rung 4)` |
 | Professor | `academic (rung 4)` |
@@ -326,8 +326,8 @@ salaries and promotion tables were not copied; every pay band and ladder here wa
 | Store supervisor | `retail (rung 2) as "supervisor"` |
 | Shift manager | `retail (alias)` |
 | Store manager | `retail (rung 3)` |
-| Customer support representative | `contact_centre (alias)` |
-| Call center worker | `contact_centre (alias)` |
+| Customer support representative | `contact_center (alias)` |
+| Call center worker | `contact_center (alias)` |
 | Telemarketer | `sales (rung 1)` |
 | Stylist | `hair_stylist (rung 2)` |
 | Fashion consultant | `fashion_retail (alias)` |
@@ -516,15 +516,15 @@ salaries and promotion tables were not copied; every pay band and ladder here wa
 | Disk jockey | `music_prod (alias)` |
 | Orchestra musician | `orchestra (alias)` |
 | Orchestra conductor | `orchestra (alias)` |
-| Model | `modelling (alias)` |
+| Model | `modeling (alias)` |
 | Talent agent | `talent_agency (rung 2)` |
 | Entertainment manager | `talent_agency (alias)` |
 | Grocery bagger | `grocery (rung 1)` |
 | Retail associate | `banker (rung 2) as "associate"` |
 | Boutique associate | `fashion_retail (rung 1)` |
 | Sales associate | `sales (rung 2)` |
-| Customer service representative | `contact_centre (rung 2)` |
-| Call center agent | `contact_centre (rung 1)` |
+| Customer service representative | `contact_center (rung 2)` |
+| Call center agent | `contact_center (rung 1)` |
 | Assistant store manager | `grocery (rung 4)` |
 | District manager | `retail (alias)` |
 | Regional retail manager | `retail (alias)` |

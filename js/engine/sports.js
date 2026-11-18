@@ -111,7 +111,7 @@ function newAthlete(state, p) {
 
 /**
  * How far someone could go in each skill. It comes from their talent and the attributes the sport uses, plus a little
- * that is theirs alone. It is fixed for life: training moves a skill towards its ceiling and never past it.
+ * that is theirs alone. It is fixed for life: training moves a skill toward its ceiling and never past it.
  */
 function ceilings(p, sport) {
   const r = seeded(`ceiling/${p.id}/${sport.id}`);
@@ -855,7 +855,7 @@ const EVENTS_A_YEAR = { recreational: 2, club: 4, school: 3, academy: 5, college
 /** The size of a draw or field. */
 const FIELD = { recreational: 8, club: 16, school: 16, academy: 32, college: 32, pro: 64, elite: 32 };
 /** Invented names for events. */
-const EVENT_NAMES = { recreational: ['Community Open', 'Summer Fun Tournament', 'Neighborhood Classic'], club: ['Club Championship', 'Spring Open', 'Autumn Classic', 'Invitational'],
+const EVENT_NAMES = { recreational: ['Community Open', 'Summer Fun Tournament', 'Neighborhood Classic'], club: ['Club Championship', 'Spring Open', 'Fall Classic', 'Invitational'],
   school: ['Schools Championship', 'Inter-School Cup', 'District Finals'], academy: ['Junior Open', 'Youth Masters', 'National Junior Series'],
   college: ['Conference Championship', 'University Invitational', 'Collegiate Open'], pro: ['Open', 'Masters', 'Classic', 'Championship', 'Grand Prix', 'Cup'], elite: ['National Championship', 'International Trophy'] };
 

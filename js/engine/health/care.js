@@ -85,7 +85,7 @@ export function joinCareTeam(npc, p = player()) {
   npc.lastInteractionAge = p.age;
 }
 
-/** "Dr Okafor" or "Sam Okafor": how a clinician is named in the health screens. */
+/** "Dr. Okafor" or "Sam Okafor": how a clinician is named in the health screens. */
 export function clinicianName(npc) {
   if (!npc) return 'a clinician';
   const t = PROFESSIONS[npc.flags.clinician?.profession]?.title;
@@ -161,8 +161,8 @@ export function cancel(apptId) {
   const h = healthOf();
   const a = h.appointments.find((x) => x.id === apptId && x.status === 'booked');
   if (!a) return result(false, 'There is no such appointment.', 'neutral');
-  a.status = 'cancelled';
-  return result(true, 'Cancelled. You can book again whenever you are ready.', 'neutral');
+  a.status = 'canceled';
+  return result(true, 'Canceled. You can book again whenever you are ready.', 'neutral');
 }
 
 /** Moves an appointment back by some weeks. */
@@ -197,7 +197,7 @@ export function resolveAppointments(p = player()) {
     if (a.status !== 'booked' || a.wk > now(p)) continue;
     if (away) { a.wk = away.endWk; continue; } // it waits until they are home
     const npc = store.state.npcs[a.providerId];
-    if (!npc?.alive) { a.status = 'cancelled'; a.note = 'The clinician was no longer available.'; continue; }
+    if (!npc?.alive) { a.status = 'canceled'; a.note = 'The clinician was no longer available.'; continue; }
     if (!turnsUp(p, a.kind === 'assessment' ? 0.04 : 0)) {
       a.status = 'missed';
       a.outcome = 'You missed it. The clinic offered another date.';
@@ -239,8 +239,8 @@ export function attendNow(a, p = player()) {
 /** The kinds of concern someone can bring, and the services that see them. */
 export const CONCERNS = {
   mental: { label: 'How I have been feeling', groups: MENTAL, services: [['primary', 'gp'], ['mental', 'psychiatrist'], ['mental', 'psychologist'], ['private', 'psychologist'], ['psychiatry', 'psychiatrist']] },
-  attention: { label: 'Attention, focus and organisation', groups: ['neurodev', 'mood', 'anxiety'], services: [['mental', 'psychiatrist'], ['psychiatry', 'psychiatrist'], ['private', 'psychologist'], ['hospital', 'paediatrician']] },
-  development: { label: 'Communication, senses and routines', groups: ['neurodev'], services: [['mental', 'psychologist'], ['private', 'psychologist'], ['hospital', 'paediatrician'], ['rehab', 'speech_therapist']] },
+  attention: { label: 'Attention, focus and organization', groups: ['neurodev', 'mood', 'anxiety'], services: [['mental', 'psychiatrist'], ['psychiatry', 'psychiatrist'], ['private', 'psychologist'], ['hospital', 'pediatrician']] },
+  development: { label: 'Communication, senses and routines', groups: ['neurodev'], services: [['mental', 'psychologist'], ['private', 'psychologist'], ['hospital', 'pediatrician'], ['rehab', 'speech_therapist']] },
   learning: { label: 'Reading, writing or numbers', groups: ['neurodev'], services: [['learning', 'educational_psychologist'], ['private', 'psychologist']] },
   senses: { label: 'Hearing or sight', groups: ['sensory', 'genetic'], services: [['hospital', 'audiologist'], ['hospital', 'ophthalmologist']] },
   body: { label: 'A physical health problem', groups: ['chronic', 'mobility', 'genetic'], services: [['primary', 'gp'], ['hospital', 'cardiologist'], ['hospital', 'oncologist'], ['hospital', 'neurologist'], ['hospital', 'doctor']] },
@@ -253,7 +253,7 @@ export function serviceOptions(concern, p = player()) {
   for (const [defId, profession] of CONCERNS[concern].services) {
     const f = fs.find((x) => x.defId === defId);
     if (!f || !professionExists(profession)) continue;
-    // Some public specialist services take patients only on referral (the player's GP can refer).
+    // Some public specialist services take patients only on referral (the player's primary care doctor can refer).
     const referral = f.public && defId !== 'primary' && !['community', 'learning'].includes(defId) && !h_hasReferral(p, concern, profession) && p.age >= 18;
     out.push({ facilityId: f.id, facility: f.name, kind: f.kind, profession, professionName: PROFESSIONS[profession].name,
       wait: waitWeeks(f), cost: priceOf(VISIT_COST.assessment, f.fee), referral });
@@ -267,7 +267,7 @@ export function seekAssessment(concern, facilityId, profession, p = player()) {
   const h = healthOf(p);
   const opt = serviceOptions(concern, p).find((o) => o.facilityId === facilityId && o.profession === profession);
   if (!opt) return result(false, 'That service is not available here.', 'neutral');
-  if (opt.referral) return result(false, 'This service sees people on referral. Your GP can refer you.', 'neutral');
+  if (opt.referral) return result(false, 'This service sees people on referral. Your primary care doctor can refer you.', 'neutral');
   if (h.appointments.some((a) => a.status === 'booked' && a.kind === 'assessment' && a.concern === concern)) return result(false, 'You already have an assessment booked for this.', 'neutral');
   const f = facility(facilityId);
   const doc = clinicianAt(f, profession);
@@ -307,7 +307,7 @@ export function assess(appt, p = player()) {
     if (rec.showsAge != null && p.age < rec.showsAge) continue; // not yet showing in daily life
     considered.add(def.id);
     const weeks = now(p) - Math.max(rec.onsetWk, rec.showsAge != null ? (p.birthYear + rec.showsAge) * 52 : 0);
-    if (!nameIn(def, year)) { rec.dx = 'none'; note(rec, 'Assessed; the clinician described the experiences, but there was no recognised name for them at the time.'); continue; }
+    if (!nameIn(def, year)) { rec.dx = 'none'; note(rec, 'Assessed; the clinician described the experiences, but there was no recognized name for them at the time.'); continue; }
     if ((def.diagnose.minAge ?? 0) > p.age) { wait.push(rec); note(rec, 'Assessed; too young for this to be diagnosed with confidence. Support offered instead.'); continue; }
     if (def.diagnose.weeks && weeks < def.diagnose.weeks) { wait.push(rec); rec.dx = 'suspected'; note(rec, 'Assessed; the clinician wants to see how things go before deciding.'); continue; }
     if (rec.status === 'in_remission' && rec.burden < 15) continue;
@@ -418,7 +418,7 @@ const dxName = (def, rec, year) => `${nameIn(def, year)}${rec.stage ? ` (stage $
 
 /**
  * A condition found by a clinician outside a booked assessment: in hospital
- * after an emergency, by a GP after a scene, or at a check-up. Recorded with the
+ * after an emergency, by a primary care doctor after a scene, or at a check-up. Recorded with the
  * clinician who found it.
  */
 export function foundByDoctor(rec, defId, profession, p = player(), how = 'found') {
@@ -440,7 +440,7 @@ export function foundByDoctor(rec, defId, profession, p = player(), how = 'found
 
 /**
  * Screening at a check-up: high blood pressure and diabetes show up on routine
- * tests; from fifty, some cancers are found early by screening programmes.
+ * tests; from fifty, some cancers are found early by screening programs.
  * Things a check-up finds that need a specialist become a referral.
  * @returns {string[]} what was found, in plain words
  */
@@ -500,7 +500,7 @@ export const GOALS = {
   return: { text: 'Get back to the things I care about', met: (h, p) => dailyFunctioning(p) >= 72 },
   work: { text: 'Manage work or study well', met: (h, p) => (p.career.careerId || p.education.enrolled) && dailyFunctioning(p) >= 70 },
   skills: { text: 'Learn skills for hard moments', met: (h) => h.skills.distress >= 45 && h.skills.regulation >= 45 },
-  routine: { text: 'Build routines that work for me', met: (h) => h.skills.organisation >= 45 },
+  routine: { text: 'Build routines that work for me', met: (h) => h.skills.organization >= 45 },
   independence: { text: 'Do more things my own way', met: (h) => h.skills.independence >= 45 },
 };
 const maxBurden = (h, groups) => Math.max(0, ...presentConditions(h).filter((c) => groups.includes(CONDITION_BY_ID[c.conditionId].group)).map((c) => c.burden));

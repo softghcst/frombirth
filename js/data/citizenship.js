@@ -2,7 +2,7 @@
 //
 // GAMEPLAY CONFIGURATION, UNVERIFIED. These lists are the author's best
 // understanding of the mid-2020s, simplified to yes or no. Real nationality
-// law has conditions, exceptions and dates that are not modelled. Nothing
+// law has conditions, exceptions and dates that are not modeled. Nothing
 // here is legal information. docs/WORLD_DATA.md says how to check a row.
 //
 // A place that is not listed follows the default: citizenship passes from a
@@ -22,4 +22,4 @@ export const DEFAULT_YEARS = 5;
 /** Married to a citizen: fewer years, never none. Marriage alone confers nothing. */
 export const SPOUSE_YEARS = 3;
 /** The application fee, in base units. */
-export const NATURALISATION_FEE = 1200;
+export const NATURALIZATION_FEE = 1200;

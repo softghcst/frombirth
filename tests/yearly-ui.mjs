@@ -63,7 +63,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   }
   check(saw, `${label}: the yearly life update appears after Age Up`);
   if (saw) {
-    check(await page.locator('.modal', { hasText: 'Swimming' }).count(), `${label}: the update reports the hobby practised through the year`);
+    check(await page.locator('.modal', { hasText: 'Swimming' }).count(), `${label}: the update reports the hobby practiced through the year`);
   }
   check(!errors.length, `${label}: no page errors (${errors.join('; ')})`);
   await page.close();

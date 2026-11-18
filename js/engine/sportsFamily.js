@@ -37,7 +37,7 @@ function lightEntry(a, sportId, since) {
 function sportsIn(year, countryId, r) {
   const open = SPORTS_LIST.filter((s) => s.founded <= year && !s.adaptive && s.kind !== 'fitness');
   const pop = open.filter((s) => s.popular.includes(countryId));
-  if (!open.length) return null; // before any organised sport existed (the eras go back to 1800)
+  if (!open.length) return null; // before any organized sport existed (the eras go back to 1800)
   return r.chance(0.7) && pop.length ? r.pick(pop) : r.pick(open);
 }
 

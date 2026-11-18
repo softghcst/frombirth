@@ -15,7 +15,7 @@ function tallyModal(title, t) {
     const m = openModal(`<div class="eyebrow">The vote</div><h2>${esc(title)}</h2>
       <div class="pol-night"><strong>For ${t.for}</strong><span>Against ${t.against}</span></div>
       <p class="muted">${t.need} needed to pass.</p>
-      ${t.rows.map((r) => `<div class="pol-result"><span>${esc(r.name)}</span><span class="pol-track"><i style="width:${Math.round(r.for / Math.max(1, r.for + r.against) * 100)}%;background:${r.colour}"></i></span><span class="num">${r.for}</span><span class="num">${r.against} no</span></div>`).join('')}
+      ${t.rows.map((r) => `<div class="pol-result"><span>${esc(r.name)}</span><span class="pol-track"><i style="width:${Math.round(r.for / Math.max(1, r.for + r.against) * 100)}%;background:${r.color}"></i></span><span class="num">${r.for}</span><span class="num">${r.against} no</span></div>`).join('')}
       <button class="btn primary" data-ok style="margin-top:14px">Continue</button>`);
     m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
   });

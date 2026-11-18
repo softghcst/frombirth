@@ -1,7 +1,7 @@
-// Modelling. A model is represented by an agency, goes to castings, and is
+// Modeling. A model is represented by an agency, goes to castings, and is
 // booked or not; every booking goes into a portfolio, and the portfolio, not
 // a number, is what the next client looks at. The model's pay is the career's
-// (engine/career.js, 'modelling'); bookings shape performance and fame, and are
+// (engine/career.js, 'modeling'); bookings shape performance and fame, and are
 // never paid a second time here.
 //
 //   state.ent.orgs: kind 'model_agency'
@@ -17,7 +17,7 @@ import { registerEmployer } from './employers.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const year = () => store.state.year;
-export const isModel = (p = player()) => p.career?.careerId === 'modelling';
+export const isModel = (p = player()) => p.career?.careerId === 'modeling';
 
 export function modelOf(p = player()) {
   const f = workOf(p);
@@ -34,7 +34,7 @@ export function agencies(countryId) {
     const city = c.place?.capital ?? c.cities[0];
     E.modelAgencies[countryId] = [85, 55, 40].map((rep) => {
       const name = rng.pick(MODEL_AGENCY_NAMES).replace('{W}', rng.pick(ORG_WORDS)).replace('{S}', rng.pick(c.names.last)).replace('{C}', city);
-      const e = registerEmployer({ name, family: 'arts', tracks: ['modelling'], countryId, city, owned: false });
+      const e = registerEmployer({ name, family: 'arts', tracks: ['modeling'], countryId, city, owned: false });
       const o = { id: `org_m${(E.seq += 1).toString(36)}`, kind: 'model_agency', name, countryId, city, reputation: rep, employerId: e.id, staff: [], history: [], founded: year() - rng.int(5, 50) };
       E.orgs[o.id] = o;
       return o.id;
@@ -119,7 +119,7 @@ export function attendCasting(id, approach = null) {
   c.played = approach;
   if (!rng.chance(odds)) {
     c.status = 'lost';
-    const miss = approach && approach !== c.wants ? ` Afterwards your booker says they wanted something more ${APPROACHES[c.wants].label.toLowerCase()}.` : '';
+    const miss = approach && approach !== c.wants ? ` Afterward your booker says they wanted something more ${APPROACHES[c.wants].label.toLowerCase()}.` : '';
     return result(false, `${rng.pick(['They went with someone else.', 'You wait three hours, walk for ninety seconds, and hear nothing.', '"Not quite the look this season."'])}${miss}`);
   }
   c.status = 'booked';
@@ -135,7 +135,7 @@ export function attendCasting(id, approach = null) {
 }
 
 /** Once a year. The agency drops a model who stops working; portfolios age. */
-export function tickModelling() {
+export function tickModeling() {
   const p = player();
   const lines = [];
   const m = p.fame?.model;
@@ -146,7 +146,7 @@ export function tickModelling() {
     lines.push(`${ent().orgs[m.agencyId]?.name} has let you go: no bookings in two years.`);
     m.agencyId = null;
   }
-  if (recent.some((x) => x.kind === 'cover' || x.kind === 'campaign')) regard({ favour: 1, why: 'a face people like' }, p);
+  if (recent.some((x) => x.kind === 'cover' || x.kind === 'campaign')) regard({ favor: 1, why: 'a face people like' }, p);
   return lines;
 }
 

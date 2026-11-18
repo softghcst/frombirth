@@ -71,7 +71,7 @@ What changed as a result: four countries no longer execute (the Bahamas, DR Cong
 status (Bolivia, Czechia, Croatia, Italy, Monaco, Nepal); conscription was added in twelve countries and removed in Syria;
 voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries and an alcohol ban for Pakistan; pension ages
 for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
-nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
+nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabeled.
 
 Still not checked: driving, gambling, marriage and school-leaving ages; residence years for naturalization (other than
 Malaysia and Singapore); gambling bans; the free-movement lists; tax and health-care models; the status sentences. Where a
@@ -128,15 +128,15 @@ shown on its profile.
   for six regional matters, in the countries listed in `REGIONAL_COUNTRIES`; which matters belong to regions in each real
   country is simplified to one list. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same nine everywhere (the eight above and a retirement route), with the
-  same fees, terms and five-year path to permanence. Real systems differ by country and are not modelled. The free-movement areas
+  same fees, terms and five-year path to permanence. Real systems differ by country and are not modeled. The free-movement areas
   (a European area, and Australia with New Zealand) are simplified lists and unverified. Family members hold dependant status on the
   player's visa, simplified to one rule for every country; there is no deportation for crime and no overstaying. Moving abroad is a case decided
   when the year turns (`js/engine/relocation.js`); the odds of a decision are invented gameplay parameters.
 - Visits (`js/data/travel.js`, `ENTRY`, `VISIT_AREAS`, `LIBERAL`, `ON_ARRIVAL`) are a hand-compiled, **unverified** picture of the
-  mid-2020s: which nationalities visit which places without a visa, need an electronic authorisation (ESTA, the UK's ETA, eTA,
+  mid-2020s: which nationalities visit which places without a visa, need an electronic authorization (ESTA, the UK's ETA, eTA,
   K-ETA, NZeTA, Australia's ETA) or need a visitor visa, the longest stay, and the Schengen area's 90 days in any 180. The visa
   names are the common ones. Real rules depend on far more than nationality (purpose, previous travel, the document held,
-  exemptions and reciprocity), change often, and are not modelled. Fees, processing times and the odds of a decision are invented
+  exemptions and reciprocity), change often, and are not modeled. Fees, processing times and the odds of a decision are invented
   (`DECISION`), and a decision never depends on nationality. This is not travel or immigration advice.
 - Professional recognition (`REGULATED`, `RECOGNITION` in `js/engine/credentials.js`) is one simplified process for every country:
   which careers are regulated, the language level each asks, the fee, and the odds of a license, an adaptation year or a refusal are

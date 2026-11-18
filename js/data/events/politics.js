@@ -111,7 +111,7 @@ export default [
   },
   {
     id: 'pol_flood', category: 'politics', ageRange: [21, 110], cooldown: 8, requires: [office, tier(2)],
-    text: 'A river has burst its banks and two thousand homes are under water. You are on holiday, three hours away by air.',
+    text: 'A river has burst its banks and two thousand homes are under water. You are on vacation, three hours away by air.',
     choices: [
       { label: 'Fly back tonight and stay until it is over', outcomes: [any('You sleep in a sports hall for a week and learn the names of the people handing out blankets. It is the best thing you do in office.', 'good', approval(12), hid('karma', 5), st('health', -2))] },
       { label: 'Fly back for a photograph in rubber boots', check: chk(0.45, { 'stats.charm': 0.4 }), outcomes: [
@@ -123,7 +123,7 @@ export default [
   },
   {
     id: 'pol_strike', category: 'politics', ageRange: [21, 110], cooldown: 7, requires: [office, tier(2)],
-    text: 'The bin collectors have been on strike for three weeks. The rubbish is piled as high as the bus shelters, and the rats are not afraid of anyone.',
+    text: 'The bin collectors have been on strike for three weeks. The garbage is piled as high as the bus shelters, and the rats are not afraid of anyone.',
     choices: [
       { label: 'Give them what they are asking for', outcomes: [any('The streets are clean by Monday. The money will have to come from somewhere, and everyone else has noticed that striking works.', 'neutral', approval(6))] },
       { label: 'Sit down with them yourself', check: chk(0.5, { 'stats.charm': 0.4, 'stats.intellect': 0.4 }), outcomes: [
@@ -258,7 +258,7 @@ export default [
     text: 'Your {rel} {kin} is standing for {title}, and polling day is close. {kin} has not asked for your help, which is how you know it is wanted.',
     choices: [
       { label: 'Campaign at their side', outcomes: [any('You clear your diary.', 'neutral', kin('campaign'))] },
-      { label: 'Pay for the leaflets ({cost})', outcomes: [any('You reach for your chequebook.', 'neutral', kin('money'))] },
+      { label: 'Pay for the leaflets ({cost})', outcomes: [any('You reach for your checkbook.', 'neutral', kin('money'))] },
       { label: 'Stay out of it', outcomes: [any('You keep your distance.', 'neutral', kin('stayOut'))] },
     ],
   },
@@ -279,7 +279,7 @@ export default [
     ],
   },
   {
-    id: 'scandal_rumour', category: 'politics', ageRange: [18, 120], queuedOnly: true,
+    id: 'scandal_rumor', category: 'politics', ageRange: [18, 120], queuedOnly: true,
     text: 'A reporter has been asking questions about {what}. She has not got the whole story, but she has enough of it to telephone your office and ask for a comment by six.',
     choices: [
       { label: 'Tell it yourself, before she can', outcomes: [any('You ask for ten minutes to think, and use them.', 'neutral', scandal('confess'))] },
@@ -291,7 +291,7 @@ export default [
     id: 'scandal_story', category: 'politics', ageRange: [18, 120], queuedOnly: true,
     text: 'It is on every front page: {what}. Your telephone has not stopped, your colleagues are suddenly hard to reach, and there are cameras at the end of the road.',
     choices: [
-      { label: 'Apologize', outcomes: [any('You face the cameras.', 'neutral', scandal('apologise'))] },
+      { label: 'Apologize', outcomes: [any('You face the cameras.', 'neutral', scandal('apologize'))] },
       { label: 'Let an aide take the blame', outcomes: [any('You have a quiet word with someone junior, loyal, and expendable.', 'neutral', scandal('aide'))] },
       { label: 'Call an independent inquiry', outcomes: [any('"I have nothing to hide, and I want that established."', 'neutral', scandal('inquiry'))] },
       { label: 'Resign', requires: [need('inOffice', '==', true)], outcomes: [any('A short statement on the steps, and a car with the engine running.', 'neutral', resignOffice(), st('mood', -6))] },
@@ -314,7 +314,7 @@ export default [
   },
   {
     id: 'pol_leader_defeated', category: 'politics', ageRange: [18, 120], queuedOnly: true,
-    text: 'The election is lost, and the morning after is very quiet. In the corridors of {party} they are asking whether the leader who lost can be the leader who wins next time.',
+    text: 'The election is lost, and the morning after is very quiet. In the hallways of {party} they are asking whether the leader who lost can be the leader who wins next time.',
     choices: [
       { label: 'Fight on as leader', outcomes: [any('You call a meeting of the party.', 'neutral', leader('fight'))] },
       { label: 'Step down', outcomes: [any('You say that the party needs a fresh start, and mean most of it.', 'neutral', leader('resign'), st('mood', -4))] },

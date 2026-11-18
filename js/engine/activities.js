@@ -3,7 +3,7 @@
 import { hasRecord } from './records.js';
 import { rule, may } from './rules.js';
 import { rightToLive } from './citizenship.js';
-import { practise } from './languages.js';
+import { practice } from './languages.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
@@ -36,7 +36,7 @@ export function activityOptions() {
   if (p.age >= 12) a.push({ id: 'gym', label: `Go to the gym (${fmtMoney(localMoney(GYM_COST, c), c)} a year)` });
   if (p.age >= 6) a.push({ id: 'library', label: 'Spend time at the library' });
   if (p.age >= 10) a.push({ id: 'meditate', label: 'Meditate' });
-  if (p.age >= 18) a.push({ id: 'holiday', label: 'Take a holiday' });
+  if (p.age >= 18) a.push({ id: 'holiday', label: 'Take a vacation' });
   if (may('drink').ok) a.push({ id: 'night', label: `Go out for the night (${fmtMoney(localMoney(NIGHT_OUT_COST, c), c)})` });
   return a.map((x) => ({ ...x, done: !!acts()[x.id] }));
 }
@@ -96,7 +96,7 @@ function tripCost(h) {
 
 export const holidayKinds = () => HOLIDAY_KINDS;
 
-/** Trips of one kind, priced for one traveller. */
+/** Trips of one kind, priced for one traveler. */
 export function holidayOptions(kind) {
   const p = player();
   return HOLIDAYS.filter((h) => !kind || h.kind === kind).map((h) => {
@@ -149,7 +149,7 @@ export function holiday(id, bringFamily, trip = {}) {
     if (!r.ok) return result(false, `${r.problems[0]} Sort out the papers first (Explore the World, Passport & Documents).`, 'neutral');
   }
   if (p.finance.cash < cost) return result(false, 'You cannot afford it.', 'neutral');
-  if (!once('holiday')) return result(false, 'You have had your holiday this year.', 'neutral');
+  if (!once('holiday')) return result(false, 'You have had your vacation this year.', 'neutral');
   const purpose = flying ? (trip.purpose ?? 'holiday') : 'holiday';
   // The border. Gameplay configuration: a criminal record can get a visitor turned round.
   if (flying && !rightToLive(dest.id, p) && hasRecord(p, { sealed: true }) && rng.chance(0.2)) {
@@ -182,7 +182,7 @@ export function holiday(id, bringFamily, trip = {}) {
   if (kin.length) p.stats.mood = clamp(p.stats.mood + 4);
   if (purpose === 'family') for (const n of kin) n.meters.relationship = clamp(n.meters.relationship + 6);
   if (purpose === 'scouting') p.stats.mood = clamp(p.stats.mood - Math.round(h.mood / 2)); // less of a rest
-  const spoke = flying ? practise(dest.id, p) : null;
+  const spoke = flying ? practice(dest.id, p) : null;
   let text = `${h.name}${party.length ? `, with ${names(party)}` : ''}. `
     + `${flying ? (ownPlace ? `You stayed in your own ${ownPlace.name.charAt(0).toLowerCase() + ownPlace.name.slice(1)}. ` : `You based yourself in ${where}. `) : ''}`
     + `${kin.length ? `You saw ${names(kin)}, and it was as if you had never been away. ` : ''}`
@@ -240,7 +240,7 @@ export function holiday(id, bringFamily, trip = {}) {
     store.state.npcs[pal.id] = pal;
     p.npcIds.push(pal.id);
     pal.lastInteractionAge = p.age;
-    remember(pal, 'metOnHoliday', 'You met on holiday and stayed in touch.');
+    remember(pal, 'metOnHoliday', 'You met on vacation and stayed in touch.');
     text += ` You met ${pal.firstName} there, and swapped numbers.`;
   }
   log(text, 'system', tone);

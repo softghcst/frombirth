@@ -28,7 +28,7 @@ export const MODULE_BY_ID = Object.fromEntries(DBT_MODULES.map((m) => [m.id, m])
 
 /**
  * A standard skills-group cycle: each module is taught after two weeks of
- * mindfulness (about 24 weeks; a full programme usually runs the cycle twice).
+ * mindfulness (about 24 weeks; a full program usually runs the cycle twice).
  */
 export const DBT_CYCLE = [
   ['mindfulness', 2], ['distress', 6], ['mindfulness', 2], ['regulation', 6], ['mindfulness', 2], ['interpersonal', 6],
@@ -36,18 +36,18 @@ export const DBT_CYCLE = [
 
 export const THERAPIES = [
   // ---------- Psychotherapy ----------
-  { id: 'cbt', name: 'Cognitive behavioural therapy', short: 'CBT', kind: 'therapy', format: 'individual',
+  { id: 'cbt', name: 'Cognitive behavioral therapy', short: 'CBT', kind: 'therapy', format: 'individual',
     for: ['mdd', 'pdd', 'gad', 'social_anxiety', 'panic', 'agoraphobia', 'ocd', 'bipolar_1', 'bipolar_2', 'adhd', 'ptsd'],
     by: ['psychologist', 'therapist', 'psychiatrist', 'psychiatric_nurse'], from: 1979, minAge: 8, sessions: 16, cost: 110,
     builds: ['coping'], blurb: 'Weekly sessions working on the links between thoughts, feelings and what you do, with practice in between.',
     sources: ['NICE NG222', 'NICE CG113'] },
-  { id: 'behavioural_activation', name: 'Behavioural activation', short: 'BA', kind: 'therapy', format: 'individual',
+  { id: 'behavioral_activation', name: 'Behavioral activation', short: 'BA', kind: 'therapy', format: 'individual',
     for: ['mdd'], by: ['psychologist', 'therapist', 'psychiatric_nurse'], from: 1996, minAge: 16, sessions: 12, cost: 100,
     builds: ['coping'], blurb: 'Gradually bringing back the activities that matter to you.', sources: ['NICE NG222'] },
   { id: 'ipt', name: 'Interpersonal psychotherapy', short: 'IPT', kind: 'therapy', format: 'individual',
     for: ['mdd', 'pdd', 'bulimia'], by: ['psychologist', 'therapist', 'psychiatrist'], from: 1984, minAge: 12, sessions: 16, cost: 110,
     builds: ['interpersonal'], blurb: 'Working on the relationships and life changes around low mood.', sources: ['NICE NG222'] },
-  { id: 'dbt', name: 'Individual dialectical behaviour therapy', short: 'Individual DBT', kind: 'therapy', format: 'individual', dbt: true,
+  { id: 'dbt', name: 'Individual dialectical behavior therapy', short: 'Individual DBT', kind: 'therapy', format: 'individual', dbt: true,
     for: ['bpd', 'bulimia', 'bed'], open: true, by: ['psychologist', 'therapist', 'psychiatrist'], dbtTrained: true,
     from: 1993, minAge: 14, sessions: 52, cost: 120,
     builds: ['mindfulness', 'distress', 'regulation', 'interpersonal'],
@@ -88,7 +88,7 @@ export const THERAPIES = [
     builds: ['coping'], blurb: 'Looking at the beliefs a hard experience left you with.', sources: ['NICE NG116'] },
   { id: 'emdr', name: 'EMDR', short: 'EMDR', kind: 'therapy', format: 'individual',
     for: ['ptsd'], by: ['psychologist', 'therapist'], from: 1989, minAge: 16, sessions: 10, cost: 120,
-    builds: ['regulation'], blurb: 'Eye movement desensitisation and reprocessing, for memories that stay raw.', sources: ['NICE NG116'] },
+    builds: ['regulation'], blurb: 'Eye movement desensitization and reprocessing, for memories that stay raw.', sources: ['NICE NG116'] },
   { id: 'eating_cbt', name: 'CBT for eating disorders', short: 'CBT-ED', kind: 'therapy', format: 'individual',
     for: ['anorexia', 'bulimia', 'bed'], by: ['psychologist', 'therapist'], from: 1981, minAge: 12, sessions: 20, cost: 120,
     builds: ['coping'], blurb: 'Regular eating, and the thoughts that keep the problem going.', sources: ['NICE NG69'] },
@@ -104,16 +104,16 @@ export const THERAPIES = [
   { id: 'couples', name: 'Couples therapy', short: 'Couples therapy', kind: 'therapy', format: 'couples',
     for: ['mdd'], open: true, by: ['therapist', 'psychologist'], from: 1950, minAge: 18, sessions: 12, cost: 130,
     builds: ['interpersonal'], blurb: 'Working on the relationship together.', sources: ['NICE NG222'] },
-  { id: 'supportive', name: 'Supportive counselling', short: 'Counselling', kind: 'therapy', format: 'individual',
-    for: ['mdd', 'gad'], open: true, by: ['counsellor', 'therapist', 'psychologist', 'social_worker'], from: 1940, minAge: 8, sessions: 8, cost: 75,
-    builds: ['coping'], blurb: 'Someone trained to listen, and help you think things through.', sources: ['NHS: Counselling'] },
+  { id: 'supportive', name: 'Supportive counseling', short: 'Counseling', kind: 'therapy', format: 'individual',
+    for: ['mdd', 'gad'], open: true, by: ['counselor', 'therapist', 'psychologist', 'social_worker'], from: 1940, minAge: 8, sessions: 8, cost: 75,
+    builds: ['coping'], blurb: 'Someone trained to listen, and help you think things through.', sources: ['NHS: Counseling'] },
   { id: 'adhd_coaching', name: 'ADHD coaching', short: 'Coaching', kind: 'therapy', format: 'individual',
     for: ['adhd'], open: true, by: ['therapist', 'occupational_therapist'], from: 1994, minAge: 14, sessions: 10, cost: 85,
-    builds: ['organisation'], blurb: 'Building routines, systems and reminders that work with how your attention works.', sources: ['NICE NG87'] },
+    builds: ['organization'], blurb: 'Building routines, systems and reminders that work with how your attention works.', sources: ['NICE NG87'] },
   { id: 'parent_training', name: 'Parent training', short: 'Parent training', kind: 'therapy', format: 'group',
     for: ['adhd'], by: ['psychologist', 'therapist'], from: 1975, minAge: 3, maxAge: 12, sessions: 10, cost: 40,
-    builds: ['organisation'], blurb: 'A course for parents, so home works better for everyone.', sources: ['NICE NG87'] },
-  { id: 'cbit', name: 'Comprehensive behavioural intervention for tics', short: 'CBIT', kind: 'therapy', format: 'individual',
+    builds: ['organization'], blurb: 'A course for parents, so home works better for everyone.', sources: ['NICE NG87'] },
+  { id: 'cbit', name: 'Comprehensive behavioral intervention for tics', short: 'CBIT', kind: 'therapy', format: 'individual',
     for: ['tourette'], by: ['psychologist', 'therapist'], from: 2010, minAge: 8, sessions: 8, cost: 110,
     builds: ['coping'], blurb: 'Noticing the urge before a tic, and learning a competing response, if you want to.', sources: ['NIH NINDS: Tourette Syndrome'] },
 
@@ -129,7 +129,7 @@ export const THERAPIES = [
     for: ['cerebral_palsy', 'spinal_cord_injury', 'limb_difference', 'cystic_fibrosis', 'huntingtons', 'back_pain'], open: true, rehab: true,
     by: ['physiotherapist'], from: 1894, minAge: 0, sessions: 12, cost: 80,
     builds: ['independence'], blurb: 'Strength, movement and breathing.', sources: ['NHS: Physiotherapy'] },
-  { id: 'rehab', name: 'Rehabilitation programme', short: 'Rehabilitation', kind: 'allied', format: 'individual', rehab: true,
+  { id: 'rehab', name: 'Rehabilitation program', short: 'Rehabilitation', kind: 'allied', format: 'individual', rehab: true,
     for: ['spinal_cord_injury'], by: ['physiotherapist', 'occupational_therapist'], from: 1945, minAge: 0, sessions: 20, cost: 150,
     builds: ['independence'], blurb: 'Intensive work on the goals you set for living the way you want to.', sources: ['WHO: Rehabilitation'] },
   { id: 'mobility_training', name: 'Orientation and mobility training', short: 'Mobility training', kind: 'allied', format: 'individual',
@@ -162,13 +162,13 @@ export const THERAPIES = [
     builds: ['coping'], blurb: 'A structured eight-week course with a therapist and a small group.', sources: ['NICE CG113'] },
   { id: 'depression_peer', name: 'Depression peer support group', short: 'Peer support', kind: 'peer', format: 'group',
     for: ['mdd', 'pdd', 'bipolar_1', 'bipolar_2'], open: true, by: [], from: 1970, minAge: 16, sessions: 26, cost: 0,
-    builds: [], blurb: 'People who have been there, meeting fortnightly. Not therapy, and not meant to be.', sources: ['NHS: Peer support'] },
+    builds: [], blurb: 'People who have been there, meeting every two weeks. Not therapy, and not meant to be.', sources: ['NHS: Peer support'] },
   { id: 'grief_peer', name: 'Bereavement support group', short: 'Bereavement group', kind: 'peer', format: 'group',
     for: [], open: true, by: [], from: 1970, minAge: 12, sessions: 12, cost: 0,
     builds: [], blurb: 'A room of people who have lost someone too.', sources: ['NHS: Bereavement'] },
-  { id: 'pain_course', name: 'Pain management programme', short: 'Pain programme', kind: 'education', format: 'group',
+  { id: 'pain_course', name: 'Pain management program', short: 'Pain program', kind: 'education', format: 'group',
     for: ['migraine', 'back_pain'], open: true, by: ['physiotherapist', 'psychologist'], from: 1985, minAge: 16, sessions: 8, cost: 40,
-    builds: ['coping'], blurb: 'Living well with long-term pain: pacing, sleep, movement.', sources: ['NHS: Pain management programmes'] },
+    builds: ['coping'], blurb: 'Living well with long-term pain: pacing, sleep, movement.', sources: ['NHS: Pain management programs'] },
   { id: 'disability_peer', name: 'Disabled people\'s peer network', short: 'Peer network', kind: 'peer', format: 'group',
     for: [], open: true, by: [], from: 1972, minAge: 14, sessions: 12, cost: 0,
     builds: [], blurb: 'Disabled people sharing what works, run by disabled people.', sources: ['Disability rights movement history'] },
@@ -179,5 +179,5 @@ export const THERAPY_BY_ID = Object.fromEntries(THERAPIES.map((t) => [t.id, t]))
 /** Skills a person builds through care and practice, shown in My Health. */
 export const SKILLS = {
   mindfulness: 'Mindfulness', distress: 'Distress tolerance', regulation: 'Emotion regulation', interpersonal: 'Interpersonal effectiveness',
-  coping: 'Coping skills', organisation: 'Organisation systems', communication: 'Communication', independence: 'Everyday independence', study: 'Study strategies',
+  coping: 'Coping skills', organization: 'Organization systems', communication: 'Communication', independence: 'Everyday independence', study: 'Study strategies',
 };

@@ -33,10 +33,10 @@ does not exist yet.
 | Age Up | One function calling about forty yearly steps in a fixed order | The same steps, in the same order, registered in `YEARLY` with once-per-year markers |
 | Everyday actions (work harder, study, spend time, dates, gym, practice, posting) | Already once a year, or a yearly allowance | Unchanged; covered by tests |
 | Health care (built in this branch) | A weekly care calendar the player moved through with "Let the weeks pass" | Assessments, prescriber talks, second opinions and side-effect reports resolve when chosen; therapy, medicines, checks and follow-ups are lived at Age Up; decisions come back to the player after the year; no week counts on screen |
-| Repeated choices (practising, posting) | Had to be clicked every year | A hobby focus is set once (`engine/plans.js`); posting is Digital Life's creator routine (`engine/digital/creator.js`, `setRoutine`) |
+| Repeated choices (practicing, posting) | Had to be clicked every year | A hobby focus is set once (`engine/plans.js`); posting is Digital Life's creator routine (`engine/digital/creator.js`, `setRoutine`) |
 | Saving money | Cash only | A standing yearly deposit into one of the player's bank accounts (`engine/banking.js`), through the ledger like any deposit |
 | Pets | Bought, aged, no routine care | The animal-care routine (`engine/animalCare.js`, `setRoutine`/`tickCare`), lived every year |
-| Celebrations and traditions | Not modelled | Living Moments (`engine/moments.js`): each occasion once a year; traditions that come round by themselves and pass to heirs |
+| Celebrations and traditions | Not modeled | Living Moments (`engine/moments.js`): each occasion once a year; traditions that come round by themselves and pass to heirs |
 | Prison | Each activity clicked once a year | The prison routine (`engine/prison.js`, `setRoutine`), chosen once and lived every year |
 | Yearly summary | Journal only | The yearly life update, including convictions, prison, moves, new citizenship and a crisis starting or ending |
 
@@ -70,7 +70,7 @@ savings pot, pet care, the prison priority, and celebrations and traditions.
   `engine/sportsLife.js`), with its World Games, caps, women's leagues and the
   route in from the jobs board; old saves are converted when loaded.
 - *Fame and social media*: fame's own social hooks (fame from a viral post,
-  bought followers) were dropped in favour of Digital Life; fame from online
+  bought followers) were dropped in favor of Digital Life; fame from online
   posting comes only from what Digital Life reports.
 - *Older treatments*: the health catalog holds today's medicines and therapies,
   so lives before the 1980s are offered little (see docs/HEALTH.md).

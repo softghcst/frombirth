@@ -179,7 +179,7 @@ function payslipHtml() {
   if (!ps || store.state.year - ps.year > 1) return '';
   const m = ps.months[0];
   const sum = (k) => ps.months.reduce((t, x) => t + x[k], 0);
-  return `<details class="card mm-slips"><summary><h3 style="display:inline">Payslips, ${ps.year}</h3><span class="muted"> · ${esc(ex(m.net, ps.cur))} a month</span></summary>
+  return `<details class="card mm-slips"><summary><h3 style="display:inline">Pay stubs, ${ps.year}</h3><span class="muted"> · ${esc(ex(m.net, ps.cur))} a month</span></summary>
     <p class="muted" style="margin:6px 0">From ${esc(ps.from.map((k) => SOURCE[k]).join(' and '))}.</p>
     ${kv([['Each month, before anything is taken', ex(m.gross, ps.cur)], ['Tax', `−${ex(m.tax, ps.cur)}`], ...(m.plan ? [['Into your pension plan', `−${ex(m.plan, ps.cur)}`]] : []), ['Paid to you', ex(m.net, ps.cur)],
     ...(m.employer ? [['Your employer also paid into your pension', ex(m.employer, ps.cur)]] : [])])}

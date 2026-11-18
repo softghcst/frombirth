@@ -2,7 +2,7 @@
 // clinicians and groups, held week by week on the care calendar.
 //
 // Progress comes only from sessions actually attended and skills actually
-// practised. It is gradual and uneven; a hard week is a setback, never a loss of
+// practiced. It is gradual and uneven; a hard week is a setback, never a loss of
 // what has been learned. No number of sessions "cures" anything: a course helps
 // to the extent it fits the person, and skills keep helping after it ends.
 import { rng } from '../../rng.js';
@@ -265,7 +265,7 @@ function session(c, t, doc, p) {
     if (t.id === 'cancer_treatment') for (const id of c.conditionIds) { const rec = h.conditions.find((x) => x.id === id); if (rec) cancerOutcome(rec, c, p); }
     c.history.push({ wk: w, text: 'Completed the course.' });
     setComponent(c.id, 'completed', 'Course completed.', p);
-    log(`You finished ${t.name.toLowerCase()}${doc ? ` with ${clinicianName(doc)}` : ''}. What you practised there goes with you.`, 'system', 'good');
+    log(`You finished ${t.name.toLowerCase()}${doc ? ` with ${clinicianName(doc)}` : ''}. What you practiced there goes with you.`, 'system', 'good');
     if (t.dbt) healthMilestone(`Completed ${t.name.toLowerCase()}.`, { type: 'therapy', id: c.id }, p);
   }
 }
@@ -291,7 +291,7 @@ function sessionNote(c, t, mod, p) {
   return `Session ${c.attended}.${topic || ' Reviewed the week and the practice in between.'}`;
 }
 
-/** Between sessions: skills grow only when they are practised. */
+/** Between sessions: skills grow only when they are practiced. */
 function practice(p) {
   const h = healthOf(p);
   const active = h.therapies.filter((c) => c.status === 'active' && THERAPY_BY_ID[c.therapyId].dbt && c.sessions.at(-1)?.attended);
@@ -315,7 +315,7 @@ export function therapyEffect(c, rec, p = player()) {
   return clamp(c.fit * 0.75 * c.progress * keep, 0, 0.6);
 }
 
-/** What practised skills do for a condition, whether or not a course is running. Counted once. */
+/** What practiced skills do for a condition, whether or not a course is running. Counted once. */
 export function skillsEffect(rec, p = player()) {
   const s = healthOf(p).skills;
   const avg4 = DBT4.reduce((a, k) => a + s[k], 0) / 4;
@@ -323,7 +323,7 @@ export function skillsEffect(rec, p = player()) {
     case 'personality': return clamp(0.7 * avg4 / 100, 0, 0.6);
     case 'mood': case 'anxiety': case 'trauma': case 'eating': case 'ocd':
       return clamp(0.25 * Math.max(s.coping, s.regulation, s.distress) / 100, 0, 0.25);
-    case 'neurodev': return clamp(0.3 * Math.max(s.organisation, s.communication, s.study, s.independence) / 100, 0, 0.3);
+    case 'neurodev': return clamp(0.3 * Math.max(s.organization, s.communication, s.study, s.independence) / 100, 0, 0.3);
     case 'mobility': case 'sensory': case 'genetic': return clamp(0.2 * s.independence / 100, 0, 0.2);
     default: return 0;
   }

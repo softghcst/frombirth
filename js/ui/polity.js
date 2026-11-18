@@ -36,8 +36,8 @@ function personRow(w, f, side = '') {
 /** The legislature as a single bar, one block per party. */
 function seatBar(o) {
   if (!o.parties.length) return '';
-  return `<div class="pol-bar" role="img" aria-label="Seats in the legislature">${o.parties.filter((p) => p.seats).map((p) => `<i style="flex:${p.seats};background:${p.colour}" title="${esc(p.name)}: ${p.seats}"></i>`).join('')}</div>
-    <div class="pol-key">${o.parties.map((p) => `<span><i style="background:${p.colour}"></i>${esc(p.name)} ${p.seats}</span>`).join('')}</div>`;
+  return `<div class="pol-bar" role="img" aria-label="Seats in the legislature">${o.parties.filter((p) => p.seats).map((p) => `<i style="flex:${p.seats};background:${p.color}" title="${esc(p.name)}: ${p.seats}"></i>`).join('')}</div>
+    <div class="pol-key">${o.parties.map((p) => `<span><i style="background:${p.color}"></i>${esc(p.name)} ${p.seats}</span>`).join('')}</div>`;
 }
 
 function pageGovernment(w, o) {
@@ -65,7 +65,7 @@ function pageGovernment(w, o) {
 function pageParties(w, o, mine) {
   if (!o.parties.length) return '<p class="muted">There are no political parties here.</p>';
   return o.parties.map((p) => `
-    <div class="card pol-party" style="border-left:5px solid ${p.colour}">
+    <div class="card pol-party" style="border-left:5px solid ${p.color}">
       <h3>${esc(p.name)}${mine?.id === p.id ? ' <small>(your party)</small>' : ''}</h3>
       <p class="muted">${esc(p.says)}</p>
       <div class="kv"><span>Seats</span><span>${p.seats} of ${o.seatCount}${p.inGovt ? ' · in government' : ''}</span></div>
@@ -88,8 +88,8 @@ function myRaces(countryId) {
   const races = (player().flags.races ?? []).filter((r) => r.countryId === countryId).reverse();
   if (!races.length) return myVotes();
   return `<div class="section-label">Your own races</div>${races.map((r) => `<div class="card"><h3>${r.year} · ${esc(r.title)} <small>(${r.won ? 'won' : 'lost'})</small></h3>
-    <div class="pol-result"><span>You${r.party ? `, ${esc(r.party)}` : ''}</span><span class="pol-track"><i style="width:${r.share}%;background:${r.colour}"></i></span><span class="num">${r.share}%</span><span class="num">${num(r.votes.me)}</span></div>
-    <div class="pol-result"><span>${esc(r.rival)}${r.rivalParty ? `, ${esc(r.rivalParty)}` : ''}</span><span class="pol-track"><i style="width:${Math.round((100 - r.share) * 10) / 10}%;background:${r.rivalColour}"></i></span><span class="num">${Math.round((100 - r.share) * 10) / 10}%</span><span class="num">${num(r.votes.rival)}</span></div>
+    <div class="pol-result"><span>You${r.party ? `, ${esc(r.party)}` : ''}</span><span class="pol-track"><i style="width:${r.share}%;background:${r.color}"></i></span><span class="num">${r.share}%</span><span class="num">${num(r.votes.me)}</span></div>
+    <div class="pol-result"><span>${esc(r.rival)}${r.rivalParty ? `, ${esc(r.rivalParty)}` : ''}</span><span class="pol-track"><i style="width:${Math.round((100 - r.share) * 10) / 10}%;background:${r.rivalColor}"></i></span><span class="num">${Math.round((100 - r.share) * 10) / 10}%</span><span class="num">${num(r.votes.rival)}</span></div>
     <div class="kv"><span>Votes cast</span><span>${num(r.total)} (${r.turnout}% turnout)</span></div>
     ${r.platform ? `<div class="kv"><span>You stood for</span><span>${esc(r.platform)}</span></div>` : ''}
     ${r.debated ? `<div class="kv"><span>The debate</span><span>${{ won: 'You won it', lost: 'You lost it', drawn: 'A draw', ducked: 'You declined it' }[r.debated]}</span></div>` : ''}
@@ -103,7 +103,7 @@ function pageElections(w, o) {
     const order = Object.entries(e.shares).sort((a, b) => b[1] - a[1]);
     const lead = world.party(w, e.govt.lead);
     return `<div class="card"><h3>${e.year}${i === 0 ? ' <small>(the most recent)</small>' : ''}</h3>
-      ${order.map(([id, s]) => { const p = world.party(w, id); return p ? `<div class="pol-result"><span>${esc(p.name)}</span><span class="pol-track"><i style="width:${s}%;background:${p.colour}"></i></span><span class="num">${s}%</span><span class="num">${e.seats[id] ?? 0} seats</span></div>` : ''; }).join('')}
+      ${order.map(([id, s]) => { const p = world.party(w, id); return p ? `<div class="pol-result"><span>${esc(p.name)}</span><span class="pol-track"><i style="width:${s}%;background:${p.color}"></i></span><span class="num">${s}%</span><span class="num">${e.seats[id] ?? 0} seats</span></div>` : ''; }).join('')}
       <div class="kv"><span>Votes cast</span><span>${num(e.total)} (${e.turnout}% turnout)</span></div>
       ${e.runoff ? `<div class="kv"><span>Run-off</span><span>${Object.entries(e.runoff.shares).sort((a, b) => b[1] - a[1]).map(([id, s]) => `${esc(world.party(w, id)?.name ?? '')} ${s}%`).join(' to ')}</span></div>` : ''}
       <div class="kv"><span>Outcome</span><span>${esc(e.govt.headName)}${lead ? `, ${esc(lead.name)}` : ''}: ${esc(GOVT[e.govt.kind] ?? e.govt.kind)}${e.govt.partners.length ? ` with ${esc(e.govt.partners.map((id) => world.party(w, id)?.name).join(' and '))}` : ''}</span></div>

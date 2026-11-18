@@ -203,28 +203,28 @@ function screening(rows, p) {
     const predictive = gene.pattern === 'dominant';
     if (predictive && p.age < 18) continue;
     out.push({ key, condition: gene.condition, name: CONDITION_BY_ID[gene.condition].name, kind: predictive ? 'predictive' : 'carrier', done: done?.result ?? null,
-      text: predictive ? 'A predictive genetic test, with counselling before and after. Some people want to know; many decide not to. Both are reasonable.' : 'A carrier test: whether you carry a variant you could pass on, and what that would mean.' });
+      text: predictive ? 'A predictive genetic test, with counseling before and after. Some people want to know; many decide not to. Both are reasonable.' : 'A carrier test: whether you carry a variant you could pass on, and what that would mean.' });
   }
   for (const id of ['adhd', 'autism', 'bipolar_1', 'bipolar_2', 'mdd']) if (known.has(id)) out.push({ key: `aware_${id}`, condition: id, name: CONDITION_BY_ID[id].name, kind: 'awareness', text: `It runs in families to a degree. It is no reason to expect it, only a reason to ask for an assessment sooner if things fit.` });
   return out;
 }
 
-/** A genetic test after counselling. The result is the player's alone. */
+/** A genetic test after counseling. The result is the player's alone. */
 export function geneTest(key, p = player()) {
   const h = healthOf(p);
   const gene = GENES[key];
   if (!gene) return result(false, 'Unknown test.', 'neutral');
   if (h.genetic.tested[key]) return result(false, 'You have already had that test.', 'neutral');
   if (store.state.year < 1993 && key === 'hd') return result(false, 'There is no reliable test for this yet.', 'neutral');
-  charge(`gene:${key}`, 600, { what: 'Genetic counselling and test' });
+  charge(`gene:${key}`, 600, { what: 'Genetic counseling and test' });
   const g = genomeOf(p);
   const has = affected(g, key, seeded('pen', key, p.id)) || (gene.pattern === 'dominant' && (g.a[key] ?? []).some((x) => x));
   const res = gene.pattern === 'dominant' ? (has ? 'has the variant' : 'does not have the variant') : carrierOf(g, key) ? 'carrier' : has ? 'affected' : 'not a carrier';
   h.genetic.tested[key] = { result: res, wk: now(p) };
   const text = {
-    'has the variant': 'The counsellor goes through it slowly. You carry the variant. It says nothing about who you are, or the life you have still to live, and support is there when you want it.',
-    'does not have the variant': 'You do not carry the variant. The counsellor makes sure you have someone to talk to: relief can be complicated too.',
-    carrier: `You are ${gene.carrierName}. It does not affect your own health. It matters for children only if their other parent is a carrier too, and the counsellor explains how.`,
+    'has the variant': 'The counselor goes through it slowly. You carry the variant. It says nothing about who you are, or the life you have still to live, and support is there when you want it.',
+    'does not have the variant': 'You do not carry the variant. The counselor makes sure you have someone to talk to: relief can be complicated too.',
+    carrier: `You are ${gene.carrierName}. It does not affect your own health. It matters for children only if their other parent is a carrier too, and the counselor explains how.`,
     'not a carrier': 'You are not a carrier.',
     affected: 'The test confirms what you already knew.',
   }[res];
@@ -305,7 +305,7 @@ function autoConcern(p) {
 
 /** Paths story events can test (see SPECIAL in engine/conditions.js). */
 export const HEALTH_PATHS = {
-  /** Domains where something unrecognised is affecting daily life. */
+  /** Domains where something unrecognized is affecting daily life. */
   healthSigns: (p) => {
     if (!p.health) return [];
     const out = new Set();

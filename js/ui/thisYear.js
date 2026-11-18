@@ -35,7 +35,7 @@ export async function thisYearAction(id, api) {
   const pl = plans.plansOf(p);
   if (id === 'hobby') {
     const opts = skillOptions().flatMap((g) => g.skills).filter((s) => !s.tooYoung && !s.mastered);
-    const main = await pickModal({ title: 'Your main passion', body: 'Practised through every year, from the year\'s own practice time.', options: [...opts.map((s) => ({ value: s.id, label: s.name, sub: s.started ? `${s.levelName} (${s.level}%)` : 'New to you' })), ...(pl.hobby ? [{ value: '__none', label: 'No hobby plan' }] : [])] });
+    const main = await pickModal({ title: 'Your main passion', body: 'Practiced through every year, from the year\'s own practice time.', options: [...opts.map((s) => ({ value: s.id, label: s.name, sub: s.started ? `${s.levelName} (${s.level}%)` : 'New to you' })), ...(pl.hobby ? [{ value: '__none', label: 'No hobby plan' }] : [])] });
     if (!main) return undefined;
     if (main === '__none') return say(api, plans.setHobby(null));
     const second = await pickModal({ title: 'Something on the side?', cancel: 'Just the one', options: opts.filter((s) => s.id !== main).map((s) => ({ value: s.id, label: s.name })) });

@@ -201,7 +201,7 @@ section('B. Family messaging');
   const sister = friend({ role: 'sibling', age: 28, relationship: 75 });
   acc.makeAccount(sister.id, 'murmur', 'sis.here');
   const mother = store.state.player.npcIds.map((id) => store.state.npcs[id]).find((n) => n.alive && n.role === 'parent');
-  if (mother && !acc.accountOn(mother.id, 'murmur')) acc.makeAccount(mother.id, 'murmur', 'mum.here');
+  if (mother && !acc.accountOn(mother.id, 'murmur')) acc.makeAccount(mother.id, 'murmur', 'mom.here');
   const g = msg.createGroup({ platformId: 'murmur', name: 'Family', type: 'family', memberIds: [sister.id, ...(mother ? [mother.id] : [])] });
   check(g.ok && g.thread.participants.every((id) => core.charOf(id)), 'a family group chat of real people');
   // The player moves abroad.
@@ -537,7 +537,7 @@ section('Education');
   const local0 = comm.communities().find((x) => x.place === city0);
   p.city = COUNTRIES[p.countryId].cities.find((x) => x !== city0);
   const local1 = comm.communities().find((x) => x.place === p.city);
-  check(local0 && local1 && local0.id !== local1.id && core.world().communities[local0.id], 'moving brings a new neighbourhood group; the old one stays in the record');
+  check(local0 && local1 && local0.id !== local1.id && core.world().communities[local0.id], 'moving brings a new neighborhood group; the old one stays in the record');
 }
 
 // ---------- Creators: routines, money, streams, portfolio ----------
@@ -563,7 +563,7 @@ section('Creator economy');
   content.publish({ accountId: ch.id, format: 'short_video', topic: 'music', affiliate: true });
   grow(1);
   const kinds = new Set(creator.ledgerOf().map((x) => x.kind));
-  check(kinds.has('merch') && kinds.has('affiliate'), `merchandise and labelled affiliate income arrive through the ledger (${[...kinds].join(', ')})`);
+  check(kinds.has('merch') && kinds.has('affiliate'), `merchandise and labeled affiliate income arrive through the ledger (${[...kinds].join(', ')})`);
   const merch = creator.ledgerOf().find((x) => x.kind === 'merch');
   check(merch.expenses > 0 && merch.net === merch.gross - merch.platformFee - merch.expenses - merch.tax, 'merchandise counts the cost of making it');
   grow(1);
@@ -585,7 +585,7 @@ section('Creator economy');
   // Streams: scheduled for next year, with equipment
   const live = join('beacon', 'routine.live', { visibility: 'public' }).account;
   freshHours();
-  // Years can pass above while a licence offer is awaited, and kit wears out: replace what no longer works.
+  // Years can pass above while a license offer is awaited, and kit wears out: replace what no longer works.
   rich(); ['camera', 'microphone', 'webcam'].forEach((d) => tech.buyDevice(d));
   const plan = creator.planStream({ accountId: live.id, topic: 'music', equipment: creator.streamGear().map((d) => d.id), when: 'next' });
   check(plan.ok && plan.stream.scheduledYear === store.state.year + 1 && plan.stream.equipment.length >= 2, `a stream can be scheduled for next year with chosen equipment${plan.ok && plan.stream.equipment.length >= 2 ? '' : ` (${plan.text}; gear ${creator.streamGear().map((d) => d.id).join(', ')})`}`);
@@ -777,10 +777,10 @@ section('Radio and television');
   const p = life({ born: 1922, age: 8 });
   const ids = bc.broadcastOptions().map((o) => o.id);
   check(ids.includes('radio') && !ids.includes('tv'), `in 1930 there is radio and no television (${ids.join(', ')})`);
-  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'parent');
-  const before = mum?.meters.relationship;
+  const mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'parent');
+  const before = mom?.meters.relationship;
   const r = bc.tuneIn('radio', 'drama');
-  check(r.ok && (bc.setFor('radio') === 'elsewhere' || mum?.meters.relationship > before), 'an evening round the family radio brings the household closer');
+  check(r.ok && (bc.setFor('radio') === 'elsewhere' || mom?.meters.relationship > before), 'an evening round the family radio brings the household closer');
   check(!bc.tuneIn('radio', 'news').ok, 'once a year');
   grow(30);
   check(bc.broadcastOptions().some((o) => o.id === 'tv'), 'by 1960 there is television too');

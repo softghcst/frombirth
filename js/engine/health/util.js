@@ -1,5 +1,6 @@
 // Small shared pieces for the health engine: the care calendar, money, and
 // randomness that belongs to one person and never changes on reload.
+import { uid } from '../../util.js';
 import { store, player, country } from '../../state.js';
 import { careCost } from '../medical.js';
 import { claim } from './insurance.js';
@@ -66,9 +67,8 @@ export function probit(p) {
   return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
 }
 
-let n = 0;
-/** Ids that stay unique within a save and say what they are. */
-export const hid = (kind) => `${kind}_${store.state.year.toString(36)}${(now() % WEEKS).toString(36)}${Date.now().toString(36).slice(-4)}${(n++).toString(36)}`;
+/** Ids that stay unique within a save and say what they are: counted in the life (util.uid), so a reload makes the same ones. */
+export const hid = (kind) => uid(kind);
 
 /**
  * Charges the patient for one thing, once. `ref` names exactly what is being paid

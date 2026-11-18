@@ -10,11 +10,11 @@ export const BIRTH_CONDITIONS = [
   { id: 'born_asthmatic', name: 'Weak lungs', chance: 0.03,
     desc: 'You were born with weak lungs.', illness: 'asthma', stats: { health: -4 } },
   // Color vision is now inherited (X-linked) through engine/health/heredity.js; kept here so older saves still show it.
-  { id: 'colour_blind', name: 'Color blind', chance: 0,
+  { id: 'color_blind', name: 'Color blind', chance: 0,
     desc: 'Reds and greens will always look much the same to you.' },
   { id: 'left_handed', name: 'Left-handed', chance: 0.1,
     desc: 'You reach for everything with your left hand.', talents: { music: 4, sports: 3 } },
-  // Dyslexia is now part of the health record (inherited, recognised at school). It never lowers intellect.
+  // Dyslexia is now part of the health record (inherited, recognized at school). It never lowers intellect.
   { id: 'dyslexia', name: 'Dyslexia', chance: 0,
     desc: 'Letters will not sit still for you, so you learn to work around them.' },
   { id: 'hyperactive', name: 'Boundless energy', chance: 0.05,

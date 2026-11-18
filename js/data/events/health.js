@@ -71,7 +71,7 @@ export default [
     choices: [
       { label: 'Find other people who get it', outcomes: [any('An online group, then a real one. People finish each other\'s sentences, which is the point.', 'good', st('mood', 5))] },
       { label: 'Read everything you can find', outcomes: [any('You learn a great deal, and set up two systems that actually stick.', 'good',
-        health({ do: 'skill', skill: 'organisation', topic: 'learning', text: 'learning about how your attention works', amount: 4 }))] },
+        health({ do: 'skill', skill: 'organization', topic: 'learning', text: 'learning about how your attention works', amount: 4 }))] },
       { label: 'Tell your family what you have learned', outcomes: [any('Your mother goes quiet, then says she has always been exactly the same.', 'neutral', st('mood', 2))] },
     ],
   },
@@ -81,7 +81,7 @@ export default [
     choices: [
       { label: 'Ask the school and the doctor about an assessment', outcomes: [any('You make the calls. {kid} is nervous, then relieved: someone is finally asking the right questions.', 'good',
         health({ do: 'childAssess', with: 'kid' }), rel('kid', 6), mem('kid', 'assessed', 'You made sure someone looked into why school was so hard.'))] },
-      { label: 'Ask {kid} what is hard, and what helps', outcomes: [any('{kid} has thought about it more than you realised. You make a few changes at home together.', 'good', rel('kid', 8))] },
+      { label: 'Ask {kid} what is hard, and what helps', outcomes: [any('{kid} has thought about it more than you realized. You make a few changes at home together.', 'good', rel('kid', 8))] },
       { label: 'Tell them to try harder', outcomes: [any('{kid} nods and goes quiet. They were already trying.', 'bad', rel('kid', -8), mem('kid', 'tryHarder', 'You told them to try harder when school was hard.'))] },
     ],
   },
@@ -101,7 +101,7 @@ export default [
     text: '{friend} is having a birthday party, upstairs at a bar with no lift.',
     choices: [
       { label: 'Tell {friend}, and suggest somewhere step-free', outcomes: [any('{friend} is mortified they did not think of it, and moves it to the place round the corner. It is a better bar anyway.', 'good', rel('friend', 5), st('mood', 3))] },
-      { label: 'Write to the bar about access', outcomes: [any('A month later they reply. A year later there is a ramp and a lift. Small things move.', 'good', hid('karma', 2))] },
+      { label: 'Write to the bar about access', outcomes: [any('A month later they reply. A year later there is a ramp and an elevator. Small things move.', 'good', hid('karma', 2))] },
       { label: 'Skip it and see {friend} another day', outcomes: [any('You take {friend} out for lunch the week after. Still, you would have liked to be there.', 'neutral', rel('friend', -1), st('mood', -2))] },
     ],
   },
@@ -121,9 +121,9 @@ export default [
     requires: [need('hearing', '==', true), need('employed', '==', true)],
     text: 'An all-staff meeting is announced for tomorrow: an hour of people talking, with no captions and no interpreter booked.',
     choices: [
-      { label: 'Ask for an interpreter', outcomes: [any('You email the organiser. Arranging it is their job; asking is yours.', 'good',
+      { label: 'Ask for an interpreter', outcomes: [any('You email the organizer. Arranging it is their job; asking is yours.', 'good',
         health({ do: 'accommodate', setting: 'work', type: 'interpreter', need: 'sign_language' }))] },
-      { label: 'Ask for live captions', outcomes: [any('Captions on the big screen, for everyone. Three colleagues thank you afterwards.', 'good',
+      { label: 'Ask for live captions', outcomes: [any('Captions on the big screen, for everyone. Three colleagues thank you afterward.', 'good',
         health({ do: 'accommodate', setting: 'work', type: 'captions', need: 'captions' }))] },
       { label: 'Get through it and ask a colleague for notes', outcomes: [any('You catch about half of it. The notes fill in the rest.', 'neutral', health({ do: 'stress', delta: 5 }))] },
     ],
@@ -212,7 +212,7 @@ export default [
   {
     id: 'mood_high_signs', category: 'health', ageRange: [14, 90], cooldown: 3, weight: 3,
     requires: [need('diagnosed', 'has', 'bipolar_1')],
-    text: 'You have been sleeping less and doing more. You recognise it from the early-warning list you made with your care team.',
+    text: 'You have been sleeping less and doing more. You recognize it from the early-warning list you made with your care team.',
     choices: [
       { label: 'Call your care team, as planned', outcomes: [any('They see you that week and help you steady things. Catching it early worked.', 'good', health({ do: 'seek', concern: 'mental' }), health({ do: 'stress', delta: -6 }))] },
       { label: 'Protect your sleep and cancel the extra plans', outcomes: [any('It is hard to slow down. You do it anyway.', 'good', health({ do: 'stress', delta: -4 }))] },

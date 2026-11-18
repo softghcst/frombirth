@@ -48,7 +48,7 @@ export default [
       { label: 'Book somewhere special ({$300})', requires: [need('cashBase', '>=', 300)], outcomes: [any(
         'A corner table, a bottle of something good, and the story of how you met, told badly by both of you.', 'good', cash(-300), rel('love', 10), st('mood', 6))] },
       { label: 'Cook the first meal you ever made them', check: chk(0.6, { 'stats.intellect': 0.3, 'cast.love.relationship': 0.4 }), outcomes: [
-        ok('You remember it exactly, including the part you burnt. {love} cries a little.', rel('love', 13), st('mood', 7),
+        ok('You remember it exactly, including the part you burned. {love} cries a little.', rel('love', 13), st('mood', 7),
           mem('love', 'firstMeal', 'You recreated the first meal you ever cooked for them.')),
         bad('You burn a different part this time. They laugh. It still counts.', rel('love', 4)),
       ] },

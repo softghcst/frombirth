@@ -15,7 +15,7 @@
 
 /** Shared genetic factors: conditions that run in families together. */
 export const CLUSTERS = {
-  internalising: 'Depression and anxiety',
+  internalizing: 'Depression and anxiety',
   psychosis_mood: 'Bipolar disorder and psychosis',
   emotion: 'Emotional sensitivity',
   neurodev: 'Neurodevelopmental',
@@ -33,8 +33,8 @@ export const CLUSTERS = {
 export const GENES = {
   cf: { condition: 'cystic_fibrosis', pattern: 'recessive', freq: 0.02, penetrance: 1, carrierName: 'a cystic fibrosis carrier' },
   hd: { condition: 'huntingtons', pattern: 'dominant', freq: 0.00005, denovo: 0.000002, penetrance: 1 },
-  f8: { condition: 'haemophilia_a', pattern: 'x', freq: 0.0002, penetrance: 1, carrierName: 'a haemophilia carrier' },
-  opn: { condition: 'colour_vision', pattern: 'x', freq: 0.08, penetrance: 1, carrierName: 'a carrier of colour vision deficiency' },
+  f8: { condition: 'hemophilia_a', pattern: 'x', freq: 0.0002, penetrance: 1, carrierName: 'a hemophilia carrier' },
+  opn: { condition: 'color_vision', pattern: 'x', freq: 0.08, penetrance: 1, carrierName: 'a carrier of color vision deficiency' },
   lhon: { condition: 'lhon', pattern: 'mito', freq: 0.0003, penetrance: { male: 0.5, female: 0.1 } },
   fgfr3: { condition: 'achondroplasia', pattern: 'dominant', freq: 0.000004, denovo: 0.00003, penetrance: 1 },
 };

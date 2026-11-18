@@ -48,7 +48,7 @@ function therapyFor(n, def) {
 /**
  * Medicines that could be prescribed to this person for this condition this
  * year: used for it, available here and now, right for their age, never for
- * BPD itself, and in bipolar disorder a mood stabiliser rather than an
+ * BPD itself, and in bipolar disorder a mood stabilizer rather than an
  * antidepressant on its own. Not already tried and found wanting.
  */
 export function npcMedOptions(n, conditionId, tried = []) {

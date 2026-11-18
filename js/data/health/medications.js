@@ -83,7 +83,7 @@ export const MEDICATIONS = [
     sources: ['MedlinePlus: Mirtazapine'] },
 
   // ---------- Bipolar disorder ----------
-  { id: 'lithium', name: 'Lithium', brands: { default: 'Priadel', us: 'Lithobid' }, cls: 'mood stabiliser', family: 'mood_stabiliser',
+  { id: 'lithium', name: 'Lithium', brands: { default: 'Priadel', us: 'Lithobid' }, cls: 'mood stabilizer', family: 'mood_stabilizer',
     uses: { bipolar_1: 'first', bipolar_2: 'first' },
     from: 1949, minAge: 18, by: ['psychiatrist'], onset: [2, 8], adequate: 26, response: { good: 0.4, partial: 0.3 }, prevents: true,
     effects: [
@@ -92,7 +92,7 @@ export const MEDICATIONS = [
       { id: 'nausea', cat: 'gastro', label: 'Upset stomach', tier: 'less common', fades: true },
     ], stopping: 'notable', tags: ['needs_levels'], monitoring: { what: 'blood levels, kidney and thyroid function', every: 13 },
     sources: ['NICE CG185', 'MedlinePlus: Lithium'] },
-  { id: 'lamotrigine', name: 'Lamotrigine', brands: { us: 'Lamictal', default: 'Lamictal' }, cls: 'anticonvulsant', family: 'mood_stabiliser',
+  { id: 'lamotrigine', name: 'Lamotrigine', brands: { us: 'Lamictal', default: 'Lamictal' }, cls: 'anticonvulsant', family: 'mood_stabilizer',
     uses: { bipolar_1: 'option', bipolar_2: 'option', epilepsy: 'first' },
     from: 1994, fromFor: { bipolar_1: 2003, bipolar_2: 2003 }, minAge: 18, by: ['psychiatrist', 'neurologist'], onset: [4, 10], adequate: 12, response: { good: 0.38, partial: 0.3 }, prevents: true,
     effects: [
@@ -101,7 +101,7 @@ export const MEDICATIONS = [
       { id: 'headache', cat: 'other', label: 'Headaches', tier: 'common', fades: true },
     ], stopping: 'moderate', tags: ['slow_start'],
     sources: ['MedlinePlus: Lamotrigine', 'NICE CG185'] },
-  { id: 'quetiapine', name: 'Quetiapine', brands: { us: 'Seroquel', default: 'Seroquel' }, cls: 'atypical antipsychotic', family: 'mood_stabiliser',
+  { id: 'quetiapine', name: 'Quetiapine', brands: { us: 'Seroquel', default: 'Seroquel' }, cls: 'atypical antipsychotic', family: 'mood_stabilizer',
     uses: { bipolar_1: 'first', bipolar_2: 'option', schizophrenia: 'option' },
     from: 1997, fromFor: { bipolar_1: 2004, bipolar_2: 2006 }, minAge: 18, by: ['psychiatrist'], onset: [1, 4], adequate: 8, response: { good: 0.38, partial: 0.3 }, prevents: true,
     effects: [
@@ -123,7 +123,7 @@ export const MEDICATIONS = [
   // ---------- ADHD ----------
   { id: 'methylphenidate', name: 'Methylphenidate', brands: { us: 'Ritalin', default: 'Ritalin' }, cls: 'stimulant', family: 'adhd',
     uses: { adhd: 'first' },
-    from: 1955, minAge: 6, by: ['psychiatrist', 'paediatrician'], onset: [0, 2], adequate: 4, response: { good: 0.55, partial: 0.25 }, controlled: true,
+    from: 1955, minAge: 6, by: ['psychiatrist', 'pediatrician'], onset: [0, 2], adequate: 4, response: { good: 0.55, partial: 0.25 }, controlled: true,
     effects: [
       { id: 'appetite', cat: 'appetite', label: 'Less appetite', tier: 'common', fades: true },
       { id: 'sleep', cat: 'sleep', label: 'Trouble getting to sleep', tier: 'common', fades: true },
@@ -133,7 +133,7 @@ export const MEDICATIONS = [
     sources: ['NICE NG87', 'MedlinePlus: Methylphenidate'] },
   { id: 'lisdexamfetamine', name: 'Lisdexamfetamine', brands: { us: 'Vyvanse', default: 'Elvanse' }, cls: 'stimulant', family: 'adhd',
     uses: { adhd: 'first' },
-    from: 2007, minAge: 6, by: ['psychiatrist', 'paediatrician'], onset: [0, 2], adequate: 4, response: { good: 0.55, partial: 0.25 }, controlled: true,
+    from: 2007, minAge: 6, by: ['psychiatrist', 'pediatrician'], onset: [0, 2], adequate: 4, response: { good: 0.55, partial: 0.25 }, controlled: true,
     effects: [
       { id: 'appetite', cat: 'appetite', label: 'Less appetite', tier: 'common', fades: true },
       { id: 'sleep', cat: 'sleep', label: 'Trouble getting to sleep', tier: 'common', fades: true },
@@ -143,7 +143,7 @@ export const MEDICATIONS = [
     sources: ['NICE NG87', 'MedlinePlus: Lisdexamfetamine'] },
   { id: 'amphetamine_salts', name: 'Mixed amphetamine salts', brands: { us: 'Adderall', default: 'Adderall' }, cls: 'stimulant', family: 'adhd',
     uses: { adhd: 'option' },
-    from: 1996, minAge: 6, by: ['psychiatrist', 'paediatrician'], onset: [0, 2], adequate: 4, response: { good: 0.52, partial: 0.25 }, controlled: true,
+    from: 1996, minAge: 6, by: ['psychiatrist', 'pediatrician'], onset: [0, 2], adequate: 4, response: { good: 0.52, partial: 0.25 }, controlled: true,
     countries: ['us', 'ca'],
     effects: [
       { id: 'appetite', cat: 'appetite', label: 'Less appetite', tier: 'common', fades: true },
@@ -153,7 +153,7 @@ export const MEDICATIONS = [
     sources: ['MedlinePlus: Amphetamine'] },
   { id: 'atomoxetine', name: 'Atomoxetine', brands: { us: 'Strattera', default: 'Strattera' }, cls: 'non-stimulant', family: 'adhd',
     uses: { adhd: 'option' },
-    from: 2002, minAge: 6, by: ['psychiatrist', 'paediatrician'], onset: [2, 8], adequate: 10, response: { good: 0.42, partial: 0.28 },
+    from: 2002, minAge: 6, by: ['psychiatrist', 'pediatrician'], onset: [2, 8], adequate: 10, response: { good: 0.42, partial: 0.28 },
     effects: [
       { id: 'nausea', cat: 'gastro', label: 'Upset stomach', tier: 'common', fades: true },
       { id: 'tired', cat: 'fatigue', label: 'Tiredness', tier: 'common', fades: true },
@@ -162,7 +162,7 @@ export const MEDICATIONS = [
     sources: ['NICE NG87', 'MedlinePlus: Atomoxetine'] },
   { id: 'guanfacine', name: 'Guanfacine (extended release)', brands: { us: 'Intuniv', default: 'Intuniv' }, cls: 'non-stimulant', family: 'adhd',
     uses: { adhd: 'option' },
-    from: 2009, minAge: 6, maxAge: 17, by: ['psychiatrist', 'paediatrician'], onset: [2, 6], adequate: 8, response: { good: 0.4, partial: 0.28 },
+    from: 2009, minAge: 6, maxAge: 17, by: ['psychiatrist', 'pediatrician'], onset: [2, 6], adequate: 8, response: { good: 0.4, partial: 0.28 },
     effects: [
       { id: 'drowsy', cat: 'fatigue', label: 'Drowsiness', tier: 'common', fades: true },
       { id: 'dizzy', cat: 'other', label: 'Dizziness', tier: 'less common', fades: true },
@@ -219,7 +219,7 @@ export const MEDICATIONS = [
     stopping: 'low', tags: [], monitoring: { what: 'cholesterol and liver function', every: 52 },
     sources: ['NICE CG181 / NG238', 'MedlinePlus: Atorvastatin'] },
   { id: 'factor_viii', name: 'Factor VIII', brands: { default: 'Factor VIII concentrate' }, cls: 'clotting factor', family: 'factor',
-    uses: { haemophilia_a: 'first' },
+    uses: { hemophilia_a: 'first' },
     from: 1966, minAge: 0, by: ['doctor'], onset: [0, 1], adequate: 4, response: { good: 0.75, partial: 0.2 }, prevents: true,
     effects: [], stopping: 'low', tags: [],
     sources: ['MedlinePlus: Hemophilia'] },
@@ -235,7 +235,7 @@ export function medName(m, countryId) {
 
 /** Medicine families, for display and for the rules about combining. */
 export const FAMILIES = {
-  antidepressant: 'Antidepressant', mood_stabiliser: 'Mood stabiliser', antipsychotic: 'Antipsychotic', adhd: 'ADHD medication',
+  antidepressant: 'Antidepressant', mood_stabilizer: 'Mood stabilizer', antipsychotic: 'Antipsychotic', adhd: 'ADHD medication',
   antiseizure: 'Antiseizure medication', migraine: 'Migraine treatment', cf: 'CFTR modulator', factor: 'Clotting factor replacement',
   asthma: 'Asthma inhaler', diabetes: 'Diabetes medicine', blood_pressure: 'Blood pressure medicine', cardiac: 'Heart medicine',
 };

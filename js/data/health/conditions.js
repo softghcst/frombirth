@@ -2,7 +2,7 @@
 // mobility, chronic and single-gene conditions, all in one shape.
 //
 // A definition describes a kind of condition, never a person. Whether someone
-// has it, how it shows in them, whether anyone has recognised it and what care
+// has it, how it shows in them, whether anyone has recognized it and what care
 // they receive are held in their own health record (engine/health/record.js).
 //
 // Numbers here are game tuning, not clinical data. `rate` is a yearly chance of
@@ -13,12 +13,12 @@
 // reviewed by a clinician.
 //
 // named: the names in clinical use over time, as [fromYear, name]. Before the
-// first entry the condition was not recognised as such: a clinician of the time
+// first entry the condition was not recognized as such: a clinician of the time
 // can describe the experiences but cannot name them.
 
 /** Who can make a formal diagnosis of each group (scope is checked again against era and place). */
 const MH = ['psychiatrist', 'psychologist'];
-const DEV = ['psychiatrist', 'psychologist', 'paediatrician'];
+const DEV = ['psychiatrist', 'psychologist', 'pediatrician'];
 
 /** @type {import('../../types.js').ConditionDef[]} */
 export const CONDITIONS = [
@@ -26,16 +26,16 @@ export const CONDITIONS = [
   { id: 'mdd', name: 'Major depressive disorder', short: 'depression', group: 'mood', course: 'episodic',
     named: [[1800, 'melancholia'], [1918, 'depression'], [1980, 'major depressive disorder']],
     onset: { kind: 'hazard', ages: [12, 85], rate: 0.0028 },
-    heredity: { cluster: 'internalising', share: 0.6, b: 0.5 },
+    heredity: { cluster: 'internalizing', share: 0.6, b: 0.5 },
     features: ['low_mood', 'lost_interest', 'sleep_change', 'low_energy', 'poor_concentration', 'appetite_change', 'self_critical'],
     diagnose: { by: [...MH, 'gp'], weeks: 2 },
-    care: { therapies: ['cbt', 'ipt', 'behavioural_activation', 'supportive'], meds: 'antidepressant' },
+    care: { therapies: ['cbt', 'ipt', 'behavioral_activation', 'supportive'], meds: 'antidepressant' },
     remit: 0.35, recur: 0.04,
     sources: ['NICE NG222 (2022)', 'NIMH: Depression'] },
   { id: 'pdd', name: 'Persistent depressive disorder', short: 'persistent depression', group: 'mood', course: 'persistent',
     named: [[1980, 'dysthymia'], [2013, 'persistent depressive disorder']],
     onset: { kind: 'hazard', ages: [15, 70], rate: 0.0005 },
-    heredity: { cluster: 'internalising', share: 0.6, b: 0.5 },
+    heredity: { cluster: 'internalizing', share: 0.6, b: 0.5 },
     features: ['low_mood', 'low_energy', 'self_critical', 'sleep_change'],
     diagnose: { by: MH, weeks: 104 },
     care: { therapies: ['cbt', 'ipt'], meds: 'antidepressant' },
@@ -48,7 +48,7 @@ export const CONDITIONS = [
     features: ['mood_episodes', 'sleep_change', 'low_mood', 'racing_thoughts'],
     episodes: { depression: 0.5, mania: 0.35, hypomania: 0 },
     diagnose: { by: ['psychiatrist'], weeks: 1 },
-    care: { therapies: ['psychoeducation', 'cbt', 'family'], meds: 'mood_stabiliser', monitor: true },
+    care: { therapies: ['psychoeducation', 'cbt', 'family'], meds: 'mood_stabilizer', monitor: true },
     remit: 0, recur: 0,
     sources: ['NICE CG185 (2014, updated 2023)', 'NIMH: Bipolar Disorder'] },
   { id: 'bipolar_2', name: 'Bipolar II disorder', short: 'bipolar II', group: 'mood', course: 'episodic',
@@ -58,7 +58,7 @@ export const CONDITIONS = [
     features: ['mood_episodes', 'low_mood', 'sleep_change'],
     episodes: { depression: 0.65, mania: 0, hypomania: 0.35 },
     diagnose: { by: ['psychiatrist'], weeks: 2 },
-    care: { therapies: ['psychoeducation', 'cbt'], meds: 'mood_stabiliser', monitor: true },
+    care: { therapies: ['psychoeducation', 'cbt'], meds: 'mood_stabilizer', monitor: true },
     remit: 0, recur: 0,
     sources: ['NICE CG185', 'NIMH: Bipolar Disorder'] },
 
@@ -66,7 +66,7 @@ export const CONDITIONS = [
   { id: 'gad', name: 'Generalized anxiety disorder', short: 'generalized anxiety', group: 'anxiety', course: 'persistent',
     named: [[1895, 'anxiety neurosis'], [1980, 'generalized anxiety disorder']],
     onset: { kind: 'hazard', ages: [12, 75], rate: 0.0010 },
-    heredity: { cluster: 'internalising', share: 0.6, b: 0.45 },
+    heredity: { cluster: 'internalizing', share: 0.6, b: 0.45 },
     features: ['worry', 'restlessness', 'sleep_change', 'poor_concentration', 'tension'],
     diagnose: { by: [...MH, 'gp'], weeks: 26 },
     care: { therapies: ['cbt', 'applied_relaxation'], meds: 'antidepressant' },
@@ -75,7 +75,7 @@ export const CONDITIONS = [
   { id: 'social_anxiety', name: 'Social anxiety disorder', short: 'social anxiety', group: 'anxiety', course: 'persistent',
     named: [[1980, 'social phobia'], [2013, 'social anxiety disorder']],
     onset: { kind: 'hazard', ages: [8, 30], rate: 0.0040 },
-    heredity: { cluster: 'internalising', share: 0.5, b: 0.45 },
+    heredity: { cluster: 'internalizing', share: 0.5, b: 0.45 },
     features: ['social_fear', 'avoidance', 'tension'],
     diagnose: { by: MH, weeks: 26 },
     care: { therapies: ['cbt'], meds: 'antidepressant' },
@@ -84,7 +84,7 @@ export const CONDITIONS = [
   { id: 'panic', name: 'Panic disorder', short: 'panic disorder', group: 'anxiety', course: 'episodic',
     named: [[1980, 'panic disorder']],
     onset: { kind: 'hazard', ages: [14, 55], rate: 0.0012 },
-    heredity: { cluster: 'internalising', share: 0.5, b: 0.5 },
+    heredity: { cluster: 'internalizing', share: 0.5, b: 0.5 },
     features: ['panic_attacks', 'avoidance', 'worry'],
     diagnose: { by: [...MH, 'gp'], weeks: 4 },
     care: { therapies: ['cbt'], meds: 'antidepressant' },
@@ -93,7 +93,7 @@ export const CONDITIONS = [
   { id: 'specific_phobia', name: 'Specific phobia', short: 'a phobia', group: 'anxiety', course: 'persistent',
     named: [[1871, 'phobia'], [1980, 'simple phobia'], [1994, 'specific phobia']],
     onset: { kind: 'hazard', ages: [4, 25], rate: 0.0035 },
-    heredity: { cluster: 'internalising', share: 0.4, b: 0.35 },
+    heredity: { cluster: 'internalizing', share: 0.4, b: 0.35 },
     features: ['specific_fear', 'avoidance'],
     diagnose: { by: MH, weeks: 26 },
     care: { therapies: ['exposure'] },
@@ -102,7 +102,7 @@ export const CONDITIONS = [
   { id: 'agoraphobia', name: 'Agoraphobia', short: 'agoraphobia', group: 'anxiety', course: 'persistent',
     named: [[1871, 'agoraphobia']],
     onset: { kind: 'hazard', ages: [15, 45], rate: 0.0004 },
-    heredity: { cluster: 'internalising', share: 0.5, b: 0.45 },
+    heredity: { cluster: 'internalizing', share: 0.5, b: 0.45 },
     features: ['avoidance', 'panic_attacks', 'worry'],
     diagnose: { by: MH, weeks: 26 },
     care: { therapies: ['cbt', 'exposure'], meds: 'antidepressant' },
@@ -113,7 +113,7 @@ export const CONDITIONS = [
   { id: 'ptsd', name: 'Post-traumatic stress disorder', short: 'PTSD', group: 'trauma', course: 'persistent',
     named: [[1915, 'shell shock'], [1945, 'combat stress reaction'], [1980, 'post-traumatic stress disorder']],
     onset: { kind: 'hazard', ages: [6, 85], rate: 0.0008 },
-    heredity: { cluster: 'internalising', share: 0.4, b: 0.35 },
+    heredity: { cluster: 'internalizing', share: 0.4, b: 0.35 },
     features: ['intrusive_memories', 'avoidance', 'sleep_change', 'on_edge'],
     diagnose: { by: MH, weeks: 4 },
     care: { therapies: ['tf_cbt', 'cpt', 'emdr'], meds: 'antidepressant' },
@@ -134,7 +134,7 @@ export const CONDITIONS = [
     named: [[1980, 'borderline personality disorder']],
     onset: { kind: 'hazard', ages: [14, 30], rate: 0.0011 },
     heredity: { cluster: 'emotion', share: 0.7, b: 0.6 },
-    // Each person has some of these, not all. None of them is a moral judgement.
+    // Each person has some of these, not all. None of them is a moral judgment.
     features: ['emotional_intensity', 'regulation_difficulty', 'abandonment_fear', 'self_image_shifts', 'impulsivity', 'relationship_strain'],
     diagnose: { by: MH, weeks: 26, minAge: 16, adolescentCare: true },
     // Psychotherapy is the treatment. No medicine is licensed for BPD itself (NICE CG78).
@@ -182,7 +182,7 @@ export const CONDITIONS = [
     remit: 0.1, recur: 0.08,
     sources: ['NICE CG178 (2014)', 'NIMH: Schizophrenia'] },
 
-  // ---------- Neurodevelopmental: present from birth, recognised (or not) later. Never "cured". ----------
+  // ---------- Neurodevelopmental: present from birth, recognized (or not) later. Never "cured". ----------
   { id: 'adhd', name: 'ADHD', short: 'ADHD', group: 'neurodev', course: 'lifelong', neurotype: true,
     named: [[1968, 'hyperkinetic reaction of childhood'], [1980, 'attention deficit disorder'], [1987, 'attention-deficit/hyperactivity disorder']],
     onset: { kind: 'birth', prevalence: 0.06, shows: [4, 12] },
@@ -190,7 +190,7 @@ export const CONDITIONS = [
     features: ['attention_regulation', 'executive_load', 'restlessness', 'impulsivity', 'time_blindness'],
     diagnose: { by: [...DEV], weeks: 26 },
     care: { therapies: ['adhd_coaching', 'cbt', 'parent_training'], meds: 'adhd' },
-    supports: ['organisation', 'extra_time', 'quiet_space'],
+    supports: ['organization', 'extra_time', 'quiet_space'],
     sources: ['NICE NG87 (2018, updated 2019)', 'NIMH: ADHD', 'Faraone & Larsson, Molecular Psychiatry (2019)'] },
   { id: 'autism', name: 'Autism', short: 'autism', group: 'neurodev', course: 'lifelong', neurotype: true,
     named: [[1943, 'early infantile autism'], [1980, 'infantile autism'], [1994, 'autistic disorder'], [2013, 'autism spectrum disorder']],
@@ -210,7 +210,7 @@ export const CONDITIONS = [
     care: { therapies: ['literacy_support'] },
     supports: ['reading_tools', 'extra_time'],
     sources: ['NHS: Dyslexia', 'MedlinePlus: Dyslexia'] },
-  { id: 'dyscalculia', name: 'Dyscalculia', short: 'dyscalculia', group: 'neurodev', course: 'lifelong', neurotype: true, learning: 'maths',
+  { id: 'dyscalculia', name: 'Dyscalculia', short: 'dyscalculia', group: 'neurodev', course: 'lifelong', neurotype: true, learning: 'math',
     named: [[1974, 'developmental dyscalculia']],
     onset: { kind: 'birth', prevalence: 0.04, shows: [6, 11] },
     heredity: { cluster: 'learning', share: 0.5, h2: 0.6 },
@@ -242,7 +242,7 @@ export const CONDITIONS = [
     onset: { kind: 'birth', prevalence: 0.01, shows: [1, 6] },
     heredity: { cluster: 'neurodev', share: 0.3, h2: 0.4 },
     features: ['learning_pace', 'daily_living_support'],
-    diagnose: { by: ['psychologist', 'paediatrician'], weeks: 0 },
+    diagnose: { by: ['psychologist', 'pediatrician'], weeks: 0 },
     care: { therapies: ['occupational', 'speech_language'] },
     supports: ['clear_communication', 'supported_living', 'learning_support'],
     sources: ['WHO ICD-11 6A00', 'NHS: Learning disabilities'] },
@@ -251,7 +251,7 @@ export const CONDITIONS = [
     onset: { kind: 'birth', prevalence: 0.006, shows: [5, 10] },
     heredity: { cluster: 'neurodev', share: 0.4, h2: 0.7 },
     features: ['tics'],
-    diagnose: { by: ['neurologist', 'psychiatrist', 'paediatrician'], weeks: 52 },
+    diagnose: { by: ['neurologist', 'psychiatrist', 'pediatrician'], weeks: 52 },
     care: { therapies: ['cbit'] },
     supports: ['understanding', 'extra_time'],
     sources: ['NHS: Tourette\'s syndrome', 'NIH NINDS: Tourette Syndrome'] },
@@ -295,7 +295,7 @@ export const CONDITIONS = [
     named: [[1861, 'cerebral paralysis'], [1889, 'cerebral palsy']],
     onset: { kind: 'birth', prevalence: 0.002, shows: [0, 2] },
     features: ['mobility'],
-    diagnose: { by: ['paediatrician', 'neurologist'], weeks: 0 },
+    diagnose: { by: ['pediatrician', 'neurologist'], weeks: 0 },
     care: { therapies: ['physio', 'occupational'] },
     supports: ['wheelchair', 'step_free'],
     sources: ['NHS: Cerebral palsy', 'NICE NG62'] },
@@ -392,7 +392,7 @@ export const CONDITIONS = [
     named: [[1938, 'cystic fibrosis']],
     onset: { kind: 'gene', shows: [0, 2] },
     features: ['breathing', 'low_energy'],
-    diagnose: { by: ['paediatrician', 'doctor'], weeks: 0 },
+    diagnose: { by: ['pediatrician', 'doctor'], weeks: 0 },
     care: { therapies: ['physio'], meds: 'cf' },
     supports: ['flexible_hours'],
     sources: ['MedlinePlus Genetics: Cystic fibrosis'] },
@@ -404,18 +404,18 @@ export const CONDITIONS = [
     care: { therapies: ['physio', 'occupational', 'speech_language'] },
     supports: ['wheelchair', 'supported_living'],
     sources: ['MedlinePlus Genetics: Huntington disease'] },
-  { id: 'haemophilia_a', name: 'Haemophilia A', short: 'haemophilia', group: 'genetic', course: 'persistent', gene: 'f8',
-    named: [[1828, 'haemophilia']],
+  { id: 'hemophilia_a', name: 'Hemophilia A', short: 'hemophilia', group: 'genetic', course: 'persistent', gene: 'f8',
+    named: [[1828, 'hemophilia']],
     onset: { kind: 'gene', shows: [0, 3] },
     features: ['bleeding'],
     diagnose: { by: ['doctor'], weeks: 0 },
     care: { therapies: [], meds: 'factor' },
     supports: [],
     sources: ['MedlinePlus Genetics: Hemophilia'] },
-  { id: 'colour_vision', name: 'Colour vision deficiency', short: 'colour blind', group: 'genetic', course: 'stable', gene: 'opn',
-    named: [[1798, 'colour blindness']],
+  { id: 'color_vision', name: 'Color vision deficiency', short: 'color blind', group: 'genetic', course: 'stable', gene: 'opn',
+    named: [[1798, 'color blindness']],
     onset: { kind: 'gene', shows: [4, 10] },
-    features: ['colours'],
+    features: ['colors'],
     diagnose: { by: ['optometrist', 'doctor'], weeks: 0 },
     care: { therapies: [] },
     supports: [],
@@ -432,7 +432,7 @@ export const CONDITIONS = [
     named: [[1878, 'achondroplasia']],
     onset: { kind: 'gene', shows: [0, 0] },
     features: ['reach'],
-    diagnose: { by: ['paediatrician', 'doctor'], weeks: 0 },
+    diagnose: { by: ['pediatrician', 'doctor'], weeks: 0 },
     care: { therapies: [] },
     supports: ['adapted_furniture'],
     sources: ['MedlinePlus Genetics: Achondroplasia'] },
@@ -448,7 +448,7 @@ export const GROUPS = {
 };
 export const MENTAL = ['mood', 'anxiety', 'trauma', 'ocd', 'personality', 'eating', 'psychotic'];
 
-/** What a condition was called in a given year, or null before it was recognised. */
+/** What a condition was called in a given year, or null before it was recognized. */
 export function nameIn(def, year) {
   let name = null;
   for (const [from, n] of def.named) if (year >= from) name = n;

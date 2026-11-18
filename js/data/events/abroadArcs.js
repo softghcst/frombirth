@@ -27,7 +27,7 @@ export default [
     ['Go and see them first', 'You look at flights both ways.', 'homeward:visit'],
     ['Stay where your life is', 'You stay, and call more often.', 'homeward:stay'],
   ]),
-  scene('abroad_firstTrip', [12, 17], 'Your parents have been whispering about money, and then about maps. This summer, they say, the family goes abroad: a fortnight {trip}. It would be your first time out of the country.', [
+  scene('abroad_firstTrip', [12, 17], 'Your parents have been whispering about money, and then about maps. This summer, they say, the family goes abroad: two weeks {trip}. It would be your first time out of the country.', [
     ['Count down the days', 'You start a list of everything you want to see.', 'firstTrip:go'],
     ['Ask if you can see family there', 'You ask whether there will be time for family.', 'firstTrip:kin'],
     ['Say you would rather stay at home', 'You shrug, and say it is not really your thing.', 'firstTrip:stay'],

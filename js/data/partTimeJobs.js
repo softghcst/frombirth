@@ -1,6 +1,6 @@
 // Part-time jobs for teenagers, students and anyone wanting a few hours a
 // week. pay is base units a year at the hours given; hours is a week's shifts.
-//   campus: needs current enrolment at a university or college (reviewed when the course ends)
+//   campus: needs current enrollment at a university or college (reviewed when the course ends)
 //   next:   the career track this work can lead into, if the employer likes you
 //   minAge is the job's own floor; the country's working-age law (data/workLaw.js) applies on top.
 const J = (id, title, place, pay, hours, minAge, hire, o = {}) => ({ id, title, place, pay, hours, minAge, hire, ...o });

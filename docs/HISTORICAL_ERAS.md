@@ -4,7 +4,7 @@ What assumed the present day before Historical Eras, and where each system is
 taught about the past. Written before the work began (Phase 1) and kept as the
 map of where eras touch the game.
 
-| System | Where | Behaviour before eras | Integration point | Risk | Tests before |
+| System | Where | Behavior before eras | Integration point | Risk | Tests before |
 |---|---|---|---|---|---|
 | World clock | `state.year`, `engine/yearProcessor.js` (`advanceYear`) | One year a tick; a life starts in the present unless `createLife({ year })` | `tickEra()` in the year processor; the era is always read from `state.year` | Low | `world-scenarios`, `digital` |
 | Technology | `data/digital.js`, `engine/digital/tech.js` | Already era-aware: adoption by year and country infrastructure | Reused as is; eras never copy its data | — | `digital`, `digital-ui` |
@@ -61,7 +61,7 @@ fall of the Berlin Wall, the millennium), each once in a life and at most one a 
 ## Known limits
 
 - Money is one index for the world, scaled into each country's currency: real differences in living standards
-  between countries in the past are not modelled, and the old German Mark's value is a gameplay rate (noted in the
+  between countries in the past are not modeled, and the old German Mark's value is a gameplay rate (noted in the
   data and in the journal when it changes). Old currencies are shown for the euro countries and for Australia and New
   Zealand's pounds; currencies replaced after runaway inflation (Brazil, Mexico, Argentina, Israel, Turkey) and those
   that inflated heavily after a changeover (South Africa, Jamaica, Nigeria) are left as today's on purpose, since one
@@ -69,6 +69,6 @@ fall of the Berlin Wall, the millennium), each once in a life and at most one a 
   (amounts are kept in whole pounds).
 - Laws: only the rules listed in `LAW_HISTORY` change with history; others are today's in every year. Racial
   restrictions on voting (the US South before 1965, apartheid South Africa) are mentioned in source notes but not
-  modelled, because the game does not record race.
+  modeled, because the game does not record race.
 - Countries keep today's borders and names; empires and colonies appear only as independence news.
-- Vehicles, property types and most consumer goods are today's catalogues, priced in the era's money.
+- Vehicles, property types and most consumer goods are today's catalogs, priced in the era's money.

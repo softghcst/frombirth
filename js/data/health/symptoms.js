@@ -73,7 +73,7 @@ export const SYMPTOMS = {
   body_change: { label: 'A change in your body that does not go away', domains: ['mood'], from: ['cancer'] },
   back_ache: { label: 'Back pain that does not go away', domains: ['pain'], from: ['back_pain'] },
   movement: { label: 'Movements that are hard to control', domains: ['access'], from: ['huntingtons'] },
-  bleeding: { label: 'Bleeding that is slow to stop', domains: ['pain'], from: ['haemophilia_a'] },
-  colours: { label: 'Some colours looking alike', domains: [], from: ['colour_vision'] },
+  bleeding: { label: 'Bleeding that is slow to stop', domains: ['pain'], from: ['hemophilia_a'] },
+  colors: { label: 'Some colors looking alike', domains: [], from: ['color_vision'] },
   reach: { label: 'A world built for taller people', domains: ['access'], from: ['achondroplasia'] },
 };

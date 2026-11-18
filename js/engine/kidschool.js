@@ -21,7 +21,7 @@ import { store, player, country, livingNpcs, log, milestone } from '../state.js'
 import { KIND_BY_ID, LEAVING_AGE } from '../data/education.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 import * as sch from './schooling.js';
-import { catalogue, uniOf, teaches } from './university.js';
+import { catalog, uniOf, teaches } from './university.js';
 import { spendAction } from './relationships.js';
 import { wealthTier } from './living.js';
 
@@ -105,7 +105,7 @@ export function tickKids() {
         log(`You could not find the fees for ${left}. ${n.firstName} has moved to ${schoolOf(n).name}, and has had to start again with new friends.`, 'system', 'bad');
       }
     }
-    if (kind?.away) bump(n, -1); // term-time away from home
+    if (kind?.away) bump(n, -1); // away from home during the school year
     const said = (e.said ??= {});
     if (n.age >= 8 && n.age <= 16 && e.gpa < 2.0 && (said.struggling ?? -9) <= n.age - 4 && rng.chance(0.5)) {
       said.struggling = n.age;
@@ -308,7 +308,7 @@ export function uniTalk(id, how) {
  */
 export function chooseUniversity(n) {
   const subject = n.life.edu.majorId;
-  const unis = catalogue(player().countryId).filter((u) => u.kind !== 'open' && (!subject || teaches(u, subject)));
+  const unis = catalog(player().countryId).filter((u) => u.kind !== 'open' && (!subject || teaches(u, subject)));
   if (!unis.length) return null;
   const g = n.life.edu.gpa;
   const reach = (u) => g >= (u.bar ?? 2.5) - 0.35;
@@ -339,7 +339,7 @@ export function graduated(n) {
 /**
  * What a family brings to a child's decision at eighteen, besides their marks:
  * a parent who went to university and can tell them what it is like, money at
- * home, a school that expects its pupils to go on. Not inherited ability.
+ * home, a school that expects its students to go on. Not inherited ability.
  */
 export function familyPull(n) {
   if (n.role !== 'child') return 0;
@@ -374,7 +374,7 @@ function finishBack(n) {
     if (!/teaching/.test(b.course)) {
       const subject = { Nursing: 'nursing', Business: 'business', Psychology: 'psychology', 'Computer Science': 'computer_science' }[(b.course.match(/in (.+)$/) ?? [])[1]];
       if (subject && !e.majorId) e.majorId = subject;
-      const open = catalogue(player().countryId).find((u) => u.kind === 'open');
+      const open = catalog(player().countryId).find((u) => u.kind === 'open');
       if (open && !e.uniId) { e.uniId = open.id; graduated(n); }
     }
     n.meters.intellect = clamp(n.meters.intellect + 3);

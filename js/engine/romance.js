@@ -220,7 +220,7 @@ export function propose(npcId, ringId) {
   p.finance.cash -= cost;
   const chance = clamp((npc.meters.relationship - 45) / 45 + ring.bonus, 0.02, 0.97);
   if (!rng.chance(chance)) {
-    p.finance.cash += Math.round(cost * 0.6); // the jeweller takes it back, at a loss
+    p.finance.cash += Math.round(cost * 0.6); // the jeweler takes it back, at a loss
     bump(npc, -15);
     p.stats.mood = clamp(p.stats.mood - 12);
     const text = `You got down on one knee. ${npc.firstName} said they were not ready. The jeweler gave you some of the money back.`;

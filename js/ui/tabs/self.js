@@ -97,7 +97,7 @@ export default {
     el.querySelector('[data-passport]').onclick = () => openExplore(api, { view: 'documents' });
     el.querySelector('[data-explore]').onclick = () => openExplore(api);
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
-    if (el.querySelector('[data-practise]')) el.querySelector('[data-practise]').onclick = () => openPractice(api);
+    if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
       const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id,
         scope: 'style', note: salon.salonNote, confirm: 'Confirm appearance' });

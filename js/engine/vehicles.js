@@ -1,4 +1,4 @@
-// Vehicles: licences, what is for sale, buying, servicing, selling, and the
+// Vehicles: licenses, what is for sale, buying, servicing, selling, and the
 // yearly depreciation, running costs and crash risk.
 import { rule, may } from './rules.js';
 import { rng } from '../rng.js';
@@ -7,7 +7,7 @@ import { player, country, log, milestone } from '../state.js';
 import { resolve } from './conditions.js';
 import { market } from './market.js';
 import { borrow, loanOffer, CAR_LOAN } from './loans.js';
-import { VEHICLE_TYPES, VEHICLE_BY_ID, COLOURS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
+import { VEHICLE_TYPES, VEHICLE_BY_ID, COLORS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
 import { book } from './ledger.js';
 import { recordLoss } from './insurance.js';
 
@@ -28,10 +28,10 @@ const worth = (type, age, condition) =>
   Math.max(localMoney(type.price * 0.03, country()),
     Math.round(type.price * country().currency.scale * (1 - type.dep) ** age * (0.5 + 0.5 * condition / 100)));
 
-// ---------- Licences ----------
+// ---------- Licenses ----------
 
-export const hasLicence = () => !!player().flags.canDrive;
-export const hasPilotLicence = () => !!player().flags.pilotLicence;
+export const hasLicense = () => !!player().flags.canDrive;
+export const hasPilotLicense = () => !!player().flags.pilotLicense;
 
 function passChance(spec) {
   let chance = spec.base;
@@ -39,7 +39,7 @@ function passChance(spec) {
   return clamp(chance, 0.05, 0.95);
 }
 
-export const canTakeDrivingTest = () => player().age >= DRIVING_TEST.minAge && !hasLicence();
+export const canTakeDrivingTest = () => player().age >= DRIVING_TEST.minAge && !hasLicense();
 export function takeDrivingTest() {
   const p = player();
   const c = country();
@@ -62,7 +62,7 @@ export function takeDrivingTest() {
   return result(true, text);
 }
 
-export const canLearnToFly = () => player().age >= FLYING_LESSONS.minAge && !hasPilotLicence();
+export const canLearnToFly = () => player().age >= FLYING_LESSONS.minAge && !hasPilotLicense();
 export function learnToFly() {
   const p = player();
   const c = country();
@@ -77,7 +77,7 @@ export function learnToFly() {
     log(text, 'system', 'bad');
     return result(false, text);
   }
-  p.flags.pilotLicence = true;
+  p.flags.pilotLicense = true;
   const text = 'You earned your pilot\'s license.';
   log(text, 'system', 'good');
   milestone('Earned a pilot\'s license.', 'life');
@@ -103,15 +103,15 @@ export function listings() {
       const age = rng.chance(type.cls === 'cycle' ? 0.5 : 0.3) ? 0 : rng.int(1, type.cls === 'cycle' ? 6 : 14);
       const condition = age === 0 ? 100 : clamp(100 - age * 5 + rng.int(-10, 8), 15, 98);
       list.push({ id: uid('lst'), typeId: type.id, age, condition,
-        name: `${age === 0 ? 'New' : `${age}-year-old`} ${rng.pick(COLOURS)} ${lower(type.name)}`,
+        name: `${age === 0 ? 'New' : `${age}-year-old`} ${rng.pick(COLORS)} ${lower(type.name)}`,
         price: worth(type, age, condition) });
     }
     m.listings = { ...(m.listings?.age === p.age ? m.listings : {}), age: p.age, vehicle: list.sort((a, b) => a.price - b.price) };
   }
   return m.listings.vehicle.map((l) => {
     const type = VEHICLE_BY_ID[l.typeId];
-    const blocked = type.needs === 'licence' && !hasLicence() ? 'You need a driving license.'
-      : type.needs === 'pilot' && !hasPilotLicence() ? 'You need a pilot\'s license.' : '';
+    const blocked = type.needs === 'license' && !hasLicense() ? 'You need a driving license.'
+      : type.needs === 'pilot' && !hasPilotLicense() ? 'You need a pilot\'s license.' : '';
     return { ...l, cls: type.cls, blocked, finance: loanOffer(l.price, CAR_LOAN.rate, CAR_LOAN.years) };
   });
 }
@@ -274,7 +274,7 @@ export function giveVehicle(typeId) {
   const type = VEHICLE_BY_ID[typeId];
   if (!type) return null;
   const price = worth(type, 0, 100);
-  const a = { id: uid('asset'), kind: 'vehicle', catalogId: type.id, name: `${rng.pick(COLOURS).replace(/^./, (ch) => ch.toUpperCase())} ${lower(type.name)}`,
+  const a = { id: uid('asset'), kind: 'vehicle', catalogId: type.id, name: `${rng.pick(COLORS).replace(/^./, (ch) => ch.toUpperCase())} ${lower(type.name)}`,
     purchasePrice: 0, value: price, boughtAtAge: p.age, condition: 100, age: 0, vehicleClass: type.cls };
   p.assets.push(a);
   return a;

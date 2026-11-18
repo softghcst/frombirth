@@ -1,7 +1,7 @@
 // The clinical rule registry. Every prescription, change and therapy referral
 // in the game passes through these checks; nothing in a story event or a UI
 // button can go around them. The rules are written from curated guidance
-// (NICE, FDA labelling, MedlinePlus), listed in docs/HEALTH.md, and kept small
+// (NICE, FDA labeling, MedlinePlus), listed in docs/HEALTH.md, and kept small
 // enough to read in one sitting.
 //
 // They are a game's rules, not medical advice: no doses, and nothing here
@@ -34,13 +34,13 @@ export function mayDiagnose(professionId, conditionId, year = store.state.year) 
   const pro = PROFESSIONS[professionId];
   const def = CONDITION_BY_ID[conditionId];
   if (!pro || !def || !professionExists(professionId, year)) return false;
-  if (!nameIn(def, year)) return false; // not yet a recognised condition
+  if (!nameIn(def, year)) return false; // not yet a recognized condition
   if (def.diagnose.by.includes(professionId)) return true;
   if (pro.only) return pro.only.includes(conditionId);
   return pro.diagnoses.includes(def.group) && !['bpd', 'bipolar_1', 'bipolar_2', 'schizophrenia'].includes(conditionId);
 }
 
-const FAMILY_NEEDS_STABILISER = ['antidepressant'];
+const FAMILY_NEEDS_STABILIZER = ['antidepressant'];
 const BIPOLAR = ['bipolar_1', 'bipolar_2'];
 
 /**
@@ -74,7 +74,7 @@ export function canPrescribe({ medId, conditionId, prescriber, replacing }, p = 
   if (med.youth?.includes(conditionId) && p.age < 18 && pro !== 'psychiatrist') return no('For someone under 18 this needs a specialist psychiatrist.');
   if (med.maxAge && p.age > med.maxAge) return no(`${med.name} is used for children and young people here.`);
   for (const c of med.avoidWith ?? []) if (isDiagnosed(c, h)) return no(`${med.name} is avoided alongside ${CONDITION_BY_ID[c].short}.`);
-  // Stimulants and heart problems: a specialist cardiology opinion first (not modelled), so not here.
+  // Stimulants and heart problems: a specialist cardiology opinion first (not modeled), so not here.
   if (med.tags.includes('cardio') && p.conditions?.some((c) => c.id === 'heart_disease')) return no('With a heart condition this needs a cardiology opinion first.');
 
   const active = h.trials.filter((t) => ['active', 'starting', 'adjusted', 'under_review'].includes(t.status) && t.id !== replacing);
@@ -87,9 +87,9 @@ export function canPrescribe({ medId, conditionId, prescriber, replacing }, p = 
     return no('Combining these needs specialist review because of how they act together.');
   }
   // Bipolar disorder: an antidepressant alone can tip someone into mania or hypomania (NICE CG185).
-  if (FAMILY_NEEDS_STABILISER.includes(med.family) && BIPOLAR.some((b) => isDiagnosed(b, h))) {
-    const covered = active.some((t) => ['mood_stabiliser'].includes(MED_BY_ID[t.medicationId].family));
-    if (!covered) return no('With bipolar disorder an antidepressant is not started on its own. It would only be considered alongside a mood stabiliser, by a psychiatrist.');
+  if (FAMILY_NEEDS_STABILIZER.includes(med.family) && BIPOLAR.some((b) => isDiagnosed(b, h))) {
+    const covered = active.some((t) => ['mood_stabilizer'].includes(MED_BY_ID[t.medicationId].family));
+    if (!covered) return no('With bipolar disorder an antidepressant is not started on its own. It would only be considered alongside a mood stabilizer, by a psychiatrist.');
     if (pro !== 'psychiatrist') return no('With bipolar disorder this is a psychiatrist\'s decision.');
   }
   return yes;

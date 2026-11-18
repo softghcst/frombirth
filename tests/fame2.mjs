@@ -1,4 +1,4 @@
-// The rest of public life: sport (fame only from results), modelling, books,
+// The rest of public life: sport (fame only from results), modeling, books,
 // celebrity brands, famous people's own lives, comebacks, and the family record.
 //   node tests/fame2.mjs
 import { store } from '../js/state.js';
@@ -10,7 +10,7 @@ import { isGamesYear } from '../js/data/sports.js';
 import { hire } from '../js/engine/career.js';
 import * as athletics from '../js/engine/sports.js';
 import * as sportsLife from '../js/engine/sportsLife.js';
-import * as modelling from '../js/engine/modelling.js';
+import * as modeling from '../js/engine/modeling.js';
 import * as pub from '../js/engine/publishing.js';
 import * as celebs from '../js/engine/celebs.js';
 import * as fame from '../js/engine/fame.js';
@@ -85,21 +85,21 @@ hire(CAREER_BY_ID.athlete, 1, 70, 'offer');
 check(!sportsLife.goPro('soccer').ok && !sportsLife.goPro('basketball').ok, 'no professional soccer or basketball in 1870');
 section('eras: no league before the sport was played professionally');
 
-// 2. Modelling: an agency, castings, a portfolio.
+// 2. Modeling: an agency, castings, a portfolio.
 p = life('uk', 20);
 p.stats.charm = 82;
-check(!modelling.attendCasting('x').ok, 'not a model, no castings');
-hire(CAREER_BY_ID.modelling, 0, 60, 'offer');
-const willing = modelling.agenciesWilling(p);
-check(willing.length > 0 && modelling.joinAgency(willing[0].id).ok, 'an agency takes a model with the look');
-const list = modelling.castings(p);
+check(!modeling.attendCasting('x').ok, 'not a model, no castings');
+hire(CAREER_BY_ID.modeling, 0, 60, 'offer');
+const willing = modeling.agenciesWilling(p);
+check(willing.length > 0 && modeling.joinAgency(willing[0].id).ok, 'an agency takes a model with the look');
+const list = modeling.castings(p);
 check(list.length >= 3, 'the agency sends castings');
-for (const c of list) modelling.attendCasting(c.id);
-check(modelling.modelOf(p).castings.went === 3, 'three castings a year');
+for (const c of list) modeling.attendCasting(c.id);
+check(modeling.modelOf(p).castings.went === 3, 'three castings a year');
 const booked = list.filter((c) => c.status === 'booked').length;
-check(modelling.portfolio(p).length === booked, 'every booking is in the portfolio');
+check(modeling.portfolio(p).length === booked, 'every booking is in the portfolio');
 check(!work.payLines(p).some((l) => /cast|model/i.test(l.source)), 'bookings are the career\'s work, not paid twice');
-section(`modelling: an agency, castings, ${booked} bookings in the portfolio`);
+section(`modeling: an agency, castings, ${booked} bookings in the portfolio`);
 
 // 3. Books.
 p = life('uk', 30);
@@ -156,7 +156,7 @@ fame.gain({ audience: 'fashion', amount: 70, lasting: 1, why: 'campaigns' }, p);
 fame.gain({ audience: 'public', amount: 60, lasting: 1, why: 'campaigns' }, p);
 check(!biz.startOptions().find((t) => t.id === 'fashion_label').block, 'a famous person can start one');
 const pull = biz.starPull(p);
-fame.fameOf(p).favour = 10;
+fame.fameOf(p).favor = 10;
 check(pull > 1 && biz.starPull(p) < pull, 'it sells on the name, and on whether people like them');
 section('celebrity brands: need a name, sell on it and on goodwill');
 

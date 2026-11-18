@@ -51,8 +51,8 @@ export const NIGHTLIFE_AGE = 18;
 /**
  * Holidays. cost is for one person, in base units; each companion adds 60%.
  * kind groups them in the menu. mood/health/intellect/charm are what the
- * traveller gains. kids: how much closer children aged 3 to 15 feel afterwards.
- * home: the country the place is in; travellers from elsewhere pay farMult more.
+ * traveler gains. kids: how much closer children aged 3 to 15 feel afterward.
+ * home: the country the place is in; travelers from elsewhere pay farMult more.
  * risky: chance of an injury. sea / park pick the mishaps and the stories.
  */
 export const HOLIDAY_KINDS = [
@@ -77,7 +77,7 @@ export const HOLIDAYS = [
   { id: 'cruise_fjords', kind: 'cruise', name: 'Two weeks cruising the fjords', cost: 9000, mood: 14, intellect: 2 },
   { id: 'cruise_world', kind: 'cruise', name: 'A world cruise, three months', cost: 48000, mood: 20, intellect: 3, charm: 2 },
 ];
-/** Flying abroad: a fortnight in the country you choose. cost is the whole trip for one. */
+/** Flying abroad: two weeks in the country you choose. cost is the whole trip for one. */
 export const CABINS = [
   { id: 'economy', name: 'Economy', cost: 3200, mood: 10, blurb: 'Knees against the seat in front. You get there.' },
   { id: 'business', name: 'Business class', cost: 8500, mood: 12, blurb: 'A seat that becomes a bed, and a real glass.' },

@@ -32,7 +32,7 @@ function kindOf(k, p) {
 const NAMES = { prison: 'Prison health service', child: 'Covered as a child', none: 'No cover', public: 'Public health system', employer: 'Health cover through work', private: 'Private health insurance' };
 
 /**
- * The policy in force now. When cover changes (a new job, buying or cancelling
+ * The policy in force now. When cover changes (a new job, buying or canceling
  * insurance, moving abroad, turning 18), the old policy is closed and a new one opened.
  */
 export function policyNow(p = player()) {

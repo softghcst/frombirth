@@ -135,7 +135,7 @@ export const YEARLY = [
   ['breeding', tickBreeding], // young that are due
   ['animalCare', () => booked('pets', 'Your animals: food, the vet and their care', tickCare)], // what the animals cost, how they fared, and anything that needs a decision
   ['equestrian', tickEquestrian],
-  ['animalLife', tickLife], // behaviour that begins, and what families argue about
+  ['animalLife', tickLife], // behavior that begins, and what families argue about
   ['animalArcs', tickArcs], // stories that take years
   ['sport', () => booked('sport', 'Sport', () => tickSports())], // the athletic year: training, seasons and events, and what they cost and paid
   ['travel', () => booked('travel', 'Travel, papers and life abroad', tickGlobalLife)],
@@ -160,7 +160,7 @@ export function runYearSteps(state = store.state) {
   return null;
 }
 
-/** Advances one year. Check player().alive and state.pendingEvents afterwards. */
+/** Advances one year. Check player().alive and state.pendingEvents afterward. */
 export function advanceYear() {
   const state = store.state;
   const p = player();

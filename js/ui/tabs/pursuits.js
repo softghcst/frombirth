@@ -133,7 +133,7 @@ export default {
       const tune = e.target.closest('[data-tune]')?.dataset.tune;
       if (tune) {
         const opt = bc.broadcastOptions().find((o) => o.id === tune);
-        return pickModal({ title: tune === 'radio' ? 'What do you listen to?' : 'What do you watch?', options: opt.programmes.map((x) => ({ value: x.id, label: x.label })) })
+        return pickModal({ title: tune === 'radio' ? 'What do you listen to?' : 'What do you watch?', options: opt.programs.map((x) => ({ value: x.id, label: x.label })) })
           .then((pick) => (pick ? report(api, bc.tuneIn(tune, pick)) : undefined));
       }
       const todo = e.target.closest('[data-do]')?.dataset.do;

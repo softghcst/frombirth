@@ -10,8 +10,9 @@ import { ensureGlobal } from './engine/globalLife.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
 import { migrateDigital } from './engine/digital/tick.js';
-import { ensureEra } from './engine/eras.js';
+import { ensureEra, alignWorld } from './engine/eras.js';
 import { adoptOldSport } from './engine/sportsLife.js';
+import { americanize } from './engine/spelling.js';
 
 export const SCHEMA_VERSION = 2;
 const K_INDEX = 'pathways.index';
@@ -38,6 +39,8 @@ function write(key, value) {
 
 /** Bring older saves up to the current schema. */
 function migrate(state) {
+  // Saves from when the game was written in British English: their ids, keys and text, in American spelling.
+  americanize(state);
   state.pendingEvents ??= [];
   state.eventHistory ??= [];
   state.player.birth ??= [];
@@ -100,7 +103,7 @@ function migrate(state) {
     ledgerOf(state, { desc: 'What you had when the books were opened (from an earlier version of the game)' });
   }
   // Lives saved before the justice records: each record entry is kept as it was,
-  // marked as older, with its offence named in today's terms. Nothing is invented:
+  // marked as older, with its offense named in today's terms. Nothing is invented:
   // open cases, unsolved crimes and sentences are upgraded the first time they are
   // used (engine/justice.js upgradeLegacy), with no trial history made up for them.
   const legal = pl.legal;
@@ -209,6 +212,9 @@ export function loadGame(slotId) {
   if (!state) return null;
   migrate(state);
   rng.seed(state.rngSeed);
+  // The loaded life is the one being played: the world's money and currencies are its year's (Historical Eras), so
+  // that living the same years again costs the same as it did the first time.
+  alignWorld(state);
   return state;
 }
 
@@ -242,6 +248,7 @@ export function popUndo(slotId) {
   write(K_UNDO + slotId, list);
   const state = migrate(JSON.parse(raw));
   rng.seed(state.rngSeed);
+  alignWorld(state); // a year taken back has that year's prices again
   return state;
 }
 /** Removes a grave, when the death it records is taken back. */

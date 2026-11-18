@@ -17,7 +17,7 @@
 //   values                               what the player wants from work (up to three)
 //   pensionPot, pensionDrawn             employer pension saved; whether a pension is being paid
 //   benefit                              unemployment benefit after losing a job { amount, yearsLeft }
-//   paidYear, lastPay                    the year last paid; what that payslip said
+//   paidYear, lastPay                    the year last paid; what that pay stub said
 //   achievements                         career milestones earned (engine/careerRecord.js)
 import { rng } from '../rng.js';
 import { workHours, contractLines, markContractsPaid } from './entertainment.js';
@@ -150,7 +150,7 @@ export function canFit(hours, o = {}) {
   let paid = load.paid;
   if (o.replacesMain) { total -= mainHours(c) + commute(c, p); paid -= mainHours(c); }
   if (p.age < law.workAge) return result(false, `In ${country().name} you must be ${law.workAge} to work for pay.`);
-  if (p.age < 18 && paid + hours > law.minorHours) return result(false, `Under 18, the law here allows ${law.minorHours} hours of paid work a week in term time. This would make ${paid + hours}.`);
+  if (p.age < 18 && paid + hours > law.minorHours) return result(false, `Under 18, the law here allows ${law.minorHours} hours of paid work a week during the school year. This would make ${paid + hours}.`);
   if (total + hours > LOAD.impossible) return result(false, `That would make ${total + hours} hours a week with everything else. There are not enough hours in the week.`);
   if (o.kind !== 'job' && !o.replacesMain) {
     const main = c.careerId ? CAREER_BY_ID[c.careerId] : null;
@@ -177,7 +177,7 @@ export function valuesFit(c = career(), car = CAREER_BY_ID[c.careerId]) {
 }
 
 /**
- * Once a year: stress and satisfaction move towards where the year puts them.
+ * Once a year: stress and satisfaction move toward where the year puts them.
  * Burnout comes from staying near the top for long; it is recovered from,
  * and it is never fatal. @returns {string[]} lines for the journal
  */
@@ -227,14 +227,14 @@ export function tickWorkLife() {
   // Burnout, and coming back from it.
   if (c.stress >= 78) c.strain += 1;
   else c.strain = Math.max(0, c.strain - (c.stress < 55 ? 2 : 1));
-  if (c.strain >= 2 && !p.flags.burntOut) {
-    p.flags.burntOut = store.state.year;
+  if (c.strain >= 2 && !p.flags.burnedOut) {
+    p.flags.burnedOut = store.state.year;
     p.stats.mood = clamp(p.stats.mood - 10);
     p.stats.health = clamp(p.stats.health - 3);
     if (c.careerId) c.performance = clamp(c.performance - 10);
-    lines.push('You are burnt out. You sleep badly, snap at people, and dread Mondays. Fewer hours, time off, or a different job would help.');
-  } else if (p.flags.burntOut && c.strain === 0) {
-    delete p.flags.burntOut;
+    lines.push('You are burned out. You sleep badly, snap at people, and dread Mondays. Fewer hours, time off, or a different job would help.');
+  } else if (p.flags.burnedOut && c.strain === 0) {
+    delete p.flags.burnedOut;
     lines.push('The worst of the burnout has passed. You feel like yourself again.');
   }
   // Leave ends with the year it was for.
@@ -296,7 +296,7 @@ export function takeLeave(kind) {
   const law = workLaw();
   const baby = livingNpcs().some((n) => n.role === 'child' && n.age <= 1);
   if (kind === 'parental' && !baby) return result(false, 'Parental leave is for the first year of a child\'s life.', 'neutral');
-  if (kind === 'sick' && p.stats.health >= 70 && !p.flags.burntOut) return result(false, 'You are not unwell enough to be signed off.', 'neutral');
+  if (kind === 'sick' && p.stats.health >= 70 && !p.flags.burnedOut) return result(false, 'You are not unwell enough to be signed off.', 'neutral');
   if (car.type === 'freelance') { c.leave = { kind, age: p.age }; return result(true, 'You take time off. Nobody pays you for it.', 'neutral'); }
   const boss = bossOf();
   if (kind === 'sabbatical') {
@@ -308,7 +308,7 @@ export function takeLeave(kind) {
   c.strain = Math.max(0, c.strain - (kind === 'vacation' ? 1 : 2));
   p.stats.mood = clamp(p.stats.mood + (kind === 'sick' ? 2 : 6));
   const paid = { vacation: `${law.leaveDays} days, paid`, sick: law.sickPay ? 'on sick pay' : 'unpaid: sick pay is not owed here', parental: law.parentalWeeks ? `${law.parentalWeeks} weeks paid, the rest unpaid` : 'unpaid: there is no paid parental leave here', sabbatical: 'unpaid' }[kind];
-  const text = { vacation: `You take your full holiday this year (${paid}). You come back rested.`,
+  const text = { vacation: `You take all your vacation days this year (${paid}). You come back rested.`,
     sick: `You are signed off sick (${paid}). Your job is held for you.`,
     parental: `You take parental leave (${paid}). The baby does not care about your career, and neither, for a while, do you.`,
     sabbatical: `A year's sabbatical, ${paid}. Your job will be there when you come back.` }[kind];
@@ -351,7 +351,7 @@ export function benefits(c = career()) {
   const e = employer(c.employerId);
   const big = e && ['large', 'major'].includes(e.size);
   const cty = country();
-  const out = [`Paid holiday: ${law.leaveDays + (big ? 5 : 0)} days`];
+  const out = [`Paid vacation: ${law.leaveDays + (big ? 5 : 0)} days`];
   out.push(law.sickPay ? 'Sick pay' : 'No statutory sick pay');
   if (law.parentalWeeks) out.push(`Parental leave: ${law.parentalWeeks} weeks paid`);
   if (law.pension || big) out.push(`Pension: employer pays ${Math.round((law.pension + (big ? 0.02 : 0)) * 100)}% of salary`);
