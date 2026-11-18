@@ -184,6 +184,20 @@ for (const e of AVATAR_MANIFEST.eyes) {
     }
   }
 }
+// Babies and toddlers have plain eyes (no lashes or liner), boys and girls alike, chosen from their own eyes; from
+// five they have their own. Even crying, a little one's eyes stay plain.
+{
+  const plain = Object.values(CUR.BABY_EYES).flat();
+  for (const id of CUR.RESTING.eyes) {
+    const look = { ...resolveLook({ v: 3, inherited: { eyes: id }, style: {} }, 'baby', 'female'), eyes: id };
+    for (const gender of ['female', 'male']) for (const age of [0, 1, 3, 4]) for (const mood of [60, 5]) {
+      const e = dressFor(look, { age, gender, mood }).eyes;
+      check(plain.includes(e) && e === CUR.babyEyes(id), `a ${age}-year-old ${gender} with ${id} has ${e}, not plain baby eyes`);
+    }
+    check(dressFor(look, { age: 5, gender: 'female' }).eyes === id && dressFor(look, { age: 30, gender: 'female' }).eyes === id, `${id} is not shown from five`);
+  }
+  for (const id of plain) check(!(id in CUR.WOMEN_EYES), `${id} has lashes or liner, so is not a baby's`);
+}
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
 const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_16', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
   314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };

@@ -27,7 +27,7 @@
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
-import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS } from './avatar/curation.js';
+import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, babyEyes } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/avatars/';
@@ -69,6 +69,7 @@ export function dressFor(look, ctx = {}) {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = []; out.glasses = null; out.facialHair = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
+    out.eyes = babyEyes(look.eyes); // plain eyes until five; their own are kept for then
   } else if (stage === 'kid') {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
@@ -101,7 +102,8 @@ export function dressFor(look, ctx = {}) {
   const mood = ctx.mood ?? 60;
   if (ctx.emotion) out.emotion = ctx.emotion;
   // Crying eyes are never a resting face: they appear only while something sad is weighing on the person.
-  if (mood <= 15 && stage !== 'baby') out.eyes = EXPRESSION.crying;
+  // (not on babies and toddlers: the crying eyes have lashes)
+  if (mood <= 15 && !young) out.eyes = EXPRESSION.crying;
   return out;
 }
 
