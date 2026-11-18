@@ -12,7 +12,7 @@ import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManife
 import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
 import { dressFor, filesFor, ageStage, fitTransforms, deepness, characterAvatarSvg } from '../js/CharacterAvatar.js';
-import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS } from '../js/avatar/hairFit.js';
+import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS, BABY_HAIR } from '../js/avatar/hairFit.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
 import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
@@ -297,8 +297,14 @@ check(hairFit('hair_boy_updo_15_headband_puff', 'head_18_long_rect').squash < 1 
 // The two repaired files, and the stray marks, stay repaired.
 for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/avatars/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
 check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy_medium_03', 'head_00_kid').top <= 2, 'the arch styles show background over the forehead again');
-// A baby's tuft is left where it was put.
-for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) check(JSON.stringify(hairFit(h.id, head)) === JSON.stringify(plainFit(head)), `${h.id} on ${head}: a baby's hair was refitted`);
+// A baby's tuft is not refitted like grown-up hair: it is placed, made bigger to cover a little one's round crown
+// (wider than it is taller), and grows up and out from the brow line, so it never comes down over the eyes.
+for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) {
+  const f = hairFit(h.id, head), p = plainFit(head), [gx, gy] = BABY_HAIR[head];
+  check(Math.abs(f.sx - p.sx * gx) < 1e-9 && Math.abs(f.sy - p.sy * gy) < 1e-9 && gx > gy && gy >= 1, `${h.id} on ${head}: a baby's hair is not made bigger`);
+  const brow = (fit) => fit.ty + (250 - AVATAR_TEMPLATE.face.top) * fit.sy;
+  check(Math.abs(brow(f) - brow(p)) < 1e-9, `${h.id} on ${head}: a baby's hair moves at the brow line`);
+}
 // The reference faces: hair that already sat well is left very nearly as drawn.
 const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_02', 'head_17_dimple_oval'] };
 for (const [who, [hair, head]] of Object.entries(REFERENCES)) {

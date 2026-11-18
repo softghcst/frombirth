@@ -80,14 +80,25 @@ export function hairFit(hairId, headId) {
   const hair = PART_BY_ID[hairId]?.edge;
   const head = PART_BY_ID[headId];
   let out = null;
-  // A baby's hair is a tuft set on top of the head, with no opening for the face to fit: it stays as placed.
+  // A baby's hair is a tuft set on top of the head, with no opening for the face to fit: it is placed, and made
+  // bigger to cover a little one's broad, round crown (BABY_HAIR).
   const tuft = PART_BY_ID[hairId]?.tags?.age === 'baby';
-  if (head?.fit) out = hair && head.edge && !tuft ? solve(hair, head.edge, head.fit, LIMITS, frameFor(headId).y) : plain(head.fit);
+  if (head?.fit) out = hair && head.edge && !tuft ? solve(hair, head.edge, head.fit, LIMITS, frameFor(headId).y) : plain(head.fit, tuft ? BABY_HAIR[headId] : null);
   cache.set(key, out);
   return out;
 }
 
-const plain = (fit) => ({ sx: fit.w / T.face.w, sy: fit.w / T.face.w, tx: fit.cx, ty: fit.top, squash: 1, line: fit.top });
+/**
+ * How much bigger baby hair is drawn on the little ones' heads: [wider, taller]. It grows up and out from the brow
+ * line (template y BABY_HAIR_ANCHOR), so a fringe never comes down over the eyes.
+ */
+export const BABY_HAIR = { head_00_baby: [1.25, 1.12], head_00_toddler: [1.24, 1.1] };
+const BABY_HAIR_ANCHOR = 250;
+const plain = (fit, grow) => {
+  const w = fit.w / T.face.w;
+  const [gx, gy] = grow ?? [1, 1];
+  return { sx: w * gx, sy: w * gy, tx: fit.cx, ty: fit.top + (BABY_HAIR_ANCHOR - T.face.top) * w * (1 - gy), squash: 1, line: fit.top };
+};
 
 function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {
   const base = plain(fit);
