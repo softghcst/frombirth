@@ -121,6 +121,20 @@ section(`change: enacted law is kept in the save; ${changes} reforms across six 
   section(`verification: ${ok} laws confirmed against sources, ${review} differ for recorded reasons, none disagree unexplained`);
 }
 
+// 6b. The world's own changes keep to who may make them: regional matters change in a region, never nationally.
+{
+  const { REFORM, REGIONAL_POWERS } = await import('../js/data/rules.js');
+  const was = { ...REFORM }; REFORM.chance = 1; REFORM.homeBias = 1;
+  let regional = 0; let national = 0; let wrong = 0;
+  for (const id of ['us', 'ca', 'au', 'in', 'de']) {
+    store.state = createLife({ countryId: id }); store.state.player.age = 30;
+    for (let i = 0; i < 150; i++) { const e = law.tickRules(); if (!e) continue; if (e.region) { regional += 1; if (!REGIONAL_POWERS[id].includes(e.id)) wrong += 1; } else { national += 1; if (REGIONAL_POWERS[id]?.includes(e.id)) wrong += 1; } }
+  }
+  Object.assign(REFORM, was);
+  check(regional > 0 && national > 0 && wrong === 0, `reforms: ${regional} regional and ${national} national, ${wrong} made at the wrong level`);
+  section(`world reforms: ${regional} made by regions, ${national} nationally, none at the wrong level`);
+}
+
 // 7. Regional law, as checked against its sources (data/rules.js REGION_RULES).
 {
   const at = (id, place, region) => law.rule(id, place, { region });
