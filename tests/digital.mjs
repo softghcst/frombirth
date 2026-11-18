@@ -241,13 +241,20 @@ section('Minor safety');
 // ---------- Scenario C: childhood friend ----------
 section('C. Reconnection');
 {
-  const p = life({ born: 1990, age: 10 });
-  const old = friend({ role: 'classmate', age: 10, relationship: 12 });
-  const id = old.id;
-  // Childhood friendships fade; this one fades out of the player's life.
-  for (let i = 0; i < 8 && p.npcIds.includes(id); i++) { old.meters.relationship = 5; grow(1); }
-  check(!p.npcIds.includes(id) && store.state.npcs[id]?.flags.drifted, 'the friend drifted away but still exists');
-  grow(14); // 2014: social networks exist
+  // A life in which both the player and the old friend are still alive in 2014 (rarely, one of them is not: then
+  // there is no one to reconnect, and the story is begun again).
+  let p, old, id, drifted;
+  for (let tries = 0; tries < 12; tries++) {
+    p = life({ born: 1990, age: 10 });
+    old = friend({ role: 'classmate', age: 10, relationship: 12 });
+    id = old.id;
+    // Childhood friendships fade; this one fades out of the player's life.
+    for (let i = 0; i < 8 && p.npcIds.includes(id); i++) { old.meters.relationship = 5; grow(1); }
+    drifted = !p.npcIds.includes(id) && !!store.state.npcs[id]?.flags.drifted;
+    grow(14); // 2014: social networks exist
+    if (p.alive && store.state.npcs[id]?.alive && drifted && store.state.year >= 2014) break;
+  }
+  check(drifted, 'the friend drifted away but still exists');
   phone();
   freshHours();
   join('hearth', 'grownup.me');
@@ -404,19 +411,25 @@ section('H. Online community');
 // ---------- Scenario I: online dating ----------
 section('I. Online dating');
 {
-  const p = life({ born: 1995, age: 28 });
-  for (const n of p.npcIds.map((id) => store.state.npcs[id])) if (['partner', 'spouse'].includes(n?.role)) n.role = 'ex';
-  phone();
-  p.flags.interestedIn ??= 'everyone';
-  check(join('kindling', 'looking.here', { visibility: 'matches', interests: ['books'] }).ok, 'an adult makes a dating profile');
-  let dating = null;
-  for (let y = 0; y < 8 && !dating; y++) {
-    freshHours();
-    comm.findMatches();
-    for (const m of comm.openMatches()) { comm.chat(m.id); comm.chat(m.id); }
-    for (const m of comm.openMatches().filter((x) => x.stage === 'talking' && x.chats >= 2)) { if (comm.meetMatch(m.id).ok) { dating = m; break; } }
-    if (!dating) grow(1);
+  // Dates are a matter of luck, and a life can go wrong in other ways (prison, an early death): a few lives, until
+  // one of them has a first date that leads somewhere.
+  let p, dating = null, joined = false;
+  for (let tries = 0; tries < 8 && !dating; tries++) {
+    p = life({ born: 1995, age: 28 });
+    if (!p.alive) continue;
+    for (const n of p.npcIds.map((id) => store.state.npcs[id])) if (['partner', 'spouse'].includes(n?.role)) n.role = 'ex';
+    phone();
+    p.flags.interestedIn ??= 'everyone';
+    joined = join('kindling', 'looking.here', { visibility: 'matches', interests: ['books'] }).ok;
+    for (let y = 0; y < 8 && !dating && p.alive; y++) {
+      freshHours();
+      comm.findMatches();
+      for (const m of comm.openMatches()) { comm.chat(m.id); comm.chat(m.id); }
+      for (const m of comm.openMatches().filter((x) => x.stage === 'talking' && x.chats >= 2)) { if (comm.meetMatch(m.id).ok) { dating = m; break; } }
+      if (!dating) grow(1);
+    }
   }
+  check(joined, 'an adult makes a dating profile');
   check(dating, 'after matching and talking, a first date led somewhere');
   const n = store.state.npcs[dating?.npcId];
   check(n && partner()?.id === n.id && p.npcIds.includes(n.id), 'the Romance engine has them as a partner, the same person');
@@ -776,10 +789,15 @@ section('Radio and television');
   const bc = await import('../js/engine/digital/broadcast.js');
   life({ born: 1790, age: 10 });
   check(bc.broadcastOptions().length === 0, 'in 1800 there is no radio or television');
-  const p = life({ born: 1922, age: 8 });
+  // A child with a parent at home who is not already as close as can be (rarely there is none: begun again).
+  let p, mom;
+  for (let tries = 0; tries < 20; tries++) {
+    p = life({ born: 1922, age: 8 });
+    mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'parent');
+    if (p.alive && mom && mom.meters.relationship < 95) break;
+  }
   const ids = bc.broadcastOptions().map((o) => o.id);
   check(ids.includes('radio') && !ids.includes('tv'), `in 1930 there is radio and no television (${ids.join(', ')})`);
-  const mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n?.alive && n.role === 'parent');
   const before = mom?.meters.relationship;
   const r = bc.tuneIn('radio', 'drama');
   check(r.ok && (bc.setFor('radio') === 'elsewhere' || mom?.meters.relationship > before), 'an evening round the family radio brings the household closer');
