@@ -414,7 +414,7 @@ export default {
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
-    const top = [['moments', 'My Moments: this year'], ['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree']];
+    const top = [['moments', 'My Moments: this year'], ['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree'], ['digitalArchive', 'Letters, photos and posts']];
     if (love.canLookForLove()) top.push(['love', 'Look for love']);
     if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
 
@@ -443,7 +443,7 @@ export default {
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
-      if (id === 'archive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
+      if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

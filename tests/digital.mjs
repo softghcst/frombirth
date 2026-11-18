@@ -207,7 +207,7 @@ section('B. Family messaging');
   // The player moves abroad.
   p.flags.livesWithParents = false;
   // Some families have already moved abroad by now (global life), so the move is to Canada from wherever they are.
-  for (let i = 0; i < 60 && p.countryId !== 'ca'; i++) { p.flags.visaAge = null; emigrate('ca', { route: 'skilled' }); emigrate('ca', {}); }
+  for (let i = 0; i < 60 && p.countryId !== 'ca'; i++) { p.flags.visaAge = null; p.legal.incarceration = null; p.legal.pending = null; emigrate('ca', { route: 'skilled' }); emigrate('ca', {}); }
   check(p.countryId === 'ca', 'the player moved to Canada');
   freshHours();
   const before = sister.meters.relationship;
@@ -252,6 +252,8 @@ section('C. Reconnection');
   freshHours();
   join('hearth', 'grownup.me');
   store.state.npcs[id].flags.drifted.year = store.state.year - 10;
+  // Only this old friend has been out of touch long enough to be looked for.
+  for (const n of Object.values(store.state.npcs)) if (n.id !== id && n.flags.drifted) n.flags.drifted.year = store.state.year;
   store.state.pendingEvents = [];
   core.world().arcs.lastYear = null;
   let queued = null;

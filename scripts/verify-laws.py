@@ -118,6 +118,10 @@ DECIDED.update({
     ('tn', 'inheritance'): 'PwC gives the 2.5% between ancestors and descendants; its summary gives up to 35% for others, which the game uses.',
     ('ua', 'inheritance'): 'PwC gives the income tax scale up to 18% for non-residents; the game models residents: close family 0%, others 5%.',
     ('ht', 'drinkingAge'): 'The source gives no national age; Port-au-Prince forbids selling to under-18s, which the game uses.',
+    ('bo', 'taxShape'): 'The table gives 0% to 25%; wages are taxed through the RC-IVA at one rate of 13%, which the game uses.',
+    ('ee', 'taxShape'): 'The table gives effective rates after the basic exemption; the income tax itself is one rate of 22%.',
+    ('ro', 'taxShape'): 'The table adds social and health contributions; the income tax itself is one rate of 10%.',
+    ('ua', 'taxShape'): 'The table counts untaxed income as 0%; the income tax is one rate of 18% on what is taxed.',
     ('my', 'naturalization'): "The table gives 12 years; Malaysia's nationality-law article gives 10 years' residence, which the game uses.",
 })
 
@@ -158,6 +162,8 @@ def game():
         const row = { name: c.name, iso3: PLACES[c.id].iso3, gov: PLACES[c.id].government };
         for (const r of law.sheet(c.id, { region: null })) row[r.id] = r.value;
         row.taxTop = (await import('./js/engine/systems.js')).taxBreakdown((await import('./js/engine/systems.js')).typicalWage(c) * 200, c).marginal;
+        const sysd = await import('./js/data/systems.js');
+        row.taxShape = c.incomeTax <= 0 ? 'none' : sysd.TAX_SHAPE_OF[c.id] ?? 'moderate';
         row.inherit = { kind: inh.lawOf(c.id).kind, top: Math.max(inh.topRate(c, 'child'), inh.topRate(c, 'other')) };
         row.health = HEALTH_MODEL_OF[c.id] ?? (c.freeHealthcare ? 'public' : 'pocket');
         row.birthright = cit.BIRTHRIGHT.has(c.id); row.single = cit.SINGLE.has(c.id); row.years = cit.RESIDENCE_YEARS[c.id] ?? cit.DEFAULT_YEARS;
@@ -571,6 +577,12 @@ def main():
         m = re.search(r'(\d+(?:\.\d+)?)\s*%', c[3]) if c and len(c) > 3 else None
         if not m: put(pid, 'taxTop', False, 'not covered by the source', covered=False); continue
         put(pid, 'taxTop', abs(g['taxTop'] - min(0.65, float(m.group(1)) / 100)) < 0.0051, f'source: {c[3][:60]}')
+        # The shape: one rate for everyone where the lowest and highest rates are the same (or no tax at all).
+        lo = re.search(r'(\d+(?:\.\d+)?)\s*%', c[2]) if len(c) > 2 else None
+        if lo:
+            src_flat = abs(float(lo.group(1)) - float(m.group(1))) < 0.01
+            put(pid, 'taxShape', (g['taxShape'] in ('flat', 'none')) == src_flat, f'source: lowest {c[2][:30]}, highest {c[3][:30]}; game: {g["taxShape"]}')
+        else: put(pid, 'taxShape', False, 'no lowest rate in the source', covered=False)
 
     # Estate and inheritance tax: PwC's headline rate is the top rate anyone pays (often an unrelated heir).
     for pid, g in G.items():

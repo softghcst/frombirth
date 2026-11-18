@@ -30,9 +30,9 @@ import { passOn } from './edlegacy.js';
 import { genomeOf } from './health/heredity.js';
 import { npcHealth } from './health/story.js';
 import { heirHealth, legacySummary } from './health/index.js';
+import { carryOver } from './digital/legacy.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
-import { carryOver } from './digital/legacy.js';
 import { handOver as handOverSports } from './sportsLife.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
@@ -285,6 +285,8 @@ export function continueAs(npcId) {
   heirHealth(next, h);
   handOverAnimals(old, next, { ancestorId: ancestor.id, heirId: h.id, assetIds });
   if (old.sports) handOverSports(old, next, { ancestorId: ancestor.id, heirId: h.id });
+  // The people who work in the family's businesses are the same people: they carry on, outside the heir's own circle.
+  for (const b of op.businesses ?? []) for (const x of [...(b.staff ?? []), ...(b.partners ?? [])]) if (old.npcs[x.id] && !npcs[x.id]) npcs[x.id] = old.npcs[x.id];
   const firmLines = carryCareers(old, next, h); // the family's working history, the same employers, and any business left to this heir
 
   // An heir who was living in another country carries on there.

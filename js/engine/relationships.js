@@ -7,10 +7,10 @@ import { COUNTRIES } from '../data/countries.js';
 import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js';
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
+import { forgetNpc } from './digital/core.js';
 import { book } from './ledger.js';
 import { settleNpc } from './npcMoney.js';
 import { animalDied } from './animals.js';
-import { forgetNpc } from './digital/core.js';
 import { estateTax } from './inheritance.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });

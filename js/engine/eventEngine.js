@@ -91,8 +91,8 @@ function eligibleCast(ev, between = false) {
   if (ev.queuedOnly) return null;
   // Scenes for the turns between years (data/events/seasons.js) are drawn only then, and yearly scenes never are.
   if (!!ev.between !== between) return null;
-  if (ev.timing && !inTime(ev.timing)) return null;
   if (!timely(ev) || !ev.choices.some((c, i) => choiceTimely(ev, i) && !c.requires?.length)) return null;
+  if (ev.timing && !inTime(ev.timing)) return null;
   if (!!ev.prison !== !!p.legal.incarceration) return null;
   if (p.age < ev.ageRange[0] || p.age > ev.ageRange[1]) return null;
   const seen = store.state.eventHistory.find((h) => h.id === ev.id);
