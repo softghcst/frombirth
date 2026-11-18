@@ -2,7 +2,7 @@
 // promotions, getting fired, gigs, fame, and retirement.
 import { hasRecord } from './records.js';
 import { licenseBlock } from './credentials.js';
-import { careerBlock, eraTitle, worldYear } from './history.js';
+import { careerBlock, careerExists, eraTitle, worldYear } from './history.js';
 import { LAW_WORDS } from '../data/history.js';
 import { rule as lawRule } from './rules.js';
 import { techAvailable } from './digital/tech.js';
@@ -12,7 +12,6 @@ import { workBarrier } from './health/access.js';
 import { tickEntertainment } from './entertainment.js';
 import { tickAwards } from './awards.js';
 import { tickMusic } from './music.js';
-import { careerExists } from '../data/eras.js';
 import { tickModeling } from './modeling.js';
 import { tickPublishing } from './publishing.js';
 import { tickCelebs } from './celebs.js';
@@ -384,7 +383,7 @@ export function hire(career, level, performance, how, o = {}) {
 export function takeOverJob(job, yearsWorked = 0) {
   const p = player();
   const career = CAREER_BY_ID[job?.careerId];
-  if (!career) return;
+  if (!career || !careerExists(career.id, store.state.year)) return; // a job from before its time is not carried on
   const lvl = career.levels[job.level];
   const c = ensureCareer(p.career);
   const e = career.type === 'freelance' ? null : employer(job.employerId) ?? placeAt(career.id, p.countryId, p.city);

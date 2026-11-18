@@ -18,7 +18,7 @@ const { continueAs, heirs } = await import('../js/engine/legacy.js');
 const { die } = await import('../js/engine/death.js');
 const { summarize } = await import('../js/engine/yearSummary.js');
 const { getEra, worldYear } = await import('../js/engine/history.js');
-const { careerExists } = await import('../js/data/eras.js');
+const { careerExists } = await import('../js/engine/history.js');
 const tech = await import('../js/engine/digital/tech.js');
 const acc = await import('../js/engine/digital/accounts.js');
 const { PLATFORM_BY_ID } = await import('../js/data/digital.js');
@@ -32,10 +32,13 @@ const problems = [];
 const check = (cond, msg) => { if (!cond && !problems.includes(msg)) problems.push(msg); };
 const roundTrip = () => { saveGame(store.state); store.state = loadGame(store.state.slotId); return store.state.player; };
 
-let s;
-do { s = createLife({ countryId: 'uk', year: 1900 }); } while (s.player.royal);
-store.state = s;
-check(store.state.year === 1900 && getEra(1900).id !== 'now', 'the first life begins in 1900, in its own era');
+function begin() {
+  let s;
+  do { s = createLife({ countryId: 'uk', year: 1900 }); } while (s.player.royal);
+  store.state = s;
+  check(store.state.year === 1900 && getEra(1900).id !== 'now', 'the first life begins in 1900, in its own era');
+}
+begin();
 
 const seenTrials = new Set();
 const offered = {}; // year -> medicines a psychiatrist could offer for depression then
@@ -60,9 +63,10 @@ function treatmentToday() {
 }
 const seenTherapies = new Set();
 const eras = new Set([getEra(store.state.year).id]);
-const archive = [];
+let archive = [];
 let generation = 1;
 let years = 0;
+let lines = 1; // families started; a line can end early (a death with no heir), and then a new one begins
 
 /** Lives one year and checks everything that should hold for it. */
 function liveYear() {
@@ -104,6 +108,7 @@ function liveYear() {
   check(summary && r.year === y, `there is a yearly summary for ${y}`);
 }
 
+for (;;) {
 while (generation < 6 && store.state.year < 2030) {
   const p = store.state.player;
   // Grow up, settle down, have a child; live until the child is grown; die; the child carries on.
@@ -136,12 +141,23 @@ while (generation < 6 && store.state.year < 2030) {
   store.state = next;
   generation++;
   check(store.state.player.generation === generation, 'the generation count goes up by one');
-  check(archive.every((name) => Object.values(next.npcs).some((n) => n.flags?.ancestor && `${n.firstName} ${n.lastName}` === name)), `every earlier generation is kept as an ancestor (generation ${generation})`);
+  // The heir's family is redrawn around them: parents and grandparents stay as people. The whole line, every
+  // generation, is kept in the family archive (engine/chronicle.js), which the family history reads.
+  const archived = Object.values(next.archive?.people ?? {}).map((x) => `${x.firstName} ${x.lastName}`);
+  check(archive.every((name) => archived.includes(name)), `every earlier generation is in the family archive (generation ${generation})`);
+  check(Object.values(next.npcs).some((n) => n.flags?.ancestor && `${n.firstName} ${n.lastName}` === archive.at(-1)), `the generation before is kept as an ancestor (generation ${generation})`);
   const y = store.state.year;
   const back = roundTrip();
   check(store.state.year === y && back.generation === generation, `generation ${generation} saves and loads in ${y}`);
 }
 
+if (generation >= 5 || lines >= 6) break;
+// The line ended before it could reach the present (a life cut short with no heir to carry on): this is about
+// whether a family can live the century a year at a time, so a new family starts from 1900.
+lines += 1; generation = 1; years = 0; archive = [];
+for (const k of Object.keys(offered)) delete offered[k];
+begin();
+}
 const last = store.state.year;
 check(generation >= 5, `at least five generations lived (${generation})`);
 check(last >= 2010, `the family reaches the present day (${last})`);
@@ -150,7 +166,7 @@ const years_ = Object.keys(offered).map(Number).sort((a, b) => a - b);
 check(offered[years_[0]].length < offered[years_.at(-1)].length, `there is more to offer for depression later in the century (${years_.map((y) => `${y}: ${offered[y].length}`).join('; ')})`);
 check(eras.size >= 4, `the family lived through several eras (${[...eras].join(', ')})`);
 
-console.log(`Medicines a psychiatrist could offer for depression: ${years_.map((y) => `${y}: ${offered[y].length}`).join(', ')}.`);
+console.log(`${lines > 1 ? `${lines} families started (a line can end early). ` : ''}Medicines a psychiatrist could offer for depression: ${years_.map((y) => `${y}: ${offered[y].length}`).join(', ')}.`);
 console.log(`${generation} generations, ${years} years (1900 to ${last}), eras: ${[...eras].join(', ')}; ${seenTrials.size} medicine trial(s), ${seenTherapies.size} therapy course(s).`);
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n${problems.map((x) => ` - ${x}`).join('\n')}`); process.exit(1); }
 console.log('One family, 1900 to the present, a year at a time.');

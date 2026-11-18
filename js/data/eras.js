@@ -21,6 +21,5 @@ export const BUSINESS_ERAS = { software_studio: 1970, design_studio: 1950, gym: 
 /** Social media, and online life generally. */
 export const SOCIAL_FROM = 2006;
 
-export const careerExists = (id, year) => year >= (CAREER_ERAS[id] ?? 0);
 export const serviceExists = (id, year) => year >= (SERVICE_ERAS[id] ?? 0);
 export const businessExists = (id, year) => year >= (BUSINESS_ERAS[id] ?? 0);

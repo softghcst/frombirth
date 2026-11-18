@@ -12,6 +12,7 @@ import { rng } from '../rng.js';
 import { clamp } from '../util.js';
 import { store, player, log, milestone } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
+import { CAREER_ERAS as CAREER_STARTS } from '../data/eras.js';
 import { ERAS, ERA_BY_ID, MONEY_ANCHORS, CURRENCY_HISTORY, LAW_HISTORY, CAREER_ERAS, PARENT_OCCUPATIONS, MODERN_OCCUPATIONS,
   MAJOR_FROM, UNIVERSITY_ACCESS, SECONDARY, SCENE_FROM, HEALTH, TREATMENT_HISTORY, PROCEDURE_FROM, EVENTS } from '../data/history.js';
 import { OCCUPATIONS } from '../data/traits.js';
@@ -157,9 +158,9 @@ const isMarried = (person) => person === store.state?.player
  * @param {(ruleId:string)=>any} rule  the law where the person lives
  */
 export function careerBlock(career, person, year, rule) {
+  if (year < careerFrom(career.id)) return 'There is no such job yet.';
   const e = CAREER_ERAS[career.id];
   if (!e) return '';
-  if (e.from && year < e.from) return 'There is no such job yet.';
   if (e.tech && !techAvailable(e.tech)) return 'There is no such job yet.';
   if (e.law && rule) {
     if (e.law === 'marriageBar' && isWoman(person) && isMarried(person) && rule('marriageBar')) return 'marriageBar';
@@ -167,7 +168,12 @@ export function careerBlock(career, person, year, rule) {
   }
   return '';
 }
-export const careerExists = (careerId, year) => { const e = CAREER_ERAS[careerId]; return !e || ((!e.from || year >= e.from) && (!e.tech || techAvailable(e.tech))); };
+/**
+ * The first year a career exists: the later of the two tables that say so (this one, with titles and laws, and the
+ * plain start years in data/eras.js), so the player's job search and everyone else's careers follow one rule.
+ */
+export const careerFrom = (careerId) => Math.max(CAREER_ERAS[careerId]?.from ?? 0, CAREER_STARTS[careerId] ?? 0);
+export const careerExists = (careerId, year) => year >= careerFrom(careerId) && (!CAREER_ERAS[careerId]?.tech || techAvailable(CAREER_ERAS[careerId].tech));
 
 /** A job's title as it was called when it was taken, or null for today's title. */
 export function eraTitle(careerId, level, year) {
