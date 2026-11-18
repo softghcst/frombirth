@@ -67,7 +67,6 @@ export const AVATAR_MANIFEST = {
     {"id": "nose_19", "file": "noses/nose_19.svg", "label": "Nose 19"},
     {"id": "nose_20", "file": "noses/nose_20.svg", "label": "Nose 20"},
     {"id": "nose_21", "file": "noses/nose_21.svg", "label": "Nose 21"},
-    {"id": "nose_22", "file": "noses/nose_22.svg", "label": "Nose 22"},
     {"id": "nose_23", "file": "noses/nose_23.svg", "label": "Nose 23"},
     {"id": "nose_24", "file": "noses/nose_24.svg", "label": "Nose 24"},
     {"id": "nose_6", "file": "noses/nose_6.svg", "label": "Nose 6"},

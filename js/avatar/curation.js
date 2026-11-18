@@ -45,7 +45,7 @@ export const RESTING = {
   // neutral or pleasant mouths only
   lips: ['lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_14'],
   noses: ['nose_6', 'nose_7', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
-    'nose_19', 'nose_20', 'nose_22', 'nose_23'],
+    'nose_19', 'nose_20', 'nose_23'],
   // relaxed brows: nothing angry, sceptical or comic
   eyebrows: ['brows_02', 'brows_03', 'brows_10', 'brows_12', 'brows_14', 'brows_15', 'brows_16_feathered', 'brows_17_puppy', 'brows_19_glam_arch', 'brows_6', 'brows_8'],
 };
@@ -64,7 +64,7 @@ export const EXPRESSION = { crying: 'eyes_14', closedHappy: 'eyes_24', laughing:
 export const WITHDRAWN = {
   eyes: { eyes_11: 'eyes_22', eyes_12: 'eyes_26' },
   lips: { lips_1: 'lips_9', lips_12: 'lips_9', lips_2: 'lips_20', lips_3: 'lips_21', lips_13: 'lips_21', lips_15: 'lips_8', lips_16: 'lips_8', lips_19: 'lips_8' },
-  nose: { nose_1: 'nose_6', nose_2: 'nose_6', nose_4: 'nose_6', nose_3: 'nose_7', nose_5: 'nose_9', nose_8: 'nose_10', nose_18: 'nose_19' },
+  nose: { nose_1: 'nose_6', nose_2: 'nose_6', nose_4: 'nose_6', nose_3: 'nose_7', nose_5: 'nose_9', nose_8: 'nose_10', nose_18: 'nose_19', nose_22: 'nose_17' },
 };
 /** Brows that come with age. */
 export const ELDER_BROWS = 'brows_23_elder_bushy';
