@@ -101,12 +101,18 @@ New York and Washington; 21 in Bavaria and Baden-Württemberg), a drinking age o
 Abu Dhabi and Ajman, and the ban on alcohol around Kano. It let Australian and Mexican states set their own drinking age, and
 corrected Malaysia's drinking age to 21 and Paraguay's to 20. The script's drinking-age check had let these pass, because it
 accepted an age mentioned anywhere in a row, including a former age in its notes. It now reads only the age columns and skips
-ages that were changed. Not confirmed: the regional gambling powers in Argentina, Malaysia, Nigeria, Spain, Canada,
-Australia and Germany (Wikipedia has no articles on most of them), Austria's drinking age, and the United Arab Emirates'
-gambling, which a federal regulator set up in 2023 may have made national.
+ages that were changed. A second round confirmed Canada's and Spain's regional gambling and the US drinking age, and
+found the United Arab Emirates' gambling is now federal (a national regulator since 2023), so it is no longer the emirates'
+to decide. Left as the author's judgement, with no source found: regional gambling in Argentina, Malaysia, Nigeria,
+Australia and Germany, and Austria's drinking age. National governments cannot change what is left to the regions.
 
-Still not checked: which countries get a flat, rising or steep income-tax schedule, and the status sentences. Where a
-source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
+Income tax: which countries tax at one flat rate is checked against the lowest and highest rates in "List of countries by
+tax rates" (92 agree; Bolivia, Estonia, Romania and Ukraine are flat taxes the table mixes with allowances or contributions;
+Belize was made flat, at its 25%). Whether a banded country's bands rise steeply or moderately is the author's judgement.
+The six status sentences (Aruba, Puerto Rico, Andorra, the Democratic Republic of the Congo, Hong Kong, Taiwan) were read
+against the Wikipedia article on each place (revs 1384847800, 1386424195, 1384796794, 1385995928, 1386426160, 1386443146)
+and each claim in them is supported. Where a source does not cover a place (often a small country or a territory), the
+field is "not confirmed", not guessed.
 
 Re-run with `python3 scripts/verify-laws.py --write` (needs access to en.wikipedia.org; pages are cached in `.cache/`).
 
@@ -175,8 +181,8 @@ shown on its profile.
 
 In rough order of value:
 
-1. **Check what is still unchecked** (listed above): the unconfirmed regional powers, the bands between the top rates of inheritance tax that are
-   the author's, the shape of each tax schedule, and the status sentences.
+1. **Find sources for what is still the author's judgement** (listed above): the bands between the top rates of
+   inheritance tax, steep or moderate income-tax bands, and the regional powers no source settled.
 2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
 5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.

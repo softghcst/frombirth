@@ -19,7 +19,8 @@
 // Row: [iso2, iso3, type, parent, group, unRegion, capital, languages, timeZone, government, status?]
 //   type: 'country' | 'territory' | 'special_administrative_region' | 'jurisdiction'
 //   parent: the place it is constitutionally tied to, if any
-//   status: one neutral sentence, for places that are not ordinary sovereign states
+//   status: one neutral sentence, for places that are not ordinary sovereign states (each claim checked against
+//           the Wikipedia article on the place; see docs/WORLD_DATA.md)
 import { CHECKED } from './worldVerification.js';
 
 const NA = 'North America';
