@@ -442,7 +442,7 @@ function findOrg(state, sport, level, o = {}) {
   const kind = level === 'recreational' ? 'rec' : level;
   const base = o.name ?? orgName(r, kind, sport, city);
   const name = division !== 'women' ? base : level === 'school' ? `${base} (girls)` : /Tour$/.test(base) ? base.replace(/ Tour$/, " Women's Tour") : `${base} Women`;
-  const org = { id, key, kind, level, div: division, sportId: sport.id, name, countryId: p.countryId, city,
+  const org = { id, key, kind, level, div: division, sportId: sport.id, name, countryId: o.countryId ?? p.countryId, city,
     founded: Math.max(sport.founded, state.year - r.int(5, 90)), strength: Math.round(LEVEL_STRENGTH[level] + r.int(-6, 6) + (o.strength ?? 0)),
     coachId: null, teamIds: [], leagueId: null, history: [], uniId: o.uniId ?? null, tier: o.tier ?? null };
   if (o.division) setCollegeDivision(org, o.division);
@@ -768,7 +768,7 @@ function leagueFor(state, org, team) {
     const cities = COUNTRIES[org.countryId].cities ?? [org.city];
     lg = { id, key, kind: 'league', level: org.level, div: org.div ?? null, sportId: sport.id, countryId: org.countryId, city: org.city, teamIds: [],
       // A college league is a conference within the program's division.
-      name: org.minorLevel ? `${org.minorLevel === 'Practice squad' ? 'Practice' : org.minorLevel} ${r.pick(['Pacific Coast', 'International', 'Eastern', 'Southern', 'Texas', 'Midwest', 'Carolina', 'Florida State', 'Northwest', 'California'])} League` : org.level === 'college' && org.division ? `${DIVISION_NAMES[org.division] ?? org.division} ${r.pick(['Mountain', 'Coastal', 'Valley', 'Great Lakes', 'Sun', 'Prairie', 'Atlantic', 'Pacific', 'Heartland', 'Metro'])} ${org.division === 'JUCO' ? 'Junior College ' : ''}Conference` : `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
+      name: /League$/.test(org.minorLevel ?? '') ? org.minorLevel : org.minorLevel ? `${org.minorLevel === 'Practice squad' ? 'Practice' : org.minorLevel} ${r.pick(['Pacific Coast', 'International', 'Eastern', 'Southern', 'Texas', 'Midwest', 'Carolina', 'Florida State', 'Northwest', 'California'])} League` : org.level === 'college' && org.division ? `${DIVISION_NAMES[org.division] ?? org.division} ${r.pick(['Mountain', 'Coastal', 'Valley', 'Great Lakes', 'Sun', 'Prairie', 'Atlantic', 'Pacific', 'Heartland', 'Metro'])} ${org.division === 'JUCO' ? 'Junior College ' : ''}Conference` : `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
       founded: Math.max(sport.founded, state.year - r.int(10, 80)), history: [] };
     S.orgs[id] = lg;
     // Every team in a league has a name of its own: the place, and a club name nobody else in the league has.
@@ -780,7 +780,7 @@ function leagueFor(state, org, team) {
       const nick = sport.kind === 'team' ? mascotsFor(sport) : TEAM_WORDS;
       for (let t = 0; t < 20 && (!name || taken.has(name)); t++) name = org.level === 'pro' ? `${city} ${r.pick(nick)}` : t < 10 ? `${city} ${r.pick(nick)}` : `${r.pick(CLUB_WORDS)} ${r.pick(nick)}`;
       taken.add(name);
-      const rival = findOrg(state, sport, org.level, { division: org.division, key: `${key}/rival/${i}`.replace(/\/women\//, '/'), city, strength: r.int(-8, 8), tier: org.tier, name, div: org.div ?? 'mixed' });
+      const rival = findOrg(state, sport, org.level, { division: org.division, countryId: org.countryId, key: `${key}/rival/${i}`.replace(/\/women\//, '/'), city, strength: r.int(-8, 8), tier: org.tier, name, div: org.div ?? 'mixed' });
       lg.teamIds.push(teamFor(state, rival).id);
     }
   }

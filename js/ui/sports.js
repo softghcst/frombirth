@@ -191,6 +191,7 @@ function draftSection() {
       const left = collegeLeft(st, e);
       out.push(`${label(`College ${sport.name.toLowerCase()}`)}${kv('Class', esc(classOf(st, e)))}${kv('Division', esc(DIVISIONS[e.college.division]?.name ?? e.college.division))}${kv('Eligibility', `${left.seasons} ${left.seasons === 1 ? 'season' : 'seasons'} left, ${left.years} ${left.years === 1 ? 'year' : 'years'} on the clock`)}${e.college.nil.length ? kv('NIL deals', esc(money(e.college.nil.reduce((s, x) => s + x.amount, 0)))) : ''}`);
     }
+    if (e.intl) out.push(intlSection(st, e));
     if (!D) continue;
     const el = draft.eligible(st, e, D);
     const grade = draft.draftGrade(st, e);
@@ -201,12 +202,26 @@ function draftSection() {
       ${e.contractId ? '' : kv('Eligible', el.ok ? `Yes${el.declare ? ', if you declare' : ''}` : esc(el.why))}
       ${e.contractId ? '' : kv('Mock drafts', pick <= D.rounds * size ? `Round ${draft.roundOf(pick, size)}, around pick ${pick}` : 'Not projected to be picked')}
       ${e.draft?.rights ? kv('Rights held by', `${esc(e.draft.rights.club)} until ${e.draft.rights.until}`) : ''}
-      ${e.minor ? kv('Minor leagues', `${esc(D.minors[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}
+      ${e.minor ? kv('Minor leagues', `${esc((e.minor.ladder ?? D.minors)[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}
       ${drafts.map((d) => `<details class="card"><summary><strong>${d.year} draft</strong> · ${d.player.undrafted ? 'not picked' : `you went in round ${d.player.round}, pick ${d.player.pick}, to ${esc(sp.teamOf(d.player.teamId)?.name ?? '')}`}</summary>
         ${d.lottery.length ? `<p class="muted">Lottery: ${d.lottery.map((x) => `${esc(sp.teamOf(x.teamId)?.name ?? '')} ${x.from}→${x.to}`).join(', ')}</p>` : ''}
         ${draft.draftBoard(st, d, 1).map((x) => `<div class="kv"><span>${x.pick}. ${x.mine ? '<strong>You</strong>' : esc(x.name)} <small class="muted">${x.mine ? '' : esc([x.pos, x.school].filter(Boolean).join(' · '))}</small></span><span>${esc(x.team)}</span></div>`).join('')}</details>`).join('')}`);
   }
   return out.join('');
+}
+
+/** An international signing (engine/international.js): the trainer, the handshake deal, the bonus, the minors. */
+function intlSection(st, e) {
+  const X = e.intl;
+  const p = player();
+  const T = X.trainer;
+  return `${label(`${sportOf(e.id).name}: international signing`)}
+    ${X.signed ? kv('Signed', `${esc(X.signed.club)}, ${X.signed.year} · ${money(X.signed.bonus)} bonus${X.signed.toTrainer ? ` (${money(X.signed.toTrainer)} to your trainer)` : ''}`)
+      : kv('Can sign', p.countryId === 'cu' && !X.left ? 'Only after leaving Cuba' : p.age < 16 ? 'From January 15 after you turn 16' : 'Now, as a free agent')}
+    ${T ? kv('Trainer', `${esc(T.name)} since ${T.since} · ${T.fullTime ? 'full time' : 'around school'} · takes ${Math.round(T.cut * 100)}% of the bonus`) : ''}
+    ${X.deal ? kv('Handshake deal', `${esc(X.deal.club)}: ${money(X.deal.amount)} (not binding)`) : ''}
+    ${X.fellThrough.map((f) => kv(`Fell through, ${f.year}`, esc(f.why))).join('')}
+    ${e.minor?.ladder ? kv('Minor leagues', `${esc(e.minor.ladder[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}`;
 }
 
 /** Recruiting: how the services rate the player, who has offered, and where they are committed or signed. */

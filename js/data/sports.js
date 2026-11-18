@@ -51,7 +51,7 @@ export const SPORTS_LIST = [
     attrs: { 'talents.sports': 0.5, 'stats.health': 0.2, 'stats.intellect': 0.15, 'hidden.discipline': 0.15 },
     positions: [['pitcher', 'Pitcher', { control: 0.35, stuff: 0.4, stamina: 0.25 }], ['catcher', 'Catcher', { fielding: 0.4, throwing: 0.3, contact: 0.3 }],
       ['infield', 'Infielder', { fielding: 0.35, throwing: 0.2, contact: 0.3, baserunning: 0.15 }], ['outfield', 'Outfielder', { power: 0.3, contact: 0.3, fielding: 0.2, baserunning: 0.2 }]],
-    popular: k('us', 'jp', 'kr', 'do', 'cu', 'ven', 'mx', 'pr', 'tw'), college: k('us', 'ca'), teamSize: 9 }),
+    popular: k('us', 'jp', 'kr', 'do', 'cu', 've', 'mx', 'pr', 'tw'), college: k('us', 'ca'), teamSize: 9 }),
   S('softball', 'Softball', 'team', 'baseball', { womenProFrom: 1997, founded: 1887, proFrom: 1997, season: 18, lesson: 400, kit: 220,
     skills: [['contact', 'Contact'], ['power', 'Power'], ['discipline', 'Plate discipline'], ['fielding', 'Fielding'], ['throwing', 'Throwing'], ['baserunning', 'Baserunning'],
       ['control', 'Pitching control'], ['stuff', 'Pitch quality'], ['stamina', 'Pitching stamina']],
@@ -336,6 +336,28 @@ export const BIG_LEAGUE_PAY = { basketball: 6, baseball: 4, american_football: 2
 export const WOMEN_DRAFTS = {
   basketball: { rounds: 3, lottery: { teams: 4, picks: 4 }, rule: 'women', declare: true, combine: false, deal: 'scale', years: 3, minors: [] },
   ice_hockey: { rounds: 7, lottery: null, rule: 'women', declare: true, combine: false, deal: 'entry', years: 2, minors: [] },
+};
+
+// ---------- International amateur signings (baseball) ----------
+//
+// Players from outside the draft countries are not drafted: big league clubs sign them as international amateurs. The
+// signing period opens on January 15, and a player may sign once they are 16. Each club has a bonus pool for the year
+// (about $5–7.6 million in the mid-2020s). Most of these players come up through a trainer (in the Dominican Republic a
+// "buscón") who takes them in at 12 to 14, trains them, often houses and feeds them, shows them to the clubs' scouts, and
+// takes a share of the bonus (usually 20–35%). Clubs and players agree handshake deals years early, against the rules and
+// binding no one: some fall through. A signed player goes to the club's academy in the Dominican Republic and the
+// Dominican Summer League (Venezuela's own summer league closed in 2015), then to the United States and the minors.
+// Cuban players must first leave Cuba and settle in a third country; those 23 or over with five seasons in Cuba's top
+// league are signed outside the bonus pools, as professionals.
+export const INTL_SIGNING = {
+  sports: ['baseball'],
+  countries: ['do', 've', 'cu', 'mx', 'pa', 'co', 'ni', 'cr', 'aw', 'bs', 'gt', 'sv', 'br', 'au', 'nz', 'za', 'nl', 'it', 'de', 'uk', 'cn', 'ph', 'tw'],
+  trainers: ['do', 've', 'pa', 'co', 'ni', 'cu', 'mx', 'cr', 'aw', 'bs'], // where trainers run programs for boys of 12 to 14
+  from: 1977, // the year big league clubs began running academies in the Dominican Republic (the Toronto club's first)
+  poolsFrom: 2012, // international bonus pools
+  pool: [5100000, 7600000],
+  cut: [0.2, 0.35],
+  ladder: ['Dominican Summer League', 'Rookie ball', 'Single-A', 'High-A', 'Double-A', 'Triple-A'],
 };
 
 // ---------- College sport (the United States and Canada) ----------

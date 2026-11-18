@@ -145,7 +145,7 @@ function order(state, lg, D, key) {
 }
 
 /** A professional club in the draft league: an employer too, so a contract with it is a job. */
-function clubOf(state, teamId) {
+export function clubOf(state, teamId) {
   const t = sp.teamOf(teamId, state);
   const org = sp.orgOf(t?.orgId, state);
   if (org && (!org.employerId || !employer(org.employerId))) {
@@ -323,20 +323,26 @@ function sign(state, d, e) {
   return result(true, `You signed with ${org.name}.${e.minor ? ` You start in ${ladder[e.minor.level] === 'Practice squad' ? 'the practice squad' : ladder[e.minor.level]}.` : ''}`);
 }
 
-/** Sends the player to a level of the club's minor league system (its own team, in its own league). */
-function toMinors(state, e, club, level) {
+/**
+ * Sends the player to a level of the club's minor league system (its own team, in its own league). The ladder is the
+ * draft's (data/sports.js DRAFTS minors), or the one an international signing starts on (engine/international.js).
+ */
+export function toMinors(state, e, club, level, ladder = e.minor?.ladder ?? draftOf(state, e.id)?.minors) {
   const p = state.player;
-  const D = draftOf(state, e.id);
-  const name = D.minors[level];
+  const name = ladder[level];
   const sport = sportOf(e.id);
-  const r = seeded(`affiliate/${club.id}/${level}`);
-  const city = r.pick(COUNTRIES[club.countryId].cities ?? [club.city]);
-  const org = findOrg(state, sport, 'pro', { key: `minor/${club.id}/${level}`, name: name === 'Practice squad' ? `${club.name} practice squad` : `${city} ${r.pick(['Bees', 'Mudcats', 'Rivercats', 'Sand Gnats', 'Firebirds', 'Hops', 'Trash Pandas', 'IronPigs', 'Storm Chasers', 'Flying Squirrels', 'Wranglers', 'Admirals'])}`,
-    tier: 2 + level, strength: -6 - (D.minors.length - 1 - level) * 4, city });
+  // The Dominican Summer League is played at the clubs' academies in the Dominican Republic; the rest where the club is.
+  const where = name === 'Dominican Summer League' ? 'do' : club.countryId;
+  const r = seeded(`affiliate/${club.id}/${name}`);
+  const city = r.pick(COUNTRIES[where].cities ?? [club.city]);
+  const nick = r.pick(['Bees', 'Mudcats', 'Rivercats', 'Sand Gnats', 'Firebirds', 'Hops', 'Trash Pandas', 'IronPigs', 'Storm Chasers', 'Flying Squirrels', 'Wranglers', 'Admirals']);
+  const org = findOrg(state, sport, 'pro', { key: `minor/${club.id}/${name}`, countryId: where, city,
+    name: name === 'Practice squad' ? `${club.name} practice squad` : name === 'Dominican Summer League' ? `DSL ${club.name.split(' ').slice(-1)[0]}` : `${city} ${nick}`,
+    tier: 2 + level, strength: -6 - (ladder.length - 1 - level) * 4 });
   org.minorLevel = name; org.parentId = club.id;
-  e.minor = { clubId: club.id, level, orgId: org.id };
+  e.minor = { clubId: club.id, level, orgId: org.id, ...(ladder !== draftOf(state, e.id)?.minors ? { ladder } : {}) };
   joinOrg(org, state);
-  p.career.salary = life.money(state, { 'Rookie ball': 26000, 'Single-A': 28000, 'High-A': 30000, 'Double-A': 35000, 'Triple-A': 46000, AHL: 90000, 'G League': 40000, 'Practice squad': 230000 }[name] ?? 30000);
+  p.career.salary = life.money(state, { 'Dominican Summer League': 7000, 'Rookie ball': 26000, 'Single-A': 28000, 'High-A': 30000, 'Double-A': 35000, 'Triple-A': 46000, AHL: 90000, 'G League': 40000, 'Practice squad': 230000 }[name] ?? 30000);
   log(`${club.name} sent you to ${name === 'Practice squad' ? 'their practice squad' : `${org.name} (${name})`}.`, 'system', 'neutral');
 }
 
@@ -348,13 +354,14 @@ export function minorsYear(state, a, e, sum) {
   const m = e.minor;
   if (!m || !e.contractId) return;
   const p = state.player;
-  const D = draftOf(state, e.id);
-  if (!D) return;
+  const ladder = m.ladder ?? draftOf(state, e.id)?.minors;
+  if (!ladder) return;
   const club = sp.orgOf(m.clubId, state);
   const o = overall(e, p);
   const ready = { baseball: 74, ice_hockey: 71, basketball: 66, american_football: 62 }[e.id] ?? 62;
-  const climb = (lvl) => 56 + lvl * 4;
-  if (o >= ready && (m.level === D.minors.length - 1 || o >= ready + 4) && (sum.rating ?? 6) >= 6.2) {
+  // What each level asks: the same names ask the same, whether or not the ladder starts in the Dominican Summer League.
+  const climb = (lvl) => 52 + (lvl + (ladder[0] === 'Dominican Summer League' ? 0 : 1)) * 4;
+  if (o >= ready && (m.level === ladder.length - 1 || o >= ready + 4) && (sum.rating ?? 6) >= 6.2) {
     e.minor = null;
     joinOrg(club, state);
     p.career.salary = Math.max(p.career.salary, life.money(state, { baseball: 760000, ice_hockey: 950000, basketball: 1200000, american_football: 900000 }[e.id] ?? 800000));
@@ -364,9 +371,9 @@ export function minorsYear(state, a, e, sum) {
     sp.moment(state, { type: 'callup', sportId: e.id, text: `Called up to ${club.name}.`, sig: 3, orgId: club.id });
     return;
   }
-  if (m.level < D.minors.length - 1 && o >= climb(m.level + 1) && (sum.rating ?? 6) >= 6.4) {
+  if (m.level < ladder.length - 1 && o >= climb(m.level + 1) && (sum.rating ?? 6) >= 6.4) {
     toMinors(state, e, club, m.level + 1);
-    sp.moment(state, { type: 'promoted', sportId: e.id, text: `Promoted to ${D.minors[e.minor.level]}.`, sig: 2 });
+    sp.moment(state, { type: 'promoted', sportId: e.id, text: `Promoted to ${ladder[e.minor.level]}.`, sig: 2 });
   } else if (m.level > 0 && o < climb(m.level) - 6 && (sum.rating ?? 6) < 5.8) {
     toMinors(state, e, club, m.level - 1);
   }

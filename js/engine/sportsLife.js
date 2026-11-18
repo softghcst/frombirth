@@ -27,6 +27,7 @@ import { seasonAwards, yearAwards } from './sportsAwards.js';
 import { recruitYear, RECRUIT_ANSWERS, divisionOf } from './recruiting.js';
 import { beforeSeason, afterSeason, COLLEGE_ANSWERS } from './college.js';
 import { draftYear, minorsYear, DRAFT_ANSWERS } from './draft.js';
+import { intlYear, intlPath, INTL_ANSWERS } from './international.js';
 
 const { nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, playSeason, playEvent, overall, rec, EVENTS_A_YEAR, fullName, seeded } = sp.internals;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -485,8 +486,10 @@ function proRoutes(state, a, e) {
       options: [{ id: 'yes', label: 'Turn professional' }, { id: 'no', label: 'Stay amateur for now' }] });
     return;
   }
-  // Where the sport has a draft, the draft decides (engine/draft.js): no club simply signs an amateur there.
+  // Where the sport has a draft, the draft decides (engine/draft.js): no club simply signs an amateur there. Where big
+  // league clubs sign international amateurs, they do (engine/international.js) until 23; a Cuban player can play at home.
   if (route === 'draft') return;
+  if (intlPath(state, e.id) && p.countryId !== 'cu' && p.age <= 22) return;
   // Clubs: a draft where the sport has one there, otherwise a club signs the player.
   const need = route === 'draft' ? 68 : 64;
   const fromRight = ['academy', 'college', 'club', 'elite'].includes(e.level) || (e.level === 'school' && route === 'draft' && p.age >= 18);
@@ -912,6 +915,7 @@ function yearIn(state, a, e) {
   // A coach who sees something says so: an academy calls.
   scouting(state, a, e, sum);
   recruitYear(state, a, e); // high school: stars, camps, offers, visits, commitment, signing day (engine/recruiting.js)
+  intlYear(state, a, e); // outside the draft countries: trainers, handshake deals, signing at 16 (engine/international.js)
   proRoutes(state, a, e);
   if (e.contractId) contractYear(state, a, e);
   mindYear(state, a, e, sum);
@@ -944,6 +948,7 @@ const rankPlace = (x) => (x === 'Champion' ? 1 : x === 'Final' ? 2 : x === 'Semi
 function scouting(state, a, e, sum) {
   const p = state.player;
   if (!['recreational', 'club', 'school'].includes(e.level) || p.age < 10 || p.age > 17) return;
+  if (e.intl?.trainer) return; // in a trainer's program: the clubs' scouts come to its showcases instead (engine/international.js)
   const sport = sportOf(e.id);
   if (!(sport.popular.includes(p.countryId) || sport.depth === 'full')) return;
   const o = overall(e, p);
@@ -1032,7 +1037,7 @@ export function audit(state = store.state) {
 }
 
 export { LEVEL_NAMES };
-Object.assign(ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS);
+Object.assign(ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS);
 /** For the parts of the athletic life kept in their own files (engine/recruiting.js, engine/draft.js). */
 export const internals = { decide: (...x) => decide(...x), money: (...x) => money(...x), fmt: (...x) => fmt(...x), proClub: (...x) => proClub(...x),
   offerFor: (...x) => offerFor(...x), signPro: (...x) => signPro(...x), endContract: (...x) => endContract(...x), ANSWERS: () => ANSWERS };
