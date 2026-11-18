@@ -241,7 +241,7 @@ const tone = (id) => part('skin', id).hex;
 check(['porcelain', 'ivory', 'rose_beige', 'sand', 'golden', 'olive', 'tan'].every((id) => deepness(tone(id)) === 0), 'a light skin tone is being adjusted');
 check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepness(tone('chestnut')) > 0 && deepness(tone('chestnut')) < deepness(tone('umber')), 'deep skin tones are not adjusted in step with their depth');
 {
-  const face = (skin) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin, eyes: 'eyes_10', eyeColor: 'brown', brows: 'brows_10', nose: 'nose_8', lips: 'lips_6', hairColor: 'black', hairTexture: 'coily', marks: [] },
+  const face = (skin) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin, eyes: 'eyes_10', eyeColor: 'brown', brows: 'brows_10', nose: 'nose_10', lips: 'lips_6', hairColor: 'black', hairTexture: 'coily', marks: [] },
     style: { hair: 'hair_boy_short_07', jewelry: [], outfit: 'outfit_01_tee' } }, seed: 'tone', age: 30 });
   const light = face('sand');
   const deep = face('ebony');
@@ -255,11 +255,30 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
   check(parseInt(white.slice(1, 3), 16) >= 0xd0, `the white of the eye is no longer white (${white})`);
 }
 
-// 10. The eye shapes: every one still on offer, none added, none reweighted. (Whether to withdraw one is not this file's decision.)
-const EYES = ['eyes_10', 'eyes_11', 'eyes_12', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_24', 'eyes_25', 'eyes_26', 'eyes_6', 'eyes_7', 'eyes_8', 'eyes_9'];
+// 10. The faces on offer: the withdrawn eyes, mouths and noses are gone, saves that used them land on the nearest kept,
+// and the rest are offered and drawn at random exactly as before.
+const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_24', 'eyes_25', 'eyes_26', 'eyes_6', 'eyes_7', 'eyes_8', 'eyes_9'];
 check(AVATAR_MANIFEST.eyes.map((e) => e.id).join() === EYES.join(), 'the eye shapes in the manifest have changed');
 check(CATALOG.eyes.map((e) => e.id).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
-check(CUR.RESTING.eyes.join() === 'eyes_6,eyes_8,eyes_9,eyes_10,eyes_11,eyes_16,eyes_18,eyes_19,eyes_22,eyes_25', 'the eyes given out at random have changed');
+check(CUR.RESTING.eyes.join() === 'eyes_6,eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_22,eyes_25', 'the eyes given out at random have changed');
+for (const [key, folder] of [['eyes', 'eyes'], ['lips', 'lips'], ['nose', 'noses']]) {
+  for (const [gone, kept] of Object.entries(CUR.WITHDRAWN[key])) {
+    check(!PART_BY_ID[gone] && !existsSync(new URL(`assets/avatars/${folder}/${gone}.svg`, root)), `${gone} is still in the game`);
+    check(!!PART_BY_ID[kept] && !CUR.WITHDRAWN[key][kept], `${gone} is replaced by ${kept}, which is not a kept shape`);
+    const a = normalize({ v: 3, inherited: { [key]: gone } }, `saved-${gone}`);
+    check(a.inherited[key] === kept && normalize(a, 'again').inherited[key] === kept, `a save with ${gone} does not land on ${kept}`);
+  }
+  for (const id of CUR.RESTING[{ eyes: 'eyes', lips: 'lips', nose: 'noses' }[key]]) check(!CUR.WITHDRAWN[key][id] && !!PART_BY_ID[id], `${id} is given out at random but is not a kept shape`);
+}
+check(!AVATAR_MANIFEST.lips.some((l) => ['lips_1', 'lips_3', 'lips_12', 'lips_13', 'lips_15', 'lips_16', 'lips_19'].includes(l.id)), 'a mouth drawn as a single line is still offered');
+check(/data-teeth="1"/.test(readFileSync(new URL('assets/avatars/lips/lips_21.svg', root), 'utf8')) && /<g id="art"><path style="fill:#ffffff"/.test(readFileSync(new URL('assets/avatars/lips/lips_21.svg', root), 'utf8')), 'lips_21 has no white teeth behind its outline');
+check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.grin] && PART_BY_ID[CUR.EXPRESSION.laughing], 'an expression names a withdrawn mouth');
+// Faces converted from the earlier avatar system land where they always did, moved off anything withdrawn.
+{
+  const old = (shape) => normalize({ v: 2, inherited: { eyeShape: shape, nose: shape, lips: shape }, style: {} }, 'v2').inherited;
+  const a = old('hooded');
+  check(JSON.stringify(a) === JSON.stringify(old('hooded')) && !CUR.WITHDRAWN.eyes[a.eyes] && !CUR.WITHDRAWN.nose[a.nose] && !CUR.WITHDRAWN.lips[a.lips], 'an older save converts to a withdrawn shape, or differently each time');
+}
 {
   const seen = {};
   rng.seed(7);

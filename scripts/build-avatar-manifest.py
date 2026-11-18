@@ -57,7 +57,11 @@ def clean_name(name):
 
 
 # Artwork that has been withdrawn: never sorted in, even if a pack still contains it.
+# Saves that used a withdrawn eye, nose or mouth are moved to the nearest one kept (WITHDRAWN in js/avatar/curation.js).
 EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05.svg', 'eyes_13.svg', 'eyes_17.svg', 'eyes_21.svg', 'eyes_23.svg',
+            'eyes_11.svg', 'eyes_12.svg',
+            'lips_1.svg', 'lips_2.svg', 'lips_3.svg', 'lips_12.svg', 'lips_13.svg', 'lips_15.svg', 'lips_16.svg', 'lips_19.svg',
+            'nose_1.svg', 'nose_2.svg', 'nose_3.svg', 'nose_4.svg', 'nose_5.svg', 'nose_8.svg', 'nose_18.svg',
             'face_01_oval.svg', 'face_02_round.svg', 'face_03_square.svg', 'face_04_heart.svg', 'face_05_diamond.svg', 'face_06_pear.svg'}
 
 
@@ -946,6 +950,42 @@ REFIT = {
 }
 
 
+# Mouths drawn as an outline whose inside should be teeth: the inside is filled white, behind the lines, once.
+TEETH = {
+    'lips_21': 'a sideways smile showing its teeth; the teeth were left as a hole, so the skin showed through',
+}
+
+
+def fill_teeth():
+    """Applies TEETH to any listed file that has not had it. -> the names filled."""
+    done = []
+    for name in TEETH:
+        path = os.path.join(ASSETS, 'lips', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-teeth="1"' in text or 'data-pathways="1"' not in text:
+            continue
+        m = re.search(r' d="([^"]*)"', text)
+        subs, cur = [], []
+        for c, a in parse_path(m.group(1)) + [('M', [])]:
+            if c == 'M' and cur:
+                subs.append(cur)
+                cur = []
+            if a or c == 'Z':
+                cur.append((c, a))
+        if len(subs) < 2:
+            continue
+        # The outline's inner edge is the opening of the mouth: the biggest shape inside the outer one.
+        inner = max(subs[1:], key=lambda sp: abs(poly_area(flatten(sp)[0])) if flatten(sp) else 0)
+        white = f'<path style="fill:#ffffff" d="{path_d(inner)}"/>'
+        text = text.replace('<g id="art">', '<g id="art">' + white, 1).replace('data-pathways="1"', 'data-pathways="1" data-teeth="1"', 1)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        done.append(name)
+    return done
+
+
 def refit_hair():
     """Applies REFIT to any listed file that has not had it. -> the names repaired."""
     done = []
@@ -1255,6 +1295,8 @@ def main(argv):
                     print(f'{folder}/{f}: ' + '; '.join(notes))
     for name, n in remove_specks().items():
         print(f'removed {n} stray mark(s) from {name}')
+    for name in fill_teeth():
+        print(f'filled the teeth of {name}')
     repaired = refit_hair()
     if repaired:
         print('repaired the placement of ' + ', '.join(repaired))
