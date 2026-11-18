@@ -592,7 +592,7 @@ section('Creator economy');
   post.quality = 0.9; post.metrics.views = 5000;
   let lic = null;
   for (let i = 0; i < 25 && !lic; i++) { grow(1); lic = core.world().offers.find((o) => o.kind === 'license' && o.status === 'open'); }
-  check(lic, 'a good, well-seen piece draws a licensing offer');
+  check(lic, `a good, well-seen piece draws a licensing offer (${JSON.stringify({ removed: post.removed, audience: post.audience, quality: post.quality, views: post.metrics?.views, listed: ch.postIds.includes(post.id), age: p.age, alive: p.alive, account: { status: ch.status, closed: ch.closed, banned: ch.banned, suspended: ch.suspended, monetized: ch.creator?.monetized }, offers: core.world().offers.filter((o) => o.kind === 'license').map((o) => o.status) })})`);
   if (lic) { creator.answerLicense(lic.id, true); creator.answerLicense(lic.id, true); check(creator.ledgerOf().filter((x) => x.ref === `license:${lic.id}`).length === 1, 'licensing pays once'); }
   // Portfolio
   const pro = join('guildhall', 'routine.pro', { visibility: 'public' }).account;
