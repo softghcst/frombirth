@@ -9,7 +9,7 @@
 //
 // Layers, back to front:
 //   back hair, head, make-up (clipped to the head), ageing, eyes, eyebrows,
-//   nose, lips, facial hair, clothes, necklaces, front hair, earrings and
+//   nose, facial hair, lips, clothes, necklaces, front hair, earrings and
 //   piercings, glasses, hat or crown, emotions.
 // Hair is drawn twice: the whole style behind the head, and the part above
 // the jaw again in front, so a fringe falls over the forehead while long
@@ -26,13 +26,14 @@
 // `ctx` describes the moment: { age, gender, mood, jailed, royal: { rank }, career: { id, level }, label }.
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
+import { hairFit, frameFor } from './avatar/hairFit.js';
 import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/avatars/';
 const href = (id) => (PART_BY_ID[id] ? `${AVATAR_BASE}${PART_BY_ID[id].file}#art` : null);
 
-/** Where the jaw is, in the 512 frame: hair above this line is drawn again in front of the face. */
+/** Where the jaw is on the template face: hair above this line is drawn again in front of the face. */
 const FRONT_HAIR_CUT = 404;
 /** Under a hat, hair above this line is hidden; bulky styles lose everything above the ears. */
 const HAT_LINE = 262;
@@ -163,13 +164,41 @@ export function fitTransforms(headId, stage, tweaks = {}) {
  * The colours, as CSS custom properties. Hair greys with age unless dyed;
  * brows grey more slowly.
  */
+/** How bright a colour is, 0 (black) to 1 (white). */
+function luminance(hex) {
+  const h = String(hex ?? '#888888').replace('#', '');
+  const [r, g, b] = [0, 2, 4].map((i) => { const v = (parseInt(h.slice(i, i + 2), 16) || 0) / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * How far a face needs help to stay readable, 0 (none) to 1: the linework of every face is one dark
+ * ink, which has less and less contrast as the skin deepens, while the white of the eye has more and more.
+ */
+export const DEEP = { from: 0.2, full: 0.05 };
+export const deepness = (skin) => Math.max(0, Math.min(1, (DEEP.from - luminance(skin)) / (DEEP.from - DEEP.full)));
+
+/**
+ * What is done about it, at full strength (each is scaled by deepness, so lighter faces are untouched):
+ *   white   how far the white of the eye is toned towards the skin
+ *   line    extra weight on the dark lines of the eyes and mouth (frame units)
+ *   rim     how much lighter than the skin the edge given to the brows is
+ *   edge    how wide that edge is (frame units)
+ *   nose    how much heavier the nose's dark lines get (frame units), in noseInk; its skin is never touched
+ * The shapes of the features are not changed, and nobody's own colours are. The nose's skin is never
+ * adjusted: it is drawn in exactly the face's skin colour on every tone; only its lines get heavier.
+ */
+export const READABLE = { white: 0.2, line: 1.4, rim: 0.2, edge: 3, nose: 1.2, ink: '#170b06', noseInk: '#1a0c06' };
+
 function colorVars(look, ctx) {
   const c = look.colors ?? {};
   const age = ctx.age ?? 25;
   const grey = c.dyed ? 0 : age >= 80 ? 0.9 : age >= 70 ? 0.72 : age >= 60 ? 0.45 : age >= 52 ? 0.18 : 0;
   const hair = grey ? mixHex(c.hair, '#dcd8d0', grey) : c.hair;
   const brow = c.brow ? mixHex(c.brow, '#d8d3c8', grey * 0.6) : mixHex(hair, '#1c1210', 0.25);
-  const vars = { 'skin-color': c.skin, 'hair-color': hair, 'brow-color': brow, 'eye-color': c.eye, 'lip-color': c.lip, 'blush-color': c.blush };
+  const deep = deepness(c.skin);
+  const vars = { 'skin-color': c.skin, 'hair-color': hair, 'brow-color': brow, 'eye-color': c.eye, 'lip-color': c.lip, 'blush-color': c.blush,
+    'eye-white': deep ? mixHex('#ffffff', c.skin, READABLE.white * deep) : null };
   if (c.outfit) vars['outfit-color'] = c.outfit;
   return Object.entries(vars).filter(([, v]) => v).map(([k, v]) => `--${k}:${v}`).join(';');
 }
@@ -187,31 +216,59 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const bulky = !!PART_BY_ID[d.hair]?.tags?.bulky;
   const hairTop = hatOn ? (bulky ? BULKY_HAT_LINE : HAT_LINE) : 0;
   // Under a hat, hair is hidden above the brim, and tucks in at the sides rather than ending in a flat shelf.
-  const under = (bottom) => `<path d="M-200 ${bottom}V${hairTop + 64}H112V${hairTop}H400V${hairTop + 64}H712V${bottom}Z"/>`;
+  const under = (bottom) => `<path d="M-400 ${bottom}V${hairTop + 64}H112V${hairTop}H400V${hairTop + 64}H912V${bottom}Z"/>`;
+  // Hair in front of the face ends at this head's own chin (in the hair's coordinates), so a lock that
+  // falls across the face stops at the jawline, not in a straight edge part-way down the cheek.
+  const hf = d.hair ? hairFit(d.hair, d.head) : null;
+  const chin = PART_BY_ID[d.head]?.fit?.chin;
+  const frontCut = hf && chin ? Math.round(T.face.top + (chin - 2 - hf.ty) / hf.sy) : FRONT_HAIR_CUT;
   const defs = [
     `<clipPath id="pw-l-${n}"><rect x="-400" y="-400" width="656" height="1400"/></clipPath><clipPath id="pw-r-${n}"><rect x="256" y="-400" width="656" height="1400"/></clipPath>`,
     `<clipPath id="pw-face-${n}"><use href="${href(d.head)?.replace('#art', '#skin')}"/></clipPath>`,
-    `<clipPath id="pw-back-${n}">${hatOn ? under(900) : '<rect x="-200" y="-300" width="912" height="1200"/>'}</clipPath>`,
-    `<clipPath id="pw-front-${n}">${hatOn ? under(FRONT_HAIR_CUT) : `<rect x="-200" y="-300" width="912" height="${FRONT_HAIR_CUT + 300}"/>`}</clipPath>`,
+    `<clipPath id="pw-back-${n}">${hatOn ? under(1400) : '<rect x="-400" y="-2000" width="1312" height="3400"/>'}</clipPath>`,
+    `<clipPath id="pw-front-${n}">${hatOn ? under(frontCut) : `<rect x="-400" y="-2000" width="1312" height="${frontCut + 2000}"/>`}</clipPath>`,
   ];
   const f = fitTransforms(d.head, ageStage(ctx.age ?? 25), look.tweaks);
+  // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).
+  const hairAt = hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
+  // A style too tall for the picture is flattened above the crown: the part above the line is drawn
+  // again, squeezed towards it, so the two halves still meet along it.
+  const hairLayer = (clip) => {
+    const g = `<g${hairAt} clip-path="url(#${clip})">${use(d.hair)}</g>`;
+    if (!hf || hf.squash >= 1) return g;
+    return `<g clip-path="url(#pw-low-${n})">${g}</g><g transform="translate(0 ${hf.line}) scale(1 ${hf.squash}) translate(0 ${-hf.line})" clip-path="url(#pw-high-${n})">${g}</g>`;
+  };
+  if (hf && hf.squash < 1) defs.push(`<clipPath id="pw-low-${n}"><rect x="-400" y="${hf.line}" width="1312" height="1400"/></clipPath><clipPath id="pw-high-${n}"><rect x="-400" y="-2000" width="1312" height="${2000 + hf.line}"/></clipPath>`);
   // Eyes and brows are drawn as a pair in one file: each half is shown separately so they can sit closer or further apart.
-  const pair = (id, l, r) => (href(id) ? `<g${l} clip-path="url(#pw-l-${n})">${use(id)}</g><g${r} clip-path="url(#pw-r-${n})">${use(id)}</g>` : '');
+  const pair = (id, l, r, extra = '') => (href(id) ? `<g${l} clip-path="url(#pw-l-${n})">${use(id, extra)}</g><g${r} clip-path="url(#pw-r-${n})">${use(id, extra)}</g>` : '');
+  // On deep skin the features are given a little more weight and the nose a little light, so the face
+  // reads as clearly as a lighter one (see READABLE). Stroke is inherited by the artwork a <use> draws.
+  const deep = deepness(look.colors?.skin);
+  const light = deep ? mixHex(look.colors.skin, '#ffe9d6', READABLE.rim * deep) : null;
+  // Dark lines gain weight; brows gain a faint lighter edge, drawn under their own shapes. Only the line shapes
+  // take the stroke (weigh_lines in the build script: an eye's or mouth's outline, a nose's lines), so whites,
+  // irises, highlights and teeth stay clean. A nose's lines are also made a little darker.
+  const weigh = (w) => (deep ? ` style="--line-ink:${READABLE.ink};--line-width:${n1(w * deep)}"` : '');
+  const rim = (w, extra = '') => (deep ? ` style="${extra}stroke:${light};stroke-width:${n1(w * deep)};stroke-linejoin:round;paint-order:stroke"` : '');
   const kind = (j) => PART_BY_ID[j]?.tags?.kind;
   const necklaces = d.jewelry.filter((j) => kind(j) === 'necklace');
   const earrings = d.jewelry.filter((j) => kind(j) === 'ears');
   const piercings = d.jewelry.filter((j) => kind(j) === 'face');
   // The clips are in the template's coordinates, on the same element as the fit, so they move with the hair.
   const layers = [
-    d.hair ? `<g${f.hair ?? ''} clip-path="url(#pw-back-${n})">${use(d.hair)}</g>` : '',
+    d.hair ? hairLayer(`pw-back-${n}`) : '',
     use(d.head),
     d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m, f.makeup)).join('')}</g>` : '',
-    d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join(''),
-    pair(d.eyes, f.eyesL, f.eyesR), use(d.eyebrows, f.eyebrows), use(d.nose, f.nose), use(d.lips, f.lips),
+    // Lines of age stay on the face: on a narrow head they would otherwise run out over the hair.
+    d.aging.length ? `<g clip-path="url(#pw-face-${n})">${d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join('')}</g>` : '',
+    pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
+    use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
+    // The mouth is drawn over a beard or moustache, not under it: a full beard would otherwise swallow it.
     d.facialHair ? use(d.facialHair, f.facialHair) : '',
+    use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
     use(d.clothes, f.clothes),
     necklaces.map((j) => use(j, f.necklace)).join(''),
-    d.hair ? `<g${f.hair ?? ''} clip-path="url(#pw-front-${n})">${use(d.hair)}</g>` : '',
+    d.hair ? hairLayer(`pw-front-${n}`) : '',
     earrings.map((j) => use(j, f.ears)).join(''),
     piercings.map((j) => use(j, f.lips)).join(''),
     d.glasses ? use(d.glasses, f.glasses) : '',
@@ -220,8 +277,10 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   ];
   const size = opts.size != null ? ` width="${opts.size}" height="${opts.size}"` : '';
   const label = ctx.label ? `<title>${esc(ctx.label)}</title>` : '';
-  // A little headroom, so tall hair and crowns are not cut off at the top.
-  const box = opts.viewBox ?? '-14 -22 540 540';
+  // A little headroom, so tall hair and crowns are not cut off at the top; and each adult head is
+  // brought to much the same size in the picture (frameFor). A screen may still ask for its own view.
+  const fr = frameFor(d.head);
+  const box = opts.viewBox ?? `${fr.x} ${fr.y} ${fr.size} ${fr.size}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}"${size} class="character-avatar${opts.className ? ` ${esc(opts.className)}` : ''}" `
     + `role="img" aria-label="${esc(ctx.label ?? 'Portrait')}" style="${colorVars(look, ctx)}">${label}<defs>${defs.join('')}</defs>${layers.join('')}</svg>`;
 }
