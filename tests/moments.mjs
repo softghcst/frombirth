@@ -29,6 +29,7 @@ const item = (key) => mo.thisYear().find((x) => x.key === key);
 function life(id = 'us', age = 30, cash = 50000) {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
   const p = store.state.player;
+  p.flags.longevity = 18; p.stats.health = 100; p.conditions = []; // these checks follow one life through several years: it should not end by chance partway
   p.age = age; p.birthYear = store.state.year - age; p.flags.livesWithParents = age < 18; p.education.enrolled = false;
   p.finance.cash = Math.round(cash * COUNTRIES[id].currency.scale);
   for (const n of Object.values(store.state.npcs)) n.alive = false;
@@ -101,12 +102,14 @@ check((p.momentsYears ?? []).some((y) => y.year === yearOfIt && y.lines.includes
 const beforeAuto = p.finance.cash;
 advanceYear(); store.state.pendingEvents = [];
 check(t.count === 2 && t.lastYear === yearOfIt + 1, 'a tradition nobody organized happens by itself at Age Up, once');
-check(p.finance.cash < beforeAuto || p.finance.cash === beforeAuto, 'and its host pays for it');
+check(store.state.ledger.tx.some((x) => x.desc === t.name && x.year === yearOfIt + 1 && x.cat === 'leisure'), 'and its host pays for it, recorded under its name');
+void beforeAuto;
 advanceYear(); store.state.pendingEvents = [];
 check(t.count === 3, 'once a year, every year');
 void spentBefore;
 // Skipping: three years running and it fades.
 for (let i = 0; i < 3; i++) { check(mo.skipTradition(t.id).ok, 'a tradition can be skipped'); advanceYear(); store.state.pendingEvents = []; }
+check(p.alive, 'the life is still going');
 check(t.status === 'lapsed' && t.count === 3, 'skipped three years running, it fades, and was not kept in those years');
 check(mo.revive(t.id).ok && t.status === 'active', 'a faded tradition can be brought back');
 bookAction(); check(audit().length === 0, 'the books balance through all of it');

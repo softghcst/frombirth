@@ -77,7 +77,8 @@ play('A', () => {
   p.education.enrolled = false; p.flags.livesWithParents = false; if (!p.education.degrees.length) p.education.degrees.push({ type: 'high', gpa: 3, age: 18 });
   check(job().ok && p.career.salary > 0, 'found work');
   p.finance.cash += 5e6; const l = estate.listings()[0]; check(estate.buyProperty(l.id, l.price).ok && p.assets.some((a) => a.city === 'Orlando'), 'bought a home in Orlando');
-  check(law.rule('drinkingAge') === 21 && law.source('drinkingAge').source === 'place' && ['place', 'enacted'].includes(law.source('deathPenalty').source), 'lives under United States law, with Florida\'s where it differs');
+  check(law.rule('drinkingAge') === 21 && law.source('drinkingAge').source === 'place' && ['place', 'enacted', 'enacted region'].includes(law.source('deathPenalty').source), 'lives under United States law, with Florida\'s where it differs');
+  // (Florida's own assembly may have changed its law in the years played: 'enacted region'. That is still Florida's.)
   const hiring0 = econ.hiringClimate(); (store.state.world.places.us ??= {}).phase = 'slump'; store.state.world.places.us.since = store.state.year;
   check(econ.hiringClimate() < hiring0 || hiring0 < 0, 'a national recession changes their prospects');
   year(8); check(Number.isFinite(netWorth(store.state)) && (econ.phaseOf('us') !== 'slump' || store.state.world.places.us.since > store.state.year - 9) && econ.news().some((n) => n.yours), 'and the economy goes on changing, with the news that touches them marked as theirs');

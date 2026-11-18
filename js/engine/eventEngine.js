@@ -79,7 +79,7 @@ function keyOf(str) {
   return h >>> 0;
 }
 /** Runs fn on a run of luck of its own, keyed to this life and moment, and puts the game's dice back as they were. */
-function apart(key, fn) {
+export function apart(key, fn) {
   const saved = rng.state();
   rng.seed(keyOf(`${store.state.slotId}/${key}`));
   try { return fn(); } finally { rng.seed(saved); }

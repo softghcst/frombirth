@@ -18,6 +18,7 @@ import { store, player, country, livingNpcs, npcsByRole, log, milestone } from '
 import { clamp, localCost, fmtMoney } from '../util.js';
 import { rng } from '../rng.js';
 import { remember } from './conditions.js';
+import { apart } from './eventEngine.js';
 import { roleLabel } from './relationships.js';
 import { book } from './ledger.js';
 import { OCCASIONS, STYLES, HOLIDAYS, INVITES, MILESTONE_BIRTHDAYS, NAMED_ANNIVERSARIES, SOCIAL_PER_YEAR, BOND_CAP, DIGITAL_INVITES, TRADITION_LAPSE } from '../data/occasions.js';
@@ -272,8 +273,12 @@ function attend(inv, from, gift, auto) {
   return result(true, text);
 }
 
-/** Deals out the year's invitations, from people really in the player's life. */
-function dealInvites() {
+/**
+ * Deals out the year's invitations, from people really in the player's life. On luck of its own, keyed to the
+ * life and the year (eventEngine.apart), so it never changes what the game's dice would otherwise have done.
+ */
+function dealInvites() { apart(`invites/${store.state.year}`, deal); }
+function deal() {
   const p = player();
   const s = yearState();
   if (s.invites.length || p.legal?.incarceration || !p.alive) return;
