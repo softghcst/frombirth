@@ -184,17 +184,17 @@ for (const e of AVATAR_MANIFEST.eyes) {
     }
   }
 }
-// Babies and toddlers have plain eyes (no lashes or liner), boys and girls alike, chosen from their own eyes; from
-// five they have their own. Even crying, a little one's eyes stay plain.
+// Children have plain eyes (no lashes or liner), boys and girls alike, chosen from their own eyes; from thirteen
+// they have their own. Even crying, a child's eyes stay plain.
 {
   const plain = Object.values(CUR.BABY_EYES).flat();
   for (const id of CUR.RESTING.eyes) {
     const look = { ...resolveLook({ v: 3, inherited: { eyes: id }, style: {} }, 'baby', 'female'), eyes: id };
-    for (const gender of ['female', 'male']) for (const age of [0, 1, 3, 4]) for (const mood of [60, 5]) {
+    for (const gender of ['female', 'male']) for (const age of [0, 1, 3, 4, 5, 9, 12]) for (const mood of [60, 5]) {
       const e = dressFor(look, { age, gender, mood }).eyes;
       check(plain.includes(e) && e === CUR.babyEyes(id), `a ${age}-year-old ${gender} with ${id} has ${e}, not plain baby eyes`);
     }
-    check(dressFor(look, { age: 5, gender: 'female' }).eyes === id && dressFor(look, { age: 30, gender: 'female' }).eyes === id, `${id} is not shown from five`);
+    check(dressFor(look, { age: 13, gender: 'female' }).eyes === id && dressFor(look, { age: 30, gender: 'female' }).eyes === id, `${id} is not shown from thirteen`);
   }
   for (const id of plain) check(!(id in CUR.WOMEN_EYES), `${id} has lashes or liner, so is not a baby's`);
 }

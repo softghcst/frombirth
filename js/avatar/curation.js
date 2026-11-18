@@ -71,8 +71,8 @@ export const MEN_EYES = {
   eyes_35: 'eyes_10', eyes_36: 'eyes_20', eyes_37: 'eyes_16', eyes_38: 'eyes_25', eyes_39: 'eyes_8', eyes_40: 'eyes_18', eyes_41: 'eyes_8',
 };
 /**
- * Babies and toddlers, boys and girls alike, have plain eyes: no lashes, no liner. Their own eyes are kept and
- * show from five. Which of these a little one has follows their own eyes, so it stays the same from year to year
+ * Children, boys and girls alike, have plain eyes: no lashes, no liner. Their own eyes are kept and show from
+ * thirteen, when they are drawn grown up. Which of these a little one has follows their own eyes, so it stays the same from year to year
  * and brothers and sisters with the same eyes look alike: round eyes stay round, the rest are soft almonds.
  */
 export const BABY_EYES = { round: ['eyes_29', 'eyes_37'], almond: ['eyes_27', 'eyes_30', 'eyes_40'] };

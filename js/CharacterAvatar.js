@@ -69,7 +69,6 @@ export function dressFor(look, ctx = {}) {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = []; out.glasses = null; out.facialHair = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
-    out.eyes = babyEyes(look.eyes); // plain eyes until five; their own are kept for then
   } else if (stage === 'kid') {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
@@ -78,6 +77,9 @@ export function dressFor(look, ctx = {}) {
     out.makeup = [...new Set([...(look.marks ?? []), ...out.makeup])];
     if (age < 16) out.facialHair = null;
   }
+  // Children have plain eyes until thirteen, when they are drawn grown up; their own are kept for then.
+  const child = young || stage === 'kid';
+  if (child) out.eyes = babyEyes(look.eyes);
   if (stage === 'older') {
     out.aging = AGING.filter(([from]) => age >= from).map(([, id]) => id);
     if (age >= 84 && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
@@ -102,8 +104,8 @@ export function dressFor(look, ctx = {}) {
   const mood = ctx.mood ?? 60;
   if (ctx.emotion) out.emotion = ctx.emotion;
   // Crying eyes are never a resting face: they appear only while something sad is weighing on the person.
-  // (not on babies and toddlers: the crying eyes have lashes)
-  if (mood <= 15 && !young) out.eyes = EXPRESSION.crying;
+  // (not on children: the crying eyes have lashes)
+  if (mood <= 15 && !child) out.eyes = EXPRESSION.crying;
   return out;
 }
 
@@ -118,7 +120,7 @@ const EYE_APART = 3;
 
 // Younger faces: features a little smaller for the size of the head, and set a little lower.
 // k: how big the features are; eyes: how much bigger again the eyes are (a little one's eyes are big for the face).
-const STAGE_FEATURES = { baby: { k: 0.74, drop: 0.05, mouth: 0.8, eyes: 1.4 }, toddler: { k: 0.82, drop: 0.04, mouth: 0.86, eyes: 1.22 }, kid: { k: 0.94, drop: 0.02 } };
+const STAGE_FEATURES = { baby: { k: 0.92, drop: 0.05, mouth: 0.85, eyes: 1.13 }, toddler: { k: 0.94, drop: 0.04, mouth: 0.9, eyes: 1.06 }, kid: { k: 0.94, drop: 0.02 } };
 const n1 = (v) => Math.round(v * 100) / 100;
 
 /**
