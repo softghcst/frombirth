@@ -1061,6 +1061,53 @@ def add_pupils():
     return done
 
 
+# Eyes drawn a size apart from the rest, brought into line: each eye scaled about its own centre by this much, so the
+# gap between them is kept and the outline thickens or thins with it.
+RESIZE_EYES = {'eyes_29': 0.82, 'eyes_44': 1.15, 'eyes_46': 1.15, 'eyes_47': 1.15, 'eyes_49': 1.15,
+               'eyes_43': 1.08, 'eyes_45': 1.08, 'eyes_48': 1.08, 'eyes_50': 1.08}
+
+
+def resize_eyes():
+    """Applies RESIZE_EYES to any listed file that has not had it. -> the names changed"""
+    done = []
+    for name, k in RESIZE_EYES.items():
+        path = os.path.join(ASSETS, 'eyes', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-resized="1"' in text:
+            continue
+        side = lambda x: 'L' if x < 256 else 'R'
+        boxes = {}
+        for d in re.findall(r'\sd="([^"]*)"', text):
+            for poly in flatten(parse_path(d)):
+                for x, y in poly:
+                    b = boxes.setdefault(side(x), [x, y, x, y])
+                    b[0], b[1], b[2], b[3] = min(b[0], x), min(b[1], y), max(b[2], x), max(b[3], y)
+        centre = {s: ((b[0] + b[2]) / 2, (b[1] + b[3]) / 2) for s, b in boxes.items()}
+
+        def scaled(m):
+            out, cur = [], []
+            for c, a in parse_path(m.group(1)):
+                if c == 'M' and cur:
+                    out.append(cur); cur = []
+                cur.append((c, a))
+            if cur:
+                out.append(cur)
+            cmds = []
+            for sub in out:  # each subpath belongs to the eye its points are on
+                pts = [(a[i], a[i + 1]) for _, a in sub for i in range(0, len(a), 2)]
+                cx, cy = centre[side(sum(x for x, _ in pts) / max(1, len(pts)))]
+                cmds += [(c, [cx + (v - cx) * k if i % 2 == 0 else cy + (v - cy) * k for i, v in enumerate(a)]) for c, a in sub]
+            return f' d="{path_d(cmds)}"'
+        text = re.sub(r'\sd="([^"]*)"', scaled, text)
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-resized="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        done.append(name)
+    return done
+
+
 def fill_teeth():
     """Applies TEETH to any listed file that has not had it. -> the names filled."""
     done = []
@@ -1441,6 +1488,8 @@ def main(argv):
     lined = weigh_lines() + weigh_lines('eyes', recolor=False) + weigh_lines('lips', recolor=False)
     if lined:
         print(f'made the lines of {len(lined)} part(s) adjustable')
+    for name in resize_eyes():
+        print(f'resized {name}')
     for name in add_pupils():
         print(f'gave {name} pupils')
     for name in fill_teeth():
