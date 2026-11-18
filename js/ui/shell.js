@@ -19,6 +19,7 @@ import { runJustice } from './justice.js';
 import { openMoney } from './tabs/holdings.js';
 import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
+import { openAthleticsAt } from './sports.js';
 
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
@@ -142,7 +143,9 @@ export function mountGame(app, hooks) {
         html += `<h2 class="age-head">Age ${age} <small>${p.birthYear + age}</small></h2>`;
       }
       // A line that tells a moment in an animal's life opens that animal's profile, at that memory.
-      const link = entry.animal ? ` linked" data-animal="${esc(entry.animal.id)}" data-ev="${esc(entry.animal.ev)}" role="button" tabindex="0` : '';
+      const link = entry.animal ? ` linked" data-animal="${esc(entry.animal.id)}" data-ev="${esc(entry.animal.ev)}" role="button" tabindex="0`
+        // A line about sport opens the page of My Athletics it is about: the season, the event, the team, the coach.
+        : entry.sport ? ` linked" data-sport-screen="${esc(entry.sport.screen)}" data-sport-id="${esc(entry.sport.id ?? '')}" role="button" tabindex="0` : '';
       html += `<p class="entry ${entry.kind} ${entry.tone}${link}">${esc(entry.text)}</p>`;
     }
     journalEl.innerHTML = html;
@@ -229,6 +232,8 @@ export function mountGame(app, hooks) {
     back.onBack();
   });
   const openFromStory = (e) => {
+    const sportLine = e.target.closest('.entry[data-sport-screen]');
+    if (sportLine && !busy && (e.type !== 'keydown' || e.key === 'Enter')) { leaveStory(); return openAthleticsAt(tabApi, { screen: sportLine.dataset.sportScreen, id: sportLine.dataset.sportId || null }); }
     const line = e.target.closest('.entry[data-animal]');
     if (!line || busy || (e.type === 'keydown' && e.key !== 'Enter')) return;
     leaveStory();
