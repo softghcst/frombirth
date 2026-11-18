@@ -251,11 +251,12 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
   check(!/eye-white|stroke/.test(light), 'a light face has been given extra weight');
   check(/--eye-white:#[0-9a-f]{6}/.test(deep) && /stroke-width/.test(deep) && /paint-order:stroke/.test(deep), 'a deep face has not been made more readable');
   check(deep.includes(`--skin-color:${tone('ebony')}`), 'the skin tone itself was changed');
-  // The nose is the skin itself: on every tone it is drawn with no colour or edge of its own.
+  // The nose is the skin itself: on every tone its skin is the face's. On deeper tones only its lines are heavier.
   for (const t of part('skin', 'porcelain') ? CATALOG.skin : []) {
     const svg = face(t.id);
     const nose = svg.match(/<use href="[^"]*noses\/[^"]*"([^>]*)\/>/)?.[1] ?? '';
-    check(nose && !/style=|--skin-color|stroke/.test(nose), `the nose looks different from the face on ${t.id} skin`);
+    check(!/--skin-color|stroke:|fill/.test(nose), `the nose looks different from the face on ${t.id} skin`);
+    check(deepness(t.hex) ? /--line-width:[\d.]+/.test(nose) : !/style=/.test(nose), `${t.id}: the nose's lines are ${deepness(t.hex) ? 'not made heavier' : 'changed on a light tone'}`);
     check((svg.match(/--skin-color:/g) ?? []).length === 1, `${t.id}: something sets its own skin colour`);
   }
   const white = deep.match(/--eye-white:(#[0-9a-f]{6})/)[1];

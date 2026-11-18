@@ -986,6 +986,29 @@ def fill_teeth():
     return done
 
 
+def weigh_lines(folder='noses'):
+    """
+    Lets the renderer thicken a part's dark lines without touching anything else in it: each ink path
+    (not the skin-coloured shape) gets a stroke that is off unless --line-width is set on the portrait.
+    The renderer sets it on deeper skin tones, where dark lines on dark skin are hard to see. Once per file.
+    -> the names changed
+    """
+    done = []
+    d = os.path.join(ASSETS, folder)
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        path = os.path.join(d, f)
+        text = open(path, encoding='utf-8').read()
+        if not f.endswith('.svg') or 'data-lines="1"' in text or 'data-pathways="1"' not in text:
+            continue
+        ink = ';stroke:var(--line-ink,currentColor);stroke-width:var(--line-width,0);stroke-linejoin:round'
+        text = re.sub(r'style="fill:(#[0-9a-fA-F]{6})"', lambda m: f'style="fill:var(--line-ink,{m.group(1)}){ink}"' if lum(m.group(1)) < INK else m.group(0), text)
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-lines="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        done.append(f[:-4])
+    return done
+
+
 def refit_hair():
     """Applies REFIT to any listed file that has not had it. -> the names repaired."""
     done = []
@@ -1295,6 +1318,9 @@ def main(argv):
                     print(f'{folder}/{f}: ' + '; '.join(notes))
     for name, n in remove_specks().items():
         print(f'removed {n} stray mark(s) from {name}')
+    lined = weigh_lines()
+    if lined:
+        print(f'made the lines of {len(lined)} nose(s) adjustable')
     for name in fill_teeth():
         print(f'filled the teeth of {name}')
     repaired = refit_hair()
