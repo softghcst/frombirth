@@ -16,7 +16,7 @@ export function snapshot(state = store.state) {
   const p = state.player;
   const h = p.health;
   return {
-    age: p.age, year: state.year, cash: p.finance.cash, savings: p.finance.savings ?? 0, worth: netWorth(state),
+    age: p.age, year: state.year, cash: p.finance.cash, worth: netWorth(state),
     earned: p.finance.lifetimeEarned, tax: p.finance.lifetimeTaxPaid,
     job: p.career.careerId, title: p.career.title, level: p.career.level, retired: !!p.career.retired,
     stage: p.education.stage, enrolled: p.education.enrolled, degrees: p.education.degrees.length,
@@ -27,7 +27,7 @@ export function snapshot(state = store.state) {
     trials: h ? h.trials.map((t) => `${t.id}:${t.status}`) : [],
     countryId: p.countryId, city: p.city, crisis: livingSummary().crisis?.name ?? null,
     jailed: !!p.legal.incarceration, yearsLeft: p.legal.incarceration?.yearsLeft ?? 0, convictions: p.legal.record.filter((r) => r.convicted).length,
-    citizenships: (p.citizenships ?? []).length, prisonPlan: p.plans?.prison ?? null,
+    citizenships: (p.citizenships ?? []).length,
   };
 }
 
@@ -90,7 +90,6 @@ export function summarize(before, state = store.state, planLines = []) {
   if (earned > 0) money.push(`Earned ${fmtMoney(earned, c)}, and paid ${fmtMoney(now.tax - before.tax, c)} in tax.`);
   const worth = now.worth - before.worth;
   if (Math.abs(worth) >= Math.max(1, Math.abs(before.worth) * 0.05)) money.push(`Your net worth ${worth > 0 ? 'rose' : 'fell'} by ${fmtMoney(Math.abs(worth), c)}.`);
-  if (now.savings > before.savings) money.push(`Savings: ${fmtMoney(now.savings, c)}.`);
 
   // Health: new diagnoses, care that happened, decisions waiting. Private, and only the player sees it.
   const h = p.health;

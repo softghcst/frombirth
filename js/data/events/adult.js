@@ -15,10 +15,11 @@ export default [
     ],
   },
   {
-    id: 'jury_summons', category: 'adult', ageRange: [18, 70], cooldown: 20,
+    // Only where juries sit (data/justice.js). The trial is a real case (engine/justiceScenes.js).
+    id: 'jury_summons', category: 'adult', ageRange: [18, 70], cooldown: 20, requires: [need('jurySystem', '==', true)],
     text: 'A letter arrives: you have been called for jury service.',
     choices: [
-      { label: 'Serve and take it seriously', outcomes: [any('Two long weeks. You argue a nervous jury round to the right verdict.', 'good', hid('karma', 6), st('intellect', 2))] },
+      { label: 'Serve and take it seriously', outcomes: [any('Two long weeks of evidence, then two days arguing in a small room.', 'good', hid('karma', 6), st('intellect', 2), { type: 'justice', value: 'jury' })] },
       { label: 'Invent a reason to get out of it', check: chk(0.5, { 'stats.intellect': 0.4, 'talents.acting': 0.4 }), outcomes: [
         ok('Your letter about a "pre-booked surgical procedure" is accepted.', hid('karma', -3)),
         bad('The court asks for proof. You pay a {$250} fine and serve anyway.', cash(-250), hid('karma', -3), st('mood', -4)),
@@ -151,7 +152,7 @@ export default [
   },
   {
     id: 'noisy_neighbour', category: 'adult', ageRange: [18, 85],
-    text: 'Your neighbour has taken up the drums. They practise at midnight.',
+    text: 'Your neighbor has taken up the drums. They practice at midnight.',
     choices: [
       { label: 'Knock and ask nicely', check: chk(0.55, { 'stats.charm': 0.6 }), outcomes: [
         ok('They had no idea the walls were so thin. They move the kit and bring round a cake.', st('mood', 5), hid('karma', 3)),

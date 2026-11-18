@@ -7,9 +7,10 @@ import { canGamble } from '../../engine/gambling.js';
 import { may } from '../../engine/rules.js';
 import * as law from '../../engine/justice.js';
 import * as jail from '../../engine/prison.js';
-import { CRIME_BY_ID, LIFE_SENTENCE } from '../../data/crimes.js';
+import { CRIME_BY_ID } from '../../data/crimes.js';
+import { prisonHub, hubClick } from '../prisonHub.js';
+import { legalCard, legalClick } from '../justice.js';
 import { playBlackjack, playHorses, playLottery } from '../minigames/casino.js';
-import { playEscape } from '../minigames/escape.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
@@ -18,7 +19,9 @@ import { canEmigrate } from '../../engine/emigration.js';
 import * as leisure from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
 import { thisYearCard, thisYearAction } from '../thisYear.js';
-import * as plans from '../../engine/plans.js';
+import { openScreen } from '../animals.js';
+import '../animalHub.js';
+import * as riding from '../../engine/equestrian.js';
 
 async function report(api, r) {
   api.changed();
@@ -71,20 +74,6 @@ async function joinGang(api) {
   if (id) await report(api, jail.joinGang(id));
 }
 
-async function escape(api) {
-  const sure = await confirmModal({
-    title: 'Attempt an escape?',
-    body: 'One attempt a year. Fail and you get two more years and a spell in solitary. Succeed and you are free, and hunted.',
-    yes: 'Go tonight', danger: true,
-  });
-  if (!sure) return;
-  const layout = jail.escapeLayout();
-  if (!jail.beginEscape()) { await messageModal({ body: 'The guards are watching you too closely this year.' }); return; }
-  api.changed();
-  const out = await playEscape(layout);
-  await report(api, jail.finishEscape(out));
-}
-
 function socialCard() {
   const p = player();
   const s = p.social;
@@ -103,27 +92,6 @@ function socialCard() {
     </div></div>`;
 }
 
-function prisonCard() {
-  const k = jail.cell();
-  const g = jail.gang();
-  const term = k.yearsLeft >= LIFE_SENTENCE ? 'Life' : `${k.yearsLeft} year${k.yearsLeft === 1 ? '' : 's'}`;
-  const where = k.facility === 'juvenile' ? 'Juvenile detention'
-    : `${{ min: 'Minimum', med: 'Medium', max: 'Maximum' }[k.security]}-security prison`;
-  return `
-    <div class="card"><h3>${esc(where)}</h3>
-      <div class="kv"><span>Left to serve</span><span>${esc(term)}</span></div>
-      <div class="kv"><span>Served</span><span>${k.served} year${k.served === 1 ? '' : 's'}</span></div>
-      ${k.facility === 'prison' ? `<div class="kv"><span>Gang</span><span>${esc(g?.name ?? 'None')}</span></div>` : ''}
-      <div style="margin-top:10px">${meterHtml('Respect', k.respect, true)}${meterHtml('Conduct', k.conduct, true)}</div>
-      <p class="muted" style="margin-top:8px">Respect keeps you safe inside. Good conduct gets you parole.</p>
-      <div class="kv" style="margin-top:8px"><span>Your years go into</span><span>${esc(plans.PRIORITIES[plans.plansOf().prison]?.name ?? 'Nothing in particular')}</span></div>
-      <button class="btn" data-prison-plan style="margin-top:8px">Choose a priority</button>
-    </div>
-    <div class="btn-stack">
-      ${jail.prisonActions().map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-prison="${a.id}">${esc(a.label)}</button>`).join('')}
-    </div>`;
-}
-
 export default {
   id: 'pursuits', title: 'Pursuits', short: 'Pursuits',
   icon: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
@@ -131,10 +99,9 @@ export default {
     const p = player();
     const c = country();
     if (law.isJailed()) {
-      el.innerHTML = prisonCard();
+      el.innerHTML = prisonHub();
     } else {
       const gambled = p.counters.gambled * c.currency.scale;
-      const record = p.legal.record.filter((r) => r.convicted);
       const things = fun.activityOptions();
       el.innerHTML = `
         ${thisYearCard()}
@@ -155,18 +122,18 @@ export default {
         </div>
         ${law.canCommitCrimes() ? `<div class="card"><h3>Crime</h3>
           <div class="kv"><span>Police attention</span><span>${p.legal.heat >= 60 ? 'They are looking for you' : p.legal.heat >= 25 ? 'You are known to them' : 'None'}</span></div>
-          ${record.length ? `<div class="kv"><span>Convictions</span><span>${record.length}</span></div>` : ''}
           ${p.flags.fugitive ? '<div class="kv"><span>Status</span><span>On the run</span></div>' : ''}
+          <p class="muted" style="margin-top:8px">Every crime has someone on the other end of it, and an investigation that may follow you for years.</p>
           <button class="btn danger" data-crime style="margin-top:10px">Commit a crime</button>
         </div>` : ''}
+        ${legalCard()}
         ${socialCard()}
+        ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Riding</h3><p class="muted" style="margin-bottom:10px">${p.riding ? `${esc(riding.levelName(riding.riderLevel()))} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : 'Lessons, horses and the show ring.'}</p><button class="btn" data-go="riding">Equestrian</button></div>` : ''}
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
     }
     el.onclick = (e) => {
-      if (e.target.closest('[data-prison-plan]')) {
-        return pickModal({ title: 'Your years inside', body: 'It carries on every year until you change it.', options: Object.entries(plans.PRIORITIES).map(([k, x]) => ({ value: k, label: x.name, sub: x.blurb })) })
-          .then((id) => (id ? report(api, plans.setPrisonPriority(id)) : undefined));
-      }
+      if (law.isJailed()) return hubClick(e, api, joinGang);
+      if (legalClick(e, api)) return undefined;
       const plan = e.target.closest('[data-year-plan]')?.dataset.yearPlan;
       if (plan) return thisYearAction(plan, api);
       const game = e.target.closest('[data-play]')?.dataset.play;
@@ -175,14 +142,9 @@ export default {
       const todo = e.target.closest('[data-do]')?.dataset.do;
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;
+      if (go === 'riding') return openScreen(api, 'riding');
       if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: leisure.moveAbroad, city: leisure.moveCity })[go](api);
-      const act = e.target.closest('[data-prison]')?.dataset.prison;
-      if (!act) return undefined;
-      if (act === 'gang') return joinGang(api);
-      if (act === 'escape') return escape(api);
-      const run = { workout: jail.workOut, read: jail.read, job: jail.prisonJob, leaveGang: jail.leaveGang,
-        riot: jail.startRiot, appeal: jail.appeal }[act];
-      return report(api, run()).then(() => { if (!store.state.player.alive) api.changed(); });
+      return undefined;
     };
   },
 };

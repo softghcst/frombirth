@@ -8,8 +8,7 @@
 //   hobby       a main passion and a second interest, practised from the year's
 //               practice sessions (engine/skills.js)
 //   online      a posting routine: casual, consistent or creator (engine/social.js)
-//   savings     a savings goal: money set aside each year, earning a little interest
-//   pets        a care routine for each animal: routine care is never optional
+//   savings     a standing deposit into one of the player's bank accounts (engine/banking.js)
 //   traditions  family traditions that come round every year, and outlive the player
 //
 // One-off celebrations (a birthday party, a reunion) are immediate actions,
@@ -21,15 +20,12 @@ import { remember } from './conditions.js';
 import { SKILL_BY_ID } from '../data/skills.js';
 import { practise, sessionsLeft, levelOf, canPractise } from './skills.js';
 import { post, postsLeft, hasAccount } from './social.js';
-import { PRIORITIES, livePriority } from './prison.js';
-
-export { PRIORITIES };
+import { accountById, deposit } from './banking.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad', extra = {}) => ({ ok, text, tone, ...extra });
 
 export function plansOf(p = player()) {
-  p.plans ??= { hobby: null, online: null, savings: null, pets: {}, traditions: [], done: {}, lastYear: null };
-  p.plans.pets ??= {};
+  p.plans ??= { hobby: null, online: null, savings: null, traditions: [], done: {}, lastYear: null };
   p.plans.traditions ??= [];
   p.plans.done ??= {};
   return p.plans;
@@ -86,47 +82,18 @@ export function setOnline(level, p = player()) {
 
 // ---------- Savings ----------
 
-export const SAVINGS_RATE = 0.02;
-
-/** In prison: what the years inside are put into, until it is changed. */
-export function setPrisonPriority(id, p = player()) {
-  if (!p.legal.incarceration) return result(false, 'You are not inside.', 'neutral');
-  if (!PRIORITIES[id]) return result(false, 'Unknown priority.', 'neutral');
-  plansOf(p).prison = id;
-  return result(true, `Your years inside go into ${PRIORITIES[id].name.toLowerCase()} now.`, 'good');
-}
-
-/** A savings goal: a target, and how much to set aside each year. */
-export function setSavings(target, yearly, p = player()) {
+/**
+ * A standing deposit: each year, this much goes from the player's pocket into
+ * one of their bank accounts (and so towards any goal that account is saving
+ * for). The money moves through the bank and the ledger like any deposit.
+ */
+export function setSavings(accountId, yearly, p = player()) {
   const pl = plansOf(p);
-  if (!target || yearly <= 0) { pl.savings = null; return result(true, 'No savings goal. Anything already saved stays saved.', 'neutral'); }
-  pl.savings = { target: Math.round(target), yearly: Math.round(yearly), since: store.state.year, reached: false };
-  p.finance.savings ??= 0;
-  return result(true, `Each year ${fmtMoney(pl.savings.yearly, country())} goes into savings, towards ${fmtMoney(pl.savings.target, country())}.`, 'good');
-}
-
-/** Takes savings back out, all at once. */
-export function withdrawSavings(p = player()) {
-  const s = p.finance.savings ?? 0;
-  if (s <= 0) return result(false, 'There is nothing in savings.', 'neutral');
-  p.finance.cash += s;
-  p.finance.savings = 0;
-  return result(true, `${fmtMoney(s, country())} is back in your account.`, 'neutral');
-}
-
-// ---------- Pets ----------
-
-export const PET_CARE = {
-  basic: { name: 'Basic responsible care', cost: 250, bond: 2, health: 0, blurb: 'Food, shelter, vaccinations, the vet when needed.' },
-  enrichment: { name: 'Enrichment', cost: 600, bond: 5, health: 2, blurb: 'Everything basic care has, plus play, outings and company.' },
-  training: { name: 'Training focus', cost: 800, bond: 3, health: 1, trains: 15, blurb: 'Classes and practice, with all the basics.' },
-};
-export const petCare = (npcId) => plansOf().pets[npcId] ?? 'basic';
-export function setPetCare(npcId, routine) {
-  const n = store.state.npcs[npcId];
-  if (!n || n.role !== 'pet' || !PET_CARE[routine]) return result(false, 'Not possible.', 'neutral');
-  plansOf().pets[npcId] = routine;
-  return result(true, `${n.firstName}'s routine: ${PET_CARE[routine].name.toLowerCase()}.`, 'good');
+  if (!accountId || !(yearly > 0)) { pl.savings = null; return result(true, 'No standing deposit. Your accounts stay as they are.', 'neutral'); }
+  const a = accountById(accountId);
+  if (!a || a.closed != null) return result(false, 'Choose an account to save into. You can open one in My Money.', 'neutral');
+  pl.savings = { accountId, yearly: Math.round(yearly), since: store.state.year };
+  return result(true, `Each year ${fmtMoney(pl.savings.yearly, country())} goes into your ${a.name.toLowerCase()}.`, 'good');
 }
 
 // ---------- Celebrations and traditions ----------
@@ -209,9 +176,6 @@ export function livePlans(p = player()) {
   const c = country();
   const free = !p.legal.incarceration;
 
-  // Inside: the year goes into the priority chosen for it.
-  if (p.legal.incarceration && pl.prison) { const line = livePriority(pl.prison); if (line) lines.push(line); }
-
   // A main passion gets most of the year's practice; a second interest some of it.
   if (pl.hobby && free && canPractise()) {
     for (const [id, times] of [[pl.hobby.main, 2], [pl.hobby.second, 1]]) {
@@ -232,33 +196,15 @@ export function livePlans(p = player()) {
     if (n) lines.push(`You posted ${n} time${n === 1 ? '' : 's'}: ${before.toLocaleString()} to ${s.followers.toLocaleString()} followers.`);
   }
 
-  // Savings: set aside what the plan says (if it is there), and a little interest.
+  // The standing deposit, if the money is there: through the bank, like any deposit.
   const f = p.finance;
-  f.savings ??= 0;
-  if (f.savings > 0) f.savings = Math.round(f.savings * (1 + SAVINGS_RATE));
-  if (pl.savings) {
-    const put = Math.max(0, Math.min(pl.savings.yearly, f.cash));
-    f.cash -= put; f.savings += put;
-    if (put) lines.push(`You put ${fmtMoney(put, c)} into savings (${fmtMoney(f.savings, c)} saved).`);
-    if (!pl.savings.reached && f.savings >= pl.savings.target) { pl.savings.reached = true; milestone(`Reached a savings goal of ${fmtMoney(pl.savings.target, c)}.`, 'money'); lines.push('You reached your savings goal.'); }
-  }
-
-  // Animals: routine care happens, and costs what it costs. It is not optional.
-  const pets = npcsByRole('pet');
-  if (pets.length) {
-    let spent = 0;
-    for (const n of pets) {
-      const care = PET_CARE[petCare(n.id)];
-      const cost = Math.round(localCost(care.cost, c));
-      const paid = Math.min(cost, Math.max(0, f.cash));
-      f.cash -= paid; spent += paid;
-      const short = paid < cost;
-      n.meters.relationship = clamp(n.meters.relationship + (short ? 0 : care.bond));
-      n.meters.health = clamp(n.meters.health + (short ? -2 : care.health));
-      if (care.trains && !short) n.flags.trained = Math.min(100, (n.flags.trained ?? 0) + care.trains);
-      n.lastInteractionAge = p.age;
+  if (pl.savings && free) {
+    const acct = accountById(pl.savings.accountId);
+    if (!acct || acct.closed != null) pl.savings = null;
+    else {
+      const put = Math.max(0, Math.min(pl.savings.yearly, Math.floor(f.cash)));
+      if (put > 0 && quietly(() => deposit(acct.id, put)).ok) lines.push(`You put ${fmtMoney(put, c)} into your ${acct.name.toLowerCase()}.`);
     }
-    lines.push(`Looking after ${pets.map((n) => n.firstName).join(' and ')} cost ${fmtMoney(spent, c)}.`);
   }
 
   // Traditions come round by themselves.
@@ -284,7 +230,7 @@ export function livePlans(p = player()) {
 /** What carries on to the next generation: the family's traditions. */
 export function inheritPlans(old, heir) {
   const traditions = (old.plans?.traditions ?? []).filter((t) => t.active).map((t) => ({ ...t, inherited: true }));
-  heir.plans = { hobby: null, online: null, savings: null, pets: {}, traditions, done: {}, lastYear: null };
+  heir.plans = { hobby: null, online: null, savings: null, traditions, done: {}, lastYear: null };
 }
 
 /** Everything that is carrying on by itself, for the This Year card. */
@@ -293,8 +239,7 @@ export function ongoing(p = player()) {
   const out = [];
   if (pl.hobby) out.push(['Hobby', `${SKILL_BY_ID[pl.hobby.main].name}${pl.hobby.second ? ` and ${SKILL_BY_ID[pl.hobby.second].name.toLowerCase()}` : ''}`]);
   if (pl.online) out.push(['Online', ONLINE[pl.online.level].name]);
-  if (pl.prison && p.legal.incarceration) out.push(['Inside', PRIORITIES[pl.prison].name]);
-  if (pl.savings) out.push(['Savings', `${fmtMoney(p.finance.savings ?? 0, country())} of ${fmtMoney(pl.savings.target, country())}`]);
+  if (pl.savings) out.push(['Saving', `${fmtMoney(pl.savings.yearly, country())} a year into your ${accountById(pl.savings.accountId)?.name.toLowerCase() ?? 'account'}`]);
   const h = p.health;
   if (h) {
     const therapy = h.therapies.filter((c) => c.status === 'active').length;

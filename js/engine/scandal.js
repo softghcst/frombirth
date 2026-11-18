@@ -18,7 +18,7 @@ import { report } from './news.js';
 export const SECRETS = {
   graft: { what: 'contracts steered to friends', crime: true },
   envelopes: { what: 'votes bought with cash', crime: true },
-  donors: { what: 'favours promised to wealthy donors' },
+  donors: { what: 'favors promised to wealthy donors' },
   coverup: { what: 'a newspaper story suppressed' },
   nepotism: { what: 'a ministry given to a relative' },
   // An allegation with nothing behind it. It can still do damage before it is seen off.
@@ -101,7 +101,7 @@ export function decide(what) {
     return 'You deny it flatly. The reporter thanks you, and goes on digging.';
   }
   if (q.stage === 'story') {
-    if (what === 'apologise') { shift(q.denied ? 1 : 4); drop(s.id); end(); tell('confessed', s); return q.denied ? 'You apologise. It would have counted for more if you had not denied it first.' : 'You apologise, plainly and without excuses. Some people even believe you.'; }
+    if (what === 'apologise') { shift(q.denied ? 1 : 4); drop(s.id); end(); tell('confessed', s); return q.denied ? 'You apologize. It would have counted for more if you had not denied it first.' : 'You apologize, plainly and without excuses. Some people even believe you.'; }
     if (what === 'aide') {
       p.hidden.karma = clamp(p.hidden.karma - 8);
       if (s.evidence < 60 && rng.chance(0.6)) { end(); s.evidence = Math.max(0, s.evidence - 20); tell('aide', s); return 'A junior aide resigns with a statement taking full responsibility. You wish them well in a short letter. The story moves on.'; }

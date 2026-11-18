@@ -151,7 +151,7 @@ export function haveSurgery(procedureId, surgeonId, tweaks) {
     p.stats.mood = clamp(p.stats.mood - 15);
     p.stats.health = clamp(p.stats.health - rng.int(3, 10));
     addCondition('botched_surgery');
-    const text = `Your ${name} went wrong. When the bandages come off, you do not recognise what is underneath. It cost ${fmtMoney(cost, c)}, and a doctor may be able to repair some of it.`;
+    const text = `Your ${name} went wrong. When the bandages come off, you do not recognize what is underneath. It cost ${fmtMoney(cost, c)}, and a doctor may be able to repair some of it.`;
     log(text, 'system', 'bad');
     milestone(`Had a ${name} that went badly wrong.`, 'life');
     return result(false, text);

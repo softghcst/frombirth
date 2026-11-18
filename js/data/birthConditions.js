@@ -9,8 +9,8 @@ export const BIRTH_CONDITIONS = [
     stats: { health: -8 } },
   { id: 'born_asthmatic', name: 'Weak lungs', chance: 0.03,
     desc: 'You were born with weak lungs.', illness: 'asthma', stats: { health: -4 } },
-  // Colour vision is now inherited (X-linked) through engine/health/heredity.js; kept here so older saves still show it.
-  { id: 'colour_blind', name: 'Colour blind', chance: 0,
+  // Color vision is now inherited (X-linked) through engine/health/heredity.js; kept here so older saves still show it.
+  { id: 'colour_blind', name: 'Color blind', chance: 0,
     desc: 'Reds and greens will always look much the same to you.' },
   { id: 'left_handed', name: 'Left-handed', chance: 0.1,
     desc: 'You reach for everything with your left hand.', talents: { music: 4, sports: 3 } },
@@ -27,7 +27,7 @@ export const BIRTH_CONDITIONS = [
   { id: 'photographic_memory', name: 'Photographic memory', chance: 0.007,
     desc: 'You remember everything you see.', stats: { intellect: 15 } },
   { id: 'heterochromia', name: 'Mismatched eyes', chance: 0.006,
-    desc: 'Your eyes are two different colours.', stats: { charm: 6 } },
+    desc: 'Your eyes are two different colors.', stats: { charm: 6 } },
   { id: 'iron_constitution', name: 'Iron constitution', chance: 0.02,
     desc: 'You were a huge, loud, extremely healthy baby.', stats: { health: 12 } },
 ];

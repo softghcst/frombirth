@@ -7,6 +7,8 @@
 //   p.counters.polExp        experience that counts with voters: student council, debating, study, years served
 //   p.counters.electionsWon / electionsLost / yearsInOffice
 //   p.flags.offices          every office held: [{ title, tier, from, to }]
+import { convictionsOf } from './records.js';
+import { pardon as pardonSelf } from './justice.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, localWage, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
@@ -36,7 +38,7 @@ export function officeTitle(id, c = country()) {
 export const offices = (c = country()) => (system(c).kind === 'none' ? []
   : OFFICES.filter((o) => officeTitle(o.id, c)).map((o) => ({ ...o, title: officeTitle(o.id, c) })));
 
-const convictions = (p) => p.legal.record.filter((r) => r.convicted && !r.juvenile).length;
+const convictions = (p) => convictionsOf(p).length;
 export const highestHeld = (p) => Math.max(0, ...(p.flags.offices ?? []).map((o) => o.tier), p.politics?.tier ?? 0);
 
 /** Why the player cannot stand for an office right now, or '' if they can. */
@@ -157,7 +159,7 @@ export function actionOptions() {
   const k = inOffice();
   const c = country();
   if (!k) return [];
-  return ACTIONS.filter((a) => k.tier >= a.tier && !(a.seize && k.ruler) && !(a.pardon && !player().legal.record.length && !player().legal.heat))
+  return ACTIONS.filter((a) => k.tier >= a.tier && !(a.seize && k.ruler) && !(a.pardon && !convictionsOf(player()).length && !player().legal.heat && !player().legal.pending))
     .map((a) => ({ id: a.id, name: a.name, risky: !!(a.graft || a.seize),
       note: a.graft ? `Worth about ${fmtMoney(localMoney(k.tier * 30000, c), c)} to you, if nobody finds out.` : a.seize ? 'No more elections. If it fails, it is treason.' : a.debt ? 'Popular now. The bill comes later.' : a.lasting ? 'Unpopular now. It pays off in a few years.' : '' }));
 }
@@ -213,7 +215,7 @@ export function govern(id) {
     if (a.mood) p.stats.mood = clamp(p.stats.mood + a.mood);
     if (a.debt) k.debt = (k.debt ?? 0) + 1;
     if (a.lasting) k.reforms = [...(k.reforms ?? []), p.age + rng.int(2, 4)];
-    if (a.pardon) { p.legal.record = []; p.legal.heat = 0; p.legal.pending = null; p.hidden.karma = clamp(p.hidden.karma - 10); }
+    if (a.pardon) { pardonSelf(); p.hidden.karma = clamp(p.hidden.karma - 10); }
     tone = change > 0 ? 'good' : change < 0 ? 'bad' : 'neutral';
   }
   log(text, 'system', tone);

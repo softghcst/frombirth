@@ -19,6 +19,17 @@ const rel = await import('../js/engine/relationships.js');
 const kids = await import('../js/engine/children.js');
 const social = await import('../js/engine/social.js');
 const plans = await import('../js/engine/plans.js');
+const bank = await import('../js/engine/banking.js');
+const jail = await import('../js/engine/prison.js');
+/** Opens an ordinary account the player can pay into, at a bank that will have them. */
+function openAccount() {
+  for (const o of bank.offers()) for (const pr of o.products) {
+    if (pr.ok === false) continue;
+    const r = bank.openAccount(o.bank.id, pr.id, 0);
+    if (r.ok && bank.accountById(r.id) && !bank.accountById(r.id).locked && bank.accountById(r.id).matures == null) return r.id;
+  }
+  return null;
+}
 const { summarize, snapshot } = await import('../js/engine/yearSummary.js');
 const { netWorth } = await import('../js/engine/finance.js');
 const R = await import('../js/engine/health/record.js');
@@ -113,19 +124,18 @@ section('actions resolve in the current year; work, closeness, practice and post
 {
   const p = adult(32);
   plans.setHobby('swimming', 'painting');
-  plans.setSavings(5000, 1000);
-  kids.getPet();
-  const pet = npcsByRole('pet').at(-1);
-  plans.setPetCare(pet.id, 'enrichment');
+  const acct = openAccount();
+  check(acct && plans.setSavings(acct, 1000).ok, 'a standing deposit is set up on a real bank account');
   const swim = p.skills?.swimming ?? 0;
   const cash = p.finance.cash;
   const lines = plans.livePlans(p);
-  check(lines.length >= 3, 'a year of plans: hobby, savings and pet care each happen');
+  check(lines.length >= 2, 'a year of plans: the hobby and the standing deposit each happen');
   check((p.skills.swimming ?? 0) > swim, 'the hobby is practised');
-  check(p.finance.savings === 1000 && p.finance.cash < cash - 1000, 'savings are set aside and pet care paid for');
-  const after = { cash: p.finance.cash, savings: p.finance.savings, swim: p.skills.swimming };
-  check(plans.livePlans(p).length === 0 && JSON.stringify({ cash: p.finance.cash, savings: p.finance.savings, swim: p.skills.swimming }) === JSON.stringify(after), 'plans run once per year: a second call changes nothing');
-  check(netWorth(store.state) >= p.finance.cash + p.finance.savings - 1, 'savings count in net worth');
+  check(bank.accountById(acct).units === 1000 && p.finance.cash <= cash - 1000, 'the deposit went from the pocket into the bank');
+  const worth = netWorth(store.state);
+  const after = { cash: p.finance.cash, bal: bank.accountById(acct).units, swim: p.skills.swimming };
+  check(plans.livePlans(p).length === 0 && JSON.stringify({ cash: p.finance.cash, bal: bank.accountById(acct).units, swim: p.skills.swimming }) === JSON.stringify(after), 'plans run once per year: a second call changes nothing');
+  check(Math.abs(netWorth(store.state) - worth) < 1, 'moving money into the bank makes none and loses none');
   // A celebration happens now, once per occasion per year.
   const sis = makeNpc({ role: 'sibling', countryId: 'uk', age: 34, relationship: 50 }); store.state.npcs[sis.id] = sis; p.npcIds.push(sis.id);
   const r = plans.celebrate('birthday', [sis.id], 'simple');
@@ -142,9 +152,9 @@ section('actions resolve in the current year; work, closeness, practice and post
   check(t.years === 2, 'and again the year after, once');
   // A plan survives a reload.
   const back = roundTrip();
-  check(back.plans.hobby.main === 'swimming' && back.plans.traditions[0].years === 2 && back.plans.pets[pet.id] === 'enrichment', 'plans survive a reload');
+  check(back.plans.hobby.main === 'swimming' && back.plans.traditions[0].years === 2 && back.plans.savings.accountId === acct, 'plans survive a reload');
 }
-section('plans: hobby, savings, pet care and traditions carry on by themselves, once a year, and survive a reload');
+section('plans: hobby, a standing deposit and traditions carry on by themselves, once a year, and survive a reload');
 
 // ---------- 4. The yearly summary reports only what happened ----------
 {
@@ -170,31 +180,26 @@ section('the yearly summary: from saved outcomes, major events first, routine le
   const p = adult(30);
   const before = snapshot();
   imprison(4, 1);
-  check(p.legal.incarceration && plans.setPrisonPriority('rehabilitation').ok, 'inside, a priority for the years is chosen once');
-  const mum = Object.values(store.state.npcs).find((n) => n.role === 'parent' && n.alive);
   const k = p.legal.incarceration;
-  const conduct = k.conduct;
-  const lines = plans.livePlans(p);
-  check(lines.some((l) => /rehabilitation/.test(l)) && k.conduct > conduct, 'the year inside goes into it without clicking');
-  const s = summarize(before, store.state, lines);
+  check(!!k, 'the player is inside');
+  // The justice engine's own routine is the yearly choice: set once, lived every year.
+  const routine = jail.routineOptions()[0];
+  check(routine && jail.setRoutine(routine.id).ok && k.routine === routine.id, 'inside, how the years are spent is chosen once');
+  const s = summarize(before, store.state, []);
   check(s.sections.flatMap((x) => x.lines).some((l) => /sent to prison/.test(l)), 'the yearly update reports going to prison');
-  plans.setPrisonPriority('family');
+  const served = k.served ?? 0;
   ageUp();
-  if (mum && p.legal.incarceration) {
-    const rel0 = mum.meters.relationship;
-    ageUp();
-    check(p.age === 32 && (mum.meters.relationship >= rel0 - 2 || !p.legal.incarceration), 'family contact keeps people close while inside, and the years still pass');
-  }
-  check(store.state.year >= before.year + 2 && p.legal.incarceration?.served >= 1 || !p.legal.incarceration, 'time served counts year by year');
+  check(p.age === 31 && (!p.legal.incarceration || (p.legal.incarceration.served === served + 1 && p.legal.incarceration.routine === routine.id)), 'a year inside passes once, and the routine carries on without being chosen again');
 }
-section('prison: a yearly priority chosen once, family contact while inside, and the summary reports it');
+section('prison: the routine is chosen once and carries on; time served counts year by year; the summary reports it');
 
 // ---------- 5. The full year: many things at once, one Age Up ----------
 {
   const p = adult(30);
   const job = CAREERS.find((c) => c.id === 'office');
   career.hire(job, 0, 60);
-  plans.setSavings(10000, 2000);
+  const acct = openAccount();
+  plans.setSavings(acct, 2000);
   const friend = makeNpc({ role: 'friend', countryId: 'uk', age: 30, relationship: 45 }); store.state.npcs[friend.id] = friend; p.npcIds.push(friend.id);
   rel.interact(friend.id, 'spendTime');
   plans.setHobby('painting');
@@ -228,7 +233,7 @@ section('prison: a yearly priority chosen once, family contact while inside, and
   const h = R.healthOf();
   check(store.state.year === year + 1 && p.age === 31, 'exactly one year passed');
   check(p.finance.lifetimeEarned - earned > 0, 'the salary was paid');
-  check(p.finance.savings >= 2000, 'savings grew');
+  check(bank.accountById(acct).units >= 2000, 'savings grew');
   check(friend.alive && friend.age === 31, 'the friend lived the year too');
   check((p.skills.painting ?? 0) > paint, 'the hobby progressed');
   check(pet.age === petAge + 1 && pet.meters.relationship > 0, 'the pet aged, and was looked after');
@@ -240,9 +245,9 @@ section('prison: a yearly priority chosen once, family contact while inside, and
   check(summary.sections.some((x) => x.title === 'Health') && summary.sections.some((x) => x.title === 'Money'), 'the yearly summary covers health and money');
   void friendship; void milestones;
   // Save and reload: everything as it was.
-  const snap = JSON.stringify({ y: store.state.year, cash: p.finance.cash, sav: p.finance.savings, t: h.therapies.map((c) => c.attended), pet: pet.age, plans: p.plans });
+  const snap = JSON.stringify({ y: store.state.year, cash: p.finance.cash, sav: bank.accountById(acct).units, t: h.therapies.map((c) => c.attended), pet: pet.age, plans: p.plans });
   const back = roundTrip();
-  check(JSON.stringify({ y: store.state.year, cash: back.finance.cash, sav: back.finance.savings, t: back.health.therapies.map((c) => c.attended), pet: store.state.npcs[pet.id].age, plans: back.plans }) === snap, 'a reload leaves the whole year as it was');
+  check(JSON.stringify({ y: store.state.year, cash: back.finance.cash, sav: bank.accountById(acct).units, t: back.health.therapies.map((c) => c.attended), pet: store.state.npcs[pet.id].age, plans: back.plans }) === snap, 'a reload leaves the whole year as it was');
 }
 section('the full year: job, savings, a friend, a hobby and sport, a pet, therapy, posting and a party, then one Age Up and a reload');
 

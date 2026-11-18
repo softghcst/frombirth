@@ -43,7 +43,7 @@ let p = life('br');
 let rs = imm.routes('jp');
 check(rs.length >= 6 && rs.every((r) => r.name && r.blurb && (r.eligible ? r.chance > 0 && r.outlook : r.why)), 'every route explains itself, open or closed');
 check(!by('work', 'jp').eligible && !by('family', 'jp').eligible && !by('invest', 'jp').eligible && !by('protection', 'jp').eligible, 'no degree, family, fortune or crisis: those four are closed');
-check(by('study', 'jp').eligible && by('settle', 'jp').eligible, 'a school leaver with savings can study or try the settlement programme');
+check(by('study', 'jp').eligible && by('settle', 'jp').eligible, 'a school leaver with savings can study or try the settlement program');
 p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.4, age: 22 });
 check(by('work', 'jp').eligible && by('work', 'jp').status === 'worker' && by('work', 'jp').years === ROUTE.workYears, 'a degree opens the work route, for a fixed term');
 const before = by('work', 'jp').chance; p.career.lastField = 'engineer';
@@ -124,6 +124,43 @@ check(r.ok && p.trips.length === 1 && p.trips[0].purpose === 'scouting' && p.tri
 check(by('settle', 'jp').chance > c0, 'having gone to look improves a later application');
 check(fun.trips(p)[0].what && fun.trips(p)[0].name === 'Japan', 'the passport can list it');
 section('travel: a record of trips with their purpose; scouting counts');
+
+// 6. Family members hold a status of their own.
+{
+  const cit2 = await import('../js/engine/citizenship.js');
+  p = life('in', 32); p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.6, age: 22 });
+  const kid = makeNpc({ role: 'child', countryId: 'in', age: 10 }); store.state.npcs[kid.id] = kid; p.npcIds.push(kid.id);
+  const teen = makeNpc({ role: 'child', countryId: 'in', age: 17 }); store.state.npcs[teen.id] = teen; p.npcIds.push(teen.id);
+  go('ca', 'work');
+  check(p.countryId === 'ca' && kid.residency?.status === 'dependant' && kid.residency.until === p.residency.until, 'a child who moves with a worker is a dependant, for as long as the parent');
+  check(/Dependant/.test(imm.familyStatus(kid)) && imm.household().some((h) => h.id === kid.id && /until/.test(h.status)), 'and it shows');
+  // The teenager comes of age with no course and no job: a year's grace, then home.
+  const idle = () => { if (teen.life) teen.life.job = null; if (teen.life?.edu) teen.life.edu.yearsLeft = 0; };
+  idle();
+  for (let i = 0; i < 3 && !teen.flags.abroad; i++) { year(); idle(); }
+  check(teen.flags.abroad === 'in' || teen.residency?.status === 'student' || teen.residency?.status === 'worker', `a child who comes of age needs a status of their own (${teen.residency?.status ?? 'went home to ' + teen.flags.abroad})`);
+  // The parent becomes permanent: so do the dependants.
+  p.residency.status = 'permanent_resident'; p.residency.until = null; year();
+  check(kid.residency?.status === 'permanent_resident' && kid.residency.until == null, 'when the parent becomes permanent, so does the child');
+  // Naturalisation takes the minor children along; a spouse it does not.
+  const sp = makeNpc({ role: 'spouse', countryId: 'in', age: 31 }); store.state.npcs[sp.id] = sp; p.npcIds.push(sp.id);
+  p.residency.since = store.state.year - 8; p.finance.cash = 1e7; p.stats.intellect = 90; p.skills = { ...(p.skills ?? {}) };
+  let r = { ok: false }; for (let i = 0; i < 6 && !r.ok; i++) { p.flags.natAge = null; r = cit2.naturalise(); }
+  if (r.ok) {
+    check(kid.age < 18 ? cit2.held(kid).includes('ca') : true, 'a child under eighteen becomes a citizen with the parent');
+    check(!cit2.held(sp).includes('ca'), 'a spouse does not');
+    check(/became citizens? with you/.test(r.text) || kid.age >= 18, 'and the result says so');
+  } else problems.push(`could not naturalize for the test: ${r.text}`);
+  // A dependant left behind loses their permission.
+  p = life('br', 40); p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.6, age: 22 });
+  const mum = makeNpc({ role: 'parent', countryId: 'br', age: 66 }); store.state.npcs[mum.id] = mum; p.npcIds.push(mum.id); mum.flags.willComeAge = p.age;
+  go('de', 'work');
+  check(mum.residency?.status === 'dependant', 'a parent who comes along is a dependant');
+  mum.flags.abroad = false; p.countryId = 'fr'; // the player has gone; she has not
+  for (let i = 0; i < 3 && !mum.flags.abroad; i++) imm.tickFamilyStatus(), store.state.year += 1;
+  check(mum.flags.abroad === 'br', 'a dependant whose sponsor has gone must leave within a year');
+  section('family: dependants follow the main visa, grow out of it, become permanent or citizens with the parent');
+}
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);

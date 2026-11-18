@@ -5,10 +5,12 @@
 //   cast.<key>.<meter>      e.g. cast.director.relationship  (0–100), or cast.kid.age
 //   memory.<key>.<memory>   e.g. memory.manager.coveredShift (100 if they remember it, else 0)
 import { rule, may } from './rules.js';
+import { CAREER_BY_ID } from '../data/careers.js';
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
 import { HEALTH_PATHS } from './health/story.js';
+import { hasRecord } from './records.js';
 
 /** Singing, dance and acting together. The weakest of the three drags it down. */
 export function tripleThreat(p = player()) {
@@ -52,8 +54,28 @@ const SPECIAL = {
   degreeTypes: (p) => p.education.degrees.map((d) => d.type),
   /** Cash expressed in base units so events can compare across currencies. */
   cashBase: (p) => p.finance.cash / country().currency.scale,
+  // Money: the year of a first wage; what has been picked up about money; cards and accounts actually held.
+  firstPayNow: (p) => p.flags.firstPayAge === p.age,
+  moneySense: (p) => Math.round(p.flags.moneySense ?? 0),
+  hasCard: (p) => (p.finance.cards ?? []).some((k) => k.status === 'open'),
+  hasBankAccount: () => Object.values(store.state.ledger?.accounts ?? {}).some((a) => a.kind === 'bank' && a.closed == null),
+  ownsBusiness: (p) => p.assets.some((a) => a.kind === 'business'),
   jailed: (p) => !!p.legal.incarceration,
+  // Justice: where juries sit, whether the player rents, has an unspent record, has served time, or has an ancestor with a court record to find.
+  jurySystem: () => rule('juryTrials'),
+  renting: (p) => !p.homeId && !p.flags.livesWithParents,
+  hasRecord: (p) => hasRecord(p),
+  servedTime: (p) => !!p.legal.custodyHistory?.some((x) => x.how !== 'escape') && !p.legal.incarceration,
+  ancestorRecord: (p) => p.npcIds.some((id) => store.state.npcs[id]?.flags.tag === 'recordedAncestor'),
   employed: (p) => !!p.career.careerId,
+  // Working life (engine/worklife.js, business.js): the field of the main job, whether the player manages people or owns a business, and the week.
+  workFamily: (p) => CAREER_BY_ID[p.career.careerId]?.family ?? null,
+  salaried: (p) => !!p.career.careerId && CAREER_BY_ID[p.career.careerId].type === 'fulltime',
+  single: (p) => !p.npcIds.some((id) => { const n = store.state.npcs[id]; return n?.alive && ['partner', 'spouse'].includes(n.role); }),
+  ownsBusiness: (p) => (p.businesses ?? []).some((b) => b.status === 'open'),
+  yearsInRole: (p) => p.career.yearsInRole ?? 0,
+  workStress: (p) => p.career.stress ?? 0,
+  hasYoungChild: (p) => p.npcIds.some((id) => { const n = store.state.npcs[id]; return n?.alive && n.role === 'child' && n.age < 12; }),
   tripleThreat: (p) => tripleThreat(p),
   ownsProperty: (p) => p.assets.some((a) => a.kind === 'property'),
   ownsHome: (p) => !!p.homeId && p.assets.some((a) => a.id === p.homeId),

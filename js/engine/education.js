@@ -324,7 +324,7 @@ function graduate() {
     courses: e.stage === 'high' && e.courses ? { ...e.courses } : undefined });
   if (e.stage === 'high') { graduationDay(e.gpa); onResults(); }
   if (e.stage === 'university') { Object.assign(e.degrees[e.degrees.length - 1], campus.onGraduate()); rememberAlumnus(e.schoolId); }
-  const honours = e.gpa >= 3.7 ? ' with top honours' : e.gpa >= 3.3 ? ' with honours' : '';
+  const honours = e.gpa >= 3.7 ? ' with top honors' : e.gpa >= 3.3 ? ' with honors' : '';
   const what = {
     high: `${place && place.kind !== 'home' ? place.name : 'school'} with your ${leaving}`,
     university: `${e.schoolName ?? 'university'} with a degree in ${major?.name}`,
@@ -339,7 +339,7 @@ function graduate() {
   }[e.stage] ?? prog?.done ?? stageLabel(e.stage).toLowerCase();
   const plain = ['medical', 'cosmetology', 'apprenticeship', 'technical', 'certificate', 'equivalency'].includes(e.stage) || !!prog?.plain || !!prog?.licence;
   log(`You ${e.stage === 'apprenticeship' ? 'completed' : 'graduated from'} ${what}${plain ? '' : honours}${['apprenticeship', 'doctorate', 'equivalency'].includes(e.stage) ? '' : e.stage === 'high' ? ` (${sch.mark(e.gpa)})` : ` (${sch.degreeMark(e.gpa)})`}.`, 'system', 'good');
-  milestone(e.stage === 'cosmetology' ? 'Earned a licence in hair and makeup.'
+  milestone(e.stage === 'cosmetology' ? 'Earned a license in hair and makeup.'
     : e.stage === 'apprenticeship' || e.stage === 'technical' ? `Qualified as a ${trade?.name.toLowerCase()}.`
       : e.stage === 'doctorate' ? `Earned a doctorate: "${e.thesis?.topic}".`
       : e.stage === 'equivalency' ? 'Finished school as an adult.'
@@ -348,7 +348,7 @@ function graduate() {
         : `Graduated ${stageLabel(e.stage).toLowerCase()}${major ? ` (${major.name})` : ''}, ${sch.degreeMark(e.gpa)}.`, 'education');
   p.stats.mood = clamp(p.stats.mood + 8);
   if (prog?.licence === 'teaching') log(`Schools will hire a graduate without it, but they prefer the ${adult.examName(prog.licence)}, which you can now sit.`);
-  else if (prog?.licence) log(`The degree is not yet the right to practise: for that there is the ${adult.examName(prog.licence)}, which you can now sit.`);
+  else if (prog?.licence) log(`The degree is not yet the right to practice: for that there is the ${adult.examName(prog.licence)}, which you can now sit.`);
   if (e.stage === 'equivalency') { e.droppedOut = false; e.expelled = false; log('Everything that asks for a school-leaving qualification is open to you now.'); }
   if (e.stage === 'doctorate') { e.degrees[e.degrees.length - 1].thesis = e.thesis.topic; p.flags.doctor = true; delete e.thesis; }
   if (e.stage === 'high') log('University, community college, trade school and apprenticeships are open to you from the Work & School tab.');

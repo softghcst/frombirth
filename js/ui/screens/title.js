@@ -53,7 +53,7 @@ export function renderTitle(app, hooks) {
   }).join('');
 
   app.innerHTML = `
-    <section class="title-screen">
+    <main class="title-screen">
       <div class="title-hero">${MARK}<h1>Pathways</h1><p>One life. One year at a time.</p></div>
       <div class="btn-stack">
         <button class="btn primary" data-random>Begin a random life</button>
@@ -67,7 +67,7 @@ export function renderTitle(app, hooks) {
       <div class="title-section"><h2>Graveyard</h2>
         ${graveRows || '<p class="empty">Nobody is buried here yet.</p>'}
         ${graves.length ? `<button class="btn" data-epitaphs style="margin-top:10px">Epitaphs earned: ${epitaphsEarned().length} of ${EPITAPHS.length}</button>` : ''}</div>
-    </section>`;
+    </main>`;
 
   app.querySelector('[data-random]').addEventListener('click', () => hooks.onPlay(createLife()));
   app.querySelector('[data-design]').addEventListener('click', () => hooks.onDesign());
@@ -118,7 +118,7 @@ function compareTimelines(root) {
   };
   const scrim = document.createElement('div');
   scrim.className = 'scrim';
-  scrim.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><div class="eyebrow">What if?</div><h2>One life, ${rows.length} ways</h2>
+  scrim.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="whatif-title"><div class="eyebrow">What if?</div><h2 id="whatif-title">One life, ${rows.length} ways</h2>
     <p class="body">The same person, from the same moments, down different roads.</p>${rows.map(cell).join('')}
     <button class="btn primary" data-ok style="margin-top:10px">Close</button></div>`;
   scrim.addEventListener('click', (e) => { if (e.target === scrim || e.target.closest('[data-ok]')) scrim.remove(); });

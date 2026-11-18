@@ -25,7 +25,7 @@ export default [
     id: 'power_cut', category: 'everyday', ageRange: [16, 95], cooldown: 12,
     text: 'The whole street goes dark at seven in the evening. It will be hours.',
     choices: [
-      { label: 'Knock on doors and check on people', outcomes: [any('You end up hosting eleven neighbours and every candle you own. People still mention it.', 'good', hid('karma', 6), st('charm', 2), st('mood', 5))] },
+      { label: 'Knock on doors and check on people', outcomes: [any('You end up hosting eleven neighbors and every candle you own. People still mention it.', 'good', hid('karma', 6), st('charm', 2), st('mood', 5))] },
       { label: 'Light a candle and read', outcomes: [any('Three quiet hours with a book. You are almost sorry when the fridge hums back on.', 'good', st('intellect', 2), st('mood', 3))] },
       { label: 'Go to bed at half past seven', outcomes: [any('Eleven hours of sleep. You feel ten years younger for one morning.', 'neutral', st('health', 2))] },
     ],
@@ -47,7 +47,7 @@ export default [
   },
   {
     id: 'street_petition', category: 'everyday', ageRange: [20, 90], cooldown: 15,
-    text: 'The council wants to close the local library. A neighbour is collecting names.',
+    text: 'The council wants to close the local library. A neighbor is collecting names.',
     choices: [
       { label: 'Sign it', outcomes: [any('One name among two thousand. It is enough, this time.', 'good', hid('karma', 3))] },
       { label: 'Run the campaign', check: chk(0.45, { 'stats.charm': 0.5, 'stats.intellect': 0.3, 'hidden.willpower': 0.3 }), outcomes: [
@@ -72,7 +72,7 @@ export default [
     choices: [
       { label: 'Take it back and refuse the reward', outcomes: [any('A child opens the door and cannot speak for crying. Worth more than the money.', 'good', hid('karma', 8), st('mood', 6))] },
       { label: 'Take it back and accept the reward', outcomes: [any('They press the envelope on you. Everyone is happy, the dog most of all.', 'good', hid('karma', 4), cash(200))] },
-      { label: 'Keep the dog', outcomes: [any('You call it {pet}. You take the long way round for walks, away from the posters.', 'bad', addNpc('pet', 'pet'), hid('karma', -8))] },
+      { label: 'Keep the dog', outcomes: [any('You call it {pet}. You take the long way round for walks, away from the posters.', 'bad', addNpc('pet', 'pet', { species: 'dog' }), hid('karma', -8))] },
     ],
   },
   {
@@ -222,7 +222,7 @@ export default [
     text: 'A very pleasant man on the doorstep says your roof needs urgent work, and he can start today for {$2000} in cash.',
     choices: [
       { label: 'Send him away', outcomes: [any('He is three doors down by the time you have shut yours. The roof is fine.', 'good', st('intellect', 1))] },
-      { label: 'Ask for it in writing first', outcomes: [any('He remembers another appointment. You ring the neighbours to warn them.', 'good', hid('karma', 4), st('intellect', 1))] },
+      { label: 'Ask for it in writing first', outcomes: [any('He remembers another appointment. You ring the neighbors to warn them.', 'good', hid('karma', 4), st('intellect', 1))] },
       { label: 'Pay him', outcomes: [any('He takes the cash, moves one tile, and is never seen again.', 'bad', cash(-2000), st('mood', -8))] },
     ],
   },
@@ -299,11 +299,11 @@ export default [
   },
   {
     id: 'neighbour_secret', category: 'conscience', ageRange: [22, 90], cooldown: 20,
-    text: 'You see your neighbour\'s spouse in a café two towns over, holding hands with someone who is not your neighbour.',
+    text: 'You see your neighbor\'s spouse in a café two towns over, holding hands with someone who is not your neighbor.',
     choices: [
-      { label: 'Tell your neighbour', outcomes: [any('A terrible conversation over the fence. They thank you for it, a year later.', 'neutral', hid('karma', 2), st('mood', -4))] },
+      { label: 'Tell your neighbor', outcomes: [any('A terrible conversation over the fence. They thank you for it, a year later.', 'neutral', hid('karma', 2), st('mood', -4))] },
       { label: 'Say nothing to anyone', outcomes: [any('You nod to both of them on bin day and keep it to yourself.', 'neutral', hid('discipline', 2))] },
-      { label: 'Tell everyone except your neighbour', outcomes: [any('The whole street knows by the weekend. So does the street know who told them.', 'bad', hid('karma', -8), st('charm', -3))] },
+      { label: 'Tell everyone except your neighbor', outcomes: [any('The whole street knows by the weekend. So does the street know who told them.', 'bad', hid('karma', -8), st('charm', -3))] },
     ],
   },
   {
@@ -336,7 +336,7 @@ export default [
     choices: [
       { label: 'Throw a big party', requires: [has(800)], outcomes: [any('Everyone you love in one room, and a cake that is a fire risk.', 'good', cash(-800), st('mood', 12), st('charm', 2))] },
       { label: 'Do something you have never done', check: chk(0.7, { 'stats.health': 0.4 }), outcomes: [
-        ok('You jump out of a perfectly good aeroplane and scream the whole way down. Wonderful.', st('mood', 12), hid('willpower', 4)),
+        ok('You jump out of a perfectly good airplane and scream the whole way down. Wonderful.', st('mood', 12), hid('willpower', 4)),
         bad('You pull a muscle on the first morning of the hiking trip and see the mountain from a café.', st('mood', -2), st('health', -3)),
       ] },
       { label: 'Let it pass quietly', outcomes: [any('A good dinner and an early night. It is only a number.', 'neutral', st('mood', 2))] },
@@ -421,7 +421,7 @@ export default [
         ok('Beans, potatoes, and more courgettes than any street could eat.', st('health', 5), st('mood', 8), ms('Took on an allotment.')),
         bad('The weeds win by July. You keep the shed and a deckchair.', st('mood', 2)),
       ] },
-      { label: 'Share it with a neighbour', outcomes: [any('They do the digging and you do the tea. An excellent arrangement. {pal} becomes a friend.', 'good', addNpc('friend', 'pal'), st('mood', 5))] },
+      { label: 'Share it with a neighbor', outcomes: [any('They do the digging and you do the tea. An excellent arrangement. {pal} becomes a friend.', 'good', addNpc('friend', 'pal'), st('mood', 5))] },
       { label: 'Let it go to the next name', outcomes: [any('Your knees send their thanks.', 'neutral')] },
     ],
   },
@@ -430,7 +430,7 @@ export default [
     text: 'You stand in the kitchen with no idea what you came in for. It is the third time this week.',
     choices: [
       { label: 'Mention it to the doctor', outcomes: [any('Some tests, a little reassurance, and a crossword prescribed daily.', 'good', st('intellect', 1), st('mood', 2))] },
-      { label: 'Start writing everything down', outcomes: [any('Notebooks in every room. You become oddly well organised.', 'good', hid('discipline', 3))] },
+      { label: 'Start writing everything down', outcomes: [any('Notebooks in every room. You become oddly well organized.', 'good', hid('discipline', 3))] },
       { label: 'Laugh it off', outcomes: [any('You go back out, and remember in the hall. It was the kettle.', 'neutral', st('mood', 1), st('intellect', -1))] },
     ],
   },

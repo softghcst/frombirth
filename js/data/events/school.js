@@ -38,7 +38,7 @@ export default [
     text: 'Someone set off the fire alarm and a teacher is certain it was you. It was not.',
     choices: [
       { label: 'Calmly explain where you were', check: chk(0.5, { 'stats.charm': 0.5, 'stats.intellect': 0.3 }), outcomes: [
-        ok('Your story checks out. The teacher even apologises.', st('mood', 3)),
+        ok('Your story checks out. The teacher even apologizes.', st('mood', 3)),
         bad('Nobody believes you. A week of detentions.', st('mood', -6), hid('karma', 1)),
       ] },
       { label: 'Name who really did it', outcomes: [any('You are cleared. You are also now known as a grass.', 'neutral', st('charm', -3), hid('karma', -1))] },
@@ -74,7 +74,7 @@ export default [
         ok('It comes back to you as you write. A respectable mark.', gpa(0.08), st('mood', 3)),
         bad('It does not come back to you.', gpa(-0.1), st('mood', -3)),
       ] },
-      { label: 'Glance at your neighbour\'s paper', check: chk(0.5, { 'talents.crime': 0.6 }), outcomes: [
+      { label: 'Glance at your neighbor\'s paper', check: chk(0.5, { 'talents.crime': 0.6 }), outcomes: [
         ok('Their answers are good. Yours are now the same.', gpa(0.1), hid('karma', -4)),
         bad('Your paper is torn up in front of everyone.', gpa(-0.2), st('mood', -6), hid('karma', -4)),
       ] },
@@ -138,7 +138,7 @@ export default [
   {
     id: 'uni_flatmate', category: 'campus life', ageRange: [18, 30], once: true, weight: 4,
     requires: [enrolled, need('education.housing', '==', 'dorm'), need('age', '>=', 18)],
-    text: 'Your new dorm-mate has labelled every item in the fridge, including the butter.',
+    text: 'Your new dorm-mate has labeled every item in the fridge, including the butter.',
     choices: [
       { label: 'Introduce yourself properly', check: chk(0.6, { 'stats.charm': 0.6 }), outcomes: [
         ok('{mate} is just nervous. By the end of term you are inseparable.', addNpc('friend', 'mate'), st('mood', 6)),
@@ -153,7 +153,7 @@ export default [
     requires: [enrolled, need('education.housing', '==', 'dorm'), need('age', '>=', 18)],
     text: 'It is 1 a.m. and the whole corridor has ended up in one room with a guitar and a bag of chips.',
     choices: [
-      { label: 'Stay up with them', outcomes: [any('You talk until the sky goes grey. {pal}, from three doors down, becomes a fixture.', 'good', addNpc('friend', 'pal'), st('mood', 7), gpa(-0.05), st('health', -1))] },
+      { label: 'Stay up with them', outcomes: [any('You talk until the sky goes gray. {pal}, from three doors down, becomes a fixture.', 'good', addNpc('friend', 'pal'), st('mood', 7), gpa(-0.05), st('health', -1))] },
       { label: 'Sing something', check: chk(0.5, { 'talents.singing': 0.8 }), outcomes: [
         ok('The room goes quiet, then loud. People you have never met know your name by breakfast.', st('charm', 3), st('mood', 6), tal('singing', 2)),
         bad('Someone turns the guitar up, kindly.', st('mood', -2)),
@@ -167,7 +167,7 @@ export default [
     text: 'Rent is due on Friday and {mate} is {$300} short. Again.',
     choices: [
       { label: 'Cover it and say nothing', requires: [need('cashBase', '>=', 300)], outcomes: [any(
-        '{mate} pays you back in instalments and washing-up. Something between you gets sturdier.', 'good',
+        '{mate} pays you back in installments and washing-up. Something between you gets sturdier.', 'good',
         cash(-300), rel('mate', 10), hid('karma', 4), mem('mate', 'coveredRent', 'You covered their share of the rent without making it a thing.'))] },
       { label: 'Sit down and work out a budget together', check: chk(0.55, { 'stats.charm': 0.4, 'cast.mate.relationship': 0.5 }), outcomes: [
         ok('An awkward hour with a spreadsheet. It does not happen again.', rel('mate', 6), st('intellect', 1)),

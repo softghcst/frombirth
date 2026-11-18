@@ -42,6 +42,16 @@ export const CRISIS_START = {
   },
 };
 
+/**
+ * War can break out, rarely, in a country that is already deeply unstable. It is described as conflict within the
+ * country, never as one named country attacking another: the game does not invent wars between real nations.
+ */
+export const WAR_START = {
+  chance: 0.004,
+  below: 32,
+  text: 'Armed conflict has broken out in {place}. There is fighting in several regions, and the government has declared a state of emergency.',
+};
+
 /** How much a crisis weakens the currency (engine/currency.js pulls each rate towards 1 + this). */
 export const CRISIS_FX = { war: 0.15, collapse: 0.3, shortages: 0.12, inflation: 0.3, sanctions: 0.15 };
 

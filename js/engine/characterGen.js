@@ -17,6 +17,8 @@ import { healthAtBirth } from './health/index.js';
 import { normalize, skinDepth, INHERITED_KEYS } from '../avatar/catalog.js';
 import { rollOrientation, attractedTo, TRANS_RATE } from './identity.js';
 import { ensureStyled, cloneAppearance } from '../avatar/inherit.js';
+import { startingSense } from './achievements.js';
+import { register as registerAnimal, reconcile as reconcileAnimals } from './animals.js';
 
 /**
  * Every option is optional; anything left out is rolled.
@@ -120,6 +122,8 @@ export function createLife(opts = {}) {
   if (trans) { player.flags.trueGender = identityGender; player.flags.realiseAge = rng.int(4, 14); }
   // Natural gifts make the matching skills come faster all life long.
   player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 65).map(([k]) => k);
+  // Growing up around how their parents handle money gives a child a little to start from (engine/achievements.js).
+  player.flags.moneySense = startingSense([mother, father]);
 
   for (const id of traits) applyMods(player, TRAIT_BY_ID[id]);
   for (const b of born) {
@@ -207,5 +211,8 @@ export function createLife(opts = {}) {
   if (seat) dress(seat.dynasty, state);
   // Genomes for the family and the child, and what the child is born with (not yet recognised by anyone).
   healthAtBirth(state, opts.health);
+  // The family's animals were there first: they go on the family's record with the line that introduces them.
+  for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => !e.animal && e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });
+  reconcileAnimals(state);
   return state;
 }

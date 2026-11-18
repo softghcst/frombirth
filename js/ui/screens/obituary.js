@@ -72,7 +72,7 @@ export function renderObituary(app, g, hooks) {
   const heirs = hooks.heirs ?? [];
 
   app.innerHTML = `
-    <section class="title-screen">
+    <main class="title-screen">
       <div class="stone">
         <p class="muted">In memory of</p>
         <h1>${esc(g.fullName)}</h1>
@@ -98,7 +98,7 @@ export function renderObituary(app, g, hooks) {
         <button class="btn" data-epitaphs>Epitaphs earned</button>
         <button class="btn primary" data-done>${heirs.length ? 'End the story here' : 'Return to title'}</button>
       </div>
-    </section>`;
+    </main>`;
   app.scrollTop = 0;
   window.scrollTo(0, 0);
   app.querySelector('[data-done]').addEventListener('click', () => hooks.onDone());

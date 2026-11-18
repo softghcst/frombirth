@@ -62,7 +62,7 @@ export function renderCreator(app, hooks) {
   const sample = randomAppearance();
 
   app.innerHTML = `
-    <section class="title-screen creator">
+    <main class="title-screen creator">
       <div class="creator-head">
         <div class="avatar preview" data-preview></div>
         <div><h1>Design a life</h1><p class="muted" data-head-note>Leave anything on Random and fate will decide.</p></div>
@@ -114,7 +114,7 @@ export function renderCreator(app, hooks) {
           <button type="submit" class="btn primary">Be born</button>
         </div>
       </form>
-    </section>`;
+    </main>`;
 
   const q = (sel) => app.querySelector(sel);
 

@@ -1,5 +1,6 @@
 // School stages, programmes after high school, housing, cliques and clubs.
 // Everything here is plain data: edit values or add entries freely.
+import { CATALOG_CERTS } from './occupations.js';
 
 /** Compulsory schooling. `start` is the age a stage begins. */
 export const SCHOOL_STAGES = [
@@ -28,7 +29,7 @@ export const PROGRAMMES = {
     blurb: 'Paid training on the job under a qualified tradesperson. No diploma needed.' },
   cosmetology: { id: 'cosmetology', label: 'Cosmetology school', kind: 'trade', years: 1, tuition: 9000,
     needs: 'high', minGpa: 0, yearly: { stats: { charm: 3 }, hidden: { discipline: 2 } },
-    blurb: 'Trade school. One year to a licence in hair and makeup.' },
+    blurb: 'Trade school. One year to a license in hair and makeup.' },
   graduate: { id: 'graduate', label: 'Graduate school', years: 2, tuition: 18000, needs: 'university', minGpa: 3.0,
     blurb: 'Two more years for a master\'s in your subject.' },
   medical: { id: 'medical', label: 'Medical school', years: 4, tuition: 38000, needs: 'university', minGpa: 3.6, science: true, licence: 'medical',
@@ -52,7 +53,7 @@ export const PROGRAMMES = {
   nursing: { id: 'nursing', label: 'Nursing school', years: 3, partYears: 5, tuition: 9000, needs: 'high', minGpa: 2.4, licence: 'nursing',
     done: 'nursing school', yearly: { hidden: { karma: 2, discipline: 2 } },
     blurb: 'Three years, half of them on the wards. A route into nursing without a university degree.' },
-  doctorate: { id: 'doctorate', label: 'Doctoral programme', years: 5, tuition: 0, stipend: 20000, needs: 'university', minGpa: 3.4, thesis: true,
+  doctorate: { id: 'doctorate', label: 'Doctoral program', years: 5, tuition: 0, stipend: 20000, needs: 'university', minGpa: 3.4, thesis: true,
     done: 'your doctorate', plain: true,
     blurb: 'Years on one question nobody has answered, paid a little, under a supervisor. A master\'s degree helps you in.' },
   technical: { id: 'technical', label: 'Technical college', kind: 'trade', years: 2, partYears: 3, tuition: 5000, needs: null, minAge: 16, subjects: 'trades', givesTrade: true,
@@ -82,6 +83,7 @@ export const CERTS = [
   { id: 'bookkeeping', name: 'Bookkeeping', opens: 'accountant' },
   { id: 'digital_marketing', name: 'Digital marketing', opens: 'marketing' },
   { id: 'project_management', name: 'Project management', opens: 'office' },
+  ...CATALOG_CERTS,
 ];
 export const CERT_BY_ID = Object.fromEntries(CERTS.map((c) => [c.id, c]));
 /** Words for a thesis title: one from each list, then the field. */
@@ -188,9 +190,9 @@ export const CLUBS = [
     yearly: { talents: { dance: 5 }, stats: { health: 1 } } },
   { id: 'choir', name: 'Singing lessons and choir', from: 6, blurb: 'Scales, harmonies, breath.',
     yearly: { talents: { singing: 5, music: 1 } } },
-  { id: 'youth_theatre', name: 'Youth theatre', from: 6, blurb: 'Saturday-morning acting classes.',
+  { id: 'youth_theatre', name: 'Youth theater', from: 6, blurb: 'Saturday-morning acting classes.',
     yearly: { talents: { acting: 4 }, stats: { charm: 1 } } },
-  { id: 'musical_theatre', name: 'Musical theatre company', from: 11,
+  { id: 'musical_theatre', name: 'Musical theater company', from: 11,
     blurb: 'The school\'s big shows. You need to sing, dance and act.',
     tryout: { base: 0.4, factors: { 'talents.singing': 0.45, 'talents.dance': 0.45, 'talents.acting': 0.45 } },
     yearly: { talents: { singing: 3, dance: 3, acting: 3 } },
