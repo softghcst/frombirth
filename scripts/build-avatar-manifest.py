@@ -1061,16 +1061,19 @@ def add_pupils():
     return done
 
 
-# Eyes drawn a size apart from the rest, brought into line: each eye scaled about its own centre by this much, so the
-# gap between them is kept and the outline thickens or thins with it.
-RESIZE_EYES = {'eyes_29': 0.82, 'eyes_44': 1.15, 'eyes_46': 1.15, 'eyes_47': 1.15, 'eyes_49': 1.15,
-               'eyes_43': 1.08, 'eyes_45': 1.08, 'eyes_48': 1.08, 'eyes_50': 1.08}
+# Eyes drawn a size or a distance apart from the rest, brought into line: (scale, gap). Each eye is scaled about its own
+# centre (the outline thickens or thins with it); then, with a gap, the two are moved apart or together so the space
+# between their inner corners is that (most eyes sit about EYE_GAP apart).
+EYE_GAP = 27.5
+RESIZE_EYES = {'eyes_29': (0.74, EYE_GAP),
+               'eyes_43': (0.91, EYE_GAP), 'eyes_44': (1.15, EYE_GAP), 'eyes_45': (1.06, EYE_GAP), 'eyes_46': (1.15, EYE_GAP),
+               'eyes_47': (1.15, EYE_GAP), 'eyes_48': (1.06, EYE_GAP), 'eyes_49': (1.15, EYE_GAP), 'eyes_50': (1.06, EYE_GAP)}
 
 
 def resize_eyes():
     """Applies RESIZE_EYES to any listed file that has not had it. -> the names changed"""
     done = []
-    for name, k in RESIZE_EYES.items():
+    for name, (k, gap) in RESIZE_EYES.items():
         path = os.path.join(ASSETS, 'eyes', name + '.svg')
         if not os.path.exists(path):
             continue
@@ -1078,13 +1081,19 @@ def resize_eyes():
         if 'data-resized="1"' in text:
             continue
         side = lambda x: 'L' if x < 256 else 'R'
-        boxes = {}
-        for d in re.findall(r'\sd="([^"]*)"', text):
-            for poly in flatten(parse_path(d)):
+        boxes, opening = {}, {}  # everything drawn, and the eye itself (its whites and iris), on each side
+        for m in re.finditer(r'<path style="([^"]*)"[^>]*?\sd="([^"]*)"', text):
+            eye = 'eye-white' in m.group(1) or 'eye-color' in m.group(1)
+            for poly in flatten(parse_path(m.group(2))):
                 for x, y in poly:
-                    b = boxes.setdefault(side(x), [x, y, x, y])
-                    b[0], b[1], b[2], b[3] = min(b[0], x), min(b[1], y), max(b[2], x), max(b[3], y)
+                    for into in ([boxes, opening] if eye else [boxes]):
+                        b = into.setdefault(side(x), [x, y, x, y])
+                        b[0], b[1], b[2], b[3] = min(b[0], x), min(b[1], y), max(b[2], x), max(b[3], y)
         centre = {s: ((b[0] + b[2]) / 2, (b[1] + b[3]) / 2) for s, b in boxes.items()}
+        # After scaling, how far each eye moves outward (negative: inward) to leave `gap` between the inner corners.
+        inner = lambda s, x: centre[s][0] + (x - centre[s][0]) * k
+        move = (gap - (inner('R', opening['R'][0]) - inner('L', opening['L'][2]))) / 2 if gap else 0
+        shift = {'L': -move, 'R': move}
 
         def scaled(m):
             out, cur = [], []
@@ -1097,8 +1106,9 @@ def resize_eyes():
             cmds = []
             for sub in out:  # each subpath belongs to the eye its points are on
                 pts = [(a[i], a[i + 1]) for _, a in sub for i in range(0, len(a), 2)]
-                cx, cy = centre[side(sum(x for x, _ in pts) / max(1, len(pts)))]
-                cmds += [(c, [cx + (v - cx) * k if i % 2 == 0 else cy + (v - cy) * k for i, v in enumerate(a)]) for c, a in sub]
+                s_ = side(sum(x for x, _ in pts) / max(1, len(pts)))
+                (cx, cy), dx = centre[s_], shift[s_]
+                cmds += [(c, [cx + (v - cx) * k + dx if i % 2 == 0 else cy + (v - cy) * k for i, v in enumerate(a)]) for c, a in sub]
             return f' d="{path_d(cmds)}"'
         text = re.sub(r'\sd="([^"]*)"', scaled, text)
         text = text.replace('data-pathways="1"', 'data-pathways="1" data-resized="1"', 1)

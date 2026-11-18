@@ -140,6 +140,26 @@ for (const e of AVATAR_MANIFEST.eyes) {
   const art = readFileSync(new URL(`assets/avatars/${e.file}`, root), 'utf8');
   if (/var\(--eye-color/.test(art)) check(/fill:#000000/.test(art), `${e.id} has no pupil`);
 }
+// Eyes given at random are about the same size and the same distance apart (eyes 10 and 26 are drawn with their lids
+// reaching past the whites, so the whites alone sit further apart). Measured on the whites and iris of each eye.
+{
+  const LOOSE = ['eyes_10', 'eyes_26'];
+  for (const id of CUR.RESTING.eyes) {
+    const art = readFileSync(new URL(`assets/avatars/${PART_BY_ID[id].file}`, root), 'utf8');
+    const box = { L: [1e9, 1e9, -1e9, -1e9], R: [1e9, 1e9, -1e9, -1e9] };
+    for (const [, style, d] of art.matchAll(/<path style="([^"]*)"[^>]*?\sd="([^"]*)"/g)) {
+      if (!/eye-white|eye-color/.test(style)) continue;
+      const n = d.match(/-?[\d.]+/g).map(Number);
+      for (let i = 0; i + 1 < n.length; i += 2) {
+        const b = box[n[i] < 256 ? 'L' : 'R'];
+        b[0] = Math.min(b[0], n[i]); b[1] = Math.min(b[1], n[i + 1]); b[2] = Math.max(b[2], n[i]); b[3] = Math.max(b[3], n[i + 1]);
+      }
+    }
+    const gap = box.R[0] - box.L[2], tall = (box.L[3] - box.L[1] + box.R[3] - box.R[1]) / 2;
+    if (!LOOSE.includes(id)) check(gap > 18 && gap < 38, `${id}: the eyes are ${gap.toFixed(1)} apart (most are about 27)`);
+    check(tall < 43, `${id}: the eyes are ${tall.toFixed(1)} tall, far bigger than the rest`);
+  }
+}
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
 const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_16', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
   314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };
