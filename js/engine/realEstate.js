@@ -212,6 +212,7 @@ export function renovate(id) {
   if (p.finance.cash < cost) return result(false, 'You cannot afford the builders.', 'neutral');
   p.finance.cash -= cost;
   a.condition = clamp(a.condition + 35);
+  a.renovatedYear = store.state.year; // a real renovation, which a post can point at (engine/digital/content.js)
   a.quality *= 1.03;
   a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined, a.countryId ?? undefined);
   const text = `You spent ${fmtMoney(cost, country())} renovating the ${lower(a.name)}. It is now worth ${fmtMoney(a.value, country())}.`;

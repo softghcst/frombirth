@@ -25,6 +25,7 @@ import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
 import { attractedTo } from './identity.js';
 import { passOn } from './edlegacy.js';
+import { carryOver } from './digital/legacy.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
 import { handOver as handOverSports } from './sportsLife.js';
@@ -254,6 +255,8 @@ export function continueAs(npcId) {
   store.state = next;
   handOverAnimals(old, next, { ancestorId: ancestor.id, heirId: h.id, assetIds });
   if (old.sports) handOverSports(old, next, { ancestorId: ancestor.id, heirId: h.id });
+  // The people who work in the family's businesses are the same people: they carry on, outside the heir's own circle.
+  for (const b of op.businesses ?? []) for (const x of [...(b.staff ?? []), ...(b.partners ?? [])]) if (old.npcs[x.id] && !npcs[x.id]) npcs[x.id] = old.npcs[x.id];
   const firmLines = carryCareers(old, next, h); // the family's working history, the same employers, and any business left to this heir
 
   // An heir who was living in another country carries on there.
@@ -304,6 +307,10 @@ export function continueAs(npcId) {
 
   // The schools of the world are the same schools: the next generation may sit in the same classrooms.
   passOn(old, next);
+  // The eras carry on with the year: the heir's money is already in this year's terms.
+  if (old.era) next.era = { ...old.era, applied: { year: old.year, countryId: next.player.countryId } };
+  // The family's digital world carries on too: the dead player's accounts become their memorial and archive.
+  carryOver(old, next, npcId, ancestor.id);
   if (old.schools) next.schools = old.schools;
   if (old.universities) next.universities = old.universities;
   if (player.education.enrolled && !PROGRAMMES[player.education.stage]) ensureSchool();

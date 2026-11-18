@@ -35,7 +35,10 @@ import sports from './sports.js';
 import seasons from './seasons.js';
 import career from './career.js';
 import justice from './justice.js';
+import digital from './stories/digital.js';
+import eras from './stories/eras.js';
+import decades from './stories/decades.js';
 
 /** @type {import('../../types.js').GameEvent[]} */
-export const EVENTS = [...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...sports, ...seasons, ...justice];
+export const EVENTS = [...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...sports, ...seasons, ...justice, ...digital, ...eras, ...decades];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));

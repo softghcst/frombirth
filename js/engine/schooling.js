@@ -17,6 +17,7 @@
 //   p.education.history   [{ schoolId, name, kind, stage, stageName, from, to, how, mark }]
 // People: classmates are NPCs with role 'classmate' and flags.schoolId. Teachers are NPCs
 // with role 'mentor', flags.tag 'teacher', flags.teaches (a subject), flags.style and flags.skill.
+import { forgetNpc } from './digital/core.js';
 import { cityOf as cityProfile } from './cities.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
@@ -132,8 +133,7 @@ function add(npc) {
 }
 function forget(npc) {
   const p = player();
-  p.npcIds = p.npcIds.filter((id) => id !== npc.id);
-  delete store.state.npcs[npc.id];
+  forgetNpc(npc.id);
 }
 const classmates = () => npcsByRole('classmate').filter((n) => n.flags.schoolId);
 export const teachers = () => livingNpcs().filter((n) => n.flags.tag === 'teacher');

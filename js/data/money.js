@@ -62,6 +62,7 @@ export const CATEGORIES = {
 
   transfer: { name: 'Between your own accounts', kind: T },
   exchange: { name: 'Currency exchange', kind: T },
+  revaluation: { name: 'Money worth what it was then (Historical Eras)', kind: T },
   borrowing: { name: 'Borrowing', kind: T },
   debt: { name: 'Debt repayment', kind: T },
   investments: { name: 'Investments bought and sold', kind: T },

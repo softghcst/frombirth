@@ -4,7 +4,8 @@
 //
 // The records themselves (incidents, evidence, cases, sentences) are kept by
 // engine/cases.js. This file applies their consequences to the player's life.
-import { rule } from './rules.js';
+import { forgetNpc } from './digital/core.js';
+import { rule, may } from './rules.js';
 import { policingShift } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
@@ -313,7 +314,7 @@ export function release(how = 'You served your sentence and walked out of the ga
   if (!cell) return;
   for (const mate of npcsByRole('cellmate')) {
     if (mate.meters.relationship >= 60) { mate.role = 'friend'; mate.flags.metInside = true; }
-    else p.npcIds = p.npcIds.filter((id) => id !== mate.id);
+    else forgetNpc(mate.id);
   }
   if (o.parole && cell.yearsLeft > 0 && cell.yearsLeft < LIFE_SENTENCE) {
     p.legal.supervision = { kind: 'parole', sentenceId: cell.sentenceId, caseId: cell.caseId, from: store.state.year, until: store.state.year + cell.yearsLeft,

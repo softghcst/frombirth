@@ -21,7 +21,8 @@ import { tickCivil } from './civil.js';
 import { tickKinCases } from './kinCases.js';
 import { checkCare } from './guardianship.js';
 import { tickPrison } from './prison.js';
-import { tickSocial } from './social.js';
+import { tickDigital } from './digital/tick.js';
+import { tickEra } from './eras.js';
 import { tickIdentity } from './identity.js';
 import { tickLiving } from './living.js';
 import { tickRoyalty } from './royalty.js';
@@ -84,6 +85,7 @@ export function advanceYear() {
 
   // Anything the player did with money since the last year is written down before this one begins.
   book({ cat: 'auto', src: 'action' });
+  tickEra(); // Historical Eras: the new year's era, money, laws and events (engine/eras.js)
 
   // Each part of the year books what it did to the player's money under its own heading (engine/ledger.js).
   booked('auto', 'Family and friends', tickRelationships);
@@ -108,7 +110,7 @@ export function advanceYear() {
   tickTrusts();
   booked('health', 'Health', tickHealth);
   booked('legal', 'Prison', tickPrison);
-  booked('auto', 'Friends and followers', tickSocial);
+  booked('auto', 'Digital life: creators, deals and devices', tickDigital); // the Digital World (engine/digital)
   booked('health', 'Health and identity', tickIdentity);
   booked('losses', 'Rising prices and losses', tickLiving);
   booked('auto', 'The royal household', tickRoyalty);

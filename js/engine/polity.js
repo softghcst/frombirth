@@ -520,6 +520,8 @@ export function mayVote(countryId = store.state.player.countryId) {
   const kind = kindOf(countryId);
   if (kind !== 'presidential' && kind !== 'parliamentary') return 'No votes are cast here.';
   if (p.age < rule('votingAge', countryId)) return `You are too young to vote: the voting age here is ${rule('votingAge', countryId)}.`;
+  // Historical Eras: before women won the vote, they could not cast one.
+  if ((p.flags?.trueGender ?? p.gender) === 'female' && !rule('womenVote', countryId)) return 'Women cannot vote here yet.';
   if (p.legal?.incarceration) return 'Prisoners cannot vote here.';
   if (!held(p).includes(issuer(countryId))) return 'You are not a citizen here, and cannot vote. You can apply for citizenship from your passport.';
   return '';

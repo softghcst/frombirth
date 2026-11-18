@@ -24,6 +24,9 @@ import * as who from '../../engine/identity.js';
 import { openDynasty } from '../dynasty.js';
 import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
+import { eventsOf } from '../../engine/digital/core.js';
+import { accountsOf } from '../../engine/digital/accounts.js';
+import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
@@ -231,6 +234,7 @@ function courtRecord(npc) {
 }
 
 /**
+ * The character profile, exported so other screens (Digital Life) open the same person, never a copy.
  * The profile of anyone in the world. People who are not part of the player's
  * life (a judge, a witness, an inmate on another landing) are shown without
  * the actions that need a relationship.
@@ -276,6 +280,13 @@ export function openNpc(npc, api, back, o = {}) {
     ? `<div class="section-label" style="margin-top:0">What has happened to them</div>
        ${npc.life.history.slice(-14).reverse().map((h) => `<div class="kv"><span>Age ${h.age}</span><span>${esc(h.text.charAt(0).toUpperCase() + h.text.slice(1))}.</span></div>`).join('')}
        <div style="height:14px"></div>` : '';
+  // Their digital life, as far as the player can see it: accounts by name, and the moments the two of you share.
+  const online = store.state.digital ? accountsOf(npc.id).filter((a) => a.status !== 'deleted') : [];
+  const shared = store.state.digital ? eventsOf(npc.id).filter((e) => e.charIds.includes(player().id) && e.visibility !== 'private').slice(0, 8) : [];
+  const digitalCard = online.length || shared.length ? `<div class="section-label" style="margin-top:0">Online</div>
+    ${online.map((a) => `<div class="kv"><span>${esc(PLATFORM_BY_ID[a.platformId].name)}</span><span>@${esc(a.handle)}${a.status === 'active' ? '' : ` · ${esc(a.status)}`}</span></div>`).join('')}
+    ${shared.map((e) => `<div class="kv"><span>${e.year}</span><span>${esc(e.summary)}</span></div>`).join('')}
+    <div style="height:14px"></div>` : '';
   const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
 
   const actions = !inLife ? [] : [
@@ -301,7 +312,7 @@ export function openNpc(npc, api, back, o = {}) {
     </div>
     ${traitChips}${owns}${feudNote}${expecting}
     <div style="margin:12px 0 16px">${meters}</div>
-    ${lifeCard}${history}${timeline}${courtRecord(npc)}
+    ${lifeCard}${history}${timeline}${courtRecord(npc)}${digitalCard}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
@@ -373,7 +384,7 @@ export default {
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
-    const top = [['moments', 'My Moments: this year'], ['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree']];
+    const top = [['moments', 'My Moments: this year'], ['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree'], ['digitalArchive', 'Letters, photos and posts']];
     if (love.canLookForLove()) top.push(['love', 'Look for love']);
     if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
 
@@ -402,6 +413,7 @@ export default {
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api));
+      if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

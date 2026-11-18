@@ -4,6 +4,8 @@ import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
+import { migrateDigital } from './engine/digital/tick.js';
+import { ensureEra } from './engine/eras.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
 
@@ -108,6 +110,10 @@ function migrate(state) {
     r.outcome ??= r.convicted ? 'convicted' : 'acquitted';
     r.year ??= pl.birthYear + r.age;
   }
+  // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.
+  migrateDigital(state);
+  // Historical Eras: a life saved before eras keeps its money as it was (see engine/eras.js).
+  ensureEra(state, { legacy: true });
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

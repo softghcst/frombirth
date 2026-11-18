@@ -1,4 +1,6 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { syncWorld } from './history.js';
+import { ensureEra } from './eras.js';
 import { atBirth, held } from './citizenship.js';
 import { fromAbroad, rollsRoots } from './economy.js';
 import { rng } from '../rng.js';
@@ -48,7 +50,10 @@ export function createLife(opts = {}) {
   const firstName = opts.firstName?.trim()
     || rng.pick(c.names[gender] ?? [...c.names.male, ...c.names.female]);
   const city = opts.city && c.cities.includes(opts.city) ? opts.city : rng.pick(c.cities);
-  const year = new Date().getFullYear();
+  // A life starts in the present unless told otherwise (tests start lives in other eras: the Digital World follows the year).
+  const year = Number.isInteger(opts.year) ? opts.year : new Date().getFullYear();
+  // Money, prices and currencies of the year the life begins in (engine/history.js).
+  syncWorld(year);
 
   // Family first, then the child is derived from the parents.
   // A designed face: the family is built to resemble it.
@@ -213,5 +218,6 @@ export function createLife(opts = {}) {
   // The family's animals were there first: they go on the family's record with the line that introduces them.
   for (const pet of fam.pets) registerAnimal(pet, { state, origin: 'family', storyEntry: journal.find((e) => !e.animal && e.text.startsWith(`The family ${pet.species}, ${pet.firstName},`)) });
   reconcileAnimals(state);
+  ensureEra(state); // a new life keeps its money in the money of its own years
   return state;
 }

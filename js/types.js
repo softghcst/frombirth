@@ -200,6 +200,8 @@
  * @property {?{caseId:string}} [pending]  the open criminal case (older saves held {crimeId, evidence, lawyer} until upgraded)
  *
  * @typedef {{handle:?string, followers:number, posts:number, viral:number, boughtFollowers:number}} SocialMedia
+ *   A summary of the player's main account, kept in step by engine/digital/tick.js (syncCompat). The Digital World
+ *   (state.digital) is the record; see js/engine/digital/core.js for its shape.
  *
  * @typedef {Object} GameEvent
  * @property {string} id
@@ -260,6 +262,7 @@
  * @property {object} [animals]  the family's animals, their keepers and their moments, kept across generations (engine/animals.js)
  * @property {number} rngSeed
  * @property {{theme:'auto'|'light'|'dark'}} settings
+ * @property {object} [digital]  the Digital World of this life: accounts, posts, threads, communities, projects, deals, ledger, events, archive (engine/digital)
  * @typedef {{age:number, text:string, kind:'event'|'choice'|'outcome'|'system', tone:'good'|'bad'|'neutral', animal?:{id:string, ev:string}}} JournalEntry  `animal` marks a line that tells a moment in an animal's life
  *
  * @typedef {{slotId:string, name:string, age:number, gender:string, countryId:string,

@@ -11,6 +11,8 @@ import { saveGame, deleteSlot, getGraveyard, updateGrave, undoDepth, popUndo, re
 import { normalize } from './avatar/catalog.js';
 import * as cloud from './sync/cloud.js';
 import { askNewPassword, cloudLine } from './ui/settings.js';
+import { alignWorld } from './engine/eras.js';
+import { resetWorld } from './engine/history.js';
 
 const app = document.getElementById('app');
 
@@ -49,6 +51,7 @@ function showDeath(entry) {
 
 function play(state) {
   onTitle = false;
+  alignWorld(state); // money and currencies of this life's year (Historical Eras)
   store.set(state);
   // A life that ended while the player was still choosing an heir.
   if (!state.player.alive) {
@@ -64,6 +67,7 @@ let onTitle = false;
 
 function showTitle() {
   store.state = null;
+  resetWorld(); // saves of every era are listed here, in today's money
   onTitle = true;
   renderTitle(app, {
     onPlay: play,

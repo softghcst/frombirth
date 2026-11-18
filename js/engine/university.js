@@ -11,6 +11,7 @@
 //     application: { instId, outcome, score, condition, reasons, aid, tuition }
 //     held: { instId, until }  a place kept open for a year
 //   p.education.aid / aidKeep / aidParts   the share of tuition waived while enrolled, and the mark that keeps it
+import { universityAccess } from './history.js';
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
 import { store, player, npcsByRole, livingNpcs, log } from '../state.js';
@@ -115,6 +116,7 @@ export function profile(majorId, inst = null) {
   const parents = npcsByRole('parent');
   const surname = p.lastName;
   return {
+    access: universityAccess(), // Historical Eras: how many students universities took in these years
     mark: school ? e.gpa : edu.entryGpa(), predicted: school, advanced, recs, activities,
     statement: plan?.statementValue ?? 0,
     audition: major?.audition ? Math.round(clamp(tripleThreat(p) + (p.flags.directorRec ? 8 : 0) + Math.min(10, (p.flags.performances?.length ?? 0) * 2))) : null,

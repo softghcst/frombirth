@@ -63,7 +63,15 @@ node tests/moments.mjs         # living moments: occasions marked once in their 
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
+node tests/digital.mjs         # the Digital World: technology by era, accounts and privacy, posts, messaging, creators and money, reputation, legacy, saves; the Digital Life brief's scenarios A to L
+node tests/eras.mjs            # Historical Eras: careers, money and currencies, laws, schooling, health and events by era; lives born 1800–today; a German family 1900 → today
 node tests/world.mjs           # the 102 reference places: codes, kinds, currencies, cities; a life lived in each (--report lists gaps); fails if any reference field disagrees with its source
+```
+
+One check runs in a real browser and needs Playwright with Chromium (it skips itself where Playwright is not installed):
+
+```bash
+node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
 ```
 
 `avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; and that the eye shapes on offer are unchanged.
@@ -533,6 +541,80 @@ js/ui/          shell, modals, screens/, tabs/
 avatar-lab.html a workbench for avatar artwork
 tests/          checks that run on Node alone
 ```
+
+## Historical Eras
+
+A life can begin in any year from 1800 (the character creator's year of birth), and the world's year decides what life
+is like: five eras (Early Era to 1918, Between the Wars, Mid-Century, Late 20th Century, Modern Day from 2000) in one
+registry, `js/data/history.js`, answered by `js/engine/history.js`. The year processor's era step (`js/engine/eras.js`)
+runs as each year begins. From 2025 on, every answer is today's game unchanged.
+
+| What changes | How |
+|---|---|
+| Careers | Jobs exist from when they did (no programmers in 1900), with the titles of the time, kept by a job once taken; some were closed to women by law then (the marriage bar, law, uniformed services), through the rule engine. Parents' occupations and NPCs' jobs are of their time |
+| Money | Wages and prices move together on a price-level and real-wage index ([estimate]); old currencies (marks, francs, lire, pesetas, Australian and New Zealand pounds and others) and their change to the euro at the official rates, applied once, through the same conversion as emigrating |
+| Laws | A historical layer in the rule engine: women's vote by country, the voting age, same-sex marriage, divorce, Prohibition, conscription, the law on being gay, the death penalty, school-leaving age. Dated facts carry a source note; places without their own record use the period's usual law, marked as such |
+| Schooling | Most children leave school at the leaving age in earlier eras (the player is offered it, and it is not dropping out); university is rarer; degree subjects exist from when they did |
+| Health | Shorter lives in earlier eras, extra risk at working ages, young children in the family who may not survive (never the player as a baby), the danger of childbirth, the 1918 influenza; treatments as medicine then could give them |
+| Events | The world wars (with each country's year of entry), the Depression, the postwar boom, the oil crisis, the end of the Cold War, independence: news, economies held in a slump or boom, the call-up for young men where the law conscripted, losses in the family. No battles, no real leaders |
+| Scenes | Present-day scenes stay in the present (by the technology they mention, or a reviewed first year); a modern choice in an older scene is hidden. About thirty scenes belong to their decades, from the railway reaching town to the millennium |
+| Screens | The creator names the era of a birth year; the Self tab, Digital History and the Family Archive show the times |
+
+`docs/HISTORICAL_ERAS.md` maps where each system meets the eras, and what is a fact and what an estimate. Lives saved
+before eras keep their money as it was; lives in the present are unaffected.
+
+## Digital Life
+
+Pursuits → **Digital Life** (*Your connections, your creativity, your world.*): the character's accounts, feed,
+messages and group chats, friends and connections, online communities, posts, Creator Studio, online reputation,
+digital memories and digital history — or, before there is an online world, the letters, visits and telephone calls
+of the time. It is one engine, the **Digital World Engine**, in `js/engine/digital/`, with its registry in
+`js/data/digital.js`; the year processor runs it with the rest of the world (`tickDigital`).
+
+| Part | Where | What it does |
+|---|---|---|
+| Registry | `js/data/digital.js` | Communication technologies (letters to shared presence) with first year, spread and infrastructure needed; devices; places to get online; the game's own platforms (Corkboard, Chatterbox, Inkwell, Guildhall, Hearth, Vista, Murmur, Glimmer, Beacon, Kindling, Spinnet, Lumen) with launch, decline and closing years, age limits, formats, privacy settings, rules and pay; topics, communities, sponsors, trends, project kinds |
+| Core | `core.js` | `state.digital` (one per saved life), stable ids, spare hours a year, life events (the Life Story and Family Archive read these), the one reputation record per character |
+| Technology | `tech.js` | The only place a year becomes "does this exist yet": adoption by year and country infrastructure, platform status, devices, school/library/work access |
+| Accounts | `accounts.js` | Accounts always owned by a real character; guardian consent for young teenagers, decided once a year; handles that change while the account stays the same; `canSee`, the single privacy rule every screen uses; follows, requests, blocks, mutes |
+| Posts | `content.js` | Posting (format, topic, real source, audience, time); the audience's response worked out once and kept; comments and moderation; the feed, with disposable "around the platform" background posts kept apart from anything that happened to anyone |
+| Messaging | `messaging.js` | Letters, telegrams, calls, texts, email, video calls and direct messages, by era and by what both people have; group chats; replies drawn from the other person's real life; protections for young players |
+| Communities | `community.js` | Communities with a few real, persistent members and a member count; friendships that move into the Relationship engine; online dating that hands a first date to the Romance engine |
+| Creators | `creator.js` | Channels, stages earned by circumstance, projects with checked transitions, livestreams, collaborations with real people, sponsorships that pay only when delivered, a ledger (gross, platform fee, costs, tax, net) paid through the Finance engine, at most once per key; going full-time through the Occupation engine's creator career |
+| Professional | `professional.js` | A profile that is the real résumé; referrals from contacts at their actual employers and recruiter messages, which feed the career engine's existing hiring odds |
+| Reputation | `reputation.js` | Recognition, credibility and loyalty kept apart; controversies that record what really happened; safety problems and sensible responses; breaks, notifications and a small, personal effect on mood |
+| People | `npc.js` | Close family and friends join platforms (or never do), follow people they know, share news that really happened to them, move on when a platform fades |
+| Stories | `stories.js` + `js/data/events/stories/digital.js` | The Story Director's digital scenes, found in saved state: an old friend to reconnect with, a teenager's first video, an ancestor's archive, a controversy, bullying |
+| Legacy | `legacy.js` | Accounts become memorials at death; the digital world passes to the heir; descendants see public and family-shared posts, never private messages |
+| Year | `tick.js` | The yearly order of work; migration of older saves (the old handle and follower count become one account, with no posts invented); the old `player.social` numbers kept in step |
+
+The screen is `js/ui/digital.js`. Portraits anywhere in it open the person's own profile (the same one the People
+tab opens); where the player is — section, filters, the open post or conversation, scroll position — is kept while
+they visit a profile, and when Digital Life is closed and opened again.
+
+More of it, by part:
+
+| Part | Where | What it does |
+|---|---|---|
+| Public life | `civic.js` | Office-holders, candidates and royals speak through official accounts (kept apart from personal ones): a statement nudges approval in office or a campaign's appeal by a capped amount, or a royal's public image, and the country's press reports it. Elections are still counted by the Politics engine. Being widely known brings interviews and panels, a loss of privacy, and — for something the player really did and was never caught for — an allegation, which is not a conviction |
+| Study | `school.js` | The school's own systems by era (paper, email, a portal with marks), online study groups with real classmates (a small effect on marks; followers count for nothing), a portfolio of finished work (which helps in creative careers), digital skills |
+| More messaging | `messaging.js` | Plans and invitations that really happen the next year (and are remembered), photos, anniversary wishes, talking about the relationship (which can clear the air or start a row), venting (the only thing a leak can ever be made of), birthday messages from family (three a year at most), helping an older relative get online |
+| More creators | `creator.js` | Optional posting routines; merchandise (with the cost of making it), labelled affiliate links, licensing offers for good work, paid collaborations paid on publication; livestreams scheduled for later with chosen equipment; project work counts as practice for the matching skill |
+| Other people | `npc.js` | Gifted friends start channels of their own; people join communities for their hobbies; an online friend who ends up in the player's field becomes a colleague; a few well-known creators on each platform to follow, who are strangers, not friends |
+| Radio and television | `broadcast.js` | Once a year, an evening's listening or viewing (news, music, plays, sport, serials, cartoons) with whoever is at home, or at a neighbour's when there is no set; the first set in the house as a life moment; now and then a broadcast the whole household remembers. Sets are household devices like any other |
+| Story arcs | `stories.js` | Also: a creator's crossroads (make it a job, keep it on the side, step back), burnout after two heavy years, stopping decades later; life after going viral; a bigger creator reaching out; a recruiter; an invitation to moderate; meeting an online friend; a partner abroad; old posts decades on (shared with the family, they join the archive); a child's school photography project |
+
+Also: the character creator can start a life in any year from 1800; scenes that mention modern technology, and the
+creator career, only appear once the registry says that technology exists where the player lives; the feed carries
+the country's real news; trips the player took and homes they bought or renovated can be posted about (a trip names
+the place visited, never the home); profile pictures (portrait, initials, a pet, a symbol — never someone else) and
+links to one's own other accounts; devices are belongings with a condition; a self-set limit on screen time; locked
+accounts can be recovered; neighbourhood groups follow a move; a university's community is made of real classmates;
+dating has preferences (ages, distance, what one is looking for); the Family Archive opens from the People tab too.
+
+Still not built: business partnerships (there is no business system in the game for an online friend to join);
+content projects live in
+the Digital World because the game has no separate hobby-project system.
 
 ## Where to edit content
 

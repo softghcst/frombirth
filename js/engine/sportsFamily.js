@@ -56,7 +56,7 @@ export function familyPast(state = store.state) {
     const born = state.year - n.age;
     const youth = born + r.int(8, 12);
     const sport = sportsIn(youth, n.bornIn ?? state.player.countryId, r);
-    if (sport.founded > youth || born + 8 > state.year) continue;
+    if (!sport || sport.founded > youth || born + 8 > state.year) continue;
     const a = lightRecord(state, n);
     const e = lightEntry(a, sport.id, youth);
     const roll = r.next();
@@ -95,7 +95,7 @@ export function tickRelatives(state = store.state) {
       if (r.chance(0.09 + nearby)) {
         const same = mine?.primary && r.chance(0.25) ? sportOf(mine.primary) : null;
         const sport = same && same.minAge <= n.age && !same.adaptive ? same : sportsIn(state.year, p.countryId, r);
-        if (sport.minAge <= n.age) {
+        if (sport && sport.minAge <= n.age) {
           a = lightRecord(state, n);
           const e = lightEntry(a, sport.id, state.year);
           e.talent = Math.round(clamp(r.normal(55, 15), 15, 95)); // their own, not the player's
