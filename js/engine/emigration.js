@@ -238,6 +238,9 @@ export function emigrate(countryId, opts = {}) {
     }
   }
 
+  // People the family knows through someone else (a sibling's partner, say) are not on the player's own list, but are
+  // recorded where they live too: anyone living in the country the player now lives in is no longer abroad.
+  for (const n of Object.values(store.state.npcs)) if (n.alive && n.flags?.abroad === to.id && !p.npcIds.includes(n.id)) n.flags.abroad = false;
   prunePending(); // scenes about people who are not coming
   // Trips booked to leave from the old home are canceled now, on their refund terms, before savings change currency.
   for (const t of (p.travel?.trips ?? []).filter((x) => x.status === 'confirmed' && x.origin.countryId !== to.id)) {
