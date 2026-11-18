@@ -8,6 +8,9 @@ import { openModal, pickModal, confirmModal, messageModal, inputModal } from './
 import { store } from '../state.js';
 import { forkGame, timelinesOf, MAX_TIMELINES, saveGame } from '../save.js';
 import { STEPS, STEP_NAMES, stepOf, setStep, monthOf, ageLabel } from '../engine/turns.js';
+import * as kit from '../engine/teamIdentity.js';
+import { jerseySvg, inkOn } from './jersey.js';
+import { JERSEY_COLORS } from '../data/sports.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
 export function ago(t) {
@@ -61,6 +64,8 @@ export async function openSettings(hooks = {}) {
         { value: 'account', label: 'Cloud saves', sub: cloudLine() },
         { value: 'transfer', label: 'Transfer saves', sub: 'Move your lives to another device with a code or a file, no account needed.' },
         { value: 'people', label: 'People you know', sub: people ? `${people} on your list.` : 'Put people from your own life into the game.' },
+        // Only while a life is being played, once there are teams in it: their names, jerseys and players.
+        ...(store.state?.player?.alive && kit.leagues().length ? [{ value: 'teams', label: 'Teams and jerseys', sub: 'Rename teams and their players, and choose their home and away colors.' }] : []),
         // Only while a life is being played: keep this moment, and live it two ways.
         ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === false ? 'Off. Turn it on to see what each year changed.' : 'On: after each year, what it changed.' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Keep this moment as a second timeline, before a decision you are about to make. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used.` }] : []),
@@ -74,12 +79,94 @@ export async function openSettings(hooks = {}) {
     if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary === false }; }
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();
+    if (pick === 'teams') { await openTeams(); saveGame(store.state); }
     if (pick === 'transfer') await openTransfer(hooks);
     if (pick === 'account') await openAccount(hooks);
   }
 }
 
 // ---------- People you know ----------
+
+// ---------- Teams and jerseys ----------
+
+/** Leagues, then a league's teams, then a team: its name, colors and players. */
+async function openTeams() {
+  for (;;) {
+    const list = kit.leagues();
+    const lg = await pickModal({ title: 'Teams and jerseys', body: 'Every league in this life. Pick one to see its teams.', cancel: 'Done',
+      options: list.map((x) => ({ value: x.league.id, label: x.league.name, sub: `${x.sport.name} · ${x.level} · ${x.teams.length} teams${x.mine ? ' · your league' : ''}` })) });
+    if (!lg) return;
+    for (;;) {
+      const L = kit.leagues().find((x) => x.league.id === lg);
+      const mine = store.state.sports?.athletes?.[store.state.player.id];
+      const myTeams = new Set(Object.values(mine?.sports ?? {}).flatMap((e) => [e.teamId, e.schoolTeamId]).filter(Boolean));
+      const t = await pickModal({ title: L.league.name, body: 'Pick a team to rename it, change its jerseys or rename its players.', cancel: 'Back',
+        options: L.teams.map(({ team, org }) => ({ value: team.id, label: team.name, sub: `${[kit.colorName(kit.colorsOf(org).home), kit.colorName(kit.colorsOf(org).away)].map((c) => c ?? 'custom').join(' and ')}${myTeams.has(team.id) ? ' · your team' : ''}` })) });
+      if (!t) break;
+      await openTeam(t);
+    }
+  }
+}
+
+function openTeam(teamId) {
+  return new Promise((resolve) => {
+    const S = store.state.sports;
+    const team = kit.numbersOf(S.teams[teamId]);
+    const org = S.orgs[team.orgId];
+    const posName = (id) => (id ? id.replace(/_/g, ' ') : '');
+    let note = '';
+    const m = openModal('<div data-body></div>', { dismissable: true, onDismiss: () => resolve() });
+    const draw = () => {
+      const c = kit.colorsOf(org);
+      m.el.querySelector('[data-body]').innerHTML = `
+        <h2>${esc(team.name)}</h2>
+        <div class="jersey-pair">${jerseySvg(c, '', 56, `${team.name} home jersey`)}${jerseySvg({ home: c.away, away: c.home }, '', 56, `${team.name} away jersey`)}</div>
+        <form data-team novalidate>
+          <div class="field"><label for="tm-name">Team name</label><input id="tm-name" maxlength="40" autocomplete="off" value="${esc(org.name)}"></div>
+          <div class="field-row">
+            <div class="field"><label for="tm-home">Home jersey</label><input id="tm-home" type="color" value="${c.home}"></div>
+            <div class="field"><label for="tm-away">Away jersey</label><input id="tm-away" type="color" value="${c.away}"></div>
+          </div>
+          <div class="jersey-swatches" role="group" aria-label="Quick colors for the home jersey">
+            ${JERSEY_COLORS.map(([n, hex]) => `<button type="button" class="jersey-swatch" data-swatch="${hex}" style="background:${hex}" aria-label="${esc(n)}" title="${esc(n)}"></button>`).join('')}
+          </div>
+          <p class="muted" data-note style="min-height:1.2em">${esc(note)}</p>
+          <button type="submit" class="btn primary">Save name and colors</button>
+        </form>
+        <div class="section-label" style="margin-top:14px">Players</div>
+        <p class="muted" style="margin-top:0">Tap a player to rename them or change their number.${team.roster.some((x) => x.npcId) ? ' People you know on this team are renamed everywhere in the game.' : ''}</p>
+        ${team.roster.slice().sort((a, b) => a.num - b.num).map((x) => `<button type="button" class="choice-btn tm-player" data-player="${esc(x.id)}" ${x.id === store.state.player.id ? 'disabled' : ''}>
+          <span class="tm-num" style="background:${c.home};color:${inkOn(c.home)}">${x.num}</span>${esc(x.name)}${x.id === store.state.player.id ? ' (you)' : ''}<small>${esc(posName(x.pos))}${x.npcId ? ' · someone you know' : ''}</small></button>`).join('')}
+        <button class="btn" data-close style="margin-top:14px">Done</button>`;
+    };
+    draw();
+    m.el.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-close]')) { m.close(); return resolve(); }
+      const sw = e.target.closest('[data-swatch]');
+      if (sw) { m.el.querySelector('#tm-home').value = sw.dataset.swatch; return undefined; }
+      const pl = e.target.closest('[data-player]');
+      if (pl && !pl.disabled) {
+        const x = team.roster.find((y) => y.id === pl.dataset.player);
+        const what = await pickModal({ title: x.name, options: [{ value: 'name', label: 'Rename', sub: x.npcId ? 'They are someone you know: their name changes everywhere.' : '' }, { value: 'num', label: 'Change their number', sub: `Now ${x.num}.` }] });
+        if (what === 'name') { const v = await inputModal({ title: `Rename ${x.name}`, label: 'Full name', value: x.name, maxLength: 40 }); if (v) note = kit.renamePlayer(team.id, x.id, v).text; }
+        if (what === 'num') { const v = await inputModal({ title: `${x.name}'s number`, label: 'Shirt number (0 to 99)', value: String(x.num), maxLength: 2 }); if (v != null) note = kit.setNumber(team.id, x.id, v).text; }
+        draw();
+      }
+      return undefined;
+    });
+    m.el.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = m.el.querySelector('#tm-name').value;
+      const out = [];
+      if (name.trim() !== org.name) out.push(kit.renameTeam(org.id, name).text);
+      const home = m.el.querySelector('#tm-home').value; const away = m.el.querySelector('#tm-away').value;
+      const c = kit.colorsOf(org);
+      if (home !== c.home || away !== c.away) out.push(kit.setColors(org.id, home, away).text);
+      note = out.join(' ') || 'Nothing to change.';
+      draw();
+    });
+  });
+}
 
 function openPeople() {
   return new Promise((resolve) => {

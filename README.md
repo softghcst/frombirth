@@ -44,6 +44,7 @@ node tests/animal-life.mjs     # staff, classes, behavior, landlords, outings, c
 node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
 node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
 node tests/sports-divisions.mjs   # sports: women's and men's divisions, women's professional years, sports agents shopped for
+node tests/teams.mjs           # team names, jersey colors and shirt numbers: made up, renamed, recolored, saved; teammates renamed everywhere
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
@@ -151,6 +152,7 @@ Fame → Representation).
 | The year in sport, money, injuries and rehab, recruiting and scholarships, contracts, sponsors, fame, arcs, generations | `js/engine/sportsLife.js` |
 | Stories with scenes, A to I: first team, a coach who believes in you, the scholarship, the championship season, the doubles partnership, injury and recovery, the professional dream, the comeback, a new generation | `js/engine/sportsArcs.js`, `js/data/events/sports.js` |
 | Sport in the family: parents' and grandparents' past, siblings and children who choose their own sport, parents at games | `js/engine/sportsFamily.js` |
+| Teams' names, home and away jersey colors and shirt numbers, made up per sport (Rovers and Albion in soccer, Owls and Barons in baseball...) and all changeable, with players' names, in Settings → Teams and jerseys | `js/engine/teamIdentity.js`, `js/ui/settings.js`, `js/ui/jersey.js` |
 | End-of-season awards: each league's MVP (or Player of the Season), Rookie of the Year, its own statistic and position awards (Golden Boot, Scoring Title, Sixth Man; in baseball Gold Glove and Silver Slugger by position, Platinum Glove, Pitcher of the Year, Reliever, Home Run, RBI and Strikeout Leaders, ERA and Batting Titles), a playoff MVP, Coach of the Year and a team of the season; Player of the Year, Newcomer and Comeback in individual sports. Decided once from the season as played, shown on the season page | `js/engine/sportsAwards.js`, `SEASON_AWARDS` in `js/data/sports.js` |
 | My Athletics; lines in the life story open the season, event, team or coach they are about | `js/ui/sports.js` |
 
