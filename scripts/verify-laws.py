@@ -117,6 +117,7 @@ DECIDED.update({
     ('jp', 'inheritance'): 'PwC gives 55%; heirs who are not family pay a fifth more, which the game includes (66%).',
     ('tn', 'inheritance'): 'PwC gives the 2.5% between ancestors and descendants; its summary gives up to 35% for others, which the game uses.',
     ('ua', 'inheritance'): 'PwC gives the income tax scale up to 18% for non-residents; the game models residents: close family 0%, others 5%.',
+    ('ht', 'drinkingAge'): 'The source gives no national age; Port-au-Prince forbids selling to under-18s, which the game uses.',
     ('my', 'naturalization'): "The table gives 12 years; Malaysia's nationality-law article gives 10 years' residence, which the game uses.",
 })
 
@@ -321,8 +322,10 @@ def src_drinking(w):
             body = re.sub(r'<ref[^>]*/>|<ref[^>]*>.*?</ref>', '', r, flags=re.S)
             cells = [c for c in re.split(r'\n\|', '\n' + body.strip('\n')) if c.strip()]
             b = blocks.setdefault(cur, {'ages': set(), 'banned': False})
-            for c in cells[1:4]:
+            # Only the age columns (the last cell is notes), and not ages the notes say were changed from.
+            for c in (cells[1:-1] if len(cells) >= 4 else cells[1:4]):
                 c2 = re.sub(r'^\s*(?:style|align|colspan|rowspan)[^|]*\|', '', c)
+                c2 = re.sub(r'(?:from|previously|was|formerly|before)\s+(?:the\s+age\s+of\s+)?\d+', '', c2, flags=re.I)
                 b['ages'] |= {int(x) for x in re.findall(r'\b(1[4-9]|2[0-5])\b', c2)}
                 if re.search(r'Illegal|Prohibited|Banned|forbidden', c2, re.I): b['banned'] = True
     return blocks

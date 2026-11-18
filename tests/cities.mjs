@@ -36,7 +36,7 @@ for (const [id, rows] of Object.entries(CITY_ROWS)) {
 }
 for (const [key, o] of Object.entries(REGION_RULES)) {
   const [place, region] = key.split('/');
-  check(Object.values(CITY_ROWS[place] ?? {}).some((r) => r.regionId === region), `regional law for a region with no city: ${key}`);
+  check(Object.values(CITY_ROWS[place] ?? {}).some((r) => r.regionId === region) || (region.startsWith('around:') && COUNTRIES[place]?.cities.includes(region.slice(7))), `regional law for a region with no city: ${key}`);
   for (const id of Object.keys(o)) check(!!RULES[id], `${key}: unknown rule ${id}`);
 }
 section('data: twelve countries have a row per city; every regional law belongs to a region with a city');
@@ -76,7 +76,7 @@ check(JSON.stringify([p.citizenships, p.residency]) === papers, 'papers do not c
 check(p.locations.at(-1).city === 'Seattle' && p.locations.at(-2).to === store.state.year, 'the move is in the record of where they have lived');
 check(r.quit ? !p.career.careerId : !!p.career.careerId && p.counters.jobsHeld === jobs, 'the job either transfers or ends');
 check(/laws are different in Washington/.test(r.text), 'the result says the law has changed');
-check(towns.moveOptions().find((o) => o.name === 'Austin').lawDiffers && !towns.moveOptions().find((o) => o.name === 'Chicago').lawDiffers, 'only real differences in law are flagged');
+check(towns.moveOptions().find((o) => o.name === 'Austin').lawDiffers && towns.moveOptions().find((o) => o.name === 'Chicago').lawDiffers && !towns.moveOptions().find((o) => o.name === 'New York').lawDiffers, 'only real differences in law are flagged (Washington and New York: no death penalty, casinos from 18)');
 check(!towns.relocate('Seattle').ok && !towns.relocate('Paris').ok, 'no moving to where you are, or to another country');
 let kept = 0; let lost = 0;
 for (let i = 0; i < 60; i++) { p = life('de', 'Leipzig'); hire(CAREERS.find((c) => c.id === 'office'), 0, 60); const before = p.career.salary; r = towns.relocate('Munich'); if (r.quit) lost += 1; else { kept += 1; check(p.career.salary > before, 'a transferred salary moves to the going rate'); } }

@@ -112,7 +112,7 @@ export const PLACE_RULES = {
   ma: { schoolLeavingAge: 13, retirementAge: 63 },
   mn: { schoolLeavingAge: 17 },
   mx: { drivingAge: 16, schoolLeavingAge: 15 },
-  my: { drivingAge: 17, gamblingAge: 21, marriageAge: 21, retirementAge: 60 },
+  my: { drinkingAge: 21, drivingAge: 17, gamblingAge: 21, marriageAge: 21, retirementAge: 60 },
   ng: { schoolLeavingAge: 15 },
   ni: { votingAge: 16 },
   nl: { drivingAge: 17, retirementAge: 67 },
@@ -127,7 +127,7 @@ export const PLACE_RULES = {
   pl: { schoolLeavingAge: 18 },
   pr: { drivingAge: 18, drinkingAge: 18, gamblingAge: 18, marriageAge: 21 },
   pt: { schoolLeavingAge: 18, retirementAge: 66 },
-  py: { schoolLeavingAge: 14 },
+  py: { drinkingAge: 20, schoolLeavingAge: 14 },
   qa: { drinkingAge: 21 },
   ro: { schoolLeavingAge: 18 },
   rs: { schoolLeavingAge: 14 },
@@ -160,46 +160,67 @@ export const PLACE_RULES = {
  * game are listed. Unverified, like everything else here.
  */
 export const REGION_RULES = {
-  // United States: the death penalty is a matter for each state.
-  'us/new_york': { deathPenalty: false },
-  'us/illinois': { deathPenalty: false },
-  'us/washington': { deathPenalty: false },
-  'us/colorado': { deathPenalty: false },
-  // Canada: the drinking age is set by each province.
+  // Checked against Wikipedia: "Capital punishment in the United States" (rev 1386383070), "Gambling age" (rev 1385344433),
+  // "Legal drinking age" (rev 1381514309) and "Alcohol laws of India" (rev 1378950707). The gambling age is the casino age,
+  // as nationally (the first the source gives).
+  // United States: the death penalty and the gambling age are matters for each state.
+  'us/new_york': { deathPenalty: false, gamblingAge: 18 },  // abolished 2004
+  'us/illinois': { deathPenalty: false },                   // 2011
+  'us/washington': { deathPenalty: false, gamblingAge: 18 }, // 2023
+  'us/colorado': { deathPenalty: false },                   // 2020
+  'us/georgia': { gamblingAge: 18 },
+  // Canada: the drinking and gambling ages are set by each province.
   'ca/quebec': { drinkingAge: 18 },
   'ca/alberta': { drinkingAge: 18 },
   'ca/manitoba': { drinkingAge: 18 },
-  // India: set by each state.
+  'ca/ontario': { gamblingAge: 19 },
+  'ca/british_columbia': { gamblingAge: 19 },
+  'ca/nova_scotia': { gamblingAge: 19 },
+  // Germany: casinos admit from 21 in Bavaria and Baden-Württemberg.
+  'de/bavaria': { gamblingAge: 21 },
+  'de/baden_wurttemberg': { gamblingAge: 21 },
+  // India: set by each state (Karnataka's law is ambiguous between 18 and 21; the source lists 18).
   'in/maharashtra': { drinkingAge: 25 },
-  // United Arab Emirates: set by each emirate.
+  'in/delhi': { drinkingAge: 25 },
+  'in/karnataka': { drinkingAge: 18 },
+  // United Arab Emirates: Sharjah bans alcohol; 21 in Dubai, Abu Dhabi and the northern emirates; 18 in Ras Al Khaimah.
   'ae/sharjah': { alcohol: false },
+  'ae/dubai': { drinkingAge: 21 },
+  'ae/abu_dhabi': { drinkingAge: 21 },
+  'ae/ajman': { drinkingAge: 21 },
+  // Nigeria: the northern states prohibit alcohol.
+  'ng/around:Kano': { alcohol: false },
 };
 
 /**
  * Which of the game's laws each country leaves to its states, provinces or other regions. A country not listed makes
- * all of them nationally. Compiled by hand from each country's division of powers, simplified to these six matters,
- * and NOT YET CHECKED against sources: treat it as the author's understanding.
- *   United States: criminal law (the death penalty), gambling and licensing ages are state law; the drinking age is
- *     state law, though federal highway money keeps it at 21.
- *   Canada: gambling, liquor and driving licences are provincial; criminal law, the death penalty included, is federal.
- *   Australia: gambling and driving licences are state matters; the Commonwealth has forbidden the death penalty everywhere.
- *   Germany: gambling is regulated by the Länder; youth protection (alcohol) and driving are federal.
- *   Austria and Switzerland: youth protection, including the age for alcohol, is set by the Länder and cantons.
- *   Mexico: states issue driving licences.  Argentina: provinces run gambling.
- *   India: alcohol (some states ban it), the drinking age and gambling are state subjects.
- *   Malaysia: gambling is restricted by some states.  Nigeria: northern states ban alcohol and regulate gambling.
- *   United Arab Emirates: each emirate sets its own rules on alcohol and gambling.
- *   United Kingdom: licensing is devolved to Scotland and Northern Ireland.  Spain: autonomous communities set the
- *     drinking age and regulate gambling.
+ * all of them nationally. Simplified to these six matters. What each claim rests on:
+ *   Confirmed by a source (Wikipedia; scripts/verify-laws.py does not check this list automatically):
+ *     United States: the death penalty ("Capital punishment in the United States": legal in 27 states), gambling ("each
+ *       state is free to regulate or prohibit"), its age (varies by state), driving licences (issued by each state).
+ *     Canada: driving licences ("issued by each province or territory"), the gambling age (18 or 19 by province).
+ *     Australia: driving licences and road rules ("managed by state and territory governments"); the drinking age
+ *       ("all states restrict purchasing to over 18": state liquor law).
+ *     Germany: the gambling age ("varies by state").  Mexico: the drinking age ("all Mexican states prohibit...").
+ *     India: alcohol ("a subject in the State List") and gambling ("states are entitled to formulate their own laws").
+ *     Nigeria: alcohol ("prohibited in northern states").  UAE: alcohol and its age ("Sharjah... banned"; 18 or 21).
+ *     Spain: the drinking age (communities raised it to 18 at different times).  Switzerland: the drinking age (Ticino
+ *       sets its own).  United Kingdom: drinking ages are given for England and Wales apart from Scotland.
+ *   The author's understanding, not confirmed by the sources fetched:
+ *     the US drinking age (state law kept at 21 by federal highway money); Canada's gambling and drinking age (provincial
+ *     liquor and gaming law); Australia's gambling; Germany's gambling (the Länder's state treaty); Austria's drinking age
+ *     (the Länder's youth-protection laws); Argentina's gambling (provincial); Malaysia's gambling (forbidden to Muslims by
+ *     state Islamic law); Nigeria's gambling (state lotteries); the UAE's gambling (a federal regulator was set up in 2023,
+ *     so this may now be national); Spain's gambling (the communities regulate land-based gambling).
  */
 export const REGIONAL_POWERS = {
   us: ['deathPenalty', 'gambling', 'gamblingAge', 'drivingAge', 'drinkingAge'],
   ca: ['gambling', 'gamblingAge', 'drivingAge', 'drinkingAge'],
-  au: ['gambling', 'gamblingAge', 'drivingAge'],
+  au: ['gambling', 'gamblingAge', 'drivingAge', 'drinkingAge'],
   de: ['gambling', 'gamblingAge'],
   at: ['drinkingAge'],
   ch: ['drinkingAge'],
-  mx: ['drivingAge'],
+  mx: ['drivingAge', 'drinkingAge'],
   ar: ['gambling', 'gamblingAge'],
   in: ['alcohol', 'drinkingAge', 'gambling', 'gamblingAge'],
   my: ['gambling'],

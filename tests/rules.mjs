@@ -58,7 +58,7 @@ check(law.rule('drinkingAge', 'pr') === 18 && law.source('drinkingAge', 'pr').so
 check(law.rule('sameSexMarriage', 'jp') === LIVING.jp.laws.marriage && law.rule('deathPenalty', 'us', { region: null }) === LIVING.us.laws.deathPenalty, 'the five older flags still come from living data');
 check(law.lawsOf('ng').lgbt === 'hostile', 'older code gets the shape it expects');
 REGION_RULES['us/test'] = { gamblingAge: 18, gambling: false };
-check(law.rule('gamblingAge', 'us', { region: 'test' }) === 18 && law.rule('gambling', 'us', { region: 'test' }) === false && law.rule('gamblingAge', 'us') === 21, 'a region overrides its place, for that region only');
+check(law.rule('gamblingAge', 'us', { region: 'test' }) === 18 && law.rule('gambling', 'us', { region: 'test' }) === false && law.rule('gamblingAge', 'us', { region: null }) === 21, 'a region overrides its place, for that region only');
 check(law.sheet('us', { region: 'test' }).find((r) => r.id === 'gambling').note === 'local law', 'and says so');
 let p = life('us'); p.regionId = 'test';
 check(!canGamble() && /against the law/.test(law.may('gamble').why), 'the region the player lives in is the one that counts');
@@ -66,7 +66,7 @@ delete REGION_RULES['us/test'];
 section('layers: default, parent state, place, region, each overriding the last');
 
 // 4. What the law allows, in play.
-p = life('us', 19);
+p = life('us', 19); p.regionId = 'illinois'; // casinos from 21 (New York, Washington and Georgia admit from 18)
 check(!canGamble() && /21/.test(law.may('gamble').why) && !activityOptions().some((a) => a.id === 'night'), 'at 19 in the United States: no casino, no bar');
 p = life('uk', 19); check(canGamble() && activityOptions().some((a) => a.id === 'night'), 'at 19 in the United Kingdom: both');
 p = life('sa', 30); check(!law.may('drink').ok && /banned/.test(law.may('drink').why) && !activityOptions().some((a) => a.id === 'night'), 'no night out where alcohol is banned');
@@ -119,6 +119,25 @@ section(`change: enacted law is kept in the save; ${changes} reforms across six 
     for (const [k, v] of Object.entries(r ?? {})) { check(v.status !== 'mismatch', `${c.id}.${k} disagrees with its source: ${v.note ?? ''}`); if (v.status === 'ok') ok += 1; if (v.status === 'review') review += 1; }
   }
   section(`verification: ${ok} laws confirmed against sources, ${review} differ for recorded reasons, none disagree unexplained`);
+}
+
+// 7. Regional law, as checked against its sources (data/rules.js REGION_RULES).
+{
+  const at = (id, place, region) => law.rule(id, place, { region });
+  check(at('deathPenalty', 'us', 'texas') === true && at('deathPenalty', 'us', 'new_york') === false && at('deathPenalty', 'us', 'colorado') === false, 'US: Texas keeps the death penalty; New York and Colorado do not');
+  check(at('gamblingAge', 'us', 'georgia') === 18 && at('gamblingAge', 'us', 'illinois') === 21, 'US: the casino age is 18 in Georgia, 21 in Illinois');
+  check(at('gamblingAge', 'ca', 'ontario') === 19 && at('gamblingAge', 'ca', 'quebec') === 18 && at('drinkingAge', 'ca', 'quebec') === 18 && at('drinkingAge', 'ca', 'ontario') === 19, 'Canada: ages by province');
+  check(at('gamblingAge', 'de', 'bavaria') === 21 && at('gamblingAge', 'de', 'berlin') === 18, 'Germany: casinos from 21 in Bavaria, 18 in Berlin');
+  check(at('drinkingAge', 'in', 'delhi') === 25 && at('drinkingAge', 'in', 'maharashtra') === 25 && at('drinkingAge', 'in', 'west_bengal') === 21, 'India: 25 in Delhi and Maharashtra, 21 elsewhere');
+  check(at('alcohol', 'ae', 'sharjah') === false && at('drinkingAge', 'ae', 'dubai') === 21 && at('drinkingAge', 'ae', 'ras_al_khaimah') === 18, 'UAE: dry Sharjah, 21 in Dubai, 18 in Ras Al Khaimah');
+  check(at('alcohol', 'ng', 'around:Kano') === false && at('alcohol', 'ng', 'around:Lagos') === true, 'Nigeria: alcohol banned in Kano, not in Lagos');
+  check(law.rule('drinkingAge', 'my', { region: null }) === 21 && law.rule('drinkingAge', 'py', { region: null }) === 20, 'Malaysia 21 and Paraguay 20');
+  for (const key of Object.keys(REGION_RULES)) {
+    const [place, region] = key.split('/');
+    const cities = COUNTRIES[place]?.cities ?? [];
+    check(cities.some((c) => law.lawRegion(place, c) === region), `${key}: no city in the game lies in this region`);
+  }
+  section('regional law: the checked values, and every region named has a city in the game');
 }
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of problems) console.log(' -', x); process.exit(1); }
