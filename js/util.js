@@ -23,8 +23,30 @@ export const localWage = (base, country) => niceRound(base * country.currency.sc
 /** Local prices: rent, bills, services, tuition, houses. Imported things (cars, flights) use localMoney. */
 export const localCost = (base, country) => niceRound(base * country.currency.scale * (country.living?.costK ?? 1));
 
+// Money is kept at today's values; a life in the past sees it at the prices of its year (data/history.js).
+let yearOf = () => null;
+let index = null;
+/** Lets money be shown at the prices of the game's year (state.js tells it where the year is). */
+export const setYearSource = (fn) => { yearOf = fn; };
+/** Prices in a year as a share of today's: 1 from the present on. */
+export function priceLevel(year) {
+  if (!index || year == null || year >= index.present) return 1;
+  const t = index.table;
+  if (year <= t[0][0]) return t[0][1];
+  for (let i = 1; i < t.length; i++) if (year <= t[i][0]) { const [y0, v0] = t[i - 1]; const [y1, v1] = t[i]; return v0 + (v1 - v0) * (year - y0) / (y1 - y0); }
+  return 1;
+}
+export const setPriceIndex = (table, present) => { index = { table, present }; };
+
 export function fmtMoney(amount, country) {
-  const n = Math.round(amount);
+  const k = priceLevel(yearOf());
+  const v = amount * k;
+  // Small sums in the past keep their pennies: a loaf was not free in 1950.
+  if (k < 1 && Math.abs(v) < 100 && Math.abs(v) > 0) {
+    const body = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${v < 0 ? '-' : ''}${country.currency.symbol}${body}`;
+  }
+  const n = Math.round(v);
   const body = Math.abs(n).toLocaleString('en-US');
   return `${n < 0 ? '-' : ''}${country.currency.symbol}${body}`;
 }

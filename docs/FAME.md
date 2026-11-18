@@ -64,10 +64,20 @@ node tests/music.mjs   # bands as people, songs, releases judged once, royalties
 The new-life screen offers a birth year back to 1920 (`js/data/eras.js`). What had not been invented does
 not exist: careers (`CAREER_ERAS`: no software before 1955, no influencers before 2006), freelance services
 (`SERVICE_ERAS`), kinds of business (`BUSINESS_ERAS`), social media (`SOCIAL_FROM`), dating apps (personal
-ads before 2009), and every medium, sport and award by its founding year (`MEDIA_ERAS`, `SPORTS`, award
-bodies). Women's professional leagues begin in their own years. Countries, laws and prices are today's,
-and money is shown at today's values throughout: a constant-price world, chosen over inflating every stored
-salary and price.
+ads before 2009), and every medium, sport, genre and award by its founding year. Women's professional leagues
+begin in their own years.
+
+**Prices** (`js/data/history.js`, `fmtMoney` in `js/util.js`): money is kept at today's values underneath, so every
+system stays in proportion, and is *shown* at the prices of the game's year: a typical American wage reads $3,375 in
+1950, $24,120 in 2000 and $45,000 today. One price index serves every country (a simplification), and from the present
+on prices are shown as they are, so lives begun today are unchanged.
+
+**History** (`js/engine/history.js`): the Great Depression (1929–33), the Second World War (at home in Britain, France,
+Germany, Japan and others; fought abroad by the United States, Canada, Australia and others), the drafts for Korea and
+Vietnam, peacetime conscription (American draft 1940–73, British national service to 1960, West Germany 1956–2011,
+Australia's ballot 1964–72), the oil shock, the early-1980s and 2008 recessions, the 2020 pandemic, and moments everyone
+remembers, in the news. Wars and slumps turn the economy; men of age are sent call-up papers; conscription becomes the
+law and is repealed with the years. A life begun mid-war finds it already under way. Countries and borders are today's.
 
 ## Bands, genres and labels
 
@@ -126,7 +136,7 @@ The best-connected representative brings brand deals, bigger ones, and takes the
 
 ## Not built yet
 
-- Prices and wages do not change with the era (see above); historical events (wars, depressions) are not modelled
-  beyond the economy engine's own cycles; countries and borders are today's.
+- One price index for every country; countries, borders and currencies are today's (no Deutsche Mark, no Soviet Union
+  as a place to live).
 - Sport: no transfers between countries, no Olympic-style team events, no management of a squad.
 - Session work and songwriting do not make credits on other acts' albums beyond the single written.

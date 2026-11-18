@@ -82,6 +82,13 @@ export function outlook(id = player().countryId) {
 
 // ---------- The year ----------
 
+/** Sets a country's economy and crisis from outside (engine/history.js): history decides, not the dice. */
+export function setPlace(id, { phase, crisis } = {}) {
+  if (!COUNTRIES[id]) return;
+  if (phase) turn(id, phase, true);
+  if (crisis !== undefined) Object.assign(entry(id), { crisis, crisisSince: crisis ? store.state.year : null });
+}
+
 function turn(id, to, quiet) {
   const e = entry(id);
   if (e.phase === to) return;
@@ -98,7 +105,7 @@ export function tickEconomy() {
   if (rng.chance(WORLD_DOWNTURN.chance)) {
     let n = 0;
     for (const c of COUNTRY_LIST) if (phaseOf(c.id) !== 'slump' && rng.chance(WORLD_DOWNTURN.share)) { turn(c.id, 'slump', true); n += 1; }
-    post(null, 'economy', `A financial crisis has spread around the world. ${n} economies are in recession${phaseOf() === 'slump' ? `, ${the(player().countryId)} among them` : ''}.`, 'bad');
+    if (n) post(null, 'economy', `A financial crisis has spread around the world. ${n} economies are in recession${phaseOf() === 'slump' ? `, ${the(player().countryId)} among them` : ''}.`, 'bad');
     return;
   }
   for (const c of COUNTRY_LIST) {

@@ -102,7 +102,7 @@ export function renderCreator(app, hooks) {
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
           ${picker('era', 'The year you are born', 'This year', START_YEARS.filter(Boolean).map((y) => ({ value: String(y), label: String(y) })))}
-          <p class="muted" style="margin-top:-4px">An earlier year means what has not been invented yet does not exist: no internet before the 1990s, no television before 1950. Money is shown at today's values.</p>
+          <p class="muted" style="margin-top:-4px">An earlier year means what has not been invented yet does not exist: no internet before the 1990s, no television before 1950. Prices are shown as they were that year, and history happens: depressions, wars, call-ups.</p>
           <div data-rank-field hidden>
             ${picker('birthRank', 'Born into', 'Random', named({ commoner: 'Commoners', noble: 'The nobility', royal: 'The royal family' }))}
             <p class="muted" data-rank-note></p>

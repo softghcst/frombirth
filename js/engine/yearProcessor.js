@@ -40,6 +40,7 @@ import { tickFx } from './currency.js';
 import { tickRules } from './rules.js';
 import { tickCover } from './systems.js';
 import { tickEconomy, tickMoves, familyLeaves, ties } from './economy.js';
+import { tickHistory } from './history.js';
 import { tickStatus, tickApart, tickFamilyStatus } from './immigration.js';
 import { emigrate } from './emigration.js';
 import { tickSchoolFunding } from './edlegacy.js';
@@ -125,6 +126,7 @@ export function advanceYear() {
   booked('insurance', 'Health insurance', tickCover);
   tickRules();
   tickEconomy();
+  tickHistory(); // lives in the past meet history (data/history.js)
   tickMoves();
   { const to = familyLeaves(); if (to) emigrate(to, { forced: true, family: true }); }
   tickApart();
