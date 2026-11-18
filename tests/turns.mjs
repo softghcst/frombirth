@@ -152,6 +152,38 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   section('scenes between years: only with shorter turns, in their season and hemisphere, fitting the life, on their own luck', n);
 }
 
+// 4. Scenes tied to a moment, the undo button, and ages with months.
+{
+  const n = problems.length;
+  const timed = EVENTS.filter((e) => e.timing);
+  check(timed.some((e) => e.timing.yearTurn) && timed.some((e) => e.timing.seasons), 'birthday and New Year scenes, and season scenes, are marked');
+  // In many three-month lives: a birthday scene only when the year turns; a season scene only in its season.
+  for (let t = 0; t < 8; t++) {
+    life(t % 2 ? 'au' : 'uk', t % 2 ? 'Sydney' : 'London');
+    turns.setStep(t % 3 ? 3 : 6);
+    for (let i = 0; i < 4 * 40 && P().alive; i++) {
+      turns.advanceTurn();
+      const m = turns.monthOf();
+      const seasons = turns.turnSeasons(m || 12, turns.stepOf(), P().countryId);
+      for (const pe of S().pendingEvents.splice(0)) {
+        const ev = EVENT_BY_ID[pe.id];
+        if (!ev?.timing) continue;
+        if (ev.timing.yearTurn) check(m === 0, `${pe.id} comes only when the year turns (month ${m})`);
+        if (ev.timing.seasons) check(ev.timing.seasons.some((x) => seasons.includes(x)), `${pe.id} comes only in its season (${seasons.join('/')} in ${P().countryId})`);
+      }
+    }
+  }
+  // Undo reaches three years back whatever the turn length, and says where it goes.
+  const { pushUndo, peekUndo, undoDepth } = await import('../js/save.js');
+  life(); turns.setStep(3);
+  for (let i = 0; i < 16; i++) { pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; }
+  check(undoDepth(S().slotId) === 12, `three years of three-month turns can be taken back (${undoDepth(S().slotId)})`);
+  const to = peekUndo(S().slotId);
+  check(to && to.month === 9 && to.age === P().age - 1, `going back from the turn of a year lands on its last quarter (${JSON.stringify(to)})`);
+  check(turns.ageLabel(0, 3) === '3 months' && turns.ageLabel(1, 6) === '1 year, 6 months' && turns.ageLabel(40, 9) === '40 years, 9 months' && turns.ageLabel(7, 0) === '7', 'ages read naturally');
+  section('timing: birthdays at the turn of the year, season scenes in their season; undo by the turn, three years back', n);
+}
+
 for (const m of ok) console.log(`ok   ${m}`);
 for (const m of problems) console.log(`FAIL ${m}`);
 if (problems.length) { console.log(`${problems.length} problem(s).`); process.exit(1); }

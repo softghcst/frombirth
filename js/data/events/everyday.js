@@ -244,7 +244,7 @@ export default [
     ],
   },
   {
-    id: 'new_year_resolution', category: 'health', ageRange: [18, 85], cooldown: 8,
+    id: 'new_year_resolution', timing: { yearTurn: true }, category: 'health', ageRange: [18, 85], cooldown: 8,
     text: 'It is the first of January. This year is going to be different.',
     choices: [
       { label: 'Get fit', check: chk(0.35, { 'hidden.discipline': 0.9 }), outcomes: [
@@ -331,7 +331,7 @@ export default [
 
   // ---------- Middle years ----------
   {
-    id: 'milestone_birthday', category: 'middle years', ageRange: [40, 60], cooldown: 9, requires: [need('age', 'in', [40, 50, 60])],
+    id: 'milestone_birthday', timing: { yearTurn: true }, category: 'middle years', ageRange: [40, 60], cooldown: 9, requires: [need('age', 'in', [40, 50, 60])],
     text: 'A birthday with a nought on the end. People keep asking how you feel about it.',
     choices: [
       { label: 'Throw a big party', requires: [has(800)], outcomes: [any('Everyone you love in one room, and a cake that is a fire risk.', 'good', cash(-800), st('mood', 12), st('charm', 2))] },

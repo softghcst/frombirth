@@ -146,7 +146,7 @@ export default [
   },
 
   {
-    id: 'first_bike', category: 'childhood', ageRange: [5, 8], once: true, weight: 3, cast: { father: 'father' },
+    id: 'first_bike', timing: { yearTurn: true }, category: 'childhood', ageRange: [5, 8], once: true, weight: 3, cast: { father: 'father' },
     text: 'There is a large, badly wrapped, bicycle-shaped present in the hallway on your birthday.',
     choices: [
       { label: 'Tear the paper off', outcomes: [any('It is exactly the one you wanted. {father} spends the afternoon running behind you, holding the saddle.', 'good', giveVehicle('kids_bike'), st('mood', 12), rel('father', 6))] },

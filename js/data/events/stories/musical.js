@@ -75,7 +75,7 @@ const NOT_YET = [flag('auditionFailed'), ...triple(2), st('mood', -6)];
 export default [
   // ---------- Building history with the director (ages 14–16) ----------
   {
-    id: 'mt_callbacks', category: 'musical theater', ageRange: [13, 16], once: true, weight: 5,
+    id: 'mt_callbacks', timing: { seasons: ['fall', 'winter'] }, category: 'musical theater', ageRange: [13, 16], once: true, weight: 5,
     requires: [inCompany], cast: { director: 'tag:director' },
     text: 'Callbacks for the winter show. {director} has it down to you and one other student for the solo.',
     choices: [

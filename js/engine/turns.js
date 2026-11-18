@@ -13,6 +13,9 @@ import { cap } from '../util.js';
 import { advanceYear } from './yearProcessor.js';
 import { book } from './ledger.js';
 import { drawBetween } from './eventEngine.js';
+import { seasonAt, turnSeasons } from './calendar.js';
+
+export { seasonAt, turnSeasons };
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
@@ -25,33 +28,16 @@ export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'Jun
 export const stepOf = (state = store.state) => (STEPS.includes(state?.settings?.step) ? state.settings.step : 12);
 export const monthOf = (state = store.state) => state?.month ?? 0;
 
-/** Countries where the seasons run the other way round. */
-const SOUTHERN = new Set(['au', 'nz', 'za', 'ar', 'cl', 'uy', 'py', 'br', 'bo', 'pe', 'na', 'bw', 'zw', 'mz', 'mg', 'ls', 'sz', 'zm', 'mw', 'fj', 'ws', 'to', 'pg']);
-const NORTH = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'fall', 'fall', 'fall', 'winter'];
-const FLIP = { winter: 'summer', summer: 'winter', spring: 'fall', fall: 'spring' };
-/** The season at a month where the player lives. */
-export function seasonAt(month, countryId) {
-  const s = NORTH[((month % 12) + 12) % 12];
-  return SOUTHERN.has(countryId) ? FLIP[s] : s;
-}
 export const seasonNow = (state = store.state) => seasonAt(monthOf(state), state.player.countryId);
-/**
- * The seasons of a turn: those of the months it covers, the turn ending at `end` (12 for the turn of the year). The
- * first is the one most of the turn was spent in, for headings.
- */
-export function turnSeasons(end, step, countryId) {
-  const count = {};
-  for (let m = end - step; m < end; m++) { const s = seasonAt(m, countryId); count[s] = (count[s] ?? 0) + 1; }
-  return Object.keys(count).sort((a, b) => count[b] - count[a]);
-}
 
-/** The player's age, with the months when the turns are shorter than a year: "15", or "15 years, 6 months". */
-export function ageText(p, state = store.state) {
-  const m = monthOf(state);
-  if (!m) return `${p.age}`;
-  if (p.age === 0) return `${m} months`;
-  return `${p.age} ${p.age === 1 ? 'year' : 'years'}, ${m} months`;
+/** An age with months: "15", "15 years, 6 months", "1 year, 3 months", or "3 months" for a baby. */
+export function ageLabel(age, month = 0) {
+  if (!month) return `${age}`;
+  if (age === 0) return `${month} months`;
+  return `${age} ${age === 1 ? 'year' : 'years'}, ${month} months`;
 }
+/** The player's age, with the months when the turns are shorter than a year. */
+export const ageText = (p, state = store.state) => ageLabel(p.age, monthOf(state));
 /** What the next turn brings, for the button: the next age, or the next season. */
 export function nextTurnText(state = store.state) {
   const p = state.player;
