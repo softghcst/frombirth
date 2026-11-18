@@ -19,6 +19,7 @@ import { convertMoney } from './emigration.js';
 import { SCHEMA_VERSION, getGraveyard } from '../save.js';
 import { ledgerOf } from './ledger.js';
 import { carryTrust } from './trusts.js';
+import { carryTraditions } from './moments.js';
 import { rollLongevity } from './death.js';
 import { normalize } from '../avatar/catalog.js';
 import { cloneAppearance } from '../avatar/inherit.js';
@@ -296,7 +297,8 @@ export function continueAs(npcId) {
   ledgerOf(next, { desc: `Your own savings, and what ${op.firstName} left you`,
     inheritance: Math.round(share * (moved ? COUNTRIES[abroad].currency.scale / COUNTRIES[op.countryId].currency.scale : 1)) });
   if (share > 0 || player.assets.length) player.milestones.push({ age: h.age, text: `Inherited from ${op.firstName}.`, kind: 'money' });
-  carryTrust(old, next, h.id, `${op.firstName} ${op.lastName}`); // a trust still being held for them stays held
+  carryTrust(old, next, h.id, `${op.firstName} ${op.lastName}`);
+  carryTraditions(old, next, h.id); // the family's traditions go on with the family // a trust still being held for them stays held
   if (h.flags.moneySense) player.flags.moneySense = h.flags.moneySense; // what allowance taught them
   if (player.finance.lifetimeEarned > 0 || player.career.salary) player.flags.firstPay = true;
 
