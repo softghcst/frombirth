@@ -3,9 +3,9 @@
 // GAMEPLAY SHAPES, NOT REAL SCHEDULES. A country's tax is its headline rate
 // (data/countries.js) run through one of three shapes; the thresholds are
 // multiples of that country's typical wage in the game, not real brackets.
-// Which shape a country gets is the author's coarse understanding of the
-// mid-2020s and is unverified; the top rates and the health-care models are
-// checked by scripts/verify-laws.py. Real systems
+// Which countries tax at one flat rate, the top rates and the health-care
+// models are checked by scripts/verify-laws.py; whether a banded country's
+// bands rise steeply or moderately is the author's judgement. Real systems
 // have credits, deductions, contributions, regional taxes, co-payments and
 // exceptions that are not modelled. Nothing here is tax or medical advice.
 
@@ -25,7 +25,7 @@ export const TAX_SHAPE_OF = {
   // Steeply progressive
   uk: 'steep', ca: 'steep', fr: 'steep', de: 'steep', jp: 'steep', kr: 'steep', au: 'steep', se: 'steep', dk: 'steep', no: 'steep', fi: 'steep', be: 'steep', nl: 'steep', at: 'steep', ie: 'steep', it: 'steep', es: 'steep', pt: 'steep',
   // One rate for everyone
-  ua: 'flat', hu: 'flat', ro: 'flat', ee: 'flat', ge: 'flat', kz: 'flat', mn: 'flat', bo: 'flat',
+  ua: 'flat', hu: 'flat', ro: 'flat', ee: 'flat', ge: 'flat', kz: 'flat', mn: 'flat', bo: 'flat', bz: 'flat',
   // Russia replaced its flat 13% with bands up to 22% in 2025.
   ru: 'moderate',
 };
