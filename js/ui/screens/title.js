@@ -10,6 +10,7 @@ import { avatarSvg } from '../avatar.js';
 import { confirmModal } from '../modals.js';
 import { openEpitaphCollection } from './obituary.js';
 import { EPITAPHS, EPITAPH_BY_ID } from '../../data/epitaphs.js';
+import { ageLabel } from '../../engine/turns.js';
 
 const MARK = `
   <svg class="title-mark" viewBox="0 0 64 64" aria-hidden="true">
@@ -33,8 +34,8 @@ export function renderTitle(app, hooks) {
         <button class="row" data-load="${s.slotId}" style="border:0;margin:0;padding:0;background:none;flex:1;min-width:0">
           <div class="avatar">${avatarSvg({ age: s.age, gender: s.gender, appearance: s.appearance, seed: s.slotId })}</div>
           <div class="main"><strong>${esc(s.name)}</strong>
-            <small>${s.dead ? `Died at ${s.age} · choose who carries on` : `Age ${s.age} · ${c.flag} ${esc(c.name)} · ${fmtMoney(s.netWorth, c)}`}</small>
-            ${s.timeline ? `<small class="timeline-tag">${esc(s.timeline.name)}${s.timeline.note ? ` · parted at ${s.timeline.age}: ${esc(s.timeline.note)}` : ''}</small>` : ''}</div>
+            <small>${s.dead ? `Died at ${s.age} · choose who carries on` : `Age ${esc(ageLabel(s.age, s.month))} · ${c.flag} ${esc(c.name)} · ${fmtMoney(s.netWorth, c)}`}</small>
+            ${s.timeline ? `<small class="timeline-tag">${esc(s.timeline.name)}${s.timeline.note ? ` · parted at ${esc(ageLabel(s.timeline.age, s.timeline.month))}: ${esc(s.timeline.note)}` : ''}</small>` : ''}</div>
         </button>
         ${s.timeline && timelinesOf(s.timeline.root).length > 1 ? `<button class="icon-btn" data-compare="${s.timeline.root}" aria-label="Compare timelines">⇄</button>` : ''}
         <button class="icon-btn" data-delete="${s.slotId}" aria-label="Delete ${esc(s.name)}">✕</button>
@@ -108,8 +109,8 @@ function compareTimelines(root) {
     const kids = people.filter((n) => n.role === 'child').length;
     const last = (p.milestones ?? []).slice(-3).reverse();
     return `<div class="card timeline-card"><h3>${esc(x.m.timeline?.name ?? 'The first telling')}</h3>
-      ${x.m.timeline?.note ? `<p class="muted">Parted at ${x.m.timeline.age}: ${esc(x.m.timeline.note)}</p>` : '<p class="muted">The road first taken.</p>'}
-      <div class="kv"><span>Now</span><span>${p.alive ? `Age ${p.age}` : `Died at ${p.age}`} · ${c.flag} ${esc(p.city)}</span></div>
+      ${x.m.timeline?.note ? `<p class="muted">Parted at ${esc(ageLabel(x.m.timeline.age, x.m.timeline.month))}: ${esc(x.m.timeline.note)}</p>` : '<p class="muted">The road first taken.</p>'}
+      <div class="kv"><span>Now</span><span>${p.alive ? `Age ${esc(ageLabel(p.age, x.st.month))}` : `Died at ${p.age}`} · ${c.flag} ${esc(p.city)}</span></div>
       <div class="kv"><span>Work</span><span>${esc(p.politics?.title ?? p.career.title ?? (p.education.enrolled ? 'Studying' : p.career.retired ? 'Retired' : 'Not working'))}</span></div>
       <div class="kv"><span>Worth</span><span>${fmtMoney(x.m.netWorth, c)}</span></div>
       <div class="kv"><span>Love</span><span>${love ? `${esc(love.firstName)}${love.role === 'spouse' ? ' (married)' : ''}` : 'Nobody'}${kids ? ` · ${kids} ${kids === 1 ? 'child' : 'children'}` : ''}</span></div>

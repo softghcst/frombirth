@@ -157,7 +157,7 @@ export default [
     ],
   },
   {
-    id: 'birthday_money', category: 'childhood', ageRange: [5, 12], cooldown: 4,
+    id: 'birthday_money', timing: { yearTurn: true }, category: 'childhood', ageRange: [5, 12], cooldown: 4,
     text: 'A relative has tucked {$25} into your birthday card.',
     choices: [
       { label: 'Save it', outcomes: [any('It goes in the jar on your shelf.', 'good', cash(25), hid('discipline', 3))] },
