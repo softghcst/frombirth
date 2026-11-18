@@ -302,4 +302,20 @@ export const REHAB = {
 export const SPONSORS = ['Northline Athletic', 'Kestrel Sportswear', 'Brightwater Drinks', 'Summit Timepieces', 'Vela Motors', 'Harbor Bank', 'Ember Nutrition', 'Lark Optics'];
 /** Invented words for team and club names; {C} is the city. */
 export const TEAM_WORDS = ['Rovers', 'United', 'Athletic', 'City', 'Wanderers', 'Comets', 'Falcons', 'Harriers', 'Lions', 'Royals', 'Pioneers', 'Rangers', 'Storm', 'Thunder', 'Mariners', 'Wolves'];
+/** Team nicknames, by the kind of names each sport's clubs tend to have (made up; any can be renamed in Settings). */
+export const MASCOTS = {
+  soccer: ['United', 'City', 'Athletic', 'Rovers', 'Wanderers', 'Albion', 'Town', 'Rangers', 'Harriers', 'Villa', 'Argyle', 'Dynamo', 'Sporting', 'Olympic', 'Victoria', 'Corinthians'],
+  basketball: ['Comets', 'Thunder', 'Falcons', 'Storm', 'Blaze', 'Hawks', 'Knights', 'Vipers', 'Rockets', 'Pumas', 'Titans', 'Kings', 'Flyers', 'Jaguars', 'Cyclones', 'Spartans'],
+  baseball: ['Bears', 'Owls', 'Mariners', 'Pioneers', 'Stallions', 'Foxes', 'Sentinels', 'Barons', 'Grizzlies', 'Hornets', 'Mustangs', 'Express', 'Miners', 'Sox', 'Captains', 'Skyhawks'],
+  american_football: ['Wolves', 'Lions', 'Chargers', 'Stampede', 'Ironmen', 'Buffalo', 'Raiders', 'Wildcats', 'Generals', 'Thunderbirds', 'Bulldogs', 'Outlaws', 'Coyotes', 'Rams', 'Admirals', 'Patriots'],
+  ice_hockey: ['Blades', 'Glaciers', 'Icemen', 'Lynx', 'Huskies', 'Avalanche', 'Bandits', 'Wolverines', 'Polar Bears', 'Frost', 'Ravens', 'Stars', 'Fury', 'Moose', 'Phantoms', 'Generals'],
+  rugby: ['Warriors', 'Saracens', 'Harlequins', 'Bulls', 'Highlanders', 'Chiefs', 'Rebels', 'Tigers', 'Sharks', 'Dragons', 'Crusaders', 'Stormers', 'Cheetahs', 'Brumbies', 'Ospreys', 'Scarlets'],
+  cricket: ['Strikers', 'Sixers', 'Scorchers', 'Heat', 'Renegades', 'Hurricanes', 'Royals', 'Super Kings', 'Gladiators', 'Zalmi', 'Capitals', 'Tridents', 'Spirit', 'Invincibles', 'Phoenix', 'Fire'],
+  volleyball: ['Spikers', 'Waves', 'Sunrays', 'Breakers', 'Aces', 'Rallies', 'Herons', 'Gulls', 'Volts', 'Flames', 'Comets', 'Tides', 'Eagles', 'Panthers', 'Sparks', 'Jets'],
+};
+export const mascotsFor = (sport) => MASCOTS[sport?.id] ?? MASCOTS[sport?.adapter === 'baseball' ? 'baseball' : 'basketball'];
+/** Jersey colors: a club's home and away shirts are two of these. */
+export const JERSEY_COLORS = [['Red', '#c8102e'], ['Crimson', '#8a1538'], ['Orange', '#f47a20'], ['Gold', '#f2b51c'], ['Yellow', '#ffd400'], ['Green', '#00843d'],
+  ['Forest', '#1f4d2b'], ['Teal', '#00787a'], ['Sky blue', '#6cace4'], ['Royal blue', '#1d4f91'], ['Navy', '#0b1f41'], ['Purple', '#5b2c83'], ['Maroon', '#6a1f2b'],
+  ['Black', '#141414'], ['White', '#f6f6f2'], ['Silver', '#a7a9ac'], ['Brown', '#5c3a21'], ['Pink', '#e8749a']];
 export const CLUB_WORDS = ['Riverside', 'Northgate', 'Elm Park', 'Westfield', 'Harbor', 'Oakmont', 'Southbank', 'Hillcrest', 'Meadowbrook', 'Kingsway', 'Ashford', 'Lakeside'];

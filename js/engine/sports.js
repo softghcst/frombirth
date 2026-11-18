@@ -24,7 +24,7 @@
 import { store, player, log, milestone, livingNpcs } from '../state.js';
 import { clamp, cap, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS } from '../data/sports.js';
+import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS, mascotsFor, JERSEY_COLORS } from '../data/sports.js';
 import { makeNpc } from './npcFactory.js';
 import { remember } from './conditions.js';
 import { school as currentSchool, atSchool } from './schooling.js';
@@ -411,8 +411,8 @@ const cityOf = (p) => p.city ?? COUNTRIES[p.countryId].cities?.[0] ?? 'Home';
 function orgName(r, kind, sport, city) {
   if (kind === 'rec') return `${city} ${sport.kind === 'team' ? 'Youth' : 'Community'} ${sport.name}`;
   if (kind === 'academy') return `${r.pick(CLUB_WORDS)} ${sport.name} Academy`;
-  if (kind === 'pro') return `${city} ${r.pick(TEAM_WORDS)}`;
-  return `${r.pick(CLUB_WORDS)} ${sport.kind === 'team' ? r.pick(TEAM_WORDS) : `${sport.name} Club`}`;
+  if (kind === 'pro') return `${city} ${r.pick(sport.kind === 'team' ? mascotsFor(sport) : TEAM_WORDS)}`;
+  return `${r.pick(CLUB_WORDS)} ${sport.kind === 'team' ? r.pick(mascotsFor(sport)) : `${sport.name} Club`}`;
 }
 /** Strength of an org's teams, by level: what a typical player there is like. */
 const LEVEL_STRENGTH = { recreational: 28, club: 45, school: 42, academy: 60, college: 64, pro: 76, elite: 80 };
@@ -763,7 +763,8 @@ function leagueFor(state, org, team) {
     for (let i = 0; i < 7; i++) {
       const city = cities[i % cities.length];
       let name = '';
-      for (let t = 0; t < 20 && (!name || taken.has(name)); t++) name = org.level === 'pro' ? `${city} ${r.pick(TEAM_WORDS)}` : t < 10 && !taken.has(`${city} ${sport.kind === 'team' ? r.pick(TEAM_WORDS) : sport.name}`) ? `${city} ${r.pick(TEAM_WORDS)}` : `${r.pick(CLUB_WORDS)} ${r.pick(TEAM_WORDS)}`;
+      const nick = sport.kind === 'team' ? mascotsFor(sport) : TEAM_WORDS;
+      for (let t = 0; t < 20 && (!name || taken.has(name)); t++) name = org.level === 'pro' ? `${city} ${r.pick(nick)}` : t < 10 ? `${city} ${r.pick(nick)}` : `${r.pick(CLUB_WORDS)} ${r.pick(nick)}`;
       taken.add(name);
       const rival = findOrg(state, sport, org.level, { key: `${key}/rival/${i}`.replace(/\/women\//, '/'), city, strength: r.int(-8, 8), tier: org.tier, name, div: org.div ?? 'mixed' });
       lg.teamIds.push(teamFor(state, rival).id);

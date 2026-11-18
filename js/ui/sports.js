@@ -9,6 +9,8 @@ import { COUNTRIES } from '../data/countries.js';
 import { sportOf, PLANS, LOADS, LEVEL_NAMES, INJURIES } from '../data/sports.js';
 import * as sp from '../engine/sports.js';
 import * as life from '../engine/sportsLife.js';
+import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
+import { jerseySvg, jerseyDot, inkOn } from './jersey.js';
 import { fmtMark } from '../engine/sportsPlay.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { createNav } from './animalNav.js';
@@ -281,8 +283,9 @@ function teamProfile(step) {
   const sport = sportOf(t.sportId);
   const pos = (id) => sport.positions?.find((x) => x[0] === id)?.[1] ?? '';
   return { title: t.name, sub: `${levelName(org.level)} · ${org.city} · founded ${org.founded}`, body: `
+    <div class="jersey-pair">${jerseySvg(colorsOf(org), '', 52, `${t.name} home jersey`)}${jerseySvg({ home: colorsOf(org).away, away: colorsOf(org).home }, '', 52, `${t.name} away jersey`)}<small class="muted">Home and away. Names, colors and numbers can be changed in Settings → Teams and jerseys.</small></div>
     ${coach ? row(`data-coach="${coach.id}"`, '🧢', coach.name, `Coach · ${coach.style}`) : ''}
-    ${label('Roster')}${t.roster.slice().sort((x, y) => y.rating - x.rating).map((x) => `<div class="kv"><span>${x.npcId || (x.id === player().id) ? `<a href="#" ${x.id === player().id ? '' : `data-person="${x.npcId}"`}>${esc(x.name)}${x.id === player().id ? ' (you)' : ''}</a>` : esc(x.name)}</span><span>${esc(pos(x.pos))} · ${x.rating}</span></div>`).join('')}
+    ${label('Roster')}${numbersOf(t).roster.slice().sort((x, y) => y.rating - x.rating).map((x) => `<div class="kv"><span><span class="tm-num" style="background:${colorsOf(org).home};color:${inkOn(colorsOf(org).home)}">${x.num}</span>${x.npcId || (x.id === player().id) ? `<a href="#" ${x.id === player().id ? '' : `data-person="${x.npcId}"`}>${esc(x.name)}${x.id === player().id ? ' (you)' : ''}</a>` : esc(x.name)}</span><span>${esc(pos(x.pos))} · ${x.rating}</span></div>`).join('')}
     ${label('History')}${t.history.slice(-12).reverse().map((h) => (h.seasonId ? `<a href="#" class="kv" data-season="${h.seasonId}"><span>${h.year}</span><span>${ordinal(h.place)}${h.champion ? ', champions' : ''}</span></a>` : kv(String(h.year), esc(h.text)))).join('') || empty('No seasons yet.')}` };
 }
 function coachProfile(step) {
@@ -305,7 +308,7 @@ function seasonProfile(step) {
   const mineF = s.fixtures.filter((f) => f.home === s.playerTeamId || f.away === s.playerTeamId);
   return { title: s.name, sub: s.champion ? `Champions: ${name(s.champion)}` : 'No champion', body: `
     ${label('Table')}<p class="muted">Counted from completed games.</p>
-    ${t.map((x, i) => `<div class="kv"><span>${i + 1}. ${x.teamId === s.playerTeamId ? `<strong>${esc(name(x.teamId))}</strong>` : esc(name(x.teamId))}</span><span>${x.w}–${x.d ? `${x.d}–` : ''}${x.l} · ${x.pts} pts</span></div>`).join('')}
+    ${t.map((x, i) => `<div class="kv"><span>${i + 1}. ${jerseyDot(colorsOf(sp.orgOf(sp.teamOf(x.teamId)?.orgId)))}${x.teamId === s.playerTeamId ? `<strong>${esc(name(x.teamId))}</strong>` : esc(name(x.teamId))}</span><span>${x.w}–${x.d ? `${x.d}–` : ''}${x.l} · ${x.pts} pts</span></div>`).join('')}
     ${s.awards ? `${label('Season awards')}${s.awards.map((a) => (a.team ? kv(a.name, esc(a.team.map((x) => (x.who === player().id || x.who === 'player' ? 'You' : x.name)).join(', '))) : kv(a.name, a.winner ? `${a.winner.who === 'player' ? '<strong>You</strong>' : esc(a.winner.name)}${a.winner.teamId ? ` <small class="muted">${esc(name(a.winner.teamId))}</small>` : ''}${a.winner.value != null ? ` · ${a.winner.value}${a.per ? ' a game' : ''}` : ''}` : 'Not awarded'))).join('')}` : ''}
     ${label('Playoffs')}${s.playoffs.map((f) => kv(f.round, `${esc(name(f.home))} ${f.score[0]}–${f.score[1]} ${esc(name(f.away))}${f.decider ? ' (after a decider)' : ''}`)).join('') || empty('None.')}
     ${label('Your games')}${mineF.map((f) => kv(`Round ${f.round}`, `${esc(name(f.home))} ${f.score[0]}–${f.score[1]} ${esc(name(f.away))}${f.me?.played ? ` · rated ${f.me.rating}` : ' · did not play'}`)).join('')}` };
