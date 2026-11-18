@@ -43,7 +43,8 @@ export function roleLabel(npc) {
     case 'ex': return npc.flags.wasSpouse ? byGender(npc, 'Ex-husband', 'Ex-wife', 'Ex-spouse') : 'Ex';
     case 'pet': return `Pet ${npc.species}`;
     // People met through the justice system: what they do, or where they are.
-    case 'official': return npc.flags.inmate && !npc.flags.inmate.released ? 'Inmate' : npc.flags.inmate ? 'Former inmate' : npc.occupation ?? 'Member of the public';
+    case 'official': return npc.flags.inmate && !npc.flags.inmate.released ? 'Inmate' : npc.flags.inmate ? 'Former inmate'
+      : npc.occupation ? npc.occupation.charAt(0).toUpperCase() + npc.occupation.slice(1) : 'Member of the public';
     default: return npc.role.charAt(0).toUpperCase() + npc.role.slice(1);
   }
 }

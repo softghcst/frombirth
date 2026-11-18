@@ -111,6 +111,13 @@ check(fromV2.inherited.skin === 'umber' && fromV2.inherited.eyeColor === 'green'
   && fromV2.style.glasses && fromV2.style.facialHair && fromV2.inherited.marks.join() === 'freckles', 'v2 save lost colors, dye, face shape or accessories');
 // Two relatives who shared an old nose still share one.
 check(normalize({ ...v2 }, 'a').inherited.nose === normalize({ ...v2 }, 'b').inherited.nose, 'old shared nose no longer shared');
+// Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
+const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_22', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
+  314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };
+for (const [i, want] of Object.entries(PINNED)) {
+  const got = normalize({ v: 2, inherited: { face: 'oval', eyeShape: 'e' + i, nose: 'n' + i, lips: 'l' + i, brows: 'b' + i, skin: 0 } }, 's' + i).inherited;
+  check(['eyes', 'nose', 'lips'].map((k) => got[k]).join() === want.join(), `old save ${i} now has a different face: ${['eyes', 'nose', 'lips'].map((k) => got[k])}`);
+}
 
 // 5. Random faces and families.
 let coily = 0, deep = 0;
@@ -258,6 +265,15 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
     check(!/--skin-color|stroke:|fill/.test(nose), `the nose looks different from the face on ${t.id} skin`);
     check(deepness(t.hex) ? /--line-width:[\d.]+/.test(nose) : !/style=/.test(nose), `${t.id}: the nose's lines are ${deepness(t.hex) ? 'not made heavier' : 'changed on a light tone'}`);
     check((svg.match(/--skin-color:/g) ?? []).length === 1, `${t.id}: something sets its own skin colour`);
+  }
+  // Eyes and mouths: only the outline gets heavier. A stroke on the whole part would ring the whites, highlights,
+  // irises and teeth, so the part itself carries no stroke, and each drawing has exactly one shade that takes it.
+  for (const use of deep.matchAll(/<use href="[^"]*(?:eyes|lips)\/[^"]*"([^>]*)\/>/g)) check(!/stroke:/.test(use[1]), 'a stroke on a whole eye or mouth');
+  check(/--line-width:[\d.]+/.test(deep.match(/<use href="[^"]*eyes\/[^"]*"([^>]*)\/>/)?.[1] ?? ''), 'deep eyes are not given heavier lines');
+  for (const key of ['eyes', 'lips']) for (const p of CATALOG[key]) {
+    const art = readFileSync(new URL(`assets/avatars/${PART_BY_ID[p.id].file}`, root), 'utf8');
+    const lined = new Set([...art.matchAll(/fill:(#[0-9a-f]{6});stroke:var\(--line-ink/g)].map((m) => m[1]));
+    check(lined.size === 1, `${p.id}: ${lined.size} shades take the heavier line, not just its outline`);
   }
   const white = deep.match(/--eye-white:(#[0-9a-f]{6})/)[1];
   check(parseInt(white.slice(1, 3), 16) >= 0xd0, `the white of the eye is no longer white (${white})`);

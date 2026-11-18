@@ -126,7 +126,8 @@ const OLD_RESTING = {
 export const current = (key, id) => WITHDRAWN[key]?.[id] ?? id;
 const fromOld = (key, oldId) => {
   if (!oldId) return null;
-  const pool = OLD_RESTING[key] ? OLD_RESTING[key].map((id) => ({ id })) : resting(key);
+  // Sorted as the manifest lists them: the earlier pools were in that order, and the pick depends on it.
+  const pool = OLD_RESTING[key] ? [...OLD_RESTING[key]].sort().map((id) => ({ id })) : resting(key);
   return current(key, seeded(pool, oldId, key).id);
 };
 

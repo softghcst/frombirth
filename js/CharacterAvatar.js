@@ -245,9 +245,10 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // reads as clearly as a lighter one (see READABLE). Stroke is inherited by the artwork a <use> draws.
   const deep = deepness(look.colors?.skin);
   const light = deep ? mixHex(look.colors.skin, '#ffe9d6', READABLE.rim * deep) : null;
-  // Dark lines gain weight; brows gain a faint lighter edge, drawn under their own shapes. The nose's
-  // lines (only its lines: see weigh_lines in the build script) are made darker and heavier.
-  const weigh = (w) => (deep ? ` style="stroke:${READABLE.ink};stroke-width:${n1(w * deep)};stroke-linejoin:round"` : '');
+  // Dark lines gain weight; brows gain a faint lighter edge, drawn under their own shapes. Only the line shapes
+  // take the stroke (weigh_lines in the build script: an eye's or mouth's outline, a nose's lines), so whites,
+  // irises, highlights and teeth stay clean. A nose's lines are also made a little darker.
+  const weigh = (w) => (deep ? ` style="--line-ink:${READABLE.ink};--line-width:${n1(w * deep)}"` : '');
   const rim = (w, extra = '') => (deep ? ` style="${extra}stroke:${light};stroke-width:${n1(w * deep)};stroke-linejoin:round;paint-order:stroke"` : '');
   const kind = (j) => PART_BY_ID[j]?.tags?.kind;
   const necklaces = d.jewelry.filter((j) => kind(j) === 'necklace');

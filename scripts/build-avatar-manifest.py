@@ -986,11 +986,12 @@ def fill_teeth():
     return done
 
 
-def weigh_lines(folder='noses'):
+def weigh_lines(folder='noses', recolor=True):
     """
     Lets the renderer thicken a part's dark lines without touching anything else in it: each ink path
     (not the skin-coloured shape) gets a stroke that is off unless --line-width is set on the portrait.
     The renderer sets it on deeper skin tones, where dark lines on dark skin are hard to see. Once per file.
+    With recolor, --line-ink also recolours the lines themselves (noses); without, only the added stroke uses it.
     -> the names changed
     """
     done = []
@@ -1001,7 +1002,12 @@ def weigh_lines(folder='noses'):
         if not f.endswith('.svg') or 'data-lines="1"' in text or 'data-pathways="1"' not in text:
             continue
         ink = ';stroke:var(--line-ink,currentColor);stroke-width:var(--line-width,0);stroke-linejoin:round'
-        text = re.sub(r'style="fill:(#[0-9a-fA-F]{6})"', lambda m: f'style="fill:var(--line-ink,{m.group(1)}){ink}"' if lum(m.group(1)) < INK else m.group(0), text)
+        fill = (lambda h: f'var(--line-ink,{h})') if recolor else (lambda h: h)
+        dark = sorted({h for h in re.findall(r'style="fill:(#[0-9a-fA-F]{6})"', text) if lum(h) < INK}, key=lum)
+        # Eyes and lips: only the darkest shade is the outline. A second dark shade is a filled area (a shaded iris)
+        # that a stroke would blot.
+        lines = set(dark) if recolor else set(dark[:1])
+        text = re.sub(r'style="fill:(#[0-9a-fA-F]{6})"', lambda m: f'style="fill:{fill(m.group(1))}{ink}"' if m.group(1) in lines else m.group(0), text)
         text = text.replace('data-pathways="1"', 'data-pathways="1" data-lines="1"', 1)
         with open(path, 'w', encoding='utf-8') as out:
             out.write(text)
@@ -1318,9 +1324,9 @@ def main(argv):
                     print(f'{folder}/{f}: ' + '; '.join(notes))
     for name, n in remove_specks().items():
         print(f'removed {n} stray mark(s) from {name}')
-    lined = weigh_lines()
+    lined = weigh_lines() + weigh_lines('eyes', recolor=False) + weigh_lines('lips', recolor=False)
     if lined:
-        print(f'made the lines of {len(lined)} nose(s) adjustable')
+        print(f'made the lines of {len(lined)} part(s) adjustable')
     for name in fill_teeth():
         print(f'filled the teeth of {name}')
     repaired = refit_hair()
