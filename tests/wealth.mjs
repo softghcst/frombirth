@@ -429,7 +429,8 @@ let list = ach.achievements();
 check(list.length === 10 && list.every((x) => !x.earned), 'a life that has done none of it has earned none of it');
 p.finance.cash = 5_000_000; book({ cat: 'giftIn', desc: 'a windfall' });
 check(ach.achievements().filter((x) => x.earned).length === 0, 'having money, on its own, earns nothing');
-hire(office, 2, 60, 'Hired.'); advanceYear();
+// A layoff before payday leaves a year with severance and benefit but no wage, which does not count: so hire again until a wage is paid.
+for (let i = 0; i < 6 && !ach.achievements().find((x) => x.id === 'first_pay').earned; i++) { if (!p.career.careerId) hire(office, 2, 60, 'Hired.'); advanceYear(); store.state.pendingEvents = []; }
 check(ach.achievements().find((x) => x.id === 'first_pay').earned && ach.achievements().find((x) => x.id === 'first_pay').age === p.age, 'the first wage is noticed in the year it happens');
 const sense0 = ach.moneySense();
 for (let i = 0; i < 400; i++) ach.learn(5, 'same');
@@ -781,7 +782,9 @@ section('new scenes: weddings, babies, careers, parents, university, grandparent
   // Early retirement, on what they have put by.
   const rich = person('sibling', 60, { savings: 0, salary: 60000 }); rich.life.fin = null; const r = nm.finOf(rich);
   r.bank = { bankId: 'meridian', name: 'Meridian Bank', bal: 5_000_000, rateBp: 100, opened: 2000 }; rich.life.yearsWorked = 35;
-  let gone = false; for (let i = 0; i < 6 && !gone; i++) gone = nm.tickNpcMoney(rich) === 'retired';
+  // Each year carries a 35% chance (engine/npcMoney.js), so give it enough years; a job lost along the way is given back.
+  const job = rich.life.job;
+  let gone = false; for (let i = 0; i < 40 && !gone; i++) { if (!rich.life.job) rich.life.job = job; gone = nm.tickNpcMoney(rich) === 'retired'; }
   check(gone && rich.life.retired && !rich.life.job && rich.life.pension > 0, 'someone with plenty put by may retire early, on a pension from their years of work');
   const poorer = person('sibling', 60, { savings: 0, salary: 60000 }); poorer.life.fin = null; nm.finOf(poorer);
   for (let i = 0; i < 5; i++) nm.tickNpcMoney(poorer);

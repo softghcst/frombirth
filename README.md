@@ -377,9 +377,10 @@ government that wants them.
 can change them, one a year, through the regional assembly. Which ones depends on the country: an American state can set
 the death penalty, gambling and the driving, drinking and gambling ages; a Canadian province the same except the death
 penalty, which is federal; a German Land only gambling; an Indian state or an emirate can ban alcohol; in Brazil, France,
-Italy or Russia none of these are regional (`REGIONAL_POWERS` in `js/data/rules.js`, not yet checked against sources). A law
-applies to everyone living in the region (where the game records no states, the area around the city). Between a regional
-and a national change to the same law, the more recent one stands.
+Italy or Russia none of these are regional (`REGIONAL_POWERS` in `js/data/rules.js`, checked against sources where they
+exist; see `docs/WORLD_DATA.md`). A law applies to everyone living in the region (where the game records no states, the
+area around the city). What is left to the regions is theirs alone: the national government cannot change it, and in the
+world's own slow reforms these laws change one region at a time.
 
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
