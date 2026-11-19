@@ -65,7 +65,7 @@ async function plan(item, api) {
   const cost = mo.costOf(item, guests.length, style);
   const who = guests.map((id) => store.state.npcs[id]?.firstName).filter(Boolean);
   const sure = await confirmModal({ title: item.label, yes: 'Go ahead',
-    body: `${who.length ? `With ${who.join(', ')}. ` : ''}${style ? `${STYLES[style].name}. ` : ''}${cost ? `About ${fmtMoney(cost, c)}${player().age < 18 && player().flags.livesWithParents ? ', which your family will pay' : ''}.` : 'It costs nothing.'}${makeTradition ? ' And every year after.' : ''}` });
+    body: `${who.length ? `With ${who.join(', ')}. ` : ''}${style ? `${STYLES[style].name}. ` : ''}${cost ? `About ${fmtMoney(cost, c)}${mo.familyPays() ? ', which your family will pay' : ''}.` : 'It costs nothing.'}${makeTradition ? ' And every year after.' : ''}` });
   if (!sure) return undefined;
   return mo.celebrate({ key: item.key, guests, style, makeTradition });
 }

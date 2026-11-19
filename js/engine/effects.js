@@ -21,7 +21,7 @@ import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { addCondition, cureCondition } from './health.js';
 import { healthEffect } from './health/story.js';
-import { remember } from './conditions.js';
+import { remember, parentsPay, parentsSpend } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
 import { hitProperty } from './realEstate.js';
 import { hitVehicle, giveVehicle } from './vehicles.js';
@@ -67,6 +67,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       case 'cash': {
         const amt = localMoney(e.delta, c);
+        // A young child at home does not pay for the family's choices: the parents do.
+        if (amt < 0 && parentsPay(p)) { parentsSpend(-amt, p); shown.push({ label: 'Paid by your parents', delta: amt, money: true, family: true }); break; }
         p.finance.cash += amt;
         if (amt > 0) p.finance.lifetimeEarned += amt;
         shown.push({ label: 'Cash', delta: amt, money: true });
