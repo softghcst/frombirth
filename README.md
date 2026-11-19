@@ -267,8 +267,9 @@ grin and the parted lips showing teeth (`lips_masc_01`, `_05`, `_08`) can be cho
 toward rose, and a man's are his own skin a shade darker with no pink in them. From bronze downward a man's lips are
 two-toned, as most lips on deep skin are: the upper lip darker than the skin, the lower lighter and a little rosier
 (`NATURAL_LIPS` and `lipColors` in `js/avatar/catalog.js`). The men's mouths are drawn in two tones, the upper lip in
-`--lip-upper`; the women's mouths are drawn in one. One mouth (`lips_4`) was drawn with a much heavier outline than
-the rest, and is thinned to match by the script (`THIN_OUTLINE`).
+`--lip-upper`; the women's mouths are drawn in one. One mouth (`lips_4`) was drawn with an outline half as heavy again
+as the rest, in a redder ink: the script trims the outside of its outline and the line between its lips, and draws it
+in the same ink as the others (`THIN_OUTLINE`).
 
 **Fitting hair.** The script also measures every hairstyle and head row by row and column by column (`edge` in the
 manifest): the inner edges of the hair either side of the face, its hairline, the outline of its crown, and the

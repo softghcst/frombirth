@@ -453,7 +453,8 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const boy = avatarSvg({ appearance: { v: 3, inherited: { skin: 'umber', lips: 'lips_9' } }, seed: 'b', age: 8, gender: 'male' });
   check(/--lip-upper:#/.test(boy) && /lips_masc_/.test(boy), 'a boy is not drawn with a two-toned men\'s mouth');
   for (const id of CUR.RESTING.lipsMasc) check(readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('var(--lip-upper,'), `${id} has no separate upper-lip color`);
-  check(readFileSync(new URL('../assets/avatars/lips/lips_4.svg', import.meta.url), 'utf8').includes('data-thinned="1"'), 'the heavy outline of lips_4 is back');
+  const l4 = readFileSync(new URL('../assets/avatars/lips/lips_4.svg', import.meta.url), 'utf8');
+  check(/data-thinned="[\d.]+\/[\d.]+"/.test(l4) && l4.includes('stroke:var(--skin-color') && !l4.includes('#3b1004'), 'the heavy outline of lips_4 is back');
 }
 
 if (problems.length) {

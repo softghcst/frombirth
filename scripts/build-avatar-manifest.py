@@ -1021,25 +1021,38 @@ def fill_teeth():
     return done
 
 
-# Mouths drawn with a much heavier outline than the rest: the lips are given an edge in their own colour, which
-# covers the inner part of the outline (and of the line between the lips) so it ends up as heavy as the others.
-# (frame units: the width of that edge.) A thinned file carries data-thinned="1" and is never thinned twice.
-THIN_OUTLINE = {'lips_4': 2.6}
+# Mouths drawn with a much heavier outline than the rest, in a redder ink: (skin, lips, ink). The outside of the
+# outline is trimmed by drawing its edge again in the skin's color (`skin`, frame units, half of it falling on the
+# outline); the line between the lips by edging the lips in their own color (`lips`, the same); and the outline is
+# drawn in the ink the other mouths use. A trimmed file records what was done (data-thinned="skin/lips"); if the
+# numbers here change, or the file was trimmed some other way, that is undone and it is trimmed again.
+THIN_OUTLINE = {'lips_4': (3.0, 1.4, '#230601')}
 
 
 def thin_outline():
     """Applies THIN_OUTLINE to any listed file that has not had it. -> the names thinned."""
     done = []
-    for name, width in THIN_OUTLINE.items():
+    for name, (skin, lips, ink) in THIN_OUTLINE.items():
         path = os.path.join(ASSETS, 'lips', name + '.svg')
         if not os.path.exists(path):
             continue
         text = open(path, encoding='utf-8').read()
-        if 'data-thinned="1"' in text or 'data-pathways="1"' not in text:
+        mark = f'data-thinned="{fmt(skin)}/{fmt(lips)}"'
+        if mark in text or 'data-pathways="1"' not in text:
             continue
+        # Undo earlier attempts.
+        text = re.sub(r';stroke:var\(--lip-color,#[0-9a-f]+\);stroke-width:[\d.]+;stroke-linejoin:round"', '"', text)
+        text = re.sub(r'<path style="fill:none;stroke:var\(--skin-color[^"]*" d="[^"]*"/>', '', text)
+        text = re.sub(r' data-thinned="[^"]*"', '', text)
+        m = re.search(r'<path style="fill:(#[0-9a-f]{6});stroke:var\(--line-ink[^"]*"( fill-rule="[^"]*")? d="([^"]*)"/>', text)
+        if not m:
+            continue
+        outline = m.group(0).replace(f'fill:{m.group(1)}', f'fill:{ink}', 1)
+        trim = f'<path style="fill:none;stroke:var(--skin-color,#e8b68c);stroke-width:{fmt(skin)};stroke-linejoin:round" d="{m.group(3)}"/>'
+        text = text[:m.start()] + outline + trim + text[m.end():]
         text = re.sub(r'style="fill:(var\(--lip-color,#[0-9a-f]+\))"',
-                      lambda m: f'style="fill:{m.group(1)};stroke:{m.group(1)};stroke-width:{fmt(width)};stroke-linejoin:round"', text)
-        text = text.replace('data-pathways="1"', 'data-pathways="1" data-thinned="1"', 1)
+                      lambda q: f'style="fill:{q.group(1)};stroke:{q.group(1)};stroke-width:{fmt(lips)};stroke-linejoin:round"', text)
+        text = text.replace('data-pathways="1"', f'data-pathways="1" {mark}', 1)
         with open(path, 'w', encoding='utf-8') as f:
             f.write(text)
         done.append(name)
