@@ -453,12 +453,10 @@ export default {
       : '<p class="muted">No past jobs.</p>';
 
     el.innerHTML = `
-      <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}</div>
-      ${btns(school)}
+      <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
       ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
       ${contacts()}
-      ${careerCard()}
-      ${btns(work)}
+      ${careerCard().replace(/<\/div>\s*$/, () => `${btns(work)}</div>`)}
       ${politicsCard()}
       ${k.history.length ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('archive')}</span><h3>Past jobs</h3></div>${past}</div>` : ''}`;
 

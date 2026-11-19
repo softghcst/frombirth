@@ -495,7 +495,7 @@ export function householdAnimalsHtml() {
   const here = zoo.householdAnimals();
   const has = zoo.houseChronicle(zoo.playerHome().key).length;
   if (!here.length && !has) return '';
-  return `<div class="section-label">Household animals</div>
+  return `<div class="card"><h3>Household animals</h3>
     ${here.map((a) => `<button class="row" data-animal="${a.id}">${animalFace(a)}<div class="main"><strong>${esc(a.name)}</strong><small>${esc(cap(speciesOf(a.speciesId).name))} · ${esc(zoo.stageOf(a))} · ${esc(zoo.familyLink(a))}</small></div></button>`).join('') || '<p class="muted zoo-note">No animal lives here now.</p>'}
-    <div class="btn-stack" style="margin-bottom:14px"><button class="btn" data-go="chronicle">House chronicle</button></div>`;
+    <div class="btn-stack" style="margin-bottom:14px"><button class="btn" data-go="chronicle">House chronicle</button></div></div>`;
 }

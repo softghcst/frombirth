@@ -24,6 +24,7 @@ import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
 import { openAthleticsAt } from './sports.js';
 import { icon } from './kit.js';
+import { sectionize, show as showSection } from './sections.js';
 import { lineMemory, lineMemoryHtml, milestonesAt, milestoneHtml } from './memories.js';
 import { openSettings } from './settings.js';
 
@@ -44,6 +45,8 @@ function occupationLine(p) {
  */
 export function mountGame(app, hooks) {
   let activeTab = null;
+  /** The section open inside the tab (its title), or null for the tab's list. */
+  let openSection = null;
   let busy = false;
   /** Set while the player is reading a line of the life story they came to from somewhere else. */
   let storyReturn = null;
@@ -109,7 +112,7 @@ export function mountGame(app, hooks) {
      * wherever the player came from: the panel that was open is put back, then `onBack` restores the rest.
      */
     showStory(eventId, { label, onBack }) {
-      storyReturn = { tab: activeTab, onBack };
+      storyReturn = { tab: activeTab, section: openSection, onBack };
       closePanel();
       const line = journalEl.querySelector(`[data-ev="${eventId}"]`);
       journalEl.querySelectorAll('.lit').forEach((x) => x.classList.remove('lit'));
@@ -230,16 +233,33 @@ export function mountGame(app, hooks) {
     const wasOpen = app.querySelector('.game').classList.contains('in-tab');
     app.querySelector('.game').classList.toggle('in-tab', !!tab);
     if (!tab) { if (wasOpen && !busy && !document.querySelector('#modal-root .scrim')) yearBtn.focus({ preventScroll: true }); return; }
-    $('[data-panel-title]').textContent = tab.title;
     panelBody.onclick = null;
     tab.render(panelBody, tabApi);
+    openSection = sectionize(panelBody, openSection);
+    $('[data-panel-title]').textContent = openSection ?? tab.title;
+    $('[data-panel-close]').setAttribute('aria-label', openSection ? `Back to ${tab.title}` : 'Back to your life');
     // Keyboard focus moves into the section: the tab that opened it is out of sight now.
     if (!wasOpen && !panelEl.contains(document.activeElement)) $('[data-panel-close]').focus({ preventScroll: true });
   }
 
   function render() { renderHeader(); renderJournal(); renderPanel(); }
 
-  function closePanel() { activeTab = null; renderPanel(); }
+  function closePanel() { activeTab = null; openSection = null; renderPanel(); }
+  /** Opens a section of the tab, or goes back to the tab's list (null). Focus follows: into the section, or back to its row. */
+  function goSection(title) {
+    const tab = TABS.find((t) => t.id === activeTab);
+    const was = openSection;
+    openSection = showSection(panelBody, title);
+    $('[data-panel-title]').textContent = openSection ?? tab.title;
+    $('[data-panel-close]').setAttribute('aria-label', openSection ? `Back to ${tab.title}` : 'Back to your life');
+    panelBody.scrollTop = 0;
+    const target = openSection ? panelBody.querySelector('.sec-body.shown button:not([disabled])')
+      : was && panelBody.querySelector(`.sec-row[data-sec="${CSS.escape(was)}"]`);
+    (target ?? $('[data-panel-close]')).focus({ preventScroll: true });
+  }
+  // Back: out of a section to the tab's list, then out of the tab.
+  const goBack = () => (openSection ? goSection(null) : closePanel());
+  panelBody.addEventListener('click', (e) => { const row = e.target.closest('.sec-row[data-sec]'); if (row) goSection(row.dataset.sec); });
   function leaveStory() { storyReturn = null; $('[data-story-back]').hidden = true; journalEl.querySelectorAll('.lit').forEach((x) => x.classList.remove('lit')); }
 
   function finish(entry) {
@@ -340,9 +360,9 @@ export function mountGame(app, hooks) {
     const earlier = popUndo(store.state.slotId);
     if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }
   });
-  $('[data-panel-close]').addEventListener('click', closePanel);
+  $('[data-panel-close]').addEventListener('click', goBack);
   // Escape goes back from a section, unless a dialog is open.
-  panelEl.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('#modal-root .scrim')) { e.preventDefault(); closePanel(); } });
+  panelEl.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('#modal-root .scrim')) { e.preventDefault(); goBack(); } });
   // The menu: the things a player reaches for from anywhere in a life.
   $('[data-menu]').addEventListener('click', async () => {
     if (busy) return;
@@ -361,6 +381,7 @@ export function mountGame(app, hooks) {
     leaveStory();
     if (!back) return;
     activeTab = back.tab;
+    openSection = back.section ?? null;
     renderPanel();
     back.onBack();
   });
@@ -379,6 +400,7 @@ export function mountGame(app, hooks) {
     if (!btn || busy) return;
     leaveStory();
     activeTab = activeTab === btn.dataset.tab ? null : btn.dataset.tab;
+    openSection = null;
     renderPanel();
   });
 

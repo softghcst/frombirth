@@ -1115,3 +1115,14 @@ details.more[open] summary::after { transform: rotate(90deg); }
 @media (min-width: 700px) { .dock .meters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* Room for descenders: the g in "Age up" must not be clipped. */
 .dock .year-btn .yb-label { line-height: 1.3; padding-bottom: 0.08em; }
+
+/* ---------- Every tab a list; each section its own screen (js/ui/sections.js) ---------- */
+.sec-body:not(.shown) { display: none !important; }
+.panel-body.sec-open > :not(.sec-body.shown) { display: none !important; }
+.panel-body .sec-body.shown { border: 0; padding-top: 4px; }
+.sec-body.shown > h3, .sec-body.shown > .info-head { display: none; }
+.sec-body.shown .nav-group { margin: 10px -16px 0; border-bottom: 0; }
+.sec-body.shown .btn-pair, .sec-body.shown .btn-stack { margin: 12px 0 0; }
+.sec-row .nr-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nr-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--peach-strong); }
+.panel-body > .nav-group + .nav-group { margin-top: 14px; }
