@@ -28,7 +28,7 @@ import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING } from './avatar/curation.js';
+import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/avatars/';
@@ -80,7 +80,7 @@ export function dressFor(look, ctx = {}) {
   }
   if (stage === 'older') {
     out.aging = AGING.filter(([from]) => age >= from).map(([, id]) => id);
-    if (age >= 84 && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
+    if (age >= 84 && gender === 'male' && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
   }
   // Clothes: prison, then crown, then work, then the person's own.
   if (young) out.clothes = look.babyClothes ?? 'outfit_baby_01_bib_onesie';
@@ -101,8 +101,9 @@ export function dressFor(look, ctx = {}) {
   // Mood shows in the face.
   const mood = ctx.mood ?? 60;
   if (ctx.emotion) out.emotion = ctx.emotion;
-  // Crying eyes are never a resting face: they appear only while something sad is weighing on the person.
-  if (mood <= 15 && stage !== 'baby') out.eyes = EXPRESSION.crying;
+  // Sad brows and crying eyes are never a resting face: they appear only while something sad is weighing on the person.
+  if (mood <= LOW_MOOD.sad && !young && out.eyebrows) out.eyebrows = EXPRESSION.sadBrows;
+  if (mood <= LOW_MOOD.crying && stage !== 'baby') out.eyes = EXPRESSION.crying;
   return out;
 }
 

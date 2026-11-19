@@ -288,6 +288,21 @@ smaller, a little lower, or each eye up to three units further out (`NOSE_FIT`).
 drawn exactly as before. It works from the measurements and the person's own proportions, so nothing is listed pair
 by pair: a new nose or pair of eyes only needs measuring (run the script).
 
+**Brows.** Twelve brows can be chosen (`CATALOG.brows`); seven of them are given at random (`RESTING.eyebrows`). Brows
+that looked wrong on every face shape have been withdrawn, and saves that had one get the nearest kept
+(`WITHDRAWN.brows`). The sad brows (`brows_11`) are never a resting face: anyone whose mood is at or below 30, as
+happiness falls or after sad news, is drawn with them, and at or below 15 their eyes cry too (`LOW_MOOD`). Babies and
+toddlers keep their soft baby brows (`BABY_BROWS`). From 84, an old man's brows grow bushy (`ELDER_BROWS`); a woman's
+keep their shape and gray, and the creator offers the bushy brows to men only.
+
+**Lid creases.** Several eye shapes (`eyes_18`, `_19`, `_20`, `_22`, `_26`, `_9`, `_8`, `_7`) draw a fold line floating
+above the eye, which, in the same ink as the eye and close under the brow, read as a second, thinner eyebrow. The
+script parts each crease into a path of its own, in a soft shade of the skin (`--crease-color`, falling back to the skin
+mixed half and half with the eye's ink), and lowers it toward the lid by an amount worked out for that eye from the
+outlines (`CREASES` in `scripts/build-avatar-manifest.py`): it stays at least 3 units clear of the eye, and a typical
+brow is at least 5 units above it. `eyes_25` drew two folds, a floating one and one under its lashes that was part of its outline: the floating one is
+taken out, and the other was cut out of the outline once and drawn in the same soft shade. The eyes whose top line is lashes (`eyes_10`, `_16`, `_6`) have no crease and are unchanged.
+
 **Fitting a mouth to the nose.** The mouth is then fitted to the nose above it, as that nose was fitted to the eyes
 (`LIP_FIT`): a resting mouth is drawn at least 1.3 times as wide as the nose, up to 15% larger, so a small bow
 under a broad nose does not look pinched; and it is moved up or down by up to four units toward an upper lip of
