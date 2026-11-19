@@ -208,7 +208,8 @@ export function pastEntry(sportId, o = {}, state = store.state) {
 /** Which side of professional sport someone plays in: the women's or the men's game. Non-binary players choose (flags.sportDiv). */
 export const divOf = (p = player()) => divisionOf(store.state, p);
 /** The first year someone could be paid to play: later for women in some sports. */
-export const proFromFor = (sport, p = player()) => proYears(sport, divOf(p)).from ?? Infinity;
+// A league that has closed (womenProUntil) counts as never having begun, for anyone asking from after it closed.
+export const proFromFor = (sport, p = player(), year = yearNow()) => { const y = proYears(sport, divOf(p), year); return y.from == null || (y.until != null && year > y.until) ? Infinity : y.from; };
 
 /** The character's athletic profile, made the first time it is needed. */
 export function profile(state = store.state) {

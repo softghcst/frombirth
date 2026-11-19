@@ -8,6 +8,9 @@ const { store } = await import('../js/state.js');
 const { rng } = await import('../js/rng.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
+const { deathRoll } = await import('../js/engine/death.js');
+// These checks are about the courts: nobody dies of an accident or illness halfway through a case.
+deathRoll.spared = true;
 const { makeNpc } = await import('../js/engine/npcFactory.js');
 const { ROOTS } = await import('../js/data/economy.js');
 const { saveGame, loadGame } = await import('../js/save.js');
@@ -146,7 +149,11 @@ function framedBy(offenseId, reliability = 0.85) {
     years += 1;
   }
   check(!jail.cell(), 'released in time');
-  check(['On parole', 'Has a criminal record'].includes(law.status()), `legal status after release: ${law.status()} ${JSON.stringify(law.pendingCase()?.hearings)} ${JSON.stringify(p.legal.history.map((h) => h.text))}`);
+  // Free again, an adult can be wrongly suspected of something new in any year (justice.js wronglySuspected): a fresh
+  // arrest after the release is that, not the old case coming back.
+  const released = p.legal.history.findLastIndex((h) => /^Released/.test(h.text));
+  const since = p.legal.history.slice(released + 1);
+  check(['On parole', 'Has a criminal record'].includes(law.status()) || (released >= 0 && since.some((h) => /^Arrested/.test(h.text))), `legal status after release: ${law.status()} ${JSON.stringify(law.pendingCase()?.hearings)} ${JSON.stringify(p.legal.history.map((h) => h.text))}`);
   check(!!p.flags.reentry?.housing, 'release comes with somewhere to live');
   check(p.legal.history.some((h) => h.kind === 'released'), 'release is in the legal history');
   check(!unmet(CAREER_BY_ID.retail).some((x) => /cell/.test(x)), 'work is open again');
@@ -341,7 +348,9 @@ function framedBy(offenseId, reliability = 0.85) {
   check(!!cell?.guardians[kid.id], 'a child is placed with a guardian');
   check(store.state.npcs[kid.id].role === 'child' && kid.parentIds.includes(p.id), 'the player is still the parent');
   // A friend inside.
-  const mate = jail.inmatesNear().find((n) => n.flags.inmate.yearsLeft <= 2) ?? jail.inmatesNear()[0];
+  // The youngest near release: the check is about release and friendship, not about an older inmate dying of old age.
+  const byAge = [...jail.inmatesNear()].sort((x, y) => x.age - y.age);
+  const mate = byAge.find((n) => n.flags.inmate.yearsLeft <= 2) ?? byAge[0];
   mate.flags.inmate.yearsLeft = 1;
   jail.getToKnow(mate.id);
   mate.meters.relationship = 80;

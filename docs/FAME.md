@@ -64,9 +64,9 @@ The new-life screen offers a birth year back to 1920 (`js/data/eras.js`). What h
 not exist: careers (`CAREER_ERAS`: no software before 1955, no influencers before 2006), freelance services
 (`SERVICE_ERAS`), kinds of business (`BUSINESS_ERAS`), social media (`SOCIAL_FROM`), dating apps (personal
 ads before 2009), and every medium, sport and award by its founding year (`MEDIA_ERAS`, `data/sports.js`, award
-bodies). Women's professional leagues begin in their own years. Countries, laws and prices are today's,
-and money is shown at today's values throughout: a constant-price world, chosen over inflating every stored
-salary and price.
+bodies). Women's professional leagues begin in their own years. Money, currencies, laws, wars and the news of
+the time follow the Historical Eras system (`engine/history.js`, `engine/eras.js`, docs/HISTORICAL_ERAS.md): fees,
+wages and sales in the fame work are set in today's terms and reach the player in their era's money through it.
 
 ## Bands, genres and labels
 
@@ -124,8 +124,7 @@ The best-connected representative brings brand deals, bigger ones, and takes the
 
 ## Not built yet
 
-- Prices and wages do not change with the era (see above); historical events (wars, depressions) are not modeled
-  beyond the economy engine's own cycles; countries and borders are today's.
+- Countries and borders are today's (see docs/HISTORICAL_ERAS.md for what the eras do and do not model).
 - Sport: no transfers between countries, no team events at the World Games, no management of a squad. Boxing is
   part of martial arts, with no separate world title.
 - Session work and songwriting do not make credits on other acts' albums beyond the single written.

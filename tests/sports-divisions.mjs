@@ -80,6 +80,8 @@ caseOf('women\'s professional play begins in its own years, and can end', () => 
   const M = (id, y) => sp.proYears(sportOf(id), 'men', y).open;
   check(!W('ice_hockey', 2010) && W('ice_hockey', 2020) && M('ice_hockey', 2010), 'women\'s hockey from 2015, men\'s long before');
   check(W('baseball', 1950) && !W('baseball', 1960) && M('baseball', 1960), 'the women\'s baseball league of 1943–1954, and none after');
+  const woman = { gender: 'female', flags: {} };
+  check(sp.proFromFor(sportOf('baseball'), woman, 1950) === 1943 && sp.proFromFor(sportOf('baseball'), woman, 1960) === Infinity, 'after the league closed, a draft or a signing sees no women\'s professional baseball');
   check(!W('american_football', 2025) && M('american_football', 2025), 'no women\'s professional American football');
   check(W('tennis', 1975) && !W('tennis', 1965), 'a women\'s tour from 1970');
   check(W('wheelchair_basketball', 1990) && sportOf('wheelchair_basketball').mixed, 'mixed sports follow their own years');

@@ -686,6 +686,12 @@ function leaderScore(who, cur) {
 export function assignPositions(g, reason = 'review') {
   const cur = current(g);
   const ids = cur.map((m) => m.who);
+  if (!ids.length) {
+    // Nobody is left in the line-up (the last member has gone): no positions, and the history says so once.
+    if (Object.keys(g.positions ?? {}).length) g.positionHistory.push({ year: year(), reason, positions: {}, maknae: null, leader: null });
+    g.positions = {}; g.leader = null;
+    return {};
+  }
   const S = Object.fromEntries(ids.map((w) => [w, skillsOf(w)]));
   const labels = Object.fromEntries(ids.map((w) => [w, []]));
   const cands = Object.fromEntries(ids.map((w) => [w, []]));
@@ -1336,6 +1342,7 @@ export function tickKpop() {
     // Korean men serve in the military, usually in their late twenties: a hiatus, not an ending.
     for (const m of current(g)) {
       const n = m.who === 'player' ? null : npc(m.who);
+      if (n && !n.flags?.idol) continue; // someone on the line-up who is not an idol of this world (an ancestor's record)
       if (n && n.gender === 'male' && n.bornIn === 'kr' && year() - n.flags.idol.born.year >= 28 && !n.flags.idol.served && !n.flags.idol.hiatus) { n.flags.idol.hiatus = { kind: 'service', since: year() }; g.history.push({ year: year(), text: `${n.firstName} ${n.lastName} began military service.` }); }
       if (n?.flags.idol.hiatus?.kind === 'service' && year() - n.flags.idol.hiatus.since >= 2) { n.flags.idol.hiatus = null; n.flags.idol.served = true; g.history.push({ year: year(), text: `${n.firstName} ${n.lastName} completed military service and returned.` }); }
       if (n && !n.flags.idol.hiatus && rng.chance(0.03)) { n.flags.idol.hiatus = { kind: rng.pick(['health', 'personal']), since: year() }; g.history.push({ year: year(), text: `${n.firstName} ${n.lastName} paused activities for ${n.flags.idol.hiatus.kind} reasons.` }); }
@@ -1406,7 +1413,16 @@ export function carryKpop(old, next, ancestorId) {
   const who = (x) => (x === 'player' ? ancestorId ?? 'ancestor' : x);
   const keep = new Set();
   for (const g of Object.values(k.groups)) {
-    for (const m of g.members) { m.who = who(m.who); keep.add(m.who); }
+    for (const m of g.members) {
+      // The life that ended leaves the line-up with it: the group goes on (or not) without them, the record keeps them.
+      if (m.who === 'player' && m.to == null) {
+        m.to = old.year; m.why = old.player.alive === false ? 'died' : 'left';
+        g.history.push({ year: old.year, text: `${old.player.firstName} ${old.player.lastName} ${m.why === 'died' ? 'died' : 'left the group'}.` });
+        if (g.leader === 'player') g.leader = null;
+        delete g.positions.player;
+      }
+      m.who = who(m.who); keep.add(m.who);
+    }
     const pos = {}; for (const [w, l] of Object.entries(g.positions)) pos[who(w)] = l; g.positions = pos;
     for (const h of g.positionHistory) { const q = {}; for (const [w, l] of Object.entries(h.positions)) q[who(w)] = l; h.positions = q; h.maknae = who(h.maknae); h.leader = who(h.leader); }
     g.leader = who(g.leader);
@@ -1414,7 +1430,7 @@ export function carryKpop(old, next, ancestorId) {
   }
   for (const r of Object.values(k.releases)) { r.performers = r.performers.map(who); r.credits.lyrics = r.credits.lyrics.map(who); if (r.solo) r.solo = who(r.solo); for (const s of r.songs) { if (!s.parts) continue; const q = {}; for (const [w, v] of Object.entries(s.parts)) q[who(w)] = v; s.parts = q; } }
   for (const x of Object.values(k.performances)) { x.members = x.members.map(who); x.fairy = who(x.fairy); x.highlight = who(x.highlight); }
-  for (const c of Object.values(k.contracts)) c.who = who(c.who);
+  for (const c of Object.values(k.contracts)) { if (c.who === 'player' && c.status === 'active') { c.status = 'ended'; c.ended = { year: old.year, how: old.player.alive === false ? 'died' : 'left' }; } c.who = who(c.who); }
   for (const pr of Object.values(k.programs)) { for (const c of pr.contestants) c.who = who(c.who); if (pr.final) pr.final = pr.final.map(who); }
   for (const pr of Object.values(k.projects)) pr.lineup = pr.lineup.map(who);
   for (const a of Object.values(k.agencies)) { if (a.dorm) a.dorm.residents = a.dorm.residents.filter((x) => x !== 'player'); for (const id of [...a.trainees, ...Object.values(a.staff)]) keep.add(id); }
