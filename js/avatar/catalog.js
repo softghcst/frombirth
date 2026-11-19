@@ -202,7 +202,7 @@ export const hairHex = (appearance) => (INDEX.anyHair[appearance.style.hairDye] 
 
 /**
  * The color of a mouth. Lipstick is worn as chosen, all over. Otherwise a woman's lips are her skin warmed toward rose;
- * a man's are a natural pair for his skin tone (one color on the lighter tones, two from olive down) (NATURAL_LIP_UPPER and NATURAL_LIP_LOWER in js/avatarPalettes.js): `lip`
+ * a man's are a natural pair for his skin tone (one color on the lighter tones, two from tan down) (NATURAL_LIP_UPPER and NATURAL_LIP_LOWER in js/avatarPalettes.js): `lip`
  * colors the lower lip and `lipUpper` the upper. Every resting mouth draws its upper lip in --lip-upper (falling back to
  * the lip color), so the pair shows on every mouth shape, thin, full or smiling.
  */

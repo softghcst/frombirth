@@ -7,16 +7,16 @@
 export const SKIN_TONES = ['#fbe3d3', '#f6d5bb', '#f0c2a8', '#e8b68c', '#dead8b', '#dda36c', '#d49b72', '#c99766', '#bc8253', '#a56b42', '#8b5431', '#73442b', '#5a3420', '#432519'];
 export const SKIN_TONE_IDS = ['porcelain', 'ivory', 'rose_beige', 'sand', 'beige', 'golden', 'caramel', 'olive', 'tan', 'bronze', 'chestnut', 'umber', 'espresso', 'ebony'];
 /**
- * Natural, bare lips on men, one pair per skin tone above (same order). From porcelain to caramel both lips are one
- * color, a nude a shade deeper than the skin, turning toward a dusty rose from golden so it does not blend into the
- * cheeks. From olive down they are two-toned: the upper lip a deeper shade of the skin, the lower softer and turned
- * toward a muted rose-brown, so the mouth reads by its own fills rather than its outline. Chosen by lightness, chroma
- * and hue against each skin: on olive and tan
+ * Natural, bare lips on men, one pair per skin tone above (same order). From porcelain to olive both lips are one
+ * color, a nude a shade deeper than the skin, warming from golden so it does not blend into the cheeks. From tan down
+ * they are two-toned: the upper lip a deeper shade of the skin, the lower softer and turned toward a muted rose-brown,
+ * so the mouth reads by its own fills rather than its outline. Chosen by lightness, chroma and hue against each skin:
+ * on tan
  * the lower lip parts from the cheeks by hue at much the cheeks' own lightness; on the deepest, a rich upper and a
  * softer rose-brown lower. Lipstick replaces both.
  */
-export const NATURAL_LIP_UPPER = ['#e0bcac', '#dcb19c', '#d7a38f', '#d19a7f', '#c6947e', '#c98a72', '#bc826b', '#b17b59', '#a76d4c', '#8c5839', '#71442a', '#5c3522', '#472718', '#371d13'];
-export const NATURAL_LIP_LOWER = ['#e0bcac', '#dcb19c', '#d7a38f', '#d19a7f', '#c6947e', '#c98a72', '#bc826b', '#bc867a', '#ae776c', '#a76a5c', '#935b4d', '#865143', '#76483c', '#6a4238'];
+export const NATURAL_LIP_UPPER = ['#e0bcac', '#dcb19c', '#d7a38f', '#d19a7f', '#c6947e', '#c98a72', '#bc826b', '#b67d63', '#a76d4c', '#8c5839', '#71442a', '#5c3522', '#472718', '#371d13'];
+export const NATURAL_LIP_LOWER = ['#e0bcac', '#dcb19c', '#d7a38f', '#d19a7f', '#c6947e', '#c98a72', '#bc826b', '#b67d63', '#ae776c', '#a76a5c', '#935b4d', '#865143', '#76483c', '#6a4238'];
 export const SKIN_TONE_NAMES = ['Porcelain', 'Ivory', 'Rose beige', 'Sand', 'Beige', 'Golden', 'Caramel', 'Olive', 'Tan', 'Bronze', 'Chestnut', 'Umber', 'Espresso', 'Ebony'];
 
 /** Natural colors first (the first NATURAL_HAIR of them), then dyes. */

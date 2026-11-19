@@ -269,9 +269,8 @@ grin and the parted lips showing teeth (`lips_masc_01`, `_05`, `_08`) can be cho
 skin warmed toward rose. A man's are a natural pair for his skin tone, from one shared palette (`NATURAL_LIP_UPPER`
 and `NATURAL_LIP_LOWER` in `js/avatarPalettes.js`, one pair per tone in `SKIN_TONES` order): the upper lip a deeper
 shade of the skin, the lower softer, so a mouth reads by its own fills rather than its outline at portrait size. From
-porcelain to caramel both lips are one nude color instead, turning toward a dusty rose from golden so the mouth does
-not blend into the cheeks. The pairs were chosen by lightness, chroma and hue against each skin: on olive and tan the
-lower lip turns to a muted rose-brown at much the cheeks' own lightness, so it parts from them by hue rather than
+porcelain to olive both lips are one nude color instead, warming from golden so the mouth does not blend into the
+cheeks. The pairs were chosen by lightness, chroma and hue against each skin: on tan the lower lip turns to a muted rose-brown at much the cheeks' own lightness, so it parts from them by hue rather than
 blending into their orange; and from bronze down the upper is a rich deep brown and the lower a softer rose-brown,
 deepening gradually. Every resting mouth draws its upper lip in `--lip-upper` (falling back to the lip color), so the
 pair shows on every shape, thin, full or smiling: the men's mouths were drawn that way, and the script parts the women's
