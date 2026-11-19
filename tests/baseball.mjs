@@ -95,46 +95,73 @@ function upForRenewal(to, pos, age) {
   }
   return { e: bigLeaguer(to, pos), renew: null };
 }
+// A life can go wrong in ways these checks are not about (a ban, a sacking, a year lost to injury). A scenario says
+// what it needs with need(); when a life does not provide it, the scenario is begun again with another life. The
+// checks themselves are never retried: one that fails in a life that got that far is a failure.
+const RETRY = Symbol('retry');
+const need = (cond) => { if (!cond) throw RETRY; };
+function scenario(name, fn) {
+  for (let tries = 0; tries < 10; tries++) {
+    const mark = problems.length;
+    try { fn(); return; } catch (err) { if (err !== RETRY) throw err; problems.length = mark; }
+  }
+  problems.push(`${name}: no life got far enough to check`);
+}
+/** A season in the big leagues, played: the line for it. */
+function season(e, pick = {}) {
+  need(e.contractId);
+  year({ twoWay: 'no', trade: 'no', extension: 'no', ...pick });
+  const x = lineOf(e);
+  need(e.contractId && x?.top);
+  return x;
+}
 const lineOf = (e) => e.bb.lines.filter((x) => x.year === S().year).at(-1);
 
 // ---------- 1. The season's line, roles, totals, the All-Star Game, October ----------
-{
+scenario('a hitter\'s season', () => {
   const e = bigLeaguer(86, 'outfield');
-  year({ twoWay: 'no', trade: 'no', extension: 'no' });
-  const x = lineOf(e);
-  check(x && x.level === 'MLB' && x.top && x.G > 0 && x.G <= 162, `a big league season is scaled to 162 games (${x?.level}, ${x?.G})`);
-  check(x && x.AB === Math.round(x.G * 3.8) && x.H <= x.AB && x.HR <= x.H && x.AVG >= 0.24 && x.AVG <= 0.36, `a hitter's line is a hitter's line (${x && bb.lineText(x)})`);
-  check(x && /home run/.test(bb.lineText(x)) && /RBI/.test(bb.lineText(x)), 'and reads as one');
+  const x = season(e);
+  check(x.level === 'MLB' && x.G > 0 && x.G <= 162, `a big league season is scaled to 162 games (${x.level}, ${x.G})`);
+  check(x.AB === Math.round(x.G * 3.8) && x.H <= x.AB && x.HR <= x.H && x.AVG >= 0.24 && x.AVG <= 0.36, `a hitter's line is a hitter's line (${bb.lineText(x)})`);
+  check(/home run/.test(bb.lineText(x)) && /RBI/.test(bb.lineText(x)), 'and reads as one');
   const C = e.bb.career;
   check(C.H === x.H && C.HR === x.HR && C.seasons === 1, 'big league seasons add up to career totals');
   check(e.bb.allStar.includes(S().year), 'one of the best players in the league is an All-Star');
-  const season = S().sports.seasons[x.seasonId];
-  check(season.playoffs.length && season.playoffs.every((f) => Object.values(BASEBALL.rounds.MLB).includes(f.label)) && season.finalName === 'World Series', 'the postseason is played by its own names, down to the World Series');
-  // A milestone: the three-thousandth hit.
-  C.H = 2999;
-  year({ twoWay: 'no', trade: 'no', extension: 'no' });
+  const played = S().sports.seasons[x.seasonId];
+  check(played.playoffs.length && played.playoffs.every((f) => Object.values(BASEBALL.rounds.MLB).includes(f.label)) && played.finalName === 'World Series', 'the postseason is played by its own names, down to the World Series');
+});
+scenario('a milestone', () => {
+  const e = bigLeaguer(86, 'outfield');
+  bb.record(e).career.H = 2999;
+  const x = season(e);
+  need(x.H > 0);
   check(e.bb.reached.H === 3000 && S().sports.moments.some((m) => /3,000 hits/.test(m.text)), 'career hit number 3,000 is marked');
-  // Two ways.
-  e.bb.twoWay = true;
-  year({ trade: 'no', extension: 'no' });
-  const two = lineOf(e);
-  check(two && two.AB > 0 && two.IP > 0 && two.GS > 0, `a two-way player has a batting line and a pitching line (${two && bb.lineText(two)})`);
-}
+});
+scenario('a two-way player', () => {
+  const e = bigLeaguer(86, 'outfield');
+  bb.record(e).twoWay = true;
+  const two = season(e);
+  check(two.AB > 0 && two.IP > 0 && two.GS > 0, `a two-way player has a batting line and a pitching line (${bb.lineText(two)})`);
+});
 {
   const role = (stamina, stuff, level = 'MLB') => bb.roleFor({ position: 'pitcher', skills: { stamina, stuff } }, level);
   check(role(70, 70) === 'starter' && role(40, 60) === 'reliever' && role(40, 80) === 'closer' && bb.roleFor({ position: 'outfield', skills: {} }, 'MLB') === null, 'starters have the stamina; the best arm in the bullpen closes');
-  const e = bigLeaguer(84, 'pitcher');
-  P().age = 21; // a young arm: the innings limit applies
-  year({ twoWay: 'no', trade: 'no', extension: 'no' });
-  const x = lineOf(e);
-  check(x && e.bb.role === 'starter' && x.GS > 0 && x.W + x.L <= x.GS && x.ERA >= 1.5 && x.ERA <= 5.5 && x.K > 0, `a starter's line: starts, a record, an earned run average, strikeouts (${x && bb.lineText(x)})`);
-  check(x && x.IP <= 110.01 && !!x.capped === (x.IP >= 110), `a young starter is shut down at his innings limit, if his season gets that far (${x?.IP})`);
-  e.skills.stamina = 30; e.ceiling.stamina = 30;
-  year({ twoWay: 'no', trade: 'no', extension: 'no' });
-  const y = lineOf(e);
-  check(y && e.bb.role === 'closer' && y.GS === 0 && y.SV >= 10 && y.IP < 90 && Math.abs(y.IP - y.GP) < 0.01, `a closer's line: saves, an inning at a time (${y && bb.lineText(y)})`);
   check(INJURIES.ucl.pitcher && INJURIES.ucl.seasons >= 1 && ILLNESSES.some((i) => i.id === 'sport_ucl'), 'a torn elbow ligament is a pitcher\'s injury, and a year away');
 }
+scenario('a starter', () => {
+  const e = bigLeaguer(84, 'pitcher');
+  P().age = 21; // a young arm: the innings limit applies
+  const x = season(e);
+  check(e.bb.role === 'starter' && x.GS > 0 && x.W + x.L <= x.GS && x.ERA >= 1.5 && x.ERA <= 5.5 && x.K > 0, `a starter's line: starts, a record, an earned run average, strikeouts (${bb.lineText(x)})`);
+  check(x.IP <= 110.01 && !!x.capped === (x.IP >= 110), `a young starter is shut down at his innings limit, if his season gets that far (${x.IP})`);
+});
+scenario('a closer', () => {
+  const e = bigLeaguer(84, 'pitcher');
+  e.skills.stamina = 30; e.ceiling.stamina = 30;
+  const y = season(e);
+  need(!sp.myAthlete().injuries.some((i) => i.year === S().year)); // a full season
+  check(e.bb.role === 'closer' && y.GS === 0 && y.SV >= 10 && y.IP < 90 && Math.abs(y.IP - y.GP) < 0.01, `a closer's line: saves, an inning at a time (${bb.lineText(y)})`);
+});
 section('lines and totals, milestones, two-way players, roles, the innings limit, the All-Star Game, October');
 
 // ---------- 2. Free agency, the qualifying offer, opt-outs, no-trade clauses, extensions ----------
@@ -299,7 +326,7 @@ section('released: independent ball and back, Japan; the Classic\'s years');
 section('summer leagues with wooden bats; a draft adviser');
 
 // ---------- 6. Signed abroad: money home, English, winter ball ----------
-{
+scenario('signed abroad', () => {
   let e = null;
   for (let tries = 0; tries < 6 && !e?.intl?.signed; tries++) {
     e = boy('do', 15, 'outfield');
@@ -314,14 +341,18 @@ section('summer leagues with wooden bats; a draft adviser');
     sl.answer(remit.id, 'house');
     check(paid('remitBonus/')[0] === -Math.min(cash, Math.round(remit.amount * 0.5)) && e.intl.remit === 'yearly', 'half of it buys the family a house, and money goes home each year after');
   }
+  need(e.contractId);
   const seen = year({ english: 'yes', winterBall: 'always', twoWay: 'no', trade: 'no' });
+  need(e.contractId);
   check(seen.some((d) => d.kind === 'english') && e.intl.study === true && e.intl.english > 5, 'the club teaches English, and it comes with work');
   const before = e.intl.english;
+  need(before < 100);
   year({ twoWay: 'no', trade: 'no' });
+  need(e.contractId);
   check(e.intl.english > before, 'a little more each year');
   check(seen.some((d) => d.kind === 'winterBall') && e.bb.winter === 'always' && e.bb.winters.length === 2 && paid('winter/').length === 2 && paid('winter/').every((v) => v > 0), `winter ball at home pays a second salary, every winter if he likes (${e.bb.winters.length})`);
   check(paid('remit/').length >= 1 && paid('remit/').every((v) => v < 0), 'and part of the salary goes home');
-}
+});
 section('signed abroad: the bonus and the family, English, winter ball');
 
 // ---------- 7. The Hall of Fame ----------
@@ -345,7 +376,7 @@ section('signed abroad: the bonus and the family, English, winter ball');
   // A good career that is not a great one: on the ballot, and then off it.
   R.hall = null;
   R.career = { seasons: 12, G: 1500, AB: 5600, H: 1500, HR: 180, RBI: 700, SB: 60 };
-  R.allStar = [last];
+  R.allStar = [last]; R.honors = []; e.awards = []; e.titles = []; // the numbers alone: no awards, no rings
   for (let i = 0; i < 12 && !R.hall?.dropped && !R.hall?.elected; i++) { bb.hallYear(S(), e); S().year += 1; }
   check(R.hall?.dropped && !R.hall.elected && R.hall.votes.length <= BASEBALL.hall.ballots && R.hall.votes.every((v) => v.pct < BASEBALL.hall.elect), `a good career stays on the ballot at most ten years, and falls off (${R.hall?.votes.length} ballots)`);
   // Too short a career is never on it.

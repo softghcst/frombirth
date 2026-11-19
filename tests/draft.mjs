@@ -58,6 +58,7 @@ const firstD1 = (d) => {
 function enrollSigned(e) {
   const p = P();
   const inst = uni.catalog(p.countryId).find((u) => u.id === e.recruit.signed);
+  if (!inst) return; // signed with a junior college: not one of the universities this helper enrolls at
   const o = e.recruit.offers.find((x) => x.id === inst.id);
   p.education.enrolled = false; p.education.stage = 'none';
   edu.enroll('university', 'business', 'scholarship', {}, { id: inst.id, name: inst.name, aid: { fraction: o.fraction, parts: o.fraction ? [{ kind: 'athletic', fraction: o.fraction }] : [] } });
