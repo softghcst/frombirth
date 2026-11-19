@@ -9,6 +9,12 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+
+/** Opens a section from the dock. With a section already open the dock is out of sight, so go back first. */
+async function openTab(page, id) {
+  if (await page.locator('[data-panel]:not([hidden]) [data-panel-close]').count()) await page.click('[data-panel-close]');
+  await page.click(`.tab-btn[data-tab="${id}"]`);
+}
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
@@ -64,7 +70,7 @@ async function run(viewport) {
   await page.waitForSelector('.tab-btn[data-tab="pursuits"]');
 
   // 2. Open Digital Life.
-  await page.click('.tab-btn[data-tab="pursuits"]');
+  await openTab(page, 'pursuits');
   await page.click('[data-digital]');
   await page.waitForSelector('.dl-modal');
   check(await page.locator('.dl-modal h2').innerText() === 'Digital Life', 'Digital Life opens');
@@ -147,11 +153,11 @@ async function run(viewport) {
   await page.click('.dl-nav [data-section="memories"]');
   check((await page.locator('.dl-body').innerText()).includes('Your first post on Hearth'), 'the first post is a digital memory');
   await page.click('.dl-modal [data-close]');
-  await page.click('.tab-btn[data-tab="self"]');
+  await openTab(page, 'self');
   check((await page.locator('[data-panel-body]').innerText()).includes('Joined Hearth, your first online account.'), 'and a milestone in the life story');
 
   // Mobile layout: nothing runs off the side.
-  await page.click('.tab-btn[data-tab="pursuits"]');
+  await openTab(page, 'pursuits');
   await page.click('[data-digital]');
   for (const s of ['accounts', 'feed', 'studio', 'history']) {
     await page.click(`.dl-nav [data-section="${s}"]`);
@@ -184,7 +190,7 @@ async function run(viewport) {
   });
   await page.reload();
   await page.click(`[data-load="${old}"]`);
-  await page.click('.tab-btn[data-tab="pursuits"]');
+  await openTab(page, 'pursuits');
   check((await page.locator('[data-digital]').innerText()).includes('Keep in touch'), 'in 1800 the card offers keeping in touch, not social media');
   await page.click('[data-digital]');
   const nav1800 = await page.locator('.dl-nav button').allInnerTexts();
@@ -214,7 +220,7 @@ async function extras() {
   await page.waitForSelector('.tab-btn[data-tab="pursuits"]');
   const born = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return { year: store.state.year, birth: store.state.player.birthYear }; });
   check(born.year === 1850 && born.birth === 1850, 'the character creator can start a life in 1850');
-  await page.click('.tab-btn[data-tab="self"]');
+  await openTab(page, 'self');
   check((await page.locator('[data-panel-body]').innerText()).includes('The times: Early Era'), 'the Self tab shows the times');
 
   // Radio in 1935, through the Pursuits tab.
@@ -227,7 +233,7 @@ async function extras() {
   });
   await page.reload();
   await page.click(`[data-load="${s35}"]`);
-  await page.click('.tab-btn[data-tab="pursuits"]');
+  await openTab(page, 'pursuits');
   check(await page.locator('[data-tune="radio"]').count() === 1 && await page.locator('[data-tune="tv"]').count() === 0, 'in 1935 Pursuits offers the radio, not television');
   await page.click('[data-tune="radio"]');
   await page.locator('#modal-root .choice-btn', { hasText: 'Radio plays' }).click();
@@ -238,7 +244,7 @@ async function extras() {
   check((await page.locator('.dl-body').innerText()).includes('Between the Wars'), 'Digital History shows the era of the year');
   await page.click('.dl-modal [data-close]');
   // The Family Archive, from the People tab.
-  await page.click('.tab-btn[data-tab="people"]');
+  await openTab(page, 'people');
   await page.click('[data-top="digitalArchive"]');
   await page.waitForSelector('.dl-modal');
   check((await page.locator('.dl-body').innerText()).includes('Family Archive'), 'the Family Archive opens from the People tab');
@@ -264,7 +270,7 @@ async function extras() {
   });
   await page.reload();
   await page.click(`[data-load="${slot}"]`);
-  await page.click('.tab-btn[data-tab="pursuits"]');
+  await openTab(page, 'pursuits');
   await page.click('[data-digital]');
   await page.click('.dl-nav [data-section="studio"]');
   await page.click('.dl-body [data-chan="routine"]');

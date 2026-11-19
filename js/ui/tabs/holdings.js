@@ -26,6 +26,7 @@ import * as review from '../../engine/estateReview.js';
 import { heirs as playableHeirs } from '../../engine/legacy.js';
 import { bankWorth } from '../../engine/banking.js';
 import { householdAnimalsHtml, openAnimalProfile, openHouseChronicle } from '../animals.js';
+import { navRow, navGroup } from '../kit.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
 const pct = (x) => `${x >= 0 ? '+' : ''}${Math.round(x * 100)}%`;
@@ -106,12 +107,12 @@ function willCard(c) {
   if (!last.canWriteWill()) return '';
   const e = last.estatePlan();
   const things = (s) => (s.items.length ? ` + ${s.items.map((it) => (it.kind === 'business' ? it.name : it.name.charAt(0).toLowerCase() + it.name.slice(1))).join(', ')}` : '');
-  const rows = e.gross <= 0 && !e.shares.length ? [['If you died today', 'There would be nothing to leave']]
-    : [['Estate tax if you died today', fmtMoney(e.tax, c)],
+  const rows = e.gross <= 0 && !e.shares.length ? [['To leave', 'Nothing yet']]
+    : [['Estate tax', fmtMoney(e.tax, c)],
       ...e.shares.map((s) => [`${s.name} (${s.role.toLowerCase()})`, `${fmtMoney(s.amount, c)}${things(s)}`]),
       ...(e.charity ? [['To charity', fmtMoney(e.charity, c)]] : []), ...(e.lost ? [['Lost in the garden', fmtMoney(e.lost, c)]] : []), ...(e.toState ? [['To the state', fmtMoney(e.toState, c)]] : [])];
   return `<div class="card" style="margin-top:14px"><h3>Your will</h3>
-    <p class="muted" style="margin-bottom:8px">${esc(last.willSummary())}</p>${kv(rows)}
+    ${kv(rows)}
     <button class="btn" data-go="will" style="margin-top:10px">Change your will</button></div>`;
 }
 
@@ -335,6 +336,9 @@ async function borrowMoney(api) {
 /** My Money, with the screens it leads on to. Also opened from the purse at the top of the game. */
 export const openMoney = (api) => openMyMoney(api, { invest: browseMarket, borrow: borrowMoney, will: changeWill });
 
+/** Icons for the things to browse and do in Holdings. */
+const HOLD_ICONS = { property: 'home', market: 'trophy', borrow: 'coin', currencies: 'globe', vehicles: 'compass', driving: 'id', flying: 'globe' };
+
 export default {
   id: 'holdings', title: 'Holdings', short: 'Holdings',
   icon: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
@@ -375,24 +379,28 @@ export default {
     const earned = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0) + (p.flags.statePension ?? 0);
     const taxOn = earned > 0 ? sys.taxBreakdown(earned, c) : null;
     el.innerHTML = `
+      <div class="worth-hero">
+        <div><small>Net worth</small><strong class="num">${fmtMoney(netWorth(store.state), c)}</strong></div>
+        <div><small>Cash</small><span class="num${f.cash < 0 ? ' neg' : ''}">${fmtMoney(f.cash, c)}</span></div>
+      </div>
+      ${navGroup([navRow({ attrs: 'data-go="mymoney"', label: 'My Money', ico: 'coin', tone: 'peach' })])}
       <div class="card">
         <h3>Money</h3>
-        ${kv([['Cash', fmtMoney(f.cash, c)], ...(bankWorth() ? [['In the bank', fmtMoney(bankWorth(), c)]] : []), ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
-        <div class="kv"><span>Net worth</span><span><strong>${fmtMoney(netWorth(store.state), c)}</strong></span></div>
-        ${kv([['Where you live', living], ['Lifetime earnings', fmtMoney(f.lifetimeEarned, c)], ['Lifetime tax paid', fmtMoney(f.lifetimeTaxPaid, c)],
+        ${kv([...(bankWorth() ? [['In the bank', fmtMoney(bankWorth(), c)]] : []), ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
+        ${kv([['Where you live', living], ['Earned in your life', fmtMoney(f.lifetimeEarned, c)]])}
+        <details class="more"><summary>Taxes and costs</summary>
+        ${kv([['Tax paid in your life', fmtMoney(f.lifetimeTaxPaid, c)],
     [`Income tax (${c.name})`, taxLine(c)], ...(taxOn ? [['On what you earn now', `${Math.round(taxOn.effective * 100)}% overall, ${Math.round(taxOn.marginal * 100)}% on anything more you earn`]] : []), ['Health care', `${sys.cover().model.name}${sys.cover().covered ? '' : ' (you are not covered)'}`], ['Property tax', propertyTaxLabel(c)], ['Inheritance tax', inheritanceLine(c)],
     ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
-    ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}
+    ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}</details>
       </div>
-      <div class="btn-stack" style="margin-bottom:10px"><button class="btn primary" data-go="mymoney">My Money<small style="display:block;font-weight:400;opacity:.85">Accounts, budget, goals, debts and history</small></button></div>
-      ${actions.length ? `<div class="btn-stack" style="margin-bottom:14px">${actions.map(([id, label]) => `<button class="btn" data-go="${id}">${esc(label)}</button>`).join('')}</div>` : ''}
+      ${navGroup(actions.map(([id, label]) => navRow({ attrs: `data-go="${id}"`, label, ico: HOLD_ICONS[id] ?? 'sparkle' })), 'Buy and invest')}
       ${householdAnimalsHtml()}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
       ${invs ? `<div class="section-label">Investments</div>${invs}` : ''}
       ${loans ? `<div class="card" style="margin-top:14px"><h3>Loans</h3>${loans}</div>` : ''}
       ${(p.inventory ?? []).length ? `<div class="section-label">Belongings</div>${p.inventory.map((it) => `<div class="kv"><span>${esc(it.name)}</span><span>${fmtMoney(it.value, c)}${it.condition != null ? ` · ${it.condition}% condition` : ''}</span></div>`).join('')}` : ''}
-      ${!props && !vehs && !invs ? '<p class="empty">You do not own any property, vehicles or investments.</p>' : ''}
       ${willCard(c)}`;
 
     el.onclick = (e) => {

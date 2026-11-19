@@ -53,6 +53,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await page.locator('.card', { hasText: 'Your life this year' }).locator('text=Swimming').count(), `${label}: the hobby plan shows as ongoing`);
   const wide = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   check(wide, `${label}: no sideways scrolling`);
+  await page.locator('[data-panel-close]').click(); // back from Pursuits to the year button
   await page.locator('[data-year]').click(); await page.waitForTimeout(400);
   let saw = false;
   for (let i = 0; i < 15 && !saw; i++) {

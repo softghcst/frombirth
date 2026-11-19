@@ -57,7 +57,7 @@ export function politicsCard() {
       <div class="kv"><span>Salary</span><span>${fmtMoney(k.salary, c)} a year</span></div>
       <div class="kv"><span>${k.ruler ? 'Next election' : 'Term'}</span><span>${k.ruler ? 'There will not be one' : `${k.termLeft} ${k.termLeft === 1 ? 'year' : 'years'} left · term ${k.terms}`}</span></div>
       <div style="margin-top:10px">${meterHtml('Approval', k.approval, true)}</div>
-      <p class="muted" style="margin-top:6px">Use the office, or be blamed for doing nothing. If approval falls far enough, there will be a move to throw you out.</p>
+      
       <div class="btn-stack" style="margin-top:10px">
         <button class="btn" data-pol="govern">Govern <small>${pol.actionsLeft()} left this year</small></button>
         ${k.officeId === 'head' ? governButtons() : ''}
@@ -71,9 +71,8 @@ export function politicsCard() {
   }
   return `<div class="card"><h3>Politics</h3>
     <p class="muted" style="margin-bottom:8px">${esc(KIND[s.kind])}${s.rigged ? ' The count is not always honest.' : ''}</p>
-    <div class="kv"><span>Experience that counts</span><span>${exp ? `${exp} ${exp >= 20 ? '(a great deal)' : exp >= 8 ? '(some)' : '(a little)'}` : 'None yet'}</span></div>
+    <div class="kv"><span>Experience</span><span>${exp ? `${exp} ${exp >= 20 ? '(a great deal)' : exp >= 8 ? '(some)' : '(a little)'}` : 'None yet'}</span></div>
     ${past}
-    <p class="muted" style="margin-top:8px">Student council, debating, a law or politics degree, helping on campaigns and every office you hold all make the next race easier.</p>
     ${worldRows}
     ${raceRows()}
     ${extras}

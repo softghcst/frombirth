@@ -7,6 +7,7 @@ import { CATALOG, normalize, part, stylesFor, TWEAKS, shownTweaks, lipsFor } fro
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
+import { icon } from '../ui/kit.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
@@ -137,7 +138,7 @@ export function mountAppearanceEditor(el, o = {}) {
         <div class="av-stage">
           <div class="av-portrait" data-portrait>${draw(a, { age: shownAge, label: 'Your portrait' })}</div>
           <div class="av-previews" role="group" aria-label="See the face at another age">${PREVIEWS.map(([v, label]) => `<button type="button" class="av-chip av-preview ${preview === v ? 'on' : ''}" data-preview="${v}">${esc(label)}</button>`).join('')}</div>
-          <button type="button" class="btn small" data-random>Randomize</button>
+          <button type="button" class="btn small av-random" data-random>${icon('sparkle')}Randomize</button>
         </div>
         <div class="av-tabs" role="tablist">${tabs.map((x) => `<button type="button" role="tab" aria-selected="${x.id === tab}" class="av-tab ${x.id === tab ? 'on' : ''}" data-tab="${x.id}">${esc(x.name)}</button>`).join('')}</div>
         <div class="av-panel">${t.keys.map(control).join('')}${scope !== 'style' ? (t.tweaks ?? []).map(tweakControl).join('') : ''}</div>
