@@ -478,6 +478,8 @@ def recolour(folder, name, elements):
         if l < lm:
             p = max(5, min(95, round(100 * l / lm)))
             mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#000)'
+            if folder == 'lips' and 'masc' in name:  # the men's mouths: the darker tone is the upper lip, set apart on deep skin
+                mapping[c] = f'var(--lip-upper,{mapping[c]})'
         else:
             p = max(5, min(95, round(100 * (1 - l) / max(1 - lm, 0.01))))
             mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#fff)'
@@ -1019,6 +1021,31 @@ def fill_teeth():
     return done
 
 
+# Mouths drawn with a much heavier outline than the rest: the lips are given an edge in their own colour, which
+# covers the inner part of the outline (and of the line between the lips) so it ends up as heavy as the others.
+# (frame units: the width of that edge.) A thinned file carries data-thinned="1" and is never thinned twice.
+THIN_OUTLINE = {'lips_4': 2.6}
+
+
+def thin_outline():
+    """Applies THIN_OUTLINE to any listed file that has not had it. -> the names thinned."""
+    done = []
+    for name, width in THIN_OUTLINE.items():
+        path = os.path.join(ASSETS, 'lips', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-thinned="1"' in text or 'data-pathways="1"' not in text:
+            continue
+        text = re.sub(r'style="fill:(var\(--lip-color,#[0-9a-f]+\))"',
+                      lambda m: f'style="fill:{m.group(1)};stroke:{m.group(1)};stroke-width:{fmt(width)};stroke-linejoin:round"', text)
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-thinned="1"', 1)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        done.append(name)
+    return done
+
+
 def weigh_lines(folder='noses', recolor=True):
     """
     Lets the renderer thicken a part's dark lines without touching anything else in it: each ink path
@@ -1366,6 +1393,8 @@ def main(argv):
     lined = weigh_lines() + weigh_lines('eyes', recolor=False) + weigh_lines('lips', recolor=False)
     if lined:
         print(f'made the lines of {len(lined)} part(s) adjustable')
+    for name in thin_outline():
+        print(f'thinned the outline of {name}')
     for name in fill_teeth():
         print(f'filled the teeth of {name}')
     repaired = refit_hair()

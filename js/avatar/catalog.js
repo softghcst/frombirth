@@ -196,11 +196,29 @@ export const skinDepth = (appearance, seed) => part('skin', normalize(appearance
 export const hairHex = (appearance) => (INDEX.anyHair[appearance.style.hairDye] ?? INDEX.anyHair[appearance.inherited.hairColor]).hex;
 
 /**
+ * The color of a mouth. Lipstick is worn as chosen. Otherwise a woman's lips are her skin warmed toward rose; a
+ * man's are his own skin a shade darker, with no pink in them. From bronze downward, a man's lips are two-toned,
+ * as most lips on deep skin are: the upper lip darker than the skin, the lower lighter and a little rosier
+ * (`lipUpper` colors the upper lip of the men's mouths, which are drawn in two tones).
+ */
+export const NATURAL_LIPS = { woman: { rose: '#b8444f', k: 0.42, deepK: 0.34 }, man: { shade: '#8c4b3b', k: 0.2, upper: 0.16 },
+  twoTone: { from: 7, upper: { ink: '#1c0b07', k: 0.32 }, lower: { rose: '#b77c74', k: 0.34 } } };
+function lipColors(skin, lipColor, gender) {
+  if (lipColor) return { lip: part('lipColor', lipColor).hex };
+  if (gender !== 'male') { const W = NATURAL_LIPS.woman; return { lip: mixHex(skin.hex, W.rose, skin.depth >= 8 ? W.deepK : W.k) }; }
+  const M = NATURAL_LIPS.man, D = NATURAL_LIPS.twoTone;
+  if (skin.depth < D.from) { const lip = mixHex(skin.hex, M.shade, M.k); return { lip, lipUpper: mixHex(lip, M.shade, M.upper) }; }
+  // The deeper the skin, the stronger the two tones.
+  const t = Math.min(1, 0.6 + 0.4 * (skin.depth - D.from) / 4);
+  return { lip: mixHex(skin.hex, D.lower.rose, D.lower.k * t), lipUpper: mixHex(skin.hex, D.upper.ink, D.upper.k * t) };
+}
+
+/**
  * Everything the renderer needs, from an appearance: which part fills each
  * layer, and the colors. Baby hair and baby clothes are chosen from the
- * seed and the hair texture, so a baby grows into the same person.
+ * seed and the hair texture, so a baby grows into the same person. A child (`child`) wears no lipstick.
  */
-export function resolveLook(appearance, seed = 'x', gender) {
+export function resolveLook(appearance, seed = 'x', gender, { child = false } = {}) {
   const a = normalize(appearance, seed);
   const g = a.inherited;
   const st = a.style;
@@ -218,7 +236,7 @@ export function resolveLook(appearance, seed = 'x', gender) {
     babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'),
     colors: {
       skin: skin.hex, hair: hairHex(a), dyed: !!st.hairDye, brow: mixHex(natural, '#1c1210', 0.22), eye: part('eyeColor', g.eyeColor).hex,
-      lip: st.lipColor ? part('lipColor', st.lipColor).hex : mixHex(skin.hex, '#b8444f', skin.depth >= 8 ? 0.34 : 0.42),
+      ...lipColors(skin, child ? null : st.lipColor, gender), // lipstick is a grown-up's choice
       blush: mixHex(skin.hex, '#f0506a', skin.depth >= 7 ? 0.4 : 0.48),
       outfit: st.outfitColor ? part('outfitColor', st.outfitColor).hex : null,
     },
