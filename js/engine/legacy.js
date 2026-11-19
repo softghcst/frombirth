@@ -270,6 +270,8 @@ export function continueAs(npcId) {
 
   const entry = (text, tone = 'neutral') => ({ age: h.age, text, kind: 'system', tone });
   const next = {
+    // The next generation lives in the same world as the last: the same weather (engine/disasters.js).
+    worldId: old.worldId ?? old.timeline?.root ?? old.slotId,
     schemaVersion: SCHEMA_VERSION, spelling: 'us', slotId: uid('life'), createdAt: Date.now(), updatedAt: Date.now(), year: old.year,
     player, npcs, journal: pastEntries(h), market: old.market, eventHistory: [], pendingEvents: [],
     rngSeed: rng.state(), settings: old.settings ?? { theme: 'auto' },

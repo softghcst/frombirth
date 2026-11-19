@@ -8,7 +8,8 @@ import { MONARCHIES } from '../data/royalty.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log } from '../state.js';
-import { LIVING, HAZARDS, CRISES, INFLATION, grade } from '../data/living.js';
+import { LIVING, CRISES, INFLATION, grade } from '../data/living.js';
+import { KINDS, countryHazards } from '../data/disasters.js';
 import { netWorth } from './finance.js';
 import { addCondition } from './health.js';
 import { damageProperty, properties } from './realEstate.js';
@@ -68,7 +69,7 @@ export function summary(c = country()) {
       ['Pay', pay], ['Prices', prices], ['Safety', grade(L.safety)], ['Health care', grade(L.health)],
       ['Power and water', grade(L.infra)], ['Stability', grade(L.stability)],
       ['Rising prices', { low: 'steady', high: 'fast', extreme: 'out of control' }[L.inflation]],
-      ['Natural hazards', L.hazards.map((h) => HAZARDS[h].name).join(', ') || 'few'],
+      ['Natural hazards', countryHazards(c.id, L).map((h) => KINDS[h].plural).join(', ') || 'few'],
       ...(MONARCHIES[c.id] ? [['Head of state', `a monarchy${MONARCHIES[c.id].maleOnly ? '; only men inherit the throne' : ''}`]] : []),
       ['Same-sex marriage', rule('sameSexMarriage', c.id) ? 'legal' : 'not recognized'],
       ...(rule('lgbt', c.id) === 'hostile' ? [['Being gay or transgender', 'against the law, or treated as if it were']] : []),
@@ -147,34 +148,7 @@ export function tickLiving() {
     log(`You were robbed${hurt ? ' and beaten' : ''} ${rng.pick(['on the way home', 'at a traffic light', 'in your own doorway', 'on the bus'])}.${taken ? ` They took ${fmtMoney(taken, c)}.` : ''}`, 'system', 'bad');
   }
 
-  // The land and the weather
-  for (const id of L.hazards) {
-    const h = HAZARDS[id];
-    if (!rng.chance(h.chance)) continue;
-    let text = h.strike;
-    if (h.health) p.stats.health = clamp(p.stats.health + Math.round(h.health * shield));
-    if (h.mood) p.stats.mood = clamp(p.stats.mood + Math.round(h.mood * shield));
-    if (h.damage) {
-      const mine = properties().filter((x) => (x.countryId ?? c.id) === c.id);
-      if (mine.length) {
-        const a = rng.pick(mine);
-        damageProperty(a, Math.round(h.damage * (tier === 'rich' ? 0.6 : 1)));
-        text += ` Your ${a.name.charAt(0).toLowerCase() + a.name.slice(1)} was damaged${tier === 'rich' ? ', though the insurance will cover much of it' : ''}.`;
-      } else if (tier === 'poor' && p.age >= 18 && rng.chance(0.4)) {
-        const lost = Math.round(Math.max(0, p.finance.cash) * 0.3);
-        p.finance.cash -= lost;
-        text += ` The place you rent was badly hit, and you lost most of what you owned${lost ? ` (${fmtMoney(lost, c)})` : ''}.`;
-      }
-    }
-    if (h.injury && rng.chance(h.injury * shield)) {
-      p.stats.health = clamp(p.stats.health - rng.int(8, 22));
-      if (rng.chance(0.4)) addCondition('broken_arm');
-      text += ' You were hurt.';
-    }
-    p.stats.mood = clamp(p.stats.mood - 3);
-    log(`${text}${h.damage || h.injury ? TIER_LINE[tier] : ''}`, 'system', 'bad');
-    break; // one disaster a year is enough
-  }
+  // The land and the weather: engine/disasters.js, in its own part of the year.
 
   // People adapt. Hard conditions wear a mood down, but on their own they do not grind it to nothing.
   if (p.stats.mood < 32 && p.stats.mood < moodBefore) p.stats.mood = Math.min(moodBefore, 32);

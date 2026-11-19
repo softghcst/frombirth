@@ -63,6 +63,7 @@ node tests/baseball.mjs        # baseball: season lines and career totals, roles
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
+node tests/disasters.mjs       # weather and disasters: where and when they strike, regions, tsunamis, preparing, news from elsewhere
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
@@ -138,6 +139,19 @@ its own climate (`js/engine/calendar.js`): four seasons in the north or the sout
 long and short rains near the equator, the monsoon in South Asia, a hot season in the desert. Scenes follow it, and the
 school scenes follow each country's school year. Those turns draw on luck of their own
 (`engine/eventEngine.js` drawBetween), never on the game's dice. A change partway through a year starts from the next.
+
+## Weather and disasters
+
+Hurricanes, typhoons and cyclones, tornadoes, blizzards, floods and monsoon floods, landslides, wildfires, heatwaves,
+droughts, earthquakes and the tsunamis that can follow them, eruptions, avalanches and dust storms
+(`js/data/disasters.js`). Each country has the ones its land and climate bring, in their season and hemisphere, and
+the United States varies by city (hurricanes in Orlando, tornadoes in Austin, earthquakes in Seattle, blizzards in
+Denver). The world's weather is a fact of the playthrough: the same storm in the same month for everyone, worked out
+from the save and the date (`engine/disasters.js` weatherOf), never the game's dice. Once a year the disasters that
+reached the player's city are reckoned (damage to the home, injuries, losses for renters, an aftermath scene), and big
+ones elsewhere go into World news, reaching the life story where the player has ties, with a scene if someone they know
+lives there. With shorter turns, each is told as it strikes, and big storms, floods and fires bring a forecast a turn
+ahead: preparing lessens the damage, and leaving in time means not being hurt.
 
 ## Sports and athletics
 

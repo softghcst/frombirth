@@ -8,6 +8,7 @@ import { tickEquestrian } from './equestrian.js';
 import { tickLife } from './animalLife.js';
 import { tickArcs } from './animalArcs.js';
 import { tickSports } from './sportsLife.js';
+import { tickDisasters } from './disasters.js';
 import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
@@ -104,6 +105,7 @@ export const YEARLY = [
   ['digital', () => booked('auto', 'Digital life', tickDigital)], // platforms, people's digital lives, creators, reputation (engine/digital)
   ['identity', () => booked('health', 'Health and identity', tickIdentity)],
   ['living', () => booked('losses', 'Rising prices and losses', tickLiving)],
+  ['disasters', () => booked('losses', 'Storms, floods and other disasters', () => tickDisasters())], // the year's weather (engine/disasters.js)
   ['royalty', () => booked('auto', 'The royal household', tickRoyalty)],
   ['politics', () => booked('auto', 'Politics', tickPolitics)],
   ['scandal', () => booked('auto', 'Scandal', tickScandal)],

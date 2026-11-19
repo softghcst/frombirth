@@ -2,7 +2,7 @@
 // five-tab dock, and the loop that walks the player through queued scenarios.
 import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
-import { store, player, country } from '../state.js';
+import { store, player, country, prunePending } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { saveGame, pushUndo, popUndo, undoDepth, peekUndo } from '../save.js';
 import { advanceTurn, ageText, nextTurnText, stepOf, monthOf } from '../engine/turns.js';
@@ -199,6 +199,9 @@ export function mountGame(app, hooks) {
     busy = true;
     renderHeader();
     while (state.pendingEvents.length && player().alive) {
+      // An earlier scene may have taken someone away (a pet that died, a person who left): scenes about them go too.
+      prunePending(state);
+      if (!state.pendingEvents.length) break;
       const pending = state.pendingEvents[0];
       const ev = getEvent(pending.id);
       if (!ev) { state.pendingEvents.shift(); continue; }
@@ -269,7 +272,7 @@ export function mountGame(app, hooks) {
     if (!to) return;
     const where = to.month ? `${to.age === 0 ? '' : `${to.age} ${to.age === 1 ? 'year' : 'years'}, `}${to.month} months` : `age ${to.age}`;
     const turnWord = to.month || store.state.month ? 'turn' : 'year';
-    const sure = await confirmModal({ title: `Go back to ${where}?`, body: `Everything that happened since then is undone. You can go back up to three years, one ${turnWord} at a time.`, yes: turnWord === 'year' ? 'Age down' : 'Go back' });
+    const sure = await confirmModal({ title: `Go back to ${where}?`, body: `Everything that happened since then is undone. You can go back a few ${turnWord}s, one at a time, as far as there is room on this device to keep them.`, yes: turnWord === 'year' ? 'Age down' : 'Go back' });
     if (!sure) return;
     const earlier = popUndo(store.state.slotId);
     if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }
