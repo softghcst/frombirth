@@ -293,6 +293,7 @@ function career() {
     ${recruitingSection()}
     ${draftSection()}
     ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.kind === 'agent' && k.share ? ` · takes ${Math.round(k.share * 100)}%` : ''}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
+    ${(() => { const moves = Object.values(a?.sports ?? {}).flatMap((e) => (e.abroad ?? []).map((m) => ({ ...m, sportId: e.id }))); return moves.length ? `${label('Moves abroad')}${moves.map((m) => kv(`${m.year}: ${sp.orgOf(m.orgId)?.name ?? 'A club'}`, esc(`${COUNTRIES[m.countryId]?.name ?? ''} · ${sportOf(m.sportId).name} · fee ${money(m.fee)}`))).join('')}` : ''; })()}
     ${agentSection()}
     ${label('Division')}
     ${kv('You play in', `${esc(sp.DIVISION_NAME[sp.divisionOf()])} competition`)}

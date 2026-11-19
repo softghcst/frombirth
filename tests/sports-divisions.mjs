@@ -11,13 +11,14 @@ const { sportOf } = await import('../js/data/sports.js');
 const sp = await import('../js/engine/sports.js');
 const life = await import('../js/engine/sportsLife.js');
 const agents = await import('../js/engine/agents.js');
+const { COUNTRIES: COUNTRIES_ } = await import('../js/data/countries.js');
 
 rng.seed(20261119);
 const problems = []; const ok = [];
 const check = (c, m) => { if (!c) problems.push(m); };
 const caseOf = (name, fn) => { const n = problems.length; try { fn(); } catch (err) { problems.push(`${name}: threw ${err.stack.split('\n').slice(0, 3).join(' | ')}`); } ok.push(problems.length === n ? name : `(failed) ${name}`); };
 const S = () => store.state; const P = () => store.state.player;
-function year(pref = {}) { advanceYear(); S().pendingEvents = []; for (const d of life.openDecisions()) life.answer(d.id, pref[d.kind] && d.options.some((o) => o.id === pref[d.kind]) ? pref[d.kind] : d.options.at(-1).id); }
+function year(pref = {}) { advanceYear(); S().pendingEvents = []; for (const d of life.openDecisions()) if (pref[d.kind] !== 'skip') life.answer(d.id, pref[d.kind] && d.options.some((o) => o.id === pref[d.kind]) ? pref[d.kind] : d.options.at(-1).id); }
 function grownTo(age, gender, countryId = 'uk', city = 'London', setup = () => {}) {
   for (;;) {
     store.state = createLife({ countryId, city, gender });
@@ -171,6 +172,31 @@ caseOf('an agent offering themselves after a signing is a real agent from the po
     const r = life.answer(d.id, 'yes');
     check(r && (life.sportsAgentOnOffer() || !r.ok), 'hearing them out puts a real agent on offer');
   }
+});
+
+caseOf('a transfer abroad: a club in another country, a sponsored work visa, a new life there', () => {
+  let d = null;
+  for (let t = 0; t < 6 && !d; t++) {
+    const e = pro('male');
+    maxOut(e, 92);
+    for (let i = 0; i < 10 && !d && P().alive && e.contractId; i++) {
+      year({ integrity: 'refuse', renew: 'yes', transfer: 'no', abroad: 'skip' });
+      d = life.openDecisions().find((x) => x.kind === 'abroad');
+    }
+  }
+  check(!!d, 'a club abroad bids for a top professional');
+  if (!d) return;
+  const home = P().countryId;
+  check(d.countryId !== home && COUNTRIES_[d.countryId] && sp.orgOf(d.orgId).countryId === d.countryId, `the club is in another country (${d.countryId})`);
+  const r = life.answer(d.id, 'yes');
+  check(r.ok, `the move goes through (${r.text})`);
+  const e = sp.entryOf('soccer');
+  const k = S().sports.contracts[e.contractId];
+  check(P().countryId === d.countryId && k?.orgId === d.orgId && sp.orgOf(k.orgId).countryId === P().countryId, 'the player lives and plays in the new country');
+  check(['worker', 'work'].some((x) => JSON.stringify(P().residency ?? {}).includes(x)) || P().citizenships?.includes?.(d.countryId), 'on a work visa there');
+  check((e.abroad ?? []).some((x) => x.countryId === d.countryId), 'the move is on the athletic record');
+  year({ integrity: 'refuse' });
+  check(e.seasonsPlayed >= 1 && S().sports.seasons[e.seasons.at(-1)] && sp.orgOf(k.orgId).countryId === d.countryId, 'and a season is played there');
 });
 
 console.log(ok.map((x) => `${x.startsWith('(failed)') ? 'FAIL' : 'ok  '} ${x}`).join('\n'));
