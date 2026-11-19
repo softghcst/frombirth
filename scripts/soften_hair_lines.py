@@ -21,11 +21,15 @@ paths drawn over it, the heavy and the soft runs made of the original curves, sp
 passes from over the hair to the silhouette. hair_back is not
 changed: its outline is the edge of the whole style.
 
+One shade: every filled shape in hair_back, hair_base and hair_bangs is given the main hair colour (the
+fill of hair_base), so no part of the hair is darker or lighter than the rest; the soft lines are what
+separate the pieces. This is checked on every run, softened or not.
+
 hair_lines: every line is stroke-width 2.5 with round caps and joins; dark lines become #4a2414 (light
 highlight strokes keep their colour, so the hair keeps its shine).
 
-A softened file is marked data-softened="1" on its <svg> and is skipped on later runs, so running it
-twice is safe. Standard library plus numpy (already needed by fit_hair.py).
+A softened file is marked data-softened="1" on its <svg> and its outlines are not touched again on later
+runs, so running it twice is safe. Standard library plus numpy (already needed by fit_hair.py).
 """
 import json, os, sys
 import xml.etree.ElementTree as ET
@@ -140,9 +144,12 @@ def attr(el, group, name):
 def soften(path, head):
     tree = ET.parse(path, ET.XMLParser(target=ET.TreeBuilder(insert_comments=True)))
     root = tree.getroot()
-    if root.get('data-softened') == '1':
-        return None
     groups = {g.get('id'): g for g in root.iter(f'{NS}g') if g.get('id') in F.LAYERS}
+    shaded = one_shade(root, groups)
+    if root.get('data-softened') == '1':
+        if shaded:
+            write(path, root)
+        return {'shaded': shaded} if shaded else None
     filled = lambda g: [(p, F.parse_d(p.get('d'))) for p in (g.iter(f'{NS}path') if g is not None else [])
                         if (attr(p, g, 'fill') or '#000') != 'none']
     front = [polygon(c) for gid in ('hair_base', 'hair_bangs') for _, c in filled(groups.get(gid))]
@@ -230,10 +237,31 @@ def soften(path, head):
             if rgb and sum(rgb) < 3 * 110:  # a dark line (a light one is a highlight, and keeps its colour)
                 p.set('stroke', LINES[0])
     root.set('data-softened', '1')
+    write(path, root)
+    counts['shaded'] = shaded
+    return counts
+
+
+def one_shade(root, groups):
+    """Gives every hair fill the main colour. -> how many fills changed."""
+    main = F.main_colour(root)
+    changed = 0
+    for gid in ('hair_back', 'hair_base', 'hair_bangs'):
+        g = groups.get(gid)
+        if g is None:
+            continue
+        for el in [g, *g.iter(f'{NS}path')]:
+            fill = el.get('fill')
+            if fill and fill.lower() not in ('none', main) and F.hex_rgb(fill) and fill.lower() != F.OUTLINE:
+                el.set('fill', main)
+                changed += 1
+    return changed
+
+
+def write(path, root):
     text = ET.tostring(root, encoding='unicode')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(text.replace('<svg:', '<').replace('</svg:', '</') + '\n')
-    return counts
 
 
 def main(argv):
@@ -245,10 +273,13 @@ def main(argv):
     for f in files:
         counts = soften(f, head)
         name = os.path.basename(f)
+        shade = f'; {counts["shaded"]} fill(s) set to the main colour' if counts and counts.get('shaded') else ''
         if counts is None:
-            print(f'  {name}: already softened')
+            print(f'  {name}: already softened, one shade')
+        elif 'soft' not in counts:
+            print(f'  {name}: already softened{shade}')
         else:
-            print(f'  {name}: {counts["soft"]} stretch(es) of edge inside the hair softened, {counts["heavy"]} kept as outline')
+            print(f'  {name}: {counts["soft"]} stretch(es) of edge inside the hair softened, {counts["heavy"]} kept as outline{shade}')
     print('Run `npm run fit-hair` to fit the softened styles to every head.')
 
 

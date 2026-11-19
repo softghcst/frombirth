@@ -7,7 +7,7 @@
 //  - a fitted style can be chosen and saved, and the hairstyles given out at random are unchanged
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { FITTED_HAIR, FITTED_BASE_HEAD, FITTED_LOADED } from '../js/avatar/fittedHair.js';
-import { CATALOG, HAIR_STYLES, FITTED_STYLES, fittedFor, normalize } from '../js/avatar/catalog.js';
+import { CATALOG, HAIR_STYLES, FITTED_STYLES, GONE_FITTED, fittedFor, normalize } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
 import { fittedHairFile, filesFor, characterAvatarSvg, dressFor } from '../js/CharacterAvatar.js';
 import { AVATAR_MANIFEST } from '../js/avatarManifest.js';
@@ -78,6 +78,17 @@ for (const id of styles) {
   check(normalize({ v: 3, inherited: { head: 'head_12_sculpted' }, style: { hair: id } }, 'saved').style.hair === id, `a saved ${id} does not load`);
 }
 check(!HAIR_STYLES.some((h) => FITTED_HAIR[h.id]), 'fitted styles are among the styles given out at random');
+// A withdrawn style is gone from the game, and a save that used it is given its replacement.
+for (const [gone, kept] of Object.entries(GONE_FITTED)) {
+  check(!FITTED_HAIR[gone] && !existsSync(new URL(`assets/hair_raw/${gone}.svg`, root)), `${gone} is withdrawn but still in the game`);
+  check(!!FITTED_HAIR[kept], `${gone} is replaced by ${kept}, which is not a fitted style`);
+  check(normalize({ v: 3, inherited: { head: 'head_12_sculpted' }, style: { hair: gone } }, 'saved').style.hair === kept, `a save with ${gone} is not given ${kept}`);
+}
+// One shade: every hair shape is the dyeable main colour itself, never a darker or lighter mix of it.
+for (const id of styles) {
+  const svg = readFileSync(new URL(`assets/hair_fitted/${id}_${FITTED_BASE_HEAD}.svg`, root), 'utf8');
+  check(!/fill:color-mix/.test(svg), `${id} has hair shapes in a different shade`);
+}
 check(FITTED_STYLES.every((s) => s.type !== 'any' || ['straight', 'wavy', 'curly', 'coily'].every((t) => fittedFor(t).includes(s))), 'a style for any texture is not offered to every texture');
 
 if (problems.length) {

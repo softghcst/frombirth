@@ -53,6 +53,8 @@ export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));
  * random for new people stay as they were.
  */
 export const FITTED_STYLES = Object.values(FITTED_HAIR).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, tags: { length: s.length ?? 'short' }, type: s.type ?? 'any' }));
+/** Fitted styles that have been withdrawn, and the style a save that used one is given instead. */
+export const GONE_FITTED = { textured_crop: 'textured_pixie_cut' };
 /** The fitted styles that suit a natural texture ('any' suits every texture). */
 export const fittedFor = (texture) => FITTED_STYLES.filter((s) => s.type === 'any' || (SUITS[texture] ?? SUITS.straight).includes(s.type));
 
@@ -185,10 +187,12 @@ export function normalize(a, seed = 'x') {
   inherited.marks = Array.isArray(src.marks) ? src.marks.filter((id) => has('marks', id))
     : hash(`${seed}:marks`) % 9 === 0 ? ['freckles'] : [];
 
-  const st = a?.style ?? {};
+  let st = a?.style ?? {};
   const style = {};
   const oldCut = v2 ? OLD_HAIRSTYLE[st.hair] : OLD_HAIRSTYLE[OLD_STYLE_NUM[old.hairStyle]];
   const suited = stylesFor(inherited.hairTexture);
+  // A fitted style that has been withdrawn is replaced by the closest one kept, not one picked at random.
+  if (GONE_FITTED[st.hair]) st = { ...st, hair: GONE_FITTED[st.hair] };
   // A saved fitted style is kept even if the hair manifest could not be loaded this time (offline, say):
   // it is simply not drawn until it loads, rather than being replaced for good.
   const unloadedFitted = !FITTED_LOADED && !v2 && typeof st.hair === 'string' && /^[a-z0-9_]+$/.test(st.hair) && !PART_BY_ID[st.hair] && st.hair !== 'bald';

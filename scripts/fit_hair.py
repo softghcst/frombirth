@@ -369,7 +369,7 @@ def test_cap(base_marks):
     bangs = f'M{tl + 22} {fy + 2} Q{cx - 40} {fy + 26} {cx - 10} {fy + 12} Q{cx + 30} {fy + 30} {tr - 22} {fy + 2} Q{cx} {fy - 14} {tl + 22} {fy + 2} Z'
     return f'''<svg xmlns="{SVG}" viewBox="0 0 512 512" width="512" height="512" data-type="any" data-length="short">
   <!-- A test hairstyle written by scripts/fit_hair.py because assets/hair_raw/ was empty. -->
-  <g id="hair_back"><path fill="#6b3520" stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" d="{outer} L{er} {ey + 20} Q{cx} {ey + 34} {el} {ey + 20} Z"/></g>
+  <g id="hair_back"><path fill="#8f4b29" stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" d="{outer} L{er} {ey + 20} Q{cx} {ey + 34} {el} {ey + 20} Z"/></g>
   <g id="hair_base"><path fill="#8f4b29" stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" d="{outer} {inner}"/></g>
   <g id="hair_bangs"><path fill="#8f4b29" stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" d="{bangs}"/></g>
   <g id="hair_lines" fill="none" stroke-linecap="round"><path stroke="#4a2414" stroke-width="3" d="M{cx - 30} {top + 12} Q{cx - 40} {top + 40} {cx - 46} {fy - 6} M{cx + 20} {top + 10} Q{cx + 24} {top + 40} {cx + 20} {fy - 8}"/></g>
@@ -380,7 +380,7 @@ def test_cap(base_marks):
 
 
 def label(name):
-    """'textured_crop' -> 'Textured Crop'."""
+    """'space_buns' -> 'Space Buns'."""
     return ' '.join(w.capitalize() for w in name.split('_') if w)
 
 
@@ -458,7 +458,7 @@ def debug_page(base, heads, skipped, styles):
   td.none {{ background: var(--card); border: 2px dashed var(--line); color: var(--muted); text-align: center; font-size: 12px; }}
   .dye {{ display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }}
   .dye button {{ width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; }}
-  .dye button[data-c=""] {{ background: linear-gradient(135deg, #8f4b29 50%, #6b3520 50%) !important; }}
+  .dye button[data-c=""] {{ background: #8f4b29 !important; }}
 </style>
 </head>
 <body>

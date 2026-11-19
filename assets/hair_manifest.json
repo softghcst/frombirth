@@ -71,23 +71,6 @@
       ]
     },
     {
-      "id": "textured_crop",
-      "name": "Textured Crop",
-      "clipToHead": false,
-      "length": "short",
-      "type": "any",
-      "heads": [
-        "almond",
-        "angular",
-        "athletic",
-        "cherubic",
-        "dimple_oval",
-        "kid",
-        "pixie",
-        "sculpted"
-      ]
-    },
-    {
       "id": "textured_pixie_cut",
       "name": "Textured Pixie Cut",
       "clipToHead": false,
