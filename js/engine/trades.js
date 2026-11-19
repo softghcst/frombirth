@@ -14,7 +14,8 @@ const { seeded, overall, rosterNames } = sp.internals;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
 /** Whether the player may refuse a trade: baseball's ten-and-five rule, in the big leagues. */
-export const canVeto = (state, e, k) => e.id === 'baseball' && ['us', 'ca'].includes(sp.orgOf(k.orgId, state)?.countryId) && !e.minor
+export const canVeto = (state, e, k) => !!k.noTrade || tenAndFive(state, e, k);
+const tenAndFive = (state, e, k) => e.id === 'baseball' && ['us', 'ca'].includes(sp.orgOf(k.orgId, state)?.countryId) && !e.minor
   && state.year - (e.proYear ?? state.year) >= 10 && state.year - k.from >= 5;
 
 /**
@@ -34,14 +35,20 @@ export function tradeYear(state, a, e, k) {
   const r = seeded(`trade/${p.id}/${k.id}/${state.year}`);
   // Prospects and useful players move most; clubs keep their stars.
   if (!r.chance(e.minor ? 0.1 : o >= 86 ? 0.03 : 0.07)) return false;
-  const to = clubOf(state, r.pick(lg.teamIds.filter((t) => t !== club.teamIds[0])));
+  // July, the trade deadline: a club out of the race sells to one that is in it. Otherwise a trade in the winter.
+  const season = Object.values(sp.ensure(state).seasons).find((s) => s.leagueId === lg.id && s.year === state.year);
+  const table = season ? sp.standings(season).map((x) => x.teamId) : [];
+  const place = table.indexOf(club.teamIds[0]);
+  const contenders = table.slice(0, Math.max(2, Math.round(table.length / 4))).filter((t) => t !== club.teamIds[0]);
+  const deadline = e.id === 'baseball' && place >= 0 && (e.minor ? place < table.length / 4 : place >= table.length / 2) && contenders.length > 0;
+  const to = clubOf(state, r.pick(deadline && !e.minor ? contenders : lg.teamIds.filter((t) => t !== club.teamIds[0])));
   const [name] = rosterNames(r, club.countryId, 1, 'male');
   const forWhom = e.minor ? `${name}, a veteran they need now` : r.chance(0.5) ? `${name} and a prospect` : name;
-  const d = { sportId: e.id, contractId: k.id, orgId: to.id, orgName: to.name, from: club.name, forWhom };
+  const d = { sportId: e.id, contractId: k.id, orgId: to.id, orgName: to.name, from: club.name, forWhom, deadline };
   if (canVeto(state, e, k)) {
     if (state.year >= k.to) return false; // the contract is up: he chooses his next club himself
     life.decide(state, { kind: 'trade', ...d, key: `trade/${k.id}/${state.year}`,
-      text: `${club.name} have agreed to trade you to ${to.name} for ${forWhom}. With ten years in the game and five with the club, you can refuse.`,
+      text: `${club.name} have agreed to trade you to ${to.name} for ${forWhom}. ${k.noTrade ? 'Your contract has a no-trade clause' : 'With ten years in the game and five with the club'}, you can refuse.`,
       options: [{ id: 'yes', label: 'Accept the trade' }, { id: 'no', label: 'Refuse it' }] });
     return true;
   }
@@ -62,8 +69,9 @@ function move(state, e, d) {
   const to = sp.orgOf(d.orgId, state);
   if (minor) toMinors(state, e, to, minor.level, minor.ladder);
   else { e.minor = null; p.career.salary = Math.max(p.career.salary, pay); }
-  (e.trades ??= []).push({ year: state.year, from: d.from, to: d.orgName, for: d.forWhom });
-  const text = `${d.from} traded you to ${d.orgName} for ${d.forWhom}. Your contract goes with you.`;
+  (e.trades ??= []).push({ year: state.year, from: d.from, to: d.orgName, for: d.forWhom, ...(d.deadline ? { deadline: true } : {}) });
+  const text = d.deadline ? (minor ? `At the trade deadline ${d.from}, chasing the pennant, sent you to ${d.orgName} for ${d.forWhom}. Your contract goes with you.` : `At the trade deadline ${d.from}, out of the race, traded you to ${d.orgName}, who are chasing the pennant, for ${d.forWhom}. Your contract goes with you.`)
+    : `${d.from} traded you to ${d.orgName} for ${d.forWhom}. Your contract goes with you.`;
   sp.say(state, text, 'neutral', { screen: 'hub', id: 'career' });
   return result(true, text, 'neutral');
 }
