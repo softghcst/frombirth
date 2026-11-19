@@ -12,6 +12,7 @@ import { book } from './ledger.js';
 import { settleNpc } from './npcMoney.js';
 import { animalDied } from './animals.js';
 import { estateTax } from './inheritance.js';
+import { rate } from './currency.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const byGender = (npc, male, female, other) => (npc.gender === 'male' ? male : npc.gender === 'female' ? female : other);
@@ -105,7 +106,7 @@ export function inheritFrom(npc) {
   const where = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad] : c;
   // A parent's or grandparent's estate passes to a child or grandchild; anyone else's to an unrelated heir (data/inheritance.js).
   const relation = ['parent', 'mother', 'father', 'grandparent'].includes(npc.role) ? 'child' : 'other';
-  const fx = where.currency.scale / c.currency.scale; // the scale is applied in that country's own money
+  const fx = rate(c.currency.code, where.currency.code); // the scale is applied in that country's own money, at today's rate
   const tax = Math.round(estateTax(savings * fx, where, Array.from({ length: heirs }, () => ({ relation, share: 1 / heirs }))) / fx / heirs);
   npc.savings = 0;
   for (const sib of npcsByRole('sibling')) { if (sib.life) sib.life.savings += gross - tax; else sib.savings = (sib.savings ?? 0) + gross - tax; }

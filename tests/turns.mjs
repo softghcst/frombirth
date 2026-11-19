@@ -71,19 +71,36 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   // made to repeat for each run, so the runs differ only in their turn length.
   const realNow = Date.now; const realRandom = Math.random;
   const repeatable = () => { let t = 1.8e12; let s = 12345; Date.now = () => (t += 1000); Math.random = () => ((s = (s * 1103515245 + 12345) >>> 0) / 4294967296); };
-  const play = (step) => {
+  // answer: also answer the year's own scenes (those drawn at the turn of the year), the same way in every mode. A scene
+  // tied to a season is held for its season with shorter turns, and left alone in every mode here.
+  const play = (step, answer = false) => {
     store.state = structuredClone(start);
     turns.setStep(step);
     rng.seed(777);
     repeatable();
     const turnsPerYear = 12 / step;
-    for (let i = 0; i < 25 * turnsPerYear && P().alive; i++) { turns.advanceTurn(); S().pendingEvents = []; }
+    for (let i = 0; i < 25 * turnsPerYear && P().alive; i++) {
+      const r = turns.advanceTurn();
+      if (answer && r.year) {
+        for (const pe of S().pendingEvents.slice()) {
+          const ev = EVENT_BY_ID[pe.id];
+          if (!ev || ev.between || ev.timing?.seasons || !P().alive) continue;
+          const pick = ev.choices.findIndex((c) => !c.requires?.length);
+          const res = resolveChoice(ev, pick, pe.cast);
+          if (res.death) break;
+        }
+      }
+      S().pendingEvents = [];
+    }
     return S();
   };
   const strip = (st) => {
     const x = structuredClone(st);
-    x.journal = x.journal.filter((j) => !j.month && j.kind !== 'season');
-    delete x.month; delete x.settings; delete x.updatedAt; delete x.idSeq;
+    // Disasters are told as they strike with shorter turns, so the year's recap of them is worded differently; what they
+    // did (money, health, homes) is compared with everything else.
+    x.journal = x.journal.filter((j) => !j.month && j.kind !== 'season' && !j.disaster);
+    if (x.disasters) { delete x.disasters.told; delete x.disasters.warned; }
+    delete x.month; delete x.settings; delete x.updatedAt; delete x.idSeq; delete x.held;
     if (x.ledger) delete x.ledger.jn; // where the ledger last read the life story, which has the seasons in it too
     // Ids are counted in the life (util.uid; random ones before a life exists): they are numbered by first appearance instead.
     const seen = new Map();
@@ -97,6 +114,12 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   Date.now = realNow; Math.random = realRandom;
   check(ja === jb && ja === jc, 'twenty-five years come out exactly the same in all three turn lengths');
   check(ra === rb, 'and the game\'s dice end in the same place');
+  // And with the year's own scenes answered the same way: the same scenes are drawn, and the same luck follows them.
+  const a2 = strip(play(12, true)); const r2a = rng.state();
+  const b2 = strip(play(3, true)); const r2b = rng.state();
+  const c2 = strip(play(6, true));
+  Date.now = realNow; Math.random = realRandom;
+  check(a2 === b2 && a2 === c2 && r2a === r2b, 'answering the year\'s own scenes, twenty-five years still come out the same in all three turn lengths');
   if (ja !== jb) {
     const A = JSON.parse(ja); const B = JSON.parse(jb);
     for (const k of Object.keys(A)) if (JSON.stringify(A[k]) !== JSON.stringify(B[k])) { problems.push(`  first difference under "${k}"`); break; }
@@ -110,7 +133,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   const between = EVENTS.filter((e) => e.between);
   check(between.length >= 30, `about thirty scenes for the turns between years (${between.length})`);
   for (const e of between) {
-    check(Array.isArray(e.between.steps) && e.between.steps.every((s) => [3, 6].includes(s)), `${e.id}: belongs to six- or three-month turns`);
+    check(e.between.queued || (Array.isArray(e.between.steps) && e.between.steps.every((s) => [3, 6].includes(s))), `${e.id}: belongs to six- or three-month turns`);
     check(!e.between.seasons || e.between.seasons.every((s) => cal.SEASON_NAMES[s]), `${e.id}: real seasons`);
   }
   // Year-long turns never see them.
@@ -131,7 +154,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
       const between = turns.monthOf() !== 0;
       for (const pe of S().pendingEvents.splice(0)) {
         const ev = EVENT_BY_ID[pe.id];
-        if (ev && !ev.between && between) {
+        if (ev && !ev.between && between && pe.id !== 'disaster_forecast') { // a forecast is queued by the turn itself (engine/disasters.js)
           // One of the year's ordinary scenes, on a turn between years: more chances with shorter turns.
           everyday.set(pe.id, (everyday.get(pe.id) ?? 0) + 1);
           check(!ev.priority && !ev.queuedOnly, `${pe.id}: only ordinary scenes come between years, not the year's story beats`);
@@ -195,11 +218,20 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   const { pushUndo, peekUndo, undoDepth } = await import('../js/save.js');
   life(); turns.setStep(3);
   for (let i = 0; i < 16; i++) { pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; }
-  check(undoDepth(S().slotId) === 12, `three years of three-month turns can be taken back (${undoDepth(S().slotId)})`);
+  const { UNDO_BUDGET, saveGame } = await import('../js/save.js');
+  const held = JSON.parse(localStorage.getItem(`pathways.undo.${S().slotId}`) ?? '[]');
+  check(undoDepth(S().slotId) >= 2 && undoDepth(S().slotId) <= 12 && held.reduce((n, x) => n + x.length, 0) <= UNDO_BUDGET, `undo keeps as many turns as fit its share of storage (${undoDepth(S().slotId)})`);
+  // A full browser: five million characters for everything. The life's own save always wins over its undo history.
+  const room = 5000000; const real = { set: localStorage.setItem };
+  localStorage.setItem = (k, v) => { let used = 0; for (const [kk, vv] of disk) if (kk !== k) used += kk.length + vv.length; if (used + k.length + String(v).length > room) throw new Error('QuotaExceededError'); disk.set(k, String(v)); };
+  let failed = 0;
+  for (let i = 0; i < 4 * 25 && P().alive; i++) { pushUndo(S()); turns.advanceTurn(); S().pendingEvents = []; if (!saveGame(S())) failed++; }
+  localStorage.setItem = real.set;
+  check(failed === 0, `with storage nearly full, the life still saves every turn (${failed} failed)`);
   const to = peekUndo(S().slotId);
   check(to && to.month === 9 && to.age === P().age - 1, `going back from the turn of a year lands on its last quarter (${JSON.stringify(to)})`);
   check(turns.ageLabel(0, 3) === '3 months' && turns.ageLabel(1, 6) === '1 year, 6 months' && turns.ageLabel(40, 9) === '40 years, 9 months' && turns.ageLabel(7, 0) === '7', 'ages read naturally');
-  section('timing: birthdays at the turn of the year, season scenes in their season; undo by the turn, three years back', n);
+  section('timing: birthdays at the turn of the year, season scenes in their season; undo by the turn, as far back as storage allows, and the life always saves', n);
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

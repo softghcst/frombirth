@@ -67,6 +67,7 @@ node tests/love-stories.mjs    # relationship stories told only when true, once,
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
+node tests/disasters.mjs       # weather and disasters: where and when they strike, regions, tsunamis, preparing, news from elsewhere
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
@@ -107,7 +108,7 @@ One check runs in a real browser and needs Playwright with Chromium (it skips it
 node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
 ```
 
-`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; and that the eye shapes on offer are unchanged.
+`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; that the eye shapes on offer are unchanged; that every nose is clear of every pair of eyes on every face shape; and that every mouth sits well under every nose, and men and women are drawn with their own mouths.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
 
 ## Living moments
@@ -142,6 +143,19 @@ its own climate (`js/engine/calendar.js`): four seasons in the north or the sout
 long and short rains near the equator, the monsoon in South Asia, a hot season in the desert. Scenes follow it, and the
 school scenes follow each country's school year. Those turns draw on luck of their own
 (`engine/eventEngine.js` drawBetween), never on the game's dice. A change partway through a year starts from the next.
+
+## Weather and disasters
+
+Hurricanes, typhoons and cyclones, tornadoes, blizzards, floods and monsoon floods, landslides, wildfires, heatwaves,
+droughts, earthquakes and the tsunamis that can follow them, eruptions, avalanches and dust storms
+(`js/data/disasters.js`). Each country has the ones its land and climate bring, in their season and hemisphere, and
+the United States varies by city (hurricanes in Orlando, tornadoes in Austin, earthquakes in Seattle, blizzards in
+Denver). The world's weather is a fact of the playthrough: the same storm in the same month for everyone, worked out
+from the save and the date (`engine/disasters.js` weatherOf), never the game's dice. Once a year the disasters that
+reached the player's city are reckoned (damage to the home, injuries, losses for renters, an aftermath scene), and big
+ones elsewhere go into World news, reaching the life story where the player has ties, with a scene if someone they know
+lives there. With shorter turns, each is told as it strikes, and big storms, floods and fires bring a forecast a turn
+ahead: preparing lessens the damage, and leaving in time means not being hurt.
 
 ## Sports and athletics
 
@@ -237,6 +251,7 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 | Notes the filenames cannot carry (hair textures, resting faces, uniforms, royal dress) | `js/avatar/curation.js` |
 | The renderer: layers, ages, auto-dress | `js/CharacterAvatar.js` |
 | How each hairstyle is fitted to each head, and how each head is framed | `js/avatar/hairFit.js` |
+| How each nose is kept clear of the eyes it is worn with, and each mouth fitted to the nose | `js/avatar/featureFit.js` |
 | How saved appearances are read, and old saves converted | `js/avatar/catalog.js` |
 | How children take after their parents | `js/avatar/inherit.js` |
 | The character creator and salon editor | `js/avatar/editor.js` |
@@ -256,6 +271,43 @@ head: features keep their place between forehead and chin, hair and hats follow 
 earrings hang from that head's ears, clothes sit under its chin. Babies, toddlers and children get slightly smaller,
 lower-set features. Eyes drawn as an empty outline are given whites by filling the opening.
 
+**Fitting a nose to the eyes.** Every nose and every pair of eyes is drawn to fill the same box on the template face,
+so some pairs crowd each other: a broad nose under eyes whose inner corners sweep down, a tall bridge between eyes
+set close. The script measures the outline of each, row by row (`shape` in the manifest), and
+`js/avatar/featureFit.js` finds, for one face, the smallest change that leaves a clear gap: the nose up to a fifth
+smaller, a little lower, or each eye up to three units further out (`NOSE_FIT`). A pair that is already clear is
+drawn exactly as before. It works from the measurements and the person's own proportions, so nothing is listed pair
+by pair: a new nose or pair of eyes only needs measuring (run the script).
+
+**Fitting a mouth to the nose.** The mouth is then fitted to the nose above it, as that nose was fitted to the eyes
+(`LIP_FIT`): a resting mouth is drawn at least 1.3 times as wide as the nose, up to 15% larger, so a small bow
+under a broad nose does not look pinched; and it is moved up or down by up to four units toward an upper lip of
+much the same length, so a short nose does not leave a long empty space above the mouth. It always keeps clear of
+the nose and the chin. Expressions (an open mouth, a pout, a grin) are drawn as they are.
+
+**Men's and women's mouths.** There are two sets of resting mouths: the women's (`RESTING.lips`) and the men's
+(`RESTING.lipsMasc`: the `lips_masc_` files, and the three neutral women's mouths, `lips_8`, `lips_9` and `lips_10`,
+which both sets share). A mouth is inherited whatever the gender, and drawn to suit it: a shared mouth is drawn as it
+is on anyone; otherwise a man born with a feminine mouth (`lips_4`, `_6`, `_7`, `_11`, `_14`) is drawn with the men's
+mouth matched to it, and a woman born with a men's mouth with the women's match (`LIP_MATCH` in
+`js/avatar/curation.js`, `lipsFor` in `js/avatar/catalog.js`). What is saved, and passed on to children, is the
+mouth itself, so a son can have his mother's full lips and pass them on to a daughter. Randomly made men are born
+with a men's mouth, and the creator offers each person only the mouths that can be drawn for them. The smirk, the
+grin and the parted lips showing teeth (`lips_masc_01`, `_05`, `_08`) can be chosen but are never given at random.
+
+**Lip colors.** Lipstick is worn as chosen, all over, by anyone, and by no child. Otherwise a woman's lips are her
+skin warmed toward rose. A man's are a natural pair for his skin tone, from one shared palette (`NATURAL_LIP_UPPER`
+and `NATURAL_LIP_LOWER` in `js/avatarPalettes.js`, one pair per tone in `SKIN_TONES` order): the upper lip a deeper
+shade of the skin, the lower softer, so a mouth reads by its own fills rather than its outline at portrait size. From
+porcelain to bronze both lips are one nude color instead, warming from golden so the mouth does not blend into the
+cheeks. From chestnut down the upper is a rich deep brown and the lower a little lighter, a warm brown with only a hint
+of rose, deepening gradually. The colors were chosen by lightness, chroma and hue against each skin. Every resting mouth draws its upper lip in `--lip-upper` (falling back to the lip color), so the
+pair shows on every shape, thin, full or smiling: the men's mouths were drawn that way, and the script parts the women's
+mouths, whose two lips were one path (`split_lip_tones`). Teeth, tongues and the inside of an open mouth are never
+parted, and lipstick and women's natural lips set no upper color, so they look exactly as before. One mouth (`lips_4`)
+was drawn with an outline half as heavy again as the rest, in a redder ink: the script trims the outside of its outline
+and the line between its lips, and draws it in the same ink as the others (`THIN_OUTLINE`).
+
 **Fitting hair.** The script also measures every hairstyle and head row by row and column by column (`edge` in the
 manifest): the inner edges of the hair either side of the face, its hairline, the outline of its crown, and the
 outline of each head. From those, `js/avatar/hairFit.js` corrects the plain fit for each pair, within small limits:
@@ -270,6 +322,12 @@ the reason); stray specks are removed from hair files (`remove_specks`).
 (`frameFor`): faces fill the same share of a portrait, with the eyes on one line, whatever the hairstyle. Children
 keep the plain picture. Every screen draws through `avatarSvg`, so a person is the same drawing everywhere; a screen
 chooses only the size.
+
+**Skin tones.** Fourteen, lightest to deepest (`SKIN_TONES` in `js/avatarPalettes.js`): porcelain, ivory, rose beige,
+sand, beige, golden, caramel, olive, tan, bronze, chestnut, umber, espresso, ebony. Saves store the id, so a tone can be
+added between two others, or retuned, without changing anyone's face. Anything that changes with depth (hair and eye
+colors and hair texture at random, freckles, blush, lip colors) names the tone it starts at (`DEPTH` in
+`js/avatar/catalog.js`), so adding a tone never moves where it starts.
 
 **Reading faces on every skin tone.** All linework is one dark ink, which loses contrast as skin deepens while the
 white of the eye gains it. From chestnut downward, in step with depth (`deepness`, `READABLE` in

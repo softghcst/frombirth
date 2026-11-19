@@ -481,7 +481,7 @@ let moved;
   p.education.enrolled = true; p.education.stage = 'university';
   docs.applyPassport(p.id, 'us');
   let ran = false;
-  for (let attempt = 0; attempt < 5 && !ran; attempt++) {
+  for (let attempt = 0; attempt < 10 && !ran; attempt++) { // about one in five is refused, and a recent refusal makes the next harder
     const y = store.state.year + 1;
     const t = travel.startPlan('semester');
     travel.updatePlan(t.id, { destination: { countryId: 'fr', city: 'Lyon' }, depart: `${y}-02-01`, ret: `${y}-06-15`, mode: 'jet', stay: 'student' });
@@ -490,8 +490,8 @@ let moved;
     check(app?.status === 'submitted' && app.kind === 'study', 'applied for; decided when the year turns');
     year();
     p.education.enrolled = true; p.education.stage = 'university'; p.finance.cash += 20000;
-    const degrees = p.education.degrees.length; // counted after the year: a degree finished at home that year is not the semester's
-    if (p.applications.find((a) => a.id === app.id).status !== 'approved') continue;
+    if (!app || p.applications.find((a) => a.id === app.id)?.status !== 'approved') continue;
+    const degrees = p.education.degrees.length; // counted after the year turns: a student can graduate while waiting on a refused visa
     ran = true;
     check(travel.problems(t).length === 0, `ready (${travel.problems(t)})`);
     travel.confirm(t.id);
@@ -502,7 +502,7 @@ let moved;
     check(mate && mate.flags.abroad === 'fr' && p.npcIds.includes(mate.id), 'a classmate from Lyon, kept as a friend in France');
     check(travel.achievements().find((a) => a.id === 'study_abroad').year, 'Study Abroad earned');
   }
-  check(ran, 'a student visa was granted within five tries');
+  check(ran, 'a student visa was granted within ten tries');
   section('study abroad: a student visa, a term\'s credit and no more, and a classmate who persists');
 }
 {
@@ -597,16 +597,18 @@ let moved;
   check(!cit.rightToLive('mx', p) && docs.entryRule(p, 'mx').kind !== 'resident' && !imm.routes('mx').find((r) => r.id === 'business').eligible, 'owning it gives no right to live there, and the owner route waits for a year of trading');
   check(!ba.startAbroad('cleaning', 'mx').ok, 'a business that is the owner\'s own work cannot be run from abroad');
   bz.hire(cafe, 0);
-  for (let i = 0; i < 2; i++) { cafe.cash += 200000; year(); p.finance.cash += 1e6; }
+  // The test keeps the café afloat: a café can lose more in a year than a fixed top-up, and two years overdrawn close it.
+  const afloat = () => { cafe.cash = Math.max(0, cafe.cash) + 200000; cafe.overdrawn = 0; };
+  for (let i = 0; i < 2; i++) { afloat(); year(); p.finance.cash += 1e6; }
   check(cafe.status === 'open' && cafe.years >= 1, `the café trades (${cafe.status}, ${cafe.years} years)`);
   const pays = bz.payouts().find((x) => x.source === `biz:${cafe.id}`);
   check(!pays || pays.gross < cafe.payout || COUNTRIES.mx.currency.scale <= COUNTRIES.us.currency.scale, 'what it pays its owner arrives changed into dollars');
+  afloat(); // money first: a business that cannot cover a wage will not hire
   if (bz.headcount(cafe) < 2) bz.hire(cafe, null);
-  cafe.overdrawn = 0; cafe.cash += 200000;
   const route = imm.routes('mx').find((r) => r.id === 'business');
   check(route.eligible && route.status === 'worker', `after a year with staff, the business-owner route opens (${route.why})`);
   let app;
-  for (let i = 0; i < 40 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); const a = reloc.applyToMove('mx', 'business', 'Guadalajara'); if (a.ok) app = a.app; year(); p.finance.cash += 1e6; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); }
+  for (let i = 0; i < 10 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; afloat(); if (bz.headcount(cafe) < 2) bz.hire(cafe, null); const a = reloc.applyToMove('mx', 'business', 'Guadalajara'); if (a.ok) app = a.app; year(); p.finance.cash += 1e6; afloat(); if (bz.headcount(cafe) < 2) bz.hire(cafe, null); }
   check(app?.status === 'approved', 'the application is approved');
   reloc.arrange(app.id, { housing: 'rent', money: 0, travel: 'plane', animals: 'leave' });
   docs.applyPassport(p.id, 'us');

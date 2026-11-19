@@ -20,6 +20,7 @@ import { applyEffects } from './effects.js';
 import { EVENTS, EVENT_BY_ID } from '../data/events/index.js';
 import { claimStory } from './animals.js';
 import { turnSeasons } from './calendar.js';
+import { feltRecently } from './disasters.js';
 
 const DEFAULT_COOLDOWN = 10;
 
@@ -110,9 +111,14 @@ function eligibleCast(ev, between = false) {
  */
 function inTime(t) {
   const state = store.state;
-  const step = [6, 3].includes(state.settings?.step) ? state.settings.step : 12;
   const month = state.month ?? 0;
+  // The year's own draw, at the turn of the year, is judged over the whole year whatever the turn length, so it is the
+  // same draw in every mode (engine/turns.js holds a season scene back for its season, with shorter turns).
+  const step = month === 0 ? 12 : [6, 3].includes(state.settings?.step) ? state.settings.step : 12;
   if (t.yearTurn && month !== 0) return false;
+  if (t.yearLong && step !== 12) return false;
+  // A scene about the weather comes only when that weather really reached the player (engine/disasters.js).
+  if (t.weather && !feltRecently(t.weather, t.minSeverity ?? 0, state, month === 0)) return false;
   if (t.seasons && step !== 12) {
     const now = turnSeasons(month === 0 ? 12 : month, step, player().countryId);
     if (!t.seasons.some((x) => now.includes(x))) return false;
@@ -148,7 +154,7 @@ export function drawBetween(step, seasons, chance = 0.8, everyday = 0) {
     const pool = [];
     for (const ev of EVENTS) {
       const b = ev.between;
-      if (!b || (b.steps && !b.steps.includes(step)) || (b.seasons && !b.seasons.some((x) => seasons.includes(x))) || (b.when && !b.when(player(), state))) continue;
+      if (!b || ev.queuedOnly || (b.steps && !b.steps.includes(step)) || (b.seasons && !b.seasons.some((x) => seasons.includes(x))) || (b.when && !b.when(player(), state))) continue;
       const cast = eligibleCast(ev, true);
       if (cast) pool.push({ ev, cast });
     }

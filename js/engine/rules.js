@@ -235,7 +235,10 @@ export function tickRules() {
   const placeId = rng.chance(REFORM.homeBias) ? p.countryId : rng.pick(COUNTRY_LIST).id;
   // A country whose regions make some law: now and then one of them changes one of those laws instead.
   const regions = [...new Set((COUNTRIES[placeId]?.cities ?? []).map((c) => lawRegion(placeId, c)).filter(Boolean))];
-  if (regionsLegislate(placeId) && regions.length && rng.chance(0.4)) return regionalReform(placeId, rng.pick(regions));
+  if (regionsLegislate(placeId) && regions.length && rng.chance(0.4)) {
+    const e = regionalReform(placeId, rng.pick(regions));
+    if (e) return e; // a region with nothing ripe to change leaves the year to the national government
+  }
   const options = reformsFor(placeId).filter(([id]) => !regionalPowers(placeId).includes(id));
   if (!options.length) return null;
   const open = options.filter(([id]) => !historyHolds(id, placeId));

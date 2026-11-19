@@ -5,7 +5,7 @@
 // genetics. Only the `inherited` half of a parent is ever read, so a dyed
 // or restyled parent passes on what they were born with.
 import { rng } from '../rng.js';
-import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, HAIR_STYLES, TWEAKS } from './catalog.js';
+import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, DEPTH, HAIR_STYLES, TWEAKS } from './catalog.js';
 import { RESTING, OUTFITS, HAIR_COVERS_FACE } from './curation.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
@@ -21,19 +21,19 @@ export function randomInherited(skinDepthHint) {
   const g = {};
   for (const key of INHERITED_KEYS) g[key] = rng.pick(pool(key)).id;
   g.skin = toneAt(depth);
-  g.hairColor = depth >= 7 ? weighted({ black: 70, dark_brown: 26, brown: 4 })
-    : depth >= 4 ? weighted({ black: 38, dark_brown: 34, brown: 20, light_brown: 8 })
+  g.hairColor = depth >= DEPTH.bronze ? weighted({ black: 70, dark_brown: 26, brown: 4 })
+    : depth >= DEPTH.golden ? weighted({ black: 38, dark_brown: 34, brown: 20, light_brown: 8 })
       : weighted({ black: 8, dark_brown: 20, brown: 24, light_brown: 16, auburn: 6, ginger: 5, dark_blonde: 11, blonde: 10 });
-  g.hairTexture = depth >= 8 ? weighted({ coily: 62, curly: 30, wavy: 8 })
-    : depth >= 5 ? weighted({ straight: 30, wavy: 30, curly: 28, coily: 12 })
+  g.hairTexture = depth >= DEPTH.chestnut ? weighted({ coily: 62, curly: 30, wavy: 8 })
+    : depth >= DEPTH.olive ? weighted({ straight: 30, wavy: 30, curly: 28, coily: 12 })
       : weighted({ straight: 46, wavy: 34, curly: 18, coily: 2 });
-  g.eyeColor = depth >= 6 ? weighted({ dark_brown: 70, brown: 26, hazel: 3, amber: 1 })
-    : depth >= 3 ? weighted({ dark_brown: 34, brown: 38, hazel: 14, amber: 6, green: 5, gray: 3 })
+  g.eyeColor = depth >= DEPTH.tan ? weighted({ dark_brown: 70, brown: 26, hazel: 3, amber: 1 })
+    : depth >= DEPTH.sand ? weighted({ dark_brown: 34, brown: 38, hazel: 14, amber: 6, green: 5, gray: 3 })
       : weighted({ dark_brown: 8, brown: 26, hazel: 16, amber: 4, green: 14, blue: 24, gray: 8 });
   // Most faces are as drawn; some have eyes a little wider set, a bigger nose, and so on.
   g.tweaks = Object.fromEntries(TWEAKS.map((k) => [k.id, rng.chance(0.3) ? rng.pick([-1, 1]) : 0]));
   g.marks = [];
-  if (depth <= 4 && rng.chance(0.14)) g.marks.push(rng.chance(0.3) ? 'dense_freckles' : 'freckles');
+  if (depth <= DEPTH.golden && rng.chance(0.14)) g.marks.push(rng.chance(0.3) ? 'dense_freckles' : 'freckles');
   if (rng.chance(0.06)) g.marks.push('beauty_mark');
   return g;
 }
@@ -53,6 +53,8 @@ export function defaultStyle(inherited, gender) {
 /** A complete appearance for someone with no known parents. */
 export function randomAppearance(skinDepthHint, gender) {
   const inherited = randomInherited(skinDepthHint);
+  // A man is born with one of the men's mouths, so every one of them turns up (it is drawn to suit a daughter: lipsFor).
+  if (gender === 'male') inherited.lips = rng.pick(CATALOG.lips.filter((x) => RESTING.lipsMasc.includes(x.id))).id;
   const style = defaultStyle(inherited, gender);
   if (rng.chance(0.14)) style.glasses = rng.pick(CATALOG.glasses.filter((g) => !/star|visor/.test(g.id))).id;
   if (gender === 'male' && rng.chance(0.3)) style.facialHair = rng.pick(CATALOG.facialHair).id;

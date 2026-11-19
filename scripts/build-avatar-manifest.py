@@ -59,9 +59,9 @@ def clean_name(name):
 # Artwork that has been withdrawn: never sorted in, even if a pack still contains it.
 # Saves that used a withdrawn eye, nose or mouth are moved to the nearest one kept (WITHDRAWN in js/avatar/curation.js).
 EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05.svg', 'eyes_13.svg', 'eyes_17.svg', 'eyes_21.svg', 'eyes_23.svg',
-            'eyes_11.svg', 'eyes_12.svg',
+            'eyes_11.svg', 'eyes_12.svg', 'eyes_24.svg',
             'lips_1.svg', 'lips_2.svg', 'lips_3.svg', 'lips_12.svg', 'lips_13.svg', 'lips_15.svg', 'lips_16.svg', 'lips_19.svg',
-            'nose_1.svg', 'nose_2.svg', 'nose_3.svg', 'nose_4.svg', 'nose_5.svg', 'nose_8.svg', 'nose_18.svg', 'nose_22.svg',
+            'nose_1.svg', 'nose_2.svg', 'nose_3.svg', 'nose_4.svg', 'nose_5.svg', 'nose_8.svg', 'nose_18.svg', 'nose_22.svg', 'nose_15.svg', 'nose_24.svg',
             'face_01_oval.svg', 'face_02_round.svg', 'face_03_square.svg', 'face_04_heart.svg', 'face_05_diamond.svg', 'face_06_pear.svg'}
 
 
@@ -478,6 +478,8 @@ def recolour(folder, name, elements):
         if l < lm:
             p = max(5, min(95, round(100 * l / lm)))
             mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#000)'
+            if folder == 'lips' and 'masc' in name:  # the men's mouths: the darker tone is the upper lip, set apart on deep skin
+                mapping[c] = f'var(--lip-upper,{mapping[c]})'
         else:
             p = max(5, min(95, round(100 * (1 - l) / max(1 - lm, 0.01))))
             mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#fff)'
@@ -934,6 +936,39 @@ def measure_head_edge(elements):
     return {'L': left, 'R': right, 'T': top}
 
 
+FEATURE_STEP = 2  # how far apart the measured rows of an eye or nose are
+
+
+def measure_feature(elements, folder):
+    """
+    The outline of a pair of eyes, a nose or a mouth, row by row, so the game can tell how close they come
+    to each other (js/avatar/featureFit.js). For eyes: how far the nearest ink is from the centre line
+    (`inner`). For a nose or a mouth: how far its lines reach from the centre line (`ink`), and how far
+    anything it draws does, a nose's patch of skin included (`all`). Rows start at `y` and are FEATURE_STEP
+    apart; `bottom` is where the drawing ends, and a mouth also has its `width`.
+    """
+    box = bbox_of(elements)
+    lines = [e for e in elements if not str(e['fill']).startswith('var(--skin-color')]
+    y0 = int(math.floor(box[1]))
+    inner, ink, whole = [], [], []
+    y = y0
+    while y <= box[3]:
+        spans = row_spans(elements, y + 0.5)
+        if folder == 'eyes':
+            crosses = any(a <= 256 <= b for a, b in spans)
+            inner.append(0 if crosses else round(min(abs(v - 256) for sp in spans for v in sp), 1) if spans else None)
+        else:
+            reach = lambda sp: round(max(256 - sp[0][0], sp[-1][1] - 256), 1) if sp else None
+            ink.append(reach(row_spans(lines, y + 0.5)))
+            whole.append(reach(spans))
+        y += FEATURE_STEP
+    shape = {'y': y0, 'bottom': round(box[3], 1)}
+    if folder == 'lips':
+        shape['width'] = round(box[2] - box[0], 1)
+    shape.update({'inner': inner} if folder == 'eyes' else {'ink': ink, 'all': whole})
+    return shape
+
+
 # ---------- Repairs to hairstyles that were placed badly ----------
 #
 # The placement above works from each drawing's face opening, and a few styles defeat it. Where the
@@ -983,6 +1018,104 @@ def fill_teeth():
         with open(path, 'w', encoding='utf-8') as f:
             f.write(text)
         done.append(name)
+    return done
+
+
+# Mouths drawn with a much heavier outline than the rest, in a redder ink: (skin, lips, ink). The outside of the
+# outline is trimmed by drawing its edge again in the skin's color (`skin`, frame units, half of it falling on the
+# outline); the line between the lips by edging the lips in their own color (`lips`, the same); and the outline is
+# drawn in the ink the other mouths use. A trimmed file records what was done (data-thinned="skin/lips"); if the
+# numbers here change, or the file was trimmed some other way, that is undone and it is trimmed again.
+THIN_OUTLINE = {'lips_4': (3.0, 1.4, '#230601')}
+
+
+def thin_outline():
+    """Applies THIN_OUTLINE to any listed file that has not had it. -> the names thinned."""
+    done = []
+    for name, (skin, lips, ink) in THIN_OUTLINE.items():
+        path = os.path.join(ASSETS, 'lips', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        mark = f'data-thinned="{fmt(skin)}/{fmt(lips)}"'
+        if mark in text or 'data-pathways="1"' not in text:
+            continue
+        # Undo earlier attempts.
+        text = re.sub(r';stroke:(var\(--lip-upper,)?var\(--lip-color,#[0-9a-f]+\)\)?;stroke-width:[\d.]+;stroke-linejoin:round"', '"', text)
+        text = re.sub(r'<path style="fill:none;stroke:var\(--skin-color[^"]*" d="[^"]*"/>', '', text)
+        text = re.sub(r' data-thinned="[^"]*"', '', text)
+        m = re.search(r'<path style="fill:(#[0-9a-f]{6});stroke:var\(--line-ink[^"]*"( fill-rule="[^"]*")? d="([^"]*)"/>', text)
+        if not m:
+            continue
+        outline = m.group(0).replace(f'fill:{m.group(1)}', f'fill:{ink}', 1)
+        trim = f'<path style="fill:none;stroke:var(--skin-color,#e8b68c);stroke-width:{fmt(skin)};stroke-linejoin:round" d="{m.group(3)}"/>'
+        text = text[:m.start()] + outline + trim + text[m.end():]
+        text = re.sub(r'style="fill:(var\(--lip-color,#[0-9a-f]+\))"',
+                      lambda q: f'style="fill:{q.group(1)};stroke:{q.group(1)};stroke-width:{fmt(lips)};stroke-linejoin:round"', text)
+        text = text.replace('data-pathways="1"', f'data-pathways="1" {mark}', 1)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        done.append(name)
+    return done
+
+
+def split_lip_tones():
+    """
+    The upper and lower lips of most mouths are drawn as two shapes in one path, so they could only ever take one
+    color. This parts them, wherever the two are clearly one above the other: the upper lip is given its own color,
+    var(--lip-upper), falling back to the mouth's color, so a mouth looks exactly as before unless the portrait sets
+    one (natural lips on men: NATURAL_LIPS in js/avatar/catalog.js). Lipstick, teeth, tongues and the inside of a
+    mouth are never touched: only shapes in the lip color are, and only a pair that is clearly upper and lower.
+    The men's mouths already draw their upper lip in --lip-upper. A parted file carries data-lip-tones="1".
+    -> the names parted.
+    """
+    done = []
+    folder = os.path.join(ASSETS, 'lips')
+    lip = re.compile(r'<path style="fill:(var\(--lip-color,#[0-9a-f]+\))([^"]*)"( fill-rule="[^"]*")? d="([^"]*)"/>')
+    for f in sorted(os.listdir(folder)):
+        if not f.endswith('.svg') or f.startswith('lips_masc'):
+            continue
+        path = os.path.join(folder, f)
+        text = open(path, encoding='utf-8').read()
+        if 'data-lip-tones="1"' in text or 'data-pathways="1"' not in text:
+            continue
+        found = list(lip.finditer(text))
+        shapes = []  # (the path it is in, its commands)
+        for m in found:
+            cur = []
+            for c, a in parse_path(m.group(4)) + [('M', [])]:
+                if c == 'M' and cur:
+                    shapes.append((m, cur))
+                    cur = []
+                if a or c == 'Z':
+                    cur.append((c, a))
+        if len(shapes) != 2:
+            continue
+        boxes = [bbox_of([{'cmds': sp, 'fill': ''}]) for _, sp in shapes]
+        # One above the other, side by side across much the same width, and neither inside the other (as the inner
+        # and outer edges of an open mouth's lips are): a smile's lower lip may curve up past the upper's bottom edge.
+        across = min(boxes[0][2], boxes[1][2]) - max(boxes[0][0], boxes[1][0])
+        inside = lambda a, b: a[0] >= b[0] - 1 and a[2] <= b[2] + 1 and a[1] >= b[1] - 1 and a[3] <= b[3] + 1
+        centres = [(bx[1] + bx[3]) / 2 for bx in boxes]
+        if across < 0.6 * max(bx[2] - bx[0] for bx in boxes) or inside(boxes[0], boxes[1]) or inside(boxes[1], boxes[0]) \
+                or abs(centres[0] - centres[1]) < 4:
+            continue
+        upper = 0 if boxes[0][1] + boxes[0][3] < boxes[1][1] + boxes[1][3] else 1
+        up = f'var(--lip-upper,{found[0].group(1)})'
+
+        def paint(i, color):
+            m = shapes[i][0]
+            return f'<path style="fill:{color}{m.group(2).replace(m.group(1), color)}"{m.group(3) or ""} d="{path_d(shapes[i][1])}"/>'
+        if len(found) == 1:
+            m = found[0]
+            text = text[:m.start()] + paint(1 - upper, m.group(1)) + paint(upper, up) + text[m.end():]
+        else:
+            m = shapes[upper][0]
+            text = text[:m.start()] + paint(upper, up) + text[m.end():]
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-lip-tones="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        done.append(f[:-4])
     return done
 
 
@@ -1234,6 +1367,8 @@ def label(name):
     if name.startswith('hair') and not name.startswith('hair_baby'):
         # Two packs share their numbering; the second continues from 17 so every name is different.
         text = f'{length}, {text}' if text else f'{length}, style {number + (16 if "boy" in parts else 0)}'
+    elif parts[0] == 'lips' and text == 'masc' and number is not None:
+        text = f'Masc {number}'  # the masculine mouths: 'lips_masc_03' -> 'Masc 3'
     elif not text:
         kind = {'eyes': 'Eyes', 'brows': 'Brows', 'nose': 'Nose', 'lips': 'Mouth', 'glasses': 'Glasses'}.get(parts[0], parts[0].title())
         text = f'{kind} {number}' if number is not None else kind
@@ -1255,6 +1390,10 @@ def write_manifest():
             for item in data[folder]:
                 _, els = read_svg(open(os.path.join(ASSETS, item['file']), encoding='utf-8').read())
                 item['edge'] = measure_hair_edge(els)
+        if folder in ('eyes', 'noses', 'lips'):  # and each pair of eyes, nose and mouth, so they can be kept clear of each other
+            for item in data[folder]:
+                _, els = read_svg(open(os.path.join(ASSETS, item['file']), encoding='utf-8').read())
+                item['shape'] = measure_feature(els, folder)
     lines = ['// Generated by scripts/build-avatar-manifest.py. Do not edit by hand: add SVGs under',
              '// assets/avatars/ and run the script again.',
              '// Paths are relative to assets/avatars/.',
@@ -1270,7 +1409,7 @@ def write_manifest():
                 'anchor': {'eyes': FACE['eye_y'], 'eyebrows': FACE['brow_y'], 'nose': FACE['nose_y'], 'lips': FACE['mouth_y'], 'cheek': FACE['cheek_y']},
                 'ear': {'left': EAR['left_x'] + 6, 'right': EAR['right_x'] - 6, 'lobe': EAR['lobe_y']},
                 'clothesTop': LAYOUT['clothes'][3], 'shoulderW': 285,
-                'profile': {'rows': list(PROFILE_ROWS), 'cols': list(PROFILE_COLS)}, 'frameTop': FRAME_TOP}
+                'profile': {'rows': list(PROFILE_ROWS), 'cols': list(PROFILE_COLS)}, 'frameTop': FRAME_TOP, 'featureStep': FEATURE_STEP}
     lines.append('/** The template face every part was fitted to. Each head\'s own measurements are in its `fit`. */')
     lines.append('export const AVATAR_TEMPLATE = ' + json.dumps(template, separators=(', ', ': ')) + ';')
     lines.append('')
@@ -1327,6 +1466,11 @@ def main(argv):
     lined = weigh_lines() + weigh_lines('eyes', recolor=False) + weigh_lines('lips', recolor=False)
     if lined:
         print(f'made the lines of {len(lined)} part(s) adjustable')
+    for name in thin_outline():
+        print(f'thinned the outline of {name}')
+    parted = split_lip_tones()
+    if parted:
+        print('gave the upper lip its own color in ' + ', '.join(parted))
     for name in fill_teeth():
         print(f'filled the teeth of {name}')
     repaired = refit_hair()
