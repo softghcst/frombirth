@@ -83,17 +83,17 @@ estate.damageProperty(h, 0); check(near(h.value, before, 0.05), 'revaluing it do
 section('moving to it: the same house, now at home');
 
 // 6. Inheritance tax by place.
-p = life('us', 'Chicago', 20e6); l = estate.listingsAbroad('jp', 'Osaka')[2]; estate.buyAbroad(l.id); const j = p.assets.find((x) => x.kind === 'property'); j.value = 2e6; // above Japan's allowance, so both countries charge something
+p = life('us', 'Chicago', 20e6); store.state.fx = { ...(store.state.fx ?? {}), JPY: 1.3 }; /* the yen away from its starting rate */ l = estate.listingsAbroad('jp', 'Osaka')[2]; estate.buyAbroad(l.id); const j = p.assets.find((x) => x.kind === 'property'); j.value = 2e6; // above Japan's allowance, so both countries charge something
 let plan = estatePlan();
 const jp = plan.taxBy?.find((t) => t.countryId === 'jp'); const us = plan.taxBy?.find((t) => t.countryId === 'us');
 const takers = willHeirs().map(([n, share]) => ({ relation: relationOf(n.role), share }));
-const fxj = COUNTRIES.jp.currency.scale / COUNTRIES.us.currency.scale;
+const fxj = fx.rate('USD', 'JPY'); // today's rate, as the estate uses
 check(!!jp && near(jp.amount, estateTax(j.value * fxj, COUNTRIES.jp, takers) / fxj, 0.01), `the house in Japan is taxed by Japan, under Japan's scale (${jp?.amount})`);
 check(!!us && near(us.amount, 0.4 * (plan.gross - j.value - 15e6), 0.01) && plan.tax === plan.taxBy.reduce((s, t) => s + t.amount, 0), 'the rest is taxed where the owner lived (40% above the US exemption), and the parts add up');
 check(plan.net === plan.gross - plan.tax - (plan.probate ?? 0) && plan.tax + (plan.probate ?? 0) <= plan.liquid, 'tax, and the cost of winding up the estate, never exceed what can be paid without selling');
 const noAbroad = (() => { const keep = p.assets; p.assets = []; p.finance.cash += j.value; const t = estatePlan().tax; p.assets = keep; p.finance.cash -= j.value; return t; })();
 check(near(plan.tax, noAbroad - 0.4 * j.value + jp.amount, 0.01), 'holding it abroad moves that part of the bill from the US to Japan');
-p.finance.cash = 100; plan = estatePlan(); check(plan.tax <= Math.max(0, plan.liquid) && plan.taxBy.reduce((s, t) => s + t.amount, 0) <= plan.tax + 2, 'with no cash, each country takes a share of what little there is');
+p.finance.cash = 100; plan = estatePlan(); check(plan.tax <= Math.max(0, plan.liquid) && plan.taxBy.reduce((s, t) => s + t.amount, 0) === plan.tax, 'with no cash, each country takes a share of what little there is, and the shares add up exactly');
 section('inheritance: property abroad is taxed where it stands, the rest where the owner lived');
 
 // 7. A run of years with property abroad does not break anything.
