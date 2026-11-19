@@ -47,14 +47,16 @@ const scheme = process.argv[2] ?? 'light';
   await close();
   await run('life');
   for (const tab of await p.$$eval('[data-tab]', (els) => els.map((e) => e.dataset.tab))) {
+    if (await p.locator('[data-panel]:not([hidden])').count()) await p.click('[data-panel-close]');
     await p.click(`[data-tab="${tab}"]`); await p.waitForTimeout(300); await close(); await run(`tab-${tab}`);
   }
   // A few modals.
+  if (await p.locator('[data-panel]:not([hidden])').count()) await p.click('[data-panel-close]');
   await p.click('[data-tab="self"]'); await p.waitForTimeout(400);
-  if (!(await p.evaluate(() => !!document.querySelector('[data-passport]')?.offsetParent))) { await p.click('[data-tab="self"]'); await p.waitForTimeout(400); }
   for (const [sel, name] of [['[data-passport]', 'passport'], ['[data-world]', 'world'], ['[data-news]', 'news'], ['[data-doctor]', 'doctor']]) {
     const ok = await p.evaluate((q) => { const el = [...document.querySelectorAll(q)].find((e) => e.offsetParent); if (el) el.click(); return !!el; }, sel); if (!ok) { console.log('no', name); continue; } await p.waitForTimeout(400); await run(name); await close();
   }
+  if (await p.locator('[data-panel]:not([hidden])').count()) await p.click('[data-panel-close]');
   await p.click('[data-tab="holdings"]'); await p.waitForTimeout(250);
   const prop = await p.evaluate(() => { const el = [...document.querySelectorAll('[data-go="property"]')].find((e) => e.offsetParent); if (el) el.click(); return !!el; }); if (prop) { await p.waitForTimeout(300); await run('pick-modal'); await close(); }
 

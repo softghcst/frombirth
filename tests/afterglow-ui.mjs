@@ -113,9 +113,11 @@ for (const scheme of ['light', 'dark']) {
 
   // The five sections.
   for (const [tab, title] of [['work', 'Work & School'], ['holdings', 'Holdings'], ['people', 'People'], ['pursuits', 'Pursuits'], ['self', 'Self']]) {
+    if (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
     await page.click(`.tab-btn[data-tab="${tab}"]`); await page.waitForTimeout(300);
+    check(!(await page.locator('.dock').isVisible()), `${scheme}: the dock steps aside while ${tab} is open`);
+    check(await page.locator('[data-panel-close]').isVisible(), `${scheme}: ${tab} has a back button`);
     check(await page.locator('[data-panel]:not([hidden]) [data-panel-title]').innerText() === title, `${scheme}: ${tab} opens`);
-    check(await page.locator(`.tab-btn[data-tab="${tab}"].active`).count() === 1, `${scheme}: ${tab} is marked as selected`);
     const spill = await page.evaluate(() => { const b = document.querySelector('[data-panel-body]'); const edge = b.getBoundingClientRect().right;
       return b.scrollWidth <= b.clientWidth + 1 ? '' : [...b.querySelectorAll('*')].filter((e) => e.getBoundingClientRect().right > edge + 1).slice(0, 4).map((e) => `${e.tagName}.${e.className?.baseVal ?? e.className}`).join(', ') || 'unknown'; });
     check(!spill, `${scheme}: ${tab} has no sideways scrolling (${spill})`);
@@ -123,6 +125,7 @@ for (const scheme of ['light', 'dark']) {
     await shot(page, `${tab}-${scheme}`);
   }
   await page.click('[data-panel-close]');
+  check(await page.locator('.dock').isVisible(), `${scheme}: back brings the dock back`);
 
   // Settings: choose the other appearance; it holds after a reload.
   const other = scheme === 'dark' ? 'light' : 'dark';

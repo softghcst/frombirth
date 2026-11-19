@@ -61,8 +61,8 @@ export function mountGame(app, hooks) {
       <div class="journal" data-journal role="log" aria-live="polite" aria-label="Your life so far" tabindex="0"></div>
       <button class="story-back" data-story-back hidden></button>
       <section class="panel" data-panel aria-labelledby="panel-title" hidden>
-        <div class="panel-head"><h2 data-panel-title id="panel-title"></h2>
-          <button class="icon-btn" data-panel-close aria-label="Close panel">${icon('close')}</button></div>
+        <div class="panel-head"><button class="icon-btn back-btn" data-panel-close aria-label="Back to your life">${icon('back')}</button>
+          <h2 data-panel-title id="panel-title"></h2></div>
         <div class="panel-body" data-panel-body></div>
       </section>
       </div>
@@ -218,10 +218,15 @@ export function mountGame(app, hooks) {
     if (self) { self.classList.toggle('badge', !!waiting); self.setAttribute('aria-label', waiting ? `Self (${waiting.short})` : 'Self'); }
     const tab = TABS.find((t) => t.id === activeTab);
     panelEl.hidden = !tab;
-    if (!tab) return;
+    // A section takes the whole screen below the header: the dock steps aside until the player goes back.
+    const wasOpen = app.querySelector('.game').classList.contains('in-tab');
+    app.querySelector('.game').classList.toggle('in-tab', !!tab);
+    if (!tab) { if (wasOpen && !busy && !document.querySelector('#modal-root .scrim')) yearBtn.focus({ preventScroll: true }); return; }
     $('[data-panel-title]').textContent = tab.title;
     panelBody.onclick = null;
     tab.render(panelBody, tabApi);
+    // Keyboard focus moves into the section: the tab that opened it is out of sight now.
+    if (!wasOpen && !panelEl.contains(document.activeElement)) $('[data-panel-close]').focus({ preventScroll: true });
   }
 
   function render() { renderHeader(); renderJournal(); renderPanel(); }
@@ -319,6 +324,8 @@ export function mountGame(app, hooks) {
     if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }
   });
   $('[data-panel-close]').addEventListener('click', closePanel);
+  // Escape goes back from a section, unless a dialog is open.
+  panelEl.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('#modal-root .scrim')) { e.preventDefault(); closePanel(); } });
   // The menu: the things a player reaches for from anywhere in a life.
   $('[data-menu]').addEventListener('click', async () => {
     if (busy) return;
