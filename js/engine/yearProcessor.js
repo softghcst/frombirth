@@ -71,6 +71,8 @@ import { tickInsurance } from './insurance.js';
 import { tickFamilyMoney } from './family.js';
 import { tickTrusts } from './trusts.js';
 import { tickSense } from './achievements.js';
+import * as hood from './neighborhood.js';
+import * as hoodLife from './neighborhoodLife.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -92,6 +94,7 @@ export const YEARLY = [
   ['openWorldYear', openGlobalYear], // the world's own year opens first (engine/globalLife.js)
   ['openBooks', () => { book({ cat: 'auto', src: 'action' }); }],
   // Each part of the year books what it did to the player's money under its own heading (engine/ledger.js).
+  ['hoodClose', () => hood.closeYear()], // the neighborhoods' months of the year just lived, before the yearly reckoning of people (engine/neighborhood.js)
   ['relationships', () => booked('auto', 'Family and friends', tickRelationships)],
   ['family', tickFamily],
   ['romance', () => booked('auto', 'Love and marriage', tickRomance)],
@@ -140,6 +143,7 @@ export const YEARLY = [
   ['activism', tickActivism],
   ['courts', () => booked('legal', 'Courts, fines and legal costs', () => { tickCrime(); tickCivil(); tickKinCases(); })],
   ['care', () => booked('auto', 'Who looks after you', checkCare)],
+  ['neighborhood', () => { hood.openYear(); hoodLife.syncBusinesses(); hoodLife.neighborsAsCustomers(); }], // who has died, where the player lives now, and the neighborhoods' plans for the year ahead
   ['animals', tickAnimals], // late, so the record sees the year as it ended: who died, who moved, who is left to care
   ['breeding', tickBreeding], // young that are due
   ['animalCare', () => booked('pets', 'Your animals: food, the vet and their care', tickCare)], // what the animals cost, how they fared, and anything that needs a decision

@@ -65,6 +65,7 @@ node tests/bonds.mjs           # adult relationships beyond one partner: casual,
 node tests/estate.mjs          # wills: one notice when someone named dies, nothing rewritten, alternates, the playable heir as its own choice, reviews when the family changes
 node tests/childhood.mjs       # childhood from birth: things to do by age, playground friends, early likings capped, pocket money from the family's own money, chores, small jobs
 node tests/love-stories.mjs    # relationship stories told only when true, once, at the drama setting's pace; the opt-in, non-graphic teenage pregnancy storyline; teenage relationship scenes
+node tests/pregnancy-choice.mjs   # the choice when a pregnancy is announced: go on with it or not; costs, laws, a partner's decision, teenagers
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season

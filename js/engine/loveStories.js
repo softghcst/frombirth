@@ -14,6 +14,7 @@ import { book } from './ledger.js';
 import * as love from './romance.js';
 import * as bonds from './bonds.js';
 import { guardians } from './childhood.js';
+import { decide } from './pregnancyChoice.js';
 
 const npcOf = (id) => store.state.npcs[id];
 const bump = (npc, d) => { if (npc) npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -69,6 +70,7 @@ export function loveChoice(value, cast) {
   const p = player();
   const c = country();
   const [story, choice] = value.split(':');
+  if (story === 'pregnancy') return decide(choice, cast);
   if (story.startsWith('teen')) return teenChoice(story, choice, cast);
   const npc = npcOf(cast.them);
   if (!npc?.alive) return '';
@@ -164,6 +166,42 @@ export function loveChoice(value, cast) {
 // begin with the news itself. What follows is about who to tell, school, and what to do: the choices are the young
 // person's, school goes on, nobody is married off, and the child (if there is one) is a child like any other.
 
+// How a young person looks after themselves: health class, a talk at home, a private visit to a doctor. All of it is
+// care and information, never a way of causing anything; each lowers the chance the storyline can begin, the doctor's
+// most. A visit is free for a young person, and kept private.
+const SAFETY = {
+  class: { label: 'Health class at school', text: 'In health class you learn how bodies work, and how to look after yourself. You pay attention.', factor: 0.6 },
+  talk: { label: 'Talk with a parent', text: 'You ask {who} the things you have not known how to ask. They answer plainly, and are glad you did.', factor: 0.75 },
+  care: { label: 'See a doctor, privately', text: 'You see a doctor on your own. Everything is private. You leave knowing what you can do to stay safe, and with what you need to.', factor: 0.15 },
+};
+const safe = () => (player().flags.teenSafe ??= {});
+const holds = (id) => safe()[id] != null && (id !== 'talk' || store.state.year - safe().talk <= 1); // a talk lasts a couple of years
+const safetyFactor = () => Object.entries(SAFETY).reduce((f, [id, a]) => f * (holds(id) ? a.factor : 1), 1);
+
+/** What a 14 to 17-year-old can do to look after themselves, and whether it is done. */
+export function teenSafety() {
+  const p = player();
+  if (p.age < 14 || p.age > 17) return [];
+  return Object.entries(SAFETY).map(([id, a]) => ({ id, label: a.label,
+    done: id === 'talk' ? safe().talk === store.state.year : safe()[id] != null,
+    why: id === 'talk' && !guardians().length ? 'nobody to ask' : '' }));
+}
+export function doTeenSafety(id) {
+  const p = player();
+  const a = SAFETY[id];
+  const opt = teenSafety().find((o) => o.id === id);
+  if (!a || !opt) return { ok: false, text: 'That is not for you now.', tone: 'neutral' };
+  if (opt.done) return { ok: false, text: 'You have done that already.', tone: 'neutral' };
+  if (opt.why) return { ok: false, text: 'There is nobody at home to ask.', tone: 'neutral' };
+  let who = '';
+  if (id === 'talk') { const g = rng.pick(guardians()); bump(g, 3); who = g.firstName; }
+  safe()[id] = store.state.year;
+  p.stats.mood = clamp(p.stats.mood + 2);
+  const text = a.text.replace('{who}', who);
+  log(text, 'system', 'good');
+  return { ok: true, text, tone: 'good' };
+}
+
 function teenYear() {
   const p = player();
   if (!sensitiveOn() || p.age < 15 || p.age > 17 || p.flags.pregnancy || p.flags.teenPregnancy) return;
@@ -171,7 +209,7 @@ function teenYear() {
   if (!other || other.age >= 18 || other.age < 15) return;
   const sexes = [p.flags.bornAs ?? p.gender, other.flags?.bornAs ?? other.gender].sort().join('+');
   if (sexes !== 'female+male') return;
-  if (!rng.chance({ low: 0.01, balanced: 0.02, high: 0.04 }[dramaOf()])) return;
+  if (!rng.chance({ low: 0.01, balanced: 0.02, high: 0.04 }[dramaOf()] * safetyFactor())) return;
   p.flags.teenPregnancy = { year: store.state.year, otherId: other.id, told: [], school: null, plan: null };
   p.flags.pregnancy = { dueAge: p.age + 1, otherId: other.id, teen: true };
   store.state.pendingEvents.push({ id: 'teen_life_changing', cast: { them: other.id, words: { who: (p.flags.bornAs ?? p.gender) === 'female' ? 'You are pregnant.' : `${other.firstName} is pregnant.` } } });
@@ -204,6 +242,7 @@ function teenChoice(story, choice, cast) {
     return { stay: 'You stay where you are. Some people stare for a week, and then it is somebody else\'s turn.', accommodate: 'The school arranges it: appointments, a lighter timetable near the end, exams when you can sit them.', support: 'A teacher goes through the year with you, and makes a plan that still ends in your exams.', other: 'A smaller school for the last months, with a nursery down the corridor. You will sit the same exams.' }[choice] ?? '';
   }
   if (story === 'teenPlan') {
+    if (choice === 'end') { t.plan = 'end'; return decide((p.flags.bornAs ?? p.gender) === 'female' ? 'end' : 'wantend', cast); }
     t.plan = choice;
     const mother = (p.flags.bornAs ?? p.gender) === 'female';
     if (choice === 'adoption') return mother ? 'You speak to an adoption agency. It is your decision until the papers are signed, and after the birth you may still change your mind.' : 'It is her decision, and she is considering adoption. You tell her you will stand by what she decides.';

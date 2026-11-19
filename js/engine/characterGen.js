@@ -1,4 +1,5 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { settle as settleHood } from './neighborhood.js';
 import { syncWorld } from './history.js';
 import { ensureEra } from './eras.js';
 import { atBirth, held } from './citizenship.js';
@@ -232,5 +233,6 @@ export function createLife(opts = {}) {
   player.birthCity = player.city;
   ensureGlobal(state);
   ensureEra(state); // a new life keeps its money in the money of its own years
+  settleHood(state); // the family home, in a neighborhood with neighbors (engine/neighborhood.js)
   return state;
 }

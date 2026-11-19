@@ -1,5 +1,6 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
+import * as hoodUi from '../neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
 import { familyStatus } from '../../engine/immigration.js';
 import { store, player, country, livingNpcs } from '../../state.js';
@@ -38,12 +39,13 @@ import { navRow, navGroup } from '../kit.js';
 import * as together from '../../engine/together.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
-  'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
+  'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
   ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
+  ['Neighbors', ['roommate', 'neighbor']], // people met where they live (engine/neighborhood.js)
   ['Your household', ['staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
   ['Sport', ['coach', 'teammate', 'agent']],
@@ -482,6 +484,7 @@ export function openNpc(npc, api, back, o = {}) {
 }
 zooUi.connect({ openPerson: openNpc, editStats: editPerson });
 sportsUi.connect({ openPerson: openNpc });
+hoodUi.connect({ openPerson: openNpc });
 
 export default {
   id: 'people', title: 'People', short: 'People',
