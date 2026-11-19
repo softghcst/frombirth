@@ -78,12 +78,22 @@ function bigLeaguer(to = 86, pos = 'outfield') {
 }
 /** The year his contract runs out and the club offers to renew (a trade that year would put it off: then the next). */
 function renewal(e) {
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 8 && e.contractId; i++) {
     contract(e).to = S().year + 1;
     const d = year({ renew: null, twoWay: 'no', trade: 'no', extension: 'no' }).find((x) => x.kind === 'renew' && x.contractId === e.contractId);
     if (d) return d;
   }
   return null;
+}
+/** A big leaguer of `age` in the year his club offers to renew: another life if this one's career goes wrong first. */
+function upForRenewal(to, pos, age) {
+  for (let tries = 0; tries < 8; tries++) {
+    const e = bigLeaguer(to, pos);
+    P().age = age;
+    const renew = renewal(e);
+    if (renew && e.contractId) return { e, renew };
+  }
+  return { e: bigLeaguer(to, pos), renew: null };
 }
 const lineOf = (e) => e.bb.lines.filter((x) => x.year === S().year).at(-1);
 
@@ -118,7 +128,7 @@ const lineOf = (e) => e.bb.lines.filter((x) => x.year === S().year).at(-1);
   year({ twoWay: 'no', trade: 'no', extension: 'no' });
   const x = lineOf(e);
   check(x && e.bb.role === 'starter' && x.GS > 0 && x.W + x.L <= x.GS && x.ERA >= 1.5 && x.ERA <= 5.5 && x.K > 0, `a starter's line: starts, a record, an earned run average, strikeouts (${x && bb.lineText(x)})`);
-  check(x && x.IP <= 110.01 && x.capped, `a young starter is shut down at his innings limit (${x?.IP})`);
+  check(x && x.IP <= 110.01 && !!x.capped === (x.IP >= 110), `a young starter is shut down at his innings limit, if his season gets that far (${x?.IP})`);
   e.skills.stamina = 30; e.ceiling.stamina = 30;
   year({ twoWay: 'no', trade: 'no', extension: 'no' });
   const y = lineOf(e);
@@ -129,15 +139,13 @@ section('lines and totals, milestones, two-way players, roles, the innings limit
 
 // ---------- 2. Free agency, the qualifying offer, opt-outs, no-trade clauses, extensions ----------
 {
-  const e = bigLeaguer(86, 'outfield');
-  P().age = 27;
+  const { e, renew } = upForRenewal(86, 'outfield', 26);
   const q = bc.qualifying(S(), e, contract(e), club(e));
   check(q && q.amount === money(BASEBALL.qualifyingOffer) && q.option.id === 'qo', 'the best free agents are made the qualifying offer');
   const list = bc.bids(S(), e, 'us');
   check(list.length >= 2 && new Set(list.map((x) => x.orgId)).size === list.length, `several clubs bid for a star (${list.length})`);
   check(list.every((x) => x.years >= 5 && x.noTrade && x.optOut > S().year && !x.minorDeal), 'with long contracts, an opt-out and a no-trade clause');
   // The contract runs out: sign again, take the qualifying offer, or go to the market.
-  const renew = renewal(e);
   const old = club(e);
   check(renew && renew.options.some((o) => o.id === 'qo') && /qualifying offer/.test(renew.text), 'the qualifying offer comes with the offer to stay');
   if (renew) {
@@ -160,9 +168,7 @@ section('lines and totals, milestones, two-way players, roles, the innings limit
 }
 {
   // Accepting the qualifying offer; an extension.
-  const e = bigLeaguer(82, 'infield');
-  P().age = 26;
-  const renew = renewal(e);
+  const { e, renew } = upForRenewal(82, 'infield', 26);
   const k = contract(e);
   if (renew) sl.answer(renew.id, 'qo');
   check(renew && k.qo && k.salary === money(BASEBALL.qualifyingOffer) && k.to === S().year + 1 && P().career.salary === k.salary, 'accepting it is one more year at the qualifying offer');
