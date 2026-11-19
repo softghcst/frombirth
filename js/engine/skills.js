@@ -74,7 +74,12 @@ export function practice(id, lesson = false) {
   acts().used += 1;
 
   const k = aptitude(id);
-  const gained = Math.max(1, Math.round(rng.int(4, 7) * k * (lesson ? 1.5 : 1) * (1 - before / 135)));
+  // Taken up for the first time by someone who liked this sort of thing when small: a little further on, once
+  // (engine/childhood.js). A head start, not a gift.
+  const kind = s.group === 'instrument' || ['singing', 'music_theory', 'rap'].includes(id) ? 'music' : ['dance', 'yoga', 'martial_arts', 'sports'].includes(id) ? 'movement' : id === 'swimming' ? 'water' : id === 'writing' ? 'books' : id === 'public_speaking' ? 'people' : null;
+  const head = before === 0 && kind && !(p.flags.earlyUsed ?? []).includes(id) ? (p.flags.childhood?.early?.[kind] ?? 0) : 0;
+  if (head) p.flags.earlyUsed = [...(p.flags.earlyUsed ?? []), id];
+  const gained = Math.max(1, Math.round(rng.int(4, 7) * k * (lesson ? 1.5 : 1) * (1 - before / 135))) + Math.min(6, head);
   const after = Math.min(100, before + gained);
   if (s.talent) {
     p.talents[s.talent] = after;
