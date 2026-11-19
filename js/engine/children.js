@@ -1,6 +1,7 @@
 // Children: pregnancy, birth, adoption, growing up, and grandchildren. Also
 // getting a pet. Children carry their own stats and talents so a later phase
 // can let the player continue as one of them.
+import { announce } from './pregnancyChoice.js';
 import { childbirthRisk } from './history.js';
 import { atBirth, held } from './citizenship.js';
 import { noteBirth } from './globalLife.js';
@@ -50,8 +51,10 @@ export function canConceive(npc) {
 export function conceive(npc, planned) {
   const p = player();
   p.flags.pregnancy = { dueAge: p.age + 1, otherId: npc.id };
-  if (p.gender === 'female') return planned ? 'You are pregnant.' : 'A few weeks later, the test is positive. You are pregnant.';
-  return planned ? `${npc.firstName} is pregnant.` : `A few weeks later, ${npc.firstName} tells you they are pregnant.`;
+  const said = p.gender === 'female' ? (planned ? 'You are pregnant.' : 'A few weeks later, the test is positive. You are pregnant.')
+    : (planned ? `${npc.firstName} is pregnant.` : `A few weeks later, ${npc.firstName} tells you they are pregnant.`);
+  announce(npc, said);
+  return said;
 }
 
 export const canTryForBaby = (npc) =>

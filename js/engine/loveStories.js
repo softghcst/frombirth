@@ -14,6 +14,7 @@ import { book } from './ledger.js';
 import * as love from './romance.js';
 import * as bonds from './bonds.js';
 import { guardians } from './childhood.js';
+import { decide } from './pregnancyChoice.js';
 
 const npcOf = (id) => store.state.npcs[id];
 const bump = (npc, d) => { if (npc) npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -69,6 +70,7 @@ export function loveChoice(value, cast) {
   const p = player();
   const c = country();
   const [story, choice] = value.split(':');
+  if (story === 'pregnancy') return decide(choice, cast);
   if (story.startsWith('teen')) return teenChoice(story, choice, cast);
   const npc = npcOf(cast.them);
   if (!npc?.alive) return '';
@@ -204,6 +206,7 @@ function teenChoice(story, choice, cast) {
     return { stay: 'You stay where you are. Some people stare for a week, and then it is somebody else\'s turn.', accommodate: 'The school arranges it: appointments, a lighter timetable near the end, exams when you can sit them.', support: 'A teacher goes through the year with you, and makes a plan that still ends in your exams.', other: 'A smaller school for the last months, with a nursery down the corridor. You will sit the same exams.' }[choice] ?? '';
   }
   if (story === 'teenPlan') {
+    if (choice === 'end') { t.plan = 'end'; return decide((p.flags.bornAs ?? p.gender) === 'female' ? 'end' : 'wantend', cast); }
     t.plan = choice;
     const mother = (p.flags.bornAs ?? p.gender) === 'female';
     if (choice === 'adoption') return mother ? 'You speak to an adoption agency. It is your decision until the papers are signed, and after the birth you may still change your mind.' : 'It is her decision, and she is considering adoption. You tell her you will stand by what she decides.';
