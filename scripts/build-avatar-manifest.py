@@ -1041,7 +1041,7 @@ def thin_outline():
         if mark in text or 'data-pathways="1"' not in text:
             continue
         # Undo earlier attempts.
-        text = re.sub(r';stroke:var\(--lip-color,#[0-9a-f]+\);stroke-width:[\d.]+;stroke-linejoin:round"', '"', text)
+        text = re.sub(r';stroke:(var\(--lip-upper,)?var\(--lip-color,#[0-9a-f]+\)\)?;stroke-width:[\d.]+;stroke-linejoin:round"', '"', text)
         text = re.sub(r'<path style="fill:none;stroke:var\(--skin-color[^"]*" d="[^"]*"/>', '', text)
         text = re.sub(r' data-thinned="[^"]*"', '', text)
         m = re.search(r'<path style="fill:(#[0-9a-f]{6});stroke:var\(--line-ink[^"]*"( fill-rule="[^"]*")? d="([^"]*)"/>', text)
@@ -1056,6 +1056,66 @@ def thin_outline():
         with open(path, 'w', encoding='utf-8') as f:
             f.write(text)
         done.append(name)
+    return done
+
+
+def split_lip_tones():
+    """
+    The upper and lower lips of most mouths are drawn as two shapes in one path, so they could only ever take one
+    color. This parts them, wherever the two are clearly one above the other: the upper lip is given its own color,
+    var(--lip-upper), falling back to the mouth's color, so a mouth looks exactly as before unless the portrait sets
+    one (natural lips on men: NATURAL_LIPS in js/avatar/catalog.js). Lipstick, teeth, tongues and the inside of a
+    mouth are never touched: only shapes in the lip color are, and only a pair that is clearly upper and lower.
+    The men's mouths already draw their upper lip in --lip-upper. A parted file carries data-lip-tones="1".
+    -> the names parted.
+    """
+    done = []
+    folder = os.path.join(ASSETS, 'lips')
+    lip = re.compile(r'<path style="fill:(var\(--lip-color,#[0-9a-f]+\))([^"]*)"( fill-rule="[^"]*")? d="([^"]*)"/>')
+    for f in sorted(os.listdir(folder)):
+        if not f.endswith('.svg') or f.startswith('lips_masc'):
+            continue
+        path = os.path.join(folder, f)
+        text = open(path, encoding='utf-8').read()
+        if 'data-lip-tones="1"' in text or 'data-pathways="1"' not in text:
+            continue
+        found = list(lip.finditer(text))
+        shapes = []  # (the path it is in, its commands)
+        for m in found:
+            cur = []
+            for c, a in parse_path(m.group(4)) + [('M', [])]:
+                if c == 'M' and cur:
+                    shapes.append((m, cur))
+                    cur = []
+                if a or c == 'Z':
+                    cur.append((c, a))
+        if len(shapes) != 2:
+            continue
+        boxes = [bbox_of([{'cmds': sp, 'fill': ''}]) for _, sp in shapes]
+        # One above the other, side by side across much the same width, and neither inside the other (as the inner
+        # and outer edges of an open mouth's lips are): a smile's lower lip may curve up past the upper's bottom edge.
+        across = min(boxes[0][2], boxes[1][2]) - max(boxes[0][0], boxes[1][0])
+        inside = lambda a, b: a[0] >= b[0] - 1 and a[2] <= b[2] + 1 and a[1] >= b[1] - 1 and a[3] <= b[3] + 1
+        centres = [(bx[1] + bx[3]) / 2 for bx in boxes]
+        if across < 0.6 * max(bx[2] - bx[0] for bx in boxes) or inside(boxes[0], boxes[1]) or inside(boxes[1], boxes[0]) \
+                or abs(centres[0] - centres[1]) < 4:
+            continue
+        upper = 0 if boxes[0][1] + boxes[0][3] < boxes[1][1] + boxes[1][3] else 1
+        up = f'var(--lip-upper,{found[0].group(1)})'
+
+        def paint(i, color):
+            m = shapes[i][0]
+            return f'<path style="fill:{color}{m.group(2).replace(m.group(1), color)}"{m.group(3) or ""} d="{path_d(shapes[i][1])}"/>'
+        if len(found) == 1:
+            m = found[0]
+            text = text[:m.start()] + paint(1 - upper, m.group(1)) + paint(upper, up) + text[m.end():]
+        else:
+            m = shapes[upper][0]
+            text = text[:m.start()] + paint(upper, up) + text[m.end():]
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-lip-tones="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        done.append(f[:-4])
     return done
 
 
@@ -1408,6 +1468,9 @@ def main(argv):
         print(f'made the lines of {len(lined)} part(s) adjustable')
     for name in thin_outline():
         print(f'thinned the outline of {name}')
+    parted = split_lip_tones()
+    if parted:
+        print('gave the upper lip its own color in ' + ', '.join(parted))
     for name in fill_teeth():
         print(f'filled the teeth of {name}')
     repaired = refit_hair()

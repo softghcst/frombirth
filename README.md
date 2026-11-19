@@ -265,13 +265,19 @@ mouth itself, so a son can have his mother's full lips and pass them on to a dau
 with a men's mouth, and the creator offers each person only the mouths that can be drawn for them. The smirk, the
 grin and the parted lips showing teeth (`lips_masc_01`, `_05`, `_08`) can be chosen but are never given at random.
 
-**Lip colors.** Lipstick is worn as chosen, by anyone, and by no child. Otherwise a woman's lips are her skin warmed
-toward rose, and a man's are his own skin a shade darker with no pink in them. From bronze downward a man's lips are
-two-toned, as most lips on deep skin are: the upper lip darker than the skin, the lower lighter and a little rosier
-(`NATURAL_LIPS` and `lipColors` in `js/avatar/catalog.js`). The men's mouths are drawn in two tones, the upper lip in
-`--lip-upper`; the women's mouths are drawn in one, so on a man a shared mouth takes a tone a quarter of the way from his lower lip's toward his upper's. One mouth (`lips_4`) was drawn with an outline half as heavy again
-as the rest, in a redder ink: the script trims the outside of its outline and the line between its lips, and draws it
-in the same ink as the others (`THIN_OUTLINE`).
+**Lip colors.** Lipstick is worn as chosen, all over, by anyone, and by no child. Otherwise a woman's lips are her
+skin warmed toward rose. A man's are a natural pair for his skin tone, from one shared palette (`NATURAL_LIP_UPPER`
+and `NATURAL_LIP_LOWER` in `js/avatarPalettes.js`, one pair per tone in `SKIN_TONES` order): the upper lip a deeper
+shade of the skin, the lower softer, so a mouth reads by its own fills rather than its outline at portrait size. The
+pairs were chosen by lightness, chroma and hue against each skin: subtle on the lightest tones; on golden, olive and
+tan the lower lip turns to a muted rose-brown at much the cheeks' own lightness, so it parts from them by hue rather
+than blending into their orange; and from bronze down the upper is a rich deep brown and the lower a softer rose-brown,
+deepening gradually. Every resting mouth draws its upper lip in `--lip-upper` (falling back to the lip color), so the
+pair shows on every shape, thin, full or smiling: the men's mouths were drawn that way, and the script parts the women's
+mouths, whose two lips were one path (`split_lip_tones`). Teeth, tongues and the inside of an open mouth are never
+parted, and lipstick and women's natural lips set no upper color, so they look exactly as before. One mouth (`lips_4`)
+was drawn with an outline half as heavy again as the rest, in a redder ink: the script trims the outside of its outline
+and the line between its lips, and draws it in the same ink as the others (`THIN_OUTLINE`).
 
 **Fitting hair.** The script also measures every hairstyle and head row by row and column by column (`edge` in the
 manifest): the inner edges of the hair either side of the face, its hairline, the outline of its crown, and the

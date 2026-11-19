@@ -196,21 +196,16 @@ export const skinDepth = (appearance, seed) => part('skin', normalize(appearance
 export const hairHex = (appearance) => (INDEX.anyHair[appearance.style.hairDye] ?? INDEX.anyHair[appearance.inherited.hairColor]).hex;
 
 /**
- * The color of a mouth. Lipstick is worn as chosen. Otherwise a woman's lips are her skin warmed toward rose; a
- * man's are his own skin a shade darker, with no pink in them. From bronze downward, a man's lips are two-toned,
- * as most lips on deep skin are: the upper lip darker than the skin, the lower lighter and a little rosier
- * (`lipUpper` colors the upper lip of the men's mouths, which are drawn in two tones).
+ * The color of a mouth. Lipstick is worn as chosen, all over. Otherwise a woman's lips are her skin warmed toward rose;
+ * a man's are a natural pair for his skin tone (NATURAL_LIP_UPPER and NATURAL_LIP_LOWER in js/avatarPalettes.js): `lip`
+ * colors the lower lip and `lipUpper` the upper. Every resting mouth draws its upper lip in --lip-upper (falling back to
+ * the lip color), so the pair shows on every mouth shape, thin, full or smiling.
  */
-export const NATURAL_LIPS = { woman: { rose: '#b8444f', k: 0.42, deepK: 0.34 }, man: { shade: '#8c4b3b', k: 0.2, upper: 0.16 },
-  twoTone: { from: 7, upper: { ink: '#1c0b07', k: 0.32 }, lower: { rose: '#b77c74', k: 0.34 } } };
+export const NATURAL_LIPS = { woman: { rose: '#b8444f', k: 0.42, deepK: 0.34 } };
 function lipColors(skin, lipColor, gender) {
   if (lipColor) return { lip: part('lipColor', lipColor).hex };
   if (gender !== 'male') { const W = NATURAL_LIPS.woman; return { lip: mixHex(skin.hex, W.rose, skin.depth >= 8 ? W.deepK : W.k) }; }
-  const M = NATURAL_LIPS.man, D = NATURAL_LIPS.twoTone;
-  if (skin.depth < D.from) { const lip = mixHex(skin.hex, M.shade, M.k); return { lip, lipUpper: mixHex(lip, M.shade, M.upper) }; }
-  // The deeper the skin, the stronger the two tones.
-  const t = Math.min(1, 0.6 + 0.4 * (skin.depth - D.from) / 4);
-  return { lip: mixHex(skin.hex, D.lower.rose, D.lower.k * t), lipUpper: mixHex(skin.hex, D.upper.ink, D.upper.k * t) };
+  return { lip: PAL.NATURAL_LIP_LOWER[skin.depth], lipUpper: PAL.NATURAL_LIP_UPPER[skin.depth] };
 }
 
 /**
@@ -230,9 +225,6 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   const sex = gender === 'female' ? 'female' : 'male';
   const lips = lipsFor(g.lips, gender);
   const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
-  // The men's own mouths are drawn in two tones; a mouth drawn in one (a neutral one shared with women) takes the
-  // tone a quarter of the way from the lower lip's toward the upper's: halfway would be the skin's own color on deep skin.
-  if (colors.lipUpper && !/^lips_masc_/.test(lips)) colors.lip = mixHex(colors.lip, colors.lipUpper, 0.25);
   return {
     tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),

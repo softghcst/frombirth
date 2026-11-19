@@ -384,9 +384,6 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   // The neutral mouths are shared: drawn as they are on men and women alike, and given to men at random; the feminine ones never are.
   for (const id of ['lips_8', 'lips_9', 'lips_10']) check(lipsFor(id, 'male') === id && lipsFor(id, 'female') === id && CUR.RESTING.lipsMasc.includes(id), `${id} is not shared by men and women`);
   for (const id of ['lips_4', 'lips_6', 'lips_7', 'lips_11', 'lips_14']) check(lipsFor(id, 'male') !== id && !CUR.RESTING.lipsMasc.includes(id), `the feminine ${id} is drawn on a man`);
-  // On a man with deep skin, a one-tone mouth is drawn between his two lip tones.
-  const deep = resolveLook({ v: 3, inherited: { skin: 'espresso', lips: 'lips_9' } }, 'x', 'male').colors, deep2 = resolveLook({ v: 3, inherited: { skin: 'espresso', lips: 'lips_masc_04' } }, 'x', 'male').colors;
-  check(deep.lip !== deep2.lip && deep.lipUpper === deep2.lipUpper, 'a one-tone mouth on a man is drawn in his lighter lip tone');
   const saved = { v: 3, inherited: { head: 'head_17_dimple_oval', lips: 'lips_7' } };
   const him = avatarSvg({ appearance: saved, seed: 'm', age: 30, gender: 'male' }), her = avatarSvg({ appearance: saved, seed: 'm', age: 30, gender: 'female' });
   check(him.includes(`lips/${lipsFor('lips_7', 'male')}.svg`) && her.includes('lips/lips_7.svg'), 'a mouth is not drawn to suit the gender');
@@ -437,28 +434,46 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(mouth('lips_17', 'nose_12') === fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose: 'nose_12' }).lips, 'an expression is fitted to the nose');
 }
 
-// 15. Lip colors: a man's natural lips are his skin a shade darker with no pink in them, two-toned on deep skin
-// (upper darker than the skin, lower lighter than the upper); lipstick is worn as chosen; children wear none;
-// and the mouth drawn with a much heavier outline has been thinned.
+// 15. Lip colors: a man's natural lips are the pair for his skin tone in the shared palette, upper deeper than lower and
+// both deeper than or level with the skin; on golden and tan the lower lip parts from the cheeks by hue at much their
+// lightness; from bronze down the lower is clearly lighter than the upper. Every resting mouth draws its upper lip in
+// --lip-upper; lipstick is worn as chosen; children wear none; and the mouth drawn with a heavier outline is trimmed.
 {
   const { SKIN_TONES } = await import('../js/avatar/catalog.js');
-  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-  const light = (h) => rgb(h).reduce((a, v) => a + v, 0);
+  const PAL = await import('../js/avatarPalettes.js');
+  const lch = (h) => {
+    const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const [r, g, b] = [1, 3, 5].map((i) => lin(parseInt(h.slice(i, i + 2), 16)));
+    const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+    const x = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047), y = f(0.2126 * r + 0.7152 * g + 0.0722 * b), z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
+    const A = 500 * (x - y), B = 200 * (y - z);
+    return { L: 116 * y - 16, C: Math.hypot(A, B), h: (Math.atan2(B, A) * 180 / Math.PI + 360) % 360 };
+  };
+  check(PAL.NATURAL_LIP_UPPER.length === SKIN_TONES.length && PAL.NATURAL_LIP_LOWER.length === SKIN_TONES.length, 'a skin tone has no natural lip pair');
+  let lastHue = Infinity;
   for (const tone of SKIN_TONES) {
-    const c = resolveLook({ v: 3, inherited: { skin: tone.id } }, 'x', 'male').colors;
-        check(light(c.lip) < light(c.skin) || tone.depth >= 7, `${tone.id}: a man's lips are not darker than his skin`);
-    const hue = (h) => { const [R, G, B] = rgb(h).map((v) => v / 255), mx = Math.max(R, G, B), d = mx - Math.min(R, G, B);
-      return d ? ((mx === R ? ((G - B) / d) % 6 : mx === G ? (B - R) / d + 2 : (R - G) / d + 4) * 60 + 360) % 360 : 0; };
-    for (const col of [c.lip, c.lipUpper]) check(hue(col) >= 10 && hue(col) <= 40, `${tone.id}: a man's lips are tinted pink (${col} on ${c.skin})`);
-    check(c.lipUpper && light(c.lipUpper) < light(c.lip), `${tone.id}: a man's upper lip is not the darker tone`);
-    if (tone.depth >= 7) check(light(c.lipUpper) < light(c.skin) - 20 && light(c.lip) - light(c.lipUpper) > 40, `${tone.id}: a man's lips are not two-toned`);
+    const c = resolveLook({ v: 3, inherited: { skin: tone.id, lips: 'lips_9' } }, 'x', 'male').colors;
+    const skin = lch(c.skin), up = lch(c.lipUpper), lo = lch(c.lip);
+    check(c.lipUpper === PAL.NATURAL_LIP_UPPER[tone.depth] && c.lip === PAL.NATURAL_LIP_LOWER[tone.depth], `${tone.id}: a man's lips are not from the shared palette`);
+    check(up.L < lo.L && up.L < skin.L - 3, `${tone.id}: the upper lip is not the deeper tone`);
+    check(lo.h >= 30 && lo.h <= 60 && up.h >= 40 && up.h <= 62, `${tone.id}: a man's lips are not a natural brown or rose-brown (${c.lipUpper} / ${c.lip})`);
+    if (['golden', 'olive', 'tan'].includes(tone.id)) check(Math.abs(lo.L - skin.L) < 7 && skin.h - lo.h > 20, `${tone.id}: the lower lip does not part from the cheeks by hue`);
+    if (tone.depth >= 7) check(lo.L - up.L > 8 && lo.L > skin.L, `${tone.id}: the lips are not two-toned`);
+    if (tone.depth >= 4) { check(lo.h <= lastHue + 3, `${tone.id}: the lower lip's hue jumps from the tone before`); lastHue = lo.h; }
   }
+  // Every resting mouth, thin, full or smiling, has an upper lip of its own color; a woman's natural lips and lipstick
+  // set none, so both lips stay one color for them.
+  for (const id of [...CUR.RESTING.lips, ...CUR.RESTING.lipsMasc]) check(readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('var(--lip-upper,'), `${id} has no separate upper-lip color`);
+  check(!resolveLook({ v: 3, inherited: { skin: 'ebony' } }, 'x', 'female').colors.lipUpper, 'a woman\'s natural lips are given two tones');
+  check(!resolveLook({ v: 3, inherited: { skin: 'ebony' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'male').colors.lipUpper, 'lipstick is given a second tone');
+  const shared = avatarSvg({ appearance: { v: 3, inherited: { skin: 'espresso', lips: 'lips_10' } }, seed: 'm', age: 30, gender: 'male' });
+  check(shared.includes(`--lip-upper:${PAL.NATURAL_LIP_UPPER[10]}`) && shared.includes('lips/lips_10.svg'), 'a shared mouth on a man is not drawn in two tones');
+  for (const id of ['lips_17', 'lips_18', 'lips_20', 'lips_21', 'lips_5']) check(!readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('--lip-upper'), `the expression ${id} has been parted`);
   const red = resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'male').colors.lip;
   check(red === CATALOG.lipColor[0].hex, 'lipstick chosen by a man is not worn');
   check(resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'female', { child: true }).colors.lip !== CATALOG.lipColor[0].hex, 'a child wears lipstick');
   const boy = avatarSvg({ appearance: { v: 3, inherited: { skin: 'umber', lips: 'lips_4' } }, seed: 'b', age: 8, gender: 'male' });
   check(/--lip-upper:#/.test(boy) && /lips_masc_/.test(boy), 'a boy is not drawn with a two-toned men\'s mouth');
-  for (const id of CUR.RESTING.lipsMasc.filter((x) => x.startsWith('lips_masc_'))) check(readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('var(--lip-upper,'), `${id} has no separate upper-lip color`);
   const l4 = readFileSync(new URL('../assets/avatars/lips/lips_4.svg', import.meta.url), 'utf8');
   check(/data-thinned="[\d.]+\/[\d.]+"/.test(l4) && l4.includes('stroke:var(--skin-color') && !l4.includes('#3b1004'), 'the heavy outline of lips_4 is back');
 }
