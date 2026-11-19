@@ -84,7 +84,7 @@ for (const scheme of ['light', 'dark']) {
   // Age Up: exactly one year, and the button names the age to come.
   const before = await age(page);
   const label = await page.locator('[data-year]').innerText();
-  check(label.includes(`age ${before + 1}`), `${scheme}: the year button names the next age (${label.replace(/\s+/g, ' ')})`);
+  check(label.includes(`→ ${before + 1}`), `${scheme}: the year button names the next age (${label.replace(/\s+/g, ' ')})`);
   await page.click('[data-year]'); await settle(page);
   check(await age(page) === before + 1, `${scheme}: Age Up moves exactly one year (${before} → ${await age(page)})`);
   check(await page.locator('.age-head', { hasText: `Age ${before + 1}` }).count() === 1, `${scheme}: the journal has a heading for the new age`);

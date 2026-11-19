@@ -65,7 +65,7 @@
 .nav-row.danger .nr-icon { background: var(--bad-soft); color: var(--bad); }
 .nav-row.danger .nr-label { color: var(--bad); }
 
-/* ---------- Live another year, Age down ---------- */
+/* ---------- Age up, Age down ---------- */
 .year-btn {
   width: 100%; min-height: 54px; border-radius: 16px;
   background: var(--peach); color: var(--peach-ink);

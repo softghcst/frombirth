@@ -691,7 +691,7 @@ modeled, which is where further work would go.
 
 ## One year at a time
 
-Every choice happens in the year it is made; "Live another year" lives the
+Every choice happens in the year it is made; "Age up" lives the
 year and then shows what it changed. Things you would otherwise repeat every
 year can be set once on the **Your life this year** card (Pursuits): a hobby
 focus, a posting routine, a savings goal, care for your animals, family

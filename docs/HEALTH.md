@@ -86,7 +86,7 @@ The rest of Pathways moves a year at a time. Health care moves a week at a
 time inside the year: a medicine is reviewed after a few weeks, and a skills
 group meets every week. A date is an absolute week (`year × 52 + week`).
 "Let the weeks pass" in My Health moves the calendar on to the next
-appointment, within the current year; "Live another year" runs whatever weeks
+appointment, within the current year; "Age up" runs whatever weeks
 are left before the year turns. Each week runs in a fixed order (see
 `engine/health/index.js`), so a medicine cannot help before it starts, a change
 cannot come before a review, and a prescription that has ended is never

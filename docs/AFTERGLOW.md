@@ -1,7 +1,7 @@
 # Afterglow
 
 The look of Pathways: warm lilac paper and plum ink by day, deep plum by night, with a peach
-"Live another year" button at the heart of every life.
+"Age up" button at the heart of every life.
 
 ## Where it lives
 

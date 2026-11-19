@@ -1,6 +1,6 @@
 # The yearly model
 
-Pathways moves one year per Age Up ("Live another year"). Players make
+Pathways moves one year per Age Up ("Age up"). Players make
 decisions; the year is lived; they see what changed. This page records how
 the game follows that model, what was changed to make it consistent, and what
 does not exist yet.
