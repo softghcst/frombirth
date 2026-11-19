@@ -82,6 +82,16 @@ export const babyEyes = (id) => {
   const set = ROUND_EYES.includes(id) ? BABY_EYES.round : BABY_EYES.almond;
   return set[n % set.length];
 };
+/**
+ * Babies and toddlers have a little one's nose and mouth: a small button nose and a small soft mouth, whatever they
+ * grow into. Like their eyes, which one follows their own (so it holds from year to year and siblings with the same
+ * features match); their own are kept and show from five.
+ */
+export const BABY_NOSES = ['nose_7', 'nose_12', 'nose_14', 'nose_16'];
+export const BABY_LIPS = ['lips_6', 'lips_7', 'lips_11'];
+const byOwn = (list) => (id) => list[(Number(String(id ?? '').replace(/\D/g, '')) || 0) % list.length];
+export const babyNose = byOwn(BABY_NOSES);
+export const babyLips = byOwn(BABY_LIPS);
 /** The soft, thin brows every baby and toddler has, whatever they grow into. */
 export const BABY_BROWS = 'brows_8';
 /** Expressions the renderer can borrow for a mood. */

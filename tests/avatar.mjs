@@ -200,6 +200,15 @@ for (const e of AVATAR_MANIFEST.eyes) {
 }
 for (const id of ['hair_baby_09_bow_headband', 'hair_baby_05_twin_puffs', 'hair_baby_07_mini_pigtails']) check(!PART_BY_ID[id] && !existsSync(new URL(`assets/avatars/hair/${id}.svg`, root)), `${id} is still in the game`);
 for (const texture of ['straight', 'wavy', 'curly', 'coily']) for (let i = 0; i < 40; i++) check(!!PART_BY_ID[resolveLook({ v: 3, inherited: { hairTexture: texture }, style: {} }, `baby${i}`, 'female').babyHair], `a ${texture}-haired baby is given hair that is not in the game`);
+// Babies and toddlers have a little one's nose and mouth, chosen from their own; from five they have their own.
+for (const [key, list, pick] of [['nose', CUR.BABY_NOSES, CUR.babyNose], ['lips', CUR.BABY_LIPS, CUR.babyLips]]) {
+  for (const id of list) check(!!PART_BY_ID[id], `${id} is a baby's ${key} but is not in the game`);
+  for (const p of CATALOG[key]) {
+    const look = { ...resolveLook({ v: 3, inherited: { [key]: p.id }, style: {} }, 'little', 'male'), [key]: p.id };
+    for (const age of [0, 1, 3, 4]) { const got = dressFor(look, { age, gender: 'male' })[key]; check(list.includes(got) && got === pick(p.id), `a ${age}-year-old with ${p.id} has ${got}`); }
+    check(dressFor(look, { age: 5, gender: 'male' })[key] === p.id && dressFor(look, { age: 30, gender: 'male' })[key] === p.id, `${p.id} is not shown from five`);
+  }
+}
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
 const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_16', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
   314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };

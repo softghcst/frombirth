@@ -27,7 +27,7 @@
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
-import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, babyEyes } from './avatar/curation.js';
+import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, babyEyes, babyNose, babyLips } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/avatars/';
@@ -69,6 +69,7 @@ export function dressFor(look, ctx = {}) {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = []; out.glasses = null; out.facialHair = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
+    out.nose = babyNose(look.nose); out.lips = babyLips(look.lips); // a little one's nose and mouth, until five
   } else if (stage === 'kid') {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
