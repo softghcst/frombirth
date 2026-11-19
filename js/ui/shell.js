@@ -68,9 +68,12 @@ export function mountGame(app, hooks) {
       </div>
       </main>
       <footer class="dock">
-        <div class="meters" data-meters></div>
-        <div class="year-row">
-          <button class="undo-btn" data-undo aria-label="Age down: take back the last year">${icon('undo')}<small>Age down</small></button>
+        <div class="dock-info">
+          <span class="dock-age num" data-dock-age></span>
+          <button class="undo-btn" data-undo aria-label="Age down: take back the last year"><span class="undo-pill">${icon('undo')}<small>Age down</small></span></button>
+        </div>
+        <div class="dock-main">
+          <div class="meters" data-meters></div>
           <button class="year-btn" data-year></button>
         </div>
         <nav aria-label="Sections">
@@ -137,9 +140,14 @@ export function mountGame(app, hooks) {
     cashEl.textContent = fmtMoney(p.finance.cash, c);
     cashEl.classList.toggle('neg', p.finance.cash < 0);
     syncMeters($('[data-meters]'), [['Mood', p.stats.mood], ['Health', p.stats.health], ['Intellect', p.stats.intellect], ['Charm', p.stats.charm]]);
+    $('[data-dock-age]').textContent = `${ageNow} · ${store.state.year}`;
+    // Age up: an arrow, the words, and a badge with what comes next (the next age, or the season for shorter turns).
     const turn = nextTurnText();
-    yearBtn.innerHTML = `<span class="yb-label">${esc(turn.label)}</span> <small>${esc(turn.sub)}</small>`;
-    yearBtn.setAttribute('aria-label', `${turn.label} ${turn.sub.replace('→', 'to')}`);
+    const next = turn.sub.replace(/^→\s*/, '');
+    const toAge = /^\d+$/.test(next);
+    const badgeWas = yearBtn.querySelector('.yb-badge')?.textContent;
+    yearBtn.innerHTML = `${icon('up', 'yb-arrow')}<span class="yb-label">${esc(turn.label)}</span><small class="yb-badge${badgeWas && badgeWas !== next ? ' changed' : ''}">${esc(next)}</small>`;
+    yearBtn.setAttribute('aria-label', `${turn.label}, to ${toAge ? `age ${next}` : next}`);
     yearBtn.disabled = busy || !p.alive;
     const undo = $('[data-undo]');
     undo.disabled = busy || !undoDepth(store.state.slotId);
@@ -268,8 +276,17 @@ export function mountGame(app, hooks) {
   }
 
   let keepFocus = false;
+  // One press, one turn: the whole turn holds the button, and a second tap a moment later is a double tap, not a turn.
+  let advancing = false;
+  let lastPress = -Infinity;
   async function nextYear() {
-    if (busy) return;
+    if (busy || advancing || performance.now() - lastPress < 400) return;
+    advancing = true;
+    lastPress = performance.now();
+    try { await liveTurn(); } finally { advancing = false; }
+  }
+
+  async function liveTurn() {
     leaveStory();
     keepFocus = document.activeElement === yearBtn;
     closePanel();
