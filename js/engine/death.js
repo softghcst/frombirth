@@ -118,7 +118,12 @@ export function currentWill() {
   let w = player().flags.will;
   if (typeof w === 'string') w = { mode: w === 'charity' ? 'charity' : w === 'buried' ? 'buried' : 'family' };
   if (w?.mode === 'person') w = { mode: 'named', heirs: [w.npcId] };
-  w = { mode: w?.mode ?? 'family', heirs: (w?.heirs ?? []).filter((id) => store.state.npcs[id]?.alive), items: { ...(w?.items ?? {}) },
+  // Someone named who has died is not an heir. If the will names an alternate for them (engine/estateReview.js), the
+  // alternate stands in their place; otherwise their share goes to the others named.
+  const alternates = { ...(w?.alternates ?? {}) };
+  const stand = (id) => (store.state.npcs[id]?.alive ? id : store.state.npcs[alternates[id]]?.alive ? alternates[id] : null);
+  w = { mode: w?.mode ?? 'family', heirs: [...new Set((w?.heirs ?? []).map(stand).filter(Boolean))],
+    items: Object.fromEntries(Object.entries(w?.items ?? {}).map(([a, id]) => [a, stand(id) ?? id])), alternates,
     executor: store.state.npcs[w?.executor]?.alive ? w.executor : null };
   if (w.mode === 'named' && !w.heirs.length) w.mode = 'family';
   return w;
@@ -169,7 +174,9 @@ export function willSummary() {
 const names = (list) => list.map((n) => n.firstName).join(', ').replace(/, ([^,]*)$/, ' and $1');
 
 function saveWill(w, text) {
-  player().flags.will = w;
+  // What a change does not mention stays as it was: the alternates named, the executor.
+  const old = player().flags.will && typeof player().flags.will === 'object' ? player().flags.will : {};
+  player().flags.will = { ...(old.alternates ? { alternates: old.alternates } : {}), ...(old.executor ? { executor: old.executor } : {}), ...w };
   const line = `${text} ${willSummary()}`;
   log(line);
   return result(true, line, 'neutral');

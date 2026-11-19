@@ -12,6 +12,7 @@ import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
 import { tickBonds } from './bonds.js';
+import { tickEstate } from './estateReview.js';
 import { tickChildren } from './children.js';
 import { tickLives } from './npcLives.js';
 import { tickEducation } from './education.js';
@@ -141,6 +142,7 @@ export const YEARLY = [
   ['animalArcs', tickArcs], // stories that take years
   ['sport', () => booked('sport', 'Sport', () => tickSports())], // the athletic year: training, seasons and events, and what they cost and paid
   ['travel', () => booked('travel', 'Travel, papers and life abroad', tickGlobalLife)],
+  ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
   ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],
   ['sense', tickSense], ['moneyReview', tickMoneyReview],
 ];

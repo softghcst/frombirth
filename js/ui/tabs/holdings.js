@@ -22,6 +22,8 @@ import * as money from '../../engine/currency.js';
 import { openCurrencies } from '../leisure.js';
 import { roleLabel } from '../../engine/relationships.js';
 import { openMyMoney } from '../money.js';
+import * as review from '../../engine/estateReview.js';
+import { heirs as playableHeirs } from '../../engine/legacy.js';
 import { bankWorth } from '../../engine/banking.js';
 import { householdAnimalsHtml, openAnimalProfile, openHouseChronicle } from '../animals.js';
 
@@ -37,6 +39,9 @@ async function changeWill(api) {
       { value: 'people', label: 'Choose the people', sub: 'Add or remove anyone. They share the money equally.', disabled: !last.willCandidates().length },
       { value: 'items', label: 'Who gets which property or vehicle', sub: 'Leave a particular house or car to a particular person.',
         disabled: !last.keepsakes().length || last.willHeirs().length < 2 },
+      { value: 'alternate', label: 'Name an alternate', sub: 'Who takes a beneficiary\'s place if they die before you.', disabled: last.currentWill().mode !== 'named' },
+      { value: 'heir', label: 'Who you would carry on as', sub: `${review.chosenHeir() ? `Now: ${review.chosenHeir().firstName}. ` : ''}Separate from who inherits.`, disabled: !playableHeirs().length },
+      ...(review.notices().length ? [{ value: 'notices', label: `Things to review (${review.notices().length})`, sub: 'What has changed since you wrote it.' }] : []),
       { value: 'family', label: 'Tear it up', sub: 'Back to the default: a spouse takes half and your children share the rest.' },
       { value: 'charity', label: 'Everything to charity', sub: 'All of it is given away. No estate tax is paid.' },
     ],
@@ -44,6 +49,26 @@ async function changeWill(api) {
   if (!mode) return undefined;
   if (mode === 'family' || mode === 'charity') return report(api, last.writeWill(mode));
   if (mode === 'items') return assignKeepsakes(api);
+  if (mode === 'alternate') {
+    const heirs = last.willHeirs().map(([n]) => n);
+    const who = await pickModal({ title: 'An alternate for whom?', options: heirs.map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: review.alternateOf(n.id) ? `Alternate: ${store.state.npcs[review.alternateOf(n.id)]?.firstName ?? 'nobody'}` : 'No alternate named' })) });
+    if (!who) return undefined;
+    const alt = await pickModal({ title: 'Who takes their place?', options: [{ value: 'none', label: 'Nobody', sub: 'Their share goes to the others named.' },
+      ...last.willCandidates().filter((n) => n.id !== who).map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}, age ${n.age}` }))] });
+    if (!alt) return undefined;
+    return report(api, review.setAlternate(who, alt === 'none' ? null : alt));
+  }
+  if (mode === 'heir') {
+    const pick = await pickModal({ title: 'Carry on as', body: 'When your time comes, whose life would you step into? This does not change who inherits what.',
+      options: [{ value: 'none', label: 'Decide when the time comes' }, ...playableHeirs().map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}, age ${n.age}` }))] });
+    if (!pick) return undefined;
+    return report(api, review.chooseHeir(pick === 'none' ? null : pick));
+  }
+  if (mode === 'notices') {
+    const id = await pickModal({ title: 'To review', options: review.notices().map((n) => ({ value: n.id, label: n.kind === 'review' ? `Since you wrote it: ${n.reasons.join(', ')}` : `${store.state.npcs[n.npcId]?.firstName ?? 'Someone'} ${n.kind === 'heir' ? 'whom you meant to carry on as, has died' : 'named in your will, has died'}`, sub: `${n.year} · mark as reviewed` })) });
+    if (id) return report(api, review.resolveNotice(id, 'done'));
+    return undefined;
+  }
   // Add and remove people until the list is right.
   for (;;) {
     const heirs = last.willHeirs().map(([n]) => n);

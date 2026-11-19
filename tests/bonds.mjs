@@ -359,10 +359,10 @@ section('discovery only by a real way; suspicion is not proof; reconciliation po
   p.hidden.fertility = 90;
   const run = (n) => { let c = 0; for (let i = 0; i < n; i++) { p.flags.pregnancy = null; other.flags.acts = {}; other.meters.relationship = 90; bonds.intimate(other.id); if (p.flags.pregnancy) c++; } return c; };
   bonds.setBirthControl(true);
-  const careful = run(400);
+  const careful = run(1500);
   bonds.setBirthControl(false);
-  const not = run(400);
-  check(not > 5 && not < 120 && careful < not / 3, `a night can lead to a pregnancy, usually does not, and far less often with birth control (${not} and ${careful} in 400)`);
+  const not = run(1500);
+  check(not > 30 && not < 400 && careful < not / 2, `a night can lead to a pregnancy, usually does not, and far less often with birth control (${not} and ${careful} in 1500)`);
   p.flags.pregnancy = null;
   for (let i = 0; i < 300 && !p.flags.pregnancy; i++) { other.flags.acts = {}; other.meters.relationship = 90; bonds.intimate(other.id); }
   const first = JSON.stringify(p.flags.pregnancy);

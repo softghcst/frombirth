@@ -19,7 +19,9 @@ const app = document.getElementById('app');
 /** The obituary for the life in the store, with the choice of who carries on. */
 function showDeath(entry) {
   const state = store.state;
-  const list = heirs(state).map((n) => ({ id: n.id, name: n.firstName, label: roleLabel(n).toLowerCase(), age: n.age }));
+  // The one the player said they meant to carry on as comes first, and is marked; the choice is still made here.
+  const chosen = state.player.flags.chosenHeir;
+  const list = heirs(state).sort((a, b) => Number(b.id === chosen) - Number(a.id === chosen)).map((n) => ({ id: n.id, name: n.firstName, label: `${roleLabel(n).toLowerCase()}${n.id === chosen ? ', your chosen heir' : ''}`, age: n.age }));
   renderObituary(app, entry, {
     heirs: list,
     onDone: () => { deleteSlot(state.slotId); showTitle(); },
