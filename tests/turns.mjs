@@ -35,7 +35,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   check(JSON.stringify(seen) === JSON.stringify([[y0 + 1, a0 + 1, 3], [y0 + 1, a0 + 1, 6], [y0 + 1, a0 + 1, 9], [y0 + 2, a0 + 2, 0]]), `four three-month turns make one year, and the birthday comes with the year (${JSON.stringify(seen)})`);
   check(turns.ageText(P()) === `${P().age}`, 'at the turn of the year the age is whole');
   turns.advanceTurn(); S().pendingEvents = [];
-  check(turns.ageText(P()) === (P().age === 1 ? '1 year, 3 months' : `${P().age} years, 3 months`) && /Three more months/.test(turns.nextTurnText().label), `partway through, the age has months (${turns.ageText(P())}), and the button says what is next`);
+  check(turns.ageText(P()) === (P().age === 1 ? '1 year, 3 months' : `${P().age} years, 3 months`) && /3 months/.test(turns.nextTurnText().label), `partway through, the age has months (${turns.ageText(P())}), and the button says what is next`);
   // A change partway through a year waits for the next year.
   const r = turns.setStep(12);
   check(r.ok && turns.stepOf() === 3 && S().settings.nextStep === 12, 'a change partway through a year waits');

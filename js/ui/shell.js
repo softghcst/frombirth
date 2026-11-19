@@ -12,8 +12,8 @@ import { educationLine } from '../engine/education.js';
 import { styledName, standing } from '../engine/royalty.js';
 import { ROYAL_RANKS } from '../data/royalty.js';
 import { avatarSvg, dressOfPlayer } from './avatar.js';
-import { meterHtml } from './meter.js';
-import { eventModal, outcomeModal, confirmModal, openModal } from './modals.js';
+import { syncMeters } from './meter.js';
+import { eventModal, outcomeModal, confirmModal, openModal, pickModal } from './modals.js';
 import { summarize } from '../engine/yearSummary.js';
 import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
@@ -23,6 +23,9 @@ import { openMoney } from './tabs/holdings.js';
 import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
 import { openAthleticsAt } from './sports.js';
+import { icon } from './kit.js';
+import { lineMemory, lineMemoryHtml, milestonesAt, milestoneHtml } from './memories.js';
+import { openSettings } from './settings.js';
 
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
@@ -50,29 +53,30 @@ export function mountGame(app, hooks) {
       <main class="stage" aria-label="Your life">
       <div class="idcard">
         <div class="avatar" data-avatar></div>
-        <div class="who"><h1 data-name></h1><p data-line1></p><p data-line2></p></div>
-        <button class="purse" data-purse aria-label="Open My Money"><div class="label">My Money</div><div class="amount num" data-cash></div></button>
+        <div class="who"><h1 data-name></h1><p class="who-line" data-line1></p><p class="who-job" data-line2></p></div>
+        <button class="purse" data-purse aria-label="Open My Money"><div class="amount num" data-cash></div><div class="label">Money</div></button>
+        <button class="icon-btn menu-btn" data-menu aria-label="Menu" aria-haspopup="dialog">${icon('menu')}</button>
       </div>
-      <div class="meters" data-meters></div>
       <div class="sheet-area">
       <div class="journal" data-journal role="log" aria-live="polite" aria-label="Your life so far" tabindex="0"></div>
       <button class="story-back" data-story-back hidden></button>
       <section class="panel" data-panel aria-labelledby="panel-title" hidden>
-        <div class="panel-head"><h2 data-panel-title id="panel-title"></h2>
-          <button class="icon-btn" data-panel-close aria-label="Close panel">✕</button></div>
+        <div class="panel-head"><button class="icon-btn back-btn" data-panel-close aria-label="Back to your life">${icon('back')}</button>
+          <h2 data-panel-title id="panel-title"></h2></div>
         <div class="panel-body" data-panel-body></div>
       </section>
       </div>
       </main>
       <footer class="dock">
+        <div class="meters" data-meters></div>
         <div class="year-row">
-          <button class="undo-btn" data-undo aria-label="Age down: take back the last year">↶<small>Age down</small></button>
+          <button class="undo-btn" data-undo aria-label="Age down: take back the last year">${icon('undo')}<small>Age down</small></button>
           <button class="year-btn" data-year></button>
         </div>
         <nav aria-label="Sections">
           ${TABS.map((t) => `
             <button class="tab-btn" data-tab="${t.id}" aria-label="${esc(t.title)}">
-              <svg viewBox="0 0 24 24" aria-hidden="true">${t.icon}</svg>${esc(t.short)}
+              <svg viewBox="0 0 24 24" aria-hidden="true">${t.icon}</svg><span>${esc(t.short)}</span>
             </button>`).join('')}
         </nav>
       </footer>
@@ -122,15 +126,20 @@ export function mountGame(app, hooks) {
       age: p.age, gender: p.gender, appearance: p.appearance, seed: p.id, mood: p.stats.mood, label: `${p.firstName} ${p.lastName}`, ...dressOfPlayer(p),
     });
     $('[data-name]').textContent = styledName(p);
-    $('[data-line1]').textContent = `Age ${ageText(p)} · ${p.city}, ${c.name} ${c.flag}`;
+    const line1 = $('[data-line1]');
+    const ageNow = `Age ${ageText(p)}`;
+    // A new age gets a brief glow, so the year turning over is felt without slowing anything down.
+    if (line1.dataset.age && line1.dataset.age !== ageNow) { line1.classList.remove('aged'); void line1.offsetWidth; line1.classList.add('aged'); }
+    line1.dataset.age = ageNow;
+    line1.innerHTML = `<span class="age-pill">${esc(ageNow)}</span><span class="place">${esc(p.city)}, ${esc(c.name)} ${c.flag}</span>`;
     $('[data-line2]').textContent = occupationLine(p);
     const cashEl = $('[data-cash]');
     cashEl.textContent = fmtMoney(p.finance.cash, c);
     cashEl.classList.toggle('neg', p.finance.cash < 0);
-    $('[data-meters]').innerHTML = meterHtml('Mood', p.stats.mood) + meterHtml('Health', p.stats.health)
-      + meterHtml('Intellect', p.stats.intellect) + meterHtml('Charm', p.stats.charm);
+    syncMeters($('[data-meters]'), [['Mood', p.stats.mood], ['Health', p.stats.health], ['Intellect', p.stats.intellect], ['Charm', p.stats.charm]]);
     const turn = nextTurnText();
-    yearBtn.innerHTML = `${esc(turn.label)} <small>${esc(turn.sub)}</small>`;
+    yearBtn.innerHTML = `<span class="yb-label">${esc(turn.label)}</span> <small>${esc(turn.sub)}</small>`;
+    yearBtn.setAttribute('aria-label', `${turn.label} ${turn.sub.replace('→', 'to')}`);
     yearBtn.disabled = busy || !p.alive;
     const undo = $('[data-undo]');
     undo.disabled = busy || !undoDepth(store.state.slotId);
@@ -141,30 +150,62 @@ export function mountGame(app, hooks) {
     undo.setAttribute('aria-label', byTurn ? 'Go back: take back the last turn' : 'Age down: take back the last year');
   }
 
+  let shownEntries = -1; // entries on screen at the last draw; newer ones fade in
   function renderJournal() {
     const p = player();
+    const journal = store.state.journal;
+    const fresh = shownEntries >= 0 && journal.length > shownEntries ? shownEntries : journal.length;
     let html = '';
     let age = -1;
     let month = 0;
-    for (const entry of store.state.journal) {
+    let memories = 0; // a few per age at most: memories stay special
+    let usedArt = new Set();
+    const closeAge = () => {
+      if (age < 0) return;
+      // The milestones of the year, as scrapbook cards, unless a line of the year already told it.
+      for (const m of milestonesAt(p, age)) {
+        if (memories >= 2) break;
+        const card = milestoneHtml(m);
+        const art = card.match(/data-memory="([a-z]+)"/)[1];
+        if (usedArt.has(art)) continue;
+        usedArt.add(art);
+        memories += 1;
+        html += card;
+      }
+      html += '</section>';
+    };
+    journal.forEach((entry, i) => {
       if (entry.age !== age) {
+        closeAge();
         age = entry.age;
         month = 0;
-        html += `<h2 class="age-head">Age ${age} <small>${p.birthYear + age}</small></h2>`;
+        memories = 0;
+        usedArt = new Set();
+        html += `<section class="age-block${i >= fresh ? ' fresh' : ''}"><h2 class="age-head">Age ${age} <small>${p.birthYear + age}</small></h2>`;
       }
       // Turns shorter than a year: each part of the year under its own heading.
       if ((entry.month ?? 0) !== month) {
         month = entry.month ?? 0;
         if (month) html += `<h3 class="season-head">${month} months <small>${esc(entry.kind === 'season' ? entry.text.replace(/\.$/, '') : '')}</small></h3>`;
       }
-      if (entry.kind === 'season') continue; // the heading says it
+      if (entry.kind === 'season') return; // the heading says it
+      const enter = i >= fresh ? ` fresh" style="--i:${Math.min(i - fresh, 8)}` : '';
       // A line that tells a moment in an animal's life opens that animal's profile, at that memory.
       const link = entry.animal ? ` linked" data-animal="${esc(entry.animal.id)}" data-ev="${esc(entry.animal.ev)}" role="button" tabindex="0`
         // A line about sport opens the page of My Athletics it is about: the season, the event, the team, the coach.
         : entry.sport ? ` linked" data-sport-screen="${esc(entry.sport.screen)}" data-sport-id="${esc(entry.sport.id ?? '')}" role="button" tabindex="0` : '';
-      html += `<p class="entry ${entry.kind} ${entry.tone}${link}">${esc(entry.text)}</p>`;
-    }
+      const mem = !link && memories < 2 && lineMemory(entry);
+      if (mem && !usedArt.has(mem.art)) {
+        usedArt.add(mem.art);
+        memories += 1;
+        html += lineMemoryHtml(entry, mem, enter ? ` fresh" style="--i:${Math.min(i - fresh, 8)}` : '');
+        return;
+      }
+      html += `<p class="entry ${entry.kind} ${entry.tone}${link}${enter}">${esc(entry.text)}</p>`;
+    });
+    closeAge();
     journalEl.innerHTML = html;
+    shownEntries = journal.length;
     journalEl.scrollTop = journalEl.scrollHeight;
   }
 
@@ -177,10 +218,15 @@ export function mountGame(app, hooks) {
     if (self) { self.classList.toggle('badge', !!waiting); self.setAttribute('aria-label', waiting ? `Self (${waiting.short})` : 'Self'); }
     const tab = TABS.find((t) => t.id === activeTab);
     panelEl.hidden = !tab;
-    if (!tab) return;
+    // A section takes the whole screen below the header: the dock steps aside until the player goes back.
+    const wasOpen = app.querySelector('.game').classList.contains('in-tab');
+    app.querySelector('.game').classList.toggle('in-tab', !!tab);
+    if (!tab) { if (wasOpen && !busy && !document.querySelector('#modal-root .scrim')) yearBtn.focus({ preventScroll: true }); return; }
     $('[data-panel-title]').textContent = tab.title;
     panelBody.onclick = null;
     tab.render(panelBody, tabApi);
+    // Keyboard focus moves into the section: the tab that opened it is out of sight now.
+    if (!wasOpen && !panelEl.contains(document.activeElement)) $('[data-panel-close]').focus({ preventScroll: true });
   }
 
   function render() { renderHeader(); renderJournal(); renderPanel(); }
@@ -278,6 +324,20 @@ export function mountGame(app, hooks) {
     if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }
   });
   $('[data-panel-close]').addEventListener('click', closePanel);
+  // Escape goes back from a section, unless a dialog is open.
+  panelEl.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('#modal-root .scrim')) { e.preventDefault(); closePanel(); } });
+  // The menu: the things a player reaches for from anywhere in a life.
+  $('[data-menu]').addEventListener('click', async () => {
+    if (busy) return;
+    const pick = await pickModal({ title: 'Menu', cancel: 'Close', options: [
+      { value: 'money', label: 'My Money' },
+      { value: 'settings', label: 'Settings' },
+      { value: 'exit', label: 'Save and quit' },
+    ] });
+    if (pick === 'money' && player().alive) openMoney(tabApi);
+    if (pick === 'settings') { await openSettings(); tabApi.changed(); }
+    if (pick === 'exit') tabApi.exitToTitle();
+  });
   $('[data-purse]').addEventListener('click', () => { if (!busy && player().alive) openMoney(tabApi); });
   $('[data-story-back]').addEventListener('click', () => {
     const back = storyReturn;

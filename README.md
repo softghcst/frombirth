@@ -78,6 +78,7 @@ node tests/yearly.mjs          # one Age Up is one year: steps run once, limits,
 node tests/generations-1900.mjs # one family from 1900 to the present, a year per Age Up, through every era: nothing before its time, heirs carry on, saves load
 node tests/spelling.mjs        # American English throughout; old saves with British spellings are converted on load, names kept
 node tests/yearly-ui.mjs       # the yearly screens in a real browser at phone and desktop widths (needs Playwright; skips without it)
+node tests/afterglow-ui.mjs    # the Afterglow look: light, dark and system appearance, Age Up and Age down, the five sections, saves, 320px phones (AFTERGLOW_SHOTS=<folder> saves screenshots)
 node tests/health.mjs          # conditions and diagnosis, therapy and DBT, medication trials and switching, access, heredity, privacy, old saves
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
@@ -690,7 +691,7 @@ modeled, which is where further work would go.
 
 ## One year at a time
 
-Every choice happens in the year it is made; "Live another year" lives the
+Every choice happens in the year it is made; "Age up" lives the
 year and then shows what it changed. Things you would otherwise repeat every
 year can be set once on the **Your life this year** card (Pursuits): a hobby
 focus, a posting routine, a savings goal, care for your animals, family

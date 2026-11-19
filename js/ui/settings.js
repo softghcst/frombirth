@@ -11,6 +11,7 @@ import { STEPS, STEP_NAMES, stepOf, setStep, monthOf, ageLabel } from '../engine
 import * as kit from '../engine/teamIdentity.js';
 import { jerseySvg, inkOn } from './jersey.js';
 import { JERSEY_COLORS } from '../data/sports.js';
+import { getTheme, setTheme, THEMES, THEME_NAMES } from '../theme.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
 export function ago(t) {
@@ -59,16 +60,17 @@ export async function openSettings(hooks = {}) {
       title: 'Settings',
       cancel: 'Done',
       options: [
+        { value: 'appearance', label: 'Appearance', sub: THEME_NAMES[getTheme()] },
         // Only while a life is being played: how far each turn moves the calendar.
-        ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()} from next year` : ''}. Shorter turns bring scenes for each season.` }] : []),
+        ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()}` : ''}` }] : []),
         { value: 'account', label: 'Cloud saves', sub: cloudLine() },
-        { value: 'transfer', label: 'Transfer saves', sub: 'Move your lives to another device with a code or a file, no account needed.' },
-        { value: 'people', label: 'People you know', sub: people ? `${people} on your list.` : 'Put people from your own life into the game.' },
+        { value: 'transfer', label: 'Transfer saves', sub: 'To another device' },
+        { value: 'people', label: 'People you know', sub: people ? `${people} added` : 'Add real people to the game' },
         // Only while a life is being played, once there are teams in it: their names, jerseys and players.
-        ...(store.state?.player?.alive && kit.leagues().length ? [{ value: 'teams', label: 'Teams and jerseys', sub: 'Rename teams and their players, and choose their home and away colors.' }] : []),
+        ...(store.state?.player?.alive && kit.leagues().length ? [{ value: 'teams', label: 'Teams and jerseys', sub: 'Names and colors' }] : []),
         // Only while a life is being played: keep this moment, and live it two ways.
-        ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === false ? 'Off. Turn it on to see what each year changed.' : 'On: after each year, what it changed.' }] : []),
-        ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Keep this moment as a second timeline, before a decision you are about to make. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used.` }] : []),
+        ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === false ? 'Off' : 'On' }] : []),
+        ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Branch this life. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used` }] : []),
       ],
     });
     if (!pick) return;
@@ -77,12 +79,25 @@ export async function openSettings(hooks = {}) {
       if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
     }
     if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary === false }; }
+    if (pick === 'appearance') await openAppearance();
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();
     if (pick === 'teams') { await openTeams(); saveGame(store.state); }
     if (pick === 'transfer') await openTransfer(hooks);
     if (pick === 'account') await openAccount(hooks);
   }
+}
+
+/** Light, Dark or System. Kept on this device for every life, and applied at once. */
+async function openAppearance() {
+  const now = getTheme();
+  const pick = await pickModal({
+    title: 'Appearance',
+    cancel: 'Back',
+    options: THEMES.map((t) => ({ value: t, label: `${THEME_NAMES[t]}${t === now ? ' · now' : ''}`,
+      })),
+  });
+  if (pick) setTheme(pick);
 }
 
 // ---------- People you know ----------
