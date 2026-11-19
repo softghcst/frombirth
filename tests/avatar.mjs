@@ -380,12 +380,18 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
     check(lipsFor(lipsFor(id, 'male'), 'female') === id, `${id} does not come back to itself on a daughter`);
   }
   for (const id of CUR.RESTING.lipsMasc) check(CUR.RESTING.lips.includes(lipsFor(id, 'female')) && lipsFor(id, 'male') === id, `${id} has no women's match`);
-  check(lipsFor('lips_20', 'male') === 'lips_20' && lipsFor('lips_10') === 'lips_10', 'an expression, or a face with no gender, was given another mouth');
-  const saved = { v: 3, inherited: { head: 'head_17_dimple_oval', lips: 'lips_10' } };
+  check(lipsFor('lips_20', 'male') === 'lips_20' && lipsFor('lips_4') === 'lips_4', 'an expression, or a face with no gender, was given another mouth');
+  // The neutral mouths are shared: drawn as they are on men and women alike, and given to men at random; the feminine ones never are.
+  for (const id of ['lips_8', 'lips_9', 'lips_10']) check(lipsFor(id, 'male') === id && lipsFor(id, 'female') === id && CUR.RESTING.lipsMasc.includes(id), `${id} is not shared by men and women`);
+  for (const id of ['lips_4', 'lips_6', 'lips_7', 'lips_11', 'lips_14']) check(lipsFor(id, 'male') !== id && !CUR.RESTING.lipsMasc.includes(id), `the feminine ${id} is drawn on a man`);
+  // On a man with deep skin, a one-tone mouth is drawn between his two lip tones.
+  const deep = resolveLook({ v: 3, inherited: { skin: 'espresso', lips: 'lips_9' } }, 'x', 'male').colors, deep2 = resolveLook({ v: 3, inherited: { skin: 'espresso', lips: 'lips_masc_04' } }, 'x', 'male').colors;
+  check(deep.lip !== deep2.lip && deep.lipUpper === deep2.lipUpper, 'a one-tone mouth on a man is drawn in his lighter lip tone');
+  const saved = { v: 3, inherited: { head: 'head_17_dimple_oval', lips: 'lips_7' } };
   const him = avatarSvg({ appearance: saved, seed: 'm', age: 30, gender: 'male' }), her = avatarSvg({ appearance: saved, seed: 'm', age: 30, gender: 'female' });
-  check(him.includes(`lips/${lipsFor('lips_10', 'male')}.svg`) && her.includes('lips/lips_10.svg'), 'a mouth is not drawn to suit the gender');
-  check(saved.inherited.lips === 'lips_10', 'drawing a man changed the mouth he passes on');
-  for (const id of CUR.RESTING.lipsMasc) check(PART_BY_ID[id] && /^Masc \d+$/.test(PART_BY_ID[id].label), `${id} is missing or unnamed`);
+  check(him.includes(`lips/${lipsFor('lips_7', 'male')}.svg`) && her.includes('lips/lips_7.svg'), 'a mouth is not drawn to suit the gender');
+  check(saved.inherited.lips === 'lips_7', 'drawing a man changed the mouth he passes on');
+  for (const id of CUR.RESTING.lipsMasc.filter((x) => x.startsWith('lips_masc_'))) check(PART_BY_ID[id] && /^Masc \d+$/.test(PART_BY_ID[id].label), `${id} is missing or unnamed`);
 }
 
 // 14. Every mouth under every nose, as that nose is fitted to every pair of eyes, on every face shape: a resting
@@ -450,9 +456,9 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const red = resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'male').colors.lip;
   check(red === CATALOG.lipColor[0].hex, 'lipstick chosen by a man is not worn');
   check(resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'female', { child: true }).colors.lip !== CATALOG.lipColor[0].hex, 'a child wears lipstick');
-  const boy = avatarSvg({ appearance: { v: 3, inherited: { skin: 'umber', lips: 'lips_9' } }, seed: 'b', age: 8, gender: 'male' });
+  const boy = avatarSvg({ appearance: { v: 3, inherited: { skin: 'umber', lips: 'lips_4' } }, seed: 'b', age: 8, gender: 'male' });
   check(/--lip-upper:#/.test(boy) && /lips_masc_/.test(boy), 'a boy is not drawn with a two-toned men\'s mouth');
-  for (const id of CUR.RESTING.lipsMasc) check(readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('var(--lip-upper,'), `${id} has no separate upper-lip color`);
+  for (const id of CUR.RESTING.lipsMasc.filter((x) => x.startsWith('lips_masc_'))) check(readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('var(--lip-upper,'), `${id} has no separate upper-lip color`);
   const l4 = readFileSync(new URL('../assets/avatars/lips/lips_4.svg', import.meta.url), 'utf8');
   check(/data-thinned="[\d.]+\/[\d.]+"/.test(l4) && l4.includes('stroke:var(--skin-color') && !l4.includes('#3b1004'), 'the heavy outline of lips_4 is back');
 }

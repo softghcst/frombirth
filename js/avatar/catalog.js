@@ -228,15 +228,20 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     : g.hairTexture === 'curly' ? ['hair_baby_01_curl_tuft', 'hair_baby_08_baby_ringlets', 'hair_baby_04_mini_puff']
       : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
   const sex = gender === 'female' ? 'female' : 'male';
+  const lips = lipsFor(g.lips, gender);
+  const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
+  // The men's own mouths are drawn in two tones; a mouth drawn in one (a neutral one shared with women) takes the
+  // tone a quarter of the way from the lower lip's toward the upper's: halfway would be the skin's own color on deep skin.
+  if (colors.lipUpper && !/^lips_masc_/.test(lips)) colors.lip = mixHex(colors.lip, colors.lipUpper, 0.25);
   return {
-    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: lipsFor(g.lips, gender),
+    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),
     facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
     babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'),
     colors: {
       skin: skin.hex, hair: hairHex(a), dyed: !!st.hairDye, brow: mixHex(natural, '#1c1210', 0.22), eye: part('eyeColor', g.eyeColor).hex,
-      ...lipColors(skin, child ? null : st.lipColor, gender), // lipstick is a grown-up's choice
+      ...colors,
       blush: mixHex(skin.hex, '#f0506a', skin.depth >= 7 ? 0.4 : 0.48),
       outfit: st.outfitColor ? part('outfitColor', st.outfitColor).hex : null,
     },

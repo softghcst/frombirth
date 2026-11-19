@@ -256,8 +256,10 @@ much the same length, so a short nose does not leave a long empty space above th
 the nose and the chin. Expressions (an open mouth, a pout, a grin) are drawn as they are.
 
 **Men's and women's mouths.** There are two sets of resting mouths: the women's (`RESTING.lips`) and the men's
-(`RESTING.lipsMasc`, the `lips_masc_` files). A mouth is inherited whatever the gender, and drawn to suit it: a man
-is drawn with the men's mouth matched to the one he was born with, a woman with the women's match (`LIP_MATCH` in
+(`RESTING.lipsMasc`: the `lips_masc_` files, and the three neutral women's mouths, `lips_8`, `lips_9` and `lips_10`,
+which both sets share). A mouth is inherited whatever the gender, and drawn to suit it: a shared mouth is drawn as it
+is on anyone; otherwise a man born with a feminine mouth (`lips_4`, `_6`, `_7`, `_11`, `_14`) is drawn with the men's
+mouth matched to it, and a woman born with a men's mouth with the women's match (`LIP_MATCH` in
 `js/avatar/curation.js`, `lipsFor` in `js/avatar/catalog.js`). What is saved, and passed on to children, is the
 mouth itself, so a son can have his mother's full lips and pass them on to a daughter. Randomly made men are born
 with a men's mouth, and the creator offers each person only the mouths that can be drawn for them. The smirk, the
@@ -267,7 +269,7 @@ grin and the parted lips showing teeth (`lips_masc_01`, `_05`, `_08`) can be cho
 toward rose, and a man's are his own skin a shade darker with no pink in them. From bronze downward a man's lips are
 two-toned, as most lips on deep skin are: the upper lip darker than the skin, the lower lighter and a little rosier
 (`NATURAL_LIPS` and `lipColors` in `js/avatar/catalog.js`). The men's mouths are drawn in two tones, the upper lip in
-`--lip-upper`; the women's mouths are drawn in one. One mouth (`lips_4`) was drawn with an outline half as heavy again
+`--lip-upper`; the women's mouths are drawn in one, so on a man a shared mouth takes a tone a quarter of the way from his lower lip's toward his upper's. One mouth (`lips_4`) was drawn with an outline half as heavy again
 as the rest, in a redder ink: the script trims the outside of its outline and the line between its lips, and draws it
 in the same ink as the others (`THIN_OUTLINE`).
 
