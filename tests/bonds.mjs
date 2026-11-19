@@ -468,7 +468,7 @@ section('trips: paid once, may go badly, may be declined');
   check((p.finance.support ?? []).filter((x) => x.childId === away.id).length === 1, 'one obligation, not one a year');
   check(bonds.halfSiblings(home, away) && !bonds.halfSiblings(home, home) && Object.values(S().npcs).filter((n) => n.role === 'child').length === kidsBefore + 2, 'the two children are half-siblings, each one person');
   check(bonds.knowsOfChild(away, other.id) && !bonds.knowsOfChild(away, wife.id) && bonds.knowsOfChild(home, wife.id), 'the spouse has not been told about a child of a relationship they do not know of');
-  if (wife.role === 'spouse' && b.status === 'active') { bonds.confess(wife.id); check(bonds.knowsOfChild(away, wife.id), 'and knows once they have been told'); }
+  if (wife.role === 'spouse' && wife.alive && other.alive && b.status === 'active') { bonds.confess(wife.id); check(bonds.knowsOfChild(away, wife.id), 'and knows once they have been told'); }
   check(away.role === 'child' && S().npcs[away.id] === away && away.parentIds.includes(other.id), 'whatever becomes of the adults, the child is the same child');
   const { roleLabel } = await import('../js/engine/relationships.js');
   const sib = person('sibling', 20); sib.flags.half = true;

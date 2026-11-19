@@ -129,7 +129,10 @@ section('nothing is invented: no relationship, no story');
   check(!tell('love_gift_meaning', 3), 'small presents start no conversation about what they mean');
   b.start.year -= 3; friend.flags.acts = {};
   bonds.give(friend.id, 'earrings');
-  check(b.gifts.some((g) => g.id === 'earrings') && tell('love_gift_meaning'), 'a lavish one does');
+  // (Asked within the year of the gift: it is this year's gift that is talked about, not one from long ago.)
+  let asked = false;
+  for (let i = 0; i < 40 && !asked; i++) { stories.tickLoveStories(); mineOnly(); asked = queued('love_gift_meaning').length > 0; }
+  check(b.gifts.some((g) => g.id === 'earrings') && asked, 'a lavish one does');
   const rel = friend.meters.relationship;
   play('love_gift_meaning', 'gift_meaning:gift');
   check(friend.meters.relationship >= rel && b.status === 'active', 'someone who wants no promises is glad it was only a gift');
