@@ -1,5 +1,6 @@
 // Annual money flow: income, tax, living costs, loan payments, and settling
 // up if the account ends the year in the red.
+import { rentShare } from './neighborhoodLife.js';
 import { housingK } from './cities.js';
 import { careCost } from './couple.js';
 import { runPayroll } from './worklife.js';
@@ -131,7 +132,8 @@ export function tickFinance() {
     // How a couple shares the household's costs is theirs to agree (engine/family.js).
     const share = billShare(gross);
     const housed = p.royal && !p.royal.waiting && ['monarch', 'heir', 'royal'].includes(p.royal.rank);
-    let base = housed ? 0 : Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share * (p.homeId ? 1 : rentFactor(c.id) * (0.5 + 0.5 * housingK()))); // rent is about half of it, and follows the city
+    // A roommate pays their share of the rent (engine/neighborhoodLife.js); a neighborhood's own costs are already in what the city charges.
+    let base = housed ? 0 : Math.round(localCost(p.homeId ? BILLS_ONLY : RENT_AND_BILLS, c) * share * (p.homeId ? 1 : rentFactor(c.id) * (0.5 + 0.5 * housingK()) * rentShare())); // rent is about half of it, and follows the city
     const lifestyle = lifestyleCost(gross, c);
     // Where pay is low against rents, people on ordinary wages do not live alone: they share.
     const takeHome = gross - incomeTax(gross, c);

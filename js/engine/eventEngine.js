@@ -261,7 +261,7 @@ function variantsFor(outcomes, on, cast) {
  */
 export function resolveChoice(ev, choiceIndex, cast) {
   // A scene between years, or any scene met on a turn between years, plays out on its own luck too (see drawBetween).
-  if (ev.between || store.state.month) return apart(`choice/${store.state.year}/${store.state.month ?? 0}/${ev.id}/${choiceIndex}`, () => resolveNow(ev, choiceIndex, cast));
+  if (ev.between || ev.hood || store.state.month) return apart(`choice/${store.state.year}/${store.state.month ?? 0}/${ev.id}/${choiceIndex}`, () => resolveNow(ev, choiceIndex, cast));
   return resolveNow(ev, choiceIndex, cast);
 }
 function resolveNow(ev, choiceIndex, cast) {

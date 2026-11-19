@@ -17,6 +17,7 @@
 //   p.education.history   [{ schoolId, name, kind, stage, stageName, from, to, how, mark }]
 // People: classmates are NPCs with role 'classmate' and flags.schoolId. Teachers are NPCs
 // with role 'mentor', flags.tag 'teacher', flags.teaches (a subject), flags.style and flags.skill.
+import { neighborKidsFor, befriend as befriendNeighbor } from './neighborhood.js';
 import { cityOf as cityProfile } from './cities.js';
 import { forgetNpc } from './digital/core.js';
 import { rng } from '../rng.js';
@@ -164,6 +165,14 @@ function fillClass(s) {
   const kind = KIND_BY_ID[s.kind];
   const taken = new Set(p.npcIds.map((id) => store.state.npcs[id]?.firstName));
   for (const n of classmates()) n.flags.schoolId = s.id;
+  // At the local school, children from the player's own street are in the class: the same people, not new ones.
+  if (s.kind === 'public') for (const id of neighborKidsFor(store.state, p.age, kind.class - classmates().length)) {
+    const n = befriendNeighbor(store.state, id, 40, 'classmate');
+    if (!n) continue;
+    if (n.role === 'neighbor') n.role = 'classmate';
+    n.flags.schoolId = s.id; n.flags.alsoNeighbor = true;
+    taken.add(n.firstName);
+  }
   for (let guard = 0; classmates().length < kind.class && guard < 20; guard++) {
     const mate = makeNpc({ role: 'classmate', countryId: p.countryId, age: p.age, relationship: rng.int(30, 62) });
     if (taken.has(mate.firstName)) continue;
