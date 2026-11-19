@@ -76,6 +76,8 @@ function year() {
   const was = S().year;
   advanceYear();
   if (!p.alive || S().year === was) over = true; // these scenes are about love, not mortality
+  // ...nor about the other person dying, or being lost from the player's life, in the middle of one.
+  if (bonds.bonds().some((b) => b.type !== 'primary' && (b.end?.why === 'they died' || !S().npcs[b.npcId]?.alive))) over = true;
   S().pendingEvents = S().pendingEvents.filter((e) => /^(bond_|romance_complicated)/.test(e.id));
 }
 
@@ -246,7 +248,7 @@ function complicated(heart = {}) {
   check(b.arc.complicated.choice === 'honest' && b.arc.answerDue === S().year + 1 && b.status === 'active' && bonds.knowledge(b, wife.id) !== 'knows', 'an honest conversation: nothing decided, an answer owed, nobody told');
   for (let i = 0; i < 3; i++) { other.meters.relationship = 90; year(); }
   check(queued('romance_complicated_001').length === 0, 'the same question is not asked again');
-  check(queued('bond_answer').length === 1, 'a year on, they need an answer');
+  check(queued('bond_answer').length === 1, `a year on, they need an answer (${JSON.stringify({ status: b.status, end: b.end, arc: b.arc, alive: other.alive, year: S().year, pending: S().pendingEvents.map((e) => e.id) })})`);
   play('bond_answer', 'answer:end');
   check(b.status === 'ended' && other.alive && bonds.pastWith(other.id).length === 1 && b.history.length >= 3, 'letting them go ends it, and the history stays');
   for (let i = 0; i < 4; i++) year();
