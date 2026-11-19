@@ -18,9 +18,11 @@ import { store, player, country, livingNpcs, npcsByRole, log, milestone } from '
 import { clamp, localCost, fmtMoney } from '../util.js';
 import { rng } from '../rng.js';
 import { remember } from './conditions.js';
+import { apart } from './eventEngine.js';
 import { roleLabel } from './relationships.js';
 import { book } from './ledger.js';
-import { OCCASIONS, STYLES, HOLIDAYS, INVITES, MILESTONE_BIRTHDAYS, NAMED_ANNIVERSARIES, SOCIAL_PER_YEAR, BOND_CAP, DIGITAL_INVITES, TRADITION_LAPSE } from '../data/occasions.js';
+import { OCCASIONS, STYLES, HOLIDAYS, INVITES, MILESTONE_BIRTHDAYS, NAMED_ANNIVERSARIES, SOCIAL_PER_YEAR, BOND_CAP, INVITE_WAYS, TRADITION_LAPSE } from '../data/occasions.js';
+import { techAvailable } from './digital/tech.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const YOU = 'you';
@@ -122,7 +124,7 @@ export function thisYear() {
   for (const inv of s.invites) {
     const from = npc(inv.fromId);
     if (!from) continue;
-    add({ key: `invite:${inv.id}`, group: 'invitations', inviteId: inv.id, forId: inv.fromId, label: `${from.firstName}'s ${inv.name}`, sub: `${inv.how === 'message' ? 'A message' : 'A card through the door'} from your ${roleWord(from)}.`, done: inv.answer != null });
+    add({ key: `invite:${inv.id}`, group: 'invitations', inviteId: inv.id, forId: inv.fromId, label: `${from.firstName}'s ${inv.name}`, sub: `${(INVITE_WAYS.find((w) => w.id === inv.how) ?? INVITE_WAYS[2]).text} from your ${roleWord(from)}.`, done: inv.answer != null });
   }
   for (const id of ['sleepover', 'game_night', 'dinner_party']) {
     const o = OCCASIONS[id];
@@ -272,12 +274,17 @@ function attend(inv, from, gift, auto) {
   return result(true, text);
 }
 
-/** Deals out the year's invitations, from people really in the player's life. */
-function dealInvites() {
+/**
+ * Deals out the year's invitations, from people really in the player's life. On luck of its own, keyed to the
+ * life and the year (eventEngine.apart), so it never changes what the game's dice would otherwise have done.
+ */
+function dealInvites() { apart(`invites/${store.state.year}`, deal); }
+function deal() {
   const p = player();
   const s = yearState();
   if (s.invites.length || p.legal?.incarceration || !p.alive) return;
-  const how = store.state.year >= DIGITAL_INVITES && p.age >= 12 ? 'message' : 'card';
+  // The newest way the time and place have: a message where mobile phones have arrived, then a call, a card, or word of mouth.
+  const how = INVITE_WAYS.find((w) => (!w.tech || techAvailable(w.tech, store.state.year, p.countryId)) && p.age >= (w.minAge ?? 0)).id;
   const n = rng.int(0, 2);
   for (let i = 0; i < n; i++) {
     const kind = rng.pick(INVITES.filter((x) => p.age >= x.minAge));
