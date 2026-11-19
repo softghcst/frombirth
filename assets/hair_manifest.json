@@ -20,6 +20,40 @@
       ]
     },
     {
+      "id": "long_straight_center_part",
+      "name": "Long Straight Center Part",
+      "clipToHead": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "messy_top_bun",
+      "name": "Messy Top Bun",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "space_buns",
       "name": "Space Buns",
       "clipToHead": false,
