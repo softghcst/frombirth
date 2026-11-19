@@ -77,9 +77,9 @@ RULES (all required):
    - Keep the face itself (eyes, nose and mouth area, roughly x 175-335, y 250-415) clear, except for a fringe or strands that deliberately fall over it.
 5. Long hair may fall behind the shoulders down to the bottom of the frame (y 512); keep everything within x 0-512.
 6. Colours: the main hair colour is exactly #8f4b29 (the fill of the main shape in hair_base, and of hair_bangs).
-   Every hair shape is that same #8f4b29, hair_back included: no darker or lighter shades for any part of the hair, so it
-   reads as one head of hair. Only the lines differ: texture lines are a darker brown such as #4a2414, highlights a lighter
-   brown such as #b8693d. The game dyes all of it together.
+   Every hair shape is that same #8f4b29, hair_back included: no darker shades for any part of the hair, so it reads as
+   one head of hair. You may add a few small lighter highlight shapes (a streak of shine, fill #b8693d, no outline). Texture
+   lines are a darker brown such as #4a2414, highlight lines a lighter brown such as #b8693d. The game dyes all of it together.
 7. Outline: every hair shape is outlined with stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" (the same
    dark brown and weight as the head's outline). Texture lines in hair_lines use stroke-width 3 with round caps.
 8. Style: match the head's flat, clean cartoon look: smooth curves, bold outline, no texture noise, no tiny specks.

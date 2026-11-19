@@ -20,6 +20,23 @@
       ]
     },
     {
+      "id": "layered_feathered_midi",
+      "name": "Layered Feathered Midi",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "long_straight_center_part",
       "name": "Long Straight Center Part",
       "clipToHead": false,
@@ -54,6 +71,23 @@
       ]
     },
     {
+      "id": "shoulder_length_locs",
+      "name": "Shoulder Length Locs",
+      "clipToHead": false,
+      "length": "long",
+      "type": "locs",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "space_buns",
       "name": "Space Buns",
       "clipToHead": false,
@@ -76,6 +110,23 @@
       "clipToHead": false,
       "length": "short",
       "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "twin_low_puffs",
+      "name": "Twin Low Puffs",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "coily",
       "heads": [
         "almond",
         "angular",

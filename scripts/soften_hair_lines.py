@@ -21,9 +21,10 @@ paths drawn over it, the heavy and the soft runs made of the original curves, sp
 passes from over the hair to the silhouette. hair_back is not
 changed: its outline is the edge of the whole style.
 
-One shade: every filled shape in hair_back, hair_base and hair_bangs is given the main hair colour (the
-fill of hair_base), so no part of the hair is darker or lighter than the rest; the soft lines are what
-separate the pieces. This is checked on every run, softened or not.
+One shade: every filled shape in hair_back, hair_base and hair_bangs that is a darker shade of the hair
+(a darker back layer, darker buns or curls) is given the main hair colour (the fill of hair_base), so no
+part of the hair is darker than the rest; the soft lines are what separate the pieces. Lighter highlight
+shapes (a streak of shine on a sweep or a fringe) are kept as they are. Checked on every run, softened or not.
 
 hair_lines: every line is stroke-width 2.5 with round caps and joins; dark lines become #4a2414 (light
 highlight strokes keep their colour, so the hair keeps its shine).
@@ -243,8 +244,9 @@ def soften(path, head):
 
 
 def one_shade(root, groups):
-    """Gives every hair fill the main colour. -> how many fills changed."""
+    """Gives every darker hair fill the main colour; lighter highlight shapes are kept. -> how many fills changed."""
     main = F.main_colour(root)
+    lum = lambda c: sum(F.hex_rgb(c))
     changed = 0
     for gid in ('hair_back', 'hair_base', 'hair_bangs'):
         g = groups.get(gid)
@@ -252,7 +254,7 @@ def one_shade(root, groups):
             continue
         for el in [g, *g.iter(f'{NS}path')]:
             fill = el.get('fill')
-            if fill and fill.lower() not in ('none', main) and F.hex_rgb(fill) and fill.lower() != F.OUTLINE:
+            if fill and fill.lower() not in ('none', main) and F.hex_rgb(fill) and fill.lower() != F.OUTLINE and lum(fill) < lum(main):
                 el.set('fill', main)
                 changed += 1
     return changed
