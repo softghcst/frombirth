@@ -40,6 +40,8 @@ import * as together from '../../engine/together.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
+/** Roles always shown at the top of People. */
+const CLOSE_ROLES = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'guardian', 'sibling', 'grandparent', 'pet'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
@@ -512,10 +514,19 @@ export default {
     const nav = (list) => list.map(([id, label, sub, ico]) => navRow({ attrs: `data-top="${id}"`, label, sub, ico }));
 
     el.innerHTML = `
-      ${list.length ? GROUPS.map(([title, roles]) => {
-        const group = list.filter((n) => roles.includes(n.role));
-        return group.length ? `<div class="section-label">${esc(title)}</div><div class="rel-grid">${group.map(row).join('')}</div>` : '';
-      }).join('') : '<p class="empty">There is nobody in your life right now.</p>'}
+      ${list.length ? (() => {
+        // The people who matter most first: partner, children, family and close friends. Everyone else (classmates,
+        // coworkers, neighbors, acquaintances) is folded under one line, so the list stays a list.
+        const close = (n) => CLOSE_ROLES.includes(n.role) || (n.role === 'friend' && (n.meters.relationship >= 40 || n.flags.title === 'Best friend' || n.flags.tag));
+        const groups = (people, roles = GROUPS) => roles.map(([title, rs]) => {
+          const group = people.filter((n) => rs.includes(n.role));
+          return group.length ? `<div class="section-label">${esc(title)}</div><div class="rel-grid">${group.map(row).join('')}</div>` : '';
+        }).join('');
+        const near = list.filter(close);
+        const rest = list.filter((n) => !close(n));
+        if (rest.length <= 4) return groups(list);
+        return `${groups(near)}<details class="more people-more"><summary>Others you know <small class="muted">(${rest.length})</small></summary>${groups(rest, [['Friends', ['friend']], ...GROUPS.filter(([t]) => t !== 'Friends'), ['School', ['classmate']]])}</details>`;
+      })() : '<p class="empty">There is nobody in your life right now.</p>'}
       ${navGroup(nav([...more, ...top, ...keep]), 'More')}`;
 
     el.onclick = async (e) => {

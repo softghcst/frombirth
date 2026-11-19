@@ -116,36 +116,40 @@ export default {
             ${jobs.map((j) => `<button class="btn" data-kidjob="${j.id}" ${j.done ? 'disabled' : ''}>${esc(j.label)} <small>${fmtMoney(j.pay, c)}${j.why ? ` · ${esc(j.why.toLowerCase())}` : ''}</small></button>`).join('')}
           </div>
         </div>` : ''}
+        <div class="section-label">Fun and hobbies</div>
         ${things.length ? `<div class="card"><h3>Things to do</h3>
           <div class="btn-pair">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
         </div>` : ''}
-        <div class="card"><h3>Gambling</h3>
-          ${canGamble()
-    ? `<div class="btn-pair">
-               <button class="btn" data-play="blackjack">Blackjack</button>
-               <button class="btn" data-play="horses">The races</button>
-               <button class="btn" data-play="lottery">Lottery tickets</button>
-             </div>
-             ${gambled ? `<div class="kv" style="margin-top:10px"><span>Staked in your lifetime</span><span>${esc(fmtMoney(gambled, c))}</span></div>` : ''}`
-    : `<p class="muted">${esc(may('gamble').why || 'Not from where you are.')}</p>`}
-        </div>
+        ${law.isJailed() ? '' : athleticsCard()}
+        ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding', ico: 'trophy',
+          sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : '' })]) : ''}
+        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'Photocards', ico: 'star',
+          sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : '' })]) : ''}
+        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><div class="btn-pair">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
+        ${digitalCard()}
+        <div class="section-label">Where you live</div>
+        ${p.age >= 3 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="neighborhood"', label: 'My Neighborhood', ico: 'home', sub: neighborhoodSub() })]) : ''}
+        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' })])}
+        ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}.</p><div class="btn-pair">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}
+        <div class="section-label">Risky business</div>
+        ${canGamble() ? `<div class="card"><h3>Gambling</h3>
+          <div class="btn-pair">
+            <button class="btn" data-play="blackjack">Blackjack</button>
+            <button class="btn" data-play="horses">The races</button>
+            <button class="btn" data-play="lottery">Lottery tickets</button>
+          </div>
+          ${gambled ? `<div class="kv" style="margin-top:10px"><span>Staked in your lifetime</span><span>${esc(fmtMoney(gambled, c))}</span></div>` : ''}
+        </div>` : ''}
         ${law.canCommitCrimes() ? `<div class="card"><h3>Crime</h3>
           <div class="kv"><span>Police attention</span><span>${p.legal.heat >= 60 ? 'They are looking for you' : p.legal.heat >= 25 ? 'You are known to them' : 'None'}</span></div>
           ${p.flags.fugitive ? '<div class="kv"><span>Status</span><span>On the run</span></div>' : ''}
           <button class="btn danger" data-crime style="margin-top:8px">Commit a crime</button>
         </div>` : ''}
         ${legalCard()}
-        ${law.isJailed() ? '' : athleticsCard()}
-        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'Photocards', ico: 'star',
-          sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : '' })]) : ''}
-        ${p.age >= 3 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="neighborhood"', label: 'My Neighborhood', ico: 'home', sub: neighborhoodSub() })]) : ''}
-        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' })])}
-        ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding', ico: 'trophy',
-          sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : '' })]) : ''}
-        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><div class="btn-pair">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
-        ${digitalCard()}
-        ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}.</p><div class="btn-pair">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
+`;
     }
+    // A heading with nothing under it (a child has no risky business) goes.
+    el.querySelectorAll(':scope > .section-label').forEach((l) => { const n = l.nextElementSibling; if (!n || n.classList.contains('section-label')) l.remove(); });
     el.onclick = (e) => {
       if (law.isJailed()) return hubClick(e, api, joinGang);
       if (legalClick(e, api)) return undefined;

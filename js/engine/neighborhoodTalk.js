@@ -24,12 +24,12 @@ export const FACTS = {
   ran: { v: 2, text: 'helped run the {what}' },
   project: { v: 2, text: 'helped {what}' },
   complaint: { v: -2, text: 'made a formal complaint about {who}' },
-  partner: { v: 0, text: 'has someone new living with them' },
-  baby: { v: 0, text: 'has a new baby at home' },
-  left: { v: 0, text: 'had someone move out of their place' },
-  regular: { v: 1, text: 'is a regular at {what}' },
-  job: { v: 0, text: 'works at {what}' },
-  split_rumor: { v: -1, text: 'has split up with someone', rumor: true },
+  partner: { v: 0, text: 'have someone new living with you' },
+  baby: { v: 0, text: 'have a new baby at home' },
+  left: { v: 0, text: 'had someone move out of your place' },
+  regular: { v: 1, text: 'are a regular at {what}' },
+  job: { v: 0, text: 'work at {what}' },
+  split_rumor: { v: -1, text: 'split up with someone', rumor: true },
 };
 const HOW = { saw: 1, told: 0.75, heard: 0.5 };
 

@@ -228,7 +228,7 @@ async function extras() {
   const born = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return { year: store.state.year, birth: store.state.player.birthYear }; });
   check(born.year === 1850 && born.birth === 1850, 'the character creator can start a life in 1850');
   await openTab(page, 'self');
-  check((await page.locator('[data-panel-body]').innerText()).includes('The times: Early Era'), 'the Self tab shows the times');
+  check((await page.locator('[data-panel-body]').innerText()).includes('Early Era'), 'the Self tab shows the times');
 
   // Radio in 1935, through the Pursuits tab.
   const s35 = await page.evaluate(async () => {

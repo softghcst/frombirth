@@ -50,7 +50,7 @@ export default [
   },
   {
     ...base, id: 'hood_community_event', ageRange: [4, 120],
-    text: '{person} is organizing {event} in the neighborhood: {what}.',
+    text: '{person} is organizing a {event} in the neighborhood: {what}.',
     choices: [
       { label: 'Go along', outcomes: [any('A good afternoon. You talked to more neighbors than you had all year.', 'good', hood({ do: 'attend', how: 'attend' }))] },
       { label: 'Offer to help organize it', requires: teen, outcomes: [any('Tables, signs, a cashbox and a lot of tape. {person} could not have done it without you, and says so.', 'good', hood({ do: 'attend', how: 'help' }), st('mood', 2))] },
@@ -213,7 +213,7 @@ export default [
   },
   {
     ...base, id: 'hood_rumor', ageRange: [16, 120],
-    text: '{person} asks, carefully, whether it is true that you {rumor}. It seems people on the street have been saying so. It is not true.',
+    text: '{person} asks, carefully, whether it is true that you {rumor}. People on the street have been saying so. It is not true.',
     choices: [
       { label: 'Set it straight, kindly', outcomes: [any('You explain what really happened. {person} is relieved, and says they will put people right.', 'good', hood({ do: 'rumor', how: 'correct' }))] },
       { label: 'Laugh it off', outcomes: [any('You laugh, and say people will talk. It will blow over.', 'neutral', hood({ do: 'rumor', how: 'laugh' }))] },

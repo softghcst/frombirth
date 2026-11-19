@@ -58,7 +58,10 @@ export function eventModal(ev, cast, opts = {}) {
         ${esc(renderText(c.label, cast))}
         ${c.enabled ? '' : '<small>Not available to you right now</small>'}
       </button>`)).join('');
+    // What came of the scene before, on this card: one tap per scene instead of two.
+    const before = opts.previous ? `<div class="prev-outcome tone-${esc(opts.previous.tone ?? 'neutral')}"><p>${esc(opts.previous.text)}</p>${changeChips(opts.previous.changes)}</div>` : '';
     const m = openModal(`
+      ${before}
       <div class="eyebrow">${esc(ev.category)}</div>
       <p class="scene">${esc(renderText(ev.text, cast))}</p>
       ${choices}

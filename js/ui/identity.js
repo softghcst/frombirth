@@ -69,13 +69,14 @@ export async function openIdentity(api) {
 }
 
 /** The Skills card on the Self tab. */
-export function skillsCard() {
+/** The skills the player practices. `inner`: without a card of its own, to sit inside another (Self, Talents and skills). */
+export function skillsCard({ inner = false } = {}) {
   if (!skill.canPractise()) return '';
   const mine = skill.practiced();
   const left = skill.sessionsLeft();
-  return `<div class="card"><h3>Skills</h3>
-    ${mine.length ? mine.map((s) => meterHtml(`${s.name} · ${s.levelName}`, s.level, true)).join('') : '<p class="muted">You have not taken anything up yet.</p>'}
-    <button class="btn" data-practice style="margin-top:10px" ${left <= 0 ? 'disabled' : ''}>Practice a skill (${left} left this year)</button></div>`;
+  const body = `${mine.length ? mine.map((s) => meterHtml(`${s.name} · ${s.levelName}`, s.level, true)).join('') : '<p class="muted">You have not taken anything up yet.</p>'}
+    <button class="btn" data-practice style="margin-top:10px" ${left <= 0 ? 'disabled' : ''}>Practice a skill (${left} left this year)</button>`;
+  return inner ? `<div class="section-label">Skills</div>${body}` : `<div class="card"><h3>Skills</h3>${body}</div>`;
 }
 
 export async function openPractice(api) {
