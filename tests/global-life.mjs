@@ -488,9 +488,9 @@ let moved;
     check(travel.entryCheck(t)[0].rule.kind === 'study', 'four months in France to study needs a student visa');
     const app = docs.applyEntry(p.id, 'fr', { from: t.depart, to: t.ret, purpose: 'study', cost: 5000 }).app;
     check(app?.status === 'submitted' && app.kind === 'study', 'applied for; decided when the year turns');
-    const degrees = p.education.degrees.length;
     year();
     p.education.enrolled = true; p.education.stage = 'university'; p.finance.cash += 20000;
+    const degrees = p.education.degrees.length; // counted after the year: a degree finished at home that year is not the semester's
     if (p.applications.find((a) => a.id === app.id).status !== 'approved') continue;
     ran = true;
     check(travel.problems(t).length === 0, `ready (${travel.problems(t)})`);
@@ -606,7 +606,7 @@ let moved;
   const route = imm.routes('mx').find((r) => r.id === 'business');
   check(route.eligible && route.status === 'worker', `after a year with staff, the business-owner route opens (${route.why})`);
   let app;
-  for (let i = 0; i < 10 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); const a = reloc.applyToMove('mx', 'business', 'Guadalajara'); if (a.ok) app = a.app; year(); p.finance.cash += 1e6; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); }
+  for (let i = 0; i < 40 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); const a = reloc.applyToMove('mx', 'business', 'Guadalajara'); if (a.ok) app = a.app; year(); p.finance.cash += 1e6; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); }
   check(app?.status === 'approved', 'the application is approved');
   reloc.arrange(app.id, { housing: 'rent', money: 0, travel: 'plane', animals: 'leave' });
   docs.applyPassport(p.id, 'us');

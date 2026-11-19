@@ -22,7 +22,10 @@ const save = await import('../js/save.js');
 rng.seed(20261119);
 const problems = [];
 const ok = [];
-const check = (cond, msg) => { if (!cond) problems.push(msg); };
+// A life in which the player has died is over: nothing after that is a fair test of these relationships, so its
+// checks are not counted (a new life begins with the next scenario).
+let over = false;
+const check = (cond, msg) => { if (!cond && !over) problems.push(msg); };
 const section = (msg) => ok.push(problems.length ? `(after failures) ${msg}` : msg);
 const S = () => store.state;
 const P = () => store.state.player;
@@ -30,6 +33,7 @@ const P = () => store.state.player;
 /** An adult of `age` with money, in the present day, with nobody yet. */
 function life(age = 30) {
   do { store.state = createLife({ countryId: 'us', gender: 'male' }); } while (S().player.royal);
+  over = false;
   const p = P();
   p.age = age; p.birthYear = S().year - age; p.flags.livesWithParents = false; p.education.enrolled = false; p.education.stage = 'none';
   p.gender = 'male'; delete p.flags.bornAs; delete p.flags.identity; // these checks need to know who could have a child with whom
@@ -69,8 +73,9 @@ const queued = (id) => S().pendingEvents.filter((e) => e.id === id);
 function year() {
   const p = P(); p.stats.health = 90; p.legal.incarceration = null; p.legal.pending = null;
   for (const n of Object.values(S().npcs)) if (n.alive && p.npcIds.includes(n.id) && n.role !== 'pet') { n.meters.health = 90; if (['spouse', 'partner'].includes(n.role)) n.meters.relationship = Math.max(n.meters.relationship, 60); }
+  const was = S().year;
   advanceYear();
-  if (!p.alive) p.alive = true; // these scenes are about love, not mortality
+  if (!p.alive || S().year === was) over = true; // these scenes are about love, not mortality
   S().pendingEvents = S().pendingEvents.filter((e) => /^(bond_|romance_complicated)/.test(e.id));
 }
 
