@@ -597,16 +597,18 @@ let moved;
   check(!cit.rightToLive('mx', p) && docs.entryRule(p, 'mx').kind !== 'resident' && !imm.routes('mx').find((r) => r.id === 'business').eligible, 'owning it gives no right to live there, and the owner route waits for a year of trading');
   check(!ba.startAbroad('cleaning', 'mx').ok, 'a business that is the owner\'s own work cannot be run from abroad');
   bz.hire(cafe, 0);
-  for (let i = 0; i < 2; i++) { cafe.cash += 200000; year(); p.finance.cash += 1e6; }
+  // The test keeps the café afloat: a café can lose more in a year than a fixed top-up, and two years overdrawn close it.
+  const afloat = () => { cafe.cash = Math.max(0, cafe.cash) + 200000; cafe.overdrawn = 0; };
+  for (let i = 0; i < 2; i++) { afloat(); year(); p.finance.cash += 1e6; }
   check(cafe.status === 'open' && cafe.years >= 1, `the café trades (${cafe.status}, ${cafe.years} years)`);
   const pays = bz.payouts().find((x) => x.source === `biz:${cafe.id}`);
   check(!pays || pays.gross < cafe.payout || COUNTRIES.mx.currency.scale <= COUNTRIES.us.currency.scale, 'what it pays its owner arrives changed into dollars');
-  cafe.overdrawn = 0; cafe.cash += 200000; // money first: a business that cannot cover a wage will not hire
+  afloat(); // money first: a business that cannot cover a wage will not hire
   if (bz.headcount(cafe) < 2) bz.hire(cafe, null);
   const route = imm.routes('mx').find((r) => r.id === 'business');
   check(route.eligible && route.status === 'worker', `after a year with staff, the business-owner route opens (${route.why})`);
   let app;
-  for (let i = 0; i < 10 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); const a = reloc.applyToMove('mx', 'business', 'Guadalajara'); if (a.ok) app = a.app; year(); p.finance.cash += 1e6; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); }
+  for (let i = 0; i < 10 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; afloat(); if (bz.headcount(cafe) < 2) bz.hire(cafe, null); const a = reloc.applyToMove('mx', 'business', 'Guadalajara'); if (a.ok) app = a.app; year(); p.finance.cash += 1e6; afloat(); if (bz.headcount(cafe) < 2) bz.hire(cafe, null); }
   check(app?.status === 'approved', 'the application is approved');
   reloc.arrange(app.id, { housing: 'rent', money: 0, travel: 'plane', animals: 'leave' });
   docs.applyPassport(p.id, 'us');
