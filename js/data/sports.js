@@ -144,6 +144,10 @@ export const SPORTS_LIST = [
     skills: [['striking', 'Striking'], ['grappling', 'Grappling'], ['defense', 'Defense'], ['conditioning', 'Conditioning'], ['composure', 'Composure']],
     attrs: { 'talents.sports': 0.45, 'stats.health': 0.35, 'hidden.discipline': 0.2 },
     popular: k('jp', 'kr', 'br', 'th', 'us') }),
+  S('boxing', 'Boxing', 'combat', 'bouts', { womenProFrom: 1994, founded: 1800, proFrom: 1880, pro: 'signing', lesson: 450, kit: 150, minAge: 8, contact: 3,
+    skills: [['jab', 'Jab'], ['power', 'Punching power'], ['defense', 'Defense'], ['footwork', 'Footwork'], ['conditioning', 'Conditioning'], ['chin', 'Taking a punch']],
+    attrs: { 'talents.sports': 0.45, 'stats.health': 0.4, 'hidden.discipline': 0.15 },
+    popular: k('us', 'mx', 'uk', 'ph', 'jp', 'pr', 'ru', 'ua', 'cu') }),
   S('wrestling', 'Wrestling', 'combat', 'bouts', { womenProFrom: 1937, founded: 1800, proFrom: 1900, pro: 'none', lesson: 250, kit: 80, minAge: 7, contact: 2,
     skills: [['takedowns', 'Takedowns'], ['control', 'Control'], ['escapes', 'Escapes'], ['conditioning', 'Conditioning'], ['strategy', 'Strategy']],
     attrs: { 'talents.sports': 0.45, 'stats.health': 0.4, 'hidden.discipline': 0.15 },
@@ -169,7 +173,7 @@ export const SPORTS_LIST = [
 ];
 // Sports that cannot be played from a wheelchair in their usual form.
 for (const id of ['soccer', 'basketball', 'baseball', 'softball', 'american_football', 'volleyball', 'ice_hockey', 'cricket', 'rugby', 'tennis', 'pickleball', 'badminton',
-  'track', 'running', 'gymnastics', 'figure_skating', 'martial_arts', 'wrestling']) SPORTS_LIST.find((s) => s.id === id).standing = false;
+  'track', 'running', 'gymnastics', 'figure_skating', 'martial_arts', 'boxing', 'wrestling']) SPORTS_LIST.find((s) => s.id === id).standing = false;
 
 // Women's professional years are set on each sport above (womenProFrom, womenProUntil).
 

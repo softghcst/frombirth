@@ -19,6 +19,7 @@ import { registerEmployer, payAt, employer } from './employers.js';
 import { catalog, uniOf } from './university.js';
 import { makeNpc } from './npcFactory.js';
 import { emigrate } from './emigration.js';
+import { gamesTeamEvent, boxingYear, coachSeason, moveCoaching } from './sportsExtras.js';
 import { rng } from '../rng.js';
 import { makeAgents, ensureTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
 import * as sp from './sports.js';
@@ -162,6 +163,10 @@ const ANSWERS = {
     const text = `You signed a new ${d.years}-year contract with ${d.orgName} at ${fmt(state, d.salary)} a year.`;
     log(text, 'system', 'good');
     return result(true, text);
+  },
+  coachOffer(state, d, choice) {
+    if (choice === 'no') return result(true, 'You stay where you are.', 'neutral');
+    return moveCoaching(state, d.orgId);
   },
   abroad(state, d, choice) {
     const p = state.player;
@@ -387,7 +392,7 @@ export function adoptOldSport(state = store.state) {
   const p = state.player;
   const old = p?.sport;
   if (!old?.sport || !Array.isArray(old.seasons)) { delete state.proSport; return; }
-  const id = { football: 'soccer', athletics: 'track', boxing: 'martial_arts' }[old.sport] ?? old.sport;
+  const id = { football: 'soccer', athletics: 'track' }[old.sport] ?? old.sport;
   if (!sportOf(id)) { delete p.sport; delete state.proSport; return; }
   const playing = !old.retiredYear && p.career?.careerId === 'athlete';
   // Still playing: the record waits at club level until the next Age Up signs them in the same sport (tickSports).
@@ -856,6 +861,7 @@ export function tickSports(state = store.state) {
   }
   paySponsors(state);
   for (const e of sp.activeSports(p.id, state)) yearIn(state, a, e);
+  for (const line of coachSeason(state)) sp.say(state, line, 'neutral', { screen: 'hub:career' }); // a coach's season (engine/sportsExtras.js)
   for (const e of Object.values(a.sports)) hallYear(state, e); // retired ballplayers: the Hall of Fame ballot (engine/baseball.js)
   // The old school record, kept up for the parts of the game that still read it.
   const main = a.sports[a.primary];
@@ -936,6 +942,8 @@ function yearIn(state, a, e) {
       sum.caps = caps;
       sp.say(state, `You won ${caps} caps for ${COUNTRIES[p.countryId].name} this year.`, 'good', { screen: 'sport', id: e.id });
     }
+    // The World Games: the national side goes, and a capped professional may go with it (engine/sportsExtras.js).
+    gamesTeamEvent(state, e, sum);
     if (games.length) {
       sum.rating = Math.round(games.reduce((s, x) => s + x, 0) / games.length * 10) / 10;
       e.lastRating = Math.round(clamp((sum.rating - 3) * 14));
@@ -947,7 +955,10 @@ function yearIn(state, a, e) {
   } else {
     const n = sp.internals.EVENTS_A_YEAR[e.level] ?? 2;
     const out = a.injuries.find((x) => x.status === 'out' && x.sportId === e.id);
-    const can = sitOut ? 0 : out ? Math.max(0, Math.floor(n * (1 - Math.min(1, out.left)))) : n;
+    // A professional boxer fights rather than entering events: ranked opponents, title shots, defenses.
+    const boxing = sport.id === 'boxing' && e.level === 'pro';
+    const can = sitOut || boxing ? 0 : out ? Math.max(0, Math.floor(n * (1 - Math.min(1, out.left)))) : n;
+    if (boxing && !sitOut) boxingYear(state, a, e, sum);
     sum.games = can; sum.role = 'starter';
     const pair = sp.currentPartnership(e.id, state);
     for (let i = 0; i < can; i++) {
