@@ -3,8 +3,59 @@
   "baseHead": "dimple_oval",
   "hairstyles": [
     {
+      "id": "half_up_half_down_waves",
+      "name": "Half Up Half Down Waves",
+      "clipToHead": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "space_buns",
+      "name": "Space Buns",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "textured_crop",
       "name": "Textured Crop",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "textured_pixie_cut",
+      "name": "Textured Pixie Cut",
       "clipToHead": false,
       "length": "short",
       "type": "any",
