@@ -30,7 +30,7 @@ function pageStudies(v) {
 function pageLife(v) {
   return `${v.roommate ? `<div class="section-label">Your roommate</div>${person(v.roommate, v.habit ? `Who ${v.habit.line}` : 'Roommate')}` : '<p class="muted">You have no roommate.</p>'}
     <div class="section-label">Organizations</div>
-    <p class="muted" style="margin-bottom:6px">Two at most. Each takes time, and each is where you meet people.</p>
+    <p class="muted" style="margin-bottom:6px">Two at most.</p>
     ${v.orgs.map((o) => `<div class="card sub-card ${o.joined ? 'on' : ''}"><div class="sub-head"><strong>${esc(o.name)}</strong><span>${esc(o.role)}</span></div>
       <p class="muted">${esc(o.blurb)}${o.dues ? ` Dues: ${o.dues} a year.` : ''}</p>
       ${o.joined ? meterHtml('Your standing in it', o.standing, true) : ''}

@@ -10,6 +10,7 @@
   --muted: #66567A;          /* secondary text: 5.4:1 on the page, 4.7:1 on cards (refined from #756586 for WCAG AA) */
   --line: #CBB8DF;
   --line-soft: #DDD0EC;
+  --track: #D4C2E8;         /* progress-bar tracks, visible on cards */
   --accent: #7956A0;         /* plum */
   --accent-ink: #FFFFFF;
   --accent-soft: #DCC9EF;    /* selected navigation, soft fills */
@@ -53,6 +54,7 @@
     --muted: #BFB0CF;
     --line: #594368;
     --line-soft: #46365A;
+    --track: #54406A;
     --accent: #BA97DF;
     --accent-ink: #231C2D;
     --accent-soft: #624773;
@@ -83,6 +85,7 @@
   --muted: #BFB0CF;
   --line: #594368;
   --line-soft: #46365A;
+  --track: #54406A;
   --accent: #BA97DF;
   --accent-ink: #231C2D;
   --accent-soft: #624773;

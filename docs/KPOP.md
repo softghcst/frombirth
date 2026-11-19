@@ -156,6 +156,14 @@ founding years.
   year on the show; castmates leave and new ones arrive. Great chemistry can win **Best Couple** at the year-end
   awards, together.
 
+- **Among the fans** (`fanFeed`): fellow fans trade with each other every year, a spare for one of their favorite's,
+  at about the same value, and keep trading after a group ends. A fan who keeps another fan's cards is found out and
+  nobody trades with them again, the player included. Fans who trade often become friends. The latest trades show as
+  a feed under My Idol Life → Photocards.
+- **Co-stars' careers** (`costarCareer`, `costarNow`): everyone the player worked with on a show goes on working:
+  their name grows or fades, they land shows of their own as regulars or hosts, shows end, and the year-end awards
+  notice them. The player hears when a former castmate gets a show; Variety & Hosting lists where everyone is now.
+
 ## Not built
 
-- Fans do not trade among themselves, only with the player; co-stars do not have shows of their own.
+- Fans' collections and trades are kept for the groups the player follows; other groups' fans are not modeled.

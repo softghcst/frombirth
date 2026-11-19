@@ -2,7 +2,8 @@
 // and, when it goes wrong, life inside.
 import { store, player, country } from '../../state.js';
 import { openIdol } from '../kpop.js';
-import { esc, fmtMoney } from '../../util.js';
+import { esc, fmtMoney, localMoney } from '../../util.js';
+import * as kidLife from '../../engine/childhood.js';
 import { canGamble } from '../../engine/gambling.js';
 import { may } from '../../engine/rules.js';
 import * as law from '../../engine/justice.js';
@@ -90,8 +91,25 @@ export default {
     } else {
       const gambled = p.counters.gambled * c.currency.scale;
       const things = fun.activityOptions();
+      const grow = kidLife.childActivities();
+      const jobs = kidLife.smallJobs();
+      const money = p.age >= 5 && p.age <= 17;
+      const cc = p.flags.childhood ?? {};
       el.innerHTML = `
         ${thisYearCard()}
+        ${grow.length ? `<div class="card"><h3>Growing up</h3>
+          <p class="muted" style="margin-bottom:10px">${p.age < 6 ? 'A grown-up takes you to most of these.' : 'A few of these in a year: there is school too.'}</p>
+          <div class="btn-stack">${grow.map((a) => `<button class="btn" data-kid="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.why ? ` · ${esc(a.why.toLowerCase())}` : ''}</button>`).join('')}</div>
+        </div>` : ''}
+        ${money ? `<div class="card"><h3>Pocket money</h3>
+          <p class="muted" style="margin-bottom:10px">${cc.allowance ? `You get ${fmtMoney(cc.allowance.amount, c)} a year.` : 'You have no allowance.'}${cc.saving ? ` Saving for ${esc(cc.saving.name)}: ${fmtMoney(Math.min(p.finance.cash, cc.saving.cost), c)} of ${fmtMoney(cc.saving.cost, c)}.` : ''}</p>
+          <div class="btn-stack">
+            ${kidLife.canAskAllowance() ? '<button class="btn" data-kidmoney="ask">Ask for an allowance</button>' : ''}
+            ${p.age >= 6 ? `<button class="btn" data-kidmoney="chores" ${kidLife.canDoChores() ? '' : 'disabled'}>Do your chores${kidLife.canDoChores() ? '' : ' · done this year'}</button>` : ''}
+            ${cc.saving ? `<button class="btn" data-kidmoney="buy" ${p.finance.cash >= cc.saving.cost ? '' : 'disabled'}>Buy ${esc(cc.saving.name)}</button>` : '<button class="btn" data-kidmoney="save">Save for something special</button>'}
+            ${jobs.map((j) => `<button class="btn" data-kidjob="${j.id}" ${j.done ? 'disabled' : ''}>${esc(j.label)} <small>${fmtMoney(j.pay, c)}${j.why ? ` · ${esc(j.why.toLowerCase())}` : ''}</small></button>`).join('')}
+          </div>
+        </div>` : ''}
         ${things.length ? `<div class="card"><h3>Things to do</h3>
           <div class="btn-pair">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
         </div>` : ''}
@@ -139,6 +157,16 @@ export default {
         return pickModal({ title: tune === 'radio' ? 'What do you listen to?' : 'What do you watch?', options: opt.programs.map((x) => ({ value: x.id, label: x.label })) })
           .then((pick) => (pick ? report(api, bc.tuneIn(tune, pick)) : undefined));
       }
+      const kidAct = e.target.closest('[data-kid]')?.dataset.kid;
+      if (kidAct) return report(api, kidLife.doActivity(kidAct));
+      const kidJob = e.target.closest('[data-kidjob]')?.dataset.kidjob;
+      if (kidJob) return report(api, kidLife.doSmallJob(kidJob));
+      const kidMoney = e.target.closest('[data-kidmoney]')?.dataset.kidmoney;
+      if (kidMoney === 'ask') return report(api, kidLife.askAllowance());
+      if (kidMoney === 'chores') return report(api, kidLife.doChores());
+      if (kidMoney === 'buy') return report(api, kidLife.buySaved());
+      if (kidMoney === 'save') return pickModal({ title: 'Save for what?', options: kidLife.SAVING_GOALS.map(([name, cost]) => ({ value: name, label: name[0].toUpperCase() + name.slice(1), sub: fmtMoney(localMoney(cost, country()), country()) })) })
+        .then((pick) => (pick ? report(api, kidLife.saveFor(pick, kidLife.SAVING_GOALS.find(([n]) => n === pick)[1])) : undefined));
       const todo = e.target.closest('[data-do]')?.dataset.do;
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;

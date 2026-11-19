@@ -403,7 +403,7 @@ export function markYear() {
     done.sort((a, b) => b.y - a.y);
     const best = done[0];
     const worst = done[done.length - 1];
-    log(`Your school report. Best: ${best.sub.name.toLowerCase()} (${mark(best.y)}), because ${e.subjects[best.sub.id].why}. Weakest: ${worst.sub.name.toLowerCase()} (${mark(worst.y)}), because ${e.subjects[worst.sub.id].why}.`, 'system', 'neutral');
+    log(`School report: best ${best.sub.name.toLowerCase()} ${mark(best.y)}, weakest ${worst.sub.name.toLowerCase()} ${mark(worst.y)}.`, 'system', 'neutral');
   }
   e.focus = null;
   return live.length ? sum / live.length : null;

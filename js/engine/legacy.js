@@ -139,7 +139,8 @@ function newRoles(old, h) {
     else if (mine(n)) role = 'child';
     else if ((n.parentIds ?? []).some((id) => myKids.has(id))) role = 'grandchild';
     else if (h.role === 'child') {
-      if (n.role === 'child') role = 'sibling';
+      // A child of the same parent by somebody else is a half-sibling (engine/bonds.js).
+      if (n.role === 'child') { role = 'sibling'; if (parents.size && n.parentIds?.length && !sharesParent(n)) n.flags.half = true; }
       else if (parents.has(n.id) || n.role === 'spouse') role = 'parent';
       else if (n.role === 'parent') role = 'grandparent';
       else if (n.role === 'sibling') role = 'relative';

@@ -197,9 +197,9 @@ export function openNews() {
       <div class="kv"><span>The economy</span><span><strong>${esc(o.name)}</strong>${o.since ? ` since ${o.since}` : ''}</span></div>
       <p class="muted" style="margin-top:6px">${esc(o.line)}</p></div>
     <div class="card"><h3>Where you have ties</h3>${yours.length ? yours.map(row).join('') : '<p class="muted">Nothing to report yet.</p>'}
-      <p class="muted" style="margin-top:6px">Where you live, where you were born, countries you are a citizen of, and where your family and property are.</p></div>
+      </div>
     <div class="card"><h3>Elsewhere</h3>${rest.length ? rest.map(row).join('') : '<p class="muted">A quiet world, so far.</p>'}</div>
-    <p class="muted">This is the story of your game, not the real world.</p>
+    
     <button class="btn" data-close style="margin-top:14px">Close</button>`, { dismissable: true });
   m.el.querySelector('[data-close]').addEventListener('click', () => m.close());
 }

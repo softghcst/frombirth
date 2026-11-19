@@ -15,7 +15,7 @@ function pageCatalog(r) {
   const c = country();
   const major = MAJOR_BY_ID[r.majorId];
   return `<button class="btn ${major ? '' : 'primary'}" data-major style="width:100%;margin-bottom:10px">${major ? `Subject: ${esc(major.name)} <small>change</small>` : 'First, choose what you want to study'}</button>
-    <p class="muted" style="margin-bottom:8px">The famous ones are not the best for everyone. Look at what each would cost, and what it is good at.</p>
+    
     ${uni.browse().map((u) => `<div class="card sub-card ${u.chosen ? 'on' : ''}">
       <div class="sub-head"><strong>${esc(u.name)}</strong><span>${esc(u.city)}</span></div>
       <p class="muted">${esc(u.label)}, founded ${u.founded}. ${esc(u.blurb)}</p>
@@ -30,12 +30,12 @@ function pageCatalog(r) {
 
 function pageApplying(r) {
   const major = MAJOR_BY_ID[r.majorId];
-  if (r.sent) return '<p class="muted">Your applications have gone. The answers are on the next page.</p>';
+  if (r.sent) return '<p class="muted">Applications sent.</p>';
   const chosen = uni.browse().filter((u) => u.chosen);
   const st = uni.statements().find((s) => s.id === r.statement);
   return `<div class="kv"><span>Subject</span><span>${major ? esc(major.name) : 'Not chosen'}</span></div>
     <div class="kv"><span>Places</span><span>${chosen.length} of ${MAX_APPLICATIONS}</span></div>
-    ${chosen.map((u) => `<div class="kv"><span>${esc(u.name)}</span><span>${esc(u.chances)}</span></div>`).join('') || '<p class="muted">Add places from the first page. A mix is wise: one you dream of, some you expect, one you are sure of.</p>'}
+    ${chosen.map((u) => `<div class="kv"><span>${esc(u.name)}</span><span>${esc(u.chances)}</span></div>`).join('') || '<p class="muted">Add places from the first page.</p>'}
     <div class="section-label">Your personal statement</div>
     <p class="muted">${st ? esc(st.name) : 'Not written yet.'}</p>
     <button class="btn" data-statement style="width:100%">${st ? 'Rewrite it' : 'Write it'}</button>
@@ -57,7 +57,7 @@ function pageAnswers(r) {
     ${a.canAccept ? `<button class="btn primary" data-accept="${a.instId}">Take this place</button>` : ''}
     ${a.canHold ? `<button class="btn" data-hold="${a.instId}">Ask them to keep it for a year</button>` : ''}
     ${a.canAppeal ? `<button class="btn" data-appeal="${a.instId}">Ask them to look again</button>` : ''}</div>`).join('')
-    + (list.some((a) => a.outcome === 'conditional') ? '<p class="muted">Conditional places are confirmed or withdrawn when your final marks come in.</p>' : '');
+    + (list.some((a) => a.outcome === 'conditional') ? '' : '');
 }
 
 /**

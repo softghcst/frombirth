@@ -24,6 +24,7 @@ import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
 import { openAthleticsAt } from './sports.js';
 import { icon } from './kit.js';
+import { sectionize, show as showSection } from './sections.js';
 import { lineMemory, lineMemoryHtml, milestonesAt, milestoneHtml } from './memories.js';
 import { openSettings } from './settings.js';
 
@@ -44,6 +45,8 @@ function occupationLine(p) {
  */
 export function mountGame(app, hooks) {
   let activeTab = null;
+  /** The section open inside the tab (its title), or null for the tab's list. */
+  let openSection = null;
   let busy = false;
   /** Set while the player is reading a line of the life story they came to from somewhere else. */
   let storyReturn = null;
@@ -68,9 +71,12 @@ export function mountGame(app, hooks) {
       </div>
       </main>
       <footer class="dock">
-        <div class="meters" data-meters></div>
-        <div class="year-row">
-          <button class="undo-btn" data-undo aria-label="Age down: take back the last year">${icon('undo')}<small>Age down</small></button>
+        <div class="dock-info">
+          <span class="dock-age num" data-dock-age></span>
+          <button class="undo-btn" data-undo aria-label="Age down: take back the last year"><span class="undo-pill">${icon('undo')}<small>Age down</small></span></button>
+        </div>
+        <div class="dock-main">
+          <div class="meters" data-meters></div>
           <button class="year-btn" data-year></button>
         </div>
         <nav aria-label="Sections">
@@ -106,7 +112,7 @@ export function mountGame(app, hooks) {
      * wherever the player came from: the panel that was open is put back, then `onBack` restores the rest.
      */
     showStory(eventId, { label, onBack }) {
-      storyReturn = { tab: activeTab, onBack };
+      storyReturn = { tab: activeTab, section: openSection, onBack };
       closePanel();
       const line = journalEl.querySelector(`[data-ev="${eventId}"]`);
       journalEl.querySelectorAll('.lit').forEach((x) => x.classList.remove('lit'));
@@ -137,9 +143,14 @@ export function mountGame(app, hooks) {
     cashEl.textContent = fmtMoney(p.finance.cash, c);
     cashEl.classList.toggle('neg', p.finance.cash < 0);
     syncMeters($('[data-meters]'), [['Mood', p.stats.mood], ['Health', p.stats.health], ['Intellect', p.stats.intellect], ['Charm', p.stats.charm]]);
+    $('[data-dock-age]').textContent = `${ageNow} · ${store.state.year}`;
+    // Age up: an arrow, the words, and a badge with what comes next (the next age, or the season for shorter turns).
     const turn = nextTurnText();
-    yearBtn.innerHTML = `<span class="yb-label">${esc(turn.label)}</span> <small>${esc(turn.sub)}</small>`;
-    yearBtn.setAttribute('aria-label', `${turn.label} ${turn.sub.replace('→', 'to')}`);
+    const next = turn.sub.replace(/^→\s*/, '');
+    const toAge = /^\d+$/.test(next);
+    const badgeWas = yearBtn.querySelector('.yb-badge')?.textContent;
+    yearBtn.innerHTML = `${icon('up', 'yb-arrow')}<span class="yb-label">${esc(turn.label)}</span><small class="yb-badge${badgeWas && badgeWas !== next ? ' changed' : ''}">${esc(next)}</small>`;
+    yearBtn.setAttribute('aria-label', `${turn.label}, to ${toAge ? `age ${next}` : next}`);
     yearBtn.disabled = busy || !p.alive;
     const undo = $('[data-undo]');
     undo.disabled = busy || !undoDepth(store.state.slotId);
@@ -222,16 +233,33 @@ export function mountGame(app, hooks) {
     const wasOpen = app.querySelector('.game').classList.contains('in-tab');
     app.querySelector('.game').classList.toggle('in-tab', !!tab);
     if (!tab) { if (wasOpen && !busy && !document.querySelector('#modal-root .scrim')) yearBtn.focus({ preventScroll: true }); return; }
-    $('[data-panel-title]').textContent = tab.title;
     panelBody.onclick = null;
     tab.render(panelBody, tabApi);
+    openSection = sectionize(panelBody, openSection);
+    $('[data-panel-title]').textContent = openSection ?? tab.title;
+    $('[data-panel-close]').setAttribute('aria-label', openSection ? `Back to ${tab.title}` : 'Back to your life');
     // Keyboard focus moves into the section: the tab that opened it is out of sight now.
     if (!wasOpen && !panelEl.contains(document.activeElement)) $('[data-panel-close]').focus({ preventScroll: true });
   }
 
   function render() { renderHeader(); renderJournal(); renderPanel(); }
 
-  function closePanel() { activeTab = null; renderPanel(); }
+  function closePanel() { activeTab = null; openSection = null; renderPanel(); }
+  /** Opens a section of the tab, or goes back to the tab's list (null). Focus follows: into the section, or back to its row. */
+  function goSection(title) {
+    const tab = TABS.find((t) => t.id === activeTab);
+    const was = openSection;
+    openSection = showSection(panelBody, title);
+    $('[data-panel-title]').textContent = openSection ?? tab.title;
+    $('[data-panel-close]').setAttribute('aria-label', openSection ? `Back to ${tab.title}` : 'Back to your life');
+    panelBody.scrollTop = 0;
+    const target = openSection ? panelBody.querySelector('.sec-body.shown button:not([disabled])')
+      : was && panelBody.querySelector(`.sec-row[data-sec="${CSS.escape(was)}"]`);
+    (target ?? $('[data-panel-close]')).focus({ preventScroll: true });
+  }
+  // Back: out of a section to the tab's list, then out of the tab.
+  const goBack = () => (openSection ? goSection(null) : closePanel());
+  panelBody.addEventListener('click', (e) => { const row = e.target.closest('.sec-row[data-sec]'); if (row) goSection(row.dataset.sec); });
   function leaveStory() { storyReturn = null; $('[data-story-back]').hidden = true; journalEl.querySelectorAll('.lit').forEach((x) => x.classList.remove('lit')); }
 
   function finish(entry) {
@@ -268,8 +296,17 @@ export function mountGame(app, hooks) {
   }
 
   let keepFocus = false;
+  // One press, one turn: the whole turn holds the button, and a second tap a moment later is a double tap, not a turn.
+  let advancing = false;
+  let lastPress = -Infinity;
   async function nextYear() {
-    if (busy) return;
+    if (busy || advancing || performance.now() - lastPress < 400) return;
+    advancing = true;
+    lastPress = performance.now();
+    try { await liveTurn(); } finally { advancing = false; }
+  }
+
+  async function liveTurn() {
     leaveStory();
     keepFocus = document.activeElement === yearBtn;
     closePanel();
@@ -323,9 +360,9 @@ export function mountGame(app, hooks) {
     const earlier = popUndo(store.state.slotId);
     if (earlier) { saveGame(earlier); hooks.onRestore(earlier); }
   });
-  $('[data-panel-close]').addEventListener('click', closePanel);
+  $('[data-panel-close]').addEventListener('click', goBack);
   // Escape goes back from a section, unless a dialog is open.
-  panelEl.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('#modal-root .scrim')) { e.preventDefault(); closePanel(); } });
+  panelEl.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('#modal-root .scrim')) { e.preventDefault(); goBack(); } });
   // The menu: the things a player reaches for from anywhere in a life.
   $('[data-menu]').addEventListener('click', async () => {
     if (busy) return;
@@ -344,6 +381,7 @@ export function mountGame(app, hooks) {
     leaveStory();
     if (!back) return;
     activeTab = back.tab;
+    openSection = back.section ?? null;
     renderPanel();
     back.onBack();
   });
@@ -362,6 +400,7 @@ export function mountGame(app, hooks) {
     if (!btn || busy) return;
     leaveStory();
     activeTab = activeTab === btn.dataset.tab ? null : btn.dataset.tab;
+    openSection = null;
     renderPanel();
   });
 

@@ -121,6 +121,9 @@ function migrate(state) {
     r.outcome ??= r.convicted ? 'convicted' : 'acquitted';
     r.year ??= pl.birthYear + r.age;
   }
+  // The other relationships (engine/bonds.js): an older life has none, and none is invented for it. Whether a couple
+  // are exclusive is read from what they are (married or engaged: yes; dating: never discussed) the first time it matters.
+  state.bonds ??= { seq: 0, list: {} };
   // Travel, papers, residence history and the family's shared record (engine/globalLife.js). Nothing is invented for older lives.
   ensureGlobal(state);
   // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.

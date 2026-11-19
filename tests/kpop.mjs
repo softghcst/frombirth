@@ -101,7 +101,7 @@ if (t) {
   check(c.kind === 'trainee' && c.who === 'player' && c.costs === 'covered' && !('debt' in c), 'a trainee agreement: its own kind, costs covered, no debt');
   check(AGENCIES.every((a) => a.trainee.review[0] >= 1) && c.review >= 1 && c.review <= 3, 'reviewed after one to three years, not a fixed two');
   check(kp.idolOf().residence?.countryId === 'kr' || t.agency.countryId !== 'kr', 'moving to Seoul for a Korean program');
-  const ids = t.agency.trainees.slice(0, 4); // the ones the player has met
+  const ids = t.agency.trainees.filter((id) => p.npcIds.includes(id)).slice(0, 4); // the ones the player has met
   kp.setFocus('vocal');
   const v0 = p.talents.singing;
   year();
@@ -324,7 +324,7 @@ section(`the vertical slice: ${g ? `${g.name}: debut, stages, an ending fairy, a
   const app = { id: 'app_t', auditionId: null, agencyId: a.id, category: 'multi', year: store.state.year, prepared: true, stage: 'offered', scores: {}, offer: { kind: 'trainee', agencyId: a.id, review: 2, costs: 'covered', allowance: 0, housing: 'dorm', rules: [], exit: 'notice' } };
   k().apps[app.id] = app; kp.idolOf().apps.push(app.id); kp.idolOf().guardianOk = true;
   check(kp.acceptOffer(app.id).ok, 'a trainee again');
-  const lineup = ['player', ...a.trainees.filter((id) => store.state.npcs[id]?.gender === 'female').slice(0, 4)];
+  const lineup = ['player', ...a.trainees.filter((id) => store.state.npcs[id]).slice(0, 4)];
   for (const id of lineup.slice(1)) store.state.npcs[id].gender = 'female';
   k().projects.pr_t = { id: 'pr_t', agencyId: a.id, year: store.state.year, gender: 'female', size: lineup.length, concept: a.concepts[0], lineup, status: 'announced' };
   kp.idolOf().debutOffer = 'pr_t';
@@ -655,6 +655,63 @@ section('photocards: a market for every member, rare cards and albums, the lowes
   }
 }
 section('people: fellow fans with names and collections, friends and a fan who keeps your cards; co-stars, chemistry, Best Couple');
+
+// 11. Lives of their own: fans trade among themselves; co-stars have careers of their own.
+{
+  rng.seed(777);
+  p = life('uk', 17);
+  p.finance.cash = 50000;
+  kp.world();
+  for (let y2 = 0; y2 < 2; y2++) year();
+  const g = kp.fanGroups()[0];
+  kp.becomeFan(g.id, kp.current(g)[0].who);
+  const fans = kp.tradersOf(g);
+  // Two fans who each hold spares of the other's favorite: a trade that can happen.
+  const r0 = kp.albumsOf(g)[0];
+  const [m0, m1] = r0.performers;
+  const setUp = (x, y) => { x.flags.fan.bias = m0; y.flags.fan.bias = m1; x.flags.fan.cards[`${r0.id}|${m1}|n`] = 3; y.flags.fan.cards[`${r0.id}|${m0}|n`] = 3; delete x.flags.fan.cards[`${r0.id}|${m0}|n`]; delete y.flags.fan.cards[`${r0.id}|${m1}|n`]; };
+  for (const n of fans) { n.flags.fan.honest = true; n.flags.fan.burned = false; }
+  setUp(fans[1], fans[2]);
+  year();
+  check(fans.some((n) => (n.flags.fan.swaps ?? 0) > 0) && kp.fanFeed(g).length > 0, 'fans trade with each other, and the community feed says who traded what');
+  check(fans.every((n) => Object.values(n.flags.fan.cards).every((c) => Number.isInteger(c) && c > 0)), 'trading among fans never leaves a fan with a broken count');
+  // A dishonest fan is found out by the others, and the player sees it.
+  fans[0].flags.fan.honest = false;
+  for (let y2 = 0; y2 < 25 && !fans[0].flags.fan.burned; y2++) { setUp(fans[0], fans[3]); year(); }
+  check(fans[0].flags.fan.burned && kp.fanFeed(g).length > 0, 'a fan who keeps another fan\'s cards is found out');
+  check(Object.keys(fans[0].flags.fan.cards).every((id) => kp.planTrade(id).trader?.id !== fans[0].id), 'and the player does not trade with them either');
+}
+{
+  rng.seed(888);
+  p = life('kr', 22);
+  kp.world();
+  const a = kp.agencies()[0];
+  const app = { id: 'app_w', auditionId: null, agencyId: a.id, category: 'multi', year: store.state.year, prepared: true, stage: 'offered', scores: {}, offer: { kind: 'trainee', agencyId: a.id, review: 2, costs: 'covered', allowance: 0, housing: 'dorm', rules: [], exit: 'notice' } };
+  k().apps[app.id] = app; kp.idolOf().apps.push(app.id); kp.idolOf().guardianOk = true; kp.acceptOffer(app.id);
+  const lineup = ['player', ...a.trainees.slice(0, 4)];
+  for (const id of lineup.slice(1)) store.state.npcs[id].gender = 'female';
+  k().projects.pr_w = { id: 'pr_w', agencyId: a.id, year: store.state.year, gender: 'female', size: 5, concept: a.concepts[0], lineup, status: 'announced' };
+  kp.idolOf().debutOffer = 'pr_w'; kp.acceptDebut(); kp.debut();
+  p.skills.public_speaking = 90; p.stats.charm = 90; kp.idolOf().pop = 70;
+  let show = null;
+  for (let t2 = 0; t2 < 15 && !show; t2++) { const o = kp.varietyOffers().find((x) => x.role !== 'guest'); if (o && kp.takeVariety(o.id).ok) show = kp.myShows()[0]; else kp.varietyOf().offers = null; }
+  check(!!show, 'a seat on a show (co-star careers)');
+  if (show) {
+    // Idols from other groups have idol careers of their own; everyone else on the cast gets a variety career.
+    if (!show.cast.some((c) => c.kind !== 'idol')) { const c = kp.internals.newCostar(show, p, 'comedian'); show.cast.push({ ...c, chem: 50, from: store.state.year, until: null }); p.npcIds.push(c.id); }
+    const mates = show.cast.map((c) => store.state.npcs[c.id]).filter((n) => kp.costarCareer(n));
+    check(mates.length >= 1 && mates.every((n) => kp.costarCareer(n).shows.some((x) => x.withPlayer && x.name === show.name)), 'each castmate\'s career starts with this show');
+    for (const n of mates) kp.costarCareer(n).fame = 95;
+    let own = false;
+    for (let y2 = 0; y2 < 8 && !own; y2++) { for (const n of mates) kp.costarCareer(n).fame = Math.max(kp.costarCareer(n).fame, 90); year(); own = mates.some((n) => kp.costarNow(n).length > 0); }
+    check(own, 'a well-known castmate lands a show of their own');
+    check(store.state.journal.some((j) => /who you worked with on/.test(j.text)), 'and the player hears about it');
+    kp.leaveVariety(show.id);
+    year();
+    check(mates.every((n) => kp.costarCareer(n).shows.filter((x) => x.withPlayer).every((x) => x.to != null)), 'after the player leaves, the show with them is in the past');
+  }
+}
+section('lives of their own: fans trading among themselves, a fan found out; co-stars with shows of their own');
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);

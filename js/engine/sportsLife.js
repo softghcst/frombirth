@@ -18,6 +18,8 @@ import { hire, endJob } from './career.js';
 import { registerEmployer, payAt, employer } from './employers.js';
 import { catalog, uniOf } from './university.js';
 import { makeNpc } from './npcFactory.js';
+import { emigrate } from './emigration.js';
+import { gamesTeamEvent, boxingYear, coachSeason, moveCoaching } from './sportsExtras.js';
 import { rng } from '../rng.js';
 import { makeAgents, ensureTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
 import * as sp from './sports.js';
@@ -161,6 +163,30 @@ const ANSWERS = {
     const text = `You signed a new ${d.years}-year contract with ${d.orgName} at ${fmt(state, d.salary)} a year.`;
     log(text, 'system', 'good');
     return result(true, text);
+  },
+  coachOffer(state, d, choice) {
+    if (choice === 'no') return result(true, 'You stay where you are.', 'neutral');
+    return moveCoaching(state, d.orgId);
+  },
+  abroad(state, d, choice) {
+    const p = state.player;
+    if (choice === 'no') { log(`You turned down ${d.orgName}. You stay where you are.`); return result(true, 'You stay.', 'neutral'); }
+    const e = sp.entryOf(d.sportId, p.id, state);
+    const S = sp.ensure(state);
+    const old = S.contracts[d.contractId];
+    if (!e || e.status !== 'active' || (old && old.status !== 'active')) return { ...result(false, 'That has passed.', 'neutral'), close: true };
+    // The club sponsors a work visa: the move goes through the immigration system like anyone's, already approved.
+    const move = emigrate(d.countryId, { grant: { id: `sportmove/${d.orgId}/${state.year}`, routeId: 'work', routeName: `a work visa sponsored by ${d.orgName}`, status_on_arrival: 'worker', years: d.years, remaining: 0 }, city: d.city, family: false });
+    if (!move.ok) return { ...result(false, `The move fell through: ${move.text}`, 'bad'), close: true };
+    if (old?.status === 'active') endContract(state, old, `transferred abroad to ${d.orgName}`);
+    const res = signPro(state, d, { transfer: true });
+    if (res.ok) {
+      const there = COUNTRIES[d.countryId];
+      milestone(`Moved abroad to play for ${d.orgName} in ${there.name}.`, 'career');
+      sp.moment(state, { type: 'abroad', sportId: d.sportId, text: `Transferred abroad to ${d.orgName}.`, sig: 3, orgId: d.orgId });
+      (e.abroad ??= []).push({ year: state.year, countryId: d.countryId, orgId: d.orgId, fee: d.fee });
+    }
+    return res.ok ? result(true, `You move to ${d.city} and sign for ${d.orgName}. ${move.text ?? ''}`.trim()) : res;
   },
   transfer(state, d, choice) {
     if (choice === 'no') { log(`You stayed, and ${d.orgName} looked elsewhere.`); return result(true, 'You stayed.', 'neutral'); }
@@ -366,7 +392,7 @@ export function adoptOldSport(state = store.state) {
   const p = state.player;
   const old = p?.sport;
   if (!old?.sport || !Array.isArray(old.seasons)) { delete state.proSport; return; }
-  const id = { football: 'soccer', athletics: 'track', boxing: 'martial_arts' }[old.sport] ?? old.sport;
+  const id = { football: 'soccer', athletics: 'track' }[old.sport] ?? old.sport;
   if (!sportOf(id)) { delete p.sport; delete state.proSport; return; }
   const playing = !old.retiredYear && p.career?.careerId === 'athlete';
   // Still playing: the record waits at club level until the next Age Up signs them in the same sport (tickSports).
@@ -577,6 +603,7 @@ function contractYear(state, a, e) {
   // Another club wants the player: a transfer. The fee passes between the clubs; it is not the player's money.
   // The better the player, the more clubs ask; in the last year of a contract a bid competes with the offer to stay.
   // Not in the leagues with a draft (players move by trade there, not for fees), nor for a player at a club abroad.
+  if (k.status === 'active' && abroadBid(state, e, k, o)) return;
   const club = sp.orgOf(k.orgId, state);
   if (club && (sportOf(e.id).draftIn ?? []).includes(club.countryId)) return; // traded instead (engine/trades.js), above
   if (club && club.countryId !== p.countryId) return;
@@ -592,6 +619,52 @@ function contractYear(state, a, e) {
       text: `${org.name} have agreed a fee of ${fmt(state, fee)} with ${k.name} for you, and offer ${off.years} ${off.years === 1 ? 'year' : 'years'} at ${fmt(state, off.salary)}. The fee is between the clubs.`,
       options: [{ id: 'yes', label: 'Move' }, { id: 'no', label: 'Stay' }] });
   }
+}
+
+// ---------- Transfers between countries ----------
+//
+// The best professionals in a club sport are wanted abroad, where the sport is big. A club in another country agrees a
+// fee with the player's club and offers a contract; taking it moves the player there on a work visa the club
+// sponsors (engine/emigration.js), and from then on they live and play there. Later bids can come from anywhere the
+// sport is big, home included. Not in the draft leagues (players there move by trade), and not before eighteen.
+
+/** A professional club in another country: the same kind of org as at home, in a city there. */
+export function proClubIn(state, sport, countryId, n, tier = 1) {
+  const p = state.player;
+  const cities = COUNTRIES[countryId].cities ?? [COUNTRIES[countryId].name];
+  const city = cities[n % cities.length];
+  const div = sport.kind === 'team' ? sp.divOf(p) : null;
+  const org = findOrg(state, sport, 'pro', { key: `pro/${sport.id}/${countryId}/${n}${div === 'women' ? '/women' : ''}`, city, tier, strength: tier === 1 ? 6 : -6, div, countryId });
+  if (!org.employerId || !employer(org.employerId)) {
+    const emp = registerEmployer({ name: org.name, family: 'sport', tracks: ['athlete', 'coaching'], countryId, city });
+    emp.owned = false; emp.sportClub = org.id; emp.size = tier === 1 ? 'large' : 'medium'; emp.founded = org.founded;
+    org.employerId = emp.id;
+  }
+  return org;
+}
+/** Where a club sport is big enough to buy players from abroad: its leading countries, but not the draft leagues. */
+export const abroadMarkets = (sport, from) => (sport.popular ?? []).filter((c) => c !== from && COUNTRIES[c] && !(sport.draftIn ?? []).includes(c));
+function abroadBid(state, e, k, o) {
+  const p = state.player;
+  const sport = sportOf(e.id);
+  if (sport.kind !== 'team' || p.age < 18 || o < 78) return false;
+  const club = sp.orgOf(k.orgId, state);
+  if (club && (sport.draftIn ?? []).includes(club.countryId)) return false;
+  const markets = abroadMarkets(sport, p.countryId);
+  if (!markets.length) return false;
+  const r = seeded(`abroad/${k.id}/${state.year}`);
+  if (!r.chance(Math.min(0.35, 0.06 + (o - 78) / 60))) return false;
+  const cc = r.pick(markets);
+  const org = proClubIn(state, sport, cc, r.int(0, 7), 1);
+  if (!sp.proYears(sport, sp.divOf(p), state.year).open) return false;
+  const off = offerFor(state, e, org);
+  off.salary = Math.round(off.salary * 1.2);
+  const fee = Math.round(off.salary * r.int(2, 6));
+  const there = COUNTRIES[cc];
+  decide(state, { kind: 'abroad', sportId: e.id, contractId: k.id, orgId: org.id, orgName: org.name, countryId: cc, city: org.city, fee, ...off, key: `abroad/${k.id}/${state.year}`,
+    text: `${org.name}, in ${there.name}, have agreed a fee of ${fmt(state, fee)} with ${k.name} for you. They offer ${off.years} ${off.years === 1 ? 'year' : 'years'} at ${fmt(state, off.salary)} and a work visa: you would move to ${org.city}. The fee is between the clubs.`,
+    options: [{ id: 'yes', label: `Move to ${there.name}` }, { id: 'no', label: 'Stay' }] });
+  return true;
 }
 
 // ---------- Fame, confidence and motivation ----------
@@ -788,6 +861,7 @@ export function tickSports(state = store.state) {
   }
   paySponsors(state);
   for (const e of sp.activeSports(p.id, state)) yearIn(state, a, e);
+  for (const line of coachSeason(state)) sp.say(state, line, 'neutral', { screen: 'hub:career' }); // a coach's season (engine/sportsExtras.js)
   for (const e of Object.values(a.sports)) hallYear(state, e); // retired ballplayers: the Hall of Fame ballot (engine/baseball.js)
   // The old school record, kept up for the parts of the game that still read it.
   const main = a.sports[a.primary];
@@ -868,6 +942,8 @@ function yearIn(state, a, e) {
       sum.caps = caps;
       sp.say(state, `You won ${caps} caps for ${COUNTRIES[p.countryId].name} this year.`, 'good', { screen: 'sport', id: e.id });
     }
+    // The World Games: the national side goes, and a capped professional may go with it (engine/sportsExtras.js).
+    gamesTeamEvent(state, e, sum);
     if (games.length) {
       sum.rating = Math.round(games.reduce((s, x) => s + x, 0) / games.length * 10) / 10;
       e.lastRating = Math.round(clamp((sum.rating - 3) * 14));
@@ -879,7 +955,10 @@ function yearIn(state, a, e) {
   } else {
     const n = sp.internals.EVENTS_A_YEAR[e.level] ?? 2;
     const out = a.injuries.find((x) => x.status === 'out' && x.sportId === e.id);
-    const can = sitOut ? 0 : out ? Math.max(0, Math.floor(n * (1 - Math.min(1, out.left)))) : n;
+    // A professional boxer fights rather than entering events: ranked opponents, title shots, defenses.
+    const boxing = sport.id === 'boxing' && e.level === 'pro';
+    const can = sitOut || boxing ? 0 : out ? Math.max(0, Math.floor(n * (1 - Math.min(1, out.left)))) : n;
+    if (boxing && !sitOut) boxingYear(state, a, e, sum);
     sum.games = can; sum.role = 'starter';
     const pair = sp.currentPartnership(e.id, state);
     for (let i = 0; i < can; i++) {

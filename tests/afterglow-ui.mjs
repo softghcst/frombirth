@@ -83,11 +83,27 @@ for (const scheme of ['light', 'dark']) {
 
   // Age Up: exactly one year, and the button names the age to come.
   const before = await age(page);
-  const label = await page.locator('[data-year]').innerText();
-  check(label.includes(`→ ${before + 1}`), `${scheme}: the year button names the next age (${label.replace(/\s+/g, ' ')})`);
-  await page.click('[data-year]'); await settle(page);
-  check(await age(page) === before + 1, `${scheme}: Age Up moves exactly one year (${before} → ${await age(page)})`);
+  const badge = await page.locator('[data-year] .yb-badge').innerText();
+  const aria = await page.locator('[data-year]').getAttribute('aria-label');
+  check(badge === String(before + 1) && aria === `Age up, to age ${before + 1}`, `${scheme}: Age up shows the next age (badge ${badge}, "${aria}")`);
+  check(await page.locator('[data-dock-age]').innerText() === `Age ${before} · ${await page.evaluate(async () => (await import('/js/state.js')).store.state.year)}`, `${scheme}: the dock shows the age and the year`);
+  // Every stat in the dock is the one in the game.
+  const stats = await page.evaluate(async () => {
+    const p = (await import('/js/state.js')).store.state.player;
+    return [...document.querySelectorAll('.dock .meter')].map((m) => [m.getAttribute('aria-label'), m.querySelector('.val').textContent,
+      `${Math.round(p.stats[{ Mood: 'mood', Health: 'health', Intellect: 'intellect', Charm: 'charm' }[m.getAttribute('aria-label')]])}%`]);
+  });
+  check(stats.length === 4 && stats.every(([, shown, real]) => shown === real), `${scheme}: the four stats show their values (${JSON.stringify(stats)})`);
+  // A quick double tap is one year, not two.
+  await page.evaluate(() => { const b = document.querySelector('[data-year]'); b.click(); b.click(); b.click(); });
+  await settle(page);
+  check(await age(page) === before + 1, `${scheme}: rapid taps advance exactly one year (${before} → ${await age(page)})`);
   check(await page.locator('.age-head', { hasText: `Age ${before + 1}` }).count() === 1, `${scheme}: the journal has a heading for the new age`);
+  // The bars follow the game: change a stat, and the dock catches up.
+  await page.evaluate(async () => { (await import('/js/state.js')).store.state.player.stats.mood = 12; });
+  await page.click('[data-menu]'); await page.locator('#modal-root .choice-btn', { hasText: 'Settings' }).click();
+  await page.locator('#modal-root [data-cancel]').click(); await page.waitForTimeout(150); // Settings redraws the life when it closes
+  check(await page.locator('.dock .meter[aria-label="Mood"] .val').innerText() === '12%' && await page.locator('.dock .meter[aria-label="Mood"] .fill.low').count() === 1, `${scheme}: a stat bar updates, and turns red when low`);
   await page.waitForTimeout(600);
   await shot(page, `main-${scheme}`);
 
@@ -113,7 +129,7 @@ for (const scheme of ['light', 'dark']) {
 
   // The five sections.
   for (const [tab, title] of [['work', 'Work & School'], ['holdings', 'Holdings'], ['people', 'People'], ['pursuits', 'Pursuits'], ['self', 'Self']]) {
-    if (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
+    while (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
     await page.click(`.tab-btn[data-tab="${tab}"]`); await page.waitForTimeout(300);
     check(!(await page.locator('.dock').isVisible()), `${scheme}: the dock steps aside while ${tab} is open`);
     check(await page.locator('[data-panel-close]').isVisible(), `${scheme}: ${tab} has a back button`);
@@ -146,6 +162,28 @@ for (const scheme of ['light', 'dark']) {
   await page.locator('[data-load]').first().click();
   await page.waitForSelector('[data-year]'); await settle(page);
   check(await age(page) === before, `${scheme}: the saved life loads at the age it was left`);
+
+  // The dock at common phone widths: nothing overlaps, nothing scrolls sideways, the journal ends above the dock.
+  for (const width of [320, 375, 390, 430]) {
+    await page.setViewportSize({ width, height: 760 });
+    await page.waitForTimeout(80);
+    const d = await page.evaluate(() => {
+      const box = (q) => document.querySelector(q).getBoundingClientRect();
+      const overlap = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      const meters = [...document.querySelectorAll('.dock .meter')].map((m) => ({ n: m.querySelector('.name').getBoundingClientRect(), v: m.querySelector('.val').getBoundingClientRect() }));
+      const yb = box('[data-year]');
+      return {
+        wide: document.documentElement.scrollWidth <= innerWidth + 1,
+        labels: meters.every(({ n, v }) => n.right <= v.left + 0.5),
+        apart: !overlap(box('.dock .meters'), yb),
+        tall: yb.height >= 76 && yb.width >= 76,
+        tabs: [...document.querySelectorAll('.tab-btn')].every((t) => { const r = t.getBoundingClientRect(); return r.width >= 44 && r.height >= 44 && r.right <= innerWidth; }),
+        journal: box('[data-journal]').bottom <= box('.dock').top + 1,
+      };
+    });
+    for (const [k, ok] of Object.entries(d)) check(ok, `${scheme}: at ${width}px the dock is right (${k})`);
+    if (width === 375) await shot(page, `dock-375-${scheme === "light" ? "dark" : "light"}`); // by now the run has switched to the other appearance
+  }
 
   // Narrow phone: long names, a long place, a fortune, and every control still reachable.
   await page.setViewportSize({ width: 320, height: 568 });

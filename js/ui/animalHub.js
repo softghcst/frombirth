@@ -53,7 +53,7 @@ function hub() {
     ${here.length ? go('activities', 'Animal activities', 'Outings, classes and the local pet show', '🎾') : ''}
     ${p.age >= 18 ? `<button class="row" data-do="work"><div class="avatar glyph">💼</div><div class="main"><strong>Animal businesses</strong><small>${esc(ANIMAL_BIZ.map((id) => biz.openBusinesses().find((b) => b.typeId === id)?.name).filter(Boolean).join(', ') || 'Pet care, grooming, kennels, a training school, a riding school, a smallholding')}</small></div></button>` : ''}
     ${go('album', 'Animal memories', 'Our Animal Family: the album and the timeline', '📖')}
-    <p class="muted zoo-note">Feeding, water, walks and the everyday are seen to without being asked. ${esc(c.name)} prices.</p>` };
+    ` };
 }
 
 function myAnimals() {
@@ -71,7 +71,7 @@ function adopt() {
   const p = player();
   const shelters = [care.shelter(), care.farmRescue()];
   return { title: 'Adopt & rescue', sub: 'The animals waiting near you are the same ones from one visit to the next.', body: `
-    ${p.age < 18 ? '<p class="muted zoo-note">You can look. Taking one home is for the adults of the house to decide.</p>' : ''}
+    ${p.age < 18 ? '<p class="muted zoo-note">The adults decide.</p>' : ''}
     <div class="btn-stack" style="margin-bottom:10px"><button class="btn" data-do="volunteer" ${p.flags.volunteeredAge === p.age || p.age < 14 ? 'disabled' : ''}>Volunteer at ${esc(care.shelter().name)}${p.flags.volunteeredAge === p.age ? ' · done this year' : p.age < 14 ? ' · from age 14' : ''}</button></div>
     ${shelters.map((sh) => {
     const list = care.shelterAnimals(sh);
@@ -112,7 +112,7 @@ function careScreen() {
     ${here.length ? here.map((a) => row(a, `${a.foster ? 'Fostering' : care.paysFor(a) ? ({ standard: 'Standard care', enriched: 'Extra enrichment', senior: 'Senior care' })[a.routine ?? 'standard'] : ''}${a.insurance ? ' · insured' : ''}${a.board ? ` · at ${a.board.name}` : ''}`, money(a.foster ? care.yearlyCost(a).care : care.yearlyCost(a).total), `data-animal="${a.id}" data-tab-to="care"`)).join('')
     + `<div class="kv" style="margin-top:6px"><span>Altogether, a year</span><span><strong>${money(total)}</strong></span></div>`
     : '<p class="empty">There are no animals you are responsible for.</p>'}
-    <p class="muted zoo-note">If money runs short, what there is goes on the animals first, and the low-cost clinic and the food bank help with the rest.</p>` };
+    ` };
 }
 function training() {
   const here = mine().filter((a) => zoo.trainingOf(a).length);
@@ -127,7 +127,7 @@ function vet() {
   return { title: cl.name, sub: `${cl.vets.map((v) => v.name).join(', ')}.${cl.lowCost ? ' Offers lower fees to those who need them.' : ''}`, body: here.length ? here.map((a) => {
     const s = care.vetServices(a.id); const open = s.filter((x) => !x.done);
     return row(a, `${a.lastCheck != null ? `Last check-up ${a.lastCheck}` : 'No check-up on record'}${a.vaccinated != null ? ` · vaccinated ${a.vaccinated}` : ''}`, open.length ? `${open.length} available` : 'Up to date', `data-animal="${a.id}" data-tab-to="health"`);
-  }).join('') + '<p class="muted zoo-note">Open an animal to book a visit. Illness and emergencies are dealt with as they come.</p>' : '<p class="empty">None of your animals needs a vet you can book.</p>' };
+  }).join('') + '' : '<p class="empty">None of your animals needs a vet you can book.</p>' };
 }
 
 // ---------- Activities ----------
@@ -169,7 +169,7 @@ function riding(step) {
       <div class="card"><h3>${esc(sc.name)}</h3>${kv([['Instructor', `${esc(sc.instructor.name)}, teaching for ${sc.instructor.years} years`], ['A year of weekly lessons', `${money(localCost(1500 * sc.priceK, C()))}${p.age < 18 ? ' (for your parents to decide)' : ''}`]])}</div>
       ${r ? `<div class="card"><h3>You, in the saddle</h3>${kv([['Level', `${esc(horse.levelName(lvl))} (${lvl})`], ['Years of lessons', String(r.lessons)], ['Falls', String(r.falls)]])}
         ${Object.entries(RIDER_SKILLS).map(([k, n]) => `<div class="kv"><span>${esc(n)}</span><span>${r.skills[k]}</span></div>`).join('')}
-        ${Object.keys(r.disciplines).length ? `<div class="section-label">Ways of riding</div>${Object.keys(r.disciplines).map((d) => `<div class="kv"><span>${esc(DISCIPLINES[d].name)}</span><span>${horse.disciplineSkill(d)}</span></div>`).join('')}` : ''}</div>` : '<p class="muted zoo-note">You have never ridden. You do not need a horse of your own to learn: the school\'s horses teach beginners.</p>'}
+        ${Object.keys(r.disciplines).length ? `<div class="section-label">Ways of riding</div>${Object.keys(r.disciplines).map((d) => `<div class="kv"><span>${esc(DISCIPLINES[d].name)}</span><span>${horse.disciplineSkill(d)}</span></div>`).join('')}` : ''}</div>` : '<p class="muted zoo-note">You have never ridden.</p>'}
       <div class="btn-stack">${can.ok ? `<button class="btn primary" data-do="lessons">${r ? 'Take this year\'s lessons' : 'Start riding lessons'}</button>` : `<button class="btn" disabled>${esc(can.why)}</button>`}</div>
       <div class="section-label">The school's horses</div>${horse.schoolHorses(sc).map((a) => row(a, `${kind(a)} · ${age(a)}${r?.schoolHorse === a.id ? ' · the one you ride' : ''}`, '', zoo.allAnimals().includes(a) ? `data-animal="${a.id}"` : 'disabled')).join('')}`,
     yard: () => {
@@ -216,7 +216,7 @@ function pedigreeScreen(step) {
     <div class="zoo-tree">${box(t, 'This animal')}
       <div class="zoo-tree-row">${box(t.dam, 'Dam')}${box(t.sire, 'Sire')}</div>
       <div class="zoo-tree-row">${box(t.dam?.dam, 'Dam\'s dam')}${box(t.dam?.sire, 'Dam\'s sire')}${box(t.sire?.dam, 'Sire\'s dam')}${box(t.sire?.sire, 'Sire\'s sire')}</div></div>
-    <p class="muted zoo-note">Only what was written down. A breed name alone is not a pedigree.</p>
+    
     ${kids.length ? `<div class="section-label">Offspring</div>${kids.map((k) => row(k, `${kind(k)} · born ${k.born} · ${zoo.familyLink(k)}`)).join('')}` : ''}` };
 }
 

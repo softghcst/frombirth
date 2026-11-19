@@ -142,7 +142,7 @@ export function romanceActions(npc) {
   }
   if ((npc.role === 'partner' || npc.role === 'spouse') && !p.legal.incarceration) {
     a.push({ id: 'date', label: npc.role === 'spouse' ? 'Plan a night out together' : 'Go on a date' });
-    if (adults) a.push({ id: 'hookUp', label: 'Spend the night together' });
+    if (adults) a.push({ id: 'hookUp', label: 'Be intimate' });
   }
   if (npc.role === 'partner') {
     if (adults && !npc.flags.engaged) a.push({ id: 'propose', label: 'Propose' });
@@ -375,6 +375,18 @@ export function tickRomance() {
       log(`${npc.firstName} ended things with you.`, 'system', 'bad');
     }
   }
+}
+
+/** This partner leaves the player, of their own accord (engine/bonds.js: after a betrayal, or when trust does not return). */
+export function leftBy(npcId) {
+  const p = player();
+  const npc = store.state.npcs[npcId];
+  if (!npc) return;
+  if (npc.role === 'spouse') { endMarriage(npc, false); return; }
+  npc.role = 'ex';
+  npc.flags.engaged = false;
+  p.stats.mood = clamp(p.stats.mood - 10);
+  log(`${npc.firstName} ended things with you.`, 'system', 'bad');
 }
 
 export { roleLabel };

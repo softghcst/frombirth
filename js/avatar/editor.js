@@ -7,6 +7,7 @@ import { CATALOG, normalize, part, stylesFor, TWEAKS, shownTweaks, lipsFor } fro
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
+import { ELDER_BROWS } from './curation.js';
 import { icon } from '../ui/kit.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
@@ -93,6 +94,8 @@ export function mountAppearanceEditor(el, o = {}) {
     }
     // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.
     if (key === 'lips') list = list.filter((x) => lipsFor(x.id, o.gender) === x.id);
+    // The bushy brows of old age are an old man's.
+    if (key === 'brows' && o.gender === 'female') list = list.filter((x) => x.id !== ELDER_BROWS);
     return list;
   };
 

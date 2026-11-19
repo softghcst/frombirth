@@ -54,12 +54,17 @@ node tests/animal-life.mjs     # staff, classes, behavior, landlords, outings, c
 node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
 node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
 node tests/sports-divisions.mjs   # sports: women's and men's divisions, women's professional years, sports agents shopped for
+node tests/sports-extras.mjs      # sports: World Games team events, managing a squad, boxing and its world title
 node tests/teams.mjs           # team names, jersey colors and shirt numbers: made up, renamed, recolored, saved; teammates renamed everywhere
 node tests/draft.mjs           # recruiting (stars, offers by division, signing day), college (redshirt, grades, portal, NIL), each league's draft rules, the minors
 node tests/international.mjs   # baseball signings outside the draft countries: trainers, handshake deals, signing at 16, the DSL, Cuba
 node tests/asia-youth.mjs      # Japan's and Korea's drafts, posting to the big leagues, Korean military service, soccer scholarships and youth contracts
 node tests/trades.mjs          # trades in the draft leagues (the contract moves as it stands, ten-and-five), Puerto Rico in the big leagues' draft
 node tests/baseball.mjs        # baseball: season lines and career totals, roles, free agency and the qualifying offer, options and Rule 5, independent ball, winter ball, the Hall of Fame
+node tests/bonds.mjs           # adult relationships beyond one partner: casual, friends with benefits, one night, private; exclusivity and affairs; who knows; gifts; discovery; A Complicated Romance
+node tests/estate.mjs          # wills: one notice when someone named dies, nothing rewritten, alternates, the playable heir as its own choice, reviews when the family changes
+node tests/childhood.mjs       # childhood from birth: things to do by age, playground friends, early likings capped, pocket money from the family's own money, chores, small jobs
+node tests/love-stories.mjs    # relationship stories told only when true, once, at the drama setting's pace; the opt-in, non-graphic teenage pregnancy storyline; teenage relationship scenes
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
@@ -90,6 +95,7 @@ node tests/kpop.mjs            # the K-pop idol life: auditions, trainees, survi
 node tests/music.mjs           # bands, releases, charts, royalties paid once, record deals, tours, music awards, heirs
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
 node tests/moments.mjs         # living moments: occasions marked once in their year, Age Up never repeats them, traditions passed down
+node tests/together.mjs        # what you can do with the people in your life, by role, age and era; trust, memories, once a year
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
@@ -174,12 +180,19 @@ division between clubs. Sports agents are shopped for like every other agent: on
 with their own cut (3–10%), pull with clubs and brands, and athletes on their books (My Athletics → Career, or My
 Fame → Representation).
 
+The best professionals in club sports are bought by clubs abroad: taking the move means a work visa the club sponsors
+and a life in that country. In a games year a capped professional goes to the World Games with the national side. A
+coach runs a club's first team: who starts, tactics, training, a season played game by game, and a board that judges
+the table. Boxing is a sport of its own, with weight classes, a ranking from the record, and a world title to win and
+defend (`js/engine/sportsExtras.js`).
+
 | What | Where |
 |---|---|
 | The registry: sports, skills, positions, founding years, routes to going pro, injuries, plans | `js/data/sports.js` |
 | How a match, race or routine comes out, and the rating | `js/engine/sportsPlay.js` |
 | Profiles, eligibility, training, clubs and tryouts, coaches, rosters, leagues and seasons, draws and meets, doubles | `js/engine/sports.js` |
-| The year in sport, money, injuries and rehab, recruiting and scholarships, contracts, sponsors, fame, arcs, generations | `js/engine/sportsLife.js` |
+| The year in sport, money, injuries and rehab, recruiting and scholarships, contracts, transfers at home and abroad, sponsors, fame, arcs, generations | `js/engine/sportsLife.js` |
+| World Games team events, managing a squad, boxing | `js/engine/sportsExtras.js` |
 | Stories with scenes, A to I: first team, a coach who believes in you, the scholarship, the championship season, the doubles partnership, injury and recovery, the professional dream, the comeback, a new generation | `js/engine/sportsArcs.js`, `js/data/events/sports.js` |
 | Sport in the family: parents' and grandparents' past, siblings and children who choose their own sport, parents at games | `js/engine/sportsFamily.js` |
 | Teams' names, home and away jersey colors and shirt numbers, made up per sport (Rovers and Albion in soccer, Owls and Barons in baseball...) and all changeable, with players' names, in Settings → Teams and jerseys | `js/engine/teamIdentity.js`, `js/ui/settings.js`, `js/ui/jersey.js` |
@@ -275,6 +288,21 @@ set close. The script measures the outline of each, row by row (`shape` in the m
 smaller, a little lower, or each eye up to three units further out (`NOSE_FIT`). A pair that is already clear is
 drawn exactly as before. It works from the measurements and the person's own proportions, so nothing is listed pair
 by pair: a new nose or pair of eyes only needs measuring (run the script).
+
+**Brows.** Twelve brows can be chosen (`CATALOG.brows`); seven of them are given at random (`RESTING.eyebrows`). Brows
+that looked wrong on every face shape have been withdrawn, and saves that had one get the nearest kept
+(`WITHDRAWN.brows`). The sad brows (`brows_11`) are never a resting face: anyone whose mood is at or below 30, as
+happiness falls or after sad news, is drawn with them, and at or below 15 their eyes cry too (`LOW_MOOD`). Babies and
+toddlers keep their soft baby brows (`BABY_BROWS`). From 84, an old man's brows grow bushy (`ELDER_BROWS`); a woman's
+keep their shape and gray, and the creator offers the bushy brows to men only.
+
+**Lid creases.** Several eye shapes (`eyes_18`, `_19`, `_20`, `_22`, `_26`, `_9`, `_8`, `_7`) draw a fold line floating
+above the eye, which, in the same ink as the eye and close under the brow, read as a second, thinner eyebrow. The
+script parts each crease into a path of its own, in a soft shade of the skin (`--crease-color`, falling back to the skin
+mixed half and half with the eye's ink), and lowers it toward the lid by an amount worked out for that eye from the
+outlines (`CREASES` in `scripts/build-avatar-manifest.py`): it stays at least 3 units clear of the eye, and a typical
+brow is at least 5 units above it. `eyes_25` drew two folds, a floating one and one under its lashes that was part of its outline: the floating one is
+taken out, and the other was cut out of the outline once and drawn in the same soft shade. The eyes whose top line is lashes (`eyes_10`, `_16`, `_6`) have no crease and are unchanged.
 
 **Fitting a mouth to the nose.** The mouth is then fitted to the nose above it, as that nose was fitted to the eyes
 (`LIP_FIT`): a resting mouth is drawn at least 1.3 times as wide as the nose, up to 15% larger, so a small bow

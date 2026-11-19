@@ -9,6 +9,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { sportOf, PLANS, LOADS, LEVEL_NAMES, INJURIES } from '../data/sports.js';
 import * as sp from '../engine/sports.js';
 import * as life from '../engine/sportsLife.js';
+import * as extras from '../engine/sportsExtras.js';
 import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
 import { decommit, gradeOf, GRADE_NAMES } from '../engine/recruiting.js';
 import * as draft from '../engine/draft.js';
@@ -65,7 +66,7 @@ function hub(step) {
   return { title: 'My Athletics', sub: 'Your sports. Your journey. Your legacy.', tabs: SECTIONS, tab, body };
 }
 function emptyHub() {
-  return `<div class="card"><h3>Every athlete starts somewhere.</h3><p class="muted">A kickabout in the park, a racket borrowed from a cousin, a first swimming lesson. Pick a sport to begin.</p>
+  return `<div class="card"><h3>Every athlete starts somewhere.</h3><p class="muted">Pick a sport.</p>
     <button class="btn primary" data-set="tab:sports" style="margin-top:10px">Choose a sport</button></div>`;
 }
 
@@ -99,7 +100,7 @@ function sportsSection() {
   return `
     ${mine.length ? `${label('Your sports')}${mine.map((e) => row(`data-sport="${e.id}"`, glyph(e.id), sportOf(e.id).name, `${e.status === 'active' ? levelName(e.level) : e.status === 'retired' ? `Retired ${e.retiredYear}` : 'Stopped'} · since ${e.since}`, `PR ${e.pr}`)).join('')}` : ''}
     ${label('Take up a sport')}
-    <p class="muted">Up to three at a time. Sports appear in the year they began to be played.</p>
+    <p class="muted">Up to three at a time.</p>
     ${menu.filter((x) => !x.playing).map((x) => `<button class="row" data-take="${x.sport.id}" ${x.ok ? '' : 'disabled'}><div class="avatar glyph">${glyph(x.sport.id)}</div>
       <div class="main"><strong>${esc(x.sport.name)}</strong><small>${esc(x.ok ? `${x.popular ? 'Popular here · ' : ''}${x.sport.kind === 'team' ? 'Team sport' : x.sport.kind === 'racket' ? 'Singles and doubles' : 'Individual'}${x.sport.adaptive ? ' · adaptive' : ''}` : x.text)}</small></div></button>`).join('')}`;
 }
@@ -108,7 +109,7 @@ function training() {
   const active = sp.activeSports();
   if (!active.length) return empty('You are not playing anything right now.');
   const left = sp.EXTRA_PER_YEAR - (S().acts.year === store.state.year ? S().acts.extra : 0);
-  return `<p class="muted">Training happens through the year. More hours help, but each extra hour adds less than the one before, and tired bodies get hurt. ${left} extra ${left === 1 ? 'session' : 'sessions'} left this year.</p>
+  return `
     ${active.map((e) => {
     const sport = sportOf(e.id);
     const coach = sp.coachOf(e.coachId);
@@ -171,7 +172,7 @@ function eventRow(ev) {
 
 function rankings() {
   const a = sp.myAthlete();
-  return `<p class="muted">The Pathways Rating (PR) is the game's own rating. It starts at 1000 and moves only with results.</p>
+  return `
     ${Object.values(a.sports).map((e) => `<div class="card"><h3>${esc(sportOf(e.id).name)}</h3>
       ${kv('Pathways Rating', `${e.pr} · ${sp.prWord(e.pr)}`)}
       ${kv('Record', `${e.wins} won · ${e.losses} lost${e.draws ? ` · ${e.draws} drawn` : ''}`)}
@@ -293,10 +294,14 @@ function career() {
     ${recruitingSection()}
     ${draftSection()}
     ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.kind === 'agent' && k.share ? ` · takes ${Math.round(k.share * 100)}%` : ''}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
+    ${(() => { const moves = Object.values(a?.sports ?? {}).flatMap((e) => (e.abroad ?? []).map((m) => ({ ...m, sportId: e.id }))); return moves.length ? `${label('Moves abroad')}${moves.map((m) => kv(`${m.year}: ${sp.orgOf(m.orgId)?.name ?? 'A club'}`, esc(`${COUNTRIES[m.countryId]?.name ?? ''} · ${sportOf(m.sportId).name} · fee ${money(m.fee)}`))).join('')}` : ''; })()}
+    ${squadSection()}
+    ${boxingSection()}
+    ${gamesSection()}
     ${agentSection()}
     ${label('Division')}
     ${kv('You play in', `${esc(sp.DIVISION_NAME[sp.divisionOf()])} competition`)}
-    <p class="muted">Clubs' teams, leagues, tours and events above recreational play each have a women's and a men's division.</p>
+    
     ${sp.choosesDivision(p) ? `<div class="btn-stack">${['women', 'men'].filter((d) => d !== sp.divisionOf()).map((d) => `<button class="btn" data-division="${d}">Compete in the ${esc(sp.DIVISION_NAME[d].toLowerCase())} division</button>`).join('')}</div>` : ''}
     ${label('The way up')}
     ${sp.activeSports().map((e) => { const sport = sportOf(e.id); const route = sp.proPath(sport, p.countryId); return kv(sport.name, esc(!sp.proYears(sport).open ? proClosed(sport) : route === 'draft' ? 'Professional teams draft from school and university.' : route === 'tour' ? 'Professionals play a tour for prize money.' : route === 'none' ? 'No professional league: the best compete for their country.' : 'Clubs sign players, often from their academies.') + (sp.hasCollegeSport(sport, p.countryId) ? ' Universities here recruit, with scholarships.' : '')); }).join('')}
@@ -304,6 +309,40 @@ function career() {
     <div class="btn-stack">${sp.activeSports().map((e) => `<button class="btn" data-retire="${e.id}">Retire from ${esc(sportOf(e.id).name.toLowerCase())}</button>`).join('')}
       ${p.age >= 18 && !a.coaching ? Object.values(a.sports).map((e) => `<button class="btn" data-coachjob="${e.id}">Coach ${esc(sportOf(e.id).name.toLowerCase())}</button>`).join('') : ''}</div>
     ${a.coaching ? kv('Coaching', `${esc(sportOf(a.coaching.sportId).name)} since ${a.coaching.since}`) : ''}`;
+}
+
+/** The squad a coach runs: the table last season, tactics, training, and who starts. */
+function squadSection() {
+  const sq = extras.squadOf();
+  if (!sq) return '';
+  const last = sq.c.seasons.at(-1);
+  const xi = new Set(extras.lineup(sq).map((x) => x.id));
+  const btns = (set, key, cur, attr) => `<div class="chips zoo-filter" role="group">${Object.entries(set).map(([k, v]) => `<button class="chip ${k === cur ? 'on' : ''}" aria-pressed="${k === cur}" ${attr}="${k}">${esc(v.name)}</button>`).join('')}</div>`;
+  return `${label(`Coaching ${sq.org.name}`)}
+    ${last ? kv(`${last.year} season`, esc(`${last.place}${['th', 'st', 'nd', 'rd'][last.place] ?? 'th'} of ${last.of} · ${last.w}-${last.d}-${last.l}`)) : `<p class="muted">Your first season starts this year.</p>`}
+    ${sq.c.warned ? '<p class="muted">The board expect better this season.</p>' : ''}
+    <p class="muted" style="margin:6px 0 2px">How the side plays: ${esc(extras.TACTICS[sq.c.tactics].blurb)}</p>${btns(extras.TACTICS, 'tactics', sq.c.tactics, 'data-tactic')}
+    <p class="muted" style="margin:6px 0 2px">Training: ${esc(extras.TRAINING[sq.c.training].blurb)}</p>${btns(extras.TRAINING, 'training', sq.c.training, 'data-training')}
+    <p class="muted" style="margin:6px 0 2px">Tap a player to leave them out or bring them back.</p>
+    ${[...sq.team.roster].filter((x) => !x.player).sort((a2, b2) => b2.rating - a2.rating).map((x) => `<button class="row" data-bench="${esc(x.id)}"><div class="main"><strong>${esc(x.name)}</strong><small>${esc(`${x.pos ? `${(sq.sport.positions ?? []).find((q) => q[0] === x.pos)?.[1] ?? x.pos} · ` : ''}rated ${x.rating}${x.age ? ` · ${x.age}` : ''}`)}</small></div><div class="side">${xi.has(x.id) ? 'Starts' : sq.c.benched.includes(x.id) ? 'Left out' : 'Bench'}</div></button>`).join('')}`;
+}
+/** A boxer's record: wins, losses, knockouts, rank, belts. */
+function boxingSection() {
+  const e = sp.entryOf('boxing');
+  const b = e?.boxing;
+  if (!b) return '';
+  return `${label('In the ring')}
+    ${kv('Record', esc(`${b.record.w}-${b.record.l}, ${b.record.ko} by knockout`))}
+    ${kv('Division', esc(b.weight))}
+    ${kv('Standing', esc(b.title ? `${extras.BELT.body} champion · ${b.title.defenses} ${b.title.defenses === 1 ? 'defense' : 'defenses'}` : `Ranked ${b.rank}`))}
+    ${b.titles.map((t) => kv(`${t.year}: ${t.weight} title`, esc(t.lost ? `held until ${t.lost}${t.defenses ? `, ${t.defenses} defenses` : ''}` : 'held'))).join('')}
+    ${b.fights.slice(-4).reverse().map((f) => kv(`${f.year} · ${f.opp}`, esc(`${f.won ? 'Won' : 'Lost'} ${f.how}${f.title ? ` · ${f.title}` : ''}`))).join('')}`;
+}
+/** The national side at the World Games. */
+function gamesSection() {
+  const rows = Object.values(sp.myAthlete()?.sports ?? {}).flatMap((e) => (e.gamesTeams ?? []).filter((t) => t.picked).map((t) => ({ ...t, sportId: e.id })));
+  if (!rows.length) return '';
+  return `${label('World Games, with the national side')}${rows.map((t) => kv(`${t.year} · ${sportOf(t.sportId).name}`, esc(`${t.medal ? `${t.medal[0].toUpperCase()}${t.medal.slice(1)}` : `Out in the ${t.place.toLowerCase()}`} · ${t.rounds.map((r) => `${r.score.join('–')} v ${COUNTRIES[r.opp]?.name ?? r.opp}${r.how}`).join(', ')}`))).join('')}`;
 }
 
 /** The player's sports agent, or the search for one: the same agents as under My Fame → Representation. */
@@ -319,7 +358,7 @@ function agentSection() {
   return `${label('Agent')}
     ${n ? `${kv(`${n.firstName} ${n.lastName}`, esc(`${mine.agency ? `${mine.agency} · ` : ''}takes ${Math.round(mine.commission * 100)}% · ${pull(mine.clout)}`))}${books(n)}
       <div class="btn-stack"><button class="btn" data-sagent="cut">Ask for a smaller cut</button><button class="btn" data-sagent="drop">Part ways</button></div>`
-      : '<p class="muted">An agent negotiates contracts and finds sponsors, for their own cut (three to ten per cent). Each one is different: shop around.</p>'}
+      : '<p class="muted">Agents take three to ten per cent.</p>'}
     ${offer ? `<div class="card"><h3>${esc(`${offer.firstName} ${offer.lastName}`)}</h3>${kv('Agency', esc(offer.flags.agent.agency))}${kv('Their cut', `${Math.round(offer.flags.agent.commission * 100)}%`)}${kv('Pull with clubs and brands', pull(offer.flags.agent.clout))}${books(offer)}
       <div class="btn-stack"><button class="btn primary" data-sagent="sign">Sign with them</button><button class="btn" data-sagent="find" ${left <= 0 ? 'disabled' : ''}>Look for another (${left} left this year)</button><button class="btn" data-sagent="pass">Say no</button></div></div>`
       : `<div class="btn-stack"><button class="btn" data-sagent="find" ${left <= 0 ? 'disabled' : ''}>${n ? 'Look for a different agent' : 'Look for an agent'} (${left > 0 ? `${left} ${left === 1 ? 'look' : 'looks'} left this year` : 'none left this year'})</button></div>`}`;
@@ -332,7 +371,7 @@ function health() {
     ${open.length ? open.map((x) => kv(`${x.name} (${sportOf(x.sportId).name})`, `${x.rehab ? esc(x.rehab === 'physio' ? 'Physiotherapy' : x.rehab === 'rush' ? 'Playing through it' : 'Resting') : 'No plan yet'} · ${x.left >= 1 ? 'a long way to go' : x.left >= 0.4 ? 'months to go' : 'nearly there'}`)).join('') : empty('Fit to play.')}
     ${a.injuries.filter((x) => x.status !== 'out').slice(-6).reverse().map((x) => kv(`${x.year}: ${x.name}`, `healed ${x.healed}${x.setbacks ? `, after ${x.setbacks} ${x.setbacks === 1 ? 'setback' : 'setbacks'}` : ''}`)).join('')}
     ${label('Mind')}
-    <p class="muted">How sport feels is part of how it goes. Pathways does not diagnose anyone: if it stops feeling right, talking to someone helps.</p>
+    
     ${kv('Confidence', bar(a.confidence))}${kv('Motivation', bar(a.motivation))}
     ${a.support ? kv('Sports psychologist', `${a.support} ${a.support === 1 ? 'year' : 'years'} of sessions`) : ''}
     ${a.integrity?.caught ? kv('Integrity', `Banned in ${a.integrity.caught}`) : a.integrity?.reported ? kv('Integrity', 'Reported an approach to cheat') : ''}`;
@@ -345,7 +384,7 @@ function moneySection() {
   const paid = Object.entries(S().paid).filter(([, x]) => x.cat && (x.personId ? x.personId === player().id : (x.gen ?? 1) === (player().generation ?? 1)) && x.cur === cur).sort((x, y) => y[1].year - x[1].year);
   const sum = (cat) => paid.filter(([, x]) => x.cat === cat).reduce((s, [, x]) => s + x.amount, 0);
   const name = { prizeMoney: 'Prize money', sponsorship: 'Sponsorship', sport: 'Fees, coaching, kit and agents', health: 'Treatment' };
-  return `<p class="muted">A professional's wages are paid as a salary with the rest of your work. Prize money and sponsors are paid here. Each payment is made once.</p>
+  return `
     ${kv('Prize money, all time', money(sum('prizeMoney')))}
     ${kv('Sponsorship, all time', money(sum('sponsorship')))}
     ${kv('Spent on sport, all time', money(-sum('sport') - sum('health')))}
@@ -356,7 +395,7 @@ function moneySection() {
 
 function legacySection() {
   const all = Object.values(S().athletes).sort((x, y) => x.gen - y.gen || x.born - y.born);
-  return `<p class="muted">Every athlete in the family, kept for good. Skills and trophies are earned, never inherited.</p>
+  return `
     ${all.length ? all.map((a) => row(`data-athlete="${a.id}"`, '🏅', a.name + (a.id === player().id ? ' (you)' : a.light && a.relation ? ` (${a.relation})` : ''), `Generation ${a.gen} · ${Object.values(a.sports).map((e) => sportOf(e.id).name).join(', ') || 'no sport'}`,
     `${Object.values(a.sports).reduce((s, e) => s + e.titles.length, 0)} titles`)).join('') : empty('No athletes in the family yet.')}`;
 }
@@ -372,10 +411,10 @@ function sportProfile(step) {
     return { title: sport.name, sub: `${levelName(e.level)} · from ${e.since}`, body: `
       ${kv('Highest level', esc(levelName(e.level)))}${kv('Seasons', String(e.seasonsPlayed))}${kv('Status', e.status === 'active' ? 'Still playing' : `Stopped in ${e.stoppedYear ?? e.retiredYear ?? '—'}`)}
       ${label('Titles')}${e.titles.length ? e.titles.map((t) => kv(String(t.year), esc(t.name))).join('') : empty('None recorded.')}
-      <p class="muted">A relative's record keeps what they reached, not every game.</p>` };
+      ` };
   }
   return { title: sport.name, sub: `${levelName(e.level)} · since ${e.since} · PR ${e.pr}`, body: `
-    ${label('Skills')}<p class="muted">Each skill can grow toward a ceiling that comes from natural talent. Training moves it closer; it never goes past.</p>
+    ${label('Skills')}
     ${sport.skills.map(([k, n]) => kv(n, `${sp.skillWord(e.skills[k])} (${Math.round(e.skills[k])})${mine ? ` <small class="muted">of ${e.ceiling[k]}</small>` : ''}`)).join('')}
     ${label('Seasons by year')}
     ${Object.entries(e.stats).sort((x, y) => y[0] - x[0]).map(([y, st]) => kv(y, esc(Object.entries(st).filter(([, v]) => v).map(([k, v]) => `${v} ${k}`).join(', ') || '—'))).join('') || empty('Nothing recorded yet.')}
@@ -517,6 +556,9 @@ async function onClick(e) {
   if ((el = hit('data-primary'))) return report(sp.setPrimary(el.dataset.primary));
   if ((el = hit('data-giveup'))) { shut(); if (!await confirmModal({ title: 'Stop playing?', body: 'Your record is kept. You can take it up again later, though skills fade.', yes: 'Stop', danger: true })) return show(); return report(sp.giveUp(el.dataset.giveup)); }
   if ((el = hit('data-retire'))) { shut(); if (!await confirmModal({ title: 'Retire?', body: 'This ends your playing career in this sport, and any contract with it.', yes: 'Retire', danger: true })) return show(); return report(life.retire(el.dataset.retire)); }
+  if ((el = hit('data-tactic'))) return report(extras.setTactics(el.dataset.tactic));
+  if ((el = hit('data-training'))) return report(extras.setTraining(el.dataset.training));
+  if ((el = hit('data-bench'))) return report(extras.toggleBench(el.dataset.bench));
   if ((el = hit('data-sagent'))) return report({ find: life.findSportsAgent, sign: life.signSportsAgent, pass: life.passOnSportsAgent, drop: life.dropSportsAgent, cut: life.askSportsAgentCut }[el.dataset.sagent]());
   if ((el = hit('data-division'))) return report(sp.setDivision(el.dataset.division));
   if ((el = hit('data-coachjob'))) return report(life.becomeCoach(el.dataset.coachjob));

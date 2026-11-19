@@ -176,7 +176,7 @@ const VIEWS = {
     ...(f.provenance ? [['Carried over', `${f.provenance.migratedFrom}, from before this record was kept`]] : [])])}
       <div style="margin-top:8px">${meterHtml('In the news now', f.attention, true)}${meterHtml('What lasts', f.legacy, true)}${meterHtml('Public regard', f.favor, true)}${meterHtml('Standing in the industry', f.credibility, true)}</div></div>
       <div class="card"><h3>Your craft</h3>${kv([['Acting', `${act} (${skills.levelName(act)})`], ['Singing', `${sing} (${skills.levelName(sing)})`], ['Dance', `${dance} (${skills.levelName(dance)})`],
-    ['Professional credits', String(ent.proCredits(p))]])}<p class="muted" style="margin-top:6px">Practice on the Pursuits tab: skill is what gets you the part, not fame.</p></div>
+    ['Professional credits', String(ent.proCredits(p))]])}</div>
       ${upcoming.length ? `<div class="card"><h3>Signed for</h3>${upcoming.map((x) => row('production', x.id, x.title, `${kindName(x)} · ${x.workYear > store.state.year ? 'starts next year' : 'now'}`)).join('')}</div>` : ''}
       ${recent.length ? `<div class="card"><h3>Recent work</h3>${recent.map((x) => row('production', x.id, x.title, `${kindName(x)} · ${x.workYear}`)).join('')}</div>` : ''}
       ${(() => { const offers = celebs.comebackOffers(p); const phase = celebs.phaseName(p);
@@ -194,7 +194,7 @@ const VIEWS = {
         ['Time', `${c.weeks} weeks at about ${c.hours} hours a week, in ${x.workYear}`], ...(c.agent ? [['Your agent takes', `${Math.round(c.agent.commission * 100)}%`]] : []), ...(p.age < 18 ? [['Held in trust until you are 18', '15% of the fee']] : [])])}
         <div class="btn-stack" style="margin-top:6px">${btn('sign', 'Sign the contract', { cls: 'primary', arg: c.id })}${btn('negotiate', 'Ask for more', { arg: c.id, disabled: c.asked || !c.fee })}${btn('decline', 'Turn it down', { arg: c.id })}</div></div>`; }).join('')}` : ''}
       <div class="section-label">Casting notices</div>
-      <p class="muted" style="margin:0 0 6px">Real parts in real productions. Most auditions do not go your way; that is the work.</p>
+      
       ${board.length ? board.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, `${x.production.title}: ${ROLE_KINDS[x.role.kind].name.toLowerCase()}`,
     `${kindName(x.production)} · ${x.role.character}, ${x.role.ages[0]}–${x.role.ages[1]} · ${x.applied ? 'You have auditioned' : x.why || 'You can audition'}`, x.role.fee ? money(Math.round(localWage(x.role.fee, COUNTRIES[x.production.countryId])), COUNTRIES[x.production.countryId]) : 'Unpaid')).join('')
     : '<p class="empty">No casting notices where you live right now.</p>'}`;
@@ -218,14 +218,14 @@ const VIEWS = {
     const pub = w.publicist ? store.state.npcs[w.publicist.npcId] : null;
     return `<div class="card"><h3>Agent</h3>${agent ? `${row('person', agent.id, `${agent.firstName} ${agent.lastName}`, `${ent.org(w.agent.orgId)?.name ?? ''} · since ${w.agent.since} · takes ${Math.round(w.agent.commission * 100)}%`, '', agent)}
       ${kv([['Their pull', clout(w.agent.clout)]])}${agentClients(agent)}<div class="btn-stack">${btn('askcut', 'Ask for a smaller cut', { arg: 'talent', sub: 'Once a year. Worth it only if you are worth it to them.' })}${btn('endagent', 'End the representation', { cls: 'danger' })}</div>`
-    : '<p class="muted">An agent finds parts, puts you up for them, and negotiates. Each takes their own cut, and some carry more weight than others. They guarantee nothing.</p>'}
+    : ''}
       ${offer ? agentOffer(offer, ent.org(offer.flags.agent.orgId)?.name ?? '', 'signagent', 'passagent', 'findagent', left) : `<div class="btn-stack">${btn('findagent', agent ? 'Look for a different agent' : 'Look for an agent', { disabled: left <= 0, sub: left > 0 ? `${left} ${left === 1 ? 'look' : 'looks'} left this year` : 'You have looked twice this year' })}</div>`}</div>
       ${music.myAct(p) || music.myManager(p) ? repCard({ title: 'Manager', holder: music.myManager(p), about: 'A manager brings labels and promoters to your act, gets better deals and bigger crowds, and takes a cut of what your music earns.',
     offer: music.managerOnOffer(), left: music.managerTriesLeft(), find: 'findmanager', sign: 'signmanager', pass: 'passmanager', drop: 'dropmanager', ask: 'music' }) : ''}
       ${sportsLife.wantsSportsAgent() ? repCard({ title: 'Sports agent', holder: sportsLife.myAgent(), about: 'A sports agent negotiates your contracts and finds sponsors: the better connected get you more. Each takes their own cut (three to ten per cent) of your salary, prize money and sponsorship.',
     offer: sportsLife.sportsAgentOnOffer(), left: sportsLife.sportsAgentTriesLeft(), find: 'findsportsagent', sign: 'signsportsagent', pass: 'passsportsagent', drop: 'dropsportsagent', ask: 'sports' }) : ''}
       <div class="card"><h3>Publicist</h3>${pub ? `${row('person', pub.id, `${pub.firstName} ${pub.lastName}`, `${money(w.publicist.fee)} a year`, '', pub)}${btn('nopub', 'Let them go')}` : btn('pub', 'Hire a publicist', { sub: 'Helps you say things well. Cannot change what happened.' })}</div>
-      <p class="muted">Lawyers and accountants are separate professions; nothing here gives legal or financial representation.</p>`;
+      `;
   },
 
   image(p) {
@@ -396,7 +396,7 @@ const VIEWS = {
   family(p) {
     const rec = [...(store.state.careerRecord ?? [])].reverse();
     const E = ent.ent();
-    return `<p class="muted">The family's public lives. What each of them did is kept on the record; none of it is yours unless you did it.</p>
+    return `
       ${rec.map((r) => {
     const id = r.npcId;
     const credits = id ? ent.creditsOf(id) : [];
@@ -452,7 +452,8 @@ const VIEWS = {
       ${music.myAct(p) ? '' : btn('write', 'Write a song', { sub: `${2 - f.musicActs.writes} left this year · ${f.songs.length} ready` })}
       ${btn('pitch', 'Offer a song to another act', { disabled: !f.songs.length || !!f.musicActs.pitched, sub: f.songs.length ? 'Your best unused song. A fee now, a writer\'s share later.' : 'Write one first.' })}
       ${btn('session', 'Play a session', { sub: `On someone else's record, for a fee · ${3 - (f.musicActs.sessions ?? 0)} left this year` })}</div>
-      ${credits.length ? `<div class="section-label">Songs you wrote for others</div>${credits.map((c) => { const r = music.release(c.releaseId); return r ? row('release', r.id, r.title, `${music.act(r.actId)?.name ?? ''} · ${r.released ?? 'coming out'}${r.chart ? ` · #${r.chart}` : ''}`) : ''; }).join('')}` : ''}`;
+      ${credits.length ? `<div class="section-label">Songs you wrote for others</div>${credits.map((c) => { const r = music.release(c.releaseId); return r ? row('release', r.id, r.title, `${music.act(r.actId)?.name ?? ''}${c.kind === 'album' ? ` · ${r.type === 'ep' ? 'EP' : 'album'}, with your song ${c.song}` : ''} · ${r.released ?? 'coming out'}${r.chart ? ` · #${r.chart}` : ''}`) : ''; }).join('')}` : ''}
+      ${(f.sessionCredits ?? []).length ? `<div class="section-label">Records you played on</div>${f.sessionCredits.slice(-12).reverse().map((c) => { const r = c.releaseId ? music.release(c.releaseId) : null; const a = music.act(c.actId); return r ? row('release', r.id, r.title, `${a?.name ?? ''} · you play ${(POSITIONS[c.position]?.name ?? c.position).toLowerCase()} · ${r.released ?? 'coming out'}`) : `<div class="kv"><span>${c.year}</span><span>${esc(`${a?.name ?? 'An act'}'s next record, on ${(POSITIONS[c.position]?.name ?? c.position).toLowerCase()}`)}</span></div>`; }).join('')}` : ''}`;
   },
 
   act(p, id) {

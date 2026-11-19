@@ -63,6 +63,9 @@ export async function openSettings(hooks = {}) {
         { value: 'appearance', label: 'Appearance', sub: THEME_NAMES[getTheme()] },
         // Only while a life is being played: how far each turn moves the calendar.
         ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()}` : ''}` }] : []),
+        // Only while a life is being played: how much of what could happen in love and family is told.
+        ...(store.state?.player?.alive ? [{ value: 'drama', label: 'Relationship drama', sub: `${{ low: 'Low', balanced: 'Balanced', high: 'High' }[store.state.settings?.drama ?? 'balanced']}: how often the stories that are true of your relationships get told. It never invents one.` },
+          { value: 'sensitive', label: 'Sensitive family storylines', sub: store.state.settings?.sensitiveFamily === true ? 'On: a teenage pregnancy may be part of a life, told without detail.' : 'Off. Turn on to allow a teenage pregnancy storyline, told without detail.' }] : []),
         { value: 'account', label: 'Cloud saves', sub: cloudLine() },
         { value: 'transfer', label: 'Transfer saves', sub: 'To another device' },
         { value: 'people', label: 'People you know', sub: people ? `${people} added` : 'Add real people to the game' },
@@ -74,6 +77,8 @@ export async function openSettings(hooks = {}) {
       ],
     });
     if (!pick) return;
+    if (pick === 'drama') { const s = (store.state.settings ??= {}); s.drama = { low: 'balanced', balanced: 'high', high: 'low' }[s.drama ?? 'balanced']; hooks.onChange?.(); continue; }
+    if (pick === 'sensitive') { const s = (store.state.settings ??= {}); s.sensitiveFamily = s.sensitiveFamily !== true; hooks.onChange?.(); continue; }
     if (pick === 'whatif') {
       const note = await inputModal({ title: 'What if?', label: 'What is the decision? (a few words)', value: '', maxLength: 60 });
       if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
@@ -149,7 +154,7 @@ function openTeam(teamId) {
           <button type="submit" class="btn primary">Save name and colors</button>
         </form>
         <div class="section-label" style="margin-top:14px">Players</div>
-        <p class="muted" style="margin-top:0">Tap a player to rename them or change their number.${team.roster.some((x) => x.npcId) ? ' People you know on this team are renamed everywhere in the game.' : ''}</p>
+        
         ${team.roster.slice().sort((a, b) => a.num - b.num).map((x) => `<button type="button" class="choice-btn tm-player" data-player="${esc(x.id)}" ${x.id === store.state.player.id ? 'disabled' : ''}>
           <span class="tm-num" style="background:${c.home};color:${inkOn(c.home)}">${x.num}</span>${esc(x.name)}${x.id === store.state.player.id ? ' (you)' : ''}<small>${esc(posName(x.pos))}${x.npcId ? ' · someone you know' : ''}</small></button>`).join('')}
         <button class="btn" data-close style="margin-top:14px">Done</button>`;
@@ -346,7 +351,7 @@ async function openAccount(hooks) {
     const m = openModal(`
       <h2>Cloud saves</h2>
       <p class="body" data-line></p>
-      <p class="muted" style="margin-bottom:12px">Your lives, graves and People you know are sent to your account a few seconds after each save, and brought in whenever the game opens. Sign in with the same account on another device to pick up where you left off.</p>
+      <p class="muted" style="margin-bottom:12px">Your lives sync to your account.</p>
       <div class="btn-stack">
         <button class="btn primary" data-sync>Sync now</button>
         <button class="btn" data-password>Change password</button>
