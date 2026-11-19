@@ -561,7 +561,19 @@ export function session() {
   p.talents.music = clamp(p.talents.music + 0.5);
   const n = rng.pick(musicians(p.countryId));
   if (n && !p.npcIds.includes(n.id) && rng.chance(0.4)) { p.npcIds.push(n.id); n.role = 'colleague'; n.flags.title = 'A musician you did a session with'; n.lastInteractionAge = p.age; }
-  return result(true, `A day in the studio playing on someone else's record. ${fmtMoney(pay, country())}, and nobody will know it was you.`);
+  // The record is someone's: the player's name goes in its credits, on the act's next release.
+  rivals(p.countryId);
+  const pos = Object.keys(POSITIONS).filter((k) => k !== 'producer').sort((x, y) => positionSkill(y, p) - positionSkill(x, p))[0];
+  const acts = Object.values(M().acts).filter((a) => a.npc && a.status === 'active' && a.countryId === p.countryId && !members(a).some((m) => m.who === 'player'));
+  const who = acts.length ? rng.pick(acts) : null;
+  if (who) {
+    const due = who.releases.map(release).find((r) => r && r.released == null);
+    const credit = { actId: who.id, position: pos, year: year(), releaseId: due?.id ?? null };
+    if (due) ((due.credits ??= {}).session ??= []).push({ who: 'player', position: pos });
+    (f.sessionCredits ??= []).push(credit);
+    return result(true, `A day in the studio playing ${posLow(pos)} on ${who.name}'s next record. ${fmtMoney(pay, country())}, and your name in the credits.`);
+  }
+  return result(true, `A day in the studio playing on someone else's record. ${fmtMoney(pay, country())}.`);
 }
 
 /** A gig in town: a little money, a few more people who know the songs. */
@@ -798,6 +810,26 @@ function rivals(countryId) {
       units: {}, critics: null, chart: null, revenue: [], paid: [], first: !a.releases.length, share: 1 };
     E.releases[r.id] = r;
     a.releases.push(r.id);
+    creditOnRelease(a, r);
+  }
+}
+
+/**
+ * The player's work on another act's record, written into its credits when the record is made: a session that was
+ * waiting for the act's next record, and (on an EP or album) a song the player wrote for them, recorded again as an
+ * album track. A song on an album earns its writer a share of the whole record, by its share of the songs.
+ */
+function creditOnRelease(a, r) {
+  const p = player();
+  const f = p.fame;
+  if (!f) return;
+  for (const c of f.sessionCredits ?? []) if (c.actId === a.id && !c.releaseId) { c.releaseId = r.id; ((r.credits ??= {}).session ??= []).push({ who: 'player', position: c.position }); }
+  if (r.type === 'single') return;
+  for (const c of p.fame.songCredits ?? []) {
+    if (c.actId !== a.id || c.album || c.kind === 'album' || year() - c.year > 3 || !rng.chance(0.6)) continue;
+    c.album = r.id;
+    ((r.credits ??= {}).writers ??= []).push({ who: 'player', song: c.title });
+    p.fame.songCredits.push({ releaseId: r.id, actId: a.id, title: r.title, year: year(), revenue: [], paid: [], kind: 'album', song: c.title, share: 1 / Math.max(1, r.songs) });
   }
 }
 
@@ -806,7 +838,7 @@ export function tickMusic() {
   const p = player();
   const E = M();
   const lines = [];
-  if (!exists('concert') || !((p.fame?.acts ?? []).length || (p.fame?.songCredits ?? []).length)) return lines; // the music world is made when the player first makes music
+  if (!exists('concert') || !((p.fame?.acts ?? []).length || (p.fame?.songCredits ?? []).length || (p.fame?.sessionCredits ?? []).length)) return lines; // the music world is made when the player first makes music
   rivals(p.countryId);
   // Releases recorded last year come out.
   for (const r of Object.values(E.releases)) {
@@ -872,15 +904,18 @@ export function tickMusic() {
   // A deal ends when its albums are delivered.
   if (a?.deal && a.deal.albumsOwed <= 0) { a.history.push({ year: year(), text: `Finished the deal with ${ent().orgs[a.deal.labelId]?.name}.` }); a.deal = null; lines.push(`${a.name} has delivered every album the deal asked for, and is free.`); }
   // Old rival records are forgotten; the player's acts' are kept.
-  const keep = new Set([...musicOf(p).acts.flatMap((id) => act(id)?.releases ?? []), ...(p.fame?.songCredits ?? []).map((c) => c.releaseId)]);
+  const keep = new Set([...musicOf(p).acts.flatMap((id) => act(id)?.releases ?? []), ...(p.fame?.songCredits ?? []).map((c) => c.releaseId), ...(musicOf(p).sessionCredits ?? []).map((c) => c.releaseId).filter(Boolean)]);
+  // Records the player played on come out: a line, and a little standing among musicians.
+  for (const c of musicOf(p).sessionCredits ?? []) { const r = release(c.releaseId); if (r?.released === year() && !c.announced) { c.announced = true; lines.push(`${act(r.actId)?.name}'s ${r.title} is out: you play ${posLow(c.position)} on it.`); regard({ credibility: 0.5, why: `playing on ${r.title}` }, p); } }
   // Songs the player wrote for other acts earn a writer's share.
   for (const c of p.fame?.songCredits ?? []) {
     const r = release(c.releaseId);
     if (!r || r.released == null || r.released > year()) continue;
+    if (r.released === year() && !c.announced && c.kind === 'album') { c.announced = true; lines.push(`${act(r.actId)?.name}'s ${RELEASE_TYPES[r.type]?.name.toLowerCase() ?? 'record'} ${r.title} is out, with ${c.song}, a song you wrote, on it.`); }
     if (r.released === year() && !c.announced) { c.announced = true; lines.push(`${act(r.actId)?.name} released ${r.title}, a song you wrote${r.chart ? `; it reached number ${r.chart}` : ''}.`); if (r.chart && r.chart <= 10) milestone(`Wrote a top-ten song: ${r.title}.`, 'fame'); gain({ audience: 'music', amount: Math.min(8, Math.sqrt(Object.values(r.units).reduce((a, b) => a + b, 0)) / 30), lasting: 0.3, why: `writing ${r.title}` }, p); }
     const age = year() - r.released;
     const total = Object.entries(r.units).reduce((s2, [cc, n]) => s2 + wageIn(MUSIC_DEAL.unitValue, COUNTRIES[cc], COUNTRIES[p.countryId]) * n, 0);
-    const amount = Math.round(total * (age === 0 ? 1 : 0.35 * Math.pow(0.6, age - 1)) * SONGWRITER_SHARE);
+    const amount = Math.round(total * (age === 0 ? 1 : 0.35 * Math.pow(0.6, age - 1)) * SONGWRITER_SHARE * (c.share ?? 1));
     if (amount >= localWage(20, COUNTRIES[r.countryId ?? p.countryId] ?? country()) || age === 0) (c.revenue ??= []).push({ year: year() - 1, amount });
   }
   for (const [id, r] of Object.entries(E.releases)) if (!keep.has(id) && r.released != null && r.released < year() - 4) delete E.releases[id];

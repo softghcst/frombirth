@@ -54,6 +54,7 @@ node tests/animal-life.mjs     # staff, classes, behavior, landlords, outings, c
 node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
 node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
 node tests/sports-divisions.mjs   # sports: women's and men's divisions, women's professional years, sports agents shopped for
+node tests/sports-extras.mjs      # sports: World Games team events, managing a squad, boxing and its world title
 node tests/teams.mjs           # team names, jersey colors and shirt numbers: made up, renamed, recolored, saved; teammates renamed everywhere
 node tests/draft.mjs           # recruiting (stars, offers by division, signing day), college (redshirt, grades, portal, NIL), each league's draft rules, the minors
 node tests/international.mjs   # baseball signings outside the draft countries: trainers, handshake deals, signing at 16, the DSL, Cuba
@@ -174,12 +175,19 @@ division between clubs. Sports agents are shopped for like every other agent: on
 with their own cut (3–10%), pull with clubs and brands, and athletes on their books (My Athletics → Career, or My
 Fame → Representation).
 
+The best professionals in club sports are bought by clubs abroad: taking the move means a work visa the club sponsors
+and a life in that country. In a games year a capped professional goes to the World Games with the national side. A
+coach runs a club's first team: who starts, tactics, training, a season played game by game, and a board that judges
+the table. Boxing is a sport of its own, with weight classes, a ranking from the record, and a world title to win and
+defend (`js/engine/sportsExtras.js`).
+
 | What | Where |
 |---|---|
 | The registry: sports, skills, positions, founding years, routes to going pro, injuries, plans | `js/data/sports.js` |
 | How a match, race or routine comes out, and the rating | `js/engine/sportsPlay.js` |
 | Profiles, eligibility, training, clubs and tryouts, coaches, rosters, leagues and seasons, draws and meets, doubles | `js/engine/sports.js` |
-| The year in sport, money, injuries and rehab, recruiting and scholarships, contracts, sponsors, fame, arcs, generations | `js/engine/sportsLife.js` |
+| The year in sport, money, injuries and rehab, recruiting and scholarships, contracts, transfers at home and abroad, sponsors, fame, arcs, generations | `js/engine/sportsLife.js` |
+| World Games team events, managing a squad, boxing | `js/engine/sportsExtras.js` |
 | Stories with scenes, A to I: first team, a coach who believes in you, the scholarship, the championship season, the doubles partnership, injury and recovery, the professional dream, the comeback, a new generation | `js/engine/sportsArcs.js`, `js/data/events/sports.js` |
 | Sport in the family: parents' and grandparents' past, siblings and children who choose their own sport, parents at games | `js/engine/sportsFamily.js` |
 | Teams' names, home and away jersey colors and shirt numbers, made up per sport (Rovers and Albion in soccer, Owls and Barons in baseball...) and all changeable, with players' names, in Settings → Teams and jerseys | `js/engine/teamIdentity.js`, `js/ui/settings.js`, `js/ui/jersey.js` |

@@ -234,8 +234,11 @@ if (next) {
   check(!!got && (got.ownerHours <= 10), 'owning it did not put them in the manager\'s chair');
   check(!!got && (!next.npcs[managerId]?.alive || got.staff.some((s) => s.manager && s.id === managerId)), 'whoever ran it is still running it');
   check((next.careerRecord ?? []).some((rec) => (rec.businesses ?? []).some((x) => x.name === bizName)), 'the family record remembers who founded it');
+  // Trading on is one more year counted under the new owner (how many came before depends on when in its first year
+  // the bakery opened).
+  const before = got?.years ?? 0;
   year();
-  check(got?.years >= 3 && got?.last, 'and it trades on under the new owner');
+  check(got?.years === before + 1 && got?.last, 'and it trades on under the new owner');
 }
 // A child who was not named gets nothing by default when another was.
 p = life('us', 70);

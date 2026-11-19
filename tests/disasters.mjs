@@ -89,7 +89,9 @@ const life = (countryId, city) => { for (;;) { store.state = createLife({ countr
   const p = P(); p.age = 30; p.finance.cash = 50000;
   p.assets.push({ id: 'asset_t', kind: 'property', catalogId: 'house', name: 'Family house', value: 300000, purchasePrice: 300000, condition: 90, countryId: 'us', city: 'Orlando' }); p.homeId = 'asset_t';
   let e = null; let year = 0;
-  for (let y = S().year; y < S().year + 200 && !e; y++) { e = dis.weatherOf('us', y).find((x) => x.kind === 'hurricane' && x.severity >= 1 && dis.reaches(x)); year = y; }
+  // A year whose life story will tell the hurricane: only the two worst disasters to reach a city in a year are told.
+  const told = (y, x) => dis.weatherOf('us', y).filter((z) => dis.reaches(z)).sort((a, b) => b.severity - a.severity).slice(0, 2).some((z) => z.id === x.id);
+  for (let y = S().year; y < S().year + 200 && !e; y++) { e = dis.weatherOf('us', y).find((x) => x.kind === 'hurricane' && x.severity >= 1 && dis.reaches(x) && told(y, x)) ?? null; year = y; }
   check(!!e, 'setup: a major hurricane reaches Orlando sooner or later');
   if (e) {
     const base = structuredClone(S());
@@ -123,7 +125,7 @@ const life = (countryId, city) => { for (;;) { store.state = createLife({ countr
   for (let y = S().year; y < S().year + 60 && !target; y++) { const e = dis.weatherOf('ph', y).find((x) => x.severity >= 1); if (e) target = { e, y }; }
   check(!!target, 'setup: a big disaster in the Philippines');
   if (target) {
-    const cousin = makeNpc({ role: 'relative', countryId: 'ph', age: 30 }); cousin.flags.abroad = 'ph';
+    const cousin = makeNpc({ role: 'relative', countryId: 'ph', age: 30, relationship: 50 }); cousin.flags.abroad = 'ph'; // room to grow closer
     S().npcs[cousin.id] = cousin; p.npcIds.push(cousin.id);
     S().year = target.y + 1; S().pendingEvents = [];
     dis.tickDisasters();
@@ -207,7 +209,9 @@ const life = (countryId, city) => { for (;;) { store.state = createLife({ countr
   // A move partway through a year does not rewrite the year: it is reckoned where it began.
   life('us', 'Orlando'); turns.setStep(12);
   for (let i = 0; i < 3; i++) { turns.advanceTurn(); S().pendingEvents = []; }
-  check(S().disasters?.home?.countryId === 'us' && S().disasters.home.year === S().year, 'where each year began is kept for its reckoning');
+  // With one-year turns a year begins where the last one's moves left the family (sometimes a family emigrates with a
+  // small child): that is where it is reckoned.
+  check(S().disasters?.home?.countryId === P().countryId && S().disasters.home.year === S().year, 'where each year began is kept for its reckoning');
   section('review fixes: no aftermath for small children; families prepare for children; forks share the weather; news grammar; the year reckoned where it began', n);
 }
 
