@@ -12,7 +12,7 @@ import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManife
 import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
 import { dressFor, filesFor, ageStage, fitTransforms, deepness, characterAvatarSvg } from '../js/CharacterAvatar.js';
-import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS } from '../js/avatar/hairFit.js';
+import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS, TUFT_SET } from '../js/avatar/hairFit.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
 import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
@@ -198,6 +198,7 @@ for (const e of AVATAR_MANIFEST.eyes) {
   }
   for (const id of plain) check(!(id in CUR.WOMEN_EYES), `${id} has lashes or liner, so is not a baby's`);
 }
+check(!PART_BY_ID.hair_baby_09_bow_headband && !existsSync(new URL('assets/avatars/hair/hair_baby_09_bow_headband.svg', root)), 'the bow headband is still in the game');
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
 const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_16', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
   314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };
@@ -305,7 +306,8 @@ for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) {
   const [r0, rs] = AVATAR_TEMPLATE.profile.rows, [c0, cs, cn] = AVATAR_TEMPLATE.profile.cols;
   const edgeAt = (col, y) => { const k = Math.max(0, Math.min(col.length - 1, Math.round((y - r0) / rs))); return col[k]; };
   const w = fit.w / AVATAR_TEMPLATE.face.w;
-  check(f.sx >= w * 0.94 && f.sx <= w * 1.29 && f.sy >= w * 0.79 && f.sy <= w * 1.29 && f.sx / f.sy < 1.45, `${h.id} on ${head}: a baby's hair is squashed or blown up (${f.sx} x ${f.sy})`);
+  const grow = TUFT_SET[h.id]?.grow ?? 1; // puffs and pigtails are set a little bigger
+  check(f.sx >= w * 0.94 * grow && f.sx <= w * 1.29 * grow && f.sy >= w * 0.79 * grow && f.sy <= w * 1.29 * grow && f.sx / f.sy < 1.45, `${h.id} on ${head}: a baby's hair is squashed or blown up (${f.sx} x ${f.sy})`);
   // Over the middle of the head, the hair's under-edge is on the skin (a parting or a knot may sit higher: the lowest counts).
   const under = Math.max(...e.T.filter((v, j) => v != null && Math.abs(f.sx * (c0 + j * cs - 256)) < fit.w * 0.22));
   check(f.ty + f.sy * (under - AVATAR_TEMPLATE.face.top) >= fit.top + 3, `${h.id} on ${head}: a baby's hair floats above the head`);
