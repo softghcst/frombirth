@@ -80,8 +80,16 @@ export const INVITES = [
   { id: 'colleague_drinks', name: 'leaving drinks', from: ['coworker', 'colleague'], minAge: 18, gift: 15, bond: 3 },
   { id: 'wedding', name: 'wedding', from: ['friend', 'sibling', 'relative'], minAge: 16, gift: 120, bond: 7, memorable: true },
 ];
-/** From this year an invitation is more often a message than a card through the door. */
-export const DIGITAL_INVITES = 2007;
+/**
+ * How an invitation arrives: the newest way the time and place have (engine/digital/tech.js decides what has
+ * arrived where), and the words for it. Checked in this order.
+ */
+export const INVITE_WAYS = [
+  { id: 'message', tech: 'mobile', minAge: 12, text: 'A message' },
+  { id: 'call', tech: 'landline', text: 'A phone call' },
+  { id: 'card', tech: 'post', text: 'A card through the door' },
+  { id: 'word', tech: null, text: 'Word passed along' },
+];
 
 // ---------- Traditions ----------
 /** Years a tradition can be skipped in a row before it fades. */
