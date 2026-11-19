@@ -966,7 +966,16 @@ function playoffs(state, season, e, team, minutes, outFor) {
     return f.winner;
   };
   void sport;
-  // A big league takes its top eight to the playoffs, a small one its top four.
+  // Baseball's big leagues (thirty clubs) take twelve: the best four rest while the other eight play a wild card round,
+  // and each winner then meets one of the four who waited, the best of them meeting the lowest seed left.
+  if (sport.id === 'baseball' && table.length >= 24) {
+    const s = table.slice(0, 12).map((x) => x.teamId);
+    const w = [tie(s[7], s[8], 7, 'Wild Card'), tie(s[4], s[11], 8, 'Wild Card'), tie(s[6], s[9], 9, 'Wild Card'), tie(s[5], s[10], 10, 'Wild Card')];
+    const q = [tie(s[0], w[0], 0, 'Quarterfinal'), tie(s[3], w[1], 1, 'Quarterfinal'), tie(s[1], w[2], 2, 'Quarterfinal'), tie(s[2], w[3], 3, 'Quarterfinal')];
+    season.champion = tie(tie(q[0], q[1], 4, 'Semifinal'), tie(q[2], q[3], 5, 'Semifinal'), 6, 'Final');
+    return;
+  }
+  // Another big league takes its top eight to the playoffs, a small one its top four.
   if (table.length >= 16) {
     const s = table.slice(0, 8).map((x) => x.teamId);
     const q = [tie(s[0], s[7], 0, 'Quarterfinal'), tie(s[3], s[4], 1, 'Quarterfinal'), tie(s[1], s[6], 2, 'Quarterfinal'), tie(s[2], s[5], 3, 'Quarterfinal')];
