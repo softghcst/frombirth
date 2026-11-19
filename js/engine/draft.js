@@ -21,7 +21,14 @@ import { eligibility } from './college.js';
 import * as sp from './sports.js';
 import { internals as life, settle } from './sportsLife.js';
 
-const { seeded, overall, findOrg, teamFor, leagueFor, joinOrg, rosterNames } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const seeded = (...a) => sp.internals.seeded(...a);
+const overall = (...a) => sp.internals.overall(...a);
+const findOrg = (...a) => sp.internals.findOrg(...a);
+const teamFor = (...a) => sp.internals.teamFor(...a);
+const leagueFor = (...a) => sp.internals.leagueFor(...a);
+const joinOrg = (...a) => sp.internals.joinOrg(...a);
+const rosterNames = (...a) => sp.internals.rosterNames(...a);
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const ordinal = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 

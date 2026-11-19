@@ -180,7 +180,10 @@ function impact(state, e) {
   const r = seeded(`impact/${state.slotId}/${e.id}/${p.id}`);
   const c = COUNTRIES[p.countryId];
   const tier = wealthOf(state);
-  const prep = D.prep[e.id];
+  // A child's family gets ready for anything that can be seen coming, however the year was played: with shorter turns
+  // the forecast says so a turn ahead (disastersBetween); with year-long turns there is no turn between, but the family
+  // still heard the warnings. (The reckoning comes after the birthday: during the year the player was a year younger.)
+  const prep = D.prep[e.id] ?? (p.age - 1 < 18 && k.forecast && s >= 1 ? 'ready' : undefined);
   const shield = { rich: 0.5, middle: 1, poor: 1.4 }[tier];
   const parts = [];
   // The home.
