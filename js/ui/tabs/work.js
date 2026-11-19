@@ -24,6 +24,7 @@ import { MAJORS, MAJOR_BY_ID } from '../../data/majors.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { careerCard, careerButtons, careerHandlers } from './workCareer.js';
+import { navRow, icon } from '../kit.js';
 
 const FUNDING = { employer: 'Paid by your employer', scholarship: 'Scholarship', parents: 'Paid by parents', loan: 'Student loan',
   self: 'Paying your own way', public: 'Publicly funded' };
@@ -387,6 +388,15 @@ function contacts() {
   }).join('')}</div>`;
 }
 
+/** Work & School actions that open another screen or a list to choose from, and their icons. */
+const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family: 'family', club: 'star', priority: 'compass', tutor: 'book',
+  clique: 'people', housing: 'home', switch: 'book', exam: 'book', apply: 'compass', gap: 'globe', hub: 'briefcase', findwork: 'briefcase',
+  myfame: 'star', myidol: 'star', fame: 'sparkle' };
+/** Opposite choices, shown side by side: Study harder | Slack off. */
+const PAIRED = new Set(['study', 'slack', 'skip', 'harder']);
+/** Leaving: restrained, set apart, and confirmed where the game already asks. */
+const DANGER = new Set(['drop', 'quit', 'quitcareer']);
+
 export default {
   id: 'work', title: 'Work & School', short: 'Work',
   icon: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>',
@@ -419,23 +429,38 @@ export default {
 
     const work = careerButtons();
 
-    const btns = (list) => (list.length ? `<div class="btn-stack" style="margin-bottom:14px">
-      ${list.map(([id, label]) => `<button class="btn ${['drop', 'quit', 'quitcareer'].includes(id) ? 'danger' : ['apply', 'findwork'].includes(id) && !k.careerId ? 'primary' : ''}" data-act="${id}">${esc(label)}</button>`).join('')}
-    </div>` : '');
+    // Afterglow: screens open from navigation rows, opposite choices sit side by side, and leaving is set apart.
+    const btns = (list) => {
+      if (!list.length) return '';
+      const nav = list.filter(([id]) => NAV_ICONS[id]);
+      const pairs = list.filter(([id]) => PAIRED.has(id));
+      const danger = list.filter(([id]) => DANGER.has(id));
+      const rest = list.filter(([id]) => !NAV_ICONS[id] && !PAIRED.has(id) && !DANGER.has(id));
+      const btn = ([id, label], cls = '') => `<button class="btn${cls}" data-act="${id}">${esc(label)}</button>`;
+      return `${pairs.length ? `<div class="btn-pair">${pairs.map((b) => btn(b)).join('')}</div>` : ''}
+        ${rest.length ? `<div class="btn-pair">${rest.map((b) => btn(b)).join('')}</div>` : ''}
+        ${nav.length ? `<div class="nav-group">${nav.map(([id, label]) => {
+    const [main, sub] = label.split(/: (.+)/);
+    const lead = ['apply', 'findwork'].includes(id) && !k.careerId;
+    return navRow({ attrs: `data-act="${id}"`, label: main, sub: sub ?? '', ico: NAV_ICONS[id], tone: lead ? 'peach' : '' });
+  }).join('')}</div>` : ''}
+        ${danger.length ? `<div class="btn-pair">${danger.map((b) => btn(b, ' danger')).join('')}</div>` : ''}
+        <div style="height:4px"></div>`;
+    };
 
     const past = k.history.length
       ? k.history.map((h) => `<div class="kv"><span>${esc(h.title)}${h.employer ? `, ${esc(h.employer)}` : ''}</span><span>Age ${h.from}–${h.to}</span></div>`).join('')
       : '<p class="muted">No past jobs.</p>';
 
     el.innerHTML = `
-      <div class="card"><h3>Education</h3>${educationCard(p, c)}</div>
+      <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><div><h3>Education</h3><small>${esc(e.stage === 'none' ? 'Not started yet' : edu.educationLine(p))}</small></div></div>${educationCard(p, c)}</div>
       ${btns(school)}
-      <div class="card"><h3>Commitments</h3>${commitments(p, c)}</div>
+      <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><div><h3>Commitments</h3><small>What takes up your time</small></div></div>${commitments(p, c)}</div>
       ${contacts()}
       ${careerCard()}
       ${btns(work)}
       ${politicsCard()}
-      <div class="card"><h3>Work history</h3>${past}</div>`;
+      <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('archive')}</span><div><h3>Work history</h3><small>${k.history.length} past ${k.history.length === 1 ? 'job' : 'jobs'}</small></div></div>${past}</div>`;
 
     el.onclick = (ev) => {
       const pol = ev.target.closest('[data-pol]')?.dataset.pol;

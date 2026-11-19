@@ -22,6 +22,7 @@ import { messageModal } from '../modals.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
 import { openHealth } from '../health/hub.js';
+import { navRow, navGroup } from '../kit.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -54,7 +55,7 @@ export default {
       ${skillsCard()}
       <div class="card"><h3>Identity</h3>
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
-        <button class="btn" data-identity style="margin-top:10px">Identity</button>
+        <button class="btn small" data-identity style="margin-top:10px;width:100%">Identity</button>
       </div>
       ${(() => { const era = getEra(store.state.year); const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence); return era.id === 'now' && !now.length ? '' : `<div class="card"><h3>The times: ${esc(era.name)}</h3>
         <p class="muted">${esc(era.description)}</p>${now.length ? `<div class="kv"><span>Under way</span><span>${now.map((e) => esc(e.name)).join(', ')}</span></div>` : ''}
@@ -72,23 +73,24 @@ export default {
         ${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}
       </div>` : ''}
       <div class="card"><h3>Conditions</h3>${conditions}</div>
-      <div class="btn-stack" style="margin-bottom:14px">
-        <button class="btn primary" data-health>My Health</button>
-        <button class="btn ${med.treatable().some((x) => !x.managed && !x.seen) ? 'primary' : ''}" data-doctor>See a doctor</button>
-        ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
-        ${salon.canVisitSalon() ? '<button class="btn" data-salon>Beauty salon</button>' : ''}
-        <button class="btn primary" data-explore>Explore the World</button>
-        <button class="btn" data-passport>Passport & Documents</button>
-        <button class="btn" data-world>The world</button>
-        <button class="btn" data-news>World news</button>
-      </div>
+      ${navGroup([
+    navRow({ attrs: 'data-health', label: 'My Health', sub: 'Care, conditions, your records and your team', ico: 'health' }),
+    navRow({ attrs: 'data-doctor', label: 'See a doctor', sub: med.treatable().some((x) => !x.managed && !x.seen) ? 'Something needs looking at' : 'A check-up, or something on your mind', ico: 'doctor', tone: med.treatable().some((x) => !x.managed && !x.seen) ? 'peach' : '' }),
+    ...(med.canHaveSurgery() ? [navRow({ attrs: 'data-surgery', label: 'Cosmetic surgery', ico: 'sparkle' })] : []),
+    ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: 'Beauty salon', sub: 'Hair, makeup and style', ico: 'scissors' })] : []),
+  ], 'Health and looks')}
+      ${navGroup([
+    navRow({ attrs: 'data-explore', label: 'Explore the World', sub: 'Trips, moves and the places you have been', ico: 'globe' }),
+    navRow({ attrs: 'data-passport', label: 'Passport & Documents', sub: 'Your papers, visas and stamps', ico: 'passport' }),
+    navRow({ attrs: 'data-world', label: 'The world', sub: 'Every country, side by side', ico: 'compass' }),
+    navRow({ attrs: 'data-news', label: 'World news', sub: 'What the papers say this year', ico: 'news' }),
+  ], 'The world')}
       <div class="card"><h3>Milestones</h3>${milestones}</div>
-      <div class="section-label">Game</div>
-      <div class="btn-stack">
-        <button class="btn" data-settings>Settings</button>
-        <button class="btn" data-exit>Save and return to title</button>
-        <button class="btn danger" data-end>End this life</button>
-      </div>`;
+      ${navGroup([
+    navRow({ attrs: 'data-settings', label: 'Settings', sub: 'Appearance, time per turn, saves', ico: 'settings' }),
+    navRow({ attrs: 'data-exit', label: 'Save and return to title', ico: 'exit' }),
+  ], 'Game')}
+      <button class="btn danger" data-end>End this life</button>`;
 
     bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);

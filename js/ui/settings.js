@@ -11,6 +11,7 @@ import { STEPS, STEP_NAMES, stepOf, setStep, monthOf, ageLabel } from '../engine
 import * as kit from '../engine/teamIdentity.js';
 import { jerseySvg, inkOn } from './jersey.js';
 import { JERSEY_COLORS } from '../data/sports.js';
+import { getTheme, setTheme, THEMES, THEME_NAMES } from '../theme.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
 export function ago(t) {
@@ -59,6 +60,7 @@ export async function openSettings(hooks = {}) {
       title: 'Settings',
       cancel: 'Done',
       options: [
+        { value: 'appearance', label: 'Appearance', sub: `${THEME_NAMES[getTheme()]}${getTheme() === 'system' ? ': light or dark, as this device is set.' : ' mode, on every screen.'}` },
         // Only while a life is being played: how far each turn moves the calendar.
         ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()} from next year` : ''}. Shorter turns bring scenes for each season.` }] : []),
         { value: 'account', label: 'Cloud saves', sub: cloudLine() },
@@ -77,12 +79,26 @@ export async function openSettings(hooks = {}) {
       if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
     }
     if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary === false }; }
+    if (pick === 'appearance') await openAppearance();
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();
     if (pick === 'teams') { await openTeams(); saveGame(store.state); }
     if (pick === 'transfer') await openTransfer(hooks);
     if (pick === 'account') await openAccount(hooks);
   }
+}
+
+/** Light, Dark or System. Kept on this device for every life, and applied at once. */
+async function openAppearance() {
+  const now = getTheme();
+  const pick = await pickModal({
+    title: 'Appearance',
+    body: 'How Pathways looks on this device. System follows your device, light by day and dark by night if it is set that way.',
+    cancel: 'Back',
+    options: THEMES.map((t) => ({ value: t, label: `${THEME_NAMES[t]}${t === now ? ' · now' : ''}`,
+      sub: { system: 'Match this device.', light: 'Soft lilac paper and plum ink.', dark: 'Deep plum, for the evening.' }[t] })),
+  });
+  if (pick) setTheme(pick);
 }
 
 // ---------- People you know ----------

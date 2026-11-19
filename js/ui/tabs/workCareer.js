@@ -14,6 +14,7 @@ import { workOf } from '../../engine/entertainment.js';
 import { employer } from '../../engine/employers.js';
 import { workLaw, weeklyLoad, career as careerState } from '../../engine/worklife.js';
 import { offers } from '../../engine/hiring.js';
+import { icon } from '../kit.js';
 import { leads } from '../../engine/recruiters.js';
 
 const kv = (rows) => rows.map(([a, b]) =>
@@ -57,7 +58,7 @@ export function careerCard() {
   }
   const fameRow = fame > 0 || cur?.fame
     ? `<div style="margin-top:10px">${meterHtml('Fame', fame, true)}</div>` : '';
-  return `<div class="card"><h3>Work</h3>${body}${fameRow}</div>`;
+  return `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('briefcase')}</span><div><h3>Work</h3><small>${esc(cur ? `${k.title}` : k.partTime ? 'Part-time' : k.retired ? 'Retired' : 'No job right now')}</small></div></div>${body}${fameRow}</div>`;
 }
 
 /** Buttons for whatever the player can do about work right now. */

@@ -26,6 +26,7 @@ import { openScreen } from '../animals.js';
 import '../animalHub.js';
 import * as riding from '../../engine/equestrian.js';
 import { athleticsCard, openAthletics } from '../sports.js';
+import { navRow, navGroup } from '../kit.js';
 
 async function report(api, r) {
   api.changed();
@@ -93,12 +94,12 @@ export default {
         ${thisYearCard()}
         ${things.length ? `<div class="card"><h3>Things to do</h3>
           <p class="muted" style="margin-bottom:10px">Each of these can be done once a year.</p>
-          <div class="btn-stack">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
+          <div class="btn-pair">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
         </div>` : ''}
         <div class="card"><h3>Gambling</h3>
           ${canGamble()
     ? `<p class="muted" style="margin-bottom:10px">The house always has an edge. Stakes leave your account the moment you place them.</p>
-             <div class="btn-stack">
+             <div class="btn-pair">
                <button class="btn" data-play="blackjack">Blackjack</button>
                <button class="btn" data-play="horses">The races</button>
                <button class="btn" data-play="lottery">Lottery tickets</button>
@@ -114,12 +115,14 @@ export default {
         </div>` : ''}
         ${legalCard()}
         ${law.isJailed() ? '' : athleticsCard()}
-        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? `<div class="card"><h3>K-pop fandom</h3><p class="muted" style="margin-bottom:10px">${p.fan ? `A fan of ${esc(store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group')} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : 'Follow a group, collect and trade photocards.'}</p><button class="btn" data-go="photocards">Photocards</button></div>` : ''}
-        <div class="card"><h3>Travel</h3><p class="muted" style="margin-bottom:10px">Trips at home and abroad, your papers, and the places you have been.</p><div class="btn-stack"><button class="btn" data-go="travel">Explore the World</button></div></div>
-        ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Riding</h3><p class="muted" style="margin-bottom:10px">${p.riding ? `${esc(riding.levelName(riding.riderLevel()))} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : 'Lessons, horses and the show ring.'}</p><button class="btn" data-go="riding">Equestrian</button></div>` : ''}
-        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><p class="muted" style="margin-bottom:10px">Once a year. With others at home, it is time together.</p><div class="btn-stack">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
+        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'K-pop fandom: photocards', ico: 'star',
+          sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : 'Follow a group, collect and trade photocards.' })]) : ''}
+        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel: Explore the World', sub: 'Trips at home and abroad, your papers, and the places you have been.', ico: 'globe' })])}
+        ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding: Equestrian', ico: 'trophy',
+          sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : 'Lessons, horses and the show ring.' })]) : ''}
+        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><p class="muted" style="margin-bottom:10px">Once a year. With others at home, it is time together.</p><div class="btn-pair">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
         ${digitalCard()}
-        ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
+        ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-pair">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
     }
     el.onclick = (e) => {
       if (law.isJailed()) return hubClick(e, api, joinGang);

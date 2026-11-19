@@ -24,6 +24,7 @@ import { roleLabel } from '../../engine/relationships.js';
 import { openMyMoney } from '../money.js';
 import { bankWorth } from '../../engine/banking.js';
 import { householdAnimalsHtml, openAnimalProfile, openHouseChronicle } from '../animals.js';
+import { navRow, navGroup } from '../kit.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
 const pct = (x) => `${x >= 0 ? '+' : ''}${Math.round(x * 100)}%`;
@@ -310,6 +311,9 @@ async function borrowMoney(api) {
 /** My Money, with the screens it leads on to. Also opened from the purse at the top of the game. */
 export const openMoney = (api) => openMyMoney(api, { invest: browseMarket, borrow: borrowMoney, will: changeWill });
 
+/** Icons for the things to browse and do in Holdings. */
+const HOLD_ICONS = { property: 'home', market: 'trophy', borrow: 'coin', currencies: 'globe', vehicles: 'compass', driving: 'id', flying: 'globe' };
+
 export default {
   id: 'holdings', title: 'Holdings', short: 'Holdings',
   icon: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
@@ -350,6 +354,11 @@ export default {
     const earned = (p.career.salary || 0) + (p.career.partTime?.salary || 0) + (p.career.retired ? p.career.pensionPerYear : 0) + (p.flags.statePension ?? 0);
     const taxOn = earned > 0 ? sys.taxBreakdown(earned, c) : null;
     el.innerHTML = `
+      <div class="worth-hero">
+        <div><small>Net worth</small><strong class="num">${fmtMoney(netWorth(store.state), c)}</strong></div>
+        <div><small>Cash</small><span class="num${f.cash < 0 ? ' neg' : ''}">${fmtMoney(f.cash, c)}</span></div>
+      </div>
+      ${navGroup([navRow({ attrs: 'data-go="mymoney"', label: 'My Money', sub: 'Accounts, budget, goals, debts and history', ico: 'coin', tone: 'peach' })])}
       <div class="card">
         <h3>Money</h3>
         ${kv([['Cash', fmtMoney(f.cash, c)], ...(bankWorth() ? [['In the bank', fmtMoney(bankWorth(), c)]] : []), ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
@@ -359,8 +368,7 @@ export default {
     ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}
       </div>
-      <div class="btn-stack" style="margin-bottom:10px"><button class="btn primary" data-go="mymoney">My Money<small style="display:block;font-weight:400;opacity:.85">Accounts, budget, goals, debts and history</small></button></div>
-      ${actions.length ? `<div class="btn-stack" style="margin-bottom:14px">${actions.map(([id, label]) => `<button class="btn" data-go="${id}">${esc(label)}</button>`).join('')}</div>` : ''}
+      ${navGroup(actions.map(([id, label]) => navRow({ attrs: `data-go="${id}"`, label, ico: HOLD_ICONS[id] ?? 'sparkle' })), 'Shop, invest and learn')}
       ${householdAnimalsHtml()}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}

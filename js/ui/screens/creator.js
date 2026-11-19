@@ -117,7 +117,7 @@ export function renderCreator(app, hooks) {
         </div>
         <div class="btn-row">
           <button type="button" class="btn" data-cancel>Back</button>
-          <button type="submit" class="btn primary">Be born</button>
+          <button type="submit" class="btn peach">Be born</button>
         </div>
       </form>
     </main>`;

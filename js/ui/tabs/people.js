@@ -33,6 +33,7 @@ import { eventsOf } from '../../engine/digital/core.js';
 import { accountsOf } from '../../engine/digital/accounts.js';
 import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
+import { navRow, navGroup } from '../kit.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
@@ -414,26 +415,34 @@ export default {
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
-    const top = [['moments', 'My Moments: this year'], ['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree'], ['digitalArchive', 'Letters, photos and posts']];
-    if (love.canLookForLove()) top.push(['love', 'Look for love']);
-    if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
+    const year = store.state.year;
+    const top = [['moments', 'My Moments', 'This year: occasions, plans and the people in them', 'calendar'],
+      ['animals', 'Pets & Animals', 'The family\'s animals, their care and their story', 'paw']];
+    const keep = [['archive', 'Family archive', 'Everyone who came before, and what they left', 'archive'],
+      ['tree', 'Family tree', 'Parents, children, and the generations between', 'tree'],
+      ['digitalArchive', 'Letters, photos and posts', year < 1995 ? 'What was written down and kept' : 'Messages, photos and posts, kept', 'letter']];
+    const more = [];
+    if (love.canLookForLove()) more.push(['love', 'Look for love', 'Dates, apps and chance meetings', 'heart']);
+    if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', `Fees of ${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)}, and a year of forms and visits`, 'child']);
 
     const row = (n) => `
-      <button class="row" data-npc="${n.id}">
+      <button class="row rel-card" data-npc="${n.id}">
         ${portrait(n)}
         <div class="main"><strong>${n.flags.royal?.title ? `${esc(n.flags.royal.title)} ` : ''}${esc(n.firstName)} ${n.role === 'pet' ? '' : esc(n.lastName)}</strong>
-          <small>${esc(rel.roleLabel(n))} · age ${n.age}${kinCase.inside(n) ? ' · in prison' : n.occupation && n.occupation !== rel.roleLabel(n) ? ` · ${esc(n.occupation)}` : ''}</small></div>
-        <div class="side">${Math.round(n.meters.relationship)}%
-          <div class="mini"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
+          <small><span class="rel-role">${esc(rel.roleLabel(n))}</span> Age ${n.age}${kinCase.inside(n) ? ' · in prison' : n.occupation && n.occupation !== rel.roleLabel(n) ? ` · ${esc(n.occupation)}` : ''}</small></div>
+        <div class="side"><span class="pct">${Math.round(n.meters.relationship)}%</span>
+          <div class="mini" role="meter" aria-label="Relationship" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(n.meters.relationship)}"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
       </button>`;
+    const nav = (list) => list.map(([id, label, sub, ico]) => navRow({ attrs: `data-top="${id}"`, label, sub, ico }));
 
     el.innerHTML = `
-      ${top.length ? `<div class="btn-stack" style="margin-bottom:14px">${top.map(([id, label]) =>
-        `<button class="btn" data-top="${id}">${esc(label)}</button>`).join('')}</div>` : ''}
       ${list.length ? GROUPS.map(([title, roles]) => {
         const group = list.filter((n) => roles.includes(n.role));
-        return group.length ? `<div class="section-label">${esc(title)}</div>${group.map(row).join('')}` : '';
-      }).join('') : '<p class="empty">There is nobody in your life right now.</p>'}`;
+        return group.length ? `<div class="section-label">${esc(title)}</div><div class="rel-grid">${group.map(row).join('')}</div>` : '';
+      }).join('') : '<p class="empty">There is nobody in your life right now.</p>'}
+      ${more.length ? navGroup(nav(more), 'Someone new') : ''}
+      ${navGroup(nav(top), 'Moments and animals')}
+      ${navGroup(nav(keep), 'Family history')}`;
 
     el.onclick = async (e) => {
       const row = e.target.closest('[data-npc]');
