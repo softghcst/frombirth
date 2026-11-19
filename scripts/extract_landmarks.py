@@ -25,6 +25,9 @@ the head. From those rows:
                  fitted to), kept above the ears.
   ear_*          the outer edges of the head where the ears attach: the row
                  just above where the silhouette suddenly widens into the ears.
+
+When it is done it runs scripts/select_base_head.py, which picks the base
+head from these numbers and rewrites assets/CHATGPT_HAIR_PROMPT.md.
 """
 import json, os, re, sys
 import xml.etree.ElementTree as ET
@@ -292,6 +295,10 @@ def main():
     if missing:
         print(f'no SVG for: {", ".join(missing)} (left as null in landmarks.json)', file=sys.stderr)
     print(f'wrote {os.path.relpath(OUT_JSON, ROOT)} and {os.path.relpath(OUT_HTML, ROOT)}')
+    # The base head depends on these numbers, so choose it again (and rewrite the ChatGPT prompt).
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import select_base_head
+    select_base_head.main()
 
 
 if __name__ == '__main__':
