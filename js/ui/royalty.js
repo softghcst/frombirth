@@ -35,7 +35,7 @@ export function royalCard() {
         <div class="kv"><span>The monarchy</span><span>Abolished in ${gone.abolishedYear}</span></div>
         <div class="kv"><span>Head of the house</span><span>${head.isPlayer ? 'You' : `${esc(head.name)}, age ${dyn.ageOf(head)}`}</span></div>
         ${p.flags.formerRoyal ? `<div class="kv"><span>You</span><span>${p.flags.exile ? 'In exile' : 'A private citizen, once royal'}</span></div>` : ''}
-        <p class="muted" style="margin-top:8px">The titles are gone and the palaces belong to the state. The family, and its history, remain. Countries have been known to ask a royal house back.</p>
+        
         <div class="btn-stack" style="margin-top:10px"><button class="btn" data-dynasty="${gone.countryId}">The family and its history</button>${head.isPlayer ? '<button class="btn" data-household>The family\'s own property</button>' : ''}</div></div>`;
     }
     if (!m) return '';
@@ -44,7 +44,7 @@ export function royalCard() {
       <div class="kv"><span>On the throne</span><span>${esc(crown.titleOf(country().id, 'monarch', k.gender))} ${esc(k.name)}, age ${k.age}</span></div>
       <div class="kv"><span>The house</span><span>${esc(dyn.house().name)}</span></div>
       <div class="kv"><span>You</span><span>A commoner</span></div>
-      <p class="muted" style="margin-top:8px">The famous, the wealthy and the successful are sometimes invited to the palace, where unmarried royals are to be met.${m.honors ? ' The crown also honors people who give a great deal to the country.' : ''}</p>
+      
       <div class="btn-stack" style="margin-top:10px"><button class="btn" data-dynasty>The royal family and its history</button></div></div>`;
   }
   const inFamily = ROYAL_RANKS.includes(r.rank);
@@ -147,7 +147,7 @@ export function openReputation() {
     <h2>Reputation</h2>
     ${rep.meters.map((x) => `${meterHtml(x.name, x.value, true)}<p class="muted" style="margin:2px 0 10px">${esc(x.word[0].toUpperCase() + x.word.slice(1))}.</p>`).join('')}
     ${(() => { const d = dyn.house(player().royal.countryId); return `${meterHtml('Support for the monarchy', d.standing, true)}<p class="muted" style="margin:2px 0 10px">${esc(throne.supportWord(d))}. If it stays very low, the country will be asked whether it wants a crown at all.</p>`; })()}
-    <p class="muted">Public approval is what keeps you in royal life. The family's regard decides how much they back you, and your allowance. The press colors everything else.</p>
+    
     <div class="section-label">In the newspapers</div>
     ${rep.stories.length ? rep.stories.map((s) => `<div class="kv"><span>${esc(s.label[0].toUpperCase() + s.label.slice(1))}${s.truth ? '' : ' <em>(untrue)</em>'}</span><span>${esc(s.loud)}</span></div>`).join('') : '<p class="muted">Nothing about you, for once.</p>'}
     <div class="section-label">What changed, and why</div>

@@ -21,7 +21,7 @@ export function openFamilyEducation() {
   const gens = [...past, mine];
   const modal = openModal(`
     <h2 style="margin-top:0">Family schooling</h2>
-    <p class="muted">The schools and universities stay where they are. Each generation's record is kept here.</p>
+    
     ${gens.map((r) => person(r, r.current ? 'You' : `Generation ${r.gen}`)).join('')}
     ${kids.length ? `<div class="card"><div class="section-label" style="margin-top:0">Your children</div>
       ${kids.map((k) => `<div class="kv"><span>${esc(k.name)}, ${k.age}</span><span>${esc([k.schools.slice(-1)[0], k.uni].filter(Boolean).join('; ') || (k.age < 5 ? 'Not at school yet' : '—'))}</span></div>`).join('')}</div>` : ''}

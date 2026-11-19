@@ -129,7 +129,7 @@ for (const scheme of ['light', 'dark']) {
 
   // The five sections.
   for (const [tab, title] of [['work', 'Work & School'], ['holdings', 'Holdings'], ['people', 'People'], ['pursuits', 'Pursuits'], ['self', 'Self']]) {
-    if (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
+    while (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
     await page.click(`.tab-btn[data-tab="${tab}"]`); await page.waitForTimeout(300);
     check(!(await page.locator('.dock').isVisible()), `${scheme}: the dock steps aside while ${tab} is open`);
     check(await page.locator('[data-panel-close]').isVisible(), `${scheme}: ${tab} has a back button`);

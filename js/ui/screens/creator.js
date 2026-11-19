@@ -106,7 +106,7 @@ export function renderCreator(app, hooks) {
           ${picker('talent', 'Natural gift', 'Random', named(TALENTS))}
           ${picker('background', 'Family background', 'Random', named(BACKGROUNDS))}
           ${picker('health', 'Born with', 'Random', [{ value: 'none', label: 'Nothing in particular' }, ...BIRTH_CHOICES.map((id) => ({ value: id, label: CONDITION_BY_ID[id].name }))])}
-          <p class="muted" style="margin:-4px 0 10px">Only things present from birth. Most will be noticed as you grow; none decides who you become.</p>
+          
           <div class="field"><label for="f-year">Year of birth</label>
             <input id="f-year" type="number" inputmode="numeric" min="1800" max="${new Date().getFullYear()}" placeholder="${new Date().getFullYear()} (now)">
             <div class="era-note" data-era-note aria-live="polite"></div></div>

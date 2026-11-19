@@ -385,7 +385,7 @@ export default {
       </div>
       ${navGroup([navRow({ attrs: 'data-go="mymoney"', label: 'My Money', ico: 'coin', tone: 'peach' })])}
       <div class="card">
-        <h3>Money</h3>
+        <h3>Earnings and taxes</h3>
         ${kv([...(bankWorth() ? [['In the bank', fmtMoney(bankWorth(), c)]] : []), ...money.balances().filter((b) => !b.home).map((b) => [`Held in ${b.code}`, `${money.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`]), ['Debts', fmtMoney(debt, c)]])}
         ${kv([['Where you live', living], ['Earned in your life', fmtMoney(f.lifetimeEarned, c)]])}
         <details class="more"><summary>Taxes and costs</summary>
