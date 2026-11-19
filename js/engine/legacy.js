@@ -34,6 +34,7 @@ import { carryOver } from './digital/legacy.js';
 import { handOver as handOverAnimals, staysInFamily, settleOnDeath as settleAnimals } from './animals.js';
 import { passOn as carryCareers } from './careerRecord.js';
 import { handOver as handOverSports } from './sportsLife.js';
+import { rate as fxRate } from './currency.js';
 
 const byGender = (n, m, f, other) => (n.gender === 'male' ? m : n.gender === 'female' ? f : other);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -301,7 +302,7 @@ export function continueAs(npcId) {
   }
   if (L.job && !h.flags.royal) takeOverJob(L.job, L.yearsWorked ?? 0);
   if (moved) {
-    const rate = COUNTRIES[abroad].currency.scale / COUNTRIES[op.countryId].currency.scale;
+    const rate = fxRate(COUNTRIES[op.countryId].currency.code, COUNTRIES[abroad].currency.code); // today's rate, as the estate was taxed
     convertMoney(rate);
     player.career.salary = Math.round(player.career.salary * rate);
     for (const n of Object.values(npcs)) {
@@ -330,7 +331,7 @@ export function continueAs(npcId) {
   // The heir's own books open with what they really have: their savings, and their share of the estate, named as such.
   const share = grave?.estate?.shares?.find((s) => s.npcId === h.id)?.amount ?? 0;
   ledgerOf(next, { desc: `Your own savings, and what ${op.firstName} left you`,
-    inheritance: Math.round(share * (moved ? COUNTRIES[abroad].currency.scale / COUNTRIES[op.countryId].currency.scale : 1)) });
+    inheritance: Math.round(share * (moved ? fxRate(COUNTRIES[op.countryId].currency.code, COUNTRIES[abroad].currency.code) : 1)) });
   if (share > 0 || player.assets.length) player.milestones.push({ age: h.age, text: `Inherited from ${op.firstName}.`, kind: 'money' });
   carryTrust(old, next, h.id, `${op.firstName} ${op.lastName}`);
   carryTraditions(old, next, h.id); // the family's traditions go on with the family // a trust still being held for them stays held
