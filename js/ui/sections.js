@@ -26,14 +26,24 @@ const rowInner = (title, sub, alert) => `<span class="nr-icon">${icon(iconFor(ti
   <span class="nr-main"><span class="nr-label">${esc(title)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</span>
   ${alert ? '<span class="nr-dot" aria-hidden="true"></span>' : ''}${icon('chevron', 'nr-chev')}`;
 
+/** Sections inside sections are named by their path: "Work › Politics". */
+export const SEP = ' › ';
+
 /**
  * Turns the cards in a tab's body into rows, and shows the one that is open, if any.
+ * Cards inside a section become rows inside it in turn, so a section can hold sections of its own.
  * @param {HTMLElement} body  the panel body, just drawn by the tab
- * @param {string|null} open  the title of the section to show, or null for the list
- * @returns {string|null}     the title of the section shown (null if none, or if it no longer exists)
+ * @param {string|null} open  the path of the section to show, or null for the list
+ * @returns {string|null}     the path of the section shown (null if none; the nearest one that still exists)
  */
 export function sectionize(body, open) {
-  for (const card of [...body.children]) {
+  build(body, '');
+  return show(body, open);
+}
+
+function build(container, prefix) {
+  const made = [];
+  for (const card of [...container.children]) {
     if (!card.classList.contains('card')) continue;
     const title = titleOf(card);
     if (!title) continue;
@@ -48,18 +58,20 @@ export function sectionize(body, open) {
       card.replaceWith(btn);
       continue;
     }
+    const key = prefix ? `${prefix}${SEP}${title}` : title;
     const row = document.createElement('button');
     row.className = 'nav-row sec-row';
-    row.dataset.sec = title;
+    row.dataset.sec = key;
     // A section with something waiting for the player (its main action is highlighted) gets a dot.
     row.innerHTML = rowInner(title, '', !!card.querySelector('.btn.primary:not([disabled]), .btn.peach:not([disabled])'));
     card.before(row);
     card.classList.add('sec-body');
-    card.dataset.secBody = title;
+    card.dataset.secBody = key;
+    made.push([card, key]);
   }
   // Rows next to each other share one list.
   let group = null;
-  for (const el of [...body.children]) {
+  for (const el of [...container.children]) {
     const isRow = el.classList.contains('sec-row') || el.classList.contains('nav-group');
     const isBody = el.classList.contains('sec-body');
     if (isBody) continue; // hidden cards do not break a list
@@ -75,13 +87,25 @@ export function sectionize(body, open) {
     }
     if (el.classList.contains('nav-group')) { group.append(...el.children); el.remove(); } else group.append(el);
   }
-  return show(body, open);
+  for (const [card, key] of made) build(card, key);
 }
 
-/** Shows one section (by title), or the list when there is none. Returns the title shown. */
+/** Shows one section (by its path), or the list when there is none. Returns the path shown. */
 export function show(body, open) {
-  const card = open ? body.querySelector(`.sec-body[data-sec-body="${CSS.escape(open)}"]`) : null;
-  body.classList.toggle('sec-open', !!card);
-  body.querySelectorAll('.sec-body').forEach((c) => c.classList.toggle('shown', c === card));
-  return card ? open : null;
+  body.querySelectorAll('.sec-body.shown').forEach((c) => c.classList.remove('shown'));
+  body.querySelectorAll('.sec-open').forEach((c) => c.classList.remove('sec-open'));
+  body.classList.remove('sec-open');
+  let container = body;
+  let shown = null;
+  const parts = open ? open.split(SEP) : [];
+  for (let i = 0; i < parts.length; i++) {
+    const key = parts.slice(0, i + 1).join(SEP);
+    const card = [...container.children].find((c) => c.classList.contains('sec-body') && c.dataset.secBody === key);
+    if (!card) break;
+    container.classList.add('sec-open');
+    card.classList.add('shown');
+    container = card;
+    shown = key;
+  }
+  return shown;
 }

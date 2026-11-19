@@ -13,6 +13,7 @@ import { openSchool } from '../school.js';
 import { openFamilyEducation } from '../familyEducation.js';
 import { familyRecord } from '../../engine/edlegacy.js';
 import { politicsCard, politicsAction } from '../politics.js';
+import { athleticsCard, openAthletics } from '../sports.js';
 import { player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import * as edu from '../../engine/education.js';
@@ -430,8 +431,9 @@ export default {
     const work = careerButtons();
 
     // Afterglow: screens open from navigation rows, opposite choices sit side by side, and leaving is set apart.
-    const btns = (list) => {
-      if (!list.length) return '';
+    // `more`: rows that belong in the same list, after the links (Work keeps athletics, politics and the rest there).
+    const btns = (list, more = '') => {
+      if (!list.length && !more) return '';
       const nav = list.filter(([id]) => NAV_ICONS[id]);
       const pairs = list.filter(([id]) => PAIRED.has(id));
       const danger = list.filter(([id]) => DANGER.has(id));
@@ -443,7 +445,7 @@ export default {
     const [main, sub] = label.split(/: (.+)/);
     const lead = ['apply', 'findwork'].includes(id) && !k.careerId;
     return navRow({ attrs: `data-act="${id}"`, label: main, sub: sub ?? '', ico: NAV_ICONS[id], tone: lead ? 'peach' : '' });
-  }).join('')}</div>` : ''}
+  }).join('')}</div>` : ''}${more}
         ${danger.length ? `<div class="btn-pair">${danger.map((b) => btn(b, ' danger')).join('')}</div>` : ''}
         <div style="height:4px"></div>`;
     };
@@ -455,12 +457,10 @@ export default {
     el.innerHTML = `
       <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
       ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
-      ${contacts()}
-      ${careerCard().replace(/<\/div>\s*$/, () => `${btns(work)}</div>`)}
-      ${politicsCard()}
-      ${k.history.length ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('archive')}</span><h3>Past jobs</h3></div>${past}</div>` : ''}`;
+      ${careerCard().replace(/<\/div>\s*$/, () => `${btns(work, `${p.legal.incarceration ? '' : athleticsCard()}${politicsCard()}${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}`;
 
     el.onclick = (ev) => {
+      if (ev.target.closest('[data-go="athletics"]')) return openAthletics(api);
       const pol = ev.target.closest('[data-pol]')?.dataset.pol;
       if (pol) return politicsAction(pol, api);
       const id = ev.target.closest('[data-act]')?.dataset.act;

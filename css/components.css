@@ -1118,7 +1118,9 @@ details.more[open] summary::after { transform: rotate(90deg); }
 
 /* ---------- Every tab a list; each section its own screen (js/ui/sections.js) ---------- */
 .sec-body:not(.shown) { display: none !important; }
-.panel-body.sec-open > :not(.sec-body.shown) { display: none !important; }
+.panel-body.sec-open > :not(.sec-body.shown), .sec-body.sec-open > :not(.sec-body.shown) { display: none !important; }
+/* A section inside a section fills the same screen, with no frame of its own. */
+.sec-body .sec-body.shown { background: none; border: 0; padding: 0; margin: 0; }
 .panel-body .sec-body.shown { border: 0; padding-top: 4px; }
 .sec-body.shown > h3, .sec-body.shown > .info-head { display: none; }
 .sec-body.shown .nav-group { margin: 10px -16px 0; border-bottom: 0; }
