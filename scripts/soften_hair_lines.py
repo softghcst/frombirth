@@ -29,6 +29,9 @@ shapes (a streak of shine on a sweep or a fringe) are kept as they are. Checked 
 hair_lines: every line is stroke-width 2.5 with round caps and joins; dark lines become #4a2414 (light
 highlight strokes keep their colour, so the hair keeps its shine).
 
+A style drawn with colour variables (stroke="var(--hair-stroke, ...)", fill="var(--hair-color, ...)") is left as
+drawn: its lines are already its own, and the variables are how the game colours it.
+
 A softened file is marked data-softened="1" on its <svg> and its outlines are not touched again on later
 runs, so running it twice is safe. Standard library plus numpy (already needed by fit_hair.py).
 """
@@ -145,7 +148,14 @@ def attr(el, group, name):
 def soften(path, head):
     tree = ET.parse(path, ET.XMLParser(target=ET.TreeBuilder(insert_comments=True)))
     root = tree.getroot()
+    renamed = F.normalize_ids(root)
     groups = {g.get('id'): g for g in root.iter(f'{NS}g') if g.get('id') in F.LAYERS}
+    # A style drawn with colour variables (stroke="var(--hair-stroke, ...)") already has the outline and colours it
+    # should: it is left as drawn, so the game's --hair-color and --hair-stroke keep working on it.
+    if any((p.get('stroke') or g.get('stroke') or '').startswith('var(') for g in groups.values() for p in g.iter(f'{NS}path')):
+        if renamed:
+            write(path, root)
+        return {'variables': True}
     shaded = one_shade(root, groups)
     if root.get('data-softened') == '1':
         if shaded:
@@ -276,7 +286,9 @@ def main(argv):
         counts = soften(f, head)
         name = os.path.basename(f)
         shade = f'; {counts["shaded"]} fill(s) set to the main colour' if counts and counts.get('shaded') else ''
-        if counts is None:
+        if counts and counts.get('variables'):
+            print(f'  {name}: drawn with colour variables, left as drawn')
+        elif counts is None:
             print(f'  {name}: already softened, one shade')
         elif 'soft' not in counts:
             print(f'  {name}: already softened{shade}')

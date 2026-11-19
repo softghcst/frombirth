@@ -62,6 +62,17 @@ DEBUG_HTML = os.path.join(HERE, 'debug_hair_fit.html')
 POINTS = EL.POINTS
 EXTRA_HEADS = ['kid']  # game heads measured here rather than kept in landmarks.json
 LAYERS = ['hair_back', 'hair_base', 'hair_bangs', 'hair_lines']
+
+
+def normalize_ids(root):
+    """Packs that name the layers 'hair-back' etc. get the ids the game uses ('hair_back'). -> whether any changed."""
+    changed = False
+    for g in root.iter(f'{NS}g'):
+        gid = g.get('id') or ''
+        if gid.replace('-', '_') in LAYERS and gid not in LAYERS:
+            g.set('id', gid.replace('-', '_'))
+            changed = True
+    return changed
 FRAME = 512
 PINS = [(0, 0), (FRAME, 0), (0, FRAME), (FRAME, FRAME)]  # held still: the warp fades out toward the frame's corners
 SVG = 'http://www.w3.org/2000/svg'
@@ -309,6 +320,7 @@ def fit_file(path, base, heads):
     parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
     tree = ET.parse(path, parser)
     root = tree.getroot()
+    normalize_ids(root)
     found = [g.get('id') for g in root.iter(f'{NS}g') if g.get('id') in LAYERS]
     missing = [l for l in LAYERS if l not in found]
     if missing:
