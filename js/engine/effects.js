@@ -40,6 +40,7 @@ import { lifeChoice } from './animalLife.js';
 import { arcChoice } from './animalArcs.js';
 import { sportArcChoice } from './sportsArcs.js';
 import { disasterChoice } from './disasters.js';
+import { hoodChoice } from './neighborhoodLife.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -112,6 +113,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'animalArc': ctx.note = arcChoice(e.value, ctx.cast); break;
       case 'sportArc': ctx.note = sportArcChoice(e.value, ctx.cast); break;
       case 'disaster': ctx.note = disasterChoice(e.value, ctx.cast); break;
+      case 'hood': { const line = hoodChoice(e.value, ctx.cast); if (line) ctx.note = line; break; }
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;

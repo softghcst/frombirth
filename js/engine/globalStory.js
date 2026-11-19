@@ -11,6 +11,7 @@ import { coords, jurisdictionAt, placeName } from './geo.js';
 import { events, visible, archiveIdOf, archivedPeople, archived, homeOnRecord } from './chronicle.js';
 import { held } from './citizenship.js';
 import { roleLabel } from './relationships.js';
+import { homeForAsset, homeHistory, hoods } from './neighborhood.js';
 
 const GEN = { grandparent: -2, parent: -1, sibling: 0, spouse: 0, partner: 0, ex: 0, relative: 0, cousin: 0, child: 1, niece: 1, grandchild: 2, greatgrandchild: 3, inlaw: 0 };
 const year = () => store.state.year;
@@ -69,6 +70,7 @@ export function placesLived(p = player()) {
       jurisdiction: jurisdictionAt(l.countryId, from ?? year(), l.city), reason: l.reason ?? (i === 0 ? 'born' : null), derived: !!l.derived,
       move: move ? { id: move.id, title: move.title, text: move.text } : null,
       homes, people: move ? move.people.filter((x) => x !== me).map((x) => personName(x)).filter(Boolean) : [],
+      neighborhoods: (l.hoods ?? []).map((id) => hoods().list[id]).filter(Boolean).map((h) => ({ id: h.id, name: h.name })),
       memories: all.filter((e) => inRange(e) && e.id !== l.eventId && ['trip', 'travel_memory', 'travel_milestone', 'family_visit', 'birth', 'belonging'].includes(e.type)).slice(0, 8),
     };
   });
@@ -142,7 +144,18 @@ export function homeChronicle(propertyId, p = player()) {
     owner: a ? 'You' : 'Not owned by you', livedInNow: p.homeId === propertyId, let: !!a?.tenant, bought: a?.boughtAtAge != null ? p.birthYear + a.boughtAtAge : null,
     residents: residents.sort((x, y) => (x.from ?? 0) - (y.from ?? 0)),
     events: events((e) => e.propertyId === propertyId && visible(e)),
+    // Where it stands and every household that has lived in it, the family's and others' (engine/neighborhood.js).
+    ...neighborhoodOf(propertyId),
   };
+}
+
+/** The neighborhood a property stands in, and the households that lived in it, from the neighborhood record. */
+function neighborhoodOf(propertyId) {
+  const home = homeForAsset(propertyId);
+  const h = home ? homeHistory(store.state, home.id) : null;
+  if (!h) return {};
+  return { neighborhood: { id: h.hood.id, name: h.hood.name, homeId: home.id, label: home.label, street: h.block.name },
+    households: h.households.map((o) => ({ name: o.mine ? `Your family (${o.n})` : `The ${o.n} household`, from: Math.floor(o.from / 12), to: o.to == null ? null : Math.floor(o.to / 12), why: o.left ?? null, mine: o.mine })) };
 }
 
 // ---------- Our Global Story ----------

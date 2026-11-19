@@ -84,7 +84,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
       if (answer && r.year) {
         for (const pe of S().pendingEvents.slice()) {
           const ev = EVENT_BY_ID[pe.id];
-          if (!ev || ev.between || ev.timing?.seasons || !P().alive) continue;
+          if (!ev || ev.between || ev.hood || ev.timing?.seasons || !P().alive) continue; // neighborhood scenes come when their month does (engine/neighborhood.js)
           const pick = ev.choices.findIndex((c) => !c.requires?.length);
           const res = resolveChoice(ev, pick, pe.cast);
           if (res.death) break;
@@ -154,7 +154,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
       const between = turns.monthOf() !== 0;
       for (const pe of S().pendingEvents.splice(0)) {
         const ev = EVENT_BY_ID[pe.id];
-        if (ev && !ev.between && between && pe.id !== 'disaster_forecast') { // a forecast is queued by the turn itself (engine/disasters.js)
+        if (ev && !ev.between && !ev.hood && between && pe.id !== 'disaster_forecast') { // a neighborhood scene comes in the month it happens (engine/neighborhood.js) // a forecast is queued by the turn itself (engine/disasters.js)
           // One of the year's ordinary scenes, on a turn between years: more chances with shorter turns.
           everyday.set(pe.id, (everyday.get(pe.id) ?? 0) + 1);
           check(!ev.priority && !ev.queuedOnly, `${pe.id}: only ordinary scenes come between years, not the year's story beats`);

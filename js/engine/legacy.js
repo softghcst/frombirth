@@ -2,6 +2,7 @@
 // their children (or, with no children left, a grandchild). The heir keeps the
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
+import { handOver as handOverHoods } from './neighborhood.js';
 import { held } from './citizenship.js';
 import { archivePerson, archiveIdOf } from './chronicle.js';
 import { ensureGlobal } from './globalLife.js';
@@ -287,6 +288,7 @@ export function continueAs(npcId) {
   store.state = next;
   heirHealth(next, h);
   handOverAnimals(old, next, { ancestorId: ancestor.id, heirId: h.id, assetIds });
+  handOverHoods(old, next, h.id); // the same neighborhoods, the same neighbors (engine/neighborhood.js)
   if (old.sports) handOverSports(old, next, { ancestorId: ancestor.id, heirId: h.id });
   // The people who work in the family's businesses are the same people: they carry on, outside the heir's own circle.
   for (const b of op.businesses ?? []) for (const x of [...(b.staff ?? []), ...(b.partners ?? [])]) if (old.npcs[x.id] && !npcs[x.id]) npcs[x.id] = old.npcs[x.id];
