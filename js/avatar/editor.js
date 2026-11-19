@@ -3,10 +3,12 @@
 // creator (every feature), the in-game salon (styling only) and the avatar
 // lab page. Each feature has its own row of options, the portrait updates on
 // every tap, and nothing is saved until the caller's confirm handler runs.
-import { CATALOG, normalize, part, stylesFor, TWEAKS, shownTweaks } from './catalog.js';
+import { CATALOG, normalize, part, stylesFor, TWEAKS, shownTweaks, lipsFor } from './catalog.js';
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
+import { ELDER_BROWS } from './curation.js';
+import { icon } from '../ui/kit.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 
@@ -90,13 +92,18 @@ export function mountAppearanceEditor(el, o = {}) {
       if (hairFilter === 'suits') list = stylesFor(a.inherited.hairTexture);
       else if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
     }
+    // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.
+    if (key === 'lips') list = list.filter((x) => lipsFor(x.id, o.gender) === x.id);
+    // The bushy brows of old age are an old man's.
+    if (key === 'brows' && o.gender === 'female') list = list.filter((x) => x.id !== ELDER_BROWS);
     return list;
   };
 
   function control(key) {
     const c = CONTROLS[key];
     const current = a[c.half][key];
-    const isOn = (id) => (c.multi ? current.includes(id) : current === id);
+    const shown = key === 'lips' ? lipsFor(current, o.gender) : current;
+    const isOn = (id) => (c.multi ? current.includes(id) : shown === id);
     const zoom = ZOOM[key];
     const options = optionsFor(key).map((x) => {
       const on = isOn(x.id) ? 'on' : '';
@@ -134,7 +141,7 @@ export function mountAppearanceEditor(el, o = {}) {
         <div class="av-stage">
           <div class="av-portrait" data-portrait>${draw(a, { age: shownAge, label: 'Your portrait' })}</div>
           <div class="av-previews" role="group" aria-label="See the face at another age">${PREVIEWS.map(([v, label]) => `<button type="button" class="av-chip av-preview ${preview === v ? 'on' : ''}" data-preview="${v}">${esc(label)}</button>`).join('')}</div>
-          <button type="button" class="btn small" data-random>Randomize</button>
+          <button type="button" class="btn small av-random" data-random>${icon('sparkle')}Randomize</button>
         </div>
         <div class="av-tabs" role="tablist">${tabs.map((x) => `<button type="button" role="tab" aria-selected="${x.id === tab}" class="av-tab ${x.id === tab ? 'on' : ''}" data-tab="${x.id}">${esc(x.name)}</button>`).join('')}</div>
         <div class="av-panel">${t.keys.map(control).join('')}${scope !== 'style' ? (t.tweaks ?? []).map(tweakControl).join('') : ''}</div>

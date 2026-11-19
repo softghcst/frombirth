@@ -27,7 +27,8 @@
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
-import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS } from './avatar/curation.js';
+import { noseFit, mouthFit } from './avatar/featureFit.js';
+import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/avatars/';
@@ -79,7 +80,7 @@ export function dressFor(look, ctx = {}) {
   }
   if (stage === 'older') {
     out.aging = AGING.filter(([from]) => age >= from).map(([, id]) => id);
-    if (age >= 84 && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
+    if (age >= 84 && gender === 'male' && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
   }
   // Clothes: prison, then crown, then work, then the person's own.
   if (young) out.clothes = look.babyClothes ?? 'outfit_baby_01_bib_onesie';
@@ -100,8 +101,9 @@ export function dressFor(look, ctx = {}) {
   // Mood shows in the face.
   const mood = ctx.mood ?? 60;
   if (ctx.emotion) out.emotion = ctx.emotion;
-  // Crying eyes are never a resting face: they appear only while something sad is weighing on the person.
-  if (mood <= 15 && stage !== 'baby') out.eyes = EXPRESSION.crying;
+  // Sad brows and crying eyes are never a resting face: they appear only while something sad is weighing on the person.
+  if (mood <= LOW_MOOD.sad && !young && out.eyebrows) out.eyebrows = EXPRESSION.sadBrows;
+  if (mood <= LOW_MOOD.crying && stage !== 'baby') out.eyes = EXPRESSION.crying;
   return out;
 }
 
@@ -124,10 +126,13 @@ const n1 = (v) => Math.round(v * 100) / 100;
  * this works out, for one head, the transform that moves each kind of part
  * from the template onto it: features keep their place between forehead and
  * chin, hair and hats follow the top and width of the head, earrings hang
- * from this head's ears, clothes sit under this head's chin.
+ * from this head's ears, clothes sit under this head's chin. Given the eyes and
+ * nose a face has (`parts`), the nose is also kept clear of those eyes, and the mouth is fitted to the
+ * nose above it (js/avatar/featureFit.js).
+ * @param {{eyes?:string, nose?:string, lips?:string}} [parts]
  * @returns {Record<string, string>} an SVG transform attribute (with a leading space) per layer
  */
-export function fitTransforms(headId, stage, tweaks = {}) {
+export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
   const fit = PART_BY_ID[headId]?.fit;
   if (!fit) return {};
   const wr = fit.w / T.face.w;
@@ -142,7 +147,15 @@ export function fitTransforms(headId, stage, tweaks = {}) {
   const step = (k) => Math.max(-2, Math.min(2, Number(tweaks[k]) || 0));
   const eyeS = s * (1 + step('eyeSize') * TWEAK_STEP.size);
   const eyeUp = step('eyeY') * TWEAK_STEP.height * hr;
-  const apart = EYE_APART + step('eyeGap') * TWEAK_STEP.gap; // template units, each eye moves this far outwards
+  const noseS = s * (1 + step('noseSize') * TWEAK_STEP.size) * (PART_SCALE[parts.nose] ?? 1);
+  // This nose with these eyes on this head: a little smaller, lower, or the eyes a touch wider, where they would crowd.
+  const nf = parts.eyes && parts.nose ? noseFit(parts.eyes, parts.nose, { s, eyeS, noseS, eyeY: at(T.anchor.eyes) - eyeUp, noseY: at(T.anchor.nose), apart: EYE_APART + step('eyeGap') * TWEAK_STEP.gap })
+    : { k: 1, drop: 0, apart: 0 };
+  // The mouth, a little wider or moved where this nose (as fitted) would leave it looking pinched or far away.
+  const mouthS = s * (young.mouth ?? 1) * (1 + step('lipSize') * TWEAK_STEP.size);
+  const mf = parts.nose && parts.lips ? mouthFit(parts.lips, parts.nose, { s, mouthS, noseS: noseS * nf.k, noseY: at(T.anchor.nose) + nf.drop, mouthY: at(T.anchor.lips), chin: fit.chin },
+    RESTING.lips.includes(parts.lips) || RESTING.lipsMasc.includes(parts.lips)) : { k: 1, dy: 0 };
+  const apart = EYE_APART + step('eyeGap') * TWEAK_STEP.gap + nf.apart; // template units, each eye moves this far outwards
   const eyeAt = (ay, scale, side) => `${move(256, ay, fit.cx, at(ay) - eyeUp, scale).slice(0, -1)} translate(${side * apart} 0)"`;
   const earS = (fit.earR - fit.earL - 20) / (T.ear.right - T.ear.left);
   const body = Math.max(0.8, Math.min(1.06, fit.shoulderW / T.shoulderW));
@@ -151,7 +164,7 @@ export function fitTransforms(headId, stage, tweaks = {}) {
     eyesL: eyeAt(T.anchor.eyes, eyeS, -1), eyesR: eyeAt(T.anchor.eyes, eyeS, 1),
     browsL: eyeAt(T.anchor.eyebrows, s, -1), browsR: eyeAt(T.anchor.eyebrows, s, 1),
     eyes: feature(T.anchor.eyes), eyebrows: feature(T.anchor.eyebrows),
-    nose: feature(T.anchor.nose, s * (1 + step('noseSize') * TWEAK_STEP.size)), lips: feature(T.anchor.lips, s * (young.mouth ?? 1) * (1 + step('lipSize') * TWEAK_STEP.size)),
+    nose: move(256, T.anchor.nose, fit.cx, at(T.anchor.nose) + nf.drop, noseS * nf.k), lips: move(256, T.anchor.lips, fit.cx, at(T.anchor.lips) + mf.dy, mouthS * mf.k),
     makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes),
     glasses: feature(T.anchor.eyes, wr * young.k), facialHair: feature(T.anchor.lips, wr),
     hair: crown, hat: crown,
@@ -197,7 +210,7 @@ function colorVars(look, ctx) {
   const hair = gray ? mixHex(c.hair, '#dcd8d0', gray) : c.hair;
   const brow = c.brow ? mixHex(c.brow, '#d8d3c8', gray * 0.6) : mixHex(hair, '#1c1210', 0.25);
   const deep = deepness(c.skin);
-  const vars = { 'skin-color': c.skin, 'hair-color': hair, 'brow-color': brow, 'eye-color': c.eye, 'lip-color': c.lip, 'blush-color': c.blush,
+  const vars = { 'skin-color': c.skin, 'hair-color': hair, 'brow-color': brow, 'eye-color': c.eye, 'lip-color': c.lip, 'lip-upper': c.lipUpper, 'blush-color': c.blush,
     'eye-white': deep ? mixHex('#ffffff', c.skin, READABLE.white * deep) : null };
   if (c.outfit) vars['outfit-color'] = c.outfit;
   return Object.entries(vars).filter(([, v]) => v).map(([k, v]) => `--${k}:${v}`).join(';');
@@ -228,7 +241,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     `<clipPath id="pw-back-${n}">${hatOn ? under(1400) : '<rect x="-400" y="-2000" width="1312" height="3400"/>'}</clipPath>`,
     `<clipPath id="pw-front-${n}">${hatOn ? under(frontCut) : `<rect x="-400" y="-2000" width="1312" height="${frontCut + 2000}"/>`}</clipPath>`,
   ];
-  const f = fitTransforms(d.head, ageStage(ctx.age ?? 25), look.tweaks);
+  const f = fitTransforms(d.head, ageStage(ctx.age ?? 25), look.tweaks, { eyes: d.eyes, nose: d.nose, lips: d.lips });
   // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).
   const hairAt = hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
   // A style too tall for the picture is flattened above the crown: the part above the line is drawn

@@ -14,6 +14,8 @@ import { advanceYear } from './yearProcessor.js';
 import { book } from './ledger.js';
 import { drawBetween } from './eventEngine.js';
 import { seasonAt, turnSeasons, seasonName } from './calendar.js';
+import { disastersBetween, markHome } from './disasters.js';
+import { EVENT_BY_ID } from '../data/events/index.js';
 
 export { seasonAt, turnSeasons, seasonName };
 
@@ -43,8 +45,8 @@ export function nextTurnText(state = store.state) {
   const p = state.player;
   const step = stepOf(state);
   const m = monthOf(state) + step;
-  if (m >= 12) return { label: step === 12 ? 'Live another year' : `${step === 3 ? 'Three' : 'Six'} more months`, sub: `→ age ${p.age + 1}` };
-  return { label: step === 3 ? 'Three more months' : 'Six more months', sub: `→ ${seasonName(turnSeasons(m, step, p.countryId)[0])}` };
+  if (m >= 12) return { label: step === 12 ? 'Age up' : `${step === 3 ? 3 : 6} months`, sub: `→ ${p.age + 1}` };
+  return { label: step === 3 ? '3 months' : '6 months', sub: `→ ${seasonName(turnSeasons(m, step, p.countryId)[0])}` };
 }
 
 /**
@@ -65,6 +67,26 @@ export function setStep(step, state = store.state) {
 }
 
 /**
+ * The year's own scenes are drawn the same way whatever the turn length. With shorter turns, one tied to a season it is
+ * not (a summer job, at the turn of a northern year) waits for that season's turn instead of coming now.
+ */
+function holdForSeason(state, now) {
+  const keep = [];
+  for (const pe of state.pendingEvents) {
+    const t = EVENT_BY_ID[pe.id]?.timing;
+    if (t?.seasons && !t.seasons.some((s) => now.includes(s))) (state.held ??= []).push({ ...pe, seasons: t.seasons });
+    else keep.push(pe);
+  }
+  state.pendingEvents = keep;
+}
+function releaseHeld(state, now) {
+  const i = (state.held ?? []).findIndex((h) => h.seasons.some((s) => now.includes(s)));
+  if (i < 0) return;
+  const [h] = state.held.splice(i, 1);
+  state.pendingEvents.push({ id: h.id, cast: h.cast });
+}
+
+/**
  * One turn. At the turn of the year it is the year itself (advanceYear). Otherwise the calendar moves on, the season
  * changes, and a scene for that time of year may be queued. @returns {{year:boolean, season?:string}}
  */
@@ -75,10 +97,15 @@ export function advanceTurn(state = store.state) {
   const next = monthOf(state) + step;
   if (next >= 12 || step === 12) {
     state.month = 0;
-    if (state.settings?.nextStep) { state.settings.step = state.settings.nextStep; delete state.settings.nextStep; }
+    const coming = state.settings?.nextStep ?? step; // a change of turn length takes effect from here
+    state.held = []; // season scenes held from last year that never found their season
     advanceYear();
-    // With shorter turns, the last part of the year has its season too: perhaps a scene for it, beside the year's own.
-    if (step !== 12 && p.alive) drawBetween(step, turnSeasons(12, step, p.countryId), 0.45);
+    // With shorter turns, the last part of the year has its season too: perhaps a scene for it, beside the year's own,
+    // told with the turn length it was lived in; forecasts look ahead with the one coming.
+    if (step !== 12 && p.alive) { drawBetween(step, turnSeasons(12, step, p.countryId), 0.45); disastersBetween(state, 12, step, coming); }
+    if (p.alive && step !== 12) holdForSeason(state, turnSeasons(12, step, p.countryId));
+    if (state.settings?.nextStep) { state.settings.step = state.settings.nextStep; delete state.settings.nextStep; }
+    markHome(state);
     return { year: true };
   }
   // Anything the player did with money since the last turn is written down before the season changes.
@@ -87,6 +114,8 @@ export function advanceTurn(state = store.state) {
   const seasons = turnSeasons(next, step, p.countryId);
   log(`${cap(seasonName(seasons[0]))}.`, 'season');
   // Shorter turns, more chances: a scene for the season, and perhaps one of the year's ordinary scenes as well.
+  disastersBetween(state, next, step); // storms as they strike, and forecasts of what is coming
+  releaseHeld(state, seasons);
   drawBetween(step, seasons, 0.8, EVERYDAY[step]);
   return { year: false, season: seasons[0] };
 }

@@ -32,7 +32,7 @@ export default [
     { label: 'Make time for it', outcomes: [any('Two hours go by like ten minutes.', 'good', rel('friend', 6), st('mood', 4))] },
     { label: 'Say you are swamped, next time', outcomes: [any('{friend} says no problem. It sounds like it is a bit of a problem.', 'neutral', rel('friend', -3))] },
   ], { cast: { friend: 'friend' }, cooldown: 2 }),
-  scene('between_call_home', [18, 90], { steps: both }, 'Your {parent} calls. Nothing in particular, they say. Just to hear your voice.', [
+  scene('between_call_home', [18, 90], { steps: both }, '{parent} calls. Nothing in particular, they say. Just to hear your voice.', [
     { label: 'Stay on the phone for an hour', outcomes: [any('You hear about the neighbors, the garden and a cousin\'s wedding. It is lovely.', 'good', rel('parent', 6), st('mood', 3))] },
     { label: 'Keep it short', outcomes: [any('A quick catch-up. They sound pleased you picked up.', 'neutral', rel('parent', 1))] },
   ], { cast: { parent: 'parent' }, cooldown: 2 }),
@@ -55,12 +55,12 @@ export default [
     { label: 'Head for water: a pool, the sea, a sprinkler', outcomes: [any('The best afternoon of the summer.', 'good', st('mood', 5))] },
     { label: 'Stay in the shade and drink plenty', outcomes: [any('Sensible. Boring. Healthy.', 'neutral', st('health', 1))] },
   ]),
-  scene('between_summer_holiday_kid', [6, 13], { steps: both, when: (p, s) => atSchool(p) && covers(s, [(schoolStart(p.countryId) + 10) % 12]) }, 'The long school holidays stretch out ahead, all of them yours.', [
+  scene('between_summer_holiday_kid', [6, 13], { steps: both, when: (p, s) => atSchool(p) && covers(s, [(schoolStart(p.countryId) + 10) % 12]) }, 'The long school holidays: weeks of them, all yours.', [
     { label: 'Spend it outside with your friends', outcomes: [any('Scraped knees, sunburn and a story you will tell for years.', 'good', st('mood', 6), st('health', 1))] },
     { label: 'Read everything you can find', outcomes: [any('You go back to school knowing things your teachers do not expect.', 'good', st('intellect', 2))] },
     { label: 'Get bored, then inventive', outcomes: [any('By the end of the holidays you have built a fort, a radio and a grudge against your sibling.', 'neutral', st('mood', 2))] },
   ], { cooldown: 2 }),
-  scene('between_summer_job', [15, 19], { steps: both, when: (p, s) => covers(s, [(schoolStart(p.countryId) + 10) % 12, (schoolStart(p.countryId) + 11) % 12]) }, 'A local shop is hiring for the school holidays: a few weeks of work, cash in hand at the end.', [
+  scene('between_summer_job', [15, 19], { steps: both, when: (p, s) => covers(s, [(schoolStart(p.countryId) + 10) % 12, (schoolStart(p.countryId) + 11) % 12]) }, 'A local shop was hiring for the school holidays: a few weeks of work, cash in hand at the end.', [
     { label: 'Take it', outcomes: [any('Long days, sore feet and your own money for the first time.', 'good', cash(600), hid('discipline', 2))] },
     { label: 'Keep the holidays free', outcomes: [any('The holidays are yours. So is the empty wallet.', 'neutral', st('mood', 2))] },
   ]),

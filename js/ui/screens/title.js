@@ -11,13 +11,9 @@ import { confirmModal } from '../modals.js';
 import { openEpitaphCollection } from './obituary.js';
 import { EPITAPHS, EPITAPH_BY_ID } from '../../data/epitaphs.js';
 import { ageLabel } from '../../engine/turns.js';
+import { markSvg, icon } from '../kit.js';
 
-const MARK = `
-  <svg class="title-mark" viewBox="0 0 64 64" aria-hidden="true">
-    <rect width="64" height="64" rx="15" fill="#2f5d50"/>
-    <path d="M18 52c0-12 28-10 28-22S18 22 18 12" fill="none" stroke="#f4efe4" stroke-width="5" stroke-linecap="round"/>
-    <circle cx="18" cy="52" r="4.5" fill="#f4efe4"/><circle cx="18" cy="12" r="4.5" fill="#e0b04a"/>
-  </svg>`;
+const MARK = markSvg();
 
 /**
  * @param {HTMLElement} app
@@ -46,7 +42,7 @@ export function renderTitle(app, hooks) {
     const c = COUNTRIES[g.countryId];
     return `
       <button class="row" data-grave="${i}">
-        <div class="avatar glyph">🪦</div>
+        <div class="avatar glyph grave-glyph" aria-hidden="true">🪦</div>
         <div class="main"><strong>${esc(g.fullName)}</strong>
           <small>${g.birthYear}–${g.deathYear} · ${esc(EPITAPH_BY_ID[g.epitaphIds?.[0]]?.title ?? `died of ${g.causeOfDeath}`)}</small></div>
         <div class="side">Age ${g.ageAtDeath}<br>${fmtMoney(g.netWorth, c)}</div>
@@ -56,11 +52,13 @@ export function renderTitle(app, hooks) {
   app.innerHTML = `
     <main class="title-screen">
       <div class="title-hero">${MARK}<h1>Pathways</h1><p>One life. One year at a time.</p></div>
-      <div class="btn-stack">
-        <button class="btn primary" data-random>Begin a random life</button>
-        <button class="btn" data-design>Design a life</button>
-        <button class="btn" data-world>The world</button>
-        <button class="btn" data-settings>Settings</button>
+      <div class="btn-stack title-actions">
+        <button class="btn peach big" data-random>${icon('sparkle')}Begin a random life</button>
+        <button class="btn" data-design>${icon('id')}Design a life</button>
+        <div class="btn-row">
+          <button class="btn" data-world>${icon('globe')}The world</button>
+          <button class="btn" data-settings>${icon('settings')}Settings</button>
+        </div>
       </div>
       ${cloud.signedIn() ? `<p class="muted sync-line" data-sync-line>${esc(cloudLine())}</p>` : ''}
       <div class="title-section"><h2>Saved lives</h2>
@@ -120,7 +118,7 @@ function compareTimelines(root) {
   const scrim = document.createElement('div');
   scrim.className = 'scrim';
   scrim.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="whatif-title"><div class="eyebrow">What if?</div><h2 id="whatif-title">One life, ${rows.length} ways</h2>
-    <p class="body">The same person, from the same moments, down different roads.</p>${rows.map(cell).join('')}
+    ${rows.map(cell).join('')}
     <button class="btn primary" data-ok style="margin-top:10px">Close</button></div>`;
   scrim.addEventListener('click', (e) => { if (e.target === scrim || e.target.closest('[data-ok]')) scrim.remove(); });
   document.getElementById('modal-root').appendChild(scrim);

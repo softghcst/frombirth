@@ -21,7 +21,7 @@ import { remember } from './conditions.js';
 import { apart } from './eventEngine.js';
 import { roleLabel } from './relationships.js';
 import { book } from './ledger.js';
-import { missedAnniversary } from './bonds.js';
+import { missedAnniversary } from './together.js';
 import { OCCASIONS, STYLES, HOLIDAYS, INVITES, MILESTONE_BIRTHDAYS, NAMED_ANNIVERSARIES, SOCIAL_PER_YEAR, BOND_CAP, INVITE_WAYS, TRADITION_LAPSE } from '../data/occasions.js';
 import { techAvailable } from './digital/tech.js';
 
@@ -431,7 +431,7 @@ export function finishYear() {
         spouse.meters.relationship = clamp(spouse.meters.relationship - 3);
         log(`Your ${ordinal(yrs)} wedding anniversary went by without being marked. ${spouse.firstName} noticed.`, 'system', 'bad');
       }
-      missedAnniversary(spouse, yrs, round); // sometimes, a scene: the card on the table (engine/bonds.js)
+      missedAnniversary(spouse, yrs, round); // sometimes, a scene: the card on the table (engine/together.js)
     }
   }
 

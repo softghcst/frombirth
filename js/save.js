@@ -120,6 +120,9 @@ function migrate(state) {
     r.outcome ??= r.convicted ? 'convicted' : 'acquitted';
     r.year ??= pl.birthYear + r.age;
   }
+  // The other relationships (engine/bonds.js): an older life has none, and none is invented for it. Whether a couple
+  // are exclusive is read from what they are (married or engaged: yes; dating: never discussed) the first time it matters.
+  state.bonds ??= { seq: 0, list: {} };
   // Travel, papers, residence history and the family's shared record (engine/globalLife.js). Nothing is invented for older lives.
   ensureGlobal(state);
   // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.
@@ -156,7 +159,12 @@ export function saveGame(state) {
   const index = read(K_INDEX, []).filter((m) => m.slotId !== state.slotId);
   index.push(meta);
   forgetDeleted('slots', state.slotId);
-  return write(K_SLOT + state.slotId, state) && write(K_INDEX, index);
+  if (!write(K_SLOT + state.slotId, state)) {
+    // Out of room: the undo history goes before the life itself does.
+    try { localStorage.removeItem(K_UNDO + state.slotId); } catch { /* storage unavailable */ }
+    if (!write(K_SLOT + state.slotId, state)) return false;
+  }
+  return write(K_INDEX, index);
 }
 
 /** A saved life as it stands, without starting to play it: for comparing timelines. */
@@ -184,6 +192,8 @@ export function forkGame(state, note) {
   if (have >= MAX_TIMELINES) return { ok: false, text: `This life already has ${MAX_TIMELINES} timelines. Delete one from the title screen to keep another.` };
   const p = state.player;
   const at = { age: p.age, month: state.month ?? 0, year: state.year, note };
+  // A timeline is the same world: the same storms (engine/disasters.js) on both roads.
+  state.worldId ??= state.timeline?.root ?? state.slotId;
   state.rngSeed = rng.state();
   const copy = JSON.parse(JSON.stringify(state));
   copy.slotId = `life_${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -239,8 +249,16 @@ export function pushUndo(state) {
   // Three years back, however long a turn is (engine/turns.js): four turns a year with three-month turns.
   const perYear = 12 / ([6, 3].includes(state.settings?.step) ? state.settings.step : 12);
   while (list.length > UNDO_YEARS * perYear) list.shift();
+  // Never more than a share of the browser's storage: the life's own save must always have room.
+  while (list.length > 1 && list.reduce((n, x) => n + x.length, 0) > UNDO_BUDGET) list.shift();
   while (list.length && !write(K_UNDO + state.slotId, list)) list.shift();
+  if (!list.length) { try { localStorage.removeItem(K_UNDO + state.slotId); } catch { /* storage unavailable */ } }
 }
+/**
+ * Characters of saved turns the undo history may hold, at most. Browser storage is about five million characters for
+ * everything, and a grown life is close to a million: undo keeps as many turns back as fit, often two or three.
+ */
+export const UNDO_BUDGET = 2500000;
 /** Where taking back the last turn would return to: { age, month }, or null. */
 export function peekUndo(slotId) {
   const list = read(K_UNDO + slotId, []);

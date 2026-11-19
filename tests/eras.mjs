@@ -118,7 +118,8 @@ section('Careers');
   check(kept.some((t) => /clerk/i.test(t)), 'a clerk taken on in 1900 keeps the title it had');
   grow(37); // 1962
   check(!unmet(CAREER_BY_ID.software).includes('There is no such job yet.'), 'computer jobs exist by the 1960s');
-  const npcJobs = Object.values(store.state.npcs).map((n) => n.life?.job).filter(Boolean);
+  // Working lives: a job now, a job lost, or a career retired from (by 1962 a 1900 family can be all children and pensioners).
+  const npcJobs = Object.values(store.state.npcs).filter((n) => n.life?.job || n.life?.lastJob || n.life?.retired);
   check(npcJobs.length > 0, `people in this life have jobs (${npcJobs.length})`);
 }
 {
@@ -165,12 +166,14 @@ section('Money');
   check(w2026.wage === localWage(50000, COUNTRIES.us) && COUNTRIES.us.currency.scale === 1, 'in the present, money is exactly as before');
   check(w1900.wage < w2026.wage / 50 && w1900.rent < w2026.rent / 50, `a 1900 wage and rent are a small fraction of today's (${w1900.wage} and ${w1900.rent} against ${w2026.wage} and ${w2026.rent})`);
   check(Math.abs(w1900.rent / w1900.wage - w2026.rent / w2026.wage) < 0.02, 'and stand in the same proportion to each other, so a life then is as affordable as now');
-  const midOf = () => { const h = estate.listings().map((x) => x.price).sort((a, b) => a - b); return h[Math.floor(h.length / 2)]; };
+  // Seven listings of mixed kinds (a flat one year, a large house the next) are too few to compare two lives by: the
+  // middle price is taken over six years' listings, about forty homes, on each side.
+  const midOf = () => { const q = store.state.player; const a0 = q.age; const h = []; for (let i = 0; i < 6; i++) { q.age = a0 + i; h.push(...estate.listings().map((x) => x.price)); } q.age = a0; h.sort((a, b) => a - b); return h[Math.floor(h.length / 2)]; };
   const p = life({ born: 1900, age: 30 });
   p.flags.livesWithParents = false; p.finance.cash = localMoney(500000, COUNTRIES.us);
   const today = (() => { const keep = store.state; const t = createLife({ countryId: 'us' }); t.player.age = 30; t.player.city = p.city; t.player.regionId = p.regionId; t.player.flags.livesWithParents = false; store.state = t; H.syncWorld(t.year); const m = midOf(); store.state = keep; H.syncWorld(keep.era.applied.year, keep.era.money); return m; })();
   const homes = estate.listings();
-  const mid = homes.map((h) => h.price).sort((a, b) => a - b)[Math.floor(homes.length / 2)];
+  const mid = midOf();
   check(homes.length && mid < today / 10, `houses in 1930 cost what they did then (a middling one: ${mid}, against ${today} today)`);
   // The yearly change moves every amount together: no money is made or lost by it.
   const cash = p.finance.cash;
@@ -219,7 +222,8 @@ section('Money');
 section('Laws');
 {
   const R = await import('../js/engine/rules.js');
-  const at = (year, countryId = 'us', gender = 'female') => { let s; do { s = createLife({ countryId, year: year - 30, gender }); } while (s.player.royal); store.state = s; s.year = year; s.player.age = 30; H.syncWorld(year); return s.player; };
+  // trans: false, so the person's legal sex is the one asked for (a transgender life is registered otherwise at birth).
+  const at = (year, countryId = 'us', gender = 'female') => { let s; do { s = createLife({ countryId, year: year - 30, gender, trans: false }); } while (s.player.royal); store.state = s; s.year = year; s.player.age = 30; H.syncWorld(year); return s.player; };
   at(1915);
   check(!R.may('vote').ok && /Women cannot vote/.test(R.may('vote').why), 'an American woman cannot vote in 1915');
   at(1921);
@@ -563,8 +567,8 @@ section('Scenes');
   check(H.sceneFits(decade.dec_suffrage, 1910, 'uk') && !H.sceneFits(decade.dec_suffrage, 1910, 'fr') && !H.sceneFits(decade.dec_suffrage, 1925, 'uk'), 'a scene belongs to its years and its places');
   check(EVENTS.filter((e) => e.years).length >= 25, `${EVENTS.filter((e) => e.years).length} scenes belong to particular decades`);
   // Many of a life's decades each bring something.
-  rng.seed(77);
   p = life({ born: 1890, age: 0, countryId: 'uk' });
+  rng.seed(77); // after the life is made (createLife draws its own seed), so the century is drawn the same way every run
   const met = new Set();
   for (let y = 0; y < 100 && p.alive; y++) { p.stats.health = 95; advanceYear(); for (const e of store.state.pendingEvents) if (decade[e.id]) { met.add(e.id); const ev = getEvent(e.id); resolveChoice(ev, 0, e.cast); } store.state.pendingEvents = []; if (!p.alive) p.alive = true; }
   check(met.size >= 6, `a British life from 1890 to 1990 met ${met.size} scenes of its decades (${[...met].join(', ')})`);

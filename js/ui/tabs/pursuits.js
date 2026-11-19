@@ -1,9 +1,9 @@
 // Pursuits tab: things to do, Digital Life, gambling, crime, moving abroad,
 // and, when it goes wrong, life inside.
-import { cityLine } from '../../engine/cities.js';
 import { store, player, country } from '../../state.js';
 import { openIdol } from '../kpop.js';
-import { esc, fmtMoney } from '../../util.js';
+import { esc, fmtMoney, localMoney } from '../../util.js';
+import * as kidLife from '../../engine/childhood.js';
 import { canGamble } from '../../engine/gambling.js';
 import { may } from '../../engine/rules.js';
 import * as law from '../../engine/justice.js';
@@ -26,6 +26,7 @@ import { openScreen } from '../animals.js';
 import '../animalHub.js';
 import * as riding from '../../engine/equestrian.js';
 import { athleticsCard, openAthletics } from '../sports.js';
+import { navRow, navGroup } from '../kit.js';
 
 async function report(api, r) {
   api.changed();
@@ -89,16 +90,31 @@ export default {
     } else {
       const gambled = p.counters.gambled * c.currency.scale;
       const things = fun.activityOptions();
+      const grow = kidLife.childActivities();
+      const jobs = kidLife.smallJobs();
+      const money = p.age >= 5 && p.age <= 17;
+      const cc = p.flags.childhood ?? {};
       el.innerHTML = `
         ${thisYearCard()}
+        ${grow.length ? `<div class="card"><h3>Growing up</h3>
+          <p class="muted" style="margin-bottom:10px">${p.age < 6 ? 'A grown-up takes you to most of these.' : 'A few of these in a year: there is school too.'}</p>
+          <div class="btn-stack">${grow.map((a) => `<button class="btn" data-kid="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.why ? ` · ${esc(a.why.toLowerCase())}` : ''}</button>`).join('')}</div>
+        </div>` : ''}
+        ${money ? `<div class="card"><h3>Pocket money</h3>
+          <p class="muted" style="margin-bottom:10px">${cc.allowance ? `You get ${fmtMoney(cc.allowance.amount, c)} a year.` : 'You have no allowance.'}${cc.saving ? ` Saving for ${esc(cc.saving.name)}: ${fmtMoney(Math.min(p.finance.cash, cc.saving.cost), c)} of ${fmtMoney(cc.saving.cost, c)}.` : ''}</p>
+          <div class="btn-stack">
+            ${kidLife.canAskAllowance() ? '<button class="btn" data-kidmoney="ask">Ask for an allowance</button>' : ''}
+            ${p.age >= 6 ? `<button class="btn" data-kidmoney="chores" ${kidLife.canDoChores() ? '' : 'disabled'}>Do your chores${kidLife.canDoChores() ? '' : ' · done this year'}</button>` : ''}
+            ${cc.saving ? `<button class="btn" data-kidmoney="buy" ${p.finance.cash >= cc.saving.cost ? '' : 'disabled'}>Buy ${esc(cc.saving.name)}</button>` : '<button class="btn" data-kidmoney="save">Save for something special</button>'}
+            ${jobs.map((j) => `<button class="btn" data-kidjob="${j.id}" ${j.done ? 'disabled' : ''}>${esc(j.label)} <small>${fmtMoney(j.pay, c)}${j.why ? ` · ${esc(j.why.toLowerCase())}` : ''}</small></button>`).join('')}
+          </div>
+        </div>` : ''}
         ${things.length ? `<div class="card"><h3>Things to do</h3>
-          <p class="muted" style="margin-bottom:10px">Each of these can be done once a year.</p>
-          <div class="btn-stack">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
+          <div class="btn-pair">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
         </div>` : ''}
         <div class="card"><h3>Gambling</h3>
           ${canGamble()
-    ? `<p class="muted" style="margin-bottom:10px">The house always has an edge. Stakes leave your account the moment you place them.</p>
-             <div class="btn-stack">
+    ? `<div class="btn-pair">
                <button class="btn" data-play="blackjack">Blackjack</button>
                <button class="btn" data-play="horses">The races</button>
                <button class="btn" data-play="lottery">Lottery tickets</button>
@@ -109,17 +125,18 @@ export default {
         ${law.canCommitCrimes() ? `<div class="card"><h3>Crime</h3>
           <div class="kv"><span>Police attention</span><span>${p.legal.heat >= 60 ? 'They are looking for you' : p.legal.heat >= 25 ? 'You are known to them' : 'None'}</span></div>
           ${p.flags.fugitive ? '<div class="kv"><span>Status</span><span>On the run</span></div>' : ''}
-          <p class="muted" style="margin-top:8px">Every crime has someone on the other end of it, and an investigation that may follow you for years.</p>
-          <button class="btn danger" data-crime style="margin-top:10px">Commit a crime</button>
+          <button class="btn danger" data-crime style="margin-top:8px">Commit a crime</button>
         </div>` : ''}
         ${legalCard()}
         ${law.isJailed() ? '' : athleticsCard()}
-        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? `<div class="card"><h3>K-pop fandom</h3><p class="muted" style="margin-bottom:10px">${p.fan ? `A fan of ${esc(store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group')} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : 'Follow a group, collect and trade photocards.'}</p><button class="btn" data-go="photocards">Photocards</button></div>` : ''}
-        <div class="card"><h3>Travel</h3><p class="muted" style="margin-bottom:10px">Trips at home and abroad, your papers, and the places you have been.</p><div class="btn-stack"><button class="btn" data-go="travel">Explore the World</button></div></div>
-        ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Riding</h3><p class="muted" style="margin-bottom:10px">${p.riding ? `${esc(riding.levelName(riding.riderLevel()))} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : 'Lessons, horses and the show ring.'}</p><button class="btn" data-go="riding">Equestrian</button></div>` : ''}
-        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><p class="muted" style="margin-bottom:10px">Once a year. With others at home, it is time together.</p><div class="btn-stack">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
+        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'Photocards', ico: 'star',
+          sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : '' })]) : ''}
+        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' })])}
+        ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding', ico: 'trophy',
+          sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : '' })]) : ''}
+        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><div class="btn-pair">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
         ${digitalCard()}
-        ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}: ${esc(cityLine(p.countryId, p.city))}.</p><div class="btn-stack">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
+        ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}.</p><div class="btn-pair">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
     }
     el.onclick = (e) => {
       if (law.isJailed()) return hubClick(e, api, joinGang);
@@ -138,6 +155,16 @@ export default {
         return pickModal({ title: tune === 'radio' ? 'What do you listen to?' : 'What do you watch?', options: opt.programs.map((x) => ({ value: x.id, label: x.label })) })
           .then((pick) => (pick ? report(api, bc.tuneIn(tune, pick)) : undefined));
       }
+      const kidAct = e.target.closest('[data-kid]')?.dataset.kid;
+      if (kidAct) return report(api, kidLife.doActivity(kidAct));
+      const kidJob = e.target.closest('[data-kidjob]')?.dataset.kidjob;
+      if (kidJob) return report(api, kidLife.doSmallJob(kidJob));
+      const kidMoney = e.target.closest('[data-kidmoney]')?.dataset.kidmoney;
+      if (kidMoney === 'ask') return report(api, kidLife.askAllowance());
+      if (kidMoney === 'chores') return report(api, kidLife.doChores());
+      if (kidMoney === 'buy') return report(api, kidLife.buySaved());
+      if (kidMoney === 'save') return pickModal({ title: 'Save for what?', options: kidLife.SAVING_GOALS.map(([name, cost]) => ({ value: name, label: name[0].toUpperCase() + name.slice(1), sub: fmtMoney(localMoney(cost, country()), country()) })) })
+        .then((pick) => (pick ? report(api, kidLife.saveFor(pick, kidLife.SAVING_GOALS.find(([n]) => n === pick)[1])) : undefined));
       const todo = e.target.closest('[data-do]')?.dataset.do;
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;

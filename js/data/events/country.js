@@ -130,7 +130,8 @@ export default [
 
   // ---------- The land and the weather ----------
   {
-    id: 'storm_warning', category: 'the weather', ageRange: [16, 90], cooldown: 7, requires: [need('hazards', 'has', 'hurricane')],
+    // Not drawn any more (weight 0): a storm's warning is engine/disasters.js's forecast now, before the storm, where this came after it.
+    id: 'storm_warning', category: 'the weather', ageRange: [16, 90], cooldown: 7, weight: 0, timing: { weather: ['hurricane', 'typhoon', 'cyclone'], minSeverity: 1, yearLong: true },
     text: 'The forecast has a name on it and an arrow pointing at your town. The authorities are telling everyone on the coast to leave by tomorrow night.',
     choices: [
       { label: 'Leave, and pay for a room inland', requires: [has(600)], outcomes: [any('You watch your own street on the news from a hotel bed. It is strange, and you are dry.', 'neutral', cash(-600), st('mood', -2))] },
@@ -142,7 +143,7 @@ export default [
     ],
   },
   {
-    id: 'earthquake_night', category: 'the weather', ageRange: [8, 90], cooldown: 12, requires: [hazard('earthquake')],
+    id: 'earthquake_night', category: 'the weather', ageRange: [8, 90], cooldown: 12, timing: { weather: ['earthquake'] },
     text: 'You wake to the bed moving across the floor. The whole building is groaning.',
     choices: [
       { label: 'Get under the table and hold on', outcomes: [any('Forty seconds that last an hour. Plaster in your hair, and nothing worse.', 'neutral', hid('discipline', 3), st('mood', -3))] },
@@ -154,7 +155,7 @@ export default [
     ],
   },
   {
-    id: 'heat_with_no_air', category: 'the weather', ageRange: [14, 95], cooldown: 6, requires: [hazard('heat')],
+    id: 'heat_with_no_air', category: 'the weather', ageRange: [14, 95], cooldown: 6, timing: { weather: ['heat'], minSeverity: 1 },
     text: 'It has been over forty degrees for nine days. The night never cools, and the old and the poor are filling the hospitals.',
     choices: [
       { label: 'Run the air conditioning day and night', requires: [has(300)], outcomes: [any('The bill is frightening. You sleep, which is more than most of the city can say.', 'neutral', cash(-300), st('health', 1))] },

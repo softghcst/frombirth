@@ -1,79 +1,37 @@
-// STORYLINE: the people in a life, between the player's own actions. Never drawn
-// at random: engine/bonds.js queues these from what is actually happening (an
-// affair that comes out, a group of friends, an anniversary that went by), and
-// their choices go back to it through the `bond` effect.
+// Scenes of the relationships kept by engine/bonds.js. None is drawn by chance: each is queued by that engine when the
+// thing it is about has really happened to these two people (queuedOnly), and each choice goes back to it (bondChoice).
+import { any } from '../helpers.js';
+
 const b = (value) => ({ type: 'bond', value });
-const out = (text, ...effects) => [{ on: 'always', text, effects }];
+const scene = (id, text, choices) => ({ id, category: 'marriage', ageRange: [18, 120], queuedOnly: true, text,
+  choices: choices.map(([label, value, line, tone = 'neutral']) => ({ label, outcomes: [any(line, tone, b(value))] })) });
 
-/** @type {import('../../../types.js').GameEvent[]} */
 export default [
-  // ---------- An affair comes out ----------
-  {
-    id: 'bond_affair_found', category: 'romance', ageRange: [16, 120], queuedOnly: true, cooldown: 0,
-    text: 'You know now. {partner} has been seeing someone else, for {time}. {partner} is sitting across from you, waiting for you to say something.',
-    choices: [
-      { label: 'Forgive them, and try to rebuild', outcomes: out('You said you would try. Neither of you knows yet whether trying is enough.', b('affair:forgive')) },
-      { label: 'Go to counseling together', outcomes: out('You found a counselor, and a time each week to say the hard things.', b('affair:counsel')) },
-      { label: 'Ask for time apart', outcomes: out('You asked for space. {partner} packed a bag without arguing.', b('affair:space')) },
-      { label: 'End it', outcomes: out('You told {partner} it was over.', b('affair:leave')) },
-    ],
-  },
-  {
-    id: 'bond_affair_confession', category: 'romance', ageRange: [16, 120], queuedOnly: true, cooldown: 0,
-    text: '{partner} asks to talk, and cannot look at you. "I have to tell you something. I have been seeing someone. It is over, but you deserve to know."',
-    choices: [
-      { label: 'Thank them for telling you, and try to rebuild', outcomes: out('It hurt more than anything. But they told you themselves, and that counts for something.', b('affair:forgive')) },
-      { label: 'Go to counseling together', outcomes: out('You agreed to try, with help.', b('affair:counsel')) },
-      { label: 'End it', outcomes: out('You told {partner} the truth came too late.', b('affair:leave')) },
-    ],
-  },
-
-  // ---------- Friends, as a group ----------
-  {
-    id: 'bond_circle_night', category: 'friends', ageRange: [8, 120], queuedOnly: true, cooldown: 0,
-    text: 'The group chat lights up: {a} wants everyone together this weekend, {b} included. It has been too long.',
-    choices: [
-      { label: 'Host it at your place', outcomes: out('Everyone came. Someone brought a guitar. It went on until the neighbors knocked.', b('circle:host')) },
-      { label: 'Go along', outcomes: out('You went, and laughed more than you had in months.', b('circle:go')) },
-      { label: 'Skip it this time', outcomes: out('You sent your apologies. The photos looked fun.', b('circle:skip')) },
-    ],
-  },
-  {
-    id: 'bond_circle_rift', category: 'friends', ageRange: [10, 120], queuedOnly: true, cooldown: 0,
-    text: '{a} and {b} have fallen out, badly, and each of them has asked you to see it their way. The rest of the group is waiting to see what you do.',
-    choices: [
-      { label: 'Take {a}\'s side', outcomes: out('You backed {a}. {b} has gone quiet in the group.', b('circle:sideA')) },
-      { label: 'Take {b}\'s side', outcomes: out('You backed {b}. {a} has not forgiven you.', b('circle:sideB')) },
-      { label: 'Get them in a room together', outcomes: out('You got them both to the same table.', b('circle:mediate')) },
-      { label: 'Stay out of it', outcomes: out('You stayed out of it, and saw both of them separately for a while.', b('circle:neutral')) },
-    ],
-  },
-  {
-    id: 'bond_circle_trip', category: 'friends', ageRange: [16, 120], queuedOnly: true, cooldown: 0,
-    text: '{a} has an idea: the whole group, away together for a weekend. {b} has already said yes. It would cost about {cost}.',
-    choices: [
-      { label: 'Count me in', outcomes: out('You went. There are photos nobody is allowed to post.', b('circle:trip')) },
-      { label: 'Say you cannot afford it', outcomes: out('You stayed home. {a} said there would be a next time.', b('circle:noTrip')) },
-    ],
-  },
-  {
-    id: 'bond_circle_news', category: 'friends', ageRange: [16, 120], queuedOnly: true, cooldown: 0,
-    text: '{a} has big news for the group: {news}. Everyone is planning something.',
-    choices: [
-      { label: 'Organize the celebration', outcomes: out('You organized it, and {a} said it was the nicest thing anyone had done for them.', b('circle:celebrate')) },
-      { label: 'Send your congratulations', outcomes: out('You sent your love, and a card.', b('circle:card')) },
-    ],
-  },
-
-  // ---------- An anniversary that went by ----------
-  {
-    id: 'bond_forgot_anniversary', category: 'romance', ageRange: [18, 120], queuedOnly: true, cooldown: 0,
-    text: 'It was your {years} wedding anniversary, and you forgot. {spouse} did not. There is a card on the table, unopened, addressed to you.',
-    choices: [
-      { label: 'Apologize with a real present', outcomes: out('You apologized properly, and the present helped.', b('anniv:gift')) },
-      { label: 'Book a weekend away to make up for it', outcomes: out('You booked the weekend that night.', b('anniv:trip')) },
-      { label: 'Say sorry, and mean it', outcomes: out('You said sorry. {spouse} said it was fine. It was not, quite.', b('anniv:sorry')) },
-      { label: 'Point out that they forgot yours once', outcomes: out('You brought up the time they forgot. That did not help.', b('anniv:defend')) },
-    ],
-  },
+  scene('romance_complicated_001', 'A Complicated Romance. You have been seeing {them} in private for some time, and lately they have gone quiet at the end of every evening. Tonight they say it: "I care about you, but I do not want to keep pretending this does not exist. What are we doing?"', [
+    ['Have an honest conversation', 'complicated:honest', 'You tell {them} how you feel, and what you do not know.'],
+    ['Discuss making the relationship public', 'complicated:public', 'You say that you may be ready for it not to be a secret.'],
+    ['Explain you are not ready for more', 'complicated:notReady', 'You tell {them} that this, as it is, is what you can give.'],
+    ['End the relationship respectfully', 'complicated:end', 'You tell {them} that it would be kinder to stop.'],
+  ]),
+  scene('bond_promise', 'A Promise You Made. A year ago you told {them} that soon it would not be a secret. They have not mentioned it since. Tonight they do: "You said soon."', [
+    ['Follow through', 'promise:keep', 'You do what you said you would.'],
+    ['Discuss changing the plan', 'promise:change', 'You ask {them} for a little longer, and say why.'],
+    ['Explain that things have changed', 'promise:explain', 'You tell {them} that you cannot do it after all.', 'bad'],
+  ]),
+  scene('bond_answer', 'They Need an Answer. {them} has given you the time you asked for. "I am not asking for everything. I am asking what this is."', [
+    ['Choose them, openly', 'answer:commit', 'You tell {them} that you want this, and not in secret.'],
+    ['Ask to go on as you are', 'answer:asIs', 'You say that you want things to stay as they are.'],
+    ['Let them go', 'answer:end', 'You tell {them} they deserve an answer, and that the answer is no.'],
+  ]),
+  scene('bond_questions', 'Someone Is Asking Questions. {love} has noticed something: an evening you could not account for, a name that came up twice. They are not accusing you. They ask, carefully, whether there is anything they should know.', [
+    ['Tell the truth', 'questions:truth', 'You tell {love} about {them}.'],
+    ['Say there is nothing', 'questions:deny', 'You say there is nothing to know.'],
+    ['Say there is nothing, and end it with {them}', 'questions:end', 'You say there is nothing to know, and decide that soon there will not be.'],
+  ]),
+  scene('bond_truth', 'The Truth Comes Out. {love} knows about {them}: {how}. They are standing in the kitchen with their coat still on. "Is it true?"', [
+    ['Tell the whole truth, and apologize', 'truth:truth', 'You tell {love} everything, and say you are sorry.'],
+    ['End it with {them}, and ask for another chance', 'truth:another', 'You say it is over with {them} as of now, and ask {love} not to give up on you.'],
+    ['Ask whether the two of you could agree different terms', 'truth:boundaries', 'You say that perhaps the promise you made each other was the wrong one.'],
+    ['Accept that it is over', 'truth:separate', 'You do not ask {love} to stay.', 'bad'],
+  ]),
 ];

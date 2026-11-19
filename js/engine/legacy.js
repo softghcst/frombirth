@@ -138,7 +138,8 @@ function newRoles(old, h) {
     else if (mine(n)) role = 'child';
     else if ((n.parentIds ?? []).some((id) => myKids.has(id))) role = 'grandchild';
     else if (h.role === 'child') {
-      if (n.role === 'child') role = 'sibling';
+      // A child of the same parent by somebody else is a half-sibling (engine/bonds.js).
+      if (n.role === 'child') { role = 'sibling'; if (parents.size && n.parentIds?.length && !sharesParent(n)) n.flags.half = true; }
       else if (parents.has(n.id) || n.role === 'spouse') role = 'parent';
       else if (n.role === 'parent') role = 'grandparent';
       else if (n.role === 'sibling') role = 'relative';
@@ -270,6 +271,8 @@ export function continueAs(npcId) {
 
   const entry = (text, tone = 'neutral') => ({ age: h.age, text, kind: 'system', tone });
   const next = {
+    // The next generation lives in the same world as the last: the same weather (engine/disasters.js).
+    worldId: old.worldId ?? old.timeline?.root ?? old.slotId,
     schemaVersion: SCHEMA_VERSION, spelling: 'us', slotId: uid('life'), createdAt: Date.now(), updatedAt: Date.now(), year: old.year,
     player, npcs, journal: pastEntries(h), market: old.market, eventHistory: [], pendingEvents: [],
     rngSeed: rng.state(), settings: old.settings ?? { theme: 'auto' },

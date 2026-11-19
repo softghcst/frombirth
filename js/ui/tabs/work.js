@@ -24,6 +24,7 @@ import { MAJORS, MAJOR_BY_ID } from '../../data/majors.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { careerCard, careerButtons, careerHandlers } from './workCareer.js';
+import { navRow, icon } from '../kit.js';
 
 const FUNDING = { employer: 'Paid by your employer', scholarship: 'Scholarship', parents: 'Paid by parents', loan: 'Student loan',
   self: 'Paying your own way', public: 'Publicly funded' };
@@ -337,7 +338,7 @@ async function quitJob(api) {
 
 function educationCard(p, c) {
   const e = p.education;
-  if (e.stage === 'none') return '<p class="muted">You have not started school yet.</p>';
+  if (e.stage === 'none') return '<p class="muted">Not started yet.</p>';
   const status = e.enrolled
     ? `Enrolled, year ${e.yearInStage + 1}${edu.isHigher(e.stage) ? ` of ${PROGRAMS[e.stage].years}` : ''}`
     : e.expelled ? 'Expelled' : e.droppedOut ? 'Dropped out' : 'Not enrolled';
@@ -345,8 +346,8 @@ function educationCard(p, c) {
   const rows = [
     ['Stage', edu.educationLine(p)],
     ['Status', status],
-    ...(e.enrolled && sch.atSchool(p) ? [['Overall mark', e.gpa ? sch.mark(e.gpa) : 'No marks yet'], ['Days skipped this year', String(e.absences)]]
-      : e.enrolled ? [['Marks', e.gpa ? sch.degreeMark(e.gpa) : 'No grades yet'], ['Absences this year', String(e.absences)]] : []),
+    ...(e.enrolled && sch.atSchool(p) ? [['Overall mark', e.gpa ? sch.mark(e.gpa) : 'No marks yet'], ['Days skipped', String(e.absences)]]
+      : e.enrolled ? [['Marks', e.gpa ? sch.degreeMark(e.gpa) : 'No grades yet'], ['Absences', String(e.absences)]] : []),
     ...(e.enrolled && edu.isHigher(e.stage) ? [['Tuition', `${FUNDING[e.funding] ?? '—'}${e.aid > 0 && e.aid < 1 ? ` · ${Math.round(e.aid * 100)}% waived` : ''}`]] : []),
     ...(e.enrolled && e.partTime ? [['Pace', 'Part-time, alongside work']] : []),
     ...(e.thesis ? [['Thesis', `${e.thesis.progress}% written${e.thesis.published ? ` · ${e.thesis.published} published` : ''}`]] : []),
@@ -372,7 +373,7 @@ function commitments(p, c) {
     const rent = edu.housingCost();
     rows.push(['Housing', `${HOUSING[e.housing]?.label ?? 'Your own home'}${mate ? ` with ${mate.firstName}` : ''}${rent ? `, ${fmtMoney(rent, c)} a year` : ''}`]);
   }
-  return rows.length ? kv(rows) : '<p class="muted">Nothing on your plate beyond the basics.</p>';
+  return rows.length ? kv(rows) : '';
 }
 
 /** People with a title: mentors, managers and others who can open doors. */
@@ -387,6 +388,15 @@ function contacts() {
   }).join('')}</div>`;
 }
 
+/** Work & School actions that open another screen or a list to choose from, and their icons. */
+const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family: 'family', club: 'star', priority: 'compass', tutor: 'book',
+  clique: 'people', housing: 'home', switch: 'book', exam: 'book', apply: 'compass', gap: 'globe', hub: 'briefcase', findwork: 'briefcase',
+  myfame: 'star', myidol: 'star', fame: 'sparkle' };
+/** Opposite choices, shown side by side: Study harder | Slack off. */
+const PAIRED = new Set(['study', 'slack', 'skip', 'harder']);
+/** Leaving: restrained, set apart, and confirmed where the game already asks. */
+const DANGER = new Set(['drop', 'quit', 'quitcareer']);
+
 export default {
   id: 'work', title: 'Work & School', short: 'Work',
   icon: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>',
@@ -397,45 +407,58 @@ export default {
     const k = p.career;
 
     const school = [];
-    if (sch.atSchool(p) || (e.history ?? []).length) school.push(['school', sch.atSchool(p) ? 'Your school: subjects, class and teachers' : 'Your school years']);
+    if (sch.atSchool(p) || (e.history ?? []).length) school.push(['school', sch.atSchool(p) ? 'Your school' : 'Your school years']);
     if (e.enrolled && p.age >= 6) {
       school.push(['study', 'Study harder'], ['slack', 'Slack off']);
       if (p.age >= 10) school.push(['skip', edu.isHigher(e.stage) ? 'Skip lectures' : 'Skip school']);
     }
-    if (edu.canSetPriority()) school.push(['priority', 'Choose what comes first this year']);
-    if (edu.canAskForTutor()) school.push(['tutor', 'Ask your parents for a tutor']);
+    if (edu.canSetPriority()) school.push(['priority', 'What comes first']);
+    if (edu.canAskForTutor()) school.push(['tutor', 'Ask for a tutor']);
     if (edu.canJoinClubs()) school.push(['club', 'Clubs and classes']);
     if (e.enrolled && e.stage === 'high') school.push(['clique', 'Choose your crowd']);
-    if (campusLife.atUniversity()) school.unshift(['campus', 'University life: studies, people, experience']);
+    if (campusLife.atUniversity()) school.unshift(['campus', 'University life']);
     if (e.enrolled && edu.isHigher(e.stage)) school.push(['housing', 'Change where you live']);
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);
     const leftSchool = !e.enrolled && (e.degrees.some((d) => d.type === 'high') || p.age >= 16);
-    if (uni.canPlan()) school.push(['uniplan', uni.plan()?.sent ? 'University: your answers' : 'University: places and applications']);
+    if (uni.canPlan()) school.push(['uniplan', uni.plan()?.sent ? 'University answers' : 'University']);
     if (adult.examOptions().length) school.push(['exam', `Sit the ${adult.examOptions()[0].name}`]);
     if (leftSchool) school.push(['apply', 'Plan what comes next']);
     if (edu.canTakeGapYear()) school.push(['gap', 'Take a gap year']);
     if (edu.canDropOut()) school.push(['drop', 'Drop out']);
-    { const fr = familyRecord(); if (fr.past.length || fr.kids.length || p.age >= 18) school.push(['family', 'Family schooling, across the generations']); }
+    { const fr = familyRecord(); if (fr.past.length || fr.kids.length || p.age >= 18) school.push(['family', 'Family schooling']); }
 
     const work = careerButtons();
 
-    const btns = (list) => (list.length ? `<div class="btn-stack" style="margin-bottom:14px">
-      ${list.map(([id, label]) => `<button class="btn ${['drop', 'quit', 'quitcareer'].includes(id) ? 'danger' : ['apply', 'findwork'].includes(id) && !k.careerId ? 'primary' : ''}" data-act="${id}">${esc(label)}</button>`).join('')}
-    </div>` : '');
+    // Afterglow: screens open from navigation rows, opposite choices sit side by side, and leaving is set apart.
+    const btns = (list) => {
+      if (!list.length) return '';
+      const nav = list.filter(([id]) => NAV_ICONS[id]);
+      const pairs = list.filter(([id]) => PAIRED.has(id));
+      const danger = list.filter(([id]) => DANGER.has(id));
+      const rest = list.filter(([id]) => !NAV_ICONS[id] && !PAIRED.has(id) && !DANGER.has(id));
+      const btn = ([id, label], cls = '') => `<button class="btn${cls}" data-act="${id}">${esc(label)}</button>`;
+      return `${pairs.length ? `<div class="btn-pair">${pairs.map((b) => btn(b)).join('')}</div>` : ''}
+        ${rest.length ? `<div class="btn-pair">${rest.map((b) => btn(b)).join('')}</div>` : ''}
+        ${nav.length ? `<div class="nav-group">${nav.map(([id, label]) => {
+    const [main, sub] = label.split(/: (.+)/);
+    const lead = ['apply', 'findwork'].includes(id) && !k.careerId;
+    return navRow({ attrs: `data-act="${id}"`, label: main, sub: sub ?? '', ico: NAV_ICONS[id], tone: lead ? 'peach' : '' });
+  }).join('')}</div>` : ''}
+        ${danger.length ? `<div class="btn-pair">${danger.map((b) => btn(b, ' danger')).join('')}</div>` : ''}
+        <div style="height:4px"></div>`;
+    };
 
     const past = k.history.length
       ? k.history.map((h) => `<div class="kv"><span>${esc(h.title)}${h.employer ? `, ${esc(h.employer)}` : ''}</span><span>Age ${h.from}–${h.to}</span></div>`).join('')
       : '<p class="muted">No past jobs.</p>';
 
     el.innerHTML = `
-      <div class="card"><h3>Education</h3>${educationCard(p, c)}</div>
-      ${btns(school)}
-      <div class="card"><h3>Commitments</h3>${commitments(p, c)}</div>
+      <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
+      ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
       ${contacts()}
-      ${careerCard()}
-      ${btns(work)}
+      ${careerCard().replace(/<\/div>\s*$/, () => `${btns(work)}</div>`)}
       ${politicsCard()}
-      <div class="card"><h3>Work history</h3>${past}</div>`;
+      ${k.history.length ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('archive')}</span><h3>Past jobs</h3></div>${past}</div>` : ''}`;
 
     el.onclick = (ev) => {
       const pol = ev.target.closest('[data-pol]')?.dataset.pol;

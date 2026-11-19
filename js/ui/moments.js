@@ -102,7 +102,7 @@ export function openMoments(api) {
           <div class="avatar glyph" aria-hidden="true">${x.done ? '✓' : ICON[g]}</div>
           <div class="main"><strong>${esc(x.label)}</strong><small>${esc(x.done ? 'Done this year.' : x.ok ? x.sub : x.reason)}</small></div>
         </button>`).join('')}`;
-    }).join('') + '<p class="muted mm-note">Anything you do not organize happens, or does not, when you age up. Family traditions carry on by themselves unless you skip them.</p>';
+    }).join('') + '';
   };
   const traditionsHtml = () => {
     const list = mo.traditions();
@@ -110,7 +110,7 @@ export function openMoments(api) {
     return list.map((t) => { const host = t.hostId === 'you' ? 'You host it' : t.hostId ? `${store.state.npcs[t.hostId]?.firstName ?? 'Someone'} hosts it` : 'Nobody hosts it';
       return `<button class="row" data-trad="${t.id}"><div class="avatar glyph" aria-hidden="true">🧺</div>
         <div class="main"><strong>${esc(t.name)}</strong><small>${t.status === 'active' ? `${host} · since ${t.founded} · kept ${t.count} ${t.count === 1 ? 'time' : 'times'}` : t.status === 'lapsed' ? `Faded · last kept ${t.lastYear}` : 'Ended'}</small></div></button>`; }).join('')
-      + '<p class="muted mm-note">Traditions belong to the family. When you die they carry on with whoever takes your place.</p>';
+      + '';
   };
   const pastHtml = () => {
     const years = [...(player().momentsYears ?? [])].reverse();

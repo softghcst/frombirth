@@ -223,7 +223,7 @@ function pageAccounts() {
     ${publicLifeCard()}
     ${schoolCard()}
     <div class="section-label">Your accounts</div>
-    ${mine.length ? mine.map(accountCard).join('') : '<p class="empty">You are not on any platform. That is a perfectly good way to live.</p>'}
+    ${mine.length ? mine.map(accountCard).join('') : '<p class="empty">No accounts yet.</p>'}
     <button class="btn primary" data-do="newAccount" style="margin-top:10px">Open an account</button>`;
 }
 
@@ -289,7 +289,7 @@ function proCard(a, mine) {
   const refs = mine ? pro.referralOptions() : [];
   return `<div class="card"><h3>Experience</h3>${cv.jobs.slice().reverse().map((j) => `<div class="kv"><span>${esc(j.title)}</span><span>${j.current ? `since age ${j.from}` : `ages ${j.from}–${j.to}`}</span></div>`).join('') || '<p class="muted">No jobs yet.</p>'}
     <h3 style="margin-top:12px">Education</h3>${cv.degrees.map((d) => `<div class="kv"><span>${esc(deg(d))}</span><span>age ${d.age}</span></div>`).join('') || '<p class="muted">Nothing listed.</p>'}
-    <p class="muted" style="margin-top:8px">This is your real record. Nothing on it can be embellished.</p></div>
+    </div>
     ${refs.length ? `<div class="section-label">Contacts who could refer you</div>${refs.map((r) => `<div class="row">${face(r.npc.id)}<div class="main"><strong>${esc(r.npc.firstName)} ${esc(r.npc.lastName)}</strong><small>${esc(r.npc.life.job.title)} · ${esc(r.career.name)}${r.linked ? ' · connected' : ''}</small></div><div class="side"><button class="btn small" data-referral="${r.npc.id}" ${r.why ? 'disabled' : ''}>Ask for a referral</button></div></div>`).join('')}` : ''}`;
 }
 
@@ -411,7 +411,7 @@ function datingCard() {
   const blocks = comm.datingBlocks();
   const matches = comm.openMatches();
   return `<div class="card" style="margin-top:14px"><h3>Online dating on ${esc(PLATFORM_BY_ID.kindling.name)}</h3>
-    <p class="muted" style="margin-bottom:10px">Adults only. Matching is a start, not a relationship: you talk, and only then decide whether to meet.</p>
+    <p class="muted" style="margin-bottom:10px">Adults only.</p>
     ${!has ? '<button class="btn" data-do="datingProfile">Make a dating profile</button>' : blocks.length ? `<p class="muted">${esc(blocks[0])}</p>` : `<div class="dl-btns"><button class="btn small primary" data-do="findMatches">See new matches</button><button class="btn small" data-do="datingPrefs">What you are looking for</button></div>`}
     ${matches.map((m) => { const n = core.charOf(m.npcId); return `<div class="row">${face(n.id)}<div class="main"><strong>${esc(n.firstName)}, ${n.age}</strong><small>${m.stage === 'talking' ? `talking · ${m.chats} conversations` : 'new match'} · likes ${esc(TOPIC_BY_ID[n.flags.interest]?.name.toLowerCase() ?? 'many things')} · ${Math.round(m.compat * 100)}% on paper</small></div><div class="side dl-btns"><button class="btn small" data-match="chat" data-id="${m.id}">Message</button>${m.stage === 'talking' && m.chats >= 2 ? `<button class="btn small" data-match="meet" data-id="${m.id}">Meet</button>` : ''}<button class="btn small" data-match="unmatch" data-id="${m.id}">Unmatch</button></div></div>`; }).join('')}
   </div>`;
@@ -444,10 +444,10 @@ function pageCreate() {
   if (!mine.length) return '<p class="empty">You need an account to post anything.</p><button class="btn primary" data-do="newAccount">Open an account</button>';
   const trends = creator.currentTrends();
   return `<div class="card"><h3>Make a post</h3>
-    <p class="muted" style="margin-bottom:10px">Choose where it goes, what it is, and who can see it. You will see it before it goes out.</p>
+    
     <button class="btn primary" data-do="compose">Start a post</button></div>
-    ${trends.length ? `<div class="card"><h3>Trending now</h3>${trends.map((t) => `<div class="kv"><span>${esc(t.name)} · ${esc(pl(t.platformId).name)}</span><span>${esc(t.text)}</span></div>`).join('')}<p class="muted" style="margin-top:8px">Joining a trend is optional. Plenty of people never do.</p></div>` : ''}
-    <div class="card"><h3>Projects</h3><p class="muted" style="margin-bottom:10px">Bigger things — a recorded performance, a documentary, a photo collection — are made over several sessions in Creator Studio, and published when you choose.</p>
+    ${trends.length ? `<div class="card"><h3>Trending now</h3>${trends.map((t) => `<div class="kv"><span>${esc(t.name)} · ${esc(pl(t.platformId).name)}</span><span>${esc(t.text)}</span></div>`).join('')}</div>` : ''}
+    <div class="card"><h3>Projects</h3>
     <button class="btn" data-section="studio">Open Creator Studio</button></div>`;
 }
 
@@ -468,7 +468,7 @@ function pageStudio() {
   const chans = creator.channels(p.id).filter((a) => a.status !== 'deleted');
   if (!chans.length) {
     const eligible = acc.activeAccountsOf(p.id).filter((a) => pl(a.platformId).audience === 'followers');
-    return `<div class="card"><h3>Creator Studio</h3><p class="muted" style="margin-bottom:10px">Turning an account into a creator channel is a choice. Most people never make one, and that is fine.</p>
+    return `<div class="card"><h3>Creator Studio</h3>
       ${eligible.length ? '<button class="btn primary" data-do="startChannel">Start a creator channel</button>' : '<p class="muted">You need an account on a platform with followers first.</p>'}</div>
       ${creator.projectsOf().length ? libraryHtml() : ''}`;
   }
@@ -545,7 +545,7 @@ function studioAudience(a) {
       <div class="kv"><span>People you know</span><span>${named.length}</span></div>
       <div class="kv"><span>Everyone else</span><span>${n0(a.audience)}</span></div>
       <div class="kv"><span>Loyalty</span><span>${Math.round(r.loyalty)}/100</span></div>
-      <p class="muted" style="margin-top:8px">Most followers are a crowd, not people you know. The ones below are real people in your world.</p></div>
+      </div>
     ${named.map((f) => `<div class="row">${face(f.ownerId)}<div class="main"><strong>${esc(core.nameOf(f.ownerId))}</strong><small>@${esc(f.handle)}</small></div></div>`).join('') || '<p class="empty">Nobody you know follows this channel yet.</p>'}`;
 }
 
@@ -612,7 +612,7 @@ function pageReputation() {
   const pub = acc.activeAccountsOf(p.id).find((a) => a.visibility === 'public');
   return `<div class="card"><h3>How you are seen online</h3>
       ${meterHtml('Recognition', r.recognition, true)}${meterHtml('Credibility', r.credibility, true)}${meterHtml('Loyalty', r.loyalty, true)}
-      <p class="muted" style="margin-top:8px">Recognition is how many people know your name. Credibility is how far they trust you. They are not the same thing.</p></div>
+      </div>
     ${civic.mediaOffers().length ? `<div class="section-label">Public attention</div>${civic.mediaOffers().map((o) => `<div class="dl-card"><strong>${esc(o.outlet)}</strong><p>${esc(civic.MEDIA.find((m) => m.id === o.media).label)}. Being known is not automatically good: it takes time, and not everything you say will come across.</p><div class="dl-btns"><button class="btn small primary" data-media="yes" data-id="${o.id}">Accept</button><button class="btn small" data-media="no" data-id="${o.id}">Decline</button></div></div>`).join('')}` : ''}
     ${cvs.length ? `<div class="section-label">Controversies</div>${cvs.map((c) => `<div class="dl-card"><strong>${esc(rep.CONTROVERSY[c.kind].name)}</strong> <small class="muted">${c.year} · ${esc({ rumor: 'unverified', verified: 'verified', cleared: 'cleared', resolved: 'resolved', allegation: 'alleged' }[c.status] ?? c.status)}${c.resolvedYear ? ` · settled ${c.resolvedYear}` : ''}</small>
         <p>${esc(c.text ?? '')}</p>
@@ -659,7 +659,7 @@ function pageHistory() {
 
 function pageArchive() {
   const list = legacy.ancestors();
-  return `<div class="card"><h3>Family Archive</h3><p class="muted">The people your family came from: their life stories, and what they left online that they meant others to see. Their private messages stay private.</p></div>
+  return `<div class="card"><h3>Family Archive</h3></div>
     ${list.length ? `<div class="section-label">Digital legacy</div>${list.map((a) => `<button class="row" data-ancestor="${a.id}">${face(a.id, '', { inert: true })}<div class="main"><strong>${esc(a.name)}</strong><small>${a.born}–${a.died} · ${esc(erasBetween(a.born, a.died).map((x) => x.name).join(' → '))} · ${a.accounts.length ? `${a.accounts.length} account${a.accounts.length === 1 ? '' : 's'}` : 'no accounts: a life before the internet, or away from it'}</small></div><div class="side">›</div></button>`).join('')}`
     : '<p class="empty">When you carry the family on as someone\'s heir, their story is kept here.</p>'}`;
 }
@@ -891,7 +891,7 @@ export function openDigitalLife(api, o = {}) {
   if (!sections.some(([id]) => id === v.section)) { v.section = sections[0][0]; v.trail = []; }
 
   const m = openModal(`
-    <div class="dyn-head"><div><div class="eyebrow">${esc(country().name)} · ${store.state.year}</div><h2>Digital Life</h2><p class="muted dl-sub">Your connections, your creativity, your world.</p></div>
+    <div class="dyn-head"><div><div class="eyebrow">${esc(country().name)} · ${store.state.year}</div><h2>Digital Life</h2></div>
       <button class="icon-btn" data-close aria-label="Close Digital Life">✕</button></div>
     <nav class="dl-nav" aria-label="Digital Life sections">${sections.map(([id, label]) => `<button data-section="${id}">${esc(label)}${id === 'messages' ? '<span data-unread></span>' : ''}</button>`).join('')}</nav>
     <div class="dyn-body dl-body" data-body></div>`, { dismissable: true });
@@ -1084,6 +1084,6 @@ export function digitalCard() {
   const mine = store.state.digital ? acc.activeAccountsOf(p.id) : [];
   const unread = store.state.digital ? msg.inbox().reduce((s, t) => s + (t.muted ? 0 : t.unread), 0) : 0;
   return `<div class="card dl-entry"><h3>Digital Life</h3>
-    <p class="muted" style="margin-bottom:10px">${online ? (mine.length ? `${mine.length} account${mine.length === 1 ? '' : 's'}: ${mine.slice(0, 3).map((a) => `@${esc(a.handle)} on ${esc(pl(a.platformId).name)}`).join(', ')}.` : 'Your connections, your creativity, your world.') : `It is ${store.state.year}: letters, visits${tech.techAvailable('landline') ? ' and the telephone' : ''}.`}${unread ? ` ${unread} unread.` : ''}</p>
+    <p class="muted" style="margin-bottom:10px">${online ? (mine.length ? `${mine.length} account${mine.length === 1 ? '' : 's'}: ${mine.slice(0, 3).map((a) => `@${esc(a.handle)} on ${esc(pl(a.platformId).name)}`).join(', ')}.` : 'No accounts yet.') : `It is ${store.state.year}: letters, visits${tech.techAvailable('landline') ? ' and the telephone' : ''}.`}${unread ? ` ${unread} unread.` : ''}</p>
     <button class="btn" data-digital>${online ? 'Open Digital Life' : 'Keep in touch'}</button></div>`;
 }

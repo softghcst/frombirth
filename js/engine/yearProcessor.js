@@ -8,10 +8,15 @@ import { tickEquestrian } from './equestrian.js';
 import { tickLife } from './animalLife.js';
 import { tickArcs } from './animalArcs.js';
 import { tickSports } from './sportsLife.js';
+import { tickDisasters } from './disasters.js';
 import { tickBreeding } from './animalBreeding.js';
 import { tickFamily } from './familyGen.js';
 import { tickRomance } from './romance.js';
 import { tickBonds } from './bonds.js';
+import { tickEstate } from './estateReview.js';
+import { tickChildhood } from './childhood.js';
+import { tickLoveStories, teenAfterBirth } from './loveStories.js';
+import { tickTogether } from './together.js';
 import { tickChildren } from './children.js';
 import { tickLives } from './npcLives.js';
 import { tickEducation } from './education.js';
@@ -90,7 +95,8 @@ export const YEARLY = [
   ['relationships', () => booked('auto', 'Family and friends', tickRelationships)],
   ['family', tickFamily],
   ['romance', () => booked('auto', 'Love and marriage', tickRomance)],
-  ['bonds', () => booked('auto', 'Friends and family', tickBonds)], // affairs, friend groups (engine/bonds.js)
+  ['bonds', () => booked('auto', 'Love and marriage', tickBonds)], // the other relationships, and who has found out (engine/bonds.js)
+  ['together', () => booked('auto', 'Friends and family', tickTogether)], // friend groups, a partner who strays (engine/together.js)
   ['children', () => booked('childcare', 'Your children', tickChildren)],
   ['npcLives', tickLives],
   ['education', () => booked('education', 'Fees and the cost of studying', tickEducation)],
@@ -106,6 +112,7 @@ export const YEARLY = [
   ['digital', () => booked('auto', 'Digital life', tickDigital)], // platforms, people's digital lives, creators, reputation (engine/digital)
   ['identity', () => booked('health', 'Health and identity', tickIdentity)],
   ['living', () => booked('losses', 'Rising prices and losses', tickLiving)],
+  ['disasters', () => booked('losses', 'Storms, floods and other disasters', () => tickDisasters())], // the year's weather (engine/disasters.js)
   ['royalty', () => booked('auto', 'The royal household', tickRoyalty)],
   ['politics', () => booked('auto', 'Politics', tickPolitics)],
   ['scandal', () => booked('auto', 'Scandal', tickScandal)],
@@ -141,6 +148,9 @@ export const YEARLY = [
   ['animalArcs', tickArcs], // stories that take years
   ['sport', () => booked('sport', 'Sport', () => tickSports())], // the athletic year: training, seasons and events, and what they cost and paid
   ['travel', () => booked('travel', 'Travel, papers and life abroad', tickGlobalLife)],
+  ['loveStories', () => { teenAfterBirth(); tickLoveStories(); }], // which of the true stories are told this year (engine/loveStories.js)
+  ['childhood', tickChildhood], // pocket money, if the family can still pay it (engine/childhood.js)
+  ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
   ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],
   ['sense', tickSense], ['moneyReview', tickMoneyReview],
 ];

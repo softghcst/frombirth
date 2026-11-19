@@ -207,5 +207,5 @@ export function raceRows() {
     ${v.rival ? `<div class="kv"><span>Against</span><span>${esc(v.rival.name)}${v.rivalParty ? `, ${esc(v.rivalParty.name)}` : ''}</span></div>` : ''}
     <div class="kv"><span>Where it stands</span><span>${esc(stage)}</span></div>
     ${v.poll ? `<div class="kv"><span>${v.poll.own ? 'Your own poll' : 'Latest poll'}</span><span>${v.national ? 'Your party' : 'You'} ${v.poll.me}% (±${v.poll.margin})</span></div>` : ''}
-    <p class="muted" style="margin-top:6px">If the year ends before you finish, the rest of the campaign runs itself and the vote is held.</p>`;
+    `;
 }

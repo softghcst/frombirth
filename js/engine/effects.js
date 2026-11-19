@@ -16,7 +16,7 @@ import { defend } from './campaign.js';
 import { decide } from './government.js';
 import { decide as digitalChoice } from './digital/stories.js';
 import { decide as eraChoice } from './eraScenes.js';
-import { sceneChoice as bondChoice } from './bonds.js';
+import { togetherChoice } from './together.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
@@ -35,11 +35,15 @@ import * as fame from './reputation.js';
 import * as throne from './reign.js';
 import { moneyEffect } from './moneyEffects.js';
 import { sceneChoice as momentChoice } from './moments.js';
+import { bondChoice } from './bonds.js';
+import { estateChoice } from './estateReview.js';
+import { loveChoice } from './loveStories.js';
 import { register as registerAnimal, recordHealth } from './animals.js';
 import { sceneChoice as animalChoice } from './animalCare.js';
 import { lifeChoice } from './animalLife.js';
 import { arcChoice } from './animalArcs.js';
 import { sportArcChoice } from './sportsArcs.js';
+import { disasterChoice } from './disasters.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -113,6 +117,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'animalLife': ctx.note = lifeChoice(e.value, ctx.cast); break;
       case 'animalArc': ctx.note = arcChoice(e.value, ctx.cast); break;
       case 'sportArc': ctx.note = sportArcChoice(e.value, ctx.cast); break;
+      case 'disaster': ctx.note = disasterChoice(e.value, ctx.cast); break;
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;
@@ -220,7 +225,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
       case 'era': ctx.note = eraChoice(e.value, ctx.cast); break;
-      case 'bond': ctx.note = bondChoice(e.value, ctx.cast); break;
+      case 'together': ctx.note = togetherChoice(e.value, ctx.cast); break;
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;
@@ -228,6 +233,9 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         p.counters[e.target] = (p.counters[e.target] ?? 0) + (e.delta ?? 1);
         break;
       case 'money': shown.push(...moneyEffect(e, ctx)); break;
+      case 'love': { const note = loveChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'estate': { const note = estateChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'milestone': milestone(e.value); break;
       case 'death': ctx.death = e.value; break;

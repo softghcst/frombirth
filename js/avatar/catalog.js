@@ -17,13 +17,18 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN } from './curation.js';
+import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 
 const named = (ids, hexes, names, extra = () => ({})) => ids.map((id, i) => ({ id, name: names[i], hex: hexes[i], ...extra(i) }));
 const parts = (folder, keep = () => true) => AVATAR_MANIFEST[folder].filter(keep).map((p) => ({ id: p.id, name: p.label, file: p.file, tags: p.tags ?? {} }));
 
 export const SKIN_TONES = named(PAL.SKIN_TONE_IDS, PAL.SKIN_TONES, PAL.SKIN_TONE_NAMES, (i) => ({ depth: i, base: PAL.SKIN_TONES[i] }));
+/**
+ * Each skin tone's depth (its place from lightest to deepest), by id. Anything that changes with depth names the tone
+ * it starts at, not a number, so adding a tone between two others never moves where it starts.
+ */
+export const DEPTH = Object.fromEntries(SKIN_TONES.map((t) => [t.id, t.depth]));
 export const HAIR_COLORS = named(PAL.HAIR_COLOR_IDS, PAL.HAIR_COLORS, PAL.HAIR_COLOR_NAMES, (i) => ({ natural: i < PAL.NATURAL_HAIR }));
 export const EYE_COLORS = named(PAL.EYE_COLOR_IDS, PAL.EYE_COLORS, PAL.EYE_COLOR_NAMES);
 export const LIP_COLORS = named(PAL.LIP_COLOR_IDS, PAL.LIP_COLORS, PAL.LIP_COLOR_NAMES);
@@ -45,7 +50,7 @@ export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));
 /** Every list of options, by the key it is saved under. */
 export const CATALOG = {
   head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying), // crying eyes appear only when something sad is happening
-  eyeColor: EYE_COLORS, brows: parts('eyebrows'), nose: parts('noses'), lips: parts('lips'),
+  eyeColor: EYE_COLORS, brows: parts('eyebrows', (p) => p.id !== EXPRESSION.sadBrows), nose: parts('noses'), lips: parts('lips'),
   hairColor: HAIR_COLORS.filter((c) => c.natural), hairTexture: HAIR_TEXTURES, marks: MARKS,
   hair: HAIR_STYLES, hairDye: HAIR_COLORS, glasses: parts('glasses'), facialHair: parts('facial_hair'),
   makeup: parts('makeup', (p) => !MARK_FILES.has(p.id)), lipColor: LIP_COLORS, jewelry: parts('jewelry'),
@@ -76,6 +81,17 @@ const INDEX = Object.fromEntries(Object.entries(CATALOG).map(([k, list]) => [k, 
 INDEX.anyHair = Object.fromEntries(HAIR_COLORS.map((x) => [x.id, x]));
 INDEX.hair.bald = { id: 'bald', name: 'Shaved', type: 'any' };
 
+/**
+ * Mouths are inherited whatever a person's gender, and drawn to suit it: a man is drawn with the men's mouth
+ * that matches the one he was born with, a woman with the women's mouth that matches hers (LIP_MATCH in
+ * js/avatar/curation.js). So a son with his mother's full lips has full lips too, and the mouth he passes on
+ * is still hers. Expressions, and mouths outside the two resting sets, are drawn as they are.
+ */
+export function lipsFor(id, gender) {
+  const match = gender === 'male' ? LIP_MATCH.male : gender === 'female' ? LIP_MATCH.female : null;
+  return match?.[id] ?? id;
+}
+
 /** The option with this id, or undefined. */
 export const part = (key, id) => INDEX[key]?.[id];
 export const has = (key, id) => !!part(key, id);
@@ -99,9 +115,10 @@ const OLD_SKIN = ['ivory', 'sand', 'golden', 'tan', 'chestnut', 'espresso'];
 const OLD_HAIR = ['black', 'brown', 'light_brown', 'blonde', 'auburn'];
 const OLD_EYES = ['dark_brown', 'blue', 'green', 'hazel'];
 const OLD_STYLE_NUM = ['short_crop', 'side_part', 'long_straight'];
-const OLD_FACE = { oval: 'head_17_dimple_oval', round: 'head_15_cherubic', square: 'head_13_athletic', heart: 'head_11_pixie', long: 'head_18_long_rect', diamond: 'head_16_angular' };
+const OLD_FACE = { oval: 'head_17_dimple_oval', round: 'head_15_cherubic', square: 'head_13_athletic', heart: 'head_11_pixie', long: 'head_12_sculpted', diamond: 'head_16_angular' };
 // Face shapes that have been withdrawn: anyone saved with one keeps the nearest shape that remains.
-const GONE_HEAD = { face_01_oval: 'head_17_dimple_oval', face_02_round: 'head_15_cherubic', face_03_square: 'head_13_athletic', face_04_heart: 'head_11_pixie', face_05_diamond: 'head_16_angular', face_06_pear: 'head_14_almond' };
+const GONE_HEAD = { face_01_oval: 'head_17_dimple_oval', face_02_round: 'head_15_cherubic', face_03_square: 'head_13_athletic', face_04_heart: 'head_11_pixie', face_05_diamond: 'head_16_angular', face_06_pear: 'head_14_almond',
+  head_18_long_rect: 'head_12_sculpted' };
 const OLD_HAIRSTYLE = {
   bald: 'bald', buzz: 'hair_boy_short_10', short_crop: 'hair_boy_short_06', side_part: 'hair_boy_short_02', pixie: 'hair_girl_short_02', waves: 'hair_boy_short_10',
   curls_tight: 'hair_boy_short_11', coils: 'hair_girl_short_14', braids: 'hair_girl_long_09', locs: 'hair_boy_medium_09', bob: 'hair_girl_short_01',
@@ -117,6 +134,7 @@ const OLD_MAKEUP = { soft: 'makeup_01_soft_blush', defined: 'makeup_02_winged_ey
  * and relatives who shared it still do.
  */
 const OLD_RESTING = {
+  brows: ['brows_02', 'brows_03', 'brows_10', 'brows_12', 'brows_14', 'brows_15', 'brows_16_feathered', 'brows_17_puppy', 'brows_19_glam_arch', 'brows_6', 'brows_8'],
   eyes: ['eyes_6', 'eyes_8', 'eyes_9', 'eyes_10', 'eyes_11', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_22', 'eyes_25'],
   lips: ['lips_1', 'lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_12', 'lips_14'],
   nose: ['nose_3', 'nose_5', 'nose_6', 'nose_7', 'nose_8', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
@@ -184,11 +202,24 @@ export const skinDepth = (appearance, seed) => part('skin', normalize(appearance
 export const hairHex = (appearance) => (INDEX.anyHair[appearance.style.hairDye] ?? INDEX.anyHair[appearance.inherited.hairColor]).hex;
 
 /**
+ * The color of a mouth. Lipstick is worn as chosen, all over. Otherwise a woman's lips are her skin warmed toward rose;
+ * a man's are a natural pair for his skin tone (one color on the lighter tones, two from chestnut down) (NATURAL_LIP_UPPER and NATURAL_LIP_LOWER in js/avatarPalettes.js): `lip`
+ * colors the lower lip and `lipUpper` the upper. Every resting mouth draws its upper lip in --lip-upper (falling back to
+ * the lip color), so the pair shows on every mouth shape, thin, full or smiling.
+ */
+export const NATURAL_LIPS = { woman: { rose: '#b8444f', k: 0.42, deepK: 0.34 } };
+function lipColors(skin, lipColor, gender) {
+  if (lipColor) return { lip: part('lipColor', lipColor).hex };
+  if (gender !== 'male') { const W = NATURAL_LIPS.woman; return { lip: mixHex(skin.hex, W.rose, skin.depth >= DEPTH.chestnut ? W.deepK : W.k) }; }
+  return { lip: PAL.NATURAL_LIP_LOWER[skin.depth], lipUpper: PAL.NATURAL_LIP_UPPER[skin.depth] };
+}
+
+/**
  * Everything the renderer needs, from an appearance: which part fills each
  * layer, and the colors. Baby hair and baby clothes are chosen from the
- * seed and the hair texture, so a baby grows into the same person.
+ * seed and the hair texture, so a baby grows into the same person. A child (`child`) wears no lipstick.
  */
-export function resolveLook(appearance, seed = 'x', gender) {
+export function resolveLook(appearance, seed = 'x', gender, { child = false } = {}) {
   const a = normalize(appearance, seed);
   const g = a.inherited;
   const st = a.style;
@@ -198,16 +229,18 @@ export function resolveLook(appearance, seed = 'x', gender) {
     : g.hairTexture === 'curly' ? ['hair_baby_01_curl_tuft', 'hair_baby_08_baby_ringlets', 'hair_baby_04_mini_puff']
       : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
   const sex = gender === 'female' ? 'female' : 'male';
+  const lips = lipsFor(g.lips, gender);
+  const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
   return {
-    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: g.lips,
+    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),
     facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
     babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'),
     colors: {
       skin: skin.hex, hair: hairHex(a), dyed: !!st.hairDye, brow: mixHex(natural, '#1c1210', 0.22), eye: part('eyeColor', g.eyeColor).hex,
-      lip: st.lipColor ? part('lipColor', st.lipColor).hex : mixHex(skin.hex, '#b8444f', skin.depth >= 8 ? 0.34 : 0.42),
-      blush: mixHex(skin.hex, '#f0506a', skin.depth >= 7 ? 0.4 : 0.48),
+      ...colors,
+      blush: mixHex(skin.hex, '#f0506a', skin.depth >= DEPTH.bronze ? 0.4 : 0.48),
       outfit: st.outfitColor ? part('outfitColor', st.outfitColor).hex : null,
     },
   };
