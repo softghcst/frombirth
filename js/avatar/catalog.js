@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN } from './curation.js';
+import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 
 const named = (ids, hexes, names, extra = () => ({})) => ids.map((id, i) => ({ id, name: names[i], hex: hexes[i], ...extra(i) }));
@@ -75,6 +75,17 @@ export const shownTweaks = (a) => ({ ...a.inherited.tweaks });
 const INDEX = Object.fromEntries(Object.entries(CATALOG).map(([k, list]) => [k, Object.fromEntries(list.map((x) => [x.id, x]))]));
 INDEX.anyHair = Object.fromEntries(HAIR_COLORS.map((x) => [x.id, x]));
 INDEX.hair.bald = { id: 'bald', name: 'Shaved', type: 'any' };
+
+/**
+ * Mouths are inherited whatever a person's gender, and drawn to suit it: a man is drawn with the men's mouth
+ * that matches the one he was born with, a woman with the women's mouth that matches hers (LIP_MATCH in
+ * js/avatar/curation.js). So a son with his mother's full lips has full lips too, and the mouth he passes on
+ * is still hers. Expressions, and mouths outside the two resting sets, are drawn as they are.
+ */
+export function lipsFor(id, gender) {
+  const match = gender === 'male' ? LIP_MATCH.male : gender === 'female' ? LIP_MATCH.female : null;
+  return match?.[id] ?? id;
+}
 
 /** The option with this id, or undefined. */
 export const part = (key, id) => INDEX[key]?.[id];
@@ -200,7 +211,7 @@ export function resolveLook(appearance, seed = 'x', gender) {
       : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
   const sex = gender === 'female' ? 'female' : 'male';
   return {
-    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: g.lips,
+    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips: lipsFor(g.lips, gender),
     hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),
     facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,

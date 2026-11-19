@@ -44,10 +44,24 @@ export const RESTING = {
   eyes: ['eyes_6', 'eyes_8', 'eyes_9', 'eyes_10', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_22', 'eyes_25'],
   // neutral or pleasant mouths only
   lips: ['lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_14'],
+  // men's mouths (the smirk, the grin and the parted lips showing teeth are left out)
+  lipsMasc: ['lips_masc_02', 'lips_masc_03', 'lips_masc_04', 'lips_masc_06', 'lips_masc_07', 'lips_masc_09', 'lips_masc_10',
+    'lips_masc_11', 'lips_masc_12', 'lips_masc_13', 'lips_masc_14'],
   noses: ['nose_6', 'nose_7', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_16', 'nose_17',
     'nose_19', 'nose_20', 'nose_23'],
   // relaxed brows: nothing angry, skeptical or comic
   eyebrows: ['brows_02', 'brows_03', 'brows_10', 'brows_12', 'brows_14', 'brows_15', 'brows_16_feathered', 'brows_17_puppy', 'brows_19_glam_arch', 'brows_6', 'brows_8'],
+};
+/**
+ * Each resting mouth's match in the other set, judged by eye: thin stays thin, full stays full, a bow stays a bow.
+ * A man is drawn with the `male` match of the mouth he was born with, a woman with the `female` match of hers
+ * (lipsFor in js/avatar/catalog.js). What is saved, and passed on to children, is the mouth itself.
+ */
+export const LIP_MATCH = {
+  male: { lips_4: 'lips_masc_04', lips_6: 'lips_masc_14', lips_7: 'lips_masc_09', lips_8: 'lips_masc_12', lips_9: 'lips_masc_11',
+    lips_10: 'lips_masc_06', lips_11: 'lips_masc_03', lips_14: 'lips_masc_13' },
+  female: { lips_masc_02: 'lips_8', lips_masc_03: 'lips_11', lips_masc_04: 'lips_4', lips_masc_06: 'lips_10', lips_masc_07: 'lips_14',
+    lips_masc_09: 'lips_7', lips_masc_10: 'lips_8', lips_masc_11: 'lips_9', lips_masc_12: 'lips_8', lips_masc_13: 'lips_14', lips_masc_14: 'lips_6' },
 };
 /** The soft, thin brows every baby and toddler has, whatever they grow into. */
 export const BABY_BROWS = 'brows_8';

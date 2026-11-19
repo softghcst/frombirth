@@ -53,6 +53,8 @@ export function defaultStyle(inherited, gender) {
 /** A complete appearance for someone with no known parents. */
 export function randomAppearance(skinDepthHint, gender) {
   const inherited = randomInherited(skinDepthHint);
+  // A man is born with one of the men's mouths, so every one of them turns up (it is drawn to suit a daughter: lipsFor).
+  if (gender === 'male') inherited.lips = rng.pick(CATALOG.lips.filter((x) => RESTING.lipsMasc.includes(x.id))).id;
   const style = defaultStyle(inherited, gender);
   if (rng.chance(0.14)) style.glasses = rng.pick(CATALOG.glasses.filter((g) => !/star|visor/.test(g.id))).id;
   if (gender === 'male' && rng.chance(0.3)) style.facialHair = rng.pick(CATALOG.facialHair).id;

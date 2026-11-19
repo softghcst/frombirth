@@ -128,7 +128,7 @@ for (let i = 0; i < 400; i++) {
   const g = i % 2 ? 'female' : 'male';
   const a = randomAppearance(i % 12, g);
   valid(normalize(a, `r${i}`), `random ${i}`);
-  check(CUR.RESTING.eyes.includes(a.inherited.eyes) && CUR.RESTING.lips.includes(a.inherited.lips), `random ${i} was given an expression for a resting face`);
+  check(CUR.RESTING.eyes.includes(a.inherited.eyes) && CUR.RESTING[g === 'male' ? 'lipsMasc' : 'lips'].includes(a.inherited.lips), `random ${i} was given an expression for a resting face, or a mouth for the other gender`);
   if (i % 12 >= 8) { deep++; if (['coily', 'curly'].includes(a.inherited.hairTexture)) coily++; }
 }
 check(coily / deep > 0.7, `deep skin tones should mostly have curly or coily hair (${coily}/${deep})`);
@@ -367,6 +367,24 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose: 'nose_12' }).nose === plain.nose, 'a clear nose is adjusted in the portrait');
   check(/scale\(1\.0[4-9]\)/.test(fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose: 'nose_10' }).nose), 'the slight nose is not drawn larger');
   for (const id of ['nose_15', 'nose_24', 'eyes_24']) check(!PART_BY_ID[id], `${id} has been withdrawn and is still listed`);
+}
+
+// 13. The men's mouths: a man is drawn with the men's match of the mouth he was born with, a woman with the
+// women's match, both ways round; what is saved and passed on is the mouth itself; every resting mouth has a
+// match; and the creator offers each person only the mouths that can be drawn for them.
+{
+  const { lipsFor } = await import('../js/avatar/catalog.js');
+  for (const id of CUR.RESTING.lips) {
+    check(CUR.RESTING.lipsMasc.includes(lipsFor(id, 'male')) && lipsFor(id, 'female') === id, `${id} has no men's match`);
+    check(lipsFor(lipsFor(id, 'male'), 'female') === id, `${id} does not come back to itself on a daughter`);
+  }
+  for (const id of CUR.RESTING.lipsMasc) check(CUR.RESTING.lips.includes(lipsFor(id, 'female')) && lipsFor(id, 'male') === id, `${id} has no women's match`);
+  check(lipsFor('lips_20', 'male') === 'lips_20' && lipsFor('lips_10') === 'lips_10', 'an expression, or a face with no gender, was given another mouth');
+  const saved = { v: 3, inherited: { head: 'head_17_dimple_oval', lips: 'lips_10' } };
+  const him = avatarSvg({ appearance: saved, seed: 'm', age: 30, gender: 'male' }), her = avatarSvg({ appearance: saved, seed: 'm', age: 30, gender: 'female' });
+  check(him.includes(`lips/${lipsFor('lips_10', 'male')}.svg`) && her.includes('lips/lips_10.svg'), 'a mouth is not drawn to suit the gender');
+  check(saved.inherited.lips === 'lips_10', 'drawing a man changed the mouth he passes on');
+  for (const id of CUR.RESTING.lipsMasc) check(PART_BY_ID[id] && /^Masc \d+$/.test(PART_BY_ID[id].label), `${id} is missing or unnamed`);
 }
 
 if (problems.length) {

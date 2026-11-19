@@ -939,10 +939,11 @@ FEATURE_STEP = 2  # how far apart the measured rows of an eye or nose are
 
 def measure_feature(elements, folder):
     """
-    The outline of a pair of eyes or a nose, row by row, so the game can tell how close a nose comes to
-    the eyes it is worn with (js/avatar/featureFit.js). For eyes: how far the nearest ink is from the
-    centre line (`inner`). For a nose: how far its lines reach from the centre line (`ink`), and how far
-    anything it draws does, its patch of skin included (`all`). Rows start at `y` and are FEATURE_STEP apart.
+    The outline of a pair of eyes, a nose or a mouth, row by row, so the game can tell how close they come
+    to each other (js/avatar/featureFit.js). For eyes: how far the nearest ink is from the centre line
+    (`inner`). For a nose or a mouth: how far its lines reach from the centre line (`ink`), and how far
+    anything it draws does, a nose's patch of skin included (`all`). Rows start at `y` and are FEATURE_STEP
+    apart; `bottom` is where the drawing ends, and a mouth also has its `width`.
     """
     box = bbox_of(elements)
     lines = [e for e in elements if not str(e['fill']).startswith('var(--skin-color')]
@@ -960,6 +961,8 @@ def measure_feature(elements, folder):
             whole.append(reach(spans))
         y += FEATURE_STEP
     shape = {'y': y0, 'bottom': round(box[3], 1)}
+    if folder == 'lips':
+        shape['width'] = round(box[2] - box[0], 1)
     shape.update({'inner': inner} if folder == 'eyes' else {'ink': ink, 'all': whole})
     return shape
 
@@ -1264,6 +1267,8 @@ def label(name):
     if name.startswith('hair') and not name.startswith('hair_baby'):
         # Two packs share their numbering; the second continues from 17 so every name is different.
         text = f'{length}, {text}' if text else f'{length}, style {number + (16 if "boy" in parts else 0)}'
+    elif parts[0] == 'lips' and text == 'masc' and number is not None:
+        text = f'Masc {number}'  # the masculine mouths: 'lips_masc_03' -> 'Masc 3'
     elif not text:
         kind = {'eyes': 'Eyes', 'brows': 'Brows', 'nose': 'Nose', 'lips': 'Mouth', 'glasses': 'Glasses'}.get(parts[0], parts[0].title())
         text = f'{kind} {number}' if number is not None else kind
@@ -1285,7 +1290,7 @@ def write_manifest():
             for item in data[folder]:
                 _, els = read_svg(open(os.path.join(ASSETS, item['file']), encoding='utf-8').read())
                 item['edge'] = measure_hair_edge(els)
-        if folder in ('eyes', 'noses'):  # and each pair of eyes and nose, so a nose can be kept clear of the eyes
+        if folder in ('eyes', 'noses', 'lips'):  # and each pair of eyes, nose and mouth, so they can be kept clear of each other
             for item in data[folder]:
                 _, els = read_svg(open(os.path.join(ASSETS, item['file']), encoding='utf-8').read())
                 item['shape'] = measure_feature(els, folder)
