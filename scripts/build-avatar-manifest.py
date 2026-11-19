@@ -61,6 +61,8 @@ def clean_name(name):
 EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05.svg', 'eyes_13.svg', 'eyes_17.svg', 'eyes_21.svg', 'eyes_23.svg',
             'eyes_11.svg', 'eyes_12.svg', 'eyes_24.svg',
             'lips_1.svg', 'lips_2.svg', 'lips_3.svg', 'lips_12.svg', 'lips_13.svg', 'lips_15.svg', 'lips_16.svg', 'lips_19.svg',
+            'brows_02.svg', 'brows_03.svg', 'brows_7.svg', 'brows_13.svg', 'brows_17_puppy.svg', 'brows_18_unibrow.svg', 'brows_19_glam_arch.svg',
+            'brows_22_skeptical.svg',
             'nose_1.svg', 'nose_2.svg', 'nose_3.svg', 'nose_4.svg', 'nose_5.svg', 'nose_8.svg', 'nose_18.svg', 'nose_22.svg', 'nose_15.svg', 'nose_24.svg',
             'face_01_oval.svg', 'face_02_round.svg', 'face_03_square.svg', 'face_04_heart.svg', 'face_05_diamond.svg', 'face_06_pear.svg'}
 
@@ -1155,8 +1157,9 @@ def weigh_lines(folder='noses', recolor=True):
 # the outlines: each crease keeps at least 4 units clear of the eye below it, and a typical brow's gap to it is made
 # up to about 10 where there is room for that. A softened file's crease carries data-crease="<units lowered>", so a
 # changed amount here moves it by the difference, and nothing is moved twice.
-# None: the eye already has a fold line close under the lashes (part of its outline), so its floating crease is taken
-# out altogether instead (eyes_25 had two).
+# None: the eye already has a fold line close under the lashes, so its floating crease is taken out altogether instead
+# (eyes_25 had two). That fold was part of the eye's outline; it was cut out of it once, with polygon geometry, and
+# drawn in the soft crease shade (its paths carry data-crease="0"), so this step leaves the file alone.
 CREASES = {'eyes_18': 6, 'eyes_19': 6, 'eyes_20': 6, 'eyes_22': 7, 'eyes_25': None, 'eyes_26': 1, 'eyes_9': 2, 'eyes_8': 0, 'eyes_7': 0}
 CREASE_SOFT = 'color-mix(in srgb,var(--skin-color,#e8b68c) 50%,#2d180e)'
 CREASE_PATH = re.compile(r'<path data-crease="([\d.]+)" style="([^"]*)" d="([^"]*)"/>')

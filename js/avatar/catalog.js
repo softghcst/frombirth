@@ -50,7 +50,7 @@ export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));
 /** Every list of options, by the key it is saved under. */
 export const CATALOG = {
   head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying), // crying eyes appear only when something sad is happening
-  eyeColor: EYE_COLORS, brows: parts('eyebrows'), nose: parts('noses'), lips: parts('lips'),
+  eyeColor: EYE_COLORS, brows: parts('eyebrows', (p) => p.id !== EXPRESSION.sadBrows), nose: parts('noses'), lips: parts('lips'),
   hairColor: HAIR_COLORS.filter((c) => c.natural), hairTexture: HAIR_TEXTURES, marks: MARKS,
   hair: HAIR_STYLES, hairDye: HAIR_COLORS, glasses: parts('glasses'), facialHair: parts('facial_hair'),
   makeup: parts('makeup', (p) => !MARK_FILES.has(p.id)), lipColor: LIP_COLORS, jewelry: parts('jewelry'),
@@ -134,6 +134,7 @@ const OLD_MAKEUP = { soft: 'makeup_01_soft_blush', defined: 'makeup_02_winged_ey
  * and relatives who shared it still do.
  */
 const OLD_RESTING = {
+  brows: ['brows_02', 'brows_03', 'brows_10', 'brows_12', 'brows_14', 'brows_15', 'brows_16_feathered', 'brows_17_puppy', 'brows_19_glam_arch', 'brows_6', 'brows_8'],
   eyes: ['eyes_6', 'eyes_8', 'eyes_9', 'eyes_10', 'eyes_11', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_22', 'eyes_25'],
   lips: ['lips_1', 'lips_4', 'lips_6', 'lips_7', 'lips_8', 'lips_9', 'lips_10', 'lips_11', 'lips_12', 'lips_14'],
   nose: ['nose_3', 'nose_5', 'nose_6', 'nose_7', 'nose_8', 'nose_9', 'nose_10', 'nose_11', 'nose_12', 'nose_13', 'nose_14', 'nose_15', 'nose_16', 'nose_17',
