@@ -891,7 +891,8 @@ function yearIn(state, a, e) {
   const S = sp.ensure(state);
   const p = state.player;
   const sport = sportOf(e.id);
-  if (e.banUntil > state.year) { log(`You are banned from ${sport.name.toLowerCase()} until ${e.banUntil}.`, 'system', 'bad'); e.plan.hours = Math.min(e.plan.hours, 5); sp.internals.trainYear(state, p, a, e); return; }
+  // Banned: no games, but an academy scholarship runs on (its wage, and its end at eighteen) like any contract would.
+  if (e.banUntil > state.year) { log(`You are banned from ${sport.name.toLowerCase()} until ${e.banUntil}.`, 'system', 'bad'); e.plan.hours = Math.min(e.plan.hours, 5); sp.internals.trainYear(state, p, a, e); youthYear(state, a, e); return; }
   // Away on military service (Korea): no games; the skills wait (engine/asiaBaseball.js).
   if (onService(state, e)) { log(`Military service: no ${sport.name.toLowerCase()} this year.`, 'system', 'neutral'); e.plan.hours = Math.min(e.plan.hours, 2); sp.internals.trainYear(state, p, a, e); asiaYear(state, a, e); return; }
   // University: the program, if the player plays for one.

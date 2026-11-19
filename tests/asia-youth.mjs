@@ -10,6 +10,8 @@ const { COUNTRY_DRAFTS, sportOf } = await import('../js/data/sports.js');
 const { ROOTS } = await import('../js/data/economy.js');
 const sl = await import('../js/engine/sportsLife.js');
 const sp = await import('../js/engine/sports.js');
+const { deathRoll } = await import('../js/engine/death.js');
+deathRoll.spared = true; // these checks are about contracts, not about dying young
 const dr = await import('../js/engine/draft.js');
 const asia = await import('../js/engine/asiaBaseball.js');
 const youth = await import('../js/engine/youthContracts.js');
@@ -48,7 +50,8 @@ function year(pick = {}) {
   const seen = [];
   for (let round = 0; round < 3; round++) for (const d of sl.openDecisions()) {
     seen.push(d);
-    const c = typeof pick[d.kind] === 'function' ? pick[d.kind](d) : pick[d.kind] ?? (d.kind === 'renew' ? 'yes' : d.options.some((o) => o.id === 'no') ? 'no' : d.options.at(-1).id);
+    // These checks are about academies and contracts: an offer to cheat is always refused.
+    const c = typeof pick[d.kind] === 'function' ? pick[d.kind](d) : pick[d.kind] ?? (d.kind === 'integrity' ? 'refuse' : d.kind === 'renew' ? 'yes' : d.options.some((o) => o.id === 'no') ? 'no' : d.options.at(-1).id);
     if (c != null) sl.answer(d.id, c);
   }
   return seen;
