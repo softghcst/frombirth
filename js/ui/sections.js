@@ -54,6 +54,7 @@ function build(container, prefix) {
     if (buttons.length === 1 && !fields.length) {
       const btn = buttons[0];
       btn.className = 'nav-row sec-row';
+      btn.removeAttribute('style'); // the card's own spacing does not belong on a row
       btn.innerHTML = rowInner(title, '', false);
       card.replaceWith(btn);
       continue;
