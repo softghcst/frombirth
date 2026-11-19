@@ -1,0 +1,10 @@
+{
+  "name": "pathways",
+  "private": true,
+  "type": "module",
+  "description": "Pathways: a life simulation that runs in the browser. Nothing to install to play; these scripts are for development.",
+  "scripts": {
+    "test": "node scripts/test-all.mjs",
+    "fit-hair": "python scripts/fit_hair.py"
+  }
+}

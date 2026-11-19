@@ -13,7 +13,9 @@
 //   piercings, glasses, hat or crown, emotions.
 // Hair is drawn twice: the whole style behind the head, and the part above
 // the jaw again in front, so a fringe falls over the forehead while long
-// lengths fall behind the shoulders and the outfit.
+// lengths fall behind the shoulders and the outfit. A style from the fitting
+// pipeline (assets/hair_fitted/, see fittedHairFile) is already split: its
+// hair_back layer is drawn behind the head and its other layers in front.
 //
 // Three ways to use it:
 //   characterAvatarSvg(look, ctx)        -> markup string (what the game's screens use)
@@ -27,12 +29,32 @@
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
+import { FITTED_HAIR, FITTED_BASE_HEAD } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
 import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
 const href = (id) => (PART_BY_ID[id] ? `${AVATAR_BASE}${PART_BY_ID[id].file}#art` : null);
+
+/** A head's plain name, as the hair pipeline knows it: 'head_17_dimple_oval' -> 'dimple_oval' (from assets/heads/dimple_oval.svg). */
+const headName = (headId) => PART_BY_ID[headId]?.file.replace(/^.*\/|\.svg$/g, '') ?? null;
+
+/**
+ * A hairstyle from the fitting pipeline (scripts/fit_hair.py) comes ready-made for each head, as
+ * assets/hair_fitted/<style>_<head>.svg, drawn in that head's own coordinates: no fitting is done here.
+ * -> its file, relative to AVATAR_BASE, or null for any other hairstyle. A head the style was not fitted
+ * to is given the base head's version.
+ */
+export function fittedHairFile(hairId, headId) {
+  const style = FITTED_HAIR[hairId];
+  if (!style) return null;
+  const head = style.heads.includes(headName(headId)) ? headName(headId) : FITTED_BASE_HEAD;
+  return `hair_fitted/${hairId}_${head}.svg`;
+}
+/** A fitted file's layers: hair_back goes behind the head, the rest in front of the face. */
+const FITTED_BACK = ['hair_back'];
+const FITTED_FRONT = ['hair_base', 'hair_bangs', 'hair_lines'];
 
 /** Where the jaw is on the template face: hair above this line is drawn again in front of the face. */
 const FRONT_HAIR_CUT = 404;
@@ -226,13 +248,14 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const d = dressFor(look, ctx);
   const n = ++serial;
   const hatOn = !!d.hat;
-  const bulky = !!PART_BY_ID[d.hair]?.tags?.bulky;
+  const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
+  const bulky = fitted ? ['long', 'medium', 'updo'].includes(FITTED_HAIR[d.hair].length) : !!PART_BY_ID[d.hair]?.tags?.bulky;
   const hairTop = hatOn ? (bulky ? BULKY_HAT_LINE : HAT_LINE) : 0;
   // Under a hat, hair is hidden above the brim, and tucks in at the sides rather than ending in a flat shelf.
   const under = (bottom) => `<path d="M-400 ${bottom}V${hairTop + 64}H112V${hairTop}H400V${hairTop + 64}H912V${bottom}Z"/>`;
   // Hair in front of the face ends at this head's own chin (in the hair's coordinates), so a lock that
   // falls across the face stops at the jawline, not in a straight edge part-way down the cheek.
-  const hf = d.hair ? hairFit(d.hair, d.head) : null;
+  const hf = d.hair && !fitted ? hairFit(d.hair, d.head) : null;
   const chin = PART_BY_ID[d.head]?.fit?.chin;
   const frontCut = hf && chin ? Math.round(T.face.top + (chin - 2 - hf.ty) / hf.sy) : FRONT_HAIR_CUT;
   const defs = [
@@ -247,6 +270,11 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // A style too tall for the picture is flattened above the crown: the part above the line is drawn
   // again, squeezed toward it, so the two halves still meet along it.
   const hairLayer = (clip) => {
+    // A fitted style is drawn as it is: its back layer behind the head, the others in front of the face. Only a hat clips it.
+    if (fitted) {
+      const ids = clip === `pw-back-${n}` ? FITTED_BACK : FITTED_FRONT;
+      return `<g clip-path="url(#pw-back-${n})">${ids.map((id) => `<use href="${AVATAR_BASE}${fitted}#${id}"/>`).join('')}</g>`;
+    }
     const g = `<g${hairAt} clip-path="url(#${clip})">${use(d.hair)}</g>`;
     if (!hf || hf.squash >= 1) return g;
     return `<g clip-path="url(#pw-low-${n})">${g}</g><g transform="translate(0 ${hf.line}) scale(1 ${hf.squash}) translate(0 ${-hf.line})" clip-path="url(#pw-high-${n})">${g}</g>`;
@@ -324,6 +352,7 @@ export class CharacterAvatar {
 /** Every file a portrait uses, for preloading or caching offline. */
 export function filesFor(look, ctx = {}) {
   const d = dressFor(look, ctx);
-  return [d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.lips, d.facialHair, d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
-    .filter((id) => id && PART_BY_ID[id]).map((id) => `${AVATAR_BASE}${PART_BY_ID[id].file}`);
+  const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
+  return [...(fitted ? [`${AVATAR_BASE}${fitted}`] : []), ...[d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.lips, d.facialHair, d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
+    .filter((id) => id && PART_BY_ID[id]).map((id) => `${AVATAR_BASE}${PART_BY_ID[id].file}`)];
 }
