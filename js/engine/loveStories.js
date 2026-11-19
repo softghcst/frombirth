@@ -15,6 +15,7 @@ import * as love from './romance.js';
 import * as bonds from './bonds.js';
 import { guardians } from './childhood.js';
 import { decide } from './pregnancyChoice.js';
+import { tickFamilyStories, familyChoice, FAMILY_IDS } from './familyStories.js';
 
 const npcOf = (id) => store.state.npcs[id];
 const bump = (npc, d) => { if (npc) npc.meters.relationship = clamp(npc.meters.relationship + d); };
@@ -42,8 +43,9 @@ const STORIES = [
 export function tickLoveStories() {
   const p = player();
   teenYear();
-  if (p.age < bonds.ADULT) return;
   const d = DRAMA[dramaOf()];
+  if (p.age >= 14) tickFamilyStories(d); // (the stories of a family and a household, engine/familyStories.js)
+  if (p.age < bonds.ADULT) return;
   const year = store.state.year;
   const can = [];
   for (const s of STORIES) {
@@ -71,6 +73,7 @@ export function loveChoice(value, cast) {
   const c = country();
   const [story, choice] = value.split(':');
   if (story === 'pregnancy') return decide(choice, cast);
+  if (FAMILY_IDS.has(story)) return familyChoice(story, Number(choice), cast);
   if (story.startsWith('teen')) return teenChoice(story, choice, cast);
   const npc = npcOf(cast.them);
   if (!npc?.alive) return '';
