@@ -1045,3 +1045,20 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .panel-head { justify-content: flex-start; gap: 4px; padding: 8px 16px 6px 6px; }
 .back-btn { color: var(--accent-text); }
 .back-btn svg { width: 24px; height: 24px; stroke-width: 2.2; }
+
+/* My Neighborhood (ui/neighborhood.js): the street or building, drawn from where the homes are. */
+.hood-plan { display: grid; gap: 6px; }
+.hood-plan.street { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+.hood-plan .hood-road { grid-column: 1 / -1; text-align: center; font-size: 0.78rem; color: var(--muted); border-top: 2px dashed var(--line); padding-top: 4px; }
+.hood-floor { display: grid; grid-template-columns: 54px repeat(3, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
+.hood-floor em { font-style: normal; font-size: 0.72rem; color: var(--muted); align-self: center; }
+.hood-cell { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 6px 4px; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--ink); font: inherit; cursor: pointer; min-width: 0; }
+.hood-cell small { font-size: 0.68rem; color: var(--muted); }
+.hood-cell span { font-size: 0.8rem; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hood-cell.mine { background: var(--accent-soft); border-color: var(--accent); }
+.hood-cell.empty { border-style: dashed; color: var(--muted); }
+.hood-person { border-bottom: 1px solid var(--line-soft); padding-bottom: 8px; margin-bottom: 8px; }
+.hood-person .btn-pair { margin-top: 6px; }
+.hood-person .btn-pair .btn { font-size: 0.82rem; padding: 6px 10px; }
+.hood-venue { border-bottom: 1px solid var(--line-soft); padding-bottom: 6px; margin-bottom: 6px; }
+.hood-venue > .btn { margin: 4px 0 2px 56px; font-size: 0.82rem; padding: 6px 10px; }

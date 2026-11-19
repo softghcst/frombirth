@@ -317,6 +317,7 @@ export function openExplore(api, start = {}) {
         <div class="card">${kvt('From', l.from ?? 'not recorded')}${kvt('To', l.to ?? (l.current ? 'now' : 'not recorded'))}${kvt('Why', l.reason ?? 'not recorded')}${l.derived ? '<p class="muted">From older records: some details were never kept.</p>' : ''}</div>
         ${l.move ? `<div class="card"><h3>The move</h3><button type="button" class="tree-row" data-event="${l.move.id}"><strong>${esc(l.move.title)}</strong><small>${esc(l.move.text ?? '')}</small></button></div>` : ''}
         ${l.homes.length ? `<div class="card"><h3>Homes</h3>${l.homes.map((h) => `<button type="button" class="tree-row" data-house="${h.id}"><strong>${esc(h.name)}</strong><small>${esc(h.city ?? '')} · ${h.owned ? 'still yours' : 'no longer the family\'s'}</small></button>`).join('')}</div>` : ''}
+        ${l.neighborhoods?.length ? `<div class="card"><h3>Neighborhoods</h3>${l.neighborhoods.map((h) => `<button type="button" class="tree-row" data-hoodlink="${h.id}"><strong>${esc(h.name)}</strong><small>Open its chronicle</small></button>`).join('')}</div>` : ''}
         ${l.people.length ? `<div class="card"><h3>Who came</h3><p>${esc(l.people.join(', '))}</p></div>` : ''}
         ${l.memories.length ? `<div class="card"><h3>Remembered from here</h3>${l.memories.map((e) => `<button type="button" class="tree-row" data-event="${e.id}"><strong>${esc(e.title)}</strong><small>${e.year}</small></button>`).join('')}</div>` : ''}
         ${(() => { const friends = livingNpcs().filter((n) => n.places?.some((pl) => pl.countryId === l.countryId) && ['friend', 'bestfriend', 'sibling', 'parent', 'grandparent', 'colleague', 'exclassmate'].includes(n.role)); return friends.length ? `<div class="card"><h3>People from here</h3>${friends.map((n) => `<button type="button" class="tree-row" data-npcperson="${n.id}"><strong>${esc(n.firstName)} ${esc(n.lastName)}</strong><small>${typeof n.flags.abroad === 'string' ? `in ${esc(nameOf(n.flags.abroad))}` : `in ${esc(nameOf(player().countryId))}`}</small></button>`).join('')}</div>` : ''; })()}`;
@@ -420,6 +421,8 @@ export function openExplore(api, start = {}) {
       return `<div class="card"><h3>${esc(h.name)}</h3>${kvt('Where', h.where)}${kvt('Owner', h.owner)}${kvt('Lived in now', h.livedInNow ? 'Yes, by you' : h.let ? 'Let to tenants' : 'No')}${h.bought ? kvt('Bought', String(h.bought)) : ''}
         <p class="muted">Owning a home and living in it are separate things; neither is the right to live in a country.</p></div>
         <div class="card"><h3>Who lived here</h3>${h.residents.map((r) => `<button type="button" class="tree-row" data-person="${esc(r.id)}"><strong>${esc(r.name)}</strong><small>${r.from ?? '?'}${r.to ? `–${r.to}` : r.current ? ' to now' : ''}</small></button>`).join('') || '<p class="muted">No residents recorded.</p>'}</div>
+        ${h.neighborhood ? `<div class="card"><h3>Where it stands</h3>${kvt('Neighborhood', h.neighborhood.name)}${kvt('Street', h.neighborhood.street)}<button type="button" class="tree-row" data-hoodlink="${h.neighborhood.id}"><strong>The neighborhood's chronicle</strong><small>Every street has a story</small></button></div>` : ''}
+        ${h.households?.length ? `<div class="card"><h3>Every household that lived here</h3>${h.households.map((o) => kvt(o.name, `${o.from}–${o.to ?? 'now'}`)).join('')}</div>` : ''}
         ${h.events.length ? `<div class="card"><h3>What happened here</h3>${h.events.map((e) => `<button type="button" class="tree-row" data-event="${e.id}"><strong>${esc(e.title)}</strong><small>${e.year}</small></button>`).join('')}</div>` : ''}`;
     },
   };
@@ -505,6 +508,7 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-residence]'))) return go('residence', { id: x.dataset.residence });
       if (t('[data-story]')) return go('story', {});
       if ((x = t('[data-house]'))) return go('house', { id: x.dataset.house });
+      if ((x = t('[data-hoodlink]'))) { const { openHoodChronicle } = await import('./neighborhood.js'); return openHoodChronicle(api, x.dataset.hoodlink); }
       if ((x = t('[data-person]'))) return go('person', { id: x.dataset.person });
       if ((x = t('[data-npcperson]'))) { const n = store.state.npcs[x.dataset.npcperson]; return n ? go('person', { id: chron.archiveIdOf(n) }) : undefined; }
       if ((x = t('[data-event]'))) return go('event', { id: x.dataset.event });

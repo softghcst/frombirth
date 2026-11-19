@@ -1,5 +1,6 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
+import * as hoodUi from '../neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
 import { familyStatus } from '../../engine/immigration.js';
 import { store, player, country, livingNpcs } from '../../state.js';
@@ -405,6 +406,7 @@ export function openNpc(npc, api, back, o = {}) {
 }
 zooUi.connect({ openPerson: openNpc, editStats: editPerson });
 sportsUi.connect({ openPerson: openNpc });
+hoodUi.connect({ openPerson: openNpc });
 
 export default {
   id: 'people', title: 'People', short: 'People',

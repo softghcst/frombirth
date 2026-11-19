@@ -204,7 +204,7 @@ function addVenue(state, hood, kind, r, opened) {
   const v = VENUES[kind];
   const taken = new Set(hood.venues.map((x) => x.name));
   const name = r.shuffle(v.names).find((n) => !taken.has(n)) ?? `${v.name} ${hood.nv + 1}`;
-  const venue = { id: `${hood.id}v${++hood.nv}`, k: kind, name, owner: null, from: opened, to: null };
+  const venue = { id: `${hood.id}v${++hood.nv}`, k: kind, name, owner: null, from: Math.max(opened, v.from ?? 0), to: null };
   hood.venues.push(venue);
   return venue;
 }
@@ -266,7 +266,9 @@ export function makeHousehold(state, hood, home, r, o = {}) {
   const year = state.year;
   const shapes = SHAPES.map(([s, w]) => [s, w * (home.t === 'student' ? (s === 'single' ? 6 : 0) : HOME_TYPES[home.t]?.floors ? ({ roommates: 2.2, single: 1.6, family: 0.6, multigen: 0.6 }[s] ?? 1) : home.t === 'rural' ? ({ roommates: 0.2, family: 1.3, multigen: 1.6 }[s] ?? 1) : 1)]);
   const shape = o.shape ?? (home.t === 'student' ? 'student' : weightedPick(r, shapes.filter(([, w]) => w > 0)));
-  const last = r.pick(c.names.last);
+  // A family name nobody else on the street has, where the country's list allows: neighbors are not relatives.
+  const taken = new Set([state.player?.lastName, ...Object.values(H.hhs).filter((x) => x.h === hood.id && x.to == null).map((x) => x.n)]);
+  const last = r.shuffle(c.names.last).find((x) => !taken.has(x)) ?? r.pick(c.names.last);
   const hh = { id: `${hood.id}x${++hood.nh}`, n: last, h: hood.id, home: null, m: [], from: o.since ?? nowT(state), kind: shape, own: false };
   const person = (g, age, lastName = last, extra = {}) => {
     const id = `npc_${hood.id}r${++hood.nr}`;
@@ -453,12 +455,12 @@ function newBlockHome(state, hood, type, p) {
 }
 
 /** Someone who works in a neighborhood and lives elsewhere in the city: a resident record with no household there. */
-function makeOutsider(state, hood, r, extra) {
+function makeOutsider(state, hood, r, extra, year = state.year) {
   const H = hoods(state);
   const c = COUNTRIES[hood.c];
   const g = r.pick(['male', 'female']);
   const age = r.int(28, 62);
-  const res = { id: `npc_${hood.id}r${++hood.nr}`, f: r.pick(c.names[g] ?? c.names.female), l: r.pick(c.names.last), g, by: state.year - age, hh: null, so: r.pick(['outgoing', 'reserved', 'busy']),
+  const res = { id: `npc_${hood.id}r${++hood.nr}`, f: r.pick(c.names[g] ?? c.names.female), l: r.pick(c.names.last), g, by: year - age, hh: null, so: r.pick(['outgoing', 'reserved', 'busy']),
     in: [r.pick(INTERESTS)[0]], ls: Math.round(clamp(r.normal(80, 9), age + 5, 103)), elsewhere: true, h: hood.id, ...extra };
   H.res[res.id] = res;
   return res;
@@ -834,7 +836,7 @@ export function planYear(state, hood, y) {
     if (oldest >= 76) chance += 0.04;
     if (tenure < 2) chance *= 0.4;
     // People in the player's life move as often as anyone, but no more: friendship does not keep them here.
-    if (r.chance(chance)) {
+    if (!hh.tenant && r.chance(chance)) { // the player's own tenants come and go with the tenancy (syncAssets)
       const why = home.t === 'student' ? 'study' : oldest >= 70 ? r.pick(['smaller', 'family', 'retire']) : youngest < 12 && people.length >= 3 ? r.pick(['space', 'job', 'family']) : hh.kind === 'roommates' ? r.pick(['together', 'job', 'like']) : r.pick(['job', 'cost', 'like', 'family', 'space']);
       const cities = COUNTRIES[hood.c].cities;
       const where = r.chance(0.55) ? hood.city : r.chance(0.85) && cities.length > 1 ? r.pick(cities.filter((x) => x !== hood.city)) : 'abroad';
@@ -932,7 +934,7 @@ function apply(state, hood, e, y, quiet = false) {
       if (!people.length) return;
       leaveHome(state, home, t, MOVE_REASONS[e.why] ? `moved ${MOVE_REASONS[e.why]}` : 'moved away');
       hh.to = t; hh.gone = { t, why: e.why, to: e.to };
-      for (const r of people) { r.hh = hh.id; r.gone = { t, city: e.to === 'abroad' ? null : e.to, c: e.to === 'abroad' ? null : hood.c }; leftHood(state, r, e.to); }
+      for (const r of people) { r.hh = hh.id; r.gone = { t, city: e.to === 'abroad' ? null : e.to, c: e.to === 'abroad' ? null : hood.c }; leftHood(state, r, e.to, y); }
       note(state, { t, h: hood.id, k: 'left', text: `The ${hh.n} household left ${home.label}, ${MOVE_REASONS[e.why] ?? 'to live somewhere else'}${e.to === 'abroad' ? ', abroad' : e.to !== hood.city ? `, to ${e.to}` : ''}.`, home: home.id, hh: hh.id });
       const friend = people.find((r) => known(r.id));
       if (playerHere && friend) queueScene(state, 'hood_moving_away', { person: friend.id, words: { where: e.to === 'abroad' ? 'abroad' : e.to === hood.city ? `another part of ${hood.city}` : e.to } }, `away/${friend.id}`, t);
@@ -984,7 +986,7 @@ function apply(state, hood, e, y, quiet = false) {
       hh.m = hh.m.filter((x) => x !== r.id);
       r.hh2 = hh.id; r.hh = null; r.gone = { t, city: e.to, c: hood.c, why: e.why };
       if (e.why === 'study' && r.job !== 'Student') r.job = 'Student';
-      leftHood(state, r, e.to);
+      leftHood(state, r, e.to, y);
       note(state, { t, h: hood.id, k: 'grownup', text: `${fullName(r)} left home${e.why === 'study' ? ' for university' : e.why === 'together' ? ' to live with a partner' : ''}${e.to !== hood.city ? `, for ${e.to}` : ''}.`, who: r.id, home: hh.home });
       if (playerHere && known(r.id) && state.npcs[r.id].meters.relationship >= 50) queueScene(state, 'hood_moving_away', { person: r.id, words: { where: e.to === hood.city ? `another part of ${hood.city}` : e.to } }, `away/${r.id}`, t);
       return;
@@ -1027,7 +1029,7 @@ function apply(state, hood, e, y, quiet = false) {
       if (!hh?.home || !r || r.dead || r.hh !== hh.id || hh.m.filter((x) => H.res[x] && aliveRes(H.res[x]) && y - H.res[x].by >= 18).length < 2) return;
       hh.m = hh.m.filter((x) => x !== r.id);
       r.hh2 = hh.id; r.hh = null; r.gone = { t, city: hood.city, c: hood.c, why: 'separated' };
-      leftHood(state, r, hood.city);
+      leftHood(state, r, hood.city, y);
       hh.kind = hh.m.some((x) => H.res[x] && y - H.res[x].by < 18) ? 'singleParent' : 'single';
       note(state, { t, h: hood.id, k: 'separated', text: `${fullName(r)} moved out of the ${hh.n} household.`, who: r.id, home: hh.home });
       return;
@@ -1062,7 +1064,7 @@ function apply(state, hood, e, y, quiet = false) {
       const v = addVenue(state, hood, e.kind, rr, y);
       const owners = residentsOf(state, hood.id).filter((x) => y - x.by >= 25 && y - x.by < 66 && !x.owns && x.job !== 'Student');
       if (!VENUES[e.kind].public) {
-        if (owners.length && rr.chance(0.5)) { const o = rr.pick(owners); o.owns = v.id; o.job = `Owner of ${v.name}`; v.owner = o.id; if (state.npcs[o.id]) state.npcs[o.id].occupation = o.job; } else v.owner = makeOutsider(state, hood, rr, { job: `Owner of ${v.name}`, owns: v.id }).id;
+        if (owners.length && rr.chance(0.5)) { const o = rr.pick(owners); o.owns = v.id; o.job = `Owner of ${v.name}`; v.owner = o.id; if (state.npcs[o.id]) state.npcs[o.id].occupation = o.job; } else v.owner = makeOutsider(state, hood, rr, { job: `Owner of ${v.name}`, owns: v.id }, y).id;
       }
       const o = H.res[v.owner];
       note(state, { t, h: hood.id, k: 'venueOpen', text: `${v.name}, a new ${VENUES[v.k].name.toLowerCase()}, opened${o ? `, run by ${fullName(o)}` : ''}.`, venue: v.id, who: o?.id });
@@ -1113,11 +1115,11 @@ function apply(state, hood, e, y, quiet = false) {
 }
 
 /** Someone leaves a neighborhood. If the player knows them, they are still the same person, somewhere else. */
-function leftHood(state, r, to) {
+function leftHood(state, r, to, year = state.year) {
   const n = state.npcs[r.id];
   if (!n) return;
   if (to === 'abroad') n.flags.abroad = true;
-  n.flags.movedAway = { year: state.year, to };
+  n.flags.movedAway = { year, to };
   if (n.role === 'neighbor') n.flags.title = 'Former neighbor';
 }
 
@@ -1156,6 +1158,42 @@ function syncDeaths(state) {
 }
 
 /**
+ * Homes the player owns, as the property records say now: one sold has a new owner and no longer belongs to the
+ * family (its history stays); one let to a tenant has a tenant household living in it; one whose tenant has gone stands
+ * empty. Ownership itself is never changed here: the property record (p.assets) is the only owner.
+ */
+function syncAssets(state) {
+  const H = hoods(state);
+  const p = state.player;
+  const t = nowT(state);
+  for (const home of Object.values(H.homes)) {
+    if (!home.asset) continue;
+    const a = p.assets.find((x) => x.id === home.asset && x.kind === 'property');
+    const hood = H.list[home.h];
+    if (!a) {
+      if (home.hh && H.hhs[home.hh]?.tenant) { const hh = H.hhs[home.hh]; leaveHome(state, home, t, 'the house was sold'); hh.to = t; }
+      note(state, { t, h: home.h, k: 'sold', text: `${home.label} on ${H.blocks[home.b].name} was sold, and passed out of the ${p.lastName} family.`, home: home.id });
+      home.asset = null; home.sold = t;
+      if (home.own === 'player') home.own = 'landlord';
+      continue;
+    }
+    if (H.cur?.home === home.id) continue;
+    const tenantHh = home.hh ? H.hhs[home.hh] : null;
+    if (a.tenant && !home.hh) {
+      const hh = makeHousehold(state, hood, home, luck(state, `tenant/${home.id}/${t}`), { since: t });
+      hh.tenant = true; hh.own = false;
+      settleIn(state, home, hh, t, 'rented it');
+      home.own = 'player';
+      note(state, { t, h: home.h, k: 'arrived', text: `The ${hh.n} household moved into ${home.label}, as tenants.`, home: home.id, hh: hh.id });
+    } else if (!a.tenant && tenantHh?.tenant) {
+      leaveHome(state, home, t, 'the tenancy ended'); tenantHh.to = t;
+      for (const id of tenantHh.m) if (H.res[id]) H.res[id].gone = { t, city: hood.city, c: hood.c, why: 'tenancy ended' };
+      home.own = 'player';
+    }
+  }
+}
+
+/**
  * Lives the neighborhoods through to now: every planned thing whose month has passed, once. Called as the calendar
  * moves (engine/turns.js) and at the turn of the year (engine/yearProcessor.js). Idempotent.
  */
@@ -1185,11 +1223,21 @@ export function openYear(state = store.state) {
   const H = hoods(state);
   syncDeaths(state);
   settle(state);
+  syncAssets(state);
   touch(state);
   for (const hood of Object.values(H.list)) if (active(state, hood) && (hood.sim ?? -Infinity) < state.year) planYear(state, hood, state.year);
   // Old disagreements fade: nobody is still cross about the bins after two years.
   for (const d of H.disputes) if (d.status === 'open' && state.year - yearOf(d.t) >= 2) d.status = 'faded';
-  // Friend groups: three or more people who live near each other and are friends with the player.
+  // People next door see each other without trying: closeness there does not fade from neglect. An acquaintance who
+  // has faded to nothing drops out of the player's life (they are still there, and can be met again).
+  const p = state.player;
+  const here = currentHome(state);
+  for (const n of p.npcIds.map((id) => state.npcs[id]).filter((x) => x?.alive && H.res[x.id])) {
+    const home = H.hhs[H.res[n.id].hh]?.home;
+    if (here && home && proximity(state, here.id, home).near >= 4) n.lastInteractionAge = Math.max(n.lastInteractionAge ?? -1, p.age - 1);
+    if (n.role === 'neighbor' && n.meters.relationship < 10 && !n.flags.tag) { p.npcIds = p.npcIds.filter((id) => id !== n.id); n.flags.drifted = { year: state.year, age: p.age, role: 'neighbor' }; }
+  }
+    // Friend groups: three or more people who live near each other and are friends with the player.
   groups(state);
 }
 
@@ -1199,7 +1247,9 @@ export function between(state = store.state) {
   catchUp(state);
   syncDeaths(state);
   settle(state);
+  syncAssets(state);
 }
+export { syncAssets };
 
 // ---------- Friend groups ----------
 
@@ -1266,6 +1316,12 @@ export function handOver(old, next, heirNpcId) {
   for (const x of H.past) if (x.who === archiveIdOf(old.player) && x.to == null) { x.to = t; x.why2 = 'died'; }
   const hh = H.cur ? H.hhs[H.cur.hh] : null;
   for (const h of Object.values(H.hhs)) if (h.m.includes(dead)) h.m = h.m.filter((x) => x !== dead);
+  // Relatives who live in a household (the family home, the player's own) are the same people: they stay in the world,
+  // outside the heir's circle if they are not the heir's family. Someone who only lived there once is history.
+  for (const h of Object.values(H.hhs)) {
+    for (const ref of h.m) if (!isPlayerRef(ref) && !H.res[ref] && !next.npcs[ref] && old.npcs[ref] && h.home && old.npcs[ref].alive) next.npcs[ref] = old.npcs[ref];
+    h.m = h.m.filter((ref) => isPlayerRef(ref) || H.res[ref] || next.npcs[ref] || ref === heirNpcId);
+  }
   if (hh) {
     if (heirNpcId && hh.m.includes(heirNpcId)) {
       hh.m = hh.m.map((x) => (x === heirNpcId ? `@${next.player.archiveId ?? heirNpcId}` : x));

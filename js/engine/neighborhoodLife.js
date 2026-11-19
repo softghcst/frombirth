@@ -603,8 +603,8 @@ export function hoodChoice(v, cast, state = S()) {
       const kind = w.kind;
       const pool = N.residentsOf(state, hood.id).filter((x) => x.id !== id && (COMMUNITY_EVENTS[kind]?.who !== 'adult' || N.ageOf(x, state) >= 16));
       const there = rr.shuffle(pool).slice(0, 4);
-      const org = state.npcs[id];
-      if (org) { if (!p.npcIds.includes(id)) N.befriend(state, id, 34); closer(state, org, v.how === 'help' ? 6 : 2); }
+      const org = id ? N.befriend(state, id, p.npcIds.includes(id) ? null : 34) : null;
+      if (org) closer(state, org, v.how === 'help' ? 6 : 2);
       let met = null;
       for (const x of there) {
         const n = state.npcs[x.id];

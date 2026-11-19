@@ -26,6 +26,7 @@ import '../animalHub.js';
 import * as riding from '../../engine/equestrian.js';
 import { athleticsCard, openAthletics } from '../sports.js';
 import { navRow, navGroup } from '../kit.js';
+import { openNeighborhood, neighborhoodSub } from '../neighborhood.js';
 
 async function report(api, r) {
   api.changed();
@@ -113,6 +114,7 @@ export default {
         ${law.isJailed() ? '' : athleticsCard()}
         ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'Photocards', ico: 'star',
           sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : '' })]) : ''}
+        ${p.age >= 3 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="neighborhood"', label: 'My Neighborhood', ico: 'home', sub: neighborhoodSub() })]) : ''}
         ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' })])}
         ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding', ico: 'trophy',
           sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : '' })]) : ''}
@@ -142,6 +144,7 @@ export default {
       const go = e.target.closest('[data-go]')?.dataset.go;
       if (go === 'riding') return openScreen(api, 'riding');
       if (go === 'athletics') return openAthletics(api);
+      if (go === 'neighborhood') return openNeighborhood(api);
       if (go === 'photocards') return openIdol(api, 'photocards');
       if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a) })[go](api);
       return undefined;
