@@ -45,8 +45,8 @@ export function nextTurnText(state = store.state) {
   const p = state.player;
   const step = stepOf(state);
   const m = monthOf(state) + step;
-  if (m >= 12) return { label: step === 12 ? 'Live another year' : `${step === 3 ? 'Three' : 'Six'} more months`, sub: `→ age ${p.age + 1}` };
-  return { label: step === 3 ? 'Three more months' : 'Six more months', sub: `→ ${seasonName(turnSeasons(m, step, p.countryId)[0])}` };
+  if (m >= 12) return { label: step === 12 ? 'Age up' : `${step === 3 ? 3 : 6} months`, sub: `→ ${p.age + 1}` };
+  return { label: step === 3 ? '3 months' : '6 months', sub: `→ ${seasonName(turnSeasons(m, step, p.countryId)[0])}` };
 }
 
 /**

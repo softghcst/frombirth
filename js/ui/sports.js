@@ -632,7 +632,7 @@ export function athleticsCard() {
   const a = sp.myAthlete();
   const active = sp.activeSports();
   const waiting = life.openDecisions().length;
-  return `<div class="card"><h3>My Athletics</h3><p class="muted" style="margin-bottom:10px">${active.length ? esc(active.map((e) => `${sportOf(e.id).name} (${levelName(e.level).toLowerCase()})`).join(' · ')) : a ? 'Not playing anything right now.' : 'Every athlete starts somewhere.'}${waiting ? ` · ${waiting} waiting for you` : ''}</p>
+  return `<div class="card"><h3>My Athletics</h3><p class="muted" style="margin-bottom:10px">${active.length ? esc(active.map((e) => `${sportOf(e.id).name} (${levelName(e.level).toLowerCase()})`).join(' · ')) : a ? 'Not playing right now.' : 'Pick a sport.'}${waiting ? ` · ${waiting} waiting for you` : ''}</p>
     <button class="btn" data-go="athletics">Open My Athletics</button></div>`;
 }
 export const internals = { nav, SCREENS, show: () => show(), INJURIES };
