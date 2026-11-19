@@ -47,6 +47,10 @@ with the style you want, and save the SVG it returns in `assets/hair_raw/` as `<
 (lowercase, underscores: e.g. `wavy_bob.svg`). Then run `npm run fit-hair` to fit it to every head.
 `assets/hair_raw/textured_crop.svg` is a finished example of the format.
 
+**Several at once:** ask ChatGPT for several hairstyles in one reply, each under its file name (e.g. `### wavy_bob.svg`)
+followed by its SVG. Paste the whole reply into `assets/raw_batch.txt` and run `npm run split-hair`: it saves each one to
+`assets/hair_raw/` (skipping any cut off part-way, with a warning) and fits them all.
+
 ````text
 You are drawing one hairstyle for a 2D game avatar. I am giving you the exact bald base head the hair must fit.
 Draw ONLY the hair, as a single standalone SVG file, in the same coordinate system as the head.

@@ -5,6 +5,7 @@
   "description": "Pathways: a life simulation that runs in the browser. Nothing to install to play; these scripts are for development.",
   "scripts": {
     "test": "node scripts/test-all.mjs",
-    "fit-hair": "python scripts/fit_hair.py"
+    "fit-hair": "python scripts/fit_hair.py",
+    "split-hair": "python scripts/split_batch.py && python scripts/fit_hair.py"
   }
 }

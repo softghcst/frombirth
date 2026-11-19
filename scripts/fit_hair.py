@@ -425,7 +425,7 @@ def debug_page(base, heads, skipped, styles):
             back, front = g['hair_back'], g['hair_base'] + g['hair_bangs'] + g['hair_lines']
             if styles[style]['clipToHead']:  # as the game draws it: clipped to this head's skin
                 clip = f'clip-{style}-{h}'
-                skin = re.search(r'<path[^>]*id="{h}-head-skin"[^>]*/>', head_svg[h]).group(0)
+                skin = re.search(rf'<path[^>]*id="{h}-head-skin"[^>]*/>', head_svg[h]).group(0)
                 skin = re.sub(r'\s(id|style)="[^"]*"', '', skin)
                 back = f'<clipPath id="{clip}">{skin}</clipPath><g clip-path="url(#{clip})">{back}</g>'
                 front = f'<g clip-path="url(#{clip})">{front}</g>'
