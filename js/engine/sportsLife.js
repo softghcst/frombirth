@@ -9,17 +9,28 @@
 import { store, log, milestone } from '../state.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { sportOf, INJURIES, REHAB, SPONSORS, LEVEL_NAMES } from '../data/sports.js';
+import { SPORTS_LIST, sportOf, INJURIES, REHAB, SPONSORS, LEVEL_NAMES, WORLD_GAMES, isGamesYear, MEDAL_FOR, BIG_LEAGUE_PAY, COUNTRY_LEAGUE_PAY } from '../data/sports.js';
+import { gain, regard } from './fame.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { book } from './ledger.js';
 import { addCondition, cureCondition } from './health.js';
 import { hire, endJob } from './career.js';
 import { registerEmployer, payAt, employer } from './employers.js';
-import { catalogue } from './university.js';
+import { catalog, uniOf } from './university.js';
 import { makeNpc } from './npcFactory.js';
+import { rng } from '../rng.js';
+import { makeAgents, ensureTerms, look as lookFor, offered, clearOffer, triesLeft, askLowerCut } from './agents.js';
 import * as sp from './sports.js';
 import { familyPast, tickRelatives, parentsYear } from './sportsFamily.js';
 import { tickSportsArcs } from './sportsArcs.js';
+import { seasonAwards, yearAwards } from './sportsAwards.js';
+import { recruitYear, RECRUIT_ANSWERS, divisionOf } from './recruiting.js';
+import { beforeSeason, afterSeason, COLLEGE_ANSWERS } from './college.js';
+import { draftYear, minorsYear, leagueClub, DRAFT_ANSWERS } from './draft.js';
+import { intlYear, intlPath, INTL_ANSWERS } from './international.js';
+import { asiaYear, onService, ASIA_ANSWERS } from './asiaBaseball.js';
+import { tradeYear, TRADE_ANSWERS } from './trades.js';
+import { youthYear, firstProAge, maxYears, YOUTH_ANSWERS } from './youthContracts.js';
 
 const { nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, playSeason, playEvent, overall, rec, EVENTS_A_YEAR, fullName, seeded } = sp.internals;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -148,6 +159,7 @@ const ANSWERS = {
     if (choice === 'no') return result(true, 'You stayed amateur for now.', 'neutral');
     const e = sp.entryOf(d.sportId, state.player.id, state);
     e.level = 'pro';
+    e.proYear ??= state.year;
     const org = findOrg(state, sportOf(d.sportId), 'pro', { key: `tour/${d.sportId}/${state.player.countryId}`, name: `${COUNTRIES[state.player.countryId].name} ${sportOf(d.sportId).name} Tour` });
     e.tourId = org.id;
     const text = `You turned professional. From now on you play for prize money, and pay your own way.`;
@@ -159,18 +171,11 @@ const ANSWERS = {
   },
   agent(state, d, choice) {
     if (choice === 'no') return result(true, 'You handle your own deals.', 'neutral');
-    const S = sp.ensure(state);
     const a = sp.myAthlete(state);
-    const p = state.player;
     if (a.agentId && state.npcs[a.agentId]?.alive) return { ...result(false, 'You already have an agent.', 'neutral'), close: true };
-    const n = makeNpc({ role: 'agent', countryId: p.countryId, age: seeded(`agent/${p.id}/${state.year}`).int(32, 58), relationship: 50 });
-    n.flags.title = 'Sports agent';
-    state.npcs[n.id] = n; p.npcIds.push(n.id);
-    a.agentId = n.id;
-    S.contracts[`agent_${n.id}`] = { id: `agent_${n.id}`, kind: 'agent', personId: p.id, agentId: n.id, name: fullName(n), from: state.year, to: null, share: 0.05, status: 'active' };
-    const text = `${fullName(n)} is your agent now: five per cent of your playing income, and better deals for it.`;
-    log(text, 'system', 'good');
-    return result(true, text);
+    // An agent who calls is one of the country's real sports agents, with their own cut and clients: the player hears
+    // them out, and signs (or looks again) under Representation.
+    return findSportsAgent(state);
   },
   sponsor(state, d, choice) {
     if (choice === 'no') return result(true, 'You said no to the sponsor.', 'neutral');
@@ -230,7 +235,8 @@ function proClub(state, sport, n, tier = 1) {
   const p = state.player;
   const cities = COUNTRIES[p.countryId].cities ?? [p.city];
   const city = cities[n % cities.length];
-  const org = findOrg(state, sport, 'pro', { key: `pro/${sport.id}/${p.countryId}/${n}`, city, tier, strength: tier === 1 ? 4 : -6 });
+  const div = sport.kind === 'team' ? sp.divOf(p) : null;
+  const org = findOrg(state, sport, 'pro', { key: `pro/${sport.id}/${p.countryId}/${n}${div === 'women' ? '/women' : ''}`, city, tier, strength: tier === 1 ? 4 : -6, div });
   if (!org.employerId || !employer(org.employerId)) {
     const e = registerEmployer({ name: org.name, family: 'sport', tracks: ['athlete', 'coaching'], countryId: p.countryId, city });
     e.owned = false; e.sportClub = org.id; e.size = tier === 1 ? 'large' : 'medium'; e.founded = org.founded;
@@ -248,10 +254,14 @@ function offerFor(state, e, org) {
   const emp = employer(org.employerId);
   const [lo, hi] = payAt(emp, career, level);
   const pop = sport.popular.includes(p.countryId) ? 1 : 0.45;
-  const agent = sp.myAthlete(state).agentId ? 1.1 : 1;
-  const salary = Math.round((lo + (hi - lo) * clamp((o - 60) / 35, 0, 1)) * pop * agent);
+  const agent = sp.myAthlete(state).agentId ? 1 + 0.1 * agentClout(sp.myAthlete(state)) : 1;
+  // The big leagues of the draft countries pay far more than an ordinary professional league (data/sports.js).
+  const big = org.level === 'pro' && !(org.tier > 1) && !org.minorLevel && (sport.draftIn ?? []).includes(org.countryId) && org.div !== 'women' ? (COUNTRY_LEAGUE_PAY[org.countryId] ? COUNTRY_LEAGUE_PAY[org.countryId][sport.id] ?? 1 : BIG_LEAGUE_PAY[sport.id] ?? 1) : 1;
+  // A club abroad pays in its own money: what that is worth where the player lives.
+  const abroad = org.countryId && org.countryId !== p.countryId ? money(state, 1e6) / localMoney(1e6, COUNTRIES[org.countryId]) : 1;
+  const salary = Math.round((lo + (hi - lo) * clamp((o - 60) / 35, 0, 1)) * pop * agent * big * abroad);
   const r = seeded(`offer/${org.id}/${p.id}/${state.year}`);
-  return { level, salary, years: r.int(1, 4) };
+  return { level, salary, years: maxYears(p, e.id, r.int(1, 4)) };
 }
 function signPro(state, d, o = {}) {
   const S = sp.ensure(state);
@@ -267,20 +277,22 @@ function signPro(state, d, o = {}) {
   const holding = Object.values(S.contracts).find((x) => x.kind === 'pro' && x.status === 'active' && x.personId === p.id);
   if (holding) return { ...result(false, `You are already under contract with ${holding.name}.`, 'neutral'), close: true };
   const id = nextId(S, 'k');
-  const k = { id, kind: 'pro', personId: p.id, sportId: d.sportId, orgId: org.id, employerId: org.employerId, name: org.name, from: state.year, to: state.year + d.years,
-    salary: d.salary, level: d.level, status: 'active', how: o.transfer ? 'transfer' : d.how ?? 'signing', history: [] };
+  const years = maxYears(p, d.sportId, d.years); // soccer: three years at most under 18 (FIFA)
+  const k = { id, kind: 'pro', personId: p.id, sportId: d.sportId, orgId: org.id, employerId: org.employerId, name: org.name, from: state.year, to: state.year + years,
+    salary: d.salary, level: d.level, status: 'active', how: o.trade ? 'trade' : o.transfer ? 'transfer' : d.how ?? 'signing', history: [] };
   S.contracts[id] = k;
   // The wages are a salary in the careers system: paid there, taxed there, and nowhere else.
-  hire(CAREER_BY_ID.athlete, d.level, 60, o.transfer ? `${org.name} signed you.` : d.how === 'draft' ? `${org.name} drafted you.` : `You signed for ${org.name}.`,
+  hire(CAREER_BY_ID.athlete, d.level, 60, o.trade ? `You were traded to ${org.name}.` : o.transfer ? `${org.name} signed you.` : d.how === 'draft' ? `${org.name} drafted you.` : `You signed for ${org.name}.`,
     { employerId: org.employerId, salary: d.salary, hours: 40 });
   p.career.sportContract = id;
   e.contractId = id;
   e.level = 'pro';
+  e.proYear ??= state.year;
   joinOrg(org, state);
-  sp.moment(state, { type: o.transfer ? 'transfer' : 'signing', sportId: d.sportId, text: `${o.transfer ? 'Transferred to' : d.how === 'draft' ? `Drafted by` : 'Signed for'} ${org.name}.`, sig: 3, orgId: org.id });
-  milestone(`${o.transfer ? 'Transferred to' : d.how === 'draft' ? 'Drafted by' : 'Signed professionally with'} ${org.name}.`, 'career');
+  sp.moment(state, { type: o.transfer ? 'transfer' : 'signing', sportId: d.sportId, text: `${o.trade ? 'Traded to' : o.transfer ? 'Transferred to' : d.how === 'draft' ? `Drafted by` : 'Signed for'} ${org.name}.`, sig: 3, orgId: org.id });
+  milestone(`${o.trade ? 'Traded to' : o.transfer ? 'Transferred to' : d.how === 'draft' ? 'Drafted by' : 'Signed professionally with'} ${org.name}.`, 'career');
   if (p.age >= 25 && !o.transfer) arc(state, 'late_bloomer', d.sportId, 'Late bloomer', `A first professional contract at ${p.age}.`);
-  if (!sp.myAthlete(state).agentId) decide(state, { kind: 'agent', sportId: d.sportId, text: 'An agent has been in touch: they would handle your contracts and sponsors for a share of what you earn.', options: [{ id: 'yes', label: 'Take on the agent (5%)' }, { id: 'no', label: 'Handle it yourself' }] });
+  if (!sp.myAthlete(state).agentId) decide(state, { kind: 'agent', sportId: d.sportId, text: 'An agent has been in touch: they would handle your contracts and sponsors for a share of what you earn.', options: [{ id: 'yes', label: 'Hear them out' }, { id: 'no', label: 'Handle it yourself' }] });
   return result(true, `You signed for ${org.name}.`);
 }
 function endContract(state, k, why) {
@@ -290,6 +302,70 @@ function endContract(state, k, why) {
   if (e?.contractId === k.id) { e.contractId = null; leaveOrg(e, state, why); e.level = 'club'; }
   if (p.career.sportContract === k.id) { endJob(why); p.career.sportContract = null; }
 }
+// ---------- Hired as a professional ----------
+//
+// Most professionals come up through the game: a club, a draft or the tour (proRoutes). Someone can also be taken on
+// as a professional athlete from the jobs board, or have played professionally in a life saved before there was one
+// sports system. They go into the same system here: a sport, a club and a contract, or the tour.
+
+/** A professional athlete whose sport is not settled yet: hired as one, with no club contract and not on a tour. */
+export function needsSport(state = store.state) {
+  const p = state.player;
+  if (p.career?.careerId !== 'athlete' || p.career.sportContract) return false;
+  return !sp.activeSports(p.id, state).some((e) => e.level === 'pro');
+}
+/** Sports a professional could play here this year. */
+export const proSports = (state = store.state) => SPORTS_LIST.filter((x) => x.kind !== 'fitness' && sp.proYears(x, sp.divOf(state.player), state.year).open && sp.proPath(x, state.player.countryId) !== 'none' && sp.canPlay(x.id, state.player, state).ok);
+
+/**
+ * Plays a sport professionally, for someone hired as a professional athlete. A team sport signs them with a club
+ * (the club is their employer and pays the wage, as for anyone who signs); an individual sport puts them on the tour,
+ * where prize money and sponsors are the pay, so the salaried job ends.
+ */
+export function goPro(sportId, state = store.state) {
+  const p = state.player;
+  const sport = sportOf(sportId);
+  if (!needsSport(state)) return result(false, 'You are not a professional athlete looking for a sport.', 'neutral');
+  if (!sport || !proSports(state).includes(sport)) return result(false, `There is no professional ${sport?.name.toLowerCase() ?? 'game'} here yet.`, 'neutral');
+  let e = sp.entryOf(sportId, p.id, state);
+  if (!e || e.status !== 'active') { const r = sp.takeUp(sportId, state); if (!r.ok) return r; e = sp.entryOf(sportId, p.id, state); }
+  // They were hired as a professional: their game is a professional's, from their talent and how senior the job is.
+  const target = 64 + (p.career.level ?? 0) * 6 + ((p.talents?.sports ?? 70) - 75) / 3;
+  for (const k of Object.keys(e.skills)) e.skills[k] = Math.round(Math.max(e.skills[k], Math.min(e.ceiling[k] - 2, target)));
+  e.pr = Math.max(e.pr, 1350);
+  e.plan = { type: 'balanced', hours: 15 };
+  if (sport.kind === 'team') {
+    const org = proClub(state, sport, seeded(`hired/${p.id}/${sportId}`).int(0, 7), 1);
+    const o = offerFor(state, e, org);
+    return signPro(state, { sportId, orgId: org.id, level: p.career.level ?? o.level, salary: p.career.salary ?? o.salary, years: 3, how: 'trial' });
+  }
+  endJob('turned professional on the tour');
+  return ANSWERS.turnPro(state, { sportId }, 'yes');
+}
+
+/**
+ * A life saved when professional sport was a separate system (state.proSport, p.sport): its record becomes the
+ * player's record here, once, when the save is loaded. Seasons, titles, medals and caps are kept; a player still
+ * playing is signed again in the same sport at the next Age Up. Runs on the given state only, never the global one.
+ */
+export function adoptOldSport(state = store.state) {
+  const p = state.player;
+  const old = p?.sport;
+  if (!old?.sport || !Array.isArray(old.seasons)) { delete state.proSport; return; }
+  const id = { football: 'soccer', athletics: 'track', boxing: 'martial_arts' }[old.sport] ?? old.sport;
+  if (!sportOf(id)) { delete p.sport; delete state.proSport; return; }
+  const playing = !old.retiredYear && p.career?.careerId === 'athlete';
+  // Still playing: the record waits at club level until the next Age Up signs them in the same sport (tickSports).
+  const e = sp.pastEntry(id, { level: playing ? 'club' : 'pro', since: old.since ?? state.year }, state);
+  e.legacySeasons = (e.legacySeasons ?? 0) + old.seasons.length;
+  e.titles.push(...(old.titles ?? []).map((t) => ({ year: t.year, name: t.name })));
+  e.medals = [...(e.medals ?? []), ...(old.medals ?? []).map((m) => ({ year: m.year, medal: m.medal, games: m.games }))];
+  e.caps = (e.caps ?? 0) + (old.caps ?? 0);
+  if (playing) { e.status = 'active'; e.plan = { type: 'balanced', hours: 15 }; }
+  else { e.status = 'retired'; e.retiredYear = old.retiredYear ?? state.year; e.plan = { type: 'balanced', hours: 0 }; }
+  delete p.sport; delete p.coach; delete state.proSport;
+}
+
 export const contractsOf = (state = store.state, personId = state.player.id) => Object.values(sp.ensure(state).contracts).filter((k) => k.personId === personId);
 
 // ---------- Injuries ----------
@@ -350,33 +426,29 @@ function outWindow(inj, games) {
 // ---------- Recruiting, scholarships and the way into paid sport ----------
 
 /** University coaches, where universities recruit. Offers name real universities of the country and what they pay. */
-function recruiting(state, a, e, rating) {
-  const p = state.player;
-  const sport = sportOf(e.id);
-  if (!sp.hasCollegeSport(sport, p.countryId) || p.age < 16 || p.age > 18 || (p.flags.sportOffers ?? []).some((o) => o.accepted)) return;
-  if (!p.education.enrolled || p.education.stage !== 'high') return;
-  const o = overall(e, p);
-  if (o < 58 || rating < 6.4) return;
-  const r = seeded(`recruit/${p.id}/${e.id}/${state.year}`);
-  const unis = catalogue(p.countryId).filter((u) => u.sport);
-  if (!unis.length) return;
-  const n = o >= 72 ? 3 : o >= 65 ? 2 : 1;
-  const offers = r.shuffle(unis).slice(0, n).map((u) => ({ instId: u.id, name: u.name, fraction: o >= 74 ? 1 : o >= 66 ? 0.75 : 0.5 }));
-  decide(state, { kind: 'scholarship', sportId: e.id, text: `University coaches have been watching. ${offers.length === 1 ? 'One has' : `${offers.length} have`} offered you an athletic scholarship. Committing means the coach backs your application and the scholarship pays part of the tuition, for as long as you play.`,
-    offers, options: [...offers.map((x) => ({ id: x.instId, label: `${x.name}: ${Math.round(x.fraction * 100)}% of tuition` })), { id: 'no', label: 'Not now' }] });
-  sp.say(state, `University ${sport.name.toLowerCase()} coaches have been in touch.`, 'good', { screen: 'hub', id: 'career' });
-}
 /** At university: the program the player plays for, kept, with the scholarship tied to it. */
 function collegeTeam(state, a, e) {
   const p = state.player;
-  if (!p.education.enrolled || p.education.stage !== 'university' || !p.education.schoolId) return null;
+  const juco = p.education.enrolled && p.education.stage === 'community';
+  if (!p.education.enrolled || (p.education.stage !== 'university' && !juco) || (!juco && !p.education.schoolId)) return null;
   const sport = sportOf(e.id);
   if (!sp.hasCollegeSport(sport, p.countryId)) return null;
+  // Junior college: the community college the player signed with, or the one in their own city.
+  if (juco) {
+    const signed = (p.flags.sportOffers ?? []).find((o) => o.accepted && o.sportId === e.id && o.instId?.startsWith('juco:'));
+    const id = signed?.instId ?? `juco:${p.city}`;
+    if (!signed && overall(e, p) < 55) return null;
+    const org = findOrg(state, sport, 'college', { key: `college/${e.id}/${id}`, name: `${signed?.name ?? `${p.city} Community College`} ${sport.name}` });
+    sp.setCollegeDivision(org, 'JUCO');
+    if (e.orgId !== org.id && !e.contractId) { joinOrg(org, state); log(`You joined the ${org.name} program${signed ? ' on your scholarship' : ' as a walk-on'}.`, 'system', 'good'); }
+    return org;
+  }
   const offer = (p.flags.sportOffers ?? []).find((o) => o.accepted && o.sportId === e.id && o.instId === p.education.schoolId);
   const walkOn = !offer && overall(e, p) >= 60;
   if (!offer && !walkOn) return null;
   if (e.leftCollege === p.education.schoolId) return null; // left this university's team: not put back on it
   const org = findOrg(state, sport, 'college', { key: `college/${e.id}/${p.education.schoolId}`, name: `${p.education.schoolName} ${sport.name}`, uniId: p.education.schoolId });
+  sp.setCollegeDivision(org, (uniOf(p.education.schoolId) && divisionOf(state, uniOf(p.education.schoolId))) ?? 'D1');
   if (e.orgId !== org.id && !e.contractId) {
     joinOrg(org, state);
     log(`You joined the ${org.name} program${offer ? ' on your scholarship' : ' as a walk-on'}.`, 'system', 'good');
@@ -402,7 +474,7 @@ export function quitCollegeTeam(sportId, state = store.state) {
 function proRoutes(state, a, e) {
   const p = state.player;
   const sport = sportOf(e.id);
-  if (e.contractId || e.level === 'pro' || p.age < 17 || state.year < sport.proFrom || e.banUntil > state.year) return;
+  if (e.contractId || e.level === 'pro' || p.age < firstProAge(p, e.id) || !sp.proYears(sport, sp.divisionOf(state), state.year).open || e.banUntil > state.year) return;
   if (Object.values(sp.ensure(state).contracts).some((k) => k.kind === 'pro' && k.status === 'active' && k.personId === p.id)) return; // under contract in another sport
   const route = sp.proPath(sport, p.countryId);
   const o = overall(e, p);
@@ -420,26 +492,26 @@ function proRoutes(state, a, e) {
       options: [{ id: 'yes', label: 'Turn professional' }, { id: 'no', label: 'Stay amateur for now' }] });
     return;
   }
-  // Clubs: a draft where the sport has one there, otherwise a club signs the player.
-  const need = route === 'draft' ? 68 : 64;
-  const fromRight = ['academy', 'college', 'club', 'elite'].includes(e.level) || (e.level === 'school' && route === 'draft' && p.age >= 18);
-  if (o < need || !fromRight || p.age > 29) return;
+  // Where the sport has a draft, the draft decides (engine/draft.js): no club simply signs an amateur there. Where big
+  // league clubs sign international amateurs, they do (engine/international.js) until 23; a Cuban player can play at home.
+  // A professional out of contract there is a free agent: any club in the league may sign him.
   if (route === 'draft') {
-    // Drafted from university, or straight from school where the sport allows. Order follows the prospects' quality.
-    const eligible = e.level === 'college' ? p.age >= 19 : p.age >= 18;
-    if (!eligible) return;
-    const r = seeded(`draft/${p.id}/${e.id}/${state.year}`);
-    const pick = Math.max(1, Math.round(1 + (90 - o) * 2.2 + r.normal(0, 6)));
-    if (pick > 120) { log(`The ${sport.name.toLowerCase()} draft came and went without your name being called.`, 'system', 'neutral'); return; }
-    const org = proClub(state, sport, pick % 8, pick <= 60 ? 1 : 2);
+    if (!e.proYear || o < 64 || p.age > 36) return;
+    const r = seeded(`freeAgent/${p.id}/${e.id}/${state.year}`);
+    if (!r.chance(0.4 + (o - 64) / 25)) return;
+    const org = leagueClub(state, sport, r);
+    if (!org) return;
     const off = offerFor(state, e, org);
-    decide(state, { kind: 'contract', how: 'draft', sportId: e.id, orgId: org.id, orgName: org.name, ...off, key: `draft/${e.id}/${state.year}`,
-      text: `${org.name} drafted you with pick ${pick}. They offer ${off.years} ${off.years === 1 ? 'year' : 'years'} at ${fmt(state, off.salary)} a year.`,
+    decide(state, { kind: 'contract', how: 'signing', sportId: e.id, orgId: org.id, orgName: org.name, ...off, key: `freeAgent/${e.id}/${state.year}`,
+      text: `You are a free agent, and ${org.name} want you: ${off.years} ${off.years === 1 ? 'year' : 'years'} at ${fmt(state, off.salary)} a year.`,
       options: [{ id: 'yes', label: 'Sign' }, { id: 'no', label: 'Turn it down' }] });
-    sp.say(state, `You were drafted: pick ${pick}, by ${org.name}.`, 'good', { screen: 'hub', id: 'career' });
-    sp.moment(state, { type: 'drafted', sportId: e.id, text: `Drafted with pick ${pick} by ${org.name}.`, sig: 3, orgId: org.id });
     return;
   }
+  if (intlPath(state, e.id) && p.countryId !== 'cu' && p.age <= 22) return;
+  // Clubs sign the player: from an academy, a club or the national squad.
+  const need = 64;
+  const fromRight = ['academy', 'college', 'club', 'elite'].includes(e.level);
+  if (o < need || !fromRight || p.age > 29) return;
   const r = seeded(`signing/${p.id}/${e.id}/${state.year}`);
   if (!r.chance(0.45 + (o - need) / 30)) return;
   const org = proClub(state, sport, r.int(0, 7), o >= 74 ? 1 : 2);
@@ -467,9 +539,11 @@ function contractYear(state, a, e) {
   }
   // Agents are paid their share of the year's playing income.
   if (a.agentId) {
-    const fee = Math.round(k.salary * 0.05);
+    const fee = Math.round(k.salary * agentCut(a));
     settle(state, `agent/${k.id}/${state.year}`, -fee, 'sport', 'Your agent\'s share');
   }
+  // In the leagues with a draft, players are traded (engine/trades.js): the contract goes to another club as it stands.
+  if ((sportOf(e.id).draftIn ?? []).includes(sp.orgOf(k.orgId, state)?.countryId) && tradeYear(state, a, e, k)) return;
   if (state.year >= k.to) {
     const org = sp.orgOf(k.orgId, state);
     if (o >= 60 && p.age <= 35) {
@@ -480,6 +554,10 @@ function contractYear(state, a, e) {
   }
   // Another club wants the player: a transfer. The fee passes between the clubs; it is not the player's money.
   // The better the player, the more clubs ask; in the last year of a contract a bid competes with the offer to stay.
+  // Not in the leagues with a draft (players move by trade there, not for fees), nor for a player at a club abroad.
+  const club = sp.orgOf(k.orgId, state);
+  if (club && (sportOf(e.id).draftIn ?? []).includes(club.countryId)) return; // traded instead (engine/trades.js), above
+  if (club && club.countryId !== p.countryId) return;
   const r = seeded(`bid/${k.id}/${state.year}`);
   if (k.status === 'active' && o >= 74 && r.chance(Math.min(0.45, 0.12 + (o - 74) / 55))) {
     const sport = sportOf(e.id);
@@ -514,17 +592,24 @@ function mindYear(state, a, e, sum) {
 function fameYear(state, a, e, sum) {
   const p = state.player;
   const watched = { recreational: 0, club: 0.3, school: 0.5, academy: 0.8, college: 2, pro: 4, elite: 3 }[e.level] ?? 0;
-  const gain = watched * (1 + (sum.title ? 1.5 : 0) + (sum.rating >= 7.5 ? 0.6 : 0)) + (sp.myAthlete(state).integrity?.reported === state.year ? 2 : 0);
+  const games = sum.medal === 'gold' ? 10 : sum.medal ? 5 : 0;
+  const honors = (sum.awards ?? []).reduce((s, a) => s + (['best', 'rookie', 'young'].includes(a.kind) ? 6 : a.kind === 'team' ? 2 : 3), 0);
+  const up = watched * (1 + (sum.title ? 1.5 : 0) + (sum.rating >= 7.5 ? 0.6 : 0)) + games + honors + (sum.caps ? 2 : 0) + (sp.myAthlete(state).integrity?.reported === state.year ? 2 : 0);
   const before = a.fame;
-  a.fame = Math.round(clamp(a.fame * (watched >= 2 ? 0.97 : 0.88) + gain) * 10) / 10;
+  a.fame = Math.round(clamp(a.fame * (watched >= 2 ? 0.97 : 0.88) + up) * 10) / 10;
   p.hidden.fame = clamp((p.hidden.fame ?? 0) + Math.max(0, Math.round((a.fame - before) / 2)));
+  // The fame profile (engine/fame.js): sports fans know the name from these results, and from nothing else.
+  if (watched >= 2 && up > 0) {
+    gain({ audience: 'sports', amount: Math.min(18, up), reach: 0.4, lasting: 0.3, abroad: sum.abroad ?? [], why: `the ${state.year} ${sportOf(e.id).name.toLowerCase()} season` }, p);
+    if (e.level === 'pro' && (sum.title || sum.medal === 'gold')) regard({ credibility: 4, why: 'results' }, p);
+  }
   if (a.fame >= 25 && ['pro', 'elite', 'college'].includes(e.level) && !Object.values(sp.ensure(state).contracts).some((k) => k.kind === 'sponsor' && k.status === 'active' && k.personId === p.id)) {
     const r = seeded(`sponsor/${p.id}/${state.year}`);
     if (e.level === 'college' && !['us'].includes(p.countryId)) return; // university athletes elsewhere are not paid for their name
     // The better known, the likelier a brand calls.
     if (r.chance(Math.min(0.9, 0.2 + a.fame / 100))) {
       const brand = r.pick(SPONSORS);
-      const amount = money(state, Math.round(a.fame * 900 * (a.agentId ? 1.15 : 1)));
+      const amount = money(state, Math.round(a.fame * 900 * (a.agentId ? 1 + 0.15 * agentClout(a) : 1)));
       decide(state, { kind: 'sponsor', sportId: e.id, brand, amount, years: r.int(1, 3), key: `sponsor/${state.year}`, text: `${brand} want you in their next campaign: ${fmt(state, amount)} a year.`,
         options: [{ id: 'yes', label: 'Sign' }, { id: 'no', label: 'Say no' }] });
     }
@@ -539,7 +624,7 @@ function paySponsors(state) {
     if (state.year > k.to) { k.status = 'ended'; continue; }
     settle(state, `sponsor/${k.id}/${state.year}`, k.amount, 'sponsorship', `Sponsorship: ${k.name}`);
     const a = sp.myAthlete(state);
-    if (a.agentId) settle(state, `agent/${k.id}/${state.year}`, -Math.round(k.amount * 0.05), 'sport', 'Your agent\'s share');
+    if (a.agentId) settle(state, `agent/${k.id}/${state.year}`, -Math.round(k.amount * agentCut(a)), 'sport', 'Your agent\'s share');
   }
 }
 /** Prize money for a professional event: by how far the player got. */
@@ -649,6 +734,14 @@ export function tickSports(state = store.state) {
   const p = state.player;
   if (S.tickYear === state.year || !p.alive) return;
   S.tickYear = state.year;
+  adoptOldSport(state);
+  // Hired as a professional with no sport settled: their own sport if it has a professional game, else the country's.
+  if (needsSport(state)) {
+    const open = proSports(state);
+    const mine = sp.activeSports(p.id, state).map((e) => sportOf(e.id)).find((x) => open.includes(x));
+    const pick = mine ?? open.find((x) => x.kind === 'team' && x.popular.includes(p.countryId)) ?? open.find((x) => x.popular.includes(p.countryId)) ?? open[0];
+    if (pick) { const r = goPro(pick.id, state); if (r.ok) log(`${r.text} (A professional plays one sport: it was chosen for you, as nothing else was chosen. You can change it in Sport.)`, 'system', 'neutral'); }
+  }
   familyPast(state);
   const started = tickRelatives(state);
   const a = sp.myAthlete(state);
@@ -688,9 +781,13 @@ function yearIn(state, a, e) {
   const p = state.player;
   const sport = sportOf(e.id);
   if (e.banUntil > state.year) { log(`You are banned from ${sport.name.toLowerCase()} until ${e.banUntil}.`, 'system', 'bad'); e.plan.hours = Math.min(e.plan.hours, 5); sp.internals.trainYear(state, p, a, e); return; }
+  // Away on military service (Korea): no games; the skills wait (engine/asiaBaseball.js).
+  if (onService(state, e)) { log(`Military service: no ${sport.name.toLowerCase()} this year.`, 'system', 'neutral'); e.plan.hours = Math.min(e.plan.hours, 2); sp.internals.trainYear(state, p, a, e); asiaYear(state, a, e); return; }
   // University: the program, if the player plays for one.
-  if (p.education.stage === 'university') collegeTeam(state, a, e);
+  if (['university', 'community'].includes(p.education.stage)) collegeTeam(state, a, e);
   sp.internals.checkSchoolTeam(state, e);
+  // College: a redshirt year, grades below the line, or eligibility used up keep the player out of the games (engine/college.js).
+  const sitOut = beforeSeason(state, a, e);
   if (!e.orgId) joinOrg(rec(state, sport), state, { quiet: true });
   sp.internals.regroup(state, e);
   sp.internals.trainYear(state, p, a, e);
@@ -702,11 +799,13 @@ function yearIn(state, a, e) {
     const teams = [e.teamId, e.schoolTeamId].filter(Boolean).map((id) => sp.teamOf(id, state)).filter(Boolean);
     for (const team of teams) {
       const open = a.injuries.find((x) => x.status === 'out' && x.sportId === e.id);
-      const season = playSeason(state, e, team, { injury: outWindow(open, sport.season ?? 14) });
+      const benched = sitOut && sp.orgOf(team.orgId, state)?.kind === 'college' ? { from: 0, to: 9999 } : null;
+      const season = playSeason(state, e, team, { injury: benched ?? outWindow(open, sport.season ?? 14) });
       if (!e.seasons.includes(season.id)) e.seasons.push(season.id);
       const table = sp.standings(season);
       const place = table.findIndex((x) => x.teamId === team.id) + 1;
       const mine = [...season.fixtures, ...season.playoffs].filter((f) => f.me?.played);
+      sum.role = season.role; sum.games = (sum.games ?? 0) + mine.length;
       for (const f of mine) {
         games.push(f.me.rating);
         yearStats.games += 1; if (f.me.start) yearStats.starts += 1;
@@ -731,8 +830,19 @@ function yearIn(state, a, e) {
       const goals = mine.reduce((s, f) => s + (f.me.goals ?? f.me.points ?? f.me.runs ?? f.me.touchdowns ?? f.me.tries ?? f.me.kills ?? f.me.hits ?? 0), 0);
       const unit = { goals: 'goals', points: sport.id.includes('basketball') ? 'points' : sport.id === 'american_football' ? 'touchdowns' : sport.id === 'rugby' ? 'tries' : 'kills', baseball: 'hits', cricket: 'runs' }[sport.adapter] ?? '';
       sp.say(state, `${team.name}, ${state.year}: ${place}${['th', 'st', 'nd', 'rd'][place] ?? 'th'} of ${table.length} in the ${season.name}${champ ? ', then won the playoffs. Champions.' : fin && (fin.home === team.id || fin.away === team.id) ? ', and beaten in the final.' : '.'} You played ${mine.length} ${mine.length === 1 ? 'game' : 'games'}${mine.length ? `, rated ${avg} on average${goals && unit ? `, with ${goals} ${unit}` : ''}` : ''}.`, champ ? 'good' : 'neutral', { screen: 'season', id: season.id });
+      // The league names its awards for the season (engine/sportsAwards.js).
+      const won = seasonAwards(state, season, e, team);
+      if (won.length) sum.awards = [...(sum.awards ?? []), ...won];
       // The school's own record of clubs.
       if (org.kind === 'school') { const f = (p.flags.athlete ??= { seasons: 0, best: 0, awards: [] }); f.sport = sport.name.toLowerCase(); f.seasons = (f.seasons ?? 0) + 1; if (avg >= 7.8) f.awards.push({ age: p.age, what: 'Player of the season' }); }
+    }
+    // The national side, for the best professionals who played most of the season.
+    if (e.level === 'pro' && games.length >= (sport.season ?? 14) * 0.6 && overall(e, p) >= 82) {
+      const caps = seeded(`caps/${p.id}/${e.id}/${state.year}`).int(3, 9);
+      if (!e.caps) { milestone(`First cap for ${COUNTRIES[p.countryId].name} in ${sport.name.toLowerCase()}.`, 'career'); sp.moment(state, { type: 'national', sportId: e.id, text: `First cap for ${COUNTRIES[p.countryId].name}.`, sig: 3 }); }
+      e.caps = (e.caps ?? 0) + caps;
+      sum.caps = caps;
+      sp.say(state, `You won ${caps} caps for ${COUNTRIES[p.countryId].name} this year.`, 'good', { screen: 'sport', id: e.id });
     }
     if (games.length) {
       sum.rating = Math.round(games.reduce((s, x) => s + x, 0) / games.length * 10) / 10;
@@ -745,7 +855,8 @@ function yearIn(state, a, e) {
   } else {
     const n = sp.internals.EVENTS_A_YEAR[e.level] ?? 2;
     const out = a.injuries.find((x) => x.status === 'out' && x.sportId === e.id);
-    const can = out ? Math.max(0, Math.floor(n * (1 - Math.min(1, out.left)))) : n;
+    const can = sitOut ? 0 : out ? Math.max(0, Math.floor(n * (1 - Math.min(1, out.left)))) : n;
+    sum.games = can; sum.role = 'starter';
     const pair = sp.currentPartnership(e.id, state);
     for (let i = 0; i < can; i++) {
       const doubles = pair && i % 2 === 1;
@@ -762,7 +873,7 @@ function yearIn(state, a, e) {
       if (prize && settle(state, `prize/${ev.id}`, prize, 'prizeMoney', `Prize money: ${ev.name}`)) {
         ev.prize = prize;
         yearStats.prize = (yearStats.prize ?? 0) + prize;
-        if (a.agentId) settle(state, `agent/${ev.id}`, -Math.round(prize * 0.05), 'sport', 'Your agent\'s share');
+        if (a.agentId) settle(state, `agent/${ev.id}`, -Math.round(prize * agentCut(a)), 'sport', 'Your agent\'s share');
       }
       if (sp.isTitle(ev.place)) {
         sum.title = true; sum.titleName = ev.name;
@@ -772,7 +883,30 @@ function yearIn(state, a, e) {
         if (['pro', 'elite', 'college', 'academy'].includes(ev.level)) milestone(`Won the ${ev.name}.`, 'career');
       }
     }
+    // The World Games, every four years: the country sends its best professionals and national-squad athletes.
+    const gamesYear = can && isGamesYear(state.year) && ['pro', 'elite'].includes(e.level);
+    if (gamesYear && overall(e, p) < 70 && !(e.gamesMissed ?? []).includes(state.year)) {
+      (e.gamesMissed ??= []).push(state.year);
+      sp.say(state, `The ${WORLD_GAMES.name} ${state.year} went ahead without you: the selectors picked others.`, 'neutral', { screen: 'sport', id: e.id });
+    }
+    if (gamesYear && overall(e, p) >= 70) {
+      const ev = playEvent(state, e, 'elite', 'games', { name: `${WORLD_GAMES.name} ${state.year}` });
+      if (!e.events.includes(ev.id)) e.events.push(ev.id);
+      ev.games = true;
+      const medal = MEDAL_FOR[ev.place] ?? null;
+      const wonMatches = ev.rounds.filter((x) => x.won).length;
+      sum.wins += wonMatches; sum.losses += ev.rounds.length - wonMatches;
+      if (medal) {
+        ev.medal = medal;
+        (e.medals ??= []).push({ year: state.year, medal, games: ev.name, eventId: ev.id });
+        sum.medal = medal;
+        milestone(`${medal[0].toUpperCase()}${medal.slice(1)} medal in ${sport.name.toLowerCase()}, ${ev.name}.`, 'career');
+        sp.moment(state, { type: 'medal', sportId: e.id, text: `${medal[0].toUpperCase()}${medal.slice(1)} medal at the ${ev.name}.`, sig: 3, eventId: ev.id });
+      }
+      sp.say(state, `The ${ev.name}: ${medal ? `a ${medal} medal` : `you finished ${/^\d/.test(ev.place) ? ev.place : `in the ${ev.place.toLowerCase()}`}`}.`, medal ? 'good' : 'neutral', { screen: 'sport', id: e.id });
+    }
     const titles = e.titles.filter((t) => t.year === state.year).length;
+    if (can) { const won = yearAwards(state, e, sum); if (won.length) sum.awards = [...(sum.awards ?? []), ...won]; }
     const best = can ? e.events.map((id) => S.events[id]).filter((x) => x.year === state.year).map((x) => x.place) : [];
     sum.rating = Math.round(clamp(6 + (sum.wins - sum.losses) / Math.max(4, sum.wins + sum.losses) * 3, 3, 10) * 10) / 10;
     e.lastRating = Math.round(clamp((sum.rating - 3) * 14));
@@ -790,11 +924,17 @@ function yearIn(state, a, e) {
   }
   // A coach who sees something says so: an academy calls.
   scouting(state, a, e, sum);
-  recruiting(state, a, e, sum.rating);
+  recruitYear(state, a, e); // high school: stars, camps, offers, visits, commitment, signing day (engine/recruiting.js)
+  youthYear(state, a, e); // soccer academies: a scholarship or youth contract at 16, or released (engine/youthContracts.js)
+  asiaYear(state, a, e); // Japan and Korea: posting, free agency abroad, military service (engine/asiaBaseball.js)
+  intlYear(state, a, e); // outside the draft countries: trainers, handshake deals, signing at 16 (engine/international.js)
   proRoutes(state, a, e);
   if (e.contractId) contractYear(state, a, e);
   mindYear(state, a, e, sum);
   fameYear(state, a, e, sum);
+  afterSeason(state, a, e, sum); // college: the season used, NIL money, the transfer portal
+  minorsYear(state, a, e, sum); // the minor leagues: up a level, called up, or down (engine/draft.js)
+  draftYear(state, a, e); // the draft, by the league's own rules (engine/draft.js)
   integrityYear(state, a, e);
   // The body says when: a professional in their thirties is asked whether this is the last year.
   if (p.age >= 33 && (e.level === 'pro' || e.level === 'elite') && overall(e, p) < 70) decide(state, { kind: 'retire', sportId: e.id, key: `retire/${e.id}/${state.year}`, text: `You are ${p.age}. The game is getting faster and you are not. Is it time?`,
@@ -820,6 +960,7 @@ const rankPlace = (x) => (x === 'Champion' ? 1 : x === 'Final' ? 2 : x === 'Semi
 function scouting(state, a, e, sum) {
   const p = state.player;
   if (!['recreational', 'club', 'school'].includes(e.level) || p.age < 10 || p.age > 17) return;
+  if (e.intl?.trainer) return; // in a trainer's program: the clubs' scouts come to its showcases instead (engine/international.js)
   const sport = sportOf(e.id);
   if (!(sport.popular.includes(p.countryId) || sport.depth === 'full')) return;
   const o = overall(e, p);
@@ -908,3 +1049,112 @@ export function audit(state = store.state) {
 }
 
 export { LEVEL_NAMES };
+Object.assign(ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS, ASIA_ANSWERS, YOUTH_ANSWERS, TRADE_ANSWERS);
+/** For the parts of the athletic life kept in their own files (engine/recruiting.js, engine/draft.js). */
+export const internals = { decide: (...x) => decide(...x), money: (...x) => money(...x), fmt: (...x) => fmt(...x), proClub: (...x) => proClub(...x),
+  offerFor: (...x) => offerFor(...x), signPro: (...x) => signPro(...x), endContract: (...x) => endContract(...x), ANSWERS: () => ANSWERS };
+
+// ---------- Sports agents, shopped for ----------
+// Each country has its own sports agents (engine/agents.js): people at agencies, each with their own cut (3–10%), pull
+// with clubs and brands (clout: better contracts and sponsorships), and athletes on their books the player can look
+// through. Looking shows one agent at a time, twice a year. The agent's cut comes out of salary, prize money and
+// sponsorship. Older saves' agents, signed at a flat five per cent, keep those terms.
+
+const AGENCY_NAMES = ['{S} Sports Management', '{W} Sports', '{S} & {S2} Athlete Representation', '{W} Pro Management'];
+const AGENCY_WORDS = ['Summit', 'Victory', 'Apex', 'Baseline', 'Podium', 'Keystone', 'Northstar', 'Fullcourt', 'Clearwater', 'Ironside'];
+export const agentCut = (a) => (a?.agentId ? a.agent?.commission ?? 0.05 : 0);
+export const agentClout = (a) => (a?.agentId ? a.agent?.clout ?? 1 : 0);
+const athleteWord = (sport) => (sport.kind === 'team' || sport.kind === 'racket' ? `${sport.name} player` : sport.kind === 'golf' ? 'Golfer' : sport.kind === 'combat' ? `${sport.name} fighter` : `${sport.name} athlete`);
+
+/** Invented professional athletes on an agency's books: a mix of sports, women and men. */
+function clientAthletes(state, countryId, tier) {
+  const pool = SPORTS_LIST.filter((x) => x.pro !== 'none' && !x.adaptive && x.proFrom <= state.year);
+  const local = pool.filter((x) => x.popular.includes(countryId));
+  return Array.from({ length: tier === 'top' ? 3 : 2 }, () => {
+    const sport = rng.pick(local.length && rng.chance(0.7) ? local : pool);
+    const woman = rng.chance(0.4) && sp.proYears(sport, 'women', state.year).open;
+    const n = makeNpc({ role: 'performer', countryId, age: rng.int(19, 34), gender: woman ? 'female' : 'male', relationship: 30 });
+    n.occupation = `Professional ${athleteWord(sport).toLowerCase()}`;
+    n.flags.sport = sport.id;
+    n.flags.star = { kind: 'athlete', sport: sport.id, division: woman ? 'women' : 'men', fame: tier === 'top' ? rng.int(40, 85) : rng.int(8, 45), skill: { sports: tier === 'top' ? rng.int(82, 96) : rng.int(64, 84) } };
+    state.npcs[n.id] = n;
+    return n;
+  });
+}
+
+/** The country's sports agents, made the first time anyone looks. */
+export function sportsAgents(countryId = store.state.player.countryId, state = store.state) {
+  const S = sp.ensure(state);
+  S.agentPools ??= {};
+  S.agentPools[countryId] ??= makeAgents('sports', countryId, { country: COUNTRIES[countryId], makeNpc, words: AGENCY_WORDS, agencyNames: AGENCY_NAMES, clients: (tier) => clientAthletes(state, countryId, tier) });
+  return S.agentPools[countryId].map((id) => state.npcs[id]).filter((n) => n && n.alive !== false).map((n) => { ensureTerms(n); return n; });
+}
+
+/** What the player is worth to an agent: how good they are where it counts, and how well known. */
+export function athleteWorth(state = store.state) {
+  const a = sp.myAthlete(state);
+  if (!a) return 0;
+  const best = Math.max(0, ...Object.values(a.sports).filter((e) => e.status === 'active' && e.level !== 'recreational').map((e) => overall(e, state.player)));
+  return Math.round(Math.max(0, (best - 40) * 1.5) + (a.fame ?? 0) * 0.5);
+}
+const canHaveAgent = (state) => { const a = sp.myAthlete(state); return state.player.age >= 15 && a && Object.values(a.sports).some((e) => e.status === 'active' && e.level !== 'recreational'); };
+export const myAgent = (state = store.state) => { const a = sp.myAthlete(state); return a?.agentId ? { npcId: a.agentId, agency: a.agent?.agency ?? '', commission: agentCut(a), clout: agentClout(a), since: a.agent?.since ?? '' } : null; };
+export const sportsAgentOnOffer = () => offered('sports');
+export const sportsAgentTriesLeft = () => triesLeft('sports');
+export const wantsSportsAgent = (state = store.state) => canHaveAgent(state) || !!sp.myAthlete(state)?.agentId;
+
+/** One look for a sports agent: one of those who would take the player on, with their terms. */
+export function findSportsAgent(state = store.state) {
+  if (!canHaveAgent(state)) return result(false, 'Agents represent athletes who compete: join a club, team or tour first.', 'neutral');
+  const worth = athleteWorth(state);
+  const mine = sp.myAthlete(state).agentId;
+  const r = lookFor('sports', sportsAgents(state.player.countryId, state).filter((n) => n.flags.agent.standard <= worth && n.id !== mine));
+  if (r.error) return result(false, r.error, 'neutral');
+  if (r.none) return result(false, 'No sports agent will take you on yet. Results, and being known, change that.', 'neutral');
+  const g = r.agent.flags.agent;
+  return result(true, `${fullName(r.agent)} of ${g.agency} would represent you, for ${Math.round(g.commission * 100)}% of what you earn from sport.`, 'neutral');
+}
+export function passOnSportsAgent() { clearOffer('sports'); return result(true, 'You say no.', 'neutral'); }
+export function signSportsAgent(state = store.state) {
+  const n = offered('sports', state.player);
+  if (!n) return result(false, 'No agent is on offer.', 'neutral');
+  if (sp.myAthlete(state).agentId) dropSportsAgent(state, true);
+  const S = sp.ensure(state);
+  const a = sp.myAthlete(state);
+  const p = state.player;
+  const g = n.flags.agent;
+  a.agentId = n.id;
+  a.agent = { agency: g.agency, commission: g.commission, clout: g.clout, since: state.year };
+  if (!g.clients.includes('player')) g.clients.push('player');
+  if (!p.npcIds.includes(n.id)) p.npcIds.push(n.id);
+  n.flags.title = 'Your sports agent';
+  S.contracts[`agent_${n.id}`] = { id: `agent_${n.id}`, kind: 'agent', personId: p.id, agentId: n.id, name: fullName(n), from: state.year, to: null, share: g.commission, status: 'active' };
+  clearOffer('sports', p);
+  const text = `${fullName(n)} of ${g.agency} is your agent now: contracts, sponsors, and ${Math.round(g.commission * 100)}% of what you earn from sport.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+export function dropSportsAgent(state = store.state, quiet = false) {
+  const a = sp.myAthlete(state);
+  if (!a?.agentId) return result(false, 'You have no agent.', 'neutral');
+  const n = state.npcs[a.agentId];
+  if (n?.flags.agent) n.flags.agent.clients = n.flags.agent.clients.filter((c) => c !== 'player');
+  if (n) n.flags.title = 'Your former sports agent';
+  const k = sp.ensure(state).contracts[`agent_${a.agentId}`];
+  if (k?.status === 'active') { k.status = 'ended'; k.to = state.year; k.ended = state.year; }
+  a.agentId = null; a.agent = null;
+  if (!quiet) log('You and your agent part ways.', 'system', 'neutral');
+  return result(true, 'You and your agent part ways.', 'neutral');
+}
+export function askSportsAgentCut(state = store.state) {
+  const a = sp.myAthlete(state);
+  if (!a?.agentId) return result(false, 'You have no agent.', 'neutral');
+  a.agent ??= { agency: '', commission: 0.05, clout: 1, since: state.year };
+  const holder = { npcId: a.agentId, commission: a.agent.commission };
+  const r = askLowerCut('sports', holder, athleteWorth(state), state.player);
+  a.agent.commission = holder.commission;
+  const k = sp.ensure(state).contracts[`agent_${a.agentId}`];
+  if (k) k.share = holder.commission;
+  if (r.dropped) dropSportsAgent(state, true);
+  return r;
+}

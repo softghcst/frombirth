@@ -83,11 +83,13 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
   const strip = (st) => {
     const x = structuredClone(st);
     x.journal = x.journal.filter((j) => !j.month && j.kind !== 'season');
-    delete x.month; delete x.settings; delete x.updatedAt;
+    delete x.month; delete x.settings; delete x.updatedAt; delete x.idSeq;
     if (x.ledger) delete x.ledger.jn; // where the ledger last read the life story, which has the seasons in it too
-    // Ids are made from the clock (util.uid), not the game's dice: they are numbered by first appearance instead.
+    // Ids are counted in the life (util.uid; random ones before a life exists): they are numbered by first appearance instead.
     const seen = new Map();
-    return JSON.stringify(x).replace(/\b([a-z]+)_([a-z0-9]{10,})\b/g, (m) => { if (!seen.has(m)) seen.set(m, `#${seen.size}`); return seen.get(m); });
+    // Compared with keys in a fixed order: the order a record's fields were first written in is not an outcome.
+    const sorted = (v) => (Array.isArray(v) ? v.map(sorted) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sorted(v[k])])) : v);
+    return JSON.stringify(sorted(x)).replace(/\b([a-z]+)_(q[a-z0-9]{5,}|[a-z0-9]{10,})\b/g, (m) => { if (!seen.has(m)) seen.set(m, `#${seen.size}`); return seen.get(m); });
   };
   const a = play(12); const ja = strip(a); const ra = rng.state();
   const b = play(3); const jb = strip(b); const rb = rng.state();

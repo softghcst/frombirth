@@ -1,17 +1,17 @@
 // Portraits of the family's animals, drawn from what the record says each one
 // looks like: species, coat, pattern, eyes, ears, coat length. The same animal
-// is drawn the same way all its life; only the muzzle greys with age.
+// is drawn the same way all its life; only the muzzle grays with age.
 // A species with no drawing of its own gets a plain paw: no likeness is claimed.
-import { COAT_COLOURS, EYE_COLOURS } from '../data/animals.js';
+import { COAT_COLORS, EYE_COLORS } from '../data/animals.js';
 import { esc } from '../util.js';
 
-const hex = (name, fallback = '#8d8c8a') => COAT_COLOURS[name] ?? fallback;
-function shade(colour, by) {
-  const n = parseInt(colour.slice(1), 16);
+const hex = (name, fallback = '#8d8c8a') => COAT_COLORS[name] ?? fallback;
+function shade(color, by) {
+  const n = parseInt(color.slice(1), 16);
   const ch = (s) => Math.max(0, Math.min(255, Math.round(((n >> s) & 255) * (1 + by))));
   return `#${[16, 8, 0].map((s) => ch(s).toString(16).padStart(2, '0')).join('')}`;
 }
-const eye = (x, y, colour, r = 3.1, slit = false) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${colour}"/>`
+const eye = (x, y, color, r = 3.1, slit = false) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}"/>`
   + (slit ? `<ellipse cx="${x}" cy="${y}" rx="${r * 0.3}" ry="${r * 0.85}" fill="#151210"/>` : `<circle cx="${x}" cy="${y}" r="${r * 0.55}" fill="#151210"/>`)
   + `<circle cx="${x - r * 0.3}" cy="${y - r * 0.35}" r="${r * 0.22}" fill="#fff" opacity=".9"/>`;
 
@@ -37,7 +37,7 @@ function cat(ap, c1, c2, dark, eyes, old) {
   const earFill = pointed ? '#4a3a30' : dark;
   const tuft = ap.ears === 'tuft' ? `<path d="M16 6l-2-4m36 4 2-4" stroke="${earFill}" stroke-width="1.6" stroke-linecap="round"/>` : '';
   const mark = { tabby: `<path d="M32 13v9m-6-8 1.5 8m10.500-8-1.500 8M13 34h6m-5 5 5-1m32-4h-6m5 5-5-1" stroke="${shade(c1, -0.5)}" stroke-width="1.7" stroke-linecap="round" fill="none"/>`,
-    bicolour: `<path d="M32 27c7 5 14 9 17 13-2 7-9 11-17 11s-15-4-17-11c3-4 10-8 17-13z" fill="${c2 ?? '#f1ede4'}"/>`,
+    bicolor: `<path d="M32 27c7 5 14 9 17 13-2 7-9 11-17 11s-15-4-17-11c3-4 10-8 17-13z" fill="${c2 ?? '#f1ede4'}"/>`,
     tortoiseshell: `<path d="M15 26c2-8 9-12 15-12-2 7-6 12-15 12z" fill="#d98a3d"/><path d="M36 15c7 1 12 6 13 13-7 0-11-5-13-13z" fill="#2b2724"/><path d="M22 44c3-3 7-3 9 0-2 4-7 4-9 0z" fill="#d98a3d"/>`,
     calico: `<path d="M32 27c7 5 14 9 17 13-2 7-9 11-17 11s-15-4-17-11c3-4 10-8 17-13z" fill="#f1ede4"/><path d="M15 26c2-8 9-12 15-12-2 7-6 12-15 12z" fill="#d98a3d"/><path d="M36 15c7 1 12 6 13 13-7 0-11-5-13-13z" fill="#2b2724"/>`,
     pointed: '<ellipse cx="32" cy="38" rx="9" ry="8" fill="#4a3a30" opacity=".8"/>' }[ap.pattern] ?? '';
@@ -160,6 +160,6 @@ export function animalPortraitSvg(animal, o = {}) {
   const c1 = hex(ap.coat);
   const c2 = ap.second ? hex(ap.second, '#f1ede4') : shade(c1, 0.4);
   const k = SCALE[ap.size] ?? 0.94;
-  const body = draw(ap, c1, c2, shade(c1, -0.22), EYE_COLOURS[ap.eyes] ?? '#5a3b22', !!o.senior);
+  const body = draw(ap, c1, c2, shade(c1, -0.22), EYE_COLORS[ap.eyes] ?? '#5a3b22', !!o.senior);
   return `<svg viewBox="0 0 64 64" role="img" aria-label="${esc(label)}"><g transform="translate(${32 - 32 * k} ${34 - 32 * k}) scale(${k})">${body}</g></svg>`;
 }

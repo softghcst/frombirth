@@ -15,7 +15,7 @@ const { makeNpc } = await import('../js/engine/npcFactory.js');
 const { audit: ledgerAudit } = await import('../js/engine/ledger.js');
 const edu = await import('../js/engine/education.js');
 const { aid } = await import('../js/engine/admissions.js');
-const { profile: applicant, catalogue } = await import('../js/engine/university.js');
+const { profile: applicant, catalog } = await import('../js/engine/university.js');
 const { EVENT_BY_ID } = await import('../js/data/events/index.js');
 const { resolveChoice, renderText } = await import('../js/engine/eventEngine.js');
 const { SPORTS } = await import('../js/data/sports.js');
@@ -160,23 +160,25 @@ scenario('F/G. recruiting interest from an eligible university, and a scholarshi
     sp.takeUp('soccer'); const e = sp.entryOf('soccer'); maxOut(e, 66); sp.setPlan('soccer', 'technical', 10);
     for (let i = 0; i < 5 && !offer; i++) {
       advanceYear(); playScenes();
-      d = life.openDecisions().find((x) => x.kind === 'scholarship');
-      if (d) { offer = d.offers[0]; life.answer(d.id, offer.instId); }
-      for (const x of life.openDecisions()) life.answer(x.id, 'no');
+      // Recruiting (engine/recruiting.js): a commitment, then signing day with a university that pays a share.
+      const paying = (sp.entryOf('soccer').recruit?.offers ?? []).find((o) => !o.pulled && o.fraction > 0 && !o.id.startsWith('juco:'));
+      d = life.openDecisions().find((x) => x.kind === 'sign');
+      if (d && paying && d.options.some((o) => o.id === paying.id) && life.answer(d.id, paying.id).ok) offer = { instId: paying.id, fraction: paying.fraction };
+      for (const x of life.openDecisions()) life.answer(x.id, x.kind === 'commit' && paying ? paying.id : x.kind === 'camp' ? 'showcase' : x.options.some((o) => o.id === 'no') ? 'no' : x.options.at(-1).id);
     }
   }
   check(!!offer, 'F: a recruited high-school player in the United States has an offer');
   if (!offer) return;
   const p = P();
-  const inst = catalogue(p.countryId).find((u) => u.id === offer.instId);
-  check(inst?.sport && inst.countryId === p.countryId, 'F: from a real university of the country that runs teams');
+  const inst = catalog(p.countryId).find((u) => u.id === offer.instId);
+  check(inst && sp.ensure().divisions?.[inst.id] && inst.countryId === p.countryId, 'F: from a real university of the country that runs teams');
   const help = aid(applicant(null, inst), inst, {}, 0.3);
   check(help.parts.some((x) => x.kind === 'athletic' && x.fraction === offer.fraction), 'G: the admissions aid carries the offered share');
   p.education.enrolled = false; p.education.stage = 'none';
-  edu.enrol('university', 'business', 'self', {}, { id: inst.id, name: inst.name, aid: help });
+  edu.enroll('university', 'business', 'self', {}, { id: inst.id, name: inst.name, aid: help });
   const full = edu.currentTuition();
   check(p.education.aid >= offer.fraction && Math.round(full * (1 - p.education.aid)) < full, 'G: the tuition charged is the tuition less the scholarship');
-  year({ agent: 'no', contract: 'no', turnPro: 'no', academy: 'no' });
+  year({ agent: 'no', contract: 'no', turnPro: 'no', academy: 'no', portal: 'stay', redshirt: 'no' });
   const e = sp.entryOf('soccer');
   check(sp.orgOf(e.orgId)?.kind === 'college' && sp.orgOf(e.orgId).uniId === inst.id, 'G: the player is on that university\'s team');
   const before = p.education.aid;

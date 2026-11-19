@@ -62,6 +62,7 @@ export const CATEGORIES = {
 
   transfer: { name: 'Between your own accounts', kind: T },
   exchange: { name: 'Currency exchange', kind: T },
+  revaluation: { name: 'Money worth what it was then (Historical Eras)', kind: T },
   borrowing: { name: 'Borrowing', kind: T },
   debt: { name: 'Debt repayment', kind: T },
   investments: { name: 'Investments bought and sold', kind: T },
@@ -198,7 +199,7 @@ const PLAN = 'de fr it es pt nl be at fi se no dk ch pl cz hu ro gr jp kr tw';
 const NONE = 'cn vn cu ir sy af iq lb et cd dj ao dz sa kw qa ae jo eg pk bd np mn kz';
 export const INSOLVENCY_OF = { ...Object.fromEntries(PLAN.split(' ').map((id) => [id, 'plan'])), ...Object.fromEntries(NONE.split(' ').map((id) => [id, 'none'])) };
 export const INSOLVENCY = {
-  discharge: { name: 'Bankruptcy with discharge', line: 'Most debts are written off. Student loans are not. No bank will lend to you for years afterwards.' },
+  discharge: { name: 'Bankruptcy with discharge', line: 'Most debts are written off. Student loans are not. No bank will lend to you for years afterward.' },
   plan: { name: 'Court repayment plan', line: 'A court writes off part of what you owe and sets a plan to repay the rest, without interest, over six years.', keep: 0.6, years: 6 },
   none: { name: 'No release from debt', line: 'There is no way to have a debt written off here. What you cannot pay becomes arrears, and follows you.', rate: 0.1, years: 10, bar: 3 },
 };

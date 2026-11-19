@@ -1,6 +1,9 @@
-// Mortality maths and the end of a life: the will, the estate and its tax,
+// Mortality math and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
+import { eraMortality } from './history.js';
 import { COUNTRIES } from '../data/countries.js';
+import { publicMilestones } from './health/story.js';
+import { seriousCondition } from './health/course.js';
 import { settleEstate, atHome } from './currency.js';
 import { closeForEstate } from './banking.js';
 import { trustsAtDeath } from './trusts.js';
@@ -16,6 +19,7 @@ import { addToGraveyard, deleteSlot, saveGame } from '../save.js';
 import { stageLabel } from './education.js';
 import { roleLabel } from './relationships.js';
 import { heirs } from './legacy.js';
+import { onDeath as digitalLegacy } from './digital/legacy.js';
 import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
 import { EPITAPHS } from '../data/epitaphs.js';
@@ -30,7 +34,10 @@ const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
  * the constitution they were born with, plus how they look after themselves.
  */
 export function mortalityChance(age, health, shift = 0) {
-  const base = 0.0004 + Math.min(0.6, Math.exp((age - 95.5 - shift) / 8.5) * 0.3);
+  // Historical Eras: earlier eras shorten old age and add risk at working ages (engine/history.js). Nothing in the present.
+  const era = eraMortality(age);
+  shift += era.shift;
+  const base = 0.0004 + era.extra + Math.min(0.6, Math.exp((age - 95.5 - shift) / 8.5) * 0.3);
   return Math.min(0.95, base * (1.75 - health / 100 * 1.1));
 }
 
@@ -57,9 +64,12 @@ const ACCIDENTS = ['a traffic accident', 'a fall', 'a house fire', 'drowning', '
 /** Rolls the yearly death check. @returns {?string} cause, or null if alive */
 export function rollDeath() {
   const p = player();
-  const worst = [...p.conditions].sort((a, b) => b.severity - a.severity)[0];
+  // The most serious condition, from the older illness list or the health record.
+  const worst = [...p.conditions, ...[seriousCondition(p)].filter(Boolean)].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
   if (p.legal.incarceration?.deathRow && p.legal.incarceration.served >= 2 && rng.chance(0.1)) return 'execution';
+  if (p.flags.birthDeath) { delete p.flags.birthDeath; return 'complications after childbirth'; }
+  if (p.flags.warDeath) { delete p.flags.warDeath; return 'wounds received in the war'; }
   if (!rng.chance(mortalityChance(p.age, p.stats.health, (p.flags.longevity ?? 0) + careShift(p)))) return null;
   if (worst && worst.severity >= 45 && rng.chance(0.7)) return worst.name.replace(/^an? /, '');
   return p.age >= 100 ? 'great old age' : p.age >= 70 ? 'old age' : rng.pick(ACCIDENTS);
@@ -319,7 +329,7 @@ function lifeSummary(p, plan) {
     neverMoved: k.countriesLived === 1 && !(p.flags.visited ?? []).length, holidays: k.holidays ?? 0,
     surgeries: k.surgeries ?? 0, mood: p.stats.mood, health: p.stats.health,
     reigned: !!p.flags.reigned, abdicated: !!p.flags.abdicated, consort: p.royal?.by === 'marriage' && ['monarch', 'heir', 'royal'].includes(p.royal.rank),
-    bornTitled: p.royal?.by === 'birth', honoured: !!p.flags.honouredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
+    bornTitled: p.royal?.by === 'birth', honored: !!p.flags.honoredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
     marriedRoyal: !!p.flags.marriedRoyal, image: p.royal?.image ?? 0,
     topOffice: Math.max(0, p.politics?.tier ?? 0, ...(p.flags.offices ?? []).map((o) => o.tier)), yearsInOffice: k.yearsInOffice ?? 0,
     electionsWon: k.electionsWon ?? 0, electionsLost: k.electionsLost ?? 0, ruledAlone: !!p.flags.ruledAlone,
@@ -350,6 +360,7 @@ export function die(cause) {
   if (life && !life.to) plan.lifeCover = life.amount;
   const summary = lifeSummary(p, plan);
   p.alive = false;
+  digitalLegacy(state); // accounts become memorials; nothing new is posted in their name
   log(`You died of ${cause} at age ${p.age}.`, 'system', 'bad');
 
   for (const s of plan.shares) {
@@ -384,7 +395,7 @@ export function die(cause) {
     spouseName: spouse ? `${spouse.firstName} ${spouse.lastName}` : null,
     lifetimeEarned: p.finance.lifetimeEarned,
     estate: plan,
-    milestones: p.milestones,
+    milestones: publicMilestones(p.milestones),
     counters: p.counters,
     generation: p.generation,
     continuedAs: null,

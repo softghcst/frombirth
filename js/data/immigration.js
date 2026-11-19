@@ -27,4 +27,7 @@ export const ROUTE = {
   studyYears: 4,
   protectionYears: 3,
   settledAfter: 5,      // years on a temporary status before it can become permanent
+  retireAge: 55,        // the youngest a retirement visa is given to (gameplay)
+  retireIncome: 24000,  // a year's pension or savings needed, base units
+  retireYears: 5,       // a retirement visa's term; renewed, never made permanent by itself
 };

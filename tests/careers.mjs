@@ -10,7 +10,7 @@ import { COUNTRIES } from '../js/data/countries.js';
 import { CAREERS, CAREER_BY_ID } from '../js/data/careers.js';
 import { FAMILY_BY_ID, MILITARY_BRANCHES, BRANCH_RANKS, TRACKS } from '../js/data/occupations.js';
 import { MAJOR_BY_ID } from '../js/data/majors.js';
-import { PROGRAMMES, TRADE_BY_ID, CERT_BY_ID, CERTS } from '../js/data/schools.js';
+import { PROGRAMS, TRADE_BY_ID, CERT_BY_ID, CERTS } from '../js/data/schools.js';
 import { WORK_LAW } from '../js/data/workLaw.js';
 import { SERVICES } from '../js/data/freelance.js';
 import { PART_TIME_JOBS } from '../js/data/partTimeJobs.js';
@@ -73,7 +73,7 @@ for (const c of CAREERS) {
   for (let i = 1; i < c.levels.length; i++) check(c.levels[i].pay[1] >= c.levels[i - 1].pay[0], `${c.id}: ${c.levels[i].title} pays less than the rung below`);
   const r = c.req ?? {};
   for (const m of r.majors ?? []) check(!!MAJOR_BY_ID[m], `${c.id}: unknown major ${m}`);
-  for (const pr of [r.programme, r.altProgramme, ...(r.programmes ?? [])].filter(Boolean)) check(!!PROGRAMMES[pr], `${c.id}: unknown program ${pr}`);
+  for (const pr of [r.program, r.altProgramme, ...(r.programs ?? [])].filter(Boolean)) check(!!PROGRAMS[pr], `${c.id}: unknown program ${pr}`);
   if (r.trade) check(!!TRADE_BY_ID[r.trade], `${c.id}: unknown trade ${r.trade}`);
   if (r.altCert) check(!!CERT_BY_ID[r.altCert], `${c.id}: unknown certificate ${r.altCert}`);
   for (const id of Object.keys(r.experience ?? {})) check(!!CAREER_BY_ID[id], `${c.id}: experience in an unknown career ${id}`);
@@ -84,10 +84,10 @@ for (const c of CAREERS) {
   // A branch-only track must be reachable: from a rung, or by experience.
   if (c.branchOnly) check((c.from ?? []).length || r.experience, `${c.id}: branch-only, but nothing leads to it`);
 }
-// Nurses do not become surgeons without medical school: no branch skips a licence.
+// Nurses do not become surgeons without medical school: no branch skips a license.
 for (const c of CAREERS) for (const f of c.from ?? []) {
-  const need = c.req?.programme ?? null;
-  if (need) check(CAREER_BY_ID[f.career].req?.programme === need || c.req?.programmes?.includes(need) || need === CAREER_BY_ID[f.career].req?.altProgramme || !!c.req.programme, `${c.id}: branch from ${f.career} skips ${need}`);
+  const need = c.req?.program ?? null;
+  if (need) check(CAREER_BY_ID[f.career].req?.program === need || c.req?.programs?.includes(need) || need === CAREER_BY_ID[f.career].req?.altProgramme || !!c.req.program, `${c.id}: branch from ${f.career} skips ${need}`);
 }
 check(!CAREER_BY_ID.surgery.from.some((f) => f.career === 'nurse'), 'nurses cannot branch into surgery');
 check(CAREERS.length >= 180 && titles >= 650, `the catalog is substantial (${CAREERS.length} tracks, ${titles} titles)`);
@@ -302,7 +302,7 @@ check(yrs === 22, `duplicated records do not double the years (${yrs})`);
 p = life('us', 70);
 career.hire(CAREER_BY_ID.engineer, 0, 60, 'Test.');
 p.education.degrees.push({ type: 'medical', gpa: 3.6, age: 26 });
-(p.flags.licences ??= []).push('medicine');
+(p.flags.licenses ??= []).push('medicine');
 const kid = makeNpc({ role: 'child', countryId: p.countryId, age: 40 }); store.state.npcs[kid.id] = kid; p.npcIds.push(kid.id);
 const firm = work.career().employerId;
 const name = `${p.firstName} ${p.lastName}`;
@@ -312,7 +312,7 @@ check(!!next, 'an heir carries on');
 if (next) {
   check((next.careerRecord ?? []).some((r) => r.name === name && r.jobs.length), 'the parent\'s working life is in the family record');
   check(!!next.jobs?.employers[firm], 'the employers of the world are the same employers');
-  check(!(next.player.flags.licences ?? []).includes('medicine'), 'a child does not inherit a license');
+  check(!(next.player.flags.licenses ?? []).includes('medicine'), 'a child does not inherit a license');
   check(record.familyCareers().length >= 2, 'the heir can read the family\'s careers');
 }
 section('records: milestones from verified years, and working lives that outlive the worker');

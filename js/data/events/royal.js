@@ -1,9 +1,9 @@
 // Scenes about crowns and titles. Three kinds:
-//   queued by engine/royalty.js: the palace invitation, the honours letter, the coronation
+//   queued by engine/royalty.js: the palace invitation, the honors letter, the coronation
 //   life inside a royal family (isRoyal), where nearly every choice moves the public's opinion
 //   life with a noble title (isNoble), and life as a commoner in a country with a crown (monarchy)
 // Every house and person is invented.
-import { st, hid, cash, ms, ok, bad, any, chk, need, rel, image, meetRoyal, honour, followers, govt } from './helpers.js';
+import { st, hid, cash, ms, ok, bad, any, chk, need, rel, image, meetRoyal, honor, followers, govt } from './helpers.js';
 
 const royal = need('isRoyal', '==', true);
 const has = (amount) => need('cashBase', '>=', amount);
@@ -27,10 +27,10 @@ export default [
     ],
   },
   {
-    id: 'honours_letter', category: 'royalty', ageRange: [30, 110], queuedOnly: true, once: true,
+    id: 'honors_letter', category: 'royalty', ageRange: [30, 110], queuedOnly: true, once: true,
     text: 'A letter arrives marked "In Confidence". The crown wishes to honor you for what you have done for the country, and asks whether you would accept.',
     choices: [
-      { label: 'Accept', outcomes: [any('You kneel on a velvet stool, a sword touches your shoulder, and you rise with a longer name than you came in with.', 'good', honour(), st('mood', 14), hid('fame', 10))] },
+      { label: 'Accept', outcomes: [any('You kneel on a velvet stool, a sword touches your shoulder, and you rise with a longer name than you came in with.', 'good', honor(), st('mood', 14), hid('fame', 10))] },
       { label: 'Decline, quietly', outcomes: [any('You write back that you did none of it for a title. Nobody ever knows, which is how you wanted it.', 'neutral', hid('karma', 4), st('mood', 2))] },
       { label: 'Decline, and tell the newspapers why', outcomes: [any('Your letter about inherited privilege is printed in full. Half the country cheers and the other half writes to complain.', 'neutral', hid('fame', 8), followers(4000), st('mood', 4))] },
     ],
@@ -76,7 +76,7 @@ export default [
         bad('The joke comes out wrong, and now that is the story instead.', image(-7), st('mood', -5)),
       ] },
       { label: 'Take the newspaper to court', requires: [has(50000)], check: chk(0.5, { 'stats.intellect': 0.3 }), outcomes: [
-        ok('You win, and give the damages to charity. Editors are more careful with you afterwards.', cash(-20000), image(4), hid('karma', 4)),
+        ok('You win, and give the damages to charity. Editors are more careful with you afterward.', cash(-20000), image(4), hid('karma', 4)),
         bad('You lose, and every picture is printed again as evidence.', cash(-50000), image(-8), st('mood', -8)),
       ] },
     ],
@@ -91,7 +91,7 @@ export default [
       ] },
       { label: 'Tell him, quietly, how to speak to a waiter', outcomes: [
         { on: 'always', weight: 0.5, tone: 'good', text: 'Someone at the table tells a journalist. By the weekend you are the most popular person in the country.', effects: [image(10), hid('karma', 5), st('mood', 6)] },
-        { on: 'always', weight: 0.5, tone: 'bad', text: 'He leaves before the pudding. The prime minister asks for a word.', effects: [image(-6), hid('karma', 4), st('mood', -3)] },
+        { on: 'always', weight: 0.5, tone: 'bad', text: 'He leaves before dessert. The prime minister asks for a word.', effects: [image(-6), hid('karma', 4), st('mood', -3)] },
       ] },
       { label: 'Plead a headache and leave early', outcomes: [any('An empty chair at the top table is noticed by everyone.', 'bad', image(-4), st('mood', 2))] },
     ],

@@ -1,4 +1,4 @@
-// Accessibility checks that need no browser: zoom, colour contrast, dialogs, landmarks.
+// Accessibility checks that need no browser: zoom, color contrast, dialogs, landmarks.
 // The full audit (axe-core in a browser, and a keyboard-only playthrough) is described in docs/ACCESSIBILITY.md.
 // Run with: node tests/a11y.mjs
 import { readFileSync } from 'node:fs';
@@ -17,7 +17,7 @@ check(viewport && !/user-scalable\s*=\s*(no|0)/.test(viewport) && !/maximum-scal
 check(/<html lang="[a-z]{2}/.test(html), 'the page declares its language');
 section('zoom: allowed, and the page language is declared');
 
-// 2. Colour contrast of the theme, in both light and dark (WCAG 2.1 AA: 4.5:1 for text).
+// 2. Color contrast of the theme, in both light and dark (WCAG 2.1 AA: 4.5:1 for text).
 const css = read('css/base.css');
 const block = (src) => Object.fromEntries([...src.matchAll(/--([a-z-]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
 const light = block(css.slice(0, css.indexOf('@media (prefers-color-scheme: dark)')));
@@ -45,7 +45,7 @@ check(/'Escape'/.test(modals), 'Escape closes a dismissable dialog');
 for (const f of ['js/ui/screens/title.js']) for (const m of read(f).matchAll(/role="dialog"[^>]*>/g)) check(/aria-label(ledby)?=/.test(m[0]), `${f}: a hand-built dialog has no name`);
 section('dialogs: named, focus managed, Escape works');
 
-// 4. Landmarks: each full screen is a <main>; the game has one <main>, a keyboard-reachable journal and a labelled nav.
+// 4. Landmarks: each full screen is a <main>; the game has one <main>, a keyboard-reachable journal and a labeled nav.
 for (const f of ['js/ui/screens/title.js', 'js/ui/screens/creator.js', 'js/ui/screens/obituary.js']) check(/app\.innerHTML = `\s*<main/.test(read(f)), `${f}: the screen is not a <main> landmark`);
 const shell = read('js/ui/shell.js');
 check((shell.match(/<main\b/g) ?? []).length === 1, 'the game screen has exactly one <main>');
@@ -55,7 +55,15 @@ check(/aria-labelledby="panel-title"/.test(shell), 'the open panel is a named re
 check(/keepFocus/.test(shell), 'focus returns to the age-up button after a year');
 section('landmarks: one main per screen, a labeled navigation, a keyboard-reachable journal');
 
-// 5. Motion: animations respect the reduced-motion setting.
+// 5. Explore the World: the map is a labeled group with a text alternative, and its markers work from the keyboard.
+const hub = read('js/ui/globalLife.js');
+check(/class="gl-map"[^>]*role="group" aria-label="[^"]+"/.test(hub), 'the family map is a labeled group');
+check(/role="button" aria-label=/.test(hub) && /tabindex="0"/.test(hub), 'map markers are named buttons in the tab order');
+check(/onkeydown[\s\S]{0,200}data-marker[\s\S]{0,120}'Enter'/.test(hub), 'map markers open with Enter or Space');
+check(/openModal\(/.test(hub), 'the hub is a dialog, named and focused like every other');
+section('Explore the World: a labeled map, keyboard markers, the shared dialog');
+
+// 6. Motion: animations respect the reduced-motion setting.
 const layout = read('css/layout.css') + read('css/components.css');
 check(/prefers-reduced-motion: reduce/.test(layout), 'animations ignore the reduced-motion setting');
 section('motion: reduced-motion is respected');

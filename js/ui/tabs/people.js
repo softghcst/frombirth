@@ -11,6 +11,9 @@ import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import { openFamilyTree } from '../familyTree.js';
+import { openExplore } from '../globalLife.js';
+import { archiveIdOf } from '../../engine/chronicle.js';
+import { placeName } from '../../engine/geo.js';
 import { avatarSvg, petGlyph, royalDress } from '../avatar.js';
 import { animalById, reconcile as reconcileAnimals } from '../../engine/animals.js';
 import * as zooUi from '../animals.js';
@@ -24,10 +27,15 @@ import * as who from '../../engine/identity.js';
 import { openDynasty } from '../dynasty.js';
 import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
+import { careRelationship, openFamilyHistory } from '../health/hub.js';
+import { npcHealthLines, npcCareActions, npcCareHistory, encourageCare, goWithCare, askCare, helpCare, visitCare } from '../../engine/health/story.js';
+import { eventsOf } from '../../engine/digital/core.js';
+import { accountsOf } from '../../engine/digital/accounts.js';
+import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
-  'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'ex', 'enemy', 'cellmate'];
+  'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
@@ -36,7 +44,8 @@ const GROUPS = [
   ['Your household', ['staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
   ['Sport', ['coach', 'teammate', 'agent']],
-  ['Others', ['ex', 'enemy', 'cellmate']],
+  ['Your care team', ['clinician']],
+  ['Others', ['ex', 'enemy', 'cellmate', 'groupmate']],
 ];
 
 export const portrait = (npc) => (npc.role === 'pet'
@@ -92,7 +101,7 @@ async function planWedding(api, npc) {
     // The palace said yes, and you are joining the family: the wedding is yours to shape.
     if (res.ok && !wasRoyal && player().royal?.by === 'marriage') {
       const picks = {};
-      for (const [key, title, body] of [['scale', 'The wedding', 'The crown pays. What kind of day will it be?'], ['media', 'The cameras', 'The whole country wants to watch.'], ['honeymoon', 'Afterwards', 'Where will the two of you go?']]) {
+      for (const [key, title, body] of [['scale', 'The wedding', 'The crown pays. What kind of day will it be?'], ['media', 'The cameras', 'The whole country wants to watch.'], ['honeymoon', 'Afterward', 'Where will the two of you go?']]) {
         picks[key] = await pickModal({ title, body, cancel: 'Let the palace decide', options: court.WEDDING[key].map((o) => ({ value: o.id, label: o.name, sub: o.sub })) }) ?? court.WEDDING[key][0].id;
       }
       await report(api, court.royalWedding(npc.id, picks));
@@ -217,6 +226,16 @@ function editPerson(api, npc, done = () => openNpc(npc, api)) {
   });
 }
 
+/** Where someone was born, lives, and has lived: from the same records as Places I've Lived. */
+function geoLine(npc) {
+  if (npc.role === 'pet') return '';
+  const born = npc.bornIn && COUNTRIES[npc.bornIn] ? placeName(npc.bornIn, npc.birthCity ?? null, store.state.year - npc.age) : null;
+  const now = typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? COUNTRIES[npc.flags.abroad].name : COUNTRIES[player().countryId].name;
+  const lived = new Set((npc.places ?? []).map((l) => l.countryId)).size;
+  const home = npc.flags.homeLanguage?.pace ? ` Growing up with ${npc.flags.homeLanguage.lang.replace(/^./, (c) => c.toUpperCase()).replace('_', ' ')} at home.` : '';
+  return `<p class="muted" style="margin-top:8px">${born ? `Born in ${esc(born)}. ` : ''}${npc.alive ? `Lives in ${esc(now)}.` : ''}${lived > 1 ? ` Has lived in ${lived} countries.` : ''}${esc(home)}</p>`;
+}
+
 /** What the courts recorded about someone, as far as it is public. */
 function courtRecord(npc) {
   const rows = (npc.flags.legalHistory ?? []).filter((h) => h.kind !== 'sealed');
@@ -231,7 +250,7 @@ function courtRecord(npc) {
 }
 
 /**
- * The profile of anyone in the world. People who are not part of the player's
+ * The profile of anyone in the world: the same person on every screen (Digital Life opens it too), never a copy. People who are not part of the player's
  * life (a judge, a witness, an inmate on another landing) are shown without
  * the actions that need a relationship.
  *
@@ -251,7 +270,7 @@ export function openNpc(npc, api, back, o = {}) {
     : [['Relationship', m.relationship], ['Money', m.money], ['Intellect', m.intellect],
       ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy]]
       .map(([n, v]) => meterHtml(n, v, true)).join('');
-  const detail = [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : familyStatus(npc).toLowerCase(), npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
+  const detail = npc.flags.clinician ? '' : [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : familyStatus(npc).toLowerCase(), npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
     .filter(Boolean).map((x) => ` · ${esc(x)}`).join('');
   const owns = (npc.holdings ?? []).length ? `<p class="muted" style="margin-top:8px">Owns: ${esc(npc.holdings.join(', '))}.</p>` : '';
   const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
@@ -276,32 +295,48 @@ export function openNpc(npc, api, back, o = {}) {
     ? `<div class="section-label" style="margin-top:0">What has happened to them</div>
        ${npc.life.history.slice(-14).reverse().map((h) => `<div class="kv"><span>Age ${h.age}</span><span>${esc(h.text.charAt(0).toUpperCase() + h.text.slice(1))}.</span></div>`).join('')}
        <div style="height:14px"></div>` : '';
+  const sharedHealth = npc.flags.clinician ? [] : npcHealthLines(npc);
+  const healthCard = sharedHealth.length ? `<div class="section-label" style="margin-top:0">What they have shared about their health</div>
+    ${sharedHealth.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+    ${npcCareHistory(npc).slice(0, 6).map(([y, t]) => `<div class="kv"><span>${y}</span><span>${esc(t.charAt(0).toUpperCase() + t.slice(1))}</span></div>`).join('')}
+    <div style="height:14px"></div>` : '';
+  // Their digital life, as far as the player can see it: accounts by name, and the moments the two of you share.
+  const online = store.state.digital ? accountsOf(npc.id).filter((a) => a.status !== 'deleted') : [];
+  const shared = store.state.digital ? eventsOf(npc.id).filter((e) => e.charIds.includes(player().id) && e.visibility !== 'private').slice(0, 8) : [];
+  const digitalCard = online.length || shared.length ? `<div class="section-label" style="margin-top:0">Online</div>
+    ${online.map((a) => `<div class="kv"><span>${esc(PLATFORM_BY_ID[a.platformId].name)}</span><span>@${esc(a.handle)}${a.status === 'active' ? '' : ` · ${esc(a.status)}`}</span></div>`).join('')}
+    ${shared.map((e) => `<div class="kv"><span>${e.year}</span><span>${esc(e.summary)}</span></div>`).join('')}
+    <div style="height:14px"></div>` : '';
   const canEncourage = npc.alive && npc.life?.aspiration && !npc.life.aspiration.achieved && npc.age >= 16;
 
   const actions = !inLife ? [] : [
     ...(npc.alive ? love.romanceActions(npc) : []),
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
+    ...npcCareActions(npc),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
-    ...(npc.alive ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
+    ...(npc.role !== 'pet' ? [{ id: 'places', label: 'Places they have lived' }] : []),
+    ...(npc.alive && !npc.flags.clinician ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
   ];
   // Friendly things first, destructive things last.
   actions.sort((a, b) => Number(!!a.danger) - Number(!!b.danger));
 
+  // A clinician's profile is a professional one: their work and your care with them, no personal meters.
+  const clinic = npc.flags.clinician ? careRelationship(npc) : '';
   const modal = openModal(`
     <div class="row" style="border:0;padding:0;background:none">
       ${portrait(npc)}
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
         <small>${esc(rel.roleLabel(npc))} · ${npc.alive ? `age ${npc.age}` : `died at ${npc.age}`}${detail}</small></div>
     </div>
-    ${traitChips}${owns}${feudNote}${expecting}
-    <div style="margin:12px 0 16px">${meters}</div>
-    ${lifeCard}${history}${timeline}${courtRecord(npc)}
+    ${clinic || `${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
+    <div style="margin:12px 0 16px">${meters}</div>`}
+    ${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}
     <div class="btn-stack">
       ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
@@ -323,6 +358,11 @@ export function openNpc(npc, api, back, o = {}) {
       hookUp: () => report(api, love.hookUp(npc.id)),
       baby: () => report(api, kids.tryForBaby(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
+      encourageCare: () => report(api, encourageCare(npc.id)),
+      goWithCare: () => report(api, goWithCare(npc.id)),
+      askCare: () => report(api, askCare(npc.id)),
+      helpCare: () => report(api, helpCare(npc.id)),
+      visitCare: () => report(api, visitCare(npc.id)),
       homework: async () => {
         const how = await pickModal({ title: `${npc.firstName}'s homework`, body: 'How you help matters, and what works depends on the child.', options: kid.HOMEWORK.map((h) => ({ value: h.id, label: h.label, sub: h.sub })) });
         if (how) await report(api, kid.homework(npc.id, how));
@@ -350,6 +390,7 @@ export function openNpc(npc, api, back, o = {}) {
       visitInside: () => report(api, kinCase.visitKin(npc.id)),
       writeInside: () => report(api, kinCase.writeToKin(npc.id)),
       dynasty: () => openDynasty(npc.flags.houseId),
+      places: () => openExplore(api, { view: 'person', params: { id: archiveIdOf(npc) } }),
       breakUp: async () => {
         const yes = await confirmModal({ title: `End things with ${npc.firstName}?`, body: 'They will become an ex.', yes: 'End it', danger: true });
         if (yes) await report(api, love.breakUp(npc.id));
@@ -373,7 +414,7 @@ export default {
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
-    const top = [['moments', 'My Moments: this year'], ['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree']];
+    const top = [['moments', 'My Moments: this year'], ['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree'], ['digitalArchive', 'Letters, photos and posts']];
     if (love.canLookForLove()) top.push(['love', 'Look for love']);
     if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
 
@@ -401,7 +442,8 @@ export default {
       if (id === 'moments') return openMoments(api);
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
-      if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api));
+      if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
+      if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

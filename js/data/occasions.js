@@ -62,7 +62,7 @@ export const HOLIDAYS = [
   { id: 'new_year', name: 'New Year', blurb: 'Staying up for midnight together.', cost: 40, bond: 3, mood: 4 },
   { id: 'christmas', name: 'Christmas', countries: XMAS, blurb: 'A tree, a long lunch, presents for the children.', cost: 250, perGuest: 30, bond: 5, mood: 6 },
   { id: 'eid', name: 'Eid al-Fitr', countries: EID, blurb: 'The end of the fast: new clothes, visits, a table full of food.', cost: 200, perGuest: 25, bond: 5, mood: 6 },
-  { id: 'diwali', name: 'Diwali', countries: 'in np sg my', blurb: 'Lamps in every window, sweets, family from across the city.', cost: 180, perGuest: 20, bond: 5, mood: 6 },
+  { id: 'diwali', name: 'Diwali', countries: 'in np sg my', blurb: 'Lamps in every window, candy, family from across the city.', cost: 180, perGuest: 20, bond: 5, mood: 6 },
   { id: 'lunar_new_year', name: 'Lunar New Year', countries: 'cn tw hk sg my vn kr', blurb: 'The reunion dinner, and red envelopes for the young.', cost: 220, perGuest: 30, bond: 6, mood: 6 },
   { id: 'thanksgiving', name: 'Thanksgiving', countries: 'us ca', since: 1863, blurb: 'A turkey, the whole family, and the same arguments every year.', cost: 150, perGuest: 20, bond: 5, mood: 5 },
   { id: 'hanukkah', name: 'Hanukkah', countries: 'il', blurb: 'Eight nights of candles, and fried food for all of them.', cost: 120, perGuest: 15, bond: 4, mood: 5 },
@@ -80,8 +80,16 @@ export const INVITES = [
   { id: 'colleague_drinks', name: 'leaving drinks', from: ['coworker', 'colleague'], minAge: 18, gift: 15, bond: 3 },
   { id: 'wedding', name: 'wedding', from: ['friend', 'sibling', 'relative'], minAge: 16, gift: 120, bond: 7, memorable: true },
 ];
-/** From this year an invitation is more often a message than a card through the door. */
-export const DIGITAL_INVITES = 2007;
+/**
+ * How an invitation arrives: the newest way the time and place have (engine/digital/tech.js decides what has
+ * arrived where), and the words for it. Checked in this order.
+ */
+export const INVITE_WAYS = [
+  { id: 'message', tech: 'mobile', minAge: 12, text: 'A message' },
+  { id: 'call', tech: 'landline', text: 'A phone call' },
+  { id: 'card', tech: 'post', text: 'A card through the door' },
+  { id: 'word', tech: null, text: 'Word passed along' },
+];
 
 // ---------- Traditions ----------
 /** Years a tradition can be skipped in a row before it fades. */

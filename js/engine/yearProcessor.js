@@ -21,7 +21,8 @@ import { tickCivil } from './civil.js';
 import { tickKinCases } from './kinCases.js';
 import { checkCare } from './guardianship.js';
 import { tickPrison } from './prison.js';
-import { tickSocial } from './social.js';
+import { tickDigital } from './digital/tick.js';
+import { tickEra } from './eras.js';
 import { tickIdentity } from './identity.js';
 import { tickLiving } from './living.js';
 import { tickRoyalty } from './royalty.js';
@@ -48,8 +49,13 @@ import { tickRoyalEducation } from './royaled.js';
 import { tickProperties } from './realEstate.js';
 import { tickVehicles } from './vehicles.js';
 import { tickHealth } from './health.js';
+import { finishCareYear, healthYear } from './health/index.js';
 import { rollDeath, die } from './death.js';
+import { livePlans } from './plans.js';
+import { snapshot } from './yearSummary.js';
 import { drawEvents } from './eventEngine.js';
+import { closeYear } from './travel.js';
+import { openGlobalYear, tickGlobalLife } from './globalLife.js';
 import { finishYear, startYear } from './moments.js';
 import { book, booked } from './ledger.js';
 import { tickBanking, tickMoneyReview } from './banking.js';
@@ -69,88 +75,117 @@ const BIRTHDAYS = {
   100: 'You turned one hundred years old!',
 };
 
-/** Advances one year. Check player().alive and state.pendingEvents afterwards. */
+/**
+ * The registered yearly subsystems, in the order they run. Each runs once per
+ * world year: `state.yearMarks[id]` records the year it last ran, so nothing
+ * can age, pay, charge or reward twice for the same year. A step that returns
+ * a cause of death ends the year there.
+ */
+export const YEARLY = [
+  // Anything the player did with money since the last year is written down before this one begins.
+  ['openWorldYear', openGlobalYear], // the world's own year opens first (engine/globalLife.js)
+  ['openBooks', () => { book({ cat: 'auto', src: 'action' }); }],
+  // Each part of the year books what it did to the player's money under its own heading (engine/ledger.js).
+  ['relationships', () => booked('auto', 'Family and friends', tickRelationships)],
+  ['family', tickFamily],
+  ['romance', () => booked('auto', 'Love and marriage', tickRomance)],
+  ['children', () => booked('childcare', 'Your children', tickChildren)],
+  ['npcLives', tickLives],
+  ['education', () => booked('education', 'Fees and the cost of studying', tickEducation)],
+  ['career', () => booked('salary', 'Work: bonuses and pay-offs', tickWork)],
+  ['market', tickMarket], ['payouts', payouts], ['retirementPlan', tickPlan], ['statePension', tickStatePension], ['property', tickProperties],
+  ['vehicles', () => booked('transport', 'Running your vehicles', tickVehicles)],
+  ['banking', tickBanking],
+  ['insurance', () => booked('insurance', 'Insurance premiums', tickInsurance)],
+  ['finance', tickFinance], ['familyMoney', tickFamilyMoney], ['trusts', tickTrusts],
+  ['illness', () => booked('health', 'Health', tickHealth)],
+  ['health', () => booked('health', 'Health care', () => healthYear(player()))],
+  ['prison', () => booked('legal', 'Prison', tickPrison)],
+  ['digital', () => booked('auto', 'Digital life', tickDigital)], // platforms, people's digital lives, creators, reputation (engine/digital)
+  ['identity', () => booked('health', 'Health and identity', tickIdentity)],
+  ['living', () => booked('losses', 'Rising prices and losses', tickLiving)],
+  ['royalty', () => booked('auto', 'The royal household', tickRoyalty)],
+  ['politics', () => booked('auto', 'Politics', tickPolitics)],
+  ['scandal', () => booked('auto', 'Scandal', tickScandal)],
+  ['polity', () => {
+    const p = player();
+    // The country's politics move on whether or not the player takes any part. The news reaches those old enough to follow it.
+    const happened = tickPolity(polity(p.countryId)).sort((a, b) => b.weight - a.weight).slice(0, 3);
+    if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
+    // Politics also goes on in countries the player has lived in and still has ties to: the results are there when they look, or go back.
+    for (const id of ties()) if (id !== p.countryId && store.state.polities?.[id]) tickPolity(store.state.polities[id]);
+    afterGeneral();
+  }],
+  ['kin', () => booked('auto', 'Family', tickKin)],
+  ['alumni', tickAlumni], ['applications', tickApplications], ['grandfather', grandfather], ['fx', tickFx],
+  ['cover', () => booked('insurance', 'Health insurance', tickCover)],
+  ['rules', tickRules], ['economy', tickEconomy], ['moves', tickMoves],
+  ['familyLeaves', () => { const to = familyLeaves(); if (to) emigrate(to, { forced: true, family: true }); }],
+  ['apart', tickApart], ['familyStatus', tickFamilyStatus],
+  ['status', () => { const back = tickStatus(); if (back) emigrate(back, { forced: true }); }],
+  ['schoolFunding', tickSchoolFunding],
+  ['kids', () => booked('education', 'Your children\'s schooling', tickKids)],
+  ['royalEducation', tickRoyalEducation],
+  ['languages', () => { const learned = tickLanguages(); if (learned) log(learned, 'system', 'good'); }],
+  ['local', () => { for (const n of tickLocal()) log(n.text, 'system', n.tone); }],
+  ['activism', tickActivism],
+  ['courts', () => booked('legal', 'Courts, fines and legal costs', () => { tickCrime(); tickCivil(); tickKinCases(); })],
+  ['care', () => booked('auto', 'Who looks after you', checkCare)],
+  ['animals', tickAnimals], // late, so the record sees the year as it ended: who died, who moved, who is left to care
+  ['breeding', tickBreeding], // young that are due
+  ['animalCare', () => booked('pets', 'Your animals: food, the vet and their care', tickCare)], // what the animals cost, how they fared, and anything that needs a decision
+  ['equestrian', tickEquestrian],
+  ['animalLife', tickLife], // behavior that begins, and what families argue about
+  ['animalArcs', tickArcs], // stories that take years
+  ['sport', () => booked('sport', 'Sport', () => tickSports())], // the athletic year: training, seasons and events, and what they cost and paid
+  ['travel', () => booked('travel', 'Travel, papers and life abroad', tickGlobalLife)],
+  ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],
+  ['sense', tickSense], ['moneyReview', tickMoneyReview],
+];
+const DEADLY = new Set(['career', 'vehicles']);
+
+/**
+ * Runs every registered yearly step that has not yet run for the current world
+ * year. Running it again for the same year does nothing.
+ * @returns {string|null} a cause of death, if a step ended the life
+ */
+export function runYearSteps(state = store.state) {
+  const marks = (state.yearMarks ??= {});
+  for (const [id, step] of YEARLY) {
+    if (marks[id] === state.year) continue;
+    marks[id] = state.year;
+    const death = step();
+    if (DEADLY.has(id) && death) return death;
+  }
+  return null;
+}
+
+/** Advances one year. Check player().alive and state.pendingEvents afterward. */
 export function advanceYear() {
   const state = store.state;
   const p = player();
   if (!p.alive) return;
 
+  // What the year started from, for the yearly life update (engine/yearSummary.js).
+  const before = snapshot(state);
+  // Plans that carry on by themselves are lived through the year that is ending, once.
+  book({ cat: 'auto', src: 'action' }); // what the player did by hand is written down first
+  const planLines = booked('auto', 'Your plans for the year', () => livePlans(p));
+  // The care calendar runs out the weeks left in this year before it turns.
+  booked('health', 'Health care through the year', () => finishCareYear(p));
+  // Trips booked for the year that is ending are taken, and anyone away comes home, before the year turns.
+  if (p.travel) closeYear();
   finishYear(); // the year just lived: traditions nobody organized, invitations nobody answered (engine/moments.js)
   p.age += 1;
   if (p.age === 100) { milestone('Turned 100.', 'life'); log('You are 100 years old. A card arrives from the head of state, and the local paper sends a photographer.', 'system', 'good'); }
   if (p.age === 110) milestone('Turned 110.', 'life');
   state.year += 1;
+  tickEra(); // Historical Eras: the new year's era, money, laws and events (engine/eras.js)
   if (BIRTHDAYS[p.age]) log(BIRTHDAYS[p.age]);
+  state.yearReport = { before, planLines, year: state.year };
 
-  // Anything the player did with money since the last year is written down before this one begins.
-  book({ cat: 'auto', src: 'action' });
-
-  // Each part of the year books what it did to the player's money under its own heading (engine/ledger.js).
-  booked('auto', 'Family and friends', tickRelationships);
-  tickFamily();
-  booked('auto', 'Love and marriage', tickRomance);
-  booked('childcare', 'Your children', tickChildren);
-  tickLives();
-  booked('education', 'Fees and the cost of studying', tickEducation);
-  const workDeath = booked('salary', 'Work: bonuses and pay-offs', tickWork);
-  if (workDeath) { die(workDeath); return; }
-  tickMarket();
-  payouts();
-  tickPlan();
-  tickStatePension();
-  tickProperties();
-  const roadDeath = booked('transport', 'Running your vehicles', tickVehicles);
-  if (roadDeath) { die(roadDeath); return; }
-  tickBanking();
-  booked('insurance', 'Insurance premiums', tickInsurance);
-  tickFinance();
-  tickFamilyMoney();
-  tickTrusts();
-  booked('health', 'Health', tickHealth);
-  booked('legal', 'Prison', tickPrison);
-  booked('auto', 'Friends and followers', tickSocial);
-  booked('health', 'Health and identity', tickIdentity);
-  booked('losses', 'Rising prices and losses', tickLiving);
-  booked('auto', 'The royal household', tickRoyalty);
-  booked('auto', 'Politics', tickPolitics);
-  booked('auto', 'Scandal', tickScandal);
-  // The country's politics move on whether or not the player takes any part. The news reaches those old enough to follow it.
-  const happened = tickPolity(polity(p.countryId)).sort((a, b) => b.weight - a.weight).slice(0, 3);
-  if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
-  // Politics also goes on in countries the player has lived in and still has ties to: the results are there when they look, or go back.
-  for (const id of ties()) if (id !== p.countryId && store.state.polities?.[id]) tickPolity(store.state.polities[id]);
-  afterGeneral();
-  booked('auto', 'Family', tickKin);
-  tickAlumni();
-  tickApplications();
-  grandfather();
-  tickFx();
-  booked('insurance', 'Health insurance', tickCover);
-  tickRules();
-  tickEconomy();
-  tickMoves();
-  { const to = familyLeaves(); if (to) emigrate(to, { forced: true, family: true }); }
-  tickApart();
-  tickFamilyStatus();
-  { const back = tickStatus(); if (back) emigrate(back, { forced: true }); }
-  tickSchoolFunding();
-  booked('education', 'Your children\'s schooling', tickKids);
-  tickRoyalEducation();
-  { const learned = tickLanguages(); if (learned) log(learned, 'system', 'good'); }
-  for (const n of tickLocal()) log(n.text, 'system', n.tone);
-  tickActivism();
-  booked('legal', 'Courts, fines and legal costs', () => { tickCrime(); tickCivil(); tickKinCases(); });
-  booked('auto', 'Who looks after you', checkCare);
-  tickAnimals(); // last, so the record sees the year as it ended: who died, who moved, who is left to care
-  tickBreeding(); // young that are due
-  booked('pets', 'Your animals: food, the vet and their care', tickCare); // then what the animals cost, how they fared, and anything that needs a decision
-  tickEquestrian();
-  tickLife(); // behaviour that begins, and what families argue about
-  tickArcs(); // stories that take years
-  booked('sport', 'Sport', () => tickSports()); // the athletic year: training, seasons and events, and what they cost and paid
-  book({ cat: 'auto', src: 'year', desc: 'The rest of the year' });
-  tickSense();
-  tickMoneyReview();
+  const death = runYearSteps(state);
+  if (death) { die(death); return; }
 
   const cause = rollDeath();
   if (cause) { die(cause); return; }

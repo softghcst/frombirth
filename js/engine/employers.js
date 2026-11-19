@@ -1,11 +1,11 @@
-// Employers and the job market. An employer is a persistent organisation in a
+// Employers and the job market. An employer is a persistent organization in a
 // city: it has a name, a size, a culture, finances that move with the
 // economy, staff the player has met, and a history. Openings come from
 // employers (never from nowhere), stay up until they are filled, withdrawn or
 // expire, and other people apply for them too.
 //
 //   state.jobs = {
-//     employers: { [id]: Employer },   every organisation the world has made
+//     employers: { [id]: Employer },   every organization the world has made
 //     cities:    { 'cc/City': [ids] }, which employers a city has (made the first time anyone looks)
 //     postings:  { [id]: Posting },    open and recently closed openings
 //     seq:       number,               for ids that are the same on every load
@@ -75,7 +75,7 @@ function makeName(r, family, countryId, city) {
 function makeEmployer(r, family, countryId, city) {
   const size = r.next() < 0.45 ? 'small' : r.next() < 0.6 ? 'medium' : r.next() < 0.75 ? 'large' : 'major';
   const own = tracksIn(family);
-  // Small places hire for a few kinds of work; big ones for most of their field, and the office work every big organisation needs.
+  // Small places hire for a few kinds of work; big ones for most of their field, and the office work every big organization needs.
   const n = { small: 2, medium: 4, large: 7, major: 12 }[size];
   const tracks = [...own].sort(() => r.next() - 0.5).slice(0, Math.min(own.length, n)).map((c) => c.id);
   if (size === 'large' || size === 'major') for (const id of EVERYWHERE) if (!tracks.includes(id) && r.chance(size === 'major' ? 0.6 : 0.3)) tracks.push(id);
@@ -131,11 +131,11 @@ export function cityEmployers(countryId, city) {
  * work there have a real place of work. It is run by engine/business.js, not
  * by the yearly employer tick: no openings appear on the board for it.
  */
-export function registerEmployer({ name, family, tracks, countryId, city }) {
+export function registerEmployer({ name, family, tracks, countryId, city, owned = true }) {
   cityEmployers(countryId, city);
   const id = nextId('emp');
   const e = { id, name, family, tracks, countryId, city, size: 'small', culture: 'supportive', payK: 1, health: 60, remote: false,
-    founded: store.state.year, closed: null, staff: [], history: [], owned: true };
+    founded: store.state.year, closed: null, staff: [], history: [], owned };
   jobs().employers[id] = e;
   jobs().cities[`${countryId}/${city}`].push(id);
   return e;

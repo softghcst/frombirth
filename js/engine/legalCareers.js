@@ -20,7 +20,7 @@ const DUTIES = {
   judiciary: [{ id: 'preside', label: 'Hear a case' }],
   corrections: [{ id: 'shift', label: 'Work a shift on the wing' }],
 };
-const OFFENCES_FOR_BRIEFS = ['theft', 'burglary', 'fraud', 'assault', 'robbery', 'vehicle_theft', 'embezzlement'];
+const OFFENSES_FOR_BRIEFS = ['theft', 'burglary', 'fraud', 'assault', 'robbery', 'vehicle_theft', 'embezzlement'];
 
 function acts() {
   const p = player();
@@ -39,7 +39,7 @@ export function duties() {
 /** Something that happened, with the people involved, ready for the system to deal with. */
 function freshIncident(o = {}) {
   const p = player();
-  const off = OFFENSE_BY_ID[o.offenseId ?? rng.pick(OFFENCES_FOR_BRIEFS)];
+  const off = OFFENSE_BY_ID[o.offenseId ?? rng.pick(OFFENSES_FOR_BRIEFS)];
   const perp = k.civilian(p.countryId, { age: rng.int(18, 55) });
   perp.savings = rng.int(500, 20000);
   const victim = off.victim ? k.civilian(p.countryId) : null;
@@ -159,7 +159,7 @@ export function openCourtBrief(side) {
   k.bailHearing(c);
   if (side === 'defend') {
     k.appoint(c, 'good', player().id);
-    c.defenceTier = 'player';
+    c.defenseTier = 'player';
   } else {
     c.prosecutorId = player().id;
     const opt = k.counselOptions(c).find((x) => x.tier === 'public');
@@ -171,7 +171,7 @@ export function openCourtBrief(side) {
 /** Choices for the player as counsel. */
 export function counselChoices(c) {
   const sys = k.procedure(c);
-  if (c.defenceId === player().id) {
+  if (c.defenseId === player().id) {
     const out = [{ id: 'trial', label: 'Fight it at trial', sub: 'Test every piece of evidence.' },
       { id: 'challenge', label: 'Fight it, and challenge how the evidence was gathered', sub: 'More work. It matters only if something was done wrong.' }];
     if (k.offer(c)) out.push({ id: 'deal', label: 'Advise your client to take the offer', sub: c.offer.text });
@@ -190,7 +190,7 @@ export function argue(c, choice) {
   const inc = k.J().incidents[c.incidentId];
   const guilty = inc.truth.perpetratorId === c.defendantId;
   const before = k.strength(c.evidenceIds, c.defendantId);
-  if (c.defenceId === p.id) {
+  if (c.defenseId === p.id) {
     if (choice === 'challenge') c.effort = 15 + Math.round(p.stats.intellect / 10);
     // A client who did it tells their lawyer; one who did not, says so.
     if (choice === 'guilty' && !guilty) return result(false, 'Your client looks at you and says, again, that they did not do it. You cannot advise them to plead guilty to something they deny.', 'neutral');
@@ -277,7 +277,7 @@ export function passSentence(c, type, years) {
   const inc = k.J().incidents[c.incidentId];
   // A conviction that rests on evidence you let in that should have stayed out may not survive appeal.
   if (c.rulings.some((r) => r.byPlayer && r.admitted)) {
-    const a = k.fileAppeal(c, 'procedure', c.defenceId);
+    const a = k.fileAppeal(c, 'procedure', c.defenseId);
     if (a?.outcome === 'conviction quashed') { adjustPerformance(-6); log('The Court of Appeal quashed a conviction from your court: evidence you admitted should have been left out.', 'system', 'bad'); }
   }
   adjustPerformance(inc.truth.perpetratorId === c.defendantId ? 4 : -2);

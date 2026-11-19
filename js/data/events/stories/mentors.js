@@ -72,7 +72,7 @@ export default [
   {
     id: 'teacher_reference', category: 'senior year', ageRange: [17, 18], once: true, priority: true,
     requires: [need('education.stage', '==', 'high')], cast: { teacher: 'tag:teacher' },
-    text: '{teacher} stops you in the corridor and asks what you are planning to do when school ends.',
+    text: '{teacher} stops you in the hallway and asks what you are planning to do when school ends.',
     choices: [
       { label: 'Ask for a recommendation', check: chk(0.5, { 'cast.teacher.relationship': 2 }), outcomes: [
         when([need('memory.teacher.sawTalent', '>=', 1)], ok(
@@ -111,7 +111,7 @@ export default [
     text: '{teacher} emails after years of silence: the school needs someone to talk to this year\'s leavers about what comes next. "I thought of you first."',
     choices: [
       { label: 'Go and speak', outcomes: [any(
-        'You stand at the front of the hall you used to sit at the back of. Afterwards a nervous kid asks how you knew what to do. You tell them the truth: you did not.',
+        'You stand at the front of the hall you used to sit at the back of. Afterward a nervous kid asks how you knew what to do. You tell them the truth: you did not.',
         'good', st('mood', 9), hid('karma', 4), cash(200), rel('teacher', 8),
         mem('teacher', 'cameBack', 'You came back to speak to the leavers when they asked.'))] },
       { label: 'Say you are too busy', outcomes: [any('{teacher} says they understand. They probably do.', 'neutral', rel('teacher', -6))] },

@@ -24,7 +24,8 @@
 import { store, player, log, milestone, livingNpcs } from '../state.js';
 import { clamp, cap, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS } from '../data/sports.js';
+import { SPORTS, SPORTS_LIST, sportOf, PLANS, LOADS, SKILL_KIND, LEVELS, LEVEL_NAMES, TEAM_WORDS, CLUB_WORDS, mascotsFor, JERSEY_COLORS, leagueSize, DIVISIONS, draftCountry } from '../data/sports.js';
+const DIVISION_NAMES = { D1: 'Division I', IVY: 'Ivy', D2: 'Division II', D3: 'Division III', NAIA: 'NAIA', JUCO: 'National' };
 import { makeNpc } from './npcFactory.js';
 import { remember } from './conditions.js';
 import { school as currentSchool, atSchool } from './schooling.js';
@@ -56,6 +57,44 @@ export function ensure(state = store.state) {
   return S;
 }
 const nextId = (S, prefix) => `${prefix}_${(S.seq += 1).toString(36)}`;
+
+// ---------- Divisions ----------
+// Women and men play in their own leagues, clubs' teams, tours and events: a division is part of every org above
+// recreational play (and of an org's key, so a women's club and a men's club in the same city are different clubs).
+// Recreational play and the adaptive sports marked `mixed` are open to everyone. Someone non-binary, or whose division
+// is not the one their gender suggests, chooses theirs (setDivision); everyone else's follows their gender.
+export const DIVISION_NAME = { women: "Women's", men: "Men's", mixed: 'Mixed' };
+export function divisionOf(state = store.state, p = state.player) {
+  if (p.flags?.sportDiv) return p.flags.sportDiv;
+  if (p.gender === 'female') return 'women';
+  if (p.gender === 'male') return 'men';
+  return p.flags?.bornAs === 'male' ? 'men' : 'women';
+}
+/** Whether this person chooses their own division: non-binary and transgender players do. */
+export const choosesDivision = (p = player()) => p.gender !== 'male' && p.gender !== 'female' || (p.flags?.bornAs && p.flags.bornAs !== p.gender);
+export function setDivision(div, state = store.state) {
+  const p = state.player;
+  if (!['women', 'men'].includes(div)) return result(false, 'There is no such division.', 'neutral');
+  if (!choosesDivision(p)) return result(false, 'Your division follows your gender.', 'neutral');
+  const a = profile(state);
+  if (Object.values(a.sports).some((e) => e.orgId || e.contractId)) return result(false, 'Leave your club or team first: a division is chosen between clubs.', 'neutral');
+  p.flags.sportDiv = div;
+  return result(true, `You compete in the ${DIVISION_NAME[div].toLowerCase()} division.`, 'good');
+}
+/** The division an org of this level plays in, for this player. */
+const orgDivision = (state, sport, level) => (level === 'recreational' || sport.mixed ? 'mixed' : divisionOf(state));
+/** The gender of the invented names on a roster or in a draw for a division. */
+const namesFor = (div, r) => (div === 'women' ? 'female' : div === 'men' ? 'male' : r.chance(0.5) ? 'male' : 'female');
+/**
+ * When anyone in a division could first be paid to play a sport, and (rarely) when that stopped. Women's professional
+ * play began later in most sports (`womenProFrom`; null where there is none at all); some leagues closed again
+ * (`womenProUntil`). Returns { open, from, until }.
+ */
+export function proYears(sport, div = divisionOf(), year = yearNow()) {
+  const from = div === 'women' && sport.womenProFrom !== undefined && !sport.mixed ? sport.womenProFrom : sport.proFrom;
+  const until = div === 'women' && !sport.mixed ? sport.womenProUntil ?? null : null;
+  return { open: from != null && year >= from && (until == null || year <= until), from, until };
+}
 
 export const athleteOf = (id, state = store.state) => ensure(state).athletes[id] ?? null;
 export const myAthlete = (state = store.state) => athleteOf(state.player.id, state);
@@ -112,7 +151,7 @@ function newAthlete(state, p) {
 
 /**
  * How far someone could go in each skill. It comes from their talent and the attributes the sport uses, plus a little
- * that is theirs alone. It is fixed for life: training moves a skill towards its ceiling and never past it.
+ * that is theirs alone. It is fixed for life: training moves a skill toward its ceiling and never past it.
  */
 function ceilings(p, sport) {
   const r = seeded(`ceiling/${p.id}/${sport.id}`);
@@ -151,6 +190,25 @@ function fillEntry(state, p, e) {
   e.orgId = null; e.teamId = null; e.coachId = null;
   return e;
 }
+
+/**
+ * The player's entry in a sport, made without taking the sport up: for a record that exists already (a life saved
+ * before there was one sports system). Skills come from their talent and the level given, as for a relative.
+ */
+export function pastEntry(sportId, o = {}, state = store.state) {
+  const p = state.player;
+  const a = profile(state);
+  const sport = sportOf(sportId);
+  const e = a.sports[sportId] ?? newEntry(state, p, a, sport, o.since ?? state.year);
+  e.level = o.level ?? e.level;
+  e.peak = Math.max(e.peak ?? 0, LEVEL_STRENGTH[e.level] ?? 30);
+  return e;
+}
+
+/** Which side of professional sport someone plays in: the women's or the men's game. Non-binary players choose (flags.sportDiv). */
+export const divOf = (p = player()) => divisionOf(store.state, p);
+/** The first year someone could be paid to play: later for women in some sports. */
+export const proFromFor = (sport, p = player()) => proYears(sport, divOf(p)).from ?? Infinity;
 
 /** The character's athletic profile, made the first time it is needed. */
 export function profile(state = store.state) {
@@ -201,7 +259,7 @@ export function sportsMenu(p = player(), state = store.state) {
 }
 /** The way into paid sport where the player lives. */
 export function proPath(sport, countryId = player().countryId) {
-  if (sport.pro === 'draft') return (sport.draftIn ?? []).includes(countryId) ? 'draft' : sport.proElse ?? 'signing';
+  if (sport.pro === 'draft') return draftCountry(sport, countryId) ? 'draft' : sport.proElse ?? 'signing';
   return sport.pro;
 }
 /** Whether universities in this country run teams that recruit, with scholarships. */
@@ -354,26 +412,40 @@ const cityOf = (p) => p.city ?? COUNTRIES[p.countryId].cities?.[0] ?? 'Home';
 function orgName(r, kind, sport, city) {
   if (kind === 'rec') return `${city} ${sport.kind === 'team' ? 'Youth' : 'Community'} ${sport.name}`;
   if (kind === 'academy') return `${r.pick(CLUB_WORDS)} ${sport.name} Academy`;
-  if (kind === 'pro') return `${city} ${r.pick(TEAM_WORDS)}`;
-  return `${r.pick(CLUB_WORDS)} ${sport.kind === 'team' ? r.pick(TEAM_WORDS) : `${sport.name} Club`}`;
+  if (kind === 'pro') return `${city} ${r.pick(sport.kind === 'team' ? mascotsFor(sport) : TEAM_WORDS)}`;
+  return `${r.pick(CLUB_WORDS)} ${sport.kind === 'team' ? r.pick(mascotsFor(sport)) : `${sport.name} Club`}`;
 }
 /** Strength of an org's teams, by level: what a typical player there is like. */
 const LEVEL_STRENGTH = { recreational: 28, club: 45, school: 42, academy: 60, college: 64, pro: 76, elite: 80 };
+
+/** How strong a college division's teams are, against the usual college level: Division I is the best. */
+const DIVISION_STRENGTH = { D1: 4, IVY: -4, D2: -6, JUCO: -8, NAIA: -10, D3: -14 };
+/** Puts a college program in its division, once: its strength follows. */
+export function setCollegeDivision(org, division) {
+  if (!org || org.division) return org;
+  org.division = division;
+  org.strength = Math.round(org.strength + (DIVISION_STRENGTH[division] ?? 0));
+  return org;
+}
 
 /** The org of a kind for a sport in the player's city, made once and found again after. */
 function findOrg(state, sport, level, o = {}) {
   const S = ensure(state);
   const p = state.player;
   const city = o.city ?? cityOf(p);
-  const key = o.key ?? `${level}/${sport.id}/${p.countryId}/${city}/${o.n ?? 0}`;
+  const division = o.div ?? orgDivision(state, sport, level);
+  const key = (o.key ?? `${level}/${sport.id}/${p.countryId}/${city}/${o.n ?? 0}`) + (division === 'women' ? '/women' : '');
   const had = Object.values(S.orgs).find((x) => x.key === key);
   if (had) return had;
   const r = seeded(`org/${key}`);
   const id = nextId(S, 'org');
   const kind = level === 'recreational' ? 'rec' : level;
-  const org = { id, key, kind, level, sportId: sport.id, name: o.name ?? orgName(r, kind, sport, city), countryId: p.countryId, city,
+  const base = o.name ?? orgName(r, kind, sport, city);
+  const name = division !== 'women' ? base : level === 'school' ? `${base} (girls)` : /Tour$/.test(base) ? base.replace(/ Tour$/, " Women's Tour") : `${base} Women`;
+  const org = { id, key, kind, level, div: division, sportId: sport.id, name, countryId: o.countryId ?? p.countryId, city,
     founded: Math.max(sport.founded, state.year - r.int(5, 90)), strength: Math.round(LEVEL_STRENGTH[level] + r.int(-6, 6) + (o.strength ?? 0)),
     coachId: null, teamIds: [], leagueId: null, history: [], uniId: o.uniId ?? null, tier: o.tier ?? null };
+  if (o.division) setCollegeDivision(org, o.division);
   S.orgs[id] = org;
   return org;
 }
@@ -415,10 +487,10 @@ export const COACH_STYLE = {
 };
 
 /** Invented names for the rest of a roster, from the country's own names. */
-function rosterNames(r, countryId, n) {
+function rosterNames(r, countryId, n, div = 'mixed') {
   const names = COUNTRIES[countryId].names;
   const out = [];
-  for (let i = 0; i < n; i++) { const g = r.chance(0.5) ? 'male' : 'female'; out.push(`${r.pick(names[g] ?? names.female)} ${r.pick(names.last)}`); }
+  for (let i = 0; i < n; i++) { const g = namesFor(div, r); out.push(`${r.pick(names[g] ?? names.female)} ${r.pick(names.last)}`); }
   return out;
 }
 
@@ -433,7 +505,7 @@ function teamFor(state, org, p = state.player) {
   const id = nextId(S, 'team');
   const size = sport.kind === 'team' ? (sport.teamSize ?? 11) + 6 : 8;
   const positions = sport.positions ?? [[null, 'Member']];
-  const roster = rosterNames(r, org.countryId, size).map((name, i) => ({ id: `r_${id}_${i}`, name, pos: positions[i % positions.length][0],
+  const roster = rosterNames(r, org.countryId, size, org.div).map((name, i) => ({ id: `r_${id}_${i}`, name, pos: positions[i % positions.length][0],
     rating: Math.round(clamp(org.strength + r.normal(0, 7) - (group === 'senior' ? 0 : 4), 10, 95)), since: state.year - r.int(0, 3) }));
   const t = { id, orgId: org.id, sportId: sport.id, group, name: group === 'senior' ? org.name : `${org.name} ${group.toUpperCase()}`, roster, history: [], captainId: null };
   S.teams[id] = t;
@@ -453,7 +525,9 @@ function meetTeammates(state, t) {
   if (known.length >= 2 || sportOf(t.sportId).kind !== 'team' && sportOf(t.sportId).kind !== 'racket') return known;
   for (const slot of r.shuffle(t.roster.filter((x) => !x.npcId && x.id !== p.id)).slice(0, 2 - known.length)) {
     const [first, ...last] = slot.name.split(' ');
-    const n = makeNpc({ role: 'teammate', countryId: state.player.countryId, age: Math.max(6, p.age + r.int(-1, 2)), relationship: r.int(40, 62), firstName: first, lastName: last.join(' ') });
+    const div = orgOf(t.orgId, state)?.div;
+    const gender = div === 'women' ? 'female' : div === 'men' ? 'male' : undefined;
+    const n = makeNpc({ role: 'teammate', countryId: state.player.countryId, age: Math.max(6, p.age + r.int(-1, 2)), relationship: r.int(40, 62), firstName: first, lastName: last.join(' '), gender });
     n.flags.title = `Teammate, ${t.name}`;
     n.flags.sport = t.sportId;
     n.flags.talents = { sports: slot.rating };
@@ -686,28 +760,31 @@ export function leftSchoolTeam(name, state = store.state) {
 function leagueFor(state, org, team) {
   const S = ensure(state);
   const sport = sportOf(org.sportId);
-  const key = `league/${org.level}/${sport.id}/${org.countryId}/${team.group}/${org.tier ?? 0}`;
+  const key = `league/${org.level}/${sport.id}/${org.countryId}/${team.group}/${org.tier ?? 0}${org.minorLevel ? `/${org.minorLevel}` : ''}${org.div === 'women' ? '/women' : ''}${org.level === 'college' && org.division ? `/${org.division}` : ''}`;
   let lg = Object.values(S.orgs).find((x) => x.key === key);
   if (!lg) {
     const r = seeded(key);
     const id = nextId(S, 'org');
     const cities = COUNTRIES[org.countryId].cities ?? [org.city];
-    lg = { id, key, kind: 'league', level: org.level, sportId: sport.id, countryId: org.countryId, city: org.city, teamIds: [],
-      name: `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
+    lg = { id, key, kind: 'league', level: org.level, div: org.div ?? null, sportId: sport.id, countryId: org.countryId, city: org.city, teamIds: [],
+      // A college league is a conference within the program's division.
+      name: /League$/.test(org.minorLevel ?? '') ? org.minorLevel : org.minorLevel === 'Farm team' ? r.pick(['Eastern League', 'Western League']) : org.minorLevel ? `${org.minorLevel === 'Practice squad' ? 'Practice' : org.minorLevel} ${r.pick(['Pacific Coast', 'International', 'Eastern', 'Southern', 'Texas', 'Midwest', 'Carolina', 'Florida State', 'Northwest', 'California'])} League` : org.level === 'college' && org.division ? `${DIVISION_NAMES[org.division] ?? org.division} ${r.pick(['Mountain', 'Coastal', 'Valley', 'Great Lakes', 'Sun', 'Prairie', 'Atlantic', 'Pacific', 'Heartland', 'Metro'])} ${org.division === 'JUCO' ? 'Junior College ' : ''}Conference` : `${org.level === 'pro' ? COUNTRIES[org.countryId].name : r.pick(['Metro', 'County', 'District', 'Regional', 'City'])} ${org.level === 'school' ? 'Schools ' : org.level === 'college' ? 'Universities ' : ''}${org.div === 'women' ? "Women's " : ''}${sport.name} League${team.group !== 'senior' ? ` ${team.group.toUpperCase()}` : ''}`,
       founded: Math.max(sport.founded, state.year - r.int(10, 80)), history: [] };
     S.orgs[id] = lg;
     // Every team in a league has a name of its own: the place, and a club name nobody else in the league has.
     const taken = new Set([org.name]);
-    for (let i = 0; i < 7; i++) {
+    lg.size = org.tier > 1 ? 10 : leagueSize(sport, org.level, org.countryId, org.div);
+    for (let i = 0; i < lg.size - 1; i++) {
       const city = cities[i % cities.length];
       let name = '';
-      for (let t = 0; t < 20 && (!name || taken.has(name)); t++) name = org.level === 'pro' ? `${city} ${r.pick(TEAM_WORDS)}` : t < 10 && !taken.has(`${city} ${sport.kind === 'team' ? r.pick(TEAM_WORDS) : sport.name}`) ? `${city} ${r.pick(TEAM_WORDS)}` : `${r.pick(CLUB_WORDS)} ${r.pick(TEAM_WORDS)}`;
+      const nick = sport.kind === 'team' ? mascotsFor(sport) : TEAM_WORDS;
+      for (let t = 0; t < 20 && (!name || taken.has(name)); t++) name = org.level === 'pro' ? `${city} ${r.pick(nick)}` : t < 10 ? `${city} ${r.pick(nick)}` : `${r.pick(CLUB_WORDS)} ${r.pick(nick)}`;
       taken.add(name);
-      const rival = findOrg(state, sport, org.level, { key: `${key}/rival/${i}`, city, strength: r.int(-8, 8), tier: org.tier, name });
+      const rival = findOrg(state, sport, org.level, { division: org.division, countryId: org.countryId, key: `${key}/rival/${i}`.replace(/\/women\//, '/'), city, strength: r.int(-8, 8), tier: org.tier, name, div: org.div ?? 'mixed' });
       lg.teamIds.push(teamFor(state, rival).id);
     }
   }
-  if (!lg.teamIds.includes(team.id)) lg.teamIds.splice(0, lg.teamIds.length >= 8 ? 1 : 0, team.id);
+  if (!lg.teamIds.includes(team.id)) lg.teamIds.splice(0, lg.teamIds.length >= (lg.size ?? 8) ? 1 : 0, team.id);
   org.leagueId = lg.id;
   return lg;
 }
@@ -718,15 +795,18 @@ function refreshRoster(state, t) {
   t.refreshed = state.year;
   const org = orgOf(t.orgId, state);
   const r = seeded(`roster/${t.id}/${state.year}`);
-  const names = rosterNames(r, org.countryId, 3);
+  const names = rosterNames(r, org.countryId, 3, org.div);
   for (const x of t.roster) if (!x.player && !x.npcId) x.rating = Math.round(clamp(x.rating + r.normal(0.5, 2.5), 10, 97));
   // One or two move on each year, and new ones arrive. Known teammates stay while the player is there.
   const leaving = r.shuffle(t.roster.filter((x) => !x.player && !x.npcId && x.since < state.year)).slice(0, r.int(1, 2));
-  for (const x of leaving) {
+  // Rosters from before this fix could hold two newcomers with the same id (both counted from the roster's length).
+  const seen = new Set();
+  for (const x of t.roster) { if (seen.has(x.id)) x.id = `${x.id}_b`; seen.add(x.id); }
+  leaving.forEach((x, i) => {
     t.roster = t.roster.filter((y) => y !== x);
     const n = names.pop();
-    t.roster.push({ id: `r_${t.id}_${state.year}_${t.roster.length}`, name: n, pos: x.pos, rating: Math.round(clamp(org.strength + r.normal(0, 7), 10, 95)), since: state.year });
-  }
+    t.roster.push({ id: `r_${t.id}_${state.year}_n${i}`, name: n, pos: x.pos, rating: Math.round(clamp(org.strength + r.normal(0, 7), 10, 95)), since: state.year });
+  });
   for (const x of t.roster) if (x.npcId && state.npcs[x.npcId]) x.rating = Math.round(clamp(x.rating + r.normal(1, 2), 10, 97));
 }
 
@@ -752,8 +832,9 @@ function playSeason(state, e, team, o = {}) {
   const above = samePos.filter((x) => x > me).length;
   const role = above < slots ? 'starter' : above < slots + 2 ? 'rotation' : 'bench';
   const minutes = { starter: 0.9, rotation: 0.5, bench: 0.15 }[role];
-  const rounds = Math.max(1, Math.round((sport.season ?? 14) / 7));
   const teams = lg.teamIds;
+  // As many times round the league as the season is long: twice round eight teams, once round thirty.
+  const rounds = Math.max(1, Math.round((sport.season ?? 14) / Math.max(1, teams.length - 1)));
   const fixtures = [];
   // A round-robin, as many times as the season is long; home and away alternate.
   for (let rr = 0; rr < rounds; rr++) {
@@ -841,6 +922,12 @@ function myGame(state, season, f, e, team, minutes) {
   }
   const won = us > them;
   s.rating = Math.round(clamp(6 + (skill - 55) / 18 + (won ? 0.5 : us === them ? 0 : -0.4) + (s.goals ?? 0) * 0.8 + (s.touchdowns ?? 0) * 0.5 + (s.tries ?? 0) * 0.6 + r.normal(0, 0.6), 3, 10) * 10) / 10;
+  // Baseball and softball also count runs batted in, and the runs a pitcher gave up (for the earned run average).
+  // Drawn after the rating, so the numbers above come out as they always did.
+  if (sport.adapter === 'baseball') {
+    if (e.position === 'pitcher') s.earned = r.poisson((s.innings ?? 0) / 9 * Math.max(0.8, 5.2 - k('stuff') * 2.4 - k('control') * 1.4));
+    else s.rbi = (s.homeRuns ?? 0) + r.poisson((s.hits ?? 0) * 0.45);
+  }
   return s;
 }
 
@@ -878,6 +965,13 @@ function playoffs(state, season, e, team, minutes, outFor) {
     return f.winner;
   };
   void sport;
+  // A big league takes its top eight to the playoffs, a small one its top four.
+  if (table.length >= 16) {
+    const s = table.slice(0, 8).map((x) => x.teamId);
+    const q = [tie(s[0], s[7], 0, 'Quarterfinal'), tie(s[3], s[4], 1, 'Quarterfinal'), tie(s[1], s[6], 2, 'Quarterfinal'), tie(s[2], s[5], 3, 'Quarterfinal')];
+    season.champion = tie(tie(q[0], q[1], 4, 'Semifinal'), tie(q[2], q[3], 5, 'Semifinal'), 6, 'Final');
+    return;
+  }
   const w1 = tie(a, d, 0, 'Semifinal');
   const w2 = tie(b, c, 1, 'Semifinal');
   const champion = tie(w1, w2, 2, 'Final');
@@ -891,14 +985,14 @@ const EVENTS_A_YEAR = { recreational: 2, club: 4, school: 3, academy: 5, college
 /** The size of a draw or field. */
 const FIELD = { recreational: 8, club: 16, school: 16, academy: 32, college: 32, pro: 64, elite: 32 };
 /** Invented names for events. */
-const EVENT_NAMES = { recreational: ['Community Open', 'Summer Fun Tournament', 'Neighborhood Classic'], club: ['Club Championship', 'Spring Open', 'Autumn Classic', 'Invitational'],
+const EVENT_NAMES = { recreational: ['Community Open', 'Summer Fun Tournament', 'Neighborhood Classic'], club: ['Club Championship', 'Spring Open', 'Fall Classic', 'Invitational'],
   school: ['Schools Championship', 'Inter-School Cup', 'District Finals'], academy: ['Junior Open', 'Youth Masters', 'National Junior Series'],
   college: ['Conference Championship', 'University Invitational', 'Collegiate Open'], pro: ['Open', 'Masters', 'Classic', 'Championship', 'Grand Prix', 'Cup'], elite: ['National Championship', 'International Trophy'] };
 
 /** An opponent, invented and named, at a rating for the level. */
-function opponent(r, countryId, level, i) {
+function opponent(r, countryId, level, i, div = 'mixed') {
   const names = COUNTRIES[countryId].names;
-  const g = r.chance(0.5) ? 'male' : 'female';
+  const g = namesFor(div, r);
   const skill = clamp(LEVEL_STRENGTH[level] + r.normal(0, 9) - i * 0.15, 8, 98);
   return { name: `${r.pick(names[g] ?? names.female)} ${r.pick(names.last)}`, skill: Math.round(skill), pr: prOfSkill(skill) };
 }
@@ -931,12 +1025,13 @@ function playEvent(state, e, level, n, o = {}) {
   const format = partner ? 'doubles' : 'singles';
   const names = EVENT_NAMES[level] ?? EVENT_NAMES.club;
   const where = level === 'pro' ? r.pick(COUNTRIES[p.countryId].cities ?? [cityOf(p)]) : cityOf(p);
-  const ev = { id, year: state.year, sportId: e.id, level, format, name: `${where} ${r.pick(names)}${format === 'doubles' ? ' (doubles)' : ''}`, playerId: p.id, partnershipId: partner?.id ?? null,
+  const division = orgDivision(state, sport, level);
+  const ev = { id, year: state.year, sportId: e.id, level, format, div: division, name: o.name ?? `${where} ${division === 'women' ? "Women's " : ''}${r.pick(names)}${format === 'doubles' ? ' (doubles)' : ''}`, playerId: p.id, partnershipId: partner?.id ?? null,
     rounds: [], place: null, field: FIELD[level] ?? 16, prize: 0, prBefore: e.pr };
   S.events[id] = ev;
   if (sport.adapter === 'time' || sport.adapter === 'judged' || sport.adapter === 'strokes') return fieldEvent(state, ev, e, r);
   const size = ev.field;
-  const field = Array.from({ length: size - 1 }, (_, i) => opponent(r, p.countryId, level, i));
+  const field = Array.from({ length: size - 1 }, (_, i) => opponent(r, p.countryId, level, i, division));
   if (partner) for (const x of field) x.skill = Math.round(clamp(x.skill + r.normal(0, 3)));
   const side = racketSide(state, e, partner);
   // Seeds: the stronger the rating, the later the strong meet. The player's position in the draw follows their rating.
@@ -976,7 +1071,7 @@ function fieldEvent(state, ev, e, r) {
   const p = state.player;
   const sport = sportOf(e.id);
   const size = Math.min(ev.field, 24);
-  const others = Array.from({ length: size - 1 }, (_, i) => opponent(r, p.countryId, ev.level, i));
+  const others = Array.from({ length: size - 1 }, (_, i) => opponent(r, p.countryId, ev.level, i, ev.div));
   const me = overall(e, p);
   let mine; let theirs;
   if (sport.adapter === 'time') {
@@ -1159,7 +1254,7 @@ export const momentsOf = (personId = store.state.player.id, state = store.state)
 
 // ---------- Exports for the other sports modules ----------
 
-export const internals = { checkSchoolTeam, fillEntry, academyAffordable, regroup, nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, leagueFor, playSeason, playEvent, newEntry, newAthlete, trainYear,
+export const internals = { rosterNames, checkSchoolTeam, fillEntry, academyAffordable, regroup, nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, leagueFor, playSeason, playEvent, newEntry, newAthlete, trainYear,
   overall, meanSkill, rec, LEVEL_STRENGTH, EVENTS_A_YEAR, teamStrength, val, fullName, rivalNote, seeded, hash, ordinal };
 export { SPORTS, LEVEL_NAMES };
 void cap; void yearNow;

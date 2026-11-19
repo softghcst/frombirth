@@ -80,7 +80,7 @@ export function residenceActions(id, d = house()) {
   return [
     r.open ? { id: 'close', label: 'Close it to visitors', sub: 'Privacy, and the upkeep in full.' }
       : { id: 'open', label: 'Open it to visitors', sub: 'Coach parties in the long gallery. It pays, and the country likes it.' },
-    { id: 'restore', label: 'Restore it', sub: `${fmtMoney(localMoney(r.value * 0.06, c), c)}. It is worth more afterwards, and costs a little less to keep.` },
+    { id: 'restore', label: 'Restore it', sub: `${fmtMoney(localMoney(r.value * 0.06, c), c)}. It is worth more afterward, and costs a little less to keep.` },
     { id: 'sell', label: 'Sell it', sub: `About ${fmtMoney(localMoney(r.value, c), c)}. The family will not forgive it quickly.` },
   ];
 }

@@ -1,11 +1,11 @@
 // Education beyond the first degree, and education later in life:
-// licences that a professional degree does not confer by itself, the
+// licenses that a professional degree does not confer by itself, the
 // doctoral thesis, studying part-time alongside a job, an employer paying
 // for it, and credits kept from a degree that was not finished.
-// The programmes themselves are data (data/schools.js); enrolling, fees and
+// The programs themselves are data (data/schools.js); enrolling, fees and
 // graduating are in engine/education.js.
 //
-//   p.flags.licences       [licenceId]   the right to practise: earned by exam, after the degree
+//   p.flags.licenses       [licenseId]   the right to practice: earned by exam, after the degree
 //   p.flags.examAge        the age at which a licensing exam was last sat
 //   p.education.thesis     { topic, progress 0–100, years, published, supervisorId }   while on a doctorate
 //   p.education.partTime   studying alongside work: longer, and the job is kept
@@ -13,42 +13,42 @@
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
-import { PROGRAMMES, LICENCES, THESIS_WORDS } from '../data/schools.js';
+import { PROGRAMS, LICENSES, THESIS_WORDS } from '../data/schools.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 import { makeNpc } from './npcFactory.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const add = (npc) => { store.state.npcs[npc.id] = npc; player().npcIds.push(npc.id); npc.lastInteractionAge = player().age; return npc; };
 
-// ---------- Licences ----------
+// ---------- Licenses ----------
 
 /** What the licensing exam for a profession is called here. */
-export const examName = (id, countryId = player().countryId) => LICENCES[id]?.exam[countryId] ?? LICENCES[id]?.exam.default ?? 'licensing exam';
-export const licensed = (id, p = player()) => (p.flags.licences ?? []).includes(id);
-/** The licence a programme leads to, if a degree alone is not enough to practise. */
-export const licenceFor = (programmeId) => PROGRAMMES[programmeId]?.licence ?? null;
+export const examName = (id, countryId = player().countryId) => LICENSES[id]?.exam[countryId] ?? LICENSES[id]?.exam.default ?? 'licensing exam';
+export const licensed = (id, p = player()) => (p.flags.licenses ?? []).includes(id);
+/** The license a program leads to, if a degree alone is not enough to practice. */
+export const licenseFor = (programId) => PROGRAMS[programId]?.license ?? null;
 
 /**
- * People who qualified before licences existed in the game already
- * practise: they are not sent back to sit an exam. Run once per life.
+ * People who qualified before licenses existed in the game already
+ * practice: they are not sent back to sit an exam. Run once per life.
  */
 export function grandfather() {
   const p = player();
-  if (p.flags.licencesChecked) return;
-  p.flags.licencesChecked = true;
-  for (const d of p.education.degrees) { const l = licenceFor(d.type); if (l && !licensed(l)) (p.flags.licences ??= []).push(l); }
+  if (p.flags.licensesChecked) return;
+  p.flags.licensesChecked = true;
+  for (const d of p.education.degrees) { const l = licenseFor(d.type); if (l && !licensed(l)) (p.flags.licenses ??= []).push(l); }
 }
 
 /** Exams the player is qualified to sit and has not yet passed. */
 export function examOptions() {
   const p = player();
   const c = country();
-  return p.education.degrees.map((d) => licenceFor(d.type)).filter((l, i, all) => l && !licensed(l) && all.indexOf(l) === i)
-    .map((l) => ({ id: l, name: examName(l), profession: LICENCES[l].name, fee: localMoney(LICENCES[l].fee, c), sat: p.flags.examAge === p.age, affordable: p.finance.cash >= localMoney(LICENCES[l].fee, c) }));
+  return p.education.degrees.map((d) => licenseFor(d.type)).filter((l, i, all) => l && !licensed(l) && all.indexOf(l) === i)
+    .map((l) => ({ id: l, name: examName(l), profession: LICENSES[l].name, fee: localMoney(LICENSES[l].fee, c), sat: p.flags.examAge === p.age, affordable: p.finance.cash >= localMoney(LICENSES[l].fee, c) }));
 }
 /** How the weeks before an exam can be spent. */
 export const PREP = [
-  { id: 'course', name: 'Pay for a revision course', cost: 1500, edge: 0.18, sub: 'Six weeks of someone else\'s timetable.' },
+  { id: 'course', name: 'Pay for a test-prep course', cost: 1500, edge: 0.18, sub: 'Six weeks of someone else\'s schedule.' },
   { id: 'self', name: 'Revise on your own', cost: 0, edge: 0.06, sub: 'Free, and only as good as your discipline.' },
   { id: 'none', name: 'Walk in as you are', cost: 0, edge: -0.08, sub: 'You have just spent years learning this.' },
 ];
@@ -68,22 +68,22 @@ export function sitExam(id, prepId = 'self') {
   if (p.finance.cash < cost) return result(false, `The fee${prep.cost ? ' and the course come' : ' comes'} to ${fmtMoney(cost, c)}. You do not have it.`, 'neutral');
   p.finance.cash -= cost;
   p.flags.examAge = p.age;
-  const deg = [...p.education.degrees].reverse().find((d) => licenceFor(d.type) === id);
+  const deg = [...p.education.degrees].reverse().find((d) => licenseFor(d.type) === id);
   const tries = (p.flags.examTries ??= {});
   tries[id] = (tries[id] ?? 0) + 1;
   const chance = clamp(0.5 + ((deg?.gpa ?? 2.8) - 3) * 0.3 + (p.stats.intellect - 55) / 200 + prep.edge + (prepId === 'self' ? (p.hidden.discipline - 50) / 300 : 0) + Math.min(0.15, (tries[id] - 1) * 0.07), 0.1, 0.95);
   if (!rng.chance(chance)) {
     p.stats.mood = clamp(p.stats.mood - 8);
-    const text = `You sat the ${o.name} and did not pass. Plenty of good ${LICENCES[id].people} fail it the first time. You can sit it again next year.`;
+    const text = `You sat the ${o.name} and did not pass. Plenty of good ${LICENSES[id].people} fail it the first time. You can sit it again next year.`;
     log(text, 'system', 'bad');
     return result(false, text);
   }
-  (p.flags.licences ??= []).push(id);
+  (p.flags.licenses ??= []).push(id);
   if (id === 'teaching') p.flags.teachingCert = true;
   p.stats.mood = clamp(p.stats.mood + 10);
-  const text = `You passed the ${o.name}${tries[id] > 1 ? `, at the ${['', 'first', 'second', 'third', 'fourth'][tries[id]] ?? 'latest'} attempt` : ''}. You are licensed to practice ${LICENCES[id].name}.`;
+  const text = `You passed the ${o.name}${tries[id] > 1 ? `, at the ${['', 'first', 'second', 'third', 'fourth'][tries[id]] ?? 'latest'} attempt` : ''}. You are licensed to practice ${LICENSES[id].name}.`;
   log(text, 'system', 'good');
-  milestone(`Licensed to practice ${LICENCES[id].name}.`, 'career');
+  milestone(`Licensed to practice ${LICENSES[id].name}.`, 'career');
   return result(true, text);
 }
 
@@ -111,7 +111,7 @@ export function thesisYear() {
   const t = e.thesis;
   const sup = supervisor();
   t.years += 1;
-  const helpful = sup?.alive ? { 'hands-off': -2, exacting: 3, 'generous with time': 5, 'always travelling': -4 }[sup.flags.style] ?? 0 : -6;
+  const helpful = sup?.alive ? { 'hands-off': -2, exacting: 3, 'generous with time': 5, 'always traveling': -4 }[sup.flags.style] ?? 0 : -6;
   const gain = Math.round(clamp(12 + (p.stats.intellect - 50) / 4 + (p.hidden.discipline - 50) / 5 + (e.effort - 50) / 8 + helpful + ((sup?.meters.relationship ?? 40) - 50) / 10 + rng.int(-5, 7), 3, 38));
   const before = t.progress;
   t.progress = Math.min(100, t.progress + gain);
@@ -137,10 +137,10 @@ export function defend(how) {
 
 // ---------- Part-time study, and who pays ----------
 
-/** Whether a programme can be taken alongside a job. */
-export const canPartTime = (progId) => !!PROGRAMMES[progId]?.partYears || ['university', 'community'].includes(progId);
-/** How many years a programme takes at the pace chosen. */
-export const yearsFor = (progId, partTime) => (partTime ? PROGRAMMES[progId].partYears ?? PROGRAMMES[progId].years : PROGRAMMES[progId].years);
+/** Whether a program can be taken alongside a job. */
+export const canPartTime = (progId) => !!PROGRAMS[progId]?.partYears || ['university', 'community'].includes(progId);
+/** How many years a program takes at the pace chosen. */
+export const yearsFor = (progId, partTime) => (partTime ? PROGRAMS[progId].partYears ?? PROGRAMS[progId].years : PROGRAMS[progId].years);
 
 /** Asks an employer to pay for a course. They do it for people they want to keep. Once a year. */
 export function askEmployer() {

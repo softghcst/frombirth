@@ -1,4 +1,4 @@
-// School stages, programmes after high school, housing, cliques and clubs.
+// School stages, programs after high school, housing, cliques and clubs.
 // Everything here is plain data: edit values or add entries freely.
 import { CATALOG_CERTS } from './occupations.js';
 
@@ -12,12 +12,12 @@ export const SCHOOL_LEAVING_AGE = 18;
 export const DROPOUT_AGE = 16;
 
 /**
- * Programmes after high school. tuition is base units per year (0 where the
+ * Programs after high school. tuition is base units per year (0 where the
  * country funds university; trade schools always charge).
  * needs: degree type required to apply. minGpa is checked against that degree.
- * kind 'trade' programmes have no major and award a licence.
+ * kind 'trade' programs have no major and award a license.
  */
-export const PROGRAMMES = {
+export const PROGRAMS = {
   university: { id: 'university', label: 'University', years: 4, tuition: 14000, needs: 'high', minGpa: 2.0,
     blurb: 'A four-year degree in a subject you choose.' },
   community: { id: 'community', label: 'Community college', years: 2, tuition: 4000, needs: 'high', minGpa: 0,
@@ -32,25 +32,25 @@ export const PROGRAMMES = {
     blurb: 'Trade school. One year to a license in hair and makeup.' },
   graduate: { id: 'graduate', label: 'Graduate school', years: 2, tuition: 18000, needs: 'university', minGpa: 3.0,
     blurb: 'Two more years for a master\'s in your subject.' },
-  medical: { id: 'medical', label: 'Medical school', years: 4, tuition: 38000, needs: 'university', minGpa: 3.6, science: true, licence: 'medical',
+  medical: { id: 'medical', label: 'Medical school', years: 4, tuition: 38000, needs: 'university', minGpa: 3.6, science: true, license: 'medical',
     blurb: 'Four gruelling years. Needs a science or health degree.' },
-  law: { id: 'law', label: 'Law school', years: 3, tuition: 32000, needs: 'university', minGpa: 3.4, licence: 'law',
+  law: { id: 'law', label: 'Law school', years: 3, tuition: 32000, needs: 'university', minGpa: 3.4, license: 'law',
     blurb: 'Three years of case law and very little sleep.' },
   // done: how graduating reads, after "You graduated from". partYears: how long it takes alongside a job.
-  // licence: the degree is not the right to practise; an exam follows. science: needs a science or health degree.
+  // license: the degree is not the right to practice; an exam follows. science: needs a science or health degree.
   business: { id: 'business', label: 'Business school', years: 2, partYears: 3, tuition: 30000, needs: 'university', minGpa: 2.9,
     done: 'business school with an MBA', yearly: { stats: { charm: 2 } },
     blurb: 'Case studies, group work and a great many contacts. Often taken by people already working.' },
-  dental: { id: 'dental', label: 'Dental school', years: 4, tuition: 36000, needs: 'university', minGpa: 3.4, science: true, licence: 'dental',
+  dental: { id: 'dental', label: 'Dental school', years: 4, tuition: 36000, needs: 'university', minGpa: 3.4, science: true, license: 'dental',
     done: 'dental school', blurb: 'Four years, most of them with your hands in someone\'s mouth.' },
-  pharmacy: { id: 'pharmacy', label: 'Pharmacy school', years: 4, tuition: 28000, needs: 'university', minGpa: 3.2, science: true, licence: 'pharmacy',
+  pharmacy: { id: 'pharmacy', label: 'Pharmacy school', years: 4, tuition: 28000, needs: 'university', minGpa: 3.2, science: true, license: 'pharmacy',
     done: 'pharmacy school', blurb: 'Chemistry, law, and the patience to read handwriting.' },
-  veterinary: { id: 'veterinary', label: 'Veterinary school', years: 4, tuition: 34000, needs: 'university', minGpa: 3.5, science: true, licence: 'veterinary',
+  veterinary: { id: 'veterinary', label: 'Veterinary school', years: 4, tuition: 34000, needs: 'university', minGpa: 3.5, science: true, license: 'veterinary',
     done: 'veterinary school', blurb: 'Harder to get into than medicine, and the patients bite.' },
-  teaching: { id: 'teaching', label: 'Teacher training', years: 1, partYears: 2, tuition: 9000, needs: 'university', minGpa: 2.5, licence: 'teaching',
+  teaching: { id: 'teaching', label: 'Teacher training', years: 1, partYears: 2, tuition: 9000, needs: 'university', minGpa: 2.5, license: 'teaching',
     done: 'teacher training', yearly: { stats: { charm: 2 }, hidden: { discipline: 2 } },
     blurb: 'A year split between lectures and a classroom of thirty people who would rather be elsewhere.' },
-  nursing: { id: 'nursing', label: 'Nursing school', years: 3, partYears: 5, tuition: 9000, needs: 'high', minGpa: 2.4, licence: 'nursing',
+  nursing: { id: 'nursing', label: 'Nursing school', years: 3, partYears: 5, tuition: 9000, needs: 'high', minGpa: 2.4, license: 'nursing',
     done: 'nursing school', yearly: { hidden: { karma: 2, discipline: 2 } },
     blurb: 'Three years, half of them on the wards. A route into nursing without a university degree.' },
   doctorate: { id: 'doctorate', label: 'Doctoral program', years: 5, tuition: 0, stipend: 20000, needs: 'university', minGpa: 3.4, thesis: true,
@@ -67,8 +67,8 @@ export const PROGRAMMES = {
     blurb: 'For anyone who left school without finishing. One year, evenings, and the same doors open as for everyone else.' },
 };
 
-/** The right to practise. A degree qualifies someone to sit the exam; passing it is something else. */
-export const LICENCES = {
+/** The right to practice. A degree qualifies someone to sit the exam; passing it is something else. */
+export const LICENSES = {
   medical: { name: 'medicine', people: 'doctors', fee: 900, exam: { default: 'medical licensing exam' } },
   law: { name: 'law', people: 'lawyers', fee: 700, exam: { default: 'professional qualifying exam', us: 'bar exam', ca: 'bar exam', ph: 'bar exam', in: 'bar exam', ng: 'bar exam', ke: 'bar exam', gh: 'bar exam', jp: 'bar exam', kr: 'bar exam' } },
   dental: { name: 'dentistry', people: 'dentists', fee: 800, exam: { default: 'dental licensing exam' } },
@@ -115,13 +115,13 @@ export const TRADE_BY_ID = Object.fromEntries(TRADES.map((t) => [t.id, t]));
 export const SCHOOL_TYPES = [
   { id: 'selective', name: 'Ashcombe University', tuitionMult: 1.9, admit: -0.25, aid: 0.4, perk: 'network',
     knownFor: 'A famous name and strong industry connections. Very little financial aid.',
-    strong: ['engineering', 'mathematics', 'computer_science', 'finance', 'chemistry', 'biology', 'political_science', 'musical_theatre_bfa'] },
+    strong: ['engineering', 'mathematics', 'computer_science', 'finance', 'chemistry', 'biology', 'political_science', 'musical_theater_bfa'] },
   { id: 'local', name: 'Northgate College', tuitionMult: 0.6, admit: 0.2, aid: 1, perk: 'home',
     knownFor: 'Close to home: you can live with family and keep your job.',
     strong: ['nursing', 'education', 'business', 'criminal_justice', 'psychology', 'communications'] },
   { id: 'small', name: 'Marlowe College', tuitionMult: 1, admit: 0, aid: 1.3, perk: 'mentor',
     knownFor: 'Small classes, generous aid, and a professor whose work you already love.',
-    strong: ['art', 'music', 'theatre', 'musical_theatre', 'musical_theatre_bfa', 'english', 'history', 'journalism'] },
+    strong: ['art', 'music', 'theater', 'musical_theater', 'musical_theater_bfa', 'english', 'history', 'journalism'] },
 ];
 export const SCHOOL_TYPE_BY_ID = Object.fromEntries(SCHOOL_TYPES.map((t) => [t.id, t]));
 
@@ -190,9 +190,9 @@ export const CLUBS = [
     yearly: { talents: { dance: 5 }, stats: { health: 1 } } },
   { id: 'choir', name: 'Singing lessons and choir', from: 6, blurb: 'Scales, harmonies, breath.',
     yearly: { talents: { singing: 5, music: 1 } } },
-  { id: 'youth_theatre', name: 'Youth theater', from: 6, blurb: 'Saturday-morning acting classes.',
+  { id: 'youth_theater', name: 'Youth theater', from: 6, blurb: 'Saturday-morning acting classes.',
     yearly: { talents: { acting: 4 }, stats: { charm: 1 } } },
-  { id: 'musical_theatre', name: 'Musical theater company', from: 11,
+  { id: 'musical_theater', name: 'Musical theater company', from: 11,
     blurb: 'The school\'s big shows. You need to sing, dance and act.',
     tryout: { base: 0.4, factors: { 'talents.singing': 0.45, 'talents.dance': 0.45, 'talents.acting': 0.45 } },
     yearly: { talents: { singing: 3, dance: 3, acting: 3 } },

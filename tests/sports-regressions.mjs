@@ -159,7 +159,7 @@ caseOf('leaving a university team sticks, and giving up the sport ends the athle
   const inst = (S().universities ? Object.values(S().universities) : []).find((u) => u.countryId === 'us');
   void inst;
   p.education.enrolled = false; p.education.stage = 'none';
-  edu.enrol('university', 'business', 'self', {}, { id: 'uni_us_1', name: 'Test University', aid: { fraction: 0.75, parts: [{ kind: 'athletic', fraction: 0.75 }], keep: 0 } });
+  edu.enroll('university', 'business', 'self', {}, { id: 'uni_us_1', name: 'Test University', aid: { fraction: 0.75, parts: [{ kind: 'athletic', fraction: 0.75 }], keep: 0 } });
   p.flags.sportOffers = [{ instId: 'uni_us_1', name: 'Test University', fraction: 0.75, sportId: 'soccer', accepted: true }];
   year({ contract: 'no' });
   const e = sp.entryOf('soccer');

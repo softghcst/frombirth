@@ -49,6 +49,9 @@ export function assess(a, inst, major, luck = 0) {
   if (inst.legacy && a.legacy) { score += 0.08; reasons.push('Your family\'s history there was noticed.'); }
   if (inst.sport && a.athlete) { score += 0.7; reasons.push('The coach asked for you.'); }
   if (a.transfer) { score += 0.1; reasons.push('Two finished years of college count for something.'); }
+  // Historical Eras: in earlier years universities took far fewer students.
+  const access = a.access ?? 1;
+  if (access < 1) { score -= (1 - access) * 0.45; reasons.push('Universities take very few students in these years.'); }
   score = Math.round((score - (inst.squeeze ?? 0) + luck) * 100) / 100;
   if ((inst.squeeze ?? 0) >= 0.2 && score < 0.12 && a.mark >= inst.bar) reasons.push('It turns away far more good applicants than it takes.');
   if (luck <= -0.1) reasons.push('It had far more applicants than places this year.');
@@ -72,7 +75,9 @@ export const meets = (condition, finalMark, luck = 0) => finalMark >= condition 
 export function aid(a, inst, major, score) {
   const parts = [];
   if (inst.merit && score >= 0.45) parts.push({ kind: 'merit', fraction: score >= 0.8 ? inst.merit : inst.merit / 2 });
-  if (inst.sport && a.athlete) parts.push({ kind: 'athletic', fraction: a.athleticFraction ?? 0.75 });
+  // A signed athletic scholarship (engine/recruiting.js) is paid wherever it was signed, Division I to NAIA; Division III and
+  // the Ivies give none, so their offers carry no fraction.
+  if (a.athlete && (a.athleticFraction ?? (inst.sport ? 0.75 : 0)) > 0) parts.push({ kind: 'athletic', fraction: a.athleticFraction ?? 0.75 });
   if (inst.arts && major.audition && (a.audition ?? 0) >= 80) parts.push({ kind: 'arts', fraction: 0.5 });
   // Only the largest award for what the applicant can do is given; help for need is on top of it.
   parts.sort((x, y) => y.fraction - x.fraction);

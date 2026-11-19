@@ -139,7 +139,7 @@ function clubsYear() {
     if (kind === 'sport') rating = season(id, life);
     else if (kind === 'stage') {
       // One production a year, and it begins with an audition.
-      if (!staged && !e.audition && p.age < LEAVING_AGE) { staged = true; const rival = mates().filter((n) => n.flags.clubs?.includes(id) || n.flags.interest === 'theatre')[0] ?? mates()[0]; e.audition = { club: id, play: rng.pick(PLAYS), rivalId: rival?.id ?? null }; pend('school_audition', { ...(rival ? { rival: rival.id } : {}), words: { play: e.audition.play, club: CLUB_BY_ID[id].name.toLowerCase(), ...(rival ? {} : { rival: 'Someone in the year above' }) } }); }
+      if (!staged && !e.audition && p.age < LEAVING_AGE) { staged = true; const rival = mates().filter((n) => n.flags.clubs?.includes(id) || n.flags.interest === 'theater')[0] ?? mates()[0]; e.audition = { club: id, play: rng.pick(PLAYS), rivalId: rival?.id ?? null }; pend('school_audition', { ...(rival ? { rival: rival.id } : {}), words: { play: e.audition.play, club: CLUB_BY_ID[id].name.toLowerCase(), ...(rival ? {} : { rival: 'Someone in the year above' }) } }); }
       rating = (p.talents.acting + p.talents.singing) / 2;
     } else if (kind !== 'council') rating = compete(id, life);
     else rating = p.stats.charm;
@@ -225,7 +225,7 @@ export function tickSchoolLife() {
   if (p.age >= 7 && p.age <= 12 && warm.length && fresh('class_birthday', 2)) pool.push(['class_birthday', { mate: rng.pick(warm).id }, 2]);
   if (best && p.age >= 9 && p.age <= 16 && rng.chance(0.07)) pool.push(['best_friend_moves', { mate: best.id }, 4]);
   if (warm.length >= 2 && p.age >= 11 && fresh('friends_quarrel', 4)) pool.push(['friends_quarrel', { one: warm[0].id, two: warm[1].id }, 1]);
-  if (cold && p.age >= 12 && rng.chance(0.3) && fresh('school_rumour', 4)) pool.push(['school_rumour', { mate: cold.id }, 2]);
+  if (cold && p.age >= 12 && rng.chance(0.3) && fresh('school_rumor', 4)) pool.push(['school_rumor', { mate: cold.id }, 2]);
   if (cold && p.age >= 8 && p.age <= 15 && !e.bullied && rng.chance(0.12)) pool.push(['school_bullied', { bully: cold.id, words: { again: '' } }, 3]);
   if (teacher) pool.push(['teacher_believes', { teacher: teacher.id, words: { subject: SUBJECT_BY_ID[teacher.flags.teaches].name.toLowerCase() } }, 3]);
   if (p.age >= 13 && rng.chance(0.05) && sch.teachers()[0]) pool.push(['cheating_accused', { teacher: sch.teachers()[0].id, words: { subject: SUBJECT_BY_ID[sch.teachers()[0].flags.teaches].name.toLowerCase() } }, 3]);
@@ -256,7 +256,7 @@ export function decide(what, cast = {}) {
       const a = store.state.npcs[what === 'sideOne' ? cast.one : cast.two];
       const b = store.state.npcs[what === 'sideOne' ? cast.two : cast.one];
       if (a) rel(a, 9); if (b) rel(b, -12);
-      return say(`${a?.firstName} is grateful. ${b?.firstName} does not speak to you for the rest of term.`);
+      return say(`${a?.firstName} is grateful. ${b?.firstName} does not speak to you for the rest of the semester.`);
     }
     case 'sideNone': {
       const a = store.state.npcs[cast.one]; const b = store.state.npcs[cast.two];
@@ -264,9 +264,9 @@ export function decide(what, cast = {}) {
       if (a) rel(a, -3); if (b) rel(b, -3);
       return say('You stay out of it. Both of them think you should have taken their side.');
     }
-    case 'rumourConfront': if (rng.chance(0.35 + p.stats.charm / 200)) { if (n) rel(n, 6); e.standing = clamp((e.standing ?? 50) + 4); return say(`You ask ${n?.firstName} about it, quietly, face to face. It stops.`); } if (n) rel(n, -8); e.standing = clamp((e.standing ?? 50) - 3); return say('It turns into a scene in the corridor, and now everyone has heard it.');
-    case 'rumourIgnore': mood(-4); return say('You say nothing. In two weeks the school is talking about something else.');
-    case 'rumourTell': { const t = sch.teachers()[0]; if (t && t.flags.skill >= 45) { if (t) rel(t, 4); return say(`${t.firstName} ${t.lastName} deals with it without making it worse. That is rarer than it should be.`); } mood(-3); return say('A teacher gives the whole class a talk about kindness. Everybody knows why.'); }
+    case 'rumorConfront': if (rng.chance(0.35 + p.stats.charm / 200)) { if (n) rel(n, 6); e.standing = clamp((e.standing ?? 50) + 4); return say(`You ask ${n?.firstName} about it, quietly, face to face. It stops.`); } if (n) rel(n, -8); e.standing = clamp((e.standing ?? 50) - 3); return say('It turns into a scene in the hallway, and now everyone has heard it.');
+    case 'rumorIgnore': mood(-4); return say('You say nothing. In two weeks the school is talking about something else.');
+    case 'rumorTell': { const t = sch.teachers()[0]; if (t && t.flags.skill >= 45) { if (t) rel(t, 4); return say(`${t.firstName} ${t.lastName} deals with it without making it worse. That is rarer than it should be.`); } mood(-3); return say('A teacher gives the whole class a talk about kindness. Everybody knows why.'); }
     case 'bullyTeacher': { const t = sch.teachers().sort((a, b) => b.flags.skill - a.flags.skill)[0]; delete e.bullied; if (t) rel(t, 6); mood(4); return say(`${t ? `${t.firstName} ${t.lastName}` : 'A teacher'} listens to all of it, writes it down, and acts: parents are called in, seats are moved, and someone checks on you every week. It stops.`); }
     case 'bullyParents': { delete e.bullied; for (const par of npcsByRole('parent')) rel(par, 5); mood(3); return say('You tell them at the kitchen table. They are angrier than you expected, on your behalf. They go to the school the next morning, and things change.'); }
     case 'bullyStand': if (rng.chance(0.3 + p.hidden.willpower / 250)) { delete e.bullied; e.standing = clamp((e.standing ?? 50) + 5); mood(5); return say('Your voice shakes, but you say it in front of everyone. It stops.'); } e.bullied = { id: n?.id }; mood(-8); return say('It does not work. It gets worse for a while.');
@@ -283,7 +283,7 @@ export function decide(what, cast = {}) {
     }
     case 'danceFriends': e.dancedAt = p.age; for (const m of mates().filter((x) => x.meters.relationship >= 50)) rel(m, 4); mood(6); milestone('Went to the school dance with friends.', 'life'); return say('You go as a gang, take over a corner of the hall, and stay until the lights come on.');
     case 'danceHome': e.dancedAt = p.age; mood(-1); return say('You stay in. You see the photographs the next day.');
-    case 'examSteady': e.examPlan = 'steady'; mood(-4); p.hidden.discipline = clamp(p.hidden.discipline + 2); return say('A timetable on the wall, and you keep to it. It is dull, and it works.');
+    case 'examSteady': e.examPlan = 'steady'; mood(-4); p.hidden.discipline = clamp(p.hidden.discipline + 2); return say('A schedule on the wall, and you keep to it. It is dull, and it works.');
     case 'examCram': e.examPlan = 'cram'; mood(2); return say('You will do it all in the last three weeks. You always have.');
     case 'examTrust': e.examPlan = 'trust'; mood(4); return say('You decide that you know what you know.');
     case 'auditionSafe': case 'auditionBold': return audition(what === 'auditionBold');

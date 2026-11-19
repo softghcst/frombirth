@@ -17,9 +17,15 @@
 //   values                               what the player wants from work (up to three)
 //   pensionPot, pensionDrawn             employer pension saved; whether a pension is being paid
 //   benefit                              unemployment benefit after losing a job { amount, yearsLeft }
-//   paidYear, lastPay                    the year last paid; what that payslip said
+//   paidYear, lastPay                    the year last paid; what that pay stub said
 //   achievements                         career milestones earned (engine/careerRecord.js)
 import { rng } from '../rng.js';
+import { workHours, contractLines, markContractsPaid } from './entertainment.js';
+import { dealLines, markDealsPaid } from './press.js';
+import { musicLines, markMusicPaid, tourWeeks } from './music.js';
+import { bookLines, markBooksPaid, published } from './publishing.js';
+import { comebackLines, markComebacksPaid } from './celebs.js';
+import { idolLines, markIdolPaid, trainee as idolTrainee, myGroup as idolGroup, myShows as varietyShows } from './kpop.js';
 import { careHours } from './couple.js';
 import { clamp, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
@@ -108,6 +114,13 @@ export function weeklyLoad(p = player(), age = p.age) {
   const fl = freelanceHours(c);
   if (fl) rows.push({ label: 'Freelance work', hours: fl, kind: 'freelance' });
   for (const b of (p.businesses ?? []).filter((x) => x.status === 'open' && x.ownerHours > 0)) rows.push({ label: `Running ${b.name}`, hours: b.ownerHours, kind: 'business' });
+  const stage = workHours(store.state.year - (p.age - age), p); // productions signed for (engine/entertainment.js)
+  if (stage) rows.push({ label: 'Productions you are in', hours: stage, kind: 'freelance' });
+  // Idol training, or a group's schedule (engine/kpop.js).
+  if (store.state.kpop && p.idol && !p.idol.hiatus && (age === p.age)) { if (idolTrainee(p)) rows.push({ label: 'Idol training', hours: 40, kind: 'freelance' }); else if (idolGroup(p)) rows.push({ label: 'Group schedule', hours: 45, kind: 'freelance' }); }
+  if (store.state.kpop && p.idol?.variety && age === p.age) for (const sh of varietyShows(p)) rows.push({ label: sh.name, hours: sh.role === 'host' ? 14 : 10, kind: 'freelance' });
+  const touring = tourWeeks(store.state.year - (p.age - age), p); // engine/music.js
+  if (touring) rows.push({ label: 'On tour', hours: Math.round(touring * 50 / 48), kind: 'freelance' });
   const care = careHours(p);
   if (care) rows.push({ label: 'Looking after the children', hours: care, kind: 'care' });
   const study = studyHours(p);
@@ -141,7 +154,7 @@ export function canFit(hours, o = {}) {
   let paid = load.paid;
   if (o.replacesMain) { total -= mainHours(c) + commute(c, p); paid -= mainHours(c); }
   if (p.age < law.workAge) return result(false, `In ${country().name} you must be ${law.workAge} to work for pay.`);
-  if (p.age < 18 && paid + hours > law.minorHours) return result(false, `Under 18, the law here allows ${law.minorHours} hours of paid work a week in term time. This would make ${paid + hours}.`);
+  if (p.age < 18 && paid + hours > law.minorHours) return result(false, `Under 18, the law here allows ${law.minorHours} hours of paid work a week during the school year. This would make ${paid + hours}.`);
   if (total + hours > LOAD.impossible) return result(false, `That would make ${total + hours} hours a week with everything else. There are not enough hours in the week.`);
   if (o.kind !== 'job' && !o.replacesMain) {
     const main = c.careerId ? CAREER_BY_ID[c.careerId] : null;
@@ -168,7 +181,7 @@ export function valuesFit(c = career(), car = CAREER_BY_ID[c.careerId]) {
 }
 
 /**
- * Once a year: stress and satisfaction move towards where the year puts them.
+ * Once a year: stress and satisfaction move toward where the year puts them.
  * Burnout comes from staying near the top for long; it is recovered from,
  * and it is never fatal. @returns {string[]} lines for the journal
  */
@@ -218,14 +231,14 @@ export function tickWorkLife() {
   // Burnout, and coming back from it.
   if (c.stress >= 78) c.strain += 1;
   else c.strain = Math.max(0, c.strain - (c.stress < 55 ? 2 : 1));
-  if (c.strain >= 2 && !p.flags.burntOut) {
-    p.flags.burntOut = store.state.year;
+  if (c.strain >= 2 && !p.flags.burnedOut) {
+    p.flags.burnedOut = store.state.year;
     p.stats.mood = clamp(p.stats.mood - 10);
     p.stats.health = clamp(p.stats.health - 3);
     if (c.careerId) c.performance = clamp(c.performance - 10);
-    lines.push('You are burnt out. You sleep badly, snap at people, and dread Mondays. Fewer hours, time off, or a different job would help.');
-  } else if (p.flags.burntOut && c.strain === 0) {
-    delete p.flags.burntOut;
+    lines.push('You are burned out. You sleep badly, snap at people, and dread Mondays. Fewer hours, time off, or a different job would help.');
+  } else if (p.flags.burnedOut && c.strain === 0) {
+    delete p.flags.burnedOut;
     lines.push('The worst of the burnout has passed. You feel like yourself again.');
   }
   // Leave ends with the year it was for.
@@ -287,7 +300,7 @@ export function takeLeave(kind) {
   const law = workLaw();
   const baby = livingNpcs().some((n) => n.role === 'child' && n.age <= 1);
   if (kind === 'parental' && !baby) return result(false, 'Parental leave is for the first year of a child\'s life.', 'neutral');
-  if (kind === 'sick' && p.stats.health >= 70 && !p.flags.burntOut) return result(false, 'You are not unwell enough to be signed off.', 'neutral');
+  if (kind === 'sick' && p.stats.health >= 70 && !p.flags.burnedOut) return result(false, 'You are not unwell enough to be signed off.', 'neutral');
   if (car.type === 'freelance') { c.leave = { kind, age: p.age }; return result(true, 'You take time off. Nobody pays you for it.', 'neutral'); }
   const boss = bossOf();
   if (kind === 'sabbatical') {
@@ -299,7 +312,7 @@ export function takeLeave(kind) {
   c.strain = Math.max(0, c.strain - (kind === 'vacation' ? 1 : 2));
   p.stats.mood = clamp(p.stats.mood + (kind === 'sick' ? 2 : 6));
   const paid = { vacation: `${law.leaveDays} days, paid`, sick: law.sickPay ? 'on sick pay' : 'unpaid: sick pay is not owed here', parental: law.parentalWeeks ? `${law.parentalWeeks} weeks paid, the rest unpaid` : 'unpaid: there is no paid parental leave here', sabbatical: 'unpaid' }[kind];
-  const text = { vacation: `You take your full holiday this year (${paid}). You come back rested.`,
+  const text = { vacation: `You take all your vacation days this year (${paid}). You come back rested.`,
     sick: `You are signed off sick (${paid}). Your job is held for you.`,
     parental: `You take parental leave (${paid}). The baby does not care about your career, and neither, for a while, do you.`,
     sabbatical: `A year's sabbatical, ${paid}. Your job will be there when you come back.` }[kind];
@@ -342,7 +355,7 @@ export function benefits(c = career()) {
   const e = employer(c.employerId);
   const big = e && ['large', 'major'].includes(e.size);
   const cty = country();
-  const out = [`Paid holiday: ${law.leaveDays + (big ? 5 : 0)} days`];
+  const out = [`Paid vacation: ${law.leaveDays + (big ? 5 : 0)} days`];
   out.push(law.sickPay ? 'Sick pay' : 'No statutory sick pay');
   if (law.parentalWeeks) out.push(`Parental leave: ${law.parentalWeeks} weeks paid`);
   if (law.pension || big) out.push(`Pension: employer pays ${Math.round((law.pension + (big ? 0.02 : 0)) * 100)}% of salary`);
@@ -380,13 +393,19 @@ export function payLines(p = player()) {
     if (leave === 'sabbatical') gross = 0;
     else if (leave === 'sick' && !law.sickPay) gross = Math.round(gross * 0.4); // paid for the part of the year worked
     else if (leave === 'parental') gross = Math.round(gross * (1 - Math.max(0, 52 - law.parentalWeeks) / 52 * 0.6));
-    if (gross > 0) lines.push({ source: 'main', label: c.title, gross });
+    if (car.id === 'author' && published(p).length) gross = 0; // a published author is paid by their books (bookLines)
+    // An athlete's agent and a model's agency take their cut of the wage they negotiated.
+    // A model's agency takes its cut of the wage it negotiated (a sports agent's share is settled in engine/sportsLife.js).
+    const cut = car.id === 'modeling' ? (p.fame?.model?.agencyId ? p.fame.model.terms?.commission : null) : null;
+    if (cut && gross > 0) { gross = Math.round(gross * (1 - cut)); lines.push({ source: 'main', label: `${c.title} (after your agency's ${Math.round(cut * 100)}%)`, gross }); }
+    else if (gross > 0) lines.push({ source: 'main', label: c.title, gross });
   }
   if (c.partTime?.salary) lines.push({ source: 'parttime', label: c.partTime.title, gross: c.partTime.salary });
   for (const s of c.sides) lines.push({ source: `side:${s.id}`, label: s.title, gross: s.salary });
   for (const k of c.freelance.contracts) if (k.status === 'done' && !k.paid) lines.push({ source: `gig:${k.id}`, label: `${k.serviceName} for ${k.client}`, gross: k.fee });
   for (const k of c.freelance.contracts) if (k.status === 'failed' && !k.paid && k.partial) lines.push({ source: `gig:${k.id}`, label: `Part payment: ${k.serviceName}`, gross: k.partial });
   lines.push(...payouts(p)); // what the player's businesses paid out to their owner
+  lines.push(...contractLines(p), ...dealLines(p), ...musicLines(p), ...bookLines(p), ...comebackLines(p), ...idolLines(p)); // performance contracts and brand deals, each year once
   if (c.pensionDrawn && c.pensionPerYear) lines.push({ source: 'pension', label: 'Pension', gross: c.pensionPerYear });
   if (c.benefit?.yearsLeft > 0 && !car) lines.push({ source: 'benefit', label: 'Unemployment benefit', gross: c.benefit.amount });
   if (p.flags.statePension) lines.push({ source: 'state', label: 'State pension', gross: p.flags.statePension }); // engine/retirement.js
@@ -405,6 +424,12 @@ export function runPayroll(p = player()) {
   c.paidYear = store.state.year;
   for (const k of c.freelance.contracts) if (['done', 'failed'].includes(k.status)) k.paid = true;
   markPaid(p);
+  markContractsPaid(p);
+  markDealsPaid(p);
+  markMusicPaid(p);
+  markBooksPaid(p);
+  markComebacksPaid(p);
+  markIdolPaid(p);
   const main = lines.find((l) => l.source === 'main');
   if (main) c.pensionPot = Math.round(c.pensionPot + main.gross * pensionRate(c));
   if (c.benefit) { c.benefit.yearsLeft -= 1; if (c.benefit.yearsLeft <= 0 || c.careerId) c.benefit = null; }

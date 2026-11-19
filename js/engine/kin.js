@@ -208,7 +208,7 @@ export function decide(what, cast = {}) {
       // A popular name on the platform helps. An unpopular one does not.
       const pull = p.politics ? (p.politics.approval - 45) / 150 : (p.hidden.fame ?? 0) / 600;
       help = clamp(0.06 + pull, -0.1, 0.2); k.backed = true; shiftRel(npc, 6);
-      text = help >= 0.06 ? 'You share a platform, and the crowd is glad to see you both.' : 'You share a platform. It is not clear, afterwards, that you helped.';
+      text = help >= 0.06 ? 'You share a platform, and the crowd is glad to see you both.' : 'You share a platform. It is not clear, afterward, that you helped.';
     } else if (what === 'money') {
       const cost = localMoney(20000, c);
       if (p.finance.cash < cost) text = 'You would like to, but you do not have the money.';

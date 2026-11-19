@@ -1,14 +1,14 @@
 // CharacterAvatar: a portrait stacked from the SVG parts in assets/avatars/.
 //
-// Every part file has been normalised onto one 512x512 frame by
+// Every part file has been normalized onto one 512x512 frame by
 // scripts/build-avatar-manifest.py, so parts are stacked without any
 // positioning here. Each layer is an SVG <use> pointing at the part's file
 // (`file.svg#art`): the browser fetches each file once and caches it, and
-// the colour variables set on the portrait (--skin-color, --hair-color, ...)
+// the color variables set on the portrait (--skin-color, --hair-color, ...)
 // reach into the referenced artwork.
 //
 // Layers, back to front:
-//   back hair, head, make-up (clipped to the head), ageing, eyes, eyebrows,
+//   back hair, head, make-up (clipped to the head), aging, eyes, eyebrows,
 //   nose, facial hair, lips, clothes, necklaces, front hair, earrings and
 //   piercings, glasses, hat or crown, emotions.
 // Hair is drawn twice: the whole style behind the head, and the part above
@@ -55,7 +55,7 @@ const AGING = [[55, 'aging_01_smile_lines'], [66, 'aging_02_crows_feet'], [78, '
 /**
  * What the portrait actually wears at this moment: work clothes, royal dress,
  * prison orange, or the person's own outfit; and what hair, make-up and
- * jewellery suit their age.
+ * jewelry suit their age.
  */
 export function dressFor(look, ctx = {}) {
   const age = ctx.age ?? 25;
@@ -161,10 +161,10 @@ export function fitTransforms(headId, stage, tweaks = {}) {
 }
 
 /**
- * The colours, as CSS custom properties. Hair greys with age unless dyed;
- * brows grey more slowly.
+ * The colors, as CSS custom properties. Hair grays with age unless dyed;
+ * brows gray more slowly.
  */
-/** How bright a colour is, 0 (black) to 1 (white). */
+/** How bright a color is, 0 (black) to 1 (white). */
 function luminance(hex) {
   const h = String(hex ?? '#888888').replace('#', '');
   const [r, g, b] = [0, 2, 4].map((i) => { const v = (parseInt(h.slice(i, i + 2), 16) || 0) / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
@@ -180,22 +180,22 @@ export const deepness = (skin) => Math.max(0, Math.min(1, (DEEP.from - luminance
 
 /**
  * What is done about it, at full strength (each is scaled by deepness, so lighter faces are untouched):
- *   white   how far the white of the eye is toned towards the skin
+ *   white   how far the white of the eye is toned toward the skin
  *   line    extra weight on the dark lines of the eyes and mouth (frame units)
  *   rim     how much lighter than the skin the edge given to the brows is
  *   edge    how wide that edge is (frame units)
  *   nose    how much heavier the nose's dark lines get (frame units), in noseInk; its skin is never touched
- * The shapes of the features are not changed, and nobody's own colours are. The nose's skin is never
- * adjusted: it is drawn in exactly the face's skin colour on every tone; only its lines get heavier.
+ * The shapes of the features are not changed, and nobody's own colors are. The nose's skin is never
+ * adjusted: it is drawn in exactly the face's skin color on every tone; only its lines get heavier.
  */
 export const READABLE = { white: 0.2, line: 1.4, rim: 0.2, edge: 3, nose: 1.2, ink: '#170b06', noseInk: '#1a0c06' };
 
 function colorVars(look, ctx) {
   const c = look.colors ?? {};
   const age = ctx.age ?? 25;
-  const grey = c.dyed ? 0 : age >= 80 ? 0.9 : age >= 70 ? 0.72 : age >= 60 ? 0.45 : age >= 52 ? 0.18 : 0;
-  const hair = grey ? mixHex(c.hair, '#dcd8d0', grey) : c.hair;
-  const brow = c.brow ? mixHex(c.brow, '#d8d3c8', grey * 0.6) : mixHex(hair, '#1c1210', 0.25);
+  const gray = c.dyed ? 0 : age >= 80 ? 0.9 : age >= 70 ? 0.72 : age >= 60 ? 0.45 : age >= 52 ? 0.18 : 0;
+  const hair = gray ? mixHex(c.hair, '#dcd8d0', gray) : c.hair;
+  const brow = c.brow ? mixHex(c.brow, '#d8d3c8', gray * 0.6) : mixHex(hair, '#1c1210', 0.25);
   const deep = deepness(c.skin);
   const vars = { 'skin-color': c.skin, 'hair-color': hair, 'brow-color': brow, 'eye-color': c.eye, 'lip-color': c.lip, 'blush-color': c.blush,
     'eye-white': deep ? mixHex('#ffffff', c.skin, READABLE.white * deep) : null };
@@ -232,7 +232,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).
   const hairAt = hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
   // A style too tall for the picture is flattened above the crown: the part above the line is drawn
-  // again, squeezed towards it, so the two halves still meet along it.
+  // again, squeezed toward it, so the two halves still meet along it.
   const hairLayer = (clip) => {
     const g = `<g${hairAt} clip-path="url(#${clip})">${use(d.hair)}</g>`;
     if (!hf || hf.squash >= 1) return g;
@@ -263,7 +263,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     d.aging.length ? `<g clip-path="url(#pw-face-${n})">${d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join('')}</g>` : '',
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
-    // The mouth is drawn over a beard or moustache, not under it: a full beard would otherwise swallow it.
+    // The mouth is drawn over a beard or mustache, not under it: a full beard would otherwise swallow it.
     d.facialHair ? use(d.facialHair, f.facialHair) : '',
     use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
     use(d.clothes, f.clothes),

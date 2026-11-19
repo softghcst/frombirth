@@ -33,11 +33,11 @@ export const UNIVERSITY_KINDS = [
     blurb: 'Where most of the city\'s nurses, teachers and accountants trained. You can live at home and keep your job.' },
   { id: 'college', label: 'Small college', bar: 2.6, auditionBar: 62, tuitionMult: 1.3, living: 1, merit: 1, needAid: 0.8, contextual: true, perk: 'mentor', rep: 70,
     names: ['{place} College', '{saint} College'],
-    strong: ['art', 'music', 'theatre', 'english', 'history', 'journalism', 'psychology'],
+    strong: ['art', 'music', 'theater', 'english', 'history', 'journalism', 'psychology'],
     blurb: 'A few thousand students, small classes, and teachers who know your name.' },
   { id: 'conservatoire', label: 'Conservatoire', only: true, squeeze: 0.1, bar: 2.0, auditionBar: 72, tuitionMult: 1.4, living: 1.2, merit: 0.5, needAid: 0.6, arts: true, perk: 'mentor', rep: 82,
     names: ['{city} Conservatoire', 'The {place} Academy of Performing Arts'],
-    strong: ['music', 'theatre', 'musical_theatre', 'musical_theatre_bfa', 'art'],
+    strong: ['music', 'theater', 'musical_theater', 'musical_theater_bfa', 'art'],
     blurb: 'For performers and artists. Everyone was the best in their school; here they are ordinary.' },
   { id: 'open', label: 'Open university', bar: 0, auditionBar: 99, open: true, tuitionMult: 0.45, living: 0, merit: 0, needAid: 0.5, perk: 'home', rep: 45,
     names: ['The {place} Open University'],
@@ -71,10 +71,10 @@ export const LOADS = [
 /** Families of subjects: moving within one keeps every credit; moving between them loses a year's worth. */
 export const MAJOR_GROUP = { engineering: 'stem', mathematics: 'stem', computer_science: 'stem', chemistry: 'stem', biology: 'stem', nursing: 'health', psychology: 'social',
   political_science: 'social', history: 'humanities', english: 'humanities', journalism: 'humanities', communications: 'humanities', criminal_justice: 'social', education: 'social',
-  finance: 'business', business: 'business', art: 'arts', music: 'arts', theatre: 'arts', musical_theatre: 'arts', musical_theatre_bfa: 'arts' };
+  finance: 'business', business: 'business', art: 'arts', music: 'arts', theater: 'arts', musical_theater: 'arts', musical_theater_bfa: 'arts' };
 
 /**
- * Student organisations. factor: what makes someone good at it. mark: what
+ * Student organizations. factor: what makes someone good at it. mark: what
  * it does to the year's marks. polExp: political experience a year.
  * only: countries where such a thing exists.
  */

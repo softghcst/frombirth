@@ -4,7 +4,7 @@ import { systemFor } from './justice.js';
 // GAMEPLAY CONFIGURATION, COMPILED BY HAND AND UNVERIFIED. These are the
 // author's best understanding of the mid-2020s, simplified to one value per
 // place. Real law has conditions, exceptions and regional differences that
-// are not modelled, and it changes. Nothing here is legal information.
+// are not modeled, and it changes. Nothing here is legal information.
 //
 // A rule is looked up in layers (engine/rules.js), last one wins:
 //   1. DEFAULT        the value in RULES
@@ -36,6 +36,11 @@ export const RULES = {
     words: { equal: 'Protected in law', limited: 'Limited protection', hostile: 'Against the law, or close to it' } },
   deathPenalty: { name: 'Death penalty', kind: 'flag', default: false, from: 'deathPenalty', words: ['Not used', 'In use'] },
   conscription: { name: 'Military service', kind: 'flag', default: false, from: 'conscription', words: ['Voluntary', 'Compulsory'] },
+  // Historical Eras: laws that today are settled everywhere in the game, but once were not (see data/history.js).
+  womenVote: { name: 'Women\'s vote', kind: 'flag', default: true, words: ['Men only', 'Everyone'] },
+  marriageBar: { name: 'Married women in teaching and public service', kind: 'flag', default: false, words: ['Allowed', 'Must leave on marrying'] },
+  womenInLaw: { name: 'Women in the legal profession', kind: 'flag', default: true, words: ['Not admitted', 'Admitted'] },
+  womenInUniform: { name: 'Women in the police, fire service and armed forces', kind: 'flag', default: true, words: ['Not taken', 'Taken'] },
   // Justice. Where a place has no value of its own, these follow the procedure it uses (data/justice.js): `derive`.
   juryTrials: { name: 'Jury trials', kind: 'flag', default: false, derive: (id) => systemFor(id).factFinder === 'jury', words: ['Judges decide', 'Juries for serious charges'] },
   cashBail: { name: 'Money bail', kind: 'flag', default: false, derive: (id) => systemFor(id).bail === 'money', words: ['Release on conditions', 'Release can depend on money'] },
@@ -197,22 +202,25 @@ export const REGION_RULES = {
  * all of them nationally. Simplified to these six matters. What each claim rests on:
  *   Confirmed by a source (Wikipedia; scripts/verify-laws.py does not check this list automatically):
  *     United States: the death penalty ("Capital punishment in the United States": legal in 27 states), gambling ("each
- *       state is free to regulate or prohibit"), its age (varies by state), driving licences (issued by each state).
- *     Canada: driving licences ("issued by each province or territory"), the gambling age (18 or 19 by province).
- *     Australia: driving licences and road rules ("managed by state and territory governments"); the drinking age
+ *       state is free to regulate or prohibit"), its age (varies by state), driving licenses (issued by each state).
+ *     Canada: driving licenses ("issued by each province or territory"), the gambling age (18 or 19 by province).
+ *     Australia: driving licenses and road rules ("managed by state and territory governments"); the drinking age
  *       ("all states restrict purchasing to over 18": state liquor law).
  *     Germany: the gambling age ("varies by state").  Mexico: the drinking age ("all Mexican states prohibit..."), and
- *       driving ("Driving licence in Mexico": each state sets "the minimum driving age").
+ *       driving ("Driving license in Mexico": each state sets "the minimum driving age").
  *     India: alcohol ("a subject in the State List") and gambling ("states are entitled to formulate their own laws").
  *     Nigeria: alcohol ("prohibited in northern states").  UAE: alcohol and its age ("Sharjah... banned"; 18 or 21).
  *     Spain: the drinking age (communities raised it to 18 at different times).  Switzerland: the drinking age (Ticino
  *       sets its own).  United Kingdom: drinking ages are given for England and Wales apart from Scotland.
- *   The author's understanding, not confirmed by the sources fetched:
- *     the US drinking age (state law kept at 21 by federal highway money); Canada's gambling and drinking age (provincial
- *     liquor and gaming law); Australia's gambling; Germany's gambling (the Länder's state treaty); Austria's drinking age
- *     (the Länder's youth-protection laws); Argentina's gambling (provincial); Malaysia's gambling (forbidden to Muslims by
- *     state Islamic law); Nigeria's gambling (state lotteries); the UAE's gambling (a federal regulator was set up in 2023,
- *     so this may now be national); Spain's gambling (the communities regulate land-based gambling).
+ *     The US drinking age: state law, kept at 21 by federal highway money ("National Minimum Drinking Age Act").
+ *     Canada: gambling (provinces run lottery schemes since the Criminal Code was amended in 1969: "Gambling in Quebec")
+ *       and the drinking age (18 or 19 by province).  Spain: gambling ("Autonomous communities of Spain": a shared power).
+ *     Not regional: the United Arab Emirates' gambling, regulated federally since the General Commercial Gaming
+ *       Regulatory Authority was set up in 2023 ("Ras Al Khaimah", "United Arab Emirates").
+ *   The author's judgment, where no source fetched settles it (left as is):
+ *     Australia's gambling (state casino and gaming law), Germany's gambling (the Länder's state treaty), Austria's
+ *     drinking age (the Länder's youth-protection laws), Argentina's gambling (provincial), Malaysia's gambling (state-run
+ *     lotteries in Sabah, and state Islamic law for Muslims), Nigeria's gambling (state lotteries).
  */
 export const REGIONAL_POWERS = {
   us: ['deathPenalty', 'gambling', 'gamblingAge', 'drivingAge', 'drinkingAge'],
@@ -226,7 +234,7 @@ export const REGIONAL_POWERS = {
   in: ['alcohol', 'drinkingAge', 'gambling', 'gamblingAge'],
   my: ['gambling'],
   ng: ['alcohol', 'gambling'],
-  ae: ['alcohol', 'drinkingAge', 'gambling', 'gamblingAge'],
+  ae: ['alcohol', 'drinkingAge'],
   uk: ['drinkingAge'],
   es: ['drinkingAge', 'gambling', 'gamblingAge'],
 };

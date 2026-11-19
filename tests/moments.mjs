@@ -16,7 +16,8 @@ const { getEvent, resolveChoice } = await import('../js/engine/eventEngine.js');
 const { heirs, continueAs } = await import('../js/engine/legacy.js');
 const death = await import('../js/engine/death.js');
 const mo = await import('../js/engine/moments.js');
-const { OCCASIONS, SOCIAL_PER_YEAR, BOND_CAP, DIGITAL_INVITES } = await import('../js/data/occasions.js');
+const { OCCASIONS, SOCIAL_PER_YEAR, BOND_CAP } = await import('../js/data/occasions.js');
+const { techAvailable } = await import('../js/engine/digital/tech.js');
 
 rng.seed(808);
 const problems = [];
@@ -191,13 +192,14 @@ check(!item('prom') && !item('holiday:thanksgiving') && !item('holiday:christmas
 check(!!item('holiday:new_year'), 'though New Year is kept everywhere');
 p = life('in', 30);
 check(!!item('holiday:diwali') && !item('holiday:thanksgiving'), 'Diwali in India');
-p = life('us', 30);
-store.state.year = 1990; store.state.moments = null; person('friend', 30, 70);
-mo.startYear();
-check(mo.yearState().invites.every((x) => x.how === 'card'), `before ${DIGITAL_INVITES} an invitation comes as a card`);
-store.state.year = 2030; store.state.moments = null;
-for (let i = 0; i < 20 && !mo.yearState().invites.length; i++) { store.state.moments = null; mo.startYear(); }
-check(mo.yearState().invites.every((x) => x.how === 'message'), 'later, as a message');
+p = life('us', 30); person('friend', 30, 70);
+/** This year's invitations, dealt again until there is at least one. */
+const dealtIn = (year) => { store.state.year = year; for (let i = 0; i < 30; i++) { store.state.moments = null; mo.startYear(); if (mo.yearState().invites.length) break; } return mo.yearState().invites; };
+const ways = (year) => [...new Set(dealtIn(year).map((x) => x.how))];
+check(!techAvailable('mobile', 1985, 'us') && ways(1985).every((h) => h === 'call'), 'in 1985 an invitation comes by telephone, the newest way there was');
+check(ways(1880).every((h) => h === 'card'), 'in 1880, as a card by post');
+check(ways(1820).every((h) => h === 'word'), 'in 1820, before the postal service here, by word of mouth');
+check(ways(2030).every((h) => h === 'message'), 'and today, as a message');
 p = life('us', 10); p.flags.livesWithParents = true; person('parent', 40); const kid = person('friend', 10);
 const c9 = p.finance.cash;
 check(mo.celebrate({ key: 'social:sleepover', guests: [kid.id] }).ok && p.finance.cash === c9, 'a child\'s sleepover is paid for by the family');
@@ -206,9 +208,11 @@ section('what is on offer follows the year, the country and the age');
 
 // ---------- 10. Whole lives: never duplicated, always balanced ----------
 for (const id of ['us', 'uk', 'in', 'mx']) {
+  // A child can die young; the checks here are about a life's occasions, so a life that ends before five starts again.
+  for (let attempt = 0; attempt < 6; attempt++) {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
   p = store.state.player;
-  const seen = new Set();
+  var seen = new Set();
   while (p.alive && p.age < 90) {
     for (const x of mo.thisYear().filter((y) => !y.done && y.ok && !y.inviteId && !y.traditionId)) {
       const guests = mo.suggestedGuests(x);
@@ -224,6 +228,8 @@ for (const id of ['us', 'uk', 'in', 'mx']) {
     bookAction();
     const bad = audit(); if (bad.length) { problems.push(`${id}, age ${p.age}: ${bad[0]}`); break; }
     seen.add(store.state.year);
+  }
+  if (seen.size >= 5 || problems.length) break;
   }
   check(seen.size >= 5, `${id}: some years were lived`);
 }

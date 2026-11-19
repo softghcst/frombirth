@@ -138,7 +138,7 @@ function activities() {
   const rows = here.map((a) => {
     const outs = life.outingsFor(a.id).filter((o) => !o.done);
     const classes = life.coursesFor(a.id).filter((x) => !x.why);
-    const b = life.behaviourOf(a);
+    const b = life.behaviorOf(a);
     const bits = [outs.length ? `${outs.length} outing${outs.length > 1 ? 's' : ''}` : '', classes.length ? `${classes.length} class${classes.length > 1 ? 'es' : ''} open` : '', b ? `working on: ${b.name.toLowerCase()}` : '', show.entries[a.id] ? `pet show: ${show.entries[a.id].place === 1 ? 'won' : `placed ${show.entries[a.id].place}`}` : ''].filter(Boolean);
     return row(a, bits.join(' · ') || 'Nothing more to do this year', '', `data-animal="${a.id}"`);
   }).join('');
@@ -180,7 +180,7 @@ function riding(step) {
     },
     shows: () => {
       const list = horse.shows(); const mounts = horse.mounts();
-      return `${list.map((s) => `<div class="card"><h3>${esc(s.name)}</h3>${kv([['Judge', esc(s.judge)], ['Organizer', esc(s.organiser)], ['Entries', String(s.entrants)], ['Entry fee', money(localCost(SHOW_LEVELS[s.level].fee, C()))], ['You need', `${SHOW_LEVELS[s.level].needs}+ in ${esc(DISCIPLINES[s.discipline].name.toLowerCase())} (you: ${horse.disciplineSkill(s.discipline)})`]])}
+      return `${list.map((s) => `<div class="card"><h3>${esc(s.name)}</h3>${kv([['Judge', esc(s.judge)], ['Organizer', esc(s.organizer)], ['Entries', String(s.entrants)], ['Entry fee', money(localCost(SHOW_LEVELS[s.level].fee, C()))], ['You need', `${SHOW_LEVELS[s.level].needs}+ in ${esc(DISCIPLINES[s.discipline].name.toLowerCase())} (you: ${horse.disciplineSkill(s.discipline)})`]])}
         ${s.result ? `<p class="zoo-note"><strong>${s.result.place === 1 ? 'Won' : `Placed ${s.result.place} of ${s.result.of}`}</strong> on ${esc(zoo.animalById(s.result.horseId)?.name ?? '')}.</p>`
     : `<div class="btn-stack">${mounts.map((m) => { const c = horse.showCheck(s.id, m.id); return `<button class="btn" data-do="enter" data-show="${s.id}" data-id="${m.id}" ${c.ok ? '' : 'disabled'}>Enter on ${esc(m.name)}${c.ok ? '' : ` · ${esc(c.problems[0])}`}</button>`; }).join('') || '<p class="muted zoo-note">You have no horse to enter on.</p>'}</div>`}</div>`).join('')}
       ${r?.record.length ? `<div class="section-label">Your results</div>${[...r.record].reverse().map((e) => `<div class="kv"><span>${e.year} · ${esc(e.horse)}</span><span>${e.place} of ${e.of}: ${esc(e.name)}</span></div>`).join('')}` : ''}`;
@@ -279,7 +279,7 @@ extend({
     ...horse.horseActions(a),
     ...(life.outingsFor(a.id).some((o) => !o.done) ? [{ id: 'outing', label: 'Go out together' }] : []),
     ...(life.coursesFor(a.id).length ? [{ id: 'classes', label: 'Classes at the training club' }] : []),
-    ...(life.behaviourOf(a) && a.behaviour.helpedYear !== store.state.year && player().age >= 14 ? [{ id: 'behaviour', label: `Help with: ${life.behaviourOf(a).name.toLowerCase()}` }] : []),
+    ...(life.behaviorOf(a) && a.behavior.helpedYear !== store.state.year && player().age >= 14 ? [{ id: 'behavior', label: `Help with: ${life.behaviorOf(a).name.toLowerCase()}` }] : []),
     ...(zoo.livesWithPlayer(a.id) && speciesOf(a.speciesId).group === 'companion' && a.speciesId !== 'fish' && !life.petShow().entries[a.id] ? [{ id: 'petshow', label: 'Enter the local pet show' }] : []),
     ...(stud.BREEDING[a.speciesId] && a.sex === 'female' && care.paysFor(a) && !a.pregnancy && player().age >= 18 ? [{ id: 'breed', label: `Breed from ${a.name}` }] : []),
     ...(a.pregnancy ? [{ id: 'expecting', label: `${a.name} is expecting, due ${a.pregnancy.due}` }] : []),
@@ -296,10 +296,10 @@ extend({
     outing: async (a) => { const o = await pickModal({ title: `Out with ${a.name}`, options: life.outingsFor(a.id).map((x) => ({ value: x.id, label: x.label, disabled: x.done, sub: x.done ? 'Done this year' : '' })) }); return o ? life.outing(a.id, o) : null; },
     classes: async (a) => {
       const k = await pickModal({ title: life.club().name, body: `Run by ${life.club().staff[0].name}. A year of weekly classes.`, options: life.coursesFor(a.id).map((x) => ({ value: x.id, label: `${x.name} (${money(x.price)})`, sub: x.why || x.blurb, disabled: !x.ok })) });
-      return k ? life.enrol(a.id, k) : null;
+      return k ? life.enroll(a.id, k) : null;
     },
-    behaviour: async (a) => {
-      const b = life.behaviourOf(a);
+    behavior: async (a) => {
+      const b = life.behaviorOf(a);
       const h = await pickModal({ title: b.name, body: `${a.name} ${b.text}. About ${b.progress}% of the way past it.`, options: Object.entries(life.HELP).map(([k, x]) => ({ value: k, label: x.name, sub: x.cost ? money(localCost(x.cost, C())) : k === 'scold' ? 'It will feel better for a moment.' : 'Free, and slow.' })) });
       return h ? life.helpWith(a.id, h) : null;
     },

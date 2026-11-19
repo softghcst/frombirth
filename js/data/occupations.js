@@ -5,7 +5,7 @@
 //
 // An OCCUPATION is a profession (a title on a track). A TRACK is a ladder of
 // titles that belong together. An EMPLOYER (engine/employers.js) is an
-// organisation. A JOB is a posting at an employer for a level of a track.
+// organization. A JOB is a posting at an employer for a level of a track.
 //
 // Extra fields a track may carry (all optional, defaults in parentheses):
 //   family     the career family it is shown under (from its category)
@@ -20,7 +20,7 @@
 //              that track for its time, the player may move across (engine/workplace.js)
 //   branchOnly true when it is reached only by branching or experience, never hired cold
 //   req.experience { careerId: years }  years in any one of these (summed across employers)
-//   req.programmes [programme ids]  every one of these
+//   req.programs [program ids]  every one of these
 //   titlesBy   { countryId: [titles per level] } where a country names the ranks differently
 //   aliases    other names people give the work (for search and the source audit)
 //
@@ -91,7 +91,7 @@ export const EXISTING = {
   bridal: { family: 'beauty', schedule: 'weekends', values: ['craft', 'creativity'] },
   editorial: { family: 'beauty', schedule: 'irregular', values: ['creativity', 'excitement'] },
   sfx: { family: 'beauty', values: ['creativity', 'craft'] },
-  theatre_hmu: { family: 'beauty', schedule: 'irregular', values: ['craft', 'community'] },
+  theater_hmu: { family: 'beauty', schedule: 'irregular', values: ['craft', 'community'] },
   mt_performer: { family: 'arts', hours: 42, schedule: 'irregular', values: ['creativity', 'excitement'], aliases: ['Musical theater performer'] },
   child_actor: { family: 'arts', hours: 10, schedule: 'irregular', values: ['creativity'] },
   actor: { family: 'arts', schedule: 'irregular', values: ['creativity', 'excitement'], aliases: ['Film actor', 'Television actor', 'Commercial actor', 'Theater actor'] },
@@ -169,13 +169,13 @@ export const TRACKS = [
   // ---------- Medicine and healthcare ----------
   T('care_assist', 'Care work', 'health', { req: ADULT, payModel: 'hourly', schedule: 'rotating', values: ['care', 'community'], aliases: ['Nursing assistant', 'Healthcare assistant'] },
     L(['Nursing assistant', 25, 31, 2], ['Senior care assistant', 32, 39, 4], ['Care team lead', 41, 52, 0])),
-  T('midwife', 'Midwifery', 'health', { req: { programme: 'nursing' }, schedule: 'rotating', stress: 2, values: ['care', 'service'] },
+  T('midwife', 'Midwifery', 'health', { req: { program: 'nursing' }, schedule: 'rotating', stress: 2, values: ['care', 'service'] },
     L(['Midwife', 50, 64, 4], ['Senior midwife', 66, 82, 5], ['Head of midwifery', 90, 120, 0])),
-  T('adv_nurse', 'Advanced practice nursing', 'health', { aliases: ['Advanced practice nurse'], branchOnly: true, from: [{ career: 'nurse', level: 1 }], req: { programmes: ['nursing', 'graduate'] }, stress: 2, values: ['care', 'autonomy'] },
+  T('adv_nurse', 'Advanced practice nursing', 'health', { aliases: ['Advanced practice nurse'], branchOnly: true, from: [{ career: 'nurse', level: 1 }], req: { programs: ['nursing', 'graduate'] }, stress: 2, values: ['care', 'autonomy'] },
     L(['Nurse practitioner', 95, 120, 4], ['Senior nurse practitioner', 120, 145, 5], ['Consultant nurse', 140, 175, 0])),
-  T('surgery', 'Surgery', 'health', { branchOnly: true, from: [{ career: 'doctor', level: 1 }], req: { programme: 'medical', stats: { 'stats.intellect': 65 } }, hours: 58, schedule: 'on_call', stress: 3, values: ['prestige', 'care', 'excitement'] },
+  T('surgery', 'Surgery', 'health', { branchOnly: true, from: [{ career: 'doctor', level: 1 }], req: { program: 'medical', stats: { 'stats.intellect': 65 } }, hours: 58, schedule: 'on_call', stress: 3, values: ['prestige', 'care', 'excitement'] },
     L(['Surgical resident', 70, 85, 4], ['Surgeon', 250, 340, 5], ['Consultant surgeon', 340, 450, 6], ['Chief of surgery', 450, 650, 0])),
-  T('psychiatry', 'Psychiatry', 'health', { branchOnly: true, from: [{ career: 'doctor', level: 1 }], req: { programme: 'medical' }, hours: 45, stress: 2, values: ['care', 'autonomy'] },
+  T('psychiatry', 'Psychiatry', 'health', { branchOnly: true, from: [{ career: 'doctor', level: 1 }], req: { program: 'medical' }, hours: 45, stress: 2, values: ['care', 'autonomy'] },
     L(['Psychiatry resident', 65, 80, 4], ['Psychiatrist', 200, 270, 6], ['Consultant psychiatrist', 270, 360, 0])),
   T('dental_hyg', 'Dental hygiene', 'health', { req: { ...HIGH, altCert: 'dental_hygiene', altOnly: true }, values: ['care', 'stability'] },
     L(['Dental hygienist', 55, 72, 4], ['Senior dental hygienist', 74, 90, 0])),
@@ -190,11 +190,11 @@ export const TRACKS = [
   // ---------- Law and justice ----------
   T('paralegal', 'Paralegal work', 'law', { req: { ...HIGH, altCert: 'paralegal' }, hours: 42, values: ['stability'], aliases: ['Legal assistant'] },
     L(['Legal assistant', 28, 36, 2], ['Paralegal', 38, 52, 3], ['Senior paralegal', 54, 70, 5], ['Legal practice manager', 72, 98, 0])),
-  T('prosecutor', 'Prosecution', 'law', { req: { programme: 'law' }, hours: 50, stress: 3, values: ['service', 'prestige'], outside: false },
+  T('prosecutor', 'Prosecution', 'law', { req: { program: 'law' }, hours: 50, stress: 3, values: ['service', 'prestige'], outside: false },
     L(['Assistant prosecutor', 60, 78, 3], ['Prosecutor', 82, 110, 5], ['Senior prosecutor', 115, 150, 6], ['Chief prosecutor', 155, 210, 0])),
-  T('defender', 'Public defense', 'law', { req: { programme: 'law' }, hours: 52, stress: 3, values: ['service', 'care'], aliases: ['Public defender'] },
+  T('defender', 'Public defense', 'law', { req: { program: 'law' }, hours: 52, stress: 3, values: ['service', 'care'], aliases: ['Public defender'] },
     L(['Public defender', 55, 72, 4], ['Senior public defender', 76, 100, 6], ['Chief public defender', 105, 145, 0])),
-  T('judiciary', 'The bench', 'law', { branchOnly: true, hire: 'interview', req: { programme: 'law', minAge: 35, cleanRecord: true, experience: { lawyer: 8, prosecutor: 8, defender: 8 } },
+  T('judiciary', 'The bench', 'law', { branchOnly: true, hire: 'interview', req: { program: 'law', minAge: 35, cleanRecord: true, experience: { lawyer: 8, prosecutor: 8, defender: 8 } },
     stress: 2, values: ['prestige', 'service', 'stability'], outside: false, aliases: ['Judge', 'Magistrate'] },
   L(['District judge', 150, 190, 6], ['Circuit judge', 190, 240, 8], ['Appeal court judge', 240, 320, 0])),
   T('court_clerk', 'Court administration', 'law', { req: HIGH, values: ['stability', 'service'] },
@@ -214,7 +214,7 @@ export const TRACKS = [
   T('primary', 'Elementary teaching', 'education', { req: { degree: 'university' }, hours: 46, stress: 2, values: ['care', 'service', 'community'], doors: [{ flag: 'teachingCert', bonus: 0.3 }],
     aliases: ['Elementary teacher', 'Primary school teacher'] },
   L(['Trainee elementary teacher', 33, 39, 1], ['Elementary teacher', 41, 56, 6], ['Senior elementary teacher', 58, 70, 0])),
-  T('counsellor', 'School counseling', 'education', { req: uni('psychology', 'education'), values: ['care', 'service'], aliases: ['School counselor'] },
+  T('counselor', 'School counseling', 'education', { req: uni('psychology', 'education'), values: ['care', 'service'], aliases: ['School counselor'] },
     L(['School counselor', 44, 58, 4], ['Senior counselor', 60, 76, 5], ['Head of student support', 78, 96, 0])),
   T('school_admin', 'School leadership', 'education', { branchOnly: true, from: [{ career: 'teacher', level: 1 }, { career: 'primary', level: 1 }], hours: 50, stress: 2, values: ['service', 'prestige'],
     aliases: ['Principal', 'School administrator'] },
@@ -248,7 +248,7 @@ export const TRACKS = [
   // ---------- Retail, sales and customer service ----------
   T('grocery', 'Grocery', 'retail', { req: { minAge: 15 }, payModel: 'hourly', schedule: 'shifts', values: ['community', 'stability'], aliases: ['Cashier', 'Grocery bagger'] },
     L(['Grocery bagger', 17, 21, 1], ['Cashier', 20, 25, 2], ['Department lead', 26, 33, 3], ['Assistant store manager', 36, 48, 0])),
-  T('contact_centre', 'Customer service', 'retail', { req: { minAge: 17 }, payModel: 'hourly', schedule: 'shifts', remote: 'hybrid', stress: 2, values: ['stability'],
+  T('contact_center', 'Customer service', 'retail', { req: { minAge: 17 }, payModel: 'hourly', schedule: 'shifts', remote: 'hybrid', stress: 2, values: ['stability'],
     aliases: ['Call center agent', 'Call center worker', 'Customer support representative', 'Customer service representative'] },
   L(['Call center agent', 21, 26, 1], ['Customer service representative', 26, 33, 2], ['Team leader', 34, 44, 4], ['Contact center manager', 50, 70, 0])),
   T('sales', 'Sales', 'retail', { req: { minAge: 18 }, payModel: 'commission', stress: 2, remote: 'hybrid', values: ['excitement', 'autonomy'], aliases: ['Telemarketer', 'Sales associate'] },
@@ -303,7 +303,7 @@ export const TRACKS = [
     L(['Environmental technician', 38, 48, 2], ['Environmental scientist', 52, 70, 4], ['Senior environmental scientist', 74, 96, 0])),
   T('meteorology', 'Meteorology', 'science', { req: uni('mathematics', 'engineering', 'computer_science'), schedule: 'rotating', values: ['stability', 'service'], aliases: ['Meteorologist'] },
     L(['Forecaster', 46, 58, 3], ['Meteorologist', 62, 82, 5], ['Chief meteorologist', 86, 115, 0])),
-  T('astronomy', 'Astronomy', 'science', { req: { programme: 'doctorate' }, schedule: 'nights', values: ['creativity', 'prestige'], aliases: ['Astronomer'] },
+  T('astronomy', 'Astronomy', 'science', { req: { program: 'doctorate' }, schedule: 'nights', values: ['creativity', 'prestige'], aliases: ['Astronomer'] },
     L(['Postdoctoral astronomer', 50, 62, 3], ['Astronomer', 70, 95, 6], ['Observatory director', 110, 160, 0])),
   T('archaeology', 'Archaeology', 'science', { req: uni('history', 'biology'), schedule: 'seasonal', values: ['outdoors', 'creativity'], aliases: ['Archaeologist'] },
     L(['Field archaeologist', 30, 38, 3], ['Archaeologist', 42, 56, 5], ['Senior archaeologist', 60, 80, 0])),
@@ -348,7 +348,7 @@ export const TRACKS = [
     L(['Lifeguard', 18, 23, 2], ['Senior lifeguard', 24, 30, 3], ['Aquatics manager', 34, 48, 0])),
 
   // ---------- Media, journalism and publishing ----------
-  T('broadcast', 'Broadcasting', 'media', { req: uni('journalism', 'communications', 'english', 'theatre'), schedule: 'irregular', stress: 2, values: ['excitement', 'prestige'], fame: { from: 2, label: 'Broadcaster' },
+  T('broadcast', 'Broadcasting', 'media', { req: uni('journalism', 'communications', 'english', 'theater'), schedule: 'irregular', stress: 2, values: ['excitement', 'prestige'], fame: { from: 2, label: 'Broadcaster' },
     aliases: ['Radio host', 'News anchor', 'Broadcaster'] },
   L(['Production runner', 24, 30, 2], ['Researcher', 32, 42, 3], ['Radio host', 45, 75, 4, { 'stats.charm': 60 }], ['News anchor', 90, 220, 0, { 'stats.charm': 70 }])),
   T('copywriting', 'Advertising', 'media', { req: uni('english', 'communications', 'art', 'business', 'journalism'), remote: 'hybrid', values: ['creativity'], aliases: ['Copywriter', 'Advertising creative'] },
@@ -393,7 +393,7 @@ export const TRACKS = [
   T('music_prod', 'Music production', 'arts', { req: { minAge: 17, stats: { 'talents.music': 45 } }, hire: 'portfolio', type: 'freelance', skill: 'talents.music', schedule: 'flexible',
     values: ['creativity', 'autonomy'], aliases: ['Music producer', 'Composer', 'Disk jockey', 'DJ', 'Background vocalist'] },
   L(['Studio assistant', 8, 18, 2], ['Session musician', 22, 45, 3, { 'talents.music': 58 }], ['Music producer', 50, 140, 4, { 'talents.music': 70 }], ['Composer for film', 120, 400, 0, { 'talents.music': 80 }])),
-  T('modelling', 'Modeling', 'arts', { hire: 'audition', skill: 'stats.charm', req: { minAge: 16, maxAge: 40, stats: { 'stats.charm': 55 } }, schedule: 'irregular', stress: 2,
+  T('modeling', 'Modeling', 'arts', { hire: 'audition', skill: 'stats.charm', req: { minAge: 16, maxAge: 40, stats: { 'stats.charm': 55 } }, schedule: 'irregular', stress: 2,
     values: ['excitement', 'prestige'], fame: { from: 2, label: 'Model' }, aliases: ['Model', 'Fashion model', 'Runway model'] },
   L(['New face', 8, 20, 1], ['Working model', 30, 60, 3, { 'stats.charm': 64 }], ['Campaign model', 80, 200, 4, { 'stats.charm': 74 }], ['Supermodel', 300, 1500, 0, { 'stats.charm': 85 }])),
   T('talent_agency', 'Talent representation', 'arts', { req: HIGH, hours: 50, stress: 2, payModel: 'commission', values: ['excitement', 'community'], aliases: ['Talent agent', 'Entertainment manager'] },

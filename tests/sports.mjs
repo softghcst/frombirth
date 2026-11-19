@@ -17,7 +17,7 @@ const { makeNpc } = await import('../js/engine/npcFactory.js');
 const { audit: ledgerAudit } = await import('../js/engine/ledger.js');
 const { weeklyLoad } = await import('../js/engine/worklife.js');
 const { aid } = await import('../js/engine/admissions.js');
-const { profile: applicant, catalogue } = await import('../js/engine/university.js');
+const { profile: applicant, catalog } = await import('../js/engine/university.js');
 const { SPORTS_LIST, SPORTS, PLANS, INJURIES } = await import('../js/data/sports.js');
 const { ILLNESS_BY_ID } = await import('../js/data/illnesses.js');
 const { CATEGORIES } = await import('../js/data/money.js');
@@ -273,26 +273,30 @@ let soccerLife;
     for (let i = 0; i < 11 && !committed; i++) {
       advanceYear(); quiet();
       for (const d of life.openDecisions()) {
-        if (d.kind === 'scholarship') { life.answer(d.id, d.offers[0].instId); committed = d.offers[0]; } else life.answer(d.id, d.kind === 'academy' ? 'yes' : 'no');
+        // Recruiting (engine/recruiting.js): camps, a commitment, then signing day with a university that pays a share.
+        const e = sp.entryOf('soccer');
+        const paying = (e.recruit?.offers ?? []).find((o) => !o.pulled && o.fraction > 0 && !o.id.startsWith('juco:'));
+        if (d.kind === 'sign' && paying && d.options.some((o) => o.id === paying.id)) { const r = life.answer(d.id, paying.id); if (r.ok) committed = { instId: paying.id, fraction: paying.fraction }; }
+        else life.answer(d.id, d.kind === 'academy' ? 'yes' : d.kind === 'camp' ? 'showcase' : d.kind === 'commit' && paying ? paying.id : d.options.some((o) => o.id === 'no') ? 'no' : d.options.at(-1).id);
       }
     }
   }
   check(!!committed, 'a strong high-school player in the United States is recruited');
   if (committed) {
     const p = P();
-    const inst = catalogue(p.countryId).find((u) => u.id === committed.instId);
-    check(!!inst && inst.sport, 'the offer comes from a real university of the country that runs teams');
+    const inst = catalog(p.countryId).find((u) => u.id === committed.instId);
+    check(!!inst && !!sp.ensure().divisions?.[inst.id], 'the offer comes from a real university of the country that runs teams');
     const a = applicant(null, inst);
     check(a.athlete && a.athleticFraction === committed.fraction, 'the application carries the coach\'s backing and the offered share');
     const help = aid(a, inst, {}, 0.3);
     check(help.parts.some((x) => x.kind === 'athletic' && x.fraction === committed.fraction) || help.parts[0].fraction > committed.fraction, 'the scholarship is what the tuition is reduced by');
-    const other = catalogue(p.countryId).find((u) => u.sport && u.id !== committed.instId);
+    const other = catalog(p.countryId).find((u) => u.sport && u.id !== committed.instId);
     if (other) check(!applicant(null, other).athleticFraction, 'another university does not inherit the offer');
   }
   // Countries without university recruiting do not get offers.
   const q = grownTo(7, 'uk', 'London'); q.talents.sports = 95; sp.takeUp('soccer'); sp.setPlan('soccer', 'technical', 10);
   let ukOffer = false;
-  for (let i = 0; i < 11; i++) { advanceYear(); quiet(); for (const d of life.openDecisions()) { if (d.kind === 'scholarship' && q.countryId === 'uk') ukOffer = true; /* the family may emigrate somewhere that does recruit */ life.answer(d.id, d.kind === 'academy' ? 'yes' : 'no'); } }
+  for (let i = 0; i < 11; i++) { advanceYear(); quiet(); for (const d of life.openDecisions()) { if (['commit', 'sign'].includes(d.kind) && q.countryId === 'uk') ukOffer = true; /* the family may emigrate somewhere that does recruit */ life.answer(d.id, d.kind === 'academy' ? 'yes' : 'no'); } }
   check(!ukOffer, 'there are no university athletic scholarships where universities do not recruit');
   sound('recruiting');
   section('recruiting: real universities, offers carried into admissions and tuition, only where they exist');

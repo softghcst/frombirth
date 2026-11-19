@@ -3,7 +3,7 @@
 // can be tested on their own (tests/legislature.mjs).
 //
 // A bill is what it would do, issue by issue: { wants: { issue: +1 | -1 } }
-//   +1 moves the country towards the high end of that issue (see data/parties.js), -1 towards the low end.
+//   +1 moves the country toward the high end of that issue (see data/parties.js), -1 toward the low end.
 // A party votes by where it sits (leading the government, a partner in it, or
 // outside it) and by whether the bill goes its way.
 

@@ -1,10 +1,10 @@
 // Life at university: the course as credits and a workload, a minor, a
 // professor who knows the player, a roommate who is a person, student
-// organisations, internships, and a year abroad. Getting in is in
+// organizations, internships, and a year abroad. Getting in is in
 // engine/university.js; fees, housing costs and graduation are in engine/education.js.
 //
 // On the player:
-//   p.education.credits      credits earned towards the degree (120 for a full one)
+//   p.education.credits      credits earned toward the degree (120 for a full one)
 //   p.education.load         'light' | 'standard' | 'heavy': credits attempted a year, and what it does to marks
 //   p.education.minorId      a second subject, recorded on the degree
 //   p.education.campus = { orgs: { orgId: { since, standing, role } }, postings, abroad, probation, officeAge }
@@ -56,7 +56,7 @@ export const creditsNeeded = () => (player().education.stage === 'community' ? D
 /** Whether there are credits enough to graduate. Courses begun before credits existed finish by years, as they always did. */
 export const finished = () => { const e = player().education; return e.credits != null && e.credits >= creditsNeeded(); };
 
-/** Called on leaving, however it ends: organisations are left behind, the people are not. */
+/** Called on leaving, however it ends: organizations are left behind, the people are not. */
 export function finish() {
   const e = player().education;
   for (const n of livingNpcs()) if (n.flags.tag === 'professor') { n.flags.tag = 'oldProfessor'; n.flags.title = `${n.flags.title}, who taught you`; }
@@ -74,7 +74,7 @@ export function setLoad(id) {
   player().education.load = id;
   return result(true, `${l.name}: ${l.blurb}`, 'neutral');
 }
-/** What the workload, a minor and organisations do to the year's marks. */
+/** What the workload, a minor and organizations do to the year's marks. */
 export function markEdge() {
   const e = player().education;
   if (!onCampus()) return 0;
@@ -143,7 +143,7 @@ export function assignRoommate() {
   return n;
 }
 
-// ---------- Organisations ----------
+// ---------- Organizations ----------
 
 export function orgOptions() {
   const p = player();
@@ -210,7 +210,7 @@ function orgsYear() {
 
 // ---------- Internships ----------
 
-/** The careers a subject leads towards. */
+/** The careers a subject leads toward. */
 const fields = (majorId) => CAREERS.filter((c) => c.type === 'fulltime' && (c.req?.majors ?? []).includes(majorId));
 /** This summer's postings. Settled once a year, so they cannot be re-rolled. */
 export function postings() {

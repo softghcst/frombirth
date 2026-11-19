@@ -9,6 +9,12 @@ import { COUNTRIES } from '../data/countries.js';
 import { sportOf, PLANS, LOADS, LEVEL_NAMES, INJURIES } from '../data/sports.js';
 import * as sp from '../engine/sports.js';
 import * as life from '../engine/sportsLife.js';
+import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
+import { decommit, gradeOf, GRADE_NAMES } from '../engine/recruiting.js';
+import * as draft from '../engine/draft.js';
+import { classOf, eligibility as collegeLeft } from '../engine/college.js';
+import { DIVISIONS } from '../data/sports.js';
+import { jerseySvg, jerseyDot, inkOn } from './jersey.js';
 import { fmtMark } from '../engine/sportsPlay.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { createNav } from './animalNav.js';
@@ -36,6 +42,15 @@ const glyph = (sportId) => (sportId === 'pickleball' ? '🏓' : sportId === 'bas
   : sportId === 'american_football' ? '🏈' : sportId === 'ice_hockey' ? '🏒' : sportId === 'cricket' ? '🏏' : sportId === 'swimming' || sportId === 'para_swimming' ? '🏊' : sportId === 'volleyball' ? '🏐' : sportId === 'cycling' ? '🚴' : GLYPH[sportOf(sportId)?.kind] ?? '🏅');
 const seg = (key, value, options) => `<div class="chips zoo-filter" role="group">${options.map(([v, t]) => `<button class="chip ${String(v) === String(value) ? 'on' : ''}" aria-pressed="${String(v) === String(value)}" data-set="${key}:${v}">${esc(t)}</button>`).join('')}</div>`;
 const bar = (v) => `<div class="mini" style="width:100%"><i class="fill ${v >= 68 ? 'good' : v >= 40 ? 'ok' : 'low'}" style="width:${Math.max(2, Math.min(100, v))}%"></i></div>`;
+/** Why nobody in the player's division can be paid to play a sport this year. */
+function proClosed(sport) {
+  const div = sp.divisionOf();
+  const y = sp.proYears(sport, div);
+  const who = div === 'women' && sport.womenProFrom !== undefined ? 'No woman' : 'Nobody';
+  if (y.from == null) return `${who} is paid to play it: there is no professional league for the ${sp.DIVISION_NAME[div].toLowerCase()} game.`;
+  if (y.until && store.state.year > y.until) return `The women's professional league closed in ${y.until}. Nobody has started another.`;
+  return `${who} is paid to play it yet (from ${y.from}).`;
+}
 const levelName = (l) => LEVEL_NAMES[l] ?? (l === 'elite' ? 'National squad' : l);
 const ordinal = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 
@@ -165,19 +180,119 @@ function rankings() {
     </div>`).join('')}`;
 }
 
+/** College, the draft and the minors: where the player stands, what the mock drafts say, and the drafts they were in. */
+function draftSection() {
+  const st = store.state;
+  const p = player();
+  const out = [];
+  for (const e of sp.activeSports()) {
+    const D = draft.draftOf(st, e.id);
+    const sport = sportOf(e.id);
+    if (e.college && sp.orgOf(e.orgId)?.kind === 'college') {
+      const left = collegeLeft(st, e);
+      out.push(`${label(`College ${sport.name.toLowerCase()}`)}${kv('Class', esc(classOf(st, e)))}${kv('Division', esc(DIVISIONS[e.college.division]?.name ?? e.college.division))}${kv('Eligibility', `${left.seasons} ${left.seasons === 1 ? 'season' : 'seasons'} left, ${left.years} ${left.years === 1 ? 'year' : 'years'} on the clock`)}${e.college.nil.length ? kv('NIL deals', esc(money(e.college.nil.reduce((s, x) => s + x.amount, 0)))) : ''}`);
+    }
+    if (e.intl) out.push(intlSection(st, e));
+    if (e.trades?.length) out.push(`${label(`${sport.name}: trades`)}${e.trades.map((t) => kv(String(t.year), `${esc(t.from)} → ${esc(t.to)}, for ${esc(t.for)}${t.vetoed ? ' · you refused' : ''}`)).join('')}`);
+    if (e.youth && (e.youth.scholar || e.youth.released)) out.push(`${label(`${sport.name}: the academy`)}${e.youth.scholar ? kv(p.countryId === 'uk' ? 'Scholarship' : 'Youth contract', `${e.youth.scholar.from}–${e.youth.scholar.until}`) : kv('Released', String(e.youth.released))}`);
+    if (e.asia && D && (e.proYear || e.asia.service || e.asia.served || e.asia.exempt)) {
+      const n = e.proYear ? st.year - e.proYear : 0;
+      const sv = e.asia.service ? `${e.asia.service.kind === 'sangmu' ? 'Serving, with Sangmu' : 'Serving'} until ${e.asia.service.until}` : e.asia.served ? 'Served' : e.asia.exempt ? `Exempt: ${e.asia.exempt}` : p.countryId === 'kr' && p.gender === 'male' ? 'Due before 28' : '';
+      out.push(`${label(`${D.name}: the way abroad`)}${e.proYear ? kv('Seasons as a professional', String(n)) : ''}
+        ${kv('Posting', D.posting ? `After ${D.posting} seasons, with the club's consent` : "With the club's consent")}
+        ${kv('Free agency abroad', `After ${D.freeAgency} seasons`)}
+        ${e.asia.posted.map((x) => kv(`Posting, ${x.year}`, x.to ? `Signed with ${esc(x.to)}` : x.consent ? 'Posted' : 'The club said no')).join('')}
+        ${sv ? kv('Military service', esc(sv)) : ''}`);
+    }
+    if (!D) continue;
+    const el = draft.eligible(st, e, D);
+    const grade = draft.draftGrade(st, e);
+    const pick = draft.projectedPick(grade);
+    const drafts = Object.values(st.sports?.drafts ?? {}).filter((d) => d.sport === e.id && d.player).sort((a, b) => b.year - a.year);
+    const size = drafts[0]?.size ?? 30;
+    out.push(`${label(`${sport.name} draft`)}
+      ${e.contractId ? '' : kv('Eligible', el.ok ? `Yes${el.declare ? ', if you declare' : ''}` : esc(el.why))}
+      ${e.contractId ? '' : kv('Mock drafts', pick <= D.rounds * size ? `Round ${draft.roundOf(pick, size)}, around pick ${pick}` : 'Not projected to be picked')}
+      ${e.draft?.rights ? kv('Rights held by', `${esc(e.draft.rights.club)} until ${e.draft.rights.until}`) : ''}
+      ${e.minor ? kv('Minor leagues', `${esc((e.minor.ladder ?? D.minors)[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}
+      ${drafts.map((d) => `<details class="card"><summary><strong>${d.year} draft</strong> · ${d.player.undrafted ? 'not picked' : `you went in round ${d.player.round}, pick ${d.player.pick}, to ${esc(sp.teamOf(d.player.teamId)?.name ?? '')}`}</summary>
+        ${d.lottery.length ? `<p class="muted">Lottery: ${d.lottery.map((x) => `${esc(sp.teamOf(x.teamId)?.name ?? '')} ${x.from}→${x.to}`).join(', ')}</p>` : ''}
+        ${draft.draftBoard(st, d, 1).map((x) => `<div class="kv"><span>${x.pick}. ${x.mine ? '<strong>You</strong>' : esc(x.name)} <small class="muted">${x.mine ? '' : esc([x.pos, x.school].filter(Boolean).join(' · '))}</small></span><span>${esc(x.team)}</span></div>`).join('')}</details>`).join('')}`);
+  }
+  return out.join('');
+}
+
+/** An international signing (engine/international.js): the trainer, the handshake deal, the bonus, the minors. */
+function intlSection(st, e) {
+  const X = e.intl;
+  const p = player();
+  const T = X.trainer;
+  return `${label(`${sportOf(e.id).name}: international signing`)}
+    ${X.signed ? kv('Signed', `${esc(X.signed.club)}, ${X.signed.year} · ${money(X.signed.bonus)} bonus${X.signed.toTrainer ? ` (${money(X.signed.toTrainer)} to your trainer)` : ''}`)
+      : kv('Can sign', p.countryId === 'cu' && !X.left ? 'Only after leaving Cuba' : p.age < 16 ? 'From January 15 after you turn 16' : 'Now, as a free agent')}
+    ${T ? kv('Trainer', `${esc(T.name)} since ${T.since} · ${T.fullTime ? 'full time' : 'around school'} · takes ${Math.round(T.cut * 100)}% of the bonus`) : ''}
+    ${X.deal ? kv('Handshake deal', `${esc(X.deal.club)}: ${money(X.deal.amount)} (not binding)`) : ''}
+    ${X.fellThrough.map((f) => kv(`Fell through, ${f.year}`, esc(f.why))).join('')}
+    ${e.minor?.ladder ? kv('Minor leagues', `${esc(e.minor.ladder[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}`;
+}
+
+/** Recruiting: how the services rate the player, who has offered, and where they are committed or signed. */
+function recruitingSection() {
+  const p = player();
+  const list = sp.activeSports().filter((e) => e.recruit && (e.recruit.stars || e.recruit.offers.length));
+  if (!list.length) return '';
+  return list.map((e) => {
+    const R = e.recruit;
+    const g = gradeOf(p);
+    const pr = (o) => `${DIVISIONS[o.division]?.name ?? o.division} · ${o.fraction >= 1 ? 'full scholarship' : o.fraction > 0 ? `${Math.round(o.fraction * 100)}% of tuition` : 'no athletic scholarship'}`;
+    return `${label(`Recruiting: ${sportOf(e.id).name}`)}
+      ${kv('Rating', R.stars ? `${'★'.repeat(R.stars)} · number ${R.rank} in your class` : 'Not rated yet')}
+      ${g ? kv('Year', `${GRADE_NAMES[g]} (grade ${g})`) : ''}
+      ${kv('Status', R.signed ? `Signed with ${esc(R.offers.find((o) => o.id === R.signed)?.name ?? '')}` : R.commit ? `Committed to ${esc(R.offers.find((o) => o.id === R.commit)?.name ?? '')} (not binding)` : 'Uncommitted')}
+      ${R.offers.length ? R.offers.map((o) => kv(esc(o.name), `${esc(pr(o))}${o.pulled ? ' · withdrawn' : ''}${R.visits.includes(o.id) ? ' · visited' : ''}`)).join('') : empty('No offers yet. Coaches can offer from junior year.')}
+      ${R.commit && !R.signed ? `<div class="btn-stack"><button class="btn" data-decommit="${e.id}">Decommit</button></div>` : ''}`;
+  }).join('');
+}
+
 function career() {
   const dec = life.openDecisions();
   const ks = life.contractsOf();
   const p = player();
   const a = sp.myAthlete();
   return `${label('Decisions')}${dec.length ? dec.map((d) => `<div class="card"><p>${esc(d.text)}</p><div class="btn-stack">${d.options.map((o) => `<button class="btn" data-answer="${d.id}:${o.id}">${esc(o.label)}</button>`).join('')}</div></div>`).join('') : empty('Nothing waiting.')}
-    ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
+    ${recruitingSection()}
+    ${draftSection()}
+    ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.kind === 'agent' && k.share ? ` · takes ${Math.round(k.share * 100)}%` : ''}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
+    ${agentSection()}
+    ${label('Division')}
+    ${kv('You play in', `${esc(sp.DIVISION_NAME[sp.divisionOf()])} competition`)}
+    <p class="muted">Clubs' teams, leagues, tours and events above recreational play each have a women's and a men's division.</p>
+    ${sp.choosesDivision(p) ? `<div class="btn-stack">${['women', 'men'].filter((d) => d !== sp.divisionOf()).map((d) => `<button class="btn" data-division="${d}">Compete in the ${esc(sp.DIVISION_NAME[d].toLowerCase())} division</button>`).join('')}</div>` : ''}
     ${label('The way up')}
-    ${sp.activeSports().map((e) => { const sport = sportOf(e.id); const route = sp.proPath(sport, p.countryId); return kv(sport.name, esc(store.state.year < sport.proFrom ? `Nobody is paid to play it yet (from ${sport.proFrom}).` : route === 'draft' ? 'Professional teams draft from school and university.' : route === 'tour' ? 'Professionals play a tour for prize money.' : route === 'none' ? 'No professional league: the best compete for their country.' : 'Clubs sign players, often from their academies.') + (sp.hasCollegeSport(sport, p.countryId) ? ' Universities here recruit, with scholarships.' : '')); }).join('')}
+    ${sp.activeSports().map((e) => { const sport = sportOf(e.id); const route = sp.proPath(sport, p.countryId); return kv(sport.name, esc(!sp.proYears(sport).open ? proClosed(sport) : route === 'draft' ? 'Professional teams draft from school and university.' : route === 'tour' ? 'Professionals play a tour for prize money.' : route === 'none' ? 'No professional league: the best compete for their country.' : 'Clubs sign players, often from their academies.') + (sp.hasCollegeSport(sport, p.countryId) ? ' Universities here recruit, with scholarships.' : '')); }).join('')}
     ${label('After playing')}
     <div class="btn-stack">${sp.activeSports().map((e) => `<button class="btn" data-retire="${e.id}">Retire from ${esc(sportOf(e.id).name.toLowerCase())}</button>`).join('')}
       ${p.age >= 18 && !a.coaching ? Object.values(a.sports).map((e) => `<button class="btn" data-coachjob="${e.id}">Coach ${esc(sportOf(e.id).name.toLowerCase())}</button>`).join('') : ''}</div>
     ${a.coaching ? kv('Coaching', `${esc(sportOf(a.coaching.sportId).name)} since ${a.coaching.since}`) : ''}`;
+}
+
+/** The player's sports agent, or the search for one: the same agents as under My Fame → Representation. */
+function agentSection() {
+  if (!life.wantsSportsAgent()) return '';
+  const mine = life.myAgent();
+  const n = mine ? store.state.npcs[mine.npcId] : null;
+  const offer = life.sportsAgentOnOffer();
+  const left = life.sportsAgentTriesLeft();
+  const pull = (c) => (c >= 1.25 ? 'a lot of pull' : c >= 0.9 ? 'some pull' : 'not much pull');
+  const books = (x) => { const list = (x.flags.agent?.clients ?? []).map((id) => store.state.npcs[id]).filter((c) => c && c.alive !== false).slice(0, 4);
+    return list.length ? `<p class="muted">Also represents: ${list.map((c) => esc(`${c.firstName} ${c.lastName} (${c.occupation ?? 'athlete'})`)).join(', ')}.</p>` : ''; };
+  return `${label('Agent')}
+    ${n ? `${kv(`${n.firstName} ${n.lastName}`, esc(`${mine.agency ? `${mine.agency} · ` : ''}takes ${Math.round(mine.commission * 100)}% · ${pull(mine.clout)}`))}${books(n)}
+      <div class="btn-stack"><button class="btn" data-sagent="cut">Ask for a smaller cut</button><button class="btn" data-sagent="drop">Part ways</button></div>`
+      : '<p class="muted">An agent negotiates contracts and finds sponsors, for their own cut (three to ten per cent). Each one is different: shop around.</p>'}
+    ${offer ? `<div class="card"><h3>${esc(`${offer.firstName} ${offer.lastName}`)}</h3>${kv('Agency', esc(offer.flags.agent.agency))}${kv('Their cut', `${Math.round(offer.flags.agent.commission * 100)}%`)}${kv('Pull with clubs and brands', pull(offer.flags.agent.clout))}${books(offer)}
+      <div class="btn-stack"><button class="btn primary" data-sagent="sign">Sign with them</button><button class="btn" data-sagent="find" ${left <= 0 ? 'disabled' : ''}>Look for another (${left} left this year)</button><button class="btn" data-sagent="pass">Say no</button></div></div>`
+      : `<div class="btn-stack"><button class="btn" data-sagent="find" ${left <= 0 ? 'disabled' : ''}>${n ? 'Look for a different agent' : 'Look for an agent'} (${left > 0 ? `${left} ${left === 1 ? 'look' : 'looks'} left this year` : 'none left this year'})</button></div>`}`;
 }
 
 function health() {
@@ -230,11 +345,12 @@ function sportProfile(step) {
       <p class="muted">A relative's record keeps what they reached, not every game.</p>` };
   }
   return { title: sport.name, sub: `${levelName(e.level)} · since ${e.since} · PR ${e.pr}`, body: `
-    ${label('Skills')}<p class="muted">Each skill can grow towards a ceiling that comes from natural talent. Training moves it closer; it never goes past.</p>
+    ${label('Skills')}<p class="muted">Each skill can grow toward a ceiling that comes from natural talent. Training moves it closer; it never goes past.</p>
     ${sport.skills.map(([k, n]) => kv(n, `${sp.skillWord(e.skills[k])} (${Math.round(e.skills[k])})${mine ? ` <small class="muted">of ${e.ceiling[k]}</small>` : ''}`)).join('')}
     ${label('Seasons by year')}
     ${Object.entries(e.stats).sort((x, y) => y[0] - x[0]).map(([y, st]) => kv(y, esc(Object.entries(st).filter(([, v]) => v).map(([k, v]) => `${v} ${k}`).join(', ') || '—'))).join('') || empty('Nothing recorded yet.')}
     ${label('Titles')}${e.titles.length ? e.titles.map((t) => kv(String(t.year), esc(t.name))).join('') : empty('None yet.')}
+    ${label('Awards')}${(e.awards ?? []).length ? e.awards.map((a) => (a.seasonId ? `<a href="#" class="kv" data-season="${a.seasonId}"><span>${a.year}</span><span>${esc(a.kind === 'team' ? `${a.league}: ${a.name}` : a.name)}</span></a>` : kv(String(a.year), esc(a.name)))).join('') : empty('None yet.')}
     ${label('Clubs')}${e.history.map((h) => kv(`${h.year}${h.to ? `–${h.to}` : ''}`, esc(h.name))).join('') || empty('None.')}
     ${shared(sp.momentsOf(step.params.personId ?? player().id).filter((m) => m.sportId === e.id && m.sig >= 2))}
     ${mine && e.status === 'active' ? `<div class="btn-stack" style="margin-top:10px">${sp.myAthlete().primary !== e.id ? `<button class="btn" data-primary="${e.id}">Make this your main sport</button>` : ''}<button class="btn danger" data-giveup="${e.id}">Stop playing</button></div>` : ''}` };
@@ -247,8 +363,9 @@ function teamProfile(step) {
   const sport = sportOf(t.sportId);
   const pos = (id) => sport.positions?.find((x) => x[0] === id)?.[1] ?? '';
   return { title: t.name, sub: `${levelName(org.level)} · ${org.city} · founded ${org.founded}`, body: `
+    <div class="jersey-pair">${jerseySvg(colorsOf(org), '', 52, `${t.name} home jersey`)}${jerseySvg({ home: colorsOf(org).away, away: colorsOf(org).home }, '', 52, `${t.name} away jersey`)}<small class="muted">Home and away. Names, colors and numbers can be changed in Settings → Teams and jerseys.</small></div>
     ${coach ? row(`data-coach="${coach.id}"`, '🧢', coach.name, `Coach · ${coach.style}`) : ''}
-    ${label('Roster')}${t.roster.slice().sort((x, y) => y.rating - x.rating).map((x) => `<div class="kv"><span>${x.npcId || (x.id === player().id) ? `<a href="#" ${x.id === player().id ? '' : `data-person="${x.npcId}"`}>${esc(x.name)}${x.id === player().id ? ' (you)' : ''}</a>` : esc(x.name)}</span><span>${esc(pos(x.pos))} · ${x.rating}</span></div>`).join('')}
+    ${label('Roster')}${numbersOf(t).roster.slice().sort((x, y) => y.rating - x.rating).map((x) => `<div class="kv"><span><span class="tm-num" style="background:${colorsOf(org).home};color:${inkOn(colorsOf(org).home)}">${x.num}</span>${x.npcId || (x.id === player().id) ? `<a href="#" ${x.id === player().id ? '' : `data-person="${x.npcId}"`}>${esc(x.name)}${x.id === player().id ? ' (you)' : ''}</a>` : esc(x.name)}</span><span>${esc(pos(x.pos))} · ${x.rating}</span></div>`).join('')}
     ${label('History')}${t.history.slice(-12).reverse().map((h) => (h.seasonId ? `<a href="#" class="kv" data-season="${h.seasonId}"><span>${h.year}</span><span>${ordinal(h.place)}${h.champion ? ', champions' : ''}</span></a>` : kv(String(h.year), esc(h.text)))).join('') || empty('No seasons yet.')}` };
 }
 function coachProfile(step) {
@@ -271,7 +388,8 @@ function seasonProfile(step) {
   const mineF = s.fixtures.filter((f) => f.home === s.playerTeamId || f.away === s.playerTeamId);
   return { title: s.name, sub: s.champion ? `Champions: ${name(s.champion)}` : 'No champion', body: `
     ${label('Table')}<p class="muted">Counted from completed games.</p>
-    ${t.map((x, i) => `<div class="kv"><span>${i + 1}. ${x.teamId === s.playerTeamId ? `<strong>${esc(name(x.teamId))}</strong>` : esc(name(x.teamId))}</span><span>${x.w}–${x.d ? `${x.d}–` : ''}${x.l} · ${x.pts} pts</span></div>`).join('')}
+    ${t.map((x, i) => `<div class="kv"><span>${i + 1}. ${jerseyDot(colorsOf(sp.orgOf(sp.teamOf(x.teamId)?.orgId)))}${x.teamId === s.playerTeamId ? `<strong>${esc(name(x.teamId))}</strong>` : esc(name(x.teamId))}</span><span>${x.w}–${x.d ? `${x.d}–` : ''}${x.l} · ${x.pts} pts</span></div>`).join('')}
+    ${s.awards ? `${label('Season awards')}${s.awards.map((a) => (a.team ? kv(a.name, esc(a.team.map((x) => (x.who === player().id || x.who === 'player' ? 'You' : x.name)).join(', '))) : kv(a.name, a.winner ? `${a.winner.who === 'player' ? '<strong>You</strong>' : esc(a.winner.name)}${a.winner.teamId ? ` <small class="muted">${esc(name(a.winner.teamId))}</small>` : ''}${a.winner.value != null ? ` · ${a.winner.value}${a.per ? ' a game' : ''}` : ''}` : 'Not awarded'))).join('')}` : ''}
     ${label('Playoffs')}${s.playoffs.map((f) => kv(f.round, `${esc(name(f.home))} ${f.score[0]}–${f.score[1]} ${esc(name(f.away))}${f.decider ? ' (after a decider)' : ''}`)).join('') || empty('None.')}
     ${label('Your games')}${mineF.map((f) => kv(`Round ${f.round}`, `${esc(name(f.home))} ${f.score[0]}–${f.score[1]} ${esc(name(f.away))}${f.me?.played ? ` · rated ${f.me.rating}` : ' · did not play'}`)).join('')}` };
 }
@@ -362,12 +480,15 @@ async function onClick(e) {
   if ((el = hit('data-take'))) return report(sp.takeUp(el.dataset.take));
   if ((el = hit('data-tryout'))) return report(sp.tryOut(el.dataset.tryout));
   if ((el = hit('data-leave'))) return report(sp.leaveClub(el.dataset.leave));
+  if ((el = hit('data-decommit'))) { shut(); if (!await confirmModal({ title: 'Decommit?', body: 'Coaches move on quickly: the offer may not be there if you change your mind again.', yes: 'Decommit' })) return show(); await messageModal({ body: decommit(el.dataset.decommit, store.state).text }); return show(); }
   if ((el = hit('data-quitcollege'))) { shut(); if (!await confirmModal({ title: 'Leave the team?', body: 'An athletic scholarship is paid for playing. Leave the team and that part of your tuition is yours to pay from next year.', yes: 'Leave', danger: true })) return show(); return report(life.quitCollegeTeam(el.dataset.quitcollege)); }
   if ((el = hit('data-pair'))) return report(sp.findPartner(el.dataset.pair));
   if ((el = hit('data-unpair'))) return report(sp.endPartnership(el.dataset.unpair));
   if ((el = hit('data-primary'))) return report(sp.setPrimary(el.dataset.primary));
   if ((el = hit('data-giveup'))) { shut(); if (!await confirmModal({ title: 'Stop playing?', body: 'Your record is kept. You can take it up again later, though skills fade.', yes: 'Stop', danger: true })) return show(); return report(sp.giveUp(el.dataset.giveup)); }
   if ((el = hit('data-retire'))) { shut(); if (!await confirmModal({ title: 'Retire?', body: 'This ends your playing career in this sport, and any contract with it.', yes: 'Retire', danger: true })) return show(); return report(life.retire(el.dataset.retire)); }
+  if ((el = hit('data-sagent'))) return report({ find: life.findSportsAgent, sign: life.signSportsAgent, pass: life.passOnSportsAgent, drop: life.dropSportsAgent, cut: life.askSportsAgentCut }[el.dataset.sagent]());
+  if ((el = hit('data-division'))) return report(sp.setDivision(el.dataset.division));
   if ((el = hit('data-coachjob'))) return report(life.becomeCoach(el.dataset.coachjob));
   if ((el = hit('data-answer'))) { const [id, choice] = el.dataset.answer.split(':'); return report(life.answer(id, choice)); }
   if ((el = hit('data-decide'))) { note({ tab: 'career', scroll: 0 }); return show(); }

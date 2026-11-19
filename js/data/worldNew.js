@@ -31,7 +31,7 @@ export const NEW_PLACES = {
   bs: ['Bahamas', '🇧🇸', ['BSD', 'B$', 1], [0.08, 0, 0.008], ['Nassau', 'Freeport', 'Marsh Harbour'],
     ['Deandre Kendal Rashad Tevin Leroy Javon Dwight Carlton', 'Shanice Latoya Anya Kendra Paige Tamika Giselle Alicia', 'Rolle Ferguson Johnson Smith Knowles Bethel Moss Cartwright Pinder Strachan'],
     [0.6, 1.0, 56, 68, 80, 78, 30, 'low', ['hurricane', 'heat'], [N, 'limited', Y, N, N]], [N, N], ['M', 'Prime Minister', MP, null]],
-  bz: ['Belize', '🇧🇿', ['BZD', 'BZ$', 2], [0.15, 0, 0.004], ['Belize City', 'Belmopan', 'San Ignacio', 'Orange Walk Town'],
+  bz: ['Belize', '🇧🇿', ['BZD', 'BZ$', 2], [0.25, 0, 0.004], ['Belize City', 'Belmopan', 'San Ignacio', 'Orange Walk Town'],
     ['Kareem Jahmal Carlos Elroy Devon Emilio Shaquille Marvin', 'Shantel Kimberly Marisol Tanya Felicia Anita Jalissa Lupita', 'Flowers Castillo Young Usher Gillett Bradley Cal Tillett Coye Garbutt'],
     [0.16, 0.5, 44, 54, 60, 66, 52, 'low', ['hurricane', 'flood'], [N, 'limited', Y, N, N]], [N, N], ['M', 'Prime Minister', MP, null]],
   cr: ['Costa Rica', '🇨🇷', ['CRC', '₡', 520], [0.15, 0, 0.003], ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Liberia', 'Limón'],

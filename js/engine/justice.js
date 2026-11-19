@@ -1,10 +1,11 @@
 // Crime and the courts, from where the player stands: choosing to break the
 // law (or not), being investigated, arrested and charged, the case itself,
-// the sentence, supervision afterwards, and the record that remains.
+// the sentence, supervision afterward, and the record that remains.
 //
 // The records themselves (incidents, evidence, cases, sentences) are kept by
 // engine/cases.js. This file applies their consequences to the player's life.
-import { rule } from './rules.js';
+import { forgetNpc } from './digital/core.js';
+import { rule, may } from './rules.js';
 import { policingShift } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
@@ -130,6 +131,7 @@ export function commitCrime(crimeId, targetId, how = {}) {
     let text = crime.done;
     if (crime.target) {
       victim.alive = false;
+      victim.flags.diedYear ??= store.state.year;
       p.counters.kills += 1;
       text = `${method.done.replace(/\{v\}/g, who).replace(/([,a-z] )The /g, '$1the ')} ${crime.done}`;
     }
@@ -313,7 +315,7 @@ export function release(how = 'You served your sentence and walked out of the ga
   if (!cell) return;
   for (const mate of npcsByRole('cellmate')) {
     if (mate.meters.relationship >= 60) { mate.role = 'friend'; mate.flags.metInside = true; }
-    else p.npcIds = p.npcIds.filter((id) => id !== mate.id);
+    else forgetNpc(mate.id);
   }
   if (o.parole && cell.yearsLeft > 0 && cell.yearsLeft < LIFE_SENTENCE) {
     p.legal.supervision = { kind: 'parole', sentenceId: cell.sentenceId, caseId: cell.caseId, from: store.state.year, until: store.state.year + cell.yearsLeft,
@@ -504,7 +506,7 @@ function ageOfficials() {
     if (!n?.alive || mine.has(id)) continue;
     n.age += 1;
     const role = n.flags.justice;
-    if (role && !role.retired && ['judge', 'prosecutor', 'defence', 'detective', 'officer', 'staff'].includes(role.kind)) {
+    if (role && !role.retired && ['judge', 'prosecutor', 'defense', 'detective', 'officer', 'staff'].includes(role.kind)) {
       role.skill = clamp((role.skill ?? 50) + (rng.chance(0.5) ? 1 : 0));
       if (n.age >= (role.kind === 'judge' ? 70 : 66) && rng.chance(0.4)) { role.retired = store.state.year; n.occupation = `Retired ${n.occupation.toLowerCase()}`; }
     }

@@ -2,7 +2,7 @@
 //
 // GAMEPLAY CONFIGURATION, UNVERIFIED. These lists are the author's best
 // understanding of the mid-2020s, simplified to yes or no. Real nationality
-// law has conditions, exceptions and dates that are not modelled. Nothing
+// law has conditions, exceptions and dates that are not modeled. Nothing
 // here is legal information. docs/WORLD_DATA.md says how to check a row.
 //
 // A place that is not listed follows the default: citizenship passes from a
@@ -29,4 +29,4 @@ export const SPOUSE_YEARS = 3;
  */
 export const SPOUSE_YEARS_IN = { br: 1, fi: 5, ie: 3, it: 2, jp: 3, kr: 3, mx: 2, ph: 5, pt: 3, ru: 3, th: 0, us: 3, uy: 3 };
 /** The application fee, in base units. */
-export const NATURALISATION_FEE = 1200;
+export const NATURALIZATION_FEE = 1200;

@@ -17,10 +17,10 @@ export const addNpc = (role, as, opts = {}) => ({ type: 'addNpc', target: as, va
 
 export const ok = (text, ...effects) => ({ on: 'success', text, effects });
 export const bad = (text, ...effects) => ({ on: 'fail', text, effects });
-/** Outcome for choices with no skill check. Tone colours the journal line. */
+/** Outcome for choices with no skill check. Tone colors the journal line. */
 export const any = (text, tone, ...effects) => ({ on: 'always', text, tone, effects });
 
-/** Skill check: base chance plus weighted stat paths (each centred on 50). */
+/** Skill check: base chance plus weighted stat paths (each centered on 50). */
 export const chk = (base, factors = {}) => ({ base, factors });
 export const need = (path, op, value) => ({ path, op, value });
 
@@ -48,10 +48,10 @@ export const promoted = () => ({ type: 'promoted' });
 /** Gives the player a new vehicle from data/vehicles.js, e.g. giveVehicle('kids_bike'). */
 export const giveVehicle = (value) => ({ type: 'giveVehicle', value });
 
-/** Royalty: move the public's opinion of a royal player; meet an unmarried royal (bound to token `as`); accept an honour. */
+/** Royalty: move the public's opinion of a royal player; meet an unmarried royal (bound to token `as`); accept an honor. */
 export const image = (delta) => ({ type: 'image', delta });
 export const meetRoyal = (as) => ({ type: 'meetRoyal', target: as });
-export const honour = () => ({ type: 'honour' });
+export const honor = () => ({ type: 'honor' });
 
 /**
  * A royal's reputation (engine/reputation.js): the family's regard, the press's

@@ -1,4 +1,5 @@
 // Doctors, check-ups, therapy and cosmetic surgery.
+import { treatmentIn, procedureOpen } from './history.js';
 import { cover } from './systems.js';
 import { normalize, cleanTweaks } from '../avatar/catalog.js';
 import { healthFactor } from './policy.js';
@@ -7,6 +8,7 @@ import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { addCondition, cureCondition } from './health.js';
 import { careQuality } from './living.js';
+import { screen } from './health/care.js';
 import { ILLNESS_BY_ID } from '../data/illnesses.js';
 import { TREATMENTS, CHECKUP_COST, THERAPY_COST, SURGERIES, SURGEONS } from '../data/activities.js';
 
@@ -31,7 +33,8 @@ export function treatable() {
   return p.conditions.filter((c) => TREATMENTS[c.id]).map((c) => {
     const t = TREATMENTS[c.id];
     const cost = careCost(t.cost);
-    return { id: c.id, name: c.name, cost, manage: !!t.manage, managed: !!c.treated,
+    const era = treatmentIn(c.id);
+    return { id: c.id, name: c.name, cost, manage: !!t.manage && era.manage, managed: !!c.treated, limited: era.limited,
       seen: !!acts().seen[c.id], affordable: p.finance.cash >= cost };
   });
 }
@@ -50,10 +53,18 @@ export function seeDoctor(conditionId) {
   const paid = cost ? ` It cost ${fmtMoney(cost, c)}.` : '';
   const plain = cond.name.replace(/^an? /, '');
 
-  if (!rng.chance(t.chance * (0.72 + careQuality() / 320))) {
+  // Historical Eras: what medicine could do then (insulin from 1922, antibiotics from the mid-1940s, and so on).
+  const era = treatmentIn(conditionId);
+  if (!rng.chance(t.chance * era.chance * (0.72 + careQuality() / 320))) {
     const text = `The treatment for your ${plain} did not take. The doctor wants to try again next year.${paid}`;
     log(text, 'system', 'bad');
     return result(false, text);
+  }
+  if (t.manage && !era.manage) {
+    p.stats.health = clamp(p.stats.health + 2);
+    const text = `The doctor did what could be done for your ${plain} in these years, which is not much. There is no lasting treatment yet.${paid}`;
+    log(text, 'system', 'neutral');
+    return result(false, text, 'neutral');
   }
   if (t.manage) {
     cond.treated = true;
@@ -79,16 +90,21 @@ export function checkUp() {
   p.finance.cash -= cost;
   p.flags.checkupAge = p.age;
   p.stats.health = clamp(p.stats.health + 2);
+  // Routine tests: blood pressure, blood sugar, and from fifty, screening.
+  const screened = screen(p);
   const found = p.conditions.filter((x) => TREATMENTS[x.id] && !x.treated);
-  const text = found.length
+  const text = screened.length ? `The tests found ${screened.join(' and ')}. It is in My Health, with what can be done about it.`
+    : found.length
     ? `The doctor ran the tests and wants to treat your ${found.map((x) => x.name.replace(/^an? /, '')).join(' and ')}.`
     : 'The doctor ran the tests and found nothing to worry about. Catching things early keeps it that way.';
-  log(text, 'system', found.length ? 'neutral' : 'good');
-  return result(true, text, found.length ? 'neutral' : 'good');
+  const any = found.length || screened.length;
+  log(text, 'system', any ? 'neutral' : 'good');
+  return result(true, text, any ? 'neutral' : 'good');
 }
 
 export function therapy() {
   const p = player();
+  if (!procedureOpen('therapy')) return result(false, 'There is no such thing as talking therapy here yet.', 'neutral');
   const c = country();
   const cost = careCost(THERAPY_COST);
   if (acts().therapy) return result(false, 'You have a standing appointment already this year.', 'neutral');
@@ -108,7 +124,7 @@ export function therapy() {
 /** Procedures open to the player, priced for each kind of surgeon. */
 export function surgeryOptions() {
   const p = player();
-  return SURGERIES.filter((s) => p.age >= s.minAge);
+  return SURGERIES.filter((s) => p.age >= s.minAge && procedureOpen(s.id));
 }
 export function surgeonOptions(procedureId) {
   const p = player();
@@ -124,7 +140,7 @@ export const canHaveSurgery = () => player().age >= 18 && !player().legal.incarc
 
 /**
  * @param {object} [tweaks] for 'reshape': the proportions asked for (eye spacing, sizes).
- *   They become the patient's face, and children born afterwards can take after it.
+ *   They become the patient's face, and children born afterward can take after it.
  */
 export function haveSurgery(procedureId, surgeonId, tweaks) {
   const p = player();

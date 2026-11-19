@@ -11,6 +11,7 @@ import * as cit from '../js/engine/citizenship.js';
 import * as imm from '../js/engine/immigration.js';
 import * as move from '../js/engine/emigration.js';
 import * as fun from '../js/engine/activities.js';
+import * as docs from '../js/engine/documents.js';
 import { unmet, hire, quitCareer } from '../js/engine/career.js';
 const job = () => { const p = store.state.player; if (!p.career.careerId) hire(CAREERS.find((c) => c.id === 'office'), 0, 60); p.career.performance = 70; };
 import { makeNpc } from '../js/engine/npcFactory.js';
@@ -66,7 +67,7 @@ p = life('br', 20);
 let r = go('ca', 'study');
 check(p.countryId === 'ca' && p.residency.status === 'student' && p.residency.until === store.state.year + ROUTE.studyYears && !p.residency.workAuthorized, 'arrives as a student, for four years, without the right to work');
 check(unmet(CAREERS.find((c) => c.id === 'retail')).some((x) => /student visa/.test(x)), 'full-time work is refused on a student visa');
-check(!cit.naturalisation(p).possible && /temporary/.test(cit.naturalisation(p).why), 'a temporary visa does not lead straight to citizenship');
+check(!cit.naturalization(p).possible && /temporary/.test(cit.naturalization(p).why), 'a temporary visa does not lead straight to citizenship');
 check(/student visa/i.test(r.text), 'the result says what was granted');
 year(); // not enrolled a year on: out of status, a year's grace
 year();
@@ -120,6 +121,9 @@ section('family: a spouse may refuse, stays married at a distance, and may follo
 p = life('us', 30); p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.4, age: 22 });
 const c0 = by('settle', 'jp').chance;
 r = fun.holiday('flight', false, { countryId: 'jp', cabin: 'economy', purpose: 'scouting' });
+check(!r.ok && /passport/i.test(r.text), 'no passport, no flight abroad');
+check(docs.applyPassport(p.id, 'us').ok, 'a citizen can get a passport');
+r = fun.holiday('flight', false, { countryId: 'jp', cabin: 'economy', purpose: 'scouting' });
 check(r.ok && p.trips.length === 1 && p.trips[0].purpose === 'scouting' && p.trips[0].countryId === 'jp', 'a trip is recorded with where and why');
 check(by('settle', 'jp').chance > c0, 'having gone to look improves a later application');
 check(fun.trips(p)[0].what && fun.trips(p)[0].name === 'Japan', 'the passport can list it');
@@ -142,10 +146,10 @@ section('travel: a record of trips with their purpose; scouting counts');
   // The parent becomes permanent: so do the dependants.
   p.residency.status = 'permanent_resident'; p.residency.until = null; year();
   check(kid.residency?.status === 'permanent_resident' && kid.residency.until == null, 'when the parent becomes permanent, so does the child');
-  // Naturalisation takes the minor children along; a spouse it does not.
+  // Naturalization takes the minor children along; a spouse it does not.
   const sp = makeNpc({ role: 'spouse', countryId: 'in', age: 31 }); store.state.npcs[sp.id] = sp; p.npcIds.push(sp.id);
   p.residency.since = store.state.year - 8; p.finance.cash = 1e7; p.stats.intellect = 90; p.skills = { ...(p.skills ?? {}) };
-  let r = { ok: false }; for (let i = 0; i < 6 && !r.ok; i++) { p.flags.natAge = null; r = cit2.naturalise(); }
+  let r = { ok: false }; for (let i = 0; i < 6 && !r.ok; i++) { p.flags.natAge = null; r = cit2.naturalize(); }
   if (r.ok) {
     check(kid.age < 18 ? cit2.held(kid).includes('ca') : true, 'a child under eighteen becomes a citizen with the parent');
     check(!cit2.held(sp).includes('ca'), 'a spouse does not');
@@ -153,12 +157,12 @@ section('travel: a record of trips with their purpose; scouting counts');
   } else problems.push(`could not naturalize for the test: ${r.text}`);
   // A dependant left behind loses their permission.
   p = life('br', 40); p.education.degrees.push({ type: 'university', majorId: 'business', gpa: 3.6, age: 22 });
-  const mum = makeNpc({ role: 'parent', countryId: 'br', age: 66 }); store.state.npcs[mum.id] = mum; p.npcIds.push(mum.id); mum.flags.willComeAge = p.age;
+  const mom = makeNpc({ role: 'parent', countryId: 'br', age: 66 }); store.state.npcs[mom.id] = mom; p.npcIds.push(mom.id); mom.flags.willComeAge = p.age;
   go('de', 'work');
-  check(mum.residency?.status === 'dependant', 'a parent who comes along is a dependant');
-  mum.flags.abroad = false; p.countryId = 'fr'; // the player has gone; she has not
-  for (let i = 0; i < 3 && !mum.flags.abroad; i++) imm.tickFamilyStatus(), store.state.year += 1;
-  check(mum.flags.abroad === 'br', 'a dependant whose sponsor has gone must leave within a year');
+  check(mom.residency?.status === 'dependant', 'a parent who comes along is a dependant');
+  mom.flags.abroad = false; p.countryId = 'fr'; // the player has gone; she has not
+  for (let i = 0; i < 3 && !mom.flags.abroad; i++) imm.tickFamilyStatus(), store.state.year += 1;
+  check(mom.flags.abroad === 'br', 'a dependant whose sponsor has gone must leave within a year');
   section('family: dependants follow the main visa, grow out of it, become permanent or citizens with the parent');
 }
 

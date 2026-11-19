@@ -44,14 +44,14 @@ export function royalCard() {
       <div class="kv"><span>On the throne</span><span>${esc(crown.titleOf(country().id, 'monarch', k.gender))} ${esc(k.name)}, age ${k.age}</span></div>
       <div class="kv"><span>The house</span><span>${esc(dyn.house().name)}</span></div>
       <div class="kv"><span>You</span><span>A commoner</span></div>
-      <p class="muted" style="margin-top:8px">The famous, the wealthy and the successful are sometimes invited to the palace, where unmarried royals are to be met.${m.honours ? ' The crown also honors people who give a great deal to the country.' : ''}</p>
+      <p class="muted" style="margin-top:8px">The famous, the wealthy and the successful are sometimes invited to the palace, where unmarried royals are to be met.${m.honors ? ' The crown also honors people who give a great deal to the country.' : ''}</p>
       <div class="btn-stack" style="margin-top:10px"><button class="btn" data-dynasty>The royal family and its history</button></div></div>`;
   }
   const inFamily = ROYAL_RANKS.includes(r.rank);
   const pay = crown.allowance();
   const d = inFamily ? dyn.house(r.countryId) : null;
   const mon = d ? dyn.monarchOf(d) : null;
-  const rows = [['Title', crown.standing(p)], ...(d ? [['House', d.name], ...(mon && !mon.isPlayer ? [['On the throne', `${dyn.nameOf(d, mon)}, age ${dyn.ageOf(mon)}`]] : [])] : []), ['How you came by it', { birth: 'By birth', marriage: 'By marriage', honour: 'Given by the crown' }[r.by]]];
+  const rows = [['Title', crown.standing(p)], ...(d ? [['House', d.name], ...(mon && !mon.isPlayer ? [['On the throne', `${dyn.nameOf(d, mon)}, age ${dyn.ageOf(mon)}`]] : [])] : []), ['How you came by it', { birth: 'By birth', marriage: 'By marriage', honor: 'Given by the crown' }[r.by]]];
   if (r.line && r.rank !== 'monarch') rows.push(['Place in line to the throne', String(r.line)]);
   if (pay && p.age >= 18) rows.push(['Allowance from the crown', `${fmtMoney(pay, country())} a year`]);
   if (inFamily) rows.push(['Home', 'A royal residence, rent free']);
@@ -97,7 +97,7 @@ export function bindRoyalCard(el, api) {
 }
 
 async function openLessons(api) {
-  if (royalEd.lessonTaken()) return messageModal({ body: 'The palace timetable has room for one of these a year. The next is next year.' });
+  if (royalEd.lessonTaken()) return messageModal({ body: 'The palace schedule has room for one of these a year. The next is next year.' });
   const pick = await pickModal({
     title: 'Royal lessons',
     body: 'Lessons nobody else at school has. One a year, on top of ordinary school. Whether you take to them is up to you, not your title.',

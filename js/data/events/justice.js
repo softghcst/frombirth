@@ -29,7 +29,7 @@ export default [
   },
   {
     id: 'witness_incident', category: 'everyday', ageRange: [14, 90], cooldown: 8, weight: 0.6,
-    text: 'Waiting at a bus stop, you see a man snatch a bag from a woman outside the chemist and run. You saw his face, for a second or two.',
+    text: 'Waiting at a bus stop, you see a man snatch a bag from a woman outside the drugstore and run. You saw his face, for a second or two.',
     choices: [
       { label: 'Go to the police and give a statement', outcomes: [any('You tell an officer what you saw, as carefully as you can. They take your details: you may be needed in court.', 'good', j('witness_report'), hid('karma', 5))] },
       { label: 'Help the woman, and leave it at that', outcomes: [any('You help her up and wait with her until her son arrives. You never hear what happened next.', 'good', j('witness_help'), hid('karma', 3))] },

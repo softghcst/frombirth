@@ -167,7 +167,7 @@ function instructor(state) {
 /**
  * A year of weekly lessons. The rider gets better at everything a little, and at what they chose to
  * work on a little more; it comes more slowly the better they already are.
- * @param {string} [focus]  a discipline to work towards, once the basics are there
+ * @param {string} [focus]  a discipline to work toward, once the basics are there
  */
 export function takeLessons(focus = 'hacking', state = store.state) {
   const p = state.player; const c = COUNTRIES[p.countryId];
@@ -223,7 +223,7 @@ export function takeLessons(focus = 'hacking', state = store.state) {
 /**
  * Whether this horse and this rider are a sensible match, and whether the player can keep it.
  * A horse that is too much for its rider is not refused outright unless the rider is a beginner:
- * it is said plainly, and it costs them in the saddle afterwards.
+ * it is said plainly, and it costs them in the saddle afterward.
  */
 export function horseCheck(animalId, state = store.state) {
   const a = zoo.animalById(animalId, state);
@@ -434,8 +434,8 @@ export function shows(state = store.state) {
     book[state.year] = ['intro', 'novice', 'open', roll.pick(['intro', 'novice'])].map((level, i) => {
       const discipline = kinds[(roll.int(0, 5) + i) % kinds.length];
       return { id: `show:${key}:${state.year}:${i}`, year: state.year, city, countryId, level, discipline, entrants: roll.int(7, 16),
-        name: `${roll.pick([`${city} ${['Spring', 'Summer', 'Autumn', 'Midwinter'][i]} Show`, `${school(state).name} ${['Open Day', 'Championship', 'Members\' Show', 'Derby'][i]}`, `The ${city} ${DISCIPLINES[discipline].name} Series`])}: ${SHOW_LEVELS[level].name.toLowerCase()} ${DISCIPLINES[discipline].name.toLowerCase()}`,
-        organiser: care.localName(countryId, `${key}:organizer:${i}`).name, judge: care.localName(countryId, `${key}:judge:${state.year}:${i}`).name, result: null };
+        name: `${roll.pick([`${city} ${['Spring', 'Summer', 'Fall', 'Midwinter'][i]} Show`, `${school(state).name} ${['Open Day', 'Championship', 'Members\' Show', 'Derby'][i]}`, `The ${city} ${DISCIPLINES[discipline].name} Series`])}: ${SHOW_LEVELS[level].name.toLowerCase()} ${DISCIPLINES[discipline].name.toLowerCase()}`,
+        organizer: care.localName(countryId, `${key}:organizer:${i}`).name, judge: care.localName(countryId, `${key}:judge:${state.year}:${i}`).name, result: null };
     });
     for (const y of Object.keys(book)) if (Number(y) < state.year - 1 && !book[y].some((s) => s.result)) delete book[y];
   }

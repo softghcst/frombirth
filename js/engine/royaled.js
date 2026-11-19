@@ -18,7 +18,7 @@ import { ROYAL_LESSONS } from '../data/education.js';
 import { SPOKEN } from '../data/skills.js';
 import { isRoyalFamily, shiftImage } from './royalty.js';
 import * as sch from './schooling.js';
-import { catalogue } from './university.js';
+import { catalog } from './university.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -36,7 +36,7 @@ export function tickRoyalEducation() {
 /** The university the house has always used: the oldest in the country. Kept on the dynasty. */
 export function familyUniversity(p = player()) {
   const d = store.state.dynasties?.[p.royal?.countryId ?? p.countryId];
-  const unis = catalogue(p.countryId);
+  const unis = catalog(p.countryId);
   const known = d?.university ? unis.find((u) => u.id === d.university) : null;
   if (known) return known;
   const u = unis.find((x) => x.kind === 'ancient') ?? unis[0];
@@ -59,7 +59,7 @@ export function takeLesson(id) {
   const l = ROYAL_LESSONS.find((x) => x.id === id);
   if (!royalChild(p) || !l) return result(false, 'These lessons are for the royal children.', 'neutral');
   if (p.age < (l.from ?? 8)) return result(false, `Not before ${l.from}.`, 'neutral');
-  if (lessonTaken()) return result(false, 'The palace timetable has room for one of these a year.', 'neutral');
+  if (lessonTaken()) return result(false, 'The palace schedule has room for one of these a year.', 'neutral');
   p.flags.lessonAge = p.age;
   const done = (p.flags.royalLessons ??= {});
   done[l.id] = (done[l.id] ?? 0) + 1;
@@ -135,7 +135,7 @@ export function decide(value) {
   }
 }
 
-/** The school kind the family picks for a royal child at each stage, honouring the choice made at ten. */
+/** The school kind the family picks for a royal child at each stage, honoring the choice made at ten. */
 export function preferredKind(stage) {
   const p = player();
   const w = p.flags.royalSchool;

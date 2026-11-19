@@ -52,7 +52,7 @@ export const WAR_START = {
   text: 'Armed conflict has broken out in {place}. There is fighting in several regions, and the government has declared a state of emergency.',
 };
 
-/** How much a crisis weakens the currency (engine/currency.js pulls each rate towards 1 + this). */
+/** How much a crisis weakens the currency (engine/currency.js pulls each rate toward 1 + this). */
 export const CRISIS_FX = { war: 0.15, collapse: 0.3, shortages: 0.12, inflation: 0.3, sanctions: 0.15 };
 
 /** People the player knows moving away, and coming back. Yearly chances. */
