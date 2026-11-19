@@ -434,9 +434,9 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(mouth('lips_17', 'nose_12') === fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose: 'nose_12' }).lips, 'an expression is fitted to the nose');
 }
 
-// 15. Lip colors: a man's natural lips are the pair for his skin tone in the shared palette, upper deeper than lower and
-// both deeper than or level with the skin, and one color from porcelain to olive; on tan the lower lip parts from the cheeks by hue at much their
-// lightness; from bronze down the lower is clearly lighter than the upper. Every resting mouth draws its upper lip in
+// 15. Lip colors: a man's natural lips are the pair for his skin tone in the shared palette: one color from porcelain to
+// bronze, a nude a shade deeper than the skin that does not blend into the cheeks; from chestnut down two tones, the
+// lower clearly lighter than the upper. Every resting mouth draws its upper lip in
 // --lip-upper; lipstick is worn as chosen; children wear none; and the mouth drawn with a heavier outline is trimmed.
 {
   const { SKIN_TONES, DEPTH } = await import('../js/avatar/catalog.js');
@@ -455,13 +455,11 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
     const c = resolveLook({ v: 3, inherited: { skin: tone.id, lips: 'lips_9' } }, 'x', 'male').colors;
     const skin = lch(c.skin), up = lch(c.lipUpper), lo = lch(c.lip);
     check(c.lipUpper === PAL.NATURAL_LIP_UPPER[tone.depth] && c.lip === PAL.NATURAL_LIP_LOWER[tone.depth], `${tone.id}: a man's lips are not from the shared palette`);
-    if (tone.depth <= DEPTH.olive) check(c.lipUpper === c.lip && lo.L < skin.L - 3, `${tone.id}: a lighter skin's lips are not one nude shade deeper than the skin`);
+    if (tone.depth <= DEPTH.bronze) check(c.lipUpper === c.lip && lo.L < skin.L - 3, `${tone.id}: a lighter skin's lips are not one nude shade deeper than the skin`);
     else check(up.L < lo.L && up.L < skin.L - 3, `${tone.id}: the upper lip is not the deeper tone`);
     check(lo.h >= 30 && lo.h <= 60 && up.h >= 40 && up.h <= 62, `${tone.id}: a man's lips are not a natural brown or rose-brown (${c.lipUpper} / ${c.lip})`);
-    if (tone.id === 'tan') check(Math.abs(lo.L - skin.L) < 7 && skin.h - lo.h > 10, `${tone.id}: the lower lip does not part from the cheeks by hue`);
-    if (['golden', 'caramel', 'olive'].includes(tone.id)) check(skin.h - lo.h > 12, `${tone.id}: the lips blend into the cheeks`);
-    if (tone.depth >= DEPTH.bronze) check(lo.L - up.L > 8 && lo.L > skin.L, `${tone.id}: the lips are not two-toned`);
-    if (tone.depth >= DEPTH.tan) check(up.L < lo.L - 3, `${tone.id}: the lips are not two-toned`);
+    if (['golden', 'caramel', 'olive', 'tan', 'bronze'].includes(tone.id)) check(skin.h - lo.h > 10, `${tone.id}: the lips blend into the cheeks`);
+    if (tone.depth >= DEPTH.chestnut) check(lo.L - up.L > 7 && lo.L > skin.L - 1, `${tone.id}: the lips are not two-toned`);
     if (tone.depth >= DEPTH.golden) { check(lo.h <= lastHue + 3, `${tone.id}: the lower lip's hue jumps from the tone before`); lastHue = lo.h; }
   }
   // Every resting mouth, thin, full or smiling, has an upper lip of its own color; a woman's natural lips and lipstick
