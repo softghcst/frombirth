@@ -8,6 +8,7 @@
 //  - hair fits every head it can be worn on; faces are framed alike; features read on every skin tone
 //  - the eye shapes on offer, and who is given which, are exactly as they were
 //  - every nose is clear of every pair of eyes on every face shape
+//  - the lid creases of eyes are soft shades of the skin, clear of the eye and of the brows above
 //  - every mouth sits well under every nose (as fitted to every pair of eyes) on every face shape
 import { readFileSync, existsSync } from 'node:fs';
 import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManifest.js';
@@ -477,6 +478,33 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(/--lip-upper:#/.test(boy) && /lips_masc_/.test(boy), 'a boy is not drawn with a two-toned men\'s mouth');
   const l4 = readFileSync(new URL('../assets/avatars/lips/lips_4.svg', import.meta.url), 'utf8');
   check(/data-thinned="[\d.]+\/[\d.]+"/.test(l4) && l4.includes('stroke:var(--skin-color') && !l4.includes('#3b1004'), 'the heavy outline of lips_4 is back');
+}
+
+// 16. Lid creases. Eyes that draw their crease as a line floating above the eye had it read as a second eyebrow: it is
+// now a path of its own, in a soft shade of the skin (not the eye's ink), lowered toward the lid; it keeps clear of the
+// eye below, and is a good way from a typical brow above.
+{
+  const numbers = (d) => (d.match(/-?\d+\.?\d*/g) ?? []).map(Number);
+  const points = (d) => { const n = numbers(d), out = []; for (let i = 0; i + 1 < n.length; i += 2) out.push([n[i], n[i + 1]]); return out; };
+  const paths = (svg) => [...svg.matchAll(/<path ([^>]*?) d="([^"]*)"/g)].map((m) => ({ attrs: m[1], pts: points(m[2]) }));
+  const read = (folder, id) => readFileSync(new URL(`../assets/avatars/${folder}/${id}.svg`, import.meta.url), 'utf8');
+  // Below each point of `from`, the nearest point of `to` within 3 units across: how far apart they are.
+  const clearance = (from, to) => { let least = Infinity; for (const [x, y] of from) for (const [x2, y2] of to) if (Math.abs(x - x2) <= 3 && y2 > y) least = Math.min(least, y2 - y); return least; };
+  const REST = CUR.RESTING.eyebrows;
+  const brows = REST.map((id) => paths(read('eyebrows', id)).flatMap((p) => p.pts).filter(([x]) => x < 256));
+  for (const id of ['eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_25', 'eyes_26', 'eyes_9', 'eyes_8', 'eyes_7']) {
+    const svg = read('eyes', id), all = paths(svg), creases = all.filter((p) => p.attrs.includes('data-crease'));
+    check(creases.length === 2, `${id} has ${creases.length} lid creases parted, not one for each eye`);
+    for (const c of creases) check(c.attrs.includes('var(--crease-color,') && !/fill:#/.test(c.attrs), `${id}: a lid crease is drawn in ink`);
+    const left = creases.find((c) => c.pts.every(([x]) => x < 256));
+    const body = all.filter((p) => !p.attrs.includes('data-crease') && !p.attrs.includes('var(--eye')).flatMap((p) => p.pts).filter(([x]) => x < 256);
+    if (!left) { check(false, `${id}: no crease on the left`); continue; }
+    check(clearance(left.pts, body) >= 3, `${id}: the lid crease runs into the eye (${clearance(left.pts, body).toFixed(1)})`);
+    const gaps = brows.map((b) => { let least = Infinity; for (const [x, y] of left.pts) for (const [x2, y2] of b) if (Math.abs(x - x2) <= 3 && y > y2) least = Math.min(least, y - y2); return least; }).filter(Number.isFinite).sort((a, b) => a - b);
+    check(gaps.length > 5 && gaps[gaps.length >> 1] >= 5, `${id}: the lid crease is too close to a typical brow (${gaps[gaps.length >> 1]?.toFixed?.(1)})`);
+  }
+  // The eyes whose top line is lashes are left as they were.
+  for (const id of ['eyes_10', 'eyes_16', 'eyes_6']) check(!read('eyes', id).includes('data-crease'), `${id} has had a lid crease softened that is a lash line`);
 }
 
 if (problems.length) {
