@@ -2,6 +2,7 @@
 // After a tab draws, each card in it becomes one row (its title, an icon and a chevron), and the card waits,
 // hidden, until its row is tapped. Nothing is redrawn or rebound: the tab's own buttons and handlers stay
 // exactly where they were. A card that is only a line of text and one button becomes that button.
+// Rows show their name and nothing else.
 import { esc } from '../util.js';
 import { icon } from './kit.js';
 
@@ -52,9 +53,8 @@ function build(container, prefix) {
     // Just a line and a button: the row is the button.
     if (buttons.length === 1 && !fields.length) {
       const btn = buttons[0];
-      const note = [...card.querySelectorAll('p')].map((p) => p.textContent.trim()).join(' ').trim();
       btn.className = 'nav-row sec-row';
-      btn.innerHTML = rowInner(title, note.length <= 60 ? note : '', false);
+      btn.innerHTML = rowInner(title, '', false);
       card.replaceWith(btn);
       continue;
     }

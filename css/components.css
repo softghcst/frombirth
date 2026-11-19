@@ -1128,3 +1128,6 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .sec-row .nr-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nr-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--peach-strong); }
 .panel-body > .nav-group + .nav-group { margin-top: 14px; }
+/* Rows show their name and nothing else: what is behind a row is on its own screen. */
+.nav-row .nr-main small { display: none; }
+.nav-row { min-height: 56px; }
