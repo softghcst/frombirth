@@ -103,6 +103,23 @@
         "pixie",
         "sculpted"
       ]
+    },
+    {
+      "id": "voluminous_curly_afro",
+      "name": "Voluminous Curly Afro",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "coily",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
     }
   ]
 }
