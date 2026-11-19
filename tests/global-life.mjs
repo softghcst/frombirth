@@ -481,17 +481,17 @@ let moved;
   p.education.enrolled = true; p.education.stage = 'university';
   docs.applyPassport(p.id, 'us');
   let ran = false;
-  for (let attempt = 0; attempt < 5 && !ran; attempt++) {
+  for (let attempt = 0; attempt < 10 && !ran; attempt++) { // about one in five is refused, and a recent refusal makes the next harder
     const y = store.state.year + 1;
     const t = travel.startPlan('semester');
     travel.updatePlan(t.id, { destination: { countryId: 'fr', city: 'Lyon' }, depart: `${y}-02-01`, ret: `${y}-06-15`, mode: 'jet', stay: 'student' });
     check(travel.entryCheck(t)[0].rule.kind === 'study', 'four months in France to study needs a student visa');
     const app = docs.applyEntry(p.id, 'fr', { from: t.depart, to: t.ret, purpose: 'study', cost: 5000 }).app;
     check(app?.status === 'submitted' && app.kind === 'study', 'applied for; decided when the year turns');
-    const degrees = p.education.degrees.length;
     year();
     p.education.enrolled = true; p.education.stage = 'university'; p.finance.cash += 20000;
-    if (p.applications.find((a) => a.id === app.id).status !== 'approved') continue;
+    if (!app || p.applications.find((a) => a.id === app.id)?.status !== 'approved') continue;
+    const degrees = p.education.degrees.length; // counted after the year turns: a student can graduate while waiting on a refused visa
     ran = true;
     check(travel.problems(t).length === 0, `ready (${travel.problems(t)})`);
     travel.confirm(t.id);
@@ -502,7 +502,7 @@ let moved;
     check(mate && mate.flags.abroad === 'fr' && p.npcIds.includes(mate.id), 'a classmate from Lyon, kept as a friend in France');
     check(travel.achievements().find((a) => a.id === 'study_abroad').year, 'Study Abroad earned');
   }
-  check(ran, 'a student visa was granted within five tries');
+  check(ran, 'a student visa was granted within ten tries');
   section('study abroad: a student visa, a term\'s credit and no more, and a classmate who persists');
 }
 {
@@ -601,8 +601,8 @@ let moved;
   check(cafe.status === 'open' && cafe.years >= 1, `the café trades (${cafe.status}, ${cafe.years} years)`);
   const pays = bz.payouts().find((x) => x.source === `biz:${cafe.id}`);
   check(!pays || pays.gross < cafe.payout || COUNTRIES.mx.currency.scale <= COUNTRIES.us.currency.scale, 'what it pays its owner arrives changed into dollars');
+  cafe.overdrawn = 0; cafe.cash += 200000; // money first: a business that cannot cover a wage will not hire
   if (bz.headcount(cafe) < 2) bz.hire(cafe, null);
-  cafe.overdrawn = 0; cafe.cash += 200000;
   const route = imm.routes('mx').find((r) => r.id === 'business');
   check(route.eligible && route.status === 'worker', `after a year with staff, the business-owner route opens (${route.why})`);
   let app;
