@@ -24,7 +24,7 @@ import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
 import { openAthleticsAt } from './sports.js';
 import { icon } from './kit.js';
-import { sectionize, show as showSection } from './sections.js';
+import { sectionize, show as showSection, SEP } from './sections.js';
 import { lineMemory, lineMemoryHtml, milestonesAt, milestoneHtml } from './memories.js';
 import { openSettings } from './settings.js';
 
@@ -236,8 +236,7 @@ export function mountGame(app, hooks) {
     panelBody.onclick = null;
     tab.render(panelBody, tabApi);
     openSection = sectionize(panelBody, openSection);
-    $('[data-panel-title]').textContent = openSection ?? tab.title;
-    $('[data-panel-close]').setAttribute('aria-label', openSection ? `Back to ${tab.title}` : 'Back to your life');
+    titleSection(tab);
     // Keyboard focus moves into the section: the tab that opened it is out of sight now.
     if (!wasOpen && !panelEl.contains(document.activeElement)) $('[data-panel-close]').focus({ preventScroll: true });
   }
@@ -250,15 +249,20 @@ export function mountGame(app, hooks) {
     const tab = TABS.find((t) => t.id === activeTab);
     const was = openSection;
     openSection = showSection(panelBody, title);
-    $('[data-panel-title]').textContent = openSection ?? tab.title;
-    $('[data-panel-close]').setAttribute('aria-label', openSection ? `Back to ${tab.title}` : 'Back to your life');
+    titleSection(tab);
     panelBody.scrollTop = 0;
-    const target = openSection ? panelBody.querySelector('.sec-body.shown button:not([disabled])')
+    const target = openSection && (!was || openSection.length > was.length) ? [...panelBody.querySelectorAll('.sec-body.shown')].pop().querySelector('button:not([disabled])')
       : was && panelBody.querySelector(`.sec-row[data-sec="${CSS.escape(was)}"]`);
     (target ?? $('[data-panel-close]')).focus({ preventScroll: true });
   }
-  // Back: out of a section to the tab's list, then out of the tab.
-  const goBack = () => (openSection ? goSection(null) : closePanel());
+  /** The header names the section open (its last part), and the back button says where it goes. */
+  function titleSection(tab) {
+    const parts = openSection ? openSection.split(SEP) : [];
+    $('[data-panel-title]').textContent = parts.at(-1) ?? tab.title;
+    $('[data-panel-close]').setAttribute('aria-label', parts.length ? `Back to ${parts.at(-2) ?? tab.title}` : 'Back to your life');
+  }
+  // Back: out of a section to the one around it, then to the tab's list, then out of the tab.
+  const goBack = () => (openSection ? goSection(openSection.split(SEP).slice(0, -1).join(SEP) || null) : closePanel());
   panelBody.addEventListener('click', (e) => { const row = e.target.closest('.sec-row[data-sec]'); if (row) goSection(row.dataset.sec); });
   function leaveStory() { storyReturn = null; $('[data-story-back]').hidden = true; journalEl.querySelectorAll('.lit').forEach((x) => x.classList.remove('lit')); }
 
