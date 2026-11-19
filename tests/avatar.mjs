@@ -29,7 +29,7 @@ const root = new URL('../', import.meta.url);
 // 1. The artwork.
 for (const [folder, list] of Object.entries(AVATAR_MANIFEST)) {
   for (const p of list) {
-    const file = new URL(`assets/avatars/${p.file}`, root);
+    const file = new URL(`assets/${p.file}`, root);
     if (!existsSync(file)) { check(false, `missing file ${p.file}`); continue; }
     const svg = readFileSync(file, 'utf8');
     check(svg.includes('viewBox="0 0 512 512"') && svg.includes('data-pathways="1"') && svg.includes('<g id="art">'), `${p.file} is not normalized`);
@@ -66,7 +66,7 @@ for (const h of AVATAR_MANIFEST.heads) {
     }
   }
 }
-const eyesWithWhites = AVATAR_MANIFEST.eyes.filter((e) => /fill:(var\(--eye-white,)?#ffffff/.test(readFileSync(new URL(`assets/avatars/${e.file}`, root), 'utf8'))).length;
+const eyesWithWhites = AVATAR_MANIFEST.eyes.filter((e) => /fill:(var\(--eye-white,)?#ffffff/.test(readFileSync(new URL(`assets/${e.file}`, root), 'utf8'))).length;
 check(eyesWithWhites >= AVATAR_MANIFEST.eyes.length - 2, `only ${eyesWithWhites} eye styles have whites`);
 
 check(!CATALOG.eyes.some((e) => e.id === CUR.EXPRESSION.crying), 'crying eyes can be chosen as a resting face');
@@ -160,7 +160,7 @@ for (const age of [0, 1, 3, 7, 12, 15, 30, 49, 55, 66, 80, 101]) {
     const a = randomAppearance(rng.int(0, 11), i % 2 ? 'female' : 'male');
     let svg = '';
     try { svg = avatarSvg({ appearance: a, age, gender: i % 2 ? 'female' : 'male', seed: `p${age}-${i}`, mood: 60, ...s }); } catch (e) { check(false, `portrait threw at ${age} (${JSON.stringify(s)}): ${e.message}`); continue; }
-    for (const m of svg.matchAll(/href="\.\/assets\/avatars\/([^"#]+)#(art|skin)"/g)) check(existsSync(new URL(`assets/avatars/${m[1]}`, root)), `portrait uses a missing file ${m[1]}`);
+    for (const m of svg.matchAll(/href="\.\/assets\/([^"#]+)#(art|skin)"/g)) check(existsSync(new URL(`assets/${m[1]}`, root)), `portrait uses a missing file ${m[1]}`);
     check(!/undefined|NaN|null/.test(svg), `portrait at ${age} (${JSON.stringify(s)}) has a hole: ${svg.match(/.{40}(undefined|NaN|null).{20}/)?.[0]}`);
     const d = dressFor(resolveLook(a, 'x', 'female'), { age, ...s });
     if (s.jailed) check(d.clothes === CUR.PRISON, 'prisoners are not in prison clothes');
@@ -213,7 +213,7 @@ for (const id of ['hair_boy_short_07', 'hair_boy_updo_15_headband_puff', 'hair_u
 }
 check(hairFit('hair_boy_updo_15_headband_puff', 'head_12_sculpted').squash < 1 && hairFit('hair_boy_short_07', 'head_12_sculpted').squash === 1, 'only a tall style is flattened to fit the picture');
 // The two repaired files, and the stray marks, stay repaired.
-for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/avatars/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
+for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
 check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy_medium_03', 'head_00_kid').top <= 2, 'the arch styles show background over the forehead again');
 // A baby's tuft is left where it was put.
 for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) check(JSON.stringify(hairFit(h.id, head)) === JSON.stringify(plainFit(head)), `${h.id} on ${head}: a baby's hair was refitted`);
@@ -276,7 +276,7 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
   for (const use of deep.matchAll(/<use href="[^"]*(?:eyes|lips)\/[^"]*"([^>]*)\/>/g)) check(!/stroke:/.test(use[1]), 'a stroke on a whole eye or mouth');
   check(/--line-width:[\d.]+/.test(deep.match(/<use href="[^"]*eyes\/[^"]*"([^>]*)\/>/)?.[1] ?? ''), 'deep eyes are not given heavier lines');
   for (const key of ['eyes', 'lips']) for (const p of CATALOG[key]) {
-    const art = readFileSync(new URL(`assets/avatars/${PART_BY_ID[p.id].file}`, root), 'utf8');
+    const art = readFileSync(new URL(`assets/${PART_BY_ID[p.id].file}`, root), 'utf8');
     const lined = new Set([...art.matchAll(/fill:(#[0-9a-f]{6});stroke:var\(--line-ink/g)].map((m) => m[1]));
     check(lined.size === 1, `${p.id}: ${lined.size} shades take the heavier line, not just its outline`);
   }
@@ -323,7 +323,7 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const a = normalize(saved, 'npc_saved');
   check(a.inherited.head === 'head_16_angular' && a.style.hair === 'hair_boy_updo_15_headband_puff' && a.inherited.eyes === 'eyes_22' && a.inherited.tweaks.eyeGap === 1, 'a saved face lost its head, hair or eyes');
   const svg = avatarSvg({ appearance: saved, seed: 'npc_saved', age: 40 });
-  for (const f of ['heads/head_16_angular.svg', 'hair/hair_boy_updo_15_headband_puff.svg', 'eyes/eyes_22.svg']) check(svg.includes(f), `a saved face is not drawn with ${f}`);
+  for (const f of ['heads/angular.svg', 'hair/hair_boy_updo_15_headband_puff.svg', 'eyes/eyes_22.svg']) check(svg.includes(f), `a saved face is not drawn with ${f}`);
   check(JSON.stringify(saved.inherited.tweaks) === '{"eyeGap":1}', 'drawing a face changed what was saved');
   // A face made today and one loaded from a save are fitted by the same rule.
   const fresh = randomAppearance(8, 'male');

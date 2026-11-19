@@ -255,7 +255,9 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 
 | What | Where |
 |---|---|
-| The artwork, one folder per kind of part | `assets/avatars/` — `heads/`, `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
+| The head shapes (shared with the hair-warping pipeline) | `assets/heads/` — clean names (`pixie.svg`, `dimple_oval.svg`, …); the save ids stay `head_11_pixie` etc. (`HEAD_IDS` in the build script) |
+| Hair-warping pipeline | `assets/hair_raw/` (base-head hair to warp), `assets/hair_fitted/` (warped output), `assets/landmarks.json` (per-head landmarks) |
+| The artwork, one folder per kind of part | `assets/avatars/` — `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
 | The list of every part (generated: do not edit) | `js/avatarManifest.js` |
 | Cleaning, aligning and listing the artwork | `scripts/build-avatar-manifest.py` |
 | Skin, hair, eye, lip and outfit colors | `js/avatarPalettes.js` |

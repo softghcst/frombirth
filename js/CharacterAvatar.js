@@ -1,4 +1,4 @@
-// CharacterAvatar: a portrait stacked from the SVG parts in assets/avatars/.
+// CharacterAvatar: a portrait stacked from the SVG parts in assets/avatars/ and the head shapes in assets/heads/.
 //
 // Every part file has been normalized onto one 512x512 frame by
 // scripts/build-avatar-manifest.py, so parts are stacked without any
@@ -31,7 +31,7 @@ import { noseFit, mouthFit } from './avatar/featureFit.js';
 import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
-export const AVATAR_BASE = './assets/avatars/';
+export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
 const href = (id) => (PART_BY_ID[id] ? `${AVATAR_BASE}${PART_BY_ID[id].file}#art` : null);
 
 /** Where the jaw is on the template face: hair above this line is drawn again in front of the face. */

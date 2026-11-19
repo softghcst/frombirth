@@ -1,0 +1,210 @@
+{
+  "pixie": {
+    "crown_top": {
+      "x": 0,
+      "y": 0
+    },
+    "forehead_mid": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_left": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_right": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_left": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_right": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "sculpted": {
+    "crown_top": {
+      "x": 0,
+      "y": 0
+    },
+    "forehead_mid": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_left": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_right": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_left": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_right": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "athletic": {
+    "crown_top": {
+      "x": 0,
+      "y": 0
+    },
+    "forehead_mid": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_left": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_right": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_left": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_right": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "almond": {
+    "crown_top": {
+      "x": 0,
+      "y": 0
+    },
+    "forehead_mid": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_left": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_right": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_left": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_right": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "cherubic": {
+    "crown_top": {
+      "x": 0,
+      "y": 0
+    },
+    "forehead_mid": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_left": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_right": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_left": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_right": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "angular": {
+    "crown_top": {
+      "x": 0,
+      "y": 0
+    },
+    "forehead_mid": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_left": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_right": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_left": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_right": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "dimple_oval": {
+    "crown_top": {
+      "x": 0,
+      "y": 0
+    },
+    "forehead_mid": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_left": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_right": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_left": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_right": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "long_rectangle": {
+    "crown_top": {
+      "x": 0,
+      "y": 0
+    },
+    "forehead_mid": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_left": {
+      "x": 0,
+      "y": 0
+    },
+    "temple_right": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_left": {
+      "x": 0,
+      "y": 0
+    },
+    "ear_right": {
+      "x": 0,
+      "y": 0
+    }
+  }
+}
