@@ -187,9 +187,12 @@ section('lines and totals, milestones, two-way players, roles, the innings limit
       check(tr.canVeto(S(), e, nk), 'a no-trade clause lets him refuse a trade');
       // Opting out.
       nk.optOut = S().year + 1;
-      const out = year({ optOut: null, twoWay: 'no', trade: 'no', extension: 'no' }).find((d) => d.kind === 'optOut');
-      check(out, 'in the opt-out year he may leave the contract');
-      if (out) { sl.answer(out.id, 'yes'); check(nk.status === 'ended' && nk.why === 'opted out' && sl.openDecisions().some((d) => d.kind === 'freeAgency'), 'opting out ends it and opens the market again'); }
+      const out = year({ optOut: null, freeAgency: null, twoWay: 'no', trade: 'no', extension: 'no' }).find((d) => d.kind === 'optOut');
+      // Only if the year left him where he was: still on that contract, still good enough to be asked.
+      if (nk.status === 'active' && e.contractId === nk.id && P().alive && sp.internals.overall(e, P()) >= 80) {
+        check(out, 'in the opt-out year he may leave the contract');
+        if (out) { const res = sl.answer(out.id, 'yes'); check(nk.status === 'ended' && nk.why === 'opted out' && sl.openDecisions().some((d) => d.kind === 'freeAgency'), `opting out ends it and opens the market again (${res.text}; ${nk.status}, ${nk.why}; ${sl.openDecisions().map((d) => d.kind).join(',')}; age ${P().age})`); }
+      }
     }
   }
 }

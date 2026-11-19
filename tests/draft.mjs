@@ -92,8 +92,12 @@ section('recruiting: stars and rank, camps, offers by division (full, partial or
 
 // ---------- 2. College ----------
 {
-  const e = athlete('american_football', 13);
-  for (let i = 0; i < 5 && !e.recruit?.signed; i++) year({ camp: 'elite', commit: firstD1, sign: firstD1 });
+  // A recruit who signed with a four-year program (rarely the only offers are from junior colleges: then another life).
+  let e = null;
+  for (let tries = 0; tries < 8 && !(e?.recruit?.signed && !e.recruit.signed.startsWith('juco:')); tries++) {
+    e = athlete('american_football', 13);
+    for (let i = 0; i < 5 && !e.recruit?.signed; i++) year({ camp: 'elite', commit: firstD1, sign: firstD1 });
+  }
   check(!!e.recruit?.signed, 'the recruit signed');
   enrollSigned(e);
   year({ redshirt: 'yes', portal: 'stay', declare: 'no', withdraw: 'withdraw' });

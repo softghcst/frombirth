@@ -74,7 +74,10 @@ export function market(state, e, last = null, o = {}) {
   if (!list.length) return false;
   const best = list.reduce((m, x) => (x.salary * x.years > m.salary * m.years ? x : m), list[0]);
   const terms = (x) => (x.minorDeal ? 'a minor league contract, with an invitation to spring training' : `${x.years} ${x.years === 1 ? 'year' : 'years'} at ${life.fmt(state, x.salary)}${x.optOut ? `, opt-out after ${x.optOut}` : ''}${x.noTrade ? ', no-trade clause' : ''}`);
-  life.decide(state, { kind: 'freeAgency', sportId: e.id, key: `freeAgency/${e.id}/${state.year}`, offers: list, qo: !!o.qo, from: last?.name ?? null,
+  // A second market in one year (an opt-out or a release after signing) is its own decision; one still open is enough.
+  const had = sp.ensure(state).decisions.filter((d) => d.kind === 'freeAgency' && d.sportId === e.id && d.year === state.year);
+  if (had.some((d) => d.status === 'open')) return true;
+  life.decide(state, { kind: 'freeAgency', sportId: e.id, key: `freeAgency/${e.id}/${state.year}${had.length ? `/${had.length + 1}` : ''}`, offers: list, qo: !!o.qo, from: last?.name ?? null,
     text: `You are a free agent. ${list.length === 1 ? `${best.orgName} offer ${terms(best)}.` : `${list.length} clubs have made offers; the biggest is from ${best.orgName}: ${terms(best)}.`}${o.qo ? ` You turned down the qualifying offer, so ${last.name} get a draft pick if you sign elsewhere.` : ''}`,
     options: [...list.map((x) => ({ id: x.orgId, label: `Sign with ${x.orgName}`, sub: terms(x) })), { id: 'wait', label: 'Wait' }] });
   return true;
