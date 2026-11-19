@@ -27,6 +27,8 @@ import { ensureLife } from './npcLives.js';
 import { book } from './ledger.js';
 import * as love from './romance.js';
 import { ROMANTIC_GIFTS } from '../data/gifts.js';
+import { SUPPORT } from '../data/money.js';
+import { holidayOptions } from './activities.js';
 
 export const ADULT = 18;
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -264,6 +266,160 @@ export function give(npcId, giftId) {
   return result(true, text);
 }
 
+// ---------- Cars and homes: who owns, and who lives there ----------
+//
+// Owning and living somewhere are different things. A home the player owns and lets someone live in is still the
+// player's (asset.occupant = { npcId, since }): it stays in their estate. A car or a home given away is the other
+// person's from then on (npc.flags.owned), and is no part of the player's estate.
+
+const assetOf = (id) => player().assets.find((a) => a.id === id);
+/** What could be made over to someone: owned outright, not the player's own home, with nobody renting it. */
+export const givable = () => player().assets.filter((a) => ['vehicle', 'property'].includes(a.kind) && !a.mortgage && !a.loan && !a.tenant && a.id !== player().homeId);
+/** Homes someone could be given to live in: the player's, empty, and not where the player lives. */
+export const spareHomes = () => player().assets.filter((a) => a.kind === 'property' && !a.tenant && !a.occupant && a.id !== player().homeId);
+export const TRANSFER_FEE = 0.01;
+
+/** Makes a car or a home over to them: theirs, for good, if they will take it. The lawyers are paid once. */
+export function transfer(npcId, assetId) {
+  const p = player();
+  const c = country();
+  const npc = npcOf(npcId);
+  const a = assetOf(assetId);
+  const b = bondWith(npcId) ?? (love.partner()?.id === npcId ? primary() : null);
+  if (!a || !npc?.alive || !b || p.age < ADULT || npc.age < ADULT) return result(false, 'That is not something you can give them.', 'neutral');
+  if (a.mortgage || a.loan) return result(false, `There is still money owed on ${a.name}. A thing with a loan on it cannot be given away: pay it off first.`, 'neutral');
+  if (a.tenant) return result(false, 'There is a tenant in it.', 'neutral');
+  if (a.id === p.homeId) return result(false, 'You live there. Move out first.', 'neutral');
+  const fee = Math.round(a.value * TRANSFER_FEE);
+  if (p.finance.cash < fee) return result(false, `The transfer costs ${fmtMoney(fee, c)} in fees, which you do not have.`, 'neutral');
+  if (!spendAction(npc, 'bondTransfer')) return result(false, `You have made something over to ${npc.firstName} this year already.`, 'neutral');
+  if (b.type !== 'primary' && since(b.start) < 1 && rng.chance(0.3 + (heart(npc).commitment - 50) / 200)) {
+    const text = `${npc.firstName} will not take ${a.name}. "I do not want to owe you that."`;
+    note(b, 'giftDeclined', text);
+    log(text, 'system', 'neutral');
+    return result(false, text, 'neutral');
+  }
+  p.assets.splice(p.assets.indexOf(a), 1);
+  p.finance.cash -= fee;
+  if (a.occupant) delete a.occupant;
+  if (npc.flags.housedIn === a.id) delete npc.flags.housedIn;
+  (npc.flags.owned ??= []).push({ ...a, givenYear: store.state.year, fromId: p.id });
+  // A will cannot leave what is no longer the player's.
+  if (p.flags.will?.items?.[a.id]) delete p.flags.will.items[a.id];
+  book({ cat: 'giftOut', src: 'action', desc: `${a.name} made over to ${npc.firstName}` });
+  b.gifts.push({ year: store.state.year, id: a.id, name: a.name, cost: a.value, asset: a.kind });
+  did(b, 'gift');
+  bump(npc, Math.round(clamp(4 + taste(npc, a.kind) / 20, 3, 9)));
+  const text = `${a.name} is ${npc.firstName}'s now, in their name (${fmtMoney(fee, c)} in fees). It is theirs whatever happens between you.`;
+  note(b, 'transfer', text);
+  remember(npc, `given_${a.id}`, `You gave them ${a.name}.`);
+  log(text, 'system', 'good');
+  milestone(`Gave ${a.name} to ${npc.firstName}.`, 'money');
+  return result(true, text);
+}
+
+/** Lets them live in a home the player owns. It stays the player's. */
+export function house(npcId, assetId) {
+  const npc = npcOf(npcId);
+  const a = assetOf(assetId);
+  const b = bondWith(npcId);
+  if (!a || a.kind !== 'property' || !npc?.alive || !b) return result(false, 'That is not open to the two of you.', 'neutral');
+  if (!spareHomes().includes(a)) return result(false, 'That home is not free.', 'neutral');
+  if (npc.flags.housedIn) return result(false, `${npc.firstName} is living in a place of yours already.`, 'neutral');
+  if (theirOwn(npc) || rng.chance(clamp((40 - npc.meters.relationship) / 60, 0, 0.6))) {
+    const text = `${npc.firstName} thanks you, and would rather keep their own place.`;
+    log(text, 'system', 'neutral');
+    return result(false, text, 'neutral');
+  }
+  a.occupant = { npcId, since: store.state.year };
+  npc.flags.housedIn = a.id;
+  did(b, 'gift');
+  bump(npc, 5);
+  const text = `${npc.firstName} moves into ${a.name}. It is still yours: the deed, the taxes and the repairs.`;
+  note(b, 'housed', text);
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+/** Asks them to leave it. */
+export function unhouse(assetId) {
+  const a = assetOf(assetId);
+  const npc = a?.occupant ? npcOf(a.occupant.npcId) : null;
+  if (!a?.occupant) return result(false, 'Nobody is living there.', 'neutral');
+  delete a.occupant;
+  if (npc) { delete npc.flags.housedIn; if (npc.alive) bump(npc, -10); const b = bondWith(npc.id) ?? pastWith(npc.id).at(-1); if (b) note(b, 'unhoused', `You asked them to leave ${a.name}.`); }
+  const text = `${npc?.firstName ?? 'They'} moved out of ${a.name}.`;
+  log(text, 'system', 'neutral');
+  return result(true, text, 'neutral');
+}
+
+// ---------- Going away together ----------
+
+/** Trips two can take from here (not the long flights: those are planned in Travel). */
+export const tripsFor = () => holidayOptions().filter((h) => h.kind !== 'flight').map((h) => ({ ...h, cost: Math.round(h.cost * 1.6), affordable: player().finance.cash >= Math.round(h.cost * 1.6) }));
+/** A trip for two, paid for once. It may go well or badly; it promises nothing. */
+export function trip(npcId, tripId) {
+  const p = player();
+  const c = country();
+  const npc = npcOf(npcId);
+  const b = bondWith(npcId) ?? (love.partner()?.id === npcId ? primary() : null);
+  const t = tripsFor().find((x) => x.id === tripId);
+  if (!t || !npc?.alive || !b || p.age < ADULT || npc.age < ADULT) return result(false, 'That trip is not on offer.', 'neutral');
+  if (p.finance.cash < t.cost) return result(false, 'You cannot afford that trip for two.', 'neutral');
+  if (!spendAction(npc, 'bondTrip')) return result(false, `You have been away with ${npc.firstName} this year.`, 'neutral');
+  if (npc.meters.relationship < 35) { const text = `${npc.firstName} does not want to go away with you just now.`; log(text, 'system', 'neutral'); return result(false, text, 'neutral'); }
+  p.finance.cash -= t.cost;
+  book({ cat: 'travel', src: 'action', desc: `${t.name}, with ${npc.firstName}` });
+  did(b, 'trip'); did(b, 'trip'); // days together, away: seen by more people than an evening is
+  const went = rng.chance(0.8);
+  bump(npc, went ? rng.int(5, 10) : -4);
+  p.stats.mood = clamp(p.stats.mood + (went ? 8 : -2));
+  const text = went ? `${t.name} with ${npc.firstName} (${fmtMoney(t.cost, c)}): the kind of days you will both remember.` : `${t.name} with ${npc.firstName} (${fmtMoney(t.cost, c)}). You argued on the second day about where this is going, and came home early.`;
+  note(b, 'trip', text);
+  remember(npc, `trip_${store.state.year}`, went ? 'You went away together.' : 'You went away together, and argued.');
+  log(text, 'system', went ? 'good' : 'neutral');
+  return result(went, text, went ? 'good' : 'neutral');
+}
+
+// ---------- Children, and the households they live in ----------
+
+/** The player's children whose other parent is this person. */
+export const childrenWith = (npcId) => Object.values(store.state.npcs).filter((n) => n.role === 'child' && (n.parentIds ?? []).includes(npcId));
+/** Two children of the player by different other parents are half-siblings. */
+export const halfSiblings = (x, y) => !!(x?.parentIds?.length && y?.parentIds?.length && x.id !== y.id && !x.parentIds.some((id) => y.parentIds.includes(id)));
+
+/**
+ * A child born of a relationship where the two do not live together lives with their mother. If that is not the
+ * player, the player owes support for the child from then on: an obligation paid each year like any other
+ * (engine/family.js), not a gift. Who has been told about the child is its own question.
+ */
+function newChildren(b, npc) {
+  const p = player();
+  for (const kid of childrenWith(npc.id)) {
+    if (kid.flags.household) continue;
+    const together = npc.role === 'spouse' || npc.flags.livesTogether;
+    const withMother = !together && (p.flags.bornAs ?? p.gender) === 'male';
+    kid.flags.household = withMother ? npc.id : 'player';
+    (b.childIds ??= []).push(kid.id);
+    note(b, 'child', `${kid.firstName} was born.`);
+    if (!withMother) continue;
+    kid.flags.livesWith = npc.id;
+    const mine = (p.career.salary || 0) + (p.career.partTime?.salary || 0);
+    const amount = Math.round(mine * SUPPORT.childShare);
+    if (amount > 0) {
+      const list = (p.finance.support ??= []);
+      list.push({ id: `sup${list.length + 1}_${store.state.year}`, npcId: npc.id, name: `${npc.firstName} ${npc.lastName}`, since: store.state.year, kind: 'child', dir: 'pay', amount, until: store.state.year + 18 - kid.age, childId: kid.id });
+      log(`${kid.firstName} lives with ${npc.firstName}. You pay ${fmtMoney(amount, country())} a year toward them until they are grown.`, 'system', 'neutral');
+    } else log(`${kid.firstName} lives with ${npc.firstName}.`, 'system', 'neutral');
+  }
+}
+/** Whether this person has been told that this child is the player's. A child kept from a partner stays kept. */
+export function knowsOfChild(kid, npcId) {
+  if ((kid.parentIds ?? []).includes(npcId)) return true;
+  const b = bonds().find((x) => (x.childIds ?? []).includes(kid.id));
+  if (!b || !b.secret) return true;
+  return knowledge(b, npcId) === 'knows';
+}
+
 // ---------- The terms of the main relationship ----------
 
 /** "Are we exclusive?": asked and answered, and what was agreed is kept. */
@@ -365,7 +521,9 @@ export function bondActions(npc) {
     a.push({ id: 'bondGift', label: 'Buy them something special' });
     if (others().some((o) => knowledge(o, npc.id) !== 'knows') && promised()) a.push({ id: 'bondConfess', label: 'Tell them the truth', danger: true });
   } else if (b) {
-    a.push({ id: 'bondTime', label: b.type === 'fwb' ? 'Spend time as friends' : 'Spend time together' }, { id: 'bondIntimate', label: 'Be intimate' }, { id: 'bondGift', label: 'Give a gift' });
+    a.push({ id: 'bondTime', label: b.type === 'fwb' ? 'Spend time as friends' : 'Spend time together' }, { id: 'bondIntimate', label: 'Be intimate' }, { id: 'bondGift', label: 'Give a gift' }, { id: 'bondTrip', label: 'Go away together' });
+    if (npc.flags.housedIn) a.push({ id: 'bondUnhouse', label: 'Ask them to move out of your property', danger: true });
+    else if (spareHomes().length) a.push({ id: 'bondHouse', label: 'Offer them a home of yours to live in' });
     if (!love.partner()) a.push({ id: 'bondOfficial', label: b.type === 'fwb' ? 'Explore a romance' : 'Become a couple' });
     a.push({ id: 'bondEnd', label: b.type === 'fwb' ? 'End the arrangement' : 'End it', danger: true });
   } else if (eligible(npc) && ['friend', 'classmate', 'coworker', 'colleague', 'ex', 'acquaintance', 'neighbor'].includes(npc.role)) {
@@ -374,6 +532,8 @@ export function bondActions(npc) {
     if (npc.role === 'friend') a.push({ id: 'askFwb', label: ASK.fwb.label });
     a.push({ id: 'askOneNight', label: ASK.onenight.label });
   }
+  if ((main || b) && givable().length) a.push({ id: 'bondTransfer', label: 'Make a car or a home over to them' });
+  if (main) a.push({ id: 'bondTrip', label: 'Go away together' });
   if (main || b) a.push({ id: 'bondControl', label: birthControl() ? 'Stop using birth control' : 'Use birth control' });
   return a;
 }
@@ -553,6 +713,7 @@ export function tickBonds() {
   for (const b of bonds().filter((x) => x.status === 'active' && x.type !== 'primary')) {
     const npc = npcOf(b.npcId);
     if (!npc?.alive) { b.status = 'ended'; b.end = { ...now(), why: 'they died' }; continue; }
+    newChildren(b, npc);
     const h = heart(npc);
     const last = b.acts[year - 1] ? Object.values(b.acts[year - 1]).reduce((s, n) => s + n, 0) : 0;
     bump(npc, last ? rng.int(-2, 2) : rng.int(-9, -3));
@@ -576,6 +737,9 @@ export function tickBonds() {
     }
     if (mainNpc && promised()) discovery(b, npc, m, mainNpc, last);
   }
+  // Children of the main relationship too; and a home sold from under someone is no longer where they live.
+  if (m && mainNpc) newChildren(m, mainNpc);
+  for (const n of livingNpcs()) if (n.flags.housedIn && !p.assets.some((a) => a.id === n.flags.housedIn && a.occupant?.npcId === n.id)) delete n.flags.housedIn;
   // Trust, after it was broken: slowly back if nothing more is hidden, or they go after all.
   if (m && mainNpc && m.arc.rebuilding) {
     const hiding = others().some((o) => isAffair(o) && knowledge(o, mainNpc.id) !== 'knows');

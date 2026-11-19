@@ -85,6 +85,25 @@ async function romanticGift(api, npc) {
   if (id) await report(api, bonds.give(npc.id, id));
 }
 
+async function tripWith(api, npc) {
+  const c = country();
+  const id = await pickModal({ title: `Away with ${npc.firstName}`, body: 'For two. A trip promises nothing but the trip.',
+    options: bonds.tripsFor().map((t) => ({ value: t.id, label: t.name, sub: fmtMoney(t.cost, c), disabled: !t.affordable })) });
+  if (id) await report(api, bonds.trip(npc.id, id));
+}
+async function makeOver(api, npc) {
+  const c = country();
+  const id = await pickModal({ title: `Make over to ${npc.firstName}`, body: 'It becomes theirs, in their name, for good. Only what you own outright can be given.',
+    options: bonds.givable().map((a) => ({ value: a.id, label: a.name, sub: `Worth ${fmtMoney(a.value, c)} · fees ${fmtMoney(Math.round(a.value * bonds.TRANSFER_FEE), c)}` })) });
+  if (id && await confirmModal({ title: 'Give it away?', body: 'This cannot be undone. It will be theirs whatever happens between you.', yes: 'Make it over', danger: true })) await report(api, bonds.transfer(npc.id, id));
+}
+async function offerHome(api, npc) {
+  const c = country();
+  const id = await pickModal({ title: `A home for ${npc.firstName}`, body: 'They live there; you still own it, and pay its taxes and repairs.',
+    options: bonds.spareHomes().map((a) => ({ value: a.id, label: a.name, sub: `Worth ${fmtMoney(a.value, c)}` })) });
+  if (id) await report(api, bonds.house(npc.id, id));
+}
+
 async function proposeTo(api, npc) {
   const c = country();
   const cash = player().finance.cash;
@@ -387,6 +406,10 @@ export function openNpc(npc, api, back, o = {}) {
       bondTime: () => report(api, bonds.spendTime(npc.id)),
       bondIntimate: () => report(api, bonds.intimate(npc.id)),
       bondGift: () => romanticGift(api, npc),
+      bondTrip: () => tripWith(api, npc),
+      bondTransfer: () => makeOver(api, npc),
+      bondHouse: () => offerHome(api, npc),
+      bondUnhouse: () => report(api, bonds.unhouse(npc.flags.housedIn)),
       bondExclusive: () => report(api, bonds.discussExclusive(npc.id)),
       bondOpen: () => report(api, bonds.discussOpen(npc.id)),
       bondOfficial: () => report(api, bonds.makeOfficial(npc.id)),

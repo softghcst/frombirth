@@ -230,6 +230,7 @@ export function letOut(id) {
   const p = player();
   const a = assetOf(id);
   if (a.tenant) return result(false, 'It is already let.', 'neutral');
+  if (a.occupant) return result(false, 'Someone is living there at your invitation. Ask them to move out first.', 'neutral');
   if (p.homeId === id) return result(false, 'You live there. Move out first.', 'neutral');
   if (a.condition < 25) return result(false, 'Nobody will rent it in this state. Renovate it first.', 'neutral');
   const code = currencyOfProperty(a);

@@ -381,6 +381,97 @@ section('discovery only by a real way; suspicion is not proof; reconciliation po
 }
 section('pregnancy: possible, not certain, respects birth control, one at a time');
 
+// ---------- 9. Cars and homes: owning is not living there ----------
+{
+  const p = life();
+  const wife = spouse();
+  const other = person('friend', 29, 90, { secrecy: 100, commitment: 0 });
+  begin(other, 'secret');
+  const b = bonds.bondWith(other.id);
+  b.start.year -= 3; // together some years: past the stage where a large gift is too much
+  const flat = { id: 'asset_flat', kind: 'property', name: 'A flat on Elm Street', value: 200000, purchasePrice: 200000, condition: 80 };
+  const house = { id: 'asset_house', kind: 'property', name: 'A house by the sea', value: 400000, purchasePrice: 400000, condition: 80, mortgage: { principal: 100000, code: 'USD' } };
+  const car = { id: 'asset_car', kind: 'vehicle', name: 'Red convertible', value: 30000, purchasePrice: 30000 };
+  p.assets.push(flat, house, car);
+  check(bonds.givable().map((a) => a.id).sort().join() === 'asset_car,asset_flat' && !bonds.transfer(other.id, house.id).ok && p.assets.includes(house), 'what still has a loan on it cannot be given away');
+  // Living there: still the owner's.
+  const moved = until(other, () => bonds.house(other.id, flat.id));
+  check(moved.ok && flat.occupant?.npcId === other.id && other.flags.housedIn === flat.id && p.assets.includes(flat) && !other.flags.owned, 'someone given a home to live in lives there; it is still the player\'s');
+  check(!bonds.spareHomes().includes(flat) && !bonds.house(wife.id, flat.id).ok, 'and nobody else can be put in it');
+  check(p.assets.filter((a) => a.kind === 'property').length === 2, 'it is still in the estate');
+  const out = bonds.unhouse(flat.id);
+  check(out.ok && !flat.occupant && !other.flags.housedIn && p.assets.includes(flat), 'asked to leave, they leave, and nothing changes hands');
+  // Made over: theirs.
+  p.flags.will = { mode: 'named', heirs: [wife.id], items: { [car.id]: wife.id } };
+  const cash = p.finance.cash;
+  const gave = until(other, () => bonds.transfer(other.id, car.id));
+  const fee = Math.round(30000 * bonds.TRANSFER_FEE);
+  check(gave.ok && !p.assets.includes(car) && other.flags.owned?.length === 1 && other.flags.owned[0].id === car.id && p.finance.cash === cash - fee, `a car made over is theirs, and the fees are paid once (${cash - p.finance.cash} of ${fee})`);
+  check(!p.flags.will.items[car.id], 'a will cannot leave what was given away');
+  check(!bonds.transfer(other.id, car.id).ok && other.flags.owned.length === 1, 'it cannot be given twice');
+  bonds.end(other.id);
+  check(other.flags.owned.length === 1 && !p.assets.includes(car), 'and it stays theirs when the relationship ends');
+  check(wife.role === 'spouse' && bonds.knowledge(b, wife.id) === null, 'none of which tells the spouse anything by itself');
+}
+section('cars and homes: living there is not owning; a gift made over is theirs for good; loans stay where they are');
+
+// ---------- 10. Going away together ----------
+{
+  const p = life();
+  const other = person('friend', 29, 90);
+  begin(other, 'casual');
+  const b = bonds.bondWith(other.id);
+  const t = bonds.tripsFor()[0];
+  const cash = p.finance.cash;
+  other.flags.acts = {};
+  const went = bonds.trip(other.id, t.id);
+  check(p.finance.cash === cash - t.cost && b.history.some((h) => h.key === 'trip') && typeof went.ok === 'boolean', `a trip for two is paid for once (${cash - p.finance.cash} of ${t.cost})`);
+  check(!bonds.trip(other.id, t.id).ok && p.finance.cash === cash - t.cost, 'and not charged again');
+  let good = 0, bad = 0;
+  for (let i = 0; i < 40; i++) { other.flags.acts = {}; other.meters.relationship = 80; (bonds.trip(other.id, t.id).ok ? good++ : bad++); }
+  check(good > 0 && bad > 0, `a trip can go well or badly (${good} and ${bad})`);
+  other.flags.acts = {}; other.meters.relationship = 10;
+  const c2 = p.finance.cash;
+  check(!bonds.trip(other.id, t.id).ok && p.finance.cash === c2, 'and they can say no to it, at no cost');
+}
+section('trips: paid once, may go badly, may be declined');
+
+// ---------- 11. Children in two households ----------
+{
+  const p = life();
+  p.career.salary = 80000;
+  const wife = spouse();
+  const other = person('friend', 28, 90, { secrecy: 100, commitment: 0 });
+  begin(other, 'secret');
+  const b = bonds.bondWith(other.id);
+  b.arc.complicated = { year: S().year, choice: 'honest' };
+  // A child at home, and a child with the other.
+  const { newborn } = await import('../js/engine/children.js');
+  const kidsBefore = Object.values(S().npcs).filter((n) => n.role === 'child').length;
+  const { makeNpc: mk } = await import('../js/engine/npcFactory.js');
+  const add = (parent, name) => { const k = mk({ role: 'child', countryId: p.countryId, age: 0, relationship: 80 }); k.firstName = name; k.parentIds = [parent.id]; S().npcs[k.id] = k; p.npcIds.push(k.id); return k; };
+  void newborn;
+  const home = add(wife, 'Ada');
+  const away = add(other, 'Ben');
+  other.meters.relationship = 90; b.acts = {};
+  year();
+  check(home.flags.household === 'player' && !home.flags.livesWith, 'a child of the marriage lives at home');
+  check(away.flags.household === other.id && away.flags.livesWith === other.id && b.childIds?.includes(away.id), 'a child with someone the player does not live with lives with their mother');
+  const sup = (p.finance.support ?? []).filter((x) => x.childId === away.id);
+  check(sup.length === 1 && sup[0].dir === 'pay' && sup[0].kind === 'child' && sup[0].amount === Math.round(80000 * 0.12) && sup[0].until > sup[0].since + 15 && sup[0].until <= sup[0].since + 18, `the player owes support for that child, by the usual share of income (${sup[0]?.amount})`);
+  other.meters.relationship = 90; b.acts = {};
+  year(); year();
+  check((p.finance.support ?? []).filter((x) => x.childId === away.id).length === 1, 'one obligation, not one a year');
+  check(bonds.halfSiblings(home, away) && !bonds.halfSiblings(home, home) && Object.values(S().npcs).filter((n) => n.role === 'child').length === kidsBefore + 2, 'the two children are half-siblings, each one person');
+  check(bonds.knowsOfChild(away, other.id) && !bonds.knowsOfChild(away, wife.id) && bonds.knowsOfChild(home, wife.id), 'the spouse has not been told about a child of a relationship they do not know of');
+  if (wife.role === 'spouse' && b.status === 'active') { bonds.confess(wife.id); check(bonds.knowsOfChild(away, wife.id), 'and knows once they have been told'); }
+  check(away.role === 'child' && S().npcs[away.id] === away && away.parentIds.includes(other.id), 'whatever becomes of the adults, the child is the same child');
+  const { roleLabel } = await import('../js/engine/relationships.js');
+  const sib = person('sibling', 20); sib.flags.half = true;
+  check(/^Half-/.test(roleLabel(sib)), 'a half-sibling is called one');
+}
+section('children across households: where they live, support owed once and yearly, half-siblings, who has been told');
+
 if (problems.length) {
   console.log(`${problems.length} problem(s):`);
   for (const p of [...new Set(problems)]) console.log(' ✗', p);
