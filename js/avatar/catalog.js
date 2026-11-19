@@ -24,6 +24,11 @@ const named = (ids, hexes, names, extra = () => ({})) => ids.map((id, i) => ({ i
 const parts = (folder, keep = () => true) => AVATAR_MANIFEST[folder].filter(keep).map((p) => ({ id: p.id, name: p.label, file: p.file, tags: p.tags ?? {} }));
 
 export const SKIN_TONES = named(PAL.SKIN_TONE_IDS, PAL.SKIN_TONES, PAL.SKIN_TONE_NAMES, (i) => ({ depth: i, base: PAL.SKIN_TONES[i] }));
+/**
+ * Each skin tone's depth (its place from lightest to deepest), by id. Anything that changes with depth names the tone
+ * it starts at, not a number, so adding a tone between two others never moves where it starts.
+ */
+export const DEPTH = Object.fromEntries(SKIN_TONES.map((t) => [t.id, t.depth]));
 export const HAIR_COLORS = named(PAL.HAIR_COLOR_IDS, PAL.HAIR_COLORS, PAL.HAIR_COLOR_NAMES, (i) => ({ natural: i < PAL.NATURAL_HAIR }));
 export const EYE_COLORS = named(PAL.EYE_COLOR_IDS, PAL.EYE_COLORS, PAL.EYE_COLOR_NAMES);
 export const LIP_COLORS = named(PAL.LIP_COLOR_IDS, PAL.LIP_COLORS, PAL.LIP_COLOR_NAMES);
@@ -197,14 +202,14 @@ export const hairHex = (appearance) => (INDEX.anyHair[appearance.style.hairDye] 
 
 /**
  * The color of a mouth. Lipstick is worn as chosen, all over. Otherwise a woman's lips are her skin warmed toward rose;
- * a man's are a natural pair for his skin tone (NATURAL_LIP_UPPER and NATURAL_LIP_LOWER in js/avatarPalettes.js): `lip`
+ * a man's are a natural pair for his skin tone (one color on the lighter tones, two from olive down) (NATURAL_LIP_UPPER and NATURAL_LIP_LOWER in js/avatarPalettes.js): `lip`
  * colors the lower lip and `lipUpper` the upper. Every resting mouth draws its upper lip in --lip-upper (falling back to
  * the lip color), so the pair shows on every mouth shape, thin, full or smiling.
  */
 export const NATURAL_LIPS = { woman: { rose: '#b8444f', k: 0.42, deepK: 0.34 } };
 function lipColors(skin, lipColor, gender) {
   if (lipColor) return { lip: part('lipColor', lipColor).hex };
-  if (gender !== 'male') { const W = NATURAL_LIPS.woman; return { lip: mixHex(skin.hex, W.rose, skin.depth >= 8 ? W.deepK : W.k) }; }
+  if (gender !== 'male') { const W = NATURAL_LIPS.woman; return { lip: mixHex(skin.hex, W.rose, skin.depth >= DEPTH.chestnut ? W.deepK : W.k) }; }
   return { lip: PAL.NATURAL_LIP_LOWER[skin.depth], lipUpper: PAL.NATURAL_LIP_UPPER[skin.depth] };
 }
 
@@ -234,7 +239,7 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     colors: {
       skin: skin.hex, hair: hairHex(a), dyed: !!st.hairDye, brow: mixHex(natural, '#1c1210', 0.22), eye: part('eyeColor', g.eyeColor).hex,
       ...colors,
-      blush: mixHex(skin.hex, '#f0506a', skin.depth >= 7 ? 0.4 : 0.48),
+      blush: mixHex(skin.hex, '#f0506a', skin.depth >= DEPTH.bronze ? 0.4 : 0.48),
       outfit: st.outfitColor ? part('outfitColor', st.outfitColor).hex : null,
     },
   };

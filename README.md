@@ -268,11 +268,11 @@ grin and the parted lips showing teeth (`lips_masc_01`, `_05`, `_08`) can be cho
 **Lip colors.** Lipstick is worn as chosen, all over, by anyone, and by no child. Otherwise a woman's lips are her
 skin warmed toward rose. A man's are a natural pair for his skin tone, from one shared palette (`NATURAL_LIP_UPPER`
 and `NATURAL_LIP_LOWER` in `js/avatarPalettes.js`, one pair per tone in `SKIN_TONES` order): the upper lip a deeper
-shade of the skin, the lower softer, so a mouth reads by its own fills rather than its outline at portrait size. On
-the four lightest tones (porcelain to sand) both lips are one nude color instead. The pairs were chosen by lightness,
-chroma and hue against each skin: on golden, olive and
-tan the lower lip turns to a muted rose-brown at much the cheeks' own lightness, so it parts from them by hue rather
-than blending into their orange; and from bronze down the upper is a rich deep brown and the lower a softer rose-brown,
+shade of the skin, the lower softer, so a mouth reads by its own fills rather than its outline at portrait size. From
+porcelain to caramel both lips are one nude color instead, turning toward a dusty rose from golden so the mouth does
+not blend into the cheeks. The pairs were chosen by lightness, chroma and hue against each skin: on olive and tan the
+lower lip turns to a muted rose-brown at much the cheeks' own lightness, so it parts from them by hue rather than
+blending into their orange; and from bronze down the upper is a rich deep brown and the lower a softer rose-brown,
 deepening gradually. Every resting mouth draws its upper lip in `--lip-upper` (falling back to the lip color), so the
 pair shows on every shape, thin, full or smiling: the men's mouths were drawn that way, and the script parts the women's
 mouths, whose two lips were one path (`split_lip_tones`). Teeth, tongues and the inside of an open mouth are never
@@ -294,6 +294,12 @@ the reason); stray specks are removed from hair files (`remove_specks`).
 (`frameFor`): faces fill the same share of a portrait, with the eyes on one line, whatever the hairstyle. Children
 keep the plain picture. Every screen draws through `avatarSvg`, so a person is the same drawing everywhere; a screen
 chooses only the size.
+
+**Skin tones.** Fourteen, lightest to deepest (`SKIN_TONES` in `js/avatarPalettes.js`): porcelain, ivory, rose beige,
+sand, beige, golden, caramel, olive, tan, bronze, chestnut, umber, espresso, ebony. Saves store the id, so a tone can be
+added between two others, or retuned, without changing anyone's face. Anything that changes with depth (hair and eye
+colors and hair texture at random, freckles, blush, lip colors) names the tone it starts at (`DEPTH` in
+`js/avatar/catalog.js`), so adding a tone never moves where it starts.
 
 **Reading faces on every skin tone.** All linework is one dark ink, which loses contrast as skin deepens while the
 white of the eye gains it. From chestnut downward, in step with depth (`deepness`, `READABLE` in

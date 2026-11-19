@@ -11,7 +11,7 @@
 //  - every mouth sits well under every nose (as fitted to every pair of eyes) on every face shape
 import { readFileSync, existsSync } from 'node:fs';
 import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManifest.js';
-import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
+import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook, SKIN_TONES as TONES, DEPTH as SKIN_DEPTH } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
 import { dressFor, filesFor, ageStage, fitTransforms, deepness, characterAvatarSvg } from '../js/CharacterAvatar.js';
 import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS } from '../js/avatar/hairFit.js';
@@ -127,10 +127,10 @@ for (const [i, want] of Object.entries(PINNED)) {
 let coily = 0, deep = 0;
 for (let i = 0; i < 400; i++) {
   const g = i % 2 ? 'female' : 'male';
-  const a = randomAppearance(i % 12, g);
+  const a = randomAppearance(i % TONES.length, g);
   valid(normalize(a, `r${i}`), `random ${i}`);
   check(CUR.RESTING.eyes.includes(a.inherited.eyes) && CUR.RESTING[g === 'male' ? 'lipsMasc' : 'lips'].includes(a.inherited.lips), `random ${i} was given an expression for a resting face, or a mouth for the other gender`);
-  if (i % 12 >= 8) { deep++; if (['coily', 'curly'].includes(a.inherited.hairTexture)) coily++; }
+  if (i % TONES.length >= SKIN_DEPTH.chestnut) { deep++; if (['coily', 'curly'].includes(a.inherited.hairTexture)) coily++; }
 }
 check(coily / deep > 0.7, `deep skin tones should mostly have curly or coily hair (${coily}/${deep})`);
 for (let i = 0; i < 200; i++) {
@@ -435,11 +435,11 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
 }
 
 // 15. Lip colors: a man's natural lips are the pair for his skin tone in the shared palette, upper deeper than lower and
-// both deeper than or level with the skin, and one color on the four lightest tones; on golden and tan the lower lip parts from the cheeks by hue at much their
+// both deeper than or level with the skin, and one color from porcelain to caramel; on olive and tan the lower lip parts from the cheeks by hue at much their
 // lightness; from bronze down the lower is clearly lighter than the upper. Every resting mouth draws its upper lip in
 // --lip-upper; lipstick is worn as chosen; children wear none; and the mouth drawn with a heavier outline is trimmed.
 {
-  const { SKIN_TONES } = await import('../js/avatar/catalog.js');
+  const { SKIN_TONES, DEPTH } = await import('../js/avatar/catalog.js');
   const PAL = await import('../js/avatarPalettes.js');
   const lch = (h) => {
     const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -455,12 +455,14 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
     const c = resolveLook({ v: 3, inherited: { skin: tone.id, lips: 'lips_9' } }, 'x', 'male').colors;
     const skin = lch(c.skin), up = lch(c.lipUpper), lo = lch(c.lip);
     check(c.lipUpper === PAL.NATURAL_LIP_UPPER[tone.depth] && c.lip === PAL.NATURAL_LIP_LOWER[tone.depth], `${tone.id}: a man's lips are not from the shared palette`);
-    if (tone.depth < 4) check(c.lipUpper === c.lip && lo.L < skin.L - 3, `${tone.id}: a light skin's lips are not one nude shade deeper than the skin`);
+    if (tone.depth <= DEPTH.caramel) check(c.lipUpper === c.lip && lo.L < skin.L - 3, `${tone.id}: a lighter skin's lips are not one nude shade deeper than the skin`);
     else check(up.L < lo.L && up.L < skin.L - 3, `${tone.id}: the upper lip is not the deeper tone`);
     check(lo.h >= 30 && lo.h <= 60 && up.h >= 40 && up.h <= 62, `${tone.id}: a man's lips are not a natural brown or rose-brown (${c.lipUpper} / ${c.lip})`);
-    if (['golden', 'olive', 'tan'].includes(tone.id)) check(Math.abs(lo.L - skin.L) < 7 && skin.h - lo.h > 20, `${tone.id}: the lower lip does not part from the cheeks by hue`);
-    if (tone.depth >= 7) check(lo.L - up.L > 8 && lo.L > skin.L, `${tone.id}: the lips are not two-toned`);
-    if (tone.depth >= 4) { check(lo.h <= lastHue + 3, `${tone.id}: the lower lip's hue jumps from the tone before`); lastHue = lo.h; }
+    if (['olive', 'tan'].includes(tone.id)) check(Math.abs(lo.L - skin.L) < 7 && skin.h - lo.h > 20, `${tone.id}: the lower lip does not part from the cheeks by hue`);
+    if (['golden', 'caramel'].includes(tone.id)) check(skin.h - lo.h > 12, `${tone.id}: the lips blend into the cheeks`);
+    if (tone.depth >= DEPTH.bronze) check(lo.L - up.L > 8 && lo.L > skin.L, `${tone.id}: the lips are not two-toned`);
+    if (tone.depth >= DEPTH.olive) check(up.L < lo.L - 3, `${tone.id}: the lips are not two-toned`);
+    if (tone.depth >= DEPTH.golden) { check(lo.h <= lastHue + 3, `${tone.id}: the lower lip's hue jumps from the tone before`); lastHue = lo.h; }
   }
   // Every resting mouth, thin, full or smiling, has an upper lip of its own color; a woman's natural lips and lipstick
   // set none, so both lips stay one color for them.
@@ -468,7 +470,7 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(!resolveLook({ v: 3, inherited: { skin: 'ebony' } }, 'x', 'female').colors.lipUpper, 'a woman\'s natural lips are given two tones');
   check(!resolveLook({ v: 3, inherited: { skin: 'ebony' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'male').colors.lipUpper, 'lipstick is given a second tone');
   const shared = avatarSvg({ appearance: { v: 3, inherited: { skin: 'espresso', lips: 'lips_10' } }, seed: 'm', age: 30, gender: 'male' });
-  check(shared.includes(`--lip-upper:${PAL.NATURAL_LIP_UPPER[10]}`) && shared.includes('lips/lips_10.svg'), 'a shared mouth on a man is not drawn in two tones');
+  check(shared.includes(`--lip-upper:${PAL.NATURAL_LIP_UPPER[DEPTH.espresso]}`) && shared.includes('lips/lips_10.svg'), 'a shared mouth on a man is not drawn in two tones');
   for (const id of ['lips_17', 'lips_18', 'lips_20', 'lips_21', 'lips_5']) check(!readFileSync(new URL(`../assets/avatars/lips/${id}.svg`, import.meta.url), 'utf8').includes('--lip-upper'), `the expression ${id} has been parted`);
   const red = resolveLook({ v: 3, inherited: { skin: 'sand' }, style: { lipColor: CATALOG.lipColor[0].id } }, 'x', 'male').colors.lip;
   check(red === CATALOG.lipColor[0].hex, 'lipstick chosen by a man is not worn');

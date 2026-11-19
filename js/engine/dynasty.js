@@ -22,7 +22,7 @@ import { store, player, country, log } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { MONARCHIES, REIGN_NOTES, SCANDALS } from '../data/royalty.js';
 import { inheritAppearance, randomAppearance, ensureStyled, cloneAppearance } from '../avatar/inherit.js';
-import { skinDepth, normalize, part } from '../avatar/catalog.js';
+import { skinDepth, normalize, part, DEPTH } from '../avatar/catalog.js';
 import { makeNpc } from './npcFactory.js';
 import { lineOfSuccession, childrenOf, bloodParent, barred, relationTo, audit } from './succession.js';
 
@@ -62,7 +62,7 @@ function freeName(d, c, gender, avoid = []) {
 }
 
 const lookOf = (a, b, gender) => ensureStyled(inheritAppearance(a.look, b?.look), gender);
-const strangerLook = (near, gender) => ensureStyled(randomAppearance(Math.round(clamp(skinDepth(near) + rng.int(-1, 1), 1, 10)), gender), gender);
+const strangerLook = (near, gender) => ensureStyled(randomAppearance(Math.round(clamp(skinDepth(near) + rng.int(-1, 1), DEPTH.ivory, DEPTH.espresso)), gender), gender);
 
 function wed(d, a, b, year, quiet) {
   a.spouseId = b.id; b.spouseId = a.id;
