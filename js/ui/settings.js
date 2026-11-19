@@ -61,6 +61,9 @@ export async function openSettings(hooks = {}) {
       options: [
         // Only while a life is being played: how far each turn moves the calendar.
         ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()} from next year` : ''}. Shorter turns bring scenes for each season.` }] : []),
+        // Only while a life is being played: how much of what could happen in love and family is told.
+        ...(store.state?.player?.alive ? [{ value: 'drama', label: 'Relationship drama', sub: `${{ low: 'Low', balanced: 'Balanced', high: 'High' }[store.state.settings?.drama ?? 'balanced']}: how often the stories that are true of your relationships get told. It never invents one.` },
+          { value: 'sensitive', label: 'Sensitive family storylines', sub: store.state.settings?.sensitiveFamily === true ? 'On: a teenage pregnancy may be part of a life, told without detail.' : 'Off. Turn on to allow a teenage pregnancy storyline, told without detail.' }] : []),
         { value: 'account', label: 'Cloud saves', sub: cloudLine() },
         { value: 'transfer', label: 'Transfer saves', sub: 'Move your lives to another device with a code or a file, no account needed.' },
         { value: 'people', label: 'People you know', sub: people ? `${people} on your list.` : 'Put people from your own life into the game.' },
@@ -72,6 +75,8 @@ export async function openSettings(hooks = {}) {
       ],
     });
     if (!pick) return;
+    if (pick === 'drama') { const s = (store.state.settings ??= {}); s.drama = { low: 'balanced', balanced: 'high', high: 'low' }[s.drama ?? 'balanced']; hooks.onChange?.(); continue; }
+    if (pick === 'sensitive') { const s = (store.state.settings ??= {}); s.sensitiveFamily = s.sensitiveFamily !== true; hooks.onChange?.(); continue; }
     if (pick === 'whatif') {
       const note = await inputModal({ title: 'What if?', label: 'What is the decision? (a few words)', value: '', maxLength: 60 });
       if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
