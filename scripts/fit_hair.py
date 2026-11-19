@@ -64,6 +64,34 @@ EXTRA_HEADS = ['kid']  # game heads measured here rather than kept in landmarks.
 LAYERS = ['hair_back', 'hair_base', 'hair_bangs', 'hair_lines']
 
 
+LEGACY = 500  # the frame older packs were drawn on: a 500x500 version of the base head
+LEGACY_SCALE = 512 / LEGACY  # 1.024: onto the 512 head canvas (FRAME)
+
+
+def upscale_legacy(root):
+    """
+    A hairstyle drawn on the legacy 500x500 frame -> the 512x512 head canvas, 1:1: the viewBox (and width and
+    height) become 512, and everything in it is wrapped in one <g transform="scale(1.024)">, the paths left as drawn.
+    The <svg> is marked data-drawn-at="500". -> whether it was changed (a 512 file is left alone).
+    """
+    vb = [float(v) for v in re.split(r'[\s,]+', (root.get('viewBox') or '').strip())] if root.get('viewBox') else None
+    if vb != [0, 0, LEGACY, LEGACY]:
+        return False
+    inner = [c for c in list(root) if isinstance(c.tag, str)]
+    at = list(root).index(inner[0]) if inner else len(root)
+    wrap = ET.Element(f'{NS}g', {'transform': f'scale({LEGACY_SCALE:g})'})
+    for c in inner:
+        root.remove(c)
+        wrap.append(c)
+    wrap.text, wrap.tail = '\n', '\n'
+    root.insert(at, wrap)
+    root.set('viewBox', f'0 0 {FRAME} {FRAME}')
+    root.set('width', str(FRAME))
+    root.set('height', str(FRAME))
+    root.set('data-drawn-at', str(LEGACY))
+    return True
+
+
 def normalize_ids(root):
     """Packs that name the layers 'hair-back' etc. get the ids the game uses ('hair_back'). -> whether any changed."""
     changed = False

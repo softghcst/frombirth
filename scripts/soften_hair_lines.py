@@ -29,6 +29,9 @@ shapes (a streak of shine on a sweep or a fringe) are kept as they are. Checked 
 hair_lines: every line is stroke-width 2.5 with round caps and joins; dark lines become #4a2414 (light
 highlight strokes keep their colour, so the hair keeps its shine).
 
+A hairstyle drawn on the legacy 500x500 frame is first moved onto the 512x512 head canvas 1:1: its viewBox
+becomes 512 and its layers are wrapped in one <g transform="scale(1.024)"> (fit_hair.upscale_legacy).
+
 A style drawn with colour variables (stroke="var(--hair-stroke, ...)", fill="var(--hair-color, ...)") is left as
 drawn: its lines are already its own, and the variables are how the game colours it.
 
@@ -148,17 +151,20 @@ def attr(el, group, name):
 def soften(path, head):
     tree = ET.parse(path, ET.XMLParser(target=ET.TreeBuilder(insert_comments=True)))
     root = tree.getroot()
-    renamed = F.normalize_ids(root)
+    upscaled = F.upscale_legacy(root)
+    renamed = F.normalize_ids(root) or upscaled
+    if root.get('data-drawn-at') == str(F.LEGACY):  # its paths are still in the 500 frame, inside scale(1.024)
+        head = [poly / F.LEGACY_SCALE for poly in head]
     groups = {g.get('id'): g for g in root.iter(f'{NS}g') if g.get('id') in F.LAYERS}
     # A style drawn with colour variables (stroke="var(--hair-stroke, ...)") already has the outline and colours it
     # should: it is left as drawn, so the game's --hair-color and --hair-stroke keep working on it.
     if any((p.get('stroke') or g.get('stroke') or '').startswith('var(') for g in groups.values() for p in g.iter(f'{NS}path')):
         if renamed:
             write(path, root)
-        return {'variables': True}
+        return {'variables': True, 'upscaled': upscaled}
     shaded = one_shade(root, groups)
     if root.get('data-softened') == '1':
-        if shaded:
+        if shaded or renamed:
             write(path, root)
         return {'shaded': shaded} if shaded else None
     filled = lambda g: [(p, F.parse_d(p.get('d'))) for p in (g.iter(f'{NS}path') if g is not None else [])
@@ -287,7 +293,8 @@ def main(argv):
         name = os.path.basename(f)
         shade = f'; {counts["shaded"]} fill(s) set to the main colour' if counts and counts.get('shaded') else ''
         if counts and counts.get('variables'):
-            print(f'  {name}: drawn with colour variables, left as drawn')
+            moved = '; moved from the 500x500 frame onto the 512 canvas (scale 1.024)' if counts.get('upscaled') else ''
+            print(f'  {name}: drawn with colour variables, left as drawn{moved}')
         elif counts is None:
             print(f'  {name}: already softened, one shade')
         elif 'soft' not in counts:

@@ -26,6 +26,10 @@ check(landmarks.base_head === FITTED_BASE_HEAD, `the hair manifest was made from
 // 1. The files.
 const raw = readdirSync(new URL('assets/hair_raw/', root)).filter((f) => f.endsWith('.svg')).map((f) => f.slice(0, -4).toLowerCase().replace(/[^a-z0-9]+/g, '_'));
 check(raw.sort().join() === [...styles].sort().join(), `assets/hair_raw/ (${raw}) and assets/hair_manifest.json (${styles}) differ: run npm run fit-hair`);
+for (const f of readdirSync(new URL('assets/hair_raw/', root)).filter((x) => x.endsWith('.svg'))) {
+  const head = readFileSync(new URL(`assets/hair_raw/${f}`, root), 'utf8').match(/<svg\b[^>]*>/)?.[0] ?? '';
+  check(/viewBox="0 0 512 512"/.test(head), `assets/hair_raw/${f} is not on the 512x512 head canvas: run npm run soften-hair`);
+}
 for (const [id, s] of Object.entries(FITTED_HAIR)) {
   check(s.id === id && typeof s.name === 'string' && s.name.length > 0 && typeof s.clipToHead === 'boolean', `${id}: the manifest entry needs an id, a name and clipToHead`);
   const rawSvg = readFileSync(new URL(`assets/hair_raw/${id}.svg`, root), 'utf8');
