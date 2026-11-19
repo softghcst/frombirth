@@ -61,9 +61,16 @@ function careShift(p) {
 
 const ACCIDENTS = ['a traffic accident', 'a fall', 'a house fire', 'drowning', 'a freak accident'];
 
+/**
+ * For checks that are about something else (the courts, the yearly model): while `spared` is true, the yearly roll
+ * takes nobody, so a test that needs a character alive is not failed by a rare early death. The game never sets it.
+ */
+export const deathRoll = { spared: false };
+
 /** Rolls the yearly death check. @returns {?string} cause, or null if alive */
 export function rollDeath() {
   const p = player();
+  if (deathRoll.spared) return null;
   // The most serious condition, from the older illness list or the health record.
   const worst = [...p.conditions, ...[seriousCondition(p)].filter(Boolean)].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';

@@ -272,8 +272,9 @@ const VIEWS = {
     const offers = kp.varietyOffers(p);
     const past = v.shows.filter((x) => x.ended).slice(-6).reverse();
     return `<div class="card"><h3>${esc(kp.varietyTitle(p) ?? 'Variety and hosting')}</h3><p class="muted" style="margin:0">A career of its own: it can go on long after a group's last stage.</p>
-      ${kv([['Standing in variety', `${Math.round(v.rep)}/100`], ['On camera', String(kp.varietyScore(p))], ['Guest spots', String(v.guests.length)], ['Awards', v.awards.length ? v.awards.map((a) => `${a.year} ${{ grand: 'Grand Prize', top_excellence: 'Top Excellence', excellence: 'Excellence', rookie: 'Rookie' }[a.category]}`).join(', ') : 'None yet']])}</div>
-      <div class="section-label">Your shows</div>${shows.length ? shows.map((x) => `<div class="card"><h3>${esc(x.name)}</h3>${kv([['Format', VARIETY_FORMATS[x.format].name], ['You are', VARIETY_ROLES[x.role].name], ['Since', String(x.from)], ['A year', fmtMoney(x.feeIn ?? x.fee, C)], ['Last ratings', x.ratings.length ? `${x.ratings.at(-1).rating}%` : 'Not yet aired']])}<div class="btn-stack">${btn('varietyleave', 'Leave the show', { arg: x.id })}</div></div>`).join('') : '<p class="empty">None at the moment.</p>'}
+      ${kv([['Standing in variety', `${Math.round(v.rep)}/100`], ['On camera', String(kp.varietyScore(p))], ['Guest spots', String(v.guests.length)], ['Awards', v.awards.length ? v.awards.map((a) => `${a.year} ${({ grand: 'Grand Prize', top_excellence: 'Top Excellence', excellence: 'Excellence', rookie: 'Rookie', best_couple: `Best Couple with ${name(a.with)}` }[a.category])}`).join(', ') : 'None yet']])}</div>
+      <div class="section-label">Your shows</div>${shows.length ? shows.map((x) => `<div class="card"><h3>${esc(x.name)}</h3>${kv([['Format', VARIETY_FORMATS[x.format].name], ['You are', VARIETY_ROLES[x.role].name], ['Since', String(x.from)], ['A year', fmtMoney(x.feeIn ?? x.fee, C)], ['Last ratings', x.ratings.length ? `${x.ratings.at(-1).rating}%` : 'Not yet aired']])}
+        ${(x.cast ?? []).filter((c) => c.until == null).length ? `<div class="section-label">On the show with you</div>${x.cast.filter((c) => c.until == null).map((c) => row('person', c.id, name(c.id), `${kp.COSTAR_KINDS[c.kind]} · ${kp.chemWord(c.chem)}`, '', npc(c.id))).join('')}` : ''}<div class="btn-stack">${btn('varietyleave', 'Leave the show', { arg: x.id })}</div></div>`).join('') : '<p class="empty">None at the moment.</p>'}
       <div class="section-label">Offers this year</div>${offers.length ? offers.map((o) => btn('varietytake', `${o.name}: ${VARIETY_ROLES[o.role].name.toLowerCase().replace('dj', 'DJ')}`, { arg: o.id, sub: `${VARIETY_FORMATS[o.format].name}${o.role === 'guest' ? ' · one episode' : ' · a year, every week'}` })).join('') : '<p class="empty">No producer is calling right now. Media training and a bigger following help.</p>'}
       ${past.length ? `<div class="section-label">Before</div>${past.map((x) => `<div class="kv"><span>${x.from}–${x.to} · ${esc(x.name)}</span><span>${esc(VARIETY_ROLES[x.role].name)} · ${esc(x.ended.how)}</span></div>`).join('')}` : ''}`;
   },
@@ -304,6 +305,8 @@ const VIEWS = {
     out += `<div class="card"><h3>Your collection</h3>${kv([['Following', `${fg?.name ?? 'A group'}${fg?.status === 'disbanded' ? ' (disbanded)' : ''}`], ['Favorite member', name(f.bias)], ['Cards', String(Object.values(f.cards).reduce((t, n) => t + n, 0))], ['Full sets', String(f.sets.length)],
       ['Worth, at today\'s prices', m(kp.collectionValue(f))], ['Spent this year', m(f.spent[store.state.year] ?? 0)], ['Albums left this year', String(kp.ALBUMS_PER_YEAR - f.acts.albums)], ['Trades left this year', String(kp.TRADES_PER_YEAR - f.acts.trades)]])}
       <div class="btn-stack">${btn('fan', 'Follow a different group, or change favorite')}</div></div>`;
+    const traders = fg ? kp.tradersOf(fg) : [];
+    if (traders.length) out += `<div class="section-label">Fellow fans you trade with</div>${traders.map((n) => row('person', n.id, name(n.id), `Loves ${name(n.flags.fan.bias)} · ${n.flags.fan.burned ? 'kept your cards: nobody trades with them' : n.flags.fan.trades ? `${n.flags.fan.trades} ${n.flags.fan.trades === 1 ? 'trade' : 'trades'} with you${n.role === 'friend' ? ' · a friend' : ''}` : 'no trades yet'}`, '', n)).join('')}`;
     for (const r of albums) {
       out += `<div class="card"><h3>${esc(r.title)} (${r.year})</h3><div class="btn-stack">${[1, 5, 10].map((n) => btn('albums', `Buy ${n === 1 ? 'an album' : `${n} albums`}`, { arg: `${r.id}:${n}`, sub: m(price * n) })).join('')}</div>
         ${f.sets.includes(r.id) ? '<p class="muted" style="margin:4px 0">Full set!</p>' : ''}
@@ -441,7 +444,9 @@ const ACTIONS = {
   async card(id, x) {
     const f = kp.fanOf();
     const have = f?.cards[id] ?? 0;
-    const opts = [{ value: 'trade', label: 'Trade spares for it', sub: `${kp.TRADES_PER_YEAR - f.acts.trades} trades left this year` }, { value: 'buy', label: 'Buy one from another fan' }, ...(have ? [{ value: 'sell', label: 'Sell one' }] : [])];
+    const plan = kp.planTrade(id);
+    const tradeSub = plan.trader ? `With ${name(plan.trader.id)}: your ${plan.offer.map((x) => name(kp.cardParts(x).who).split(' ')[0]).join(', ')} · ${kp.TRADES_PER_YEAR - f.acts.trades} trades left this year` : plan.why;
+    const opts = [{ value: 'trade', label: 'Trade spares for it', sub: tradeSub }, { value: 'buy', label: 'Buy one from another fan' }, ...(have ? [{ value: 'sell', label: 'Sell one' }] : [])];
     const what = await pickModal({ title: name(kp.cardParts(id).who), body: `${kp.cardParts(id).release?.title ?? ''}${kp.cardParts(id).rare ? ' · a rare card' : ''}. You have ${have}.`, cancel: 'Back', options: opts });
     if (what === 'trade') return x.say(kp.tradeFor(id));
     if (what === 'buy') return x.say(kp.buyCard(id));

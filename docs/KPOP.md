@@ -137,14 +137,25 @@ founding years.
   each year); or for fewer. The company decides.
 - **Collecting, for any character** (`becomeFan`, `buyAlbums`, `tradeFor`, `buyCard`, `sellCard`): from age eight, from
   Pursuits → K-pop fandom or My Idol Life → Photocards. Follow a group with a favorite member; buy albums (thirty a
-  year) for the random card inside, now and then a rare one; trade spares with other fans for a card you are missing
-  (eight trades a year; about one in twenty-five posted trades never comes back); buy or sell single cards at about
-  the going price (selling nets a little under it, thirty sales a year); complete a set (every member's card from one album). Money moves both ways and is booked under
+  year) for the random card inside, now and then a rare one; trade spares with fellow fans (eight trades a year); buy
+  or sell single cards at about the going price (selling nets a little under it, thirty sales a year); complete a set
+  (every member's card from one album). Money moves both ways and is booked under
   leisure; spending a large part of what one has in a year shows. The cards keep their albums in the world for as
   long as they are collected; old cards are worth a little more. A character who later debuts finds their own cards on
   the same market.
 
+- **Fellow fans** (`tradersOf`, `planTrade`, `tradeFor`): six fans of each group the player follows, made the first
+  time they are needed. Each is a person with a favorite member and a collection that grows every year as they buy
+  albums too. A trade is with one of them: someone who has the card to spare (never their favorite's last copy) and
+  takes the player's spares they want most, their favorite's first. The screen says who, and for what, before the
+  trade. About one fan in seven is dishonest and may keep the cards sent: after that their name is known and nobody
+  trades with them again. Three good trades with the same fan make a friend, who gives a slightly better deal.
+- **Co-stars** (`castShow`, `castYear`): a regular seat on a variety show comes with three to five castmates
+  (comedians, hosts and actors, and now and then an idol from another group), people the player knows from then on.
+  Chemistry with each moves year by year with the player's ease on camera and with chance, and lifts or drags their
+  year on the show; castmates leave and new ones arrive. Great chemistry can win **Best Couple** at the year-end
+  awards, together.
+
 ## Not built
 
-- The fans the player trades with are not people: a trade is with "another fan".
-- Variety shows are one record each (ratings, the player's year); their other cast members are not people.
+- Fans do not trade among themselves, only with the player; co-stars do not have shows of their own.

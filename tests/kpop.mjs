@@ -565,6 +565,97 @@ section('fan products, variety as a career, and the family route');
 }
 section('photocards: a market for every member, rare cards and albums, the lowest card, and collecting as a hobby');
 
+// 10. The people around it: fellow fans to trade with, and co-stars on a variety show.
+{
+  rng.seed(321);
+  p = life('uk', 17);
+  p.finance.cash = 50000;
+  kp.world();
+  for (let y2 = 0; y2 < 2; y2++) year();
+  const g = kp.fanGroups()[0];
+  kp.becomeFan(g.id, kp.current(g)[0].who);
+  const traders = kp.tradersOf(g);
+  check(traders.length === kp.FANS_PER_GROUP && traders.every((n) => n.flags.fan.groupId === g.id && Object.keys(n.flags.fan.cards).length > 0), 'six fellow fans, each with a collection of their own');
+  check(traders.every((n) => kp.current(g).some((m) => m.who === n.flags.fan.bias)), 'each loves one of the members');
+  check(kp.tradersOf(g).map((n) => n.id).join() === traders.map((n) => n.id).join(), 'the same fans are there next time');
+  // Make every trader honest, buy plenty of spares, then trade until someone becomes a friend.
+  for (const n of traders) n.flags.fan.honest = true;
+  kp.buyAlbums(30);
+  let traded = 0; let named = true;
+  for (let t2 = 0; t2 < 80 && !traders.some((n) => n.role === 'friend'); t2++) {
+    const f = kp.fanOf();
+    if (f.acts.trades >= kp.TRADES_PER_YEAR || !kp.spares(f).length) { year(); kp.buyAlbums(30); continue; }
+    // What a fan trades for: a card they lack, or one more of their favorite member's.
+    const all = Object.keys(traders.reduce((acc, n) => ({ ...acc, ...n.flags.fan.cards }), {}));
+    const want = all.find((id) => !f.cards[id] && kp.planTrade(id).trader) ?? all.find((id) => kp.cardParts(id).who === f.bias && kp.planTrade(id).trader);
+    if (!want) { year(); kp.buyAlbums(30); continue; }
+    const plan = kp.planTrade(want);
+    const before = plan.trader.flags.fan.cards[want];
+    const mine = f.cards[want] ?? 0;
+    const r = kp.tradeFor(want);
+    if (r.ok) { traded++; named = named && r.text.includes(plan.trader.firstName); check(f.cards[want] === mine + 1 && (plan.trader.flags.fan.cards[want] ?? 0) === before - 1, 'the card moves from them to you'); }
+  }
+  check(traded > 0 && named, `trades are with named fans (${traded})`);
+  // Friendship, on purpose: one fan with spare copies of the player's favorite's card, traded with again and again.
+  const pal = traders.find((n) => n.role !== 'friend' && !n.flags.fan.burned) ?? traders[0];
+  const r0 = kp.albumsOf(g)[0];
+  const biasCard = `${r0.id}|${kp.fanOf().bias}|n`;
+  pal.flags.fan.bias = kp.current(g).map((m) => m.who).find((w) => w !== kp.fanOf().bias);
+  pal.flags.fan.cards[biasCard] = 20;
+  for (const n of traders) if (n !== pal) delete n.flags.fan.cards[biasCard];
+  for (let t2 = 0; t2 < 20 && pal.role !== 'friend'; t2++) {
+    const f = kp.fanOf();
+    if (f.acts.trades >= kp.TRADES_PER_YEAR || kp.spares(f).length < 3) { year(); kp.buyAlbums(30); pal.flags.fan.cards[biasCard] = 20; continue; }
+    kp.tradeFor(biasCard);
+  }
+  check(pal.role === 'friend' && p.npcIds.includes(pal.id) && pal.flags.fan.trades >= 3, `trading well with someone makes a friend (${pal.flags.fan.trades} trades)`);
+  // A dishonest fan keeps the cards once, and is never traded with again.
+  for (const n of traders) { n.flags.fan.honest = false; n.flags.fan.burned = false; }
+  kp.fanOf().acts.trades = 0;
+  let burned = null;
+  for (let t2 = 0; t2 < 30 && !burned; t2++) {
+    const f = kp.fanOf();
+    if (f.acts.trades >= kp.TRADES_PER_YEAR || !kp.spares(f).length) { year(); kp.buyAlbums(30); kp.fanOf().acts.trades = 0; continue; }
+    const want = Object.keys(traders.reduce((acc, n) => ({ ...acc, ...n.flags.fan.cards }), {})).find((id) => kp.planTrade(id).trader);
+    if (!want) { year(); kp.buyAlbums(30); continue; }
+    const who = kp.planTrade(want).trader;
+    const r = kp.tradeFor(want);
+    if (!r.ok && who.flags.fan.burned) burned = who;
+  }
+  check(!!burned, 'a dishonest fan can keep your cards');
+  if (burned) check(Object.keys(burned.flags.fan.cards).every((id) => kp.planTrade(id).trader?.id !== burned.id), 'and nobody trades with them again');
+}
+{
+  // Co-stars on a regular show: real people, chemistry by the year, a cast that changes.
+  rng.seed(654);
+  p = life('kr', 22);
+  kp.world();
+  const a = kp.agencies()[0];
+  const app = { id: 'app_v', auditionId: null, agencyId: a.id, category: 'multi', year: store.state.year, prepared: true, stage: 'offered', scores: {}, offer: { kind: 'trainee', agencyId: a.id, review: 2, costs: 'covered', allowance: 0, housing: 'dorm', rules: [], exit: 'notice' } };
+  k().apps[app.id] = app; kp.idolOf().apps.push(app.id); kp.idolOf().guardianOk = true; kp.acceptOffer(app.id);
+  const lineup = ['player', ...a.trainees.slice(0, 4)];
+  for (const id of lineup.slice(1)) store.state.npcs[id].gender = 'female';
+  k().projects.pr_v = { id: 'pr_v', agencyId: a.id, year: store.state.year, gender: 'female', size: 5, concept: a.concepts[0], lineup, status: 'announced' };
+  kp.idolOf().debutOffer = 'pr_v'; kp.acceptDebut(); kp.debut();
+  p.skills.public_speaking = 90; p.stats.charm = 90; kp.idolOf().pop = 70;
+  let show = null;
+  for (let t2 = 0; t2 < 15 && !show; t2++) { const o = kp.varietyOffers().find((x) => x.role !== 'guest'); if (o && kp.takeVariety(o.id).ok) show = kp.myShows()[0]; else kp.varietyOf().offers = null; }
+  check(!!show && show.cast.length >= 3 && show.cast.length <= 5, 'a regular seat comes with three to five castmates');
+  if (show) {
+    check(show.cast.every((c) => store.state.npcs[c.id] && p.npcIds.includes(c.id)), 'the castmates are people the player knows');
+    const chem0 = show.cast.map((c) => c.chem).join();
+    year();
+    check(show.ended || show.cast.map((c) => c.chem).join() !== chem0, 'chemistry moves with the year');
+    for (const c of show.cast) c.chem = 95;
+    let couple = false;
+    for (let y2 = 0; y2 < 12 && !couple && !show.ended; y2++) { for (const c of show.cast) c.chem = 95; year(); couple = kp.varietyOf().awards.some((x) => x.category === 'best_couple'); }
+    if (!show.ended) check(couple, 'great chemistry can win Best Couple');
+    const pair = kp.varietyOf().awards.find((x) => x.category === 'best_couple');
+    if (pair) check(show.cast.some((c) => c.id === pair.with), 'Best Couple is with someone on the show');
+  }
+}
+section('people: fellow fans with names and collections, friends and a fan who keeps your cards; co-stars, chemistry, Best Couple');
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('Debut, and everything after.');
