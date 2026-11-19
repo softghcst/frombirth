@@ -35,6 +35,7 @@ import { accountsOf } from '../../engine/digital/accounts.js';
 import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
 import { navRow, navGroup } from '../kit.js';
+import * as together from '../../engine/together.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
@@ -282,6 +283,16 @@ function courtRecord(npc) {
     <div style="height:14px"></div>`;
 }
 
+/** A profile's actions in labeled groups (Together, Talk, Ask, Help, Love, Conflict), so a long list stays easy to scan. */
+function grouped(actions) {
+  const groupOf = (a) => a.group ?? together.GROUP_OF[a.id] ?? (a.danger ? 'conflict' : 'more');
+  return together.GROUPS.map(([g, name]) => {
+    const here = actions.filter((a) => groupOf(a) === g);
+    if (!here.length) return '';
+    return `<div class="section-label">${esc(name)}</div><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>`;
+  }).join('');
+}
+
 /**
  * The profile of anyone in the world: the same person on every screen (Digital Life opens it too), never a copy. People who are not part of the player's
  * life (a judge, a witness, an inmate on another landing) are shown without
@@ -301,7 +312,7 @@ export function openNpc(npc, api, back, o = {}) {
   const meters = isPet
     ? meterHtml('Bond', m.relationship, true) + meterHtml('Health', m.health, true)
     : [['Relationship', m.relationship], ['Money', m.money], ['Intellect', m.intellect],
-      ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy]]
+      ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy], ...(together.keepsTrust(npc) ? [['Trust in you', together.trustOf(npc)]] : [])]
       .map(([n, v]) => meterHtml(n, v, true)).join('');
   const detail = npc.flags.clinician ? '' : [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : familyStatus(npc).toLowerCase(), npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
     .filter(Boolean).map((x) => ` · ${esc(x)}`).join('');
@@ -363,6 +374,7 @@ export function openNpc(npc, api, back, o = {}) {
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
+    ...(npc.alive && npc.role !== 'pet' ? together.bondActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
     ...(npc.role !== 'pet' ? [{ id: 'places', label: 'Places they have lived' }] : []),
     ...(npc.alive && !npc.flags.clinician ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
@@ -381,8 +393,8 @@ export function openNpc(npc, api, back, o = {}) {
     ${clinic || `${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
     <div style="margin:12px 0 16px">${meters}</div>`}
     ${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}
-    <div class="btn-stack">
-      ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
+    ${grouped(actions)}
+    <div class="btn-stack" style="margin-top:12px">
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
     </div>`, { dismissable: true, onDismiss: () => back?.() });
 
@@ -457,7 +469,12 @@ export function openNpc(npc, api, back, o = {}) {
         if (yes) await report(api, love.breakUp(npc.id));
       },
     };
-    await (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
+    if (id.startsWith('with:')) {
+      const opts = together.bondOptions(npc.id, id);
+      const label = actions.find((x) => x.id === id)?.label ?? '';
+      const pick = opts ? await pickModal({ title: label, options: opts }) : undefined;
+      if (!opts || pick) await report(api, together.doBond(npc.id, id, pick));
+    } else await (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
     // Opened from somewhere else: go back there once the thing is done (the stat editor returns here by itself).
     if (id !== 'edit' && id !== 'dynasty') back?.();
     return undefined;

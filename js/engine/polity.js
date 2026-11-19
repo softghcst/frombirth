@@ -380,7 +380,6 @@ export function tickPolity(w) {
     // A new government names new ministers; one that is returned keeps its own.
     if (!kept && before.lead !== w.govt.lead && !head(w)?.isPlayer) formCabinet(w);
     const lead = party(w, rec.govt.lead);
-    const top = Object.entries(rec.shares).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, s]) => `${party(w, id).name} ${s}%`).join(', ');
     const how = w.kind === 'party' ? `${rec.govt.headName} ${before.headId === rec.govt.headId ? 'remains' : 'now stands'} at the head of ${the(lead)}.`
       : w.kind === 'presidential' ? `${rec.govt.headName} of ${the(lead)} ${before.headId === rec.govt.headId ? 'is re-elected' : 'is elected'} ${headTitle(cid)}${rec.runoff ? ' after a run-off' : ''}${rec.govt.kind === 'divided' ? ', and faces a legislature held by opponents' : ''}.`
         : rec.govt.kind === 'coalition' ? `No party won a majority. ${the(lead).replace(/^t/, 'T')} will govern in coalition with ${rec.govt.partners.map((id) => the(party(w, id))).join(' and ')}, under ${rec.govt.headName}.`
@@ -392,7 +391,13 @@ export function tickPolity(w) {
       const chosen = party(w, v?.countryId === cid ? v.partyId : membership(cid)?.id);
       if (chosen) { (pl.flags.voted ??= []).push({ year, party: chosen.name, won: chosen.id === w.govt.lead }); if (pl.flags.voted.length > 30) pl.flags.voted.shift(); tell(`You voted for ${the(chosen)}. ${chosen.id === w.govt.lead ? 'It will lead the government.' : (w.seats[chosen.id] ?? 0) ? 'It did not win.' : 'It won no seats at all.'}`, 'neutral', 4); }
     }
-    tell(w.kind === 'party' ? `The party congress has met. ${how}` : kept ? `Legislative election: ${top}; turnout ${rec.turnout}%. You remain ${headTitle(cid)}${w.govt.kind === 'majority' ? ', with a majority behind you' : ', without a majority'}.` : `General election: ${top}; turnout ${rec.turnout}%. ${how}`, 'neutral', 5);
+    // The journal line: who won and who governs, in a sentence (the full result is in The political world).
+    const share = rec.shares[rec.govt.lead] != null ? `, ${rec.shares[rec.govt.lead]}%` : '';
+    const brief = w.kind === 'presidential' ? `Election: ${rec.govt.headName} (${lead.name}) ${before.headId === rec.govt.headId ? 're-elected' : 'elected'}${rec.runoff ? ' after a run-off' : ''}.`
+      : rec.govt.kind === 'coalition' ? `Election: ${lead.name} first${share}. Coalition under ${rec.govt.headName}.`
+        : rec.govt.kind === 'minority' ? `Election: ${lead.name} first${share}. Minority government under ${rec.govt.headName}.`
+          : `Election: ${lead.name} wins${share}. ${rec.govt.headName} ${before.headId === rec.govt.headId ? 'stays' : 'becomes'} ${headTitle(cid)}.`;
+    tell(w.kind === 'party' ? `The party congress has met. ${how}` : kept ? `Election: ${lead.name}${share}. You remain ${headTitle(cid)}${w.govt.kind === 'majority' ? ', with a majority' : ', without a majority'}.` : brief, 'neutral', 5);
   }
   return news;
 }

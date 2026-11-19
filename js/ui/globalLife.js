@@ -91,7 +91,7 @@ export function openExplore(api, start = {}) {
       <div class="gl-head">
         ${isRoot ? '' : btn('← Back', 'data-back', 'small')}
         <h2 style="margin:6px 0 0">${v.view === 'story' ? 'Our Global Story' : 'Explore the World'}</h2>
-        <p class="muted" style="margin:0">${v.view === 'story' ? 'How the family has lived across places and generations.' : 'Every destination has a story waiting for you.'}</p>
+        <p class="muted" style="margin:0">${v.view === 'story' ? 'How the family has lived across places and generations.' : ''}</p>
         <p class="gl-where">${where.away ? `✈ Away: ${esc(where.name)}. Home is still ${esc(placeName(p.countryId, p.city, store.state.year))}.` : `At home in ${esc(placeName(p.countryId, p.city, store.state.year))} · ${esc(docs.today())}`}</p>
         ${(() => { const era = getEra(store.state.year); if (era.id === 'now') return ''; const papers = { open: 'No passports or visas are asked for, and anyone may go and settle where they like.', controls: 'Passports are required, and most borders want a visa.', modern: 'Passports and visas as in the modern world, by the rules of the time.' }[docs.eraOf().id]; return `<p class="muted gl-era">${esc(era.name)} (${esc(era.short)}). ${esc(papers)} Travel is by what exists in ${store.state.year}.</p>`; })()}
       </div>
@@ -111,7 +111,7 @@ export function openExplore(api, start = {}) {
     discover(params, ui) {
       const list = travel.discover(ui.filter ?? '');
       return `<div class="world-groups">${chip('All', !ui.filter, 'data-filter=""')}${FILTERS.map(([id, label]) => chip(label, ui.filter === id, `data-filter="${id}"`)).join('')}</div>
-        <p class="muted">${list.length} places. Costs are for one person for a week, with the journey; rough, for play.</p>
+        <p class="muted">${list.length} places. Prices are for a week.</p>
         <div class="world-list">${list.map((d) => `<button type="button" class="row world-row" data-dest="${d.id}" data-city="${esc(d.city)}">
           <div class="world-flag" aria-hidden="true">${d.flag}</div>
           <div class="main"><strong>${esc(d.city)}, ${esc(d.name)}</strong>
@@ -178,7 +178,7 @@ export function openExplore(api, start = {}) {
             ${x.problems.map((pr) => `<small>${esc(pr)}</small>`).join('')}
             ${x.mayApply && x.needs === 'passport' ? btn('Apply for a passport', `data-passport="${x.id}" data-issuer="${x.rule.nationality ?? cit.held(docs.personById(x.id))[0]}"`, 'small') : ''}
             ${x.mayApply && x.needs && x.needs !== 'passport' ? btn(`Apply: ${x.rule.name}`, `data-applyentry="${x.id}"`, 'small') : ''}</div>`).join('') : '<p class="muted">No border to cross.</p>'}
-          <p class="muted">Simplified game rules, not travel or immigration advice. A visitor may not work.</p></div>
+          <p class="muted">A visitor may not work.</p></div>
         ${m?.includesStay ? '' : `<div class="card gl-step"><h3>7 · Where to stay</h3>${stays.map((s) => `<label class="gl-radio"><input type="radio" name="stay" data-planfield="stay" value="${s.id}" ${trip.stay === s.id ? 'checked' : ''}> ${esc(s.name)}${s.accessible ? '' : ' <small class="muted">not step-free</small>'}</label>`).join('')}</div>`}
         <div class="card gl-step"><h3>8 · Things to do</h3><div class="chips">${acts.map((a) => chip(`${a.name}${a.liked ? ' ★' : ''}`, trip.activities.includes(a.id), `data-act="${a.id}"`)).join('')}</div><p class="muted">★ something you love. Unplanned things can be done there too.</p></div>
         <div class="card gl-step"><h3>9 · Paying</h3>
@@ -186,7 +186,7 @@ export function openExplore(api, start = {}) {
           <label class="gl-radio"><input type="checkbox" data-planfield="insurance" ${trip.insurance ? 'checked' : ''}> Travel insurance</label>
           ${q.lines.map((l) => kvt(`${l.label}${l.payer === 'employer' ? ' (employer)' : l.payer && !['organizer', 'player'].includes(l.payer) ? ` (${docs.personById(l.payer)?.firstName})` : ''}`, money(l.amount))).join('')}
           ${kv('<strong>You pay</strong>', `<strong>${esc(money(q.organizer))}</strong>`)}${q.employer ? kvt('Your employer pays', money(q.employer)) : ''}
-          <p class="muted">Refunds if canceled more than 30 days ahead: most of the journey, all of the stay; closer, much less. Insurance pays back a disrupted trip.</p></div>` : ''}
+          </div>` : ''}
         ${bad.length ? `<div class="card gl-problems"><h3>Before booking</h3>${bad.map((b) => `<p>• ${esc(b)}</p>`).join('')}</div>` : ''}
         <div class="btn-stack">${btn(`Book${bad.length ? '' : ` for ${money(q.organizer)}`}`, `data-book="${trip.id}" ${bad.length ? 'disabled' : ''}`, 'primary')}${btn('Discard this plan', `data-discard="${trip.id}"`)}</div>
         ${going.length > 1 ? `<p class="muted">${going.length} traveling.</p>` : ''}`;
@@ -226,16 +226,16 @@ export function openExplore(api, start = {}) {
       const tab = ui.tab ?? 'citizenship';
       const tabs = [['citizenship', 'Citizenship'], ['passports', 'Passports'], ['visas', 'Visas'], ['residence', 'Residence'], ['applications', 'Applications'], ['history', 'Immigration history']];
       let body = '';
-      if (tab === 'citizenship') body = `<div class="card"><h3>Born</h3>${kvt('Birthplace', placeName(p.birthCountryId, p.birthCity, p.birthYear))}<p class="muted">Where you were born is not the same as your nationality.</p></div>
+      if (tab === 'citizenship') body = `<div class="card"><h3>Born</h3>${kvt('Birthplace', placeName(p.birthCountryId, p.birthCity, p.birthYear))}</div>
         ${paper.citizenships.map((c) => `<div class="card"><h3>${c.flag} ${esc(c.name)}</h3>${kvt('How', c.how)}${kvt('Since', c.since ?? 'birth')}${kvt('Status', c.lost ? `Ended ${c.lost}` : 'Held')}</div>`).join('')}
         <div class="card"><h3>Becoming a citizen where you live</h3><p>${esc(nat.possible ? `You can apply. ${nat.outlook}` : nat.why)}</p>${nat.possible ? btn('Apply for citizenship', 'data-naturalize', 'primary') : ''}</div>`;
       if (tab === 'passports') body = d.people.map((x) => `<div class="card"><h3>${esc(x.name)}${x.you ? '' : ' (your child)'}</h3>
         ${x.passports.length ? x.passports.map((pp) => kv(`${pp.flag} ${esc(pp.name)}`, `${esc(pp.word)} · ${esc(pp.issuedOn)} to ${esc(pp.expiresOn)}${pp.status === 'valid' ? ` <button type="button" class="btn small" data-lost="${x.id}" data-doc="${pp.id}">Report lost</button>` : ''}`)).join('') : '<p class="muted">No passport.</p>'}
         ${x.nationalities.map((n) => `<p>${n.flag} ${esc(n.name)}: ${n.quote.possible ? btn(`${n.quote.renewal ? 'Renew' : 'Apply'} (${money(n.quote.fee)}, ${n.quote.years} years)`, `data-passport="${x.id}" data-issuer="${n.id}"`, 'small') : `<small class="muted">${esc(n.quote.why)}</small>`}</p>`).join('')}</div>`).join('')
-        + '<p class="muted">A passport is a document. It can expire or be lost without changing anyone\'s citizenship.</p>';
+        + '';
       if (tab === 'visas') body = d.people.map((x) => `<div class="card"><h3>${esc(x.name)}</h3>${x.authorizations.length ? x.authorizations.map((a) => kvt(`${a.name}: ${a.place}`, `${STATUS[a.status] ?? a.status} · ${a.validFrom} to ${a.validUntil} · ${a.permitted.join(', ')}`)).join('') : '<p class="muted">None.</p>'}</div>`).join('')
-        + '<p class="muted">A visa is permission to visit, for a purpose and a time. It is not residence and it is not permission to work.</p>';
-      if (tab === 'residence') { const r = paper.residency; body = `<div class="card"><h3>${r.flag} ${esc(r.name)}</h3>${kvt('Status', r.word)}${r.status !== 'citizen' ? kvt('Since', r.since) : ''}${imm.statusLine(p) ? kvt('Permission', imm.statusLine(p)) : ''}${kvt('Work', r.workAuthorized ? 'Allowed' : 'Not allowed')}${kvt('Health care', healthCover(p).how)}${kvt('Tax residence (game rule)', `${nameOf(p.countryId)}: where you live`)}</div>${(() => { const house = imm.household(p).filter((h) => !h.citizen || r.status !== 'citizen'); return house.length ? `<div class="card"><h3>Your household here</h3>${house.map((h) => kvt(`${h.name}${h.role === 'child' ? `, ${h.age}` : ''}`, h.status)).join('')}<p class="muted">Each person's status is recorded separately; a child's nationality comes from the law of the place and the parents, never from a visa.</p></div>` : ''; })()}<p class="muted">Residence is permission to live somewhere. It is not citizenship, and owning a home somewhere does not give it.</p>`; }
+        + '';
+      if (tab === 'residence') { const r = paper.residency; body = `<div class="card"><h3>${r.flag} ${esc(r.name)}</h3>${kvt('Status', r.word)}${r.status !== 'citizen' ? kvt('Since', r.since) : ''}${imm.statusLine(p) ? kvt('Permission', imm.statusLine(p)) : ''}${kvt('Work', r.workAuthorized ? 'Allowed' : 'Not allowed')}${kvt('Health care', healthCover(p).how)}${kvt('Tax residence (game rule)', `${nameOf(p.countryId)}: where you live`)}</div>${(() => { const house = imm.household(p).filter((h) => !h.citizen || r.status !== 'citizen'); return house.length ? `<div class="card"><h3>Your household here</h3>${house.map((h) => kvt(`${h.name}${h.role === 'child' ? `, ${h.age}` : ''}`, h.status)).join('')}</div>` : ''; })()}`; }
       if (tab === 'applications') body = d.applications.length ? d.applications.map((a) => `<div class="card"><h3>${esc({ passport: 'Passport', eta: 'Electronic authorization', evisa: 'e-Visa', visa: 'Visitor visa', study: 'Student visa', on_arrival: 'Visa on arrival', relocation: 'Moving abroad' }[a.kind] ?? a.kind)}: ${esc(a.place)}</h3>
           ${kvt('For', a.who)}${kvt('Submitted', a.submittedYear)}${kvt('Status', STATUS[a.status] ?? a.status)}${['submitted', 'review_requested'].includes(a.status) ? kvt('Decision', `when ${a.decideYear} begins`) : ''}${a.reason ? `<p class="muted">${esc(a.reason)}</p>` : ''}
           ${a.status === 'refused' && a.kind !== 'eta' && a.kind !== 'relocation' && !(a.reviews >= 1) ? btn('Ask for a review', `data-review="${a.id}"`, 'small') : ''}${['submitted'].includes(a.status) && a.kind !== 'relocation' ? btn('Withdraw', `data-withdraw="${a.id}"`, 'small') : ''}</div>`).join('') : '<p class="empty">No applications.</p>';
@@ -249,7 +249,7 @@ export function openExplore(api, start = {}) {
       const dest = ui.dest;
       const ways = dest ? move.routes(dest) : [];
       const live = cases.filter((a) => ['submitted', 'review_requested', 'approved'].includes(a.status) && !a.used);
-      return `<p class="muted">Where will your next chapter begin? Moving is an application decided when the year turns, then a move you arrange yourself. Simplified game rules, not immigration advice.</p>
+      return `
         <div class="card"><h3>Residence status</h3>${kvt(nameOf(p.countryId), cit.STATUS_WORDS[cit.residency(p).status])}${imm.statusLine(p) ? `<p class="muted">${esc(imm.statusLine(p))}</p>` : ''}</div>
         ${live.map((a) => {
           const steps = reloc.checklist(a.id);
@@ -274,12 +274,12 @@ export function openExplore(api, start = {}) {
             ${r.eligible ? btn(['right', 'free'].includes(r.id) ? 'Start arranging the move' : `Apply (${money(Math.round(r.fee * 0.2))} now)`, `data-applymove="${r.id}"`, 'small') : ''}</div>`).join('')}
             <div class="section-label">Family relocation</div><p>Coming: ${esc(move.household(dest).map((n) => n.firstName).join(', ') || 'only you')}.</p>
             ${move.askable().map((x) => `<button type="button" class="tree-row" data-ask="${x.npc.id}" ${x.asked ? 'disabled' : ''}><strong>Ask ${esc(x.npc.firstName)}</strong><small>${x.coming ? 'Has said yes' : x.asked ? 'Has said no' : 'They decide for themselves'}</small></button>`).join('')}` : ''}</div>
-        <div class="card"><h3>Work and study abroad</h3><p class="muted">A job offer is not permission to work: the work route is an application, tied to the job. A student visa does not allow full-time work. A semester abroad is a trip (Plan a Trip → University semester abroad) with a student visa.</p>
+        <div class="card"><h3>Work and study abroad</h3>
           ${(() => { const qs = creds.qualifications(); return qs.length ? `<div class="section-label">Your qualifications</div>${qs.map((q) => `<div class="gl-route ${q.here ? '' : 'closed'}"><strong>${esc(q.name)}</strong>
             <small>${esc(q.here ? `Recognized in ${nameOf(p.countryId)}: you can practice here.` : `Recognized in ${q.practice.map(nameOf).join(', ') || 'nowhere yet'}; not yet in ${nameOf(p.countryId)}.`)}</small>
             ${q.here ? '' : `<small>${esc(q.open ? (q.open.status === 'pending' ? `With ${q.body}: decided when the year turns.` : `Adaptation year with ${q.body}.`) : q.mutual ? `Under the ${q.mutual}, ${q.body} registers it on application.` : `${q.body.replace(/^./, (x) => x.toUpperCase())} decides: a full license, a supervised year${regFor(q).exam ? ' and an exam' : ''}, or a refusal. ${q.language.needed ? `They ask for the language at level ${q.language.needed}; you have ${Math.round(q.language.have)}.` : ''}`)}</small>
             ${q.open ? '' : btn(`Apply for recognition (${money(q.fee)})`, `data-recognize="${q.profession}"`, 'small')}`}</div>`).join('')}
-            <p class="muted">Game rules, the same everywhere; real recognition differs by profession and country.</p>` : ''; })()}</div>
+            ` : ''; })()}</div>
         ${(() => {
           const mine = bizAbroad.businessesAbroad();
           const types = bizEngine.startOptions().filter((t) => !t.solo);
@@ -297,7 +297,7 @@ export function openExplore(api, start = {}) {
             ${bc ? `<label class="field">City <select data-bizf="bizCity">${COUNTRIES[bc].cities.map((c) => `<option ${c === city ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>` : ''}
             ${block ? `<p class="muted">${esc(block)}</p>` : q ? `<p class="muted">About ${esc(money(q.fromCash))} of your money (${esc(fmtMoney(q.total, COUNTRIES[bc]))} there): the premises, the registration, and a manager's first months. Its accounts are kept and taxed there. It gives no right to live there.</p>${btn('Open it', `data-bizstart="${bt}" data-bizcountry="${bc}" data-bizcity="${esc(city)}"`, 'small')}` : ''}
             ${home.length ? `<div class="section-label">A branch abroad</div>${home.map((b) => `<p>${esc(b.name)}: ${bc ? btn(`Open a branch in ${city}`, `data-bizbranch="${b.id}" data-bizcountry="${bc}" data-bizcity="${esc(city)}"`, 'small') : '<small class="muted">Choose a country above.</small>'}</p>`).join('')}` : ''}
-            <p class="muted">Owning a business abroad gives no right to live there. After a year of trading with staff, the business-owner route opens: an application like any other.</p></div>`;
+            </div>`;
         })()}
         <div class="card"><h3>Citizenship pathways</h3><p class="muted">${esc(cit.naturalization(p).possible ? 'You can apply for citizenship where you live (Passport & Documents).' : cit.naturalization(p).why)} Permanent residence is not citizenship; marriage shortens the wait and grants nothing by itself.</p></div>
         ${cases.filter((a) => !live.includes(a)).length ? `<div class="card"><h3>Earlier applications</h3>${cases.filter((a) => !live.includes(a)).map((a) => kvt(`${nameOf(a.jurisdictionId)}, ${a.submittedYear}`, `${a.routeName}: ${STATUS[a.used ? 'used' : a.status]}`)).join('')}</div>` : ''}`;
@@ -335,7 +335,7 @@ export function openExplore(api, start = {}) {
           <p class="muted">Where you live: ${esc(fluency(p.countryId, p) || 'no other language needed')}. Proficiency grows with time and use: lessons, living somewhere, family. Nobody is fluent after one trip.</p></div>
         ${logs.length ? `<div class="card"><h3>How you learned</h3>${logs.slice(-12).reverse().map((x) => kvt(`${x.year}`, `${langs.find((l) => l.id === x.lang)?.name ?? x.lang}: ${x.source}`)).join('')}</div>` : ''}
         <div class="card"><h3>Culture and belonging</h3>${s ? `<p>Still settling into ${esc(nameOf(s.countryId))}, since ${s.since}. It takes some people longer than others; friends nearby help.</p>` : ''}
-          ${chron.events((e) => e.type === 'belonging' && e.subject === chron.archiveIdOf(p)).map((e) => kvt(String(e.year), e.title)).join('') || (s ? '' : '<p class="muted">Every country you have lived in is part of who you are.</p>')}
+          ${chron.events((e) => e.type === 'belonging' && e.subject === chron.archiveIdOf(p)).map((e) => kvt(String(e.year), e.title)).join('') || (s ? '' : '')}
           ${kvt('Countries lived in', String(new Set(story.placesLived().map((l) => l.countryId)).size))}</div>`;
     },
 
@@ -357,7 +357,7 @@ export function openExplore(api, start = {}) {
         const col = travel.collection();
         body = `<div class="card">${kvt('Countries', String(col.countries.length))}${kvt('Cities', String(col.cities))}${col.favorite ? kvt('Most visited', `${col.favorite.flag} ${col.favorite.name}`) : ''}</div>
           <div class="passport">${col.countries.map((e, i) => `<div class="stamp" style="transform:rotate(${[-3, 2, -1, 3, -2, 1][i % 6]}deg)"><span class="flag">${e.flag}</span><strong>${esc(e.name)}</strong><small>${e.legacy ? 'An older record' : `First ${esc(String(e.first))}${e.visits > 1 ? ` · ${e.visits} visits` : ''}`}</small></div>`).join('')}</div>
-          <p class="muted">Stamps are a keepsake of the game, for trips actually taken.</p>
+          
           <div class="card"><h3>Achievements</h3>${travel.achievements().map((a) => kv(`${a.year ? '★' : '☆'} ${esc(a.name)}`, `<small>${esc(a.year ? `${a.year}` : a.desc)}</small>`)).join('')}</div>`;
       }
       return `<p class="muted">The places you've been. The memories you've made.</p><div class="world-groups">${tabs.map(([id, label]) => chip(label, tab === id, `data-tab="${id}"`)).join('')}</div>${body}`;
@@ -383,7 +383,7 @@ export function openExplore(api, start = {}) {
         <div class="section-label">Timeline</div>
         ${s.timeline.map((i, n) => `<details class="gl-tl" ${ui.open === n ? 'open' : ''} data-tl="${n}"><summary>${esc(String(i.year ?? '?'))} · ${esc(i.name ?? '')}: ${esc({ born: 'born', lived: 'lived', visited: 'visited', moved: 'moved' }[i.kind])} ${esc(i.where)}</summary>
           <div class="btn-row" style="flex-wrap:wrap;margin:6px 0">${btn('The person', `data-person="${esc(i.person)}"`, 'small')}${i.eventId ? btn('The move', `data-event="${i.eventId}"`, 'small') : ''}${i.tripId ? btn('The trip', `data-trip="${i.tripId}"`, 'small') : ''}${(i.homes ?? []).map((h) => btn('The home', `data-house="${h}"`, 'small')).join('')}</div></details>`).join('') || '<p class="empty">Nothing matches.</p>'}
-        <p class="muted">Every marker is a place recorded in this family's life; positions from GeoNames, land from Natural Earth. A place known only by country is shown at its capital (hollow marker). Lines join only moves that were made.</p>`;
+        `;
     },
 
     person({ id }) {
@@ -418,7 +418,7 @@ export function openExplore(api, start = {}) {
       const h = story.homeChronicle(id);
       if (!h) return '<p class="empty">Not found.</p>';
       return `<div class="card"><h3>${esc(h.name)}</h3>${kvt('Where', h.where)}${kvt('Owner', h.owner)}${kvt('Lived in now', h.livedInNow ? 'Yes, by you' : h.let ? 'Let to tenants' : 'No')}${h.bought ? kvt('Bought', String(h.bought)) : ''}
-        <p class="muted">Owning a home and living in it are separate things; neither is the right to live in a country.</p></div>
+        </div>
         <div class="card"><h3>Who lived here</h3>${h.residents.map((r) => `<button type="button" class="tree-row" data-person="${esc(r.id)}"><strong>${esc(r.name)}</strong><small>${r.from ?? '?'}${r.to ? `–${r.to}` : r.current ? ' to now' : ''}</small></button>`).join('') || '<p class="muted">No residents recorded.</p>'}</div>
         ${h.events.length ? `<div class="card"><h3>What happened here</h3>${h.events.map((e) => `<button type="button" class="tree-row" data-event="${e.id}"><strong>${esc(e.title)}</strong><small>${e.year}</small></button>`).join('')}</div>` : ''}`;
     },

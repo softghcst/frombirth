@@ -257,6 +257,29 @@ section('whole lives: nothing marked twice, traditions at most once a year, the 
 }
 section('with six- or three-month turns, a year\'s occasions still happen once, and Age Up finishes the year once');
 
+// ---------- A baby's year: the family pays, as the screen says ----------
+{
+  const baby = life('us', 1, 0);
+  const mom = person('parent', 30, 90); const dad = person('parent', 32, 90);
+  const money = (n) => (n.life ? n.life.savings : n.savings) ?? 0;
+  if (mom.life) mom.life.savings = Math.round(5000 * COUNTRIES.us.currency.scale); else mom.savings = Math.round(5000 * COUNTRIES.us.currency.scale);
+  const holiday = mo.thisYear().find((x) => x.holiday && x.ok && !x.done);
+  check(holiday && mo.costOf(holiday, 0) > 0 && mo.familyPays(), 'a baby at home with parents: the family pays for what the year holds');
+  const r = holiday ? mo.celebrate({ key: holiday.key, guests: mo.suggestedGuests(holiday) }) : { ok: false, text: 'no holiday' };
+  check(r.ok && baby.finance.cash === 0 && /Your family paid/.test(r.text), `a holiday is marked with no money of the baby's own (${r.text})`);
+  // A scene's cost for a young child comes out of the parents' savings, not the child's cash.
+  const { applyEffects } = await import('../js/engine/effects.js');
+  const before = money(mom) + money(dad);
+  applyEffects([{ type: 'cash', delta: -150 }], { cast: {} });
+  check(baby.finance.cash === 0 && money(mom) + money(dad) === before - Math.round(150 * COUNTRIES.us.currency.scale), 'a family portrait at age one is paid for by the parents');
+  // A teenager pays from their own pocket.
+  const teen = life('us', 15, 100);
+  person('parent', 45, 80);
+  applyEffects([{ type: 'cash', delta: -20 }], { cast: {} });
+  check(teen.finance.cash === Math.round(80 * COUNTRIES.us.currency.scale), 'a teenager pays for their own choices');
+}
+section('a child at home: the family pays for occasions and for scenes, as the screen says; a teenager pays their own way in scenes');
+
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }
 console.log('Every moment happens once, in its year.');

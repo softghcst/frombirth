@@ -101,7 +101,7 @@ export function postingView(id) {
   const hours = post.partTime ? canFit(post.hours, { kind: 'parttime' }) : canFit(post.hours + 0, { kind: 'job', replacesMain: !!p.career.careerId });
   if (!hours.ok) reasons.push(hours.text);
   return { post, employer: e, career: car, eligible: !reasons.length, reasons, stretch, have, want, culture: cultureOf(e),
-    note: stretch > 0 ? `A stretch: they want about ${yrs(want)} of relevant experience and you have ${have}.` : '' };
+    note: stretch > 0 ? `A stretch: wants ${yrs(want)} of experience.` : '' };
 }
 
 /** Questions for an opening: one from its own field, the rest general. */

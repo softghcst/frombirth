@@ -96,6 +96,7 @@ node tests/kpop.mjs            # the K-pop idol life: auditions, trainees, survi
 node tests/music.mjs           # bands, releases, charts, royalties paid once, record deals, tours, music awards, heirs
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
 node tests/moments.mjs         # living moments: occasions marked once in their year, Age Up never repeats them, traditions passed down
+node tests/together.mjs        # what you can do with the people in your life, by role, age and era; trust, memories, once a year
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
