@@ -6,11 +6,11 @@
   <g id="hair_base" fill="#8f4b29" stroke="#23140f" stroke-width="6" stroke-linejoin="round">
     <path d="M255 141 C229 134 193 145 171 164 C146 184 134 218 134 253.5 Q133 269 140.6 278 Q149 269 154 252 C161 227 175 210 198 204 C219 198 242 200 255 211.6 C268 200 291 198 312 204 C335 210 349 227 356 252 Q361 269 368.8 278 Q377 269 375 253.5 C376 218 364 184 339 164 C316 145 279 134 255 141 Z"/>
   </g>
-  <g id="hair_bangs" fill="#8f4b29" stroke="#23140f" stroke-width="6" stroke-linejoin="round">
+  <g id="hair_bangs" fill="#8f4b29" stroke="#4a2414" stroke-width="2.5" stroke-linejoin="round">
     <path d="M162 225 C152 237 146 250 149 264 C152 278 154 286 146 297 C162 289 166 274 159 259 Q154 246 162 225 Z"/>
     <path d="M348 225 C358 237 364 250 361 264 C358 278 356 286 364 297 C348 289 344 274 351 259 Q356 246 348 225 Z"/>
   </g>
-  <g id="hair_lines" fill="none" stroke-width="3" stroke-linecap="round">
+  <g id="hair_lines" fill="none" stroke-width="2.5" stroke-linecap="round">
     <path stroke="#4a2414" d="M255 144 Q252 174 255 208 M127 158 C115 139 132 111 156 108 C180 102 192 130 170 141 Q157 147 151 139 M383 158 C395 139 378 111 354 108 C330 102 318 130 340 141 Q353 147 359 139"/>
     <path stroke="#b8693d" d="M127 125 Q138 99 166 98 M383 125 Q372 99 344 98 M246 157 Q199 151 166 190 M264 157 Q311 151 344 190"/>
   </g>

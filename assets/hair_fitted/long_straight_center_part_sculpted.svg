@@ -6,10 +6,10 @@
   <g id="hair_base" fill="#8f4b29" stroke="#23140f" stroke-width="6" stroke-linejoin="round" style="fill:var(--hair-color,#8f4b29)">
     <path d="M254.62 144.07 C218.88 133.12 178.25 147.87 156.35 175.53 C134.5 202.22 130.38 230.86 133 252.52 Q133.63 272.15 127.85 284.03 Q136.68 276.06 147.49 276 C145.06 261.3 157.36 252.44 168.66 243.56 Q183.69 231.71 190.01 213.99 Q225.24 222.8 254.01 203.13 Q282.5 222.8 318.48 214 Q324.77 231.72 339.76 243.56 C351.08 252.44 363.49 261.31 361.39 276 Q372.17 276.07 381.09 284.03 Q375.16 269.2 375.4 252.52 C377.86 230.86 373.77 202.22 352.14 175.54 C330.59 147.87 290.32 133.12 254.62 144.07 Z" />
   </g>
-  <g id="hair_bangs" fill="#8f4b29" stroke="#23140f" stroke-width="6" stroke-linejoin="round" style="fill:var(--hair-color,#8f4b29)">
+  <g id="hair_bangs" fill="#8f4b29" stroke="#4a2414" stroke-width="2.5" stroke-linejoin="round" style="fill:var(--hair-color,#8f4b29);stroke:color-mix(in srgb,var(--hair-color,#8f4b29) 50%,#000)">
 
   </g>
-  <g id="hair_lines" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <g id="hair_lines" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
     <path stroke="#4a2414" style="stroke:color-mix(in srgb,var(--hair-color,#8f4b29) 50%,#000)" d="M254.62 145.06 Q253.55 172.67 254.01 203.13 M247.88 150.98 Q169.61 155.77 140.93 255.44 M246.88 168.73 Q197.11 178.53 173.87 221.9 M246.85 186.43 Q221.31 206.09 195.66 209.07 M261.31 150.98 Q339.11 155.77 367.5 255.44 M262.15 168.73 Q311.6 178.53 334.5 221.9 M262.04 186.43 Q287.38 206.1 312.88 209.07 M126.84 349.8 Q124.47 427.23 113.01 478.77 M150.06 361.68 Q147.86 440.18 135.86 483.66 M382.7 349.8 Q385.43 427.22 397.03 478.76 M359.59 361.67 Q362.12 440.17 374.24 483.65" />
     <path stroke="#b8693d" style="stroke:color-mix(in srgb,var(--hair-color,#8f4b29) 79%,#fff)" d="M165.43 190.36 Q183.39 165.68 212.28 156.84 M343.01 190.36 Q325.33 165.69 296.69 156.85 M134.44 359.77 Q132.21 400.99 127.15 437.29 M375.17 359.77 Q377.6 400.98 382.79 437.29" />
   </g>

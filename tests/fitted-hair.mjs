@@ -5,6 +5,8 @@
 //    a clipToHead style (buzz cut, fade) is clipped to the head's skin
 //  - children get the kid head's file; a head the style was not fitted to gets the base head's
 //  - a fitted style can be chosen and saved, and the hairstyles given out at random are unchanged
+//  - every hairstyle has one bold outer silhouette (hair_back, hair_base) and only soft lines inside it (hair_bangs,
+//    hair_lines), raw and fitted; and the ChatGPT prompt asks for exactly that
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { FITTED_HAIR, FITTED_BASE_HEAD, FITTED_LOADED } from '../js/avatar/fittedHair.js';
 import { CATALOG, HAIR_STYLES, FITTED_STYLES, fittedFor, normalize } from '../js/avatar/catalog.js';
@@ -79,6 +81,26 @@ for (const id of styles) {
 }
 check(!HAIR_STYLES.some((h) => FITTED_HAIR[h.id]), 'fitted styles are among the styles given out at random');
 check(FITTED_STYLES.every((s) => s.type !== 'any' || ['straight', 'wavy', 'curly', 'coily'].every((t) => fittedFor(t).includes(s))), 'a style for any texture is not offered to every texture');
+
+
+// The lines: one bold outer silhouette, soft separation inside it (scripts/soften_hair_lines.py, assets/CHATGPT_HAIR_PROMPT.md).
+{
+  const layers = (svg) => Object.fromEntries([...svg.matchAll(/<g id="(hair_\w+)"([\s\S]*?)<\/g>/g)].map((m) => [m[1], m[2]]));
+  const widths = (body) => [...body.matchAll(/stroke-width(?:="|:)\s*([\d.]+)/g)].map((m) => Number(m[1]));
+  const files = [...raw.map((id) => `assets/hair_raw/${id}.svg`), ...readdirSync(new URL('assets/hair_fitted/', root)).filter((f) => f.endsWith('.svg')).map((f) => `assets/hair_fitted/${f}`)];
+  for (const f of files) {
+    const g = layers(readFileSync(new URL(f, root), 'utf8'));
+    for (const outer of ['hair_back', 'hair_base']) check(!g[outer] || !/<path/.test(g[outer]) || (g[outer].includes('#23140f') && widths(g[outer]).includes(6)), `${f}: ${outer} has lost its bold outline`);
+    for (const inner of ['hair_bangs', 'hair_lines']) {
+      check(!(g[inner] ?? '').includes('#23140f'), `${f}: ${inner} still has the bold outline inside the hair`);
+      check(widths(g[inner] ?? '').every((w) => w <= 2.5), `${f}: ${inner} has a line heavier than 2.5 (${widths(g[inner])})`);
+    }
+  }
+  const prompt = readFileSync(new URL('assets/CHATGPT_HAIR_PROMPT.md', root), 'utf8');
+  check(/ONLY the outer silhouette/.test(prompt) && prompt.includes('stroke="#4a2414" stroke-width="2.5" stroke-linecap="round"') && /hair_bangs has stroke="none"/.test(prompt)
+    && ['#8f4b29', '#6b3520', '#4a2414', '#b8693d'].every((c) => prompt.includes(c)), 'the ChatGPT hair prompt does not ask for one bold silhouette and soft lines inside it');
+  check(prompt.includes(`Here is the base head (\`${landmarks.base_head}\`)`) && prompt.includes('| `crown_top` |'), 'the ChatGPT hair prompt has lost its reference head or landmarks');
+}
 
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));

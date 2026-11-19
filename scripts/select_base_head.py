@@ -67,7 +67,9 @@ RULES (all required):
      <g id="hair_base">   the main mass in FRONT of the head: the cap over the skull from the crown down to the
                           hairline, and the sideburns or side lengths.
      <g id="hair_bangs">  the fringe/bangs and any locks that fall over the forehead or face (may be empty).
-     <g id="hair_lines">  strand and texture lines, and highlights, drawn on top (fill="none", strokes only).
+                          Filled shapes with NO outline (stroke="none"), so they blend into hair_base.
+     <g id="hair_lines">  drawn on top: thin lines for the part, strands and the bottom edge of the bangs
+                          (fill="none"), and any highlights (filled shapes with stroke="none").
 3. Do NOT include the head, face, ears, neck or any skin in your output. Hair only.
 4. Fit the head exactly, using these landmarks of the base head (x, y in the 512 frame, y points down):
    - crown_top {marks["crown_top"]["x"]}, {marks["crown_top"]["y"]}: the hair must cover the top of the skull, sitting on or above this point.
@@ -76,12 +78,23 @@ RULES (all required):
    - ear_left {marks["ear_left"]["x"]}, {marks["ear_left"]["y"]} and ear_right {marks["ear_right"]["x"]}, {marks["ear_right"]["y"]}: where the ears attach. Sideburns or the side hairline end here; longer hair may fall past it.
    - Keep the face itself (eyes, nose and mouth area, roughly x 175-335, y 250-415) clear, except for a fringe or strands that deliberately fall over it.
 5. Long hair may fall behind the shoulders down to the bottom of the frame (y 512); keep everything within x 0-512.
-6. Colours: the main hair colour is exactly #8f4b29 (the fill of the main shape in hair_base, and of hair_bangs).
-   hair_back uses a darker shade such as #6b3520; texture lines a darker brown such as #4a2414; highlights a lighter
-   brown such as #b8693d. Only shades of that one brown, so the game can dye the hair any colour.
-7. Outline: every hair shape is outlined with stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" (the same
-   dark brown and weight as the head's outline). Texture lines in hair_lines use stroke-width 3 with round caps.
-8. Style: match the head's flat, clean cartoon look: smooth curves, bold outline, no texture noise, no tiny specks.
+6. Colours: use exactly these four and no others, so the game can dye the hair any colour:
+     #8f4b29  the main fill: every shape in hair_base and hair_bangs
+     #6b3520  the fill of hair_back
+     #4a2414  the internal lines in hair_lines
+     #b8693d  highlights in hair_lines (filled shapes, no line around them)
+   (The outline colour {OUTLINE} in rule 7 is the only other colour, and only on the outer silhouette.)
+7. Lines: the hair has ONE bold outer silhouette and soft, subtle detail inside it.
+   - Outline ONLY the outer silhouette: put stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" on the shapes
+     in hair_base and hair_back, and nowhere else (the same dark brown and weight as the head's outline).
+   - Do NOT put the {OUTLINE} 6-unit outline on internal pieces or bangs, or anywhere hair overlaps hair: every shape
+     in hair_bangs has stroke="none", so it blends smoothly into hair_base.
+   - Draw the part, strand lines and the bottom edge of the bangs as thin lines in hair_lines:
+     stroke="#4a2414" stroke-width="2.5" stroke-linecap="round" fill="none".
+   - No harsh internal cut-outs: separate locks by overlapping borderless shapes or by these thin lines, not by
+     gaps or holes cut through the hair.
+8. Style: match the head's flat, clean cartoon look: smooth curves, one bold silhouette, no texture noise, no tiny
+   specks.
 9. For a buzz cut or skin fade (hair that hugs the skull), add data-clip-to-head="true" to the root <svg>: the game
    then clips the hair to the head's exact outline, so it can be drawn slightly oversized with no overhang.
 

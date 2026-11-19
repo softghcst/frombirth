@@ -9,10 +9,10 @@
   </g>
   <g id="hair_bangs">
     <path fill="#8f4b29" style="fill:var(--hair-color,#8f4b29)" d="M161 227 Q162.7 234.2 189 236 Q190.2 219.9 204 213 Q205.2 234.6 224 240 Q225.1 222.5 238 215 Q239.3 230.2 259 234 Q260 220 271 214 Q272.3 236.4 293 242 Q294 223.8 305 216 Q306.3 227.2 326 230 Q326.9 218.8 337 214 Q337.7 224.4 348 227 Q350 200 330 190 Q254.5 176 179 190 Q160 202 161 227 Z" />
-    <path fill="none" stroke="#23140f" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" d="M161 227 Q162.7 234.2 189 236 Q190.2 219.9 204 213 Q205.2 234.6 224 240 Q225.1 222.5 238 215 Q239.3 230.2 259 234 Q260 220 271 214 Q272.3 236.4 293 242 Q294 223.8 305 216 Q306.3 227.2 326 230 Q326.9 218.8 337 214 Q337.7 224.4 348 227" />
+    <path fill="none" stroke="#4a2414" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" style="stroke:color-mix(in srgb,var(--hair-color,#8f4b29) 50%,#000)" d="M161 227 Q162.7 234.2 189 236 Q190.2 219.9 204 213 Q205.2 234.6 224 240 Q225.1 222.5 238 215 Q239.3 230.2 259 234 Q260 220 271 214 Q272.3 236.4 293 242 Q294 223.8 305 216 Q306.3 227.2 326 230 Q326.9 218.8 337 214 Q337.7 224.4 348 227" />
   </g>
   <g id="hair_lines" fill="none" stroke-linecap="round">
-    <path stroke="#4a2414" stroke-width="3" style="stroke:color-mix(in srgb,var(--hair-color,#8f4b29) 50%,#000)" d="M214 140 Q204 168 194 210 M240 128 Q232 165 222 222 M268 126 Q266 168 258 218 M298 132 Q300 172 290 224 M318 150 Q326 180 324 212 M196 160 Q180 182 172 210 M338 172 Q346 190 346 208 M150 232 L147 252 M359 232 L362 252" />
-    <path stroke="#b8693d" stroke-width="3.5" style="stroke:color-mix(in srgb,var(--hair-color,#8f4b29) 79%,#fff)" d="M226 136 Q244 128 258 130 M280 134 Q292 135 300 141" />
+    <path stroke="#4a2414" stroke-width="2.5" style="stroke:color-mix(in srgb,var(--hair-color,#8f4b29) 50%,#000)" d="M214 140 Q204 168 194 210 M240 128 Q232 165 222 222 M268 126 Q266 168 258 218 M298 132 Q300 172 290 224 M318 150 Q326 180 324 212 M196 160 Q180 182 172 210 M338 172 Q346 190 346 208 M150 232 L147 252 M359 232 L362 252" />
+    <path stroke="#b8693d" stroke-width="2.5" style="stroke:color-mix(in srgb,var(--hair-color,#8f4b29) 79%,#fff)" d="M226 136 Q244 128 258 130 M280 134 Q292 135 300 141" />
   </g>
 </svg>

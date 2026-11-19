@@ -357,7 +357,8 @@ def fit_file(path, base, heads):
 
 
 def test_cap(base_marks):
-    """A plain short cap built from the base head's landmarks, in the four layers."""
+    """A plain short cap built from the base head's landmarks, in the four layers, drawn to the house rules (see
+    assets/CHATGPT_HAIR_PROMPT.md): a bold outline on hair_back and hair_base only, borderless bangs, thin lines."""
     P = dict(zip(POINTS, base_marks.tolist()))
     (cx, top), (_, fy) = P['crown_top'], P['forehead_mid']
     (tl, ty), (tr, _) = P['temple_left'], P['temple_right']
@@ -367,12 +368,13 @@ def test_cap(base_marks):
              f'C{cx - 70} {top - 22} {cx + 70} {top - 22} {tr - 20} {top + 30} C{tr + o} {ty - 40} {er + o + 2} {ty} {er + o} {ey + 6}')
     inner = (f'L{er - 10} {ey + 4} C{er - 10} {ty} {tr - 30} {fy + 4} {cx} {fy} C{tl + 30} {fy + 4} {el + 10} {ty} {el + 10} {ey + 4} Z')
     bangs = f'M{tl + 22} {fy + 2} Q{cx - 40} {fy + 26} {cx - 10} {fy + 12} Q{cx + 30} {fy + 30} {tr - 22} {fy + 2} Q{cx} {fy - 14} {tl + 22} {fy + 2} Z'
+    bangs_edge = f'M{tl + 22} {fy + 2} Q{cx - 40} {fy + 26} {cx - 10} {fy + 12} Q{cx + 30} {fy + 30} {tr - 22} {fy + 2}'  # their bottom edge, a thin line
     return f'''<svg xmlns="{SVG}" viewBox="0 0 512 512" width="512" height="512" data-type="any" data-length="short">
   <!-- A test hairstyle written by scripts/fit_hair.py because assets/hair_raw/ was empty. -->
   <g id="hair_back"><path fill="#6b3520" stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" d="{outer} L{er} {ey + 20} Q{cx} {ey + 34} {el} {ey + 20} Z"/></g>
   <g id="hair_base"><path fill="#8f4b29" stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" d="{outer} {inner}"/></g>
-  <g id="hair_bangs"><path fill="#8f4b29" stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" d="{bangs}"/></g>
-  <g id="hair_lines" fill="none" stroke-linecap="round"><path stroke="#4a2414" stroke-width="3" d="M{cx - 30} {top + 12} Q{cx - 40} {top + 40} {cx - 46} {fy - 6} M{cx + 20} {top + 10} Q{cx + 24} {top + 40} {cx + 20} {fy - 8}"/></g>
+  <g id="hair_bangs"><path fill="#8f4b29" stroke="none" d="{bangs}"/></g>
+  <g id="hair_lines" fill="none" stroke="#4a2414" stroke-width="2.5" stroke-linecap="round"><path d="M{cx - 30} {top + 12} Q{cx - 40} {top + 40} {cx - 46} {fy - 6} M{cx + 20} {top + 10} Q{cx + 24} {top + 40} {cx + 20} {fy - 8}"/><path d="{bangs_edge}"/></g>
 </svg>
 '''
 
