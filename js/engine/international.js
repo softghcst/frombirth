@@ -204,6 +204,11 @@ export const INTL_ANSWERS = {
     if (start != null) toMinors(state, e, club, start, I.ladder);
     const where = start === 0 ? `You report to ${club.name}'s academy in the Dominican Republic: baseball, English classes, and the Dominican Summer League.` : start != null ? `You start in ${I.ladder[start]}.` : 'You go straight to the big club.';
     milestone(`Signed with ${club.name} for a ${life.fmt(state, x.amount)} bonus.`, 'career');
+    // The bonus is the family's too (engine/baseball.js).
+    const mine = x.amount - toTrainer;
+    if (mine > 0) life.decide(state, { kind: 'remit', sportId: e.id, amount: mine, key: `remit/${e.id}`,
+      text: `The bonus is more money than your family has ever seen. Many players buy their mother a house with it, and send money home every year after.`,
+      options: [{ id: 'house', label: 'A house for the family', sub: `Half the bonus: ${life.fmt(state, Math.round(mine * 0.5))}, and money home each year` }, { id: 'some', label: 'Give them a share', sub: `A fifth: ${life.fmt(state, Math.round(mine * 0.2))}, and money home each year` }, { id: 'no', label: 'Keep it for now' }] });
     return result(true, `You signed with ${club.name}. The bonus is ${life.fmt(state, x.amount)}${toTrainer ? `, of which ${e.intl.trainer.name} takes ${life.fmt(state, toTrainer)}` : ''}. ${where}`);
   },
 };

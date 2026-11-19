@@ -36,7 +36,7 @@ export const ILLNESSES = [
 // Sports injuries (engine/sportsLife.js). They are never drawn by the yearly roll and do not clear up by chance:
 // they heal on a rehabilitation plan, and the sports engine removes them when they have.
 for (const [id, name, severity, health] of [['strain', 'a muscle strain', 12, -1], ['sprain', 'a sprained ankle', 15, -1], ['overuse', 'an overuse injury', 20, -2],
-  ['fracture', 'a fracture', 35, -3], ['concussion', 'a concussion', 40, -3], ['ligament', 'a torn knee ligament', 60, -4]]) {
+  ['fracture', 'a fracture', 35, -3], ['concussion', 'a concussion', 40, -3], ['ligament', 'a torn knee ligament', 60, -4], ['ucl', 'a torn elbow ligament', 55, -2]]) {
   ILLNESSES.push({ id: `sport_${id}`, name, ages: [0, 120], chance: 0, severity, yearly: { health, mood: -2 }, recover: 0, sport: true });
 }
 // An idol's workload (engine/kpop.js): never drawn by the yearly roll; they come of a hard year, and ease with rest.

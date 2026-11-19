@@ -83,7 +83,7 @@ for (const country of ['us', 'jp']) {
   let e = null;
   let traded = null;
   let transfers = 0;
-  for (let life = 0; life < 12 && !traded; life++) {
+  for (let life = 0; life < 40 && !traded; life++) {
     e = pro(country, country === 'us' ? 80 : 70);
     if (!e) continue;
     for (let i = 0; i < 14 && !traded && P().alive && e.contractId; i++) {
