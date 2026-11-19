@@ -24,7 +24,6 @@ import reign from './reign.js';
 import household from './household.js';
 import musical from './stories/musical.js';
 import mentors from './stories/mentors.js';
-import bondScenes from './stories/bonds.js';
 import estateScenes from './stories/estate.js';
 import loveScenes from './stories/love.js';
 import paper from './stories/paper.js';
@@ -44,7 +43,9 @@ import abroadArcs from './abroadArcs.js';
 import digital from './stories/digital.js';
 import eras from './stories/eras.js';
 import decades from './stories/decades.js';
+import togetherScenes from './stories/together.js';
+import bondScenes from './stories/bonds.js';
 
 /** @type {import('../../types.js').GameEvent[]} */
-export const EVENTS = [...bondScenes, ...estateScenes, ...loveScenes, ...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...justice, ...abroadArcs, ...digital, ...eras, ...decades, ...healthScenes, ...sports, ...seasons, ...disasters];
+export const EVENTS = [...bondScenes, ...estateScenes, ...loveScenes, ...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...justice, ...abroadArcs, ...digital, ...eras, ...decades, ...healthScenes, ...sports, ...seasons, ...disasters, ...togetherScenes];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));

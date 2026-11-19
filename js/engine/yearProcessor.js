@@ -16,6 +16,7 @@ import { tickBonds } from './bonds.js';
 import { tickEstate } from './estateReview.js';
 import { tickChildhood } from './childhood.js';
 import { tickLoveStories, teenAfterBirth } from './loveStories.js';
+import { tickTogether } from './together.js';
 import { tickChildren } from './children.js';
 import { tickLives } from './npcLives.js';
 import { tickEducation } from './education.js';
@@ -95,6 +96,7 @@ export const YEARLY = [
   ['family', tickFamily],
   ['romance', () => booked('auto', 'Love and marriage', tickRomance)],
   ['bonds', () => booked('auto', 'Love and marriage', tickBonds)], // the other relationships, and who has found out (engine/bonds.js)
+  ['together', () => booked('auto', 'Friends and family', tickTogether)], // friend groups, a partner who strays (engine/together.js)
   ['children', () => booked('childcare', 'Your children', tickChildren)],
   ['npcLives', tickLives],
   ['education', () => booked('education', 'Fees and the cost of studying', tickEducation)],
