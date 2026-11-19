@@ -43,7 +43,7 @@ import { register as registerAnimal, reconcile as reconcileAnimals } from './ani
  * @returns {import('../types.js').GameState}
  */
 export function createLife(opts = {}) {
-  rng.seed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
+  if (!rng.pinned) rng.seed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0); // a fresh life, unless the dice are pinned (js/rng.js)
 
   const c = COUNTRIES[opts.countryId] ?? rng.pick(COUNTRY_LIST);
   // `identityGender` is who they are. A transgender character is registered as something else at birth.

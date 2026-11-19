@@ -4,6 +4,7 @@ import { store, player, country } from '../../state.js';
 import { openIdol } from '../kpop.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
 import * as kidLife from '../../engine/childhood.js';
+import * as loveStories from '../../engine/loveStories.js';
 import { canGamble } from '../../engine/gambling.js';
 import { may } from '../../engine/rules.js';
 import * as law from '../../engine/justice.js';
@@ -93,6 +94,7 @@ export default {
       const things = fun.activityOptions();
       const grow = kidLife.childActivities();
       const jobs = kidLife.smallJobs();
+      const safety = loveStories.teenSafety();
       const money = p.age >= 5 && p.age <= 17;
       const cc = p.flags.childhood ?? {};
       el.innerHTML = `
@@ -100,6 +102,10 @@ export default {
         ${grow.length ? `<div class="card"><h3>Growing up</h3>
           <p class="muted" style="margin-bottom:10px">${p.age < 6 ? 'A grown-up takes you to most of these.' : 'A few of these in a year: there is school too.'}</p>
           <div class="btn-stack">${grow.map((a) => `<button class="btn" data-kid="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.why ? ` · ${esc(a.why.toLowerCase())}` : ''}</button>`).join('')}</div>
+        </div>` : ''}
+        ${safety.length ? `<div class="card"><h3>Staying safe</h3>
+          <p class="muted" style="margin-bottom:10px">Looking after yourself. Private, and free.</p>
+          <div class="btn-stack">${safety.map((a) => `<button class="btn" data-kidsafe="${a.id}" ${a.done || a.why ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done' : a.why ? ` · ${esc(a.why)}` : ''}</button>`).join('')}</div>
         </div>` : ''}
         ${money ? `<div class="card"><h3>Pocket money</h3>
           <p class="muted" style="margin-bottom:10px">${cc.allowance ? `You get ${fmtMoney(cc.allowance.amount, c)} a year.` : 'You have no allowance.'}${cc.saving ? ` Saving for ${esc(cc.saving.name)}: ${fmtMoney(Math.min(p.finance.cash, cc.saving.cost), c)} of ${fmtMoney(cc.saving.cost, c)}.` : ''}</p>
@@ -129,7 +135,6 @@ export default {
           <button class="btn danger" data-crime style="margin-top:8px">Commit a crime</button>
         </div>` : ''}
         ${legalCard()}
-        ${law.isJailed() ? '' : athleticsCard()}
         ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'Photocards', ico: 'star',
           sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : '' })]) : ''}
         ${p.age >= 3 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="neighborhood"', label: 'My Neighborhood', ico: 'home', sub: neighborhoodSub() })]) : ''}
@@ -159,6 +164,8 @@ export default {
       }
       const kidAct = e.target.closest('[data-kid]')?.dataset.kid;
       if (kidAct) return report(api, kidLife.doActivity(kidAct));
+      const kidSafe = e.target.closest('[data-kidsafe]')?.dataset.kidsafe;
+      if (kidSafe) return report(api, loveStories.doTeenSafety(kidSafe));
       const kidJob = e.target.closest('[data-kidjob]')?.dataset.kidjob;
       if (kidJob) return report(api, kidLife.doSmallJob(kidJob));
       const kidMoney = e.target.closest('[data-kidmoney]')?.dataset.kidmoney;

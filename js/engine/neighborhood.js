@@ -541,7 +541,17 @@ export function syncHousehold(state = store.state) {
  * anywhere in the game (buying a house, a new city, leaving home, emigrating), and after the turn of a year. Running it
  * again changes nothing.
  */
-export function settle(state = store.state) {
+export function settle(state = store.state, { quiet = false } = {}) {
+  if (!quiet) return settleNow(state);
+  // Loading a save only brings the neighborhood up to date: no scene is queued (or used up) by opening a game.
+  muted = true;
+  try { return settleNow(state); } finally { muted = false; }
+}
+
+/** While a save is being loaded: scenes are not queued, and not marked as seen, so they can still come in play. */
+let muted = false;
+
+function settleNow(state) {
   if (!state?.player) return null;
   const H = hoods(state);
   H.at ??= nowT(state);
@@ -807,7 +817,7 @@ export function note(state, e) {
 /** Queues one neighborhood scene for the player, once per story key, a few a year at most. */
 export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   const H = hoods(state);
-  if (!state.player.alive) return false;
+  if (muted || !state.player.alive) return false;
   if (H.seen[key] != null) return false;
   const thisYear = Object.values(H.seen).filter((x) => yearOf(x) === yearOf(t)).length;
   if (thisYear >= SCENES_A_YEAR) return false;

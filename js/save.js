@@ -133,7 +133,7 @@ function migrate(state) {
   // One sports system: a professional career kept under the old separate system becomes the player's sports record.
   if (state.proSport || state.player?.sport?.seasons) adoptOldSport(state);
   // Neighborhoods: an older life gets the neighborhood it lives in now, with today's neighbors and no invented past.
-  try { settleHood(state); } catch (e) { console.warn('neighborhood', e); }
+  try { settleHood(state, { quiet: true }); } catch (e) { console.warn('neighborhood', e); }
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }

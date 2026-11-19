@@ -84,9 +84,20 @@ const stories = [
     ['Look at other ways of finishing school', 'teenSchool:other', 'You look at what else there is.'],
   ]),
   scene('teen_parenthood', [15, 17], 'Thinking About Parenthood. A nurse has gone through what there is with you, without telling you what to do. It is not to be decided by anyone else.', [
-    ['Plan to raise the child', 'teenPlan:raise', 'You begin to plan.'],
+    ['Keep the baby', 'teenPlan:raise', 'You begin to plan.'],
     ['Talk to an adoption agency', 'teenPlan:adoption', 'You ask what adoption would mean.'],
     ['Find out what help there is', 'teenPlan:help', 'You ask who could help.'],
+    ["Don't keep it", 'teenPlan:end', 'You say it out loud, and then you make the call.'],
+  ]),
+  // For anyone, at any age: asked whenever a pregnancy is announced (engine/pregnancyChoice.js). The answer is the pregnant person\'s.
+  scene('pregnancy_choice', [12, 60], 'Expecting. {who} Nothing has to be decided today, but it is yours to decide.', [
+    ['Keep the baby', 'pregnancy:keep', 'You decide to keep the baby.', 'good'],
+    ["Don't keep it", 'pregnancy:end', 'You make your decision, and you are not asked to explain it to anyone.'],
+  ]),
+  scene('pregnancy_partner', [12, 90], 'Expecting. {who} It is their body and their decision. You can say what you hope, or that you will stand by whatever they choose.', [
+    ['Stand by them', 'pregnancy:support', 'You tell them you are with them either way.'],
+    ['Hope they keep it', 'pregnancy:keep', 'You tell them what you hope.'],
+    ["Hope they don't", 'pregnancy:end', 'You tell them what you hope, as gently as you can.'],
   ]),
 ];
 
