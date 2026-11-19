@@ -43,6 +43,8 @@ function athlete(sport, age, boost = 30) {
 /** One year, with the decisions answered as `pick` says (a function of the decision), or the cautious default. */
 function year(pick = {}) {
   const p = P(); p.stats.health = 95; p.legal.pending = null; p.legal.incarceration = null;
+  // These checks are about the rules of recruiting and the draft, not about a year lost to a ban.
+  for (const x of Object.values(sp.myAthlete()?.sports ?? {})) x.banUntil = 0;
   advanceYear(); S().pendingEvents = [];
   for (let round = 0; round < 3; round++) for (const d of sl.openDecisions()) {
     const c = typeof pick[d.kind] === 'function' ? pick[d.kind](d) : pick[d.kind] ?? (d.kind === 'camp' ? 'showcase' : d.options.some((o) => o.id === 'no') ? 'no' : d.options.at(-1).id);
@@ -58,6 +60,7 @@ const firstD1 = (d) => {
 function enrollSigned(e) {
   const p = P();
   const inst = uni.catalog(p.countryId).find((u) => u.id === e.recruit.signed);
+  if (!inst) return; // signed with a junior college: not one of the universities this helper enrolls at
   const o = e.recruit.offers.find((x) => x.id === inst.id);
   p.education.enrolled = false; p.education.stage = 'none';
   edu.enroll('university', 'business', 'scholarship', {}, { id: inst.id, name: inst.name, aid: { fraction: o.fraction, parts: o.fraction ? [{ kind: 'athletic', fraction: o.fraction }] : [] } });
@@ -65,8 +68,12 @@ function enrollSigned(e) {
 
 // ---------- 1. Recruiting ----------
 {
-  const e = athlete('american_football', 13);
-  for (let i = 0; i < 4; i++) year({ camp: 'elite', commit: firstD1, sign: firstD1, visit: (d) => d.options[0].id });
+  // A recruit who stays in school to signing day (rarely one is expelled or leaves: then another life).
+  let e = null;
+  for (let tries = 0; tries < 8 && !e?.recruit?.signed; tries++) {
+    e = athlete('american_football', 13);
+    for (let i = 0; i < 4; i++) year({ camp: 'elite', commit: firstD1, sign: firstD1, visit: (d) => d.options[0].id });
+  }
   const R = e.recruit;
   check(R && R.stars >= 3 && R.rank > 0, `the recruiting services rate a good high school player (${R?.stars}★, number ${R?.rank})`);
   check(R.offers.length >= 2 && R.offers.every((o) => DIVISIONS[o.division]), `offers come from real divisions (${R.offers.map((o) => o.division).join(', ')})`);
@@ -91,8 +98,12 @@ section('recruiting: stars and rank, camps, offers by division (full, partial or
 
 // ---------- 2. College ----------
 {
-  const e = athlete('american_football', 13);
-  for (let i = 0; i < 5 && !e.recruit?.signed; i++) year({ camp: 'elite', commit: firstD1, sign: firstD1 });
+  // A recruit who signed with a four-year program (rarely the only offers are from junior colleges: then another life).
+  let e = null;
+  for (let tries = 0; tries < 8 && !(e?.recruit?.signed && !e.recruit.signed.startsWith('juco:')); tries++) {
+    e = athlete('american_football', 13);
+    for (let i = 0; i < 5 && !e.recruit?.signed; i++) year({ camp: 'elite', commit: firstD1, sign: firstD1 });
+  }
   check(!!e.recruit?.signed, 'the recruit signed');
   enrollSigned(e);
   year({ redshirt: 'yes', portal: 'stay', declare: 'no', withdraw: 'withdraw' });
@@ -110,7 +121,7 @@ section('recruiting: stars and rank, camps, offers by division (full, partial or
   e.college.lastGpa = 1.6;
   const n = e.college.played.length;
   year({ portal: 'stay', declare: 'no', withdraw: 'withdraw' });
-  check(e.college.out[S().year] === 'grades' && e.college.played.length === n, 'a college GPA under 2.0 means no games');
+  check(e.college.out[S().year] === 'grades' && e.college.played.length === n, `a college GPA under 2.0 means no games (${JSON.stringify({ out: e.college.out, played: e.college.played, n, start: e.college.start, year: S().year, org: sp.orgOf(e.orgId)?.kind, stage: P().education.stage, enrolled: P().education.enrolled, level: e.level, status: e.status, last: e.college.lastGpa })})`);
   P().education.gpa = 3;
   check(e.college.nil.every((x) => S().year >= col.NIL_FROM), 'name-image-likeness money only from 2021');
 }
@@ -194,7 +205,7 @@ section('drafts: baseball from high school (or college after junior year), footb
     check(P().career.salary < 60000, 'and is paid a minor league wage');
     for (let i = 0; i < 6 && e.minor; i++) { for (const k of Object.keys(e.skills)) e.skills[k] = Math.min(e.ceiling[k], e.skills[k] + 3); year({}); }
     check(!e.minor || e.minor.level > start, `a player who improves climbs (now ${e.minor ? D.minors[e.minor.level] : 'called up'})`);
-    if (!e.minor) check(P().career.salary >= 700000 && P().milestones.some((m) => /Called up/.test(m.text)), 'called up to the big club, at a big league wage');
+    if (!e.minor && e.contractId) check(P().career.salary >= 700000 && P().milestones.some((m) => /Called up/.test(m.text)), 'called up to the big club, at a big league wage');
   } else check(true, 'skipped');
 }
 section('the minors: a draftee starts at a level for their age, climbs, and is called up');

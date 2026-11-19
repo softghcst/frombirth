@@ -290,6 +290,8 @@ export const INJURIES = {
   fracture: { name: 'a fracture', severity: 35, seasons: 0.6, skillLoss: 2 },
   concussion: { name: 'a concussion', severity: 40, seasons: 0.5, skillLoss: 1, contactOnly: true },
   ligament: { name: 'a torn knee ligament', severity: 60, seasons: 1.2, skillLoss: 5 },
+  // A pitcher's elbow: the ulnar collateral ligament, rebuilt by Tommy John surgery; a year or more away.
+  ucl: { name: 'a torn elbow ligament', severity: 55, seasons: 1.3, skillLoss: 2, pitcher: true },
 };
 /** How an injury is treated. Costs are base units. */
 export const REHAB = {
@@ -355,7 +357,7 @@ export const COUNTRY_DRAFTS = {
 };
 /** The women's leagues' drafts: basketball takes players at 22 or once college is done; hockey after college. */
 /** What the big leagues of the draft countries pay, against an ordinary professional league (their real averages run to millions). */
-export const BIG_LEAGUE_PAY = { basketball: 6, baseball: 4, american_football: 2.5, ice_hockey: 2.5 };
+export const BIG_LEAGUE_PAY = { basketball: 6, baseball: 9, american_football: 2.5, ice_hockey: 2.5 };
 /** Japan's and Korea's professional baseball pay well, if far less than the big leagues. */
 export const COUNTRY_LEAGUE_PAY = { jp: { baseball: 1.8 }, kr: { baseball: 1.3 } };
 export const WOMEN_DRAFTS = {
@@ -383,6 +385,32 @@ export const INTL_SIGNING = {
   pool: [5100000, 7600000],
   cut: [0.2, 0.35],
   ladder: ['Dominican Summer League', 'Rookie ball', 'Single-A', 'High-A', 'Double-A', 'Triple-A'],
+};
+
+// ---------- Baseball, in detail (engine/baseball.js, engine/baseballContracts.js) ----------
+//
+// A season in the game is a sample of a real one: the player's numbers are scaled to the length of the real season at
+// their level, so a career adds up to the totals baseball counts (3,000 hits, 500 home runs, 300 wins).
+export const BASEBALL = {
+  games: { MLB: 162, NPB: 143, KBO: 144, 'Triple-A': 150, 'Double-A': 138, 'High-A': 132, 'Single-A': 132, 'Rookie ball': 60, 'Dominican Summer League': 60,
+    'Farm team': 110, 'Futures League': 100, 'Independent League': 100, college: 56, school: 28, other: 30 },
+  top: { us: 'MLB', ca: 'MLB', jp: 'NPB', kr: 'KBO' },
+  // The rounds of the postseason, as each league names them (the game plays eight clubs: no wild card round).
+  rounds: { MLB: { Quarterfinal: 'Division Series', Semifinal: 'League Championship Series', Final: 'World Series' },
+    NPB: { Quarterfinal: 'Climax Series, first stage', Semifinal: 'Climax Series, final stage', Final: 'Japan Series' },
+    KBO: { Quarterfinal: 'Semi-playoff', Semifinal: 'Playoff', Final: 'Korean Series' } },
+  milestones: { H: [1000, 2000, 3000], HR: [100, 200, 300, 400, 500, 600, 700], W: [100, 200, 300], SV: [100, 300, 500], K: [1000, 2000, 3000] },
+  names: { H: 'hits', HR: 'home runs', W: 'wins', SV: 'saves', K: 'strikeouts' },
+  // The World Baseball Classic: 2006, 2009, 2013, 2017, 2023, 2026; assumed every four years after that.
+  classic: [2006, 2009, 2013, 2017, 2023, 2026],
+  classicStrong: ['jp', 'us', 'do', 've', 'pr', 'kr', 'cu', 'mx', 'nl'],
+  winter: { do: 'Dominican Winter League', ve: 'Venezuelan Winter League', pr: 'Puerto Rican Winter League', mx: 'Mexican Pacific League', pa: 'Panamanian Winter League', co: 'Colombian Winter League', ni: 'Nicaraguan Winter League' },
+  qualifyingOffer: 21000000, // one year, at the average of the 125 best salaries (about $21 million in the mid-2020s)
+  minimum: 760000,
+  optionYears: 3, // seasons in which a club may send a player on its 40-man roster down to the minors
+  rule5: { young: 5, older: 4 }, // seasons before an unprotected minor leaguer can be taken: five if signed at 18 or under, else four
+  hall: { wait: 5, ballots: 10, elect: 75, stay: 5, seasons: 10 }, // Hall of Fame: five years retired, ten years on the ballot, 75% to get in, 5% to stay on
+  derbyPrize: 1000000,
 };
 
 // ---------- College sport (the United States and Canada) ----------
