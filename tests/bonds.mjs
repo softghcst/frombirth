@@ -49,7 +49,8 @@ function person(role, age = 30, rel = 80, heart = {}) {
 const spouse = (o = {}) => { const n = person('spouse', 30, 80, o); n.marriedAtAge = 25; n.flags.livesTogether = true; return n; };
 /** Asks again (a new year each time, as far as the asking goes) until the answer is yes: for setting a scene. */
 function until(npc, fn, tries = 80) {
-  for (let i = 0; i < tries; i++) { npc.flags.acts = {}; const r = fn(); if (r.ok) return r; }
+  const rel = npc.meters.relationship; // each asking as if it were the first: a refusal does not sour the next
+  for (let i = 0; i < tries; i++) { npc.flags.acts = {}; npc.meters.relationship = rel; const r = fn(); if (r.ok) return r; }
   return { ok: false, text: 'never' };
 }
 const begin = (npc, type) => until(npc, () => bonds.propose(npc.id, type));
