@@ -1084,6 +1084,6 @@ export function digitalCard() {
   const mine = store.state.digital ? acc.activeAccountsOf(p.id) : [];
   const unread = store.state.digital ? msg.inbox().reduce((s, t) => s + (t.muted ? 0 : t.unread), 0) : 0;
   return `<div class="card dl-entry"><h3>Digital Life</h3>
-    <p class="muted" style="margin-bottom:10px">${online ? (mine.length ? `${mine.length} account${mine.length === 1 ? '' : 's'}: ${mine.slice(0, 3).map((a) => `@${esc(a.handle)} on ${esc(pl(a.platformId).name)}`).join(', ')}.` : 'Your connections, your creativity, your world.') : `It is ${store.state.year}: letters, visits${tech.techAvailable('landline') ? ' and the telephone' : ''}.`}${unread ? ` ${unread} unread.` : ''}</p>
+    <p class="muted" style="margin-bottom:10px">${online ? (mine.length ? `${mine.length} account${mine.length === 1 ? '' : 's'}: ${mine.slice(0, 3).map((a) => `@${esc(a.handle)} on ${esc(pl(a.platformId).name)}`).join(', ')}.` : 'No accounts yet.') : `It is ${store.state.year}: letters, visits${tech.techAvailable('landline') ? ' and the telephone' : ''}.`}${unread ? ` ${unread} unread.` : ''}</p>
     <button class="btn" data-digital>${online ? 'Open Digital Life' : 'Keep in touch'}</button></div>`;
 }

@@ -16,14 +16,13 @@ export function thisYearCard() {
   if (p.age < 5 || !p.alive) return '';
   const going = plans.ongoing(p);
   const buttons = [
-    ['hobby', plans.plansOf(p).hobby ? 'Change your hobby focus' : 'Choose a hobby focus'],
-    ...(p.age >= 16 ? [['savings', plans.plansOf(p).savings ? 'Change your yearly saving' : 'Save something every year']] : []),
-    ['moments', 'Occasions, invitations and traditions'],
+    ['hobby', plans.plansOf(p).hobby ? 'Change hobby' : 'Pick a hobby'],
+    ...(p.age >= 16 ? [['savings', plans.plansOf(p).savings ? 'Change savings' : 'Save each year']] : []),
+    ['moments', 'Occasions and invitations'],
   ];
   return `<div class="card"><h3>Your life this year</h3>
-    ${going.length ? going.map(([a, b]) => kv(a, b)).join('') : '<p class="muted">Nothing is carrying on by itself yet. Plans you set here go on every year until you change them.</p>'}
-    <div class="btn-stack" style="margin-top:10px">${buttons.map(([id, label]) => `<button class="btn" data-year-plan="${id}">${esc(label)}</button>`).join('')}</div>
-    <p class="muted" style="margin-top:8px">These happen as you live the year, when you press Live another year.</p></div>`;
+    ${going.map(([a, b]) => kv(a, b)).join('')}
+    <div class="btn-stack" style="margin-top:${going.length ? 10 : 2}px">${buttons.map(([id, label]) => `<button class="btn" data-year-plan="${id}">${esc(label)}</button>`).join('')}</div></div>`;
 }
 
 async function say(api, r) { api.changed(); await messageModal({ body: r.text, tone: r.tone }); }

@@ -60,17 +60,17 @@ export async function openSettings(hooks = {}) {
       title: 'Settings',
       cancel: 'Done',
       options: [
-        { value: 'appearance', label: 'Appearance', sub: `${THEME_NAMES[getTheme()]}${getTheme() === 'system' ? ': light or dark, as this device is set.' : ' mode, on every screen.'}` },
+        { value: 'appearance', label: 'Appearance', sub: THEME_NAMES[getTheme()] },
         // Only while a life is being played: how far each turn moves the calendar.
-        ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()} from next year` : ''}. Shorter turns bring scenes for each season.` }] : []),
+        ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()}` : ''}` }] : []),
         { value: 'account', label: 'Cloud saves', sub: cloudLine() },
-        { value: 'transfer', label: 'Transfer saves', sub: 'Move your lives to another device with a code or a file, no account needed.' },
-        { value: 'people', label: 'People you know', sub: people ? `${people} on your list.` : 'Put people from your own life into the game.' },
+        { value: 'transfer', label: 'Transfer saves', sub: 'To another device' },
+        { value: 'people', label: 'People you know', sub: people ? `${people} added` : 'Add real people to the game' },
         // Only while a life is being played, once there are teams in it: their names, jerseys and players.
-        ...(store.state?.player?.alive && kit.leagues().length ? [{ value: 'teams', label: 'Teams and jerseys', sub: 'Rename teams and their players, and choose their home and away colors.' }] : []),
+        ...(store.state?.player?.alive && kit.leagues().length ? [{ value: 'teams', label: 'Teams and jerseys', sub: 'Names and colors' }] : []),
         // Only while a life is being played: keep this moment, and live it two ways.
-        ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === false ? 'Off. Turn it on to see what each year changed.' : 'On: after each year, what it changed.' }] : []),
-        ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Keep this moment as a second timeline, before a decision you are about to make. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used.` }] : []),
+        ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === false ? 'Off' : 'On' }] : []),
+        ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Branch this life. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used` }] : []),
       ],
     });
     if (!pick) return;
@@ -93,10 +93,9 @@ async function openAppearance() {
   const now = getTheme();
   const pick = await pickModal({
     title: 'Appearance',
-    body: 'How Pathways looks on this device. System follows your device, light by day and dark by night if it is set that way.',
     cancel: 'Back',
     options: THEMES.map((t) => ({ value: t, label: `${THEME_NAMES[t]}${t === now ? ' · now' : ''}`,
-      sub: { system: 'Match this device.', light: 'Soft lilac paper and plum ink.', dark: 'Deep plum, for the evening.' }[t] })),
+      })),
   });
   if (pick) setTheme(pick);
 }

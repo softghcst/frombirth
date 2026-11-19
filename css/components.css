@@ -1008,3 +1008,32 @@ input[type="color"] { width: 100%; min-height: 44px; padding: 2px; border-radius
 .modal { box-shadow: 0 20px 50px -20px rgba(20, 8, 30, 0.45); }
 .modal .eyebrow { background: none; padding: 0; }
 .choice-btn { background: var(--card); border-color: transparent; }
+
+/* ---------- Even lighter: less chrome, fewer words ---------- */
+.idcard { padding: 12px 6px 10px 16px; gap: 10px; }
+.idcard .avatar { width: 52px; height: 52px; }
+.idcard button.purse { padding: 2px 2px 2px 6px; min-height: 44px; }
+.idcard .purse .label { font-size: 0.68rem; letter-spacing: 0.04em; text-transform: none; font-weight: 600; }
+.idcard button.purse .label::after { content: none; }
+.menu-btn { flex: none; margin-left: -2px; }
+.info-card .info-head { margin-bottom: 4px; }
+.info-card .info-head .nr-icon { display: none; }
+.panel-body .card h3 { font-family: var(--sans); font-size: 0.95rem; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+.panel-body .card .muted { font-size: 0.9rem; }
+.kv { font-size: 0.92rem; }
+details.more { margin-top: 4px; }
+details.more summary { cursor: pointer; list-style: none; min-height: 40px; display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 700; color: var(--accent-text); }
+details.more summary::-webkit-details-marker { display: none; }
+details.more summary::after { content: "›"; transition: transform 0.15s ease; font-size: 1.1rem; }
+details.more[open] summary::after { transform: rotate(90deg); }
+.dock .meters { gap: 4px 16px; }
+.meter { font-size: 0.74rem; }
+.meter .track { height: 6px; }
+.choice-btn small { font-size: 0.78rem; }
+.creator .card, .creator-head { background: transparent; border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; padding: 12px 2px; margin: 0; }
+.creator .card h3 { font-family: var(--sans); font-size: 0.95rem; font-weight: 800; }
+.randomize-all { border: 1px dashed var(--line); background: transparent; margin: 8px 0; }
+.memory { padding: 8px 12px 8px 8px; gap: 10px; }
+.memory-art { width: 40px; height: 40px; }
+.memory-text { font-size: 0.95rem; }
+.memory::before { width: 38px; height: 10px; top: -5px; }

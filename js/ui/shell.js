@@ -23,7 +23,7 @@ import { openMoney } from './tabs/holdings.js';
 import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
 import { openAthleticsAt } from './sports.js';
-import { markSvg, icon } from './kit.js';
+import { icon } from './kit.js';
 import { lineMemory, lineMemoryHtml, milestonesAt, milestoneHtml } from './memories.js';
 import { openSettings } from './settings.js';
 
@@ -50,15 +50,12 @@ export function mountGame(app, hooks) {
 
   app.innerHTML = `
     <div class="game">
-      <header class="topbar">
-        <div class="brand">${markSvg('brand-mark')}<span class="wordmark">Pathways</span></div>
-        <button class="icon-btn menu-btn" data-menu aria-label="Menu" aria-haspopup="dialog">${icon('menu')}</button>
-      </header>
       <main class="stage" aria-label="Your life">
       <div class="idcard">
         <div class="avatar" data-avatar></div>
         <div class="who"><h1 data-name></h1><p class="who-line" data-line1></p><p class="who-job" data-line2></p></div>
-        <button class="purse" data-purse aria-label="Open My Money"><div class="label">My Money</div><div class="amount num" data-cash></div></button>
+        <button class="purse" data-purse aria-label="Open My Money"><div class="amount num" data-cash></div><div class="label">Money</div></button>
+        <button class="icon-btn menu-btn" data-menu aria-label="Menu" aria-haspopup="dialog">${icon('menu')}</button>
       </div>
       <div class="sheet-area">
       <div class="journal" data-journal role="log" aria-live="polite" aria-label="Your life so far" tabindex="0"></div>
@@ -325,10 +322,10 @@ export function mountGame(app, hooks) {
   // The menu: the things a player reaches for from anywhere in a life.
   $('[data-menu]').addEventListener('click', async () => {
     if (busy) return;
-    const pick = await pickModal({ title: 'Menu', cancel: 'Back to my life', options: [
-      { value: 'money', label: 'My Money', sub: 'Accounts, budget, debts and what you own.' },
-      { value: 'settings', label: 'Settings', sub: 'Appearance, time per turn, saves and more.' },
-      { value: 'exit', label: 'Save and return to title', sub: 'This life is kept, exactly as it is.' },
+    const pick = await pickModal({ title: 'Menu', cancel: 'Close', options: [
+      { value: 'money', label: 'My Money' },
+      { value: 'settings', label: 'Settings' },
+      { value: 'exit', label: 'Save and quit' },
     ] });
     if (pick === 'money' && player().alive) openMoney(tabApi);
     if (pick === 'settings') { await openSettings(); tabApi.changed(); }

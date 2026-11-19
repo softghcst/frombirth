@@ -415,15 +415,11 @@ export default {
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
-    const year = store.state.year;
-    const top = [['moments', 'My Moments', 'This year: occasions, plans and the people in them', 'calendar'],
-      ['animals', 'Pets & Animals', 'The family\'s animals, their care and their story', 'paw']];
-    const keep = [['archive', 'Family archive', 'Everyone who came before, and what they left', 'archive'],
-      ['tree', 'Family tree', 'Parents, children, and the generations between', 'tree'],
-      ['digitalArchive', 'Letters, photos and posts', year < 1995 ? 'What was written down and kept' : 'Messages, photos and posts, kept', 'letter']];
+    const top = [['moments', 'My Moments', '', 'calendar'], ['animals', 'Pets & Animals', '', 'paw']];
+    const keep = [['tree', 'Family tree', '', 'tree'], ['archive', 'Family archive', '', 'archive'], ['digitalArchive', 'Letters and photos', '', 'letter']];
     const more = [];
-    if (love.canLookForLove()) more.push(['love', 'Look for love', 'Dates, apps and chance meetings', 'heart']);
-    if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', `Fees of ${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)}, and a year of forms and visits`, 'child']);
+    if (love.canLookForLove()) more.push(['love', 'Look for love', '', 'heart']);
+    if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), 'child']);
 
     const row = (n) => `
       <button class="row rel-card" data-npc="${n.id}">
@@ -440,9 +436,7 @@ export default {
         const group = list.filter((n) => roles.includes(n.role));
         return group.length ? `<div class="section-label">${esc(title)}</div><div class="rel-grid">${group.map(row).join('')}</div>` : '';
       }).join('') : '<p class="empty">There is nobody in your life right now.</p>'}
-      ${more.length ? navGroup(nav(more), 'Someone new') : ''}
-      ${navGroup(nav(top), 'Moments and animals')}
-      ${navGroup(nav(keep), 'Family history')}`;
+      ${navGroup(nav([...more, ...top, ...keep]), 'More')}`;
 
     el.onclick = async (e) => {
       const row = e.target.closest('[data-npc]');
