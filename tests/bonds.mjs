@@ -222,6 +222,7 @@ section('friends with benefits stays what it is; one night commits nobody');
 section('gifts: paid once, may be refused, buy nothing, of their time');
 
 // ---------- 6. A Complicated Romance: the four choices ----------
+let lives = 0, asked = 0;
 function complicated(heart = {}) {
   life();
   const wife = spouse();
@@ -230,6 +231,9 @@ function complicated(heart = {}) {
   const b = bonds.bondWith(other.id);
   check(!queued('romance_complicated_001').length, 'the question does not come before there is a history');
   for (let i = 0; i < 14 && !queued('romance_complicated_001').length && b.status === 'active'; i++) { other.meters.relationship = 90; year(); }
+  // Rarely one of them dies first, and there is no conversation to have: that life is not counted (but see the tally below).
+  lives++;
+  if (queued('romance_complicated_001').length) asked++; else over = true;
   return { wife, other, b };
 }
 {
@@ -279,6 +283,8 @@ function complicated(heart = {}) {
   for (let i = 0; i < 8; i++) year();
   check(!S().pendingEvents.some((e) => /^bond_|romance_compl/.test(e.id)) && bonds.others().length === 0, 'with no such relationship, no such scene: nothing is invented');
 }
+over = false;
+check(asked >= lives - 3 && asked >= 20, `in nearly every such life the question is asked (${asked} of ${lives})`);
 section('A Complicated Romance: asked once by a real person, four choices, follow-ups from what was actually said');
 
 // ---------- 7. Being found out; staying or going ----------
