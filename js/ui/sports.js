@@ -12,6 +12,7 @@ import * as life from '../engine/sportsLife.js';
 import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
 import { decommit, gradeOf, GRADE_NAMES } from '../engine/recruiting.js';
 import * as draft from '../engine/draft.js';
+import * as bb from '../engine/baseball.js';
 import { classOf, eligibility as collegeLeft } from '../engine/college.js';
 import { DIVISIONS } from '../data/sports.js';
 import { jerseySvg, jerseyDot, inkOn } from './jersey.js';
@@ -192,7 +193,9 @@ function draftSection() {
       const left = collegeLeft(st, e);
       out.push(`${label(`College ${sport.name.toLowerCase()}`)}${kv('Class', esc(classOf(st, e)))}${kv('Division', esc(DIVISIONS[e.college.division]?.name ?? e.college.division))}${kv('Eligibility', `${left.seasons} ${left.seasons === 1 ? 'season' : 'seasons'} left, ${left.years} ${left.years === 1 ? 'year' : 'years'} on the clock`)}${e.college.nil.length ? kv('NIL deals', esc(money(e.college.nil.reduce((s, x) => s + x.amount, 0)))) : ''}`);
     }
+    if (e.bb?.lines.length) out.push(baseballSection(st, e));
     if (e.intl) out.push(intlSection(st, e));
+    if (e.trades?.length) out.push(`${label(`${sport.name}: trades`)}${e.trades.map((t) => kv(String(t.year), `${esc(t.from)} → ${esc(t.to)}, for ${esc(t.for)}${t.deadline ? ' · at the trade deadline' : ''}${t.vetoed ? ' · you refused' : ''}`)).join('')}`);
     if (e.youth && (e.youth.scholar || e.youth.released)) out.push(`${label(`${sport.name}: the academy`)}${e.youth.scholar ? kv(p.countryId === 'uk' ? 'Scholarship' : 'Youth contract', `${e.youth.scholar.from}–${e.youth.scholar.until}`) : kv('Released', String(e.youth.released))}`);
     if (e.asia && D && (e.proYear || e.asia.service || e.asia.served || e.asia.exempt)) {
       const n = e.proYear ? st.year - e.proYear : 0;
@@ -221,6 +224,32 @@ function draftSection() {
   return out.join('');
 }
 
+/** Baseball's own record (engine/baseball.js): the lines, the totals, the honors, the roster rules, the Hall of Fame. */
+function baseballSection(st, e) {
+  const R = e.bb;
+  const C = R.career;
+  const pro = R.lines.filter((x) => !['other', 'school'].includes(x.level));
+  const shown = (pro.length ? pro : R.lines).slice(-6).reverse();
+  const k = e.contractId ? st.sports.contracts[e.contractId] : null;
+  const avg = C.AB ? (C.H / C.AB).toFixed(3).replace(/^0/, '') : null;
+  const era = C.IP ? (C.ER * 9 / C.IP).toFixed(2) : null;
+  return `${label('Baseball: the record')}
+    ${R.role ? kv('Role', `${R.role[0].toUpperCase()}${R.role.slice(1)}${R.twoWay ? ', and a hitter: a two-way player' : ''}`) : R.twoWay ? kv('Role', 'A two-way player: hitting and pitching') : ''}
+    ${shown.map((x) => kv(`${x.year} · ${esc(x.level === 'other' ? x.team : x.level)}`, `${x.G ?? x.GP} games · ${esc(bb.lineText(x))}${x.capped ? ' · innings limit' : ''}`)).join('')}
+    ${C.seasons ? kv(`Big league career (${C.seasons} ${C.seasons === 1 ? 'season' : 'seasons'})`, [avg ? `${avg}, ${C.H.toLocaleString('en-US')} hits, ${C.HR} home runs, ${C.RBI.toLocaleString('en-US')} RBI, ${C.SB} stolen bases` : '', era ? `${C.W}–${C.L}, ${C.SV} saves, ${era} ERA, ${C.K.toLocaleString('en-US')} strikeouts` : ''].filter(Boolean).join(' · ')) : ''}
+    ${R.allStar.length ? kv('All-Star', `${R.allStar.length} ${R.allStar.length === 1 ? 'time' : 'times'} (${R.allStar.slice(-6).join(', ')})`) : ''}
+    ${R.derby.length ? kv('Home Run Derby', `${R.derby.length} ${R.derby.length === 1 ? 'appearance' : 'appearances'}${R.derby.some((x) => x.won) ? `, won ${R.derby.filter((x) => x.won).map((x) => x.year).join(', ')}` : ''}`) : ''}
+    ${R.honors.map((x) => kv(String(x.year), esc(x.what))).join('')}
+    ${R.feats.map((x) => kv(String(x.year), esc(`${x.what[0].toUpperCase()}${x.what.slice(1)}`))).join('')}
+    ${R.classic.length ? kv('World Baseball Classic', R.classic.map((x) => `${x.year}: ${x.result}`).join(' · ')) : ''}
+    ${R.winters.length ? kv('Winter ball', `${R.winters.length} ${R.winters.length === 1 ? 'winter' : 'winters'}, last with ${esc(R.winters.at(-1).team)}${R.winter === 'always' ? ' · every winter' : ''}`) : ''}
+    ${k && (R.fortyMan || R.options?.length) ? kv('Roster', `${R.fortyMan ? 'On the 40-man roster' : 'Not on the 40-man roster'}${R.options?.length ? ` · ${R.options.length} of 3 option years used` : ''}${R.rule5 ? ' · a Rule 5 pick: must stay in the big leagues all season' : ''}`) : ''}
+    ${k?.optOut || k?.noTrade ? kv('Contract', [k.optOut ? `opt-out in ${k.optOut}` : '', k.noTrade ? 'no-trade clause' : ''].filter(Boolean).join(' · ')) : ''}
+    ${R.summer.length ? kv('Summer league', `${R.summer.length} ${R.summer.length === 1 ? 'summer' : 'summers'} with wooden bats`) : ''}
+    ${R.adviser && !e.proYear ? kv('Draft adviser', 'Yes: 4% of a signing bonus') : ''}
+    ${R.hall ? kv('Hall of Fame', R.hall.elected ? `Elected in ${R.hall.elected} with ${R.hall.votes.at(-1).pct}% of the vote` : `${R.hall.votes.map((v) => `${v.year}: ${v.pct}%`).slice(-4).join(' · ')}${R.hall.dropped ? ' · off the ballot' : ' · 75% needed'}`) : ''}`;
+}
+
 /** An international signing (engine/international.js): the trainer, the handshake deal, the bonus, the minors. */
 function intlSection(st, e) {
   const X = e.intl;
@@ -232,6 +261,8 @@ function intlSection(st, e) {
     ${T ? kv('Trainer', `${esc(T.name)} since ${T.since} · ${T.fullTime ? 'full time' : 'around school'} · takes ${Math.round(T.cut * 100)}% of the bonus`) : ''}
     ${X.deal ? kv('Handshake deal', `${esc(X.deal.club)}: ${money(X.deal.amount)} (not binding)`) : ''}
     ${X.fellThrough.map((f) => kv(`Fell through, ${f.year}`, esc(f.why))).join('')}
+    ${X.signed && X.english != null ? kv('English', X.english >= 60 ? 'Fluent enough for interviews' : X.english >= 35 ? 'Getting by' : 'A few words') : ''}
+    ${X.remit === 'yearly' ? kv('Money home', '15% of your salary each year') : ''}
     ${e.minor?.ladder ? kv('Minor leagues', `${esc(e.minor.ladder[e.minor.level])}: ${esc(sp.orgOf(e.minor.orgId)?.name ?? '')}`) : ''}`;
 }
 
@@ -389,7 +420,7 @@ function seasonProfile(step) {
     ${label('Table')}<p class="muted">Counted from completed games.</p>
     ${t.map((x, i) => `<div class="kv"><span>${i + 1}. ${jerseyDot(colorsOf(sp.orgOf(sp.teamOf(x.teamId)?.orgId)))}${x.teamId === s.playerTeamId ? `<strong>${esc(name(x.teamId))}</strong>` : esc(name(x.teamId))}</span><span>${x.w}–${x.d ? `${x.d}–` : ''}${x.l} · ${x.pts} pts</span></div>`).join('')}
     ${s.awards ? `${label('Season awards')}${s.awards.map((a) => (a.team ? kv(a.name, esc(a.team.map((x) => (x.who === player().id || x.who === 'player' ? 'You' : x.name)).join(', '))) : kv(a.name, a.winner ? `${a.winner.who === 'player' ? '<strong>You</strong>' : esc(a.winner.name)}${a.winner.teamId ? ` <small class="muted">${esc(name(a.winner.teamId))}</small>` : ''}${a.winner.value != null ? ` · ${a.winner.value}${a.per ? ' a game' : ''}` : ''}` : 'Not awarded'))).join('')}` : ''}
-    ${label('Playoffs')}${s.playoffs.map((f) => kv(f.round, `${esc(name(f.home))} ${f.score[0]}–${f.score[1]} ${esc(name(f.away))}${f.decider ? ' (after a decider)' : ''}`)).join('') || empty('None.')}
+    ${label('Playoffs')}${s.playoffs.map((f) => kv(f.label ?? f.round, `${esc(name(f.home))} ${f.score[0]}–${f.score[1]} ${esc(name(f.away))}${f.decider ? ' (after a decider)' : ''}`)).join('') || empty('None.')}
     ${label('Your games')}${mineF.map((f) => kv(`Round ${f.round}`, `${esc(name(f.home))} ${f.score[0]}–${f.score[1]} ${esc(name(f.away))}${f.me?.played ? ` · rated ${f.me.rating}` : ' · did not play'}`)).join('')}` };
 }
 function eventProfile(step) {

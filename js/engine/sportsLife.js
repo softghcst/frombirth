@@ -29,6 +29,9 @@ import { beforeSeason, afterSeason, COLLEGE_ANSWERS } from './college.js';
 import { draftYear, minorsYear, leagueClub, DRAFT_ANSWERS } from './draft.js';
 import { intlYear, intlPath, INTL_ANSWERS } from './international.js';
 import { asiaYear, onService, ASIA_ANSWERS } from './asiaBaseball.js';
+import { tradeYear, TRADE_ANSWERS } from './trades.js';
+import { seasonLine, baseballYear, hallYear, BASEBALL_ANSWERS } from './baseball.js';
+import { contractHook, qualifying, market, freeAgentYear, CONTRACT_ANSWERS } from './baseballContracts.js';
 import { youthYear, firstProAge, maxYears, YOUTH_ANSWERS } from './youthContracts.js';
 
 const { nextId, findOrg, coachFor, meetCoach, teamFor, joinOrg, leaveOrg, playSeason, playEvent, overall, rec, EVENTS_A_YEAR, fullName, seeded } = sp.internals;
@@ -140,7 +143,19 @@ const ANSWERS = {
       if (k.status === 'active') endContract(state, k, 'left the club');
       return { ...result(false, `You have already left ${k.name}.`, 'neutral'), close: true };
     }
-    if (choice === 'no' || !k) { if (k) endContract(state, k, 'let the contract run out'); return result(true, 'You will look for a new club.', 'neutral'); }
+    if (choice === 'no' || !k) {
+      const old = k ? sp.orgOf(k.orgId, state) : null;
+      if (k) endContract(state, k, 'let the contract run out');
+      // Baseball: the market opens at once, with every club that wants him bidding (engine/baseballContracts.js).
+      const e = sp.entryOf(d.sportId, state.player.id, state);
+      if (e && market(state, e, old, { qo: !!d.qo })) return result(true, 'You are a free agent, and clubs are calling.', 'neutral');
+      return result(true, 'You will look for a new club.', 'neutral');
+    }
+    if (choice === 'qo' && d.qo) {
+      k.to = state.year + 1; k.salary = d.qo; k.qo = true;
+      state.player.career.salary = d.qo;
+      return result(true, `You accepted the qualifying offer: one more year with ${d.orgName} at ${fmt(state, d.qo)}.`);
+    }
     k.to = state.year + d.years; k.salary = d.salary;
     state.player.career.salary = d.salary;
     const text = `You signed a new ${d.years}-year contract with ${d.orgName} at ${fmt(state, d.salary)} a year.`;
@@ -278,18 +293,18 @@ function signPro(state, d, o = {}) {
   const id = nextId(S, 'k');
   const years = maxYears(p, d.sportId, d.years); // soccer: three years at most under 18 (FIFA)
   const k = { id, kind: 'pro', personId: p.id, sportId: d.sportId, orgId: org.id, employerId: org.employerId, name: org.name, from: state.year, to: state.year + years,
-    salary: d.salary, level: d.level, status: 'active', how: o.transfer ? 'transfer' : d.how ?? 'signing', history: [] };
+    salary: d.salary, level: d.level, status: 'active', how: o.trade ? 'trade' : o.transfer ? 'transfer' : d.how ?? 'signing', history: [] };
   S.contracts[id] = k;
   // The wages are a salary in the careers system: paid there, taxed there, and nowhere else.
-  hire(CAREER_BY_ID.athlete, d.level, 60, o.transfer ? `${org.name} signed you.` : d.how === 'draft' ? `${org.name} drafted you.` : `You signed for ${org.name}.`,
+  hire(CAREER_BY_ID.athlete, d.level, 60, o.trade ? `You were traded to ${org.name}.` : o.transfer ? `${org.name} signed you.` : d.how === 'draft' ? `${org.name} drafted you.` : `You signed for ${org.name}.`,
     { employerId: org.employerId, salary: d.salary, hours: 40 });
   p.career.sportContract = id;
   e.contractId = id;
   e.level = 'pro';
   e.proYear ??= state.year;
   joinOrg(org, state);
-  sp.moment(state, { type: o.transfer ? 'transfer' : 'signing', sportId: d.sportId, text: `${o.transfer ? 'Transferred to' : d.how === 'draft' ? `Drafted by` : 'Signed for'} ${org.name}.`, sig: 3, orgId: org.id });
-  milestone(`${o.transfer ? 'Transferred to' : d.how === 'draft' ? 'Drafted by' : 'Signed professionally with'} ${org.name}.`, 'career');
+  sp.moment(state, { type: o.transfer ? 'transfer' : 'signing', sportId: d.sportId, text: `${o.trade ? 'Traded to' : o.transfer ? 'Transferred to' : d.how === 'draft' ? `Drafted by` : 'Signed for'} ${org.name}.`, sig: 3, orgId: org.id });
+  milestone(`${o.trade ? 'Traded to' : o.transfer ? 'Transferred to' : d.how === 'draft' ? 'Drafted by' : 'Signed professionally with'} ${org.name}.`, 'career');
   if (p.age >= 25 && !o.transfer) arc(state, 'late_bloomer', d.sportId, 'Late bloomer', `A first professional contract at ${p.age}.`);
   if (!sp.myAthlete(state).agentId) decide(state, { kind: 'agent', sportId: d.sportId, text: 'An agent has been in touch: they would handle your contracts and sponsors for a share of what you earn.', options: [{ id: 'yes', label: 'Hear them out' }, { id: 'no', label: 'Handle it yourself' }] });
   return result(true, `You signed for ${org.name}.`);
@@ -376,15 +391,18 @@ function rollInjury(state, a, e) {
   const r = seeded(`injury/${a.id}/${e.id}/${state.year}`);
   if (a.injuries.some((x) => x.status === 'out')) return null;
   const risk = 0.03 + sport.contact * 0.025 + Math.max(0, e.fatigue - 45) / 300 + (p.age >= 30 ? 0.03 : 0) + (e.plan.hours >= 18 ? 0.03 : 0) - (p.stats.health - 60) / 1500;
-  if (!r.chance(Math.max(0.01, risk))) return null;
-  const types = Object.entries(INJURIES).filter(([, x]) => !x.contactOnly || sport.contact >= 2);
-  const [type, def] = r.pick(r.chance(0.7) ? types.filter(([, x]) => x.severity < 35) : types);
+  // A pitcher's elbow has its own odds: more for a heavy load, and for a young arm throwing hard.
+  const pitcher = sport.id === 'baseball' && e.position === 'pitcher';
+  const elbow = pitcher && seeded(`elbow/${a.id}/${state.year}`).chance(0.018 + (e.plan.hours >= 18 ? 0.02 : 0) + (p.age <= 25 && (e.skills.stuff ?? 0) >= 75 ? 0.012 : 0));
+  if (!elbow && !r.chance(Math.max(0.01, risk))) return null;
+  const types = Object.entries(INJURIES).filter(([, x]) => (!x.contactOnly || sport.contact >= 2) && !x.pitcher);
+  const [type, def] = elbow ? ['ucl', INJURIES.ucl] : r.pick(r.chance(0.7) ? types.filter(([, x]) => x.severity < 35) : types);
   const id = `inj_${a.injuries.length + 1}_${state.year}`;
   const inj = { id, type, sportId: e.id, year: state.year, age: p.age, name: def.name, severity: def.severity, left: def.seasons, rehab: null, status: 'out', setbacks: 0, from: r.next() };
   a.injuries.push(inj);
   addCondition(injuryCondition(type));
   for (const [k] of sport.skills) if (def.skillLoss && r.chance(0.4)) e.skills[k] = Math.max(0, e.skills[k] - def.skillLoss);
-  sp.say(state, `You picked up ${def.name} playing ${sport.name.toLowerCase()}.${def.seasons >= 1 ? ' It will be a long way back.' : ''}`, 'bad', { screen: 'hub', id: 'health' });
+  sp.say(state, type === 'ucl' ? 'Your elbow went: the ligament is torn. The surgeon will rebuild it with a tendon from your forearm (Tommy John surgery), and it will be a year or more before you pitch again.' : `You picked up ${def.name} playing ${sport.name.toLowerCase()}.${def.seasons >= 1 ? ' It will be a long way back.' : ''}`, 'bad', { screen: 'hub', id: 'health' });
   sp.moment(state, { type: 'injury', sportId: e.id, text: `Injured: ${def.name}.`, sig: def.severity >= 35 ? 2 : 1, key: `injury/${id}` });
   decide(state, { kind: 'rehab', sportId: e.id, injuryId: id, key: `rehab/${id}`, text: `You have ${def.name}. How will you deal with it?`,
     options: Object.entries(REHAB).map(([k, x]) => ({ id: k, label: x.name + (x.cost ? ` (${fmt(state, money(state, x.cost))})` : '') })) });
@@ -494,6 +512,7 @@ function proRoutes(state, a, e) {
   // Where the sport has a draft, the draft decides (engine/draft.js): no club simply signs an amateur there. Where big
   // league clubs sign international amateurs, they do (engine/international.js) until 23; a Cuban player can play at home.
   // A professional out of contract there is a free agent: any club in the league may sign him.
+  if (freeAgentYear(state, a, e)) return; // baseball: the market, independent ball, Japan and Korea (engine/baseballContracts.js)
   if (route === 'draft') {
     if (!e.proYear || o < 64 || p.age > 36) return;
     const r = seeded(`freeAgent/${p.id}/${e.id}/${state.year}`);
@@ -541,19 +560,26 @@ function contractYear(state, a, e) {
     const fee = Math.round(k.salary * agentCut(a));
     settle(state, `agent/${k.id}/${state.year}`, -fee, 'sport', 'Your agent\'s share');
   }
+  // Baseball's own rules first: the 40-man roster, options and waivers, Rule 5, opt-outs, extensions (engine/baseballContracts.js).
+  if (contractHook(state, a, e, k) || k.status !== 'active' || e.contractId !== k.id) return;
+  // In the leagues with a draft, players are traded (engine/trades.js): the contract goes to another club as it stands.
+  const mine = sp.orgOf(k.orgId, state);
+  if ((sportOf(e.id).draftIn ?? []).includes(mine?.countryId) && !mine.minorLevel && tradeYear(state, a, e, k)) return;
   if (state.year >= k.to) {
     const org = sp.orgOf(k.orgId, state);
     if (o >= 60 && p.age <= 35) {
       const off = offerFor(state, e, org);
-      decide(state, { kind: 'renew', sportId: e.id, contractId: k.id, orgName: org.name, ...off, key: `renew/${k.id}/${state.year}`, text: `Your contract with ${org.name} is up. They offer ${off.years} more ${off.years === 1 ? 'year' : 'years'} at ${fmt(state, off.salary)}.`,
-        options: [{ id: 'yes', label: 'Sign again' }, { id: 'no', label: 'Leave as a free agent' }] });
-    } else { endContract(state, k, 'released at the end of the contract'); log(`${org.name} did not offer you a new contract.`, 'system', 'bad'); }
+      const qo = qualifying(state, e, k, org); // baseball: the qualifying offer (engine/baseballContracts.js)
+      decide(state, { kind: 'renew', sportId: e.id, contractId: k.id, orgName: org.name, ...off, qo: qo?.amount ?? null, key: `renew/${k.id}/${state.year}`, text: `Your contract with ${org.name} is up. They offer ${off.years} more ${off.years === 1 ? 'year' : 'years'} at ${fmt(state, off.salary)}.${qo?.text ?? ''}`,
+        options: [{ id: 'yes', label: 'Sign again' }, ...(qo ? [qo.option] : []), { id: 'no', label: 'Leave as a free agent' }] });
+    } else { endContract(state, k, 'released at the end of the contract'); log(`${org.name} did not offer you a new contract.`, 'system', 'bad'); market(state, e, org); return; }
   }
   // Another club wants the player: a transfer. The fee passes between the clubs; it is not the player's money.
   // The better the player, the more clubs ask; in the last year of a contract a bid competes with the offer to stay.
   // Not in the leagues with a draft (players move by trade there, not for fees), nor for a player at a club abroad.
   const club = sp.orgOf(k.orgId, state);
-  if (club && (sp.proPath(sportOf(e.id), club.countryId) === 'draft' || club.countryId !== p.countryId)) return;
+  if (club && (sportOf(e.id).draftIn ?? []).includes(club.countryId)) return; // traded instead (engine/trades.js), above
+  if (club && club.countryId !== p.countryId) return;
   const r = seeded(`bid/${k.id}/${state.year}`);
   if (k.status === 'active' && o >= 74 && r.chance(Math.min(0.45, 0.12 + (o - 74) / 55))) {
     const sport = sportOf(e.id);
@@ -762,6 +788,7 @@ export function tickSports(state = store.state) {
   }
   paySponsors(state);
   for (const e of sp.activeSports(p.id, state)) yearIn(state, a, e);
+  for (const e of Object.values(a.sports)) hallYear(state, e); // retired ballplayers: the Hall of Fame ballot (engine/baseball.js)
   // The old school record, kept up for the parts of the game that still read it.
   const main = a.sports[a.primary];
   if (main) {
@@ -827,6 +854,7 @@ function yearIn(state, a, e) {
       const unit = { goals: 'goals', points: sport.id.includes('basketball') ? 'points' : sport.id === 'american_football' ? 'touchdowns' : sport.id === 'rugby' ? 'tries' : 'kills', baseball: 'hits', cricket: 'runs' }[sport.adapter] ?? '';
       sp.say(state, `${team.name}, ${state.year}: ${place}${['th', 'st', 'nd', 'rd'][place] ?? 'th'} of ${table.length} in the ${season.name}${champ ? ', then won the playoffs. Champions.' : fin && (fin.home === team.id || fin.away === team.id) ? ', and beaten in the final.' : '.'} You played ${mine.length} ${mine.length === 1 ? 'game' : 'games'}${mine.length ? `, rated ${avg} on average${goals && unit ? `, with ${goals} ${unit}` : ''}` : ''}.`, champ ? 'good' : 'neutral', { screen: 'season', id: season.id });
       // The league names its awards for the season (engine/sportsAwards.js).
+      seasonLine(state, a, e, season, team, mine, sum); // baseball: the season's line, milestones, the All-Star Game, October (engine/baseball.js)
       const won = seasonAwards(state, season, e, team);
       if (won.length) sum.awards = [...(sum.awards ?? []), ...won];
       // The school's own record of clubs.
@@ -931,6 +959,7 @@ function yearIn(state, a, e) {
   afterSeason(state, a, e, sum); // college: the season used, NIL money, the transfer portal
   minorsYear(state, a, e, sum); // the minor leagues: up a level, called up, or down (engine/draft.js)
   draftYear(state, a, e); // the draft, by the league's own rules (engine/draft.js)
+  baseballYear(state, a, e, sum); // baseball: winter ball, the Classic, summer leagues, life abroad (engine/baseball.js)
   integrityYear(state, a, e);
   // The body says when: a professional in their thirties is asked whether this is the last year.
   if (p.age >= 33 && (e.level === 'pro' || e.level === 'elite') && overall(e, p) < 70) decide(state, { kind: 'retire', sportId: e.id, key: `retire/${e.id}/${state.year}`, text: `You are ${p.age}. The game is getting faster and you are not. Is it time?`,
@@ -1045,7 +1074,7 @@ export function audit(state = store.state) {
 }
 
 export { LEVEL_NAMES };
-Object.assign(ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS, ASIA_ANSWERS, YOUTH_ANSWERS);
+Object.assign(ANSWERS, RECRUIT_ANSWERS, COLLEGE_ANSWERS, DRAFT_ANSWERS, INTL_ANSWERS, ASIA_ANSWERS, YOUTH_ANSWERS, TRADE_ANSWERS, BASEBALL_ANSWERS, CONTRACT_ANSWERS);
 /** For the parts of the athletic life kept in their own files (engine/recruiting.js, engine/draft.js). */
 export const internals = { decide: (...x) => decide(...x), money: (...x) => money(...x), fmt: (...x) => fmt(...x), proClub: (...x) => proClub(...x),
   offerFor: (...x) => offerFor(...x), signPro: (...x) => signPro(...x), endContract: (...x) => endContract(...x), ANSWERS: () => ANSWERS };

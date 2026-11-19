@@ -14,7 +14,7 @@
 import { log, milestone } from '../state.js';
 import { clamp } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { sportOf, DRAFTS, WOMEN_DRAFTS, COUNTRY_DRAFTS } from '../data/sports.js';
+import { sportOf, DRAFTS, WOMEN_DRAFTS, COUNTRY_DRAFTS, draftCountry } from '../data/sports.js';
 import { registerEmployer, employer } from './employers.js';
 import { gradeOf, programs } from './recruiting.js';
 import { eligibility } from './college.js';
@@ -128,7 +128,8 @@ export function draftGrade(state, e) {
   const form = ((e.lastRating ?? 50) - 50) / 8;
   const level = { D1: 2, IVY: -1, D2: -2, NAIA: -3, JUCO: -1, D3: -5 }[e.college?.division] ?? (e.level === 'academy' || e.level === 'elite' ? 1 : 0);
   const r = seeded(`draftGrade/${p.id}/${e.id}/${state.year}`);
-  return Math.round(o + youth + form + level + (e.draft?.combine?.[state.year] ?? 0) + r.normal(0, 2));
+  // Baseball: what a summer with wooden bats showed the scouts (engine/baseball.js).
+  return Math.round(o + youth + form + level + (e.draft?.combine?.[state.year] ?? 0) + (e.bb?.wood ?? 0) + r.normal(0, 2));
 }
 /** Where a grade goes in a draft: the first pick at the top, a thousand down for an ordinary prospect. */
 export const projectedPick = (grade) => Math.max(1, Math.round(10 ** ((95 - grade) / 14)));
@@ -136,7 +137,11 @@ export const roundOf = (pick, size) => Math.ceil(pick / size);
 
 /** The league the draft is for: the country's top professional league in the sport, with all its clubs. */
 function topLeague(state, sport) {
-  const org = life.proClub(state, sport, 0, 1);
+  const via = draftCountry(sport, state.player.countryId);
+  // Drafted into another country's league (Puerto Rico's baseball players, into the big leagues).
+  const org = via && via !== state.player.countryId
+    ? findOrg(state, sport, 'pro', { key: `pro/${sport.id}/${via}/0`, countryId: via, city: COUNTRIES[via].cities[0], tier: 1, strength: 4, div: 'men' })
+    : life.proClub(state, sport, 0, 1);
   return leagueFor(state, org, teamFor(state, org));
 }
 
@@ -187,9 +192,10 @@ export function clubOf(state, teamId) {
 export function classPick(state, d, n) {
   const sport = sportOf(d.sport);
   const r = seeded(`class/${d.sport}/${d.div}/${d.year}/${n}`);
-  const [name] = rosterNames(r, state.player.countryId, 1, d.div === 'women' ? 'female' : 'male');
+  const via = draftCountry(sport, state.player.countryId) ?? state.player.countryId;
+  const [name] = rosterNames(r, via, 1, d.div === 'women' ? 'female' : 'male');
   const progs = programs(state, sport);
-  const school = r.chance(d.sport === 'baseball' ? 0.35 : d.sport === 'ice_hockey' ? 0.5 : 0.05) ? `${r.pick(COUNTRIES[state.player.countryId].cities)} ${d.sport === 'ice_hockey' ? 'Juniors' : 'High School'}` : r.pick(progs)?.name ?? '';
+  const school = r.chance(d.sport === 'baseball' ? 0.35 : d.sport === 'ice_hockey' ? 0.5 : 0.05) ? `${r.pick(COUNTRIES[via].cities)} ${d.sport === 'ice_hockey' ? 'Juniors' : 'High School'}` : (progs.length ? r.pick(progs).name : '');
   return { name, school, pos: r.pick(sport.positions ?? [[null, '']])[1] };
 }
 
@@ -302,6 +308,8 @@ export function hold(state, e, D = draftOf(state, e.id)) {
   sp.moment(state, { type: 'drafted', sportId: e.id, text: `Drafted by ${club.name}, round ${round}, pick ${pick}.`, sig: 3, orgId: club.id });
   sp.say(state, `${name}, round ${round}: with the ${ordinal(pick)} pick, ${club.name} select you.${pick === 1 ? ' The first pick of the draft.' : ''}`, 'good', { screen: 'hub', id: 'career' });
   const deal = dealFor(state, { ...D, sportId: e.id }, pick, size);
+  // An adviser knows what the pick is worth, and gets a tenth more out of the club (engine/baseball.js).
+  if (e.bb?.adviser && deal.bonus) { deal.bonus = Math.round(deal.bonus * 1.1 / 1000) * 1000; deal.adviser = true; }
   const g = gradeOf(p);
   const atCollege = e.college && sp.orgOf(e.orgId, state)?.kind === 'college' && eligibility(state, e).seasons > 0 && !e.draft.declared;
   const committed = !!e.recruit?.signed && !e.college;
@@ -310,7 +318,7 @@ export function hold(state, e, D = draftOf(state, e.id)) {
   const ready = overall(e, p) >= (asia ? 66 : { baseball: 76, ice_hockey: 70, basketball: 64, american_football: 60 }[e.id] ?? 60);
   if (asia) d.name = `${D.name} draft`;
   life.decide(state, { kind: 'draftSign', sportId: e.id, key: `draftSign/${key}`, orgId: club.id, orgName: club.name, pick, round, deal, how: 'draft',
-    text: `${club.name} drafted you in the ${ordinal(round)} round, ${ordinal(pick)} overall. ${deal.bonus ? `They offer a signing bonus of ${life.fmt(state, deal.bonus)}` : 'They offer'}${deal.twoWay ? ' a two-way contract: their G League team, and the big club when they call you up' : ` ${deal.years} years at ${life.fmt(state, deal.salary)} a year`}${D.minors.length && D.deal !== 'scale' && !ready ? `, starting in the ${D.minors[0] === 'AHL' ? 'AHL' : D.minors[0] === 'Farm team' ? 'farm team' : D.minors[0] === 'Futures League' ? 'Futures League' : 'minor leagues'}` : ''}.`,
+    text: `${club.name} drafted you in the ${ordinal(round)} round, ${ordinal(pick)} overall. ${deal.bonus ? `They offer a signing bonus of ${life.fmt(state, deal.bonus)}` : 'They offer'}${deal.twoWay ? ' a two-way contract: their G League team, and the big club when they call you up' : `${deal.bonus ? ' and' : ''} ${deal.years} ${deal.years === 1 ? 'year' : 'years'} at ${life.fmt(state, deal.salary)} a year`}${D.minors.length && D.deal !== 'scale' && !ready ? `, starting in the ${D.minors[0] === 'AHL' ? 'AHL' : D.minors[0] === 'Farm team' ? 'farm team' : D.minors[0] === 'Futures League' ? 'Futures League' : 'minor leagues'}` : ''}.`,
     options: [{ id: 'sign', label: 'Sign' }, ...(stay ? [{ id: 'stay', label: stay }] : [])] });
   return d;
 }
@@ -351,6 +359,7 @@ function sign(state, d, e) {
   if (!org) return { ...result(false, 'That club is gone.', 'neutral'), close: true };
   clubOf(state, sp.teamOf(org.teamIds[0], state)?.id ?? null);
   if (d.deal.bonus) settle(state, `bonus/${e.id}/${state.year}/${org.id}`, d.deal.bonus, 'sponsorship', `Signing bonus: ${org.name}`, 'action');
+  if (d.deal.bonus && d.deal.adviser) settle(state, `adviser/${e.id}/${state.year}`, -Math.round(d.deal.bonus * 0.04), 'fees', 'Your adviser\'s 4% of the bonus', 'action');
   e.draft.declared = null; e.draft.rights = null;
   const last = e.draft.history.find((x) => x.year === state.year && x.teamId); if (last) last.signed = true;
   const o = overall(e, p);
@@ -421,7 +430,8 @@ export function minorsYear(state, a, e, sum) {
     sp.moment(state, { type: 'callup', sportId: e.id, text: `Called up to ${club.name}.`, sig: 3, orgId: club.id });
     return;
   }
-  if (m.level < ladder.length - 1 && o >= climb(m.level + 1) && (sum.rating ?? 6) >= 6.4) {
+  // Up a level for a player who is good enough for it and playing well, or plainly too good for where he is.
+  if (m.level < ladder.length - 1 && o >= climb(m.level + 1) && ((sum.rating ?? 6) >= 6.4 || o >= climb(m.level + 1) + 2)) {
     toMinors(state, e, club, m.level + 1);
     sp.moment(state, { type: 'promoted', sportId: e.id, text: `Promoted to ${ladder[e.minor.level]}.`, sig: 2 });
   } else if (m.level > 0 && o < climb(m.level) - 6 && (sum.rating ?? 6) < 5.8) {

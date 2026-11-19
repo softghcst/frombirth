@@ -4,7 +4,7 @@ import { eraMortality } from './history.js';
 import { COUNTRIES } from '../data/countries.js';
 import { publicMilestones } from './health/story.js';
 import { seriousCondition } from './health/course.js';
-import { settleEstate, atHome } from './currency.js';
+import { settleEstate, atHome, rate } from './currency.js';
 import { closeForEstate } from './banking.js';
 import { trustsAtDeath } from './trusts.js';
 import { settleLife } from './insurance.js';
@@ -61,9 +61,16 @@ function careShift(p) {
 
 const ACCIDENTS = ['a traffic accident', 'a fall', 'a house fire', 'drowning', 'a freak accident'];
 
+/**
+ * For checks that are about something else (the courts, the yearly model): while `spared` is true, the yearly roll
+ * takes nobody, so a test that needs a character alive is not failed by a rare early death. The game never sets it.
+ */
+export const deathRoll = { spared: false };
+
 /** Rolls the yearly death check. @returns {?string} cause, or null if alive */
 export function rollDeath() {
   const p = player();
+  if (deathRoll.spared) return null;
   // The most serious condition, from the older illness list or the health record.
   const worst = [...p.conditions, ...[seriousCondition(p)].filter(Boolean)].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
@@ -239,8 +246,8 @@ export function estatePlan() {
   const kids = living('child');
   const takers = (will.mode === 'charity' ? kids.map((k) => [k, reservedShare() / kids.length]) : willHeirs())
     .map(([n, share]) => ({ relation: relationOf(n.role), share }));
-  // Property abroad is valued in this country's money here; each country's scale is applied in its own.
-  const there = (id, v) => { const k = COUNTRIES[id]; const own = v * (k.currency.scale / c.currency.scale); return Math.round(estateTax(own, k, takers) * (c.currency.scale / k.currency.scale)); };
+  // Property abroad is valued in this country's money here; each country's scale is applied in its own, at today's rate.
+  const there = (id, v) => { const fx = rate(c.currency.code, COUNTRIES[id].currency.code); return Math.round(estateTax(v * fx, COUNTRIES[id], takers) / fx); };
   const due = [{ countryId: c.id, amount: estateTax(Math.max(0, gross - abroad), c, takers) },
     ...Object.entries(away).map(([id, v]) => ({ countryId: id, amount: there(id, v) }))]
     .map((d) => ({ ...d, rate: d.amount && (d.countryId === c.id ? gross - abroad : away[d.countryId]) > 0 ? d.amount / (d.countryId === c.id ? gross - abroad : away[d.countryId]) : 0 }))
@@ -249,6 +256,10 @@ export function estatePlan() {
   plan.tax = Math.max(0, Math.min(liquid, owed));
   // Paid from cash and investments only; if that does not cover it, each country takes its share of what there is.
   plan.taxBy = due.map((d) => ({ ...d, name: COUNTRIES[d.countryId].name, amount: owed > plan.tax ? Math.round(d.amount * plan.tax / owed) : d.amount }));
+  if (owed > plan.tax && plan.taxBy.length) {
+    plan.taxBy.at(-1).amount += plan.tax - plan.taxBy.reduce((s, t) => s + t.amount, 0); // rounding: the parts add up to the whole
+    for (const t of plan.taxBy) { const base = t.countryId === c.id ? gross - abroad : away[t.countryId]; t.rate = base > 0 ? t.amount / base : 0; }
+  }
   // Winding the estate up costs something, from the cash, after the tax (see PROBATE).
   plan.probate = Math.max(0, Math.min(liquid - plan.tax, probateCost(gross - plan.tax)));
   plan.executor = executor() ? `${executor().firstName} ${executor().lastName}` : null;

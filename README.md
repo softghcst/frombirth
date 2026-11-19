@@ -20,7 +20,17 @@ Lives save automatically to the browser's `localStorage`.
 
 ## Checks
 
-There is nothing to install: the checks run on Node alone.
+There is nothing to install: the checks run on Node alone. To run all of them at once, several at a time (this is
+what CI runs on every pull request, `.github/workflows/tests.yml`):
+
+```bash
+node scripts/test-all.mjs            # every check; add a word to run only the files whose names contain it
+```
+
+`node scripts/stress/fame-lives.mjs 60` plays sixty idol, fan and athlete lives and checks money, fame, fandoms, card
+prices, positions and saves after every year (each life is reproducible from its seed).
+
+Or one at a time:
 
 ```bash
 node tests/avatar.mjs
@@ -48,6 +58,8 @@ node tests/teams.mjs           # team names, jersey colors and shirt numbers: ma
 node tests/draft.mjs           # recruiting (stars, offers by division, signing day), college (redshirt, grades, portal, NIL), each league's draft rules, the minors
 node tests/international.mjs   # baseball signings outside the draft countries: trainers, handshake deals, signing at 16, the DSL, Cuba
 node tests/asia-youth.mjs      # Japan's and Korea's drafts, posting to the big leagues, Korean military service, soccer scholarships and youth contracts
+node tests/trades.mjs          # trades in the draft leagues (the contract moves as it stands, ten-and-five), Puerto Rico in the big leagues' draft
+node tests/baseball.mjs        # baseball: season lines and career totals, roles, free agency and the qualifying offer, options and Rule 5, independent ball, winter ball, the Hall of Fame
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
