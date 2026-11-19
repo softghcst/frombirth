@@ -31,6 +31,7 @@ const sp = await import('../../js/engine/sports.js');
 const sportsLife = await import('../../js/engine/sportsLife.js');
 const work = await import('../../js/engine/worklife.js');
 const fame = await import('../../js/engine/fame.js');
+const extras = await import('../../js/engine/sportsExtras.js');
 
 const LIVES = Number(process.argv[2] ?? 60);
 const FIRST = Number(process.argv[3] ?? 1);
@@ -69,7 +70,7 @@ function invariants(tag) {
   const a = s.sports?.athletes?.[p.id];
   if (a?.agentId && !(a.agent?.commission >= 0.03 && a.agent.commission <= 0.1) && a.agent) bad(`agent cut ${a.agent.commission}`);
 }
-const answerSports = () => { for (const d of sportsLife.openDecisions()) sportsLife.answer(d.id, d.options.some((o) => o.id === 'yes') && d.kind !== 'retire' && d.kind !== 'integrity' ? 'yes' : d.options.at(-1).id); };
+const answerSports = () => { for (const d of sportsLife.openDecisions()) { const yes = d.options.some((o) => o.id === 'yes') && d.kind !== 'retire' && d.kind !== 'integrity' && (d.kind !== 'abroad' || rng.chance(0.5)); if (d.kind === 'abroad' && yes) tally.abroad = (tally.abroad ?? 0) + 1; sportsLife.answer(d.id, yes ? 'yes' : d.options.at(-1).id); } };
 function year(tag) {
   advanceYear();
   store.state.pendingEvents = [];
@@ -193,10 +194,28 @@ for (let n = 0; n < LIVES; n++) {
       const p = newLife(rng.pick(['us', 'uk', 'ca', 'au', 'kr']), gender, 9);
       if (sp.choosesDivision(p)) sp.setDivision(rng.pick(['women', 'men']));
       p.talents.sports = Math.max(p.talents.sports, rng.int(70, 98)); p.stats.health = Math.max(p.stats.health, 80);
-      const sportId = rng.pick(['soccer', 'basketball', 'tennis', 'ice_hockey', 'track', 'volleyball']);
+      const sportId = rng.pick(['soccer', 'basketball', 'tennis', 'ice_hockey', 'track', 'volleyball', 'boxing', 'rugby']);
       sp.takeUp(sportId);
       sp.setPlan(sportId, 'technical', 10);
       for (let y = 0; y < 22 && p.alive; y++) athleteYear(tag, sportId);
+      // Then the dugout: a team sport's former player coaches a club for a few seasons.
+      if (p.alive && ['soccer', 'basketball', 'ice_hockey', 'volleyball', 'rugby'].includes(sportId)) {
+        const e = sp.entryOf(sportId);
+        if (e?.status === 'active') sportsLife.retire(sportId);
+        if (sportsLife.becomeCoach(sportId).ok) {
+          tally.coaches = (tally.coaches ?? 0) + 1;
+          for (let y = 0; y < 6 && p.alive; y++) {
+            extras.setTactics(rng.pick(Object.keys(extras.TACTICS))); extras.setTraining(rng.pick(Object.keys(extras.TRAINING)));
+            const sq = extras.squadOf(); if (sq && rng.chance(0.3)) extras.toggleBench(rng.pick(sq.team.roster).id);
+            year(tag);
+            for (const x of extras.squadOf()?.team.roster ?? []) if (!finite(x.rating) || x.rating < 0 || x.rating > 100) problems.push(`${tag}: a squad rating is ${x.rating}`);
+          }
+        }
+      }
+      const bx = sp.entryOf('boxing')?.boxing;
+      if (bx) { tally.boxers = (tally.boxers ?? 0) + 1; if (bx.titles.length) tally.champions = (tally.champions ?? 0) + 1; if (bx.fights.length !== Math.min(60, bx.record.w + bx.record.l) && bx.record.w + bx.record.l <= 60) problems.push(`${tag}: boxing record ${bx.record.w}-${bx.record.l} but ${bx.fights.length} fights`); }
+      const gt = Object.values(sp.myAthlete()?.sports ?? {}).flatMap((e) => e.gamesTeams ?? []).filter((t) => t.picked);
+      tally.gamesTeams = (tally.gamesTeams ?? 0) + gt.length;
     }
     const s = store.state;
     // Money at the end, in base units (today's dollars), to show anything absurd.

@@ -1716,6 +1716,7 @@ function yearExtras(p, lived, lines) {
   if (g?.debut) { const r = maybeRumor(p, g); if (r) lines.push(`A story in the press: ${r.text}`); }
   if (i.mc?.year === lived && !i.mc.paid) i.mc.due = true;
   varietyYear(p, lived, lines);
+  costarsYear(p, lived, lines);
   fanYear(p, lived, lines);
 }
 
@@ -2018,8 +2019,8 @@ export function tradersOf(g) {
   k.fans ??= {};
   const ids = (k.fans[g.id] ?? []).filter((id) => npc(id)?.flags?.fan && npc(id).alive !== false);
   const p = player();
-  const albums = albumsOf(g);
   const members = current(g).map((m) => m.who).filter((w) => w !== 'player');
+  const albums = members.length && g.status === 'active' ? albumsOf(g) : [];
   const places = [p.countryId, p.countryId, ...Object.keys(g.fandom.regions ?? {}).filter((c) => COUNTRIES[c])];
   while (ids.length < FANS_PER_GROUP && members.length) {
     const n = makeNpc({ role: 'member', countryId: rng.pick(places), age: clamp(p.age + rng.int(-6, 10), 12, 60), relationship: rng.int(30, 50) });
@@ -2096,11 +2097,60 @@ export function tradeFor(id) {
 /** The year for fellow fans: they buy albums too, so new spares turn up. */
 function tradersYear(f) {
   const g = group(f.groupId);
-  if (!g || g.status !== 'active') return;
-  const r = albumsOf(g)[0];
-  if (!r) return;
-  for (const n of tradersOf(g)) for (let i = rng.int(1, 6); i > 0; i--) fanGets(n, `${r.id}|${rng.pick(r.performers)}|${rng.chance(0.03) ? 'r' : 'n'}`);
+  if (!g) return;
+  const fans = tradersOf(g);
+  // While the group is putting out albums, fans buy them; after it ends they still trade what there is.
+  const r = g.status === 'active' ? albumsOf(g)[0] : null;
+  if (r) for (const n of fans) for (let i = rng.int(1, 6); i > 0; i--) fanGets(n, `${r.id}|${rng.pick(r.performers)}|${rng.chance(0.03) ? 'r' : 'n'}`);
+  fansTradeAmongThemselves(g, fans);
 }
+/**
+ * Fans trade with each other too: each gives a spare card for one of their favorite member's that another fan can
+ * spare, at about the same value. A dishonest fan sometimes keeps what was sent; the fan who lost out tells everyone,
+ * and from then on nobody trades with them, the player included. Fans who trade well together become friends.
+ * The year's trades are kept as a short community feed (state.kpop.fanFeed[groupId]).
+ */
+function fansTradeAmongThemselves(g, fans) {
+  const k = K();
+  const feed = ((k.fanFeed ??= {})[g.id] ??= []);
+  const open = fans.filter((n) => !n.flags.fan.burned);
+  const name = (n) => `${n.firstName} ${n.lastName}`;
+  const order = [...open];
+  for (let i = order.length - 1; i > 0; i--) { const j = rng.int(0, i); [order[i], order[j]] = [order[j], order[i]]; }
+  for (const a of order) {
+    const fa = a.flags.fan;
+    const spare = Object.keys(fa.cards).filter((id) => cardParts(id).release && canGive(a, id) && cardParts(id).who !== fa.bias);
+    if (!spare.length) continue;
+    // Someone who can spare a card of a's favorite, and wants one of a's spares.
+    for (const b of open) {
+      if (b === a || b.flags.fan.burned) continue;
+      const fb = b.flags.fan;
+      const theirs = Object.keys(fb.cards).find((id) => cardParts(id).who === fa.bias && canGive(b, id) && !(fa.cards[id] > 1));
+      if (!theirs) continue;
+      const mine = spare.find((id) => cardParts(id).who === fb.bias) ?? spare.find((id) => !fb.cards[id] && cardValue(id) >= cardValue(theirs) * 0.7);
+      if (!mine) continue;
+      const cheat = !fa.honest && rng.chance(0.3) ? a : !fb.honest && rng.chance(0.3) ? b : null;
+      if (cheat) {
+        const victim = cheat === a ? b : a;
+        const sent = cheat === a ? theirs : mine;
+        fanGets(victim, sent, -1); fanGets(cheat, sent);
+        cheat.flags.fan.burned = true;
+        feed.push({ year: year(), text: `${name(victim)} sent ${name(cheat)} a card and got nothing back. Everyone knows now.` });
+      } else {
+        fanGets(a, mine, -1); fanGets(b, mine);
+        fanGets(b, theirs, -1); fanGets(a, theirs);
+        fa.swaps = (fa.swaps ?? 0) + 1; fb.swaps = (fb.swaps ?? 0) + 1;
+        const pals = (fa.pals ??= []);
+        if (!pals.includes(b.id)) { const count = (fa.with ??= {}); count[b.id] = (count[b.id] ?? 0) + 1; if (count[b.id] >= 2) { pals.push(b.id); (fb.pals ??= []).includes(a.id) || fb.pals.push(a.id); feed.push({ year: year(), text: `${name(a)} and ${name(b)} have traded so often they are friends now.` }); } }
+        feed.push({ year: year(), text: `${name(a)} traded ${full(cardParts(mine).who).split(' ')[0]} to ${name(b)} for ${full(cardParts(theirs).who).split(' ')[0]}.` });
+      }
+      break;
+    }
+  }
+  if (feed.length > 30) feed.splice(0, feed.length - 30);
+}
+/** What fellow fans of a group have been up to: the latest trades among them. */
+export const fanFeed = (g) => (K().fanFeed?.[g?.id] ?? []).slice(-8).reverse();
 /** Buys one card outright from another fan, at the going price and a little more. */
 export function buyCard(id) {
   const p = player();
@@ -2295,17 +2345,55 @@ function varietyYear(p, lived, lines) {
 // on the show. Cast members come and go; everyone the player worked with stays among the people they know.
 
 export const COSTAR_KINDS = { comedian: 'Comedian', host: 'Host', actor: 'Actor', idol: 'Idol' };
-function newCostar(show, p) {
+function newCostar(show, p, force = null) {
   const k = K();
   const others = Object.values(k.groups).filter((g) => g.npc && g.status === 'active' && g.debut).flatMap((g) => current(g).map((m) => m.who)).filter((w) => w !== 'player' && npc(w)?.flags?.idol && !(show.cast ?? []).some((c) => c.id === w));
-  if (others.length && rng.chance(0.3)) return { id: rng.pick(others), kind: 'idol' };
-  const kind = rng.pick(['comedian', 'comedian', 'host', 'actor']);
+  if (!force && others.length && rng.chance(0.3)) return { id: rng.pick(others), kind: 'idol' };
+  const kind = force ?? rng.pick(['comedian', 'comedian', 'host', 'actor']);
   const n = makeNpc({ role: 'colleague', countryId: COUNTRIES.kr && rng.chance(0.8) ? 'kr' : p.countryId, age: rng.int(24, 58), relationship: rng.int(40, 55) });
   n.occupation = COSTAR_KINDS[kind];
   n.flags.title = `${COSTAR_KINDS[kind]}, ${show.name}`;
-  n.flags.costar = { kind };
+  n.flags.costar = { kind, career: { fame: rng.int(8, 45), shows: [{ name: show.name, role: 'cast', from: year(), to: null, withPlayer: true }], awards: [] } };
   store.state.npcs[n.id] = n;
   return { id: n.id, kind };
+}
+
+// ---------- Co-stars' own careers ----------
+//   npc.flags.costar.career = { fame, shows:[{ name, format, role, from, to, withPlayer }], awards:[{ year, what }] }
+// Everyone the player has worked with on a show goes on working: their name grows or fades, they land shows of their
+// own (a seat as a regular, a host's chair), shows end, and the year-end awards notice them. The player hears when
+// someone they worked with gets a show of their own.
+export const costarCareer = (n) => n?.flags?.costar?.career ?? null;
+export const costarNow = (n) => (costarCareer(n)?.shows ?? []).filter((x) => x.to == null && !x.withPlayer);
+function costarsYear(p, lived, lines) {
+  for (const id of p.npcIds) {
+    const n = npc(id);
+    const c = costarCareer(n);
+    if (!c || n.alive === false) continue;
+    // A show with the player ends when the player's seat or the show does, or they leave it.
+    for (const x of c.shows.filter((y) => y.withPlayer && y.to == null)) {
+      const sh = (p.idol?.variety?.shows ?? []).find((v) => v.name === x.name);
+      const still = sh && !sh.ended && (sh.cast ?? []).some((cc) => cc.id === n.id && cc.until == null);
+      if (!still) x.to = lived;
+    }
+    const busy = c.shows.filter((x) => x.to == null).length;
+    c.fame = Math.round(clamp(c.fame + rng.around(busy ? 2 : -2, 4)));
+    // Their own shows run their course.
+    for (const x of costarNow(n)) if (rng.chance(x.role === 'host' ? 0.18 : 0.25)) x.to = lived;
+    // A show of their own: more likely the better known they are, and never more than two at once.
+    if (busy < 2 && n.age < 70 && rng.chance(clamp((c.fame - 20) / 120, 0.02, 0.4))) {
+      const fmts = Object.entries(VARIETY_FORMATS).filter(([, fm]) => year() >= fm.from);
+      const [fid] = rng.pick(fmts);
+      const role = c.fame >= 55 && VARIETY_FORMATS[fid].roles.includes('host') && rng.chance(0.5) ? 'host' : 'regular';
+      const x = { name: showName(fid), format: fid, role, from: year(), to: null };
+      c.shows.push(x);
+      lines.push(`${n.firstName} ${n.lastName}, who you worked with on ${c.shows.find((y) => y.withPlayer)?.name ?? 'a show'}, ${role === 'host' ? 'is hosting' : 'has joined'} ${x.name}.`);
+    }
+    // The year-end awards notice those having a great year.
+    if (lived >= VARIETY_AWARDS.from && c.fame >= 60 && rng.chance(0.15)) c.awards.push({ year: lived, what: c.fame >= 80 && rng.chance(0.3) ? 'Top Excellence Award' : 'Excellence Award' });
+    if (c.shows.length > 12) c.shows.splice(0, c.shows.length - 12);
+    n.occupation = costarNow(n).some((x) => x.role === 'host') ? 'TV host' : n.occupation;
+  }
 }
 function meet(id, p) { const n = npc(id); if (n && !p.npcIds.includes(id)) { p.npcIds.push(id); n.lastInteractionAge = p.age; } }
 /** Fills a show's cast when the player joins: three to five people they will work with every week. */
@@ -2409,3 +2497,6 @@ export function legacyAudition(agencyId, category = null) {
   const r = attendCallback(app.id);
   return { ...r, text: `${agency(agencyId).name} sees you privately: ${route.name}'s ${p.gender === 'female' ? 'daughter' : p.gender === 'male' ? 'son' : 'child'}${route.relation === 'grandparent' ? `'s child` : ''}, they know. ${r.text}` };
 }
+
+/** For checks: pieces the game uses internally. */
+export const internals = { newCostar };

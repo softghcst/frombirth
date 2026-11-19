@@ -60,7 +60,13 @@ export function ties(p = player()) {
 export function post(placeId, kind, text, tone = 'neutral', journal = true) {
   const w = world();
   w.news.push({ year: store.state.year, placeId, kind, text });
-  if (w.news.length > NEWS_MAX) w.news.shift();
+  // Full: the oldest story from somewhere the player has no ties to goes first, so a world of floods and elections
+  // never crowds out the news from home.
+  if (w.news.length > NEWS_MAX) {
+    const mine = ties();
+    const i = w.news.findIndex((n) => n.placeId != null && !mine.has(n.placeId));
+    w.news.splice(i >= 0 ? i : 0, 1);
+  }
   // Children do not follow the news, and not everything is worth a line in a life.
   if (journal && player().age >= 12 && (placeId == null || ties().has(placeId))) log(text, 'system', tone);
 }
@@ -68,8 +74,12 @@ export function post(placeId, kind, text, tone = 'neutral', journal = true) {
 /** The news, newest first, with what touches the player marked. */
 export function news(limit = 40) {
   const mine = ties();
-  return [...(store.state.world?.news ?? [])].reverse().slice(0, limit).map((n) => ({ ...n, yours: n.placeId == null || mine.has(n.placeId),
-    flag: n.placeId ? COUNTRIES[n.placeId]?.flag ?? '' : '🌍' }));
+  const all = [...(store.state.world?.news ?? [])].map((n, i) => ({ ...n, i, yours: n.placeId == null || mine.has(n.placeId),
+    flag: n.placeId ? COUNTRIES[n.placeId]?.flag ?? '' : '🌍' })).reverse();
+  // Up to half of what is shown is news that touches the player, however much else is happening in the world.
+  const yours = all.filter((n) => n.yours).slice(0, Math.ceil(limit / 2));
+  const rest = all.filter((n) => !n.yours).slice(0, limit - yours.length);
+  return [...yours, ...rest].sort((a, b) => b.i - a.i).slice(0, limit).map(({ i, ...n }) => n);
 }
 
 /** How things stand where the player lives, in a sentence. */

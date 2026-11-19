@@ -42,7 +42,8 @@ function playScenes(pick = 0) {
     scenes.push(pe.id);
   }
 }
-function year(pref = {}) { advanceYear(); playScenes(); for (const d of life.openDecisions()) life.answer(d.id, pref[d.kind] && d.options.some((o) => o.id === pref[d.kind]) ? pref[d.kind] : d.options[0].id); }
+// A move abroad (a new country) is only taken where a scenario asks for it.
+function year(pref = {}) { advanceYear(); playScenes(); for (const d of life.openDecisions()) life.answer(d.id, pref[d.kind] && d.options.some((o) => o.id === pref[d.kind]) ? pref[d.kind] : d.kind === 'abroad' ? 'no' : d.options[0].id); }
 function years(n, pref) { for (let i = 0; i < n && P().alive; i++) year(pref); }
 function grownTo(age, countryId = 'us', city = 'Chicago', setup = () => {}) {
   for (;;) {
