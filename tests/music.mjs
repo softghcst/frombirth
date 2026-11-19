@@ -196,6 +196,31 @@ if (joined) {
 check(GENRE_BY_ID.kpop.from > 1960 && !music.openings('uk').some((o) => GENRE_BY_ID[o.genre].from > store.state.year), 'no genre before it existed');
 section(`bands: ${notices.length} notices, ${joined ? `joined ${GENRE_BY_ID[joined.genre].name.toLowerCase()} as ${POSITIONS[joined.position].name.toLowerCase()}` : 'no audition went well'}, labels with their own sounds`);
 
+// Credits on other acts' records: sessions, and songs that end up on an album.
+{
+  p = life('uk', 28);
+  p.talents.music = 85; p.talents.singing = 70;
+  music.musicOf(p).songs = Array.from({ length: 6 }, (_, i) => ({ title: `Song ${i}`, q: 90 }));
+  let played = 0;
+  for (let y = 0; y < 3; y++) { for (let i = 0; i < 3; i++) if (music.session().ok) played++; year(); }
+  const sc = music.musicOf(p).sessionCredits ?? [];
+  check(played >= 3 && sc.length === played, `every session is credited (${sc.length} of ${played})`);
+  check(sc.every((c) => POSITIONS[c.position] && music.act(c.actId)), 'each credit names the act and what the player played');
+  const placed = sc.filter((c) => c.releaseId && music.release(c.releaseId));
+  check(placed.length >= 1 && placed.every((c) => (music.release(c.releaseId).credits?.session ?? []).some((x) => x.who === 'player' && x.position === c.position)), 'the record\'s own credits list the player');
+  // Songs sold to acts: some reappear on their EPs and albums, and earn a share of the whole record.
+  let sold = 0;
+  for (let y = 0; y < 8; y++) { if (music.pitchSong().ok) sold++; year(); }
+  const credits = p.fame.songCredits ?? [];
+  const albums = credits.filter((c) => c.kind === 'album');
+  check(sold >= 1, `songs sold (${sold})`);
+  if (albums.length) {
+    check(albums.every((c) => c.share > 0 && c.share <= 1 && (music.release(c.releaseId)?.credits?.writers ?? []).some((w) => w.who === 'player')), 'an album with the player\'s song credits them as a writer, for their share of the songs');
+    check(credits.filter((c) => c.album).every((c) => albums.some((x) => x.releaseId === c.album)), 'the single and the album are linked');
+  }
+  section(`credits: ${sc.length} sessions credited, ${sold} songs sold, ${albums.length} on albums`);
+}
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('Encore.');

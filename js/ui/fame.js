@@ -452,7 +452,8 @@ const VIEWS = {
       ${music.myAct(p) ? '' : btn('write', 'Write a song', { sub: `${2 - f.musicActs.writes} left this year · ${f.songs.length} ready` })}
       ${btn('pitch', 'Offer a song to another act', { disabled: !f.songs.length || !!f.musicActs.pitched, sub: f.songs.length ? 'Your best unused song. A fee now, a writer\'s share later.' : 'Write one first.' })}
       ${btn('session', 'Play a session', { sub: `On someone else's record, for a fee · ${3 - (f.musicActs.sessions ?? 0)} left this year` })}</div>
-      ${credits.length ? `<div class="section-label">Songs you wrote for others</div>${credits.map((c) => { const r = music.release(c.releaseId); return r ? row('release', r.id, r.title, `${music.act(r.actId)?.name ?? ''} · ${r.released ?? 'coming out'}${r.chart ? ` · #${r.chart}` : ''}`) : ''; }).join('')}` : ''}`;
+      ${credits.length ? `<div class="section-label">Songs you wrote for others</div>${credits.map((c) => { const r = music.release(c.releaseId); return r ? row('release', r.id, r.title, `${music.act(r.actId)?.name ?? ''}${c.kind === 'album' ? ` · ${r.type === 'ep' ? 'EP' : 'album'}, with your song ${c.song}` : ''} · ${r.released ?? 'coming out'}${r.chart ? ` · #${r.chart}` : ''}`) : ''; }).join('')}` : ''}
+      ${(f.sessionCredits ?? []).length ? `<div class="section-label">Records you played on</div>${f.sessionCredits.slice(-12).reverse().map((c) => { const r = c.releaseId ? music.release(c.releaseId) : null; const a = music.act(c.actId); return r ? row('release', r.id, r.title, `${a?.name ?? ''} · you play ${(POSITIONS[c.position]?.name ?? c.position).toLowerCase()} · ${r.released ?? 'coming out'}`) : `<div class="kv"><span>${c.year}</span><span>${esc(`${a?.name ?? 'An act'}'s next record, on ${(POSITIONS[c.position]?.name ?? c.position).toLowerCase()}`)}</span></div>`; }).join('')}` : ''}`;
   },
 
   act(p, id) {
