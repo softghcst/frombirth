@@ -76,6 +76,7 @@ section('infancy, toddler years and childhood each have their own things to do, 
   check(n === CHILD_ACTS_A_YEAR && kid.childActivities().every((a) => a.done), `only so much fits in a year (${n})`);
   // Dance from three to seven, every year: a head start, not a dancer.
   const p2 = child(3);
+  p2.talents.dance = 30; // room to grow: a child born a dancer has nothing to gain from the class
   const start = p2.talents.dance;
   for (let age = 3; age <= 7; age++) { p2.age = age; kid.doActivity('dance'); kid.doActivity('tumbling'); kid.doActivity('musicclass'); }
   const c = p2.flags.childhood;
