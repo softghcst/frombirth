@@ -3,10 +3,44 @@
   "baseHead": "dimple_oval",
   "hairstyles": [
     {
+      "id": "curtain_bangs_90s",
+      "name": "Curtain Bangs 90s",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "half_up_half_down_waves",
       "name": "Half Up Half Down Waves",
       "clipToHead": false,
       "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "ivy_league_crew_cut",
+      "name": "Ivy League Crew Cut",
+      "clipToHead": false,
+      "length": "short",
       "type": "any",
       "heads": [
         "almond",
@@ -54,10 +88,44 @@
       ]
     },
     {
+      "id": "low_taper_fade",
+      "name": "Low Taper Fade",
+      "clipToHead": true,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "messy_top_bun",
       "name": "Messy Top Bun",
       "clipToHead": false,
       "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "messy_wavy_fringe",
+      "name": "Messy Wavy Fringe",
+      "clipToHead": false,
+      "length": "short",
       "type": "any",
       "heads": [
         "almond",
@@ -88,10 +156,78 @@
       ]
     },
     {
+      "id": "side_part_quiff",
+      "name": "Side Part Quiff",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "space_buns",
       "name": "Space Buns",
       "clipToHead": false,
       "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "swept_back_pompadour",
+      "name": "Swept Back Pompadour",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "textured_faux_hawk",
+      "name": "Textured Faux Hawk",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "textured_french_crop",
+      "name": "Textured French Crop",
+      "clipToHead": false,
+      "length": "short",
       "type": "any",
       "heads": [
         "almond",
