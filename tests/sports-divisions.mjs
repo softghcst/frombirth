@@ -12,6 +12,7 @@ const sp = await import('../js/engine/sports.js');
 const life = await import('../js/engine/sportsLife.js');
 const agents = await import('../js/engine/agents.js');
 const { COUNTRIES: COUNTRIES_ } = await import('../js/data/countries.js');
+const { rightToLive } = await import('../js/engine/citizenship.js');
 
 rng.seed(20261119);
 const problems = []; const ok = [];
@@ -193,7 +194,8 @@ caseOf('a transfer abroad: a club in another country, a sponsored work visa, a n
   const e = sp.entryOf('soccer');
   const k = S().sports.contracts[e.contractId];
   check(P().countryId === d.countryId && k?.orgId === d.orgId && sp.orgOf(k.orgId).countryId === P().countryId, 'the player lives and plays in the new country');
-  check(['worker', 'work'].some((x) => JSON.stringify(P().residency ?? {}).includes(x)) || P().citizenships?.includes?.(d.countryId), 'on a work visa there');
+  // A work visa where one is needed; an EU citizen moving within the EU, say, needs none.
+  check(rightToLive(d.countryId, P()) || (P().residency?.jurisdictionId === d.countryId && P().residency.status === 'worker' && P().residency.workAuthorized), 'with the right to live and work there');
   check((e.abroad ?? []).some((x) => x.countryId === d.countryId), 'the move is on the athletic record');
   year({ integrity: 'refuse' });
   check(e.seasonsPlayed >= 1 && S().sports.seasons[e.seasons.at(-1)] && sp.orgOf(k.orgId).countryId === d.countryId, 'and a season is played there');
