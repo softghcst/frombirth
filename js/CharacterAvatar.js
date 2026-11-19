@@ -229,7 +229,7 @@ export const deepness = (skin) => Math.max(0, Math.min(1, (DEEP.from - luminance
  */
 export const READABLE = { white: 0.2, line: 1.4, rim: 0.2, edge: 3, nose: 1.2, ink: '#170b06', noseInk: '#1a0c06' };
 
-/** The outline of hairstyles drawn with colour variables (var(--hair-stroke)): the heads' own outline colour. */
+/** The outline of hairstyles drawn with color variables (var(--hair-stroke)): the heads' own outline color. */
 const HAIR_STROKE = '#23140f';
 
 function colorVars(look, ctx) {
@@ -239,7 +239,7 @@ function colorVars(look, ctx) {
   const hair = gray ? mixHex(c.hair, '#dcd8d0', gray) : c.hair;
   const brow = c.brow ? mixHex(c.brow, '#d8d3c8', gray * 0.6) : mixHex(hair, '#1c1210', 0.25);
   const deep = deepness(c.skin);
-  // --hair-stroke: the outline of hairstyles drawn with colour variables, the same dark line as the heads.
+  // --hair-stroke: the outline of hairstyles drawn with color variables, the same dark line as the heads.
   const vars = { 'skin-color': c.skin, 'hair-color': hair, 'hair-stroke': HAIR_STROKE, 'brow-color': brow, 'eye-color': c.eye, 'lip-color': c.lip, 'lip-upper': c.lipUpper, 'blush-color': c.blush,
     'eye-white': deep ? mixHex('#ffffff', c.skin, READABLE.white * deep) : null };
   if (c.outfit) vars['outfit-color'] = c.outfit;

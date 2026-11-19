@@ -88,7 +88,7 @@ for (const [gone, kept] of Object.entries(GONE_FITTED)) {
   check(!!FITTED_HAIR[kept], `${gone} is replaced by ${kept}, which is not a fitted style`);
   check(normalize({ v: 3, inherited: { head: 'head_12_sculpted' }, style: { hair: gone } }, 'saved').style.hair === kept, `a save with ${gone} is not given ${kept}`);
 }
-// One shade: no hair shape is a darker mix of the main colour (lighter highlight shapes are allowed).
+// One shade: no hair shape is a darker mix of the main color (lighter highlight shapes are allowed).
 for (const id of styles) {
   const svg = readFileSync(new URL(`assets/hair_fitted/${id}_${FITTED_BASE_HEAD}.svg`, root), 'utf8');
   check(!/fill:color-mix\([^)]*#000\)/.test(svg), `${id} has hair shapes in a darker shade`);
