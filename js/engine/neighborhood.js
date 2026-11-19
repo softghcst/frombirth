@@ -31,7 +31,8 @@ import { store, player } from '../state.js';
 import { clamp, cap } from '../util.js';
 import { rng } from '../rng.js';
 import { COUNTRIES } from '../data/countries.js';
-import { PROFILES, HOME_TYPES, PROPERTY_HOODS, PROPERTY_HOME, VENUES, HOOD_NAMES, BUILDING_NAMES, LANDLORDS, SHAPES, MOVE_REASONS, INTERESTS, COMMUNITY_EVENTS, DISAGREEMENTS } from '../data/neighborhoods.js';
+import { PROFILES, HOME_TYPES, PROPERTY_HOODS, PROPERTY_HOME, VENUES, HOOD_NAMES, BUILDING_NAMES, LANDLORDS, SHAPES, MOVE_REASONS, INTERESTS, COMMUNITY_EVENTS, DISAGREEMENTS, FLAT_COUNTRIES, HOME_NAMES, STEP_FREE, BUILDING_ISSUES, PROJECTS, BUSINESS_VENUE } from '../data/neighborhoods.js';
+import { needs as accessNeeds, homeRecord as accessHome } from './health/access.js';
 import { STREETS } from '../data/properties.js';
 import { seeded } from './sportsPlay.js';
 import { coastal } from './geo.js';
@@ -39,6 +40,7 @@ import { cityOf } from './cities.js';
 import { archiveIdOf, recordEvent } from './chronicle.js';
 import { parentOccupations } from './history.js';
 import { makeNpc } from './npcFactory.js';
+import * as Talk from './neighborhoodTalk.js';
 
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 /** A month as one number: year * 12 + month. */
@@ -94,7 +96,11 @@ export function profileAvailable(id, countryId, year) {
   return year >= (pr.fromWhere?.[countryId] ?? pr.from);
 }
 export const homeTypeAvailable = (type, year) => year >= (HOME_TYPES[type]?.from ?? 0);
-export const homeTypeName = (type, countryId) => HOME_TYPES[type]?.nameWhere?.[countryId] ?? HOME_TYPES[type]?.name ?? cap(type);
+export const homeTypeName = (type, countryId) => HOME_NAMES[type]?.[countryId] ?? HOME_TYPES[type]?.nameWhere?.[countryId] ?? HOME_TYPES[type]?.name ?? cap(type);
+/** The share of something being so in a year, from a table of [from-year, share] rows, newest first. */
+const byYear = (rows, year) => (rows.find(([from]) => year >= from) ?? rows[rows.length - 1])[1];
+/** Whether a country's towns and cities are mostly flats. */
+export const flatCountry = (countryId) => FLAT_COUNTRIES.includes(countryId);
 export const venueAvailable = (kind, year) => { const v = VENUES[kind]; return !!v && year >= (v.from ?? 0) && year <= (v.until ?? 9999); };
 /** The name a community event goes by where it happens. */
 export const eventName = (kind, countryId) => COMMUNITY_EVENTS[kind]?.names?.[countryId] ?? COMMUNITY_EVENTS[kind]?.name ?? kind;
@@ -205,12 +211,13 @@ function addVenue(state, hood, kind, r, opened) {
   const taken = new Set(hood.venues.map((x) => x.name));
   const name = r.shuffle(v.names).find((n) => !taken.has(n)) ?? `${v.name} ${hood.nv + 1}`;
   const venue = { id: `${hood.id}v${++hood.nv}`, k: kind, name, owner: null, from: Math.max(opened, v.from ?? 0), to: null };
+  venue.sf = r.chance(byYear(STEP_FREE.venue, opened) * (v.public ? 1.15 : 1)); // a level way in
   hood.venues.push(venue);
   return venue;
 }
 
 /** A street, a building or a lane in a neighborhood, with its homes, every one but `keep` lived in or for let. */
-function makeBlock(state, hood, homeType) {
+function makeBlock(state, hood, homeType, year = state.year, fresh = false) {
   const H = hoods(state);
   const pr = PROFILES[hood.p];
   const r = luck(state, `block/${hood.id}/${hood.nb + 1}`);
@@ -220,25 +227,29 @@ function makeBlock(state, hood, homeType) {
   const size = r.int(pr.size[0], pr.size[1]);
   const street = r.pick(STREETS);
   const tree = r.pick(HOOD_NAMES.first);
-  const block = { id, h: hood.id, kind, homes: [], est: Math.max(hood.est, state.year - r.int(5, 90)), n0: r.int(0, 30) * 2 + 1 };
+  const block = { id, h: hood.id, kind, homes: [], est: fresh ? year : Math.max(hood.est, year - r.int(5, 90)), n0: r.int(0, 30) * 2 + 1 };
   if (kind === 'building') {
     block.name = r.pick(BUILDING_NAMES).replace('{street}', street).replace('{tree}', tree).replace('{n}', String(r.int(2, 140)));
     block.fl = Math.max(2, Math.ceil(size / 3));
     block.condo = homeType === 'condo';
     block.ll = block.condo ? null : r.pick(LANDLORDS);
     block.areas = r.shuffle(['the courtyard', 'the laundry room', 'the roof terrace', 'the lobby', 'the bike store', 'the garden']).slice(0, 2);
+    block.lift = Math.ceil(size / 3) >= 3 && r.chance(byYear(STEP_FREE.lift, block.est));
   } else {
     block.name = street;
   }
   H.blocks[id] = block;
   hood.blocks.push(id);
-  const types = pr.homes.filter(([t]) => homeTypeAvailable(t, state.year));
+  // Where towns and cities are mostly flats, more of a street is flats too.
+  const types = pr.homes.filter(([t]) => homeTypeAvailable(t, year)).map(([t, w]) => [t, w * (flatCountry(hood.c) && HOME_TYPES[t]?.floors && hood.p !== 'rural' ? 2.5 : 1)]);
   const n = kind === 'building' ? block.fl * 3 : size;
   for (let i = 0; i < n; i++) {
     const t = kind === 'building' ? (homeType === 'student' ? 'student' : homeType === 'condo' ? 'condo' : r.chance(0.15) ? 'shared' : homeType === 'shared' ? 'apartment' : homeType)
       : (i === 0 ? homeType : weightedPick(r, types.filter(([x]) => !HOME_TYPES[x].floors).length ? types.filter(([x]) => !HOME_TYPES[x].floors) : [[homeType, 1]]));
     const home = { id: `${id}u${i + 1}`, h: hood.id, b: id, t: kind === 'building' ? t : t, i: kind === 'building' ? i % 3 : i, occ: [], hh: null, own: 'landlord' };
     if (kind === 'building') { home.fl = Math.floor(i / 3) + 1; home.label = `Apartment ${home.fl}${'ABC'[i % 3]}`; } else home.label = `No. ${block.n0 + i * 2}`;
+    // Getting in: a ground-floor flat, a flat in a building with a lift, or a house built or altered to be level.
+    home.sf = kind === 'building' ? home.fl === 1 ? r.chance(STEP_FREE.groundFloor) : !!block.lift : r.chance(byYear(STEP_FREE.home, block.est));
     H.homes[home.id] = home;
     block.homes.push(home.id);
   }
@@ -376,8 +387,9 @@ function profilesFor(state, d, p) {
     if (farm) list = ['rural', 'smalltown'];
     else if (wealth >= 65) list = r.chance(0.5) ? ['suburban', 'historic', 'coastal'] : ['historic', 'suburban'];
     else if (!big) list = r.chance(0.5) ? ['smalltown', 'suburban'] : ['suburban', 'urban'];
-    else list = r.chance(0.5) ? ['apartments', 'urban', 'mixed'] : ['suburban', 'urban', 'smalltown'];
+    else list = r.chance(flatCountry(c) ? 0.85 : 0.5) ? ['apartments', 'urban', 'mixed'] : ['suburban', 'urban', 'smalltown'];
   }
+  if (flatCountry(c) && d.kind === 'rent') list = list.filter((x) => x !== 'suburban').concat(['suburban']);
   const ok = list.filter((x) => profileAvailable(x, c, y));
   return ok.length ? ok : ['urban', 'smalltown'].filter((x) => profileAvailable(x, c, y)).concat(['smalltown']);
 }
@@ -407,7 +419,9 @@ export function findHome(state, d, o = {}) {
     for (const bid of hood.blocks) {
       const b = H.blocks[bid];
       if (floors !== (b.kind === 'building')) continue;
-      const free = b.homes.map((id) => H.homes[id]).find((h) => !h.hh && h.t === type && h.id !== currentHome(state)?.id && !h.asset);
+      const empty = b.homes.map((id) => H.homes[id]).filter((h) => !h.hh && h.t === type && h.id !== currentHome(state)?.id && !h.asset);
+      // Someone who needs a level way in is offered the homes that have one first.
+      const free = (needsStepFree(state) ? empty.find((h) => stepFree(state, h)) : null) ?? empty[0];
       if (free) return free;
     }
     // A street in a neighborhood the player already knows, not yet seen: a new block there.
@@ -423,7 +437,8 @@ function newBlockHome(state, hood, type, p) {
   const r = luck(state, `spot/${block.id}`);
   const homes = block.homes.map((id) => H.homes[id]);
   const fits = homes.filter((h) => h.t === type);
-  const mine = (fits.length ? r.pick(fits.slice(Math.min(1, fits.length - 1))) : homes[Math.min(1, homes.length - 1)]);
+  let mine = (fits.length ? r.pick(fits.slice(Math.min(1, fits.length - 1))) : homes[Math.min(1, homes.length - 1)]);
+  if (needsStepFree(state)) mine = fits.find((h) => stepFree(state, h)) ?? mine;
   mine.t = type;
   populate(state, block, [mine.id]);
   // A child moving in: most streets have someone their age.
@@ -498,6 +513,11 @@ export function syncHousehold(state = store.state) {
   const hh = H.hhs[H.cur.hh];
   if (!hh) return;
   const want = [meId(state.player), ...housemates(state, d)];
+  const home = H.homes[hh.home];
+  // Who moves in and out of the player's home is plain to see from next door (engine/neighborhoodTalk.js).
+  const seen = (kind, words) => { if (home && H.cur.since < nowT(state)) Talk.hear(state, home.h, kind, Talk.watchers(state, home.id), words); };
+  for (const id of want) if (!hh.m.includes(id) && !isPlayerRef(id)) { const n = state.npcs[id]; seen(n?.role === 'child' && n.age <= 1 ? 'baby' : 'partner', { partner: ['spouse', 'partner'].includes(n?.role) }); }
+  for (const id of hh.m) if (!want.includes(id) && !isPlayerRef(id) && personOf(state, id)?.alive) { const n = state.npcs[id]; seen('left', { partner: ['spouse', 'partner', 'ex'].includes(n?.role) || !!n?.flags?.wasSpouse }); }
   for (const id of want) if (!hh.m.includes(id)) {
     // Someone who lived elsewhere in the world moves in: they leave their own household (a neighbor who married the player).
     const r = H.res[id];
@@ -598,6 +618,7 @@ export function moveInto(state, home, d = dwelling(state), why = null) {
   // Where they have lived (engine/globalStory.js): this neighborhood, beside the city.
   const loc = p.locations?.[p.locations.length - 1];
   if (loc && loc.to == null) { (loc.hoods ??= []); if (!loc.hoods.includes(hood.id)) loc.hoods.push(hood.id); }
+  if (prev) Talk.hear(state, hood.id, 'moved_in', Talk.watchers(state, home.id), { at: `to ${home.label}` }, t);
   if (prev || why) {
     const ev = store.state === state ? recordEvent({ key: `hood:move:${archiveIdOf(p)}:${home.id}:${t}`, type: 'home_move', title: `Moved to ${hood.name}`,
       text: `${homeTypeName(home.t, hood.c)} in ${hood.name}, ${hood.city}.`, place: { countryId: hood.c, city: hood.city }, propertyId: home.asset ?? null, significance: 1, privacy: 'family' }) : null;
@@ -689,6 +710,40 @@ export function befriend(state, resId, rel = null, role = 'neighbor') {
   (r.met ??= {})[archiveIdOf(p)] ??= nowT(state);
   n.lastInteractionAge = p.age;
   return n;
+}
+
+// ---------- Getting in ----------
+
+/** Whether the player needs a level way in (step-free access, or a wheelchair), from their own health record. */
+export function needsStepFree(state = store.state) {
+  try { return accessNeeds(state.player).some((n) => n.id === 'step_free' || n.id === 'wheelchair'); } catch { return false; }
+}
+/** Whether a home can be reached without steps: as built, or as adapted (the adaptations are the health record's). */
+export function stepFree(state, home) {
+  if (!home) return false;
+  if (home.sf) return true;
+  if (home.id === hoods(state).cur?.home) { try { return accessHome(state.player).features.some((f) => ['ramp', 'step_free_entry', 'lift'].includes(f)); } catch { return false; } }
+  return false;
+}
+/** In a building with no lift, a ground-floor home that stands empty, for someone the stairs shut in. */
+export function groundFloorOption(state = store.state) {
+  const H = hoods(state);
+  const home = currentHome(state);
+  if (!home || !needsStepFree(state) || stepFree(state, home) || dwelling(state)?.kind !== 'rent') return null;
+  const block = H.blocks[home.b];
+  if (block.kind !== 'building') return null;
+  return block.homes.map((id) => H.homes[id]).find((h) => !h.hh && h.sf && !h.asset) ?? null;
+}
+
+/** Children on the player's street who go to the local school and are in the player's year: at most `max`. */
+export function neighborKidsFor(state, age, max = 2) {
+  if (!state?.hoods || max <= 0) return [];
+  const home = currentHome(state);
+  if (!home) return [];
+  const H = hoods(state);
+  return around(state, home.id).filter((x) => x.hh && !x.hh.me && !x.hh.fam).flatMap((x) => x.hh.m).map((id) => H.res[id])
+    .filter((r) => r && aliveRes(r) && r.school && Math.abs(ageOf(r, state) - age) <= 1 && !(state.npcs[r.id] && state.player.npcIds.includes(r.id) && state.npcs[r.id].role === 'classmate'))
+    .slice(0, Math.min(2, max)).map((r) => r.id);
 }
 
 // ---------- Proximity ----------
@@ -803,7 +858,7 @@ export function wake(state, hood) {
   for (const r of Object.values(H.res)) if (r.id.startsWith(`npc_${hood.id}r`) && !r.met && !r.fam && (r.dead || r.gone) && !state.npcs[r.id] && !r.owns) {
     const hh = H.hhs[r.hh];
     if (hh && hh.home) continue;
-    for (const id of [r.hh, r.hh2]) if (H.hhs[id]) H.hhs[id].m = H.hhs[id].m.filter((x) => x !== r.id);
+    for (const x of Object.values(H.hhs)) if (x.h === hood.id && x.m.includes(r.id)) x.m = x.m.filter((y) => y !== r.id);
     delete H.res[r.id];
   }
 }
@@ -833,6 +888,9 @@ export function planYear(state, hood, y) {
     const youngest = Math.min(...people.map(age));
     const tenure = y - yearOf(hh.from);
     let chance = (hh.own ? 0.035 : floors ? 0.13 : 0.08) * (pr.moving ?? 1);
+    // Renters feel rising prices first.
+    const fiveAgo = (hood.costs ?? []).find(([yy]) => yy === y - 5);
+    if (!hh.own && fiveAgo && hood.cost > fiveAgo[1] * 1.12) chance += 0.05;
     if (home.t === 'student') chance = tenure >= 1 ? 0.7 : 0.25;
     if (hh.kind === 'roommates') chance += 0.08;
     if (oldest >= 76) chance += 0.04;
@@ -918,6 +976,39 @@ export function planYear(state, hood, y) {
     }
     const elders = residentsOf(state, hood.id).filter((x) => age(x) >= 70 && y - yearOf(H.hhs[x.hh]?.from ?? T(y)) >= 25 && !state.npcs[x.id]);
     if (pAge >= 14 && elders.length && r.chance(0.2)) ev.push({ m: r.int(0, 11), k: 'elder', res: r.pick(elders).id });
+  }
+  // The neighborhood itself changes: new homes go up, old ones are done up, prices and how close-knit it is drift.
+  const growing = { suburban: 0.05, mixed: 0.04, urban: 0.03, apartments: 0.04, downtown: 0.03, university: 0.03, coastal: 0.02, smalltown: 0.02, rural: 0.01, historic: 0.005, gated: 0.02 }[hood.p] ?? 0.02;
+  if (hood.blocks.length < 6 && y >= 1880 && r.chance(growing)) {
+    const type = weightedPick(r, pr.homes.filter(([t]) => homeTypeAvailable(t, y) && t !== 'student'));
+    ev.push({ m: r.int(0, 11), k: 'build', type });
+  }
+  const tired = hood.blocks.map((b) => H.blocks[b]).filter((b) => y - (b.renovated ?? b.est) >= 30);
+  if (tired.length && r.chance(0.05)) ev.push({ m: r.int(0, 11), k: 'renovate', block: r.pick(tired).id });
+  const lastYear = H.log.filter((x) => x.h === hood.id && x.t >= T(y - 1) && x.t < T(y));
+  const events = lastYear.filter((x) => x.k === 'event' || x.k === 'hosted' || x.k === 'attended').length;
+  const leavers = lastYear.filter((x) => x.k === 'left').length;
+  const opened = lastYear.filter((x) => x.k === 'venueOpen' || x.k === 'built').length;
+  ev.push({ m: 11, k: 'drift', cost: Math.round((r.normal(0.005, 0.025) + opened * 0.01 - leavers * 0.004) * 1000) / 1000, cohesion: Math.round(clamp(events * 2 - leavers * 1.5 + (50 - hood.g.cohesion) / 10, -6, 6)) });
+  if (r.chance(0.08 * (0.5 + hood.g.cohesion / 100))) {
+    const org = organizers.length ? r.pick(organizers) : null;
+    if (org) ev.push({ m: r.int(2, 9), k: 'project', org: org.id, what: r.pick(PROJECTS) });
+  }
+  if (here?.h === hood.id && p.alive) {
+    const block = H.blocks[here.b];
+    const pAge = p.age + (y - state.year);
+    if (block.kind === 'building' && pAge >= 16 && r.chance(0.15)) {
+      const kinds = Object.entries(BUILDING_ISSUES).filter(([, x]) => (!x.needs || block[x.needs]) && y >= (x.from ?? 0)).map(([k]) => k);
+      if (kinds.length) ev.push({ m: r.int(0, 11), k: 'issue', block: block.id, kind: r.pick(kinds) });
+    }
+    // The family that stayed: a household here for forty years and more, with children born on the street.
+    const stayed = Object.values(H.hhs).filter((hh) => hh.home && H.homes[hh.home].h === hood.id && !mine(hh) && y - yearOf(hh.from) >= 40 && hh.m.some((id) => H.res[id] && (H.res[id].bornHere || H.res[id].by >= yearOf(hh.from))));
+    if (pAge >= 12 && stayed.length && r.chance(0.3)) ev.push({ m: r.int(0, 11), k: 'stayed', hh: r.pick(stayed).id });
+    // An unexpected friendship: a neighbor the player knows turns out to share a passion.
+    const me = archiveIdOf(p);
+    const sharers = knownIn(state, hood.id).filter((n) => H.res[n.id] && n.role === 'neighbor' && n.meters.relationship >= 35 && sharedWith(state, H.res[n.id]).length);
+    if (sharers.length && r.chance(0.35)) { const n = r.pick(sharers); ev.push({ m: r.int(0, 11), k: 'shared', res: n.id, interest: sharedWith(state, H.res[n.id])[0] }); }
+    void me;
   }
   ev.sort((a, b) => a.m - b.m);
   H.plans[hood.id] = { y, ev };
@@ -1130,6 +1221,64 @@ function apply(state, hood, e, y, quiet = false) {
       state.journal.push({ age: p.age, text: line, kind: 'system', tone: 'good', ...(state.month ? { month: state.month } : {}), hood: true });
       return;
     }
+    case 'build': {
+      if (hood.blocks.length >= 6) return;
+      const block = makeBlock(state, hood, e.type, y, true);
+      block.isNew = true;
+      for (const id of block.homes) H.homes[id].sf = H.homes[id].sf || y >= 1990; // new building is built level, from the 1990s
+      if (block.kind === 'building') block.lift = block.lift || (block.fl >= 3 && y >= 1960);
+      note(state, { t, h: hood.id, k: 'built', text: `New ${block.kind === 'building' ? `apartments went up: ${block.name}` : `homes were built on ${block.name}`}, ${block.homes.length} of them.`, block: block.id });
+      return;
+    }
+    case 'renovate': {
+      const block = H.blocks[e.block];
+      if (!block) return;
+      block.renovated = y;
+      if (block.kind === 'building' && block.fl >= 3 && y >= 1960 && !block.lift) { block.lift = true; for (const id of block.homes) H.homes[id].sf = true; }
+      hood.g.upkeep = clamp(hood.g.upkeep + 4);
+      hood.cost = Math.round(hood.cost * 1.03 * 100) / 100;
+      note(state, { t, h: hood.id, k: 'renovated', text: `${block.name} was done up${block.lift && block.kind === 'building' ? ', with a lift at last' : ''}.`, block: block.id });
+      return;
+    }
+    case 'drift': {
+      const was = hood.cost;
+      hood.cost = Math.round(clamp(hood.cost * (1 + e.cost), 0.4, 3) * 100) / 100;
+      hood.g.cohesion = clamp(hood.g.cohesion + e.cohesion);
+      (hood.costs ??= []).push([y, hood.cost]);
+      if (hood.costs.length > 12) hood.costs.shift();
+      const five = hood.costs.find(([yy]) => yy === y - 5);
+      if (five && hood.cost >= five[1] * 1.15 && !H.log.some((x) => x.h === hood.id && x.k === 'prices' && x.t >= T(y - 5))) note(state, { t, h: hood.id, k: 'prices', text: `Homes in ${hood.name} cost far more than five years ago. Some people who rent are being priced out.` });
+      if (five && hood.cost <= five[1] * 0.88 && !H.log.some((x) => x.h === hood.id && x.k === 'prices' && x.t >= T(y - 5))) note(state, { t, h: hood.id, k: 'prices', text: `Homes in ${hood.name} cost less than they did five years ago.` });
+      void was;
+      return;
+    }
+    case 'project': {
+      const org = H.res[e.org];
+      if (!org || org.dead || !org.hh || H.homes[H.hhs[org.hh]?.home]?.h !== hood.id) return;
+      const pAge = p.age - (state.year - y);
+      if (playerHere && pAge >= 10) queueAbout(state, 'hood_community_project', org.id, { what: e.what }, `project/${hood.id}/${y}`, t);
+      else { hood.g.parks = clamp(hood.g.parks + 3); hood.g.cohesion = clamp(hood.g.cohesion + 2); note(state, { t, h: hood.id, k: 'project', text: `Neighbors got together to ${e.what}, led by ${fullName(org)}.`, who: org.id }); }
+      return;
+    }
+    case 'issue': {
+      if (!playerHere || here.b !== e.block) return;
+      queueScene(state, 'hood_building_issue', { words: { issue: BUILDING_ISSUES[e.kind].text, building: H.blocks[e.block].name, landlord: H.blocks[e.block].ll ?? 'the owners\' committee', issueKind: e.kind } }, `issue/${e.block}/${y}`, t);
+      return;
+    }
+    case 'stayed': {
+      const hh = H.hhs[e.hh];
+      if (!playerHere || !hh?.home) return;
+      const head = hh.m.map((id) => H.res[id]).filter((x) => x && aliveRes(x)).sort((a, b) => a.by - b.by)[0];
+      if (!head) return;
+      queueAbout(state, 'hood_family_that_stayed', head.id, { family: `the ${hh.n} household`, years: String(y - yearOf(hh.from)), street: H.blocks[H.homes[hh.home].b].name }, `stayed/${hh.id}`, t);
+      return;
+    }
+    case 'shared': {
+      const n = state.npcs[e.res];
+      if (!playerHere || !n?.alive || !known(n.id)) return;
+      queueAbout(state, 'hood_unexpected_friendship', n.id, { interest: INTERESTS.find(([k]) => k === e.interest)?.[1] ?? e.interest }, `shared/${n.id}`, t);
+      return;
+    }
     case 'elder': {
       const r = H.res[e.res];
       if (!playerHere || !r || r.dead || state.npcs[r.id]) return;
@@ -1139,6 +1288,18 @@ function apply(state, hood, e, y, quiet = false) {
     }
     default:
   }
+}
+
+/** Interests the player shares with a resident: from the player's passions, talents and animals, and the resident's own. */
+export function sharedWith(state, r) {
+  const p = state.player;
+  const mine = new Set();
+  if ((p.talents?.music ?? 0) >= 55) mine.add('music');
+  if ((p.talents?.sports ?? 0) >= 55 || p.sport) mine.add('sport');
+  if ((p.stats?.intellect ?? 0) >= 65) { mine.add('books'); mine.add('chess'); }
+  if (p.npcIds.some((id) => state.npcs[id]?.role === 'pet') || p.animals) mine.add('animals');
+  for (const k of Object.keys(p.passions ?? {})) mine.add(k);
+  return (r.in ?? []).filter((k) => mine.has(k));
 }
 
 /** Someone leaves a neighborhood. If the player knows them, they are still the same person, somewhere else. */
@@ -1281,7 +1442,17 @@ export function openYear(state = store.state) {
     if (here && home && proximity(state, here.id, home).near >= 4) n.lastInteractionAge = Math.max(n.lastInteractionAge ?? -1, p.age - 1);
     if (n.role === 'neighbor' && n.meters.relationship < 10 && !n.flags.tag) { p.npcIds = p.npcIds.filter((id) => id !== n.id); n.flags.drifted = { year: state.year, age: p.age, role: 'neighbor' }; }
   }
-    // Friend groups: three or more people who live near each other and are friends with the player.
+    // A year of talk, for the year just lived; and a wrong story going round the player's own street.
+  for (const hood of Object.values(H.list)) if (active(state, hood)) Talk.spread(state, hood, state.year - 1);
+  if (here) {
+    const rumor = Talk.rumorToSettle(state, here.h);
+    if (rumor && state.player.age >= 16) {
+      const cast = rumor.person ? { person: rumor.person, words: {} } : { words: { person: H.res[rumor.res].f, res: rumor.res } };
+      cast.words.rumor = Talk.factText(rumor.f); cast.words.factId = rumor.f.id; cast.words.count = String(rumor.count);
+      queueScene(state, 'hood_rumor', cast, `rumor/${rumor.f.id}`, T(state.year));
+    }
+  }
+  // Friend groups: three or more people who live near each other and are friends with the player.
   groups(state);
 }
 

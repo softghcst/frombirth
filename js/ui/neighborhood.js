@@ -10,6 +10,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { PROFILES, VENUES } from '../data/neighborhoods.js';
 import * as N from '../engine/neighborhood.js';
 import * as L from '../engine/neighborhoodLife.js';
+import * as Talk from '../engine/neighborhoodTalk.js';
 import { avatarSvg } from './avatar.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { createNav } from './animalNav.js';
@@ -89,11 +90,14 @@ function overview(home, hood) {
       ${kv('Shops and services', measure(g.amenities))}
       ${kv('Neighbors doing things together', measure(g.cohesion))}
       ${kv('Upkeep', measure(g.upkeep))}
+      ${(() => { const c = hood.costs ?? []; const five = c.find(([y]) => y === S().year - 5) ?? c[0]; if (!five || five[0] >= S().year - 1) return ''; const d = hood.cost / five[1]; return kv(`Prices since ${five[0]}`, d >= 1.1 ? 'Up a lot' : d >= 1.03 ? 'Up a little' : d <= 0.9 ? 'Down a lot' : d <= 0.97 ? 'Down a little' : 'About the same'); })()}
       <p class="muted" style="margin-top:8px">These describe the place, not the people in it.</p></div>
     <div class="card"><h3>People you know here</h3>${people.length ? people.map((n) => personRow(n, relWord(n), `${Math.round(n.meters.relationship)}%`)).join('') : empty('Nobody yet. Try saying hello.')}</div>
     <div class="card"><h3>Lately</h3>${recent.length ? recent.map((x) => `<p class="body">${year(x.t)}: ${esc(x.text)}</p>`).join('') : empty('Nothing much has happened yet.')}
       ${coming ? `<p class="muted">Something is planned in the neighborhood later this year.</p>` : ''}</div>
-    <div class="card"><h3>How you are known</h3>${kv('Familiarity', esc(st.familiarity))}${kv('Helping out', esc(st.reliability))}${kv('Joining in', esc(st.involvement))}${kv('Disagreements', esc(st.trouble))}</div>`;
+    <div class="card"><h3>How you are known</h3>${kv('Familiarity', esc(st.familiarity))}${kv('Helping out', esc(st.reliability))}${kv('Joining in', esc(st.involvement))}${kv('Disagreements', esc(st.trouble))}
+      ${kv('Think well of you', `${st.thinkWell} ${st.thinkWell === 1 ? 'person' : 'people'}`)}${st.thinkBadly ? kv('Think less of you', String(st.thinkBadly)) : ''}
+      <p class="muted" style="margin-top:6px">Each person goes by what they have seen or been told. See Community for what is going round.</p></div>`;
 }
 
 /** The street or the building, drawn from where the homes really are. */
@@ -130,9 +134,11 @@ function homeTab(home, hood) {
       ${kv('Owned by', esc(owner))}
       ${asset ? kv('Worth', esc(fmtMoney(asset.value, C()))) : ''}
       ${kv('Who lives here', esc(N.living(S(), hh).map((ref) => N.personOf(S(), ref)?.name).filter(Boolean).join(', ') || 'You'))}
+      ${kv('Getting in', N.stepFree(S(), home) ? 'Level, no steps' : block.kind === 'building' && home.fl > 1 ? (block.lift ? 'By lift' : 'Stairs only: no lift') : 'Steps at the door')}
+      ${N.needsStepFree(S()) && !N.stepFree(S(), home) ? `<p class="muted">The steps are a barrier for you here. Adaptations can be made through My Health${N.groundFloorOption(S()) ? ', or the landlord can move you to an empty ground-floor home' : ''}.</p>${N.groundFloorOption(S()) ? btn('data-groundfloor', 'Ask for the ground-floor home') : ''}` : ''}
       ${btn(`data-home="${home.id}"`, 'The history of this home')}</div>
     ${block.kind === 'building' ? `<div class="card"><h3>My building</h3>
-      ${kv('Floors', String(block.fl))}
+      ${kv('Floors', String(block.fl))}${kv('Lift', block.lift ? 'Yes' : 'No')}${block.renovated ? kv('Done up', String(block.renovated)) : ''}
       ${kv('Run by', esc(block.condo ? 'The owners, together' : block.ll ?? 'A landlord'))}
       ${mgr ? kv('Building manager', esc(known(mgr.id) ? `${mgr.f} ${mgr.l}` : `Someone from the ${mgr.l} household`)) : ''}
       ${kv('Shared spaces', esc(cap((block.areas ?? []).join(' and ')) || 'The stairs'))}</div>` : ''}
@@ -177,6 +183,7 @@ function community(home, hood) {
   const groups = H.groups.filter((g) => g.h === hood.id && g.to == null);
   const disputes = H.disputes.filter((d) => d.h === hood.id && d.status === 'open');
   return `<div class="card"><h3>Community events</h3>${events.length ? events.map((x) => `<p class="body">${year(x.t)}${x.t % 12 ? `, ${N.MONTHS[x.t % 12]}` : ''}: ${esc(x.text)}</p>`).join('') : empty('Nothing yet. Neighbors organize things now and then; you will hear when they do.')}</div>
+    ${(() => { const k = Talk.knownAbout(S(), hood.id); return `<div class="card"><h3>What people here know about you</h3>${k.length ? k.slice(0, 8).map((x) => `<p class="body">${esc(cap(`you ${x.text}`))}. <small class="muted">${x.truth ? '' : 'Not true: a rumor. '}${x.saw ? `${x.saw} saw it` : ''}${x.saw && x.heard ? ', ' : ''}${x.heard ? `${x.heard} heard it` : ''}.</small></p>`).join('') : empty('Nothing yet: people know what they see.')}<p class="muted">Only what people could have seen or been told. Nobody here knows your health or your private life.</p></div>`; })()}
     <div class="card"><h3>Host something</h3>${o.kinds.length ? `<p class="muted">Pick what, who and how much. Guests may say no.</p>${btn('data-host', o.done ? 'Hosted already this time' : 'Plan a gathering', { disabled: o.done || !o.guests.length })}${o.guests.length ? '' : '<p class="muted">Get to know some neighbors first.</p>'}` : empty('Not yet: you are too young to host.')}</div>
     ${groups.length ? `<div class="card"><h3>Friend groups</h3>${groups.map((g) => `<p class="body"><strong>${esc(cap(g.name))}</strong>: ${esc(g.m.map((ref) => (N.isPlayerRef(ref) ? 'you' : S().npcs[ref]?.firstName)).filter(Boolean).join(', '))}, since ${year(g.since)}.</p>`).join('')}</div>` : ''}
     ${disputes.length ? `<div class="card"><h3>Not settled yet</h3>${disputes.map((d) => `<p class="body">With ${esc(`${H.res[d.res]?.f ?? ''} ${H.res[d.res]?.l ?? ''}`)}: ${esc(d.kind)} (${year(d.t)}). Old disagreements fade.</p>`).join('')}</div>` : ''}`;
@@ -187,7 +194,7 @@ function places() {
   if (!list.length) return `<div class="card">${empty('Nothing within walking distance.')}</div>`;
   return `<div class="card">${list.map((v) => `<div class="hood-venue">
       ${row(`data-visit="${v.id}"`, { cafe: '☕', restaurant: '🍽️', bakery: '🥖', grocery: '🧺', corner: '🏪', bookshop: '📚', barber: '💈', market: '🧺', hardware: '🔧', pharmacy: '💊', laundromat: '🧺', gym: '🏋️', cinema: '🎬', bar: '🍺', library: '📖', playground: '🛝', park: '🌳', community: '🏛️', church: '🏛️', school: '🏫', video: '📼', netcafe: '🖥️' }[v.k] ?? '📍',
-    v.name, `${v.kind}${v.owner?.name ? ` · run by ${v.owner.name}` : ''}${v.regular >= 4 ? ' · you are a regular' : ''}`, v.visited ? 'Been' : v.canVisit ? 'Visit' : '')}
+    v.name, `${v.mine ? 'Your business' : v.kind}${!v.mine && v.owner?.name ? ` · run by ${v.owner.name}` : ''}${v.regular >= 4 ? ' · you are a regular' : ''} · ${v.sf ? 'step-free' : 'steps at the door'}`, v.visited ? 'Been' : v.canVisit ? 'Visit' : '')}
       ${v.canWork ? btn(`data-work="${v.id}"`, 'Ask about work') : ''}</div>`).join('')}</div>`;
 }
 
@@ -227,7 +234,8 @@ function household(step) {
     }
     if (!r || r.dead) return '';
     const acts = L.neighborActions(S(), ref);
-    return `<div class="hood-person">${row('aria-disabled="true"', '👤', r.seen >= 2 ? `${r.f} ${r.l}` : cap(looks(r)), r.seen >= 2 ? `You know each other by sight · ${looks(r)}` : 'You have not met')}
+    const heard = Talk.impression(S(), ref).known;
+    return `<div class="hood-person">${row('aria-disabled="true"', '👤', r.seen >= 2 ? `${r.f} ${r.l}` : cap(looks(r)), `${r.seen >= 2 ? `You know each other by sight · ${looks(r)}` : 'You have not met'}${heard.length ? ` · has heard you ${Talk.factText(heard[heard.length - 1])}` : ''}`)}
       <div class="btn-pair">${acts.map((a) => btn(`data-nact="${ref}:${a.id}"`, a.label, { disabled: a.done })).join('')}</div></div>`;
   }).join('');
   return { title: `The ${hh.n} household`, sub: [home?.label, prox, home ? N.homeTypeName(home.t, H.list[home.h].c) : null].filter(Boolean).join(' · '), body: `
@@ -341,6 +349,7 @@ async function onClick(e) {
   if ((el = hit('data-visit'))) return report(L.visitPlace(el.dataset.visit));
   if ((el = hit('data-work'))) return report(L.askForWork(el.dataset.work));
   if ((el = hit('data-revisit'))) return report(L.revisit(el.dataset.revisit));
+  if (hit('data-groundfloor')) return report(L.moveToGroundFloor());
   if (hit('data-host')) return planGathering();
   if (hit('data-endroommate')) { shut(); if (!await confirmModal({ title: 'End the arrangement?', body: 'They move out, and you pay the whole rent again.', yes: 'End it' })) return show(); return report(L.endRoommate()); }
   if (hit('data-roommate')) {

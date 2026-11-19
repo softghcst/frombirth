@@ -169,4 +169,55 @@ export default [
       { label: 'Send your best wishes', outcomes: [any('You wrote back with news and a photograph. Two of them replied.', 'neutral', hood({ do: 'reunion', how: 'write' }))] },
     ],
   },
+  {
+    ...base, id: 'hood_community_project', ageRange: [10, 120],
+    text: '{person} wants neighbors to {what}, and is asking who will help.',
+    choices: [
+      { label: 'Help lead it', requires: [need('age', '>=', 16)], outcomes: [any('Weekends of planning, digging and phone calls. When it is done, people stop to look at it.', 'good', hood({ do: 'project', how: 'lead' }), st('mood', 4))] },
+      { label: 'Turn up and help on the day', outcomes: [any('Gloves, a spade, a lot of tea. Good, tired, satisfied.', 'good', hood({ do: 'project', how: 'help' }), st('mood', 2))] },
+      { label: 'Wish them luck', outcomes: [any('It happens without you. It is lovely anyway.', 'neutral', hood({ do: 'project', how: 'skip' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_building_issue', ageRange: [16, 120],
+    text: 'In {building}, {issue}. Some of the residents want to do something about it together.',
+    choices: [
+      { label: 'Go to the residents\' meeting', outcomes: [any('Twenty people in the lobby, one agreed letter, and a deadline for {landlord}.', 'neutral', hood({ do: 'issue', how: 'meeting' }))] },
+      { label: 'Add your name to a joint letter', outcomes: [any('You signed, with most of the building.', 'neutral', hood({ do: 'issue', how: 'letter' }))] },
+      { label: 'Leave it to the others', outcomes: [any('Someone will sort it out. Probably.', 'neutral', hood({ do: 'issue', how: 'leave' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_family_that_stayed', ageRange: [12, 120],
+    text: '{family} has lived on {street} for {years} years, and their children grew up there. {person} remembers everyone who ever lived on it.',
+    choices: [
+      { label: 'Ask about the street\'s history', outcomes: [any('Who lived in your home before you, the flood, the summer of the street party. {person} has the photographs.', 'good', hood({ do: 'stayed', how: 'listen' }), st('mood', 2))] },
+      { label: 'Say a friendly hello', outcomes: [any('A nod and a wave: the way the street has always done it.', 'neutral', hood({ do: 'stayed', how: 'polite' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_unexpected_friendship', ageRange: [8, 120],
+    text: 'You find out by chance that {person} loves {interest} as much as you do.',
+    choices: [
+      { label: 'Do it together', outcomes: [any('An afternoon becomes a habit. You did not expect to find this next door.', 'good', hood({ do: 'shared', how: 'together' }), st('mood', 3))] },
+      { label: 'Swap a few stories about it', outcomes: [any('A good half hour, and a promise of more.', 'good', hood({ do: 'shared', how: 'talk' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_different_neighbor', ageRange: [8, 120],
+    text: '{person} lives a life a long way from yours, and is into {interest}, which you know nothing about. They offer to show you.',
+    choices: [
+      { label: 'Say yes', outcomes: [any('An hour in someone else\'s world. You understand them better, and they you.', 'good', hood({ do: 'different', how: 'learn' }), st('mood', 2))] },
+      { label: 'Thank them, another time', outcomes: [any('"Any time," says {person}.', 'neutral', hood({ do: 'different', how: 'later' }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_rumor', ageRange: [16, 120],
+    text: '{person} asks, carefully, whether it is true that you {rumor}. It seems people on the street have been saying so. It is not true.',
+    choices: [
+      { label: 'Set it straight, kindly', outcomes: [any('You explain what really happened. {person} is relieved, and says they will put people right.', 'good', hood({ do: 'rumor', how: 'correct' }))] },
+      { label: 'Laugh it off', outcomes: [any('You laugh, and say people will talk. It will blow over.', 'neutral', hood({ do: 'rumor', how: 'laugh' }))] },
+      { label: 'Say it is nobody\'s business', outcomes: [any('A stiff silence. Fair, but it does not stop the talk.', 'neutral', hood({ do: 'rumor', how: 'private' }))] },
+    ],
+  },
 ];

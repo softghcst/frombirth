@@ -9,7 +9,7 @@
 import { store, log } from '../state.js';
 import { clamp, cap, localCost, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
-import { VENUES, HOSTED, COMMUNITY_EVENTS, INTERESTS, PROFILES } from '../data/neighborhoods.js';
+import { VENUES, HOSTED, COMMUNITY_EVENTS, INTERESTS, PROFILES, BUSINESS_VENUE } from '../data/neighborhoods.js';
 import { PART_TIME_BY_ID } from '../data/partTimeJobs.js';
 import * as N from './neighborhood.js';
 import { archiveIdOf, recordEvent, charge } from './chronicle.js';
@@ -17,6 +17,8 @@ import { remember } from './conditions.js';
 import { techAvailable } from './digital/tech.js';
 import { jobOptions, canWorkPartTime } from './partTime.js';
 import { checkChance } from './eventEngine.js';
+import * as Talk from './neighborhoodTalk.js';
+import { openBusinesses } from './business.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const S = () => store.state;
@@ -51,8 +53,9 @@ export function standing(state = S(), hoodId = N.currentHome(state)?.h) {
   const r = repOf(state, hoodId);
   const known = N.knownIn(state, hoodId).length;
   const residents = N.residentsOf(state, hoodId).length;
+  const op = Talk.opinions(state, hoodId);
   return {
-    known, residents, ...r,
+    known, residents, ...r, thinkWell: op.good, thinkBadly: op.bad,
     familiarity: known === 0 ? 'Nobody knows you yet' : known <= 2 ? 'A few people know you' : known <= 6 ? 'Known on your street' : 'Known all over the neighborhood',
     reliability: r.help >= 4 ? 'Known as someone who helps' : r.help >= 1 ? 'Has helped out' : 'Not yet tested',
     involvement: r.inv + r.host >= 6 ? 'At the heart of things' : r.inv + r.host >= 2 ? 'Turns up and joins in' : 'Keeps to themselves',
@@ -141,9 +144,12 @@ export function neighborAct(resId, action, state = S()) {
       const style = r.so;
       const interests = shared(state, r);
       const base = style === 'outgoing' ? 38 : style === 'reserved' ? 26 : style === 'busy' ? 28 : 34;
-      const met = N.befriend(state, resId, base + rr.int(0, 8) + (interests.length ? 6 : 0));
+      // What they already know of the player, from what really happened, colors the first hello (engine/neighborhoodTalk.js).
+      const impr = Talk.impression(state, resId);
+      const met = N.befriend(state, resId, base + rr.int(0, 8) + (interests.length ? 6 : 0) + clamp(Math.round(impr.v * 3), -8, 10));
       if (!met) return result(false, 'There is nobody at home.', 'neutral');
       met.flags.hoodTimes = 1;
+      const heard = impr.known.find((f) => Talk.FACTS[f.k].v > 0) ?? impr.known.find((f) => Talk.FACTS[f.k].v < 0);
       const fam = Object.keys(r.fam ?? {}).find((x) => x !== archiveIdOf(p));
       const known = fam ? N.personOf(state, `@${fam}`) : null;
       const ancestor = fam ? state.archive?.people?.[fam] : null;
@@ -155,7 +161,10 @@ export function neighborAct(resId, action, state = S()) {
               : style === 'reserved' ? `You introduced yourself to ${name} ${r.l}. A polite hello, and not much more: some people take time.`
                 : `You introduced yourself to ${name} ${r.l}, who asked about your family and told you about theirs.`;
       void known;
-      return out(text, style === 'reserved' ? 'neutral' : 'good');
+      // Someone a long way from the player's own life: a chance to find out about theirs.
+      if (!interests.length && (r.in ?? []).length && Math.abs(N.ageOf(r, state) - p.age) >= 25 && rr.chance(0.5)) N.queueScene(state, 'hood_different_neighbor', { person: resId, words: { interest: INTEREST_NAME[r.in[0]] } }, `diff/${resId}`);
+      const said = heard ? (Talk.FACTS[heard.k].v > 0 ? ` "You're the one who ${Talk.factText(heard)}," they said. They had heard.` : ` They were a little cool: they had heard you ${Talk.factText(heard)}.`) : '';
+      return out(text + said, style === 'reserved' ? 'neutral' : 'good');
     }
     case 'wave': { r.seen = (r.seen ?? 0) + 1; return out(`You waved to ${r.seen >= 2 ? name : `someone from the ${H.hhs[r.hh]?.n ?? ''} household`}. They waved back.`, 'neutral'); }
     case 'hello': { closer(state, n, rr.int(1, 2)); return out(`You stopped to chat with ${name} for a few minutes.`, 'neutral'); }
@@ -172,6 +181,7 @@ export function neighborAct(resId, action, state = S()) {
       closer(state, n, rr.int(4, 7));
       repOf(state, N.hoods(state).hhs[r.hh]?.h ?? N.currentHome(state).h).help += 1;
       (r.owes ??= {})[archiveIdOf(p)] = N.nowT(state);
+      Talk.hear(state, H.hhs[r.hh]?.h, 'helped', [resId], { who: name });
       return out(`You helped ${name} with ${rr.pick(['the shopping', 'a leaking gutter', 'a pile of boxes', 'their garden', 'a broken fence', 'a form they could not make sense of'])}. They were grateful.`);
     }
     case 'pet': {
@@ -295,7 +305,9 @@ export function places(state = S()) {
   const H = N.hoods(state);
   const hood = H.list[home.h];
   const p = state.player;
+  syncBusinesses(state);
   return hood.venues.filter((v) => v.to == null && N.venueAvailable(v.k, state.year)).map((v) => {
+    if (v.owner === `@${archiveIdOf(p)}`) return { ...v, kind: VENUES[v.k].name, mine: true, owner: { id: null, name: 'you' }, regular: 0, canVisit: true, visited: used(`venue:${v.id}`, state), canWork: false };
     const o = H.res[v.owner];
     const regular = (v.reg?.[archiveIdOf(p)] ?? 0);
     return { ...v, kind: VENUES[v.k].name, owner: o ? { id: o.id, name: o.f && state.npcs[o.id] && p.npcIds.includes(o.id) ? `${o.f} ${o.l}` : null } : null, regular,
@@ -304,11 +316,50 @@ export function places(state = S()) {
   });
 }
 
+/**
+ * The player's own businesses that open onto the street where they live (data/business.js) are local places too: on
+ * the neighborhood's list while open, closed in the record when they close. The business is the business system's;
+ * this is only where it stands. Neighbors who know the player become customers, which helps its reputation a little.
+ */
+export function syncBusinesses(state = S()) {
+  const p = state.player;
+  const home = N.currentHome(state);
+  const H = N.hoods(state);
+  const mine = `@${archiveIdOf(p)}`;
+  let list = [];
+  try { list = openBusinesses(p); } catch { return; }
+  for (const hood of Object.values(H.list)) for (const v of hood.venues) if (v.biz && v.to == null && !list.some((b) => b.id === v.biz)) { v.to = state.year; N.note(state, { t: N.nowT(state), h: hood.id, k: 'venueClose', text: `${v.name} closed.`, venue: v.id }); }
+  if (!home) return;
+  const hood = H.list[home.h];
+  for (const b of list) {
+    const kind = BUSINESS_VENUE[b.typeId];
+    if (!kind || b.countryId !== hood.c || b.city !== hood.city || Object.values(H.list).some((h) => h.venues.some((v) => v.biz === b.id))) continue;
+    hood.nv = (hood.nv ?? 0) + 1;
+    const v = { id: `${hood.id}v${hood.nv}`, k: kind, name: b.name, owner: mine, biz: b.id, from: b.founded ?? state.year, to: null, sf: state.year >= 1995 };
+    hood.venues.push(v);
+    N.note(state, { t: N.nowT(state), h: hood.id, k: 'venueOpen', text: `${b.name}, ${p.firstName} ${p.lastName}'s ${VENUES[kind].name.toLowerCase()}, opened in ${hood.name}.`, venue: v.id, who: mine });
+  }
+}
+/** Once a year: neighbors who know the player are customers too. A little, and only while they live nearby. */
+export function neighborsAsCustomers(state = S()) {
+  const home = N.currentHome(state);
+  if (!home) return;
+  const hood = N.hoods(state).list[home.h];
+  const mine = `@${archiveIdOf(state.player)}`;
+  const known = N.knownIn(state, hood.id).filter((n) => n.meters.relationship >= 45).length;
+  if (known < 3) return;
+  for (const v of hood.venues) if (v.owner === mine && v.to == null) {
+    const b = openBusinesses(state.player).find((x) => x.id === v.biz);
+    if (b) b.reputation = Math.min(100, (b.reputation ?? 50) + 1);
+  }
+}
+
 export function visitPlace(venueId, state = S()) {
   const v = places(state).find((x) => x.id === venueId);
   if (!v || !v.canVisit) return result(false, 'You cannot go there.', 'neutral');
   if (v.visited) return result(false, 'You have been already this time.', 'neutral');
   use(`venue:${v.id}`, state);
+  if (v.mine) { const text = `You looked in on ${v.name}. ${N.knownIn(state, N.currentHome(state).h).length >= 3 ? 'Two neighbors were in, and waved.' : 'Busy enough.'}`; log(text, 'system', 'neutral'); return result(true, text, 'neutral'); }
   const H = N.hoods(state);
   const venue = N.hoodOf(N.currentHome(state).h, state).venues.find((x) => x.id === venueId);
   const me = archiveIdOf(state.player);
@@ -321,7 +372,9 @@ export function visitPlace(venueId, state = S()) {
     const n = known ? state.npcs[o.id] : N.befriend(state, o.id, 34);
     if (!known) { n.flags.title = `Runs ${venue.name}`; text += ` ${o.f} ${o.l}, who runs it, knows your face now and introduced themselves.`; } else closer(state, n, 1);
   }
-  if (venue.reg[me] === 4) text += ' You are a regular.';
+  if (venue.reg[me] === 4) { text += ' You are a regular.'; if (o) Talk.hear(state, N.currentHome(state).h, 'regular', [o.id], { what: venue.name }); }
+  // Getting in: a level entrance, or steps. Nobody is kept out: there is a way, and people help.
+  if (N.needsStepFree(state) && !venue.sf) text += state.year >= 1995 ? ' There are steps at the door; they keep a ramp for it, and brought it out.' : ' There are steps at the door, and two people helped you in without being asked.';
   log(text, 'system', 'neutral');
   return result(true, text, 'neutral');
 }
@@ -355,6 +408,7 @@ export function askForWork(venueId, state = S()) {
   for (const id of p.npcIds) { const x = state.npcs[id]; if (x?.flags.tag === 'manager') { x.flags.tag = 'formerManager'; x.flags.title = 'Former manager'; } }
   if (!p.npcIds.includes(boss.id)) N.befriend(state, boss.id, 45);
   boss.flags.tag = 'manager'; boss.flags.title = `Manager at ${venue.name}`; boss.flags.workedWith = venue.name;
+  Talk.hear(state, N.currentHome(state).h, 'job', [boss.id], { what: venue.name });
   p.career.partTime = { jobId, title: job.title, place: venue.name, salary: option.pay, hours: job.hours, since: p.age, campus: false, venueId };
   p.counters.jobsHeld += 1;
   const text = `${boss.firstName} took you on at ${venue.name}, as a ${job.title.toLowerCase()}, for ${fmtMoney(option.pay, c)} a year.`;
@@ -409,6 +463,7 @@ export function host(kindId, guestIds, budget = 'modest', state = S()) {
   for (const n of came) if (closer(state, n, rr.int(3, 7) + lift)) friends += 1;
   // Neighbors who meet at the player's gathering may get on too: a new acquaintance among guests is just noted.
   repOf(state, N.currentHome(state).h).host += 1;
+  Talk.hear(state, N.currentHome(state).h, 'hosted', came.map((n) => n.id), { what: kind.name.toLowerCase() });
   p.stats.mood = clamp(p.stats.mood + (came.length ? 5 : -2));
   const hitch = came.length >= 3 && rr.chance(0.12) ? rr.pick([' Two of the guests disagreed loudly about parking, and made it up over dessert.', ' Someone broke a glass. Nobody minded.', ' The food ran out early, and nobody minded.']) : '';
   const text = came.length
@@ -514,6 +569,17 @@ export function moveTo(choice, state = S()) {
   return result(true, text);
 }
 
+/** A tenant who needs a level way in moves to an empty ground-floor home in the same building. */
+export function moveToGroundFloor(state = S()) {
+  const target = N.groundFloorOption(state);
+  if (!target) return result(false, 'There is no empty ground-floor home here just now.', 'neutral');
+  const d = N.dwelling(state);
+  N.moveInto(state, target, d, 'moved downstairs');
+  const text = `The landlord agreed: you moved down to ${target.label}, with a level way in.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
 // ---------- Places the family has lived ----------
 
 /** Earlier homes in the city the player lives in now that they could go and see: their own, or their family's. */
@@ -612,6 +678,7 @@ export function hoodChoice(v, cast, state = S()) {
         else if (!met && Math.abs(N.ageOf(x, state) - p.age) <= (p.age < 18 ? 4 : 40)) { met = N.befriend(state, x.id, 33 + rr.int(0, 6)); if (met) met.flags.hoodTimes = 1; }
       }
       repOf(state, hood.id).inv += v.how === 'help' ? 2 : 1;
+      Talk.hear(state, hood.id, v.how === 'help' ? 'ran' : 'joined', [id, ...there.map((x) => x.id)], { what: w.event ?? 'neighborhood event' });
       p.stats.mood = clamp(p.stats.mood + 3);
       const people = [id, ...there.map((x) => x.id)].filter((x) => state.npcs[x] && p.npcIds.includes(x));
       recordEvent({ key: `hood:event:${w.eventId}:${archiveIdOf(p)}`, type: 'community_event', title: `${cap(w.event ?? 'A neighborhood event')} in ${hood.name}`, text: v.how === 'help' ? 'Helped organize it.' : 'Went along.',
@@ -622,7 +689,7 @@ export function hoodChoice(v, cast, state = S()) {
     case 'help': {
       const n = N.befriend(state, id, null);
       if (!n) return null;
-      if (v.how === 'help') { closer(state, n, 7); (r.owes ??= {})[archiveIdOf(p)] = N.nowT(state); if (home) repOf(state, home.h).help += 1; recordEvent({ key: `hood:help:${archiveIdOf(p)}:${id}:${state.year}`, type: 'neighbor_help', title: `Helped ${n.firstName} ${n.lastName}`, text: w.need ?? '', people: [archiveIdOf(n)], significance: 1, privacy: 'family' }); }
+      if (v.how === 'help') { closer(state, n, 7); (r.owes ??= {})[archiveIdOf(p)] = N.nowT(state); if (home) repOf(state, home.h).help += 1; Talk.hear(state, H.hhs[r.hh]?.h, 'helped', [id], { who: r.f }); recordEvent({ key: `hood:help:${archiveIdOf(p)}:${id}:${state.year}`, type: 'neighbor_help', title: `Helped ${n.firstName} ${n.lastName}`, text: w.need ?? '', people: [archiveIdOf(n)], significance: 1, privacy: 'family' }); }
       else if (v.how === 'suggest') closer(state, n, 1);
       return null;
     }
@@ -635,7 +702,7 @@ export function hoodChoice(v, cast, state = S()) {
       d.status = ok ? 'resolved' : 'open';
       d.how = v.how;
       n.meters.relationship = clamp(n.meters.relationship + ({ calm: ok ? 3 : -2, compromise: ok ? 4 : -1, ask: ok ? 5 : 0, mediate: 1, boundary: -3, formal: -6 }[v.how] ?? 0));
-      if (v.how === 'formal' && home) repOf(state, home.h).trouble += 1;
+      if (v.how === 'formal' && home) { repOf(state, home.h).trouble += 1; Talk.hear(state, home.h, 'complaint', [id], { who: n.firstName }); }
       recordEvent({ key: `hood:dispute:${d.id}`, type: 'neighbor_dispute', title: `A disagreement with ${n.firstName} ${n.lastName}`, text: ok ? 'Sorted out.' : 'Not settled yet.', people: [archiveIdOf(n)], significance: 0, privacy: 'private' });
       return ok ? `It is settled${v.how === 'ask' ? `: ${n.firstName} had no idea, and is mortified.` : '.'}` : 'It is not settled, but it may yet blow over.';
     }
@@ -661,6 +728,56 @@ export function hoodChoice(v, cast, state = S()) {
     case 'elder': {
       const n = N.befriend(state, id, v.how === 'listen' ? 46 : 34);
       if (n && v.how === 'listen') { n.flags.hoodTimes = 2; remember(n, 'stories', `Told you about ${w.hood ?? 'the neighborhood'} as it was, ${w.years ?? 'many'} years ago.`); }
+      return null;
+    }
+    case 'project': {
+      const hood = home && H.list[home.h];
+      if (!hood || v.how === 'skip') return null;
+      const n = N.befriend(state, id, null);
+      if (n) closer(state, n, v.how === 'lead' ? 6 : 3);
+      hood.g.parks = clamp(hood.g.parks + (v.how === 'lead' ? 5 : 3));
+      hood.g.cohesion = clamp(hood.g.cohesion + 3);
+      repOf(state, hood.id).inv += 2;
+      Talk.hear(state, hood.id, 'project', [id, ...N.residentsOf(state, hood.id).filter((x) => x.id !== id).slice(0, 3).map((x) => x.id)], { what: `to ${w.what}` });
+      N.note(state, { t: N.nowT(state), h: hood.id, k: 'project', text: `Neighbors got together to ${w.what}, ${p.firstName} ${p.lastName} among them.`, who: id });
+      recordEvent({ key: `hood:project:${archiveIdOf(p)}:${hood.id}:${state.year}`, type: 'community_project', title: `Helped ${w.what}`, people: n ? [archiveIdOf(n)] : [], place: { countryId: hood.c, city: hood.city }, significance: 1, privacy: 'public' });
+      return null;
+    }
+    case 'issue': {
+      const hood = home && H.list[home.h];
+      if (!hood || v.how === 'leave') return null;
+      const rr2 = N.luck(state, `issue/${home.b}/${state.year}`);
+      const fixed = rr2.chance(v.how === 'meeting' ? 0.75 : 0.6);
+      const block = H.blocks[home.b];
+      if (fixed) { hood.g.upkeep = clamp(hood.g.upkeep + 2); hood.g.cohesion = clamp(hood.g.cohesion + 2); }
+      const inside = N.around(state, home.id).filter((x) => x.home.b === home.b && x.hh).flatMap((x) => x.hh.m).filter((x) => H.res[x] && N.ageOf(H.res[x], state) >= 16).slice(0, 4);
+      for (const x of inside.slice(0, 1)) { const n = N.befriend(state, x, null); if (n) closer(state, n, 2); }
+      Talk.hear(state, hood.id, 'joined', inside, { what: 'residents\' meeting' });
+      N.note(state, { t: N.nowT(state), h: hood.id, k: 'issue', text: `Residents of ${block.name} took on ${w.issue}${fixed ? ', and got it fixed' : '; it is still being argued about'}.` });
+      return fixed ? 'It worked: it is fixed.' : 'Nothing yet. Landlords move slowly.';
+    }
+    case 'different': {
+      const n = state.npcs[id];
+      if (!n?.alive) return null;
+      if (v.how === 'learn') { closer(state, n, 6); remember(n, 'showedYou', `Showed you their world: ${w.interest}.`); } else closer(state, n, 1);
+      return null;
+    }
+    case 'stayed': {
+      const n = N.befriend(state, id, v.how === 'listen' ? 44 : 34);
+      if (n && v.how === 'listen') { n.flags.hoodTimes = Math.max(2, n.flags.hoodTimes ?? 0); remember(n, 'familyStory', `Told you about ${w.years} years of their family on ${w.street}.`); }
+      return null;
+    }
+    case 'shared': {
+      const n = state.npcs[id];
+      if (!n?.alive) return null;
+      closer(state, n, v.how === 'together' ? 8 : 3);
+      if (v.how === 'together') { n.flags.hoodTimes = (n.flags.hoodTimes ?? 0) + 1; remember(n, 'sharedPassion', `You share a love of ${w.interest}.`); maybeFriends(state, n); }
+      return null;
+    }
+    case 'rumor': {
+      const n = id && N.hoods(state).res[id] ? N.befriend(state, id, null) : null;
+      if (v.how === 'correct') { Talk.correct(state, w.factId, id); if (n) closer(state, n, 2); return 'Put right. It stops there.'; }
+      if (v.how === 'private' && n) n.meters.relationship = clamp(n.meters.relationship - 1);
       return null;
     }
     case 'reflect': { p.stats.mood = clamp(p.stats.mood + (v.by ?? 0)); return null; }

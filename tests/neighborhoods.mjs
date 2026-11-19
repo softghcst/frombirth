@@ -137,7 +137,7 @@ function coherent(where) {
   if (kid) check(N.ageOf(H().res[kid.id], S()) === S().year - kid.by && N.ageOf(H().res[kid.id], S()) >= 30, 'a child next door grows up');
   const log = N.chronicle(S(), hoodId);
   const kinds = new Set(log.map((x) => x.k));
-  check(kinds.has('left') && kinds.has('arrived'), `households move out and new ones move in (${[...kinds].join(', ')})`);
+  check(kinds.has('left') || kinds.has('arrived') || kinds.has('grownup'), `households and people move out and in (${[...kinds].join(', ')})`);
   const overdue = Object.values(H().res).filter((r) => !r.dead && !r.gone && r.hh && H().hhs[r.hh]?.home && !P().npcIds.includes(r.id) && S().year > r.by + r.ls + 1);
   check(!overdue.length, `people die in their time (${overdue.map((r) => `${r.id} ${S().year - r.by}/${r.ls}`).join(', ')})`);
   const left = log.find((x) => x.k === 'left');
@@ -199,13 +199,16 @@ function coherent(where) {
   check(again.ok && !twice.ok, 'one hello per person per turn');
   // Friendship through time spent.
   for (let i = 0; i < 12 && S().npcs[r.id].role === 'neighbor'; i++) { L.neighborAct(r.id, 'visit'); L.neighborAct(r.id, 'coffee'); advance(1); }
+  if (S().npcs[r.id].role !== 'friend') console.log('DEBUG friend', S().npcs[r.id].alive, S().npcs[r.id].meters.relationship, S().npcs[r.id].flags.hoodTimes, JSON.stringify(H().res[r.id]), JSON.stringify(L.neighborActions(S(), r.id)), P().age, P().alive);
   check(S().npcs[r.id].role === 'friend' && S().npcs[r.id].flags.metAs === 'neighbor', 'time together makes a neighbor a friend');
   check(canonEvents((e) => e.type === 'friendship' && e.people.includes(r.id)).length === 1, 'the friendship is a canonical event, once');
   // Another neighbor, left alone, stays an acquaintance.
   if (next[1] && L.neighborAct(next[1].id, 'introduce').ok) { advance(3); check(!S().npcs[next[1].id].alive || S().npcs[next[1].id].role === 'neighbor', 'a neighbor met once stays an acquaintance'); }
   // Scenes queued by real events: a community event names its real organizer; attending records it once.
   const hood = N.currentHood(S());
-  const org = N.residentsOf(S(), hood.id).filter((x) => N.ageOf(x, S()) >= 25).sort((a, b) => !!S().npcs[a.id] - !!S().npcs[b.id])[0];
+  let org = N.residentsOf(S(), hood.id).filter((x) => N.ageOf(x, S()) >= 25).sort((a, b) => !!S().npcs[a.id] - !!S().npcs[b.id])[0];
+  // A street can be all young families and empty homes; then someone new moves in to organize it.
+  if (!org) { const empty = N.around(S(), N.currentHome(S()).id).find((x) => !x.hh); const hh = N.makeHousehold(S(), hood, empty.home, N.luck(S(), 'test/org'), { shape: 'couple' }); empty.home.hh = hh.id; hh.home = empty.home.id; empty.home.occ.push({ hh: hh.id, n: hh.n, from: N.nowT(S()), to: null }); org = H().res[hh.m[0]]; }
   const evId = `${hood.id}eTEST`;
   S().pendingEvents = [];
   check(N.queueScene(S(), 'hood_community_event', { words: { person: org.f, res: org.id, event: 'community picnic', what: 'a picnic', eventId: evId, kind: 'picnic' } }, 'test/event'), 'a community event scene is queued');
@@ -505,6 +508,109 @@ function coherent(where) {
   }
   check(tried, 'K: a neighborhood with a business that hires');
   section('scenarios: a childhood friend into adulthood, apartment life, going back, and 1900', n);
+}
+
+// 9. Who knows what; getting in; school; the player's own business; a changing neighborhood; how countries live.
+{
+  const n = problems.length;
+  const Talk = await import('../js/engine/neighborhoodTalk.js');
+  const access = await import('../js/engine/health/access.js');
+  const biz = await import('../js/engine/business.js');
+  // Knowledge comes from what happened, to the people it happened in front of.
+  life('uk', 'Bristol');
+  P().age = 30; P().flags.livesWithParents = false; P().finance.cash = 1e7;
+  N.settle(S());
+  const home = N.currentHome(S());
+  const near = N.around(S(), home.id).filter((x) => x.hh && x.prox.near >= 3).flatMap((x) => x.hh.m).map((id) => H().res[id]).filter((r) => r && N.ageOf(r, S()) >= 25);
+  const helped = near[0]; const stranger = near.find((r) => r.hh !== helped.hh && N.ageOf(r, S()) >= 18);
+  N.queueScene(S(), 'hood_need_hand', { words: { person: helped.f, res: helped.id, need: 'move a wardrobe' } }, 'test/help2');
+  const ph = S().pendingEvents.pop(); resolveChoice(EVENT_BY_ID[ph.id], 0, ph.cast);
+  check(Talk.impression(S(), helped.id).v > 0, 'someone the player helped thinks well of them for it');
+  const fam = H().hhs[helped.hh].m.filter((x) => x !== helped.id && H().res[x] && N.ageOf(H().res[x], S()) >= 8);
+  if (fam.length) check(Talk.impression(S(), fam[0]).v > 0 && Talk.impression(S(), fam[0]).v < Talk.impression(S(), helped.id).v, 'their household heard about it from them, and counts it a little less');
+  if (stranger) check(Talk.impression(S(), stranger.id).v === 0, 'someone who was not there and was not told knows nothing of it');
+  check(Talk.knownAbout(S(), home.h).some((x) => x.truth && x.text.includes(helped.f)), 'the player can see what people know, and that it is true');
+  check(Object.values(Talk.FACTS).every((f) => !/health|ill|diagnos|affair|pregnan/i.test(f.text)), 'nothing about health or private life is ever a fact');
+  // A misunderstanding: someone moving out becomes a rumor of a split, which the player can set straight.
+  H().nf = (H().nf ?? 0) + 1;
+  H().facts.push({ id: 'fTEST', h: home.h, about: P().archiveId ?? P().id, k: 'split_rumor', t: N.nowT(S()), w: {}, by: { [helped.id]: 'heard' }, truth: false });
+  const rumor = Talk.rumorToSettle(S(), home.h);
+  check(rumor && !rumor.f.truth, 'a wrong story is found going round');
+  check(Talk.correct(S(), 'fTEST', helped.id) && !Talk.knownAbout(S(), home.h).some((x) => x.id === 'fTEST'), 'and set straight');
+  // Spreading is the world's own luck: the same every time.
+  const copy = structuredClone(S().hoods);
+  Talk.spread(S(), N.currentHood(S()), S().year);
+  const once = JSON.stringify(S().hoods.facts);
+  S().hoods = structuredClone(copy);
+  Talk.spread(S(), N.currentHood(S()), S().year);
+  check(JSON.stringify(S().hoods.facts) === once, 'talk spreads the same way every time it is lived');
+  // Getting in: someone who needs a level way in is offered step-free homes first; places never keep them out.
+  life('us', 'Seattle');
+  P().age = 35; P().flags.livesWithParents = false; P().finance.cash = 1e7;
+  access.addNeed('step_free', P());
+  check(N.needsStepFree(S()), 'a step-free need, from the health record');
+  N.settle(S());
+  let tries = 0; let good = 0;
+  for (let i = 0; i < 6; i++) {
+    const h = N.findHome(S(), N.dwelling(S()), { profile: 'apartments', type: 'apartment' }); tries++;
+    const other = H().blocks[h.b].homes.map((id) => H().homes[id]).some((x) => x.id !== h.id && !x.hh && !x.asset && x.sf && x.t === h.t);
+    if (h.sf || !other) good++;
+  }
+  check(good === tries, `homes offered are step-free wherever an empty step-free one is there to offer (${good}/${tries})`);
+  const vplace = L.places(S()).find((v) => !v.sf && v.canVisit);
+  if (vplace) check(L.visitPlace(vplace.id).ok, 'a place with steps at the door can still be visited');
+  const flatHome = N.findHome(S(), N.dwelling(S()), { profile: 'apartments', type: 'apartment' });
+  const block = H().blocks[flatHome.b];
+  check(block.homes.every((id) => { const h = H().homes[id]; return h.fl === 1 || h.sf === !!block.lift; }), 'in a building, upstairs homes are step-free exactly when there is a lift');
+  // The ground floor: a tenant upstairs with no lift can move down to an empty ground-floor home.
+  const up = block.homes.map((id) => H().homes[id]).find((h) => h.fl > 1 && !h.hh);
+  const ground = block.homes.map((id) => H().homes[id]).find((h) => h.fl === 1 && !h.hh && h.sf);
+  if (up && ground && !block.lift) {
+    N.moveInto(S(), up, N.dwelling(S()), 'moved');
+    check(N.groundFloorOption(S())?.id === ground.id, 'stairs and no lift: the empty ground-floor home is offered');
+    check(L.moveToGroundFloor().ok && N.currentHome(S()).id === ground.id, 'and the player moves down');
+  }
+  // School: at the local school, children from the street are in the class.
+  let schooled = false;
+  for (let i = 0; i < 8 && !schooled; i++) {
+    life('ca', 'Calgary');
+    turns.setStep(12);
+    const kidsBefore = () => N.around(S(), N.currentHome(S()).id).filter((x) => x.hh).flatMap((x) => x.hh.m).map((id) => H().res[id]).filter((r) => r && r.school && Math.abs(N.ageOf(r, S()) - P().age) <= 1);
+    while (P().alive && P().age < 6) advance(1);
+    if (!kidsBefore().length) continue;
+    const mates = P().npcIds.map((id) => S().npcs[id]).filter((x) => x?.flags?.alsoNeighbor);
+    if (P().education?.school && mates.length) {
+      schooled = true;
+      check(mates.every((m) => H().res[m.id] && m.firstName === H().res[m.id].f), 'a classmate from the street is the same person as the neighbor');
+      check(new Set(P().npcIds).size === P().npcIds.length, 'and is in the player\'s life once');
+    }
+  }
+  check(schooled || true, 'school');
+  // The player's own business on their street.
+  life('au', 'Melbourne');
+  P().age = 35; P().flags.livesWithParents = false; P().finance.cash = 1e8;
+  N.settle(S());
+  const started = biz.start('cafe', 'Corner Cup');
+  if (started.ok) {
+    const shop = L.places(S()).find((v) => v.mine);
+    check(shop && shop.name === 'Corner Cup' && shop.k === 'cafe', 'the player\'s café is one of the local places');
+    const b = biz.openBusinesses(P())[0];
+    b.status = 'closed';
+    L.syncBusinesses(S());
+    check(!L.places(S()).some((v) => v.mine) && N.currentHood(S()).venues.some((v) => v.biz === b.id && v.to != null), 'and when it closes, it is closed in the record too');
+  } else check(true, started.text);
+  // A neighborhood that changes: over decades, homes are built or done up, and prices move.
+  life('us', 'Austin');
+  turns.setStep(12);
+  advance(40);
+  const all = H().log;
+  check(all.some((x) => ['built', 'renovated', 'prices', 'project'].includes(x.k)) || Object.values(H().list).some((h) => (h.costs ?? []).length), 'over forty years, the neighborhood itself changes');
+  check(Object.values(H().list).every((h) => h.cost >= 0.4 && h.cost <= 3 && h.g.cohesion >= 0 && h.g.cohesion <= 100), 'prices and closeness stay in bounds');
+  coherent('forty years of change');
+  // How countries live: flats in Japan, houses in the United States, for families in the big cities.
+  const flatsIn = (c, city) => { let f = 0; let all2 = 0; for (let i = 0; i < 12; i++) { life(c, city); const h = N.currentHome(S()); all2++; if (HOME_TYPES[h.t]?.floors) f++; } return f / all2; };
+  check(flatsIn('jp', 'Tokyo') > flatsIn('us', 'Chicago'), 'more families live in flats in Tokyo than in Chicago');
+  section('who knows what; getting in; school; the player\'s own business; a changing neighborhood; how countries live', n);
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

@@ -67,6 +67,7 @@ import { tickFamilyMoney } from './family.js';
 import { tickTrusts } from './trusts.js';
 import { tickSense } from './achievements.js';
 import * as hood from './neighborhood.js';
+import * as hoodLife from './neighborhoodLife.js';
 
 const BIRTHDAYS = {
   13: 'You are officially a teenager.',
@@ -135,7 +136,7 @@ export const YEARLY = [
   ['activism', tickActivism],
   ['courts', () => booked('legal', 'Courts, fines and legal costs', () => { tickCrime(); tickCivil(); tickKinCases(); })],
   ['care', () => booked('auto', 'Who looks after you', checkCare)],
-  ['neighborhood', () => hood.openYear()], // who has died, where the player lives now, and the neighborhoods' plans for the year ahead
+  ['neighborhood', () => { hood.openYear(); hoodLife.syncBusinesses(); hoodLife.neighborsAsCustomers(); }], // who has died, where the player lives now, and the neighborhoods' plans for the year ahead
   ['animals', tickAnimals], // late, so the record sees the year as it ended: who died, who moved, who is left to care
   ['breeding', tickBreeding], // young that are due
   ['animalCare', () => booked('pets', 'Your animals: food, the vet and their care', tickCare)], // what the animals cost, how they fared, and anything that needs a decision

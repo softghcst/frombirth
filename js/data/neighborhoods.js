@@ -102,6 +102,7 @@ export const VENUES = {
   community: { name: 'Community center', names: ['The Community Center', 'Neighborhood Hall', 'The Civic Hall'], from: 1930, kid: true, public: true },
   church: { name: 'Meeting hall', names: ['The Old Hall', 'The Parish Hall', 'The Assembly Rooms'], from: 1800, kid: true, public: true },
   school: { name: 'School', names: ['The Local School'], from: 1870, kid: true, public: true },
+  shop: { name: 'Shop', names: ['The Little Shop', 'Odds & Ends', 'The Village Store'], from: 1800, kid: true, work: 'shop' },
   video: { name: 'Video rental shop', names: ['Rewind Video', 'Movie Corner'], from: 1980, until: 2012, kid: true, work: 'shop' },
   netcafe: { name: 'Internet café', names: ['Byte Café', 'Net Corner'], from: 1995, until: 2015, work: 'shop' },
 };
@@ -173,3 +174,21 @@ export const MOVE_REASONS = {
   job: 'for a new job', family: 'to be nearer family', space: 'to somewhere with more room', smaller: 'to somewhere smaller',
   retire: 'to retire somewhere quieter', study: 'to study', cost: 'to somewhere cheaper', like: 'because they wanted a change', together: 'to move in with a partner',
 };
+
+/**
+ * How people mostly live, by country: in much of the world a city family lives in a flat, not a house with a yard.
+ * GAMEPLAY GROUPING from general knowledge, rounded hard: `flats` countries weigh apartments over houses in towns and
+ * cities; elsewhere the profiles stand as written.
+ */
+export const FLAT_COUNTRIES = ['jp', 'kr', 'cn', 'tw', 'sg', 'es', 'it', 'pt', 'gr', 'ru', 'ua', 'pl', 'cz', 'hu', 'ro', 'bg', 'rs', 'hr', 'ar', 'br', 'cl', 'eg', 'tr', 'il', 'ir', 'ae', 'sa', 'qa', 'kw', 'fr', 'de', 'at', 'ch', 'se', 'fi', 'dk', 'no'];
+/** Local names for kinds of home, beside HOME_TYPES.nameWhere. */
+export const HOME_NAMES = { townhouse: { uk: 'Terraced house', ie: 'Terraced house', au: 'Terrace house', nz: 'Terrace house' } };
+/** Step-free homes and places become usual as access laws and new building do (gameplay figures). */
+export const STEP_FREE = { home: [[1990, 0.4], [1960, 0.2], [0, 0.1]], groundFloor: 0.6, lift: [[1990, 0.85], [1950, 0.5], [1900, 0.15]], venue: [[1995, 0.8], [1970, 0.45], [0, 0.2]] };
+/** What goes wrong in a building, for residents to sort out together. */
+export const BUILDING_ISSUES = { lift: { text: 'the lift has been out of order for three weeks', needs: 'lift' }, heating: { text: 'the heating keeps failing on the top floors', from: 1900 },
+  damp: { text: 'damp is coming through the walls on the north side' }, bins: { text: 'the bin store is overflowing and nobody is collecting' }, door: { text: 'the front door lock is broken and anyone can walk in' } };
+/** Shared spaces neighbors improve together. */
+export const PROJECTS = ['turn the empty lot into a community garden', 'repaint and repair the playground', 'plant trees along the street', 'fix up the old hall for clubs and meetings', 'put benches and lights in the little park'];
+/** Which of the player's own businesses open their doors on the street, as a local place (data/business.js types). */
+export const BUSINESS_VENUE = { cafe: 'cafe', restaurant: 'restaurant', bakery: 'bakery', bar: 'bar', shop: 'shop', boutique: 'shop', bookshop: 'bookshop', salon: 'barber' };
