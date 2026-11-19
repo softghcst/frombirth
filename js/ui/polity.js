@@ -59,7 +59,7 @@ function pageGovernment(w, o) {
     <div class="section-label">Abroad</div>
     ${abroad(c.id).map((x) => `<div class="kv"><span>${x.flag} ${esc(x.name)}</span><span>${esc(x.mood)}${x.treaties.length ? ` · ${esc(x.treaties.join(', '))}` : ''}</span></div>`).join('')}
     <div class="section-label">What its governments have changed</div>
-    ${o.policies.length ? o.policies.map((t) => `<p class="dyn-reach">${esc(t)}</p>`).join('') : '<p class="muted">Taxes, tuition, medical bills and rents are as they have long been.</p>'}`;
+    ${o.policies.length ? o.policies.map((t) => `<p class="dyn-reach">${esc(t)}</p>`).join('') : ''}`;
 }
 
 function pageParties(w, o, mine) {

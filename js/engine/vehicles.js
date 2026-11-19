@@ -49,7 +49,8 @@ export function takeDrivingTest() {
   if (p.finance.cash < fee) return result(false, `Lessons and the test cost ${fmtMoney(fee, c)}.`, 'neutral');
   yearActs().test = 1;
   p.finance.cash -= fee;
-  if (!rng.chance(passChance(DRIVING_TEST.pass))) {
+  // Practice with a parent before the test (engine/bonds.js) helps.
+  if (!rng.chance(clamp(passChance(DRIVING_TEST.pass) + Math.min(0.15, (p.flags.drivePractice ?? 0) * 0.07), 0.05, 0.97))) {
     const text = 'You failed your driving test: you mounted the curb on the way out of the test center.';
     log(text, 'system', 'bad');
     return result(false, text);

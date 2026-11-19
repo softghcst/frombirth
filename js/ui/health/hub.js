@@ -89,7 +89,7 @@ export function careRelationship(npc) {
     ${kv('Your care with them', now.length ? esc(now.join('; ')) : seen ? 'Earlier care' : 'Not at the moment')}
     ${kv('Appointments and sessions', String(seen))}
     ${kv('Working relationship', rapport >= 70 ? 'Strong' : rapport >= 50 ? 'Good' : rapport >= 35 ? 'Still finding its feet' : 'Not a good fit so far')}
-    <p class="muted" style="margin-top:8px">A professional relationship. What you discuss with them stays between you.</p></div>`;
+    <p class="muted" style="margin-top:8px">Confidential.</p></div>`;
 }
 
 // ---------- Sections ----------
@@ -101,22 +101,22 @@ function overview(p, h) {
   const next = care.upcoming(h).slice(0, 3);
   const sessions = h.therapies.filter((c) => c.status === 'active');
   return `
-    <p class="hl-sub">Your health. Your choices. Your life.</p>
+    
     ${open.map(proposalCard).join('')}
     ${card('How things are', `${bar('Sleep', w.sleep)}${bar('Energy', w.energy)}${bar('Stress', w.stress, false)}${bar('Pain', w.pain, false)}
       ${kv('Physical health', words('Health', p.stats.health))}${kv('Day-to-day life', esc(course.functioningWords(f)))}
-      ${muted('These move with your life through the year. None of them is a verdict on you.')}`)}
+      `)}
     ${card('Coming up', `${next.length ? next.map(apptLine).join('') : muted('Nothing booked.')}
       ${sessions.map((c) => kv(THERAPY_BY_ID[c.therapyId].short, 'Sessions through the year')).join('')}
       <div class="btn-stack" style="margin-top:10px">
 
       </div>
-      ${muted('Your care carries on as you live the year: sessions, follow-ups and checks happen when you age up, and anything that needs you comes back to you.')}`)}
+      `)}
     ${card('Getting help', `<div class="btn-stack">${btn('Talk to someone about how I have been feeling', 'seek', { arg: 'mental' })}${btn('Other kinds of assessment', 'seekOther')}${btn('My Treatment Journey', 'journey')}</div>`)}
     ${card('Preferences', `${kv('After a review', h.settings.follow ? 'Go with my clinician\'s recommendation' : 'Ask me each time')}
       ${kv('Hard storylines', h.settings.sensitive === 'full' ? 'Shown' : 'Reduced')}
       <div class="btn-row" style="margin-top:8px">${btn(h.settings.follow ? 'Ask me each time' : 'Follow recommendations', 'follow', { small: true })}${btn(h.settings.sensitive === 'full' ? 'Reduce hard storylines' : 'Show them again', 'sensitive', { small: true })}</div>
-      ${muted('Reducing hard storylines leaves your care, and everyone in the world, as they are. Only some scenes change.')}`)}`;
+      `)}`;
 }
 
 function apptLine(a) {
@@ -141,7 +141,7 @@ function physical(p, h) {
   return `${away ? card('In hospital', `${kv('Since', esc(when(away.startWk)))}${kv('Expected home', esc(later(away.endWk)))}${muted('Appointments and sessions wait for you.')}`) : ''}
     ${card('Your body', `${bar('Health', p.stats.health)}${bar('Pain', h.wellbeing.pain, false)}${bar('Energy', h.wellbeing.energy)}`)}
     ${card('Long-term conditions', `${known.map((r) => { const d = diagnosisFor(r, h); return d ? `<button class="row hl-cond" data-cond="${esc(d.id)}"><div class="main"><strong>${esc(conditionName(r, h))}</strong><small>${esc(r.status === 'in_remission' ? 'In remission' : `${course.burdenWords(r.burden)}${r.effect ? ', treatment is helping' : ''}`)}</small></div><div class="side">›</div></button>` : kv(conditionName(r, h), 'Part of your life'); }).join('')}
-      ${legacy ? `<div class="section-label">Short-term</div>${legacy}` : ''}${!legacy && !known.length ? muted('Nothing on record. Regular check-ups find some things early.') : ''}`)}
+      ${legacy ? `<div class="section-label">Short-term</div>${legacy}` : ''}${!legacy && !known.length ? muted('Nothing on record.') : ''}`)}
     ${rehab.map((c) => therapyCard(c, h)).join('')}
     ${card('The doctor', `<div class="btn-stack">${btn('Have a check-up, see a doctor, or sort out insurance', 'doctor', { primary: true })}${btn('See a specialist', 'seek', { arg: 'body' })}${btn('Hearing or sight', 'seek', { arg: 'senses' })}${body.some((r) => r.conditionId === 'back_pain') || p.age >= 40 ? btn('Ask for physiotherapy', 'physio') : ''}</div>`)}`;
 }
@@ -151,7 +151,7 @@ function cover(p, h) {
   const k = sys.cover(p);
   const stays = hosp.admissions(p).slice().reverse();
   const cur = c.now;
-  return `<p class="hl-sub">Who pays, and where you have stayed.</p>
+  return `
     ${card('Your cover', `${kv('Now', esc(cur.name))}${kv('Health system', esc(cur.system))}${kv('You pay', `${Math.round(cur.share * 100)}% of a bill`)}${cur.premium ? kv('It costs', `${money(cur.premium)} a year`) : ''}
       ${muted(esc(c.how))}
       ${k.canBuy && !k.bought && !k.covered ? btn(`Take out health insurance (${money(k.price)} a year)`, 'insure', { primary: true }) : ''}${k.bought ? btn('Cancel your health insurance', 'uninsure', { small: true }) : ''}`)}
@@ -173,12 +173,12 @@ function mental(p, h) {
   const skills = Object.entries(h.skills).filter(([, v]) => v >= 3);
   return `${card('How you have been', `${bar('Stress', h.wellbeing.stress, false)}${bar('Sleep', h.wellbeing.sleep)}
       ${ex.length ? `<div class="section-label" style="margin-top:8px">What you have been noticing</div>${ex.map((e) => kv(e.label, esc(course.burdenWords(e.strength)))).join('')}
-        ${muted('Experiences like these have many possible explanations: sleep, stress, a hard stretch, or a health condition. Only an assessment can tell them apart.')}` : muted('Nothing in particular stands out at the moment.')}`)}
+        ${muted('Only an assessment can tell what this is.')}` : muted('Nothing in particular stands out at the moment.')}`)}
     ${dx.length ? card('Diagnoses', dx.map((d) => `<button class="row hl-cond" data-cond="${esc(d.id)}"><div class="main"><strong>${esc(d.name.charAt(0).toUpperCase() + d.name.slice(1))}</strong><small>${esc(dxLine(d, h))}</small></div><div class="side">›</div></button>`).join('')) : ''}
     ${card('Care', `${active.length ? active.map((c) => kv(THERAPY_BY_ID[c.therapyId].name, esc(`${c.attended} session${c.attended === 1 ? '' : 's'}`))).join('') : muted('No current therapy.')}
       ${h.trials.filter(meds.isLive).map((t) => kv(MED_BY_ID[t.medicationId].name, esc(meds.RESPONSE_WORDS[t.responseState]))).join('')}
       <div class="btn-stack" style="margin-top:10px">${btn('Book an assessment', 'seek', { arg: 'mental' })}${btn('Find a therapist or group', 'findTherapy')}${h.therapies.some((c) => THERAPY_BY_ID[c.therapyId].dbt) ? btn('My DBT Journey', 'dbt') : ''}</div>`)}
-    ${skills.length ? card('Skills you have practiced', skills.map(([k, v]) => bar(SKILLS[k], v)).join('') + muted('Built in sessions and in daily life. A hard week does not take them away.')) : ''}`;
+    ${skills.length ? card('Skills you have practiced', skills.map(([k, v]) => bar(SKILLS[k], v)).join('')) : ''}`;
 }
 
 function dxLine(d, h) {
@@ -191,7 +191,7 @@ function conditions(p, h) {
   const list = activeDiagnoses(h);
   const earlier = h.diagnoses.filter((d) => d.status !== 'active');
   const plain = presentConditions(h).filter((r) => !diagnosisFor(r, h) && ['sensory', 'mobility'].includes(CONDITION_BY_ID[r.conditionId].group));
-  if (!list.length && !plain.length) return card('', `${muted('No diagnosed conditions. If something has been bothering you, an assessment is the place to start.')}<div class="btn-stack" style="margin-top:10px">${btn('Book an assessment', 'seekOther')}</div>`);
+  if (!list.length && !plain.length) return card('', `${muted('No diagnosed conditions.')}<div class="btn-stack" style="margin-top:10px">${btn('Book an assessment', 'seekOther')}</div>`);
   const groups = [...new Set(list.map((d) => CONDITION_BY_ID[d.conditionId].group))];
   return `${groups.map((g) => card(GROUPS[g], list.filter((d) => CONDITION_BY_ID[d.conditionId].group === g).map((d) => `<button class="row hl-cond" data-cond="${esc(d.id)}"><div class="main"><strong>${esc(d.name.charAt(0).toUpperCase() + d.name.slice(1))}</strong><small>${esc(dxLine(d, h))}</small></div><div class="side">›</div></button>`).join(''))).join('')}
     ${plain.length ? card('Part of your life', plain.map((r) => kv(CONDITION_BY_ID[r.conditionId].name, 'Since birth')).join('')) : ''}
@@ -220,7 +220,7 @@ function conditionPage(p, h, dxId) {
     ${card(esc(d.name.charAt(0).toUpperCase() + d.name.slice(1)), `<p class="body">${esc(about)}</p>
       ${kv('On record', esc(dxLine(d, h)))}${rec ? kv('Right now', esc(course.burdenWords(rec.burden))) : ''}
       ${rec?.status === 'in_remission' ? kv('Status', 'In remission') : ''}
-      ${def.neurotype ? muted('A neurotype, not an illness. There is nothing to cure; there is plenty that can help.') : ''}`)}
+      ${def.neurotype ? muted('A neurotype, not an illness.') : ''}`)}
     ${rec ? card('Your experience of it', rec.features.map((f) => `<div class="kv"><span>${esc((course.experiences(p).find((e) => e.id === f) ?? { label: f.replace(/_/g, ' ') }).label)}</span><span></span></div>`).join('')) : ''}
     ${card('Your care for this', `${plan.length ? plan.map((c) => kv(c.label, pill(c.status, c.status === 'active' ? 'good' : ''))).join('') : muted('Nothing yet.')}
       <div class="btn-stack" style="margin-top:10px">
@@ -265,7 +265,7 @@ function therapy(p, h) {
   const current = h.therapies.filter((c) => ['active', 'paused'].includes(c.status));
   const past = h.therapies.filter((c) => !['active', 'paused'].includes(c.status));
   const dbt = h.therapies.some((c) => THERAPY_BY_ID[c.therapyId].dbt) || activeDiagnoses(h).some((d) => d.conditionId === 'bpd');
-  return `${current.length ? current.map((c) => therapyCard(c, h)).join('') : card('', muted('You are not in therapy at the moment. It is there if you want it.'))}
+  return `${current.length ? current.map((c) => therapyCard(c, h)).join('') : card('', muted('Not in therapy.'))}
     ${card('', `<div class="btn-stack">${btn('Find a therapist or group', 'findTherapy', { primary: !current.length })}${dbt ? btn('My DBT Journey', 'dbt') : ''}${btn('My Treatment Journey', 'journey')}</div>`)}
     ${past.length ? card('Earlier therapy', past.map((c) => kv(THERAPY_BY_ID[c.therapyId].name, esc(`${c.status}, ${c.attended} sessions, ${when(c.startWk)}`))).join('')) : ''}`;
 }
@@ -300,7 +300,7 @@ function medications(p, h) {
   return `${open.map(proposalCard).join('')}
     ${live.length ? live.map((t) => trialCard(t, h)).join('') : card('', muted('No current medicine.'))}
     ${past.length ? `<div class="section-label">Previous trials</div>${past.map((t) => trialCard(t, h)).join('')}` : ''}
-    ${muted('Medicine is always a decision made with a prescriber. No doses are shown, and nothing here is advice for real life.')}
+    ${muted('Not medical advice.')}
     ${activeDiagnoses(h).some((d) => CONDITION_BY_ID[d.conditionId].care.meds) ? card('', `<div class="btn-stack">${btn('Talk to a prescriber about medicine', 'discussMedsPick')}</div>`) : ''}`;
 }
 
@@ -310,8 +310,8 @@ function supports(p, h) {
   const acc = h.supports.accommodations.slice(-10).reverse();
   const home = access.homeRecord(p);
   const settingName = { school: 'School', work: 'Work', home: 'Home', transport: 'Getting around' };
-  return `<p class="hl-sub">Support, without having to explain yourself.</p>
-    ${card('What helps you', list.length ? list.map((n) => `<div class="kv"><span>${esc(n.name)}</span><span>${n.settings.map((s) => pill(`${settingName[s.setting]}${s.met ? ' ✓' : ''}`, s.met ? 'good' : '')).join(' ')}</span></div>`).join('') + muted('✓ means it is in place there.') : muted('Nothing recorded. You can add something that helps you, with or without a diagnosis.'))}
+  return `
+    ${card('What helps you', list.length ? list.map((n) => `<div class="kv"><span>${esc(n.name)}</span><span>${n.settings.map((s) => pill(`${settingName[s.setting]}${s.met ? ' ✓' : ''}`, s.met ? 'good' : '')).join(' ')}</span></div>`).join('') + muted('✓ means it is in place there.') : muted('Nothing recorded.'))}
     ${card('Equipment', `${owned.length ? owned.map((d) => `<div class="kv"><span>${esc(DEVICES[d.deviceId].name)}</span><span>${btn('Put away', 'retire', { arg: d.id, small: true })}</span></div>`).join('') : muted('None.')}
       <div class="btn-stack" style="margin-top:8px">${btn('Get equipment', 'device')}${btn('Note a preference not to use something', 'declineDevice')}</div>`)}
     ${card('At school or work', `${acc.length ? acc.map((a) => kv(ACCOMMODATIONS[a.typeId].name, pill(a.status, a.status === 'granted' ? 'good' : ''))).join('') : muted('Nothing asked for yet.')}
@@ -346,7 +346,7 @@ function familyCard(fam, h) {
 function goals(p, h) {
   const plan = h.plans.find((x) => x.status !== 'completed');
   const list = plan?.goals ?? [];
-  return `${card('Your goals', list.length ? list.map((g) => kv(g.text, pill(g.status === 'met' ? 'Reached' : 'Working on it', g.status === 'met' ? 'good' : ''))).join('') + muted('Goals are reached by how life goes, not by how many sessions you attend.') : muted('No goals set. Goals you choose shape what your care works toward.'))}
+  return `${card('Your goals', list.length ? list.map((g) => kv(g.text, pill(g.status === 'met' ? 'Reached' : 'Working on it', g.status === 'met' ? 'good' : ''))).join('') : muted('No goals set.'))}
     ${card('', `<div class="btn-stack">${btn('Choose goals', 'goals')}</div>`)}`;
 }
 
@@ -357,7 +357,7 @@ function journey(p, h) {
   const tabs = `<div class="hl-tabs hl-subtabs" role="tablist">${JOURNEY.map(([id, l]) => `<button role="tab" data-jtab="${id}" class="${tab === id ? 'on' : ''}" aria-selected="${tab === id}">${l}</button>`).join('')}</div>`;
   const empty = !h.trials.length && !h.therapies.length && !h.assessments.length;
   let body;
-  if (empty) body = card('', `${muted('Your care, your progress, your story. When you start any kind of care, it will be recorded here.')}<div class="btn-stack" style="margin-top:10px">${btn('Talk to someone about how I have been feeling', 'seek', { arg: 'mental' })}${btn('Find a therapist or group', 'findTherapy')}</div>`);
+  if (empty) body = card('', `${muted('Nothing yet.')}<div class="btn-stack" style="margin-top:10px">${btn('Talk to someone about how I have been feeling', 'seek', { arg: 'mental' })}${btn('Find a therapist or group', 'findTherapy')}</div>`);
   else if (tab === 'overview') {
     const plan = h.plans.find((x) => x.status !== 'completed');
     body = `${card('Where things stand', `${kv('Diagnoses', String(activeDiagnoses(h).length))}${kv('Current therapy', String(h.therapies.filter((c) => c.status === 'active').length))}${kv('Current medicine', String(h.trials.filter(meds.isLive).length))}${kv('Appointments kept', String(h.appointments.filter((a) => a.status === 'attended').length))}`)}
@@ -368,7 +368,7 @@ function journey(p, h) {
   else if (tab === 'appointments') body = appointments(p, h);
   else if (tab === 'plans') body = h.plans.length ? h.plans.map((pl) => planCard(pl, h)).join('') : card('', muted('No care plan yet.'));
   else body = history(p, h);
-  return `<button class="btn hl-back" data-back>← Back</button><h3 class="hl-page">My Treatment Journey</h3><p class="hl-sub">Your care, your progress, your story.</p>${tabs}${body}`;
+  return `<button class="btn hl-back" data-back>← Back</button><h3 class="hl-page">My Treatment Journey</h3>${tabs}${body}`;
 }
 
 function sessionList(c) {
@@ -395,7 +395,7 @@ function dbtPage(p, h) {
   const done = s.groupCourses.flatMap((c) => Object.keys(c.moduleDone ?? {}));
   const hasBpd = activeDiagnoses(h).some((d) => d.conditionId === 'bpd');
   return `<button class="btn hl-back" data-back>← Back</button><h3 class="hl-page">My DBT Journey</h3>
-    <p class="hl-sub">Skills for a life worth living, practiced through the year.</p>
+    
     ${card('Individual DBT', ind ? `${clinicianRow(npcOf(ind.providerId))}${kv('Sessions', `${ind.attended} attended${ind.missed ? `, ${ind.missed} missed` : ''}`)}${ind.status === 'active' ? kv('Next', esc(later(ind.nextWk))) : kv('Status', esc(ind.status))}${ind.sessions.length ? kv('Last session', esc(ind.sessions.at(-1).note)) : ''}${['active', 'paused'].includes(ind.status) ? `${kv('Focus this year', esc(ind.focus ? MODULE_BY_ID[ind.focus].name : 'Whatever you need most'))}${btn('Change the focus', 'dbtFocus', { small: true })}` : ''}`
       : `${muted('Weekly sessions with a DBT-trained therapist.')}${btn('Find a DBT therapist', 'findTherapy', { arg: 'dbt' })}`)}
     ${card('DBT skills group', g ? `${g.facilitatorIds.map((id) => clinicianRow(npcOf(id), 'Facilitator')).join('')}${kv('Meets', `${esc(g.day)} ${g.evening ? 'evenings' : 'afternoons'}`)}
@@ -403,10 +403,10 @@ function dbtPage(p, h) {
         ${muted('What people share in the group stays in the group.')}`
       : `${muted('A weekly class teaching the four skills modules.')}${btn('Join a skills group', 'findTherapy', { arg: 'dbt_group' })}`)}
     ${card('The four skills', DBT_MODULES.map((m) => `<div class="hl-module"><div class="kv"><span><strong>${esc(m.name)}</strong>${done.includes(m.id) ? ' · module completed' : ''}</span><span></span></div>${bar('Practice', s.skills[m.id])}<p class="muted">${esc(m.blurb)} ${esc(m.skills.join(', '))}.</p></div>`).join('')
-      + muted('Skills grow with sessions attended and practice between them. They make more choices available in hard moments; they do not promise how a moment will go.'))}
+     )}
     ${card('Goals', goalsList.length ? goalsList.map((g2) => kv(g2.text, g2.status === 'met' ? 'Reached' : 'Working on it')).join('') : muted('No goals set yet.'))}
-    ${!hasBpd ? muted('DBT is offered for more than one reason; it does not need a particular diagnosis.') : ''}
-    ${muted('This is a game. It is not a substitute for real therapy.')}`;
+    ${!hasBpd ? '' : ''}
+    ${muted('A game, not a substitute for real therapy.')}`;
 }
 
 // ---------- The modal ----------

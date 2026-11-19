@@ -5,6 +5,13 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
+
+/** Opens a section of the tab on screen: each card on a tab is a row until it is tapped. */
+async function openSection(page, title) {
+  if (await page.locator('.sec-body.shown').count()) await page.click('[data-panel-close]');
+  // A card with a single action is that action, with no section to open.
+  if (await page.locator(`.sec-row[data-sec="${title}"]`).count()) await page.locator(`.sec-row[data-sec="${title}"]`).click();
+}
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -45,6 +52,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     S.store.state.pendingEvents = [];
   });
   await page.locator('[data-tab="pursuits"]').click(); await page.waitForTimeout(150);
+  await openSection(page, 'Your life this year');
   check(await page.locator('[data-year-plan="hobby"]').count(), `${label}: the This Year card is on Pursuits`);
   await page.locator('[data-year-plan="hobby"]').click(); await page.waitForTimeout(150);
   await page.locator('.modal .choice-btn', { hasText: 'Swimming' }).first().click(); await page.waitForTimeout(150);
@@ -53,7 +61,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(await page.locator('.card', { hasText: 'Your life this year' }).locator('text=Swimming').count(), `${label}: the hobby plan shows as ongoing`);
   const wide = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   check(wide, `${label}: no sideways scrolling`);
-  await page.locator('[data-panel-close]').click(); // back from Pursuits to the year button
+  await page.locator('[data-panel-close]').click(); await page.locator('[data-panel-close]').click(); // back from the section, then from Pursuits
   await page.locator('[data-year]').click(); await page.waitForTimeout(400);
   let saw = false;
   for (let i = 0; i < 15 && !saw; i++) {

@@ -89,7 +89,7 @@ export function renderObituary(app, g, hooks) {
         ${g.milestones.map((m) => `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('')}
       </div>
       ${heirs.length ? `<div class="card"><h3>Carry on as ${heirs[0].label.includes('grand') ? 'a grandchild' : 'a child'}</h3>
-        <p class="muted" style="margin-bottom:10px">Step into the life of one of the family. They keep their own schooling, work, savings and loved ones, and whatever they were left.</p>
+        
         <div class="btn-stack">${heirs.map((h) => `<button class="btn" data-heir="${h.id}">Continue as ${esc(h.name)} <small>${esc(h.label)}, age ${h.age}</small></button>`).join('')}</div>
       </div>` : ''}
       <div class="btn-stack">

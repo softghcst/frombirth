@@ -16,12 +16,13 @@ import { defend } from './campaign.js';
 import { decide } from './government.js';
 import { decide as digitalChoice } from './digital/stories.js';
 import { decide as eraChoice } from './eraScenes.js';
+import { togetherChoice } from './together.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { addCondition, cureCondition } from './health.js';
 import { healthEffect } from './health/story.js';
-import { remember } from './conditions.js';
+import { remember, parentsPay, parentsSpend } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
 import { hitProperty } from './realEstate.js';
 import { hitVehicle, giveVehicle } from './vehicles.js';
@@ -43,6 +44,7 @@ import { lifeChoice } from './animalLife.js';
 import { arcChoice } from './animalArcs.js';
 import { sportArcChoice } from './sportsArcs.js';
 import { disasterChoice } from './disasters.js';
+import { hoodChoice } from './neighborhoodLife.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -71,6 +73,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       case 'cash': {
         const amt = localMoney(e.delta, c);
+        // A young child at home does not pay for the family's choices: the parents do.
+        if (amt < 0 && parentsPay(p)) { parentsSpend(-amt, p); shown.push({ label: 'Paid by your parents', delta: amt, money: true, family: true }); break; }
         p.finance.cash += amt;
         if (amt > 0) p.finance.lifetimeEarned += amt;
         shown.push({ label: 'Cash', delta: amt, money: true });
@@ -115,6 +119,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'animalArc': ctx.note = arcChoice(e.value, ctx.cast); break;
       case 'sportArc': ctx.note = sportArcChoice(e.value, ctx.cast); break;
       case 'disaster': ctx.note = disasterChoice(e.value, ctx.cast); break;
+      case 'hood': { const line = hoodChoice(e.value, ctx.cast); if (line) ctx.note = line; break; }
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;
@@ -222,6 +227,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
       case 'era': ctx.note = eraChoice(e.value, ctx.cast); break;
+      case 'together': ctx.note = togetherChoice(e.value, ctx.cast); break;
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;
