@@ -395,8 +395,9 @@ export const BASEBALL = {
   games: { MLB: 162, NPB: 143, KBO: 144, 'Triple-A': 150, 'Double-A': 138, 'High-A': 132, 'Single-A': 132, 'Rookie ball': 60, 'Dominican Summer League': 60,
     'Farm team': 110, 'Futures League': 100, 'Independent League': 100, college: 56, school: 28, other: 30 },
   top: { us: 'MLB', ca: 'MLB', jp: 'NPB', kr: 'KBO' },
-  // The rounds of the postseason, as each league names them (the game plays eight clubs: no wild card round).
-  rounds: { MLB: { Quarterfinal: 'Division Series', Semifinal: 'League Championship Series', Final: 'World Series' },
+  // The rounds of the postseason, as each league names them. The big leagues take twelve clubs: four rest through the
+  // wild card round (engine/sports.js playoffs).
+  rounds: { MLB: { 'Wild Card': 'Wild Card Series', Quarterfinal: 'Division Series', Semifinal: 'League Championship Series', Final: 'World Series' },
     NPB: { Quarterfinal: 'Climax Series, first stage', Semifinal: 'Climax Series, final stage', Final: 'Japan Series' },
     KBO: { Quarterfinal: 'Semi-playoff', Semifinal: 'Playoff', Final: 'Korean Series' } },
   milestones: { H: [1000, 2000, 3000], HR: [100, 200, 300, 400, 500, 600, 700], W: [100, 200, 300], SV: [100, 300, 500], K: [1000, 2000, 3000] },

@@ -8,7 +8,7 @@ globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), se
 const { store } = await import('../js/state.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
-const { BASEBALL, INJURIES, DRAFTS } = await import('../js/data/sports.js');
+const { BASEBALL, INJURIES, DRAFTS, INTL_SIGNING } = await import('../js/data/sports.js');
 const { ILLNESSES } = await import('../js/data/illnesses.js');
 const { ROOTS } = await import('../js/data/economy.js');
 const sl = await import('../js/engine/sportsLife.js');
@@ -129,6 +129,14 @@ scenario('a hitter\'s season', () => {
   check(e.bb.allStar.includes(S().year), 'one of the best players in the league is an All-Star');
   const played = S().sports.seasons[x.seasonId];
   check(played.playoffs.length && played.playoffs.every((f) => Object.values(BASEBALL.rounds.MLB).includes(f.label)) && played.finalName === 'World Series', 'the postseason is played by its own names, down to the World Series');
+  // Twelve clubs: the best four rest while the other eight play the wild card round.
+  const seeds = sp.standings(played).map((t) => t.teamId);
+  const wild = played.playoffs.filter((f) => f.round === 'Wild Card');
+  const inIt = new Set(played.playoffs.flatMap((f) => [f.home, f.away]));
+  check(wild.length === 4 && wild.every((f) => f.label === 'Wild Card Series') && inIt.size === 12 && seeds.slice(0, 12).every((t) => inIt.has(t)), `twelve clubs reach the postseason, and eight of them start in the Wild Card Series (${wild.length} series, ${inIt.size} clubs)`);
+  check(wild.every((f) => !seeds.slice(0, 4).includes(f.home) && !seeds.slice(0, 4).includes(f.away)) && wild.every((f) => seeds.indexOf(f.home) < seeds.indexOf(f.away)), 'the best four rest through it, and the better seed is at home');
+  const div = played.playoffs.filter((f) => f.round === 'Quarterfinal');
+  check(div.length === 4 && div.every((f) => seeds.indexOf(f.home) < 4 && wild.some((w) => w.winner === f.away)) && played.playoffs.length === 11, 'each wild card winner then meets one of the four who waited');
 });
 scenario('a milestone', () => {
   const e = bigLeaguer(86, 'outfield');
@@ -388,6 +396,117 @@ section('signed abroad: the bonus and the family, English, winter ball');
   check(!R.hall, 'ten big league seasons to be considered at all');
 }
 section('the Hall of Fame: five years on, ten ballots, 75%');
+
+// ---------- 8. The Classic, a rehab assignment, the trade deadline, the first year abroad ----------
+scenario('the Classic', () => {
+  const e = bigLeaguer(88, 'outfield');
+  const a = sp.myAthlete();
+  need(sp.internals.overall(e, P()) >= 80 && e.level === 'pro');
+  const R = bb.record(e);
+  const caps = e.caps ?? 0;
+  while (bb.classicYear(S().year)) S().year += 1;
+  bb.baseballYear(S(), a, e, {});
+  check(R.classic.length === 0, 'no Classic in a year without one');
+  while (!bb.classicYear(S().year)) S().year += 1;
+  bb.baseballYear(S(), a, e, {});
+  const c = R.classic[0];
+  check(R.classic.length === 1 && c.year === S().year && ['champions', 'runners-up', 'semifinalists', 'out in the quarterfinals', 'out in the pool round'].includes(c.result), `one of his country's best plays in the Classic (${c?.result})`);
+  check((e.caps ?? 0) > caps && S().sports.moments.some((m) => /World Baseball Classic/.test(m.text)) && S().journal.some((j) => /World Baseball Classic/.test(j.text)), 'with caps for his country, and the story told');
+  bb.baseballYear(S(), a, e, {});
+  check(R.classic.length === 1, 'once a tournament');
+  // Not good enough for a strong country's team.
+  aim(e, 72);
+  S().year += 1; while (!bb.classicYear(S().year)) S().year += 1;
+  bb.baseballYear(S(), a, e, {});
+  check(R.classic.length === 1, 'a strong country leaves an ordinary player at home');
+});
+scenario('a rehab assignment', () => {
+  const e = bigLeaguer(84, 'pitcher');
+  const a = sp.myAthlete();
+  need(e.contractId && !e.minor);
+  const R = bb.record(e);
+  const hurt = (o = {}) => a.injuries.push({ id: `test_${a.injuries.length}`, type: 'ucl', sportId: 'baseball', year: S().year - 1, name: 'a torn elbow ligament', severity: 55, left: 0, status: 'healed', healed: S().year, setbacks: 0, ...o });
+  hurt({ type: 'strain', name: 'a muscle strain', severity: 12 });
+  bb.baseballYear(S(), a, e, {});
+  check(R.rehab.length === 0, 'a short injury needs no rehab assignment');
+  hurt();
+  bb.baseballYear(S(), a, e, {});
+  check(R.rehab.length === 1 && R.rehab[0].year === S().year && /elbow/.test(R.rehab[0].injury) && S().journal.some((j) => /rehab assignment/.test(j.text) && /elbow/.test(j.text)), 'back from a long injury, a big leaguer plays a rehab assignment first');
+  bb.baseballYear(S(), a, e, {});
+  check(R.rehab.length === 1, 'once');
+  // A minor leaguer is already in the minors.
+  S().year += 1;
+  dr.toMinors(S(), e, club(e), 3);
+  hurt();
+  bb.baseballYear(S(), a, e, {});
+  check(R.rehab.length === 1, 'a minor leaguer has no big club to rejoin');
+});
+scenario('the trade deadline', () => {
+  const e = bigLeaguer(80, 'outfield');
+  const a = sp.myAthlete();
+  season(e);
+  /** This year's standings rewritten so the player's club lost (or won) every game; then years pass until a trade. */
+  const tradedFrom = (won) => {
+    need(e.contractId);
+    const tid = club(e).teamIds[0];
+    const lg = Object.values(S().sports.orgs).find((x) => x.kind === 'league' && x.teamIds.includes(tid));
+    const played = Object.values(S().sports.seasons).filter((x) => x.leagueId === lg.id).sort((x, y) => y.year - x.year)[0];
+    need(played);
+    for (const f of played.fixtures) { if (f.home === tid) f.score = won ? [5, 0] : [0, 5]; else if (f.away === tid) f.score = won ? [0, 5] : [5, 0]; }
+    const table = sp.standings(played).map((t) => t.teamId);
+    const n = (e.trades ?? []).length;
+    for (let i = 0; i < 600 && (e.trades ?? []).length === n; i++) {
+      S().year += 1; played.year = S().year;
+      const k = contract(e); k.from = S().year - 2; k.to = S().year + 5;
+      tr.tradeYear(S(), a, e, k);
+    }
+    return { t: e.trades?.[n], table, tid, to: club(e).teamIds[0], said: S().journal.at(-1)?.text ?? '' };
+  };
+  const sold = tradedFrom(false);
+  check(sold.t && sold.table.indexOf(sold.tid) === sold.table.length - 1 && sold.t.deadline === true, 'a club at the bottom in July sells at the trade deadline');
+  check(sold.t && sold.table.indexOf(sold.to) < Math.max(2, Math.round(sold.table.length / 4)), `to a club that is in the race (place ${sold.table.indexOf(sold.to) + 1})`);
+  check(/At the trade deadline/.test(sold.said) && /out of the race/.test(sold.said) && /chasing the pennant/.test(sold.said), `and it is told that way (${sold.said})`);
+  const kept = tradedFrom(true);
+  check(kept.t && kept.table.indexOf(kept.tid) === 0 && !kept.t.deadline && !/trade deadline/.test(kept.said), 'a club at the top does not sell its big leaguers in July: a trade from there is a winter one');
+  // A contender does deal its prospects at the deadline.
+  need(e.contractId);
+  dr.toMinors(S(), e, club(e), 3);
+  const prospect = tradedFrom(true);
+  check(prospect.t?.deadline === true && /chasing the pennant, sent you/.test(prospect.said) && e.minor, `a contender sends a prospect away at the deadline for help now (${prospect.said})`);
+});
+scenario('the first year abroad', () => {
+  let e = null;
+  for (let tries = 0; tries < 6 && !e?.intl?.signed; tries++) {
+    e = boy('do', 15, 'outfield');
+    set(e, 60);
+    for (let i = 0; i < 3 && !e.intl?.signed; i++) year({ buscon: 'no', handshake: 'no', intlSign: (d) => d.options[0].id, remit: 'no' });
+  }
+  need(e.intl?.signed && e.contractId);
+  const a = sp.myAthlete();
+  const X = e.intl;
+  const p = P();
+  const reset = (english, usYears) => { Object.assign(X, { english, usYears, study: false }); a.motivation = 60; p.stats.mood = 60; };
+  // Still at the academy in the Dominican Republic: at home.
+  dr.toMinors(S(), e, club(e), 0, INTL_SIGNING.ladder);
+  reset(5, 0);
+  bb.baseballYear(S(), a, e, {});
+  check(sp.orgOf(e.orgId).countryId === 'do' && X.usYears === 0 && a.motivation === 60 && p.stats.mood === 60, 'at the academy in the Dominican Republic he is still at home');
+  // The first season in the United States, without the language.
+  dr.toMinors(S(), e, club(e), 1, INTL_SIGNING.ladder);
+  reset(5, 0);
+  bb.baseballYear(S(), a, e, {});
+  check(sp.orgOf(e.orgId).countryId === 'us' && X.usYears === 1 && a.motivation === 54 && p.stats.mood === 56, `the first season in the United States, without English, is a lonely one (motivation ${a.motivation}, mood ${p.stats.mood})`);
+  check(S().journal.some((j) => /first season in the United States/.test(j.text) && /lonely year/.test(j.text)), 'and it is told');
+  check(X.english > 5 && X.english < 45, 'English comes slowly to one who only gets by');
+  // With the language, or after two years, it is not.
+  reset(80, 0);
+  bb.baseballYear(S(), a, e, {});
+  check(X.usYears === 1 && a.motivation === 60 && p.stats.mood === 60, 'a player who has the language is not lonely');
+  reset(5, 2);
+  bb.baseballYear(S(), a, e, {});
+  check(X.usYears === 3 && a.motivation === 60 && p.stats.mood === 60, 'and by the third year it is home enough');
+});
+section('the Classic; a rehab assignment; the trade deadline, sellers and contenders; the first year abroad');
 
 if (problems.length) {
   console.log(`${problems.length} problem(s):`);
