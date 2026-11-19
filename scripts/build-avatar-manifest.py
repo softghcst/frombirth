@@ -1155,7 +1155,9 @@ def weigh_lines(folder='noses', recolor=True):
 # the outlines: each crease keeps at least 4 units clear of the eye below it, and a typical brow's gap to it is made
 # up to about 10 where there is room for that. A softened file's crease carries data-crease="<units lowered>", so a
 # changed amount here moves it by the difference, and nothing is moved twice.
-CREASES = {'eyes_18': 6, 'eyes_19': 6, 'eyes_20': 6, 'eyes_22': 7, 'eyes_25': 9, 'eyes_26': 1, 'eyes_9': 2, 'eyes_8': 0, 'eyes_7': 0}
+# None: the eye already has a fold line close under the lashes (part of its outline), so its floating crease is taken
+# out altogether instead (eyes_25 had two).
+CREASES = {'eyes_18': 6, 'eyes_19': 6, 'eyes_20': 6, 'eyes_22': 7, 'eyes_25': None, 'eyes_26': 1, 'eyes_9': 2, 'eyes_8': 0, 'eyes_7': 0}
 CREASE_SOFT = 'color-mix(in srgb,var(--skin-color,#e8b68c) 50%,#2d180e)'
 CREASE_PATH = re.compile(r'<path data-crease="([\d.]+)" style="([^"]*)" d="([^"]*)"/>')
 ANY_PATH = re.compile(r'<path style="([^"]*)"([^>]*?) d="([^"]*)"/>')
@@ -1185,8 +1187,10 @@ def soften_creases():
         if not os.path.exists(path):
             continue
         text = open(path, encoding='utf-8').read()
-        if 'data-pathways="1"' not in text:
+        if 'data-pathways="1"' not in text or 'data-crease-removed="1"' in text:
             continue
+        if drop is None and CREASE_PATH.search(text):
+            continue  # (a softened crease is only ever taken out from the original file)
         if CREASE_PATH.search(text):  # already parted: move it by the difference
             if all(abs(float(m.group(1)) - drop) < 1e-9 for m in CREASE_PATH.finditer(text)):
                 continue
@@ -1227,9 +1231,11 @@ def soften_creases():
                 continue
             rest = [cmd for k, sp in enumerate(subs) if k not in out for cmd in sp]
             soft = f'fill:var(--crease-color,{CREASE_SOFT});stroke:var(--crease-color,{CREASE_SOFT});stroke-width:var(--line-width,0);stroke-linejoin:round'
-            creases = ''.join(f'<path data-crease="{fmt(drop)}" style="{soft}" d="{path_d(shift_down(subs[f[2]], drop))}"/>' for f in sorted(mine, key=lambda f: f[2]))
+            creases = '' if drop is None else ''.join(f'<path data-crease="{fmt(drop)}" style="{soft}" d="{path_d(shift_down(subs[f[2]], drop))}"/>' for f in sorted(mine, key=lambda f: f[2]))
             kept = f'<path style="{m.group(1)}"{m.group(2)} d="{path_d(rest)}"/>' if rest else ''
             text = text[:m.start()] + kept + creases + text[m.end():]
+        if drop is None:
+            text = text.replace('data-pathways="1"', 'data-pathways="1" data-crease-removed="1"', 1)
         open(path, 'w', encoding='utf-8').write(text)
         done[name] = drop
     return done
@@ -1556,7 +1562,7 @@ def main(argv):
     for name in thin_outline():
         print(f'thinned the outline of {name}')
     for name, drop in soften_creases().items():
-        print(f'softened the lid crease of {name} (lowered {drop})')
+        print(f'took out the floating lid crease of {name}' if drop is None else f'softened the lid crease of {name} (lowered {drop})')
     parted = split_lip_tones()
     if parted:
         print('gave the upper lip its own color in ' + ', '.join(parted))

@@ -492,7 +492,7 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const clearance = (from, to) => { let least = Infinity; for (const [x, y] of from) for (const [x2, y2] of to) if (Math.abs(x - x2) <= 3 && y2 > y) least = Math.min(least, y2 - y); return least; };
   const REST = CUR.RESTING.eyebrows;
   const brows = REST.map((id) => paths(read('eyebrows', id)).flatMap((p) => p.pts).filter(([x]) => x < 256));
-  for (const id of ['eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_25', 'eyes_26', 'eyes_9', 'eyes_8', 'eyes_7']) {
+  for (const id of ['eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_26', 'eyes_9', 'eyes_8', 'eyes_7']) {
     const svg = read('eyes', id), all = paths(svg), creases = all.filter((p) => p.attrs.includes('data-crease'));
     check(creases.length === 2, `${id} has ${creases.length} lid creases parted, not one for each eye`);
     for (const c of creases) check(c.attrs.includes('var(--crease-color,') && !/fill:#/.test(c.attrs), `${id}: a lid crease is drawn in ink`);
@@ -503,6 +503,8 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
     const gaps = brows.map((b) => { let least = Infinity; for (const [x, y] of left.pts) for (const [x2, y2] of b) if (Math.abs(x - x2) <= 3 && y > y2) least = Math.min(least, y - y2); return least; }).filter(Number.isFinite).sort((a, b) => a - b);
     check(gaps.length > 5 && gaps[gaps.length >> 1] >= 5, `${id}: the lid crease is too close to a typical brow (${gaps[gaps.length >> 1]?.toFixed?.(1)})`);
   }
+  // Eyes 25 already has a fold line under its lashes, as part of its outline: it is left with that one alone.
+  check(read('eyes', 'eyes_25').includes('data-crease-removed="1"') && !read('eyes', 'eyes_25').includes('data-crease="'), 'eyes_25 has two lid creases again');
   // The eyes whose top line is lashes are left as they were.
   for (const id of ['eyes_10', 'eyes_16', 'eyes_6']) check(!read('eyes', id).includes('data-crease'), `${id} has had a lid crease softened that is a lash line`);
 }
