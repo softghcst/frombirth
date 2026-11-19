@@ -122,9 +122,16 @@ The best-connected representative brings brand deals, bigger ones, and takes the
 - **Celebrity brands**: one product launch a year; hit, steady or flop, from the product and the owner's name.
 - **Music**: music videos (from 1981), songs written for other acts with a writer's share, session work.
 
+## Credits on other acts' records
+
+`engine/music.js`. A session is credited on the act's next record, with what the player played there, and the
+record's own credits list them (My Fame → Music → *Records you played on*). A song sold to an act can reappear on the
+act's next EP or album (more than half the time, within three years): the album credits the player as a writer and
+pays a writer's share of the whole record, by the song's share of its tracks.
+
 ## Not built yet
 
 - Countries and borders are today's (see docs/HISTORICAL_ERAS.md for what the eras do and do not model).
-- Sport: no transfers between countries, no team events at the World Games, no management of a squad. Boxing is
-  part of martial arts, with no separate world title.
-- Session work and songwriting do not make credits on other acts' albums beyond the single written.
+- Sport: transfers between countries are for club team sports outside the draft leagues (baseball players from Japan
+  and Korea are posted to the big leagues instead, `engine/asiaBaseball.js`); a coach runs one club's first team, not
+  a national side; boxing has one sanctioning body.
