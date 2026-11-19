@@ -16,7 +16,8 @@ const { getEvent, resolveChoice } = await import('../js/engine/eventEngine.js');
 const { heirs, continueAs } = await import('../js/engine/legacy.js');
 const death = await import('../js/engine/death.js');
 const mo = await import('../js/engine/moments.js');
-const { OCCASIONS, SOCIAL_PER_YEAR, BOND_CAP, DIGITAL_INVITES } = await import('../js/data/occasions.js');
+const { OCCASIONS, SOCIAL_PER_YEAR, BOND_CAP } = await import('../js/data/occasions.js');
+const { techAvailable } = await import('../js/engine/digital/tech.js');
 
 rng.seed(808);
 const problems = [];
@@ -29,6 +30,7 @@ const item = (key) => mo.thisYear().find((x) => x.key === key);
 function life(id = 'us', age = 30, cash = 50000) {
   do { store.state = createLife({ countryId: id }); } while (store.state.player.royal);
   const p = store.state.player;
+  p.flags.longevity = 18; p.stats.health = 100; p.conditions = []; // these checks follow one life through several years: it should not end by chance partway
   p.age = age; p.birthYear = store.state.year - age; p.flags.livesWithParents = age < 18; p.education.enrolled = false;
   p.finance.cash = Math.round(cash * COUNTRIES[id].currency.scale);
   for (const n of Object.values(store.state.npcs)) n.alive = false;
@@ -101,12 +103,14 @@ check((p.momentsYears ?? []).some((y) => y.year === yearOfIt && y.lines.includes
 const beforeAuto = p.finance.cash;
 advanceYear(); store.state.pendingEvents = [];
 check(t.count === 2 && t.lastYear === yearOfIt + 1, 'a tradition nobody organized happens by itself at Age Up, once');
-check(p.finance.cash < beforeAuto || p.finance.cash === beforeAuto, 'and its host pays for it');
+check(store.state.ledger.tx.some((x) => x.desc === t.name && x.year === yearOfIt + 1 && x.cat === 'leisure'), 'and its host pays for it, recorded under its name');
+void beforeAuto;
 advanceYear(); store.state.pendingEvents = [];
 check(t.count === 3, 'once a year, every year');
 void spentBefore;
 // Skipping: three years running and it fades.
 for (let i = 0; i < 3; i++) { check(mo.skipTradition(t.id).ok, 'a tradition can be skipped'); advanceYear(); store.state.pendingEvents = []; }
+check(p.alive, 'the life is still going');
 check(t.status === 'lapsed' && t.count === 3, 'skipped three years running, it fades, and was not kept in those years');
 check(mo.revive(t.id).ok && t.status === 'active', 'a faded tradition can be brought back');
 bookAction(); check(audit().length === 0, 'the books balance through all of it');
@@ -188,13 +192,14 @@ check(!item('prom') && !item('holiday:thanksgiving') && !item('holiday:christmas
 check(!!item('holiday:new_year'), 'though New Year is kept everywhere');
 p = life('in', 30);
 check(!!item('holiday:diwali') && !item('holiday:thanksgiving'), 'Diwali in India');
-p = life('us', 30);
-store.state.year = 1990; store.state.moments = null; person('friend', 30, 70);
-mo.startYear();
-check(mo.yearState().invites.every((x) => x.how === 'card'), `before ${DIGITAL_INVITES} an invitation comes as a card`);
-store.state.year = 2030; store.state.moments = null;
-for (let i = 0; i < 20 && !mo.yearState().invites.length; i++) { store.state.moments = null; mo.startYear(); }
-check(mo.yearState().invites.every((x) => x.how === 'message'), 'later, as a message');
+p = life('us', 30); person('friend', 30, 70);
+/** This year's invitations, dealt again until there is at least one. */
+const dealtIn = (year) => { store.state.year = year; for (let i = 0; i < 30; i++) { store.state.moments = null; mo.startYear(); if (mo.yearState().invites.length) break; } return mo.yearState().invites; };
+const ways = (year) => [...new Set(dealtIn(year).map((x) => x.how))];
+check(!techAvailable('mobile', 1985, 'us') && ways(1985).every((h) => h === 'call'), 'in 1985 an invitation comes by telephone, the newest way there was');
+check(ways(1880).every((h) => h === 'card'), 'in 1880, as a card by post');
+check(ways(1820).every((h) => h === 'word'), 'in 1820, before the postal service here, by word of mouth');
+check(ways(2030).every((h) => h === 'message'), 'and today, as a message');
 p = life('us', 10); p.flags.livesWithParents = true; person('parent', 40); const kid = person('friend', 10);
 const c9 = p.finance.cash;
 check(mo.celebrate({ key: 'social:sleepover', guests: [kid.id] }).ok && p.finance.cash === c9, 'a child\'s sleepover is paid for by the family');

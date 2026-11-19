@@ -244,6 +244,7 @@ let soccerLife;
 {
   const p = grownTo(16); sp.takeUp('soccer');
   const a = sp.myAthlete(); const e = sp.entryOf('soccer');
+  p.flags.longevity = 18; // this waits years for an injury: the player should not die of something else first (a drowning did)
   // Force an injury through the engine's own path: a year at full load, worn out.
   let inj = null;
   for (let i = 0; i < 40 && !inj; i++) { e.fatigue = 95; e.plan.hours = 18; advanceYear(); quiet(); inj = a.injuries.find((x) => x.status === 'out'); }
