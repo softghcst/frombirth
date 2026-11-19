@@ -23,7 +23,7 @@ export function roleLabel(npc) {
     case 'parent': return byGender(npc, 'Father', 'Mother', 'Parent');
     case 'sibling': {
       const kind = byGender(npc, 'brother', 'sister', 'sibling');
-      return npc.flags.twin ? `Twin ${kind}` : kind.charAt(0).toUpperCase() + kind.slice(1);
+      return npc.flags.twin ? `Twin ${kind}` : npc.flags.half ? `Half-${kind}` : kind.charAt(0).toUpperCase() + kind.slice(1);
     }
     case 'grandparent': return byGender(npc, 'Grandfather', 'Grandmother', 'Grandparent');
     case 'child': return byGender(npc, 'Son', 'Daughter', 'Child') + (npc.adopted ? ' (adopted)' : '');

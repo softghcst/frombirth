@@ -258,6 +258,16 @@ async function extras() {
   await page.waitForSelector('.dl-modal');
   check((await page.locator('.dl-body').innerText()).includes('Family Archive'), 'the Family Archive opens from the People tab');
   await page.click('.dl-modal [data-close]');
+  // A profile's actions come in groups, with things of the person's own role (engine/bonds.js).
+  const relative = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const p = store.state.player; return p.npcIds.find((id) => store.state.npcs[id]?.alive && ['parent', 'sibling', 'grandparent'].includes(store.state.npcs[id].role)); });
+  if (relative) {
+    await page.click(`[data-npc="${relative}"]`);
+    await page.waitForSelector('#modal-root [data-act^="with:"]');
+    const groups = await page.locator('#modal-root .section-label').allInnerTexts();
+    check(groups.some((g) => /together/i.test(g)) && groups.some((g) => /talk/i.test(g)), `a relative's profile groups what you can do (${groups.join(', ')})`);
+    check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'and fits a phone');
+    await page.click('#modal-root [data-close]');
+  }
   // A modern creator: routine and dating preferences through the forms.
   const slot = await page.evaluate(async () => {
     const { store } = await import('/js/state.js');

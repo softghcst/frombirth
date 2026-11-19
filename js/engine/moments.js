@@ -21,6 +21,7 @@ import { remember } from './conditions.js';
 import { apart } from './eventEngine.js';
 import { roleLabel } from './relationships.js';
 import { book } from './ledger.js';
+import { missedAnniversary } from './together.js';
 import { OCCASIONS, STYLES, HOLIDAYS, INVITES, MILESTONE_BIRTHDAYS, NAMED_ANNIVERSARIES, SOCIAL_PER_YEAR, BOND_CAP, INVITE_WAYS, TRADITION_LAPSE } from '../data/occasions.js';
 import { techAvailable } from './digital/tech.js';
 
@@ -148,8 +149,8 @@ export function costOf(item, guests = 0, styleId = null) {
   const base = (st?.cost ?? o?.cost ?? 0) + guests * (st?.perGuest ?? o?.perGuest ?? 0);
   return localCost(base, c);
 }
-/** Under 18, living at home, the family pays for the child's own occasions. */
-const familyPays = () => { const p = player(); return p.age < 18 && p.flags.livesWithParents && npcsByRole('parent').length > 0; };
+/** Under 18, living at home with a parent, the family pays for every occasion the child marks: the screen says so, and this is what charges. */
+export const familyPays = () => { const p = player(); return p.age < 18 && !!p.flags.livesWithParents && npcsByRole('parent').length > 0; };
 
 /** Who the occasion naturally includes, before the player changes anything. */
 export function suggestedGuests(item) {
@@ -185,7 +186,7 @@ export function celebrate({ key, guests = [], style = null, makeTradition = fals
   const people = [...new Set(guests)].map(npc).filter(inLife);
   if (item.forId && !people.some((n) => n.id === item.forId) && npc(item.forId)) people.unshift(npc(item.forId));
   const cost = costOf(item, people.length, style);
-  const paidBy = familyPays() && ['birthday', 'prom', 'formal', 'leavers_ball', 'school_dance', 'sleepover', 'graduation_party'].includes(item.occasion) ? 'family' : 'you';
+  const paidBy = familyPays() ? 'family' : 'you';
   if (paidBy === 'you' && cost > 0 && p.finance.cash < cost) return result(false, `It would cost ${fmtMoney(cost, c)}. You have ${fmtMoney(Math.max(0, p.finance.cash), c)}.`, 'neutral');
 
   // Spent once, and written down as what it was.
@@ -400,7 +401,7 @@ export function finishYear() {
       continue;
     }
     // It happens anyway, as it always has.
-    if (t.hostId === YOU) {
+    if (t.hostId === YOU && !familyPays()) {
       const cost = localCost(t.holiday ? (HOLIDAYS.find((h) => h.id === t.holiday)?.cost ?? 100) : 150, c);
       if (p.finance.cash < cost) { t.skipped = [...(t.skipped ?? []), year]; t.history.push({ year, text: 'There was no money to host it this year.' }); continue; }
       p.finance.cash -= cost;
@@ -424,9 +425,13 @@ export function finishYear() {
   const spouse = npcsByRole('spouse')[0];
   if (spouse?.marriedAtAge != null) {
     const yrs = p.age - spouse.marriedAtAge;
-    if (NAMED_ANNIVERSARIES[yrs] && [5, 10, 25, 40, 50].includes(yrs) && !s.done[`anniversary:${spouse.id}`]) {
-      spouse.meters.relationship = clamp(spouse.meters.relationship - 3);
-      log(`Your ${ordinal(yrs)} wedding anniversary went by without being marked. ${spouse.firstName} noticed.`, 'system', 'bad');
+    const round = NAMED_ANNIVERSARIES[yrs] && [5, 10, 25, 40, 50].includes(yrs);
+    if (yrs >= 1 && !s.done[`anniversary:${spouse.id}`]) {
+      if (round) {
+        spouse.meters.relationship = clamp(spouse.meters.relationship - 3);
+        log(`Your ${ordinal(yrs)} wedding anniversary went by without being marked. ${spouse.firstName} noticed.`, 'system', 'bad');
+      }
+      missedAnniversary(spouse, yrs, round); // sometimes, a scene: the card on the table (engine/together.js)
     }
   }
 

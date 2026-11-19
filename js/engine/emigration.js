@@ -171,7 +171,7 @@ export function emigrate(countryId, opts = {}) {
     // The application was decided earlier (engine/relocation.js). What is left is paying for the grant, the shipping and the animals.
     if (!canEmigrate()) return result(false, 'You cannot move there now.', 'neutral');
     if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
-    if (p.finance.cash < fee + shipping + pets) return result(false, `The visa, shipping and the animals' travel come to ${fmtMoney(fee + shipping + pets, from)}. You do not have it.`, 'neutral');
+    if (fee + shipping + pets > 0 && p.finance.cash < fee + shipping + pets) return result(false, `The visa, shipping and the animals' travel come to ${fmtMoney(fee + shipping + pets, from)}. You do not have it.`, 'neutral');
     if (fee) charge({ amount: fee, kind: 'relocation', memo: `The rest of the visa fee: ${to.name}`, key: `move:${moveId}:grant`, ref: { moveId } });
     if (shipping) charge({ amount: shipping, kind: 'relocation', memo: 'Shipping vehicles', key: `move:${moveId}:ship`, ref: { moveId } });
   } else if (!opts.forced) {
@@ -179,7 +179,7 @@ export function emigrate(countryId, opts = {}) {
     if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
     if (!route?.eligible) return result(false, route?.why || 'That route is not open to you.', 'neutral');
     if (p.flags.visaAge === p.age) return result(false, 'You have already applied this year. Try again next year.', 'neutral');
-    if (p.finance.cash < fee + shipping + pets) return result(false, `Visas, lawyers, shipping and the animals' travel come to ${fmtMoney(fee + shipping + pets, from)}. You do not have it.`, 'neutral');
+    if (fee + shipping + pets > 0 && p.finance.cash < fee + shipping + pets) return result(false, `Visas, lawyers, shipping and the animals' travel come to ${fmtMoney(fee + shipping + pets, from)}. You do not have it.`, 'neutral');
     p.flags.visaAge = p.age;
     // The application fee is gone either way.
     charge({ amount: Math.round(fee * 0.2), kind: 'visa_fee', memo: `Application to move to ${to.name}`, key: `move:${moveId}:apply`, ref: { moveId } });

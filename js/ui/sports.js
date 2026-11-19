@@ -9,6 +9,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { sportOf, PLANS, LOADS, LEVEL_NAMES, INJURIES } from '../data/sports.js';
 import * as sp from '../engine/sports.js';
 import * as life from '../engine/sportsLife.js';
+import * as extras from '../engine/sportsExtras.js';
 import { colorsOf, numbersOf } from '../engine/teamIdentity.js';
 import { decommit, gradeOf, GRADE_NAMES } from '../engine/recruiting.js';
 import * as draft from '../engine/draft.js';
@@ -293,6 +294,10 @@ function career() {
     ${recruitingSection()}
     ${draftSection()}
     ${label('Contracts')}${ks.length ? ks.map((k) => kv(`${k.kind === 'pro' ? 'Playing' : k.kind === 'sponsor' ? 'Sponsor' : 'Agent'}: ${k.name}`, `${k.from}${k.to ? `–${k.to}` : ''} · ${k.status}${k.kind === 'agent' && k.share ? ` · takes ${Math.round(k.share * 100)}%` : ''}${k.salary ? ` · ${money(k.salary)} a year` : k.amount ? ` · ${money(k.amount)} a year` : ''}`)).join('') : empty('None.')}
+    ${(() => { const moves = Object.values(a?.sports ?? {}).flatMap((e) => (e.abroad ?? []).map((m) => ({ ...m, sportId: e.id }))); return moves.length ? `${label('Moves abroad')}${moves.map((m) => kv(`${m.year}: ${sp.orgOf(m.orgId)?.name ?? 'A club'}`, esc(`${COUNTRIES[m.countryId]?.name ?? ''} · ${sportOf(m.sportId).name} · fee ${money(m.fee)}`))).join('')}` : ''; })()}
+    ${squadSection()}
+    ${boxingSection()}
+    ${gamesSection()}
     ${agentSection()}
     ${label('Division')}
     ${kv('You play in', `${esc(sp.DIVISION_NAME[sp.divisionOf()])} competition`)}
@@ -304,6 +309,40 @@ function career() {
     <div class="btn-stack">${sp.activeSports().map((e) => `<button class="btn" data-retire="${e.id}">Retire from ${esc(sportOf(e.id).name.toLowerCase())}</button>`).join('')}
       ${p.age >= 18 && !a.coaching ? Object.values(a.sports).map((e) => `<button class="btn" data-coachjob="${e.id}">Coach ${esc(sportOf(e.id).name.toLowerCase())}</button>`).join('') : ''}</div>
     ${a.coaching ? kv('Coaching', `${esc(sportOf(a.coaching.sportId).name)} since ${a.coaching.since}`) : ''}`;
+}
+
+/** The squad a coach runs: the table last season, tactics, training, and who starts. */
+function squadSection() {
+  const sq = extras.squadOf();
+  if (!sq) return '';
+  const last = sq.c.seasons.at(-1);
+  const xi = new Set(extras.lineup(sq).map((x) => x.id));
+  const btns = (set, key, cur, attr) => `<div class="chips zoo-filter" role="group">${Object.entries(set).map(([k, v]) => `<button class="chip ${k === cur ? 'on' : ''}" aria-pressed="${k === cur}" ${attr}="${k}">${esc(v.name)}</button>`).join('')}</div>`;
+  return `${label(`Coaching ${sq.org.name}`)}
+    ${last ? kv(`${last.year} season`, esc(`${last.place}${['th', 'st', 'nd', 'rd'][last.place] ?? 'th'} of ${last.of} · ${last.w}-${last.d}-${last.l}`)) : `<p class="muted">Your first season starts this year.</p>`}
+    ${sq.c.warned ? '<p class="muted">The board expect better this season.</p>' : ''}
+    <p class="muted" style="margin:6px 0 2px">How the side plays: ${esc(extras.TACTICS[sq.c.tactics].blurb)}</p>${btns(extras.TACTICS, 'tactics', sq.c.tactics, 'data-tactic')}
+    <p class="muted" style="margin:6px 0 2px">Training: ${esc(extras.TRAINING[sq.c.training].blurb)}</p>${btns(extras.TRAINING, 'training', sq.c.training, 'data-training')}
+    <p class="muted" style="margin:6px 0 2px">Tap a player to leave them out or bring them back.</p>
+    ${[...sq.team.roster].filter((x) => !x.player).sort((a2, b2) => b2.rating - a2.rating).map((x) => `<button class="row" data-bench="${esc(x.id)}"><div class="main"><strong>${esc(x.name)}</strong><small>${esc(`${x.pos ? `${(sq.sport.positions ?? []).find((q) => q[0] === x.pos)?.[1] ?? x.pos} · ` : ''}rated ${x.rating}${x.age ? ` · ${x.age}` : ''}`)}</small></div><div class="side">${xi.has(x.id) ? 'Starts' : sq.c.benched.includes(x.id) ? 'Left out' : 'Bench'}</div></button>`).join('')}`;
+}
+/** A boxer's record: wins, losses, knockouts, rank, belts. */
+function boxingSection() {
+  const e = sp.entryOf('boxing');
+  const b = e?.boxing;
+  if (!b) return '';
+  return `${label('In the ring')}
+    ${kv('Record', esc(`${b.record.w}-${b.record.l}, ${b.record.ko} by knockout`))}
+    ${kv('Division', esc(b.weight))}
+    ${kv('Standing', esc(b.title ? `${extras.BELT.body} champion · ${b.title.defenses} ${b.title.defenses === 1 ? 'defense' : 'defenses'}` : `Ranked ${b.rank}`))}
+    ${b.titles.map((t) => kv(`${t.year}: ${t.weight} title`, esc(t.lost ? `held until ${t.lost}${t.defenses ? `, ${t.defenses} defenses` : ''}` : 'held'))).join('')}
+    ${b.fights.slice(-4).reverse().map((f) => kv(`${f.year} · ${f.opp}`, esc(`${f.won ? 'Won' : 'Lost'} ${f.how}${f.title ? ` · ${f.title}` : ''}`))).join('')}`;
+}
+/** The national side at the World Games. */
+function gamesSection() {
+  const rows = Object.values(sp.myAthlete()?.sports ?? {}).flatMap((e) => (e.gamesTeams ?? []).filter((t) => t.picked).map((t) => ({ ...t, sportId: e.id })));
+  if (!rows.length) return '';
+  return `${label('World Games, with the national side')}${rows.map((t) => kv(`${t.year} · ${sportOf(t.sportId).name}`, esc(`${t.medal ? `${t.medal[0].toUpperCase()}${t.medal.slice(1)}` : `Out in the ${t.place.toLowerCase()}`} · ${t.rounds.map((r) => `${r.score.join('–')} v ${COUNTRIES[r.opp]?.name ?? r.opp}${r.how}`).join(', ')}`))).join('')}`;
 }
 
 /** The player's sports agent, or the search for one: the same agents as under My Fame → Representation. */
@@ -517,6 +556,9 @@ async function onClick(e) {
   if ((el = hit('data-primary'))) return report(sp.setPrimary(el.dataset.primary));
   if ((el = hit('data-giveup'))) { shut(); if (!await confirmModal({ title: 'Stop playing?', body: 'Your record is kept. You can take it up again later, though skills fade.', yes: 'Stop', danger: true })) return show(); return report(sp.giveUp(el.dataset.giveup)); }
   if ((el = hit('data-retire'))) { shut(); if (!await confirmModal({ title: 'Retire?', body: 'This ends your playing career in this sport, and any contract with it.', yes: 'Retire', danger: true })) return show(); return report(life.retire(el.dataset.retire)); }
+  if ((el = hit('data-tactic'))) return report(extras.setTactics(el.dataset.tactic));
+  if ((el = hit('data-training'))) return report(extras.setTraining(el.dataset.training));
+  if ((el = hit('data-bench'))) return report(extras.toggleBench(el.dataset.bench));
   if ((el = hit('data-sagent'))) return report({ find: life.findSportsAgent, sign: life.signSportsAgent, pass: life.passOnSportsAgent, drop: life.dropSportsAgent, cut: life.askSportsAgentCut }[el.dataset.sagent]());
   if ((el = hit('data-division'))) return report(sp.setDivision(el.dataset.division));
   if ((el = hit('data-coachjob'))) return report(life.becomeCoach(el.dataset.coachjob));

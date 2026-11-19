@@ -61,6 +61,8 @@ def clean_name(name):
 EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05.svg', 'eyes_13.svg', 'eyes_17.svg', 'eyes_21.svg', 'eyes_23.svg',
             'eyes_11.svg', 'eyes_12.svg', 'eyes_24.svg',
             'lips_1.svg', 'lips_2.svg', 'lips_3.svg', 'lips_12.svg', 'lips_13.svg', 'lips_15.svg', 'lips_16.svg', 'lips_19.svg',
+            'brows_02.svg', 'brows_03.svg', 'brows_7.svg', 'brows_13.svg', 'brows_17_puppy.svg', 'brows_18_unibrow.svg', 'brows_19_glam_arch.svg',
+            'brows_22_skeptical.svg',
             'nose_1.svg', 'nose_2.svg', 'nose_3.svg', 'nose_4.svg', 'nose_5.svg', 'nose_8.svg', 'nose_18.svg', 'nose_22.svg', 'nose_15.svg', 'nose_24.svg',
             'face_01_oval.svg', 'face_02_round.svg', 'face_03_square.svg', 'face_04_heart.svg', 'face_05_diamond.svg', 'face_06_pear.svg'}
 
@@ -1148,6 +1150,100 @@ def weigh_lines(folder='noses', recolor=True):
     return done
 
 
+# Eyes whose lid crease is drawn as a separate thin line floating above the eye, in the same ink as the eye's outline,
+# so that it reads as a second, thinner eyebrow. Each crease is parted from the eye's own shapes into a path of its own,
+# so that it can take a soft shade of the skin instead of the ink (--crease-color, set by the portrait), and is moved
+# down toward the lid by the amount here (frame units) so it clears the brow above it. The amounts were worked out from
+# the outlines: each crease keeps at least 4 units clear of the eye below it, and a typical brow's gap to it is made
+# up to about 10 where there is room for that. A softened file's crease carries data-crease="<units lowered>", so a
+# changed amount here moves it by the difference, and nothing is moved twice.
+# None: the eye already has a fold line close under the lashes, so its floating crease is taken out altogether instead
+# (eyes_25 had two). That fold was part of the eye's outline; it was cut out of it once, with polygon geometry, and
+# drawn in the soft crease shade (its paths carry data-crease="0"), so this step leaves the file alone.
+CREASES = {'eyes_18': 6, 'eyes_19': 6, 'eyes_20': 6, 'eyes_22': 7, 'eyes_25': None, 'eyes_26': 1, 'eyes_9': 2, 'eyes_8': 0, 'eyes_7': 0}
+CREASE_SOFT = 'color-mix(in srgb,var(--skin-color,#e8b68c) 50%,#2d180e)'
+CREASE_PATH = re.compile(r'<path data-crease="([\d.]+)" style="([^"]*)" d="([^"]*)"/>')
+ANY_PATH = re.compile(r'<path style="([^"]*)"([^>]*?) d="([^"]*)"/>')
+INK_PATH = re.compile(r'<path style="(fill:#[0-9a-fA-F]{6};stroke:var\(--line-ink[^"]*)"([^>]*?) d="([^"]*)"/>')
+
+
+def shift_down(cmds, dy):
+    return [(c, [v + dy if i % 2 else v for i, v in enumerate(a)]) for c, a in cmds]
+
+
+def subpaths_of(d):
+    subs, cur = [], []
+    for c, a in parse_path(d) + [('M', [])]:
+        if c == 'M' and cur:
+            subs.append(cur)
+            cur = []
+        if a or c == 'Z':
+            cur.append((c, a))
+    return subs
+
+
+def soften_creases():
+    """Applies CREASES to every listed eye file. -> {name: units lowered} for the files changed."""
+    done = {}
+    for name, drop in CREASES.items():
+        path = os.path.join(ASSETS, 'eyes', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-pathways="1"' not in text or 'data-crease-removed="1"' in text:
+            continue
+        if drop is None and CREASE_PATH.search(text):
+            continue  # (a softened crease is only ever taken out from the original file)
+        if CREASE_PATH.search(text):  # already parted: move it by the difference
+            if all(abs(float(m.group(1)) - drop) < 1e-9 for m in CREASE_PATH.finditer(text)):
+                continue
+            text = CREASE_PATH.sub(lambda m: f'<path data-crease="{fmt(drop)}" style="{m.group(2)}" d="{path_d(shift_down(parse_path(m.group(3)), drop - float(m.group(1))))}"/>', text)
+            open(path, 'w', encoding='utf-8').write(text)
+            done[name] = drop
+            continue
+        found = []  # the topmost thin ink line in each half: (top, match, its subpath number, the match's subpaths)
+        for in_half in (lambda x0, x1: x1 < 256, lambda x0, x1: x0 > 256):
+            best = None
+            for m in INK_PATH.finditer(text):
+                subs = subpaths_of(m.group(3))
+                for si, sp in enumerate(subs):
+                    bx = bbox_of([{'cmds': sp, 'fill': ''}])
+                    if not bx or not in_half(bx[0], bx[2]):
+                        continue
+                    h, w = bx[3] - bx[1], bx[2] - bx[0]
+                    # Thin, wide and with some body: not a lash tick, and not the eye's own outline.
+                    if 8 <= h <= 20 and w >= 25 and area({'cmds': sp, 'fill': ''}) >= 60 and (best is None or bx[1] < best[0]):
+                        best = (bx[1], m, si, subs)
+            if best:
+                found.append(best)
+        if len(found) != 2:
+            continue
+        # Specks of a second shade drawn right on a crease (invisible while the crease was as dark as they are) go with it.
+        boxes = [bbox_of([{'cmds': f[3][f[2]], 'fill': ''}]) for f in found]
+        inside = lambda bx: any(bx[0] >= c[0] - 1 and bx[2] <= c[2] + 1 and bx[1] >= c[1] - 1 and bx[3] <= c[3] + 1 for c in boxes)
+        # Take the creases (and those specks) out of their paths, working back to front so earlier positions hold.
+        for m in reversed(list(ANY_PATH.finditer(text))):
+            subs = subpaths_of(m.group(3))
+            mine = [f for f in found if f[1].start() == m.start()]
+            out = {f[2] for f in mine}
+            for k, sp in enumerate(subs):
+                bx = bbox_of([{'cmds': sp, 'fill': ''}])
+                if k not in out and bx and area({'cmds': sp, 'fill': ''}) < 30 and inside(bx):
+                    out.add(k)
+            if not out:
+                continue
+            rest = [cmd for k, sp in enumerate(subs) if k not in out for cmd in sp]
+            soft = f'fill:var(--crease-color,{CREASE_SOFT});stroke:var(--crease-color,{CREASE_SOFT});stroke-width:var(--line-width,0);stroke-linejoin:round'
+            creases = '' if drop is None else ''.join(f'<path data-crease="{fmt(drop)}" style="{soft}" d="{path_d(shift_down(subs[f[2]], drop))}"/>' for f in sorted(mine, key=lambda f: f[2]))
+            kept = f'<path style="{m.group(1)}"{m.group(2)} d="{path_d(rest)}"/>' if rest else ''
+            text = text[:m.start()] + kept + creases + text[m.end():]
+        if drop is None:
+            text = text.replace('data-pathways="1"', 'data-pathways="1" data-crease-removed="1"', 1)
+        open(path, 'w', encoding='utf-8').write(text)
+        done[name] = drop
+    return done
+
+
 def refit_hair():
     """Applies REFIT to any listed file that has not had it. -> the names repaired."""
     done = []
@@ -1468,6 +1564,8 @@ def main(argv):
         print(f'made the lines of {len(lined)} part(s) adjustable')
     for name in thin_outline():
         print(f'thinned the outline of {name}')
+    for name, drop in soften_creases().items():
+        print(f'took out the floating lid crease of {name}' if drop is None else f'softened the lid crease of {name} (lowered {drop})')
     parted = split_lip_tones()
     if parted:
         print('gave the upper lip its own color in ' + ', '.join(parted))
