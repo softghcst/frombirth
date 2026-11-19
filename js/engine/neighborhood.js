@@ -802,7 +802,9 @@ export function wake(state, hood) {
   const H = H_(state);
   for (const r of Object.values(H.res)) if (r.id.startsWith(`npc_${hood.id}r`) && !r.met && !r.fam && (r.dead || r.gone) && !state.npcs[r.id] && !r.owns) {
     const hh = H.hhs[r.hh];
-    if (!hh || !hh.home) delete H.res[r.id];
+    if (hh && hh.home) continue;
+    for (const id of [r.hh, r.hh2]) if (H.hhs[id]) H.hhs[id].m = H.hhs[id].m.filter((x) => x !== r.id);
+    delete H.res[r.id];
   }
 }
 
@@ -903,6 +905,16 @@ export function planYear(state, hood, y) {
     if (pAge >= 4 && pAge <= 13) {
       const kids = near.flatMap((x) => x.hh.m).map((id) => H.res[id]).filter((x) => x && aliveRes(x) && Math.abs(age(x) - pAge) <= 2 && !state.npcs[x.id]);
       if (kids.length && r.chance(0.5)) ev.push({ m: r.int(3, 8), k: 'kid', res: r.pick(kids).id });
+    }
+    // Kindness remembered: someone the player once helped may, some years on, do something in return. Never owed.
+    const me = archiveIdOf(p);
+    const owed = residentsOf(state, hood.id).filter((x) => x.owes?.[me] != null && y - yearOf(x.owes[me]) >= 2 && p.npcIds.includes(x.id) && state.npcs[x.id]?.alive);
+    if (owed.length && r.chance(0.25)) ev.push({ m: r.int(0, 11), k: 'kindness', res: r.pick(owed).id });
+    // The next generation: the player's own children make friends of their own on the street.
+    const mineKids = (H.hhs[H.cur?.hh]?.m ?? []).map((id) => state.npcs[id]).filter((n) => n?.alive && n.role === 'child' && n.age >= 4 && n.age <= 14);
+    for (const child of mineKids) {
+      const pals = near.flatMap((x) => x.hh.m).map((id) => H.res[id]).filter((x) => x && aliveRes(x) && Math.abs(age(x) - (child.age + (y - state.year))) <= 2 && !(x.pals ?? []).includes(child.id));
+      if (pals.length && r.chance(0.3)) ev.push({ m: r.int(0, 11), k: 'kidsFriends', res: r.pick(pals).id, child: child.id });
     }
     const elders = residentsOf(state, hood.id).filter((x) => age(x) >= 70 && y - yearOf(H.hhs[x.hh]?.from ?? T(y)) >= 25 && !state.npcs[x.id]);
     if (pAge >= 14 && elders.length && r.chance(0.2)) ev.push({ m: r.int(0, 11), k: 'elder', res: r.pick(elders).id });
@@ -1103,6 +1115,21 @@ function apply(state, hood, e, y, quiet = false) {
       queueAbout(state, 'hood_friend_across_street', r.id, { where: H.blocks[here.b].kind === 'building' ? 'in the courtyard' : 'across the street' }, `kid/${r.id}`, t);
       return;
     }
+    case 'kindness': {
+      const n = state.npcs[e.res];
+      if (!playerHere || !n?.alive || !known(n.id)) return;
+      queueAbout(state, 'hood_kindness_returned', n.id, { help: luck(state, `kind/${n.id}/${t}`).pick(['a casserole and an offer to help with anything', 'a hand with the heavy lifting', 'a lift when the car would not start', 'some very good advice about the landlord', 'a plant for the window, just because']) }, `kind/${n.id}/${y}`, t);
+      return;
+    }
+    case 'kidsFriends': {
+      const r = H.res[e.res]; const child = state.npcs[e.child];
+      if (!playerHere || !r || r.dead || !child?.alive || (r.pals ?? []).includes(child.id)) return;
+      (r.pals ??= []).push(child.id);
+      note(state, { t, h: hood.id, k: 'friends', text: `${child.firstName} ${child.lastName} and ${r.f} ${r.l} became friends.`, who: r.id });
+      const line = `${child.firstName} has made a friend on the street: ${r.f}, from the ${r.l} household.`;
+      state.journal.push({ age: p.age, text: line, kind: 'system', tone: 'good', ...(state.month ? { month: state.month } : {}), hood: true });
+      return;
+    }
     case 'elder': {
       const r = H.res[e.res];
       if (!playerHere || !r || r.dead || state.npcs[r.id]) return;
@@ -1226,6 +1253,23 @@ export function openYear(state = store.state) {
   syncAssets(state);
   touch(state);
   for (const hood of Object.values(H.list)) if (active(state, hood) && (hood.sim ?? -Infinity) < state.year) planYear(state, hood, state.year);
+  // A community remembers: ten years on, someone who lived on a street for decades is still talked about.
+  for (const r of Object.values(H.res)) {
+    if (!r.dead || yearOf(r.dead) !== state.year - 10) continue;
+    const hh = H.hhs[r.hh];
+    const hoodId = hh?.h;
+    if (!hoodId || !active(state, H.list[hoodId]) || yearOf(r.dead) - yearOf(hh.from) < 25) continue;
+    if (!H.log.some((x) => x.k === 'remembered' && x.who === r.id)) note(state, { t: T(state.year), h: hoodId, k: 'remembered', text: `Ten years since ${fullName(r)} died. People in ${H.list[hoodId].name} still talk about them.`, who: r.id });
+  }
+  // A reunion: a neighborhood the player left long ago, where people they knew are still about.
+  const me = archiveIdOf(state.player);
+  for (const x of H.past.filter((x) => x.who === me && x.to != null && state.year - yearOf(x.to) >= 15)) {
+    if (x.hood === currentHome(state)?.h) continue;
+    const old = Object.values(H.res).filter((r) => r.met?.[me] != null && !r.dead && r.id.startsWith(`npc_${x.hood}r`) && (!state.npcs[r.id] || state.npcs[r.id].alive));
+    if (old.length >= 2 && luck(state, `reunion/${x.hood}/${state.year}`).chance(0.15)) {
+      queueScene(state, 'hood_reunion', { words: { hood: H.list[x.hood].name, names: old.slice(0, 3).map((r) => r.f).join(', '), hoodId: x.hood } }, `reunion/${x.hood}/${me}`, T(state.year));
+    }
+  }
   // Old disagreements fade: nobody is still cross about the bins after two years.
   for (const d of H.disputes) if (d.status === 'open' && state.year - yearOf(d.t) >= 2) d.status = 'faded';
   // People next door see each other without trying: closeness there does not fade from neglect. An acquaintance who

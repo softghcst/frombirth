@@ -659,7 +659,8 @@ function pageHistory() {
 
 function pageArchive() {
   const list = legacy.ancestors();
-  return `<div class="card"><h3>Family Archive</h3><p class="muted">The people your family came from: their life stories, and what they left online that they meant others to see. Their private messages stay private.</p></div>
+  return `<div class="card"><h3>Family Archive</h3><p class="muted">The people your family came from: their life stories, and what they left online that they meant others to see. Their private messages stay private.</p>
+      <button class="btn" data-places-home style="margin-top:8px">Places we've called home</button></div>
     ${list.length ? `<div class="section-label">Digital legacy</div>${list.map((a) => `<button class="row" data-ancestor="${a.id}">${face(a.id, '', { inert: true })}<div class="main"><strong>${esc(a.name)}</strong><small>${a.born}–${a.died} · ${esc(erasBetween(a.born, a.died).map((x) => x.name).join(' → '))} · ${a.accounts.length ? `${a.accounts.length} account${a.accounts.length === 1 ? '' : 's'}` : 'no accounts: a life before the internet, or away from it'}</small></div><div class="side">›</div></button>`).join('')}`
     : '<p class="empty">When you carry the family on as someone\'s heir, their story is kept here.</p>'}`;
 }
@@ -939,6 +940,7 @@ export function openDigitalLife(api, o = {}) {
     if ((el = ds('data-open-post'))) return push({ type: 'post', id: el.dataset.openPost });
     if ((el = ds('data-open-thread'))) return push({ type: 'thread', id: el.dataset.openThread });
     if ((el = ds('data-ancestor'))) return push({ type: 'ancestor', id: el.dataset.ancestor });
+    if (ds('data-places-home')) { m.close(); const { openNeighborhood } = await import('./neighborhood.js'); return openNeighborhood(api, 'history'); }
     if ((el = ds('data-studio'))) { v.studio = el.dataset.studio; if (v.section !== 'studio') { v.section = 'studio'; v.trail = []; } return draw(); }
     if ((el = ds('data-do'))) {
       const flows = {

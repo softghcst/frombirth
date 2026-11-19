@@ -98,7 +98,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
     const x = structuredClone(st);
     // Disasters are told as they strike with shorter turns, so the year's recap of them is worded differently; what they
     // did (money, health, homes) is compared with everything else.
-    x.journal = x.journal.filter((j) => !j.month && j.kind !== 'season' && !j.disaster);
+    x.journal = x.journal.filter((j) => !j.month && j.kind !== 'season' && !j.disaster && !j.hood); // neighborhood lines are told in their month (engine/neighborhood.js)
     if (x.disasters) { delete x.disasters.told; delete x.disasters.warned; }
     delete x.month; delete x.settings; delete x.updatedAt; delete x.idSeq; delete x.held;
     if (x.ledger) delete x.ledger.jn; // where the ledger last read the life story, which has the seasons in it too

@@ -126,6 +126,11 @@ for (const [name, viewport] of [['phone', { width: 390, height: 844 }], ['deskto
   await page.reload(); await page.waitForTimeout(400);
   const cont = page.locator('[data-load]');
   if (await cont.count()) { await cont.first().click(); await page.waitForSelector('[data-year]'); await settle(page); }
+  if (met) {
+    if (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
+    await page.click('.tab-btn[data-tab="people"]'); await page.waitForTimeout(250);
+    check(await page.locator(`[data-npc="${met}"]`).count() === 1, `${name}: the neighbor is on the People tab, under Neighbors`);
+  }
   await openHood(page);
   await tab(page, 'neighbors');
   await page.click('.hood-modal [data-set="show:known"]'); await page.waitForTimeout(150);

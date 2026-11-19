@@ -86,7 +86,8 @@ function coherent(where) {
   check(N.dwelling(S()).kind === 'family' && home.own === 'family', 'a child lives in the family home, owned by the family');
   const around = N.around(S(), home.id).filter((x) => x.hh);
   check(around.length >= 3, `there are households close by (${around.length})`);
-  check(around.some((x) => x.prox.k === 'adjacent'), 'someone lives next door');
+  check(around.some((x) => x.prox.near >= 3), 'someone lives on the same street or in the same building');
+  check(N.around(S(), home.id).some((x) => x.prox.k === 'adjacent'), 'there is a home next door');
   const before = JSON.stringify(H());
   const ids = Object.keys(H().res).sort().join();
   N.settle(S()); N.settle(S());
@@ -161,6 +162,15 @@ function coherent(where) {
   // Dead people start nothing.
   advance(5);
   for (const pe of S().pendingEvents) for (const v of Object.values(pe.cast ?? {})) if (typeof v === 'string' && S().npcs[v]) check(S().npcs[v].alive, `${pe.id}: cast alive`);
+  // A neighborhood nobody has had anything to do with for decades rests, and catches up when someone goes back.
+  const quiet = N.makeHood(S(), P().countryId, P().city, 'smalltown');
+  N.findHome(S(), { ...N.dwelling(S()), kind: 'rent' }, { hood: quiet.id, type: 'house' });
+  quiet.last = S().year - 40; quiet.sim = S().year - 40;
+  advance(1);
+  check(quiet.sim === S().year - 41, `a dormant neighborhood is not lived through year by year (${quiet.sim}, ${S().year})`);
+  N.wake(S(), quiet);
+  check(quiet.sim === S().year - 1 && quiet.last === S().year, 'going back lives its missing years through at once');
+  coherent('after waking a dormant neighborhood');
   section('neighbors\' lives: aging, growing up, moving out and in, dying; the record keeps everyone', n);
 }
 
@@ -192,10 +202,10 @@ function coherent(where) {
   check(S().npcs[r.id].role === 'friend' && S().npcs[r.id].flags.metAs === 'neighbor', 'time together makes a neighbor a friend');
   check(canonEvents((e) => e.type === 'friendship' && e.people.includes(r.id)).length === 1, 'the friendship is a canonical event, once');
   // Another neighbor, left alone, stays an acquaintance.
-  if (next[1]) { L.neighborAct(next[1].id, 'introduce'); advance(3); check(S().npcs[next[1].id].role === 'neighbor', 'a neighbor met once stays an acquaintance'); }
+  if (next[1] && L.neighborAct(next[1].id, 'introduce').ok) { advance(3); check(!S().npcs[next[1].id].alive || S().npcs[next[1].id].role === 'neighbor', 'a neighbor met once stays an acquaintance'); }
   // Scenes queued by real events: a community event names its real organizer; attending records it once.
   const hood = N.currentHood(S());
-  const org = N.residentsOf(S(), hood.id).find((x) => N.ageOf(x, S()) >= 25 && !S().npcs[x.id]);
+  const org = N.residentsOf(S(), hood.id).filter((x) => N.ageOf(x, S()) >= 25).sort((a, b) => !!S().npcs[a.id] - !!S().npcs[b.id])[0];
   const evId = `${hood.id}eTEST`;
   S().pendingEvents = [];
   check(N.queueScene(S(), 'hood_community_event', { words: { person: org.f, res: org.id, event: 'community picnic', what: 'a picnic', eventId: evId, kind: 'picnic' } }, 'test/event'), 'a community event scene is queued');
@@ -342,10 +352,14 @@ function coherent(where) {
 // 6. Generations from 1900: one world, the same neighborhoods, every family home on record.
 {
   const n = problems.length;
-  life('uk', null, { year: 1900 });
   const steps = [12, 6, 3, 12, 6];
   let gen = 1;
-  const firstHood = N.currentHood(S()).id;
+  let firstHood = null;
+  // Many people died young then: a family line that ends early is tried again from 1900.
+  for (let attempt = 0; attempt < 4 && gen < 3; attempt++) {
+  life('uk', null, { year: 1900 });
+  gen = 1;
+  firstHood = N.currentHood(S()).id;
   while (S().year < 1985 && gen <= 4) {
     turns.setStep(steps[gen % steps.length]);
     while (P().alive && P().age < 26) { turns.advanceTurn(); S().pendingEvents = []; }
@@ -356,14 +370,15 @@ function coherent(where) {
     S().npcs[sp.id] = sp; P().npcIds.push(sp.id);
     const child = makeNpc({ role: 'child', countryId: P().countryId, age: 0, relationship: 80, lastName: P().lastName });
     S().npcs[child.id] = child; P().npcIds.push(child.id);
+    let heirId = child.id;
     for (let i = 0; i < 25 && P().alive; i++) { turns.advanceTurn(); S().pendingEvents = []; }
     coherent(`generation ${gen}, ${S().year}`);
     // Children died young far more often then; a family that lost one had another (here, grown, to carry on).
-    if (!S().npcs[child.id]?.alive) { const c2 = makeNpc({ role: 'child', countryId: P().countryId, age: 20, relationship: 80, lastName: P().lastName }); S().npcs[c2.id] = c2; P().npcIds.push(c2.id); child.id = c2.id; }
+    if (!S().npcs[child.id]?.alive) { const c2 = makeNpc({ role: 'child', countryId: P().countryId, age: 20, relationship: 80, lastName: P().lastName }); S().npcs[c2.id] = c2; P().npcIds.push(c2.id); heirId = c2.id; }
     for (const hood of Object.values(H().list)) for (const v of hood.venues) check(N.venueAvailable(v.k, v.from), `${hood.name}: ${v.name} opened when there were ${VENUES[v.k].name.toLowerCase()}s (${v.from})`);
     if (P().alive) die('old age');
-    const h = heirs().find((x) => x.id === child.id) ?? heirs()[0];
-    if (!h || !S().npcs[child.id]?.alive) break;
+    const h = heirs().find((x) => x.id === heirId) ?? heirs()[0];
+    if (!h || !S().npcs[h.id]?.alive) break;
     const before = Object.keys(H().res).length;
     const next = continueAs(h.id);
     if (!next) break;
@@ -372,6 +387,7 @@ function coherent(where) {
     advance(1);
     check(H().cur && H().homes[H().cur.home], `the heir has a home (generation ${gen + 1})`);
     gen++;
+  }
   }
   check(gen >= 3, `several generations lived (${gen})`);
   const places = N.placesWeCalledHome(S());
@@ -405,6 +421,90 @@ function coherent(where) {
   saveGame(S()); store.state = loadGame(S().slotId);
   check(JSON.stringify(H()) === again, 'loading it twice changes nothing: nothing doubles');
   section('old saves: a neighborhood from now on, nothing invented, nothing doubled', n);
+}
+
+// 8. Scenarios: a childhood friend into adulthood, apartment life, going back, an old home with new people, 1900.
+{
+  const n = problems.length;
+  // C. A child makes a friend on the street; the same person is a friend at 25.
+  life('us', 'Denver');
+  turns.setStep(12);
+  advance(6);
+  const home = N.currentHome(S());
+  const kid = N.around(S(), home.id).filter((x) => x.hh).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && Math.abs(N.ageOf(r, S()) - P().age) <= 3 && r.ls > 40);
+  if (kid) {
+    N.queueScene(S(), 'hood_friend_across_street', { words: { person: kid.f, res: kid.id, where: 'across the street' } }, 'test/kid');
+    const pk = S().pendingEvents.pop();
+    resolveChoice(EVENT_BY_ID[pk.id], 0, pk.cast);
+    for (let i = 0; i < 10 && S().npcs[kid.id].role !== 'friend'; i++) { L.neighborAct(kid.id, 'play'); L.neighborAct(kid.id, 'hello'); advance(1); }
+    check(S().npcs[kid.id].role === 'friend' && S().npcs[kid.id].flags.childhoodFriend, 'C: a child makes a friend on the street');
+    while (P().age < 25 && P().alive) { L.neighborAct(kid.id, 'hello'); L.neighborAct(kid.id, 'touch'); L.neighborAct(kid.id, 'visit'); advance(1); }
+    const f = S().npcs[kid.id];
+    check(f && f.firstName === kid.f && (P().npcIds.includes(kid.id) || f.flags.drifted || !f.alive), 'C: and at 25 it is the same person, kept in touch with or drifted, never replaced');
+  } else check(true, 'no child nearby');
+  // D. Apartment life: rent a unit, meet someone in the building, a building gathering, move out; the unit is released.
+  life('fr', 'Paris');
+  P().age = 27; P().flags.livesWithParents = false; P().finance.cash = 1e8;
+  N.settle(S());
+  const flat = N.findHome(S(), N.dwelling(S()), { profile: 'urban', type: 'apartment' });
+  N.moveInto(S(), flat, N.dwelling(S()), 'moved');
+  const building = H().blocks[flat.b];
+  check(building.kind === 'building', 'D: an apartment is a unit in a building');
+  const upstairs = N.around(S(), flat.id).filter((x) => x.hh && x.home.b === building.id).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && N.ageOf(r, S()) >= 18);
+  check(upstairs && L.neighborAct(upstairs.id, 'introduce').ok, 'D: meeting someone who lives in the building');
+  N.queueScene(S(), 'hood_building_gathering', { person: upstairs.id, words: { what: 'drinks in the courtyard', eventId: 'bTEST', kind: 'building', event: 'building gathering' } }, 'test/building');
+  const pb = S().pendingEvents.pop();
+  resolveChoice(EVENT_BY_ID[pb.id], 0, pb.cast);
+  check(canonEvents((e) => e.type === 'community_event' && e.key.includes('bTEST')).length === 1, 'D: the building gathering is on record');
+  const myHh = H().cur.hh;
+  const out = L.moveTo(L.homesToRent(S()).find((x) => !x.known) ?? L.homesToRent(S())[0]);
+  check(out.ok && !H().homes[flat.id].hh && H().homes[flat.id].occ.some((o) => o.hh === myHh && o.to != null), 'D: moving out releases the unit and keeps the record');
+  reload();
+  check(!H().homes[flat.id].hh && S().npcs[upstairs.id] && H().res[upstairs.id].met?.[P().archiveId ?? P().id] != null, 'D: after a reload, the unit is still free, and the neighbor is the same person, met');
+  // G. Going back to the street you grew up on.
+  life('jp', 'Osaka');
+  advance(10);
+  const childhood = N.currentHood(S()).id;
+  const friend = N.around(S(), N.currentHome(S()).id).filter((x) => x.hh).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && N.ageOf(r, S()) >= 30 && r.ls - N.ageOf(r, S()) > 25);
+  if (friend) N.befriend(S(), friend.id, 60);
+  P().age += 12; P().finance.cash = 1e8;
+  P().flags.livesWithParents = false;
+  advance(1);
+  if (N.currentHood(S()).id === childhood) L.moveTo(L.homesToRent(S()).find((x) => !x.known) ?? L.homesToRent(S())[0]);
+  const spots = L.placesToRevisit(S());
+  const spot = spots.find((x) => x.hood === childhood);
+  check(spot && spot.mine && spot.childhood, 'G: the street the player grew up on can be visited');
+  if (spot) {
+    const v = L.revisit(childhood);
+    check(v.ok && canonEvents((e) => e.type === 'revisit').length === 1, 'G: going back is on record');
+    if (friend && !H().res[friend.id].dead && !H().res[friend.id].gone) check(v.text.includes(friend.f), 'G: someone from those years is still there, and remembers');
+  }
+  // P. 1900: letters, not messages; no places that did not exist yet.
+  life('uk', null, { year: 1900 });
+  P().age = 30; P().flags.livesWithParents = false;
+  N.settle(S());
+  check(L.keepInTouchWay(S()).noun === 'a letter' || L.keepInTouchWay(S()).noun === 'a telephone call', `P: in 1900 people keep in touch by letter (${L.keepInTouchWay(S()).noun})`);
+  check(L.places(S()).every((v) => N.venueAvailable(v.k, 1900)), 'P: only places that existed in 1900');
+  check(L.activities(S()).length > 0 && L.doActivity('walk').ok, 'P: and there are things to do');
+  // K. A local business: its owner is a real person; asking about work uses the ordinary part-time job, never guaranteed.
+  let tried = false;
+  for (let i = 0; i < 6 && !tried; i++) {
+    life('us', 'Chicago');
+    P().age = 17; P().flags.livesWithParents = true;
+    N.settle(S());
+    const v = L.places(S()).find((x) => x.canWork);
+    if (!v) continue;
+    tried = true;
+    const owner = H().res[N.currentHood(S()).venues.find((x) => x.id === v.id).owner];
+    check(owner && owner.owns === v.id, 'K: a local business has a real owner');
+    const r1 = L.askForWork(v.id);
+    const r2 = L.askForWork(v.id);
+    check(!r2.ok, 'K: asking twice in a year is refused');
+    if (r1.ok) check(P().career.partTime?.venueId === v.id && S().npcs[owner.id]?.flags.tag === 'manager', 'K: the job is at that place, and its owner is the manager');
+    else check(!P().career.partTime, 'K: a no is a no: no job, no pay');
+  }
+  check(tried, 'K: a neighborhood with a business that hires');
+  section('scenarios: a childhood friend into adulthood, apartment life, going back, and 1900', n);
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

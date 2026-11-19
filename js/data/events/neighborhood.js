@@ -153,4 +153,20 @@ export default [
       { label: 'Send a note to say welcome back', outcomes: [any('A reply came the same day: "Coffee? Like old times."', 'good', hood({ do: 'closer', by: 5 }))] },
     ],
   },
+  {
+    ...base, id: 'hood_kindness_returned', ageRange: [12, 120],
+    text: '{person} turns up at your door with {help}. "You helped me once," they say. "My turn."',
+    choices: [
+      { label: 'Accept, gratefully', outcomes: [any('It was exactly what you needed, and you both know it.', 'good', hood({ do: 'closer', by: 5 }), st('mood', 4))] },
+      { label: 'Thank them, and say you are fine', outcomes: [any('"The offer stands," says {person}.', 'neutral', hood({ do: 'closer', by: 2 }))] },
+    ],
+  },
+  {
+    ...base, id: 'hood_reunion', ageRange: [25, 120],
+    text: 'A note from the old days: people from {hood} are getting together, and {names} will be there.',
+    choices: [
+      { label: 'Go', outcomes: [any('Older faces, the same voices. You talked about the street for hours, and about who is not there any more.', 'good', hood({ do: 'reunion', how: 'go' }), st('mood', 5))] },
+      { label: 'Send your best wishes', outcomes: [any('You wrote back with news and a photograph. Two of them replied.', 'neutral', hood({ do: 'reunion', how: 'write' }))] },
+    ],
+  },
 ];

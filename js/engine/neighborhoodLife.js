@@ -664,6 +664,15 @@ export function hoodChoice(v, cast, state = S()) {
       return null;
     }
     case 'reflect': { p.stats.mood = clamp(p.stats.mood + (v.by ?? 0)); return null; }
+    case 'reunion': {
+      const hoodId = w.hoodId;
+      const me = archiveIdOf(p);
+      const old = Object.values(H.res).filter((x) => x.met?.[me] != null && !x.dead && x.id.startsWith(`npc_${hoodId}r`)).slice(0, 3);
+      const met = [];
+      for (const x of old) { const n = N.befriend(state, x.id, null); if (n) { n.meters.relationship = clamp(n.meters.relationship + (v.how === 'go' ? 8 : 3)); n.lastInteractionAge = p.age; met.push(n); } }
+      if (v.how === 'go') recordEvent({ key: `hood:reunion:${me}:${hoodId}`, type: 'reunion', title: `A reunion in ${H.list[hoodId]?.name ?? 'the old neighborhood'}`, text: `With ${met.map((n) => n.firstName).join(', ')}.`, people: met.map((n) => archiveIdOf(n)), significance: 1, privacy: 'family' });
+      return null;
+    }
     default: return null;
   }
 }
