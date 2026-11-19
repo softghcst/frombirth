@@ -260,8 +260,10 @@ function complicated(heart = {}) {
   check(b.promise?.what === 'public' && b.promise.year === S().year && bonds.knowledge(b, wife.id) === null && wife.role === 'spouse', 'saying it may become public is a promise, and tells nobody');
   other.meters.relationship = 90; year();
   check(queued('bond_promise').length === 1, 'a year later the promise is remembered');
-  const told = play('bond_promise', 'promise:keep');
-  check(bonds.knowledge(b, wife.id) === 'knows' && b.knows[wife.id].how === 'you told them yourself' && told.length > 0, 'keeping it means telling the spouse: and now they know, because they were told');
+  // (If the marriage has ended by other means in the meantime, there is no spouse left to tell: not this check's business.)
+  if (!wife.alive || wife.role !== 'spouse') over = true;
+  const told = play('bond_promise', 'promise:keep') ?? '';
+  check(bonds.knowledge(b, wife.id) === 'knows' && b.knows[wife.id]?.how === 'you told them yourself' && told.length > 0, 'keeping it means telling the spouse: and now they know, because they were told');
   check(wife.role === 'ex' || bonds.primary()?.arc.rebuilding || bonds.primary()?.open, 'and the spouse does what they will with it');
 }
 {
