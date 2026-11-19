@@ -18,6 +18,8 @@ import { getEra, atWar } from './history.js';
 import { familyAdopts } from './animalCare.js';
 import { lendMoney } from './family.js';
 import { CAREER_BY_ID } from '../data/careers.js';
+import { makeNpc } from './npcFactory.js';
+import { breakUp, divorce } from './romance.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const npcs = () => store.state.npcs;
@@ -275,8 +277,10 @@ export const BONDS = [
   { id: 'godparent', group: 'help', roles: SIBLING, age: [18, 120], if: (n) => (n.life?.kids ?? 0) > 0 && !n.flags.godparent, label: 'Offer to be godparent to their child',
     run: (n) => {
       if (!rng.chance(odds(0.55, n))) return { text: `${n.firstName} was touched, but has already asked someone else.`, tone: 'neutral' };
-      n.flags.godparent = store.state.year; bump(n, 8); remember(n, 'godparent', 'Asked you to be godparent to their child.'); milestone(`Became godparent to ${n.firstName}'s child.`, 'family');
-      return `${n.firstName} said yes, and cried a little. You are a godparent now.`;
+      n.flags.godparent = store.state.year; bump(n, 8); remember(n, 'godparent', 'Asked you to be godparent to their child.');
+      const kid = godchildFor(n);
+      milestone(`Became godparent to ${kid.firstName}, ${n.firstName}'s ${kid.gender === 'male' ? 'son' : kid.gender === 'female' ? 'daughter' : 'child'}.`, 'family');
+      return `${n.firstName} said yes, and cried a little. You are godparent to little ${kid.firstName} now.`;
     } },
   { id: 'estate', group: 'talk', roles: SIBLING, age: [18, 120], them: [18, 130], if: () => mine(PARENT).length < 2 && player().npcIds.some((id) => npcs()[id]?.role === 'parent' && !npcs()[id].alive), label: 'Talk about your parents\' estate',
     run: (n) => (rng.chance(odds(0.5, n)) ? (bump(n, 6), remember(n, 'settledEstate', 'You settled your parents\' things between you without a fight.'), `You and ${n.firstName} went through the house together, and split things without a cross word. Mostly.`)
@@ -448,7 +452,7 @@ export const BONDS = [
       hidden('karma', -2);
       const found = n.flags.affair && rng.chance(0.6);
       if (rng.chance(0.35)) { trust(n, -15); bump(n, -10); return { text: `${n.firstName} caught you with ${his(n)} phone. "If you do not trust me, what are we doing?"`, tone: 'bad' }; }
-      if (found) { bump(n, -15); return { text: `You found messages you cannot unsee. ${n.firstName} has been seeing someone.`, tone: 'bad' }; }
+      if (found) { bump(n, -15); affairOut(n, 'bond_affair_found'); return { text: `You found messages you cannot unsee. ${n.firstName} has been seeing someone.`, tone: 'bad' }; }
       return { text: `You found nothing, except that ${n.firstName} calls you something very silly in ${his(n)} contacts. You feel terrible.`, tone: 'neutral' };
     } },
   { id: 'confess', group: 'talk', roles: PARTNER, age: [16, 120], label: 'Confess something',
@@ -456,7 +460,7 @@ export const BONDS = [
       : (trust(n, -8), bump(n, -6), { text: `You told ${n.firstName}. ${cap(he(n))} needed a walk, alone. It will take time.`, tone: 'bad' })) },
   { id: 'askFaithful', group: 'talk', roles: PARTNER, age: [16, 120], label: 'Ask if they are being faithful',
     run: (n) => {
-      if (n.flags.affair && rng.chance(0.5)) { bump(n, -12); trust(n, -5); return { text: `${n.firstName} could not look at you. Then ${he(n)} told you everything.`, tone: 'bad' }; }
+      if (n.flags.affair && rng.chance(0.5)) { bump(n, -12); trust(n, -5); affairOut(n, 'bond_affair_found'); return { text: `${n.firstName} could not look at you. Then ${he(n)} told you everything.`, tone: 'bad' }; }
       trust(n, -4); bump(n, -3); return { text: `${n.firstName} looked hurt that you had to ask. "Of course I am."`, tone: 'neutral' };
     } },
   { id: 'counseling', group: 'help', roles: PARTNER, age: [18, 120], if: (n) => n.meters.relationship < 55 || (n.flags.friction ?? 0) >= 2, label: () => `Go to couples counseling (${money(pay(1200))})`,
@@ -512,6 +516,17 @@ export const BONDS = [
   { id: 'babysit', group: 'help', roles: CHILD, age: [36, 120], them: [18, 80], if: () => mine(['grandchild']).some((g) => g.age < 12), label: 'Babysit your grandchildren',
     run: (n) => { bump(n, rng.int(5, 9)); for (const g of mine(['grandchild']).filter((g) => g.age < 12)) bump(g, rng.int(4, 8)); mood(4);
       return `You had the grandchildren for the weekend, so ${n.firstName} could rest. They ate sugar for breakfast. Do not tell ${n.firstName}.`; } },
+
+  // ---------- A godchild ----------
+  { id: 'godchildGift', group: 'help', roles: ['niece'], age: [18, 120], them: [0, 17], if: (n) => !!n.flags.godchild, label: () => `A birthday present for your godchild (${money(pay(60))})`,
+    run: (n) => { const no = spend(pay(60), 'The present'); if (no) return no; bump(n, rng.int(5, 9)); const pa = npcs()[n.flags.parentId]; if (pa?.alive) bump(pa, 2);
+      return rng.pick([`You sent ${n.firstName} a present ${he(n)} has not put down since.`, `${n.firstName} opened your present, and the thank-you drawing is on your fridge.`]); } },
+  { id: 'godchildDay', group: 'together', roles: ['niece'], age: [18, 120], them: [3, 17], if: (n) => !!n.flags.godchild, label: 'Take your godchild out for the day',
+    run: (n) => { bump(n, rng.int(6, 10)); mood(4); remember(n, 'godparentDay', 'Their godparent took them out, just the two of them.');
+      return `You took ${n.firstName} out for the day: the park, ice cream, and a long list of questions about everything.`; } },
+  { id: 'godchildAdvice', group: 'talk', roles: ['niece'], age: [25, 120], them: [13, 40], if: (n) => !!n.flags.godchild, label: 'Be someone they can talk to',
+    run: (n) => { bump(n, rng.int(5, 9)); remember(n, 'godparentTalk', 'Could tell their godparent things they could not tell their parents.');
+      return `${n.firstName} told you things ${he(n)} cannot tell ${his(n)} parents. You listened, and kept them.`; } },
 
   // ---------- Grandparents ----------
   { id: 'visitGrand', group: 'together', roles: GRAND, age: [3, 120], label: 'Visit them',
@@ -627,3 +642,129 @@ export const GROUP_OF = {
   talkIdentity: 'talk', visitInside: 'together', writeInside: 'talk', encourageCare: 'help', goWithCare: 'help', askCare: 'ask', helpCare: 'help', visitCare: 'together',
 };
 export const GROUPS = [['together', 'Together'], ['talk', 'Talk'], ['ask', 'Ask'], ['help', 'Help'], ['love', 'Love'], ['conflict', 'Conflict'], ['more', 'More']];
+
+// ---------- A godchild ----------
+
+/** The sibling's child the player is godparent to: one of their children, now someone in the player's life. */
+function godchildFor(sib) {
+  const p = player();
+  const n = makeNpc({ role: 'niece', countryId: sib.bornIn ?? p.countryId, age: rng.int(0, Math.max(0, Math.min(6, sib.age - 18))), relationship: 70, lastName: sib.lastName });
+  n.flags.parentId = sib.id;
+  n.flags.godchild = store.state.year;
+  n.flags.title = n.gender === 'male' ? 'Godson' : n.gender === 'female' ? 'Goddaughter' : 'Godchild';
+  store.state.npcs[n.id] = n; p.npcIds.push(n.id);
+  remember(n, 'godchild', 'You are their godparent.');
+  return n;
+}
+
+// ---------- The year, between the player's own actions ----------
+
+const queue = (id, cast) => { const st = store.state; if (!st.pendingEvents.some((x) => x.id === id)) st.pendingEvents.push({ id, cast }); };
+
+/** An affair that has come out: the player decides what happens (bond_affair_*). */
+function affairOut(n, scene) {
+  if (!n.flags.affair || n.flags.affair.out) return;
+  n.flags.affair.out = store.state.year;
+  trust(n, -25);
+  queue(scene, { partner: n.id, words: { time: years(store.state.year - n.flags.affair.since) } });
+}
+const years = (k) => (k <= 0 ? 'a few months' : k === 1 ? 'about a year' : `${k} years`);
+
+/**
+ * Once a year: partners who stray (and sometimes confess, or are found out), and the
+ * groups of friends the player has brought together, who have lives as a group.
+ */
+export function tickBonds() {
+  const st = store.state;
+  const p = player();
+  if (!p?.alive) return;
+  const y = st.year;
+  // Partners. An open relationship has no affairs, only arrangements.
+  for (const n of mine(PARTNER)) {
+    if (n.flags.open) continue;
+    const a = n.flags.affair;
+    if (!a) {
+      const risk = clamp(0.006 + (55 - n.meters.relationship) / 900 + (n.flags.friction ?? 0) * 0.006 + (n.meters.crazy - 50) / 2500 + (60 - trustOf(n)) / 3000, 0.002, 0.06);
+      if (n.age >= 18 && rng.chance(risk)) n.flags.affair = { since: y };
+      continue;
+    }
+    if (a.out) continue;
+    bump(n, -rng.int(1, 4));
+    // It comes out (someone sees them), they confess, or it ends quietly and is never known.
+    if (rng.chance(0.18)) affairOut(n, 'bond_affair_found');
+    else if (rng.chance(clamp(0.05 + (n.meters.relationship - 40) / 300 + (n.meters.generosity - 50) / 400, 0.02, 0.2))) affairOut(n, 'bond_affair_confession');
+    else if (rng.chance(0.2)) { delete n.flags.affair; n.flags.hadAffair = y; }
+  }
+  // Friend groups.
+  for (const circle of Object.keys(p.flags.circles ?? {})) {
+    const members = mine(FRIEND).filter((f) => f.flags.circle === circle);
+    if (members.length < 2) { if (!members.length) delete p.flags.circles[circle]; continue; }
+    if (!rng.chance(0.4)) continue;
+    const a = rng.pick(members);
+    const b2 = rng.pick(members.filter((m) => m.id !== a.id));
+    const kinds = ['bond_circle_night', 'bond_circle_night', ...(p.age >= 10 ? ['bond_circle_rift'] : []), ...(p.age >= 16 ? ['bond_circle_trip', 'bond_circle_news'] : [])];
+    const id = rng.pick(kinds);
+    const words = { group: members.map((m) => m.firstName).join(', '), cost: money(pay(350)), news: rng.pick(a.age >= 22 ? ['an engagement', 'a baby on the way', 'a new job abroad', 'a house of their own'] : ['a place at the college they wanted', 'their first real job', 'a part in the school play']) };
+    queue(id, { a: a.id, b: b2.id, words });
+    break; // one group scene a year is plenty
+  }
+}
+
+/** A missed wedding anniversary, from the year that just ended (engine/moments.js): a scene, sometimes. */
+export function missedAnniversary(spouse, yrs, round) {
+  if (!spouse?.alive || (!round && !rng.chance(0.4))) return;
+  const ord = (k) => `${k}${k % 100 >= 11 && k % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[k % 10] ?? 'th')}`;
+  queue('bond_forgot_anniversary', { spouse: spouse.id, words: { years: ord(yrs) } });
+}
+
+/** What the player chose in one of the scenes above. */
+export function sceneChoice(value, cast = {}) {
+  const [what, how] = value.split(':');
+  const p = player();
+  if (what === 'affair') {
+    const n = npcs()[cast.partner];
+    if (!n?.alive) return null;
+    n.flags.hadAffair = n.flags.affair?.since ?? store.state.year;
+    delete n.flags.affair;
+    if (how === 'forgive') { trust(n, 5); bump(n, 6); hidden('karma', 3); remember(n, 'forgivenAffair', 'You forgave them for an affair.'); return null; }
+    if (how === 'counsel') {
+      const cost = pay(1200);
+      if (p.finance.cash >= cost) { p.finance.cash -= cost; trust(n, 15); bump(n, 10); n.flags.friction = 0; remember(n, 'counseling', 'Went to counseling with you, after the affair.'); return `A year of counseling, ${money(cost)}. It is not the same as before. Some days it is better.`; }
+      trust(n, 5); return 'You could not afford a counselor, so you talked at the kitchen table instead. Some of it helped.';
+    }
+    if (how === 'space') { bump(n, -6); n.flags.onBreak = store.state.year; return null; }
+    const r = n.role === 'spouse' ? divorce(n.id) : breakUp(n.id);
+    return r?.text ?? null;
+  }
+  if (what === 'circle') {
+    const a = npcs()[cast.a]; const b2 = npcs()[cast.b];
+    const all = a?.flags.circle ? mine(FRIEND).filter((f) => f.flags.circle === a.flags.circle) : [a, b2].filter(Boolean);
+    if (how === 'host') { const cost = pay(120); if (p.finance.cash >= cost) p.finance.cash -= cost; for (const f of all) bump(f, rng.int(4, 8)); mood(6); return null; }
+    if (how === 'go') { for (const f of all) bump(f, rng.int(2, 6)); mood(5); return null; }
+    if (how === 'skip') { for (const f of all) bump(f, -1); return null; }
+    if (how === 'sideA' || how === 'sideB') {
+      const [win, lose] = how === 'sideA' ? [a, b2] : [b2, a];
+      if (win) bump(win, 8); if (lose) { bump(lose, -12); if (lose.meters.relationship < 25) { delete lose.flags.circle; return `${lose.firstName} has left the group.`; } }
+      return null;
+    }
+    if (how === 'mediate') {
+      if (rng.chance(odds(0.45, a ?? b2))) { for (const f of all) bump(f, 4); if (a) remember(a, 'mediated', 'You got the group back together after a falling out.'); return 'By the end of the evening they were laughing about it. The group is whole again.'; }
+      if (a) bump(a, -3); if (b2) bump(b2, -3); return 'It went badly. Now they are both a little annoyed with you, too.';
+    }
+    if (how === 'neutral') { if (a) bump(a, -2); if (b2) bump(b2, -2); return null; }
+    if (how === 'trip') { const cost = pay(350); if (p.finance.cash < cost) { for (const f of all) bump(f, -1); return 'In the end you could not afford it, and stayed home.'; } p.finance.cash -= cost; for (const f of all) bump(f, rng.int(6, 10)); mood(8); if (a) remember(a, 'groupTrip', 'Went away with you and the whole group.'); return null; }
+    if (how === 'noTrip') { for (const f of all) bump(f, -1); return null; }
+    if (how === 'celebrate') { const cost = pay(150); if (p.finance.cash >= cost) p.finance.cash -= cost; if (a) bump(a, 10); for (const f of all) bump(f, 2); return null; }
+    if (how === 'card') { if (a) bump(a, 2); return null; }
+    return null;
+  }
+  if (what === 'anniv') {
+    const n = npcs()[cast.spouse];
+    if (!n?.alive) return null;
+    if (how === 'gift') { const cost = pay(300); if (p.finance.cash >= cost) { p.finance.cash -= cost; bump(n, 6); return `The present cost ${money(cost)}. ${n.firstName} smiled, at last.`; } bump(n, -2); return 'You could not afford much. The thought counted, a little.'; }
+    if (how === 'trip') { const cost = pay(700); if (p.finance.cash >= cost) { p.finance.cash -= cost; bump(n, 9); remember(n, 'makeupTrip', 'Took them away to make up for a forgotten anniversary.'); return `A weekend away, ${money(cost)}. All was forgiven by Saturday night.`; } bump(n, -3); return 'You could not afford the weekend after all, which made it worse.'; }
+    if (how === 'sorry') { bump(n, -2); return null; }
+    bump(n, -8); trust(n, -4); return null;
+  }
+  return null;
+}

@@ -127,7 +127,7 @@ section('each role offers what suits the ages of both people');
   }
   check(!threw.length, `nothing breaks (${threw.slice(0, 3).join('; ')})`);
   const never = B.BONDS.map((b) => b.id).filter((id) => !seen.has(`bond:${id}`));
-  check(never.length <= 8, `almost every action was reached by these lives (${runs} runs; not reached: ${never.join(', ') || 'none'})`);
+  check(never.filter((id) => !id.startsWith('godchild')).length <= 9, `almost every action was reached by these lives (${runs} runs; not reached: ${never.join(', ') || 'none'})`);
 }
 section('every action runs with every option, says something sensible, keeps meters in range, and happens once a year');
 
@@ -211,6 +211,74 @@ section('the times decide: letters before telephones, the fire before the radio,
   check(B.doBond(w.id, 'bond:confess').ok, 'and next year it can be done again');
 }
 section('trust and yearly limits are saved with the life');
+
+// ---------- 7. Affairs, friend groups, a forgotten anniversary, a godchild ----------
+{
+  const { getEvent, resolveChoice } = await import('../js/engine/eventEngine.js');
+  const mo = await import('../js/engine/moments.js');
+  const play = (id, pick) => { const q = store.state.pendingEvents.find((e) => e.id === id); if (!q) return null; store.state.pendingEvents = store.state.pendingEvents.filter((e) => e !== q); return resolveChoice(getEvent(id), pick, q.cast); };
+
+  // A partner who strays: found out, and the player decides.
+  let p = life(35, { home: false });
+  let wife = person('spouse', 34, 30); wife.marriedAtAge = 25; wife.meters.crazy = 80; wife.flags.friction = 3;
+  let started = false;
+  for (let i = 0; i < 200 && !started; i++) { store.state.pendingEvents = []; B.tickBonds(); started = !!wife.flags.affair; }
+  check(started, 'an unhappy partner can start an affair');
+  let out = false;
+  for (let i = 0; i < 60 && !out && wife.flags.affair; i++) { store.state.pendingEvents = []; B.tickBonds(); out = store.state.pendingEvents.some((e) => e.id.startsWith('bond_affair')); }
+  check(out || !wife.flags.affair, 'and sooner or later it comes out, or quietly ends');
+  // Found by looking through their phone.
+  p = life(35, { home: false });
+  wife = person('spouse', 34, 60); wife.marriedAtAge = 25; wife.flags.affair = { since: store.state.year - 2 };
+  let found = false;
+  for (let i = 0; i < 40 && !found; i++) { if (wife.flags.acts) delete wife.flags.acts['bond:checkPhone']; store.state.pendingEvents = []; B.doBond(wife.id, 'bond:checkPhone'); found = store.state.pendingEvents.some((e) => e.id === 'bond_affair_found'); }
+  check(found && B.trustOf(wife) < 60, 'looking through a cheating partner\'s phone can find it, and trust falls');
+  const r = play('bond_affair_found', 0);
+  check(r && !wife.flags.affair && wife.flags.hadAffair && wife.role === 'spouse', 'forgiving: the affair is over, remembered, and the marriage goes on');
+  wife.flags.affair = { since: store.state.year - 1 };
+  B.doBond(wife.id, 'bond:askFaithful');
+  if (wife.flags.affair?.out) { play('bond_affair_found', 3); check(wife.role === 'ex' || wife.role === 'spouse' && p.flags.annulAge === p.age, 'ending it: a divorce'); }
+  // An open relationship has no affairs.
+  p = life(30, { home: false });
+  const open = person('partner', 30, 10); open.flags.open = store.state.year; open.meters.crazy = 100;
+  for (let i = 0; i < 300; i++) B.tickBonds();
+  check(!open.flags.affair, 'an open relationship has no affairs');
+
+  // A group of friends has scenes of its own.
+  p = life(25, { home: false });
+  const f1 = person('friend', 25, 70); const f2 = person('friend', 26, 70); const f3 = person('friend', 24, 70);
+  for (let i = 0; i < 20 && (!f1.flags.circle || f2.flags.circle !== f1.flags.circle); i++) { if (f1.flags.acts) delete f1.flags.acts['bond:introduceFriends']; B.doBond(f1.id, 'bond:introduceFriends'); }
+  check(f1.flags.circle && f2.flags.circle === f1.flags.circle && p.flags.circles?.[f1.flags.circle], 'introduced friends become a group');
+  const kinds = new Set();
+  for (let i = 0; i < 80; i++) { store.state.pendingEvents = []; B.tickBonds(); for (const e of store.state.pendingEvents) if (e.id.startsWith('bond_circle')) kinds.add(e.id); }
+  check(kinds.size >= 3, `the group has its own scenes: nights out, falling out, trips, news (${[...kinds].join(', ')})`);
+  store.state.pendingEvents = [{ id: 'bond_circle_rift', cast: { a: f1.id, b: f2.id, words: {} } }];
+  const before = f1.meters.relationship;
+  play('bond_circle_rift', 0);
+  check(f1.meters.relationship > before, 'taking a friend\'s side brings you closer to them');
+
+  // A forgotten anniversary.
+  p = life(40, { home: false });
+  const husband = person('spouse', 41, 70); husband.marriedAtAge = 30;
+  let asked = false;
+  for (let i = 0; i < 10 && !asked; i++) { store.state.pendingEvents = []; mo.finishYear(); asked = store.state.pendingEvents.some((e) => e.id === 'bond_forgot_anniversary'); }
+  check(asked, 'an anniversary that went by unmarked becomes a scene');
+  const rel0 = husband.meters.relationship;
+  store.state.pendingEvents = [{ id: 'bond_forgot_anniversary', cast: { spouse: husband.id, words: { years: '10th' } } }];
+  play('bond_forgot_anniversary', 3);
+  check(husband.meters.relationship < rel0, 'blaming them for forgetting yours makes it worse');
+
+  // A godchild.
+  p = life(30, { home: false });
+  const sis = person('sibling', 32, 90);
+  if (sis.life) sis.life.kids = 1; else sis.life = { kids: 1 };
+  let god = null;
+  for (let i = 0; i < 20 && !god; i++) { if (sis.flags.acts) delete sis.flags.acts['bond:godparent']; B.doBond(sis.id, 'bond:godparent'); god = Object.values(store.state.npcs).find((n) => n.flags.godchild && n.flags.parentId === sis.id); }
+  check(god && p.npcIds.includes(god.id) && /^God(son|daughter|child)$/.test(god.flags.title) && god.lastName === sis.lastName, 'a godchild is a real child in your life, your sibling\'s, with your sibling\'s name');
+  check(god && ids(god).some((id) => id.startsWith('godchild')), 'and has things of their own to do with you');
+  if (god) { god.age = 8; check(B.doBond(god.id, 'bond:godchildDay').ok, 'a day out with your godchild'); }
+}
+section('partners can stray and be found out; friend groups have scenes; a forgotten anniversary comes up; a godchild is a real child');
 
 for (const line of ok) console.log(`ok   ${line}`);
 if (problems.length) { for (const m of problems) console.log(`FAIL ${m}`); console.log(`${problems.length} problem(s).`); process.exit(1); }

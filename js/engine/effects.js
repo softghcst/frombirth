@@ -16,6 +16,7 @@ import { defend } from './campaign.js';
 import { decide } from './government.js';
 import { decide as digitalChoice } from './digital/stories.js';
 import { decide as eraChoice } from './eraScenes.js';
+import { sceneChoice as bondChoice } from './bonds.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
@@ -219,6 +220,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
       case 'era': ctx.note = eraChoice(e.value, ctx.cast); break;
+      case 'bond': ctx.note = bondChoice(e.value, ctx.cast); break;
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;

@@ -21,6 +21,7 @@ import { remember } from './conditions.js';
 import { apart } from './eventEngine.js';
 import { roleLabel } from './relationships.js';
 import { book } from './ledger.js';
+import { missedAnniversary } from './bonds.js';
 import { OCCASIONS, STYLES, HOLIDAYS, INVITES, MILESTONE_BIRTHDAYS, NAMED_ANNIVERSARIES, SOCIAL_PER_YEAR, BOND_CAP, INVITE_WAYS, TRADITION_LAPSE } from '../data/occasions.js';
 import { techAvailable } from './digital/tech.js';
 
@@ -424,9 +425,13 @@ export function finishYear() {
   const spouse = npcsByRole('spouse')[0];
   if (spouse?.marriedAtAge != null) {
     const yrs = p.age - spouse.marriedAtAge;
-    if (NAMED_ANNIVERSARIES[yrs] && [5, 10, 25, 40, 50].includes(yrs) && !s.done[`anniversary:${spouse.id}`]) {
-      spouse.meters.relationship = clamp(spouse.meters.relationship - 3);
-      log(`Your ${ordinal(yrs)} wedding anniversary went by without being marked. ${spouse.firstName} noticed.`, 'system', 'bad');
+    const round = NAMED_ANNIVERSARIES[yrs] && [5, 10, 25, 40, 50].includes(yrs);
+    if (yrs >= 1 && !s.done[`anniversary:${spouse.id}`]) {
+      if (round) {
+        spouse.meters.relationship = clamp(spouse.meters.relationship - 3);
+        log(`Your ${ordinal(yrs)} wedding anniversary went by without being marked. ${spouse.firstName} noticed.`, 'system', 'bad');
+      }
+      missedAnniversary(spouse, yrs, round); // sometimes, a scene: the card on the table (engine/bonds.js)
     }
   }
 
