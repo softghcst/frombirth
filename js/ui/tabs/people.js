@@ -6,6 +6,7 @@ import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
 import * as rel from '../../engine/relationships.js';
 import * as love from '../../engine/romance.js';
+import * as bonds from '../../engine/bonds.js';
 import * as kids from '../../engine/children.js';
 import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
@@ -70,6 +71,18 @@ async function giveGift(api, npc) {
     }),
   });
   if (tier) await report(api, rel.interact(npc.id, 'gift', tier));
+}
+
+/** Something bought for a partner (engine/bonds.js): what there is to buy now, and what it costs. */
+async function romanticGift(api, npc) {
+  const c = country();
+  const cash = player().finance.cash;
+  const id = await pickModal({
+    title: `Something for ${npc.firstName}`,
+    body: 'A gift is theirs to keep, or to hand back. What it means to them depends on them.',
+    options: bonds.giftsFor().map((g) => ({ value: g.id, label: `${g.name[0].toUpperCase()}${g.name.slice(1)}`, sub: fmtMoney(g.price, c), disabled: cash < g.price })),
+  });
+  if (id) await report(api, bonds.give(npc.id, id));
 }
 
 async function proposeTo(api, npc) {
@@ -280,10 +293,20 @@ export function openNpc(npc, api, back, o = {}) {
   const feudNote = rival?.alive ? `<p class="muted" style="margin-top:8px">Not speaking to ${esc(rival.firstName)} at the moment.</p>` : '';
   const expecting = player().flags.pregnancy?.otherId === npc.id
     ? '<p class="muted" style="margin-top:8px">You are expecting a baby together.</p>' : '';
-  const history = npc.memories?.length
-    ? `<div class="section-label" style="margin-top:0">What they remember</div>
-       ${npc.memories.map((x) => `<div class="kv"><span>When you were ${x.age}</span><span>${esc(x.text)}</span></div>`).join('')}
+  // What is between the two of you, as the player knows it (engine/bonds.js): never shown as anybody else's knowledge.
+  const tie = bonds.summary(npc);
+  const between = tie ? `<div class="section-label" style="margin-top:0">Between you</div>
+       <div class="kv"><span>${esc(tie.label)}</span><span>since ${tie.since}</span></div>
+       ${tie.terms ? `<div class="kv"><span>Terms</span><span>${esc(tie.terms)}</span></div>` : ''}
+       ${tie.trust != null ? `<div class="kv"><span>Trust</span><span>${tie.trust < 35 ? 'Badly damaged' : 'Being rebuilt'}</span></div>` : ''}
+       ${tie.bond.type !== 'primary' ? `<div class="kv"><span>Who knows</span><span>${tie.knownBy.length ? esc(tie.knownBy.map((k) => `${k.name} ${k.level === 'knows' ? 'knows' : 'suspects'} (${k.how})`).join('; ')) : 'Only the two of you'}</span></div>` : ''}
+       ${tie.gifts.length ? `<div class="kv"><span>Gifts</span><span>${esc(tie.gifts.map((g) => `${g.name}, ${g.year}`).join('; '))}</span></div>` : ''}
+       ${tie.history.map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.text)}</span></div>`).join('')}
        <div style="height:14px"></div>` : '';
+  const history = npc.memories?.length
+    ? `${between}<div class="section-label" style="margin-top:0">What they remember</div>
+       ${npc.memories.map((x) => `<div class="kv"><span>When you were ${x.age}</span><span>${esc(x.text)}</span></div>`).join('')}
+       <div style="height:14px"></div>` : between;
 
   const life = lives.lifeSummary(npc);
   const at = npc.role === 'child' && npc.alive ? kid.schoolLine(npc) : null;
@@ -311,6 +334,7 @@ export function openNpc(npc, api, back, o = {}) {
 
   const actions = !inLife ? [] : [
     ...(npc.alive ? love.romanceActions(npc) : []),
+    ...(npc.alive ? bonds.bondActions(npc) : []),
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
     ...npcCareActions(npc),
@@ -356,6 +380,19 @@ export function openNpc(npc, api, back, o = {}) {
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),
       hookUp: () => report(api, love.hookUp(npc.id)),
+      askCasual: () => report(api, bonds.propose(npc.id, 'casual')),
+      askFwb: () => report(api, bonds.propose(npc.id, 'fwb')),
+      askSecret: () => report(api, bonds.propose(npc.id, 'secret')),
+      askOneNight: () => report(api, bonds.propose(npc.id, 'onenight')),
+      bondTime: () => report(api, bonds.spendTime(npc.id)),
+      bondIntimate: () => report(api, bonds.intimate(npc.id)),
+      bondGift: () => romanticGift(api, npc),
+      bondExclusive: () => report(api, bonds.discussExclusive(npc.id)),
+      bondOpen: () => report(api, bonds.discussOpen(npc.id)),
+      bondOfficial: () => report(api, bonds.makeOfficial(npc.id)),
+      bondEnd: () => report(api, bonds.end(npc.id)),
+      bondConfess: () => report(api, bonds.confess(npc.id)),
+      bondControl: () => report(api, bonds.setBirthControl(!bonds.birthControl())),
       baby: () => report(api, kids.tryForBaby(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
       encourageCare: () => report(api, encourageCare(npc.id)),
