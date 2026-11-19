@@ -20,7 +20,17 @@ Lives save automatically to the browser's `localStorage`.
 
 ## Checks
 
-There is nothing to install: the checks run on Node alone.
+There is nothing to install: the checks run on Node alone. To run all of them at once, several at a time (this is
+what CI runs on every pull request, `.github/workflows/tests.yml`):
+
+```bash
+node scripts/test-all.mjs            # every check; add a word to run only the files whose names contain it
+```
+
+`node scripts/stress/fame-lives.mjs 60` plays sixty idol, fan and athlete lives and checks money, fame, fandoms, card
+prices, positions and saves after every year (each life is reproducible from its seed).
+
+Or one at a time:
 
 ```bash
 node tests/avatar.mjs
