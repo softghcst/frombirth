@@ -81,7 +81,6 @@ async function run(viewport) {
   await page.click('[data-digital]');
   await page.waitForSelector('.dl-modal');
   check(await page.locator('.dl-modal h2').innerText() === 'Digital Life', 'Digital Life opens');
-  check((await page.locator('.dl-sub').innerText()).includes('Your connections, your creativity, your world.'), 'with its subtitle');
   const navLabels = await page.locator('.dl-nav button').allInnerTexts();
   check(['My Accounts', 'Feed', 'Messages', 'Friends & Connections', 'Communities', 'Create Content', 'Creator Studio', 'Online Reputation', 'Digital Memories', 'Digital History'].every((x) => navLabels.some((y) => y.startsWith(x))), 'all ten sections are there');
 

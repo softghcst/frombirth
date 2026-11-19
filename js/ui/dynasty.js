@@ -119,7 +119,7 @@ function pageLine(d, me) {
     ${shown.length ? shown.map((id, i) => {
     const x = d.people[id];
     return row(d, x, me, `<span class="dyn-place">${i + 1}</span><br><small>${esc(dyn.relationToMonarch(d, id))} of the ${esc(dyn.titleOf(d, monarch).toLowerCase())}</small>`);
-  }).join('') : '<p class="muted">Nobody is left who can inherit. If the throne falls vacant, parliament will have to send for a distant relative.</p>'}
+  }).join('') : '<p class="muted">Nobody is left to inherit.</p>'}
     ${line.length > shown.length ? `<p class="muted">…and ${line.length - shown.length} more.</p>` : ''}
     ${me && mine > 30 ? `<p class="muted">You are ${ORD(mine)} in line.</p>` : ''}
     ${out.length ? `<div class="section-label">Not in the line</div>${out.map((x) => row(d, x, me, `<small>${esc(dyn.whyNot(d, x))}</small>`)).join('')}` : ''}`;

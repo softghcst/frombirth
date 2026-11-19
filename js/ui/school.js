@@ -36,7 +36,7 @@ function pageOverview(v) {
 
 function pageSubjects(v) {
   if (!v.subjects.length) return '<p class="muted">No subjects yet.</p>';
-  return `<p class="muted" style="margin-bottom:8px">A mark comes from ability, work, interest, attendance and teaching together. ${v.focus ? '' : 'You can give one subject extra attention each year.'}</p>
+  return `
     ${life.canChooseCourses() ? '<button class="btn primary" data-courses style="width:100%;margin-bottom:10px">Choose your courses for these last years</button>' : ''}
     ${v.subjects.map((s) => `<div class="card sub-card ${v.focus === s.id ? 'on' : ''}">
       <div class="sub-head"><strong>${esc(s.name)}${s.advanced ? ' <small>(advanced)</small>' : ''}</strong><span class="sub-mark">${s.mark ?? '–'}</span></div>
@@ -54,7 +54,7 @@ function pagePeople(v) {
     <div class="section-label">Your class</div>
     ${v.classmates.length ? v.classmates.map((n) => person(n, `${n.flags.title === 'Best friend' ? 'Best friend · ' : ''}${life.interestName(n) ? `Into ${life.interestName(n).toLowerCase()}` : `Age ${n.age}`}${n.flags.note ? ` · ${n.flags.note}` : ''}`)).join('') : '<p class="muted">Nobody else is in your class.</p>'}
     ${old.length ? `<div class="section-label">Friends from school</div>${old.map((n) => person(n, `${roleLabel(n)} · met at ${n.flags.metAt}`)).join('')}` : ''}
-    <p class="muted" style="margin-top:8px">Spend time with any of them from the People tab. Friends you make here stay your friends when school ends.</p>`;
+    `;
 }
 
 function pageActivities() {
@@ -66,7 +66,7 @@ function pageActivities() {
       ${c.mates.length ? `<p class="muted">With you: ${esc(c.mates.map((n) => n.firstName).join(', '))}.</p>` : ''}
       ${c.record.map((r) => `<p class="muted">Age ${r.age}: ${esc(r.text)}.</p>`).join('')}</div>`).join('');
   return `<div class="kv"><span>How the school sees you</span><span>${esc(a.standing)}</span></div>
-    <p class="muted" style="margin:6px 0 10px">Being well known is not the same as being happy here. Join and leave clubs from the Work tab.</p>
+    
     ${clubs || `<p class="muted">${p.age < 7 ? 'Clubs come later.' : 'You are not in any clubs or teams.'}</p>`}
     ${a.athlete?.seasons ? `<div class="section-label">On the field</div><div class="kv"><span>${esc(a.athlete.sport)}</span><span>${a.athlete.seasons} ${a.athlete.seasons === 1 ? 'season' : 'seasons'}${a.athlete.captain ? ' · captain' : ''}</span></div>${a.athlete.awards.map((x) => `<p class="muted">Age ${x.age}: ${esc(x.what)}.</p>`).join('')}${a.athlete.recruited ? `<p class="dyn-reach">A university coach has asked about you.</p>` : ''}` : ''}
     ${a.performances.length ? `<div class="section-label">On the stage</div>${a.performances.map((x) => `<div class="dyn-event"><span class="num">${x.year}</span><span>${esc(x.role[0].toUpperCase() + x.role.slice(1))} in <em>${esc(x.show)}</em>, ${esc(x.where)}</span></div>`).join('')}` : ''}`;

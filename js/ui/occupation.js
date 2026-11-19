@@ -183,14 +183,14 @@ const VIEWS = {
     const posts = market.board({ scope: st.scope, family: st.family, partTime: st.kind === 'full' ? false : st.kind === 'part' ? true : null });
     const views = posts.map((x) => hiring.postingView(x.id)).filter((v) => v && (!st.eligibleOnly || v.eligible));
     const chip = (key, val, label) => `<button type="button" class="world-group av-chip ${st[key] === val ? 'on' : ''}" data-act="filter" data-arg="${key}:${val}">${esc(label)}</button>`;
-    return `<p class="muted" style="margin:0 0 6px">Openings come from real employers and stay up until someone takes them. Other people are applying too.</p>
+    return `
       <div class="world-groups">${chip('scope', 'here', p.city)}${chip('scope', 'country', 'Whole country')}${chip('scope', 'remote', 'Remote')}</div>
       <div class="world-groups">${chip('kind', 'all', 'All')}${chip('kind', 'full', 'Full-time')}${chip('kind', 'part', 'Part-time')}${chip('eligibleOnly', true, 'You qualify')}${chip('eligibleOnly', false, 'Everything')}
         <button type="button" class="world-group av-chip ${st.family ? 'on' : ''}" data-act="family">${esc(st.family ? FAMILY_BY_ID[st.family].name : 'Any field')}</button></div>
       <p class="muted" style="margin:6px 0">${views.length} ${views.length === 1 ? 'opening' : 'openings'}</p>
       <div class="world-list">${views.slice(0, 60).map((v) => `<button type="button" class="row world-row" data-act="posting" data-arg="${v.post.id}">
         <div class="main"><strong>${esc(v.post.title)}</strong><small>${esc(v.employer.name)} · ${esc(v.post.city)}${v.post.remote !== 'none' ? ` · ${v.post.remote}` : ''}${v.post.partTime ? ` · ${v.post.hours} h/week` : ''}</small>
-        <small>${v.eligible ? (v.note ? esc(v.note) : 'You can apply.') : esc(v.reasons[0])}</small></div>
+        <small>${v.eligible ? esc(v.note ?? '') : esc(v.reasons[0])}</small></div>
         <div class="side">${money(v.post.pay[0], COUNTRIES[v.post.countryId])}<br>–${money(v.post.pay[1], COUNTRIES[v.post.countryId])}</div></button>`).join('') || '<p class="empty">Nothing matching right now. New openings appear every year.</p>'}</div>`;
   },
 
@@ -206,14 +206,14 @@ const VIEWS = {
       <div class="section-label">Recruiters and contacts</div>
       ${leads.length ? leads.map((l) => `<div class="card"><p style="margin:0 0 6px">${esc(l.text)}</p>
         <div class="btn-stack">${btn('leaddetails', 'Ask for details', { arg: l.id })}${btn('leadapply', 'Go for it', { cls: 'primary', arg: l.id })}${btn('leadrefer', 'Put a friend forward instead', { arg: l.id })}${btn('leaddecline', 'Decline', { arg: l.id })}</div></div>`).join('')
-    : '<p class="muted">No recruiter has been in touch. A good record and a few years of experience bring them.</p>'}`;
+    : '<p class="muted">No recruiters yet.</p>'}`;
   },
 
   parttime(p) {
     const held = side.allSides();
     const opts = pt.canWorkPartTime() ? pt.jobOptions() : [];
     return `${held.length ? `<div class="card"><h3>Your part-time work</h3>${held.map((s) => `${kv([[s.title, `${s.hours ?? 12} h/week · ${money(s.salary)} a year`]])}<div class="btn-stack" style="margin:6px 0">${s.slot ? btn('cover', 'Cover an extra shift') : ''}${btn('quitside', `Leave: ${s.title}`, { cls: 'danger', arg: s.id })}</div>`).join('')}</div>` : ''}
-      <p class="muted">A few hours a week, around school, study, another job, or retirement. Part-time openings at employers are on "Find a job" too.</p>
+      
       ${opts.map((j) => btn('takept', j.title, { arg: j.id, disabled: !j.available, sub: j.available ? `At ${j.place}. ${j.hours} hours a week, ${money(j.pay)} a year.${j.campus ? ' Students only.' : ''}` : j.reason })).join('') || '<p class="empty">You have as much part-time work as you can take on.</p>'}`;
   },
 
@@ -222,7 +222,7 @@ const VIEWS = {
     const f = work.career().freelance;
     const inq = Object.keys(f.services).length && f.hoursOffered ? free.inquiries() : [];
     const active = f.contracts.filter((k) => k.status === 'active');
-    return `<p class="muted" style="margin:0 0 6px">Set what you offer and at what price. Clients write once a year; each job you take uses the hours you set aside, and is paid when it is done.</p>
+    return `
       ${btn('availability', `Hours a week for freelance work: ${f.hoursOffered}`)}
       ${inq.length ? `<div class="section-label">Inquiries this year</div>${inq.map((q) => `<div class="card"><p style="margin:0">${esc(q.client)}${q.regular ? ' (a regular)' : ''}: ${esc(q.serviceName.toLowerCase())}, about ${q.hours} hours, ${money(q.fee)}.</p>
         <div class="btn-stack" style="margin-top:6px">${btn('inqaccept', 'Take it on', { cls: 'primary', arg: q.id })}${btn('inqcounter', 'Ask for more', { arg: q.id, disabled: q.countered })}${btn('inqdecline', 'Pass', { arg: q.id })}</div></div>`).join('')}` : ''}
@@ -248,7 +248,7 @@ const VIEWS = {
     ['Staff', `${biz.headcount(b)}${biz.managerOf(b) ? ` · run day to day by ${biz.managerOf(b).firstName}` : ''}`], ['Your hours', `${b.ownerHours} a week`], ['Prices', PRICING[b.pricing].label], ['You take', DRAWS[b.draw].label]])}
         <div style="margin-top:8px">${meterHtml('Reputation', b.reputation, true)}${meterHtml('Quality', b.quality, true)}</div>
         ${L ? `<div class="section-label">Last year</div>${kv([['Takings', money(L.revenue, cty)], ['Wages', money(L.wages, cty)], ['Premises', money(L.rent, cty)], ['Stock and supplies', money(L.supplies + L.overhead, cty)], ...(L.interest ? [['Interest', money(L.interest, cty)]] : []),
-    [L.profit >= 0 ? 'Profit' : 'Loss', money(Math.abs(L.profit), cty)], ...(L.profit > 0 ? [[biz.headcount(b) || b.partners.length ? `Tax on profit (${Math.round(biz.profitTaxOf(b.countryId).rate * 100)}%)` : 'Tax on profit', biz.headcount(b) || b.partners.length ? money(L.tax ?? 0, cty) : 'None: as a sole trader, it is taxed as your income']] : []), ...(b.lossCarry ? [['Losses to set against future profit', money(b.lossCarry, cty)]] : []), ['Paid to you', money(L.drawn, cty)], ['Custom against capacity', L.demand > L.heads * 1.25 ? 'More custom than you could serve' : L.heads > L.demand * 1.4 ? 'More staff than there was work for' : 'About right']])}` : '<p class="muted" style="margin-top:6px">The first year\'s accounts come at the end of the year.</p>'}
+    [L.profit >= 0 ? 'Profit' : 'Loss', money(Math.abs(L.profit), cty)], ...(L.profit > 0 ? [[biz.headcount(b) || b.partners.length ? `Tax on profit (${Math.round(biz.profitTaxOf(b.countryId).rate * 100)}%)` : 'Tax on profit', biz.headcount(b) || b.partners.length ? money(L.tax ?? 0, cty) : 'None: as a sole trader, it is taxed as your income']] : []), ...(b.lossCarry ? [['Losses to set against future profit', money(b.lossCarry, cty)]] : []), ['Paid to you', money(L.drawn, cty)], ['Custom against capacity', L.demand > L.heads * 1.25 ? 'More custom than you could serve' : L.heads > L.demand * 1.4 ? 'More staff than there was work for' : 'About right']])}` : ''}
         ${b.overdrawn ? '<p class="world-status">The account is overdrawn. Put money in, cut costs or borrow: another year like this and it closes.</p>' : ''}
         ${staff.length ? `<div class="section-label">People</div>${staff.map((x) => `<button type="button" class="row world-row" data-act="bizstaff" data-arg="${arg}:${x.id}">${face(x.npc)}<div class="main"><strong>${esc(x.npc.firstName)} ${esc(x.npc.lastName)}${x.manager ? ' (manager)' : ''}</strong><small>${money(x.wage, cty)} a year · since age ${x.since}</small></div><div class="side">${Math.round(x.npc.meters.relationship)}%</div></button>`).join('')}` : ''}
         ${b.others ? `<p class="muted">And ${b.others} other staff.</p>` : ''}
@@ -265,7 +265,7 @@ const VIEWS = {
         </div>
         ${b.history.length ? `<div class="section-label">Its story</div>${b.history.slice(-5).reverse().map((h) => `<p style="margin:3px 0">${h.year}: ${esc(h.text)}</p>`).join('')}` : ''}</div>`;
     };
-    return `<p class="muted" style="margin:0 0 6px">A business has its own money. It pays its staff, its rent and its debts first; you are paid from what is left.</p>
+    return `
       ${open.map(card).join('')}
       ${btn('bizstart', open.length ? 'Start another business' : 'Start a business', { cls: open.length ? '' : 'primary' })}
       ${past.length ? `<div class="card" style="margin-top:10px"><h3>Before</h3>${kv(past.map((b) => [b.name, `${b.founded}–${b.founded + b.years} · ${{ sold: 'sold', closed: 'closed', failed: 'went under', family: `run by ${store.state.npcs[b.ownerNpcId]?.firstName ?? 'family'}` }[b.status]}`]))}</div>` : ''}`;
@@ -299,7 +299,7 @@ const VIEWS = {
       ['Space', ['astronaut']],
     ];
     const pol = p.politics ? `You hold office as ${p.politics.title}.` : 'Running for office goes through elections, not job applications: see Politics on the Work tab.';
-    return `<p class="muted" style="margin:0 0 6px">Careers with their own way in: auditions, portfolios, selection boards. They use the same pay, hours and record as any job.</p>
+    return `
       ${groups.map(([name, ids]) => `<div class="section-label">${esc(name)}</div>${ids.map((id) => CAREER_BY_ID[id]).filter(Boolean).map((t) => {
     const why = career.unmet(t);
     const mine = work.career().careerId === t.id;
@@ -317,7 +317,7 @@ const VIEWS = {
     const ranks = (id) => CAREER_BY_ID[id].levels.map((_, i) => career.localTitle(CAREER_BY_ID[id], i, c.military?.branch ?? branches[0])).join(' → ');
     return `${c.military ? `<div class="card"><h3>Your service</h3>${kv([['Branch', c.military.branch], ['Rank', c.title], ['Years served', String(c.yearsInField)], ['Deployments', String(c.military.deployments)], ['Honors', String(c.military.honors ?? 0)],
       ['Pension', CAREER_BY_ID[c.careerId].pensionAfter ? `After ${CAREER_BY_ID[c.careerId].pensionAfter} years' service` : '—']])}</div>` : ''}
-      ${p.flags.veteran ? '<p class="muted">You are a veteran. Some employers in public safety, government and logistics look on that kindly.</p>' : ''}
+      ${p.flags.veteran ? '<p class="muted">Veteran.</p>' : ''}
       <div class="card"><h3>The armed forces of ${esc(country().name)}</h3>${kv([['Branches', branches.join(', ')], ['Service', conscript ? 'Compulsory' : 'Voluntary'], ['Enlisted ranks', ranks('enlisted')], ['Officer ranks', ranks('officer')]])}</div>
       ${!c.military ? `<div class="btn-stack">${['enlisted', 'officer'].map((id) => { const why = career.unmet(CAREER_BY_ID[id]); return btn('enlist', id === 'enlisted' ? 'Enlist' : 'Apply for officer training', { arg: id, disabled: !!why.length, sub: why[0] ?? `Selection: fitness, discipline and an interview. Branch: one of ${branches.length}.` }); }).join('')}</div>` : ''}`;
   },
@@ -333,7 +333,7 @@ const VIEWS = {
       ['Strengths', r.strengths.join(', ') || '—']])}</div>
       <div class="card"><h3>What it opens</h3><p style="margin:0">You meet the requirements for ${open} of ${CAREERS.filter((t) => !t.branchOnly && t.type !== 'military').length} kinds of work that hire from outside.</p>
       ${certs.length ? `<div class="section-label">A one-year certificate would open</div>${kv(certs.map((x) => [x.name, CAREER_BY_ID[x.opens]?.name ?? x.opens]))}` : ''}
-      <p class="muted" style="margin-top:6px">To study (a degree, a certificate, an apprenticeship, part-time alongside work), use "Plan what comes next" on the Work tab.</p></div>
+      </div>
       <div class="card"><h3>Experience by field</h3>${kv(Object.entries(work.career().experience).filter(([id]) => CAREER_BY_ID[id]).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, y]) => [CAREER_BY_ID[id].name, years(Math.round(y))])) || '<p class="muted">None yet.</p>'}</div>`;
   },
 
@@ -342,7 +342,7 @@ const VIEWS = {
     const fam = record.familyCareers().filter((r) => !r.current);
     const c = work.career();
     return `<div class="card"><h3>Working life</h3>${line.length ? line.map((h) => `<div class="kv"><span>${esc(h.title)}${h.employer ? `, ${esc(h.employer)}` : ''}${h.kind && h.kind !== 'job' ? ' (part-time)' : ''}</span><span>${h.from}–${h.current ? 'now' : h.to}${h.exit ? ` · ${esc(h.exit)}` : ''}</span></div>`).join('') : '<p class="muted">No jobs yet.</p>'}</div>
-      <div class="card"><h3>Milestones</h3>${c.achievements.length ? c.achievements.map((a) => `<div class="kv"><span>${esc(a.name)}</span><span>Age ${a.age}</span></div>`).join('') : '<p class="muted">None yet. They come from the record: years served, promotions, people helped, second starts.</p>'}</div>
+      <div class="card"><h3>Milestones</h3>${c.achievements.length ? c.achievements.map((a) => `<div class="kv"><span>${esc(a.name)}</span><span>Age ${a.age}</span></div>`).join('') : '<p class="muted">None yet.</p>'}</div>
       ${fam.length ? `<div class="card"><h3>The family at work</h3>${fam.map((r) => `<div class="contact"><strong>${esc(r.name)} (${r.born}–${r.died ?? ''})</strong><small>${esc(r.topTitle ?? 'No recorded work')}${r.achievements.length ? ` · ${esc(r.achievements.slice(0, 3).join(', '))}` : ''}</small>
         <p style="margin:2px 0">${r.jobs.slice(-4).map((j) => `${esc(j.title)}${j.employer ? ` at ${esc(j.employer)}` : ''} (${j.from}–${j.to})`).join('; ') || ''}</p></div>`).join('')}</div>` : ''}`;
   },
@@ -356,7 +356,7 @@ const VIEWS = {
       ${c.careerId && !c.retired ? btn('hours', 'Ease down: fewer hours', { sub: 'Partial retirement, if your employer agrees.' }) : ''}
       ${c.retired ? btn('gotofind', 'Go back to work', { sub: 'Your pension keeps being paid.' }) : ''}
       ${c.retired ? btn('gotofree', 'Consult or freelance', { sub: 'Your experience is worth something to people.' }) : ''}</div>
-      <p class="muted" style="margin-top:8px">Retirement keeps your record, your milestones and the people you worked with.</p>`;
+      `;
   },
 };
 

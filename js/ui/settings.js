@@ -149,7 +149,7 @@ function openTeam(teamId) {
           <button type="submit" class="btn primary">Save name and colors</button>
         </form>
         <div class="section-label" style="margin-top:14px">Players</div>
-        <p class="muted" style="margin-top:0">Tap a player to rename them or change their number.${team.roster.some((x) => x.npcId) ? ' People you know on this team are renamed everywhere in the game.' : ''}</p>
+        
         ${team.roster.slice().sort((a, b) => a.num - b.num).map((x) => `<button type="button" class="choice-btn tm-player" data-player="${esc(x.id)}" ${x.id === store.state.player.id ? 'disabled' : ''}>
           <span class="tm-num" style="background:${c.home};color:${inkOn(c.home)}">${x.num}</span>${esc(x.name)}${x.id === store.state.player.id ? ' (you)' : ''}<small>${esc(posName(x.pos))}${x.npcId ? ' · someone you know' : ''}</small></button>`).join('')}
         <button class="btn" data-close style="margin-top:14px">Done</button>`;
@@ -346,7 +346,7 @@ async function openAccount(hooks) {
     const m = openModal(`
       <h2>Cloud saves</h2>
       <p class="body" data-line></p>
-      <p class="muted" style="margin-bottom:12px">Your lives, graves and People you know are sent to your account a few seconds after each save, and brought in whenever the game opens. Sign in with the same account on another device to pick up where you left off.</p>
+      <p class="muted" style="margin-bottom:12px">Your lives sync to your account.</p>
       <div class="btn-stack">
         <button class="btn primary" data-sync>Sync now</button>
         <button class="btn" data-password>Change password</button>

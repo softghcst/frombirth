@@ -118,7 +118,7 @@ function compareTimelines(root) {
   const scrim = document.createElement('div');
   scrim.className = 'scrim';
   scrim.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="whatif-title"><div class="eyebrow">What if?</div><h2 id="whatif-title">One life, ${rows.length} ways</h2>
-    <p class="body">The same person, from the same moments, down different roads.</p>${rows.map(cell).join('')}
+    ${rows.map(cell).join('')}
     <button class="btn primary" data-ok style="margin-top:10px">Close</button></div>`;
   scrim.addEventListener('click', (e) => { if (e.target === scrim || e.target.closest('[data-ok]')) scrim.remove(); });
   document.getElementById('modal-root').appendChild(scrim);

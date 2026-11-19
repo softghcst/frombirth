@@ -49,13 +49,13 @@ const BODY = {
       ${c.job ? `<div class="kv"><span>Work</span><span>${esc(jail.jobOptions().find((j) => j.id === c.job.id)?.name ?? '')}</span></div>` : ''}
       ${kids.map(([n, g]) => `<div class="kv"><span>${esc(n.firstName)}, ${n.age}</span><span>living with ${g === 'care' ? 'foster parents' : esc(k.nameOf(g))}</span></div>`).join('')}
       <div style="margin-top:10px">${meterHtml('Respect', c.respect, true)}${meterHtml('Conduct', c.conduct, true)}</div>
-      <p class="muted" style="margin-top:8px">Conduct, courses and a place to live matter at a parole review. Respect keeps trouble away, but so does asking for help.</p>
+      
       ${jail.paroleDue() ? '<button class="btn primary" data-hub-act="parole" style="margin-top:10px">Prepare for your parole review</button>' : ''}
     </div>`;
   },
   daily(c) {
     return `<div class="card"><h3>How your days go</h3>
-      <p class="muted" style="margin-bottom:10px">What the year is built around. It carries on without you having to choose each day.</p>
+      
       <div class="btn-stack">${jail.routineOptions().map((r) => `<button class="btn stacked ${r.now ? 'primary' : ''}" data-routine="${r.id}">${esc(r.name)}<small>${esc(r.blurb)}</small></button>`).join('')}</div></div>
       <div class="card"><h3>This year</h3><div class="btn-stack">
         ${jail.prisonActions().map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-prison="${a.id}">${esc(a.label)}</button>`).join('')}
@@ -70,14 +70,14 @@ const BODY = {
     const staff = jail.staffNear();
     return `<div class="card"><h3>On your wing</h3>
       ${mates.map((n) => row(n, `${n.age} · loves ${n.flags.inmate.interest} · ${yrs(n.flags.inmate.yearsLeft)} left${player().npcIds.includes(n.id) ? ` · ${roleLabel(n)}` : ''}`, 'data-mate')).join('')}
-      <p class="muted" style="margin-top:8px">Tap someone to see who they are. People here have their own lives, goals and release dates.</p></div>
+      </div>
       <div class="card"><h3>Staff</h3>${staff.map((s) => `<button class="row" data-staff="${s.npc.id}"><div class="main"><strong>${esc(s.npc.firstName)} ${esc(s.npc.lastName)}</strong><small>${esc(s.role.name)}</small></div></button>`).join('')}</div>`;
   },
   family(c) {
     const list = jail.contacts();
     return `<div class="card"><h3>Family and friends</h3>
       ${list.length ? list.map((n) => row(n, roleLabel(n) + (n.flags.abroad ? ' · abroad' : '') + (n.age < 18 ? `, ${n.age}` : ''), 'data-contact')).join('') : '<p class="muted">There is nobody on your list.</p>'}
-      <p class="muted" style="margin-top:8px">Up to four letters, three calls and two visiting orders a year. People decide for themselves whether to come.</p></div>
+      <p class="muted" style="margin-top:8px">Four letters, three calls, two visits a year.</p></div>
       ${c.visits.length ? `<div class="card"><h3>Visits</h3>${c.visits.slice(-8).reverse().map((v) => `<div class="kv"><span>${v.year}</span><span>${esc(k.nameOf(v.npcId))}</span></div>`).join('')}</div>` : ''}`;
   },
   education(c) {
@@ -86,7 +86,7 @@ const BODY = {
     return `<div class="card"><h3>Education</h3>
       ${c.program ? `<div class="kv"><span>Now</span><span>${esc(PROGRAM_BY_ID[c.program.id].name)}: ${Math.min(100, Math.round(c.program.progress / PROGRAM_BY_ID[c.program.id].years * 100))}%</span></div>` : ''}
       ${done.map((id) => `<div class="kv"><span>Completed</span><span>${esc(PROGRAM_BY_ID[id].name)}</span></div>`).join('')}
-      <p class="muted" style="margin:8px 0 10px">Qualifications earned here go on your education record, the same as any other.</p>
+      
       <div class="btn-stack">${list.map((x) => `<button class="btn stacked ${x.now ? 'primary' : ''}" data-course="${x.id}" ${x.ok && !x.now ? '' : 'disabled'}>${esc(x.name)}<small>${esc(x.now ? 'Enrolled.' : x.why || x.blurb)}</small></button>`).join('')}
       ${c.program ? '<button class="btn" data-hub-act="leaveCourse">Leave the course</button>' : ''}</div></div>`;
   },
@@ -124,7 +124,7 @@ const BODY = {
       ${jail.paroleDue() ? '<button class="btn primary" data-hub-act="parole" style="margin-top:10px">Prepare for your parole review</button>' : ''}
       ${c.security !== 'min' && c.facility !== 'juvenile' ? '<button class="btn" data-hub-act="transfer" style="margin-top:10px">Apply to move to lower security</button>' : ''}
       ${(c.transfers ?? []).map((t) => `<div class="kv"><span>${t.year}</span><span>Moved: ${esc(t.why)}</span></div>`).join('')}
-      <p class="muted" style="margin-top:10px">On release you go to family if they will have you, or to a hostel, with a release grant. Work and study can pick up where they left off.</p></div>`;
+      </div>`;
   },
 };
 
