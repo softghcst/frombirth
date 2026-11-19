@@ -8,6 +8,7 @@
 //  - hair fits every head it can be worn on; faces are framed alike; features read on every skin tone
 //  - the eye shapes on offer, and who is given which, are exactly as they were
 //  - every nose is clear of every pair of eyes on every face shape
+//  - every mouth sits well under every nose (as fitted to every pair of eyes) on every face shape
 import { readFileSync, existsSync } from 'node:fs';
 import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManifest.js';
 import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
@@ -15,7 +16,7 @@ import { avatarSvg } from '../js/avatar/render.js';
 import { dressFor, filesFor, ageStage, fitTransforms, deepness, characterAvatarSvg } from '../js/CharacterAvatar.js';
 import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS } from '../js/avatar/hairFit.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
-import { noseFit, noseGap, NOSE_FIT } from '../js/avatar/featureFit.js';
+import { noseFit, noseGap, NOSE_FIT, mouthFit, LIP_FIT } from '../js/avatar/featureFit.js';
 import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
 
@@ -385,6 +386,49 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(him.includes(`lips/${lipsFor('lips_10', 'male')}.svg`) && her.includes('lips/lips_10.svg'), 'a mouth is not drawn to suit the gender');
   check(saved.inherited.lips === 'lips_10', 'drawing a man changed the mouth he passes on');
   for (const id of CUR.RESTING.lipsMasc) check(PART_BY_ID[id] && /^Masc \d+$/.test(PART_BY_ID[id].label), `${id} is missing or unnamed`);
+}
+
+// 14. Every mouth under every nose, as that nose is fitted to every pair of eyes, on every face shape: a resting
+// mouth is at least LIP_FIT.wide times as wide as the nose (unless it would have to grow too much), its upper lip is
+// closer to the same length than before, it is clear of the nose and the chin, and an expression is left as drawn.
+{
+  const T = AVATAR_TEMPLATE, STEP = T.featureStep;
+  const rows = (list, y0) => list.map((v, i) => (v == null ? null : [v, y0 + i * STEP + 0.5])).filter(Boolean);
+  const resting = (id) => CUR.RESTING.lips.includes(id) || CUR.RESTING.lipsMasc.includes(id);
+  let faces = 0, spreadBefore = [Infinity, -Infinity], spreadAfter = [Infinity, -Infinity];
+  for (const h of AVATAR_MANIFEST.heads.filter((x) => x.tags?.age === 'adult')) {
+    const hr = (h.fit.chin - h.fit.top) / (T.face.chin - T.face.top), s = Math.sqrt((h.fit.w / T.face.w) * hr);
+    const at = (ay) => h.fit.top + (ay - T.face.top) * hr;
+    for (const e of CATALOG.eyes) for (const n of CATALOG.nose) {
+      const noseS = s * (CUR.PART_SCALE[n.id] ?? 1);
+      const nf = noseFit(e.id, n.id, { s, eyeS: s, noseS, eyeY: at(T.anchor.eyes), noseY: at(T.anchor.nose), apart: 3 });
+      const nr = rows(PART_BY_ID[n.id].shape.ink, PART_BY_ID[n.id].shape.y);
+      const nS = noseS * nf.k, nY = at(T.anchor.nose) + nf.drop;
+      const noseBottom = nY + nS * (Math.max(...nr.map((r) => r[1])) - T.anchor.nose), noseW = 2 * nS * Math.max(...nr.map((r) => r[0]));
+      for (const l of AVATAR_MANIFEST.lips) {
+        const g = { s, mouthS: s, noseS: nS, noseY: nY, mouthY: at(T.anchor.lips), chin: h.fit.chin };
+        const f = mouthFit(l.id, n.id, g, resting(l.id));
+        faces++;
+        const lr = rows(l.shape.all, l.shape.y);
+        const top = g.mouthY + f.dy + s * f.k * (Math.min(...lr.map((r) => r[1])) - T.anchor.lips);
+        const bottom = g.mouthY + f.dy + s * f.k * (Math.max(...lr.map((r) => r[1])) - T.anchor.lips);
+        const where = `${l.id} under ${n.id} (with ${e.id}) on ${h.id}`;
+        check(top - noseBottom >= Math.min(LIP_FIT.gap * s, 12) - 0.05, `${where} is too close to the nose`);
+        check(h.fit.chin - bottom >= LIP_FIT.chin * s - 0.05, `${where} is too close to the chin`);
+        if (!resting(l.id)) { check(f.k === 1 && f.dy === 0, `the expression ${where} has been changed`); continue; }
+        check(f.k <= LIP_FIT.grow && Math.abs(f.dy) <= LIP_FIT.move * s + 0.01, `${where} is changed beyond the limits`);
+        check(s * f.k * l.shape.width >= Math.min(LIP_FIT.wide * noseW, LIP_FIT.grow * s * l.shape.width) - 0.05, `${where} is narrow for the nose`);
+        const lip = (g.mouthY + f.dy - noseBottom) / s, lip0 = (g.mouthY - noseBottom) / s;
+        spreadBefore = [Math.min(spreadBefore[0], lip0), Math.max(spreadBefore[1], lip0)]; spreadAfter = [Math.min(spreadAfter[0], lip), Math.max(spreadAfter[1], lip)];
+      }
+    }
+  }
+  check(faces === 7 * CATALOG.eyes.length * CATALOG.nose.length * AVATAR_MANIFEST.lips.length, 'the mouths were not checked under every nose and pair of eyes on every face');
+  check(spreadAfter[1] - spreadAfter[0] < spreadBefore[1] - spreadBefore[0] - 3, `upper lips are not more even (${spreadBefore.map(Math.round)} to ${spreadAfter.map(Math.round)})`);
+  // The renderer applies it: a small mouth under a broad nose is drawn larger; an open mouth is left as it is.
+  const mouth = (lips, nose) => fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose, lips }).lips;
+  check(mouth('lips_4', 'nose_12') !== mouth('lips_4', 'nose_19') && /scale\(1\.0\d\)/.test(mouth('lips_4', 'nose_12')), 'a small mouth under a broad nose is not drawn wider');
+  check(mouth('lips_17', 'nose_12') === fitTransforms('head_17_dimple_oval', 'adult', {}, { eyes: 'eyes_9', nose: 'nose_12' }).lips, 'an expression is fitted to the nose');
 }
 
 if (problems.length) {

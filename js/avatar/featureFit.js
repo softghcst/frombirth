@@ -80,3 +80,51 @@ export function noseGap(eyesId, noseId, g, fit = { k: 1, drop: 0, apart: 0 }) {
   const n = rows(nose.ink, nose.y).map(([x, y]) => [g.noseS * fit.k * x, g.noseY + fit.drop + g.noseS * fit.k * (y - T.anchor.nose)]);
   return space(e, n, STEP * g.eyeS);
 }
+
+/**
+ * How a mouth is fitted to the nose above it:
+ *   wide      a resting mouth is drawn at least this many times as wide as the nose's lines, up to `grow` larger
+ *   lip       the length of the upper lip wanted: from the bottom of the nose to the line of the mouth
+ *   move      how far the mouth may be moved up or down toward that
+ *   gap       the clear space always kept between the nose and the top of the mouth, and `chin` below it
+ * Expressions (a pout, an open mouth) are drawn as they are: only RESTING mouths are fitted.
+ * `off` is for drawing faces as they were before this fit, for comparison.
+ */
+export const LIP_FIT = { wide: 1.3, grow: 1.15, lip: 42, move: 4, gap: 12, chin: 15, off: false };
+
+const lipCache = new Map();
+
+/**
+ * How one mouth is adjusted for the nose above it on one face.
+ * @param {string} lipsId
+ * @param {string} noseId
+ * @param {{s:number, mouthS:number, noseS:number, noseY:number, mouthY:number, chin:number}} g  the face's scale, the
+ *   scale of the mouth and of the nose (each with any adjustments already made), where the nose's and the mouth's
+ *   anchors are (the nose's after it was fitted to the eyes), and the chin
+ * @param {boolean} resting  whether the mouth is a resting one (expressions are left as they are)
+ * @returns {{k:number, dy:number}} scale the mouth by k, move it down by dy (in the picture's units; up if negative)
+ */
+export function mouthFit(lipsId, noseId, g, resting = true) {
+  const lips = PART_BY_ID[lipsId]?.shape, nose = PART_BY_ID[noseId]?.shape;
+  if (LIP_FIT.off || !resting || !lips?.all || !nose?.ink) return { k: 1, dy: 0 };
+  const key = [lipsId, noseId, g.s, g.mouthS, g.noseS, g.noseY, g.mouthY, g.chin].map((v) => (typeof v === 'number' ? v.toFixed(3) : v)).join('|');
+  if (lipCache.has(key)) return lipCache.get(key);
+  const F = LIP_FIT;
+  const noseRows = rows(nose.ink, nose.y);
+  const noseW = 2 * g.noseS * Math.max(...noseRows.map(([x]) => x));
+  const noseBottom = g.noseY + g.noseS * (Math.max(...noseRows.map(([, y]) => y)) - T.anchor.nose);
+  // Wide enough for the nose above it.
+  const k = Math.min(F.grow, Math.max(1, (F.wide * noseW) / (g.mouthS * lips.width)));
+  // The mouth's own top and bottom, at that size.
+  const mouthRows = rows(lips.all, lips.y);
+  const top = (dy) => g.mouthY + dy + g.mouthS * k * (Math.min(...mouthRows.map(([, y]) => y)) - T.anchor.lips);
+  const bottom = (dy) => g.mouthY + dy + g.mouthS * k * (Math.max(...mouthRows.map(([, y]) => y)) - T.anchor.lips);
+  // An upper lip of much the same length whatever the nose, within what the nose above and the chin below allow.
+  // Where the nose and the chin both crowd it (a large nose and mouth chosen together), it is set halfway between them.
+  const lo = noseBottom + F.gap * g.s - top(0), hi = g.chin - F.chin * g.s - bottom(0);
+  const want = F.lip * g.s - (g.mouthY - noseBottom);
+  const dy = Math.max(-F.move * g.s, Math.min(F.move * g.s, lo <= hi ? Math.max(lo, Math.min(hi, want)) : (lo + hi) / 2));
+  const fit = { k: Math.round(k * 1000) / 1000, dy: Math.round(dy * 100) / 100 };
+  lipCache.set(key, fit);
+  return fit;
+}

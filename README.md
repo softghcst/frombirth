@@ -91,7 +91,7 @@ One check runs in a real browser and needs Playwright with Chromium (it skips it
 node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
 ```
 
-`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; that the eye shapes on offer are unchanged; and that every nose is clear of every pair of eyes on every face shape.
+`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; that the eye shapes on offer are unchanged; that every nose is clear of every pair of eyes on every face shape; and that every mouth sits well under every nose, and men and women are drawn with their own mouths.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
 
 ## Living moments
@@ -221,7 +221,7 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 | Notes the filenames cannot carry (hair textures, resting faces, uniforms, royal dress) | `js/avatar/curation.js` |
 | The renderer: layers, ages, auto-dress | `js/CharacterAvatar.js` |
 | How each hairstyle is fitted to each head, and how each head is framed | `js/avatar/hairFit.js` |
-| How each nose is kept clear of the eyes it is worn with | `js/avatar/featureFit.js` |
+| How each nose is kept clear of the eyes it is worn with, and each mouth fitted to the nose | `js/avatar/featureFit.js` |
 | How saved appearances are read, and old saves converted | `js/avatar/catalog.js` |
 | How children take after their parents | `js/avatar/inherit.js` |
 | The character creator and salon editor | `js/avatar/editor.js` |
@@ -248,6 +248,20 @@ set close. The script measures the outline of each, row by row (`shape` in the m
 smaller, a little lower, or each eye up to three units further out (`NOSE_FIT`). A pair that is already clear is
 drawn exactly as before. It works from the measurements and the person's own proportions, so nothing is listed pair
 by pair: a new nose or pair of eyes only needs measuring (run the script).
+
+**Fitting a mouth to the nose.** The mouth is then fitted to the nose above it, as that nose was fitted to the eyes
+(`LIP_FIT`): a resting mouth is drawn at least 1.3 times as wide as the nose, up to 15% larger, so a small bow
+under a broad nose does not look pinched; and it is moved up or down by up to four units toward an upper lip of
+much the same length, so a short nose does not leave a long empty space above the mouth. It always keeps clear of
+the nose and the chin. Expressions (an open mouth, a pout, a grin) are drawn as they are.
+
+**Men's and women's mouths.** There are two sets of resting mouths: the women's (`RESTING.lips`) and the men's
+(`RESTING.lipsMasc`, the `lips_masc_` files). A mouth is inherited whatever the gender, and drawn to suit it: a man
+is drawn with the men's mouth matched to the one he was born with, a woman with the women's match (`LIP_MATCH` in
+`js/avatar/curation.js`, `lipsFor` in `js/avatar/catalog.js`). What is saved, and passed on to children, is the
+mouth itself, so a son can have his mother's full lips and pass them on to a daughter. Randomly made men are born
+with a men's mouth, and the creator offers each person only the mouths that can be drawn for them. The smirk, the
+grin and the parted lips showing teeth (`lips_masc_01`, `_05`, `_08`) can be chosen but are never given at random.
 
 **Fitting hair.** The script also measures every hairstyle and head row by row and column by column (`edge` in the
 manifest): the inner edges of the hair either side of the face, its hairline, the outline of its crown, and the
