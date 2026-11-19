@@ -686,6 +686,12 @@ function leaderScore(who, cur) {
 export function assignPositions(g, reason = 'review') {
   const cur = current(g);
   const ids = cur.map((m) => m.who);
+  if (!ids.length) {
+    // Nobody is left in the line-up (the last member has gone): no positions, and the history says so once.
+    if (Object.keys(g.positions ?? {}).length) g.positionHistory.push({ year: year(), reason, positions: {}, maknae: null, leader: null });
+    g.positions = {}; g.leader = null;
+    return {};
+  }
   const S = Object.fromEntries(ids.map((w) => [w, skillsOf(w)]));
   const labels = Object.fromEntries(ids.map((w) => [w, []]));
   const cands = Object.fromEntries(ids.map((w) => [w, []]));
@@ -1336,6 +1342,7 @@ export function tickKpop() {
     // Korean men serve in the military, usually in their late twenties: a hiatus, not an ending.
     for (const m of current(g)) {
       const n = m.who === 'player' ? null : npc(m.who);
+      if (n && !n.flags?.idol) continue; // someone on the line-up who is not an idol of this world (an ancestor's record)
       if (n && n.gender === 'male' && n.bornIn === 'kr' && year() - n.flags.idol.born.year >= 28 && !n.flags.idol.served && !n.flags.idol.hiatus) { n.flags.idol.hiatus = { kind: 'service', since: year() }; g.history.push({ year: year(), text: `${n.firstName} ${n.lastName} began military service.` }); }
       if (n?.flags.idol.hiatus?.kind === 'service' && year() - n.flags.idol.hiatus.since >= 2) { n.flags.idol.hiatus = null; n.flags.idol.served = true; g.history.push({ year: year(), text: `${n.firstName} ${n.lastName} completed military service and returned.` }); }
       if (n && !n.flags.idol.hiatus && rng.chance(0.03)) { n.flags.idol.hiatus = { kind: rng.pick(['health', 'personal']), since: year() }; g.history.push({ year: year(), text: `${n.firstName} ${n.lastName} paused activities for ${n.flags.idol.hiatus.kind} reasons.` }); }
@@ -1406,7 +1413,16 @@ export function carryKpop(old, next, ancestorId) {
   const who = (x) => (x === 'player' ? ancestorId ?? 'ancestor' : x);
   const keep = new Set();
   for (const g of Object.values(k.groups)) {
-    for (const m of g.members) { m.who = who(m.who); keep.add(m.who); }
+    for (const m of g.members) {
+      // The life that ended leaves the line-up with it: the group goes on (or not) without them, the record keeps them.
+      if (m.who === 'player' && m.to == null) {
+        m.to = old.year; m.why = old.player.alive === false ? 'died' : 'left';
+        g.history.push({ year: old.year, text: `${old.player.firstName} ${old.player.lastName} ${m.why === 'died' ? 'died' : 'left the group'}.` });
+        if (g.leader === 'player') g.leader = null;
+        delete g.positions.player;
+      }
+      m.who = who(m.who); keep.add(m.who);
+    }
     const pos = {}; for (const [w, l] of Object.entries(g.positions)) pos[who(w)] = l; g.positions = pos;
     for (const h of g.positionHistory) { const q = {}; for (const [w, l] of Object.entries(h.positions)) q[who(w)] = l; h.positions = q; h.maknae = who(h.maknae); h.leader = who(h.leader); }
     g.leader = who(g.leader);
@@ -1414,7 +1430,7 @@ export function carryKpop(old, next, ancestorId) {
   }
   for (const r of Object.values(k.releases)) { r.performers = r.performers.map(who); r.credits.lyrics = r.credits.lyrics.map(who); if (r.solo) r.solo = who(r.solo); for (const s of r.songs) { if (!s.parts) continue; const q = {}; for (const [w, v] of Object.entries(s.parts)) q[who(w)] = v; s.parts = q; } }
   for (const x of Object.values(k.performances)) { x.members = x.members.map(who); x.fairy = who(x.fairy); x.highlight = who(x.highlight); }
-  for (const c of Object.values(k.contracts)) c.who = who(c.who);
+  for (const c of Object.values(k.contracts)) { if (c.who === 'player' && c.status === 'active') { c.status = 'ended'; c.ended = { year: old.year, how: old.player.alive === false ? 'died' : 'left' }; } c.who = who(c.who); }
   for (const pr of Object.values(k.programs)) { for (const c of pr.contestants) c.who = who(c.who); if (pr.final) pr.final = pr.final.map(who); }
   for (const pr of Object.values(k.projects)) pr.lineup = pr.lineup.map(who);
   for (const a of Object.values(k.agencies)) { if (a.dorm) a.dorm.residents = a.dorm.residents.filter((x) => x !== 'player'); for (const id of [...a.trainees, ...Object.values(a.staff)]) keep.add(id); }
@@ -1987,23 +2003,103 @@ export const spares = (f = fanOf()) => Object.entries(f?.cards ?? {}).filter(([i
  * Trades spare cards for one the fan wants: other fans take duplicates worth about as much. Now and then a trade by post
  * goes wrong: the cards sent never come back.
  */
+// ---------- Fellow fans: the people the player trades with ----------
+//   state.kpop.fans[groupId] = [npcId]   six fans of each group the player follows, made when first needed
+//   npc.flags.fan = { groupId, bias, cards:{ cardId: count }, honest, trades, burned }
+// They are people: each has a favorite member and a collection that grows each year. Most are honest. Someone who keeps
+// the player's cards is known for it afterward, and nobody trades with them again. Good trades make friends, and
+// friends give a slightly better deal.
+
+export const FANS_PER_GROUP = 6;
+/** The fans of a group the player can trade with, made the first time they are needed. */
+export function tradersOf(g) {
+  if (!g) return [];
+  const k = K();
+  k.fans ??= {};
+  const ids = (k.fans[g.id] ?? []).filter((id) => npc(id)?.flags?.fan && npc(id).alive !== false);
+  const p = player();
+  const albums = albumsOf(g);
+  const members = current(g).map((m) => m.who).filter((w) => w !== 'player');
+  const places = [p.countryId, p.countryId, ...Object.keys(g.fandom.regions ?? {}).filter((c) => COUNTRIES[c])];
+  while (ids.length < FANS_PER_GROUP && members.length) {
+    const n = makeNpc({ role: 'member', countryId: rng.pick(places), age: clamp(p.age + rng.int(-6, 10), 12, 60), relationship: rng.int(30, 50) });
+    n.flags.title = `A fan of ${g.name}`;
+    n.flags.fan = { groupId: g.id, bias: rng.pick(members), cards: {}, honest: rng.chance(0.85), trades: 0, burned: false };
+    for (const r of albums) for (let i = rng.int(2, 9); i > 0; i--) fanGets(n, `${r.id}|${rng.pick(r.performers)}|${rng.chance(0.03) ? 'r' : 'n'}`);
+    store.state.npcs[n.id] = n;
+    ids.push(n.id);
+  }
+  k.fans[g.id] = ids;
+  return ids.map(npc);
+}
+const fanGets = (n, id, by = 1) => { const c = n.flags.fan.cards; c[id] = (c[id] ?? 0) + by; if (c[id] <= 0) delete c[id]; };
+/** Whether a fan would part with one of their cards: never their favorite's last copy. */
+const canGive = (n, id) => (n.flags.fan.cards[id] ?? 0) > (cardParts(id).who === n.flags.fan.bias ? 1 : 0);
+/** What a fan would take for a card: the player's spares they want most (their favorite, then cards they lack). */
+function offerFor(n, id, f) {
+  const friend = f && player().npcIds.includes(n.id) && n.role === 'friend';
+  const want = cardValue(id) * (friend ? 0.85 : 1);
+  const wanted = (x) => (cardParts(x).who === n.flags.fan.bias ? 2 : 0) + (n.flags.fan.cards[x] ? 0 : 1);
+  const pool = spares(f).filter((x) => x !== id).sort((x, y) => wanted(y) - wanted(x) || cardValue(x) - cardValue(y));
+  const offer = [];
+  let sum = 0;
+  for (const x of pool) { if (sum >= want) break; offer.push(x); sum += cardValue(x); }
+  return sum >= want && offer.length ? offer : null;
+}
+/** Who would trade the player a card, and for what, without trading yet: { trader, offer } or { why }. */
+export function planTrade(id) {
+  const f = fanOf();
+  if (!f) return { why: 'You do not collect.' };
+  const c = cardParts(id);
+  if (!c.release) return { why: 'That card is not out there.' };
+  const g = group(c.release.groupId);
+  const have = tradersOf(g).filter((n) => !n.flags.fan.burned && canGive(n, id));
+  if (!have.length) return { why: `Nobody you trade with has ${full(c.who).split(' ')[0]}'s${c.rare ? ' rare' : ''} card to spare. Buy it, or wait: they buy albums too.` };
+  const ranked = have.sort((x, y) => y.meters.relationship - x.meters.relationship);
+  for (const n of ranked) { const offer = offerFor(n, id, f); if (offer) return { trader: n, offer }; }
+  return { why: `${ranked[0].firstName} has ${full(c.who).split(' ')[0]}'s card, but nothing you have spare is worth it to them. More duplicates, or buy it.` };
+}
+/** Trades spare cards for one the player wants, with a named fan. Most trades go well; a dishonest fan keeps the cards. */
 export function tradeFor(id) {
   const f = fanOf();
   if (!f) return result(false, 'You do not collect.', 'neutral');
-  const c = cardParts(id);
-  if (!c.release) return result(false, 'That card is not out there.', 'neutral');
   if (f.acts.trades >= TRADES_PER_YEAR) return result(false, `${TRADES_PER_YEAR} trades a year is plenty.`, 'neutral');
-  const want = cardValue(id) * rng.around(1, 0.15);
-  const offer = [];
-  let sum = 0;
-  for (const s2 of spares(f).filter((x) => x !== id)) { if (sum >= want) break; offer.push(s2); sum += cardValue(s2); }
-  if (sum < want) return result(false, `Nobody will give up ${full(c.who).split(' ')[0]}'s card for the spares you have. More duplicates, or buy it.`, 'neutral');
+  const plan = planTrade(id);
+  if (!plan.trader) return result(false, plan.why, 'neutral');
+  const { trader: n, offer } = plan;
+  const c = cardParts(id);
+  const nm = `${n.firstName} ${n.lastName}`;
   f.acts.trades += 1;
-  for (const s2 of offer) take(s2);
-  if (rng.chance(0.04)) { flog(`Sent ${offer.length} ${offer.length === 1 ? 'card' : 'cards'} in a trade; nothing came back.`); return result(false, 'You post your cards. Nothing comes back, and the account that offered the trade is gone.'); }
+  for (const x of offer) { take(x); fanGets(n, x); }
+  if (!n.flags.fan.honest && rng.chance(0.5)) {
+    n.flags.fan.burned = true;
+    n.meters.relationship = clamp(n.meters.relationship - 40);
+    flog(`Sent ${offer.length} ${offer.length === 1 ? 'card' : 'cards'} to ${nm}; nothing came back.`);
+    return result(false, `You post your cards to ${nm}. Nothing comes back, and they stop answering. Other fans know their name now; so do you.`);
+  }
+  fanGets(n, id, -1);
   give(id);
-  flog(`Traded ${offer.length} ${offer.length === 1 ? 'card' : 'cards'} for ${full(c.who)}'s${c.rare ? ' rare' : ''} card from ${c.release.title}.`);
-  return result(true, `Traded ${offer.map((x) => full(cardParts(x).who).split(' ')[0]).join(', ')} for ${full(c.who).split(' ')[0]}${c.rare ? ' (rare)' : ''}.`);
+  n.flags.fan.trades += 1;
+  n.meters.relationship = clamp(n.meters.relationship + 8);
+  n.lastInteractionAge = player().age;
+  let friends = '';
+  if (n.flags.fan.trades >= 3 && n.meters.relationship >= 50 && n.role !== 'friend') {
+    n.role = 'friend';
+    n.flags.title = `A friend from trading ${group(n.flags.fan.groupId)?.name ?? ''} cards`.trim();
+    if (!player().npcIds.includes(n.id)) player().npcIds.push(n.id);
+    flog(`Became friends with ${nm}, a fellow fan.`);
+    friends = ` You and ${n.firstName} have traded enough to be friends now.`;
+  }
+  flog(`Traded ${offer.length} ${offer.length === 1 ? 'card' : 'cards'} with ${nm} for ${full(c.who)}'s${c.rare ? ' rare' : ''} card from ${c.release.title}.`);
+  return result(true, `${nm} trades you ${full(c.who).split(' ')[0]}${c.rare ? ' (rare)' : ''} for ${offer.map((x) => full(cardParts(x).who).split(' ')[0]).join(', ')}.${friends}`);
+}
+/** The year for fellow fans: they buy albums too, so new spares turn up. */
+function tradersYear(f) {
+  const g = group(f.groupId);
+  if (!g || g.status !== 'active') return;
+  const r = albumsOf(g)[0];
+  if (!r) return;
+  for (const n of tradersOf(g)) for (let i = rng.int(1, 6); i > 0; i--) fanGets(n, `${r.id}|${rng.pick(r.performers)}|${rng.chance(0.03) ? 'r' : 'n'}`);
 }
 /** Buys one card outright from another fan, at the going price and a little more. */
 export function buyCard(id) {
@@ -2044,6 +2140,7 @@ function fanYear(p, lived, lines) {
   if (!f) return;
   const g = group(f.groupId);
   if (g?.debut) cardValues(g);
+  tradersYear(f);
   const spent = f.spent[lived] ?? 0;
   if (spent > local(400, p) && spent > 0.25 * (Math.max(0, p.finance.cash) + spent)) {
     p.stats.mood = clamp(p.stats.mood - 3);
@@ -2131,10 +2228,12 @@ export function takeVariety(offerId) {
   o.taken = true;
   const show = { id: `vs_${(K().seq += 1).toString(36)}`, name: o.name, format: o.format, role: o.role, from: year(), to: null, ratings: [], fee: o.fee, feeIn: Math.round(wageIn(o.fee, kr, COUNTRIES[p.countryId])) };
   v.shows.push(show);
+  castShow(show, p);
   if (o.role === 'host' && !v.shows.some((s) => s !== show && s.role === 'host')) milestone(`Became the main host of ${o.name}.`, 'fame');
   else if (v.shows.length === 1) milestone(`Joined ${o.name} as a ${role.name.toLowerCase().replace('dj', 'DJ')}.`, 'fame');
   note(`Joined ${o.name} (${VARIETY_FORMATS[o.format].name.toLowerCase()}) as ${role.name.toLowerCase().replace('dj', 'DJ')}.`);
-  return result(true, `You are ${o.role === 'host' ? 'the main host' : `a ${role.name.toLowerCase().replace('dj', 'DJ')}`} of ${o.name} from this year: ${fmtMoney(show.feeIn, COUNTRIES[p.countryId])} a year.`);
+  const with_ = show.cast.length ? ` With ${show.cast.map((c) => full(c.id)).join(', ')}.` : '';
+  return result(true, `You are ${o.role === 'host' ? 'the main host' : `a ${role.name.toLowerCase().replace('dj', 'DJ')}`} of ${o.name} from this year: ${fmtMoney(show.feeIn, COUNTRIES[p.countryId])} a year.${with_}`);
 }
 export function leaveVariety(showId) {
   const s = varietyOf().shows.find((x) => x.id === showId && !x.ended);
@@ -2150,7 +2249,8 @@ function varietyYear(p, lived, lines) {
   const score = varietyScore(p);
   let best = null;
   for (const s of v.shows.filter((x) => !x.ended && x.from <= lived)) {
-    const you = Math.round(clamp(score + rng.around(0, 10)));
+    const chem = castYear(s, p, lived, lines);
+    const you = Math.round(clamp(score + (chem - 50) / 5 + rng.around(0, 10)));
     const rating = Math.round(clamp(3 + (you - 45) / 6 + rng.around(0, 2.5), 0.5, 20) * 10) / 10;
     s.ratings.push({ year: lived, rating, you });
     s.due = lived;
@@ -2174,7 +2274,74 @@ function varietyYear(p, lived, lines) {
       lines.push(`At the ${VARIETY_AWARDS.name}, you win ${label} for ${best.s.name}.`);
     }
   }
+  // Best Couple: the pair whose chemistry carried a show that year, the player and a co-star.
+  if (lived >= VARIETY_AWARDS.from) {
+    const pairs = v.shows.filter((x) => (x.cast ?? []).length && x.ratings.some((r) => r.year === lived)).flatMap((x) => x.cast.filter((c) => c.until == null).map((c) => ({ x, c })));
+    const top = pairs.sort((a, b) => b.c.chem - a.c.chem)[0];
+    if (top && top.c.chem >= 82 && rng.chance(0.5)) {
+      v.awards.push({ year: lived, category: 'best_couple', show: top.x.name, with: top.c.id, award: VARIETY_AWARDS.name });
+      const n = npc(top.c.id);
+      if (n) n.meters.relationship = clamp(n.meters.relationship + 8);
+      milestone(`Won Best Couple at the ${VARIETY_AWARDS.name} with ${full(top.c.id)}, for ${top.x.name}.`, 'fame');
+      lines.push(`You and ${full(top.c.id)} win Best Couple at the ${VARIETY_AWARDS.name}, for ${top.x.name}.`);
+    }
+  }
 }
+
+// ---------- Co-stars: the people on a show with the player ----------
+//   show.cast = [{ id, kind, chem, from, until }]   chem: 0–100, how well the two of them play off each other on air
+// Co-stars are people: comedians, hosts and actors made for the show, and now and then an idol from another group.
+// Chemistry moves each year with how the player does on camera and with chance; it lifts or drags the player's year
+// on the show. Cast members come and go; everyone the player worked with stays among the people they know.
+
+export const COSTAR_KINDS = { comedian: 'Comedian', host: 'Host', actor: 'Actor', idol: 'Idol' };
+function newCostar(show, p) {
+  const k = K();
+  const others = Object.values(k.groups).filter((g) => g.npc && g.status === 'active' && g.debut).flatMap((g) => current(g).map((m) => m.who)).filter((w) => w !== 'player' && npc(w)?.flags?.idol && !(show.cast ?? []).some((c) => c.id === w));
+  if (others.length && rng.chance(0.3)) return { id: rng.pick(others), kind: 'idol' };
+  const kind = rng.pick(['comedian', 'comedian', 'host', 'actor']);
+  const n = makeNpc({ role: 'colleague', countryId: COUNTRIES.kr && rng.chance(0.8) ? 'kr' : p.countryId, age: rng.int(24, 58), relationship: rng.int(40, 55) });
+  n.occupation = COSTAR_KINDS[kind];
+  n.flags.title = `${COSTAR_KINDS[kind]}, ${show.name}`;
+  n.flags.costar = { kind };
+  store.state.npcs[n.id] = n;
+  return { id: n.id, kind };
+}
+function meet(id, p) { const n = npc(id); if (n && !p.npcIds.includes(id)) { p.npcIds.push(id); n.lastInteractionAge = p.age; } }
+/** Fills a show's cast when the player joins: three to five people they will work with every week. */
+function castShow(show, p) {
+  show.cast = [];
+  for (let i = rng.int(3, 5); i > 0; i--) {
+    const c = newCostar(show, p);
+    show.cast.push({ ...c, chem: rng.int(40, 62), from: year(), until: null });
+    meet(c.id, p);
+  }
+}
+/** The year with the cast: chemistry moves, someone may leave and someone new arrives. Returns the average chemistry. */
+function castYear(show, p, lived, lines) {
+  show.cast ??= [];
+  if (!show.cast.length) castShow(show, p);
+  const now = show.cast.filter((c) => c.until == null);
+  const s = skillsOf();
+  for (const c of now) {
+    const n = npc(c.id);
+    if (!n || n.alive === false) { c.until = lived; continue; }
+    c.chem = Math.round(clamp(c.chem + (s.media - 50) / 12 + ((p.stats.charm ?? 50) - 50) / 15 + rng.around(1, 7)));
+    n.meters.relationship = clamp(n.meters.relationship + (c.chem >= 65 ? 3 : c.chem < 35 ? -3 : 1));
+  }
+  // Someone moves on; a new face replaces them.
+  const leaving = now.filter((c) => c.until == null && rng.chance(0.12));
+  for (const c of leaving) {
+    c.until = lived;
+    lines.push(`${full(c.id)} has left ${show.name}.`);
+    const nc = newCostar(show, p);
+    show.cast.push({ ...nc, chem: rng.int(40, 60), from: year(), until: null });
+    meet(nc.id, p);
+  }
+  const live = show.cast.filter((c) => c.until == null);
+  return live.length ? live.reduce((t, c) => t + c.chem, 0) / live.length : 50;
+}
+export const chemWord = (v) => (v >= 80 ? 'Wonderful together' : v >= 65 ? 'Good chemistry' : v >= 45 ? 'Getting along' : v >= 30 ? 'A little awkward' : 'They clash on air');
 /** The player's title in variety, for the screen and the record. */
 export function varietyTitle(p = player()) {
   const v = p.idol?.variety;

@@ -251,6 +251,9 @@ section('the full year: job, savings, a friend, a hobby and sport, a pet, therap
   mo.traditions().push({ id: 'trad_test', occasion: 'family_reunion', holiday: null, name: 'A summer trip together', status: 'active', founded: store.state.year, founder: { id: p0.id, name: p0.firstName }, hostId: 'you', participants: ['you', ...p0.npcIds.filter((id) => ['child', 'partner', 'sibling'].includes(store.state.npcs[id]?.role))], count: 0, history: [] });
   const startYear = store.state.year;
   const archive = [];
+  // Each generation lives its eight years and then dies on cue: no early illness or accident cuts the line short.
+  const { deathRoll } = await import('../js/engine/death.js');
+  deathRoll.spared = true;
   let generation = 1;
   for (let g = 0; g < 3; g++) {
     const p = store.state.player;
@@ -274,6 +277,7 @@ section('the full year: job, savings, a friend, a hobby and sport, a pet, therap
     np.age = Math.max(np.age, 25); np.flags.livesWithParents = false;
     const sp = makeNpc({ role: 'spouse', countryId: np.countryId, age: np.age, relationship: 80 }); next.npcs[sp.id] = sp; np.npcIds.push(sp.id);
   }
+  deathRoll.spared = false;
   check(generation >= 3, `three generations lived (${generation})`);
   check(store.state.year >= startYear + 16, 'the world year moved on continuously');
   const back = roundTrip();
