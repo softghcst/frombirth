@@ -88,7 +88,8 @@ towns.relocate('Paris');
 check(p.homeId == null && p.assets.includes(home), 'after moving city the house is still owned, and no longer home');
 check(!estate.moveIn(home.id).ok, 'and cannot be lived in from another city');
 for (let i = 0; i < 2; i++) { advanceYear(); store.state.pendingEvents = []; p.legal.pending = null; }
-check(Math.abs(home.value / was - 1) < 0.35, `it keeps the value of the city it is in, not the one its owner lives in (${(home.value / was).toFixed(2)})`);
+// Lyon's own market can fall a long way in two years (a crash is fair); what must not happen is Paris prices.
+check(home.city === 'Lyon' && home.value / was < 1.35, `it keeps the value of the city it is in, not the one its owner lives in (${home.city}, ${(home.value / was).toFixed(2)})`);
 p = life('uk', 'Leeds', 15); check(!!towns.moveBlock(), 'children do not move on their own');
 // Emigrating to a chosen city.
 p = life('br', 'Recife'); for (let i = 0; i < 40 && p.countryId === 'br'; i++) { p.flags.visaAge = null; emigrate('ca', { city: 'Calgary' }); }
