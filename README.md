@@ -27,6 +27,14 @@ what CI runs on every pull request, `.github/workflows/tests.yml`):
 node scripts/test-all.mjs            # every check; add a word to run only the files whose names contain it
 ```
 
+The checks play the same lives every run: outside a browser the dice are pinned (`js/rng.js`), so a new life carries on
+the seeded sequence instead of drawing a fresh seed from the clock, and a failure can be played again exactly. To roll
+fresh dice each run instead, and shake out checks that only pass for some lives:
+
+```bash
+PATHWAYS_RANDOM=1 node scripts/test-all.mjs
+```
+
 `node scripts/stress/fame-lives.mjs 60` plays sixty idol, fan and athlete lives and checks money, fame, fandoms, card
 prices, positions and saves after every year (each life is reproducible from its seed).
 

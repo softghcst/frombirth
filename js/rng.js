@@ -2,7 +2,15 @@
 // reloaded game continues the same sequence of rolls.
 let s = 1;
 
+/**
+ * Outside a browser (the checks in tests/, the balance and stress scripts) the dice are pinned: a new life carries on
+ * the sequence that was seeded instead of drawing a fresh seed from the clock, so every run comes out the same and a
+ * failure can be played again. PATHWAYS_RANDOM=1 unpins them. In the game, every new life starts from a fresh seed.
+ */
+const PINNED = typeof window === 'undefined' && !globalThis.process?.env?.PATHWAYS_RANDOM;
+
 export const rng = {
+  pinned: PINNED,
   seed(n) { s = (n >>> 0) || 1; },
   state() { return s; },
   /** @returns {number} float in [0, 1) */
