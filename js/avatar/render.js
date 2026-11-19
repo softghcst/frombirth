@@ -30,10 +30,9 @@ export const mix = mixHex;
  */
 export function avatarSvg(o) {
   const seed = String(o.seed ?? 'x');
-  const look = resolveLook(o.appearance, seed, o.gender);
   const age = o.age ?? 25;
   // Lipstick is a grown-up's choice: children's lips stay their natural color.
-  if (age < 13) look.colors.lip = mixHex(look.colors.skin, '#b8444f', 0.4);
+  const look = resolveLook(o.appearance, seed, o.gender, { child: age < 13 });
   return characterAvatarSvg(look, { age, gender: o.gender, mood: o.mood, jailed: o.jailed, royal: o.royal, career: o.career, emotion: o.emotion, label: o.label },
     { size: o.size, viewBox: o.viewBox });
 }

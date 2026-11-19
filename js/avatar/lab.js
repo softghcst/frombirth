@@ -1,7 +1,7 @@
 // The avatar lab (avatar-lab.html): a page for working on avatar artwork
 // outside the game. It shows the live editor, a family whose children are
 // generated from two parents, and every part in the catalog with its id.
-import { CATALOG, normalize, part } from './catalog.js';
+import { CATALOG, normalize, part, DEPTH } from './catalog.js';
 import { avatarSvg } from './render.js';
 import { mountAppearanceEditor } from './editor.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from './inherit.js';
@@ -19,8 +19,8 @@ $('#editor-json').addEventListener('click', () => { $('#json').textContent = JSO
 // ---------- 2. A family ----------
 /** Two parents who look as unlike each other as the catalog allows, one with dyed hair. */
 function newFamily() {
-  const mother = randomAppearance(rng.int(0, 3), 'female');
-  const father = randomAppearance(rng.int(7, 11), 'male');
+  const mother = randomAppearance(rng.int(DEPTH.porcelain, DEPTH.sand), 'female');
+  const father = randomAppearance(rng.int(DEPTH.bronze, DEPTH.espresso), 'male');
   for (const key of ['head', 'eyes', 'brows', 'nose', 'lips']) {
     while (father.inherited[key] === mother.inherited[key]) father.inherited[key] = rng.pick(CATALOG[key]).id;
   }
