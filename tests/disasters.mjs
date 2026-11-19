@@ -103,7 +103,9 @@ const life = (countryId, city) => { for (;;) { store.state = createLife({ countr
     const none = run(null); const ready = run('ready'); const gone = run('evacuated');
     check(none.dice && ready.dice && gone.dice, 'what a disaster does is settled without the game\'s dice');
     check(ready.condition >= none.condition, `preparing never makes the damage worse (${none.condition} → ${ready.condition})`);
-    check(!gone.hurt, 'nobody who left in time is hurt');
+    // The hurricane's own line (a heatwave the same year can still wear on health).
+    const own = gone.line.slice(gone.line.indexOf(e.name));
+    check(/You had left in time/.test(own) && !/You were hurt/.test(own.split(/In [A-Z][a-z]+, /)[0]), `nobody who left in time is hurt by it (${own.slice(0, 120)})`);
     check(new RegExp(e.name).test(none.line) && /In [A-Z][a-z]+, Hurricane/.test(none.line), `the life story names the hurricane and the month (${none.line.slice(0, 80)})`);
     // The aftermath is about the worst thing that year: the hurricane, or a flood or tornado that was worse.
     const after = none.scene ? renderText(EVENT_BY_ID.disaster_aftermath.text, none.scene.cast) : '';
@@ -166,6 +168,47 @@ const life = (countryId, city) => { for (;;) { store.state = createLife({ countr
   for (let i = 0; i < 40 && P().alive; i++) { turns.advanceTurn(); f12 += S().pendingEvents.filter((x) => x.id === 'disaster_forecast').length; S().pendingEvents = []; }
   check(f12 === 0, 'with year-long turns there are no forecasts');
   section('shorter turns: forecasts a turn ahead, the choice kept; told as they strike', n);
+}
+
+// 6. Found in review, kept fixed.
+{
+  const n = problems.length;
+  // No aftermath scene for small children; no forecast for children (their family gets ready), only for adults.
+  let small = 0; let kidForecasts = 0; const seenPrep = new Set();
+  for (let t = 0; t < 6; t++) {
+    life('us', 'Orlando'); turns.setStep(3);
+    for (let i = 0; i < 4 * 17 && P().alive; i++) {
+      turns.advanceTurn();
+      for (const pe of S().pendingEvents) { if (pe.id === 'disaster_aftermath' && P().age < 8) small++; if (pe.id === 'disaster_forecast' && P().age < 18) kidForecasts++; }
+      S().pendingEvents = [];
+      // Preparations are cleared once their year is settled: counted as they are made.
+      for (const [id, how] of Object.entries(S().disasters?.prep ?? {})) if (how === 'ready' && P().age < 18) seenPrep.add(id);
+    }
+  }
+  check(small === 0, `no aftermath scene for small children (${small})`);
+  check(kidForecasts === 0 && seenPrep.size > 0, `children get no forecast to answer; their family gets ready (${kidForecasts}, ${seenPrep.size})`);
+  // A What if? timeline and an heir live in the same world: the same weather.
+  life('us', 'Orlando');
+  const { forkGame } = await import('../js/save.js');
+  const before = JSON.stringify(dis.weatherOf('us', S().year + 3));
+  const r = forkGame(S(), 'test');
+  const { loadGame } = await import('../js/save.js');
+  const copy = loadGame(r.slotId);
+  check(copy && copy.slotId !== S().slotId && JSON.stringify(dis.weatherOf('us', S().year + 3, copy)) === before, 'a What if? timeline has the same weather as the life it came from');
+  // News of a named storm reads well.
+  let named = null;
+  for (let y = 2000; y < 2400 && !named; y++) named = dis.weatherOf('ph', y, { slotId: 'news' }).find((e) => e.name && e.severity === 2);
+  if (named) {
+    S().year = named.year + 1; S().worldId = 'news';
+    dis.tickDisasters();
+    const line = (S().world?.news ?? []).find((x) => x.text.includes(named.name))?.text ?? '';
+    check(line && !/a catastrophic [A-Z]/.test(line), `named storms read well in the news (${line.slice(0, 80)})`);
+  }
+  // A move partway through a year does not rewrite the year: it is reckoned where it began.
+  life('us', 'Orlando'); turns.setStep(12);
+  for (let i = 0; i < 3; i++) { turns.advanceTurn(); S().pendingEvents = []; }
+  check(S().disasters?.home?.countryId === 'us' && S().disasters.home.year === S().year, 'where each year began is kept for its reckoning');
+  section('review fixes: no aftermath for small children; families prepare for children; forks share the weather; news grammar; the year reckoned where it began', n);
 }
 
 for (const m of ok) console.log(`ok   ${m}`);

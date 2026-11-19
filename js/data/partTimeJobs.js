@@ -1,6 +1,6 @@
 // Part-time jobs for teenagers, students and anyone wanting a few hours a
 // week. pay is base units a year at the hours given; hours is a week's shifts.
-//   campus: needs current enrolment at a university or college (reviewed when the course ends)
+//   campus: needs current enrollment at a university or college (reviewed when the course ends)
 //   next:   the career track this work can lead into, if the employer likes you
 //   minAge is the job's own floor; the country's working-age law (data/workLaw.js) applies on top.
 const J = (id, title, place, pay, hours, minAge, hire, o = {}) => ({ id, title, place, pay, hours, minAge, hire, ...o });
@@ -22,7 +22,7 @@ export const PART_TIME_JOBS = [
   J('golf_pt', 'Golf shop assistant', 'the golf club', 3800, 10, 15, easy(0.4, 0.2), { next: 'golf_course' }),
   J('office_pt', 'Office assistant', 'a small accountancy firm', 5000, 14, 16, { base: 0.6, factors: { 'hidden.discipline': 0.5 } }, { next: 'admin_support' }),
   J('hotel_pt', 'Hotel front-desk clerk', 'a hotel in the center', 4800, 14, 17, easy(0.5, 0.2), { next: 'hotel' }),
-  J('tester_pt', 'Video game tester', 'a games studio', 4600, 12, 16, { base: 0.5, factors: { 'stats.intellect': 0.5, 'hidden.discipline': 0.3 } }, { next: 'qa' }),
+  J('tester_pt', 'Video game tester', 'a games studio', 4600, 12, 16, { base: 0.5, factors: { 'stats.intellect': 0.5, 'hidden.discipline': 0.3 } }, { next: 'qa', from: 1980 }),
   J('delivery_pt', 'Delivery rider', 'a food delivery app', 4400, 12, 18, { base: 0.85, factors: { 'stats.health': 0.2 } }, { next: 'driver' }),
   J('tutor_pt', 'Tutor', 'a tutoring agency', 5200, 8, 16, { base: 0.45, factors: { 'stats.intellect': 0.7 } }, { req: { 'stats.intellect': 60 } }),
   J('camp_pt', 'Camp counselor', 'a summer camp', 3000, 10, 16, easy(0.5, 0.3), { next: 'recreation' }),

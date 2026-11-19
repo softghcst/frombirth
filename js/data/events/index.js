@@ -28,6 +28,7 @@ import paper from './stories/paper.js';
 import schoolLife from './schoolLife.js';
 import campusLife from './campusLife.js';
 import parenting from './parenting.js';
+import healthScenes from './health.js';
 import finance from './finance.js';
 import moments from './moments.js';
 import animals from './animals.js';
@@ -36,7 +37,11 @@ import seasons from './seasons.js';
 import disasters from './disasters.js';
 import career from './career.js';
 import justice from './justice.js';
+import abroadArcs from './abroadArcs.js';
+import digital from './stories/digital.js';
+import eras from './stories/eras.js';
+import decades from './stories/decades.js';
 
 /** @type {import('../../types.js').GameEvent[]} */
-export const EVENTS = [...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...sports, ...seasons, ...disasters, ...justice];
+export const EVENTS = [...moments, ...finance, ...childhood, ...school, ...teen, ...adult, ...elder, ...friends, ...work, ...romance, ...family, ...familyLives, ...money, ...prison, ...leisure, ...early, ...everyday, ...identity, ...countryScenes, ...royal, ...politics, ...court, ...royalLife, ...reign, ...household, ...musical, ...mentors, ...paper, ...schoolLife, ...campusLife, ...parenting, ...career, ...animals, ...justice, ...abroadArcs, ...digital, ...eras, ...decades, ...healthScenes, ...sports, ...seasons, ...disasters];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));

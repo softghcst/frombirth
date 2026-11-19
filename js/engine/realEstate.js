@@ -1,5 +1,6 @@
 // Property: what is for sale, mortgages, living in it, renovating, letting to
 // tenants, selling, and the yearly upkeep, wear and repayments.
+import { rememberHome } from './chronicle.js';
 import { housingK } from './cities.js';
 import { rng } from '../rng.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -212,6 +213,7 @@ export function renovate(id) {
   if (p.finance.cash < cost) return result(false, 'You cannot afford the builders.', 'neutral');
   p.finance.cash -= cost;
   a.condition = clamp(a.condition + 35);
+  a.renovatedYear = store.state.year; // a real renovation, which a post can point at (engine/digital/content.js)
   a.quality *= 1.03;
   a.value = worth(a.catalogId, a.quality, a.condition, a.city ?? undefined, a.countryId ?? undefined);
   const text = `You spent ${fmtMoney(cost, country())} renovating the ${lower(a.name)}. It is now worth ${fmtMoney(a.value, country())}.`;
@@ -334,6 +336,7 @@ export function sellProperty(id) {
   if (!away) p.finance.cash += raised;
   const gain = a.value - a.purchasePrice;
   const wasHome = p.homeId === id;
+  rememberHome(a);
   remove(a);
   const text = `You sold the ${lower(a.name)} for ${fmtMoney(a.value, c)}, ${gain >= 0 ? `${fmtMoney(gain, c)} more` : `${fmtMoney(-gain, c)} less`} than you paid. After fees${a.mortgage ? ' and the mortgage' : ''} you kept ${fmtMoney(raised, c)}.${wasHome ? ' You are renting again.' : ''}`;
   const text2 = away ? `${text} It was paid in ${away}: ${fmt(paid, away)} is in your ${away} account.` : text;

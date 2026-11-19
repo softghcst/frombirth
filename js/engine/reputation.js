@@ -7,8 +7,8 @@
 //   family   how the family regards the player: duty done, wishes respected
 //   press    how the newspapers treat them: warm, wary or hostile
 //   stories  what is being talked about now: [{ label, truth, heat, year }]
-//              truth  whether it actually happened (a rumour is not a fact,
-//                     and denying a rumour works where denying the truth may not)
+//              truth  whether it actually happened (a rumor is not a fact,
+//                     and denying a rumor works where denying the truth may not)
 //              heat   how loud it still is; it fades each year
 //   why      the last few changes, newest last: [{ year, what, delta, text }]
 import { clamp } from '../util.js';
@@ -101,10 +101,10 @@ export function tickReputation(dutiesDone) {
   for (const s of r.stories) { noise += s.heat; s.heat = Math.round(s.heat * 0.55 - 2); }
   r.stories = r.stories.filter((s) => s.heat > 4);
   if (noise >= 40) { shift('image', -Math.min(8, Math.round(noise / 14)), 'a story that would not go away'); shift('press', -4, 'a story that would not go away'); }
-  // Left alone, each drifts back towards the middle.
+  // Left alone, each drifts back toward the middle.
   r.family = Math.round(r.family + (58 - r.family) * 0.06);
   r.press = Math.round(r.press + (55 - r.press) * 0.1);
-  // A hostile press colours everything; a friendly one helps a little.
+  // A hostile press colors everything; a friendly one helps a little.
   if (r.press < 30) shift('image', -2, 'a hostile press');
   else if (r.press >= 75) shift('image', 1, 'a friendly press');
   // A family that has closed ranks makes itself felt.

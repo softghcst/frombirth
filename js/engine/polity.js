@@ -7,7 +7,7 @@
 //     govt: { lead, partners, headId, since, kind }, calendar: { general, term, local },
 //     policies: { lever: level }, budget, laws: [{ year, text, lever, by }],
 //     elections: [record], approval, seq }
-// A party:   { id, kind, name, colour, positions, says, leaderId, deputyId, founded, record }
+// A party:   { id, kind, name, color, positions, says, leaderId, deputyId, founded, record }
 //   record   how voters judge its time in office lately, about -15..15
 // A figure:  a politician, who persists: { id, name, gender, born, died, partyId, look,
 //              t: { ambition, integrity, charisma }, post, history: [{ year, text }] }
@@ -52,9 +52,9 @@ export const party = (w, id) => w.parties.find((p) => p.id === id) ?? null;
 export const figure = (w, id) => w.figures[id] ?? null;
 const head = (w) => w.figures[w.govt.headId] ?? null;
 /** "the National Union", "the Greens": a party's name as it reads in a sentence. */
-export const the = (p) => (/^The /.test(p.name) ? `the ${p.name.slice(4)}` : /(Party|Union|Alliance|League|Front|Movement|Centre|Center|Democrats)$/.test(p.name) ? `the ${p.name}` : p.name);
+export const the = (p) => (/^The /.test(p.name) ? `the ${p.name.slice(4)}` : /(Party|Union|Alliance|League|Front|Movement|Center|Center|Democrats)$/.test(p.name) ? `the ${p.name}` : p.name);
 
-/** Whether the count here leans towards those already in power. */
+/** Whether the count here leans toward those already in power. */
 export const rigged = (countryId) => !!SYSTEMS[countryId]?.rigged;
 /** What the head of government is called here. */
 export const headTitle = (countryId) => SYSTEMS[countryId]?.head ?? (MONARCHIES[countryId] ? 'Chief Minister' : 'Head of Government');
@@ -90,7 +90,7 @@ function build(countryId) {
   for (const k of kinds) {
     const name = rng.pick(k.names.filter((n) => !taken.has(n)).length ? k.names.filter((n) => !taken.has(n)) : k.names);
     taken.add(name);
-    const p = { id: `p${w.parties.length + 1}`, kind: k.kind, name, colour: k.colour, says: k.says, founded: year - rng.int(12, 140), record: 0,
+    const p = { id: `p${w.parties.length + 1}`, kind: k.kind, name, color: k.color, says: k.says, founded: year - rng.int(12, 140), record: 0,
       // No two parties of a kind are quite alike.
       positions: Object.fromEntries(Object.entries(k.positions).map(([i, v]) => [i, clamp(Math.round((v + noise(0.5)) * 2) / 2, -2, 2)])) };
     w.parties.push(p);
@@ -133,7 +133,7 @@ export function partyField(w, year = yearNow(), mood = 0, boosts = {}) {
     // Governments are judged on how things are going, and wear out their welcome the longer they stay.
     if (inPower.has(p.id)) appeal += (w.approval - 50) / 3 - Math.min(14, (year - (w.govt.leadSince ?? year)) * 0.9);
     if (mood) appeal += noise(mood);
-    if (sys.rigged && p.id === w.govt.lead) appeal += 14; // the count leans towards those already in power
+    if (sys.rigged && p.id === w.govt.lead) appeal += 14; // the count leans toward those already in power
     appeal += boosts[p.id] ?? p.boost ?? 0; // a player's campaign for this party
     return { id: p.id, positions: p.positions, appeal };
   });
@@ -520,6 +520,8 @@ export function mayVote(countryId = store.state.player.countryId) {
   const kind = kindOf(countryId);
   if (kind !== 'presidential' && kind !== 'parliamentary') return 'No votes are cast here.';
   if (p.age < rule('votingAge', countryId)) return `You are too young to vote: the voting age here is ${rule('votingAge', countryId)}.`;
+  // Historical Eras: before women won the vote, they could not cast one.
+  if ((p.flags?.trueGender ?? p.gender) === 'female' && !rule('womenVote', countryId)) return 'Women cannot vote here yet.';
   if (p.legal?.incarceration) return 'Prisoners cannot vote here.';
   if (!held(p).includes(issuer(countryId))) return 'You are not a citizen here, and cannot vote. You can apply for citizenship from your passport.';
   return '';

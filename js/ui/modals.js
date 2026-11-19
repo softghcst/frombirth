@@ -53,11 +53,11 @@ function nameDialog(card) {
 /** Shows a scenario and resolves with the index of the chosen option. */
 export function eventModal(ev, cast, opts = {}) {
   return new Promise((resolve) => {
-    const choices = choiceStates(ev, cast).map((c, i) => `
+    const choices = choiceStates(ev, cast).map((c, i) => (c.hidden ? '' : `
       <button class="choice-btn" data-i="${i}" ${c.enabled ? '' : 'disabled'}>
         ${esc(renderText(c.label, cast))}
         ${c.enabled ? '' : '<small>Not available to you right now</small>'}
-      </button>`).join('');
+      </button>`)).join('');
     const m = openModal(`
       <div class="eyebrow">${esc(ev.category)}</div>
       <p class="scene">${esc(renderText(ev.text, cast))}</p>
@@ -124,7 +124,7 @@ export function confirmModal({ title, body, yes = 'Confirm', no = 'Cancel', dang
 }
 
 /**
- * A list of options to pick from. Resolves with the chosen value, or null if cancelled.
+ * A list of options to pick from. Resolves with the chosen value, or null if canceled.
  * @param {{title:string, body?:string, cancel?:string,
  *          options:{value:any, label:string, sub?:string, disabled?:boolean}[]}} o
  */
@@ -150,7 +150,7 @@ export function pickModal({ title, body, options, cancel = 'Cancel' }) {
 }
 
 /**
- * Asks for a short piece of text. Resolves the trimmed text, or null if cancelled.
+ * Asks for a short piece of text. Resolves the trimmed text, or null if canceled.
  * @param {{title:string, label:string, value?:string, maxLength?:number}} o
  */
 export function inputModal({ title, label, value = '', maxLength = 24 }) {

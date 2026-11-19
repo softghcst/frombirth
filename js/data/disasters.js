@@ -111,7 +111,7 @@ export const AFTERMATH = {
   flood: 'The water has gone down, leaving a line of mud on every wall in the street and a smell that will not shift.',
   quake: 'The aftershocks have mostly stopped. Cracked walls, taped windows, and people still sleeping in cars, just in case.',
   fire: 'The fire is out. The hills are black, and the town smells of smoke for weeks.',
-  cold: 'The snow has melted into grey heaps. Burst pipes, cars still stuck, and a lot of people who could not get to work.',
+  cold: 'The snow has melted into gray heaps. Burst pipes, cars still stuck, and a lot of people who could not get to work.',
   heat: 'The heat has broken at last. The hospitals say the old and the lonely suffered most.',
   dust: 'The dust has settled on everything: cars, windowsills, the inside of every cupboard. The clinics are full of coughs.',
   dry: 'Still no proper rain. Water comes on a few hours a day, and the fields outside town are dust.',

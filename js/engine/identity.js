@@ -264,7 +264,7 @@ export function haveSurgery(which) {
   if (rng.chance(0.06)) {
     p.stats.health = clamp(p.stats.health - rng.int(6, 14));
     addCondition('flu');
-    text += ' There was an infection afterwards, and a slow few months.';
+    text += ' There was an infection afterward, and a slow few months.';
   }
   log(text, 'system', 'good');
   milestone(`Had ${s.name.toLowerCase()}.`, 'life');
@@ -315,7 +315,7 @@ export function tickIdentity() {
   const id = ident();
   const c = country();
   informNewcomers();
-  if (p.flags.trueGender && !id.knows && p.age >= (p.flags.realiseAge ?? 8)) {
+  if (p.flags.trueGender && !id.knows && p.age >= (p.flags.realizeAge ?? 8)) {
     id.knows = true;
     log(`For as long as you can remember, something has not fitted, and now you have the words for it: you are ${genderName(p.flags.trueGender)}. Nobody else knows yet. When you are ready, it is under Self, then Identity.`, 'system', 'neutral');
   }

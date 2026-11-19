@@ -24,6 +24,10 @@ import { post as postNews, ties } from './economy.js';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const ensure = (state) => (state.disasters ??= { prep: {}, told: {}, warned: {} });
+/** The world a life is in: the same for its What if? timelines and for the generations after it (save.js, legacy.js). */
+const worldOf = (state) => state?.worldId ?? state?.timeline?.root ?? state?.slotId ?? 'world';
+/** Where the player is, or was at the start of a year (D.home, kept at each turn of the year). */
+const placeNow = (state) => ({ countryId: state.player.countryId, city: state.player.city });
 
 // ---------- Where, and what ----------
 
@@ -43,7 +47,7 @@ export function hazardsAt(countryId, city) {
  * from the playthrough, the country and the year, so it is the same every time it is asked.
  */
 export function weatherOf(countryId, year, state = store.state) {
-  const slot = state?.slotId ?? 'world';
+  const slot = worldOf(state);
   const climate = climateOf(countryId);
   const out = [];
   for (const kind of kindsOf(countryId)) {
@@ -74,10 +78,13 @@ export function weatherOf(countryId, year, state = store.state) {
 }
 
 /** Whether a disaster reached the player's city: one their city can have, and near enough. The same answer every time. */
-export function reaches(e, state = store.state) {
-  const p = state.player;
-  if (e.countryId !== p.countryId || !hazardsAt(p.countryId, p.city).includes(e.kind)) return false;
-  return seeded(`reach/${state.slotId}/${e.id}/${p.city}`).chance([0.35, 0.65, 0.9][e.severity]);
+export function reaches(e, state = store.state, place = placeNow(state)) {
+  if (e.countryId !== place.countryId || !hazardsAt(place.countryId, place.city).includes(e.kind)) return false;
+  return seeded(`reach/${worldOf(state)}/${e.id}/${place.city}`).chance([0.35, 0.65, 0.9][e.severity]);
+}
+/** Notes where the player starts a year, for that year's reckoning: a move partway through it does not rewrite it. */
+export function markHome(state = store.state) {
+  ensure(state).home = { year: state.year, ...placeNow(state) };
 }
 
 const an = (w) => (/^[aeiou]/i.test(w) ? 'an' : 'a');
@@ -110,9 +117,13 @@ export function tickDisasters(state = store.state) {
   if (!p.alive) return;
   const D = ensure(state);
   const year = state.year - 1;
-  const c = COUNTRIES[p.countryId];
-  const here = weatherOf(p.countryId, year, state);
-  const felt = here.filter((e) => reaches(e, state)).sort((a, b) => b.severity - a.severity).slice(0, 2).sort((a, b) => a.month - b.month);
+  // The year is reckoned where it was lived: where the player was when it began.
+  const place = D.home?.year === year ? { countryId: D.home.countryId, city: D.home.city } : placeNow(state);
+  const c = COUNTRIES[place.countryId];
+  const here = weatherOf(place.countryId, year, state);
+  const reached = here.filter((e) => reaches(e, state, place));
+  // At most two are felt in person, the worst; all that reached the player are theirs, not news from elsewhere.
+  const felt = reached.slice().sort((a, b) => b.severity - a.severity).slice(0, 2).sort((a, b) => a.month - b.month);
   let worst = null;
   if (!p.legal?.incarceration) {
     for (const e of felt) {
@@ -124,14 +135,14 @@ export function tickDisasters(state = store.state) {
     }
   }
   // Big ones elsewhere in the country are the country's news.
-  for (const e of here.filter((x) => !felt.includes(x) && x.severity >= 1)) {
-    postNews(p.countryId, 'disaster', `${Kind(e)} struck elsewhere in ${theCountry(c.name)} in ${MONTHS[e.month]}${e.severity === 2 ? ': a national disaster, with thousands homeless' : ''}.`, 'bad');
+  for (const e of here.filter((x) => !reached.includes(x) && x.severity >= 1)) {
+    postNews(place.countryId, 'disaster', `${Kind(e)} struck elsewhere in ${theCountry(c.name)} in ${MONTHS[e.month]}${e.severity === 2 ? ': a national disaster, with thousands homeless' : ''}.`, 'bad');
   }
   // And big ones around the world are the world's. The player hears of those where they have ties.
   const mine = ties(p);
   let far = null;
   for (const id of Object.keys(COUNTRIES)) {
-    if (id === p.countryId) continue;
+    if (id === place.countryId) continue;
     for (const e of weatherOf(id, year, state)) {
       if (e.severity < 1) continue;
       const tied = mine.has(id);
@@ -145,7 +156,7 @@ export function tickDisasters(state = store.state) {
     }
   }
   const waiting = new Set(state.pendingEvents.map((x) => x.id));
-  if (worst && !waiting.has('disaster_aftermath')) state.pendingEvents.push({ id: 'disaster_aftermath', cast: { words: { after: AFTERMATH[AFTER_OF[worst.kind]].replace('{what}', what(worst)), what: what(worst) } } });
+  if (worst && p.age >= 8 && !waiting.has('disaster_aftermath')) state.pendingEvents.push({ id: 'disaster_aftermath', cast: { words: { after: AFTERMATH[AFTER_OF[worst.kind]].replace('{what}', what(worst)), what: what(worst) } } });
   if (far && p.age >= 12 && !waiting.has('disaster_far_away')) {
     state.pendingEvents.push({ id: 'disaster_far_away', cast: { person: far.someone.id, words: { kind: KINDS[far.e.kind].name, what: what(far.e), where: theCountry(COUNTRIES[far.e.countryId].name) } } });
   }
@@ -156,6 +167,7 @@ export function tickDisasters(state = store.state) {
 function newsLine(e) {
   const where = theCountry(COUNTRIES[e.countryId].name);
   const kind = e.name ?? KINDS[e.kind].name;
+  if (e.name && e.severity === 2) return `Disaster in ${where}: ${e.name}, one of the worst on record. Aid is on its way from around the world.`;
   return NEWS[e.severity].replace('{Kind}', cap(kind)).replace('{kind}', kind).replace('{where}', where);
 }
 
@@ -214,9 +226,10 @@ function wealthOf(state) {
  * the months just lived are told as they happened, and those that can be seen coming in the months ahead bring a
  * forecast (a scene: prepare, leave, or wait). Nothing here changes the year's reckoning except the player's choice.
  * @param {number} end   the month the turn just played ended at (12 for the turn of the year)
- * @param {number} step  the turn length, in months
+ * @param {number} step  the turn length just played, in months
+ * @param {number} [ahead]  the next turn's length (different at a turn of the year when the setting changes); 12: no forecasts
  */
-export function disastersBetween(state, end, step) {
+export function disastersBetween(state, end, step, ahead = step) {
   const p = state.player;
   if (!p.alive || p.legal?.incarceration) return;
   const D = ensure(state);
@@ -228,12 +241,16 @@ export function disastersBetween(state, end, step) {
     say(state, strikeText(e), e.severity ? 'bad' : 'neutral');
   }
   // What is coming: storms, floods and fires that can be seen from a way off, in the next turn's months.
+  if (ahead === 12) return; // year-long turns: no forecasts
   const nextYear = end === 12 ? state.year : year;
   const from = end % 12;
-  const ahead = weatherOf(p.countryId, nextYear, state).filter((e) => KINDS[e.kind].forecast && e.severity >= 1 && e.month >= from && e.month < from + step && !D.warned[e.id] && reaches(e, state));
-  const e = ahead.sort((a, b) => b.severity - a.severity)[0];
-  if (e && p.age >= 10 && !state.pendingEvents.some((x) => x.id === 'disaster_forecast')) {
-    D.warned[e.id] = nextYear;
+  const coming = weatherOf(p.countryId, nextYear, state).filter((e) => KINDS[e.kind].forecast && e.severity >= 1 && e.month >= from && e.month < from + ahead && !D.warned[e.id] && reaches(e, state));
+  const e = coming.sort((a, b) => b.severity - a.severity)[0];
+  if (!e) return;
+  D.warned[e.id] = nextYear;
+  // A child's family gets ready for them; adults decide for themselves.
+  if (p.age < 18) { D.prep[e.id] = 'ready'; return; }
+  if (!state.pendingEvents.some((x) => x.id === 'disaster_forecast')) {
     state.pendingEvents.push({ id: 'disaster_forecast', cast: { words: { what: what(e), What: Kind(e), when: MONTHS[e.month], eventId: e.id } } });
   }
 }
@@ -248,6 +265,19 @@ export function disasterChoice(v, cast = {}, state = store.state) {
     return v.how === 'evacuated' ? 'You will be somewhere safe when it comes.' : v.how === 'ready' ? 'You have done what you can.' : '';
   }
   return '';
+}
+
+/**
+ * Whether a disaster of one of these kinds reached the player in the time just lived: the year just ended, at the turn
+ * of a year; the months of the turn just played, between years. For scenes about the weather (`timing.weather`).
+ */
+export function feltRecently(kinds, minSeverity = 0, state = store.state, wholeYear = false) {
+  const p = state.player;
+  const month = state.month ?? 0;
+  const step = wholeYear ? 12 : [6, 3].includes(state.settings?.step) ? state.settings.step : 12;
+  const year = month === 0 ? state.year - 1 : state.year;
+  const to = month === 0 ? 12 : month; const from = to - step; // the turn of a year covers its last part only, with shorter turns
+  return weatherOf(p.countryId, year, state).some((e) => kinds.includes(e.kind) && e.severity >= minSeverity && e.month >= from && e.month < to && reaches(e, state));
 }
 
 /** The disasters a country has, by name, for the country's description. */

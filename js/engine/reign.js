@@ -166,7 +166,7 @@ export function tickReign(d) {
     return;
   }
 
-  // Left alone, feeling about the crown settles back towards the middle.
+  // Left alone, feeling about the crown settles back toward the middle.
   d.standing = Math.round(d.standing + (55 - d.standing) * 0.07);
   // What the monarch is like shows in how the country feels about the crown.
   const monarch = dyn.monarchOf(d);

@@ -3,13 +3,29 @@ import { rng } from '../rng.js';
 import { clamp } from '../util.js';
 import { player, log } from '../state.js';
 import { ILLNESSES, ILLNESS_BY_ID } from '../data/illnesses.js';
+import { LEGACY_IDS, CONDITION_BY_ID } from '../data/health/conditions.js';
+import { begin } from './health/course.js';
+import { hasCondition } from './health/record.js';
+import { PHYSICAL_LEGACY } from '../data/health/conditions.js';
+import { foundByDoctor } from './health/care.js';
+import { admit } from './health/hospital.js';
 
 export function addCondition(id) {
   const p = player();
+  // Mental health conditions belong to the health engine: an event can start one, never diagnose it.
+  if (LEGACY_IDS[id] || CONDITION_BY_ID[id]) {
+    const cid = LEGACY_IDS[id] ?? id;
+    if (hasCondition(cid)) return false;
+    const rec = begin(CONDITION_BY_ID[cid], p, { attack: cid === 'heart_disease' });
+    // A scene that brings on a physical condition is one where a doctor found it (the tests, the ambulance).
+    if (PHYSICAL_LEGACY.includes(cid)) foundByDoctor(rec, cid === 'heart_disease' ? 'hospital' : 'primary', cid === 'heart_disease' ? 'cardiologist' : 'gp', p);
+    return true;
+  }
   const def = ILLNESS_BY_ID[id];
   if (!def || p.conditions.some((c) => c.id === id)) return false;
   p.conditions.push({ id, name: def.name, severity: def.severity, chronic: !!def.chronic,
     sinceAge: p.age, treated: false });
+  if (id === 'broken_hip') admit('hip', {}, p);
   return true;
 }
 
@@ -59,6 +75,7 @@ export function tickHealth() {
   // Poor mood wears the body down; a recent check-up catches things early.
   const frailty = (1.6 - s.health / 100) * (p.flags.checkupAge === age - 1 ? 0.6 : 1) * (s.mood < 25 ? 1.3 : 1);
   for (const def of ILLNESSES) {
+    if (LEGACY_IDS[def.id]) continue; // these now begin in engine/health/course.js
     if (age < def.ages[0] || age > def.ages[1] || !def.chance) continue; // never drawn (sports injuries): no roll
     if (rng.chance(def.chance * frailty) && addCondition(def.id)) {
       log(`You came down with ${def.name}.`, 'system', 'bad');

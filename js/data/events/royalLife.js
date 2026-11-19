@@ -1,6 +1,6 @@
 // Royal life, part two: the press, love, and children.
-//   The press: stories and rumours. story(label, truth, heat) puts something
-//   in the newspapers; `truth` is whether it happened. Denying a rumour works;
+//   The press: stories and rumors. story(label, truth, heat) puts something
+//   in the newspapers; `truth` is whether it happened. Denying a rumor works;
 //   denying the truth can come back. pressTone/family move the other meters.
 //   Love: a secret romance for someone born royal, and what follows.
 //   Children: an heir with a mind of their own.
@@ -15,7 +15,7 @@ const has = (amount) => need('cashBase', '>=', amount);
 export default [
   // ---------- The press ----------
   {
-    id: 'press_rumour_feud', category: 'royalty', ageRange: [18, 95], cooldown: 9, requires: [royal],
+    id: 'press_rumor_feud', category: 'royalty', ageRange: [18, 95], cooldown: 9, requires: [royal],
     text: 'A newspaper reports, on the word of "a palace insider", that you have fallen out badly with another member of the family and no longer speak. There is not a word of truth in it.',
     choices: [
       { label: 'Say nothing', outcomes: [any('The palace does not comment on gossip. With nothing to feed on, the story is gone in a week.', 'neutral', story('a supposed family feud', false, 12))] },
@@ -28,7 +28,7 @@ export default [
     ],
   },
   {
-    id: 'press_rumour_romance', category: 'royalty', ageRange: [18, 60], cooldown: 10, requires: [royal],
+    id: 'press_rumor_romance', category: 'royalty', ageRange: [18, 60], cooldown: 10, requires: [royal],
     text: 'A magazine has a blurred photograph of you leaving a restaurant, and a headline about a "mystery companion". The companion is your cousin\'s accountant, and you were discussing a charity.',
     choices: [
       { label: 'Laugh, and name the charity', outcomes: [any('You thank the magazine for the publicity and give the charity\'s address. Donations double.', 'good', image(4), press(3), hid('karma', 2))] },
@@ -92,7 +92,7 @@ export default [
         { on: 'always', weight: 0.4, tone: 'neutral', text: 'The statement goes out. Within a day there are reporters at {love}\'s lectures and outside their mother\'s house.', effects: [image(4), family(-10), story('your relationship', true, 45), rel('love', -6), flag('secretLove', false), mem('love', 'stoodByThem', 'You told the world about them when the palace wanted silence.')] },
       ] },
       { label: 'Carry on, more carefully', outcomes: [any('Different cafés, borrowed cars. The folder on the desk gets thicker, and one day it will reach a newspaper.', 'neutral', family(-5), story('a secret relationship', true, 20), rel('love', 3))] },
-      { label: 'End it, as the family wishes', outcomes: [any('You tell {love} in a car park, because there is nowhere else. They say they understand, and that is the worst part.', 'bad', family(10), st('mood', -18), rel('love', -40), flag('secretLove', false), hid('willpower', -3), mem('love', 'gaveThemUp', 'You ended it when the palace told you to.'))] },
+      { label: 'End it, as the family wishes', outcomes: [any('You tell {love} in a parking lot, because there is nowhere else. They say they understand, and that is the worst part.', 'bad', family(10), st('mood', -18), rel('love', -40), flag('secretLove', false), hid('willpower', -3), mem('love', 'gaveThemUp', 'You ended it when the palace told you to.'))] },
       { label: 'Tell the family it is not their decision', outcomes: [any('It is the first time you have ever said no to them. There is a long silence, and then your allowance is "under review".', 'neutral', family(-18), hid('willpower', 6), rel('love', 8), st('mood', 4), flag('secretLove', false), mem('love', 'stoodByThem', 'You defied your family for them.'))] },
     ],
   },
@@ -126,7 +126,7 @@ export default [
     text: '{kid} does not want to cut ribbons. {kid} wants to study music, in another country, under another name, and has already been offered a place.',
     choices: [
       { label: 'Give your blessing', outcomes: [any('You see {kid} off at an ordinary station with an ordinary suitcase. The family says you are too soft. You have never seen your child so happy.', 'good', rel('kid', 16), family(-8), image(3), st('mood', 5))] },
-      { label: 'Allow it, with duties in the holidays', outcomes: [any('A bargain: term-time for music, summers for the family. It satisfies nobody completely, which is how you know it is fair.', 'neutral', rel('kid', 6), family(-2))] },
+      { label: 'Allow it, with duties in the holidays', outcomes: [any('A bargain: the school year for music, summers for the family. It satisfies nobody completely, which is how you know it is fair.', 'neutral', rel('kid', 6), family(-2))] },
       { label: 'Refuse', outcomes: [any('The place goes to someone else. {kid} carries out every engagement that year without one mistake, and without once looking at you.', 'bad', rel('kid', -22), family(5), hid('karma', -4))] },
     ],
   },
@@ -160,7 +160,7 @@ export default [
     choices: [
       { label: 'Make them have it out in front of you', check: chk(0.5, { 'stats.charm': 0.4, 'cast.elder.relationship': 0.3, 'cast.younger.relationship': 0.3 }), outcomes: [
         ok('It takes an evening and gets loud. But they are arguing with each other again, instead of about each other, and that is how it mends.', rel('elder', 6), rel('younger', 6), family(3)),
-        bad('It gets loud and stays loud. {younger} leaves before the pudding.', rel('elder', -4), rel('younger', -8), story('a quarrel between your children', true, 25)),
+        bad('It gets loud and stays loud. {younger} leaves before dessert.', rel('elder', -4), rel('younger', -8), story('a quarrel between your children', true, 25)),
       ] },
       { label: 'Tell {younger} they have a point', outcomes: [any('You say that an institution which cannot change is a museum. {younger} is astonished. {elder} is hurt.', 'neutral', rel('younger', 12), rel('elder', -10), image(4), family(-5))] },
       { label: 'Tell {elder} they are right', outcomes: [any('You say that what has lasted a thousand years should not be redesigned in an interview. {elder} is relieved. {younger} is not surprised.', 'neutral', rel('elder', 10), rel('younger', -12), family(5), image(-2))] },

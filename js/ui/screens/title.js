@@ -107,7 +107,7 @@ function compareTimelines(root) {
     const people = Object.values(x.st.npcs).filter((n) => n.alive);
     const love = people.find((n) => n.role === 'spouse') ?? people.find((n) => n.role === 'partner');
     const kids = people.filter((n) => n.role === 'child').length;
-    const last = (p.milestones ?? []).slice(-3).reverse();
+    const last = (p.milestones ?? []).filter((m) => !m.private || m.shared).slice(-3).reverse();
     return `<div class="card timeline-card"><h3>${esc(x.m.timeline?.name ?? 'The first telling')}</h3>
       ${x.m.timeline?.note ? `<p class="muted">Parted at ${esc(ageLabel(x.m.timeline.age, x.m.timeline.month))}: ${esc(x.m.timeline.note)}</p>` : '<p class="muted">The road first taken.</p>'}
       <div class="kv"><span>Now</span><span>${p.alive ? `Age ${esc(ageLabel(p.age, x.st.month))}` : `Died at ${p.age}`} · ${c.flag} ${esc(p.city)}</span></div>

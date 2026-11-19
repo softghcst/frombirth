@@ -19,7 +19,7 @@ export default [
     id: 'first_steps', category: 'parenthood', ageRange: [18, 62], weight: 3, cast: { kid: 'child' }, castRequires: kidAged(1, 1), cooldown: 2,
     text: '{kid} lets go of the sofa, wobbles, and takes three steps straight toward the stairs.',
     choices: [
-      { label: 'Catch them and cheer', outcomes: [any('{kid} laughs so hard they sit down. You have it on video, sideways.', 'good', rel('kid', 6), st('mood', 9))] },
+      { label: 'Catch them and cheer', outcomes: [any('{kid} laughs so hard they sit down. You have it on video, sideways.', 'good', rel('kid', 6), st('mood', 9)), any('{kid} laughs so hard they sit down. You will remember it for the rest of your life.', 'good', rel('kid', 6), st('mood', 9))] },
       { label: 'Film it first', outcomes: [any('A perfect video, ending in a small bump and a great deal of noise.', 'neutral', rel('kid', -2), st('mood', 4))] },
     ],
   },
@@ -32,7 +32,7 @@ export default [
         mem('kid', 'lessons', 'You paid for lessons when a teacher said they had a gift.'))] },
       { label: 'Practice with them yourself', check: chk(0.5, { 'hidden.discipline': 0.6 }), outcomes: [
         ok('An hour together every evening. You are not much of a teacher, and {kid} does not mind.', rel('kid', 12), st('mood', 4),
-          mem('kid', 'practisedTogether', 'You practiced with them every evening for a year.')),
+          mem('kid', 'practicedTogether', 'You practiced with them every evening for a year.')),
         bad('It lasts three weeks before life gets in the way.', rel('kid', 1)),
       ] },
       { label: 'Say there is time for that later', outcomes: [any('{kid} stops mentioning it after a while.', 'neutral', rel('kid', -4))] },
@@ -80,7 +80,7 @@ export default [
     choices: [
       { label: 'Move them in with you', outcomes: [any('The spare room becomes their room. It is hard, and you would not have it any other way.', 'good', rel('parent', 18), hid('karma', 10), st('mood', -4),
         mem('parent', 'tookMeIn', 'When they could not live alone, you took them in.'))] },
-      { label: 'Pay for a good care home ({$20000})', requires: [need('cashBase', '>=', 20000)], outcomes: [any('You visit every Sunday. They have made a friend called Arthur and complain about the puddings.', 'good', cash(-20000), rel('parent', 6), hid('karma', 4))] },
+      { label: 'Pay for a good care home ({$20000})', requires: [need('cashBase', '>=', 20000)], outcomes: [any('You visit every Sunday. They have made a friend called Arthur and complain about the desserts.', 'good', cash(-20000), rel('parent', 6), hid('karma', 4))] },
       { label: 'Leave it to the rest of the family', outcomes: [any('Somebody else sorts it out. They do not ask you for much, after that.', 'bad', rel('parent', -20), hid('karma', -8))] },
     ],
   },
@@ -115,7 +115,7 @@ export default [
     choices: [
       { label: 'Go to the play', outcomes: [any('{kid} finds your face in the third row and forgets their line from sheer delight.', 'good', rel('kid', 12), st('mood', 6),
         mem('kid', 'cameToPlay', 'You left work to be at their school play.'))] },
-      { label: 'Go to the meeting', outcomes: [any('The meeting could have been an email. {kid} says it does not matter.', 'neutral', rel('kid', -9), st('mood', -4))] },
+      { label: 'Go to the meeting', outcomes: [any('The meeting could have been an email. {kid} says it does not matter.', 'neutral', rel('kid', -9), st('mood', -4)), any('The meeting could have been a note on a noticeboard. {kid} says it does not matter.', 'neutral', rel('kid', -9), st('mood', -4))] },
       { label: 'Run from one to the other', check: chk(0.4, { 'stats.health': 0.4 }), outcomes: [
         ok('You slide into the back row for the last song, still holding your laptop.', rel('kid', 6)),
         bad('You miss the play by four minutes and are late back for the meeting.', rel('kid', -5), st('mood', -5)),

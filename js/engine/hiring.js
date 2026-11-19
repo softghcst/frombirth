@@ -6,7 +6,7 @@
 //   An offer lasts until the end of the year of age it was made in (two with "more time").
 //
 // The résumé is not typed in: it is read from the life (education, jobs,
-// licences, internships, service) whenever it is needed.
+// licenses, internships, service) whenever it is needed.
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, uid } from '../util.js';
 import { player, log } from '../state.js';
@@ -14,7 +14,7 @@ import { CAREER_BY_ID } from '../data/careers.js';
 import { COUNTRIES } from '../data/countries.js';
 import { GENERAL, PRACTICAL, MILITARY, AUDITION_PIECES, FAMILY_QUESTIONS } from '../data/interviewQuestions.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
-import { TRADE_BY_ID, CERT_BY_ID, PROGRAMMES } from '../data/schools.js';
+import { TRADE_BY_ID, CERT_BY_ID, PROGRAMS } from '../data/schools.js';
 import { resolve } from './conditions.js';
 import { unmet, hire, doorBonus, royalWorkBlock } from './career.js';
 import { employer, posting, isOpen, fillPosting, cultureOf } from './employers.js';
@@ -30,7 +30,7 @@ const an = (noun) => `${/^[aeiou]/i.test(noun) ? 'an' : 'a'} ${noun}`;
 // ---------- The résumé ----------
 
 /**
- * Years of experience that count towards a track: its own (and any track it branches from) in full, other work
+ * Years of experience that count toward a track: its own (and any track it branches from) in full, other work
  * in the same field at a quarter. o.ownOnly: only the track's own line of work.
  */
 export function experienceFor(careerId, c = careerState(), o = {}) {
@@ -59,17 +59,17 @@ export function resume(p = player()) {
     if (d.type === 'university') return `Degree in ${MAJOR_BY_ID[d.majorId]?.name ?? 'a subject'}${d.school ? `, ${d.school}` : ''}`;
     if (d.type === 'apprenticeship') return `${TRADE_BY_ID[d.majorId]?.name ?? 'Trade'} apprenticeship`;
     if (d.type === 'certificate') return `Certificate in ${CERT_BY_ID[d.majorId]?.name ?? 'a skill'}`;
-    return PROGRAMMES[d.type]?.label ?? d.type;
+    return PROGRAMS[d.type]?.label ?? d.type;
   });
   const jobs = [...c.history].reverse().slice(0, 8).map((h) => `${h.title}${h.employer ? `, ${h.employer}` : ''} (age ${h.from}–${h.to})`);
   if (c.careerId) jobs.unshift(`${c.title}${employer(c.employerId) ? `, ${employer(c.employerId).name}` : ''} (since age ${p.age - c.yearsInRole})`);
-  const licences = p.flags.licences ?? [];
+  const licenses = p.flags.licenses ?? [];
   const interns = (p.flags.internships ?? []).map((i) => `Intern, ${i.employer}`);
   const service = c.history.some((h) => CAREER_BY_ID[h.careerId]?.type === 'military') || c.military ? ['Military service'] : [];
-  const honours = c.achievements.slice(-4).map((a) => a.name);
+  const honors = c.achievements.slice(-4).map((a) => a.name);
   const skills = Object.entries({ Intellect: p.stats.intellect, Charm: p.stats.charm, Fitness: p.stats.health, Discipline: p.hidden.discipline })
     .filter(([, v]) => v >= 65).map(([k]) => k);
-  return { education: edu, jobs, licences, internships: interns, service, honours, strengths: skills };
+  return { education: edu, jobs, licenses, internships: interns, service, honors, strengths: skills };
 }
 
 // ---------- Applying ----------
@@ -150,7 +150,7 @@ export function decide(id, answers = [], o = {}) {
   // Employers in office, technical and public work prefer a degree even where it is not required, and more so higher up.
   const graduate = p.education.degrees.some((d) => ['university', 'graduate', 'doctorate', 'business', 'law', 'medical'].includes(d.type));
   const deskWork = ['corporate', 'tech', 'government', 'science', 'media', 'law', 'education', 'health'].includes(car.family);
-  const degreeEdge = deskWork && !car.req?.degree && !car.req?.programme ? (graduate ? 0.04 + post.level * 0.03 : -post.level * 0.05) : 0;
+  const degreeEdge = deskWork && !car.req?.degree && !car.req?.program ? (graduate ? 0.04 + post.level * 0.03 : -post.level * 0.05) : 0;
   const bonus = bonus0 + degreeEdge;
   const stretch = view.stretch * 0.07;
   // More people go for junior jobs, and in a slump; and every rung up, the field is stronger.

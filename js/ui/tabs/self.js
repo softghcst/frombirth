@@ -1,4 +1,6 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { getEra, eventsIn } from '../../engine/history.js';
+import { store } from '../../state.js';
 import { outlook } from '../../engine/economy.js';
 import { openNews } from '../leisure.js';
 import { openWorld } from '../world.js';
@@ -11,13 +13,15 @@ import { meterHtml } from '../meter.js';
 import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
-import { seeDoctor, cosmeticSurgery, openPassport } from '../leisure.js';
+import { seeDoctor, cosmeticSurgery } from '../leisure.js';
+import { openExplore } from '../globalLife.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import * as salon from '../../engine/salon.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
 import { messageModal } from '../modals.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
+import { openHealth } from '../health/hub.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -30,8 +34,10 @@ export default {
     const conditions = p.conditions.length
       ? p.conditions.map((c) => `<div class="kv"><span>${esc(c.name.charAt(0).toUpperCase() + c.name.slice(1))}</span><span>since age ${c.sinceAge}${c.treated ? ', under treatment' : ''}</span></div>`).join('')
       : '<p class="muted">You are in good health.</p>';
-    const milestones = p.milestones.map((m) =>
-      `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('');
+    // Health milestones are private: shown here with a lock, and they open the Treatment Journey.
+    const milestones = p.milestones.map((m, i) => (m.kind === 'health'
+      ? `<button class="kv hl-milestone" data-milestone="${i}"><span>Age ${m.age}</span><span>${esc(m.text)} <span class="hl-lock" title="Private">🔒</span></span></button>`
+      : `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`)).join('');
 
     el.innerHTML = `
       <div class="card"><h3>Wellbeing</h3>
@@ -50,6 +56,9 @@ export default {
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         <button class="btn" data-identity style="margin-top:10px">Identity</button>
       </div>
+      ${(() => { const era = getEra(store.state.year); const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence); return era.id === 'now' && !now.length ? '' : `<div class="card"><h3>The times: ${esc(era.name)}</h3>
+        <p class="muted">${esc(era.description)}</p>${now.length ? `<div class="kv"><span>Under way</span><span>${now.map((e) => esc(e.name)).join(', ')}</span></div>` : ''}
+        <div class="kv"><span>Born into</span><span>${esc(getEra(p.birthYear).name)} (${p.birthYear})</span></div></div>`; })()}
       ${(() => { const here = living.summary(); return `<div class="card"><h3>Life in ${esc(country().name)}</h3>
         ${here.crisis ? `<p style="margin-bottom:8px"><strong>${esc(here.crisis.name)}.</strong> ${esc(here.crisis.blurb)}</p>` : ''}
         <div class="kv"><span>Your standing here</span><span><strong>${esc(living.tierName())}</strong></span></div>
@@ -64,10 +73,12 @@ export default {
       </div>` : ''}
       <div class="card"><h3>Conditions</h3>${conditions}</div>
       <div class="btn-stack" style="margin-bottom:14px">
+        <button class="btn primary" data-health>My Health</button>
         <button class="btn ${med.treatable().some((x) => !x.managed && !x.seen) ? 'primary' : ''}" data-doctor>See a doctor</button>
         ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
         ${salon.canVisitSalon() ? '<button class="btn" data-salon>Beauty salon</button>' : ''}
-        <button class="btn" data-passport>Passport</button>
+        <button class="btn primary" data-explore>Explore the World</button>
+        <button class="btn" data-passport>Passport & Documents</button>
         <button class="btn" data-world>The world</button>
         <button class="btn" data-news>World news</button>
       </div>
@@ -81,9 +92,12 @@ export default {
 
     bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
-    el.querySelector('[data-passport]').onclick = () => openPassport(api);
+    el.querySelector('[data-health]').onclick = () => openHealth(api);
+    el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
+    el.querySelector('[data-passport]').onclick = () => openExplore(api, { view: 'documents' });
+    el.querySelector('[data-explore]').onclick = () => openExplore(api);
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
-    if (el.querySelector('[data-practise]')) el.querySelector('[data-practise]').onclick = () => openPractice(api);
+    if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
       const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id,
         scope: 'style', note: salon.salonNote, confirm: 'Confirm appearance' });

@@ -7,6 +7,7 @@ import { COUNTRIES } from '../data/countries.js';
 import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js';
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
+import { forgetNpc } from './digital/core.js';
 import { book } from './ledger.js';
 import { settleNpc } from './npcMoney.js';
 import { animalDied } from './animals.js';
@@ -43,6 +44,8 @@ export function roleLabel(npc) {
       : byGender(npc, 'Boyfriend', 'Girlfriend', 'Partner');
     case 'ex': return npc.flags.wasSpouse ? byGender(npc, 'Ex-husband', 'Ex-wife', 'Ex-spouse') : 'Ex';
     case 'pet': return `Pet ${npc.species}`;
+    case 'clinician': return npc.occupation ?? 'Clinician';
+    case 'groupmate': return 'From your group';
     // People met through the justice system: what they do, or where they are.
     case 'official': return npc.flags.inmate && !npc.flags.inmate.released ? 'Inmate' : npc.flags.inmate ? 'Former inmate'
       : npc.occupation ? npc.occupation.charAt(0).toUpperCase() + npc.occupation.slice(1) : 'Member of the public';
@@ -51,12 +54,11 @@ export function roleLabel(npc) {
 }
 
 const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 3,
-  spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, coach: 3, teammate: 3, agent: 2 };
+  spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
 
 export const removeNpc = (npc) => {
-  const p = player();
-  p.npcIds = p.npcIds.filter((id) => id !== npc.id);
-  delete store.state.npcs[npc.id];
+  // Gone from the player's life; kept in the save only if their digital life is part of the record.
+  forgetNpc(npc.id);
 };
 
 /** A parent's estate goes to the other parent if living, otherwise to the children. */
@@ -123,6 +125,7 @@ export function tickRelationships() {
       : !spared && rng.chance(mortalityChance(npc.age, npc.meters.health));
     if (dies) {
       npc.alive = false;
+      npc.flags.diedYear = store.state.year;
       // An animal's death is written into the family's record, which tells it in the life story.
       if (npc.role === 'pet') animalDied(npc);
       else log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}.`, 'system', 'bad');
@@ -145,7 +148,9 @@ export function tickRelationships() {
     }
     if ((npc.role === 'friend' || npc.role === 'classmate') && npc.meters.relationship < 10 && !npc.flags.tag) {
       log(`You and ${npc.firstName} drifted apart.`);
-      removeNpc(npc);
+      // They leave the player's life but not the world: years later they may turn up again (engine/digital/stories.js).
+      p.npcIds = p.npcIds.filter((id) => id !== npc.id);
+      npc.flags.drifted = { year: store.state.year, age: p.age, role: npc.role };
     }
   }
 }
@@ -175,7 +180,7 @@ const PET_TIME = {
   sheep: ['Spend time together', '{name} let you scratch the one place a sheep cannot reach.'],
   mouse: ['Sit with them', '{name} ran up your sleeve and out of your collar, twice.'],
   leopard_gecko: ['Spend a quiet hour', '{name} sat on your hand, warmed up, and licked your thumb thoughtfully.'],
-  bearded_dragon: ['Spend a quiet hour', '{name} lay along your arm under the lamp like a small, judgemental pharaoh.'],
+  bearded_dragon: ['Spend a quiet hour', '{name} lay along your arm under the lamp like a small, judgmental pharaoh.'],
   corn_snake: ['Spend a quiet hour', '{name} explored the length of both your arms, very slowly.'],
   tortoise: ['Sit out with them', 'You and {name} spent the afternoon in the garden. {name} covered almost a meter.'],
   other: ['Spend time together', 'You spent time with {name}.'],
@@ -203,6 +208,8 @@ export function basicActions(npc) {
     return a;
   }
   if (p.age >= 3) a.push({ id: 'spendTime', label: 'Spend time' });
+  // A clinician is a professional relationship: care happens in My Health, not over coffee.
+  if (npc.role === 'clinician') return [];
   if (p.age >= 4 && npc.age >= 2) a.push({ id: 'talk', label: 'Have a conversation' });
   if (p.age >= 5 && npc.age >= 3) a.push({ id: 'compliment', label: 'Compliment' });
   if (p.age >= 6) a.push({ id: 'gift', label: 'Give a gift' });

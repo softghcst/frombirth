@@ -1,9 +1,9 @@
 // Freelance services the player can offer. rate is base units an hour at the
 // going rate; job is the [fewest, most] hours a typical piece of work takes.
 //   skill:   the path that decides quality (and, with reputation, what clients will pay)
-//   req:     thresholds to offer it at all; cert / programme: a qualification it needs
+//   req:     thresholds to offer it at all; cert / program: a qualification it needs
 //   demand:  how much work there is, 1 = ordinary
-//   track:   the career track whose experience this counts towards
+//   track:   the career track whose experience this counts toward
 // Age limits here are the service's own; the country's working-age law applies on top.
 const S = (id, name, rate, job, skill, minAge, o = {}) => ({ id, name, rate, job, skill, minAge, req: {}, demand: 1, ...o });
 
@@ -31,8 +31,8 @@ export const SERVICES = [
   S('social_media', 'Social media management', 30, [10, 60], 'stats.charm', 16, { track: 'social_media' }),
   S('mystery_shopping', 'Mystery shopping', 16, [3, 12], 'stats.charm', 18, { demand: 0.7 }),
   S('event_staffing', 'Event staffing', 18, [6, 24], 'stats.charm', 17, { demand: 1.1, track: 'events' }),
-  S('makeup', 'Event hair and makeup', 45, [4, 16], 'stats.charm', 18, { programme: 'cosmetology' }),
-  S('ride_share', 'Ride-share driving', 20, [20, 120], 'hidden.discipline', 21, { demand: 1.4, licence: 'driving', track: 'taxi' }),
+  S('makeup', 'Event hair and makeup', 45, [4, 16], 'stats.charm', 18, { program: 'cosmetology' }),
+  S('ride_share', 'Ride-share driving', 20, [20, 120], 'hidden.discipline', 21, { demand: 1.4, license: 'driving', track: 'taxi' }),
   S('consulting', 'Consulting in your old field', 90, [10, 80], 'stats.intellect', 30, { experience: 10 }),
 ];
 export const SERVICE_BY_ID = Object.fromEntries(SERVICES.map((s) => [s.id, s]));

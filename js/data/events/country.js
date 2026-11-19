@@ -20,7 +20,7 @@ export default [
         st('health', 6), hid('discipline', 10), st('mood', -4), ms('Completed military service.'))] },
       { label: 'Ask to defer it for your studies', requires: [need('education.enrolled', '==', true)], outcomes: [any('The deferment is stamped. It will be waiting for you when you graduate.', 'neutral', hid('discipline', 1))] },
       { label: 'Pay someone to lose your file', requires: [has(3000), need('living.graft', '>=', 50)], check: chk(0.6, { 'stats.charm': 0.3 }), outcomes: [
-        ok('An envelope changes hands in a car park. Your name is no longer on any list.', cash(-3000), hid('karma', -8), count('crimes')),
+        ok('An envelope changes hands in a parking lot. Your name is no longer on any list.', cash(-3000), hid('karma', -8), count('crimes')),
         bad('The clerk takes the money and reports you anyway. You serve, with a mark against your name.', cash(-3000), hid('karma', -8), heat(15), st('mood', -8), hid('discipline', 6)),
       ] },
       { label: 'Do not turn up', outcomes: [any('Two military policemen come for you at work. You serve the full term, the first month of it in a cell.', 'bad', st('mood', -10), heat(20), hid('discipline', 5), st('health', 3))] },
@@ -64,7 +64,7 @@ export default [
     id: 'blackout_week', category: 'life here', ageRange: [12, 90], cooldown: 5, requires: [need('living.infra', '<=', 58)],
     text: 'The power has been off for six days. The food in the fridge has gone, and the nights are very dark.',
     choices: [
-      { label: 'Buy a generator', requires: [has(900)], outcomes: [any('It roars like a lorry and smells of petrol, and you have light. Half the street runs a cable to it.', 'good', cash(-900), st('mood', 5), hid('karma', 3))] },
+      { label: 'Buy a generator', requires: [has(900)], outcomes: [any('It roars like a truck and smells of gas, and you have light. Half the street runs a cable to it.', 'good', cash(-900), st('mood', 5), hid('karma', 3))] },
       { label: 'Cook outside with the neighbors', outcomes: [any('Everyone brings what was about to spoil. It is the best meal of the year, eaten by candlelight in the yard.', 'good', st('mood', 5), st('charm', 2))] },
       { label: 'Sit it out', outcomes: [any('You go to bed when it gets dark and get up when it gets light, like your great-grandparents did.', 'neutral', st('mood', -4))] },
     ],
@@ -130,7 +130,8 @@ export default [
 
   // ---------- The land and the weather ----------
   {
-    id: 'storm_warning', category: 'the weather', ageRange: [16, 90], cooldown: 7, requires: [need('hazards', 'has', 'hurricane')],
+    // Not drawn any more (weight 0): a storm's warning is engine/disasters.js's forecast now, before the storm, where this came after it.
+    id: 'storm_warning', category: 'the weather', ageRange: [16, 90], cooldown: 7, weight: 0, timing: { weather: ['hurricane', 'typhoon', 'cyclone'], minSeverity: 1, yearLong: true },
     text: 'The forecast has a name on it and an arrow pointing at your town. The authorities are telling everyone on the coast to leave by tomorrow night.',
     choices: [
       { label: 'Leave, and pay for a room inland', requires: [has(600)], outcomes: [any('You watch your own street on the news from a hotel bed. It is strange, and you are dry.', 'neutral', cash(-600), st('mood', -2))] },
@@ -142,7 +143,7 @@ export default [
     ],
   },
   {
-    id: 'earthquake_night', category: 'the weather', ageRange: [8, 90], cooldown: 12, requires: [hazard('earthquake')],
+    id: 'earthquake_night', category: 'the weather', ageRange: [8, 90], cooldown: 12, timing: { weather: ['earthquake'] },
     text: 'You wake to the bed moving across the floor. The whole building is groaning.',
     choices: [
       { label: 'Get under the table and hold on', outcomes: [any('Forty seconds that last an hour. Plaster in your hair, and nothing worse.', 'neutral', hid('discipline', 3), st('mood', -3))] },
@@ -154,7 +155,7 @@ export default [
     ],
   },
   {
-    id: 'heat_with_no_air', category: 'the weather', ageRange: [14, 95], cooldown: 6, requires: [hazard('heat')],
+    id: 'heat_with_no_air', category: 'the weather', ageRange: [14, 95], cooldown: 6, timing: { weather: ['heat'], minSeverity: 1 },
     text: 'It has been over forty degrees for nine days. The night never cools, and the old and the poor are filling the hospitals.',
     choices: [
       { label: 'Run the air conditioning day and night', requires: [has(300)], outcomes: [any('The bill is frightening. You sleep, which is more than most of the city can say.', 'neutral', cash(-300), st('health', 1))] },

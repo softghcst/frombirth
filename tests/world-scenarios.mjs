@@ -19,7 +19,7 @@ import * as sys from '../js/engine/systems.js';
 import * as fun from '../js/engine/activities.js';
 import * as local from '../js/engine/local.js';
 import * as politics from '../js/engine/politics.js';
-import { catalogue } from '../js/engine/university.js';
+import { catalog } from '../js/engine/university.js';
 import { rentFactor, healthFactor } from '../js/engine/policy.js';
 import { speaks } from '../js/engine/languages.js';
 import { netWorth } from '../js/engine/finance.js';
@@ -77,7 +77,8 @@ play('A', () => {
   p.education.enrolled = false; p.flags.livesWithParents = false; if (!p.education.degrees.length) p.education.degrees.push({ type: 'high', gpa: 3, age: 18 });
   check(job().ok && p.career.salary > 0, 'found work');
   p.finance.cash += 5e6; const l = estate.listings()[0]; check(estate.buyProperty(l.id, l.price).ok && p.assets.some((a) => a.city === 'Orlando'), 'bought a home in Orlando');
-  check(law.rule('drinkingAge') === 21 && law.source('drinkingAge').source === 'place' && ['place', 'enacted'].includes(law.source('deathPenalty').source), 'lives under United States law, with Florida\'s where it differs');
+  check(law.rule('drinkingAge') === 21 && law.source('drinkingAge').source === 'place' && ['place', 'enacted', 'enacted region'].includes(law.source('deathPenalty').source), 'lives under United States law, with Florida\'s where it differs');
+  // (Florida's own assembly may have changed its law in the years played: 'enacted region'. That is still Florida's.)
   const hiring0 = econ.hiringClimate(); (store.state.world.places.us ??= {}).phase = 'slump'; store.state.world.places.us.since = store.state.year;
   check(econ.hiringClimate() < hiring0 || hiring0 < 0, 'a national recession changes their prospects');
   year(8); check(Number.isFinite(netWorth(store.state)) && (econ.phaseOf('us') !== 'slump' || store.state.world.places.us.since > store.state.year - 9) && econ.news().some((n) => n.yours), 'and the economy goes on changing, with the news that touches them marked as theirs');
@@ -99,7 +100,7 @@ play('B', () => {
   check(p.locations.length === 2 && p.locations[0].countryId === 'br' && p.locations[1].city === 'Porto', 'both homes are in the record');
   year(6); check(p.age === 13 && p.education.enrolled && speaks('pt') >= 70, `at school in Portugal, speaking the language (${speaks('pt')})`);
   check(fun.flightDestinations().find((d) => d.id === 'br')?.family.length > 0 || !Object.values(store.state.npcs).some((n) => n.alive && n.flags.abroad === 'br'), 'and can fly back to see the family in Brazil, while any of them are living');
-  year(6); p.legal.record = []; p.finance.cash = Math.max(p.finance.cash, 1e5); check(p.countryId !== 'pt' || cit.naturalisation(p).possible, `as an adult, after years there, may apply to become Portuguese (${cit.naturalisation(p).why})`);
+  year(6); p.legal.record = []; p.finance.cash = Math.max(p.finance.cash, 1e5); check(p.countryId !== 'pt' || cit.naturalization(p).possible, `as an adult, after years there, may apply to become Portuguese (${cit.naturalization(p).why})`);
   done('Brazil to Portugal as a child: family together, birthplace kept, school and language carried on');
 });
 
@@ -108,7 +109,7 @@ play('C', () => {
   scenario('C');
   p = adult({ countryId: 'in', city: 'Pune' }, 18, 60000);
   const study = imm.routes('ca').find((r) => r.id === 'study');
-  check(study.eligible && study.status === 'student' && catalogue('ca').length > 0, 'a school leaver from India with funds may apply to study in Canada, where there are universities to apply to');
+  check(study.eligible && study.status === 'student' && catalog('ca').length > 0, 'a school leaver from India with funds may apply to study in Canada, where there are universities to apply to');
   check(go('ca', { route: 'study', city: 'Toronto' }) && p.city === 'Toronto' && p.residency.status === 'student', 'arrived in Toronto on a student visa');
   check(unmet(CAREERS.find((c) => c.id === 'retail')).some((x) => /student visa/.test(x)), 'may not work full-time');
   check(p.finance.cash > 0 && !p.homeId, 'rents somewhere to live');
@@ -141,7 +142,7 @@ play('D', () => {
   job(); const before = p.career.careerId;
   check(go('uk', { route: 'family', city: 'Bristol' }) && !s.flags.abroad && before && !p.career.careerId, 'they moved to Bristol together; the job in Japan was given up');
   check(Object.values(store.state.npcs).some((n) => n.role === 'parent' && n.flags.abroad === 'jp') || !Object.values(store.state.npcs).some((n) => n.role === 'parent' && n.alive), 'family in Japan is still family, now abroad');
-  const nat = cit.naturalisation(p);
+  const nat = cit.naturalization(p);
   check(nat.spouse && nat.needs < 5 && !nat.possible && cit.held(p).join() === 'jp' && mayVote('uk') !== '', 'the wait for citizenship is shorter for a spouse, and nothing is automatic: no vote yet');
   check(nat.mustRenounce.length + nat.willLose.length > 0, 'and taking it would cost the Japanese one, which the game says before the decision');
   let foreign = 0; for (let i = 0; i < 12; i++) { p = adult({ countryId: 'jp' }, 28); for (let k = 0; k < 40; k++) { p.flags.loveActs = null; const r = meetSomeone('app'); const n = r?.npc; if (n?.flags?.from) foreign += 1; } }
@@ -262,7 +263,7 @@ play('J', () => {
   p.legal.pending = null; p.flags.fugitive = false; p.finance.cash = Math.max(p.finance.cash, 200000); if (p.politics) { politics.leave('stepped down', true); p.politics = null; }
   p.legal.incarceration = null; const home = go('pl', {});
   check(p.alive === false || (home && cit.residency(p).status === 'citizen' && mayVote() === ''), `came home as a citizen, with a vote (${p.alive === false ? 'died' : home ? mayVote() : `still in ${p.countryId}: ${move.emigrate('pl', {}).text}`})`);
-  check(p.alive === false || !home || p.locations.map((x) => x.countryId).join('>') === 'pl>de>pl' && Object.values(store.state.npcs).filter((n) => n.alive && n.flags.abroad === 'pl').length === 0, 'the record shows the years away, and the people who stayed are neighbors again');
+  check(p.alive === false || !home || p.locations.map((x) => x.countryId).join('>') === 'pl>de>pl' && Object.values(store.state.npcs).filter((n) => n.alive && n.flags.abroad === 'pl').length === 0, `the record shows the years away, and the people who stayed are neighbors again (${p.locations.map((x) => x.countryId).join('>')}; still abroad: ${Object.values(store.state.npcs).filter((n) => n.alive && n.flags.abroad === 'pl').map((n) => n.role).join(', ')})`);
   done('twenty-five years away, and a return to a country that kept moving');
 });
 

@@ -8,6 +8,8 @@
 //   cast: {key: spec}   spec is a role, 'mother'/'father', or 'tag:<contact tag>'
 //   castRequires: [...] conditions on the people cast, e.g. cast.kid.age >= 14
 //   outcome.requires    picks a text variant from history (see conditions.js)
+import { techAvailable } from './digital/tech.js';
+import { sceneFits } from './history.js';
 import { headTitle } from './polity.js';
 import { latestLaw } from './government.js';
 import { rng } from '../rng.js';
@@ -18,6 +20,7 @@ import { applyEffects } from './effects.js';
 import { EVENTS, EVENT_BY_ID } from '../data/events/index.js';
 import { claimStory } from './animals.js';
 import { turnSeasons } from './calendar.js';
+import { feltRecently } from './disasters.js';
 
 const DEFAULT_COOLDOWN = 10;
 
@@ -38,12 +41,58 @@ function castFor(ev) {
   return cast;
 }
 
+/**
+ * Scenes belong to their time. A scene's own story must fit the year: the technology it mentions has to
+ * exist where the player lives (the Digital World's registry decides), it must be within any `years` and
+ * `places` it declares, and not before the year Historical Eras gives for it (data/history.js SCENE_FROM).
+ * A single choice that mentions something not yet invented is hidden, and the rest of the scene stays.
+ */
+const TECH_WORDS = [
+  [/\b(smartphone|selfie|app|apps|swipe|group chat)\b/i, 'smartphone'],
+  [/\b(texted|texting|on (your|their|his|her|my) phone|phone (lights|buzz\w*)|phones at lunch|your mobile|on video|mobile phone)\b/i, 'mobile'],
+  [/\b(social media|followers|influencer|went viral|posted online)\b/i, 'social'],
+  [/\b(internet|online|website|email|emails|e-mail|googl\w*)\b/i, 'web'],
+  [/\b(streaming|livestream|livestreaming)\b/i, 'video_share'],
+  [/\b(video call)\b/i, 'video_call'],
+  [/\b(laptop|computer|video game|video games)\b/i, 'pc'],
+  [/\b(phone|phones|phoned|ringtone|voicemail)\b/i, 'landline'],
+  [/\b(television|tv)\b/i, 'television'],
+];
+/** Words that tie a choice to a later time even where no technology is named: [pattern, first year]. */
+const LATE_WORDS = [[/\b(video|film it|filmed it)\b/i, 1985]];
+const techOf = (text) => TECH_WORDS.filter(([re]) => re.test(text)).map(([, id]) => id);
+const lateOf = (text) => Math.max(0, ...LATE_WORDS.filter(([re]) => re.test(text)).map(([, y]) => y));
+const sceneCache = new Map();
+const choiceCache = new Map();
+/** Whether the scene's own story fits the year and place. */
+function timely(ev) {
+  if (!sceneCache.has(ev.id)) sceneCache.set(ev.id, { tech: techOf(ev.text), late: lateOf(ev.text) });
+  const t = sceneCache.get(ev.id);
+  return t.tech.every((id) => techAvailable(id)) && sceneFits(ev, store.state.year, player().countryId, t.late);
+}
+/** Whether an outcome's words fit the year (outcomes that do are preferred). */
+export function outcomeTimely(o) {
+  return techOf(o.text).every((id) => techAvailable(id)) && (store.state?.year ?? 9999) >= lateOf(o.text);
+}
+/** Whether one choice fits the year, by what it says. */
+export function choiceTimely(ev, i) {
+  const key = `${ev.id}#${i}`;
+  if (!choiceCache.has(key)) {
+    const ch = ev.choices[i];
+    const words = ch.label;
+    choiceCache.set(key, { tech: techOf(words), late: lateOf(words) });
+  }
+  const t = choiceCache.get(key);
+  return t.tech.every((id) => techAvailable(id)) && (store.state?.year ?? 9999) >= t.late;
+}
+
 /** The cast for an event if it can fire now, otherwise null. */
 function eligibleCast(ev, between = false) {
   const p = player();
   if (ev.queuedOnly) return null;
   // Scenes for the turns between years (data/events/seasons.js) are drawn only then, and yearly scenes never are.
   if (!!ev.between !== between) return null;
+  if (!timely(ev) || !ev.choices.some((c, i) => choiceTimely(ev, i) && !c.requires?.length)) return null;
   if (ev.timing && !inTime(ev.timing)) return null;
   if (!!ev.prison !== !!p.legal.incarceration) return null;
   if (p.age < ev.ageRange[0] || p.age > ev.ageRange[1]) return null;
@@ -62,9 +111,14 @@ function eligibleCast(ev, between = false) {
  */
 function inTime(t) {
   const state = store.state;
-  const step = [6, 3].includes(state.settings?.step) ? state.settings.step : 12;
   const month = state.month ?? 0;
+  // The year's own draw, at the turn of the year, is judged over the whole year whatever the turn length, so it is the
+  // same draw in every mode (engine/turns.js holds a season scene back for its season, with shorter turns).
+  const step = month === 0 ? 12 : [6, 3].includes(state.settings?.step) ? state.settings.step : 12;
   if (t.yearTurn && month !== 0) return false;
+  if (t.yearLong && step !== 12) return false;
+  // A scene about the weather comes only when that weather really reached the player (engine/disasters.js).
+  if (t.weather && !feltRecently(t.weather, t.minSeverity ?? 0, state, month === 0)) return false;
   if (t.seasons && step !== 12) {
     const now = turnSeasons(month === 0 ? 12 : month, step, player().countryId);
     if (!t.seasons.some((x) => now.includes(x))) return false;
@@ -79,7 +133,7 @@ function keyOf(str) {
   return h >>> 0;
 }
 /** Runs fn on a run of luck of its own, keyed to this life and moment, and puts the game's dice back as they were. */
-function apart(key, fn) {
+export function apart(key, fn) {
   const saved = rng.state();
   rng.seed(keyOf(`${store.state.slotId}/${key}`));
   try { return fn(); } finally { rng.seed(saved); }
@@ -100,7 +154,7 @@ export function drawBetween(step, seasons, chance = 0.8, everyday = 0) {
     const pool = [];
     for (const ev of EVENTS) {
       const b = ev.between;
-      if (!b || (b.steps && !b.steps.includes(step)) || (b.seasons && !b.seasons.some((x) => seasons.includes(x))) || (b.when && !b.when(player(), state))) continue;
+      if (!b || ev.queuedOnly || (b.steps && !b.steps.includes(step)) || (b.seasons && !b.seasons.some((x) => seasons.includes(x))) || (b.when && !b.when(player(), state))) continue;
       const cast = eligibleCast(ev, true);
       if (cast) pool.push({ ev, cast });
     }
@@ -192,7 +246,7 @@ export function checkChance(check, cast) {
 
 /** @returns {{label:string, enabled:boolean}[]} */
 export const choiceStates = (ev, cast) =>
-  ev.choices.map((ch) => ({ label: ch.label, enabled: meetsAll(ch.requires, cast) }));
+  ev.choices.map((ch, i) => ({ label: ch.label, enabled: meetsAll(ch.requires, cast), hidden: !!store.state && !choiceTimely(ev, i) }));
 
 /** Outcomes whose history conditions hold; specific variants beat generic ones. */
 function variantsFor(outcomes, on, cast) {
@@ -220,6 +274,9 @@ function resolveNow(ev, choiceIndex, cast) {
   let options = variantsFor(choice.outcomes, result, cast);
   if (!options.length) options = variantsFor(choice.outcomes, 'always', cast);
   if (!options.length) options = choice.outcomes;
+  // Historical Eras: an outcome that fits the year is preferred to one that mentions things not yet invented.
+  const fitting = options.filter(outcomeTimely);
+  if (fitting.length) options = fitting;
   const outcome = rng.weighted(options);
 
   // `why` is what reputation changes are put down to in the royal's record.

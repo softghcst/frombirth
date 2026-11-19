@@ -1,5 +1,5 @@
 // Checks the scenes of working life (js/data/events/career.js) by playing every outcome of every one, and the
-// rules around them: a relationship at work, children who lean towards a parent's work without being forced,
+// rules around them: a relationship at work, children who lean toward a parent's work without being forced,
 // and royals with professions. Run with: node tests/worklife.mjs
 import { store } from '../js/state.js';
 import { rng } from '../js/rng.js';

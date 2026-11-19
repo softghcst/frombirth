@@ -41,25 +41,25 @@ for (let i = 0; i < 30 && p.countryId === 'br'; i++) { p.flags.visaAge = null; r
 check(p.countryId === 'pt' && p.birthCountryId === 'br' && cit.held(p).join() === 'br', 'moving to Portugal changes where you live, not where you were born or what you are');
 check(cit.residency(p).status === 'permanent_resident' && cit.locations(p).length === 2 && cit.locations(p)[0].to != null, 'residency and location history were not recorded on the move');
 check(mayVote('pt') !== '', 'a resident who is not a citizen should not be able to vote');
-check(!cit.naturalisation(p).possible && /years of residence/.test(cit.naturalisation(p).why), 'citizenship should need years of residence first');
+check(!cit.naturalization(p).possible && /years of residence/.test(cit.naturalization(p).why), 'citizenship should need years of residence first');
 // Marrying a citizen shortens the wait and confers nothing by itself.
 const spouse = makeNpc({ role: 'spouse', countryId: 'pt', age: 30 }); store.state.npcs[spouse.id] = spouse; p.npcIds.push(spouse.id);
-{ const base = (await import('../js/data/citizenship.js')).RESIDENCE_YEARS.pt ?? 5; const n = cit.naturalisation(p); check(cit.held(p).join() === 'br' && n.spouse && n.needs < base && n.needs >= 3, `marriage should shorten the wait (${n.needs} of ${base} years) and grant nothing`); }
+{ const base = (await import('../js/data/citizenship.js')).RESIDENCE_YEARS.pt ?? 5; const n = cit.naturalization(p); check(cit.held(p).join() === 'br' && n.spouse && n.needs < base && n.needs >= 3, `marriage should shorten the wait (${n.needs} of ${base} years) and grant nothing`); }
 for (let i = 0; i < 6; i++) year();
-const n = cit.naturalisation(p);
+const n = cit.naturalization(p);
 check(n.possible && n.mustRenounce.length === 0, `after six years a spouse should be eligible (${n.why})`);
-for (let i = 0; i < 12 && !cit.held(p).includes('pt'); i++) { p.flags.natAge = null; p.finance.cash += 5000; cit.naturalise(); }
+for (let i = 0; i < 12 && !cit.held(p).includes('pt'); i++) { p.flags.natAge = null; p.finance.cash += 5000; cit.naturalize(); }
 check(cit.held(p).sort().join() === 'br,pt' && cit.residency(p).status === 'citizen' && mayVote('pt') === '', 'naturalized: both citizenships, citizen status, and a vote');
 section('moving, residency, marriage and naturalization keep birthplace, residence and citizenship apart');
 
 // 3. Single-nationality places.
 p = life('fr', 40); p.countryId = 'jp'; p.flags.arrivedYear = store.state.year - 9; p.finance.cash = 9e6;
-let nat = cit.naturalisation(p);
+let nat = cit.naturalization(p);
 check(nat.possible && nat.mustRenounce.join() === 'fr', 'becoming Japanese should mean giving up French citizenship');
-for (let i = 0; i < 12 && !cit.held(p).includes('jp'); i++) { p.flags.natAge = null; cit.naturalise(); }
+for (let i = 0; i < 12 && !cit.held(p).includes('jp'); i++) { p.flags.natAge = null; cit.naturalize(); }
 check(cit.held(p).join() === 'jp' && p.citizenships.find((c) => c.jurisdictionId === 'fr').lostAt != null, 'the lost citizenship should be kept in the record, marked as lost');
 p = life('in', 40); p.countryId = 'ca'; p.flags.arrivedYear = store.state.year - 5; p.finance.cash = 1e5;
-nat = cit.naturalisation(p);
+nat = cit.naturalization(p);
 check(nat.possible && nat.willLose.join() === 'in' && nat.mustRenounce.length === 0, 'an Indian citizen who becomes Canadian loses Indian citizenship by India\'s rule');
 section('places that allow one nationality are honored in both directions');
 
@@ -78,7 +78,7 @@ check(!fx.exchange('USD', 'MXN', 1e9).ok && !fx.exchange('USD', 'USD', 5).ok && 
 // A hundred round trips never create money.
 p.finance.cash = 100000; let last = 100000;
 for (let i = 0; i < 100; i++) { fx.exchange('USD', 'JPY', Math.floor(p.finance.cash)); fx.exchange('JPY', 'USD', p.finance.accounts.JPY); check(p.finance.cash <= last, 'a round trip created money'); last = p.finance.cash; }
-// Rates drift but stay sane, and a recorded rate does not change afterwards.
+// Rates drift but stay sane, and a recorded rate does not change afterward.
 const logged = p.finance.fxLog[0].rate;
 for (let i = 0; i < 300; i++) fx.tickFx();
 check(Object.values(store.state.fx).every((v) => v >= 0.7 && v <= 1.4 && Number.isFinite(v)) && p.finance.fxLog[0].rate === logged, 'rates left their bounds, or history was rewritten');

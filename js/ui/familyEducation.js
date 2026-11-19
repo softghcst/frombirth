@@ -13,7 +13,7 @@ const person = (r, label) => `
     ${r.degrees.some((d) => d.type === 'high') ? '' : '<div class="kv"><span>School</span><span>Left without a qualification</span></div>'}
     ${r.first ? '<div class="kv"><span>First</span><span>The first in the family to graduate from university</span></div>' : ''}
     ${r.mentor ? `<div class="kv"><span>Remembered</span><span>${esc(r.mentor)}</span></div>` : ''}
-    ${r.honours.length ? `<p class="muted" style="margin:6px 0 0">${r.honours.map(esc).join(' ')}</p>` : ''}
+    ${r.honors.length ? `<p class="muted" style="margin:6px 0 0">${r.honors.map(esc).join(' ')}</p>` : ''}
   </div>`;
 
 export function openFamilyEducation() {

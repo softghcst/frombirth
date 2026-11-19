@@ -8,6 +8,9 @@ const { store } = await import('../js/state.js');
 const { rng } = await import('../js/rng.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
+const { deathRoll } = await import('../js/engine/death.js');
+// These checks are about the courts: nobody dies of an accident or illness halfway through a case.
+deathRoll.spared = true;
 const { makeNpc } = await import('../js/engine/npcFactory.js');
 const { ROOTS } = await import('../js/data/economy.js');
 const { saveGame, loadGame } = await import('../js/save.js');
@@ -94,7 +97,7 @@ function framedBy(offenseId, reliability = 0.85) {
   check(['remand', 'conditions', 'released', 'bail'].includes(b.decision) && c.stage === 'pretrial', 'the first hearing decides bail');
   if (b.decision !== 'remand' && b.decision !== 'released' && b.decision !== 'conditions') k.remand(c);
   const opts = k.counselOptions(c);
-  check(opts.some((o) => o.tier === 'public') && opts.filter((o) => o.tier !== 'self').every((o) => store.state.npcs[o.npcId]?.flags.justice?.kind === 'defence'), 'counsel are real lawyers');
+  check(opts.some((o) => o.tier === 'public') && opts.filter((o) => o.tier !== 'self').every((o) => store.state.npcs[o.npcId]?.flags.justice?.kind === 'defense'), 'counsel are real lawyers');
   const legalAid = opts.find((o) => o.tier === 'public');
   check(legalAid.ok, 'a serious charge qualifies for legal aid');
   k.appoint(c, 'public', legalAid.npcId);
@@ -128,15 +131,15 @@ function framedBy(offenseId, reliability = 0.85) {
   }
   check(visited && cell.visits.some((x) => x.npcId === mother.id), 'a parent visits');
   // 20: education.
-  const eq = jail.programmeOptions().find((x) => x.id === 'equivalency');
+  const eq = jail.programOptions().find((x) => x.id === 'equivalency');
   check(eq?.ok, 'a school-leaving course is on offer');
-  check(jail.enrol('equivalency').ok && cell.programme?.id === 'equivalency', 'the player enrolls');
+  check(jail.enroll('equivalency').ok && cell.program?.id === 'equivalency', 'the player enrolls');
   jail.setRoutine('study');
   // 21–24: years pass.
   const startLeft = cell.yearsLeft;
   year();
   check(cell.served === 1 && cell.yearsLeft === startLeft - 1, 'a year is served, once');
-  if (cell.programme) year();
+  if (cell.program) year();
   check(p.education.degrees.some((d) => d.type === 'high' && d.inCustody), 'the qualification is in the real education record');
   // 25–27: release when the law allows.
   let years = 1;
@@ -146,7 +149,11 @@ function framedBy(offenseId, reliability = 0.85) {
     years += 1;
   }
   check(!jail.cell(), 'released in time');
-  check(['On parole', 'Has a criminal record'].includes(law.status()), `legal status after release: ${law.status()} ${JSON.stringify(law.pendingCase()?.hearings)} ${JSON.stringify(p.legal.history.map((h) => h.text))}`);
+  // Free again, an adult can be wrongly suspected of something new in any year (justice.js wronglySuspected): a fresh
+  // arrest after the release is that, not the old case coming back.
+  const released = p.legal.history.findLastIndex((h) => /^Released/.test(h.text));
+  const since = p.legal.history.slice(released + 1);
+  check(['On parole', 'Has a criminal record'].includes(law.status()) || (released >= 0 && since.some((h) => /^Arrested/.test(h.text))), `legal status after release: ${law.status()} ${JSON.stringify(law.pendingCase()?.hearings)} ${JSON.stringify(p.legal.history.map((h) => h.text))}`);
   check(!!p.flags.reentry?.housing, 'release comes with somewhere to live');
   check(p.legal.history.some((h) => h.kind === 'released'), 'release is in the legal history');
   check(!unmet(CAREER_BY_ID.retail).some((x) => /cell/.test(x)), 'work is open again');
@@ -273,7 +280,7 @@ function framedBy(offenseId, reliability = 0.85) {
   check(jobs.duties().map((d) => d.id).join() === 'prosecute', 'a prosecutor prosecutes, and does nothing else');
   p.career.careerId = 'lawyer';
   const c = jobs.openCourtBrief('defend');
-  check(c && c.defenceId === p.id && c.defendantId !== p.id && valid(c.defendantId), 'a defense brief is a real case with a real client');
+  check(c && c.defenseId === p.id && c.defendantId !== p.id && valid(c.defendantId), 'a defense brief is a real case with a real client');
   const r = jobs.argue(c, 'trial');
   check(['sentenced', 'acquitted', 'dismissed'].includes(c.stage) && c.hearings.length >= 3 && r.text, 'the case is argued to an end, with hearings on record');
   check(!jobs.openCourtBrief('defend'), 'one defense brief a year');
@@ -294,7 +301,7 @@ function framedBy(offenseId, reliability = 0.85) {
 
   p = adult('uk', 45);
   p.education.degrees.push({ type: 'university', majorId: 'law', gpa: 3.5, age: 22 }, { type: 'law', gpa: 3.5, age: 25 });
-  p.flags.licences = ['law'];
+  p.flags.licenses = ['law'];
   const before = unmet(CAREER_BY_ID.judiciary);
   check(before.some((x) => /years as/.test(x)), `a judge must first practice law (${before.join('; ')})`);
   ensureCareer(p.career).experience.lawyer = 14;
@@ -341,7 +348,9 @@ function framedBy(offenseId, reliability = 0.85) {
   check(!!cell?.guardians[kid.id], 'a child is placed with a guardian');
   check(store.state.npcs[kid.id].role === 'child' && kid.parentIds.includes(p.id), 'the player is still the parent');
   // A friend inside.
-  const mate = jail.inmatesNear().find((n) => n.flags.inmate.yearsLeft <= 2) ?? jail.inmatesNear()[0];
+  // The youngest near release: the check is about release and friendship, not about an older inmate dying of old age.
+  const byAge = [...jail.inmatesNear()].sort((x, y) => x.age - y.age);
+  const mate = byAge.find((n) => n.flags.inmate.yearsLeft <= 2) ?? byAge[0];
   mate.flags.inmate.yearsLeft = 1;
   jail.getToKnow(mate.id);
   mate.meters.relationship = 80;
@@ -357,11 +366,11 @@ function framedBy(offenseId, reliability = 0.85) {
   const lettered = jail.writeLetter(kid.id);
   check(typeof lettered.text === 'string', 'letters can be written');
   // Vocational study counts outside.
-  const chef = jail.programmeOptions().find((x) => x.id === 'chef');
+  const chef = jail.programOptions().find((x) => x.id === 'chef');
   if (chef?.ok) {
     cell.yearsLeft = Math.max(cell.yearsLeft, 6); cell.total = Math.max(cell.total, cell.served + 6);
-    jail.enrol('chef');
-    for (let i = 0; i < 4 && jail.cell()?.programme; i++) year();
+    jail.enroll('chef');
+    for (let i = 0; i < 4 && jail.cell()?.program; i++) year();
     check(p.education.degrees.some((d) => d.type === 'apprenticeship' && d.majorId === 'chef'), 'a trade learned inside is a real trade');
   }
   section('H I J  education that counts, a friendship that outlasts the sentence, a family that goes on');
@@ -435,7 +444,7 @@ function framedBy(offenseId, reliability = 0.85) {
   const kinds = inv.evidenceIds.map((id) => k.J().evidence[id].kind);
   check(!kinds.some((x) => ['forensic', 'cctv', 'digital'].includes(x)), `no DNA, cameras or phone records in 1960 (${kinds.join(', ')})`);
   law.imprison(3, 2, {});
-  check(!jail.programmeOptions().find((x) => x.id === 'coding').ok, 'no computer courses before computers');
+  check(!jail.programOptions().find((x) => x.id === 'coding').ok, 'no computer courses before computers');
   store.state.year = EVIDENCE_FROM.forensic + 20;
   section('N  an earlier era: evidence and education follow the calendar (eras are otherwise not modeled)');
 }
@@ -509,7 +518,7 @@ function framedBy(offenseId, reliability = 0.85) {
   delete store.state.justice;
   const cash = r.finance.cash;
   const c = law.pendingCase();
-  check(c && c.stage === 'plea' && c.defenceTier === 'good' && r.finance.cash === cash, 'an open case resumes with its lawyer, and the fee is not taken again');
+  check(c && c.stage === 'plea' && c.defenseTier === 'good' && r.finance.cash === cash, 'an open case resumes with its lawyer, and the fee is not taken again');
   check(c.evidenceIds.length >= 1 && k.J().evidence[c.evidenceIds[c.evidenceIds.length - 1]].reliability === 0.85, 'its evidence keeps the old strength');
   section('older saves: an open case resumes where it was');
 }
@@ -548,7 +557,7 @@ function framedBy(offenseId, reliability = 0.85) {
   p = adult('se', 30);
   rules.enact('se', 'prisonEducation', 'minimal', 'a test');
   law.imprison(5, 2, {});
-  check(jail.programmeOptions().find((x) => x.id === 'degree').why === 'Not offered in prisons here.', 'cutting prison education closes courses');
+  check(jail.programOptions().find((x) => x.id === 'degree').why === 'Not offered in prisons here.', 'cutting prison education closes courses');
   law.release();
   p = adult('uk', 30);
   rules.enact('uk', 'recordSealing', false, 'a test');
@@ -792,16 +801,16 @@ function framedBy(offenseId, reliability = 0.85) {
   // The player's own children, while the player serves a long sentence.
   {
     const q = adult('uk', 40);
-    const mum = q.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive);
+    const mom = q.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive);
     // Only one grandparent, and nobody else who could look after the child.
-    for (const id of [...q.npcIds]) { const n = store.state.npcs[id]; if (['spouse', 'partner', 'sibling'].includes(n.role) || (n.role === 'parent' && n !== mum)) q.npcIds = q.npcIds.filter((x) => x !== id); }
+    for (const id of [...q.npcIds]) { const n = store.state.npcs[id]; if (['spouse', 'partner', 'sibling'].includes(n.role) || (n.role === 'parent' && n !== mom)) q.npcIds = q.npcIds.filter((x) => x !== id); }
     const kid = makeNpc({ role: 'child', countryId: 'uk', age: 7, relationship: 80 });
     store.state.npcs[kid.id] = kid; q.npcIds.push(kid.id);
-    if (mum) {
-      mum.age = 65; mum.meters.health = 80; mum.meters.relationship = 90;
-      mum.city = COUNTRIES_CITIES.find((c) => c !== q.city);
+    if (mom) {
+      mom.age = 65; mom.meters.health = 80; mom.meters.relationship = 90;
+      mom.city = COUNTRIES_CITIES.find((c) => c !== q.city);
       law.imprison(8, 3, {});
-      check(kid.flags.livesIn === mum.city, 'a long sentence: the player\'s child moves to the grandparent\'s town');
+      check(kid.flags.livesIn === mom.city, 'a long sentence: the player\'s child moves to the grandparent\'s town');
       law.release();
       check(!kid.flags.livesIn && !kid.flags.guardian, 'and comes home when the player is released');
       law.imprison(1, 1, {});

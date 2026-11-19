@@ -1,5 +1,5 @@
 // Scenes sent by the campus engine (engine/campus.js): about the player's
-// real roommate, organisations and standing. Each choice goes back to the engine.
+// real roommate, organizations and standing. Each choice goes back to the engine.
 import { any } from './helpers.js';
 
 const campus = (value) => ({ type: 'campus', value });
@@ -21,7 +21,7 @@ export default [
     ['Take fewer courses', 'You ask what can be dropped.', 'probLight'],
     ['Say it will be fine', 'You nod in the right places.', 'probCarry'],
   ]),
-  scene('thesis_defence', [22, 90], 'Your thesis, "{topic}", is written, bound, and in the hands of the examiners. On Thursday they will ask you to defend every page of it.', [
+  scene('thesis_defense', [22, 90], 'Your thesis, "{topic}", is written, bound, and in the hands of the examiners. On Thursday they will ask you to defend every page of it.', [
     ['Rehearse it with your supervisor', 'You book a room and a hostile audience of two.', 'defendPrepare'],
     ['Go in as you are', 'Nobody knows this better than you do.', 'defendPlain'],
     ['Improvise', 'You have not opened it in a month.', 'defendWing'],

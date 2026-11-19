@@ -7,7 +7,7 @@ const disaster = (value) => ({ type: 'disaster', value });
 export default [
   {
     // Turns shorter than a year: a storm, flood or fire seen coming, a turn ahead.
-    id: 'disaster_forecast', category: 'disaster', ageRange: [10, 120], queuedOnly: true, cooldown: 0, cast: {},
+    id: 'disaster_forecast', category: 'disaster', ageRange: [18, 120], queuedOnly: true, between: { queued: true }, // its own luck, like every turn's scene cooldown: 0, cast: {},
     text: 'The forecasts are all about {what}, expected to hit in {when}. The shops are already running out of water and batteries.',
     choices: [
       { label: 'Prepare properly: board up, sandbag, stock up, and stay', outcomes: [any('You spend a weekend on it, and the house looks like a fortress.', 'neutral', cash(-60), disaster({ do: 'prep', how: 'ready' }))] },

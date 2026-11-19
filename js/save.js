@@ -1,11 +1,18 @@
 // localStorage persistence: multiple save slots plus the graveyard.
 import { rng } from './rng.js';
+import { fameOf } from './engine/fame.js';
 import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
+import { migrateHealth } from './engine/health/record.js';
+import { ensureGlobal } from './engine/globalLife.js';
 import { ledgerOf } from './engine/ledger.js';
 import { reconcile as reconcileAnimals } from './engine/animals.js';
+import { migrateDigital } from './engine/digital/tick.js';
+import { ensureEra, alignWorld } from './engine/eras.js';
+import { adoptOldSport } from './engine/sportsLife.js';
+import { americanize } from './engine/spelling.js';
 
 export const SCHEMA_VERSION = 2;
 const K_INDEX = 'pathways.index';
@@ -32,6 +39,8 @@ function write(key, value) {
 
 /** Bring older saves up to the current schema. */
 function migrate(state) {
+  // Saves from when the game was written in British English: their ids, keys and text, in American spelling.
+  americanize(state);
   state.pendingEvents ??= [];
   state.eventHistory ??= [];
   state.player.birth ??= [];
@@ -60,6 +69,8 @@ function migrate(state) {
   rename(pl, pl.countryId);
   for (const l of pl.locations ?? []) rename(l, l.countryId);
   for (const a of pl.assets ?? []) if (a.kind === 'property') rename(a, a.countryId ?? pl.countryId);
+  // Lives saved before the health record: conditions carried over, nothing invented.
+  migrateHealth(state);
   // The same renaming for employers, their openings, and businesses (engine/employers.js, business.js).
   for (const e of Object.values(state.jobs?.employers ?? {})) rename(e, e.countryId);
   for (const post of Object.values(state.jobs?.postings ?? {})) rename(post, post.countryId);
@@ -71,6 +82,7 @@ function migrate(state) {
   // Careers before employers, side jobs and the time budget: fill in what the save lacks. Nothing is re-paid.
   ensureCareer(state.player.career);
   state.player.businesses ??= [];
+  fameOf(state.player); // a save's single fame figure becomes a fame profile, with where it came from noted; nothing is invented
   if (state.player.career.paidYear == null) state.player.career.paidYear = state.year; // this year's pay has already been through the old payroll
   for (const a of Object.values(state.animals?.byId ?? {})) for (const h of a.homes) rename(h, h.countryId);
   for (const e of state.animals?.events ?? []) if (e.place) rename(e.place, e.place.countryId);
@@ -91,7 +103,7 @@ function migrate(state) {
     ledgerOf(state, { desc: 'What you had when the books were opened (from an earlier version of the game)' });
   }
   // Lives saved before the justice records: each record entry is kept as it was,
-  // marked as older, with its offence named in today's terms. Nothing is invented:
+  // marked as older, with its offense named in today's terms. Nothing is invented:
   // open cases, unsolved crimes and sentences are upgraded the first time they are
   // used (engine/justice.js upgradeLegacy), with no trial history made up for them.
   const legal = pl.legal;
@@ -108,6 +120,14 @@ function migrate(state) {
     r.outcome ??= r.convicted ? 'convicted' : 'acquitted';
     r.year ??= pl.birthYear + r.age;
   }
+  // Travel, papers, residence history and the family's shared record (engine/globalLife.js). Nothing is invented for older lives.
+  ensureGlobal(state);
+  // The Digital World (engine/digital): older saves keep their account and followers, with nothing invented.
+  migrateDigital(state);
+  // Historical Eras: a life saved before eras keeps its money as it was (see engine/eras.js).
+  ensureEra(state, { legacy: true });
+  // One sports system: a professional career kept under the old separate system becomes the player's sports record.
+  if (state.proSport || state.player?.sport?.seasons) adoptOldSport(state);
   state.schemaVersion = SCHEMA_VERSION;
   return state;
 }
@@ -136,7 +156,12 @@ export function saveGame(state) {
   const index = read(K_INDEX, []).filter((m) => m.slotId !== state.slotId);
   index.push(meta);
   forgetDeleted('slots', state.slotId);
-  return write(K_SLOT + state.slotId, state) && write(K_INDEX, index);
+  if (!write(K_SLOT + state.slotId, state)) {
+    // Out of room: the undo history goes before the life itself does.
+    try { localStorage.removeItem(K_UNDO + state.slotId); } catch { /* storage unavailable */ }
+    if (!write(K_SLOT + state.slotId, state)) return false;
+  }
+  return write(K_INDEX, index);
 }
 
 /** A saved life as it stands, without starting to play it: for comparing timelines. */
@@ -164,6 +189,8 @@ export function forkGame(state, note) {
   if (have >= MAX_TIMELINES) return { ok: false, text: `This life already has ${MAX_TIMELINES} timelines. Delete one from the title screen to keep another.` };
   const p = state.player;
   const at = { age: p.age, month: state.month ?? 0, year: state.year, note };
+  // A timeline is the same world: the same storms (engine/disasters.js) on both roads.
+  state.worldId ??= state.timeline?.root ?? state.slotId;
   state.rngSeed = rng.state();
   const copy = JSON.parse(JSON.stringify(state));
   copy.slotId = `life_${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -193,6 +220,9 @@ export function loadGame(slotId) {
   if (!state) return null;
   migrate(state);
   rng.seed(state.rngSeed);
+  // The loaded life is the one being played: the world's money and currencies are its year's (Historical Eras), so
+  // that living the same years again costs the same as it did the first time.
+  alignWorld(state);
   return state;
 }
 
@@ -216,8 +246,16 @@ export function pushUndo(state) {
   // Three years back, however long a turn is (engine/turns.js): four turns a year with three-month turns.
   const perYear = 12 / ([6, 3].includes(state.settings?.step) ? state.settings.step : 12);
   while (list.length > UNDO_YEARS * perYear) list.shift();
+  // Never more than a share of the browser's storage: the life's own save must always have room.
+  while (list.length > 1 && list.reduce((n, x) => n + x.length, 0) > UNDO_BUDGET) list.shift();
   while (list.length && !write(K_UNDO + state.slotId, list)) list.shift();
+  if (!list.length) { try { localStorage.removeItem(K_UNDO + state.slotId); } catch { /* storage unavailable */ } }
 }
+/**
+ * Characters of saved turns the undo history may hold, at most. Browser storage is about five million characters for
+ * everything, and a grown life is close to a million: undo keeps as many turns back as fit, often two or three.
+ */
+export const UNDO_BUDGET = 2500000;
 /** Where taking back the last turn would return to: { age, month }, or null. */
 export function peekUndo(slotId) {
   const list = read(K_UNDO + slotId, []);
@@ -234,6 +272,7 @@ export function popUndo(slotId) {
   write(K_UNDO + slotId, list);
   const state = migrate(JSON.parse(raw));
   rng.seed(state.rngSeed);
+  alignWorld(state); // a year taken back has that year's prices again
   return state;
 }
 /** Removes a grave, when the death it records is taken back. */

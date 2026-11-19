@@ -23,14 +23,14 @@ export const MAJORS = [
   M('communications', 'Communications', 0.1, 2.0, { stats: { charm: 2 } }),
   M('art', 'Fine Art', 0.1, 2.0, { stats: { mood: 2 } }),
   M('music', 'Music', 0.2, 2.0, { talents: { music: 5, singing: 2 } }),
-  M('theatre', 'Theater', 0.15, 2.0, { talents: { acting: 5 }, stats: { charm: 1 } }),
+  M('theater', 'Theater', 0.15, 2.0, { talents: { acting: 5 }, stats: { charm: 1 } }),
   M('journalism', 'Journalism', 0.25, 2.6, { stats: { intellect: 1, charm: 1 } }, ['law']),
   // BA: performance alongside a broad degree. BFA: conservatory-style, almost
   // all studio time, a tougher audition and much faster skill growth.
-  M('musical_theatre', 'Musical Theater (BA)', 0.2, 2.0,
+  M('musical_theater', 'Musical Theater (BA)', 0.2, 2.0,
     { talents: { singing: 4, dance: 4, acting: 4 }, stats: { intellect: 1 } }, [],
     { audition: true, auditionBase: 0.3, blurb: 'Performance classes inside a broad degree. Easier audition, steady growth.' }),
-  M('musical_theatre_bfa', 'Musical Theater (BFA)', 0.3, 2.0,
+  M('musical_theater_bfa', 'Musical Theater (BFA)', 0.3, 2.0,
     { talents: { singing: 7, dance: 7, acting: 7 }, stats: { health: 1 } }, [],
     { audition: true, auditionBase: 0.12, blurb: 'Conservatory training: studio all day, shows at night. Hard to get into, fastest growth.' }),
 ];
