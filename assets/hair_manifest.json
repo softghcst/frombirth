@@ -3,8 +3,76 @@
   "baseHead": "dimple_oval",
   "hairstyles": [
     {
+      "id": "90s_flipped_ponytail",
+      "name": "90s Flipped Ponytail",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "collarbone_butterfly_cut",
+      "name": "Collarbone Butterfly Cut",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "curtain_bangs_90s",
       "name": "Curtain Bangs 90s",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "dutch_halo_braid",
+      "name": "Dutch Halo Braid",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "half_up_fountain_bob",
+      "name": "Half Up Fountain Bob",
       "clipToHead": false,
       "length": "short",
       "type": "any",
@@ -124,6 +192,57 @@
     {
       "id": "messy_wavy_fringe",
       "name": "Messy Wavy Fringe",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "retro_60s_bouffant_bob",
+      "name": "Retro 60s Bouffant Bob",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "short_bubble_pigtails",
+      "name": "Short Bubble Pigtails",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "short_hime_princess_bob",
+      "name": "Short Hime Princess Bob",
       "clipToHead": false,
       "length": "short",
       "type": "any",
@@ -280,6 +399,23 @@
       "clipToHead": false,
       "length": "medium",
       "type": "coily",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "y2k_spiky_updo_bun",
+      "name": "Y2K Spiky Updo Bun",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
       "heads": [
         "almond",
         "angular",
