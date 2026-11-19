@@ -16,6 +16,7 @@ const PATHS = {
   menu: '<path d="M4 7h16M4 12h16M4 17h10"/>',
   chevron: '<path d="m9 6 6 6-6 6"/>',
   back: '<path d="m15 5-7 7 7 7"/>',
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
   sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
