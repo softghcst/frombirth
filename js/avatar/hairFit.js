@@ -82,7 +82,7 @@ export function hairFit(hairId, headId) {
   let out = null;
   // A baby's hair is set on the head, with no opening for the face to fit: its own outline is laid on the head's (fitTuft).
   const tuft = PART_BY_ID[hairId]?.tags?.age === 'baby';
-  if (head?.fit) out = tuft && hair?.XL && head.edge ? fitTuft(hair, head.edge, head.fit, YOUNG_DROP[headId] ?? 0, hairId) : hair && head.edge && !tuft ? solve(hair, head.edge, head.fit, LIMITS, frameFor(headId).y) : plain(head.fit);
+  if (head?.fit) out = tuft && hair?.XL && head.edge ? fitTuft(hair, head.edge, head.fit, YOUNG_DROP[headId] ?? 0) : hair && head.edge && !tuft ? solve(hair, head.edge, head.fit, LIMITS, frameFor(headId).y) : plain(head.fit);
   cache.set(key, out);
   return out;
 }
@@ -102,14 +102,7 @@ export const TUFT = { lap: 2, eye: 6, fringe: 16 };
  * the head (a curl, a fountain, puffs) is free. The hair ends by the brows and its fringe stays clear of them, and it
  * keeps its drawn proportions as far as that allows. A pure function of the two measurements, like solve().
  */
-/**
- * Puffs and pigtails are worn on top of the head, with little hair lying on it for fitTuft to lay against the
- * outline: they are drawn this much bigger than it finds, and this far further down (in units of the head's scale),
- * so the cap and its parting sit well onto the forehead.
- */
-export const TUFT_SET = { hair_baby_05_twin_puffs: { grow: 1.1, down: 12 }, hair_baby_07_mini_pigtails: { grow: 1.12, down: 14 } };
-
-function fitTuft(hair, head, fit, drop, id) {
+function fitTuft(hair, head, fit, drop) {
   const faceH = fit.chin - fit.top;
   const hr = faceH / (T.face.chin - T.face.top);
   const browY = fit.top + (T.anchor.eyebrows - T.face.top) * hr + drop * faceH;
@@ -169,9 +162,7 @@ function fitTuft(hair, head, fit, drop, id) {
   search(w * 0.95, w * 1.28, w * 0.8, w * 1.28, fit.top - 100, fit.top + 12, 0.03, 3);
   search(Math.max(w * 0.95, best.sx - 0.03), Math.min(w * 1.28, best.sx + 0.03), Math.max(w * 0.8, best.sy - 0.03), Math.min(w * 1.28, best.sy + 0.03), best.ty - 3, best.ty + 3, 0.01, 1);
   const r3 = (v) => Math.round(v * 1000) / 1000;
-  // Styles worn on top of the head are set a little bigger and further down onto it (TUFT_SET).
-  const set = TUFT_SET[id] ?? { grow: 1, down: 0 };
-  return { sx: r3(best.sx * set.grow), sy: r3(best.sy * set.grow), tx: fit.cx, ty: r3(best.ty + set.down * w), squash: 1, line: fit.top };
+  return { sx: r3(best.sx), sy: r3(best.sy), tx: fit.cx, ty: r3(best.ty), squash: 1, line: fit.top };
 }
 
 function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {

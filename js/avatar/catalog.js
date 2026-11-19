@@ -194,7 +194,9 @@ export function resolveLook(appearance, seed = 'x', gender) {
   const st = a.style;
   const skin = part('skin', g.skin);
   const natural = INDEX.anyHair[g.hairColor].hex;
-  const babyHair = g.hairTexture === 'coily' ? ['hair_baby_04_mini_puff', 'hair_baby_05_twin_puffs', 'hair_baby_08_baby_ringlets']
+  // The middle of the coily list was twin puffs, since withdrawn: its place is kept (so every other baby keeps the hair
+  // they had) and given to the mini puff.
+  const babyHair = g.hairTexture === 'coily' ? ['hair_baby_04_mini_puff', 'hair_baby_04_mini_puff', 'hair_baby_08_baby_ringlets']
     : g.hairTexture === 'curly' ? ['hair_baby_01_curl_tuft', 'hair_baby_08_baby_ringlets', 'hair_baby_04_mini_puff']
       : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
   const sex = gender === 'female' ? 'female' : 'male';

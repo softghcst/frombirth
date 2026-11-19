@@ -12,7 +12,7 @@ import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManife
 import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
 import { dressFor, filesFor, ageStage, fitTransforms, deepness, characterAvatarSvg } from '../js/CharacterAvatar.js';
-import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS, TUFT_SET } from '../js/avatar/hairFit.js';
+import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS } from '../js/avatar/hairFit.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
 import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
@@ -198,7 +198,8 @@ for (const e of AVATAR_MANIFEST.eyes) {
   }
   for (const id of plain) check(!(id in CUR.WOMEN_EYES), `${id} has lashes or liner, so is not a baby's`);
 }
-check(!PART_BY_ID.hair_baby_09_bow_headband && !existsSync(new URL('assets/avatars/hair/hair_baby_09_bow_headband.svg', root)), 'the bow headband is still in the game');
+for (const id of ['hair_baby_09_bow_headband', 'hair_baby_05_twin_puffs', 'hair_baby_07_mini_pigtails']) check(!PART_BY_ID[id] && !existsSync(new URL(`assets/avatars/hair/${id}.svg`, root)), `${id} is still in the game`);
+for (const texture of ['straight', 'wavy', 'curly', 'coily']) for (let i = 0; i < 40; i++) check(!!PART_BY_ID[resolveLook({ v: 3, inherited: { hairTexture: texture }, style: {} }, `baby${i}`, 'female').babyHair], `a ${texture}-haired baby is given hair that is not in the game`);
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
 const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_16', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
   314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };
@@ -306,8 +307,7 @@ for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) {
   const [r0, rs] = AVATAR_TEMPLATE.profile.rows, [c0, cs, cn] = AVATAR_TEMPLATE.profile.cols;
   const edgeAt = (col, y) => { const k = Math.max(0, Math.min(col.length - 1, Math.round((y - r0) / rs))); return col[k]; };
   const w = fit.w / AVATAR_TEMPLATE.face.w;
-  const grow = TUFT_SET[h.id]?.grow ?? 1; // puffs and pigtails are set a little bigger
-  check(f.sx >= w * 0.94 * grow && f.sx <= w * 1.29 * grow && f.sy >= w * 0.79 * grow && f.sy <= w * 1.29 * grow && f.sx / f.sy < 1.45, `${h.id} on ${head}: a baby's hair is squashed or blown up (${f.sx} x ${f.sy})`);
+  check(f.sx >= w * 0.94 && f.sx <= w * 1.29 && f.sy >= w * 0.79 && f.sy <= w * 1.29 && f.sx / f.sy < 1.45, `${h.id} on ${head}: a baby's hair is squashed or blown up (${f.sx} x ${f.sy})`);
   // Over the middle of the head, the hair's under-edge is on the skin (a parting or a knot may sit higher: the lowest counts).
   const under = Math.max(...e.T.filter((v, j) => v != null && Math.abs(f.sx * (c0 + j * cs - 256)) < fit.w * 0.22));
   check(f.ty + f.sy * (under - AVATAR_TEMPLATE.face.top) >= fit.top + 3, `${h.id} on ${head}: a baby's hair floats above the head`);
@@ -319,8 +319,7 @@ for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) {
     gap += Math.max(0, fit.cx - edgeAt(H.edge.L, y) - f.sx * e.XL[i]) + Math.max(0, edgeAt(H.edge.R, y) - fit.cx - f.sx * e.XR[i]); n += 2;
   }
   const mean = n ? gap / n : 0;
-  const top = ['hair_baby_05_twin_puffs', 'hair_baby_07_mini_pigtails'].includes(h.id); // worn on top of the head: the sides are bare by design
-  check(n > 0 && mean < (top ? 30 : 9), `${h.id} on ${head}: a baby's hair leaves ${mean.toFixed(1)} of scalp at its sides on average`);
+  check(n > 0 && mean < 9, `${h.id} on ${head}: a baby's hair leaves ${mean.toFixed(1)} of scalp at its sides on average`);
 }
 // The reference faces: hair that already sat well is left very nearly as drawn.
 const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_02', 'head_17_dimple_oval'] };
