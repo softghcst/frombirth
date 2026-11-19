@@ -62,13 +62,13 @@ const children = () => Object.values(S().npcs).filter((n) => n.role === 'child')
   const said = kids.conceive(m, false);
   check(p.flags.pregnancy && queued('pregnancy_choice').length === 1 && !queued('pregnancy_partner').length, 'when a woman is told she is pregnant she is asked what to do');
   const ev = EVENTS.find((e) => e.id === 'pregnancy_choice');
-  check(ev.choices.length === 2 && /go on/i.test(ev.choices[0].label) && /continue/i.test(ev.choices[1].label), 'the two answers are to go on with it or not to continue');
+  check(ev.choices.length === 2 && /keep/i.test(ev.choices[0].label) && /keep/i.test(ev.choices[1].label) && ev.choices.every((c) => c.label.length <= 16), 'the two answers are short enough to tap: "Keep the baby" and "Don\'t keep it"');
   check(said && queued('pregnancy_choice')[0].cast.words.who === said, 'the news is told as it came');
   const q = life(30, 'male');
   const w = person('partner', 28, 'female');
   kids.conceive(w, true);
   check(queued('pregnancy_partner').length === 1 && !queued('pregnancy_choice').length, 'a man whose partner is pregnant is asked too: what he hopes, not what she does');
-  check(EVENTS.find((e) => e.id === 'pregnancy_partner').choices.length === 3, 'with three things to say: with you either way, hope to keep, hope not to continue');
+  check(EVENTS.find((e) => e.id === 'pregnancy_partner').choices.length === 3 && EVENTS.find((e) => e.id === 'pregnancy_partner').choices.every((c) => c.label.length <= 18), 'with three short things to say, each fitting a button');
   // Every way a pregnancy can begin asks.
   const r = life(30, 'female'); const s = person('partner', 30, 'male', 95);
   S().pendingEvents = []; let hooked = false;
@@ -176,6 +176,35 @@ section('a partner decides; what the player hopes weighs but does not decide');
   check(!q.flags.pregnancy || q.flags.pregnancy.decided === 'keep', 'for a boy whose girlfriend is pregnant it is her decision, not his');
 }
 section('teenagers have the choice too; school goes on; nobody pays; a boyfriend only says what he hopes');
+
+// ---------- 7. How a teenager looks after themselves ----------
+{
+  const p = life(13, 'female');
+  check(stories.teenSafety().length === 0, 'nothing is offered before 14');
+  const rate = (setup, n = 6000) => {
+    let began = 0;
+    for (let k = 0; k < n; k++) {
+      const q = life(16, 'female'); S().settings = { ...(S().settings ?? {}), drama: 'high', sensitiveFamily: true };
+      const bf = person('partner', 16, 'male', 80);
+      setup(q);
+      stories.tickLoveStories();
+      if (q.flags.teenPregnancy) began++;
+    }
+    return began;
+  };
+  const none = rate(() => {});
+  const learned = rate((q) => { stories.doTeenSafety('class'); stories.doTeenSafety('care'); });
+  check(none > 20 && learned < none / 3, `a young person who has been to health class and seen a doctor is far less likely to meet the storyline (${none} without, ${learned} with)`);
+  const q = life(16, 'female');
+  const opts = stories.teenSafety();
+  check(opts.length === 3 && opts.every((o) => !o.done) && stories.doTeenSafety('care').ok && !stories.doTeenSafety('care').ok, 'three things are offered, each once');
+  check(opts.map((o) => o.label).join(' ').split(/\s+/).every((w) => !/sex|intimate|condom/i.test(w)), 'described as looking after yourself, with nothing about how it comes about');
+  const cash = q.finance.cash;
+  check(q.finance.cash === cash, 'all of it is free');
+  const orphan = life(16, 'female'); for (const id of orphan.npcIds) { const n = S().npcs[id]; if (n && (n.role === 'parent' || n.role === 'guardian')) n.alive = false; }
+  check(!stories.doTeenSafety('talk').ok || stories.teenSafety().find((o) => o.id === 'talk').why === '', 'a talk needs someone to talk to');
+}
+section('a teenager can look after themselves: health class, a talk, a private doctor; each makes the storyline less likely');
 
 if (problems.length) {
   console.log(`${problems.length} problem(s):`);
