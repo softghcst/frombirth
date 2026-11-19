@@ -1,10 +1,12 @@
 // Checks the fitted-hair pipeline's output and how the game draws it. Run with: node tests/fitted-hair.mjs
-//  - every style in js/avatar/fittedHair.js has a fitted file for every head it lists, with its four layers
-//  - a portrait draws hair_back behind the head and the other layers in front, from that head's own file
+//  - assets/hair_manifest.json lists exactly the styles in assets/hair_raw/, with names and clipToHead set by the rules
+//  - every style has a fitted file for every head it lists, with its four layers
+//  - a portrait draws hair_back behind the head and the other layers in front, from that head's own file;
+//    a clipToHead style (buzz cut, fade) is clipped to the head's skin
 //  - children get the kid head's file; a head the style was not fitted to gets the base head's
 //  - a fitted style can be chosen and saved, and the hairstyles given out at random are unchanged
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
-import { FITTED_HAIR, FITTED_BASE_HEAD } from '../js/avatar/fittedHair.js';
+import { FITTED_HAIR, FITTED_BASE_HEAD, FITTED_LOADED } from '../js/avatar/fittedHair.js';
 import { CATALOG, HAIR_STYLES, FITTED_STYLES, fittedFor, normalize } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
 import { fittedHairFile, filesFor, characterAvatarSvg, dressFor } from '../js/CharacterAvatar.js';
@@ -17,13 +19,18 @@ const LAYERS = ['hair_back', 'hair_base', 'hair_bangs', 'hair_lines'];
 const styles = Object.keys(FITTED_HAIR);
 const landmarks = JSON.parse(readFileSync(new URL('assets/landmarks.json', root), 'utf8'));
 
+check(FITTED_LOADED, 'assets/hair_manifest.json did not load');
 check(styles.length > 0, 'no fitted hairstyles: run npm run fit-hair');
-check(landmarks.base_head === FITTED_BASE_HEAD, `fittedHair.js was made from base head ${FITTED_BASE_HEAD}, but landmarks.json says ${landmarks.base_head}: run npm run fit-hair`);
+check(landmarks.base_head === FITTED_BASE_HEAD, `the hair manifest was made from base head ${FITTED_BASE_HEAD}, but landmarks.json says ${landmarks.base_head}: run npm run fit-hair`);
 
 // 1. The files.
 const raw = readdirSync(new URL('assets/hair_raw/', root)).filter((f) => f.endsWith('.svg')).map((f) => f.slice(0, -4).toLowerCase().replace(/[^a-z0-9]+/g, '_'));
-check(raw.sort().join() === [...styles].sort().join(), `assets/hair_raw/ (${raw}) and fittedHair.js (${styles}) differ: run npm run fit-hair`);
+check(raw.sort().join() === [...styles].sort().join(), `assets/hair_raw/ (${raw}) and assets/hair_manifest.json (${styles}) differ: run npm run fit-hair`);
 for (const [id, s] of Object.entries(FITTED_HAIR)) {
+  check(s.id === id && typeof s.name === 'string' && s.name.length > 0 && typeof s.clipToHead === 'boolean', `${id}: the manifest entry needs an id, a name and clipToHead`);
+  const rawSvg = readFileSync(new URL(`assets/hair_raw/${id}.svg`, root), 'utf8');
+  const flag = rawSvg.match(/<svg[^>]*\sdata-clip-to-head="(true|false)"/)?.[1];
+  check(s.clipToHead === (flag ? flag === 'true' : /fade|buzz/.test(id)), `${id}: clipToHead should be ${flag ?? /fade|buzz/.test(id)}`);
   check(s.heads.includes(FITTED_BASE_HEAD) && s.heads.includes('kid'), `${id} is not fitted to the base head and the kid head`);
   for (const head of s.heads) {
     const file = new URL(`assets/hair_fitted/${id}_${head}.svg`, root);
@@ -48,6 +55,17 @@ for (const id of styles) {
     for (const layer of LAYERS.slice(1)) check(at(`${want}#${layer}`) > at('outfit_01_tee'), `${id} on ${h.id}: ${layer} is not drawn in front`);
     check(!svg.includes(`${id}.svg`) && !/scale\(/.test(svg.slice(at(`${want}#hair_back`) - 120, at(`${want}#hair_back`))), `${id} on ${h.id} is moved again at run time`);
   }
+  // A style marked clipToHead is drawn inside the head's skin, back and front; one that is not, is not clipped to it.
+  const meta = FITTED_HAIR[id];
+  const was = meta.clipToHead;
+  for (const clip of [false, true]) {
+    meta.clipToHead = clip;
+    const svg = characterAvatarSvg(dressFor({ head: 'head_12_sculpted', hair: id, makeup: [], jewelry: [], colors: { skin: '#c68642', hair: '#2b1b14' } }, { age: 30 }), { age: 30 });
+    const face = svg.match(/<clipPath id="(pw-face-\d+)"><use href="[^"]*heads\/sculpted\.svg#skin"\/><\/clipPath>/)?.[1];
+    const wrapped = (layer) => new RegExp(`<g clip-path="url\\(#${face}\\)"><g clip-path="url\\(#pw-back-\\d+\\)"><use href="[^"]*${id}_sculpted\\.svg#${layer}"`).test(svg);
+    check(!!face && wrapped('hair_back') === clip && wrapped('hair_base') === clip, `${id} with clipToHead ${clip} is ${clip ? 'not ' : ''}clipped to the head's skin`);
+  }
+  meta.clipToHead = was;
   // A child wears it on the kid head; under a hat it is still clipped by the brim.
   const kid = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid', age: 9 });
   check(kid.includes(`hair_fitted/${id}_kid.svg#hair_back`), `a child is not drawn with ${id}_kid.svg`);

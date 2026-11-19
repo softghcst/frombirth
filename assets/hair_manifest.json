@@ -1,0 +1,23 @@
+{
+  "generatedBy": "scripts/fit_hair.py (do not edit by hand)",
+  "baseHead": "dimple_oval",
+  "hairstyles": [
+    {
+      "id": "textured_crop",
+      "name": "Textured Crop",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    }
+  ]
+}

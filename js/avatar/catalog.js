@@ -19,7 +19,7 @@ import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
 import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH } from './curation.js';
 import { mixHex } from './color.js';
-import { FITTED_HAIR } from './fittedHair.js';
+import { FITTED_HAIR, FITTED_LOADED } from './fittedHair.js';
 
 const named = (ids, hexes, names, extra = () => ({})) => ids.map((id, i) => ({ id, name: names[i], hex: hexes[i], ...extra(i) }));
 const parts = (folder, keep = () => true) => AVATAR_MANIFEST[folder].filter(keep).map((p) => ({ id: p.id, name: p.label, file: p.file, tags: p.tags ?? {} }));
@@ -48,10 +48,11 @@ export const HEADS = parts('heads', (p) => p.tags?.age === 'adult');
 export const HAIR_STYLES = parts('hair', (p) => !/baby/.test(p.id)).map((h) => ({ ...h, type: HAIR_TYPE[h.id] ?? 'straight' }));
 export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));
 /**
- * Hairstyles from the fitting pipeline (scripts/fit_hair.py): offered in the creator and at the salon, drawn from
- * assets/hair_fitted/. They are not in HAIR_STYLES, so the styles picked at random for new people stay as they were.
+ * Hairstyles from the fitting pipeline, read from assets/hair_manifest.json (js/avatar/fittedHair.js): offered in the
+ * creator and at the salon, drawn from assets/hair_fitted/. They are not in HAIR_STYLES, so the styles picked at
+ * random for new people stay as they were.
  */
-export const FITTED_STYLES = Object.entries(FITTED_HAIR).map(([id, s]) => ({ id, name: s.name, file: null, fitted: true, tags: { length: s.length }, type: s.type }));
+export const FITTED_STYLES = Object.values(FITTED_HAIR).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, tags: { length: s.length ?? 'short' }, type: s.type ?? 'any' }));
 /** The fitted styles that suit a natural texture ('any' suits every texture). */
 export const fittedFor = (texture) => FITTED_STYLES.filter((s) => s.type === 'any' || (SUITS[texture] ?? SUITS.straight).includes(s.type));
 
@@ -188,7 +189,10 @@ export function normalize(a, seed = 'x') {
   const style = {};
   const oldCut = v2 ? OLD_HAIRSTYLE[st.hair] : OLD_HAIRSTYLE[OLD_STYLE_NUM[old.hairStyle]];
   const suited = stylesFor(inherited.hairTexture);
-  style.hair = has('hair', st.hair) ? st.hair : oldCut ?? seeded(suited.length ? suited : HAIR_STYLES, seed, 'hair').id;
+  // A saved fitted style is kept even if the hair manifest could not be loaded this time (offline, say):
+  // it is simply not drawn until it loads, rather than being replaced for good.
+  const unloadedFitted = !FITTED_LOADED && !v2 && typeof st.hair === 'string' && /^[a-z0-9_]+$/.test(st.hair) && !PART_BY_ID[st.hair] && st.hair !== 'bald';
+  style.hair = has('hair', st.hair) || unloadedFitted ? st.hair : oldCut ?? seeded(suited.length ? suited : HAIR_STYLES, seed, 'hair').id;
   style.hairDye = INDEX.anyHair[st.hairDye] ? st.hairDye : null;
   style.glasses = has('glasses', st.glasses) ? st.glasses : (v2 && OLD_GLASSES[st.glasses]) || null;
   style.facialHair = has('facialHair', st.facialHair) ? st.facialHair : (v2 && OLD_BEARD[st.facialHair]) || null;

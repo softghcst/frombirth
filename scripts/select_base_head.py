@@ -78,6 +78,8 @@ RULES (all required):
 7. Outline: every hair shape is outlined with stroke="{OUTLINE}" stroke-width="6" stroke-linejoin="round" (the same
    dark brown and weight as the head's outline). Texture lines in hair_lines use stroke-width 3 with round caps.
 8. Style: match the head's flat, clean cartoon look: smooth curves, bold outline, no texture noise, no tiny specks.
+9. For a buzz cut or skin fade (hair that hugs the skull), add data-clip-to-head="true" to the root <svg>: the game
+   then clips the hair to the head's exact outline, so it can be drawn slightly oversized with no overhang.
 
 Here is the base head (`{base}`). Use it only as the reference shape; do not return it:
 

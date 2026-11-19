@@ -52,7 +52,11 @@ export function fittedHairFile(hairId, headId) {
   const head = style.heads.includes(headName(headId)) ? headName(headId) : FITTED_BASE_HEAD;
   return `hair_fitted/${hairId}_${head}.svg`;
 }
-/** A fitted file's layers: hair_back goes behind the head, the rest in front of the face. */
+/**
+ * A fitted file's layers: hair_back goes behind the head, the rest in front of the face. A style marked
+ * clipToHead (a buzz cut or fade) is clipped to this head's skin, the same shape make-up is clipped to,
+ * so it hugs the skull exactly on every head and nothing stands off it.
+ */
 const FITTED_BACK = ['hair_back'];
 const FITTED_FRONT = ['hair_base', 'hair_bangs', 'hair_lines'];
 
@@ -273,7 +277,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     // A fitted style is drawn as it is: its back layer behind the head, the others in front of the face. Only a hat clips it.
     if (fitted) {
       const ids = clip === `pw-back-${n}` ? FITTED_BACK : FITTED_FRONT;
-      return `<g clip-path="url(#pw-back-${n})">${ids.map((id) => `<use href="${AVATAR_BASE}${fitted}#${id}"/>`).join('')}</g>`;
+      const drawn = `<g clip-path="url(#pw-back-${n})">${ids.map((id) => `<use href="${AVATAR_BASE}${fitted}#${id}"/>`).join('')}</g>`;
+      return FITTED_HAIR[d.hair].clipToHead ? `<g clip-path="url(#pw-face-${n})">${drawn}</g>` : drawn;
     }
     const g = `<g${hairAt} clip-path="url(#${clip})">${use(d.hair)}</g>`;
     if (!hf || hf.squash >= 1) return g;
