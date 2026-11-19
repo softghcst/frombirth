@@ -198,15 +198,16 @@ function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {
   // A style that leaves the crown bare as drawn (a parting, a shaved side) is allowed what it already shows.
   const bareAsDrawn = bare(base.sx, base.sy, base.tx, base.ty);
   let sides = true;
+  let reach = REACH.ear;
   const cost = (sx, sy, tx, ty) => {
     let c = 0;
     const bald = bare(sx, sy, tx, ty) - Math.max(0, bareAsDrawn);
     if (bald > 0) c += 4 * bald * bald;
     for (const i of sides ? rows : []) {
       const y = ty + sy * (R0 + i * RSTEP - T.face.top);
-      if (y < fit.top + 18 || y > fit.earTop - 14) continue;
-      const hl = at(head.L, R0, RSTEP, y);
-      const hrx = at(head.R, R0, RSTEP, y);
+      if (y < fit.top + 18 || y > fit.earTop - reach) continue;
+      const hl = skull(head.L, y, fit.earTop);
+      const hrx = skull(head.R, y, fit.earTop);
       if (hl == null) continue;
       const l = hair.L[i];
       const r = hair.R[i];
@@ -269,7 +270,13 @@ function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {
   run();
   // Strands that still hang clear of the head after all that are meant to (a loose lock, a side
   // sweep): the style is fitted again without trying to close them, so it is not pulled out of shape.
-  if (sideGap(hair, head, fit, best) > 2) { sides = false; run(); }
+  // First the whole side of the head, down to where the ear begins. Where that cannot be closed (a style cut in
+  // above the ear), only the temples, as far as the style allows; and where not even that, see above.
+  if (sideGap(hair, head, fit, best, REACH.ear) > 2) {
+    reach = REACH.temple;
+    run();
+    if (sideGap(hair, head, fit, best, REACH.temple) > 2) { sides = false; run(); }
+  }
   const r3 = (v) => Math.round(v * 1000) / 1000;
   // A tall style is flattened above the crown, just enough to stay inside the picture.
   const line = fit.top - 6;
@@ -279,14 +286,25 @@ function solve(hair, head, fit, lim = LIMITS, frameTop = T.frameTop) {
   return { sx: r3(best.sx), sy: r3(best.sy), tx: r3(best.tx), ty: r3(best.ty), squash: r3(squash), line };
 }
 
+/** How far above the top of the ear the sides of the head are looked at: right down to the ear, or the temples only. */
+const REACH = { ear: 3, temple: 14 };
+/** The edge of the skull at a height: as measured, but never read across the step out to the ear. */
+function skull(col, y, earTop) {
+  if (y < earTop - 12) return at(col, R0, RSTEP, y); // well above the ear: the crown curves fast, and is read as it is
+  const i = Math.max(0, Math.min(col.length - 2, Math.floor((y - R0) / RSTEP)));
+  const a = col[i];
+  const b = col[i + 1];
+  return a != null && b != null && Math.abs(b - a) > 8 ? a : at(col, R0, RSTEP, y);
+}
+
 /** The widest strip of background between the hair's inner edges and the head, at the temples. */
-function sideGap(hair, head, fit, f) {
+function sideGap(hair, head, fit, f, reach = REACH.temple) {
   let side = 0;
   for (let i = 0; i < RN; i++) {
     const y = f.ty + f.sy * (R0 + i * RSTEP - T.face.top);
-    if (y < fit.top + 18 || y > fit.earTop - 14) continue;
-    const hl = at(head.L, R0, RSTEP, y);
-    const hr = at(head.R, R0, RSTEP, y);
+    if (y < fit.top + 18 || y > fit.earTop - reach) continue;
+    const hl = skull(head.L, y, fit.earTop);
+    const hr = skull(head.R, y, fit.earTop);
     const l = hair.L[i];
     const r = hair.R[i];
     if (hl == null || l === r) continue;

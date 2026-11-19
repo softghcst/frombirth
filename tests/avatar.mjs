@@ -209,6 +209,22 @@ for (const [key, list, pick] of [['nose', CUR.BABY_NOSES, CUR.babyNose], ['lips'
     check(dressFor(look, { age: 5, gender: 'male' })[key] === p.id && dressFor(look, { age: 30, gender: 'male' })[key] === p.id, `${p.id} is not shown from five`);
   }
 }
+// Every nose is about as wide as the rest (the long-bridge ones were once a third narrower), and no hairstyle has a
+// piece of the artist's sheet left under the mouth.
+for (const n of AVATAR_MANIFEST.noses) {
+  const xs = [...readFileSync(new URL(`assets/avatars/${n.file}`, root), 'utf8').matchAll(/\sd="([^"]*)"/g)].flatMap(([, d]) => d.match(/-?[\d.]+/g).map(Number).filter((_, i) => i % 2 === 0));
+  const wide = Math.max(...xs) - Math.min(...xs);
+  check(wide > 44 && wide < 58, `${n.id} is ${wide.toFixed(0)} wide (the rest are about 52)`);
+}
+{
+  const d = [...readFileSync(new URL('assets/avatars/hair/hair_updo_09.svg', root), 'utf8').matchAll(/\sd="([^"]*)"/g)].map((m) => m[1]).join(' ');
+  const pts = d.match(/-?[\d.]+/g).map(Number);
+  let stray = false;
+  for (let i = 0; i + 1 < pts.length; i += 2) if (pts[i + 1] > 425 && pts[i] > 200 && pts[i] < 320) stray = true;
+  check(!stray, 'hair_updo_09 has its stray piece under the mouth again');
+}
+// A style that can cover the side of the head down to the ear does: the bowl cut no longer stands clear of a child's head.
+check(hairFit('hair_boy_short_07', 'head_00_kid').sx < plainFit('head_00_kid').sx, 'the bowl cut stands out from the side of a child\'s head');
 // Old saves keep the faces they always had (taken from the code before shapes were withdrawn, then moved off withdrawn ones).
 const PINNED = { 1: ['eyes_9', 'nose_16', 'lips_9'], 7: ['eyes_16', 'nose_7', 'lips_11'], 42: ['eyes_10', 'nose_12', 'lips_9'], 99: ['eyes_10', 'nose_10', 'lips_9'],
   314: ['eyes_16', 'nose_23', 'lips_9'], 2718: ['eyes_16', 'nose_17', 'lips_4'] };

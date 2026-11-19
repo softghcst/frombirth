@@ -1202,6 +1202,32 @@ def ink_eyes():
     return done
 
 
+# Noses drawn with a long bridge were fitted by their height, which left them a third narrower than the rest. They are
+# scaled up by this much, from the base of the nose (so the bridge grows up between the eyes), to the others' width.
+RESIZE_NOSES = {'nose_10': 1.38, 'nose_13': 1.2, 'nose_19': 1.42, 'nose_21': 1.3}
+
+
+def resize_noses():
+    """Applies RESIZE_NOSES to any listed file that has not had it. -> the names changed"""
+    done = []
+    for name, k in RESIZE_NOSES.items():
+        path = os.path.join(ASSETS, 'noses', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-resized="1"' in text:
+            continue
+        base = max(y for shape in re.findall(r'\sd="([^"]*)"', text) for poly in flatten(parse_path(shape)) for _, y in poly)
+        grow = lambda m: ' d="' + path_d([(c, [256 + (v - 256) * k if i % 2 == 0 else base + (v - base) * k for i, v in enumerate(a)])
+                                          for c, a in parse_path(m.group(1))]) + '"'
+        text = re.sub(r'\sd="([^"]*)"', grow, text)
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-resized="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        done.append(name)
+    return done
+
+
 def fill_teeth():
     """Applies TEETH to any listed file that has not had it. -> the names filled."""
     done = []
@@ -1347,6 +1373,13 @@ def remove_specks(folder='hair', pad=6, share=0.004):
         size = lambda g: (max(subs[i][2][2] for i in g) - min(subs[i][2][0] for i in g)) * (max(subs[i][2][3] for i in g) - min(subs[i][2][1] for i in g))
         whole = max(size(g) for g in groups.values())
         drop = {i for g in groups.values() if size(g) < whole * share for i in g}
+        # A piece of the artist's sheet left under the style: something small, wholly below the mouth and in the
+        # middle of the face, touching nothing else (hair that hangs there comes down the sides, joined to the rest).
+        box = lambda g: (min(subs[i][2][0] for i in g), min(subs[i][2][1] for i in g), max(subs[i][2][2] for i in g), max(subs[i][2][3] for i in g))
+        for g in groups.values():
+            x0, y0, x1, y1 = box(g)
+            if size(g) < whole * 0.08 and y0 > FACE['mouth_y'] + 20 and x0 > 190 and x1 < 322:
+                drop |= set(g)
         if not drop:
             continue
         for pi, m in reversed(list(enumerate(paths))):
@@ -1589,6 +1622,8 @@ def main(argv):
         print(f'drew the outlines of {len(inked)} eye shape(s) in black')
     for name in fix_creases():
         print(f'fixed the creases of {name}')
+    for name in resize_noses():
+        print(f'resized {name}')
     for name in resize_eyes():
         print(f'resized {name}')
     for name in add_pupils():
