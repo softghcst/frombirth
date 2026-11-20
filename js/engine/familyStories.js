@@ -27,6 +27,12 @@ const secrets = () => bonds.others().filter((b) => b.secret && partnerNow()).map
 const kidsOf = () => Object.values(store.state.npcs).filter((n) => n.role === 'child' && n.alive && mine(n));
 const teens = () => player().age >= 14 && player().age <= 17;
 
+/** Children living with their other parent, and that parent: [{ k, o }]. */
+const apart = () => kidsOf().filter((k) => k.age < 18 && k.flags.livesWith && k.flags.livesWith !== 'player').map((k) => ({ k, o: npcOf(k.flags.livesWith) })).filter(({ o }) => o?.alive);
+/** People of this role who died between `from` and `to` years ago, as stories about nobody in particular (named in words). */
+const gone = (role, from, to) => Object.values(store.state.npcs).filter((n) => !n.alive && n.role === role && mine(n) && n.flags.diedYear != null
+  && year() - n.flags.diedYear >= from && year() - n.flags.diedYear <= to).map((n) => nobody(n.id, { words: { gone: `${n.firstName} ${n.lastName}` } }));
+
 const GATES = {
   secret_encounter: () => secrets().filter(({ b }) => bonds.since(b.start) >= 0.5).map(({ npc }) => sub(npc)),
   secret_public: () => secrets().filter(({ b }) => bonds.since(b.start) >= 1.5).map(({ npc }) => sub(npc)),
@@ -76,6 +82,32 @@ const GATES = {
   teen_family: () => { const n = partnerNow(); return teens() && n?.alive && n.age < 18 ? [sub(n)] : []; },
   teen_breakup: () => (teens() ? living('ex').filter((n) => n.age <= 18).map((n) => sub(n)) : []),
   teen_promise: () => { const n = partnerNow(); return player().age === 17 && n?.alive && n.age <= 19 ? [sub(n)] : []; },
+
+  // ---------- Grandchildren, step-families, households, siblings, loss, friends, the long middle ----------
+  grandchild_visit: () => living('grandchild').filter((n) => n.age >= 3 && n.age <= 17).map((n) => sub(n)),
+  grandchild_questions: () => living('grandchild').filter((n) => n.age >= 12).map((n) => sub(n)),
+  stepchild_trust: () => living('stepchild').map((n) => sub(n)),
+  stepparent_new: () => (teens() ? living('stepparent').map((n) => sub(n)) : []),
+  coparent_handover: () => apart().map(({ k, o }) => sub(o, { key: `${o.id}/${k.id}` })),
+  coparent_holiday: () => apart().map(({ k, o }) => sub(o, { key: `${o.id}/${k.id}` })),
+  custody_words: () => apart().filter(({ o }) => o.meters.relationship < 40).map(({ k, o }) => sub(o, { key: `${o.id}/${k.id}` })),
+  wants_to_live: () => apart().filter(({ k }) => k.age >= 12 && k.meters.relationship >= 70).map(({ k }) => sub(k)),
+  child_graduates: () => kidsOf().filter((k) => k.age >= 17 && k.age <= 18).map((k) => sub(k)),
+  quiet_house: () => { const w = love.spouse(); return w?.alive && player().age >= 45 && kidsOf().some((k) => k.age >= 24) && !kidsOf().some((k) => k.age < 18) ? [sub(w)] : []; },
+  sibling_rivalry: () => living('sibling').filter((n) => n.age >= 18 && n.meters.relationship < 50).map((n) => sub(n)),
+  sibling_midnight: () => living('sibling').filter((n) => n.age >= 18 && n.meters.relationship >= 75).map((n) => sub(n)),
+  cousin_wedding: () => living('cousin').filter((n) => n.age >= 20 && n.age <= 50 && n.meters.relationship >= 40).map((n) => sub(n)),
+  relative_advice: () => [...living('aunt'), ...living('uncle')].filter((n) => n.age >= 50 && n.meters.relationship >= 50).map((n) => sub(n)),
+  widowed_year: () => gone('spouse', 0, 2),
+  after_loss_new: () => { const n = partnerNow(); return n?.alive && gone('spouse', 3, 40).length ? [sub(n)] : []; },
+  old_friend_writes: () => living('friend').filter((n) => n.meters.relationship >= 20 && n.meters.relationship < 45).map((n) => sub(n)),
+  friend_trouble: () => living('friend').filter((n) => n.meters.health < 40 && n.meters.relationship >= 40).map((n) => sub(n)),
+  friend_big_news: () => living('friend').filter((n) => n.age >= 18 && n.meters.relationship >= 75).map((n) => sub(n)),
+  long_marriage: () => { const w = love.spouse(); const m = bonds.primary(); return w?.alive && m && m.npcId === w.id && bonds.since(m.start) >= 10 ? [sub(w)] : []; },
+  tradition: () => { const n = partnerNow(); const m = bonds.primary(); return n?.alive && m && m.npcId === n.id && bonds.since(m.start) >= 3 ? [sub(n)] : []; },
+  retirement_plans: () => { const w = love.spouse(); return w?.alive && player().age >= 60 ? [sub(w)] : []; },
+  ex_died: () => gone('ex', 0, 2),
+  child_money: () => (player().finance.cash >= localMoney(60000, country()) ? kidsOf().filter((k) => k.age >= 21 && k.meters.relationship >= 50).map((k) => sub(k)) : []),
 };
 
 /** Once a year (with `d` the drama setting's {chance, most}): of the stories true now, one or two are told. */
@@ -105,6 +137,14 @@ export function tickFamilyStories(d) {
 // ---------- What a choice does ----------
 
 const FNS = {
+  takeIn(npc) {
+    const p = player();
+    if (!npc || npc.role !== 'child') return '';
+    npc.flags.livesWith = 'player'; npc.flags.household = 'player';
+    p.finance.support = (p.finance.support ?? []).filter((x) => x.childId !== npc.id);
+    bump(npc, 8); p.stats.mood = clamp(p.stats.mood + 3);
+    return `${npc.firstName} moves in. You no longer pay support for them, and their room is already half theirs.`;
+  },
   confess(npc) { const m = bonds.primary(); if (!m) return ''; const r = bonds.confess(m.npcId); return r.text; },
   endIt(npc) { if (!npc?.alive) return ''; bonds.end(npc.id, 'ended it'); return ''; },
   closeUp(npc) { const m = bonds.primary(); if (!m || m.npcId !== npc.id) return ''; m.open = false; m.exclusive = true; bump(npc, 4); return `${nm(npc)} says that is what they hoped you would say. It is only the two of you now.`; },

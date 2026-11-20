@@ -138,4 +138,106 @@ export const FAMILY = [
     ['Say you want to see where life takes you both', 'It is honest, and it is gentle.', { rel: 3 }],
     ['Promise, and mean it', 'You promise. Whether you can keep it, the years will say.', { rel: 6, mood: 2 }],
     ['Say you cannot promise that', 'You are honest. It stings, and it is fair.', { rel: -4 }]] },
+
+  // ---------- Grandchildren, step-families and households ----------
+  { id: 'grandchild_visit', ages: A, again: 3, text: 'A Grandchild Stays Over. {them} is staying for the weekend, with a bag that is mostly toys. The house is going to be loud.', choices: [
+    ['Bake something together', 'There is flour on every surface, and on both of you.', { rel: 7, mood: 5 }],
+    ['Tell them stories from when you were young', 'They listen with their whole face.', { rel: 6, mood: 3 }],
+    ['Let them watch whatever they like', 'It is peaceful. It is not a memory.', { rel: 2, mood: 1 }]] },
+  { id: 'grandchild_questions', ages: A, again: 5, text: 'What Was It Like? {them} has been given a school project about the past, and you are the oldest person they know.', choices: [
+    ['Tell them everything, even the hard parts', 'You talk until it is dark, and they write it down.', { rel: 8, mood: 4 }],
+    ['Tell them the funny parts', 'They laugh all the way home.', { rel: 5, mood: 3 }],
+    ['Say you do not remember it well', 'You do. It was easier.', { rel: -2 }]] },
+  { id: 'stepchild_trust', ages: A, again: 4, text: 'A Stepchild Tests the Water. {them} has never quite known what to call you. Today, unprompted, they ask you for help with something that matters to them.', choices: [
+    ['Drop everything to help', 'It is a small thing, and it is not small at all.', { rel: 9, mood: 3 }],
+    ['Help, and say it is no trouble', 'They nod, and relax a little.', { rel: 5 }],
+    ['Suggest they ask their parent', 'They go, and do not ask you again for a while.', { rel: -6 }]] },
+  { id: 'stepparent_new', ages: [14, 17], again: 4, text: 'A New Person in the House. {them} is not your parent, and you are not sure what they are. They have made you your favorite dinner, and are watching you eat it.', choices: [
+    ['Say thank you, and mean it', 'It is not nothing. They smile.', { rel: 7, mood: 2 }],
+    ['Eat in silence', 'They do not say anything. Neither do you.', { rel: -2 }],
+    ['Say you did not ask them to', 'You say it, and it lands as badly as you thought.', { rel: -8, mood: -2 }]] },
+  { id: 'coparent_handover', ages: A, again: 4, text: 'The Handover. {them} has your child for the week, and you meet halfway, as you always do. This time neither of you is in a hurry.', choices: [
+    ['Take a few minutes to talk properly', 'It is the longest conversation in a year, and it is civil.', { rel: 6, mood: 2 }],
+    ['Keep it quick and polite', 'It is efficient. Nobody is hurt.', { rel: 1 }],
+    ['Bring up an old grievance', 'It does not go well, in front of the child.', { rel: -8, mood: -3 }]] },
+  { id: 'coparent_holiday', ages: A, again: 4, text: 'Whose Holiday Is It? Both of you want the child for the holiday, and neither is willing to say it plainly.', choices: [
+    ['Offer to alternate, and start with them', 'It costs you a holiday, and buys you peace.', { rel: 6, mood: -2 }],
+    ['Suggest a day each', 'It is fair, and tiring.', { rel: 3 }],
+    ['Insist on this year', 'You get it. You will pay for it later.', { rel: -7 }]] },
+  { id: 'custody_words', ages: A, again: 5, text: 'Words About Custody. Things with {them} have been bad for a while. Today a message comes that mentions lawyers.', choices: [
+    ['Ring and ask to talk it through', 'It is awkward, and it is the right thing.', { rel: 6, mood: -1 }],
+    ['Get your own advice first', 'You see a lawyer, and it costs.', { rel: -3, cost: 2500 }],
+    ['Ignore it', 'It does not go away.', { rel: -6, mood: -3 }]] },
+  { id: 'wants_to_live', ages: A, again: 4, text: '"Can I Live With You?" {them} has been thinking about it for a while. They have a speech ready, and it comes out all at once.', choices: [
+    ['Say yes, and mean it', 'You say yes. It will not be simple, and it is right.', { fn: 'takeIn' }],
+    ['Say you need to talk to their other parent first', 'You do, and it is honest.', { rel: 2 }],
+    ['Say now is not the right time', 'They take it quietly. They are not sure you mean it.', { rel: -8 }]] },
+  { id: 'child_graduates', ages: A, again: 3, text: 'Your Child Graduates. {them} is walking across a stage, in a gown that is slightly too big. You are in the third row, not quite able to see for tears.', choices: [
+    ['Throw a party', 'It is too loud, and everyone says it was the best.', { rel: 6, mood: 6, cost: 1200 }],
+    ['Take them out for dinner, just the two of you', 'You say the things you have been meaning to.', { rel: 8, mood: 4, cost: 200 }],
+    ['Say well done, and go home', 'You are proud. You do not say so enough.', { rel: -2 }]] },
+  { id: 'quiet_house', ages: A, again: 8, text: 'A Quiet House. The last of the children has gone, and the house is the quietest it has been in decades. {them} comes into the kitchen and says, "Well."', choices: [
+    ['Suggest a trip somewhere you have always meant to go', 'You book it that night.', { rel: 7, mood: 5, cost: 4000 }],
+    ['Say you could do with a rest', 'You do nothing for a week. It is wonderful.', { rel: 2, mood: 3 }],
+    ['Say you miss the noise', 'They say they do too. You hold hands, and say nothing.', { rel: 5, mood: -1 }]] },
+
+  // ---------- Siblings, cousins and the wider family ----------
+  { id: 'sibling_rivalry', ages: A, again: 5, text: 'An Old Rivalry. {them} said something at lunch that was not about lunch, and you have both been replaying it since you were twelve.', choices: [
+    ['Bring it up, kindly', 'It takes an hour. Twenty years of it comes out.', { rel: 9, mood: 3 }],
+    ['Let it go, again', 'You do. It will come back.', { rel: -1 }],
+    ['Say it back, harder', 'It is satisfying for about a minute.', { rel: -9, mood: -2 }]] },
+  { id: 'sibling_midnight', ages: A, again: 4, text: 'A Phone Call at Midnight. It is {them}. They do not have a reason, they say. They just did not want to be on their own.', choices: [
+    ['Stay on the line as long as they like', 'You talk until the birds start.', { rel: 8, mood: 2 }],
+    ['Say you will see them in the morning', 'You do. They are grateful.', { rel: 6, mood: -1 }],
+    ['Say it is late, and ring tomorrow', 'You do. It is not the same.', { rel: -4 }]] },
+  { id: 'cousin_wedding', ages: A, again: 6, text: 'A Cousin Gets Married. {them} is getting married, and the whole family is going to be in one room for the first time in years.', choices: [
+    ['Go, and dance', 'You do. It is the best night of the year.', { rel: 5, mood: 6, cost: 400 }],
+    ['Go for the ceremony, and leave', 'You do your duty, and slip away.', { rel: 2 }],
+    ['Send a gift and your regrets', 'It is a nice gift. It is not the same.', { rel: -3, cost: 150 }]] },
+  { id: 'relative_advice', ages: A, again: 5, text: 'Advice From an Elder. {them} has noticed that things have not been easy, and takes you aside. "Come and sit down. I am not going to tell you what to do."', choices: [
+    ['Listen to all of it', 'They tell you a story you have never heard. It helps.', { rel: 8, mood: 3, will: 1 }],
+    ['Thank them, and say you have it in hand', 'They nod. They have said it before.', { rel: 2 }],
+    ['Say you would rather work it out yourself', 'You mean it. They look a little sad.', { rel: -3, will: 1 }]] },
+
+  // ---------- Loss, friendship and the long middle ----------
+  { id: 'widowed_year', ages: A, again: 3, text: 'The First Year After. It has been months since {gone} died. You find their coat on the hook, and for the first time you cannot walk past it.', choices: [
+    ['Sit with it, as long as it takes', 'You let it come. It is awful, and then it is lighter.', { mood: 3 }],
+    ['Call a friend', 'You do. They come at once.', { mood: 4 }],
+    ['Keep busy', 'It helps, and it will not for ever.', { mood: -2 }]] },
+  { id: 'after_loss_new', ages: A, again: 6, text: 'A New Someone, After. {them} has been part of your life for a while now. You have been wondering whether to let that mean what it might.', choices: [
+    ['Tell them how you feel', 'It is frightening, and it is good.', { rel: 8, mood: 4 }],
+    ['Say you are not ready', 'They understand, and wait.', { rel: 1 }],
+    ['Say there is no room for anyone else', 'It hurts them. It hurts you.', { rel: -8 }]] },
+  { id: 'old_friend_writes', ages: A, again: 5, text: 'An Old Friend Writes. A letter from {them}, which you have owed an answer for some time. They say they were thinking about you.', choices: [
+    ['Ring them tonight', 'The call goes on for two hours.', { rel: 12, mood: 4 }],
+    ['Write back, properly', 'It takes a long evening, and it is worth it.', { rel: 8, mood: 2 }],
+    ['Put it off', 'It is still on the table.', { rel: -4 }]] },
+  { id: 'friend_trouble', ages: A, again: 4, text: 'A Friend in Trouble. {them} has been unwell for a while and not said so. This week it comes out, awkwardly, in the car.', choices: [
+    ['Be there, whatever it takes', 'You are there. It is exhausting, and you would do it again.', { rel: 10, mood: -2 }],
+    ['Help them find help', 'You find a doctor, and go with them.', { rel: 6, cost: 300 }],
+    ['Say you are sure it will be fine', 'It is the wrong thing, and they know.', { rel: -6 }]] },
+  { id: 'friend_big_news', ages: A, again: 5, text: 'A Friend\'s Big News. {them} has something to tell you in person. It is the sort of news you cannot say on the phone.', choices: [
+    ['Take them out to celebrate', 'You do. It becomes a long dinner.', { rel: 7, mood: 5, cost: 200 }],
+    ['Be happy for them, and ring later', 'You do, and mean it.', { rel: 4 }],
+    ['Feel jealous, and hide it badly', 'It shows. They are kind about it.', { rel: -3, mood: -2 }]] },
+  { id: 'long_marriage', ages: A, again: 5, text: 'Years Together. {them} has remembered what today is, and has a card, and a look on their face you have not seen in years.', choices: [
+    ['Take them to where it all began', 'You go. You are both older, and it is the same place.', { rel: 9, mood: 6, cost: 600 }],
+    ['Cook for them, at home', 'It is simple, and it is perfect.', { rel: 6, mood: 4 }],
+    ['Say the card is enough', 'It is. It is not what they wanted.', { rel: -2 }]] },
+  { id: 'tradition', ages: A, again: 6, text: 'A Tradition of Your Own. You and {them} have a small ritual that nobody else knows about. This year, someone asks why you do it.', choices: [
+    ['Tell the whole story', 'It is nicer than you remembered.', { rel: 6, mood: 3 }],
+    ['Say it is a private thing', 'It is. You smile at each other.', { rel: 4 }],
+    ['Say you do not remember', 'It is not true, and they know.', { rel: -4 }]] },
+  { id: 'retirement_plans', ages: A, again: 5, text: 'Plans for Retirement. You and {them} have been putting off the conversation about what comes after work. Tonight there is a spreadsheet.', choices: [
+    ['Go through it line by line', 'It is not romantic. It is a relief.', { rel: 5, mood: 3 }],
+    ['Dream first, and count later', 'It is a lovely evening, and the numbers are still there.', { rel: 4, mood: 4 }],
+    ['Say you will work as long as you can', 'They sigh. You are not wrong.', { rel: -3 }]] },
+  { id: 'ex_died', ages: A, again: 20, text: 'An Ex Has Died. You hear it by message: {gone} is dead. You had not spoken in a long time, and it still goes through you.', choices: [
+    ['Go to the funeral', 'You stand at the back. It is the right place.', { mood: -2 }],
+    ['Write to their family', 'You find some words. It helps them, and you.', { mood: 1 }],
+    ['Grieve privately', 'You light a candle, and let it be.', { mood: -1 }]] },
+  { id: 'child_money', ages: A, again: 3, text: 'A Grown Child Asks for Money. {them} is not someone who asks. They have run out of options, and it is clear how much it cost them to ring.', choices: [
+    ['Give it, no questions', 'You hand it over, and they cry.', { rel: 9, cost: 5000 }],
+    ['Lend it, with terms', 'It is sensible, and it stings a little.', { rel: 3, cost: 2500 }],
+    ['Say no', 'You say it kindly. It is still no.', { rel: -8 }]] },
 ];

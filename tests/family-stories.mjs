@@ -1,4 +1,4 @@
-// The thirty stories of data/familyStories.js: each is told only when the world makes it true (private relationships,
+// The fifty-four stories of data/familyStories.js: each is told only when the world makes it true (private relationships,
 // marriages, children in two households, family secrets, what is left behind, being a teenager with someone), once,
 // and each of its three choices really changes something. Run with: node tests/family-stories.mjs
 const mem = new Map();
@@ -33,7 +33,7 @@ function life(age = 30, gender = 'male') {
   p.flags.livesWithParents = age < 18; if (age >= 18) { p.education.enrolled = false; p.education.stage = 'none'; }
   p.flags.interestedIn = 'everyone'; p.stats.charm = 70; p.stats.mood = 60; p.finance.cash = 900000; p.legal.incarceration = null;
   p.flags.pregnancy = null;
-  for (const id of [...p.npcIds]) { const n = S().npcs[id]; if (n && ['partner', 'spouse', 'ex', 'friend', 'parent', 'sibling', 'relative', 'child'].includes(n.role)) { n.alive = false; n.role = 'acquaintance'; } }
+  for (const id of [...p.npcIds]) { const n = S().npcs[id]; if (n && ['partner', 'spouse', 'ex', 'friend', 'parent', 'sibling', 'relative', 'child', 'grandchild', 'stepchild', 'stepparent', 'cousin', 'aunt', 'uncle'].includes(n.role)) { n.alive = false; n.role = 'acquaintance'; } }
   ledgerOf();
   return p;
 }
@@ -83,6 +83,30 @@ const WORLD = {
   teen_family() { life(16); return person('partner', 16, 80, {}, 'male'); },
   teen_breakup() { life(16); return person('ex', 16, 40, {}, 'male'); },
   teen_promise() { life(17); return person('partner', 17, 85, {}, 'male'); },
+  grandchild_visit() { life(62); return person('grandchild', 8, 80); },
+  grandchild_questions() { life(62); return person('grandchild', 14, 80); },
+  stepchild_trust() { life(35); return person('stepchild', 10, 60); },
+  stepparent_new() { life(15); return person('stepparent', 40, 60); },
+  coparent_handover() { life(35); const o = person('ex', 32, 60); kid(6, [o.id], { livesWith: o.id }); return o; },
+  coparent_holiday() { return WORLD.coparent_handover(); },
+  custody_words() { life(35); const o = person('ex', 32, 20); kid(6, [o.id], { livesWith: o.id }); return o; },
+  wants_to_live() { life(40); const o = person('ex', 38, 50); return kid(14, [o.id], { livesWith: o.id }); },
+  child_graduates() { life(45); return kid(17, ['x']); },
+  quiet_house() { life(55); const w = person('spouse', 54, 80); bonds.primary(); kid(26, ['x']); return w; },
+  sibling_rivalry() { life(35); return person('sibling', 33, 30); },
+  sibling_midnight() { life(35); return person('sibling', 33, 85); },
+  cousin_wedding() { life(35); return person('cousin', 30, 60); },
+  relative_advice() { life(35); return person('aunt', 65, 70); },
+  widowed_year() { life(60); const n = person('spouse', 60, 90); n.alive = false; n.flags.diedYear = S().year - 1; },
+  after_loss_new() { life(62); const n = person('spouse', 60, 90); n.alive = false; n.flags.diedYear = S().year - 5; return person('partner', 58, 80); },
+  old_friend_writes() { life(35); return person('friend', 35, 30); },
+  friend_trouble() { life(35); const f = person('friend', 35, 70); f.meters.health = 20; return f; },
+  friend_big_news() { life(35); return person('friend', 30, 85); },
+  long_marriage() { life(50); const w = person('spouse', 48, 80); const m = bonds.primary(); aged(m, 11); return w; },
+  tradition() { life(35); const w = person('partner', 33, 80); const m = bonds.primary(); aged(m, 4); return w; },
+  retirement_plans() { life(63); return person('spouse', 62, 80); },
+  ex_died() { life(40); const n = person('ex', 40, 40); n.alive = false; n.flags.diedYear = S().year - 1; },
+  child_money() { life(60); return kid(30, ['x'], {}); },
 };
 const play = (id, i) => {
   const at = S().pendingEvents.findIndex((e) => e.id === `fam_${id}`);
@@ -91,7 +115,7 @@ const play = (id, i) => {
 };
 
 // ---------- 1. Every story: told when true, with the right person; its choices change the world ----------
-check(FAMILY.length === 30 && EVENTS.filter((e) => e.id.startsWith('fam_')).length === 30, 'there are thirty stories, each a scene');
+check(FAMILY.length === 54 && EVENTS.filter((e) => e.id.startsWith('fam_')).length === 54, 'there are fifty-four stories, each a scene');
 for (const s of FAMILY) {
   const about = WORLD[s.id]();
   S().pendingEvents = []; (S().bonds ??= { seq: 0, list: {} }).told = {};
@@ -121,7 +145,7 @@ for (const s of FAMILY) {
     if (fx.cost) check(p.finance.cash === cash - localMoney(fx.cost, { currency: { scale: 1 } }) || p.finance.cash < cash, `${s.id}/${i}: it costs real money`);
   }
 }
-section('all thirty stories: told when true, to the right person, not twice at once; every choice changes something');
+section('all fifty-four stories: told when true, to the right person, not twice at once; every choice changes something');
 
 // ---------- 2. Not told when it is not true ----------
 {
@@ -133,7 +157,7 @@ section('all thirty stories: told when true, to the right person, not twice at o
   life(30); person('partner', 30, 80); bonds.primary();
   let found = new Set();
   for (let i = 0; i < 40; i++) { S().pendingEvents = []; fam.tickFamilyStories(ALL); for (const e of S().pendingEvents) found.add(e.id); S().year += 1; P().age += 1; }
-  check(![...found].some((id) => /secret_|teen_|child_unknown|half_meet|questions_past|legacy|house_history|family_decision|unexpected|parent_reaches/.test(id)), `a life with only a partner has only partner stories (${[...found].join(', ')})`);
+  check(![...found].some((id) => /secret_|teen_|child_unknown|half_meet|questions_past|legacy|house_history|family_decision|unexpected|parent_reaches|grandchild|stepchild|stepparent|coparent|custody|wants_to_live|graduates|quiet_house|sibling|cousin|relative_advice|widowed|after_loss|old_friend|friend_|ex_died|child_money/.test(id)), `a life with only a partner has only partner stories (${[...found].join(', ')})`);
 }
 section('only what is true is told');
 
@@ -168,10 +192,26 @@ section('drama sets how many; a year tells at most its share');
 }
 section('told at the yearly step, as with every other story');
 
+// ---------- 4b. Real changes ----------
+{
+  const k = WORLD.wants_to_live(); const p = P();
+  p.finance.support = [{ id: 's1', npcId: k.parentIds[0], kind: 'child', dir: 'pay', amount: 5000, childId: k.id }, { id: 's2', npcId: 'z', kind: 'child', dir: 'pay', amount: 100, childId: 'other' }];
+  S().pendingEvents = [{ id: 'fam_wants_to_live', cast: { them: k.id } }];
+  play('wants_to_live', 0);
+  check(k.flags.livesWith === 'player' && !p.finance.support.some((x) => x.childId === k.id) && p.finance.support.length === 1, 'a child who comes to live with you stops being paid for, and only that child');
+  const w = WORLD.custody_words(); S().pendingEvents = []; (S().bonds ??= { seq: 0, list: {} }).told = {}; w.meters.relationship = 70;
+  fam.tickFamilyStories(ALL);
+  check(!queued('custody_words').length && queued('coparent_handover').length === 1, 'words about custody are only said where things are bad; a handover where they are not');
+  const d = WORLD.widowed_year(); S().pendingEvents = []; (S().bonds ??= { seq: 0, list: {} }).told = {}; fam.tickFamilyStories(ALL);
+  check(queued('widowed_year').length === 1 && queued('widowed_year')[0].cast.words.gone && !queued('widowed_year')[0].cast.them, 'a death is told by name, with nobody left to cast');
+  void d;
+}
+section('a child moving in changes the household and the money; custody and loss are told only when true');
+
 // ---------- 5. Tone ----------
 {
   const teen = FAMILY.filter((s) => s.ages[1] <= 17);
-  check(teen.length === 5 && !/sex|intimate|night together|pregnan|virgin|kiss/i.test(JSON.stringify(teen)), 'the teenage stories are about friends, school, family and feelings');
+  check(teen.length === 6 && !/sex|intimate|night together|pregnan|virgin|kiss/i.test(JSON.stringify(teen)), 'the teenage stories are about friends, school, family and feelings');
   check(FAMILY.every((s) => s.choices.every(([label]) => label.length <= 56)), 'every button fits on a screen');
 }
 section('teenage stories stay about friends and family; labels fit');
