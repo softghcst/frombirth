@@ -82,7 +82,7 @@ export function renderCreator(app, hooks) {
                 <button type="button" class="dice-btn" data-dice="last" aria-label="Pick a random last name">${DIE}</button></div></div>
           </div>
           ${picker('sex', 'Sex', 'Random', named({ female: 'Female', male: 'Male' }))}
-          ${picker('trans', 'Transgender', 'Random', named({ no: 'No', yes: 'Yes', nonbinary: 'Non-binary' }))}
+          ${picker('trans', 'Transgender', 'Random', named({ yes: 'Yes', no: 'No', nonbinary: 'Non-binary' }))}
           ${picker('orientation', 'Sexuality', 'Random', ORIENTATIONS.map((o) => ({ value: o.id, label: o.name })))}
         </div>
         <div class="card"><h3>Birthplace</h3>

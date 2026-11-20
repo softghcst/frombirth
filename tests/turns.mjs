@@ -9,7 +9,8 @@ const { rng } = await import('../js/rng.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { saveGame, loadGame } = await import('../js/save.js');
 const { EVENTS, EVENT_BY_ID } = await import('../js/data/events/index.js');
-const { resolveChoice, renderText } = await import('../js/engine/eventEngine.js');
+const { resolveChoice, renderText, stillFits } = await import('../js/engine/eventEngine.js');
+let stale = 0;
 const turns = await import('../js/engine/turns.js');
 const cal = await import('../js/engine/calendar.js');
 const { COUNTRIES } = await import('../js/data/countries.js');
@@ -165,6 +166,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
           continue;
         }
         if (!ev?.between) continue;
+        if (!stillFits(pe)) { stale += 1; continue; } // an earlier scene this turn changed the life (spent the money, say): it is not shown (ui/shell.js)
         got.set(pe.id, (got.get(pe.id) ?? 0) + 1);
         const end = turns.monthOf() || 12;
         const seasons = turns.turnSeasons(end, 3, P().countryId);
@@ -182,6 +184,7 @@ const life = (countryId = 'us', city = 'Chicago') => { for (;;) { store.state = 
     }
   }
   check(got.size >= 20, `many different seasonal scenes come up over eight lives in seven climates (${got.size})`);
+  { const shown = [...got.values()].reduce((a, b) => a + b, 0); check(stale <= Math.max(2, shown * 0.05), `a seasonal scene rarely goes stale before it is shown (${stale} of ${shown + stale})`); }
   // Each of these needs a life long enough in the right climate to have seen it.
   if ((lived.in ?? 0) >= 15) check(got.has('between_monsoon'), 'the monsoon comes in India');
   if ((lived.ng ?? 0) + (lived.br ?? 0) + (lived.ke ?? 0) >= 15) check(got.has('between_rains_arrive'), 'the rains come in the tropics');
