@@ -542,14 +542,14 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(!avatarSvg({ appearance: a, seed, age: 8, gender: 'female' }).includes('hair_baby/'), 'a child still has baby hair');
 }
 
-// A baby has a binkie in place of a mouth: blue for a boy, pink for a girl. A toddler has a mouth again.
+// Babies and toddlers have a binkie in place of a mouth: blue for a boy, pink for a girl. A child of five has a mouth again.
 {
   const face = (age, gender) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: 'bald' } }, seed: 'binkie', age, gender });
-  for (const [gender, hex] of [['male', CUR.PACIFIER.boy], ['female', CUR.PACIFIER.girl]]) {
-    const svg = face(1, gender);
-    check(svg.includes('pacifiers/pacifier_01.svg#art') && svg.includes(`--binkie-color:${hex}`) && !/lips\/lips_/.test(svg), `a baby ${gender === 'male' ? 'boy' : 'girl'} has no ${hex} binkie in place of a mouth`);
+  for (const [gender, hex] of [['male', CUR.PACIFIER.boy], ['female', CUR.PACIFIER.girl]]) for (const age of [1, 3]) {
+    const svg = face(age, gender);
+    check(svg.includes('pacifiers/pacifier_01.svg#art') && svg.includes(`--binkie-color:${hex}`) && !/lips\/lips_/.test(svg), `a ${age === 1 ? 'baby' : 'toddler'} ${gender === 'male' ? 'boy' : 'girl'} has no ${hex} binkie in place of a mouth`);
   }
-  check(!face(3, 'female').includes('pacifier') && /lips\/lips_/.test(face(3, 'female')), 'a toddler still has a binkie, or no mouth');
+  check(!face(5, 'female').includes('pacifier') && /lips\/lips_/.test(face(5, 'female')), 'a five-year-old still has a binkie, or no mouth');
 }
 
 if (problems.length) {

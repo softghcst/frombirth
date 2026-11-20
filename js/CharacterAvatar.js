@@ -99,7 +99,7 @@ export function dressFor(look, ctx = {}) {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = []; out.glasses = null; out.facialHair = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
-    if (stage === 'baby') { out.pacifier = PACIFIER.id; out.lips = null; }  // a binkie in place of a mouth
+    out.pacifier = PACIFIER.id; out.lips = null;  // babies and toddlers: a binkie in place of a mouth
   } else if (stage === 'kid') {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
@@ -247,7 +247,7 @@ function colorVars(look, ctx) {
   const vars = { 'skin-color': c.skin, 'hair-color': hair, 'hair-stroke': HAIR_STROKE, 'brow-color': brow, 'eye-color': c.eye, 'lip-color': c.lip, 'lip-upper': c.lipUpper, 'blush-color': c.blush,
     'eye-white': deep ? mixHex('#ffffff', c.skin, READABLE.white * deep) : null };
   if (c.outfit) vars['outfit-color'] = c.outfit;
-  if (ageStage(age) === 'baby') vars['binkie-color'] = ctx.gender === 'female' ? PACIFIER.girl : PACIFIER.boy;
+  if (['baby', 'toddler'].includes(ageStage(age))) vars['binkie-color'] = ctx.gender === 'female' ? PACIFIER.girl : PACIFIER.boy;
   return Object.entries(vars).filter(([, v]) => v).map(([k, v]) => `--${k}:${v}`).join(';');
 }
 

@@ -130,7 +130,7 @@ export const BABY_HAIR = { styles: ['fuzz', 'wisps', 'curl', 'curls', 'fringe'],
 /** A baby hair id ('babyhair_fuzz') -> its style ('fuzz'), or null for any other hair. */
 export const babyHairStyle = (id) => (typeof id === 'string' && id.startsWith('babyhair_') && BABY_HAIR.styles.includes(id.slice(9)) ? id.slice(9) : null);
 
-/** A baby (under 2) has a binkie in place of a mouth: blue for a boy, pink for a girl (the portrait sets --binkie-color). */
+/** Babies and toddlers (under 5) have a binkie in place of a mouth: blue for a boy, pink for a girl (the portrait sets --binkie-color). */
 export const PACIFIER = { id: 'pacifier_01', boy: '#5aa7f0', girl: '#f48cc4' };
 /** What a prisoner wears, and a graduate: null until there are clothes for them. */
 export const PRISON = null;
