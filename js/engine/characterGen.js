@@ -42,6 +42,12 @@ import { register as registerAnimal, reconcile as reconcileAnimals } from './ani
  * @param {boolean} [opts.trans]  whether `gender` differs from the one registered at birth
  * @returns {import('../types.js').GameState}
  */
+/** Every life starts with at least one gift (a talent of 75 or more): if none was inherited, one is picked at random. */
+function withAGift(talents) {
+  if (!Object.values(talents).some((v) => v >= 75)) talents[rng.pick(Object.keys(talents))] = rng.int(75, 100);
+  return talents;
+}
+
 export function createLife(opts = {}) {
   rng.seed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
 
@@ -103,7 +109,7 @@ export function createLife(opts = {}) {
   const player = {
     id: uid('pc'), firstName, lastName, gender, age: 0, birthYear: year,
     countryId: c.id, city, birthCountryId: c.id,
-    stats, hidden, talents: inheritTalents(mother, genes, opts.talent),
+    stats, hidden, talents: withAGift(inheritTalents(mother, genes, opts.talent)),
     traits, traitSources: sources, birth: born.map((b) => b.id), conditions: [],
     appearance,
     education: { stage: 'none', enrolled: false, yearInStage: 0, gpa: 0, effort: 50, absences: 0,
