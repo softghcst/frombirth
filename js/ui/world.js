@@ -7,6 +7,8 @@ import { openModal } from './modals.js';
 import * as world from '../engine/world.js';
 import { GROUPS } from '../data/world.js';
 
+/** The few lines about living in a place that show without opening anything. */
+const MAIN = ['Typical pay', 'Local prices', 'Income tax', 'Health care', 'Safety'];
 const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('');
 const card = (c) => `<button type="button" class="row world-row" data-place="${c.id}" aria-label="${esc(c.name)}">
   <div class="world-flag" aria-hidden="true">${c.flag}</div>
@@ -55,12 +57,15 @@ export function openWorld(o = {}) {
         <div class="world-compare"><span></span><strong>${esc(cmp.a.name)}</strong><strong>${esc(cmp.b.name)}</strong>
           ${cmp.rows.map(([k, x, y]) => `<span>${esc(k)}</span><span>${esc(x)}</span><span>${esc(y)}</span>`).join('')}</div>
         <p class="muted" style="margin-top:6px">Neither is better: it depends on the life.</p></div>` : ''}
-      <div class="card"><h3>About the place</h3>${kv(p.reference)}${p.checks.length ? `<details style="margin-top:8px"><summary class="muted">How this was checked</summary>${kv(p.checks)}</details>` : ''}</div>
-      <div class="card"><h3>Cities you can live in</h3>${kv(p.cityLines)}</div>
-      <div class="card"><h3>Living here</h3>${kv(p.game)}</div>
-      <div class="card"><h3>School</h3>${kv(p.school)}</div>
-      <div class="card"><h3>Government</h3>${kv(p.politics)}</div>
-      <div class="card"><h3>The law</h3>${kv(p.laws)}${p.lawChecks.length ? `<details style="margin-top:8px"><summary class="muted">How the law was checked</summary>${kv(p.lawChecks)}</details>` : ''}${p.lawChanges.length ? `<div class="section-label">Changed in your world</div>${p.lawChanges.map((n) => `<p style="margin:4px 0">${esc(n)}</p>`).join('')}` : ''}</div>
+      <div class="card"><h3>At a glance</h3>${kv(p.reference.filter(([k]) => ['Capital', 'Languages', 'Currency', 'Government'].includes(k)))}</div>
+      <div class="card"><h3>Cities</h3>${kv(p.cityLines)}</div>
+      <div class="card"><h3>Living here</h3>${kv(p.game.filter(([k]) => MAIN.includes(k)).map(([k, v]) => [k, k === 'Health care' ? (/^Private/i.test(v) ? 'Private' : 'Public') : v.replace(/^about the same as (pay|prices) in .*$/, 'about the same as the US').replace(/ (pay|prices) in the United States$/, ' the US')]))}</div>
+      <details class="card world-more"><summary>More: taxes, school, government and the law</summary>
+        ${kv(p.game.filter(([k]) => !MAIN.includes(k)))}
+        <div class="section-label">School</div>${kv(p.school)}
+        <div class="section-label">Government</div>${kv(p.politics)}
+        <div class="section-label">The law</div>${kv(p.laws)}
+      </details>
       ${p.yourWorld ? `<div class="card"><h3>In your world</h3>${kv(p.yourWorld.lines) || '<p class="muted">Nothing of note yet.</p>'}
         ${p.yourWorld.news.length ? `<div class="section-label">Recently</div>${p.yourWorld.news.map((n) => `<p style="margin:4px 0">${esc(n)}</p>`).join('')}` : ''}
         </div>` : ''}

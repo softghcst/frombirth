@@ -143,8 +143,8 @@ export function createLife(opts = {}) {
   };
   player.flags.bornAs = gender;
   player.flags.interestedIn = attractedTo(orientation, identityGender);
-  // A transgender child works out who they are some time in childhood.
-  if (trans) { player.flags.trueGender = identityGender; player.flags.realizeAge = rng.int(4, 14); }
+  // A transgender character who never goes looking feels it some time from the teenage years on: at 14, or 19, or 31.
+  if (trans) { const r = rng.int(0, 99); player.flags.trueGender = identityGender; player.flags.realizeAge = r < 40 ? 13 + (r % 5) : r < 75 ? 18 + (r % 7) : 25 + (r % 11); }
   // Natural gifts make the matching skills come faster all life long.
   player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 65).map(([k]) => k);
   // Growing up around how their parents handle money gives a child a little to start from (engine/achievements.js).

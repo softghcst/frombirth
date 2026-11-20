@@ -48,6 +48,8 @@ const exploreAll = () => { for (const x of who.exploreOptions().filter((o) => !o
   const p = fresh({ sex: 'female', trans: true });
   p.flags.realizeAge = 30; // the feeling would come late: this one goes looking first
   while (p.age < 12) year();
+  check(!who.canQuestion(), 'a child of 12 does not question their gender here: that starts in the teenage years');
+  while (p.age < 13) year();
   check(!who.canStartHrt() && !who.surgeryOptions().length && !who.discovered(), 'before finding out, no hormones or surgery are offered');
   check(who.canQuestion() && who.startQuestioning().ok && card().Exploring === 'Just starting', `anyone can start questioning (${card().Exploring})`);
   let years = 0;
@@ -76,8 +78,8 @@ const exploreAll = () => { for (const x of who.exploreOptions().filter((o) => !o
 // A trans girl who never looks: the feeling comes, and pushing it away costs.
 {
   const p = fresh({ sex: 'male', trans: true });
-  p.flags.realizeAge = 12;
-  while (p.age < 11) { year(); store.state.pendingEvents = []; }
+  p.flags.realizeAge = 15;
+  while (p.age < 14) { year(); store.state.pendingEvents = []; }
   year();
   const ev = store.state.pendingEvents.find((e) => e.id === 'gender_feeling');
   check(ev && ev.cast.words.born === 'boy', `at ${p.age} the feeling comes: "when people call you a ${ev?.cast.words.born}"`);
@@ -93,6 +95,13 @@ const exploreAll = () => { for (const x of who.exploreOptions().filter((o) => !o
   store.state.pendingEvents = [];
   feelingChoice('look');
   check(who.quest().stage === 'questioning' && who.quest().clarity >= 30, 'looking into it starts the questioning, with a head start');
+}
+
+// When the feeling comes, for those who never go looking: any time from the teenage years into the thirties.
+{
+  const ages = [];
+  for (let i = 0; i < 300; i++) { const s = createLife({ countryId: 'us', sex: i % 2 ? 'male' : 'female', trans: true }); ages.push(s.player.flags.realizeAge); }
+  check(Math.min(...ages) >= 13 && Math.max(...ages) >= 30 && ages.some((a) => a >= 18 && a < 25), `the feeling comes at 13 at the earliest, sometimes not till the thirties (${Math.min(...ages)}–${Math.max(...ages)})`);
 }
 
 if (problems.length) { console.log(`${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }

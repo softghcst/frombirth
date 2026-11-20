@@ -12,7 +12,7 @@ const feeling = (value) => ({ type: 'genderFeeling', value });
 export default [
   // Queued by engine/identity.js for a transgender character who has not gone looking: the feeling arrives anyway.
   {
-    id: 'gender_feeling', category: 'identity', ageRange: [4, 120], queuedOnly: true,
+    id: 'gender_feeling', category: 'identity', ageRange: [13, 120], queuedOnly: true,
     text: 'For a while now, something has not fitted. When people call you a {born}, it feels like a coat that belongs to someone else, and you cannot stop noticing.',
     choices: [
       { label: 'Look into it', outcomes: [any('You let yourself think about it, properly.', 'neutral', feeling('look'))] },

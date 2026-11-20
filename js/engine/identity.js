@@ -316,15 +316,17 @@ export function talkItThrough(npcId) {
 
 /** Things to try while questioning. Each once a year; two a year at most. */
 export const EXPLORE = [
-  { id: 'clothes', label: 'Try wearing different clothes', minAge: 6, gain: [14, 22] },
-  { id: 'look', label: 'Try a different look: hair and style', minAge: 8, gain: [14, 22], look: true },
-  { id: 'name', label: 'Try a different name with someone you trust', minAge: 8, gain: [16, 26], trusted: true },
-  { id: 'stories', label: 'Read and listen to other people\'s stories', minAge: 10, gain: [12, 20] },
-  { id: 'journal', label: 'Write down how you feel', minAge: 8, gain: [10, 16] },
-  { id: 'counselor', label: 'Talk to a counselor', minAge: 10, gain: [22, 32], cost: 300 },
-  { id: 'group', label: 'Go to a support group', minAge: 13, gain: [18, 28] },
+  { id: 'clothes', label: 'Try wearing different clothes', minAge: 13, gain: [14, 22] },
+  { id: 'look', label: 'Try a different look: hair and style', minAge: 13, gain: [14, 22], look: true },
+  { id: 'name', label: 'Try a different name with someone you trust', minAge: 13, gain: [16, 26], trusted: true },
+  { id: 'stories', label: 'Read and listen to other people\'s stories', minAge: 13, gain: [12, 20] },
+  { id: 'journal', label: 'Write down how you feel', minAge: 13, gain: [10, 16] },
+  { id: 'counselor', label: 'Talk to a counselor', minAge: 13, gain: [22, 32], cost: 300 },
+  { id: 'group', label: 'Go to a support group', minAge: 14, gain: [18, 28] },
 ];
 const EXPLORE_A_YEAR = 2;
+/** Questioning is for the teenage years on, not childhood. */
+export const QUESTION_AGE = 13;
 export const quest = () => (ident().quest ??= { stage: 'none', clarity: 0, tried: {}, since: null, nudged: null, pushed: 0, settledAge: null });
 /** Someone to try a new name with: the closest friend or sibling. */
 const trustedOne = () => livingNpcs().filter((n) => ['friend', 'sibling', 'partner', 'spouse'].includes(n.role) && player().npcIds.includes(n.id))
@@ -339,7 +341,7 @@ export function questLine() {
 /** Whether the player may start questioning now (anyone can; once settled, again after a few years). */
 export const canQuestion = () => {
   const p = player(); const q = quest();
-  return p.age >= 6 && !p.legal.incarceration && q.stage !== 'questioning' && q.stage !== 'found' && !(ident().knows && p.flags.trueGender) && bornAs() === p.gender
+  return p.age >= QUESTION_AGE && !p.legal.incarceration && q.stage !== 'questioning' && q.stage !== 'found' && !(ident().knows && p.flags.trueGender) && bornAs() === p.gender
     && !(q.stage === 'settled' && p.age - q.settledAge < 5);
 };
 export function startQuestioning(boost = 0) {
@@ -446,7 +448,7 @@ export function tickIdentity() {
   // A transgender character who has not gone looking feels it anyway, sooner or later: a moment that asks what to do
   // about it. Pushing it away costs something every year, and the feeling comes back.
   const q = quest();
-  if (p.flags.trueGender && !id.knows && p.age >= (p.flags.realizeAge ?? 8) && q.stage !== 'questioning') {
+  if (p.flags.trueGender && !id.knows && p.age >= Math.max(QUESTION_AGE, p.flags.realizeAge ?? 16) && q.stage !== 'questioning') {
     if (q.nudged != null) p.stats.mood = clamp(p.stats.mood - (q.pushed ? 3 + Math.min(4, q.pushed) : 1));
     if ((q.nudged == null || p.age - q.nudged >= (q.pushed ? 3 : 2)) && !store.state.pendingEvents.some((e) => e.id === 'gender_feeling')) {
       q.nudged = p.age;
