@@ -159,7 +159,7 @@ export const CIRCLES = [
   { id: 'own', name: 'people who go their own way', interests: [] },
 ];
 /** What each club does with its year, which decides how it is played: a season, a production, a competition, an election. */
-export const CLUB_KIND = { sports_team: 'sport', drama: 'stage', youth_theater: 'stage', council: 'council', paper: 'press', debate: 'compete', chess: 'compete', band: 'compete', choir: 'compete',
+export const CLUB_KIND = { sports_team: 'sport', drama: 'stage', youth_theater: 'stage', musical_theater: 'stage', dance_class: 'compete', council: 'council', paper: 'press', debate: 'compete', chess: 'compete', band: 'compete', choir: 'compete',
   science_club: 'compete', coding: 'compete', art_club: 'compete', environment: 'compete', volunteers: 'compete' };
 /** The interest a club belongs to: classmates who share it are the ones found there. */
 export const CLUB_INTEREST = { sports_team: 'sport', drama: 'theater', youth_theater: 'theater', musical_theater: 'theater', council: 'politics', paper: 'writing', debate: 'politics', chess: 'games', band: 'music', choir: 'music',

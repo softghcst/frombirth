@@ -21,6 +21,7 @@ import { LEAVING_AGE } from '../data/education.js';
 import { INTERESTS, CIRCLES, SPORTS, ELECTIVES, CORE_HIGH, PLAYS, CLUB_KIND, CLUB_INTEREST, SUBJECT_BY_ID } from '../data/education.js';
 import * as sch from './schooling.js';
 import { schoolSeason } from './sports.js';
+import { idolOf } from './kpop.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const mates = () => npcsByRole('classmate').filter((n) => n.flags.schoolId);
@@ -115,15 +116,102 @@ function season(id, life) {
 function compete(id, life) {
   const p = player();
   const club = CLUB_BY_ID[id];
-  const paths = Object.keys(club.tryout?.factors ?? { 'stats.intellect': 1 });
+  const taught = Object.keys(club.yearly?.talents ?? {}).map((k) => `talents.${k}`);
+  const paths = Object.keys(club.tryout?.factors ?? {}).length ? Object.keys(club.tryout.factors) : taught.length ? taught : ['stats.intellect'];
   const skill = paths.reduce((s, k) => s + val(p, k), 0) / paths.length;
   const score = Math.round(clamp(skill * 0.75 + life.standing * 0.15 + rng.int(-12, 14)));
-  const what = { debate: 'the debating tournament', chess: 'the chess championship', science_club: 'the science fair', coding: 'the programming contest', band: 'the band competition', choir: 'the choral festival', art_club: 'the art exhibition', environment: 'the environmental challenge', paper: 'the school press awards', volunteers: 'the volunteering awards' }[id] ?? 'the regional competition';
+  const what = { debate: 'the debating tournament', chess: 'the chess championship', science_club: 'the science fair', coding: 'the programming contest', band: 'the band competition', choir: 'the choral festival', dance_class: 'the dance showcase', art_club: 'the art exhibition', environment: 'the environmental challenge', paper: 'the school press awards', volunteers: 'the volunteering awards' }[id] ?? 'the regional competition';
   const place = score >= 85 ? 'won' : score >= 70 ? 'reached the final of' : score >= 50 ? 'did respectably at' : 'went out early in';
   life.record.push({ age: p.age, text: `${place} ${what}`, rating: score });
   log(`With the ${club.name.toLowerCase()}, you ${place} ${what}.`, 'system', score >= 70 ? 'good' : 'neutral');
   if (score >= 85) { milestone(`Won ${what}.`, 'education'); mood(5); }
   return score;
+}
+
+/** Clubs that put people in front of an audience: time in them builds stage presence. */
+const PERFORMING = new Set(['drama', 'youth_theater', 'musical_theater', 'dance_class', 'choir', 'band']);
+/** Stage presence (shown with the idol skills, engine/kpop.js) grows from performing anywhere, more slowly near the top. */
+function presence(by) { const i = idolOf(player()); i.stage = clamp(i.stage + by * Math.max(0.15, (100 - i.stage) / 100)); }
+
+function makeLeader(id, life) {
+  const p = player(); const e = p.education; const kind = CLUB_KIND[id];
+  life.role = 'leader';
+  if (kind === 'sport') (p.flags.athlete ??= { awards: [] }).captain = true;
+  if (kind === 'council' || id === 'debate') p.counters.polExp = Math.min(30, (p.counters.polExp ?? 0) + 2);
+  e.standing = clamp((e.standing ?? 50) + 6);
+  milestone(`Became ${leaderTitle(id).toLowerCase()} of the ${CLUB_BY_ID[id].name.toLowerCase()}.`, 'education');
+}
+
+// ---------- What the player can do in a club ----------
+
+/** This year's record of what the player has done in each club: each thing once a year. */
+const clubDone = (id) => { const p = player(); const e = p.education; e.clubActs ??= {}; if (e.clubActs.age !== p.age) e.clubActs = { age: p.age }; return (e.clubActs[id] ??= {}); };
+
+/** The things the player can do in one of their clubs this year. */
+export function clubActions(id) {
+  const p = player();
+  const e = p.education;
+  if (!e.clubs?.includes(id) || p.legal?.incarceration) return [];
+  const life = lifeOf(id);
+  const done = clubDone(id);
+  const kind = CLUB_KIND[id];
+  const out = [
+    { id: 'practice', label: kind === 'sport' ? 'Train extra' : PERFORMING.has(id) ? 'Rehearse extra' : 'Put in extra work', done: !!done.practice },
+    { id: 'help', label: kind === 'sport' ? 'Help the coach' : 'Help run things', done: !!done.help },
+  ];
+  if (PERFORMING.has(id) && p.age >= 7) out.push({ id: 'feature', label: id === 'choir' ? 'Ask for a solo' : id === 'band' ? 'Ask to play a solo' : id === 'dance_class' ? 'Ask for a featured spot' : 'Ask for a bigger part', done: !!done.feature });
+  if (life.role === 'member' && p.age >= 12 && life.standing >= 40) out.push({ id: 'lead', label: `Stand for ${leaderTitle(id).toLowerCase()}`, done: !!done.lead });
+  return out;
+}
+
+/** Does one of them. Each moves the player's standing in the club, and what the club is about. */
+export function clubAct(id, action) {
+  const p = player();
+  const e = p.education;
+  const club = CLUB_BY_ID[id];
+  if (!clubActions(id).some((a) => a.id === action)) return result(false, 'That is not open to you here.', 'neutral');
+  const done = clubDone(id);
+  if (done[action]) return result(false, 'You have done that this year already.', 'neutral');
+  done[action] = true;
+  const life = lifeOf(id);
+  const stand = (d) => { life.standing = Math.round(clamp(life.standing + d)); };
+  const name = club.name.toLowerCase();
+  const inClub = mates().filter((n) => n.flags.clubs?.includes(id));
+  switch (action) {
+    case 'practice': {
+      for (const [k, v] of Object.entries(club.yearly?.talents ?? {})) p.talents[k] = clamp((p.talents[k] ?? 0) + Math.max(1, Math.round(v / 2)));
+      for (const [k, v] of Object.entries(club.yearly?.stats ?? {})) p.stats[k] = clamp((p.stats[k] ?? 0) + Math.max(1, Math.round(v / 2)));
+      stand(rng.int(4, 8) + (e.priority === 'activities' ? 2 : 0));
+      if (PERFORMING.has(id)) presence(2);
+      return result(true, `Extra hours with the ${name}, long after everyone else has gone home. You are better for it, and people noticed.`);
+    }
+    case 'help': {
+      stand(rng.int(5, 9));
+      for (const n of inClub) rel(n, 4);
+      e.standing = clamp((e.standing ?? 50) + 1);
+      return result(true, `You set up, stayed late, and did the jobs nobody wants. The ${name} runs better with you in it${inClub.length ? `, and ${inClub[0].firstName} says so` : ''}.`);
+    }
+    case 'feature': {
+      const taught = Object.keys(club.yearly?.talents ?? {});
+      const skill = taught.length ? taught.reduce((s, k) => s + (p.talents[k] ?? 0), 0) / taught.length : p.stats.charm;
+      const chance = clamp(0.2 + (skill - 40) / 100 + (life.standing - 30) / 150, 0.1, 0.9);
+      if (rng.chance(chance)) {
+        stand(8); presence(4); mood(5);
+        life.record.push({ age: p.age, text: id === 'choir' || id === 'band' ? 'a solo at the concert' : id === 'dance_class' ? 'a featured spot in the showcase' : 'a bigger part this year' });
+        return result(true, id === 'choir' ? 'You got the solo. Your knees shook for the first line, and then they did not.' : id === 'band' ? 'Sixteen bars, alone, with everyone watching. You nailed it.' : id === 'dance_class' ? 'Front and center in the showcase. You hit every mark.' : 'A bigger part, and you make it your own.');
+      }
+      stand(-1); presence(1); mood(-3);
+      return result(false, `Not this time: it went to someone with more experience. You were told to ask again next year, and you will.`, 'neutral');
+    }
+    case 'lead': {
+      const title = leaderTitle(id).toLowerCase();
+      const chance = clamp((life.standing - 30) / 60 + (p.stats.charm - 50) / 200, 0.1, 0.9);
+      if (rng.chance(chance)) { makeLeader(id, life); mood(8); return result(true, `You stood for ${title} of the ${name}, and won. It is yours to run now.`); }
+      stand(-3); mood(-5);
+      return result(false, `You stood for ${title} of the ${name}. Someone else got it, this time. Your standing will count for more next year.`, 'bad');
+    }
+    default: return result(false, 'Nothing happens.', 'neutral');
+  }
 }
 
 /** Everything the player's clubs did this year, and whether any of them now looks to the player. */
@@ -144,14 +232,10 @@ function clubsYear() {
     } else if (kind !== 'council') rating = compete(id, life);
     else rating = p.stats.charm;
     life.standing = Math.round(clamp(life.standing + 6 + (rating - 50) / 6 + (e.priority === 'activities' ? 4 : 0)));
+    if (PERFORMING.has(id)) presence(1.5);
     if (life.role === 'member' && life.standing >= 60 && p.age >= 14 && rng.chance(0.4)) {
-      life.role = 'leader';
-      const title = leaderTitle(id);
-      if (kind === 'sport') (p.flags.athlete ??= { awards: [] }).captain = true;
-      if (kind === 'council' || id === 'debate') p.counters.polExp = Math.min(30, (p.counters.polExp ?? 0) + 2);
-      e.standing = clamp((e.standing ?? 50) + 6);
-      log(`The ${CLUB_BY_ID[id].name.toLowerCase()} has chosen you as its ${title.toLowerCase()}.`, 'system', 'good');
-      milestone(`Became ${title.toLowerCase()} of the ${CLUB_BY_ID[id].name.toLowerCase()}.`, 'education');
+      makeLeader(id, life);
+      log(`The ${CLUB_BY_ID[id].name.toLowerCase()} has chosen you as its ${leaderTitle(id).toLowerCase()}.`, 'system', 'good');
     }
   }
   for (const id of Object.keys(e.clubLife ?? {})) if (!e.clubs.includes(id)) e.clubLife[id].left ??= p.age;
@@ -312,6 +396,7 @@ function audition(bold) {
   if (!role) { mood(-6); p.talents.acting = clamp(p.talents.acting + 1); return `The cast list goes up on Friday, and your name is not on it.${rival ? ` ${rival.firstName} has the lead.` : ''} You paint scenery instead, and learn something from the wings.`; }
   (p.flags.performances ??= []).push({ year: store.state.year, age: p.age, show: a.play, role, where });
   const gain = role === 'the lead' ? 6 : role === 'a supporting part' ? 4 : 2;
+  presence(gain);
   p.talents.acting = clamp(p.talents.acting + gain);
   p.stats.charm = clamp(p.stats.charm + 1);
   lifeOf(a.club).record.push({ age: p.age, text: `${role} in ${a.play}` });
