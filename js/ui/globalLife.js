@@ -182,13 +182,13 @@ export function openExplore(api, start = {}) {
         ${m?.includesStay ? '' : `<div class="card gl-step"><h3>7 · Where to stay</h3>${stays.map((s) => `<label class="gl-radio"><input type="radio" name="stay" data-planfield="stay" value="${s.id}" ${trip.stay === s.id ? 'checked' : ''}> ${esc(s.name)}${s.accessible ? '' : ' <small class="muted">not step-free</small>'}</label>`).join('')}</div>`}
         <div class="card gl-step"><h3>8 · Things to do</h3><div class="chips">${acts.map((a) => chip(`${a.name}${a.liked ? ' ★' : ''}`, trip.activities.includes(a.id), `data-act="${a.id}"`)).join('')}</div><p class="muted">★ something you love. Unplanned things can be done there too.</p></div>
         <div class="card gl-step"><h3>9 · Paying</h3>
-          <select data-planfield="payment" aria-label="Who pays">${[['organizer', 'You pay for everyone'], ['split', 'Split equally'], ['separate', 'Each pays their own way']].map(([v2, l]) => `<option value="${v2}" ${trip.payment === v2 ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          ${travel.parentsPaying(trip) ? '<p class="muted">You are traveling with your parents: they pay for the trip.</p>' : `<select data-planfield="payment" aria-label="Who pays">${[['organizer', 'You pay for everyone'], ['split', 'Split equally'], ['separate', 'Each pays their own way']].map(([v2, l]) => `<option value="${v2}" ${trip.payment === v2 ? 'selected' : ''}>${l}</option>`).join('')}</select>`}
           <label class="gl-radio"><input type="checkbox" data-planfield="insurance" ${trip.insurance ? 'checked' : ''}> Travel insurance</label>
           ${q.lines.map((l) => kvt(`${l.label}${l.payer === 'employer' ? ' (employer)' : l.payer && !['organizer', 'player'].includes(l.payer) ? ` (${docs.personById(l.payer)?.firstName})` : ''}`, money(l.amount))).join('')}
-          ${kv('<strong>You pay</strong>', `<strong>${esc(money(q.organizer))}</strong>`)}${q.employer ? kvt('Your employer pays', money(q.employer)) : ''}
+          ${kv(`<strong>${travel.parentsPaying(trip) ? 'Your parents pay' : 'You pay'}</strong>`, `<strong>${esc(money(q.organizer))}</strong>`)}${q.employer ? kvt('Your employer pays', money(q.employer)) : ''}
           </div>` : ''}
         ${bad.length ? `<div class="card gl-problems"><h3>Before booking</h3>${bad.map((b) => `<p>• ${esc(b)}</p>`).join('')}</div>` : ''}
-        <div class="btn-stack">${btn(`Book${bad.length ? '' : ` for ${money(q.organizer)}`}`, `data-book="${trip.id}" ${bad.length ? 'disabled' : ''}`, 'primary')}${btn('Discard this plan', `data-discard="${trip.id}"`)}</div>
+        <div class="btn-stack">${btn(`Book${bad.length ? '' : travel.parentsPaying(trip) ? ` (your parents pay ${money(q.organizer)})` : ` for ${money(q.organizer)}`}`, `data-book="${trip.id}" ${bad.length ? 'disabled' : ''}`, 'primary')}${btn('Discard this plan', `data-discard="${trip.id}"`)}</div>
         ${going.length > 1 ? `<p class="muted">${going.length} traveling.</p>` : ''}`;
     },
 

@@ -328,7 +328,14 @@ export function applyEntry(personId, destId, o) {
     return result(false, 'It was refused this year. A review can be asked for once; a new application can be made next year.', 'neutral');
   if (rule.passport && !validPassport(person, o.from, o.to)) return result(false, `${isPlayer(person) ? 'You need' : `${person.firstName} needs`} a valid passport first: the application is made with it.`, 'neutral');
   const fee = authorizationFee(rule, destId);
-  const paid = charge({ amount: fee, kind: 'visa_fee', memo: `${rule.name} for ${person.firstName}, ${nameOf(destId)}`, key: `entry:${person.id}:${destId}:${o.from}`, ref: { personId: person.id, tripId: o.tripId ?? null } });
+  // A grown-up traveling with a child (the player) pays their own fee from their own savings.
+  const selfPays = !isPlayer(person) && person.age >= 18 && p.age < 18;
+  if (selfPays) {
+    const money = person.life?.savings ?? person.savings ?? 0;
+    if (money < fee) return result(false, `${person.firstName} cannot pay the ${fmtMoney(fee, country())} fee.`, 'neutral');
+    if (person.life) person.life.savings -= fee; else person.savings = money - fee;
+  }
+  const paid = charge({ ...(selfPays ? { payer: person.id } : {}), amount: fee, kind: 'visa_fee', memo: `${rule.name} for ${person.firstName}, ${nameOf(destId)}`, key: `entry:${person.id}:${destId}:${o.from}`, ref: { personId: person.id, tripId: o.tripId ?? null } });
   if (!paid.ok) return result(false, paid.why === 'Not enough money.' ? `The fee is ${fmtMoney(fee, country())}. You do not have it.` : paid.why, 'neutral');
   const instant = ['eta', 'evisa', 'on_arrival'].includes(rule.kind);
   const app = { id: uid('app'), personId: person.id, kind: rule.kind, jurisdictionId: destId, purpose, status: 'submitted', submittedYear: year, decideYear: instant ? year : year + 1,
