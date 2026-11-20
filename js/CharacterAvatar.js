@@ -297,7 +297,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const hairLayer = (clip) => {
     // A fitted style is drawn as it is: its back layer behind the head, the others in front of the face. Only a hat clips it.
     // An anchored older style is one layer, drawn as the older styles are: behind the head, and again in front down to the chin.
-    if (fitted && legacy) return `<g clip-path="url(#${clip})"><use href="${AVATAR_BASE}${fitted}#hair_base"/></g>`;
+    // Its hair_back (a cap filling gaps beside the skull, where it has one) goes behind the head only.
+    if (fitted && legacy) return `<g clip-path="url(#${clip})">${clip === `pw-back-${n}` ? `<use href="${AVATAR_BASE}${fitted}#hair_back"/>` : ''}<use href="${AVATAR_BASE}${fitted}#hair_base"/></g>`;
     if (fitted) {
       const ids = clip === `pw-back-${n}` ? FITTED_BACK : FITTED_FRONT;
       const drawn = `<g clip-path="url(#pw-back-${n})">${ids.map((id) => `<use href="${AVATAR_BASE}${fitted}#${id}"/>`).join('')}</g>`;

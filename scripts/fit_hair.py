@@ -525,13 +525,29 @@ def legacy_root(hair_id, base, tune, game=None):
     for old, new in tune.get('recolor', {}).items():  # e.g. line work drawn in a reddish brown, set to the usual one
         art = re.sub(re.escape(old), new, art, flags=re.I)
     move = f'translate({g["tx"] + tune.get("dx", 0):g} {g["ty"] + tune.get("dy", 0):g}) scale({k:g} {sy:g}) translate(-256 {-face["top"]:g})'
-    return ET.fromstring(f'<svg xmlns="{SVG}" viewBox="0 0 512 512" width="512" height="512"><g id="hair_back"/>'
+    back = ''
+    if tune.get('skull_fill'):
+        # A cap of hair behind the head, its outline grown by skull_fill, from the crown down to where the ears attach:
+        # the head hides it except where the style leaves a gap beside the skull.
+        rows = EL.scan(EL.head_polys(os.path.join(HEADS, f'{base}.svg')))
+        ys = sorted(rows)
+        m, pad = EL.landmarks(rows)[0], tune['skull_fill']
+        band = [y for y in ys if y <= m['ear_left']['y'] + 6]
+        # Grown sideways only, from nothing at the crown to the full amount 16 below it, so it never shows over the top.
+        grow = lambda y: pad * min(1, (y - band[0]) / 16)
+        pts = [(rows[y][0] - grow(y), y) for y in band] + [(rows[y][1] + grow(y), y) for y in reversed(band)]
+        d = f'M{pts[0][0]:.1f} {pts[0][1]:.1f}' + ''.join(f'L{x:.1f} {y:.1f}' for x, y in pts[1:]) + 'Z'
+        main = re.search(r'var\(--hair-color,(#[0-9a-fA-F]{6})\)', art)
+        back = f'<path fill="{main.group(1) if main else "#2f1006"}" d="{d}"/>'
+    return ET.fromstring(f'<svg xmlns="{SVG}" viewBox="0 0 512 512" width="512" height="512"><g id="hair_back">{back}</g>'
                          f'<g id="hair_base" transform="{move}">{art}</g><g id="hair_bangs"/><g id="hair_lines"/></svg>')
 
 
 def legacy_adjust(tune, base_marks):
     """
     The changes to a style's shape that tune asks for, on the base head (frame units, y down):
+      skull_fill: n  a cap of hair drawn behind the head, its outline grown by n, from the crown to the ears: fills gaps
+               the style leaves beside the skull (pigtails tied away from the head).
       recolor: {"#from": "#to"}  colors in the drawing replaced (for line work that does not match the other styles).
       front_cut: y  the style is drawn in front of the face only above y; below it, only behind the head, so locks that
                would hang over the cheeks or eyes sit behind the face instead (the head hides them).
