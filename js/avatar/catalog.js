@@ -46,7 +46,7 @@ const MARK_FILES = new Set(MARKS.map((m) => m.file));
 const AUTO_OUTFIT = /prison|police|swat|military|firefighter|doctor|grad|^outfit_baby|babybib|royal|prince|princess|queen|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|jabot|capelet|doublet/;
 export const HEADS = parts('heads', (p) => p.tags?.age === 'adult');
 export const HAIR_STYLES = parts('hair', (p) => !/baby/.test(p.id)).map((h) => ({ ...h, type: HAIR_TYPE[h.id] ?? 'straight' }));
-export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));
+export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));  // none: withdrawn, so babies and toddlers are bald
 /**
  * Hairstyles from the fitting pipeline, read from assets/hair_manifest.json (js/avatar/fittedHair.js): offered in the
  * creator and at the salon, drawn from assets/hair_fitted/. They are not in HAIR_STYLES, so the styles picked at
@@ -248,15 +248,12 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   const st = a.style;
   const skin = part('skin', g.skin);
   const natural = INDEX.anyHair[g.hairColor].hex;
-  const babyHair = g.hairTexture === 'coily' ? ['hair_baby_04_mini_puff', 'hair_baby_05_twin_puffs', 'hair_baby_08_baby_ringlets']
-    : g.hairTexture === 'curly' ? ['hair_baby_01_curl_tuft', 'hair_baby_08_baby_ringlets', 'hair_baby_04_mini_puff']
-      : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
   const sex = gender === 'female' ? 'female' : 'male';
   const lips = lipsFor(g.lips, gender);
   const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
   return {
     tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips,
-    hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),
+    hair: st.hair === 'bald' ? null : st.hair, babyHair: null,  // babies and toddlers are bald: the baby hairstyles have been withdrawn
     facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
     babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'),
