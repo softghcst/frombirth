@@ -530,6 +530,18 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(browsAt(60, 90, 'male') === CUR.ELDER_BROWS && browsAt(60, 90, 'female') === 'brows_10' && browsAt(60, 70, 'male') === 'brows_10', 'the bushy brows of old age are not an old man\'s alone');
 }
 
+// Baby hair: every style is made for both young heads, and a baby or toddler is drawn with the one for their head.
+{
+  for (const style of CUR.BABY_HAIR.styles) for (const head of CUR.BABY_HAIR.heads) check(existsSync(new URL(`assets/hair_baby/${style}_${head}.svg`, root)), `no ${style} baby hair for the ${head} head`);
+  const a = { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', hairTexture: 'curly' }, style: { hair: 'bald' } };
+  let seed = 'bh'; for (let k = 0; k < 50 && !resolveLook(a, seed, 'female').babyHair; k++) seed = `bh${k}`;
+  const style = resolveLook(a, seed, 'female').babyHair.slice(9);
+  check(CUR.BABY_HAIR.byTexture.curly.includes(style), `a curly-haired baby was given ${style}`);
+  check(avatarSvg({ appearance: a, seed, age: 1, gender: 'female' }).includes(`hair_baby/${style}_baby.svg#hair_base`), 'a baby is not drawn with the baby hair made for the baby head');
+  check(avatarSvg({ appearance: a, seed, age: 3, gender: 'female' }).includes(`hair_baby/${style}_toddler.svg#hair_base`), 'a toddler is not drawn with the baby hair made for the toddler head');
+  check(!avatarSvg({ appearance: a, seed, age: 8, gender: 'female' }).includes('hair_baby/'), 'a child still has baby hair');
+}
+
 // A baby has a binkie in place of a mouth: blue for a boy, pink for a girl. A toddler has a mouth again.
 {
   const face = (age, gender) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: 'bald' } }, seed: 'binkie', age, gender });

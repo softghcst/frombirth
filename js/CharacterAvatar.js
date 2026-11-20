@@ -31,7 +31,7 @@ import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
+import { babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
@@ -47,6 +47,9 @@ const headName = (headId) => PART_BY_ID[headId]?.file.replace(/^.*\/|\.svg$/g, '
  * to is given the base head's version.
  */
 export function fittedHairFile(hairId, headId) {
+  // Baby hair: made for each young head (assets/hair_baby/, scripts/make_baby_hair.py).
+  const baby = babyHairStyle(hairId);
+  if (baby) return `hair_baby/${baby}_${BABY_HAIR.heads.includes(headName(headId)) ? headName(headId) : 'baby'}.svg`;
   const style = FITTED_HAIR[hairId];
   if (!style) return null;
   const head = style.heads.includes(headName(headId)) ? headName(headId) : FITTED_BASE_HEAD;
@@ -259,7 +262,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const n = ++serial;
   const hatOn = !!d.hat;
   const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
-  const bulky = fitted ? ['long', 'medium', 'updo'].includes(FITTED_HAIR[d.hair].length) : !!PART_BY_ID[d.hair]?.tags?.bulky;
+  const bulky = fitted ? ['long', 'medium', 'updo'].includes(FITTED_HAIR[d.hair]?.length) : !!PART_BY_ID[d.hair]?.tags?.bulky;
   const hairTop = hatOn ? (bulky ? BULKY_HAT_LINE : HAT_LINE) : 0;
   // Under a hat, hair is hidden above the brim, and tucks in at the sides rather than ending in a flat shelf.
   const under = (bottom) => `<path d="M-400 ${bottom}V${hairTop + 64}H112V${hairTop}H400V${hairTop + 64}H912V${bottom}Z"/>`;
@@ -284,7 +287,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     if (fitted) {
       const ids = clip === `pw-back-${n}` ? FITTED_BACK : FITTED_FRONT;
       const drawn = `<g clip-path="url(#pw-back-${n})">${ids.map((id) => `<use href="${AVATAR_BASE}${fitted}#${id}"/>`).join('')}</g>`;
-      return FITTED_HAIR[d.hair].clipToHead ? `<g clip-path="url(#pw-face-${n})">${drawn}</g>` : drawn;
+      return FITTED_HAIR[d.hair]?.clipToHead ? `<g clip-path="url(#pw-face-${n})">${drawn}</g>` : drawn;
     }
     const g = `<g${hairAt} clip-path="url(#${clip})">${use(d.hair)}</g>`;
     if (!hf || hf.squash >= 1) return g;
