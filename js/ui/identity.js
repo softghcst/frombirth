@@ -17,9 +17,10 @@ export function identityRows() {
   const p = player();
   const id = who.identity();
   const trans = who.isTrans() && (id.knows || id.outGender);
-  const gender = { female: 'Woman', male: 'Man', nonbinary: 'Non-binary' }[p.gender];
-  const rows = [['Gender', trans && p.gender !== who.bornAs() ? `${gender} (transgender)` : gender]];
-  if (p.flags.trueGender && p.flags.trueGender !== p.gender && id.knows) rows.push(['What you know', `You are ${who.genderName(p.flags.trueGender)}. Nobody has been told.`]);
+  const gender = (p.age < 18 ? { female: 'Girl', male: 'Boy', nonbinary: 'Non-binary' } : { female: 'Woman', male: 'Man', nonbinary: 'Non-binary' })[p.gender];
+  const hidden = p.flags.trueGender && p.flags.trueGender !== p.gender && id.knows; // knows who they are; still living as registered
+  const rows = [['Gender', trans && p.gender !== who.bornAs() ? `${gender} (transgender)` : hidden ? `${gender}, as registered at birth` : gender]];
+  if (hidden) rows.push(['What you know', `You are ${who.genderName(p.flags.trueGender)}. Nobody has been told.`]);
   if (p.age >= 12) rows.push(['Sexuality', `${who.orientationName(p.orientation)}${p.orientation !== 'straight' ? (id.outOrientation ? ', out' : ', not out') : ''}`]);
   if (id.hrtAge != null) rows.push(['Hormone therapy', `Since age ${id.hrtAge}`]);
   if (id.top || id.bottom) rows.push(['Surgery', [id.top ? 'top' : '', id.bottom ? 'bottom' : ''].filter(Boolean).join(' and ')]);

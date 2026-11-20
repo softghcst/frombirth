@@ -81,8 +81,9 @@ export function renderCreator(app, hooks) {
               <div class="with-dice"><input id="f-last" maxlength="24" autocomplete="off" placeholder="Random">
                 <button type="button" class="dice-btn" data-dice="last" aria-label="Pick a random last name">${DIE}</button></div></div>
           </div>
-          ${picker('gender', 'Gender', 'Random', named({ female: 'Female', male: 'Male', nonbinary: 'Non-binary' }))}
-          ${picker('trans', 'Transgender', 'Random', named({ yes: 'Yes', no: 'No' }))}
+          ${picker('gender', 'Gender: who you are', 'Random', named({ female: 'Female', male: 'Male', nonbinary: 'Non-binary' }))}
+          ${picker('trans', 'Transgender: registered at birth as another gender', 'Random', named({ yes: 'Yes', no: 'No' }))}
+          <p class="muted" data-trans-note aria-live="polite"></p>
           ${picker('orientation', 'Sexuality', 'Random', ORIENTATIONS.map((o) => ({ value: o.id, label: o.name })))}
         </div>
         <div class="card"><h3>Birthplace</h3>
@@ -138,11 +139,21 @@ export function renderCreator(app, hooks) {
   });
   q('[data-clear-look]').addEventListener('click', () => { look = null; preview(); });
 
+  // Spells out what Gender and Transgender together make, so a trans boy is not mistaken for a trans girl.
+  const transNote = () => {
+    const g = choice.gender; const t = choice.trans;
+    q('[data-trans-note]').textContent = t !== 'yes' ? ''
+      : g === 'male' ? 'A trans boy: registered as a girl at birth, he grows up knowing he is a boy.'
+      : g === 'female' ? 'A trans girl: registered as a boy at birth, she grows up knowing she is a girl.'
+      : g === 'nonbinary' ? 'Non-binary, and registered as a boy or a girl at birth.'
+      : 'Registered at birth as a different gender from who you are. Pick a gender above for who you really are.';
+  };
   app.querySelectorAll('[data-pick]').forEach((group) => {
     group.addEventListener('click', (e) => {
       const btn = e.target.closest('.pick');
       if (!btn) return;
       choice[group.dataset.pick] = btn.dataset.value;
+      transNote();
       group.querySelectorAll('.pick').forEach((b) => {
         b.classList.toggle('on', b === btn);
         b.setAttribute('aria-checked', String(b === btn));
