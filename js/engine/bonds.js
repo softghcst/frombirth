@@ -21,7 +21,7 @@ import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { remember } from './conditions.js';
-import { spendAction } from './relationships.js';
+import { spendAction, countAction } from './relationships.js';
 import { conceive, canConceive } from './children.js';
 import { ensureLife } from './npcLives.js';
 import { book } from './ledger.js';
@@ -185,13 +185,13 @@ function maybeConceive(npc, b) {
   return ` ${said}`;
 }
 
-/** A night together, if they want one too. Once a year counts; nothing is owed for anything given before. */
+/** A night together, if they want one too. As often as you both like; nothing is owed for anything given before. */
 export function intimate(npcId) {
   const p = player();
   const npc = npcOf(npcId);
   const b = bondWith(npcId) ?? (love.partner()?.id === npcId ? primary() : null);
   if (!b || !eligible(npc)) return result(false, 'That is not open to the two of you.', 'neutral');
-  if (!spendAction(npc, 'intimate')) return result(false, 'Not again this year.', 'neutral');
+  const first = countAction(npc, 'intimate') === 1;
   // Their answer, tonight: how things are between you, not what you have given them.
   if (npc.meters.relationship < 25 || !rng.chance(clamp(0.55 + (npc.meters.relationship - 40) / 120, 0.2, 0.95))) {
     const text = `${npc.firstName} is not in the mood, and says so.`;
@@ -199,8 +199,8 @@ export function intimate(npcId) {
     return result(false, text, 'neutral');
   }
   did(b, 'intimate');
-  bump(npc, rng.int(2, 6));
-  p.stats.mood = clamp(p.stats.mood + 6);
+  bump(npc, first ? rng.int(2, 6) : rng.int(0, 2));
+  p.stats.mood = clamp(p.stats.mood + (first ? 6 : 2));
   const text = `You and ${npc.firstName} spent the night together.${maybeConceive(npc, b)}`;
   log(text, 'system', 'good');
   return result(true, text);

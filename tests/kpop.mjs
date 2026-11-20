@@ -506,10 +506,10 @@ section('fan products, variety as a career, and the family route');
   check(set && kp.cardBoost(grp) > modest && grp.cardPolicy === 'generous', 'asking for more rare cards sells more');
   const eng = grp.fandom.engagement;
   // Lowest in the group two years running: the player feels it.
-  kp.idolOf().pop = 0;
-  for (const w of lineup.slice(1)) store.state.npcs[w].flags.idol.appeal = 85;
+  // Held at the bottom each year (a year's work can lift popularity on its own, which is not what this checks).
+  const bottom = () => { kp.idolOf().pop = 0; for (const w of lineup.slice(1)) if (store.state.npcs[w]?.flags.idol) store.state.npcs[w].flags.idol.appeal = 85; };
   // This year's prices were set while the player was everyone's favorite: it takes two more years to show.
-  year(); year(); year();
+  bottom(); year(); bottom(); year(); bottom(); year();
   check(grp.fandom.engagement < eng, 'fans grumble about all the rare cards');
   const mc = kp.myCard(grp);
   check(mc && mc.rank === mc.of && mc.low && kp.idolOf().history.some((h) => /traded lowest/.test(h.text)), 'the lowest card two years running weighs on the player');

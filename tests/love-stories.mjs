@@ -304,5 +304,16 @@ if (problems.length) {
   for (const p of [...new Set(problems)]) console.log(' ✗', p);
   process.exit(1);
 }
+// Being intimate: as often as the two of you like, with no once-a-year limit.
+{
+  life(30, 'female');
+  const n = person('spouse', 32, 80, {}, 'male');
+  const nights = [1, 2, 3, 4].map(() => love.hookUp(n.id));
+  check(nights.every((r) => r.ok), `a spouse can be intimate more than once a year (${nights.map((r) => r.text).join(' | ')})`);
+  check(n.flags.times?.hookUp?.n === 4, 'each night is counted');
+  check(n.meters.relationship <= 100, 'and closeness stays in bounds');
+}
+section('being intimate is not limited to once a year');
+
 for (const m of ok) console.log(' ✓', m);
 console.log('Every story told is a true one.');

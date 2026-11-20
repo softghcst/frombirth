@@ -32,7 +32,23 @@ decorations keep their colours.
 import colorsys, json, math, os, re, shutil, sys, tempfile, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ASSETS = os.path.join(ROOT, 'assets', 'avatars')
+ASSETS_ROOT = os.path.join(ROOT, 'assets')
+ASSETS = os.path.join(ASSETS_ROOT, 'avatars')
+# Head shapes live on their own in assets/heads/ (shared with the hair-warping pipeline) under clean names.
+# Saves store each head by its id, so the ids stay what they were: HEAD_IDS maps file name -> id.
+HEADS = os.path.join(ASSETS_ROOT, 'heads')
+HEAD_IDS = {'baby': 'head_00_baby', 'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
+            'pixie': 'head_11_pixie', 'sculpted': 'head_12_sculpted', 'athletic': 'head_13_athletic', 'almond': 'head_14_almond',
+            'cherubic': 'head_15_cherubic', 'angular': 'head_16_angular', 'dimple_oval': 'head_17_dimple_oval'}
+
+
+def folder_dir(folder):
+    """Where a folder's SVGs live on disk: assets/heads/ for heads, assets/avatars/<folder>/ for everything else."""
+    return HEADS if folder == 'heads' else os.path.join(ASSETS, folder)
+
+
+def part_id(folder, stem):
+    return HEAD_IDS.get(stem, stem) if folder == 'heads' else stem
 MANIFEST = os.path.join(ROOT, 'js', 'avatarManifest.js')
 FOLDERS = ['heads', 'eyes', 'eyebrows', 'noses', 'lips', 'hair', 'clothes', 'crowns', 'hats', 'glasses', 'jewelry',
            'facial_hair', 'makeup', 'aging', 'emotions']
@@ -99,7 +115,7 @@ def unpack(zips, into):
 
 
 def sort_into_folders(search_dirs):
-    """Moves every .svg found under search_dirs into assets/avatars/<folder>/ by its filename prefix."""
+    """Moves every .svg found under search_dirs into its folder (folder_dir) by its filename prefix."""
     moved, skipped = 0, []
     for top in search_dirs:
         for d, _, files in os.walk(top):
@@ -112,7 +128,7 @@ def sort_into_folders(search_dirs):
                 if not folder:
                     skipped.append(f)
                     continue
-                dest_dir = os.path.join(ASSETS, folder)
+                dest_dir = folder_dir(folder)
                 if os.path.realpath(d) == os.path.realpath(dest_dir) and name == f:
                     continue
                 os.makedirs(dest_dir, exist_ok=True)
@@ -1130,7 +1146,7 @@ def weigh_lines(folder='noses', recolor=True):
     -> the names changed
     """
     done = []
-    d = os.path.join(ASSETS, folder)
+    d = folder_dir(folder)
     for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
         path = os.path.join(d, f)
         text = open(path, encoding='utf-8').read()
@@ -1277,7 +1293,7 @@ def remove_specks(folder='hair', pad=6, share=0.004):
     -> {name: how many specks were removed}
     """
     removed = {}
-    d = os.path.join(ASSETS, folder)
+    d = folder_dir(folder)
     for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
         if not f.endswith('.svg'):
             continue
@@ -1474,25 +1490,27 @@ def label(name):
 def write_manifest():
     data = {}
     for folder in FOLDERS:
-        d = os.path.join(ASSETS, folder)
+        d = folder_dir(folder)
         files = sorted(f for f in os.listdir(d) if f.endswith('.svg')) if os.path.isdir(d) else []
-        data[folder] = [{'id': f[:-4], 'file': f'{folder}/{f}', 'label': label(f[:-4]), **({'tags': tags_for(folder, f[:-4])} if tags_for(folder, f[:-4]) else {})} for f in files]
+        rel = os.path.relpath(d, ASSETS_ROOT).replace(os.sep, '/')
+        ids = sorted(((f, part_id(folder, f[:-4])) for f in files), key=lambda t: t[1])  # by id, so renaming a file never reorders the list
+        data[folder] = [{'id': i, 'file': f'{rel}/{f}', 'label': label(i), **({'tags': tags_for(folder, i)} if tags_for(folder, i) else {})} for f, i in ids]
         if folder == 'heads':  # each head is measured, so parts can be moved onto it exactly
             for item in data[folder]:
-                _, els = read_svg(open(os.path.join(ASSETS, item['file']), encoding='utf-8').read())
+                _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
                 item['fit'] = measure_head(els)
                 item['edge'] = measure_head_edge(els)
         if folder == 'hair':  # and each hairstyle, so it can be fitted to each head
             for item in data[folder]:
-                _, els = read_svg(open(os.path.join(ASSETS, item['file']), encoding='utf-8').read())
+                _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
                 item['edge'] = measure_hair_edge(els)
         if folder in ('eyes', 'noses', 'lips'):  # and each pair of eyes, nose and mouth, so they can be kept clear of each other
             for item in data[folder]:
-                _, els = read_svg(open(os.path.join(ASSETS, item['file']), encoding='utf-8').read())
+                _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
                 item['shape'] = measure_feature(els, folder)
     lines = ['// Generated by scripts/build-avatar-manifest.py. Do not edit by hand: add SVGs under',
-             '// assets/avatars/ and run the script again.',
-             '// Paths are relative to assets/avatars/.',
+             '// assets/avatars/ (head shapes: assets/heads/) and run the script again.',
+             '// Paths are relative to assets/.',
              'export const AVATAR_MANIFEST = {']
     for folder in FOLDERS:
         lines.append(f'  {folder}: [')
@@ -1542,7 +1560,7 @@ def main(argv):
         print(f'sorted {moved} loose SVG(s)')
     processed, problems = 0, []
     for folder in FOLDERS:
-        d = os.path.join(ASSETS, folder)
+        d = folder_dir(folder)
         if not os.path.isdir(d):
             continue
         for f in sorted(os.listdir(d)):

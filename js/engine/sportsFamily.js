@@ -13,7 +13,10 @@ import { clamp } from '../util.js';
 import { SPORTS_LIST, sportOf } from '../data/sports.js';
 import * as sp from './sports.js';
 
-const { seeded, fullName, LEVEL_STRENGTH } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const seeded = (...a) => sp.internals.seeded(...a);
+const fullName = (...a) => sp.internals.fullName(...a);
+const LEVEL_STRENGTH = new Proxy({}, { get: (_, k) => sp.internals.LEVEL_STRENGTH[k], ownKeys: () => Reflect.ownKeys(sp.internals.LEVEL_STRENGTH), getOwnPropertyDescriptor: (_, k) => Object.getOwnPropertyDescriptor(sp.internals.LEVEL_STRENGTH, k) });
 const RELATIVES = { parent: -1, grandparent: -2, sibling: 0, child: 1, grandchild: 2 };
 const LEVEL_ORDER = ['recreational', 'club', 'school', 'academy', 'college', 'elite', 'pro'];
 const genOf = (state, n) => (state.player.generation ?? 1) + (RELATIVES[n.role] ?? 0);

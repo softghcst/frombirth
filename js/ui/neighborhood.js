@@ -370,11 +370,11 @@ async function onClick(e) {
 }
 
 /** Opens My Neighborhood at a section. `back` is called when it is closed. */
-export function openNeighborhood(tabApi, tab = 'overview', back = null) {
+export function openNeighborhood(tabApi, tab = 'overview', back = null, ui = {}) {
   api = tabApi;
   onLeave = back;
   nav.clear();
-  nav.open('hub', {}, { tab });
+  nav.open('hub', {}, { tab, ...ui });
   show();
 }
 /** Opens the chronicle of one neighborhood (from Places I've Lived, or the Family Archive). */
