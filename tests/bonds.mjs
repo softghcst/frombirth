@@ -99,7 +99,10 @@ function year() {
   // A night together: asked, answered, a line and no more.
   const night = until(friend, () => bonds.intimate(friend.id));
   check(night.ok && /spent the night together/.test(night.text) && night.text.length < 200, 'being intimate is their choice too, and is told in a line');
-  check(!bonds.intimate(friend.id).ok, 'once a year counts: it cannot be repeated for more');
+  // As often as they both like, but only the first night of the year moves things much.
+  const closeBefore = friend.meters.relationship;
+  for (let i = 0; i < 6; i++) bonds.intimate(friend.id);
+  check(friend.flags.times?.intimate?.n >= 7 && friend.meters.relationship - closeBefore <= 12, `it can be repeated, and repeating adds little (${closeBefore} to ${friend.meters.relationship})`);
   // A gift: paid for once, theirs.
   const cash = p.finance.cash;
   const g = bonds.giftsFor().find((x) => x.id === 'bracelet');

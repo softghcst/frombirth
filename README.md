@@ -27,6 +27,14 @@ what CI runs on every pull request, `.github/workflows/tests.yml`):
 node scripts/test-all.mjs            # every check; add a word to run only the files whose names contain it
 ```
 
+The checks play the same lives every run: outside a browser the dice are pinned (`js/rng.js`), so a new life carries on
+the seeded sequence instead of drawing a fresh seed from the clock, and a failure can be played again exactly. To roll
+fresh dice each run instead, and shake out checks that only pass for some lives:
+
+```bash
+PATHWAYS_RANDOM=1 node scripts/test-all.mjs
+```
+
 `node scripts/stress/fame-lives.mjs 60` plays sixty idol, fan and athlete lives and checks money, fame, fandoms, card
 prices, positions and saves after every year (each life is reproducible from its seed).
 
@@ -256,7 +264,9 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 
 | What | Where |
 |---|---|
-| The artwork, one folder per kind of part | `assets/avatars/` — `heads/`, `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
+| The head shapes (shared with the hair-warping pipeline) | `assets/heads/` — clean names (`pixie.svg`, `dimple_oval.svg`, …); the save ids stay `head_11_pixie` etc. (`HEAD_IDS` in the build script) |
+| Hair-warping pipeline | `assets/hair_raw/` (hairstyles drawn on the base head), `assets/hair_fitted/` (each style fitted to each head, `<style>_<head>.svg`), `assets/landmarks.json` (six landmarks per head, and `base_head`), `assets/CHATGPT_HAIR_PROMPT.md` (the prompt for new styles). New style: save ChatGPT's SVG in `assets/hair_raw/`, run `npm run fit-hair` (several at once: paste the reply into `assets/raw_batch.txt` and run `npm run split-hair`); `npm run soften-hair` turns the heavy outline inside the hair (a fringe over the cap, curls over curls) into soft lines, keeping it on the silhouette (needs `pip install -r scripts/requirements.txt`), check `scripts/debug_hair_fit.html`. The game reads `assets/hair_manifest.json` (written by the same command; loaded by `js/avatar/fittedHair.js`), so a new style appears in the creator with no code change, and draws its `hair_back` behind the head and its other layers in front (`fittedHairFile` in `js/CharacterAvatar.js`). A style whose file name contains `fade` or `buzz`, or whose SVG has `data-clip-to-head="true"`, is clipped to the head's skin |
+| The artwork, one folder per kind of part | `assets/avatars/` — `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
 | The list of every part (generated: do not edit) | `js/avatarManifest.js` |
 | Cleaning, aligning and listing the artwork | `scripts/build-avatar-manifest.py` |
 | Skin, hair, eye, lip and outfit colors | `js/avatarPalettes.js` |

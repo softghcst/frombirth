@@ -11,7 +11,9 @@ const { rng } = await import('../js/rng.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
 const { saveGame, loadGame } = await import('../js/save.js');
-const { die } = await import('../js/engine/death.js');
+const { die, deathRoll } = await import('../js/engine/death.js');
+// These checks are about sport: nobody dies of a rare childhood accident halfway through a season (die() still works).
+deathRoll.spared = true;
 const { continueAs, heirs } = await import('../js/engine/legacy.js');
 const { makeNpc } = await import('../js/engine/npcFactory.js');
 const { audit: ledgerAudit } = await import('../js/engine/ledger.js');
@@ -247,8 +249,10 @@ let soccerLife;
   p.flags.longevity = 18; // this waits years for an injury: the player should not die of something else first (a drowning did)
   // Force an injury through the engine's own path: a year at full load, worn out.
   let inj = null;
-  for (let i = 0; i < 40 && !inj; i++) { e.fatigue = 95; e.plan.hours = 18; advanceYear(); quiet(); inj = a.injuries.find((x) => x.status === 'out'); }
-  check(!!inj, 'a worn-out player gets hurt sooner or later');
+  // Kept playing, worn out, for as long as it takes. An injury that comes and heals inside one year does not count:
+  // the checks below need one that is still keeping the player out. A player who dies first is a fair end (rare).
+  for (let i = 0; i < 60 && !inj && p.alive; i++) { if (e.status !== 'active') e.status = 'active'; e.fatigue = 95; e.plan.hours = 18; advanceYear(); quiet(); inj = a.injuries.find((x) => x.status === 'out'); }
+  check(!p.alive || !!inj, 'a worn-out player gets hurt sooner or later');
   if (inj) {
     check(p.conditions.some((c) => c.id === `sport_${inj.type}`), 'the injury is in the health record');
     const d = life.openDecisions().find((x) => x.kind === 'rehab' && x.injuryId === inj.id);

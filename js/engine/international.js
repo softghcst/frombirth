@@ -18,7 +18,12 @@ import { clubOf, toMinors } from './draft.js';
 import * as sp from './sports.js';
 import { internals as life, settle } from './sportsLife.js';
 
-const { seeded, overall, findOrg, teamFor, leagueFor } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const seeded = (...a) => sp.internals.seeded(...a);
+const overall = (...a) => sp.internals.overall(...a);
+const findOrg = (...a) => sp.internals.findOrg(...a);
+const teamFor = (...a) => sp.internals.teamFor(...a);
+const leagueFor = (...a) => sp.internals.leagueFor(...a);
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const cubaRule = (p) => p.countryId === 'cu';
 

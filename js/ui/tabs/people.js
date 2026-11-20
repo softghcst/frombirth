@@ -1,6 +1,7 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
 import * as hoodUi from '../neighborhood.js';
+import * as hoods from '../../engine/neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
 import { familyStatus } from '../../engine/immigration.js';
 import { store, player, country, livingNpcs } from '../../state.js';
@@ -45,8 +46,10 @@ const GROUPS = [
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
   ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
-  ['Neighbors', ['roommate', 'neighbor']], // people met where they live (engine/neighborhood.js)
-  ['Your household', ['staff']],
+  // Neighbors you have only met live on the My Neighborhood screen, not here: they join this list once they are friends.
+  // Someone met as a neighbor whom you no longer live near, but kept up with, still shows here.
+  ['Old neighbors', ['neighbor']],
+  ['Your household', ['roommate', 'staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
   ['Sport', ['coach', 'teammate', 'agent']],
   ['Your care team', ['clinician']],
@@ -491,7 +494,9 @@ export default {
   icon: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16.5 14.2c2.6.3 4.5 2.4 4.5 5.3"/>',
   render(el, api) {
     const c = country();
-    const list = livingNpcs().sort((a, b) =>
+    const here = hoods.currentHood(store.state);
+    const nearby = new Set(here ? hoods.knownIn(store.state, here.id).filter((n) => n.role === 'neighbor').map((n) => n.id) : []);
+    const list = livingNpcs().filter((n) => !nearby.has(n.id)).sort((a, b) =>
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
@@ -500,6 +505,7 @@ export default {
     const more = [];
     if (love.canLookForLove()) more.push(['love', 'Look for love', '', 'heart']);
     if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), 'child']);
+    if (nearby.size) more.unshift(['neighbors', 'Neighbors you know', `${nearby.size} on My Neighborhood`, 'home']);
 
     const row = (n) => `
       <button class="row rel-card" data-npc="${n.id}">
@@ -528,6 +534,7 @@ export default {
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
       if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
+      if (id === 'neighbors') return hoodUi.openNeighborhood(api, 'neighbors', null, { show: 'known' });
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {
         const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
