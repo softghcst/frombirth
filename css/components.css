@@ -1158,3 +1158,14 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .prev-outcome.tone-good { border-color: var(--good); }
 .prev-outcome.tone-bad { border-color: var(--bad); }
 .prev-outcome .chips { margin-top: 2px; }
+
+/* A death notice: one card for each person. */
+.death-card { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.death-card:first-of-type { border-top: 0; }
+.death-card > :first-child { flex: 0 0 64px; width: 64px; height: 64px; overflow: hidden; filter: grayscale(0.6); }
+.death-card > :first-child svg { width: 100%; height: 100%; }
+.death-card .main { flex: 1; }
+.death-card .main { min-width: 0; }
+.death-card strong { display: block; font-family: var(--serif); font-size: 1.15rem; }
+.death-card small { display: block; color: var(--muted); }
+.death-card .body { margin: 6px 0 0; }
