@@ -9,6 +9,7 @@ import { summary, mayLeave } from '../engine/living.js';
 import { roleLabel } from '../engine/relationships.js';
 import * as med from '../engine/medical.js';
 import * as fun from '../engine/activities.js';
+import { CHARM_ACTIVITIES } from '../data/activities.js';
 import * as net from '../engine/social.js';
 import * as move from '../engine/emigration.js';
 import { messageModal, pickModal, confirmModal, inputModal, openModal } from './modals.js';
@@ -153,6 +154,7 @@ export const quick = (api) => ({
   night: () => report(api, fun.nightOut()),
   holiday: () => takeHoliday(api),
   post: () => report(api, net.post()),
+  ...Object.fromEntries(CHARM_ACTIVITIES.map((x) => [x.id, () => report(api, fun.charmActivity(x.id))])),
 });
 
 /** Money in other currencies: what is held, changing it, and the record of every exchange. */

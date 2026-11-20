@@ -117,8 +117,12 @@ export default {
           </div>
         </div>` : ''}
         <div class="section-label">Fun and hobbies</div>
-        ${things.length ? `<div class="card"><h3>Things to do</h3>
-          <div class="btn-pair">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
+        ${things.some((a) => a.charm) ? `<div class="card"><h3>Charm and confidence</h3>
+          <p class="muted" style="margin-bottom:10px">Charm ${p.stats.charm}. Each once a year; the more charming you are, the less each adds.</p>
+          <div class="btn-stack">${things.filter((a) => a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
+        </div>` : ''}
+        ${things.some((a) => !a.charm) ? `<div class="card"><h3>Things to do</h3>
+          <div class="btn-pair">${things.filter((a) => !a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
         </div>` : ''}
         ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding', ico: 'trophy',
           sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : '' })]) : ''}
