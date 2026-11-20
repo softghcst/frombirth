@@ -12,7 +12,7 @@ For each SVG in assets/hair_raw/ (drawn on the base head named in assets/landmar
      Beziers first), and basic shapes (rect, circle, ellipse, line, polyline, polygon, turned into paths).
      Any transform on the element or its groups, and a viewBox other than the 512 frame, is applied first.
   2. A thin-plate-spline warp (scipy RBFInterpolator, kernel='thin_plate_spline') is fitted from the base
-     head's six landmarks to each head's six, plus the four corners of the frame held still, so the warp
+     head's six landmarks, and twelve points along its skull outline (skull_anchors), to each head's same points, plus the four corners of the frame held still, so the warp
      stays local to the head and long hair is not flung about far from it. Every point goes through it.
   3. The file is written to assets/hair_fitted/<style>_<head>.svg with the same groups, ids, fills,
      strokes and stroke widths. Only the path data changes, and shapes become paths. Each colour also gets
@@ -136,7 +136,56 @@ def load_heads():
             heads[name] = np.array([[marks[p]['x'], marks[p]['y']] for p in POINTS], float)
     if base not in heads:
         sys.exit(f'the base head {base!r} has no landmarks')
+    for name in heads:
+        heads[name] = np.vstack([heads[name], skull_anchors(name, heads[name])])
+        heads[name] = padded(heads[name], outline_pad(name))
     return base, heads, skipped
+
+
+def outline_pad(name):
+    """
+    How far the head's drawn edge lies outside the outline the landmarks were measured on: half the outline path's
+    stroke width. The adult heads draw their outline as a plain fill (0); the kid, toddler and baby heads stroke it
+    5 wide, so their real edge is 2.5 further out and the hair has to reach that far to cover it.
+    """
+    with open(os.path.join(HEADS, f'{name}.svg'), encoding='utf-8') as f:
+        m = re.search(r'<path[^>]*stroke-width:\s*([\d.]+)', f.read())
+    return float(m.group(1)) / 2 if m else 0.0
+
+
+def padded(pts, pad):
+    """The landmarks and skull points pushed out by pad: away from the head's centre line, and the crown up."""
+    if not pad:
+        return pts
+    pts = pts.copy()
+    cx = pts[0][0]
+    pts[0][1] -= pad  # crown_top
+    for k in range(2, len(pts)):  # forehead_mid (1) is on the face, not the edge
+        pts[k][0] += pad if pts[k][0] > cx else -pad
+    return pts
+
+
+SKULL = [0.08, 0.2, 0.35, 0.5, 0.65]  # rows down the skull, as a fraction of the way from the crown to the ears
+
+
+def skull_anchors(name, marks):
+    """
+    Extra points that pin the hair to this head's own skull, so a style sits on it the way it sits on the base head.
+    The six landmarks only fix the crown, the brow and where the ears attach; two heads can agree on all six and still
+    differ in between (a rounder or flatter top, wider temples, ears set lower), and then the hair stood off the skull
+    or left skin showing at its edge. These are the outline's left and right edges at fixed fractions of the way from
+    the crown down to the ears, plus one between the temple and the ear when they are far apart (the kid's ears sit
+    low). Each head gets the same list in the same order, so point k on one head matches point k on every other.
+    """
+    rows = EL.scan(EL.head_polys(os.path.join(HEADS, f'{name}.svg')))
+    ys = sorted(rows)
+    near = lambda v: min(ys, key=lambda y: abs(y - v))
+    top, temple, ear = marks[0][1], marks[2][1], marks[4][1]
+    out = []
+    for f in SKULL + ['between']:
+        y = near((temple + ear) / 2 if f == 'between' else top + f * (ear - top))
+        out += [(rows[y][0], y), (rows[y][1], y)]
+    return np.array(out, float)
 
 
 def warp_for(src, dst):
