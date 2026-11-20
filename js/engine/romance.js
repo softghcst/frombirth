@@ -10,7 +10,7 @@ import { store, player, country, npcsByRole, log, milestone } from '../state.js'
 import { makeNpc } from './npcFactory.js';
 import { COUNTRIES } from '../data/countries.js';
 import { remember } from './conditions.js';
-import { spendAction, roleLabel } from './relationships.js';
+import { spendAction, countAction, roleLabel } from './relationships.js';
 import { conceive, canConceive } from './children.js';
 import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
@@ -198,9 +198,10 @@ export function hookUp(npcId) {
   const p = player();
   const npc = npcOf(npcId);
   if (p.age < ADULT || npc.age < ADULT) return result(false, 'Not at your age.');
-  if (!spendAction(npc, 'hookUp')) return result(false, 'Not again this year.', 'neutral');
-  bump(npc, rng.int(3, 8));
-  p.stats.mood = clamp(p.stats.mood + 6);
+  // As often as you both like. The first night of the year means the most; after that it is part of life together.
+  const first = countAction(npc, 'hookUp') === 1;
+  bump(npc, first ? rng.int(3, 8) : rng.int(0, 2));
+  p.stats.mood = clamp(p.stats.mood + (first ? 6 : 2));
   let text = `You and ${npc.firstName} spent the night together.`;
   if (canConceive(npc) && !p.flags.pregnancy && rng.chance(0.04 * p.hidden.fertility / 70)) {
     text += ` ${conceive(npc, false)}`;

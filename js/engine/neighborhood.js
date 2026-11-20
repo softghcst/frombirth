@@ -51,8 +51,8 @@ const worldOf = (state) => state?.worldId ?? state?.timeline?.root ?? state?.slo
 const nowT = (state) => T(state.year, state.month ?? 0);
 /** Keyed luck: the same for everyone in this world asking the same thing. Never the game's dice. */
 export const luck = (state, key) => seeded(`hood/${worldOf(state)}/${key}`);
-/** How many neighborhood scenes one year may bring the player. */
-export const SCENES_A_YEAR = 3;
+/** How many neighborhood scenes one year may bring the player. Neighbors are background, not a to-do list. */
+export const SCENES_A_YEAR = 1;
 /** Neighborhoods nobody in the family has had anything to do with for this many years rest until someone returns. */
 const DORMANT_AFTER = 30;
 
@@ -814,14 +814,21 @@ export function note(state, e) {
   return e;
 }
 
-/** Queues one neighborhood scene for the player, once per story key, a few a year at most. */
+/** Scenes that are all, at heart, "a neighbor would like your company": one of these is plenty for a while. */
+const COMPANY = new Set(['hood_invitation', 'hood_invitation_upstairs', 'hood_different_neighbor', 'hood_unexpected_friendship', 'hood_kindness_returned', 'hood_block_party', 'hood_building_gathering', 'hood_community_event', 'hood_friend_across_street']);
+const sceneSort = (id) => (COMPANY.has(id) ? 'company' : id);
+
+/** Queues one neighborhood scene for the player, once per story key, one a year at most. */
 export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   const H = hoods(state);
   if (muted || !state.player.alive) return false;
   if (H.seen[key] != null) return false;
   const thisYear = Object.values(H.seen).filter((x) => yearOf(x) === yearOf(t)).length;
   if (thisYear >= SCENES_A_YEAR) return false;
+  // The same sort of scene (another invitation, another neighbor wanting company) not two years running.
+  if (H.lastScene?.sort === sceneSort(id) && yearOf(t) - H.lastScene.y <= 1) return false;
   H.seen[key] = t;
+  H.lastScene = { sort: sceneSort(id), y: yearOf(t) };
   state.pendingEvents.push({ id, cast });
   return true;
 }
@@ -1443,13 +1450,14 @@ export function openYear(state = store.state) {
   }
   // Old disagreements fade: nobody is still cross about the bins after two years.
   for (const d of H.disputes) if (d.status === 'open' && state.year - yearOf(d.t) >= 2) d.status = 'faded';
-  // People next door see each other without trying: closeness there does not fade from neglect. An acquaintance who
-  // has faded to nothing drops out of the player's life (they are still there, and can be met again).
+  // People in the same neighborhood see each other without trying: closeness there does not fade from neglect, so
+  // neighbors are never a chore to keep up with. An acquaintance who has soured to nothing drops out of the player's
+  // life (they are still there, and can be met again).
   const p = state.player;
   const here = currentHome(state);
   for (const n of p.npcIds.map((id) => state.npcs[id]).filter((x) => x?.alive && H.res[x.id])) {
     const home = H.hhs[H.res[n.id].hh]?.home;
-    if (here && home && proximity(state, here.id, home).near >= 4) n.lastInteractionAge = Math.max(n.lastInteractionAge ?? -1, p.age - 1);
+    if (here && home && proximity(state, here.id, home).near >= 2) n.lastInteractionAge = Math.max(n.lastInteractionAge ?? -1, p.age - 1);
     if (n.role === 'neighbor' && n.meters.relationship < 10 && !n.flags.tag) { p.npcIds = p.npcIds.filter((id) => id !== n.id); n.flags.drifted = { year: state.year, age: p.age, role: 'neighbor' }; }
   }
     // A year of talk, for the year just lived; and a wrong story going round the player's own street.

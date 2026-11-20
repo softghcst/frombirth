@@ -55,7 +55,7 @@ export function roleLabel(npc) {
 }
 
 const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 3,
-  spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
+  neighbor: 0, roommate: 0, spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
 
 export const removeNpc = (npc) => {
   // Gone from the player's life; kept in the save only if their digital life is part of the record.
@@ -230,6 +230,19 @@ export function spendAction(npc, action) {
   npc.flags.acts[action] = p.age;
   npc.lastInteractionAge = p.age;
   return true;
+}
+
+/**
+ * Counts one more time doing something with this person this year, with no limit. Returns how many times it has been
+ * this year, this one included, so callers can make the first time count for the most.
+ */
+export function countAction(npc, action) {
+  const p = player();
+  npc.flags.times ??= {};
+  const t = npc.flags.times[action];
+  npc.flags.times[action] = t && t.age === p.age ? { age: p.age, n: t.n + 1 } : { age: p.age, n: 1 };
+  npc.lastInteractionAge = p.age;
+  return npc.flags.times[action].n;
 }
 
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };

@@ -31,6 +31,8 @@ const S = () => store.state; const P = () => store.state.player;
 const life = (countryId, city, o = {}) => { for (;;) { store.state = createLife({ countryId, city, ...o }); if (!P().royal) return P(); } };
 const H = () => N.hoods(S());
 const advance = (n = 1) => { for (let i = 0; i < n && P().alive; i++) { turns.advanceTurn(); S().pendingEvents = []; } };
+// One neighborhood scene a year: these checks queue several on purpose, so each starts with the year's quota free.
+const quota = () => { const h = N.hoods(store.state); for (const [k, t] of Object.entries(h.seen)) if (Math.floor(t / 12) === store.state.year) h.seen[k] = t - 120; h.lastScene = null; };
 const reload = () => { saveGame(S()); store.state = loadGame(S().slotId); };
 
 /** Every record points at real records, and nothing is in two places at once. */
@@ -211,6 +213,7 @@ function coherent(where) {
   if (!org) { const empty = N.around(S(), N.currentHome(S()).id).find((x) => !x.hh); const hh = N.makeHousehold(S(), hood, empty.home, N.luck(S(), 'test/org'), { shape: 'couple' }); empty.home.hh = hh.id; hh.home = empty.home.id; empty.home.occ.push({ hh: hh.id, n: hh.n, from: N.nowT(S()), to: null }); org = H().res[hh.m[0]]; }
   const evId = `${hood.id}eTEST`;
   S().pendingEvents = [];
+  quota();
   check(N.queueScene(S(), 'hood_community_event', { words: { person: org.f, res: org.id, event: 'community picnic', what: 'a picnic', eventId: evId, kind: 'picnic' } }, 'test/event'), 'a community event scene is queued');
   check(!N.queueScene(S(), 'hood_community_event', { words: {} }, 'test/event'), 'the same story is never queued twice');
   const pe = S().pendingEvents.pop();
@@ -224,6 +227,7 @@ function coherent(where) {
   check(S().npcs[org.id] && P().npcIds.includes(org.id), 'the organizer is now someone the player knows');
   // Help: the person is real, the choice is recorded, and nothing is promised in return.
   const helper = N.residentsOf(S(), hood.id).find((x) => N.ageOf(x, S()) >= 30 && x.id !== org.id);
+  quota();
   N.queueScene(S(), 'hood_need_hand', { words: { person: helper.f, res: helper.id, need: 'carry a sofa' } }, 'test/help');
   const ph = S().pendingEvents.pop();
   resolveChoice(EVENT_BY_ID[ph.id], 0, ph.cast);
@@ -231,6 +235,7 @@ function coherent(where) {
   // A disagreement can be settled.
   const other = N.residentsOf(S(), hood.id).find((x) => N.ageOf(x, S()) >= 25 && x.id !== org.id && x.id !== helper.id);
   H().disputes.push({ id: 'dTEST', h: hood.id, res: other.id, kind: 'noise', t: N.nowT(S()), status: 'open' });
+  quota();
   N.queueScene(S(), 'hood_disagreement', { words: { person: other.f, res: other.id, about: 'noise', disputeId: 'dTEST' } }, 'test/dispute');
   const pd = S().pendingEvents.pop();
   resolveChoice(EVENT_BY_ID[pd.id], 0, pd.cast); // seek a compromise
@@ -436,6 +441,7 @@ function coherent(where) {
   const home = N.currentHome(S());
   const kid = N.around(S(), home.id).filter((x) => x.hh).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && Math.abs(N.ageOf(r, S()) - P().age) <= 3 && r.ls > 40);
   if (kid) {
+    quota();
     N.queueScene(S(), 'hood_friend_across_street', { words: { person: kid.f, res: kid.id, where: 'across the street' } }, 'test/kid');
     const pk = S().pendingEvents.pop();
     resolveChoice(EVENT_BY_ID[pk.id], 0, pk.cast);
@@ -455,6 +461,7 @@ function coherent(where) {
   check(building.kind === 'building', 'D: an apartment is a unit in a building');
   const upstairs = N.around(S(), flat.id).filter((x) => x.hh && x.home.b === building.id).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && N.ageOf(r, S()) >= 18);
   check(upstairs && L.neighborAct(upstairs.id, 'introduce').ok, 'D: meeting someone who lives in the building');
+  quota();
   N.queueScene(S(), 'hood_building_gathering', { person: upstairs.id, words: { what: 'drinks in the courtyard', eventId: 'bTEST', kind: 'building', event: 'building gathering' } }, 'test/building');
   const pb = S().pendingEvents.pop();
   resolveChoice(EVENT_BY_ID[pb.id], 0, pb.cast);
@@ -523,6 +530,7 @@ function coherent(where) {
   const home = N.currentHome(S());
   const near = N.around(S(), home.id).filter((x) => x.hh && x.prox.near >= 3).flatMap((x) => x.hh.m).map((id) => H().res[id]).filter((r) => r && N.ageOf(r, S()) >= 25);
   const helped = near[0]; const stranger = near.find((r) => r.hh !== helped.hh && N.ageOf(r, S()) >= 18);
+  quota();
   N.queueScene(S(), 'hood_need_hand', { words: { person: helped.f, res: helped.id, need: 'move a wardrobe' } }, 'test/help2');
   const ph = S().pendingEvents.pop(); resolveChoice(EVENT_BY_ID[ph.id], 0, ph.cast);
   check(Talk.impression(S(), helped.id).v > 0, 'someone the player helped thinks well of them for it');
@@ -611,6 +619,26 @@ function coherent(where) {
   const flatsIn = (c, city) => { let f = 0; let all2 = 0; for (let i = 0; i < 12; i++) { life(c, city); const h = N.currentHome(S()); all2++; if (HOME_TYPES[h.t]?.floors) f++; } return f / all2; };
   check(flatsIn('jp', 'Tokyo') > flatsIn('us', 'Chicago'), 'more families live in flats in Tokyo than in Chicago');
   section('who knows what; getting in; school; the player\'s own business; a changing neighborhood; how countries live', n);
+}
+
+// Neighbors are background, not a chore: at most one scene a year, none to keep up with, and no fading.
+{
+  const n = problems.length;
+  life('us', 'Chicago');
+  P().age = 30; P().flags.livesWithParents = false;
+  N.settle(S());
+  const res = N.residentsOf(S(), N.currentHood(S()).id).filter((r) => N.ageOf(r, S()) >= 18)[0];
+  const npc = res && N.befriend(S(), res.id, 50);
+  check(!!npc && npc.role === 'neighbor', 'a neighbor can be met');
+  const sceneYears = {};
+  for (let i = 0; i < 12 && P().alive; i++) {
+    turns.advanceTurn();
+    for (const e of S().pendingEvents) if (e.id.startsWith('hood_')) sceneYears[S().year] = (sceneYears[S().year] ?? 0) + 1;
+    S().pendingEvents = [];
+  }
+  check(Object.values(sceneYears).every((c) => c <= 1), `at most one neighborhood scene a year (${JSON.stringify(sceneYears)})`);
+  if (npc?.alive && npc.role === 'neighbor' && P().npcIds.includes(npc.id)) check(npc.meters.relationship >= 50, `a neighbor left alone for twelve years has not faded (${npc.meters.relationship})`);
+  section('neighbors are background: one scene a year, nothing to keep up', n);
 }
 
 for (const m of ok) console.log(`ok   ${m}`);
