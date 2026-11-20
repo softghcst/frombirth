@@ -525,7 +525,7 @@ def legacy_root(hair_id, base, tune, game=None):
     for old, new in tune.get('recolor', {}).items():  # e.g. line work drawn in a reddish brown, set to the usual one
         art = re.sub(re.escape(old), new, art, flags=re.I)
     move = f'translate({g["tx"] + tune.get("dx", 0):g} {g["ty"] + tune.get("dy", 0):g}) scale({k:g} {sy:g}) translate(-256 {-face["top"]:g})'
-    back = ''
+    back, under = '', ''
     if tune.get('skull_fill'):
         # A cap of hair behind the head, its outline grown by skull_fill, from the crown down to where the ears attach:
         # the head hides it except where the style leaves a gap beside the skull.
@@ -538,9 +538,20 @@ def legacy_root(hair_id, base, tune, game=None):
         pts = [(rows[y][0] - grow(y), y) for y in band] + [(rows[y][1] + grow(y), y) for y in reversed(band)]
         d = f'M{pts[0][0]:.1f} {pts[0][1]:.1f}' + ''.join(f'L{x:.1f} {y:.1f}' for x, y in pts[1:]) + 'Z'
         main = re.search(r'var\(--hair-color,(#[0-9a-fA-F]{6})\)', art)
-        back = f'<path fill="{main.group(1) if main else "#2f1006"}" d="{d}"/>'
+        fill = main.group(1) if main else '#2f1006'
+        back = f'<path fill="{fill}" d="{d}"/>'
+        inset = tune.get('skull_band', 0)
+        if inset:
+            # Also in front: a band of hair just inside the skull's outline on either side, under the style's own drawing,
+            # so skin does not show at the temples between the style and the edge of the head.
+            ease = lambda y: inset * min(1, (y - band[0]) / 16)
+            for side in (0, 1):
+                edge = [(rows[y][side], y) for y in band]
+                sign = 1 if side == 0 else -1
+                ring = [(x - sign * grow(y), y) for x, y in edge] + [(x + sign * ease(y), y) for x, y in reversed(edge)]
+                under += f'<path fill="{fill}" d="M' + 'L'.join(f'{x:.1f} {y:.1f}' for x, y in ring) + 'Z"/>'
     return ET.fromstring(f'<svg xmlns="{SVG}" viewBox="0 0 512 512" width="512" height="512"><g id="hair_back">{back}</g>'
-                         f'<g id="hair_base" transform="{move}">{art}</g><g id="hair_bangs"/><g id="hair_lines"/></svg>')
+                         f'<g id="hair_base">{under}<g transform="{move}">{art}</g></g><g id="hair_bangs"/><g id="hair_lines"/></svg>')
 
 
 def legacy_adjust(tune, base_marks):
@@ -548,6 +559,8 @@ def legacy_adjust(tune, base_marks):
     The changes to a style's shape that tune asks for, on the base head (frame units, y down):
       skull_fill: n  a cap of hair drawn behind the head, its outline grown by n, from the crown to the ears: fills gaps
                the style leaves beside the skull (pigtails tied away from the head).
+      skull_band: n  with skull_fill, also a band of hair n wide just inside the skull's edge, drawn in front under the
+               style, so skin does not show at the temples between the style and the edge of the head.
       recolor: {"#from": "#to"}  colors in the drawing replaced (for line work that does not match the other styles).
       front_cut: y  the style is drawn in front of the face only above y; below it, only behind the head, so locks that
                would hang over the cheeks or eyes sit behind the face instead (the head hides them).

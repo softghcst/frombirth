@@ -5,6 +5,7 @@
     "Per style, all optional (frame units on the 512 head canvas, y down): dx, dy move it (dy > 0 is lower); scale, scale_y resize it;",
     "front_cut: y draws the style in front of the face only above y (below it, only behind the head, so side locks sit behind the face).",
     "skull_fill: n draws a cap of hair behind the head, its outline grown by n, from the crown to the ears, filling gaps beside the skull.",
+    "skull_band: n (with skull_fill) also draws a band of hair n wide just inside the skull edge, in front under the style, covering the temples.",
     "recolor: {\"#from\": \"#to\"} replaces colors in the drawing (line work that does not match the other styles).",
     "shorten: [{below: y, k: f, beyond: d, within: e, only: left|right}] draws points lower than y, between d and e from the center line, up toward y (k 0.5 halves them). On the base head: brows y 256, eyes 293, ears attach 278, temples 116 from the center line."
   ],
@@ -107,7 +108,8 @@
     },
     "hair_girl_long_06": {
       "scale": 1.06,
-      "skull_fill": 26
+      "skull_fill": 26,
+      "skull_band": 16
     },
     "hair_girl_long_07": {
       "front_cut": 262
