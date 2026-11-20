@@ -16,6 +16,7 @@ import { playBlackjack, playHorses, playLottery } from '../minigames/casino.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
+import * as clubLife from '../../engine/clubs.js';
 import { openDigitalLife, digitalCard } from '../digital.js';
 import * as bc from '../../engine/digital/broadcast.js';
 import { canEmigrate } from '../../engine/emigration.js';
@@ -117,6 +118,11 @@ export default {
           </div>
         </div>` : ''}
         <div class="section-label">Fun and hobbies</div>
+        ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and classes</h3>
+          <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
+          <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(m.club.name.replace(/^(A|An|The) /, '').replace(/^./, (x) => x.toUpperCase()))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
+            <button class="btn primary" data-club="find">Find a club or class</button></div>
+        </div>` : ''}
         ${things.some((a) => a.charm) ? `<div class="card"><h3>Charm and confidence</h3>
           <p class="muted" style="margin-bottom:10px">Charm ${p.stats.charm}. Each once a year; the more charming you are, the less each adds.</p>
           <div class="btn-stack">${things.filter((a) => a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
@@ -182,6 +188,8 @@ export default {
       if (kidMoney === 'buy') return report(api, kidLife.buySaved());
       if (kidMoney === 'save') return pickModal({ title: 'Save for what?', options: kidLife.SAVING_GOALS.map(([name, cost]) => ({ value: name, label: name[0].toUpperCase() + name.slice(1), sub: fmtMoney(localMoney(cost, country()), country()) })) })
         .then((pick) => (pick ? report(api, kidLife.saveFor(pick, kidLife.SAVING_GOALS.find(([n]) => n === pick)[1])) : undefined));
+      const club = e.target.closest('[data-club]')?.dataset.club;
+      if (club) return leisure.openClubs(api, club);
       const todo = e.target.closest('[data-do]')?.dataset.do;
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;

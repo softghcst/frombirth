@@ -55,8 +55,8 @@ export const NIGHTLIFE_AGE = 18;
 export const CHARM_ACTIVITIES = [
   { id: 'style', label: 'Get a new look: a stylist and a new wardrobe', cost: 900, minAge: 14, charm: [2, 4], mood: 3,
     text: 'A stylist went through your wardrobe without mercy. You walk into rooms differently now.' },
-  { id: 'speaking', label: 'Join a public speaking club', cost: 150, minAge: 14, charm: [2, 3], willpower: 2,
-    text: 'Every week you stood up and talked while strangers timed you. By the end of the year you could hold a room.' },
+  { id: 'speaking', label: 'Take a public speaking course', cost: 150, minAge: 14, charm: [2, 3], willpower: 2,
+    text: 'Every week of the course you stood up and talked while strangers timed you. By the end of the year you could hold a room.' },
   { id: 'dance', label: 'Take dance classes', cost: 350, minAge: 8, charm: [1, 3], health: 2, mood: 2,
     text: 'Two left feet, then one, then none. You move better, and it shows when you walk in anywhere.' },
   { id: 'improv', label: 'Take an improv class', cost: 250, minAge: 12, charm: [2, 3], mood: 3, acting: 2,
