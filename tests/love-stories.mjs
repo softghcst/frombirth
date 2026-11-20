@@ -315,5 +315,20 @@ if (problems.length) {
 }
 section('being intimate is not limited to once a year');
 
+// Spending time with everyone at once: each person counts as seen this year, and nobody twice.
+{
+  const rel = await import('../js/engine/relationships.js');
+  life(30);
+  const a = person('friend', 30, 40); const b = person('friend', 28, 40);
+  const owed = rel.timeStillOwed();
+  check(owed.includes(a) && owed.includes(b), 'friends not yet seen this year are owed time');
+  const r = rel.spendTimeWithAll();
+  check(r.ok && a.meters.relationship > 40 && b.meters.relationship > 40, `spending time with everyone brings each of them closer (${r.text})`);
+  check(rel.timeStillOwed().length === 0 && !rel.spendTimeWithAll().ok, 'and then nobody is owed time until next year');
+  check(!rel.interact(a.id, 'spendTime').ok, 'it counts as this year\'s time with each person');
+  check(P().stats.mood <= 100, 'mood stays in bounds');
+}
+section('spend time with everyone');
+
 for (const m of ok) console.log(' ✓', m);
 console.log('Every story told is a true one.');

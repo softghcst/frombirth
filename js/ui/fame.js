@@ -39,7 +39,7 @@ const money = (n, c = country()) => fmtMoney(n, c);
 const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const nameOf = (who) => (who === 'player' ? 'You' : who ? `${store.state.npcs[who]?.firstName ?? ''} ${store.state.npcs[who]?.lastName ?? ''}`.trim() || 'Someone' : '');
 const kindName = (prod) => `${TIERS[prod.tier].name} ${PRODUCTION_KINDS[prod.kind].name.toLowerCase()}`;
-const row = (act, arg, main, sub, side = '', n = null) => `<button type="button" class="row world-row" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
+const row = (act, arg, main, sub, side = '', n = null, cls = '') => `<button type="button" class="row world-row${cls ? ` ${cls}` : ''}" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
   <div class="main"><strong>${esc(main)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>`;
 
 const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modeling', 'Modeling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
@@ -183,7 +183,7 @@ const VIEWS = {
       ${(() => { const offers = celebs.comebackOffers(p); const phase = celebs.phaseName(p);
     const say = { reality: ['A reality show', 'Ten weeks on camera. The money is good; the respect is not.'], tribute: ['A tribute evening', 'Your work, celebrated.'], memoir: ['Write your memoir', 'Publishers want your story. Starts a memoir on the Writing tab.'], reunion: ['Get the band back together', 'One more time.'] };
     return phase || offers.length ? `<div class="card"><h3>${esc(phase ?? 'Your story')}</h3>${offers.length ? `<p class="muted" style="margin:0 0 6px">People have stopped asking about you. Some ways back:</p><div class="btn-stack">${offers.map((o) => btn('comeback', say[o.kind][0], { arg: o.kind, sub: say[o.kind][1] })).join('')}</div>` : ''}</div>` : ''; })()}
-      ${celebs.news(5).length ? `<div class="card"><h3>Celebrity news</h3>${celebs.news(5).map((a) => { const n = store.state.npcs[a.about]; return row('person', n.id, a.text, `${a.year}${a.accuracy === 'rumor' ? ' · unconfirmed' : ''}`, '', n); }).join('')}</div>` : ''}
+      ${celebs.news(5).length ? `<div class="card"><h3>Celebrity news</h3>${celebs.news(5).map((a) => { const n = store.state.npcs[a.about]; return row('person', n.id, a.text, `${a.year}${a.accuracy === 'rumor' ? ' · unconfirmed' : ''}`, '', n, 'news-row'); }).join('')}</div>` : ''}
       ${f.log.length ? `<div class="card"><h3>Why people know you</h3>${f.log.slice(-5).reverse().map((l) => `<p style="margin:3px 0">${l.year}: ${esc(l.why || l.audience)} (${l.delta > 0 ? '+' : ''}${l.delta} ${esc(l.audience)})</p>`).join('')}</div>` : ''}`;
   },
 

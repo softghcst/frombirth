@@ -247,6 +247,30 @@ export function countAction(npc, action) {
 
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
 
+/** Everyone the player could spend time with this year and has not yet. Neighbors they have only met need no visits. */
+export const timeStillOwed = () => {
+  const p = player();
+  if (p.age < 3 || p.legal?.incarceration) return [];
+  return livingNpcs().filter((n) => n.role !== 'neighbor' && n.flags.acts?.spendTime !== p.age && basicActions(n).some((a) => a.id === 'spendTime'));
+};
+
+/**
+ * Spends time with everyone at once, the same as doing it with each in turn: each counts as this year's time together.
+ * One line in the log, and the lift in mood of a good year with people, not of twenty separate afternoons.
+ */
+export function spendTimeWithAll() {
+  const p = player();
+  const people = timeStillOwed();
+  if (!people.length) return result(false, 'You have already spent time with everyone this year.', 'neutral');
+  for (const n of people) { spendAction(n, 'spendTime'); bump(n, rng.int(3, 9)); }
+  p.stats.mood = clamp(p.stats.mood + Math.min(8, 2 + people.length));
+  const names = people.map((n) => n.firstName);
+  const list = names.length <= 3 ? names.join(names.length === 2 ? ' and ' : ', ') : `${names.slice(0, 3).join(', ')} and ${names.length - 3} ${names.length - 3 === 1 ? 'other' : 'others'}`;
+  const text = `You made time for the people in your life this year: ${list}.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
+
 /** A friendship that hits the floor turns into something worse. */
 function sour(npc) {
   if (['friend', 'classmate', 'coworker'].includes(npc.role) && npc.meters.relationship < 12) {

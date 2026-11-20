@@ -507,6 +507,7 @@ export default {
     const more = [];
     if (love.canLookForLove()) more.push(['love', 'Look for love', '', 'heart']);
     if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), 'child']);
+    const owed = rel.timeStillOwed().length;
     if (nearby.size) more.unshift(['neighbors', 'Neighbors you know', `${nearby.size} on My Neighborhood`, 'home']);
 
     const row = (n) => `
@@ -520,6 +521,7 @@ export default {
     const nav = (list) => list.map(([id, label, sub, ico]) => navRow({ attrs: `data-top="${id}"`, label, sub, ico }));
 
     el.innerHTML = `
+      ${owed > 1 ? navGroup(nav([['spendAll', 'Spend time with everyone', `${owed} people you have not seen this year`, 'heart']])) : ''}
       ${list.length ? (() => {
         // The people who matter most first: partner, children, family and close friends. Everyone else (classmates,
         // coworkers, neighbors, acquaintances) is folded under one line, so the list stays a list.
@@ -545,6 +547,7 @@ export default {
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
       if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
+      if (id === 'spendAll') return report(api, rel.spendTimeWithAll());
       if (id === 'neighbors') return hoodUi.openNeighborhood(api, 'neighbors', null, { show: 'known' });
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

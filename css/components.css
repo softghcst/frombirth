@@ -401,6 +401,9 @@ button.tree-row:active { background: var(--accent-soft); }
 .world-group.on { border-color: var(--accent); }
 .world-list { display: flex; flex-direction: column; gap: 6px; }
 .world-row { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+/* A news story is read, not scanned: the whole headline, over as many lines as it needs. */
+.news-row { align-items: flex-start; }
+.news-row .main strong { white-space: normal; overflow: visible; text-overflow: clip; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
 .world-flag { font-size: 1.7rem; line-height: 1; width: 40px; text-align: center; flex: none; }
 .world-flag.big { font-size: 2.6rem; width: 56px; }
 .world-head { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; }
