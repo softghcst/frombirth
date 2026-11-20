@@ -120,8 +120,8 @@ for (const [name, viewport] of [['phone', { width: 390, height: 844 }], ['deskto
   await page.evaluate(async () => { const { store } = await import('/js/state.js'); document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()); (await import('/js/engine/turns.js')).setStep(3); store.notify(); });
   await page.waitForTimeout(200);
   if (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
-  await page.click('[data-year]'); await settle(page);
-  await page.click('[data-year]'); await settle(page);
+  await page.click('[data-year]'); await page.waitForTimeout(450); await settle(page); // a second press within 0.4s is a double tap, and ignored
+  await page.click('[data-year]'); await page.waitForTimeout(450); await settle(page); // a second press within 0.4s is a double tap, and ignored
   await page.evaluate(async () => { const { saveGame } = await import('/js/save.js'); const { store } = await import('/js/state.js'); saveGame(store.state); });
   await page.reload(); await page.waitForTimeout(400);
   const cont = page.locator('[data-load]');
