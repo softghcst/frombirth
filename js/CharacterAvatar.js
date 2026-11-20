@@ -273,11 +273,21 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const chin = PART_BY_ID[d.head]?.fit?.chin;
   // An anchored older style is already in the head's own coordinates: it is cut at the chin as it is.
   const frontCut = hf && chin ? Math.round(T.face.top + (chin - 2 - hf.ty) / hf.sy) : fitted && legacy && chin ? Math.round(chin - 2) : FRONT_HAIR_CUT;
+  // Some are kept off the face (frontCut, per head: where the window's top is): in front of the face they are drawn only
+  // outside a wide oval over the face, from that line down to the chin, so locks that would hang over the eyes and
+  // cheeks sit behind it and the hair's edge across the skin curves down to the ears like a hairline, not a straight cut.
+  const legacyCut = legacy ? FITTED_HAIR[d.hair].frontCut?.[headName(d.head)] : null;
+  const fitHead = PART_BY_ID[d.head]?.fit;
+  const faceWindow = legacyCut != null && fitHead ? (() => {
+    const rx = n1(fitHead.w / 2 * 1.22);
+    const ry = n1(frontCut - legacyCut);
+    return `M${n1(fitHead.cx - rx)} ${frontCut}a${rx} ${ry} 0 1 1 ${n1(2 * rx)} 0a${rx} ${ry} 0 1 1 ${n1(-2 * rx)} 0Z`;
+  })() : '';
   const defs = [
     `<clipPath id="pw-l-${n}"><rect x="-400" y="-400" width="656" height="1400"/></clipPath><clipPath id="pw-r-${n}"><rect x="256" y="-400" width="656" height="1400"/></clipPath>`,
     `<clipPath id="pw-face-${n}"><use href="${href(d.head)?.replace('#art', '#skin')}"/></clipPath>`,
     `<clipPath id="pw-back-${n}">${hatOn ? under(1400) : '<rect x="-400" y="-2000" width="1312" height="3400"/>'}</clipPath>`,
-    `<clipPath id="pw-front-${n}">${hatOn ? under(frontCut) : `<rect x="-400" y="-2000" width="1312" height="${frontCut + 2000}"/>`}</clipPath>`,
+    `<clipPath id="pw-front-${n}">${hatOn ? under(frontCut) : faceWindow ? `<path clip-rule="evenodd" d="M-400 -2000H912V${frontCut}H-400Z${faceWindow}"/>` : `<rect x="-400" y="-2000" width="1312" height="${frontCut + 2000}"/>`}</clipPath>`,
   ];
   const f = fitTransforms(d.head, ageStage(ctx.age ?? 25), look.tweaks, { eyes: d.eyes, nose: d.nose, lips: d.lips });
   // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).

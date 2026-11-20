@@ -542,6 +542,438 @@
         "pixie",
         "sculpted"
       ]
+    },
+    {
+      "id": "hair_boy_short_09",
+      "name": "Short, style 25",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_boy_short_15",
+      "name": "Short, style 31",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_boy_short_16",
+      "name": "Short, style 32",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_boy_updo_01_manbun",
+      "name": "Up, manbun",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_boy_updo_03_curly_puff",
+      "name": "Up, curly puff",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_boy_updo_05_loc_bun",
+      "name": "Up, loc bun",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_boy_updo_11_high_ponytail",
+      "name": "Up, high ponytail",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_girl_long_06",
+      "name": "Long, style 6",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_girl_long_07",
+      "name": "Long, style 7",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "frontCut": {
+        "almond": 262.2,
+        "angular": 260.1,
+        "athletic": 260.6,
+        "cherubic": 261.5,
+        "dimple_oval": 262.0,
+        "pixie": 263.4,
+        "sculpted": 260.1
+      }
+    },
+    {
+      "id": "hair_girl_long_09",
+      "name": "Long, style 9",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "frontCut": {
+        "almond": 262.2,
+        "angular": 260.1,
+        "athletic": 260.6,
+        "cherubic": 261.5,
+        "dimple_oval": 262.0,
+        "pixie": 263.4,
+        "sculpted": 260.1
+      }
+    },
+    {
+      "id": "hair_girl_long_16",
+      "name": "Long, style 16",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_girl_medium_09",
+      "name": "Medium, style 9",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "frontCut": {
+        "almond": 262.2,
+        "angular": 260.1,
+        "athletic": 260.6,
+        "cherubic": 261.5,
+        "dimple_oval": 262.0,
+        "pixie": 263.4,
+        "sculpted": 260.1
+      }
+    },
+    {
+      "id": "hair_girl_medium_11",
+      "name": "Medium, style 11",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "frontCut": {
+        "almond": 262.2,
+        "angular": 260.1,
+        "athletic": 260.6,
+        "cherubic": 261.5,
+        "dimple_oval": 262.0,
+        "pixie": 263.4,
+        "sculpted": 260.1
+      }
+    },
+    {
+      "id": "hair_girl_medium_12",
+      "name": "Medium, style 12",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "frontCut": {
+        "almond": 262.2,
+        "angular": 260.1,
+        "athletic": 260.6,
+        "cherubic": 261.5,
+        "dimple_oval": 262.0,
+        "pixie": 263.4,
+        "sculpted": 260.1
+      }
+    },
+    {
+      "id": "hair_girl_short_04",
+      "name": "Short, style 4",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "frontCut": {
+        "almond": 262.2,
+        "angular": 260.1,
+        "athletic": 260.6,
+        "cherubic": 261.5,
+        "dimple_oval": 262.0,
+        "pixie": 263.4,
+        "sculpted": 260.1
+      }
+    },
+    {
+      "id": "hair_girl_short_05",
+      "name": "Short, style 5",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "frontCut": {
+        "almond": 262.2,
+        "angular": 260.1,
+        "athletic": 260.6,
+        "cherubic": 261.5,
+        "dimple_oval": 262.0,
+        "pixie": 263.4,
+        "sculpted": 260.1
+      }
+    },
+    {
+      "id": "hair_girl_short_10",
+      "name": "Short, style 10",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "frontCut": {
+        "almond": 270.3,
+        "angular": 268.0,
+        "athletic": 268.2,
+        "cherubic": 269.5,
+        "dimple_oval": 270.0,
+        "pixie": 272.2,
+        "sculpted": 268.0
+      }
+    },
+    {
+      "id": "hair_girl_short_11",
+      "name": "Short, style 11",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_girl_short_15",
+      "name": "Short, style 15",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "hair_updo_02",
+      "name": "Up, style 2",
+      "clipToHead": false,
+      "kids": false,
+      "legacy": true,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ]
     }
   ]
 }

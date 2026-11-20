@@ -498,20 +498,33 @@ def avatar_manifest():
     return grab('AVATAR_MANIFEST'), grab('AVATAR_TEMPLATE')
 
 
-def legacy_root(hair_id, base, tune):
+def game_fits(base, ids):
+    """Where the game draws each older style on the base head (its run-time fit, js/avatar/hairFit.js), by id."""
+    import subprocess
+    parts, _ = avatar_manifest()
+    head_id = next(h['id'] for h in parts['heads'] if h['file'].endswith(f'/{base}.svg'))
+    out = subprocess.run(['node', os.path.join(HERE, 'legacy-base-fit.mjs'), head_id, *ids], capture_output=True, text=True, check=True)
+    return json.loads(out.stdout)
+
+
+def legacy_root(hair_id, base, tune, game=None):
     """
     An older style as a raw hairstyle on the base head: one hair_base layer (the game draws it behind the head and again
-    in front of the face down to the chin, as it draws the older styles), placed as the game's plain fit places it on
-    that head (scaled by the head's width, hung from the top of it), moved by tune's dx, dy (frame units) and scale.
+    in front of the face down to the chin, as it draws the older styles), placed exactly where the game draws it on
+    that head (game: its run-time fit, scales sx, sy and offset tx, ty; the squashing of a tall top is left out), then
+    moved by tune's dx, dy (frame units) and scaled by its scale and scale_y.
     """
     parts, T = avatar_manifest()
     head = next(h for h in parts['heads'] if h['file'].endswith(f'/{base}.svg'))
     fit, face = head['fit'], T['face']
-    k = fit['w'] / face['w'] * tune.get('scale', 1)
-    sy = k * tune.get('scale_y', 1)
+    g = game or {'sx': fit['w'] / face['w'], 'sy': fit['w'] / face['w'], 'tx': fit['cx'], 'ty': fit['top']}
+    k = g['sx'] * tune.get('scale', 1)
+    sy = g['sy'] * tune.get('scale', 1) * tune.get('scale_y', 1)
     with open(os.path.join(LEGACY_ART, f'{hair_id}.svg'), encoding='utf-8') as f:
         art = re.search(r'<g id="art">(.*)</g>\s*</svg>', f.read(), re.S).group(1)
-    move = f'translate({fit["cx"] + tune.get("dx", 0):g} {fit["top"] + tune.get("dy", 0):g}) scale({k:g} {sy:g}) translate(-256 {-face["top"]:g})'
+    for old, new in tune.get('recolor', {}).items():  # e.g. line work drawn in a reddish brown, set to the usual one
+        art = re.sub(re.escape(old), new, art, flags=re.I)
+    move = f'translate({g["tx"] + tune.get("dx", 0):g} {g["ty"] + tune.get("dy", 0):g}) scale({k:g} {sy:g}) translate(-256 {-face["top"]:g})'
     return ET.fromstring(f'<svg xmlns="{SVG}" viewBox="0 0 512 512" width="512" height="512"><g id="hair_back"/>'
                          f'<g id="hair_base" transform="{move}">{art}</g><g id="hair_bangs"/><g id="hair_lines"/></svg>')
 
@@ -519,6 +532,9 @@ def legacy_root(hair_id, base, tune):
 def legacy_adjust(tune, base_marks):
     """
     The changes to a style's shape that tune asks for, on the base head (frame units, y down):
+      recolor: {"#from": "#to"}  colors in the drawing replaced (for line work that does not match the other styles).
+      front_cut: y  the style is drawn in front of the face only above y; below it, only behind the head, so locks that
+               would hang over the cheeks or eyes sit behind the face instead (the head hides them).
       shorten: [{"below": y, "k": f, "beyond": d, "within": e}] points lower than y, and between d and e from the head's
                center line, are drawn up toward y (k=0.5 halves how far they hang below it): sideburns, side locks or wisps
                made shorter. The change eases off over "soft" units (12) past d and e, so a curl bends rather than kinks.
@@ -557,9 +573,10 @@ def fit_legacy(base, heads, styles, written):
     parts, _ = avatar_manifest()
     by_id = {p['id']: p for p in parts['hair']}
     adults = {h: m for h, m in heads.items() if h not in KID_HEADS}
+    game = game_fits(base, list(config))
     for hair_id, tune in config.items():
         print(f'{hair_id} (older style):')
-        root = legacy_root(hair_id, base, tune)
+        root = legacy_root(hair_id, base, tune, game.get(hair_id))
         fitted = fit_file(os.path.join(LEGACY_ART, f'{hair_id}.svg'), base, adults, root=root,
                           adjust=legacy_adjust(tune, heads[base]), source=f'assets/avatars/hair/{hair_id}.svg (see assets/hair_legacy_fit.json)')
         for head, text in fitted.items():
@@ -570,6 +587,12 @@ def fit_legacy(base, heads, styles, written):
         tags = by_id[hair_id].get('tags', {})
         styles[hair_id] = {'name': by_id[hair_id].get('label') or label(hair_id), 'clipToHead': False, 'kids': False,
                            'legacy': True, 'length': tags.get('length', 'short'), 'type': 'any', 'heads': sorted(fitted)}
+        if 'front_cut' in tune:
+            # The line, on each head, below which the style is drawn only behind the head: where the base head's line
+            # lands on that head, at its centre.
+            cx = heads[base][0][0]
+            styles[hair_id]['frontCut'] = {h: round(float(warp_for(heads[base], heads[h])(np.array([[cx, tune['front_cut']]]))[0][1]), 1)
+                                           for h in sorted(fitted)}
         print(f'  -> {len(fitted)} fitted: ' + ', '.join(sorted(fitted)))
 
 # ---------- Outputs for the game and for checking ----------
