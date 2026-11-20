@@ -189,10 +189,12 @@ export function normalize(a, seed = 'x') {
 
   let st = a?.style ?? {};
   const style = {};
-  const oldCut = v2 ? OLD_HAIRSTYLE[st.hair] : OLD_HAIRSTYLE[OLD_STYLE_NUM[old.hairStyle]];
+  const oldCut = current('hair', v2 ? OLD_HAIRSTYLE[st.hair] : OLD_HAIRSTYLE[OLD_STYLE_NUM[old.hairStyle]]);
   const suited = stylesFor(inherited.hairTexture);
   // A fitted style that has been withdrawn is replaced by the closest one kept, not one picked at random.
   if (GONE_FITTED[st.hair]) st = { ...st, hair: GONE_FITTED[st.hair] };
+  // An older style that has been taken out of the game becomes the nearest one kept (WITHDRAWN.hair).
+  if (WITHDRAWN.hair[st.hair]) st = { ...st, hair: WITHDRAWN.hair[st.hair] };
   // A saved fitted style is kept even if the hair manifest could not be loaded this time (offline, say):
   // it is simply not drawn until it loads, rather than being replaced for good.
   const unloadedFitted = !FITTED_LOADED && !v2 && typeof st.hair === 'string' && /^[a-z0-9_]+$/.test(st.hair) && !PART_BY_ID[st.hair] && st.hair !== 'bald';
