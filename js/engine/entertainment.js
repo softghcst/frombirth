@@ -236,9 +236,63 @@ export function slate(countryId) {
 /** Professional credits (not school or community shows). */
 export const proCredits = (p = player()) => workOf(p).credits.filter((c) => production(c.productionId) && !['community'].includes(production(c.productionId).tier)).length;
 
+/**
+ * How good the script is, 0–100. Fixed for a production from its name, so it never changes and costs no dice
+ * (older saves get theirs the first time anyone asks). Bigger productions can pay for better writers, but money
+ * does not guarantee a good script, and a student film can have a great one.
+ */
+export function scriptOf(prod) {
+  if (prod.script == null) {
+    let h = 2166136261;
+    for (const ch of `${prod.id}/${prod.title}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+    const u = ((h >>> 0) % 10007) / 10007;
+    prod.script = Math.round(clamp(28 + TIERS[prod.tier].reach * 18 + u * 58, 15, 97));
+  }
+  return prod.script;
+}
+/** The script in words. */
+export const scriptWord = (prod) => { const q = scriptOf(prod); return q >= 80 ? 'a great script' : q >= 62 ? 'a good script' : q >= 42 ? 'an ordinary script' : 'a weak script'; };
+/** The director's standing, from their skill, in words. */
+export function directorWord(prod) {
+  const d = store.state.npcs[prod.directorId];
+  const q = d?.flags.star?.skill.acting ?? 50;
+  return q >= 80 ? 'a celebrated director' : q >= 65 ? 'a respected director' : q >= 45 ? 'a steady director' : 'an untested director';
+}
+
+/**
+ * Once a year, the casting calls that suit the player: a few open parts in productions they could get into are written
+ * for someone their age, so there is always work worth going for, beside the parts that are not for them.
+ */
+function fitParts(p) {
+  const f = workOf(p);
+  if (f.fitted === year() || p.age < 6) return;
+  f.fitted = year();
+  const credits = proCredits(p);
+  const reachable = (prod) => TIERS[prod.tier].minCredits <= credits || (f.agent && TIERS[prod.tier].minCredits <= 2);
+  const fits = (r) => p.age >= r.ages[0] - 2 && p.age <= r.ages[1] + 4;
+  const open = [];
+  for (const prod of Object.values(ent().productions)) {
+    if (prod.status !== 'casting' || prod.countryId !== p.countryId || !reachable(prod)) continue;
+    if (prod.tier === 'community' && prod.city !== p.city) continue;
+    if (['studio', 'blockbuster', 'major_stage'].includes(prod.tier) && !f.agent && recognitionIn(p.countryId, p) < 40) continue;
+    for (const r of prod.cast) if (r.open && !r.who) open.push({ prod, r });
+  }
+  const want = 4;
+  let have = open.filter((x) => fits(x.r)).length;
+  // The smaller parts first, from the productions that would have the player soonest; the same ones every time.
+  for (const { r } of open.filter((x) => !fits(x.r)).sort((a, b) => TIERS[b.prod.tier].reach - TIERS[a.prod.tier].reach || a.prod.id.localeCompare(b.prod.id) || a.r.idx - b.r.idx)) {
+    if (have >= want) break;
+    if (r.kind === 'background' && p.age < 18) continue;
+    const lo = Math.max(r.kind === 'background' ? 18 : 6, p.age - (p.age < 16 ? 2 : 6));
+    r.ages = p.age < 16 ? [lo, lo + 5] : [lo, lo + 15];
+    have++;
+  }
+}
+
 /** Every open part the player could hear about, with whether they may go for it. */
 export function castingBoard(p = player()) {
   slate(p.countryId);
+  fitParts(p);
   const f = workOf(p);
   const out = [];
   for (const prod of Object.values(ent().productions)) {
@@ -488,7 +542,7 @@ function receive(prod) {
   const director = store.state.npcs[prod.directorId];
   const castSkill = prod.cast.filter((r) => r.who).map((r) => (r.who === 'player' ? playerSkill(SKILLS_FOR[prod.kind]) : npcSkill(store.state.npcs[r.who] ?? { flags: {} }, SKILLS_FOR[prod.kind])) * ROLE_KINDS[r.kind].weight);
   const weight = prod.cast.filter((r) => r.who).reduce((s, r) => s + ROLE_KINDS[r.kind].weight, 0) || 1;
-  const quality = castSkill.reduce((a, b) => a + b, 0) / weight * 0.5 + (director?.flags.star?.skill.acting ?? 55) * 0.3 + rng.around(10, 14);
+  const quality = castSkill.reduce((a, b) => a + b, 0) / weight * 0.5 + (director?.flags.star?.skill.acting ?? 55) * 0.3 + (scriptOf(prod) - 55) * 0.3 + rng.around(10, 14);
   const critics = Math.round(clamp(quality + rng.around(0, 10)));
   const stars = prod.cast.filter((r) => r.who && ['lead', 'voice_lead'].includes(r.kind)).map((r) => (r.who === 'player' ? recognitionIn(prod.countryId) : store.state.npcs[r.who]?.flags.star?.fame ?? 10));
   const audience = Math.round(clamp(critics * 0.45 + 22 + (Math.max(0, ...stars) / 3) + rng.around(0, 16)));
