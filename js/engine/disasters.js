@@ -181,8 +181,9 @@ function impact(state, e) {
   const c = COUNTRIES[p.countryId];
   const tier = wealthOf(state);
   // A child's family gets ready for what can be seen coming. With shorter turns that happens at the forecast
-  // (disastersBetween); with a year-long turn there is no forecast, and the family is just as ready.
-  const prep = D.prep[e.id] ?? (p.age < 18 && k.forecast && s >= 1 ? 'ready' : undefined);
+  // (disastersBetween); with a year-long turn there is no forecast, and the family is just as ready. The forecast
+  // comes during the year and this reckoning after the birthday, so "a child" here is one who was under 18 then.
+  const prep = D.prep[e.id] ?? (p.age - 1 < 18 && k.forecast && s >= 1 ? 'ready' : undefined);
   const shield = { rich: 0.5, middle: 1, poor: 1.4 }[tier];
   const parts = [];
   // The home.

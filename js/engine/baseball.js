@@ -20,7 +20,9 @@ import { gradeOf } from './recruiting.js';
 import * as sp from './sports.js';
 import { internals as life, settle } from './sportsLife.js';
 
-const { seeded, overall } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const seeded = (...a) => sp.internals.seeded(...a);
+const overall = (...a) => sp.internals.overall(...a);
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const k = (e, key) => (e.skills[key] ?? 0) / 100;
 const round1 = (n) => Math.round(n * 10) / 10;
