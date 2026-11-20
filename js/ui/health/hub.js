@@ -131,9 +131,9 @@ function youngView(p, h) {
   const next = care.upcoming(h).slice(0, 2);
   return `
     ${card('How you are', `${kv('Health', words('Health', p.stats.health))}${kv('Sleep', words('Sleep', h.wellbeing.sleep))}`)}
-    ${known.length ? card('What the doctors know', known.map((n) => kv(n.charAt(0).toUpperCase() + n.slice(1), '')).join('')) : ''}
-    ${card('Check-ups', next.length ? next.map(apptLine).join('') : muted('Your parents take you to the doctor for your check-ups.'))}
-    ${muted(`Your parents look after your health for now. When you are ${OWN_CARE_AGE}, you will see more of it here, and as you grow up you will take charge of your own care.`)}`;
+    ${known.length ? card('Conditions', known.map((n) => kv(n.charAt(0).toUpperCase() + n.slice(1), '')).join('')) : ''}
+    ${next.length ? card('Check-ups', next.map(apptLine).join('')) : ''}
+    ${muted('Your parents look after your health.')}`;
 }
 
 function apptLine(a) {

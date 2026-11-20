@@ -271,8 +271,57 @@ function passportsForCompanions(trip, p) {
   }
 }
 
-/** A child (under 16) traveling with a parent: the parents pay for the trip. */
-export const parentsPaying = (trip, p = player()) => p.age < 16 && goingPeople(trip).some((x) => x.role === 'parent');
+/**
+ * A child (under 16) traveling with a parent pays only if the parents have agreed to pay for this plan, and the
+ * plan is no dearer and no bigger than when they agreed (askParentsToPay).
+ */
+export function parentsPaying(trip, p = player()) {
+  const a = trip.parentAsk;
+  if (p.age >= 16 || a?.answer !== 'yes' || !goingPeople(trip).some((x) => x.role === 'parent')) return false;
+  return quote(trip, p).organizer <= a.cost && going(trip).length <= a.people;
+}
+
+const LAVISH = { cabins: ['business', 'first'], stays: ['luxury'] };
+const parentsOn = (trip) => goingPeople(trip).filter((x) => x.role === 'parent');
+
+/**
+ * Asks your parents to pay for a trip (a child under 16, with a parent going). Not a given: they weigh the price
+ * against their savings and how well off the family is, who else they would be paying for, how lavish it is, how
+ * you get on, and whether they have paid for a trip already this year. The answer holds for the plan: after a no,
+ * it can be asked again only once the trip is cheaper or smaller.
+ */
+export function askParentsToPay(tripId, p = player()) {
+  const trip = tripById(tripId, p);
+  if (!trip || trip.status !== 'draft') return result(false, 'There is no plan to ask about.', 'neutral');
+  if (p.age >= 16) return result(false, 'You pay your own way now.', 'neutral');
+  const parents = parentsOn(trip);
+  if (!parents.length) return result(false, 'Ask a parent to come first: they would only pay for a trip they are on.', 'neutral');
+  if (!trip.destination) return result(false, 'Choose where to go first.', 'neutral');
+  const cost = quote(trip, p).organizer;
+  const people = going(trip).length;
+  const who = parents.length > 1 ? 'Your parents' : parents[0].firstName;
+  const prev = trip.parentAsk;
+  if (prev?.answer === 'yes' && cost <= prev.cost && people <= prev.people) return result(true, `${who} already said they would pay.`, 'neutral');
+  if (prev?.answer === 'no' && cost >= prev.cost && people >= prev.people) return result(false, `${who} said no to this. ${prev.reason} Make it cheaper or smaller and ask again.`, 'neutral');
+  const savings = parents.reduce((s, n) => s + Math.max(0, n.life?.savings ?? n.savings ?? 0), 0);
+  const wealth = parents.reduce((s, n) => s + (n.wealth ?? 50), 0) / parents.length;
+  const rel = parents.reduce((s, n) => s + n.meters.relationship, 0) / parents.length;
+  const share = cost / Math.max(1, savings);
+  const extras = goingPeople(trip).filter((x) => x !== p && !['parent', 'sibling'].includes(x.role)).length;
+  const lavish = LAVISH.cabins.includes(trip.cabin) || LAVISH.stays.includes(trip.stay);
+  const paidThisYear = (p.flags.parentsPaidTrips ?? {})[year()] ?? 0;
+  let k = share < 0.02 ? 0.85 : share < 0.05 ? 0.6 : share < 0.1 ? 0.4 : share < 0.2 ? 0.22 : share < 0.4 ? 0.08 : 0.02;
+  k += (wealth - 50) / 250 + (rel - 60) / 200 - extras * 0.1 - (lavish ? 0.15 : 0) - paidThisYear * 0.25;
+  const yes = rng.chance(clamp(k, 0.02, 0.95));
+  const reason = share >= 0.2 ? 'It is too much money for them.'
+    : extras ? `They are not paying for ${extras === 1 ? 'someone else' : `${extras} other people`} as well.`
+      : lavish ? `Not ${LAVISH.cabins.includes(trip.cabin) ? `${trip.cabin === 'first' ? 'first' : 'business'} class` : 'a grand hotel'}.`
+        : paidThisYear ? 'They already paid for a trip this year.'
+          : rel < 45 ? 'They are not in the mood to do you favors.' : 'Not this time.';
+  trip.parentAsk = { answer: yes ? 'yes' : 'no', cost, people, reason: yes ? '' : reason, year: year() };
+  return yes ? result(true, `${who} said yes: they will pay the ${fmtMoney(cost, country())}.`, 'good')
+    : result(false, `${who} said no. ${reason}`, 'neutral');
+}
 
 /** Removes a plan that was never booked. */
 export function discardPlan(id, p = player()) {
@@ -463,7 +512,12 @@ export function problems(trip, p = player()) {
   for (const o of travelState(p).trips) if (o.id !== trip.id && LIVE.includes(o.status) && overlaps(o, trip)) out.push(`It clashes with your trip to ${COUNTRIES[o.destination.countryId].name} (${o.depart} to ${o.ret}).`);
   // Money.
   const q = quote(trip, p);
-  if (q.organizer > p.finance.cash && !parentsPaying(trip, p)) out.push(`It comes to ${fmtMoney(q.organizer, country())} for you, and you have ${fmtMoney(p.finance.cash, country())}.`);
+  if (q.organizer > p.finance.cash && !parentsPaying(trip, p)) {
+    const a = trip.parentAsk;
+    const ask = p.age < 16 && people.some((x) => x.role === 'parent')
+      ? (a?.answer === 'no' && q.organizer >= a.cost && going(trip).length >= a.people ? ` Your parents said no: ${a.reason}` : ' Ask your parents if they will pay.') : '';
+    out.push(`It comes to ${fmtMoney(q.organizer, country())} for you, and you have ${fmtMoney(p.finance.cash, country())}.${ask}`);
+  }
   return [...new Set(out)];
 }
 
@@ -488,6 +542,14 @@ export function confirm(tripId, p = player()) {
   if (bad.length) return result(false, bad[0], 'neutral', { problems: bad });
   const q = quote(trip, p);
   const parentsPay = parentsPaying(trip, p);
+  if (parentsPay) {
+    // It comes out of the parents' savings, shared between the ones going, and makes another trip this year a harder ask.
+    const parents = parentsOn(trip);
+    const each = Math.round(q.organizer / parents.length);
+    for (const n of parents) { if (n.life) n.life.savings -= each; else n.savings = (n.savings ?? 0) - each; }
+    const paid = (p.flags.parentsPaidTrips ??= {});
+    paid[year()] = (paid[year()] ?? 0) + 1;
+  }
   const where = placeName(trip.destination.countryId, trip.destination.city);
   for (const [i, l] of q.lines.entries()) {
     const payer = l.payer === 'employer' ? 'employer' : l.payer !== 'organizer' ? l.payer : parentsPay ? 'parent' : 'player';
