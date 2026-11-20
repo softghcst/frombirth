@@ -8,6 +8,7 @@ import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
 import { ELDER_BROWS } from './curation.js';
+import { kidsMayWear } from './fittedHair.js';
 import { icon } from '../ui/kit.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
@@ -91,6 +92,8 @@ export function mountAppearanceEditor(el, o = {}) {
     if (key === 'hair') {
       if (hairFilter === 'suits') list = [...stylesFor(a.inherited.hairTexture), ...fittedFor(a.inherited.hairTexture)];
       else if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
+      // A child is not offered the grown-ups' styles.
+      if (age < 13) list = list.filter((h) => kidsMayWear(h.id));
     }
     // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.
     if (key === 'lips') list = list.filter((x) => lipsFor(x.id, o.gender) === x.id);

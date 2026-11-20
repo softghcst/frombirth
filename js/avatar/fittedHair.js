@@ -34,5 +34,11 @@ const manifest = await load();
 export const FITTED_LOADED = !!manifest;
 /** The head every style was drawn on; a head a style was not fitted to is given this head's version. */
 export const FITTED_BASE_HEAD = manifest?.baseHead ?? null;
+/**
+ * Whether a child may wear this hairstyle. A fitted style is for grown-ups unless the pipeline marked it a
+ * children's style (data-kids="true" on its raw file; it is then fitted to the kid head too). Any other hairstyle,
+ * one of the older ones in assets/avatars/hair/, is fine for a child.
+ */
+export const kidsMayWear = (hairId) => !FITTED_HAIR[hairId] || !!FITTED_HAIR[hairId].kids;
 /** Every fitted hairstyle, by id. */
 export const FITTED_HAIR = Object.fromEntries((manifest?.hairstyles ?? []).map((h) => [h.id, h]));

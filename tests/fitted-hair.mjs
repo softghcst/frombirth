@@ -3,10 +3,11 @@
 //  - every style has a fitted file for every head it lists, with its four layers
 //  - a portrait draws hair_back behind the head and the other layers in front, from that head's own file;
 //    a clipToHead style (buzz cut, fade) is clipped to the head's skin
-//  - children get the kid head's file; a head the style was not fitted to gets the base head's
+//  - a style is for grown-ups unless marked for children: only then is it fitted to the kid head and worn by a child;
+//    a child whose style is a grown-up's wears another of the older styles until 13; a head not fitted gets the base head's
 //  - a fitted style can be chosen and saved, and the hairstyles given out at random are unchanged
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
-import { FITTED_HAIR, FITTED_BASE_HEAD, FITTED_LOADED } from '../js/avatar/fittedHair.js';
+import { FITTED_HAIR, FITTED_BASE_HEAD, FITTED_LOADED, kidsMayWear } from '../js/avatar/fittedHair.js';
 import { CATALOG, HAIR_STYLES, FITTED_STYLES, GONE_FITTED, fittedFor, normalize } from '../js/avatar/catalog.js';
 import { avatarSvg } from '../js/avatar/render.js';
 import { fittedHairFile, filesFor, characterAvatarSvg, dressFor } from '../js/CharacterAvatar.js';
@@ -35,7 +36,8 @@ for (const [id, s] of Object.entries(FITTED_HAIR)) {
   const rawSvg = readFileSync(new URL(`assets/hair_raw/${id}.svg`, root), 'utf8');
   const flag = rawSvg.match(/<svg[^>]*\sdata-clip-to-head="(true|false)"/)?.[1];
   check(s.clipToHead === (flag ? flag === 'true' : /fade|buzz/.test(id)), `${id}: clipToHead should be ${flag ?? /fade|buzz/.test(id)}`);
-  check(s.heads.includes(FITTED_BASE_HEAD) && s.heads.includes('kid'), `${id} is not fitted to the base head and the kid head`);
+  check(s.heads.includes(FITTED_BASE_HEAD), `${id} is not fitted to the base head`);
+  check(typeof s.kids === 'boolean' && s.kids === /<svg[^>]*\sdata-kids="true"/.test(rawSvg) && s.heads.includes('kid') === s.kids, `${id}: fitted to the kid head only if it is marked data-kids="true"`);
   for (const head of s.heads) {
     const file = new URL(`assets/hair_fitted/${id}_${head}.svg`, root);
     if (!existsSync(file)) { check(false, `missing assets/hair_fitted/${id}_${head}.svg`); continue; }
@@ -70,9 +72,12 @@ for (const id of styles) {
     check(!!face && wrapped('hair_back') === clip && wrapped('hair_base') === clip, `${id} with clipToHead ${clip} is ${clip ? 'not ' : ''}clipped to the head's skin`);
   }
   meta.clipToHead = was;
-  // A child wears it on the kid head; under a hat it is still clipped by the brim.
+  // A children's style is worn on the kid head; a grown-up's style waits, and the child wears one of the older styles.
   const kid = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid', age: 9 });
-  check(kid.includes(`hair_fitted/${id}_kid.svg#hair_back`), `a child is not drawn with ${id}_kid.svg`);
+  if (meta.kids) check(kid.includes(`hair_fitted/${id}_kid.svg#hair_back`), `a child is not drawn with ${id}_kid.svg`);
+  else check(!kid.includes('hair_fitted/') && /avatars\/hair\/hair_[a-z0-9_]+\.svg/.test(kid), `a child is drawn with the grown-up style ${id}, or with no hair`);
+  const grown = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid', age: 13 });
+  check(grown.includes(`hair_fitted/${id}_dimple_oval.svg#hair_back`), `at 13 the person does not wear their own style ${id}`);
   check(filesFor({ head: 'head_11_pixie', hair: id, makeup: [], jewelry: [] }, { age: 30 }).includes(`./assets/hair_fitted/${id}_pixie.svg`), `the fitted file of ${id} is not preloaded`);
 }
 
@@ -82,6 +87,7 @@ for (const id of styles) {
   check(normalize({ v: 3, inherited: { head: 'head_12_sculpted' }, style: { hair: id } }, 'saved').style.hair === id, `a saved ${id} does not load`);
 }
 check(!HAIR_STYLES.some((h) => FITTED_HAIR[h.id]), 'fitted styles are among the styles given out at random');
+check(HAIR_STYLES.every((h) => kidsMayWear(h.id)) && styles.every((id) => kidsMayWear(id) === !!FITTED_HAIR[id].kids), 'which styles a child may wear is wrong');
 // A withdrawn style is gone from the game, and a save that used it is given its replacement.
 for (const [gone, kept] of Object.entries(GONE_FITTED)) {
   check(!FITTED_HAIR[gone] && !existsSync(new URL(`assets/hair_raw/${gone}.svg`, root)), `${gone} is withdrawn but still in the game`);
@@ -100,4 +106,4 @@ if (problems.length) {
   console.log(`${problems.length} problem(s).`);
   process.exit(1);
 }
-console.log(`Fitted hair is sound: ${styles.length} style(s), each drawn from its own file on ${heads.length} adult heads and the kid head, back layer behind the head, the rest in front.`);
+console.log(`Fitted hair is sound: ${styles.length} style(s), each drawn from its own file on ${heads.length} adult heads (${styles.filter((id) => FITTED_HAIR[id].kids).length} also for children), back layer behind the head, the rest in front.`);

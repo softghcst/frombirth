@@ -29,7 +29,7 @@
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
-import { FITTED_HAIR, FITTED_BASE_HEAD } from './avatar/fittedHair.js';
+import { FITTED_HAIR, FITTED_BASE_HEAD, kidsMayWear } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
 import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
@@ -97,6 +97,8 @@ export function dressFor(look, ctx = {}) {
     out.jewelry = []; out.glasses = null; out.facialHair = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
   } else if (stage === 'kid') {
+    // A grown-up's hairstyle waits until 13: until then the child wears the one picked for them (resolveLook's kidHair).
+    if (out.hair && !kidsMayWear(out.hair)) out.hair = look.kidHair ?? null;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
     out.facialHair = null;

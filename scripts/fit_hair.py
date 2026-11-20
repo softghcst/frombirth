@@ -19,8 +19,10 @@ For each SVG in assets/hair_raw/ (drawn on the base head named in assets/landmar
      a style= with a CSS variable (main colour: var(--hair-color,<colour>); its shades: color-mix() of it),
      so the game can dye the hair. The fill/stroke attributes stay as they are and look identical without it.
 
-Heads: the eight in assets/landmarks.json (a head with no SVG, null landmarks, is skipped), plus the game's
-`kid` head, measured here the same way, because children wear their hairstyle on it.
+Heads: the adult heads in assets/landmarks.json (a head with no SVG, null landmarks, is skipped). The game's `kid`
+head is measured here the same way, but a style is fitted to it only when it is a children's style: the raw SVG's root
+has data-kids="true". Every other style is for grown-ups only; a child whose style it is wears another until 13
+(dressFor in js/CharacterAvatar.js), and the creator and salon do not offer it for a child.
 
 It also writes:
   assets/hair_manifest.json      what the game reads (js/avatar/fittedHair.js loads it): every hairstyle, its name,
@@ -61,6 +63,7 @@ DEBUG_HTML = os.path.join(HERE, 'debug_hair_fit.html')
 
 POINTS = EL.POINTS
 EXTRA_HEADS = ['kid']  # game heads measured here rather than kept in landmarks.json
+KID_HEADS = {'kid'}  # fitted only for a style marked data-kids="true"
 LAYERS = ['hair_back', 'hair_base', 'hair_bangs', 'hair_lines']
 
 
@@ -480,6 +483,11 @@ def clip_to_head(name, root):
     return bool(re.search(r'fade|buzz', name))
 
 
+def for_kids(root):
+    """Whether a style is also a children's style: data-kids="true" on the raw SVG's root. Otherwise it is for adults only."""
+    return (root.get('data-kids') or '').strip().lower() == 'true'
+
+
 def write_manifest(base, styles):
     with open(MANIFEST, 'w', encoding='utf-8') as f:
         json.dump({'generatedBy': 'scripts/fit_hair.py (do not edit by hand)', 'baseHead': base,
@@ -509,6 +517,9 @@ def debug_page(base, heads, skipped, styles):
         for h in cols:
             if h not in heads:
                 cells.append(f'<td class="none">no head SVG<br>for <code>{h}</code></td>')
+                continue
+            if h not in styles[style]['heads']:
+                cells.append('<td class="none">adults only</td>')
                 continue
             g = groups(open(os.path.join(FITTED, f'{style}_{h}.svg'), encoding='utf-8').read())
             back, front = g['hair_back'], g['hair_base'] + g['hair_bangs'] + g['hair_lines']
@@ -586,14 +597,15 @@ def main():
     for raw in raws:
         name = re.sub(r'[^a-z0-9]+', '_', raw[:-4].lower()).strip('_')
         print(f'{name}:')
-        fitted = fit_file(os.path.join(RAW, raw), base, heads)
+        root = ET.parse(os.path.join(RAW, raw)).getroot()
+        kids = for_kids(root)
+        fitted = fit_file(os.path.join(RAW, raw), base, {h: m for h, m in heads.items() if kids or h not in KID_HEADS})
         for head, text in fitted.items():
             out = f'{name}_{head}.svg'
             with open(os.path.join(FITTED, out), 'w', encoding='utf-8') as f:
                 f.write(text)
             written.add(out)
-        root = ET.parse(os.path.join(RAW, raw)).getroot()
-        styles[name] = {'name': root.get('data-name') or label(name), 'clipToHead': clip_to_head(name, root),
+        styles[name] = {'name': root.get('data-name') or label(name), 'clipToHead': clip_to_head(name, root), 'kids': kids,
                         'length': root.get('data-length', 'short'), 'type': root.get('data-type', 'any'), 'heads': sorted(fitted)}
         print(f'  -> {len(fitted)} fitted: ' + ', '.join(sorted(fitted)))
     # Fitted files whose raw hairstyle has gone are removed, so the folder matches the index.
