@@ -6,6 +6,7 @@ import * as who from '../engine/identity.js';
 import * as skill from '../engine/skills.js';
 import { messageModal, pickModal, confirmModal, inputModal } from './modals.js';
 import { meterHtml } from './meter.js';
+import { openAppearanceEditor } from '../avatar/editor.js';
 
 async function report(api, r) {
   api.changed();
@@ -18,9 +19,9 @@ export function identityRows() {
   const id = who.identity();
   const trans = who.isTrans() && (id.knows || id.outGender);
   const gender = (p.age < 18 ? { female: 'Girl', male: 'Boy', nonbinary: 'Non-binary' } : { female: 'Woman', male: 'Man', nonbinary: 'Non-binary' })[p.gender];
-  const hidden = p.flags.trueGender && p.flags.trueGender !== p.gender && id.knows; // knows who they are; still living as registered
   const rows = [['Gender', trans && p.gender !== who.bornAs() ? `${gender} (transgender)` : gender]];
-  if (hidden) rows.push(['What you know', `You are ${who.genderName(p.flags.trueGender)}. Nobody has been told.`]);
+  const journey = who.questLine();
+  if (journey) rows.push([journey.startsWith('Questioning') ? 'Exploring' : 'Inside', journey.replace(/^Questioning: /, '').replace(/^./, (x) => x.toUpperCase())]);
   if (p.age >= 12) rows.push(['Sexuality', `${who.orientationName(p.orientation)}${p.orientation !== 'straight' ? (id.outOrientation ? ', out' : ', not out') : ''}`]);
   if (id.hrtAge != null) rows.push(['Hormone therapy', `Since age ${id.hrtAge}`]);
   if (id.top || id.bottom) rows.push(['Surgery', [id.top ? 'top' : '', id.bottom ? 'bottom' : ''].filter(Boolean).join(' and ')]);
@@ -34,7 +35,10 @@ export async function openIdentity(api) {
   const c = country();
   const id = who.identity();
   const options = [];
-  if (who.canTransition()) options.push({ value: 'gender', label: 'Live as a different gender', sub: 'Tell the people around you who you are.' });
+  const q = who.quest();
+  if (q.stage === 'questioning') options.push({ value: 'explore', label: 'Keep exploring your gender', sub: 'Try something, and see how it feels.' });
+  else if (who.canQuestion()) options.push({ value: 'question', label: 'Explore your gender', sub: q.stage === 'settled' ? 'You asked before and had your answer. You can always ask again.' : 'Wonder about it, and try things. There is no wrong answer.' });
+  if (who.canTransition() && (who.discovered() || q.stage === 'questioning' || q.stage === 'settled')) options.push({ value: 'gender', label: 'Live as a different gender', sub: 'Tell the people around you who you are.' });
   options.push({ value: 'name', label: 'Change your first name', sub: p.age >= who.AGES.nameAlone ? `${fmtMoney(Math.round(who.COSTS.name * c.currency.scale), c)} in paperwork.` : 'Under 18, a parent on your side has to sign.' });
   if (p.age >= who.AGES.comeOut) options.push({ value: 'orientation', label: 'Sexuality', sub: `Now: ${who.orientationName(p.orientation).toLowerCase()}.` });
   if (who.canComeOut()) options.push({ value: 'comeout', label: 'Come out', sub: 'Tell your family and friends. They will each take it their own way.' });
@@ -48,6 +52,8 @@ export async function openIdentity(api) {
 
   const pick = await pickModal({ title: 'Identity', body: 'Who you are is yours to decide, and to share when you are ready.', options });
   if (!pick) return undefined;
+  if (pick === 'question') { await report(api, who.startQuestioning()); return openExplore(api); }
+  if (pick === 'explore') return openExplore(api);
   if (pick === 'gender') {
     const g = await pickModal({ title: 'Live as', options: who.GENDERS.filter((x) => x.id !== p.gender).map((x) => ({ value: x.id, label: { female: 'A woman', male: 'A man', nonbinary: 'Non-binary' }[x.id] })) });
     if (!g) return undefined;
@@ -67,6 +73,25 @@ export async function openIdentity(api) {
   if (pick === 'stophrt') return report(api, who.stopHrt());
   if (pick === 'legal') return report(api, who.changeLegalGender());
   return report(api, who.haveSurgery(pick.split(':')[1]));
+}
+
+/** Questioning: things to try, one at a time, two a year. */
+async function openExplore(api) {
+  const p = player();
+  const c = country();
+  const q = who.quest();
+  if (q.stage !== 'questioning') return undefined;
+  const opts = who.exploreOptions();
+  const pick = await pickModal({ title: 'Exploring', body: `${who.questLine().replace(/^Questioning: /, '').replace(/^./, (x) => x.toUpperCase())}. Two things a year.`, cancel: 'Back',
+    options: [...opts.map((o) => ({ value: o.id, label: o.label, disabled: !!o.why, sub: o.why ? o.why.replace(/^./, (x) => x.toUpperCase()) : o.cost ? fmtMoney(o.cost, c) : '' })),
+      { value: 'stop', label: 'Stop exploring for now' }] });
+  if (!pick) return undefined;
+  if (pick === 'stop') return report(api, who.stopQuestioning());
+  if (opts.find((o) => o.id === pick)?.look) {
+    const next = await openAppearanceEditor({ title: 'A different look', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id, scope: 'style', confirm: 'Try it' });
+    if (next) p.appearance = next;
+  }
+  return report(api, who.explore(pick));
 }
 
 /** The Skills card on the Self tab. */

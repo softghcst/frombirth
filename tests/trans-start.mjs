@@ -22,7 +22,7 @@ for (const [sex, gender, word, knows] of [['female', 'male', 'Girl', 'a boy'], [
   who.identity().knows = true;
   const c = card();
   check(c.Gender === word, `${gender}: the card says "${c.Gender}"`);
-  check(c['What you know'] === `You are ${knows}. Nobody has been told.`, `${gender}: they know they are ${knows} ("${c['What you know']}")`);
+  check(c.Inside === `${knows.replace(/^a /, '').replace(/^./, (x) => x.toUpperCase())}, inside. Not living it yet.`, `${gender}: they know they are ${knows} ("${c.Inside}")`);
 }
 // Sex alone, not transgender: as registered. Non-binary: registered as the sex chosen, truly non-binary.
 { let s; do { s = createLife({ countryId: 'us', sex: 'female', trans: false }); } while (s.player.royal);
@@ -33,7 +33,67 @@ for (const [sex, gender, word, knows] of [['female', 'male', 'Girl', 'a boy'], [
   check(s.player.flags.bornAs === 'female', 'sex chosen, transgender left to chance: still registered female'); }
 let s; do { s = createLife({ countryId: 'us', sex: 'male', trans: false }); } while (s.player.royal);
 store.state = s; s.player.age = 30;
-check(card().Gender === 'Man' && !card()['What you know'], 'a man who is not transgender is simply a man');
+check(card().Gender === 'Man' && !card().Inside && !card().Exploring, 'a man who is not transgender is simply a man');
+
+// ---------- The journey: questioning, trying things, and an answer ----------
+const { advanceYear } = await import('../js/engine/yearProcessor.js');
+const { deathRoll } = await import('../js/engine/death.js');
+deathRoll.spared = true;
+const year = () => { const p = store.state.player; p.stats.health = Math.max(p.stats.health, 80); advanceYear(); p.legal.pending = null; p.legal.incarceration = null; };
+const fresh = (o) => { let s; do { s = createLife({ countryId: 'us', ...o }); } while (s.player.royal); store.state = s; return s.player; };
+const exploreAll = () => { for (const x of who.exploreOptions().filter((o) => !o.why && o.id !== 'counselor').slice(0, 2)) who.explore(x.id); };
+
+// A trans boy who goes looking finds out; nothing medical is offered before he does.
+{
+  const p = fresh({ sex: 'female', trans: true });
+  p.flags.realizeAge = 30; // the feeling would come late: this one goes looking first
+  while (p.age < 12) year();
+  check(!who.canStartHrt() && !who.surgeryOptions().length && !who.discovered(), 'before finding out, no hormones or surgery are offered');
+  check(who.canQuestion() && who.startQuestioning().ok && card().Exploring === 'Just starting', `anyone can start questioning (${card().Exploring})`);
+  let years = 0;
+  while (who.quest().stage === 'questioning' && years++ < 8) { exploreAll(); if (who.quest().stage === 'questioning') year(); }
+  check(who.quest().stage === 'found' && who.identity().knows, `exploring, a trans boy finds out (${who.quest().stage}, clarity ${who.quest().clarity})`);
+  check(card().Inside === 'Boy, inside. Not living it yet.', `the card: ${card().Inside}`);
+  check(p.milestones.some((m) => /Realized you are transgender/.test(m.text)), 'it is a milestone');
+  while (p.age < 16) year();
+  check(who.canStartHrt(), 'now hormone therapy can be asked for (with a parent\'s consent under 18)');
+  check(who.liveAs('male').ok && p.gender === 'male' && !card().Inside, 'he lives as a boy, and the card says so');
+}
+
+// A cis girl who explores finds it is not for her, and can ask again years later.
+{
+  const p = fresh({ sex: 'female', trans: false });
+  while (p.age < 14) year();
+  who.startQuestioning();
+  let years = 0;
+  while (who.quest().stage === 'questioning' && years++ < 8) { exploreAll(); if (who.quest().stage === 'questioning') year(); }
+  check(who.quest().stage === 'settled' && !who.identity().knows && p.gender === 'female', `exploring, a girl who is not trans settles it (${who.quest().stage})`);
+  check(!who.canStartHrt() && !who.canQuestion(), 'nothing medical, and not again straight away');
+  for (let i = 0; i < 5; i++) year();
+  check(who.canQuestion(), 'five years on, she can ask again if she wants');
+}
+
+// A trans girl who never looks: the feeling comes, and pushing it away costs.
+{
+  const p = fresh({ sex: 'male', trans: true });
+  p.flags.realizeAge = 12;
+  while (p.age < 11) { year(); store.state.pendingEvents = []; }
+  year();
+  const ev = store.state.pendingEvents.find((e) => e.id === 'gender_feeling');
+  check(ev && ev.cast.words.born === 'boy', `at ${p.age} the feeling comes: "when people call you a ${ev?.cast.words.born}"`);
+  const { feelingChoice } = who;
+  store.state.pendingEvents = [];
+  p.stats.mood = 70;
+  feelingChoice('push');
+  const after = p.stats.mood;
+  year(); store.state.pendingEvents = [];
+  check(after < 70 && p.stats.mood <= after, `pushing it away hurts, and keeps hurting (${70} → ${after} → ${p.stats.mood})`);
+  year();
+  check(store.state.pendingEvents.some((e) => e.id === 'gender_feeling') || p.age - who.quest().nudged < 3, 'and it comes back');
+  store.state.pendingEvents = [];
+  feelingChoice('look');
+  check(who.quest().stage === 'questioning' && who.quest().clarity >= 30, 'looking into it starts the questioning, with a head start');
+}
 
 if (problems.length) { console.log(`${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('Gender and transgender at creation mean what they say.');
