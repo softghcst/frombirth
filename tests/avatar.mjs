@@ -10,6 +10,7 @@
 //  - every nose is clear of every pair of eyes on every face shape
 //  - the lid creases of eyes are soft shades of the skin, clear of the eye and of the brows above
 //  - every mouth sits well under every nose (as fitted to every pair of eyes) on every face shape
+//  - every beard drawn along the jaw meets the jaw of every face shape, and none shows past it
 import { readFileSync, existsSync } from 'node:fs';
 import { AVATAR_MANIFEST, PART_BY_ID, AVATAR_TEMPLATE } from '../js/avatarManifest.js';
 import { CATALOG, INHERITED_KEYS, STYLE_KEYS, normalize, part, resolveLook, SKIN_TONES as TONES, DEPTH as SKIN_DEPTH } from '../js/avatar/catalog.js';
@@ -18,6 +19,7 @@ import { dressFor, filesFor, ageStage, fitTransforms, deepness, characterAvatarS
 import { hairFit, fitGaps, crownBare, plainFit, frameFor, FRAME, LIMITS } from '../js/avatar/hairFit.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from '../js/avatar/inherit.js';
 import { noseFit, noseGap, NOSE_FIT, mouthFit, LIP_FIT } from '../js/avatar/featureFit.js';
+import { beardFit, followsJaw, BEARD_FIT } from '../js/avatar/beardFit.js';
 import * as CUR from '../js/avatar/curation.js';
 import { rng } from '../js/rng.js';
 
@@ -527,6 +529,60 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(browsAt(5, 8) === sad && browsAt(5, 1) === CUR.BABY_BROWS, 'a sad child, or a baby, has the wrong brows');
   check(dressFor(resolveLook({ v: 3, inherited: { brows: 'brows_10' } }, 'x', 'female'), { age: 30, gender: 'female', mood: 5 }).eyes === CUR.EXPRESSION.crying, 'a very unhappy face does not cry');
   check(browsAt(60, 90, 'male') === CUR.ELDER_BROWS && browsAt(60, 90, 'female') === 'brows_10' && browsAt(60, 70, 'male') === 'brows_10', 'the bushy brows of old age are not an old man\'s alone');
+}
+
+// 18. Beards on every face shape: a beard drawn along the template's jaw is stretched until it meets each head's jaw,
+// with no bare skin between beard and jawline, and clipped to the face (ears left out) so it never shows past it; a
+// mustache, or a beard that already reaches the jaw, is drawn exactly as before; and every style is big enough to see.
+{
+  const STEP = T.featureStep ?? 2;
+  const adults = AVATAR_MANIFEST.heads.filter((h) => h.tags?.age === 'adult');
+  // Artwork too small to read at any size: to be redrawn. The check below fails once it is, so this list stays honest.
+  const TOO_SMALL = ['facial_hair_10_soulpatch'];
+  for (const h of AVATAR_MANIFEST.heads) check(h.jaw?.L?.length && h.jaw.L.length === h.jaw.R.length, `${h.id}: the jaw has not been measured`);
+  let fitted = 0;
+  for (const b of AVATAR_MANIFEST.facial_hair) {
+    const s = b.shape;
+    if (!s?.L?.length || s.L.length !== s.R.length) { check(false, `${b.id}: the beard has not been measured`); continue; }
+    const area = s.L.reduce((sum, l, i) => sum + (l == null ? 0 : (s.R[i] - l) * STEP), 0);
+    check((area >= 150) !== TOO_SMALL.includes(b.id), `${b.id}: ${area >= 150 ? 'is listed as too small to see, but is not' : `is too small to see (${Math.round(area)} square units)`}`);
+    for (const h of adults) {
+      const fit = h.fit, wr = fit.w / T.face.w, hr = (fit.chin - fit.top) / (T.face.chin - T.face.top);
+      const at = (y) => fit.top + (y - T.face.top) * hr;
+      const bf = beardFit(b.id, h.id);
+      const plain = fitTransforms(h.id, 'adult', {}, {}).facialHair;
+      const drawn = fitTransforms(h.id, 'adult', {}, { facialHair: b.id }).facialHair;
+      const svg = avatarSvg({ age: 35, gender: 'male', seed: 'b', appearance: { v: 3, inherited: { head: h.id }, style: { facialHair: b.id } } });
+      const clipped = new RegExp(`<g clip-path="url\\(#pw-face-\\d+\\)"><g clip-path="url\\(#pw-ears-\\d+\\)"><use href="[^"]*${b.id}`).test(svg);
+      if (!bf.hugs) {
+        check(drawn === plain && !clipped, `${b.id} on ${h.id}: a beard that is not fitted to the jaw is drawn differently from before`);
+        continue;
+      }
+      fitted++;
+      check(clipped, `${b.id} on ${h.id}: a beard fitted to the jaw is not clipped to the face`);
+      check(bf.sx > wr && bf.sx <= wr * BEARD_FIT.stretch + 1e-9 && bf.sy === hr, `${b.id} on ${h.id}: stretched out of bounds (${bf.sx.toFixed(3)} for a head ${wr.toFixed(3)} wide)`);
+      // Along the jaw (below the ears, above the chin), the beard's edge reaches the jawline on nearly every row.
+      let rows = 0, short = 0;
+      s.L.forEach((l, i) => {
+        if (l == null) return;
+        const y = at(s.y + i * STEP);
+        const j = Math.round((y - h.jaw.y) / STEP);
+        if (y < fit.lobe + BEARD_FIT.earClear || y > fit.chin - 2 || h.jaw.L[j] == null) return;
+        for (const [beard, edge] of [[256 - l, fit.cx - h.jaw.L[j]], [s.R[i] - 256, h.jaw.R[j] - fit.cx]]) {
+          if (beard < BEARD_FIT.least) continue;
+          rows++;
+          if (edge - beard * bf.sx > 1.5) short++;
+        }
+      });
+      const capped = bf.sx >= wr * BEARD_FIT.stretch - 1e-9;
+      check(capped || short <= rows * (1 - BEARD_FIT.reaches + 0.05), `${b.id} on ${h.id}: bare skin between beard and jaw on ${short} of ${rows} rows`);
+    }
+  }
+  check(fitted >= 10, `only ${fitted} beards are fitted to a jaw`);
+  for (const h of adults) for (const id of ['facial_hair_02_handlebar_mustache', 'facial_hair_07_chevron']) check(!beardFit(id, h.id).hugs, `${id} is stretched to the jaw of ${h.id}`);
+  // A full beard stands out past the jaw on purpose: it is never trimmed to the face, on any face shape.
+  for (const id of ['facial_hair_01_shaped_beard', 'facial_hair_04_bushy_full_beard']) check(!followsJaw(id), `${id}, a full beard, is fitted to the jaw`);
+  check(beardFit('facial_hair_05_chinstrap_beard', 'head_15_cherubic').hugs, 'a chinstrap does not reach the jaw of the roundest face');
 }
 
 if (problems.length) {

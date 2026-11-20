@@ -31,6 +31,7 @@ import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
+import { beardFit, BEARD_FIT } from './avatar/beardFit.js';
 import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
@@ -154,8 +155,9 @@ const n1 = (v) => Math.round(v * 100) / 100;
  * chin, hair and hats follow the top and width of the head, earrings hang
  * from this head's ears, clothes sit under this head's chin. Given the eyes and
  * nose a face has (`parts`), the nose is also kept clear of those eyes, and the mouth is fitted to the
- * nose above it (js/avatar/featureFit.js).
- * @param {{eyes?:string, nose?:string, lips?:string}} [parts]
+ * nose above it (js/avatar/featureFit.js). A beard is stretched across the face until it meets this head's
+ * jaw (js/avatar/beardFit.js); a mustache, or a beard that already reaches the jaw, is only scaled with the head.
+ * @param {{eyes?:string, nose?:string, lips?:string, facialHair?:string}} [parts]
  * @returns {Record<string, string>} an SVG transform attribute (with a leading space) per layer
  */
 export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
@@ -186,13 +188,18 @@ export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
   const earS = (fit.earR - fit.earL - 20) / (T.ear.right - T.ear.left);
   const body = Math.max(0.8, Math.min(1.06, fit.shoulderW / T.shoulderW));
   const crown = move(256, T.face.top, fit.cx, fit.top, wr);
+  // A beard keeps its place at the mouth; one fitted to the jaw is stretched across the face and runs chin to chin.
+  const beard = parts.facialHair ? beardFit(parts.facialHair, headId) : null;
+  const beardAt = (ay) => (beard?.hugs
+    ? ` transform="translate(${n1(fit.cx)} ${n1(at(ay))}) scale(${n1(beard.sx)} ${n1(beard.sy)}) translate(${-256} ${-ay})"`
+    : feature(ay, wr));
   return {
     eyesL: eyeAt(T.anchor.eyes, eyeS, -1), eyesR: eyeAt(T.anchor.eyes, eyeS, 1),
     browsL: eyeAt(T.anchor.eyebrows, s, -1), browsR: eyeAt(T.anchor.eyebrows, s, 1),
     eyes: feature(T.anchor.eyes), eyebrows: feature(T.anchor.eyebrows),
     nose: move(256, T.anchor.nose, fit.cx, at(T.anchor.nose) + nf.drop, noseS * nf.k), lips: move(256, T.anchor.lips, fit.cx, at(T.anchor.lips) + mf.dy, mouthS * mf.k),
     makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes),
-    glasses: feature(T.anchor.eyes, wr * young.k), facialHair: feature(T.anchor.lips, wr),
+    glasses: feature(T.anchor.eyes, wr * young.k), facialHair: beardAt(T.anchor.lips),
     hair: crown, hat: crown,
     ears: move(256, T.ear.lobe, (fit.earL + fit.earR) / 2, fit.lobe, earS),
     clothes: move(256, T.clothesTop, fit.cx, fit.chin + 8, body), necklace: move(256, T.clothesTop, fit.cx, fit.chin + 8, body),
@@ -272,7 +279,14 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     `<clipPath id="pw-back-${n}">${hatOn ? under(1400) : '<rect x="-400" y="-2000" width="1312" height="3400"/>'}</clipPath>`,
     `<clipPath id="pw-front-${n}">${hatOn ? under(frontCut) : `<rect x="-400" y="-2000" width="1312" height="${frontCut + 2000}"/>`}</clipPath>`,
   ];
-  const f = fitTransforms(d.head, ageStage(ctx.age ?? 25), look.tweaks, { eyes: d.eyes, nose: d.nose, lips: d.lips });
+  // The face without its ears, for a beard fitted to the jaw: the ears stand out from the skin between their top
+  // and a little below the lobes, and nothing there wider than the face above the ears is beard.
+  const hfit = PART_BY_ID[d.head]?.fit;
+  if (d.facialHair && hfit) {
+    const x = n1(hfit.cx - hfit.w / 2), top = hfit.earTop - 12, low = hfit.lobe + BEARD_FIT.earClear;
+    defs.push(`<clipPath id="pw-ears-${n}"><rect x="-400" y="-400" width="1312" height="${top + 400}"/><rect x="${x}" y="${top}" width="${n1(hfit.w)}" height="${low - top}"/><rect x="-400" y="${low}" width="1312" height="1000"/></clipPath>`);
+  }
+  const f = fitTransforms(d.head, ageStage(ctx.age ?? 25), look.tweaks, { eyes: d.eyes, nose: d.nose, lips: d.lips, facialHair: d.facialHair });
   // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).
   const hairAt = hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
   // A style too tall for the picture is flattened above the crown: the part above the line is drawn
@@ -314,7 +328,9 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     // The mouth is drawn over a beard or mustache, not under it: a full beard would otherwise swallow it.
-    d.facialHair ? use(d.facialHair, f.facialHair) : '',
+    // A beard stretched to meet the jaw is clipped to the face, ears left out, so it never shows past the jawline.
+    d.facialHair ? (beardFit(d.facialHair, d.head).hugs
+      ? `<g clip-path="url(#pw-face-${n})"><g clip-path="url(#pw-ears-${n})">${use(d.facialHair, f.facialHair)}</g></g>` : use(d.facialHair, f.facialHair)) : '',
     use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
     use(d.clothes, f.clothes),
     necklaces.map((j) => use(j, f.necklace)).join(''),

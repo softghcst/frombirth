@@ -120,7 +120,7 @@ One check runs in a real browser and needs Playwright with Chromium (it skips it
 node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
 ```
 
-`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; that the eye shapes on offer are unchanged; that every nose is clear of every pair of eyes on every face shape; and that every mouth sits well under every nose, and men and women are drawn with their own mouths.
+`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; that every beard drawn along the jaw meets the jaw of every head and none shows past it; framing; readability across skin tones; that the eye shapes on offer are unchanged; that every nose is clear of every pair of eyes on every face shape; and that every mouth sits well under every nose, and men and women are drawn with their own mouths.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
 
 ## Living moments
@@ -273,6 +273,7 @@ Python script (standard library only) keeps them tidy and lists them for the gam
 | The renderer: layers, ages, auto-dress | `js/CharacterAvatar.js` |
 | How each hairstyle is fitted to each head, and how each head is framed | `js/avatar/hairFit.js` |
 | How each nose is kept clear of the eyes it is worn with, and each mouth fitted to the nose | `js/avatar/featureFit.js` |
+| How each beard is fitted to each head's jaw | `js/avatar/beardFit.js` |
 | How saved appearances are read, and old saves converted | `js/avatar/catalog.js` |
 | How children take after their parents | `js/avatar/inherit.js` |
 | The character creator and salon editor | `js/avatar/editor.js` |
@@ -353,6 +354,15 @@ above the crown. A style with a lock or sweep that hangs clear of the head on pu
 are not refitted. Nothing is special-cased by person: a new hairstyle or head only needs measuring (run the script).
 A style placed so badly that the limits cannot save it is repaired in its file, once (`REFIT` in the script, with
 the reason); stray specks are removed from hair files (`remove_specks`).
+
+**Fitting beards.** The script measures each beard's outline row by row (`shape` in the manifest) and each head's
+jaw (`jaw`). A beard that follows the jaw (a chinstrap, stubble, muttonchops, a goatee's straps) is stretched across
+the face until three quarters of its rows along the jaw meet this head's jawline, at most 1.3 times the plain fit,
+and runs chin to chin (`BEARD_FIT` in `js/avatar/beardFit.js`). It is then clipped to the face, ears left out, so it
+never shows past the jaw. Whether a beard follows the jaw is decided once, on all adult heads: a full beard, drawn to
+stand out past the jaw, and a mustache or soul patch, which never reaches it, are drawn exactly as before. Nothing is
+listed by name: a new beard only needs measuring (run the script). The soul patch is drawn too small to see, and
+`tests/avatar.mjs` lists it (`TOO_SMALL`) until it is redrawn.
 
 **Framing.** Adult heads differ in size by up to a fifth, so each is zoomed a little toward the average
 (`frameFor`): faces fill the same share of a portrait, with the eyes on one line, whatever the hairstyle. Children

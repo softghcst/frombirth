@@ -987,6 +987,47 @@ def measure_feature(elements, folder):
     return shape
 
 
+JAW_FROM = 300  # the jaw is measured from this row of the 512 frame (ears included, where they stand out) down to the chin
+
+
+def measure_jaw(elements, chin):
+    """
+    The outline of a head's skin from the cheeks to the chin, row by row, every FEATURE_STEP: its left and right
+    edges. Beards are fitted to it (js/avatar/beardFit.js), so a beard drawn on the template's jaw reaches this one.
+    """
+    skins = [e for e in elements if str(e['fill']).startswith('var(--skin-color')]
+    skin = max(skins or elements, key=area)
+    left, right = [], []
+    for y in range(JAW_FROM, chin + 1, FEATURE_STEP):
+        spans = row_spans([skin], y + 0.5)
+        left.append(round(spans[0][0], 1) if spans else None)
+        right.append(round(spans[-1][1], 1) if spans else None)
+    return {'y': JAW_FROM, 'L': left, 'R': right}
+
+
+def measure_beard(elements):
+    """
+    The outline of a beard or mustache, row by row, every FEATURE_STEP from the top of the drawing: its outermost
+    left and right edges (None: nothing on that row). The renderer compares them with each head's jaw
+    (js/avatar/beardFit.js) to stretch a beard across the face until it meets the jaw.
+    """
+    box = bbox_of(elements)
+    y0 = int(math.floor(box[1]))
+    left, right = [], []
+    y = y0
+    while y <= box[3]:
+        spans = [sp for sp in row_spans(elements, y + 0.5) if sp[1] - sp[0] >= 1]  # zero-width slivers in the artwork draw nothing
+        left.append(round(spans[0][0], 1) if spans else None)
+        right.append(round(spans[-1][1], 1) if spans else None)
+        y += FEATURE_STEP
+    while left and left[-1] is None:
+        left.pop(), right.pop()
+    while left and left[0] is None:
+        left.pop(0), right.pop(0)
+        y0 += FEATURE_STEP
+    return {'y': y0, 'bottom': y0 + (len(left) - 1) * FEATURE_STEP, 'L': left, 'R': right}
+
+
 # ---------- Repairs to hairstyles that were placed badly ----------
 #
 # The placement above works from each drawing's face opening, and a few styles defeat it. Where the
@@ -1500,6 +1541,11 @@ def write_manifest():
                 _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
                 item['fit'] = measure_head(els)
                 item['edge'] = measure_head_edge(els)
+                item['jaw'] = measure_jaw(els, item['fit']['chin'])
+        if folder == 'facial_hair':  # and each beard, so it can be fitted to each head's jaw
+            for item in data[folder]:
+                _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
+                item['shape'] = measure_beard(els)
         if folder == 'hair':  # and each hairstyle, so it can be fitted to each head
             for item in data[folder]:
                 _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
