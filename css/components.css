@@ -40,6 +40,8 @@
 .icon-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 @media (hover: hover) { .icon-btn:hover { background: var(--accent-soft); color: var(--ink); } }
 .icon-btn:active { background: var(--accent-soft); }
+/* The settings gear beside a person's or animal's name: opens the stat editor. */
+.edit-gear { flex: none; margin-left: auto; }
 
 /* Navigation rows: open another screen. */
 .nav-group { background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }

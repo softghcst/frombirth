@@ -35,7 +35,7 @@ import { eventsOf } from '../../engine/digital/core.js';
 import { accountsOf } from '../../engine/digital/accounts.js';
 import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
-import { navRow, navGroup } from '../kit.js';
+import { navRow, navGroup, icon } from '../kit.js';
 import * as together from '../../engine/together.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
@@ -379,8 +379,11 @@ export function openNpc(npc, api, back, o = {}) {
     ...(npc.alive && npc.role !== 'pet' ? together.bondActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
     ...(npc.role !== 'pet' ? [{ id: 'places', label: 'Places they have lived' }] : []),
-    ...(npc.alive && !npc.flags.clinician ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
   ];
+  // Editing stats and talents is a small gear beside the name, not a button in the list.
+  const editLabel = npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents';
+  const gear = inLife && npc.alive && !npc.flags.clinician
+    ? `<button class="icon-btn edit-gear" data-act="edit" aria-label="${esc(editLabel)}" title="${esc(editLabel)}">${icon('gear')}</button>` : '';
   // Friendly things first, destructive things last.
   actions.sort((a, b) => Number(!!a.danger) - Number(!!b.danger));
 
@@ -391,6 +394,7 @@ export function openNpc(npc, api, back, o = {}) {
       ${portrait(npc)}
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
         <small>${esc(rel.roleLabel(npc))} · ${npc.alive ? `age ${npc.age}` : `died at ${npc.age}`}${detail}</small></div>
+      ${gear}
     </div>
     ${clinic || `${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
     <div style="margin:12px 0 16px">${meters}</div>`}

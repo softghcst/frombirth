@@ -9,6 +9,7 @@
 // screen was left, is kept by animalNav.js, so going back returns to the same
 // animal, tab, filters, open memory and place on the page.
 import { store, player } from '../state.js';
+import { icon } from './kit.js';
 import { esc, cap, theCountry } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
 import * as zoo from '../engine/animals.js';
@@ -177,6 +178,7 @@ function profile(step) {
         <small>${esc(zoo.lifeDates(a))}${alive ? ` · ${esc(zoo.stageOf(a))}` : ''}</small>
         <small class="zoo-link">${esc(zoo.familyLink(a))}</small>
         ${alive ? '' : `<small>${a.memorial ? `Memorial made in ${a.memorial.year}` : 'Remembered in the family archive'}</small>`}</div>
+      ${alive && npc?.alive && hooks.editStats ? `<button class="icon-btn edit-gear" data-act="edit" aria-label="Edit ${esc(a.name)}'s stats" title="Edit stats">${icon('gear')}</button>` : ''}
     </div>`;
 
   const sections = {
@@ -282,7 +284,6 @@ function profile(step) {
     for (const f of care.fosterChoices(a)) acts.push({ id: `foster:${f.id}`, label: f.label });
     for (const x of extras.actions) acts.push(...x(a));
     if (care.rehomeOptions(a.id).length) acts.push({ id: 'rehome', label: `Find ${a.name} a new home`, danger: true });
-    if (hooks.editStats) acts.push({ id: 'edit', label: 'Edit stats' });
   } else if (!alive && !a.memorial && player().age >= 5) acts.push({ id: 'memorial', label: 'Make a memorial' });
   const away = alive && !npc ? `<p class="muted zoo-note">${esc(a.name)} is no longer in your life. ${esc(cap(zoo.pronoun(a)))} is with ${esc(main?.name ?? 'someone else')} now.</p>` : '';
 
