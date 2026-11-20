@@ -60,7 +60,7 @@ const named = (map) => Object.entries(map).map(([value, label]) => ({ value, lab
  * @param {{onCreate:(opts:object)=>void, onCancel:Function}} hooks
  */
 export function renderCreator(app, hooks) {
-  const choice = { talent: '', background: '', gender: '', trans: '', orientation: '', birthRank: '', health: '' };
+  const choice = { talent: '', background: '', sex: '', trans: '', orientation: '', birthRank: '', health: '' };
   let look = null; // a designed appearance, or null to inherit one
   const sample = randomAppearance();
 
@@ -81,9 +81,8 @@ export function renderCreator(app, hooks) {
               <div class="with-dice"><input id="f-last" maxlength="24" autocomplete="off" placeholder="Random">
                 <button type="button" class="dice-btn" data-dice="last" aria-label="Pick a random last name">${DIE}</button></div></div>
           </div>
-          ${picker('gender', 'Gender: who you are', 'Random', named({ female: 'Female', male: 'Male', nonbinary: 'Non-binary' }))}
-          ${picker('trans', 'Transgender: registered at birth as another gender', 'Random', named({ yes: 'Yes', no: 'No' }))}
-          <p class="muted" data-trans-note aria-live="polite"></p>
+          ${picker('sex', 'Sex', 'Random', named({ female: 'Female', male: 'Male' }))}
+          ${picker('trans', 'Transgender', 'Random', named({ no: 'No', yes: 'Yes', nonbinary: 'Non-binary' }))}
           ${picker('orientation', 'Sexuality', 'Random', ORIENTATIONS.map((o) => ({ value: o.id, label: o.name })))}
         </div>
         <div class="card"><h3>Birthplace</h3>
@@ -125,8 +124,11 @@ export function renderCreator(app, hooks) {
 
   const q = (sel) => app.querySelector(sel);
 
+  /** Who the person grows up to be, as far as the choices say: the other sex if transgender. */
+  const grownGender = () => (choice.sex && choice.trans === 'yes' ? (choice.sex === 'male' ? 'female' : 'male') : choice.sex || undefined);
+
   function preview() {
-    q('[data-preview]').innerHTML = avatarSvg({ age: 24, gender: choice.gender || 'female', mood: 70, appearance: look ?? sample, seed: 'creator' });
+    q('[data-preview]').innerHTML = avatarSvg({ age: 24, gender: grownGender() || 'female', mood: 70, appearance: look ?? sample, seed: 'creator' });
     q('[data-preview]').style.opacity = look ? '1' : '0.45';
     q('[data-look-note]').textContent = look ? 'This is the face you will grow into. Your family will take after you.' : 'Left alone, you will take after your parents.';
     q('[data-clear-look]').hidden = !look;
@@ -134,26 +136,16 @@ export function renderCreator(app, hooks) {
   }
 
   q('[data-design-look]').addEventListener('click', async () => {
-    const result = await openAppearanceEditor({ title: 'Your look', appearance: look ?? sample, age: 24, gender: choice.gender || undefined, seed: 'creator' });
+    const result = await openAppearanceEditor({ title: 'Your look', appearance: look ?? sample, age: 24, gender: grownGender(), seed: 'creator' });
     if (result) { look = result; preview(); }
   });
   q('[data-clear-look]').addEventListener('click', () => { look = null; preview(); });
 
-  // Spells out what Gender and Transgender together make, so a trans boy is not mistaken for a trans girl.
-  const transNote = () => {
-    const g = choice.gender; const t = choice.trans;
-    q('[data-trans-note]').textContent = t !== 'yes' ? ''
-      : g === 'male' ? 'A trans boy: registered as a girl at birth, he grows up knowing he is a boy.'
-      : g === 'female' ? 'A trans girl: registered as a boy at birth, she grows up knowing she is a girl.'
-      : g === 'nonbinary' ? 'Non-binary, and registered as a boy or a girl at birth.'
-      : 'Registered at birth as a different gender from who you are. Pick a gender above for who you really are.';
-  };
   app.querySelectorAll('[data-pick]').forEach((group) => {
     group.addEventListener('click', (e) => {
       const btn = e.target.closest('.pick');
       if (!btn) return;
       choice[group.dataset.pick] = btn.dataset.value;
-      transNote();
       group.querySelectorAll('.pick').forEach((b) => {
         b.classList.toggle('on', b === btn);
         b.setAttribute('aria-checked', String(b === btn));
@@ -184,10 +176,10 @@ export function renderCreator(app, hooks) {
   });
 
   // The dice: a name from the chosen country (or any country, if that is left on Random),
-  // a first name to suit the chosen gender. Each box rolls on its own.
+  // a first name to suit the sex chosen (the name a baby is given). Each box rolls on its own.
   function rollName(which) {
     const c = COUNTRIES[q('#f-country').value] ?? pickFrom(COUNTRY_LIST);
-    const gender = choice.gender === 'male' || choice.gender === 'female' ? choice.gender : pickFrom(['male', 'female']);
+    const gender = choice.sex || pickFrom(['male', 'female']);
     const box = q(which === 'first' ? '#f-first' : '#f-last');
     let name;
     for (let tries = 0; tries < 6 && (!name || name === box.value); tries++) {
@@ -211,12 +203,12 @@ export function renderCreator(app, hooks) {
     q('#f-country').dispatchEvent(new Event('change'));
     q('#f-city').value = pickFrom(c.cities);
     cityNote();
-    setPick('gender', weightedKey({ female: 49, male: 49, nonbinary: 2 }));
-    setPick('trans', Math.random() < 0.03 ? 'yes' : 'no');
+    setPick('sex', Math.random() < 0.5 ? 'female' : 'male');
+    setPick('trans', weightedKey({ no: 95, yes: 3, nonbinary: 2 }));
     setPick('orientation', weightedKey(Object.fromEntries(ORIENTATIONS.map((o) => [o.id, o.weight]))));
     rollName('first');
     rollName('last');
-    look = randomAppearance(undefined, choice.gender === 'male' || choice.gender === 'female' ? choice.gender : undefined);
+    look = randomAppearance(undefined, grownGender());
     setPick('talent', pickFrom(Object.keys(TALENTS)));
     setPick('background', pickFrom(Object.keys(BACKGROUNDS)));
     const crown = MONARCHIES[c.id];
@@ -234,8 +226,9 @@ export function renderCreator(app, hooks) {
     e.preventDefault();
     hooks.onCreate({
       firstName: q('#f-first').value, lastName: q('#f-last').value,
-      gender: choice.gender || undefined,
-      trans: choice.trans === '' ? undefined : choice.trans === 'yes',
+      sex: choice.sex || undefined,
+      gender: choice.trans === 'nonbinary' ? 'nonbinary' : undefined,
+      trans: choice.trans === '' ? undefined : choice.trans !== 'no',
       orientation: choice.orientation || undefined,
       countryId: q('#f-country').value || undefined,
       city: q('#f-city').value || undefined,
