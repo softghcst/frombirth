@@ -54,7 +54,13 @@ export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));
  */
 export const FITTED_STYLES = Object.values(FITTED_HAIR).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, tags: { length: s.length ?? 'short' }, type: s.type ?? 'any' }));
 /** Fitted styles that have been withdrawn, and the style a save that used one is given instead. */
-export const GONE_FITTED = { textured_crop: 'textured_pixie_cut' };
+export const GONE_FITTED = {
+  textured_crop: 'textured_pixie_cut',
+  // The girls' pack, withdrawn.
+  '90s_flipped_ponytail': 'half_up_half_down_waves', short_bubble_pigtails: 'space_buns', y2k_spiky_updo_bun: 'messy_top_bun',
+  collarbone_butterfly_cut: 'layered_feathered_midi', dutch_halo_braid: 'messy_top_bun', half_up_fountain_bob: 'half_up_half_down_waves',
+  retro_60s_bouffant_bob: 'layered_feathered_midi', short_hime_princess_bob: 'layered_feathered_midi',
+};
 /** The fitted styles that suit a natural texture ('any' suits every texture). */
 export const fittedFor = (texture) => FITTED_STYLES.filter((s) => s.type === 'any' || (SUITS[texture] ?? SUITS.straight).includes(s.type));
 
