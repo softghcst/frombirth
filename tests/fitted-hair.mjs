@@ -17,7 +17,9 @@ const problems = [];
 const check = (ok, msg) => { if (!ok) problems.push(msg); };
 const root = new URL('../', import.meta.url);
 const LAYERS = ['hair_back', 'hair_base', 'hair_bangs', 'hair_lines'];
-const styles = Object.keys(FITTED_HAIR);
+// The pipeline's own styles; older styles it anchors to the adult heads (legacy) are checked in section 4.
+const styles = Object.keys(FITTED_HAIR).filter((id) => !FITTED_HAIR[id].legacy);
+const legacy = Object.keys(FITTED_HAIR).filter((id) => FITTED_HAIR[id].legacy);
 const landmarks = JSON.parse(readFileSync(new URL('assets/landmarks.json', root), 'utf8'));
 
 check(FITTED_LOADED, 'assets/hair_manifest.json did not load');
@@ -31,7 +33,7 @@ for (const f of readdirSync(new URL('assets/hair_raw/', root)).filter((x) => x.e
   const head = readFileSync(new URL(`assets/hair_raw/${f}`, root), 'utf8').match(/<svg\b[^>]*>/)?.[0] ?? '';
   check(/viewBox="0 0 512 512"/.test(head), `assets/hair_raw/${f} is not on the 512x512 head canvas: run npm run soften-hair`);
 }
-for (const [id, s] of Object.entries(FITTED_HAIR)) {
+for (const [id, s] of Object.entries(FITTED_HAIR).filter(([id]) => !FITTED_HAIR[id].legacy)) {
   check(s.id === id && typeof s.name === 'string' && s.name.length > 0 && typeof s.clipToHead === 'boolean', `${id}: the manifest entry needs an id, a name and clipToHead`);
   const rawSvg = readFileSync(new URL(`assets/hair_raw/${id}.svg`, root), 'utf8');
   const flag = rawSvg.match(/<svg[^>]*\sdata-clip-to-head="(true|false)"/)?.[1];
@@ -86,7 +88,7 @@ for (const id of styles) {
   check(CATALOG.hair.some((h) => h.id === id), `${id} is not offered in the creator`);
   check(normalize({ v: 3, inherited: { head: 'head_12_sculpted' }, style: { hair: id } }, 'saved').style.hair === id, `a saved ${id} does not load`);
 }
-check(!HAIR_STYLES.some((h) => FITTED_HAIR[h.id]), 'fitted styles are among the styles given out at random');
+check(!HAIR_STYLES.some((h) => FITTED_HAIR[h.id] && !FITTED_HAIR[h.id].legacy), 'fitted styles are among the styles given out at random');
 check(HAIR_STYLES.every((h) => kidsMayWear(h.id)) && styles.every((id) => kidsMayWear(id) === !!FITTED_HAIR[id].kids), 'which styles a child may wear is wrong');
 // A withdrawn style is gone from the game, and a save that used it is given its replacement.
 for (const [gone, kept] of Object.entries(GONE_FITTED)) {
@@ -100,6 +102,26 @@ for (const id of styles) {
   check(!/fill:color-mix\([^)]*#000\)/.test(svg), `${id} has hair shapes in a darker shade`);
 }
 check(FITTED_STYLES.every((s) => s.type !== 'any' || ['straight', 'wavy', 'curly', 'coily'].every((t) => fittedFor(t).includes(s))), 'a style for any texture is not offered to every texture');
+
+// 4. Older styles anchored to every adult head (assets/hair_legacy_fit.json): drawn from their fitted file on an adult
+// head, as one layer behind the head and again in front; from the older file, fitted at run time, on a child's.
+const legacyConfig = JSON.parse(readFileSync(new URL('assets/hair_legacy_fit.json', root), 'utf8')).styles;
+check(Object.keys(legacyConfig).sort().join() === [...legacy].sort().join(), 'assets/hair_legacy_fit.json and the hair manifest differ: run npm run fit-hair');
+for (const id of legacy) {
+  const s = FITTED_HAIR[id];
+  check(HAIR_STYLES.some((h) => h.id === id) && !FITTED_STYLES.some((h) => h.id === id), `${id} is not kept among the older styles`);
+  check(kidsMayWear(id) && !s.heads.includes('kid') && s.heads.length === heads.length, `${id}: should be fitted to every adult head and no child's`);
+  for (const h of heads) {
+    const name = h.file.replace(/^.*\/|\.svg$/g, '');
+    const file = `hair_fitted/${id}_${name}.svg`;
+    check(fittedHairFile(id, h.id) === file && existsSync(new URL(`assets/${file}`, root)), `${id} on ${h.id} is not drawn from ${file}`);
+    const svg = characterAvatarSvg(dressFor({ head: h.id, hair: id, makeup: [], jewelry: [], colors: { skin: '#c68642', hair: '#2b1b14' } }, { age: 30 }), { age: 30 });
+    const uses = svg.split(`${file}#hair_base`).length - 1;
+    check(uses === 2 && svg.indexOf(`${file}#hair_base`) < svg.indexOf(`${h.file}#art`), `${id} on ${h.id}: not drawn behind the head and again in front`);
+  }
+  const kid = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid', age: 9 });
+  check(!kid.includes('hair_fitted/') && kid.includes(`avatars/hair/${id}.svg`), `a child with ${id} is not drawn with the older file`);
+}
 
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));

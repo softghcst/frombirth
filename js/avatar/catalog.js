@@ -52,7 +52,7 @@ export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));
  * creator and at the salon, drawn from assets/hair_fitted/. They are not in HAIR_STYLES, so the styles picked at
  * random for new people stay as they were.
  */
-export const FITTED_STYLES = Object.values(FITTED_HAIR).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, kids: !!s.kids, tags: { length: s.length ?? 'short' }, type: s.type ?? 'any' }));
+export const FITTED_STYLES = Object.values(FITTED_HAIR).filter((s) => !s.legacy).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, kids: !!s.kids, tags: { length: s.length ?? 'short' }, type: s.type ?? 'any' }));
 /** Fitted styles that have been withdrawn, and the style a save that used one is given instead. */
 export const GONE_FITTED = { textured_crop: 'textured_pixie_cut' };
 /** The fitted styles that suit a natural texture ('any' suits every texture). */

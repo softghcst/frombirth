@@ -49,6 +49,8 @@ const headName = (headId) => PART_BY_ID[headId]?.file.replace(/^.*\/|\.svg$/g, '
 export function fittedHairFile(hairId, headId) {
   const style = FITTED_HAIR[hairId];
   if (!style) return null;
+  // An older style anchored to the adult heads is drawn from its older file anywhere else (a child's head).
+  if (style.legacy && !style.heads.includes(headName(headId))) return null;
   const head = style.heads.includes(headName(headId)) ? headName(headId) : FITTED_BASE_HEAD;
   return `hair_fitted/${hairId}_${head}.svg`;
 }
@@ -259,7 +261,9 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const n = ++serial;
   const hatOn = !!d.hat;
   const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
-  const bulky = fitted ? ['long', 'medium', 'updo'].includes(FITTED_HAIR[d.hair].length) : !!PART_BY_ID[d.hair]?.tags?.bulky;
+  // An older style, even one anchored by the pipeline, keeps its own measure of bulk.
+  const legacy = !!FITTED_HAIR[d.hair]?.legacy;
+  const bulky = fitted && !legacy ? ['long', 'medium', 'updo'].includes(FITTED_HAIR[d.hair].length) : !!PART_BY_ID[d.hair]?.tags?.bulky;
   const hairTop = hatOn ? (bulky ? BULKY_HAT_LINE : HAT_LINE) : 0;
   // Under a hat, hair is hidden above the brim, and tucks in at the sides rather than ending in a flat shelf.
   const under = (bottom) => `<path d="M-400 ${bottom}V${hairTop + 64}H112V${hairTop}H400V${hairTop + 64}H912V${bottom}Z"/>`;
@@ -267,7 +271,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // falls across the face stops at the jawline, not in a straight edge part-way down the cheek.
   const hf = d.hair && !fitted ? hairFit(d.hair, d.head) : null;
   const chin = PART_BY_ID[d.head]?.fit?.chin;
-  const frontCut = hf && chin ? Math.round(T.face.top + (chin - 2 - hf.ty) / hf.sy) : FRONT_HAIR_CUT;
+  // An anchored older style is already in the head's own coordinates: it is cut at the chin as it is.
+  const frontCut = hf && chin ? Math.round(T.face.top + (chin - 2 - hf.ty) / hf.sy) : fitted && legacy && chin ? Math.round(chin - 2) : FRONT_HAIR_CUT;
   const defs = [
     `<clipPath id="pw-l-${n}"><rect x="-400" y="-400" width="656" height="1400"/></clipPath><clipPath id="pw-r-${n}"><rect x="256" y="-400" width="656" height="1400"/></clipPath>`,
     `<clipPath id="pw-face-${n}"><use href="${href(d.head)?.replace('#art', '#skin')}"/></clipPath>`,
@@ -281,6 +286,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // again, squeezed toward it, so the two halves still meet along it.
   const hairLayer = (clip) => {
     // A fitted style is drawn as it is: its back layer behind the head, the others in front of the face. Only a hat clips it.
+    // An anchored older style is one layer, drawn as the older styles are: behind the head, and again in front down to the chin.
+    if (fitted && legacy) return `<g clip-path="url(#${clip})"><use href="${AVATAR_BASE}${fitted}#hair_base"/></g>`;
     if (fitted) {
       const ids = clip === `pw-back-${n}` ? FITTED_BACK : FITTED_FRONT;
       const drawn = `<g clip-path="url(#pw-back-${n})">${ids.map((id) => `<use href="${AVATAR_BASE}${fitted}#${id}"/>`).join('')}</g>`;
