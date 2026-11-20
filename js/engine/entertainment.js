@@ -24,7 +24,7 @@ import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, uid } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
-import { PRODUCTION_KINDS, TIERS, ROLE_KINDS, ROLES_FOR, SKILLS_FOR, CHILD_PARTS, ORG_NAMES, ORG_WORDS, OUTLET_WORDS, TITLE_PARTS, GENRES, CHARACTER_WORDS,
+import { PRODUCTION_KINDS, TIERS, ROLE_KINDS, ROLES_FOR, SKILLS_FOR, CHILD_PARTS, THEATER_DISTRICTS, TITLE_NODS, ORG_NAMES, ORG_WORDS, OUTLET_WORDS, TITLE_PARTS, GENRES, CHARACTER_WORDS,
   CHILD_TRUST_SHARE } from '../data/fame.js';
 import { makeNpc } from './npcFactory.js';
 import { resolve, remember } from './conditions.js';
@@ -136,8 +136,10 @@ export function orgsOf(countryId) {
     makeOrg('studio', countryId, rng.pick(cities), 'indie');
     makeOrg('network', countryId, big, 'network');
     makeOrg('network', countryId, rng.pick(cities), 'network');
-    makeOrg('theater', countryId, big, 'major_stage');
-    makeOrg('theater', countryId, big, 'major_stage');
+    // The major stage stands in the country's theater district, where it has one (New York's Broadway, not Washington).
+    const stage = cities.includes(THEATER_DISTRICTS[countryId]?.city) ? THEATER_DISTRICTS[countryId].city : big;
+    makeOrg('theater', countryId, stage, 'major_stage');
+    makeOrg('theater', countryId, stage, 'major_stage');
     makeOrg('theater', countryId, rng.pick(cities), 'touring');
     for (const city of cities.slice(0, 4)) makeOrg('theater', countryId, city, 'regional');
     for (const city of cities) makeOrg('community', countryId, city, 'community');
@@ -164,7 +166,8 @@ export function orgsOf(countryId) {
 // ---------- Productions ----------
 
 const title = () => {
-  const taken = new Set(Object.values(ent().productions).map((x) => x.title));
+  // A show that took a nod's title (TITLE_NODS) counts by the title it drew, so the dice fall as they always have.
+  const taken = new Set(Object.values(ent().productions).map((x) => x.drawn ?? x.title));
   for (let i = 0; i < 8; i++) { const t = titleOnce(); if (!taken.has(t)) return t; }
   return `${titleOnce()} ${rng.int(2, 9)}`;
 };
@@ -173,6 +176,16 @@ const titleOnce = () => {
   const t = TITLE_PARTS;
   return r < 0.4 ? `${rng.pick(t.a)} ${rng.pick(t.b)}` : r < 0.7 ? `The ${rng.pick(t.b)} of ${rng.pick(t.c)}` : r < 0.85 ? `${rng.pick(t.b)} at ${rng.pick(t.c)}` : `The ${rng.pick(t.a)} ${rng.pick(t.b)}`;
 };
+
+/** The theater district a production plays in, if it is on the major stage in a country that has one: { name, city, on }. */
+export function districtOf(prod) {
+  const d = prod?.tier === 'major_stage' ? THEATER_DISTRICTS[prod.countryId] : null;
+  return d && prod.city === d.city ? d : null; // an old world's major stage, built before districts, stays where it was
+}
+/** A production's level, as people say it: "Broadway" for a major-stage show in New York, else the tier's name. */
+export function tierName(prod) {
+  return districtOf(prod)?.name ?? TIERS[prod.tier].name;
+}
 
 /** The tiers each kind of production comes in. */
 const TIERS_OF = { film: ['student', 'indie', 'studio', 'blockbuster'], tv: ['network', 'studio'], stage: ['community', 'regional', 'touring', 'major_stage'], musical: ['community', 'regional', 'touring', 'major_stage'],
@@ -204,12 +217,19 @@ export function makeProduction(kind, tier, countryId, o = {}) {
   // and children audition for it against other children. Its own luck, by the production, so the rest of the
   // world's rolls come out as they did before there were children's parts.
   const luck = seeded(`${id}:child`);
+  // A play or musical sometimes tips its hat to a famous show (TITLE_NODS); the usual title is drawn anyway, so
+  // the world's rolls come out the same.
+  const drawn = title();
+  let named = drawn;
+  const nods = (TITLE_NODS[kind] ?? []).filter((t) => !Object.values(ent().productions).some((x) => x.title === t));
+  const nodLuck = seeded(`${id}:title`);
+  if (nods.length && nodLuck.chance(TITLE_NODS.share)) named = nodLuck.pick(nods);
   if (CHILD_PARTS.share[kind] && luck.chance(CHILD_PARTS.share[kind])) {
     roles.push({ idx: roles.length, kind: 'child', character: luck.pick(CHILD_PARTS.characters), ages: [...luck.pick(CHILD_PARTS.ages)], approach: luck.pick(['bold', 'restrained', 'playful']),
       who: null, perf: null, fee: Math.round(TIERS[tier].fee * ROLE_KINDS.child.fee), open: true });
   }
   const p = {
-    id, title: title(), kind, tier, genre: rng.pick(GENRES[kind]), orgId: home.id, countryId, city: home.city, directorId: director.id,
+    id, title: named, ...(named !== drawn ? { drawn } : {}), kind, tier, genre: rng.pick(GENRES[kind]), orgId: home.id, countryId, city: home.city, directorId: director.id,
     budget: Math.round(TIERS[tier].budget * rng.around(1, 0.25)), created: year(), workYear: year() + 1, runYears: ['stage', 'musical'].includes(kind) ? (tier === 'community' ? 1 : rng.int(1, 3)) : 1,
     status: 'casting', cast: roles, reception: null, abroad: [], awards: [],
   };
@@ -276,7 +296,7 @@ export function whyNot(prod, r, p = player()) {
   if (p.age < 16 && !guardianConsents(p)) return 'A parent or guardian has to agree to a child working, and yours have not.';
   if (r.kind === 'child') {
     // Children's parts are cast at open calls for children: the major stage wants one professional credit, or an agent.
-    if (prod.tier === 'major_stage' && proCredits(p) < 1 && !f.agent) return 'Children\'s parts here go to children with a professional credit (a regional or touring part) or an agent.';
+    if (prod.tier === 'major_stage' && proCredits(p) < 1 && !f.agent) return `Children's parts ${districtOf(prod)?.on ?? 'on the major stage'} go to children with a professional credit (a regional or touring part) or an agent.`;
   } else {
     if (proCredits(p) < tier.minCredits && !(f.agent && tier.minCredits <= 2)) return `They see people with ${tier.minCredits} professional credits or an agent.`;
     if (['studio', 'blockbuster', 'major_stage'].includes(prod.tier) && !f.agent && recognitionIn(p.countryId, p) < 40) return 'Parts at this level go through agents.';

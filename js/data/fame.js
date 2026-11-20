@@ -128,6 +128,39 @@ export const ORG_WORDS = ['Silver Gate', 'Lantern', 'Meridian', 'Harbor Light', 
 export const OUTLET_WORDS = ['Herald', 'Gazette', 'Screen Weekly', 'Stage Door', 'Courier', 'Spotlight', 'Review', 'Chronicle'];
 
 /** Words for fictional titles: "{A} {B}", "The {B} of {C}", and others. Original, invented combinations. */
+/**
+ * The real theater districts where a country's major-stage theaters stand: places, named as places. The theaters in
+ * them keep invented names (ORG_NAMES); no real theater, show, award or logo is used. `on` is how a line reads
+ * ("on Broadway", "in the West End"). A country with none here gets "the major stage" in its biggest city.
+ */
+export const THEATER_DISTRICTS = {
+  us: { name: 'Broadway', city: 'New York', on: 'on Broadway' },
+  uk: { name: 'West End', city: 'London', on: 'in the West End' },
+  ca: { name: 'Entertainment District', city: 'Toronto', on: 'in Toronto\'s Entertainment District' },
+  au: { name: 'East End', city: 'Melbourne', on: 'in Melbourne\'s East End' },
+  es: { name: 'Gran Vía', city: 'Madrid', on: 'on the Gran Vía' },
+  fr: { name: 'Grands Boulevards', city: 'Paris', on: 'on the Grands Boulevards' },
+  jp: { name: 'Hibiya', city: 'Tokyo', on: 'in Hibiya' },
+  kr: { name: 'Daehak-ro', city: 'Seoul', on: 'on Daehak-ro' },
+  ar: { name: 'Avenida Corrientes', city: 'Buenos Aires', on: 'on Avenida Corrientes' },
+};
+
+/**
+ * Titles that tip a hat to a famous show without being it: a theatergoer knows what they are winking at. A play or
+ * musical takes one `share` of the time (its own luck, by the production), and never one already running.
+ */
+export const TITLE_NODS = {
+  share: 0.35,
+  musical: ['Next to Nothing', 'Hammerton', 'Wickeder', 'Less Miserable', 'The Phantom of the Soap Opera', 'Dogs!', 'Papa Mia!',
+    'Dear Evan Handsome', 'Hadesville', 'The Lion Prince', 'Mortgage', 'Milwaukee', 'Butter', 'Hair Gel', 'Seven', 'Thawed',
+    'The Book of Norman', 'Into the Weeds', 'East Side Story', 'Sweeney Toad', 'Okay, Alabama!', 'The Sound of Muzak',
+    'Fiddler on the Porch', 'Mean Moms', 'Bartender', 'Come From Afar', 'The Music Manager', 'A Chorus Queue', 'School of Jazz',
+    'Blogsies', 'Moulin Bleu!', 'Little Shop of Chores', 'Evitable', 'Funky Boots', 'Delaware Boys', 'Spring Cleaning', 'Avenue R', 'Goodspell'],
+  stage: ['Life of a Salesman', 'A Bus Named Desire', 'The Importance of Being Ernie', 'Waiting for Gordon', 'Your Town', 'Romeo and Julio',
+    'Hamlette', 'Who\'s Afraid of Virginia Beach?', 'Angels in Arizona', 'The Plastic Menagerie', 'Dog on a Hot Tin Roof', 'The Rat Trap',
+    'The Cauldron', 'Gates', 'August: Orange County', 'Noises On', 'A Grape in the Shade', 'Long Night\'s Journey into Day'],
+};
+
 export const TITLE_PARTS = {
   a: ['Silent', 'Golden', 'Last', 'Broken', 'Northern', 'Paper', 'Midnight', 'Second', 'Hidden', 'Borrowed', 'Electric', 'Quiet', 'Burning', 'Winter', 'Glass'],
   b: ['Harbor', 'Kingdom', 'Summer', 'Letters', 'Orchard', 'Tide', 'Signal', 'Lanterns', 'Garden', 'Avenue', 'Crossing', 'Promise', 'Inheritance', 'Weather', 'Station'],

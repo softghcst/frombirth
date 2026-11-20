@@ -1,4 +1,5 @@
-// Checks the child stage path: lessons for a child who wants to be on stage, children's parts in plays and musicals
+// Checks the Center Stage pack. Theater districts: the major stage stands on Broadway, in the West End and the rest,
+// and says so. Titles that tip a hat to famous shows. And the child stage path: lessons for a child who wants to be on stage, children's parts in plays and musicals
 // at every level up to the major stage, children auditioning against other children, a child's shorter hours, and a
 // childhood on the professional stage carried into a grown-up career in musical theater.
 // Run with: node tests/child-stage.mjs
@@ -6,7 +7,8 @@ import { store } from '../js/state.js';
 import { rng } from '../js/rng.js';
 import { createLife } from '../js/engine/characterGen.js';
 import { advanceYear } from '../js/engine/yearProcessor.js';
-import { CHILD_PARTS, ROLE_KINDS, PRODUCTION_KINDS, TIERS } from '../js/data/fame.js';
+import { CHILD_PARTS, ROLE_KINDS, PRODUCTION_KINDS, TIERS, THEATER_DISTRICTS, TITLE_NODS } from '../js/data/fame.js';
+import { COUNTRIES } from '../js/data/countries.js';
 import { CHILD_ACTIVITIES, EARLY_CAP, LESSON_CAP } from '../js/data/childhood.js';
 import { CAREERS } from '../js/data/careers.js';
 import * as ent from '../js/engine/entertainment.js';
@@ -169,6 +171,48 @@ section('data: children\'s parts by tier, lessons, and a door into musical theat
   }
   check(parts >= 1, `a trained child with an agreeable parent books at least one child part by 18 (${parts})`);
   section(`a theater childhood from 6 to 18 runs cleanly: ${parts} child parts, ${ent.workOf(p).credits.length} credits${p.flags.childStageMajor ? ', the major stage among them' : ''}`);
+}
+
+// 8. Theater districts: the major stage stands in a real theater district, by name; theaters and shows stay invented.
+{
+  for (const [id, d] of Object.entries(THEATER_DISTRICTS)) check(COUNTRIES[id]?.cities.includes(d.city) && /^(on|in) /.test(d.on), `${id}: ${d.name} is not in one of its cities`);
+  const p = kid(10, 'us');
+  const stages = ent.orgsOf('us').filter((o) => o.tier === 'major_stage');
+  check(stages.length === 2 && stages.every((o) => o.city === 'New York' && !/broadway/i.test(o.name)), `the US major stage: ${stages.map((o) => `${o.name} in ${o.city}`).join(', ')}`);
+  const show = ent.makeProduction('musical', 'major_stage', 'us');
+  check(ent.tierName(show) === 'Broadway' && ent.districtOf(show).on === 'on Broadway', `a major-stage musical in New York is a Broadway musical (${ent.tierName(show)})`);
+  const regional = ent.makeProduction('musical', 'regional', 'us');
+  check(ent.tierName(regional) === TIERS.regional.name && !ent.districtOf(regional), 'a regional show is not on Broadway');
+  check(ent.tierName({ ...show, city: 'Washington, D.C.' }) === TIERS.major_stage.name, 'a major stage from an older world, outside the district, keeps its old name');
+  const major = childPart('musical', 'major_stage', p);
+  major.r.ages = [8, 12];
+  check(/on Broadway/.test(ent.whyNot(major.prod, major.r, p)), `a child is told what Broadway wants: ${ent.whyNot(major.prod, major.r, p)}`);
+  kid(10, 'de');
+  const de = ent.makeProduction('musical', 'major_stage', 'de');
+  check(ent.tierName(de) === TIERS.major_stage.name, 'a country with no district here keeps "Major stage"');
+  section(`districts: ${Object.keys(THEATER_DISTRICTS).length} countries play their major stage in a real theater district, ${stages.map((o) => o.name).join(' and ')} on Broadway`);
+}
+
+// 9. Titles that wink at famous shows: about a third of plays and musicals, never two running at once, never on screen.
+{
+  kid(30, 'us');
+  let made = 0, nods = 0;
+  const all = [...TITLE_NODS.musical, ...TITLE_NODS.stage];
+  for (let i = 0; i < 40; i++) {
+    for (const kind of ['musical', 'stage']) {
+      const x = ent.makeProduction(kind, 'regional', 'us');
+      if (!x) continue;
+      made++;
+      if (TITLE_NODS[kind].includes(x.title)) nods++;
+      check(!all.includes(x.title) || TITLE_NODS[kind].includes(x.title), `${x.title}: a musical's nod on a play, or the other way`);
+    }
+    const film = ent.makeProduction('film', 'indie', 'us');
+    check(!film || !all.includes(film.title), `a film is called ${film?.title}`);
+  }
+  const titles = Object.values(ent.ent().productions ?? {}).map((x) => x.title).filter((t) => all.includes(t));
+  check(new Set(titles).size === titles.length, 'the same nod is running twice');
+  check(nods / made > 0.2 && nods / made < 0.5, `nods: ${nods} of ${made}`);
+  section(`titles: ${nods} of ${made} new plays and musicals tip their hat to a famous show (${titles.slice(0, 4).join(', ')}, …)`);
 }
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
