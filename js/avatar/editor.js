@@ -68,7 +68,8 @@ export function mountAppearanceEditor(el, o = {}) {
   let a = cloneAppearance(normalize(o.appearance, seed));
   let preview = 'now';
   let hairFilter = 'suits';
-  const usable = (key) => (scope === 'all' || CONTROLS[key].half === 'style') && age >= (CONTROLS[key].minAge ?? 0);
+  const usable = (key) => (scope === 'all' || CONTROLS[key].half === 'style') && age >= (CONTROLS[key].minAge ?? 0)
+    && (CATALOG.outfit.length || !['outfit', 'outfitColor'].includes(key));  // no Clothes tab while there are no clothes
   // scope 'tweaks' is the surgeon's: only proportions, and they are worn rather than born with.
   const tabs = scope === 'tweaks' ? [{ id: 'shape', name: 'Proportions', keys: [], tweaks: TWEAKS.map((k) => k.id) }]
     : TABS.map((t) => ({ ...t, keys: t.keys.filter(usable) })).filter((t) => t.keys.length);

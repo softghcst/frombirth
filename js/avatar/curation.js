@@ -98,37 +98,31 @@ export const PART_SCALE = {
 /** Brows that come with age, to men: from 84 an old man's brows grow bushy (a woman's keep their shape and gray). */
 export const ELDER_BROWS = 'brows_23_elder_bushy';
 
+// Clothes. The old outfits have been withdrawn while new ones are made: every list below is empty, so for now
+// nobody wears clothes (portraits show bare shoulders) and the creator hides its Clothes tab. To add clothes, put
+// the SVGs in assets/avatars/clothes/ (named outfit_<...>.svg), run python3 scripts/build-avatar-manifest.py, and
+// list their ids here. Saves keep no outfit until there is one to give: then everyone is dressed again.
+
 /** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
-export const OUTFITS = {
-  any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
-    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket'],
-  female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset'],
-  male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
-  baby: ['outfit_baby_01_bib_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_peterpan_dress', 'outfit_baby_04_bear_hoodie', 'outfit_baby_05_sailor_romper',
-    'outfit_baby_07_rainbow_sweatshirt', 'outfit_baby_08_mini_tux', 'outfit_04_babybib'],
-};
+export const OUTFITS = { any: [], female: [], male: [], baby: [] };
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
-  outfits: { female: ['outfit_09_princess_gown', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
-    male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
-      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: 'outfit_37_emperor_ermine', female: 'outfit_10_queen_collar' } },
+  outfits: { female: [], male: [], baby: null, monarch: { male: null, female: null } },
   crowns: { monarch: { male: 'crown_01_king', female: 'crown_03_queen' }, heir: { male: 'crown_04_prince_circlet', female: 'crown_02_princess_tiara' },
     royal: { male: null, female: 'crown_02_princess_tiara' }, child: 'crown_04_prince_circlet', noble: 'crown_06_noble_coronet' },
 };
 
-/** Work clothes the portrait wears, by career id (engine/career.js). */
+/** Work clothes the portrait wears, by career id (engine/career.js). outfit: null until there are work clothes. */
 export const CAREER_DRESS = {
-  police: { outfit: 'outfit_police_01', senior: { outfit: 'outfit_swat_02', level: 4 } },
-  firefighter: { outfit: 'outfit_firefighter_01' },
-  enlisted: { outfit: 'outfit_military_01' },
-  officer: { outfit: 'outfit_military_01' },
-  doctor: { outfit: 'outfit_06_doctor' }, nurse: { outfit: 'outfit_06_doctor' }, dentist: { outfit: 'outfit_06_doctor' }, vet: { outfit: 'outfit_06_doctor' },
-  pharmacist: { outfit: 'outfit_06_doctor' }, scientist: { outfit: 'outfit_06_doctor' },
-  lawyer: { outfit: 'outfit_03_suit' }, banker: { outfit: 'outfit_19_tuxedo' }, accountant: { outfit: 'outfit_03_suit' }, political_staff: { outfit: 'outfit_03_suit' },
+  police: { outfit: null, senior: { outfit: null, level: 4 } },
+  firefighter: { outfit: null }, enlisted: { outfit: null }, officer: { outfit: null },
+  doctor: { outfit: null }, nurse: { outfit: null }, dentist: { outfit: null }, vet: { outfit: null }, pharmacist: { outfit: null }, scientist: { outfit: null },
+  lawyer: { outfit: null }, banker: { outfit: null }, accountant: { outfit: null }, political_staff: { outfit: null },
 };
-export const PRISON = 'outfit_07_prison';
-export const GRADUATION = { outfit: 'outfit_08_grad' };
+/** What a prisoner wears, and a graduate: null until there are clothes for them. */
+export const PRISON = null;
+export const GRADUATION = { outfit: null };
 
 /**
  * Hairstyles that hide an eye or much of the face (measured: see README). Nobody is given one

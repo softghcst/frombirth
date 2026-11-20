@@ -81,7 +81,8 @@ const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).fl
   ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch),
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
   ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, ...CUR.HAIR_COVERS_FACE];
-for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
+// An empty slot (null) is allowed: the clothes lists are empty while new clothes are made.
+for (const id of curated.filter(Boolean)) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
 for (const h of AVATAR_MANIFEST.hair) if (!/baby/.test(h.id)) check(!!CUR.HAIR_TYPE[h.id], `hairstyle without a texture: ${h.id}`);
 
 // 3. Colors that saves store by id.
@@ -167,7 +168,7 @@ for (const age of [0, 1, 3, 7, 12, 15, 30, 49, 55, 66, 80, 101]) {
     if (s.royal?.rank === 'monarch' && age >= 13) check(/crown_0[13]/.test(d.crown ?? ''), 'a monarch has no crown');
     if (ageStage(age) === 'baby') check(d.head === 'head_00_baby' && !d.glasses && !d.jewelry.length, 'a baby is wearing grown-up things');
     if (age >= 66) check(d.aging.length >= 2, 'no lines with age');
-    if (s.career?.id === 'police' && age >= 18) check(/police|swat/.test(d.clothes), 'police are not in uniform');
+    if (s.career?.id === 'police' && age >= 18 && CUR.CAREER_DRESS.police.outfit) check(/police|swat/.test(d.clothes), 'police are not in uniform');
     check(filesFor(resolveLook(a, 'x'), { age, ...s }).every((f) => existsSync(new URL(f.replace('./', ''), root))), 'filesFor lists a missing file');
   }
 }
@@ -260,7 +261,7 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
   const parts = (svg) => [...svg.matchAll(/href="([^"#]+)#art"/g)].map((m) => m[1]).join(' ');
   const places = (svg) => [...svg.matchAll(/transform="([^"]+)"/g)].map((m) => m[1]).join(' ');
   check(parts(light) === parts(deep) && places(light) === places(deep), 'the same features are not the same shapes in the same places on a deeper skin tone');
-  check(!/eye-white|stroke/.test(light.replace(/--hair-stroke:[^;"]*;?/, '')), 'a light face has been given extra weight'); // --hair-stroke is the hair outline's colour, on every face
+  check(!/eye-white|stroke/.test(light.replace(/--hair-stroke:[^;"]*;?/, '')), 'a light face has been given extra weight'); // --hair-stroke is the hair outline's color, on every face
   check(/--eye-white:#[0-9a-f]{6}/.test(deep) && /stroke-width/.test(deep) && /paint-order:stroke/.test(deep), 'a deep face has not been made more readable');
   check(deep.includes(`--skin-color:${tone('ebony')}`), 'the skin tone itself was changed');
   // The nose is the skin itself: on every tone its skin is the face's. On deeper tones only its lines are heavier.

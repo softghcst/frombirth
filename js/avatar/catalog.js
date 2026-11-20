@@ -209,7 +209,8 @@ export function normalize(a, seed = 'x') {
   style.makeup = has('makeup', st.makeup) ? st.makeup : (v2 && OLD_MAKEUP[st.makeup]) || null;
   style.lipColor = has('lipColor', st.lipColor) ? st.lipColor : null;
   style.jewelry = Array.isArray(st.jewelry) ? st.jewelry.filter((id) => has('jewelry', id)) : [];
-  style.outfit = has('outfit', st.outfit) ? st.outfit : seeded(CATALOG.outfit.filter((o) => OUTFITS.any.includes(o.id)), seed, 'outfit').id;
+  const wardrobe = CATALOG.outfit.filter((o) => OUTFITS.any.includes(o.id));  // empty while there are no clothes: then nobody wears any
+  style.outfit = has('outfit', st.outfit) ? st.outfit : wardrobe.length ? seeded(wardrobe, seed, 'outfit').id : null;
   style.outfitColor = has('outfitColor', st.outfitColor) ? st.outfitColor : null;
   style.hat = has('hat', st.hat) ? st.hat : null;
   // Earlier saves kept surgery separately; it is simply the person's face now.
