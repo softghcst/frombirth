@@ -79,7 +79,7 @@ for (const scheme of ['light', 'dark']) {
   await page.click('[data-random]');
   await page.waitForSelector('[data-year]');
   await settle(page);
-  for (let y = 0; y < 6; y++) { await page.click('[data-year]'); await settle(page); }
+  for (let y = 0; y < 6; y++) { await page.click('[data-year]'); await page.waitForTimeout(450); await settle(page); } // a second press within 0.4s is a double tap, and ignored
 
   // Age Up: exactly one year, and the button names the age to come.
   const before = await age(page);

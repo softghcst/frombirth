@@ -1,8 +1,9 @@
 // "Your life this year": the plans that carry on by themselves, and the few
 // things to set or celebrate. Shown at the top of the Pursuits tab.
-import { player, country } from '../state.js';
+import { store, player, country } from '../state.js';
+import { summarize } from '../engine/yearSummary.js';
 import { esc, fmtMoney, localMoney } from '../util.js';
-import { messageModal, pickModal, confirmModal } from './modals.js';
+import { messageModal, pickModal, confirmModal, openModal } from './modals.js';
 import * as plans from '../engine/plans.js';
 import { skillOptions } from '../engine/skills.js';
 import { accounts } from '../engine/banking.js';
@@ -19,10 +20,24 @@ export function thisYearCard() {
     ['hobby', plans.plansOf(p).hobby ? 'Change hobby' : 'Pick a hobby'],
     ...(p.age >= 16 ? [['savings', plans.plansOf(p).savings ? 'Change savings' : 'Save each year']] : []),
     ['moments', 'Occasions and invitations'],
+    ...(store.state.yearReport ? [['lookback', 'Look back at last year']] : []),
   ];
   return `<div class="card"><h3>Your life this year</h3>
     ${going.map(([a, b]) => kv(a, b)).join('')}
     <div class="btn-stack" style="margin-top:${going.length ? 10 : 2}px">${buttons.map(([id, label]) => `<button class="btn" data-year-plan="${id}">${esc(label)}</button>`).join('')}</div></div>`;
+}
+
+/** Last year at a glance: what changed in money, work, people and health (engine/yearSummary.js). Shown when asked for. */
+export function openYearReview() {
+  const r = store.state.yearReport;
+  if (!r) return messageModal({ body: 'Nothing to look back on yet.' });
+  const s = summarize(r.before, store.state, r.planLines);
+  return new Promise((resolve) => {
+    const m = openModal(`<div class="eyebrow">${s.year}</div><h2>Age ${s.from} → ${s.to}</h2>
+      ${s.quiet ? '<p class="body">A quiet year. Those count too.</p>' : s.sections.map((x) => `<div class="section-label">${esc(x.title)}</div>${x.lines.map((l) => `<p class="yu-line">${esc(l)}</p>`).join('')}`).join('')}
+      <button class="btn primary" data-ok style="margin-top:14px">Close</button>`, { dismissable: true, onDismiss: resolve });
+    m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+  });
 }
 
 async function say(api, r) { api.changed(); await messageModal({ body: r.text, tone: r.tone }); }
@@ -32,6 +47,7 @@ export async function thisYearAction(id, api) {
   const p = player();
   const c = country();
   const pl = plans.plansOf(p);
+  if (id === 'lookback') return openYearReview();
   if (id === 'hobby') {
     const opts = skillOptions().flatMap((g) => g.skills).filter((s) => !s.tooYoung && !s.mastered);
     const main = await pickModal({ title: 'Your main passion', body: 'Practiced through every year, from the year\'s own practice time.', options: [...opts.map((s) => ({ value: s.id, label: s.name, sub: s.started ? `${s.levelName} (${s.level}%)` : 'New to you' })), ...(pl.hobby ? [{ value: '__none', label: 'No hobby plan' }] : [])] });

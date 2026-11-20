@@ -478,6 +478,7 @@ function coherent(where) {
   const friend = N.around(S(), N.currentHome(S()).id).filter((x) => x.hh).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && N.ageOf(r, S()) >= 30 && r.ls - N.ageOf(r, S()) > 25);
   if (friend) N.befriend(S(), friend.id, 60);
   P().age += 12; P().finance.cash = 1e8;
+  P().education.enrolled = false; P().education.housing = 'home'; // renting in the home city, not in a student hall elsewhere
   P().flags.livesWithParents = false;
   advance(1);
   if (N.currentHood(S()).id === childhood) L.moveTo(L.homesToRent(S()).find((x) => !x.known) ?? L.homesToRent(S())[0]);

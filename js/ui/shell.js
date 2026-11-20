@@ -276,6 +276,8 @@ export function mountGame(app, hooks) {
     const state = store.state;
     busy = true;
     renderHeader();
+    // Each result is shown at the top of the next scene's card, and only the last one gets a card of its own.
+    let previous = null;
     while (state.pendingEvents.length && player().alive) {
       // An earlier scene may have taken someone away (a pet that died, a person who left): scenes about them go too.
       prunePending(state);
@@ -283,15 +285,16 @@ export function mountGame(app, hooks) {
       const pending = state.pendingEvents[0];
       const ev = getEvent(pending.id);
       if (!ev) { state.pendingEvents.shift(); continue; }
-      const index = await eventModal(ev, pending.cast, turningPoint(ev) ? { onFork: () => forkGame(state, turningNote(ev, pending.cast)) } : {});
+      const index = await eventModal(ev, pending.cast, { ...(turningPoint(ev) ? { onFork: () => forkGame(state, turningNote(ev, pending.cast)) } : {}), previous });
       const result = resolveChoice(ev, index, pending.cast);
       state.pendingEvents.shift();
       persist();
       render();
-      await outcomeModal(result);
-      if (result.death) { busy = false; return finish(die(result.death)); }
-      if (player().stats.health <= 0) { busy = false; return finish(die('failing health')); }
+      previous = result;
+      if (result.death) { await outcomeModal(result); busy = false; return finish(die(result.death)); }
+      if (player().stats.health <= 0) { await outcomeModal(result); busy = false; return finish(die('failing health')); }
     }
+    if (previous && player().alive) await outcomeModal(previous);
     busy = false;
     renderHeader();
     // The button was disabled while the year ran, which drops keyboard focus; give it back.
@@ -329,7 +332,8 @@ export function mountGame(app, hooks) {
   async function yearUpdate() {
     const state = store.state;
     const r = state.yearReport;
-    if (!r || r.shown || !player().alive || state.settings?.yearSummary === false) return;
+    // The yearly update is there to look at (Pursuits, Your life this year), and pops up only for players who turn it on.
+    if (!r || r.shown || !player().alive || state.settings?.yearSummary !== true) return;
     r.shown = true;
     persist();
     const s = summarize(r.before, state, r.planLines);
@@ -338,7 +342,7 @@ export function mountGame(app, hooks) {
         <div class="eyebrow">${s.year}</div>
         <h2>Age ${s.from} → ${s.to}</h2>
         ${s.quiet ? '<p class="body">A quiet year. Those count too.</p>' : s.sections.map((x) => `<div class="section-label">${esc(x.title)}</div>${x.lines.map((l) => `<p class="yu-line">${esc(l)}</p>`).join('')}`).join('')}
-        <div class="btn-row" style="margin-top:14px"><button class="btn" data-off>Stop showing these</button><button class="btn primary" data-ok>Continue</button></div>`, { dismissable: true, onDismiss: resolve });
+        <div class="btn-row" style="margin-top:14px"><button class="btn" data-off>Stop showing these after each year</button><button class="btn primary" data-ok>Continue</button></div>`, { dismissable: true, onDismiss: resolve });
       m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
       m.el.querySelector('[data-off]').addEventListener('click', () => { state.settings = { ...(state.settings ?? {}), yearSummary: false }; persist(); m.close(); resolve(); });
     });

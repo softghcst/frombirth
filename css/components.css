@@ -1148,3 +1148,10 @@ details.more[open] summary::after { transform: rotate(90deg); }
 /* Rows show their name and nothing else: what is behind a row is on its own screen. */
 .nav-row .nr-main small { display: none; }
 .nav-row { min-height: 56px; }
+
+/* The result of the scene before, at the top of the next scene's card (ui/shell.js). */
+.prev-outcome { border-left: 3px solid var(--line); padding: 4px 0 6px 10px; margin-bottom: 12px; color: var(--muted); font-size: 0.9rem; }
+.prev-outcome p { margin: 0 0 4px; }
+.prev-outcome.tone-good { border-color: var(--good); }
+.prev-outcome.tone-bad { border-color: var(--bad); }
+.prev-outcome .chips { margin-top: 2px; }
