@@ -550,6 +550,10 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
     check(svg.includes('pacifiers/pacifier_01.svg#art') && svg.includes(`--binkie-color:${hex}`) && !/lips\/lips_/.test(svg), `a ${age === 1 ? 'baby' : 'toddler'} ${gender === 'male' ? 'boy' : 'girl'} has no ${hex} binkie in place of a mouth`);
   }
   check(!face(5, 'female').includes('pacifier') && /lips\/lips_/.test(face(5, 'female')), 'a five-year-old still has a binkie, or no mouth');
+  // Round, open eyes until five: a heavy-lidded shape is drawn as the round one it maps to; at five, their own again.
+  const eyed = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender: 'female' });
+  check(eyed(1).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && CUR.BABY_EYES.includes(CUR.babyEyes('eyes_10')) && !eyed(3).includes('eyes/eyes_10.svg'), 'a baby or toddler is drawn with grown-up eyes');
+  check(eyed(5).includes('eyes/eyes_10.svg'), 'a five-year-old does not have the eyes they were born with');
 }
 
 if (problems.length) {

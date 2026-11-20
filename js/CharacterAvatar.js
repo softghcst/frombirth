@@ -31,7 +31,7 @@ import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
+import { babyEyes, babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
@@ -100,6 +100,7 @@ export function dressFor(look, ctx = {}) {
     out.jewelry = []; out.glasses = null; out.facialHair = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
     out.pacifier = PACIFIER.id; out.lips = null;  // babies and toddlers: a binkie in place of a mouth
+    out.eyes = babyEyes(out.eyes);  // and round, open eyes (curation.BABY_EYES)
   } else if (stage === 'kid') {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
@@ -147,7 +148,17 @@ export const TWEAK_STEP = { size: 0.09, gap: 4, height: 5 };
 const EYE_APART = 3;
 
 // Younger faces: features a little smaller for the size of the head, and set a little lower.
-const STAGE_FEATURES = { baby: { k: 0.74, drop: 0.05, mouth: 0.8 }, toddler: { k: 0.82, drop: 0.04, mouth: 0.86 }, kid: { k: 0.94, drop: 0.02 } };
+/**
+ * Faces at each stage of childhood, as sizes against a grown-up's face on the same head. k is the face as a whole
+ * (and anything not listed); a baby's and toddler's are big-eyed and cute: big eyes set wide and low, soft brows, a
+ * button nose, and a binkie (mouth) that reads. drop moves the features down the face; apart (template units)
+ * sets each eye further out.
+ */
+const STAGE_FEATURES = {
+  baby: { k: 0.74, eye: 1.2, brow: 0.9, nose: 0.6, mouth: 1.25, drop: 0.07, apart: 9 },
+  toddler: { k: 0.82, eye: 1.12, brow: 0.92, nose: 0.66, mouth: 1.15, drop: 0.05, apart: 7 },
+  kid: { k: 0.94, drop: 0.02 },
+};
 const n1 = (v) => Math.round(v * 100) / 100;
 
 /**
@@ -170,14 +181,16 @@ export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
   const hr = faceH / (T.face.chin - T.face.top);
   const young = STAGE_FEATURES[stage] ?? { k: 1, drop: 0 };
   const move = (ax, ay, x, y, s) => ` transform="translate(${n1(x)} ${n1(y)}) scale(${n1(s)}) translate(${-ax} ${-ay})"`;
-  const s = Math.sqrt(wr * hr) * young.k;
+  const base = Math.sqrt(wr * hr);
+  const s = base * young.k;
+  const browS = base * (young.brow ?? young.k);
   const at = (ay) => fit.top + (ay - T.face.top) * hr + young.drop * faceH;
   const feature = (ay, scale = s) => move(256, ay, fit.cx, at(ay), scale);
   // A person's own proportions: each step is a small, fixed change (see TWEAKS).
   const step = (k) => Math.max(-2, Math.min(2, Number(tweaks[k]) || 0));
-  const eyeS = s * (1 + step('eyeSize') * TWEAK_STEP.size);
+  const eyeS = base * (young.eye ?? young.k) * (1 + step('eyeSize') * TWEAK_STEP.size);
   const eyeUp = step('eyeY') * TWEAK_STEP.height * hr;
-  const noseS = s * (1 + step('noseSize') * TWEAK_STEP.size) * (PART_SCALE[parts.nose] ?? 1);
+  const noseS = base * (young.nose ?? young.k) * (1 + step('noseSize') * TWEAK_STEP.size) * (PART_SCALE[parts.nose] ?? 1);
   // This nose with these eyes on this head: a little smaller, lower, or the eyes a touch wider, where they would crowd.
   const nf = parts.eyes && parts.nose ? noseFit(parts.eyes, parts.nose, { s, eyeS, noseS, eyeY: at(T.anchor.eyes) - eyeUp, noseY: at(T.anchor.nose), apart: EYE_APART + step('eyeGap') * TWEAK_STEP.gap })
     : { k: 1, drop: 0, apart: 0 };
@@ -185,17 +198,17 @@ export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
   const mouthS = s * (young.mouth ?? 1) * (1 + step('lipSize') * TWEAK_STEP.size);
   const mf = parts.nose && parts.lips ? mouthFit(parts.lips, parts.nose, { s, mouthS, noseS: noseS * nf.k, noseY: at(T.anchor.nose) + nf.drop, mouthY: at(T.anchor.lips), chin: fit.chin },
     RESTING.lips.includes(parts.lips) || RESTING.lipsMasc.includes(parts.lips)) : { k: 1, dy: 0 };
-  const apart = EYE_APART + step('eyeGap') * TWEAK_STEP.gap + nf.apart; // template units, each eye moves this far outwards
+  const apart = EYE_APART + (young.apart ?? 0) + step('eyeGap') * TWEAK_STEP.gap + nf.apart; // template units, each eye moves this far outwards
   const eyeAt = (ay, scale, side) => `${move(256, ay, fit.cx, at(ay) - eyeUp, scale).slice(0, -1)} translate(${side * apart} 0)"`;
   const earS = (fit.earR - fit.earL - 20) / (T.ear.right - T.ear.left);
   const body = Math.max(0.8, Math.min(1.06, fit.shoulderW / T.shoulderW));
   const crown = move(256, T.face.top, fit.cx, fit.top, wr);
   return {
     eyesL: eyeAt(T.anchor.eyes, eyeS, -1), eyesR: eyeAt(T.anchor.eyes, eyeS, 1),
-    browsL: eyeAt(T.anchor.eyebrows, s, -1), browsR: eyeAt(T.anchor.eyebrows, s, 1),
-    eyes: feature(T.anchor.eyes), eyebrows: feature(T.anchor.eyebrows),
+    browsL: eyeAt(T.anchor.eyebrows, browS, -1), browsR: eyeAt(T.anchor.eyebrows, browS, 1),
+    eyes: feature(T.anchor.eyes, eyeS), eyebrows: feature(T.anchor.eyebrows, browS),
     nose: move(256, T.anchor.nose, fit.cx, at(T.anchor.nose) + nf.drop, noseS * nf.k), lips: move(256, T.anchor.lips, fit.cx, at(T.anchor.lips) + mf.dy, mouthS * mf.k),
-    makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes),
+    makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes, eyeS),
     glasses: feature(T.anchor.eyes, wr * young.k), facialHair: feature(T.anchor.lips, wr),
     hair: crown, hat: crown,
     ears: move(256, T.ear.lobe, (fit.earL + fit.earR) / 2, fit.lobe, earS),
