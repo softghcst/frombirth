@@ -76,6 +76,28 @@ export const ROLE_KINDS = {
   background: { name: 'Background', fee: 0.03, weight: 0.02, field: 0.5 },
   voice_lead: { name: 'Lead voice', fee: 0.5, weight: 0.4, field: 1.2 },
   spokesperson: { name: 'On-screen spokesperson', fee: 0.6, weight: 0.1, field: 1 },
+  child: { name: 'Child part', fee: 0.15, weight: 0.3, field: 1 },
+};
+
+/**
+ * Children's parts on stage: the orphan, the youngest child, the kid who sees the ghost. Plays and musicals at
+ * every level have them, and children audition against other children for them, not against grown actors.
+ *   share   the chance a production of that kind has a child part
+ *   ages    the ages a part is written for (children a couple of years either side may audition)
+ *   field   how good the other children who turn up tend to be, by tier, and how much they vary (spread): the
+ *           major stage sees the strongest children in the country; community shows take most who can do it
+ *   hours   a child's hours, as a share of an adult's: shorter calls, and two children often share a part
+ * A child part on the major stage needs one professional credit (a regional or touring part, say) or an agent;
+ * the other tiers take a child with none. Neither needs the recognition grown actors need there.
+ */
+export const CHILD_PARTS = {
+  share: { musical: 0.7, stage: 0.35 },
+  ages: [[6, 10], [8, 12], [10, 14]],
+  field: { community: 30, regional: 44, touring: 52, major_stage: 64 },
+  spread: 16,
+  hours: 0.45,
+  characters: ['the orphan who runs away', 'the youngest child', 'the boy who sees the ghost', 'a street kid with a plan', 'the girl who reads everything',
+    'the prince as a boy', 'the heroine as a child', 'a choir child', 'the twin who lies', 'the kid next door'],
 };
 
 /** Which parts each kind of production casts, and what each part asks for (skill paths and weights). */
