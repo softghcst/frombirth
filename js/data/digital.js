@@ -276,4 +276,5 @@ export const PROJECT_STAGES = ['planned', 'in_progress', 'editing', 'ready', 'pu
 export const SPARE_HOURS = { base: 420, school: 120, fulltime: 200, parttime: 80, kids: 60, minimum: 60 };
 
 /** Ages at which people start using what. Below these, guardians decide. */
-export const DIGITAL_AGES = { phoneFromParents: 11, ownAccounts: 13, creatorPay: 18, dating: 18 };
+/** digitalLife: the age a life online starts at all (the Digital Life card, its sections, reputation and screen time); younger children see only the Family Archive. */
+export const DIGITAL_AGES = { digitalLife: 6, phoneFromParents: 11, ownAccounts: 13, creatorPay: 18, dating: 18 };
