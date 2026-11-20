@@ -120,6 +120,8 @@ export const CAREER_DRESS = {
   doctor: { outfit: null }, nurse: { outfit: null }, dentist: { outfit: null }, vet: { outfit: null }, pharmacist: { outfit: null }, scientist: { outfit: null },
   lawyer: { outfit: null }, banker: { outfit: null }, accountant: { outfit: null }, political_staff: { outfit: null },
 };
+/** A baby (under 2) has a binkie in place of a mouth: blue for a boy, pink for a girl (the portrait sets --binkie-color). */
+export const PACIFIER = { id: 'pacifier_01', boy: '#5aa7f0', girl: '#f48cc4' };
 /** What a prisoner wears, and a graduate: null until there are clothes for them. */
 export const PRISON = null;
 export const GRADUATION = { outfit: null };

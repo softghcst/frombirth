@@ -318,6 +318,9 @@ export const AVATAR_MANIFEST = {
     {"id": "emotion_03_angry_vein", "file": "avatars/emotions/emotion_03_angry_vein.svg", "label": "Angry vein"},
     {"id": "emotion_04_love_hearts", "file": "avatars/emotions/emotion_04_love_hearts.svg", "label": "Love hearts"},
   ],
+  pacifiers: [
+    {"id": "pacifier_01", "file": "avatars/pacifiers/pacifier_01.svg", "label": "Pacifier"},
+  ],
 };
 
 /** The template face every part was fitted to. Each head's own measurements are in its `fit`. */
