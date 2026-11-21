@@ -116,7 +116,9 @@ export function currentTuition() {
   const e = player().education;
   // Part-time, the same fees are spread over more years.
   const pace = e.partTime && PROGRAMS[e.stage]?.partYears ? PROGRAMS[e.stage].years / PROGRAMS[e.stage].partYears : e.partTime && e.stage === 'university' ? 2 / 3 : 1;
-  return Math.round(tuitionFor(e.stage) * (e.stage === 'university' ? e.tuitionMult ?? 1 : 1) * pace);
+  const fee = Math.round(tuitionFor(e.stage) * (e.stage === 'university' ? e.tuitionMult ?? 1 : 1) * pace);
+  // A private conservatory charges fees even where the state pays for university (engine/university.js).
+  return fee || (e.stage === 'university' && e.privateFee ? Math.round(e.privateFee * pace) : 0);
 }
 
 export const studentLoan = () => player().finance.loans.find((l) => l.kind === 'student');
@@ -915,6 +917,7 @@ export function enroll(progId, subjectId, funding, living = {}, school = null) {
   e.schoolId = school?.id ?? null;
   e.schoolName = school?.name ?? null;
   e.tuitionMult = uniOf(school?.id)?.tuitionMult ?? 1;
+  e.privateFee = progId === 'university' && uniOf(school?.id)?.private ? Math.round(localCost(PROGRAMS.university.tuition, country()) * e.tuitionMult) : 0;
   // Help with the cost, as offered: a share of tuition waived, and the mark that keeps it.
   e.aid = school?.aid?.fraction ?? 0;
   e.aidKeep = school?.aid?.keep ?? 0;
