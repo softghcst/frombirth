@@ -70,7 +70,9 @@ export const BABY_BROWS = 'brows_8';
  * A baby's and toddler's eyes are round and open: eyes they were born with that are one of these are kept; any other
  * shape (heavy-lidded, almond, winged) is drawn as the round one it always maps to, until they are five.
  */
-export const BABY_EYES = ['eyes_6', 'eyes_22', 'eyes_16', 'eyes_14'];
+// Round and open, with nothing above the eye that would read as a second pair of brows: eyes_22, and eyes_6 without
+// its fold lines (assets/avatars/baby_eyes/baby_eyes_6.svg).
+export const BABY_EYES = ['eyes_22', 'baby_eyes_6'];
 export const babyEyes = (id) => (!id || BABY_EYES.includes(id) ? id : BABY_EYES[[...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9973, 7) % BABY_EYES.length]);
 /** Expressions the renderer can borrow for a mood. */
 export const EXPRESSION = { crying: 'eyes_14', laughing: 'lips_20', grin: 'lips_21', sadBrows: 'brows_11' };

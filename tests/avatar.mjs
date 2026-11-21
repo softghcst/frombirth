@@ -554,6 +554,12 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const eyed = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender: 'female' });
   check(eyed(1).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && CUR.BABY_EYES.includes(CUR.babyEyes('eyes_10')) && !eyed(3).includes('eyes/eyes_10.svg'), 'a baby or toddler is drawn with grown-up eyes');
   check(eyed(5).includes('eyes/eyes_10.svg'), 'a five-year-old does not have the eyes they were born with');
+  // One soft pair of brows: no lighter edge on any skin, no lid crease under them, and never the crying eyes at rest.
+  for (const skin of ['porcelain', 'umber', 'ebony']) {
+    const svg = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin }, style: { hair: 'bald' } }, seed: 'brows', age: 1, gender: 'male', mood: 70 });
+    check(!/eyebrows\/[^"]+#art"[^>]*paint-order:stroke/.test(svg) && svg.includes('--crease-color:transparent'), `a baby on ${skin} skin has a lighter edge on the brows, or a crease`);
+  }
+  check(CUR.BABY_EYES.every((e) => e !== CUR.EXPRESSION.crying && PART_BY_ID[e]), 'a baby eye shape is the crying eyes, or missing');
 }
 
 if (problems.length) {

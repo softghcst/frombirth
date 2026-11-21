@@ -152,11 +152,11 @@ const EYE_APART = 3;
  * Faces at each stage of childhood, as sizes against a grown-up's face on the same head. k is the face as a whole
  * (and anything not listed); a baby's and toddler's are big-eyed and cute: big eyes set wide and low, soft brows, a
  * button nose, and a binkie (mouth) that reads. drop moves the features down the face; apart (template units)
- * sets each eye further out.
+ * sets each eye further out; browUp (template units) lifts the brows clear of the big eyes.
  */
 const STAGE_FEATURES = {
-  baby: { k: 0.74, eye: 1.2, brow: 0.9, nose: 0.6, mouth: 1.25, drop: 0.07, apart: 9 },
-  toddler: { k: 0.82, eye: 1.12, brow: 0.92, nose: 0.66, mouth: 1.15, drop: 0.05, apart: 7 },
+  baby: { k: 0.74, eye: 1.2, brow: 0.9, nose: 0.6, mouth: 1.25, drop: 0.07, apart: 9, browUp: 11 },
+  toddler: { k: 0.82, eye: 1.12, brow: 0.92, nose: 0.66, mouth: 1.15, drop: 0.05, apart: 7, browUp: 8 },
   kid: { k: 0.94, drop: 0.02 },
 };
 const n1 = (v) => Math.round(v * 100) / 100;
@@ -199,14 +199,15 @@ export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
   const mf = parts.nose && parts.lips ? mouthFit(parts.lips, parts.nose, { s, mouthS, noseS: noseS * nf.k, noseY: at(T.anchor.nose) + nf.drop, mouthY: at(T.anchor.lips), chin: fit.chin },
     RESTING.lips.includes(parts.lips) || RESTING.lipsMasc.includes(parts.lips)) : { k: 1, dy: 0 };
   const apart = EYE_APART + (young.apart ?? 0) + step('eyeGap') * TWEAK_STEP.gap + nf.apart; // template units, each eye moves this far outwards
-  const eyeAt = (ay, scale, side) => `${move(256, ay, fit.cx, at(ay) - eyeUp, scale).slice(0, -1)} translate(${side * apart} 0)"`;
+  const eyeAt = (ay, scale, side, lift = 0) => `${move(256, ay, fit.cx, at(ay) - eyeUp - lift, scale).slice(0, -1)} translate(${side * apart} 0)"`;
+  const browLift = (young.browUp ?? 0) * hr;
   const earS = (fit.earR - fit.earL - 20) / (T.ear.right - T.ear.left);
   const body = Math.max(0.8, Math.min(1.06, fit.shoulderW / T.shoulderW));
   const crown = move(256, T.face.top, fit.cx, fit.top, wr);
   return {
     eyesL: eyeAt(T.anchor.eyes, eyeS, -1), eyesR: eyeAt(T.anchor.eyes, eyeS, 1),
-    browsL: eyeAt(T.anchor.eyebrows, browS, -1), browsR: eyeAt(T.anchor.eyebrows, browS, 1),
-    eyes: feature(T.anchor.eyes, eyeS), eyebrows: feature(T.anchor.eyebrows, browS),
+    browsL: eyeAt(T.anchor.eyebrows, browS, -1, browLift), browsR: eyeAt(T.anchor.eyebrows, browS, 1, browLift),
+    eyes: feature(T.anchor.eyes, eyeS), eyebrows: move(256, T.anchor.eyebrows, fit.cx, at(T.anchor.eyebrows) - browLift, browS),
     nose: move(256, T.anchor.nose, fit.cx, at(T.anchor.nose) + nf.drop, noseS * nf.k), lips: move(256, T.anchor.lips, fit.cx, at(T.anchor.lips) + mf.dy, mouthS * mf.k),
     makeup: feature(T.anchor.cheek), aging: feature(T.anchor.cheek), emotion: feature(T.anchor.eyes, eyeS),
     glasses: feature(T.anchor.eyes, wr * young.k), facialHair: feature(T.anchor.lips, wr),
@@ -260,6 +261,8 @@ function colorVars(look, ctx) {
   const vars = { 'skin-color': c.skin, 'hair-color': hair, 'hair-stroke': HAIR_STROKE, 'brow-color': brow, 'eye-color': c.eye, 'lip-color': c.lip, 'lip-upper': c.lipUpper, 'blush-color': c.blush,
     'eye-white': deep ? mixHex('#ffffff', c.skin, READABLE.white * deep) : null };
   if (c.outfit) vars['outfit-color'] = c.outfit;
+  // Babies and toddlers: no lid crease line (on their big eyes it reads as a second pair of brows).
+  if (['baby', 'toddler'].includes(ageStage(age))) vars['crease-color'] = 'transparent';
   if (['baby', 'toddler'].includes(ageStage(age))) vars['binkie-color'] = ctx.gender === 'female' ? PACIFIER.girl : PACIFIER.boy;
   return Object.entries(vars).filter(([, v]) => v).map(([k, v]) => `--${k}:${v}`).join(';');
 }
@@ -312,6 +315,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // On deep skin the features are given a little more weight and the nose a little light, so the face
   // reads as clearly as a lighter one (see READABLE). Stroke is inherited by the artwork a <use> draws.
   const deep = deepness(look.colors?.skin);
+  const youngFace = ['baby', 'toddler'].includes(ageStage(ctx.age ?? 25));
   const light = deep ? mixHex(look.colors.skin, '#ffe9d6', READABLE.rim * deep) : null;
   // Dark lines gain weight; brows gain a faint lighter edge, drawn under their own shapes. Only the line shapes
   // take the stroke (weigh_lines in the build script: an eye's or mouth's outline, a nose's lines), so whites,
@@ -329,7 +333,9 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m, f.makeup)).join('')}</g>` : '',
     // Lines of age stay on the face: on a narrow head they would otherwise run out over the hair.
     d.aging.length ? `<g clip-path="url(#pw-face-${n})">${d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join('')}</g>` : '',
-    pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
+    pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)),
+    // A baby's or toddler's brows: one soft pair, lifted, set as wide as their eyes, with no lighter edge on any skin.
+    youngFace ? pair(d.eyebrows, f.browsL, f.browsR) : use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     // The mouth is drawn over a beard or mustache, not under it: a full beard would otherwise swallow it.
     d.facialHair ? use(d.facialHair, f.facialHair) : '',
