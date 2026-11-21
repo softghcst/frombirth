@@ -116,6 +116,33 @@ function willCard(c) {
     <button class="btn" data-go="will" style="margin-top:10px">Change your will</button></div>`;
 }
 
+/** The driving test: pay, answer five questions one by one, and see how it went. */
+async function drivingTest(api) {
+  const c = country();
+  const st = cars.drivingTestStatus();
+  if (!st.left) return messageModal({ body: 'You have used all three tries this year. You can take the test again next year.' });
+  const go = await confirmModal({ title: st.retake ? 'Retake the test?' : 'Driving lessons and the test',
+    body: `${fmtMoney(st.fee, c)}. Five questions; get four right to pass. ${st.left} ${st.left === 1 ? 'try' : 'tries'} left this year.`, yes: 'Take the test' });
+  if (!go) return undefined;
+  const t = cars.startDrivingTest();
+  if (!t.ok) return report(api, t);
+  const picks = [];
+  for (const [i, x] of t.questions.entries()) {
+    const pick = await pickModal({ title: `Question ${i + 1} of ${t.questions.length}`, body: x.q, cancel: 'Give up',
+      options: x.options.map((o) => ({ value: o, label: o })) });
+    if (!pick) break; // walking out of the test fails it: the try is used
+    picks.push(pick);
+  }
+  const r = cars.finishDrivingTest(picks);
+  api.changed();
+  return new Promise((resolve) => {
+    const m = openModal(`<h2>${r.ok ? 'You passed' : 'Not this time'}</h2><p class="body">${esc(r.text)}</p>
+      ${r.missed?.length ? `<div class="section-label">${r.ok ? 'The one you missed' : 'What you missed'}</div>${r.missed.map((x) => `<p class="muted" style="margin:4px 0">${esc(x.q)}</p><p style="margin:0 0 10px"><strong>${esc(x.right)}</strong></p>`).join('')}` : ''}
+      <button class="btn primary" data-ok>Continue</button>`, { tone: r.tone });
+    m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+  });
+}
+
 async function report(api, r) {
   api.changed();
   await messageModal({ body: r.text, tone: r.tone });
@@ -354,7 +381,7 @@ export default {
     const actions = [];
     if (p.age >= 18) actions.push(['property', 'Browse property'], ['market', 'Invest'], ['borrow', 'Borrow money'], ['currencies', 'Currencies']);
     if (p.age >= 3) actions.push(['vehicles', p.age >= 16 ? 'Browse vehicles' : 'Browse bikes and boards']);
-    if (cars.canTakeDrivingTest()) actions.push(['driving', 'Take driving lessons and the test']);
+    if (cars.canTakeDrivingTest()) actions.push(['driving', cars.drivingTestStatus().retake ? 'Retake the driving test' : 'Take driving lessons and the test']);
     if (cars.canLearnToFly() && p.age >= 21) actions.push(['flying', 'Learn to fly']);
 
     const row = (a, glyph, sub, value) => `
@@ -410,7 +437,7 @@ export default {
       if (go === 'chronicle') return openHouseChronicle(api);
       if (go) {
         return { mymoney: () => openMoney(api), currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
-          borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => report(api, cars.takeDrivingTest()), flying: () => report(api, cars.learnToFly()) }[go]();
+          borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => drivingTest(api), flying: () => report(api, cars.learnToFly()) }[go]();
       }
       const repay = e.target.closest('[data-repay]')?.dataset.repay;
       if (repay) return report(api, bank.repayLoan(repay));
