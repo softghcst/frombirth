@@ -2,6 +2,7 @@
 // GPA needed to be considered; yearly gains apply each year of study.
 // tracks: postgraduate routes the degree opens beyond plain graduate school.
 // audition: true means entry is decided by performance skill, not grades alone.
+// programOnly: taught only where a school is known for it (a BFA is a program, not a subject any university offers).
 const M = (id, name, difficulty, minGpa, yearly, tracks = [], extra = {}) =>
   ({ id, name, difficulty, minGpa, yearly, tracks, ...extra });
 
@@ -32,7 +33,7 @@ export const MAJORS = [
     { audition: true, auditionBase: 0.3, blurb: 'Performance classes inside a broad degree. Easier audition, steady growth.' }),
   M('musical_theater_bfa', 'Musical Theater (BFA)', 0.3, 2.0,
     { talents: { singing: 7, dance: 7, acting: 7 }, stats: { health: 1 } }, [],
-    { audition: true, auditionBase: 0.12, blurb: 'Conservatory training: studio all day, shows at night. Hard to get into, fastest growth.' }),
+    { audition: true, auditionBase: 0.12, programOnly: true, blurb: 'Conservatory training: studio all day, shows at night. Hard to get into, fastest growth. Only the schools with a BFA teach it.' }),
 ];
 
 export const MAJOR_BY_ID = Object.fromEntries(MAJORS.map((m) => [m.id, m]));

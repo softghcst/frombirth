@@ -64,6 +64,7 @@ function pageActivities() {
       ${meterHtml('Your standing in it', c.standing, true)}
       ${c.kind === 'sport' ? `<div class="kv"><span>Sport</span><span>${esc(a.sport ?? a.sports[0])}</span></div><button class="btn" data-sport>Play a different sport</button>` : ''}
       ${c.mates.length ? `<p class="muted">With you: ${esc(c.mates.map((n) => n.firstName).join(', '))}.</p>` : ''}
+      ${life.clubActions(c.id).length ? `<div class="chips club-acts">${life.clubActions(c.id).map((x) => `<button class="chip" data-club-act="${esc(c.id)}:${x.id}" ${x.done ? 'disabled' : ''}>${esc(x.label)}${x.done ? ' ✓' : ''}</button>`).join('')}</div>` : ''}
       ${c.record.map((r) => `<p class="muted">Age ${r.age}: ${esc(r.text)}.</p>`).join('')}</div>`).join('');
   return `<div class="kv"><span>How the school sees you</span><span>${esc(a.standing)}</span></div>
     
@@ -105,6 +106,15 @@ export function openSchool(onChange) {
     if (t) { tab = t.dataset.tab; return draw(); }
     const f = e.target.closest('[data-focus]');
     if (f) { sch.setFocus(f.dataset.focus); onChange?.(); return draw(true); }
+    const ca = e.target.closest('[data-club-act]');
+    if (ca && !ca.disabled) {
+      const [club, act] = ca.dataset.clubAct.split(':');
+      const r = life.clubAct(club, act);
+      onChange?.();
+      draw(true);
+      await messageModal({ body: r.text, tone: r.tone });
+      return undefined;
+    }
     if (e.target.closest('[data-sport]')) {
       const pick = await pickModal({ title: 'Which sport?', cancel: 'Back', options: life.sportsHere().map((x) => ({ value: x, label: x[0].toUpperCase() + x.slice(1) })) });
       if (pick) { life.setSport(pick); onChange?.(); }

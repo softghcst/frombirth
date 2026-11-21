@@ -350,7 +350,9 @@ const ACTIONS = {
   groupview: (id, x) => x.go('groupview', id),
   person: (id, x) => { const n = npc(id); if (n) openNpc(n, x.api); },
   peer: async (id, x) => {
-    const v = await pickModal({ title: name(id), options: [{ value: 'friend', label: 'Spend time together' }, { value: 'help', label: 'Ask for help' }, { value: 'support', label: 'Support them before an evaluation' }, { value: 'resolve', label: 'Clear the air' }, { value: 'profile', label: 'Open their profile' }] });
+    const did = kp.idolOf().acts.did;
+    const opt = (value, label) => ({ value, label, disabled: !!did[`${value}:${id}`], sub: did[`${value}:${id}`] ? 'Done this year' : '' });
+    const v = await pickModal({ title: name(id), options: [opt('friend', 'Spend time together'), opt('help', 'Ask for help'), opt('support', 'Support them before an evaluation'), opt('resolve', 'Clear the air'), { value: 'profile', label: 'Open their profile' }] });
     if (v === 'profile') return ACTIONS.person(id, x);
     if (v) await x.say(kp.trainAction(v, id));
     return undefined;

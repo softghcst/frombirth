@@ -109,6 +109,14 @@ if (t) {
   const ev = k().evals[kp.idolOf().trainee.evals.at(-1)];
   check(ev && ev.rank >= 1 && ev.of >= 5 && ev.feedback.length === 2 && ev.evaluators.every((id) => store.state.npcs[id]), 'an evaluation: a rank, two pieces of feedback, real evaluators');
   check(ids.every((id) => store.state.npcs[id]?.flags.idol), 'fellow trainees are the same people a year later');
+  // Time with the other trainees does not use up the year's practice sessions.
+  const peer = t.agency.trainees.find((id) => store.state.npcs[id]?.alive);
+  if (peer) {
+    for (let x = 0; x < 4; x++) kp.trainAction('vocal');
+    check(!kp.trainAction('dance').ok, 'four extra practice sessions a year');
+    check(kp.trainAction('friend', peer).ok && kp.trainAction('help', peer).ok, 'and time with a fellow trainee is still open after them');
+    check(!kp.trainAction('friend', peer).ok, 'once per kind per trainee per year');
+  }
   // Leaving is allowed; nothing is charged back.
   const cash = p.finance.cash;
   check(kp.leaveTraining().ok && !kp.trainee() && p.finance.cash === cash, 'leaving with notice, nothing charged');
@@ -259,6 +267,11 @@ if (g) {
     check(kp.idolOf().pop <= 3, 'one ending fairy does not make a star');
   }
   check(p.milestones.some((m) => /Debuted with/.test(m.text)), 'the debut is in the life story');
+  // Being an idol is a job: the work shown everywhere says so.
+  const idolJob = kp.idolWork(p);
+  check(idolJob?.current && idolJob.title === `K-pop idol, ${g.name}`, `an idol's work is being an idol (${idolJob?.title})`);
+  const cv = (await import('../js/engine/digital/professional.js')).resume();
+  check(cv.jobs.some((j) => j.current && j.title === idolJob.title), 'and it is on the CV');
   // A comeback: a real release, promoted, wins only when earned.
   year();
   const cb = kp.comeback('mini', 'bright');

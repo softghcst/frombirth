@@ -11,6 +11,7 @@ import { forgetNpc } from './digital/core.js';
 import { book } from './ledger.js';
 import { settleNpc } from './npcMoney.js';
 import { animalDied } from './animals.js';
+import { SPECIES } from '../data/animals.js';
 import { estateTax } from './inheritance.js';
 import { rate } from './currency.js';
 
@@ -44,7 +45,7 @@ export function roleLabel(npc) {
     case 'partner': return npc.flags.engaged ? byGender(npc, 'Fiancé', 'Fiancée', 'Betrothed')
       : byGender(npc, 'Boyfriend', 'Girlfriend', 'Partner');
     case 'ex': return npc.flags.wasSpouse ? byGender(npc, 'Ex-husband', 'Ex-wife', 'Ex-spouse') : 'Ex';
-    case 'pet': return `Pet ${npc.species}`;
+    case 'pet': return `Pet ${SPECIES[npc.species]?.name ?? String(npc.species ?? 'animal').replace(/_/g, ' ')}`;
     case 'clinician': return npc.occupation ?? 'Clinician';
     case 'groupmate': return 'From your group';
     // People met through the justice system: what they do, or where they are.
@@ -55,7 +56,7 @@ export function roleLabel(npc) {
 }
 
 const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 3,
-  spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
+  neighbor: 0, roommate: 0, spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
 
 export const removeNpc = (npc) => {
   // Gone from the player's life; kept in the save only if their digital life is part of the record.
@@ -145,7 +146,7 @@ export function tickRelationships() {
     const atHome = (p.flags.livesWithParents && !away && family)
       || npc.role === 'pet' || npc.role === 'spouse' || (npc.role === 'child' && npc.age < 18) || p.flags.care?.guardianId === npc.id;
     if (neglected && !atHome) {
-      npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad ? 2 : 0));
+      npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)); // (roles that never fade, like neighbors, do not fade by moving away either)
     }
     if ((npc.role === 'friend' || npc.role === 'classmate') && npc.meters.relationship < 10 && !npc.flags.tag) {
       log(`You and ${npc.firstName} drifted apart.`);
@@ -232,7 +233,44 @@ export function spendAction(npc, action) {
   return true;
 }
 
+/**
+ * Counts one more time doing something with this person this year, with no limit. Returns how many times it has been
+ * this year, this one included, so callers can make the first time count for the most.
+ */
+export function countAction(npc, action) {
+  const p = player();
+  npc.flags.times ??= {};
+  const t = npc.flags.times[action];
+  npc.flags.times[action] = t && t.age === p.age ? { age: p.age, n: t.n + 1 } : { age: p.age, n: 1 };
+  npc.lastInteractionAge = p.age;
+  return npc.flags.times[action].n;
+}
+
 const bump = (npc, d) => { npc.meters.relationship = clamp(npc.meters.relationship + d); };
+
+/** Everyone the player could spend time with this year and has not yet. Neighbors they have only met need no visits. */
+export const timeStillOwed = () => {
+  const p = player();
+  if (p.age < 3 || p.legal?.incarceration) return [];
+  return livingNpcs().filter((n) => n.role !== 'neighbor' && n.flags.acts?.spendTime !== p.age && basicActions(n).some((a) => a.id === 'spendTime'));
+};
+
+/**
+ * Spends time with everyone at once, the same as doing it with each in turn: each counts as this year's time together.
+ * One line in the log, and the lift in mood of a good year with people, not of twenty separate afternoons.
+ */
+export function spendTimeWithAll() {
+  const p = player();
+  const people = timeStillOwed();
+  if (!people.length) return result(false, 'You have already spent time with everyone this year.', 'neutral');
+  for (const n of people) { spendAction(n, 'spendTime'); bump(n, rng.int(3, 9)); }
+  p.stats.mood = clamp(p.stats.mood + Math.min(8, 2 + people.length));
+  const names = people.map((n) => n.firstName);
+  const list = names.length <= 3 ? names.join(names.length === 2 ? ' and ' : ', ') : `${names.slice(0, 3).join(', ')} and ${names.length - 3} ${names.length - 3 === 1 ? 'other' : 'others'}`;
+  const text = `You made time for the people in your life this year: ${list}.`;
+  log(text, 'system', 'good');
+  return result(true, text);
+}
 
 /** A friendship that hits the floor turns into something worse. */
 function sour(npc) {

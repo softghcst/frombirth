@@ -365,7 +365,7 @@ function commitments(p, c) {
   const rows = [];
   if (edu.canSetPriority()) rows.push(['Putting first', PRIORITY_BY_ID[e.priority]?.name ?? 'Nothing in particular']);
   for (const id of e.clubs) rows.push([CLUB_BY_ID[id].name, 'Member']);
-  if (e.enrolled && e.stage === 'high') rows.push(['Crowd', CLIQUE_BY_ID[e.clique]?.name ?? 'None yet']);
+  if (e.enrolled && ['middle', 'high'].includes(e.stage)) rows.push(['Crowd', CLIQUE_BY_ID[e.clique]?.name ?? 'None yet']);
   if (p.career.partTime) rows.push([p.career.partTime.title, `${fmtMoney(p.career.partTime.salary, c)} a year`]);
   for (const s of p.career.sides ?? []) rows.push([s.title, `${s.hours} h/week, ${fmtMoney(s.salary, c)} a year`]);
   if (p.flags.tutorAge === p.age) rows.push(['Private tutor', 'Two evenings a week']);
@@ -416,7 +416,7 @@ export default {
     if (edu.canSetPriority()) school.push(['priority', 'What comes first']);
     if (edu.canAskForTutor()) school.push(['tutor', 'Ask for a tutor']);
     if (edu.canJoinClubs()) school.push(['club', 'Clubs and classes']);
-    if (e.enrolled && e.stage === 'high') school.push(['clique', 'Choose your crowd']);
+    if (e.enrolled && ['middle', 'high'].includes(e.stage)) school.push(['clique', 'Choose your crowd']);
     if (campusLife.atUniversity()) school.unshift(['campus', 'University life']);
     if (e.enrolled && edu.isHigher(e.stage)) school.push(['housing', 'Change where you live']);
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);

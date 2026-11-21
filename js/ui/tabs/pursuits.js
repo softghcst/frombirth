@@ -14,8 +14,9 @@ import { prisonHub, hubClick } from '../prisonHub.js';
 import { legalCard, legalClick } from '../justice.js';
 import { playBlackjack, playHorses, playLottery } from '../minigames/casino.js';
 import { meterHtml } from '../meter.js';
-import { messageModal, pickModal, confirmModal } from '../modals.js';
+import { messageModal, pickModal, confirmModal, openModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
+import * as clubLife from '../../engine/clubs.js';
 import { openDigitalLife, digitalCard } from '../digital.js';
 import * as bc from '../../engine/digital/broadcast.js';
 import { canEmigrate } from '../../engine/emigration.js';
@@ -35,6 +36,38 @@ async function report(api, r) {
   await messageModal({ body: r.text, tone: r.tone });
 }
 
+/** Who, and how: two dropdowns and a button. Resolves to { who, how }, or null if called off. */
+function targetForm() {
+  const known = law.targets();
+  const strangers = law.strangerOptions();
+  const methods = law.methodOptions();
+  const cap = (s) => s.replace(/^./, (ch) => ch.toUpperCase());
+  return new Promise((resolve) => {
+    const m = openModal(`
+      <h2>Kill someone</h2>
+      <p class="body">Some ways are surer. Some are quieter. Some are neither. There is no taking this back.</p>
+      <div class="field"><label for="k-who">Who</label>
+        <select id="k-who">
+          <optgroup label="Strangers around this year">${strangers.map((x) => `<option value="stranger:${esc(x.id)}">${esc(cap(x.name))}</option>`).join('')}</optgroup>
+          ${known.length ? `<optgroup label="People you know">${known.map((n) => `<option value="npc:${esc(n.id)}">${esc(`${n.firstName} ${n.lastName}`)} (${esc(roleLabel(n).toLowerCase())}, ${n.age})</option>`).join('')}</optgroup>` : ''}
+        </select><p class="muted" data-who-note style="margin-top:4px"></p></div>
+      <div class="field"><label for="k-how">How</label>
+        <select id="k-how">${methods.map((x) => `<option value="${esc(x.id)}">${esc(x.name)} (chances: ${esc(x.odds)})</option>`).join('')}</select>
+        <p class="muted" data-how-note style="margin-top:4px"></p></div>
+      <div class="btn-row" style="margin-top:14px"><button type="button" class="btn" data-cancel>Never mind</button><button type="button" class="btn danger" data-go>Do it</button></div>`,
+    { dismissable: true, onDismiss: () => resolve(null) });
+    const who = m.el.querySelector('#k-who'); const how = m.el.querySelector('#k-how');
+    const notes = () => {
+      const s = strangers.find((x) => `stranger:${x.id}` === who.value);
+      m.el.querySelector('[data-who-note]').textContent = s ? s.note ?? '' : 'They trust you, which makes it easier to get close.';
+      m.el.querySelector('[data-how-note]').textContent = methods.find((x) => x.id === how.value)?.blurb ?? '';
+    };
+    who.addEventListener('change', notes); how.addEventListener('change', notes); notes();
+    m.el.querySelector('[data-cancel]').addEventListener('click', () => { m.close(); resolve(null); });
+    m.el.querySelector('[data-go]').addEventListener('click', () => { const v = { who: who.value, how: how.value }; m.close(); resolve(v); });
+  });
+}
+
 async function commitCrime(api) {
   const id = await pickModal({
     title: 'Crime',
@@ -45,24 +78,15 @@ async function commitCrime(api) {
   let targetId;
   const how = {};
   if (CRIME_BY_ID[id].target) {
-    const known = law.targets();
-    const kind = await pickModal({ title: 'Who?', options: [
-      { value: 'stranger', label: 'A stranger', sub: 'Whoever happens to be around this year.' },
-      { value: 'known', label: 'Someone you know', sub: known.length ? 'They trust you, which makes it easier to get close.' : 'You do not know anyone.', disabled: !known.length },
-    ] });
-    if (!kind) return;
-    if (kind === 'known') {
-      targetId = await pickModal({ title: 'Who?',
-        options: known.map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}, age ${n.age}` })) });
-      if (!targetId) return;
-    } else {
-      how.strangerId = await pickModal({ title: 'Who?', body: 'Different people every year.',
-        options: law.strangerOptions().map((x) => ({ value: x.id, label: x.name.replace(/^./, (ch) => ch.toUpperCase()), sub: x.note })) });
-      if (!how.strangerId) return;
-    }
-    how.methodId = await pickModal({ title: 'How?', body: 'Some ways are surer. Some are quieter. Some are neither.',
-      options: law.methodOptions().map((m) => ({ value: m.id, label: m.name, sub: `${m.blurb} Your chances: ${m.odds}.` })) });
-    if (!how.methodId) return;
+    // One form: who, and how, each a dropdown.
+    const pick = await targetForm();
+    if (!pick) return;
+    if (pick.who.startsWith('npc:')) targetId = pick.who.slice(4); else how.strangerId = pick.who.slice(9);
+    how.methodId = pick.how;
+    const r = law.commitCrime(id, targetId, how);
+    await report(api, r);
+    if (r.arrested) await api.justice();
+    return;
   }
   const sure = await confirmModal({ title: `${CRIME_BY_ID[id].name}?`, body: 'There is no taking this back.', yes: 'Do it', danger: true });
   if (!sure) return;
@@ -116,35 +140,48 @@ export default {
             ${jobs.map((j) => `<button class="btn" data-kidjob="${j.id}" ${j.done ? 'disabled' : ''}>${esc(j.label)} <small>${fmtMoney(j.pay, c)}${j.why ? ` · ${esc(j.why.toLowerCase())}` : ''}</small></button>`).join('')}
           </div>
         </div>` : ''}
-        ${things.length ? `<div class="card"><h3>Things to do</h3>
-          <div class="btn-pair">${things.map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
+        <div class="section-label">Fun and hobbies</div>
+        ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and classes</h3>
+          <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
+          <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(m.club.name.replace(/^(A|An|The) /, '').replace(/^./, (x) => x.toUpperCase()))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
+            <button class="btn primary" data-club="find">Find a club or class</button></div>
         </div>` : ''}
-        <div class="card"><h3>Gambling</h3>
-          ${canGamble()
-    ? `<div class="btn-pair">
-               <button class="btn" data-play="blackjack">Blackjack</button>
-               <button class="btn" data-play="horses">The races</button>
-               <button class="btn" data-play="lottery">Lottery tickets</button>
-             </div>
-             ${gambled ? `<div class="kv" style="margin-top:10px"><span>Staked in your lifetime</span><span>${esc(fmtMoney(gambled, c))}</span></div>` : ''}`
-    : `<p class="muted">${esc(may('gamble').why || 'Not from where you are.')}</p>`}
-        </div>
+        ${things.some((a) => a.charm) ? `<div class="card"><h3>Charm and confidence</h3>
+          <p class="muted" style="margin-bottom:10px">Charm ${p.stats.charm} · each once a year</p>
+          <div class="btn-stack">${things.filter((a) => a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
+        </div>` : ''}
+        ${things.some((a) => !a.charm) ? `<div class="card"><h3>Things to do</h3>
+          <div class="btn-pair">${things.filter((a) => !a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
+        </div>` : ''}
+        ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding', ico: 'trophy',
+          sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : '' })]) : ''}
+        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'Photocards', ico: 'star',
+          sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : '' })]) : ''}
+        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><div class="btn-pair">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
+        ${digitalCard()}
+        <div class="section-label">Where you live</div>
+        ${p.age >= 3 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="neighborhood"', label: 'My Neighborhood', ico: 'home', sub: neighborhoodSub() })]) : ''}
+        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' }), navRow({ attrs: 'data-go="documents"', label: 'Passport & Documents', ico: 'passport' })])}
+        ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}.</p><div class="btn-pair">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}
+        <div class="section-label">Risky business</div>
+        ${canGamble() ? `<div class="card"><h3>Gambling</h3>
+          <div class="btn-pair">
+            <button class="btn" data-play="blackjack">Blackjack</button>
+            <button class="btn" data-play="horses">The races</button>
+            <button class="btn" data-play="lottery">Lottery tickets</button>
+          </div>
+          ${gambled ? `<div class="kv" style="margin-top:10px"><span>Staked in your lifetime</span><span>${esc(fmtMoney(gambled, c))}</span></div>` : ''}
+        </div>` : ''}
         ${law.canCommitCrimes() ? `<div class="card"><h3>Crime</h3>
           <div class="kv"><span>Police attention</span><span>${p.legal.heat >= 60 ? 'They are looking for you' : p.legal.heat >= 25 ? 'You are known to them' : 'None'}</span></div>
           ${p.flags.fugitive ? '<div class="kv"><span>Status</span><span>On the run</span></div>' : ''}
           <button class="btn danger" data-crime style="margin-top:8px">Commit a crime</button>
         </div>` : ''}
         ${legalCard()}
-        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'Photocards', ico: 'star',
-          sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : '' })]) : ''}
-        ${p.age >= 3 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="neighborhood"', label: 'My Neighborhood', ico: 'home', sub: neighborhoodSub() })]) : ''}
-        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' })])}
-        ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding', ico: 'trophy',
-          sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : '' })]) : ''}
-        ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><div class="btn-pair">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
-        ${digitalCard()}
-        ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}.</p><div class="btn-pair">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}`;
+`;
     }
+    // A heading with nothing under it (a child has no risky business) goes.
+    el.querySelectorAll(':scope > .section-label').forEach((l) => { const n = l.nextElementSibling; if (!n || n.classList.contains('section-label')) l.remove(); });
     el.onclick = (e) => {
       if (law.isJailed()) return hubClick(e, api, joinGang);
       if (legalClick(e, api)) return undefined;
@@ -174,6 +211,8 @@ export default {
       if (kidMoney === 'buy') return report(api, kidLife.buySaved());
       if (kidMoney === 'save') return pickModal({ title: 'Save for what?', options: kidLife.SAVING_GOALS.map(([name, cost]) => ({ value: name, label: name[0].toUpperCase() + name.slice(1), sub: fmtMoney(localMoney(cost, country()), country()) })) })
         .then((pick) => (pick ? report(api, kidLife.saveFor(pick, kidLife.SAVING_GOALS.find(([n]) => n === pick)[1])) : undefined));
+      const club = e.target.closest('[data-club]')?.dataset.club;
+      if (club) return leisure.openClubs(api, club);
       const todo = e.target.closest('[data-do]')?.dataset.do;
       if (todo) return leisure.quick(api)[todo]();
       const go = e.target.closest('[data-go]')?.dataset.go;
@@ -181,7 +220,7 @@ export default {
       if (go === 'athletics') return openAthletics(api);
       if (go === 'neighborhood') return openNeighborhood(api);
       if (go === 'photocards') return openIdol(api, 'photocards');
-      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a) })[go](api);
+      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a), documents: (a) => openExplore(a, { view: 'documents' }) })[go](api);
       return undefined;
       if (go) return ({ abroad: leisure.moveAbroad, city: leisure.moveCity })[go]?.(api);
       const act = e.target.closest('[data-prison]')?.dataset.prison;

@@ -7,7 +7,7 @@ import { player, country, log, milestone } from '../state.js';
 import { resolve } from './conditions.js';
 import { market } from './market.js';
 import { borrow, loanOffer, CAR_LOAN } from './loans.js';
-import { VEHICLE_TYPES, VEHICLE_BY_ID, COLORS, DRIVING_TEST, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
+import { VEHICLE_TYPES, VEHICLE_BY_ID, COLORS, DRIVING_TEST, DRIVING_QUIZ, DRIVING_QUESTIONS, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
 import { book } from './ledger.js';
 import { recordLoss } from './insurance.js';
 
@@ -40,27 +40,65 @@ function passChance(spec) {
 }
 
 export const canTakeDrivingTest = () => player().age >= DRIVING_TEST.minAge && !hasLicense();
-export function takeDrivingTest() {
+/** Tries left this year, and what the next one costs (the first of a year includes the lessons). */
+export function drivingTestStatus() {
+  const c = country();
+  const used = yearActs().test ?? 0;
+  return { left: Math.max(0, DRIVING_QUIZ.triesAYear - used), fee: localMoney(used ? DRIVING_QUIZ.retakeFee : DRIVING_TEST.fee, c), retake: used > 0 };
+}
+/**
+ * Starts a test: pays for it, counts the try, and hands back the questions (answers shuffled). Practice with a parent
+ * (engine/bonds.js) crosses one wrong answer off each question. The test is kept on the player until it is marked.
+ */
+export function startDrivingTest() {
   const p = player();
   const c = country();
-  const fee = localMoney(DRIVING_TEST.fee, c);
   if (!canTakeDrivingTest()) return result(false, 'You cannot take the test right now.', 'neutral');
-  if (yearActs().test) return result(false, 'The next test slot is next year.', 'neutral');
-  if (p.finance.cash < fee) return result(false, `Lessons and the test cost ${fmtMoney(fee, c)}.`, 'neutral');
-  yearActs().test = 1;
-  p.finance.cash -= fee;
-  // Practice with a parent before the test (engine/bonds.js) helps.
-  if (!rng.chance(clamp(passChance(DRIVING_TEST.pass) + Math.min(0.15, (p.flags.drivePractice ?? 0) * 0.07), 0.05, 0.97))) {
-    const text = 'You failed your driving test: you mounted the curb on the way out of the test center.';
+  const st = drivingTestStatus();
+  if (!st.left) return result(false, `You have failed ${DRIVING_QUIZ.triesAYear} times this year. You can try again next year.`, 'neutral');
+  if (p.finance.cash < st.fee) return result(false, `${st.retake ? 'A retake costs' : 'Lessons and the test cost'} ${fmtMoney(st.fee, c)}.`, 'neutral');
+  p.finance.cash -= st.fee;
+  yearActs().test = (yearActs().test ?? 0) + 1;
+  const pool = [...DRIVING_QUESTIONS.keys()].sort(() => rng.next() - 0.5).slice(0, DRIVING_QUIZ.questions);
+  const practiced = (p.flags.drivePractice ?? 0) > 0;
+  const questions = pool.map((i) => {
+    const [q, answers] = DRIVING_QUESTIONS[i];
+    let opts = answers.map((text, k) => ({ text, right: k === 0 }));
+    if (practiced) { const wrong = opts.filter((o) => !o.right); const drop = wrong[rng.int(0, wrong.length - 1)]; opts = opts.filter((o) => o !== drop); }
+    return { q, options: opts.sort(() => rng.next() - 0.5).map((o) => o.text), right: opts.find((o) => o.right).text };
+  });
+  p.flags.drivingTest = { questions, year: p.age };
+  return { ...result(true, '', 'neutral'), questions: questions.map(({ q, options }) => ({ q, options })), practiced, fee: st.fee };
+}
+/** Marks the test. `picks` are the answers chosen, in order; a question left unanswered is wrong. */
+export function finishDrivingTest(picks = []) {
+  const p = player();
+  const t = p.flags.drivingTest;
+  if (!t) return result(false, 'There is no test to mark.', 'neutral');
+  delete p.flags.drivingTest;
+  const score = t.questions.filter((x, i) => picks[i] === x.right).length;
+  const missed = t.questions.map((x, i) => (picks[i] === x.right ? null : x)).filter(Boolean);
+  if (score < DRIVING_QUIZ.passMark) {
+    const left = drivingTestStatus().left;
+    const text = `You failed your driving test: ${score} out of ${t.questions.length}. You needed ${DRIVING_QUIZ.passMark}. ${left ? `You can try again this year (${left} ${left === 1 ? 'try' : 'tries'} left).` : 'That was your last try this year.'}`;
     log(text, 'system', 'bad');
-    return result(false, text);
+    return { ...result(false, text), score, missed: missed.map((x) => ({ q: x.q, right: x.right })) };
   }
   p.flags.canDrive = true;
-  const text = 'You passed your driving test.';
+  const text = `You passed your driving test: ${score} out of ${t.questions.length}.`;
   log(text, 'system', 'good');
   milestone('Passed the driving test.', 'life');
-  book({ cat: 'transport', src: 'action', desc: text });
-  return result(true, text);
+  book({ cat: 'transport', src: 'action', desc: 'Driving lessons and the test' });
+  return { ...result(true, text), score, missed: missed.map((x) => ({ q: x.q, right: x.right })) };
+}
+/** The old one-step test, for anything that still calls it: answers as well as the player's discipline and wits would. */
+export function takeDrivingTest() {
+  const r = startDrivingTest();
+  if (!r.ok) return r;
+  const p = player();
+  const t = p.flags.drivingTest;
+  const chance = clamp(passChance(DRIVING_TEST.pass) + Math.min(0.15, (p.flags.drivePractice ?? 0) * 0.07), 0.05, 0.97);
+  return finishDrivingTest(t.questions.map((x) => (rng.chance(chance + 0.1) ? x.right : x.options.find((o) => o !== x.right))));
 }
 
 export const canLearnToFly = () => player().age >= FLYING_LESSONS.minAge && !hasPilotLicense();

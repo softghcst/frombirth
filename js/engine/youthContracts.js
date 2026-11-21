@@ -9,7 +9,8 @@ import { sportOf } from '../data/sports.js';
 import * as sp from './sports.js';
 import { internals as life, settle } from './sportsLife.js';
 
-const { overall } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const overall = (...a) => sp.internals.overall(...a);
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 export const YOUTH_SPORTS = ['soccer'];
 /** The youngest age for a first professional contract: 17 in England, 16 elsewhere (FIFA). */

@@ -11,7 +11,7 @@ const ICONS = [
   [/wellbeing|health|conditions|born with|care/i, 'health'], [/aptitude|skill|talent/i, 'star'], [/crown|royal|court/i, 'trophy'],
   [/identity/i, 'id'], [/times|news|era/i, 'news'], [/life in|world|abroad|travel/i, 'globe'], [/trait/i, 'sparkle'],
   [/milestone|this year|week|calendar/i, 'calendar'], [/school|universit|education|campus/i, 'school'], [/work|job|career|office|politic/i, 'briefcase'],
-  [/contact|people|friend|family/i, 'people'], [/money|loan|debt|tax|gambl/i, 'coin'], [/will|letter|digital|online/i, 'letter'],
+  [/contact|people|friend|family|club/i, 'people'], [/money|loan|debt|tax|gambl/i, 'coin'], [/will|letter|digital|online/i, 'letter'],
   [/crime|legal|court|prison|police/i, 'passport'], [/athlet|sport|riding|race/i, 'trophy'], [/radio|television/i, 'news'],
   [/moving|home|house|propert/i, 'home'], [/things to do|hobby|fun/i, 'compass'], [/past|history|archive/i, 'archive'],
 ];

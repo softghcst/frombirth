@@ -1,0 +1,62 @@
+// Browser check of the Clubs page of the school book (ui/school.js): each club has things to do, a tap does one and
+// says what happened, and a thing done this year shows as done. Needs Playwright. Run with: node tests/school-clubs-ui.mjs
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname, join, normalize } from 'node:path';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+let chromium;
+try { ({ chromium } = require('playwright')); } catch {
+  try { ({ chromium } = require(join(process.execPath, '../../lib/node_modules/playwright'))); } catch { console.log('Playwright is not available here: browser check skipped.'); process.exit(0); }
+}
+const root = new URL('..', import.meta.url).pathname;
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const server = createServer(async (req, res) => {
+  const path = normalize(join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname)));
+  if (!path.startsWith(root)) { res.writeHead(403); return res.end(); }
+  try { const body = await readFile(path.endsWith('/') ? join(path, 'index.html') : path); res.writeHead(200, { 'content-type': TYPES[extname(path)] ?? 'application/octet-stream' }); res.end(body); }
+  catch { res.writeHead(404); res.end(); }
+}).listen(0);
+const port = server.address().port;
+
+const problems = [];
+const check = (c, m) => { if (!c) problems.push(m); };
+const browser = await chromium.launch();
+for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['desktop', { width: 1280, height: 900 }]]) {
+  const page = await browser.newPage({ viewport });
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`http://localhost:${port}/index.html`);
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.click('[data-random]');
+  await page.waitForSelector('[data-year]');
+  const ready = await page.evaluate(async () => {
+    const { store } = await import('/js/state.js');
+    const { advanceYear } = await import('/js/engine/yearProcessor.js');
+    document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove());
+    while (store.state.player.alive && store.state.player.age < 12) { advanceYear(); store.state.pendingEvents = []; }
+    const p = store.state.player;
+    if (!p.education.enrolled) return false;
+    p.education.clubs = ['choir', 'dance_class'];
+    (await import('/js/ui/school.js')).openSchool(() => {});
+    return true;
+  });
+  if (!ready) { check(true, 'not at school'); await page.close(); continue; }
+  await page.waitForTimeout(200);
+  await page.click('.modal [data-tab="activities"]'); await page.waitForTimeout(150);
+  check(await page.locator('[data-club-act]').count() >= 4, `${label}: each club has things to do`);
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/clubs-${label}.png` });
+  await page.locator('[data-club-act="choir:practice"]').click(); await page.waitForTimeout(200);
+  check(await page.locator('#modal-root .scrim').count() === 2, `${label}: doing one says what happened`);
+  await page.locator('#modal-root .scrim').last().locator('button').last().click(); await page.waitForTimeout(150);
+  check(await page.locator('[data-club-act="choir:practice"][disabled]').count() === 1, `${label}: and then shows as done for the year`);
+  check(!errors.length, `${label}: no errors in the page (${errors.join('; ')})`);
+  await page.close();
+}
+await browser.close();
+server.close();
+for (const m of problems) console.log(`FAIL ${m}`);
+console.log(problems.length ? `${problems.length} problem(s).` : 'The Clubs page has things to do.');
+process.exit(problems.length ? 1 : 0);

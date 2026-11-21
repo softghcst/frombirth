@@ -10,7 +10,10 @@ import { clubOf, toMinors } from './draft.js';
 import * as sp from './sports.js';
 import { internals as life } from './sportsLife.js';
 
-const { seeded, overall, rosterNames } = sp.internals;
+// Looked up when used, not when this module loads: engine/sports.js may still be loading (an import cycle).
+const seeded = (...a) => sp.internals.seeded(...a);
+const overall = (...a) => sp.internals.overall(...a);
+const rosterNames = (...a) => sp.internals.rosterNames(...a);
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 
 /** Whether the player may refuse a trade: baseball's ten-and-five rule, in the big leagues. */

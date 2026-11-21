@@ -11,7 +11,9 @@ const { rng } = await import('../js/rng.js');
 const { createLife } = await import('../js/engine/characterGen.js');
 const { advanceYear } = await import('../js/engine/yearProcessor.js');
 const { saveGame, loadGame } = await import('../js/save.js');
-const { die } = await import('../js/engine/death.js');
+const { die, deathRoll } = await import('../js/engine/death.js');
+// These checks are about sport: nobody dies of a rare childhood accident halfway through a season (die() still works).
+deathRoll.spared = true;
 const { continueAs, heirs } = await import('../js/engine/legacy.js');
 const { makeNpc } = await import('../js/engine/npcFactory.js');
 const { audit: ledgerAudit } = await import('../js/engine/ledger.js');

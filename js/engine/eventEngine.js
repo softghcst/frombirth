@@ -148,6 +148,13 @@ export function apart(key, fn) {
  * @param {number} [everyday]  how likely one of the year's ordinary scenes is as well: shorter turns, more chances
  * @returns {string[]} the scenes queued
  */
+/** Whether a queued scene still fits the life when it comes to be shown: a seasonal scene that asked for money, say, after
+ * an earlier one that turn has spent it. */
+export function stillFits(pe, state = store.state) {
+  const ev = EVENTS.find((e) => e.id === pe.id);
+  return !ev?.between?.when || !!ev.between.when(state.player, state);
+}
+
 export function drawBetween(step, seasons, chance = 0.8, everyday = 0) {
   const state = store.state;
   return apart(`between/${state.year}/${state.month}/${chance}`, () => {

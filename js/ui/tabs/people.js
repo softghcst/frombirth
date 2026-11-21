@@ -1,6 +1,7 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
 import * as hoodUi from '../neighborhood.js';
+import * as hoods from '../../engine/neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
 import { familyStatus } from '../../engine/immigration.js';
 import { store, player, country, livingNpcs } from '../../state.js';
@@ -40,13 +41,17 @@ import * as together from '../../engine/together.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
   'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
+/** Roles always shown at the top of People. */
+const CLOSE_ROLES = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'guardian', 'sibling', 'grandparent', 'pet'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
   ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
-  ['Neighbors', ['roommate', 'neighbor']], // people met where they live (engine/neighborhood.js)
-  ['Your household', ['staff']],
+  // Neighbors you have only met live on the My Neighborhood screen, not here: they join this list once they are friends.
+  // Someone met as a neighbor whom you no longer live near, but kept up with, still shows here.
+  ['Old neighbors', ['neighbor']],
+  ['Your household', ['roommate', 'staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
   ['Sport', ['coach', 'teammate', 'agent']],
   ['Your care team', ['clinician']],
@@ -285,13 +290,16 @@ function courtRecord(npc) {
     <div style="height:14px"></div>`;
 }
 
-/** A profile's actions in labeled groups (Together, Talk, Ask, Help, Love, Conflict), so a long list stays easy to scan. */
+/** A profile's actions in labeled groups (Together, Talk, Romance, Between you, Gifts and trips, Ask, Help, Hard moments), each
+ *  folded under its name with a count: the first one with anything in it is open, so a long list stays easy to scan. */
 function grouped(actions) {
   const groupOf = (a) => a.group ?? together.GROUP_OF[a.id] ?? (a.danger ? 'conflict' : 'more');
+  let shown = 0;
   return together.GROUPS.map(([g, name]) => {
     const here = actions.filter((a) => groupOf(a) === g);
     if (!here.length) return '';
-    return `<div class="section-label">${esc(name)}</div><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>`;
+    const open = shown++ < 1;
+    return `<details class="more action-group" ${open ? 'open' : ''}><summary>${esc(name)} <small>${here.length}</small></summary><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></details>`;
   }).join('');
 }
 
@@ -394,8 +402,8 @@ export function openNpc(npc, api, back, o = {}) {
     </div>
     ${clinic || `${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
     <div style="margin:12px 0 16px">${meters}</div>`}
-    ${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}
     ${grouped(actions)}
+    ${(() => { const about = `${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}`; return about.trim() ? `<details class="more about-them"><summary>About ${isPet ? 'them' : esc(npc.firstName)}: life, history, memories</summary>${about}</details>` : ''; })()}
     <div class="btn-stack" style="margin-top:12px">
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
     </div>`, { dismissable: true, onDismiss: () => back?.() });
@@ -491,7 +499,9 @@ export default {
   icon: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16.5 14.2c2.6.3 4.5 2.4 4.5 5.3"/>',
   render(el, api) {
     const c = country();
-    const list = livingNpcs().sort((a, b) =>
+    const here = hoods.currentHood(store.state);
+    const nearby = new Set(here ? hoods.knownIn(store.state, here.id).filter((n) => n.role === 'neighbor').map((n) => n.id) : []);
+    const list = livingNpcs().filter((n) => !nearby.has(n.id)).sort((a, b) =>
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
@@ -500,6 +510,8 @@ export default {
     const more = [];
     if (love.canLookForLove()) more.push(['love', 'Look for love', '', 'heart']);
     if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), 'child']);
+    const owed = rel.timeStillOwed().length;
+    if (nearby.size) more.unshift(['neighbors', 'Neighbors you know', `${nearby.size} on My Neighborhood`, 'home']);
 
     const row = (n) => `
       <button class="row rel-card" data-npc="${n.id}">
@@ -512,10 +524,20 @@ export default {
     const nav = (list) => list.map(([id, label, sub, ico]) => navRow({ attrs: `data-top="${id}"`, label, sub, ico }));
 
     el.innerHTML = `
-      ${list.length ? GROUPS.map(([title, roles]) => {
-        const group = list.filter((n) => roles.includes(n.role));
-        return group.length ? `<div class="section-label">${esc(title)}</div><div class="rel-grid">${group.map(row).join('')}</div>` : '';
-      }).join('') : '<p class="empty">There is nobody in your life right now.</p>'}
+      ${owed > 1 ? navGroup(nav([['spendAll', 'Spend time with everyone', `${owed} people you have not seen this year`, 'heart']])) : ''}
+      ${list.length ? (() => {
+        // The people who matter most first: partner, children, family and close friends. Everyone else (classmates,
+        // coworkers, neighbors, acquaintances) is folded under one line, so the list stays a list.
+        const close = (n) => CLOSE_ROLES.includes(n.role) || (n.role === 'friend' && (n.meters.relationship >= 40 || n.flags.title === 'Best friend' || n.flags.tag));
+        const groups = (people, roles = GROUPS) => roles.map(([title, rs]) => {
+          const group = people.filter((n) => rs.includes(n.role));
+          return group.length ? `<div class="section-label">${esc(title)}</div><div class="rel-grid">${group.map(row).join('')}</div>` : '';
+        }).join('');
+        const near = list.filter(close);
+        const rest = list.filter((n) => !close(n));
+        if (rest.length <= 4) return groups(list);
+        return `${groups(near)}<details class="more people-more"><summary>Others you know <small class="muted">(${rest.length})</small></summary>${groups(rest, [['Friends', ['friend']], ...GROUPS.filter(([t]) => t !== 'Friends'), ['School', ['classmate']]])}</details>`;
+      })() : '<p class="empty">There is nobody in your life right now.</p>'}
       ${navGroup(nav([...more, ...top, ...keep]), 'More')}`;
 
     el.onclick = async (e) => {
@@ -528,6 +550,8 @@ export default {
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
       if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
+      if (id === 'spendAll') return report(api, rel.spendTimeWithAll());
+      if (id === 'neighbors') return hoodUi.openNeighborhood(api, 'neighbors', null, { show: 'known' });
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {
         const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });

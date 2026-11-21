@@ -1,5 +1,6 @@
 // Mortality math and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
+import { idolWork } from './kpop.js';
 import { eraMortality } from './history.js';
 import { COUNTRIES } from '../data/countries.js';
 import { publicMilestones } from './health/story.js';
@@ -86,7 +87,10 @@ function lastOccupation(p) {
   if (p.politics) return p.politics.title;
   const top = (p.flags.offices ?? []).reduce((a, b) => (b.tier > (a?.tier ?? 0) ? b : a), null);
   if (top && top.tier >= 4) return `Former ${top.title}`;
+  const idol = idolWork(p);
+  if (idol?.current) return idol.title;
   if (p.career.title) return p.career.title;
+  if (idol) return idol.title;
   if (p.career.retired) return 'Retired';
   const last = p.career.history[p.career.history.length - 1];
   if (last) return `Former ${last.title}`;

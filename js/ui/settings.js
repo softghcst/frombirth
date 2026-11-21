@@ -72,7 +72,7 @@ export async function openSettings(hooks = {}) {
         // Only while a life is being played, once there are teams in it: their names, jerseys and players.
         ...(store.state?.player?.alive && kit.leagues().length ? [{ value: 'teams', label: 'Teams and jerseys', sub: 'Names and colors' }] : []),
         // Only while a life is being played: keep this moment, and live it two ways.
-        ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === false ? 'Off' : 'On' }] : []),
+        ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === true ? 'Shown after each year' : 'Off (look back from Your life this year)' }] : []),
         ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Branch this life. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used` }] : []),
       ],
     });
@@ -83,7 +83,7 @@ export async function openSettings(hooks = {}) {
       const note = await inputModal({ title: 'What if?', label: 'What is the decision? (a few words)', value: '', maxLength: 60 });
       if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
     }
-    if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary === false }; }
+    if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary !== true }; }
     if (pick === 'appearance') await openAppearance();
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();
