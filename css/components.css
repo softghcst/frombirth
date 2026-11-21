@@ -401,6 +401,9 @@ button.tree-row:active { background: var(--accent-soft); }
 .world-group.on { border-color: var(--accent); }
 .world-list { display: flex; flex-direction: column; gap: 6px; }
 .world-row { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+/* A news story is read, not scanned: the whole headline, over as many lines as it needs. */
+.news-row { align-items: flex-start; }
+.news-row .main strong { white-space: normal; overflow: visible; text-overflow: clip; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
 .world-flag { font-size: 1.7rem; line-height: 1; width: 40px; text-align: center; flex: none; }
 .world-flag.big { font-size: 2.6rem; width: 56px; }
 .world-head { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; }
@@ -1155,3 +1158,14 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .prev-outcome.tone-good { border-color: var(--good); }
 .prev-outcome.tone-bad { border-color: var(--bad); }
 .prev-outcome .chips { margin-top: 2px; }
+
+/* A death notice: one card for each person. */
+.death-card { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.death-card:first-of-type { border-top: 0; }
+.death-card > :first-child { flex: 0 0 64px; width: 64px; height: 64px; overflow: hidden; filter: grayscale(0.6); }
+.death-card > :first-child svg { width: 100%; height: 100%; }
+.death-card .main { flex: 1; }
+.death-card .main { min-width: 0; }
+.death-card strong { display: block; font-family: var(--serif); font-size: 1.15rem; }
+.death-card small { display: block; color: var(--muted); }
+.death-card .body { margin: 6px 0 0; }
