@@ -11,6 +11,7 @@
 //   p.idol = { apps:[], traineeId(contract), contracts:[], programs:[], groupId, groups:[], focus, stage, camera, history:[],
 //              fairies:[], hiatus, solo:[], acts:{ age, ... }, pop, trust }
 //   npc.flags.idol = { agencyId, since, sk:{vocal,dance,rap,stage,camera,media,korean}, born:{year,day}, status, groupId, pop, history:[] }
+import { MOMENTS } from '../data/kpopMoments.js';
 import { canFit } from './worklife.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, localCost, wageIn } from '../util.js';
@@ -1044,6 +1045,13 @@ export function nameFandom(name) {
 }
 
 /** Interviews, variety, radio, fan events: how they go depends on media training, and the approach. */
+/** A moment at an appearance of this kind, to be handled one of a few ways (data/kpopMoments.js). */
+export function appearanceMoment(kind) {
+  const list = MOMENTS[kind] ?? MOMENTS.interview;
+  const m = rng.int(0, list.length - 1);
+  return { kind, m, prompt: list[m].prompt, options: list[m].options.map((o, k) => ({ value: k, label: o.label })) };
+}
+
 export function appearance(kind, approach = 'professional') {
   const p = player();
   const g = myGroup(p);
@@ -1055,6 +1063,21 @@ export function appearance(kind, approach = 'professional') {
   i.acts.social += 1;
   const s = skillsOf();
   const leader = g.leader === 'player';
+  // A moment from the show, handled one way: how it goes rests on the skill that way needs.
+  const moment = approach && typeof approach === 'object' ? (MOMENTS[kind] ?? MOMENTS.interview)[approach.m]?.options[approach.o] : null;
+  if (moment) {
+    const others = current(g).map((x) => x.who).filter((w) => w !== 'player');
+    const team = Math.round(others.map((id) => npc(id)?.meters.relationship ?? 50).reduce((a, b) => a + b, 0) / Math.max(1, others.length));
+    const level = moment.skill === 'team' ? team : s[moment.skill] ?? 50;
+    const won = rng.chance(clamp(0.3 + (level - 50) / 70, 0.08, 0.92));
+    raise('player', moment.skill === 'team' ? 'media' : moment.skill === 'rap' ? 'media' : moment.skill, 1);
+    const up = won ? (kind === 'variety' ? 2 : 1) : 0;
+    i.pop = clamp(i.pop + up);
+    g.fandom.engagement = clamp(g.fandom.engagement + (won ? 2 : 0));
+    if (moment.skill === 'team') for (const id of others) { const n = npc(id); if (n) n.meters.relationship = clamp(n.meters.relationship + (won ? 2 : 1)); }
+    if (up) gain({ audience: kind === 'variety' ? 'tv' : 'music', amount: up, why: `a ${kind === 'variety' ? 'variety show' : kind}` }, p);
+    return result(won, `${won ? moment.good : moment.bad}${won ? ' New fans find you.' : ''}`, won ? 'good' : 'neutral');
+  }
   const odds = clamp(0.35 + (s.media - 50) / 80 + (approach === 'funny' ? (s.camera - 55) / 100 : 0) + (approach === 'leader' && !leader ? -0.15 : 0), 0.08, 0.92);
   const good = rng.chance(odds);
   raise('player', 'media', 1.5);
