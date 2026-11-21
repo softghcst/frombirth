@@ -20,7 +20,7 @@ export function openModal(html, opts = {}) {
   const close = () => {
     scrim.remove();
     const still = document.querySelector('#modal-root .scrim:last-child .modal');
-    if (still) { (still.querySelector('button:not([disabled])') ?? still).focus({ preventScroll: true }); return; }
+    if (still) { (still.querySelector('button:not([disabled]):not(.modal-x)') ?? still).focus({ preventScroll: true }); return; }
     const target = returnTo?.isConnected ? returnTo : document.querySelector('[data-year]');
     target?.focus?.({ preventScroll: true });
   };
@@ -33,10 +33,24 @@ export function openModal(html, opts = {}) {
   root().appendChild(scrim);
   const card = scrim.firstElementChild;
   card._returnTo = returnTo;
+  // Anything that can be closed has a way out in plain sight: a ✕ that stays in the corner however far down the page
+  // has been scrolled. Pages that draw their own close button keep theirs, and do not get a second.
+  if (opts.dismissable) {
+    const row = document.createElement('div');
+    row.className = 'modal-xrow';
+    row.innerHTML = '<button type="button" class="modal-x" aria-label="Close">✕</button>';
+    row.firstElementChild.addEventListener('click', () => { close(); opts.onDismiss?.(); });
+    card.prepend(row);
+    card.classList.add('has-x');
+    const own = () => !!card.querySelector('[data-x], .icon-btn[data-close], [aria-label^="Close"]:not(.modal-x)');
+    const sync = () => { const hide = own(); row.hidden = hide; card.classList.toggle('has-x', !hide); if (!row.isConnected) card.prepend(row); };
+    sync();
+    new MutationObserver(sync).observe(card, { childList: true, subtree: true });
+  }
   nameDialog(card);
   card.setAttribute('tabindex', '-1');
   // Only things that can take focus: an SVG <use href> inside a portrait matches [href] but cannot.
-  (card.querySelector('button:not([disabled]), a[href], input, select, textarea, summary') ?? card).focus({ preventScroll: true });
+  (card.querySelector('button:not([disabled]):not(.modal-x), a[href], input, select, textarea, summary') ?? card).focus({ preventScroll: true });
   return { el: card, close };
 }
 

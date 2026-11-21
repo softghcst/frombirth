@@ -49,3 +49,16 @@
 .modal.tone-good { border-top: 5px solid var(--good); }
 .modal.tone-bad { border-top: 5px solid var(--bad); }
 .modal.tone-neutral { border-top: 5px solid var(--accent-soft); }
+
+/* The way out of any page that can be closed: a ✕ that stays in the top corner while the page scrolls. */
+.modal-xrow { position: sticky; top: -14px; height: 0; z-index: 5; display: flex; justify-content: flex-end; }
+.modal-xrow[hidden] { display: none; }
+.modal-x {
+  position: relative; top: -12px; right: -6px; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 1.05rem; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line-soft); box-shadow: var(--shadow-lift);
+}
+@media (hover: hover) { .modal-x:hover { background: var(--accent-soft); } }
+.modal-x:active { transform: scale(0.94); }
+/* Keep the first heading clear of it. */
+.modal.has-x h2:first-of-type, .modal.has-x h1:first-of-type { padding-right: 40px; }

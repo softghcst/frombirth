@@ -11,6 +11,7 @@ import { forgetNpc } from './digital/core.js';
 import { book } from './ledger.js';
 import { settleNpc } from './npcMoney.js';
 import { animalDied } from './animals.js';
+import { SPECIES } from '../data/animals.js';
 import { estateTax } from './inheritance.js';
 import { rate } from './currency.js';
 
@@ -44,7 +45,7 @@ export function roleLabel(npc) {
     case 'partner': return npc.flags.engaged ? byGender(npc, 'Fiancé', 'Fiancée', 'Betrothed')
       : byGender(npc, 'Boyfriend', 'Girlfriend', 'Partner');
     case 'ex': return npc.flags.wasSpouse ? byGender(npc, 'Ex-husband', 'Ex-wife', 'Ex-spouse') : 'Ex';
-    case 'pet': return `Pet ${npc.species}`;
+    case 'pet': return `Pet ${SPECIES[npc.species]?.name ?? String(npc.species ?? 'animal').replace(/_/g, ' ')}`;
     case 'clinician': return npc.occupation ?? 'Clinician';
     case 'groupmate': return 'From your group';
     // People met through the justice system: what they do, or where they are.

@@ -331,8 +331,16 @@ export function trainAction(kind, npcId = null) {
   const t = trainee(p);
   const i = idolOf(p);
   if (!t && !idolMember(p)) return result(false, 'You are not training anywhere.', 'neutral');
-  if (i.acts.sessions >= 4) return result(false, 'You have nothing left this year. Rest is part of training too.', 'neutral');
-  i.acts.sessions += 1;
+  // Time with the other trainees is not a practice session: it has no yearly budget, only once per kind per person.
+  const social = ['friend', 'help', 'support', 'resolve'].includes(kind);
+  if (social) {
+    const key = `${kind}:${npcId}`;
+    if (i.acts.did[key]) return result(false, `You have already done that with ${npc(npcId)?.firstName ?? 'them'} this year.`, 'neutral');
+    if (npc(npcId)) i.acts.did[key] = true;
+  } else {
+    if (i.acts.sessions >= 4) return result(false, 'You have nothing left this year. Rest is part of training too.', 'neutral');
+    i.acts.sessions += 1;
+  }
   const a = t?.agency ?? agency(K().groups[i.groupId]?.agencyId);
   if (kind === 'vocal' || kind === 'dance' || kind === 'rap' || kind === 'korean' || kind === 'media' || kind === 'stage') {
     raise('player', kind, 3 + (a?.training ?? 60) / 40);
