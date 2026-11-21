@@ -50,7 +50,7 @@ export const payK = (city = player().city, countryId = player().countryId) => ci
 /** One line about a city, for a list. */
 export function cityLine(countryId, name) {
   const k = cityOf(countryId, name);
-  return [k.region && k.region !== name ? k.region : '', k.kind === 'capital' ? 'the capital' : '', `homes ${k.housingWord}`, `pay ${k.payWord}`, k.servicesLine].filter(Boolean).join(' · ');
+  return [k.kind === 'capital' ? 'the capital' : '', `homes ${k.housingWord}`, `pay ${k.payWord}`].filter(Boolean).join(' · ');
 }
 
 // ---------- Moving within the country ----------

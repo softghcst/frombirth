@@ -7,7 +7,19 @@ const out = need('flags.identity.outOrientation', '==', true);
 const outGender = need('flags.identity.outGender', '==', true);
 
 /** @type {import('../../types.js').GameEvent[]} */
+const feeling = (value) => ({ type: 'genderFeeling', value });
+
 export default [
+  // Queued by engine/identity.js for a transgender character who has not gone looking: the feeling arrives anyway.
+  {
+    id: 'gender_feeling', category: 'identity', ageRange: [13, 120], queuedOnly: true,
+    text: 'For a while now, something has not fitted. When people call you a {born}, it feels like a coat that belongs to someone else, and you cannot stop noticing.',
+    choices: [
+      { label: 'Look into it', outcomes: [any('You let yourself think about it, properly.', 'neutral', feeling('look'))] },
+      { label: 'Think about it later', outcomes: [any('Not now. Maybe soon.', 'neutral', feeling('later'))] },
+      { label: 'Push it away', outcomes: [any('You tell yourself it is nothing.', 'bad', feeling('push'))] },
+    ],
+  },
   {
     id: 'kid_comes_out', category: 'their life', ageRange: [28, 120], queuedOnly: true, cooldown: 1,
     text: '{kid} asks if you have a minute, and then cannot seem to start. "I\'m not straight," comes out at last, very fast. "I wanted you to hear it from me."',

@@ -40,6 +40,8 @@ import { register as registerAnimal, reconcile as reconcileAnimals } from './ani
  * @param {string} [opts.orientation]  one of ORIENTATIONS in engine/identity.js
  * @param {'commoner'|'noble'|'royal'} [opts.birthRank]  only matters in a monarchy; left out, a title at birth is rare
  * @param {boolean} [opts.trans]  whether `gender` differs from the one registered at birth
+ * @param {'male'|'female'} [opts.sex]  the sex registered at birth; with it, `gender` (if given) is who they are, and
+ *   otherwise follows from `trans`
  * @returns {import('../types.js').GameState}
  */
 export function createLife(opts = {}) {
@@ -47,9 +49,19 @@ export function createLife(opts = {}) {
 
   const c = COUNTRIES[opts.countryId] ?? rng.pick(COUNTRY_LIST);
   // `identityGender` is who they are. A transgender character is registered as something else at birth.
-  const identityGender = opts.gender ?? rng.pick(['male', 'female']);
-  const trans = opts.trans ?? rng.chance(TRANS_RATE);
-  const gender = !trans ? identityGender : identityGender === 'male' ? 'female' : identityGender === 'female' ? 'male' : rng.pick(['male', 'female']);
+  // Or from the other end (the life designer): `sex` is who they are registered as at birth, and who they are follows
+  // from whether they are transgender (the other) or non-binary.
+  const other = (g) => (g === 'male' ? 'female' : 'male');
+  let identityGender, trans, gender;
+  if (opts.sex === 'male' || opts.sex === 'female') {
+    trans = opts.trans ?? (opts.gender === 'nonbinary' ? true : rng.chance(TRANS_RATE));
+    gender = opts.sex;
+    identityGender = opts.gender ?? (trans ? other(opts.sex) : opts.sex);
+  } else {
+    identityGender = opts.gender ?? rng.pick(['male', 'female']);
+    trans = opts.trans ?? rng.chance(TRANS_RATE);
+    gender = !trans ? identityGender : identityGender === 'male' ? 'female' : identityGender === 'female' ? 'male' : rng.pick(['male', 'female']);
+  }
   const orientation = opts.orientation ?? rollOrientation();
   const lastName = surnameFor(c.id, opts.lastName?.trim() || rng.pick(c.names.last), gender);
   const firstName = opts.firstName?.trim()
@@ -131,8 +143,8 @@ export function createLife(opts = {}) {
   };
   player.flags.bornAs = gender;
   player.flags.interestedIn = attractedTo(orientation, identityGender);
-  // A transgender child works out who they are some time in childhood.
-  if (trans) { player.flags.trueGender = identityGender; player.flags.realizeAge = rng.int(4, 14); }
+  // A transgender character who never goes looking feels it some time from the teenage years on: at 14, or 19, or 31.
+  if (trans) { const r = rng.int(0, 99); player.flags.trueGender = identityGender; player.flags.realizeAge = r < 40 ? 13 + (r % 5) : r < 75 ? 18 + (r % 7) : 25 + (r % 11); }
   // Natural gifts make the matching skills come faster all life long.
   player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 65).map(([k]) => k);
   // Growing up around how their parents handle money gives a child a little to start from (engine/achievements.js).
