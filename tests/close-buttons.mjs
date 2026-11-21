@@ -63,6 +63,12 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.waitForTimeout(50);
   check(await page.locator('#modal-root .modal-back:visible').count() === 1 && await page.locator('#modal-root [data-x]:visible').count() === 0, `${label}: a page with its own ✕ gets one Back, and its own ✕ is tucked away`);
   await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
+  // A page with levels of its own: Back presses its own back control, and leaves the page only from the first level.
+  await page.evaluate(async () => { const M = await import('/js/ui/modals.js'); const m = M.openModal('<div id="lvl"><h2>Level one</h2><button class="btn" data-next>Deeper</button></div>', { dismissable: true }); m.el.addEventListener('click', (e) => { if (e.target.closest('[data-next]')) m.el.querySelector('#lvl').innerHTML = '<h2>Level two</h2><button class="btn" data-back>Back to one</button>'; if (e.target.closest('[data-back]:not(.modal-back)')) m.el.querySelector('#lvl').innerHTML = '<h2>Level one</h2><button class="btn" data-next>Deeper</button>'; }); });
+  await page.click('#modal-root [data-next]'); await page.locator('#modal-root .modal-back').click(); await page.waitForTimeout(80);
+  check(await page.locator('#modal-root .scrim').count() === 1 && /Level one/.test(await page.locator('#modal-root .modal').innerText()), `${label}: Back steps out one level at a time`);
+  await page.locator('#modal-root .modal-back').click(); await page.waitForTimeout(80);
+  check(!(await page.locator('#modal-root .scrim').count()), `${label}: and leaves the page from the first`);
   // My Neighborhood, opened from Pursuits.
   await page.locator('[data-tab="pursuits"]').click(); await page.waitForTimeout(200);
   if (await page.locator('[data-go="neighborhood"]').count()) {

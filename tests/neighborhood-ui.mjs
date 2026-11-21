@@ -53,7 +53,7 @@ async function openHood(page) {
   await page.click('[data-go="neighborhood"]'); await page.waitForSelector('.hood-modal');
 }
 const tab = async (page, id) => { await page.click(`.hood-modal [data-set="tab:${id}"]`); await page.waitForTimeout(150); };
-const close = async (page) => { await page.click('.hood-modal .modal-back'); await page.waitForTimeout(150); };
+const close = async (page) => { for (let i = 0; i < 8 && await page.locator('.hood-modal').count(); i++) { await page.click('.hood-modal .modal-back'); await page.waitForTimeout(150); } }; // (Back steps out one level at a time)
 
 for (const [name, viewport] of [['phone', { width: 390, height: 844 }], ['desktop', { width: 1280, height: 900 }]]) {
   const context = await browser.newContext({ viewport });

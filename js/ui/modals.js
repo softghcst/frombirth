@@ -41,7 +41,13 @@ export function openModal(html, opts = {}) {
     const row = document.createElement('div');
     row.className = 'modal-backrow';
     row.innerHTML = '<button type="button" class="modal-back" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>';
-    row.firstElementChild.addEventListener('click', () => { close(); opts.onDismiss?.(); });
+    // A page with levels of its own (a screen opened from a screen) has its own back control: this one presses it, so Back
+    // steps out one level at a time and only leaves the page from the first.
+    row.firstElementChild.addEventListener('click', () => {
+      const inner = card.querySelector('[data-back]:not(.modal-back)');
+      if (inner && !inner.disabled) { inner.click(); return; }
+      close(); opts.onDismiss?.();
+    });
     card.prepend(row);
     card.classList.add('has-back');
     // Pages redraw their own contents; the row is put back if one wipes it.
