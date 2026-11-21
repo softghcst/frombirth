@@ -21,16 +21,18 @@ CENTRES = [(218, 298), (294, 298)]
 INK = 'fill:#2a160c;stroke:var(--line-ink,currentColor);stroke-width:var(--line-width,0);stroke-linejoin:round'
 f = lambda v: f'{v:.1f}'.rstrip('0').rstrip('.')
 
-# rx, ry: the white; iris: radius; lid: how heavy the upper lid line is; tilt: outer corners up (+) or down (-).
+# rx, ry: the white (a little wider than tall, so the eye never stares); iris: radius, big enough to fill the eye
+# top to bottom so little white shows above or below it (white all round a small iris reads as fright); lid: how
+# thick the upper lid is at its middle; tilt: outer corners up (+) or down (-).
 SHAPES = {
-    'round': {'rx': 19, 'ry': 21, 'iris': 13, 'lid': 4.5, 'tilt': 0},
-    'soft': {'rx': 21, 'ry': 17, 'iris': 12, 'lid': 4, 'tilt': 2},
-    'bright': {'rx': 20, 'ry': 20, 'iris': 15, 'lid': 4.5, 'tilt': -1},
+    'round': {'rx': 18, 'ry': 15, 'iris': 13, 'lid': 4.2, 'tilt': 0},
+    'soft': {'rx': 18.5, 'ry': 13, 'iris': 12.5, 'lid': 4.2, 'tilt': 1.5},
+    'bright': {'rx': 17.5, 'ry': 15.5, 'iris': 13.5, 'lid': 4, 'tilt': -0.5},
 }
 
 
-def oval(cx, cy, rx, ry, tilt, side, n=48):
-    """Points round an eye: an ellipse whose outer corner is lifted by `tilt`."""
+def oval(cx, cy, rx, ry, tilt, side, n=60):
+    """Points round an eye, from the outer corner: an ellipse whose outer corner is lifted by `tilt`."""
     pts = []
     for k in range(n):
         a = 2 * math.pi * k / n
@@ -44,35 +46,52 @@ def closed(pts):
     return 'M' + ' L'.join(f'{f(x)} {f(y)}' for x, y in pts) + 'Z'
 
 
+def inside(cx, cy, rx, ry, tilt, side):
+    """Clamps a point into the eye white (by hand, as clip paths are not resolved everywhere inside a <use>d file)."""
+    def clamp(x, y):
+        x = min(max(x, cx - rx + 0.3), cx + rx - 0.3)
+        h = ry * math.sqrt(max(0.0, 1 - ((x - cx) / rx) ** 2))
+        lift = tilt * max(0, (x - cx) * side / rx)
+        return x, min(max(y, cy - h - lift), cy + h - lift)
+    return clamp
+
+
+def disc(x0, y0, r, clamp=None, n=40):
+    pts = [(x0 + r * math.cos(2 * math.pi * k / n), y0 + r * math.sin(2 * math.pi * k / n)) for k in range(n)]
+    return closed([clamp(x, y) for x, y in pts] if clamp else pts)
+
+
 def eye_pair(shape):
     s = SHAPES[shape]
-    white, ink, iris, irisDark, pupil, shine = [], [], [], [], [], []
+    white, lids, lower, iris, irisDark, pupil, shine = [], [], [], [], [], [], []
     for (cx, cy), side in zip(CENTRES, (-1, 1)):
         o = oval(cx, cy, s['rx'], s['ry'], s['tilt'], side)
         white.append(closed(o))
-        # The outline: a thin ring all round, and a heavier upper lid, as one ink shape (outer ring minus the white).
-        ring = oval(cx, cy, s['rx'] + 2.2, s['ry'] + 2.2, s['tilt'], side)
-        lid = [(x, y - s['lid'] * max(0.0, -(y - cy) / s['ry']) ** 0.8) for x, y in ring]
-        ink.append(closed(lid) + ' ' + closed(o[::-1]))
-        ix, iy = cx + side * 0.5, cy + 3
-        iris.append(f'M{f(ix - s["iris"])} {f(iy)}a{s["iris"]} {s["iris"]} 0 1 0 {2 * s["iris"]} 0a{s["iris"]} {s["iris"]} 0 1 0 {-2 * s["iris"]} 0Z')
-        r2 = s['iris'] * 0.62
-        irisDark.append(f'M{f(ix - r2)} {f(iy + 2)}a{f(r2)} {f(r2)} 0 1 0 {f(2 * r2)} 0a{f(r2)} {f(r2)} 0 1 0 {f(-2 * r2)} 0Z')
-        rp = s['iris'] * 0.45
-        pupil.append(f'M{f(ix - rp)} {f(iy)}a{f(rp)} {f(rp)} 0 1 0 {f(2 * rp)} 0a{f(rp)} {f(rp)} 0 1 0 {f(-2 * rp)} 0Z')
-        hx, hy, hr = ix - s['iris'] * 0.42, iy - s['iris'] * 0.42, s['iris'] * 0.32
-        shine.append(f'M{f(hx - hr)} {f(hy)}a{f(hr)} {f(hr)} 0 1 0 {f(2 * hr)} 0a{f(hr)} {f(hr)} 0 1 0 {f(-2 * hr)} 0Z')
-        sx, sy, sr = ix + s['iris'] * 0.38, iy + s['iris'] * 0.35, s['iris'] * 0.14
-        shine.append(f'M{f(sx - sr)} {f(sy)}a{f(sr)} {f(sr)} 0 1 0 {f(2 * sr)} 0a{f(sr)} {f(sr)} 0 1 0 {f(-2 * sr)} 0Z')
-    # The iris is sized to sit inside the white (no clipping: a clip inside a file drawn by <use> is not resolved everywhere).
+        clamp = inside(cx, cy, s['rx'], s['ry'], s['tilt'], side)
+        # The iris sits a little high, its top tucked under the lid: a calm, sweet look rather than a stare.
+        ix, iy, r = cx + side * 0.6, cy - 1, s['iris']
+        iris.append(disc(ix, iy, r, clamp))
+        irisDark.append(disc(ix, iy + 1.5, r * 0.66, clamp))
+        pupil.append(disc(ix, iy + 0.5, r * 0.42, clamp))
+        shine.append(disc(ix - r * 0.36, iy - r * 0.34, r * 0.3))
+        shine.append(disc(ix + r * 0.34, iy + r * 0.38, r * 0.12))
+        # Upper lid: a crescent over the top of the eye, thickest in the middle, tapering to points at both corners.
+        top = [(x, y) for x, y in o if y <= cy - s['tilt'] * max(0, (x - cx) * side / s['rx']) + 0.01]
+        top.sort(key=lambda p: p[0])
+        outer = [(x, y - s['lid'] * (1 - ((x - cx) / s['rx']) ** 2) ** 0.7 - 0.6) for x, y in top]
+        lids.append(closed(top + outer[::-1]))
+        # Lower lid: a short, thin line under the middle of the eye only.
+        bot = sorted([(x, y) for x, y in o if y > cy + s['ry'] * 0.55], key=lambda p: p[0])
+        lower.append('M' + ' L'.join(f'{f(x)} {f(y + 0.6)}' for x, y in bot))
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-pathways="1" data-child-eyes="{shape}"><g id="art">
-<!-- Generated by scripts/make_child_eyes.py: a child's eyes, round and open, with no lashes. -->
+<!-- Generated by scripts/make_child_eyes.py: a child's eyes, a big iris under a soft lid, with no lashes. -->
 <path style="fill:var(--eye-white,#ffffff)" d="{" ".join(white)}"/>
 <path style="fill:var(--eye-color,#6b4a2e)" d="{" ".join(iris)}"/>
-<path style="fill:color-mix(in srgb,var(--eye-color,#6b4a2e) 75%,#000)" d="{" ".join(irisDark)}"/>
+<path style="fill:color-mix(in srgb,var(--eye-color,#6b4a2e) 72%,#000)" d="{" ".join(irisDark)}"/>
 <path style="fill:#1a0e08" d="{" ".join(pupil)}"/>
 <path style="fill:#ffffff" d="{" ".join(shine)}"/>
-<path style="{INK}" fill-rule="evenodd" d="{" ".join(ink)}"/>
+<path style="fill:none;stroke:#2a160c;stroke-opacity:.55;stroke-width:1.6;stroke-linecap:round" d="{" ".join(lower)}"/>
+<path style="{INK}" d="{" ".join(lids)}"/>
 </g></svg>
 '''
 
