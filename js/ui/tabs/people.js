@@ -36,7 +36,7 @@ import { eventsOf } from '../../engine/digital/core.js';
 import { accountsOf } from '../../engine/digital/accounts.js';
 import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
-import { navRow, navGroup } from '../kit.js';
+import { navRow, navGroup, lockedRow, fromAge } from '../kit.js';
 import * as together from '../../engine/together.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
@@ -508,8 +508,12 @@ export default {
     const top = [['moments', 'My Moments', '', 'calendar'], ['animals', 'Pets & Animals', '', 'paw']];
     const keep = [['tree', 'Family tree', '', 'tree'], ['archive', 'Family archive', '', 'archive'], ['digitalArchive', 'Letters and photos', '', 'letter']];
     const more = [];
+    // What is not open yet is shown greyed, with why (the fifth item), so the player can see it is there.
+    const pp = player();
     if (love.canLookForLove()) more.push(['love', 'Look for love', '', 'heart']);
+    else if (!love.partner()) more.push(['love', 'Look for love', '', 'heart', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, love.DATING_AGE) || 'Not open to you now']);
     if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), 'child']);
+    else more.push(['adopt', 'Adopt a child', '', 'child', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, 21) || 'Your family is already large']);
     const owed = rel.timeStillOwed().length;
     if (nearby.size) more.unshift(['neighbors', 'Neighbors you know', `${nearby.size} on My Neighborhood`, 'home']);
 
@@ -521,7 +525,7 @@ export default {
         <div class="side"><span class="pct">${Math.round(n.meters.relationship)}%</span>
           <div class="mini" role="meter" aria-label="Relationship" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(n.meters.relationship)}"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
       </button>`;
-    const nav = (list) => list.map(([id, label, sub, ico]) => navRow({ attrs: `data-top="${id}"`, label, sub, ico }));
+    const nav = (list) => list.map(([id, label, sub, ico, why]) => (why ? lockedRow(label, why, ico) : navRow({ attrs: `data-top="${id}"`, label, sub, ico })));
 
     el.innerHTML = `
       ${owed > 1 ? navGroup(nav([['spendAll', 'Spend time with everyone', `${owed} people you have not seen this year`, 'heart']])) : ''}

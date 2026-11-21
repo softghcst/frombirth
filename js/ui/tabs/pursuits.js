@@ -20,6 +20,7 @@ import * as clubLife from '../../engine/clubs.js';
 import { openDigitalLife, digitalCard } from '../digital.js';
 import * as bc from '../../engine/digital/broadcast.js';
 import { canEmigrate } from '../../engine/emigration.js';
+import { EMIGRATION } from '../../data/activities.js';
 import * as leisure from '../leisure.js';
 import { openExplore } from '../globalLife.js';
 import { roleLabel } from '../../engine/relationships.js';
@@ -28,7 +29,7 @@ import { openScreen } from '../animals.js';
 import '../animalHub.js';
 import * as riding from '../../engine/equestrian.js';
 import { athleticsCard, openAthletics } from '../sports.js';
-import { navRow, navGroup } from '../kit.js';
+import { navRow, navGroup, lockedRow, fromAge } from '../kit.js';
 import { openNeighborhood, neighborhoodSub } from '../neighborhood.js';
 
 async function report(api, r) {
@@ -121,6 +122,9 @@ export default {
       const safety = loveStories.teenSafety();
       const money = p.age >= 5 && p.age <= 17;
       const cc = p.flags.childhood ?? {};
+      // What is not open yet is shown greyed, with why, in its place in the list.
+      const jailed = p.legal.incarceration ? 'Not from where you are' : '';
+      const lock = (label, why) => `<div class="nav-group">${lockedRow(label, why)}</div>`;
       el.innerHTML = `
         ${thisYearCard()}
         ${grow.length ? `<div class="card"><h3>Growing up</h3>
@@ -141,6 +145,7 @@ export default {
           </div>
         </div>` : ''}
         <div class="section-label">Fun and hobbies</div>
+        ${p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and classes', jailed || fromAge(p.age, 6))}
         ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and classes</h3>
           <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
           <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(m.club.name.replace(/^(A|An|The) /, '').replace(/^./, (x) => x.toUpperCase()))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
@@ -153,17 +158,23 @@ export default {
         ${things.some((a) => !a.charm) ? `<div class="card"><h3>Things to do</h3>
           <div class="btn-pair">${things.filter((a) => !a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
         </div>` : ''}
+        ${p.age >= 6 && !p.legal.incarceration ? '' : lock('Riding', jailed || fromAge(p.age, 6))}
         ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding', ico: 'trophy',
           sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : '' })]) : ''}
+        ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? '' : lock('Photocards', jailed || fromAge(p.age, 8) || 'Photocards begin in 1999')}
         ${p.age >= 8 && !p.legal.incarceration && store.state.year >= 1999 ? navGroup([navRow({ attrs: 'data-go="photocards"', label: 'Photocards', ico: 'star',
           sub: p.fan ? `A fan of ${store.state.kpop?.groups[p.fan.groupId]?.name ?? 'a group'} · ${Object.values(p.fan.cards).reduce((t, n) => t + n, 0)} photocards${p.fan.sets.length ? ` · ${p.fan.sets.length} full ${p.fan.sets.length === 1 ? 'set' : 'sets'}` : ''}` : '' })]) : ''}
         ${(() => { const opts = bc.broadcastOptions(); return opts.length ? `<div class="card"><h3>Radio and television</h3><div class="btn-pair">${opts.map((o) => `<button class="btn" data-tune="${o.id}" ${o.done ? 'disabled' : ''}>${esc(o.label)}${o.done ? ' · done this year' : ''}</button>`).join('')}${p.age >= 16 ? opts.filter((o) => bc.setFor(o.id) === 'elsewhere').map((o) => `<button class="btn" data-buyset="${o.id === 'radio' ? 'radio_set' : 'tv_set'}">Buy a ${o.id === 'radio' ? 'radio' : 'television'} set of your own</button>`).join('') : ''}</div></div>` : ''; })()}
+        ${p.age >= 6 ? '' : lock('Digital Life', fromAge(p.age, 6))}
         ${digitalCard()}
         <div class="section-label">Where you live</div>
+        ${p.age >= 3 && !p.legal.incarceration ? '' : lock('My Neighborhood', jailed || fromAge(p.age, 3))}
         ${p.age >= 3 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="neighborhood"', label: 'My Neighborhood', ico: 'home', sub: neighborhoodSub() })]) : ''}
         ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' }), navRow({ attrs: 'data-go="documents"', label: 'Passport & Documents', ico: 'passport' })])}
+        ${canEmigrate() ? '' : lock('Moving', jailed || fromAge(p.age, EMIGRATION.minAge) || 'Not while a case is open against you')}
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}.</p><div class="btn-pair">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}
         <div class="section-label">Risky business</div>
+        ${canGamble() ? '' : lock('Gambling', jailed || may('gamble').why || 'Not open to you now')}
         ${canGamble() ? `<div class="card"><h3>Gambling</h3>
           <div class="btn-pair">
             <button class="btn" data-play="blackjack">Blackjack</button>
@@ -172,6 +183,7 @@ export default {
           </div>
           ${gambled ? `<div class="kv" style="margin-top:10px"><span>Staked in your lifetime</span><span>${esc(fmtMoney(gambled, c))}</span></div>` : ''}
         </div>` : ''}
+        ${law.canCommitCrimes() ? '' : lock('Crime', jailed || fromAge(p.age, 8) || 'Not while a case is open against you')}
         ${law.canCommitCrimes() ? `<div class="card"><h3>Crime</h3>
           <div class="kv"><span>Police attention</span><span>${p.legal.heat >= 60 ? 'They are looking for you' : p.legal.heat >= 25 ? 'You are known to them' : 'None'}</span></div>
           ${p.flags.fugitive ? '<div class="kv"><span>Status</span><span>On the run</span></div>' : ''}
