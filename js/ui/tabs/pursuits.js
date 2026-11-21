@@ -14,7 +14,7 @@ import { prisonHub, hubClick } from '../prisonHub.js';
 import { legalCard, legalClick } from '../justice.js';
 import { playBlackjack, playHorses, playLottery } from '../minigames/casino.js';
 import { meterHtml } from '../meter.js';
-import { messageModal, pickModal, confirmModal } from '../modals.js';
+import { messageModal, pickModal, confirmModal, openModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
 import * as clubLife from '../../engine/clubs.js';
 import { openDigitalLife, digitalCard } from '../digital.js';
@@ -36,6 +36,38 @@ async function report(api, r) {
   await messageModal({ body: r.text, tone: r.tone });
 }
 
+/** Who, and how: two dropdowns and a button. Resolves to { who, how }, or null if called off. */
+function targetForm() {
+  const known = law.targets();
+  const strangers = law.strangerOptions();
+  const methods = law.methodOptions();
+  const cap = (s) => s.replace(/^./, (ch) => ch.toUpperCase());
+  return new Promise((resolve) => {
+    const m = openModal(`
+      <h2>Kill someone</h2>
+      <p class="body">Some ways are surer. Some are quieter. Some are neither. There is no taking this back.</p>
+      <div class="field"><label for="k-who">Who</label>
+        <select id="k-who">
+          <optgroup label="Strangers around this year">${strangers.map((x) => `<option value="stranger:${esc(x.id)}">${esc(cap(x.name))}</option>`).join('')}</optgroup>
+          ${known.length ? `<optgroup label="People you know">${known.map((n) => `<option value="npc:${esc(n.id)}">${esc(`${n.firstName} ${n.lastName}`)} (${esc(roleLabel(n).toLowerCase())}, ${n.age})</option>`).join('')}</optgroup>` : ''}
+        </select><p class="muted" data-who-note style="margin-top:4px"></p></div>
+      <div class="field"><label for="k-how">How</label>
+        <select id="k-how">${methods.map((x) => `<option value="${esc(x.id)}">${esc(x.name)} (chances: ${esc(x.odds)})</option>`).join('')}</select>
+        <p class="muted" data-how-note style="margin-top:4px"></p></div>
+      <div class="btn-row" style="margin-top:14px"><button type="button" class="btn" data-cancel>Never mind</button><button type="button" class="btn danger" data-go>Do it</button></div>`,
+    { dismissable: true, onDismiss: () => resolve(null) });
+    const who = m.el.querySelector('#k-who'); const how = m.el.querySelector('#k-how');
+    const notes = () => {
+      const s = strangers.find((x) => `stranger:${x.id}` === who.value);
+      m.el.querySelector('[data-who-note]').textContent = s ? s.note ?? '' : 'They trust you, which makes it easier to get close.';
+      m.el.querySelector('[data-how-note]').textContent = methods.find((x) => x.id === how.value)?.blurb ?? '';
+    };
+    who.addEventListener('change', notes); how.addEventListener('change', notes); notes();
+    m.el.querySelector('[data-cancel]').addEventListener('click', () => { m.close(); resolve(null); });
+    m.el.querySelector('[data-go]').addEventListener('click', () => { const v = { who: who.value, how: how.value }; m.close(); resolve(v); });
+  });
+}
+
 async function commitCrime(api) {
   const id = await pickModal({
     title: 'Crime',
@@ -46,24 +78,15 @@ async function commitCrime(api) {
   let targetId;
   const how = {};
   if (CRIME_BY_ID[id].target) {
-    const known = law.targets();
-    const kind = await pickModal({ title: 'Who?', options: [
-      { value: 'stranger', label: 'A stranger', sub: 'Whoever happens to be around this year.' },
-      { value: 'known', label: 'Someone you know', sub: known.length ? 'They trust you, which makes it easier to get close.' : 'You do not know anyone.', disabled: !known.length },
-    ] });
-    if (!kind) return;
-    if (kind === 'known') {
-      targetId = await pickModal({ title: 'Who?',
-        options: known.map((n) => ({ value: n.id, label: `${n.firstName} ${n.lastName}`, sub: `${roleLabel(n)}, age ${n.age}` })) });
-      if (!targetId) return;
-    } else {
-      how.strangerId = await pickModal({ title: 'Who?', body: 'Different people every year.',
-        options: law.strangerOptions().map((x) => ({ value: x.id, label: x.name.replace(/^./, (ch) => ch.toUpperCase()), sub: x.note })) });
-      if (!how.strangerId) return;
-    }
-    how.methodId = await pickModal({ title: 'How?', body: 'Some ways are surer. Some are quieter. Some are neither.',
-      options: law.methodOptions().map((m) => ({ value: m.id, label: m.name, sub: `${m.blurb} Your chances: ${m.odds}.` })) });
-    if (!how.methodId) return;
+    // One form: who, and how, each a dropdown.
+    const pick = await targetForm();
+    if (!pick) return;
+    if (pick.who.startsWith('npc:')) targetId = pick.who.slice(4); else how.strangerId = pick.who.slice(9);
+    how.methodId = pick.how;
+    const r = law.commitCrime(id, targetId, how);
+    await report(api, r);
+    if (r.arrested) await api.justice();
+    return;
   }
   const sure = await confirmModal({ title: `${CRIME_BY_ID[id].name}?`, body: 'There is no taking this back.', yes: 'Do it', danger: true });
   if (!sure) return;
