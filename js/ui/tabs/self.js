@@ -78,10 +78,9 @@ export default {
         ${here.rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         </details>
         ${crownLine ? crownLine.replace(/^<div class="card"><h3>[^<]*<\/h3>/, '<div class="section-label">The crown</div>').replace(/<\/div>$/, '') : ''}</div>`; })()}
-      ${navGroup([
-    navRow({ attrs: 'data-world', label: 'The world', ico: 'compass' }),
-    navRow({ attrs: 'data-news', label: 'World news', ico: 'news' }),
-  ], 'The world')}
+      <div class="card"><h3>The world</h3>
+        <p class="muted">The map, every country and how it compares, and the news from everywhere.</p>
+        <div class="btn-stack"><button class="btn" data-world>The world map</button><button class="btn" data-news>World news</button></div></div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
       ${navGroup([
     navRow({ attrs: 'data-settings', label: 'Settings', ico: 'settings' }),

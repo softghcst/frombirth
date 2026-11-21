@@ -747,13 +747,13 @@ export function groundFloorOption(state = store.state) {
 }
 
 /** Children on the player's street who go to the local school and are in the player's year: at most `max`. */
-export function neighborKidsFor(state, age, max = 2) {
+export function neighborKidsFor(state, age, max = 2, { school = true } = {}) {
   if (!state?.hoods || max <= 0) return [];
   const home = currentHome(state);
   if (!home) return [];
   const H = hoods(state);
   return around(state, home.id).filter((x) => x.hh && !x.hh.me && !x.hh.fam).flatMap((x) => x.hh.m).map((id) => H.res[id])
-    .filter((r) => r && aliveRes(r) && r.school && Math.abs(ageOf(r, state) - age) <= 1 && !(state.npcs[r.id] && state.player.npcIds.includes(r.id) && state.npcs[r.id].role === 'classmate'))
+    .filter((r) => r && aliveRes(r) && (!school || r.school) && Math.abs(ageOf(r, state) - age) <= (school ? 1 : 2) && !(state.npcs[r.id] && state.player.npcIds.includes(r.id) && (school ? state.npcs[r.id].role === 'classmate' : true)))
     .slice(0, Math.min(2, max)).map((r) => r.id);
 }
 
@@ -821,7 +821,11 @@ const sceneSort = (id) => (COMPANY.has(id) ? 'company' : id);
 
 /** Queues one neighborhood scene for the player, once per story key, one a year at most. */
 /** Years before the same neighborhood scene can come again, whoever it is about. */
-const SCENE_GAP = 5;
+const SCENE_GAP = 10;
+/** Years between any two neighborhood scenes: the neighborhood is background, and the rest of life comes first. */
+const ANY_GAP = 2;
+/** Scenes that are the same story told about a different occasion: one gap for all of them. */
+const STORY_OF = { hood_block_party: 'hood_community_event', hood_building_gathering: 'hood_community_event', hood_invitation_upstairs: 'hood_invitation' };
 
 export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   const H = hoods(state);
@@ -831,10 +835,13 @@ export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   if (thisYear >= SCENES_A_YEAR) return false;
   // The same sort of scene (another invitation, another neighbor wanting company) not two years running.
   if (H.lastScene?.sort === sceneSort(id) && yearOf(t) - H.lastScene.y <= 1) return false;
-  // And the same scene (another community event, another neighbor needing a hand) not again for a few years.
+  // One neighborhood scene every couple of years at most, whatever it is about.
+  if (H.lastScene && yearOf(t) - H.lastScene.y < ANY_GAP) return false;
+  // And the same story (another community event, another neighbor needing a hand) not again for ten years.
   H.byId ??= {};
-  if (H.byId[id] != null && yearOf(t) - H.byId[id] < SCENE_GAP) return false;
-  H.byId[id] = yearOf(t);
+  const story = STORY_OF[id] ?? id;
+  if (H.byId[story] != null && yearOf(t) - H.byId[story] < SCENE_GAP) return false;
+  H.byId[story] = yearOf(t);
   H.seen[key] = t;
   H.lastScene = { sort: sceneSort(id), y: yearOf(t) };
   state.pendingEvents.push({ id, cast });
@@ -1506,20 +1513,23 @@ export { syncAssets };
 
 // ---------- Friend groups ----------
 
-/** Children and teenagers on the same streets who are all friends of the player become a group, with a name. */
+/**
+ * Children and teenagers on the same street who are all the player's friends become a group of friends: the same
+ * friend groups as anywhere else in the game (engine/together.js, `flags.circle`), with their nights out and falling
+ * outs. There is no second kind of group for neighbors.
+ */
 export function groups(state = store.state) {
   const H = hoods(state);
   const p = state.player;
   const here = currentHome(state);
-  if (!here || p.age > 19) return H.groups;
+  if (!here || p.age > 19) return;
   const friends = knownIn(state, here.h).filter((n) => n.role === 'friend' && Math.abs(n.age - p.age) <= 4);
-  if (friends.length >= 2 && !H.groups.some((g) => g.h === here.h && g.to == null)) {
-    const block = H.blocks[here.b];
-    H.groups.push({ id: `g${H.groups.length + 1}`, name: block.kind === 'building' ? `the kids from ${block.name}` : `the ${block.name} crowd`, h: here.h, m: [meId(p), ...friends.map((n) => n.id)], since: nowT(state) });
-    note(state, { t: nowT(state), h: here.h, k: 'group', text: `${p.firstName}, ${friends.map((n) => n.firstName).join(' and ')} became a group of friends.`, who: meId(p) });
-  }
-  for (const g of H.groups) if (g.to == null && g.h === here.h) for (const n of friends) if (!g.m.includes(n.id)) g.m.push(n.id);
-  return H.groups;
+  if (friends.length < 2 || friends.some((n) => n.flags.circle)) return;
+  const circle = `circle_${friends[0].id}`;
+  for (const n of friends) n.flags.circle = circle;
+  (p.flags.circles ??= {})[circle] = state.year;
+  note(state, { t: nowT(state), h: here.h, k: 'group', text: `${p.firstName}, ${friends.map((n) => n.firstName).join(' and ')} became a group of friends.`, who: meId(p) });
+  void H;
 }
 
 // ---------- Views ----------
