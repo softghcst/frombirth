@@ -25,7 +25,6 @@ import { openMyMoney } from '../money.js';
 import * as review from '../../engine/estateReview.js';
 import { heirs as playableHeirs } from '../../engine/legacy.js';
 import { bankWorth } from '../../engine/banking.js';
-import { householdAnimalsHtml, openAnimalProfile, openHouseChronicle } from '../animals.js';
 import { navRow, navGroup } from '../kit.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
@@ -422,7 +421,6 @@ export default {
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}</details>
       </div>
       ${navGroup(actions.map(([id, label]) => navRow({ attrs: `data-go="${id}"`, label, ico: HOLD_ICONS[id] ?? 'sparkle' })), 'Buy and invest')}
-      ${householdAnimalsHtml()}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
       ${invs ? `<div class="section-label">Investments</div>${invs}` : ''}
@@ -432,9 +430,6 @@ export default {
 
     el.onclick = (e) => {
       const go = e.target.closest('[data-go]')?.dataset.go;
-      const animal = e.target.closest('[data-animal]')?.dataset.animal;
-      if (animal) return openAnimalProfile(api, animal);
-      if (go === 'chronicle') return openHouseChronicle(api);
       if (go) {
         return { mymoney: () => openMoney(api), currencies: () => openCurrencies(api), property: () => browseProperty(api), vehicles: () => browseVehicles(api), market: () => browseMarket(api),
           borrow: () => borrowMoney(api), will: () => changeWill(api), driving: () => drivingTest(api), flying: () => report(api, cars.learnToFly()) }[go]();
