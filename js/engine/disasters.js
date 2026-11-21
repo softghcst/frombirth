@@ -156,8 +156,16 @@ export function tickDisasters(state = store.state) {
     }
   }
   const waiting = new Set(state.pendingEvents.map((x) => x.id));
-  if (worst && p.age >= 8 && !waiting.has('disaster_aftermath')) state.pendingEvents.push({ id: 'disaster_aftermath', cast: { words: { after: AFTERMATH[AFTER_OF[worst.kind]].replace('{what}', what(worst)), what: what(worst) } } });
-  if (far && p.age >= 12 && !waiting.has('disaster_far_away')) {
+  // An aftermath scene at most every three years; a smaller disaster also waits until the same kind of trouble has not
+  // had one for six (a snowy city has a bad storm most winters, and it is not news every time).
+  const afterKind = worst ? AFTER_OF[worst.kind] : null;
+  D.after ??= {};
+  const lastAny = Math.max(-Infinity, ...Object.values(D.after));
+  const fresh = worst && year - lastAny >= 3 && (worst.severity >= 2 || D.after[afterKind] == null || year - D.after[afterKind] >= 6);
+  if (fresh) D.after[afterKind] = year;
+  if (fresh && p.age >= 8 && !waiting.has('disaster_aftermath')) state.pendingEvents.push({ id: 'disaster_aftermath', cast: { words: { after: AFTERMATH[AFTER_OF[worst.kind]].replace('{what}', what(worst)), what: what(worst) } } });
+  if (far && p.age >= 12 && !waiting.has('disaster_far_away') && !(D.farAt != null && year - D.farAt < 3)) {
+    D.farAt = year;
     state.pendingEvents.push({ id: 'disaster_far_away', cast: { person: far.someone.id, words: { kind: KINDS[far.e.kind].name, what: what(far.e), where: theCountry(COUNTRIES[far.e.countryId].name) } } });
   }
   // The record of what was told and prepared for only needs this year and the next.

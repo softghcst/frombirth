@@ -32,7 +32,7 @@ const life = (countryId, city, o = {}) => { for (;;) { store.state = createLife(
 const H = () => N.hoods(S());
 const advance = (n = 1) => { for (let i = 0; i < n && P().alive; i++) { turns.advanceTurn(); S().pendingEvents = []; } };
 // One neighborhood scene a year: these checks queue several on purpose, so each starts with the year's quota free.
-const quota = () => { const h = N.hoods(store.state); for (const [k, t] of Object.entries(h.seen)) if (Math.floor(t / 12) === store.state.year) h.seen[k] = t - 120; h.lastScene = null; };
+const quota = () => { const h = N.hoods(store.state); for (const [k, t] of Object.entries(h.seen)) if (Math.floor(t / 12) === store.state.year) h.seen[k] = t - 120; h.lastScene = null; h.byId = {}; };
 const reload = () => { saveGame(S()); store.state = loadGame(S().slotId); };
 
 /** Every record points at real records, and nothing is in two places at once. */
