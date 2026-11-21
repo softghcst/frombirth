@@ -187,6 +187,24 @@ export function whyNotApply(au, p = player()) {
 }
 const idolMember = (p = player()) => { const g = K().groups[idolOf(p).groupId]; return g && g.members.some((m) => m.who === 'player' && m.to == null); };
 
+/**
+ * Being an idol is a job, like any other: what the player does, as the header, the save card, a CV and an obituary say it.
+ * Null when they are not in idol life at all. `former` is what they were, for after it has ended.
+ */
+export function idolWork(p = player()) {
+  if (!p?.idol) return null;
+  const k = store.state?.kpop;
+  if (!k) return null;
+  const i = p.idol;
+  const g = k.groups?.[i.groupId];
+  const inGroup = g && g.status !== 'disbanded' && g.members.some((m) => m.who === 'player' && m.to == null);
+  if (inGroup) return { title: g.debut ? `K-pop idol, ${g.name}` : `Pre-debut idol, ${g.name}`, current: true, since: g.members.find((m) => m.who === 'player' && m.to == null)?.from ?? null };
+  const c = k.contracts?.[i.traineeId];
+  if (c?.status === 'active') return { title: `Trainee at ${k.agencies?.[c.agencyId]?.name ?? AGENCY_BY_ID[c.agencyId]?.name ?? 'an agency'}`, current: true };
+  const was = [...(i.groups ?? [])].reverse().map((id) => k.groups?.[id]).find((x) => x?.debut);
+  return was ? { title: `Former K-pop idol, ${was.name}`, current: false } : null;
+}
+
 /** Preparing an audition: a year's worth of practice for the tape. Once per audition. */
 export function prepare(auditionId) {
   const i = idolOf();

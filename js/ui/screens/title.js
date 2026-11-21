@@ -1,4 +1,5 @@
 // Title screen: start a life, resume a saved life, or visit the graveyard.
+import { idolWork } from '../../engine/kpop.js';
 import { openWorld } from '../world.js';
 import { openSettings, cloudLine } from '../settings.js';
 import * as cloud from '../../sync/cloud.js';
@@ -109,7 +110,7 @@ function compareTimelines(root) {
     return `<div class="card timeline-card"><h3>${esc(x.m.timeline?.name ?? 'The first telling')}</h3>
       ${x.m.timeline?.note ? `<p class="muted">Parted at ${esc(ageLabel(x.m.timeline.age, x.m.timeline.month))}: ${esc(x.m.timeline.note)}</p>` : '<p class="muted">The road first taken.</p>'}
       <div class="kv"><span>Now</span><span>${p.alive ? `Age ${esc(ageLabel(p.age, x.st.month))}` : `Died at ${p.age}`} · ${c.flag} ${esc(p.city)}</span></div>
-      <div class="kv"><span>Work</span><span>${esc(p.politics?.title ?? p.career.title ?? (p.education.enrolled ? 'Studying' : p.career.retired ? 'Retired' : 'Not working'))}</span></div>
+      <div class="kv"><span>Work</span><span>${esc(p.politics?.title ?? (idolWork(p)?.current ? idolWork(p).title : null) ?? p.career.title ?? (p.education.enrolled ? 'Studying' : p.career.retired ? 'Retired' : 'Not working'))}</span></div>
       <div class="kv"><span>Worth</span><span>${fmtMoney(x.m.netWorth, c)}</span></div>
       <div class="kv"><span>Love</span><span>${love ? `${esc(love.firstName)}${love.role === 'spouse' ? ' (married)' : ''}` : 'Nobody'}${kids ? ` · ${kids} ${kids === 1 ? 'child' : 'children'}` : ''}</span></div>
       <div class="kv"><span>Mood · health</span><span>${Math.round(p.stats.mood)}% · ${Math.round(p.stats.health)}%</span></div>

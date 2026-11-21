@@ -267,6 +267,11 @@ if (g) {
     check(kp.idolOf().pop <= 3, 'one ending fairy does not make a star');
   }
   check(p.milestones.some((m) => /Debuted with/.test(m.text)), 'the debut is in the life story');
+  // Being an idol is a job: the work shown everywhere says so.
+  const idolJob = kp.idolWork(p);
+  check(idolJob?.current && idolJob.title === `K-pop idol, ${g.name}`, `an idol's work is being an idol (${idolJob?.title})`);
+  const cv = (await import('../js/engine/digital/professional.js')).resume();
+  check(cv.jobs.some((j) => j.current && j.title === idolJob.title), 'and it is on the CV');
   // A comeback: a real release, promoted, wins only when earned.
   year();
   const cb = kp.comeback('mini', 'bright');

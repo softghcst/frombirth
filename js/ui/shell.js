@@ -15,6 +15,7 @@ import { avatarSvg, dressOfPlayer } from './avatar.js';
 import { syncMeters } from './meter.js';
 import { eventModal, outcomeModal, confirmModal, openModal, pickModal } from './modals.js';
 import { summarize } from '../engine/yearSummary.js';
+import { idolWork } from '../engine/kpop.js';
 import { portrait } from './tabs/people.js';
 import { roleLabel } from '../engine/relationships.js';
 import { TABS } from './tabs/index.js';
@@ -33,6 +34,8 @@ import { openSettings } from './settings.js';
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
   if (p.politics) return `${p.politics.title}${p.career.title && p.politics.tier < 2 ? ` · ${p.career.title}` : ''}`;
+  const idol = idolWork(p);
+  if (idol?.current) return idol.title;
   if (p.career.title) return p.career.title;
   if (p.royal && ROYAL_RANKS.includes(p.royal.rank) && (p.age >= 18 || !p.education.enrolled)) return standing(p);
   if (p.education.enrolled) return educationLine(p);

@@ -2,6 +2,7 @@
 // their children (or, with no children left, a grandchild). The heir keeps the
 // schooling, job, savings, partner and children they already had, and the
 // rest of the family is re-drawn around them.
+import { idolWork } from './kpop.js';
 import { handOver as handOverHoods } from './neighborhood.js';
 import { held } from './citizenship.js';
 import { archivePerson, archiveIdOf } from './chronicle.js';
@@ -86,7 +87,7 @@ function asAncestor(old, role, year) {
   return { id: uid('npc'), firstName: old.firstName, lastName: old.lastName, gender: old.gender, age: old.age,
     alive: false, role, meters: { relationship: 80, money: 50, crazy: old.hidden.crazy, intellect: old.stats.intellect,
       charm: old.stats.charm, health: 0, generosity: 50 },
-    appearance: cloneAppearance(old.appearance), traits: [...old.traits], occupation: (old.career.title ?? 'retired').toLowerCase(),
+    appearance: cloneAppearance(old.appearance), traits: [...old.traits], occupation: ((idolWork(old)?.current ? idolWork(old).title : null) ?? old.career.title ?? 'retired').toLowerCase(),
     talents: { ...old.talents }, lastInteractionAge: -1, flags: { diedYear: year, ancestor: true, wasPlayer: old.id, archiveId: archiveIdOf(old), ...publicRecord(old) },
     // The same person, for the family's history: where they were born and lived.
     bornIn: old.birthCountryId, birthCity: old.birthCity ?? null,

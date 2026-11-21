@@ -3,6 +3,7 @@
 // real: a contact who works somewhere can put in a word for the player there;
 // a recruiter can point them at a kind of job that exists. It never makes up
 // a vacancy, and the Occupation Engine still decides who is hired.
+import { idolWork } from '../kpop.js';
 import { rng } from '../../rng.js';
 import { store, player } from '../../state.js';
 import { CAREER_BY_ID } from '../../data/careers.js';
@@ -19,6 +20,9 @@ export function resume(charId = player().id) {
   const degrees = (c.education.degrees ?? []).map((d) => ({ what: d.type, field: d.majorId ?? null, school: d.school ?? null, age: d.age }));
   const jobs = [...(c.career.history ?? []).map((h) => ({ title: h.title, from: h.from, to: h.to, careerId: h.careerId })),
     ...(c.career.careerId ? [{ title: c.career.title, from: c.age - (c.career.yearsInRole ?? 0), to: null, careerId: c.career.careerId, current: true }] : [])];
+  // Idol work is work: on the CV with the rest (engine/kpop.js).
+  const idol = c === player() ? idolWork(c) : null;
+  if (idol?.current) jobs.push({ title: idol.title, from: idol.since != null ? c.age - (store.state.year - idol.since) : c.age, to: null, careerId: 'idol', current: true });
   return { degrees, jobs, skills: Object.entries(c.skills ?? {}).filter(([, v]) => v >= 40).map(([k]) => k) };
 }
 
