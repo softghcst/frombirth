@@ -79,7 +79,7 @@ export function openExplore(api, start = {}) {
   const back = () => { if (NAV.stack.length > 1) { NAV.stack.pop(); render(top().scroll); } };
   const section = (view) => { top().scroll = modal.el.scrollTop; NAV.stack = [{ view, params: {}, scroll: 0 }]; render(0); };
   const changed = () => { api?.changed?.(); render(modal.el.scrollTop); };
-  const tell = async (r) => { changed(); await messageModal({ body: r.text, tone: r.tone }); render(modal.el.scrollTop); };
+  const tell = async (r) => { changed(); await messageModal({ title: r.title, body: r.text, tone: r.tone, changes: r.changes }); render(modal.el.scrollTop); };
 
   function render(scroll = 0) {
     const v = top();
@@ -215,7 +215,7 @@ export function openExplore(api, start = {}) {
         ${c.memories.length ? `<div class="card"><h3>Memories</h3>${c.memories.map((e) => `<button type="button" class="tree-row" data-event="${e.id}"><strong>${esc(e.title)}</strong><small>${esc(e.text ?? '')}</small></button>`).join('')}</div>` : ''}
         ${away ? `<div class="card"><h3>While you are here</h3><p class="muted">${travel.daysLeft(t)} days left.</p>${acts.map((a) => `<button type="button" class="tree-row" data-doact="${a.id}" ${t.done.some((d) => d.id === a.id) || a.days > travel.daysLeft(t) ? 'disabled' : ''}><strong>${esc(a.name)}${a.liked ? ' ★' : ''}</strong><small>${a.cost ? esc(money(a.costLocal)) : 'Free'} · ${a.days ? `${a.days} day${a.days > 1 ? 's' : ''}` : 'an evening'}${t.activities.includes(a.id) ? ' · paid for' : ''}</small></button>`).join('')}</div>
           <div class="btn-stack">${btn('Come home', `data-home="${t.id}"`, 'primary')}</div>` : ''}
-        ${t.status === 'confirmed' ? `<div class="btn-stack">${docs.yearOf(t.depart) === store.state.year ? btn('Set off', `data-depart="${t.id}"`, 'primary') : `<p class="muted">Leaves in ${docs.yearOf(t.depart)}.</p>`}${btn('Cancel this trip', `data-cancel="${t.id}"`, 'danger')}</div>` : ''}`;
+        ${t.status === 'confirmed' ? `<div class="btn-stack">${docs.yearOf(t.depart) === store.state.year ? btn('Go on this trip', `data-depart="${t.id}"`, 'primary') : `<p class="muted">Leaves in ${docs.yearOf(t.depart)}.</p>`}${btn('Cancel this trip', `data-cancel="${t.id}"`, 'danger')}</div>` : ''}`;
     },
 
     documents(params, ui) {
@@ -488,7 +488,8 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-book]'))) { const r = travel.confirm(x.dataset.book); if (r.ok) { NAV.stack[NAV.stack.length - 1] = { view: 'trip', params: { id: x.dataset.book }, scroll: 0 }; } return tell(r); }
       if ((x = t('[data-discard]'))) { if (await confirmModal({ title: 'Discard this plan?', body: 'Nothing has been paid.', yes: 'Discard' })) { travel.discardPlan(x.dataset.discard); NAV.stack = [{ view: 'plan', params: {}, scroll: 0 }]; changed(); } return undefined; }
       if ((x = t('[data-trip]'))) { const trip = travel.tripById(x.dataset.trip); return trip ? go(trip.status === 'draft' ? 'plan' : 'trip', { id: trip.id }) : undefined; }
-      if ((x = t('[data-depart]'))) return tell(travel.depart(x.dataset.depart));
+      // Going is instant: the whole trip is taken, and a notice says how it went.
+      if ((x = t('[data-depart]'))) return tell(travel.takeTrip(x.dataset.depart));
       if ((x = t('[data-doact]'))) return tell(travel.doActivity(v.params.id, x.dataset.doact));
       if ((x = t('[data-home]'))) return tell(travel.comeHome(x.dataset.home));
       if ((x = t('[data-cancel]'))) { if (await confirmModal({ title: 'Cancel this trip?', body: 'What comes back depends on what was booked and how soon it is.', yes: 'Cancel the trip', no: 'Keep it', danger: true })) return tell(travel.cancel(x.dataset.cancel)); return undefined; }

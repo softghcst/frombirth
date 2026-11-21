@@ -11,26 +11,24 @@
  */
 const T = (ids, type) => Object.fromEntries(ids.map((id) => [id, type]));
 export const HAIR_TYPE = {
-  ...T(['hair_girl_long_02', 'hair_girl_medium_02', 'hair_girl_medium_06', 'hair_girl_medium_08', 'hair_girl_short_01', 'hair_girl_short_02', 'hair_girl_short_03', 'hair_girl_short_06',
-    'hair_boy_long_05', 'hair_boy_long_06', 'hair_boy_medium_06', 'hair_boy_medium_07', 'hair_boy_medium_08', 'hair_boy_short_02', 'hair_boy_short_04', 'hair_boy_short_06', 'hair_boy_short_07',
+  ...T(['hair_girl_medium_08', 'hair_girl_short_01', 'hair_girl_short_02', 'hair_girl_short_03', 'hair_boy_long_05', 'hair_boy_short_02', 'hair_boy_short_04', 'hair_boy_short_06', 'hair_boy_short_07',
     'hair_boy_updo_02_samurai', 'hair_boy_updo_04_curtain_bun', 'hair_boy_updo_11_high_ponytail', 'hair_updo_03', 'hair_updo_07'], 'straight'),
-  ...T(['hair_girl_long_01', 'hair_girl_long_03', 'hair_girl_long_04', 'hair_girl_long_05', 'hair_girl_long_06', 'hair_girl_long_08', 'hair_girl_medium_01', 'hair_girl_medium_03',
-    'hair_girl_medium_04', 'hair_girl_medium_07', 'hair_girl_short_04', 'hair_girl_short_07', 'hair_girl_short_08', 'hair_girl_short_12',
-    'hair_boy_long_01', 'hair_boy_long_02', 'hair_boy_long_03', 'hair_boy_long_07', 'hair_boy_long_08', 'hair_boy_medium_01', 'hair_boy_medium_02', 'hair_boy_medium_03',
-    'hair_boy_medium_05', 'hair_boy_short_01', 'hair_boy_short_03', 'hair_boy_short_08', 'hair_boy_short_12', 'hair_boy_updo_01_manbun', 'hair_boy_updo_08_royal_lowpony',
+  ...T(['hair_girl_long_01', 'hair_girl_long_03', 'hair_girl_long_04', 'hair_girl_long_06', 'hair_girl_long_08', 'hair_girl_medium_01', 'hair_girl_medium_03',
+    'hair_girl_medium_04', 'hair_girl_short_04', 'hair_girl_short_07', 'hair_girl_short_08', 'hair_girl_short_12',
+    'hair_boy_long_01', 'hair_boy_long_02', 'hair_boy_long_03', 'hair_boy_long_07', 'hair_boy_medium_01', 'hair_boy_medium_02', 'hair_boy_medium_03',
+    'hair_boy_short_01', 'hair_boy_short_03', 'hair_boy_short_08', 'hair_boy_short_12', 'hair_boy_updo_01_manbun', 'hair_boy_updo_08_royal_lowpony',
     'hair_boy_updo_10_surfer_bun', 'hair_boy_updo_14_double_lowbuns', 'hair_updo_01', 'hair_updo_02', 'hair_updo_05'], 'wavy'),
-  ...T(['hair_girl_long_07', 'hair_girl_long_10', 'hair_girl_long_12', 'hair_girl_medium_05', 'hair_girl_medium_14', 'hair_girl_medium_15', 'hair_girl_short_05', 'hair_girl_short_09',
+  ...T(['hair_girl_long_07', 'hair_girl_long_10', 'hair_girl_long_12', 'hair_girl_medium_14', 'hair_girl_medium_15', 'hair_girl_short_05', 'hair_girl_short_09',
     'hair_boy_long_04', 'hair_boy_long_16', 'hair_boy_medium_04', 'hair_boy_medium_15', 'hair_boy_short_05', 'hair_boy_short_13', 'hair_boy_updo_03_curly_puff',
     'hair_updo_06', 'hair_updo_10', 'hair_updo_14'], 'curly'),
   ...T(['hair_girl_medium_11', 'hair_girl_short_11', 'hair_girl_short_13', 'hair_girl_short_14', 'hair_girl_short_15', 'hair_girl_short_16',
     'hair_boy_medium_12', 'hair_boy_short_09', 'hair_boy_short_10', 'hair_boy_short_11', 'hair_boy_short_15', 'hair_boy_short_16',
     'hair_boy_updo_09_spacebuns', 'hair_boy_updo_15_headband_puff', 'hair_updo_09'], 'coily'),
-  ...T(['hair_girl_long_09', 'hair_girl_long_11', 'hair_girl_long_14', 'hair_girl_long_15', 'hair_girl_long_16', 'hair_girl_medium_10', 'hair_girl_medium_12', 'hair_girl_medium_16',
-    'hair_girl_short_10', 'hair_boy_long_10', 'hair_boy_long_11', 'hair_boy_long_12', 'hair_boy_long_14', 'hair_boy_long_15', 'hair_boy_medium_10', 'hair_boy_medium_11',
+  ...T(['hair_girl_long_09', 'hair_girl_long_11', 'hair_girl_long_15', 'hair_girl_long_16', 'hair_girl_medium_10', 'hair_girl_medium_12', 'hair_girl_medium_16',
+    'hair_girl_short_10', 'hair_boy_long_10', 'hair_boy_long_11', 'hair_boy_long_12', 'hair_boy_long_15', 'hair_boy_medium_10', 'hair_boy_medium_11',
     'hair_boy_medium_16', 'hair_boy_short_14', 'hair_boy_updo_06_braid_bun', 'hair_boy_updo_12_twist_pineapple', 'hair_boy_updo_13_braid_mohawk', 'hair_boy_updo_16_halfup_braids',
     'hair_updo_04', 'hair_updo_08', 'hair_updo_12', 'hair_updo_15', 'hair_updo_16'], 'braids'),
-  ...T(['hair_girl_long_13', 'hair_girl_medium_09', 'hair_girl_medium_13', 'hair_boy_long_09', 'hair_boy_long_13', 'hair_boy_medium_09', 'hair_boy_medium_13', 'hair_boy_medium_14',
-    'hair_boy_updo_05_loc_bun', 'hair_boy_updo_07_fountain_pony', 'hair_updo_11', 'hair_updo_13'], 'locs'),
+  ...T(['hair_girl_long_13', 'hair_girl_medium_09', 'hair_girl_medium_13', 'hair_boy_long_09', 'hair_boy_long_13', 'hair_boy_medium_09', 'hair_boy_medium_13', 'hair_boy_updo_05_loc_bun', 'hair_boy_updo_07_fountain_pony', 'hair_updo_11', 'hair_updo_13'], 'locs'),
 };
 /** Which hair types suit each natural texture. */
 export const SUITS = {
@@ -87,6 +85,25 @@ export const WITHDRAWN = {
   brows: { brows_02: 'brows_10', brows_03: 'brows_12', brows_7: 'brows_04', brows_13: 'brows_04', brows_17_puppy: 'brows_14',
     brows_18_unibrow: 'brows_16_feathered', brows_19_glam_arch: 'brows_10', brows_22_skeptical: 'brows_12', brows_11: 'brows_10' },
   nose: { nose_1: 'nose_6', nose_2: 'nose_6', nose_4: 'nose_6', nose_3: 'nose_7', nose_5: 'nose_9', nose_8: 'nose_10', nose_18: 'nose_19', nose_22: 'nose_17', nose_15: 'nose_11', nose_24: 'nose_7' },
+  // Hairstyles taken out of the game: each becomes the nearest of the styles kept, by texture and length.
+  hair: {
+    hair_boy_long_06: 'hair_boy_updo_10_surfer_bun',
+    hair_boy_long_08: 'hair_boy_updo_10_surfer_bun',
+    hair_girl_long_02: 'hair_boy_updo_10_surfer_bun',
+    hair_girl_long_05: 'hair_boy_updo_10_surfer_bun',
+    hair_boy_medium_07: 'hair_boy_short_08',
+    hair_boy_medium_06: 'hair_boy_short_08',
+    hair_boy_medium_08: 'hair_boy_short_08',
+    hair_boy_medium_05: 'hair_boy_short_01',
+    hair_boy_medium_14: 'hair_boy_updo_07_fountain_pony',
+    hair_girl_long_14: 'hair_boy_long_10',
+    hair_boy_long_14: 'hair_boy_long_10',
+    hair_girl_medium_02: 'hair_girl_short_12',
+    hair_girl_medium_06: 'hair_girl_short_12',
+    hair_girl_short_06: 'hair_girl_short_12',
+    hair_girl_medium_07: 'hair_girl_short_12',
+    hair_girl_medium_05: 'hair_girl_short_09',
+  },
 };
 /**
  * Parts drawn a little larger or smaller than their file: the artwork is fitted to a box, which leaves a
@@ -135,7 +152,7 @@ export const GRADUATION = { outfit: 'outfit_08_grad' };
  * at random; they can still be chosen in the creator or the salon.
  */
 export const HAIR_COVERS_FACE = [
-  'hair_boy_medium_14', 'hair_girl_long_04', 'hair_boy_long_07', 'hair_girl_medium_01',
+  'hair_girl_long_04', 'hair_boy_long_07', 'hair_girl_medium_01',
   'hair_updo_10', 'hair_updo_02', 'hair_girl_long_11', 'hair_girl_long_03',
   'hair_boy_long_03', 'hair_boy_long_11', 'hair_girl_long_12', 'hair_girl_medium_03',
   'hair_girl_medium_12', 'hair_girl_long_01', 'hair_girl_long_08', 'hair_girl_long_10',

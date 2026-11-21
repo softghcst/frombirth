@@ -1,0 +1,159 @@
+{
+  "about": [
+    "Older hairstyles (assets/avatars/hair/) that scripts/fit_hair.py anchors to every adult head: each is placed on the base head",
+    "where the game draws it, changed as listed here, then warped onto each adult head like the newer styles. Run npm run fit-hair after editing.",
+    "Per style, all optional (frame units on the 512 head canvas, y down): dx, dy move it (dy > 0 is lower); scale, scale_y resize it;",
+    "front_cut: y draws the style in front of the face only above y (below it, only behind the head, so side locks sit behind the face).",
+    "skull_fill: n draws a cap of hair behind the head, its outline grown by n, from the crown to the ears, filling gaps beside the skull.",
+    "skull_band: n (with skull_fill) also draws a band of hair n wide just inside the skull edge, in front under the style, covering the temples.",
+    "recolor: {\"#from\": \"#to\"} replaces colors in the drawing (line work that does not match the other styles).",
+    "shorten: [{below: y, k: f, beyond: d, within: e, only: left|right}] draws points lower than y, between d and e from the center line, up toward y (k 0.5 halves them). On the base head: brows y 256, eyes 293, ears attach 278, temples 116 from the center line."
+  ],
+  "styles": {
+    "hair_boy_long_10": {},
+    "hair_boy_medium_12": {},
+    "hair_boy_short_03": {
+      "dy": 20,
+      "scale_y": 0.9,
+      "shorten": [
+        {
+          "below": 268,
+          "beyond": 95,
+          "k": 0.3
+        }
+      ]
+    },
+    "hair_boy_short_08": {
+      "shorten": [
+        {
+          "below": 272,
+          "beyond": 95,
+          "k": 0.4
+        }
+      ]
+    },
+    "hair_boy_updo_07_fountain_pony": {},
+    "hair_boy_updo_10_surfer_bun": {},
+    "hair_boy_updo_12_twist_pineapple": {},
+    "hair_girl_short_12": {
+      "shorten": [
+        {
+          "below": 268,
+          "beyond": 90,
+          "k": 0.3
+        }
+      ]
+    },
+    "hair_girl_short_16": {
+      "shorten": [
+        {
+          "below": 268,
+          "beyond": 90,
+          "k": 0.3
+        }
+      ]
+    },
+    "hair_boy_short_01": {},
+    "hair_boy_short_05": {
+      "shorten": [
+        {
+          "below": 275,
+          "beyond": 95,
+          "k": 0.5
+        }
+      ]
+    },
+    "hair_boy_medium_10": {
+      "dy": 3
+    },
+    "hair_boy_short_12": {
+      "shorten": [
+        {
+          "below": 262,
+          "beyond": 90,
+          "k": 0.25
+        }
+      ]
+    },
+    "hair_girl_short_09": {
+      "shorten": [
+        {
+          "below": 244,
+          "beyond": 38,
+          "within": 104,
+          "k": 0.3
+        }
+      ]
+    },
+    "hair_boy_short_09": {
+      "dy": 4
+    },
+    "hair_boy_short_15": {},
+    "hair_boy_short_16": {},
+    "hair_boy_updo_01_manbun": {
+      "shorten": [
+        {
+          "below": 268,
+          "beyond": 95,
+          "k": 0.4
+        }
+      ]
+    },
+    "hair_boy_updo_03_curly_puff": {},
+    "hair_boy_updo_05_loc_bun": {
+      "dy": 5
+    },
+    "hair_boy_updo_11_high_ponytail": {
+      "dy": 6
+    },
+    "hair_girl_long_06": {
+      "scale": 1.06,
+      "skull_fill": 26,
+      "skull_band": 16
+    },
+    "hair_girl_long_07": {
+      "front_cut": 262
+    },
+    "hair_girl_long_09": {
+      "front_cut": 262
+    },
+    "hair_girl_long_16": {
+      "dy": -8,
+      "recolor": {
+        "#441602": "#2f1006"
+      }
+    },
+    "hair_girl_medium_09": {
+      "front_cut": 262
+    },
+    "hair_girl_medium_11": {
+      "front_cut": 262
+    },
+    "hair_girl_medium_12": {
+      "front_cut": 262
+    },
+    "hair_girl_short_04": {
+      "front_cut": 262
+    },
+    "hair_girl_short_05": {
+      "front_cut": 262
+    },
+    "hair_girl_short_10": {
+      "front_cut": 270
+    },
+    "hair_girl_short_11": {},
+    "hair_girl_short_15": {
+      "shorten": [
+        {
+          "below": 236,
+          "beyond": 40,
+          "within": 112,
+          "k": 0.35
+        }
+      ]
+    },
+    "hair_updo_02": {
+      "dy": -4
+    }
+  }
+}
