@@ -820,6 +820,9 @@ const COMPANY = new Set(['hood_invitation', 'hood_invitation_upstairs', 'hood_di
 const sceneSort = (id) => (COMPANY.has(id) ? 'company' : id);
 
 /** Queues one neighborhood scene for the player, once per story key, one a year at most. */
+/** Years before the same neighborhood scene can come again, whoever it is about. */
+const SCENE_GAP = 5;
+
 export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   const H = hoods(state);
   if (muted || !state.player.alive) return false;
@@ -828,6 +831,10 @@ export function queueScene(state, id, cast = {}, key = id, t = nowT(state)) {
   if (thisYear >= SCENES_A_YEAR) return false;
   // The same sort of scene (another invitation, another neighbor wanting company) not two years running.
   if (H.lastScene?.sort === sceneSort(id) && yearOf(t) - H.lastScene.y <= 1) return false;
+  // And the same scene (another community event, another neighbor needing a hand) not again for a few years.
+  H.byId ??= {};
+  if (H.byId[id] != null && yearOf(t) - H.byId[id] < SCENE_GAP) return false;
+  H.byId[id] = yearOf(t);
   H.seen[key] = t;
   H.lastScene = { sort: sceneSort(id), y: yearOf(t) };
   state.pendingEvents.push({ id, cast });

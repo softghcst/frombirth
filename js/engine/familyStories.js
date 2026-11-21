@@ -120,6 +120,9 @@ export function tickFamilyStories(d) {
       const key = `fam_${s.id}/${x.key}`;
       const last = told()[key];
       if (last === 'closed' || (last != null && (!s.again || year() - last < s.again))) continue;
+      // Each story waits its time whoever it is about: five close friends do not mean big news every year.
+      const any = told()[`fam_${s.id}`];
+      if (any != null && year() - any < Math.max(s.again ?? 0, 6)) continue;
       can.push({ s, x, key });
     }
   }
@@ -128,6 +131,7 @@ export function tickFamilyStories(d) {
   for (const c of can.map((v) => [rng.next(), v]).sort((a, b) => a[0] - b[0]).map(([, v]) => v)) {
     if (n >= most || !rng.chance(d.chance)) continue;
     told()[c.key] = year();
+    told()[`fam_${c.s.id}`] = year();
     store.state.pendingEvents.push({ id: `fam_${c.s.id}`, cast: { ...(c.x.them ? { them: c.x.them } : {}), ...(c.x.words ? { words: c.x.words } : {}) } });
     n++;
   }
