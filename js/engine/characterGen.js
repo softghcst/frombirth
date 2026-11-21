@@ -9,6 +9,7 @@ import { EARLIEST_START } from '../data/eras.js';
 import { fromAbroad, rollsRoots } from './economy.js';
 import { rng } from '../rng.js';
 import { bornInto, birthKind, titleOf, dress } from './royalty.js';
+import { MONARCHIES } from '../data/royalty.js';
 import { seatFamily, nameOf, monarchOf, bloodParent, relationToMonarch } from './dynasty.js';
 import { uid, theCountry } from '../util.js';
 import { COUNTRIES, COUNTRY_LIST, surnameFor } from '../data/countries.js';
@@ -38,13 +39,22 @@ import { register as registerAnimal, reconcile as reconcileAnimals } from './ani
  * @param {'music'|'sports'|'acting'|'crime'|'singing'|'dance'} [opts.talent]  a guaranteed natural gift
  * @param {'struggling'|'comfortable'|'wealthy'} [opts.background]
  * @param {string} [opts.orientation]  one of ORIENTATIONS in engine/identity.js
- * @param {'commoner'|'noble'|'royal'} [opts.birthRank]  only matters in a monarchy; left out, a title at birth is rare
+ * @param {'commoner'|'noble'|'royal'|'heir'} [opts.birthRank]  only matters in a monarchy; left out, a title at birth is rare.
+ *   'heir' is the first child of the reigning monarch: first in line where the law allows it.
  * @param {boolean} [opts.trans]  whether `gender` differs from the one registered at birth
  * @param {'male'|'female'} [opts.sex]  the sex registered at birth; with it, `gender` (if given) is who they are, and
  *   otherwise follows from `trans`
  * @returns {import('../types.js').GameState}
  */
 export function createLife(opts = {}) {
+  // Heir to the throne: first in line, which depends on the house that is drawn around the family; drawn again if not.
+  if (opts.birthRank !== 'heir') return createOnce(opts);
+  let state;
+  for (let i = 0; i < 20; i++) { state = createOnce(opts); if (!state.player.royal || state.player.royal.line === 1) return state; }
+  return state;
+}
+
+function createOnce(opts = {}) {
   if (!rng.pinned) rng.seed((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0); // a fresh life, unless the dice are pinned (js/rng.js)
 
   const c = COUNTRIES[opts.countryId] ?? rng.pick(COUNTRY_LIST);
@@ -52,6 +62,11 @@ export function createLife(opts = {}) {
   // Or from the other end (the life designer): `sex` is who they are registered as at birth, and who they are follows
   // from whether they are transgender (the other) or non-binary.
   const other = (g) => (g === 'male' ? 'female' : 'male');
+  // Heir to a throne only men inherit: born a boy if nothing else was chosen, and royal (not first in line) if a girl was.
+  if (opts.birthRank === 'heir' && MONARCHIES[c.id]?.law?.order === 'maleOnly') {
+    if (!opts.sex) opts = { ...opts, sex: 'male', trans: opts.trans ?? false };
+    else if (opts.sex !== 'male') opts = { ...opts, birthRank: 'royal' };
+  }
   let identityGender, trans, gender;
   if (opts.sex === 'male' || opts.sex === 'female') {
     trans = opts.trans ?? (opts.gender === 'nonbinary' ? true : rng.chance(TRANS_RATE));
@@ -82,7 +97,9 @@ export function createLife(opts = {}) {
   const fam = generateFamily(c, lastName, { background: opts.background, skinHint: designed ? skinDepth(designed) : undefined, avoidNames: [firstName] });
   // A royal child: the house is built around the family before the child is drawn from it.
   const birth = birthKind(c.id, opts.birthRank);
-  const seat = birth === 'royal' ? seatFamily(c, year, fam, gender) : null;
+  // The heir: the monarch's first child, so no older brothers or sisters stand ahead in the line.
+  if (birth === 'heir') { fam.siblings = []; fam.twin = null; }
+  const seat = birth === 'royal' || birth === 'heir' ? seatFamily(c, year, fam, gender, birth === 'heir' ? 'crown' : null) : null;
   const { mother, father } = fam;
   const genes = father ?? unknownParent(mother);
   // One family in ten has a parent who came from another country. Their own parents, if living, are still there.

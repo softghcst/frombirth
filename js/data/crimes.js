@@ -125,6 +125,16 @@ export const METHODS = [
     done: 'Six kilos, frozen solid, swung hard. {v} is dead. The turkey is delicious.' },
   { id: 'anvil', name: 'An anvil, from a great height', edge: -0.12, caught: 0, blurb: 'You have seen it done in cartoons.',
     done: 'It whistles on the way down, just like on television. {v} is dead.' },
+  { id: 'dirty_rag', name: 'Strangle them with a dirty rag', edge: -0.05, caught: 0, blurb: 'It has been under the sink since before you were born.',
+    done: 'You wring out the rag, and then you wring out {v}. {v} is dead, and the rag is somehow dirtier.' },
+  { id: 'ball_pit', name: 'Hold them under in a ball pit', edge: -0.15, caught: -0.1, blurb: 'Fun for all ages, it says on the sign.',
+    done: '{v} went in among the plastic balls and never came up. The ball pit keeps its secrets.' },
+  { id: 'glitter_bomb', name: 'A glitter bomb that is mostly bomb', edge: -0.05, caught: 0.15, blurb: 'Glitter gets into everything, evidence included.',
+    done: 'A box, a bow, a bang. {v} is dead, and very sparkly. Detectives will be finding glitter for years.' },
+  { id: 'karaoke', name: 'Sing at them until their heart gives out', edge: -0.25, caught: -0.3, blurb: 'You have to be truly, deeply terrible.',
+    done: 'Three hours of power ballads, every one a little flat. During the key change, {v} clutches their chest. Dead.' },
+  { id: 'toy_bricks', name: 'Toy bricks across a dark hallway', edge: -0.2, caught: -0.25, blurb: 'Every parent knows the danger.',
+    done: 'Bare feet, a dark hall, two hundred little plastic bricks. {v} hopped, howled, and went down the stairs. Dead.' },
 ];
 export const METHOD_BY_ID = Object.fromEntries(METHODS.map((m) => [m.id, m]));
 export const CRIME_BY_ID = Object.fromEntries(CRIMES.map((c) => [c.id, c]));
