@@ -6,7 +6,7 @@ import { store, player, country, prunePending } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { saveGame, pushUndo, popUndo, undoDepth, peekUndo } from '../save.js';
 import { advanceTurn, ageText, nextTurnText, stepOf, monthOf } from '../engine/turns.js';
-import { getEvent, resolveChoice } from '../engine/eventEngine.js';
+import { getEvent, resolveChoice, stillFits } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
 import { styledName, standing } from '../engine/royalty.js';
@@ -284,7 +284,7 @@ export function mountGame(app, hooks) {
       if (!state.pendingEvents.length) break;
       const pending = state.pendingEvents[0];
       const ev = getEvent(pending.id);
-      if (!ev) { state.pendingEvents.shift(); continue; }
+      if (!ev || !stillFits(pending, state)) { state.pendingEvents.shift(); continue; } // gone, or no longer fits the life
       const index = await eventModal(ev, pending.cast, { ...(turningPoint(ev) ? { onFork: () => forkGame(state, turningNote(ev, pending.cast)) } : {}), previous });
       const result = resolveChoice(ev, index, pending.cast);
       state.pendingEvents.shift();

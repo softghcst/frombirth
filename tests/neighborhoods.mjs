@@ -439,7 +439,7 @@ function coherent(where) {
   turns.setStep(12);
   advance(6);
   const home = N.currentHome(S());
-  const kid = N.around(S(), home.id).filter((x) => x.hh).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && Math.abs(N.ageOf(r, S()) - P().age) <= 3 && r.ls > 40);
+  const kid = N.around(S(), home.id).filter((x) => x.hh).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && Math.abs(N.ageOf(r, S()) - P().age) <= 3 && r.ls > 40 && (!S().npcs[r.id] || S().npcs[r.id].role === 'neighbor')); // only a neighbor: a classmate becomes a friend at school
   if (kid) {
     quota();
     N.queueScene(S(), 'hood_friend_across_street', { words: { person: kid.f, res: kid.id, where: 'across the street' } }, 'test/kid');
