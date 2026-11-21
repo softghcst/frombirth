@@ -599,7 +599,7 @@ export function joinClique(id) {
   const p = player();
   const e = p.education;
   const c = CLIQUE_BY_ID[id];
-  if (e.stage !== 'high' || !e.enrolled) return result(false, 'Cliques are a high-school thing.');
+  if (!['middle', 'high'].includes(e.stage) || !e.enrolled) return result(false, 'Cliques start in middle school.');
   if (acts().clique >= 1) return result(false, 'You already changed who you sit with this year.', 'neutral');
   acts().clique += 1;
   if (!cliqueOptions().find((o) => o.id === id).allowed) {

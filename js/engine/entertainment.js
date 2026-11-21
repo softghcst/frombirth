@@ -471,7 +471,7 @@ export function sign(contractId) {
   if (r.who || prod.status !== 'casting') { c.status = 'withdrawn'; return result(false, 'The part has gone to someone else.', 'neutral'); }
   const clash = scheduleClash(prod, p);
   if (clash) return result(false, clash, 'neutral');
-  const fit = canFit(Math.round(PRODUCTION_KINDS[prod.kind].hours * weeksOf(prod) / 48), { kind: 'freelance' });
+  const fit = canFit(Math.round(PRODUCTION_KINDS[prod.kind].hours * weeksOf(prod) / 48), { kind: 'freelance', performing: true });
   if (!fit.ok) return fit;
   c.status = 'signed';
   r.who = 'player';

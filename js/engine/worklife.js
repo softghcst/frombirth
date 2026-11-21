@@ -72,6 +72,10 @@ export const career = () => ensureCareer(player().career);
 
 // ---------- Time ----------
 
+/** The most hours a week a young performer (an idol, an actor) may be trained, rehearsed and worked: Korea's rule for the popular
+ *  culture industry (35 under fifteen, 40 from fifteen), which the game uses wherever there is no stricter one. */
+export const performerCap = (age) => (age < 15 ? 35 : age < 18 ? 40 : Infinity);
+
 /** Hours a week spent studying. */
 export function studyHours(p = player()) {
   const e = p.education;
@@ -115,16 +119,24 @@ export function weeklyLoad(p = player(), age = p.age) {
   if (fl) rows.push({ label: 'Freelance work', hours: fl, kind: 'freelance' });
   for (const b of (p.businesses ?? []).filter((x) => x.status === 'open' && x.ownerHours > 0)) rows.push({ label: `Running ${b.name}`, hours: b.ownerHours, kind: 'business' });
   const stage = workHours(store.state.year - (p.age - age), p); // productions signed for (engine/entertainment.js)
-  if (stage) rows.push({ label: 'Productions you are in', hours: stage, kind: 'freelance' });
+  if (stage) rows.push({ label: 'Productions you are in', hours: stage, kind: 'freelance', perform: true });
   // Idol training, or a group's schedule (engine/kpop.js).
-  if (store.state.kpop && p.idol && !p.idol.hiatus && (age === p.age)) { if (idolTrainee(p)) rows.push({ label: 'Idol training', hours: 40, kind: 'freelance' }); else if (idolGroup(p)) rows.push({ label: 'Group schedule', hours: 45, kind: 'freelance' }); }
-  if (store.state.kpop && p.idol?.variety && age === p.age) for (const sh of varietyShows(p)) rows.push({ label: sh.name, hours: sh.role === 'host' ? 14 : 10, kind: 'freelance' });
+  // Under 18 the week of a performer is capped (performerCap): what else they are in comes first, and training and the
+  // group's schedule shrink to fit what is left (never below ten hours: a trainee still has to train).
+  const cap = performerCap(age);
+  if (store.state.kpop && p.idol?.variety && age === p.age) for (const sh of varietyShows(p)) rows.push({ label: sh.name, hours: sh.role === 'host' ? 14 : 10, kind: 'freelance', perform: true });
+  const others = rows.filter((r) => r.perform).reduce((t, r) => t + r.hours, 0);
+  const room = Math.max(10, cap - others);
+  if (store.state.kpop && p.idol && !p.idol.hiatus && (age === p.age)) { if (idolTrainee(p)) rows.push({ label: 'Idol training', hours: Math.min(40, room), kind: 'freelance', perform: true }); else if (idolGroup(p)) rows.push({ label: 'Group schedule', hours: Math.min(45, room), kind: 'freelance', perform: true }); }
   const touring = tourWeeks(store.state.year - (p.age - age), p); // engine/music.js
   if (touring) rows.push({ label: 'On tour', hours: Math.round(touring * 50 / 48), kind: 'freelance' });
   const care = careHours(p);
   if (care) rows.push({ label: 'Looking after the children', hours: care, kind: 'care' });
-  const study = studyHours(p);
-  if (study) rows.push({ label: p.education.stage === 'high' || p.age < 18 ? 'School' : 'Studying', hours: study, kind: 'study' });
+  let study = studyHours(p);
+  // A school-age performer is on a reduced timetable: the school bends around the work (and the work is capped, above).
+  const reduced = age < 18 && study >= STUDY_HOURS.school && rows.some((r) => r.perform);
+  if (reduced) study = STUDY_HOURS.reduced;
+  if (study) rows.push({ label: reduced ? 'School (reduced timetable)' : p.education.stage === 'high' || p.age < 18 ? 'School' : 'Studying', hours: study, kind: 'study' });
   const train = sportHours(p);
   if (train) rows.push({ label: 'Training', hours: train, kind: 'sport' });
   const travel = commute(c, p);
@@ -154,7 +166,21 @@ export function canFit(hours, o = {}) {
   let paid = load.paid;
   if (o.replacesMain) { total -= mainHours(c) + commute(c, p); paid -= mainHours(c); }
   if (p.age < law.workAge) return result(false, `In ${country().name} you must be ${law.workAge} to work for pay.`);
-  if (p.age < 18 && paid + hours > law.minorHours) return result(false, `Under 18, the law here allows ${law.minorHours} hours of paid work a week during the school year. This would make ${paid + hours}.`);
+  if (p.age < 18 && o.performing) {
+    // A young performer's whole week: training, rehearsal and work together are capped, and school bends around it.
+    // Training and a group's schedule shrink to fit what else they are in, but not below ten hours.
+    const cap = performerCap(p.age);
+    const isIdol = (r) => r.label === 'Idol training' || r.label === 'Group schedule';
+    const perfNow = load.rows.filter((r) => r.perform).reduce((t, r) => t + r.hours, 0);
+    const nonIdol = load.rows.filter((r) => r.perform && !isIdol(r)).reduce((t, r) => t + r.hours, 0);
+    const idolAfter = o.idol || load.rows.some(isIdol) ? 1 : 0;
+    const others = nonIdol + (o.idol ? 0 : hours);
+    if (others + idolAfter * 10 > cap) return result(false, `At ${p.age} a performer's week is capped at ${cap} hours of training, rehearsal and work together. This would make ${others + idolAfter * 10} even with training cut to the minimum. Something has to give first.`);
+    const performAfter = idolAfter ? Math.min(cap, others + Math.max(10, Math.min(o.idol ? hours : 45, cap - others))) : others;
+    const school = load.rows.find((r) => r.kind === 'study')?.hours ?? 0;
+    const after = total - perfNow - school + performAfter + Math.min(school, STUDY_HOURS.reduced);
+    if (after > LOAD.crushing) return result(false, `With school and everything else that would be ${after} hours a week, which is more than anyone should be asked to do at ${p.age}.`);
+  } else if (p.age < 18 && paid + hours > law.minorHours) return result(false, `Under 18, the law here allows ${law.minorHours} hours of paid work a week during the school year. This would make ${paid + hours}.`);
   if (total + hours > LOAD.impossible) return result(false, `That would make ${total + hours} hours a week with everything else. There are not enough hours in the week.`);
   if (o.kind !== 'job' && !o.replacesMain) {
     const main = c.careerId ? CAREER_BY_ID[c.careerId] : null;

@@ -11,6 +11,7 @@
 //   p.idol = { apps:[], traineeId(contract), contracts:[], programs:[], groupId, groups:[], focus, stage, camera, history:[],
 //              fairies:[], hiatus, solo:[], acts:{ age, ... }, pop, trust }
 //   npc.flags.idol = { agencyId, since, sk:{vocal,dance,rap,stage,camera,media,korean}, born:{year,day}, status, groupId, pop, history:[] }
+import { canFit } from './worklife.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, localCost, wageIn } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
@@ -297,6 +298,8 @@ export function acceptOffer(appId) {
   // Training somewhere else needs permission to be there: the agency sponsors it, but a criminal record can stop it.
   const abroad = a.countryId !== p.countryId && !rightToLive(a.countryId, p);
   if (abroad && hasRecord(p, { sealed: true })) { app.stage = 'declined'; return result(false, `The trainee visa is refused because of your record. ${a.name} cannot take you.`); }
+  // A school-age trainee's week is capped (engine/worklife.js): a child with parts already signed may have to give one up first.
+  if (p.age < 18) { const fit = canFit(40, { kind: 'freelance', performing: true, idol: true }); if (!fit.ok) return result(false, fit.text, 'neutral'); }
   const c = { id: nextId('ctr'), ...app.offer, who: 'player', start: year(), reviewAt: year() + app.offer.review, status: 'active', notes: [] };
   k.contracts[c.id] = c;
   app.stage = 'accepted';
@@ -2270,6 +2273,7 @@ export function takeVariety(offerId) {
   if (!o || v.offers.year !== year()) return result(false, 'That offer has gone.', 'neutral');
   const role = VARIETY_ROLES[o.role];
   const kr = COUNTRIES.kr ?? COUNTRIES[p.countryId];
+  if (o.role !== 'guest' && p.age < 18) { const fit = canFit(o.role === 'host' ? 14 : 10, { kind: 'freelance', performing: true }); if (!fit.ok) return result(false, fit.text, 'neutral'); } // a regular show is a standing weekly commitment
   if (o.role === 'guest') {
     if (v.guests.filter((x) => x.year === year()).length >= 6) return result(false, 'Six guest spots this year is plenty.', 'neutral');
     o.taken = true;

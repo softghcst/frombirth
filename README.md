@@ -75,6 +75,7 @@ node tests/childhood.mjs       # childhood from birth: things to do by age, play
 node tests/love-stories.mjs    # relationship stories told only when true, once, at the drama setting's pace; the opt-in, non-graphic teenage pregnancy storyline; teenage relationship scenes
 node tests/pregnancy-choice.mjs   # the choice when a pregnancy is announced: go on with it or not; costs, laws, a partner's decision, teenagers
 node tests/family-stories.mjs   # fifty-four stories of relationships, marriages, households, family secrets, inheritance and teenage life: each told only when true
+node tests/idol-student.mjs   # a young trainee abroad goes to school where they live; the performer week cap; talent schools cost more; a crowd from middle school
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
