@@ -12,15 +12,17 @@ For each SVG in assets/hair_raw/ (drawn on the base head named in assets/landmar
      Beziers first), and basic shapes (rect, circle, ellipse, line, polyline, polygon, turned into paths).
      Any transform on the element or its groups, and a viewBox other than the 512 frame, is applied first.
   2. A thin-plate-spline warp (scipy RBFInterpolator, kernel='thin_plate_spline') is fitted from the base
-     head's six landmarks to each head's six, plus the four corners of the frame held still, so the warp
+     head's six landmarks, and twelve points along its skull outline (skull_anchors), to each head's same points, plus the four corners of the frame held still, so the warp
      stays local to the head and long hair is not flung about far from it. Every point goes through it.
   3. The file is written to assets/hair_fitted/<style>_<head>.svg with the same groups, ids, fills,
      strokes and stroke widths. Only the path data changes, and shapes become paths. Each colour also gets
      a style= with a CSS variable (main colour: var(--hair-color,<colour>); its shades: color-mix() of it),
      so the game can dye the hair. The fill/stroke attributes stay as they are and look identical without it.
 
-Heads: the eight in assets/landmarks.json (a head with no SVG, null landmarks, is skipped), plus the game's
-`kid` head, measured here the same way, because children wear their hairstyle on it.
+Heads: the adult heads in assets/landmarks.json (a head with no SVG, null landmarks, is skipped). The game's `kid`
+head is measured here the same way, but a style is fitted to it only when it is a children's style: the raw SVG's root
+has data-kids="true". Every other style is for grown-ups only; a child whose style it is wears another until 13
+(dressFor in js/CharacterAvatar.js), and the creator and salon do not offer it for a child.
 
 It also writes:
   assets/hair_manifest.json      what the game reads (js/avatar/fittedHair.js loads it): every hairstyle, its name,
@@ -61,6 +63,7 @@ DEBUG_HTML = os.path.join(HERE, 'debug_hair_fit.html')
 
 POINTS = EL.POINTS
 EXTRA_HEADS = ['kid']  # game heads measured here rather than kept in landmarks.json
+KID_HEADS = {'kid'}  # fitted only for a style marked data-kids="true"
 LAYERS = ['hair_back', 'hair_base', 'hair_bangs', 'hair_lines']
 
 
@@ -136,7 +139,56 @@ def load_heads():
             heads[name] = np.array([[marks[p]['x'], marks[p]['y']] for p in POINTS], float)
     if base not in heads:
         sys.exit(f'the base head {base!r} has no landmarks')
+    for name in heads:
+        heads[name] = np.vstack([heads[name], skull_anchors(name, heads[name])])
+        heads[name] = padded(heads[name], outline_pad(name))
     return base, heads, skipped
+
+
+def outline_pad(name):
+    """
+    How far the head's drawn edge lies outside the outline the landmarks were measured on: half the outline path's
+    stroke width. The adult heads draw their outline as a plain fill (0); the kid, toddler and baby heads stroke it
+    5 wide, so their real edge is 2.5 further out and the hair has to reach that far to cover it.
+    """
+    with open(os.path.join(HEADS, f'{name}.svg'), encoding='utf-8') as f:
+        m = re.search(r'<path[^>]*stroke-width:\s*([\d.]+)', f.read())
+    return float(m.group(1)) / 2 if m else 0.0
+
+
+def padded(pts, pad):
+    """The landmarks and skull points pushed out by pad: away from the head's centre line, and the crown up."""
+    if not pad:
+        return pts
+    pts = pts.copy()
+    cx = pts[0][0]
+    pts[0][1] -= pad  # crown_top
+    for k in range(2, len(pts)):  # forehead_mid (1) is on the face, not the edge
+        pts[k][0] += pad if pts[k][0] > cx else -pad
+    return pts
+
+
+SKULL = [0.08, 0.2, 0.35, 0.5, 0.65]  # rows down the skull, as a fraction of the way from the crown to the ears
+
+
+def skull_anchors(name, marks):
+    """
+    Extra points that pin the hair to this head's own skull, so a style sits on it the way it sits on the base head.
+    The six landmarks only fix the crown, the brow and where the ears attach; two heads can agree on all six and still
+    differ in between (a rounder or flatter top, wider temples, ears set lower), and then the hair stood off the skull
+    or left skin showing at its edge. These are the outline's left and right edges at fixed fractions of the way from
+    the crown down to the ears, plus one between the temple and the ear when they are far apart (the kid's ears sit
+    low). Each head gets the same list in the same order, so point k on one head matches point k on every other.
+    """
+    rows = EL.scan(EL.head_polys(os.path.join(HEADS, f'{name}.svg')))
+    ys = sorted(rows)
+    near = lambda v: min(ys, key=lambda y: abs(y - v))
+    top, temple, ear = marks[0][1], marks[2][1], marks[4][1]
+    out = []
+    for f in SKULL + ['between']:
+        y = near((temple + ear) / 2 if f == 'between' else top + f * (ear - top))
+        out += [(rows[y][0], y), (rows[y][1], y)]
+    return np.array(out, float)
 
 
 def warp_for(src, dst):
@@ -342,12 +394,15 @@ def drawable(root):
     return out
 
 
-def fit_file(path, base, heads):
-    """-> {head name: the fitted SVG text}."""
+def fit_file(path, base, heads, root=None, adjust=None, source=None):
+    """
+    -> {head name: the fitted SVG text}. root: an already built SVG to fit instead of reading path (an older style,
+    see legacy_root); adjust: a function given the (n, 2) points of each shape on the base head, returning them changed.
+    """
     name = os.path.basename(path)[:-4]
-    parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
-    tree = ET.parse(path, parser)
-    root = tree.getroot()
+    if root is None:
+        parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+        root = ET.parse(path, parser).getroot()
     normalize_ids(root)
     found = [g.get('id') for g in root.iter(f'{NS}g') if g.get('id') in LAYERS]
     missing = [l for l in LAYERS if l not in found]
@@ -358,7 +413,8 @@ def fit_file(path, base, heads):
     items = []
     for el, tag, m in drawable(root):
         cmds = parse_d(el.get('d') if tag == 'path' else shape_d(el, tag))
-        items.append((el, tag, cmds, apply(m, points_of(cmds))))
+        pts = apply(m, points_of(cmds))
+        items.append((el, tag, cmds, adjust(pts) if adjust and len(pts) else pts))
     # Colours: a style= that follows --hair-color, ahead of any style already there.
     for el in root.iter():
         if not isinstance(el.tag, str):
@@ -389,8 +445,8 @@ def fit_file(path, base, heads):
         root.set('data-hair', name)
         root.set('data-head', head)
         root.set('data-fitted-from', base)
-        out[head] = '<!-- Generated by scripts/fit_hair.py from assets/hair_raw/%s.svg: do not edit by hand. -->\n%s\n' % (
-            name, ET.tostring(root, encoding='unicode'))
+        out[head] = '<!-- Generated by scripts/fit_hair.py from %s: do not edit by hand. -->\n%s\n' % (
+            source or f'assets/hair_raw/{name}.svg', ET.tostring(root, encoding='unicode'))
     return out
 
 # ---------- A test hairstyle, when there are none ----------
@@ -416,6 +472,158 @@ def test_cap(base_marks):
 </svg>
 '''
 
+# ---------- Older hairstyles, anchored to every adult head ----------
+#
+# The older hairstyles in assets/avatars/hair/ are drawn once, on the template face, and the game only scales and moves
+# each as a whole to suit a head (js/avatar/hairFit.js). That cannot follow one face's temples and ears and not another's:
+# sideburns stop short of the ear, or cut into the cheek. The styles listed in assets/hair_legacy_fit.json are instead put
+# through this pipeline: placed on the base head exactly where the game draws them there, adjusted as that file says,
+# then warped onto each adult head like any other style, with the same landmarks and skull anchors. The game draws those
+# files on adult heads (each style keeps its id, so saves and the styles given out at random are unchanged); a child
+# still wears the older drawing on the kid head.
+
+LEGACY_CONFIG = os.path.join(ASSETS, 'hair_legacy_fit.json')
+LEGACY_ART = os.path.join(ASSETS, 'avatars', 'hair')
+AVATAR_MANIFEST_JS = os.path.join(ROOT, 'js', 'avatarManifest.js')
+
+
+def avatar_manifest():
+    """-> (the game's part manifest, its template face), read from js/avatarManifest.js."""
+    with open(AVATAR_MANIFEST_JS, encoding='utf-8') as f:
+        text = f.read()
+    def grab(name):
+        body = re.search(rf'export const {name} = (\{{.*?\n?\}});\n', text, re.S).group(1)
+        body = re.sub(r'^(\s*)([A-Za-z_]\w*):', r'\1"\2":', body, flags=re.M)  # its part lists are keyed without quotes
+        return json.loads(re.sub(r',(\s*[\]}])', r'\1', body))
+    return grab('AVATAR_MANIFEST'), grab('AVATAR_TEMPLATE')
+
+
+def game_fits(base, ids):
+    """Where the game draws each older style on the base head (its run-time fit, js/avatar/hairFit.js), by id."""
+    import subprocess
+    parts, _ = avatar_manifest()
+    head_id = next(h['id'] for h in parts['heads'] if h['file'].endswith(f'/{base}.svg'))
+    out = subprocess.run(['node', os.path.join(HERE, 'legacy-base-fit.mjs'), head_id, *ids], capture_output=True, text=True, check=True)
+    return json.loads(out.stdout)
+
+
+def legacy_root(hair_id, base, tune, game=None):
+    """
+    An older style as a raw hairstyle on the base head: one hair_base layer (the game draws it behind the head and again
+    in front of the face down to the chin, as it draws the older styles), placed exactly where the game draws it on
+    that head (game: its run-time fit, scales sx, sy and offset tx, ty; the squashing of a tall top is left out), then
+    moved by tune's dx, dy (frame units) and scaled by its scale and scale_y.
+    """
+    parts, T = avatar_manifest()
+    head = next(h for h in parts['heads'] if h['file'].endswith(f'/{base}.svg'))
+    fit, face = head['fit'], T['face']
+    g = game or {'sx': fit['w'] / face['w'], 'sy': fit['w'] / face['w'], 'tx': fit['cx'], 'ty': fit['top']}
+    k = g['sx'] * tune.get('scale', 1)
+    sy = g['sy'] * tune.get('scale', 1) * tune.get('scale_y', 1)
+    with open(os.path.join(LEGACY_ART, f'{hair_id}.svg'), encoding='utf-8') as f:
+        art = re.search(r'<g id="art">(.*)</g>\s*</svg>', f.read(), re.S).group(1)
+    for old, new in tune.get('recolor', {}).items():  # e.g. line work drawn in a reddish brown, set to the usual one
+        art = re.sub(re.escape(old), new, art, flags=re.I)
+    move = f'translate({g["tx"] + tune.get("dx", 0):g} {g["ty"] + tune.get("dy", 0):g}) scale({k:g} {sy:g}) translate(-256 {-face["top"]:g})'
+    back, under = '', ''
+    if tune.get('skull_fill'):
+        # A cap of hair behind the head, its outline grown by skull_fill, from the crown down to where the ears attach:
+        # the head hides it except where the style leaves a gap beside the skull.
+        rows = EL.scan(EL.head_polys(os.path.join(HEADS, f'{base}.svg')))
+        ys = sorted(rows)
+        m, pad = EL.landmarks(rows)[0], tune['skull_fill']
+        band = [y for y in ys if y <= m['ear_left']['y'] + 6]
+        # Grown sideways only, from nothing at the crown to the full amount 16 below it, so it never shows over the top.
+        grow = lambda y: pad * min(1, (y - band[0]) / 16)
+        pts = [(rows[y][0] - grow(y), y) for y in band] + [(rows[y][1] + grow(y), y) for y in reversed(band)]
+        d = f'M{pts[0][0]:.1f} {pts[0][1]:.1f}' + ''.join(f'L{x:.1f} {y:.1f}' for x, y in pts[1:]) + 'Z'
+        main = re.search(r'var\(--hair-color,(#[0-9a-fA-F]{6})\)', art)
+        fill = main.group(1) if main else '#2f1006'
+        back = f'<path fill="{fill}" d="{d}"/>'
+        inset = tune.get('skull_band', 0)
+        if inset:
+            # Also in front: a band of hair just inside the skull's outline on either side, under the style's own drawing,
+            # so skin does not show at the temples between the style and the edge of the head.
+            ease = lambda y: inset * min(1, (y - band[0]) / 16)
+            for side in (0, 1):
+                edge = [(rows[y][side], y) for y in band]
+                sign = 1 if side == 0 else -1
+                ring = [(x - sign * grow(y), y) for x, y in edge] + [(x + sign * ease(y), y) for x, y in reversed(edge)]
+                under += f'<path fill="{fill}" d="M' + 'L'.join(f'{x:.1f} {y:.1f}' for x, y in ring) + 'Z"/>'
+    return ET.fromstring(f'<svg xmlns="{SVG}" viewBox="0 0 512 512" width="512" height="512"><g id="hair_back">{back}</g>'
+                         f'<g id="hair_base">{under}<g transform="{move}">{art}</g></g><g id="hair_bangs"/><g id="hair_lines"/></svg>')
+
+
+def legacy_adjust(tune, base_marks):
+    """
+    The changes to a style's shape that tune asks for, on the base head (frame units, y down):
+      skull_fill: n  a cap of hair drawn behind the head, its outline grown by n, from the crown to the ears: fills gaps
+               the style leaves beside the skull (pigtails tied away from the head).
+      skull_band: n  with skull_fill, also a band of hair n wide just inside the skull's edge, drawn in front under the
+               style, so skin does not show at the temples between the style and the edge of the head.
+      recolor: {"#from": "#to"}  colors in the drawing replaced (for line work that does not match the other styles).
+      front_cut: y  the style is drawn in front of the face only above y; below it, only behind the head, so locks that
+               would hang over the cheeks or eyes sit behind the face instead (the head hides them).
+      shorten: [{"below": y, "k": f, "beyond": d, "within": e}] points lower than y, and between d and e from the head's
+               center line, are drawn up toward y (k=0.5 halves how far they hang below it): sideburns, side locks or wisps
+               made shorter. The change eases off over "soft" units (12) past d and e, so a curl bends rather than kinks.
+               "only": "left" or "right" limits it to one side.
+    """
+    rules = tune.get('shorten', [])
+    if not rules:
+        return None
+    cx = base_marks[0][0]
+
+    def adjust(pts):
+        pts = np.array(pts, float)
+        for r in rules:
+            off = pts[:, 0] - cx
+            d = np.abs(off)
+            soft = r.get('soft', 12)
+            # How much each point takes the change: all of it inside [beyond, within], easing to none over `soft` outside.
+            w = np.clip((d - r.get('beyond', 0)) / soft + 1, 0, 1) * np.clip((r.get('within', 1e9) - d) / soft + 1, 0, 1)
+            if r.get('only') == 'left':
+                w *= off < 0
+            elif r.get('only') == 'right':
+                w *= off > 0
+            low = pts[:, 1] > r['below']
+            k = 1 - w[low] * (1 - r['k'])
+            pts[low, 1] = r['below'] + (pts[low, 1] - r['below']) * k
+        return pts
+    return adjust
+
+
+def fit_legacy(base, heads, styles, written):
+    """Fits every older style listed in assets/hair_legacy_fit.json to the adult heads; adds them to styles."""
+    if not os.path.exists(LEGACY_CONFIG):
+        return
+    with open(LEGACY_CONFIG, encoding='utf-8') as f:
+        config = json.load(f)['styles']
+    parts, _ = avatar_manifest()
+    by_id = {p['id']: p for p in parts['hair']}
+    adults = {h: m for h, m in heads.items() if h not in KID_HEADS}
+    game = game_fits(base, list(config))
+    for hair_id, tune in config.items():
+        print(f'{hair_id} (older style):')
+        root = legacy_root(hair_id, base, tune, game.get(hair_id))
+        fitted = fit_file(os.path.join(LEGACY_ART, f'{hair_id}.svg'), base, adults, root=root,
+                          adjust=legacy_adjust(tune, heads[base]), source=f'assets/avatars/hair/{hair_id}.svg (see assets/hair_legacy_fit.json)')
+        for head, text in fitted.items():
+            out = f'{hair_id}_{head}.svg'
+            with open(os.path.join(FITTED, out), 'w', encoding='utf-8') as f:
+                f.write(text)
+            written.add(out)
+        tags = by_id[hair_id].get('tags', {})
+        styles[hair_id] = {'name': by_id[hair_id].get('label') or label(hair_id), 'clipToHead': False, 'kids': False,
+                           'legacy': True, 'length': tags.get('length', 'short'), 'type': 'any', 'heads': sorted(fitted)}
+        if 'front_cut' in tune:
+            # The line, on each head, below which the style is drawn only behind the head: where the base head's line
+            # lands on that head, at its centre.
+            cx = heads[base][0][0]
+            styles[hair_id]['frontCut'] = {h: round(float(warp_for(heads[base], heads[h])(np.array([[cx, tune['front_cut']]]))[0][1]), 1)
+                                           for h in sorted(fitted)}
+        print(f'  -> {len(fitted)} fitted: ' + ', '.join(sorted(fitted)))
+
 # ---------- Outputs for the game and for checking ----------
 
 
@@ -429,6 +637,11 @@ def clip_to_head(name, root):
     if flag in ('true', 'false'):
         return flag == 'true'
     return bool(re.search(r'fade|buzz', name))
+
+
+def for_kids(root):
+    """Whether a style is also a children's style: data-kids="true" on the raw SVG's root. Otherwise it is for adults only."""
+    return (root.get('data-kids') or '').strip().lower() == 'true'
 
 
 def write_manifest(base, styles):
@@ -460,6 +673,9 @@ def debug_page(base, heads, skipped, styles):
         for h in cols:
             if h not in heads:
                 cells.append(f'<td class="none">no head SVG<br>for <code>{h}</code></td>')
+                continue
+            if h not in styles[style]['heads']:
+                cells.append('<td class="none">adults only</td>')
                 continue
             g = groups(open(os.path.join(FITTED, f'{style}_{h}.svg'), encoding='utf-8').read())
             back, front = g['hair_back'], g['hair_base'] + g['hair_bangs'] + g['hair_lines']
@@ -537,16 +753,18 @@ def main():
     for raw in raws:
         name = re.sub(r'[^a-z0-9]+', '_', raw[:-4].lower()).strip('_')
         print(f'{name}:')
-        fitted = fit_file(os.path.join(RAW, raw), base, heads)
+        root = ET.parse(os.path.join(RAW, raw)).getroot()
+        kids = for_kids(root)
+        fitted = fit_file(os.path.join(RAW, raw), base, {h: m for h, m in heads.items() if kids or h not in KID_HEADS})
         for head, text in fitted.items():
             out = f'{name}_{head}.svg'
             with open(os.path.join(FITTED, out), 'w', encoding='utf-8') as f:
                 f.write(text)
             written.add(out)
-        root = ET.parse(os.path.join(RAW, raw)).getroot()
-        styles[name] = {'name': root.get('data-name') or label(name), 'clipToHead': clip_to_head(name, root),
+        styles[name] = {'name': root.get('data-name') or label(name), 'clipToHead': clip_to_head(name, root), 'kids': kids,
                         'length': root.get('data-length', 'short'), 'type': root.get('data-type', 'any'), 'heads': sorted(fitted)}
         print(f'  -> {len(fitted)} fitted: ' + ', '.join(sorted(fitted)))
+    fit_legacy(base, heads, styles, written)
     # Fitted files whose raw hairstyle has gone are removed, so the folder matches the index.
     for f in os.listdir(FITTED):
         if f.endswith('.svg') and f not in written:
