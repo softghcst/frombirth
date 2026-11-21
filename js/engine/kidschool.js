@@ -96,7 +96,7 @@ export function tickKids() {
     }
     const kind = KIND_BY_ID[e.kind];
     if (kind?.fee) {
-      const fee = localMoney(kind.fee, c);
+      const fee = localMoney(sch.feeFor(kind, asPupil(n)), c);
       if (p.finance.cash >= fee) { p.finance.cash -= fee; }
       else {
         const left = schoolOf(n)?.name;
@@ -246,7 +246,7 @@ export function attend(id) {
 export function schoolOptions(id) {
   const n = npcOf(id);
   const stage = stageOf(n) ?? 'elementary';
-  return Object.values(KIND_BY_ID).filter((k) => k.id !== 'palace' && k.id !== 'home').map((k) => ({ id: k.id, name: k.name, blurb: k.blurb, fee: k.fee ? localMoney(k.fee, country()) : 0,
+  return Object.values(KIND_BY_ID).filter((k) => k.id !== 'palace' && k.id !== 'home').map((k) => ({ id: k.id, name: k.name, blurb: k.blurb, fee: k.fee ? localMoney(sch.feeFor(k, asPupil(n)), country()) : 0,
     why: sch.barred(k, stage, asPupil(n)), now: n.life.edu.kind === k.id }));
 }
 export function moveSchool(id, kindId, how = 'parent') {

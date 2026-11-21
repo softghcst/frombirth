@@ -14,6 +14,8 @@
 //   only         it teaches nothing but the subjects it is known for
 //   perk         'network' an alumni contact at graduation · 'home' cheap and near family · 'mentor' a professor from day one
 //   names        patterns: {city} a city of the country, {place} an invented place, {country} the country
+//   private      charges fees even where the state funds university (a conservatory is not the state's)
+//   rigor        how much an audition-entered course there is decided on the day: widens the luck in the room
 export const UNIVERSITY_KINDS = [
   { id: 'ancient', label: 'Old and very selective', squeeze: 0.4, bar: 3.4, auditionBar: 74, tuitionMult: 1.9, living: 1.25, merit: 0.5, needAid: 1, legacy: true, contextual: true, perk: 'network', rep: 96,
     names: ['{place} University', 'University of {place}'],
@@ -35,10 +37,24 @@ export const UNIVERSITY_KINDS = [
     names: ['{place} College', '{saint} College'],
     strong: ['art', 'music', 'theater', 'english', 'history', 'journalism', 'psychology'],
     blurb: 'A few thousand students, small classes, and teachers who know your name.' },
-  { id: 'conservatoire', label: 'Conservatoire', only: true, squeeze: 0.1, bar: 2.0, auditionBar: 72, tuitionMult: 1.4, living: 1.2, merit: 0.5, needAid: 0.6, arts: true, perk: 'mentor', rep: 82,
+  { id: 'conservatoire', label: 'Conservatoire', only: true, private: true, squeeze: 0.1, bar: 2.0, auditionBar: 78, tuitionMult: 2.0, living: 1.2, merit: 0.5, needAid: 0.6, arts: true, perk: 'mentor', rep: 82,
     names: ['{city} Conservatoire', 'The {place} Academy of Performing Arts'],
     strong: ['music', 'theater', 'musical_theater', 'musical_theater_bfa', 'art'],
     blurb: 'For performers and artists. Everyone was the best in their school; here they are ordinary.' },
+  // Musical theater BFAs: studio all day, shows at night, a panel that sees hundreds for every few places. Most who get
+  // in were turned away at least once somewhere. Dearer than any ordinary degree, and the hardest rooms in the game.
+  { id: 'mt_elite', label: 'Elite musical theater conservatory', only: true, private: true, squeeze: 0.3, bar: 2.6, auditionBar: 86, tuitionMult: 3.4, living: 1.45, merit: 0.3, needAid: 0.45, arts: true, rigor: 1, perk: 'network', rep: 95,
+    names: ['The {place} Conservatory of Musical Theater', '{city} School of Musical Theater'],
+    strong: ['musical_theater_bfa', 'musical_theater', 'theater'],
+    blurb: 'Famous names came out of its studios. It takes a handful from hundreds, and most of those auditioned before.' },
+  { id: 'mt_conservatory', label: 'Musical theater BFA conservatory', only: true, private: true, squeeze: 0.2, bar: 2.4, auditionBar: 82, tuitionMult: 2.6, living: 1.3, merit: 0.4, needAid: 0.5, arts: true, rigor: 1, perk: 'mentor', rep: 84,
+    names: ['{city} Conservatory of Performing Arts', 'The {place} School of Performing Arts'],
+    strong: ['musical_theater_bfa', 'musical_theater', 'theater', 'music'],
+    blurb: 'A serious musical theater BFA: dance every morning, scenes every afternoon. Competitive, and costly.' },
+  { id: 'university_bfa', label: 'University with a musical theater BFA', squeeze: 0.12, bar: 2.9, auditionBar: 76, tuitionMult: 2.1, living: 1.15, merit: 0.5, needAid: 0.6, contextual: true, arts: true, rigor: 0.8, perk: 'mentor', rep: 76,
+    names: ['{city} University School of Drama', '{saint} College School of the Arts'],
+    strong: ['musical_theater_bfa', 'musical_theater', 'theater', 'music', 'art', 'english'],
+    blurb: 'A university with a conservatory-style BFA inside it. You need the marks and the audition both.' },
   { id: 'open', label: 'Open university', bar: 0, auditionBar: 99, open: true, tuitionMult: 0.45, living: 0, merit: 0, needAid: 0.5, perk: 'home', rep: 45,
     names: ['The {place} Open University'],
     strong: ['business', 'education', 'psychology', 'communications'],
@@ -49,8 +65,28 @@ export const UNIVERSITY_KIND_BY_ID = Object.fromEntries(UNIVERSITY_KINDS.map((k)
 export const UNI_PLACES = ['Ashcombe', 'Marlowe', 'Wexcombe', 'Harrowgate', 'Calder', 'Thornley', 'Aldermoor', 'Penhallow', 'Ravensworth', 'Lindisholm'];
 export const UNI_SAINTS = ['St Osric\'s', 'St Hild\'s', 'Trinity', 'All Hallows', 'St Aubyn\'s'];
 
-/** The most places one round of applications can go to. */
+/** The most places one round of applications can go to. Audition courses are applied to more widely: nobody counts on one room. */
 export const MAX_APPLICATIONS = 5;
+export const MAX_APPLICATIONS_AUDITION = 8;
+/** The most places that can be set side by side. */
+export const MAX_COMPARE = 4;
+
+/**
+ * The musical theater BFA programs added to a country's universities, by kind. Countries with a deep performing arts
+ * tradition have several; everywhere else has one conservatory and, perhaps, a university with a program.
+ */
+export const BFA_PLANS = {
+  us: ['mt_elite', 'mt_elite', 'mt_elite', 'mt_conservatory', 'mt_conservatory', 'mt_conservatory', 'university_bfa', 'university_bfa', 'university_bfa', 'university_bfa'],
+  gb: ['mt_elite', 'mt_elite', 'mt_conservatory', 'mt_conservatory', 'university_bfa'],
+  ca: ['mt_elite', 'mt_conservatory', 'university_bfa', 'university_bfa'],
+  au: ['mt_elite', 'mt_conservatory', 'university_bfa'],
+  ie: ['mt_conservatory', 'university_bfa'], nz: ['mt_conservatory', 'university_bfa'], kr: ['mt_elite', 'mt_conservatory', 'university_bfa'],
+  jp: ['mt_conservatory', 'university_bfa'], de: ['mt_conservatory', 'university_bfa'], fr: ['mt_conservatory'],
+};
+export const BFA_DEFAULT = ['mt_conservatory'];
+
+/** Coaching for an audition: a year of lessons with someone who has sat on the panel. Once a year; it adds up, to a point. */
+export const AUDITION_COACHING = { cost: 2400, points: 6, cap: 18, blurb: 'A year of private coaching in your pieces, your movement and the room: worth a few points on the day.' };
 
 /** How a personal statement can be written. `needs`: what makes the risky ones come off. */
 export const STATEMENTS = [

@@ -25,7 +25,7 @@ import { studyBarrier } from './health/access.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, livingNpcs, log } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { degreeScheme, schoolModel, subjectsAt, SUBJECT_BY_ID, SCHOOL_KINDS, KIND_BY_ID, SCHOOL_PLACES, SCHOOL_SAINTS, TEACHING_STYLES, LEAVING_AGE } from '../data/education.js';
+import { degreeScheme, schoolModel, subjectsAt, SUBJECT_BY_ID, SCHOOL_KINDS, KIND_BY_ID, FEE_CAP, SCHOLARSHIPS, SCHOOL_PLACES, SCHOOL_SAINTS, TEACHING_STYLES, LEAVING_AGE } from '../data/education.js';
 import { yearMark, carry, nextInterest, reason, showMark, showDegree, stageFor } from './grades.js';
 import { makeNpc } from './npcFactory.js';
 import { applyMods } from './genetics.js';
@@ -88,14 +88,33 @@ function findOrFound(kindId, stage, city, countryId) {
   return s;
 }
 
+/** The year's fee in base units for this child: the school's fee less a scholarship for an exceptional audition or trial
+ *  (a school with entry by talent only). */
+export function feeFor(kind, p = player()) {
+  if (!kind.fee) return 0;
+  const sch = scholarshipFor(kind, p);
+  return Math.round(kind.fee * (1 - (sch?.off ?? 0)));
+}
+export function scholarshipFor(kind, p = player()) {
+  return kind.fee && kind.needs?.entry && kind.id !== 'selective' ? SCHOLARSHIPS.find((x) => val(p, kind.needs.entry.path) >= x.min) ?? null : null;
+}
+
+/** Where the young person actually lives and goes to school: the agency's dorm in another country if they are a trainee or idol there. */
+export function livesAt(p = player()) {
+  const r = p.idol?.residence;
+  return r && p.age < 18 ? { countryId: r.countryId, city: r.city, sponsored: true } : { countryId: p.countryId, city: p.city, sponsored: false };
+}
+
 /** Whether a kind of school would take this child, and the family could manage it. '' if so, else why not. */
-export function barred(kind, stage, p = player()) {
+export function barred(kind, stage, p = player(), sponsored = false) {
   const tier = wealthTier();
   if (kind.from && SCHOOL.indexOf(stage) < SCHOOL.indexOf(kind.from)) return 'Not for children this young.';
   if (kind.needs?.royal && !(p.royal && !p.royal.waiting)) return 'Only for the royal family.';
-  if (kind.needs?.wealth === 'rich' && tier !== 'rich') return 'The fees are beyond your family.';
-  if (kind.fee >= 1500 && kind.fee < 5000 && tier === 'poor') return 'Even small fees are too much at home just now.';
+  if (kind.needs?.wealth === 'rich' && tier !== 'rich' && !sponsored) return 'The fees are beyond your family.';
   if (kind.needs?.entry && val(p, kind.needs.entry.path) < kind.needs.entry.min) return kind.id === 'selective' ? 'You would not pass the entrance test.' : 'You would not get through the audition or trial.';
+  // The fees, less any scholarship for an exceptional audition, against what the family can pay.
+  const fee = feeFor(kind, p);
+  if (!sponsored && fee > FEE_CAP[tier]) return fee >= 5000 ? `The fees (${fmtMoney(localMoney(fee, country()), country())} a year) are beyond your family, unless an audition is exceptional.` : 'Even small fees are too much at home just now.';
   return '';
 }
 
@@ -264,11 +283,15 @@ export function ensure() {
     if (want && want.stage === e.stage) { enrollAt(want, 0); seedMarks(); return; }
     enter(e.stage); return;
   }
-  if (!KIND_BY_ID[s.kind].away && s.kind !== 'home' && (s.city !== p.city || s.countryId !== p.countryId)) {
-    // The family has moved: a new school, and the old class left behind, though not the friends made there.
-    const next = findOrFound(barred(KIND_BY_ID[s.kind], e.stage) ? 'public' : s.kind, e.stage, p.city, p.countryId);
+  // A young trainee or idol who lives in another country (in the agency's dorm, on a trainee visa) goes to school there.
+  const lives = livesAt(p);
+  if (!KIND_BY_ID[s.kind].away && s.kind !== 'home' && (s.city !== lives.city || s.countryId !== lives.countryId)) {
+    // The family has moved, or the dorm is in another country: a new school, and the old class left behind, though not
+    // the friends made there. An idol is often taken in by a performing arts school, whose timetable bends around the work.
+    const want = lives.sponsored && !barred(KIND_BY_ID.arts, e.stage, p, true) ? 'arts' : barred(KIND_BY_ID[s.kind], e.stage, p, lives.sponsored) ? 'public' : s.kind;
+    const next = findOrFound(want, e.stage, lives.city, lives.countryId);
     enrollAt(next, 0);
-    log(`With the move, you changed schools: you are at ${next.name} now, and everyone is new.`);
+    log(lives.sponsored ? `You live in ${lives.city} now, so you changed schools: you are at ${next.name}, with a timetable that bends around your training, and everyone is new.` : `With the move, you changed schools: you are at ${next.name} now, and everyone is new.`);
   } else if (barred(KIND_BY_ID[s.kind], e.stage) === 'The fees are beyond your family.') {
     const next = findOrFound('public', e.stage, p.city, p.countryId);
     enrollAt(next, 0);
@@ -299,7 +322,7 @@ export function choices() {
   if (!atSchool(p) || p.age < 11 || e.choseAt === e.stage) return [];
   const now = school();
   return SCHOOL_KINDS.filter((k) => k.id !== now?.kind && k.id !== 'home').map((k) => ({ id: k.id, name: k.name, blurb: k.blurb, why: barred(k, e.stage, p),
-    fee: k.fee ? `${fmtMoney(localMoney(k.fee, country()), country())} a year, paid by your family.` : 'No fees.' }));
+    fee: k.fee ? `${fmtMoney(localMoney(feeFor(k, p), country()), country())} a year, paid by your family${scholarshipFor(k, p) ? ` (with ${scholarshipFor(k, p).name}; the full fee is ${fmtMoney(localMoney(k.fee, country()), country())})` : ''}.` : 'No fees.' }));
 }
 /** The player asks to change schools. Parents usually agree if it can be done; once per stage. */
 export function askToMove(kindId) {
@@ -441,7 +464,7 @@ export function view() {
     overall: e.gpa ? mark(e.gpa) : null, effort: e.effort, absences: e.absences, focus: e.focus,
     subjects: atSchool(p) && e.subjects ? subjectsAt(e.stage).filter((sub) => e.subjects[sub.id] && !e.subjects[sub.id].done).map((sub) => { const r = e.subjects[sub.id]; return { id: sub.id, name: sub.name, advanced: !!e.courses?.advanced.includes(sub.id), mark: r.g == null ? null : mark(r.g), g: r.g, interest: r.interest, why: r.why ?? '', teacher: teachers().find((t) => t.flags.teaches === sub.id) ?? null }; }) : [],
     classmates: classmates(), friends: npcsByRole('friend').filter((n) => n.flags.metAt), teachers: teachers(),
-    history: [...(e.history ?? [])].reverse(), fee: kind?.fee ? localMoney(kind.fee, country()) : 0,
+    history: [...(e.history ?? [])].reverse(), fee: kind?.fee ? localMoney(feeFor(kind, p), country()) : 0,
     family: s ? s.family.filter((n) => n !== `${p.firstName} ${p.lastName}`) : [],
   };
 }

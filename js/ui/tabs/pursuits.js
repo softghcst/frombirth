@@ -161,7 +161,7 @@ export default {
         ${digitalCard()}
         <div class="section-label">Where you live</div>
         ${p.age >= 3 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="neighborhood"', label: 'My Neighborhood', ico: 'home', sub: neighborhoodSub() })]) : ''}
-        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' })])}
+        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' }), navRow({ attrs: 'data-go="documents"', label: 'Passport & Documents', ico: 'passport' })])}
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}.</p><div class="btn-pair">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}
         <div class="section-label">Risky business</div>
         ${canGamble() ? `<div class="card"><h3>Gambling</h3>
@@ -220,7 +220,7 @@ export default {
       if (go === 'athletics') return openAthletics(api);
       if (go === 'neighborhood') return openNeighborhood(api);
       if (go === 'photocards') return openIdol(api, 'photocards');
-      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a) })[go](api);
+      if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a), documents: (a) => openExplore(a, { view: 'documents' }) })[go](api);
       return undefined;
       if (go) return ({ abroad: leisure.moveAbroad, city: leisure.moveCity })[go]?.(api);
       const act = e.target.closest('[data-prison]')?.dataset.prison;

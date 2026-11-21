@@ -1169,3 +1169,17 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .death-card strong { display: block; font-family: var(--serif); font-size: 1.15rem; }
 .death-card small { display: block; color: var(--muted); }
 .death-card .body { margin: 6px 0 0; }
+
+/* A profile's actions, folded by group: the group's name, how many it holds, and the first two groups open. */
+details.action-group { margin-top: 2px; border-top: 1px solid var(--line-soft); }
+details.action-group summary small { color: var(--muted); font-weight: 600; }
+details.action-group .btn-stack { margin: 2px 0 10px; }
+details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); padding-top: 4px; }
+
+/* University planner: the comparison, stacked so it reads on a phone, and the fit chips. */
+.cmp-block { margin-bottom: 6px; }
+.cmp-block .kv { align-items: flex-start; gap: 12px; }
+.cmp-block .kv span:last-child { text-align: right; max-width: 62%; }
+.cmp-block .cmp-best span:last-child { font-weight: 800; color: var(--good, var(--accent-text)); }
+.chip.good { background: color-mix(in srgb, var(--good) 18%, var(--paper)); }
+.chip.bad { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); }

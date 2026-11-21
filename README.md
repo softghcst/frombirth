@@ -53,6 +53,8 @@ node tests/escape-layouts.mjs
 node tests/succession.mjs      # the rules of royal succession, on hand-built families
 node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candidate races and the count
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
+node tests/bfa-universities.mjs   # musical theater BFA programs: costliest and hardest places, second tries after coaching, the ranked short list, comparison
+node tests/university-ui.mjs   # browser: the planner on a phone and desktop (short list, show more, compare, coaching, Back)
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
@@ -75,6 +77,7 @@ node tests/childhood.mjs       # childhood from birth: things to do by age, play
 node tests/love-stories.mjs    # relationship stories told only when true, once, at the drama setting's pace; the opt-in, non-graphic teenage pregnancy storyline; teenage relationship scenes
 node tests/pregnancy-choice.mjs   # the choice when a pregnancy is announced: go on with it or not; costs, laws, a partner's decision, teenagers
 node tests/family-stories.mjs   # fifty-four stories of relationships, marriages, households, family secrets, inheritance and teenage life: each told only when true
+node tests/idol-student.mjs   # a young trainee abroad goes to school where they live; the performer week cap; talent schools cost more; a crowd from middle school
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
