@@ -553,7 +553,10 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   // Round, open eyes until five: a heavy-lidded shape is drawn as the round one it maps to; at five, their own again.
   const eyed = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender: 'female' });
   check(eyed(1).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && CUR.BABY_EYES.includes(CUR.babyEyes('eyes_10')) && !eyed(3).includes('eyes/eyes_10.svg'), 'a baby or toddler is drawn with grown-up eyes');
-  check(eyed(5).includes('eyes/eyes_10.svg'), 'a five-year-old does not have the eyes they were born with');
+  // Children (5 to 12) have round, lashless child eyes; their own eyes come back at thirteen.
+  for (const age of [5, 9, 12]) check(eyed(age).includes(`child_eyes/${CUR.childEyes('eyes_10')}.svg`) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
+  check(CUR.CHILD_EYES.every((id) => !!PART_BY_ID[id]), 'a child eye shape is missing from the manifest');
+  check(eyed(13).includes('eyes/eyes_10.svg') && !eyed(13).includes('child_eyes/'), 'a thirteen-year-old does not have the eyes they were born with');
   // One soft pair of brows: no lighter edge on any skin, no lid crease under them, and never the crying eyes at rest.
   for (const skin of ['porcelain', 'umber', 'ebony']) {
     const svg = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin }, style: { hair: 'bald' } }, seed: 'brows', age: 1, gender: 'male', mood: 70 });

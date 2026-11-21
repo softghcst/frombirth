@@ -73,6 +73,12 @@ export const BABY_BROWS = 'brows_8';
 // Round and open, with nothing above the eye that would read as a second pair of brows: eyes_22, and eyes_6 without
 // its fold lines (assets/avatars/baby_eyes/baby_eyes_6.svg).
 export const BABY_EYES = ['eyes_22', 'baby_eyes_6'];
+/**
+ * A child's eyes (5 to 12): round and open, with no lashes, made for children (scripts/make_child_eyes.py). The eyes
+ * they were born with always map to the same one of three, in their own color; at thirteen, their own eyes again.
+ */
+export const CHILD_EYES = ['child_eyes_round', 'child_eyes_soft', 'child_eyes_bright'];
+export const childEyes = (id) => (!id ? id : CHILD_EYES[[...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9973, 11) % CHILD_EYES.length]);
 export const babyEyes = (id) => (!id || BABY_EYES.includes(id) ? id : BABY_EYES[[...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9973, 7) % BABY_EYES.length]);
 /** Expressions the renderer can borrow for a mood. */
 export const EXPRESSION = { crying: 'eyes_14', laughing: 'lips_20', grin: 'lips_21', sadBrows: 'brows_11' };
