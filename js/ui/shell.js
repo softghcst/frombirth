@@ -249,6 +249,7 @@ export function mountGame(app, hooks) {
   /** Opens a section of the tab, or goes back to the tab's list (null). Focus follows: into the section, or back to its row. */
   function goSection(title) {
     const tab = TABS.find((t) => t.id === activeTab);
+    if (!tab) return; // (the tab was closed under it: nothing to open a section of)
     const was = openSection;
     openSection = showSection(panelBody, title);
     titleSection(tab);

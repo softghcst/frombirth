@@ -290,13 +290,16 @@ function courtRecord(npc) {
     <div style="height:14px"></div>`;
 }
 
-/** A profile's actions in labeled groups (Together, Talk, Ask, Help, Love, Conflict), so a long list stays easy to scan. */
+/** A profile's actions in labeled groups (Together, Talk, Romance, Between you, Gifts and trips, Ask, Help, Hard moments), each
+ *  folded under its name with a count: the first one with anything in it is open, so a long list stays easy to scan. */
 function grouped(actions) {
   const groupOf = (a) => a.group ?? together.GROUP_OF[a.id] ?? (a.danger ? 'conflict' : 'more');
+  let shown = 0;
   return together.GROUPS.map(([g, name]) => {
     const here = actions.filter((a) => groupOf(a) === g);
     if (!here.length) return '';
-    return `<div class="section-label">${esc(name)}</div><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>`;
+    const open = shown++ < 1;
+    return `<details class="more action-group" ${open ? 'open' : ''}><summary>${esc(name)} <small>${here.length}</small></summary><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></details>`;
   }).join('');
 }
 
@@ -399,8 +402,8 @@ export function openNpc(npc, api, back, o = {}) {
     </div>
     ${clinic || `${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
     <div style="margin:12px 0 16px">${meters}</div>`}
-    ${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}
     ${grouped(actions)}
+    ${(() => { const about = `${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}`; return about.trim() ? `<details class="more about-them"><summary>About ${isPet ? 'them' : esc(npc.firstName)}: life, history, memories</summary>${about}</details>` : ''; })()}
     <div class="btn-stack" style="margin-top:12px">
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
     </div>`, { dismissable: true, onDismiss: () => back?.() });

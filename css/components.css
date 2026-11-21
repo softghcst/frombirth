@@ -1169,3 +1169,9 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .death-card strong { display: block; font-family: var(--serif); font-size: 1.15rem; }
 .death-card small { display: block; color: var(--muted); }
 .death-card .body { margin: 6px 0 0; }
+
+/* A profile's actions, folded by group: the group's name, how many it holds, and the first two groups open. */
+details.action-group { margin-top: 2px; border-top: 1px solid var(--line-soft); }
+details.action-group summary small { color: var(--muted); font-weight: 600; }
+details.action-group .btn-stack { margin: 2px 0 10px; }
+details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); padding-top: 4px; }

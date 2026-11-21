@@ -14,7 +14,6 @@ import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
-import { openExplore } from '../globalLife.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import * as salon from '../../engine/salon.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
@@ -80,7 +79,6 @@ export default {
         </details>
         ${crownLine ? crownLine.replace(/^<div class="card"><h3>[^<]*<\/h3>/, '<div class="section-label">The crown</div>').replace(/<\/div>$/, '') : ''}</div>`; })()}
       ${navGroup([
-    navRow({ attrs: 'data-passport', label: 'Passport & Documents', ico: 'passport' }),
     navRow({ attrs: 'data-world', label: 'The world', ico: 'compass' }),
     navRow({ attrs: 'data-news', label: 'World news', ico: 'news' }),
   ], 'The world')}
@@ -95,7 +93,6 @@ export default {
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
     el.querySelector('[data-health]').onclick = () => openHealth(api);
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
-    el.querySelector('[data-passport]').onclick = () => openExplore(api, { view: 'documents' });
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
