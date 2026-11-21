@@ -100,6 +100,17 @@ function inMonth(e, text) {
   return `In ${MONTHS[e.month]}, ${first}`;
 }
 /** A line in the life story about a disaster. Marked, so the turns can tell it apart (it is told as it strikes with shorter turns). */
+/**
+ * A small one of something that comes most years where the player lives (the summer heat wave, the winter's snow) is
+ * not news every time: it is told when it has not happened for a few years. Worked out from the world's weather
+ * alone, so every turn length tells the same ones.
+ */
+function routine(state, e, year, place) {
+  if (e.severity > 0) return false;
+  for (let k = 1; k <= 4; k++) if (weatherOf(place.countryId, year - k, state).some((x) => x.kind === e.kind && x.severity === 0 && reaches(x, state, place))) return true;
+  return false;
+}
+
 function say(state, text, tone) {
   const entry = { age: state.player.age, text, kind: 'system', tone, disaster: true };
   if (state.month) entry.month = state.month;
@@ -130,13 +141,13 @@ export function tickDisasters(state = store.state) {
       const { strike, after } = impact(state, e);
       // Told already as it struck (turns shorter than a year): the year's reckoning says only what it cost.
       if (D.told[e.id]) { if (after) say(state, `After ${what(e)}: ${after.charAt(0).toLowerCase()}${after.slice(1)}`, 'bad'); }
-      else { say(state, inMonth(e, `${strike}${after ? ` ${after}` : ''}`), e.severity ? 'bad' : 'neutral'); D.told[e.id] = year; }
+      else { if (after || !routine(state, e, year, place)) say(state, inMonth(e, `${strike}${after ? ` ${after}` : ''}`), e.severity ? 'bad' : 'neutral'); D.told[e.id] = year; }
       if (e.severity >= 1 && (!worst || e.severity > worst.severity)) worst = e;
     }
   }
   // Big ones elsewhere in the country are the country's news.
   for (const e of here.filter((x) => !reached.includes(x) && x.severity >= 1)) {
-    postNews(place.countryId, 'disaster', `${Kind(e)} struck elsewhere in ${theCountry(c.name)} in ${MONTHS[e.month]}${e.severity === 2 ? ': a national disaster, with thousands homeless' : ''}.`, 'bad');
+    postNews(place.countryId, 'disaster', `${Kind(e)} struck elsewhere in ${theCountry(c.name)} in ${MONTHS[e.month]}${e.severity === 2 ? ': a national disaster, with thousands homeless' : ''}.`, 'bad', e.severity === 2);
   }
   // And big ones around the world are the world's. The player hears of those where they have ties.
   const mine = ties(p);
@@ -147,7 +158,9 @@ export function tickDisasters(state = store.state) {
       if (e.severity < 1) continue;
       const tied = mine.has(id);
       if (e.severity === 2 || tied || seeded(`news/${state.slotId}/${e.id}`).chance(0.2)) {
-        postNews(id, 'disaster', newsLine(e), 'bad', tied);
+        // In the life story when it is a catastrophe somewhere that matters to the player, or someone they know lives there.
+        const knownThere = tied && Object.values(state.npcs).some((n) => n.alive && n.flags?.abroad === id && p.npcIds.includes(n.id) && n.role !== 'pet');
+        postNews(id, 'disaster', newsLine(e), 'bad', tied && (e.severity === 2 || knownThere));
       }
       if (tied && !far) {
         const someone = Object.values(state.npcs).find((n) => n.alive && n.flags?.abroad === id && p.npcIds.includes(n.id) && n.role !== 'ex' && n.role !== 'pet');
@@ -161,7 +174,8 @@ export function tickDisasters(state = store.state) {
   const afterKind = worst ? AFTER_OF[worst.kind] : null;
   D.after ??= {};
   const lastAny = Math.max(-Infinity, ...Object.values(D.after));
-  const fresh = worst && year - lastAny >= 3 && (worst.severity >= 2 || D.after[afterKind] == null || year - D.after[afterKind] >= 6);
+  // A scene after a disaster at most every five years, and for the same kind of trouble every ten; a catastrophe, every two.
+  const fresh = worst && (worst.severity >= 2 ? year - lastAny >= 2 : year - lastAny >= 5 && (D.after[afterKind] == null || year - D.after[afterKind] >= 10));
   if (fresh) D.after[afterKind] = year;
   if (fresh && p.age >= 8 && !waiting.has('disaster_aftermath')) state.pendingEvents.push({ id: 'disaster_aftermath', cast: { words: { after: AFTERMATH[AFTER_OF[worst.kind]].replace('{what}', what(worst)), what: what(worst) } } });
   if (far && p.age >= 12 && !waiting.has('disaster_far_away') && !(D.farAt != null && year - D.farAt < 3)) {
@@ -249,7 +263,7 @@ export function disastersBetween(state, end, step, ahead = step) {
   for (const e of weatherOf(p.countryId, year, state)) {
     if (e.month < end - step || e.month >= end || D.told[e.id] || !reaches(e, state)) continue;
     D.told[e.id] = year;
-    say(state, strikeText(e), e.severity ? 'bad' : 'neutral');
+    if (!routine(state, e, year, placeNow(state))) say(state, strikeText(e), e.severity ? 'bad' : 'neutral');
   }
   // What is coming: storms, floods and fires that can be seen from a way off, in the next turn's months.
   if (ahead === 12) return; // year-long turns: no forecasts

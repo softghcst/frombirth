@@ -207,14 +207,13 @@ export function activities(state = S()) {
   const known = N.knownIn(state, hood.id);
   const list = [
     { id: 'walk', label: 'Take a walk', sub: 'See who is about.', ok: p.age >= 6, why: 'With a grown-up, when you are older.' },
-    { id: 'park', label: open('playground') && p.age <= 11 ? 'Go to the playground' : 'Visit the park', sub: p.age <= 5 ? 'With a grown-up.' : 'Fresh air, and other people.', ok: p.age >= 2 && (open('park') || open('playground') || hood.p === 'rural' || PROFILES[hood.p].gauge.parks >= 50), why: 'There is no park within reach.' },
+    { id: 'park', label: open('playground') && p.age <= 11 ? 'Go to the playground' : 'Visit the park', sub: p.age <= 5 ? 'With a grown-up.' : 'Fresh air, and other people.', ok: (open('park') || open('playground') || hood.p === 'rural' || PROFILES[hood.p].gauge.parks >= 50), why: 'There is no park within reach.', hide: p.age < 13 }, // children go to the playground from Things to do
     { id: 'knock', label: 'Knock on a neighbor\'s door', sub: 'Meet someone you have not met.', ok: p.age >= 13, why: 'You are a little young to go knocking on your own.' },
     { id: 'volunteer', label: 'Volunteer locally', sub: 'The cleanup crew, the food bank, the reading club.', ok: p.age >= 12, why: 'From 12.' },
-    { id: 'club', label: 'Go to a local club', sub: 'Something people round here do together.', ok: p.age >= 6 && (open('community') || open('church') || open('library') || open('school')), why: 'There is nowhere nearby that runs one.' },
     { id: 'helpout', label: 'Help a neighbor out', sub: 'Someone you know could use a hand.', ok: p.age >= 10 && known.some((n) => n.age >= 18), why: 'You do not know anyone well enough to offer yet.' },
     { id: 'explore', label: 'Explore the neighborhood', sub: 'The back streets, the history, what is new.', ok: p.age >= 8, why: 'From 8, or with a grown-up.' },
   ];
-  return list.map((a) => ({ ...a, done: used(`act:${a.id}`, state) }));
+  return list.filter((a) => !a.hide).map((a) => ({ ...a, done: used(`act:${a.id}`, state) }));
 }
 
 /** Unmet residents near the player, nearest first: who a walk or a knock might find. */

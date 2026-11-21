@@ -88,10 +88,12 @@ export function settleUp(forceSale) {
   const p = player();
   const c = country();
   const f = p.finance;
-  if (f.cash >= 0) return;
+  if (f.cash >= 0) { delete f.overdrawnTold; return; }
   const interest = Math.round(-f.cash * OVERDRAFT_RATE);
   f.cash -= interest;
-  log(`You are overdrawn. The bank charged ${fmtMoney(interest, c)} in interest.`, 'system', 'bad');
+  // Said when it starts, and every few years while it goes on: not the same line every year.
+  const since = f.overdrawnTold;
+  if (since == null || store.state.year - since >= 5) { log(`You are overdrawn. The bank charged ${fmtMoney(interest, c)} in interest.`, 'system', 'bad'); f.overdrawnTold = store.state.year; }
 
   const limit = Math.max(localMoney(4000, c), grossIncome() * 0.4);
   if (-f.cash <= limit) return;

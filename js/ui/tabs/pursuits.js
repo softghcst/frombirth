@@ -116,17 +116,14 @@ export default {
     } else {
       const gambled = p.counters.gambled * c.currency.scale;
       const things = fun.activityOptions();
-      const grow = kidLife.childActivities();
+      // An after-school club is one of the clubs and classes (below), not a second list of its own.
+      const grow = kidLife.childActivities().filter((a) => a.id !== 'club');
       const jobs = kidLife.smallJobs();
       const safety = loveStories.teenSafety();
       const money = p.age >= 5 && p.age <= 17;
       const cc = p.flags.childhood ?? {};
       el.innerHTML = `
         ${thisYearCard()}
-        ${grow.length ? `<div class="card"><h3>Growing up</h3>
-          <p class="muted" style="margin-bottom:10px">${p.age < 6 ? 'A grown-up takes you to most of these.' : 'A few of these in a year: there is school too.'}</p>
-          <div class="btn-stack">${grow.map((a) => `<button class="btn" data-kid="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.why ? ` · ${esc(a.why.toLowerCase())}` : ''}</button>`).join('')}</div>
-        </div>` : ''}
         ${safety.length ? `<div class="card"><h3>Staying safe</h3>
           <p class="muted" style="margin-bottom:10px">Looking after yourself. Private, and free.</p>
           <div class="btn-stack">${safety.map((a) => `<button class="btn" data-kidsafe="${a.id}" ${a.done || a.why ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done' : a.why ? ` · ${esc(a.why)}` : ''}</button>`).join('')}</div>
@@ -150,8 +147,11 @@ export default {
           <p class="muted" style="margin-bottom:10px">Charm ${p.stats.charm} · each once a year</p>
           <div class="btn-stack">${things.filter((a) => a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
         </div>` : ''}
-        ${things.some((a) => !a.charm) ? `<div class="card"><h3>Things to do</h3>
-          <div class="btn-pair">${things.filter((a) => !a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>
+        ${grow.length || things.some((a) => !a.charm) || p.age >= 3 ? `<div class="card"><h3>Things to do</h3>
+          ${grow.length ? `<p class="muted" style="margin-bottom:10px">${p.age < 6 ? 'A grown-up takes you to most of these.' : 'A few of these in a year: there is school too.'}</p>
+          <div class="btn-stack">${grow.map((a) => `<button class="btn" data-kid="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.why ? ` · ${esc(a.why.toLowerCase())}` : ''}</button>`).join('')}</div>` : ''}
+          ${things.some((a) => !a.charm) ? `<div class="btn-pair">${things.filter((a) => !a.charm).map((a) => `<button class="btn" data-do="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>` : ''}
+          ${p.age >= 3 && !p.legal.incarceration ? '<button class="btn" data-go="neighborhoodActs" style="margin-top:6px;width:100%">Around the neighborhood</button>' : ''}
         </div>` : ''}
         ${p.age >= 6 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="riding"', label: 'Riding', ico: 'trophy',
           sub: p.riding ? `${riding.levelName(riding.riderLevel())} rider · ${p.riding.lessons} ${p.riding.lessons === 1 ? 'year' : 'years'} of lessons${p.riding.record.length ? ` · ${p.riding.record.length} ${p.riding.record.length === 1 ? 'show' : 'shows'}` : ''}` : '' })]) : ''}
@@ -161,7 +161,7 @@ export default {
         ${digitalCard()}
         <div class="section-label">Where you live</div>
         ${p.age >= 3 && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-go="neighborhood"', label: 'My Neighborhood', ico: 'home', sub: neighborhoodSub() })]) : ''}
-        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel', ico: 'globe' }), navRow({ attrs: 'data-go="documents"', label: 'Passport & Documents', ico: 'passport' })])}
+        ${navGroup([navRow({ attrs: 'data-go="travel"', label: 'Travel and passport', ico: 'globe' })])}
         ${canEmigrate() ? `<div class="card"><h3>Moving</h3><p class="muted" style="margin-bottom:10px">You live in ${esc(p.city)}.</p><div class="btn-pair">${c.cities.length > 1 ? '<button class="btn" data-go="city">Move to another city</button>' : ''}<button class="btn" data-go="abroad">Move abroad</button></div></div>` : ''}
         <div class="section-label">Risky business</div>
         ${canGamble() ? `<div class="card"><h3>Gambling</h3>
@@ -219,6 +219,7 @@ export default {
       if (go === 'riding') return openScreen(api, 'riding');
       if (go === 'athletics') return openAthletics(api);
       if (go === 'neighborhood') return openNeighborhood(api);
+      if (go === 'neighborhoodActs') return openNeighborhood(api, 'activities');
       if (go === 'photocards') return openIdol(api, 'photocards');
       if (go) return ({ account: leisure.openAccount, followers: leisure.buyFollowers, abroad: (a) => openExplore(a, { view: 'immigration' }), city: leisure.moveCity, travel: (a) => openExplore(a), documents: (a) => openExplore(a, { view: 'documents' }) })[go](api);
       return undefined;

@@ -123,7 +123,8 @@ export const YEARLY = [
   ['polity', () => {
     const p = player();
     // The country's politics move on whether or not the player takes any part. The news reaches those old enough to follow it.
-    const happened = tickPolity(polity(p.countryId)).sort((a, b) => b.weight - a.weight).slice(0, 3);
+    // Only what changes things (a law passed, a new leader, an election) reaches the life story; the rest is in World news.
+    const happened = tickPolity(polity(p.countryId)).filter((n) => n.weight >= 2 || p.politics).sort((a, b) => b.weight - a.weight).slice(0, 2);
     if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
     // Politics also goes on in countries the player has lived in and still has ties to: the results are there when they look, or go back.
     for (const id of ties()) if (id !== p.countryId && store.state.polities?.[id]) tickPolity(store.state.polities[id]);
