@@ -80,12 +80,12 @@ export function finishDrivingTest(picks = []) {
   const missed = t.questions.map((x, i) => (picks[i] === x.right ? null : x)).filter(Boolean);
   if (score < DRIVING_QUIZ.passMark) {
     const left = drivingTestStatus().left;
-    const text = `You failed your driving test: ${score} out of ${t.questions.length}. You needed ${DRIVING_QUIZ.passMark}. ${left ? `You can try again this year (${left} ${left === 1 ? 'try' : 'tries'} left).` : 'That was your last try this year.'}`;
+    const text = `You failed your driving test${t.questions.length > 1 ? `: ${score} out of ${t.questions.length}. You needed ${DRIVING_QUIZ.passMark}` : ''}. ${left ? `You can try again this year (${left} ${left === 1 ? 'try' : 'tries'} left).` : 'That was your last try this year.'}`;
     log(text, 'system', 'bad');
     return { ...result(false, text), score, missed: missed.map((x) => ({ q: x.q, right: x.right })) };
   }
   p.flags.canDrive = true;
-  const text = `You passed your driving test: ${score} out of ${t.questions.length}.`;
+  const text = `You passed your driving test${t.questions.length > 1 ? `: ${score} out of ${t.questions.length}` : ''}.`;
   log(text, 'system', 'good');
   milestone('Passed the driving test.', 'life');
   book({ cat: 'transport', src: 'action', desc: 'Driving lessons and the test' });

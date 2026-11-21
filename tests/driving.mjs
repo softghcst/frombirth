@@ -1,4 +1,4 @@
-// The driving test: five questions, four to pass, three tries a year, and practice with a parent helps.
+// The driving test: one question, right to pass, three tries a year, and practice with a parent helps.
 // Run with: node tests/driving.mjs
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 const { store } = await import('../js/state.js');
@@ -33,24 +33,19 @@ check(!cars.startDrivingTest().ok, 'not at 16');
   const p = life();
   const cash = p.finance.cash;
   const t = cars.startDrivingTest();
-  check(t.ok && t.questions.length === DRIVING_QUIZ.questions && t.questions.every((x) => x.options.length === 4 && x.q), 'five questions, four answers each');
+  check(t.ok && t.questions.length === 1 && t.questions.every((x) => x.options.length === 4 && x.q), 'one question, four answers');
   check(p.finance.cash < cash, 'the lessons and the test are paid for');
   const r = cars.finishDrivingTest(right());
-  check(r.ok && r.score === 5 && cars.hasLicense() && p.milestones.some((m) => /driving test/.test(m.text)), 'all right: passed, and a milestone');
+  check(r.ok && r.score === 1 && cars.hasLicense() && p.milestones.some((m) => /driving test/.test(m.text)), 'all right: passed, and a milestone');
   check(!cars.canTakeDrivingTest(), 'no test once you have a license');
 }
 
-// Four of five passes; three does not.
+// A wrong answer fails, and shows the right one.
 {
   life();
   cars.startDrivingTest();
-  const picks = right(); picks[0] = wrong()[0];
-  check(cars.finishDrivingTest(picks).ok, 'four of five passes');
-  life();
-  cars.startDrivingTest();
-  const three = right(); three[0] = wrong()[0]; three[1] = wrong()[1];
-  const r = cars.finishDrivingTest(three);
-  check(!r.ok && r.score === 3 && r.missed.length === 2 && r.missed.every((m) => m.q && m.right), 'three of five fails, and shows what was missed');
+  const r = cars.finishDrivingTest(wrong());
+  check(!r.ok && r.score === 0 && r.missed.length === 1 && r.missed[0].right && !cars.hasLicense(), 'a wrong answer fails, and shows the right one');
 }
 
 // Three tries a year, retakes cheaper, then wait for next year. Walking out counts as a try.
@@ -72,7 +67,7 @@ check(!cars.startDrivingTest().ok, 'not at 16');
   const p = life();
   p.flags.drivePractice = 2;
   const t = cars.startDrivingTest();
-  check(t.practiced && t.questions.every((x) => x.options.length === 3), 'practice: one wrong answer gone from each question');
+  check(t.practiced && t.questions.every((x) => x.options.length === 3), 'practice: one wrong answer crossed off');
   check(cars.finishDrivingTest(right()).ok, 'and the right answer is still there');
 }
 

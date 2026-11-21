@@ -2,7 +2,7 @@
 // profile, the chronicle of a house, and the roads between them.
 //
 //   Family archive → Our Animal Family → an animal → its memories → the life story
-//   Holdings → Household animals → an animal → shared memories → the house chronicle
+//   People → Pets & Animals → an animal → shared memories → the house chronicle
 //
 // Every screen reads the family's record (engine/animals.js) as it stands;
 // nothing shown here is kept anywhere else. Where the player is, and how each
@@ -489,13 +489,3 @@ export const openAnimalProfile = (tabApi, animalId, ui = {}) => { zoo.reconcile(
 /** The chronicle of the house the player lives in. */
 export const openHouseChronicle = (tabApi, key = zoo.playerHome().key) => start(tabApi, 'chronicle', { key });
 
-/** For the Holdings tab: the animals of the player's household, and the way into the chronicle. */
-export function householdAnimalsHtml() {
-  zoo.reconcile();
-  const here = zoo.householdAnimals();
-  const has = zoo.houseChronicle(zoo.playerHome().key).length;
-  if (!here.length && !has) return '';
-  return `<div class="card"><h3>Household animals</h3>
-    ${here.map((a) => `<button class="row" data-animal="${a.id}">${animalFace(a)}<div class="main"><strong>${esc(a.name)}</strong><small>${esc(cap(speciesOf(a.speciesId).name))} · ${esc(zoo.stageOf(a))} · ${esc(zoo.familyLink(a))}</small></div></button>`).join('') || '<p class="muted zoo-note">No animal lives here now.</p>'}
-    <div class="btn-stack" style="margin-bottom:14px"><button class="btn" data-go="chronicle">House chronicle</button></div></div>`;
-}
