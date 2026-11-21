@@ -68,7 +68,7 @@ export const COLORS = ['red', 'silver', 'black', 'white', 'blue', 'green', 'gray
 /** Licenses, in base units. pass: base chance, improved by the stat paths given. */
 export const DRIVING_TEST = { fee: 600, minAge: 17, pass: { base: 0.55, factors: { 'stats.intellect': 0.3, 'hidden.discipline': 0.3 } } };
 /** The driving test: questions drawn from these, a pass mark, tries a year, and what a retake costs (base units). */
-export const DRIVING_QUIZ = { questions: 5, passMark: 4, triesAYear: 3, retakeFee: 120 };
+export const DRIVING_QUIZ = { questions: 1, passMark: 1, triesAYear: 3, retakeFee: 120 };
 /**
  * Rules of the road and decisions on it. The first answer is the right one (the order is shuffled when asked).
  * Nothing here depends on which side of the road a country drives on.
