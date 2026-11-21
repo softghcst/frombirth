@@ -102,7 +102,7 @@ export function dressFor(look, ctx = {}) {
     out.pacifier = PACIFIER.id; out.lips = null;  // babies and toddlers: a binkie in place of a mouth
     out.eyes = babyEyes(out.eyes);  // and round, open eyes (curation.BABY_EYES)
   } else if (stage === 'kid') {
-    out.eyes = childEyes(out.eyes);  // a child's eyes: round, no lashes (curation.CHILD_EYES)
+    out.eyes = childEyes(out.eyes);  // a child's eyes: round, small lashes (curation.CHILD_EYES)
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
     out.facialHair = null;

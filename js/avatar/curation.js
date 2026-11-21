@@ -74,7 +74,7 @@ export const BABY_BROWS = 'brows_8';
 // its fold lines (assets/avatars/baby_eyes/baby_eyes_6.svg).
 export const BABY_EYES = ['eyes_22', 'baby_eyes_6'];
 /**
- * A child's eyes (5 to 12): round and open, with no lashes, made for children (scripts/make_child_eyes.py). The eyes
+ * A child's eyes (5 to 12): round and open, with small lashes, made for children (scripts/make_child_eyes.py). The eyes
  * they were born with always map to the same one of three, in their own color; at thirteen, their own eyes again.
  */
 export const CHILD_EYES = ['child_eyes_round', 'child_eyes_soft', 'child_eyes_bright'];
