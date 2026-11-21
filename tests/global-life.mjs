@@ -285,6 +285,20 @@ let p = life('us', 30, 80000, 'New York');
   section('companions: everyone decides for themselves; children travel with a parent and their own passport');
 }
 
+// ---------- Going is instant: one click takes the whole trip and says how it went ----------
+{
+  p = life('fr', 34, 60000, 'Paris');
+  const t = travel.startPlan('vacation');
+  travel.updatePlan(t.id, { destination: { countryId: 'fr', city: 'Lyon' }, depart: `${store.state.year}-05-03`, ret: `${store.state.year}-05-09`, mode: 'rail', stay: 'hotel', activities: ['museum'] });
+  check(travel.confirm(t.id).ok, `a trip at home is booked (${travel.problems(t)})`);
+  const r = travel.takeTrip(t.id);
+  check(r.ok && t.status === 'completed' && !travel.whereabouts().away, `going takes the whole trip and brings you home (${r.text})`);
+  check(/Back from Lyon/.test(r.title) && /museum/i.test(r.text) && /Home from/.test(r.text), 'the notice says where you went, what you did and that you are home');
+  check(Array.isArray(r.changes) && r.changes.some((c) => c.label === 'Mood' && c.delta > 0), 'and shows what changed');
+  check(!travel.takeTrip(t.id).ok, 'a trip is taken once');
+  section('going on a trip is instant, with one notice of how it went');
+}
+
 // ---------- Vertical slice 2: a lawful move ----------
 let moved;
 {
