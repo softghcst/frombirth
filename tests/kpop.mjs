@@ -255,6 +255,20 @@ if (g) {
   const d = kp.debut();
   check(d.ok && g.debut && g.debut.releaseId && g.debut.performanceId, 'the debut is recorded with its release and first stage');
   check(!kp.debut().ok, 'once');
+  // Appearances: a moment from that kind of show, each handled its own way; not the same five choices every time.
+  {
+    const { MOMENTS } = await import('../js/data/kpopMoments.js');
+    const kinds = ['radio', 'variety', 'interview', 'fanmeeting', 'fansign', 'fancall', 'livestream'];
+    check(kinds.every((kd) => MOMENTS[kd]?.length >= 2 && MOMENTS[kd].every((m) => m.prompt && m.options.length === 3 && m.options.every((o) => o.good && o.bad && ['vocal', 'dance', 'rap', 'stage', 'camera', 'media', 'team'].includes(o.skill)))), 'every kind of show has its own moments, three ways to handle each');
+    const prompts = new Set();
+    for (let n = 0; n < 12; n++) prompts.add(kp.appearanceMoment('radio').prompt);
+    check(prompts.size >= 2, `the radio show is not the same moment every time (${prompts.size})`);
+    const mo = kp.appearanceMoment('variety');
+    kp.idolOf().acts.social = 0;
+    const r = kp.appearance('variety', { m: mo.m, o: 0 });
+    const opt = MOMENTS.variety[mo.m].options[0];
+    check(r.text.startsWith(opt.good) || r.text.startsWith(opt.bad), `the outcome comes from the moment chosen (${r.text.slice(0, 60)})`);
+  }
   const perfs = g.performances.map((id) => k().performances[id]);
   check(perfs.every((x) => x.members.includes(x.fairy) && k().releases[x.releaseId]), 'every ending fairy is a member, on a real performance');
   const center = kp.current(g).find((m) => g.positions[m.who]?.includes('center'))?.who;

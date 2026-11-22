@@ -133,6 +133,22 @@ if (bought.ok && hm.mortgage) {
 section('markets: one housing market per country; mortgages and rent stay in the money they were agreed in');
 }
 
+// A lender counts what was really earned last year, not only a salary: an idol's earnings, a musician's royalties.
+{
+  const p = life('us', 'New York');
+  p.career.salary = 0; p.career.partTime = null;
+  const loans = await import('../js/engine/loans.js');
+  const { ledgerOf } = await import('../js/engine/ledger.js');
+  const L = store.state.ledger ?? ledgerOf(store.state);
+  store.state.ledger = L;
+  check(!estate.mortgageTerms(500000).available, 'no salary and no earnings: no mortgage');
+  ((L.years[store.state.year - 1] ??= {}).USD ??= {}).salary = [12000000, 0]; // $120,000 paid last year, in cents
+  check(loans.earnedLastYear() === 120000, `last year's earnings are read from the books (${loans.earnedLastYear()})`);
+  const t = estate.mortgageTerms(500000);
+  check(t.available && t.maxLoan > 0, `an idol with no salary but real earnings can get a mortgage (${t.reason || t.maxLoan})`);
+  section('a lender counts real earnings, not only a salary');
+}
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)]) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('Property and tax hold across borders.');
