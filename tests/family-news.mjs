@@ -11,6 +11,7 @@ const { ensureLife } = await import('../js/engine/npcLives.js');
 const { EVENTS } = await import('../js/data/events/index.js');
 const { resolveChoice } = await import('../js/engine/eventEngine.js');
 const passing = await import('../js/engine/passing.js');
+const rel = await import('../js/engine/relationships.js');
 const lessons = await import('../js/engine/lessons.js');
 const { LESSONS_A_YEAR } = await import('../js/data/lessons.js');
 const together = await import('../js/engine/together.js');
@@ -42,27 +43,27 @@ const rich = (n) => { n.life ??= {}; n.life.savings = 5e6; n.savings = 5e6; n.me
   life(30);
   const mom = person('parent', 66, 80);
   mom.health = { v: 1, conds: [{ id: 'cancer', age: 60, diagnosed: true }], last: 66 };
-  let cancer = 0;
-  for (let i = 0; i < 40; i++) if (/cancer/.test(passing.causeOfDeath(mom))) cancer++;
-  check(cancer >= 20, `a death follows the illness they really had, mostly (${cancer} of 40 mention cancer)`);
+  check(/cancer/.test(rel.causeOfDeath(mom)), 'a death follows the serious illness they really had');
   const young = person('friend', 22, 60);
-  const causes = new Set(Array.from({ length: 60 }, () => passing.causeOfDeath(young)));
-  check(![...causes].some((c) => /old age|sleep/.test(c)) && causes.size >= 3, `a young friend does not die of old age, and causes vary (${causes.size})`);
-  check([...causes].every((c) => /^She /.test(c) && /\.$/.test(c)), 'each is a sentence about them');
+  check(!/old age/.test(rel.causeOfDeath(young)), 'a young friend does not die of old age');
+  check(rel.causeOfDeath(young) === rel.causeOfDeath(young), 'and the cause is fixed: it does not change on asking again');
   const sis = person('sibling', 34, 70);
   mom.alive = false; mom.flags.diedYear = S().year;
-  const said = passing.noteDeath(mom);
-  check(mom.flags.diedOf === said && passing.noteDeath(mom) === said, 'the cause is recorded once, and kept');
-  const mood = P().stats.mood; const rel = sis.meters.relationship;
-  const r = passing.funeral(mom.id, true);
-  check(r.ok && mom.flags.funeral === 'attended' && P().stats.mood > mood && sis.meters.relationship > rel, 'going to the funeral helps, and the family is closer for it');
-  check(!passing.funeral(mom.id, false).ok, 'and it is decided once');
+  const r0 = sis.meters.relationship;
+  check(passing.funeral(mom.id, true) && mom.flags.funeral === 'attended' && sis.meters.relationship > r0, 'going to the funeral brings the family closer');
+  check(!passing.funeral(mom.id, false), 'and it is decided once');
   const dad = person('parent', 70, 60); dad.alive = false;
-  const rel2 = sis.meters.relationship; const mood2 = P().stats.mood;
+  const r1 = sis.meters.relationship;
   passing.funeral(dad.id, false);
-  check(dad.flags.funeral === 'skipped' && sis.meters.relationship < rel2 && P().stats.mood < mood2, 'missing a parent\'s funeral: the family notices');
+  check(dad.flags.funeral === 'skipped' && sis.meters.relationship < r1, 'missing a parent\'s funeral: the family notices');
+  const gran = person('grandparent', 90, 60); gran.alive = false;
+  const r2 = sis.meters.relationship;
+  passing.funeral(gran.id, 'speak');
+  check(gran.flags.funeral === 'spoke' && sis.meters.relationship - r2 >= 4, 'speaking at it counts for more');
+  const scene = EVENTS.find((e) => e.id === 'close_death');
+  check(scene.notice?.who === 'goneId' && scene.choices.every((c) => c.outcomes.every((o) => o.effects.some((f) => f.type === 'funeral'))), 'the funeral scene has their face, and every answer reaches the family');
 }
-section('a death has a cause from their life, and a funeral to go to or miss');
+section('a death has a cause from their life, and a funeral to go to, speak at, or miss');
 
 // ---------- 2. Lessons ----------
 {

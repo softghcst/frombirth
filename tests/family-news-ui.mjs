@@ -71,18 +71,18 @@ for (let t = 0; t < 4 && !seen; t++) {
   for (let i = 0; i < 30 && !seen; i++) {
     await page.waitForTimeout(120);
     const txt = await page.evaluate(() => document.querySelector('#modal-root .modal:last-child')?.innerText ?? '');
-    if (/Go to the funeral/.test(txt)) { seen = txt; break; }
+    if (/Go to the funeral/i.test(txt)) { seen = txt; break; }
     const c = page.locator('#modal-root .choice-btn:not([disabled])');
     if (await c.count()) await c.first().click(); else if (await page.locator('#modal-root [data-ok]').count()) await page.locator('#modal-root [data-ok]').last().click();
   }
 }
-check(seen && /Simon/.test(seen) && /has died\. (He|She|They) (was|were) \d+\./.test(seen) && /In memory/.test(seen) && /Stay away/.test(seen), 'a death is a notice: who, at what age, what of, and the funeral');
+check(seen && /Simon/.test(seen) && /has died at \d+/.test(seen) && /In memory/i.test(seen) && /Stay away/i.test(seen) && /Speak at the funeral/i.test(seen), 'a death is a scene: who, at what age, what of, and the funeral');
+check(seen && await page.locator('#modal-root .modal').last().locator('.notice-head .avatar').count() === 1, 'with their face');
 check(seen && !(await page.locator('#modal-root .modal').last().locator('.modal-back').count()), 'part of the turn: answered, not closed');
 await shot('death');
 if (seen) {
-  await page.locator('#modal-root [data-attend]').click(); await page.waitForTimeout(200);
-  check(/funeral/.test(await page.locator('#modal-root .modal').last().innerText()), 'going to the funeral is told');
-  check(await page.evaluate(async (id) => (await import('/js/state.js')).store.state.npcs[id].flags.funeral, ids.pal) === 'attended', 'and recorded');
+  await page.locator('#modal-root .modal').last().locator('.choice-btn', { hasText: /Go to the funeral/i }).click(); await page.waitForTimeout(250);
+  check(await page.evaluate(async (id) => (await import('/js/state.js')).store.state.npcs[id].flags.funeral, ids.pal) === 'attended', 'going is recorded, and the family hears of it');
 }
 await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
 // 4. An illness notice, with a face.

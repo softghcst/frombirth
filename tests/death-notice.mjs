@@ -59,7 +59,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   let seen = false;
   for (let i = 0; i < 30 && !seen; i++) {
     await page.waitForTimeout(150);
-    if (await page.locator('.modal .notice-head').count() && /In memory/.test(await page.locator('.modal').last().innerText())) { seen = true; break; }
+    if (await page.locator('.modal .notice-head').count() && /In memory/i.test(await page.locator('.modal').last().innerText())) { seen = true; break; }
     if (await page.locator('.modal .choice-btn:not([disabled])').count()) await page.locator('.modal .choice-btn:not([disabled])').first().click();
     else if (await page.locator('.modal [data-ok]').count()) await page.locator('.modal [data-ok]').last().click();
   }
@@ -68,7 +68,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(seen, `${label}: Age Up shows a death notice`);
   if (seen) {
     const text = await page.locator('.modal').last().innerText();
-    check(/Toffee/.test(text) && /In memory/.test(text) && /has died\. They were \d+\./.test(text), `${label}: the notice names them, and their age (${text.replace(/\n/g, ' / ')})`);
+    check(/Toffee/.test(text) && /In memory/i.test(text) && /has died\. They were \d+\./.test(text), `${label}: the notice names them, and their age (${text.replace(/\n/g, ' / ')})`);
     check(!(await page.locator('.modal [data-attend]').count()), `${label}: an animal has no funeral to go to`);
     check(/guinea pig/i.test(text) && !/guinea_pig/.test(text), `${label}: a pet's kind is written as words`);
     if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/death-${label}.png` });

@@ -77,7 +77,7 @@ function nameDialog(card) {
  * player on a band, then the emoji and the title, as a notice. '' when the scene is not one, or they are not known.
  */
 function noticeOf(ev, cast) {
-  const id = ev.notice && cast?.[ev.notice.who];
+  const id = ev.notice && (cast?.[ev.notice.who] ?? cast?.words?.[ev.notice.who]);
   const n = id && store.state.npcs[id];
   if (!n) return '';
   const face = `<div class="avatar">${avatarSvg({ age: n.age, gender: n.gender, appearance: n.appearance, seed: n.id, mood: n.meters?.relationship ?? 60, label: n.firstName })}</div>`;
