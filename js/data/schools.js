@@ -163,19 +163,32 @@ export const HOUSING = {
 
 /** High-school social groups. `needs` gates entry; `yearly` applies each year you stay. */
 export const CLIQUES = [
-  { id: 'brains', name: 'The Brains', desc: 'Library at lunch, top of every class.',
-    needs: { 'stats.intellect': 60 }, yearly: { stats: { intellect: 1 } }, gpa: 0.15 },
-  { id: 'athletes', name: 'The Athletes', desc: 'Team kit, early training, loud tables.',
-    needs: { 'talents.sports': 50 }, yearly: { stats: { health: 1 }, talents: { sports: 2 } } },
-  { id: 'artists', name: 'The Artists', desc: 'Paint under the fingernails, band after school.',
-    needs: { 'talents.music|talents.acting|talents.singing|talents.dance': 45 },
-    yearly: { talents: { music: 2, acting: 2, singing: 1, dance: 1 } } },
-  { id: 'populars', name: 'The In-Crowd', desc: 'Everyone knows their names.',
-    needs: { 'stats.charm': 65 }, yearly: { stats: { charm: 1, mood: 1 } }, gpa: -0.05 },
-  { id: 'rebels', name: 'The Rebels', desc: 'Behind the bike sheds, never in assembly.',
-    needs: {}, yearly: { stats: { mood: 1 }, talents: { crime: 2 }, hidden: { discipline: -2 } }, gpa: -0.15 },
-  { id: 'loners', name: 'On your own', desc: 'Headphones in. Nobody bothers you.',
-    needs: {}, yearly: { hidden: { willpower: 1 } } },
+  // needs: what it takes (any one of the paths joined by | will do); pop: the popularity they expect; shuns: what puts
+  // them off (path above the number); rivals: cliques whose members they will not take; interest: where the leader is from.
+  { id: 'populars', name: 'Popular Kids', desc: 'Everyone knows their names.', who: 'You need to be well liked, and good company.',
+    needs: { 'stats.charm': 60 }, pop: 65, rivals: ['loners', 'goths'], interest: 'sport', yearly: { stats: { charm: 1, mood: 1 } }, gpa: -0.05 },
+  { id: 'athletes', name: 'Jocks', desc: 'Team kit, early training, loud tables.', who: 'You need to be an athlete, and not too bookish.',
+    needs: { 'talents.sports': 50 }, pop: 45, shuns: { 'stats.intellect': 85 }, rivals: ['brains', 'gamers'], interest: 'sport', yearly: { stats: { health: 1 }, talents: { sports: 2 } } },
+  { id: 'brains', name: 'Nerds', desc: 'Library at lunch, top of every class.', who: 'You need to be clever, and care about the work.',
+    needs: { 'stats.intellect': 60 }, pop: 0, rivals: ['athletes', 'rebels'], interest: 'science', yearly: { stats: { intellect: 1 } }, gpa: 0.15 },
+  { id: 'theater', name: 'Theater Kids', desc: 'Every lunch is a rehearsal for something.', who: 'You need to act, sing or dance, and not mind an audience.',
+    needs: { 'talents.acting|talents.singing|talents.dance': 45 }, pop: 20, interest: 'theater', yearly: { talents: { acting: 2, singing: 1, dance: 1 } } },
+  { id: 'band', name: 'Band Kids', desc: 'Instrument cases, inside jokes, marching season.', who: 'You need to play music.',
+    needs: { 'talents.music': 45 }, pop: 10, interest: 'music', yearly: { talents: { music: 2 } } },
+  { id: 'artists', name: 'Artsy Kids', desc: 'Paint under the fingernails, sketchbooks everywhere.', who: 'You need a creative streak.',
+    needs: { 'talents.music|talents.acting|talents.singing|talents.dance|stats.charm': 45 }, pop: 15, interest: 'art', yearly: { talents: { music: 1, acting: 1 }, stats: { mood: 1 } } },
+  { id: 'gamers', name: 'Gamers', desc: 'Handhelds under the desk, tournaments at the weekend.', who: 'Anyone who can hold their own in a game.',
+    needs: { 'stats.intellect': 40 }, pop: 0, rivals: ['populars'], interest: 'games', yearly: { stats: { intellect: 1, mood: 1 } } },
+  { id: 'goths', name: 'Goths', desc: 'Black clothes, dark music, sharp wit.', who: 'You need to not care what the popular kids think.',
+    needs: {}, pop: 0, shuns: { 'stats.charm': 90 }, rivals: ['populars'], interest: 'writing', yearly: { stats: { mood: 1 }, hidden: { willpower: 1 } } },
+  { id: 'skaters', name: 'Skaters', desc: 'Scraped knees and the parking lot after school.', who: 'You need some nerve, and to be up for anything.',
+    needs: { 'stats.health': 50 }, pop: 25, interest: 'sport', yearly: { stats: { health: 1, mood: 1 }, hidden: { discipline: -1 } } },
+  { id: 'rebels', name: 'Troublemakers', desc: 'Behind the bleachers, never in assembly.', who: 'Anyone willing to break a few rules.',
+    needs: {}, pop: 20, rivals: ['brains'], interest: 'games', yearly: { stats: { mood: 1 }, talents: { crime: 2 }, hidden: { discipline: -2 } }, gpa: -0.15 },
+  { id: 'floaters', name: 'Social Floaters', desc: 'A seat at every table, and no table of their own.', who: 'You need to get on with everyone.',
+    needs: { 'stats.charm': 50 }, pop: 40, interest: 'service', yearly: { stats: { charm: 1 } } },
+  { id: 'loners', name: 'On your own', desc: 'Headphones in. Nobody bothers you.', who: 'Anyone. No one will ask.',
+    needs: {}, pop: 0, yearly: { hidden: { willpower: 1 } } },
 ];
 export const CLIQUE_BY_ID = Object.fromEntries(CLIQUES.map((c) => [c.id, c]));
 
@@ -222,6 +235,16 @@ export const CLUBS = [
     yearly: { hidden: { karma: 3 }, stats: { health: 1 } } },
   { id: 'volunteers', name: 'Volunteer group', from: 11,
     yearly: { hidden: { karma: 4 }, stats: { mood: 1 } } },
+  { id: 'math_club', name: 'Math club', from: 10, blurb: 'Competition problems and a whiteboard nobody erases.',
+    yearly: { stats: { intellect: 2 } } },
+  { id: 'book_club', name: 'Book club', from: 9, blurb: 'A book a month and pizza while you argue about it.',
+    yearly: { stats: { intellect: 1, mood: 1 } } },
+  { id: 'astronomy', name: 'Astronomy club', from: 10, blurb: 'A telescope on the roof, on clear nights.',
+    yearly: { stats: { intellect: 2 } } },
+  { id: 'animal_rights', name: 'Animal rights club', from: 10, blurb: 'Shelter visits and bake sales for the strays.',
+    yearly: { hidden: { karma: 3 }, stats: { mood: 1 } } },
+  { id: 'gaming_club', name: 'Video games club', from: 10, blurb: 'Tournaments in the computer lab after school.',
+    yearly: { stats: { mood: 2 } } },
 ];
 export const CLUB_BY_ID = Object.fromEntries(CLUBS.map((c) => [c.id, c]));
 export const MAX_CLUBS = 3;
