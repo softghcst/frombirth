@@ -21,7 +21,7 @@ import { messageModal } from '../modals.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
 import { openHealth } from '../health/hub.js';
-import { navRow, navGroup } from '../kit.js';
+import { navRow, navGroup, icon } from '../kit.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -48,10 +48,10 @@ export default {
         <div class="section-label">Conditions</div>${conditions}
         ${born.length ? `<div class="section-label">Born with</div>${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}` : ''}
         <div class="btn-stack" style="margin-top:10px">
-          <button class="btn${sick ? ' peach' : ''}" data-doctor>See a doctor${sick ? ' · something needs looking at' : ''}</button>
-          <button class="btn" data-health>My Health: care, support and records</button>
-          ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
-          ${salon.canVisitSalon() ? '<button class="btn" data-salon>Beauty salon</button>' : ''}
+          <button class="btn${sick ? ' peach' : ''}" data-doctor>${icon('doctor')}See a Doctor${sick ? ' · something needs looking at' : ''}</button>
+          <button class="btn" data-health>${icon('health')}My Health</button>
+          ${med.canHaveSurgery() ? `<button class="btn" data-surgery>${icon('scissors')}Cosmetic Surgery</button>` : ''}
+          ${salon.canVisitSalon() ? `<button class="btn" data-salon>${icon('sparkle')}Beauty Salon</button>` : ''}
         </div>
       </div>
       <div class="card"><h3>Talents and skills</h3>
