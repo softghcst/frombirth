@@ -33,8 +33,8 @@ export function openModal(html, opts = {}) {
   root().appendChild(scrim);
   const card = scrim.firstElementChild;
   card._returnTo = returnTo;
-  // Every page that can be closed has the same way back, in plain sight: "‹ Back", top left, staying there however far
-  // down the page has been scrolled. (Scenes that must be answered have none. A page that draws its own ✕ in a header
+  // Every page that can be closed has a way back, in plain sight: "‹ Back", top left, staying there however far
+  // down the page has been scrolled, unless the page shows its own back button (see sync below). (Scenes that must be answered have none. A page that draws its own ✕ in a header
   // keeps working, but that one is tucked away: there is one way back, and it is always in the same place.) Opened from
   // inside another page, Back returns to it; opened from a tab, it returns to the tab.
   if (opts.dismissable) {
@@ -50,8 +50,16 @@ export function openModal(html, opts = {}) {
     });
     card.prepend(row);
     card.classList.add('has-back');
+    // One way back, never two: while the page shows a back button of its own ("← All places", "← Back" on a deeper
+    // level), this one is hidden, and it returns when the page has none (its first level).
+    const sync = () => {
+      const own = [...card.querySelectorAll('[data-back]:not(.modal-back)')].some((b) => !b.disabled && b.getClientRects().length > 0);
+      if (row.hidden !== own) row.hidden = own;
+    };
     // Pages redraw their own contents; the row is put back if one wipes it.
-    new MutationObserver(() => { if (!row.isConnected) card.prepend(row); }).observe(card, { childList: true });
+    new MutationObserver(() => { if (!row.isConnected) card.prepend(row); sync(); })
+      .observe(card, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'disabled', 'class', 'style'] });
+    sync();
   }
   nameDialog(card);
   card.setAttribute('tabindex', '-1');
