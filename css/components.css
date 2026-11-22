@@ -1220,3 +1220,16 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .pp-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
 .pp-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
 .pp-dots span.on { background: var(--accent); }
+
+/* A sport's page (ui/sports.js sportDesk), practice and the league. */
+.sd-head, .sd-team { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; }
+.sd-glyph { font-size: 2.2rem; width: 48px; text-align: center; flex: none; }
+.sd-main { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.sd-strength { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; }
+.sd-skill { display: grid; grid-template-columns: 110px 1fr 32px; gap: 10px; align-items: center; margin: 6px 0; }
+.sd-skill small { text-align: right; }
+.sd-lrow.mine { outline: 2px solid var(--accent); border-radius: 14px; }
+.sd-lrow .main { display: grid; gap: 3px; }
+.sd-head .mini, .sd-team .mini, .sd-skill .mini, .sd-lrow .mini { width: 100% !important; height: 8px; border-radius: 99px; background: var(--line-soft); overflow: hidden; margin: 0; }
+.sd-head .mini .fill, .sd-team .mini .fill, .sd-skill .mini .fill, .sd-lrow .mini .fill { display: block; height: 100%; border-radius: 99px; }
+.sd-lrow strong { white-space: normal; }
