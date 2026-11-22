@@ -9,8 +9,11 @@ const scene = (id, ageRange, text, choices) => ({ id, category: 'school', ageRan
 
 export default [
   // A new school: where, what kind, and for how long. Told when a stage of school begins (engine/schooling.js enter).
-  scene('school_start', [4, 19], 'A new school: {school}. {kind}, {stage}, {years} years.', [
-    ['Here we go', 'You find your new classroom.', 'startOk'],
+  scene('school_start', [4, 19], 'A new school: {school}. {kind}, {stage}, {years} years. New corridors, new faces, a timetable you cannot read yet. How do you want to start?', [
+    ['Make friends from day one', 'You sit next to someone you do not know.', 'startFriends'],
+    ['Get ahead with the work', 'You read the first chapter before anyone asks you to.', 'startStudy'],
+    ['Join a club or a team', 'You put your name on a list on the noticeboard.', 'startJoin'],
+    ['Keep your head down and see', 'You find your classroom and a seat by the window.', 'startOk'],
   ]),
   // The last year of high school: nominated for prom {title} (engine/schoollife.js). Each pitch rests on something different.
   scene('prom_royalty', [16, 19], 'You have been nominated for prom {title} at {school}, and every nominee gives a short speech in the gym. What is yours?', [

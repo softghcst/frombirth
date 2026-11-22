@@ -23,7 +23,8 @@ import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
 import { openHealth } from './health/hub.js';
 import { careWaiting } from '../engine/health/index.js';
-import { openMoney } from './tabs/holdings.js';
+import { openMoney, drivingTest } from './tabs/holdings.js';
+import * as vehicles from '../engine/vehicles.js';
 import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
 import { openAthleticsAt } from './sports.js';
@@ -327,15 +328,28 @@ export function mountGame(app, hooks) {
     closePanel();
     pushUndo(store.state); // so this turn can be taken back
     const aliveBefore = player().npcIds.filter((id) => store.state.npcs[id]?.alive);
+    const knownBefore = new Set(player().npcIds);
     advanceTurn(); // a year, or six or three months of one (engine/turns.js)
     if (!player().alive) return finish(store.lastObituary);
     persist();
     render();
     await runPending();
     if (player().alive) await deathNotice(aliveBefore);
+    if (player().alive) await birthNotice(knownBefore);
     if (player().alive && player().legal.pending) await tabApi.justice();
     await yearUpdate();
     await healthNotice();
+    if (player().alive) await drivingNotice();
+  }
+
+  /** Old enough to drive: the test is offered once, so nobody has to go looking for it (Holdings has it after that). */
+  async function drivingNotice() {
+    const p = player();
+    if (p.flags.drivingOffered || !vehicles.canTakeDrivingTest() || p.legal.incarceration) return;
+    p.flags.drivingOffered = true;
+    persist();
+    const yes = await confirmModal({ title: "Time for Your Driver's License", body: `You are ${p.age}: old enough to drive here. Take driving lessons and sit the test now? You can also take it later, from Holdings.`, yes: 'Take the test', no: 'Not yet' });
+    if (yes) await drivingTest(tabApi);
   }
 
   /** Someone in the player's life died this turn: a notice for each, before anything else about the year. */
@@ -360,9 +374,30 @@ export function mountGame(app, hooks) {
         <div class="eyebrow">In memory</div>
         <h2>${gone.length === 1 ? `${esc(gone[0].firstName)} has died` : `${gone.length} people you loved have died`}</h2>
         ${gone.map(card).join('')}
-        <div class="btn-row" style="margin-top:14px"><button class="btn primary" data-ok>Close</button></div>`, { dismissable: true, tone: 'neutral', onDismiss: resolve });
+        <div class="btn-row" style="margin-top:14px"><button class="btn primary" data-ok>Close</button></div>`, { dismissable: true, back: false, tone: 'neutral', onDismiss: resolve });
       m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
     });
+  }
+
+  /** A baby brother or sister was born this turn: a notice with their portrait. */
+  async function birthNotice(knownBefore) {
+    const babies = player().npcIds.filter((id) => !knownBefore.has(id)).map((id) => store.state.npcs[id])
+      .filter((n) => n?.alive && /sibling/.test(n.role) && n.age <= 1);
+    for (const b of babies) {
+      const kind = b.gender === 'male' ? 'brother' : b.gender === 'female' ? 'sister' : 'sibling';
+      const mom = player().npcIds.map((id) => store.state.npcs[id]).find((n) => n?.role === 'parent' && n.gender === 'female' && n.alive);
+      await new Promise((resolve) => {
+        const m = openModal(`
+          <div class="eyebrow">New in the family</div>
+          <h2>A Baby ${kind.charAt(0).toUpperCase()}${kind.slice(1)}</h2>
+          <div class="death-card">${portrait(b)}<div class="main">
+            <strong>${esc(b.firstName)} ${esc(b.lastName)}</strong>
+            <small>Your ${esc(kind)} · born ${store.state.year}</small>
+            <p class="body">${mom ? 'Your mother gave birth to' : 'The family welcomes'} a baby ${esc(kind)}. ${player().age < 6 ? 'Everyone is looking at the baby now.' : `You hold ${b.gender === 'male' ? 'him' : b.gender === 'female' ? 'her' : 'them'} for the first time.`}</p></div></div>
+          <div class="btn-row" style="margin-top:14px"><button class="btn primary" data-ok>Welcome, ${esc(b.firstName)}</button></div>`, { dismissable: true, back: false, tone: 'good', onDismiss: resolve });
+        m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+      });
+    }
   }
 
   /** The yearly life update: what this year changed, from the saved state. Shown once per year. */

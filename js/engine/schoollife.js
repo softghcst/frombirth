@@ -335,7 +335,16 @@ export function decide(what, cast = {}) {
   const n = store.state.npcs[cast.mate ?? cast.bully ?? cast.teacher ?? cast.rival ?? cast.one];
   const say = (text) => text;
   switch (what) {
-    case 'startOk': return say('');
+    // A new school: how the player chooses to start. Small, lasting nudges, and one real classmate where friends are made.
+    case 'startOk': mood(2); return say('Nothing happens fast, and that suits you. By the end of the month you know where everything is.');
+    case 'startFriends': {
+      const m = rng.pick(mates().length ? mates() : [null]);
+      if (m) rel(m, 12);
+      e.standing = clamp((e.standing ?? 50) + 3); mood(4);
+      return say(m ? `${m.firstName} laughs at the same moment you do. By the end of the first week you have someone to sit with.` : 'You talk to everyone a little. By the end of the first week, people know your name.');
+    }
+    case 'startStudy': p.stats.intellect = clamp(p.stats.intellect + 2); e.gpa != null && (e.gpa = Math.min(4, e.gpa + 0.05)); return say('The teachers notice. The first test comes back with a good mark on it.');
+    case 'startJoin': e.standing = clamp((e.standing ?? 50) + 2); mood(3); p.stats.charm = clamp(p.stats.charm + 1); return say('Your first practice is chaos, and you love it. Now you have a reason to stay late.');
     case 'promSmart': case 'promLooks': case 'promStrong': case 'promFunny': {
       // The pitch that matches who you are works best; popularity carries every one of them.
       const lean = { promSmart: p.stats.intellect, promLooks: p.stats.charm, promStrong: (p.stats.health + (p.talents.sports ?? 0)) / 2, promFunny: (p.stats.charm + (p.talents.acting ?? 0)) / 2 }[what];

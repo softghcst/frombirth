@@ -81,7 +81,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   for (let i = 0; i < 20; i++) {
     await page.waitForTimeout(150);
     if (!(await page.locator('#modal-root .scrim').count())) break;
-    const b = page.locator('#modal-root .scrim:last-child [data-ok], #modal-root .scrim:last-child .choice-btn:not([disabled]), #modal-root .scrim:last-child .modal-back');
+    const b = page.locator('#modal-root .scrim:last-child [data-ok], #modal-root .scrim:last-child .choice-btn:not([disabled]), #modal-root .scrim:last-child .modal-back, #modal-root .scrim:last-child [data-no]');
     if (await b.count()) await b.first().click();
   }
   await page.locator('[data-tab="pursuits"]').click(); await page.waitForTimeout(150);

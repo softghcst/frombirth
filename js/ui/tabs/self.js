@@ -22,6 +22,7 @@ import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
 import { openHealth } from '../health/hub.js';
 import { navRow, navGroup, icon } from '../kit.js';
+import { loveFamilyGroup, openLoveFamily } from './people.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -82,6 +83,7 @@ export default {
         <p class="muted">The map, every country and how it compares, and the news from everywhere.</p>
         <div class="btn-stack"><button class="btn" data-world>The world map</button><button class="btn" data-news>World news</button></div></div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
+      ${loveFamilyGroup()}
       ${navGroup([
     navRow({ attrs: 'data-settings', label: 'Settings', ico: 'settings' }),
     navRow({ attrs: 'data-exit', label: 'Save and quit', ico: 'exit' }),
@@ -91,6 +93,7 @@ export default {
     bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
     el.querySelector('[data-health]').onclick = () => openHealth(api);
+    el.querySelectorAll('[data-lovefam]').forEach((b) => { b.onclick = () => openLoveFamily(b.dataset.lovefam, api); });
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);

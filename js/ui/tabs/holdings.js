@@ -118,11 +118,11 @@ function willCard(c) {
 }
 
 /** The driving test: pay, answer five questions one by one, and see how it went. */
-async function drivingTest(api) {
+export async function drivingTest(api) {
   const c = country();
   const st = cars.drivingTestStatus();
   if (!st.left) return messageModal({ body: 'You have used all three tries this year. You can take the test again next year.' });
-  const go = await confirmModal({ title: st.retake ? 'Retake the test?' : 'Driving lessons and the test',
+  const go = await confirmModal({ title: st.retake ? 'Retake the test?' : "Your Driver's Test",
     body: `${fmtMoney(st.fee, c)}. One question; get it right to pass. ${st.left} ${st.left === 1 ? 'try' : 'tries'} left this year.`, yes: 'Take the test' });
   if (!go) return undefined;
   const t = cars.startDrivingTest();
@@ -407,13 +407,13 @@ export default {
     const actions = [];
     if (p.age >= 18) actions.push(['property', 'Browse property'], ['market', 'Invest'], ['borrow', 'Borrow money'], ['currencies', 'Currencies']);
     if (p.age >= 3) actions.push(['vehicles', p.age >= 16 ? 'Browse vehicles' : 'Browse bikes and boards']);
-    if (cars.canTakeDrivingTest()) actions.push(['driving', cars.drivingTestStatus().retake ? 'Retake the driving test' : 'Take driving lessons and the test']);
+    if (cars.canTakeDrivingTest()) actions.push(['driving', cars.drivingTestStatus().retake ? "Retake the Driver's Test" : "Driver's License"]);
     if (cars.canLearnToFly() && p.age >= 21) actions.push(['flying', 'Learn to fly']);
     // What is not open yet stays in the list, greyed, with why: the player can see what is coming.
     const locked = [];
     if (p.age < 18) locked.push(['Browse property', 'From age 18'], ['Invest', 'From age 18'], ['Borrow money', 'From age 18'], ['Currencies', 'From age 18']);
     if (p.age < 3) locked.push(['Browse vehicles', 'From age 3']);
-    if (!cars.canTakeDrivingTest() && !cars.hasLicense()) locked.push(['Take driving lessons and the test', fromAge(p.age, DRIVING_TEST.minAge) || 'Not open to you now']);
+    if (!cars.canTakeDrivingTest() && !cars.hasLicense()) locked.push(["Driver's License", fromAge(p.age, cars.drivingTestAge()) || 'Not open to you now']);
     if (!(cars.canLearnToFly() && p.age >= 21) && !cars.hasPilotLicense()) locked.push(['Learn to fly', fromAge(p.age, 21) || 'Not open to you now']);
 
     const row = (a, glyph, sub, value) => `
