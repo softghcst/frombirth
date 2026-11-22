@@ -14,7 +14,8 @@ import { openModal, pickModal, messageModal, confirmModal } from './modals.js';
 import { store } from '../state.js';
 import * as edu from '../engine/education.js';
 import * as cliques from '../engine/cliques.js';
-import { navRow } from './kit.js';
+import { navRow, icon } from './kit.js';
+import { CLUB_BY_ID as SCHOOL_CLUB } from '../data/schools.js';
 import { MAX_CLUBS, CLIQUE_BY_ID } from '../data/schools.js';
 
 const face = (n) => avatarSvg({ age: n.age, gender: n.gender, appearance: n.appearance, seed: n.id, mood: 60 });
@@ -72,6 +73,16 @@ const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const sportName = (x) => (player().countryId === 'us' && x === 'American football' ? 'football' : x);
 const pct = (x) => Math.round(x * 100);
 
+/** What each club action looks like. */
+const ACT_ICON = { practice: 'calendar', help: 'people', feature: 'star', event: 'trophy', friend: 'heart', lead: 'id' };
+const STAT_WORDS = { dance: 'dance', singing: 'singing', music: 'music', acting: 'acting', sports: 'sports', health: 'health', charm: 'charm', intellect: 'smarts', mood: 'happiness', karma: 'kindness', discipline: 'discipline' };
+/** "dance and health go up": what a year in the club does, from its data. */
+function gives(id) {
+  const y = SCHOOL_CLUB[id]?.yearly ?? {};
+  const keys = [...Object.keys(y.talents ?? {}), ...Object.keys(y.stats ?? {}), ...Object.keys(y.hidden ?? {})].map((k) => STAT_WORDS[k] ?? k);
+  return keys.length ? `your ${keys.join(', ').replace(/, ([^,]*)$/, ' and $1')} ${keys.length > 1 ? 'go' : 'goes'} up.` : '';
+}
+
 /** The list of clubs and teams: the ones you are in first, then everything you could join or try out for. */
 function pageActivitiesHub() {
   const p = player();
@@ -79,8 +90,11 @@ function pageActivitiesHub() {
   const a = life.activities();
   const mine = a.clubs.map((c) => `<div class="card sub-card"><div class="sub-head"><strong>${esc(c.kind === 'sport' ? `${cap(sportName(a.sport ?? a.sports[0] ?? 'school'))} team` : c.name)}</strong><span>${esc(c.role)}</span></div>
       ${meterHtml('Your standing in it', c.standing, true)}
-      ${life.clubActions(c.id).length ? `<div class="chips club-acts">${life.clubActions(c.id).map((x) => `<button class="chip" data-club-act="${esc(c.id)}:${x.id}" ${x.done ? 'disabled' : ''}>${esc(x.label)}${x.done ? ' ✓' : ''}</button>`).join('')}</div>` : ''}
-      <button class="btn" data-leave-club="${esc(c.id)}" style="margin-top:6px">Leave</button></div>`).join('');
+      ${gives(c.id) ? `<p class="muted" style="margin:4px 0 8px">Each year: ${esc(gives(c.id))}</p>` : ''}
+      ${c.mates?.length ? `<p class="muted" style="margin:0 0 6px">With ${esc(c.mates.slice(0, 3).map((n) => n.firstName).join(', ').replace(/, ([^,]*)$/, ' and $1'))}${c.mates.length > 3 ? ` and ${c.mates.length - 3} more` : ''} from your class.</p>` : ''}
+      ${c.record?.length ? `<p class="muted" style="margin:0 0 6px">🏅 ${esc(c.record.map((r) => `${r.text.charAt(0).toUpperCase()}${r.text.slice(1)} (age ${r.age})`).join(' · '))}</p>` : ''}
+      ${life.clubActions(c.id).length ? `<div class="section-label" style="margin-top:6px">This year</div><div class="btn-stack club-acts">${life.clubActions(c.id).map((x) => `<button class="btn" data-club-act="${esc(c.id)}:${x.id}" ${x.done ? 'disabled' : ''}>${icon(ACT_ICON[x.id] ?? 'star')}${esc(x.label)}${x.done ? ' · done' : ''}</button>`).join('')}</div>` : ''}
+      <button class="btn danger" data-leave-club="${esc(c.id)}" style="margin-top:14px">Leave ${esc(c.kind === 'sport' ? 'the Team' : 'the Club')}</button></div>`).join('');
   const opts = edu.clubOptions().filter((c) => !c.joined && c.id !== 'sports_team');
   const team = edu.clubOptions().find((c) => c.id === 'sports_team');
   const full = e.clubs.length >= MAX_CLUBS;
