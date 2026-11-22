@@ -54,6 +54,7 @@ export const MENU_RULES = [
   [/^letters and photos$/i, '✉️', 'What was written and kept'],
   // ---------- Pursuits ----------
   [/^your life this year$/i, '📆', 'Your hobby, savings and occasions'],
+  [/^lessons$/i, '🎻', 'Music, martial arts, dance and more'],
   [/^growing up$/i, '🧒', 'Play, learn and make friends'],
   [/^staying safe$/i, '🩺', 'Health class, a talk, a private doctor'],
   [/^pocket money$/i, '🪙', 'Allowance, chores and small jobs'],

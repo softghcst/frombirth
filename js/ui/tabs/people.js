@@ -23,7 +23,7 @@ import * as zooUi from '../animals.js';
 import * as sportsUi from '../sports.js';
 import { openAnimalHub } from '../animalHub.js';
 import { meterHtml, band } from '../meter.js';
-import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
+import { openModal, messageModal, pickModal, confirmModal, inputModal, selectModal } from '../modals.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
 import { COUNTRIES } from '../../data/countries.js';
 import * as who from '../../engine/identity.js';
@@ -482,8 +482,14 @@ export function openNpc(npc, api, back, o = {}) {
     if (id.startsWith('with:')) {
       const opts = together.bondOptions(npc.id, id);
       const label = actions.find((x) => x.id === id)?.label ?? '';
-      const pick = opts ? await pickModal({ title: label, options: opts }) : undefined;
-      if (!opts || pick) await report(api, together.doBond(npc.id, id, pick));
+      // Some actions ask with a dropdown dialog (a sleepover: what to do); the rest with a list.
+      const how = together.bondSelect(npc.id, id);
+      const pick = !opts ? undefined : how ? await selectModal({ ...how, options: opts }) : await pickModal({ title: label, options: opts });
+      if (!opts || pick) {
+        await report(api, together.doBond(npc.id, id, pick));
+        // Something that happened because of it (a scene during the night) plays now, not next year.
+        if (store.state.pendingEvents.length) await api.pending?.();
+      }
     } else await (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
     // Opened from somewhere else: go back there once the thing is done (the stat editor returns here by itself).
     if (id !== 'edit' && id !== 'dynasty') back?.();

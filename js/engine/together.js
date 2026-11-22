@@ -55,6 +55,19 @@ const spend = (amount, why) => { const p = player(); if (p.finance.cash < amount
 
 const PARENT = ['parent'];
 const SIBLING = ['sibling'];
+/** What a sleepover can be. `if`: only where it makes sense (video games need a television, from 1980). */
+const SLEEPOVER = [
+  { id: 'movie', label: 'Watch a movie', text: '{name} slept over and you watched a movie, then half of another, and fell asleep on the floor.', memory: 'a movie and a floor full of popcorn.' },
+  { id: 'games', label: 'Play video games', if: () => has('television') && store.state.year >= 1980, text: 'You and {name} played video games until somebody\'s parent said lights out, twice.', memory: 'video games until lights out.' },
+  { id: 'bake', label: 'Bake together', text: 'You and {name} baked cookies. Some were burned, most were eaten raw, and the kitchen will never be the same.', memory: 'cookies, mostly eaten raw.' },
+  { id: 'camp', label: 'Camp in the backyard', text: 'You and {name} camped in the backyard, and talked in the tent until it got light.', memory: 'a tent in the backyard.', mood: 8 },
+  { id: 'fort', label: 'Build a blanket fort', text: 'You and {name} built a blanket fort out of every cushion in the house, and slept in it.', memory: 'a blanket fort.' },
+  { id: 'ghost', label: 'Tell ghost stories', text: 'You and {name} told ghost stories with a flashlight. Nobody admitted being scared. Everyone was.', memory: 'ghost stories by flashlight.', mood: 4 },
+];
+/** Scenes that can happen during the night (data/events/stories/sleepover.js). */
+const SLEEPOVER_SCENES = ['sleepover_board_game', 'sleepover_prank_call', 'sleepover_sneak_out', 'sleepover_secret'];
+export const SLEEPOVER_IDS = SLEEPOVER.map((a) => a.id);
+
 const FRIEND = ['friend', 'classmate'];
 const PARTNER = ['partner', 'spouse'];
 const CHILD = ['child'];
@@ -295,9 +308,19 @@ export const BONDS = [
       return a < 10 ? `You and ${n.firstName} spent the afternoon on the swings arguing about who could go higher.`
         : a < 16 ? `You and ${n.firstName} spent the afternoon doing nothing much, which was the point.`
         : `You and ${n.firstName} caught up properly for the first time in ages.`; } },
+  // A sleepover: an activity picked from a dropdown (ui select dialog), and now and then a scene during the night.
   { id: 'sleepover', group: 'together', roles: FRIEND, age: [7, 14], them: [6, 16], if: () => atHome(), label: 'Have a sleepover',
-    run: (n) => { bump(n, rng.int(6, 10)); mood(6); remember(n, 'sleepover', 'Stayed up all night at a sleepover with you.');
-      return `${n.firstName} slept over. Nobody slept. There was popcorn in places popcorn should not be.`; } },
+    select: (n) => ({ emoji: '😴', eyebrow: 'Friend', title: 'Sleepover', body: `Invite ${n.flags.title === 'Best friend' ? 'your best friend' : 'your friend'}, ${n.firstName}, to a sleepover!`, label: 'Pick an activity:', button: `Ask ${n.gender === 'male' ? 'him' : n.gender === 'female' ? 'her' : 'them'}` }),
+    options: () => SLEEPOVER.filter((a) => !a.if || a.if()).map((a) => ({ value: a.id, label: a.label })),
+    run: (n, option) => {
+      const a = SLEEPOVER.find((x) => x.id === option) ?? SLEEPOVER[0];
+      // Most friends say yes; a friend who is not close may have other plans.
+      if (!rng.chance(clamp(0.55 + n.meters.relationship / 160, 0.4, 0.97))) { bump(n, -1); return { ok: true, text: `${n.firstName} cannot come this time: ${rng.pick(['a family thing', 'too much homework', 'their parents said no', 'they have a cold'])}.`, tone: 'neutral' }; }
+      bump(n, rng.int(6, 10)); mood(a.mood ?? 6);
+      remember(n, 'sleepover', `Stayed over at your place: ${a.memory}`);
+      if (rng.chance(0.4)) store.state.pendingEvents.push({ id: rng.pick(SLEEPOVER_SCENES), cast: { pal: n.id } });
+      return a.text.replace(/\{name\}/g, n.firstName);
+    } },
   { id: 'askHelp', group: 'ask', roles: FRIEND, age: [6, 120],
     options: (n) => {
       const p = player();
@@ -604,6 +627,13 @@ function fits(b, n) {
 export function bondActions(n) {
   return BONDS.filter((b) => fits(b, n)).map((b) => ({ id: `with:${b.id}`, label: typeof b.label === 'function' ? b.label(n) : b.label, group: b.group,
     danger: !!b.danger, done: n.flags.acts?.[`with:${b.id}`] === player().age }));
+}
+
+/** How the choice is asked, when an action asks it with a dropdown dialog: {emoji, eyebrow, title, body, label, button}. */
+export function bondSelect(npcId, id) {
+  const b = BY_ID[id.replace(/^with:/, '')];
+  const n = npcs()[npcId];
+  return b?.select && n ? b.select(n) : null;
 }
 
 /** The choices an action asks for first, if any. */

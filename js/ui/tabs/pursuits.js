@@ -5,6 +5,7 @@ import { openIdol } from '../kpop.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
 import * as kidLife from '../../engine/childhood.js';
 import * as loveStories from '../../engine/loveStories.js';
+import * as lessons from '../../engine/lessons.js';
 import { canGamble } from '../../engine/gambling.js';
 import { may } from '../../engine/rules.js';
 import * as law from '../../engine/justice.js';
@@ -14,7 +15,7 @@ import { prisonHub, hubClick } from '../prisonHub.js';
 import { legalCard, legalClick } from '../justice.js';
 import { playBlackjack, playHorses, playLottery } from '../minigames/casino.js';
 import { meterHtml } from '../meter.js';
-import { messageModal, pickModal, confirmModal, openModal } from '../modals.js';
+import { messageModal, pickModal, confirmModal, openModal, selectModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
 import * as clubLife from '../../engine/clubs.js';
 import { openDigitalLife, digitalCard } from '../digital.js';
@@ -106,6 +107,20 @@ async function joinGang(api) {
   if (id) await report(api, jail.joinGang(id));
 }
 
+/** Lessons: pick one from the dropdown, then ask a parent (or, as an adult, sign up). */
+async function openLessons(api) {
+  const c = country();
+  const opts = lessons.lessonOptions();
+  const ask = lessons.asksParents();
+  const id = await selectModal({
+    eyebrow: 'Lessons', emoji: '🎓', title: 'Lessons',
+    body: ask ? 'Ask your parents if you can take lessons this year!' : 'Sign up for a year of lessons.',
+    label: 'Pick a lesson:', button: ask ? 'Ask them' : 'Sign up',
+    options: opts.map((o) => ({ value: o.id, label: `${o.emoji} ${o.name} · ${fmtMoney(o.cost, c)}${o.years ? ` · ${o.years} yr` : ''}${o.why ? ` · ${o.why.toLowerCase()}` : ''}`, disabled: !!o.why })),
+  });
+  if (id) await report(api, lessons.takeLesson(id));
+}
+
 export default {
   id: 'pursuits', title: 'Pursuits', short: 'Pursuits',
   icon: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
@@ -142,6 +157,7 @@ export default {
           </div>
         </div>` : ''}
         <div class="section-label">Fun and hobbies</div>
+        ${p.age >= lessons.LESSON_AGE && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-lessons', label: 'Lessons', sub: lessons.asksParents() ? 'Ask your parents for music, martial arts, dance and more' : '' })]) : lock('Lessons', jailed || fromAge(p.age, lessons.LESSON_AGE))}
         ${p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and classes', jailed || fromAge(p.age, 6))}
         ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and classes</h3>
           <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
@@ -213,6 +229,7 @@ export default {
       }
       const kidAct = e.target.closest('[data-kid]')?.dataset.kid;
       if (kidAct) return report(api, kidLife.doActivity(kidAct));
+      if (e.target.closest('[data-lessons]')) return openLessons(api);
       const kidSafe = e.target.closest('[data-kidsafe]')?.dataset.kidsafe;
       if (kidSafe) return report(api, loveStories.doTeenSafety(kidSafe));
       const kidJob = e.target.closest('[data-kidjob]')?.dataset.kidjob;

@@ -1,5 +1,6 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
+import { noteDeath, funeral } from '../engine/passing.js';
 import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
 import { store, player, country, prunePending } from '../state.js';
@@ -13,7 +14,7 @@ import { styledName, standing } from '../engine/royalty.js';
 import { ROYAL_RANKS } from '../data/royalty.js';
 import { avatarSvg, dressOfPlayer } from './avatar.js';
 import { syncMeters } from './meter.js';
-import { eventModal, outcomeModal, confirmModal, openModal, pickModal } from './modals.js';
+import { eventModal, outcomeModal, confirmModal, openModal, pickModal, messageModal } from './modals.js';
 import { summarize } from '../engine/yearSummary.js';
 import { idolWork } from '../engine/kpop.js';
 import { portrait } from './tabs/people.js';
@@ -126,6 +127,8 @@ export function mountGame(app, hooks) {
       btn.textContent = `← ${label}`;
       btn.hidden = false;
     },
+    /** Plays any scenes an action has queued (a sleepover's night), now rather than at the next turn. */
+    async pending() { if (store.state.pendingEvents.length) await runPending(); render(); },
     /** Takes any open court case through to its verdict. */
     async justice() { busy = true; renderHeader(); await runJustice(tabApi); busy = false; render(); },
   };
@@ -337,30 +340,36 @@ export function mountGame(app, hooks) {
   }
 
   /** Someone in the player's life died this turn: a notice for each, before anything else about the year. */
+  /**
+   * Someone died this turn: one notice each, with their face, who they were to the player, what they died of, and (for
+   * a person, not an animal) the choice to go to the funeral or not (engine/passing.js). It is part of the turn, so it
+   * is answered, not closed.
+   */
   async function deathNotice(aliveBefore) {
     const state = store.state;
     const gone = aliveBefore.map((id) => state.npcs[id]).filter((n) => n && !n.alive);
-    if (!gone.length) return;
-    const card = (n) => {
-      const died = n.flags.diedYear ?? state.year;
-      const born = died - n.age;
+    for (const n of gone) {
+      const pet = n.role === 'pet';
       const who = roleLabel(n);
-      const r = n.meters?.relationship ?? 0;
-      const feel = n.role === 'pet' ? (r >= 60 ? `${n.firstName} was family. The house is very quiet.` : `You will miss ${n.firstName}.`)
-        : r >= 70 ? 'You were close. It will take a long time.' : r >= 40 ? `You will miss ${n.firstName}.` : 'You had drifted apart, but it still hurts.';
-      return `<div class="death-card">${portrait(n)}<div class="main">
-        <strong>${esc(n.firstName)}${n.role === 'pet' ? '' : ` ${esc(n.lastName)}`}</strong>
-        <small>${esc(who)} · ${born} – ${died} · age ${n.age}</small>
-        <p class="body">${esc(feel)}</p></div></div>`;
-    };
-    await new Promise((resolve) => {
-      const m = openModal(`
-        <div class="eyebrow">In memory</div>
-        <h2>${gone.length === 1 ? `${esc(gone[0].firstName)} has died` : `${gone.length} people you loved have died`}</h2>
-        ${gone.map(card).join('')}
-        <div class="btn-row" style="margin-top:14px"><button class="btn primary" data-ok>Close</button></div>`, { dismissable: true, tone: 'neutral', onDismiss: resolve });
-      m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
-    });
+      const cause = pet ? '' : (n.flags.diedOf ?? noteDeath(n));
+      const name = `${n.firstName}${pet ? '' : ` ${n.lastName}`}`;
+      const line = `Your ${who.toLowerCase()}, ${n.firstName}, ${pet ? 'died' : 'passed away'} at the age of ${n.age}.`;
+      const attend = await new Promise((resolve) => {
+        const m = openModal(`
+          <div class="notice-head">${portrait(n)}<strong>${esc(name)}</strong><span class="notice-tag">${esc(who)}</span></div>
+          <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">☠️</span>Death</h2>
+          <p class="body pick-body">${esc(line)}</p>
+          ${cause ? `<p class="body pick-body">${esc(cause)}</p>` : ''}
+          ${pet ? '<button class="btn primary" data-ok style="width:100%">OK</button>'
+    : '<div class="btn-stack"><button class="btn primary" data-attend>Attend the funeral</button><button class="btn" data-skip>Skip it</button></div>'}`, { tone: 'neutral' });
+        m.el.addEventListener('click', (e) => {
+          if (e.target.closest('[data-ok]')) { m.close(); resolve(null); }
+          if (e.target.closest('[data-attend]')) { m.close(); resolve(true); }
+          if (e.target.closest('[data-skip]')) { m.close(); resolve(false); }
+        });
+      });
+      if (attend != null) { const r = funeral(n.id, attend); persist(); render(); if (r.text) await messageModal({ body: r.text, tone: 'neutral' }); }
+    }
   }
 
   /** The yearly life update: what this year changed, from the saved state. Shown once per year. */

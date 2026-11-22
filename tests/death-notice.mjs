@@ -59,7 +59,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   let seen = false;
   for (let i = 0; i < 30 && !seen; i++) {
     await page.waitForTimeout(150);
-    if (await page.locator('.modal .death-card').count()) { seen = true; break; }
+    if (await page.locator('.modal .notice-head').count() && /Death/.test(await page.locator('.modal').last().innerText())) { seen = true; break; }
     if (await page.locator('.modal .choice-btn:not([disabled])').count()) await page.locator('.modal .choice-btn:not([disabled])').first().click();
     else if (await page.locator('.modal [data-ok]').count()) await page.locator('.modal [data-ok]').last().click();
   }
@@ -68,11 +68,12 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   check(seen, `${label}: Age Up shows a death notice`);
   if (seen) {
     const text = await page.locator('.modal').last().innerText();
-    check(/Toffee/.test(text) && /In memory/i.test(text), `${label}: the notice names them (${text.replace(/\n/g, ' / ')})`);
+    check(/Toffee/.test(text) && /Death/.test(text) && /died at the age of \d+\./.test(text), `${label}: the notice names them, and their age (${text.replace(/\n/g, ' / ')})`);
+    check(!(await page.locator('.modal [data-attend]').count()), `${label}: an animal has no funeral to go to`);
     check(/guinea pig/i.test(text) && !/guinea_pig/.test(text), `${label}: a pet's kind is written as words`);
     if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/death-${label}.png` });
     await page.locator('.modal [data-ok]').last().click(); await page.waitForTimeout(150);
-    check(!(await page.locator('.modal .death-card').count()), `${label}: the notice closes`);
+    check(!(await page.locator('.modal .notice-head').count()), `${label}: the notice closes`);
   }
   check(!errors.length, `${label}: no errors in the page (${errors.join('; ')})`);
   await page.close();

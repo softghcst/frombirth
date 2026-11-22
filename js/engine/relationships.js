@@ -1,6 +1,7 @@
 // Everyone in the player's life: aging, mortality, inheritance, relationship
 // decay, and the everyday interactions. Romance is in romance.js and
 // children in children.js.
+import { noteDeath } from './passing.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -132,6 +133,7 @@ export function tickRelationships() {
     if (dies) {
       npc.alive = false;
       npc.flags.diedYear = store.state.year;
+      if (npc.role !== 'pet') noteDeath(npc); // what they died of, for the notice and the record (engine/passing.js)
       // An animal's death is written into the family's record, which tells it in the life story.
       // Someone close is a loss in the life story; an acquaintance (a neighbor met once, an old classmate) is not news to
       // be told, and is felt only a little.
