@@ -4,6 +4,7 @@
 //
 // The records themselves (incidents, evidence, cases, sentences) are kept by
 // engine/cases.js. This file applies their consequences to the player's life.
+import { fightEdge } from './martial.js';
 import { forgetNpc } from './digital/core.js';
 import { rule, may } from './rules.js';
 import { policingShift } from './policy.js';
@@ -110,7 +111,8 @@ export function commitCrime(crimeId, targetId, how = {}) {
   const stranger = crime.target && !known ? STRANGERS.find((x) => x.id === how.strangerId) ?? STRANGERS[0] : null;
   const method = crime.target ? METHOD_BY_ID[how.methodId] ?? METHOD_BY_ID.knife : null;
   const who = known ? `${known.firstName} ${known.lastName}` : stranger ? stranger.name.replace(/^an? /, 'The ').replace(/^the /, 'The ') : '';
-  const edge = (method?.edge ?? 0) - (stranger?.guard ?? 0) + (method?.id === 'bare_hands' ? (p.stats.health - 50) / 250 : 0);
+  // With bare hands, fitness counts, and so does training: a black belt knows what to do with them (engine/martial.js).
+  const edge = (method?.edge ?? 0) - (stranger?.guard ?? 0) + (method?.id === 'bare_hands' ? (p.stats.health - 50) / 250 + fightEdge(p) : 0);
   const worked = rng.chance(successChance(crime, edge)); // judged on who you were before you did it
   p.counters.crimes += 1;
   p.hidden.karma = clamp(p.hidden.karma + crime.karma);
@@ -144,7 +146,7 @@ export function commitCrime(crimeId, targetId, how = {}) {
 
   // It went wrong. Either you are caught there and then, or you get away with nothing.
   if (crime.danger && rng.chance(crime.danger)) p.stats.health = clamp(p.stats.health - rng.int(15, 35));
-  if (stranger && stranger.guard >= 0.25 && rng.chance(0.3)) p.stats.health = clamp(p.stats.health - rng.int(10, 30)); // they fought back
+  if (stranger && stranger.guard >= 0.25 && rng.chance(Math.max(0.05, 0.3 - fightEdge(p)))) p.stats.health = clamp(p.stats.health - rng.int(10, 30)); // they fought back
   const failed = crime.target ? `${who} is still very much alive. ${crime.failed}` : crime.failed;
   if (crime.target) inc.attempted = true;
   if (rng.chance(clamp(crime.caught + (method?.caught ?? 0) + l.heat / 300 + policingShift(p.countryId), 0.05, 0.97))) {

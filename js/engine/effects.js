@@ -4,6 +4,7 @@ import { rng } from '../rng.js';
 import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
 import { feelingChoice } from './identity.js';
+import { ailmentChoice } from './health.js';
 import { workChoice } from './workEvents.js';
 import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
@@ -201,6 +202,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
       case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;
       case 'genderFeeling': ctx.note = feelingChoice(e.value); break;
+      case 'ailment': ctx.note = ailmentChoice(e.value, ctx.cast); break;
       case 'parent': ctx.note = parentChoice(e.value, ctx.cast); break;
       case 'royalEd': ctx.note = royalEdChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;

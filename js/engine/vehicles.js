@@ -9,6 +9,8 @@ import { market } from './market.js';
 import { borrow, loanOffer, CAR_LOAN } from './loans.js';
 import { VEHICLE_TYPES, VEHICLE_BY_ID, COLORS, DRIVING_TEST, DRIVING_QUIZ, DRIVING_QUESTIONS, FLYING_LESSONS, SERVICE_COST } from '../data/vehicles.js';
 import { book } from './ledger.js';
+import { PACES, DURATIONS, CRUISE_SPEED, RIDES_A_YEAR, ENCOUNTERS, ENCOUNTER_BY_ID } from '../data/rides.js';
+import { bestMove, fightEdge } from './martial.js';
 import { recordLoss } from './insurance.js';
 
 /** Lower-cases a name's first letter, unless it starts with an acronym (BMX, SUV). */
@@ -196,6 +198,80 @@ export function service(id) {
   log(text);
   book({ cat: 'transport', src: 'action', desc: text });
   return result(true, text, 'neutral');
+}
+
+// ---------- Rides ----------
+
+/** What can be ridden or driven out for the day: bikes, boards, motorbikes, cars. */
+export const canRide = (a) => ['cycle', 'bike', 'car'].includes(vehicleTypeOf(a)?.cls);
+/** Rides left this year on this vehicle. */
+export const ridesLeft = (id) => RIDES_A_YEAR - (yearActs().rides?.[id] ?? 0);
+
+/**
+ * A ride: the pace and how long. Back come the distance, how much it was enjoyed (0–100), and sometimes an encounter
+ * on the way to be handled (rideEncounter).
+ */
+export function ride(id, paceId = 'cruising', minutes = 30) {
+  const p = player();
+  const a = assetOf(id);
+  const type = a && vehicleTypeOf(a);
+  if (!a || !canRide(a)) return result(false, 'That is not something you can go for a ride on.', 'neutral');
+  if ((type.cls === 'car' || type.cls === 'bike') && !hasLicense() && p.age < 18) return result(false, 'You need a license to drive it.', 'neutral');
+  if (ridesLeft(id) <= 0) return result(false, `${RIDES_A_YEAR} rides a year on it is plenty.`, 'neutral');
+  const acts = yearActs();
+  acts.rides ??= {};
+  acts.rides[id] = (acts.rides[id] ?? 0) + 1;
+  const pace = PACES.find((x) => x.id === paceId) ?? PACES[1];
+  const km = Math.round(CRUISE_SPEED[type.cls] * pace.speed * (type.id === 'road_bike' ? 1.25 : 1) * (minutes / 60) * rng.around(1, 0.12) * 100) / 100;
+  const miles = country().id === 'us' || country().id === 'uk';
+  const distance = miles ? `${(km / 1.609).toFixed(2)} miles` : `${km.toFixed(2)} kilometers`;
+  let joy = clamp(Math.round(35 + type.joy * 4 + pace.joy + rng.int(-15, 20) - (p.stats.health < 40 ? 15 : 0) + (a.condition < 40 ? -10 : 0)));
+  if (type.cls === 'cycle') p.stats.health = clamp(p.stats.health + Math.max(1, Math.round(minutes / 30 * pace.speed)));
+  p.stats.mood = clamp(p.stats.mood + Math.round(joy / 20));
+  a.condition = clamp((a.condition ?? 80) - Math.round(minutes / 60 * pace.speed));
+  // Going fast has its own risk.
+  if (rng.chance(0.012 * pace.risk * type.risk * (minutes / 60))) {
+    p.stats.health = clamp(p.stats.health - rng.int(6, 14));
+    a.condition = clamp(a.condition - 15);
+    joy = Math.min(joy, 15);
+    const text = `You took a spill on the ${a.name.toLowerCase()}, ${distance} in. Scraped up and sore, but nothing broken.`;
+    log(text, 'system', 'bad');
+    return { ...result(false, text), distance, joy };
+  }
+  const where = { cycle: rng.pick(['along the river', 'through a noisy city park', 'out past the edge of town', 'up and down every hill nearby']), bike: rng.pick(['along the coast road', 'out into the hills']), car: rng.pick(['on an empty highway with the windows down', 'out to somewhere you had never been']) }[type.cls];
+  const text = `You went for a ${pace.name.toLowerCase()} ride ${where} on your ${a.name.toLowerCase()}.`;
+  log(text, 'system', 'good');
+  // Sometimes the ride brings something with it.
+  const pool = ENCOUNTERS.filter((e) => e.classes.includes(type.cls));
+  const enc = rng.chance(0.35) && pool.length ? rng.pick(pool) : null;
+  const move = bestMove(p);
+  const encounter = enc ? { id: enc.id, assetId: id, text: fill(enc.text, a, move), options: enc.options.map((o, i) => ({ value: i, label: fill(o.label, a, move) })).filter((o) => !enc.options[o.value].needsMove || move) } : null;
+  return { ...result(true, text), distance, joy, encounter };
+}
+const fill = (t, a, move) => t.replace(/\{vehicle\}/g, a.name.toLowerCase()).replace(/\{city\}/g, player().city).replace(/\{move\}/g, move ?? 'training');
+
+/** How an encounter on a ride turns out, for the option chosen. */
+export function rideEncounter(encId, optionIndex, assetId) {
+  const p = player();
+  const enc = ENCOUNTER_BY_ID[encId];
+  const o = enc?.options[optionIndex];
+  if (!o) return result(false, 'Nothing happens.', 'neutral');
+  const a = assetOf(assetId);
+  const move = bestMove(p);
+  const level = o.lean === 'martial' ? 50 + fightEdge(p) * 160 : o.lean ? Number(resolve(o.lean)) || 50 : null;
+  const won = level == null ? true : rng.chance(clamp(0.25 + (level - 40) / 80, 0.08, 0.92));
+  const [text, fx] = won ? o.good : o.bad;
+  const c = country();
+  if (fx.mood) p.stats.mood = clamp(p.stats.mood + fx.mood);
+  if (fx.health) p.stats.health = clamp(p.stats.health + fx.health);
+  if (fx.charm) p.stats.charm = clamp(p.stats.charm + fx.charm);
+  if (fx.karma) p.hidden.karma = clamp(p.hidden.karma + fx.karma);
+  if (fx.cash) p.finance.cash += localMoney(fx.cash, c);
+  if (fx.followers) p.social.followers = (p.social.followers ?? 0) + fx.followers;
+  if (fx.lost && a) { p.assets = p.assets.filter((x) => x.id !== a.id); }
+  const said = fill(text, a ?? { name: 'ride' }, move);
+  log(said, 'system', won ? 'good' : 'neutral');
+  return result(won, said, won ? 'good' : 'neutral');
 }
 
 /** A day out. Good for the mood; once a year per vehicle. */

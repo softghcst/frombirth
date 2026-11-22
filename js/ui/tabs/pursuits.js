@@ -17,6 +17,7 @@ import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal, openModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
 import * as clubLife from '../../engine/clubs.js';
+import * as martial from '../../engine/martial.js';
 import { openDigitalLife, digitalCard } from '../digital.js';
 import * as bc from '../../engine/digital/broadcast.js';
 import { canEmigrate } from '../../engine/emigration.js';
@@ -106,6 +107,20 @@ async function joinGang(api) {
   if (id) await report(api, jail.joinGang(id));
 }
 
+/** A martial art: where you are in it, the moves you know, and a course of lessons. */
+async function trainMartial(api, id) {
+  const st = martial.styles().find((x) => x.id === id);
+  const cost = martial.courseCost();
+  const belt = (r) => (/^(White|Yellow|Orange|Green|Blue|Purple|Brown|Black)$/.test(r) ? `${r} belt` : r);
+  const go = await pickModal({ title: st.name, cancel: 'Back',
+    body: `${st.started ? `${belt(st.rank)}. Moves: ${st.moves.join(', ')}.` : `A style from ${st.from}.`} ${cost ? `A course of lessons costs ${fmtMoney(cost, country())}.` : 'Your family pays for lessons.'}`,
+    options: [{ value: 'go', label: st.started ? `Keep studying ${st.name.toLowerCase()}` : `Take ${st.name.toLowerCase()} lessons`, disabled: !!st.why || st.black, sub: st.why || (st.black ? 'You are at the top of the style.' : '') }] });
+  if (go !== 'go') return undefined;
+  const r = martial.takeCourse(id);
+  api.changed();
+  return messageModal({ title: r.ok ? (r.text.includes('New move') || r.text.includes('first move') ? 'This is your dojo' : 'Training') : undefined, body: r.text, tone: r.tone });
+}
+
 export default {
   id: 'pursuits', title: 'Pursuits', short: 'Pursuits',
   icon: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
@@ -147,6 +162,9 @@ export default {
           <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
           <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(m.club.name.replace(/^(A|An|The) /, '').replace(/^./, (x) => x.toUpperCase()))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
             <button class="btn primary" data-club="find">Find a club or class</button></div>
+        </div>` : ''}
+        ${p.age >= 5 && !p.legal.incarceration ? `<div class="card"><h3>Martial arts</h3>
+          <div class="nav-group">${martial.styles().map((st) => navRow({ attrs: `data-martial="${st.id}"`, label: st.name, sub: st.started ? `${st.rank}${/^(White|Yellow|Orange|Green|Blue|Purple|Brown|Black)$/.test(st.rank) ? ' belt' : ''} · ${st.moves.length} ${st.moves.length === 1 ? 'move' : 'moves'}` : st.why || `From ${st.from}`, ico: 'trophy' })).join('')}</div>
         </div>` : ''}
         ${things.some((a) => a.charm) ? `<div class="card"><h3>Charm and confidence</h3>
           <p class="muted" style="margin-bottom:10px">Charm ${p.stats.charm} · each once a year</p>
@@ -223,6 +241,8 @@ export default {
       if (kidMoney === 'buy') return report(api, kidLife.buySaved());
       if (kidMoney === 'save') return pickModal({ title: 'Save for what?', options: kidLife.SAVING_GOALS.map(([name, cost]) => ({ value: name, label: name[0].toUpperCase() + name.slice(1), sub: fmtMoney(localMoney(cost, country()), country()) })) })
         .then((pick) => (pick ? report(api, kidLife.saveFor(pick, kidLife.SAVING_GOALS.find(([n]) => n === pick)[1])) : undefined));
+      const art = e.target.closest('[data-martial]')?.dataset.martial;
+      if (art) return trainMartial(api, art);
       const club = e.target.closest('[data-club]')?.dataset.club;
       if (club) return leisure.openClubs(api, club);
       const todo = e.target.closest('[data-do]')?.dataset.do;
