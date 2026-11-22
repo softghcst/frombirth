@@ -87,7 +87,7 @@ async function run(viewport) {
   check(['My Accounts', 'Feed', 'Messages', 'Friends & Connections', 'Communities', 'Create Content', 'Creator Studio', 'Online Reputation', 'Digital Memories', 'Digital History'].every((x) => navLabels.some((y) => y.startsWith(x))), 'all ten sections are there');
 
   // 3. Available technology.
-  check((await page.locator('.dl-body').innerText()).includes('Getting online'), 'the accounts page shows how the character gets online');
+  check((await page.locator('.dl-body').innerText()).includes('Getting Online'), 'the accounts page shows how the character gets online');
   await page.click('.dl-body [data-do="buyDevice"]');
   await choose('Smartphone');
   await continueModal();
