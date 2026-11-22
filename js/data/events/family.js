@@ -5,6 +5,19 @@ const kidAged = (lo, hi) => [need('cast.kid.age', '>=', lo), need('cast.kid.age'
 
 /** @type {import('../../types.js').GameEvent[]} */
 export default [
+  // Queued when someone close dies (engine/relationships.js): the funeral, and whether you go.
+  {
+    id: 'close_death', category: 'loss', ageRange: [6, 120], queuedOnly: true, priority: true,
+    text: 'Your {role}, {deceased}, has died at {age}. {cause}',
+    choices: [
+      { label: 'Go to the funeral', outcomes: [any('You stand with the family and say goodbye. It is hard, and you are glad you were there.', 'neutral', st('mood', 3), hid('karma', 2))] },
+      { label: 'Speak at the funeral', check: chk(0.5, { 'stats.charm': 0.5, 'hidden.willpower': 0.3 }), outcomes: [
+        ok('You tell a story about {first} that has the whole room smiling through it. People thank you afterward.', st('mood', 5), st('charm', 1), hid('karma', 3)),
+        bad('Halfway through, your voice goes. Someone squeezes your hand, and you finish it anyway.', st('mood', 1), hid('karma', 2))] },
+      { label: 'Stay away', outcomes: [any('You do not go. People notice, and so do you, for a long time.', 'bad', st('mood', -4), hid('karma', -3))] },
+    ],
+  },
+
   {
     id: 'sleepless', category: 'parenthood', ageRange: [18, 60], cooldown: 3, weight: 3,
     cast: { kid: 'child' }, castRequires: kidAged(0, 1),

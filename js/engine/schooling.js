@@ -262,6 +262,13 @@ export function enter(stage, chosenKind = null) {
   if (kind.away) text += ' You will live there during the school year, and come home for the holidays.';
   if (been.length) text += ` ${been[been.length - 1]} went here before you.`;
   log(text);
+  // A new school is announced: where, what kind, and for how long.
+  if (kindId !== 'home') {
+    const stages = schoolModel(c.id).stages;
+    const at = stages.findIndex((x) => x.id === stage);
+    const years = Math.max(1, (stages[at + 1]?.start ?? LEAVING_AGE) - Math.max(p.age, stages[at]?.start ?? p.age));
+    store.state.pendingEvents.push({ id: 'school_start', cast: { words: { school: s.name, kind: kind.id === 'public' ? 'Public' : kind.name, stage: stageName(stage), years: String(years) } } });
+  }
   // The very first day of school is its own memory.
   const e = p.education;
   const first = classmates()[0];

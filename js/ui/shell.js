@@ -1,5 +1,6 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
+import { watchTitles } from './titles.js';
 import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
 import { store, player, country, prunePending } from '../state.js';
@@ -49,6 +50,7 @@ function occupationLine(p) {
  * @param {{onExit:Function, onDeath:Function, onRestore:(state:object)=>void}} hooks
  */
 export function mountGame(app, hooks) {
+  watchTitles();
   let activeTab = null;
   /** The section open inside the tab (its title), or null for the tab's list. */
   let openSection = null;

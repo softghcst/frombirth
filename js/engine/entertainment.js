@@ -293,6 +293,9 @@ export function slate(countryId) {
 
 // ---------- Casting ----------
 
+/** School productions the player has been in (drama club, musical theater): experience a casting director counts. */
+export const stageShows = (p = player()) => (p.flags.performances ?? []).length + (['drama', 'musical_theater'].some((id) => p.education?.clubs?.includes(id)) ? 1 : 0);
+
 /** Professional credits (not school or community shows). */
 export const proCredits = (p = player()) => workOf(p).credits.filter((c) => production(c.productionId) && !['community'].includes(production(c.productionId).tier)).length;
 
@@ -386,7 +389,8 @@ export function whyNot(prod, r, p = player()) {
     // Children's parts are cast at open calls for children: the major stage wants one professional credit, or an agent.
     if (prod.tier === 'major_stage' && proCredits(p) < 1 && !f.agent) return `Children's parts ${districtOf(prod)?.on ?? 'on the major stage'} go to children with a professional credit (a regional or touring part) or an agent.`;
   } else {
-    if (proCredits(p) < tier.minCredits && !(f.agent && tier.minCredits <= 2)) return `They see people with ${tier.minCredits} professional credits or an agent.`;
+    // Two school shows or more stand in for a first professional credit: a touring company or a network will see you.
+    if (proCredits(p) + (stageShows(p) >= 2 ? 1 : 0) < tier.minCredits && !(f.agent && tier.minCredits <= 2)) return `They see people with ${tier.minCredits} professional credits or an agent.`;
     if (['studio', 'blockbuster', 'major_stage'].includes(prod.tier) && !f.agent && recognitionIn(p.countryId, p) < 40) return 'Parts at this level go through agents.';
   }
   if (r.kind === 'background' && proCredits(p) >= 3) return '';
@@ -458,7 +462,8 @@ export function audition(productionId, idx, prep = 'study', approach = 'restrain
   const skill = playerSkill(need);
   // What is seen in the room: the craft, the preparation, and whether it matches how the director sees the part.
   const fit = approach === r.approach ? 4 : rng.chance(0.3) ? 1 : -3; // directors see a part their own way; some are persuaded
-  const craft = skill + { none: -4, study: 1, coach: 4 }[prep] + fit;
+  // School drama and musical theater count: someone who has been on a stage before walks into the room differently.
+  const craft = skill + { none: -4, study: 1, coach: 4 }[prep] + fit + Math.min(5, stageShows(p));
   // What helps around it: a record, a reputation, an agent, a known face for a lead. Each a little.
   const star = ['lead', 'voice_lead'].includes(r.kind) ? recognitionIn(p.countryId, p) / 20 : 0;
   // On stage, training shows in the room: a conservatory degree more than a broad one (STAGE_BAR).

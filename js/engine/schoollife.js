@@ -285,6 +285,11 @@ export function tickSchoolLife() {
   for (const n of class_) flesh(n);
   e.standing = Math.round(clamp((e.standing ?? 50) + (p.stats.charm - 50) / 25 + (p.hidden.karma - 50) / 50 + (class_.filter((n) => n.meters.relationship >= 55).length - 2) + (50 - (e.standing ?? 50)) * 0.05));
   clubsYear();
+  // The last year of high school: a nomination for prom royalty, likelier the more popular you are. Once.
+  if (e.stage === 'high' && p.age === 17 && !e.prom && rng.chance(clamp(0.12 + ((e.standing ?? 50) - 50) / 100 + (p.stats.charm - 50) / 200, 0.04, 0.6))) {
+    e.prom = { age: p.age, nominated: true };
+    pend('prom_royalty', { words: { title: p.gender === 'male' ? 'king' : p.gender === 'female' ? 'queen' : 'royalty', school: sch.school()?.name ?? 'your school' } });
+  }
 
   // Classmates have lives of their own: one of them has news most years.
   for (const n of class_) delete n.flags.note;
@@ -330,6 +335,18 @@ export function decide(what, cast = {}) {
   const n = store.state.npcs[cast.mate ?? cast.bully ?? cast.teacher ?? cast.rival ?? cast.one];
   const say = (text) => text;
   switch (what) {
+    case 'startOk': return say('');
+    case 'promSmart': case 'promLooks': case 'promStrong': case 'promFunny': {
+      // The pitch that matches who you are works best; popularity carries every one of them.
+      const lean = { promSmart: p.stats.intellect, promLooks: p.stats.charm, promStrong: (p.stats.health + (p.talents.sports ?? 0)) / 2, promFunny: (p.stats.charm + (p.talents.acting ?? 0)) / 2 }[what];
+      const won = rng.chance(clamp(0.15 + (lean - 50) / 90 + ((e.standing ?? 50) - 50) / 120, 0.05, 0.85));
+      const title = cast.words?.title ?? 'royalty';
+      e.prom = { age: p.age, won };
+      if (!won) { mood(-3); return say(`The speech goes fine. Someone else is crowned prom ${title}, and you clap for them like you mean it.`); }
+      e.standing = clamp((e.standing ?? 50) + 8); mood(12);
+      milestone(`Crowned prom ${title} at ${cast.words?.school ?? 'school'}.`, 'education');
+      return say(`The envelope is opened, and it is your name. You are prom ${title}. The crown is a little too big, and you keep it forever.`);
+    }
     case 'firstHello': e.firstDay = true; if (n) rel(n, 14); return say(`${n?.firstName ?? 'Someone'} says hello back. By lunchtime you are sharing a table.`);
     case 'firstHide': e.firstDay = true; mood(-3); return say('The day is very long. Nobody is unkind. You get through it.');
     case 'partyGo': if (n) rel(n, 10); mood(5); e.standing = clamp((e.standing ?? 50) + 2); return say(`Cake, a game that gets out of hand, and a party bag. ${n?.firstName ?? 'Your friend'} is glad you came.`);

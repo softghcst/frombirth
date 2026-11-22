@@ -438,14 +438,15 @@ export default {
 
     const school = [];
     if (sch.atSchool(p) || (e.history ?? []).length) school.push(['school', sch.atSchool(p) ? 'Your school' : 'Your school years']);
-    if (e.enrolled && p.age >= 6) {
+    // At school, everything about it is on the school screen: studying, clubs and teams, cliques, leaving.
+    const atSchoolNow = sch.atSchool(p) && !edu.isHigher(e.stage);
+    if (e.enrolled && p.age >= 6 && !atSchoolNow) {
       school.push(['study', 'Study harder'], ['slack', 'Slack off']);
       if (p.age >= 10) school.push(['skip', edu.isHigher(e.stage) ? 'Skip lectures' : 'Skip school']);
     }
     if (edu.canSetPriority()) school.push(['priority', 'What comes first']);
     if (edu.canAskForTutor()) school.push(['tutor', 'Ask for a tutor']);
-    if (edu.canJoinClubs()) school.push(['club', 'Clubs and classes']);
-    if (e.enrolled && ['middle', 'high'].includes(e.stage)) school.push(['clique', 'Choose your crowd']);
+    if (edu.canJoinClubs() && !atSchoolNow) school.push(['club', 'Clubs and classes']);
     if (campusLife.atUniversity()) school.unshift(['campus', 'University life']);
     if (e.enrolled && edu.isHigher(e.stage)) school.push(['housing', 'Change where you live']);
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);
@@ -454,7 +455,7 @@ export default {
     if (adult.examOptions().length) school.push(['exam', `Sit the ${adult.examOptions()[0].name}`]);
     if (leftSchool) school.push(['apply', 'Plan what comes next']);
     if (edu.canTakeGapYear()) school.push(['gap', 'Take a gap year']);
-    if (edu.canDropOut()) school.push(['drop', 'Drop out']);
+    if (edu.canDropOut() && !atSchoolNow) school.push(['drop', 'Drop out']);
     { const fr = familyRecord(); if (fr.past.length || fr.kids.length || p.age >= 18) school.push(['family', 'Family schooling']); }
 
     const work = careerButtons();

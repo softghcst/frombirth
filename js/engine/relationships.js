@@ -117,6 +117,20 @@ export function inheritFrom(npc) {
   record(gross - tax, `You inherited ${fmtMoney(gross - tax, c)} from ${npc.firstName}'s estate${tax ? ` after ${fmtMoney(tax, c)} in estate tax${where !== c ? ` in ${theCountry(where.name)}` : ''}` : ''}${heirs > 1 ? `, a ${heirs === 2 ? 'half' : `1/${heirs}`} share with your ${heirs === 2 ? 'sibling' : 'siblings'}` : ''}.`);
 }
 
+/**
+ * What someone died of, as a family would say it: more likely to be an accident when young, cancer or the heart in
+ * middle age, and simply age when old. Fixed by who they were, so it uses none of the game's dice.
+ */
+function causeOfDeath(npc) {
+  let h = 7;
+  for (const ch of String(npc.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const pick = (list) => list[h % list.length];
+  if (npc.age < 35) return pick(['a car accident', 'an accident at work', 'a sudden heart condition', 'an infection that turned serious', 'an overdose', 'a rare cancer']);
+  if (npc.age < 65) return pick(['cancer', 'a heart attack', 'a stroke', 'complications after surgery', 'liver failure', 'cancer, after a long illness', 'a car accident']);
+  if (npc.age < 85) return pick(['a heart attack', 'cancer', 'a stroke', 'pneumonia', 'heart failure', 'complications of diabetes', 'dementia, after a long decline']);
+  return pick(['old age, in their sleep', 'pneumonia', 'heart failure', 'a fall, and what came after', 'old age, peacefully, with family near']);
+}
+
 export function tickRelationships() {
   const p = player();
   const drifted = [];
@@ -137,7 +151,16 @@ export function tickRelationships() {
       // be told, and is felt only a little.
       const close = KIN_ROLES.includes(npc.role) || npc.meters.relationship >= 40;
       if (npc.role === 'pet') animalDied(npc);
-      else if (close) log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}.`, 'system', 'bad');
+      else if (close) {
+        const cause = causeOfDeath(npc);
+        npc.flags.cause = cause;
+        log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}${cause ? `, of ${cause}` : ''}.`, 'system', 'bad');
+        // The ones who matter most get a moment of their own: the funeral, and whether you go. Two a year at most.
+        const told = store.state.pendingEvents.filter((e) => e.id === 'close_death').length;
+        if (told < 2 && p.age >= 6 && (KIN_ROLES.includes(npc.role) || npc.meters.relationship >= 60)) {
+          store.state.pendingEvents.push({ id: 'close_death', cast: { words: { deceased: `${npc.firstName} ${npc.lastName}`, first: npc.firstName, role: roleLabel(npc).toLowerCase(), age: String(npc.age), cause: cause ? `It was ${cause}.` : '' } } });
+        }
+      }
       p.stats.mood = clamp(p.stats.mood - (close || npc.role === 'pet' ? Math.round(8 + npc.meters.relationship / 5) : 1));
       inheritFrom(npc);
       continue;

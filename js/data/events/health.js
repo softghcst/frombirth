@@ -51,6 +51,17 @@ const tellPartner = (role) => ({
 
 /** @type {import('../../types.js').GameEvent[]} */
 export default [
+  // Queued when a new illness starts (engine/health.js): what to do about it.
+  {
+    id: 'ailment', category: 'health', ageRange: [3, 120], queuedOnly: true,
+    text: 'You have come down with {illness}.',
+    choices: [
+      { label: 'See a doctor', outcomes: [any('You make an appointment.', 'neutral', { type: 'ailment', value: 'doctor' })] },
+      { label: 'Rest it off', outcomes: [any('You go to bed early.', 'neutral', { type: 'ailment', value: 'rest' })] },
+      { label: 'Ignore it', outcomes: [any('You carry on.', 'neutral', { type: 'ailment', value: 'ignore' })] },
+    ],
+  },
+
   tellPartner('partner'),
   tellPartner('spouse'),
   {
