@@ -17,6 +17,7 @@ import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal, openModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
 import * as clubLife from '../../engine/clubs.js';
+import { clubTitle } from '../../data/clubs.js';
 import * as martial from '../../engine/martial.js';
 import { openDigitalLife, digitalCard } from '../digital.js';
 import * as bc from '../../engine/digital/broadcast.js';
@@ -157,11 +158,11 @@ export default {
           </div>
         </div>` : ''}
         <div class="section-label">Fun and hobbies</div>
-        ${p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and classes', jailed || fromAge(p.age, 6))}
-        ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and classes</h3>
+        ${p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and Classes', jailed || fromAge(p.age, 6))}
+        ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and Classes</h3>
           <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
-          <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(m.club.name.replace(/^(A|An|The) /, '').replace(/^./, (x) => x.toUpperCase()))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
-            <button class="btn primary" data-club="find">Find a club or class</button></div>
+          <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(clubTitle(m.club))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
+            <button class="btn primary" data-club="find">Find a Club or Class</button></div>
         </div>` : ''}
         ${p.age >= 5 && !p.legal.incarceration ? `<div class="card"><h3>Martial arts</h3>
           <div class="nav-group">${martial.styles().map((st) => navRow({ attrs: `data-martial="${st.id}"`, label: st.name, sub: st.started ? `${st.rank}${/^(White|Yellow|Orange|Green|Blue|Purple|Brown|Black)$/.test(st.rank) ? ' belt' : ''} · ${st.moves.length} ${st.moves.length === 1 ? 'move' : 'moves'}` : st.why || `From ${st.from}`, ico: 'trophy' })).join('')}</div>
