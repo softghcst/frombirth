@@ -1,5 +1,6 @@
 // Flows for health care, cosmetic surgery, holidays, social media and
 // emigrating. The Self and Pursuits tabs call into these.
+import { faceGenderOf } from '../avatar/render.js';
 import * as sys from '../engine/systems.js';
 import * as econ from '../engine/economy.js';
 import { player, country } from '../state.js';
@@ -59,7 +60,7 @@ export async function cosmeticSurgery(api) {
   let tweaks;
   if (proc === 'reshape') {
     const p = player();
-    const next = await openAppearanceEditor({ title: 'Reshape your features', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id, scope: 'tweaks',
+    const next = await openAppearanceEditor({ title: 'Reshape your features', appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id, scope: 'tweaks',
       confirm: 'Choose a surgeon', note: () => 'Eye spacing, eye size and height, nose and mouth size.' });
     if (!next) return undefined;
     tweaks = next.inherited.tweaks;

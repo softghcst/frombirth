@@ -76,7 +76,7 @@ export function mountAppearanceEditor(el, o = {}) {
   if (scope === 'style') tabs.sort((x, y) => (y.id === 'hair') - (x.id === 'hair')); // a salon starts with the hair
   let tab = tabs[0].id;
 
-  const draw = (appearance, opts = {}) => avatarSvg({ appearance, age: opts.age ?? age, gender: o.gender, seed, mood: 66, viewBox: opts.viewBox, label: opts.label });
+  const draw = (appearance, opts = {}) => avatarSvg({ appearance, age: opts.age ?? age, gender: o.gender, face: o.face ?? o.gender, seed, mood: 66, viewBox: opts.viewBox, label: opts.label });
   const withValue = (key, value) => {
     const next = cloneAppearance(a);
     const c = CONTROLS[key];

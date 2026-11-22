@@ -136,7 +136,7 @@ export function renderCreator(app, hooks) {
   const grownGender = () => (choice.sex && choice.trans === 'yes' ? (choice.sex === 'male' ? 'female' : 'male') : choice.sex || undefined);
 
   function preview() {
-    q('[data-preview]').innerHTML = avatarSvg({ age: 24, gender: grownGender() || 'female', mood: 70, appearance: look ?? sample, seed: 'creator' });
+    q('[data-preview]').innerHTML = avatarSvg({ age: 24, gender: grownGender() || 'female', face: choice.sex || grownGender() || 'female', mood: 70, appearance: look ?? sample, seed: 'creator' });
     q('[data-preview]').style.opacity = look ? '1' : '0.45';
     q('[data-look-note]').textContent = look ? 'This is the face you will grow into. Your family will take after you.' : 'Left alone, you will take after your parents.';
     q('[data-clear-look]').hidden = !look;
@@ -220,7 +220,7 @@ export function renderCreator(app, hooks) {
     setPick('orientation', weightedKey(Object.fromEntries(ORIENTATIONS.map((o) => [o.id, o.weight]))));
     rollName('first');
     rollName('last');
-    look = randomAppearance(undefined, grownGender());
+    look = randomAppearance(undefined, choice.sex || grownGender()); // the face they are born with: a trans boy's changes with hormones, later
     setPick('talent', pickFrom(Object.keys(TALENTS)));
     setPick('background', pickFrom(Object.keys(BACKGROUNDS)));
     const crown = MONARCHIES[c.id];

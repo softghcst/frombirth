@@ -29,7 +29,7 @@ export function renderTitle(app, hooks) {
     return `
       <div class="row">
         <button class="row" data-load="${s.slotId}" style="border:0;margin:0;padding:0;background:none;flex:1;min-width:0">
-          <div class="avatar">${avatarSvg({ age: s.age, gender: s.gender, appearance: s.appearance, seed: s.slotId })}</div>
+          <div class="avatar">${avatarSvg({ age: s.age, gender: s.gender, face: s.face ?? s.gender, appearance: s.appearance, seed: s.slotId })}</div>
           <div class="main"><strong>${esc(s.name)}</strong>
             <small>${s.dead ? `Died at ${s.age} · choose who carries on` : `Age ${esc(ageLabel(s.age, s.month))} · ${c.flag} ${esc(c.name)} · ${fmtMoney(s.netWorth, c)}`}</small>
             ${s.timeline ? `<small class="timeline-tag">${esc(s.timeline.name)}${s.timeline.note ? ` · parted at ${esc(ageLabel(s.timeline.age, s.timeline.month))}: ${esc(s.timeline.note)}` : ''}</small>` : ''}</div>

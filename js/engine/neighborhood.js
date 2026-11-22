@@ -811,8 +811,35 @@ export function residentsOf(state, hoodId) {
 export function note(state, e) {
   const H = hoods(state);
   H.log.push(e);
-  if (H.log.length > 1500) H.log.splice(0, H.log.length - 1500);
+  if (H.log.length > 1000) {
+    // The oldest lines about strangers go first; what concerns people the player knew is kept longest.
+    const knew = (x) => x.k === 'remembered' || (x.who && (H.res[x.who]?.met || H.res[x.who]?.fam || state.npcs?.[x.who])) || H.hhs[x.hh]?.me || H.hhs[x.hh]?.fam;
+    const keep = H.log.slice(0, -200).filter(knew);
+    H.log = [...keep.slice(-600), ...H.log.slice(-200)].slice(-1000);
+  }
   return e;
+}
+
+/**
+ * People nobody in the family ever met, who left or died twenty years and more ago, leave no trace but the name on a
+ * home's history. Keeps a long life's neighborhoods from growing without end.
+ */
+export function forget(state = store.state) {
+  const H = hoods(state);
+  const cutoff = T(state.year - 20);
+  const held = new Set([...Object.values(H.blocks).map((b) => b.mgr), ...H.disputes.filter((d) => d.status === 'open').map((d) => d.res)].filter(Boolean));
+  const gone = new Set();
+  for (const r of Object.values(H.res)) {
+    if (r.met || r.fam || r.owns || state.npcs[r.id] || held.has(r.id)) continue;
+    const when = r.dead ?? r.gone?.t;
+    if (when == null || when > cutoff) continue;
+    if (H.hhs[r.hh]?.home) continue;
+    gone.add(r.id);
+    delete H.res[r.id];
+  }
+  if (!gone.size) return;
+  // Their households stay on record (a home's history and the chronicle point at them), only without them.
+  for (const hh of Object.values(H.hhs)) if (hh.m.some((x) => gone.has(x))) hh.m = hh.m.filter((x) => !gone.has(x));
 }
 
 /** Scenes that are all, at heart, "a neighbor would like your company": one of these is plenty for a while. */
@@ -1499,6 +1526,7 @@ export function openYear(state = store.state) {
   }
   // Friend groups: three or more people who live near each other and are friends with the player.
   groups(state);
+  forget(state);
 }
 
 /** A turn between years: the months just lived, and where the player lives now. */
