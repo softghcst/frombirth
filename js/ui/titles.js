@@ -22,7 +22,9 @@ export function titleCase(text) {
       const bare = p.toLowerCase().replace(/^[^\p{L}]+|[^\p{L}.]+$/gu, '');
       const keepSmall = SMALL.has(bare) && p !== first && p !== last && !afterBreak;
       if (keepSmall) return p;
-      // Each part of a hyphenated word: Part-Time, Jiu-Jitsu. A word with a capital inside is left alone.
+      // Each part of a hyphenated word: Part-Time, Jiu-Jitsu. A word with a capital inside is left alone, and so is
+      // one that starts with a single capital letter: K-pop, T-shirt, X-ray.
+      if (/^[^\p{L}]*\p{Lu}-/u.test(p)) return p;
       return p.split('-').map((seg) => (/\p{Lu}/u.test(seg.slice(1)) ? seg : upFirst(seg))).join('-');
     })();
     afterBreak = /[:—–]$/.test(p) || /^[—–]$/.test(p);
