@@ -31,7 +31,7 @@ import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { babyEyes, childEyes, babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
+import { babyEyes, babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
@@ -102,7 +102,7 @@ export function dressFor(look, ctx = {}) {
     out.pacifier = PACIFIER.id; out.lips = null;  // babies and toddlers: a binkie in place of a mouth
     out.eyes = babyEyes(out.eyes);  // and round, open eyes (curation.BABY_EYES)
   } else if (stage === 'kid') {
-    out.eyes = childEyes(out.eyes);  // a child's eyes: round, small lashes (curation.CHILD_EYES)
+    out.eyes = babyEyes(out.eyes);  // children keep the round toddler eyes (curation.BABY_EYES) until thirteen
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
     out.facialHair = null;
@@ -265,7 +265,7 @@ function colorVars(look, ctx) {
     'eye-white': deep ? mixHex('#ffffff', c.skin, READABLE.white * deep) : null };
   if (c.outfit) vars['outfit-color'] = c.outfit;
   // Babies and toddlers: no lid crease line (on their big eyes it reads as a second pair of brows).
-  if (['baby', 'toddler'].includes(ageStage(age))) vars['crease-color'] = 'transparent';
+  if (['baby', 'toddler', 'kid'].includes(ageStage(age))) vars['crease-color'] = 'transparent';
   if (['baby', 'toddler'].includes(ageStage(age))) vars['binkie-color'] = ctx.gender === 'female' ? PACIFIER.girl : PACIFIER.boy;
   return Object.entries(vars).filter(([, v]) => v).map(([k, v]) => `--${k}:${v}`).join(';');
 }

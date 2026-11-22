@@ -314,11 +314,6 @@ export const AVATAR_MANIFEST = {
   baby_eyes: [
     {"id": "baby_eyes_6", "file": "avatars/baby_eyes/baby_eyes_6.svg", "label": "Baby 6"},
   ],
-  child_eyes: [
-    {"id": "child_eyes_bright", "file": "avatars/child_eyes/child_eyes_bright.svg", "label": "Child bright"},
-    {"id": "child_eyes_round", "file": "avatars/child_eyes/child_eyes_round.svg", "label": "Child round"},
-    {"id": "child_eyes_soft", "file": "avatars/child_eyes/child_eyes_soft.svg", "label": "Child soft"},
-  ],
 };
 
 /** The template face every part was fitted to. Each head's own measurements are in its `fit`. */

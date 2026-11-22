@@ -550,13 +550,12 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
     check(svg.includes('pacifiers/pacifier_01.svg#art') && svg.includes(`--binkie-color:${hex}`) && !/lips\/lips_/.test(svg), `a ${age === 1 ? 'baby' : 'toddler'} ${gender === 'male' ? 'boy' : 'girl'} has no ${hex} binkie in place of a mouth`);
   }
   check(!face(5, 'female').includes('pacifier') && /lips\/lips_/.test(face(5, 'female')), 'a five-year-old still has a binkie, or no mouth');
-  // Round, open eyes until five: a heavy-lidded shape is drawn as the round one it maps to; at five, their own again.
+  // Round, open eyes until thirteen: a heavy-lidded shape is drawn as the round one it maps to.
   const eyed = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender: 'female' });
   check(eyed(1).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && CUR.BABY_EYES.includes(CUR.babyEyes('eyes_10')) && !eyed(3).includes('eyes/eyes_10.svg'), 'a baby or toddler is drawn with grown-up eyes');
-  // Children (5 to 12) have round child eyes with small lashes; their own eyes come back at thirteen.
-  for (const age of [5, 9, 12]) check(eyed(age).includes(`child_eyes/${CUR.childEyes('eyes_10')}.svg`) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
-  check(CUR.CHILD_EYES.every((id) => !!PART_BY_ID[id]), 'a child eye shape is missing from the manifest');
-  check(eyed(13).includes('eyes/eyes_10.svg') && !eyed(13).includes('child_eyes/'), 'a thirteen-year-old does not have the eyes they were born with');
+  // Children (5 to 12) keep the toddler eyes; their own eyes come back at thirteen.
+  for (const age of [5, 9, 12]) check(eyed(age).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
+  check(eyed(13).includes('eyes/eyes_10.svg'), 'a thirteen-year-old does not have the eyes they were born with');
   // One soft pair of brows: no lighter edge on any skin, no lid crease under them, and never the crying eyes at rest.
   for (const skin of ['porcelain', 'umber', 'ebony']) {
     const svg = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin }, style: { hair: 'bald' } }, seed: 'brows', age: 1, gender: 'male', mood: 70 });
