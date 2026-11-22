@@ -1,10 +1,7 @@
 // The in-game screen: identity header, stat meters, journal, year button,
 // five-tab dock, and the loop that walks the player through queued scenarios.
-<<<<<<< HEAD
 import { noteDeath, funeral } from '../engine/passing.js';
-=======
 import { watchTitles } from './titles.js';
->>>>>>> origin/main
 import { forkGame } from '../save.js';
 import { turningPoint, turningNote } from '../engine/turning.js';
 import { store, player, country, prunePending } from '../state.js';
