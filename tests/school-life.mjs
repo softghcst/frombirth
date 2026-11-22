@@ -87,5 +87,28 @@ check(['math_club', 'book_club', 'astronomy', 'animal_rights', 'gaming_club', 'd
   check(ent.stageShows(p) === before + 2, `school shows and the drama club count as stage experience (${ent.stageShows(p)})`);
 }
 
+// A new school is announced; prom royalty in the last year; a house party in high school.
+{
+  let s; do { s = createLife({ countryId: 'us' }); } while (s.player.royal);
+  store.state = s;
+  let seen = null;
+  while (s.player.age < 12 && !seen) { advanceYear(); seen = s.pendingEvents.find((e) => e.id === 'school_start' && /Middle/i.test(e.cast.words.stage)); s.pendingEvents = []; }
+  check(seen && seen.cast.words.school && seen.cast.words.years === '3', `starting middle school is announced, with its name and years (${JSON.stringify(seen?.cast.words)})`);
+  const p = teen(17);
+  const { decide } = await import('../js/engine/schoollife.js');
+  p.stats.intellect = 99; p.education.standing = 95;
+  let wins = 0;
+  for (let i = 0; i < 20; i++) { delete p.education.prom; decide('promSmart', { words: { title: 'queen', school: 'Lincoln High' } }); if (p.education.prom.won) wins++; }
+  check(wins >= 12, `a brilliant, popular student usually wins with the smart pitch (${wins} of 20)`);
+  check(p.milestones.some((m) => /Crowned prom queen at Lincoln High/.test(m.text)), 'the crown is a milestone, with the right title');
+  p.stats.intellect = 15; p.education.standing = 20;
+  let low = 0;
+  for (let i = 0; i < 20; i++) { decide('promSmart', { words: { title: 'queen', school: 'Lincoln High' } }); if (p.education.prom.won) low++; }
+  check(low < wins, `the wrong pitch from an unpopular student mostly loses (${low} of 20)`);
+  check(cl.houseParty().ok !== undefined && !cl.houseParty().ok, 'a house party, once a year');
+  teen(12);
+  check(!cl.houseParty().ok, 'not in middle school');
+}
+
 if (problems.length) { console.log(`${problems.length} problem(s):\n- ${problems.join('\n- ')}`); process.exit(1); }
 console.log('School is a place with people in it.');

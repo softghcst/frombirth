@@ -17,7 +17,7 @@ import { cureCondition } from './health.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const ed = () => player().education;
-const day = () => { const e = ed(); if (e.dayActs?.age !== player().age) e.dayActs = { age: player().age, cliques: 0, nurse: false, dance: false }; return e.dayActs; };
+const day = () => { const e = ed(); if (e.dayActs?.age !== player().age) e.dayActs = { age: player().age, cliques: 0, nurse: false, dance: false, party: false }; return e.dayActs; };
 const num = (path) => Math.max(...path.split('|').map((x) => Number(resolve(x)) || 0));
 export const popularity = () => Math.round(ed().standing ?? 50);
 const bump = (d) => { const e = ed(); e.standing = clamp((e.standing ?? 50) + d); };
@@ -167,4 +167,37 @@ export function schoolDance() {
   }
   log(text, 'system', partner ? 'good' : 'neutral');
   return result(true, text, partner ? 'good' : 'neutral');
+}
+
+/**
+ * A house party while the parents are away: high school, once a year. Popularity if it goes well; trouble if the
+ * neighbors call it in or the house pays for it.
+ */
+export function houseParty() {
+  const p = player();
+  const e = ed();
+  if (!e.enrolled || e.stage !== 'high') return result(false, 'House parties are a high school thing.', 'neutral');
+  if (day().party) return result(false, 'One party a year is plenty.', 'neutral');
+  day().party = true;
+  const guests = mates().filter((n) => n.meters.relationship >= 40);
+  const turnout = clamp(0.25 + (popularity() - 50) / 80 + (p.stats.charm - 50) / 150, 0.05, 0.9);
+  const roll = rng.next();
+  let text; let tone;
+  if (roll < 0.12) {
+    bump(2); p.stats.mood = clamp(p.stats.mood - 6);
+    for (const n of npcsByRole('parent')) if (n.alive) n.meters.relationship = clamp(n.meters.relationship - 10);
+    text = 'It gets out of hand. A neighbor calls the police, and your parents come home to a broken lamp and a long talk.';
+    tone = 'bad';
+  } else if (rng.chance(turnout)) {
+    bump(rng.int(5, 9)); p.stats.mood = clamp(p.stats.mood + 8);
+    for (const n of guests.slice(0, 6)) n.meters.relationship = clamp(n.meters.relationship + 5);
+    text = 'Half the school turns up. Music, too many people in the kitchen, and a night everyone talks about on Monday.';
+    tone = 'good';
+  } else {
+    bump(-2); p.stats.mood = clamp(p.stats.mood - 3);
+    text = 'A handful of people come. It is a nice enough evening, and a lot of chips are left over.';
+    tone = 'neutral';
+  }
+  log(text, 'system', tone);
+  return result(tone !== 'bad', text, tone);
 }

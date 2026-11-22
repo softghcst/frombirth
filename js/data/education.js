@@ -85,7 +85,7 @@ export const subjectsAt = (stage) => SUBJECTS.filter((s) => ORDER.indexOf(s.from
  * suffix: how such schools are named; {stage} is the country's word for the stage.
  */
 export const SCHOOL_KINDS = [
-  { id: 'public', name: 'State school', fee: 0, teach: 0, class: 6, suffix: ['{place} {stage}'],
+  { id: 'public', name: 'Public school', fee: 0, teach: 0, class: 6, suffix: ['{place} {stage}'],
     blurb: 'The local school. Free, mixed, and where most people go.' },
   { id: 'religious', name: 'Faith school', fee: 1500, teach: 0.05, class: 6, yearly: { hidden: { discipline: 1, karma: 1 } }, suffix: ['St {saint}\'s School', 'Holy Cross {stage}'],
     blurb: 'Small fees, assemblies, and firm ideas about behavior.' },

@@ -118,18 +118,25 @@ export function openSchool(onChange) {
     const teen = cliques.inCliqueYears();
     const rows = [];
     const add = (id, label, sub, ico, tone = '') => rows.push(navRow({ attrs: `data-go="${id}"`, label, sub, ico, tone }));
+    // What you are part of comes first: your team, and your crowd.
+    const mine = [];
+    if (e.clubs?.includes('sports_team')) { const a = life.activities(); const c = a.clubs.find((x) => x.id === 'sports_team'); mine.push(navRow({ attrs: 'data-go="team"', label: `${cap(sportName(a.sport ?? a.sports[0] ?? 'school'))} team`, sub: `Performance ${Math.round(c?.standing ?? 0)}%`, ico: 'trophy' })); }
+    if (teen && e.clique) mine.push(navRow({ attrs: 'data-go="cliques"', label: CLIQUE_BY_ID[e.clique]?.name ?? 'Your crowd', sub: 'Your clique', ico: 'people' }));
     if (v.school && sch.choices().length) add('move', 'Change schools', v.kind.id === 'private' ? 'Ask to go to a public school' : 'Ask to go to a private school', 'school');
     if (edu.canJoinClubs()) add('activities', 'Activities', e.clubs.length ? `${e.clubs.length} of ${MAX_CLUBS}` : 'Clubs and sports teams', 'trophy');
     if (v.school) add('class', 'Class', 'Your teacher and classmates', 'people');
     if (teen) add('cliques', 'Cliques', e.clique ? `You sit with the ${CLIQUE_BY_ID[e.clique]?.name.toLowerCase() ?? ''}` : 'Find your crowd', 'people');
     if (v.subjects.length) add('subjects', 'Subjects', life.canChooseCourses() ? 'Choose your courses' : 'Marks and teachers', 'book');
     if (teen) add('dance', 'School dance', 'Once a year', 'star');
+    if (e.enrolled && e.stage === 'high') add('party', 'House party', 'Throw one while your parents are away', 'star');
     if (e.enrolled && p.age <= 18) add('nurse', 'Nurse', 'Visit the school nurse', 'health');
     add('history', 'Your school years', 'Every school, and what you left with', 'archive');
     return `${v.school ? `<div class="card"><h3>${esc(v.school.kind === 'home' ? 'Taught at home' : v.school.name)}</h3>
         <p class="muted" style="margin:0 0 6px">${esc(v.kind.name)} · ${esc(v.stageName)}, year ${v.year}</p>
         ${meterHtml('Grades', Math.round(Math.min(100, (e.gpa ?? 2.5) / 4 * 100)), true)}
         ${teen ? meterHtml('Popularity', cliques.popularity(), true) : ''}</div>` : `<p class="muted">${p.age < 5 ? 'School has not started yet.' : 'You are not at school.'}</p>`}
+      ${mine.length ? `<div class="nav-group">${mine.join('')}</div>` : ''}
+      <div class="section-label">Activities</div>
       <div class="nav-group">${rows.join('')}</div>
       ${e.enrolled && p.age >= 6 ? `<div class="btn-pair" style="margin-top:10px"><button class="btn" data-do="study">Study harder</button><button class="btn" data-do="slack">Slack off</button></div>` : ''}
       ${e.enrolled && p.age >= 10 ? '<div class="btn-pair"><button class="btn" data-do="skip">Skip school</button></div>' : ''}
@@ -157,6 +164,20 @@ export function openSchool(onChange) {
       return kind ? say(sch.askToMove(kind)) : undefined;
     }
     if (go === 'dance') return say(cliques.schoolDance());
+    if (go === 'party') return say(cliques.houseParty());
+    if (go === 'team') {
+      const a = life.activities();
+      const c = a.clubs.find((x) => x.id === 'sports_team');
+      if (!c) return undefined;
+      const years = Math.max(0, player().age - (c.since ?? player().age)) + 1;
+      const practice = life.clubActions('sports_team').find((x) => x.id === 'practice');
+      const pick = await pickModal({ title: `${cap(sportName(a.sport ?? a.sports[0]))} team`,
+        body: `${c.role}. ${years} ${years === 1 ? 'season' : 'seasons'} on the team, about ${8 + Math.round((c.standing ?? 0) / 10)} hours a week. Performance ${Math.round(c.standing ?? 0)}%.`,
+        options: [{ value: 'practice', label: 'Practice harder', disabled: !!practice?.done, sub: practice?.done ? 'Done this year' : '' }, { value: 'quit', label: 'Quit the team' }] });
+      if (pick === 'practice') return say(life.clubAct('sports_team', 'practice'));
+      if (pick === 'quit') return say(edu.quitClub('sports_team'));
+      return undefined;
+    }
     if (go === 'nurse') return say(cliques.nurse());
     if (go) { stack.push(go); return draw(); }
     const act = t.closest('[data-do]')?.dataset.do;
