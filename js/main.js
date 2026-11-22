@@ -14,7 +14,9 @@ import { askNewPassword, cloudLine } from './ui/settings.js';
 import { alignWorld } from './engine/eras.js';
 import { resetWorld } from './engine/history.js';
 import { applyTheme } from './theme.js';
+import { watchTitles } from './ui/titles.js';
 
+watchTitles();
 applyTheme(); // Light, Dark or System (Settings → Appearance)
 
 const app = document.getElementById('app');
