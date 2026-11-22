@@ -44,7 +44,7 @@ const GLYPH = { team: '⚽', racket: '🎾', golf: '⛳', race: '🏃', judged: 
 const glyph = (sportId) => (sportId === 'pickleball' ? '🏓' : sportId === 'basketball' || sportId === 'wheelchair_basketball' ? '🏀' : sportId === 'baseball' || sportId === 'softball' ? '⚾'
   : sportId === 'american_football' ? '🏈' : sportId === 'ice_hockey' ? '🏒' : sportId === 'cricket' ? '🏏' : sportId === 'swimming' || sportId === 'para_swimming' ? '🏊' : sportId === 'volleyball' ? '🏐' : sportId === 'cycling' ? '🚴' : GLYPH[sportOf(sportId)?.kind] ?? '🏅');
 const seg = (key, value, options) => `<div class="chips zoo-filter" role="group">${options.map(([v, t]) => `<button class="chip ${String(v) === String(value) ? 'on' : ''}" aria-pressed="${String(v) === String(value)}" data-set="${key}:${v}">${esc(t)}</button>`).join('')}</div>`;
-const bar = (v) => `<div class="mini" style="width:100%"><i class="fill ${v >= 68 ? 'good' : v >= 40 ? 'ok' : 'low'}" style="width:${Math.max(2, Math.min(100, v))}%"></i></div>`;
+const bar = (v) => `<div class="mini" style="width:100%"><i class="fill ${v >= 68 ? 'high' : v >= 40 ? 'mid' : 'low'}" style="width:${Math.max(2, Math.min(100, v))}%"></i></div>`;
 /** Why nobody in the player's division can be paid to play a sport this year. */
 function proClosed(sport) {
   const div = sp.divisionOf();
@@ -534,6 +534,9 @@ function sportDesk(step) {
   else rows.push(navRow({ attrs: 'data-gohub="rankings"', label: 'Rankings', sub: `Pathways Rating ${e.pr} · ${sp.prWord(e.pr)}`, ico: 'trophy' }));
   if (e.status === 'active') {
     rows.push(navRow({ attrs: `data-practice="${e.id}"`, label: 'Practice', sub: left > 0 ? `Work on one skill · ${left} ${left === 1 ? 'session' : 'sessions'} left this year` : 'Done for this year', ico: 'star' }));
+    const fit = sp.fitnessScore(sp.fitnessOf());
+    const tl = sp.TRAIN_PER_YEAR - (S().acts.year === store.state.year ? S().acts.train ?? 0 : 0);
+    rows.push(navRow({ attrs: `data-train="${e.id}"`, label: 'Train', sub: `Fitness ${fit} · ${tl > 0 ? `${tl} ${tl === 1 ? 'session' : 'sessions'} left this year` : 'done for this year'}`, ico: 'health' }));
     rows.push(navRow({ attrs: `data-plan="${e.id}"`, label: 'Training Plan', sub: `${PLANS[e.plan.type]?.name ?? 'Balanced'}, ${e.plan.hours} h a week`, ico: 'calendar' }));
   }
   if (team) rows.push(navRow({ attrs: `data-team="${team.id}"`, label: sport.kind === 'team' ? 'Team' : 'Club', sub: 'The roster, the coach and the history', ico: 'people' }));
@@ -566,6 +569,26 @@ function practiceScreen(step) {
     <p class="muted" style="margin-top:6px">${left > 0 ? `${left} ${left === 1 ? 'session' : 'sessions'} left this year.` : 'No more sessions this year: the rest is in the training plan.'}</p>` };
 }
 
+/** Train: physical fitness, for every sport at once. Who you are and where you play, then four bars and a focus. */
+function trainScreen(step) {
+  const e = sp.entryOf(step.params.sportId);
+  const sport = sportOf(step.params.sportId);
+  const f = sp.fitnessOf();
+  const left = sp.TRAIN_PER_YEAR - (S().acts.year === store.state.year ? S().acts.train ?? 0 : 0);
+  const lowest = sp.FITNESS.slice().sort((a, b) => f[a[0]] - f[b[0]])[0][0];
+  const focus = step.ui.focus ?? lowest;
+  const pos = sport.positions?.find((x) => x[0] === e.position)?.[1];
+  return { title: 'Train', sub: 'Work on your physical fitness', body: `
+    <div class="card">${kv('Age', String(player().age))}${kv('Sport', esc(sport.name))}${pos ? kv('Position', esc(pos)) : ''}</div>
+    <div class="card"><div class="sd-skill"><strong>Fitness</strong>${bar(sp.fitnessScore(f))}<small>${sp.fitnessScore(f)}</small></div>
+      ${sp.FITNESS.map(([k, n]) => `<div class="sd-skill"><span>${esc(n)}</span>${bar(f[k])}<small>${f[k]}</small></div>`).join('')}
+      <p class="muted" style="margin-top:6px">Fit athletes play better in every sport, and stay healthier.</p></div>
+    <label class="field"><span>Pick your focus</span>
+      <select data-focus>${sp.FITNESS.map(([k, n]) => `<option value="${k}" ${k === focus ? 'selected' : ''}>${esc(n)} (${f[k]})</option>`).join('')}</select></label>
+    <button class="btn primary" data-dotrain ${left > 0 && e.status === 'active' ? '' : 'disabled'} style="margin-top:10px">Train</button>
+    <p class="muted" style="margin-top:6px">${left > 0 ? `${left} ${left === 1 ? 'session' : 'sessions'} left this year.` : 'No more sessions this year.'}</p>` };
+}
+
 /** The league: every team in the player's latest season, best first, with its strength. */
 function leagueScreen(step) {
   const e = sp.entryOf(step.params.sportId);
@@ -585,8 +608,8 @@ function leagueScreen(step) {
     <button class="btn" data-season="${s.id}" style="margin-top:10px">The Full Season</button>` };
 }
 
-const SCREENS = { hub, desk: sportDesk, practice: practiceScreen, league: leagueScreen, sport: sportProfile, team: teamProfile, coach: coachProfile, season: seasonProfile, event: eventProfile, athlete: athleteProfile };
-const BACK = { hub: 'Back to My Athletics', desk: 'Back to the sport', practice: 'Back to practice', league: 'Back to the league', sport: 'Back to the stats', team: 'Back to the team', coach: 'Back to the coach', season: 'Back to the season', event: 'Back to the event', athlete: 'Back to the athlete' };
+const SCREENS = { hub, desk: sportDesk, practice: practiceScreen, train: trainScreen, league: leagueScreen, sport: sportProfile, team: teamProfile, coach: coachProfile, season: seasonProfile, event: eventProfile, athlete: athleteProfile };
+const BACK = { hub: 'Back to My Athletics', desk: 'Back to the sport', practice: 'Back to practice', train: 'Back to training', league: 'Back to the league', sport: 'Back to the stats', team: 'Back to the team', coach: 'Back to the coach', season: 'Back to the season', event: 'Back to the event', athlete: 'Back to the athlete' };
 export const backText = (step) => (step ? BACK[step.screen] ?? 'Back' : 'Close');
 
 // ---------- Showing and acting ----------
@@ -644,6 +667,7 @@ async function onClick(e) {
   if ((el = hit('data-gohub'))) { e.preventDefault(); while (nav.top() && nav.top().screen !== 'hub') nav.back(); if (!nav.top()) nav.open('hub', {}); nav.remember({ tab: el.dataset.gohub, scroll: 0 }); return show(); }
   if ((el = hit('data-stats'))) return open('sport', { sportId: el.dataset.stats, personId: null });
   if ((el = hit('data-practice'))) return open('practice', { sportId: el.dataset.practice });
+  if ((el = hit('data-train'))) return open('train', { sportId: el.dataset.train });
   if ((el = hit('data-league'))) return open('league', { sportId: el.dataset.league });
   if ((el = hit('data-team')) && el.dataset.team) return open('team', { teamId: el.dataset.team });
   if ((el = hit('data-coach'))) return open('coach', { coachId: el.dataset.coach });
@@ -693,6 +717,11 @@ async function onClick(e) {
     return report(sp.hirePrivateCoach(sport.id, pick));
   }
   if ((el = hit('data-dropcoach'))) return report(sp.dropPrivateCoach(el.dataset.dropcoach));
+  if ((el = hit('data-dotrain'))) {
+    const focus = modal.el.querySelector('[data-focus]')?.value;
+    note({ focus });
+    return report(sp.trainFitness(focus));
+  }
   if ((el = hit('data-work'))) {
     const skill = modal.el.querySelector('[data-focus]')?.value;
     note({ focus: skill });

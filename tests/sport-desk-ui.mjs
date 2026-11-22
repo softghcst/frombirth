@@ -74,8 +74,20 @@ const after = await page.evaluate(async (k) => (await import('/js/engine/sports.
 check(after >= before && /extra session/i.test(await page.locator('#modal-root .modal').last().innerText()), `working on it practices that skill (${before} → ${after})`);
 await page.locator('#modal-root [data-ok]').last().click(); await page.waitForTimeout(200);
 check(await page.locator('.sport-modal select[data-focus]').count() === 1 && await page.locator('.sport-modal select[data-focus]').inputValue() === skill, 'and comes back to practice, the same skill chosen');
-// An individual sport: a rating instead of a league.
+// Train: fitness for every sport.
 await page.locator('.sport-modal [data-back]').click(); await page.waitForTimeout(150);
+await page.locator('.sport-modal [data-train]').click(); await page.waitForTimeout(200);
+const tr = await page.locator('.sport-modal').innerText();
+check(/Strength/.test(tr) && /Cardio/.test(tr) && /Flexibility/.test(tr) && /Balance/.test(tr) && /Position/.test(tr), 'Train shows the four parts of fitness, and your position');
+const fBefore = await page.evaluate(async () => (await import('/js/engine/sports.js')).fitnessOf().cardio);
+await page.selectOption('.sport-modal select[data-focus]', 'cardio');
+await shot('sport-train');
+await page.locator('.sport-modal [data-dotrain]').click(); await page.waitForTimeout(250);
+const fAfter = await page.evaluate(async () => (await import('/js/engine/sports.js')).fitnessOf().cardio);
+check(fAfter > fBefore, `training cardio raises it (${fBefore} → ${fAfter})`);
+await page.locator('#modal-root [data-ok]').last().click(); await page.waitForTimeout(200);
+await page.locator('.sport-modal [data-back]').click(); await page.waitForTimeout(150);
+// An individual sport: a rating instead of a league.
 await page.locator('.sport-modal [data-back]').click(); await page.waitForTimeout(150);
 await page.locator('.sport-modal [data-sport="tennis"]').first().click(); await page.waitForTimeout(200);
 const tennis = await page.locator('.sport-modal').innerText();
