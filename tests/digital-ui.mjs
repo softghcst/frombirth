@@ -114,6 +114,8 @@ async function run(viewport) {
   // 8–11. Create a post, publish, simulate, show real numbers.
   await page.click('.dl-nav [data-section="create"]');
   await page.click('.dl-body [data-do="compose"]');
+  // Most posts are one tap now; the full form is behind "Write a detailed post".
+  await page.click('#modal-root button:has-text("Write a detailed post")');
   await page.selectOption('#modal-root select[name="format"]', 'text');
   await page.fill('#modal-root textarea[name="text"]', 'Hello from the vertical slice.');
   await page.click('#modal-root button[type="submit"]');
@@ -123,6 +125,16 @@ async function run(viewport) {
   await page.waitForSelector('.dl-body .dl-metrics');
   const views = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const x = Object.values(store.state.digital.posts).find((y) => y.text === 'Hello from the vertical slice.'); return x.metrics.views; });
   check((await page.locator('.dl-body .dl-metrics').first().innerText()).includes(String(views.toLocaleString('en-US'))), 'the post shows its actual metrics');
+  // A quick post: one tap on the kind of post, and it is up.
+  {
+    const before = await page.evaluate(async () => Object.keys((await import('/js/state.js')).store.state.digital.posts).length);
+    await page.click('.dl-nav [data-section="create"]');
+    await page.click('.dl-body [data-do="compose"]');
+    await page.click('#modal-root button:has-text("Something on your mind")');
+    await continueModal();
+    const after = await page.evaluate(async () => Object.keys((await import('/js/state.js')).store.state.digital.posts).length);
+    check(after === before + 1, `a quick post is one tap (${before} → ${after})`);
+  }
 
   // 12–13. Connect with an existing friend; view their profile.
   await page.click('.dl-nav [data-section="people"]');
