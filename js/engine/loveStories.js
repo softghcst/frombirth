@@ -55,13 +55,19 @@ export function tickLoveStories() {
       const key = `${s.id}/${npc.id}`;
       const last = told()[key];
       if (last === 'closed' || (last != null && (!s.again || year - last < s.again))) continue;
+      // Each story waits its years whoever it is about: three close friends do not mean "More than friends?" three
+      // years running, or twice in one.
+      const any = told()[`story/${s.id}`];
+      if (any != null && year - any < Math.max(s.again ?? 0, 6)) continue;
       can.push({ s, npc, key });
     }
   }
   let n = 0;
   for (const c of can.map((x) => [rng.next(), x]).sort((a, b) => a[0] - b[0]).map(([, x]) => x)) {
     if (n >= d.most || !rng.chance(d.chance)) continue;
+    if (told()[`story/${c.s.id}`] === year) continue; // never the same story twice in a year
     told()[c.key] = year;
+    told()[`story/${c.s.id}`] = year;
     store.state.pendingEvents.push({ id: `love_${c.s.id}`, cast: { them: c.npc.id } });
     n++;
   }

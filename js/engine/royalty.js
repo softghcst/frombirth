@@ -142,7 +142,7 @@ export function birthKind(countryId, wish) {
 export function bornInto(p, kind, seat) {
   const m = MONARCHIES[p.countryId];
   if (!m || !kind) return;
-  if (kind === 'royal' && seat) {
+  if ((kind === 'royal' || kind === 'heir') && seat) {
     const d = seat.dynasty;
     const me = dyn.seatPlayer(d, seat, p);
     const place = dyn.placeOf(d, me.id);

@@ -1,5 +1,6 @@
 // The annual tick. Order matters: the world ages first, then the player's own
 // systems run, then the death check, then this year's scenarios are queued.
+import { tickClubs } from './clubs.js';
 import { store, player, log, milestone, prunePending } from '../state.js';
 import { tickRelationships } from './relationships.js';
 import { tickAnimals } from './animals.js';
@@ -122,7 +123,8 @@ export const YEARLY = [
   ['polity', () => {
     const p = player();
     // The country's politics move on whether or not the player takes any part. The news reaches those old enough to follow it.
-    const happened = tickPolity(polity(p.countryId)).sort((a, b) => b.weight - a.weight).slice(0, 3);
+    // Only what changes things (a law passed, a new leader, an election) reaches the life story; the rest is in World news.
+    const happened = tickPolity(polity(p.countryId)).filter((n) => n.weight >= 2 || p.politics).sort((a, b) => b.weight - a.weight).slice(0, 2);
     if (p.age >= 14) for (const n of happened) log(n.text, 'system', n.tone);
     // Politics also goes on in countries the player has lived in and still has ties to: the results are there when they look, or go back.
     for (const id of ties()) if (id !== p.countryId && store.state.polities?.[id]) tickPolity(store.state.polities[id]);
@@ -153,6 +155,7 @@ export const YEARLY = [
   ['sport', () => booked('sport', 'Sport', () => tickSports())], // the athletic year: training, seasons and events, and what they cost and paid
   ['travel', () => booked('travel', 'Travel, papers and life abroad', tickGlobalLife)],
   ['loveStories', () => { teenAfterBirth(); tickLoveStories(); }], // which of the true stories are told this year (engine/loveStories.js)
+  ['clubs', () => booked('leisure', 'Clubs and classes', tickClubs)], // dues, what a year of each adds, and the people met there (engine/clubs.js)
   ['childhood', tickChildhood], // pocket money, if the family can still pay it (engine/childhood.js)
   ['estate', tickEstate], // a will and the people in it: someone named has died, the family has changed (engine/estateReview.js)
   ['closeBooks', () => { book({ cat: 'auto', src: 'year', desc: 'The rest of the year' }); }],

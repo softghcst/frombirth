@@ -401,6 +401,9 @@ button.tree-row:active { background: var(--accent-soft); }
 .world-group.on { border-color: var(--accent); }
 .world-list { display: flex; flex-direction: column; gap: 6px; }
 .world-row { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+/* A news story is read, not scanned: the whole headline, over as many lines as it needs. */
+.news-row { align-items: flex-start; }
+.news-row .main strong { white-space: normal; overflow: visible; text-overflow: clip; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
 .world-flag { font-size: 1.7rem; line-height: 1; width: 40px; text-align: center; flex: none; }
 .world-flag.big { font-size: 2.6rem; width: 56px; }
 .world-head { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; }
@@ -1145,8 +1148,8 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .sec-row .nr-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nr-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--peach-strong); }
 .panel-body > .nav-group + .nav-group { margin-top: 14px; }
-/* Rows show their name and nothing else: what is behind a row is on its own screen. */
-.nav-row .nr-main small { display: none; }
+/* Rows show their name and one line saying what is behind them (data/menus.js), like a phone's settings list. */
+.nav-row .nr-main small { display: block; }
 .nav-row { min-height: 56px; }
 
 /* The result of the scene before, at the top of the next scene's card (ui/shell.js). */
@@ -1155,3 +1158,37 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .prev-outcome.tone-good { border-color: var(--good); }
 .prev-outcome.tone-bad { border-color: var(--bad); }
 .prev-outcome .chips { margin-top: 2px; }
+
+/* A death notice: one card for each person. */
+.death-card { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.death-card:first-of-type { border-top: 0; }
+.death-card > :first-child { flex: 0 0 64px; width: 64px; height: 64px; overflow: hidden; filter: grayscale(0.6); }
+.death-card > :first-child svg { width: 100%; height: 100%; }
+.death-card .main { flex: 1; }
+.death-card .main { min-width: 0; }
+.death-card strong { display: block; font-family: var(--serif); font-size: 1.15rem; }
+.death-card small { display: block; color: var(--muted); }
+.death-card .body { margin: 6px 0 0; }
+
+/* A profile's actions, folded by group: the group's name, how many it holds, and the first two groups open. */
+details.action-group { margin-top: 2px; border-top: 1px solid var(--line-soft); }
+details.action-group summary small { color: var(--muted); font-weight: 600; }
+details.action-group .btn-stack { margin: 2px 0 10px; }
+details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); padding-top: 4px; }
+
+/* University planner: the comparison, stacked so it reads on a phone, and the fit chips. */
+.cmp-block { margin-bottom: 6px; }
+.cmp-block .kv { align-items: flex-start; gap: 12px; }
+.cmp-block .kv span:last-child { text-align: right; max-width: 62%; }
+.cmp-block .cmp-best span:last-child { font-weight: 800; color: var(--good, var(--accent-text)); }
+.chip.good { background: color-mix(in srgb, var(--good) 18%, var(--paper)); }
+.chip.bad { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); }
+
+/* Menu rows with a picture: an emoji on a soft tile, a line under the name saying what it is for. */
+.nr-icon.emoji { font-size: 1.32rem; line-height: 1; background: var(--raised); border: 1px solid var(--line-soft); }
+.nav-row .nr-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Not open yet: greyed, untappable, with the reason in place of the line and a small lock where the chevron goes. */
+.nav-row.locked, .nav-row:disabled { cursor: default; }
+.nav-row.locked .nr-label, .nav-row.locked .nr-main small { color: var(--muted); }
+.nav-row.locked .nr-icon { filter: grayscale(1); opacity: 0.55; }
+.nav-row.locked .nr-lock { flex: none; font-size: 0.85rem; opacity: 0.55; }

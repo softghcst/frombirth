@@ -41,7 +41,7 @@ function tabsFor(p) {
     variety: kp.varietyOpen(p),
     photocards: kp.available() && store.state.year >= 1999,
     history: i.history.length > 0,
-  }[id] ?? true));
+  }[id] ?? true)).map(([id, name]) => (id === 'evaluations' && !kp.trainee(p) ? [id, 'Trainee years'] : [id, name]));
 }
 
 /** Opens My Idol Life. api: the tab api ({ changed }). */
@@ -172,7 +172,9 @@ const VIEWS = {
 
   evaluations(p) {
     const evs = (kp.idolOf(p).trainee?.evals ?? []).map((id) => K().evals[id]).filter(Boolean).reverse();
-    return evs.map((e) => `<div class="card"><h3>${e.year}: ${esc(e.outcome)}</h3>${kv([['Rank', `${e.rank} of ${e.of}`], ...['vocal', 'dance', 'rap', 'stage', 'camera', 'team', 'growth'].map((k) => [k[0].toUpperCase() + k.slice(1), String(e.scores[k])])])}
+    const g = kp.myGroup(p) ?? kp.group(kp.idolOf(p).groupId);
+    const done = !kp.trainee(p) && evs.length ? `<p class="muted">${g?.debut ? `You debuted with ${esc(g.name)} in ${g.debut.year}. ` : ''}Monthly evaluations are for trainees: these are from your training years, latest first.</p>` : '';
+    return done + evs.map((e) => `<div class="card"><h3>${e.year}: ${esc(e.outcome)}</h3>${kv([['Rank', `${e.rank} of ${e.of}`], ...['vocal', 'dance', 'rap', 'stage', 'camera', 'team', 'growth'].map((k) => [k[0].toUpperCase() + k.slice(1), String(e.scores[k])])])}
       <p style="margin:6px 0 2px">"${esc(e.feedback[0])}"</p><p style="margin:2px 0">"${esc(e.feedback[1])}"</p>
       <div class="section-label">Evaluators</div>${e.evaluators.map((id) => row('person', id, name(id), npc(id)?.occupation ?? '', '', npc(id))).join('')}</div>`).join('') || '<p class="empty">No evaluations yet.</p>';
   },
@@ -350,7 +352,9 @@ const ACTIONS = {
   groupview: (id, x) => x.go('groupview', id),
   person: (id, x) => { const n = npc(id); if (n) openNpc(n, x.api); },
   peer: async (id, x) => {
-    const v = await pickModal({ title: name(id), options: [{ value: 'friend', label: 'Spend time together' }, { value: 'help', label: 'Ask for help' }, { value: 'support', label: 'Support them before an evaluation' }, { value: 'resolve', label: 'Clear the air' }, { value: 'profile', label: 'Open their profile' }] });
+    const did = kp.idolOf().acts.did;
+    const opt = (value, label) => ({ value, label, disabled: !!did[`${value}:${id}`], sub: did[`${value}:${id}`] ? 'Done this year' : '' });
+    const v = await pickModal({ title: name(id), options: [opt('friend', 'Spend time together'), opt('help', 'Ask for help'), opt('support', 'Support them before an evaluation'), opt('resolve', 'Clear the air'), { value: 'profile', label: 'Open their profile' }] });
     if (v === 'profile') return ACTIONS.person(id, x);
     if (v) await x.say(kp.trainAction(v, id));
     return undefined;
@@ -398,7 +402,12 @@ const ACTIONS = {
   },
   solo: (_, x) => x.say(kp.soloRelease()),
   fandomname: async (_, x) => { const v = await pickModal({ title: 'A name for the fans', options: ['Lumi', 'Orbiters', 'Halos', 'Blooms', 'Wavers', 'Sparks', 'Petals', 'Comets'].map((n2) => ({ value: n2, label: n2 })) }); if (v) await x.say(kp.nameFandom(v)); },
-  appear: async (kind, x) => { const v = await pickModal({ title: 'How do you play it?', options: [{ value: 'professional', label: 'Answer professionally' }, { value: 'funny', label: 'Go for the laugh' }, { value: 'leader', label: 'Let the leader speak' }, { value: 'member', label: 'Highlight another member' }, { value: 'music', label: 'Talk about the music' }] }); if (v) await x.say(kp.appearance(kind, v)); },
+  appear: async (kind, x) => {
+    const m = kp.appearanceMoment(kind);
+    const show = { interview: 'An interview', variety: 'A variety show', radio: 'A radio show', fanmeeting: 'A fan meeting', fansign: 'A fansign', fancall: 'A video call with a fan', livestream: 'A livestream' }[kind] ?? 'An appearance';
+    const v = await pickModal({ title: show, body: m.prompt, options: m.options.map((o) => ({ value: `o${o.value}`, label: o.label })) });
+    if (v) await x.say(kp.appearance(kind, { m: m.m, o: Number(String(v).slice(1)) }));
+  },
   tour: (k, x) => x.say(kp.planTour(k)),
   renew: async (_, x) => { const v = await pickModal({ title: 'Your contract is up', body: 'Every member decides for themselves.', options: [{ value: 'renew', label: 'Renew with the agency' }, { value: 'keep_group', label: 'Leave the agency, keep doing group activities', sub: 'If they agree.' }, { value: 'leave', label: 'Leave' }] }); if (v) await x.say(kp.decideRenewal(v)); },
   reunion: (id, x) => x.say(kp.proposeReunion(id)),

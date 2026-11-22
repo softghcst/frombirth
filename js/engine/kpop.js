@@ -11,6 +11,8 @@
 //   p.idol = { apps:[], traineeId(contract), contracts:[], programs:[], groupId, groups:[], focus, stage, camera, history:[],
 //              fairies:[], hiatus, solo:[], acts:{ age, ... }, pop, trust }
 //   npc.flags.idol = { agencyId, since, sk:{vocal,dance,rap,stage,camera,media,korean}, born:{year,day}, status, groupId, pop, history:[] }
+import { MOMENTS } from '../data/kpopMoments.js';
+import { canFit } from './worklife.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, localCost, wageIn } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
@@ -187,6 +189,24 @@ export function whyNotApply(au, p = player()) {
 }
 const idolMember = (p = player()) => { const g = K().groups[idolOf(p).groupId]; return g && g.members.some((m) => m.who === 'player' && m.to == null); };
 
+/**
+ * Being an idol is a job, like any other: what the player does, as the header, the save card, a CV and an obituary say it.
+ * Null when they are not in idol life at all. `former` is what they were, for after it has ended.
+ */
+export function idolWork(p = player()) {
+  if (!p?.idol) return null;
+  const k = store.state?.kpop;
+  if (!k) return null;
+  const i = p.idol;
+  const g = k.groups?.[i.groupId];
+  const inGroup = g && g.status !== 'disbanded' && g.members.some((m) => m.who === 'player' && m.to == null);
+  if (inGroup) return { title: g.debut ? `K-pop idol, ${g.name}` : `Pre-debut idol, ${g.name}`, current: true, since: g.members.find((m) => m.who === 'player' && m.to == null)?.from ?? null };
+  const c = k.contracts?.[i.traineeId];
+  if (c?.status === 'active') return { title: `Trainee at ${k.agencies?.[c.agencyId]?.name ?? AGENCY_BY_ID[c.agencyId]?.name ?? 'an agency'}`, current: true };
+  const was = [...(i.groups ?? [])].reverse().map((id) => k.groups?.[id]).find((x) => x?.debut);
+  return was ? { title: `Former K-pop idol, ${was.name}`, current: false } : null;
+}
+
 /** Preparing an audition: a year's worth of practice for the tape. Once per audition. */
 export function prepare(auditionId) {
   const i = idolOf();
@@ -297,6 +317,8 @@ export function acceptOffer(appId) {
   // Training somewhere else needs permission to be there: the agency sponsors it, but a criminal record can stop it.
   const abroad = a.countryId !== p.countryId && !rightToLive(a.countryId, p);
   if (abroad && hasRecord(p, { sealed: true })) { app.stage = 'declined'; return result(false, `The trainee visa is refused because of your record. ${a.name} cannot take you.`); }
+  // A school-age trainee's week is capped (engine/worklife.js): a child with parts already signed may have to give one up first.
+  if (p.age < 18) { const fit = canFit(40, { kind: 'freelance', performing: true, idol: true }); if (!fit.ok) return result(false, fit.text, 'neutral'); }
   const c = { id: nextId('ctr'), ...app.offer, who: 'player', start: year(), reviewAt: year() + app.offer.review, status: 'active', notes: [] };
   k.contracts[c.id] = c;
   app.stage = 'accepted';
@@ -331,8 +353,16 @@ export function trainAction(kind, npcId = null) {
   const t = trainee(p);
   const i = idolOf(p);
   if (!t && !idolMember(p)) return result(false, 'You are not training anywhere.', 'neutral');
-  if (i.acts.sessions >= 4) return result(false, 'You have nothing left this year. Rest is part of training too.', 'neutral');
-  i.acts.sessions += 1;
+  // Time with the other trainees is not a practice session: it has no yearly budget, only once per kind per person.
+  const social = ['friend', 'help', 'support', 'resolve'].includes(kind);
+  if (social) {
+    const key = `${kind}:${npcId}`;
+    if (i.acts.did[key]) return result(false, `You have already done that with ${npc(npcId)?.firstName ?? 'them'} this year.`, 'neutral');
+    if (npc(npcId)) i.acts.did[key] = true;
+  } else {
+    if (i.acts.sessions >= 4) return result(false, 'You have nothing left this year. Rest is part of training too.', 'neutral');
+    i.acts.sessions += 1;
+  }
   const a = t?.agency ?? agency(K().groups[i.groupId]?.agencyId);
   if (kind === 'vocal' || kind === 'dance' || kind === 'rap' || kind === 'korean' || kind === 'media' || kind === 'stage') {
     raise('player', kind, 3 + (a?.training ?? 60) / 40);
@@ -1015,6 +1045,13 @@ export function nameFandom(name) {
 }
 
 /** Interviews, variety, radio, fan events: how they go depends on media training, and the approach. */
+/** A moment at an appearance of this kind, to be handled one of a few ways (data/kpopMoments.js). */
+export function appearanceMoment(kind) {
+  const list = MOMENTS[kind] ?? MOMENTS.interview;
+  const m = rng.int(0, list.length - 1);
+  return { kind, m, prompt: list[m].prompt, options: list[m].options.map((o, k) => ({ value: k, label: o.label })) };
+}
+
 export function appearance(kind, approach = 'professional') {
   const p = player();
   const g = myGroup(p);
@@ -1026,6 +1063,21 @@ export function appearance(kind, approach = 'professional') {
   i.acts.social += 1;
   const s = skillsOf();
   const leader = g.leader === 'player';
+  // A moment from the show, handled one way: how it goes rests on the skill that way needs.
+  const moment = approach && typeof approach === 'object' ? (MOMENTS[kind] ?? MOMENTS.interview)[approach.m]?.options[approach.o] : null;
+  if (moment) {
+    const others = current(g).map((x) => x.who).filter((w) => w !== 'player');
+    const team = Math.round(others.map((id) => npc(id)?.meters.relationship ?? 50).reduce((a, b) => a + b, 0) / Math.max(1, others.length));
+    const level = moment.skill === 'team' ? team : s[moment.skill] ?? 50;
+    const won = rng.chance(clamp(0.3 + (level - 50) / 70, 0.08, 0.92));
+    raise('player', moment.skill === 'team' ? 'media' : moment.skill === 'rap' ? 'media' : moment.skill, 1);
+    const up = won ? (kind === 'variety' ? 2 : 1) : 0;
+    i.pop = clamp(i.pop + up);
+    g.fandom.engagement = clamp(g.fandom.engagement + (won ? 2 : 0));
+    if (moment.skill === 'team') for (const id of others) { const n = npc(id); if (n) n.meters.relationship = clamp(n.meters.relationship + (won ? 2 : 1)); }
+    if (up) gain({ audience: kind === 'variety' ? 'tv' : 'music', amount: up, why: `a ${kind === 'variety' ? 'variety show' : kind}` }, p);
+    return result(won, `${won ? moment.good : moment.bad}${won ? ' New fans find you.' : ''}`, won ? 'good' : 'neutral');
+  }
   const odds = clamp(0.35 + (s.media - 50) / 80 + (approach === 'funny' ? (s.camera - 55) / 100 : 0) + (approach === 'leader' && !leader ? -0.15 : 0), 0.08, 0.92);
   const good = rng.chance(odds);
   raise('player', 'media', 1.5);
@@ -2262,6 +2314,7 @@ export function takeVariety(offerId) {
   if (!o || v.offers.year !== year()) return result(false, 'That offer has gone.', 'neutral');
   const role = VARIETY_ROLES[o.role];
   const kr = COUNTRIES.kr ?? COUNTRIES[p.countryId];
+  if (o.role !== 'guest' && p.age < 18) { const fit = canFit(o.role === 'host' ? 14 : 10, { kind: 'freelance', performing: true }); if (!fit.ok) return result(false, fit.text, 'neutral'); } // a regular show is a standing weekly commitment
   if (o.role === 'guest') {
     if (v.guests.filter((x) => x.year === year()).length >= 6) return result(false, 'Six guest spots this year is plenty.', 'neutral');
     o.taken = true;

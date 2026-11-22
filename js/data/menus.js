@@ -1,0 +1,91 @@
+// What each row in the tabs looks like: a picture and one line saying what it is for. Matched against the row's
+// label (the first rule that fits wins), so a label that changes with the life ("Jobs (2 waiting)", "Life in Peru")
+// still finds its line. A row the caller gives its own line keeps that line.
+//   [pattern, emoji, what it is for]
+export const MENU_RULES = [
+  // ---------- Work & School ----------
+  [/^school$|^your school( years)?$/i, '🏫', 'Classes, grades and school life'],
+  [/^your week$/i, '🗓️', 'Where your hours go'],
+  [/^work$/i, '💼', 'Your job, your pay and what comes next'],
+  [/^what comes first$/i, '🎯', 'Grades, friends, clubs or work'],
+  [/^ask for a tutor$/i, '📝', 'Extra help with schoolwork'],
+  [/^clubs and classes$/i, '🎭', 'Join a club, a team or a class'],
+  [/^choose your crowd$/i, '👥', 'Who you sit with at lunch'],
+  [/^university( answers| life)?$/i, '🎓', 'Applications, offers and campus life'],
+  [/^plan what comes next$/i, '🧭', 'University, college, training or work'],
+  [/^family schooling$/i, '👨‍👩‍👧', 'Your children and their schools'],
+  [/^change where you live$/i, '🏠', 'Dorm, apartment or home'],
+  [/^switch major$/i, '🔁', 'Study something else'],
+  [/^sit the /i, '📜', 'The exam that lets you practice'],
+  [/^take a gap year$/i, '🌍', 'A year off before what comes next'],
+  [/^jobs\b/i, '💵', 'Browse full-time job listings'],
+  [/^find work$|^look for a different job$/i, '🔎', 'Apply for jobs and part-time work'],
+  [/acting work$/i, '🎬', 'Audition for parts in plays, films and ads'],
+  [/^quick one-off gigs$/i, '🧢', 'Make some quick money'],
+  [/^special careers$/i, '🎩', 'Fame, idols, sport and politics'],
+  [/^my fame$/i, '⭐', 'Acting, music and being known'],
+  [/^k-pop idol$/i, '🎤', 'Auditions, training and debut'],
+  [/^my athletics$/i, '🏅', 'Your sports, teams and contracts'],
+  [/^politics$/i, '🏛️', 'Parties, elections and office'],
+  [/^use your fame$/i, '📣', 'Endorsements, appearances and causes'],
+  [/^contacts$/i, '📇', 'People who can open doors'],
+  [/^past jobs$/i, '🗂️', 'Where you have worked'],
+  // ---------- Holdings ----------
+  [/^my money$/i, '💰', 'Accounts, budget and cards'],
+  [/^earnings and taxes$/i, '🧾', 'What you earn, owe and pay'],
+  [/^browse property$/i, '🏡', 'Buy a home or a place to let'],
+  [/^invest$/i, '📈', 'Shares, funds and bonds'],
+  [/^borrow money$/i, '🏦', 'Loans and mortgages'],
+  [/^currencies$/i, '💱', 'Change money for a trip or a move'],
+  [/^browse (vehicles|bikes and boards)$/i, '🚗', 'Cars, bikes and boards'],
+  [/driving (lessons|test)/i, '🚦', 'Lessons, the test and a license'],
+  [/^learn to fly$/i, '🛩️', 'Lessons and a pilot\'s license'],
+  [/^loans$/i, '📉', 'What you still owe'],
+  [/^your will$/i, '📜', 'Who gets what, and who carries on'],
+  // ---------- People ----------
+  [/^spend time with everyone/i, '🤝', 'See the people you have not seen this year'],
+  [/^neighbors you know/i, '🏘️', 'The people on your street'],
+  [/^look for love$/i, '❤️', 'Meet someone new'],
+  [/^adopt a child/i, '🧸', 'Give a child a home'],
+  [/^my moments$/i, '📸', 'The moments you keep'],
+  [/^pets & animals$/i, '🐾', 'Your animals, adoption and care'],
+  [/^family tree$/i, '🌳', 'Everyone who came before'],
+  [/^family archive$/i, '🗄️', 'Records the family has kept'],
+  [/^letters and photos$/i, '✉️', 'What was written and kept'],
+  // ---------- Pursuits ----------
+  [/^your life this year$/i, '📆', 'Your hobby, savings and occasions'],
+  [/^growing up$/i, '🧒', 'Play, learn and make friends'],
+  [/^staying safe$/i, '🩺', 'Health class, a talk, a private doctor'],
+  [/^pocket money$/i, '🪙', 'Allowance, chores and small jobs'],
+  [/^charm and confidence$/i, '✨', 'A stylist, public speaking, dance'],
+  [/^things to do$/i, '🎟️', 'Gym, library, movies and more'],
+  [/^riding$/i, '🏇', 'Lessons, horses and shows'],
+  [/^photocards$/i, '💿', 'Albums, cards and your favorite group'],
+  [/^radio and television$/i, '📺', 'What you listen to and watch'],
+  [/^digital life$/i, '📱', 'Accounts, messages and posts'],
+  [/^my neighborhood$/i, '🏘️', 'Your street, your neighbors, the local places'],
+  [/^travel and passport$/i, '✈️', 'Trips, passport and visas'],
+  [/^travel$/i, '✈️', 'Trips, holidays and visits'],
+  [/^passport & documents$/i, '🛂', 'Passport, visas and papers'],
+  [/^moving$/i, '📦', 'Another city, or another country'],
+  [/^gambling$/i, '🎲', 'Cards, the races and the lottery'],
+  [/^crime$/i, '🦹', 'Commit a crime'],
+  [/^legal matters$/i, '⚖️', 'Cases, lawyers and your record'],
+  // ---------- Self ----------
+  [/^health and mood$/i, '🧘', 'Your body, your mind, your care'],
+  [/^talents and skills$/i, '🎨', 'What you are good at, and traits'],
+  [/^identity$/i, '🪪', 'Who you are'],
+  [/^life in /i, '🗺️', 'Your country, its economy and its times'],
+  [/^the world$/i, '🌐', 'Every country, and how it lives'],
+  [/^world news$/i, '📰', 'What is happening'],
+  [/^milestones$/i, '🏆', 'The big moments of your life'],
+  [/^settings$/i, '⚙️', 'Time per turn, drama and more'],
+  [/^save and quit$/i, '💾', 'Back to the title screen'],
+  [/crown|royal/i, '👑', 'Your place in the royal family'],
+];
+
+/** The picture and the line for a row's label, or null. */
+export function menuInfo(label) {
+  const r = MENU_RULES.find(([re]) => re.test(String(label ?? '').trim()));
+  return r ? { emoji: r[1], desc: r[2] } : null;
+}

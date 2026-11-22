@@ -1,2 +1,5 @@
 __pycache__/
 .cache/
+
+# Parallel agents work in their own checkouts here.
+.claude/worktrees/

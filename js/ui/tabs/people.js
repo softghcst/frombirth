@@ -36,7 +36,7 @@ import { eventsOf } from '../../engine/digital/core.js';
 import { accountsOf } from '../../engine/digital/accounts.js';
 import { PLATFORM_BY_ID } from '../../data/digital.js';
 import { openMoments } from '../moments.js';
-import { navRow, navGroup } from '../kit.js';
+import { navRow, navGroup, lockedRow, fromAge } from '../kit.js';
 import * as together from '../../engine/together.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
@@ -290,13 +290,16 @@ function courtRecord(npc) {
     <div style="height:14px"></div>`;
 }
 
-/** A profile's actions in labeled groups (Together, Talk, Ask, Help, Love, Conflict), so a long list stays easy to scan. */
+/** A profile's actions in labeled groups (Together, Talk, Romance, Between you, Gifts and trips, Ask, Help, Hard moments), each
+ *  folded under its name with a count: the first one with anything in it is open, so a long list stays easy to scan. */
 function grouped(actions) {
   const groupOf = (a) => a.group ?? together.GROUP_OF[a.id] ?? (a.danger ? 'conflict' : 'more');
+  let shown = 0;
   return together.GROUPS.map(([g, name]) => {
     const here = actions.filter((a) => groupOf(a) === g);
     if (!here.length) return '';
-    return `<div class="section-label">${esc(name)}</div><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div>`;
+    const open = shown++ < 1;
+    return `<details class="more action-group" ${open ? 'open' : ''}><summary>${esc(name)} <small>${here.length}</small></summary><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></details>`;
   }).join('');
 }
 
@@ -399,8 +402,8 @@ export function openNpc(npc, api, back, o = {}) {
     </div>
     ${clinic || `${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
     <div style="margin:12px 0 16px">${meters}</div>`}
-    ${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}
     ${grouped(actions)}
+    ${(() => { const about = `${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}`; return about.trim() ? `<details class="more about-them"><summary>About ${isPet ? 'them' : esc(npc.firstName)}: life, history, memories</summary>${about}</details>` : ''; })()}
     <div class="btn-stack" style="margin-top:12px">
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
     </div>`, { dismissable: true, onDismiss: () => back?.() });
@@ -505,8 +508,13 @@ export default {
     const top = [['moments', 'My Moments', '', 'calendar'], ['animals', 'Pets & Animals', '', 'paw']];
     const keep = [['tree', 'Family tree', '', 'tree'], ['archive', 'Family archive', '', 'archive'], ['digitalArchive', 'Letters and photos', '', 'letter']];
     const more = [];
+    // What is not open yet is shown greyed, with why (the fifth item), so the player can see it is there.
+    const pp = player();
     if (love.canLookForLove()) more.push(['love', 'Look for love', '', 'heart']);
+    else if (!love.partner()) more.push(['love', 'Look for love', '', 'heart', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, love.DATING_AGE) || 'Not open to you now']);
     if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), 'child']);
+    else more.push(['adopt', 'Adopt a child', '', 'child', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, 21) || 'Your family is already large']);
+    const owed = rel.timeStillOwed().length;
     if (nearby.size) more.unshift(['neighbors', 'Neighbors you know', `${nearby.size} on My Neighborhood`, 'home']);
 
     const row = (n) => `
@@ -517,9 +525,10 @@ export default {
         <div class="side"><span class="pct">${Math.round(n.meters.relationship)}%</span>
           <div class="mini" role="meter" aria-label="Relationship" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(n.meters.relationship)}"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
       </button>`;
-    const nav = (list) => list.map(([id, label, sub, ico]) => navRow({ attrs: `data-top="${id}"`, label, sub, ico }));
+    const nav = (list) => list.map(([id, label, sub, ico, why]) => (why ? lockedRow(label, why, ico) : navRow({ attrs: `data-top="${id}"`, label, sub, ico })));
 
     el.innerHTML = `
+      ${owed > 1 ? navGroup(nav([['spendAll', 'Spend time with everyone', `${owed} people you have not seen this year`, 'heart']])) : ''}
       ${list.length ? (() => {
         // The people who matter most first: partner, children, family and close friends. Everyone else (classmates,
         // coworkers, neighbors, acquaintances) is folded under one line, so the list stays a list.
@@ -545,6 +554,7 @@ export default {
       if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
       if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
+      if (id === 'spendAll') return report(api, rel.spendTimeWithAll());
       if (id === 'neighbors') return hoodUi.openNeighborhood(api, 'neighbors', null, { show: 'known' });
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {

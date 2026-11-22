@@ -180,12 +180,10 @@ function community(home, hood) {
   const H = N.hoods(S());
   const events = N.chronicle(S(), hood.id).filter((x) => ['event', 'tradition', 'attended', 'hosted'].includes(x.k)).slice(-10).reverse();
   const o = L.hostOptions(S());
-  const groups = H.groups.filter((g) => g.h === hood.id && g.to == null);
   const disputes = H.disputes.filter((d) => d.h === hood.id && d.status === 'open');
   return `<div class="card"><h3>Community events</h3>${events.length ? events.map((x) => `<p class="body">${year(x.t)}${x.t % 12 ? `, ${N.MONTHS[x.t % 12]}` : ''}: ${esc(x.text)}</p>`).join('') : empty('Nothing yet. Neighbors organize things now and then; you will hear when they do.')}</div>
     ${(() => { const k = Talk.knownAbout(S(), hood.id); return `<div class="card"><h3>What people here know about you</h3>${k.length ? k.slice(0, 8).map((x) => `<p class="body">${esc(cap(`you ${x.text}`))}. <small class="muted">${x.truth ? '' : 'Not true: a rumor. '}${x.saw ? `${x.saw} saw it` : ''}${x.saw && x.heard ? ', ' : ''}${x.heard ? `${x.heard} heard it` : ''}.</small></p>`).join('') : empty('Nothing yet: people know what they see.')}<p class="muted">Only what people could have seen or been told. Nobody here knows your health or your private life.</p></div>`; })()}
     <div class="card"><h3>Host something</h3>${o.kinds.length ? `<p class="muted">Pick what, who and how much. Guests may say no.</p>${btn('data-host', o.done ? 'Hosted already this time' : 'Plan a gathering', { disabled: o.done || !o.guests.length })}${o.guests.length ? '' : '<p class="muted">Get to know some neighbors first.</p>'}` : empty('Not yet: you are too young to host.')}</div>
-    ${groups.length ? `<div class="card"><h3>Friend groups</h3>${groups.map((g) => `<p class="body"><strong>${esc(cap(g.name))}</strong>: ${esc(g.m.map((ref) => (N.isPlayerRef(ref) ? 'you' : S().npcs[ref]?.firstName)).filter(Boolean).join(', '))}, since ${year(g.since)}.</p>`).join('')}</div>` : ''}
     ${disputes.length ? `<div class="card"><h3>Not settled yet</h3>${disputes.map((d) => `<p class="body">With ${esc(`${H.res[d.res]?.f ?? ''} ${H.res[d.res]?.l ?? ''}`)}: ${esc(d.kind)} (${year(d.t)}). Old disagreements fade.</p>`).join('')}</div>` : ''}`;
 }
 

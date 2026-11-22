@@ -7,7 +7,7 @@ import { expectedPay } from './worklife.js';
 import { MONARCHIES } from '../data/royalty.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, theCountry } from '../util.js';
-import { store, player, country, livingNpcs, log } from '../state.js';
+import { store, player, country, livingNpcs, log, log as logLine } from '../state.js';
 import { LIVING, CRISES, INFLATION, grade } from '../data/living.js';
 import { KINDS, countryHazards } from '../data/disasters.js';
 import { netWorth } from './finance.js';
@@ -108,7 +108,11 @@ export function tickLiving() {
     const lost = Math.round(p.finance.cash * rate * rng.around(1, 0.3));
     if (lost > 0) {
       p.finance.cash -= lost;
-      log(`Prices rose again. What you keep in cash buys ${fmtMoney(lost, c)} less than it did a year ago. Property and investments held their value.`, 'system', 'bad');
+      // Said when it starts to bite, then every few years: rising prices are the background of a life there, not news.
+      if (p.flags.pricesSaid == null || store.state.year - p.flags.pricesSaid >= 5) {
+        log(`Prices rose again. What you keep in cash buys ${fmtMoney(lost, c)} less than it did a year ago. Property and investments held their value.`, 'system', 'bad');
+        p.flags.pricesSaid = store.state.year;
+      }
     }
   }
 
@@ -133,6 +137,10 @@ export function tickLiving() {
 
   // Power and water
   if (L.infra < 60 && rng.chance((60 - L.infra) / 60)) {
+    // Felt every time; told the first time and every few years after, not as the same line every year.
+    const say = p.flags.outagesSaid == null || store.state.year - p.flags.outagesSaid >= 4;
+    if (say) p.flags.outagesSaid = store.state.year;
+    const log = say ? logLine : () => {};
     if (tier === 'rich') log('The power was off for weeks at a time this year. Your generator ran; the street was dark.', 'system', 'neutral');
     else { p.stats.mood = clamp(p.stats.mood - (tier === 'poor' ? 3 : 2)); log(`The power and water were off for weeks at a time this year.${tier === 'poor' ? ' You carried water up the stairs in buckets.' : ''}`, 'system', 'bad'); }
   }

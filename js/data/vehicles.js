@@ -67,6 +67,37 @@ export const COLORS = ['red', 'silver', 'black', 'white', 'blue', 'green', 'gray
 
 /** Licenses, in base units. pass: base chance, improved by the stat paths given. */
 export const DRIVING_TEST = { fee: 600, minAge: 17, pass: { base: 0.55, factors: { 'stats.intellect': 0.3, 'hidden.discipline': 0.3 } } };
+/** The driving test: questions drawn from these, a pass mark, tries a year, and what a retake costs (base units). */
+export const DRIVING_QUIZ = { questions: 1, passMark: 1, triesAYear: 3, retakeFee: 120 };
+/**
+ * Rules of the road and decisions on it. The first answer is the right one (the order is shuffled when asked).
+ * Nothing here depends on which side of the road a country drives on.
+ */
+export const DRIVING_QUESTIONS = [
+  ['The light ahead turns yellow as you approach. You are not too close to stop safely. What do you do?', ['Stop before the line', 'Speed up to make it through', 'Keep going at the same speed', 'Honk and go']],
+  ['What does a flashing red light mean?', ['Stop, then go when it is safe, like a stop sign', 'Slow down, but you do not need to stop', 'The light is broken: ignore it', 'Only trucks must stop']],
+  ['An ambulance with its siren on is coming up behind you. What do you do?', ['Pull over to the side and stop', 'Speed up to stay ahead of it', 'Stop right where you are, in your lane', 'Keep driving normally']],
+  ['How far behind the car in front should you stay in good weather?', ['At least three seconds', 'One car length', 'Half a second', 'As close as traffic allows']],
+  ['The road is wet and you feel the tires lose grip (hydroplaning). What do you do?', ['Ease off the gas and steer straight', 'Brake hard', 'Speed up to get through it', 'Turn the wheel sharply']],
+  ['Before changing lanes, what must you do?', ['Signal, check your mirrors and look over your shoulder', 'Just signal', 'Just check the mirror', 'Nothing, if the road looks clear']],
+  ['A pedestrian is waiting at a crosswalk with no lights. What do you do?', ['Stop and let them cross', 'Honk so they wait', 'Drive through: you are moving', 'Wave them back']],
+  ['At a four-way stop, two cars arrive at the same time. Who goes first?', ['The car on the right', 'The car on the left', 'The bigger car', 'Whoever honks first']],
+  ['When should you turn your headlights on?', ['From dusk to dawn, and whenever it is hard to see', 'Only after midnight', 'Only on highways', 'Only when it snows']],
+  ['Your phone buzzes while you are driving. What do you do?', ['Leave it, or pull over safely to check it', 'Read it quickly at the next red light', 'Hold it low and glance down', 'Answer it on speaker in your hand']],
+  ['You have had a few drinks at a party. What do you do?', ['Find another way home', 'Drive slowly and carefully', 'Wait twenty minutes, then drive', 'Drink coffee, then drive']],
+  ['You feel very tired on a long drive. What do you do?', ['Stop somewhere safe and rest', 'Open the window and keep going', 'Turn the music up', 'Drive faster to get there sooner']],
+  ['You are entering a roundabout. Who has the right of way?', ['Traffic already in the roundabout', 'You, as you enter', 'Whoever is going fastest', 'Trucks and buses only']],
+  ['A school bus ahead stops with its red lights flashing and stop arm out. What do you do?', ['Stop and wait until the lights stop', 'Pass it slowly', 'Pass it if no children are visible', 'Honk and go around']],
+  ['You park facing downhill next to a curb. Which way do you turn your front wheels?', ['Toward the curb', 'Away from the curb', 'Straight ahead', 'It does not matter']],
+  ['What is a blind spot?', ['An area around the car your mirrors do not show', 'A dark stretch of road', 'A dirty patch on the windshield', 'The space under the dashboard']],
+  ['The speed limit is 55, but there is thick fog. How fast should you go?', ['Slower than 55, so you can stop in the distance you can see', 'Exactly 55', 'A little over 55 to get out of the fog faster', 'Whatever the car in front does']],
+  ['When must everyone in the car wear a seat belt?', ['Always, on every trip', 'Only on highways', 'Only in the front seats', 'Only on long trips']],
+  ['You are turning across traffic at an intersection with a green light, no arrow. What do you do?', ['Yield to oncoming traffic and pedestrians, then turn', 'Turn first: you have a green light', 'Stop and wait for a red light', 'Turn quickly before they reach you']],
+  ['A solid line runs down your side of the center of the road. What does it mean?', ['Do not pass here', 'Passing is allowed', 'The lane is ending', 'Parking is allowed']],
+  ['A ball rolls into the road from between parked cars. What do you do?', ['Slow down and be ready to stop: a child may follow', 'Swerve around it', 'Keep going: it is only a ball', 'Speed up past it']],
+  ['How should you hold the steering wheel?', ['Both hands, at about nine and three o\'clock', 'One hand at the top', 'One hand on the bottom', 'By the inside of the rim']],
+];
+
 export const FLYING_LESSONS = { fee: 15000, minAge: 18, pass: { base: 0.5, factors: { 'stats.intellect': 0.6, 'hidden.discipline': 0.3 } } };
 
 /** Servicing restores condition; costs this share of the vehicle's new price. */

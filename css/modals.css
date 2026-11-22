@@ -49,3 +49,20 @@
 .modal.tone-good { border-top: 5px solid var(--good); }
 .modal.tone-bad { border-top: 5px solid var(--bad); }
 .modal.tone-neutral { border-top: 5px solid var(--accent-soft); }
+
+/* The way back from any page that can be closed: "‹ Back", top left, held there while the page scrolls. */
+.modal-backrow {
+  position: sticky; top: -22px; z-index: 5; display: flex; justify-content: flex-start;
+  margin: -22px -18px 10px; padding: 12px 18px 6px;
+  background: linear-gradient(var(--paper) 72%, transparent);
+}
+.modal-back {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 14px 0 10px;
+  border-radius: 999px; font-weight: 700; font-size: 0.9rem; color: var(--accent-text);
+  background: var(--accent-soft); border: 1px solid var(--line-soft);
+}
+.modal-back span { font-size: 1.25rem; line-height: 1; margin-top: -2px; }
+@media (hover: hover) { .modal-back:hover { border-color: var(--accent); } }
+.modal-back:active { transform: scale(0.96); }
+/* A page that draws its own ✕ in a header: the Back above is the one way out. */
+.modal.has-back :is(.icon-btn[data-close], .icon-btn[data-x], [data-x]) { display: none; }

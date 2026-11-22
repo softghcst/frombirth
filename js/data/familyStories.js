@@ -218,7 +218,7 @@ export const FAMILY = [
     ['Say you are sure it will be fine', 'It is the wrong thing, and they know.', { rel: -6 }]] },
   { id: 'friend_big_news', ages: A, again: 5, text: 'A Friend\'s Big News. {them} has something to tell you in person. It is the sort of news you cannot say on the phone.', choices: [
     ['Take them out to celebrate', 'You do. It becomes a long dinner.', { rel: 7, mood: 5, cost: 200 }],
-    ['Be happy for them, and ring later', 'You do, and mean it.', { rel: 4 }],
+    ['Be happy for them, and call later', 'You do, and mean it.', { rel: 4 }],
     ['Feel jealous, and hide it badly', 'It shows. They are kind about it.', { rel: -3, mood: -2 }]] },
   { id: 'long_marriage', ages: A, again: 5, text: 'Years Together. {them} has remembered what today is, and has a card, and a look on their face you have not seen in years.', choices: [
     ['Take them to where it all began', 'You go. You are both older, and it is the same place.', { rel: 9, mood: 6, cost: 600 }],

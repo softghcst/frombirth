@@ -6,7 +6,7 @@ import { store, player, country, prunePending } from '../state.js';
 import { esc, fmtMoney } from '../util.js';
 import { saveGame, pushUndo, popUndo, undoDepth, peekUndo } from '../save.js';
 import { advanceTurn, ageText, nextTurnText, stepOf, monthOf } from '../engine/turns.js';
-import { getEvent, resolveChoice } from '../engine/eventEngine.js';
+import { getEvent, resolveChoice, stillFits } from '../engine/eventEngine.js';
 import { die } from '../engine/death.js';
 import { educationLine } from '../engine/education.js';
 import { styledName, standing } from '../engine/royalty.js';
@@ -15,6 +15,9 @@ import { avatarSvg, dressOfPlayer } from './avatar.js';
 import { syncMeters } from './meter.js';
 import { eventModal, outcomeModal, confirmModal, openModal, pickModal } from './modals.js';
 import { summarize } from '../engine/yearSummary.js';
+import { idolWork } from '../engine/kpop.js';
+import { portrait } from './tabs/people.js';
+import { roleLabel } from '../engine/relationships.js';
 import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
 import { openHealth } from './health/hub.js';
@@ -31,6 +34,8 @@ import { openSettings } from './settings.js';
 function occupationLine(p) {
   if (p.legal.incarceration) return 'Incarcerated';
   if (p.politics) return `${p.politics.title}${p.career.title && p.politics.tier < 2 ? ` · ${p.career.title}` : ''}`;
+  const idol = idolWork(p);
+  if (idol?.current) return idol.title;
   if (p.career.title) return p.career.title;
   if (p.royal && ROYAL_RANKS.includes(p.royal.rank) && (p.age >= 18 || !p.education.enrolled)) return standing(p);
   if (p.education.enrolled) return educationLine(p);
@@ -247,6 +252,7 @@ export function mountGame(app, hooks) {
   /** Opens a section of the tab, or goes back to the tab's list (null). Focus follows: into the section, or back to its row. */
   function goSection(title) {
     const tab = TABS.find((t) => t.id === activeTab);
+    if (!tab) return; // (the tab was closed under it: nothing to open a section of)
     const was = openSection;
     openSection = showSection(panelBody, title);
     titleSection(tab);
@@ -284,7 +290,7 @@ export function mountGame(app, hooks) {
       if (!state.pendingEvents.length) break;
       const pending = state.pendingEvents[0];
       const ev = getEvent(pending.id);
-      if (!ev) { state.pendingEvents.shift(); continue; }
+      if (!ev || !stillFits(pending, state)) { state.pendingEvents.shift(); continue; } // gone, or no longer fits the life
       const index = await eventModal(ev, pending.cast, { ...(turningPoint(ev) ? { onFork: () => forkGame(state, turningNote(ev, pending.cast)) } : {}), previous });
       const result = resolveChoice(ev, index, pending.cast);
       state.pendingEvents.shift();
@@ -318,14 +324,43 @@ export function mountGame(app, hooks) {
     keepFocus = document.activeElement === yearBtn;
     closePanel();
     pushUndo(store.state); // so this turn can be taken back
+    const aliveBefore = player().npcIds.filter((id) => store.state.npcs[id]?.alive);
     advanceTurn(); // a year, or six or three months of one (engine/turns.js)
     if (!player().alive) return finish(store.lastObituary);
     persist();
     render();
     await runPending();
+    if (player().alive) await deathNotice(aliveBefore);
     if (player().alive && player().legal.pending) await tabApi.justice();
     await yearUpdate();
     await healthNotice();
+  }
+
+  /** Someone in the player's life died this turn: a notice for each, before anything else about the year. */
+  async function deathNotice(aliveBefore) {
+    const state = store.state;
+    const gone = aliveBefore.map((id) => state.npcs[id]).filter((n) => n && !n.alive);
+    if (!gone.length) return;
+    const card = (n) => {
+      const died = n.flags.diedYear ?? state.year;
+      const born = died - n.age;
+      const who = roleLabel(n);
+      const r = n.meters?.relationship ?? 0;
+      const feel = n.role === 'pet' ? (r >= 60 ? `${n.firstName} was family. The house is very quiet.` : `You will miss ${n.firstName}.`)
+        : r >= 70 ? 'You were close. It will take a long time.' : r >= 40 ? `You will miss ${n.firstName}.` : 'You had drifted apart, but it still hurts.';
+      return `<div class="death-card">${portrait(n)}<div class="main">
+        <strong>${esc(n.firstName)}${n.role === 'pet' ? '' : ` ${esc(n.lastName)}`}</strong>
+        <small>${esc(who)} · ${born} – ${died} · age ${n.age}</small>
+        <p class="body">${esc(feel)}</p></div></div>`;
+    };
+    await new Promise((resolve) => {
+      const m = openModal(`
+        <div class="eyebrow">In memory</div>
+        <h2>${gone.length === 1 ? `${esc(gone[0].firstName)} has died` : `${gone.length} people you loved have died`}</h2>
+        ${gone.map(card).join('')}
+        <div class="btn-row" style="margin-top:14px"><button class="btn primary" data-ok>Close</button></div>`, { dismissable: true, tone: 'neutral', onDismiss: resolve });
+      m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+    });
   }
 
   /** The yearly life update: what this year changed, from the saved state. Shown once per year. */

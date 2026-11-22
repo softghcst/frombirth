@@ -637,11 +637,13 @@ export const GROUP_OF = {
   argue: 'conflict', insult: 'conflict', askOut: 'love', date: 'love', hookUp: 'love', propose: 'love', wedding: 'love', breakUp: 'conflict',
   divorce: 'conflict', baby: 'love', encourage: 'help', homework: 'help', schoolEvent: 'together', kidTutor: 'help', kidSchool: 'help', uniPlans: 'talk',
   talkIdentity: 'talk', visitInside: 'together',
-  // Relationships and their terms (engine/bonds.js).
-  bondExclusive: 'love', bondOpen: 'love', bondGift: 'love', bondConfess: 'love', bondTime: 'love', bondIntimate: 'love', bondTrip: 'love', bondUnhouse: 'love',
-  bondHouse: 'love', bondOfficial: 'love', bondEnd: 'conflict', askSecret: 'love', askCasual: 'love', askFwb: 'love', askOneNight: 'love', bondTransfer: 'love', bondControl: 'love', writeInside: 'talk', encourageCare: 'help', goWithCare: 'help', askCare: 'ask', helpCare: 'help', visitCare: 'together',
+  // Relationships and their terms (engine/bonds.js): what you do together, what is agreed between you, what you give.
+  bondTime: 'love', bondIntimate: 'love', bondOfficial: 'terms', bondExclusive: 'terms', bondOpen: 'terms', bondConfess: 'terms', bondControl: 'terms',
+  askSecret: 'terms', askCasual: 'terms', askFwb: 'terms', askOneNight: 'terms', bondEnd: 'conflict',
+  bondGift: 'gifts', bondTrip: 'gifts', bondTransfer: 'gifts', bondHouse: 'gifts', bondUnhouse: 'gifts',
+  writeInside: 'talk', encourageCare: 'help', goWithCare: 'help', askCare: 'ask', helpCare: 'help', visitCare: 'together',
 };
-export const GROUPS = [['together', 'Together'], ['talk', 'Talk'], ['ask', 'Ask'], ['help', 'Help'], ['love', 'Love'], ['conflict', 'Conflict'], ['more', 'More']];
+export const GROUPS = [['together', 'Together'], ['talk', 'Talk'], ['love', 'Romance'], ['terms', 'Between you'], ['gifts', 'Gifts and trips'], ['ask', 'Ask'], ['help', 'Help'], ['conflict', 'Hard moments'], ['more', 'More']];
 
 // ---------- A godchild ----------
 

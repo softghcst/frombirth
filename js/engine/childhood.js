@@ -9,6 +9,7 @@ import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
+import { neighborKidsFor, befriend as befriendNeighbor } from './neighborhood.js';
 import { ensureLife } from './npcLives.js';
 import { remember } from './conditions.js';
 import { spendable, takeFrom } from './npcMoney.js';
@@ -75,12 +76,15 @@ export function doActivity(id) {
   if (a.friend && p.age >= 2) {
     const made = livingNpcs().filter((n) => n.flags.metAt === 'playground' || n.flags.metAt === 'club').length;
     const roll = rng.next();
+    // At the playground, the other children are the ones from the player's own street, where there are some (engine/neighborhood.js).
+    const local = a.id === 'playground' ? neighborKidsFor(store.state, p.age, 1, { school: false })[0] : null;
     if (roll < a.friend && made < 4) {
-      friend = makeNpc({ role: 'friend', countryId: p.countryId, age: Math.max(1, p.age + rng.int(-1, 1)), relationship: rng.int(45, 65) });
+      friend = local ? befriendNeighbor(store.state, local, rng.int(45, 65), 'friend') : makeNpc({ role: 'friend', countryId: p.countryId, age: Math.max(1, p.age + rng.int(-1, 1)), relationship: rng.int(45, 65) });
+      if (local) friend.role = 'friend';
       ensureLife(friend);
       friend.flags.metAt = a.id === 'playground' ? 'playground' : 'club'; friend.flags.metAge = p.age; friend.flags.title = a.id === 'playground' ? 'Friend from the playground' : null;
       if (!friend.flags.title) delete friend.flags.title;
-      store.state.npcs[friend.id] = friend; p.npcIds.push(friend.id);
+      store.state.npcs[friend.id] = friend; if (!p.npcIds.includes(friend.id)) p.npcIds.push(friend.id);
       remember(friend, 'met', a.id === 'playground' ? 'You met at the playground, when you were small.' : 'You met at a club after school.');
       text += ` A child called ${friend.firstName} ${a.id === 'playground' ? 'shares the sandpit with you, and then the afternoon' : 'is put next to you, and you get on'}.`;
       if (made === 0) milestone(`Made a friend: ${friend.firstName}.`, 'life');

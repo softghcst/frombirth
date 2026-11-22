@@ -105,7 +105,8 @@ export function healthYear(p = player()) {
   tickPeopleHealth(p);
   policyNow(p);
   const open = h.proposals.filter((x) => x.status === 'open');
-  if (open.length) log(`${clinicianName(store.state.npcs[open[0].providerId])} is waiting to hear what you would like to do about your treatment. It is in My Health.`, 'system', 'neutral');
+  // Said once for each decision waiting, not every year it waits (it is in My Health, and on the year's notice).
+  if (open.length && !open[0].told) { open[0].told = true; log(`${clinicianName(store.state.npcs[open[0].providerId])} is waiting to hear what you would like to do about your treatment. It is in My Health.`, 'system', 'neutral'); }
 }
 
 /**

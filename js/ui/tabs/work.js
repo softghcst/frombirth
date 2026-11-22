@@ -14,7 +14,7 @@ import { openFamilyEducation } from '../familyEducation.js';
 import { familyRecord } from '../../engine/edlegacy.js';
 import { politicsCard, politicsAction } from '../politics.js';
 import { athleticsCard, openAthletics } from '../sports.js';
-import { player, country, livingNpcs } from '../../state.js';
+import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import * as edu from '../../engine/education.js';
 import * as job from '../../engine/partTime.js';
@@ -25,7 +25,8 @@ import { MAJORS, MAJOR_BY_ID } from '../../data/majors.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { careerCard, careerButtons, careerHandlers } from './workCareer.js';
-import { navRow, icon } from '../kit.js';
+import { navRow, icon, lockedRow, fromAge } from '../kit.js';
+import { workLaw } from '../../engine/worklife.js';
 
 const FUNDING = { employer: 'Paid by your employer', scholarship: 'Scholarship', parents: 'Paid by parents', loan: 'Student loan',
   self: 'Paying your own way', public: 'Publicly funded' };
@@ -365,7 +366,7 @@ function commitments(p, c) {
   const rows = [];
   if (edu.canSetPriority()) rows.push(['Putting first', PRIORITY_BY_ID[e.priority]?.name ?? 'Nothing in particular']);
   for (const id of e.clubs) rows.push([CLUB_BY_ID[id].name, 'Member']);
-  if (e.enrolled && e.stage === 'high') rows.push(['Crowd', CLIQUE_BY_ID[e.clique]?.name ?? 'None yet']);
+  if (e.enrolled && ['middle', 'high'].includes(e.stage)) rows.push(['Crowd', CLIQUE_BY_ID[e.clique]?.name ?? 'None yet']);
   if (p.career.partTime) rows.push([p.career.partTime.title, `${fmtMoney(p.career.partTime.salary, c)} a year`]);
   for (const s of p.career.sides ?? []) rows.push([s.title, `${s.hours} h/week, ${fmtMoney(s.salary, c)} a year`]);
   if (p.flags.tutorAge === p.age) rows.push(['Private tutor', 'Two evenings a week']);
@@ -393,6 +394,34 @@ function contacts() {
 const NAV_ICONS = { school: 'school', campus: 'school', uniplan: 'book', family: 'family', club: 'star', priority: 'compass', tutor: 'book',
   clique: 'people', housing: 'home', switch: 'book', exam: 'book', apply: 'compass', gap: 'globe', hub: 'briefcase', findwork: 'briefcase',
   myfame: 'star', myidol: 'star', fame: 'sparkle' };
+/** Ways into work, as in a job center: the ones open to the player, and the rest greyed with why. */
+const FIND = new Set(['hub', 'findwork', 'gigs']);
+/** The careers with worlds of their own: fame, idols, sport, politics. */
+const SPECIAL = new Set(['myfame', 'myidol', 'fame']);
+const has = (list, id) => list.find(([x]) => x === id);
+const row = ([id, label]) => navRow({ attrs: `data-act="${id}"`, label, ico: NAV_ICONS[id] ?? 'briefcase' });
+
+function findWork(p, list) {
+  const rows = [];
+  rows.push(has(list, 'hub') ? row(has(list, 'hub')) : lockedRow('Jobs', fromAge(p.age, Math.min(15, workLaw().workAge)) || 'Not open to you now'));
+  rows.push(has(list, 'findwork') ? row(has(list, 'findwork')) : lockedRow('Find work', fromAge(p.age, 5) || 'Not open to you now'));
+  if (has(list, 'gigs')) rows.push(row(has(list, 'gigs')));
+  return `<div class="section-label">Find work</div><div class="nav-group">${rows.join('')}</div>`;
+}
+
+/** Special careers: one row on the Work tab, opening a list of its own (like a job center's special desk). */
+function specialCareers(p, list) {
+  const rows = [];
+  rows.push(has(list, 'myfame') ? row(['myfame', 'My Fame']) : lockedRow('My Fame', fromAge(p.age, 5) || 'Needs a talent for acting, singing or dance'));
+  rows.push(has(list, 'myidol') ? row(['myidol', 'K-pop Idol']) : lockedRow('K-pop Idol', fromAge(p.age, 12) || (store.state.year < 1996 ? 'K-pop begins in the 1990s' : 'Needs a talent for singing or dance')));
+  if (has(list, 'fame')) rows.push(row(has(list, 'fame')));
+  const athletics = p.legal.incarceration ? '' : athleticsCard();
+  const politics = politicsCard();
+  return `<div class="card"><h3>Special careers</h3><div class="nav-group">${rows.join('')}</div>
+    ${athletics || `<div class="nav-group">${lockedRow('My Athletics', p.legal.incarceration ? 'Not from where you are' : fromAge(p.age, 4))}</div>`}
+    ${politics || `<div class="nav-group">${lockedRow('Politics', fromAge(p.age, 14) || 'Not open to you now')}</div>`}</div>`;
+}
+
 /** Opposite choices, shown side by side: Study harder | Slack off. */
 const PAIRED = new Set(['study', 'slack', 'skip', 'harder']);
 /** Leaving: restrained, set apart, and confirmed where the game already asks. */
@@ -416,7 +445,7 @@ export default {
     if (edu.canSetPriority()) school.push(['priority', 'What comes first']);
     if (edu.canAskForTutor()) school.push(['tutor', 'Ask for a tutor']);
     if (edu.canJoinClubs()) school.push(['club', 'Clubs and classes']);
-    if (e.enrolled && e.stage === 'high') school.push(['clique', 'Choose your crowd']);
+    if (e.enrolled && ['middle', 'high'].includes(e.stage)) school.push(['clique', 'Choose your crowd']);
     if (campusLife.atUniversity()) school.unshift(['campus', 'University life']);
     if (e.enrolled && edu.isHigher(e.stage)) school.push(['housing', 'Change where you live']);
     if (edu.canSwitchMajor()) school.push(['switch', 'Switch major']);
@@ -429,6 +458,8 @@ export default {
     { const fr = familyRecord(); if (fr.past.length || fr.kids.length || p.age >= 18) school.push(['family', 'Family schooling']); }
 
     const work = careerButtons();
+    // Your job's own actions stay with the job; finding work and the special careers have lists of their own below.
+    const jobOnly = work.filter(([id]) => !FIND.has(id) && !SPECIAL.has(id));
 
     // Afterglow: screens open from navigation rows, opposite choices sit side by side, and leaving is set apart.
     // `more`: rows that belong in the same list, after the links (Work keeps athletics, politics and the rest there).
@@ -455,9 +486,12 @@ export default {
       : '<p class="muted">No past jobs.</p>';
 
     el.innerHTML = `
+      <div class="section-label">You</div>
       <div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('school')}</span><h3>School</h3></div>${educationCard(p, c)}${btns(school)}</div>
       ${commitments(p, c) ? `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('calendar')}</span><h3>Your week</h3></div>${commitments(p, c)}</div>` : ''}
-      ${careerCard().replace(/<\/div>\s*$/, () => `${btns(work, `${p.legal.incarceration ? '' : athleticsCard()}${politicsCard()}${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}`;
+      ${careerCard().replace(/<\/div>\s*$/, () => `${btns(jobOnly, `${contacts()}${k.history.length ? `<div class="card"><h3>Past jobs</h3>${past}</div>` : ''}`)}</div>`)}
+      ${findWork(p, work)}
+      ${specialCareers(p, work)}`;
 
     el.onclick = (ev) => {
       if (ev.target.closest('[data-go="athletics"]')) return openAthletics(api);

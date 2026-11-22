@@ -6,7 +6,7 @@ import { openNews } from '../leisure.js';
 import { openWorld } from '../world.js';
 import { player, country } from '../../state.js';
 import * as living from '../../engine/living.js';
-import { esc } from '../../util.js';
+import { esc, theCountry } from '../../util.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
 import { BIRTH_BY_ID } from '../../data/birthConditions.js';
 import { meterHtml } from '../meter.js';
@@ -14,7 +14,6 @@ import { tripleThreat } from '../../engine/conditions.js';
 import { confirmModal } from '../modals.js';
 import * as med from '../../engine/medical.js';
 import { seeDoctor, cosmeticSurgery } from '../leisure.js';
-import { openExplore } from '../globalLife.js';
 import { openAppearanceEditor } from '../../avatar/editor.js';
 import * as salon from '../../engine/salon.js';
 import { identityRows, openIdentity, skillsCard, openPractice } from '../identity.js';
@@ -69,7 +68,7 @@ export default {
         ${identityRows().map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         <button class="btn small" data-identity style="margin-top:10px;width:100%">Edit identity</button>
       </div>
-      ${(() => { const here = living.summary(); const era = getEra(store.state.year); const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence); return `<div class="card"><h3>Life in ${esc(country().name)}${era.id === 'now' ? '' : ` · ${esc(era.name)}`}</h3>
+      ${(() => { const here = living.summary(); const era = getEra(store.state.year); const now = eventsIn(p.countryId).filter((e) => e.name && !e.independence); return `<div class="card"><h3>Life in ${esc(theCountry(country().name))}${era.id === 'now' ? '' : ` · ${esc(era.name)}`}</h3>
         ${here.crisis ? `<p style="margin-bottom:8px"><strong>${esc(here.crisis.name)}.</strong> ${esc(here.crisis.blurb)}</p>` : ''}
         <div class="kv"><span>Your standing here</span><span><strong>${esc(living.tierName())}</strong></span></div>
         <div class="kv"><span>The economy</span><span>${esc(outlook().name)}</span></div>
@@ -79,11 +78,9 @@ export default {
         ${here.rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
         </details>
         ${crownLine ? crownLine.replace(/^<div class="card"><h3>[^<]*<\/h3>/, '<div class="section-label">The crown</div>').replace(/<\/div>$/, '') : ''}</div>`; })()}
-      ${navGroup([
-    navRow({ attrs: 'data-passport', label: 'Passport & Documents', ico: 'passport' }),
-    navRow({ attrs: 'data-world', label: 'The world', ico: 'compass' }),
-    navRow({ attrs: 'data-news', label: 'World news', ico: 'news' }),
-  ], 'The world')}
+      <div class="card"><h3>The world</h3>
+        <p class="muted">The map, every country and how it compares, and the news from everywhere.</p>
+        <div class="btn-stack"><button class="btn" data-world>The world map</button><button class="btn" data-news>World news</button></div></div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
       ${navGroup([
     navRow({ attrs: 'data-settings', label: 'Settings', ico: 'settings' }),
@@ -95,7 +92,6 @@ export default {
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
     el.querySelector('[data-health]').onclick = () => openHealth(api);
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
-    el.querySelector('[data-passport]').onclick = () => openExplore(api, { view: 'documents' });
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {

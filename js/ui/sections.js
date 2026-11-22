@@ -2,16 +2,17 @@
 // After a tab draws, each card in it becomes one row (its title, an icon and a chevron), and the card waits,
 // hidden, until its row is tapped. Nothing is redrawn or rebound: the tab's own buttons and handlers stay
 // exactly where they were. A card that is only a line of text and one button becomes that button.
-// Rows show their name and nothing else.
+// Rows show their picture, their name and one line saying what they are for (data/menus.js).
 import { esc } from '../util.js';
-import { icon } from './kit.js';
+import { icon, rowTile } from './kit.js';
+import { menuInfo } from '../data/menus.js';
 
 /** Icons for section titles, by the first word or phrase that matches. */
 const ICONS = [
   [/wellbeing|health|conditions|born with|care/i, 'health'], [/aptitude|skill|talent/i, 'star'], [/crown|royal|court/i, 'trophy'],
   [/identity/i, 'id'], [/times|news|era/i, 'news'], [/life in|world|abroad|travel/i, 'globe'], [/trait/i, 'sparkle'],
   [/milestone|this year|week|calendar/i, 'calendar'], [/school|universit|education|campus/i, 'school'], [/work|job|career|office|politic/i, 'briefcase'],
-  [/contact|people|friend|family/i, 'people'], [/money|loan|debt|tax|gambl/i, 'coin'], [/will|letter|digital|online/i, 'letter'],
+  [/contact|people|friend|family|club/i, 'people'], [/money|loan|debt|tax|gambl/i, 'coin'], [/will|letter|digital|online/i, 'letter'],
   [/crime|legal|court|prison|police/i, 'passport'], [/athlet|sport|riding|race/i, 'trophy'], [/radio|television/i, 'news'],
   [/moving|home|house|propert/i, 'home'], [/things to do|hobby|fun/i, 'compass'], [/past|history|archive/i, 'archive'],
 ];
@@ -23,8 +24,8 @@ function titleOf(card) {
   return h ? h.textContent.trim() : '';
 }
 
-const rowInner = (title, sub, alert) => `<span class="nr-icon">${icon(iconFor(title))}</span>
-  <span class="nr-main"><span class="nr-label">${esc(title)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</span>
+const rowInner = (title, sub, alert) => `${rowTile(title, iconFor(title))}
+  <span class="nr-main"><span class="nr-label">${esc(title)}</span>${(sub || menuInfo(title)?.desc) ? `<small>${esc(sub || menuInfo(title).desc)}</small>` : ''}</span>
   ${alert ? '<span class="nr-dot" aria-hidden="true"></span>' : ''}${icon('chevron', 'nr-chev')}`;
 
 /** Sections inside sections are named by their path: "Work › Politics". */
@@ -77,9 +78,10 @@ function build(container, prefix) {
     const isBody = el.classList.contains('sec-body');
     if (isBody) continue; // hidden cards do not break a list
     if (!isRow) { group = null; continue; }
-    // A list under its own heading keeps to itself: rows after it start a new list.
+    // A list under its own heading starts a new list, and rows that follow it belong to that heading too (a heading
+    // ends only at the next heading or at something that is not a row).
     const labeled = el.classList.contains('nav-group') && el.previousElementSibling?.classList.contains('section-label');
-    if (labeled) { group = null; continue; }
+    if (labeled) { group = el; continue; }
     if (!group) {
       if (el.classList.contains('nav-group')) { group = el; continue; }
       group = document.createElement('div');

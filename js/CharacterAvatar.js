@@ -29,7 +29,7 @@
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
-import { FITTED_HAIR, FITTED_BASE_HEAD } from './avatar/fittedHair.js';
+import { FITTED_HAIR, FITTED_BASE_HEAD, kidsMayWear } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
 import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
@@ -49,6 +49,8 @@ const headName = (headId) => PART_BY_ID[headId]?.file.replace(/^.*\/|\.svg$/g, '
 export function fittedHairFile(hairId, headId) {
   const style = FITTED_HAIR[hairId];
   if (!style) return null;
+  // An older style anchored to the adult heads is drawn from its older file anywhere else (a child's head).
+  if (style.legacy && !style.heads.includes(headName(headId))) return null;
   const head = style.heads.includes(headName(headId)) ? headName(headId) : FITTED_BASE_HEAD;
   return `hair_fitted/${hairId}_${head}.svg`;
 }
@@ -97,6 +99,8 @@ export function dressFor(look, ctx = {}) {
     out.jewelry = []; out.glasses = null; out.facialHair = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
   } else if (stage === 'kid') {
+    // A grown-up's hairstyle waits until 13: until then the child wears the one picked for them (resolveLook's kidHair).
+    if (out.hair && !kidsMayWear(out.hair)) out.hair = look.kidHair ?? null;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
     out.facialHair = null;
@@ -257,7 +261,9 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const n = ++serial;
   const hatOn = !!d.hat;
   const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
-  const bulky = fitted ? ['long', 'medium', 'updo'].includes(FITTED_HAIR[d.hair].length) : !!PART_BY_ID[d.hair]?.tags?.bulky;
+  // An older style, even one anchored by the pipeline, keeps its own measure of bulk.
+  const legacy = !!FITTED_HAIR[d.hair]?.legacy;
+  const bulky = fitted && !legacy ? ['long', 'medium', 'updo'].includes(FITTED_HAIR[d.hair].length) : !!PART_BY_ID[d.hair]?.tags?.bulky;
   const hairTop = hatOn ? (bulky ? BULKY_HAT_LINE : HAT_LINE) : 0;
   // Under a hat, hair is hidden above the brim, and tucks in at the sides rather than ending in a flat shelf.
   const under = (bottom) => `<path d="M-400 ${bottom}V${hairTop + 64}H112V${hairTop}H400V${hairTop + 64}H912V${bottom}Z"/>`;
@@ -265,12 +271,23 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // falls across the face stops at the jawline, not in a straight edge part-way down the cheek.
   const hf = d.hair && !fitted ? hairFit(d.hair, d.head) : null;
   const chin = PART_BY_ID[d.head]?.fit?.chin;
-  const frontCut = hf && chin ? Math.round(T.face.top + (chin - 2 - hf.ty) / hf.sy) : FRONT_HAIR_CUT;
+  // An anchored older style is already in the head's own coordinates: it is cut at the chin as it is.
+  const frontCut = hf && chin ? Math.round(T.face.top + (chin - 2 - hf.ty) / hf.sy) : fitted && legacy && chin ? Math.round(chin - 2) : FRONT_HAIR_CUT;
+  // Some are kept off the face (frontCut, per head: where the window's top is): in front of the face they are drawn only
+  // outside a wide oval over the face, from that line down to the chin, so locks that would hang over the eyes and
+  // cheeks sit behind it and the hair's edge across the skin curves down to the ears like a hairline, not a straight cut.
+  const legacyCut = legacy ? FITTED_HAIR[d.hair].frontCut?.[headName(d.head)] : null;
+  const fitHead = PART_BY_ID[d.head]?.fit;
+  const faceWindow = legacyCut != null && fitHead ? (() => {
+    const rx = n1(fitHead.w / 2 * 1.22);
+    const ry = n1(frontCut - legacyCut);
+    return `M${n1(fitHead.cx - rx)} ${frontCut}a${rx} ${ry} 0 1 1 ${n1(2 * rx)} 0a${rx} ${ry} 0 1 1 ${n1(-2 * rx)} 0Z`;
+  })() : '';
   const defs = [
     `<clipPath id="pw-l-${n}"><rect x="-400" y="-400" width="656" height="1400"/></clipPath><clipPath id="pw-r-${n}"><rect x="256" y="-400" width="656" height="1400"/></clipPath>`,
     `<clipPath id="pw-face-${n}"><use href="${href(d.head)?.replace('#art', '#skin')}"/></clipPath>`,
     `<clipPath id="pw-back-${n}">${hatOn ? under(1400) : '<rect x="-400" y="-2000" width="1312" height="3400"/>'}</clipPath>`,
-    `<clipPath id="pw-front-${n}">${hatOn ? under(frontCut) : `<rect x="-400" y="-2000" width="1312" height="${frontCut + 2000}"/>`}</clipPath>`,
+    `<clipPath id="pw-front-${n}">${hatOn ? under(frontCut) : faceWindow ? `<path clip-rule="evenodd" d="M-400 -2000H912V${frontCut}H-400Z${faceWindow}"/>` : `<rect x="-400" y="-2000" width="1312" height="${frontCut + 2000}"/>`}</clipPath>`,
   ];
   const f = fitTransforms(d.head, ageStage(ctx.age ?? 25), look.tweaks, { eyes: d.eyes, nose: d.nose, lips: d.lips });
   // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).
@@ -279,6 +296,9 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   // again, squeezed toward it, so the two halves still meet along it.
   const hairLayer = (clip) => {
     // A fitted style is drawn as it is: its back layer behind the head, the others in front of the face. Only a hat clips it.
+    // An anchored older style is one layer, drawn as the older styles are: behind the head, and again in front down to the chin.
+    // Its hair_back (a cap filling gaps beside the skull, where it has one) goes behind the head only.
+    if (fitted && legacy) return `<g clip-path="url(#${clip})">${clip === `pw-back-${n}` ? `<use href="${AVATAR_BASE}${fitted}#hair_back"/>` : ''}<use href="${AVATAR_BASE}${fitted}#hair_base"/></g>`;
     if (fitted) {
       const ids = clip === `pw-back-${n}` ? FITTED_BACK : FITTED_FRONT;
       const drawn = `<g clip-path="url(#pw-back-${n})">${ids.map((id) => `<use href="${AVATAR_BASE}${fitted}#${id}"/>`).join('')}</g>`;

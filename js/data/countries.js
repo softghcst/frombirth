@@ -9,9 +9,26 @@ import { PLACES } from './world.js';
 /** A name list: the short one here plus the long one in names.js, without repeats. */
 const pool = (short, long = '') => [...new Set(`${short} ${long}`.split(' ').filter(Boolean).map((n) => n.replace(/_/g, ' ')))];
 
+/**
+ * The traditional names most people in English-speaking countries still have. They are listed three times over in
+ * those countries' name lists, so that most people drawn at random have one, and the rest of the list gives the mix.
+ */
+const ENGLISH = {
+  male: 'James John William Michael David Robert Thomas Daniel Matthew Christopher Joseph Benjamin Samuel Henry Edward Charles Andrew Ryan Jacob Luke Nathan Jack Oliver Harry George Peter Paul Mark Adam Alexander Joshua Anthony Steven Richard',
+  female: 'Elizabeth Sarah Emily Jessica Katherine Rebecca Rachel Anna Grace Lucy Sophie Charlotte Abigail Emma Mary Jennifer Laura Megan Lauren Amy Hannah Victoria Alice Ellie Olivia Chloe Lily Elizabeth Ruth Helen Natalie Amelia Isabella Jane',
+  last: 'Smith Johnson Williams Brown Jones Miller Davis Wilson Taylor Anderson Thomas Moore Martin Thompson White Harris Clark Lewis Walker Hall Allen Young King Wright Hill Green Baker Adams Evans Roberts Turner Parker Collins Edwards Stewart Morris Cook Bell Murphy Cooper',
+};
+const IRISH = {
+  male: 'Seán Patrick Conor Liam Michael John James Daniel Cian Darragh Oisín Niall Ciarán Eoin Jack Thomas Kevin Brendan Declan Aidan',
+  female: 'Aoife Ciara Siobhán Niamh Sinéad Mary Sarah Emma Grace Róisín Orla Caoimhe Saoirse Áine Clodagh Kate Rachel Laura Emily Ella',
+  last: 'Murphy Kelly O\'Sullivan Walsh Smith O\'Brien Byrne Ryan O\'Connor O\'Neill Doyle McCarthy Gallagher Doherty Kennedy Lynch Murray Quinn Moore Brennan',
+};
+const CLASSIC = { us: ENGLISH, uk: ENGLISH, ca: ENGLISH, au: ENGLISH, nz: ENGLISH, ie: IRISH };
+const weighted = (id, key, list) => (CLASSIC[id] ? [...Array(3).fill(CLASSIC[id][key].split(' ')).flat(), ...list] : list);
+
 const C = (id, name, flag, code, symbol, scale, incomeTax, estateTax, cities, m = '', f = '', s = '') => ({
   id, name, flag, currency: { code, symbol, scale }, incomeTax, cities,
-  names: { male: pool(m, NAMES[id]?.male), female: pool(f, NAMES[id]?.female), last: pool(s, NAMES[id]?.last) },
+  names: { male: weighted(id, 'male', pool(m, NAMES[id]?.male)), female: weighted(id, 'female', pool(f, NAMES[id]?.female)), last: weighted(id, 'last', pool(s, NAMES[id]?.last)) },
 });
 
 const LIST = [
