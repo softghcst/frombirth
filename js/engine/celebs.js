@@ -6,6 +6,7 @@
 //   npc.flags.star.story = [{ year, text }]      what happened to them, in order
 //   npc.flags.star.partner, .married, .retired, .retiredYear
 //   p.fame.arc = { phase:'rising'|'peak'|'fading'|'faded'|'comeback', peak, since, offers:[{ kind, ... }], comebacks }
+import { royalWorkBan } from './royalRules.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
@@ -149,7 +150,7 @@ function offerComebacks(p, a) {
 
 /** The youngest age for each way back: a reality show, a memoir or a tribute is for grown-ups; a child actor's way back is simply more work. */
 export const COMEBACK_AGE = { reality: 18, memoir: 18, tribute: 18, reunion: 16 };
-const oldEnough = (o, p) => (p.age ?? 0) >= (COMEBACK_AGE[o.kind] ?? 18);
+const oldEnough = (o, p) => (p.age ?? 0) >= (COMEBACK_AGE[o.kind] ?? 18) && !(o.kind === 'reality' && royalWorkBan(p));
 /** The ways back open to the player now. Offers made while too young wait until they are old enough. */
 export const comebackOffers = (p = player()) => (fameOf(p).arc?.offers ?? []).filter((o) => oldEnough(o, p));
 

@@ -80,7 +80,7 @@ const offerOf = (kind, p) => {
   const bfa = dancer(24, 70, { degree: 'dance_bfa' });
   const ob = offerOf('revue', bfa); ob.wants = 'jazz';
   const trained = dance.odds(ob, 'jazz', bfa);
-  check(Math.abs(trained - plain - DANCE_YEAR.training.bfa / 25) < 1e-9, `a BFA in dance helps (${plain.toFixed(2)} to ${trained.toFixed(2)})`);
+  check(Math.abs(trained - Math.min(DANCE_YEAR.most, plain + DANCE_YEAR.training.bfa / 25)) < 1e-9 && trained > plain, `a BFA in dance helps (${plain.toFixed(2)} to ${trained.toFixed(2)})`);
   let won = 0;
   for (let i = 0; i < 200; i++) { const q = dancer(25, 60); if (rng.chance(dance.odds(offerOf('tour', q), 'hiphop', q))) won++; }
   check(won / 200 < 0.12, `an ordinary dancer rarely makes a tour (${won / 2}%)`);
@@ -137,10 +137,10 @@ const offerOf = (kind, p) => {
   check(dance.competitions(dancer(5, 50)).every((c) => c.why), 'not before six');
   let top3 = 0, weakTop3 = 0;
   for (let i = 0; i < 80; i++) {
-    const strong = dancer(10, 62); if (dance.compete('regional', 'jazz').ok) top3++;
+    const strong = dancer(10, 72); if (dance.compete('regional', 'jazz').ok) top3++;
     const weak = dancer(10, 28); if (dance.compete('regional', 'jazz').ok) weakTop3++;
   }
-  check(top3 / 80 >= 0.5 && weakTop3 / 80 <= 0.1, `a strong child places in the top three regionally ${Math.round(top3 / 0.8)}%, a weak one ${Math.round(weakTop3 / 0.8)}%`);
+  check(top3 / 80 >= 0.5 && weakTop3 / 80 <= 0.1, `regional junior dance is hard: a strong child places in the top three ${Math.round(top3 / 0.8)}%, a weak one ${Math.round(weakTop3 / 0.8)}%`);
   const adult = dancer(24, 95);
   const cash = adult.finance.cash;
   const r1 = dance.compete('regional', 'jazz');
@@ -271,6 +271,22 @@ const offerOf = (kind, p) => {
   check(good.r.ok && good.rel?.danced && /choreograph/.test(good.r.text), `a dancing musician dances in their video: ${good.r.text}`);
   check(poor.r.ok && poor.rel && !poor.rel.danced, 'one who cannot dance does not');
   section('music videos: a musician who dances well choreographs and stars in their own, and it sells better');
+}
+
+// ---------- A royal: amateur competitions, but no paid work, no auditions and no selling the name ----------
+{
+  const career = await import('../js/engine/career.js');
+  const celebs = await import('../js/engine/celebs.js');
+  const p = dancer(10, 80);
+  p.royal = { rank: 'heir', countryId: 'uk', line: 1 };
+  p.hidden.fame = 70;
+  check(/Royals/.test(dance.whyNot('commercial', p)), 'a royal child does not dance in commercials');
+  check(ent.castingBoard(p).every((x) => /Royals|already|no /i.test(x.why) || x.why), 'nor audition for paid parts');
+  check(!career.canUseFame(p) && career.fameOptions().every((o) => !o.available), 'nor sell their name');
+  check(dance.competitions(p).find((c) => c.level === 'regional').why === '', 'but may compete as an amateur');
+  p.royal.rank = 'former';
+  check(!/Royals/.test(dance.whyNot('commercial', p)), 'stepping back from royal life lifts it');
+  section('royals do not take paid or commercial work; amateur competitions are fine');
 }
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }

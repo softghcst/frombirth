@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { royalWorkBan } from './royalRules.js';
 import { hasRecord } from './records.js';
 import { licenseBlock } from './credentials.js';
 import { careerBlock, careerExists, eraTitle, worldYear } from './history.js';
@@ -637,14 +638,14 @@ export function doGig(id) {
 export const fame = () => Math.round(player().hidden.fame);
 
 /** Whether the player can use their fame at all: known enough, and old enough (a famous baby cannot). */
-export const canUseFame = (p = player()) => fame() >= 10 && p.age >= FAME_MIN_AGE;
+export const canUseFame = (p = player()) => fame() >= 10 && p.age >= FAME_MIN_AGE && !royalWorkBan(p);
 
 /** @returns {{id, name, available:boolean, reason:string}[]} */
 export function fameOptions() {
   const done = acts().fame;
   const age = player().age;
-  return FAME_ACTIONS.map((a) => ({ id: a.id, name: a.name, available: age >= (a.minAge ?? FAME_MIN_AGE) && fame() >= a.min && !done[a.id],
-    reason: age < (a.minAge ?? FAME_MIN_AGE) ? `From age ${a.minAge ?? FAME_MIN_AGE}.` : fame() < a.min ? `Needs ${a.min}% fame.` : done[a.id] ? 'Already done this year.' : '' }));
+  return FAME_ACTIONS.map((a) => ({ id: a.id, name: a.name, available: !royalWorkBan() && age >= (a.minAge ?? FAME_MIN_AGE) && fame() >= a.min && !done[a.id],
+    reason: royalWorkBan() ? 'Royals do not sell their name.' : age < (a.minAge ?? FAME_MIN_AGE) ? `From age ${a.minAge ?? FAME_MIN_AGE}.` : fame() < a.min ? `Needs ${a.min}% fame.` : done[a.id] ? 'Already done this year.' : '' }));
 }
 
 export function doFameAction(id) {
