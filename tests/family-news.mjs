@@ -69,7 +69,7 @@ section('a death has a cause from their life, and a funeral to go to or miss');
   const p = life(9);
   const mom = person('parent', 38, 80); rich(mom);
   const opts = lessons.lessonOptions();
-  check(lessons.asksParents() && opts.some((o) => o.id === 'voice') && opts.some((o) => o.id === 'karate') && opts.some((o) => o.id === 'guitar'), 'a child can ask for voice, karate, guitar and more');
+  check(lessons.asksParents() && opts.some((o) => o.id === 'voice') && opts.some((o) => o.id === 'ballet') && opts.some((o) => o.id === 'guitar'), 'a child can ask for voice, ballet, guitar and more');
   check(!opts.some((o) => o.id === 'modeling'), 'modeling lessons wait until ten');
   let yes = 0; let tries = 0;
   for (let y = 0; y < 30 && yes < 3; y++) {
@@ -81,7 +81,7 @@ section('a death has a cause from their life, and a funeral to go to or miss');
   }
   check(yes >= 2, `a well-off, generous parent mostly says yes (${yes} of ${tries})`);
   p.flags.lessons.year = {};
-  for (const id of ['piano', 'karate', 'chess', 'swimming']) lessons.takeLesson(id);
+  for (const id of ['piano', 'violin', 'chess', 'swimming']) lessons.takeLesson(id);
   check(p.flags.lessons.year.ids.length === LESSONS_A_YEAR && lessons.lessonOptions().every((o) => o.why), `a few lessons a year, no more (${LESSONS_A_YEAR})`);
   // A family without the money says no more often.
   let poorYes = 0;

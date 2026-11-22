@@ -1,5 +1,6 @@
 // Holdings tab: money, where you live, property, vehicles, investments and
 // loans, with everything you can do about each.
+import { PACES, DURATIONS } from '../../data/rides.js';
 import { careLine } from '../../engine/guardianship.js';
 import * as sys from '../../engine/systems.js';
 import { taxLine } from '../../engine/systems.js';
@@ -284,6 +285,30 @@ async function browseVehicles(api) {
   return how ? report(api, cars.buyVehicle(listing.id, how)) : undefined;
 }
 
+/** A ride: the pace, how long, whatever happens on the way, and how it went. */
+async function goForRide(a, api) {
+  const drive = a.vehicleClass === 'car';
+  const pace = await pickModal({ title: drive ? 'Go for a drive' : 'Go for a ride', body: 'Pick your pace.', cancel: 'Back', options: PACES.map((x) => ({ value: x.id, label: x.name })) });
+  if (!pace) return undefined;
+  const mins = await pickModal({ title: 'How long?', cancel: 'Back', options: DURATIONS.map((x) => ({ value: String(x), label: x < 60 ? `${x} minutes` : x === 60 ? '1 hour' : `${x / 60} hours` })) });
+  if (!mins) return undefined;
+  const r = cars.ride(a.id, pace, Number(mins));
+  if (!r.ok && !r.distance) return report(api, r);
+  if (r.encounter) {
+    const v = await pickModal({ title: drive ? 'On the road' : 'On your ride', body: r.encounter.text, options: r.encounter.options.map((o) => ({ value: `o${o.value}`, label: o.label })) });
+    const pick = v ? Number(String(v).slice(1)) : r.encounter.options.at(-1).value;
+    const e = cars.rideEncounter(r.encounter.id, pick, a.id);
+    api.changed();
+    await messageModal({ body: e.text, tone: e.tone });
+  }
+  api.changed();
+  return new Promise((resolve) => {
+    const m = openModal(`<h2>${r.ok ? (r.joy >= 60 ? 'A great ride' : r.joy >= 35 ? 'Time well spent' : 'Not your best ride') : 'Ouch'}</h2><p class="body">${esc(r.text)}</p>
+      ${kv([['Distance', r.distance]])}<div style="margin:10px 0">${meterHtml('Enjoyment', r.joy, true)}</div><button class="btn primary" data-ok>Continue</button>`, { tone: r.tone });
+    m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+  });
+}
+
 function openVehicle(a, api) {
   const c = country();
   const m = openModal(`
@@ -291,7 +316,7 @@ function openVehicle(a, api) {
     ${kv([['Worth', fmtMoney(a.value, c)], ['You paid', fmtMoney(a.purchasePrice, c)], ['Age', `${a.age} ${a.age === 1 ? 'year' : 'years'}`], ...(cars.loanOn(a) ? [['Still owed on it', `${fmtMoney(cars.loanOn(a).principal, c)}: the lender can take it back if the loan goes unpaid`]] : [])])}
     <div style="margin:12px 0 16px">${meterHtml('Condition', a.condition, true)}</div>
     <div class="btn-stack">
-      <button class="btn" data-act="out">Take it out</button>
+      ${cars.canRide(a) ? `<button class="btn primary" data-act="ride" ${cars.ridesLeft(a.id) <= 0 ? 'disabled' : ''}>${a.vehicleClass === 'car' ? 'Go for a drive' : 'Go for a ride'}${cars.ridesLeft(a.id) <= 0 ? ' · enough for this year' : ''}</button>` : '<button class="btn" data-act="out">Take it out</button>'}
       ${a.condition < 95 ? `<button class="btn" data-act="service">Service it (${fmtMoney(cars.serviceCost(a), c)})</button>` : ''}
       <button class="btn danger" data-act="sell">Sell for ${fmtMoney(a.value, c)}${cars.loanOn(a) ? ` (${cars.saleNet(a) >= 0 ? `${fmtMoney(cars.saleNet(a), c)} after the loan` : `${fmtMoney(-cars.saleNet(a), c)} short of the loan`})` : ''}</button>
       <button class="btn" data-close>Close</button>
@@ -301,6 +326,7 @@ function openVehicle(a, api) {
     const id = e.target.closest('[data-act]')?.dataset.act;
     if (!id) return undefined;
     m.close();
+    if (id === 'ride') return goForRide(a, api);
     return report(api, { out: () => cars.takeOut(a.id), service: () => cars.service(a.id), sell: () => cars.sellVehicle(a.id) }[id]());
   });
 }

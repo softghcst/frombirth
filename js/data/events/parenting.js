@@ -10,7 +10,7 @@ const scene = (id, ageRange, text, choices, kind = parent) => ({ id, category: '
 
 export default [
   scene('kid_school_choice', [18, 130], '{kid} is starting {stage}. For now the place is at {school}, but where {kid} goes is your decision, and it will shape the next few years.', [
-    ['Keep them at the local state school', 'You fill in the form for the local school.', 'kidState'],
+    ['Keep them at the local public school', 'You fill in the form for the local school.', 'kidState'],
     ['Pay for a private school', 'You book a tour.', 'kidPrivate'],
     ['Send them to boarding school', 'You look at the brochures, and the fees.', 'kidBoarding'],
     ['Find a school that fits their gifts', 'You think about what {kid} is good at.', 'kidGifts'],

@@ -76,6 +76,34 @@ export const ROLE_KINDS = {
   background: { name: 'Background', fee: 0.03, weight: 0.02, field: 0.5 },
   voice_lead: { name: 'Lead voice', fee: 0.5, weight: 0.4, field: 1.2 },
   spokesperson: { name: 'On-screen spokesperson', fee: 0.6, weight: 0.1, field: 1 },
+  child: { name: 'Child part', fee: 0.15, weight: 0.3, field: 1 },
+  dance_ensemble: { name: 'Dance ensemble', fee: 0.22, weight: 0.08, field: 0.9 },
+  choreographer: { name: 'Choreographer', fee: 0.6, weight: 0.2, field: 0.6 },
+};
+/** Parts judged on something other than the production's usual skills: a dance ensemble is cast on dancing. */
+export const ROLE_SKILLS = { dance_ensemble: { 'talents.dance': 0.8, 'talents.singing': 0.1, 'talents.acting': 0.1 }, choreographer: { 'talents.dance': 0.85, 'stats.intellect': 0.15 } };
+/** How often a musical holds an open call for its dance ensemble (its own luck, by the production). */
+export const DANCE_CALL = 0.6;
+
+/**
+ * Children's parts on stage: the orphan, the youngest child, the kid who sees the ghost. Plays and musicals at
+ * every level have them, and children audition against other children for them, not against grown actors.
+ *   share   the chance a production of that kind has a child part
+ *   ages    the ages a part is written for (children a couple of years either side may audition)
+ *   field   how good the other children who turn up tend to be, by tier, and how much they vary (spread): the
+ *           major stage sees the strongest children in the country; community shows take most who can do it
+ *   hours   a child's hours, as a share of an adult's: shorter calls, and two children often share a part
+ * A child part on the major stage needs one professional credit (a regional or touring part, say) or an agent;
+ * the other tiers take a child with none. Neither needs the recognition grown actors need there.
+ */
+export const CHILD_PARTS = {
+  share: { musical: 0.7, stage: 0.35 },
+  ages: [[6, 10], [8, 12], [10, 14]],
+  field: { community: 30, regional: 44, touring: 52, major_stage: 64 },
+  spread: 16,
+  hours: 0.45,
+  characters: ['the orphan who runs away', 'the youngest child', 'the boy who sees the ghost', 'a street kid with a plan', 'the girl who reads everything',
+    'the prince as a boy', 'the heroine as a child', 'a choir child', 'the twin who lies', 'the kid next door'],
 };
 
 /** Which parts each kind of production casts, and what each part asks for (skill paths and weights). */
@@ -106,6 +134,58 @@ export const ORG_WORDS = ['Silver Gate', 'Lantern', 'Meridian', 'Harbor Light', 
 export const OUTLET_WORDS = ['Herald', 'Gazette', 'Screen Weekly', 'Stage Door', 'Courier', 'Spotlight', 'Review', 'Chronicle'];
 
 /** Words for fictional titles: "{A} {B}", "The {B} of {C}", and others. Original, invented combinations. */
+/**
+ * How hard the stage is. Broadway, the West End and the rest are among the hardest jobs in the arts to get: open calls
+ * draw hundreds, and the people cast have usually done it before, elsewhere.
+ *   bar        how much stronger the best of the other auditioners is, by tier, for plays and musicals
+ *   crowd      how many more of them turn up (a multiple of the tier's field), by tier
+ *   training   what a degree shows in the audition room (points), and to a company hiring for its season (odds):
+ *              conservatory training (a BFA) shows; a broad degree with performance classes (a BA) a little
+ *   company    a major-stage company hiring for its season (data/careers.js mt_performer): the bar it judges
+ *              auditions against (55 elsewhere), the extra crowd, and the credits it wants unless you have an agent
+ *   agents     what agents see in training: a BFA, and a showcase they were invited to
+ */
+export const STAGE_BAR = {
+  bar: { touring: 3, major_stage: 12 },
+  crowd: { major_stage: 1.5 },
+  training: { bfa: { audition: 5, company: 0.12 }, ba: { audition: 2, company: 0.05 } },
+  company: { need: 78, crowd: 0.2, credits: 2 },
+  agents: { bfa: 10, ba: 4, showcase: 6 },
+};
+
+/**
+ * The real theater districts where a country's major-stage theaters stand: places, named as places. The theaters in
+ * them keep invented names (ORG_NAMES); no real theater, show, award or logo is used. `on` is how a line reads
+ * ("on Broadway", "in the West End"). A country with none here gets "the major stage" in its biggest city.
+ */
+export const THEATER_DISTRICTS = {
+  us: { name: 'Broadway', city: 'New York', on: 'on Broadway' },
+  uk: { name: 'West End', city: 'London', on: 'in the West End' },
+  ca: { name: 'Entertainment District', city: 'Toronto', on: 'in Toronto\'s Entertainment District' },
+  au: { name: 'East End', city: 'Melbourne', on: 'in Melbourne\'s East End' },
+  es: { name: 'Gran Vía', city: 'Madrid', on: 'on the Gran Vía' },
+  fr: { name: 'Grands Boulevards', city: 'Paris', on: 'on the Grands Boulevards' },
+  jp: { name: 'Hibiya', city: 'Tokyo', on: 'in Hibiya' },
+  kr: { name: 'Daehak-ro', city: 'Seoul', on: 'on Daehak-ro' },
+  ar: { name: 'Avenida Corrientes', city: 'Buenos Aires', on: 'on Avenida Corrientes' },
+};
+
+/**
+ * Titles that tip a hat to a famous show without being it: a theatergoer knows what they are winking at. A play or
+ * musical takes one `share` of the time (its own luck, by the production), and never one already running.
+ */
+export const TITLE_NODS = {
+  share: 0.35,
+  musical: ['Next to Nothing', 'Hammerton', 'Wickeder', 'Less Miserable', 'The Phantom of the Soap Opera', 'Dogs!', 'Papa Mia!',
+    'Dear Evan Handsome', 'Hadesville', 'The Lion Prince', 'Mortgage', 'Milwaukee', 'Butter', 'Hair Gel', 'Seven', 'Thawed',
+    'The Book of Norman', 'Into the Weeds', 'East Side Story', 'Sweeney Toad', 'Okay, Alabama!', 'The Sound of Muzak',
+    'Fiddler on the Porch', 'Mean Moms', 'Bartender', 'Come From Afar', 'The Music Manager', 'A Chorus Queue', 'School of Jazz',
+    'Blogsies', 'Moulin Bleu!', 'Little Shop of Chores', 'Evitable', 'Funky Boots', 'Delaware Boys', 'Spring Cleaning', 'Avenue R', 'Goodspell'],
+  stage: ['Life of a Salesman', 'A Bus Named Desire', 'The Importance of Being Ernie', 'Waiting for Gordon', 'Your Town', 'Romeo and Julio',
+    'Hamlette', 'Who\'s Afraid of Virginia Beach?', 'Angels in Arizona', 'The Plastic Menagerie', 'Dog on a Hot Tin Roof', 'The Rat Trap',
+    'The Cauldron', 'Gates', 'August: Orange County', 'Noises On', 'A Grape in the Shade', 'Long Night\'s Journey into Day'],
+};
+
 export const TITLE_PARTS = {
   a: ['Silent', 'Golden', 'Last', 'Broken', 'Northern', 'Paper', 'Midnight', 'Second', 'Hidden', 'Borrowed', 'Electric', 'Quiet', 'Burning', 'Winter', 'Glass'],
   b: ['Harbor', 'Kingdom', 'Summer', 'Letters', 'Orchard', 'Tide', 'Signal', 'Lanterns', 'Garden', 'Avenue', 'Crossing', 'Promise', 'Inheritance', 'Weather', 'Station'],

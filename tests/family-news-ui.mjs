@@ -58,7 +58,7 @@ await page.evaluate(() => document.querySelector('.tab-btn[data-tab="pursuits"]'
 check(await page.locator('[data-lessons]').count() === 1, 'Pursuits has Lessons');
 await page.evaluate(() => document.querySelector('[data-lessons]').click()); await page.waitForTimeout(250);
 const lessonOpts = await page.locator('#modal-root select#m-pick option').allInnerTexts();
-check(lessonOpts.some((x) => /Voice lessons/.test(x)) && lessonOpts.some((x) => /Karate/.test(x)) && /Ask your parents/.test(await page.locator('#modal-root [data-go]').innerText()), 'lessons: a dropdown, and "Ask your parents"');
+check(lessonOpts.some((x) => /Voice lessons/.test(x)) && lessonOpts.some((x) => /Ballet/.test(x)) && /Ask your parents/.test(await page.locator('#modal-root [data-go]').innerText()), 'lessons: a dropdown, and "Ask your parents"');
 await shot('lessons');
 await page.locator('#modal-root .modal-back').click(); await page.waitForTimeout(150);
 // 3. A death notice: the friend dies in the turn.

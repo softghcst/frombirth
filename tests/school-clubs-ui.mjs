@@ -45,7 +45,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   });
   if (!ready) { check(true, 'not at school'); await page.close(); continue; }
   await page.waitForTimeout(200);
-  await page.click('.modal [data-tab="activities"]'); await page.waitForTimeout(150);
+  await page.click('.modal [data-go="activities"]'); await page.waitForTimeout(150);
   check(await page.locator('[data-club-act]').count() >= 4, `${label}: each club has things to do`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/clubs-${label}.png` });
   await page.locator('[data-club-act="choir:practice"]').click(); await page.waitForTimeout(200);

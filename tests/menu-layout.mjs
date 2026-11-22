@@ -46,17 +46,17 @@ for (const t of ['work', 'holdings', 'people', 'pursuits', 'self']) {
   check(rs.every((r) => r.line && r.shown), `${t}: every row says what it is for (${rs.filter((r) => !r.line || !r.shown).map((r) => r.label).join(', ')})`);
 }
 await tab('work');
-check(JSON.stringify(await labels()) === JSON.stringify(['You', 'Find work']), `work: You, then Find work (${await labels()})`);
+check(JSON.stringify(await labels()) === JSON.stringify(['You', 'Find Work']), `work: You, then Find work (${await labels()})`);
 let rs = await rows();
 check(rs.some((r) => r.label === 'Jobs' && r.locked && /^From age \d+$/.test(r.line)), 'work: Jobs is greyed for a child, with the age it opens');
-check(rs.at(-1)?.label === 'Special careers' && !rs.at(-1).locked, 'work: Special careers closes the list');
+check(rs.at(-1)?.label === 'Special Careers' && !rs.at(-1).locked, 'work: Special careers closes the list');
 await page.evaluate(() => document.querySelector('[data-sec="Special careers"]').click()); await page.waitForTimeout(250);
 const special = await page.evaluate(() => [...document.querySelectorAll('.sec-body.shown .nav-row, .sec-body.shown .sec-row')].filter((r) => r.offsetParent).map((r) => `${r.querySelector('.nr-label')?.textContent.trim()}${r.disabled ? ' (locked)' : ''}`));
-check(['My Fame', 'K-pop Idol', 'My Athletics', 'Politics'].every((n) => special.some((x) => x.startsWith(n))), `Special careers holds fame, K-pop, athletics and politics (${special.join(', ')})`);
-check(special.some((x) => /K-pop Idol \(locked\)/.test(x)) && special.some((x) => /Politics \(locked\)/.test(x)), 'with K-pop and politics greyed for a child');
+check(['My Fame', 'K-Pop Idol', 'My Athletics', 'Politics'].every((n) => special.some((x) => x.startsWith(n))), `Special careers holds fame, K-pop, athletics and politics (${special.join(', ')})`);
+check(special.some((x) => /K-Pop Idol \(locked\)/.test(x)) && special.some((x) => /Politics \(locked\)/.test(x)), 'with K-pop and politics greyed for a child');
 await tab('holdings');
 rs = await rows();
-const prop = rs.find((r) => r.label === 'Browse property');
+const prop = rs.find((r) => r.label === 'Browse Property');
 check(prop?.locked && prop.line === 'From age 18', 'holdings: property is greyed until 18');
 const before = await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').length);
 await page.evaluate(() => [...document.querySelectorAll('.nav-row.locked')].forEach((b) => b.click()));
@@ -64,13 +64,13 @@ await page.waitForTimeout(150);
 check(await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').length) === before, 'a greyed row cannot be opened');
 await tab('people');
 rs = await rows();
-check(rs.some((r) => r.label === 'Look for love' && r.locked && /From age 14/.test(r.line)), 'people: Look for love is greyed until 14');
+check(rs.some((r) => r.label === 'Look for Love' && r.locked && /From age 14/.test(r.line)), 'people: Look for love is greyed until 14');
 
 // The same player, grown: the rows open.
 await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.age = 30; p.birthYear = S.store.state.year - 30; p.flags.livesWithParents = false; p.education.enrolled = false; });
 await tab('holdings');
 rs = await rows();
-check(['Browse property', 'Invest', 'Borrow money'].every((n) => rs.find((r) => r.label === n && !r.locked)), 'holdings: at 30 property, investing and borrowing are open');
+check(['Browse Property', 'Invest', 'Borrow Money'].every((n) => rs.find((r) => r.label === n && !r.locked)), 'holdings: at 30 property, investing and borrowing are open');
 await tab('work');
 rs = await rows();
 check(rs.some((r) => /^Jobs/.test(r.label) && !r.locked), 'work: at 30 Jobs is open');

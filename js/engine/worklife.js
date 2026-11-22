@@ -21,6 +21,7 @@
 //   achievements                         career milestones earned (engine/careerRecord.js)
 import { rng } from '../rng.js';
 import { workHours, contractLines, markContractsPaid } from './entertainment.js';
+import { danceHours, danceLines, markDancePaid } from './dance.js';
 import { dealLines, markDealsPaid } from './press.js';
 import { musicLines, markMusicPaid, tourWeeks } from './music.js';
 import { bookLines, markBooksPaid, published } from './publishing.js';
@@ -120,6 +121,8 @@ export function weeklyLoad(p = player(), age = p.age) {
   for (const b of (p.businesses ?? []).filter((x) => x.status === 'open' && x.ownerHours > 0)) rows.push({ label: `Running ${b.name}`, hours: b.ownerHours, kind: 'business' });
   const stage = workHours(store.state.year - (p.age - age), p); // productions signed for (engine/entertainment.js)
   if (stage) rows.push({ label: 'Productions you are in', hours: stage, kind: 'freelance', perform: true });
+  const dancing = danceHours(p, store.state.year - (p.age - age)); // dance gigs booked (engine/dance.js)
+  if (dancing) rows.push({ label: 'Dance work', hours: dancing, kind: 'freelance', perform: true });
   // Idol training, or a group's schedule (engine/kpop.js).
   // Under 18 the week of a performer is capped (performerCap): what else they are in comes first, and training and the
   // group's schedule shrink to fit what is left (never below ten hours: a trainee still has to train).
@@ -165,7 +168,10 @@ export function canFit(hours, o = {}) {
   let total = load.total;
   let paid = load.paid;
   if (o.replacesMain) { total -= mainHours(c) + commute(c, p); paid -= mainHours(c); }
-  if (p.age < law.workAge) return result(false, `In ${country().name} you must be ${law.workAge} to work for pay.`);
+  // Performers are the exception to the minimum working age, as child labor laws make them: a child may act, sing or
+  // dance for pay under an entertainment work permit, with a parent's consent (engine/entertainment.js asks for it)
+  // and their earnings held in trust. The hours a minor may work still apply.
+  if (p.age < law.workAge && !o.performer) return result(false, `In ${country().name} you must be ${law.workAge} to work for pay.`);
   if (p.age < 18 && o.performing) {
     // A young performer's whole week: training, rehearsal and work together are capped, and school bends around it.
     // Training and a group's schedule shrink to fit what else they are in, but not below ten hours.
@@ -431,7 +437,7 @@ export function payLines(p = player()) {
   for (const k of c.freelance.contracts) if (k.status === 'done' && !k.paid) lines.push({ source: `gig:${k.id}`, label: `${k.serviceName} for ${k.client}`, gross: k.fee });
   for (const k of c.freelance.contracts) if (k.status === 'failed' && !k.paid && k.partial) lines.push({ source: `gig:${k.id}`, label: `Part payment: ${k.serviceName}`, gross: k.partial });
   lines.push(...payouts(p)); // what the player's businesses paid out to their owner
-  lines.push(...contractLines(p), ...dealLines(p), ...musicLines(p), ...bookLines(p), ...comebackLines(p), ...idolLines(p)); // performance contracts and brand deals, each year once
+  lines.push(...contractLines(p), ...danceLines(p), ...dealLines(p), ...musicLines(p), ...bookLines(p), ...comebackLines(p), ...idolLines(p)); // performance contracts and brand deals, each year once
   if (c.pensionDrawn && c.pensionPerYear) lines.push({ source: 'pension', label: 'Pension', gross: c.pensionPerYear });
   if (c.benefit?.yearsLeft > 0 && !car) lines.push({ source: 'benefit', label: 'Unemployment benefit', gross: c.benefit.amount });
   if (p.flags.statePension) lines.push({ source: 'state', label: 'State pension', gross: p.flags.statePension }); // engine/retirement.js
@@ -451,6 +457,7 @@ export function runPayroll(p = player()) {
   for (const k of c.freelance.contracts) if (['done', 'failed'].includes(k.status)) k.paid = true;
   markPaid(p);
   markContractsPaid(p);
+  markDancePaid(p);
   markDealsPaid(p);
   markMusicPaid(p);
   markBooksPaid(p);

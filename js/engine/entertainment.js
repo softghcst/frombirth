@@ -24,7 +24,7 @@ import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, uid } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
-import { PRODUCTION_KINDS, TIERS, ROLE_KINDS, ROLES_FOR, SKILLS_FOR, ORG_NAMES, ORG_WORDS, OUTLET_WORDS, TITLE_PARTS, GENRES, CHARACTER_WORDS,
+import { PRODUCTION_KINDS, TIERS, ROLE_KINDS, ROLES_FOR, SKILLS_FOR, CHILD_PARTS, THEATER_DISTRICTS, TITLE_NODS, STAGE_BAR, ROLE_SKILLS, DANCE_CALL, ORG_NAMES, ORG_WORDS, OUTLET_WORDS, TITLE_PARTS, GENRES, CHARACTER_WORDS,
   CHILD_TRUST_SHARE } from '../data/fame.js';
 import { makeNpc } from './npcFactory.js';
 import { resolve, remember } from './conditions.js';
@@ -32,6 +32,9 @@ import { cityOf } from './cities.js';
 import { registerEmployer } from './employers.js';
 import { fameOf, gain, regard, exists, recognitionIn } from './fame.js';
 import { rollTerms } from './agents.js';
+import { seeded } from './sportsPlay.js';
+import { CHOREOGRAPHER } from '../data/dance.js';
+import { choreoRecord } from './dance.js';
 import { canFit } from './worklife.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -135,8 +138,10 @@ export function orgsOf(countryId) {
     makeOrg('studio', countryId, rng.pick(cities), 'indie');
     makeOrg('network', countryId, big, 'network');
     makeOrg('network', countryId, rng.pick(cities), 'network');
-    makeOrg('theater', countryId, big, 'major_stage');
-    makeOrg('theater', countryId, big, 'major_stage');
+    // The major stage stands in the country's theater district, where it has one (New York's Broadway, not Washington).
+    const stage = cities.includes(THEATER_DISTRICTS[countryId]?.city) ? THEATER_DISTRICTS[countryId].city : big;
+    makeOrg('theater', countryId, stage, 'major_stage');
+    makeOrg('theater', countryId, stage, 'major_stage');
     makeOrg('theater', countryId, rng.pick(cities), 'touring');
     for (const city of cities.slice(0, 4)) makeOrg('theater', countryId, city, 'regional');
     for (const city of cities) makeOrg('community', countryId, city, 'community');
@@ -163,7 +168,8 @@ export function orgsOf(countryId) {
 // ---------- Productions ----------
 
 const title = () => {
-  const taken = new Set(Object.values(ent().productions).map((x) => x.title));
+  // A show that took a nod's title (TITLE_NODS) counts by the title it drew, so the dice fall as they always have.
+  const taken = new Set(Object.values(ent().productions).map((x) => x.drawn ?? x.title));
   for (let i = 0; i < 8; i++) { const t = titleOnce(); if (!taken.has(t)) return t; }
   return `${titleOnce()} ${rng.int(2, 9)}`;
 };
@@ -172,6 +178,31 @@ const titleOnce = () => {
   const t = TITLE_PARTS;
   return r < 0.4 ? `${rng.pick(t.a)} ${rng.pick(t.b)}` : r < 0.7 ? `The ${rng.pick(t.b)} of ${rng.pick(t.c)}` : r < 0.85 ? `${rng.pick(t.b)} at ${rng.pick(t.c)}` : `The ${rng.pick(t.a)} ${rng.pick(t.b)}`;
 };
+
+/**
+ * Stage training: 'bfa' for conservatory training in musical theater, 'ba' for a broad degree in it, in theater or in
+ * dance, else null. For a dance ensemble part, a BFA in dance counts as much as one in musical theater.
+ */
+export function stageTraining(p = player(), roleKind = null) {
+  const ids = p.education.degrees.map((d) => d.majorId);
+  if (ids.includes('musical_theater_bfa') || (roleKind === 'dance_ensemble' && ids.includes('dance_bfa'))) return 'bfa';
+  if (ids.some((m) => ['musical_theater', 'theater', 'dance', 'dance_bfa'].includes(m))) return 'ba';
+  return null;
+}
+/** The stage tier of a company that hires performers (an employer of engine/employers.js), if it is a theater. */
+export function stageTierOf(employerId) {
+  return Object.values(ent().orgs).find((o) => o.employerId === employerId && o.kind === 'theater')?.tier ?? null;
+}
+
+/** The theater district a production plays in, if it is on the major stage in a country that has one: { name, city, on }. */
+export function districtOf(prod) {
+  const d = prod?.tier === 'major_stage' ? THEATER_DISTRICTS[prod.countryId] : null;
+  return d && prod.city === d.city ? d : null; // an old world's major stage, built before districts, stays where it was
+}
+/** A production's level, as people say it: "Broadway" for a major-stage show in New York, else the tier's name. */
+export function tierName(prod) {
+  return districtOf(prod)?.name ?? TIERS[prod.tier].name;
+}
 
 /** The tiers each kind of production comes in. */
 const TIERS_OF = { film: ['student', 'indie', 'studio', 'blockbuster'], tv: ['network', 'studio'], stage: ['community', 'regional', 'touring', 'major_stage'], musical: ['community', 'regional', 'touring', 'major_stage'],
@@ -198,14 +229,43 @@ export function makeProduction(kind, tier, countryId, o = {}) {
     return { idx, kind: rk, character: rng.pick(CHARACTER_WORDS), ages, approach: rng.pick(['bold', 'restrained', 'playful']), who: null, perf: null,
       fee: Math.round(TIERS[tier].fee * ROLE_KINDS[rk].fee), open: false };
   });
+  const id = nextId('prod');
+  // Plays and musicals often have a part for a child (CHILD_PARTS). No grown performer is cast in it: it is open,
+  // and children audition for it against other children. Its own luck, by the production, so the rest of the
+  // world's rolls come out as they did before there were children's parts.
+  const luck = seeded(`${id}:child`);
+  // A play or musical sometimes tips its hat to a famous show (TITLE_NODS); the usual title is drawn anyway, so
+  // the world's rolls come out the same.
+  const drawn = title();
+  let named = drawn;
+  const nods = (TITLE_NODS[kind] ?? []).filter((t) => !Object.values(ent().productions).some((x) => x.title === t));
+  const nodLuck = seeded(`${id}:title`);
+  // A musical often holds an open call for its dance ensemble, cast on dancing (ROLE_SKILLS); its own luck again.
+  const danceLuck = seeded(`${id}:dance`);
+  if (kind === 'musical' && danceLuck.chance(DANCE_CALL)) {
+    roles.push({ idx: roles.length, kind: 'dance_ensemble', character: danceLuck.pick(['the dance ensemble', 'the dance captain\'s line', 'the swing dancers', 'the tap line']), ages: [18, 35],
+      approach: danceLuck.pick(['bold', 'restrained', 'playful']), who: null, perf: null, fee: Math.round(TIERS[tier].fee * ROLE_KINDS.dance_ensemble.fee), open: true });
+  }
+  // A musical's choreographer is often hired by pitch, from dancers who have choreographed before (CHOREOGRAPHER).
+  const choreoLuck = seeded(`${id}:choreo`);
+  if (kind === 'musical' && choreoLuck.chance(CHOREOGRAPHER.call)) {
+    roles.push({ idx: roles.length, kind: 'choreographer', character: 'the show\'s dances', ages: [22, 70], approach: choreoLuck.pick(['bold', 'restrained', 'playful']),
+      who: null, perf: null, fee: Math.round(TIERS[tier].fee * ROLE_KINDS.choreographer.fee), open: true });
+  }
+  if (nods.length && nodLuck.chance(TITLE_NODS.share)) named = nodLuck.pick(nods);
+  if (CHILD_PARTS.share[kind] && luck.chance(CHILD_PARTS.share[kind])) {
+    roles.push({ idx: roles.length, kind: 'child', character: luck.pick(CHILD_PARTS.characters), ages: [...luck.pick(CHILD_PARTS.ages)], approach: luck.pick(['bold', 'restrained', 'playful']),
+      who: null, perf: null, fee: Math.round(TIERS[tier].fee * ROLE_KINDS.child.fee), open: true });
+  }
   const p = {
-    id: nextId('prod'), title: title(), kind, tier, genre: rng.pick(GENRES[kind]), orgId: home.id, countryId, city: home.city, directorId: director.id,
+    id, title: named, ...(named !== drawn ? { drawn } : {}), kind, tier, genre: rng.pick(GENRES[kind]), orgId: home.id, countryId, city: home.city, directorId: director.id,
     budget: Math.round(TIERS[tier].budget * rng.around(1, 0.25)), created: year(), workYear: year() + 1, runYears: ['stage', 'musical'].includes(kind) ? (tier === 'community' ? 1 : rng.int(1, 3)) : 1,
     status: 'casting', cast: roles, reception: null, abroad: [], awards: [],
   };
   // Most parts go to people already working; some are open to anyone who comes in.
   const used = new Set();
   for (const r of p.cast) {
+    if (['child', 'dance_ensemble', 'choreographer'].includes(r.kind)) continue; // open calls and pitches, not the casting pool (CHILD_PARTS, DANCE_CALL, CHOREOGRAPHER)
     if (rng.chance(o.openShare ?? 0.35) || (tier === 'community') || (tier === 'student')) { r.open = true; continue; }
     const fits = performers.filter((n) => !used.has(n.id) && ageOf(n) >= r.ages[0] - 4 && ageOf(n) <= r.ages[1] + 8 && npcSkill(n, SKILLS_FOR[kind]) >= 25 + TIERS[tier].reach * 45);
     const pick = fits.sort((a, b) => npcSkill(b, SKILLS_FOR[kind]) + (b.flags.star.fame - a.flags.star.fame) * 0.3 - npcSkill(a, SKILLS_FOR[kind]))[rng.int(0, Math.min(3, fits.length - 1))];
@@ -232,6 +292,9 @@ export function slate(countryId) {
 }
 
 // ---------- Casting ----------
+
+/** School productions the player has been in (drama club, musical theater): experience a casting director counts. */
+export const stageShows = (p = player()) => (p.flags.performances ?? []).length + (['drama', 'musical_theater'].some((id) => p.education?.clubs?.includes(id)) ? 1 : 0);
 
 /** Professional credits (not school or community shows). */
 export const proCredits = (p = player()) => workOf(p).credits.filter((c) => production(c.productionId) && !['community'].includes(production(c.productionId).tier)).length;
@@ -317,8 +380,19 @@ export function whyNot(prod, r, p = player()) {
   if (p.age < r.ages[0] - 2 || p.age > r.ages[1] + 4) return `They are casting someone of about ${r.ages[0]}–${r.ages[1]}.`;
   if (p.age < 6) return 'Too young to work.';
   if (p.age < 16 && !guardianConsents(p)) return 'A parent or guardian has to agree to a child working, and yours have not.';
-  if (proCredits(p) < tier.minCredits && !(f.agent && tier.minCredits <= 2)) return `They see people with ${tier.minCredits} professional credits or an agent.`;
-  if (['studio', 'blockbuster', 'major_stage'].includes(prod.tier) && !f.agent && recognitionIn(p.countryId, p) < 40) return 'Parts at this level go through agents.';
+  if (r.kind === 'choreographer') {
+    // A choreographer is hired on their dancing and the choreography they have done (CHOREOGRAPHER), not on acting credits.
+    if (p.talents.dance < CHOREOGRAPHER.skill) return 'They want a choreographer who dances at the top of the field.';
+    const want = CHOREOGRAPHER.record[prod.tier] ?? 0;
+    if (choreoRecord(p) < want) return `They want ${want} choreography credit${want === 1 ? '' : 's'} (a music video, a show) behind you.`;
+  } else if (r.kind === 'child') {
+    // Children's parts are cast at open calls for children: the major stage wants one professional credit, or an agent.
+    if (prod.tier === 'major_stage' && proCredits(p) < 1 && !f.agent) return `Children's parts ${districtOf(prod)?.on ?? 'on the major stage'} go to children with a professional credit (a regional or touring part) or an agent.`;
+  } else {
+    // Two school shows or more stand in for a first professional credit: a touring company or a network will see you.
+    if (proCredits(p) + (stageShows(p) >= 2 ? 1 : 0) < tier.minCredits && !(f.agent && tier.minCredits <= 2)) return `They see people with ${tier.minCredits} professional credits or an agent.`;
+    if (['studio', 'blockbuster', 'major_stage'].includes(prod.tier) && !f.agent && recognitionIn(p.countryId, p) < 40) return 'Parts at this level go through agents.';
+  }
   if (r.kind === 'background' && proCredits(p) >= 3) return '';
   const clash = scheduleClash(prod, p);
   if (clash) return clash;
@@ -359,7 +433,9 @@ export function scheduleClash(prod, p = player()) {
 
 /** Hours a week, averaged over the year, the player's signed work takes. */
 export function workHours(y = year(), p = player()) {
-  return Math.round(commitments(y, p).reduce((s, x) => s + PRODUCTION_KINDS[x.kind].hours * weeksOf(x) / 48, 0));
+  // Each contract's own hours: a child's part asks fewer than a grown actor's.
+  const hoursOf = (x) => workOf(p).contracts.find((c) => c.status === 'signed' && c.productionId === x.id)?.hours ?? PRODUCTION_KINDS[x.kind].hours;
+  return Math.round(commitments(y, p).reduce((s, x) => s + hoursOf(x) * weeksOf(x) / 48, 0));
 }
 
 /**
@@ -382,23 +458,32 @@ export function audition(productionId, idx, prep = 'study', approach = 'restrain
   p.finance.cash -= cost;
   f.applied[key] = year();
   const tier = TIERS[prod.tier];
-  const skill = playerSkill(SKILLS_FOR[prod.kind]);
+  const need = ROLE_SKILLS[r.kind] ?? SKILLS_FOR[prod.kind]; // a dance ensemble is cast on dancing
+  const skill = playerSkill(need);
   // What is seen in the room: the craft, the preparation, and whether it matches how the director sees the part.
   const fit = approach === r.approach ? 4 : rng.chance(0.3) ? 1 : -3; // directors see a part their own way; some are persuaded
-  const craft = skill + { none: -4, study: 1, coach: 4 }[prep] + fit;
+  // School drama and musical theater count: someone who has been on a stage before walks into the room differently.
+  const craft = skill + { none: -4, study: 1, coach: 4 }[prep] + fit + Math.min(5, stageShows(p));
   // What helps around it: a record, a reputation, an agent, a known face for a lead. Each a little.
   const star = ['lead', 'voice_lead'].includes(r.kind) ? recognitionIn(p.countryId, p) / 20 : 0;
-  const mine = craft + Math.min(6, proCredits(p) * 1.5) + fameOf(p).credibility / 20 + (f.agent ? 2 * (f.agent.clout ?? 1) : 0) + star + rng.around(0, 8);
-  // The field: other people go for every part, from the same pool of working actors; bigger parts draw stronger fields.
-  const field = Math.max(1, Math.round(tier.field * ROLE_KINDS[r.kind].field));
+  // On stage, training shows in the room: a conservatory degree more than a broad one (STAGE_BAR).
+  const stage = ['stage', 'musical'].includes(prod.kind);
+  const trained = stage ? STAGE_BAR.training[stageTraining(p, r.kind)]?.audition ?? 0 : 0;
+  const mine = craft + trained + Math.min(6, proCredits(p) * 1.5) + fameOf(p).credibility / 20 + (f.agent ? 2 * (f.agent.clout ?? 1) : 0) + star + rng.around(0, 8);
+  // The field: other people go for every part, from the same pool of working actors; bigger parts draw stronger fields,
+  // and the biggest stages draw the most, and the best, of all (STAGE_BAR).
+  const field = Math.max(1, Math.round(tier.field * ROLE_KINDS[r.kind].field * (stage && r.kind !== 'child' ? STAGE_BAR.crowd[prod.tier] ?? 1 : 1)));
+  const bar = stage && r.kind !== 'child' ? STAGE_BAR.bar[prod.tier] ?? 0 : 0;
   let best = 0;
   // Who turns up depends on the size of the job: the best-known actors go for the biggest parts.
-  const ranked = [...pool(prod.countryId)].sort((x, y) => npcSkill(y, SKILLS_FOR[prod.kind]) - npcSkill(x, SKILLS_FOR[prod.kind]));
+  const ranked = [...pool(prod.countryId)].sort((x, y) => npcSkill(y, need) - npcSkill(x, need));
   const reachK = TIERS[prod.tier].reach;
   const others = ranked.slice(0, Math.max(6, Math.round(ranked.length * (reachK >= 0.5 ? 0.3 : reachK >= 0.25 ? 0.6 : 1))));
   for (let i = 0; i < field; i++) {
+    // A child's part is contested by other children, not by the working actors.
+    if (r.kind === 'child') { best = Math.max(best, rng.around(CHILD_PARTS.field[prod.tier] ?? 44, CHILD_PARTS.spread)); continue; }
     const n = rng.pick(others);
-    best = Math.max(best, npcSkill(n, SKILLS_FOR[prod.kind]) + rng.around(0, 8) + TIERS[prod.tier].reach * 6 + Math.min(6, (n.flags.star.credits?.length ?? 0) * 1.5) + (['lead', 'voice_lead'].includes(r.kind) ? n.flags.star.fame / 20 : 0));
+    best = Math.max(best, bar + npcSkill(n, need) + rng.around(0, 8) + TIERS[prod.tier].reach * 6 + Math.min(6, (n.flags.star.credits?.length ?? 0) * 1.5) + (['lead', 'voice_lead'].includes(r.kind) ? n.flags.star.fame / 20 : 0));
   }
   // Community and student work takes almost anyone who turns up and can do it.
   if (['community', 'student'].includes(prod.tier)) best = Math.min(best, 35 + rng.int(0, 15));
@@ -413,7 +498,9 @@ export function audition(productionId, idx, prep = 'study', approach = 'restrain
   }
   const local = COUNTRIES[prod.countryId];
   const fee = K(r.fee * (1 + recognitionIn(p.countryId, p) / 200), local);
-  const contract = { id: uid('con'), productionId: prod.id, idx, fee, weeks: weeksOf(prod), hours: PRODUCTION_KINDS[prod.kind].hours, years: prod.runYears,
+  // A child's calls are shorter, whatever the part; a choreographer's work is mostly the rehearsal room.
+  const hours = Math.round(PRODUCTION_KINDS[prod.kind].hours * (r.kind === 'child' || p.age < 18 ? CHILD_PARTS.hours : 1) * (r.kind === 'choreographer' ? CHOREOGRAPHER.hours : 1));
+  const contract = { id: uid('con'), productionId: prod.id, idx, fee, weeks: weeksOf(prod), hours, years: prod.runYears,
     status: 'offered', age: p.age, asked: false, perf: Math.round(craft), paidYears: [], agent: f.agent ? { ...f.agent } : null };
   f.contracts.push(contract);
   const text = `${prod.title} wants you: ${an(ROLE_KINDS[r.kind].name.toLowerCase())} part, ${r.character}.${fee ? ` They offer ${fmtMoney(fee, local)}${prod.runYears > 1 ? ' a year' : ''}.` : ' It is unpaid.'}`;
@@ -471,7 +558,9 @@ export function sign(contractId) {
   if (r.who || prod.status !== 'casting') { c.status = 'withdrawn'; return result(false, 'The part has gone to someone else.', 'neutral'); }
   const clash = scheduleClash(prod, p);
   if (clash) return result(false, clash, 'neutral');
-  const fit = canFit(Math.round(PRODUCTION_KINDS[prod.kind].hours * weeksOf(prod) / 48), { kind: 'freelance', performing: true });
+  // The contract's own hours (a child's are shorter); a performer may work below the usual working age, and a young
+  // performer's whole week is capped (engine/worklife.js).
+  const fit = canFit(Math.round((c.hours ?? PRODUCTION_KINDS[prod.kind].hours) * weeksOf(prod) / 48), { kind: 'freelance', performer: true, performing: true });
   if (!fit.ok) return fit;
   c.status = 'signed';
   r.who = 'player';
@@ -569,6 +658,11 @@ function creditPlayer(prod) {
   if (!r) return [];
   const lines = [];
   if (!f.credits.some((c) => c.productionId === prod.id)) f.credits.push({ productionId: prod.id, idx: r.idx, year: prod.workYear });
+  // A child who worked on a professional stage carries it into a grown-up career in musical theater (data/careers.js).
+  if (['stage', 'musical'].includes(prod.kind) && prod.tier !== 'community' && p.age - (year() - prod.workYear) < 18) {
+    p.flags.childStage = true;
+    if (prod.tier === 'major_stage') p.flags.childStageMajor = true;
+  }
   const k = PRODUCTION_KINDS[prod.kind];
   const R = prod.reception;
   const size = ROLE_KINDS[r.kind].weight;
@@ -632,7 +726,9 @@ export function tickEntertainment() {
     if (prod.status === 'casting' && prod.created < year()) {
       // Whoever was not cast by the player is cast from the pool; the work begins.
       for (const r of prod.cast) {
-        if (r.who) continue;
+        // An open call's part (a child's, the dance ensemble) goes to one of the children or dancers who came, not to
+        // a working actor from the pool: nobody on record, unless the player won it.
+        if (r.who || ['child', 'dance_ensemble', 'choreographer'].includes(r.kind)) continue;
         const fits = pool(prod.countryId).filter((n) => ageOf(n) >= r.ages[0] - 4 && ageOf(n) <= r.ages[1] + 8 && !prod.cast.some((x) => x.who === n.id));
         const anyone = pool(prod.countryId).filter((n) => !prod.cast.some((x) => x.who === n.id)).sort((a, b) => Math.abs(ageOf(a) - r.ages[0]) - Math.abs(ageOf(b) - r.ages[0]));
         r.who = (fits.sort((a, b) => npcSkill(b, SKILLS_FOR[prod.kind]) - npcSkill(a, SKILLS_FOR[prod.kind]))[rng.int(0, Math.min(4, fits.length - 1))] ?? anyone[0])?.id ?? null;
