@@ -15,6 +15,9 @@ import { store } from '../state.js';
 import * as edu from '../engine/education.js';
 import * as cliques from '../engine/cliques.js';
 import { navRow, icon } from './kit.js';
+import * as clubLife from '../engine/clubs.js';
+import { clubTitle } from '../data/clubs.js';
+import { openClubs } from './leisure.js';
 import { CLUB_BY_ID as SCHOOL_CLUB } from '../data/schools.js';
 import { MAX_CLUBS, CLIQUE_BY_ID } from '../data/schools.js';
 
@@ -103,7 +106,21 @@ function pageActivitiesHub() {
   return `${mine ? `<div class="section-label">Yours</div>${mine}` : ''}
     <div class="section-label">${full ? `You have time for ${MAX_CLUBS}. Leave one to join another.` : 'Join or try out'}</div>
     <div class="nav-group">${sports.map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : `Try out · about ${pct(team.chance)}%`, SPORT_ICON)).join('')}
-    ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try out · about ${pct(c.chance)}%`, 'star')).join('')}</div>`;
+    ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try out · about ${pct(c.chance)}%`, 'star')).join('')}</div>
+    ${outsideSchool()}`;
+}
+
+/**
+ * Clubs and classes outside school (engine/clubs.js: the scouts, a running club, a pottery class), kept here with the
+ * school's own while the player is at school, so all of their clubs are in one place. After school they are in Pursuits.
+ */
+function outsideSchool() {
+  const p = player();
+  if (p.age < 6 || p.legal.incarceration) return '';
+  const mine = clubLife.memberships();
+  return `<div class="section-label">Outside School</div>
+    <div class="nav-group">${mine.map((m) => navRow({ attrs: `data-outclub="${esc(m.id)}"`, label: clubTitle(m.club), sub: m.rankName === 'Member' ? `Member${m.years ? ` · ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName, ico: 'people' })).join('')}
+      ${navRow({ attrs: 'data-outclub="find"', label: 'Find a Club or Class', sub: 'The scouts, a running club, pottery and more, near home', ico: 'compass' })}</div>`;
 }
 
 /** Your class: the teacher(s) and classmates, how you get on, and a tap to spend time with any of them. */
@@ -212,6 +229,8 @@ export function openSchool(onChange) {
     if (leave) return say(edu.quitClub(leave));
     const join = t.closest('[data-join]')?.dataset.join;
     if (join) return say(edu.joinClub(join));
+    const out = t.closest('[data-outclub]')?.dataset.outclub;
+    if (out) { await openClubs({ changed: () => onChange?.() }, out); return draw(true); }
     const team = t.closest('[data-team]')?.dataset.team;
     if (team) {
       const e = player().education;
