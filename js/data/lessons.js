@@ -16,7 +16,7 @@ export const LESSONS = [
   { id: 'modeling', name: 'Modeling lessons', emoji: '📸', ages: [10, 120], cost: 900, from: 1950, grows: { 'stats.charm': 3 } },
   { id: 'chess', name: 'Chess club lessons', emoji: '♟️', ages: [6, 120], cost: 300, grows: { 'stats.intellect': 3 } },
   { id: 'coding', name: 'Coding classes', emoji: '💻', ages: [9, 120], cost: 800, from: 1985, grows: { 'stats.intellect': 3 } },
-  { id: 'spacecamp', name: 'Space camp', emoji: '🚀', ages: [9, 17], cost: 1200, from: 1982, grows: { 'stats.intellect': 3, 'stats.mood': 5 } },
+  { id: 'spacecamp', name: 'Astronomy camp', emoji: '🔭', ages: [9, 17], cost: 1200, from: 1982, grows: { 'stats.intellect': 3, 'stats.mood': 5 } },
 ];
 export const LESSON_BY_ID = Object.fromEntries(LESSONS.map((l) => [l.id, l]));
 /** How many lessons fit in a year alongside school. */

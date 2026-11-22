@@ -81,7 +81,7 @@ function noticeOf(ev, cast) {
   const n = id && store.state.npcs[id];
   if (!n) return '';
   const face = `<div class="avatar">${avatarSvg({ age: n.age, gender: n.gender, appearance: n.appearance, seed: n.id, mood: n.meters?.relationship ?? 60, label: n.firstName })}</div>`;
-  return `<div class="notice-head">${face}<strong>${esc(n.firstName)} ${esc(n.lastName ?? '')}</strong><span class="notice-tag">${esc(roleLabel(n))}</span></div>
+  return `<div class="notice-head">${face}<div class="notice-who"><strong>${esc(n.firstName)} ${esc(n.lastName ?? '')}</strong><small>${esc(roleLabel(n))}</small></div></div>
     <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">${esc(renderText(ev.notice.emoji, cast))}</span>${esc(renderText(ev.notice.title, cast))}</h2>`;
 }
 
@@ -219,7 +219,7 @@ export function inputModal({ title, label, value = '', maxLength = 24 }) {
  * @param {{eyebrow?:string, emoji?:string, title:string, body?:string, label?:string, button?:string,
  *          options:{value:any, label:string, disabled?:boolean}[]}} o
  */
-export function selectModal({ eyebrow, emoji, title, body, label = 'Pick one:', button = 'Go', options }) {
+export function selectModal({ eyebrow, emoji, title, body, label = 'Choose', button = 'Go', options }) {
   return new Promise((resolve) => {
     const first = options.findIndex((o) => !o.disabled);
     const m = openModal(`

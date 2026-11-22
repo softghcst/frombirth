@@ -353,15 +353,15 @@ export function mountGame(app, hooks) {
       const who = roleLabel(n);
       const cause = pet ? '' : (n.flags.diedOf ?? noteDeath(n));
       const name = `${n.firstName}${pet ? '' : ` ${n.lastName}`}`;
-      const line = `Your ${who.toLowerCase()}, ${n.firstName}, ${pet ? 'died' : 'passed away'} at the age of ${n.age}.`;
+      const line = `${n.firstName}, your ${who.toLowerCase()}, has died. ${pet ? 'They' : n.gender === 'male' ? 'He' : n.gender === 'female' ? 'She' : 'They'} ${pet ? 'were' : 'was'} ${n.age}.`;
       const attend = await new Promise((resolve) => {
         const m = openModal(`
-          <div class="notice-head">${portrait(n)}<strong>${esc(name)}</strong><span class="notice-tag">${esc(who)}</span></div>
-          <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">☠️</span>Death</h2>
+          <div class="notice-head">${portrait(n)}<div class="notice-who"><strong>${esc(name)}</strong><small>${esc(who)}</small></div></div>
+          <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">🕯️</span>In memory</h2>
           <p class="body pick-body">${esc(line)}</p>
           ${cause ? `<p class="body pick-body">${esc(cause)}</p>` : ''}
           ${pet ? '<button class="btn primary" data-ok style="width:100%">OK</button>'
-    : '<div class="btn-stack"><button class="btn primary" data-attend>Attend the funeral</button><button class="btn" data-skip>Skip it</button></div>'}`, { tone: 'neutral' });
+    : '<div class="btn-stack"><button class="btn primary" data-attend>Go to the funeral</button><button class="btn" data-skip>Stay away</button></div>'}`, { tone: 'neutral' });
         m.el.addEventListener('click', (e) => {
           if (e.target.closest('[data-ok]')) { m.close(); resolve(null); }
           if (e.target.closest('[data-attend]')) { m.close(); resolve(true); }

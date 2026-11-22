@@ -113,9 +113,9 @@ async function openLessons(api) {
   const opts = lessons.lessonOptions();
   const ask = lessons.asksParents();
   const id = await selectModal({
-    eyebrow: 'Lessons', emoji: '🎓', title: 'Lessons',
-    body: ask ? 'Ask your parents if you can take lessons this year!' : 'Sign up for a year of lessons.',
-    label: 'Pick a lesson:', button: ask ? 'Ask them' : 'Sign up',
+    eyebrow: 'Learning', emoji: '🎓', title: 'Lessons',
+    body: ask ? 'Something you would love to learn this year? Your parents will need to say yes, and pay.' : 'A year of lessons, paid by you.',
+    label: 'Lesson', button: ask ? 'Ask your parents' : 'Sign up',
     options: opts.map((o) => ({ value: o.id, label: `${o.emoji} ${o.name} · ${fmtMoney(o.cost, c)}${o.years ? ` · ${o.years} yr` : ''}${o.why ? ` · ${o.why.toLowerCase()}` : ''}`, disabled: !!o.why })),
   });
   if (id) await report(api, lessons.takeLesson(id));

@@ -81,9 +81,9 @@
 .modal [data-go].btn { width: 100%; }
 
 /* A notice about someone (a death, an illness): their face and name, and who they are to the player, on a band. */
-.modal .notice-head { display: flex; align-items: center; gap: 12px; margin: 0 -18px 14px; padding: 8px 18px; background: var(--accent-soft); }
-.modal .notice-head .avatar, .modal .notice-head svg, .modal .notice-head img { width: 48px; height: 48px; flex: none; }
-.modal .notice-head strong { flex: 1; min-width: 0; font-size: 1rem; }
-.modal .notice-tag { font-weight: 800; font-style: italic; color: var(--accent-text); }
+.modal .notice-head { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 0 10px; text-align: center; }
+.modal .notice-head .avatar, .modal .notice-head > svg, .modal .notice-head > img { width: 72px; height: 72px; flex: none; border-radius: 50%; background: var(--accent-soft); }
+.modal .notice-who small { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+.modal .notice-head strong { font-size: 1.05rem; }
 .modal .btn-stack .btn { width: 100%; }
 .modal .notice-head ~ .scene { text-align: center; font-family: inherit; font-size: 1.02rem; }

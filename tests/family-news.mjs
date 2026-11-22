@@ -107,14 +107,14 @@ section('lessons: a child asks a parent, who decides by money and closeness and 
     const opts = together.bondOptions(pal.id, 'with:sleepover');
     const how = together.bondSelect(pal.id, 'with:sleepover');
     if (k === 0) {
-      check(opts?.length >= 4 && opts.some((o) => o.value === 'camp') && opts.some((o) => o.value === 'bake'), `a sleepover offers activities to pick (${opts?.map((o) => o.label).join(', ')})`);
-      check(how && how.title === 'Sleepover' && /Pick an activity/.test(how.label), 'asked with a dropdown');
+      check(opts?.length >= 4 && opts.some((o) => o.value === 'camp') && opts.some((o) => o.value === 'bake'), `a sleepover offers plans to pick (${opts?.map((o) => o.label).join(', ')})`);
+      check(how && how.title === 'Sleepover' && how.label && /Invite/.test(how.button), 'asked with a dropdown');
     }
     const r = together.doBond(pal.id, 'with:sleepover', 'camp');
-    if (r.ok && /backyard/.test(r.text)) yes++;
+    if (r.ok && /tent/.test(r.text)) yes++;
     if (S().pendingEvents.some((e) => e.id.startsWith('sleepover_') && e.cast.pal === pal.id)) queued++;
   }
-  check(yes >= 45, `a close friend mostly comes, and you camp in the backyard (${yes} of 60)`);
+  check(yes >= 45, `a close friend mostly comes, and you sleep out in a tent (${yes} of 60)`);
   check(queued >= 10 && queued <= 40, `sometimes something happens in the night (${queued} of 60)`);
   const scenes = EVENTS.filter((e) => e.id.startsWith('sleepover_'));
   check(scenes.length === 4 && scenes.every((e) => e.queuedOnly && e.choices.length >= 3), 'four night scenes, each with choices');
@@ -122,8 +122,8 @@ section('lessons: a child asks a parent, who decides by money and closeness and 
   life(10); const pal = person('friend', 10, 60);
   const ev = EVENTS.find((e) => e.id === 'sleepover_board_game');
   const before = pal.meters.relationship;
-  resolveChoice(ev, ev.choices.findIndex((c) => c.label === 'Up the ante'), { pal: pal.id });
-  check(pal.meters.relationship < before, 'upping the ante ends in hurtful words');
+  resolveChoice(ev, ev.choices.findIndex((c) => c.label === 'Bet your pocket money'), { pal: pal.id });
+  check(pal.meters.relationship < before, 'betting pocket money ends in sharp words');
   S().year = 1970; life(10); const old = person('friend', 10, 80); S().year = 1970;
   check(!together.bondOptions(old.id, 'with:sleepover').some((o) => o.value === 'games'), 'no video games before 1980');
 }
@@ -154,7 +154,7 @@ section('a sleepover: pick what to do, most friends come, and sometimes the nigh
       S().pendingEvents = []; S().year += 1; mom.age += 1;
       story.tickPeopleHealth();
       const e = S().pendingEvents.find((x) => x.id === 'kin_diagnosed');
-      if (e) { news++; check(e.cast.who === mom.id && e.cast.words.cond && e.cast.words.role === 'mother' && e.cast.words.title, `"Your mother has been diagnosed with ${e.cast.words.cond}."`); }
+      if (e) { news++; check(e.cast.who === mom.id && e.cast.words.cond && e.cast.words.role === 'mother' && e.cast.words.title, `your mother's news: ${e.cast.words.cond}`); }
     }
   }
   check(news, 'a parent\'s shared diagnosis comes as news');

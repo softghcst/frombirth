@@ -57,12 +57,12 @@ const PARENT = ['parent'];
 const SIBLING = ['sibling'];
 /** What a sleepover can be. `if`: only where it makes sense (video games need a television, from 1980). */
 const SLEEPOVER = [
-  { id: 'movie', label: 'Watch a movie', text: '{name} slept over and you watched a movie, then half of another, and fell asleep on the floor.', memory: 'a movie and a floor full of popcorn.' },
-  { id: 'games', label: 'Play video games', if: () => has('television') && store.state.year >= 1980, text: 'You and {name} played video games until somebody\'s parent said lights out, twice.', memory: 'video games until lights out.' },
-  { id: 'bake', label: 'Bake together', text: 'You and {name} baked cookies. Some were burned, most were eaten raw, and the kitchen will never be the same.', memory: 'cookies, mostly eaten raw.' },
-  { id: 'camp', label: 'Camp in the backyard', text: 'You and {name} camped in the backyard, and talked in the tent until it got light.', memory: 'a tent in the backyard.', mood: 8 },
-  { id: 'fort', label: 'Build a blanket fort', text: 'You and {name} built a blanket fort out of every cushion in the house, and slept in it.', memory: 'a blanket fort.' },
-  { id: 'ghost', label: 'Tell ghost stories', text: 'You and {name} told ghost stories with a flashlight. Nobody admitted being scared. Everyone was.', memory: 'ghost stories by flashlight.', mood: 4 },
+  { id: 'movie', label: 'Movie marathon', text: '{name} slept over and you watched a film, then half of another, and fell asleep on the floor.', memory: 'a movie and a floor full of popcorn.' },
+  { id: 'games', label: 'Gaming night', if: () => has('television') && store.state.year >= 1980, text: 'You and {name} played video games until somebody\'s parent said lights out, twice.', memory: 'video games until lights out.' },
+  { id: 'bake', label: 'Make cookies', text: 'You and {name} baked cookies. Some were burned, most were eaten raw, and the kitchen will never be the same.', memory: 'cookies, mostly eaten raw.' },
+  { id: 'camp', label: 'Sleep out in a tent', text: 'You and {name} pitched a tent outside, and talked in it until it got light.', memory: 'a night in a tent outside.', mood: 8 },
+  { id: 'fort', label: 'Blanket fort', text: 'You and {name} built a blanket fort out of every cushion in the house, and slept in it.', memory: 'a blanket fort.' },
+  { id: 'ghost', label: 'Ghost stories by flashlight', text: 'You and {name} told ghost stories with a flashlight. Nobody admitted being scared. Everyone was.', memory: 'ghost stories by flashlight.', mood: 4 },
 ];
 /** Scenes that can happen during the night (data/events/stories/sleepover.js). */
 const SLEEPOVER_SCENES = ['sleepover_board_game', 'sleepover_prank_call', 'sleepover_sneak_out', 'sleepover_secret'];
@@ -310,7 +310,7 @@ export const BONDS = [
         : `You and ${n.firstName} caught up properly for the first time in ages.`; } },
   // A sleepover: an activity picked from a dropdown (ui select dialog), and now and then a scene during the night.
   { id: 'sleepover', group: 'together', roles: FRIEND, age: [7, 14], them: [6, 16], if: () => atHome(), label: 'Have a sleepover',
-    select: (n) => ({ emoji: '😴', eyebrow: 'Friend', title: 'Sleepover', body: `Invite ${n.flags.title === 'Best friend' ? 'your best friend' : 'your friend'}, ${n.firstName}, to a sleepover!`, label: 'Pick an activity:', button: `Ask ${n.gender === 'male' ? 'him' : n.gender === 'female' ? 'her' : 'them'}` }),
+    select: (n) => ({ emoji: '🌙', eyebrow: 'Friends', title: 'Sleepover', body: `${n.firstName} could stay the night. What is the plan?`, label: 'The plan', button: `Invite ${n.firstName}` }),
     options: () => SLEEPOVER.filter((a) => !a.if || a.if()).map((a) => ({ value: a.id, label: a.label })),
     run: (n, option) => {
       const a = SLEEPOVER.find((x) => x.id === option) ?? SLEEPOVER[0];

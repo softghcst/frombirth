@@ -46,19 +46,19 @@ await page.evaluate((id) => document.querySelector(`[data-npc="${id}"]`).click()
 await page.evaluate(() => document.querySelectorAll('#modal-root details.action-group').forEach((d) => { d.open = true; }));
 await page.locator('#modal-root [data-act="with:sleepover"]').click(); await page.waitForTimeout(250);
 check(await page.locator('#modal-root select#m-pick').count() === 1 && /Sleepover/.test(await page.locator('#modal-root .modal').last().innerText()), 'the sleepover asks with a dropdown');
-check((await page.locator('#modal-root select#m-pick option').allInnerTexts()).includes('Camp in the backyard'), 'camping in the backyard is one of the choices');
-await page.selectOption('#modal-root select#m-pick', { label: 'Camp in the backyard' });
+check((await page.locator('#modal-root select#m-pick option').allInnerTexts()).includes('Sleep out in a tent'), 'a night in a tent is one of the plans');
+await page.selectOption('#modal-root select#m-pick', { label: 'Sleep out in a tent' });
 await shot('sleepover');
 await page.locator('#modal-root [data-go]').click(); await page.waitForTimeout(300);
 const said = await page.locator('#modal-root .modal').last().innerText();
-check(/backyard|cannot come/.test(said), `and it happens (${said.slice(0, 80)})`);
+check(/tent|cannot come/.test(said), `and it happens (${said.slice(0, 80)})`);
 for (let i = 0; i < 8 && await page.locator('#modal-root .scrim').count(); i++) { const c = page.locator('#modal-root .choice-btn:not([disabled])'); if (await c.count()) await c.first().click(); else await page.locator('#modal-root .modal').last().locator('[data-ok], .modal-back').first().click(); await page.waitForTimeout(150); }
 // 2. Lessons, from Pursuits.
 await page.evaluate(() => document.querySelector('.tab-btn[data-tab="pursuits"]').click()); await page.waitForTimeout(250);
 check(await page.locator('[data-lessons]').count() === 1, 'Pursuits has Lessons');
 await page.evaluate(() => document.querySelector('[data-lessons]').click()); await page.waitForTimeout(250);
 const lessonOpts = await page.locator('#modal-root select#m-pick option').allInnerTexts();
-check(lessonOpts.some((x) => /Voice lessons/.test(x)) && lessonOpts.some((x) => /Karate/.test(x)) && /Ask them/.test(await page.locator('#modal-root [data-go]').innerText()), 'lessons: a dropdown, and "Ask them"');
+check(lessonOpts.some((x) => /Voice lessons/.test(x)) && lessonOpts.some((x) => /Karate/.test(x)) && /Ask your parents/.test(await page.locator('#modal-root [data-go]').innerText()), 'lessons: a dropdown, and "Ask your parents"');
 await shot('lessons');
 await page.locator('#modal-root .modal-back').click(); await page.waitForTimeout(150);
 // 3. A death notice: the friend dies in the turn.
@@ -71,12 +71,12 @@ for (let t = 0; t < 4 && !seen; t++) {
   for (let i = 0; i < 30 && !seen; i++) {
     await page.waitForTimeout(120);
     const txt = await page.evaluate(() => document.querySelector('#modal-root .modal:last-child')?.innerText ?? '');
-    if (/Attend the funeral/.test(txt)) { seen = txt; break; }
+    if (/Go to the funeral/.test(txt)) { seen = txt; break; }
     const c = page.locator('#modal-root .choice-btn:not([disabled])');
     if (await c.count()) await c.first().click(); else if (await page.locator('#modal-root [data-ok]').count()) await page.locator('#modal-root [data-ok]').last().click();
   }
 }
-check(seen && /Simon/.test(seen) && /passed away at the age of/.test(seen) && /Skip it/.test(seen), 'a death is a notice: who, at what age, what of, and the funeral');
+check(seen && /Simon/.test(seen) && /has died\. (He|She|They) (was|were) \d+\./.test(seen) && /In memory/.test(seen) && /Stay away/.test(seen), 'a death is a notice: who, at what age, what of, and the funeral');
 check(seen && !(await page.locator('#modal-root .modal').last().locator('.modal-back').count()), 'part of the turn: answered, not closed');
 await shot('death');
 if (seen) {
@@ -92,7 +92,7 @@ const html = await page.evaluate(async (id) => {
   await new Promise((r) => setTimeout(r, 150));
   return document.querySelector('#modal-root .modal').innerText;
 }, ids.mom);
-check(/Rosa/.test(html) && /Diarrhea/.test(html) && /Your mother is suffering from diarrhea\./.test(html) && await page.locator('#modal-root .notice-head .avatar').count() === 1, 'an illness is news, with their face, name and who they are');
+check(/Rosa/.test(html) && /Diarrhea/.test(html) && /Your mother is laid up with diarrhea\./.test(html) && await page.locator('#modal-root .notice-head .avatar').count() === 1, 'an illness is news, with their face, name and who they are');
 await shot('ailment');
 check(!errors.length, `no errors in the page (${errors.join('; ')})`);
 await browser.close(); server.close();

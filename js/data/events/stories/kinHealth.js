@@ -6,12 +6,12 @@ const notice = (id, emoji, title, text, choices) => ({ id, category: 'Family', a
   choices: choices.map(([label, outcomes]) => ({ label, outcomes })) });
 
 export default [
-  notice('kin_diagnosed', '{emoji}', '{title}', 'Your {role} has been diagnosed with {cond}.', [
+  notice('kin_diagnosed', '{emoji}', '{title}', 'Your {role} has had news from the doctor: {cond}.', [
     ['Be there for them', [any('You go round, and sit with {who}, and talk about everything else for a while. It helps.', 'good', rel('who', 5), st('mood', -1))]],
-    ['OK', [any('You will call {who} soon.', 'neutral', st('mood', -2))]],
+    ['Give them space', [any('You will call {who} soon.', 'neutral', st('mood', -2))]],
   ]),
-  notice('kin_ailment', '{emoji}', '{title}', 'Your {role} is suffering from {ailment}.', [
-    ['Check on them', [any('You check on {who}, and bring them something warm. They are grateful.', 'good', rel('who', 3))]],
-    ['OK', [any('{who} will be fine in a few days.', 'neutral')]],
+  notice('kin_ailment', '{emoji}', '{title}', 'Your {role} is laid up with {ailment}.', [
+    ['Bring them something warm', [any('You look in on {who} with something warm. They are grateful.', 'good', rel('who', 3))]],
+    ['Wish them better', [any('{who} will be fine in a few days.', 'neutral')]],
   ]),
 ];
