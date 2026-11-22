@@ -121,16 +121,16 @@ export function agency(countryId, city = COUNTRIES[countryId].cities[0]) {
 
 /** Judges, prosecutors and defense lawyers practicing in a country. */
 export function bench(countryId) {
-  const b = (J().benches[countryId] ??= { judges: [], prosecutors: [], defence: { public: [], good: [], star: [] } });
+  const b = (J().benches[countryId] ??= { judges: [], prosecutors: [], defense: { public: [], good: [], star: [] } });
   b.judges = b.judges.filter(active);
   b.prosecutors = b.prosecutors.filter(active);
   while (b.judges.length < 3) b.judges.push(official(countryId, 'judge', 'Judge', { age: rng.int(45, 66), skill: rng.int(60, 85), strict: rng.int(25, 75) }).id);
   while (b.prosecutors.length < 3) b.prosecutors.push(official(countryId, 'prosecutor', 'Prosecutor', { skill: rng.int(45, 80) }).id);
   for (const tier of ['public', 'good', 'star']) {
     const base = LAWYERS.find((x) => x.id === tier).skill;
-    b.defence[tier] = b.defence[tier].filter(active);
-    while (b.defence[tier].length < (tier === 'star' ? 2 : 3)) {
-      b.defence[tier].push(official(countryId, 'defence', tier === 'public' ? 'Legal aid lawyer' : tier === 'star' ? 'Senior defense attorney' : 'Defense lawyer',
+    b.defense[tier] = b.defense[tier].filter(active);
+    while (b.defense[tier].length < (tier === 'star' ? 2 : 3)) {
+      b.defense[tier].push(official(countryId, 'defense', tier === 'public' ? 'Legal aid lawyer' : tier === 'star' ? 'Senior defense attorney' : 'Defense lawyer',
         { tier, skill: clamp(base + rng.int(-8, 8)), age: tier === 'star' ? rng.int(45, 64) : rng.int(28, 55) }).id);
     }
   }
@@ -167,11 +167,12 @@ export function addEvidence(incident, kind, pointsTo, o = {}) {
   const [lo, hi] = EVIDENCE[kind].reliability;
   const ev = { id: nextId('ev'), incidentId: incident.id, kind, sourceId: o.sourceId ?? null, year: year(),
     reliability: Math.round((o.reliability ?? lo + (hi - lo) * rng.next()) * 100) / 100,
-    pointsTo, lawful: o.lawful ?? rng.chance(0.93), admissible: null, summary: o.summary ?? summarise(kind, pointsTo, o.sourceId) };
+    // Only what is searched for or seized can be obtained unlawfully; what people say is not.
+    pointsTo, lawful: o.lawful ?? (SEIZED.includes(kind) ? rng.chance(0.92) : true), admissible: null, summary: o.summary ?? summarize(kind, pointsTo, o.sourceId) };
   J().evidence[ev.id] = ev;
   return ev;
 }
-function summarise(kind, pointsTo, sourceId) {
+function summarize(kind, pointsTo, sourceId) {
   const who = pointsTo ? words(pointsTo) : 'someone nobody can name';
   const src = (id) => nameOf(id, false);
   return {
@@ -188,6 +189,7 @@ function summarise(kind, pointsTo, sourceId) {
     character: `${sourceId ? src(sourceId) : 'Someone'} speaks for ${who}'s character.`,
   }[kind];
 }
+const SEIZED = ['physical', 'digital', 'forensic', 'cctv', 'documents', 'financial'];
 const exists = (kind) => !EVIDENCE_FROM[kind] || year() >= EVIDENCE_FROM[kind];
 
 /**
@@ -343,7 +345,7 @@ function openCase(inc, inv, defendantId) {
   const c = { id: nextId('case'), kind: 'criminal', incidentId: inc.id, investigationId: inv.id, countryId: inc.countryId,
     systemId: sys.id, court: courtFor(inc.countryId, off.severity, juvenile), juvenile, defendantId, year: year(), age,
     charges: [{ offenseId: off.id, lesser: off.lesser ?? null }], prosecutorId: prosecutor.id, judgeId: judge.id,
-    defenceId: null, defenceTier: null, evidenceIds: [...inv.evidenceIds], stage: 'charged', hearings: [],
+    defenseId: null, defenseTier: null, evidenceIds: [...inv.evidenceIds], stage: 'charged', hearings: [],
     bail: null, remand: false, offer: null, plea: null, trials: 0, verdict: null, sentenceId: null, appealIds: [], fresh: null, rulings: [], law: lawAt(inc.countryId) };
   c.hearings.push({ year: year(), stage: 'charged', court: c.court, text: `Charged with ${off.name.toLowerCase()}.` });
   J().cases[c.id] = c;
@@ -419,7 +421,7 @@ export function counselOptions(c) {
   }
   for (const x of LAWYERS) {
     if (x.id === 'self') { out.push({ tier: 'self', npcId: c.defendantId, name: 'yourself', label: x.name, cost: 0, ok: true, blurb: x.blurb }); continue; }
-    const n = pick(b.defence[x.id]);
+    const n = pick(b.defense[x.id]);
     if (n.id === known?.id) continue;
     const cost = localMoney(x.cost, country);
     out.push({ tier: x.id, npcId: n.id, name: nameOf(n.id), label: `${nameOf(n.id)}: ${x.name.toLowerCase()}`, cost, blurb: x.blurb,
@@ -430,17 +432,18 @@ export function counselOptions(c) {
 
 /** Appoints counsel. The fee is paid once per case. */
 export function appoint(c, tier, npcId) {
-  if (c.defenceId) return false;
-  const cost = tier === 'self' || tier === 'public' ? 0 : localMoney(LAWYERS.find((x) => x.id === tier).cost, COUNTRIES[c.countryId]);
+  if (c.defenseId) return false;
+  // The player as counsel is paid a salary by their employer, not a fee by the client.
+  const cost = tier === 'self' || tier === 'public' || npcId === player().id ? 0 : localMoney(LAWYERS.find((x) => x.id === tier).cost, COUNTRIES[c.countryId]);
   if (cost && !pay({ key: `fee:${c.id}`, kind: 'legal_fee', amount: cost, payer: c.defendantId, payee: npcId, caseId: c.id })) return false;
-  c.defenceId = npcId;
-  c.defenceTier = tier;
+  c.defenseId = npcId;
+  c.defenseTier = tier;
   if (tier !== 'self') {
     person(npcId)?.flags?.justice?.caseIds.push(c.id);
     const list = c.defendantId === player().id ? (player().legal.counselIds ??= []) : (person(c.defendantId).flags.counselIds ??= []);
     if (!list.includes(npcId)) list.push(npcId);
   }
-  if (c.stage === 'pretrial') move(c, 'plea', tier === 'self' ? 'The defendant will speak for themselves.' : `${nameOf(npcId)} appears for the defense.`);
+  if (c.stage === 'pretrial') move(c, 'plea', tier === 'self' ? 'The defendant will speak for themselves.' : npcId === player().id ? 'You appear for the defense.' : `${nameOf(npcId)} appears for the defense.`);
   return true;
 }
 
@@ -453,7 +456,7 @@ export function caseFile(c) {
 /** Counsel's honest view of the trial: an estimate, not a promise. */
 export function advice(c) {
   const s = strength(c.evidenceIds, c.defendantId, { admissibleOnly: true });
-  const read = clamp(s + (rng.next() - 0.5) * (1 - skillOf(c.defenceId) / 100) * 0.3, 0, 1);
+  const read = clamp(s + (rng.next() - 0.5) * (1 - skillOf(c.defenseId) / 100) * 0.3, 0, 1);
   return read >= 0.85 ? 'The evidence against you is strong. A trial would be hard to win.'
     : read >= 0.65 ? 'There is a real case to answer. A trial could go either way.'
       : read >= 0.45 ? 'The prosecution has gaps. There is a fair chance at trial.'
@@ -540,7 +543,7 @@ export function trial(c, o = {}) {
   if (c.stage !== 'trial') return { stage: c.stage, lines: [], verdict: null };
   const sys = procedure(c);
   const lines = [];
-  const counsel = clamp((c.defenceId ? skillOf(c.defenceId) : 15) + (c.effort ?? 0));
+  const counsel = clamp((c.defenseId ? skillOf(c.defenseId) : 15) + (c.effort ?? 0));
   const pros = skillOf(c.prosecutorId);
   c.trials += 1;
   // 1. Admissibility.
@@ -649,7 +652,8 @@ export function sentence(c, offenseId, how, ruling = null) {
   score += { lenient: -6, standard: 0, tough: 6 }[sys.sentencing ?? 'standard'];
   const ladder = off.ladder;
   let type = ladder[clamp(Math.floor((score - 10) / 15), 0, ladder.length - 1)];
-  if (type === 'diversion' && (n > 0 || c.age >= sys.adultAge + 7)) type = ladder[Math.min(1, ladder.length - 1)];
+  // Diversion is instead of prosecution: for a first offense admitted early, never after a trial.
+  if (type === 'diversion' && (n > 0 || c.age >= sys.adultAge + 7 || !plea)) type = ladder[Math.min(1, ladder.length - 1)];
   let years = 0;
   if (type === 'custody') {
     const [lo, hi] = off.custody;
@@ -662,7 +666,7 @@ export function sentence(c, offenseId, how, ruling = null) {
   }
   if (ruling) {
     // A player judge chooses, but only from what the law allows.
-    if (ladder.includes(ruling.type)) type = ruling.type;
+    if (ladder.includes(ruling.type) && !(ruling.type === 'diversion' && !plea)) type = ruling.type;
     if (type === 'custody') years = clamp(Math.round(ruling.years ?? years), Math.max(1, off.custody[0]), off.custody[1]);
   }
   if (c.juvenile && type === 'custody') years = Math.max(1, Math.min(years, sys.adultAge + 3 - c.age));
@@ -730,7 +734,7 @@ export function appealGrounds(c) {
  * final for that ground.
  * @returns {{appeal:Object, outcome:string, text:string}}
  */
-export function fileAppeal(c, ground, counselId = c.defenceId) {
+export function fileAppeal(c, ground, counselId = c.defenseId) {
   if (!appealGrounds(c).some((g) => g.id === ground)) return null;
   const courts = courtsFor(c.countryId);
   const a = { id: nextId('appeal'), caseId: c.id, ground, year: year(), counselId, court: courts.appeal, status: 'decided', outcome: null };

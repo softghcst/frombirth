@@ -5,6 +5,19 @@ const kidAged = (lo, hi) => [need('cast.kid.age', '>=', lo), need('cast.kid.age'
 
 /** @type {import('../../types.js').GameEvent[]} */
 export default [
+  // Queued when someone close dies (engine/relationships.js): the funeral, and whether you go.
+  {
+    id: 'close_death', category: 'loss', ageRange: [6, 120], queuedOnly: true, priority: true,
+    text: 'Your {role}, {deceased}, has died at {age}. {cause}',
+    choices: [
+      { label: 'Go to the funeral', outcomes: [any('You stand with the family and say goodbye. It is hard, and you are glad you were there.', 'neutral', st('mood', 3), hid('karma', 2))] },
+      { label: 'Speak at the funeral', check: chk(0.5, { 'stats.charm': 0.5, 'hidden.willpower': 0.3 }), outcomes: [
+        ok('You tell a story about {first} that has the whole room smiling through it. People thank you afterward.', st('mood', 5), st('charm', 1), hid('karma', 3)),
+        bad('Halfway through, your voice goes. Someone squeezes your hand, and you finish it anyway.', st('mood', 1), hid('karma', 2))] },
+      { label: 'Stay away', outcomes: [any('You do not go. People notice, and so do you, for a long time.', 'bad', st('mood', -4), hid('karma', -3))] },
+    ],
+  },
+
   {
     id: 'sleepless', category: 'parenthood', ageRange: [18, 60], cooldown: 3, weight: 3,
     cast: { kid: 'child' }, castRequires: kidAged(0, 1),
@@ -32,7 +45,7 @@ export default [
         mem('kid', 'lessons', 'You paid for lessons when a teacher said they had a gift.'))] },
       { label: 'Practice with them yourself', check: chk(0.5, { 'hidden.discipline': 0.6 }), outcomes: [
         ok('An hour together every evening. You are not much of a teacher, and {kid} does not mind.', rel('kid', 12), st('mood', 4),
-          mem('kid', 'practisedTogether', 'You practiced with them every evening for a year.')),
+          mem('kid', 'practicedTogether', 'You practiced with them every evening for a year.')),
         bad('It lasts three weeks before life gets in the way.', rel('kid', 1)),
       ] },
       { label: 'Say there is time for that later', outcomes: [any('{kid} stops mentioning it after a while.', 'neutral', rel('kid', -4))] },
@@ -40,7 +53,7 @@ export default [
   },
   {
     id: 'kid_in_trouble', category: 'parenthood', ageRange: [25, 70], cooldown: 5, cast: { kid: 'child' }, castRequires: kidAged(7, 15),
-    text: 'The school rings: {kid} has hit another child, and says the other child started it.',
+    text: 'The school calls: {kid} has hit another child, and says the other child started it.',
     choices: [
       { label: 'Hear {kid}\'s side before anything else', outcomes: [any('It takes an hour to come out: the other child has been at them for weeks. You go back to the school together.', 'good', rel('kid', 10), hid('karma', 3),
         mem('kid', 'listened', 'When the school rang, you heard their side first.'))] },
@@ -62,7 +75,7 @@ export default [
   },
   {
     id: 'kid_asks_deposit', category: 'parenthood', ageRange: [40, 95], cooldown: 8, cast: { kid: 'child' }, castRequires: kidAged(20, 40),
-    text: '{kid} rings, working up to something: they have found a flat and are {$8000} short of the deposit.',
+    text: '{kid} calls, working up to something: they have found an apartment and are {$8000} short of the deposit.',
     choices: [
       { label: 'Give it to them', requires: [need('cashBase', '>=', 8000)], outcomes: [any('"Do not pay it back. Pay it forward." {kid} does not know what to say.', 'good', cash(-8000), rel('kid', 15), hid('karma', 6), count('donated', 8000),
         mem('kid', 'deposit', 'You gave them the deposit for their first flat.'))] },
@@ -80,7 +93,7 @@ export default [
     choices: [
       { label: 'Move them in with you', outcomes: [any('The spare room becomes their room. It is hard, and you would not have it any other way.', 'good', rel('parent', 18), hid('karma', 10), st('mood', -4),
         mem('parent', 'tookMeIn', 'When they could not live alone, you took them in.'))] },
-      { label: 'Pay for a good care home ({$20000})', requires: [need('cashBase', '>=', 20000)], outcomes: [any('You visit every Sunday. They have made a friend called Arthur and complain about the puddings.', 'good', cash(-20000), rel('parent', 6), hid('karma', 4))] },
+      { label: 'Pay for a good care home ({$20000})', requires: [need('cashBase', '>=', 20000)], outcomes: [any('You visit every Sunday. They have made a friend called Arthur and complain about the desserts.', 'good', cash(-20000), rel('parent', 6), hid('karma', 4))] },
       { label: 'Leave it to the rest of the family', outcomes: [any('Somebody else sorts it out. They do not ask you for much, after that.', 'bad', rel('parent', -20), hid('karma', -8))] },
     ],
   },

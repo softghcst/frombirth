@@ -3,7 +3,7 @@
 import { uid, localMoney, fmtMoney, clamp } from '../util.js';
 import { player, country, npcsByRole, log, milestone } from '../state.js';
 import { BANK_LOAN, OVERDRAFT_RATE, BANKRUPTCY_YEARS } from '../data/securities.js';
-import { INSOLVENCY, INSOLVENCY_OF } from '../data/money.js';
+import { INSOLVENCY, INSOLVENCY_OF, decimalsOf } from '../data/money.js';
 import { store } from '../state.js';
 import { recentDefault } from './credit.js';
 
@@ -14,8 +14,21 @@ export function grossIncome() {
   const k = player().career;
   return (k.salary || 0) + (k.partTime?.salary || 0) + (k.retired ? k.pensionPerYear : 0) + (player().flags.statePension ?? 0);
 }
-/** Household income, which is what lenders look at. */
-export const householdIncome = () => grossIncome() + (npcsByRole('spouse')[0]?.life?.job?.salary ?? 0);
+/** Kinds of money that count as earnings to a lender: pay, fees, royalties, rent, profits; not gifts, wins or windfalls. */
+const EARNED = ['salary', 'partTime', 'pension', 'gigs', 'rentIncome', 'prizeMoney', 'sponsorship', 'dividends', 'statePension', 'distribution', 'otherIncome'];
+/**
+ * What the player actually earned last year, from the books: an idol's settlements, a musician's royalties, a
+ * freelancer's fees and a business owner's profits are income too, not only a salary.
+ */
+export function earnedLastYear(state = store.state) {
+  const code = country().currency.code;
+  const y = state.ledger?.years?.[state.year - 1]?.[code];
+  if (!y) return 0;
+  const minor = EARNED.reduce((s, cat) => s + ((y[cat]?.[0] ?? 0) - (y[cat]?.[1] ?? 0)), 0); // the books keep cents
+  return Math.max(0, Math.round(minor / 10 ** decimalsOf(code)));
+}
+/** Household income, which is what lenders look at: a salary, or what was really earned last year, whichever is more. */
+export const householdIncome = () => Math.max(grossIncome(), earnedLastYear()) + (npcsByRole('spouse')[0]?.life?.job?.salary ?? 0);
 
 export const isBankrupt = () => (player().flags.bankruptUntil ?? 0) > player().age;
 
@@ -88,10 +101,12 @@ export function settleUp(forceSale) {
   const p = player();
   const c = country();
   const f = p.finance;
-  if (f.cash >= 0) return;
+  if (f.cash >= 0) { delete f.overdrawnTold; return; }
   const interest = Math.round(-f.cash * OVERDRAFT_RATE);
   f.cash -= interest;
-  log(`You are overdrawn. The bank charged ${fmtMoney(interest, c)} in interest.`, 'system', 'bad');
+  // Said when it starts, and every few years while it goes on: not the same line every year.
+  const since = f.overdrawnTold;
+  if (since == null || store.state.year - since >= 5) { log(`You are overdrawn. The bank charged ${fmtMoney(interest, c)} in interest.`, 'system', 'bad'); f.overdrawnTold = store.state.year; }
 
   const limit = Math.max(localMoney(4000, c), grossIncome() * 0.4);
   if (-f.cash <= limit) return;

@@ -1,11 +1,11 @@
-// Employers and the job market. An employer is a persistent organisation in a
+// Employers and the job market. An employer is a persistent organization in a
 // city: it has a name, a size, a culture, finances that move with the
 // economy, staff the player has met, and a history. Openings come from
 // employers (never from nowhere), stay up until they are filled, withdrawn or
 // expire, and other people apply for them too.
 //
 //   state.jobs = {
-//     employers: { [id]: Employer },   every organisation the world has made
+//     employers: { [id]: Employer },   every organization the world has made
 //     cities:    { 'cc/City': [ids] }, which employers a city has (made the first time anyone looks)
 //     postings:  { [id]: Posting },    open and recently closed openings
 //     seq:       number,               for ids that are the same on every load
@@ -75,7 +75,7 @@ function makeName(r, family, countryId, city) {
 function makeEmployer(r, family, countryId, city) {
   const size = r.next() < 0.45 ? 'small' : r.next() < 0.6 ? 'medium' : r.next() < 0.75 ? 'large' : 'major';
   const own = tracksIn(family);
-  // Small places hire for a few kinds of work; big ones for most of their field, and the office work every big organisation needs.
+  // Small places hire for a few kinds of work; big ones for most of their field, and the office work every big organization needs.
   const n = { small: 2, medium: 4, large: 7, major: 12 }[size];
   const tracks = [...own].sort(() => r.next() - 0.5).slice(0, Math.min(own.length, n)).map((c) => c.id);
   if (size === 'large' || size === 'major') for (const id of EVERYWHERE) if (!tracks.includes(id) && r.chance(size === 'major' ? 0.6 : 0.3)) tracks.push(id);
@@ -117,13 +117,13 @@ export function cityEmployers(countryId, city) {
     const r = seeded(`${key}/${now}`);
     for (const id of J.cities[key]) {
       const e = J.employers[id];
-      if (e.closed) continue;
+      if (e.closed || e.sportClub) continue;
       const n = Math.round(sizeOf(e).openings * 1.5 * (0.6 + e.health / 100) + r.next());
       for (let i = 0; i < n; i++) openPosting(e, { r, age: r.int(0, POSTING_LIFE - 1) });
     }
   }
   J.seen[key] = now;
-  return J.cities[key].map((id) => J.employers[id]).filter((e) => e && !e.closed && !e.owned);
+  return J.cities[key].map((id) => J.employers[id]).filter((e) => e && !e.closed && !e.owned && !e.sportClub);
 }
 
 /**
@@ -131,11 +131,11 @@ export function cityEmployers(countryId, city) {
  * work there have a real place of work. It is run by engine/business.js, not
  * by the yearly employer tick: no openings appear on the board for it.
  */
-export function registerEmployer({ name, family, tracks, countryId, city }) {
+export function registerEmployer({ name, family, tracks, countryId, city, owned = true }) {
   cityEmployers(countryId, city);
   const id = nextId('emp');
   const e = { id, name, family, tracks, countryId, city, size: 'small', culture: 'supportive', payK: 1, health: 60, remote: false,
-    founded: store.state.year, closed: null, staff: [], history: [], owned: true };
+    founded: store.state.year, closed: null, staff: [], history: [], owned };
   jobs().employers[id] = e;
   jobs().cities[`${countryId}/${city}`].push(id);
   return e;
@@ -278,7 +278,7 @@ export function tickEmployers() {
   // Lighten the records of employers nobody is connected to.
   for (const e of Object.values(J.employers)) if (!connected(e) && e.history.length > 3) e.history = e.history.slice(-3);
   for (const e of Object.values(J.employers)) {
-    if (e.closed || e.owned) continue; // a business the player owns is run by engine/business.js
+    if (e.closed || e.owned || e.sportClub) continue; // a business the player owns is run by engine/business.js; a sports club by engine/sportsLife.js
     const local = e.countryId === p.countryId ? ph : { hiring: 0, layoff: 0.03 };
     const detailed = connected(e);
     const live = (J.seen[`${e.countryId}/${e.city}`] ?? -99) >= now - 1 || detailed; // markets being watched

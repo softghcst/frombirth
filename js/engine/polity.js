@@ -7,7 +7,7 @@
 //     govt: { lead, partners, headId, since, kind }, calendar: { general, term, local },
 //     policies: { lever: level }, budget, laws: [{ year, text, lever, by }],
 //     elections: [record], approval, seq }
-// A party:   { id, kind, name, colour, positions, says, leaderId, deputyId, founded, record }
+// A party:   { id, kind, name, color, positions, says, leaderId, deputyId, founded, record }
 //   record   how voters judge its time in office lately, about -15..15
 // A figure:  a politician, who persists: { id, name, gender, born, died, partyId, look,
 //              t: { ambition, integrity, charisma }, post, history: [{ year, text }] }
@@ -52,9 +52,9 @@ export const party = (w, id) => w.parties.find((p) => p.id === id) ?? null;
 export const figure = (w, id) => w.figures[id] ?? null;
 const head = (w) => w.figures[w.govt.headId] ?? null;
 /** "the National Union", "the Greens": a party's name as it reads in a sentence. */
-export const the = (p) => (/^The /.test(p.name) ? `the ${p.name.slice(4)}` : /(Party|Union|Alliance|League|Front|Movement|Centre|Center|Democrats)$/.test(p.name) ? `the ${p.name}` : p.name);
+export const the = (p) => (/^The /.test(p.name) ? `the ${p.name.slice(4)}` : /(Party|Union|Alliance|League|Front|Movement|Center|Center|Democrats)$/.test(p.name) ? `the ${p.name}` : p.name);
 
-/** Whether the count here leans towards those already in power. */
+/** Whether the count here leans toward those already in power. */
 export const rigged = (countryId) => !!SYSTEMS[countryId]?.rigged;
 /** What the head of government is called here. */
 export const headTitle = (countryId) => SYSTEMS[countryId]?.head ?? (MONARCHIES[countryId] ? 'Chief Minister' : 'Head of Government');
@@ -90,7 +90,7 @@ function build(countryId) {
   for (const k of kinds) {
     const name = rng.pick(k.names.filter((n) => !taken.has(n)).length ? k.names.filter((n) => !taken.has(n)) : k.names);
     taken.add(name);
-    const p = { id: `p${w.parties.length + 1}`, kind: k.kind, name, colour: k.colour, says: k.says, founded: year - rng.int(12, 140), record: 0,
+    const p = { id: `p${w.parties.length + 1}`, kind: k.kind, name, color: k.color, says: k.says, founded: year - rng.int(12, 140), record: 0,
       // No two parties of a kind are quite alike.
       positions: Object.fromEntries(Object.entries(k.positions).map(([i, v]) => [i, clamp(Math.round((v + noise(0.5)) * 2) / 2, -2, 2)])) };
     w.parties.push(p);
@@ -133,7 +133,7 @@ export function partyField(w, year = yearNow(), mood = 0, boosts = {}) {
     // Governments are judged on how things are going, and wear out their welcome the longer they stay.
     if (inPower.has(p.id)) appeal += (w.approval - 50) / 3 - Math.min(14, (year - (w.govt.leadSince ?? year)) * 0.9);
     if (mood) appeal += noise(mood);
-    if (sys.rigged && p.id === w.govt.lead) appeal += 14; // the count leans towards those already in power
+    if (sys.rigged && p.id === w.govt.lead) appeal += 14; // the count leans toward those already in power
     appeal += boosts[p.id] ?? p.boost ?? 0; // a player's campaign for this party
     return { id: p.id, positions: p.positions, appeal };
   });
@@ -380,7 +380,6 @@ export function tickPolity(w) {
     // A new government names new ministers; one that is returned keeps its own.
     if (!kept && before.lead !== w.govt.lead && !head(w)?.isPlayer) formCabinet(w);
     const lead = party(w, rec.govt.lead);
-    const top = Object.entries(rec.shares).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, s]) => `${party(w, id).name} ${s}%`).join(', ');
     const how = w.kind === 'party' ? `${rec.govt.headName} ${before.headId === rec.govt.headId ? 'remains' : 'now stands'} at the head of ${the(lead)}.`
       : w.kind === 'presidential' ? `${rec.govt.headName} of ${the(lead)} ${before.headId === rec.govt.headId ? 'is re-elected' : 'is elected'} ${headTitle(cid)}${rec.runoff ? ' after a run-off' : ''}${rec.govt.kind === 'divided' ? ', and faces a legislature held by opponents' : ''}.`
         : rec.govt.kind === 'coalition' ? `No party won a majority. ${the(lead).replace(/^t/, 'T')} will govern in coalition with ${rec.govt.partners.map((id) => the(party(w, id))).join(' and ')}, under ${rec.govt.headName}.`
@@ -392,7 +391,13 @@ export function tickPolity(w) {
       const chosen = party(w, v?.countryId === cid ? v.partyId : membership(cid)?.id);
       if (chosen) { (pl.flags.voted ??= []).push({ year, party: chosen.name, won: chosen.id === w.govt.lead }); if (pl.flags.voted.length > 30) pl.flags.voted.shift(); tell(`You voted for ${the(chosen)}. ${chosen.id === w.govt.lead ? 'It will lead the government.' : (w.seats[chosen.id] ?? 0) ? 'It did not win.' : 'It won no seats at all.'}`, 'neutral', 4); }
     }
-    tell(w.kind === 'party' ? `The party congress has met. ${how}` : kept ? `Legislative election: ${top}; turnout ${rec.turnout}%. You remain ${headTitle(cid)}${w.govt.kind === 'majority' ? ', with a majority behind you' : ', without a majority'}.` : `General election: ${top}; turnout ${rec.turnout}%. ${how}`, 'neutral', 5);
+    // The journal line: who won and who governs, in a sentence (the full result is in The political world).
+    const share = rec.shares[rec.govt.lead] != null ? `, ${rec.shares[rec.govt.lead]}%` : '';
+    const brief = w.kind === 'presidential' ? `Election: ${rec.govt.headName} (${lead.name}) ${before.headId === rec.govt.headId ? 're-elected' : 'elected'}${rec.runoff ? ' after a run-off' : ''}.`
+      : rec.govt.kind === 'coalition' ? `Election: ${lead.name} first${share}. Coalition under ${rec.govt.headName}.`
+        : rec.govt.kind === 'minority' ? `Election: ${lead.name} first${share}. Minority government under ${rec.govt.headName}.`
+          : `Election: ${lead.name} wins${share}. ${rec.govt.headName} ${before.headId === rec.govt.headId ? 'stays' : 'becomes'} ${headTitle(cid)}.`;
+    tell(w.kind === 'party' ? `The party congress has met. ${how}` : kept ? `Election: ${lead.name}${share}. You remain ${headTitle(cid)}${w.govt.kind === 'majority' ? ', with a majority' : ', without a majority'}.` : brief, 'neutral', 5);
   }
   return news;
 }

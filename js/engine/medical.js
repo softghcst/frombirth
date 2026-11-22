@@ -8,6 +8,7 @@ import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { addCondition, cureCondition } from './health.js';
 import { careQuality } from './living.js';
+import { screen } from './health/care.js';
 import { ILLNESS_BY_ID } from '../data/illnesses.js';
 import { TREATMENTS, CHECKUP_COST, THERAPY_COST, SURGERIES, SURGEONS } from '../data/activities.js';
 
@@ -89,12 +90,16 @@ export function checkUp() {
   p.finance.cash -= cost;
   p.flags.checkupAge = p.age;
   p.stats.health = clamp(p.stats.health + 2);
+  // Routine tests: blood pressure, blood sugar, and from fifty, screening.
+  const screened = screen(p);
   const found = p.conditions.filter((x) => TREATMENTS[x.id] && !x.treated);
-  const text = found.length
+  const text = screened.length ? `The tests found ${screened.join(' and ')}. It is in My Health, with what can be done about it.`
+    : found.length
     ? `The doctor ran the tests and wants to treat your ${found.map((x) => x.name.replace(/^an? /, '')).join(' and ')}.`
     : 'The doctor ran the tests and found nothing to worry about. Catching things early keeps it that way.';
-  log(text, 'system', found.length ? 'neutral' : 'good');
-  return result(true, text, found.length ? 'neutral' : 'good');
+  const any = found.length || screened.length;
+  log(text, 'system', any ? 'neutral' : 'good');
+  return result(true, text, any ? 'neutral' : 'good');
 }
 
 export function therapy() {
@@ -135,7 +140,7 @@ export const canHaveSurgery = () => player().age >= 18 && !player().legal.incarc
 
 /**
  * @param {object} [tweaks] for 'reshape': the proportions asked for (eye spacing, sizes).
- *   They become the patient's face, and children born afterwards can take after it.
+ *   They become the patient's face, and children born afterward can take after it.
  */
 export function haveSurgery(procedureId, surgeonId, tweaks) {
   const p = player();

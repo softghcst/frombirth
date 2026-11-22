@@ -60,14 +60,14 @@ export default [
         bad('Now there are two bags going down the stairs. You and {mate} pick up books together for twenty minutes.', rel('mate', 18), hid('karma', 6), st('health', -2),
           tagNpc('mate', 'defended'), mem('mate', 'defended', 'You stood up for them in their first month of high school, and paid for it.')),
       ] },
-      { label: 'Fetch a teacher', outcomes: [any('A teacher clears the stairwell. {mate} nods at you afterwards.', 'good', rel('mate', 7), hid('karma', 2),
+      { label: 'Fetch a teacher', outcomes: [any('A teacher clears the stairwell. {mate} nods at you afterward.', 'good', rel('mate', 7), hid('karma', 2),
         mem('mate', 'fetchedHelp', 'You fetched a teacher when they were being picked on.'))] },
       { label: 'Keep walking', outcomes: [any('You take the other stairs. {mate} saw you see.', 'neutral', rel('mate', -8), hid('karma', -4),
         mem('mate', 'walkedPast', 'You walked past when they needed someone.'))] },
     ],
   },
   {
-    id: 'senior_rumour', category: 'senior year', ageRange: [17, 17], once: true, priority: true,
+    id: 'senior_rumor', category: 'senior year', ageRange: [17, 17], once: true, priority: true,
     requires: [need('education.stage', '==', 'high')], cast: { mate: 'tag:defended' },
     text: 'An ugly rumor about you is going round the senior year. Before you have decided what to do, {mate} stands up in the common room: "I know who started that, and it is a lie. {name} was the only person who helped me in my first month here."',
     choices: [
@@ -82,7 +82,7 @@ export default [
   {
     id: 'big_night', category: 'commitments collide', ageRange: [15, 19], weight: 3, cooldown: 3,
     requires: [need('career.partTime', '!=', false)], cast: { pal: 'friend', manager: 'tag:manager' },
-    text: '{pal}\'s first proper gig is on Friday and they have saved you a spot at the front. At four o\'clock {manager} rings: someone has dropped out, and they need you on Friday night.',
+    text: '{pal}\'s first proper gig is on Friday and they have saved you a spot at the front. At four o\'clock {manager} calls: someone has dropped out, and they need you on Friday night.',
     choices: [
       { label: 'Go to the gig', outcomes: [any(
         'You are at the front, shouting the words. {pal} finds your face in the crowd during the last song. {manager} covers the shift alone.', 'good',

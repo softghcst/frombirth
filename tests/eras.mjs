@@ -19,6 +19,11 @@ globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), se
 const save = await import('../js/save.js');
 
 rng.seed(19001);
+// These scenarios follow a life in one country through its history. A family emigrating with a young child is a
+// part of life tested on its own (tests/economy.mjs, tests/world-scenarios.mjs); here it would only move the life
+// away from the history being checked.
+const { ROOTS } = await import('../js/data/economy.js');
+ROOTS.familyLeaves = 0;
 const problems = [];
 const passed = [];
 let where = '';
@@ -113,7 +118,8 @@ section('Careers');
   check(kept.some((t) => /clerk/i.test(t)), 'a clerk taken on in 1900 keeps the title it had');
   grow(37); // 1962
   check(!unmet(CAREER_BY_ID.software).includes('There is no such job yet.'), 'computer jobs exist by the 1960s');
-  const npcJobs = Object.values(store.state.npcs).map((n) => n.life?.job).filter(Boolean);
+  // Working lives: a job now, a job lost, or a career retired from (by 1962 a 1900 family can be all children and pensioners).
+  const npcJobs = Object.values(store.state.npcs).filter((n) => n.life?.job || n.life?.lastJob || n.life?.retired);
   check(npcJobs.length > 0, `people in this life have jobs (${npcJobs.length})`);
 }
 {
@@ -130,12 +136,12 @@ section('Careers');
   const { unmet } = await import('../js/engine/career.js');
   const p = life({ born: 1880, age: 30, countryId: 'uk', gender: 'female' });
   p.education.enrolled = false; p.education.degrees = [{ type: 'high', gpa: 3.5, age: 18 }, { type: 'university', majorId: 'english', gpa: 3.5, age: 22 }, { type: 'law', gpa: 3.5, age: 25 }];
-  check(store.state.year === 1910 && unmet(CAREER_BY_ID.lawyer).some((x) => /not admitted to practise law/.test(x)), 'in 1910 a British woman could not practise law');
+  check(store.state.year === 1910 && unmet(CAREER_BY_ID.lawyer).some((x) => /not admitted to practice law/.test(x)), 'in 1910 a British woman could not practice law');
   const husband = makeNpc({ role: 'spouse', countryId: 'uk', age: 32 }); store.state.npcs[husband.id] = husband; p.npcIds.push(husband.id);
   check(unmet(CAREER_BY_ID.teacher).some((x) => /married women are not allowed/.test(x)), 'and a married woman could not keep a teaching post');
   check(!unmet(CAREER_BY_ID.office).some((x) => /married women|admitted/.test(x)), 'but other work was open to her');
   grow(15); // 1925
-  check(!unmet(CAREER_BY_ID.lawyer).some((x) => /not admitted/.test(x)), 'by 1925 women could practise law in the UK');
+  check(!unmet(CAREER_BY_ID.lawyer).some((x) => /not admitted/.test(x)), 'by 1925 women could practice law in the UK');
   grow(25); // 1950
   check(!unmet(CAREER_BY_ID.teacher).some((x) => /married women/.test(x)), 'and after 1945 married women could teach');
 }
@@ -160,11 +166,15 @@ section('Money');
   check(w2026.wage === localWage(50000, COUNTRIES.us) && COUNTRIES.us.currency.scale === 1, 'in the present, money is exactly as before');
   check(w1900.wage < w2026.wage / 50 && w1900.rent < w2026.rent / 50, `a 1900 wage and rent are a small fraction of today's (${w1900.wage} and ${w1900.rent} against ${w2026.wage} and ${w2026.rent})`);
   check(Math.abs(w1900.rent / w1900.wage - w2026.rent / w2026.wage) < 0.02, 'and stand in the same proportion to each other, so a life then is as affordable as now');
+  // Seven listings of mixed kinds (a flat one year, a large house the next) are too few to compare two lives by: the
+  // middle price is taken over six years' listings, about forty homes, on each side.
+  const midOf = () => { const q = store.state.player; const a0 = q.age; const h = []; for (let i = 0; i < 6; i++) { q.age = a0 + i; h.push(...estate.listings().map((x) => x.price)); } q.age = a0; h.sort((a, b) => a - b); return h[Math.floor(h.length / 2)]; };
   const p = life({ born: 1900, age: 30 });
   p.flags.livesWithParents = false; p.finance.cash = localMoney(500000, COUNTRIES.us);
+  const today = (() => { const keep = store.state; const t = createLife({ countryId: 'us' }); t.player.age = 30; t.player.city = p.city; t.player.regionId = p.regionId; t.player.flags.livesWithParents = false; store.state = t; H.syncWorld(t.year); const m = midOf(); store.state = keep; H.syncWorld(keep.era.applied.year, keep.era.money); return m; })();
   const homes = estate.listings();
-  const mid = homes.map((h) => h.price).sort((a, b) => a - b)[Math.floor(homes.length / 2)];
-  check(homes.length && mid < 20000, `houses in 1930 cost what they did then (a middling one: ${mid})`);
+  const mid = midOf();
+  check(homes.length && mid < today / 10, `houses in 1930 cost what they did then (a middling one: ${mid}, against ${today} today)`);
   // The yearly change moves every amount together: no money is made or lost by it.
   const cash = p.finance.cash;
   const before = H.currencyFor('us', store.state.year).scale;
@@ -181,7 +191,11 @@ section('Money');
   store.state.journal.push({ age: p.age, text: 'You were paid DM 3,000 for the summer job.', kind: 'system', tone: 'neutral' });
   grow(8); // to 2003
   const lines = store.state.journal.filter((j) => /changed its money/.test(j.text));
-  check(COUNTRIES.de.currency.code === 'EUR' && lines.length === 1 && store.state.era.conversions['de:DEM>EUR'] === 2002, 'the euro arrives in 2002, and savings are converted once');
+  // A family that moved to another euro country converts from its own money instead (Austria: schillings); one that
+  // left the euro area has nothing to convert.
+  const conv = store.state.era.conversions ?? {};
+  const mine = Object.keys(conv).find((k) => k.startsWith(`${p.countryId}:`) && k.endsWith('>EUR'));
+  check(COUNTRIES.de.currency.code === 'EUR' && (mine ? lines.length === 1 && conv[mine] === 2002 : p.countryId !== 'de' && COUNTRIES[p.countryId].currency.code !== 'EUR'), `the euro arrives in 2002, and savings are converted once (in ${p.countryId}, ${COUNTRIES.de.currency.code}, ${lines.length} lines, ${JSON.stringify(store.state.era.conversions)})`);
   check(store.state.journal.some((j) => j.text === 'You were paid DM 3,000 for the summer job.'), 'what happened before keeps its old money');
   save.saveGame(store.state);
   const back = save.loadGame(store.state.slotId);
@@ -208,7 +222,8 @@ section('Money');
 section('Laws');
 {
   const R = await import('../js/engine/rules.js');
-  const at = (year, countryId = 'us', gender = 'female') => { let s; do { s = createLife({ countryId, year: year - 30, gender }); } while (s.player.royal); store.state = s; s.year = year; s.player.age = 30; H.syncWorld(year); return s.player; };
+  // trans: false, so the person's legal sex is the one asked for (a transgender life is registered otherwise at birth).
+  const at = (year, countryId = 'us', gender = 'female') => { let s; do { s = createLife({ countryId, year: year - 30, gender, trans: false }); } while (s.player.royal); store.state = s; s.year = year; s.player.age = 30; H.syncWorld(year); return s.player; };
   at(1915);
   check(!R.may('vote').ok && /Women cannot vote/.test(R.may('vote').why), 'an American woman cannot vote in 1915');
   at(1921);
@@ -253,8 +268,11 @@ section('Laws');
   const p = life({ born: 1900, age: 0, countryId: 'us', gender: 'female' });
   grow(22);
   const said = store.state.journal.filter((j) => /Women in the United States have won the right to vote/.test(j.text));
-  check(said.length === 1, 'the year women won the vote is written in the journal, once');
-  check(store.state.journal.some((j) => /Alcohol has been banned/.test(j.text)), 'and so is Prohibition');
+  const state1 = `in ${p.countryId}, ${store.state.year}, journal ${store.state.journal.length}, era news ${Object.keys(store.state.era?.events ?? {}).length}, deaths ${p.flags?.diedYear ?? '-'}`;
+  // A family that moved abroad before 1920 hears other news.
+  const stayed = p.countryId === 'us' && (p.locations ?? []).every((l) => l.countryId === 'us');
+  check(said.length === 1 || (!stayed && said.length <= 1), `the year women won the vote is written in the journal, once (${said.length}; ${state1})`);
+  check(!stayed || store.state.journal.some((j) => /Alcohol has been banned/.test(j.text)), 'and so is Prohibition');
 }
 
 // ---------- Phase 6: schooling ----------
@@ -347,8 +365,13 @@ section('Health');
   const s = life({ born: 1910, age: 30 });
   save.saveGame(store.state);
   const slot = store.state.slotId;
+  // A life that ends with no heir is taken off the saved lives; keep the file to load it again (as a player could
+  // with a copy of their save).
+  const key = `pathways.slot.${slot}`;
+  const kept = localStorage.getItem(key);
   grow(10);
   const first = `${store.state.player.alive}:${store.state.journal.length}:${Object.values(store.state.npcs).filter((n) => !n.alive).length}`;
+  if (!localStorage.getItem(key)) localStorage.setItem(key, kept);
   store.state = save.loadGame(slot);
   grow(10);
   const second = `${store.state.player.alive}:${store.state.journal.length}:${Object.values(store.state.npcs).filter((n) => !n.alive).length}`;
@@ -404,7 +427,8 @@ section('Events');
   check(began === 1 || f.countryId !== 'fr', 'the war\'s beginning is reported once');
   // Independence: news in the country concerned, in its year.
   const g = life({ born: 1940, age: 17, countryId: 'gh' });
-  check(store.state.journal.some((j) => /Ghana is independent now/.test(j.text)), 'Ghana\'s independence in 1957 is in the news of a life there');
+  // A family can have moved abroad by then (global life); the news is only for those still living there.
+  check(store.state.journal.some((j) => /Ghana is independent now/.test(j.text)) || g.countryId !== 'gh', 'Ghana\'s independence in 1957 is in the news of a life there');
 }
 
 // ---------- Phase 10: lives in every era, and a dynasty through them all ----------
@@ -426,7 +450,7 @@ section('Lives');
   p = life({ born: 1930, age: 0, countryId: 'uk', gender: 'male' });
   check(H.getEra(1930).id === 'interwar' && COUNTRIES.uk.currency.code === 'GBP', '1930: between the wars');
   grow(12);
-  check(store.state.era.events['ww2:begin'] === 1939 && store.state.pendingEvents.length >= 0, 'the Second World War comes in childhood');
+  check(store.state.era.events['ww2:begin'] === 1939 && store.state.pendingEvents.length >= 0, `the Second World War comes in childhood (${JSON.stringify(store.state.era.events).slice(0, 200)}, ${store.state.year}, in ${p.countryId})`);
   // Born 1960.
   p = life({ born: 1960, age: 10 });
   check(H.getEra(store.state.year).id === 'late20c' && tech.techAvailable('television') && !tech.techAvailable('web'), '1970: television, no internet yet');
@@ -543,8 +567,8 @@ section('Scenes');
   check(H.sceneFits(decade.dec_suffrage, 1910, 'uk') && !H.sceneFits(decade.dec_suffrage, 1910, 'fr') && !H.sceneFits(decade.dec_suffrage, 1925, 'uk'), 'a scene belongs to its years and its places');
   check(EVENTS.filter((e) => e.years).length >= 25, `${EVENTS.filter((e) => e.years).length} scenes belong to particular decades`);
   // Many of a life's decades each bring something.
-  rng.seed(77);
   p = life({ born: 1890, age: 0, countryId: 'uk' });
+  rng.seed(77); // after the life is made (createLife draws its own seed), so the century is drawn the same way every run
   const met = new Set();
   for (let y = 0; y < 100 && p.alive; y++) { p.stats.health = 95; advanceYear(); for (const e of store.state.pendingEvents) if (decade[e.id]) { met.add(e.id); const ev = getEvent(e.id); resolveChoice(ev, 0, e.cast); } store.state.pendingEvents = []; if (!p.alive) p.alive = true; }
   check(met.size >= 6, `a British life from 1890 to 1990 met ${met.size} scenes of its decades (${[...met].join(', ')})`);
@@ -554,7 +578,8 @@ section('Scenes');
   const p = life({ born: 1955, age: 5, countryId: 'au' });
   check(COUNTRIES.au.currency.code === 'AUP', 'Australia in 1960: the Australian pound');
   grow(8);
-  check(COUNTRIES.au.currency.code === 'AUD' && store.state.era.conversions['au:AUP>AUD'] === 1966 && store.state.journal.filter((j) => /official rate/.test(j.text)).length === 1, 'decimal dollars from 1966, at two to the pound, once');
+  // A family that left Australia before 1966 has no Australian money to convert.
+  check(COUNTRIES.au.currency.code === 'AUD' && (store.state.player.countryId !== 'au' && !store.state.era.conversions?.['au:AUP>AUD'] ? true : store.state.era.conversions?.['au:AUP>AUD'] === 1966 && store.state.journal.filter((j) => /official rate/.test(j.text)).length === 1), 'decimal dollars from 1966, at two to the pound, once');
   const g = life({ born: 1890, age: 0, countryId: 'de' });
   grow(60);
   check(store.state.journal.some((j) => /the game's rate/.test(j.text)) || g.countryId !== 'de', 'the old Mark changes at the game\'s rate, and the journal says so');

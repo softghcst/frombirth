@@ -1,15 +1,31 @@
 // Yearly body upkeep: natural stat drift, new conditions, recoveries.
 import { rng } from '../rng.js';
 import { clamp } from '../util.js';
-import { player, log } from '../state.js';
+import { player, log, store, country } from '../state.js';
 import { ILLNESSES, ILLNESS_BY_ID } from '../data/illnesses.js';
+import { LEGACY_IDS, CONDITION_BY_ID } from '../data/health/conditions.js';
+import { begin } from './health/course.js';
+import { hasCondition } from './health/record.js';
+import { PHYSICAL_LEGACY } from '../data/health/conditions.js';
+import { foundByDoctor } from './health/care.js';
+import { admit } from './health/hospital.js';
 
 export function addCondition(id) {
   const p = player();
+  // Mental health conditions belong to the health engine: an event can start one, never diagnose it.
+  if (LEGACY_IDS[id] || CONDITION_BY_ID[id]) {
+    const cid = LEGACY_IDS[id] ?? id;
+    if (hasCondition(cid)) return false;
+    const rec = begin(CONDITION_BY_ID[cid], p, { attack: cid === 'heart_disease' });
+    // A scene that brings on a physical condition is one where a doctor found it (the tests, the ambulance).
+    if (PHYSICAL_LEGACY.includes(cid)) foundByDoctor(rec, cid === 'heart_disease' ? 'hospital' : 'primary', cid === 'heart_disease' ? 'cardiologist' : 'gp', p);
+    return true;
+  }
   const def = ILLNESS_BY_ID[id];
   if (!def || p.conditions.some((c) => c.id === id)) return false;
   p.conditions.push({ id, name: def.name, severity: def.severity, chronic: !!def.chronic,
     sinceAge: p.age, treated: false });
+  if (id === 'broken_hip') admit('hip', {}, p);
   return true;
 }
 
@@ -46,7 +62,8 @@ export function tickHealth() {
     if (cond.sinceAge < age) {
       if (rng.chance(def.recover)) {
         cureCondition(cond.id);
-        log(`You recovered from ${def.name}.`, 'system', 'good');
+        // Getting over a cold or the flu goes without saying; getting over something serious does not.
+        if (def.chronic || def.recover < 0.8) log(`You recovered from ${def.name}.`, 'system', 'good');
         continue;
       }
       if (!def.chronic) log(`You are still suffering from ${def.name}.`, 'system', 'bad');
@@ -59,10 +76,32 @@ export function tickHealth() {
   // Poor mood wears the body down; a recent check-up catches things early.
   const frailty = (1.6 - s.health / 100) * (p.flags.checkupAge === age - 1 ? 0.6 : 1) * (s.mood < 25 ? 1.3 : 1);
   for (const def of ILLNESSES) {
-    if (age < def.ages[0] || age > def.ages[1]) continue;
+    if (LEGACY_IDS[def.id]) continue; // these now begin in engine/health/course.js
+    if (age < def.ages[0] || age > def.ages[1] || !def.chance) continue; // never drawn (sports injuries): no roll
     if (rng.chance(def.chance * frailty) && addCondition(def.id)) {
       log(`You came down with ${def.name}.`, 'system', 'bad');
       for (const [k, v] of Object.entries(def.yearly)) bump(s, k, v);
+      // A new illness is a moment of its own (one a year): see a doctor, rest it off, or carry on regardless.
+      if (!def.chronic && age >= 3 && !store.state.pendingEvents.some((e) => e.id === 'ailment')) store.state.pendingEvents.push({ id: 'ailment', cast: { words: { illness: def.name, illnessId: def.id } } });
     }
   }
+}
+
+/** What the player does about a new illness (the scene 'ailment'). */
+export function ailmentChoice(value, cast = {}) {
+  const p = player();
+  const id = cast.words?.illnessId;
+  if (!id || !p.conditions.some((c) => c.id === id)) return '';
+  if (value === 'doctor') {
+    const fee = Math.round(80 * (country().currency?.scale ?? 1));
+    if (p.age >= 18) p.finance.cash -= fee;
+    if (rng.chance(0.85)) { cureCondition(id); p.stats.health = clamp(p.stats.health + 3); return 'The doctor sorts you out. You feel like yourself within a week.'; }
+    return 'The doctor gives you something for it. It is slow to clear, but it is clearing.';
+  }
+  if (value === 'rest') {
+    if (rng.chance(0.6)) { cureCondition(id); p.stats.mood = clamp(p.stats.mood + 1); return 'A few days in bed, soup, and too much television. It passes.'; }
+    return 'You rest, and it hangs on anyway.';
+  }
+  p.stats.health = clamp(p.stats.health - 3);
+  return 'You carry on as if nothing is wrong. Your body disagrees.';
 }

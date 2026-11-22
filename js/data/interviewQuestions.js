@@ -5,7 +5,7 @@ const Q = (q, ...a) => ({ q, a: a.map(([t, s]) => ({ t, s })) });
 /** Asked for office, professional and service jobs. */
 export const GENERAL = [
   Q('"Tell me about a time you made a mistake at work or school."',
-    ['Describe a real mistake and exactly what you changed afterwards', 2],
+    ['Describe a real mistake and exactly what you changed afterward', 2],
     ['Say your biggest mistake is caring too much', 0],
     ['Describe a mistake that was mostly someone else\'s fault', 0],
     ['Admit a small one and move on quickly', 1]),
@@ -56,7 +56,7 @@ export const GENERAL = [
     ['Ask how soon you could be promoted', 0]),
   Q('"The team has just been told about a change nobody likes."',
     ['Raise your concerns in the room, then give it a fair try', 2],
-    ['Complain with everyone else in the kitchen afterwards', 0],
+    ['Complain with everyone else in the kitchen afterward', 0],
     ['Say it is a great idea', 1],
     ['Start looking for another job', 0]),
   Q('"How do you handle being told your work is not good enough?"',
@@ -219,7 +219,7 @@ export const FAMILY_QUESTIONS = {
       ['Offer something free straight away', 1],
       ['Explain the policy', 0.3]),
     F('"It is the busiest night of the year and a colleague walks out."',
-      ['Reorganise the sections quickly and tell the manager', 1.7, 'hidden.discipline'],
+      ['Reorganize the sections quickly and tell the manager', 1.7, 'hidden.discipline'],
       ['Keep everyone\'s spirits up and pick up the slack', 1.5, 'stats.charm'],
       ['Carry on with your own section', 0.6]),
   ],

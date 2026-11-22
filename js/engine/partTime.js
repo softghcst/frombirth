@@ -31,7 +31,8 @@ export function jobOptions() {
   return PART_TIME_JOBS.map((j) => {
     let reason = '';
     const short = Object.entries(j.req ?? {}).find(([path, min]) => (Number(resolve(path)) || 0) < min);
-    if (p.age < Math.max(j.minAge, workLaw().workAge)) reason = `You need to be ${Math.max(j.minAge, workLaw().workAge)}.`;
+    if (j.from && store.state.year < j.from) reason = `There is no such job in ${store.state.year}.`;
+    else if (p.age < Math.max(j.minAge, workLaw().workAge)) reason = `You need to be ${Math.max(j.minAge, workLaw().workAge)}.`;
     else if (held.includes(j.id)) reason = 'You already work there.';
     else if (j.campus && !(p.education.enrolled && STUDYING.includes(p.education.stage))) reason = 'Only for students at a university or college.';
     else if (short) reason = 'You are not quite what they are looking for yet.';

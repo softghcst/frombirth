@@ -11,9 +11,12 @@ import { SOURCES } from '../data/worldVerification.js';
 const SOURCE_LINE = `ISO 3166-1, ISO 4217 and the Unicode CLDR, the IANA time-zone database (${SOURCES.tzdata}) and GeoNames`;
 const CHECK_NAME = { codes: 'ISO codes', name: 'Name', currency: 'Currency', timeZone: 'Time zone', capital: 'Capital', unRegion: 'UN region', languages: 'Official languages', cities: 'Cities', regions: 'Regions of cities' };
 const LAW_NAME = { sameSexMarriage: 'Same-sex marriage', lgbt: 'LGBT people', deathPenalty: 'Death penalty', conscription: 'Military service', alcohol: 'Alcohol', divorce: 'Divorce',
-  votingAge: 'Voting age', drinkingAge: 'Drinking age', retirementAge: 'Pension age', birthright: 'Citizenship by birth', single: 'Dual citizenship', government: 'Form of government' };
+  votingAge: 'Voting age', drinkingAge: 'Drinking age', drivingAge: 'Driving age', marriageAge: 'Marriage age', gambling: 'Gambling', gamblingAge: 'Gambling age',
+  schoolLeavingAge: 'School-leaving age', retirementAge: 'Pension age', birthright: 'Citizenship by birth', single: 'Dual citizenship', naturalization: 'Years before citizenship', spouseWait: 'Wait for a citizen\'s spouse', healthCare: 'Health care', taxTop: 'Top rate of income tax', taxShape: 'Flat or rising income tax', inheritance: 'Estate and inheritance tax',
+  freeMovement: 'Free movement', government: 'Form of government' };
 const CHECK_WORD = { ok: 'Confirmed', review: 'Differs on purpose', unconfirmed: 'Not confirmed', mismatch: 'Disagrees with the source' };
 import { healthLine, taxLine } from './systems.js';
+import { inheritanceLine } from './inheritance.js';
 import { outlook } from './economy.js';
 import { cityLine } from './cities.js';
 import { sheet, reforms } from './rules.js';
@@ -22,7 +25,8 @@ import { COUNTRIES, COUNTRY_LIST, propertyTaxLabel } from '../data/countries.js'
 import { PLACES, GROUPS, placesIn } from '../data/world.js';
 import { SYSTEMS } from '../data/politics.js';
 import { MONARCHIES } from '../data/royalty.js';
-import { HAZARDS, CRISES } from '../data/living.js';
+import { CRISES } from '../data/living.js';
+import { KINDS, countryHazards } from '../data/disasters.js';
 import { schoolModel } from '../data/education.js';
 import { SPOKEN } from '../data/skills.js';
 
@@ -72,7 +76,7 @@ export function profile(id) {
     ['Typical pay', `${times(L.wage)} pay in the United States`],
     ['Local prices', `${times(L.cost)} prices in the United States`],
     ['Income tax', `${Math.round(c.incomeTax * 100)}%`],
-    ['Inheritance tax', c.estateTax ? `${Math.round(c.estateTax * 100)}%` : 'none'],
+    ['Inheritance tax', inheritanceLine(c)],
     ['Property tax', propertyTaxLabel(c)],
     ['Health care', healthLine(c)],
     ['How income is taxed', taxLine(c)],
@@ -82,7 +86,7 @@ export function profile(id) {
     ['Power, water, roads', level(L.infra, ['Reliable', 'Mostly reliable', 'Patchy', 'Unreliable', 'Failing'])],
     ['Stability', level(L.stability, ['Very stable', 'Stable', 'Tense', 'Unstable', 'In turmoil'])],
     ['Prices over time', { low: 'Steady', high: 'Rising fast', extreme: 'Out of control' }[L.inflation]],
-    ...(L.hazards.length ? [['Natural hazards', L.hazards.map((h) => HAZARDS[h].name ?? h).join(', ')]] : []),
+    ...(countryHazards(id, L).length ? [['Natural hazards', countryHazards(id, L).map((h) => KINDS[h].plural).join(', ')]] : []),
     ...(L.crisis ? [['Ongoing', CRISES[L.crisis].name]] : []),
     ...(store.state ? [['Economy now', outlook(id).name]] : []),
   ];
@@ -107,8 +111,8 @@ export function profile(id) {
   const lc = LAW_CHECKED[id] ?? {};
   const lawChecks = Object.entries(LAW_NAME).filter(([k]) => lc[k] && !(store.state?.rules?.[id]?.[k])).map(([k, name]) => {
     const v = lc[k];
-    const src = LAW_SOURCES[{ alcohol: 'drinkingAge' }[k] ?? k];
-    const cite = Array.isArray(src) ? 'Wikipedia, regional articles' : src ? `Wikipedia, "${src.page}"` : '';
+    const src = LAW_SOURCES[{ alcohol: 'drinkingAge', gambling: 'gamblingAge', freeMovement: 'eu', spouseWait: 'naturalization', taxShape: 'taxTop' }[k] ?? k];
+    const cite = Array.isArray(src) ? 'Wikipedia, regional articles' : src?.site ? `${src.site}, "${src.page}"` : src ? `Wikipedia, "${src.page}"` : '';
     return [name, `${CHECK_WORD[v.status]}${v.status === 'ok' ? ` (${cite})` : v.note ? `: ${v.note}` : ''}`];
   });
   const spoken = Object.entries(SPOKEN).filter(([, ids]) => ids.includes(id)).map(([k]) => k);

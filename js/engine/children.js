@@ -1,6 +1,7 @@
 // Children: pregnancy, birth, adoption, growing up, and grandchildren. Also
 // getting a pet. Children carry their own stats and talents so a later phase
 // can let the player continue as one of them.
+import { announce } from './pregnancyChoice.js';
 import { childbirthRisk } from './history.js';
 import { atBirth, held } from './citizenship.js';
 import { noteBirth } from './globalLife.js';
@@ -10,6 +11,7 @@ import { store, player, country, npcsByRole, log, milestone } from '../state.js'
 import { makeNpc, makePet } from './npcFactory.js';
 import { inheritAppearance, inheritTraits, inheritTalents, inheritStats } from './genetics.js';
 import { spendAction, PET_PRICE, canGetPet } from './relationships.js';
+import { childGenome, genomeOf } from './health/heredity.js';
 import { quickAdopt } from './animalCare.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -49,8 +51,10 @@ export function canConceive(npc) {
 export function conceive(npc, planned) {
   const p = player();
   p.flags.pregnancy = { dueAge: p.age + 1, otherId: npc.id };
-  if (p.gender === 'female') return planned ? 'You are pregnant.' : 'A few weeks later, the test is positive. You are pregnant.';
-  return planned ? `${npc.firstName} is pregnant.` : `A few weeks later, ${npc.firstName} tells you they are pregnant.`;
+  const said = p.gender === 'female' ? (planned ? 'You are pregnant.' : 'A few weeks later, the test is positive. You are pregnant.')
+    : (planned ? `${npc.firstName} is pregnant.` : `A few weeks later, ${npc.firstName} tells you they are pregnant.`);
+  announce(npc, said);
+  return said;
 }
 
 export const canTryForBaby = (npc) =>
@@ -92,6 +96,10 @@ export function newborn(other) {
   child.parentIds = other ? [other.id] : [];
   // Nationality: each parent's, and the place's own where being born there is enough.
   child.citizenships = atBirth(p.countryId, [held(p), other ? held(other) : []], store.state.year);
+  // Genes come from the two biological parents; a parent's diagnosis is never copied to a child.
+  const mine = genomeOf(p); const theirs = other ? genomeOf(other) : null;
+  const sex = child.gender === 'male' ? 'male' : 'female';
+  child.genome = p.gender === 'female' ? childGenome(mine, theirs, child.id, sex) : childGenome(theirs, mine, child.id, sex);
   child.bornIn = p.countryId;
   child.birthCity = p.city;
   const added = addNpc(child);

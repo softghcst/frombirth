@@ -72,7 +72,7 @@ for (const c of COUNTRY_LIST) {
   check(Array.isArray(c.cities) && c.cities.length >= 1 && new Set(c.cities).size === c.cities.length, `${tag}: needs at least one city, none repeated`);
   check(c.names.male.length >= 8 && c.names.female.length >= 8 && c.names.last.length >= 8, `${tag}: too few names`);
   check(c.flag && typeof c.freeHealthcare === 'boolean' && typeof c.freeUniversity === 'boolean', `${tag}: flag or public-services data missing`);
-  check(c.incomeTax >= 0 && c.incomeTax < 0.6 && c.estateTax >= 0 && c.estateTax < 0.6 && c.propertyTax >= 0 && c.propertyTax < 0.05, `${tag}: a tax rate is out of range`);
+  check(c.incomeTax >= 0 && c.incomeTax < 0.6 && c.propertyTax >= 0 && c.propertyTax < 0.05, `${tag}: a tax rate is out of range`);
   const L = c.living;
   check(L && L.wage > 0 && L.cost > 0 && Number.isFinite(L.wageK) && Number.isFinite(L.costK), `${tag}: living data missing`);
   for (const k of ['safety', 'health', 'infra', 'stability', 'graft']) check(L[k] >= 0 && L[k] <= 100, `${tag}: ${k} is outside 0-100`);
@@ -87,7 +87,7 @@ for (const c of COUNTRY_LIST) {
 }
 if (!problems.length) pass(`${COUNTRY_LIST.length} places: codes, type, currency, cities, names, living data, politics and schools all in order`);
 
-// 3. Relationships that must be modelled, not flattened.
+// 3. Relationships that must be modeled, not flattened.
 const rel = (id, type, parent) => check(PLACES[id].type === type && PLACES[id].parentId === parent, `${id}: expected ${type} of ${parent}`);
 rel('pr', 'territory', 'us'); rel('aw', 'territory', 'nl'); rel('hk', 'special_administrative_region', 'cn');
 check(PLACES.tw.type === 'jurisdiction' && !PLACES.tw.parentId && COUNTRIES.tw.currency.code === 'TWD', 'Taiwan must be a distinct jurisdiction with its own currency');

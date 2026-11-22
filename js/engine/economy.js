@@ -60,7 +60,13 @@ export function ties(p = player()) {
 export function post(placeId, kind, text, tone = 'neutral', journal = true) {
   const w = world();
   w.news.push({ year: store.state.year, placeId, kind, text });
-  if (w.news.length > NEWS_MAX) w.news.shift();
+  // Full: the oldest story from somewhere the player has no ties to goes first, so a world of floods and elections
+  // never crowds out the news from home.
+  if (w.news.length > NEWS_MAX) {
+    const mine = ties();
+    const i = w.news.findIndex((n) => n.placeId != null && !mine.has(n.placeId));
+    w.news.splice(i >= 0 ? i : 0, 1);
+  }
   // Children do not follow the news, and not everything is worth a line in a life.
   if (journal && player().age >= 12 && (placeId == null || ties().has(placeId))) log(text, 'system', tone);
 }
@@ -68,8 +74,12 @@ export function post(placeId, kind, text, tone = 'neutral', journal = true) {
 /** The news, newest first, with what touches the player marked. */
 export function news(limit = 40) {
   const mine = ties();
-  return [...(store.state.world?.news ?? [])].reverse().slice(0, limit).map((n) => ({ ...n, yours: n.placeId == null || mine.has(n.placeId),
-    flag: n.placeId ? COUNTRIES[n.placeId]?.flag ?? '' : '🌍' }));
+  const all = [...(store.state.world?.news ?? [])].map((n, i) => ({ ...n, i, yours: n.placeId == null || mine.has(n.placeId),
+    flag: n.placeId ? COUNTRIES[n.placeId]?.flag ?? '' : '🌍' })).reverse();
+  // Up to half of what is shown is news that touches the player, however much else is happening in the world.
+  const yours = all.filter((n) => n.yours).slice(0, Math.ceil(limit / 2));
+  const rest = all.filter((n) => !n.yours).slice(0, limit - yours.length);
+  return [...yours, ...rest].sort((a, b) => b.i - a.i).slice(0, limit).map(({ i, ...n }) => n);
 }
 
 /** How things stand where the player lives, in a sentence. */
@@ -108,7 +118,7 @@ export function tickEconomy() {
   if (rng.chance(WORLD_DOWNTURN.chance)) {
     let n = 0;
     for (const c of COUNTRY_LIST) if (phaseOf(c.id) !== 'slump' && (store.state.world?.places?.[c.id]?.heldUntil ?? 0) < year && rng.chance(WORLD_DOWNTURN.share)) { turn(c.id, 'slump', true); n += 1; }
-    post(null, 'economy', `A financial crisis has spread around the world. ${n} economies are in recession${phaseOf() === 'slump' ? `, ${the(player().countryId)} among them` : ''}.`, 'bad');
+    if (n) post(null, 'economy', `A financial crisis has spread around the world. ${n} economies are in recession${phaseOf() === 'slump' ? `, ${the(player().countryId)} among them` : ''}.`, 'bad');
     return;
   }
   for (const c of COUNTRY_LIST) {
@@ -218,8 +228,8 @@ export function fromAbroad(n, hereId, { settled = false, keepSurname = false, ye
   if (!keepSurname) n.lastName = surnameFor(from, rng.pick(COUNTRIES[from].names.last), n.gender);
   n.flags.from = from;
   n.citizenships = [{ jurisdictionId: issuerOf(from), acquisitionType: 'birth', acquiredAt: year - n.age }];
-  // Someone long settled has usually naturalised, unless either country allows only one nationality.
-  if (settled && !SINGLE.has(issuerOf(from)) && !SINGLE.has(issuerOf(hereId))) n.citizenships.push({ jurisdictionId: issuerOf(hereId), acquisitionType: 'naturalisation', acquiredAt: year - Math.min(10, Math.max(1, n.age - 20)) });
+  // Someone long settled has usually naturalized, unless either country allows only one nationality.
+  if (settled && !SINGLE.has(issuerOf(from)) && !SINGLE.has(issuerOf(hereId))) n.citizenships.push({ jurisdictionId: issuerOf(hereId), acquisitionType: 'naturalization', acquiredAt: year - Math.min(10, Math.max(1, n.age - 20)) });
   return from;
 }
 /** Whether a newly made family, or someone newly met, has roots abroad. */

@@ -1,10 +1,11 @@
 // Tax schedules and health-care models: how a country's headline numbers
 // turn into what one person actually pays. Shapes are in data/systems.js.
+import { held } from './citizenship.js';
 import { localMoney, fmtMoney, theCountry } from '../util.js';
 import { player, country, log } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { TAX_SHAPES, TAX_SHAPE_OF, HEALTH_MODELS, HEALTH_MODEL_OF, VISA_HEALTH } from '../data/systems.js';
+import { TAX_SHAPES, TAX_SHAPE_OF, TAX_TOP, HEALTH_MODELS, HEALTH_MODEL_OF, VISA_HEALTH } from '../data/systems.js';
 import { residency } from './citizenship.js';
 import { taxShift } from './policy.js';
 
@@ -31,9 +32,20 @@ export function taxBreakdown(gross, c = country()) {
   let from = allowance;
   let tax = 0;
   let marginal = 0;
-  for (const [upTo, k] of shape.bands) {
+  const bandRates = [];
+  // Where the top rate is known, the last band uses it and no band goes above it (TAX_TOP in data/systems.js).
+  const top = shape.bands.length > 1 ? TAX_TOP[c.id] : undefined;
+  let prev = 0;
+  shape.bands.forEach(([upTo, k], i) => {
+    const last = i === shape.bands.length - 1;
+    let r = Math.min(shape.cap, rate * k);
+    if (top != null) r = last ? Math.max(prev, Math.min(0.65, top)) : Math.min(r, top);
+    prev = r;
+    bandRates.push(r);
+  });
+  for (const [i, [upTo]] of shape.bands.entries()) {
     const to = upTo === Infinity ? Infinity : Math.round(upTo * T);
-    const r = Math.min(shape.cap, rate * k);
+    const r = bandRates[i];
     const taxed = Math.max(0, Math.min(gross, to) - from);
     if (taxed > 0 || !bands.length) { bands.push({ from, to, rate: r, taxed, tax: Math.round(taxed * r) }); tax += taxed * r; if (taxed > 0) marginal = r; }
     from = to;
@@ -48,9 +60,9 @@ export function taxLine(c = country()) {
   const shape = taxShapeOf(c);
   const rate = Math.round(headlineRate(c) * 100);
   if (shape === TAX_SHAPES.none) return 'No income tax';
-  if (shape === TAX_SHAPES.flat) return `A flat ${rate}%`;
-  const top = Math.round(Math.min(shape.cap, headlineRate(c) * shape.bands.at(-1)[1]) * 100);
-  return `${shape.name}: about ${Math.round(taxBreakdown(typicalWage(c), c).effective * 100)}% of a typical wage, up to ${top}% on the highest incomes`;
+  if (shape === TAX_SHAPES.flat) return `${rate}% flat`;
+  const top = Math.round(taxBreakdown(typicalWage(c) * 200, c).marginal * 100);
+  return `About ${Math.round(taxBreakdown(typicalWage(c), c).effective * 100)}%, up to ${top}%`;
 }
 
 // ---------- Health care ----------
@@ -85,6 +97,8 @@ export function cover(p = player()) {
   }
   if (m.covers === 'everyone') return { model: m, covered: true, share: m.share, how: m.line, premium: p.age >= 18 && m.premium ? price : 0, canBuy: false, bought: false };
   if (working) return { model: m, covered: true, share: m.share, how: 'Your job brings health cover with it.', premium: 0, canBuy: false, bought };
+  // Where cover comes through an employer, it is for expatriates: the country's own citizens have a national scheme.
+  if (m.covers === 'workers' && held(p).includes(c.place?.nationalityOf ?? c.id)) return { model: m, covered: true, share: m.share, how: 'As a citizen you are covered by the national scheme.', premium: 0, canBuy: false, bought: false };
   if (m.covers === 'buyers' && bought) return { model: m, covered: true, share: m.share, how: 'You pay for your own cover.', premium: price, canBuy: true, bought: true };
   return { model: m, covered: false, share: m.uncovered, how: m.covers === 'buyers' ? 'You have no cover: you pay the whole bill.' : 'With no full-time job you have no cover: you pay the whole bill.',
     premium: 0, canBuy: m.covers === 'buyers', bought: false, price };

@@ -15,7 +15,7 @@ import { careWhere, homeOf } from './guardianship.js';
 import { GANGS, ESCAPE_PENALTY, RECAPTURE_PENALTY, LIFE_SENTENCE } from '../data/crimes.js';
 import { LAYOUTS } from '../data/prisonLayouts.js';
 import {
-  systemFor, FACILITY_KINDS, PROGRAMMES, PROGRAMME_BY_ID, PRISON_JOBS, PRISON_JOB_BY_ID, ROUTINES, INMATE_LIVES,
+  systemFor, FACILITY_KINDS, PROGRAMS, PROGRAM_BY_ID, PRISON_JOBS, PRISON_JOB_BY_ID, ROUTINES, INMATE_LIVES,
   STAFF_ROLES, OFFENSES, OFFENSE_BY_ID, EVIDENCE_FROM, courtsFor,
 } from '../data/justice.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -77,7 +77,7 @@ function newInmate(f) {
   const [lo, hi] = off.custody;
   n.flags.inmate = { facilityId: f.id, offenseId: off.id, yearsLeft: rng.int(Math.max(1, Math.ceil(lo / 2)), Math.max(2, Math.ceil(hi / 2))),
     interest: rng.pick(INMATE_LIVES.interests), goal: rng.pick(INMATE_LIVES.goals), background: rng.pick(INMATE_LIVES.backgrounds),
-    studying: rng.chance(0.35) ? rng.pick(PROGRAMMES).id : null, since: year() };
+    studying: rng.chance(0.35) ? rng.pick(PROGRAMS).id : null, since: year() };
   n.occupation = null;
   (n.flags.record ??= []).push({ crimeId: off.id, offense: off.name, year: year() - rng.int(0, 3), convicted: true, outcome: 'convicted', note: 'before the player knew them' });
   return n;
@@ -161,7 +161,7 @@ export function workOut() {
 
 export function read() {
   const p = player();
-  if (!once('read')) return result(false, 'You have read everything on the trolley this year.', 'neutral');
+  if (!once('read')) return result(false, 'You have read everything on the book cart this year.', 'neutral');
   p.stats.intellect = clamp(p.stats.intellect + 3);
   p.stats.mood = clamp(p.stats.mood + 2);
   bump('conduct', 5);
@@ -184,13 +184,13 @@ export function setRoutine(id) {
 const held = (type) => player().education.degrees.some((d) => d.type === type);
 
 /** Courses this facility can offer the player, and why any are closed. */
-export function programmeOptions() {
+export function programOptions() {
   const f = facility();
   const c = cell();
   if (!f || !c) return [];
   const sys = k.lawAt(f.countryId);
   const sec = f.kind === 'juvenile' ? 'min' : f.kind;
-  return PROGRAMMES.map((x) => {
+  return PROGRAMS.map((x) => {
     let why = '';
     if (RANK[sec] > RANK[x.security]) why = 'Not offered at this security level.';
     else if (sys.schooling < x.schooling) why = 'Not offered in prisons here.';
@@ -199,16 +199,16 @@ export function programmeOptions() {
     else if (x.notHeld && held(x.notHeld)) why = 'You already have this.';
     else if (c.studied?.[x.id]) why = 'Completed.';
     else if (x.gives && x.years > c.yearsLeft && c.yearsLeft < LIFE_SENTENCE) why = `Takes ${x.years} years; you have ${c.yearsLeft} left. You can finish it outside.`;
-    return { ...x, ok: !why, why, now: c.programme?.id === x.id };
+    return { ...x, ok: !why, why, now: c.program?.id === x.id };
   });
 }
 
-export function enrol(id) {
+export function enroll(id) {
   const c = cell();
-  const x = programmeOptions().find((y) => y.id === id);
+  const x = programOptions().find((y) => y.id === id);
   if (!x?.ok) return result(false, x?.why || 'That course is not on offer.', 'neutral');
-  if (c.programme && c.programme.id !== id) return result(false, `Finish ${PROGRAMME_BY_ID[c.programme.id].name.toLowerCase()} first, or leave it.`, 'neutral');
-  c.programme = { id, progress: 0, since: year() };
+  if (c.program && c.program.id !== id) return result(false, `Finish ${PROGRAM_BY_ID[c.program.id].name.toLowerCase()} first, or leave it.`, 'neutral');
+  c.program = { id, progress: 0, since: year() };
   const teacher = staffNear().find((s) => s.role.id === 'teacher')?.npc;
   const text = `You are enrolled: ${x.name.toLowerCase()}.${teacher ? ` ${teacher.firstName} ${teacher.lastName} runs the class.` : ''}`;
   log(text, 'system', 'good');
@@ -217,23 +217,23 @@ export function enrol(id) {
 }
 export function leaveCourse() {
   const c = cell();
-  if (!c?.programme) return result(false, 'You are not on a course.', 'neutral');
-  const x = PROGRAMME_BY_ID[c.programme.id];
-  c.programme = null;
+  if (!c?.program) return result(false, 'You are not on a course.', 'neutral');
+  const x = PROGRAM_BY_ID[c.program.id];
+  c.program = null;
   return result(true, `You left ${x.name.toLowerCase()}.`, 'neutral');
 }
 
 /** A year of study. Completion goes into the real education record. */
 function study(c) {
-  if (!c.programme) return;
+  if (!c.program) return;
   const p = player();
-  const x = PROGRAMME_BY_ID[c.programme.id];
+  const x = PROGRAM_BY_ID[c.program.id];
   const pace = c.routine === 'study' ? 1 : 0.7;
-  c.programme.progress = Math.round((c.programme.progress + pace * (0.85 + p.stats.intellect / 400)) * 100) / 100;
+  c.program.progress = Math.round((c.program.progress + pace * (0.85 + p.stats.intellect / 400)) * 100) / 100;
   if (x.stat) p.stats[x.stat] = clamp(p.stats[x.stat] + 3);
-  if (c.programme.progress < x.years) return;
+  if (c.program.progress < x.years) return;
   c.studied[x.id] = year();
-  c.programme = null;
+  c.program = null;
   const f = facility();
   if (x.gives) {
     const gpa = Math.round(clamp(2.3 + p.stats.intellect / 80 + (c.routine === 'study' ? 0.3 : 0) + rng.next() * 0.3, 2, 4) * 100) / 100;
@@ -388,10 +388,10 @@ export function getToKnow(npcId) {
 export function studyTogether(npcId) {
   const n = store.state.npcs[npcId];
   const c = cell();
-  if (!c?.programme) return result(false, 'You need to be on a course first.', 'neutral');
+  if (!c?.program) return result(false, 'You need to be on a course first.', 'neutral');
   if (!n?.flags.inmate || !once(`studied_${npcId}`)) return result(false, 'Not this year.', 'neutral');
-  n.flags.inmate.studying = c.programme.id;
-  c.programme.progress += 0.15;
+  n.flags.inmate.studying = c.program.id;
+  c.program.progress += 0.15;
   n.meters.relationship = clamp(n.meters.relationship + 8);
   remember(n, 'studiedInside', 'You studied together inside.');
   const text = `You and ${n.firstName} quiz each other after lock-up. You are both further on for it.`;
@@ -418,9 +418,9 @@ export function healthcare() {
   return result(true, text);
 }
 
-export function counselling() {
+export function counseling() {
   const p = player();
-  if (!once('counselling')) return result(false, 'Your sessions for the year are booked.', 'neutral');
+  if (!once('counseling')) return result(false, 'Your sessions for the year are booked.', 'neutral');
   p.stats.mood = clamp(p.stats.mood + 7);
   bump('conduct', 4);
   c2().courses = (c2().courses ?? 0) + 0.5;
@@ -437,7 +437,7 @@ export function joinCourse() {
   bump('conduct', 6);
   const text = 'A rehabilitation course: twelve weeks of looking hard at choices, yours included.';
   log(text, 'system', 'good');
-  k.note(player().id, 'programme', 'Completed a rehabilitation course in custody.');
+  k.note(player().id, 'program', 'Completed a rehabilitation course in custody.');
   return result(true, text);
 }
 
@@ -557,7 +557,7 @@ export function appealCase(caseId, ground) {
   const c = k.J().cases[caseId];
   if (!c || c.defendantId !== p.id) return result(false, 'There is no such case.', 'neutral');
   const cost = p.finance.cash < localMoney(25000, country()) ? 0 : localMoney(APPEAL_COST, country());
-  if (cost && !k.pay({ key: `appeal:${caseId}:${ground}`, kind: 'legal_fee', amount: cost, payer: p.id, payee: c.defenceId ?? 'counsel', caseId })) {
+  if (cost && !k.pay({ key: `appeal:${caseId}:${ground}`, kind: 'legal_fee', amount: cost, payer: p.id, payee: c.defenseId ?? 'counsel', caseId })) {
     return result(false, `An appeal costs ${fmtMoney(cost, country())}.`, 'neutral');
   }
   const r = k.fileAppeal(c, ground);
@@ -724,10 +724,10 @@ export function tickPrison() {
   p.counters.yearsJailed += 1;
   // How the year felt depends on what filled it, and who stayed in touch.
   const contact = c.visits.filter((v) => v.year === year() - 1 || v.year === year()).length + (acts().letters ?? 0) * 0.5 + (acts().calls ?? 0) * 0.5;
-  p.stats.mood = clamp(p.stats.mood - (c.security === 'max' ? 6 : 4) + Math.min(contact, 4) + (c.programme ? 1 : 0));
+  p.stats.mood = clamp(p.stats.mood - (c.security === 'max' ? 6 : 4) + Math.min(contact, 4) + (c.program ? 1 : 0));
   if (c.security === 'max') p.stats.health = clamp(p.stats.health - 1);
   if (c.routine === 'fitness') p.stats.health = clamp(p.stats.health + 3);
-  if (c.routine === 'programmes') { bump('conduct', 5); c.courses = (c.courses ?? 0) + 0.5; }
+  if (c.routine === 'programs') { bump('conduct', 5); c.courses = (c.courses ?? 0) + 0.5; }
   if (c.routine === 'family') for (const n of contacts().slice(0, 2)) n.meters.relationship = clamp(n.meters.relationship + 3);
   study(c);
   work(c);

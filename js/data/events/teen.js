@@ -56,12 +56,12 @@ export default [
       ] },
       { label: 'Fetch a teacher', outcomes: [any('A teacher breaks it up. The kid nods at you on the way past.', 'good', hid('karma', 5))] },
       { label: 'Film it', outcomes: [any('The video gets passed around. You do not feel good about it.', 'bad', hid('karma', -8), followers(40))] },
-      { label: 'Keep walking', outcomes: [any('You look at the floor until you are round the corner.', 'neutral', hid('karma', -3), st('mood', -2))] },
+      { label: 'Keep walking', outcomes: [any('You look at the floor until you are around the corner.', 'neutral', hid('karma', -3), st('mood', -2))] },
     ],
   },
   {
-    id: 'summer_work', category: 'teen', ageRange: [14, 17], cooldown: 2,
-    text: 'A neighbor offers to pay you to clear and paint their fence over the summer.',
+    id: 'summer_work', timing: { seasons: ['spring', 'summer', 'hot', 'dry'] }, category: 'teen', ageRange: [14, 17], cooldown: 2,
+    text: 'A neighbor offers to pay you to clear and paint their fence over summer vacation.',
     choices: [
       { label: 'Take it and do it properly', outcomes: [any('Six blistered weeks later you are handed {$400}.', 'good', cash(400), hid('discipline', 5), st('health', 2))] },
       { label: 'Take it and rush it', check: chk(0.5, { 'stats.charm': 0.4 }), outcomes: [
@@ -73,7 +73,7 @@ export default [
   },
   {
     id: 'driving_lesson', category: 'teen', ageRange: [16, 17], once: true, weight: 2, cast: { father: 'father' },
-    text: '{father} takes you to an empty car park and hands you the keys.',
+    text: '{father} takes you to an empty parking lot and hands you the keys.',
     choices: [
       { label: 'Take it slow', outcomes: [any('You stall eleven times, then drive a full lap. {father} claps.', 'good', rel('father', 6), st('mood', 5), flag('canDrive'))] },
       { label: 'Show off', check: chk(0.35, { 'stats.intellect': 0.3, 'talents.sports': 0.3 }), outcomes: [
@@ -143,7 +143,7 @@ export default [
         ok('Raw talent carries you through.', tal('sports', 5), st('mood', 7)),
         bad('You are sick behind the goal after the warm-up laps.', st('mood', -5), st('health', -1)),
       ] },
-      { label: 'Give it a miss', outcomes: [any('You watch from the stands with a bag of crisps.', 'neutral', st('mood', 1))] },
+      { label: 'Give it a miss', outcomes: [any('You watch from the stands with a bag of chips.', 'neutral', st('mood', 1))] },
     ],
   },
   {

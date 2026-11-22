@@ -113,9 +113,9 @@ export function season(countryId, month, city) {
   if (!c) return null;
   if (Math.abs(c.lat) < 15) return month >= 5 && month <= 10 ? 'the wet season' : 'the dry season';
   const north = c.lat >= 0;
-  const s = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'][month - 1];
+  const s = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'fall', 'fall', 'fall', 'winter'][month - 1];
   if (north) return s;
-  return { winter: 'summer', summer: 'winter', spring: 'autumn', autumn: 'spring' }[s];
+  return { winter: 'summer', summer: 'winter', spring: 'fall', fall: 'spring' }[s];
 }
 /** Broad climate, from latitude alone. A description for play, not a climate classification. */
 export function climate(countryId, city) {

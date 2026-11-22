@@ -18,6 +18,7 @@ A field is 'ok' when the source agrees, 'review' when it differs and the reason 
 stands is written in DECIDED, 'unconfirmed' when the source does not cover the place, and
 'mismatch' when nobody has looked yet.
 """
+import html
 import json
 import os
 import re
@@ -46,6 +47,15 @@ SOURCES = {
     'birthright': ('Jus soli', 1384581062),
     'single': ('Multiple citizenship', 1383418957),
     'government': ('List of countries by system of government', 1385845870),
+    'marriageAge': ('Marriageable age', 1382980745),
+    'drivingAge': ('List of minimum driving ages', 1383563696),
+    'gamblingAge': ('Gambling age', 1385344433),
+    'naturalization': ('Naturalization', 1384638556),
+    'eu': ('Member state of the European Union', 1386331027),
+    'tasman': ('Trans-Tasman Travel Arrangement', 1386322832),
+    'healthCare': ('Universal health care', 1385246824),
+    'taxTop': ('List of countries by tax rates', 1385796804),
+    'schoolLeavingAge': ('School-leaving age', 1380468003),
 }
 
 # Where the game's value stands although the source reads differently, and why.
@@ -70,6 +80,50 @@ DECIDED = {
     ('gy', 'single'): 'The source lists dual citizenship as restricted in Guyana without detail; the game allows it, unverified.',
     ('at', 'single'): 'Dual citizenship only with special permission or from birth; the game treats Austria as single-nationality.',
 }
+
+# Decided while checking the second round: marriage, driving and gambling ages, naturalization.
+DECIDED.update({
+    ('au', 'drivingAge'): 'The table lists Victoria (18) first; most states license at 17, which the game uses.',
+    ('es', 'drivingAge'): 'The ages the table lists first are for mopeds and motorcycles; a car license is at 18.',
+    ('iq', 'drivingAge'): 'The table lists motorcycles first; cars are 18.',
+    ('jm', 'drivingAge'): 'A learner can drive at 16 or 17 under supervision; the game uses 18, the age of a full license.',
+    ('jp', 'drivingAge'): 'The table lists small motorcycles first; ordinary cars are 18.',
+    ('np', 'drivingAge'): 'The table lists two-wheelers first; four-wheelers are 18.',
+    ('vn', 'drivingAge'): 'The table lists small motorcycles first; cars are 18.',
+    ('uk', 'marriageAge'): 'The table gives 16 for Scotland and Northern Ireland; the game never lets anyone marry before 18.',
+    ('ir', 'marriageAge'): 'The law allows women to marry at 15; the game never lets anyone marry before 18.',
+    ('pk', 'marriageAge'): 'The law allows women to marry at 16 in some provinces; the game never lets anyone marry before 18.',
+    ('ca', 'drivingAge'): 'Set by each province, 16 in most, which the game uses.',
+    ('il', 'drivingAge'): 'The table cell lists motorcycles and supervised driving first; a car license is at 17, which the game uses.',
+    ('nz', 'drivingAge'): 'The age is 16 and a half; the game counts whole years.',
+    ('au', 'schoolLeavingAge'): 'The table gives 15 or 17; school or training is compulsory to 17 in most states, which the game uses.',
+    ('cr', 'schoolLeavingAge'): 'The table gives 17 or 18; the game uses 17.',
+    ('pl', 'schoolLeavingAge'): 'Compulsory education lasts to 18 (the table gives a range); the game uses 18.',
+    ('tr', 'schoolLeavingAge'): 'The table gives 14 to 16, uncertain; the game uses 16.',
+    ('sg', 'naturalization'): 'There is no fixed residence period; the game uses the ten years given in Singapore\'s nationality-law article.',
+    ('pt', 'gamblingAge'): 'Some casinos admit from 25 and others from 18; the game uses 18.',
+    ('br', 'gambling'): 'Casinos are illegal, but lotteries and (since 2023) fixed-odds betting are legal; the game counts that as legal.',
+    ('eg', 'gambling'): 'Casinos are open to foreigners only; for citizens the game treats gambling as banned.',
+    ('ws', 'gambling'): 'Casinos are open to foreigners only; for citizens the game treats gambling as banned.',
+    ('in', 'gambling'): 'Gambling is illegal under national law except in a few states (Goa, Sikkim) and state lotteries; the game treats it as banned.',
+    ('ph', 'spouseWait'): 'The note lists several reductions; for the husband of a Filipina it is five years, which the game uses.',
+    ('us', 'taxTop'): 'The table gives New York City\'s combined 51.8%; the game uses the federal 37%, since state income tax varies from none to about 13%.',
+    ('bo', 'taxTop'): "The table's 25% is not the personal income tax; Bolivia taxes wages through the RC-IVA at a flat 13%, which the game uses.",
+    ('ee', 'taxTop'): "The table's 23.6% is an effective figure for 2024; Estonia's flat income tax is 22% from 2025, which the game uses.",
+    ('ro', 'taxTop'): "The table's 45% adds social and health contributions; Romania's income tax is a flat 10%, which the game uses.",
+    ('br', 'inheritance'): 'PwC gives the 8% ceiling on the state tax; the game uses the São Paulo rate of 4%.',
+    ('cl', 'inheritance'): 'PwC gives the scale\'s top of 25%; heirs outside the family pay 40% more, which the game includes (35%).',
+    ('es', 'inheritance'): 'PwC gives the state scale\'s top of 34%; the game multiplies it by 1.7 for heirs outside the family, as the law does.',
+    ('jp', 'inheritance'): 'PwC gives 55%; heirs who are not family pay a fifth more, which the game includes (66%).',
+    ('tn', 'inheritance'): 'PwC gives the 2.5% between ancestors and descendants; its summary gives up to 35% for others, which the game uses.',
+    ('ua', 'inheritance'): 'PwC gives the income tax scale up to 18% for non-residents; the game models residents: close family 0%, others 5%.',
+    ('ht', 'drinkingAge'): 'The source gives no national age; Port-au-Prince forbids selling to under-18s, which the game uses.',
+    ('bo', 'taxShape'): 'The table gives 0% to 25%; wages are taxed through the RC-IVA at one rate of 13%, which the game uses.',
+    ('ee', 'taxShape'): 'The table gives effective rates after the basic exemption; the income tax itself is one rate of 22%.',
+    ('ro', 'taxShape'): 'The table adds social and health contributions; the income tax itself is one rate of 10%.',
+    ('ua', 'taxShape'): 'The table counts untaxed income as 0%; the income tax is one rate of 18% on what is taxed.',
+    ('my', 'naturalization'): "The table gives 12 years; Malaysia's nationality-law article gives 10 years' residence, which the game uses.",
+})
 
 # Retirement: where the table gives a range, the standard full-pension age.
 RETIRE_STANDARD = {'us': 67, 'ca': 65, 'hk': 65, 'sg': 63, 'it': 67, 'fi': 65, 'se': 66, 'no': 67, 'uy': 65, 'dk': 67, 'be': 66}
@@ -101,20 +155,36 @@ def game():
       const { PLACES } = await import('./js/data/world.js');
       const law = await import('./js/engine/rules.js');
       const cit = await import('./js/data/citizenship.js');
+      const { HEALTH_MODEL_OF } = await import('./js/data/systems.js');
+      const inh = await import('./js/engine/inheritance.js');
       const out = {};
       for (const c of COUNTRY_LIST) {
         const row = { name: c.name, iso3: PLACES[c.id].iso3, gov: PLACES[c.id].government };
         for (const r of law.sheet(c.id, { region: null })) row[r.id] = r.value;
-        row.birthright = cit.BIRTHRIGHT.has(c.id); row.single = cit.SINGLE.has(c.id);
+        row.taxTop = (await import('./js/engine/systems.js')).taxBreakdown((await import('./js/engine/systems.js')).typicalWage(c) * 200, c).marginal;
+        const sysd = await import('./js/data/systems.js');
+        row.taxShape = c.incomeTax <= 0 ? 'none' : sysd.TAX_SHAPE_OF[c.id] ?? 'moderate';
+        row.inherit = { kind: inh.lawOf(c.id).kind, top: Math.max(inh.topRate(c, 'child'), inh.topRate(c, 'other')) };
+        row.health = HEALTH_MODEL_OF[c.id] ?? (c.freeHealthcare ? 'public' : 'pocket');
+        row.birthright = cit.BIRTHRIGHT.has(c.id); row.single = cit.SINGLE.has(c.id); row.years = cit.RESIDENCE_YEARS[c.id] ?? cit.DEFAULT_YEARS;
+        row.spouseYears = Math.min(row.years, cit.SPOUSE_YEARS_IN?.[c.id] ?? Math.max(cit.SPOUSE_YEARS, Math.ceil(row.years / 2)));
+        row.marriageAgeWomen = law.rule('marriageAgeWomen', c.id, { region: null });
         out[c.id] = row;
       }
-      console.log(JSON.stringify(out));
+      const { FREE_MOVEMENT } = await import('./js/data/immigration.js');
+      console.log(JSON.stringify({ out, free: FREE_MOVEMENT }));
     """
     r = subprocess.run(['node', '--input-type=module', '-e', script], cwd=ROOT, capture_output=True, text=True, check=True)
-    return json.loads(r.stdout)
+    d = json.loads(r.stdout)
+    FREE_EUROPE[:] = next(a['members'] for a in d['free'] if a['id'] == 'europe')
+    TASMAN[:] = next(a['members'] for a in d['free'] if a['id'] == 'tasman')
+    return d['out']
 
 
 G = None
+PWC = {}
+FREE_EUROPE = []
+TASMAN = []
 BY3 = {}
 BYNAME = {}
 ALIAS = {'united states of america': 'us', 'united kingdom': 'uk', 'south korea': 'kr', 'democratic republic of the congo': 'cd', 'czech republic': 'cz', 'czechia': 'cz',
@@ -144,6 +214,29 @@ def clean(s):
     s = re.sub(r'\{\{(?:tooltip|abbr)\|([^|}]+)\|[^}]*\}\}', r'\1', s)
     s = re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]+)\]\]', r'\1', s)
     return re.sub(r"'''?", '', s)
+
+
+def cells_of(r):
+    """The cells of a table row as plain text; a cell spanning n columns is repeated n times."""
+    body = re.sub(r'<ref[^>]*/>|<ref[^>]*>.*?</ref>', '', r, flags=re.S).replace('\n!', '\n|')
+    out = []
+    for c in re.split(r'\|\||\n\|', '\n' + body.strip('\n')):
+        if not c.strip(): continue
+        span = re.match(r'\s*colspan="?(\d)"?', c)
+        c2 = re.sub(r'^\s*(?:(?:style|align|colspan|rowspan|data-sort-value|class)\s*=\s*"?[^|"]*"?\s*;?"?\s*)+\|', '', c)
+        c2 = re.sub(r'\{\{(?:center|nowrap|small)\|([^{}]*)\}\}', r'\1', c2)
+        out.extend([clean(c2).strip()] * (int(span.group(1)) if span else 1))
+    return out
+
+
+def car_license_age(cell):
+    parts = re.split(r'<br\s*/?>|,|;|\n|\s(?=\d{2}\s)', cell.replace('&nbsp;', ' '))
+    cars = [p for p in parts if re.search(r'\bcars?\b|ordinary|four-wheel|non-professional', p, re.I)]
+    for p in cars + parts:
+        if re.search(r'moped|motorcycle|scooter|two-wheel|tractor|quad|bus|truck|heavy|professional (?:licen|driv)|supervis|teacher|learner|permit|attendant', p, re.I) and p not in cars: continue
+        m = re.search(r'\b(1[4-9]|2[0-1])\b', p)
+        if m: return int(m.group(1))
+    return None
 
 
 def table_at(w, start):
@@ -235,8 +328,10 @@ def src_drinking(w):
             body = re.sub(r'<ref[^>]*/>|<ref[^>]*>.*?</ref>', '', r, flags=re.S)
             cells = [c for c in re.split(r'\n\|', '\n' + body.strip('\n')) if c.strip()]
             b = blocks.setdefault(cur, {'ages': set(), 'banned': False})
-            for c in cells[1:4]:
+            # Only the age columns (the last cell is notes), and not ages the notes say were changed from.
+            for c in (cells[1:-1] if len(cells) >= 4 else cells[1:4]):
                 c2 = re.sub(r'^\s*(?:style|align|colspan|rowspan)[^|]*\|', '', c)
+                c2 = re.sub(r'(?:from|previously|was|formerly|before)\s+(?:the\s+age\s+of\s+)?\d+', '', c2, flags=re.I)
                 b['ages'] |= {int(x) for x in re.findall(r'\b(1[4-9]|2[0-5])\b', c2)}
                 if re.search(r'Illegal|Prohibited|Banned|forbidden', c2, re.I): b['banned'] = True
     return blocks
@@ -295,6 +390,41 @@ GOV_WORDS = {
 }
 
 
+PWC_CHART = 'https://taxsummaries.pwc.com/quick-charts/inheritance-and-gift-tax-rates'
+PWC_NAMES = {'korea, republic of': 'kr', "china, people's republic of": 'cn', 'bahamas, the': 'bs', 'congo, democratic republic of the': 'cd',
+             'hong kong sar': 'hk', 'slovak republic': 'sk', 'czech republic': 'cz', 'puerto rico': 'pr', 'united states': 'us'}
+
+
+def pwc_inheritance():
+    """PwC's chart of headline inheritance tax rates: {place: (cell text, last reviewed)}. Cached in .cache/pwc/."""
+    d = os.path.join(ROOT, '.cache', 'pwc'); os.makedirs(d, exist_ok=True)
+    fn = os.path.join(d, 'inheritance-and-gift-tax-rates.html')
+    if not os.path.exists(fn):
+        with urllib.request.urlopen(urllib.request.Request(PWC_CHART, headers=UA), timeout=60) as r: open(fn, 'wb').write(r.read())
+    h = open(fn, encoding='utf-8').read()
+    t = h[h.find('<table'):]
+    out = {}
+    for r in re.findall(r'<tr.*?</tr>', t[:t.find('</table>')], re.S):
+        c = [' '.join(html.unescape(re.sub(r'<[^>]+>', ' ', x)).split()) for x in re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', r, re.S)]
+        m = re.match(r'(.*?)\s*\(Last reviewed ([^)]*)\)', c[0]) if c else None
+        if not m: continue
+        n = m.group(1).strip().lower()
+        pid = PWC_NAMES.get(n) or BYNAME.get(norm(n)) or ALIAS.get(norm(n))
+        if pid: out[pid] = (c[1], m.group(2))
+    return out
+
+
+def pwc_reading(cell):
+    """('none', None), ('rate', top rate), or ('text', None) when the cell gives no figure."""
+    low = cell.lower()
+    if cell.strip() in ('NA',) or 'however' not in low and re.search(r'^na at federal level|no inheritance tax|does not have an inheritance|not expressly|exempt from income tax|generally tax exempt|is not taxable', low):
+        return 'none', None
+    if cell.strip() == 'NP': return 'np', None
+    nums = [float(x) for x in re.findall(r'(?<![\d.])(\d+(?:\.\d+)?)\s*%?(?!\s*(?:million|years?|\d))', re.sub(r'(IQD|JMD|GBP|USD|EUR)\s*[\d,.]+(\s*million)?', '', cell))]
+    nums = [x for x in nums if 0 < x <= 80]
+    return ('rate', max(nums) / 100) if nums else ('text', None)
+
+
 def main():
     global G
     G = game()
@@ -302,6 +432,8 @@ def main():
         BY3[v['iso3']] = k
         BYNAME[norm(v['name'])] = k
     page = lambda key: fetch(*SOURCES[key])['wikitext']
+    global PWC
+    PWC = pwc_inheritance()
     results = {pid: {} for pid in G}
 
     def put(pid, field, ok, note, covered=True):
@@ -354,6 +486,130 @@ def main():
         elif pid in SAYS_MULTI and SAYS_MULTI[pid] in multi: put(pid, 'single', not g['single'] if pid not in ('pa', 'gy') else g['single'], f'source: "{SAYS_MULTI[pid]}"')
         else: put(pid, 'single', False, 'not covered by the source', covered=False)
 
+    # Marriage, driving and gambling ages; residence before naturalization; single nationality from the same table.
+    def first_rows(key):
+        seen = {}
+        w = page(key)
+        for m in re.finditer('wikitable', w):
+            for r in rows(table_at(w, m.start())):
+                pid = place_of(r)
+                if pid and pid not in seen: seen[pid] = cells_of(r)
+        return seen
+    def first_int(x):
+        m = re.search(r'\b(\d{1,2})\b', x or ''); return int(m.group(1)) if m else None
+
+    marriage = first_rows('marriageAge')
+    for pid, g in G.items():
+        c = marriage.get(pid)
+        men = first_int(c[1]) if c and len(c) > 1 else None
+        women = first_int(c[2]) if c and len(c) > 2 else None
+        if men is None: put(pid, 'marriageAge', False, 'not covered by the source', covered=False); continue
+        game_women = g.get('marriageAgeWomen') if g.get('marriageAgeWomen') is not None else g['marriageAge']
+        put(pid, 'marriageAge', g['marriageAge'] == men and (women is None or game_women == women), f'source: men {c[1][:40]}, women {c[2][:40] if len(c) > 2 else "?"}')
+
+    driving = first_rows('drivingAge')
+    for pid, g in G.items():
+        c = driving.get(pid)
+        if not c or len(c) < 2: put(pid, 'drivingAge', False, 'not covered by the source', covered=False); continue
+        # The youngest age to hold a car license (conditions allowed), skipping mopeds, motorcycles and supervised learners.
+        best = car_license_age(c[1])
+        put(pid, 'drivingAge', best == g['drivingAge'], f'source: {c[1][:90]}')
+
+    gambling = first_rows('gamblingAge')
+    for pid, g in G.items():
+        c = gambling.get(pid)
+        if not c or len(c) < 2:
+            put(pid, 'gambling', False, 'not covered by the source', covered=False); put(pid, 'gamblingAge', False, 'not covered by the source', covered=False); continue
+        illegal = bool(re.match(r'\s*Illegal', c[1]))
+        put(pid, 'gambling', g['gambling'] == (not illegal), f'source: {c[1][:90]}')
+        v = None if illegal else first_int(c[1])
+        if not g['gambling']: put(pid, 'gamblingAge', True, '')
+        elif v is None: put(pid, 'gamblingAge', False, 'no age given', covered=False)
+        else: put(pid, 'gamblingAge', g['gamblingAge'] == v, f'source: {c[1][:90]}')
+
+    nat = first_rows('naturalization')
+    for pid, g in G.items():
+        c = nat.get(pid)
+        if not c or len(c) < 4: put(pid, 'naturalization', False, 'not covered by the source', covered=False); continue
+        years = first_int(c[1])
+        put(pid, 'naturalization', (years is not None and years == g['years']) or (g['years'] >= 90 and years is None), f'source: {c[1][:60]}')
+        # A spouse's shorter wait, where the note states one.
+        sm = re.search(r'(?:spouse|married|marriage)[^.]{0,80}?\b(\d+|one|two|three|four|five)\s+years?|\b(\d+|one|two|three|four|five)\s+years?[^.]{0,60}(?:spouse|married|marriage)|waived for spouses', c[2], re.I)
+        if sm:
+            word = (sm.group(1) or sm.group(2) or '0').lower()
+            n = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5}.get(word, None)
+            n = int(word) if n is None else n
+            put(pid, 'spouseWait', g['spouseYears'] == n, f'source: {c[2][:90]}')
+        else:
+            put(pid, 'spouseWait', False, 'the source gives no separate wait for spouses', covered=False)
+        multi = True if '{{yes}}' in c[3] else False if '{{no}}' in c[3] else None
+        if multi is not None and results[pid].get('single', {}).get('status') != 'ok':
+            put(pid, 'single', g['single'] == (not multi), f'source: "Naturalization", multiple citizenship {c[3][:20]}')
+
+    # School-leaving ages: this table names countries in plain text.
+    w = page('schoolLeavingAge'); school = {}
+    for m in re.finditer('wikitable', w):
+        for r in rows(table_at(w, m.start())):
+            c = cells_of(r)
+            for i, x in enumerate(c[:3]):
+                pid = BYNAME.get(norm(x)) or ALIAS.get(norm(x))
+                if pid: school.setdefault(pid, c[i + 1] if i + 1 < len(c) else ''); break
+    for pid, g in G.items():
+        v = first_int(school.get(pid)) if pid in school else None
+        if v is None: put(pid, 'schoolLeavingAge', False, 'not covered by the source', covered=False)
+        else: put(pid, 'schoolLeavingAge', g['schoolLeavingAge'] == v, f'source: {school[pid][:40]}')
+
+    # Health care: a country the source lists as having universal care must not leave the patient with the whole bill.
+    # The list gives start dates for only some countries, so a country missing from it is not evidence of anything.
+    w = page('healthCare'); t = table_at(w, w.find('wikitable')); universal = {}
+    for r in rows(t):
+        m = re.search(r'\{\{flagg\|[^}]*?\|([^|{}]+)\}\}', r)
+        pid = place_of('{{flag|' + m.group(1) + '}}') if m else None
+        if pid: universal[pid] = (re.findall(r'\n\|\s*(\d{4})', r) or ['?'])[0]
+    for pid, g in G.items():
+        if pid in universal: put(pid, 'healthCare', g['health'] not in ('pocket', 'private'), f'source: universal health care since {universal[pid]}; the game charges the whole bill')
+        else: put(pid, 'healthCare', False, 'not in the source\'s list of start dates', covered=False)
+
+    # The top rate of income tax, from the "Highest" column.
+    taxes = first_rows('taxTop')
+    for pid, g in G.items():
+        c = taxes.get(pid)
+        m = re.search(r'(\d+(?:\.\d+)?)\s*%', c[3]) if c and len(c) > 3 else None
+        if not m: put(pid, 'taxTop', False, 'not covered by the source', covered=False); continue
+        put(pid, 'taxTop', abs(g['taxTop'] - min(0.65, float(m.group(1)) / 100)) < 0.0051, f'source: {c[3][:60]}')
+        # The shape: one rate for everyone where the lowest and highest rates are the same (or no tax at all).
+        lo = re.search(r'(\d+(?:\.\d+)?)\s*%', c[2]) if len(c) > 2 else None
+        if lo:
+            src_flat = abs(float(lo.group(1)) - float(m.group(1))) < 0.01
+            put(pid, 'taxShape', (g['taxShape'] in ('flat', 'none')) == src_flat, f'source: lowest {c[2][:30]}, highest {c[3][:30]}; game: {g["taxShape"]}')
+        else: put(pid, 'taxShape', False, 'no lowest rate in the source', covered=False)
+
+    # Estate and inheritance tax: PwC's headline rate is the top rate anyone pays (often an unrelated heir).
+    for pid, g in G.items():
+        cell = PWC.get(pid)
+        if not cell: put(pid, 'inheritance', False, 'not in PwC\'s chart', covered=False); continue
+        kind, top = pwc_reading(cell[0])
+        gi = g['inherit']
+        note = f'PwC (reviewed {cell[1]}): {cell[0][:110]}'
+        if kind == 'none': put(pid, 'inheritance', gi['kind'] == 'none', note)
+        elif kind == 'rate': put(pid, 'inheritance', gi['kind'] != 'none' and abs(gi['top'] - top) < 0.006, note + f' (game: top {gi["top"]:.4g})')
+        else: put(pid, 'inheritance', False, note, covered=gi['kind'] == 'none' and kind == 'np' and False)
+
+    # The free-movement lists: the European area is the EU members in the game, plus Norway (EEA) and Switzerland (agreements).
+    eu = set()
+    w = page('eu')
+    for m in re.finditer('wikitable', w):
+        for r in rows(table_at(w, m.start())):
+            pid = place_of(r)
+            if pid: eu.add(pid)
+    eu.discard('uk')  # listed among former members: it left in 2020
+    area = set(FREE_EUROPE)
+    tasman = 'free movement of citizens' in clean(page('tasman')[:4000])
+    for pid in G:
+        if pid in ('no', 'ch'): put(pid, 'freeMovement', pid in area, 'Norway (EEA) and Switzerland (bilateral agreements) belong to the area')
+        elif pid in ('au', 'nz'): put(pid, 'freeMovement', tasman and pid in TASMAN, 'source: Trans-Tasman Travel Arrangement')
+        else: put(pid, 'freeMovement', (pid in eu) == (pid in area), 'source: EU member' if pid in eu else 'source: not an EU member')
+
     gov = src_government(page('government'))
     for pid, g in G.items():
         secs = [s for s in gov.get(pid, []) if s in GOV_WORDS]
@@ -375,6 +631,7 @@ def main():
 
     if '--write' in sys.argv:
         sources = {k: ([{'page': t, 'rev': r} for t, r in v] if isinstance(v, list) else {'page': v[0], 'rev': v[1]}) for k, v in SOURCES.items()}
+        sources['inheritance'] = {'site': 'PwC Worldwide Tax Summaries', 'page': 'Inheritance and gift tax rates', 'url': PWC_CHART}
         with open(os.path.join(ROOT, 'js', 'data', 'lawVerification.js'), 'w', encoding='utf-8') as f:
             f.write('// GENERATED by scripts/verify-laws.py. Do not edit by hand: change the data, or DECIDED in the script, and run it again.\n')
             f.write('// What each place\'s laws, ages, citizenship rules and form of government were checked against, and with what result.\n')

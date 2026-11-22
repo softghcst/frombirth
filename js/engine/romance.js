@@ -10,7 +10,7 @@ import { store, player, country, npcsByRole, log, milestone } from '../state.js'
 import { makeNpc } from './npcFactory.js';
 import { COUNTRIES } from '../data/countries.js';
 import { remember } from './conditions.js';
-import { spendAction, roleLabel } from './relationships.js';
+import { spendAction, countAction, roleLabel } from './relationships.js';
 import { conceive, canConceive } from './children.js';
 import { ensureLife } from './npcLives.js';
 import { netWorth } from './finance.js';
@@ -69,7 +69,7 @@ export function meetingPlaces() {
   const apps = platformOpen('kindling');
   return [
     { id: 'friends', name: 'Through friends', desc: 'Someone a friend thinks you would like.' },
-    ...(adult ? [...(apps ? [{ id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' }] : []),
+    ...(adult ? [...(apps ? [{ id: 'app', name: 'A dating app', desc: 'A lot of profiles. Some of them accurate.' }] : [{ id: 'app', name: 'A personal ad in the paper', desc: 'Forty words about yourself, and a box number.' }]),
       { id: 'out', name: 'A night out', desc: 'Whoever catches your eye across the room.' }]
       : [{ id: 'school', name: 'Around school', desc: 'Someone from a different class.' }]),
   ];
@@ -137,12 +137,12 @@ export function romanceActions(npc) {
   const adults = p.age >= ADULT && npc.age >= ADULT;
   const a = [];
   // Not someone who reports to you: a manager asking is not a free question.
-  if (['friend', 'classmate', 'coworker', 'ex'].includes(npc.role) && !npc.flags.report && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
+  if (['friend', 'classmate', 'coworker', 'colleague', 'ex', 'neighbor', 'roommate'].includes(npc.role) && !npc.flags.report && !partner() && p.age >= DATING_AGE && ageFits(npc)) {
     a.push({ id: 'askOut', label: 'Ask out' });
   }
   if ((npc.role === 'partner' || npc.role === 'spouse') && !p.legal.incarceration) {
     a.push({ id: 'date', label: npc.role === 'spouse' ? 'Plan a night out together' : 'Go on a date' });
-    if (adults) a.push({ id: 'hookUp', label: 'Spend the night together' });
+    if (adults) a.push({ id: 'hookUp', label: 'Be intimate' });
   }
   if (npc.role === 'partner') {
     if (adults && !npc.flags.engaged) a.push({ id: 'propose', label: 'Propose' });
@@ -198,9 +198,10 @@ export function hookUp(npcId) {
   const p = player();
   const npc = npcOf(npcId);
   if (p.age < ADULT || npc.age < ADULT) return result(false, 'Not at your age.');
-  if (!spendAction(npc, 'hookUp')) return result(false, 'Not again this year.', 'neutral');
-  bump(npc, rng.int(3, 8));
-  p.stats.mood = clamp(p.stats.mood + 6);
+  // As often as you both like. The first night of the year means the most; after that it is part of life together.
+  const first = countAction(npc, 'hookUp') === 1;
+  bump(npc, first ? rng.int(3, 8) : rng.int(0, 2));
+  p.stats.mood = clamp(p.stats.mood + (first ? 6 : 2));
   let text = `You and ${npc.firstName} spent the night together.`;
   if (canConceive(npc) && !p.flags.pregnancy && rng.chance(0.04 * p.hidden.fertility / 70)) {
     text += ` ${conceive(npc, false)}`;
@@ -220,7 +221,7 @@ export function propose(npcId, ringId) {
   p.finance.cash -= cost;
   const chance = clamp((npc.meters.relationship - 45) / 45 + ring.bonus, 0.02, 0.97);
   if (!rng.chance(chance)) {
-    p.finance.cash += Math.round(cost * 0.6); // the jeweller takes it back, at a loss
+    p.finance.cash += Math.round(cost * 0.6); // the jeweler takes it back, at a loss
     bump(npc, -15);
     p.stats.mood = clamp(p.stats.mood - 12);
     const text = `You got down on one knee. ${npc.firstName} said they were not ready. The jeweler gave you some of the money back.`;
@@ -375,6 +376,18 @@ export function tickRomance() {
       log(`${npc.firstName} ended things with you.`, 'system', 'bad');
     }
   }
+}
+
+/** This partner leaves the player, of their own accord (engine/bonds.js: after a betrayal, or when trust does not return). */
+export function leftBy(npcId) {
+  const p = player();
+  const npc = store.state.npcs[npcId];
+  if (!npc) return;
+  if (npc.role === 'spouse') { endMarriage(npc, false); return; }
+  npc.role = 'ex';
+  npc.flags.engaged = false;
+  p.stats.mood = clamp(p.stats.mood - 10);
+  log(`${npc.firstName} ended things with you.`, 'system', 'bad');
 }
 
 export { roleLabel };

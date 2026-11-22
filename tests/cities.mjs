@@ -36,7 +36,7 @@ for (const [id, rows] of Object.entries(CITY_ROWS)) {
 }
 for (const [key, o] of Object.entries(REGION_RULES)) {
   const [place, region] = key.split('/');
-  check(Object.values(CITY_ROWS[place] ?? {}).some((r) => r.regionId === region), `regional law for a region with no city: ${key}`);
+  check(Object.values(CITY_ROWS[place] ?? {}).some((r) => r.regionId === region) || (region.startsWith('around:') && COUNTRIES[place]?.cities.includes(region.slice(7))), `regional law for a region with no city: ${key}`);
   for (const id of Object.keys(o)) check(!!RULES[id], `${key}: unknown rule ${id}`);
 }
 section('data: twelve countries have a row per city; every regional law belongs to a region with a city');
@@ -46,7 +46,7 @@ let n = 0;
 for (const c of COUNTRY_LIST) for (const k of towns.citiesOf(c.id)) { n += 1; check(k.housing > 0 && k.pay > 0 && k.housingWord && k.payWord && towns.cityLine(c.id, k.name).length > 5, `${c.id}/${k.name}: no profile`); }
 check(towns.cityOf('sg', 'Singapore').housing === 1, 'a one-city place is its own average');
 check(towns.cityOf('ke', COUNTRIES.ke.place.capital).kind === 'capital' && towns.cityOf('ke', COUNTRIES.ke.place.capital).estimated, 'elsewhere the capital gets the generic capital profile, and says it is an estimate');
-check(profile('ca').cityLines.length === COUNTRIES.ca.cities.length && /Ontario/.test(profile('ca').cityLines[0][1]), 'the world explorer lists cities with their regions');
+check(profile('ca').cityLines.length === COUNTRIES.ca.cities.length && profile('ca').cityLines.every(([, l]) => /^(Capital · )?[A-Za-z ]+ Homes · [A-Za-z ]+ Pay$/.test(l)), 'the world explorer lists every city, briefly: homes and pay');
 section(`profiles: all ${n} cities have one`);
 
 // 3. Homes and pay follow the city.
@@ -76,7 +76,7 @@ check(JSON.stringify([p.citizenships, p.residency]) === papers, 'papers do not c
 check(p.locations.at(-1).city === 'Seattle' && p.locations.at(-2).to === store.state.year, 'the move is in the record of where they have lived');
 check(r.quit ? !p.career.careerId : !!p.career.careerId && p.counters.jobsHeld === jobs, 'the job either transfers or ends');
 check(/laws are different in Washington/.test(r.text), 'the result says the law has changed');
-check(towns.moveOptions().find((o) => o.name === 'Austin').lawDiffers && !towns.moveOptions().find((o) => o.name === 'Chicago').lawDiffers, 'only real differences in law are flagged');
+check(towns.moveOptions().find((o) => o.name === 'Austin').lawDiffers && towns.moveOptions().find((o) => o.name === 'Chicago').lawDiffers && !towns.moveOptions().find((o) => o.name === 'New York').lawDiffers, 'only real differences in law are flagged (Washington and New York: no death penalty, casinos from 18)');
 check(!towns.relocate('Seattle').ok && !towns.relocate('Paris').ok, 'no moving to where you are, or to another country');
 let kept = 0; let lost = 0;
 for (let i = 0; i < 60; i++) { p = life('de', 'Leipzig'); hire(CAREERS.find((c) => c.id === 'office'), 0, 60); const before = p.career.salary; r = towns.relocate('Munich'); if (r.quit) lost += 1; else { kept += 1; check(p.career.salary > before, 'a transferred salary moves to the going rate'); } }
@@ -88,7 +88,8 @@ towns.relocate('Paris');
 check(p.homeId == null && p.assets.includes(home), 'after moving city the house is still owned, and no longer home');
 check(!estate.moveIn(home.id).ok, 'and cannot be lived in from another city');
 for (let i = 0; i < 2; i++) { advanceYear(); store.state.pendingEvents = []; p.legal.pending = null; }
-check(Math.abs(home.value / was - 1) < 0.35, `it keeps the value of the city it is in, not the one its owner lives in (${(home.value / was).toFixed(2)})`);
+// Lyon's own market can fall a long way in two years (a crash is fair); what must not happen is Paris prices.
+check(home.city === 'Lyon' && home.value / was < 1.35, `it keeps the value of the city it is in, not the one its owner lives in (${home.city}, ${(home.value / was).toFixed(2)})`);
 p = life('uk', 'Leeds', 15); check(!!towns.moveBlock(), 'children do not move on their own');
 // Emigrating to a chosen city.
 p = life('br', 'Recife'); for (let i = 0; i < 40 && p.countryId === 'br'; i++) { p.flags.visaAge = null; emigrate('ca', { city: 'Calgary' }); }
@@ -104,7 +105,8 @@ section('moving: cost, record, job, home, and the city chosen when emigrating');
   }
   const cap = towns.cityOf('fr', 'Paris'); const small = towns.cityOf('fr', 'Nantes');
   check(cap.health > small.health && cap.safety < small.safety && cap.schools >= small.schools, 'the capital has the big hospitals and more crime; a smaller city is safer');
-  check(/major hospitals/.test(towns.cityLine('fr', 'Paris')) && /safer/.test(towns.cityLine('fr', 'Nantes')), 'and the city lists say so');
+  check(/major hospitals/.test(cap.servicesLine) && /safer/.test(small.servicesLine), 'and each city\'s profile says so');
+  check(towns.cityLine('fr', 'Paris') === 'Capital · ' + cap.housingWord + ' · ' + cap.payWord, `the city line itself stays short (${towns.cityLine('fr', 'Paris')})`);
   check(towns.cityOf('sg', 'Singapore').health === 0 && towns.cityOf('sg', 'Singapore').safety === 0, 'a one-city place is its own average');
   let p = life('fr', 'Paris'); p.finance.cash = 0; const there = careQuality();
   p.city = 'Nantes'; const here = careQuality();

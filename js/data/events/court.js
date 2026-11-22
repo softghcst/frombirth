@@ -78,7 +78,7 @@ export default [
       ] },
       { label: 'Give {rival} a real place at your side', outcomes: [any('You make them your representative abroad, with a household of their own. It costs you some pride and ends the crisis in an afternoon.', 'good', rivalEnd('peace'), image(3), hid('karma', 5))] },
       { label: 'Ask the government to deal with it', outcomes: [
-        { on: 'always', weight: 0.55, tone: 'neutral', text: 'The prime minister has a quiet word. {rival} takes a long holiday. You owe the government a favor now, and it will be collected.', effects: [rivalEnd('cold'), image(-2)] },
+        { on: 'always', weight: 0.55, tone: 'neutral', text: 'The prime minister has a quiet word. {rival} takes a long vacation. You owe the government a favor now, and it will be collected.', effects: [rivalEnd('cold'), image(-2)] },
         { on: 'always', weight: 0.45, tone: 'bad', text: 'The prime minister says it is a family matter. You look weak for having asked.', effects: [rivalEnd('lost'), image(-10), st('mood', -8)] },
       ] },
     ],
@@ -116,7 +116,7 @@ export default [
     text: 'Your first public engagement: opening a children\'s ward. There is a ribbon, a pair of scissors too big for your hands, and a row of cameras.',
     choices: [
       { label: 'Do exactly as you were told', outcomes: [any('You cut the ribbon, say your one line, and shake eleven hands. The matron says you are a credit to your family.', 'good', image(4), hid('discipline', 3))] },
-      { label: 'Stop and talk to a boy with his leg in plaster', outcomes: [any('You sit on his bed for twenty minutes comparing scars, and the whole program runs late. The photograph of the two of you is the one everybody keeps.', 'good', image(9), hid('karma', 4), st('mood', 5))] },
+      { label: 'Stop and talk to a boy with his leg in a cast', outcomes: [any('You sit on his bed for twenty minutes comparing scars, and the whole program runs late. The photograph of the two of you is the one everybody keeps.', 'good', image(9), hid('karma', 4), st('mood', 5))] },
       { label: 'Freeze', outcomes: [any('The scissors will not cut and your line will not come. A nurse puts a hand on your shoulder, and the two of you do it together.', 'neutral', image(1), st('mood', -5))] },
     ],
   },
@@ -159,7 +159,7 @@ export default [
   },
   {
     id: 'royal_no_ordinary_friend', category: 'royalty', ageRange: [8, 15], once: true, requires: bornRoyal,
-    text: 'A friend from school comes to tea. There is a policeman in the corridor, a footman behind each chair, and your friend, who is never quiet, has not said a word in twenty minutes.',
+    text: 'A friend from school comes to tea. There is a policeman in the hallway, a footman behind each chair, and your friend, who is never quiet, has not said a word in twenty minutes.',
     choices: [
       { label: 'Take them to the kitchens instead', outcomes: [any('The cook gives you both bread and dripping at the scrubbed table, and your friend comes back to life. You are there until dark.', 'good', st('mood', 8), st('charm', 2))] },
       { label: 'Show them the armory', outcomes: [any('Four hundred years of swords will loosen anybody\'s tongue. You are both told off, and it is worth it.', 'good', st('mood', 6), hid('discipline', -2))] },

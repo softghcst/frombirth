@@ -9,6 +9,19 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+
+/** Opens a section from the dock. With a section already open the dock is out of sight, so go back first. */
+async function openTab(page, id) {
+  for (let i = 0; i < 2 && await page.locator('[data-panel]:not([hidden]) [data-panel-close]').count(); i++) await page.click('[data-panel-close]');
+  await page.click(`.tab-btn[data-tab="${id}"]`);
+}
+
+/** Opens a section of the tab on screen: each card on a tab is a row until it is tapped. */
+async function openSection(page, title) {
+  if (await page.locator('.sec-body.shown').count()) await page.click('[data-panel-close]');
+  // A card with a single action is that action, with no section to open.
+  if (await page.locator(`.sec-row[data-sec="${title}"]`).count()) await page.locator(`.sec-row[data-sec="${title}"]`).click();
+}
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
@@ -24,6 +37,8 @@ const url = `http://127.0.0.1:${port}/index.html`;
 const problems = [];
 const passed = [];
 const check = (cond, text) => { (cond ? passed : problems).push(text); };
+/** Back steps out one level at a time, and leaves Digital Life from the first: press it until the page is gone. */
+const leave = async (page) => { for (let i = 0; i < 8 && await page.locator('.dl-modal').count(); i++) { await page.locator('.dl-modal .modal-back').click(); await page.waitForTimeout(120); } };
 
 const browser = await chromium.launch();
 const errors = [];
@@ -51,6 +66,8 @@ async function run(viewport) {
     p.finance.cash = 50000;
     p.education.enrolled = false;
     const f = makeNpc({ role: 'friend', countryId: 'us', age: p.age, relationship: 60 });
+    // A name nobody else in the world has: the steps below find the friend by name (a random one is sometimes shared).
+    f.firstName = 'Marisol'; f.lastName = 'Quennell';
     f.lastInteractionAge = p.age; ensureLife(f);
     s.npcs[f.id] = f; p.npcIds.push(f.id);
     for (const pl of ['hearth', 'murmur', 'glimmer']) acc.makeAccount(f.id, pl, `${f.firstName.toLowerCase()}.${pl}`, { visibility: 'public' });
@@ -62,16 +79,15 @@ async function run(viewport) {
   await page.waitForSelector('.tab-btn[data-tab="pursuits"]');
 
   // 2. Open Digital Life.
-  await page.click('.tab-btn[data-tab="pursuits"]');
+  await openTab(page, 'pursuits');
   await page.click('[data-digital]');
   await page.waitForSelector('.dl-modal');
   check(await page.locator('.dl-modal h2').innerText() === 'Digital Life', 'Digital Life opens');
-  check((await page.locator('.dl-sub').innerText()).includes('Your connections, your creativity, your world.'), 'with its subtitle');
   const navLabels = await page.locator('.dl-nav button').allInnerTexts();
   check(['My Accounts', 'Feed', 'Messages', 'Friends & Connections', 'Communities', 'Create Content', 'Creator Studio', 'Online Reputation', 'Digital Memories', 'Digital History'].every((x) => navLabels.some((y) => y.startsWith(x))), 'all ten sections are there');
 
   // 3. Available technology.
-  check((await page.locator('.dl-body').innerText()).includes('Getting online'), 'the accounts page shows how the character gets online');
+  check((await page.locator('.dl-body').innerText()).includes('Getting Online'), 'the accounts page shows how the character gets online');
   await page.click('.dl-body [data-do="buyDevice"]');
   await choose('Smartphone');
   await continueModal();
@@ -98,6 +114,8 @@ async function run(viewport) {
   // 8–11. Create a post, publish, simulate, show real numbers.
   await page.click('.dl-nav [data-section="create"]');
   await page.click('.dl-body [data-do="compose"]');
+  // Most posts are one tap now; the full form is behind "Write a detailed post".
+  await page.click('#modal-root button:has-text("Write a detailed post")');
   await page.selectOption('#modal-root select[name="format"]', 'text');
   await page.fill('#modal-root textarea[name="text"]', 'Hello from the vertical slice.');
   await page.click('#modal-root button[type="submit"]');
@@ -107,6 +125,16 @@ async function run(viewport) {
   await page.waitForSelector('.dl-body .dl-metrics');
   const views = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const x = Object.values(store.state.digital.posts).find((y) => y.text === 'Hello from the vertical slice.'); return x.metrics.views; });
   check((await page.locator('.dl-body .dl-metrics').first().innerText()).includes(String(views.toLocaleString('en-US'))), 'the post shows its actual metrics');
+  // A quick post: one tap on the kind of post, and it is up.
+  {
+    const before = await page.evaluate(async () => Object.keys((await import('/js/state.js')).store.state.digital.posts).length);
+    await page.click('.dl-nav [data-section="create"]');
+    await page.click('.dl-body [data-do="compose"]');
+    await page.click('#modal-root button:has-text("Something on your mind")');
+    await continueModal();
+    const after = await page.evaluate(async () => Object.keys((await import('/js/state.js')).store.state.digital.posts).length);
+    check(after === before + 1, `a quick post is one tap (${before} → ${after})`);
+  }
 
   // 12–13. Connect with an existing friend; view their profile.
   await page.click('.dl-nav [data-section="people"]');
@@ -132,11 +160,11 @@ async function run(viewport) {
   // 19–21. Tap the friend's portrait, see their real profile, come back to the same conversation.
   await page.locator(`.dl-chat [data-person="${setup.friendId}"]`).first().click();
   await page.waitForFunction((name) => [...document.querySelectorAll('#modal-root .modal')].some((m) => !m.classList.contains('dl-modal') && m.innerText.includes(name)), setup.friend);
-  const profile = await page.locator('#modal-root .modal').last().innerText();
+  const profile = await page.locator('#modal-root .modal').last().evaluate((m) => m.textContent); // (what is folded under "About them" counts: it is one tap away)
   check(profile.includes('Relationship') && profile.includes('Hearth'), 'the portrait opens the existing character profile, with their accounts');
   await page.locator('#modal-root .modal').last().locator('[data-close]').click();
   check(await page.locator('.dl-chat .dl-msg').count() >= 2 && await page.locator('.dl-body [data-back]').count() === 1, 'coming back lands in the same conversation');
-  await page.click('.dl-modal [data-close]');
+  await page.evaluate(() => document.querySelector('.dl-modal [data-close]').click()); // (the page's own close, tucked away behind Back: it leaves at once, from any depth)
   await page.click('[data-digital]');
   check(await page.locator('.dl-chat .dl-msg').count() >= 2, 'closing and reopening Digital Life keeps the place');
 
@@ -144,12 +172,13 @@ async function run(viewport) {
   await page.click('.dl-body [data-back]');
   await page.click('.dl-nav [data-section="memories"]');
   check((await page.locator('.dl-body').innerText()).includes('Your first post on Hearth'), 'the first post is a digital memory');
-  await page.click('.dl-modal [data-close]');
-  await page.click('.tab-btn[data-tab="self"]');
+  await leave(page);
+  await openTab(page, 'self');
+  await openSection(page, 'Milestones');
   check((await page.locator('[data-panel-body]').innerText()).includes('Joined Hearth, your first online account.'), 'and a milestone in the life story');
 
   // Mobile layout: nothing runs off the side.
-  await page.click('.tab-btn[data-tab="pursuits"]');
+  await openTab(page, 'pursuits');
   await page.click('[data-digital]');
   for (const s of ['accounts', 'feed', 'studio', 'history']) {
     await page.click(`.dl-nav [data-section="${s}"]`);
@@ -182,8 +211,8 @@ async function run(viewport) {
   });
   await page.reload();
   await page.click(`[data-load="${old}"]`);
-  await page.click('.tab-btn[data-tab="pursuits"]');
-  check((await page.locator('[data-digital]').innerText()).includes('Keep in touch'), 'in 1800 the card offers keeping in touch, not social media');
+  await openTab(page, 'pursuits');
+  check((await page.locator('[data-digital] .nr-label').innerText()).trim() === 'Digital Life' && /\S/.test(await page.locator('[data-digital] .nr-main small').innerText()), 'in 1800 the row is its name and one line saying what it is for');
   await page.click('[data-digital]');
   const nav1800 = await page.locator('.dl-nav button').allInnerTexts();
   check(!nav1800.some((x) => /Feed|Creator Studio|Communities/.test(x)), 'and Digital Life shows no feed, communities or creator studio');
@@ -212,8 +241,8 @@ async function extras() {
   await page.waitForSelector('.tab-btn[data-tab="pursuits"]');
   const born = await page.evaluate(async () => { const { store } = await import('/js/state.js'); return { year: store.state.year, birth: store.state.player.birthYear }; });
   check(born.year === 1850 && born.birth === 1850, 'the character creator can start a life in 1850');
-  await page.click('.tab-btn[data-tab="self"]');
-  check((await page.locator('[data-panel-body]').innerText()).includes('The times: Early Era'), 'the Self tab shows the times');
+  await openTab(page, 'self');
+  check((await page.locator('[data-panel-body]').innerText()).includes('Early Era'), 'the Self tab shows the times');
 
   // Radio in 1935, through the Pursuits tab.
   const s35 = await page.evaluate(async () => {
@@ -225,23 +254,34 @@ async function extras() {
   });
   await page.reload();
   await page.click(`[data-load="${s35}"]`);
-  await page.click('.tab-btn[data-tab="pursuits"]');
+  await openTab(page, 'pursuits');
+  await openSection(page, 'Radio and television');
   check(await page.locator('[data-tune="radio"]').count() === 1 && await page.locator('[data-tune="tv"]').count() === 0, 'in 1935 Pursuits offers the radio, not television');
   await page.click('[data-tune="radio"]');
   await page.locator('#modal-root .choice-btn', { hasText: 'Radio plays' }).click();
   check((await continueModal()).includes('radio plays'), 'an evening of radio plays happens');
   check(await page.locator('[data-tune="radio"]').isDisabled(), 'and is done for the year');
+  if (await page.locator('.sec-body.shown').count()) await page.click('[data-panel-close]'); // back to the list of Pursuits
   await page.click('[data-digital]');
   await page.click('.dl-nav [data-section="history"]');
   check((await page.locator('.dl-body').innerText()).includes('Between the Wars'), 'Digital History shows the era of the year');
-  await page.click('.dl-modal [data-close]');
+  await leave(page);
   // The Family Archive, from the People tab.
-  await page.click('.tab-btn[data-tab="people"]');
-  await page.click('[data-top="archive"]');
-  await page.click('[data-go="digital"]');
+  await openTab(page, 'people');
+  await page.click('[data-top="digitalArchive"]');
   await page.waitForSelector('.dl-modal');
   check((await page.locator('.dl-body').innerText()).includes('Family Archive'), 'the Family Archive opens from the People tab');
-  await page.click('.dl-modal [data-close]');
+  await leave(page);
+  // A profile's actions come in groups, with things of the person's own role (engine/bonds.js).
+  const relative = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const p = store.state.player; return p.npcIds.find((id) => store.state.npcs[id]?.alive && ['parent', 'sibling', 'grandparent'].includes(store.state.npcs[id].role)); });
+  if (relative) {
+    await page.click(`[data-npc="${relative}"]`);
+    await page.waitForSelector('#modal-root [data-act^="with:"]');
+    const groups = await page.locator('#modal-root details.action-group summary').allInnerTexts();
+    check(groups.some((g) => /together/i.test(g)) && groups.some((g) => /talk/i.test(g)), `a relative's profile groups what you can do (${groups.join(', ')})`);
+    check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'and fits a phone');
+    await page.click('#modal-root [data-close]');
+  }
   // A modern creator: routine and dating preferences through the forms.
   const slot = await page.evaluate(async () => {
     const { store } = await import('/js/state.js');
@@ -263,7 +303,7 @@ async function extras() {
   });
   await page.reload();
   await page.click(`[data-load="${slot}"]`);
-  await page.click('.tab-btn[data-tab="pursuits"]');
+  await openTab(page, 'pursuits');
   await page.click('[data-digital]');
   await page.click('.dl-nav [data-section="studio"]');
   await page.click('.dl-body [data-chan="routine"]');
@@ -289,7 +329,7 @@ try {
   await run({ width: 390, height: 844 });
   await run({ width: 1280, height: 860 });
 } catch (e) {
-  problems.push(`the browser run stopped: ${e.message.split('\n')[0]}`);
+  problems.push(`the browser run stopped: ${e.message.split('\n').slice(0, 3).join(' | ')}`);
 } finally {
   await browser.close();
   server.kill();

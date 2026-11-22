@@ -11,7 +11,7 @@ export default [
     text: 'At a routine appointment, the doctor puts down the chart and says, kindly, that the next ten years depend on what you do in the next one.',
     choices: [
       { label: 'Change how you live', check: chk(0.5, { 'hidden.discipline': 0.7, 'hidden.willpower': 0.4 }), outcomes: [
-        ok('You walk every morning and stop pretending the biscuits do not count. By the next appointment the numbers have moved.', st('health', 10), st('mood', 4), hid('discipline', 4)),
+        ok('You walk every morning and stop pretending the cookies do not count. By the next appointment the numbers have moved.', st('health', 10), st('mood', 4), hid('discipline', 4)),
         bad('You manage three weeks. It is three weeks more than nothing.', st('health', 2)),
       ] },
       { label: 'Nod, and carry on', outcomes: [any('You have heard it before.', 'neutral', st('health', -4))] },
@@ -25,7 +25,7 @@ export default [
       { label: 'Tell someone how bad it is', outcomes: [any('Saying it out loud does not fix it. It does make it something two people know about.', 'good', st('mood', 9), hid('willpower', 2))] },
       { label: 'Push through on your own', check: chk(0.35, { 'hidden.willpower': 0.8 }), outcomes: [
         ok('Slowly, without any one day you could point to, it lifts.', st('mood', 6)),
-        bad('It settles in. A doctor would call it depression.', cond('depression'), st('mood', -5)),
+        bad('It settles in, and it does not lift.', cond('depression'), st('mood', -5)),
       ] },
       { label: 'Stay in bed', outcomes: [any('The days run together.', 'bad', cond('depression'), st('health', -3))] },
     ],

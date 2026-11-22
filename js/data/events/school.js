@@ -129,7 +129,7 @@ export default [
     choices: [
       { label: 'Take it', check: chk(0.5, { 'stats.charm': 0.6, 'talents.acting': 0.4 }), outcomes: [
         ok('The whole class is crying with laughter. Even the teacher cracks.', st('charm', 4), st('mood', 5), tal('acting', 2)),
-        bad('Silence. Then you are sent to stand in the corridor.', st('mood', -4), gpa(-0.05)),
+        bad('Silence. Then you are sent to stand in the hallway.', st('mood', -4), gpa(-0.05)),
       ] },
       { label: 'Keep your head down and work', outcomes: [any('You finish the worksheet. Nobody else does.', 'good', gpa(0.05), hid('discipline', 2))] },
       { label: 'Help the teacher get order back', outcomes: [any('The teacher is grateful. Your classmates are not.', 'neutral', hid('karma', 4), st('charm', -2))] },
@@ -141,7 +141,7 @@ export default [
     text: 'Your new dorm-mate has labeled every item in the fridge, including the butter.',
     choices: [
       { label: 'Introduce yourself properly', check: chk(0.6, { 'stats.charm': 0.6 }), outcomes: [
-        ok('{mate} is just nervous. By the end of term you are inseparable.', addNpc('friend', 'mate'), st('mood', 6)),
+        ok('{mate} is just nervous. By the end of the semester you are inseparable.', addNpc('friend', 'mate'), st('mood', 6)),
         bad('The conversation lasts eleven seconds. You coexist.', st('mood', -1)),
       ] },
       { label: 'Eat the butter', outcomes: [any('A note appears on your door. Then another. {mate} never forgives you.', 'bad', addNpc('enemy', 'mate', { relationship: 8 }), hid('karma', -3), hid('crazy', 2))] },
@@ -167,7 +167,7 @@ export default [
     text: 'Rent is due on Friday and {mate} is {$300} short. Again.',
     choices: [
       { label: 'Cover it and say nothing', requires: [need('cashBase', '>=', 300)], outcomes: [any(
-        '{mate} pays you back in installments and washing-up. Something between you gets sturdier.', 'good',
+        '{mate} pays you back in installments and by doing your dishes. Something between you gets sturdier.', 'good',
         cash(-300), rel('mate', 10), hid('karma', 4), mem('mate', 'coveredRent', 'You covered their share of the rent without making it a thing.'))] },
       { label: 'Sit down and work out a budget together', check: chk(0.55, { 'stats.charm': 0.4, 'cast.mate.relationship': 0.5 }), outcomes: [
         ok('An awkward hour with a spreadsheet. It does not happen again.', rel('mate', 6), st('intellect', 1)),
@@ -223,7 +223,7 @@ export default [
     requires: [enrolled, need('education.gpa', '>=', 3.2), need('age', '>=', 19)],
     text: 'A professor has noticed your work and offers you a paid place on their research project.',
     choices: [
-      { label: 'Accept', outcomes: [any('Long evenings in the lab, {$900}, and your name in the acknowledgements.', 'good', cash(900), st('intellect', 4), gpa(0.1), hid('discipline', 3), ms('Worked on a professor\'s research project.'))] },
+      { label: 'Accept', outcomes: [any('Long evenings in the lab, {$900}, and your name in the acknowledgments.', 'good', cash(900), st('intellect', 4), gpa(0.1), hid('discipline', 3), ms('Worked on a professor\'s research project.'))] },
       { label: 'Decline politely', outcomes: [any('They give the place to someone else. You keep your evenings.', 'neutral', st('mood', 2))] },
     ],
   },

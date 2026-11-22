@@ -158,7 +158,7 @@ export function emigrate(countryId, opts = {}) {
   const shipping = ship ? shippingCost() : 0;
   // Animals that come need papers and a way to travel. Those left behind are found homes (opts.animals: 'bring' | 'leave').
   const pets = opts.forced || opts.animals === 'leave' ? 0 : travelPlan(countryId).reduce((s, t) => s + t.cost, 0);
-  // `route` is how the player is applying; without one, as a citizen where possible, otherwise the settlement programme.
+  // `route` is how the player is applying; without one, as a citizen where possible, otherwise the settlement program.
   const open = opts.forced ? [] : routes(countryId);
   const found = opts.forced ? null : open.find((r) => r.id === opts.route) ?? (opts.route ? null : open.find((r) => r.eligible && ['right', 'free'].includes(r.id)) ?? open.find((r) => r.id === 'settle'));
   // A case decided earlier keeps the status it was granted, whatever the routes look like today.
@@ -171,7 +171,7 @@ export function emigrate(countryId, opts = {}) {
     // The application was decided earlier (engine/relocation.js). What is left is paying for the grant, the shipping and the animals.
     if (!canEmigrate()) return result(false, 'You cannot move there now.', 'neutral');
     if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
-    if (p.finance.cash < fee + shipping + pets) return result(false, `The visa, shipping and the animals' travel come to ${fmtMoney(fee + shipping + pets, from)}. You do not have it.`, 'neutral');
+    if (fee + shipping + pets > 0 && p.finance.cash < fee + shipping + pets) return result(false, `The visa, shipping and the animals' travel come to ${fmtMoney(fee + shipping + pets, from)}. You do not have it.`, 'neutral');
     if (fee) charge({ amount: fee, kind: 'relocation', memo: `The rest of the visa fee: ${to.name}`, key: `move:${moveId}:grant`, ref: { moveId } });
     if (shipping) charge({ amount: shipping, kind: 'relocation', memo: 'Shipping vehicles', key: `move:${moveId}:ship`, ref: { moveId } });
   } else if (!opts.forced) {
@@ -179,7 +179,7 @@ export function emigrate(countryId, opts = {}) {
     if (!mayLeave().ok) return result(false, mayLeave().reason, 'neutral');
     if (!route?.eligible) return result(false, route?.why || 'That route is not open to you.', 'neutral');
     if (p.flags.visaAge === p.age) return result(false, 'You have already applied this year. Try again next year.', 'neutral');
-    if (p.finance.cash < fee + shipping + pets) return result(false, `Visas, lawyers, shipping and the animals' travel come to ${fmtMoney(fee + shipping + pets, from)}. You do not have it.`, 'neutral');
+    if (fee + shipping + pets > 0 && p.finance.cash < fee + shipping + pets) return result(false, `Visas, lawyers, shipping and the animals' travel come to ${fmtMoney(fee + shipping + pets, from)}. You do not have it.`, 'neutral');
     p.flags.visaAge = p.age;
     // The application fee is gone either way.
     charge({ amount: Math.round(fee * 0.2), kind: 'visa_fee', memo: `Application to move to ${to.name}`, key: `move:${moveId}:apply`, ref: { moveId } });
@@ -238,11 +238,14 @@ export function emigrate(countryId, opts = {}) {
     }
   }
 
+  // People the family knows through someone else (a sibling's partner, say) are not on the player's own list, but are
+  // recorded where they live too: anyone living in the country the player now lives in is no longer abroad.
+  for (const n of Object.values(store.state.npcs)) if (n.alive && n.flags?.abroad === to.id && !p.npcIds.includes(n.id)) n.flags.abroad = false;
   prunePending(); // scenes about people who are not coming
-  // Trips booked to leave from the old home are cancelled now, on their refund terms, before savings change currency.
+  // Trips booked to leave from the old home are canceled now, on their refund terms, before savings change currency.
   for (const t of (p.travel?.trips ?? []).filter((x) => x.status === 'confirmed' && x.origin.countryId !== to.id)) {
     const c = cancelTrip(t.id);
-    if (c.ok) log(`The move meant cancelling your trip to ${COUNTRIES[t.destination.countryId].name}: it was to leave from ${t.origin.city ?? COUNTRIES[t.origin.countryId].name}. ${c.refunded ? `${fmtMoney(c.refunded, from)} came back.` : 'Nothing could be refunded.'}`, 'system', 'neutral');
+    if (c.ok) log(`The move meant canceling your trip to ${COUNTRIES[t.destination.countryId].name}: it was to leave from ${t.origin.city ?? COUNTRIES[t.origin.countryId].name}. ${c.refunded ? `${fmtMoney(c.refunded, from)} came back.` : 'Nothing could be refunded.'}`, 'system', 'neutral');
   }
   // Money follows, at today's rate, except whatever the player chose to leave in the old currency.
   for (const a of p.assets) if (a.kind === 'property') { if (a.mortgage) a.mortgage.code ??= from.currency.code; if (a.tenant) a.tenant.code ??= from.currency.code; }

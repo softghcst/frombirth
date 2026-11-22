@@ -53,7 +53,7 @@ export default [
       { label: 'Take it, and ask {love} to come', check: chk(0.5, { 'cast.love.relationship': 0.9 }), outcomes: [
         ok('{love} thinks about it for a week, and says yes. You both start again in {city}.', promoted(), { type: 'moveCity' }, rel('love', -4), npcSet('love', { flags: { heldBack: true } }),
           mem('love', 'movedForYou', 'They gave up their own work to move for your promotion.')),
-        bad('{love} comes, and does not forgive it. The new job is everything you were promised. The flat is very quiet.', promoted(), { type: 'moveCity' }, rel('love', -20), npcSet('love', { flags: { heldBack: true } })),
+        bad('{love} comes, and does not forgive it. The new job is everything you were promised. The apartment is very quiet.', promoted(), { type: 'moveCity' }, rel('love', -20), npcSet('love', { flags: { heldBack: true } })),
       ] },
       { label: 'Turn it down', outcomes: [any('{boss} nods, and gives it to someone else within the month. {love} does not say thank you, and does not need to.', 'neutral', perf(-3), rel('love', 10), wk('satisfaction:-6'),
         mem('love', 'stayedForMe', 'You turned down a promotion so they could keep the work they loved.'))] },
@@ -79,7 +79,7 @@ export default [
     id: 'wf_work_trip', category: 'work', ageRange: [24, 62], requires: [salaried, inField('corporate', 'tech', 'media', 'government', 'science', 'transport')], cast: { love: 'spouse', boss: 'tag:boss' }, cooldown: 10,
     text: '{boss} wants you abroad for three weeks, starting Monday. It is the week of your anniversary with {love}.',
     choices: [
-      { label: 'Go, and make it up to {love} afterwards', outcomes: [any('The trip goes well. The anniversary is a video call with a bad connection.', 'neutral', perf(6), rel('love', -8), wk('stress:4'))] },
+      { label: 'Go, and make it up to {love} afterward', outcomes: [any('The trip goes well. The anniversary is a video call with a bad connection.', 'neutral', perf(6), rel('love', -8), wk('stress:4'))] },
       { label: 'Ask to fly out two days late', check: chk(0.65, { 'cast.boss.relationship': 0.5 }), outcomes: [
         ok('{boss} moves the first meetings. You have dinner with {love}, then a taxi to the airport at five in the morning.', perf(4), rel('love', 6)),
         bad('"The client is expecting you Monday." You go Monday.', perf(3), rel('love', -8), rel('boss', -3)),
@@ -95,7 +95,7 @@ export default [
     choices: [
       { label: 'Introduce yourself early and offer to show them round', outcomes: [any('{newcomer} remembers who was helpful in the first week. {boss} says to keep in touch, and seems to mean it.', 'good',
         addNpc('coworker', 'newcomer', { ageOffset: 6, relationship: 58 }), wk('newBoss'), perf(3), mem('newcomer', 'welcomed', 'You showed them round in their first week.'))] },
-      { label: 'Keep your head down and see what happens', outcomes: [any('{newcomer} reorganises the team by the end of the quarter. You are neither a winner nor a loser of it.', 'neutral',
+      { label: 'Keep your head down and see what happens', outcomes: [any('{newcomer} reorganizes the team by the end of the quarter. You are neither a winner nor a loser of it.', 'neutral',
         addNpc('coworker', 'newcomer', { ageOffset: 6, relationship: 48 }), wk('newBoss'))] },
       { label: 'Tell the new manager plainly what is not working here', check: chk(0.5, { 'stats.intellect': 0.5, 'stats.charm': 0.4 }), outcomes: [
         ok('{newcomer} takes notes. Two of your suggestions happen. You are someone whose opinion is asked now.', addNpc('coworker', 'newcomer', { ageOffset: 6, relationship: 62 }), wk('newBoss'), perf(7)),
@@ -196,14 +196,14 @@ export default [
   },
   {
     id: 'fd_edu_parent', category: 'work', ageRange: [21, 66], requires: [inField('education')], cast: { boss: 'tag:boss' }, cooldown: 9,
-    text: 'A parent is in the corridor, loudly certain that their child\'s mark is your fault. {boss} is watching from the office door to see how you handle it.',
+    text: 'A parent is in the hallway, loudly certain that their child\'s mark is your fault. {boss} is watching from the office door to see how you handle it.',
     choices: [
       { label: 'Invite them in, show the work, and listen', check: chk(0.65, { 'stats.charm': 0.6 }), outcomes: [
         ok('Twenty minutes in, they are asking what they can do at home to help. {boss} gives you a small nod.', perf(6), rel('boss', 4), wk('satisfaction:4')),
         bad('They hear every explanation as an excuse, and ask for the head. {boss} takes over.', perf(-3), wk('stress:6')),
       ] },
       { label: 'Tell them, calmly, that you do not discuss marks in corridors, and offer an appointment', outcomes: [any('They are furious, and book the appointment. By Thursday they have calmed down.', 'neutral', perf(2), wk('stress:3'))] },
-      { label: 'Change the mark', outcomes: [any('It goes away. So does something else. Next term there are three more parents in the corridor.', 'bad', perf(-6), hid('karma', -4), rel('boss', -6))] },
+      { label: 'Change the mark', outcomes: [any('It goes away. So does something else. Next semester there are three more parents in the hallway.', 'bad', perf(-6), hid('karma', -4), rel('boss', -6))] },
     ],
   },
   {
@@ -250,7 +250,7 @@ export default [
         ok('You do not stop moving for five hours. Nothing goes out wrong. At midnight someone hands you a drink and nobody speaks for a while.', perf(9), wk('stress:8'), cash(120)),
         bad('It is too much for one person. Three tables walk out, and one of them writes a review.', perf(-4), wk('stress:10')),
       ] },
-      { label: 'Go after {mate}', outcomes: [any('Five minutes in the yard by the bins. {mate} comes back in, red-eyed, and finishes the night. The tables waited; the friendship will not forget.', 'good', rel('mate', 14), perf(1))] },
+      { label: 'Go after {mate}', outcomes: [any('Five minutes in the yard by the trash. {mate} comes back in, red-eyed, and finishes the night. The tables waited; the friendship will not forget.', 'good', rel('mate', 14), perf(1))] },
       { label: 'Tell the manager and carry on with your own tables', outcomes: [any('Your section runs perfectly. The rest of the room is chaos, and you can see it from where you stand.', 'neutral', perf(2), rel('mate', -4))] },
     ],
   },
@@ -328,7 +328,7 @@ export default [
   },
   {
     id: 'fd_safety_call', category: 'work', ageRange: [19, 62], requires: [inField('safety')], cast: { mate: 'coworker' }, cooldown: 8,
-    text: 'A call like the others, until it is not. Afterwards, back at the station, {mate} is washing their hands for the third time and not saying anything.',
+    text: 'A call like the others, until it is not. Afterward, back at the station, {mate} is washing their hands for the third time and not saying anything.',
     choices: [
       { label: 'Sit with {mate}, and say you are not all right either', outcomes: [any('You talk until the next shift comes on. It does not fix it. It means neither of you carries it alone.', 'good', rel('mate', 12), wk('stress:-6'), st('mood', 2))] },
       { label: 'Suggest you both see the counselor the service offers', check: chk(0.6, { 'cast.mate.relationship': 0.6 }), outcomes: [
@@ -412,7 +412,7 @@ export default [
         ok('The saving is real. So is the drawer of cash you now have to explain to yourself.', wk('biz:cash:0.06'), hid('karma', -4)),
         bad('The supplier is investigated, and their customers with them. It costs you a fine and a difficult month.', wk('biz:cash:-0.08'), wk('biz:rep:-6'), hid('karma', -4), { type: 'legal', delta: 4 }),
       ] },
-      { label: 'Find another supplier', outcomes: [any('It takes a month of phone calls. The new one is dearer and delivers on time.', 'neutral', wk('biz:quality:3'))] },
+      { label: 'Find another supplier', outcomes: [any('It takes a month of phone calls. The new one costs more and delivers on time.', 'neutral', wk('biz:quality:3'))] },
     ],
   },
   {
@@ -461,7 +461,7 @@ export default [
         ok('The talk dies down. You are careful: separate lunches, no shared lifts.', wk('stress:5')),
         bad('It reaches someone senior as gossip rather than as fact, which is worse. You are both spoken to.', perf(-5), wk('stress:8'), rel('love', -4)),
       ] },
-      { label: 'End it, for both your sakes', outcomes: [any('You see each other every day afterwards. It is the hardest part.', 'bad', wk('romance:end'), st('mood', -12), wk('satisfaction:-8'))] },
+      { label: 'End it, for both your sakes', outcomes: [any('You see each other every day afterward. It is the hardest part.', 'bad', wk('romance:end'), st('mood', -12), wk('satisfaction:-8'))] },
     ]),
   queued('work_romance_conflict', 'romance',
     'You and {love} are together, and one of you now has a say over the other\'s work, pay and prospects. Nobody could call that fair to either of you, or to the people you work with.', [

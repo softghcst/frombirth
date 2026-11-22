@@ -19,7 +19,7 @@ for (const t of BUSINESS_TYPES) {
     const p = store.state.player;
     p.age = 32; p.education.enrolled = false; p.education.stage = 'none'; p.finance.cash = 1e9; p.stats.intellect = 60; p.hidden.discipline = 55;
     p.education.degrees.push({ type: 'high', gpa: 3, age: 18 }, { type: 'university', majorId: 'business', gpa: 3, age: 22 }, { type: 'apprenticeship', majorId: t.needs.trade ?? 'electrician', gpa: 3, age: 21 });
-    if (t.needs.programme) { p.education.degrees.push({ type: t.needs.programme, gpa: 3.5, age: 26 }); (p.flags.licences ??= []).push(t.needs.programme); }
+    if (t.needs.program) { p.education.degrees.push({ type: t.needs.program, gpa: 3.5, age: 26 }); (p.flags.licenses ??= []).push(t.needs.program); }
     const c = work.career();
     c.experience = Object.fromEntries([...Object.keys(t.needs.experience ?? {}), t.track].map((k) => [k, 6]));
     c.experience.office = 12;

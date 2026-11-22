@@ -1,4 +1,4 @@
-// Practising skills: instruments, performing, sport, crafts and languages.
+// Practicing skills: instruments, performing, sport, crafts and languages.
 // A few sessions a year; each one moves a progress bar, faster for someone
 // with a natural gift for it and slower as they near mastery.
 import { rng } from '../rng.js';
@@ -49,8 +49,8 @@ export function skillOptions() {
   }) }));
 }
 
-/** Skills with a progress bar to show: everything practised at least once. */
-export const practised = () => SKILLS.filter((s) => (s.talent ? (player().flags.practised ?? []).includes(s.id) : s.id in book()))
+/** Skills with a progress bar to show: everything practiced at least once. */
+export const practiced = () => SKILLS.filter((s) => (s.talent ? (player().flags.practiced ?? []).includes(s.id) : s.id in book()))
   .map((s) => ({ id: s.id, name: s.name, level: levelOf(s.id), levelName: levelName(levelOf(s.id)) }));
 
 export const lessonCost = () => localMoney(LESSON_COST, country());
@@ -59,7 +59,7 @@ export const lessonCost = () => localMoney(LESSON_COST, country());
  * One practice session. `lesson` pays a teacher for half as much again.
  * @returns {{ok:boolean, text:string, tone:string, gained?:number}}
  */
-export function practise(id, lesson = false) {
+export function practice(id, lesson = false) {
   const p = player();
   const c = country();
   const s = SKILL_BY_ID[id];
@@ -74,11 +74,16 @@ export function practise(id, lesson = false) {
   acts().used += 1;
 
   const k = aptitude(id);
-  const gained = Math.max(1, Math.round(rng.int(4, 7) * k * (lesson ? 1.5 : 1) * (1 - before / 135)));
+  // Taken up for the first time by someone who liked this sort of thing when small: a little further on, once
+  // (engine/childhood.js). A head start, not a gift.
+  const kind = s.group === 'instrument' || ['singing', 'music_theory', 'rap'].includes(id) ? 'music' : ['dance', 'yoga', 'martial_arts', 'sports'].includes(id) ? 'movement' : id === 'swimming' ? 'water' : id === 'writing' ? 'books' : id === 'public_speaking' ? 'people' : null;
+  const head = before === 0 && kind && !(p.flags.earlyUsed ?? []).includes(id) ? (p.flags.childhood?.early?.[kind] ?? 0) : 0;
+  if (head) p.flags.earlyUsed = [...(p.flags.earlyUsed ?? []), id];
+  const gained = Math.max(1, Math.round(rng.int(4, 7) * k * (lesson ? 1.5 : 1) * (1 - before / 135))) + Math.min(6, head);
   const after = Math.min(100, before + gained);
   if (s.talent) {
     p.talents[s.talent] = after;
-    p.flags.practised = [...new Set([...(p.flags.practised ?? []), id])];
+    p.flags.practiced = [...new Set([...(p.flags.practiced ?? []), id])];
   } else {
     book()[id] = after;
     if (s.helps) p.talents[s.helps] = clamp((p.talents[s.helps] ?? 0) + Math.max(1, Math.round(gained / 4)));

@@ -7,7 +7,7 @@
 //   'parliamentary'  voters elect a parliament; its leader is the head of government
 //   'party'          one party rules; offices are given by its committees, not by voters
 //   'none'           no elections at all; power is inherited
-// rigged: elections are held, but the count leans heavily towards those already in power
+// rigged: elections are held, but the count leans heavily toward those already in power
 // region: what the head of a state or province is called (left out where the country has none)
 // seat:   what a member of the national legislature is called
 // head:   what the head of government is called
@@ -129,16 +129,16 @@ export const MOVES = [
   { id: 'debate', name: 'Challenge your opponent to a debate', boost: [-6, 12], factor: 'intellect', text: 'An hour under the lights, with nowhere to hide.' },
   { id: 'babies', name: 'Kiss babies and eat local food', boost: [2, 5], factor: 'charm', text: 'You eat nine regional delicacies in one day and smile through all of them.' },
   { id: 'smear', name: 'Run attack adverts', boost: [-8, 12], dirty: true, karma: -6, text: 'Your opponent\'s worst photograph is on every channel.' },
-  { id: 'buy', name: 'Hand out envelopes on polling day', boost: [8, 18], illegal: true, karma: -12, text: 'A great many people are suddenly very keen to vote.' },
+  { id: 'buy', name: 'Hand out envelopes on Election Day', boost: [8, 18], illegal: true, karma: -12, text: 'A great many people are suddenly very keen to vote.' },
 ];
 
 /** What an office-holder can do with a year. Two a year. tier: the lowest office that can do it. */
 export const ACTIONS = [
-  { id: 'meet', tier: 1, name: 'Hold open meetings', approval: [2, 5], text: 'You sit in draughty halls and listen to people complain about bins, and it does you good.' },
+  { id: 'meet', tier: 1, name: 'Hold open meetings', approval: [2, 5], text: 'You sit in drafty halls and listen to people complain about bins, and it does you good.' },
   { id: 'build', tier: 1, name: 'Build something people can see', approval: [3, 8], text: 'There is a ribbon, a pair of giant scissors, and your name on a brass plate.' },
   { id: 'cut', tier: 2, name: 'Cut taxes', approval: [5, 10], debt: true, text: 'Everyone has a little more in their pocket. The treasury has a good deal less.' },
   { id: 'reform', tier: 2, name: 'Push through a hard reform', approval: [-9, -2], karma: 6, lasting: true, text: 'It is needed, it is right, and nobody thanks you for it. Not yet.' },
-  { id: 'favours', tier: 1, name: 'Steer contracts to your friends', approval: [0, 0], graft: true, text: 'A contract goes to a company owned by a man you play golf with.' },
+  { id: 'favors', tier: 1, name: 'Steer contracts to your friends', approval: [0, 0], graft: true, text: 'A contract goes to a company owned by a man you play golf with.' },
   { id: 'holiday', tier: 5, name: 'Declare a national holiday', approval: [4, 9], text: 'Nobody has ever voted against a day off.' },
   { id: 'statue', tier: 5, name: 'Put up a statue of yourself', approval: [-10, -3], mood: 8, text: 'It is forty feet high, and the pigeons have already found it.' },
   { id: 'pardon', tier: 5, name: 'Pardon yourself of everything', approval: [-14, -6], pardon: true, text: 'With one signature, your record is as clean as the day you were born.' },
@@ -167,7 +167,7 @@ export const TRAIL = [
   { id: 'donors', name: 'Dine with wealthy donors', raise: [2.5, 5], karma: -2, strings: true, text: 'The wine is excellent, and everybody at the table wants something.' },
   { id: 'poll', name: 'Commission a private poll', cost: 0.5, poll: true, text: '' },
   { id: 'smear', name: 'Run attack adverts', boost: [-5, 8], cost: 1, dirty: true, karma: -6, text: 'Your opponent\'s worst photograph is on every channel.' },
-  { id: 'buy', name: 'Hand out envelopes on polling day', boost: [6, 12], illegal: true, karma: -12, last: true, text: 'A great many people are suddenly very keen to vote.' },
+  { id: 'buy', name: 'Hand out envelopes on Election Day', boost: [6, 12], illegal: true, karma: -12, last: true, text: 'A great many people are suddenly very keen to vote.' },
 ];
 
 /** What is asked in a debate, by issue. Three are drawn. */
@@ -190,7 +190,7 @@ export const DEBATE_ANSWERS = [
 
 /** Ways to win a party's nomination. */
 export const NOMINATION = [
-  { id: 'members', name: 'Win over the members', sub: 'Draughty halls and handshakes. Charm counts.' },
+  { id: 'members', name: 'Win over the members', sub: 'Drafty halls and handshakes. Charm counts.' },
   { id: 'leadership', name: 'Win over the leadership', sub: 'Years of loyalty and patience count.' },
   { id: 'money', name: 'Outspend your rival', sub: 'It costs, and it shows.', cost: 1 },
 ];
@@ -222,11 +222,11 @@ export const CAUSES = [
  * rise: what it does for the player's standing in it; standing/strength: what is needed first.
  */
 export const CAUSE_ACTIONS = [
-  { id: 'petition', name: 'Collect signatures', gain: [3, 6], rise: 3, sub: 'A clipboard, a high street, and a thick skin.', text: 'You stand outside a supermarket for six Saturdays with a clipboard.' },
+  { id: 'petition', name: 'Collect signatures', gain: [3, 6], rise: 3, sub: 'A clipboard, a main street, and a thick skin.', text: 'You stand outside a supermarket for six Saturdays with a clipboard.' },
   { id: 'march', name: 'March', gain: [5, 11], rise: 5, factor: 'charm', sub: 'Loud, visible, and not without risk.', text: 'Thousands of you fill the streets, and the evening news has to show it.' },
   { id: 'donate', name: 'Give money', gain: [4, 7], rise: 2, cost: 2000, sub: 'Placards and coaches are not free.', text: 'Your money pays for placards, coaches and a great many sandwiches.' },
-  { id: 'organise', name: 'Organize a local branch', gain: [8, 13], rise: 8, exp: 1, standing: 15, factor: 'intellect', sub: 'Meetings, rotas and other people\'s arguments. It counts as experience.', text: 'You run a branch: the meetings, the rotas, and the falling-out over the banner.' },
-  { id: 'speak', name: 'Speak for the movement', gain: [6, 14], rise: 10, exp: 1, standing: 40, factor: 'charm', sub: 'A microphone and a crowd. It makes you known.', text: 'You speak from the back of a lorry, and people quote it afterwards.' },
+  { id: 'organize', name: 'Organize a local branch', gain: [8, 13], rise: 8, exp: 1, standing: 15, factor: 'intellect', sub: 'Meetings, rotas and other people\'s arguments. It counts as experience.', text: 'You run a branch: the meetings, the rotas, and the falling-out over the banner.' },
+  { id: 'speak', name: 'Speak for the movement', gain: [6, 14], rise: 10, exp: 1, standing: 40, factor: 'charm', sub: 'A microphone and a crowd. It makes you known.', text: 'You speak from the back of a truck, and people quote it afterward.' },
   { id: 'lobby', name: 'Take it to a minister', gain: [0, 3], rise: 4, standing: 40, strength: 40, sub: 'If the movement is strong enough, the government may give way.', text: '' },
 ];
 

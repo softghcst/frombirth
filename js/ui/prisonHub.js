@@ -8,7 +8,7 @@ import * as law from '../engine/justice.js';
 import * as k from '../engine/cases.js';
 import { roleLabel } from '../engine/relationships.js';
 import { LIFE_SENTENCE } from '../data/crimes.js';
-import { OFFENSE_BY_ID, PROGRAMME_BY_ID, FACILITY_KINDS } from '../data/justice.js';
+import { OFFENSE_BY_ID, PROGRAM_BY_ID, FACILITY_KINDS } from '../data/justice.js';
 import { meterHtml } from './meter.js';
 import { messageModal, pickModal, confirmModal } from './modals.js';
 import { openNpc } from './tabs/people.js';
@@ -45,17 +45,17 @@ const BODY = {
       ${s ? `<div class="kv"><span>Sentence</span><span>${esc(k.describe(s))} for ${esc(OFFENSE_BY_ID[s.offenseId].name.toLowerCase())}</span></div>` : ''}
       <div class="kv"><span>Served</span><span>${yrs(c.served)}</span></div>
       <div class="kv"><span>Release</span><span>${esc(out.text)}</span></div>
-      ${c.programme ? `<div class="kv"><span>Studying</span><span>${esc(PROGRAMME_BY_ID[c.programme.id].name)}</span></div>` : ''}
+      ${c.program ? `<div class="kv"><span>Studying</span><span>${esc(PROGRAM_BY_ID[c.program.id].name)}</span></div>` : ''}
       ${c.job ? `<div class="kv"><span>Work</span><span>${esc(jail.jobOptions().find((j) => j.id === c.job.id)?.name ?? '')}</span></div>` : ''}
       ${kids.map(([n, g]) => `<div class="kv"><span>${esc(n.firstName)}, ${n.age}</span><span>living with ${g === 'care' ? 'foster parents' : esc(k.nameOf(g))}</span></div>`).join('')}
       <div style="margin-top:10px">${meterHtml('Respect', c.respect, true)}${meterHtml('Conduct', c.conduct, true)}</div>
-      <p class="muted" style="margin-top:8px">Conduct, courses and a place to live matter at a parole review. Respect keeps trouble away, but so does asking for help.</p>
+      
       ${jail.paroleDue() ? '<button class="btn primary" data-hub-act="parole" style="margin-top:10px">Prepare for your parole review</button>' : ''}
     </div>`;
   },
   daily(c) {
     return `<div class="card"><h3>How your days go</h3>
-      <p class="muted" style="margin-bottom:10px">What the year is built around. It carries on without you having to choose each day.</p>
+      
       <div class="btn-stack">${jail.routineOptions().map((r) => `<button class="btn stacked ${r.now ? 'primary' : ''}" data-routine="${r.id}">${esc(r.name)}<small>${esc(r.blurb)}</small></button>`).join('')}</div></div>
       <div class="card"><h3>This year</h3><div class="btn-stack">
         ${jail.prisonActions().map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-prison="${a.id}">${esc(a.label)}</button>`).join('')}
@@ -70,25 +70,25 @@ const BODY = {
     const staff = jail.staffNear();
     return `<div class="card"><h3>On your wing</h3>
       ${mates.map((n) => row(n, `${n.age} · loves ${n.flags.inmate.interest} · ${yrs(n.flags.inmate.yearsLeft)} left${player().npcIds.includes(n.id) ? ` · ${roleLabel(n)}` : ''}`, 'data-mate')).join('')}
-      <p class="muted" style="margin-top:8px">Tap someone to see who they are. People here have their own lives, goals and release dates.</p></div>
+      </div>
       <div class="card"><h3>Staff</h3>${staff.map((s) => `<button class="row" data-staff="${s.npc.id}"><div class="main"><strong>${esc(s.npc.firstName)} ${esc(s.npc.lastName)}</strong><small>${esc(s.role.name)}</small></div></button>`).join('')}</div>`;
   },
   family(c) {
     const list = jail.contacts();
     return `<div class="card"><h3>Family and friends</h3>
       ${list.length ? list.map((n) => row(n, roleLabel(n) + (n.flags.abroad ? ' · abroad' : '') + (n.age < 18 ? `, ${n.age}` : ''), 'data-contact')).join('') : '<p class="muted">There is nobody on your list.</p>'}
-      <p class="muted" style="margin-top:8px">Up to four letters, three calls and two visiting orders a year. People decide for themselves whether to come.</p></div>
+      <p class="muted" style="margin-top:8px">Four letters, three calls, two visits a year.</p></div>
       ${c.visits.length ? `<div class="card"><h3>Visits</h3>${c.visits.slice(-8).reverse().map((v) => `<div class="kv"><span>${v.year}</span><span>${esc(k.nameOf(v.npcId))}</span></div>`).join('')}</div>` : ''}`;
   },
   education(c) {
-    const list = jail.programmeOptions();
+    const list = jail.programOptions();
     const done = Object.keys(c.studied ?? {});
     return `<div class="card"><h3>Education</h3>
-      ${c.programme ? `<div class="kv"><span>Now</span><span>${esc(PROGRAMME_BY_ID[c.programme.id].name)}: ${Math.min(100, Math.round(c.programme.progress / PROGRAMME_BY_ID[c.programme.id].years * 100))}%</span></div>` : ''}
-      ${done.map((id) => `<div class="kv"><span>Completed</span><span>${esc(PROGRAMME_BY_ID[id].name)}</span></div>`).join('')}
-      <p class="muted" style="margin:8px 0 10px">Qualifications earned here go on your education record, the same as any other.</p>
+      ${c.program ? `<div class="kv"><span>Now</span><span>${esc(PROGRAM_BY_ID[c.program.id].name)}: ${Math.min(100, Math.round(c.program.progress / PROGRAM_BY_ID[c.program.id].years * 100))}%</span></div>` : ''}
+      ${done.map((id) => `<div class="kv"><span>Completed</span><span>${esc(PROGRAM_BY_ID[id].name)}</span></div>`).join('')}
+      
       <div class="btn-stack">${list.map((x) => `<button class="btn stacked ${x.now ? 'primary' : ''}" data-course="${x.id}" ${x.ok && !x.now ? '' : 'disabled'}>${esc(x.name)}<small>${esc(x.now ? 'Enrolled.' : x.why || x.blurb)}</small></button>`).join('')}
-      ${c.programme ? '<button class="btn" data-hub-act="leaveCourse">Leave the course</button>' : ''}</div></div>`;
+      ${c.program ? '<button class="btn" data-hub-act="leaveCourse">Leave the course</button>' : ''}</div></div>`;
   },
   work(c) {
     const cty = country();
@@ -100,7 +100,7 @@ const BODY = {
     return `<div class="card"><h3>Health and well-being</h3>${meterHtml('Health', player().stats.health, true)}${meterHtml('Mood', player().stats.mood, true)}
       <div class="btn-stack" style="margin-top:10px">
         <button class="btn" data-hub-act="healthcare">See the healthcare team</button>
-        <button class="btn" data-hub-act="counselling">Counseling</button>
+        <button class="btn" data-hub-act="counseling">Counseling</button>
         <button class="btn" data-hub-act="course">Join a rehabilitation course</button>
       </div></div>`;
   },
@@ -124,7 +124,7 @@ const BODY = {
       ${jail.paroleDue() ? '<button class="btn primary" data-hub-act="parole" style="margin-top:10px">Prepare for your parole review</button>' : ''}
       ${c.security !== 'min' && c.facility !== 'juvenile' ? '<button class="btn" data-hub-act="transfer" style="margin-top:10px">Apply to move to lower security</button>' : ''}
       ${(c.transfers ?? []).map((t) => `<div class="kv"><span>${t.year}</span><span>Moved: ${esc(t.why)}</span></div>`).join('')}
-      <p class="muted" style="margin-top:10px">On release you go to family if they will have you, or to a hostel, with a release grant. Work and study can pick up where they left off.</p></div>`;
+      </div>`;
   },
 };
 
@@ -143,7 +143,7 @@ async function contact(api, n) {
 
 async function mate(api, n) {
   const what = await pickModal({ title: `${n.firstName} ${n.lastName}`, body: `${n.age}. They ${n.flags.inmate.background}. They want to ${n.flags.inmate.goal}.`, cancel: 'Back',
-    options: [{ value: 'know', label: 'Spend time together' }, { value: 'study', label: 'Study together', disabled: !jail.cell().programme }, { value: 'profile', label: 'See their profile' }] });
+    options: [{ value: 'know', label: 'Spend time together' }, { value: 'study', label: 'Study together', disabled: !jail.cell().program }, { value: 'profile', label: 'See their profile' }] });
   if (what === 'profile') return openNpc(n, api, undefined, { readOnly: true });
   if (what === 'know') return report(api, jail.getToKnow(n.id));
   if (what === 'study') return report(api, jail.studyTogether(n.id));
@@ -175,7 +175,7 @@ export function hubClick(e, api, joinGang) {
   const r = t.closest('[data-routine]')?.dataset.routine;
   if (r) { report(api, jail.setRoutine(r)); return true; }
   const course = t.closest('[data-course]')?.dataset.course;
-  if (course) { report(api, jail.enrol(course)); return true; }
+  if (course) { report(api, jail.enroll(course)); return true; }
   const job = t.closest('[data-job]')?.dataset.job;
   if (job) { report(api, jail.takeJob(job)); return true; }
   const help = t.closest('[data-help]')?.dataset.help;
@@ -193,7 +193,7 @@ export function hubClick(e, api, joinGang) {
   const act = t.closest('[data-hub-act]')?.dataset.hubAct;
   if (act) {
     if (act === 'parole') parole(api);
-    else report(api, { healthcare: jail.healthcare, counselling: jail.counselling, course: jail.joinCourse, leaveCourse: jail.leaveCourse, transfer: jail.requestTransfer }[act]());
+    else report(api, { healthcare: jail.healthcare, counseling: jail.counseling, course: jail.joinCourse, leaveCourse: jail.leaveCourse, transfer: jail.requestTransfer }[act]());
     return true;
   }
   const pr = t.closest('[data-prison]')?.dataset.prison;

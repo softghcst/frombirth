@@ -650,7 +650,7 @@ export function sceneChoice(v, cast, state = store.state) {
       note: emergency ? (well ? 'Emergency treatment. Came through it.' : 'Emergency treatment. Everything possible was done.') : (well ? 'Treated for an illness, and recovered.' : 'Treated for an illness. It will need managing from now on.'),
       cost: tx.amount, currency: c.currency.code, recovered: well, paidBy: tx.amount ? T.ref(state, p.id) : null, clinic: cl.name, vet: vet.name, txId: tx.id, reimbursed: back, eventId: null };
     a.health.push(entry);
-    const money = `${tx.amount ? `It cost ${fmtMoney(tx.amount, c)}.` : `${a.foster?.name ?? 'The rescue'} paid the bill.`}${back ? ` The insurance paid back ${fmtMoney(back, c)}.` : ''}${price > tx.amount ? ' The surgery let you pay what you could.' : ''}`;
+    const money = `${tx.amount ? `It cost ${fmtMoney(tx.amount, c)}.` : `${a.foster?.name ?? 'The rescue'} paid the bill.`}${back ? ` The insurance paid back ${fmtMoney(back, c)}.` : ''}${price > tx.amount ? ' The clinic let you pay what you could.' : ''}`;
     if (well) {
       npc.meters.health = clamp(npc.meters.health + (emergency ? -4 : 2));
       npc.meters.relationship = clamp(npc.meters.relationship + 6);
@@ -782,7 +782,7 @@ export function tickCare(state = store.state) {
     const away = !zoo.livesWithPlayer(a.id, state) && zoo.homeOf(a)?.hh === 'parents' && !npc.flags.abroad;
     if (away && zoo.eventsOf(a.id, state).some((e) => e.type === 'stayed' && e.year === state.year) && npc.meters.relationship >= 75 && p.age >= 18) queue('take_them_with_you', a);
     else if (away && npc.meters.relationship >= 45 && p.age - seenAt('home_for_holidays') >= 3 && roll.chance(0.3)) queue('home_for_holidays', a);
-    if (a.speciesId === 'dog' && zoo.livesWithPlayer(a.id, state) && p.age >= 16 && p.age - seenAt('walk_neighbour') >= 12 && roll.chance(0.1)) queue('walk_neighbour', a);
+    if (a.speciesId === 'dog' && zoo.livesWithPlayer(a.id, state) && p.age >= 16 && p.age - seenAt('walk_neighbor') >= 12 && roll.chance(0.1)) queue('walk_neighbor', a);
   }
   // Illness is uncommon, and less common in an animal that is looked after. At most one such scene in a year.
   if (p.age >= 12) {

@@ -92,7 +92,7 @@ export const MEDIA = [
   { id: 'feature', label: 'A newspaper feature', hours: 4, text: 'wants to write a feature about you' },
 ];
 
-/** Requests from the media and organisers, open now. */
+/** Requests from the media and organizers, open now. */
 export const mediaOffers = () => world().offers.filter((o) => o.kind === 'media' && o.status === 'open' && o.year >= store.state.year - 1);
 
 export function answerMedia(offerId, yes) {
@@ -126,7 +126,7 @@ export function tickFame() {
     world().offers.push({ id: newId('offer'), kind: 'media', media: m.id, outlet, year: store.state.year, status: 'open' });
     log(`${outlet} ${m.text}.`, 'system', 'good');
   }
-  // Recognition costs some privacy: strangers recognise you, and some go too far.
+  // Recognition costs some privacy: strangers recognize you, and some go too far.
   if (r.recognition >= 55 && rng.chance(0.15) && !world().safety.some((s) => s.kind === 'privacy' && s.status === 'open')) {
     const acc = activeAccountsOf(p.id).find((a) => a.visibility === 'public') ?? activeAccountsOf(p.id)[0];
     world().safety.push({ id: newId('safe'), charId: p.id, kind: 'privacy', accountId: acc.id, year: store.state.year, status: 'open' });

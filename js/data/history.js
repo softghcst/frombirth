@@ -14,11 +14,11 @@
 /** The five eras. A life moves through them as the world's year advances. */
 export const ERAS = [
   { id: 'early', from: 1800, to: 1918, name: 'Early Era', short: '1800–1918',
-    description: 'Farms, workshops, railways and the first factories. Most children leave school young, few go to university, and medicine can do little against infection.',
+    description: 'Farms, workshops, railways and the first factories. Most children leave school young, few go to college, and medicine can do little against infection.',
     careers: 'Mostly farming, trades, domestic service, shops and the old professions.', economy: 'Wages and prices are a small fraction of today\'s.',
     schooling: 'A few years of schooling for most; university for very few.', law: 'Women cannot vote in most countries. Marriage and divorce follow older laws.' },
   { id: 'interwar', from: 1919, to: 1945, name: 'Between the Wars', short: '1919–1945',
-    description: 'Radio, cinema and motor cars arrive; the Depression and a second world war follow.',
+    description: 'Radio, the movies and the automobile arrive; the Depression and a second world war follow.',
     careers: 'Factories, offices and the first broadcasting and film jobs.', economy: 'Boom, then the Great Depression.',
     schooling: 'Most leave school at fourteen; university is still rare.', law: 'Women win the vote in many countries. Conscription returns in wartime.' },
   { id: 'midcentury', from: 1946, to: 1969, name: 'Mid-Century', short: '1946–1969',
@@ -178,7 +178,7 @@ export const LAW_HISTORY = {
     uk: [{ until: 1945, value: true }], ie: [{ from: 1932, until: 1973, value: true }], nl: [{ from: 1904, until: 1956, value: true }],
     au: [{ until: 1966, value: true }], ca: [{ until: 1955, value: true }], us: [{ until: 1950, value: true }],
   },
-  // [fact] Women admitted to practise law: US (first states) 1869, France 1900, UK 1919 (Sex Disqualification
+  // [fact] Women admitted to practice law: US (first states) 1869, France 1900, UK 1919 (Sex Disqualification
   // (Removal) Act), Italy 1919, Germany 1922, Japan 1933. [default] 1920 elsewhere.
   womenInLaw: Object.fromEntries([['us', 1869], ['fr', 1900], ['uk', 1919], ['it', 1919], ['de', 1922], ['jp', 1933], ['*', 1920]]
     .map(([id, year]) => [id, [{ until: year - 1, value: false }]])),
@@ -190,7 +190,7 @@ export const LAW_HISTORY = {
 export const LAW_WORDS = {
   womenVote: (place) => `Women cannot vote in ${place} yet.`,
   marriageBar: (place) => `In ${place}, married women are not allowed to keep this kind of job yet.`,
-  womenInLaw: (place) => `Women are not admitted to practise law in ${place} yet.`,
+  womenInLaw: (place) => `Women are not admitted to practice law in ${place} yet.`,
   womenInUniform: (place) => `In ${place}, this service does not take women yet.`,
 };
 
@@ -208,9 +208,9 @@ export const CAREER_ERAS = {
   marketing: { from: 1900, titles: { early: ['Advertising clerk', 'Copywriter', 'Advertising manager', 'Agency director'], interwar: ['Advertising clerk', 'Copywriter', 'Advertising manager', 'Agency director'] } },
   political_staff: { from: 1900 },
   nurse: { from: 1860 },
-  pharmacist: { titles: { early: ['Chemist\'s assistant', 'Chemist', 'Senior chemist', 'Proprietor'] } },
+  pharmacist: { titles: { early: ['Druggist\'s assistant', 'Druggist', 'Senior druggist', 'Proprietor'] } },
   office: { titles: { early: ['Junior clerk', 'Clerk', 'Senior clerk', 'Chief clerk'], interwar: ['Junior clerk', 'Clerk', 'Senior clerk', 'Chief clerk'] } },
-  retail: { titles: { early: ['Shop boy', 'Shop assistant', 'Senior assistant', 'Shopkeeper'] } },
+  retail: { titles: { early: ['Stock boy', 'Sales clerk', 'Senior clerk', 'Storekeeper'] } },
   driver: { titles: { early: ['Stable hand', 'Carter', 'Coachman', 'Carrier'] } },
   firefighter: { from: 1850, law: 'womenInUniform' },
   enlisted: { law: 'womenInUniform' },
@@ -234,7 +234,7 @@ export const CAREER_ERAS = {
  */
 export const PARENT_OCCUPATIONS = [
   { title: 'farmer', wealth: [15, 55], income: 30000, until: 1999 },
-  { title: 'farm labourer', wealth: [5, 25], income: 22000, until: 1969 },
+  { title: 'farm laborer', wealth: [5, 25], income: 22000, until: 1969 },
   { title: 'blacksmith', wealth: [15, 40], income: 30000, until: 1945 },
   { title: 'seamstress', wealth: [10, 30], income: 24000, until: 1969 },
   { title: 'tailor', wealth: [15, 45], income: 32000, until: 1999 },
@@ -253,7 +253,7 @@ export const PARENT_OCCUPATIONS = [
 export const MODERN_OCCUPATIONS = { 'software engineer': 1960, 'investment banker': 1920, 'hair stylist': 1950, 'company director': 1900, 'warehouse picker': 1960, 'electrician': 1890, 'bus driver': 1910, 'line cook': 1950, 'dentist': 1850, 'surgeon': 1850, 'civil engineer': 1850, 'police officer': 1829, 'florist': 1850 };
 
 /** [estimate] University subjects that did not exist as degrees before these years. */
-export const MAJOR_FROM = { computer_science: 1965, psychology: 1900, criminal_justice: 1930, communications: 1945, musical_theatre: 1940, musical_theatre_bfa: 1945, business: 1900, nursing: 1880, political_science: 1880, journalism: 1900, finance: 1900 };
+export const MAJOR_FROM = { computer_science: 1965, psychology: 1900, criminal_justice: 1930, communications: 1945, musical_theater: 1940, musical_theater_bfa: 1945, business: 1900, nursing: 1880, political_science: 1880, journalism: 1900, finance: 1900 };
 
 // ---------- Schooling ----------
 
@@ -325,7 +325,7 @@ export const EVENTS = [
     begin: 'Factories are busy and wages are rising: good times, for once.', end: null },
   { id: 'moon', name: 'the Moon landing', from: 1969, to: 1969, who: ['*'], begin: 'People have walked on the Moon. Half the world watched it live.', end: null },
   { id: 'oil', name: 'the oil crisis', from: 1974, to: 1975, economy: 'slump', who: ['*'],
-    begin: 'Oil prices have quadrupled. Queues at petrol stations, and prices rising everywhere.', end: null },
+    begin: 'Oil prices have quadrupled. Queues at gas stations, and prices rising everywhere.', end: null },
   { id: 'coldwarend', name: 'the end of the Cold War', from: 1989, to: 1991, who: ['*'], begin: 'The Berlin Wall has come down.', end: 'The Soviet Union is gone. The Cold War is over.' },
   // [fact] Independence (the country as it is in the game now).
   ...[['in', 1947], ['pk', 1947], ['il', 1948], ['id', 1949], ['gh', 1957], ['ng', 1960], ['ke', 1963], ['jm', 1962], ['tz', 1961], ['ug', 1962], ['dz', 1962], ['ma', 1956], ['tn', 1956], ['ph', 1946], ['kr', 1945], ['ie', 1922]]
@@ -334,7 +334,7 @@ export const EVENTS = [
 
 /**
  * [reviewed] Scenes written for the present day whose story only makes sense from a certain year, even
- * though they name no technology the event engine recognises: the first year each can happen. Every scene
+ * though they name no technology the event engine recognizes: the first year each can happen. Every scene
  * not listed here is timeless, or is gated by the technology it mentions (js/engine/eventEngine.js).
  */
 export const SCENE_FROM = {

@@ -8,6 +8,17 @@ const scene = (id, ageRange, text, choices) => ({ id, category: 'school', ageRan
   choices: choices.map(([label, line, value]) => ({ label, outcomes: [any(line, 'neutral', school(value))] })) });
 
 export default [
+  // A new school: where, what kind, and for how long. Told when a stage of school begins (engine/schooling.js enter).
+  scene('school_start', [4, 19], 'A new school: {school}. {kind}, {stage}, {years} years.', [
+    ['Here we go', 'You find your new classroom.', 'startOk'],
+  ]),
+  // The last year of high school: nominated for prom {title} (engine/schoollife.js). Each pitch rests on something different.
+  scene('prom_royalty', [16, 19], 'You have been nominated for prom {title} at {school}, and every nominee gives a short speech in the gym. What is yours?', [
+    ['"I\'m the smartest one here"', 'You step up to the microphone.', 'promSmart'],
+    ['"Look at me"', 'You step up to the microphone.', 'promLooks'],
+    ['"I\'m the strongest, and the most fun"', 'You step up to the microphone.', 'promStrong'],
+    ['Make them laugh', 'You step up to the microphone.', 'promFunny'],
+  ]),
   scene('first_day_school', [4, 8], 'Your first day of school. The room is loud and smells of floor polish, and everyone seems to know where to sit except you. The child at the next peg is called {mate}.', [
     ['Say hello', 'You say your name, too quietly, and then again.', 'firstHello'],
     ['Stay close to the wall', 'You hold on to the strap of your bag.', 'firstHide'],
@@ -25,12 +36,12 @@ export default [
     ['Take {two}\'s side', 'You say what you think.', 'sideTwo'],
     ['Try to bring them back together', 'You refuse to choose.', 'sideNone'],
   ]),
-  scene('school_rumour', [11, 18], 'There is a story going round about you. It is not true, and it is not kind, and you are fairly sure it started with {mate}.', [
-    ['Ask {mate} about it, face to face', 'You wait by the lockers.', 'rumourConfront'],
-    ['Say nothing and let it die', 'You keep your head up.', 'rumourIgnore'],
-    ['Tell a teacher', 'You stay behind after a lesson.', 'rumourTell'],
+  scene('school_rumor', [11, 18], 'There is a story going round about you. It is not true, and it is not kind, and you are fairly sure it started with {mate}.', [
+    ['Ask {mate} about it, face to face', 'You wait by the lockers.', 'rumorConfront'],
+    ['Say nothing and let it die', 'You keep your head up.', 'rumorIgnore'],
+    ['Tell a teacher', 'You stay behind after a lesson.', 'rumorTell'],
   ]),
-  scene('school_bullied', [7, 16], '{again}{bully} has started on you: your bag in the bin, your name said in a certain voice, a shove on the stairs when nobody is looking. It is every day now.', [
+  scene('school_bullied', [7, 16], '{again}{bully} has started on you: your bag in the trash, your name said in a certain voice, a shove on the stairs when nobody is looking. It is every day now.', [
     ['Tell a teacher', 'You knock on the staffroom door.', 'bullyTeacher'],
     ['Tell them at home', 'You wait until after dinner.', 'bullyParents'],
     ['Stand up to {bully}', 'You stop walking away.', 'bullyStand'],

@@ -16,7 +16,7 @@ import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
-import { BIRTHRIGHT, SINGLE, RESIDENCE_YEARS, DEFAULT_YEARS, SPOUSE_YEARS, NATURALISATION_FEE } from '../data/citizenship.js';
+import { BIRTHRIGHT, SINGLE, RESIDENCE_YEARS, DEFAULT_YEARS, SPOUSE_YEARS, SPOUSE_YEARS_IN, NATURALIZATION_FEE } from '../data/citizenship.js';
 import { speaks } from './languages.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -94,7 +94,7 @@ export function locations(p = player()) {
 // ---------- Becoming a citizen ----------
 
 /** What it would take to become a citizen of the country the player lives in. */
-export function naturalisation(p = player()) {
+export function naturalization(p = player()) {
   const here = issuer(p.countryId);
   const c = country();
   const year = store.state.year;
@@ -102,9 +102,9 @@ export function naturalisation(p = player()) {
   if (mine.includes(here)) return { possible: false, why: `You are already a citizen of ${nameOf(here)}.` };
   const spouse = livingNpcs().some((n) => n.role === 'spouse' && held(n).includes(here));
   const base = RESIDENCE_YEARS[here] ?? DEFAULT_YEARS;
-  const needs = spouse ? Math.min(base, Math.max(SPOUSE_YEARS, Math.ceil(base / 2))) : base;
+  const needs = spouse ? Math.min(base, SPOUSE_YEARS_IN[here] ?? Math.max(SPOUSE_YEARS, Math.ceil(base / 2))) : base;
   const lived = year - (residency(p).since ?? year);
-  const fee = localMoney(NATURALISATION_FEE, c);
+  const fee = localMoney(NATURALIZATION_FEE, c);
   // Taking a single-nationality citizenship means giving up the rest; and some of the rest give you up.
   const mustRenounce = SINGLE.has(here) ? mine : [];
   const willLose = SINGLE.has(here) ? [] : mine.filter((j) => SINGLE.has(j));
@@ -124,9 +124,9 @@ export function naturalisation(p = player()) {
 }
 
 /** Applies. There is a test; passing it is not certain. */
-export function naturalise() {
+export function naturalize() {
   const p = player();
-  const n = naturalisation(p);
+  const n = naturalization(p);
   if (!n.possible) return result(false, n.why, 'neutral');
   const c = country();
   const year = store.state.year;
@@ -172,6 +172,6 @@ export function papers(p = player()) {
       how: how[c.acquisitionType] ?? '', since: c.acquiredAt ?? null, lost: c.lostAt ?? null })),
     residency: { ...r, name: COUNTRIES[r.jurisdictionId]?.name, flag: flag(r.jurisdictionId), word: STATUS_WORDS[r.status] },
     locations: locations(p).map((l) => ({ ...l, name: COUNTRIES[l.countryId]?.name, flag: flag(l.countryId) })),
-    naturalisation: naturalisation(p),
+    naturalization: naturalization(p),
   };
 }

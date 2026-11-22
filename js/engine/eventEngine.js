@@ -19,6 +19,8 @@ import { meetsAll, resolve } from './conditions.js';
 import { applyEffects } from './effects.js';
 import { EVENTS, EVENT_BY_ID } from '../data/events/index.js';
 import { claimStory } from './animals.js';
+import { turnSeasons } from './calendar.js';
+import { feltRecently } from './disasters.js';
 
 const DEFAULT_COOLDOWN = 10;
 
@@ -85,10 +87,13 @@ export function choiceTimely(ev, i) {
 }
 
 /** The cast for an event if it can fire now, otherwise null. */
-function eligibleCast(ev) {
+function eligibleCast(ev, between = false) {
   const p = player();
   if (ev.queuedOnly) return null;
+  // Scenes for the turns between years (data/events/seasons.js) are drawn only then, and yearly scenes never are.
+  if (!!ev.between !== between) return null;
   if (!timely(ev) || !ev.choices.some((c, i) => choiceTimely(ev, i) && !c.requires?.length)) return null;
+  if (ev.timing && !inTime(ev.timing)) return null;
   if (!!ev.prison !== !!p.legal.incarceration) return null;
   if (p.age < ev.ageRange[0] || p.age > ev.ageRange[1]) return null;
   const seen = store.state.eventHistory.find((h) => h.id === ev.id);
@@ -98,6 +103,92 @@ function eligibleCast(ev) {
   if (!specs.every((spec) => npcsByRole(spec).length >= specs.filter((x) => x === spec).length)) return null;
   const cast = castFor(ev);
   return meetsAll(ev.castRequires, cast) ? cast : null;
+}
+
+/**
+ * Whether a scene tied to a moment fits now (`timing` on a scene): { yearTurn } only when the year turns (a birthday,
+ * New Year), { seasons } only in those seasons where the player lives. With year-long turns a turn covers every season.
+ */
+function inTime(t) {
+  const state = store.state;
+  const month = state.month ?? 0;
+  // The year's own draw, at the turn of the year, is judged over the whole year whatever the turn length, so it is the
+  // same draw in every mode (engine/turns.js holds a season scene back for its season, with shorter turns).
+  const step = month === 0 ? 12 : [6, 3].includes(state.settings?.step) ? state.settings.step : 12;
+  if (t.yearTurn && month !== 0) return false;
+  if (t.yearLong && step !== 12) return false;
+  // A scene about the weather comes only when that weather really reached the player (engine/disasters.js).
+  if (t.weather && !feltRecently(t.weather, t.minSeverity ?? 0, state, month === 0)) return false;
+  if (t.seasons && step !== 12) {
+    const now = turnSeasons(month === 0 ? 12 : month, step, player().countryId);
+    if (!t.seasons.some((x) => now.includes(x))) return false;
+  }
+  return true;
+}
+
+/** A whole-number key from a string, for luck that belongs to one moment. */
+function keyOf(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+/** Runs fn on a run of luck of its own, keyed to this life and moment, and puts the game's dice back as they were. */
+export function apart(key, fn) {
+  const saved = rng.state();
+  rng.seed(keyOf(`${store.state.slotId}/${key}`));
+  try { return fn(); } finally { rng.seed(saved); }
+}
+
+/**
+ * A turn between years (engine/turns.js): perhaps one scene written for this time of year and this turn length.
+ * Drawn on luck of its own, so it never changes what the game's dice would have done.
+ * @param {number} step  months a turn is (6 or 3)
+ * @param {string[]} seasons  the seasons the turn covered where the player lives: 'winter' | 'spring' | 'summer' | 'fall'
+ * @param {number} [chance]  how likely a seasonal scene is at all
+ * @param {number} [everyday]  how likely one of the year's ordinary scenes is as well: shorter turns, more chances
+ * @returns {string[]} the scenes queued
+ */
+/** Whether a queued scene still fits the life when it comes to be shown: a seasonal scene that asked for money, say, after
+ * an earlier one that turn has spent it. */
+export function stillFits(pe, state = store.state) {
+  const ev = EVENTS.find((e) => e.id === pe.id);
+  return !ev?.between?.when || !!ev.between.when(state.player, state);
+}
+
+export function drawBetween(step, seasons, chance = 0.8, everyday = 0) {
+  const state = store.state;
+  return apart(`between/${state.year}/${state.month}/${chance}`, () => {
+    const pool = [];
+    for (const ev of EVENTS) {
+      const b = ev.between;
+      if (!b || ev.queuedOnly || (b.steps && !b.steps.includes(step)) || (b.seasons && !b.seasons.some((x) => seasons.includes(x))) || (b.when && !b.when(player(), state))) continue;
+      const cast = eligibleCast(ev, true);
+      if (cast) pool.push({ ev, cast });
+    }
+    const queued = [];
+    if (pool.length && rng.chance(chance)) {
+      const pick = rng.weighted(pool, (x) => x.ev.weight ?? 1);
+      state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast });
+      queued.push(pick.ev.id);
+    }
+    // One of the ordinary scenes of a year can happen between years too. Story beats (priority scenes) stay with the
+    // turn of the year, where the systems that call for them run; cooldowns still count in years.
+    if (everyday && rng.chance(everyday)) {
+      const waiting = new Set(state.pendingEvents.map((e) => e.id));
+      const ordinary = [];
+      for (const ev of EVENTS) {
+        if (ev.priority || (ev.weight ?? 1) <= 0 || waiting.has(ev.id)) continue;
+        const cast = eligibleCast(ev, false);
+        if (cast) ordinary.push({ ev, cast });
+      }
+      if (ordinary.length) {
+        const pick = rng.weighted(ordinary, (x) => x.ev.weight ?? 1);
+        state.pendingEvents.push({ id: pick.ev.id, cast: pick.cast });
+        queued.push(pick.ev.id);
+      }
+    }
+    return queued;
+  });
 }
 
 /** Queues this year's scenarios onto state.pendingEvents: story beats first. */
@@ -176,6 +267,11 @@ function variantsFor(outcomes, on, cast) {
  * @returns {{text:string, tone:'good'|'bad'|'neutral', changes:Array, death?:string}}
  */
 export function resolveChoice(ev, choiceIndex, cast) {
+  // A scene between years, or any scene met on a turn between years, plays out on its own luck too (see drawBetween).
+  if (ev.between || ev.hood || store.state.month) return apart(`choice/${store.state.year}/${store.state.month ?? 0}/${ev.id}/${choiceIndex}`, () => resolveNow(ev, choiceIndex, cast));
+  return resolveNow(ev, choiceIndex, cast);
+}
+function resolveNow(ev, choiceIndex, cast) {
   const p = player();
   const state = store.state;
   const choice = ev.choices[choiceIndex];

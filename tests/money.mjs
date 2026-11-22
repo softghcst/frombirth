@@ -161,6 +161,7 @@ section('interest: monthly, compounding, exact, and paid once a year');
 disk.clear();
 p = life('us', { age: 16, cash: 400 });                                   // 1. a real character
 p.flags.firstPay = false;
+p.flags.longevity = 18; p.stats.health = 100; p.conditions = []; // followed from 16 into work: the life should not end by chance partway (it did, once, and death closes every account)
 let o = bank.overview();                                                    // 2-3. My Money shows what they have
 check(o.cash === 400 && o.netWorth === netWorth(store.state), 'the overview shows the character\'s actual money');
 const g = Object.values(store.state.npcs).find((n) => n.role === 'parent');
@@ -190,7 +191,7 @@ let y2 = null;   // a year in work (people are sometimes laid off: try again)
 for (let i = 0; i < 8 && !(y2?.income.salary > 0 && y2?.expense.tax > 0); i++) { if (!p.career.careerId) hire(office, 0, 60, 'Hired.'); advanceYear(); y2 = yearTotals(store.state.ledger, store.state.year, 'USD'); }
 check((y2.expense.housing ?? 0) > 0 && (y2.expense.living ?? 0) > 0, 'rent and everyday spending were paid and recorded');
 check((y2.income.salary ?? 0) > 0 && (y2.expense.tax ?? 0) > 0, 'salary and the tax on it are recorded separately');
-check(y2.in - (y2.income.salary ?? 0) - (y2.income.partTime ?? 0) - (y2.income.interestIncome ?? 0) - (y2.income.giftIn ?? 0) - (y2.income.otherIncome ?? 0) - (y2.income.gigs ?? 0) - (y2.income.winnings ?? 0) - (y2.income.rentIncome ?? 0) - (y2.income.pension ?? 0) === 0, 'income is made of real sources only');
+check(y2.in - (y2.income.salary ?? 0) - (y2.income.partTime ?? 0) - (y2.income.interestIncome ?? 0) - (y2.income.giftIn ?? 0) - (y2.income.otherIncome ?? 0) - (y2.income.gigs ?? 0) - (y2.income.winnings ?? 0) - (y2.income.rentIncome ?? 0) - (y2.income.pension ?? 0) - (y2.income.benefits ?? 0) - (y2.income.prizeMoney ?? 0) - (y2.income.sponsorship ?? 0) === 0, 'income is made of real sources only');
 // 11-13. a goal, money saved toward it, progress.
 p.finance.cash += 0;
 const acct = bank.accounts()[0];
@@ -207,6 +208,8 @@ check(bank.goalList()[0].status === 'completed' && goalsDone() === 1, 'the goal 
 bank.checkGoals(); bank.withdraw(acct.id, 500);
 check(bank.goalList()[0].status === 'completed' && goalsDone() === 1, 'a goal once met stays met, and is recorded once');
 // 14-18. another year; balances, history and net worth.
+// Enough cash for a costly year, so the bills never have to empty the bank account this check counts.
+p.finance.cash += 200000; book({ cat: 'giftIn', desc: 'For the test' });
 const cashWas = p.finance.cash; const txWas = txs().length;
 advanceYear();
 check(txs().length > txWas && p.finance.cash !== cashWas, 'a year of income and bills moved the money');
@@ -350,15 +353,24 @@ check(loans.loanOptions().every((x) => !x.approved), 'lenders who can see a rece
 section('hardship and the lending record: savings first; marks from real events; no invented scores');
 
 // ---------- 10. Budget: planned against actual ----------
-p = life('us', { cash: 20000 });
-hire(office, 1, 60, 'Hired.');
-advanceYear();
-let b = bank.budgetView();
-check(b.income > 0 && b.spent > 0 && b.left === b.income - b.spent && b.rows.some((x) => x.cat === 'housing' && x.actual > 0), 'the budget shows what was actually earned and spent');
-check(bank.setLimit('housing', 1).ok && !bank.setLimit('salary', 100).ok && !bank.setLimit('housing', -4).ok, 'limits are for spending, and are whole amounts');
-const lines = store.state.journal.length;
-advanceYear();
-check(store.state.journal.slice(lines).some((e) => e.text.startsWith('You spent more than you planned on')), 'going over a limit is noticed at the end of the year');
+// (A life is begun again if the player does not survive the two years: nothing is written for a year that ends in a death.)
+let b; let noticed = false; let shown = false; let limitsOk = false;
+for (let tries = 0; tries < 12 && !(shown && noticed); tries++) {
+  p = life('us', { cash: 20000 });
+  hire(office, 1, 60, 'Hired.');
+  p.stats.health = 100; advanceYear();
+  if (!p.alive) continue;
+  b = bank.budgetView();
+  shown = b.income > 0 && b.spent > 0 && b.left === b.income - b.spent && b.rows.some((x) => x.cat === 'housing' && x.actual > 0);
+  limitsOk = bank.setLimit('housing', 1).ok && !bank.setLimit('salary', 100).ok && !bank.setLimit('housing', -4).ok;
+  const lines = store.state.journal.length;
+  p.stats.health = 100; advanceYear();
+  if (!p.alive) continue;
+  noticed = store.state.journal.slice(lines).some((e) => e.text.startsWith('You spent more than you planned on'));
+}
+check(shown, 'the budget shows what was actually earned and spent');
+check(limitsOk, 'limits are for spending, and are whole amounts');
+check(noticed, 'going over a limit is noticed at the end of the year');
 bank.setLimit('housing', null);
 b = bank.budgetView();
 check(b.rows.find((x) => x.cat === 'housing').limit === null, 'a limit can be removed');

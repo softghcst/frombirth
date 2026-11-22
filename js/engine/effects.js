@@ -1,8 +1,10 @@
-import { rng } from '../rng.js';
 // The single place where consequences are applied. Events, activities, crimes
 // and interactions all describe what happens as Effect[] and send it here.
+import { rng } from '../rng.js';
 import { forgetNpc } from './digital/core.js';
 import { decide as campusChoice } from './campus.js';
+import { feelingChoice } from './identity.js';
+import { ailmentChoice } from './health.js';
 import { workChoice } from './workEvents.js';
 import { decide as parentChoice } from './kidschool.js';
 import { decide as royalEdChoice } from './royaled.js';
@@ -17,11 +19,13 @@ import { defend } from './campaign.js';
 import { decide } from './government.js';
 import { decide as digitalChoice } from './digital/stories.js';
 import { decide as eraChoice } from './eraScenes.js';
+import { togetherChoice } from './together.js';
 import { clamp, localMoney, cap } from '../util.js';
 import { store, player, country, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
 import { addCondition, cureCondition } from './health.js';
-import { remember } from './conditions.js';
+import { healthEffect } from './health/story.js';
+import { remember, parentsPay, parentsSpend } from './conditions.js';
 import { adjustPerformance, scaleSalary, fire, promote } from './career.js';
 import { hitProperty } from './realEstate.js';
 import { hitVehicle, giveVehicle } from './vehicles.js';
@@ -33,10 +37,17 @@ import * as courtLife from './court.js';
 import * as fame from './reputation.js';
 import * as throne from './reign.js';
 import { moneyEffect } from './moneyEffects.js';
+import { sceneChoice as momentChoice } from './moments.js';
+import { bondChoice } from './bonds.js';
+import { estateChoice } from './estateReview.js';
+import { loveChoice } from './loveStories.js';
 import { register as registerAnimal, recordHealth } from './animals.js';
 import { sceneChoice as animalChoice } from './animalCare.js';
 import { lifeChoice } from './animalLife.js';
 import { arcChoice } from './animalArcs.js';
+import { sportArcChoice } from './sportsArcs.js';
+import { disasterChoice } from './disasters.js';
+import { hoodChoice } from './neighborhoodLife.js';
 
 /**
  * @param {import('../types.js').Effect[]} effects
@@ -65,6 +76,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       case 'cash': {
         const amt = localMoney(e.delta, c);
+        // A young child at home does not pay for the family's choices: the parents do.
+        if (amt < 0 && parentsPay(p)) { parentsSpend(-amt, p); shown.push({ label: 'Paid by your parents', delta: amt, money: true, family: true }); break; }
         p.finance.cash += amt;
         if (amt > 0) p.finance.lifetimeEarned += amt;
         shown.push({ label: 'Cash', delta: amt, money: true });
@@ -107,6 +120,9 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'animal': ctx.note = animalChoice(e.value, ctx.cast); break;
       case 'animalLife': ctx.note = lifeChoice(e.value, ctx.cast); break;
       case 'animalArc': ctx.note = arcChoice(e.value, ctx.cast); break;
+      case 'sportArc': ctx.note = sportArcChoice(e.value, ctx.cast); break;
+      case 'disaster': ctx.note = disasterChoice(e.value, ctx.cast); break;
+      case 'hood': { const line = hoodChoice(e.value, ctx.cast); if (line) ctx.note = line; break; }
       case 'memory':
         remember(store.state.npcs[ctx.cast[e.target]], e.value.key, e.value.text);
         break;
@@ -138,7 +154,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       }
       case 'moveCity': {
         const others = c.cities.filter((x) => x !== p.city);
-        p.city = others.length ? rng.pick(others) : p.city;
+        p.city = others.length ? rng.pick(others) : p.city; // the game's own dice, so a reload replays it
         break;
       }
       case 'property': hitProperty(e.target, e.value); break;
@@ -158,7 +174,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (e.target) ctx.cast[e.target] = npc.id;
         break;
       }
-      case 'honour': crown.honour(p.flags.honourRank ?? 'knight'); break;
+      case 'honor': crown.honor(p.flags.honorRank ?? 'knight'); break;
       case 'family': { const d = fame.shift('family', e.delta, ctx.why); if (d) shown.push({ label: 'Family approval', delta: d }); break; }
       case 'press': { const d = fame.shift('press', e.delta, ctx.why); if (d) shown.push({ label: 'The press', delta: d }); break; }
       case 'story': fame.addStory(e.value.label, e.value.truth, e.value.heat); break;
@@ -185,6 +201,8 @@ export function applyEffects(effects, ctx = { cast: {} }) {
       case 'work': { const said = workChoice(e.value, ctx.cast); if (said) ctx.note = ctx.note ? `${ctx.note} ${said}` : said; break; }
       case 'school': ctx.note = schoolChoice(e.value, ctx.cast); break;
       case 'campus': ctx.note = campusChoice(e.value, ctx.cast); break;
+      case 'genderFeeling': ctx.note = feelingChoice(e.value); break;
+      case 'ailment': ctx.note = ailmentChoice(e.value, ctx.cast); break;
       case 'parent': ctx.note = parentChoice(e.value, ctx.cast); break;
       case 'royalEd': ctx.note = royalEdChoice(e.value, ctx.cast); break;
       case 'abroad': ctx.note = abroadChoice(e.value, ctx.cast); break;
@@ -204,6 +222,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         if (p.career.partTime) p.career.partTime.salary = Math.round(p.career.partTime.salary * e.delta);
         break;
       case 'condition': addCondition(e.value); break;
+      case 'health': { const n = healthEffect(e.value, ctx); if (n) ctx.note = ctx.note ? `${ctx.note} ${n}` : n; break; }
       case 'cure': cureCondition(e.value); break;
       case 'gpa':
         p.education.gpa = Math.round(clamp(p.education.gpa + e.delta, 0, 4) * 100) / 100;
@@ -213,6 +232,7 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         break;
       case 'digital': ctx.note = digitalChoice(e.value, ctx.cast); break;
       case 'era': ctx.note = eraChoice(e.value, ctx.cast); break;
+      case 'together': ctx.note = togetherChoice(e.value, ctx.cast); break;
       case 'followers':
         p.social.followers = Math.max(0, Math.round(p.social.followers * (e.value ?? 1)) + (e.delta ?? 0));
         break;
@@ -220,6 +240,10 @@ export function applyEffects(effects, ctx = { cast: {} }) {
         p.counters[e.target] = (p.counters[e.target] ?? 0) + (e.delta ?? 1);
         break;
       case 'money': shown.push(...moneyEffect(e, ctx)); break;
+      case 'love': { const note = loveChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'estate': { const note = estateChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'bond': { const note = bondChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
+      case 'moment': { const note = momentChoice(e.value, ctx.cast); if (note) ctx.note = note; break; }
       case 'milestone': milestone(e.value); break;
       case 'death': ctx.death = e.value; break;
       default: console.warn('Unknown effect', e);

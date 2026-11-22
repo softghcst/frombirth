@@ -112,7 +112,7 @@ function careersFor(npc) {
   if ((t.acting ?? 0) >= 75) stage.push('actor');
   if ((t.singing ?? 0) >= 78) stage.push('singer');
   if ((t.sports ?? 0) >= 82 && npc.age <= 26) stage.push('athlete');
-  const wantsIt = npc.life.aspiration?.id === 'stage' || e.majorId === 'musical_theatre' || e.majorId === 'theatre';
+  const wantsIt = npc.life.aspiration?.id === 'stage' || e.majorId === 'musical_theater' || e.majorId === 'theater';
   const stageOpen = stage.filter((id) => careerExists(id, worldYear()));
   if (stageOpen.length && rng.chance(wantsIt ? 0.85 : 0.06)) return stageOpen.map((id) => CAREER_BY_ID[id]);
 
@@ -122,10 +122,10 @@ function careersFor(npc) {
     const r = c.req ?? {};
     if (careerBlock(c, npc, worldYear(), (id) => lawRule(id, typeof npc.flags?.abroad === 'string' ? npc.flags.abroad : store.state.player.countryId))) return false;
     if (c.category === 'performing') return false;
-    if (c.branchOnly || r.experience || r.programmes || c.agesOut) return false; // reached from inside a career, not hired into cold
+    if (c.branchOnly || r.experience || r.programs || c.agesOut) return false; // reached from inside a career, not hired into cold
     if (r.altOnly && !rng.chance(0.15)) return false; // needs a certificate few people have
     if (c.type === 'military' && !rng.chance(0.08)) return false;
-    if (r.programme && !has(r.programme)) return false;
+    if (r.program && !has(r.program)) return false;
     if (r.trade && e.trade !== r.trade) return false;
     if (r.degree === 'university' && !has('university')) return false;
     if (r.majors && !r.majors.includes(e.majorId)) return false;
@@ -135,9 +135,9 @@ function careersFor(npc) {
     return true;
   });
   // Someone with a trade, a profession or a subject works in it nine times in ten.
-  const own = open.filter((c) => (e.trade && usesTrade(c)) || (c.req?.programme && has(c.req.programme))
+  const own = open.filter((c) => (e.trade && usesTrade(c)) || (c.req?.program && has(c.req.program))
     || (c.req?.majors && has('university')));
-  // A child may lean towards a parent's line of work (more so if they were shown it and liked it), where they
+  // A child may lean toward a parent's line of work (more so if they were shown it and liked it), where they
   // qualify for it. Never forced: one told to find their own way does not lean at all.
   if (npc.role === 'child' && !npc.flags.ownPath && store.state?.player) {
     const mine = store.state.player.career;
@@ -146,7 +146,7 @@ function careersFor(npc) {
     if (same.length && rng.chance(npc.flags.inspiredBy ? 0.6 : 0.1)) { npc.flags.followed = fam; return same; }
   }
   if (own.length && rng.chance(0.9)) return own;
-  return open.filter((c) => !c.req?.majors && !c.req?.programme && !c.req?.trade);
+  return open.filter((c) => !c.req?.majors && !c.req?.program && !c.req?.trade);
 }
 
 const bandPay = (level, where = 0.4) => localWage((level.pay[0] + (level.pay[1] - level.pay[0]) * where) * 1000, country());
@@ -220,8 +220,8 @@ export const netIncome = (npc) => Math.round((npc.life?.job?.salary ?? npc.life?
 
 function chooseMajor(npc) {
   const t = npc.talents ?? {};
-  if ((t.singing ?? 0) >= 60 && (t.dance ?? 0) >= 55 && (t.acting ?? 0) >= 55) return 'musical_theatre';
-  if ((t.acting ?? 0) >= 70) return 'theatre';
+  if ((t.singing ?? 0) >= 60 && (t.dance ?? 0) >= 55 && (t.acting ?? 0) >= 55) return 'musical_theater';
+  if ((t.acting ?? 0) >= 70) return 'theater';
   if ((t.music ?? 0) >= 70) return 'music';
   const gpa = npc.life.edu.gpa;
   const open = MAJORS.filter((m) => !m.audition && gpa >= m.minGpa && majorOpen(m.id, worldYear()));
@@ -584,7 +584,7 @@ export function lifeSummary(npc) {
   const c = country();
   const rows = [];
   const e = L.edu;
-  const school = { elementary: 'Elementary school', middle: 'Middle school', high: 'High school', university: 'At university',
+  const school = { elementary: 'Elementary school', middle: 'Middle school', high: 'High school', university: 'In college',
     apprenticeship: 'Apprentice', medical: 'At medical school', law: 'At law school' }[e.stage];
   // A child of the player's at school, or at a named university, has a fuller line of its own (kidschool.schoolLine).
   const named = npc.role === 'child' && (kid.schoolLine(npc));

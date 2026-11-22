@@ -25,7 +25,7 @@ const DEFAULT = model(['Primary school', 6], ['Lower secondary', 12], ['Upper se
 
 /** How universities mark, by country. Not listed: a grade-point average. */
 const DEGREE_SCHEME = {
-  uk: 'honours', ie: 'honours', jm: 'honours', ng: 'honours', ke: 'honours', gh: 'honours', pk: 'honours', my: 'honours', sg: 'honours', au: 'honours', nz: 'honours', za: 'honours',
+  uk: 'honors', ie: 'honors', jm: 'honors', ng: 'honors', ke: 'honors', gh: 'honors', pk: 'honors', my: 'honors', sg: 'honors', au: 'honors', nz: 'honors', za: 'honors',
   fr: 'twenty', be: 'twenty', mc: 'twenty', ma: 'twenty',
   de: 'german', ch: 'german',
   it: 'italy',
@@ -58,7 +58,7 @@ export const LEAVING_AGE = 18;
  */
 export const SUBJECTS = [
   { id: 'reading', name: 'Reading and writing', until: 'elementary', from: 'elementary', apt: { 'stats.intellect': 1 } },
-  { id: 'maths', name: 'Mathematics', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['chess'] },
+  { id: 'math', name: 'Mathematics', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['chess'] },
   { id: 'science', name: 'Science', from: 'elementary', apt: { 'stats.intellect': 1 }, club: ['science_club', 'environment'] },
   { id: 'literature', name: 'Literature', from: 'middle', apt: { 'stats.intellect': 0.8, 'stats.charm': 0.2 }, club: ['paper', 'debate'] },
   { id: 'history', name: 'History', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['debate'] },
@@ -66,7 +66,7 @@ export const SUBJECTS = [
   { id: 'technology', name: 'Technology', from: 'middle', apt: { 'stats.intellect': 1 }, club: ['coding'] },
   { id: 'art', name: 'Art', from: 'elementary', apt: { 'stats.intellect': 0.4, 'stats.charm': 0.6 }, club: ['art_club'] },
   { id: 'music', name: 'Music', from: 'elementary', apt: { 'talents.music': 0.7, 'talents.singing': 0.3 }, club: ['choir', 'band'] },
-  { id: 'theatre', name: 'Theater', from: 'middle', apt: { 'talents.acting': 0.8, 'stats.charm': 0.2 }, club: ['drama', 'youth_theatre', 'musical_theatre'] },
+  { id: 'theater', name: 'Theater', from: 'middle', apt: { 'talents.acting': 0.8, 'stats.charm': 0.2 }, club: ['drama', 'youth_theater', 'musical_theater'] },
   { id: 'pe', name: 'Physical education', from: 'elementary', apt: { 'talents.sports': 0.7, 'stats.health': 0.3 }, club: ['sports_team', 'dance_class'] },
   { id: 'economics', name: 'Economics', from: 'high', apt: { 'stats.intellect': 1 } },
   { id: 'government', name: 'Government', from: 'high', apt: { 'stats.intellect': 0.6, 'stats.charm': 0.4 }, club: ['council', 'debate'] },
@@ -85,7 +85,7 @@ export const subjectsAt = (stage) => SUBJECTS.filter((s) => ORDER.indexOf(s.from
  * suffix: how such schools are named; {stage} is the country's word for the stage.
  */
 export const SCHOOL_KINDS = [
-  { id: 'public', name: 'State school', fee: 0, teach: 0, class: 6, suffix: ['{place} {stage}'],
+  { id: 'public', name: 'Public school', fee: 0, teach: 0, class: 6, suffix: ['{place} {stage}'],
     blurb: 'The local school. Free, mixed, and where most people go.' },
   { id: 'religious', name: 'Faith school', fee: 1500, teach: 0.05, class: 6, yearly: { hidden: { discipline: 1, karma: 1 } }, suffix: ['St {saint}\'s School', 'Holy Cross {stage}'],
     blurb: 'Small fees, assemblies, and firm ideas about behavior.' },
@@ -95,16 +95,19 @@ export const SCHOOL_KINDS = [
     blurb: 'Small classes, good facilities, and fees to match.' },
   { id: 'boarding', name: 'Boarding school', fee: 24000, teach: 0.2, class: 6, from: 'middle', away: true, needs: { wealth: 'rich' }, yearly: { hidden: { willpower: 2 }, stats: { charm: 1 } }, suffix: ['St {saint}\'s College', '{place} College'],
     blurb: 'Home only in the holidays. Old buildings, older rules, friends for life.' },
-  { id: 'arts', name: 'Performing arts school', fee: 2000, teach: 0, class: 6, from: 'middle', needs: { entry: { path: 'talents.acting|talents.singing|talents.dance|talents.music', min: 55 } }, favours: ['music', 'theatre', 'art'], suffix: ['The {place} School of Performing Arts'],
-    blurb: 'Half the timetable is on a stage. Entry by audition.' },
-  { id: 'sports', name: 'Sports academy', fee: 2000, teach: -0.05, class: 6, from: 'middle', needs: { entry: { path: 'talents.sports', min: 60 } }, favours: ['pe'], suffix: ['{place} Sports Academy'],
-    blurb: 'Training before lessons and after them. Entry by trial.' },
+  { id: 'arts', name: 'Performing arts school', fee: 19000, teach: 0, class: 6, from: 'middle', needs: { entry: { path: 'talents.acting|talents.singing|talents.dance|talents.music', min: 55 } }, favors: ['music', 'theater', 'art'], suffix: ['The {place} School of Performing Arts'],
+    blurb: 'Half the timetable is on a stage. Entry by audition, and the fees are steep unless the audition is exceptional.' },
+  { id: 'sports', name: 'Sports academy', fee: 15000, teach: -0.05, class: 6, from: 'middle', needs: { entry: { path: 'talents.sports', min: 60 } }, favors: ['pe'], suffix: ['{place} Sports Academy'],
+    blurb: 'Training before lessons and after them. Entry by trial, with steep fees unless the trial is exceptional.' },
   { id: 'home', name: 'Taught at home', fee: 0, teach: 0.05, class: 0, suffix: ['home'],
     blurb: 'Lessons at the kitchen table. No bell, no uniform, not many other children.' },
 ];
 SCHOOL_KINDS.push({ id: 'palace', name: 'Palace tutors', fee: 0, teach: 0.12, class: 2, needs: { royal: true }, suffix: ['The Palace Schoolroom', 'The Schoolroom at {place} House', 'The {place} Palace Schoolroom'],
   blurb: 'Lessons at home from tutors chosen by the household. Two companions chosen for you, and few friends of your own choosing.' });
 export const KIND_BY_ID = Object.fromEntries(SCHOOL_KINDS.map((k) => [k.id, k]));
+/** What a family can pay, a year, by wealth. A school with entry by talent may take off part of its fee for an exceptional one. */
+export const FEE_CAP = { poor: 1000, middle: 12000, rich: Infinity };
+export const SCHOLARSHIPS = [{ min: 90, off: 1, name: 'a full scholarship' }, { min: 78, off: 0.5, name: 'a half scholarship' }, { min: 66, off: 0.25, name: 'a quarter scholarship' }];
 
 /**
  * The lessons a royal child has that nobody else does: one a year, from eight.
@@ -144,26 +147,26 @@ export const TEACHING_STYLES = [
 
 /** What a child may come to care about. Not fixed: interests move with what happens. */
 export const INTERESTS = [
-  { id: 'science', name: 'Science' }, { id: 'maths', name: 'Mathematics' }, { id: 'writing', name: 'Writing' }, { id: 'music', name: 'Music' },
-  { id: 'theatre', name: 'Theater' }, { id: 'art', name: 'Art' }, { id: 'sport', name: 'Sport' }, { id: 'technology', name: 'Technology' },
+  { id: 'science', name: 'Science' }, { id: 'math', name: 'Mathematics' }, { id: 'writing', name: 'Writing' }, { id: 'music', name: 'Music' },
+  { id: 'theater', name: 'Theater' }, { id: 'art', name: 'Art' }, { id: 'sport', name: 'Sport' }, { id: 'technology', name: 'Technology' },
   { id: 'politics', name: 'Politics' }, { id: 'history', name: 'History' }, { id: 'languages', name: 'Languages' }, { id: 'service', name: 'Helping out' }, { id: 'games', name: 'Games' },
 ];
 /** The circles a school sorts itself into: by what people care about, not by who they are. The last is for everyone else. */
 export const CIRCLES = [
-  { id: 'academic', name: 'the ones who like the work', interests: ['science', 'maths', 'history', 'languages'] },
+  { id: 'academic', name: 'the ones who like the work', interests: ['science', 'math', 'history', 'languages'] },
   { id: 'sport', name: 'the sports crowd', interests: ['sport'] },
-  { id: 'stage', name: 'the theater and music lot', interests: ['theatre', 'music'] },
+  { id: 'stage', name: 'the theater and music lot', interests: ['theater', 'music'] },
   { id: 'makers', name: 'the ones who build things', interests: ['technology', 'games'] },
   { id: 'creative', name: 'the artists and writers', interests: ['art', 'writing'] },
   { id: 'causes', name: 'the ones with a cause', interests: ['politics', 'service'] },
   { id: 'own', name: 'people who go their own way', interests: [] },
 ];
 /** What each club does with its year, which decides how it is played: a season, a production, a competition, an election. */
-export const CLUB_KIND = { sports_team: 'sport', drama: 'stage', youth_theatre: 'stage', council: 'council', paper: 'press', debate: 'compete', chess: 'compete', band: 'compete', choir: 'compete',
+export const CLUB_KIND = { math_club: 'compete', book_club: 'compete', astronomy: 'compete', animal_rights: 'compete', gaming_club: 'compete', sports_team: 'sport', drama: 'stage', youth_theater: 'stage', musical_theater: 'stage', dance_class: 'compete', council: 'council', paper: 'press', debate: 'compete', chess: 'compete', band: 'compete', choir: 'compete',
   science_club: 'compete', coding: 'compete', art_club: 'compete', environment: 'compete', volunteers: 'compete' };
 /** The interest a club belongs to: classmates who share it are the ones found there. */
-export const CLUB_INTEREST = { sports_team: 'sport', drama: 'theatre', youth_theatre: 'theatre', musical_theatre: 'theatre', council: 'politics', paper: 'writing', debate: 'politics', chess: 'games', band: 'music', choir: 'music',
-  science_club: 'science', coding: 'technology', art_club: 'art', environment: 'service', volunteers: 'service', dance_class: 'theatre' };
+export const CLUB_INTEREST = { math_club: 'math', book_club: 'writing', astronomy: 'science', animal_rights: 'service', gaming_club: 'games', sports_team: 'sport', drama: 'theater', youth_theater: 'theater', musical_theater: 'theater', council: 'politics', paper: 'writing', debate: 'politics', chess: 'games', band: 'music', choir: 'music',
+  science_club: 'science', coding: 'technology', art_club: 'art', environment: 'service', volunteers: 'service', dance_class: 'theater' };
 /** The sports schools play, by country. */
 export const SPORTS = {
   default: ['football', 'basketball', 'volleyball', 'athletics', 'swimming', 'tennis'],
@@ -181,7 +184,7 @@ export const SPORTS = {
   jm: ['athletics', 'football', 'cricket', 'netball', 'swimming'],
 };
 /** The last stage of school: what everyone takes, and what can be chosen beside it. */
-export const CORE_HIGH = ['maths', 'science', 'literature', 'languages', 'pe'];
-export const ELECTIVES = ['history', 'technology', 'art', 'music', 'theatre', 'economics', 'government'];
+export const CORE_HIGH = ['math', 'science', 'literature', 'languages', 'pe'];
+export const ELECTIVES = ['history', 'technology', 'art', 'music', 'theater', 'economics', 'government'];
 /** Plays a school might put on. All invented. */
 export const PLAYS = ['The Glass Orchard', 'A Winter Crossing', 'The Lamplighter\'s Daughter', 'Nine Days in August', 'The Paper Kingdom', 'Salt and Honey', 'The Clockmaker of Varna', 'Under the Signal Tower', 'A Door in the Hill', 'The Last Ferry Home'];

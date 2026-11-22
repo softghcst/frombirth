@@ -20,6 +20,8 @@ import { CLUB_BY_ID } from '../data/schools.js';
 import { LEAVING_AGE } from '../data/education.js';
 import { INTERESTS, CIRCLES, SPORTS, ELECTIVES, CORE_HIGH, PLAYS, CLUB_KIND, CLUB_INTEREST, SUBJECT_BY_ID } from '../data/education.js';
 import * as sch from './schooling.js';
+import { schoolSeason } from './sports.js';
+import { idolOf } from './kpop.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const mates = () => npcsByRole('classmate').filter((n) => n.flags.schoolId);
@@ -87,6 +89,10 @@ function season(id, life) {
   e.sport ??= sportsHere()[0];
   const a = (p.flags.athlete ??= { sport: e.sport, seasons: 0, best: 0, captain: false, awards: [] });
   a.sport = e.sport;
+  // Sports the athletic engine knows are played through it: the school's team, coach, league and record are kept
+  // (engine/sports.js), and the season itself is played with the rest of the athletic year.
+  const engine = schoolSeason(e.sport);
+  if (engine != null) { life.record.push({ age: p.age, text: `${e.sport} season`, rating: engine }); return engine; }
   const skill = p.talents.sports;
   const rating = Math.round(clamp(skill * 0.7 + p.stats.health * 0.15 + p.hidden.discipline * 0.15 + rng.int(-10, 10)));
   const games = 10;
@@ -110,15 +116,102 @@ function season(id, life) {
 function compete(id, life) {
   const p = player();
   const club = CLUB_BY_ID[id];
-  const paths = Object.keys(club.tryout?.factors ?? { 'stats.intellect': 1 });
+  const taught = Object.keys(club.yearly?.talents ?? {}).map((k) => `talents.${k}`);
+  const paths = Object.keys(club.tryout?.factors ?? {}).length ? Object.keys(club.tryout.factors) : taught.length ? taught : ['stats.intellect'];
   const skill = paths.reduce((s, k) => s + val(p, k), 0) / paths.length;
   const score = Math.round(clamp(skill * 0.75 + life.standing * 0.15 + rng.int(-12, 14)));
-  const what = { debate: 'the debating tournament', chess: 'the chess championship', science_club: 'the science fair', coding: 'the programming contest', band: 'the band competition', choir: 'the choral festival', art_club: 'the art exhibition', environment: 'the environmental challenge', paper: 'the school press awards', volunteers: 'the volunteering awards' }[id] ?? 'the regional competition';
+  const what = { debate: 'the debating tournament', chess: 'the chess championship', science_club: 'the science fair', coding: 'the programming contest', band: 'the band competition', choir: 'the choral festival', dance_class: 'the dance showcase', art_club: 'the art exhibition', environment: 'the environmental challenge', paper: 'the school press awards', volunteers: 'the volunteering awards' }[id] ?? 'the regional competition';
   const place = score >= 85 ? 'won' : score >= 70 ? 'reached the final of' : score >= 50 ? 'did respectably at' : 'went out early in';
   life.record.push({ age: p.age, text: `${place} ${what}`, rating: score });
   log(`With the ${club.name.toLowerCase()}, you ${place} ${what}.`, 'system', score >= 70 ? 'good' : 'neutral');
   if (score >= 85) { milestone(`Won ${what}.`, 'education'); mood(5); }
   return score;
+}
+
+/** Clubs that put people in front of an audience: time in them builds stage presence. */
+const PERFORMING = new Set(['drama', 'youth_theater', 'musical_theater', 'dance_class', 'choir', 'band']);
+/** Stage presence (shown with the idol skills, engine/kpop.js) grows from performing anywhere, more slowly near the top. */
+function presence(by) { const i = idolOf(player()); i.stage = clamp(i.stage + by * Math.max(0.15, (100 - i.stage) / 100)); }
+
+function makeLeader(id, life) {
+  const p = player(); const e = p.education; const kind = CLUB_KIND[id];
+  life.role = 'leader';
+  if (kind === 'sport') (p.flags.athlete ??= { awards: [] }).captain = true;
+  if (kind === 'council' || id === 'debate') p.counters.polExp = Math.min(30, (p.counters.polExp ?? 0) + 2);
+  e.standing = clamp((e.standing ?? 50) + 6);
+  milestone(`Became ${leaderTitle(id).toLowerCase()} of the ${CLUB_BY_ID[id].name.toLowerCase()}.`, 'education');
+}
+
+// ---------- What the player can do in a club ----------
+
+/** This year's record of what the player has done in each club: each thing once a year. */
+const clubDone = (id) => { const p = player(); const e = p.education; e.clubActs ??= {}; if (e.clubActs.age !== p.age) e.clubActs = { age: p.age }; return (e.clubActs[id] ??= {}); };
+
+/** The things the player can do in one of their clubs this year. */
+export function clubActions(id) {
+  const p = player();
+  const e = p.education;
+  if (!e.clubs?.includes(id) || p.legal?.incarceration) return [];
+  const life = lifeOf(id);
+  const done = clubDone(id);
+  const kind = CLUB_KIND[id];
+  const out = [
+    { id: 'practice', label: kind === 'sport' ? 'Train extra' : PERFORMING.has(id) ? 'Rehearse extra' : 'Put in extra work', done: !!done.practice },
+    { id: 'help', label: kind === 'sport' ? 'Help the coach' : 'Help run things', done: !!done.help },
+  ];
+  if (PERFORMING.has(id) && p.age >= 7) out.push({ id: 'feature', label: id === 'choir' ? 'Ask for a solo' : id === 'band' ? 'Ask to play a solo' : id === 'dance_class' ? 'Ask for a featured spot' : 'Ask for a bigger part', done: !!done.feature });
+  if (life.role === 'member' && p.age >= 12 && life.standing >= 40) out.push({ id: 'lead', label: `Stand for ${leaderTitle(id).toLowerCase()}`, done: !!done.lead });
+  return out;
+}
+
+/** Does one of them. Each moves the player's standing in the club, and what the club is about. */
+export function clubAct(id, action) {
+  const p = player();
+  const e = p.education;
+  const club = CLUB_BY_ID[id];
+  if (!clubActions(id).some((a) => a.id === action)) return result(false, 'That is not open to you here.', 'neutral');
+  const done = clubDone(id);
+  if (done[action]) return result(false, 'You have done that this year already.', 'neutral');
+  done[action] = true;
+  const life = lifeOf(id);
+  const stand = (d) => { life.standing = Math.round(clamp(life.standing + d)); };
+  const name = club.name.toLowerCase();
+  const inClub = mates().filter((n) => n.flags.clubs?.includes(id));
+  switch (action) {
+    case 'practice': {
+      for (const [k, v] of Object.entries(club.yearly?.talents ?? {})) p.talents[k] = clamp((p.talents[k] ?? 0) + Math.max(1, Math.round(v / 2)));
+      for (const [k, v] of Object.entries(club.yearly?.stats ?? {})) p.stats[k] = clamp((p.stats[k] ?? 0) + Math.max(1, Math.round(v / 2)));
+      stand(rng.int(4, 8) + (e.priority === 'activities' ? 2 : 0));
+      if (PERFORMING.has(id)) presence(2);
+      return result(true, `Extra hours with the ${name}, long after everyone else has gone home. You are better for it, and people noticed.`);
+    }
+    case 'help': {
+      stand(rng.int(5, 9));
+      for (const n of inClub) rel(n, 4);
+      e.standing = clamp((e.standing ?? 50) + 1);
+      return result(true, `You set up, stayed late, and did the jobs nobody wants. The ${name} runs better with you in it${inClub.length ? `, and ${inClub[0].firstName} says so` : ''}.`);
+    }
+    case 'feature': {
+      const taught = Object.keys(club.yearly?.talents ?? {});
+      const skill = taught.length ? taught.reduce((s, k) => s + (p.talents[k] ?? 0), 0) / taught.length : p.stats.charm;
+      const chance = clamp(0.2 + (skill - 40) / 100 + (life.standing - 30) / 150, 0.1, 0.9);
+      if (rng.chance(chance)) {
+        stand(8); presence(4); mood(5);
+        life.record.push({ age: p.age, text: id === 'choir' || id === 'band' ? 'a solo at the concert' : id === 'dance_class' ? 'a featured spot in the showcase' : 'a bigger part this year' });
+        return result(true, id === 'choir' ? 'You got the solo. Your knees shook for the first line, and then they did not.' : id === 'band' ? 'Sixteen bars, alone, with everyone watching. You nailed it.' : id === 'dance_class' ? 'Front and center in the showcase. You hit every mark.' : 'A bigger part, and you make it your own.');
+      }
+      stand(-1); presence(1); mood(-3);
+      return result(false, `Not this time: it went to someone with more experience. You were told to ask again next year, and you will.`, 'neutral');
+    }
+    case 'lead': {
+      const title = leaderTitle(id).toLowerCase();
+      const chance = clamp((life.standing - 30) / 60 + (p.stats.charm - 50) / 200, 0.1, 0.9);
+      if (rng.chance(chance)) { makeLeader(id, life); mood(8); return result(true, `You stood for ${title} of the ${name}, and won. It is yours to run now.`); }
+      stand(-3); mood(-5);
+      return result(false, `You stood for ${title} of the ${name}. Someone else got it, this time. Your standing will count for more next year.`, 'bad');
+    }
+    default: return result(false, 'Nothing happens.', 'neutral');
+  }
 }
 
 /** Everything the player's clubs did this year, and whether any of them now looks to the player. */
@@ -134,19 +227,15 @@ function clubsYear() {
     if (kind === 'sport') rating = season(id, life);
     else if (kind === 'stage') {
       // One production a year, and it begins with an audition.
-      if (!staged && !e.audition && p.age < LEAVING_AGE) { staged = true; const rival = mates().filter((n) => n.flags.clubs?.includes(id) || n.flags.interest === 'theatre')[0] ?? mates()[0]; e.audition = { club: id, play: rng.pick(PLAYS), rivalId: rival?.id ?? null }; pend('school_audition', { ...(rival ? { rival: rival.id } : {}), words: { play: e.audition.play, club: CLUB_BY_ID[id].name.toLowerCase(), ...(rival ? {} : { rival: 'Someone in the year above' }) } }); }
+      if (!staged && !e.audition && p.age < LEAVING_AGE) { staged = true; const rival = mates().filter((n) => n.flags.clubs?.includes(id) || n.flags.interest === 'theater')[0] ?? mates()[0]; e.audition = { club: id, play: rng.pick(PLAYS), rivalId: rival?.id ?? null }; pend('school_audition', { ...(rival ? { rival: rival.id } : {}), words: { play: e.audition.play, club: CLUB_BY_ID[id].name.toLowerCase(), ...(rival ? {} : { rival: 'Someone in the year above' }) } }); }
       rating = (p.talents.acting + p.talents.singing) / 2;
     } else if (kind !== 'council') rating = compete(id, life);
     else rating = p.stats.charm;
     life.standing = Math.round(clamp(life.standing + 6 + (rating - 50) / 6 + (e.priority === 'activities' ? 4 : 0)));
+    if (PERFORMING.has(id)) presence(1.5);
     if (life.role === 'member' && life.standing >= 60 && p.age >= 14 && rng.chance(0.4)) {
-      life.role = 'leader';
-      const title = leaderTitle(id);
-      if (kind === 'sport') (p.flags.athlete ??= { awards: [] }).captain = true;
-      if (kind === 'council' || id === 'debate') p.counters.polExp = Math.min(30, (p.counters.polExp ?? 0) + 2);
-      e.standing = clamp((e.standing ?? 50) + 6);
-      log(`The ${CLUB_BY_ID[id].name.toLowerCase()} has chosen you as its ${title.toLowerCase()}.`, 'system', 'good');
-      milestone(`Became ${title.toLowerCase()} of the ${CLUB_BY_ID[id].name.toLowerCase()}.`, 'education');
+      makeLeader(id, life);
+      log(`The ${CLUB_BY_ID[id].name.toLowerCase()} has chosen you as its ${leaderTitle(id).toLowerCase()}.`, 'system', 'good');
     }
   }
   for (const id of Object.keys(e.clubLife ?? {})) if (!e.clubs.includes(id)) e.clubLife[id].left ??= p.age;
@@ -196,6 +285,11 @@ export function tickSchoolLife() {
   for (const n of class_) flesh(n);
   e.standing = Math.round(clamp((e.standing ?? 50) + (p.stats.charm - 50) / 25 + (p.hidden.karma - 50) / 50 + (class_.filter((n) => n.meters.relationship >= 55).length - 2) + (50 - (e.standing ?? 50)) * 0.05));
   clubsYear();
+  // The last year of high school: a nomination for prom royalty, likelier the more popular you are. Once.
+  if (e.stage === 'high' && p.age === 17 && !e.prom && rng.chance(clamp(0.12 + ((e.standing ?? 50) - 50) / 100 + (p.stats.charm - 50) / 200, 0.04, 0.6))) {
+    e.prom = { age: p.age, nominated: true };
+    pend('prom_royalty', { words: { title: p.gender === 'male' ? 'king' : p.gender === 'female' ? 'queen' : 'royalty', school: sch.school()?.name ?? 'your school' } });
+  }
 
   // Classmates have lives of their own: one of them has news most years.
   for (const n of class_) delete n.flags.note;
@@ -220,7 +314,7 @@ export function tickSchoolLife() {
   if (p.age >= 7 && p.age <= 12 && warm.length && fresh('class_birthday', 2)) pool.push(['class_birthday', { mate: rng.pick(warm).id }, 2]);
   if (best && p.age >= 9 && p.age <= 16 && rng.chance(0.07)) pool.push(['best_friend_moves', { mate: best.id }, 4]);
   if (warm.length >= 2 && p.age >= 11 && fresh('friends_quarrel', 4)) pool.push(['friends_quarrel', { one: warm[0].id, two: warm[1].id }, 1]);
-  if (cold && p.age >= 12 && rng.chance(0.3) && fresh('school_rumour', 4)) pool.push(['school_rumour', { mate: cold.id }, 2]);
+  if (cold && p.age >= 12 && rng.chance(0.3) && fresh('school_rumor', 4)) pool.push(['school_rumor', { mate: cold.id }, 2]);
   if (cold && p.age >= 8 && p.age <= 15 && !e.bullied && rng.chance(0.12)) pool.push(['school_bullied', { bully: cold.id, words: { again: '' } }, 3]);
   if (teacher) pool.push(['teacher_believes', { teacher: teacher.id, words: { subject: SUBJECT_BY_ID[teacher.flags.teaches].name.toLowerCase() } }, 3]);
   if (p.age >= 13 && rng.chance(0.05) && sch.teachers()[0]) pool.push(['cheating_accused', { teacher: sch.teachers()[0].id, words: { subject: SUBJECT_BY_ID[sch.teachers()[0].flags.teaches].name.toLowerCase() } }, 3]);
@@ -241,6 +335,18 @@ export function decide(what, cast = {}) {
   const n = store.state.npcs[cast.mate ?? cast.bully ?? cast.teacher ?? cast.rival ?? cast.one];
   const say = (text) => text;
   switch (what) {
+    case 'startOk': return say('');
+    case 'promSmart': case 'promLooks': case 'promStrong': case 'promFunny': {
+      // The pitch that matches who you are works best; popularity carries every one of them.
+      const lean = { promSmart: p.stats.intellect, promLooks: p.stats.charm, promStrong: (p.stats.health + (p.talents.sports ?? 0)) / 2, promFunny: (p.stats.charm + (p.talents.acting ?? 0)) / 2 }[what];
+      const won = rng.chance(clamp(0.15 + (lean - 50) / 90 + ((e.standing ?? 50) - 50) / 120, 0.05, 0.85));
+      const title = cast.words?.title ?? 'royalty';
+      e.prom = { age: p.age, won };
+      if (!won) { mood(-3); return say(`The speech goes fine. Someone else is crowned prom ${title}, and you clap for them like you mean it.`); }
+      e.standing = clamp((e.standing ?? 50) + 8); mood(12);
+      milestone(`Crowned prom ${title} at ${cast.words?.school ?? 'school'}.`, 'education');
+      return say(`The envelope is opened, and it is your name. You are prom ${title}. The crown is a little too big, and you keep it forever.`);
+    }
     case 'firstHello': e.firstDay = true; if (n) rel(n, 14); return say(`${n?.firstName ?? 'Someone'} says hello back. By lunchtime you are sharing a table.`);
     case 'firstHide': e.firstDay = true; mood(-3); return say('The day is very long. Nobody is unkind. You get through it.');
     case 'partyGo': if (n) rel(n, 10); mood(5); e.standing = clamp((e.standing ?? 50) + 2); return say(`Cake, a game that gets out of hand, and a party bag. ${n?.firstName ?? 'Your friend'} is glad you came.`);
@@ -251,7 +357,7 @@ export function decide(what, cast = {}) {
       const a = store.state.npcs[what === 'sideOne' ? cast.one : cast.two];
       const b = store.state.npcs[what === 'sideOne' ? cast.two : cast.one];
       if (a) rel(a, 9); if (b) rel(b, -12);
-      return say(`${a?.firstName} is grateful. ${b?.firstName} does not speak to you for the rest of term.`);
+      return say(`${a?.firstName} is grateful. ${b?.firstName} does not speak to you for the rest of the semester.`);
     }
     case 'sideNone': {
       const a = store.state.npcs[cast.one]; const b = store.state.npcs[cast.two];
@@ -259,9 +365,9 @@ export function decide(what, cast = {}) {
       if (a) rel(a, -3); if (b) rel(b, -3);
       return say('You stay out of it. Both of them think you should have taken their side.');
     }
-    case 'rumourConfront': if (rng.chance(0.35 + p.stats.charm / 200)) { if (n) rel(n, 6); e.standing = clamp((e.standing ?? 50) + 4); return say(`You ask ${n?.firstName} about it, quietly, face to face. It stops.`); } if (n) rel(n, -8); e.standing = clamp((e.standing ?? 50) - 3); return say('It turns into a scene in the corridor, and now everyone has heard it.');
-    case 'rumourIgnore': mood(-4); return say('You say nothing. In two weeks the school is talking about something else.');
-    case 'rumourTell': { const t = sch.teachers()[0]; if (t && t.flags.skill >= 45) { if (t) rel(t, 4); return say(`${t.firstName} ${t.lastName} deals with it without making it worse. That is rarer than it should be.`); } mood(-3); return say('A teacher gives the whole class a talk about kindness. Everybody knows why.'); }
+    case 'rumorConfront': if (rng.chance(0.35 + p.stats.charm / 200)) { if (n) rel(n, 6); e.standing = clamp((e.standing ?? 50) + 4); return say(`You ask ${n?.firstName} about it, quietly, face to face. It stops.`); } if (n) rel(n, -8); e.standing = clamp((e.standing ?? 50) - 3); return say('It turns into a scene in the hallway, and now everyone has heard it.');
+    case 'rumorIgnore': mood(-4); return say('You say nothing. In two weeks the school is talking about something else.');
+    case 'rumorTell': { const t = sch.teachers()[0]; if (t && t.flags.skill >= 45) { if (t) rel(t, 4); return say(`${t.firstName} ${t.lastName} deals with it without making it worse. That is rarer than it should be.`); } mood(-3); return say('A teacher gives the whole class a talk about kindness. Everybody knows why.'); }
     case 'bullyTeacher': { const t = sch.teachers().sort((a, b) => b.flags.skill - a.flags.skill)[0]; delete e.bullied; if (t) rel(t, 6); mood(4); return say(`${t ? `${t.firstName} ${t.lastName}` : 'A teacher'} listens to all of it, writes it down, and acts: parents are called in, seats are moved, and someone checks on you every week. It stops.`); }
     case 'bullyParents': { delete e.bullied; for (const par of npcsByRole('parent')) rel(par, 5); mood(3); return say('You tell them at the kitchen table. They are angrier than you expected, on your behalf. They go to the school the next morning, and things change.'); }
     case 'bullyStand': if (rng.chance(0.3 + p.hidden.willpower / 250)) { delete e.bullied; e.standing = clamp((e.standing ?? 50) + 5); mood(5); return say('Your voice shakes, but you say it in front of everyone. It stops.'); } e.bullied = { id: n?.id }; mood(-8); return say('It does not work. It gets worse for a while.');
@@ -278,7 +384,7 @@ export function decide(what, cast = {}) {
     }
     case 'danceFriends': e.dancedAt = p.age; for (const m of mates().filter((x) => x.meters.relationship >= 50)) rel(m, 4); mood(6); milestone('Went to the school dance with friends.', 'life'); return say('You go as a gang, take over a corner of the hall, and stay until the lights come on.');
     case 'danceHome': e.dancedAt = p.age; mood(-1); return say('You stay in. You see the photographs the next day.');
-    case 'examSteady': e.examPlan = 'steady'; mood(-4); p.hidden.discipline = clamp(p.hidden.discipline + 2); return say('A timetable on the wall, and you keep to it. It is dull, and it works.');
+    case 'examSteady': e.examPlan = 'steady'; mood(-4); p.hidden.discipline = clamp(p.hidden.discipline + 2); return say('A schedule on the wall, and you keep to it. It is dull, and it works.');
     case 'examCram': e.examPlan = 'cram'; mood(2); return say('You will do it all in the last three weeks. You always have.');
     case 'examTrust': e.examPlan = 'trust'; mood(4); return say('You decide that you know what you know.');
     case 'auditionSafe': case 'auditionBold': return audition(what === 'auditionBold');
@@ -307,6 +413,7 @@ function audition(bold) {
   if (!role) { mood(-6); p.talents.acting = clamp(p.talents.acting + 1); return `The cast list goes up on Friday, and your name is not on it.${rival ? ` ${rival.firstName} has the lead.` : ''} You paint scenery instead, and learn something from the wings.`; }
   (p.flags.performances ??= []).push({ year: store.state.year, age: p.age, show: a.play, role, where });
   const gain = role === 'the lead' ? 6 : role === 'a supporting part' ? 4 : 2;
+  presence(gain);
   p.talents.acting = clamp(p.talents.acting + gain);
   p.stats.charm = clamp(p.stats.charm + 1);
   lifeOf(a.club).record.push({ age: p.age, text: `${role} in ${a.play}` });
@@ -319,7 +426,7 @@ function audition(bold) {
 /** After leaving school with a qualification: the day itself. */
 export function graduationDay(gpa) {
   const top = gpa >= 3.7;
-  pend('graduation_day', { words: { honours: top ? 'Your name is read out first, with the prize for the year. ' : '' } });
+  pend('graduation_day', { words: { honors: top ? 'Your name is read out first, with the prize for the year. ' : '' } });
 }
 
 /** The data for the Activities page of the school book. */

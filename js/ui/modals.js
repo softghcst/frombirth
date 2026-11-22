@@ -20,7 +20,7 @@ export function openModal(html, opts = {}) {
   const close = () => {
     scrim.remove();
     const still = document.querySelector('#modal-root .scrim:last-child .modal');
-    if (still) { (still.querySelector('button:not([disabled])') ?? still).focus({ preventScroll: true }); return; }
+    if (still) { (still.querySelector('button:not([disabled]):not(.modal-back)') ?? still).focus({ preventScroll: true }); return; }
     const target = returnTo?.isConnected ? returnTo : document.querySelector('[data-year]');
     target?.focus?.({ preventScroll: true });
   };
@@ -33,10 +33,30 @@ export function openModal(html, opts = {}) {
   root().appendChild(scrim);
   const card = scrim.firstElementChild;
   card._returnTo = returnTo;
+  // Every page that can be closed has the same way back, in plain sight: "‹ Back", top left, staying there however far
+  // down the page has been scrolled. (Scenes that must be answered have none. A page that draws its own ✕ in a header
+  // keeps working, but that one is tucked away: there is one way back, and it is always in the same place.) Opened from
+  // inside another page, Back returns to it; opened from a tab, it returns to the tab.
+  if (opts.dismissable) {
+    const row = document.createElement('div');
+    row.className = 'modal-backrow';
+    row.innerHTML = '<button type="button" class="modal-back" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>';
+    // A page with levels of its own (a screen opened from a screen) has its own back control: this one presses it, so Back
+    // steps out one level at a time and only leaves the page from the first.
+    row.firstElementChild.addEventListener('click', () => {
+      const inner = card.querySelector('[data-back]:not(.modal-back)');
+      if (inner && !inner.disabled) { inner.click(); return; }
+      close(); opts.onDismiss?.();
+    });
+    card.prepend(row);
+    card.classList.add('has-back');
+    // Pages redraw their own contents; the row is put back if one wipes it.
+    new MutationObserver(() => { if (!row.isConnected) card.prepend(row); }).observe(card, { childList: true });
+  }
   nameDialog(card);
   card.setAttribute('tabindex', '-1');
   // Only things that can take focus: an SVG <use href> inside a portrait matches [href] but cannot.
-  (card.querySelector('button:not([disabled]), a[href], input, select, textarea, summary') ?? card).focus({ preventScroll: true });
+  (card.querySelector('button:not([disabled]):not(.modal-back), a[href], input, select, textarea, summary') ?? card).focus({ preventScroll: true });
   return { el: card, close };
 }
 
@@ -58,7 +78,10 @@ export function eventModal(ev, cast, opts = {}) {
         ${esc(renderText(c.label, cast))}
         ${c.enabled ? '' : '<small>Not available to you right now</small>'}
       </button>`)).join('');
+    // What came of the scene before, on this card: one tap per scene instead of two.
+    const before = opts.previous ? `<div class="prev-outcome tone-${esc(opts.previous.tone ?? 'neutral')}"><p>${esc(opts.previous.text)}</p>${changeChips(opts.previous.changes)}</div>` : '';
     const m = openModal(`
+      ${before}
       <div class="eyebrow">${esc(ev.category)}</div>
       <p class="scene">${esc(renderText(ev.text, cast))}</p>
       ${choices}
@@ -124,7 +147,7 @@ export function confirmModal({ title, body, yes = 'Confirm', no = 'Cancel', dang
 }
 
 /**
- * A list of options to pick from. Resolves with the chosen value, or null if cancelled.
+ * A list of options to pick from. Resolves with the chosen value, or null if canceled.
  * @param {{title:string, body?:string, cancel?:string,
  *          options:{value:any, label:string, sub?:string, disabled?:boolean}[]}} o
  */
@@ -150,7 +173,7 @@ export function pickModal({ title, body, options, cancel = 'Cancel' }) {
 }
 
 /**
- * Asks for a short piece of text. Resolves the trimmed text, or null if cancelled.
+ * Asks for a short piece of text. Resolves the trimmed text, or null if canceled.
  * @param {{title:string, label:string, value?:string, maxLength?:number}} o
  */
 export function inputModal({ title, label, value = '', maxLength = 24 }) {

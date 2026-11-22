@@ -52,12 +52,15 @@ export const rate = (from, to) => unitsPerBase(to) / unitsPerBase(from);
 /** An amount in one currency, in another, at today's rate. Rounds down. */
 export const convert = (amount, from, to) => (from === to ? Math.floor(amount) : Math.floor(amount * rate(from, to)));
 
-/** Yearly: currencies drift a little, and are pulled back towards where they started. */
+/** Yearly: currencies drift a little, and are pulled back toward where they started. */
 export function tickFx() {
   const fx = (store.state.fx ??= {});
-  for (const code of Object.keys(BY_CODE)) {
+  // The currencies in use this year, and any this life already has a rate for: decided by the save alone (the table
+  // above also remembers currencies from other years and lives), in a fixed order, so a reload rolls the same dice.
+  const codes = [...new Set([...COUNTRY_LIST.map((c) => c.currency.code), ...Object.keys(fx)])].filter((c) => BY_CODE[c]).sort();
+  for (const code of codes) {
     const now = fx[code] ?? 1;
-    const next = clamp(now * (1 + rng.around(0, 0.025)) + (1 + fxBias(code) - now) * 0.08, 0.7, 1.6); // pulled towards its usual rate, or a weaker one in bad times
+    const next = clamp(now * (1 + rng.around(0, 0.025)) + (1 + fxBias(code) - now) * 0.08, 0.7, 1.6); // pulled toward its usual rate, or a weaker one in bad times
     fx[code] = Math.round(next * 10000) / 10000;
   }
 }

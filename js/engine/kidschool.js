@@ -21,7 +21,7 @@ import { store, player, country, livingNpcs, log, milestone } from '../state.js'
 import { KIND_BY_ID, LEAVING_AGE } from '../data/education.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 import * as sch from './schooling.js';
-import { catalogue, uniOf, teaches } from './university.js';
+import { catalog, uniOf, teaches } from './university.js';
 import { spendAction } from './relationships.js';
 import { wealthTier } from './living.js';
 
@@ -96,7 +96,7 @@ export function tickKids() {
     }
     const kind = KIND_BY_ID[e.kind];
     if (kind?.fee) {
-      const fee = localMoney(kind.fee, c);
+      const fee = localMoney(sch.feeFor(kind, asPupil(n)), c);
       if (p.finance.cash >= fee) { p.finance.cash -= fee; }
       else {
         const left = schoolOf(n)?.name;
@@ -105,7 +105,7 @@ export function tickKids() {
         log(`You could not find the fees for ${left}. ${n.firstName} has moved to ${schoolOf(n).name}, and has had to start again with new friends.`, 'system', 'bad');
       }
     }
-    if (kind?.away) bump(n, -1); // term-time away from home
+    if (kind?.away) bump(n, -1); // away from home during the school year
     const said = (e.said ??= {});
     if (n.age >= 8 && n.age <= 16 && e.gpa < 2.0 && (said.struggling ?? -9) <= n.age - 4 && rng.chance(0.5)) {
       said.struggling = n.age;
@@ -246,7 +246,7 @@ export function attend(id) {
 export function schoolOptions(id) {
   const n = npcOf(id);
   const stage = stageOf(n) ?? 'elementary';
-  return Object.values(KIND_BY_ID).filter((k) => k.id !== 'palace' && k.id !== 'home').map((k) => ({ id: k.id, name: k.name, blurb: k.blurb, fee: k.fee ? localMoney(k.fee, country()) : 0,
+  return Object.values(KIND_BY_ID).filter((k) => k.id !== 'palace' && k.id !== 'home').map((k) => ({ id: k.id, name: k.name, blurb: k.blurb, fee: k.fee ? localMoney(sch.feeFor(k, asPupil(n)), country()) : 0,
     why: sch.barred(k, stage, asPupil(n)), now: n.life.edu.kind === k.id }));
 }
 export function moveSchool(id, kindId, how = 'parent') {
@@ -282,7 +282,7 @@ export function uniTalk(id, how) {
   let text;
   if (how === 'mine') {
     const u = myUniversity();
-    if (!u) return result(false, 'You did not go to university, or it is not there any more.', 'neutral');
+    if (!u) return result(false, 'You did not go to college, or it is not there any more.', 'neutral');
     f.uniWish = u.id; f.pushUniversity = true;
     bump(n, n.meters.crazy >= 60 ? -3 : 1);
     text = `You tell ${n.firstName} about ${u.name}: the library, the river, the friends you still have. ${n.meters.crazy >= 60 ? `${they(n).replace(/^./, (c) => c.toUpperCase())} rolls ${their(n)} eyes, and takes the prospectus anyway.` : `${they(n).replace(/^./, (c) => c.toUpperCase())} puts it on the list.`}`;
@@ -308,7 +308,7 @@ export function uniTalk(id, how) {
  */
 export function chooseUniversity(n) {
   const subject = n.life.edu.majorId;
-  const unis = catalogue(player().countryId).filter((u) => u.kind !== 'open' && (!subject || teaches(u, subject)));
+  const unis = catalog(player().countryId).filter((u) => u.kind !== 'open' && (!subject || teaches(u, subject)));
   if (!unis.length) return null;
   const g = n.life.edu.gpa;
   const reach = (u) => g >= (u.bar ?? 2.5) - 0.35;
@@ -339,7 +339,7 @@ export function graduated(n) {
 /**
  * What a family brings to a child's decision at eighteen, besides their marks:
  * a parent who went to university and can tell them what it is like, money at
- * home, a school that expects its pupils to go on. Not inherited ability.
+ * home, a school that expects its students to go on. Not inherited ability.
  */
 export function familyPull(n) {
   if (n.role !== 'child') return 0;
@@ -374,7 +374,7 @@ function finishBack(n) {
     if (!/teaching/.test(b.course)) {
       const subject = { Nursing: 'nursing', Business: 'business', Psychology: 'psychology', 'Computer Science': 'computer_science' }[(b.course.match(/in (.+)$/) ?? [])[1]];
       if (subject && !e.majorId) e.majorId = subject;
-      const open = catalogue(player().countryId).find((u) => u.kind === 'open');
+      const open = catalog(player().countryId).find((u) => u.kind === 'open');
       if (open && !e.uniId) { e.uniId = open.id; graduated(n); }
     }
     n.meters.intellect = clamp(n.meters.intellect + 3);

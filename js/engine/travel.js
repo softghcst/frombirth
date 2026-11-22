@@ -5,9 +5,11 @@
 //   p.travel.earned      achievements, with the year each was earned
 //
 // A trip moves through: draft -> confirmed -> in_progress -> completed, or
-// canceled / disrupted. Opening the planner costs nothing; money changes
-// hands only when a trip is confirmed, once per booking (engine/chronicle.js
-// ledger). A trip is completed once. Taking a trip never changes where
+// canceled / disrupted. The player takes a booked trip in one go (takeTrip): it
+// sets off and comes home at once, and the screen shows one notice of how it
+// went; in_progress is only ever held by older saves and in between. Opening
+// the planner costs nothing; money changes hands only when a trip is confirmed,
+// once per booking (engine/chronicle.js ledger). A trip is completed once. Taking a trip never changes where
 // anyone lives: the primary residence is p.countryId / p.city, untouched here.
 //
 // Time. The world clock moves a year at a time (yearProcessor). Inside a
@@ -87,7 +89,7 @@ export function typeBlock(typeId, destId = null, p = player()) {
     case 'professional': return p.career.careerId && (p.career.level ?? 0) >= 1 ? '' : 'For people a few years into a career.';
     case 'offer': return p.flags.sponsor && (!destId || p.flags.sponsor === destId) ? '' : 'You need an interview offered by an employer abroad.';
     case 'language': return destId && !languagesOf(destId).length ? 'That place has no language of its own for you to learn.' : '';
-    case 'university': return p.education.enrolled && ['university', 'graduate', 'medical', 'law', 'doctorate'].includes(p.education.stage) ? '' : 'You must be enrolled at university.';
+    case 'university': return p.education.enrolled && ['university', 'graduate', 'medical', 'law', 'doctorate'].includes(p.education.stage) ? '' : 'You must be enrolled in college.';
     default: return '';
   }
 }
@@ -535,9 +537,9 @@ export function cancel(tripId, p = player()) {
     const r = refund(b.txId, early ? terms[0] : terms[1], `Canceled: ${b.label}`, p);
     if (r.ok && b.payer === 'player') back += r.amount;
     if (r.ok && b.payer !== 'player' && b.payer !== 'employer' && b.payer !== 'parent') { const n = store.state.npcs[b.payer]; if (n) { if (n.life) n.life.savings += r.amount; else n.savings = (n.savings ?? 0) + r.amount; } }
-    b.status = 'cancelled';
+    b.status = 'canceled';
   }
-  trip.status = 'cancelled';
+  trip.status = 'canceled';
   trip.notes.push(`Canceled on ${today()}.`);
   const text = `You canceled the trip to ${COUNTRIES[trip.destination.countryId].name}. ${back ? `${fmtMoney(back, country())} came back to you.` : 'Nothing could be refunded.'}`;
   log(text, 'system', 'neutral');
@@ -689,7 +691,7 @@ export function comeHome(tripId, p = player()) {
     n.lastInteractionAge = p.age;
     remember(n, `trip_${trip.id}`, `${TRIP_TYPE_BY_ID[trip.type].name} to ${trip.destination.city ?? COUNTRIES[trip.destination.countryId].name}, together.`);
   }
-  // Language: a fortnight is practice for a language already begun, never fluency.
+  // Language: two weeks is practice for a language already begun, never fluency.
   if (abroad) {
     const lang = languagesOf(trip.destination.countryId).filter((l) => (p.skills?.[l] ?? 0) > 0 && (p.skills[l] ?? 0) < 85)[0];
     if (lang) { const gain = days >= 60 ? 6 : days >= 14 ? 3 : 1; p.skills[lang] = clamp(p.skills[lang] + gain); (p.languageLog ??= []).push({ year: year(), lang, source: 'travel', gain }); }
@@ -728,13 +730,40 @@ export function comeHome(tripId, p = player()) {
   return result(true, text, 'good', { trip });
 }
 
+/**
+ * Takes a booked trip in one go: sets off, does what was planned (and anything free there the player loves, while
+ * days remain), and comes home. Returns how it went, as one account, with what changed (mood, health, intellect),
+ * for the notification. A trip that cannot go ahead is reported as such, refunded on its terms.
+ */
+export function takeTrip(tripId, p = player()) {
+  const before = { mood: p.stats.mood, health: p.stats.health, intellect: p.stats.intellect };
+  const out = depart(tripId, p);
+  if (!out.ok) return { ...out, title: 'The trip did not happen' };
+  const trip = out.trip;
+  // Free things they love, if there is time: nobody spends a week in Tokyo doing only what was booked.
+  for (const a of activityOptions(trip, p)) {
+    if (!a.cost && likes(a, p) && !trip.activities.includes(a.id) && !trip.done.some((d) => d.id === a.id) && a.days <= daysLeft(trip) - planDays(trip)) experience(trip, a, p);
+  }
+  const back = comeHome(trip.id, p);
+  const where = trip.destination.city ?? COUNTRIES[trip.destination.countryId].name;
+  const did = trip.done.map((d) => { const n = ACTIVITY_BY_ID[d.id]?.name ?? d.id; return `${n.charAt(0).toLowerCase()}${n.slice(1)}${d.liked ? ' (you loved it)' : ''}`; });
+  const days = daysBetween(trip.depart, trip.ret);
+  const text = [out.text, did.length ? `While you were there: ${list(did)}.` : `${days} quiet days in ${where}.`, back.text].join(' ');
+  const changes = [['Mood', 'mood'], ['Health', 'health'], ['Intellect', 'intellect']]
+    .map(([label, k]) => ({ label, delta: Math.round(p.stats[k] - before[k]) })).filter((c) => c.delta);
+  return result(true, text, 'good', { trip, changes, title: `Back from ${where}` });
+}
+
+/** Days the trip's planned, not yet done activities will take. */
+const planDays = (trip) => trip.activities.filter((id) => !trip.done.some((d) => d.id === id)).reduce((s, id) => s + (ACTIVITY_BY_ID[id]?.days ?? 0), 0);
+
 /** A trip that could not happen: the bookings are refunded on their terms, more if insured. */
 function disrupt(trip, why, p = player()) {
   for (const b of trip.bookings) {
     if (b.status !== 'confirmed') continue;
     const terms = REFUNDS[b.kind === 'daily' ? 'activity' : b.kind] ?? [0, 0];
     refund(b.txId, trip.insurance ? Math.max(terms[1], 0.9) : terms[1], `Disrupted: ${b.label}`, p);
-    b.status = 'cancelled';
+    b.status = 'canceled';
   }
   trip.status = 'disrupted';
   trip.notes.push(why);
@@ -841,7 +870,7 @@ export const KEEP = { tripDetail: 3, ledgerYears: 10, stayDays: 400 };
  */
 export function compactHistory(p = player()) {
   const yr = year();
-  const done = ['completed', 'cancelled', 'disrupted'];
+  const done = ['completed', 'canceled', 'disrupted'];
   for (const t of travelState(p).trips) {
     if (!done.includes(t.status) || t.compact || yearOf(t.depart) > yr - KEEP.tripDetail) continue;
     t.spent = -(p.finance.receipts ?? []).filter((x) => x.ref?.tripId === t.id && x.payer === 'player').reduce((s2, x) => s2 + x.amount, 0);

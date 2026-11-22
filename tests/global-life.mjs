@@ -200,8 +200,8 @@ let p = life('us', 30, 80000, 'New York');
     L.book();
     const bad = L.audit();
     const code = COUNTRIES[p.countryId].currency.code;
-    const travelled = L.yearTotals(store.state.ledger, store.state.year, code).expense.travel ?? 0;
-    check(!bad.length && travelled > 0, `the game's ledger balances, with the trip filed under Travel (${bad.slice(0, 2).join('; ')})`);
+    const traveled = L.yearTotals(store.state.ledger, store.state.year, code).expense.travel ?? 0;
+    check(!bad.length && traveled > 0, `the game's ledger balances, with the trip filed under Travel (${bad.slice(0, 2).join('; ')})`);
   }
   year(2);
   check(p.finance.receipts.filter((x) => x.ref?.tripId === plan.id && x.amount < 0).length === n + 1, 'later years never charge for it again');
@@ -221,7 +221,7 @@ let p = life('us', 30, 80000, 'New York');
   travel.confirm(t.id);
   const paid = before - cash();
   const r = travel.cancel(t.id);
-  check(r.ok && r.refunded > 0 && r.refunded < paid && t.status === 'cancelled', `canceling early returns most, not all (${r.refunded} of ${paid})`);
+  check(r.ok && r.refunded > 0 && r.refunded < paid && t.status === 'canceled', `canceling early returns most, not all (${r.refunded} of ${paid})`);
   check(!travel.cancel(t.id).ok, 'and only once');
   // Dates.
   const bad = travel.startPlan('vacation');
@@ -285,6 +285,20 @@ let p = life('us', 30, 80000, 'New York');
   section('companions: everyone decides for themselves; children travel with a parent and their own passport');
 }
 
+// ---------- Going is instant: one click takes the whole trip and says how it went ----------
+{
+  p = life('fr', 34, 60000, 'Paris');
+  const t = travel.startPlan('vacation');
+  travel.updatePlan(t.id, { destination: { countryId: 'fr', city: 'Lyon' }, depart: `${store.state.year}-05-03`, ret: `${store.state.year}-05-09`, mode: 'rail', stay: 'hotel', activities: ['museum'] });
+  check(travel.confirm(t.id).ok, `a trip at home is booked (${travel.problems(t)})`);
+  const r = travel.takeTrip(t.id);
+  check(r.ok && t.status === 'completed' && !travel.whereabouts().away, `going takes the whole trip and brings you home (${r.text})`);
+  check(/Back from Lyon/.test(r.title) && /museum/i.test(r.text) && /Home from/.test(r.text), 'the notice says where you went, what you did and that you are home');
+  check(Array.isArray(r.changes) && r.changes.some((c) => c.label === 'Mood' && c.delta > 0), 'and shows what changed');
+  check(!travel.takeTrip(t.id).ok, 'a trip is taken once');
+  section('going on a trip is instant, with one notice of how it went');
+}
+
 // ---------- Vertical slice 2: a lawful move ----------
 let moved;
 {
@@ -293,7 +307,7 @@ let moved;
   hire(CAREERS.find((c) => c.id === 'office'), 1, 60);
   docs.applyPassport(p.id, 'mx');
   const friend = add('friend', 'mx', 29, 85);
-  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
+  const mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
   const dog = add('pet', 'mx', 3, 90); dog.species = 'dog'; dog.firstName = 'Biscuit';
   (await import('../js/engine/animals.js')).reconcile(); // the family's animals are registered with the animals engine
   const home = { id: 'asset_home_gdl', kind: 'property', catalogId: 'condo', name: 'Two-bedroom condo', purchasePrice: 100000, value: 100000, boughtAtAge: 26, condition: 80, quality: 1, mortgage: null, tenant: null, countryId: 'mx', city: 'Guadalajara' };
@@ -330,9 +344,9 @@ let moved;
   check(p.residency.status === 'worker' && p.residency.workAuthorized && p.career.careerId, 'a work visa, with the job that sponsored it');
   check(p.locations.length >= 2 && p.locations[p.locations.length - 2].countryId === 'mx' && p.locations[p.locations.length - 2].to === store.state.year && p.locations[p.locations.length - 2].homes.includes(home.id), 'Guadalajara stays in the record, with the flat');
   check(p.assets.some((a) => a.id === home.id), 'the flat is still owned');
-  check(later.status === 'cancelled' && p.finance.receipts.some((x) => x.kind === 'refund' && x.ref?.tripId === later.id), 'the Puebla weekend was canceled at the move and refunded on its terms');
+  check(later.status === 'canceled' && p.finance.receipts.some((x) => x.kind === 'refund' && x.ref?.tripId === later.id), 'the Puebla weekend was canceled at the move and refunded on its terms');
   check(friend.alive && p.npcIds.includes(friend.id) && friend.role === 'friend' && (friend.flags.abroad === 'mx' || friend.places?.some((l) => l.countryId === 'mx')), 'the friend from Mexico is still a friend, with their life in Mexico on record');
-  check(!mum || !mum.alive || (p.npcIds.includes(mum.id) && (mum.flags.abroad === 'mx' || mum.places?.some((l) => l.countryId === 'mx'))), 'and so is mum, with her life in Mexico on record');
+  check(!mom || !mom.alive || (p.npcIds.includes(mom.id) && (mom.flags.abroad === 'mx' || mom.places?.some((l) => l.countryId === 'mx'))), 'and so is mom, with her life in Mexico on record');
   check(!dog.alive || (!dog.flags.abroad && store.state.npcs[dog.id] === dog), `the dog came, the same dog (${dog.flags.abroad}, ${dog.alive}, ${dog.role})`);
   const moves = store.state.canon.events.filter((e) => e.type === 'relocation' && e.international);
   check(moves.length === 1 && p.locations[p.locations.length - 1].eventId === moves[0].id, 'one relocation event, linked from the residence record');
@@ -360,10 +374,10 @@ let moved;
   p = store.state.player;
   for (let i = 0; i < 10 && p.residency?.status === 'worker'; i++) { if (!p.career.careerId) hire(CAREERS.find((c) => c.id === 'office'), 0, 60); p.career.performance = 70; year(); }
   check(p.residency?.status === 'permanent_resident' && !cit.held(p).includes('ca'), 'permanent resident after years of work; still not a citizen');
-  check(!cit.naturalisation(p).possible || cit.naturalisation(p).lived >= cit.naturalisation(p).needs, 'naturalization only once the years are there');
-  for (let i = 0; i < 8 && !cit.naturalisation(p).possible; i++) year();
+  check(!cit.naturalization(p).possible || cit.naturalization(p).lived >= cit.naturalization(p).needs, 'naturalization only once the years are there');
+  for (let i = 0; i < 8 && !cit.naturalization(p).possible; i++) year();
   let got = false;
-  for (let i = 0; i < 6 && !got; i++) { p.flags.natAge = null; p.finance.cash += 100000; got = cit.naturalise().ok; if (!got) year(); }
+  for (let i = 0; i < 6 && !got; i++) { p.flags.natAge = null; p.finance.cash += 100000; got = cit.naturalize().ok; if (!got) year(); }
   check(got && cit.held(p).includes('ca') && p.birthCountryId === 'mx', 'naturalized: a Canadian born in Mexico');
   check(docs.applyPassport(p.id, 'ca').ok && docs.validPassport(p, undefined, undefined, 'ca'), 'a Canadian passport follows');
   check(cit.held(p).includes('mx') ? docs.passports(p).filter((d) => d.status === 'valid').length >= 1 : true, 'the Mexican passport is a separate document');
@@ -392,7 +406,7 @@ let moved;
   docs.applyPassport(p.id, 'uk');
   const m = reloc.completeMove(app.id);
   check(m.ok && p.residency?.status === 'retiree' && !p.residency.workAuthorized && !cit.held(p).includes('pt'), `retired to Porto on a retirement visa: no work, not Portuguese (${m.text})`);
-  check(cit.naturalisation(p).possible === false, 'and it is not a road to citizenship by itself');
+  check(cit.naturalization(p).possible === false, 'and it is not a road to citizenship by itself');
   year(5);
   check(p.countryId === 'pt' && p.residency?.status === 'retiree', 'renewed while the pension lasts');
   section('retirement abroad: its own status, renewed, no work, no citizenship');
@@ -424,9 +438,9 @@ let moved;
 {
   // A child at home with a parent who grew up speaking another language.
   p = life('us', 2, 0, 'Seattle');
-  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
-  mum.bornIn = 'kr';
-  for (let i = 0; i < 8; i++) { mum.alive = true; mum.flags.abroad = false; mum.meters.health = 90; p.flags.livesWithParents = true; year(); }
+  const mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent');
+  mom.bornIn = 'kr';
+  for (let i = 0; i < 8; i++) { mom.alive = true; mom.flags.abroad = false; mom.meters.health = 90; p.flags.livesWithParents = true; year(); }
   check((p.skills.korean ?? 0) > 0 && (p.skills.korean ?? 0) < 90, `a child picks up Korean at home, at their own pace, short of fluency (${p.skills.korean})`);
   check((p.languageLog ?? []).some((x) => x.lang === 'korean' && /at home/.test(x.source)), 'and where it came from is kept');
   section('multilingual families: a parent\'s language picked up at home, gradually');
@@ -481,17 +495,17 @@ let moved;
   p.education.enrolled = true; p.education.stage = 'university';
   docs.applyPassport(p.id, 'us');
   let ran = false;
-  for (let attempt = 0; attempt < 5 && !ran; attempt++) {
+  for (let attempt = 0; attempt < 10 && !ran; attempt++) { // about one in five is refused, and a recent refusal makes the next harder
     const y = store.state.year + 1;
     const t = travel.startPlan('semester');
     travel.updatePlan(t.id, { destination: { countryId: 'fr', city: 'Lyon' }, depart: `${y}-02-01`, ret: `${y}-06-15`, mode: 'jet', stay: 'student' });
     check(travel.entryCheck(t)[0].rule.kind === 'study', 'four months in France to study needs a student visa');
     const app = docs.applyEntry(p.id, 'fr', { from: t.depart, to: t.ret, purpose: 'study', cost: 5000 }).app;
     check(app?.status === 'submitted' && app.kind === 'study', 'applied for; decided when the year turns');
-    const degrees = p.education.degrees.length;
     year();
     p.education.enrolled = true; p.education.stage = 'university'; p.finance.cash += 20000;
-    if (p.applications.find((a) => a.id === app.id).status !== 'approved') continue;
+    if (!app || p.applications.find((a) => a.id === app.id)?.status !== 'approved') continue;
+    const degrees = p.education.degrees.length; // counted after the year turns: a student can graduate while waiting on a refused visa
     ran = true;
     check(travel.problems(t).length === 0, `ready (${travel.problems(t)})`);
     travel.confirm(t.id);
@@ -502,7 +516,7 @@ let moved;
     check(mate && mate.flags.abroad === 'fr' && p.npcIds.includes(mate.id), 'a classmate from Lyon, kept as a friend in France');
     check(travel.achievements().find((a) => a.id === 'study_abroad').year, 'Study Abroad earned');
   }
-  check(ran, 'a student visa was granted within five tries');
+  check(ran, 'a student visa was granted within ten tries');
   section('study abroad: a student visa, a term\'s credit and no more, and a classmate who persists');
 }
 {
@@ -597,16 +611,18 @@ let moved;
   check(!cit.rightToLive('mx', p) && docs.entryRule(p, 'mx').kind !== 'resident' && !imm.routes('mx').find((r) => r.id === 'business').eligible, 'owning it gives no right to live there, and the owner route waits for a year of trading');
   check(!ba.startAbroad('cleaning', 'mx').ok, 'a business that is the owner\'s own work cannot be run from abroad');
   bz.hire(cafe, 0);
-  for (let i = 0; i < 2; i++) { cafe.cash += 200000; year(); p.finance.cash += 1e6; }
+  // The test keeps the café afloat: a café can lose more in a year than a fixed top-up, and two years overdrawn close it.
+  const afloat = () => { cafe.cash = Math.max(0, cafe.cash) + 200000; cafe.overdrawn = 0; };
+  for (let i = 0; i < 2; i++) { afloat(); year(); p.finance.cash += 1e6; }
   check(cafe.status === 'open' && cafe.years >= 1, `the café trades (${cafe.status}, ${cafe.years} years)`);
   const pays = bz.payouts().find((x) => x.source === `biz:${cafe.id}`);
   check(!pays || pays.gross < cafe.payout || COUNTRIES.mx.currency.scale <= COUNTRIES.us.currency.scale, 'what it pays its owner arrives changed into dollars');
+  afloat(); // money first: a business that cannot cover a wage will not hire
   if (bz.headcount(cafe) < 2) bz.hire(cafe, null);
-  cafe.overdrawn = 0; cafe.cash += 200000;
   const route = imm.routes('mx').find((r) => r.id === 'business');
   check(route.eligible && route.status === 'worker', `after a year with staff, the business-owner route opens (${route.why})`);
   let app;
-  for (let i = 0; i < 10 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); const a = reloc.applyToMove('mx', 'business', 'Guadalajara'); if (a.ok) app = a.app; year(); p.finance.cash += 1e6; cafe.cash += 200000; cafe.overdrawn = 0; if (bz.headcount(cafe) < 2) bz.hire(cafe, null); }
+  for (let i = 0; i < 10 && app?.status !== 'approved'; i++) { p.flags.visaAge = null; afloat(); if (bz.headcount(cafe) < 2) bz.hire(cafe, null); const a = reloc.applyToMove('mx', 'business', 'Guadalajara'); if (a.ok) app = a.app; year(); p.finance.cash += 1e6; afloat(); if (bz.headcount(cafe) < 2) bz.hire(cafe, null); }
   check(app?.status === 'approved', 'the application is approved');
   reloc.arrange(app.id, { housing: 'rent', money: 0, travel: 'plane', animals: 'leave' });
   docs.applyPassport(p.id, 'us');
@@ -739,8 +755,8 @@ let moved;
   // Going home: only after years away, still a citizen, with a parent growing old there.
   p = life('ph', 45, 120000, 'Manila');
   move.emigrate('ca', { forced: true }); p.flags.arrivedYear = store.state.year - 12;
-  const mum = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive) ?? add('parent', 'ph', 75);
-  mum.age = 76; mum.flags.abroad = 'ph'; mum.alive = true;
+  const mom = p.npcIds.map((id) => store.state.npcs[id]).find((n) => n.role === 'parent' && n.alive) ?? add('parent', 'ph', 75);
+  mom.age = 76; mom.flags.abroad = 'ph'; mom.alive = true;
   check(arcs.tickAbroadArcs(p, 'homeward') === 'homeward' && scene('abroad_homeward').cast.words.years === '12', 'twelve years in Canada and a mother of 76 in the Philippines');
   choose('abroad_homeward', 'Go home');
   const home = reloc.cases().find((a) => a.jurisdictionId === 'ph');
@@ -762,7 +778,7 @@ let moved;
   const ft = choose('abroad_firstTrip', 'Count down');
   check(chron.hasEvent(`first-abroad:${chron.archiveIdOf(p)}`) && travel.trips(['completed']).length === 1 && docs.validPassport(p), `the first trip abroad happens, with a passport, and is remembered (${ft.text.slice(0, 70)})`);
   check(arcs.tickAbroadArcs(p, 'firstTrip') === null, 'and is not offered again');
-  // A semester abroad: a plan, not an enrolment.
+  // A semester abroad: a plan, not an enrollment.
   p = life('us', 20, 50000, 'Chicago'); p.education.enrolled = true; p.education.stage = 'university';
   check(arcs.tickAbroadArcs(p, 'exchange') === 'exchange', 'a university student is offered an exchange semester');
   choose('abroad_exchange', 'Apply');

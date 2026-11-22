@@ -1,5 +1,6 @@
 // Central store. One GameState is live at a time; UI subscribes for re-render.
 import { COUNTRIES } from './data/countries.js';
+import { setIdSource } from './util.js';
 
 /** @type {{state: import('./types.js').GameState|null}} */
 export const store = {
@@ -10,6 +11,8 @@ export const store = {
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
   notify() { this.listeners.forEach((fn) => fn(this.state)); },
 };
+// New ids are counted in the life being played (util.uid), so a reloaded year makes the same ids again.
+setIdSource(() => store.state);
 
 export const player = () => store.state.player;
 export const country = () => COUNTRIES[player().countryId];
@@ -29,7 +32,9 @@ export const npcsByRole = (spec) => livingNpcs().filter((n) => npcMatches(n, spe
 
 /** Append a line to the journal under the player's current age. */
 export function log(text, kind = 'system', tone = 'neutral') {
-  store.state.journal.push({ age: player().age, text, kind, tone });
+  const e = { age: player().age, text, kind, tone };
+  if (store.state.month) e.month = store.state.month; // a turn partway through a year (engine/turns.js)
+  store.state.journal.push(e);
 }
 
 export function milestone(text, kind = 'life') {

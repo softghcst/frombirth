@@ -5,16 +5,16 @@
 // ranks, highest first. Each is [id, title for a man, title for a woman].
 //   'monarch', 'heir' and 'royal' are the royal family itself.
 //   Everything after is the nobility (where the country still has one),
-//   and 'knight' is an honour for a commoner, not inherited.
+//   and 'knight' is an honor for a commoner, not inherited.
 // rules:
 //   maleOnly       only men can inherit the throne
 //   leavesOnMarriage  a princess who marries a commoner leaves the royal family
-//   honours        the crown gives titles to commoners for what they have done
+//   honors        the crown gives titles to commoners for what they have done
 //   type           'constitutional' | 'ceremonial' | 'executive' | 'absolute': how much the monarch governs
 //   law            how the throne passes (see engine/succession.js):
 //                    order 'absolute' (eldest child), 'malePreference' (sons first), 'maleOnly' (men, through fathers)
 //                    adoption: adopted children can inherit; renounceCoversHeirs: giving up a place also
-//                    takes out children born afterwards
+//                    takes out children born afterward
 //   reformed       daughters were given equal rights within living memory (told in the house's history)
 //   names          { male, female, house }: names for the royal house itself, where they differ from the country's at large
 //   elective       { title, term, houses, realms }: (realms: the states the houses rule; the house in the game has one)
@@ -23,50 +23,50 @@
 // Countries that share another country's monarch (Canada, Australia, New
 // Zealand, Jamaica) have no royal family of their own and are not listed.
 export const MONARCHIES = {
-  uk: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honours: true,
+  uk: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honors: true,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Prince', 'Princess'], ['royal', 'Prince', 'Princess'],
       ['duke', 'Duke', 'Duchess'], ['marquess', 'Marquess', 'Marchioness'], ['earl', 'Earl', 'Countess'],
       ['viscount', 'Viscount', 'Viscountess'], ['baron', 'Baron', 'Baroness'], ['knight', 'Sir', 'Dame']] },
-  es: { type: 'constitutional', law: { order: 'malePreference', adoption: false, renounceCoversHeirs: false }, reformed: false, house: 'Royal House', honours: true,
+  es: { type: 'constitutional', law: { order: 'malePreference', adoption: false, renounceCoversHeirs: false }, reformed: false, house: 'Royal House', honors: true,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Prince', 'Princess'], ['royal', 'Infante', 'Infanta'],
       ['duke', 'Duke', 'Duchess'], ['marquess', 'Marquis', 'Marchioness'], ['earl', 'Count', 'Countess'], ['baron', 'Baron', 'Baroness'],
       ['knight', 'Don', 'Doña']] },
-  se: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honours: false,
+  se: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honors: false,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess'],
       ['duke', 'Duke', 'Duchess'], ['earl', 'Count', 'Countess'], ['baron', 'Baron', 'Baroness']] },
-  no: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honours: false,
+  no: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honors: false,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess']] },
-  dk: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honours: false,
+  dk: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honors: false,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess'],
       ['earl', 'Count', 'Countess'], ['baron', 'Baron', 'Baroness']] },
-  nl: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honours: false,
+  nl: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honors: false,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Prince', 'Princess'], ['royal', 'Prince', 'Princess'],
       ['earl', 'Count', 'Countess'], ['baron', 'Baron', 'Baroness'], ['knight', 'Jonkheer', 'Jonkvrouw']] },
-  jp: { type: 'ceremonial', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Imperial House', honours: false, maleOnly: true, leavesOnMarriage: true,
+  jp: { type: 'ceremonial', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Imperial House', honors: false, maleOnly: true, leavesOnMarriage: true,
     ranks: [['monarch', 'Emperor', 'Empress'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess']] },
-  th: { type: 'constitutional', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honours: false, maleOnly: true,
+  th: { type: 'constitutional', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honors: false, maleOnly: true,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess']] },
-  ma: { type: 'executive', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honours: false, maleOnly: true,
+  ma: { type: 'executive', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honors: false, maleOnly: true,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess']] },
-  ae: { type: 'absolute', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Ruling House', honours: false, maleOnly: true,
+  ae: { type: 'absolute', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Ruling House', honors: false, maleOnly: true,
     ranks: [['monarch', 'Emir', 'Sheikha'], ['heir', 'Crown Prince', 'Sheikha'], ['royal', 'Sheikh', 'Sheikha']] },
-  be: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honours: false,
+  be: { type: 'constitutional', law: { order: 'absolute', adoption: false, renounceCoversHeirs: false }, reformed: true, house: 'Royal House', honors: false,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess'],
       ['earl', 'Count', 'Countess'], ['baron', 'Baron', 'Baroness']] },
   // A principality: the sovereign is a prince, not a king.
-  mc: { type: 'executive', law: { order: 'malePreference', adoption: false, renounceCoversHeirs: false }, reformed: false, house: 'Princely House', honours: false,
+  mc: { type: 'executive', law: { order: 'malePreference', adoption: false, renounceCoversHeirs: false }, reformed: false, house: 'Princely House', honors: false,
     ranks: [['monarch', 'Prince', 'Princess'], ['heir', 'Hereditary Prince', 'Hereditary Princess'], ['royal', 'Prince', 'Princess']] },
-  jo: { type: 'executive', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honours: false, maleOnly: true,
+  jo: { type: 'executive', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honors: false, maleOnly: true,
     ranks: [['monarch', 'King', 'Queen'], ['heir', 'Crown Prince', 'Crown Princess'], ['royal', 'Prince', 'Princess']] },
-  sa: { type: 'absolute', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honours: false, maleOnly: true,
+  sa: { type: 'absolute', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honors: false, maleOnly: true,
     ranks: [['monarch', 'King', 'Princess'], ['heir', 'Crown Prince', 'Princess'], ['royal', 'Prince', 'Princess']] },
-  kw: { type: 'executive', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Ruling House', honours: false, maleOnly: true,
+  kw: { type: 'executive', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Ruling House', honors: false, maleOnly: true,
     ranks: [['monarch', 'Emir', 'Sheikha'], ['heir', 'Crown Prince', 'Sheikha'], ['royal', 'Sheikh', 'Sheikha']] },
-  qa: { type: 'absolute', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Ruling House', honours: false, maleOnly: true,
+  qa: { type: 'absolute', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Ruling House', honors: false, maleOnly: true,
     ranks: [['monarch', 'Emir', 'Sheikha'], ['heir', 'Heir Apparent', 'Sheikha'], ['royal', 'Sheikh', 'Sheikha']] },
   // A federation of nine royal houses. The house in the game is one of them: its sultan rules a state by
   // inheritance, and every so often takes a five-year turn as king of the whole country (`elective`).
-  my: { type: 'constitutional', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honours: false, maleOnly: true,
+  my: { type: 'constitutional', law: { order: 'maleOnly', adoption: false, renounceCoversHeirs: true }, reformed: false, house: 'Royal House', honors: false, maleOnly: true,
     elective: { title: ['King', 'Queen'], term: 5, houses: 9, realms: ['Johor', 'Kedah', 'Kelantan', 'Pahang', 'Perak', 'Selangor', 'Terengganu', 'Perlis', 'Negeri Sembilan'] },
     // The country has many peoples; its royal houses are Malay, and are named so.
     names: { male: ['Ahmad', 'Iskandar', 'Ibrahim', 'Abdullah', 'Azlan', 'Ismail', 'Mahmud', 'Mizan', 'Sharafuddin', 'Nazrin', 'Muhammad', 'Sallehuddin', 'Hassanal', 'Idris', 'Yahya', 'Zainal', 'Faris', 'Aminuddin', 'Hisham', 'Sulaiman'],
@@ -116,7 +116,7 @@ export const DISGRACE = 15;
 /**
  * What a reign is remembered for. One is drawn for each past monarch. `standing`
  * moves how the public sees the house today, so a great-grandmother's choices
- * still colour how her descendants are received.
+ * still color how her descendants are received.
  */
 export const REIGN_NOTES = [
   { text: 'kept the country out of a war that ruined its neighbors', standing: 6 },
@@ -153,7 +153,7 @@ export const POWERS = [
   { id: 'address', kind: 'advise', name: 'Address the nation', note: 'A broadcast in a hard year. It can steady a country, or fall flat.',
     risky: { base: 0.6, stat: 'charm' }, support: 5, image: 5, text: 'You speak for nine minutes about what the country has been through, and it listens.',
     fail: { support: -2, image: -4, text: 'The words are right and the delivery is wooden. It is mocked by breakfast.' } },
-  { id: 'honours', kind: 'advise', name: 'Honor people nobody has heard of', note: 'Nurses, lollipop ladies, a man who has run a youth club for forty years.',
+  { id: 'honors', kind: 'advise', name: 'Honor people nobody has heard of', note: 'Nurses, lollipop ladies, a man who has run a youth club for forty years.',
     support: 3, image: 3, karma: 3, text: 'You give the highest honors to people who never expected a letter from a palace. It is the most popular list in memory.' },
   { id: 'books', kind: 'advise', name: 'Open the palace accounts', note: 'Publish what the crown costs, and cut it. The family will hate it.',
     support: 9, family: -12, press: 5, chronicle: 'opened the palace accounts to the public and cut the cost of the crown', text: 'Every bill, published. Three residences are given up. The family eats in silence; the country approves.' },

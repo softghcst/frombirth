@@ -32,15 +32,31 @@ decorations keep their colours.
 import colorsys, json, math, os, re, shutil, sys, tempfile, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ASSETS = os.path.join(ROOT, 'assets', 'avatars')
+ASSETS_ROOT = os.path.join(ROOT, 'assets')
+ASSETS = os.path.join(ASSETS_ROOT, 'avatars')
+# Head shapes live on their own in assets/heads/ (shared with the hair-warping pipeline) under clean names.
+# Saves store each head by its id, so the ids stay what they were: HEAD_IDS maps file name -> id.
+HEADS = os.path.join(ASSETS_ROOT, 'heads')
+HEAD_IDS = {'baby': 'head_00_baby', 'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
+            'pixie': 'head_11_pixie', 'sculpted': 'head_12_sculpted', 'athletic': 'head_13_athletic', 'almond': 'head_14_almond',
+            'cherubic': 'head_15_cherubic', 'angular': 'head_16_angular', 'dimple_oval': 'head_17_dimple_oval'}
+
+
+def folder_dir(folder):
+    """Where a folder's SVGs live on disk: assets/heads/ for heads, assets/avatars/<folder>/ for everything else."""
+    return HEADS if folder == 'heads' else os.path.join(ASSETS, folder)
+
+
+def part_id(folder, stem):
+    return HEAD_IDS.get(stem, stem) if folder == 'heads' else stem
 MANIFEST = os.path.join(ROOT, 'js', 'avatarManifest.js')
 FOLDERS = ['heads', 'eyes', 'eyebrows', 'noses', 'lips', 'hair', 'clothes', 'crowns', 'hats', 'glasses', 'jewelry',
-           'facial_hair', 'makeup', 'aging', 'emotions']
+           'makeup', 'aging', 'emotions']
 
 # ---------- 1. Unpacking and sorting ----------
 
 PREFIXES = [  # longest first
-    ('facial_hair', 'facial_hair'), ('accessory', 'jewelry'), ('jewelry', 'jewelry'), ('emotion', 'emotions'),
+    ('accessory', 'jewelry'), ('jewelry', 'jewelry'), ('emotion', 'emotions'),
     ('glasses', 'glasses'), ('outfit', 'clothes'), ('makeup', 'makeup'), ('eyebrow', 'eyebrows'), ('brows', 'eyebrows'),
     ('crown', 'crowns'), ('aging', 'aging'), ('head', 'heads'), ('face', 'heads'), ('hair', 'hair'), ('eyes', 'eyes'),
     ('nose', 'noses'), ('lips', 'lips'), ('hat', 'hats'),
@@ -57,12 +73,21 @@ def clean_name(name):
 
 
 # Artwork that has been withdrawn: never sorted in, even if a pack still contains it.
+# Saves that used a withdrawn eye, nose or mouth are moved to the nearest one kept (WITHDRAWN in js/avatar/curation.js).
 EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05.svg', 'eyes_13.svg', 'eyes_17.svg', 'eyes_21.svg', 'eyes_23.svg',
+            'eyes_11.svg', 'eyes_12.svg', 'eyes_24.svg',
+            'lips_1.svg', 'lips_2.svg', 'lips_3.svg', 'lips_12.svg', 'lips_13.svg', 'lips_15.svg', 'lips_16.svg', 'lips_19.svg',
+            'brows_02.svg', 'brows_03.svg', 'brows_7.svg', 'brows_13.svg', 'brows_17_puppy.svg', 'brows_18_unibrow.svg', 'brows_19_glam_arch.svg',
+            'brows_22_skeptical.svg',
+            'nose_1.svg', 'nose_2.svg', 'nose_3.svg', 'nose_4.svg', 'nose_5.svg', 'nose_8.svg', 'nose_18.svg', 'nose_22.svg', 'nose_15.svg', 'nose_24.svg',
+            'hair_boy_long_06.svg', 'hair_boy_long_08.svg', 'hair_girl_long_02.svg', 'hair_girl_long_05.svg', 'hair_boy_medium_07.svg', 'hair_boy_medium_06.svg', 'hair_boy_medium_08.svg', 'hair_boy_medium_05.svg', 'hair_boy_medium_14.svg', 'hair_girl_long_14.svg', 'hair_boy_long_14.svg', 'hair_girl_medium_02.svg', 'hair_girl_medium_06.svg', 'hair_girl_short_06.svg', 'hair_girl_medium_07.svg', 'hair_girl_medium_05.svg',
             'face_01_oval.svg', 'face_02_round.svg', 'face_03_square.svg', 'face_04_heart.svg', 'face_05_diamond.svg', 'face_06_pear.svg'}
 
 
 def folder_for(name):
     if name in EXCLUDED or name.startswith('hat'):  # hats are withdrawn: only crowns and tiaras are worn on the head
+        return None
+    if name.startswith('facial_hair'):  # facial hair has been taken out of the game
         return None
     for prefix, folder in PREFIXES:
         if name.startswith(prefix):
@@ -93,7 +118,7 @@ def unpack(zips, into):
 
 
 def sort_into_folders(search_dirs):
-    """Moves every .svg found under search_dirs into assets/avatars/<folder>/ by its filename prefix."""
+    """Moves every .svg found under search_dirs into its folder (folder_dir) by its filename prefix."""
     moved, skipped = 0, []
     for top in search_dirs:
         for d, _, files in os.walk(top):
@@ -106,7 +131,7 @@ def sort_into_folders(search_dirs):
                 if not folder:
                     skipped.append(f)
                     continue
-                dest_dir = os.path.join(ASSETS, folder)
+                dest_dir = folder_dir(folder)
                 if os.path.realpath(d) == os.path.realpath(dest_dir) and name == f:
                     continue
                 os.makedirs(dest_dir, exist_ok=True)
@@ -432,7 +457,7 @@ def hue_gap(a, b):
 
 
 # What each folder's main colour becomes. clothes: only everyday outfits; uniforms and costumes keep their colours.
-RECOLOUR = {'heads': 'skin-color', 'noses': 'skin-color', 'hair': 'hair-color', 'facial_hair': 'hair-color',
+RECOLOUR = {'heads': 'skin-color', 'noses': 'skin-color', 'hair': 'hair-color',
             'eyebrows': 'brow-color', 'eyes': 'eye-color', 'lips': 'lip-color', 'makeup': 'blush-color', 'clothes': 'outfit-color'}
 FIXED_OUTFITS = re.compile(r'royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|doublet|jabot|capelet|'
                            r'police|swat|military|firefighter|doctor|prison|grad|chef|tuxedo')
@@ -450,9 +475,9 @@ def recolour(folder, name, elements):
         return None
     darkest = min(weights, key=lum)
     marked = [e['fill'] for e in elements if (e.get('id') or '').startswith(('hair-color', 'hair-fill', 'skin')) or e.get('layer') == 'skin-color']
-    hairlike = folder in ('hair', 'facial_hair', 'eyebrows')
+    hairlike = folder in ('hair', 'eyebrows')
     # Outlines are ink: never recoloured. Hair can itself be nearly black, so there only the darkest of several tones counts as ink.
-    # Outlines are never recoloured. In hair, brows and beards the darkest of several tones is the outline, however dark or light it is.
+    # Outlines are never recoloured. In hair and brows the darkest of several tones is the outline, however dark or light it is.
     browns = [c for c in weights if not is_white(c)]
     candidates = {c: w for c, w in weights.items() if not is_white(c) and not ((hairlike and c == darkest and len(browns) > 1) or (not hairlike and lum(c) < INK))}
     if folder == 'eyes':  # irises are drawn in browns; tears and sparkles keep their colours
@@ -474,6 +499,8 @@ def recolour(folder, name, elements):
         if l < lm:
             p = max(5, min(95, round(100 * l / lm)))
             mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#000)'
+            if folder == 'lips' and 'masc' in name:  # the men's mouths: the darker tone is the upper lip, set apart on deep skin
+                mapping[c] = f'var(--lip-upper,{mapping[c]})'
         else:
             p = max(5, min(95, round(100 * (1 - l) / max(1 - lm, 0.01))))
             mapping[c] = f'color-mix(in srgb,var(--{var},{main}) {p}%,#fff)'
@@ -523,25 +550,6 @@ BY_NAME = [
     ('makeup', r'beauty_mark', (14, 999, 290, FACE['mouth_y'] - 16, 'center')),
     ('makeup', r'egirl|heart', (176, 999, 256, FACE['eye_y'] + 34, 'center')),
     ('makeup', r'.', (190, 999, 256, FACE['eye_y'] - 6, 'center')),
-]
-
-
-# Facial hair, style by style: (width, the point down the drawing that is anchored, where that point goes).
-# A beard is anchored by its mouth opening to the mouth; a moustache sits between nose and mouth;
-# a chinstrap or stubble by its lowest point just under the chin.
-MOUSTACHE_Y = (FACE['nose_y'] + 22 + FACE['mouth_y'] - 14) / 2 + 2
-BEARDS = [
-    (r'shaped_beard', (208, 0.40, FACE['mouth_y'])),
-    (r'bushy_full_beard', (226, 0.33, FACE['mouth_y'] - 2)),
-    (r'vandyke', (112, 0.47, FACE['mouth_y'])),
-    (r'handlebar', (108, 0.5, MOUSTACHE_Y)),
-    (r'chevron|mustache|moustache', (92, 0.5, MOUSTACHE_Y)),
-    (r'goatee', (204, 1.0, FACE['chin_y'] + 20)),
-    (r'chinstrap', (220, 1.0, FACE['chin_y'] + 10)),
-    (r'stubble', (212, 1.0, FACE['chin_y'] + 6)),
-    (r'muttonchop', (246, 0.5, FACE['mouth_y'] - 34)),
-    (r'soulpatch', (24, 0.0, FACE['mouth_y'] + 17)),
-    (r'.', (200, 0.4, FACE['mouth_y'])),
 ]
 
 
@@ -645,11 +653,6 @@ def place(folder, name, elements):
         return 'no face opening found: fitted to the crown of the head' + lifted
     if folder == 'jewelry' and not re.search(r'choker|chain|necklace|pendant|lip_ring', name):
         return hang_from_ears(name, elements, box)
-    if folder == 'facial_hair':
-        width, frac, ay = next(r for pat, r in BEARDS if re.search(pat, name))
-        s = width / w
-        transform_elements(elements, s, 256 - (x0 + w / 2) * s, ay - (y0 + frac * h) * s)
-        return f'beard fitted: {width} wide, anchored {frac:.2f} of the way down at y={ay:.0f}'
     rule = rule_for(folder, name)
     if not rule:
         return 'left as drawn'
@@ -850,6 +853,480 @@ def measure_head(elements):
     return {'cx': r(cx), 'top': top, 'chin': neck - 4, 'w': r(face_w), 'earL': r(ear_l), 'earR': r(ear_r), 'earTop': band[0] if band else widest - 20,
             'lobe': ear_bottom - 8, 'neck': neck, 'neckW': r(wid(neck)), 'shoulderW': r(shoulder)}
 
+# ---------- Measuring how hair meets a head ----------
+#
+# The renderer fits each hairstyle to each head from these (js/avatar/hairFit.js). Both are sampled on the
+# same rows and columns of the 512 frame.
+PROFILE_ROWS = (150, 6, 43)   # first row, step, how many
+PROFILE_COLS = (128, 8, 33)   # first column, step, how many
+FRAME_TOP = -22               # the top of the picture the game shows (CharacterAvatar's viewBox)
+
+
+def col_spans(elements, x):
+    """Filled y-intervals of all elements along the column x, merged (row_spans, turned on its side)."""
+    spans = []
+    for e in elements:
+        ys = []
+        for poly in e.setdefault('polys', flatten(e['cmds'])):
+            n = len(poly)
+            for i in range(n):
+                x1, y1 = poly[i]
+                x2, y2 = poly[(i + 1) % n]
+                if (x1 <= x < x2) or (x2 <= x < x1):
+                    ys.append(y1 + (x - x1) * (y2 - y1) / (x2 - x1))
+        ys.sort()
+        for i in range(0, len(ys) - 1, 2):
+            spans.append((ys[i], ys[i + 1]))
+    spans.sort()
+    merged = []
+    for a, b in spans:
+        if merged and a <= merged[-1][1] + 0.5:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    return merged
+
+
+def measure_hair_edge(elements):
+    """
+    Where a hairstyle meets the face. Row by row: the inner edges of the hair either side of the
+    opening the face shows through (None: no hair on that side; both 256: the hair covers the middle
+    of the face). Column by column: the hairline (T), where the hair that starts above the forehead
+    ends, and the outline of the crown (O), where it begins.
+    """
+    r0, rs, rn = PROFILE_ROWS
+    c0, cs, cn = PROFILE_COLS
+    left, right = [], []
+    for i in range(rn):
+        spans = row_spans(elements, r0 + i * rs + 0.5)
+        edges = [-1e9] + [v for sp in spans for v in sp] + [1e9]
+        gaps = [(edges[k], edges[k + 1]) for k in range(0, len(edges), 2)]
+        a, b = max(gaps, key=lambda g: min(g[1], 316) - max(g[0], 196))
+        if min(b, 316) - max(a, 196) < 30:
+            left.append(256)
+            right.append(256)
+        else:
+            left.append(None if a < -1e8 else round(a))
+            right.append(None if b > 1e8 else round(b))
+    line, crown = [], []
+    for j in range(cn):
+        upper = [sp for sp in col_spans(elements, c0 + j * cs + 0.5) if sp[0] < 205]
+        line.append(round(max(sp[1] for sp in upper)) if upper else None)
+        crown.append(round(upper[0][0]) if upper else None)
+    return {'top': round(bbox_of(elements)[1]), 'L': left, 'R': right, 'T': line, 'O': crown}
+
+
+def measure_head_edge(elements):
+    """The outline of a head's skin: its left and right edges row by row, and the top of the skull column by column."""
+    skins = [e for e in elements if str(e['fill']).startswith('var(--skin-color')]
+    skin = max(skins or elements, key=area)
+    r0, rs, rn = PROFILE_ROWS
+    c0, cs, cn = PROFILE_COLS
+    left, right, top = [], [], []
+    for i in range(rn):
+        spans = row_spans([skin], r0 + i * rs + 0.5)
+        left.append(round(spans[0][0]) if spans else None)
+        right.append(round(spans[-1][1]) if spans else None)
+    for j in range(cn):
+        spans = col_spans([skin], c0 + j * cs + 0.5)
+        top.append(round(spans[0][0]) if spans else None)
+    return {'L': left, 'R': right, 'T': top}
+
+
+FEATURE_STEP = 2  # how far apart the measured rows of an eye or nose are
+
+
+def measure_feature(elements, folder):
+    """
+    The outline of a pair of eyes, a nose or a mouth, row by row, so the game can tell how close they come
+    to each other (js/avatar/featureFit.js). For eyes: how far the nearest ink is from the centre line
+    (`inner`). For a nose or a mouth: how far its lines reach from the centre line (`ink`), and how far
+    anything it draws does, a nose's patch of skin included (`all`). Rows start at `y` and are FEATURE_STEP
+    apart; `bottom` is where the drawing ends, and a mouth also has its `width`.
+    """
+    box = bbox_of(elements)
+    lines = [e for e in elements if not str(e['fill']).startswith('var(--skin-color')]
+    y0 = int(math.floor(box[1]))
+    inner, ink, whole = [], [], []
+    y = y0
+    while y <= box[3]:
+        spans = row_spans(elements, y + 0.5)
+        if folder == 'eyes':
+            crosses = any(a <= 256 <= b for a, b in spans)
+            inner.append(0 if crosses else round(min(abs(v - 256) for sp in spans for v in sp), 1) if spans else None)
+        else:
+            reach = lambda sp: round(max(256 - sp[0][0], sp[-1][1] - 256), 1) if sp else None
+            ink.append(reach(row_spans(lines, y + 0.5)))
+            whole.append(reach(spans))
+        y += FEATURE_STEP
+    shape = {'y': y0, 'bottom': round(box[3], 1)}
+    if folder == 'lips':
+        shape['width'] = round(box[2] - box[0], 1)
+    shape.update({'inner': inner} if folder == 'eyes' else {'ink': ink, 'all': whole})
+    return shape
+
+
+# ---------- Repairs to hairstyles that were placed badly ----------
+#
+# The placement above works from each drawing's face opening, and a few styles defeat it. Where the
+# renderer's own fitting (js/avatar/hairFit.js) cannot bring a style onto the head within its limits,
+# the file itself is moved here, once: (x scale, y scale, shift right, shift down), about the top of
+# the template face. A repaired file carries data-refit="1" and is never moved twice.
+REFIT = {
+    # An arch of braids drawn for a much taller forehead: the opening reached 100 units above the skull,
+    # so the background showed through it. Lowered until the arch sits on the crown, the beads at the jaw.
+    'hair_boy_medium_11': (1.0, 0.85, 0, 94),
+    # Cornrows on one side, drawn far wider than the head: the shaved side hung in the air beside the
+    # face. Brought in until the cornrows lie on the scalp.
+    'hair_girl_long_11': (0.75, 0.75, -13, 0),
+}
+
+
+# Mouths drawn as an outline whose inside should be teeth: the inside is filled white, behind the lines, once.
+TEETH = {
+    'lips_21': 'a sideways smile showing its teeth; the teeth were left as a hole, so the skin showed through',
+}
+
+
+def fill_teeth():
+    """Applies TEETH to any listed file that has not had it. -> the names filled."""
+    done = []
+    for name in TEETH:
+        path = os.path.join(ASSETS, 'lips', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-teeth="1"' in text or 'data-pathways="1"' not in text:
+            continue
+        m = re.search(r' d="([^"]*)"', text)
+        subs, cur = [], []
+        for c, a in parse_path(m.group(1)) + [('M', [])]:
+            if c == 'M' and cur:
+                subs.append(cur)
+                cur = []
+            if a or c == 'Z':
+                cur.append((c, a))
+        if len(subs) < 2:
+            continue
+        # The outline's inner edge is the opening of the mouth: the biggest shape inside the outer one.
+        inner = max(subs[1:], key=lambda sp: abs(poly_area(flatten(sp)[0])) if flatten(sp) else 0)
+        white = f'<path style="fill:#ffffff" d="{path_d(inner)}"/>'
+        text = text.replace('<g id="art">', '<g id="art">' + white, 1).replace('data-pathways="1"', 'data-pathways="1" data-teeth="1"', 1)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        done.append(name)
+    return done
+
+
+# Mouths drawn with a much heavier outline than the rest, in a redder ink: (skin, lips, ink). The outside of the
+# outline is trimmed by drawing its edge again in the skin's color (`skin`, frame units, half of it falling on the
+# outline); the line between the lips by edging the lips in their own color (`lips`, the same); and the outline is
+# drawn in the ink the other mouths use. A trimmed file records what was done (data-thinned="skin/lips"); if the
+# numbers here change, or the file was trimmed some other way, that is undone and it is trimmed again.
+THIN_OUTLINE = {'lips_4': (3.0, 1.4, '#230601')}
+
+
+def thin_outline():
+    """Applies THIN_OUTLINE to any listed file that has not had it. -> the names thinned."""
+    done = []
+    for name, (skin, lips, ink) in THIN_OUTLINE.items():
+        path = os.path.join(ASSETS, 'lips', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        mark = f'data-thinned="{fmt(skin)}/{fmt(lips)}"'
+        if mark in text or 'data-pathways="1"' not in text:
+            continue
+        # Undo earlier attempts.
+        text = re.sub(r';stroke:(var\(--lip-upper,)?var\(--lip-color,#[0-9a-f]+\)\)?;stroke-width:[\d.]+;stroke-linejoin:round"', '"', text)
+        text = re.sub(r'<path style="fill:none;stroke:var\(--skin-color[^"]*" d="[^"]*"/>', '', text)
+        text = re.sub(r' data-thinned="[^"]*"', '', text)
+        m = re.search(r'<path style="fill:(#[0-9a-f]{6});stroke:var\(--line-ink[^"]*"( fill-rule="[^"]*")? d="([^"]*)"/>', text)
+        if not m:
+            continue
+        outline = m.group(0).replace(f'fill:{m.group(1)}', f'fill:{ink}', 1)
+        trim = f'<path style="fill:none;stroke:var(--skin-color,#e8b68c);stroke-width:{fmt(skin)};stroke-linejoin:round" d="{m.group(3)}"/>'
+        text = text[:m.start()] + outline + trim + text[m.end():]
+        text = re.sub(r'style="fill:(var\(--lip-color,#[0-9a-f]+\))"',
+                      lambda q: f'style="fill:{q.group(1)};stroke:{q.group(1)};stroke-width:{fmt(lips)};stroke-linejoin:round"', text)
+        text = text.replace('data-pathways="1"', f'data-pathways="1" {mark}', 1)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        done.append(name)
+    return done
+
+
+def split_lip_tones():
+    """
+    The upper and lower lips of most mouths are drawn as two shapes in one path, so they could only ever take one
+    color. This parts them, wherever the two are clearly one above the other: the upper lip is given its own color,
+    var(--lip-upper), falling back to the mouth's color, so a mouth looks exactly as before unless the portrait sets
+    one (natural lips on men: NATURAL_LIPS in js/avatar/catalog.js). Lipstick, teeth, tongues and the inside of a
+    mouth are never touched: only shapes in the lip color are, and only a pair that is clearly upper and lower.
+    The men's mouths already draw their upper lip in --lip-upper. A parted file carries data-lip-tones="1".
+    -> the names parted.
+    """
+    done = []
+    folder = os.path.join(ASSETS, 'lips')
+    lip = re.compile(r'<path style="fill:(var\(--lip-color,#[0-9a-f]+\))([^"]*)"( fill-rule="[^"]*")? d="([^"]*)"/>')
+    for f in sorted(os.listdir(folder)):
+        if not f.endswith('.svg') or f.startswith('lips_masc'):
+            continue
+        path = os.path.join(folder, f)
+        text = open(path, encoding='utf-8').read()
+        if 'data-lip-tones="1"' in text or 'data-pathways="1"' not in text:
+            continue
+        found = list(lip.finditer(text))
+        shapes = []  # (the path it is in, its commands)
+        for m in found:
+            cur = []
+            for c, a in parse_path(m.group(4)) + [('M', [])]:
+                if c == 'M' and cur:
+                    shapes.append((m, cur))
+                    cur = []
+                if a or c == 'Z':
+                    cur.append((c, a))
+        if len(shapes) != 2:
+            continue
+        boxes = [bbox_of([{'cmds': sp, 'fill': ''}]) for _, sp in shapes]
+        # One above the other, side by side across much the same width, and neither inside the other (as the inner
+        # and outer edges of an open mouth's lips are): a smile's lower lip may curve up past the upper's bottom edge.
+        across = min(boxes[0][2], boxes[1][2]) - max(boxes[0][0], boxes[1][0])
+        inside = lambda a, b: a[0] >= b[0] - 1 and a[2] <= b[2] + 1 and a[1] >= b[1] - 1 and a[3] <= b[3] + 1
+        centres = [(bx[1] + bx[3]) / 2 for bx in boxes]
+        if across < 0.6 * max(bx[2] - bx[0] for bx in boxes) or inside(boxes[0], boxes[1]) or inside(boxes[1], boxes[0]) \
+                or abs(centres[0] - centres[1]) < 4:
+            continue
+        upper = 0 if boxes[0][1] + boxes[0][3] < boxes[1][1] + boxes[1][3] else 1
+        up = f'var(--lip-upper,{found[0].group(1)})'
+
+        def paint(i, color):
+            m = shapes[i][0]
+            return f'<path style="fill:{color}{m.group(2).replace(m.group(1), color)}"{m.group(3) or ""} d="{path_d(shapes[i][1])}"/>'
+        if len(found) == 1:
+            m = found[0]
+            text = text[:m.start()] + paint(1 - upper, m.group(1)) + paint(upper, up) + text[m.end():]
+        else:
+            m = shapes[upper][0]
+            text = text[:m.start()] + paint(upper, up) + text[m.end():]
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-lip-tones="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        done.append(f[:-4])
+    return done
+
+
+def weigh_lines(folder='noses', recolor=True):
+    """
+    Lets the renderer thicken a part's dark lines without touching anything else in it: each ink path
+    (not the skin-coloured shape) gets a stroke that is off unless --line-width is set on the portrait.
+    The renderer sets it on deeper skin tones, where dark lines on dark skin are hard to see. Once per file.
+    With recolor, --line-ink also recolours the lines themselves (noses); without, only the added stroke uses it.
+    -> the names changed
+    """
+    done = []
+    d = folder_dir(folder)
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        path = os.path.join(d, f)
+        text = open(path, encoding='utf-8').read()
+        if not f.endswith('.svg') or 'data-lines="1"' in text or 'data-pathways="1"' not in text:
+            continue
+        ink = ';stroke:var(--line-ink,currentColor);stroke-width:var(--line-width,0);stroke-linejoin:round'
+        fill = (lambda h: f'var(--line-ink,{h})') if recolor else (lambda h: h)
+        dark = sorted({h for h in re.findall(r'style="fill:(#[0-9a-fA-F]{6})"', text) if lum(h) < INK}, key=lum)
+        # Eyes and lips: only the darkest shade is the outline. A second dark shade is a filled area (a shaded iris)
+        # that a stroke would blot.
+        lines = set(dark) if recolor else set(dark[:1])
+        text = re.sub(r'style="fill:(#[0-9a-fA-F]{6})"', lambda m: f'style="fill:{fill(m.group(1))}{ink}"' if m.group(1) in lines else m.group(0), text)
+        text = text.replace('data-pathways="1"', 'data-pathways="1" data-lines="1"', 1)
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        done.append(f[:-4])
+    return done
+
+
+# Eyes whose lid crease is drawn as a separate thin line floating above the eye, in the same ink as the eye's outline,
+# so that it reads as a second, thinner eyebrow. Each crease is parted from the eye's own shapes into a path of its own,
+# so that it can take a soft shade of the skin instead of the ink (--crease-color, set by the portrait), and is moved
+# down toward the lid by the amount here (frame units) so it clears the brow above it. The amounts were worked out from
+# the outlines: each crease keeps at least 4 units clear of the eye below it, and a typical brow's gap to it is made
+# up to about 10 where there is room for that. A softened file's crease carries data-crease="<units lowered>", so a
+# changed amount here moves it by the difference, and nothing is moved twice.
+# None: the eye already has a fold line close under the lashes, so its floating crease is taken out altogether instead
+# (eyes_25 had two). That fold was part of the eye's outline; it was cut out of it once, with polygon geometry, and
+# drawn in the soft crease shade (its paths carry data-crease="0"), so this step leaves the file alone.
+CREASES = {'eyes_18': 6, 'eyes_19': 6, 'eyes_20': 6, 'eyes_22': 7, 'eyes_25': None, 'eyes_26': 1, 'eyes_9': 2, 'eyes_8': 0, 'eyes_7': 0}
+CREASE_SOFT = 'color-mix(in srgb,var(--skin-color,#e8b68c) 50%,#2d180e)'
+CREASE_PATH = re.compile(r'<path data-crease="([\d.]+)" style="([^"]*)" d="([^"]*)"/>')
+ANY_PATH = re.compile(r'<path style="([^"]*)"([^>]*?) d="([^"]*)"/>')
+INK_PATH = re.compile(r'<path style="(fill:#[0-9a-fA-F]{6};stroke:var\(--line-ink[^"]*)"([^>]*?) d="([^"]*)"/>')
+
+
+def shift_down(cmds, dy):
+    return [(c, [v + dy if i % 2 else v for i, v in enumerate(a)]) for c, a in cmds]
+
+
+def subpaths_of(d):
+    subs, cur = [], []
+    for c, a in parse_path(d) + [('M', [])]:
+        if c == 'M' and cur:
+            subs.append(cur)
+            cur = []
+        if a or c == 'Z':
+            cur.append((c, a))
+    return subs
+
+
+def soften_creases():
+    """Applies CREASES to every listed eye file. -> {name: units lowered} for the files changed."""
+    done = {}
+    for name, drop in CREASES.items():
+        path = os.path.join(ASSETS, 'eyes', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-pathways="1"' not in text or 'data-crease-removed="1"' in text:
+            continue
+        if drop is None and CREASE_PATH.search(text):
+            continue  # (a softened crease is only ever taken out from the original file)
+        if CREASE_PATH.search(text):  # already parted: move it by the difference
+            if all(abs(float(m.group(1)) - drop) < 1e-9 for m in CREASE_PATH.finditer(text)):
+                continue
+            text = CREASE_PATH.sub(lambda m: f'<path data-crease="{fmt(drop)}" style="{m.group(2)}" d="{path_d(shift_down(parse_path(m.group(3)), drop - float(m.group(1))))}"/>', text)
+            open(path, 'w', encoding='utf-8').write(text)
+            done[name] = drop
+            continue
+        found = []  # the topmost thin ink line in each half: (top, match, its subpath number, the match's subpaths)
+        for in_half in (lambda x0, x1: x1 < 256, lambda x0, x1: x0 > 256):
+            best = None
+            for m in INK_PATH.finditer(text):
+                subs = subpaths_of(m.group(3))
+                for si, sp in enumerate(subs):
+                    bx = bbox_of([{'cmds': sp, 'fill': ''}])
+                    if not bx or not in_half(bx[0], bx[2]):
+                        continue
+                    h, w = bx[3] - bx[1], bx[2] - bx[0]
+                    # Thin, wide and with some body: not a lash tick, and not the eye's own outline.
+                    if 8 <= h <= 20 and w >= 25 and area({'cmds': sp, 'fill': ''}) >= 60 and (best is None or bx[1] < best[0]):
+                        best = (bx[1], m, si, subs)
+            if best:
+                found.append(best)
+        if len(found) != 2:
+            continue
+        # Specks of a second shade drawn right on a crease (invisible while the crease was as dark as they are) go with it.
+        boxes = [bbox_of([{'cmds': f[3][f[2]], 'fill': ''}]) for f in found]
+        inside = lambda bx: any(bx[0] >= c[0] - 1 and bx[2] <= c[2] + 1 and bx[1] >= c[1] - 1 and bx[3] <= c[3] + 1 for c in boxes)
+        # Take the creases (and those specks) out of their paths, working back to front so earlier positions hold.
+        for m in reversed(list(ANY_PATH.finditer(text))):
+            subs = subpaths_of(m.group(3))
+            mine = [f for f in found if f[1].start() == m.start()]
+            out = {f[2] for f in mine}
+            for k, sp in enumerate(subs):
+                bx = bbox_of([{'cmds': sp, 'fill': ''}])
+                if k not in out and bx and area({'cmds': sp, 'fill': ''}) < 30 and inside(bx):
+                    out.add(k)
+            if not out:
+                continue
+            rest = [cmd for k, sp in enumerate(subs) if k not in out for cmd in sp]
+            soft = f'fill:var(--crease-color,{CREASE_SOFT});stroke:var(--crease-color,{CREASE_SOFT});stroke-width:var(--line-width,0);stroke-linejoin:round'
+            creases = '' if drop is None else ''.join(f'<path data-crease="{fmt(drop)}" style="{soft}" d="{path_d(shift_down(subs[f[2]], drop))}"/>' for f in sorted(mine, key=lambda f: f[2]))
+            kept = f'<path style="{m.group(1)}"{m.group(2)} d="{path_d(rest)}"/>' if rest else ''
+            text = text[:m.start()] + kept + creases + text[m.end():]
+        if drop is None:
+            text = text.replace('data-pathways="1"', 'data-pathways="1" data-crease-removed="1"', 1)
+        open(path, 'w', encoding='utf-8').write(text)
+        done[name] = drop
+    return done
+
+
+def refit_hair():
+    """Applies REFIT to any listed file that has not had it. -> the names repaired."""
+    done = []
+    for name, (sx, sy, dx, dy) in REFIT.items():
+        path = os.path.join(ASSETS, 'hair', name + '.svg')
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+        if 'data-refit="1"' in text or 'data-pathways="1"' not in text:
+            continue
+
+        def move(m):
+            cmds = [(c, [(256 + sx * (v - 256) + dx) if i % 2 == 0 else (FACE['top'] + sy * (v - FACE['top']) + dy) for i, v in enumerate(a)]) for c, a in parse_path(m.group(1))]
+            return f' d="{path_d(cmds)}"'
+        text = re.sub(r' d="([^"]*)"', move, text).replace('data-pathways="1"', 'data-pathways="1" data-refit="1"', 1)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(text)
+        done.append(name)
+    return done
+
+
+# ---------- Stray marks ----------
+
+
+def remove_specks(folder='hair', pad=6, share=0.004):
+    """
+    Deletes specks from hairstyles: tiny pieces that touch nothing else in the drawing (a dot left
+    above a parting, a sliver beside a bun). A piece is a speck when it stands more than `pad` units
+    clear of everything else and its box is under `share` of the whole style's. Loose strands and
+    clips are far larger, and stay. Safe to run again: once removed there is nothing left to find.
+    -> {name: how many specks were removed}
+    """
+    removed = {}
+    d = folder_dir(folder)
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        if not f.endswith('.svg'):
+            continue
+        path = os.path.join(d, f)
+        text = open(path, encoding='utf-8').read()
+        if 'data-pathways="1"' not in text:
+            continue
+        paths = [m for m in re.finditer(r' d="([^"]*)"', text)]
+        subs = []  # (path index, subpath commands, box)
+        for pi, m in enumerate(paths):
+            cur = []
+            for c, a in parse_path(m.group(1)) + [('M', [])]:
+                if c == 'M' and cur:
+                    xs = [v for _, args in cur for v in args[0::2]]
+                    ys = [v for _, args in cur for v in args[1::2]]
+                    subs.append((pi, cur, (min(xs), min(ys), max(xs), max(ys))))
+                    cur = []
+                if a or c == 'Z':
+                    cur.append((c, a))
+        parent = list(range(len(subs)))
+
+        def find(i):
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+        order = sorted(range(len(subs)), key=lambda i: subs[i][2][0])
+        for n, i in enumerate(order):
+            a = subs[i][2]
+            for j in order[n + 1:]:
+                b = subs[j][2]
+                if b[0] > a[2] + pad:
+                    break
+                if b[1] <= a[3] + pad and b[3] >= a[1] - pad:
+                    parent[find(i)] = find(j)
+        groups = {}
+        for i in range(len(subs)):
+            groups.setdefault(find(i), []).append(i)
+        if len(groups) < 2:
+            continue
+        size = lambda g: (max(subs[i][2][2] for i in g) - min(subs[i][2][0] for i in g)) * (max(subs[i][2][3] for i in g) - min(subs[i][2][1] for i in g))
+        whole = max(size(g) for g in groups.values())
+        drop = {i for g in groups.values() if size(g) < whole * share for i in g}
+        if not drop:
+            continue
+        for pi, m in reversed(list(enumerate(paths))):
+            keep = [cmd for i, (p, cmds, _) in enumerate(subs) if p == pi and i not in drop for cmd in cmds]
+            text = text[:m.start()] + f' d="{path_d(keep)}"' + text[m.end():]
+        with open(path, 'w', encoding='utf-8') as out:
+            out.write(text)
+        removed[f[:-4]] = len({find(i) for i in drop})
+    return removed
+
+
 # ---------- 3. Cleaning one file ----------
 
 HALO_FOLDERS = {'clothes', 'hats', 'crowns', 'jewelry', 'glasses', 'emotions'}
@@ -913,6 +1390,8 @@ def process(path, folder, force=False):
         if folder == 'heads' and e.get('paint', '').startswith('var(--skin-color') and 'skin' not in ''.join(paths):
             role = ' id="skin"'
         paint = e.get('paint') or e['fill']
+        if folder == 'eyes' and not e.get('paint') and is_white(e['fill']):
+            paint = 'var(--eye-white,#ffffff)'  # the renderer softens the white a little on deep skin tones
         extra = (f' fill-rule="{e["rule"]}"' if e.get('rule') else '') + (f' opacity="{e["opacity"]}"' if e.get('opacity') else '')
         stroke = f';stroke:{e["stroke"]};stroke-width:5;stroke-linejoin:round' if e.get('stroke') else ''
         paths.append(f'<path{role} style="fill:{paint}{stroke}"{extra} d="{path_d(e["cmds"])}"/>')
@@ -979,6 +1458,8 @@ def label(name):
     if name.startswith('hair') and not name.startswith('hair_baby'):
         # Two packs share their numbering; the second continues from 17 so every name is different.
         text = f'{length}, {text}' if text else f'{length}, style {number + (16 if "boy" in parts else 0)}'
+    elif parts[0] == 'lips' and text == 'masc' and number is not None:
+        text = f'Masc {number}'  # the masculine mouths: 'lips_masc_03' -> 'Masc 3'
     elif not text:
         kind = {'eyes': 'Eyes', 'brows': 'Brows', 'nose': 'Nose', 'lips': 'Mouth', 'glasses': 'Glasses'}.get(parts[0], parts[0].title())
         text = f'{kind} {number}' if number is not None else kind
@@ -988,16 +1469,27 @@ def label(name):
 def write_manifest():
     data = {}
     for folder in FOLDERS:
-        d = os.path.join(ASSETS, folder)
+        d = folder_dir(folder)
         files = sorted(f for f in os.listdir(d) if f.endswith('.svg')) if os.path.isdir(d) else []
-        data[folder] = [{'id': f[:-4], 'file': f'{folder}/{f}', 'label': label(f[:-4]), **({'tags': tags_for(folder, f[:-4])} if tags_for(folder, f[:-4]) else {})} for f in files]
+        rel = os.path.relpath(d, ASSETS_ROOT).replace(os.sep, '/')
+        ids = sorted(((f, part_id(folder, f[:-4])) for f in files), key=lambda t: t[1])  # by id, so renaming a file never reorders the list
+        data[folder] = [{'id': i, 'file': f'{rel}/{f}', 'label': label(i), **({'tags': tags_for(folder, i)} if tags_for(folder, i) else {})} for f, i in ids]
         if folder == 'heads':  # each head is measured, so parts can be moved onto it exactly
             for item in data[folder]:
-                _, els = read_svg(open(os.path.join(ASSETS, item['file']), encoding='utf-8').read())
+                _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
                 item['fit'] = measure_head(els)
+                item['edge'] = measure_head_edge(els)
+        if folder == 'hair':  # and each hairstyle, so it can be fitted to each head
+            for item in data[folder]:
+                _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
+                item['edge'] = measure_hair_edge(els)
+        if folder in ('eyes', 'noses', 'lips'):  # and each pair of eyes, nose and mouth, so they can be kept clear of each other
+            for item in data[folder]:
+                _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
+                item['shape'] = measure_feature(els, folder)
     lines = ['// Generated by scripts/build-avatar-manifest.py. Do not edit by hand: add SVGs under',
-             '// assets/avatars/ and run the script again.',
-             '// Paths are relative to assets/avatars/.',
+             '// assets/avatars/ (head shapes: assets/heads/) and run the script again.',
+             '// Paths are relative to assets/.',
              'export const AVATAR_MANIFEST = {']
     for folder in FOLDERS:
         lines.append(f'  {folder}: [')
@@ -1009,7 +1501,8 @@ def write_manifest():
     template = {'face': {'cx': 256, 'top': FACE['top'], 'chin': FACE['chin_y'], 'w': FACE['w']},
                 'anchor': {'eyes': FACE['eye_y'], 'eyebrows': FACE['brow_y'], 'nose': FACE['nose_y'], 'lips': FACE['mouth_y'], 'cheek': FACE['cheek_y']},
                 'ear': {'left': EAR['left_x'] + 6, 'right': EAR['right_x'] - 6, 'lobe': EAR['lobe_y']},
-                'clothesTop': LAYOUT['clothes'][3], 'shoulderW': 285}
+                'clothesTop': LAYOUT['clothes'][3], 'shoulderW': 285,
+                'profile': {'rows': list(PROFILE_ROWS), 'cols': list(PROFILE_COLS)}, 'frameTop': FRAME_TOP, 'featureStep': FEATURE_STEP}
     lines.append('/** The template face every part was fitted to. Each head\'s own measurements are in its `fit`. */')
     lines.append('export const AVATAR_TEMPLATE = ' + json.dumps(template, separators=(', ', ': ')) + ';')
     lines.append('')
@@ -1046,7 +1539,7 @@ def main(argv):
         print(f'sorted {moved} loose SVG(s)')
     processed, problems = 0, []
     for folder in FOLDERS:
-        d = os.path.join(ASSETS, folder)
+        d = folder_dir(folder)
         if not os.path.isdir(d):
             continue
         for f in sorted(os.listdir(d)):
@@ -1061,6 +1554,23 @@ def main(argv):
                 processed += 1
                 if '-v' in argv:
                     print(f'{folder}/{f}: ' + '; '.join(notes))
+    for name, n in remove_specks().items():
+        print(f'removed {n} stray mark(s) from {name}')
+    lined = weigh_lines() + weigh_lines('eyes', recolor=False) + weigh_lines('lips', recolor=False)
+    if lined:
+        print(f'made the lines of {len(lined)} part(s) adjustable')
+    for name in thin_outline():
+        print(f'thinned the outline of {name}')
+    for name, drop in soften_creases().items():
+        print(f'took out the floating lid crease of {name}' if drop is None else f'softened the lid crease of {name} (lowered {drop})')
+    parted = split_lip_tones()
+    if parted:
+        print('gave the upper lip its own color in ' + ', '.join(parted))
+    for name in fill_teeth():
+        print(f'filled the teeth of {name}')
+    repaired = refit_hair()
+    if repaired:
+        print('repaired the placement of ' + ', '.join(repaired))
     counts = write_manifest()
     print(f'processed {processed} new SVG(s); manifest lists ' + ', '.join(f'{k} {v}' for k, v in counts.items()))
     for p in problems:

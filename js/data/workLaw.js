@@ -7,11 +7,11 @@
 // The state pension age is not here: it is the rule engine's retirementAge.
 //
 //   workAge         youngest age for ordinary paid work
-//   minorHours      most weekly hours of paid work under 18 (term time)
+//   minorHours      most weekly hours of paid work under 18 (during the school year)
 //   maxHours        working hours a week above which employers may not ask for more
 //   leaveDays       paid holiday a full-time employee is owed a year
 //   parentalWeeks   paid parental leave, in weeks
-//   pension         share of pay an employer puts towards a pension (0–0.15)
+//   pension         share of pay an employer puts toward a pension (0–0.15)
 //   sickPay         whether ordinary employees are paid while off sick
 //   unemployment    share of previous pay paid for a while after losing a job (0 = none)
 export const DEFAULT = { workAge: 16, minorHours: 20, maxHours: 60, leaveDays: 20, parentalWeeks: 14, pension: 0.04, sickPay: true, unemployment: 0.4 };
@@ -60,7 +60,7 @@ export const WORK_LAW = {
 export const LOAD = { comfortable: 45, heavy: 55, crushing: 68, impossible: 84 };
 
 /** Study hours a week, by how someone is enrolled. */
-export const STUDY_HOURS = { school: 32, fullTime: 30, partTime: 12 };
+export const STUDY_HOURS = { school: 32, reduced: 18, fullTime: 30, partTime: 12 };
 
 /** Commute, hours a week each way combined, by the kind of city. */
 export const COMMUTE = { capital: 7, largest: 6, city: 4 };

@@ -1,11 +1,14 @@
 // People tab: everyone in your life, what they remember, and everything you
 // can do with them, from a conversation to a wedding.
+import * as hoodUi from '../neighborhood.js';
+import * as hoods from '../../engine/neighborhood.js';
 import * as kinCase from '../../engine/kinCases.js';
 import { familyStatus } from '../../engine/immigration.js';
 import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
 import * as rel from '../../engine/relationships.js';
 import * as love from '../../engine/romance.js';
+import * as bonds from '../../engine/bonds.js';
 import * as kids from '../../engine/children.js';
 import * as lives from '../../engine/npcLives.js';
 import * as kid from '../../engine/kidschool.js';
@@ -17,6 +20,7 @@ import { placeName } from '../../engine/geo.js';
 import { avatarSvg, petGlyph, royalDress } from '../avatar.js';
 import { animalById, reconcile as reconcileAnimals } from '../../engine/animals.js';
 import * as zooUi from '../animals.js';
+import * as sportsUi from '../sports.js';
 import { openAnimalHub } from '../animalHub.js';
 import { meterHtml, band } from '../meter.js';
 import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
@@ -26,20 +30,32 @@ import * as who from '../../engine/identity.js';
 import { openDynasty } from '../dynasty.js';
 import * as court from '../../engine/court.js';
 import { MONARCHIES } from '../../data/royalty.js';
+import { careRelationship, openFamilyHistory } from '../health/hub.js';
+import { npcHealthLines, npcCareActions, npcCareHistory, encourageCare, goWithCare, askCare, helpCare, visitCare } from '../../engine/health/story.js';
 import { eventsOf } from '../../engine/digital/core.js';
 import { accountsOf } from '../../engine/digital/accounts.js';
 import { PLATFORM_BY_ID } from '../../data/digital.js';
+import { openMoments } from '../moments.js';
+import { navRow, navGroup, lockedRow, fromAge } from '../kit.js';
+import * as together from '../../engine/together.js';
 
 const ORDER = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative',
-  'guardian', 'pet', 'friend', 'classmate', 'mentor', 'coworker', 'boss', 'ex', 'enemy', 'cellmate'];
+  'guardian', 'pet', 'friend', 'classmate', 'roommate', 'neighbor', 'mentor', 'coworker', 'boss', 'coach', 'teammate', 'agent', 'clinician', 'ex', 'enemy', 'cellmate', 'groupmate'];
+/** Roles always shown at the top of People. */
+const CLOSE_ROLES = ['spouse', 'partner', 'child', 'grandchild', 'greatgrandchild', 'parent', 'guardian', 'sibling', 'grandparent', 'pet'];
 const GROUPS = [
   ['Partner', ['spouse', 'partner']],
   ['Children and grandchildren', ['child', 'grandchild', 'greatgrandchild']],
   ['Family', ['parent', 'guardian', 'sibling', 'grandparent', 'inlaw', 'niece', 'relative', 'pet']],
   ['Friends', ['friend', 'classmate']],
-  ['Your household', ['staff']],
+  // Neighbors you have only met live on the My Neighborhood screen, not here: they join this list once they are friends.
+  // Someone met as a neighbor whom you no longer live near, but kept up with, still shows here.
+  ['Old neighbors', ['neighbor']],
+  ['Your household', ['roommate', 'staff']],
   ['Work and mentors', ['mentor', 'coworker', 'boss']],
-  ['Others', ['ex', 'enemy', 'cellmate']],
+  ['Sport', ['coach', 'teammate', 'agent']],
+  ['Your care team', ['clinician']],
+  ['Others', ['ex', 'enemy', 'cellmate', 'groupmate']],
 ];
 
 export const portrait = (npc) => (npc.role === 'pet'
@@ -64,6 +80,37 @@ async function giveGift(api, npc) {
     }),
   });
   if (tier) await report(api, rel.interact(npc.id, 'gift', tier));
+}
+
+/** Something bought for a partner (engine/bonds.js): what there is to buy now, and what it costs. */
+async function romanticGift(api, npc) {
+  const c = country();
+  const cash = player().finance.cash;
+  const id = await pickModal({
+    title: `Something for ${npc.firstName}`,
+    body: 'A gift is theirs to keep, or to hand back. What it means to them depends on them.',
+    options: bonds.giftsFor().map((g) => ({ value: g.id, label: `${g.name[0].toUpperCase()}${g.name.slice(1)}`, sub: fmtMoney(g.price, c), disabled: cash < g.price })),
+  });
+  if (id) await report(api, bonds.give(npc.id, id));
+}
+
+async function tripWith(api, npc) {
+  const c = country();
+  const id = await pickModal({ title: `Away with ${npc.firstName}`, body: 'For two. A trip promises nothing but the trip.',
+    options: bonds.tripsFor().map((t) => ({ value: t.id, label: t.name, sub: fmtMoney(t.cost, c), disabled: !t.affordable })) });
+  if (id) await report(api, bonds.trip(npc.id, id));
+}
+async function makeOver(api, npc) {
+  const c = country();
+  const id = await pickModal({ title: `Make over to ${npc.firstName}`, body: 'It becomes theirs, in their name, for good. Only what you own outright can be given.',
+    options: bonds.givable().map((a) => ({ value: a.id, label: a.name, sub: `Worth ${fmtMoney(a.value, c)} · fees ${fmtMoney(Math.round(a.value * bonds.TRANSFER_FEE), c)}` })) });
+  if (id && await confirmModal({ title: 'Give it away?', body: 'This cannot be undone. It will be theirs whatever happens between you.', yes: 'Make it over', danger: true })) await report(api, bonds.transfer(npc.id, id));
+}
+async function offerHome(api, npc) {
+  const c = country();
+  const id = await pickModal({ title: `A home for ${npc.firstName}`, body: 'They live there; you still own it, and pay its taxes and repairs.',
+    options: bonds.spareHomes().map((a) => ({ value: a.id, label: a.name, sub: `Worth ${fmtMoney(a.value, c)}` })) });
+  if (id) await report(api, bonds.house(npc.id, id));
 }
 
 async function proposeTo(api, npc) {
@@ -95,7 +142,7 @@ async function planWedding(api, npc) {
     // The palace said yes, and you are joining the family: the wedding is yours to shape.
     if (res.ok && !wasRoyal && player().royal?.by === 'marriage') {
       const picks = {};
-      for (const [key, title, body] of [['scale', 'The wedding', 'The crown pays. What kind of day will it be?'], ['media', 'The cameras', 'The whole country wants to watch.'], ['honeymoon', 'Afterwards', 'Where will the two of you go?']]) {
+      for (const [key, title, body] of [['scale', 'The wedding', 'The crown pays. What kind of day will it be?'], ['media', 'The cameras', 'The whole country wants to watch.'], ['honeymoon', 'Afterward', 'Where will the two of you go?']]) {
         picks[key] = await pickModal({ title, body, cancel: 'Let the palace decide', options: court.WEDDING[key].map((o) => ({ value: o.id, label: o.name, sub: o.sub })) }) ?? court.WEDDING[key][0].id;
       }
       await report(api, court.royalWedding(npc.id, picks));
@@ -243,6 +290,19 @@ function courtRecord(npc) {
     <div style="height:14px"></div>`;
 }
 
+/** A profile's actions in labeled groups (Together, Talk, Romance, Between you, Gifts and trips, Ask, Help, Hard moments), each
+ *  folded under its name with a count: the first one with anything in it is open, so a long list stays easy to scan. */
+function grouped(actions) {
+  const groupOf = (a) => a.group ?? together.GROUP_OF[a.id] ?? (a.danger ? 'conflict' : 'more');
+  let shown = 0;
+  return together.GROUPS.map(([g, name]) => {
+    const here = actions.filter((a) => groupOf(a) === g);
+    if (!here.length) return '';
+    const open = shown++ < 1;
+    return `<details class="more action-group" ${open ? 'open' : ''}><summary>${esc(name)} <small>${here.length}</small></summary><div class="btn-stack">${here.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}" ${a.done ? 'disabled' : ''}>${esc(a.label)}${a.done ? ' · done this year' : ''}</button>`).join('')}</div></details>`;
+  }).join('');
+}
+
 /**
  * The profile of anyone in the world: the same person on every screen (Digital Life opens it too), never a copy. People who are not part of the player's
  * life (a judge, a witness, an inmate on another landing) are shown without
@@ -262,9 +322,9 @@ export function openNpc(npc, api, back, o = {}) {
   const meters = isPet
     ? meterHtml('Bond', m.relationship, true) + meterHtml('Health', m.health, true)
     : [['Relationship', m.relationship], ['Money', m.money], ['Intellect', m.intellect],
-      ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy]]
+      ['Charm', m.charm], ['Health', m.health], ['Generosity', m.generosity], ['Crazy', m.crazy], ...(together.keepsTrust(npc) ? [['Trust in you', together.trustOf(npc)]] : [])]
       .map(([n, v]) => meterHtml(n, v, true)).join('');
-  const detail = [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : familyStatus(npc).toLowerCase(), npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
+  const detail = npc.flags.clinician ? '' : [npc.flags.royal ? `${npc.flags.royal.title}${npc.flags.royal.line ? `, ${npc.flags.royal.line === 1 ? 'next' : `number ${npc.flags.royal.line}`} in line to the throne` : ''}` : '', npc.occupation, npc.age >= 16 && npc.orientation && npc.orientation !== 'straight' && (npc.flags.cameOut || npc.role !== 'child') ? who.orientationName(npc.orientation).toLowerCase() : '', who.stanceLabel(npc).toLowerCase(), typeof npc.flags.abroad === 'string' && COUNTRIES[npc.flags.abroad] ? `lives in ${COUNTRIES[npc.flags.abroad].name}` : familyStatus(npc).toLowerCase(), npc.marriedAtAge != null && npc.role === 'spouse' ? `${player().age === npc.marriedAtAge ? 'newly married' : `married ${player().age - npc.marriedAtAge} yr`}${npc.prenup ? ', prenup' : ''}` : '']
     .filter(Boolean).map((x) => ` · ${esc(x)}`).join('');
   const owns = (npc.holdings ?? []).length ? `<p class="muted" style="margin-top:8px">Owns: ${esc(npc.holdings.join(', '))}.</p>` : '';
   const known = (npc.traits ?? []).map((id) => TRAIT_BY_ID[id]).filter(Boolean);
@@ -274,10 +334,20 @@ export function openNpc(npc, api, back, o = {}) {
   const feudNote = rival?.alive ? `<p class="muted" style="margin-top:8px">Not speaking to ${esc(rival.firstName)} at the moment.</p>` : '';
   const expecting = player().flags.pregnancy?.otherId === npc.id
     ? '<p class="muted" style="margin-top:8px">You are expecting a baby together.</p>' : '';
-  const history = npc.memories?.length
-    ? `<div class="section-label" style="margin-top:0">What they remember</div>
-       ${npc.memories.map((x) => `<div class="kv"><span>When you were ${x.age}</span><span>${esc(x.text)}</span></div>`).join('')}
+  // What is between the two of you, as the player knows it (engine/bonds.js): never shown as anybody else's knowledge.
+  const tie = bonds.summary(npc);
+  const between = tie ? `<div class="section-label" style="margin-top:0">Between you</div>
+       <div class="kv"><span>${esc(tie.label)}</span><span>since ${tie.since}</span></div>
+       ${tie.terms ? `<div class="kv"><span>Terms</span><span>${esc(tie.terms)}</span></div>` : ''}
+       ${tie.trust != null ? `<div class="kv"><span>Trust</span><span>${tie.trust < 35 ? 'Badly damaged' : 'Being rebuilt'}</span></div>` : ''}
+       ${tie.bond.type !== 'primary' ? `<div class="kv"><span>Who knows</span><span>${tie.knownBy.length ? esc(tie.knownBy.map((k) => `${k.name} ${k.level === 'knows' ? 'knows' : 'suspects'} (${k.how})`).join('; ')) : 'Only the two of you'}</span></div>` : ''}
+       ${tie.gifts.length ? `<div class="kv"><span>Gifts</span><span>${esc(tie.gifts.map((g) => `${g.name}, ${g.year}`).join('; '))}</span></div>` : ''}
+       ${tie.history.map((h) => `<div class="kv"><span>${h.year}</span><span>${esc(h.text)}</span></div>`).join('')}
        <div style="height:14px"></div>` : '';
+  const history = npc.memories?.length
+    ? `${between}<div class="section-label" style="margin-top:0">What they remember</div>
+       ${npc.memories.map((x) => `<div class="kv"><span>When you were ${x.age}</span><span>${esc(x.text)}</span></div>`).join('')}
+       <div style="height:14px"></div>` : between;
 
   const life = lives.lifeSummary(npc);
   const at = npc.role === 'child' && npc.alive ? kid.schoolLine(npc) : null;
@@ -289,6 +359,11 @@ export function openNpc(npc, api, back, o = {}) {
     ? `<div class="section-label" style="margin-top:0">What has happened to them</div>
        ${npc.life.history.slice(-14).reverse().map((h) => `<div class="kv"><span>Age ${h.age}</span><span>${esc(h.text.charAt(0).toUpperCase() + h.text.slice(1))}.</span></div>`).join('')}
        <div style="height:14px"></div>` : '';
+  const sharedHealth = npc.flags.clinician ? [] : npcHealthLines(npc);
+  const healthCard = sharedHealth.length ? `<div class="section-label" style="margin-top:0">What they have shared about their health</div>
+    ${sharedHealth.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+    ${npcCareHistory(npc).slice(0, 6).map(([y, t]) => `<div class="kv"><span>${y}</span><span>${esc(t.charAt(0).toUpperCase() + t.slice(1))}</span></div>`).join('')}
+    <div style="height:14px"></div>` : '';
   // Their digital life, as far as the player can see it: accounts by name, and the moments the two of you share.
   const online = store.state.digital ? accountsOf(npc.id).filter((a) => a.status !== 'deleted') : [];
   const shared = store.state.digital ? eventsOf(npc.id).filter((e) => e.charIds.includes(player().id) && e.visibility !== 'private').slice(0, 8) : [];
@@ -300,31 +375,36 @@ export function openNpc(npc, api, back, o = {}) {
 
   const actions = !inLife ? [] : [
     ...(npc.alive ? love.romanceActions(npc) : []),
+    ...(npc.alive ? bonds.bondActions(npc) : []),
     ...(npc.role === 'child' && npc.alive ? kid.actionsFor(npc) : []),
     ...(canEncourage ? [{ id: 'encourage', label: 'Encourage their ambition' }] : []),
+    ...npcCareActions(npc),
     ...(kids.canTryForBaby(npc) ? [{ id: 'baby', label: 'Try for a baby' }] : []),
     ...(kids.canRename(npc) ? [{ id: 'rename', label: 'Change their name' }] : []),
     ...(npc.alive && who.canTalk(npc) ? [{ id: 'talkIdentity', label: 'Talk to them about who you are' }] : []),
     ...(npc.alive && kinCase.inside(npc) ? [{ id: 'visitInside', label: 'Visit them in prison' }, { id: 'writeInside', label: 'Write to them' }] : []),
     ...(npc.alive ? rel.basicActions(npc) : []),
+    ...(npc.alive && npc.role !== 'pet' ? together.bondActions(npc) : []),
     ...(npc.flags.houseId ? [{ id: 'dynasty', label: 'See them in the dynasty journal' }] : []),
     ...(npc.role !== 'pet' ? [{ id: 'places', label: 'Places they have lived' }] : []),
-    ...(npc.alive ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
+    ...(npc.alive && !npc.flags.clinician ? [{ id: 'edit', label: npc.role === 'pet' ? 'Edit stats' : 'Edit stats and talents' }] : []),
   ];
   // Friendly things first, destructive things last.
   actions.sort((a, b) => Number(!!a.danger) - Number(!!b.danger));
 
+  // A clinician's profile is a professional one: their work and your care with them, no personal meters.
+  const clinic = npc.flags.clinician ? careRelationship(npc) : '';
   const modal = openModal(`
     <div class="row" style="border:0;padding:0;background:none">
       ${portrait(npc)}
       <div class="main"><strong>${esc(npc.firstName)} ${isPet ? '' : esc(npc.lastName)}</strong>
         <small>${esc(rel.roleLabel(npc))} · ${npc.alive ? `age ${npc.age}` : `died at ${npc.age}`}${detail}</small></div>
     </div>
-    ${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
-    <div style="margin:12px 0 16px">${meters}</div>
-    ${lifeCard}${history}${timeline}${courtRecord(npc)}${digitalCard}
-    <div class="btn-stack">
-      ${actions.map((a) => `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.id}">${esc(a.label)}</button>`).join('')}
+    ${clinic || `${traitChips}${owns}${feudNote}${expecting}${geoLine(npc)}
+    <div style="margin:12px 0 16px">${meters}</div>`}
+    ${grouped(actions)}
+    ${(() => { const about = `${lifeCard}${healthCard}${history}${timeline}${courtRecord(npc)}${digitalCard}`; return about.trim() ? `<details class="more about-them"><summary>About ${isPet ? 'them' : esc(npc.firstName)}: life, history, memories</summary>${about}</details>` : ''; })()}
+    <div class="btn-stack" style="margin-top:12px">
       <button class="btn" data-close>${back ? 'Back' : 'Close'}</button>
     </div>`, { dismissable: true, onDismiss: () => back?.() });
 
@@ -342,8 +422,30 @@ export function openNpc(npc, api, back, o = {}) {
       askOut: () => report(api, love.askOut(npc.id)),
       date: () => report(api, love.goOnDate(npc.id)),
       hookUp: () => report(api, love.hookUp(npc.id)),
+      askCasual: () => report(api, bonds.propose(npc.id, 'casual')),
+      askFwb: () => report(api, bonds.propose(npc.id, 'fwb')),
+      askSecret: () => report(api, bonds.propose(npc.id, 'secret')),
+      askOneNight: () => report(api, bonds.propose(npc.id, 'onenight')),
+      bondTime: () => report(api, bonds.spendTime(npc.id)),
+      bondIntimate: () => report(api, bonds.intimate(npc.id)),
+      bondGift: () => romanticGift(api, npc),
+      bondTrip: () => tripWith(api, npc),
+      bondTransfer: () => makeOver(api, npc),
+      bondHouse: () => offerHome(api, npc),
+      bondUnhouse: () => report(api, bonds.unhouse(npc.flags.housedIn)),
+      bondExclusive: () => report(api, bonds.discussExclusive(npc.id)),
+      bondOpen: () => report(api, bonds.discussOpen(npc.id)),
+      bondOfficial: () => report(api, bonds.makeOfficial(npc.id)),
+      bondEnd: () => report(api, bonds.end(npc.id)),
+      bondConfess: () => report(api, bonds.confess(npc.id)),
+      bondControl: () => report(api, bonds.setBirthControl(!bonds.birthControl())),
       baby: () => report(api, kids.tryForBaby(npc.id)),
       encourage: () => report(api, lives.encourage(npc.id)),
+      encourageCare: () => report(api, encourageCare(npc.id)),
+      goWithCare: () => report(api, goWithCare(npc.id)),
+      askCare: () => report(api, askCare(npc.id)),
+      helpCare: () => report(api, helpCare(npc.id)),
+      visitCare: () => report(api, visitCare(npc.id)),
       homework: async () => {
         const how = await pickModal({ title: `${npc.firstName}'s homework`, body: 'How you help matters, and what works depends on the child.', options: kid.HOMEWORK.map((h) => ({ value: h.id, label: h.label, sub: h.sub })) });
         if (how) await report(api, kid.homework(npc.id, how));
@@ -377,53 +479,83 @@ export function openNpc(npc, api, back, o = {}) {
         if (yes) await report(api, love.breakUp(npc.id));
       },
     };
-    await (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
+    if (id.startsWith('with:')) {
+      const opts = together.bondOptions(npc.id, id);
+      const label = actions.find((x) => x.id === id)?.label ?? '';
+      const pick = opts ? await pickModal({ title: label, options: opts }) : undefined;
+      if (!opts || pick) await report(api, together.doBond(npc.id, id, pick));
+    } else await (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
     // Opened from somewhere else: go back there once the thing is done (the stat editor returns here by itself).
     if (id !== 'edit' && id !== 'dynasty') back?.();
     return undefined;
   });
 }
 zooUi.connect({ openPerson: openNpc, editStats: editPerson });
+sportsUi.connect({ openPerson: openNpc });
+hoodUi.connect({ openPerson: openNpc });
 
 export default {
   id: 'people', title: 'People', short: 'People',
   icon: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16.5 14.2c2.6.3 4.5 2.4 4.5 5.3"/>',
   render(el, api) {
     const c = country();
-    const list = livingNpcs().sort((a, b) =>
+    const here = hoods.currentHood(store.state);
+    const nearby = new Set(here ? hoods.knownIn(store.state, here.id).filter((n) => n.role === 'neighbor').map((n) => n.id) : []);
+    const list = livingNpcs().filter((n) => !nearby.has(n.id)).sort((a, b) =>
       ORDER.indexOf(a.role) - ORDER.indexOf(b.role) || b.age - a.age);
 
     reconcileAnimals();
-    const top = [['animals', 'Pets & Animals'], ['archive', 'Family archive'], ['tree', 'Family tree']];
-    if (love.canLookForLove()) top.push(['love', 'Look for love']);
-    if (kids.canAdopt()) top.push(['adopt', `Adopt a child (${fmtMoney(localMoney(kids.ADOPTION_FEE, c), c)})`]);
+    const top = [['moments', 'My Moments', '', 'calendar'], ['animals', 'Pets & Animals', '', 'paw']];
+    const keep = [['tree', 'Family tree', '', 'tree'], ['archive', 'Family archive', '', 'archive'], ['digitalArchive', 'Letters and photos', '', 'letter']];
+    const more = [];
+    // What is not open yet is shown greyed, with why (the fifth item), so the player can see it is there.
+    const pp = player();
+    if (love.canLookForLove()) more.push(['love', 'Look for love', '', 'heart']);
+    else if (!love.partner()) more.push(['love', 'Look for love', '', 'heart', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, love.DATING_AGE) || 'Not open to you now']);
+    if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), 'child']);
+    else more.push(['adopt', 'Adopt a child', '', 'child', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, 21) || 'Your family is already large']);
+    const owed = rel.timeStillOwed().length;
+    if (nearby.size) more.unshift(['neighbors', 'Neighbors you know', `${nearby.size} on My Neighborhood`, 'home']);
 
     const row = (n) => `
-      <button class="row" data-npc="${n.id}">
+      <button class="row rel-card" data-npc="${n.id}">
         ${portrait(n)}
         <div class="main"><strong>${n.flags.royal?.title ? `${esc(n.flags.royal.title)} ` : ''}${esc(n.firstName)} ${n.role === 'pet' ? '' : esc(n.lastName)}</strong>
-          <small>${esc(rel.roleLabel(n))} · age ${n.age}${kinCase.inside(n) ? ' · in prison' : n.occupation && n.occupation !== rel.roleLabel(n) ? ` · ${esc(n.occupation)}` : ''}</small></div>
-        <div class="side">${Math.round(n.meters.relationship)}%
-          <div class="mini"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
+          <small><span class="rel-role">${esc(rel.roleLabel(n))}</span> Age ${n.age}${kinCase.inside(n) ? ' · in prison' : n.occupation && n.occupation !== rel.roleLabel(n) ? ` · ${esc(n.occupation)}` : ''}</small></div>
+        <div class="side"><span class="pct">${Math.round(n.meters.relationship)}%</span>
+          <div class="mini" role="meter" aria-label="Relationship" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(n.meters.relationship)}"><i class="fill ${band(n.meters.relationship)}" style="width:${n.meters.relationship}%"></i></div></div>
       </button>`;
+    const nav = (list) => list.map(([id, label, sub, ico, why]) => (why ? lockedRow(label, why, ico) : navRow({ attrs: `data-top="${id}"`, label, sub, ico })));
 
     el.innerHTML = `
-      ${top.length ? `<div class="btn-stack" style="margin-bottom:14px">${top.map(([id, label]) =>
-        `<button class="btn" data-top="${id}">${esc(label)}</button>`).join('')}</div>` : ''}
-      ${list.length ? GROUPS.map(([title, roles]) => {
-        const group = list.filter((n) => roles.includes(n.role));
-        return group.length ? `<div class="section-label">${esc(title)}</div>${group.map(row).join('')}` : '';
-      }).join('') : '<p class="empty">There is nobody in your life right now.</p>'}`;
+      ${owed > 1 ? navGroup(nav([['spendAll', 'Spend time with everyone', `${owed} people you have not seen this year`, 'heart']])) : ''}
+      ${list.length ? (() => {
+        // The people who matter most first: partner, children, family and close friends. Everyone else (classmates,
+        // coworkers, neighbors, acquaintances) is folded under one line, so the list stays a list.
+        const close = (n) => CLOSE_ROLES.includes(n.role) || (n.role === 'friend' && (n.meters.relationship >= 40 || n.flags.title === 'Best friend' || n.flags.tag));
+        const groups = (people, roles = GROUPS) => roles.map(([title, rs]) => {
+          const group = people.filter((n) => rs.includes(n.role));
+          return group.length ? `<div class="section-label">${esc(title)}</div><div class="rel-grid">${group.map(row).join('')}</div>` : '';
+        }).join('');
+        const near = list.filter(close);
+        const rest = list.filter((n) => !close(n));
+        if (rest.length <= 4) return groups(list);
+        return `${groups(near)}<details class="more people-more"><summary>Others you know <small class="muted">(${rest.length})</small></summary>${groups(rest, [['Friends', ['friend']], ...GROUPS.filter(([t]) => t !== 'Friends'), ['School', ['classmate']]])}</details>`;
+      })() : '<p class="empty">There is nobody in your life right now.</p>'}
+      ${navGroup(nav([...more, ...top, ...keep]), 'More')}`;
 
     el.onclick = async (e) => {
       const row = e.target.closest('[data-npc]');
       if (row) return openNpc(store.state.npcs[row.dataset.npc], api);
       const id = e.target.closest('[data-top]')?.dataset.top;
+      if (id === 'moments') return openMoments(api);
       if (id === 'animals') return openAnimalHub(api);
       if (id === 'archive') return zooUi.openFamilyArchive(api);
-      if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api));
-      if (id === 'archive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
+      if (id === 'tree') return openFamilyTree((npc) => openNpc(npc, api), () => openFamilyHistory(api));
+      if (id === 'digitalArchive') return import('../digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
       if (id === 'love') return lookForLove(api);
+      if (id === 'spendAll') return report(api, rel.spendTimeWithAll());
+      if (id === 'neighbors') return hoodUi.openNeighborhood(api, 'neighbors', null, { show: 'known' });
       if (id === 'pet') return report(api, kids.getPet());
       if (id === 'adopt') {
         const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });

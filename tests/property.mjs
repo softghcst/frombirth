@@ -8,7 +8,8 @@ import { BUYING_FEE, FOREIGN_BUYER_FEE } from '../js/data/properties.js';
 import * as estate from '../js/engine/realEstate.js';
 import * as fx from '../js/engine/currency.js';
 import { netWorth } from '../js/engine/finance.js';
-import { estatePlan } from '../js/engine/death.js';
+import { estatePlan, willHeirs } from '../js/engine/death.js';
+import { estateTax, relationOf } from '../js/engine/inheritance.js';
 import { emigrate } from '../js/engine/emigration.js';
 
 rng.seed(31337);
@@ -82,15 +83,17 @@ estate.damageProperty(h, 0); check(near(h.value, before, 0.05), 'revaluing it do
 section('moving to it: the same house, now at home');
 
 // 6. Inheritance tax by place.
-p = life('us', 'Chicago', 4e6); l = estate.listingsAbroad('jp', 'Osaka')[2]; estate.buyAbroad(l.id); const j = p.assets.find((x) => x.kind === 'property');
+p = life('us', 'Chicago', 20e6); store.state.fx = { ...(store.state.fx ?? {}), JPY: 1.3 }; /* the yen away from its starting rate */ l = estate.listingsAbroad('jp', 'Osaka')[2]; estate.buyAbroad(l.id); const j = p.assets.find((x) => x.kind === 'property'); j.value = 2e6; // above Japan's allowance, so both countries charge something
 let plan = estatePlan();
 const jp = plan.taxBy?.find((t) => t.countryId === 'jp'); const us = plan.taxBy?.find((t) => t.countryId === 'us');
-check(!!jp && near(jp.amount, j.value * COUNTRIES.jp.estateTax, 0.01) && jp.rate === COUNTRIES.jp.estateTax, 'the house in Japan is taxed by Japan, at Japan\'s rate');
-check(!!us && us.rate === COUNTRIES.us.estateTax && plan.tax === plan.taxBy.reduce((s, t) => s + t.amount, 0), 'the rest is taxed where the owner lived, and the parts add up');
+const takers = willHeirs().map(([n, share]) => ({ relation: relationOf(n.role), share }));
+const fxj = fx.rate('USD', 'JPY'); // today's rate, as the estate uses
+check(!!jp && near(jp.amount, estateTax(j.value * fxj, COUNTRIES.jp, takers) / fxj, 0.01), `the house in Japan is taxed by Japan, under Japan's scale (${jp?.amount})`);
+check(!!us && near(us.amount, 0.4 * (plan.gross - j.value - 15e6), 0.01) && plan.tax === plan.taxBy.reduce((s, t) => s + t.amount, 0), 'the rest is taxed where the owner lived (40% above the US exemption), and the parts add up');
 check(plan.net === plan.gross - plan.tax - (plan.probate ?? 0) && plan.tax + (plan.probate ?? 0) <= plan.liquid, 'tax, and the cost of winding up the estate, never exceed what can be paid without selling');
 const noAbroad = (() => { const keep = p.assets; p.assets = []; p.finance.cash += j.value; const t = estatePlan().tax; p.assets = keep; p.finance.cash -= j.value; return t; })();
-check(COUNTRIES.jp.estateTax > COUNTRIES.us.estateTax ? plan.tax > noAbroad : plan.tax <= noAbroad, 'holding it abroad changes the bill in the direction the two rates say');
-p.finance.cash = 100; plan = estatePlan(); check(plan.tax <= Math.max(0, plan.liquid) && plan.taxBy.reduce((s, t) => s + t.amount, 0) <= plan.tax + 2, 'with no cash, each country takes a share of what little there is');
+check(near(plan.tax, noAbroad - 0.4 * j.value + jp.amount, 0.01), 'holding it abroad moves that part of the bill from the US to Japan');
+p.finance.cash = 100; plan = estatePlan(); check(plan.tax <= Math.max(0, plan.liquid) && plan.taxBy.reduce((s, t) => s + t.amount, 0) === plan.tax, 'with no cash, each country takes a share of what little there is, and the shares add up exactly');
 section('inheritance: property abroad is taxed where it stands, the rest where the owner lived');
 
 // 7. A run of years with property abroad does not break anything.
@@ -128,6 +131,22 @@ if (bought.ok && hm.mortgage) {
   check(Number.isFinite(netWorth(store.state)), 'net worth stays sound');
 } else problems.push(`the test mortgage could not be taken out: ${bought.text}`);
 section('markets: one housing market per country; mortgages and rent stay in the money they were agreed in');
+}
+
+// A lender counts what was really earned last year, not only a salary: an idol's earnings, a musician's royalties.
+{
+  const p = life('us', 'New York');
+  p.career.salary = 0; p.career.partTime = null;
+  const loans = await import('../js/engine/loans.js');
+  const { ledgerOf } = await import('../js/engine/ledger.js');
+  const L = store.state.ledger ?? ledgerOf(store.state);
+  store.state.ledger = L;
+  check(!estate.mortgageTerms(500000).available, 'no salary and no earnings: no mortgage');
+  ((L.years[store.state.year - 1] ??= {}).USD ??= {}).salary = [12000000, 0]; // $120,000 paid last year, in cents
+  check(loans.earnedLastYear() === 120000, `last year's earnings are read from the books (${loans.earnedLastYear()})`);
+  const t = estate.mortgageTerms(500000);
+  check(t.available && t.maxLoan > 0, `an idol with no salary but real earnings can get a mortgage (${t.reason || t.maxLoan})`);
+  section('a lender counts real earnings, not only a salary');
 }
 
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)]) console.log(' -', x); process.exit(1); }

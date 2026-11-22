@@ -1,6 +1,6 @@
 // Career half of the Work & School tab: the job card, finding work,
 // interviews and auditions, gigs, fame and retirement.
-import { player, country } from '../../state.js';
+import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import * as career from '../../engine/career.js';
 import * as job from '../../engine/partTime.js';
@@ -8,9 +8,13 @@ import { meterHtml } from '../meter.js';
 import { dutyButtons, runDuty } from '../justice.js';
 import { messageModal, pickModal, confirmModal } from '../modals.js';
 import { openOccupation } from '../occupation.js';
+import { openFame } from '../fame.js';
+import { openIdol } from '../kpop.js';
+import { workOf } from '../../engine/entertainment.js';
 import { employer } from '../../engine/employers.js';
 import { workLaw, weeklyLoad, career as careerState } from '../../engine/worklife.js';
 import { offers } from '../../engine/hiring.js';
+import { icon } from '../kit.js';
 import { leads } from '../../engine/recruiters.js';
 
 const kv = (rows) => rows.map(([a, b]) =>
@@ -43,18 +47,18 @@ export function careerCard() {
       ...(k.military ? [['Deployments', String(k.military.deployments)]] : []),
       ...(step ? [['Next step', `${step.title}${step.missing.length ? `: needs ${step.missing.join(' and ')}` : step.yearsLeft > 0 ? `, in about ${step.yearsLeft} ${step.yearsLeft === 1 ? 'year' : 'years'} with good reviews` : ', when a good review lands'}`]]
         : [['Next step', 'You are at the top.']]),
-      ['Your week', `${weeklyLoad().total} hours, all told`],
+      ['Hours a week', String(weeklyLoad().total)],
     ]) + `<div style="margin-top:10px">${meterHtml('Performance', k.performance, true)}${meterHtml('Satisfaction', careerState().satisfaction, true)}${meterHtml('Stress', careerState().stress, true)}</div>`;
   } else if (k.partTime) {
     body = kv([['Part-time', k.partTime.title], ['Pay', `${fmtMoney(k.partTime.salary, c)} / year`], ['Since', `Age ${k.partTime.since}`]]);
   } else if (k.retired) {
     body = kv([['Status', 'Retired'], ['Pension', `${fmtMoney(k.pensionPerYear, c)} / year`]]);
   } else {
-    body = `<p class="muted">${p.age < 5 ? 'You are too young to work.' : p.age < 15 ? 'You are too young for an ordinary job, but children can act.' : 'You do not have a job.'}</p>`;
+    body = `<p class="muted">${p.age < 5 ? 'Too young to work.' : p.age < 15 ? 'Too young for a job, but you can act.' : 'No job right now.'}</p>`;
   }
   const fameRow = fame > 0 || cur?.fame
     ? `<div style="margin-top:10px">${meterHtml('Fame', fame, true)}</div>` : '';
-  return `<div class="card"><h3>Work</h3>${body}${fameRow}</div>`;
+  return `<div class="card info-card"><div class="info-head"><span class="nr-icon">${icon('briefcase')}</span><h3>Work</h3></div>${body}${fameRow}</div>`;
 }
 
 /** Buttons for whatever the player can do about work right now. */
@@ -64,7 +68,7 @@ export function careerButtons() {
   const cur = career.currentCareer();
   const list = [];
   const waiting = offers().length + leads().length;
-  if (p.age >= Math.min(15, workLaw().workAge)) list.push(['hub', `Work: jobs, people, freelancing, history${waiting ? ` (${waiting} waiting)` : ''}`]);
+  if (p.age >= Math.min(15, workLaw().workAge)) list.push(['hub', `Jobs${waiting ? ` (${waiting} waiting)` : ''}`]);
   if (p.age >= workLaw().workAge) list.push(['findwork', cur ? 'Look for a different job' : 'Find work']);
   else if (p.age >= 5) list.push(['findwork', cur ? 'Look for other acting work' : 'Audition for acting work']);
   if (cur) {
@@ -74,6 +78,9 @@ export function careerButtons() {
   }
   if (k.partTime) list.push(['cover', 'Cover an extra shift']);
   if (career.canGig()) list.push(['gigs', 'Quick one-off gigs']);
+  // My Fame: for anyone with a performer's skills, credits, or a name people know.
+  if (p.age >= 5 && (Math.max(p.talents.acting, p.talents.singing, p.talents.dance) >= 25 || workOf(p).credits.length || career.fame() >= 5)) list.push(['myfame', 'My Fame']);
+  if (p.age >= 12 && (store.state.kpop || (store.state.year >= 1996 && Math.max(p.talents.singing, p.talents.dance) >= 30))) list.push(['myidol', 'K-pop Idol']);
   if (career.fame() >= 10) list.push(['fame', 'Use your fame']);
   if (career.canRetire()) list.push(['retire', 'Retire']);
   if (cur) list.push(['quitcareer', 'Quit your job']);
@@ -197,6 +204,8 @@ async function quit(api) {
 /** Handlers keyed by button id. */
 export const careerHandlers = (api) => ({
   hub: () => openOccupation(api),
+  myfame: () => openFame(api),
+  myidol: () => openIdol(api),
   findwork: () => (player().age >= workLaw().workAge ? openOccupation(api, 'find') : findWork(api)),
   harder: () => report(api, career.workHarder()),
   slack: () => report(api, career.slackOffAtWork()),

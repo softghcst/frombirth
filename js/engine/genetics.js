@@ -7,9 +7,9 @@ import { TRAITS, TRAIT_BY_ID } from '../data/traits.js';
 import { BIRTH_CONDITIONS } from '../data/birthConditions.js';
 
 export const SKIN_TONES = 6;
-export const HAIR_COLOURS = 5;
+export const HAIR_COLORS = 5;
 export const HAIR_STYLES = 3;
-export const EYE_COLOURS = 4;
+export const EYE_COLORS = 4;
 
 const stat = (mean, spread) => Math.round(clamp(rng.around(mean, spread)));
 

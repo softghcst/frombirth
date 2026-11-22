@@ -67,7 +67,7 @@ export function declare(officeId, defending = false) {
   const size = officeId === 'head' ? c.cities.length * 1.1e6 : ELECTORATE[officeId] ?? 50000;
   p.flags.campaignAge = p.age;
   p.flags.race = { officeId, countryId: c.id, year: store.state.year, rivalId: rival?.id ?? null, stage: !defending && !national && needsNomination(o, c) ? 'nomination' : 'plan', national,
-    // Where the count leans towards those in power, it leans towards the one who holds the office.
+    // Where the count leans toward those in power, it leans toward the one who holds the office.
     defend: defending, round: 0, platform: null, budget: null, appeal: defending && system(c).rigged ? 12 : 0, edge: {}, used: {}, polls: [], promises: 0,
     // A rival with charm is harder to beat; how good their campaign is, nobody knows yet.
     rivalAppeal: 56 + rng.int(-10, 10) + (rival ? (rival.t.charisma - 55) / 8 : 0),
@@ -418,7 +418,7 @@ export function answer(how) {
 export function pollingDay() {
   const p = player();
   const r = race();
-  if (!r || r.stage !== 'vote') return result(false, 'It is not polling day.', 'neutral');
+  if (!r || r.stage !== 'vote') return result(false, 'It is not Election Day.', 'neutral');
   const c = COUNTRIES[r.countryId];
   const s = system(c);
   const o = office(r);
@@ -444,8 +444,8 @@ export function pollingDay() {
   const order = AREAS.map((x) => x.id).sort(() => rng.next() - 0.5);
   const batches = countByArea(res.byGroup, AREAS, order).map((b) => ({ ...b, name: AREAS.find((x) => x.id === b.id).name }));
   const lastPoll = [...r.polls].reverse().find((x) => !x.own) ?? r.polls[r.polls.length - 1];
-  const rec = { year: store.state.year, countryId: c.id, officeId: o.id, title: o.title, rival: f?.name ?? 'your opponent', rivalParty: pa?.name ?? null, rivalColour: pa?.colour ?? '#777',
-    party: world.membership(c.id)?.name ?? null, colour: world.membership(c.id)?.colour ?? '#444', share, won, votes: { ...res.votes }, total: res.total, turnout: res.turnout,
+  const rec = { year: store.state.year, countryId: c.id, officeId: o.id, title: o.title, rival: f?.name ?? 'your opponent', rivalParty: pa?.name ?? null, rivalColor: pa?.color ?? '#777',
+    party: world.membership(c.id)?.name ?? null, color: world.membership(c.id)?.color ?? '#444', share, won, votes: { ...res.votes }, total: res.total, turnout: res.turnout,
     byGroup: Object.fromEntries(Object.entries(res.byGroup).map(([g, v]) => [g, Math.round(v.me / Math.max(1, v.me + v.rival) * 1000) / 10])),
     batches, exit: Math.round(clamp(share + noise(3), 3, 97)), lastPoll: lastPoll?.me ?? null, platform: PLATFORMS.find((x) => x.id === r.platform)?.name ?? null, debated: r.debated ?? null, rigged: !!s.rigged };
   const races = (p.flags.races ??= []);
@@ -522,7 +522,7 @@ function generalElection(r, notes) {
   const spent = r.spent ?? 0;
   delete p.flags.race;
   p.counters.polExp = (p.counters.polExp ?? 0) + 2;
-  const parties = w.parties.map((x) => ({ id: x.id, name: x.name, colour: x.colour, share: rec.shares[x.id] ?? 0, seats: rec.seats[x.id] ?? 0, mine: x.id === mine?.id })).sort((a, b) => b.seats - a.seats || b.share - a.share);
+  const parties = w.parties.map((x) => ({ id: x.id, name: x.name, color: x.color, share: rec.shares[x.id] ?? 0, seats: rec.seats[x.id] ?? 0, mine: x.id === mine?.id })).sort((a, b) => b.seats - a.seats || b.share - a.share);
   // The seats come in over the night, a quarter of the country at a time.
   const order = AREAS.map((x) => x.name).sort(() => rng.next() - 0.5);
   const left = Object.fromEntries(parties.map((x) => [x.id, x.seats]));

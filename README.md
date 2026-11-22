@@ -20,7 +20,25 @@ Lives save automatically to the browser's `localStorage`.
 
 ## Checks
 
-There is nothing to install: the checks run on Node alone.
+There is nothing to install: the checks run on Node alone. To run all of them at once, several at a time (this is
+what CI runs on every pull request, `.github/workflows/tests.yml`):
+
+```bash
+node scripts/test-all.mjs            # every check; add a word to run only the files whose names contain it
+```
+
+The checks play the same lives every run: outside a browser the dice are pinned (`js/rng.js`), so a new life carries on
+the seeded sequence instead of drawing a fresh seed from the clock, and a failure can be played again exactly. To roll
+fresh dice each run instead, and shake out checks that only pass for some lives:
+
+```bash
+PATHWAYS_RANDOM=1 node scripts/test-all.mjs
+```
+
+`node scripts/stress/fame-lives.mjs 60` plays sixty idol, fan and athlete lives and checks money, fame, fandoms, card
+prices, positions and saves after every year (each life is reproducible from its seed).
+
+Or one at a time:
 
 ```bash
 node tests/avatar.mjs
@@ -35,25 +53,67 @@ node tests/escape-layouts.mjs
 node tests/succession.mjs      # the rules of royal succession, on hand-built families
 node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candidate races and the count
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
+node tests/bfa-universities.mjs   # musical theater BFA programs: costliest and hardest places, second tries after coaching, the ranked short list, comparison
+node tests/university-ui.mjs   # browser: the planner on a phone and desktop (short list, show more, compare, coaching, Back)
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
 node tests/animal-care.mjs     # shelters, adoption, costs, the vet, insurance, fostering, rehoming, moving abroad, careers
 node tests/animal-riding.mjs   # lessons, horses, livery, shows, farm animals, breeding and pedigrees
-node tests/animal-life.mjs     # staff, classes, behaviour, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
+node tests/animal-life.mjs     # staff, classes, behavior, landlords, outings, custody, leasing, reptiles, bonds, businesses, story arcs
+node tests/sports.mjs          # sports: registry, skills, training limits, clubs, seasons, draws, injuries, recruiting, contracts, money once, generations
+node tests/sports-scenarios.mjs # sports: the playable scenarios A to R, the family, and the first vertical slice, each played through
+node tests/sports-divisions.mjs   # sports: women's and men's divisions, women's professional years, sports agents shopped for
+node tests/sports-extras.mjs      # sports: World Games team events, managing a squad, boxing and its world title
+node tests/teams.mjs           # team names, jersey colors and shirt numbers: made up, renamed, recolored, saved; teammates renamed everywhere
+node tests/draft.mjs           # recruiting (stars, offers by division, signing day), college (redshirt, grades, portal, NIL), each league's draft rules, the minors
+node tests/international.mjs   # baseball signings outside the draft countries: trainers, handshake deals, signing at 16, the DSL, Cuba
+node tests/asia-youth.mjs      # Japan's and Korea's drafts, posting to the big leagues, Korean military service, soccer scholarships and youth contracts
+node tests/trades.mjs          # trades in the draft leagues (the contract moves as it stands, ten-and-five), Puerto Rico in the big leagues' draft
+node tests/baseball.mjs        # baseball: season lines and career totals, roles, free agency and the qualifying offer, options and Rule 5, independent ball, winter ball, the Hall of Fame
+node tests/bonds.mjs           # adult relationships beyond one partner: casual, friends with benefits, one night, private; exclusivity and affairs; who knows; gifts; discovery; A Complicated Romance
+node tests/estate.mjs          # wills: one notice when someone named dies, nothing rewritten, alternates, the playable heir as its own choice, reviews when the family changes
+node tests/childhood.mjs       # childhood from birth: things to do by age, playground friends, early likings capped, pocket money from the family's own money, chores, small jobs
+node tests/love-stories.mjs    # relationship stories told only when true, once, at the drama setting's pace; the opt-in, non-graphic teenage pregnancy storyline; teenage relationship scenes
+node tests/pregnancy-choice.mjs   # the choice when a pregnancy is announced: go on with it or not; costs, laws, a partner's decision, teenagers
+node tests/family-stories.mjs   # fifty-four stories of relationships, marriages, households, family secrets, inheritance and teenage life: each told only when true
+node tests/idol-student.mjs   # a young trainee abroad goes to school where they live; the performer week cap; talent schools cost more; a crowd from middle school
+node tests/animal-entry-ui.mjs   # animals have one home in the menus (People → Pets & Animals, with the house chronicle)
+node tests/menu-layout.mjs   # every tab is a list of rows with pictures and a line each; what is not open yet is greyed with why; Special careers
+node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
+node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
+node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
+node tests/disasters.mjs       # weather and disasters: where and when they strike, regions, tsunamis, preparing, news from elsewhere
 node tests/lawmaking.mjs       # a head of government changing the law of the land through the legislature
 node tests/world-scenarios.mjs # the Living World brief's ten end-to-end scenarios, A to J
 node tests/systems.mjs         # income-tax schedules and health-care models
 node tests/property.mjs        # buying, owning and selling property abroad; tax and inheritance by place
+node tests/inheritance.mjs     # estate and inheritance tax: worked examples, and every country's scale
 node tests/economy.mjs         # economies that turn, crises that begin and end, news, people who move
 node tests/cities.mjs          # cities and regions: prices, pay, regional law, moving within a country
 node tests/rules.mjs           # the legal rule engine: layers, overrides, what is allowed, laws that change
 node tests/immigration.mjs     # routes into a country, visas that run out, spouses who stay, trips
-node tests/citizenship.mjs     # nationality at birth, residency, naturalisation; exchanging money never creates it
+node tests/citizenship.mjs     # nationality at birth, residency, naturalization; exchanging money never creates it
+node tests/yearly.mjs          # one Age Up is one year: steps run once, limits, plans, the yearly update, a full year, three generations
+node tests/generations-1900.mjs # one family from 1900 to the present, a year per Age Up, through every era: nothing before its time, heirs carry on, saves load
+node tests/spelling.mjs        # American English throughout; old saves with British spellings are converted on load, names kept
+node tests/yearly-ui.mjs       # the yearly screens in a real browser at phone and desktop widths (needs Playwright; skips without it)
+node tests/afterglow-ui.mjs    # the Afterglow look: light, dark and system appearance, Age Up and Age down, the five sections, saves, 320px phones (AFTERGLOW_SHOTS=<folder> saves screenshots)
+node tests/health.mjs          # conditions and diagnosis, therapy and DBT, medication trials and switching, access, heredity, privacy, old saves
 node tests/business.mjs        # owning a business: starting, staff, the accounts, the owner paid once, partners, selling, failing, heirs
 node tests/worklife.mjs        # every outcome of every working-life scene played through; romance at work, children's leanings, royals at work, two-career households
 node tests/careers.mjs         # the occupation catalog, employers and openings, hiring, payroll once a year, side jobs, workplaces, freelancing, the military, retirement, records across generations
+node tests/dance.mjs           # a dancer's life: BFA/BA in dance, gigs from commercials to tours and TV, competitions, dance ensemble parts
+node tests/stage-difficulty.mjs # the major stage is very hard to reach: odds by skill, what a BFA in musical theater adds, agents
+node tests/child-stage.mjs     # the child stage path: lessons from 6, children's parts up to the major stage, children against children, the work permit, a theater childhood counted at 18
+node tests/fame.mjs            # the fame profile, the entertainment world, acting from audition to credit, press, awards once, eras, child performers (see docs/FAME.md)
+node tests/fame2.mjs           # sport played match by match (fame from results only), modeling, books, celebrity brands, famous lives, comebacks, the family record
+node tests/fame3.mjs           # lives started in the past, newer sports, injuries, women's leagues, coaching, casting choices, literary agents and rights, brand launches, music videos and songwriting
+node tests/kpop.mjs            # the K-pop idol life: auditions, trainees, survival programs, positions (one or two each), music shows, ending fairies, contracts, hiatus, fan products, photocards and collecting, variety careers, the family route, generations (see docs/KPOP.md)
+node tests/music.mjs           # bands, releases, charts, royalties paid once, record deals, tours, music awards, heirs
 node tests/a11y.mjs            # zoom, contrast in both themes, dialog names and focus, landmarks (see docs/ACCESSIBILITY.md)
+node tests/moments.mjs         # living moments: occasions marked once in their year, Age Up never repeats them, traditions passed down
+node tests/together.mjs        # what you can do with the people in your life, by role, age and era; trust, memories, once a year
 node tests/money.mjs           # the ledger, banking, goals, budget and lending record: no money made or lost, nothing posted twice
 node tests/wealth.mjs          # credit cards, insolvency, insurance, pension plans, family money, trusts, money scenes
 node tests/justice.mjs         # crime, courts and prison: incident to release and reload, scenarios A to O, older saves, law reform, family cases, royal immunity, transfers
@@ -69,8 +129,15 @@ One check runs in a real browser and needs Playwright with Chromium (it skips it
 node tests/digital-ui.mjs      # the Digital Life vertical slice, end to end, at phone and desktop widths
 ```
 
-`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves.
+`avatar.mjs` checks the artwork, the manifest, the renderer, inheritance and the loading of old saves; that every hairstyle fits every head it is worn on; framing; readability across skin tones; that the eye shapes on offer are unchanged; that every nose is clear of every pair of eyes on every face shape; and that every mouth sits well under every nose, and men and women are drawn with their own mouths.
 `events.mjs` checks every scene. `escape-layouts.mjs` proves each prison map can be escaped.
+
+## Living moments
+
+People → **My Moments** lists what this year holds: birthdays, school dances and proms, family occasions,
+holidays, the family's traditions, invitations and evenings with friends. Choose one and it happens at once;
+Age Up keeps the traditions nobody organized. No calendar: Pathways is still lived a year at a time.
+Details: [docs/MOMENTS.md](docs/MOMENTS.md).
 
 ## Money
 
@@ -82,6 +149,78 @@ budgets are in `js/engine/banking.js`; cards, insurance, pension plans, family m
 (`js/data/money.js`).
 
 How it works, what is fiction, and what is not built yet: [docs/FINANCE.md](docs/FINANCE.md).
+
+## Time per turn
+
+Self → **Settings → Time per turn**: a year (the default), six months or three months. The year itself still happens
+once, at the turn of the year: pay, tax, school reports, seasons of sport, health and birthdays run exactly as with
+one-year turns, so money and records come out the same in every mode (`tests/turns.mjs` plays the same life all three
+ways and compares). The turns in between move the calendar on, show the age in months, put a heading for each part of
+the year in the life story, and may bring one of about thirty scenes written for that season and that turn length
+(`js/data/events/seasons.js`: summer holidays, exam season, the dark of winter, a first scan, a baby's first smile,
+preseason training), and perhaps one of the year's ordinary scenes as well: about 1.8 scenes a year with one-year turns,
+3.7 with six-month turns and 5.8 with three-month turns. Story beats stay with the turn of the year. Each country has
+its own climate (`js/engine/calendar.js`): four seasons in the north or the south, rainy and dry seasons in the tropics,
+long and short rains near the equator, the monsoon in South Asia, a hot season in the desert. Scenes follow it, and the
+school scenes follow each country's school year. Those turns draw on luck of their own
+(`engine/eventEngine.js` drawBetween), never on the game's dice. A change partway through a year starts from the next.
+
+## Weather and disasters
+
+Hurricanes, typhoons and cyclones, tornadoes, blizzards, floods and monsoon floods, landslides, wildfires, heatwaves,
+droughts, earthquakes and the tsunamis that can follow them, eruptions, avalanches and dust storms
+(`js/data/disasters.js`). Each country has the ones its land and climate bring, in their season and hemisphere, and
+the United States varies by city (hurricanes in Orlando, tornadoes in Austin, earthquakes in Seattle, blizzards in
+Denver). The world's weather is a fact of the playthrough: the same storm in the same month for everyone, worked out
+from the save and the date (`engine/disasters.js` weatherOf), never the game's dice. Once a year the disasters that
+reached the player's city are reckoned (damage to the home, injuries, losses for renters, an aftermath scene), and big
+ones elsewhere go into World news, reaching the life story where the player has ties, with a scene if someone they know
+lives there. With shorter turns, each is told as it strikes, and big storms, floods and fires bring a forecast a turn
+ahead: preparing lessens the damage, and leaving in time means not being hurt.
+
+## Sports and athletics
+
+Pursuits → **My Athletics** is the hub: ten sections (overview, sports, training, teams and clubs, competitions,
+rankings, career and offers, health and mind, money and fame, legacy), with profiles for each sport, team, coach,
+season, event and family athlete. Family archive → **Athletic legacy** opens the same record from the People tab.
+
+One engine plays every sport; the sports themselves are data. Soccer, tennis and pickleball (with doubles partners)
+are modeled in full; the other twenty-odd sports use shared scoring for goals, points, runs, sets, rally games,
+strokes, times, judged scores and bouts. Sport skills are separate from the character's talents and grow toward a
+fixed ceiling, with diminishing returns per training hour. Coaches, key teammates, doubles partners and agents are
+real people. Results come from keyed, seeded luck and are stored once, so a reload never re-rolls them; standings
+and champions are counted from completed games only. Clubs, leagues and the Pathways Rating (PR) are invented.
+
+Above recreational play, women and men compete in their own divisions: separate clubs' teams, leagues, tours and
+events, with names and teammates to match. Women's professional play starts in its own years (later than men's in
+most sports, none at all in some, and one league that closed again); non-binary and transgender players choose their
+division between clubs. Sports agents are shopped for like every other agent: one at a time, two looks a year, each
+with their own cut (3–10%), pull with clubs and brands, and athletes on their books (My Athletics → Career, or My
+Fame → Representation).
+
+The best professionals in club sports are bought by clubs abroad: taking the move means a work visa the club sponsors
+and a life in that country. In a games year a capped professional goes to the World Games with the national side. A
+coach runs a club's first team: who starts, tactics, training, a season played game by game, and a board that judges
+the table. Boxing is a sport of its own, with weight classes, a ranking from the record, and a world title to win and
+defend (`js/engine/sportsExtras.js`).
+
+| What | Where |
+|---|---|
+| The registry: sports, skills, positions, founding years, routes to going pro, injuries, plans | `js/data/sports.js` |
+| How a match, race or routine comes out, and the rating | `js/engine/sportsPlay.js` |
+| Profiles, eligibility, training, clubs and tryouts, coaches, rosters, leagues and seasons, draws and meets, doubles | `js/engine/sports.js` |
+| The year in sport, money, injuries and rehab, recruiting and scholarships, contracts, transfers at home and abroad, sponsors, fame, arcs, generations | `js/engine/sportsLife.js` |
+| World Games team events, managing a squad, boxing | `js/engine/sportsExtras.js` |
+| Stories with scenes, A to I: first team, a coach who believes in you, the scholarship, the championship season, the doubles partnership, injury and recovery, the professional dream, the comeback, a new generation | `js/engine/sportsArcs.js`, `js/data/events/sports.js` |
+| Sport in the family: parents' and grandparents' past, siblings and children who choose their own sport, parents at games | `js/engine/sportsFamily.js` |
+| Teams' names, home and away jersey colors and shirt numbers, made up per sport (Rovers and Albion in soccer, Owls and Barons in baseball...) and all changeable, with players' names, in Settings → Teams and jerseys | `js/engine/teamIdentity.js`, `js/ui/settings.js`, `js/ui/jersey.js` |
+| End-of-season awards: each league's MVP (or Player of the Season), Rookie of the Year, its own statistic and position awards (Golden Boot, Scoring Title, Sixth Man; in baseball Gold Glove and Silver Slugger by position, Platinum Glove, Pitcher of the Year, Reliever, Home Run, RBI and Strikeout Leaders, ERA and Batting Titles), a playoff MVP, Coach of the Year and a team of the season; Player of the Year, Newcomer and Comeback in individual sports. Decided once from the season as played, shown on the season page | `js/engine/sportsAwards.js`, `SEASON_AWARDS` in `js/data/sports.js` |
+| My Athletics; lines in the life story open the season, event, team or coach they are about | `js/ui/sports.js` |
+
+Not built: there is no wider disability system (adaptive sports key off `flags.wheelchair` or a matching condition),
+no historical eras beyond each sport's founding and first-professional year, and the shared adapters do not model
+substitutions, set plays or per-event schedules. Relatives' records are light: the level reached, seasons and titles,
+not every game.
 
 ## The family's animals
 
@@ -128,27 +267,31 @@ day, so there is nothing for era rules to change).
 ## Avatars
 
 Every portrait in the game is the **CharacterAvatar** system: hand-drawn SVG parts in `assets/avatars/`, stacked
-in layers and recoloured with CSS variables. There is no build step: the parts are plain files, and a short
+in layers and recolored with CSS variables. There is no build step: the parts are plain files, and a short
 Python script (standard library only) keeps them tidy and lists them for the game.
 
 | What | Where |
 |---|---|
-| The artwork, one folder per kind of part | `assets/avatars/` — `heads/`, `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `facial_hair/`, `makeup/`, `aging/`, `emotions/` |
+| The head shapes (shared with the hair-warping pipeline) | `assets/heads/` — clean names (`pixie.svg`, `dimple_oval.svg`, …); the save ids stay `head_11_pixie` etc. (`HEAD_IDS` in the build script) |
+| Hair-warping pipeline | `assets/hair_raw/` (hairstyles drawn on the base head), `assets/hair_fitted/` (each style fitted to each head, `<style>_<head>.svg`), `assets/landmarks.json` (six landmarks per head, and `base_head`), `assets/CHATGPT_HAIR_PROMPT.md` (the prompt for new styles). New style: save ChatGPT's SVG in `assets/hair_raw/`, run `npm run fit-hair` (several at once: paste the reply into `assets/raw_batch.txt` and run `npm run split-hair`); `npm run soften-hair` turns the heavy outline inside the hair (a fringe over the cap, curls over curls) into soft lines, keeping it on the silhouette (needs `pip install -r scripts/requirements.txt`), check `scripts/debug_hair_fit.html`. The game reads `assets/hair_manifest.json` (written by the same command; loaded by `js/avatar/fittedHair.js`), so a new style appears in the creator with no code change, and draws its `hair_back` behind the head and its other layers in front (`fittedHairFile` in `js/CharacterAvatar.js`). A style whose file name contains `fade` or `buzz`, or whose SVG has `data-clip-to-head="true"`, is clipped to the head's skin |
+| The artwork, one folder per kind of part | `assets/avatars/` — `eyes/`, `eyebrows/`, `noses/`, `lips/`, `hair/`, `clothes/`, `crowns/`, `glasses/`, `jewelry/`, `makeup/`, `aging/`, `emotions/` |
 | The list of every part (generated: do not edit) | `js/avatarManifest.js` |
 | Cleaning, aligning and listing the artwork | `scripts/build-avatar-manifest.py` |
 | Skin, hair, eye, lip and outfit colors | `js/avatarPalettes.js` |
 | Notes the filenames cannot carry (hair textures, resting faces, uniforms, royal dress) | `js/avatar/curation.js` |
 | The renderer: layers, ages, auto-dress | `js/CharacterAvatar.js` |
+| How each hairstyle is fitted to each head, and how each head is framed | `js/avatar/hairFit.js` |
+| How each nose is kept clear of the eyes it is worn with, and each mouth fitted to the nose | `js/avatar/featureFit.js` |
 | How saved appearances are read, and old saves converted | `js/avatar/catalog.js` |
 | How children take after their parents | `js/avatar/inherit.js` |
 | The character creator and salon editor | `js/avatar/editor.js` |
 | The salon's prices | `js/engine/salon.js` |
 
 **How a portrait is built.** Each layer is an SVG `<use>` of a part file, in this order: back hair, head, make-up
-(clipped to the head), age lines, eyes, eyebrows, nose, mouth, facial hair, clothes, necklaces, front hair,
-earrings and piercings, glasses, hat or crown, emotions. Hair is drawn twice — the whole style behind the head,
-and the part above the jaw again in front — so a fringe falls over the forehead while long hair falls behind the
-shoulders. A hat hides hair above the brim (bulky styles, above the ears). Colors are CSS variables on the portrait
+(clipped to the head), age lines (clipped to the head too), eyes, eyebrows, nose, mouth, clothes,
+necklaces, front hair, earrings and piercings, glasses, hat or crown, emotions. There is no facial hair: it has been
+taken out of the game, and a beard or mustache in an old save is dropped. Hair is drawn twice — the whole style behind the head, and the part above that
+head's chin again in front — so a fringe falls over the forehead while long hair falls behind the shoulders. A hat hides hair above the brim (bulky styles, above the ears). Colors are CSS variables on the portrait
 (`--skin-color`, `--hair-color`, `--brow-color`, `--eye-color`, `--lip-color`, `--blush-color`, `--outfit-color`)
 that reach into the part files.
 
@@ -158,10 +301,89 @@ head: features keep their place between forehead and chin, hair and hats follow 
 earrings hang from that head's ears, clothes sit under its chin. Babies, toddlers and children get slightly smaller,
 lower-set features. Eyes drawn as an empty outline are given whites by filling the opening.
 
+**Fitting a nose to the eyes.** Every nose and every pair of eyes is drawn to fill the same box on the template face,
+so some pairs crowd each other: a broad nose under eyes whose inner corners sweep down, a tall bridge between eyes
+set close. The script measures the outline of each, row by row (`shape` in the manifest), and
+`js/avatar/featureFit.js` finds, for one face, the smallest change that leaves a clear gap: the nose up to a fifth
+smaller, a little lower, or each eye up to three units further out (`NOSE_FIT`). A pair that is already clear is
+drawn exactly as before. It works from the measurements and the person's own proportions, so nothing is listed pair
+by pair: a new nose or pair of eyes only needs measuring (run the script).
+
+**Brows.** Twelve brows can be chosen (`CATALOG.brows`); seven of them are given at random (`RESTING.eyebrows`). Brows
+that looked wrong on every face shape have been withdrawn, and saves that had one get the nearest kept
+(`WITHDRAWN.brows`). The sad brows (`brows_11`) are never a resting face: anyone whose mood is at or below 30, as
+happiness falls or after sad news, is drawn with them, and at or below 15 their eyes cry too (`LOW_MOOD`). Babies and
+toddlers keep their soft baby brows (`BABY_BROWS`). From 84, an old man's brows grow bushy (`ELDER_BROWS`); a woman's
+keep their shape and gray, and the creator offers the bushy brows to men only.
+
+**Lid creases.** Several eye shapes (`eyes_18`, `_19`, `_20`, `_22`, `_26`, `_9`, `_8`, `_7`) draw a fold line floating
+above the eye, which, in the same ink as the eye and close under the brow, read as a second, thinner eyebrow. The
+script parts each crease into a path of its own, in a soft shade of the skin (`--crease-color`, falling back to the skin
+mixed half and half with the eye's ink), and lowers it toward the lid by an amount worked out for that eye from the
+outlines (`CREASES` in `scripts/build-avatar-manifest.py`): it stays at least 3 units clear of the eye, and a typical
+brow is at least 5 units above it. `eyes_25` drew two folds, a floating one and one under its lashes that was part of its outline: the floating one is
+taken out, and the other was cut out of the outline once and drawn in the same soft shade. The eyes whose top line is lashes (`eyes_10`, `_16`, `_6`) have no crease and are unchanged.
+
+**Fitting a mouth to the nose.** The mouth is then fitted to the nose above it, as that nose was fitted to the eyes
+(`LIP_FIT`): a resting mouth is drawn at least 1.3 times as wide as the nose, up to 15% larger, so a small bow
+under a broad nose does not look pinched; and it is moved up or down by up to four units toward an upper lip of
+much the same length, so a short nose does not leave a long empty space above the mouth. It always keeps clear of
+the nose and the chin. Expressions (an open mouth, a pout, a grin) are drawn as they are.
+
+**Men's and women's mouths.** There are two sets of resting mouths: the women's (`RESTING.lips`) and the men's
+(`RESTING.lipsMasc`: the `lips_masc_` files, and the three neutral women's mouths, `lips_8`, `lips_9` and `lips_10`,
+which both sets share). A mouth is inherited whatever the gender, and drawn to suit it: a shared mouth is drawn as it
+is on anyone; otherwise a man born with a feminine mouth (`lips_4`, `_6`, `_7`, `_11`, `_14`) is drawn with the men's
+mouth matched to it, and a woman born with a men's mouth with the women's match (`LIP_MATCH` in
+`js/avatar/curation.js`, `lipsFor` in `js/avatar/catalog.js`). What is saved, and passed on to children, is the
+mouth itself, so a son can have his mother's full lips and pass them on to a daughter. Randomly made men are born
+with a men's mouth, and the creator offers each person only the mouths that can be drawn for them. The smirk, the
+grin and the parted lips showing teeth (`lips_masc_01`, `_05`, `_08`) can be chosen but are never given at random.
+
+**Lip colors.** Lipstick is worn as chosen, all over, by anyone, and by no child. Otherwise a woman's lips are her
+skin warmed toward rose. A man's are a natural pair for his skin tone, from one shared palette (`NATURAL_LIP_UPPER`
+and `NATURAL_LIP_LOWER` in `js/avatarPalettes.js`, one pair per tone in `SKIN_TONES` order): the upper lip a deeper
+shade of the skin, the lower softer, so a mouth reads by its own fills rather than its outline at portrait size. From
+porcelain to bronze both lips are one nude color instead, warming from golden so the mouth does not blend into the
+cheeks. From chestnut down the upper is a rich deep brown and the lower a little lighter, a warm brown with only a hint
+of rose, deepening gradually. The colors were chosen by lightness, chroma and hue against each skin. Every resting mouth draws its upper lip in `--lip-upper` (falling back to the lip color), so the
+pair shows on every shape, thin, full or smiling: the men's mouths were drawn that way, and the script parts the women's
+mouths, whose two lips were one path (`split_lip_tones`). Teeth, tongues and the inside of an open mouth are never
+parted, and lipstick and women's natural lips set no upper color, so they look exactly as before. One mouth (`lips_4`)
+was drawn with an outline half as heavy again as the rest, in a redder ink: the script trims the outside of its outline
+and the line between its lips, and draws it in the same ink as the others (`THIN_OUTLINE`).
+
+**Fitting hair.** The script also measures every hairstyle and head row by row and column by column (`edge` in the
+manifest): the inner edges of the hair either side of the face, its hairline, the outline of its crown, and the
+outline of each head. From those, `js/avatar/hairFit.js` corrects the plain fit for each pair, within small limits:
+no background may show between hair and scalp, a fringe is lifted off the eyebrows where a small move does it, hair
+that covers the top of the head goes on covering it, and a style too tall for the picture is flattened a little
+above the crown. A style with a lock or sweep that hangs clear of the head on purpose is left alone. Babies' tufts
+are not refitted. Nothing is special-cased by person: a new hairstyle or head only needs measuring (run the script).
+A style placed so badly that the limits cannot save it is repaired in its file, once (`REFIT` in the script, with
+the reason); stray specks are removed from hair files (`remove_specks`).
+
+**Framing.** Adult heads differ in size by up to a fifth, so each is zoomed a little toward the average
+(`frameFor`): faces fill the same share of a portrait, with the eyes on one line, whatever the hairstyle. Children
+keep the plain picture. Every screen draws through `avatarSvg`, so a person is the same drawing everywhere; a screen
+chooses only the size.
+
+**Skin tones.** Fourteen, lightest to deepest (`SKIN_TONES` in `js/avatarPalettes.js`): porcelain, ivory, rose beige,
+sand, beige, golden, caramel, olive, tan, bronze, chestnut, umber, espresso, ebony. Saves store the id, so a tone can be
+added between two others, or retuned, without changing anyone's face. Anything that changes with depth (hair and eye
+colors and hair texture at random, freckles, blush, lip colors) names the tone it starts at (`DEPTH` in
+`js/avatar/catalog.js`), so adding a tone never moves where it starts.
+
+**Reading faces on every skin tone.** All linework is one dark ink, which loses contrast as skin deepens while the
+white of the eye gains it. From chestnut downward, in step with depth (`deepness`, `READABLE` in
+`js/CharacterAvatar.js`): the whites are toned slightly toward the skin, the outlines of eyes and mouth (only the outlines, never the whites, irises or teeth) gain a little
+weight, and brows get a faint lighter edge. A nose's skin is always the face's own skin color; on deeper tones only its lines get darker and heavier. Shapes, skin tones and everyone's own colors are unchanged;
+lighter faces are untouched.
+
 **Personal proportions.** Each person also has `inherited.tweaks`: eye spacing, eye size, eye height, nose size
 and mouth size, each from -2 to 2 steps (`TWEAKS` in `js/avatar/catalog.js`, step sizes in `TWEAK_STEP` in
 `js/CharacterAvatar.js`). They are set in the creator, vary a little at random, and children take each from a parent. Cosmetic surgery
-(**Self** → **Cosmetic surgery** → *Facial reshaping*) changes them too, and children born afterwards can take after the new face. Anyone's whole look can be edited from **People** → a person →
+(**Self** → **Cosmetic surgery** → *Facial reshaping*) changes them too, and children born afterward can take after the new face. Anyone's whole look can be edited from **People** → a person →
 **Edit stats and talents** → **Edit their look**.
 
 **Ages and dress.** Babies and toddlers have their own heads, baby hair and baby clothes; children have the child
@@ -181,7 +403,7 @@ hair filtered by length or by what suits your texture, a preview at other ages, 
 appearance: {
   v: 3,
   inherited: { head, skin, eyes, eyeColor, brows, nose, lips, hairColor, hairTexture, marks: [], tweaks: {} }, // set once, at birth
-  style: { hair, hairDye, glasses, facialHair, makeup, lipColor, jewelry: [], outfit, outfitColor, hat }, // the salon and wardrobe
+  style: { hair, hairDye, glasses, makeup, lipColor, jewelry: [], outfit, outfitColor, hat }, // the salon and wardrobe
 }
 ```
 
@@ -315,11 +537,14 @@ bill costs nothing and has no committee stage; it counts as one of the year's tw
 it; where one person rules, it is a decree. The world's own reforms in a country your life has a government for now need a
 government that wants them.
 
-**Regional law.** In countries whose regions make law (the federations, and the United Kingdom's devolved nations), the head
-of a region can change the laws a region controls, one a year, through the regional assembly: the drinking, driving and
-gambling ages, bans on gambling or alcohol, and the death penalty. It applies to everyone living in that region (Texas, Ontario,
-Bavaria; where the game records no states, the area around the city). Between a regional and a national change to the same
-law, the more recent one stands.
+**Regional law.** Where a country leaves some of these laws to its states, provinces or emirates, the head of a region
+can change them, one a year, through the regional assembly. Which ones depends on the country: an American state can set
+the death penalty, gambling and the driving, drinking and gambling ages; a Canadian province the same except the death
+penalty, which is federal; a German Land only gambling; an Indian state or an emirate can ban alcohol; in Brazil, France,
+Italy or Russia none of these are regional (`REGIONAL_POWERS` in `js/data/rules.js`, checked against sources where they
+exist; see `docs/WORLD_DATA.md`). A law applies to everyone living in the region (where the game records no states, the
+area around the city). What is left to the regions is theirs alone: the national government cannot change it, and in the
+world's own slow reforms these laws change one region at a time.
 
 The values are hand-compiled, one per place, and unverified. They are not legal information.
 
@@ -394,8 +619,16 @@ All of it is fiction, kept in the save. The reference data is never rewritten, s
 **Income tax** is the country's headline rate run through a schedule: an allowance, then bands. There are four shapes: none
 (the United Arab Emirates and others that charge nothing), one flat rate (Russia, Ukraine, Hungary and others), rising bands
 (the default, and the United States), and steeply rising bands (much of western Europe, Japan, South Korea, Canada,
-Australia). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
+Australia). The top band is each country's real top rate, from "List of countries by tax rates" (`TAX_TOP`; for the
+United States the federal 37%). The low paid keep more than before and high earners less. Holdings shows the rate on what you earn now and on
 anything more you earn.
+
+**Estate and inheritance tax** (`js/engine/inheritance.js`, rules in `js/data/inheritance.js`) depends on who inherits. Some
+countries tax the estate as a whole before it is shared (the United States above USD 15 million, the United Kingdom at 40% above
+GBP 325,000, Japan, South Korea, Taiwan, South Africa, the Philippines); others tax each heir on what they receive, with a spouse
+usually exempt, a child paying little, and anyone else much more (Germany, France, Spain, Italy, Ireland, the Netherlands and
+others); many charge nothing. A will that leaves everything to friends costs more than one that leaves it to children, and
+charity is untaxed. Rates and allowances come from PwC Worldwide Tax Summaries and Wikipedia; see `docs/WORLD_DATA.md`.
 
 **Health care** has six models:
 
@@ -504,6 +737,59 @@ twenty-five years away. A scenario whose character dies early of something unrel
 The Living World engine is complete as a first version. `docs/WORLD_DATA.md` lists what is simplified, unverified or not
 modeled, which is where further work would go.
 
+## One year at a time
+
+Every choice happens in the year it is made; "Age up" lives the
+year and then shows what it changed. Things you would otherwise repeat every
+year can be set once on the **Your life this year** card (Pursuits): a hobby
+focus, a posting routine, a savings goal, care for your animals, family
+traditions. See [`docs/YEARLY.md`](docs/YEARLY.md) for how it works and what
+is not built.
+
+## Health, mental health and accessibility
+
+**My Health** (Self tab) holds a character's health record: how they have been
+sleeping, their energy, stress and pain, what they have been experiencing,
+their diagnoses, appointments, therapy, medicines, supports, medical history and
+goals, with a **Treatment Journey** and a **DBT Journey** of their own.
+
+- **Conditions are not diagnoses.** Depression, anxiety, BPD, bipolar disorder,
+  ADHD, autism, dyslexia, deafness, epilepsy and thirty more can be present for
+  a long time before anyone names them. Experiences have several possible
+  explanations; an assessment can diagnose, refer, wait, or find nothing.
+  Diagnoses can be revised, and a second opinion is always open.
+- **Care happens week by week.** Clinics and clinicians persist in each city;
+  clinicians are people in your life who age, move and retire. Appointments
+  take time and money (once). "Let the weeks pass" moves care on inside the
+  year.
+- **Medicine is a decision with a prescriber.** Trials unfold over weeks and go
+  differently for different people. Follow-ups lead to a proposal you accept or
+  decline: carry on, adjust, switch (supervised, with the old trial kept) or
+  reduce gradually. A rule registry checks every prescription. No doses appear
+  anywhere.
+- **Therapy builds skills.** CBT, individual DBT, a DBT skills group (four
+  modules, a standing group with its own facilitators), and more. Skills open
+  new choices in everyday scenes without deciding how they go.
+- **Accessibility removes barriers, not people's traits.** Needs (with or
+  without a diagnosis), equipment, school and work accommodations, and home
+  adaptations. Asking shares the need, never the diagnosis.
+- **Families share genes, not diagnoses.** Predisposition is inherited from
+  biological parents and makes things more or less likely, never certain.
+  Family medical history shows only what relatives chose to share.
+- **Private by default.** Health milestones are hidden from the obituary and
+  from descendants unless shared.
+- **The body too.** Asthma, high blood pressure, diabetes, heart disease, cancer
+  and back pain are found at check-ups and assessments and managed over years;
+  hospital stays lead to rehabilitation with goals; every bill is an insurance
+  claim you can see (and appeal, if a private insurer refuses it); family
+  members can get care of their own.
+- **Part of everyday life.** A dot on Self when care needs you, and scenes that
+  follow the health record: telling a partner, a child's assessment, supporting
+  someone you love, access at work and with friends.
+
+The design, the sources, and what has not yet been clinically reviewed are in
+[`docs/HEALTH.md`](docs/HEALTH.md).
+
 ## Layout
 
 ```
@@ -515,9 +801,9 @@ js/save.js      save slots and graveyard
 js/rng.js       seeded RNG (state is saved with the game)
 js/types.js     master schemas (JSDoc)
 js/engine/      year processor, event engine, effects, conditions, generation,
-                health, education, finance, relationships, death
-js/data/        countries, traits, birthConditions, illnesses, events/
-js/avatar/      portrait parts, catalogue, renderer, inheritance, live editor
+                health (and health/: the health engine), education, finance, relationships, death
+js/data/        countries, traits, birthConditions, illnesses, health/, events/
+js/avatar/      portrait parts, catalog, renderer, inheritance, live editor
 js/ui/          shell, modals, screens/, tabs/
 avatar-lab.html a workbench for avatar artwork
 tests/          checks that run on Node alone
@@ -580,9 +866,9 @@ More of it, by part:
 | Public life | `civic.js` | Office-holders, candidates and royals speak through official accounts (kept apart from personal ones): a statement nudges approval in office or a campaign's appeal by a capped amount, or a royal's public image, and the country's press reports it. Elections are still counted by the Politics engine. Being widely known brings interviews and panels, a loss of privacy, and — for something the player really did and was never caught for — an allegation, which is not a conviction |
 | Study | `school.js` | The school's own systems by era (paper, email, a portal with marks), online study groups with real classmates (a small effect on marks; followers count for nothing), a portfolio of finished work (which helps in creative careers), digital skills |
 | More messaging | `messaging.js` | Plans and invitations that really happen the next year (and are remembered), photos, anniversary wishes, talking about the relationship (which can clear the air or start a row), venting (the only thing a leak can ever be made of), birthday messages from family (three a year at most), helping an older relative get online |
-| More creators | `creator.js` | Optional posting routines; merchandise (with the cost of making it), labelled affiliate links, licensing offers for good work, paid collaborations paid on publication; livestreams scheduled for later with chosen equipment; project work counts as practice for the matching skill |
+| More creators | `creator.js` | Optional posting routines; merchandise (with the cost of making it), labeled affiliate links, licensing offers for good work, paid collaborations paid on publication; livestreams scheduled for later with chosen equipment; project work counts as practice for the matching skill |
 | Other people | `npc.js` | Gifted friends start channels of their own; people join communities for their hobbies; an online friend who ends up in the player's field becomes a colleague; a few well-known creators on each platform to follow, who are strangers, not friends |
-| Radio and television | `broadcast.js` | Once a year, an evening's listening or viewing (news, music, plays, sport, serials, cartoons) with whoever is at home, or at a neighbour's when there is no set; the first set in the house as a life moment; now and then a broadcast the whole household remembers. Sets are household devices like any other |
+| Radio and television | `broadcast.js` | Once a year, an evening's listening or viewing (news, music, plays, sport, serials, cartoons) with whoever is at home, or at a neighbor's when there is no set; the first set in the house as a life moment; now and then a broadcast the whole household remembers. Sets are household devices like any other |
 | Story arcs | `stories.js` | Also: a creator's crossroads (make it a job, keep it on the side, step back), burnout after two heavy years, stopping decades later; life after going viral; a bigger creator reaching out; a recruiter; an invitation to moderate; meeting an online friend; a partner abroad; old posts decades on (shared with the family, they join the archive); a child's school photography project |
 
 Also: the character creator can start a life in any year from 1800; scenes that mention modern technology, and the
@@ -590,7 +876,7 @@ creator career, only appear once the registry says that technology exists where 
 the country's real news; trips the player took and homes they bought or renovated can be posted about (a trip names
 the place visited, never the home); profile pictures (portrait, initials, a pet, a symbol — never someone else) and
 links to one's own other accounts; devices are belongings with a condition; a self-set limit on screen time; locked
-accounts can be recovered; neighbourhood groups follow a move; a university's community is made of real classmates;
+accounts can be recovered; neighborhood groups follow a move; a university's community is made of real classmates;
 dating has preferences (ages, distance, what one is looking for); the Family Archive opens from the People tab too.
 
 Still not built: business partnerships (there is no business system in the game for an online friend to join);
@@ -621,7 +907,7 @@ the Digital World because the game has no separate hobby-project system.
 | Property tax by country | `PROPERTY_TAX` in `js/data/countries.js` |
 | Monarchies: which countries have a crown, the titles used there, allowances, public duties, how rare a royal birth is | `js/data/royalty.js` |
 | How each country is governed, what its offices are called, campaign platforms, budgets and moves, what office-holders can do | `js/data/politics.js` |
-| Political scenes (class president, polling day, scandals, removal votes, uprisings) | `js/data/events/politics.js` |
+| Political scenes (class president, Election Day, scandals, removal votes, uprisings) | `js/data/events/politics.js` |
 | Royal and noble scenes (palace invitation, honors, scandal, protocol) | `js/data/events/royal.js` |
 | Moving abroad: who comes, how likely relatives are to say yes, shipping costs, the passport | `js/engine/emigration.js` |
 | Transport by era, places to stay, things to do on a trip, kinds of trip, refund terms, passports, visit rules by destination, pets moving, earlier jurisdictions | `js/data/travel.js` |
@@ -646,6 +932,8 @@ the Digital World because the game has no separate hobby-project system.
 | Scenes that depend on the country | `js/data/events/country.js` |
 | First names and surnames for each country (people are named from where they live) | `js/data/names.js` |
 | Child acting: ages, levels, pay, and the head start it gives an adult actor | `child_actor` in `js/data/careers.js` |
+| Children's parts on stage: how often, how strong the other children are, a child's hours | `CHILD_PARTS` in `js/data/fame.js` |
+| Dance gigs, the TV dance competition, dance competitions | `js/data/dance.js` |
 | Prison events | `js/data/events/prison.js` |
 | Gift tiers, rings, wedding sizes, fees | top of `js/engine/relationships.js`, `romance.js`, `children.js` |
 | Romance and family events | `js/data/events/romance.js`, `family.js` |
@@ -778,7 +1066,7 @@ and the press),
 the screens are in `js/ui/royalty.js` and `js/ui/dynasty.js`.
 Scenes can test `monarchy`, `isRoyal`, `isNoble`, `titled`, `reigning`,
 `royalBy` and `royal.image`, and use the `image()`, `meetRoyal()` and
-`honour()` effects.
+`honor()` effects.
 
 ## Politics
 
@@ -1039,7 +1327,7 @@ whether or not the player takes any part.
     few points, the same way all campaign long.
   - *The debate.* Three questions. A straight answer, a crowd-pleasing promise
     (which comes due in office), an attack, or a dodge.
-  - *Polling day.* The result is worked out once and stored; election night
+  - *Election Day.* The result is worked out once and stored; election night
     shows it arriving area by area, after an exit poll that may be wrong.
   A campaign left unfinished when the year ends plays itself out. One-party
   states have no voters to win: the committee decides.
@@ -1200,8 +1488,10 @@ and promotions, and checked the layout at iPad and phone sizes. Since then: a mo
 avatar system with a live editor, wills with named heirs, skills to practice,
 orientation and gender identity, living conditions by country, royalty with a living royal house and a dynasty journal,
 politics, a list of people you know who are written into your lives,
-moving saves between devices with a transfer code or cloud saves, and a working life with persistent
-employers, coworkers, side jobs, freelancing and recruiters.
+moving saves between devices with a transfer code or cloud saves, a working life with persistent
+employers, coworkers, side jobs, freelancing and recruiters, and a health engine for mental and
+physical health, therapy, medication, disability and accessibility (not yet clinically reviewed:
+see `docs/HEALTH.md`).
 
 The layout has been checked in a desktop browser emulating iPad and phone
 screens (portrait and landscape). It has not been run on a physical iPad.

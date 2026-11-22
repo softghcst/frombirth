@@ -4,7 +4,7 @@
 //   needs: stat or talent thresholds for holding that level, e.g. { 'talents.singing': 76 }
 // req (what you need to be considered at all):
 //   degree: 'high' | 'university'      majors: [...]  (any of these university majors)
-//   programme: 'medical' | 'law' | 'cosmetology'      trade: apprenticeship trade id
+//   program: 'medical' | 'law' | 'cosmetology'      trade: apprenticeship trade id
 //   minAge / maxAge, stats: { path: minimum }, cleanRecord: true
 // hire: how you get in: 'interview' | 'practical' | 'audition' | 'portfolio' | 'military'
 //   skill: the path an audition or portfolio is judged on
@@ -52,27 +52,27 @@ const BASE_CAREERS = [
     levels: L(['Marketing assistant', 36, 46, 2], ['Marketing executive', 48, 64, 3], ['Marketing manager', 70, 98, 4], ['Marketing director', 120, 170, 0]) },
   { id: 'teacher', name: 'Teaching', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
     req: { degree: 'university' }, doors: [{ flag: 'teacherRec', bonus: 0.15 }, { flag: 'teachingCert', bonus: 0.3 }],
-    levels: L(['Trainee teacher', 34, 40, 1], ['Teacher', 42, 58, 5], ['Head of department', 60, 75, 5], ['Head teacher', 85, 120, 0]) },
+    levels: L(['Trainee teacher', 34, 40, 1], ['Teacher', 42, 58, 5], ['Head of department', 60, 75, 5], ['Principal', 85, 120, 0]) },
   { id: 'nurse', name: 'Nursing', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
     req: { degree: 'university', majors: ['nursing'], altProgramme: 'nursing' },
     levels: L(['Staff nurse', 48, 62, 3], ['Senior nurse', 65, 80, 4], ['Charge nurse', 82, 98, 5], ['Director of nursing', 110, 150, 0]) },
   { id: 'doctor', name: 'Medicine', category: 'professional', type: 'fulltime', hire: 'interview', stress: 3,
-    req: { programme: 'medical' }, doors: [{ flag: 'profRec', bonus: 0.15 }],
+    req: { program: 'medical' }, doors: [{ flag: 'profRec', bonus: 0.15 }],
     levels: L(['Resident doctor', 60, 75, 3], ['Physician', 160, 220, 5], ['Senior physician', 230, 300, 6], ['Chief of medicine', 320, 450, 0]) },
   { id: 'dentist', name: 'Dentistry', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
-    req: { programme: 'dental' },
+    req: { program: 'dental' },
     levels: L(['Associate dentist', 90, 120, 3], ['Dentist', 130, 180, 5], ['Practice owner', 190, 300, 0]) },
   { id: 'pharmacist', name: 'Pharmacy', category: 'professional', type: 'fulltime', hire: 'interview', stress: 1,
-    req: { programme: 'pharmacy' },
+    req: { program: 'pharmacy' },
     levels: L(['Pharmacist', 85, 105, 4], ['Senior pharmacist', 108, 130, 5], ['Pharmacy manager', 135, 170, 0]) },
   { id: 'vet', name: 'Veterinary medicine', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
-    req: { programme: 'veterinary' },
+    req: { program: 'veterinary' },
     levels: L(['Junior vet', 60, 78, 3], ['Veterinary surgeon', 85, 120, 5], ['Practice partner', 130, 210, 0]) },
   { id: 'academic', name: 'University teaching', category: 'professional', type: 'fulltime', hire: 'interview', stress: 2,
-    req: { programme: 'doctorate' }, doors: [{ flag: 'profRec', bonus: 0.2 }],
+    req: { program: 'doctorate' }, doors: [{ flag: 'profRec', bonus: 0.2 }],
     levels: L(['Research fellow', 45, 58, 3], ['Lecturer', 62, 85, 5], ['Senior lecturer', 88, 115, 6], ['Professor', 125, 190, 0]) },
   { id: 'lawyer', name: 'Law', category: 'professional', type: 'fulltime', hire: 'interview', stress: 3,
-    req: { programme: 'law' }, doors: [{ flag: 'profRec', bonus: 0.15 }, { flag: 'alumniIntro', bonus: 0.2 }],
+    req: { program: 'law' }, doors: [{ flag: 'profRec', bonus: 0.15 }, { flag: 'alumniIntro', bonus: 0.2 }],
     levels: L(['Associate lawyer', 75, 110, 3], ['Senior associate', 120, 170, 4], ['Partner', 220, 380, 6], ['Managing partner', 400, 700, 0]) },
   { id: 'engineer', name: 'Engineering', category: 'professional', type: 'fulltime', hire: 'interview', stress: 1,
     req: { degree: 'university', majors: ['engineering'] }, doors: [{ flag: 'alumniIntro', bonus: 0.2 }],
@@ -116,30 +116,31 @@ const BASE_CAREERS = [
       { flag: 'proBackstage', bonus: 0.3 }, { flag: 'internship', bonus: 0.2 }],
     levels: L(['Stagehand', 26, 34, 2], ['Stage technician', 38, 52, 3], ['Head of stage', 56, 76, 5], ['Technical director', 85, 125, 0]) },
 
-  // ---------- Hair and makeup (all need the cosmetology licence) ----------
+  // ---------- Hair and makeup (all need the cosmetology license) ----------
   { id: 'hair_stylist', name: 'Salon hair styling', category: 'beauty', type: 'fulltime', hire: 'practical', stress: 1,
-    req: { programme: 'cosmetology' }, focus: 'salon',
+    req: { program: 'cosmetology' }, focus: 'salon',
     levels: L(['Junior stylist', 24, 30, 2], ['Stylist', 34, 48, 3], ['Senior stylist', 52, 72, 5], ['Salon owner', 80, 140, 0]) },
   { id: 'bridal', name: 'Bridal hair and makeup', category: 'beauty', type: 'fulltime', hire: 'practical', stress: 1,
-    req: { programme: 'cosmetology' }, focus: 'bridal', doors: [{ flag: 'bridalClients', bonus: 0.25 }],
+    req: { program: 'cosmetology' }, focus: 'bridal', doors: [{ flag: 'bridalClients', bonus: 0.25 }],
     levels: L(['Bridal assistant', 22, 28, 1], ['Bridal makeup artist', 36, 55, 3], ['Lead bridal artist', 60, 85, 5], ['Bridal studio owner', 90, 150, 0]) },
   { id: 'editorial', name: 'Runway and print makeup', category: 'beauty', type: 'fulltime', hire: 'practical', stress: 2,
-    req: { programme: 'cosmetology' }, focus: 'editorial', fame: { from: 3, label: 'Celebrity makeup artist' },
+    req: { program: 'cosmetology' }, focus: 'editorial', fame: { from: 3, label: 'Celebrity makeup artist' },
     levels: L(['Makeup assistant', 20, 26, 2], ['Runway makeup artist', 40, 62, 3], ['Key makeup artist', 75, 115, 5], ['Creative director', 130, 220, 0]) },
   { id: 'sfx', name: 'Special-effects makeup', category: 'beauty', type: 'fulltime', hire: 'practical', stress: 2,
-    req: { programme: 'cosmetology', stats: { 'stats.intellect': 50 } }, focus: 'sfx', doors: [{ flag: 'sfxPiece', bonus: 0.3 }],
+    req: { program: 'cosmetology', stats: { 'stats.intellect': 50 } }, focus: 'sfx', doors: [{ flag: 'sfxPiece', bonus: 0.3 }],
     levels: L(['Workshop assistant', 26, 34, 2], ['Special-effects makeup artist', 48, 70, 4], ['Prosthetics designer', 80, 120, 5], ['Head of makeup effects', 130, 200, 0]) },
-  { id: 'theatre_hmu', name: 'Theater hair and makeup', category: 'beauty', type: 'fulltime', hire: 'practical', stress: 2,
-    req: { programme: 'cosmetology' }, focus: 'theatre',
+  { id: 'theater_hmu', name: 'Theater hair and makeup', category: 'beauty', type: 'fulltime', hire: 'practical', stress: 2,
+    req: { program: 'cosmetology' }, focus: 'theater',
     doors: [{ flag: 'proBackstage', guaranteed: true, level: 1, text: 'The head of wigs who hired you once wants you back in the department.' },
-      { flag: 'theatreCredit', bonus: 0.25 }],
+      { flag: 'theaterCredit', bonus: 0.25 }],
     levels: L(['Dresser and wig assistant', 26, 34, 2], ['Wig and makeup artist', 40, 56, 3], ['Head of wigs', 60, 82, 5], ['Hair and makeup designer', 90, 140, 0]) },
 
   // ---------- Performing and creative ----------
   { id: 'mt_performer', name: 'Musical theater', category: 'performing', type: 'fulltime', hire: 'audition', stress: 2,
     skill: 'tripleThreat', req: { minAge: 18, stats: { tripleThreat: 55 } }, fame: { from: 2, label: 'Musical theater star' },
     doors: [{ flag: 'proDebut', guaranteed: true, level: 1, text: 'The company that cast you at the open call has your contract ready.' },
-      { flag: 'directorRec', bonus: 0.1 }],
+      { flag: 'childStageMajor', guaranteed: true, level: 0, text: 'You grew up on the biggest stage in the country. The company remembers you, and has a place for you in the ensemble.' },
+      { flag: 'childStage', bonus: 0.2 }, { flag: 'directorRec', bonus: 0.1 }],
     levels: L(['Ensemble member', 28, 40, 2], ['Featured ensemble', 45, 65, 3, { tripleThreat: 66 }],
       ['Principal performer', 80, 130, 4, { tripleThreat: 78 }], ['Leading performer', 160, 320, 0, { tripleThreat: 88 }]) },
   // Children and teenagers can work as actors around school. At 18 they age
@@ -210,7 +211,7 @@ export const GIGS = [
   { id: 'dog_walking', name: 'Walk dogs', pay: 500, skill: 'stats.health', minAge: 12, req: {} },
   { id: 'wedding_singer', name: 'Sing at a wedding', pay: 1200, skill: 'talents.singing', minAge: 16, req: { 'talents.singing': 55 } },
   { id: 'dance_teacher', name: 'Teach a children\'s dance class', pay: 1000, skill: 'talents.dance', minAge: 16, req: { 'talents.dance': 55 } },
-  { id: 'event_makeup', name: 'Do makeup for an event', pay: 1400, skill: 'stats.charm', minAge: 18, req: {}, programme: 'cosmetology' },
+  { id: 'event_makeup', name: 'Do makeup for an event', pay: 1400, skill: 'stats.charm', minAge: 18, req: {}, program: 'cosmetology' },
   { id: 'copywriting', name: 'Write copy for a local business', pay: 1100, skill: 'stats.intellect', minAge: 18, req: { 'stats.intellect': 55 } },
   { id: 'website', name: 'Build someone a website', pay: 2200, skill: 'stats.intellect', minAge: 16, req: { 'stats.intellect': 65 } },
   { id: 'coaching', name: 'Coach a youth team', pay: 900, skill: 'talents.sports', minAge: 17, req: { 'talents.sports': 55 } },
@@ -220,7 +221,7 @@ export const MAX_GIGS_PER_YEAR = 2;
 /** What the famous can do. min is the fame needed. cash is base units before fame scaling. */
 export const FAME_ACTIONS = [
   { id: 'book', name: 'Write a book', min: 15, skill: 'stats.intellect', cash: 40000, fame: 5,
-    ok: 'Your book comes out to queues round the block.', fail: 'Your book is politely reviewed and quickly remaindered.' },
+    ok: 'Your book comes out to queues around the block.', fail: 'Your book is politely reviewed and quickly remaindered.' },
   { id: 'photoshoot', name: 'Do a photoshoot', min: 20, skill: 'stats.charm', cash: 15000, fame: 3,
     ok: 'The cover sells out in a week.', fail: 'The photos are fine. Nobody mentions them.' },
   { id: 'commercial', name: 'Film a commercial', min: 30, skill: 'stats.charm', cash: 90000, fame: 2, karma: -2,

@@ -1,4 +1,4 @@
-// Everyday scenes for adult life and old age: neighbours, friends, money,
+// Everyday scenes for adult life and old age: neighbors, friends, money,
 // health, conscience and the small turns that fill the years between the
 // big ones. Most have no special requirements, so any life can meet them.
 import { st, hid, tal, cash, rel, cond, heat, count, ms, addNpc, death, ok, bad, any, chk, need, perf, pay } from './helpers.js';
@@ -14,7 +14,7 @@ export default [
     text: 'A parcel meant for someone three streets away is left on your step. It is heavy and it rattles expensively.',
     choices: [
       { label: 'Walk it round to them', outcomes: [any('It was a wedding present. They insist you stay for tea, and you leave with a friend: {pal}.', 'good', addNpc('friend', 'pal'), hid('karma', 6))] },
-      { label: 'Leave it with the courier\'s depot', outcomes: [any('Forty minutes in a queue, and a clear conscience.', 'neutral', hid('karma', 3), st('mood', -1))] },
+      { label: 'Leave it with the courier\'s depot', outcomes: [any('Forty minutes in line, and a clear conscience.', 'neutral', hid('karma', 3), st('mood', -1))] },
       { label: 'Open it', outcomes: [
         { on: 'always', weight: 0.6, tone: 'bad', text: 'A coffee machine worth {$400}. You keep it, and never quite enjoy the coffee.', effects: [hid('karma', -8), cash(400), count('crimes')] },
         { on: 'always', weight: 0.4, tone: 'bad', text: 'The doorbell camera across the road saw everything. A police officer comes for the parcel and takes your name.', effects: [hid('karma', -8), heat(12), st('mood', -5)] },
@@ -40,7 +40,7 @@ export default [
       ] },
       { label: 'Climb out through the hatch', check: chk(0.3, { 'talents.sports': 0.6, 'stats.health': 0.3 }), outcomes: [
         ok('You haul yourself onto the floor above and fetch help. It was a stupid thing to do and it worked.', tal('sports', 2), hid('willpower', 4)),
-        bad('You get halfway, slip, and land on your back on the lift floor.', cond('back_pain'), st('health', -6)),
+        bad('You get halfway, slip, and land on your back on the elevator floor.', cond('back_pain'), st('health', -6)),
       ] },
       { label: 'Sit down and wait', outcomes: [any('The engineer arrives in ninety minutes. You are late for everything.', 'neutral', hid('discipline', 2), st('mood', -2))] },
     ],
@@ -61,7 +61,7 @@ export default [
     id: 'restaurant_bill', category: 'everyday', ageRange: [18, 90], cooldown: 12, requires: [has(100)],
     text: 'The bill arrives and the waiter has left off two main courses and a bottle.',
     choices: [
-      { label: 'Point it out', outcomes: [any('The waiter looks as if you have saved his week. Pudding is on the house.', 'good', hid('karma', 5), st('mood', 3))] },
+      { label: 'Point it out', outcomes: [any('The waiter looks as if you have saved his week. Dessert is on the house.', 'good', hid('karma', 5), st('mood', 3))] },
       { label: 'Pay it and leave a large tip', outcomes: [any('A compromise your conscience does not quite accept.', 'neutral', hid('karma', -1), cash(30))] },
       { label: 'Pay it and walk out quickly', outcomes: [any('You save {$80} and avoid that street for a while.', 'bad', hid('karma', -5), cash(80))] },
     ],
@@ -122,7 +122,7 @@ export default [
         ok('{pal} goes quiet, then says they had wondered too. It is over within a month.', rel('pal', 10), hid('karma', 3)),
         bad('{pal} tells you that you are jealous. You are not invited to things for a while.', rel('pal', -18), st('mood', -4)),
       ] },
-      { label: 'Say nothing and stay close', outcomes: [any('It ends badly in the spring. You are the one {pal} rings at two in the morning.', 'good', rel('pal', 8), hid('karma', 4))] },
+      { label: 'Say nothing and stay close', outcomes: [any('It ends badly in the spring. You are the one {pal} calls at two in the morning.', 'good', rel('pal', 8), hid('karma', 4))] },
       { label: 'Keep your distance until it blows over', outcomes: [any('It takes two years to blow over, and {pal} notices who was missing.', 'neutral', rel('pal', -8))] },
     ],
   },
@@ -135,7 +135,7 @@ export default [
         bad('You say all the right things with a face like a shut door. {pal} is not fooled.', rel('pal', -4), st('mood', -4)),
       ] },
       { label: 'Ask how they did it', outcomes: [any('{pal} talks you through it over lunch. Some of it is even useful.', 'good', rel('pal', 4), st('intellect', 2), hid('discipline', 2))] },
-      { label: 'Find a reason to be busy', outcomes: [any('You see the photographs online instead, which is worse.', 'bad', rel('pal', -8), st('mood', -5)), any('You hear all about it afterwards from someone else, which is worse.', 'bad', rel('pal', -8), st('mood', -5))] },
+      { label: 'Find a reason to be busy', outcomes: [any('You see the photographs online instead, which is worse.', 'bad', rel('pal', -8), st('mood', -5)), any('You hear all about it afterward from someone else, which is worse.', 'bad', rel('pal', -8), st('mood', -5))] },
     ],
   },
   {
@@ -172,7 +172,7 @@ export default [
   },
   {
     id: 'headhunter_call', category: 'work', ageRange: [26, 58], cooldown: 12, requires: [employed, need('career.performance', '>=', 60)],
-    text: 'A recruiter rings your mobile at your desk: a rival firm would like to talk, and is hinting at more money.',
+    text: 'A recruiter calls your cell at your desk: a rival firm would like to talk, and is hinting at more money.',
     choices: [
       { label: 'Use it to ask for a raise', check: chk(0.45, { 'stats.charm': 0.4, 'career.performance': 0.6 }), outcomes: [
         ok('Your boss matches it before you have finished the sentence.', pay(1.08), st('mood', 6)),
@@ -244,7 +244,7 @@ export default [
     ],
   },
   {
-    id: 'new_year_resolution', category: 'health', ageRange: [18, 85], cooldown: 8,
+    id: 'new_year_resolution', timing: { yearTurn: true }, category: 'health', ageRange: [18, 85], cooldown: 8,
     text: 'It is the first of January. This year is going to be different.',
     choices: [
       { label: 'Get fit', check: chk(0.35, { 'hidden.discipline': 0.9 }), outcomes: [
@@ -298,11 +298,11 @@ export default [
     ],
   },
   {
-    id: 'neighbour_secret', category: 'conscience', ageRange: [22, 90], cooldown: 20,
+    id: 'neighbor_secret', category: 'conscience', ageRange: [22, 90], cooldown: 20,
     text: 'You see your neighbor\'s spouse in a café two towns over, holding hands with someone who is not your neighbor.',
     choices: [
       { label: 'Tell your neighbor', outcomes: [any('A terrible conversation over the fence. They thank you for it, a year later.', 'neutral', hid('karma', 2), st('mood', -4))] },
-      { label: 'Say nothing to anyone', outcomes: [any('You nod to both of them on bin day and keep it to yourself.', 'neutral', hid('discipline', 2))] },
+      { label: 'Say nothing to anyone', outcomes: [any('You nod to both of them on trash day and keep it to yourself.', 'neutral', hid('discipline', 2))] },
       { label: 'Tell everyone except your neighbor', outcomes: [any('The whole street knows by the weekend. So does the street know who told them.', 'bad', hid('karma', -8), st('charm', -3))] },
     ],
   },
@@ -331,7 +331,7 @@ export default [
 
   // ---------- Middle years ----------
   {
-    id: 'milestone_birthday', category: 'middle years', ageRange: [40, 60], cooldown: 9, requires: [need('age', 'in', [40, 50, 60])],
+    id: 'milestone_birthday', timing: { yearTurn: true }, category: 'middle years', ageRange: [40, 60], cooldown: 9, requires: [need('age', 'in', [40, 50, 60])],
     text: 'A birthday with a nought on the end. People keep asking how you feel about it.',
     choices: [
       { label: 'Throw a big party', requires: [has(800)], outcomes: [any('Everyone you love in one room, and a cake that is a fire risk.', 'good', cash(-800), st('mood', 12), st('charm', 2))] },
@@ -384,7 +384,7 @@ export default [
       ] },
       { label: 'Carry on. You have been driving for sixty years', outcomes: [
         { on: 'always', weight: 0.8, tone: 'neutral', text: 'You go on driving, a little slower, with everyone holding their breath.', effects: [hid('willpower', 2)] },
-        { on: 'always', weight: 0.17, tone: 'bad', text: 'You pull out without looking. The car is written off and you spend a month in hospital.', effects: [st('health', -25), st('mood', -10)] },
+        { on: 'always', weight: 0.17, tone: 'bad', text: 'You pull out without looking. The car is written off and you spend a month in the hospital.', effects: [st('health', -25), st('mood', -10)] },
         { on: 'always', weight: 0.03, tone: 'bad', text: 'You pull out without looking.', effects: [death('a car accident')] },
       ] },
     ],
@@ -403,7 +403,7 @@ export default [
   },
   {
     id: 'scam_call', category: 'later life', ageRange: [65, 120], cooldown: 8, requires: [has(3000)],
-    text: 'A polite young man rings to say he is from your bank\'s fraud team, and your savings must be moved tonight to keep them safe.',
+    text: 'A polite young man calls to say he is from your bank\'s fraud team, and your savings must be moved tonight to keep them safe.',
     choices: [
       { label: 'Hang up and ring the bank yourself', outcomes: [any('The bank has never heard of him. They thank you for reporting it.', 'good', st('intellect', 1), hid('karma', 2))] },
       { label: 'Keep him talking for an hour', outcomes: [any('You invent three accounts and a parrot. He hangs up on you in the end.', 'good', st('mood', 8), tal('acting', 2))] },

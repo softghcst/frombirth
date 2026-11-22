@@ -72,7 +72,7 @@ export const passports = (person = player()) => docs(person).filter((d) => d.typ
 export function validPassport(person, onDate = today(), through = onDate, issuerId = null) {
   return passports(person).find((d) => d.status === 'valid' && d.issuedOn <= onDate && d.expiresOn > through && (!issuerId || d.issuer === issuerId) && held(person).includes(d.issuer)) ?? null;
 }
-const DOC_WORDS = { valid: 'Valid', expired: 'Expired', lost: 'Reported lost', stolen: 'Reported stolen', canceled: 'Cancelled', replaced: 'Replaced' };
+const DOC_WORDS = { valid: 'Valid', expired: 'Expired', lost: 'Reported lost', stolen: 'Reported stolen', canceled: 'Canceled', replaced: 'Replaced' };
 export const docWord = (s) => DOC_WORDS[s] ?? s;
 
 /**

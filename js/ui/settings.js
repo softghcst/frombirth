@@ -6,7 +6,12 @@ import { exportCode, importCode, collect, describe } from '../sync/bundle.js';
 import * as cloud from '../sync/cloud.js';
 import { openModal, pickModal, confirmModal, messageModal, inputModal } from './modals.js';
 import { store } from '../state.js';
-import { forkGame, timelinesOf, MAX_TIMELINES } from '../save.js';
+import { forkGame, timelinesOf, MAX_TIMELINES, saveGame } from '../save.js';
+import { STEPS, STEP_NAMES, stepOf, setStep, monthOf, ageLabel } from '../engine/turns.js';
+import * as kit from '../engine/teamIdentity.js';
+import { jerseySvg, inkOn } from './jersey.js';
+import { JERSEY_COLORS } from '../data/sports.js';
+import { getTheme, setTheme, THEMES, THEME_NAMES } from '../theme.js';
 
 /** "just now", "4 minutes ago", "yesterday". */
 export function ago(t) {
@@ -30,6 +35,20 @@ export function cloudLine(s = cloud.status()) {
   return `${s.email} · ${s.pending ? 'changes waiting to send' : `synced ${ago(s.syncedAt)}`}`;
 }
 
+/** Time per turn: a year (the default), six months or three months. */
+async function openTime(hooks) {
+  const now = stepOf();
+  const pick = await pickModal({
+    title: 'Time per turn',
+    body: `How far the calendar moves each time you live on. The year's pay, school reports, seasons of sport and birthdays still come once a year, at the turn of the year; shorter turns add the seasons in between, with scenes written for them.${monthOf() ? ' You are partway through a year: a change starts from next year.' : ''}`,
+    options: STEPS.map((s) => ({ value: String(s), label: `${STEP_NAMES[s]}${s === 12 ? ' (default)' : ''}${s === now ? ' · now' : ''}`, sub: s === 12 ? 'One turn is a whole year.' : s === 6 ? 'Two turns a year: the year, and its middle.' : 'Four turns a year: each season of it.' })),
+  });
+  if (!pick) return;
+  const r = setStep(Number(pick));
+  if (r.ok) { saveGame(store.state); hooks.onChange?.(); }
+  await messageModal({ body: r.text, tone: 'neutral' });
+}
+
 /**
  * Opens Settings. Resolves when it is closed.
  * @param {{onChange?:Function}} [hooks]  onChange: saves on this device changed (the title screen redraws)
@@ -41,25 +60,133 @@ export async function openSettings(hooks = {}) {
       title: 'Settings',
       cancel: 'Done',
       options: [
+        { value: 'appearance', label: 'Appearance', sub: THEME_NAMES[getTheme()] },
+        // Only while a life is being played: how far each turn moves the calendar.
+        ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()}` : ''}` }] : []),
+        // Only while a life is being played: how much of what could happen in love and family is told.
+        ...(store.state?.player?.alive ? [{ value: 'drama', label: 'Relationship drama', sub: `${{ low: 'Low', balanced: 'Balanced', high: 'High' }[store.state.settings?.drama ?? 'balanced']}: how often the stories that are true of your relationships get told. It never invents one.` },
+          { value: 'sensitive', label: 'Sensitive family storylines', sub: store.state.settings?.sensitiveFamily === true ? 'On: a teenage pregnancy may be part of a life, told without detail.' : 'Off. Turn on to allow a teenage pregnancy storyline, told without detail.' }] : []),
         { value: 'account', label: 'Cloud saves', sub: cloudLine() },
-        { value: 'transfer', label: 'Transfer saves', sub: 'Move your lives to another device with a code or a file, no account needed.' },
-        { value: 'people', label: 'People you know', sub: people ? `${people} on your list.` : 'Put people from your own life into the game.' },
+        { value: 'transfer', label: 'Transfer saves', sub: 'To another device' },
+        { value: 'people', label: 'People you know', sub: people ? `${people} added` : 'Add real people to the game' },
+        // Only while a life is being played, once there are teams in it: their names, jerseys and players.
+        ...(store.state?.player?.alive && kit.leagues().length ? [{ value: 'teams', label: 'Teams and jerseys', sub: 'Names and colors' }] : []),
         // Only while a life is being played: keep this moment, and live it two ways.
-        ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Keep this moment as a second timeline, before a decision you are about to make. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used.` }] : []),
+        ...(store.state?.player?.alive ? [{ value: 'summary', label: 'Yearly life update', sub: store.state.settings?.yearSummary === true ? 'Shown after each year' : 'Off (look back from Your life this year)' }] : []),
+        ...(store.state?.player?.alive ? [{ value: 'whatif', label: 'What if?', sub: `Branch this life. ${timelinesOf(store.state.timeline?.root ?? store.state.slotId).length || 1} of ${MAX_TIMELINES} used` }] : []),
       ],
     });
     if (!pick) return;
+    if (pick === 'drama') { const s = (store.state.settings ??= {}); s.drama = { low: 'balanced', balanced: 'high', high: 'low' }[s.drama ?? 'balanced']; hooks.onChange?.(); continue; }
+    if (pick === 'sensitive') { const s = (store.state.settings ??= {}); s.sensitiveFamily = s.sensitiveFamily !== true; hooks.onChange?.(); continue; }
     if (pick === 'whatif') {
       const note = await inputModal({ title: 'What if?', label: 'What is the decision? (a few words)', value: '', maxLength: 60 });
-      if (note != null) { const r = forkGame(store.state, note || `Age ${store.state.player.age}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
+      if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
     }
+    if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary !== true }; }
+    if (pick === 'appearance') await openAppearance();
+    if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();
+    if (pick === 'teams') { await openTeams(); saveGame(store.state); }
     if (pick === 'transfer') await openTransfer(hooks);
     if (pick === 'account') await openAccount(hooks);
   }
 }
 
+/** Light, Dark or System. Kept on this device for every life, and applied at once. */
+async function openAppearance() {
+  const now = getTheme();
+  const pick = await pickModal({
+    title: 'Appearance',
+    cancel: 'Back',
+    options: THEMES.map((t) => ({ value: t, label: `${THEME_NAMES[t]}${t === now ? ' · now' : ''}`,
+      })),
+  });
+  if (pick) setTheme(pick);
+}
+
 // ---------- People you know ----------
+
+// ---------- Teams and jerseys ----------
+
+/** Leagues, then a league's teams, then a team: its name, colors and players. */
+async function openTeams() {
+  for (;;) {
+    const list = kit.leagues();
+    const lg = await pickModal({ title: 'Teams and jerseys', body: 'Every league in this life. Pick one to see its teams.', cancel: 'Done',
+      options: list.map((x) => ({ value: x.league.id, label: x.league.name, sub: `${x.sport.name} · ${x.level} · ${x.teams.length} teams${x.mine ? ' · your league' : ''}` })) });
+    if (!lg) return;
+    for (;;) {
+      const L = kit.leagues().find((x) => x.league.id === lg);
+      const mine = store.state.sports?.athletes?.[store.state.player.id];
+      const myTeams = new Set(Object.values(mine?.sports ?? {}).flatMap((e) => [e.teamId, e.schoolTeamId]).filter(Boolean));
+      const t = await pickModal({ title: L.league.name, body: 'Pick a team to rename it, change its jerseys or rename its players.', cancel: 'Back',
+        options: L.teams.map(({ team, org }) => ({ value: team.id, label: team.name, sub: `${[kit.colorName(kit.colorsOf(org).home), kit.colorName(kit.colorsOf(org).away)].map((c) => c ?? 'custom').join(' and ')}${myTeams.has(team.id) ? ' · your team' : ''}` })) });
+      if (!t) break;
+      await openTeam(t);
+    }
+  }
+}
+
+function openTeam(teamId) {
+  return new Promise((resolve) => {
+    const S = store.state.sports;
+    const team = kit.numbersOf(S.teams[teamId]);
+    const org = S.orgs[team.orgId];
+    const posName = (id) => (id ? id.replace(/_/g, ' ') : '');
+    let note = '';
+    const m = openModal('<div data-body></div>', { dismissable: true, onDismiss: () => resolve() });
+    const draw = () => {
+      const c = kit.colorsOf(org);
+      m.el.querySelector('[data-body]').innerHTML = `
+        <h2>${esc(team.name)}</h2>
+        <div class="jersey-pair">${jerseySvg(c, '', 56, `${team.name} home jersey`)}${jerseySvg({ home: c.away, away: c.home }, '', 56, `${team.name} away jersey`)}</div>
+        <form data-team novalidate>
+          <div class="field"><label for="tm-name">Team name</label><input id="tm-name" maxlength="40" autocomplete="off" value="${esc(org.name)}"></div>
+          <div class="field-row">
+            <div class="field"><label for="tm-home">Home jersey</label><input id="tm-home" type="color" value="${c.home}"></div>
+            <div class="field"><label for="tm-away">Away jersey</label><input id="tm-away" type="color" value="${c.away}"></div>
+          </div>
+          <div class="jersey-swatches" role="group" aria-label="Quick colors for the home jersey">
+            ${JERSEY_COLORS.map(([n, hex]) => `<button type="button" class="jersey-swatch" data-swatch="${hex}" style="background:${hex}" aria-label="${esc(n)}" title="${esc(n)}"></button>`).join('')}
+          </div>
+          <p class="muted" data-note style="min-height:1.2em">${esc(note)}</p>
+          <button type="submit" class="btn primary">Save name and colors</button>
+        </form>
+        <div class="section-label" style="margin-top:14px">Players</div>
+        
+        ${team.roster.slice().sort((a, b) => a.num - b.num).map((x) => `<button type="button" class="choice-btn tm-player" data-player="${esc(x.id)}" ${x.id === store.state.player.id ? 'disabled' : ''}>
+          <span class="tm-num" style="background:${c.home};color:${inkOn(c.home)}">${x.num}</span>${esc(x.name)}${x.id === store.state.player.id ? ' (you)' : ''}<small>${esc(posName(x.pos))}${x.npcId ? ' · someone you know' : ''}</small></button>`).join('')}
+        <button class="btn" data-close style="margin-top:14px">Done</button>`;
+    };
+    draw();
+    m.el.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-close]')) { m.close(); return resolve(); }
+      const sw = e.target.closest('[data-swatch]');
+      if (sw) { m.el.querySelector('#tm-home').value = sw.dataset.swatch; return undefined; }
+      const pl = e.target.closest('[data-player]');
+      if (pl && !pl.disabled) {
+        const x = team.roster.find((y) => y.id === pl.dataset.player);
+        const what = await pickModal({ title: x.name, options: [{ value: 'name', label: 'Rename', sub: x.npcId ? 'They are someone you know: their name changes everywhere.' : '' }, { value: 'num', label: 'Change their number', sub: `Now ${x.num}.` }] });
+        if (what === 'name') { const v = await inputModal({ title: `Rename ${x.name}`, label: 'Full name', value: x.name, maxLength: 40 }); if (v) note = kit.renamePlayer(team.id, x.id, v).text; }
+        if (what === 'num') { const v = await inputModal({ title: `${x.name}'s number`, label: 'Shirt number (0 to 99)', value: String(x.num), maxLength: 2 }); if (v != null) note = kit.setNumber(team.id, x.id, v).text; }
+        draw();
+      }
+      return undefined;
+    });
+    m.el.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = m.el.querySelector('#tm-name').value;
+      const out = [];
+      if (name.trim() !== org.name) out.push(kit.renameTeam(org.id, name).text);
+      const home = m.el.querySelector('#tm-home').value; const away = m.el.querySelector('#tm-away').value;
+      const c = kit.colorsOf(org);
+      if (home !== c.home || away !== c.away) out.push(kit.setColors(org.id, home, away).text);
+      note = out.join(' ') || 'Nothing to change.';
+      draw();
+    });
+  });
+}
 
 function openPeople() {
   return new Promise((resolve) => {
@@ -224,7 +351,7 @@ async function openAccount(hooks) {
     const m = openModal(`
       <h2>Cloud saves</h2>
       <p class="body" data-line></p>
-      <p class="muted" style="margin-bottom:12px">Your lives, graves and People you know are sent to your account a few seconds after each save, and brought in whenever the game opens. Sign in with the same account on another device to pick up where you left off.</p>
+      <p class="muted" style="margin-bottom:12px">Your lives sync to your account.</p>
       <div class="btn-stack">
         <button class="btn primary" data-sync>Sync now</button>
         <button class="btn" data-password>Change password</button>

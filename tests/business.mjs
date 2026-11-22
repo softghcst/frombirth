@@ -8,7 +8,7 @@ import { advanceYear } from '../js/engine/yearProcessor.js';
 import { makeNpc } from '../js/engine/npcFactory.js';
 import { CAREER_BY_ID } from '../js/data/careers.js';
 import { FAMILY_BY_ID } from '../js/data/occupations.js';
-import { PROGRAMMES, TRADE_BY_ID } from '../js/data/schools.js';
+import { PROGRAMS, TRADE_BY_ID } from '../js/data/schools.js';
 import { BUSINESS_TYPES, BUSINESS_BY_ID, FROM_SERVICE, DRAWS } from '../js/data/business.js';
 import { SERVICE_BY_ID } from '../js/data/freelance.js';
 import * as biz from '../js/engine/business.js';
@@ -44,7 +44,7 @@ for (const t of BUSINESS_TYPES) {
   check(t.startup > 0 && t.perHead > t.wage * (1 + t.cogs), `${t.id}: a member of staff could never pay for themselves`);
   check(t.cogs > 0 && t.cogs < 0.6, `${t.id}: odd cost of supplies`);
   if (t.needs.trade) check(!!TRADE_BY_ID[t.needs.trade], `${t.id}: unknown trade`);
-  if (t.needs.programme) check(!!PROGRAMMES[t.needs.programme], `${t.id}: unknown program`);
+  if (t.needs.program) check(!!PROGRAMS[t.needs.program], `${t.id}: unknown program`);
   for (const id of Object.keys(t.needs.experience ?? {})) check(!!CAREER_BY_ID[id], `${t.id}: experience in an unknown career ${id}`);
 }
 for (const [s, b] of Object.entries(FROM_SERVICE)) check(!!SERVICE_BY_ID[s] && !!BUSINESS_BY_ID[b], `freelance ${s} grows into an unknown business ${b}`);
@@ -121,6 +121,8 @@ section('money: the company has its own account, and the owner is paid from prof
   let paidSome = false;
   for (let i = 0; i < 6 && b.status === 'open'; i++) {
     const carry = b.lossCarry ?? 0;
+    // Staff now and then move on; like any owner, this one hires again, so it stays a company and not a sole trader.
+    if (biz.headcount(b) < 2) staffUp(b, 2 - biz.headcount(b));
     year();
     if (!b.last) continue;
     const expect = biz.profitTax(b.last.profit, b.countryId, carry);
@@ -232,8 +234,11 @@ if (next) {
   check(!!got && (got.ownerHours <= 10), 'owning it did not put them in the manager\'s chair');
   check(!!got && (!next.npcs[managerId]?.alive || got.staff.some((s) => s.manager && s.id === managerId)), 'whoever ran it is still running it');
   check((next.careerRecord ?? []).some((rec) => (rec.businesses ?? []).some((x) => x.name === bizName)), 'the family record remembers who founded it');
+  // Trading on is one more year counted under the new owner (how many came before depends on when in its first year
+  // the bakery opened).
+  const before = got?.years ?? 0;
   year();
-  check(got?.years >= 3 && got?.last, 'and it trades on under the new owner');
+  check(got?.years === before + 1 && got?.last, 'and it trades on under the new owner');
 }
 // A child who was not named gets nothing by default when another was.
 p = life('us', 70);

@@ -1,8 +1,11 @@
-// Mortality maths and the end of a life: the will, the estate and its tax,
+// Mortality math and the end of a life: the will, the estate and its tax,
 // who inherits, and the epitaphs the life earned.
+import { idolWork } from './kpop.js';
 import { eraMortality } from './history.js';
 import { COUNTRIES } from '../data/countries.js';
-import { settleEstate, atHome } from './currency.js';
+import { publicMilestones } from './health/story.js';
+import { seriousCondition } from './health/course.js';
+import { settleEstate, atHome, rate } from './currency.js';
 import { closeForEstate } from './banking.js';
 import { trustsAtDeath } from './trusts.js';
 import { settleLife } from './insurance.js';
@@ -20,7 +23,8 @@ import { heirs } from './legacy.js';
 import { onDeath as digitalLegacy } from './digital/legacy.js';
 import { careQuality } from './living.js';
 import { CAREER_BY_ID } from '../data/careers.js';
-import { EPITAPHS, ESTATE_ALLOWANCE } from '../data/epitaphs.js';
+import { EPITAPHS } from '../data/epitaphs.js';
+import { estateTax, relationOf } from './inheritance.js';
 import { settleOnDeath as settleAnimals } from './animals.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -58,10 +62,18 @@ function careShift(p) {
 
 const ACCIDENTS = ['a traffic accident', 'a fall', 'a house fire', 'drowning', 'a freak accident'];
 
+/**
+ * For checks that are about something else (the courts, the yearly model): while `spared` is true, the yearly roll
+ * takes nobody, so a test that needs a character alive is not failed by a rare early death. The game never sets it.
+ */
+export const deathRoll = { spared: false };
+
 /** Rolls the yearly death check. @returns {?string} cause, or null if alive */
 export function rollDeath() {
   const p = player();
-  const worst = [...p.conditions].sort((a, b) => b.severity - a.severity)[0];
+  if (deathRoll.spared) return null;
+  // The most serious condition, from the older illness list or the health record.
+  const worst = [...p.conditions, ...[seriousCondition(p)].filter(Boolean)].sort((a, b) => b.severity - a.severity)[0];
   if (p.stats.health <= 0) return worst ? worst.name.replace(/^an? /, '') : 'failing health';
   if (p.legal.incarceration?.deathRow && p.legal.incarceration.served >= 2 && rng.chance(0.1)) return 'execution';
   if (p.flags.birthDeath) { delete p.flags.birthDeath; return 'complications after childbirth'; }
@@ -75,7 +87,10 @@ function lastOccupation(p) {
   if (p.politics) return p.politics.title;
   const top = (p.flags.offices ?? []).reduce((a, b) => (b.tier > (a?.tier ?? 0) ? b : a), null);
   if (top && top.tier >= 4) return `Former ${top.title}`;
+  const idol = idolWork(p);
+  if (idol?.current) return idol.title;
   if (p.career.title) return p.career.title;
+  if (idol) return idol.title;
   if (p.career.retired) return 'Retired';
   const last = p.career.history[p.career.history.length - 1];
   if (last) return `Former ${last.title}`;
@@ -107,7 +122,12 @@ export function currentWill() {
   let w = player().flags.will;
   if (typeof w === 'string') w = { mode: w === 'charity' ? 'charity' : w === 'buried' ? 'buried' : 'family' };
   if (w?.mode === 'person') w = { mode: 'named', heirs: [w.npcId] };
-  w = { mode: w?.mode ?? 'family', heirs: (w?.heirs ?? []).filter((id) => store.state.npcs[id]?.alive), items: { ...(w?.items ?? {}) },
+  // Someone named who has died is not an heir. If the will names an alternate for them (engine/estateReview.js), the
+  // alternate stands in their place; otherwise their share goes to the others named.
+  const alternates = { ...(w?.alternates ?? {}) };
+  const stand = (id) => (store.state.npcs[id]?.alive ? id : store.state.npcs[alternates[id]]?.alive ? alternates[id] : null);
+  w = { mode: w?.mode ?? 'family', heirs: [...new Set((w?.heirs ?? []).map(stand).filter(Boolean))],
+    items: Object.fromEntries(Object.entries(w?.items ?? {}).map(([a, id]) => [a, stand(id) ?? id])), alternates,
     executor: store.state.npcs[w?.executor]?.alive ? w.executor : null };
   if (w.mode === 'named' && !w.heirs.length) w.mode = 'family';
   return w;
@@ -158,7 +178,9 @@ export function willSummary() {
 const names = (list) => list.map((n) => n.firstName).join(', ').replace(/, ([^,]*)$/, ' and $1');
 
 function saveWill(w, text) {
-  player().flags.will = w;
+  // What a change does not mention stays as it was: the alternates named, the executor.
+  const old = player().flags.will && typeof player().flags.will === 'object' ? player().flags.will : {};
+  player().flags.will = { ...(old.alternates ? { alternates: old.alternates } : {}), ...(old.executor ? { executor: old.executor } : {}), ...w };
   const line = `${text} ${willSummary()}`;
   log(line);
   return result(true, line, 'neutral');
@@ -231,12 +253,24 @@ export function estatePlan() {
   const away = {};
   for (const a of kept) if (a.kind === 'property' && a.countryId && a.countryId !== c.id && COUNTRIES[a.countryId]) away[a.countryId] = (away[a.countryId] ?? 0) + Math.max(0, equity(a));
   const abroad = Object.values(away).reduce((s, v) => s + v, 0);
-  const due = [{ countryId: c.id, rate: c.estateTax, amount: Math.round(Math.max(0, gross - abroad - localMoney(ESTATE_ALLOWANCE, c)) * c.estateTax) },
-    ...Object.entries(away).map(([id, v]) => ({ countryId: id, rate: COUNTRIES[id].estateTax, amount: Math.round(v * COUNTRIES[id].estateTax) }))].filter((d) => d.amount > 0);
+  // Who inherits decides the tax where it is charged by heir (data/inheritance.js): a spouse, children, or others.
+  const kids = living('child');
+  const takers = (will.mode === 'charity' ? kids.map((k) => [k, reservedShare() / kids.length]) : willHeirs())
+    .map(([n, share]) => ({ relation: relationOf(n.role), share }));
+  // Property abroad is valued in this country's money here; each country's scale is applied in its own, at today's rate.
+  const there = (id, v) => { const fx = rate(c.currency.code, COUNTRIES[id].currency.code); return Math.round(estateTax(v * fx, COUNTRIES[id], takers) / fx); };
+  const due = [{ countryId: c.id, amount: estateTax(Math.max(0, gross - abroad), c, takers) },
+    ...Object.entries(away).map(([id, v]) => ({ countryId: id, amount: there(id, v) }))]
+    .map((d) => ({ ...d, rate: d.amount && (d.countryId === c.id ? gross - abroad : away[d.countryId]) > 0 ? d.amount / (d.countryId === c.id ? gross - abroad : away[d.countryId]) : 0 }))
+    .filter((d) => d.amount > 0);
   const owed = due.reduce((s, d) => s + d.amount, 0);
   plan.tax = Math.max(0, Math.min(liquid, owed));
   // Paid from cash and investments only; if that does not cover it, each country takes its share of what there is.
   plan.taxBy = due.map((d) => ({ ...d, name: COUNTRIES[d.countryId].name, amount: owed > plan.tax ? Math.round(d.amount * plan.tax / owed) : d.amount }));
+  if (owed > plan.tax && plan.taxBy.length) {
+    plan.taxBy.at(-1).amount += plan.tax - plan.taxBy.reduce((s, t) => s + t.amount, 0); // rounding: the parts add up to the whole
+    for (const t of plan.taxBy) { const base = t.countryId === c.id ? gross - abroad : away[t.countryId]; t.rate = base > 0 ? t.amount / base : 0; }
+  }
   // Winding the estate up costs something, from the cash, after the tax (see PROBATE).
   plan.probate = Math.max(0, Math.min(liquid - plan.tax, probateCost(gross - plan.tax)));
   plan.executor = executor() ? `${executor().firstName} ${executor().lastName}` : null;
@@ -317,7 +351,7 @@ function lifeSummary(p, plan) {
     neverMoved: k.countriesLived === 1 && !(p.flags.visited ?? []).length, holidays: k.holidays ?? 0,
     surgeries: k.surgeries ?? 0, mood: p.stats.mood, health: p.stats.health,
     reigned: !!p.flags.reigned, abdicated: !!p.flags.abdicated, consort: p.royal?.by === 'marriage' && ['monarch', 'heir', 'royal'].includes(p.royal.rank),
-    bornTitled: p.royal?.by === 'birth', honoured: !!p.flags.honouredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
+    bornTitled: p.royal?.by === 'birth', honored: !!p.flags.honoredAs, lostTitle: !!p.flags.lostTitle && !p.royal,
     marriedRoyal: !!p.flags.marriedRoyal, image: p.royal?.image ?? 0,
     topOffice: Math.max(0, p.politics?.tier ?? 0, ...(p.flags.offices ?? []).map((o) => o.tier)), yearsInOffice: k.yearsInOffice ?? 0,
     electionsWon: k.electionsWon ?? 0, electionsLost: k.electionsLost ?? 0, ruledAlone: !!p.flags.ruledAlone,
@@ -383,7 +417,7 @@ export function die(cause) {
     spouseName: spouse ? `${spouse.firstName} ${spouse.lastName}` : null,
     lifetimeEarned: p.finance.lifetimeEarned,
     estate: plan,
-    milestones: p.milestones,
+    milestones: publicMilestones(p.milestones),
     counters: p.counters,
     generation: p.generation,
     continuedAs: null,

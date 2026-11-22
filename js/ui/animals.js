@@ -2,7 +2,7 @@
 // profile, the chronicle of a house, and the roads between them.
 //
 //   Family archive → Our Animal Family → an animal → its memories → the life story
-//   Holdings → Household animals → an animal → shared memories → the house chronicle
+//   People → Pets & Animals → an animal → shared memories → the house chronicle
 //
 // Every screen reads the family's record (engine/animals.js) as it stands;
 // nothing shown here is kept anywhere else. Where the player is, and how each
@@ -30,7 +30,7 @@ const nav = createNav();
 let modal = null;
 let api = null;
 /** Set by the People tab: how to open a person's profile, and the stat editor. */
-const hooks = { openPerson: null, editStats: null };
+const hooks = { openPerson: null, editStats: null, openAthletics: null };
 export const connect = (h) => Object.assign(hooks, h);
 
 // ---------- Pieces ----------
@@ -100,6 +100,8 @@ function archive() {
     <button class="row" data-go="album"><div class="avatar glyph">🐾</div>
       <div class="main"><strong>Our Animal Family</strong><small>Every paw print leaves a memory.</small></div>
       <div class="side">${n || ''}</div></button>
+    <button class="row" data-go="athletics"><div class="avatar glyph">🏅</div>
+      <div class="main"><strong>Athletic legacy</strong><small>Every season, every title, every generation.</small></div></button>
     <button class="row" data-go="tree"><div class="avatar glyph">🌳</div>
       <div class="main"><strong>Family tree</strong><small>Every relative, living or dead.</small></div></button>
     <button class="row" data-go="digital"><div class="avatar glyph">📜</div>
@@ -213,7 +215,7 @@ function profile(step) {
       ${kv([['Owner', owner ? personChip(owner) : 'Not recorded'], alive ? ['Main caregiver', main ? personChip(main) : 'Not recorded'] : null,
     alive && zoo.helpersOf(a).length ? ['Also helping', `<span class="chips end">${zoo.helpersOf(a).map((r) => personChip(r)).join('')}</span>`] : null,
     [alive ? 'Lives at' : 'Last home', home ? `${esc(home.label)}${place(home) ? `, ${esc(place(home))}` : ''}` : '']])}
-      <p class="muted zoo-note">Who owns an animal, who looks after it day to day, and where it lives are kept as three separate things.</p>
+      
       ${a.kit?.length ? `<div class="kv"><span>At home</span><span>${esc(cap(a.kit.join(', ')))}</span></div>` : ''}
       ${a.permit ? `<div class="kv"><span>License</span><span>Held since ${a.permit.year}</span></div>` : ''}
       ${a.lease ? `<div class="kv"><span>Leased from</span><span>${esc(a.lease.name)} · ${fmtMoney(a.lease.fee, COUNTRIES[player().countryId])} a year</span></div>` : ''}
@@ -237,7 +239,7 @@ function profile(step) {
       if (!skills.length) return `<p class="empty">There is nothing a ${esc(sp.name)} needs to be taught.</p>`;
       return `${skills.map((s) => `<div class="zoo-skill"><div class="kv"><span>${esc(s.name)}</span><span>${s.progress >= 100 ? `Learned ${s.learnedYear}${s.by ? ` with ${esc(first(s.by))}` : ''}` : s.sessions ? `${s.sessions} ${s.sessions === 1 ? 'year' : 'years'} of practice` : 'Not started'}</span></div>
           <div class="pol-track" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${s.progress}" aria-label="${esc(s.name)}"><i class="fill ${s.progress >= 100 ? 'high' : 'mid'}" style="width:${s.progress}%"></i></div></div>`).join('')}
-        <p class="muted zoo-note">Taught with food, praise and patience. Some of it takes more than a year.</p>`;
+        `;
     },
     health: () => {
       const full = zoo.healthAccess(a.id) === 'full';
@@ -305,7 +307,7 @@ function chronicle(step) {
     ${before.length ? `<div class="section-label">Lived here once</div>${before.map(row).join('')}` : ''}
     <div class="section-label">What happened here</div>
     ${events.length ? byYear(events, (e) => eventRow(e, step.ui, { chronicle: false })) : '<p class="empty">Nothing has been recorded under this roof yet.</p>'}
-    <p class="muted zoo-note">The chronicle keeps what happened with the family's animals in this house.</p>` };
+    ` };
 }
 
 /** The animal lines from the life story of someone who came before. */
@@ -390,6 +392,7 @@ async function onClick(e) {
     if (el.dataset.go === 'album') { note(); nav.open('album'); return show(); }
     if (el.dataset.go === 'story') return openGlobalStory(api);
     if (el.dataset.go === 'digital') return import('./digital.js').then((m) => m.openDigitalLife(api, { section: 'archive' }));
+    if (el.dataset.go === 'athletics') { note(); shut(); return hooks.openAthletics?.(api, 'legacy', () => show()); }
     note(); shut();
     return openFamilyTree((npc) => hooks.openPerson?.(npc, api, () => show()));
   }
@@ -486,13 +489,3 @@ export const openAnimalProfile = (tabApi, animalId, ui = {}) => { zoo.reconcile(
 /** The chronicle of the house the player lives in. */
 export const openHouseChronicle = (tabApi, key = zoo.playerHome().key) => start(tabApi, 'chronicle', { key });
 
-/** For the Holdings tab: the animals of the player's household, and the way into the chronicle. */
-export function householdAnimalsHtml() {
-  zoo.reconcile();
-  const here = zoo.householdAnimals();
-  const has = zoo.houseChronicle(zoo.playerHome().key).length;
-  if (!here.length && !has) return '';
-  return `<div class="section-label">Household animals</div>
-    ${here.map((a) => `<button class="row" data-animal="${a.id}">${animalFace(a)}<div class="main"><strong>${esc(a.name)}</strong><small>${esc(cap(speciesOf(a.speciesId).name))} · ${esc(zoo.stageOf(a))} · ${esc(zoo.familyLink(a))}</small></div></button>`).join('') || '<p class="muted zoo-note">No animal lives here now.</p>'}
-    <div class="btn-stack" style="margin-bottom:14px"><button class="btn" data-go="chronicle">House chronicle</button></div>`;
-}

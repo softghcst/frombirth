@@ -35,10 +35,10 @@ export default [
   },
   {
     id: 'era_hard_times', category: 'history', ageRange: [14, 120], queuedOnly: true, cooldown: 0,
-    text: 'Since the crash, work is scarce and money scarcer. There are queues for bread in the town.',
+    text: 'Since the crash, work is scarce and money scarcer. There are lines for bread in the town.',
     choices: [
       { label: 'Tighten your belt and save what you can', outcomes: out('Thin soup, mended clothes, and a little put by.', e('hard:save')) },
-      { label: 'Share what you have with neighbours worse off', outcomes: out('You had little, and gave some of it anyway.', e('hard:share')) },
+      { label: 'Share what you have with neighbors worse off', outcomes: out('You had little, and gave some of it anyway.', e('hard:share')) },
       { label: 'Take any odd job going', outcomes: out('A day here, a day there.', e('hard:work')) },
     ],
   },

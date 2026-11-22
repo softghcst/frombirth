@@ -23,12 +23,12 @@ export default [
   {
     id: 'sibling_needs_help', category: 'money', ageRange: [22, 80], cooldown: 14, cast: { sib: 'sibling' },
     castRequires: [need('cast.sib.age', '>=', 20), need('cast.sib.money', '<=', 40)], requires: [need('cashBase', '>=', 4000)],
-    text: '{sib} rings late, and gets to the point slowly. It has been a hard year. Could you help with the rent, just until things turn?',
+    text: '{sib} calls late, and gets to the point slowly. It has been a hard year. Could you help with the rent, just until things turn?',
     choices: [
       { label: 'Give them the money ({$1500})', outcomes: [any('You send it that night and tell {sib} it is a gift, not a debt.', 'good', money('give', { target: 'sib', base: 1500 }), mem('sib', 'helped_rent', 'You paid my rent the year everything went wrong.'))] },
       { label: 'Lend it, to be paid back ({$1500})', outcomes: [any('You agree on three years, and write it down so that neither of you has to remember.', 'neutral', money('lend', { target: 'sib', base: 1500, years: 3 }))] },
       { label: 'Help another way', outcomes: [any('You spend a weekend going through job adverts and forms with {sib}. It is not money. It is not nothing.', 'good', rel('sib', 5), hid('karma', 2))] },
-      { label: 'Say you cannot', outcomes: [any('"No, of course. Forget I asked." {sib} rings off quickly.', 'bad', rel('sib', -10))] },
+      { label: 'Say you cannot', outcomes: [any('"No, of course. Forget I asked." {sib} hangs up quickly.', 'bad', rel('sib', -10))] },
     ],
   },
   {
@@ -86,7 +86,7 @@ export default [
     id: 'wedding_budget', category: 'money', ageRange: [18, 80], cooldown: 99, weight: 3, cast: { love: 'partner' }, castRequires: [need('cast.love.flags.engaged', '>=', 100)],
     text: 'The wedding. {love} has a folder of ideas, and you have a number in your head that is a good deal smaller. It is time to agree what you will spend.',
     choices: [
-      { label: 'Small and close: family and a long lunch', outcomes: [any('A dozen people, a good meal, and nothing owed afterwards. {love} says it was perfect, and means it.', 'good', rel('love', 5), learn(2, 'wedding'))] },
+      { label: 'Small and close: family and a long lunch', outcomes: [any('A dozen people, a good meal, and nothing owed afterward. {love} says it was perfect, and means it.', 'good', rel('love', 5), learn(2, 'wedding'))] },
       { label: 'Save for a year first', outcomes: [any('You agree a figure and put money aside for it every month. The wedding waits, and is paid for.', 'good', money('save', { share: 0.25 }), learn(3, 'wedding'), rel('love', 2))] },
       { label: 'The day of your dreams ({$15000})', requires: [need('cashBase', '>=', 15000)], outcomes: [any('A day nobody will forget, and a bill you will remember a while longer.', 'good', money('spend', { base: 15000, what: 'Your wedding' }), rel('love', 8), st('mood', 6))] },
       { label: 'Put it on a card and worry later', requires: [need('hasCard', '==', true)], outcomes: [any('It is a wonderful day. The statement in January is less so.', 'neutral', money('spend', { base: 8000, what: 'Your wedding, on the card', card: true }), rel('love', 6), st('mood', 3))] },
@@ -96,8 +96,8 @@ export default [
     id: 'baby_savings', category: 'money', ageRange: [18, 55], cooldown: 99, weight: 4, requires: [need('flags.pregnancy', '!=', false)],
     text: 'A baby is coming. Somebody at work hands you a list of everything you will apparently need. It runs to two pages, and the total at the bottom is not small.',
     choices: [
-      { label: 'Start putting money aside now', outcomes: [any('You set aside a little each month. By the time the baby comes, the pram is paid for.', 'good', money('save', { share: 0.2 }), learn(3, 'baby'))] },
-      { label: 'Buy secondhand from other parents', outcomes: [any('A cot from a neighbor, clothes in bin bags from a cousin. The baby does not notice.', 'good', money('spend', { base: 300, what: 'Secondhand things for the baby' }), learn(2, 'baby'))] },
+      { label: 'Start putting money aside now', outcomes: [any('You set aside a little each month. By the time the baby comes, the stroller is paid for.', 'good', money('save', { share: 0.2 }), learn(3, 'baby'))] },
+      { label: 'Buy secondhand from other parents', outcomes: [any('A cot from a neighbor, clothes in trash bags from a cousin. The baby does not notice.', 'good', money('spend', { base: 300, what: 'Secondhand things for the baby' }), learn(2, 'baby'))] },
       { label: 'Buy everything new', outcomes: [any('It is all beautiful, and some of it will be used.', 'neutral', money('spend', { base: 3500, what: 'Everything new for the baby' }), st('mood', 4))] },
     ],
   },

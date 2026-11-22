@@ -33,7 +33,7 @@ export function communities() {
   };
   for (const def of COMMUNITIES) {
     if (!platformOpen(def.platform)) continue;
-    // A neighbourhood group belongs to a place: moving brings a new one, and the old one stays in the record.
+    // A neighborhood group belongs to a place: moving brings a new one, and the old one stays in the record.
     if (def.local) make(`${def.id}:${p.countryId}:${p.city}`, def, { name: `${p.city} ${def.name}`, size: 600, place: `${p.city}` });
     else make(def.id, def);
   }
@@ -202,7 +202,7 @@ export function meetInPerson(npcId) {
   acts()[`meet:${n.id}`] = true;
   n.meters.relationship = clamp(n.meters.relationship + rng.int(6, 12));
   n.lastInteractionAge = p.age;
-  const text = abroad ? `You travelled to ${COUNTRIES[n.flags.abroad].name} to meet ${n.firstName} in person at last. They were exactly like their messages, and taller.` : `You met ${n.firstName} for coffee, in person, after all this time online.`;
+  const text = abroad ? `You traveled to ${COUNTRIES[n.flags.abroad].name} to meet ${n.firstName} in person at last. They were exactly like their messages, and taller.` : `You met ${n.firstName} for coffee, in person, after all this time online.`;
   recordEvent({ kind: 'met_online_friend', charIds: [p.id, n.id], ref: { type: 'npc', id: n.id }, summary: text, visibility: 'family', once: `met_${n.id}` });
   return result(true, text, 'good');
 }

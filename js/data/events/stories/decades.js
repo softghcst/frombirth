@@ -36,7 +36,7 @@ export default [
   }),
   era({
     id: 'dec_portrait', years: [1855, 1910], ageRange: [4, 90],
-    text: 'A travelling photographer has set up in the square, offering portraits. You have to sit perfectly still for half a minute.',
+    text: 'A traveling photographer has set up in the square, offering portraits. You have to sit perfectly still for half a minute.',
     choices: [
       { label: 'Have a family portrait taken', outcomes: [any('Nobody smiled: you could not hold a smile that long. It went on the wall above the fireplace.', 'good', cash(-150), st('mood', 3), ms('Sat for a family photograph.'))] },
       { label: 'Not worth the money', outcomes: [any('Your face went unrecorded for another year.', 'neutral')] },
@@ -47,12 +47,12 @@ export default [
     text: 'The electricity company is wiring the street. For a fee they will bring it into the house: light at the turn of a switch.',
     choices: [
       { label: 'Pay to have it put in', outcomes: [any('The first evening, everyone kept switching it on and off just to see it happen.', 'good', cash(-1500), st('mood', 4), ms('Electric light came into the house.'))] },
-      { label: 'The oil lamps are fine', outcomes: [any('For now. The neighbours\' windows look very bright.', 'neutral')] },
+      { label: 'The oil lamps are fine', outcomes: [any('For now. The neighbors\' windows look very bright.', 'neutral')] },
     ],
   }),
   era({
     id: 'dec_motorcar', years: [1900, 1915], ageRange: [5, 80],
-    text: 'A motor car has come through {city}, scattering chickens and frightening every horse on the high street. The driver has stopped outside the inn.',
+    text: 'A motor car has come through {city}, scattering chickens and frightening every horse on Main Street. The driver has stopped outside the inn.',
     choices: [
       { label: 'Ask the driver for a ride', check: chk(0.45, { 'stats.charm': 0.6 }), outcomes: [ok('Twenty miles an hour down the London road. You held your hat the whole way.', st('mood', 7), ms('Rode in a motor car for the first time.')), bad('He laughed and said not today.', st('mood', -1))] },
       { label: 'Join the people complaining about the noise', outcomes: [any('A letter to the paper, signed by thirty people. The cars kept coming.', 'neutral')] },
@@ -68,7 +68,7 @@ export default [
   }),
   era({
     id: 'dec_suffrage', years: [1905, 1918], places: ['uk', 'us'], ageRange: [16, 80],
-    text: 'There is a great march through the city for votes for women. Banners, sashes, and a lot of angry men on the pavements.',
+    text: 'There is a great march through the city for votes for women. Banners, sashes, and a lot of angry men on the sidewalks.',
     choices: [
       { label: 'March with them', check: chk(0.75), outcomes: [ok('Miles of you, singing. You will remember it all your life.', hid('karma', 3), st('mood', 4), ms('Marched for votes for women.')), bad('The police broke up the end of the march, and you spent a night in the cells.', heat(5), st('mood', -2), ms('Arrested marching for votes for women.'))] },
       { label: 'Sign the petition', outcomes: [any('Your name, among a quarter of a million.', 'good', hid('karma', 1))] },
@@ -95,7 +95,7 @@ export default [
   }),
   era({
     id: 'dec_talkies', years: [1927, 1932], ageRange: [6, 90],
-    text: 'The picture house is showing a film where the actors talk, out loud, from the screen. There is a queue round the block.',
+    text: 'The picture house is showing a film where the actors talk, out loud, from the screen. There is a line around the block.',
     choices: [
       { label: 'Queue for it', outcomes: [any('When the first line was spoken, the whole room gasped.', 'good', cash(-15), st('mood', 5), ms('Saw the first talking picture.'))] },
       { label: 'Go three times', outcomes: [any('You can recite the songs now, and do.', 'good', cash(-45), st('mood', 6), tal('acting', 2))] },
@@ -106,9 +106,9 @@ export default [
     id: 'dec_bank_run', years: [1929, 1933], ageRange: [18, 90],
     text: 'There is a crowd outside the bank, shouting. Word is going round that it will not open tomorrow.',
     choices: [
-      { label: 'Join the queue and take your money out', outcomes: [any('You got to the counter an hour before they closed the doors. Your savings went under the mattress.', 'neutral', st('mood', -2))] },
+      { label: 'Get in line and take your money out', outcomes: [any('You got to the counter an hour before they closed the doors. Your savings went under the mattress.', 'neutral', st('mood', -2))] },
       { label: 'Trust the bank', check: chk(0.5), outcomes: [ok('It held. Others did not.', st('mood', 2)), bad('It did not open again. Part of what you had is gone for good.', cash(-2000), st('mood', -10))] },
-      { label: 'Help the old woman at the back of the queue', outcomes: [any('You held her place and walked her home after.', 'good', hid('karma', 3))] },
+      { label: 'Help the old woman at the back of the line', outcomes: [any('You held her place and walked her home after.', 'good', hid('karma', 3))] },
     ],
   }),
   era({
@@ -132,7 +132,7 @@ export default [
     id: 'dec_rationing', years: [1940, 1948], places: WARTIME, ageRange: [8, 90],
     text: 'Everything is rationed: one egg a week, a scrape of butter, and never enough sugar.',
     choices: [
-      { label: 'Dig the garden for vegetables', outcomes: [any('Potatoes, onions and a great many cabbages. You have never been healthier.', 'good', st('health', 3), hid('discipline', 2))] },
+      { label: 'Dig up the yard for vegetables', outcomes: [any('Potatoes, onions and a great many cabbages. You have never been healthier.', 'good', st('health', 3), hid('discipline', 2))] },
       { label: 'Buy extra on the black market', check: chk(0.7), outcomes: [ok('Nylons, chocolate and no questions.', cash(-150), hid('karma', -3), st('mood', 2)), bad('A policeman took a keen interest in where it came from.', cash(-150), heat(10), hid('karma', -3))] },
       { label: 'Share yours with the family next door', outcomes: [any('They had five children and nothing. You had a little.', 'good', hid('karma', 4), st('health', -1))] },
     ],
@@ -141,9 +141,9 @@ export default [
   // ---------- Mid-century ----------
   era({
     id: 'dec_polio', years: [1955, 1962], ageRange: [3, 50],
-    text: 'There is a vaccine against polio at last. The queue at the school hall stretches round the playground.',
+    text: 'There is a vaccine against polio at last. The line at the school hall stretches round the playground.',
     choices: [
-      { label: 'Join the queue', outcomes: [any('A sugar lump, or a quick jab, and one fear fewer.', 'good', st('health', 3))] },
+      { label: 'Get in line', outcomes: [any('A sugar lump, or a quick shot, and one fear fewer.', 'good', st('health', 3))] },
       { label: 'Wait and see', outcomes: [any('You went the next year, with everyone else.', 'neutral')] },
     ],
   }),
@@ -157,7 +157,7 @@ export default [
   }),
   era({
     id: 'dec_rock_and_roll', years: [1955, 1963], ageRange: [13, 24],
-    text: 'There is a new kind of music on the radio, loud and fast, and your parents say it is the end of civilisation.',
+    text: 'There is a new kind of music on the radio, loud and fast, and your parents say it is the end of civilization.',
     choices: [
       { label: 'Buy the record and wear it out', outcomes: [any('You learned every word, and so did everyone in earshot.', 'good', tal('music', 2), st('mood', 4))] },
       { label: 'Go to the dance at the church hall', outcomes: [any('Somebody\'s cousin had a guitar, and the vicar left early.', 'good', tal('dance', 3), st('charm', 1))] },
@@ -177,7 +177,7 @@ export default [
     text: 'A march for civil rights and equal treatment under the law is coming through {city}. People you know are going.',
     choices: [
       { label: 'March', outcomes: [any('Arm in arm, singing, past people who shouted and people who joined in.', 'good', hid('karma', 4), st('mood', 3), ms('Marched for civil rights.'))] },
-      { label: 'Give money to the organisers', outcomes: [any('For bus fares and lawyers. It mattered.', 'good', cash(-100), hid('karma', 2))] },
+      { label: 'Give money to the organizers', outcomes: [any('For bus fares and lawyers. It mattered.', 'good', cash(-100), hid('karma', 2))] },
       { label: 'Stay home', outcomes: [any('You watched the reports that evening.', 'neutral')] },
     ],
   }),
@@ -185,15 +185,15 @@ export default [
     id: 'dec_moon_landing', years: [1969, 1969], ageRange: [4, 100], priority: true,
     text: 'Tonight two men are going to walk on the Moon. The whole street has crowded into the houses with a television.',
     choices: [
-      { label: 'Stay up all night to watch', outcomes: [any('Grey, ghostly pictures, and a voice from a quarter of a million miles away. You will never forget it.', 'good', st('mood', 6), st('intellect', 2), ms('Watched the first people walk on the Moon.'))] },
+      { label: 'Stay up all night to watch', outcomes: [any('Gray, ghostly pictures, and a voice from a quarter of a million miles away. You will never forget it.', 'good', st('mood', 6), st('intellect', 2), ms('Watched the first people walk on the Moon.'))] },
       { label: 'Listen on the radio instead', outcomes: [any('Somehow the crackle made it more real.', 'good', st('mood', 4), ms('Heard the Moon landing as it happened.'))] },
     ],
   }),
 
   // ---------- The late twentieth century ----------
   era({
-    id: 'dec_petrol_queue', years: [1973, 1974], ageRange: [17, 90],
-    text: 'The oil crisis: petrol is rationed, the queues stretch for blocks, and there are signs saying "No fuel today".',
+    id: 'dec_gas_queue', years: [1973, 1974], ageRange: [17, 90],
+    text: 'The oil crisis: gas is rationed, the lines stretch for blocks, and there are signs saying "No fuel today".',
     choices: [
       { label: 'Queue from dawn', outcomes: [any('Three hours for half a tank.', 'neutral', st('mood', -2))] },
       { label: 'Get a bicycle', outcomes: [any('Your legs complained for a month and then stopped complaining.', 'good', st('health', 3), cash(-300))] },

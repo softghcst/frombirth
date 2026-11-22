@@ -49,10 +49,27 @@ export const NIGHT_OUT_COST = 120;
 export const NIGHTLIFE_AGE = 18;
 
 /**
+ * Things done for the sake of charm, once a year each. cost in base units; charm: the range gained (less as charm
+ * gets high: being liked has diminishing returns); minAge; the rest is what else it does.
+ */
+export const CHARM_ACTIVITIES = [
+  { id: 'style', label: 'A stylist and a new wardrobe', cost: 900, minAge: 14, charm: [2, 4], mood: 3,
+    text: 'A stylist went through your wardrobe without mercy. You walk into rooms differently now.' },
+  { id: 'speaking', label: 'Public speaking course', cost: 150, minAge: 14, charm: [2, 3], willpower: 2,
+    text: 'Every week of the course you stood up and talked while strangers timed you. By the end of the year you could hold a room.' },
+  { id: 'dance', label: 'Dance classes', cost: 350, minAge: 8, charm: [1, 3], health: 2, mood: 2,
+    text: 'Two left feet, then one, then none. You move better, and it shows when you walk in anywhere.' },
+  { id: 'improv', label: 'Improv class', cost: 250, minAge: 12, charm: [2, 3], mood: 3, acting: 2,
+    text: 'You learned to say "yes, and" and mean it. You are quicker in conversation, and funnier.' },
+  { id: 'etiquette', label: 'Etiquette course', cost: 600, minAge: 10, charm: [1, 3], discipline: 1,
+    text: 'Which fork, how to introduce people, when to write a thank-you note. Small things that people notice.' },
+];
+
+/**
  * Holidays. cost is for one person, in base units; each companion adds 60%.
  * kind groups them in the menu. mood/health/intellect/charm are what the
- * traveller gains. kids: how much closer children aged 3 to 15 feel afterwards.
- * home: the country the place is in; travellers from elsewhere pay farMult more.
+ * traveler gains. kids: how much closer children aged 3 to 15 feel afterward.
+ * home: the country the place is in; travelers from elsewhere pay farMult more.
  * risky: chance of an injury. sea / park pick the mishaps and the stories.
  */
 export const HOLIDAY_KINDS = [
@@ -77,7 +94,7 @@ export const HOLIDAYS = [
   { id: 'cruise_fjords', kind: 'cruise', name: 'Two weeks cruising the fjords', cost: 9000, mood: 14, intellect: 2 },
   { id: 'cruise_world', kind: 'cruise', name: 'A world cruise, three months', cost: 48000, mood: 20, intellect: 3, charm: 2 },
 ];
-/** Flying abroad: a fortnight in the country you choose. cost is the whole trip for one. */
+/** Flying abroad: two weeks in the country you choose. cost is the whole trip for one. */
 export const CABINS = [
   { id: 'economy', name: 'Economy', cost: 3200, mood: 10, blurb: 'Knees against the seat in front. You get there.' },
   { id: 'business', name: 'Business class', cost: 8500, mood: 12, blurb: 'A seat that becomes a bed, and a real glass.' },

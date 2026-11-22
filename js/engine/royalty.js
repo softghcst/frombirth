@@ -1,7 +1,7 @@
 // Royalty and nobility: being born into a title, meeting and marrying a
-// royal, public duties, the public's opinion, succession, and honours.
+// royal, public duties, the public's opinion, succession, and honors.
 //
-// On the player:  p.royal = { countryId, rank, by: 'birth'|'marriage'|'honour',
+// On the player:  p.royal = { countryId, rank, by: 'birth'|'marriage'|'honor',
 //                             line, image, reigning, spouseId? }
 //   line   place in the succession (1 is next), or null if not in it
 //   image  the public's opinion, 0–100. Duties raise it; scandal sinks it.
@@ -69,7 +69,7 @@ export function standing(p = player()) {
   if (r.rank === 'heir') return `${t} of ${realm(c.id)}${r.line === 1 ? ', heir to the throne' : ''}`;
   if (r.waiting) return `Heir to the title of ${t.toLowerCase()}`;
   if (r.rank === 'royal') return `${t} of ${realm(c.id)}${r.by === 'marriage' ? ', by marriage' : r.line ? `, ${ordinal(r.line)} in line` : ''}`;
-  return `${r.rank === 'knight' && t === 'Sir' ? 'Knight' : ownTitle(p) ?? t}${r.by === 'honour' ? ', for services to the country' : ''}`;
+  return `${r.rank === 'knight' && t === 'Sir' ? 'Knight' : ownTitle(p) ?? t}${r.by === 'honor' ? ', for services to the country' : ''}`;
 }
 const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : Math.min(n % 10, 4) % 4]}`;
 
@@ -142,7 +142,7 @@ export function birthKind(countryId, wish) {
 export function bornInto(p, kind, seat) {
   const m = MONARCHIES[p.countryId];
   if (!m || !kind) return;
-  if (kind === 'royal' && seat) {
+  if ((kind === 'royal' || kind === 'heir') && seat) {
     const d = seat.dynasty;
     const me = dyn.seatPlayer(d, seat, p);
     const place = dyn.placeOf(d, me.id);
@@ -395,18 +395,18 @@ export function renounce() {
   return result(true, text, 'neutral');
 }
 
-/** An honour from the crown for a commoner who has earned one. */
-export function honour(rank) {
+/** An honor from the crown for a commoner who has earned one. */
+export function honor(rank) {
   const p = player();
   const c = country();
   if (!monarchy(c) || (p.royal && p.royal.rank !== 'knight')) return '';
-  p.royal = { countryId: c.id, rank, by: 'honour', line: null, image: 60, reigning: false };
-  p.flags.honouredAs = rank;
+  p.royal = { countryId: c.id, rank, by: 'honor', line: null, image: 60, reigning: false };
+  p.flags.honoredAs = rank;
   milestone(`Was made ${titleOf(c.id, rank, p.gender) === 'Sir' || titleOf(c.id, rank, p.gender) === 'Dame' ? `a ${p.gender === 'female' ? 'dame' : 'knight'}` : `${/^[AEIOU]/.test(titleOf(c.id, rank, p.gender)) ? 'an' : 'a'} ${titleOf(c.id, rank, p.gender).toLowerCase()}`}.`, 'fame');
   return styledName(p);
 }
 
-/** Yearly: the allowance, what the public thinks, the succession, and invitations and honours for commoners. */
+/** Yearly: the allowance, what the public thinks, the succession, and invitations and honors for commoners. */
 export function tickRoyalty() {
   const p = player();
   const c = country();
@@ -419,7 +419,7 @@ export function tickRoyalty() {
     const far = store.state.dynasties[old.countryId];
     dyn.tickDynasty(far); tickReign(far);
   }
-  // Someone who leaves the country leaves the role (a title of honour or nobility travels with them).
+  // Someone who leaves the country leaves the role (a title of honor or nobility travels with them).
   if (r && r.countryId !== c.id && ROYAL_RANKS.includes(r.rank)) {
     delete p.royal;
     log('Having left the country, you are no longer a working member of the royal family.', 'system', 'neutral');
@@ -529,19 +529,19 @@ export function tickRoyalty() {
     }
   }
 
-  // For commoners: an invitation to the palace, and now and then an honour.
+  // For commoners: an invitation to the palace, and now and then an honor.
   if (p.age >= 18 && p.age <= 55 && !p.legal.incarceration && invitable() && !livingNpcs().some((n) => n.role === 'spouse' || n.role === 'partner')
       && p.flags.palaceAge !== p.age && rng.chance(0.3)) {
     p.flags.palaceAge = p.age;
     store.state.pendingEvents.push({ id: 'palace_invitation', cast: {} });
   }
-  if (m.honours && p.age >= 30 && !p.royal && !p.flags.honoured && !hasRecord(p, { sealed: true })) {
+  if (m.honors && p.age >= 30 && !p.royal && !p.flags.honored && !hasRecord(p, { sealed: true })) {
     const great = p.counters.donated >= 1000000 || p.hidden.fame >= 90;
     const good = p.counters.donated >= 100000 || p.hidden.fame >= 65 || (p.counters.livesSaved ?? 0) >= 2;
     if ((great || good) && rng.chance(0.2)) {
-      p.flags.honoured = true;
-      p.flags.honourRank = great ? 'baron' : 'knight';
-      store.state.pendingEvents.push({ id: 'honours_letter', cast: {} });
+      p.flags.honored = true;
+      p.flags.honorRank = great ? 'baron' : 'knight';
+      store.state.pendingEvents.push({ id: 'honors_letter', cast: {} });
     }
   }
 }

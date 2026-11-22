@@ -16,7 +16,7 @@ function estateCard(g, c) {
   if (e.gross <= 0 && !shares.some((s) => s.items?.length)) return '<div class="card"><h3>The estate</h3><p class="muted">There was nothing to leave. The debts were written off.</p></div>';
   const rows = [['Everything they owned', fmtMoney(e.gross, c)]];
   if (e.tax && e.taxBy?.length > 1) for (const t of e.taxBy) rows.push([`Estate tax, ${t.name} (${Math.round(t.rate * 100)}%)`, `− ${fmtMoney(t.amount, c)}`]);
-  else if (e.tax) rows.push([`Estate tax (${Math.round((e.taxBy?.[0]?.rate ?? c.estateTax) * 100)}%)`, `− ${fmtMoney(e.tax, c)}`]);
+  else if (e.tax) rows.push([`Estate tax (${Math.round((e.taxBy?.[0]?.rate ?? 0) * 100)}% of the estate)`, `− ${fmtMoney(e.tax, c)}`]);
   if (e.charity) rows.push(['Left to charity', fmtMoney(e.charity, c)]);
   for (const s of shares) {
     rows.push([`${s.name} (${s.role.toLowerCase()})`, fmtMoney(s.amount, c)]);
@@ -89,7 +89,7 @@ export function renderObituary(app, g, hooks) {
         ${g.milestones.map((m) => `<div class="kv"><span>Age ${m.age}</span><span>${esc(m.text)}</span></div>`).join('')}
       </div>
       ${heirs.length ? `<div class="card"><h3>Carry on as ${heirs[0].label.includes('grand') ? 'a grandchild' : 'a child'}</h3>
-        <p class="muted" style="margin-bottom:10px">Step into the life of one of the family. They keep their own schooling, work, savings and loved ones, and whatever they were left.</p>
+        
         <div class="btn-stack">${heirs.map((h) => `<button class="btn" data-heir="${h.id}">Continue as ${esc(h.name)} <small>${esc(h.label)}, age ${h.age}</small></button>`).join('')}</div>
       </div>` : ''}
       <div class="btn-stack">

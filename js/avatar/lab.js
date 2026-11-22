@@ -1,7 +1,7 @@
 // The avatar lab (avatar-lab.html): a page for working on avatar artwork
 // outside the game. It shows the live editor, a family whose children are
-// generated from two parents, and every part in the catalogue with its id.
-import { CATALOG, normalize, part } from './catalog.js';
+// generated from two parents, and every part in the catalog with its id.
+import { CATALOG, normalize, part, DEPTH } from './catalog.js';
 import { avatarSvg } from './render.js';
 import { mountAppearanceEditor } from './editor.js';
 import { randomAppearance, inheritAppearance, ensureStyled, cloneAppearance } from './inherit.js';
@@ -17,10 +17,10 @@ const editor = mountAppearanceEditor($('#editor'), { appearance: randomAppearanc
 $('#editor-json').addEventListener('click', () => { $('#json').textContent = JSON.stringify(editor.get(), null, 2); });
 
 // ---------- 2. A family ----------
-/** Two parents who look as unlike each other as the catalogue allows, one with dyed hair. */
+/** Two parents who look as unlike each other as the catalog allows, one with dyed hair. */
 function newFamily() {
-  const mother = randomAppearance(rng.int(0, 3), 'female');
-  const father = randomAppearance(rng.int(7, 11), 'male');
+  const mother = randomAppearance(rng.int(DEPTH.porcelain, DEPTH.sand), 'female');
+  const father = randomAppearance(rng.int(DEPTH.bronze, DEPTH.espresso), 'male');
   for (const key of ['head', 'eyes', 'brows', 'nose', 'lips']) {
     while (father.inherited[key] === mother.inherited[key]) father.inherited[key] = rng.pick(CATALOG[key]).id;
   }
@@ -34,8 +34,8 @@ const FEATURES = [['head', 'Face'], ['skin', 'Skin'], ['eyes', 'Eyes'], ['eyeCol
   ['lips', 'Lips'], ['hairColor', 'Natural hair'], ['hairTexture', 'Texture']];
 
 function showFamily(family, note = '') {
-  const [mum, dad, ...kids] = family.people;
-  const m = normalize(mum.appearance).inherited;
+  const [mom, dad, ...kids] = family.people;
+  const m = normalize(mom.appearance).inherited;
   const d = normalize(dad.appearance).inherited;
   const card = (person, i) => {
     const a = normalize(person.appearance);
@@ -52,7 +52,7 @@ function showFamily(family, note = '') {
   $('#family').innerHTML = family.people.map(card).join('');
   $('#family-note').textContent = note;
   // The same four people at the size used in the game's menus.
-  $('#family-small').innerHTML = [mum, dad, ...kids].map((x, i) => `<div class="menu-face">${avatarSvg({ appearance: x.appearance, age: x.age, seed: `lab-${i}` })}</div>`).join('');
+  $('#family-small').innerHTML = [mom, dad, ...kids].map((x, i) => `<div class="menu-face">${avatarSvg({ appearance: x.appearance, age: x.age, seed: `lab-${i}` })}</div>`).join('');
 }
 
 let family = newFamily();
@@ -68,9 +68,9 @@ $('#family-dye').addEventListener('click', () => {
   showFamily(family, `Both parents were restyled. Children unchanged: ${same ? 'yes' : 'NO'}.`);
 });
 $('#family-child').addEventListener('click', () => {
-  const [mum, dad] = family.people;
+  const [mom, dad] = family.people;
   const gender = rng.pick(['female', 'male']);
-  family.people.push({ label: `Child, ${family.people.length + 2}`, gender, age: rng.int(4, 17), appearance: ensureStyled(inheritAppearance(mum.appearance, dad.appearance), gender) });
+  family.people.push({ label: `Child, ${family.people.length + 2}`, gender, age: rng.int(4, 17), appearance: ensureStyled(inheritAppearance(mom.appearance, dad.appearance), gender) });
   showFamily(family, 'A new child, mixed from what the parents were born with (their dye and haircuts are ignored).');
 });
 $('#family-save').addEventListener('click', () => {
@@ -84,7 +84,7 @@ $('#family-save').addEventListener('click', () => {
 // ---------- 3. Every part ----------
 const base = normalize({ v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'sand', eyes: 'eyes_10', eyeColor: 'brown', brows: 'brows_10', nose: 'nose_10', lips: 'lips_10',
   hairColor: 'dark_brown', hairTexture: 'straight', marks: [] }, style: { hair: 'bald', outfit: 'outfit_01_tee' } }, 'sheet');
-const STYLE = new Set(['hair', 'hairDye', 'glasses', 'facialHair', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat']);
+const STYLE = new Set(['hair', 'hairDye', 'glasses', 'makeup', 'lipColor', 'jewelry', 'outfit', 'outfitColor', 'hat']);
 $('#parts').innerHTML = Object.entries(CATALOG).map(([key, list]) => `
   <h3>${esc(key)} <small>${list.length} parts</small></h3>
   <div class="sheet">${list.map((x) => {

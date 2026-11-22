@@ -66,16 +66,53 @@ Explorer under "How the law was checked", and `node tests/rules.mjs` fails if an
 | Citizenship by birth | Jus soli | unconditional, allowing for a diplomats' exception or a registration step |
 | One nationality only | Multiple citizenship, and 13 national nationality-law articles | |
 | Form of government | List of countries by system of government | |
+| Marriage age | Marriageable age | without parental or judicial consent; a separate age for women where the law sets one. The game never lets anyone marry before 18 |
+| Driving age | List of minimum driving ages | the youngest age to hold a car license, conditions allowed; not mopeds, motorcycles or supervised learners |
+| Gambling age, and whether gambling is legal | Gambling age | the casino age where several are given; legal where lotteries or betting are open to citizens |
+| School-leaving age | School-leaving age | the end of compulsory schooling |
+| Residence before naturalization; dual nationality | Naturalization | |
+| Free movement | Member state of the European Union; Trans-Tasman Travel Arrangement | the European area is the EU members in the game, plus Norway (EEA) and Switzerland |
 
 What changed as a result: four countries no longer execute (the Bahamas, DR Congo, Ethiopia, Uganda); six gained "protected"
 status (Bolivia, Czechia, Croatia, Italy, Monaco, Nepal); conscription was added in twelve countries and removed in Syria;
 voting ages for Greece, Taiwan, Samoa and Nepal; drinking ages for six countries and an alcohol ban for Pakistan; pension ages
 for 64 countries, with the default lowered from 68 to 65; the United Arab Emirates, Afghanistan and Ukraine now allow dual
-nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabelled.
+nationality; Malaysia and Singapore require ten years' residence; five forms of government were relabeled.
 
-Still not checked: driving, gambling, marriage and school-leaving ages; residence years for naturalization (other than
-Malaysia and Singapore); gambling bans; the free-movement lists; tax and health-care models; the status sentences. Where a
-source does not cover a place (often a small country or a territory), the field is "not confirmed", not guessed.
+Also checked now: the top rate of income tax ("List of countries by tax rates"; 92 agree, and four differ for reasons recorded in
+the script: the United States uses the federal 37%, and Bolivia, Estonia and Romania use their flat income tax where the table adds
+other charges), health-care models ("Universal health care": no country the source lists as universal is out of pocket or
+private in the game), and the spouse's shorter wait for citizenship, now set per country where the "Naturalization" notes give it
+(`SPOUSE_YEARS_IN`; elsewhere the old rule: half the usual wait, at least three years).
+
+Estate and inheritance tax (`js/data/inheritance.js`) is now by heir: a spouse, a child, or anyone else, each with their own
+tax-free amount and scale, from PwC Worldwide Tax Summaries (pages reviewed in 2026) and Wikipedia's "Inheritance tax". The
+script checks every country against PwC's chart of headline rates: 73 agree, 6 differ for recorded reasons (Brazil uses São
+Paulo's 4%; Chile, Spain and Japan include the surcharge on heirs outside the family; Tunisia and Ukraine), and 24 are not
+confirmed: 15 are not in the chart, and 9 have no figure there (Belgium, Switzerland, Finland, Poland and Venezuela give only
+words; Guatemala, Kenya, Morocco and Peru are "not provided"). Each entry's `src` says whether its rates and allowances are
+stated by a source, partly sourced (the range or top rate is, the bands between are the author's), or the author's alone.
+
+Regional law is now checked by hand against Wikipedia ("Capital punishment in the United States", "Gambling age", "Legal
+drinking age", "Alcohol laws of India", "Gambling in India", "Sharia in Nigeria" and the driving-license articles for the United
+States, Canada and Australia). Each claim in `REGIONAL_POWERS` is marked in `js/data/rules.js` as confirmed or as the author's
+understanding. This added the casino age by state and province (19 in Ontario, British Columbia and Nova Scotia; 18 in Georgia,
+New York and Washington; 21 in Bavaria and Baden-Württemberg), a drinking age of 25 in Delhi and 18 in Karnataka, 21 in Dubai,
+Abu Dhabi and Ajman, and the ban on alcohol around Kano. It let Australian and Mexican states set their own drinking age, and
+corrected Malaysia's drinking age to 21 and Paraguay's to 20. The script's drinking-age check had let these pass, because it
+accepted an age mentioned anywhere in a row, including a former age in its notes. It now reads only the age columns and skips
+ages that were changed. A second round confirmed Canada's and Spain's regional gambling and the US drinking age, and
+found the United Arab Emirates' gambling is now federal (a national regulator since 2023), so it is no longer the emirates'
+to decide. Left as the author's judgment, with no source found: regional gambling in Argentina, Malaysia, Nigeria,
+Australia and Germany, and Austria's drinking age. National governments cannot change what is left to the regions.
+
+Income tax: which countries tax at one flat rate is checked against the lowest and highest rates in "List of countries by
+tax rates" (92 agree; Bolivia, Estonia, Romania and Ukraine are flat taxes the table mixes with allowances or contributions;
+Belize was made flat, at its 25%). Whether a banded country's bands rise steeply or moderately is the author's judgment.
+The six status sentences (Aruba, Puerto Rico, Andorra, the Democratic Republic of the Congo, Hong Kong, Taiwan) were read
+against the Wikipedia article on each place (revs 1384847800, 1386424195, 1384796794, 1385995928, 1386426160, 1386443146)
+and each claim in them is supported. Where a source does not cover a place (often a small country or a territory), the
+field is "not confirmed", not guessed.
 
 Re-run with `python3 scripts/verify-laws.py --write` (needs access to en.wikipedia.org; pages are cached in `.cache/`).
 
@@ -125,18 +162,18 @@ shown on its profile.
   exceptions (marriage with consent, beer before spirits, learner permits). Where a real country differs by state or province
   the value is the commonest one. Nine regional overrides exist (four American states, three Canadian provinces, one Indian state, one emirate). A head of government can change them through the legislature; public
   opinion on each is a fixed number shaded by the law the country already has, not a model of its people. Regional law can be changed by the head of a region,
-  for six regional matters, in the countries listed in `REGIONAL_COUNTRIES`; which matters belong to regions in each real
-  country is simplified to one list. Mayors make no law. School-leaving age is the same everywhere.
+  for the matters `REGIONAL_POWERS` gives each country: compiled by hand from each country's division of powers and not yet
+  checked against sources. Mayors make no law. School-leaving age is the same everywhere.
 - Immigration routes (`js/data/immigration.js`) are the same nine everywhere (the eight above and a retirement route), with the
-  same fees, terms and five-year path to permanence. Real systems differ by country and are not modelled. The free-movement areas
+  same fees, terms and five-year path to permanence. Real systems differ by country and are not modeled. The free-movement areas
   (a European area, and Australia with New Zealand) are simplified lists and unverified. Family members hold dependant status on the
   player's visa, simplified to one rule for every country; there is no deportation for crime and no overstaying. Moving abroad is a case decided
   when the year turns (`js/engine/relocation.js`); the odds of a decision are invented gameplay parameters.
 - Visits (`js/data/travel.js`, `ENTRY`, `VISIT_AREAS`, `LIBERAL`, `ON_ARRIVAL`) are a hand-compiled, **unverified** picture of the
-  mid-2020s: which nationalities visit which places without a visa, need an electronic authorisation (ESTA, the UK's ETA, eTA,
+  mid-2020s: which nationalities visit which places without a visa, need an electronic authorization (ESTA, the UK's ETA, eTA,
   K-ETA, NZeTA, Australia's ETA) or need a visitor visa, the longest stay, and the Schengen area's 90 days in any 180. The visa
   names are the common ones. Real rules depend on far more than nationality (purpose, previous travel, the document held,
-  exemptions and reciprocity), change often, and are not modelled. Fees, processing times and the odds of a decision are invented
+  exemptions and reciprocity), change often, and are not modeled. Fees, processing times and the odds of a decision are invented
   (`DECISION`), and a decision never depends on nationality. This is not travel or immigration advice.
 - Professional recognition (`REGULATED`, `RECOGNITION` in `js/engine/credentials.js`) is one simplified process for every country:
   which careers are regulated, the language level each asks, the fee, and the odds of a license, an adaptation year or a refusal are
@@ -161,15 +198,16 @@ shown on its profile.
   agreed in. Each country has its own housing index, moved by its economy; the numbers are invented, not house-price data. No
   country restricts foreign buyers, and there are no tax treaties: nothing is taxed twice, and nothing is credited. Income tax is
   each country's headline rate through one of four shapes (`js/data/systems.js`) with thresholds in multiples of a typical wage:
-  not real brackets, and with no social contributions, credits or regional taxes. Health care is one of six models; which
-  country has which is unverified, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
+  not real brackets, and with no social contributions, credits or regional taxes. The top band is the country's real top rate (`TAX_TOP`), checked. Health care is one of six models; that no
+  universal-care country is modeled as out of pocket or private is checked, but the finer choice among models is not, and quality of care and waiting are not affected by the model. Loans are in the everyday currency and converted when you move. Exchange rates are fictional: they drift within
   bounds and are pulled weaker by a recession or a crisis, without following measured inflation.
 
 ## Where further work would go
 
 In rough order of value:
 
-1. **Check what is still unchecked** (listed above): the remaining ages, residence years and the free-movement lists.
+1. **Find sources for what is still the author's judgment** (listed above): the bands between the top rates of
+   inheritance tax, steep or moderate income-tax bands, and the regional powers no source settled.
 2. **Real city data** with a clear license, to replace the guessed multipliers, and cities for more of each country.
 5. **Regions with governments and taxes of their own.**
 6. Only seven languages plus Portuguese exist as skills; most countries need none to live in.

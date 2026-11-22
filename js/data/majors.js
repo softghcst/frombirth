@@ -2,6 +2,7 @@
 // GPA needed to be considered; yearly gains apply each year of study.
 // tracks: postgraduate routes the degree opens beyond plain graduate school.
 // audition: true means entry is decided by performance skill, not grades alone.
+// programOnly: taught only where a school is known for it (a BFA is a program, not a subject any university offers).
 const M = (id, name, difficulty, minGpa, yearly, tracks = [], extra = {}) =>
   ({ id, name, difficulty, minGpa, yearly, tracks, ...extra });
 
@@ -23,16 +24,24 @@ export const MAJORS = [
   M('communications', 'Communications', 0.1, 2.0, { stats: { charm: 2 } }),
   M('art', 'Fine Art', 0.1, 2.0, { stats: { mood: 2 } }),
   M('music', 'Music', 0.2, 2.0, { talents: { music: 5, singing: 2 } }),
-  M('theatre', 'Theater', 0.15, 2.0, { talents: { acting: 5 }, stats: { charm: 1 } }),
+  M('theater', 'Theater', 0.15, 2.0, { talents: { acting: 5 }, stats: { charm: 1 } }),
   M('journalism', 'Journalism', 0.25, 2.6, { stats: { intellect: 1, charm: 1 } }, ['law']),
   // BA: performance alongside a broad degree. BFA: conservatory-style, almost
   // all studio time, a tougher audition and much faster skill growth.
-  M('musical_theatre', 'Musical Theater (BA)', 0.2, 2.0,
+  M('musical_theater', 'Musical Theater (BA)', 0.2, 2.0,
     { talents: { singing: 4, dance: 4, acting: 4 }, stats: { intellect: 1 } }, [],
     { audition: true, auditionBase: 0.3, blurb: 'Performance classes inside a broad degree. Easier audition, steady growth.' }),
-  M('musical_theatre_bfa', 'Musical Theater (BFA)', 0.3, 2.0,
+  M('musical_theater_bfa', 'Musical Theater (BFA)', 0.3, 2.0,
     { talents: { singing: 7, dance: 7, acting: 7 }, stats: { health: 1 } }, [],
-    { audition: true, auditionBase: 0.12, blurb: 'Conservatory training: studio all day, shows at night. Hard to get into, fastest growth.' }),
+    { audition: true, auditionBase: 0.12, programOnly: true, blurb: 'Conservatory training: studio all day, shows at night. Hard to get into, fastest growth. Only the schools with a BFA teach it.' }),
+  // Dance, judged at audition on dancing alone (auditionSkill). The BFA is a conservatory: ballet, modern and jazz
+  // every day, and it is what companies, tours and choreographers look for (engine/dance.js danceTraining).
+  M('dance', 'Dance (BA)', 0.2, 2.0,
+    { talents: { dance: 5 }, stats: { health: 1, intellect: 1 } }, [],
+    { audition: true, auditionBase: 0.3, auditionSkill: 'talents.dance', blurb: 'Technique classes inside a broad degree. Easier audition, steady growth.' }),
+  M('dance_bfa', 'Dance (BFA)', 0.3, 2.0,
+    { talents: { dance: 8 }, stats: { health: 2 } }, [],
+    { audition: true, auditionBase: 0.12, auditionSkill: 'talents.dance', blurb: 'Conservatory training: ballet, modern and jazz every day. Hard to get into, fastest growth.' }),
 ];
 
 export const MAJOR_BY_ID = Object.fromEntries(MAJORS.map((m) => [m.id, m]));

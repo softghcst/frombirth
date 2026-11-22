@@ -131,7 +131,7 @@ function worthChart() {
       <div class="mm-tip" data-tip>${lastPt.year}, age ${lastPt.age}: <strong>${esc(fx.fmt(lastPt.v, lastPt.cur))}</strong></div>
     </div>
     <details class="mm-table"><summary>As a table</summary>${kv(pts.slice().reverse().map((x) => [`${x.year} (age ${x.age})`, fx.fmt(x.v, x.cur)]))}</details>
-    <p class="muted" style="margin-top:6px">As it stood at the end of each year, in ${esc(L.home)}${all.length > pts.length ? '. Years in another currency, before you moved, are not drawn on the same line' : ''}.</p></div>`;
+    </div>`;
 }
 
 /** A small line of a price over the years the market remembers. Read the figures from the label; the line shows the shape. */
@@ -163,11 +163,11 @@ function overviewHtml() {
       ${stat('Debts', o.liabilities, o.liabilities ? 'neg' : '')}
     </div>
     <div class="card mm-worth"><small>Net worth</small><strong class="${o.netWorth < 0 ? 'neg' : ''}">${esc(fmtMoney(netWorth(store.state), c))}</strong>
-      <p class="muted">Everything you have, less everything you owe. Property, vehicles and investments are counted at what they would fetch today: an estimate, and not money you can spend.</p></div>
+      </div>
     ${worthChart()}
     <div class="card"><h3>This year so far</h3>
       ${kv([['Money in', fmtMoney(o.income, c)], ['Money out', fmtMoney(o.spent, c)], ['A month, on average', `${fmtMoney(o.income / 12, c)} in · ${fmtMoney(o.spent / 12, c)} out`]])}
-      <p class="muted" style="margin-top:6px">Borrowing, moving money between your accounts and buying things you still own are not counted as money in or out.</p></div>
+      </div>
     ${goals.length ? `<div class="card"><h3>What you are saving for</h3>${goals.map((g) => `<div class="mm-line"><span>${esc(g.name)}</span><span>${esc(ex(g.saved, g.cur))} of ${esc(ex(g.target, g.cur))}</span></div>${bar(g.share, 'good')}`).join('')}</div>` : ''}
     <div class="card"><h3>Lately</h3>${recent.length ? recent.map((t) => txRow(L, t)).join('') : '<p class="muted">Nothing has moved yet.</p>'}</div>`;
 }
@@ -179,14 +179,14 @@ function payslipHtml() {
   if (!ps || store.state.year - ps.year > 1) return '';
   const m = ps.months[0];
   const sum = (k) => ps.months.reduce((t, x) => t + x[k], 0);
-  return `<details class="card mm-slips"><summary><h3 style="display:inline">Payslips, ${ps.year}</h3><span class="muted"> · ${esc(ex(m.net, ps.cur))} a month</span></summary>
+  return `<details class="card mm-slips"><summary><h3 style="display:inline">Pay stubs, ${ps.year}</h3><span class="muted"> · ${esc(ex(m.net, ps.cur))} a month</span></summary>
     <p class="muted" style="margin:6px 0">From ${esc(ps.from.map((k) => SOURCE[k]).join(' and '))}.</p>
     ${kv([['Each month, before anything is taken', ex(m.gross, ps.cur)], ['Tax', `−${ex(m.tax, ps.cur)}`], ...(m.plan ? [['Into your pension plan', `−${ex(m.plan, ps.cur)}`]] : []), ['Paid to you', ex(m.net, ps.cur)],
     ...(m.employer ? [['Your employer also paid into your pension', ex(m.employer, ps.cur)]] : [])])}
     <div class="section-label">Month by month</div>
     ${kv(ps.months.map((x) => [x.name, ex(x.net, ps.cur)]))}
     ${kv([['The year', `${ex(sum('gross'), ps.cur)} earned, ${ex(sum('net'), ps.cur)} paid to you`]])}
-    <p class="muted" style="margin-top:6px">The months add up to exactly the year. In the game the year's pay arrives in one step; this is how it was made up.</p></details>`;
+    </details>`;
 }
 
 function accountsHtml() {
@@ -205,7 +205,7 @@ function accountsHtml() {
   return `
     <div class="card"><h3>Everyday money</h3>
       ${kv([[`Cash (${c.currency.code})`, fmtMoney(p.finance.cash, c)], ...holdings.map((b) => [`Held in ${b.code}`, `${fx.fmt(b.amount, b.code)} (about ${fmtMoney(b.worth, c)})`])])}
-      <p class="muted" style="margin-top:6px">What you spend from. Wages arrive here and bills leave from here.</p></div>
+      </div>
     ${payslipHtml()}
     ${rows ? `<div class="section-label">Your bank accounts</div>${rows}` : `<p class="empty">You have no bank account${p.age < 7 ? ' yet. You are a little young.' : '.'}</p>`}
     <div class="btn-stack">
@@ -213,7 +213,7 @@ function accountsHtml() {
       ${list.length > 1 ? '<button class="btn" data-act="between">Move money between accounts</button>' : ''}
     </div>
     ${closed.length ? `<div class="card" style="margin-top:14px"><h3>Closed accounts</h3>${kv(closed.map((a) => [`${a.name} (${a.cur})`, `opened ${a.opened}, closed ${a.closed}`]))}</div>` : ''}
-    <p class="muted mm-note">The banks in Pathways are invented, and so are their rates.</p>`;
+    `;
 }
 
 function budgetHtml() {
@@ -233,7 +233,7 @@ function budgetHtml() {
       ${rows || '<p class="muted">Nothing has been spent this year.</p>'}
       ${b.fixed.length ? `<div style="margin-top:8px">${kv(b.fixed.map((x) => [x.name, fmtMoney(x.actual, c)]))}</div>` : ''}
       <div class="kv"><span>Total</span><span><strong>${esc(fmtMoney(b.spent, c))}</strong></span></div>
-      <p class="muted" style="margin-top:6px">Tap a line to set the most you mean to spend on it in a year. You will be told at the end of each year how you did.</p></div>
+      <p class="muted" style="margin-top:6px">Tap a line to set a limit.</p></div>
     <div class="card"><h3>What was left</h3>
       ${kv([['Money in, less money out', fmtMoney(b.left, c)], ['Moved into bank accounts', fmtMoney(b.saved, c)]])}</div>`;
 }
@@ -268,12 +268,12 @@ function debtHtml() {
     ${total || cardRows ? `<div class="section-label">What you owe: ${esc(fmtMoney(total, c))}</div>${cardRows}${loanRows}${mortRows}` : '<p class="empty">You owe nothing.</p>'}
     ${p.finance.loans.length > 1 ? `<div class="card"><h3>Which to clear first</h3>
       ${kv([['Highest interest first', order('rate')], ['Smallest first', order('size')]])}
-      <p class="muted" style="margin-top:6px">The first costs least in interest. The second gives an early win. Neither suits everyone.</p></div>` : ''}
+      </div>` : ''}
     ${loans.isBankrupt() ? `<p class="muted mm-note">You are bankrupt until age ${p.flags.bankruptUntil}. No bank will lend to you until then.</p>` : ''}
     ${p.age >= 18 ? `<div class="btn-stack"><button class="btn" data-link="borrow">Borrow money</button>
       <button class="btn" data-act="card" ${offer.ok ? '' : 'disabled'}>Apply for a credit card${offer.ok ? `<small style="display:block;font-weight:400">${esc(offer.name)}, limit ${esc(fmtMoney(offer.limit, c))}, ${(offer.rateBp / 100).toFixed(1)}% a year</small>` : `<small style="display:block;font-weight:400">${esc(offer.reason)}</small>`}</button></div>` : ''}
     <div class="card" style="margin-top:14px"><h3>If you could not pay</h3><p class="muted">${esc(law.name)}. ${esc(law.line)}</p>
-      <p class="muted" style="margin-top:6px">A rule made for the game, not a description of the law anywhere.</p></div>`;
+      </div>`;
 }
 
 function investHtml() {
@@ -290,13 +290,13 @@ function investHtml() {
   return `
     ${held.length ? `<div class="card"><h3>Your holdings</h3>
       ${kv([['Worth today', fmtMoney(value, c)], ['What you paid', fmtMoney(cost, c)], [value >= cost ? 'Gain, on paper' : 'Loss, on paper', fmtMoney(Math.abs(value - cost), c)]])}
-      <p class="muted" style="margin:6px 0 10px">A gain on paper is not money until you sell, and can be gone by next year.</p>${rows}</div>
+      ${rows}</div>
     <div class="card"><h3>How it is spread</h3>${byKind.map((k) => `<div class="mm-line"><span>${esc(k.name)}</span><span>${Math.round(k.value / value * 100)}%</span></div>${bar(k.value / value)}`).join('')}</div>`
     : '<p class="empty">You hold no investments. Nobody has to.</p>'}
     ${paidOut ? `<p class="muted mm-note">This year your investments paid out ${esc(ex(paidOut, c.currency.code))}, after tax.</p>` : ''}
     <div class="btn-stack"><button class="btn" data-link="invest">Go to the market</button>
       ${held.length ? '<button class="btn" data-act="rebalance">Spread my investments</button>' : ''}</div>
-    <p class="muted mm-note">Tap a holding to choose whether what it pays out comes to you or buys more of it. The market in Pathways is a simulation with invented companies. Prices move once a year, down as well as up.</p>`;
+    `;
 }
 
 function coverHtml() {
@@ -322,7 +322,7 @@ function coverHtml() {
       ${insurable.length ? '<button class="btn" data-act="insure">Insure a property or vehicle</button>' : ''}
       ${ins.quote('life').ok ? '<button class="btn" data-act="life">Take out life insurance</button>' : ''}
     </div>
-    <p class="muted mm-note">Pets are insured through their care (People, Pets &amp; Animals). A claim is paid only for damage that really happened to the thing insured, while it was insured, and only once. Insurance takes some risks off you; it does not take them all.</p>`;
+    `;
 }
 
 function goalsHtml() {
@@ -336,7 +336,7 @@ function goalsHtml() {
     </button>`).join('');
   return `${rows ? `<div class="card">${rows}</div>` : '<p class="empty">You are not saving for anything in particular.</p>'}
     <div class="btn-stack"><button class="btn primary" data-act="goal" ${bank.accounts().some((a) => !a.goal) ? '' : 'disabled'}>Save for something</button></div>
-    <p class="muted mm-note">A goal is tied to one bank account, and is reached when the money is really in it. ${bank.accounts().some((a) => !a.goal) ? '' : 'Open an account to save into first.'}</p>`;
+    `;
 }
 
 function retireHtml() {
@@ -353,10 +353,10 @@ function retireHtml() {
     ['Money of your own', fmtMoney(own, c)], ['What a year costs you now', fmtMoney(o.spent, c)],
     ['A year, less the pension', fmtMoney(gap, c)],
     ['Your own money would last', gap <= 0 ? 'The pension covers it' : o.spent ? `about ${Math.floor(own / gap)} ${Math.floor(own / gap) === 1 ? 'year' : 'years'}` : 'No spending recorded yet']])}
-      <p class="muted" style="margin-top:6px">A rough sum, not a promise: it takes this year's spending and today's prices, and assumes nothing changes. Things change. Property is left out, because you have to live somewhere.</p></div>
+      </div>
     ${stateHtml()}
     ${planHtml()}
-    <p class="muted mm-note">The pension above comes from the years you have worked (Work tab). A plan of your own is on top of it.</p>`;
+    `;
 }
 
 function stateHtml() {
@@ -367,7 +367,7 @@ function stateHtml() {
   const years = p.career.totalYears ?? 0;
   return `<div class="card"><h3>The state pension</h3>
     ${kv(now ? [['Paid to you', `${fmtMoney(now, c)} a year`]] : [[`From ${STATE_PENSION.age}, as things stand`, `about ${fmtMoney(est, c)} a year`], ['Years you have worked', `${years} of the ${STATE_PENSION.full} for a full pension`]])}
-    <p class="muted" style="margin-top:6px">Paid by the country you live in, at a share of an ordinary wage there. Fewer years of work mean less, never nothing. Move abroad and it is worked out again there. A rule made for the game.</p></div>`;
+    </div>`;
 }
 
 function planHtml() {
@@ -375,7 +375,7 @@ function planHtml() {
   const pl = ret.plan();
   const can = ret.canOpenPlan();
   if (!pl) return `<div class="card"><h3>A pension plan of your own</h3>
-      <p class="muted">A share of your pay goes in each year and is invested. Any pension your employer builds for you is separate, and comes on top. It is locked until you are ${PENSION_PLAN.unlockAge}, and it can fall as well as rise.</p>
+      
       <div class="btn-stack" style="margin-top:10px"><button class="btn primary" data-act="plan" ${can.ok ? '' : 'disabled'}>Start a pension plan${can.ok ? '' : `<small style="display:block;font-weight:400">${esc(can.reason)}</small>`}</button></div></div>`;
   const pr = ret.projection();
   return `<div class="card"><h3>Your pension plan</h3>
@@ -384,7 +384,7 @@ function planHtml() {
     [pl.account.locked ? `Locked until you are ${PENSION_PLAN.unlockAge}` : 'Yours to draw on', pl.account.locked ? `${pr.years} ${pr.years === 1 ? 'year' : 'years'} to go` : 'From Accounts']])}
       ${pr.years > 0 ? `<div class="section-label">What it might be at ${pr.at}</div>
       ${kv([['If it barely grows', fx.fmt(pr.low, pl.account.cur)], ['If it grows steadily', fx.fmt(pr.mid, pl.account.cur)], ['If the markets are kind', fx.fmt(pr.high, pl.account.cur)]])}
-      <p class="muted" style="margin-top:6px">Three guesses, not a forecast. They assume your pay and what you put in stay as they are. The real figure will be none of these.</p>` : ''}
+      ` : ''}
       ${pl.current ? '<div class="btn-stack" style="margin-top:10px"><button class="btn" data-act="planrate">Change how much you pay in</button></div>' : ''}</div>`;
 }
 
@@ -425,9 +425,9 @@ function outsideHtml() {
       <div class="main"><strong>${esc(t.name)}</strong><small>Theirs at ${t.releaseAge}${name(t.beneficiaryId) ? ` (now ${store.state.npcs[t.beneficiaryId].age})` : ''} · held by a trustee · not yours any more</small></div>
       <div class="side">${esc(ex(t.bal, t.cur))}</div></button>`).join('');
   const held = tr.heldForYou().map((t) => [`${t.name}: ${ex(t.bal, t.cur)}`, `yours at ${t.releaseAge}`]);
-  return `${rows.length ? `<div class="card"><h3>Outside your will</h3>${kv(rows)}<p class="muted" style="margin-top:6px">These go straight to the person named, whatever your will says.</p></div>` : ''}
+  return `${rows.length ? `<div class="card"><h3>Outside your will</h3>${kv(rows)}<p class="muted" style="margin-top:6px">Paid outside your will.</p></div>` : ''}
     ${trusts ? `<div class="section-label">Trusts you have set up</div>${trusts}` : ''}
-    ${held.length ? `<div class="card"><h3>Held in trust for you</h3>${kv(held)}<p class="muted" style="margin-top:6px">Not yours yet, and not counted in what you are worth.</p></div>` : ''}`;
+    ${held.length ? `<div class="card"><h3>Held in trust for you</h3>${kv(held)}</div>` : ''}`;
 }
 
 function familyHtml() {
@@ -441,7 +441,7 @@ function familyHtml() {
     ...f.shares.map((s) => [`${s.you ? 'To you' : `To ${s.name}`} (${s.role.toLowerCase()})`, `${fx.fmt(s.amount, f.cur)}${s.items.length ? ` + ${s.items.map(lower).join(', ')}` : ''}`])])}
       ${f.milestones.length ? `<div style="margin-top:8px">${kv(f.milestones.map((m) => [`Age ${m.age}`, m.text]))}</div>` : ''}
       ${f.graveId && getGraveyard().some((g) => g.id === f.graveId) ? `<div class="btn-stack" style="margin-top:10px"><button class="btn" data-grave="${f.graveId}">${esc(f.name.split(' ')[0])}'s life story</button></div>` : ''}</div>`).join('')
-    + '<p class="muted mm-note">What is recorded here is what happened: amounts are in the money of the time and place. The private detail of their accounts was not passed on.</p>';
+    + '';
 }
 
 /** The family whose money the game follows in detail: a home, a mortgage, debts of their own. */
@@ -454,7 +454,7 @@ function familyRows() {
     const bits = [roleLabel(n), f.home ? (f.home.mortgage ? 'owns a home, with a mortgage' : 'owns their home outright') : 'renting', ...(n.life.retired ? ['retired'] : []),
       ...(f.card?.balance > 0 ? [`${fmtMoney(f.card.balance, c)} on a card`] : []), ...(f.debt > 0 ? [`owes ${fmtMoney(f.debt, c)}`] : [])];
     return personRow(n, bits.join(' · '), fmtMoney(npcWorth(n), c));
-  }).join('')}<p class="muted mm-note" style="margin-top:0">Their money is theirs. Tap anyone to see their life.</p>`;
+  }).join('')}`;
 }
 
 function householdHtml() {
@@ -481,9 +481,9 @@ function householdHtml() {
     <div class="btn-stack"><button class="btn" data-act="give">Give money to someone</button><button class="btn" data-act="lend">Lend money to someone</button></div>
     ${kids.length ? `<div class="card" style="margin-top:14px"><h3>Allowance</h3>
       ${kv([['Now', fam.ALLOWANCES[fam.allowance()].name], ['Costs you', `${fmtMoney(fam.allowanceCost(), c)} a year`], ['For', kids.map((k) => k.firstName).join(', ')]])}
-      <p class="muted" style="margin-top:6px">Money of their own to look after teaches a child something. It does not decide what they will be like with money.</p>
+      
       <div class="btn-stack" style="margin-top:10px"><button class="btn" data-act="allowance">Change it</button></div></div>` : ''}
-    <p class="muted mm-note">Other people's money is theirs. They can turn a gift or a loan down, and a loan is repaid only if they are able and willing.</p>`;
+    `;
 }
 
 function businessHtml() {
@@ -495,7 +495,7 @@ function businessHtml() {
       <div class="side">${esc(fmtMoney(worth(b), c))}</div></button>`).join('');
   return `${rows || '<p class="empty">You do not own a business.</p>'}
     <div class="btn-stack"><button class="btn primary" data-occ="business">${list.length ? 'Run your businesses' : 'Start a business'}</button></div>
-    <p class="muted mm-note">A business has its own money. What it pays you arrives with your pay each year and is taxed as income. The figure shown is roughly what your share would sell for. It is not counted in your net worth: when you die it passes to your heir as it stands, not as money.</p>`;
+    `;
 }
 
 function awardsHtml() {
@@ -503,11 +503,11 @@ function awardsHtml() {
   const v = ach.moneySense();
   return `<div class="card"><h3>What you understand about money</h3>
       <div class="mm-line"><span>${esc(ach.senseWord(v))}</span><span>${v} of 100</span></div>${bar(v / 100)}
-      <p class="muted" style="margin-top:6px">Picked up from living with money, from school, and from the people you grew up with; and learned on purpose. It helps you see through a bad offer and argue with a bank. It is not cleverness, and it makes nobody rich.</p>
+      
       <div class="btn-stack" style="margin-top:10px">${ach.lessonOptions().map((l) => `<button class="btn" data-lesson="${l.id}" ${l.ok ? '' : 'disabled'}>${esc(l.name)}<small style="display:block;font-weight:400">${esc(l.ok ? `${fmtMoney(l.cost, country())} · ${l.blurb}` : l.reason)}</small></button>`).join('')}</div></div>
     <div class="card"><h3>Milestones</h3>
       ${list.map((a) => `<div class="mm-tx"><div class="main"><strong>${a.earned ? '✓ ' : ''}${esc(a.name)}</strong><small>${esc(a.blurb)}</small></div><div class="amt ${a.earned ? 'in' : ''}">${a.earned ? `age ${a.age}` : '—'}</div></div>`).join('')}
-      <p class="muted" style="margin-top:8px">Each is worked out from what has actually happened in this life. They are things that can happen, not a score: plenty of good lives have none of them.</p></div>`;
+      </div>`;
 }
 
 function historyHtml(filter) {
@@ -875,7 +875,7 @@ export function openMyMoney(api, links = {}) {
     const shown = SECTIONS.filter(([, , on]) => on(p));
     if (!shown.some(([id]) => id === tab)) tab = 'overview';
     root.innerHTML = `
-      <div class="mm-head"><div><h2>My Money</h2><p class="muted">Make your choices. Build your future.</p></div>
+      <div class="mm-head"><div><h2>My Money</h2></div>
         <button class="icon-btn" data-close aria-label="Close My Money">✕</button></div>
       <nav class="mm-nav" aria-label="My Money sections">${shown.map(([id, name]) => `<button class="mm-chip ${id === tab ? 'on' : ''}" data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}>${esc(name)}</button>`).join('')}</nav>
       <div class="mm-body">${body[tab]()}</div>`;

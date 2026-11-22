@@ -9,7 +9,27 @@ import { CAREER_BY_ID } from '../data/careers.js';
 import { store, player, country, livingNpcs, npcMatches } from '../state.js';
 import { MONARCHIES, ROYAL_RANKS } from '../data/royalty.js';
 import { SYSTEMS } from '../data/politics.js';
+import { HEALTH_PATHS } from './health/story.js';
 import { hasRecord } from './records.js';
+
+/** A young child at home: what a scene costs comes from the parents, not the child's own pocket. */
+export const parentsPay = (p = player()) => p.age < 13 && !!p.flags.livesWithParents && parentsAtHome(p).length > 0;
+const parentsAtHome = (p) => p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && n.role === 'parent' && !n.flags.abroad);
+/** The money the parents have to hand, in local money. */
+export const parentsMoney = (p = player()) => parentsAtHome(p).reduce((sum, n) => sum + Math.max(0, n.life?.savings ?? n.savings ?? 0), 0);
+/** Takes a cost from the parents' money, the better-off parent first. @returns {number} what they paid */
+export function parentsSpend(amount, p = player()) {
+  let left = Math.round(amount);
+  for (const n of parentsAtHome(p).sort((a, b) => (b.life?.savings ?? b.savings ?? 0) - (a.life?.savings ?? a.savings ?? 0))) {
+    if (left <= 0) break;
+    const key = n.life ? 'life' : null;
+    const have = Math.max(0, key ? n.life.savings ?? 0 : n.savings ?? 0);
+    const take = Math.min(have, left);
+    if (key) n.life.savings = have - take; else n.savings = have - take;
+    left -= take;
+  }
+  return Math.round(amount) - left;
+}
 
 /** Singing, dance and acting together. The weakest of the three drags it down. */
 export function tripleThreat(p = player()) {
@@ -25,7 +45,7 @@ const SPECIAL = {
   conscription: () => rule('conscription'),
   inCrisis: () => !!country().living.crisis,
   // Royalty: monarchy (the country has a crown), isRoyal (in the royal family), isNoble (holds a noble title),
-  // reigning, royalBy ('birth' | 'marriage' | 'honour' | null). The public's opinion is plain 'royal.image'.
+  // reigning, royalBy ('birth' | 'marriage' | 'honor' | null). The public's opinion is plain 'royal.image'.
   monarchy: () => !!MONARCHIES[country().id] && store.state.dynasties?.[country().id]?.status !== 'abolished',
   // Whether the crown the player wears governs (executive or absolute), or only advises.
   crownGoverns: (p) => { const cid = p.royal?.countryId; const d = store.state.dynasties?.[cid]; return ['executive', 'absolute'].includes(d?.type ?? MONARCHIES[cid]?.type); },
@@ -52,7 +72,7 @@ const SPECIAL = {
   inventoryIds: (p) => p.inventory.map((i) => i.id),
   degreeTypes: (p) => p.education.degrees.map((d) => d.type),
   /** Cash expressed in base units so events can compare across currencies. */
-  cashBase: (p) => p.finance.cash / country().currency.scale,
+  cashBase: (p) => (p.finance.cash + (parentsPay(p) ? parentsMoney(p) : 0)) / country().currency.scale,
   // Money: the year of a first wage; what has been picked up about money; cards and accounts actually held.
   firstPayNow: (p) => p.flags.firstPayAge === p.age,
   moneySense: (p) => Math.round(p.flags.moneySense ?? 0),
@@ -97,6 +117,7 @@ export function remember(npc, key, text) {
 export function resolve(path, cast = {}) {
   const p = player();
   if (SPECIAL[path]) return SPECIAL[path](p);
+  if (HEALTH_PATHS[path]) return HEALTH_PATHS[path](p);
   const parts = path.split('.');
   if (SPECIAL[parts[0]]) return parts.slice(1).reduce((o, k) => (o == null ? undefined : o[k]), SPECIAL[parts[0]](p)) ?? null;
   if (parts[0] === 'cast' || parts[0] === 'memory') {

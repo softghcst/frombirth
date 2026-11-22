@@ -13,7 +13,7 @@ const person = (r, label) => `
     ${r.degrees.some((d) => d.type === 'high') ? '' : '<div class="kv"><span>School</span><span>Left without a qualification</span></div>'}
     ${r.first ? '<div class="kv"><span>First</span><span>The first in the family to graduate from university</span></div>' : ''}
     ${r.mentor ? `<div class="kv"><span>Remembered</span><span>${esc(r.mentor)}</span></div>` : ''}
-    ${r.honours.length ? `<p class="muted" style="margin:6px 0 0">${r.honours.map(esc).join(' ')}</p>` : ''}
+    ${r.honors.length ? `<p class="muted" style="margin:6px 0 0">${r.honors.map(esc).join(' ')}</p>` : ''}
   </div>`;
 
 export function openFamilyEducation() {
@@ -21,7 +21,7 @@ export function openFamilyEducation() {
   const gens = [...past, mine];
   const modal = openModal(`
     <h2 style="margin-top:0">Family schooling</h2>
-    <p class="muted">The schools and universities stay where they are. Each generation's record is kept here.</p>
+    
     ${gens.map((r) => person(r, r.current ? 'You' : `Generation ${r.gen}`)).join('')}
     ${kids.length ? `<div class="card"><div class="section-label" style="margin-top:0">Your children</div>
       ${kids.map((k) => `<div class="kv"><span>${esc(k.name)}, ${k.age}</span><span>${esc([k.schools.slice(-1)[0], k.uni].filter(Boolean).join('; ') || (k.age < 5 ? 'Not at school yet' : '—'))}</span></div>`).join('')}</div>` : ''}

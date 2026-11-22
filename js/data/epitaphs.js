@@ -11,7 +11,7 @@
 //   vehicles, greatGrandchildren, talents (how many at 80+), music, childStar,
 //   lifeSentence, neverMoved, holidays, surgeries, mood, health,
 //   topOffice (0 none … 5 head of government), yearsInOffice, electionsWon, electionsLost, ruledAlone, removedFromOffice, approval
-//   reigned, abdicated, consort, bornTitled, honoured, lostTitle, marriedRoyal, image (public opinion, royals only)
+//   reigned, abdicated, consort, bornTitled, honored, lostTitle, marriedRoyal, image (public opinion, royals only)
 
 export const EPITAPHS = [
   { id: 'brief_candle', title: 'A Brief Candle', line: 'Gone before the story had properly begun.',
@@ -104,7 +104,7 @@ export const EPITAPHS = [
   { id: 'also_ran', title: 'The Also-Ran', line: 'Name on the ballot again and again. Never once on the door.',
     hint: 'Lose four elections without ever winning one.', earned: (s) => s.electionsLost >= 4 && s.electionsWon === 0 },
   { id: 'arise', title: 'For Services Rendered', line: 'Knelt once, before the crown, and rose with a longer name.',
-    hint: 'Be honored by the crown.', earned: (s) => s.honoured },
+    hint: 'Be honored by the crown.', earned: (s) => s.honored },
   { id: 'blue_blood', title: 'Blue Blood', line: 'Born with a title, a portrait gallery and a leaking roof.',
     hint: 'Be born into a title.', earned: (s) => s.bornTitled },
   { id: 'the_holidaymaker', title: 'The Holidaymaker', line: 'Always just back from somewhere, or just about to go.',
@@ -117,5 +117,3 @@ export const EPITAPHS = [
 
 export const EPITAPH_BY_ID = Object.fromEntries(EPITAPHS.map((e) => [e.id, e]));
 
-/** Estates below this (base units) pass to the family untaxed. */
-export const ESTATE_ALLOWANCE = 100000;

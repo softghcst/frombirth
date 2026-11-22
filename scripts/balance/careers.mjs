@@ -56,7 +56,7 @@ for (let i = 0; i < LIVES; i++) {
     const cc = work.career();
     for (const h of cc.history.slice(hist)) { if (h.exit === 'laid off') T.layoffs += 1; if (h.exit === 'fired') T.fired += 1; if (h.exit === 'left for another job') T.quits += 1; }
     T.promos += (cc.promotions ?? 0) - promos;
-    if (p.flags.burntOut === store.state.year) T.burnouts += 1;
+    if (p.flags.burnedOut === store.state.year) T.burnouts += 1;
     if (p.age >= 25 && p.age <= 64) {
       T.workYears += 1; e.years += 1;
       if (cc.careerId) {

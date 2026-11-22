@@ -9,10 +9,10 @@ import { MONARCHIES } from '../../data/royalty.js';
 import { world, acts, result, recordEvent } from './core.js';
 import { techAvailable, devicesOf, householdHas } from './tech.js';
 
-export const PROGRAMMES = {
+export const PROGRAMS = {
   radio: [
     { id: 'news', label: 'The news and current affairs', effect: { intellect: 2 } },
-    { id: 'music', label: 'Music programmes', effect: { music: 1, mood: 2 } },
+    { id: 'music', label: 'Music programs', effect: { music: 1, mood: 2 } },
     { id: 'drama', label: 'Radio plays and serials', effect: { acting: 1, mood: 2 } },
     { id: 'sport', label: 'Sport commentary', effect: { sports: 1, mood: 2 } },
     { id: 'children', label: 'Children\'s hour', effect: { mood: 3 }, maxAge: 12 },
@@ -41,7 +41,7 @@ export function setFor(kind) {
   if (!techAvailable(k.tech)) return null;
   if (devicesOf(player().id).some((d) => d.type === k.device)) return 'own';
   if (householdHas(k.device)) return 'home';
-  return 'elsewhere'; // a neighbour's, a café, the window of a shop
+  return 'elsewhere'; // a neighbor's, a café, the window of a shop
 }
 
 /** The radio and television activities open this year. */
@@ -49,19 +49,19 @@ export function broadcastOptions() {
   const p = player();
   if (p.legal?.incarceration || p.age < 3) return [];
   return ['radio', 'tv'].filter((k) => setFor(k)).map((k) => ({
-    id: k, label: k === 'radio' ? (setFor(k) === 'elsewhere' ? 'Listen to the radio at a neighbour\'s' : 'Listen to the radio') : (setFor(k) === 'elsewhere' ? 'Watch television somewhere that has one' : 'Watch television'),
-    done: !!acts()[`bc:${k}`], programmes: PROGRAMMES[k].filter((x) => !x.maxAge || p.age <= x.maxAge),
+    id: k, label: k === 'radio' ? (setFor(k) === 'elsewhere' ? 'Listen to the radio at a neighbor\'s' : 'Listen to the radio') : (setFor(k) === 'elsewhere' ? 'Watch television somewhere that has one' : 'Watch television'),
+    done: !!acts()[`bc:${k}`], programs: PROGRAMS[k].filter((x) => !x.maxAge || p.age <= x.maxAge),
   }));
 }
 
 /** A year of evenings with the radio or the television. With others at home, it brings the household closer. */
-export function tuneIn(kind, programmeId) {
+export function tuneIn(kind, programId) {
   const p = player();
   const k = KIND[kind];
   const opt = broadcastOptions().find((o) => o.id === kind);
   if (!opt) return result(false, `There is no ${k.name} here yet.`);
   if (opt.done) return result(false, `You have already spent the year's evenings with the ${k.name}.`);
-  const prog = opt.programmes.find((x) => x.id === programmeId) ?? opt.programmes[0];
+  const prog = opt.programs.find((x) => x.id === programId) ?? opt.programs[0];
   acts()[`bc:${kind}`] = true;
   const e = prog.effect;
   if (e.intellect) p.stats.intellect = clamp(p.stats.intellect + e.intellect);
@@ -70,7 +70,7 @@ export function tuneIn(kind, programmeId) {
   const where = setFor(kind);
   const people = where === 'elsewhere' ? [] : household();
   for (const n of people) { n.meters.relationship = clamp(n.meters.relationship + rng.int(2, 4)); n.lastInteractionAge = p.age; }
-  const with_ = people.length ? `, ${people.length === 1 ? `with ${people[0].firstName}` : 'with the household gathered round'}` : where === 'elsewhere' ? ', crowded in with the neighbours' : ', on your own';
+  const with_ = people.length ? `, ${people.length === 1 ? `with ${people[0].firstName}` : 'with the household gathered round'}` : where === 'elsewhere' ? ', crowded in with the neighbors' : ', on your own';
   const text = `You ${k.verb} ${prog.label.charAt(0).toLowerCase()}${prog.label.slice(1)} through the year${with_}.`;
   log(text, 'system', 'good');
   return result(true, text, 'good');
