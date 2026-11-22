@@ -50,6 +50,7 @@ check(JSON.stringify(await labels()) === JSON.stringify(['You', 'Find Work']), `
 let rs = await rows();
 check(rs.some((r) => r.label === 'Jobs' && r.locked && /^From age \d+$/.test(r.line)), 'work: Jobs is greyed for a child, with the age it opens');
 check(rs.at(-1)?.label === 'Special Careers' && !rs.at(-1).locked, 'work: Special careers closes the list');
+check(rs.some((r) => r.label === 'Military' && r.locked && /From age 18/i.test(r.line)), 'work: Military is greyed until 18');
 await page.evaluate(() => document.querySelector('[data-sec="Special careers"]').click()); await page.waitForTimeout(250);
 const special = await page.evaluate(() => [...document.querySelectorAll('.sec-body.shown .nav-row, .sec-body.shown .sec-row')].filter((r) => r.offsetParent).map((r) => `${r.querySelector('.nr-label')?.textContent.trim()}${r.disabled ? ' (locked)' : ''}`));
 check(['My Fame', 'K-pop Idol', 'My Athletics', 'Politics'].every((n) => special.some((x) => x.startsWith(n))), `Special careers holds fame, K-pop, athletics and politics (${special.join(', ')})`);
@@ -74,6 +75,22 @@ check(['Browse Property', 'Invest', 'Borrow Money'].every((n) => rs.find((r) => 
 await tab('work');
 rs = await rows();
 check(rs.some((r) => /^Jobs/.test(r.label) && !r.locked), 'work: at 30 Jobs is open');
+check(rs.some((r) => r.label === 'Military' && !r.locked), 'work: at 30 Military is open');
+// Joining: the way in, then the branch from a dropdown, then basic training.
+await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.stats.health = 90; p.legal.incarceration = null; });
+await tab('work');
+await page.evaluate(() => document.querySelector('[data-act="military"]').click()); await page.waitForTimeout(250);
+await page.locator('#modal-root .choice-btn', { hasText: 'Enlist' }).click(); await page.waitForTimeout(250);
+const branches = await page.locator('#modal-root select#m-pick option').allInnerTexts();
+check(branches.length >= 3, `the branch is picked from a dropdown (${branches.join(', ')})`);
+await page.locator('#modal-root [data-go]').click(); await page.waitForTimeout(300);
+check(/contract/i.test(await page.locator('#modal-root .modal').last().innerText()), 'enlisting says what was signed');
+await page.locator('#modal-root .modal').last().locator('[data-ok]').click(); await page.waitForTimeout(300);
+check(/basic training/i.test(await page.locator('#modal-root .modal').last().innerText()), 'and basic training follows at once');
+for (let i = 0; i < 6 && await page.locator('#modal-root .scrim').count(); i++) { const c = page.locator('#modal-root .choice-btn:not([disabled])'); if (await c.count()) await c.first().click(); else await page.locator('#modal-root .modal').last().locator('[data-ok]').click(); await page.waitForTimeout(200); }
+await tab('work');
+rs = await rows();
+check(rs.some((r) => r.label === 'Military' && /, /.test(r.line)), 'serving: the row shows rank and branch');
 check(!errors.length, `no errors in the page (${errors.join('; ')})`);
 await browser.close(); server.close();
 for (const m of problems) console.log(`FAIL ${m}`);

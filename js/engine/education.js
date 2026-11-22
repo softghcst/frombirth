@@ -142,6 +142,8 @@ function chargeTuition() {
   // What is owed is what is charged less whatever help came with the offer.
   const fee = Math.round(currentTuition() * (1 - (e.aid ?? 0)));
   if (!fee || e.funding === 'scholarship' || e.funding === 'parents' || e.funding === 'employer') return;
+  // A veteran who served a full contract has years of tuition paid (engine/military.js).
+  if (p.flags.vetEducation > 0 && isHigher(e.stage)) { p.flags.vetEducation -= 1; log(`Your veterans' education benefit paid this year's tuition (${fmtMoney(fee, c)}).`, 'system', 'good'); return; }
   if (e.funding === 'self' && p.finance.cash >= fee) {
     p.finance.cash -= fee;
     log(`You paid ${fmtMoney(fee, c)} in tuition.`);

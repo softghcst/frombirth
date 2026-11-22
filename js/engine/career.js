@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { deploy } from './military.js';
 import { hasRecord } from './records.js';
 import { licenseBlock } from './credentials.js';
 import { careerBlock, careerExists, eraTitle, worldYear } from './history.js';
@@ -741,22 +742,10 @@ export function tickCareer() {
   }
 
   // Military service: deployments are rarer in peacetime, and almost always come home.
-  if (c.military && rng.chance(0.22)) {
-    c.military.deployments += 1;
-    const roll = rng.next();
-    if (roll < 0.004) return 'wounds received on deployment';
-    if (roll < 0.14) {
-      p.stats.health = clamp(p.stats.health - rng.int(8, 18));
-      log('You were deployed overseas and came home injured.', 'system', 'bad');
-    } else if (roll < 0.3) {
-      c.performance = clamp(c.performance + 15);
-      log('You were deployed overseas and decorated for what you did there.', 'system', 'good');
-      milestone('Decorated on deployment.', 'career');
-      c.military.honors = (c.military.honors ?? 0) + 1;
-    } else {
-      c.performance = clamp(c.performance + 5);
-      log('You were deployed overseas. You came home in one piece.');
-    }
+  if (c.military && !c.military.conscript && rng.chance(0.22)) {
+    // A deployment is a scene with choices (engine/military.js); a very few do not come home.
+    if (rng.chance(0.004)) return 'wounds received on deployment';
+    deploy();
   }
 
   // Space: training, and sometimes a mission.
