@@ -64,6 +64,7 @@ export const MENU_RULES = [
   [/^radio and television$/i, '📺', 'What you listen to and watch'],
   [/^digital life$/i, '📱', 'Accounts, messages and posts'],
   [/^my neighborhood$/i, '🏘️', 'Your street, your neighbors, the local places'],
+  [/^travel and passport$/i, '✈️', 'Trips, passport and visas'],
   [/^travel$/i, '✈️', 'Trips, holidays and visits'],
   [/^passport & documents$/i, '🛂', 'Passport, visas and papers'],
   [/^moving$/i, '📦', 'Another city, or another country'],

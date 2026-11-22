@@ -122,13 +122,13 @@ async function drivingTest(api) {
   const st = cars.drivingTestStatus();
   if (!st.left) return messageModal({ body: 'You have used all three tries this year. You can take the test again next year.' });
   const go = await confirmModal({ title: st.retake ? 'Retake the test?' : 'Driving lessons and the test',
-    body: `${fmtMoney(st.fee, c)}. Five questions; get four right to pass. ${st.left} ${st.left === 1 ? 'try' : 'tries'} left this year.`, yes: 'Take the test' });
+    body: `${fmtMoney(st.fee, c)}. One question; get it right to pass. ${st.left} ${st.left === 1 ? 'try' : 'tries'} left this year.`, yes: 'Take the test' });
   if (!go) return undefined;
   const t = cars.startDrivingTest();
   if (!t.ok) return report(api, t);
   const picks = [];
   for (const [i, x] of t.questions.entries()) {
-    const pick = await pickModal({ title: `Question ${i + 1} of ${t.questions.length}`, body: x.q, cancel: 'Give up',
+    const pick = await pickModal({ title: t.questions.length > 1 ? `Question ${i + 1} of ${t.questions.length}` : 'Your driving test', body: x.q, cancel: 'Give up',
       options: x.options.map((o) => ({ value: o, label: o })) });
     if (!pick) break; // walking out of the test fails it: the try is used
     picks.push(pick);
@@ -137,7 +137,7 @@ async function drivingTest(api) {
   api.changed();
   return new Promise((resolve) => {
     const m = openModal(`<h2>${r.ok ? 'You passed' : 'Not this time'}</h2><p class="body">${esc(r.text)}</p>
-      ${r.missed?.length ? `<div class="section-label">${r.ok ? 'The one you missed' : 'What you missed'}</div>${r.missed.map((x) => `<p class="muted" style="margin:4px 0">${esc(x.q)}</p><p style="margin:0 0 10px"><strong>${esc(x.right)}</strong></p>`).join('')}` : ''}
+      ${r.missed?.length ? `<div class="section-label">${r.ok ? 'The one you missed' : 'The right answer'}</div>${r.missed.map((x) => `<p class="muted" style="margin:4px 0">${esc(x.q)}</p><p style="margin:0 0 10px"><strong>${esc(x.right)}</strong></p>`).join('')}` : ''}
       <button class="btn primary" data-ok>Continue</button>`, { tone: r.tone });
     m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
   });

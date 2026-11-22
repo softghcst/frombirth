@@ -55,6 +55,9 @@ export function roleLabel(npc) {
   }
 }
 
+/** Family, by role: their deaths are always told. */
+const KIN_ROLES = ['parent', 'sibling', 'grandparent', 'child', 'grandchild', 'greatgrandchild', 'spouse', 'partner', 'niece', 'relative', 'inlaw', 'guardian'];
+
 const DECAY = { mentor: 1, parent: 1, grandparent: 2, sibling: 2, friend: 4, classmate: 5, coworker: 4, partner: 3,
   neighbor: 0, roommate: 0, spouse: 2, child: 2, grandchild: 2, greatgrandchild: 2, niece: 3, relative: 3, inlaw: 2, pet: 1, enemy: 0, ex: 0, boss: 2, cellmate: 3, clinician: 0, groupmate: 2, coach: 3, teammate: 3, agent: 2 };
 
@@ -116,6 +119,7 @@ export function inheritFrom(npc) {
 
 export function tickRelationships() {
   const p = player();
+  const drifted = [];
   for (const npc of livingNpcs()) {
     npc.age += 1;
 
@@ -129,9 +133,12 @@ export function tickRelationships() {
       npc.alive = false;
       npc.flags.diedYear = store.state.year;
       // An animal's death is written into the family's record, which tells it in the life story.
+      // Someone close is a loss in the life story; an acquaintance (a neighbor met once, an old classmate) is not news to
+      // be told, and is felt only a little.
+      const close = KIN_ROLES.includes(npc.role) || npc.meters.relationship >= 40;
       if (npc.role === 'pet') animalDied(npc);
-      else log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}.`, 'system', 'bad');
-      p.stats.mood = clamp(p.stats.mood - Math.round(8 + npc.meters.relationship / 5));
+      else if (close) log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}.`, 'system', 'bad');
+      p.stats.mood = clamp(p.stats.mood - (close || npc.role === 'pet' ? Math.round(8 + npc.meters.relationship / 5) : 1));
       inheritFrom(npc);
       continue;
     }
@@ -149,12 +156,14 @@ export function tickRelationships() {
       npc.meters.relationship = clamp(npc.meters.relationship - (DECAY[npc.role] ?? 2) - (npc.flags.abroad && (DECAY[npc.role] ?? 2) > 0 ? 2 : 0)); // (roles that never fade, like neighbors, do not fade by moving away either)
     }
     if ((npc.role === 'friend' || npc.role === 'classmate') && npc.meters.relationship < 10 && !npc.flags.tag) {
-      log(`You and ${npc.firstName} drifted apart.`);
+      drifted.push(npc.firstName);
       // They leave the player's life but not the world: years later they may turn up again (engine/digital/stories.js).
       p.npcIds = p.npcIds.filter((id) => id !== npc.id);
       npc.flags.drifted = { year: store.state.year, age: p.age, role: npc.role };
     }
   }
+  // Everyone the player lost touch with this year, in one line.
+  if (drifted.length) log(`You lost touch with ${drifted.length === 1 ? drifted[0] : `${drifted.slice(0, -1).join(', ')} and ${drifted[drifted.length - 1]}`}.`);
 }
 
 // ---------- Everyday interactions ----------

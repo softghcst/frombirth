@@ -80,6 +80,7 @@ EXCLUDED = {'eyes_15.svg', 'eyes_02.svg', 'eyes_03.svg', 'eyes_04.svg', 'eyes_05
             'brows_02.svg', 'brows_03.svg', 'brows_7.svg', 'brows_13.svg', 'brows_17_puppy.svg', 'brows_18_unibrow.svg', 'brows_19_glam_arch.svg',
             'brows_22_skeptical.svg',
             'nose_1.svg', 'nose_2.svg', 'nose_3.svg', 'nose_4.svg', 'nose_5.svg', 'nose_8.svg', 'nose_18.svg', 'nose_22.svg', 'nose_15.svg', 'nose_24.svg',
+            'hair_boy_long_06.svg', 'hair_boy_long_08.svg', 'hair_girl_long_02.svg', 'hair_girl_long_05.svg', 'hair_boy_medium_07.svg', 'hair_boy_medium_06.svg', 'hair_boy_medium_08.svg', 'hair_boy_medium_05.svg', 'hair_boy_medium_14.svg', 'hair_girl_long_14.svg', 'hair_boy_long_14.svg', 'hair_girl_medium_02.svg', 'hair_girl_medium_06.svg', 'hair_girl_short_06.svg', 'hair_girl_medium_07.svg', 'hair_girl_medium_05.svg',
             'face_01_oval.svg', 'face_02_round.svg', 'face_03_square.svg', 'face_04_heart.svg', 'face_05_diamond.svg', 'face_06_pear.svg'}
 
 

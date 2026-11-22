@@ -62,7 +62,8 @@ export function tickHealth() {
     if (cond.sinceAge < age) {
       if (rng.chance(def.recover)) {
         cureCondition(cond.id);
-        log(`You recovered from ${def.name}.`, 'system', 'good');
+        // Getting over a cold or the flu goes without saying; getting over something serious does not.
+        if (def.chronic || def.recover < 0.8) log(`You recovered from ${def.name}.`, 'system', 'good');
         continue;
       }
       if (!def.chronic) log(`You are still suffering from ${def.name}.`, 'system', 'bad');

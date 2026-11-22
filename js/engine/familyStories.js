@@ -130,6 +130,7 @@ export function tickFamilyStories(d) {
   const most = d.most;
   for (const c of can.map((v) => [rng.next(), v]).sort((a, b) => a[0] - b[0]).map(([, v]) => v)) {
     if (n >= most || !rng.chance(d.chance)) continue;
+    if (told()[`fam_${c.s.id}`] === year()) continue; // never the same story twice in a year, about two people
     told()[c.key] = year();
     told()[`fam_${c.s.id}`] = year();
     store.state.pendingEvents.push({ id: `fam_${c.s.id}`, cast: { ...(c.x.them ? { them: c.x.them } : {}), ...(c.x.words ? { words: c.x.words } : {}) } });

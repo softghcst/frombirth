@@ -135,8 +135,9 @@ for (const [name, viewport] of [['phone', { width: 390, height: 844 }], ['deskto
     // A neighbor you have only met is kept off the People tab; it links to them on My Neighborhood instead.
     const role = await page.evaluate(async (id) => (await import('/js/state.js')).store.state.npcs[id]?.role, met);
     if (role === 'neighbor') {
-      check(await page.locator(`[data-npc="${met}"]`).count() === 0, `${name}: a neighbor you have only met is not on the People tab`);
-      check(await page.locator('[data-top="neighbors"]').count() === 1, `${name}: the People tab links to the neighbors you know`);
+      const where = await page.evaluate((id) => [...document.querySelectorAll(`[data-panel-body] [data-npc="${id}"]`)].map((e) => e.closest('.card, section, .scrim')?.className ?? '?'), met);
+      check(where.length === 0, `${name}: a neighbor you have only met is not on the People tab (${where.join(', ')})`);
+      check(await page.locator('[data-panel-body] [data-top="neighbors"]').count() === 1, `${name}: the People tab links to the neighbors you know`);
     } else check(await page.locator(`[data-npc="${met}"]`).count() === 1, `${name}: a neighbor who became a friend is on the People tab`);
   }
   await openHood(page);

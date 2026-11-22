@@ -5,9 +5,11 @@
 //   p.travel.earned      achievements, with the year each was earned
 //
 // A trip moves through: draft -> confirmed -> in_progress -> completed, or
-// canceled / disrupted. Opening the planner costs nothing; money changes
-// hands only when a trip is confirmed, once per booking (engine/chronicle.js
-// ledger). A trip is completed once. Taking a trip never changes where
+// canceled / disrupted. The player takes a booked trip in one go (takeTrip): it
+// sets off and comes home at once, and the screen shows one notice of how it
+// went; in_progress is only ever held by older saves and in between. Opening
+// the planner costs nothing; money changes hands only when a trip is confirmed,
+// once per booking (engine/chronicle.js ledger). A trip is completed once. Taking a trip never changes where
 // anyone lives: the primary residence is p.countryId / p.city, untouched here.
 //
 // Time. The world clock moves a year at a time (yearProcessor). Inside a
@@ -688,6 +690,33 @@ export function comeHome(tripId, p = player()) {
   log(text, 'system', 'good');
   return result(true, text, 'good', { trip });
 }
+
+/**
+ * Takes a booked trip in one go: sets off, does what was planned (and anything free there the player loves, while
+ * days remain), and comes home. Returns how it went, as one account, with what changed (mood, health, intellect),
+ * for the notification. A trip that cannot go ahead is reported as such, refunded on its terms.
+ */
+export function takeTrip(tripId, p = player()) {
+  const before = { mood: p.stats.mood, health: p.stats.health, intellect: p.stats.intellect };
+  const out = depart(tripId, p);
+  if (!out.ok) return { ...out, title: 'The trip did not happen' };
+  const trip = out.trip;
+  // Free things they love, if there is time: nobody spends a week in Tokyo doing only what was booked.
+  for (const a of activityOptions(trip, p)) {
+    if (!a.cost && likes(a, p) && !trip.activities.includes(a.id) && !trip.done.some((d) => d.id === a.id) && a.days <= daysLeft(trip) - planDays(trip)) experience(trip, a, p);
+  }
+  const back = comeHome(trip.id, p);
+  const where = trip.destination.city ?? COUNTRIES[trip.destination.countryId].name;
+  const did = trip.done.map((d) => { const n = ACTIVITY_BY_ID[d.id]?.name ?? d.id; return `${n.charAt(0).toLowerCase()}${n.slice(1)}${d.liked ? ' (you loved it)' : ''}`; });
+  const days = daysBetween(trip.depart, trip.ret);
+  const text = [out.text, did.length ? `While you were there: ${list(did)}.` : `${days} quiet days in ${where}.`, back.text].join(' ');
+  const changes = [['Mood', 'mood'], ['Health', 'health'], ['Intellect', 'intellect']]
+    .map(([label, k]) => ({ label, delta: Math.round(p.stats[k] - before[k]) })).filter((c) => c.delta);
+  return result(true, text, 'good', { trip, changes, title: `Back from ${where}` });
+}
+
+/** Days the trip's planned, not yet done activities will take. */
+const planDays = (trip) => trip.activities.filter((id) => !trip.done.some((d) => d.id === id)).reduce((s, id) => s + (ACTIVITY_BY_ID[id]?.days ?? 0), 0);
 
 /** A trip that could not happen: the bookings are refunded on their terms, more if insured. */
 function disrupt(trip, why, p = player()) {
