@@ -52,8 +52,8 @@ check(rs.some((r) => r.label === 'Jobs' && r.locked && /^From age \d+$/.test(r.l
 check(rs.at(-1)?.label === 'Special Careers' && !rs.at(-1).locked, 'work: Special careers closes the list');
 await page.evaluate(() => document.querySelector('[data-sec="Special careers"]').click()); await page.waitForTimeout(250);
 const special = await page.evaluate(() => [...document.querySelectorAll('.sec-body.shown .nav-row, .sec-body.shown .sec-row')].filter((r) => r.offsetParent).map((r) => `${r.querySelector('.nr-label')?.textContent.trim()}${r.disabled ? ' (locked)' : ''}`));
-check(['My Fame', 'K-Pop Idol', 'My Athletics', 'Politics'].every((n) => special.some((x) => x.startsWith(n))), `Special careers holds fame, K-pop, athletics and politics (${special.join(', ')})`);
-check(special.some((x) => /K-Pop Idol \(locked\)/.test(x)) && special.some((x) => /Politics \(locked\)/.test(x)), 'with K-pop and politics greyed for a child');
+check(['My Fame', 'K-pop Idol', 'My Athletics', 'Politics'].every((n) => special.some((x) => x.startsWith(n))), `Special careers holds fame, K-pop, athletics and politics (${special.join(', ')})`);
+check(special.some((x) => /K-pop Idol \(locked\)/.test(x)) && special.some((x) => /Politics \(locked\)/.test(x)), 'with K-pop and politics greyed for a child');
 await tab('holdings');
 rs = await rows();
 const prop = rs.find((r) => r.label === 'Browse Property');

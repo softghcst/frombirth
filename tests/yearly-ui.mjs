@@ -76,7 +76,14 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     check(await page.locator('.modal', { hasText: 'Swimming' }).count(), `${label}: the update reports the hobby practiced through the year`);
   }
   // And it can be looked back on at any time, from Your life this year.
-  while (await page.locator('#modal-root .scrim').count()) { const b = page.locator('#modal-root .scrim:last-child [data-ok], #modal-root .scrim:last-child .choice-btn:not([disabled])'); if (!(await b.count())) break; await b.first().click(); await page.waitForTimeout(120); }
+  // Answer or close whatever is still open (a scene, a notice, or a page with a Back button), allowing for one that
+  // arrives a moment late on a slow machine.
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(150);
+    if (!(await page.locator('#modal-root .scrim').count())) break;
+    const b = page.locator('#modal-root .scrim:last-child [data-ok], #modal-root .scrim:last-child .choice-btn:not([disabled]), #modal-root .scrim:last-child .modal-back');
+    if (await b.count()) await b.first().click();
+  }
   await page.locator('[data-tab="pursuits"]').click(); await page.waitForTimeout(150);
   await openSection(page, 'Your life this year');
   await page.locator('[data-year-plan="lookback"]').click(); await page.waitForTimeout(200);
