@@ -25,7 +25,8 @@ import { openMyMoney } from '../money.js';
 import * as review from '../../engine/estateReview.js';
 import { heirs as playableHeirs } from '../../engine/legacy.js';
 import { bankWorth } from '../../engine/banking.js';
-import { navRow, navGroup } from '../kit.js';
+import { navRow, navGroup, lockedRow, fromAge } from '../kit.js';
+import { DRIVING_TEST } from '../../data/vehicles.js';
 
 const GLYPH = { car: '🚗', cycle: '🚲', bike: '🏍️', boat: '⛵', plane: '✈️', property: '🏠', fund: '📈', stock: '📈', crypto: '🪙' };
 const pct = (x) => `${x >= 0 ? '+' : ''}${Math.round(x * 100)}%`;
@@ -382,6 +383,12 @@ export default {
     if (p.age >= 3) actions.push(['vehicles', p.age >= 16 ? 'Browse vehicles' : 'Browse bikes and boards']);
     if (cars.canTakeDrivingTest()) actions.push(['driving', cars.drivingTestStatus().retake ? 'Retake the driving test' : 'Take driving lessons and the test']);
     if (cars.canLearnToFly() && p.age >= 21) actions.push(['flying', 'Learn to fly']);
+    // What is not open yet stays in the list, greyed, with why: the player can see what is coming.
+    const locked = [];
+    if (p.age < 18) locked.push(['Browse property', 'From age 18'], ['Invest', 'From age 18'], ['Borrow money', 'From age 18'], ['Currencies', 'From age 18']);
+    if (p.age < 3) locked.push(['Browse vehicles', 'From age 3']);
+    if (!cars.canTakeDrivingTest() && !cars.hasLicense()) locked.push(['Take driving lessons and the test', fromAge(p.age, DRIVING_TEST.minAge) || 'Not open to you now']);
+    if (!(cars.canLearnToFly() && p.age >= 21) && !cars.hasPilotLicense()) locked.push(['Learn to fly', fromAge(p.age, 21) || 'Not open to you now']);
 
     const row = (a, glyph, sub, value) => `
       <button class="row" data-asset="${a.id}">
@@ -420,7 +427,7 @@ export default {
     ...(estate.properties().some((a) => estate.isAbroad(a)) ? [['Property abroad', 'Taxed where it stands']] : []),
     ...(bank.isBankrupt() ? [['Bankrupt until age', String(p.flags.bankruptUntil)]] : [])])}</details>
       </div>
-      ${navGroup(actions.map(([id, label]) => navRow({ attrs: `data-go="${id}"`, label, ico: HOLD_ICONS[id] ?? 'sparkle' })), 'Buy and invest')}
+      ${navGroup([...actions.map(([id, label]) => navRow({ attrs: `data-go="${id}"`, label, ico: HOLD_ICONS[id] ?? 'sparkle' })), ...locked.map(([label, why]) => lockedRow(label, why))], 'Buy and invest')}
       ${props ? `<div class="section-label">Property</div>${props}` : ''}
       ${vehs ? `<div class="section-label">Vehicles</div>${vehs}` : ''}
       ${invs ? `<div class="section-label">Investments</div>${invs}` : ''}

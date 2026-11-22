@@ -200,7 +200,7 @@ async function run(viewport) {
   await page.reload();
   await page.click(`[data-load="${old}"]`);
   await openTab(page, 'pursuits');
-  check((await page.locator('[data-digital]').innerText()).trim() === 'Digital Life', 'in 1800 the row is just its name');
+  check((await page.locator('[data-digital] .nr-label').innerText()).trim() === 'Digital Life' && /\S/.test(await page.locator('[data-digital] .nr-main small').innerText()), 'in 1800 the row is its name and one line saying what it is for');
   await page.click('[data-digital]');
   const nav1800 = await page.locator('.dl-nav button').allInnerTexts();
   check(!nav1800.some((x) => /Feed|Creator Studio|Communities/.test(x)), 'and Digital Life shows no feed, communities or creator studio');

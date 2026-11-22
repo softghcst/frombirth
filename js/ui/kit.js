@@ -1,6 +1,7 @@
 // Afterglow building blocks shared by every screen: the Pathways mark, outline icons, navigation rows and
 // paired actions. Markup only; the look lives in css/components.css.
 import { esc } from '../util.js';
+import { menuInfo } from '../data/menus.js';
 
 /** The Pathways mark: a road from a first step to a bright point. The same shape as always, in Afterglow colors. */
 export const markSvg = (cls = 'title-mark') => `
@@ -51,17 +52,30 @@ const PATHS = {
 /** An outline icon. */
 export const icon = (name, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${PATHS[name] ?? PATHS.sparkle}</svg>`;
 
+/** The tile at the start of a row: the row's picture (data/menus.js) where it has one, else the drawn icon. */
+export function rowTile(label, ico = 'sparkle') {
+  const info = menuInfo(label);
+  return info ? `<span class="nr-icon emoji" aria-hidden="true">${info.emoji}</span>` : `<span class="nr-icon">${icon(ico)}</span>`;
+}
+
 /**
- * A row that opens another screen: icon, label (and an optional line under it), chevron.
+ * A row that opens another screen: picture, label, a line saying what it is for, chevron.
  * `attrs` is the data attribute(s) the screen's click handler listens for, e.g. 'data-top="tree"'.
+ * A row that is not open to the player yet is shown greyed, with why in place of its line (`why`), and cannot be tapped.
  */
-export function navRow({ attrs, label, sub = '', ico = 'sparkle', tone = '', disabled = false }) {
-  return `<button class="nav-row${tone ? ` ${tone}` : ''}" ${attrs} ${disabled ? 'disabled' : ''}>
-    <span class="nr-icon">${icon(ico)}</span>
-    <span class="nr-main"><span class="nr-label">${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</span>
-    ${icon('chevron', 'nr-chev')}
+export function navRow({ attrs, label, sub = '', ico = 'sparkle', tone = '', disabled = false, why = '' }) {
+  const line = (disabled && why) || sub || menuInfo(label)?.desc || '';
+  return `<button class="nav-row${tone ? ` ${tone}` : ''}${disabled ? ' locked' : ''}" ${attrs} ${disabled ? 'disabled aria-disabled="true"' : ''}>
+    ${rowTile(label, ico)}
+    <span class="nr-main"><span class="nr-label">${esc(label)}</span>${line ? `<small>${esc(line)}</small>` : ''}</span>
+    ${disabled ? '<span class="nr-lock" aria-hidden="true">🔒</span>' : icon('chevron', 'nr-chev')}
   </button>`;
 }
+
+/** A row for something not open yet, greyed with the reason: "From age 18". */
+export const lockedRow = (label, why, ico) => navRow({ attrs: 'data-locked', label, disabled: true, why, ico });
+/** "From age 18", or '' when the player is old enough. */
+export const fromAge = (age, min) => (age < min ? `From age ${min}` : '');
 
 /** A group of navigation rows on one card. */
 export const navGroup = (rows, title = '') => (rows.length

@@ -1148,8 +1148,8 @@ details.more[open] summary::after { transform: rotate(90deg); }
 .sec-row .nr-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nr-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--peach-strong); }
 .panel-body > .nav-group + .nav-group { margin-top: 14px; }
-/* Rows show their name and nothing else: what is behind a row is on its own screen. */
-.nav-row .nr-main small { display: none; }
+/* Rows show their name and one line saying what is behind them (data/menus.js), like a phone's settings list. */
+.nav-row .nr-main small { display: block; }
 .nav-row { min-height: 56px; }
 
 /* The result of the scene before, at the top of the next scene's card (ui/shell.js). */
@@ -1183,3 +1183,12 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .cmp-block .cmp-best span:last-child { font-weight: 800; color: var(--good, var(--accent-text)); }
 .chip.good { background: color-mix(in srgb, var(--good) 18%, var(--paper)); }
 .chip.bad { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); }
+
+/* Menu rows with a picture: an emoji on a soft tile, a line under the name saying what it is for. */
+.nr-icon.emoji { font-size: 1.32rem; line-height: 1; background: var(--raised); border: 1px solid var(--line-soft); }
+.nav-row .nr-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Not open yet: greyed, untappable, with the reason in place of the line and a small lock where the chevron goes. */
+.nav-row.locked, .nav-row:disabled { cursor: default; }
+.nav-row.locked .nr-label, .nav-row.locked .nr-main small { color: var(--muted); }
+.nav-row.locked .nr-icon { filter: grayscale(1); opacity: 0.55; }
+.nav-row.locked .nr-lock { flex: none; font-size: 0.85rem; opacity: 0.55; }
