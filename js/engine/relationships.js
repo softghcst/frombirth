@@ -1,6 +1,7 @@
 // Everyone in the player's life: aging, mortality, inheritance, relationship
 // decay, and the everyday interactions. Romance is in romance.js and
 // children in children.js.
+import { illnessCause } from './passing.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -121,7 +122,10 @@ export function inheritFrom(npc) {
  * What someone died of, as a family would say it: more likely to be an accident when young, cancer or the heart in
  * middle age, and simply age when old. Fixed by who they were, so it uses none of the game's dice.
  */
-function causeOfDeath(npc) {
+export function causeOfDeath(npc) {
+  // A serious illness they really had is what the family names first (engine/passing.js).
+  const ill = illnessCause(npc);
+  if (ill) return ill;
   let h = 7;
   for (const ch of String(npc.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const pick = (list) => list[h % list.length];
@@ -158,7 +162,8 @@ export function tickRelationships() {
         // The ones who matter most get a moment of their own: the funeral, and whether you go. Two a year at most.
         const told = store.state.pendingEvents.filter((e) => e.id === 'close_death').length;
         if (told < 2 && p.age >= 6 && (KIN_ROLES.includes(npc.role) || npc.meters.relationship >= 60)) {
-          store.state.pendingEvents.push({ id: 'close_death', cast: { words: { deceased: `${npc.firstName} ${npc.lastName}`, first: npc.firstName, role: roleLabel(npc).toLowerCase(), age: String(npc.age), cause: cause ? `It was ${cause}.` : '' } } });
+          npc.flags.deathScene = true;
+          store.state.pendingEvents.push({ id: 'close_death', cast: { words: { goneId: npc.id, deceased: `${npc.firstName} ${npc.lastName}`, first: npc.firstName, role: roleLabel(npc).toLowerCase(), age: String(npc.age), cause: cause ? `It was ${cause}.` : '' } } });
         }
       }
       p.stats.mood = clamp(p.stats.mood - (close || npc.role === 'pet' ? Math.round(8 + npc.meters.relationship / 5) : 1));

@@ -67,3 +67,24 @@
 .modal-back:active { transform: scale(0.96); }
 /* A page that draws its own ✕ in a header: the Back above is the one way out. */
 .modal.has-back :is(.icon-btn[data-close], .icon-btn[data-x], [data-x]) { display: none; }
+
+/* The dropdown dialog (modals.selectModal): a title with its emoji, a line, the dropdown, one button. */
+.modal .pick-title { display: flex; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.modal .pick-emoji { font-size: 1.6rem; line-height: 1; }
+.modal .pick-body { text-align: center; }
+.modal .pick-field { margin: 6px 0 16px; }
+.modal .pick-field label { display: block; font-weight: 800; color: var(--accent-text); margin-bottom: 6px; }
+.modal .pick-field select { width: 100%; min-height: 48px; padding: 0 40px 0 14px; border-radius: 12px; border: 1px solid var(--line-soft);
+  background: var(--raised); color: var(--ink); font: inherit; font-weight: 600; appearance: none; -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+.modal .pick-field select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.modal [data-go].btn { width: 100%; }
+
+/* A notice about someone (a death, an illness): their face and name, and who they are to the player, on a band. */
+.modal .notice-head { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 0 10px; text-align: center; }
+.modal .notice-head .avatar, .modal .notice-head > svg, .modal .notice-head > img { width: 72px; height: 72px; flex: none; border-radius: 50%; background: var(--accent-soft); }
+.modal .notice-who small { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+.modal .notice-head strong { font-size: 1.05rem; }
+.modal .btn-stack .btn { width: 100%; }
+.modal .notice-head ~ .scene { text-align: center; font-family: inherit; font-size: 1.02rem; }
