@@ -35,11 +35,13 @@ export function openModal(html, opts = {}) {
   root().appendChild(scrim);
   const card = scrim.firstElementChild;
   card._returnTo = returnTo;
-  // Every page that can be closed has the same way back, in plain sight: "‹ Back", top left, staying there however far
-  // down the page has been scrolled. (Scenes that must be answered have none. A page that draws its own ✕ in a header
+  // Every page that can be closed has a way back, in plain sight: "‹ Back", top left, staying there however far
+  // down the page has been scrolled, unless the page shows its own back button (see sync below). (Scenes that must be answered have none. A page that draws its own ✕ in a header
   // keeps working, but that one is tucked away: there is one way back, and it is always in the same place.) Opened from
   // inside another page, Back returns to it; opened from a tab, it returns to the tab.
-  if (opts.dismissable) {
+  // back: false, for a pop-up with its own way out (Close, Cancel, Not yet): tapping outside still closes it, with no
+  // Back as well. The question, choice and text pop-ups below all have their own.
+  if (opts.dismissable && opts.back !== false) {
     const row = document.createElement('div');
     row.className = 'modal-backrow';
     row.innerHTML = '<button type="button" class="modal-back" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>';
@@ -52,8 +54,16 @@ export function openModal(html, opts = {}) {
     });
     card.prepend(row);
     card.classList.add('has-back');
+    // One way back, never two: while the page shows a back button of its own ("← All places", "← Back" on a deeper
+    // level), this one is hidden, and it returns when the page has none (its first level).
+    const sync = () => {
+      const own = [...card.querySelectorAll('[data-back]:not(.modal-back)')].some((b) => !b.disabled && b.getClientRects().length > 0);
+      if (row.hidden !== own) row.hidden = own;
+    };
     // Pages redraw their own contents; the row is put back if one wipes it.
-    new MutationObserver(() => { if (!row.isConnected) card.prepend(row); }).observe(card, { childList: true });
+    new MutationObserver(() => { if (!row.isConnected) card.prepend(row); sync(); })
+      .observe(card, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'disabled', 'class', 'style'] });
+    sync();
   }
   nameDialog(card);
   card.setAttribute('tabindex', '-1');
@@ -155,7 +165,7 @@ export function confirmModal({ title, body, yes = 'Confirm', no = 'Cancel', dang
       <div class="btn-row">
         <button class="btn" data-no>${esc(no)}</button>
         <button class="btn ${danger ? 'danger' : 'primary'}" data-yes>${esc(yes)}</button>
-      </div>`, { dismissable: true, onDismiss: () => resolve(false) });
+      </div>`, { dismissable: true, back: false, onDismiss: () => resolve(false) });
     m.el.querySelector('[data-no]').addEventListener('click', () => { m.close(); resolve(false); });
     m.el.querySelector('[data-yes]').addEventListener('click', () => { m.close(); resolve(true); });
   });
@@ -176,7 +186,7 @@ export function pickModal({ title, body, options, cancel = 'Cancel' }) {
           ${esc(o.label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}
         </button>`).join('')}
       <button class="btn" data-cancel style="margin-top:14px">${esc(cancel)}</button>`,
-    { dismissable: true, onDismiss: () => resolve(null) });
+    { dismissable: true, back: false, onDismiss: () => resolve(null) });
     m.el.addEventListener('click', (e) => {
       if (e.target.closest('[data-cancel]')) { m.close(); return resolve(null); }
       const btn = e.target.closest('.choice-btn');
@@ -202,7 +212,7 @@ export function inputModal({ title, label, value = '', maxLength = 24 }) {
           <button type="button" class="btn" data-cancel>Cancel</button>
           <button type="submit" class="btn primary">Save</button>
         </div>
-      </form>`, { dismissable: true, onDismiss: () => resolve(null) });
+      </form>`, { dismissable: true, back: false, onDismiss: () => resolve(null) });
     m.el.querySelector('[data-cancel]').addEventListener('click', () => { m.close(); resolve(null); });
     m.el.querySelector('form').addEventListener('submit', (e) => {
       e.preventDefault();

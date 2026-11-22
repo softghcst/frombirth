@@ -22,6 +22,7 @@ import * as chron from '../engine/chronicle.js';
 import { languagesOf, fluency } from '../engine/languages.js';
 import { placeName, project, coords, capitalCity, jurisdictionAt } from '../engine/geo.js';
 import { avatarSvg } from './avatar.js';
+import { openPassportBook } from './passportBook.js';
 import { cover as healthCover } from '../engine/systems.js';
 import { getEra } from '../engine/history.js';
 import * as creds from '../engine/credentials.js';
@@ -173,8 +174,10 @@ export function openExplore(api, start = {}) {
           ${m?.cabins ? `<select data-planfield="cabin" aria-label="Cabin">${CABINS.map((k) => `<option value="${k.id}" ${trip.cabin === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select>` : ''}
           ${legs.length ? `<div class="gl-legs">${legs.map((l) => `<p>${esc(l.from.city)} ${esc(l.depart.date)} ${esc(l.depart.time)} → ${esc(l.to.city)} ${esc(l.arrive.date)} ${esc(l.arrive.time)} <small class="muted">local times · ${l.km.toLocaleString('en-US')} km</small></p>`).join('')}</div>` : ''}
           <label class="gl-radio"><input type="checkbox" data-needs ${p.flags.travelNeeds?.stepFree ? 'checked' : ''}> I need step-free access</label></div>
-        <div class="card gl-step"><h3>6 · Entry requirements</h3>
+        <div class="card gl-step"><h3>6 · Passports and Visas</h3>
+          ${entry.some((x) => x.sorted?.length) ? '<p class="muted">🛂 Passports and visas are sorted for you when you book. The fees go on the bill.</p>' : ''}
           ${entry.length ? entry.map((x) => `<div class="gl-entry ${x.ok ? 'ok' : ''}"><strong>${esc(x.name)}</strong>: ${esc(x.rule.name)}${x.ok ? ' ✓' : ''}
+            ${x.sorted?.length ? `<small class="muted">${x.sorted.length > 1 ? 'Passport and visa' : /passport/.test(x.sorted[0]) ? 'Passport' : 'Visa'}: sorted when you book</small>` : ''}
             ${x.problems.map((pr) => `<small>${esc(pr)}</small>`).join('')}
             ${x.mayApply && x.needs === 'passport' ? btn('Apply for a passport', `data-passport="${x.id}" data-issuer="${x.rule.nationality ?? cit.held(docs.personById(x.id))[0]}"`, 'small') : ''}
             ${x.mayApply && x.needs && x.needs !== 'passport' ? btn(`Apply: ${x.rule.name}`, `data-applyentry="${x.id}"`, 'small') : ''}</div>`).join('') : '<p class="muted">No border to cross.</p>'}
@@ -197,7 +200,7 @@ export function openExplore(api, start = {}) {
       const group = (title, rows) => (rows.length ? `<div class="section-label">${esc(title)}</div>${rows.map((t) => { const c = travel.tripCard(t); return `<button type="button" class="row world-row" data-trip="${t.id}"><div class="world-flag">${c.flag}</div><div class="main"><strong>${esc(c.type)}: ${esc(c.where)}</strong><small>${esc(c.depart)} to ${esc(c.ret)} · ${esc(STATUS[c.status])}${c.travelers.length > 1 ? ` · with ${esc(c.travelers.filter((x) => !x.you && x.status === 'accepted').map((x) => x.name).join(', '))}` : ''}</small></div></button>`; }).join('')}` : '');
       return `${group('Away now', list.filter((t) => t.status === 'in_progress'))}${group('Booked', list.filter((t) => t.status === 'confirmed'))}${group('Plans', list.filter((t) => t.status === 'draft'))}
         ${group('Past trips', list.filter((t) => ['completed', 'canceled', 'disrupted'].includes(t.status)))}
-        ${list.length ? '' : '<p class="empty">No trips yet.</p>'}<div class="btn-stack">${btn('Plan a trip', 'data-newplan', 'primary')}</div>`;
+        ${list.length ? '' : '<p class="empty">No trips yet.</p>'}<div class="btn-stack">${btn('Plan a trip', 'data-newplan', 'primary')}${btn('🛂 My Passport and Stamps', 'data-passportbook')}</div>`;
     },
 
     trip({ id }, ui) {
@@ -240,7 +243,8 @@ export function openExplore(api, start = {}) {
           ${kvt('For', a.who)}${kvt('Submitted', a.submittedYear)}${kvt('Status', STATUS[a.status] ?? a.status)}${['submitted', 'review_requested'].includes(a.status) ? kvt('Decision', `when ${a.decideYear} begins`) : ''}${a.reason ? `<p class="muted">${esc(a.reason)}</p>` : ''}
           ${a.status === 'refused' && a.kind !== 'eta' && a.kind !== 'relocation' && !(a.reviews >= 1) ? btn('Ask for a review', `data-review="${a.id}"`, 'small') : ''}${['submitted'].includes(a.status) && a.kind !== 'relocation' ? btn('Withdraw', `data-withdraw="${a.id}"`, 'small') : ''}</div>`).join('') : '<p class="empty">No applications.</p>';
       if (tab === 'history') body = `<div class="card">${story.placesLived().map((l) => kvt(`${l.from ?? '?'}${l.to ? `–${l.to}` : l.current ? ' to now' : ''}`, `${l.flag} ${l.city ? `${l.city}, ` : ''}${l.jurisdiction.name}${l.reason ? ` · ${l.reason}` : ''}`)).join('')}</div>`;
-      return `<div class="world-groups">${tabs.map(([id, label]) => chip(label, tab === id, `data-tab="${id}"`)).join('')}</div>${body}`;
+      return `<div class="btn-stack" style="margin-bottom:12px">${btn('🛂 Open My Passport', 'data-passportbook', 'primary')}</div>
+        <div class="world-groups">${tabs.map(([id, label]) => chip(label, tab === id, `data-tab="${id}"`)).join('')}</div>${body}`;
     },
 
     immigration(params, ui) {
@@ -489,6 +493,7 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-discard]'))) { if (await confirmModal({ title: 'Discard this plan?', body: 'Nothing has been paid.', yes: 'Discard' })) { travel.discardPlan(x.dataset.discard); NAV.stack = [{ view: 'plan', params: {}, scroll: 0 }]; changed(); } return undefined; }
       if ((x = t('[data-trip]'))) { const trip = travel.tripById(x.dataset.trip); return trip ? go(trip.status === 'draft' ? 'plan' : 'trip', { id: trip.id }) : undefined; }
       // Going is instant: the whole trip is taken, and a notice says how it went.
+      if (t('[data-passportbook]')) return openPassportBook();
       if ((x = t('[data-depart]'))) return tell(travel.takeTrip(x.dataset.depart));
       if ((x = t('[data-doact]'))) return tell(travel.doActivity(v.params.id, x.dataset.doact));
       if ((x = t('[data-home]'))) return tell(travel.comeHome(x.dataset.home));

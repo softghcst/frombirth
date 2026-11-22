@@ -284,6 +284,23 @@ section(`a 25-year acting career runs cleanly: ${ent.workOf(p).credits.length} c
   section('the casting board: parts that fit, parts that do not and why, a script and a director to weigh');
 }
 
+// ---------- Born famous: a royal baby is known everywhere but uses none of it ----------
+{
+  const career = await import('../js/engine/career.js');
+  const p = life('uk', 0);
+  p.hidden.fame = 71;
+  const avail = () => career.fameOptions().filter((o) => o.available).map((o) => o.id).sort().join();
+  check(!career.canUseFame() && avail() === '' && career.fameOptions().every((o) => /From age/.test(o.reason)), 'a famous baby cannot use their fame');
+  check(!career.doFameAction('book').ok && !p.milestones.some((m) => /book/i.test(m.text)), 'nor write a book');
+  p.age = 5;
+  check(career.canUseFame() && avail() === 'commercial,photoshoot', `at five: a photoshoot or a commercial (${avail()})`);
+  p.age = 10;
+  check(avail() === 'commercial,photoshoot,talk_show', `at ten: a talk show too (${avail()})`);
+  p.age = 12;
+  check(avail() === 'book,commercial,photoshoot,talk_show', `at twelve: a book too (${avail()})`);
+  section('fame is used only by those old enough: nothing for a baby, a book from twelve');
+}
+
 if (problems.length) { console.log('PROBLEMS:'); for (const x of [...new Set(problems)].slice(0, 30)) console.log(' -', x); process.exit(1); }
 for (const x of ok) console.log('ok  ', x);
 console.log('The show goes on.');

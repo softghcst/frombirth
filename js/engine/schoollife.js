@@ -160,9 +160,36 @@ export function clubActions(id) {
     { id: 'help', label: kind === 'sport' ? 'Help the coach' : 'Help run things', done: !!done.help },
   ];
   if (PERFORMING.has(id) && p.age >= 7) out.push({ id: 'feature', label: id === 'choir' ? 'Ask for a solo' : id === 'band' ? 'Ask to play a solo' : id === 'dance_class' ? 'Ask for a featured spot' : 'Ask for a bigger part', done: !!done.feature });
+  // The club's big moment of the year, whatever the club: a showcase, a match, a tournament, an exhibition.
+  out.push({ id: 'event', label: bigMoment(id).label, done: !!done.event });
+  // A classmate who is not in it yet.
+  if (mates().some((n) => !n.flags.clubs?.includes(id))) out.push({ id: 'friend', label: 'Bring a friend along', done: !!done.friend });
   if (life.role === 'member' && p.age >= 12 && life.standing >= 40) out.push({ id: 'lead', label: `Stand for ${leaderTitle(id).toLowerCase()}`, done: !!done.lead });
   return out;
 }
+
+/** Each club's big moment of the year: what it is called, and how it goes either way. */
+const MOMENTS = {
+  dance_class: ['Dance in the showcase', 'The lights, the music, and you on the beat the whole way through. The applause lasts.', 'You missed a step in the middle. Nobody else seemed to notice.'],
+  choir: ['Sing in the concert', 'Every note in place, and the hall goes quiet at the end before it claps.', 'The high part cracked once. The rest of the choir carried you through.'],
+  youth_theater: ['Perform in the end-of-term show', 'You forget you are on a stage. So does the audience.', 'You dried on a line, and someone fed it to you. It was fine.'],
+  musical_theater: ['Star in the school musical', 'Standing ovation on closing night.', 'Your voice tired by the third night, but you got through every show.'],
+  drama: ['Perform in the school play', 'A review in the school paper calls you "a natural".', 'You were fine. The set fell over, which is what everyone talks about.'],
+  band: ['Play in the concert', 'The band is tight and loud, and you are right in the middle of it.', 'You came in a bar early once. Nobody minds.'],
+  sports_team: ['Play in the big match', 'You win it, and you are the one they carry off the pitch.', 'You lost, narrowly. Next year.'],
+  chess: ['Play in a tournament', 'You win your section and bring home a little trophy.', 'You lose on time in the last round, from a winning position.'],
+  math_club: ['Enter a math competition', 'A certificate with your name on it, and a mention at assembly.', 'Hard problems. You got some of them.'],
+  science_club: ['Enter the science fair', 'First prize, and a photograph in the local paper.', 'An honorable mention. The volcano did not erupt.'],
+  coding: ['Enter a hackathon', 'Your team builds something that works, and wins.', 'It nearly worked. You learned more than the winners.'],
+  debate: ['Debate in a competition', 'You win the final, and your closing speech is the one people quote.', 'You lose on a split decision. You still think you were right.'],
+  council: ['Propose an idea to the school', 'It passes. The school changes a little because of you.', 'It is voted down, politely. You will try again.'],
+  paper: ['Write a front-page story', 'It is the story everyone at school reads.', 'Your story ran on page six.'],
+  art_club: ['Enter the art show', 'Your piece gets a ribbon, and a parent asks to buy it.', 'It hangs in the corridor for a month. People stop to look.'],
+  environment: ['Run a clean-up day', 'Forty people turn up, and the park looks new.', 'It rained. Six of you came anyway.'],
+  volunteers: ['Run a charity drive', 'You raise more than any year before.', 'Smaller than hoped, but it went where it was needed.'],
+  book_club: ['Lead a book discussion', 'The best discussion the club has had all year.', 'Half of them had not finished the book.'],
+};
+const bigMoment = (id) => { const m = MOMENTS[id] ?? ['Take part in the big event of the year', 'It goes well, and people remember your part in it.', 'It goes fine. Not your year to shine.']; return { label: m[0], won: m[1], lost: m[2] }; };
 
 /** Does one of them. Each moves the player's standing in the club, and what the club is about. */
 export function clubAct(id, action) {
@@ -202,6 +229,28 @@ export function clubAct(id, action) {
       }
       stand(-1); presence(1); mood(-3);
       return result(false, `Not this time: it went to someone with more experience. You were told to ask again next year, and you will.`, 'neutral');
+    }
+    case 'event': {
+      const m = bigMoment(id);
+      const taught = [...Object.keys(club.yearly?.talents ?? {}).map((k) => p.talents[k] ?? 0), ...Object.keys(club.yearly?.stats ?? {}).filter((k) => k !== 'mood').map((k) => p.stats[k] ?? 0)];
+      const skill = taught.length ? taught.reduce((s, v) => s + v, 0) / taught.length : p.stats.charm;
+      if (rng.chance(clamp(0.3 + (skill - 40) / 90 + (life.standing - 30) / 150, 0.15, 0.9))) {
+        stand(rng.int(6, 10)); mood(6);
+        for (const [k] of Object.entries(club.yearly?.talents ?? {})) p.talents[k] = clamp((p.talents[k] ?? 0) + 2);
+        if (PERFORMING.has(id)) presence(3);
+        e.standing = clamp((e.standing ?? 50) + 2);
+        life.record.push({ age: p.age, text: m.label.toLowerCase() });
+        return result(true, m.won);
+      }
+      stand(1); mood(-1);
+      return result(true, m.lost, 'neutral');
+    }
+    case 'friend': {
+      const n = rng.pick(mates().filter((x) => !x.flags.clubs?.includes(id)));
+      if (!n) return result(false, 'Everyone you know is already in it.', 'neutral');
+      rel(n, 10);
+      if (rng.chance(0.6)) { (n.flags.clubs ??= []).push(id); stand(3); return result(true, `${n.firstName} comes along, loves it, and joins. Now you go together.`); }
+      return result(true, `${n.firstName} comes once and says it is not for them, but liked being asked.`, 'neutral');
     }
     case 'lead': {
       const title = leaderTitle(id).toLowerCase();
@@ -335,7 +384,16 @@ export function decide(what, cast = {}) {
   const n = store.state.npcs[cast.mate ?? cast.bully ?? cast.teacher ?? cast.rival ?? cast.one];
   const say = (text) => text;
   switch (what) {
-    case 'startOk': return say('');
+    // A new school: how the player chooses to start. Small, lasting nudges, and one real classmate where friends are made.
+    case 'startOk': mood(2); return say('Nothing happens fast, and that suits you. By the end of the month you know where everything is.');
+    case 'startFriends': {
+      const m = rng.pick(mates().length ? mates() : [null]);
+      if (m) rel(m, 12);
+      e.standing = clamp((e.standing ?? 50) + 3); mood(4);
+      return say(m ? `${m.firstName} laughs at the same moment you do. By the end of the first week you have someone to sit with.` : 'You talk to everyone a little. By the end of the first week, people know your name.');
+    }
+    case 'startStudy': p.stats.intellect = clamp(p.stats.intellect + 2); e.gpa != null && (e.gpa = Math.min(4, e.gpa + 0.05)); return say('The teachers notice. The first test comes back with a good mark on it.');
+    case 'startJoin': e.standing = clamp((e.standing ?? 50) + 2); mood(3); p.stats.charm = clamp(p.stats.charm + 1); return say('Your first practice is chaos, and you love it. Now you have a reason to stay late.');
     case 'promSmart': case 'promLooks': case 'promStrong': case 'promFunny': {
       // The pitch that matches who you are works best; popularity carries every one of them.
       const lean = { promSmart: p.stats.intellect, promLooks: p.stats.charm, promStrong: (p.stats.health + (p.talents.sports ?? 0)) / 2, promFunny: (p.stats.charm + (p.talents.acting ?? 0)) / 2 }[what];

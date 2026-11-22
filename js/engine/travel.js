@@ -25,7 +25,7 @@ import { CABINS } from '../data/activities.js';
 import { MODES, MODE_BY_ID, STAYS, STAY_BY_ID, ACTIVITIES, ACTIVITY_BY_ID, TRIP_TYPES, TRIP_TYPE_BY_ID, REFUNDS, INSURANCE_RATE, DAILY, CABIN_FARE, HUBS, NONSTOP_KM } from '../data/travel.js';
 import { SKILL_BY_ID } from '../data/skills.js';
 import { distanceKm, overland, coastal, regionOf, localTime, instantAt, season, climate, placeName, capitalCity, placeId, parsePlace } from './geo.js';
-import { today, addDays, daysBetween, yearOf, readiness, addStay, ensureOwnPassport, personById, entryRule, needsAuthorization, eraOf } from './documents.js';
+import { today, addDays, daysBetween, yearOf, readiness, readyForTrip, addStay, ensureOwnPassport, personById, entryRule, needsAuthorization, eraOf } from './documents.js';
 import { charge, refund, recordEvent, hasEvent, archiveIdOf, events } from './chronicle.js';
 import { languagesOf, speaks } from './languages.js';
 import { remember } from './conditions.js';
@@ -442,9 +442,12 @@ export function problems(trip, p = player()) {
   // The border, for everyone going.
   if (abroad && trip.depart >= today()) {
     const purpose = t.purpose;
+    // A holiday or a business trip: passports and visitor's permissions are sorted when it is booked (readyForTrip), so
+    // they are not problems. Study and anything closed still are.
+    const auto = ['visit', 'business'].includes(purpose);
     for (const x of people) {
       const r = readiness(x, trip.destination.countryId, purpose, trip.depart, trip.ret);
-      out.push(...r.problems);
+      out.push(...r.problems.filter((y) => !(auto && r.papers.includes(y))));
     }
   }
   // Clashes with other trips.
@@ -461,7 +464,11 @@ export function entryCheck(trip, p = player()) {
   const purpose = TRIP_TYPE_BY_ID[trip.type].purpose;
   return goingPeople(trip).map((x) => {
     const r = readiness(x, trip.destination.countryId, purpose, trip.depart, trip.ret);
-    return { id: x.id, name: x.firstName, you: x === p, rule: r.rule, ok: r.ok, problems: r.problems, needs: r.needs, mayApply: x === p || (x.role === 'child' && x.age < 18) };
+    // On a holiday or business trip, missing papers are sorted when it is booked: listed, not problems.
+    const auto = ['visit', 'business'].includes(purpose);
+    const sorted = auto ? r.papers : [];
+    const left = r.problems.filter((y) => !sorted.includes(y));
+    return { id: x.id, name: x.firstName, you: x === p, rule: r.rule, ok: !left.length, problems: left, sorted, needs: auto ? null : r.needs, mayApply: x === p || (x.role === 'child' && x.age < 18) };
   });
 }
 
@@ -491,13 +498,26 @@ export function confirm(tripId, p = player()) {
     if (!paid.ok) return result(false, paid.why, 'neutral');
     trip.bookings.push({ id: uid('bk'), kind: l.kind, label: l.label, amount: l.amount, payer, txId: paid.tx.id, status: 'confirmed', activityId: l.activityId ?? null });
   }
+  const papers = sortPapers(trip, p);
   trip.status = 'confirmed';
   trip.confirmedOn = today();
   trip.confirmedYear = year();
   const others = going(trip).filter((x) => x.id !== p.id).map((x) => personById(x.id).firstName);
-  const text = `Booked: ${TRIP_TYPE_BY_ID[trip.type].name.toLowerCase()} to ${where}, ${trip.depart} to ${trip.ret}${others.length ? `, with ${list(others)}` : ''}. ${q.employer ? `Your employer pays ${fmtMoney(q.employer, country())}. ` : ''}${parentsPay ? 'Your parents paid.' : `You paid ${fmtMoney(q.organizer, country())}.`}`;
+  const text = `Booked: ${TRIP_TYPE_BY_ID[trip.type].name.toLowerCase()} to ${where}, ${trip.depart} to ${trip.ret}${others.length ? `, with ${list(others)}` : ''}. ${papers.notes.length ? `Sorted for the trip: ${list(papers.notes)}${papers.fees ? ` (${fmtMoney(papers.fees, country())} in fees)` : ''}. ` : ''}${q.employer ? `Your employer pays ${fmtMoney(q.employer, country())}. ` : ''}${parentsPay ? 'Your parents paid.' : `You paid ${fmtMoney(q.organizer, country())}.`}`;
   log(text, 'system', 'good');
   return result(true, text, 'good', { trip });
+}
+
+/** Passports and visitor's permissions for everyone going on a holiday or business trip abroad (documents.readyForTrip). */
+function sortPapers(trip, p = player()) {
+  const out = { fees: 0, notes: [] };
+  if (!trip.destination || trip.destination.countryId === p.countryId) return out;
+  const purpose = TRIP_TYPE_BY_ID[trip.type].purpose;
+  for (const x of goingPeople(trip)) {
+    const r = readyForTrip(x, trip.destination.countryId, purpose, trip.depart, trip.ret, trip.id);
+    out.fees += r.fees; out.notes.push(...r.notes);
+  }
+  return out;
 }
 
 /** Cancels a booked trip. What comes back depends on what was booked and how close the date is. */
@@ -533,6 +553,8 @@ export function depart(tripId, p = player()) {
   if (trip.depart < today()) return disrupt(trip, 'The date had already passed.', p);
   const abroad = trip.destination.countryId !== p.countryId;
   const purpose = TRIP_TYPE_BY_ID[trip.type].purpose;
+  // A trip booked before papers were sorted with the booking (an older save) is sorted now.
+  if (abroad) sortPapers(trip, p);
   // At the border: anyone not able to cross stays home.
   if (abroad) {
     const me = readiness(p, trip.destination.countryId, purpose, trip.depart, trip.ret);
@@ -709,7 +731,8 @@ export function takeTrip(tripId, p = player()) {
   const where = trip.destination.city ?? COUNTRIES[trip.destination.countryId].name;
   const did = trip.done.map((d) => { const n = ACTIVITY_BY_ID[d.id]?.name ?? d.id; return `${n.charAt(0).toLowerCase()}${n.slice(1)}${d.liked ? ' (you loved it)' : ''}`; });
   const days = daysBetween(trip.depart, trip.ret);
-  const text = [out.text, did.length ? `While you were there: ${list(did)}.` : `${days} quiet days in ${where}.`, back.text].join(' ');
+  const abroad = trip.destination.countryId !== trip.origin?.countryId;
+  const text = [out.text, did.length ? `While you were there: ${list(did)}.` : `${days} quiet days in ${where}.`, back.text, abroad ? `🛂 A new stamp in your passport: ${COUNTRIES[trip.destination.countryId].name}.` : ''].filter(Boolean).join(' ');
   const changes = [['Mood', 'mood'], ['Health', 'health'], ['Intellect', 'intellect']]
     .map(([label, k]) => ({ label, delta: Math.round(p.stats[k] - before[k]) })).filter((c) => c.delta);
   return result(true, text, 'good', { trip, changes, title: `Back from ${where}` });

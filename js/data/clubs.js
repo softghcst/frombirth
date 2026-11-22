@@ -8,13 +8,20 @@
 //   condition: 'kids' a child under 12, 'instrument' an instrument at 40 or more, 'drink' the drinking age),
 //   top (what the head of it is called), blurb, year (the line for a year of it).
 export const CLUB_KINDS = [
-  { id: 'mind', name: 'Minds and games' },
-  { id: 'arts', name: 'Arts and making' },
-  { id: 'stage', name: 'Music, dance and the stage' },
-  { id: 'body', name: 'Fitness and the outdoors' },
-  { id: 'community', name: 'Community and service' },
-  { id: 'social', name: 'Social clubs' },
+  { id: 'mind', name: 'Minds and Games' },
+  { id: 'arts', name: 'Arts and Making' },
+  { id: 'stage', name: 'Music, Dance and Stage' },
+  { id: 'body', name: 'Fitness and Outdoors' },
+  { id: 'community', name: 'Community and Service' },
+  { id: 'social', name: 'Social Clubs' },
 ];
+
+const SMALL = new Set(['and', 'of', 'the', 'a', 'an', 'in', 'for', 'or']);
+/** A club as a heading or a button: "A knitting and sewing circle" → "Knitting and Sewing Circle". (name stays a phrase for sentences.) */
+export const clubTitle = (c) => c.name.replace(/^(A|An|The) /, '')
+  // Words that add nothing on a button: "Community Choir" is a choir, "Evening Art Class" an art class.
+  .replace(/^(community|evening|local|private) (?!garden)/, '').split(' ')
+  .map((w, i) => (i > 0 && SMALL.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(' ');
 
 const C = (id, kind, name, minAge, dues, o = {}) => ({ id, kind, name, minAge, dues, from: 0, grows: {}, friend: 0.3, top: 'Chair', ...o });
 
