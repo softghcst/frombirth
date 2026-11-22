@@ -26,7 +26,7 @@ import { CAREERS } from '../data/careers.js';
 import { OCCUPATIONS } from '../data/traits.js';
 import { assess, meets, aid as aidFor, outlook, luckRange, acceptanceRate, fitOf, chanceOf } from './admissions.js';
 import { book } from './ledger.js';
-import { tripleThreat } from './conditions.js';
+import { tripleThreat, resolve } from './conditions.js';
 import { wealthTier } from './living.js';
 import * as edu from './education.js';
 import { arriveAt } from './edlegacy.js';
@@ -162,7 +162,7 @@ export function profile(majorId, inst = null) {
     access: universityAccess(), // Historical Eras: how many students universities took in these years
     mark: school ? e.gpa : edu.entryGpa(), predicted: school, advanced, recs, activities,
     statement: plan?.statementValue ?? 0,
-    audition: major?.audition ? Math.round(clamp(tripleThreat(p) + (p.flags.directorRec ? 8 : 0) + Math.min(10, (p.flags.performances?.length ?? 0) * 2) + (e.auditionPrep?.points ?? 0))) : null,
+    audition: major?.audition ? Math.round(clamp((major.auditionSkill ? Number(resolve(major.auditionSkill)) || 0 : tripleThreat(p)) + (p.flags.directorRec ? 8 : 0) + Math.min(10, (p.flags.performances?.length ?? 0) * 2) + (e.auditionPrep?.points ?? 0))) : null,
     attempts: inst && majorId ? triesOf(majorId, inst.id).n : 0,
     priorBest: inst && majorId ? triesOf(majorId, inst.id).best : null,
     // A university that offered an athletic scholarship (engine/sportsLife.js) backs the application, and pays what it offered.

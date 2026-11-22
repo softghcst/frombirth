@@ -22,6 +22,8 @@ import * as athletics from '../engine/sports.js';
 import * as sportsLife from '../engine/sportsLife.js';
 import { openAthletics } from './sports.js';
 import * as modeling from '../engine/modeling.js';
+import * as dance from '../engine/dance.js';
+import { DANCE_GIGS, DANCE_STYLES, DANCE_SHOW } from '../data/dance.js';
 import * as pub from '../engine/publishing.js';
 import * as celebs from '../engine/celebs.js';
 import * as agents from '../engine/agents.js';
@@ -38,11 +40,12 @@ const face = (n) => `<div class="avatar">${avatarSvg({ age: n.age, gender: n.gen
 const money = (n, c = country()) => fmtMoney(n, c);
 const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const nameOf = (who) => (who === 'player' ? 'You' : who ? `${store.state.npcs[who]?.firstName ?? ''} ${store.state.npcs[who]?.lastName ?? ''}`.trim() || 'Someone' : '');
-const kindName = (prod) => `${TIERS[prod.tier].name} ${PRODUCTION_KINDS[prod.kind].name.toLowerCase()}`;
+// "Broadway musical" for a major-stage show in New York (engine/entertainment.js tierName), else "Regional theater musical".
+const kindName = (prod) => `${ent.tierName(prod)} ${PRODUCTION_KINDS[prod.kind].name.toLowerCase()}`;
 const row = (act, arg, main, sub, side = '', n = null, cls = '') => `<button type="button" class="row world-row${cls ? ` ${cls}` : ''}" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
   <div class="main"><strong>${esc(main)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>`;
 
-const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modeling', 'Modeling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
+const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modeling', 'Modeling'], ['dance', 'Dance'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
   ['awards', 'Awards'], ['connections', 'Connections'], ['archive', 'Archive'], ['family', 'Family']];
 
 function tabsFor(p) {
@@ -53,6 +56,7 @@ function tabsFor(p) {
     if (id === 'music') return p.age >= 12 && fame.exists('concert');
     if (id === 'sport') return sportsLife.needsSport(store.state) || Object.values(store.state.sports?.athletes?.[p.id]?.sports ?? {}).some((e) => ['pro', 'elite', 'college'].includes(e.level) || e.legacySeasons);
     if (id === 'modeling') return modeling.isModel(p) || modeling.portfolio(p).length > 0;
+    if (id === 'dance') return dance.dances(p);
     if (id === 'writing') return p.age >= 14 && fame.exists('publishing');
     if (id === 'family') return (store.state.careerRecord ?? []).length > 0;
     if (id === 'awards') return awards.myAwards(p).length > 0;
@@ -282,7 +286,7 @@ const VIEWS = {
     if (!x) return '<p class="empty">That production is no longer on record.</p>';
     const R = x.reception;
     const o = ent.org(x.orgId);
-    return `<div class="card"><h3>${esc(x.title)}</h3>${kv([['What it is', `${kindName(x)}, ${x.genre}`], ['Made by', o?.name ?? '—'], ['Where', `${x.city}, ${COUNTRIES[x.countryId]?.name ?? ''}`], ['Directed by', `${nameOf(x.directorId)}, ${ent.directorWord(x)}`], ['The script', cap(ent.scriptWord(x).replace(/^an? /, '').replace(/ script$/, ''))], ...(x.basedOn ? [['Based on', `the book by ${x.basedOn.author}`]] : []),
+    return `<div class="card"><h3>${esc(x.title)}</h3>${kv([['What it is', `${kindName(x)}, ${x.genre}`], ['Made by', o?.name ?? '—'], ['Where', `${ent.districtOf(x) ? `${ent.districtOf(x).name}, ` : ''}${x.city}, ${COUNTRIES[x.countryId]?.name ?? ''}`], ['Directed by', `${nameOf(x.directorId)}, ${ent.directorWord(x)}`], ['The script', cap(ent.scriptWord(x).replace(/^an? /, '').replace(/ script$/, ''))], ...(x.basedOn ? [['Based on', `the book by ${x.basedOn.author}`]] : []),
       ['When', `${x.workYear}${x.runYears > 1 ? `–${x.workYear + x.runYears - 1}` : ''}`], ['Status', { casting: 'Casting', production: 'In production', running: 'Running', released: 'Released', closed: 'Closed' }[x.status]],
       ...(R ? [['Critics', `${R.critics}/100`], ['Audiences', `${R.audience}/100`], [R.profit >= 0 ? 'Made' : 'Lost', money(Math.abs(R.profit), COUNTRIES[x.countryId])], ...(x.abroad.length ? [['Seen in', `${x.abroad.length} other ${x.abroad.length === 1 ? 'country' : 'countries'}`]] : [])] : [])])}</div>
       <div class="section-label">Cast</div>${x.cast.filter((r) => r.who).map((r) => { const n = r.who === 'player' ? null : store.state.npcs[r.who];
@@ -373,6 +377,28 @@ const VIEWS = {
     offer: modeling.agencyOnOffer(), left: modeling.agencyTriesLeft(), find: 'findagency', sign: 'signagency', pass: 'passagency', drop: 'leaveagency', ask: 'model' }) : ''}
       ${list.length ? `<div class="section-label">Castings this year (${3 - m.castings.went} you can still go to)</div>${list.map((c) => (c.status === 'open' ? row('casting2', c.id, `${BOOKINGS[c.kind].name}: ${c.client}`, `${c.city}`, '') : `<div class="kv"><span>${esc(BOOKINGS[c.kind].name)}: ${esc(c.client)}</span><span>${c.status === 'booked' ? 'Booked' : 'Not this time'}</span></div>`)).join('')}` : ''}
       ${m.portfolio.length ? `<div class="section-label">Portfolio</div>${modeling.portfolio(p).map((x) => `<div class="kv"><span>${x.year} · ${esc(BOOKINGS[x.kind].name)}</span><span>${esc(x.client)}, ${esc(x.city)}</span></div>`).join('')}` : ''}`;
+  },
+
+  dance(p) {
+    const d = dance.danceOf(p);
+    const training = { bfa: 'A BFA in dance', ba: 'A BA in dance', theater: 'A degree in musical theater' }[dance.danceTraining(p)] ?? 'None';
+    const list = dance.offers(p);
+    const left = 4 - d.offers.went;
+    const comps = dance.competitions(p);
+    const place = (n) => (n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`);
+    return `<div class="card"><h3>Dance</h3>${kv([['Your dancing', String(p.talents.dance)], ['Training', training], ['Jobs on your record', String(dance.record(p))], ['Agent', ent.workOf(p).agent ? 'Yes' : 'None']])}
+      <p class="muted">Gigs are booked one at a time. Read the brief: clients hint at the style they want. The big ones (tours, ${esc(DANCE_SHOW.name)}) go through agents, and to dancers with jobs behind them. Dance ensemble parts in musicals, and musicals looking for a choreographer, are on the Opportunities page. A qualified dancer can open a studio of their own, from Business.</p></div>
+      ${list.length ? `<div class="section-label">Auditions this year (${Math.max(0, left)} you can still go to)</div>${list.map((o) => {
+        const g = DANCE_GIGS[o.kind];
+        const why = dance.whyNot(o.kind, p);
+        return o.status === 'open' ? row('dancegig', o.id, `${g.name}${g.show ? '' : `: ${o.client}`}`, why || `${g.hours ? `${g.weeks} weeks, ${g.hours} hours a week` : 'A few days'}`, money(o.fee, COUNTRIES[p.countryId]))
+          : `<div class="kv"><span>${esc(g.name)}: ${esc(o.client)}</span><span>${o.status === 'booked' ? 'Booked' : 'Not this time'}</span></div>`;
+      }).join('')}` : '<p class="muted">No auditions you are ready for yet. Dance more.</p>'}
+      <div class="section-label">Competitions (${2 - (d.entered.age === p.age ? d.entered.n : 0)} left this year)</div>${comps.map((c) => (c.why || c.entered
+        ? `<div class="kv"><span>${esc(c.name)}</span><span>${esc(c.entered ? 'Entered this year' : c.why)}</span></div>`
+        : row('dancecomp', c.level, c.name, `${c.category === 'kid' ? 'Junior' : 'Senior'} category · ${c.field} routines${d.best[c.level] ? ` · your best: ${place(d.best[c.level])}` : ''}`, ''))).join('')}
+      ${d.gigs.length ? `<div class="section-label">Your dance record</div>${dance.gigs(p).map((x) => `<div class="kv"><span>${x.year} · ${esc(DANCE_GIGS[x.kind].name)}</span><span>${esc(DANCE_GIGS[x.kind].show ? `with ${x.partner}, ${place(x.place)}` : x.client)}</span></div>`).join('')}` : ''}
+      ${d.comps.length ? `<div class="section-label">Competition results</div>${dance.results(p).slice(0, 12).map((x) => `<div class="kv"><span>${x.year} · ${esc(x.level[0].toUpperCase() + x.level.slice(1))} (${x.category === 'kid' ? 'junior' : 'senior'})</span><span>${place(x.place)} of ${x.of}</span></div>`).join('')}` : ''}`;
   },
 
   writing(p) {
@@ -508,6 +534,23 @@ const ACTIONS = {
   sport: (k, x) => x.say(sportsLife.goPro(k)),
   athletics: (_, x) => { x.close(); openAthletics(x.api); },
   agency: (id, x) => x.say(modeling.joinAgency(id)),
+  async dancegig(id, x) {
+    const o = dance.offers().find((y) => y.id === id);
+    if (!o) return undefined;
+    const g = DANCE_GIGS[o.kind];
+    const why = dance.whyNot(o.kind);
+    if (why) { await x.say({ ok: false, text: why, tone: 'neutral' }); return undefined; }
+    const v = await pickModal({ title: `${g.name}${g.show ? '' : `: ${o.client}`}`, body: `${g.hours ? `${g.weeks} weeks, ${g.hours} hours a week. ` : ''}The brief: ${o.brief}`, cancel: 'Back',
+      options: Object.entries(DANCE_STYLES).map(([k, a]) => ({ value: k, label: a.label, sub: a.sub })) });
+    if (v) await x.say(dance.audition(id, v));
+    return undefined;
+  },
+  async dancecomp(level, x) {
+    const v = await pickModal({ title: 'Your routine', body: 'Each year\'s judges favor a style. You will not know which until the scores come in.', cancel: 'Back',
+      options: Object.entries(DANCE_STYLES).map(([k, a]) => ({ value: k, label: a.label, sub: a.sub })) });
+    if (v) await x.say(dance.compete(level, v));
+    return undefined;
+  },
   async casting2(id, x) {
     const c = modeling.castings().find((y) => y.id === id);
     if (!c) return undefined;
@@ -640,7 +683,7 @@ const ACTIONS = {
     if (!r) return;
     const why = ent.whyNot(prod, r);
     const local = COUNTRIES[prod.countryId];
-    const body = `${kindName(prod)}, ${prod.genre}, from ${ent.org(prod.orgId)?.name ?? 'a company'} in ${prod.city.replace(/\.$/, '')}. The part: ${ROLE_KINDS[r.kind].name.toLowerCase()}, ${r.character}, aged about ${r.ages[0]}–${r.ages[1]}. ${prod.workYear} work: ${PRODUCTION_KINDS[prod.kind].weeks} weeks${prod.runYears > 1 ? ` a year for ${prod.runYears} years` : ''}. ${r.fee ? `Pays about ${money(Math.round(localWage(r.fee, local)), local)}.` : 'Unpaid.'} ${cap(ent.scriptWord(prod))}, and ${ent.directorWord(prod)} in ${nameOf(prod.directorId)}.${why ? ` Not open to you: ${why}` : ''}`;
+    const body = `${kindName(prod)}, ${prod.genre}, from ${ent.org(prod.orgId)?.name ?? 'a company'} ${ent.districtOf(prod)?.on ?? `in ${prod.city.replace(/\.$/, '')}`}. The part: ${ROLE_KINDS[r.kind].name.toLowerCase()}, ${r.character}, aged about ${r.ages[0]}–${r.ages[1]}. ${prod.workYear} work: ${PRODUCTION_KINDS[prod.kind].weeks} weeks${prod.runYears > 1 ? ` a year for ${prod.runYears} years` : ''}. ${r.fee ? `Pays about ${money(Math.round(localWage(r.fee, local)), local)}.` : 'Unpaid.'} ${cap(ent.scriptWord(prod))}, and ${ent.directorWord(prod)} in ${nameOf(prod.directorId)}.${why ? ` Not open to you: ${why}` : ''}`;
     const go = await pickModal({ title: prod.title, body, cancel: 'Back', options: [{ value: 'go', label: 'Audition', disabled: !!why || !!ent.workOf().applied[arg], sub: ent.workOf().applied[arg] ? 'You have auditioned.' : '' }, { value: 'view', label: 'Look at the production and its cast' }] });
     if (go === 'view') return x.go('production', pid);
     if (go !== 'go') return undefined;
