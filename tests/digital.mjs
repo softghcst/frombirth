@@ -548,6 +548,8 @@ section('Education');
   const mate = friend({ role: 'classmate', age: 19 });
   const c = comm.communities().find((x) => x.school === 'Northfield University');
   check(c && c.keyMembers.includes(mate.id), 'a university community is made of real classmates');
+  // (A family may have moved abroad over the years, maybe to a one-city country: this check needs somewhere to move to.)
+  if (COUNTRIES[p.countryId].cities.length < 2) { p.countryId = 'us'; p.city = COUNTRIES.us.cities[0]; }
   const city0 = p.city;
   const local0 = comm.communities().find((x) => x.place === city0);
   p.city = COUNTRIES[p.countryId].cities.find((x) => x !== city0);

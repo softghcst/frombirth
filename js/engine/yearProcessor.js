@@ -41,7 +41,7 @@ import { tickKin } from './kin.js';
 import { tickActivism } from './activism.js';
 import { tickLocal } from './local.js';
 import { tickLanguages } from './languages.js';
-import { tickAlumni } from './schooling.js';
+import { tickAlumni, ensure as ensureSchool } from './schooling.js';
 import { tickApplications } from './university.js';
 import { grandfather } from './adulted.js';
 import { tickKids } from './kidschool.js';
@@ -134,9 +134,10 @@ export const YEARLY = [
   ['alumni', tickAlumni], ['applications', tickApplications], ['grandfather', grandfather], ['fx', tickFx],
   ['cover', () => booked('insurance', 'Health insurance', tickCover)],
   ['rules', tickRules], ['economy', tickEconomy], ['moves', tickMoves],
-  ['familyLeaves', () => { const to = familyLeaves(); if (to) emigrate(to, { forced: true, family: true }); }],
+  // A family that moves abroad puts the children in school there at once, not a year later (engine/schooling.js).
+  ['familyLeaves', () => { const to = familyLeaves(); if (to) { emigrate(to, { forced: true, family: true }); ensureSchool(); } }],
   ['apart', tickApart], ['familyStatus', tickFamilyStatus],
-  ['status', () => { const back = tickStatus(); if (back) emigrate(back, { forced: true }); }],
+  ['status', () => { const back = tickStatus(); if (back) { emigrate(back, { forced: true }); ensureSchool(); } }],
   ['schoolFunding', tickSchoolFunding],
   ['kids', () => booked('education', 'Your children\'s schooling', tickKids)],
   ['royalEducation', tickRoyalEducation],
