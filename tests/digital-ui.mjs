@@ -37,6 +37,8 @@ const url = `http://127.0.0.1:${port}/index.html`;
 const problems = [];
 const passed = [];
 const check = (cond, text) => { (cond ? passed : problems).push(text); };
+/** Back steps out one level at a time, and leaves Digital Life from the first: press it until the page is gone. */
+const leave = async (page) => { for (let i = 0; i < 8 && await page.locator('.dl-modal').count(); i++) { await page.locator('.dl-modal .modal-back').click(); await page.waitForTimeout(120); } };
 
 const browser = await chromium.launch();
 const errors = [];
@@ -146,11 +148,11 @@ async function run(viewport) {
   // 19–21. Tap the friend's portrait, see their real profile, come back to the same conversation.
   await page.locator(`.dl-chat [data-person="${setup.friendId}"]`).first().click();
   await page.waitForFunction((name) => [...document.querySelectorAll('#modal-root .modal')].some((m) => !m.classList.contains('dl-modal') && m.innerText.includes(name)), setup.friend);
-  const profile = await page.locator('#modal-root .modal').last().innerText();
+  const profile = await page.locator('#modal-root .modal').last().evaluate((m) => m.textContent); // (what is folded under "About them" counts: it is one tap away)
   check(profile.includes('Relationship') && profile.includes('Hearth'), 'the portrait opens the existing character profile, with their accounts');
   await page.locator('#modal-root .modal').last().locator('[data-close]').click();
   check(await page.locator('.dl-chat .dl-msg').count() >= 2 && await page.locator('.dl-body [data-back]').count() === 1, 'coming back lands in the same conversation');
-  await page.click('.dl-modal [data-close]');
+  await page.evaluate(() => document.querySelector('.dl-modal [data-close]').click()); // (the page's own close, tucked away behind Back: it leaves at once, from any depth)
   await page.click('[data-digital]');
   check(await page.locator('.dl-chat .dl-msg').count() >= 2, 'closing and reopening Digital Life keeps the place');
 
@@ -158,7 +160,7 @@ async function run(viewport) {
   await page.click('.dl-body [data-back]');
   await page.click('.dl-nav [data-section="memories"]');
   check((await page.locator('.dl-body').innerText()).includes('Your first post on Hearth'), 'the first post is a digital memory');
-  await page.click('.dl-modal [data-close]');
+  await leave(page);
   await openTab(page, 'self');
   await openSection(page, 'Milestones');
   check((await page.locator('[data-panel-body]').innerText()).includes('Joined Hearth, your first online account.'), 'and a milestone in the life story');
@@ -198,7 +200,7 @@ async function run(viewport) {
   await page.reload();
   await page.click(`[data-load="${old}"]`);
   await openTab(page, 'pursuits');
-  check((await page.locator('[data-digital]').innerText()).trim() === 'Digital Life', 'in 1800 the row is just its name');
+  check((await page.locator('[data-digital] .nr-label').innerText()).trim() === 'Digital Life' && /\S/.test(await page.locator('[data-digital] .nr-main small').innerText()), 'in 1800 the row is its name and one line saying what it is for');
   await page.click('[data-digital]');
   const nav1800 = await page.locator('.dl-nav button').allInnerTexts();
   check(!nav1800.some((x) => /Feed|Creator Studio|Communities/.test(x)), 'and Digital Life shows no feed, communities or creator studio');
@@ -251,19 +253,19 @@ async function extras() {
   await page.click('[data-digital]');
   await page.click('.dl-nav [data-section="history"]');
   check((await page.locator('.dl-body').innerText()).includes('Between the Wars'), 'Digital History shows the era of the year');
-  await page.click('.dl-modal [data-close]');
+  await leave(page);
   // The Family Archive, from the People tab.
   await openTab(page, 'people');
   await page.click('[data-top="digitalArchive"]');
   await page.waitForSelector('.dl-modal');
   check((await page.locator('.dl-body').innerText()).includes('Family Archive'), 'the Family Archive opens from the People tab');
-  await page.click('.dl-modal [data-close]');
+  await leave(page);
   // A profile's actions come in groups, with things of the person's own role (engine/bonds.js).
   const relative = await page.evaluate(async () => { const { store } = await import('/js/state.js'); const p = store.state.player; return p.npcIds.find((id) => store.state.npcs[id]?.alive && ['parent', 'sibling', 'grandparent'].includes(store.state.npcs[id].role)); });
   if (relative) {
     await page.click(`[data-npc="${relative}"]`);
     await page.waitForSelector('#modal-root [data-act^="with:"]');
-    const groups = await page.locator('#modal-root .section-label').allInnerTexts();
+    const groups = await page.locator('#modal-root details.action-group summary').allInnerTexts();
     check(groups.some((g) => /together/i.test(g)) && groups.some((g) => /talk/i.test(g)), `a relative's profile groups what you can do (${groups.join(', ')})`);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'and fits a phone');
     await page.click('#modal-root [data-close]');

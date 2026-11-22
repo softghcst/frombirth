@@ -142,16 +142,16 @@ for (const scheme of ['light', 'dark']) {
   }
   while (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
   check(await page.locator('.dock').isVisible(), `${scheme}: back brings the dock back`);
-  // Everything about work is behind Work: jobs, athletics, politics. Back steps out one level at a time.
+  // Everything about work is on the Work tab: jobs, and athletics and politics under Special careers. Back steps out one level at a time.
   await page.click('.tab-btn[data-tab="pursuits"]');
   check(!(await page.locator('[data-panel-body] [data-go="athletics"]').count()), `${scheme}: My Athletics is no longer in Pursuits`);
   await page.click('[data-panel-close]');
   await page.click('.tab-btn[data-tab="work"]');
   const title = () => page.locator('[data-panel-title]').innerText();
-  await page.click('.sec-row[data-sec="Work"]');
-  check(await title() === 'Work' && await page.locator('.sec-body.shown [data-go="athletics"]').isVisible(), `${scheme}: My Athletics is inside Work`);
+  await page.click('.sec-row[data-sec="Special careers"]');
+  check(await title() === 'Special careers' && await page.locator('.sec-body.shown [data-go="athletics"]').isVisible(), `${scheme}: My Athletics is inside Special careers, on the Work tab`);
   await page.click('[data-panel-close]');
-  check(await title() === 'Work & School', `${scheme}: back from Work goes to the Work & School list`);
+  check(await title() === 'Work & School', `${scheme}: back from Special careers goes to the Work & School list`);
   await page.click('[data-panel-close]');
   check(await page.locator('.dock').isVisible(), `${scheme}: and back again returns to the journal`);
 

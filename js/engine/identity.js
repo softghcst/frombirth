@@ -8,7 +8,9 @@
 //   p.gender             the gender they live as today
 //   p.flags.bornAs       the gender on their birth certificate
 //   p.flags.trueGender   set at birth for a transgender character: who they really are
-//   p.flags.identity     { knows, outOrientation, outGender, hrtAge, top, bottom, legal, names:[...] }
+//   p.flags.identity     { knows, outOrientation, outGender, hrtAge, top, bottom, legal, names:[...], quest }
+//   quest                the player's own exploring of their gender: { stage: 'none'|'questioning'|'settled'|'found',
+//                        clarity 0–100, tried: { [age]: [ids] }, since, nudged (age), pushed (times), settledAge }
 // On each person:  npc.flags.acceptance  0–100, and npc.flags.stubborn (never changes)
 import { rule, may } from './rules.js';
 import { rng } from '../rng.js';
@@ -43,6 +45,8 @@ const ident = () => (player().flags.identity ??= { knows: false, outOrientation:
 export const identity = () => ident();
 export const bornAs = () => player().flags.bornAs ?? player().gender;
 export const isTrans = () => bornAs() !== player().gender || (!!player().flags.trueGender && player().flags.trueGender !== bornAs());
+/** Whether the player has found out (or lives as another gender already): until then, hormones and surgery are not on the table. */
+export const discovered = () => ident().knows || bornAs() !== player().gender;
 /** Which genders someone is drawn to, as the romance engine's 'men' | 'women' | null (anyone). */
 export function attractedTo(orientation, gender) {
   if (orientation === 'straight') return gender === 'male' ? 'women' : gender === 'female' ? 'men' : null;
@@ -181,7 +185,7 @@ export function changeName(name) {
 
 /** In some countries none of this is available, by law. */
 export const hostileHere = () => rule('lgbt') === 'hostile';
-export const canChangeLegalGender = () => player().age >= AGES.legal && isTrans() && !ident().legal && !hostileHere();
+export const canChangeLegalGender = () => player().age >= AGES.legal && isTrans() && discovered() && !ident().legal && !hostileHere();
 export function changeLegalGender() {
   const p = player();
   const c = country();
@@ -202,7 +206,7 @@ export function changeLegalGender() {
 export const hrtCost = () => careCost(COSTS.hrtYear);
 export const canStartHrt = () => {
   const p = player();
-  return isTrans() && !ident().hrtAge && p.age >= AGES.hrt && !p.legal.incarceration && !hostileHere();
+  return isTrans() && discovered() && !ident().hrtAge && p.age >= AGES.hrt && !p.legal.incarceration && !hostileHere();
 };
 export function startHrt() {
   const p = player();
@@ -231,7 +235,7 @@ export function stopHrt() {
 export function surgeryOptions() {
   const p = player();
   const c = country();
-  if (!isTrans() || p.age < AGES.surgery || p.legal.incarceration || hostileHere()) return [];
+  if (!isTrans() || !discovered() || p.age < AGES.surgery || p.legal.incarceration || hostileHere()) return [];
   const id = ident();
   return [
     { id: 'top', name: 'Top surgery', done: id.top, cost: careCost(COSTS.top) },
@@ -308,6 +312,132 @@ export function talkItThrough(npcId) {
   return result(false, text, 'neutral');
 }
 
+// ---------- Exploring: questioning, trying things, and finding out ----------
+
+/** Things to try while questioning. Each once a year; two a year at most. */
+export const EXPLORE = [
+  { id: 'clothes', label: 'Try wearing different clothes', minAge: 13, gain: [14, 22] },
+  { id: 'look', label: 'Try a different look: hair and style', minAge: 13, gain: [14, 22], look: true },
+  { id: 'name', label: 'Try a different name with someone you trust', minAge: 13, gain: [16, 26], trusted: true },
+  { id: 'stories', label: 'Read and listen to other people\'s stories', minAge: 13, gain: [12, 20] },
+  { id: 'journal', label: 'Write down how you feel', minAge: 13, gain: [10, 16] },
+  { id: 'counselor', label: 'Talk to a counselor', minAge: 13, gain: [22, 32], cost: 300 },
+  { id: 'group', label: 'Go to a support group', minAge: 14, gain: [18, 28] },
+];
+const EXPLORE_A_YEAR = 2;
+/** Questioning is for the teenage years on, not childhood. */
+export const QUESTION_AGE = 13;
+export const quest = () => (ident().quest ??= { stage: 'none', clarity: 0, tried: {}, since: null, nudged: null, pushed: 0, settledAge: null });
+/** Someone to try a new name with: the closest friend or sibling. */
+const trustedOne = () => livingNpcs().filter((n) => ['friend', 'sibling', 'partner', 'spouse'].includes(n.role) && player().npcIds.includes(n.id))
+  .sort((a, b) => b.meters.relationship - a.meters.relationship)[0] ?? null;
+/** What the player's exploring shows, in words: '' when there is nothing to show. */
+export function questLine() {
+  const q = quest(); const p = player();
+  if (q.stage === 'questioning') return q.clarity >= 70 ? 'Questioning: nearly sure' : q.clarity >= 35 ? 'Questioning: getting clearer' : 'Questioning: just starting';
+  if (ident().knows && p.flags.trueGender && p.flags.trueGender !== p.gender) return `${genderName(p.flags.trueGender).replace(/^a /, '').replace(/^./, (x) => x.toUpperCase())}, inside. Not living it yet.`;
+  return '';
+}
+/** Whether the player may start questioning now (anyone can; once settled, again after a few years). */
+export const canQuestion = () => {
+  const p = player(); const q = quest();
+  return p.age >= QUESTION_AGE && !p.legal.incarceration && q.stage !== 'questioning' && q.stage !== 'found' && !(ident().knows && p.flags.trueGender) && bornAs() === p.gender
+    && !(q.stage === 'settled' && p.age - q.settledAge < 5);
+};
+export function startQuestioning(boost = 0) {
+  const p = player(); const q = quest();
+  if (!canQuestion() && !boost) return result(false, 'Not right now.', 'neutral');
+  if (q.stage === 'settled') q.clarity = 0; // asking again, years later: from the start
+  q.stage = 'questioning'; q.since ??= p.age; q.clarity = Math.min(90, q.clarity + boost);
+  const text = 'You let yourself wonder, properly, for the first time: about who you are, and whether it is who everyone thinks. There is no hurry, and no wrong answer.';
+  log(text, 'system', 'neutral');
+  return result(true, text, 'neutral');
+}
+export function stopQuestioning() {
+  const q = quest();
+  if (q.stage !== 'questioning') return result(false, 'You are not questioning.', 'neutral');
+  q.stage = 'none';
+  const text = 'You put the questions down for now. They will keep, if they need to.';
+  log(text);
+  return result(true, text, 'neutral');
+}
+/** What can be tried this year. */
+export function exploreOptions() {
+  const p = player(); const q = quest();
+  const done = q.tried[p.age] ?? [];
+  return EXPLORE.filter((x) => p.age >= x.minAge).map((x) => {
+    const cost = x.cost && p.age >= 18 ? careCost(x.cost) : 0;
+    const why = done.includes(x.id) ? 'done this year' : done.length >= EXPLORE_A_YEAR ? 'enough for one year' : x.trusted && !trustedOne() ? 'nobody close to try it with' : cost && p.finance.cash < cost ? 'cannot afford it' : '';
+    return { id: x.id, label: x.label, cost, look: !!x.look, why };
+  });
+}
+/** One thing tried. What it feels like depends on who the player really is. */
+export function explore(which) {
+  const p = player(); const q = quest();
+  const x = EXPLORE.find((y) => y.id === which);
+  const opt = exploreOptions().find((y) => y.id === which);
+  if (q.stage !== 'questioning' || !x || !opt) return result(false, 'Not right now.', 'neutral');
+  if (opt.why) return result(false, `Not now: ${opt.why}.`, 'neutral');
+  if (opt.cost) p.finance.cash -= opt.cost;
+  (q.tried[p.age] ??= []).push(which);
+  const truth = p.flags.trueGender && p.flags.trueGender !== bornAs() ? p.flags.trueGender : null;
+  const other = truth === 'nonbinary' ? 'neither one thing nor the other' : truth ? genderName(truth) : genderName(bornAs() === 'male' ? 'female' : 'male');
+  let gain = rng.int(x.gain[0], x.gain[1]);
+  let text;
+  if (which === 'name') {
+    const n = trustedOne();
+    const s = stance(n);
+    if (s === 'not accepting') {
+      gain = Math.round(gain / 2);
+      p.stats.mood = clamp(p.stats.mood - 4);
+      text = `You ask ${n.firstName} to try a different name for you, just for an afternoon. They laugh, then see you are not joking, and change the subject. It stings. And still, hearing it once was something.`;
+    } else {
+      p.stats.mood = clamp(p.stats.mood + (truth ? 5 : 1));
+      n.meters.relationship = clamp(n.meters.relationship + 3);
+      text = truth ? `${n.firstName} tries the new name all afternoon, and gets it right by the end. Every time they say it, something in you sits up and listens.`
+        : `${n.firstName} plays along all afternoon. It is fun, and it is kind of them, and it sounds like a name for somebody else.`;
+    }
+  } else {
+    const lines = {
+      clothes: truth ? 'You try on clothes that are not meant for you, in front of the mirror, with the door shut. You stay there a long time. It looks like you.' : 'You try clothes from the other side of the shop. Some of them look good. None of them feel like more than clothes.',
+      look: truth ? 'A different haircut and a different way of dressing. Catching sight of yourself in a shop window, for a second you see someone you recognize.' : 'A new look, for a while. It is fun to play with, and then it is just a haircut.',
+      stories: truth ? 'You read people\'s stories late into the night. Some of them could have been written about you.' : 'You read other people\'s stories. You understand them better now, and they are not yours.',
+      journal: truth ? 'You write it down: how it feels to be called what you are called. Reading it back, the words are plainer than you expected.' : 'You write it all down. Reading it back, it sounds like someone who is comfortable where they are.',
+      counselor: truth ? 'The counselor does not tell you anything. They just ask good questions, and you hear your own answers.' : 'The counselor asks good questions. Your answers keep coming back to the same place: you are fine as you are.',
+      group: truth ? 'A room of people who have asked the same questions. Nobody explains themselves. When it is your turn, you say more than you meant to.' : 'A room of kind people asking hard questions. You are glad they have each other, and you are not sure you are one of them.',
+    };
+    text = lines[which];
+    p.stats.mood = clamp(p.stats.mood + (truth ? 3 : 1));
+  }
+  q.clarity = Math.min(100, q.clarity + gain);
+  if (q.clarity >= 100) text += ` ${conclude()}`;
+  log(text, 'system', truth ? 'good' : 'neutral');
+  return result(true, text, truth ? 'good' : 'neutral');
+}
+/** The end of the questioning: an answer. */
+function conclude() {
+  const p = player(); const q = quest(); const id = ident();
+  const truth = p.flags.trueGender && p.flags.trueGender !== bornAs() ? p.flags.trueGender : null;
+  if (truth) {
+    q.stage = 'found'; id.knows = true;
+    p.stats.mood = clamp(p.stats.mood + 8);
+    milestone(truth === 'nonbinary' ? 'Realized you are non-binary.' : `Realized you are transgender: ${genderName(truth)}.`, 'life');
+    return `And then one day it is simply true, and you know it: you are ${truth === 'nonbinary' ? 'non-binary' : genderName(truth)}. Nobody else knows yet. Living as yourself, telling people, and anything medical are under Self, then Identity, when you are ready.`;
+  }
+  q.stage = 'settled'; q.settledAge = p.age;
+  p.stats.mood = clamp(p.stats.mood + 4);
+  return `You have looked at it honestly, and you have your answer: you are ${genderName(bornAs())}, and it fits. It was worth asking.`;
+}
+/** The moment a transgender character feels it, from the scene 'gender_feeling'. */
+export function feelingChoice(value) {
+  const p = player(); const q = quest();
+  if (value === 'look') { startQuestioning(30); return 'You stop telling yourself it is nothing.'; }
+  if (value === 'later') { p.stats.mood = clamp(p.stats.mood - 2); return 'You put it to one side. It does not go anywhere.'; }
+  q.pushed = (q.pushed ?? 0) + 1;
+  p.stats.mood = clamp(p.stats.mood - 5);
+  return q.pushed >= 2 ? 'You push it down again. It is getting heavier to carry.' : 'You push it down, and get on with things.';
+}
+
 // ---------- The yearly step ----------
 
 export function tickIdentity() {
@@ -315,9 +445,15 @@ export function tickIdentity() {
   const id = ident();
   const c = country();
   informNewcomers();
-  if (p.flags.trueGender && !id.knows && p.age >= (p.flags.realizeAge ?? 8)) {
-    id.knows = true;
-    log(`For as long as you can remember, something has not fitted, and now you have the words for it: you are ${genderName(p.flags.trueGender)}. Nobody else knows yet. When you are ready, it is under Self, then Identity.`, 'system', 'neutral');
+  // A transgender character who has not gone looking feels it anyway, sooner or later: a moment that asks what to do
+  // about it. Pushing it away costs something every year, and the feeling comes back.
+  const q = quest();
+  if (p.flags.trueGender && !id.knows && p.age >= Math.max(QUESTION_AGE, p.flags.realizeAge ?? 16) && q.stage !== 'questioning') {
+    if (q.nudged != null) p.stats.mood = clamp(p.stats.mood - (q.pushed ? 3 + Math.min(4, q.pushed) : 1));
+    if ((q.nudged == null || p.age - q.nudged >= (q.pushed ? 3 : 2)) && !store.state.pendingEvents.some((e) => e.id === 'gender_feeling')) {
+      q.nudged = p.age;
+      store.state.pendingEvents.push({ id: 'gender_feeling', cast: { words: { born: bornAs() === 'male' ? (p.age < 18 ? 'boy' : 'man') : bornAs() === 'female' ? (p.age < 18 ? 'girl' : 'woman') : 'person' } } });
+    }
   }
 
   // Hormones are paid for each year, and the body follows over time.

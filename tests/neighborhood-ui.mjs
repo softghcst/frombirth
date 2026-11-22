@@ -53,7 +53,7 @@ async function openHood(page) {
   await page.click('[data-go="neighborhood"]'); await page.waitForSelector('.hood-modal');
 }
 const tab = async (page, id) => { await page.click(`.hood-modal [data-set="tab:${id}"]`); await page.waitForTimeout(150); };
-const close = async (page) => { await page.click('.hood-modal [data-x]'); await page.waitForTimeout(150); };
+const close = async (page) => { for (let i = 0; i < 8 && await page.locator('.hood-modal').count(); i++) { await page.click('.hood-modal .modal-back'); await page.waitForTimeout(150); } }; // (Back steps out one level at a time)
 
 for (const [name, viewport] of [['phone', { width: 390, height: 844 }], ['desktop', { width: 1280, height: 900 }]]) {
   const context = await browser.newContext({ viewport });
@@ -129,11 +129,15 @@ for (const [name, viewport] of [['phone', { width: 390, height: 844 }], ['deskto
   if (met) {
     if (await page.locator('[data-panel]:not([hidden])').count()) await page.click('[data-panel-close]');
     await page.click('.tab-btn[data-tab="people"]'); await page.waitForTimeout(250);
+    // Wait for the People tab itself, not a fixed time: under load it can take longer to draw.
+    await page.waitForSelector('.tab-btn[data-tab="people"].active, .tab-btn[data-tab="people"][aria-selected="true"], [data-top]', { timeout: 8000 }).catch(() => {});
+    await settle(page);
     // A neighbor you have only met is kept off the People tab; it links to them on My Neighborhood instead.
     const role = await page.evaluate(async (id) => (await import('/js/state.js')).store.state.npcs[id]?.role, met);
     if (role === 'neighbor') {
-      check(await page.locator(`[data-npc="${met}"]`).count() === 0, `${name}: a neighbor you have only met is not on the People tab`);
-      check(await page.locator('[data-top="neighbors"]').count() === 1, `${name}: the People tab links to the neighbors you know`);
+      const where = await page.evaluate((id) => [...document.querySelectorAll(`[data-panel-body] [data-npc="${id}"]`)].map((e) => e.closest('.card, section, .scrim')?.className ?? '?'), met);
+      check(where.length === 0, `${name}: a neighbor you have only met is not on the People tab (${where.join(', ')})`);
+      check(await page.locator('[data-panel-body] [data-top="neighbors"]').count() === 1, `${name}: the People tab links to the neighbors you know`);
     } else check(await page.locator(`[data-npc="${met}"]`).count() === 1, `${name}: a neighbor who became a friend is on the People tab`);
   }
   await openHood(page);

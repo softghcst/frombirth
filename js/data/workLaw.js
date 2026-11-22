@@ -60,7 +60,7 @@ export const WORK_LAW = {
 export const LOAD = { comfortable: 45, heavy: 55, crushing: 68, impossible: 84 };
 
 /** Study hours a week, by how someone is enrolled. */
-export const STUDY_HOURS = { school: 32, fullTime: 30, partTime: 12 };
+export const STUDY_HOURS = { school: 32, reduced: 18, fullTime: 30, partTime: 12 };
 
 /** Commute, hours a week each way combined, by the kind of city. */
 export const COMMUTE = { capital: 7, largest: 6, city: 4 };

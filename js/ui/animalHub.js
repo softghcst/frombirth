@@ -53,6 +53,7 @@ function hub() {
     ${here.length ? go('activities', 'Animal activities', 'Outings, classes and the local pet show', '🎾') : ''}
     ${p.age >= 18 ? `<button class="row" data-do="work"><div class="avatar glyph">💼</div><div class="main"><strong>Animal businesses</strong><small>${esc(ANIMAL_BIZ.map((id) => biz.openBusinesses().find((b) => b.typeId === id)?.name).filter(Boolean).join(', ') || 'Pet care, grooming, kennels, a training school, a riding school, a smallholding')}</small></div></button>` : ''}
     ${go('album', 'Animal memories', 'Our Animal Family: the album and the timeline', '📖')}
+    ${zoo.householdAnimals().length || zoo.houseChronicle(zoo.playerHome().key).length ? `<button class="row" data-chronicle="${zoo.playerHome().key}"><div class="avatar glyph">🏠</div><div class="main"><strong>House chronicle</strong><small>Everyone who has lived in your home, and their animals</small></div></button>` : ''}
     ` };
 }
 

@@ -460,7 +460,7 @@ const ACTIONS = {
     const v = hiring.postingView(id);
     if (!v) return;
     const cty = COUNTRIES[v.post.countryId];
-    const body = `${v.employer.name}, ${v.post.city}. ${market.describe(v.employer)}. ${v.culture.blurb} Pays ${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year for ${v.post.hours} hours a week${v.post.remote !== 'none' ? ` (${v.post.remote})` : ''}. They ask for about ${years(v.want)} of relevant experience; you have ${v.have}.${v.eligible ? '' : ` ${v.reasons.join(' ')}`}`;
+    const body = `${v.employer.name}, ${v.post.city.replace(/\.$/, '')}. ${market.describe(v.employer)}. ${v.culture.blurb} Pays ${money(v.post.pay[0], cty)}–${money(v.post.pay[1], cty)} a year for ${v.post.hours} hours a week${v.post.remote !== 'none' ? ` (${v.post.remote})` : ''}. They ask for about ${years(v.want)} of relevant experience; you have ${v.have}.${v.eligible ? '' : ` ${v.reasons.join(' ')}`}`;
     const go = await pickModal({ title: v.post.title, body, cancel: 'Back', options: [{ value: 'apply', label: v.post.partTime ? 'Apply for the part-time job' : 'Apply', disabled: !v.eligible, sub: v.eligible ? v.note : v.reasons[0] }] });
     if (go) await applyTo(id, x);
   },
@@ -468,7 +468,7 @@ const ACTIONS = {
     const o = hiring.offers().find((y) => y.id === id);
     const post = market.posting(o?.postingId);
     if (post && (post.countryId !== player().countryId || post.city !== player().city)) {
-      const sure = await confirmModal({ title: 'This means moving', body: post.countryId !== player().countryId ? `The job is in ${COUNTRIES[post.countryId].name}. You would emigrate, and a visa can still be refused.` : `The job is in ${post.city}. You would move there.`, yes: 'Move and accept' });
+      const sure = await confirmModal({ title: 'This means moving', body: post.countryId !== player().countryId ? `The job is in ${COUNTRIES[post.countryId].name}. You would emigrate, and a visa can still be refused.` : `The job is in ${post.city.replace(/\.$/, '')}. You would move there.`, yes: 'Move and accept' });
       if (!sure) return;
       return x.say(recruit.moveForOffer(o, hiring.accept));
     }

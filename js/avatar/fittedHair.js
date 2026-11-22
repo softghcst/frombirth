@@ -4,7 +4,10 @@
 //
 // Each style is drawn on each head from assets/hair_fitted/<id>_<head>.svg (see fittedHairFile in
 // js/CharacterAvatar.js). A manifest entry:
-//   { id, name, clipToHead, length, type, heads: [head names it was fitted to] }
+//   { id, name, clipToHead, kids, legacy, length, type, heads: [head names it was fitted to] }
+// legacy: one of the older styles (assets/avatars/hair/) anchored to the adult heads by the pipeline
+// (assets/hair_legacy_fit.json). It keeps its id and its place among the older styles; on a head it was not
+// fitted to (a child's) the older drawing is used, fitted at run time as before.
 // clipToHead: a buzz cut or fade, clipped to the head's skin so it hugs the skull exactly.
 //
 // The manifest is loaded once, before anything that imports this module runs (top-level await).
@@ -34,5 +37,11 @@ const manifest = await load();
 export const FITTED_LOADED = !!manifest;
 /** The head every style was drawn on; a head a style was not fitted to is given this head's version. */
 export const FITTED_BASE_HEAD = manifest?.baseHead ?? null;
+/**
+ * Whether a child may wear this hairstyle. A fitted style is for grown-ups unless the pipeline marked it a
+ * children's style (data-kids="true" on its raw file; it is then fitted to the kid head too). Any other hairstyle,
+ * one of the older ones in assets/avatars/hair/, is fine for a child.
+ */
+export const kidsMayWear = (hairId) => !FITTED_HAIR[hairId] || !!FITTED_HAIR[hairId].kids || !!FITTED_HAIR[hairId].legacy;
 /** Every fitted hairstyle, by id. */
 export const FITTED_HAIR = Object.fromEntries((manifest?.hairstyles ?? []).map((h) => [h.id, h]));

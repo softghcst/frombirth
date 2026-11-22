@@ -270,7 +270,9 @@ function attend(inv, from, gift, auto) {
   p.stats.mood = clamp(p.stats.mood + 3);
   if (inv.memorable) remember(from, `invite:${inv.id}`, `You came to their ${inv.name}.`);
   const text = `You went to ${from.firstName}'s ${inv.name}.${gift ? ` The present cost ${fmtMoney(gift, c)}.` : ''}`;
-  log(text, 'system', 'good');
+  // Going along to the usual things (a family dinner, a birthday) is not a line in the story every year; anything
+  // memorable is, and so is anything the player chose to go to themselves.
+  if (!auto || inv.memorable) log(text, 'system', 'good');
   yearState().log.push({ key: `invite:${inv.id}`, label: `${from.firstName}'s ${inv.name}`, guests: [from.id], cost: gift, memorable: !!inv.memorable });
   return result(true, text);
 }

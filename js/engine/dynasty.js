@@ -389,13 +389,13 @@ export function generationsUp(d, fromId, ancestorId) {
  * the blood takes the face the house's history gave them).
  * @returns {{dynasty:object, parentId:string, place:string}}
  */
-export function seatFamily(c, year, fam, playerGender) {
+export function seatFamily(c, year, fam, playerGender, want = null) {
   const m = MONARCHIES[c.id];
   const maleLine = m.law.order === 'maleOnly';
   // The parent through whom the child is royal. Without a father in the picture, it is the mother (where the law allows a line through her).
   const blood = fam.father && (maleLine || rng.chance(0.5)) ? fam.father : fam.mother;
   const other = blood === fam.father ? fam.mother : fam.father;
-  const place = rng.weighted(['crown', 'heir', 'cadet'], (k) => ({ crown: blood.age >= 30 ? 22 : 6, heir: 38, cadet: 40 })[k]);
+  const place = want ?? rng.weighted(['crown', 'heir', 'cadet'], (k) => ({ crown: blood.age >= 30 ? 22 : 6, heir: 38, cadet: 40 })[k]);
   const d = buildHouse(c, year, { surname: blood.lastName, blood, other, kids: fam.siblings, place });
   const anchor = Object.values(d.people).find((p) => p.npcId === blood.id);
   // The parent of the blood wears the face their ancestors gave them; the children are redrawn from both parents.

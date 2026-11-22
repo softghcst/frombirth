@@ -36,9 +36,10 @@ const kv = (rows) => rows.map(([a, b]) => `<div class="kv"><span>${esc(a)}</span
 const btn = (act, label, o = {}) => `<button type="button" class="btn ${o.cls ?? ''}" data-act="${act}"${o.arg != null ? ` data-arg="${esc(o.arg)}"` : ''}${o.disabled ? ' disabled' : ''}>${esc(label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</button>`;
 const face = (n) => `<div class="avatar">${avatarSvg({ age: n.age, gender: n.gender, appearance: n.appearance, seed: n.id, mood: n.meters.relationship, label: n.firstName })}</div>`;
 const money = (n, c = country()) => fmtMoney(n, c);
+const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const nameOf = (who) => (who === 'player' ? 'You' : who ? `${store.state.npcs[who]?.firstName ?? ''} ${store.state.npcs[who]?.lastName ?? ''}`.trim() || 'Someone' : '');
 const kindName = (prod) => `${TIERS[prod.tier].name} ${PRODUCTION_KINDS[prod.kind].name.toLowerCase()}`;
-const row = (act, arg, main, sub, side = '', n = null) => `<button type="button" class="row world-row" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
+const row = (act, arg, main, sub, side = '', n = null, cls = '') => `<button type="button" class="row world-row${cls ? ` ${cls}` : ''}" data-act="${act}" data-arg="${esc(arg)}">${n ? face(n) : ''}
   <div class="main"><strong>${esc(main)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</div>${side ? `<div class="side">${esc(side)}</div>` : ''}</button>`;
 
 const TABS = [['overview', 'Overview'], ['casting', 'Opportunities'], ['music', 'Music'], ['sport', 'Sport'], ['modeling', 'Modeling'], ['writing', 'Writing'], ['work', 'Current work'], ['representation', 'Representation'], ['image', 'Public image'],
@@ -182,7 +183,7 @@ const VIEWS = {
       ${(() => { const offers = celebs.comebackOffers(p); const phase = celebs.phaseName(p);
     const say = { reality: ['A reality show', 'Ten weeks on camera. The money is good; the respect is not.'], tribute: ['A tribute evening', 'Your work, celebrated.'], memoir: ['Write your memoir', 'Publishers want your story. Starts a memoir on the Writing tab.'], reunion: ['Get the band back together', 'One more time.'] };
     return phase || offers.length ? `<div class="card"><h3>${esc(phase ?? 'Your story')}</h3>${offers.length ? `<p class="muted" style="margin:0 0 6px">People have stopped asking about you. Some ways back:</p><div class="btn-stack">${offers.map((o) => btn('comeback', say[o.kind][0], { arg: o.kind, sub: say[o.kind][1] })).join('')}</div>` : ''}</div>` : ''; })()}
-      ${celebs.news(5).length ? `<div class="card"><h3>Celebrity news</h3>${celebs.news(5).map((a) => { const n = store.state.npcs[a.about]; return row('person', n.id, a.text, `${a.year}${a.accuracy === 'rumor' ? ' · unconfirmed' : ''}`, '', n); }).join('')}</div>` : ''}
+      ${celebs.news(5).length ? `<div class="card"><h3>Celebrity news</h3>${celebs.news(5).map((a) => { const n = store.state.npcs[a.about]; return row('person', n.id, a.text, `${a.year}${a.accuracy === 'rumor' ? ' · unconfirmed' : ''}`, '', n, 'news-row'); }).join('')}</div>` : ''}
       ${f.log.length ? `<div class="card"><h3>Why people know you</h3>${f.log.slice(-5).reverse().map((l) => `<p style="margin:3px 0">${l.year}: ${esc(l.why || l.audience)} (${l.delta > 0 ? '+' : ''}${l.delta} ${esc(l.audience)})</p>`).join('')}</div>` : ''}`;
   },
 
@@ -194,9 +195,16 @@ const VIEWS = {
         ['Time', `${c.weeks} weeks at about ${c.hours} hours a week, in ${x.workYear}`], ...(c.agent ? [['Your agent takes', `${Math.round(c.agent.commission * 100)}%`]] : []), ...(p.age < 18 ? [['Held in trust until you are 18', '15% of the fee']] : [])])}
         <div class="btn-stack" style="margin-top:6px">${btn('sign', 'Sign the contract', { cls: 'primary', arg: c.id })}${btn('negotiate', 'Ask for more', { arg: c.id, disabled: c.asked || !c.fee })}${btn('decline', 'Turn it down', { arg: c.id })}</div></div>`; }).join('')}` : ''}
       <div class="section-label">Casting notices</div>
-      
-      ${board.length ? board.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, `${x.production.title}: ${ROLE_KINDS[x.role.kind].name.toLowerCase()}`,
-    `${kindName(x.production)} · ${x.role.character}, ${x.role.ages[0]}–${x.role.ages[1]} · ${x.applied ? 'You have auditioned' : x.why || 'You can audition'}`, x.role.fee ? money(Math.round(localWage(x.role.fee, COUNTRIES[x.production.countryId])), COUNTRIES[x.production.countryId]) : 'Unpaid')).join('')
+      ${board.length ? (() => {
+        const fee = (x) => (x.role.fee ? money(Math.round(localWage(x.role.fee, COUNTRIES[x.production.countryId])), COUNTRIES[x.production.countryId]) : 'Unpaid');
+        const name = (x) => `${x.production.title}: ${ROLE_KINDS[x.role.kind].name.toLowerCase()}`;
+        const open = board.filter((x) => !x.why);
+        const shut = board.filter((x) => x.why);
+        const q = (x) => `${cap(ent.scriptWord(x.production))}, ${ent.directorWord(x.production)}`;
+        return `${open.length ? open.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, name(x), `${x.applied ? 'Auditioned · ' : ''}${q(x)} · ${kindName(x.production)} · ${x.role.character}`, fee(x))).join('')
+          : '<p class="empty">Nothing open to you right now. New productions are announced every year.</p>'}
+        ${shut.length ? `<details class="card" style="margin-top:8px"><summary>Not open to you (${shut.length})</summary>${shut.map((x) => row('notice', `${x.production.id}:${x.role.idx}`, name(x), x.why, fee(x))).join('')}</details>` : ''}`;
+      })()
     : '<p class="empty">No casting notices where you live right now.</p>'}`;
   },
 
@@ -274,7 +282,7 @@ const VIEWS = {
     if (!x) return '<p class="empty">That production is no longer on record.</p>';
     const R = x.reception;
     const o = ent.org(x.orgId);
-    return `<div class="card"><h3>${esc(x.title)}</h3>${kv([['What it is', `${kindName(x)}, ${x.genre}`], ['Made by', o?.name ?? '—'], ['Where', `${x.city}, ${COUNTRIES[x.countryId]?.name ?? ''}`], ['Directed by', nameOf(x.directorId)], ...(x.basedOn ? [['Based on', `the book by ${x.basedOn.author}`]] : []),
+    return `<div class="card"><h3>${esc(x.title)}</h3>${kv([['What it is', `${kindName(x)}, ${x.genre}`], ['Made by', o?.name ?? '—'], ['Where', `${x.city}, ${COUNTRIES[x.countryId]?.name ?? ''}`], ['Directed by', `${nameOf(x.directorId)}, ${ent.directorWord(x)}`], ['The script', cap(ent.scriptWord(x).replace(/^an? /, '').replace(/ script$/, ''))], ...(x.basedOn ? [['Based on', `the book by ${x.basedOn.author}`]] : []),
       ['When', `${x.workYear}${x.runYears > 1 ? `–${x.workYear + x.runYears - 1}` : ''}`], ['Status', { casting: 'Casting', production: 'In production', running: 'Running', released: 'Released', closed: 'Closed' }[x.status]],
       ...(R ? [['Critics', `${R.critics}/100`], ['Audiences', `${R.audience}/100`], [R.profit >= 0 ? 'Made' : 'Lost', money(Math.abs(R.profit), COUNTRIES[x.countryId])], ...(x.abroad.length ? [['Seen in', `${x.abroad.length} other ${x.abroad.length === 1 ? 'country' : 'countries'}`]] : [])] : [])])}</div>
       <div class="section-label">Cast</div>${x.cast.filter((r) => r.who).map((r) => { const n = r.who === 'player' ? null : store.state.npcs[r.who];
@@ -503,7 +511,7 @@ const ACTIONS = {
   async casting2(id, x) {
     const c = modeling.castings().find((y) => y.id === id);
     if (!c) return undefined;
-    const v = await pickModal({ title: `${BOOKINGS[c.kind].name}: ${c.client}`, body: `${c.city}. The brief: ${c.brief ?? '(none given)'}`, cancel: 'Back',
+    const v = await pickModal({ title: `${BOOKINGS[c.kind].name}: ${c.client}`, body: `${c.city.replace(/\.$/, '')}. The brief: ${c.brief ?? '(none given)'}`, cancel: 'Back',
       options: Object.entries(modeling.APPROACHES).map(([k, a]) => ({ value: k, label: a.label, sub: a.sub })) });
     if (v) await x.say(modeling.attendCasting(id, v));
     return undefined;
@@ -632,7 +640,7 @@ const ACTIONS = {
     if (!r) return;
     const why = ent.whyNot(prod, r);
     const local = COUNTRIES[prod.countryId];
-    const body = `${kindName(prod)}, ${prod.genre}, from ${ent.org(prod.orgId)?.name ?? 'a company'} in ${prod.city}. The part: ${ROLE_KINDS[r.kind].name.toLowerCase()}, ${r.character}, aged about ${r.ages[0]}–${r.ages[1]}. ${prod.workYear} work: ${PRODUCTION_KINDS[prod.kind].weeks} weeks${prod.runYears > 1 ? ` a year for ${prod.runYears} years` : ''}. ${r.fee ? `Pays about ${money(Math.round(localWage(r.fee, local)), local)}.` : 'Unpaid.'}${why ? ` ${why}` : ''}`;
+    const body = `${kindName(prod)}, ${prod.genre}, from ${ent.org(prod.orgId)?.name ?? 'a company'} in ${prod.city.replace(/\.$/, '')}. The part: ${ROLE_KINDS[r.kind].name.toLowerCase()}, ${r.character}, aged about ${r.ages[0]}–${r.ages[1]}. ${prod.workYear} work: ${PRODUCTION_KINDS[prod.kind].weeks} weeks${prod.runYears > 1 ? ` a year for ${prod.runYears} years` : ''}. ${r.fee ? `Pays about ${money(Math.round(localWage(r.fee, local)), local)}.` : 'Unpaid.'} ${cap(ent.scriptWord(prod))}, and ${ent.directorWord(prod)} in ${nameOf(prod.directorId)}.${why ? ` Not open to you: ${why}` : ''}`;
     const go = await pickModal({ title: prod.title, body, cancel: 'Back', options: [{ value: 'go', label: 'Audition', disabled: !!why || !!ent.workOf().applied[arg], sub: ent.workOf().applied[arg] ? 'You have auditioned.' : '' }, { value: 'view', label: 'Look at the production and its cast' }] });
     if (go === 'view') return x.go('production', pid);
     if (go !== 'go') return undefined;

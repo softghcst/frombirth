@@ -222,8 +222,9 @@ check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy
 // A baby's tuft is left where it was put.
 for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) check(JSON.stringify(hairFit(h.id, head)) === JSON.stringify(plainFit(head)), `${h.id} on ${head}: a baby's hair was refitted`);
 // The reference faces: hair that already sat well is left very nearly as drawn.
-const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_02', 'head_17_dimple_oval'] };
+const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_13', 'head_17_dimple_oval'] };
 for (const [who, [hair, head]] of Object.entries(REFERENCES)) {
+  check(!!PART_BY_ID[hair], `${who}: the reference hairstyle ${hair} is not in the game`);
   const f = hairFit(hair, head);
   const base = plainFit(head);
   check(Math.abs(f.sx / base.sx - 1) <= 0.1 && Math.abs(f.sy / base.sy - 1) <= 0.1 && Math.abs(f.ty - base.ty) <= 18, `${who}: a reference look was moved a long way (${JSON.stringify(f)})`);
@@ -287,6 +288,16 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
   const white = deep.match(/--eye-white:(#[0-9a-f]{6})/)[1];
   check(parseInt(white.slice(1, 3), 16) >= 0xd0, `the white of the eye is no longer white (${white})`);
 }
+
+// Hairstyles taken out of the game: their files are gone, they are not offered or given out, and a save that used one
+// gets the nearest kept style, the same every time.
+for (const [gone, kept] of Object.entries(CUR.WITHDRAWN.hair)) {
+  check(!PART_BY_ID[gone] && !existsSync(new URL(`assets/avatars/hair/${gone}.svg`, root)) && !CATALOG.hair.some((h) => h.id === gone) && !CUR.HAIR_TYPE[gone], `${gone} is still in the game`);
+  check(!!PART_BY_ID[kept] && !CUR.WITHDRAWN.hair[kept], `${gone} is replaced by ${kept}, which is not a kept style`);
+  const a = normalize({ v: 3, inherited: { head: 'head_12_sculpted' }, style: { hair: gone } }, `saved-${gone}`);
+  check(a.style.hair === kept && normalize(a, 'again').style.hair === kept, `a save with ${gone} does not land on ${kept}`);
+}
+check(normalize({ v: 2, inherited: { face: 'oval' }, style: { hair: 'long_straight' } }, 'v2').style.hair === CUR.WITHDRAWN.hair.hair_girl_long_02, 'an older save with long straight hair does not get a kept style');
 
 // 10. The faces on offer: the withdrawn eyes, mouths and noses are gone, saves that used them land on the nearest kept,
 // and the rest are offered and drawn at random exactly as before.

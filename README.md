@@ -53,6 +53,8 @@ node tests/escape-layouts.mjs
 node tests/succession.mjs      # the rules of royal succession, on hand-built families
 node tests/elections.mjs       # votes, seats, run-offs, coalitions, two-candidate races and the count
 node tests/admissions.mjs      # university decisions and aid, on hand-built applicants
+node tests/bfa-universities.mjs   # musical theater BFA programs: costliest and hardest places, second tries after coaching, the ranked short list, comparison
+node tests/university-ui.mjs   # browser: the planner on a phone and desktop (short list, show more, compare, coaching, Back)
 node tests/schooling.mjs       # marks, and the shape of school in every country
 node tests/legislature.mjs     # votes in the legislature: majorities, rebels, deals, vetoes
 node tests/animals.mjs         # the family's animals: one record each, owners and carers kept apart, the album, generations
@@ -75,6 +77,9 @@ node tests/childhood.mjs       # childhood from birth: things to do by age, play
 node tests/love-stories.mjs    # relationship stories told only when true, once, at the drama setting's pace; the opt-in, non-graphic teenage pregnancy storyline; teenage relationship scenes
 node tests/pregnancy-choice.mjs   # the choice when a pregnancy is announced: go on with it or not; costs, laws, a partner's decision, teenagers
 node tests/family-stories.mjs   # fifty-four stories of relationships, marriages, households, family secrets, inheritance and teenage life: each told only when true
+node tests/idol-student.mjs   # a young trainee abroad goes to school where they live; the performer week cap; talent schools cost more; a crowd from middle school
+node tests/animal-entry-ui.mjs   # animals have one home in the menus (People → Pets & Animals, with the house chronicle)
+node tests/menu-layout.mjs   # every tab is a list of rows with pictures and a line each; what is not open yet is greyed with why; Special careers
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
@@ -899,7 +904,7 @@ the Digital World because the game has no separate hobby-project system.
 | Property tax by country | `PROPERTY_TAX` in `js/data/countries.js` |
 | Monarchies: which countries have a crown, the titles used there, allowances, public duties, how rare a royal birth is | `js/data/royalty.js` |
 | How each country is governed, what its offices are called, campaign platforms, budgets and moves, what office-holders can do | `js/data/politics.js` |
-| Political scenes (class president, polling day, scandals, removal votes, uprisings) | `js/data/events/politics.js` |
+| Political scenes (class president, Election Day, scandals, removal votes, uprisings) | `js/data/events/politics.js` |
 | Royal and noble scenes (palace invitation, honors, scandal, protocol) | `js/data/events/royal.js` |
 | Moving abroad: who comes, how likely relatives are to say yes, shipping costs, the passport | `js/engine/emigration.js` |
 | Transport by era, places to stay, things to do on a trip, kinds of trip, refund terms, passports, visit rules by destination, pets moving, earlier jurisdictions | `js/data/travel.js` |
@@ -1317,7 +1322,7 @@ whether or not the player takes any part.
     few points, the same way all campaign long.
   - *The debate.* Three questions. A straight answer, a crowd-pleasing promise
     (which comes due in office), an attack, or a dodge.
-  - *Polling day.* The result is worked out once and stored; election night
+  - *Election Day.* The result is worked out once and stored; election night
     shows it arriving area by area, after an exit poll that may be wrong.
   A campaign left unfinished when the year ends plays itself out. One-party
   states have no voters to win: the committee decides.
