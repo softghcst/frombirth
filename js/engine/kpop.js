@@ -1415,9 +1415,8 @@ export function tickKpop() {
     // Old rival groups wind down eventually.
     if (g.npc && g.status === 'active' && g.debut && year() - g.debut.year > rng.int(7, 12)) { g.status = 'disbanded'; g.disbanded = year(); g.history.push({ year: year(), text: `${g.name} disbanded.` }); }
   }
-  // The player's own military service, if they are a Korean man in a group in his late twenties.
+  // The player's own military service is called up by engine/military.js (national service, as an idol); it ends here too.
   const g0 = myGroup(p);
-  if (g0 && p.gender === 'male' && (p.birthCountryId === 'kr') && p.age >= 28 && !i.served && !i.hiatus) { i.hiatus = { kind: 'service', since: year(), public: 'for military service' }; i.served = true; lines.push('You begin your military service. The group will be there when you come back.'); note('Began military service.'); }
   if (i.hiatus?.kind === 'service' && year() - i.hiatus.since >= 2) { lines.push('Your military service is over.'); endHiatus(); }
   // Promotions are hard work: health pays for a heavy year at a demanding agency, unless rest was asked for.
   if (g0 && (i.workload ?? 0) >= 2 && !i.hiatus) { const a = agency(g0.agencyId); p.stats.health = clamp(p.stats.health - Math.max(0, (100 - a.welfare) / 15 - (i.lighter === p.age - 1 ? 2 : 0))); if (p.stats.health < 45) lines.push('The schedule is wearing you down. You can ask for rest or take a break: it will not cost you your place.'); }
