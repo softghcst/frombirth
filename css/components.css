@@ -676,8 +676,6 @@ div.row { cursor: default; }
 .btn.stacked small { font-weight: 400; opacity: 0.8; }
 
 /* Explore the World (js/ui/globalLife.js) */
-/* Explore the World keeps its own back control for its levels; the page's Back (top left, css/modals.css) presses it, so only that one shows. */
-.modal.has-back.gl-modal [data-back]:not(.modal-back) { display: none; }
 .gl-modal select, .gl-modal input[type="date"], .gl-modal input[type="number"] { width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: inherit; font: inherit; }
 .gl-modal label.field { font-size: 0.85rem; color: var(--muted); }
 .gl-head .gl-where { font-size: 0.85rem; margin: 6px 0 2px; padding: 6px 10px; border-radius: 8px; background: var(--accent-soft); }
