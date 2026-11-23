@@ -812,6 +812,45 @@ let moved;
   check(bz2.openBusinesses().some((b) => b.countryId === 'at' && b.parentId === bk2.id), 'a branch in Austria, with its own accounts');
   section('stories abroad: a job offer, a marriage across a border, going home, retiring near family, a first trip, an exchange, two cultures, a family business abroad; each from real state');
 }
+
+// ---------- Weddings and funerals ----------
+{
+  p = life('fr', 45, 90000, 'Paris');
+  const y = store.state.year;
+  docs.applyPassport(p.id, 'fr');
+  const sis = add('sibling', 'de', 38, 60); sis.flags.abroad = 'de';
+  check(/wedding/.test(travel.typeBlock('wedding')) && /funeral/.test(travel.typeBlock('funeral')), 'no wedding and no funeral: neither trip is offered');
+  sis.flags.weddingYear = y; // as engine/npcLives.js marks it when a relative marries
+  check(travel.typeBlock('wedding') === '' && travel.typeBlock('wedding', 'de') === '' && travel.typeBlock('wedding', 'it') !== '', 'a sister marrying in Germany: a wedding trip, to Germany and nowhere else');
+  const w = travel.startPlan('wedding');
+  check(w.destination?.countryId === 'de', `choosing it points the plan at the wedding (${w.destination?.countryId})`);
+  travel.updatePlan(w.id, { depart: `${y}-07-03`, ret: `${y}-07-06`, mode: 'rail', stay: 'hotel' });
+  check(travel.problems(w).length === 0, `the wedding trip can be booked (${travel.problems(w)})`);
+  const relBefore = sis.meters.relationship;
+  check(travel.confirm(w.id).ok && travel.depart(w.id).ok && travel.comeHome(w.id).ok, 'booked, taken and home');
+  check(sis.meters.relationship >= relBefore + 10 && sis.memories.some((m) => m.key === 'cameToWedding'), 'she remembers that you came');
+  check(chron.hasEvent(`wedding-trip:${sis.id}`) && /wedding/.test(travel.typeBlock('wedding')), 'the wedding is in the family record, and there is only one');
+  check(p.trips?.at(-1)?.purpose === 'family', `counted as a family trip (${w.status})`);
+  // A funeral: someone close who lived abroad, this year or last.
+  const uncle = add('grandparent', 'it', 80, 70); uncle.flags.abroad = 'it';
+  uncle.alive = false; uncle.flags.diedYear = y;
+  const cousin = add('friend', 'it', 50, 40); cousin.flags.abroad = 'it';
+  const far = add('friend', 'es', 70, 5); far.flags.abroad = 'es'; far.alive = false; far.flags.diedYear = y;
+  check(travel.typeBlock('funeral', 'it') === '' && travel.typeBlock('funeral', 'es') !== '', 'a funeral in Italy can be traveled to; a stranger\'s in Spain is not an occasion');
+  const f = travel.startPlan('funeral');
+  check(f.destination?.countryId === 'it', 'the plan goes where the funeral is');
+  travel.updatePlan(f.id, { depart: `${y}-09-10`, ret: `${y}-09-13`, mode: 'jet', stay: 'hotel' });
+  check(travel.problems(f).length === 0, `the funeral trip can be booked (${travel.problems(f)})`);
+  const moodBefore = p.stats.mood; const cousinBefore = cousin.meters.relationship;
+  check(travel.confirm(f.id).ok && travel.depart(f.id).ok && travel.comeHome(f.id).ok, 'and taken');
+  check(p.stats.mood <= moodBefore + 2, `a funeral is not a holiday (${moodBefore} to ${p.stats.mood})`);
+  check(cousin.meters.relationship > cousinBefore, 'family there are closer for it');
+  check(chron.hasEvent(`funeral-trip:${uncle.id}`) && travel.typeBlock('funeral', 'it') !== '', 'recorded once; not offered again');
+  check(!chron.hasEvent(`first-vacation:${chron.archiveIdOf(p)}`) || travel.trips(['completed']).some((t) => !['wedding', 'funeral'].includes(t.type)), 'neither counts as a first vacation');
+  year(2);
+  check(travel.typeBlock('funeral') !== '', 'two years on, the moment has passed');
+  section('weddings and funerals: trips for real family occasions, where they happen, once each');
+}
 {
   // A long life: trips most years, passports renewed, moves applied for, seventy years. Nothing breaks, nothing is paid twice.
   p = life('de', 20, 200000, 'Berlin');
