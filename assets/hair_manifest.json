@@ -20,6 +20,24 @@
       ]
     },
     {
+      "id": "flipped_half_up",
+      "name": "Flipped Half Up",
+      "clipToHead": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
       "id": "half_up_half_down_waves",
       "name": "Half Up Half Down Waves",
       "clipToHead": false,
