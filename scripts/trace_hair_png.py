@@ -17,7 +17,8 @@ knows what hair in this game is made of, and rebuilds it from those parts instea
 
   outline     the outer edge of everything drawn, redrawn as ONE clean #23140f outline 6 units wide (the head's own
               outline), from a smoothed distance field of the silhouette, so it is even all the way round.
-  main color  the commonest color in the hair, which becomes exactly #8f4b29: the color the game dyes.
+  main color  the hair's main tone (the middle one of shadow, main and highlight), which becomes exactly #8f4b29:
+              the color the game dyes.
   shadows     shapes clearly darker than the main color, and highlights clearly lighter, each as one shade of the
               main color (so they dye with it); thin slivers along edges (anti-aliasing) are dropped.
   ink lines   dark strand lines drawn inside the hair: near-black ones in the outline color, dark brown ones as a
@@ -171,16 +172,26 @@ def trace(path, layer):
     smooth_rgb = ndi.median_filter(rgb, size=(5, 5, 1))
     L = lum(smooth_rgb)
 
-    # Main color: the commonest color among the clearly-not-ink pixels.
-    q = (smooth_rgb[mask] // 16).astype(int)
-    keys = q[:, 0] * 256 + q[:, 1] * 16 + q[:, 2]
+    # Main color: hair is usually drawn in two or three tones (shadow, main, highlight), and the shadow can cover more
+    # of it than the main tone does. So the tones are found as the peaks of the brightness histogram, and the main
+    # color is the middle one of three (or the bigger of two, or the only one).
     lums = L[mask]
     cand = lums > 55
     if not cand.any():
         print('  warning: the hair is almost black: draw it in a medium color (the game dyes it), with a near-black outline')
         cand = np.ones_like(lums, bool)
-    top = np.bincount(keys[cand]).argmax()
-    main_rgb = smooth_rgb[mask][cand][keys[cand] == top].mean(axis=0)
+    hist = ndi.gaussian_filter1d(np.bincount(np.clip(lums[cand], 0, 255).astype(int), minlength=256).astype(float), 3)
+    peaks = [i for i in range(1, 255) if hist[i] >= hist[i - 1] and hist[i] > hist[i + 1]]
+    total = hist.sum()
+    tones = []
+    for i in peaks:  # each peak's share: the pixels within 12 levels of it
+        share = hist[max(0, i - 12):i + 13].sum() / total
+        if share >= 0.1 and all(abs(i - j) > 18 for j, _ in tones):
+            tones.append((i, share))
+    tones.sort()
+    pick = tones[len(tones) // 2][0] if len(tones) % 2 else max(tones, key=lambda t: t[1])[0] if tones else int(np.median(lums[cand]))
+    near = cand & (np.abs(lums - pick) <= 10)
+    main_rgb = smooth_rgb[mask][near].mean(axis=0)
     main_l = float(lum(main_rgb[None])[0])
 
     ink = mask & (L < min(70, main_l * 0.55))
@@ -205,7 +216,7 @@ def trace(path, layer):
         if not m.any():
             continue
         r = float(np.median(ratio[m]))
-        color = np.array(MAIN) * r if name == 'shadow' else np.array(MAIN) + (255 - np.array(MAIN)) * min(0.8, (r - 1) * main_l / max(1, 255 - main_l))
+        color = np.array(MAIN) * min(r, 2.2)  # the main color made darker or brighter: same hue, so it dyes with it
         d = path_d(soft(m), 0.5)
         if d:
             shapes.append(f'<path fill="{hexc(color)}" d="{d}"/>')
@@ -239,7 +250,15 @@ def build(style, force=False):
     fshapes, fstats = trace(front, 'front')
     bshapes, bstats = trace(back, 'back') if os.path.exists(back) else ([], {})
     base, details = fshapes[:1], fshapes[1:]
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-from-png="1">
+    # Its length and texture (data-length: short/medium/long/updo; data-type: any, or a texture such as wavy, coily,
+    # locs) are set by hand on the traced SVG's root once, and kept when it is traced again.
+    tags = 'data-length="short"'
+    if os.path.exists(out):
+        import re
+        old = open(out, encoding='utf-8').read(400)
+        found = re.findall(r'data-(?:length|type)="[a-z]+"', old)
+        tags = ' '.join(found) or tags
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-from-png="1" {tags}>
 <!-- Traced from assets/hair_png/{style}.png by scripts/trace_hair_png.py. Redraw the PNG and trace again, rather than editing this. -->
 <g id="hair_back">{''.join(bshapes)}</g>
 <g id="hair_base">{''.join(base)}</g>

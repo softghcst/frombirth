@@ -42,3 +42,8 @@ best.
 
 Put `fade` or `buzz` in the name (e.g. `low_fade.png`). The game then clips the hair to each head's outline so it
 hugs the skull.
+
+## Length
+
+New styles count as short until tagged. To change that, add `data-length="medium"` (or `long`, `updo`) to the root
+`<svg>` of the traced `assets/hair_raw/<style>.svg` once; the tag is kept when the style is traced again.

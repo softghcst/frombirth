@@ -190,6 +190,23 @@
       ]
     },
     {
+      "id": "storybook_waves",
+      "name": "Storybook Waves",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "swept_back_pompadour",
       "name": "Swept Back Pompadour",
       "clipToHead": false,
