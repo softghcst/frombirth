@@ -95,7 +95,7 @@ export function renderObituary(app, g, hooks) {
       <div class="btn-stack">
         ${hooks.onUndo ? '<button class="btn" data-undo-death>Go back a year</button>' : ''}
         ${hooks.onRestart ? '<button class="btn" data-restart>Start this life again</button>' : ''}
-        <button class="btn" data-epitaphs>Epitaphs earned</button>
+        <button class="btn" data-epitaphs>Epitaphs Earned</button>
         <button class="btn primary" data-done>${heirs.length ? 'End the story here' : 'Return to title'}</button>
       </div>
     </main>`;
