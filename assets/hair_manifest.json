@@ -281,6 +281,24 @@
       "minAge": 13
     },
     {
+      "id": "side_swept_bob",
+      "name": "Side Swept Bob",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
       "id": "space_buns",
       "name": "Space Buns",
       "clipToHead": false,
