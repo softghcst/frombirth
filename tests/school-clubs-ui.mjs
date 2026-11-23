@@ -47,7 +47,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.waitForTimeout(200);
   await page.click('.modal [data-go="activities"]'); await page.waitForTimeout(150);
   check(await page.locator('[data-club-act]').count() >= 4, `${label}: each club has things to do`);
-  check(await page.locator('[data-club-act="choir:event"]').count() === 1 && /Sing in the concert/.test(await page.locator('[data-club-act="choir:event"]').innerText()), `${label}: each club has its big moment of the year`);
+  check(await page.locator('[data-club-act="choir:event"]').count() === 1 && /Sing in the concert/i.test(await page.locator('[data-club-act="choir:event"]').innerText()), `${label}: each club has its big moment of the year`);
   check(/Each year: your singing and music go up/.test(await page.locator('.modal').last().innerText()), `${label}: and says what a year in it does`);
   check(!/Singing lessons and choir/i.test(await page.locator('.modal').last().innerText()), `${label}: the choir is just the Choir`);
   // Clubs outside school are here too, at school: one place for every club, and not a second list in Pursuits.

@@ -59,7 +59,11 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   let seen = false;
   for (let i = 0; i < 30 && !seen; i++) {
     await page.waitForTimeout(150);
-    if (await page.locator('.modal .notice-head').count() && /In memory/i.test(await page.locator('.modal').last().innerText())) { seen = true; break; }
+    // Someone else can die the same year (another pet, a grandparent): their notices are closed until Toffee's.
+    if (await page.locator('.modal .notice-head').count() && /In memory/i.test(await page.locator('.modal').last().innerText())) {
+      if (/Toffee/.test(await page.locator('.modal').last().innerText())) { seen = true; break; }
+      await page.locator('.modal [data-ok]').last().click(); continue;
+    }
     if (await page.locator('.modal .choice-btn:not([disabled])').count()) await page.locator('.modal .choice-btn:not([disabled])').first().click();
     else if (await page.locator('.modal [data-ok]').count()) await page.locator('.modal [data-ok]').last().click();
   }

@@ -55,17 +55,17 @@ section('the years bring a talent on toward half the gift; practice takes it fur
   const tried = []; const idle = [];
   for (let k = 0; k < 40; k++) {
     const p = life({ talent: 'sports' }); lives++;
-    const practise = k % 2 === 0;
+    const practice = k % 2 === 0;
     let at = null;
     while (p.age < 18 && p.alive) {
-      if (practise && p.age >= 4) p.talents.sports = Math.min(100, p.talents.sports + 4);
+      if (practice && p.age >= 4) p.talents.sports = Math.min(100, p.talents.sports + 4);
       year();
       const f = p.flags.found?.sports;
       if (f && at == null) at = p.age;
     }
     if (p.flags.found?.sports) hints++;
     if (p.flags.found?.sports === 'known') known++;
-    (practise ? tried : idle).push(at ?? 19);
+    (practice ? tried : idle).push(at ?? 19);
     check(!Object.entries(p.flags.found ?? {}).some(([id]) => p.potential[id] < 65), 'only real gifts are found');
   }
   const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;

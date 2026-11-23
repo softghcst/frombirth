@@ -51,12 +51,12 @@ const lessonsFresh = () => { const l = store.state.player.flags.lessons; if (l) 
   const kids = [];
   for (let i = 0; i < 40; i++) {
     const s = createLife({ countryId: 'us', year: 2000 });
-    kids.push(s.player.talents.tech);
+    kids.push(s.player.potential.tech); // the gift: what a newborn could become, not where a baby starts
   }
   const mean = kids.reduce((a, b) => a + b, 0) / kids.length;
   check(mean > 10 && mean < 60, `technology varies from life to life (average ${Math.round(mean)})`);
   const gifted = createLife({ countryId: 'us', year: 2000, talent: 'tech' }).player;
-  check(gifted.talents.tech >= 75, `a chosen gift for technology is a real gift (${gifted.talents.tech})`);
+  check(gifted.potential.tech >= 75 && gifted.talents.tech < 20, `a chosen gift for technology is a real gift, and the baby still starts low (${gifted.potential.tech}, now ${gifted.talents.tech})`);
   section('talents: art, writing, technology, math and science, for everyone; mischief stays off the chart');
 }
 

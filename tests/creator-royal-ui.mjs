@@ -74,7 +74,7 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     await page.locator('.modal .choice-btn', { hasText: 'Kill someone' }).click(); await page.waitForTimeout(150);
     check(await page.locator('.modal select#k-who').count() === 1 && await page.locator('.modal select#k-how').count() === 1, `${label}: killing someone is one form with a who and a how`);
     const ways = await page.locator('#k-how option').allInnerTexts();
-    check(ways.some((x) => /dirty rag/.test(x)) && ways.some((x) => /wedgie/i.test(x)), `${label}: silly ways among the serious ones`);
+    check(ways.some((x) => /dirty rag/i.test(x)) && ways.some((x) => /wedgie/i.test(x)), `${label}: silly ways among the serious ones`);
     if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/kill-${label}.png` });
     await page.selectOption('#k-how', 'dirty_rag');
     await page.click('.modal [data-go]'); await page.waitForTimeout(250);
