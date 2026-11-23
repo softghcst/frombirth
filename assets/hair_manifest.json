@@ -17,7 +17,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "minAge": 13
     },
     {
       "id": "curly_puff",
@@ -34,7 +35,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "minAge": 13
     },
     {
       "id": "curtain_bangs_90s",
@@ -103,7 +105,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "minAge": 13
     },
     {
       "id": "ivy_league_crew_cut",
@@ -239,7 +242,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "minAge": 13
     },
     {
       "id": "side_part_quiff",
@@ -273,7 +277,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "minAge": 13
     },
     {
       "id": "space_buns",
@@ -307,7 +312,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "minAge": 13
     },
     {
       "id": "storybook_waves",
@@ -411,6 +417,24 @@
         "pixie",
         "sculpted"
       ]
+    },
+    {
+      "id": "twisted_crown_waves",
+      "name": "Twisted Crown Waves",
+      "clipToHead": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
     },
     {
       "id": "voluminous_curly_afro",
