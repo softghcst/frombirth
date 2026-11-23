@@ -3,6 +3,7 @@ import { rng } from '../rng.js';
 import { randomAppearance as avatarRandom, inheritAppearance as avatarInherit } from '../avatar/inherit.js';
 import { skinDepth } from '../avatar/catalog.js';
 import { clamp } from '../util.js';
+import { ADDED_TALENTS } from '../data/talents.js';
 import { TRAITS, TRAIT_BY_ID } from '../data/traits.js';
 import { BIRTH_CONDITIONS } from '../data/birthConditions.js';
 
@@ -21,9 +22,29 @@ export const randomTraits = (n = rng.int(1, 2)) => {
   return Array.from({ length: n }, () => pool.splice(rng.int(0, pool.length - 1), 1)[0]);
 };
 
-export const randomTalents = () =>
-  ({ music: rng.int(0, 55), sports: rng.int(0, 55), acting: rng.int(0, 55), crime: rng.int(0, 55),
-    singing: rng.int(0, 55), dance: rng.int(0, 55) });
+export const randomTalents = () => {
+  const t = { music: rng.int(0, 55), sports: rng.int(0, 55), acting: rng.int(0, 55), crime: rng.int(0, 55),
+    singing: rng.int(0, 55), dance: rng.int(0, 55) };
+  return addedTalents(t, () => 28, 0, 55);
+};
+
+/**
+ * The talents added after the first six (art, writing, technology, math and science), drawn from dice of their own,
+ * seeded from the game's, so that adding them changes no other roll in a life. `mean(id)` is what to center on.
+ */
+export function addedTalents(t, mean, lo = 0, hi = 100, spread = 24, giftChance = 0) {
+  // Seeded from the game's dice and the talents already drawn: the same life gives the same talents, however it is played.
+  let x = Object.values(t).reduce((h, v) => (Math.imul(h ^ (v | 0), 0x9e3779b1) >>> 0), rng.state()) >>> 0;
+  const next = () => { x = (x + 0x6D2B79F5) >>> 0; let r = x; r = Math.imul(r ^ (r >>> 15), r | 1); r ^= r + Math.imul(r ^ (r >>> 7), r | 61); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
+  for (const id of ADDED_TALENTS) {
+    if (t[id] != null) continue;
+    const around = mean(id) + (next() + next() + next() - 1.5) / 1.5 * spread;
+    t[id] = Math.round(clamp(around, lo, hi));
+  }
+  // Now and then a real gift for one of them, as the first six have.
+  if (next() < giftChance) { const id = ADDED_TALENTS[Math.floor(next() * ADDED_TALENTS.length)]; t[id] = Math.max(t[id], 75 + Math.floor(next() * 26)); }
+  return t;
+}
 
 /** Stand-in genome for a parent who is not in the picture. */
 export function unknownParent(other) {
@@ -66,8 +87,10 @@ export function inheritTalents(mother, father, gift) {
     const mean = ((mother.talents?.[key] ?? 28) + (father.talents?.[key] ?? 28)) / 2;
     t[key] = Math.round(clamp(rng.around(mean, 24)));
   }
-  const chosen = gift ?? (rng.chance(0.25) ? rng.pick(Object.keys(t)) : null);
+  const chosen = gift && !ADDED_TALENTS.includes(gift) ? gift : gift ? null : (rng.chance(0.25) ? rng.pick(Object.keys(t)) : null);
   if (chosen) t[chosen] = Math.max(t[chosen], rng.int(75, 100));
+  addedTalents(t, (id) => ((mother.talents?.[id] ?? 28) + (father.talents?.[id] ?? 28)) / 2, 0, 100, 24, chosen || gift ? 0 : 0.15);
+  if (gift && ADDED_TALENTS.includes(gift)) t[gift] = Math.max(t[gift], 75 + (rng.state() % 26));
   return t;
 }
 

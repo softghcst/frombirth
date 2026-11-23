@@ -7,6 +7,9 @@ import { store, player, country, log } from '../state.js';
 import { book } from './ledger.js';
 import { spendable, takeFrom } from './npcMoney.js';
 import { guardians } from './childhood.js';
+import { familyPays, learnFromLessons } from './skills.js';
+import { SKILL_BY_ID } from '../data/skills.js';
+import { talentWord } from '../data/talents.js';
 import { LESSONS, LESSON_BY_ID, LESSONS_A_YEAR } from '../data/lessons.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'neutral') => ({ ok, text, tone });
@@ -15,7 +18,7 @@ const thisYear = () => { const l = L(); if (l.year.age !== player().age) l.year 
 const cost = (lesson) => localMoney(lesson.cost, country());
 
 /** Whether a child asks a parent (true) or an adult pays for themselves. */
-export const asksParents = (p = player()) => p.age < 18 && guardians().length > 0;
+export const asksParents = (p = player()) => familyPays(p);
 
 /** The lessons open at this age, in this year, with why any cannot be taken. */
 export function lessonOptions() {
@@ -49,7 +52,7 @@ export function takeLesson(id) {
       return result(false, text);
     }
     takeFrom(parent, price);
-    return finish(lesson, `${parent.firstName} agreed to pay for ${lesson.name.toLowerCase()} (${fmtMoney(price, country())}).`);
+    return finish(lesson, `${parent.firstName} agreed to pay for ${lesson.name.toLowerCase()}.`);
   }
   if (p.finance.cash < price) return result(false, `A year of ${lesson.name.toLowerCase()} costs ${fmtMoney(price, country())}. You do not have it.`);
   p.finance.cash -= price;
@@ -72,7 +75,10 @@ function finish(lesson, opening) {
     if (group === 'talents') gained.push(key);
   }
   const years = l.taken[lesson.id];
-  const text = `${opening} ${years === 1 ? 'A first year of it.' : `${years} years of it now.`}${gained.length ? ` You are a little better at ${gained.join(' and ')}.` : ''}`;
+  // The lessons are in something: that skill goes on (data/skills.js), and counts wherever it counts.
+  const sk = lesson.skill ? learnFromLessons(lesson.skill) : null;
+  const skillLine = sk && !SKILL_BY_ID[lesson.skill].talent && sk.after > sk.before ? ` ${SKILL_BY_ID[lesson.skill].name}: ${sk.before}% to ${sk.after}%.` : '';
+  const text = `${opening} ${years === 1 ? 'A first year of it.' : `${years} years of it now.`}${gained.length ? ` You are a little better at ${gained.map(talentWord).join(' and ')}.` : ''}${skillLine}`;
   log(text, 'system', 'good');
   return result(true, text);
 }

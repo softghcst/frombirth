@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { workEdge } from './aptitudes.js';
 import { deploy } from './military.js';
 import { royalWorkBan } from './royalRules.js';
 import { hasRecord } from './records.js';
@@ -166,6 +167,7 @@ export function doorBonus(career) {
   if ((p.flags.internships ?? []).some((i) => i.careerId === career.id)) bonus += 0.2; // they have done the work before
   if (career.req?.altCert && degrees().some((d) => d.type === 'certificate' && d.majorId === career.req.altCert)) bonus += 0.1; // a certificate in exactly this
   if (livingNpcs().some((n) => n.flags.mentor && n.meters.relationship >= 60)) bonus += 0.05; // a word from a mentor
+  bonus += workEdge(career, p) * 0.15; // able to do the work already: coding for tech jobs (engine/aptitudes.js)
   const referred = p.flags.referrals?.[career.id];
   if (referred != null && p.age - referred <= 1) bonus += 0.2;
   if (['performing', 'beauty'].includes(career.category) && (p.flags.portfolio ?? 0) >= 0.55) bonus += 0.1; // a portfolio of good finished work (engine/digital/school.js) // someone there vouched for them, or a recruiter put them forward (engine/digital/professional.js)

@@ -17,6 +17,7 @@
 //   p.education.history   [{ schoolId, name, kind, stage, stageName, from, to, how, mark }]
 // People: classmates are NPCs with role 'classmate' and flags.schoolId. Teachers are NPCs
 // with role 'mentor', flags.tag 'teacher', flags.teaches (a subject), flags.style and flags.skill.
+import { subjectEdge } from './aptitudes.js';
 import { neighborKidsFor, befriend as befriendNeighbor } from './neighborhood.js';
 import { cityOf as cityProfile } from './cities.js';
 import { forgetNpc } from './digital/core.js';
@@ -412,7 +413,8 @@ export function markYear() {
   const done = [];
   for (const sub of live) {
     const rec = e.subjects[sub.id];
-    const natural = Object.entries(sub.apt).reduce((t, [path, w]) => t + val(p, path) * w, 0);
+    // What was learned outside school counts too: coding in Technology, writing in Literature (engine/aptitudes.js).
+    const natural = Object.entries(sub.apt).reduce((t, [path, w]) => t + val(p, path) * w, 0) + subjectEdge(sub.id, p) * 12;
     const t = staff.find((x) => x.flags.teaches === sub.id);
     const style = t ? TEACHING_STYLES.find((x) => x.id === t.flags.style) : null;
     const club = (sub.club ?? []).some((id) => e.clubs.includes(id));

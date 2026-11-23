@@ -13,6 +13,7 @@
 //     application: { instId, outcome, score, condition, reasons, aid, tuition }
 //     held: { instId, until }  a place kept open for a year
 //   p.education.aid / aidKeep / aidParts   the share of tuition waived while enrolled, and the mark that keeps it
+import { majorEdge, strongest, MAJOR_EDGE } from './aptitudes.js';
 import { universityAccess } from './history.js';
 import { rng } from '../rng.js';
 import { clamp, localCost, fmtMoney } from '../util.js';
@@ -162,6 +163,7 @@ export function profile(majorId, inst = null) {
     access: universityAccess(), // Historical Eras: how many students universities took in these years
     mark: school ? e.gpa : edu.entryGpa(), predicted: school, advanced, recs, activities,
     statement: plan?.statementValue ?? 0,
+    skill: majorEdge(majorId, p), skillWhat: strongest(MAJOR_EDGE[majorId], p), // what they can already do (engine/aptitudes.js)
     audition: major?.audition ? Math.round(clamp((major.auditionSkill ? Number(resolve(major.auditionSkill)) || 0 : tripleThreat(p)) + (p.flags.directorRec ? 8 : 0) + Math.min(10, (p.flags.performances?.length ?? 0) * 2) + (e.auditionPrep?.points ?? 0))) : null,
     attempts: inst && majorId ? triesOf(majorId, inst.id).n : 0,
     priorBest: inst && majorId ? triesOf(majorId, inst.id).best : null,

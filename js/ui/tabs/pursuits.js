@@ -119,7 +119,8 @@ async function openLessons(api) {
     eyebrow: 'Learning', emoji: '🎓', title: 'Lessons',
     body: ask ? 'Something you would love to learn this year? Your parents will need to say yes, and pay.' : 'A year of lessons, paid by you.',
     label: 'Lesson', button: ask ? 'Ask your parents' : 'Sign up',
-    options: opts.map((o) => ({ value: o.id, label: `${o.emoji} ${o.name} · ${fmtMoney(o.cost, c)}${o.years ? ` · ${o.years} yr` : ''}${o.why ? ` · ${o.why.toLowerCase()}` : ''}`, disabled: !!o.why })),
+    // While parents pay, the price is theirs: it shows from 18, when it is yours.
+    options: opts.map((o) => ({ value: o.id, label: `${o.emoji} ${o.name}${ask ? '' : ` · ${fmtMoney(o.cost, c)}`}${o.years ? ` · ${o.years} yr` : ''}${o.why ? ` · ${o.why.toLowerCase()}` : ''}`, disabled: !!o.why })),
   });
   if (id) await report(api, lessons.takeLesson(id));
 }

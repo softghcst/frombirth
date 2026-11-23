@@ -1,4 +1,5 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { TALENTS } from '../../data/talents.js';
 import { getEra, eventsIn } from '../../engine/history.js';
 import { store } from '../../state.js';
 import { outlook } from '../../engine/economy.js';
@@ -21,7 +22,7 @@ import { messageModal } from '../modals.js';
 import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
 import { openHealth } from '../health/hub.js';
-import { navRow, navGroup, icon } from '../kit.js';
+import { navRow, navGroup } from '../kit.js';
 import { loveFamilyGroup, openLoveFamily } from './people.js';
 
 export default {
@@ -48,17 +49,15 @@ export default {
         ${meterHtml('Intellect', p.stats.intellect, true)}${meterHtml('Charm', p.stats.charm, true)}
         <div class="section-label">Conditions</div>${conditions}
         ${born.length ? `<div class="section-label">Born with</div>${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}` : ''}
-        <div class="btn-stack" style="margin-top:10px">
-          <button class="btn${sick ? ' peach' : ''}" data-doctor>${icon('doctor')}See a Doctor${sick ? ' · something needs looking at' : ''}</button>
-          <button class="btn" data-health>${icon('health')}My Health</button>
-          ${med.canHaveSurgery() ? `<button class="btn" data-surgery>${icon('scissors')}Cosmetic Surgery</button>` : ''}
-          ${salon.canVisitSalon() ? `<button class="btn" data-salon>${icon('sparkle')}Beauty Salon</button>` : ''}
-        </div>
+        <div style="margin-top:10px">${navGroup([
+          navRow({ attrs: 'data-doctor', label: 'See a Doctor', sub: sick ? 'Something needs looking at' : '', tone: sick ? 'peach' : '' }),
+          navRow({ attrs: 'data-health', label: 'My Health' }),
+          ...(med.canHaveSurgery() ? [navRow({ attrs: 'data-surgery', label: 'Cosmetic Surgery' })] : []),
+          ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: 'Beauty Salon' })] : []),
+        ])}</div>
       </div>
       <div class="card"><h3>Talents and skills</h3>
-        ${meterHtml('Music', p.talents.music, true)}${meterHtml('Sports', p.talents.sports, true)}
-        ${meterHtml('Acting', p.talents.acting, true)}${meterHtml('Singing', p.talents.singing, true)}
-        ${meterHtml('Dance', p.talents.dance, true)}
+        ${TALENTS.filter((t) => !t.hidden).map((t) => meterHtml(t.name, p.talents[t.id] ?? 0, true)).join('')}
         ${p.flags.musicalRoute || p.career.careerId === 'mt_performer' || /musical/.test(p.education.majorId ?? '') ? `<div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat()}</strong></span></div>` : ''}
         ${skillsCard({ inner: true })}
         <div class="section-label">Traits</div>

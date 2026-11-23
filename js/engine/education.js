@@ -1,6 +1,7 @@
 // Education: compulsory school by age, effort and attendance, tutors, cliques,
 // clubs and classes, then university, trade school, graduate, medical and law
 // school with tuition, funding and housing.
+import { majorEdge } from './aptitudes.js';
 import { majorOpen } from './history.js';
 import { forgetNpc } from './digital/core.js';
 import { rule, may } from './rules.js';
@@ -272,6 +273,7 @@ function yearGpa(p) {
   if (marked == null) g -= studyBarrier(p);
   if (hasMajor(e.stage)) g -= (MAJOR_BY_ID[e.majorId]?.difficulty ?? 0.3) * (e.stage === 'community' ? 0.5 : 1);
   if (e.stage === 'university' && uniOf(e.schoolId)?.strong.includes(e.majorId)) g += 0.1;
+  if (hasMajor(e.stage)) g += majorEdge(e.majorId, p) * 0.3; // arriving already able to do it: coding for computer science
   if (!isHigher(e.stage) && p.age >= 12) g += PRIORITY_BY_ID[e.priority]?.gpa ?? 0;
   // Professional and graduate study builds on the degree before it: a strong student stays strong.
   if (PROGRAMS[e.stage]?.needs === 'university') {
