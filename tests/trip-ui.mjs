@@ -52,7 +52,11 @@ const tripId = await page.evaluate(async () => {
 });
 await page.waitForSelector('.gl-modal');
 const go = page.locator('.gl-modal [data-depart]');
-check(await go.count() === 1 && /Go on this trip/.test(await go.innerText()), 'a booked trip has a "Go on this trip" button');
+check(await go.count() === 1 && /^Leave Now$/.test((await go.innerText()).trim()), `a booked trip has a "Leave Now" button (${await go.innerText()})`);
+const before = await page.locator('.gl-modal').innerText();
+if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/trip-booked.png` });
+check(/The Plan/.test(before) && /Museum/i.test(before) && !/What you did/i.test(before), 'before leaving it shows the plan, not "What you did"');
+check(/Cancel This Trip/.test(before) && /Your Share/.test(before), 'buttons and labels are capitalized');
 await go.click();
 const notice = page.locator('#modal-root .modal', { hasText: 'Back from Chicago' });
 await notice.waitFor({ timeout: 5000 }).catch(() => {});
@@ -66,6 +70,32 @@ const after = await page.evaluate(async (id) => { const travel = await import('/
 check(after.status === 'completed' && !after.away, `the trip is over and you are home (${JSON.stringify(after)})`);
 check(await page.locator('.gl-modal', { hasText: 'Away now' }).count() === 0, 'there is no "Away now" step');
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/trip-after.png` });
+// A ten-year-old does not choose who pays: the parents (or whoever looks after them) do.
+await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()));
+const kid = await page.evaluate(async () => {
+  const { store } = await import('/js/state.js');
+  const p = store.state.player;
+  p.age = 10; p.birthYear = store.state.year - 10; p.finance.cash = 0;
+  const travel = await import('/js/engine/travel.js');
+  const fam = travel.familyPayer();
+  const t = travel.startPlan('vacation');
+  const y = store.state.year;
+  travel.updatePlan(t.id, { destination: { countryId: 'us', city: 'Chicago' }, depart: `${y}-08-02`, ret: `${y}-08-05`, mode: 'rail', stay: 'hotel', payment: 'split' });
+  if (fam) t.travelers.push({ id: fam.people[0].id, status: 'accepted', pays: 'organizer' });
+  const { openExplore } = await import('/js/ui/globalLife.js');
+  openExplore({ changed() {}, rerender() {} }, { view: 'plan', params: { id: t.id } });
+  return { id: t.id, who: fam?.who, payment: t.payment };
+});
+await page.waitForSelector('.gl-modal');
+const plan = await page.locator('.gl-modal').innerText();
+check(kid.who && kid.payment === 'organizer', `a child has someone paying and cannot change it (${JSON.stringify(kid)})`);
+check(await page.locator('.gl-modal [data-planfield="payment"]').count() === 0 && plan.includes(`${kid.who} `) && /once you are 18/.test(plan), 'the planner says who pays instead of offering a choice');
+check(!/<strong>/.test(plan), 'no markup shows as text');
+if (process.env.SHOT) { await page.locator('.gl-modal [data-planfield="insurance"]').scrollIntoViewIfNeeded(); await page.screenshot({ path: `${process.env.SHOT}/trip-kid-plan.png` }); }
+const booked = await page.evaluate(async (id) => { const travel = await import('/js/engine/travel.js'); const r = travel.confirm(id); return { ok: r.ok, text: r.text }; }, kid.id);
+check(booked.ok && booked.text.includes(`${kid.who} paid.`), `booked with no money of their own: the family paid (${JSON.stringify(booked)})`);
+const grown = await page.evaluate(async () => { const { store } = await import('/js/state.js'); store.state.player.age = 18; const travel = await import('/js/engine/travel.js'); return travel.choosesPayment(); });
+check(grown, 'at 18 you choose who pays');
 check(!errors.length, `no page errors (${errors.join('; ')})`);
 await browser.close();
 server.close();

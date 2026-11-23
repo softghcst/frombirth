@@ -25,9 +25,10 @@ export function startTalents(potential, age) {
 }
 
 /** The gift, for systems that need what someone could become rather than what they are now (a sport's ceiling, how fast a skill comes). */
-export const gift = (p, key) => (p.potential?.[key] ?? p.talents?.[key] ?? 0);
+// Never below how good they already are: whoever has got that far had at least that much in them.
+export const gift = (p, key) => Math.max(p.potential?.[key] ?? 0, p.talents?.[key] ?? 0);
 /** Gifts of note (65 and up): what a natural at something is a natural at. */
-export const giftsOf = (p) => Object.entries(p.potential ?? p.talents ?? {}).filter(([, v]) => v >= 65).map(([k]) => k);
+export const giftsOf = (p) => [...new Set([...Object.keys(p.potential ?? {}), ...Object.keys(p.talents ?? {})])].filter((k) => gift(p, k) >= 65);
 
 /** An older save has only one number per talent: it becomes the gift too, and nothing the player has is lowered. */
 export function ensurePotential(p = player()) {

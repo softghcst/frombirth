@@ -28,6 +28,7 @@ import { distanceKm, overland, coastal, regionOf, localTime, instantAt, season, 
 import { today, addDays, daysBetween, yearOf, readiness, readyForTrip, addStay, ensureOwnPassport, personById, entryRule, needsAuthorization, eraOf } from './documents.js';
 import { charge, refund, recordEvent, hasEvent, archiveIdOf, events } from './chronicle.js';
 import { languagesOf, speaks } from './languages.js';
+import { takeFrom } from './npcMoney.js';
 import { remember } from './conditions.js';
 import { stamp } from './emigration.js';
 import { makeNpc } from './npcFactory.js';
@@ -284,7 +285,7 @@ export function updatePlan(id, changes, p = player()) {
   if (changes.stay !== undefined) trip.stay = changes.stay;
   if (changes.activities) trip.activities = changes.activities.filter((a) => ACTIVITY_BY_ID[a]);
   if (changes.insurance != null) trip.insurance = !!changes.insurance;
-  if (changes.payment) trip.payment = changes.payment;
+  if (changes.payment && choosesPayment(p)) trip.payment = changes.payment;
   return result(true, 'Plan updated.', 'neutral', { trip });
 }
 
@@ -340,11 +341,11 @@ export function invite(tripId, npcId, p = player()) {
     if ((n.traits ?? []).includes('worrier') && abroad) k -= 0.1;
     yes = rng.chance(clamp(k, 0.03, 0.97));
     reason = yes ? `${n.firstName} said yes.` : n.life?.job && nights > 10 ? `${n.firstName} cannot get the time off work.` : `${n.firstName} would rather not.`;
-    const selfPay = trip.payment !== 'organizer';
+    const selfPay = payMode(trip, p) !== 'organizer';
     if (yes && selfPay && money < share) { yes = false; reason = `${n.firstName} cannot afford their share.`; }
     if (yes && abroad && !ensureOwnPassport(n, trip.depart, trip.ret)) { yes = false; reason = `${n.firstName} has no passport and could not get one in time.`; }
   }
-  trip.travelers.push({ id: n.id, status: yes ? 'accepted' : 'declined', reason, pays: trip.payment === 'organizer' ? 'organizer' : 'self' });
+  trip.travelers.push({ id: n.id, status: yes ? 'accepted' : 'declined', reason, pays: payMode(trip, p) === 'organizer' ? 'organizer' : 'self' });
   return result(yes, reason, yes ? 'good' : 'neutral');
 }
 /** Takes back an invitation (or someone's place) before booking. */
@@ -405,12 +406,12 @@ export function quote(trip, p = player()) {
     if (employerPays && ['transport', 'stay', 'daily'].includes(l.kind) && (!l.personId || l.personId === p.id)) { l.payer = 'employer'; employer += l.amount; continue; }
     l.payer = 'organizer';
   }
-  if (trip.payment === 'split' || trip.payment === 'separate') {
+  if (payMode(trip, p) !== 'organizer') {
     // Each adult who came pays for themselves (their journey) and an equal part of the shared things; the organizer covers children.
     const adults = people.filter((x) => x === p || (x.age ?? 30) >= 18);
     for (const l of lines.filter((x) => x.payer === 'organizer')) {
       if (l.personId && l.personId !== p.id && adults.some((x) => x.id === l.personId)) { l.payer = l.personId; shares[l.personId] = (shares[l.personId] ?? 0) + l.amount; continue; }
-      if (!l.personId && trip.payment === 'split' && adults.length > 1) {
+      if (!l.personId && payMode(trip, p) === 'split' && adults.length > 1) {
         const part = Math.floor(l.amount / adults.length);
         for (const x of adults) if (x !== p) shares[x.id] = (shares[x.id] ?? 0) + part;
         l.split = adults.length;
@@ -479,7 +480,7 @@ export function problems(trip, p = player()) {
   for (const o of travelState(p).trips) if (o.id !== trip.id && LIVE.includes(o.status) && overlaps(o, trip)) out.push(`It clashes with your trip to ${COUNTRIES[o.destination.countryId].name} (${o.depart} to ${o.ret}).`);
   // Money.
   const q = quote(trip, p);
-  if (q.organizer > p.finance.cash && !(p.age < 16 && people.some((x) => x.role === 'parent'))) out.push(`It comes to ${fmtMoney(q.organizer, country())} for you, and you have ${fmtMoney(p.finance.cash, country())}.`);
+  if (q.organizer > p.finance.cash && !familyPayer(p)) out.push(`It comes to ${fmtMoney(q.organizer, country())} for you, and you have ${fmtMoney(p.finance.cash, country())}.`);
   return [...new Set(out)];
 }
 
@@ -497,6 +498,27 @@ export function entryCheck(trip, p = player()) {
   });
 }
 
+// ---------- Who pays ----------
+
+/** Who pays for a child's trip: the parents, or whoever looks after a child with none. Null from 18, when you pay your own way. */
+export function familyPayer(p = player()) {
+  if (p.age >= 18) return null;
+  const close = livingNpcs().filter((n) => p.npcIds.includes(n.id) && (n.age ?? 0) >= 18);
+  const parents = close.filter((n) => n.role === 'parent');
+  const people = parents.length ? parents : close.filter((n) => n.role === 'guardian').length ? close.filter((n) => n.role === 'guardian') : close.filter((n) => n.role === 'grandparent');
+  if (!people.length) return null;
+  const one = people.length === 1 ? people[0] : null;
+  const who = parents.length ? (one ? (one.gender === 'female' ? 'Your mom' : 'Your dad') : 'Your parents')
+    : people[0].role === 'guardian' ? (one ? 'Your guardian' : 'Your guardians')
+    : one ? (one.gender === 'female' ? 'Your grandmother' : 'Your grandfather') : 'Your grandparents';
+  return { people, who };
+}
+
+/** Whether you choose who pays: only from 18, or a child with nobody to pay for them. */
+export const choosesPayment = (p = player()) => !familyPayer(p);
+/** How a trip is paid: as planned, or all by the family while you are a child. */
+export const payMode = (trip, p = player()) => (choosesPayment(p) ? trip.payment : 'organizer');
+
 // ---------- Booking ----------
 
 /** Books a plan: everything is paid once, and written down. */
@@ -507,7 +529,8 @@ export function confirm(tripId, p = player()) {
   const bad = problems(trip, p);
   if (bad.length) return result(false, bad[0], 'neutral', { problems: bad });
   const q = quote(trip, p);
-  const parentsPay = p.age < 16 && q.organizer > p.finance.cash;
+  const family = familyPayer(p);
+  const parentsPay = !!family;
   const where = placeName(trip.destination.countryId, trip.destination.city);
   for (const [i, l] of q.lines.entries()) {
     const payer = l.payer === 'employer' ? 'employer' : l.payer !== 'organizer' ? l.payer : parentsPay ? 'parent' : 'player';
@@ -519,6 +542,7 @@ export function confirm(tripId, p = player()) {
     if (l.split && payer === 'player') {
       for (const x of going(trip)) if (x.id !== p.id) { const n = store.state.npcs[x.id]; if (n && (n.age ?? 0) >= 18) { const part = Math.floor(l.amount / l.split); if (n.life) n.life.savings -= part; else n.savings = (n.savings ?? 0) - part; } }
     }
+    if (payer === 'parent') { const share = Math.ceil(l.amount / family.people.length); for (const n of family.people) takeFrom(n, share); }
     const paid = charge({ amount: payer === 'player' ? mine : l.amount, kind: 'travel', memo: `${l.label}: ${where}`, key: `trip:${trip.id}:${i}`, ref: { tripId: trip.id }, payer });
     if (!paid.ok) return result(false, paid.why, 'neutral');
     trip.bookings.push({ id: uid('bk'), kind: l.kind, label: l.label, amount: l.amount, payer, txId: paid.tx.id, status: 'confirmed', activityId: l.activityId ?? null });
@@ -528,7 +552,7 @@ export function confirm(tripId, p = player()) {
   trip.confirmedOn = today();
   trip.confirmedYear = year();
   const others = going(trip).filter((x) => x.id !== p.id).map((x) => personById(x.id).firstName);
-  const text = `Booked: ${TRIP_TYPE_BY_ID[trip.type].name.toLowerCase()} to ${where}, ${trip.depart} to ${trip.ret}${others.length ? `, with ${list(others)}` : ''}. ${papers.notes.length ? `Sorted for the trip: ${list(papers.notes)}${papers.fees ? ` (${fmtMoney(papers.fees, country())} in fees)` : ''}. ` : ''}${q.employer ? `Your employer pays ${fmtMoney(q.employer, country())}. ` : ''}${parentsPay ? 'Your parents paid.' : `You paid ${fmtMoney(q.organizer, country())}.`}`;
+  const text = `Booked: ${TRIP_TYPE_BY_ID[trip.type].name.toLowerCase()} to ${where}, ${trip.depart} to ${trip.ret}${others.length ? `, with ${list(others)}` : ''}. ${papers.notes.length ? `Sorted for the trip: ${list(papers.notes)}${papers.fees ? ` (${fmtMoney(papers.fees, country())} in fees)` : ''}. ` : ''}${q.employer ? `Your employer pays ${fmtMoney(q.employer, country())}. ` : ''}${parentsPay ? `${family.who} paid.` : `You paid ${fmtMoney(q.organizer, country())}.`}`;
   log(text, 'system', 'good');
   return result(true, text, 'good', { trip });
 }

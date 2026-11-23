@@ -125,15 +125,21 @@ function coherent(where) {
 // 2. Neighbors' lives: aging, growing up, moving out and in, dying; the record keeps everyone.
 {
   const n = problems.length;
-  life('uk', 'Manchester');
-  const home = N.currentHome(S());
-  const hoodId = home.h;
-  const first = new Map(Object.values(H().res).map((r) => [r.id, { by: r.by, hh: r.hh, f: r.f }]));
-  const kid = Object.values(H().res).find((r) => N.ageOf(r, S()) < 10 && H().hhs[r.hh]?.home);
-  // Meet someone, so a known person is among those who may move.
-  const someone = N.around(S(), home.id).filter((x) => x.hh).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && N.ageOf(r, S()) >= 20);
-  if (someone) N.befriend(S(), someone.id, 50);
-  advance(30);
+  // Thirty years lived: a life lost early to bad luck (a drowning at 16) is lived again from the
+  // next seed, so these checks do not hang on one roll of the dice.
+  let home; let hoodId; let first; let kid; let someone; let seed = 20261200;
+  do {
+    rng.seed(seed++);
+    life('uk', 'Manchester');
+    home = N.currentHome(S());
+    hoodId = home.h;
+    first = new Map(Object.values(H().res).map((r) => [r.id, { by: r.by, hh: r.hh, f: r.f }]));
+    kid = Object.values(H().res).find((r) => N.ageOf(r, S()) < 10 && H().hhs[r.hh]?.home);
+    // Meet someone, so a known person is among those who may move.
+    someone = N.around(S(), home.id).filter((x) => x.hh).flatMap((x) => x.hh.m).map((id) => H().res[id]).find((r) => r && N.ageOf(r, S()) >= 20);
+    if (someone) N.befriend(S(), someone.id, 50);
+    advance(30);
+  } while (!P().alive && seed < 20261210);
   coherent('thirty years on');
   for (const [id, x] of first) { const r = H().res[id]; if (r) check(r.by === x.by && r.f === x.f, `${id} keeps their name and birth year`); }
   if (kid) check(N.ageOf(H().res[kid.id], S()) === S().year - kid.by && N.ageOf(H().res[kid.id], S()) >= 30, 'a child next door grows up');

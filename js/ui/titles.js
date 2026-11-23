@@ -32,7 +32,9 @@ export function titleCase(text) {
   }).join('');
 }
 
-const SELECTOR = 'h1, h2, h3, h4, .nr-label, .section-label, .tab-label, .sec-title, .sub-head, .dyn-head, .world-head, .panel-head, .gl-head, .season-head, .mm-head';
+// Buttons, the names down the left of a fact list, dropdown choices, toggles and fold-out labels are titles too.
+const SELECTOR = 'h1, h2, h3, h4, .nr-label, .section-label, .tab-label, .sec-title, .sub-head, .dyn-head, .world-head, .panel-head, .gl-head, .season-head, .mm-head, '
+  + '.btn, .kv > span:first-child, select option, summary, .gl-radio, .chip, .av-chip';
 /** An option named after something: "Join: Dance classes" shows the name in Title Case, "Join: Dance Classes". */
 const NAMED = '.choice-btn';
 
