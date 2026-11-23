@@ -21,6 +21,24 @@
       "minAge": 13
     },
     {
+      "id": "cloud_curls",
+      "name": "Cloud Curls",
+      "clipToHead": false,
+      "length": "long",
+      "type": "coily",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
       "id": "curly_puff",
       "name": "Curly Puff",
       "clipToHead": false,
