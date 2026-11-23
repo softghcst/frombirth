@@ -68,10 +68,11 @@ await page.evaluate(async (id) => { const S = await import('/js/state.js'); cons
 let seen = false;
 for (let t = 0; t < 4 && !seen; t++) {
   await page.evaluate(() => document.querySelector('[data-year]').click());
-  for (let i = 0; i < 30 && !seen; i++) {
+  for (let i = 0; i < 60 && !seen; i++) {
     await page.waitForTimeout(120);
     const txt = await page.evaluate(() => document.querySelector('#modal-root .modal:last-child')?.innerText ?? '');
-    if (/Go to the funeral/i.test(txt)) { seen = txt; break; }
+    // The friend's funeral, not another one: someone else in the family can die in the same turn.
+    if (/Go to the funeral/i.test(txt) && /Simon/.test(txt)) { seen = txt; break; }
     const c = page.locator('#modal-root .choice-btn:not([disabled])');
     if (await c.count()) await c.first().click(); else if (await page.locator('#modal-root [data-ok]').count()) await page.locator('#modal-root [data-ok]').last().click();
   }
