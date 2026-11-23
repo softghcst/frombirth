@@ -191,6 +191,23 @@
       ]
     },
     {
+      "id": "side_part_locs",
+      "name": "Side Part Locs",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "locs",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "side_part_quiff",
       "name": "Side Part Quiff",
       "clipToHead": false,
