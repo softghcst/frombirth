@@ -92,6 +92,7 @@ export function mountAppearanceEditor(el, o = {}) {
     if (key === 'hair') {
       if (hairFilter === 'suits') list = [...stylesFor(a.inherited.hairTexture), ...fittedFor(a.inherited.hairTexture)];
       else if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
+      list = list.filter((h) => age >= (h.minAge ?? 0));  // grown-up styles are not offered to children
     }
     // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.
     if (key === 'lips') list = list.filter((x) => lipsFor(x.id, o.gender) === x.id);

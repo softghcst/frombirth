@@ -204,7 +204,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "minAge": 13
     },
     {
       "id": "swept_back_pompadour",

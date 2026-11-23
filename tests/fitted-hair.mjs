@@ -95,6 +95,14 @@ for (const id of styles) {
 }
 check(FITTED_STYLES.every((s) => s.type !== 'any' || ['straight', 'wavy', 'curly', 'coily'].every((t) => fittedFor(t).includes(s))), 'a style for any texture is not offered to every texture');
 
+// Grown-up styles (data-min-age on the raw SVG) carry their minimum age into the game, which does not offer them younger.
+for (const [id, st] of Object.entries(FITTED_HAIR)) {
+  const head = readFileSync(new URL(`assets/hair_raw/${id}.svg`, root), 'utf8').match(/<svg\b[^>]*>/)?.[0] ?? '';
+  const want = Number(head.match(/data-min-age="(\d+)"/)?.[1] ?? 0);
+  check((st.minAge ?? 0) === want && FITTED_STYLES.find((x) => x.id === id)?.minAge === want, `${id}: minimum age ${want} not carried into the game`);
+}
+check(FITTED_HAIR.storybook_waves?.minAge === 13, 'Storybook Waves is offered to children');
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);

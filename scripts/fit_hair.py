@@ -546,6 +546,8 @@ def main():
         root = ET.parse(os.path.join(RAW, raw)).getroot()
         styles[name] = {'name': root.get('data-name') or label(name), 'clipToHead': clip_to_head(name, root),
                         'length': root.get('data-length', 'short'), 'type': root.get('data-type', 'any'), 'heads': sorted(fitted)}
+        if root.get('data-min-age'):  # a grown-up style: not offered to anyone younger (data-min-age="13" on the raw SVG)
+            styles[name]['minAge'] = int(root.get('data-min-age'))
         print(f'  -> {len(fitted)} fitted: ' + ', '.join(sorted(fitted)))
     # Fitted files whose raw hairstyle has gone are removed, so the folder matches the index.
     for f in os.listdir(FITTED):

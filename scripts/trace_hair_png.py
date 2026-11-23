@@ -15,7 +15,7 @@ A general auto-tracer guesses at shapes from the pixels, which is what ruins hai
 strands into specks, outlines wobble, and the colors split into dozens of shades the game cannot dye. This one
 knows what hair in this game is made of, and rebuilds it from those parts instead:
 
-  outline     the outer edge of everything drawn, redrawn as ONE clean #23140f outline 6 units wide (the head's own
+  outline     the outer edge of everything drawn, redrawn as ONE clean #23140f band 6 units wide (the head's own
               outline), from a smoothed distance field of the silhouette, so it is even all the way round.
   main color  the hair's main tone (the middle one of shadow, main and highlight), which becomes exactly #8f4b29:
               the color the game dyes.
@@ -24,6 +24,11 @@ knows what hair in this game is made of, and rebuilds it from those parts instea
   ink lines   dark strand lines drawn inside the hair: near-black ones in the outline color, dark brown ones as a
               shade of the main color (so they dye).
   wisps       anything thinner than the outline (a flyaway strand) is kept as ink, so nothing drawn is lost.
+
+Front and back: everything above the ears is drawn in front of the head, and from the ears down only locks that
+fall over the face; the lengths beside the jaw and neck go behind it (hair_back), so a wider jaw draws over them and a
+narrower one shows hair beside it, never a gap (a hidden fill behind the jaw and neck, out of sight on the template
+head, sees to that). The outline is an even filled band, so cutting the hair in two leaves no line along the cut.
 
 Every edge is a smooth curve (Catmull-Rom through a simplified contour, turned into Bezier curves), with sharp points
 kept sharp, as on the tips of locks. Specks smaller than a few units are dropped.
@@ -47,6 +52,11 @@ ROOT = os.path.dirname(HERE)
 PNG_DIR = os.path.join(ROOT, 'assets', 'hair_png')
 RAW = os.path.join(ROOT, 'assets', 'hair_raw')
 DEBUG_HTML = os.path.join(HERE, 'debug_hair_png.html')
+TEMPLATE = os.path.join(PNG_DIR, 'TEMPLATE_base_head.png')
+EAR_Y = 278          # the base head's ears (assets/landmarks.json): hair below this beside the head goes behind it
+NECK_Y = 470         # the base of its neck: the filler behind the jaw and neck stops here
+MIN_LOCK = 150       # a piece of hair over the face below the ears must be this big (square units) to stay in front
+FACE_MARGIN = 12     # below the ears, hair stays in front of the face only this far inside the head's outline
 
 SIZE = 2048                 # pictures are worked on at this size: 4 pixels to one unit of the 512 frame
 PX = SIZE / 512
@@ -163,12 +173,12 @@ def soft(mask, sigma=2.0):
 # ---------- One picture -> paths ----------
 
 
-def trace(path, layer):
+def trace(path):
     rgb, mask = load(path)
     mask = clean(mask, MIN_AREA)
     if not mask.any():
         print(f'  warning: nothing drawn in {os.path.basename(path)}')
-        return [], {}
+        return [], mask, {}
     smooth_rgb = ndi.median_filter(rgb, size=(5, 5, 1))
     L = lum(smooth_rgb)
 
@@ -197,46 +207,67 @@ def trace(path, layer):
     ink = mask & (L < min(70, main_l * 0.55))
     sdf = ndi.distance_transform_edt(mask) - ndi.distance_transform_edt(~mask)  # inside > 0, in pixels
     sdf = ndi.gaussian_filter(sdf, 1.5)
+    ow = OUTLINE_W * PX
+    as_field = lambda m, sigma=2.0: (soft(m, sigma) - 0.5) * 8  # a mask as a field: > 0 inside, roughly in pixels
 
-    # The main shape: the silhouette, pulled in by half the outline, so the outline drawn on it lands on the edge.
-    inset = OUTLINE_W / 2 * PX
-    main_d = path_d(sdf, inset)
-    body = sdf > inset
-
-    shapes = []
-    shapes.append(f'<path fill="{hexc(MAIN)}" stroke="{OUTLINE}" stroke-width="{OUTLINE_W}" stroke-linejoin="round" fill-rule="evenodd" d="{main_d}"/>')
-
-    # Shadows and highlights, away from the outline band, as one shade each of the main color.
-    inner = sdf > OUTLINE_W * PX * 0.85
+    # Each part of the hair as a field (> 0 inside) and its color; the outline is an even band 6 units wide just
+    # inside the silhouette, drawn last, as a filled shape (so the hair can be cut in two with no outline along the cut).
+    parts = [('main', sdf, hexc(MAIN))]
+    inner = sdf > ow * 0.85
     ratio = L / max(1, main_l)
     stats = {}
     for name, sel in (('shadow', (ratio < 0.8) & ~ink), ('highlight', ratio > 1.16)):
         m = ndi.binary_opening(sel & inner, structure=DISK3)
         m = clean(m, MIN_SHADE_AREA)
-        if not m.any():
-            continue
-        r = float(np.median(ratio[m]))
-        color = np.array(MAIN) * min(r, 2.2)  # the main color made darker or brighter: same hue, so it dyes with it
-        d = path_d(soft(m), 0.5)
-        if d:
-            shapes.append(f'<path fill="{hexc(color)}" d="{d}"/>')
+        if m.any():
+            r = float(np.median(ratio[m]))
+            parts.append((name, as_field(m), hexc(np.array(MAIN) * min(r, 2.2))))  # same hue as the main color, so it dyes
             stats[name] = int(m.sum() / PX / PX)
-
-    # Ink drawn inside the hair (strand lines), and wisps too thin to survive as outlined shape.
-    lines = clean(ink & (sdf > OUTLINE_W * PX * 0.9), 2)
-    covered = ndi.binary_dilation(body, iterations=int(inset + 2))
-    wisps = clean(mask & ~covered, 2)
+    # Ink drawn inside the hair (strand lines), and wisps too thin for the outline band to hold.
+    lines = clean(ink & (sdf > ow * 0.9), 2)
+    wisps = clean(mask & (sdf < ow * 0.5) & ~ndi.binary_dilation(sdf > ow * 0.5, iterations=int(ow * 0.6)), 2)
     extra = lines | wisps
     if extra.any():
         # Near-black lines stay the outline color; dark brown ones become a shade of the main color, so they dye.
         r = float(np.median(L[extra])) / max(1, main_l)
-        color = OUTLINE if np.median(L[extra]) < 35 else hexc(np.array(MAIN) * r)
-        d = path_d(soft(extra, 1.2), 0.5)
-        if d:
-            shapes.append(f'<path fill="{color}" d="{d}"/>')
-            stats['ink'] = int(extra.sum() / PX / PX)
+        parts.append(('ink', as_field(extra, 1.2), OUTLINE if np.median(L[extra]) < 35 else hexc(np.array(MAIN) * r)))
+        stats['ink'] = int(extra.sum() / PX / PX)
+    parts.append(('outline', np.minimum(sdf, ow - sdf), OUTLINE))
     stats['main'] = hexc(main_rgb)
-    return shapes, stats
+    return parts, mask, stats
+
+
+def emit(parts, region=None):
+    """Paths for the parts, cut to a region (a field, > 0 inside) if given: (main fill, [the rest])."""
+    out = []
+    for name, field, color in parts:
+        f = field if region is None else np.minimum(field, region)
+        d = path_d(f, 0)
+        if d:
+            out.append((name, f'<path fill="{color}" fill-rule="evenodd" d="{d}"/>'))
+    return [p for n, p in out if n == 'main'], [p for n, p in out if n != 'main']
+
+
+def regions(mask):
+    """Where hair is in front of the head and where behind, from the template head (fields, > 0 inside), and the head."""
+    head = np.asarray(Image.open(TEMPLATE).convert('RGBA').resize((SIZE, SIZE)))[..., 3] > 127
+    head = ndi.binary_fill_holes(head)
+    inside = ndi.distance_transform_edt(head)
+    y = np.arange(SIZE)[:, None] * np.ones((1, SIZE))
+    split = EAR_Y * PX
+    # In front: everything above the ears, and below them only locks that fall well inside the face (over a cheek or
+    # an eye): whole pieces of hair, not slivers or the ends of strand lines.
+    over = mask & (y >= split) & (inside > FACE_MARGIN * PX)
+    lab, n = ndi.label(over)
+    if n:
+        big = np.bincount(lab.ravel()) >= MIN_LOCK * PX * PX
+        big[0] = False
+        over = ndi.binary_dilation(big[lab], iterations=int(4 * PX)) & mask
+    front = np.maximum(split - y, (soft(over) - 0.5) * 8)
+    # Behind: everything from just above the ears down (its top edge hides under the front hair), so the lengths beside
+    # the jaw and neck go behind them: a wider jaw draws over them, rather than being covered by them.
+    back = y - (split - 15 * PX)
+    return front, back, head, y
 
 
 def build(style, force=False):
@@ -247,16 +278,30 @@ def build(style, force=False):
     if not force and os.path.exists(out) and os.path.getmtime(out) > newest:
         return None
     print(f'{style}:')
-    fshapes, fstats = trace(front, 'front')
-    bshapes, bstats = trace(back, 'back') if os.path.exists(back) else ([], {})
-    base, details = fshapes[:1], fshapes[1:]
+    fparts, fmask, fstats = trace(front)
+    front_r, back_r, head, y = regions(fmask)
+    base, details = emit(fparts, front_r)
+    bmain, bdetails = emit(fparts, back_r)
+    # Behind it all: hair filling the space the drawing encloses between the hair and the head, from the ears down to
+    # the neck, so a narrower jaw or neck than the template's shows hair beside it, not a gap. No outline; the head
+    # covers it wherever the head is.
+    gap = ndi.binary_fill_holes(fmask | head) & (y > EAR_Y * PX) & (y < NECK_Y * PX)
+    hair_sdf = ndi.distance_transform_edt(fmask)
+    gap &= ~fmask | (hair_sdf > OUTLINE_W * PX * 1.5)  # never out to the hair's own edge, where it could peek past it
+    filler = emit([('fill', (soft(gap) - 0.5) * 8, hexc(np.array(MAIN) * 0.72))])[1]
+    bshapes = filler + bmain + bdetails
+    bstats = {}
+    if os.path.exists(back):
+        bparts, _, bstats = trace(back)
+        m, rest = emit(bparts)
+        bshapes = m + rest + bshapes
     # Its length and texture (data-length: short/medium/long/updo; data-type: any, or a texture such as wavy, coily,
     # locs) are set by hand on the traced SVG's root once, and kept when it is traced again.
     tags = 'data-length="short"'
     if os.path.exists(out):
         import re
         old = open(out, encoding='utf-8').read(400)
-        found = re.findall(r'data-(?:length|type)="[a-z]+"', old)
+        found = re.findall(r'data-(?:length|type|min-age)="[a-z0-9]+"', old)
         tags = ' '.join(found) or tags
     svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-from-png="1" {tags}>
 <!-- Traced from assets/hair_png/{style}.png by scripts/trace_hair_png.py. Redraw the PNG and trace again, rather than editing this. -->

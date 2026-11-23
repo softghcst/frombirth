@@ -47,3 +47,7 @@ hugs the skull.
 
 New styles count as short until tagged. To change that, add `data-length="medium"` (or `long`, `updo`) to the root
 `<svg>` of the traced `assets/hair_raw/<style>.svg` once; the tag is kept when the style is traced again.
+
+## Grown-up styles
+
+Add `data-min-age="13"` the same way to keep a style from being offered to children.
