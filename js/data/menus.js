@@ -76,6 +76,10 @@ export const MENU_RULES = [
   [/^legal matters$/i, '⚖️', 'Cases, lawyers and your record'],
   // ---------- Self ----------
   [/^health and mood$/i, '🧘', 'Your body, your mind, your care'],
+  [/^see a doctor$/i, '🩺', 'A checkup, or something that needs looking at'],
+  [/^my health$/i, '❤️', 'Conditions, care and your record'],
+  [/^cosmetic surgery$/i, '💉', 'Change something about how you look'],
+  [/^beauty salon$/i, '💅', 'Hair, nails and a new look'],
   [/^talents and skills$/i, '🎨', 'What you are good at, and traits'],
   [/^identity$/i, '🪪', 'Who you are'],
   [/^life in /i, '🗺️', 'Your country, its economy and its times'],

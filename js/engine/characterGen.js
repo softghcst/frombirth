@@ -1,4 +1,5 @@
 // Creates a brand-new life: the player, their family and the opening journal.
+import { talentWord } from '../data/talents.js';
 import { settle as settleHood } from './neighborhood.js';
 import { syncWorld } from './history.js';
 import { ensureEra } from './eras.js';
@@ -36,7 +37,7 @@ import { register as registerAnimal, reconcile as reconcileAnimals } from './ani
  * @param {string} [opts.countryId]
  * @param {string} [opts.city]
  * @param {object} [opts.appearance]  a complete appearance from the editor; left out, the face is inherited
- * @param {'music'|'sports'|'acting'|'crime'|'singing'|'dance'} [opts.talent]  a guaranteed natural gift
+ * @param {string} [opts.talent]  a guaranteed natural gift: a talent id from data/talents.js
  * @param {'struggling'|'comfortable'|'wealthy'} [opts.background]
  * @param {string} [opts.orientation]  one of ORIENTATIONS in engine/identity.js
  * @param {'commoner'|'noble'|'royal'|'heir'} [opts.birthRank]  only matters in a monarchy; left out, a title at birth is rare.
@@ -240,7 +241,7 @@ function createOnce(opts = {}) {
   player.flags.longevity = rollLongevity();
   if (player.flags.longevity >= 8) journal.push(j('People in your family tend to live to a great age.', 'good'));
   const gift = Object.entries(player.talents).find(([, v]) => v >= 75);
-  if (gift) journal.push(j(`Something about you hints at a gift for ${gift[0]}.`, 'good'));
+  if (gift) journal.push(j(`Something about you hints at a gift for ${talentWord(gift[0])}.`, 'good'));
 
   const state = {
     schemaVersion: SCHEMA_VERSION, spelling: 'us', slotId: uid('life'),

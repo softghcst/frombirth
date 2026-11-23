@@ -4,6 +4,7 @@
 //
 //   p.clubs = { now: { [id]: { id, since, years, rank (0 member, 1 committee, 2 the top), countryId, friends: [npcId],
 //                              stood: year } }, past: [{ id, from, to, rank, why }] }
+import { familyPays } from './skills.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
@@ -19,8 +20,8 @@ export const clubsOf = (p = player()) => (p.clubs ??= { now: {}, past: [] });
 const the = (c) => c.name.replace(/^(A|An|The) /, 'the ');
 /** What a membership's rank is called. */
 export const rankName = (c, rank) => (rank >= 2 ? c.top : CLUB_RANKS[rank]);
-/** Dues a year, in local money: nothing for a child, whose family pays. */
-export const duesOf = (c, p = player()) => (p.age < 16 ? 0 : localMoney(c.dues, country()));
+/** Dues a year, in local money: nothing for a child, whose family pays until 18. */
+export const duesOf = (c, p = player()) => (familyPays(p) ? 0 : localMoney(c.dues, country()));
 
 /** Why the player cannot join this club now, or ''. */
 export function whyNot(c, p = player()) {
