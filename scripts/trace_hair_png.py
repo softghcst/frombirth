@@ -435,6 +435,31 @@ def squeeze(field, left, right):
     return out if field.dtype != bool else out > 0.5
 
 
+def cover_crown(parts, mask, head):
+    """Fills any scalp left showing above the hair's top edge (hair drawn a little low on the skull) with hair, so no
+    bald band shows over the crown on any head: in each column the hair reaches, the head above the topmost hair."""
+    cols = mask.any(axis=0)
+    top = np.where(cols, mask.argmax(axis=0), SIZE)
+    rows = np.arange(SIZE)[:, None]
+    crown = head & (rows < top[None, :]) & cols[None, :] & (rows < BASE_EAR_Y * PX)
+    crown = ndi.binary_dilation(crown, iterations=int(OUTLINE_W * PX))  # reaches over the head's own outline too
+    crown &= ~mask
+    if crown.sum() < MIN_AREA * PX * PX:
+        return parts, mask
+    print(f'  covered {int(crown.sum() / PX / PX)} square units of scalp left showing above the hair')
+    new = mask | crown
+    sdf = ndi.gaussian_filter(ndi.distance_transform_edt(new) - ndi.distance_transform_edt(~new), 1.5)
+    ow = OUTLINE_W * PX
+    out = []
+    for n, f, c in parts:
+        if n == 'main':
+            f = sdf
+        elif n == 'outline':
+            f = np.minimum(sdf, ow - sdf)
+        out.append((n, f, c))
+    return out, new
+
+
 def build(style, force=False):
     front = os.path.join(PNG_DIR, f'{style}.png')
     back = os.path.join(PNG_DIR, f'{style}_back.png')
@@ -471,6 +496,7 @@ def build(style, force=False):
     for f in os.listdir(per):
         os.remove(os.path.join(per, f))
     drawn_head, drawn_lobe = head_in_base(EL.head_polys(os.path.join(FH.HEADS, f'{base_name}.svg')))[:2]
+    fparts, fmask = cover_crown(fparts, fmask, drawn_head)
     for name, marks in heads.items():
         polys = EL.head_polys(os.path.join(FH.HEADS, f'{name}.svg'))
         warp = None if name == base_name else FH.warp_for(marks, heads[base_name])

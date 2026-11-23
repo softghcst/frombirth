@@ -3,6 +3,23 @@
   "baseHead": "athletic",
   "hairstyles": [
     {
+      "id": "center_part_waves",
+      "name": "Center Part Waves",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "curly_puff",
       "name": "Curly Puff",
       "clipToHead": false,
