@@ -4,6 +4,7 @@
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
+import { guardians } from './childhood.js';
 import { SKILLS, SKILL_BY_ID, SKILL_GROUPS, PRACTICE_PER_YEAR, LESSON_COST, LEVELS } from '../data/skills.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -54,6 +55,24 @@ export const practiced = () => SKILLS.filter((s) => (s.talent ? (player().flags.
   .map((s) => ({ id: s.id, name: s.name, level: levelOf(s.id), levelName: levelName(levelOf(s.id)) }));
 
 export const lessonCost = () => localMoney(LESSON_COST, country());
+/** Under 18 with a parent or guardian at home, lessons are the family's to pay for, and the price is theirs to worry about. */
+export const familyPays = (p = player()) => p.age < 18 && guardians().length > 0;
+
+/**
+ * A year of lessons (engine/lessons.js) in a skill: it goes on the list of skills and moves on, about as far as a
+ * session with a teacher. Talents grown by the lesson itself are not counted twice. @returns {{before:number, after:number}}
+ */
+export function learnFromLessons(id) {
+  const p = player();
+  const s = SKILL_BY_ID[id];
+  if (!s) return null;
+  const before = levelOf(id);
+  if (s.talent) { p.flags.practiced = [...new Set([...(p.flags.practiced ?? []), id])]; return { before, after: levelOf(id) }; }
+  const gained = Math.max(1, Math.round(rng.int(9, 13) * aptitude(id) * (1 - before / 135))); // a year of weekly lessons
+  const after = Math.min(100, before + gained);
+  book()[id] = after;
+  return { before, after };
+}
 
 /**
  * One practice session. `lesson` pays a teacher for half as much again.
@@ -69,8 +88,9 @@ export function practice(id, lesson = false) {
   const before = levelOf(id);
   if (before >= 100) return result(false, `There is nothing left to learn about ${s.name.toLowerCase()}. You could teach it.`, 'neutral');
   const cost = lesson ? lessonCost() : 0;
-  if (lesson && p.age >= 16 && p.finance.cash < cost) return result(false, `A lesson costs ${fmtMoney(cost, c)}. You do not have it.`, 'neutral');
-  if (lesson && p.age >= 16) p.finance.cash -= cost; // a child's lessons are paid for at home
+  const own = lesson && !familyPays(p);
+  if (own && p.finance.cash < cost) return result(false, `A lesson costs ${fmtMoney(cost, c)}. You do not have it.`, 'neutral');
+  if (own) p.finance.cash -= cost; // a child's lessons are paid for at home, until 18
   acts().used += 1;
 
   const k = aptitude(id);

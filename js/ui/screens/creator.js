@@ -1,4 +1,5 @@
 // Character creator. Every field can be left on "Random" / "Inherited".
+import { TALENTS as TALENT_LIST } from '../../data/talents.js';
 import { getEra } from '../../engine/history.js';
 import { technologies } from '../../engine/digital/tech.js';
 import { cityLine } from '../../engine/cities.js';
@@ -15,7 +16,7 @@ import { MONARCHIES } from '../../data/royalty.js';
 import { BIRTH_CHOICES } from '../../engine/health/index.js';
 import { CONDITION_BY_ID } from '../../data/health/conditions.js';
 
-const TALENTS = { singing: 'Singing', dance: 'Dance', acting: 'Acting', music: 'Music', sports: 'Sports', crime: 'Mischief' };
+const TALENTS = Object.fromEntries(TALENT_LIST.map((t) => [t.id, t.name]));
 
 /** A dropdown whose first option means "let the game decide". */
 const optionsHtml = (autoLabel, options) => `<option value="">${esc(autoLabel)}</option>${options.map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('')}`;

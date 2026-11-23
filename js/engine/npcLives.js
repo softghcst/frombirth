@@ -15,7 +15,7 @@ import { schoolModel } from '../data/education.js';
 import { clamp, localMoney, fmtMoney, localWage, localCost } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
-import { inheritAppearance, inheritTalents, inheritTraits } from './genetics.js';
+import { inheritAppearance, inheritTalents, inheritTraits, addedTalents } from './genetics.js';
 import { roleLabel, spendAction, removeNpc } from './relationships.js';
 import { remember } from './conditions.js';
 import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
@@ -435,6 +435,7 @@ function haveBaby(npc, love) {
   } else {
     baby.adopted = true;
     baby.talents = { music: rng.int(0, 60), sports: rng.int(0, 60), acting: rng.int(0, 60), crime: rng.int(0, 60), singing: rng.int(0, 60), dance: rng.int(0, 60) };
+    addedTalents(baby.talents, () => 30, 0, 60);
   }
   baby.parentIds = [npc.id, love.id];
   ensureLife(baby);
@@ -459,7 +460,7 @@ function tickLove(npc) {
   // Friends and distant relatives: it happens, but off-screen.
   if (!FAMILY_MAKERS.includes(npc.role) || L.offscreenPartner) {
     if (!L.offscreenPartner && a >= 20 && a <= 45 && rng.chance(0.1)) meetPartner(npc);
-    else if (L.offscreenPartner && !L.married && rng.chance(0.2)) { L.married = true; note(npc, 'got married'); }
+    else if (L.offscreenPartner && !L.married && rng.chance(0.2)) { L.married = true; npc.flags.weddingYear = store.state.year; note(npc, 'got married'); }
     else if (L.married && L.kids < 2 && a <= 42 && rng.chance(0.12)) { L.kids += 1; note(npc, 'had a baby'); }
     return;
   }
@@ -476,6 +477,7 @@ function tickLove(npc) {
     if (L.together >= 2 && rng.chance(0.3)) {
       L.married = true;
       love.flags.married = true;
+      npc.flags.weddingYear = store.state.year; // family who live far away can travel for it (engine/travel.js)
       note(npc, `married ${love.firstName} ${love.lastName}`, true, 'good');
       if (npc.role !== 'grandchild' || rng.chance(0.5)) ask('family_wedding', { who: npc.id, inlaw: love.id });
       if (NEWSWORTHY.includes(npc.role)) letter(`${npc.firstName} and ${love.firstName} were married last month. There is a photograph, and an empty chair in it where you should have been.`);

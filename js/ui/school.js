@@ -14,7 +14,11 @@ import { openModal, pickModal, messageModal, confirmModal } from './modals.js';
 import { store } from '../state.js';
 import * as edu from '../engine/education.js';
 import * as cliques from '../engine/cliques.js';
-import { navRow } from './kit.js';
+import { navRow, icon } from './kit.js';
+import * as clubLife from '../engine/clubs.js';
+import { clubTitle } from '../data/clubs.js';
+import { openClubs } from './leisure.js';
+import { CLUB_BY_ID as SCHOOL_CLUB } from '../data/schools.js';
 import { MAX_CLUBS, CLIQUE_BY_ID } from '../data/schools.js';
 
 const face = (n) => avatarSvg({ age: n.age, gender: n.gender, appearance: n.appearance, seed: n.id, mood: 60 });
@@ -72,6 +76,16 @@ const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const sportName = (x) => (player().countryId === 'us' && x === 'American football' ? 'football' : x);
 const pct = (x) => Math.round(x * 100);
 
+/** What each club action looks like. */
+const ACT_ICON = { practice: 'calendar', help: 'people', feature: 'star', event: 'trophy', friend: 'heart', lead: 'id' };
+const STAT_WORDS = { dance: 'dance', singing: 'singing', music: 'music', acting: 'acting', sports: 'sports', health: 'health', charm: 'charm', intellect: 'smarts', mood: 'happiness', karma: 'kindness', discipline: 'discipline' };
+/** "dance and health go up": what a year in the club does, from its data. */
+function gives(id) {
+  const y = SCHOOL_CLUB[id]?.yearly ?? {};
+  const keys = [...Object.keys(y.talents ?? {}), ...Object.keys(y.stats ?? {}), ...Object.keys(y.hidden ?? {})].map((k) => STAT_WORDS[k] ?? k);
+  return keys.length ? `your ${keys.join(', ').replace(/, ([^,]*)$/, ' and $1')} ${keys.length > 1 ? 'go' : 'goes'} up.` : '';
+}
+
 /** The list of clubs and teams: the ones you are in first, then everything you could join or try out for. */
 function pageActivitiesHub() {
   const p = player();
@@ -79,8 +93,11 @@ function pageActivitiesHub() {
   const a = life.activities();
   const mine = a.clubs.map((c) => `<div class="card sub-card"><div class="sub-head"><strong>${esc(c.kind === 'sport' ? `${cap(sportName(a.sport ?? a.sports[0] ?? 'school'))} team` : c.name)}</strong><span>${esc(c.role)}</span></div>
       ${meterHtml('Your standing in it', c.standing, true)}
-      ${life.clubActions(c.id).length ? `<div class="chips club-acts">${life.clubActions(c.id).map((x) => `<button class="chip" data-club-act="${esc(c.id)}:${x.id}" ${x.done ? 'disabled' : ''}>${esc(x.label)}${x.done ? ' ✓' : ''}</button>`).join('')}</div>` : ''}
-      <button class="btn" data-leave-club="${esc(c.id)}" style="margin-top:6px">Leave</button></div>`).join('');
+      ${gives(c.id) ? `<p class="muted" style="margin:4px 0 8px">Each year: ${esc(gives(c.id))}</p>` : ''}
+      ${c.mates?.length ? `<p class="muted" style="margin:0 0 6px">With ${esc(c.mates.slice(0, 3).map((n) => n.firstName).join(', ').replace(/, ([^,]*)$/, ' and $1'))}${c.mates.length > 3 ? ` and ${c.mates.length - 3} more` : ''} from your class.</p>` : ''}
+      ${c.record?.length ? `<p class="muted" style="margin:0 0 6px">🏅 ${esc(c.record.map((r) => `${r.text.charAt(0).toUpperCase()}${r.text.slice(1)} (age ${r.age})`).join(' · '))}</p>` : ''}
+      ${life.clubActions(c.id).length ? `<div class="section-label" style="margin-top:6px">This year</div><div class="btn-stack club-acts">${life.clubActions(c.id).map((x) => `<button class="btn" data-club-act="${esc(c.id)}:${x.id}" ${x.done ? 'disabled' : ''}>${icon(ACT_ICON[x.id] ?? 'star')}${esc(x.label)}${x.done ? ' · done' : ''}</button>`).join('')}</div>` : ''}
+      <button class="btn danger" data-leave-club="${esc(c.id)}" style="margin-top:14px">Leave ${esc(c.kind === 'sport' ? 'the Team' : 'the Club')}</button></div>`).join('');
   const opts = edu.clubOptions().filter((c) => !c.joined && c.id !== 'sports_team');
   const team = edu.clubOptions().find((c) => c.id === 'sports_team');
   const full = e.clubs.length >= MAX_CLUBS;
@@ -89,7 +106,21 @@ function pageActivitiesHub() {
   return `${mine ? `<div class="section-label">Yours</div>${mine}` : ''}
     <div class="section-label">${full ? `You have time for ${MAX_CLUBS}. Leave one to join another.` : 'Join or try out'}</div>
     <div class="nav-group">${sports.map((x) => row(`data-team="${esc(x)}"`, `${cap(sportName(x))} team`, e.clubs.includes('sports_team') ? 'Switch to this team' : `Try out · about ${pct(team.chance)}%`, SPORT_ICON)).join('')}
-    ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try out · about ${pct(c.chance)}%`, 'star')).join('')}</div>`;
+    ${opts.map((c) => row(`data-join="${esc(c.id)}"`, c.name, c.chance >= 1 ? (c.blurb || 'Open to everyone') : `Try out · about ${pct(c.chance)}%`, 'star')).join('')}</div>
+    ${outsideSchool()}`;
+}
+
+/**
+ * Clubs and classes outside school (engine/clubs.js: the scouts, a running club, a pottery class), kept here with the
+ * school's own while the player is at school, so all of their clubs are in one place. After school they are in Pursuits.
+ */
+function outsideSchool() {
+  const p = player();
+  if (p.age < 6 || p.legal.incarceration) return '';
+  const mine = clubLife.memberships();
+  return `<div class="section-label">Outside School</div>
+    <div class="nav-group">${mine.map((m) => navRow({ attrs: `data-outclub="${esc(m.id)}"`, label: clubTitle(m.club), sub: m.rankName === 'Member' ? `Member${m.years ? ` · ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName, ico: 'people' })).join('')}
+      ${navRow({ attrs: 'data-outclub="find"', label: 'Find a Club or Class', sub: 'The scouts, a running club, pottery and more, near home', ico: 'compass' })}</div>`;
 }
 
 /** Your class: the teacher(s) and classmates, how you get on, and a tap to spend time with any of them. */
@@ -198,6 +229,8 @@ export function openSchool(onChange) {
     if (leave) return say(edu.quitClub(leave));
     const join = t.closest('[data-join]')?.dataset.join;
     if (join) return say(edu.joinClub(join));
+    const out = t.closest('[data-outclub]')?.dataset.outclub;
+    if (out) { await openClubs({ changed: () => onChange?.() }, out); return draw(true); }
     const team = t.closest('[data-team]')?.dataset.team;
     if (team) {
       const e = player().education;

@@ -234,13 +234,16 @@ export function readiness(person, destId, purpose, from, to) {
   const who = isPlayer(person) ? 'You' : person.firstName;
   const rule = entryRule(person, destId, purpose, yearOf(from), daysBetween(from, to));
   const problems = [];
+  const papers = []; // the problems that are only papers: a passport or a visitor's permission (readyForTrip sorts these for a holiday)
   let needs = null;
-  if (rule.kind === 'closed') return { ok: false, rule, problems: [rule.why], needs: null };
+  if (rule.kind === 'closed') return { ok: false, rule, problems: [rule.why], papers, needs: null };
   if (rule.passport && !validPassport(person, from, to)) {
+    papers.push(problems.length);
     problems.push(passports(person).some((d) => d.status === 'valid') ? `${who === 'You' ? 'Your' : `${who}'s`} passport runs out before the journey ends.` : `${who} ${who === 'You' ? 'have' : 'has'} no valid passport.`);
     needs = 'passport';
   }
   if (needsAuthorization(rule.kind) && !authorizationFor(person, destId, purpose === 'study' ? 'study' : purpose, from, to)) {
+    if (rule.kind !== 'study') papers.push(problems.length);
     problems.push(`${who} need${who === 'You' ? '' : 's'} ${/^[AEIOU]/.test(rule.name) ? 'an' : 'a'} ${rule.name} for ${nameOf(destId)}.`);
     needs ??= rule.kind;
   }
@@ -251,7 +254,7 @@ export function readiness(person, destId, purpose, from, to) {
       ? `${who} would spend ${length + used} days in ${rule.zone === 'schengen' ? 'the Schengen area' : nameOf(destId)} in ${rule.rolling} days; ${rule.days} are allowed.`
       : `A visit to ${nameOf(destId)} may last ${rule.days} days at most.`);
   }
-  return { ok: !problems.length, rule, problems, needs };
+  return { ok: !problems.length, rule, problems, papers: papers.map((i) => problems[i]), needs };
 }
 
 // ---------- Applications ----------
@@ -404,6 +407,56 @@ export function tickPapers() {
     for (const a of person.authorizations ?? []) if (a.status === 'granted' && a.validUntil < jan1) a.status = 'expired';
   }
   return out.filter(Boolean);
+}
+
+/**
+ * Gets a traveler ready for a holiday or a business trip with no paperwork to chase: a passport if they have none
+ * that lasts the journey (issued at once), and the visitor's permission the destination asks of a visitor (granted,
+ * the fee paid). The player pays for themselves and the children they travel with (their parents pay for a young
+ * player who cannot); an adult who comes has their passport issued as their own. Not for study, work or moving
+ * abroad: those still go through an application. A closed border or too many days are not papers, and stay problems.
+ * @returns {{fees:number, notes:string[]}}
+ */
+export function readyForTrip(person, destId, purpose, from, to, tripId = null) {
+  const out = { fees: 0, notes: [] };
+  if (!['visit', 'business'].includes(purpose)) return out;
+  const p = player();
+  const rule = entryRule(person, destId, purpose, yearOf(from), daysBetween(from, to));
+  if (rule.kind === 'closed') return out;
+  const pays = isPlayer(person) || guardianOf(person) === p;
+  const payer = () => (isPlayer(person) && person.age < 16 && p.finance.cash < 1 ? 'parent' : 'player');
+  const who = isPlayer(person) ? 'Your' : `${person.firstName}'s`;
+  if (rule.passport && !validPassport(person, from, to)) {
+    const iss = held(person)[0];
+    if (iss) {
+      const child = ageOf(person) < PASSPORT.childUnder;
+      const fee = localMoney(child ? PASSPORT.childFee : PASSPORT.fee, country());
+      if (pays) {
+        const paid = charge({ amount: fee, kind: 'passport_fee', memo: `Passport for ${person.firstName}`, key: `passport:${person.id}:${iss}:trip:${tripId ?? from}`, ref: { personId: person.id, tripId }, payer: payer() });
+        if (paid.ok) out.fees += fee;
+      }
+      for (const d of passports(person)) if (d.issuer === iss && d.status === 'valid') { d.status = 'replaced'; d.history.push({ year: store.state.year, status: 'replaced' }); }
+      const issued = today();
+      const doc = { id: uid('doc'), holderId: person.id, type: 'passport', issuer: iss, issuedOn: issued, expiresOn: addYears(issued, child ? PASSPORT.childYears : PASSPORT.adultYears), status: 'valid',
+        history: [{ year: store.state.year, status: 'valid', note: 'issued for a trip' }] };
+      docs(person).push(doc);
+      notePassportEvent(person, doc);
+      out.notes.push(`${who} passport`);
+    }
+  }
+  if (needsAuthorization(rule.kind) && rule.kind !== 'study' && !authorizationFor(person, destId, purpose, from, to)) {
+    const fee = authorizationFee(rule, destId);
+    if (fee) {
+      const paid = charge({ amount: fee, kind: 'visa_fee', memo: `${rule.name} for ${person.firstName}, ${nameOf(destId)}`, key: `entry:${person.id}:${destId}:${from}`, ref: { personId: person.id, tripId }, payer: pays ? payer() : 'player' });
+      if (paid.ok) out.fees += fee;
+    }
+    auths(person).push({ id: uid('auth'), personId: person.id, jurisdictionId: destId, zone: rule.zone ?? null, type: rule.kind, name: rule.name ?? KIND_NAMES[rule.kind],
+      validFrom: addDays(from, -1), validUntil: to, permitted: ['visit', 'business'], status: 'granted', applicationId: null, issuedYear: store.state.year, forTrip: tripId });
+    // An application already in for the same visit is no longer needed.
+    for (const a of p.applications ?? []) if (a.personId === person.id && a.jurisdictionId === destId && ['submitted', 'under_review', 'review_requested'].includes(a.status)) { a.status = 'withdrawn'; a.history.push({ year: store.state.year, date: today(), status: 'withdrawn', note: 'sorted with the trip' }); }
+    out.notes.push(`${who} ${rule.name}`);
+  }
+  return out;
 }
 
 /** A passport for an adult relative or friend who agrees to travel: they apply and pay for it themselves. */

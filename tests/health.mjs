@@ -781,6 +781,20 @@ section('physical conditions, hospital stays, rehabilitation goals, cancer care,
 }
 section("family members' care: their own clinicians, sessions attended, medicines reviewed and changed, help that counts, hospital visits, details shared by choice");
 
+// ---------- Babies: no talking therapy or psychologist; a doctor, hearing and sight from birth ----------
+{
+  const p = adult(0);
+  const ther = await import('../js/engine/health/therapy.js');
+  check(!care.concernsFor(p).includes('mental') && care.concernsFor(p).includes('body') && care.concernsFor(p).includes('senses'), `a baby can be taken for a physical problem, hearing or sight, not about how they feel (${care.concernsFor(p)})`);
+  check(care.serviceOptions('mental', p).length === 0 && !care.seekAssessment('mental', 'x', 'psychologist', p).ok, 'nobody takes a baby to a psychologist');
+  check(ther.findProviders('depression_peer', null, p).every((o) => !o.ok), 'a baby is not offered a support group');
+  p.age = 2;
+  check(care.concernsFor(p).includes('development') && !care.concernsFor(p).includes('mental'), 'at two: communication and routines can be looked at');
+  p.age = 5;
+  check(care.concernsFor(p).includes('mental') && care.serviceOptions('mental', p).length > 0, 'at five: talking to someone about how they feel');
+  section('mental health care is from five: nothing of the kind for a baby');
+}
+
 console.log(ok.map((x) => `ok  ${x}`).join('\n'));
 if (problems.length) { console.log(`\n${problems.length} problem(s):\n${problems.join('\n')}`); process.exit(1); }
 console.log('\nThe health engine checks out.');

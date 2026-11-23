@@ -1,5 +1,6 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
 import { faceGenderOf } from '../../avatar/render.js';
+import { TALENTS } from '../../data/talents.js';
 import { getEra, eventsIn } from '../../engine/history.js';
 import { store } from '../../state.js';
 import { outlook } from '../../engine/economy.js';
@@ -23,6 +24,7 @@ import { royalCard, bindRoyalCard } from '../royalty.js';
 import { openSettings } from '../settings.js';
 import { openHealth } from '../health/hub.js';
 import { navRow, navGroup } from '../kit.js';
+import { loveFamilyGroup, openLoveFamily } from './people.js';
 
 export default {
   id: 'self', title: 'Self', short: 'Self',
@@ -48,17 +50,15 @@ export default {
         ${meterHtml('Intellect', p.stats.intellect, true)}${meterHtml('Charm', p.stats.charm, true)}
         <div class="section-label">Conditions</div>${conditions}
         ${born.length ? `<div class="section-label">Born with</div>${born.map((b) => `<div class="kv"><span>${esc(b.name)}</span><span>${esc(b.desc)}</span></div>`).join('')}` : ''}
-        <div class="btn-stack" style="margin-top:10px">
-          <button class="btn${sick ? ' peach' : ''}" data-doctor>See a doctor${sick ? ' · something needs looking at' : ''}</button>
-          <button class="btn" data-health>My Health: care, support and records</button>
-          ${med.canHaveSurgery() ? '<button class="btn" data-surgery>Cosmetic surgery</button>' : ''}
-          ${salon.canVisitSalon() ? '<button class="btn" data-salon>Beauty salon</button>' : ''}
-        </div>
+        <div style="margin-top:10px">${navGroup([
+          navRow({ attrs: 'data-doctor', label: 'See a Doctor', sub: sick ? 'Something needs looking at' : '', tone: sick ? 'peach' : '' }),
+          navRow({ attrs: 'data-health', label: 'My Health' }),
+          ...(med.canHaveSurgery() ? [navRow({ attrs: 'data-surgery', label: 'Cosmetic Surgery' })] : []),
+          ...(salon.canVisitSalon() ? [navRow({ attrs: 'data-salon', label: 'Beauty Salon' })] : []),
+        ])}</div>
       </div>
       <div class="card"><h3>Talents and skills</h3>
-        ${meterHtml('Music', p.talents.music, true)}${meterHtml('Sports', p.talents.sports, true)}
-        ${meterHtml('Acting', p.talents.acting, true)}${meterHtml('Singing', p.talents.singing, true)}
-        ${meterHtml('Dance', p.talents.dance, true)}
+        ${TALENTS.filter((t) => !t.hidden).map((t) => meterHtml(t.name, p.talents[t.id] ?? 0, true)).join('')}
         ${p.flags.musicalRoute || p.career.careerId === 'mt_performer' || /musical/.test(p.education.majorId ?? '') ? `<div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat()}</strong></span></div>` : ''}
         ${skillsCard({ inner: true })}
         <div class="section-label">Traits</div>
@@ -83,6 +83,7 @@ export default {
         <p class="muted">The map, every country and how it compares, and the news from everywhere.</p>
         <div class="btn-stack"><button class="btn" data-world>The world map</button><button class="btn" data-news>World news</button></div></div>
       <div class="card"><h3>Milestones</h3>${milestones}</div>
+      ${loveFamilyGroup()}
       ${navGroup([
     navRow({ attrs: 'data-settings', label: 'Settings', ico: 'settings' }),
     navRow({ attrs: 'data-exit', label: 'Save and quit', ico: 'exit' }),
@@ -92,6 +93,7 @@ export default {
     bindRoyalCard(el, api);
     el.querySelector('[data-doctor]').onclick = () => seeDoctor(api);
     el.querySelector('[data-health]').onclick = () => openHealth(api);
+    el.querySelectorAll('[data-lovefam]').forEach((b) => { b.onclick = () => openLoveFamily(b.dataset.lovefam, api); });
     el.querySelectorAll('[data-milestone]').forEach((b) => { b.onclick = () => openHealth(api, { page: 'journey', journey: 'overview' }); });
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);

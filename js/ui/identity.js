@@ -102,7 +102,8 @@ export function skillsCard({ inner = false } = {}) {
   const mine = skill.practiced();
   const left = skill.sessionsLeft();
   const body = `${mine.length ? mine.map((s) => meterHtml(`${s.name} · ${s.levelName}`, s.level, true)).join('') : '<p class="muted">You have not taken anything up yet.</p>'}
-    <button class="btn" data-practice style="margin-top:10px" ${left <= 0 ? 'disabled' : ''}>Practice a skill (${left} left this year)</button>`;
+    <button class="btn" data-practice style="margin-top:10px" ${left <= 0 ? 'disabled' : ''}>Practice Skills</button>
+    <p class="muted" style="margin:6px 0 0;font-size:0.85rem">${left > 0 ? `${left} ${left === 1 ? 'session' : 'sessions'} left this year.` : 'No sessions left this year.'}</p>`;
   return inner ? `<div class="section-label">Skills</div>${body}` : `<div class="card"><h3>Skills</h3>${body}</div>`;
 }
 
@@ -123,7 +124,7 @@ export async function openPractice(api) {
   if (!id) return undefined;
   const how = await pickModal({ title: 'How?', options: [
     { value: 'self', label: 'Practice on your own', sub: 'Free.' },
-    { value: 'lesson', label: 'Take lessons', sub: p.age < 16 ? 'Your family pays. You learn half as much again.' : `${fmtMoney(skill.lessonCost(), c)}. You learn half as much again.` },
+    { value: 'lesson', label: 'Take lessons', sub: skill.familyPays(p) ? 'Your family pays. You learn half as much again.' : `${fmtMoney(skill.lessonCost(), c)}. You learn half as much again.` },
   ] });
   return how ? report(api, skill.practice(id, how === 'lesson')) : undefined;
 }

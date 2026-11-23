@@ -3,6 +3,7 @@
 // scrapes a day out can bring (engine/vehicles.js ride encounters).
 //
 //   p.martial = { [styleId]: { courses, rank, moves: [names] } }   p.flags.martialActs = { age, n }
+import { familyPays } from './skills.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
 import { STYLES, STYLE_BY_ID, MARTIAL_COURSE, COURSES_A_YEAR } from '../data/martial.js';
@@ -10,7 +11,7 @@ import { STYLES, STYLE_BY_ID, MARTIAL_COURSE, COURSES_A_YEAR } from '../data/mar
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
 const mine = (p = player()) => (p.martial ??= {});
 const acts = () => { const p = player(); if (p.flags.martialActs?.age !== p.age) p.flags.martialActs = { age: p.age, n: 0 }; return p.flags.martialActs; };
-export const courseCost = (p = player()) => (p.age < 16 ? 0 : localMoney(MARTIAL_COURSE, country()));
+export const courseCost = (p = player()) => (familyPays(p) ? 0 : localMoney(MARTIAL_COURSE, country())); // a child's lessons are the family's to pay for, until 18
 
 /** Every style, with where the player is in it. */
 export function styles(p = player()) {

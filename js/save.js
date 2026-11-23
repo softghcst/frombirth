@@ -6,6 +6,7 @@ import { fameOf } from './engine/fame.js';
 import { ensureCareer } from './engine/worklife.js';
 import { netWorth } from './engine/finance.js';
 import { normalize, hash } from './avatar/catalog.js';
+import { ADDED_TALENTS } from './data/talents.js';
 import { changed, rememberDeleted, forgetDeleted } from './sync/bundle.js';
 import { migrateHealth } from './engine/health/record.js';
 import { ensureGlobal } from './engine/globalLife.js';
@@ -60,6 +61,19 @@ function migrate(state) {
   pl.skills ??= {};
   pl.flags.bornAs ??= pl.gender;
   pl.flags.gifts ??= Object.entries(pl.talents).filter(([, v]) => v >= 75).map(([k]) => k);
+  // Lives saved before art, writing, technology and math and science were talents: each person is given them, from
+  // their id so every load agrees, and centered a little toward what they already do well.
+  const fillTalents = (who) => {
+    if (!who?.talents) return;
+    ADDED_TALENTS.forEach((id) => {
+      if (who.talents[id] != null) return;
+      const roll = (hash(`${who.id}:${id}`) % 1000) / 1000;
+      const lean = id === 'art' ? 0 : (who.stats?.intellect ?? who.meters?.intellect ?? 50) - 50; // the bookish ones lean on intellect
+      who.talents[id] = Math.round(Math.max(0, Math.min(100, 6 + roll * 50 + lean / 4)));
+    });
+  };
+  fillTalents(pl);
+  for (const n of Object.values(state.npcs)) if (n.role !== 'pet') fillTalents(n);
   for (const n of Object.values(state.npcs)) if (n.role !== 'pet') n.orientation ??= ['straight', 'straight', 'straight', 'straight', 'straight', 'straight', 'straight', 'straight', 'gay', 'bisexual'][hash(n.id) % 10];
   // Faces saved before the avatar system: give each a complete appearance,
   // chosen from the character's id so it is the same on every load.

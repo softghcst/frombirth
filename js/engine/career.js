@@ -1,5 +1,8 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { workEdge } from './aptitudes.js';
+import { deploy } from './military.js';
+import { royalWorkBan } from './royalRules.js';
 import { hasRecord } from './records.js';
 import { licenseBlock } from './credentials.js';
 import { careerBlock, careerExists, eraTitle, worldYear } from './history.js';
@@ -34,7 +37,7 @@ import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '
 import { makeNpc } from './npcFactory.js';
 import { resolve, remember } from './conditions.js';
 import { CAREERS, CAREER_BY_ID, CAREER_CATEGORIES, BRANCHES, RETIREMENT_AGE, EARLY_RETIREMENT_AGE,
-  GIGS, MAX_GIGS_PER_YEAR, FAME_ACTIONS } from '../data/careers.js';
+  GIGS, MAX_GIGS_PER_YEAR, FAME_ACTIONS, FAME_MIN_AGE } from '../data/careers.js';
 import { GENERAL, PRACTICAL, MILITARY, AUDITION_PIECES } from '../data/interviewQuestions.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 import { TRADE_BY_ID, CERT_BY_ID } from '../data/schools.js';
@@ -164,6 +167,7 @@ export function doorBonus(career) {
   if ((p.flags.internships ?? []).some((i) => i.careerId === career.id)) bonus += 0.2; // they have done the work before
   if (career.req?.altCert && degrees().some((d) => d.type === 'certificate' && d.majorId === career.req.altCert)) bonus += 0.1; // a certificate in exactly this
   if (livingNpcs().some((n) => n.flags.mentor && n.meters.relationship >= 60)) bonus += 0.05; // a word from a mentor
+  bonus += workEdge(career, p) * 0.15; // able to do the work already: coding for tech jobs (engine/aptitudes.js)
   const referred = p.flags.referrals?.[career.id];
   if (referred != null && p.age - referred <= 1) bonus += 0.2;
   if (['performing', 'beauty'].includes(career.category) && (p.flags.portfolio ?? 0) >= 0.55) bonus += 0.1; // a portfolio of good finished work (engine/digital/school.js) // someone there vouched for them, or a recruiter put them forward (engine/digital/professional.js)
@@ -636,11 +640,15 @@ export function doGig(id) {
 
 export const fame = () => Math.round(player().hidden.fame);
 
+/** Whether the player can use their fame at all: known enough, and old enough (a famous baby cannot). */
+export const canUseFame = (p = player()) => fame() >= 10 && p.age >= FAME_MIN_AGE && !royalWorkBan(p);
+
 /** @returns {{id, name, available:boolean, reason:string}[]} */
 export function fameOptions() {
   const done = acts().fame;
-  return FAME_ACTIONS.map((a) => ({ id: a.id, name: a.name, available: fame() >= a.min && !done[a.id],
-    reason: fame() < a.min ? `Needs ${a.min}% fame.` : done[a.id] ? 'Already done this year.' : '' }));
+  const age = player().age;
+  return FAME_ACTIONS.map((a) => ({ id: a.id, name: a.name, available: !royalWorkBan() && age >= (a.minAge ?? FAME_MIN_AGE) && fame() >= a.min && !done[a.id],
+    reason: royalWorkBan() ? 'Royals do not sell their name.' : age < (a.minAge ?? FAME_MIN_AGE) ? `From age ${a.minAge ?? FAME_MIN_AGE}.` : fame() < a.min ? `Needs ${a.min}% fame.` : done[a.id] ? 'Already done this year.' : '' }));
 }
 
 export function doFameAction(id) {
@@ -741,22 +749,10 @@ export function tickCareer() {
   }
 
   // Military service: deployments are rarer in peacetime, and almost always come home.
-  if (c.military && rng.chance(0.22)) {
-    c.military.deployments += 1;
-    const roll = rng.next();
-    if (roll < 0.004) return 'wounds received on deployment';
-    if (roll < 0.14) {
-      p.stats.health = clamp(p.stats.health - rng.int(8, 18));
-      log('You were deployed overseas and came home injured.', 'system', 'bad');
-    } else if (roll < 0.3) {
-      c.performance = clamp(c.performance + 15);
-      log('You were deployed overseas and decorated for what you did there.', 'system', 'good');
-      milestone('Decorated on deployment.', 'career');
-      c.military.honors = (c.military.honors ?? 0) + 1;
-    } else {
-      c.performance = clamp(c.performance + 5);
-      log('You were deployed overseas. You came home in one piece.');
-    }
+  if (c.military && !c.military.conscript && rng.chance(0.22)) {
+    // A deployment is a scene with choices (engine/military.js); a very few do not come home.
+    if (rng.chance(0.004)) return 'wounds received on deployment';
+    deploy();
   }
 
   // Space: training, and sometimes a mission.

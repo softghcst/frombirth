@@ -5,6 +5,7 @@ import { openIdol } from '../kpop.js';
 import { esc, fmtMoney, localMoney } from '../../util.js';
 import * as kidLife from '../../engine/childhood.js';
 import * as loveStories from '../../engine/loveStories.js';
+import * as lessons from '../../engine/lessons.js';
 import { canGamble } from '../../engine/gambling.js';
 import { may } from '../../engine/rules.js';
 import * as law from '../../engine/justice.js';
@@ -14,9 +15,11 @@ import { prisonHub, hubClick } from '../prisonHub.js';
 import { legalCard, legalClick } from '../justice.js';
 import { playBlackjack, playHorses, playLottery } from '../minigames/casino.js';
 import { meterHtml } from '../meter.js';
-import { messageModal, pickModal, confirmModal, openModal } from '../modals.js';
+import { messageModal, pickModal, confirmModal, openModal, selectModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
+import { atSchool } from '../../engine/schooling.js';
 import * as clubLife from '../../engine/clubs.js';
+import { clubTitle } from '../../data/clubs.js';
 import * as martial from '../../engine/martial.js';
 import { openDigitalLife, digitalCard } from '../digital.js';
 import * as bc from '../../engine/digital/broadcast.js';
@@ -107,6 +110,21 @@ async function joinGang(api) {
   if (id) await report(api, jail.joinGang(id));
 }
 
+/** Lessons: pick one from the dropdown, then ask a parent (or, as an adult, sign up). */
+async function openLessons(api) {
+  const c = country();
+  const opts = lessons.lessonOptions();
+  const ask = lessons.asksParents();
+  const id = await selectModal({
+    eyebrow: 'Learning', emoji: '🎓', title: 'Lessons',
+    body: ask ? 'Something you would love to learn this year? Your parents will need to say yes, and pay.' : 'A year of lessons, paid by you.',
+    label: 'Lesson', button: ask ? 'Ask your parents' : 'Sign up',
+    // While parents pay, the price is theirs: it shows from 18, when it is yours.
+    options: opts.map((o) => ({ value: o.id, label: `${o.emoji} ${o.name}${ask ? '' : ` · ${fmtMoney(o.cost, c)}`}${o.years ? ` · ${o.years} yr` : ''}${o.why ? ` · ${o.why.toLowerCase()}` : ''}`, disabled: !!o.why })),
+  });
+  if (id) await report(api, lessons.takeLesson(id));
+}
+
 /** A martial art: where you are in it, the moves you know, and a course of lessons. */
 async function trainMartial(api, id) {
   const st = martial.styles().find((x) => x.id === id);
@@ -140,6 +158,7 @@ export default {
       const cc = p.flags.childhood ?? {};
       // What is not open yet is shown greyed, with why, in its place in the list.
       const jailed = p.legal.incarceration ? 'Not from where you are' : '';
+      const inSchool = atSchool(p);
       const lock = (label, why) => `<div class="nav-group">${lockedRow(label, why)}</div>`;
       el.innerHTML = `
         ${thisYearCard()}
@@ -157,11 +176,13 @@ export default {
           </div>
         </div>` : ''}
         <div class="section-label">Fun and hobbies</div>
-        ${p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and classes', jailed || fromAge(p.age, 6))}
-        ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and classes</h3>
+        ${p.age >= lessons.LESSON_AGE && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-lessons', label: 'Lessons', sub: lessons.asksParents() ? 'Ask your parents for music, martial arts, dance and more' : '' })]) : lock('Lessons', jailed || fromAge(p.age, lessons.LESSON_AGE))}
+        ${/* At school, every club (the school's and those outside it) is under School › Activities: not here as well. */ ''}
+        ${inSchool ? '' : p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and Classes', jailed || fromAge(p.age, 6))}
+        ${!inSchool && p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and Classes</h3>
           <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
-          <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(m.club.name.replace(/^(A|An|The) /, '').replace(/^./, (x) => x.toUpperCase()))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
-            <button class="btn primary" data-club="find">Find a club or class</button></div>
+          <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(clubTitle(m.club))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
+            <button class="btn primary" data-club="find">Find a Club or Class</button></div>
         </div>` : ''}
         ${p.age >= 5 && !p.legal.incarceration ? `<div class="card"><h3>Martial arts</h3>
           <div class="nav-group">${martial.styles().map((st) => navRow({ attrs: `data-martial="${st.id}"`, label: st.name, sub: st.started ? `${st.rank}${/^(White|Yellow|Orange|Green|Blue|Purple|Brown|Black)$/.test(st.rank) ? ' belt' : ''} · ${st.moves.length} ${st.moves.length === 1 ? 'move' : 'moves'}` : st.why || `From ${st.from}`, ico: 'trophy' })).join('')}</div>
@@ -231,6 +252,7 @@ export default {
       }
       const kidAct = e.target.closest('[data-kid]')?.dataset.kid;
       if (kidAct) return report(api, kidLife.doActivity(kidAct));
+      if (e.target.closest('[data-lessons]')) return openLessons(api);
       const kidSafe = e.target.closest('[data-kidsafe]')?.dataset.kidsafe;
       if (kidSafe) return report(api, loveStories.doTeenSafety(kidSafe));
       const kidJob = e.target.closest('[data-kidjob]')?.dataset.kidjob;

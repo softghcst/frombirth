@@ -51,7 +51,8 @@ check(await page.locator('#modal-root .modal-back').count() === 1, 'with one Bac
 await page.evaluate(() => document.querySelector('#modal-root [data-chronicle]').click()); await page.waitForTimeout(400);
 const chron = await page.evaluate(() => document.querySelector('#modal-root .modal')?.innerText ?? '');
 check(/chronicle|House/i.test(chron) && !/Pets & Animals/.test(chron.split('\n')[0] ?? ''), 'the chronicle opens');
-await page.locator('#modal-root .modal-back').last().click(); await page.waitForTimeout(300);
+// One way back is shown: the window's, or the page's own where it has one.
+await page.locator('#modal-root .modal-back:visible, #modal-root [data-back]:not(.modal-back):visible').last().click(); await page.waitForTimeout(300);
 check(/My animals/.test(await page.evaluate(() => document.querySelector('#modal-root .modal')?.innerText ?? '')), 'and Back returns to the hub');
 check(!errors.length, `no errors in the page (${errors.join('; ')})`);
 await browser.close(); server.close();

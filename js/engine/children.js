@@ -9,7 +9,7 @@ import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, localCost } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
 import { makeNpc, makePet } from './npcFactory.js';
-import { inheritAppearance, inheritTraits, inheritTalents, inheritStats } from './genetics.js';
+import { inheritAppearance, inheritTraits, inheritTalents, inheritStats, addedTalents } from './genetics.js';
 import { spendAction, PET_PRICE, canGetPet } from './relationships.js';
 import { childGenome, genomeOf } from './health/heredity.js';
 import { quickAdopt } from './animalCare.js';
@@ -150,6 +150,7 @@ export function adopt() {
   child.stats = { mood: 60, health: child.meters.health, intellect: child.meters.intellect, charm: child.meters.charm };
   child.talents = { music: rng.int(0, 60), sports: rng.int(0, 60), acting: rng.int(0, 60), crime: rng.int(0, 60),
     singing: rng.int(0, 60), dance: rng.int(0, 60) };
+  addedTalents(child.talents, () => 30, 0, 60);
   p.stats.mood = clamp(p.stats.mood + 12);
   p.hidden.karma = clamp(p.hidden.karma + 8);
   const text = `After a year of forms and home visits, you adopted ${child.firstName}, age ${child.age}. The fees came to ${fmtMoney(fee, c)}.`;

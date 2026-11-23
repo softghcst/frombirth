@@ -39,6 +39,8 @@ export const DANCE_GIGS = {
  */
 export const DANCE_YEAR = {
   offers: 5, auditions: 4, reach: 12,
+  // The odds of being booked: base, plus a point of skill over the bar per `slope`, at most `most`; a child less by `young`.
+  base: 0.15, slope: 40, most: 0.55, young: 0.1,
   training: { bfa: 4, ba: 2, theater: 1 },
   record: { per: 0.02, most: 0.12 },
   agent: 0.06,
@@ -88,9 +90,9 @@ export const DANCE_SHOW = { name: 'Prancing with the Stars', weeks: 11, couples:
  *   fee    the entry fee (base units, a grown dancer's to pay); prize: for a win (a child's is a scholarship)
  */
 export const DANCE_COMPETITIONS = {
-  regional: { name: 'Regional dance competition', bar: { kid: 42, adult: 50 }, field: 10, fee: 60, prize: { kid: 0, adult: 500 }, fame: 0 },
-  national: { name: 'National dance championships', bar: { kid: 56, adult: 66 }, field: 14, fee: 250, prize: { kid: 1000, adult: 5000 }, fame: 2, after: 'regional' },
-  world: { name: 'World dance championships', bar: { kid: 68, adult: 80 }, field: 18, fee: 900, prize: { kid: 5000, adult: 25000 }, fame: 6, after: 'national' },
+  regional: { name: 'Regional dance competition', bar: { kid: 60, adult: 64 }, field: 10, fee: 60, prize: { kid: 0, adult: 500 }, fame: 0 },
+  national: { name: 'National dance championships', bar: { kid: 72, adult: 76 }, field: 14, fee: 250, prize: { kid: 1000, adult: 5000 }, fame: 2, after: 'regional' },
+  world: { name: 'World dance championships', bar: { kid: 82, adult: 86 }, field: 18, fee: 900, prize: { kid: 5000, adult: 25000 }, fame: 6, after: 'national' },
 };
 export const COMPETITIONS_A_YEAR = 2;
 /** Idol groups to name before the K-pop world has made its own (engine/kpop.js keeps the real ones). */

@@ -87,7 +87,8 @@ export function findProviders(therapyId, conditionId = null, p = player()) {
   const out = [];
   for (const f of facilitiesHere(p)) {
     const def = facilityDef(f);
-    if (t.kind === 'peer') { if (f.defId === 'community') out.push({ facilityId: f.id, facility: f.name, kind: f.kind, group: true, providerId: null, cost: 0, wait: 1, ok: true, why: '' }); continue; }
+    // A peer group is open to anyone of the right age (canOffer checks the age before anything else).
+    if (t.kind === 'peer') { if (f.defId === 'community') { const ok = canOffer(therapyId, conditionId, null, p); out.push({ facilityId: f.id, facility: f.name, kind: f.kind, group: true, providerId: null, cost: 0, wait: 1, ok: ok.ok, why: ok.why }); } continue; }
     if (t.dbt && !def.dbt && f.defId !== 'private') continue;
     const pro = t.by.find((b) => def.staff.includes(b));
     if (!pro) continue;

@@ -23,7 +23,8 @@ import { TABS } from './tabs/index.js';
 import { runJustice } from './justice.js';
 import { openHealth } from './health/hub.js';
 import { careWaiting } from '../engine/health/index.js';
-import { openMoney } from './tabs/holdings.js';
+import { openMoney, drivingTest } from './tabs/holdings.js';
+import * as vehicles from '../engine/vehicles.js';
 import { bookAction } from '../engine/ledger.js';
 import { openAnimalProfile } from './animals.js';
 import { openAthleticsAt } from './sports.js';
@@ -128,6 +129,8 @@ export function mountGame(app, hooks) {
       btn.textContent = `← ${label}`;
       btn.hidden = false;
     },
+    /** Plays any scenes an action has queued (a sleepover's night), now rather than at the next turn. */
+    async pending() { if (store.state.pendingEvents.length) await runPending(); render(); },
     /** Takes any open court case through to its verdict. */
     async justice() { busy = true; renderHeader(); await runJustice(tabApi); busy = false; render(); },
   };
@@ -327,42 +330,72 @@ export function mountGame(app, hooks) {
     closePanel();
     pushUndo(store.state); // so this turn can be taken back
     const aliveBefore = player().npcIds.filter((id) => store.state.npcs[id]?.alive);
+    const knownBefore = new Set(player().npcIds);
     advanceTurn(); // a year, or six or three months of one (engine/turns.js)
     if (!player().alive) return finish(store.lastObituary);
     persist();
     render();
     await runPending();
     if (player().alive) await deathNotice(aliveBefore);
+    if (player().alive) await birthNotice(knownBefore);
     if (player().alive && player().legal.pending) await tabApi.justice();
     await yearUpdate();
     await healthNotice();
+    if (player().alive) await drivingNotice();
+  }
+
+  /** Old enough to drive: the test is offered once, so nobody has to go looking for it (Holdings has it after that). */
+  async function drivingNotice() {
+    const p = player();
+    if (p.flags.drivingOffered || !vehicles.canTakeDrivingTest() || p.legal.incarceration) return;
+    p.flags.drivingOffered = true;
+    persist();
+    const yes = await confirmModal({ title: "Time for Your Driver's License", body: `You are ${p.age}: old enough to drive here. Take driving lessons and sit the test now? You can also take it later, from Holdings.`, yes: 'Take the test', no: 'Not yet' });
+    if (yes) await drivingTest(tabApi);
   }
 
   /** Someone in the player's life died this turn: a notice for each, before anything else about the year. */
+  /**
+   * Someone died this turn. The ones closest get the funeral scene ('close_death', with their face); everyone else
+   * who mattered, and animals, get a notice of their own: their face, who they were, the age they died at and what of.
+   */
   async function deathNotice(aliveBefore) {
     const state = store.state;
-    const gone = aliveBefore.map((id) => state.npcs[id]).filter((n) => n && !n.alive);
-    if (!gone.length) return;
-    const card = (n) => {
-      const died = n.flags.diedYear ?? state.year;
-      const born = died - n.age;
+    const gone = aliveBefore.map((id) => state.npcs[id]).filter((n) => n && !n.alive && !n.flags.deathScene);
+    for (const n of gone) {
+      const pet = n.role === 'pet';
       const who = roleLabel(n);
-      const r = n.meters?.relationship ?? 0;
-      const feel = n.role === 'pet' ? (r >= 60 ? `${n.firstName} was family. The house is very quiet.` : `You will miss ${n.firstName}.`)
-        : r >= 70 ? 'You were close. It will take a long time.' : r >= 40 ? `You will miss ${n.firstName}.` : 'You had drifted apart, but it still hurts.';
-      return `<div class="death-card">${portrait(n)}<div class="main">
-        <strong>${esc(n.firstName)}${n.role === 'pet' ? '' : ` ${esc(n.lastName)}`}</strong>
-        <small>${esc(who)} · ${born} – ${died} · age ${n.age}</small>
-        <p class="body">${esc(feel)}</p></div></div>`;
-    };
-    await new Promise((resolve) => {
-      const m = openModal(`
-        <div class="eyebrow">In memory</div>
-        <h2>${gone.length === 1 ? `${esc(gone[0].firstName)} has died` : `${gone.length} people you loved have died`}</h2>
-        ${gone.map(card).join('')}
-        <div class="btn-row" style="margin-top:14px"><button class="btn primary" data-ok>Close</button></div>`, { dismissable: true, tone: 'neutral', onDismiss: resolve });
-      m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
-    });
+      const name = `${n.firstName}${pet ? '' : ` ${n.lastName}`}`;
+      const they = pet ? 'They' : n.gender === 'male' ? 'He' : n.gender === 'female' ? 'She' : 'They';
+      const line = `${n.firstName}, your ${who.toLowerCase()}, has died. ${they} ${they === 'They' ? 'were' : 'was'} ${n.age}.`;
+      await new Promise((resolve) => {
+        const m = openModal(`
+          <div class="notice-head">${portrait(n)}<div class="notice-who"><strong>${esc(name)}</strong><small>${esc(who)}</small></div></div>
+          <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">🕯️</span>In memory</h2>
+          <p class="body pick-body">${esc(line)}</p>
+          ${n.flags.cause ? `<p class="body pick-body">It was ${esc(n.flags.cause)}.</p>` : ''}
+          <button class="btn primary" data-ok style="width:100%">OK</button>`, { tone: 'neutral' });
+        m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+      });
+    }
+  }
+
+  /** A baby brother or sister was born this turn: a notice with their portrait. */
+  async function birthNotice(knownBefore) {
+    const babies = player().npcIds.filter((id) => !knownBefore.has(id)).map((id) => store.state.npcs[id])
+      .filter((n) => n?.alive && /sibling/.test(n.role) && n.age <= 1);
+    for (const b of babies) {
+      const kind = b.gender === 'male' ? 'brother' : b.gender === 'female' ? 'sister' : 'sibling';
+      const mom = player().npcIds.map((id) => store.state.npcs[id]).find((n) => n?.role === 'parent' && n.gender === 'female' && n.alive);
+      await new Promise((resolve) => {
+        const m = openModal(`
+          <div class="notice-head">${portrait(b)}<div class="notice-who"><strong>${esc(b.firstName)} ${esc(b.lastName)}</strong><small>Your ${esc(kind)}</small></div></div>
+          <h2 class="pick-title"><span class="pick-emoji" aria-hidden="true">👶</span>A Baby ${kind.charAt(0).toUpperCase()}${kind.slice(1)}</h2>
+          <p class="body pick-body">${mom ? 'Your mother gave birth to' : 'The family welcomes'} a baby ${esc(kind)}, ${esc(b.firstName)}. ${player().age < 6 ? 'Everyone is looking at the baby now.' : `You hold ${b.gender === 'male' ? 'him' : b.gender === 'female' ? 'her' : 'them'} for the first time.`}</p>
+          <button class="btn primary" data-ok style="width:100%">Welcome, ${esc(b.firstName)}</button>`, { tone: 'good' });
+        m.el.querySelector('[data-ok]').addEventListener('click', () => { m.close(); resolve(); });
+      });
+    }
   }
 
   /** The yearly life update: what this year changed, from the saved state. Shown once per year. */
