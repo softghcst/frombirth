@@ -136,9 +136,11 @@ def inside(polys, pts, rule='nonzero'):
 # ---------- One file ----------
 
 
-def base_head_outline():
-    with open(os.path.join(ROOT, 'assets', 'landmarks.json'), encoding='utf-8') as f:
-        base = json.load(f)['base_head']
+def base_head_outline(base=None):
+    """The outline of the head a style was drawn on (its data-drawn-on; the base head if not given)."""
+    if not base:
+        with open(os.path.join(ROOT, 'assets', 'landmarks.json'), encoding='utf-8') as f:
+            base = json.load(f)['base_head']
     root = ET.parse(os.path.join(ROOT, 'assets', 'heads', f'{base}.svg')).getroot()
     outline = next(p for p in root.iter(f'{NS}path') if p.get('id') != 'skin')  # the silhouette: head, ears, neck
     return polygon(F.parse_d(outline.get('d')))
@@ -287,9 +289,12 @@ def main(argv):
     files = []
     for t in targets:
         files += sorted(os.path.join(t, f) for f in os.listdir(t) if f.endswith('.svg')) if os.path.isdir(t) else [t]
-    head = base_head_outline()
+    outlines = {}
     for f in files:
-        counts = soften(f, head)
+        on = ET.parse(f).getroot().get('data-drawn-on')
+        if on not in outlines:
+            outlines[on] = base_head_outline(on)
+        counts = soften(f, outlines[on])
         name = os.path.basename(f)
         shade = f'; {counts["shaded"]} fill(s) set to the main colour' if counts and counts.get('shaded') else ''
         if counts and counts.get('variables'):

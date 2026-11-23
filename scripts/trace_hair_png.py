@@ -62,9 +62,8 @@ RAW = os.path.join(ROOT, 'assets', 'hair_raw')
 DEBUG_HTML = os.path.join(HERE, 'debug_hair_png.html')
 TEMPLATE = os.path.join(PNG_DIR, 'TEMPLATE_base_head.png')
 LANDMARKS = os.path.join(ROOT, 'assets', 'landmarks.json')
-_BASE = json.load(open(LANDMARKS))[json.load(open(LANDMARKS))['base_head']]
-BASE_EAR_Y = _BASE['ear_left']['y']                            # where the ears join the base head
-EAR_X = (_BASE['ear_left']['x'], _BASE['ear_right']['x'])
+BASE_EAR_Y = 0.0     # where the ears join the head the style was drawn on, and their x: set by drawn_on()
+EAR_X = (0.0, 0.0)
 EAR_PAD = 7          # hair over an ear reaches this far past it, so no edge of the ear peeks out
 EDGE_START = 4       # that outline starts this far below the top of the shoulders, clear of the neck's own line
 NECK_PAD = 0         # the neck band reaches this far past the neck's outline
@@ -284,11 +283,18 @@ def head_in_base(polys, warp=None):
 _BASE_INSIDE = []
 
 
+def drawn_on(name):
+    """Measures from the head a style was drawn on (the base head when it was drawn, kept on its traced SVG)."""
+    global BASE_EAR_Y, EAR_X
+    marks = json.load(open(LANDMARKS))[name]
+    BASE_EAR_Y = marks['ear_left']['y']
+    EAR_X = (marks['ear_left']['x'], marks['ear_right']['x'])
+    head = head_in_base(EL.head_polys(os.path.join(FH.HEADS, f'{name}.svg')))[0]
+    _BASE_INSIDE[:] = [ndi.distance_transform_edt(head)]
+
+
 def base_inside():
-    """Distance inside the base head (the template), in pixels."""
-    if not _BASE_INSIDE:
-        head = np.asarray(Image.open(TEMPLATE).convert('RGBA').resize((SIZE, SIZE)))[..., 3] > 127
-        _BASE_INSIDE.append(ndi.distance_transform_edt(ndi.binary_fill_holes(head)))
+    """Distance inside the head the style was drawn on, in pixels."""
     return _BASE_INSIDE[0]
 
 
@@ -386,12 +392,20 @@ def build(style, force=False):
     tags = 'data-length="short"'
     if os.path.exists(out):
         import re
-        found = re.findall(r'data-(?:length|type|min-age)="[a-z0-9]+"', open(out, encoding='utf-8').read(400))
+        found = re.findall(r'data-(?:length|type|min-age|drawn-on)="[a-z0-9_]+"', open(out, encoding='utf-8').read(400))
         tags = ' '.join(found) or tags
+    # The head it was drawn on: kept from an earlier trace, or the base head now (a new style is drawn on the template).
+    import re
+    m = re.search(r'data-drawn-on="([a-z0-9_]+)"', tags)
+    on = m.group(1) if m else json.load(open(LANDMARKS))['base_head']
+    if not m:
+        tags += f' data-drawn-on="{on}"'
+    drawn_on(on)
     # Which hair goes in front of the head and which behind depends on the head's own jaw, ears and shoulders, so it
     # is worked out on each head (its outline mapped back onto the base head), and fit_hair.py fits each head's own
-    # version (assets/hair_raw/heads/<style>/<head>.svg). The base head's version is assets/hair_raw/<style>.svg.
-    base_name, heads, _ = FH.load_heads()
+    # version (assets/hair_raw/heads/<style>/<head>.svg). The version for the head it was drawn on is assets/hair_raw/<style>.svg.
+    _, heads, _ = FH.load_heads()
+    base_name = on
     per = os.path.join(RAW, 'heads', style)
     os.makedirs(per, exist_ok=True)
     for f in os.listdir(per):
@@ -410,9 +424,12 @@ def build(style, force=False):
 
 def debug_page(styles):
     rel = lambda p: os.path.relpath(p, HERE).replace(os.sep, '/')
-    head = rel(os.path.join(ROOT, 'assets', 'heads', 'dimple_oval.svg'))
     cards = []
     for s in styles:
+        import re
+        raw = os.path.join(RAW, f'{s}.svg')
+        m = re.search(r'data-drawn-on="([a-z0-9_]+)"', open(raw, encoding='utf-8').read(400)) if os.path.exists(raw) else None
+        head = rel(os.path.join(ROOT, 'assets', 'heads', f'{m.group(1) if m else json.load(open(LANDMARKS))["base_head"]}.svg'))
         back = os.path.join(PNG_DIR, f'{s}_back.png')
         png = (f'<img src="{rel(back)}">' if os.path.exists(back) else '') + f'<img src="{rel(os.path.join(PNG_DIR, s + ".png"))}">'
         cards.append(f'''<figure><div class="pair">

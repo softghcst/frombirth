@@ -287,6 +287,13 @@ def main():
         out[name] = marks
         cards.append(card(name, path, marks, extra))
         print(f'{name:<12} ' + '  '.join(f'{k}=({v["x"]},{v["y"]})' for k, v in marks.items()))
+    # A base head chosen by hand is kept (scripts/select_base_head.py --base).
+    try:
+        old = json.load(open(OUT_JSON, encoding='utf-8'))
+        if old.get('base_head_pinned'):
+            out = {'base_head': old['base_head'], 'base_head_pinned': True, **out}
+    except (OSError, ValueError):
+        pass
     with open(OUT_JSON, 'w', encoding='utf-8') as f:
         json.dump(out, f, indent=2)
         f.write('\n')

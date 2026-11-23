@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-length="long" data-softened="1">
+<svg data-drawn-on="dimple_oval" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-length="long" data-softened="1">
   <g id="hair_back" fill="#8f4b29" stroke="#23140f" stroke-width="6" stroke-linejoin="round">
     <path d="M255 145C178 139 129 189 121 251C115 303 119 422 100 496L121 486L117 502L144 492L142 505Q182 502 211 485L218 442C184 408 151 327 152 260Q167 188 255 185Q344 188 358 260C359 327 326 408 292 442L299 485Q328 502 368 505L366 492L393 502L389 486L410 496C391 422 395 303 389 251C381 189 332 139 255 145Z" />
   </g>

@@ -102,6 +102,15 @@ for (const [id, st] of Object.entries(FITTED_HAIR)) {
   check((st.minAge ?? 0) === want && FITTED_STYLES.find((x) => x.id === id)?.minAge === want, `${id}: minimum age ${want} not carried into the game`);
 }
 check(FITTED_HAIR.storybook_waves?.minAge === 13, 'Storybook Waves is offered to children');
+// Each style is fitted from the head it was drawn on (data-drawn-on; the base head if not given), so changing the
+// base head keeps every style fitting.
+for (const id of Object.keys(FITTED_HAIR)) {
+  const on = readFileSync(new URL(`assets/hair_raw/${id}.svg`, root), 'utf8').match(/<svg\b[^>]*>/)?.[0].match(/data-drawn-on="([a-z0-9_]+)"/)?.[1] ?? landmarks.base_head;
+  check(!!landmarks[on], `${id}: drawn on ${on}, which has no landmarks`);
+  const fitted = readFileSync(new URL(`assets/hair_fitted/${id}_${FITTED_BASE_HEAD}.svg`, root), 'utf8');
+  check(fitted.includes(`data-fitted-from="${on}"`), `${id}: not fitted from the head it was drawn on (${on})`);
+}
+
 
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
