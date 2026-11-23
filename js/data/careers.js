@@ -218,14 +218,19 @@ export const GIGS = [
 ];
 export const MAX_GIGS_PER_YEAR = 2;
 
-/** What the famous can do. min is the fame needed. cash is base units before fame scaling. */
+/**
+ * What the famous can do. min is the fame needed, minAge the age (a baby born famous, a royal, does none of these: a
+ * child can sit for a photo or a commercial, be a guest on a talk show at ten, write a book at twelve). cash is base
+ * units before fame scaling.
+ */
+export const FAME_MIN_AGE = 5;
 export const FAME_ACTIONS = [
-  { id: 'book', name: 'Write a book', min: 15, skill: 'stats.intellect', cash: 40000, fame: 5,
+  { id: 'book', name: 'Write a book', min: 15, minAge: 12, skill: 'stats.intellect', cash: 40000, fame: 5,
     ok: 'Your book comes out to queues around the block.', fail: 'Your book is politely reviewed and quickly remaindered.' },
-  { id: 'photoshoot', name: 'Do a photoshoot', min: 20, skill: 'stats.charm', cash: 15000, fame: 3,
+  { id: 'photoshoot', name: 'Do a photoshoot', min: 20, minAge: 5, skill: 'stats.charm', cash: 15000, fame: 3,
     ok: 'The cover sells out in a week.', fail: 'The photos are fine. Nobody mentions them.' },
-  { id: 'commercial', name: 'Film a commercial', min: 30, skill: 'stats.charm', cash: 90000, fame: 2, karma: -2,
+  { id: 'commercial', name: 'Film a commercial', min: 30, minAge: 5, skill: 'stats.charm', cash: 90000, fame: 2, karma: -2,
     ok: 'Your face is on every bus shelter in the country, holding a yogurt.', fail: 'The advert is pulled after a week of complaints.' },
-  { id: 'talk_show', name: 'Go on a talk show', min: 35, skill: 'stats.charm', cash: 8000, fame: 8, risky: true,
+  { id: 'talk_show', name: 'Go on a talk show', min: 35, minAge: 10, skill: 'stats.charm', cash: 8000, fame: 8, risky: true,
     ok: 'You tell one story and the clip is everywhere by morning.', fail: 'You say the wrong thing on live television. The clip is everywhere by morning.' },
 ];

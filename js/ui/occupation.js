@@ -307,7 +307,7 @@ const VIEWS = {
   }).join('')}`).join('')}
       ${btn('castingboard', 'Casting notices: film, television, stage and voice', { cls: 'primary', sub: 'Real parts in real productions, in My Fame.' })}
       <div class="section-label">Politics</div><p class="muted">${esc(pol)}</p>
-      ${career.fame() >= 10 ? btn('fame', `Use your fame (${career.fame()}%)`) : ''}`;
+      ${career.canUseFame() ? btn('fame', `Use your fame (${career.fame()}%)`) : ''}`;
   },
 
   military(p) {

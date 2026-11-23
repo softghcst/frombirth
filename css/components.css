@@ -512,6 +512,8 @@ button.dyn-event { cursor: pointer; }
 .hl-card { margin-bottom: 12px; }
 .hl-card .btn-row { flex-wrap: wrap; }
 .hl-small { min-height: 36px; padding: 6px 12px; font-size: 0.85rem; }
+.btn.hl-small { gap: 6px; padding: 6px 10px; }
+.btn.hl-small .ico { width: 16px; height: 16px; }
 .hl-pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 0.78rem; background: var(--line); color: var(--ink); }
 .hl-pill.good { background: var(--accent-soft); color: var(--good); }
 .hl-meter { display: grid; grid-template-columns: 6.5em 1fr 5.5em; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.9rem; }
@@ -1194,3 +1196,42 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .nav-row.locked .nr-label, .nav-row.locked .nr-main small { color: var(--muted); }
 .nav-row.locked .nr-icon { filter: grayscale(1); opacity: 0.55; }
 .nav-row.locked .nr-lock { flex: none; font-size: 0.85rem; opacity: 0.55; }
+
+/* My Passport (ui/passportBook.js): a little book, the photo page then pages of stamps. */
+.pp-book { border-radius: 14px; background: linear-gradient(135deg, #fbf6ea, #f3ead6); color: #2b2418; border: 1px solid #d9ccae; min-height: 330px; padding: 14px; box-shadow: inset 0 0 0 6px rgba(255,255,255,.35); touch-action: pan-y; }
+.pp-photo { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: start; }
+.pp-pic { width: 110px; height: 136px; overflow: hidden; border-radius: 6px; background: #e8dcc0; border: 1px solid #cdbd99; }
+.pp-pic svg { width: 150px; height: 150px; margin: -6px 0 0 -20px; }
+.pp-photo dl { margin: 0; display: grid; gap: 2px; font-size: 0.82rem; }
+.pp-photo dt { font-size: 0.62rem; letter-spacing: .08em; color: #7a6b4c; text-transform: uppercase; }
+.pp-photo dd { margin: 0 0 4px; font-weight: 700; letter-spacing: .02em; }
+.pp-mrz { grid-column: 1 / -1; font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem; letter-spacing: .12em; color: #5a4e36; margin: 8px 0 0; overflow: hidden; white-space: nowrap; }
+.pp-pagehead { font-size: 0.66rem; letter-spacing: .18em; color: #8a7a58; text-align: center; margin-bottom: 8px; }
+.pp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 10px; justify-items: center; }
+.pp-stamp { color: var(--ink); border: 3px double var(--ink); width: 128px; min-height: 112px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 1px; opacity: .88; mix-blend-mode: multiply; }
+.pp-round { border-radius: 50%; width: 120px; min-height: 120px; }
+.pp-oval { border-radius: 50% / 40%; }
+.pp-rect { border-radius: 6px; }
+.pp-stamp .pp-flag { font-size: 1.3rem; line-height: 1; }
+.pp-stamp strong { font-size: 0.7rem; letter-spacing: .06em; line-height: 1.1; }
+.pp-stamp small { font-size: 0.6rem; letter-spacing: .06em; }
+.pp-stamp em { font-style: normal; font-size: 0.56rem; letter-spacing: .14em; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); padding: 0 4px; margin-top: 2px; }
+.pp-stamp b { font-size: 0.66rem; letter-spacing: .05em; }
+.pp-empty { text-align: center; color: #8a7a58; margin-top: 110px; }
+.pp-count { text-align: center; margin: 8px 0 4px; }
+.pp-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.pp-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.pp-dots span.on { background: var(--accent); }
+
+/* A sport's page (ui/sports.js sportDesk), practice and the league. */
+.sd-head, .sd-team { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; }
+.sd-glyph { font-size: 2.2rem; width: 48px; text-align: center; flex: none; }
+.sd-main { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.sd-strength { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; }
+.sd-skill { display: grid; grid-template-columns: 110px 1fr 32px; gap: 10px; align-items: center; margin: 6px 0; }
+.sd-skill small { text-align: right; }
+.sd-lrow.mine { outline: 2px solid var(--accent); border-radius: 14px; }
+.sd-lrow .main { display: grid; gap: 3px; }
+.sd-head .mini, .sd-team .mini, .sd-skill .mini, .sd-lrow .mini { width: 100% !important; height: 8px; border-radius: 99px; background: var(--line-soft); overflow: hidden; margin: 0; }
+.sd-head .mini .fill, .sd-team .mini .fill, .sd-skill .mini .fill, .sd-lrow .mini .fill { display: block; height: 100%; border-radius: 99px; }
+.sd-lrow strong { white-space: normal; }

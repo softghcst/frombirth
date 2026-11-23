@@ -8,6 +8,7 @@
 //   Gig    { id, year, kind, client, fee, weeks, hours, prestige, style, trust, paid, partner?, place? }
 //   Offer  { id, kind, client, city, fee, wants, brief, status: 'open'|'booked'|'lost' }
 import { rng } from '../rng.js';
+import { royalWorkBan } from './royalRules.js';
 import { clamp, fmtMoney, localWage } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -57,6 +58,7 @@ export const dances = (p = player()) => p.age >= 6 && (p.talents.dance >= 25 || 
 /** Why a dancer cannot go for this kind of gig, or ''. */
 export function whyNot(kind, p = player()) {
   const g = DANCE_GIGS[kind];
+  if (royalWorkBan(p)) return 'Royals do not take paid work.';
   if (p.age < g.minAge) return `From ${g.minAge}.`;
   if (g.agent && !workOf(p).agent) return 'Cast through agents: you need one.';
   if (g.after && record(p) < g.after) return `They look for dancers with ${g.after} jobs behind them.`;
@@ -111,7 +113,9 @@ export function odds(o, style, p = player()) {
   const trained = (Y.training[danceTraining(p)] ?? 0) / 25;
   const rec = Math.min(Y.record.most, record(p) * Y.record.per);
   const read = style ? (style === o.wants ? Y.style.right : Y.style.wrong) : 0;
-  return clamp(0.35 + (p.talents.dance - g.bar) / 25 + trained + rec + (workOf(p).agent ? Y.agent : 0) + read, 0.03, 0.9);
+  // Hundreds go for every job, and a child is one of hundreds of children: even the best are often turned away.
+  const young = p.age < 16 ? Y.young : 0;
+  return clamp(Y.base + (p.talents.dance - g.bar) / Y.slope + trained + rec + (workOf(p).agent ? Y.agent : 0) + read - young, 0.02, Y.most - young);
 }
 
 /** Goes for a gig and dances it one way. A few a year, around everything else. */
@@ -190,9 +194,10 @@ export function compete(level, style) {
   d.entered.n += 1;
   // The judges this year favor a style; a routine in it scores better. A dancer's training and experience show.
   const taste = rng.pick(Object.keys(DANCE_STYLES));
-  const mine = p.talents.dance + (DANCE_YEAR.training[danceTraining(p)] ?? 0) / 2 + (style === taste ? 4 : 0) + Math.min(4, d.comps.length * 0.5) + rng.around(0, 6);
+  const mine = p.talents.dance + (DANCE_YEAR.training[danceTraining(p)] ?? 0) / 2 + (style === taste ? 3 : 0) + Math.min(4, d.comps.length * 0.5) + rng.around(0, 8);
   const bar = c.bar[c.category];
-  const place = 1 + Array.from({ length: c.field - 1 }, () => rng.around(bar, 10)).filter((x) => x > mine).length;
+  // The field: dancers round the bar, and a few who are much better (there always are).
+  const place = 1 + Array.from({ length: c.field - 1 }, () => rng.around(bar, 12) + (rng.chance(0.15) ? 10 : 0)).filter((x) => x > mine).length;
   d.comps.push({ year: year(), level, place, style, category: c.category, of: c.field });
   d.best[level] = Math.min(d.best[level] ?? 99, place);
   const prize = place === 1 ? K(c.prize[c.category], p) : place === 2 ? Math.round(K(c.prize[c.category], p) * 0.4) : place === 3 ? Math.round(K(c.prize[c.category], p) * 0.2) : 0;

@@ -10,7 +10,7 @@ import { store, player, country, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { remember } from './conditions.js';
 import { may } from './rules.js';
-import { CLUBS, CLUB_BY_ID, CLUB_KINDS, MAX_CLUBS, CLUB_RANKS } from '../data/clubs.js';
+import { CLUBS, CLUB_BY_ID, CLUB_KINDS, MAX_CLUBS, CLUB_RANKS, clubTitle } from '../data/clubs.js';
 import { SKILL_BY_ID, SKILLS } from '../data/skills.js';
 
 const result = (ok, text, tone = ok ? 'good' : 'bad') => ({ ok, text, tone });
@@ -27,8 +27,8 @@ export function whyNot(c, p = player()) {
   const mine = clubsOf(p).now;
   if (p.legal.incarceration) return 'Not from prison.';
   if (mine[c.id]) return 'You are a member.';
-  if (p.age < c.minAge) return `From age ${c.minAge}.`;
-  if (c.maxAge && p.age > c.maxAge) return `Up to age ${c.maxAge}.`;
+  if (p.age < c.minAge) return `From age ${c.minAge}`;
+  if (c.maxAge && p.age > c.maxAge) return `Up to age ${c.maxAge}`;
   if (c.needs === 'drink' && !may('drink').ok) return 'Only for those old enough to drink.';
   if (c.needs === 'kids' && !p.npcIds.some((id) => { const n = store.state.npcs[id]; return n?.alive && n.role === 'child' && n.age < 12; })) return 'For parents of young children.';
   if (c.needs === 'instrument' && !SKILLS.some((s) => s.group === 'instrument' && (p.skills?.[s.id] ?? 0) >= 40)) return 'You need to play an instrument fairly well (practice one in Skills).';
@@ -170,6 +170,6 @@ export function tickClubs() {
       m.friends.push(pal.id);
       line += ` You and ${pal.firstName} have become friends.`;
     }
-    log(`${c.name.replace(/^(A|An) /, '').replace(/^./, (x) => x.toUpperCase())}: ${line}`, 'system', 'good');
+    log(`${clubTitle(c)}: ${line}`, 'system', 'good');
   }
 }

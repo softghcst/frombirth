@@ -41,7 +41,9 @@ function passChance(spec) {
   return clamp(chance, 0.05, 0.95);
 }
 
-export const canTakeDrivingTest = () => player().age >= DRIVING_TEST.minAge && !hasLicense();
+/** The age a learner can take the test where they live: the country's driving age (16 in the United States, 18 in much of Europe). */
+export const drivingTestAge = () => rule('drivingAge') ?? DRIVING_TEST.minAge;
+export const canTakeDrivingTest = () => player().age >= drivingTestAge() && !hasLicense();
 /** Tries left this year, and what the next one costs (the first of a year includes the lessons). */
 export function drivingTestStatus() {
   const c = country();

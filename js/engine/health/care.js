@@ -237,17 +237,26 @@ export function attendNow(a, p = player()) {
 // ---------- Seeking care ----------
 
 /** The kinds of concern someone can bring, and the services that see them. */
+/**
+ * What a person can seek an assessment for. minAge: nobody takes a baby to a psychologist about how they have been
+ * feeling; hearing, sight and physical problems are seen from birth, communication and routines from two.
+ */
+export const MENTAL_CARE_AGE = 5;
 export const CONCERNS = {
-  mental: { label: 'How I have been feeling', groups: MENTAL, services: [['primary', 'gp'], ['mental', 'psychiatrist'], ['mental', 'psychologist'], ['private', 'psychologist'], ['psychiatry', 'psychiatrist']] },
-  attention: { label: 'Attention, focus and organization', groups: ['neurodev', 'mood', 'anxiety'], services: [['mental', 'psychiatrist'], ['psychiatry', 'psychiatrist'], ['private', 'psychologist'], ['hospital', 'pediatrician']] },
-  development: { label: 'Communication, senses and routines', groups: ['neurodev'], services: [['mental', 'psychologist'], ['private', 'psychologist'], ['hospital', 'pediatrician'], ['rehab', 'speech_therapist']] },
-  learning: { label: 'Reading, writing or numbers', groups: ['neurodev'], services: [['learning', 'educational_psychologist'], ['private', 'psychologist']] },
-  senses: { label: 'Hearing or sight', groups: ['sensory', 'genetic'], services: [['hospital', 'audiologist'], ['hospital', 'ophthalmologist']] },
-  body: { label: 'A physical health problem', groups: ['chronic', 'mobility', 'genetic'], services: [['primary', 'gp'], ['hospital', 'cardiologist'], ['hospital', 'oncologist'], ['hospital', 'neurologist'], ['hospital', 'doctor']] },
+  mental: { minAge: 5, label: 'How I have been feeling', groups: MENTAL, services: [['primary', 'gp'], ['mental', 'psychiatrist'], ['mental', 'psychologist'], ['private', 'psychologist'], ['psychiatry', 'psychiatrist']] },
+  attention: { minAge: 5, label: 'Attention, focus and organization', groups: ['neurodev', 'mood', 'anxiety'], services: [['mental', 'psychiatrist'], ['psychiatry', 'psychiatrist'], ['private', 'psychologist'], ['hospital', 'pediatrician']] },
+  development: { minAge: 2, label: 'Communication, senses and routines', groups: ['neurodev'], services: [['mental', 'psychologist'], ['private', 'psychologist'], ['hospital', 'pediatrician'], ['rehab', 'speech_therapist']] },
+  learning: { minAge: 5, label: 'Reading, writing or numbers', groups: ['neurodev'], services: [['learning', 'educational_psychologist'], ['private', 'psychologist']] },
+  senses: { minAge: 0, label: 'Hearing or sight', groups: ['sensory', 'genetic'], services: [['hospital', 'audiologist'], ['hospital', 'ophthalmologist']] },
+  body: { minAge: 0, label: 'A physical health problem', groups: ['chronic', 'mobility', 'genetic'], services: [['primary', 'gp'], ['hospital', 'cardiologist'], ['hospital', 'oncologist'], ['hospital', 'neurologist'], ['hospital', 'doctor']] },
 };
+
+/** The concerns a person is old enough to seek help for. */
+export const concernsFor = (p = player()) => Object.entries(CONCERNS).filter(([, c]) => p.age >= c.minAge).map(([id]) => id);
 
 /** Where a concern can be taken now, with the wait and the price. */
 export function serviceOptions(concern, p = player()) {
+  if (p.age < (CONCERNS[concern]?.minAge ?? 0)) return [];
   const fs = facilitiesHere(p);
   const out = [];
   for (const [defId, profession] of CONCERNS[concern].services) {
@@ -265,6 +274,7 @@ const h_hasReferral = (p, concern, profession) => (healthOf(p).referrals ?? []).
 /** Book an assessment for a concern at a service. Under-16s are taken by a parent. */
 export function seekAssessment(concern, facilityId, profession, p = player()) {
   const h = healthOf(p);
+  if (p.age < (CONCERNS[concern]?.minAge ?? 0)) return result(false, `Not at ${p.age}: this is from age ${CONCERNS[concern].minAge}.`, 'neutral');
   const opt = serviceOptions(concern, p).find((o) => o.facilityId === facilityId && o.profession === profession);
   if (!opt) return result(false, 'That service is not available here.', 'neutral');
   if (opt.referral) return result(false, 'This service sees people on referral. Your primary care doctor can refer you.', 'neutral');

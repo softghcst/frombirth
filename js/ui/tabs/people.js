@@ -23,7 +23,7 @@ import * as zooUi from '../animals.js';
 import * as sportsUi from '../sports.js';
 import { openAnimalHub } from '../animalHub.js';
 import { meterHtml, band } from '../meter.js';
-import { openModal, messageModal, pickModal, confirmModal, inputModal } from '../modals.js';
+import { openModal, messageModal, pickModal, confirmModal, inputModal, selectModal } from '../modals.js';
 import { TRAIT_BY_ID } from '../../data/traits.js';
 import { COUNTRIES } from '../../data/countries.js';
 import * as who from '../../engine/identity.js';
@@ -482,8 +482,14 @@ export function openNpc(npc, api, back, o = {}) {
     if (id.startsWith('with:')) {
       const opts = together.bondOptions(npc.id, id);
       const label = actions.find((x) => x.id === id)?.label ?? '';
-      const pick = opts ? await pickModal({ title: label, options: opts }) : undefined;
-      if (!opts || pick) await report(api, together.doBond(npc.id, id, pick));
+      // Some actions ask with a dropdown dialog (a sleepover: what to do); the rest with a list.
+      const how = together.bondSelect(npc.id, id);
+      const pick = !opts ? undefined : how ? await selectModal({ ...how, options: opts }) : await pickModal({ title: label, options: opts });
+      if (!opts || pick) {
+        await report(api, together.doBond(npc.id, id, pick));
+        // Something that happened because of it (a scene during the night) plays now, not next year.
+        if (store.state.pendingEvents.length) await api.pending?.();
+      }
     } else await (flows[id] ?? (() => report(api, rel.interact(npc.id, id))))();
     // Opened from somewhere else: go back there once the thing is done (the stat editor returns here by itself).
     if (id !== 'edit' && id !== 'dynasty') back?.();
@@ -493,6 +499,28 @@ export function openNpc(npc, api, back, o = {}) {
 zooUi.connect({ openPerson: openNpc, editStats: editPerson });
 sportsUi.connect({ openPerson: openNpc });
 hoodUi.connect({ openPerson: openNpc });
+
+/** Look for Love and Adopt a Child, for the Self tab: what you can start yourself. Greyed, with why, until open. */
+export function loveFamilyGroup() {
+  const c = country();
+  const pp = player();
+  const rows = [];
+  if (love.canLookForLove()) rows.push(navRow({ attrs: 'data-lovefam="love"', label: 'Look for Love', ico: 'heart' }));
+  else if (!love.partner()) rows.push(lockedRow('Look for Love', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, love.DATING_AGE) || 'Not open to you now', 'heart'));
+  if (kids.canAdopt()) rows.push(navRow({ attrs: 'data-lovefam="adopt"', label: 'Adopt a Child', sub: fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), ico: 'child' }));
+  else rows.push(lockedRow('Adopt a Child', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, 21) || 'Your family is already large', 'child'));
+  return navGroup(rows, 'Love and Family');
+}
+
+/** Opens what a Love and Family row starts. */
+export async function openLoveFamily(id, api) {
+  if (id === 'love') return lookForLove(api);
+  if (id === 'adopt') {
+    const yes = await confirmModal({ title: 'Adopt a child?', body: 'It takes a year of forms and visits, and a child joins your family for good.', yes: 'Start the adoption' });
+    if (yes) return report(api, kids.adopt());
+  }
+  return undefined;
+}
 
 export default {
   id: 'people', title: 'People', short: 'People',
@@ -509,11 +537,7 @@ export default {
     const keep = [['tree', 'Family tree', '', 'tree'], ['archive', 'Family archive', '', 'archive'], ['digitalArchive', 'Letters and photos', '', 'letter']];
     const more = [];
     // What is not open yet is shown greyed, with why (the fifth item), so the player can see it is there.
-    const pp = player();
-    if (love.canLookForLove()) more.push(['love', 'Look for love', '', 'heart']);
-    else if (!love.partner()) more.push(['love', 'Look for love', '', 'heart', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, love.DATING_AGE) || 'Not open to you now']);
-    if (kids.canAdopt()) more.push(['adopt', 'Adopt a child', fmtMoney(localMoney(kids.ADOPTION_FEE, c), c), 'child']);
-    else more.push(['adopt', 'Adopt a child', '', 'child', pp.legal.incarceration ? 'Not from where you are' : fromAge(pp.age, 21) || 'Your family is already large']);
+    // Look for Love and Adopt a Child are on the Self tab (loveFamilyGroup), with your own plans, not here among your people.
     const owed = rel.timeStillOwed().length;
     if (nearby.size) more.unshift(['neighbors', 'Neighbors you know', `${nearby.size} on My Neighborhood`, 'home']);
 

@@ -20,6 +20,7 @@ import { jerseySvg, jerseyDot, inkOn } from './jersey.js';
 import { fmtMark } from '../engine/sportsPlay.js';
 import { openModal, messageModal, pickModal, confirmModal } from './modals.js';
 import { createNav } from './animalNav.js';
+import { navRow } from './kit.js';
 import { connect as connectAnimals } from './animals.js';
 
 const nav = createNav();
@@ -43,7 +44,7 @@ const GLYPH = { team: '⚽', racket: '🎾', golf: '⛳', race: '🏃', judged: 
 const glyph = (sportId) => (sportId === 'pickleball' ? '🏓' : sportId === 'basketball' || sportId === 'wheelchair_basketball' ? '🏀' : sportId === 'baseball' || sportId === 'softball' ? '⚾'
   : sportId === 'american_football' ? '🏈' : sportId === 'ice_hockey' ? '🏒' : sportId === 'cricket' ? '🏏' : sportId === 'swimming' || sportId === 'para_swimming' ? '🏊' : sportId === 'volleyball' ? '🏐' : sportId === 'cycling' ? '🚴' : GLYPH[sportOf(sportId)?.kind] ?? '🏅');
 const seg = (key, value, options) => `<div class="chips zoo-filter" role="group">${options.map(([v, t]) => `<button class="chip ${String(v) === String(value) ? 'on' : ''}" aria-pressed="${String(v) === String(value)}" data-set="${key}:${v}">${esc(t)}</button>`).join('')}</div>`;
-const bar = (v) => `<div class="mini" style="width:100%"><i class="fill ${v >= 68 ? 'good' : v >= 40 ? 'ok' : 'low'}" style="width:${Math.max(2, Math.min(100, v))}%"></i></div>`;
+const bar = (v) => `<div class="mini" style="width:100%"><i class="fill ${v >= 68 ? 'high' : v >= 40 ? 'mid' : 'low'}" style="width:${Math.max(2, Math.min(100, v))}%"></i></div>`;
 /** Why nobody in the player's division can be paid to play a sport this year. */
 function proClosed(sport) {
   const div = sp.divisionOf();
@@ -489,8 +490,126 @@ function athleteProfile(step) {
     ${shared(ms)}` };
 }
 
-const SCREENS = { hub, sport: sportProfile, team: teamProfile, coach: coachProfile, season: seasonProfile, event: eventProfile, athlete: athleteProfile };
-const BACK = { hub: 'Back to My Athletics', sport: 'Back to the sport', team: 'Back to the team', coach: 'Back to the coach', season: 'Back to the season', event: 'Back to the event', athlete: 'Back to the athlete' };
+
+// ---------- One sport: its page, practice, and the league ----------
+
+/** The player's latest season in a sport, or null before the first is played. */
+function latestSeason(e) {
+  return e.seasons.map((id) => sp.seasonOf(id)).filter(Boolean).sort((a, b) => b.year - a.year)[0] ?? null;
+}
+/** The losing finalist, if the season had a final. */
+function runnersUp(s) {
+  const fin = s.playoffs?.[s.playoffs.length - 1];
+  return fin?.score && s.champion ? (fin.home === s.champion ? fin.away : fin.home) : null;
+}
+/** A team's place in the season's final order: the champions first, the runners-up second, then the table. */
+function rank(s, teamId, table) {
+  if (s.champion === teamId) return 1;
+  const ru = runnersUp(s);
+  if (ru === teamId) return 2;
+  const rest = table.filter((x) => x.teamId !== s.champion && x.teamId !== ru);
+  return (s.champion ? 1 : 0) + (ru ? 1 : 0) + rest.findIndex((x) => x.teamId === teamId) + 1;
+}
+/** Where a team finished: Champions, Runners-up, or its place. */
+function finish(s, teamId, table) {
+  const r = rank(s, teamId, table);
+  return s.champion === teamId ? 'Champions' : runnersUp(s) === teamId ? 'Runners-up' : ordinal(r);
+}
+const record = (x) => `${x.w}–${x.l}${x.d ? `–${x.d}` : ''}`;
+
+/** A sport the player plays: how good they are, their team and where it stands, and everything to do. */
+function sportDesk(step) {
+  const e = sp.entryOf(step.params.sportId);
+  const sport = sportOf(step.params.sportId);
+  if (!e) return { title: sport.name, body: empty('You do not play this.') };
+  const team = sp.teamOf(e.teamId);
+  const org = sp.orgOf(team?.orgId ?? e.orgId);
+  const s = sport.kind === 'team' ? latestSeason(e) : null;
+  const table = s ? sp.standings(s) : null;
+  const mine = table?.find((x) => x.teamId === s.playerTeamId);
+  const left = sp.EXTRA_PER_YEAR - (S().acts.year === store.state.year ? S().acts.extra : 0);
+  const ov = sp.overall(e);
+  const rows = [];
+  if (sport.kind === 'team') rows.push(navRow({ attrs: `data-league="${e.id}"`, label: 'League', sub: s ? `${s.name}: the standings` : 'The table, once your first season is played', ico: 'trophy' }));
+  else rows.push(navRow({ attrs: 'data-gohub="rankings"', label: 'Rankings', sub: `Pathways Rating ${e.pr} · ${sp.prWord(e.pr)}`, ico: 'trophy' }));
+  if (e.status === 'active') {
+    rows.push(navRow({ attrs: `data-practice="${e.id}"`, label: 'Practice', sub: left > 0 ? `Work on one skill · ${left} ${left === 1 ? 'session' : 'sessions'} left this year` : 'Done for this year', ico: 'star' }));
+    const fit = sp.fitnessScore(sp.fitnessOf());
+    const tl = sp.TRAIN_PER_YEAR - (S().acts.year === store.state.year ? S().acts.train ?? 0 : 0);
+    rows.push(navRow({ attrs: `data-train="${e.id}"`, label: 'Train', sub: `Fitness ${fit} · ${tl > 0 ? `${tl} ${tl === 1 ? 'session' : 'sessions'} left this year` : 'done for this year'}`, ico: 'health' }));
+    rows.push(navRow({ attrs: `data-plan="${e.id}"`, label: 'Training Plan', sub: `${PLANS[e.plan.type]?.name ?? 'Balanced'}, ${e.plan.hours} h a week`, ico: 'calendar' }));
+  }
+  if (team) rows.push(navRow({ attrs: `data-team="${team.id}"`, label: sport.kind === 'team' ? 'Team' : 'Club', sub: 'The roster, the coach and the history', ico: 'people' }));
+  if (sport.positions && e.status === 'active') rows.push(navRow({ attrs: `data-position="${e.id}"`, label: 'Position', sub: sport.positions.find((x) => x[0] === e.position)?.[1] ?? 'Choose one', ico: 'compass' }));
+  rows.push(navRow({ attrs: `data-stats="${e.id}"`, label: 'Stats', sub: 'Your skills, seasons, titles and awards', ico: 'archive' }));
+  if (e.status === 'active') rows.push(navRow({ attrs: `data-giveup="${e.id}"`, label: 'Stop Playing', sub: 'Your record is kept', ico: 'exit' }));
+  return { title: sport.name, sub: `${levelName(e.level)}${org ? ` · ${org.name}` : ''}`, body: `
+    <div class="card sd-head"><div class="sd-glyph" aria-hidden="true">${glyph(e.id)}</div><div class="sd-main">
+      <strong>${esc(sp.skillWord(ov))}</strong>${bar(ov)}<small class="muted">Overall ${ov} · Pathways Rating ${e.pr}</small></div></div>
+    ${team && sport.kind === 'team' ? `<button class="card sd-team" data-league="${e.id}"><div class="sd-glyph" aria-hidden="true">${jerseyDot(colorsOf(org))}</div><div class="sd-main">
+      <strong>${esc(team.name)}${mine ? ` <span class="muted">(${rank(s, s.playerTeamId, table)}/${table.length})</span>` : ''}</strong>
+      ${mine ? `<small>${esc(s.year)}: ${record(mine)} · ${esc(finish(s, s.playerTeamId, table))}</small>` : '<small class="muted">The season is played through the year.</small>'}
+      <span class="sd-strength"><small>Team strength</small>${bar(org?.strength ?? 50)}</span></div></button>` : ''}
+    ${label('Activities')}<div class="nav-group">${rows.join('')}</div>` };
+}
+
+/** Practice: every skill of the sport as a bar, and one to work on now. */
+function practiceScreen(step) {
+  const e = sp.entryOf(step.params.sportId);
+  const sport = sportOf(step.params.sportId);
+  const left = sp.EXTRA_PER_YEAR - (S().acts.year === store.state.year ? S().acts.extra : 0);
+  const lowest = sport.skills.slice().sort((a, b) => (e.skills[a[0]] ?? 0) - (e.skills[b[0]] ?? 0))[0][0];
+  const focus = step.ui.focus ?? lowest;
+  return { title: 'Practice', sub: `Work on your ${sport.name.toLowerCase()} skills`, body: `
+    <div class="card">${sport.skills.map(([k, n]) => `<div class="sd-skill"><span>${esc(n)}</span>${bar(e.skills[k] ?? 0)}<small>${Math.round(e.skills[k] ?? 0)}</small></div>`).join('')}
+      <p class="muted" style="margin-top:6px">Each skill can grow up to what your body allows. Tired: ${e.fatigue >= 70 ? 'very' : e.fatigue >= 45 ? 'a little' : 'not at all'}.</p></div>
+    <label class="field"><span>Pick your focus</span>
+      <select data-focus>${sport.skills.map(([k, n]) => `<option value="${k}" ${k === focus ? 'selected' : ''}>${esc(n)} (${Math.round(e.skills[k] ?? 0)})</option>`).join('')}</select></label>
+    <button class="btn primary" data-work="${e.id}" ${left > 0 && e.status === 'active' ? '' : 'disabled'} style="margin-top:10px">Work on It</button>
+    <p class="muted" style="margin-top:6px">${left > 0 ? `${left} ${left === 1 ? 'session' : 'sessions'} left this year.` : 'No more sessions this year: the rest is in the training plan.'}</p>` };
+}
+
+/** Train: physical fitness, for every sport at once. Who you are and where you play, then four bars and a focus. */
+function trainScreen(step) {
+  const e = sp.entryOf(step.params.sportId);
+  const sport = sportOf(step.params.sportId);
+  const f = sp.fitnessOf();
+  const left = sp.TRAIN_PER_YEAR - (S().acts.year === store.state.year ? S().acts.train ?? 0 : 0);
+  const lowest = sp.FITNESS.slice().sort((a, b) => f[a[0]] - f[b[0]])[0][0];
+  const focus = step.ui.focus ?? lowest;
+  const pos = sport.positions?.find((x) => x[0] === e.position)?.[1];
+  return { title: 'Train', sub: 'Work on your physical fitness', body: `
+    <div class="card">${kv('Age', String(player().age))}${kv('Sport', esc(sport.name))}${pos ? kv('Position', esc(pos)) : ''}</div>
+    <div class="card"><div class="sd-skill"><strong>Fitness</strong>${bar(sp.fitnessScore(f))}<small>${sp.fitnessScore(f)}</small></div>
+      ${sp.FITNESS.map(([k, n]) => `<div class="sd-skill"><span>${esc(n)}</span>${bar(f[k])}<small>${f[k]}</small></div>`).join('')}
+      <p class="muted" style="margin-top:6px">Fit athletes play better in every sport, and stay healthier.</p></div>
+    <label class="field"><span>Pick your focus</span>
+      <select data-focus>${sp.FITNESS.map(([k, n]) => `<option value="${k}" ${k === focus ? 'selected' : ''}>${esc(n)} (${f[k]})</option>`).join('')}</select></label>
+    <button class="btn primary" data-dotrain ${left > 0 && e.status === 'active' ? '' : 'disabled'} style="margin-top:10px">Train</button>
+    <p class="muted" style="margin-top:6px">${left > 0 ? `${left} ${left === 1 ? 'session' : 'sessions'} left this year.` : 'No more sessions this year.'}</p>` };
+}
+
+/** The league: every team in the player's latest season, best first, with its strength. */
+function leagueScreen(step) {
+  const e = sp.entryOf(step.params.sportId);
+  const sport = sportOf(step.params.sportId);
+  const s = latestSeason(e);
+  if (!s) return { title: 'League', sub: sport.name, body: empty('Your first season is played through this year. The table appears once it is.') };
+  const table = sp.standings(s);
+  // The final order: the champions, the runners-up, then everyone else as the table had them.
+  const order = table.slice().sort((a, b) => rank(s, a.teamId, table) - rank(s, b.teamId, table));
+  return { title: s.name, sub: `${sport.name} · ${s.year}`, body: `
+    ${order.map((x) => {
+    const t = sp.teamOf(x.teamId); const org = sp.orgOf(t?.orgId); const me = x.teamId === s.playerTeamId;
+    return `<button class="row sd-lrow ${me ? 'mine' : ''}" data-team="${x.teamId}"><div class="avatar glyph">${jerseyDot(colorsOf(org))}</div>
+      <div class="main"><strong>${esc(t?.name ?? x.teamId)}</strong>
+        <small><b>${esc(finish(s, x.teamId, table))}</b> · ${record(x)}${me ? ' · your team' : ''}</small><span class="sd-strength"><small>Strength</small>${bar(org?.strength ?? 50)}</span></div></button>`;
+  }).join('')}
+    <button class="btn" data-season="${s.id}" style="margin-top:10px">The Full Season</button>` };
+}
+
+const SCREENS = { hub, desk: sportDesk, practice: practiceScreen, train: trainScreen, league: leagueScreen, sport: sportProfile, team: teamProfile, coach: coachProfile, season: seasonProfile, event: eventProfile, athlete: athleteProfile };
+const BACK = { hub: 'Back to My Athletics', desk: 'Back to the sport', practice: 'Back to practice', train: 'Back to training', league: 'Back to the league', sport: 'Back to the stats', team: 'Back to the team', coach: 'Back to the coach', season: 'Back to the season', event: 'Back to the event', athlete: 'Back to the athlete' };
 export const backText = (step) => (step ? BACK[step.screen] ?? 'Back' : 'Close');
 
 // ---------- Showing and acting ----------
@@ -539,7 +658,17 @@ async function onClick(e) {
     return hooks.openPerson(npc, api, () => show());
   }
   const open = (screen, params) => { e.preventDefault(); note(); nav.open(screen, params); return show(); };
-  if ((el = hit('data-sport'))) return open('sport', { sportId: el.dataset.sport, personId: el.dataset.who ?? step.params.athleteId ?? null });
+  if ((el = hit('data-sport'))) {
+    const who = el.dataset.who ?? step.params.athleteId ?? null;
+    // A sport the player plays opens its page; anyone else's (or one given up) opens the record.
+    const mine = (!who || who === player().id) && sp.entryOf(el.dataset.sport);
+    return open(mine ? 'desk' : 'sport', { sportId: el.dataset.sport, personId: who });
+  }
+  if ((el = hit('data-gohub'))) { e.preventDefault(); while (nav.top() && nav.top().screen !== 'hub') nav.back(); if (!nav.top()) nav.open('hub', {}); nav.remember({ tab: el.dataset.gohub, scroll: 0 }); return show(); }
+  if ((el = hit('data-stats'))) return open('sport', { sportId: el.dataset.stats, personId: null });
+  if ((el = hit('data-practice'))) return open('practice', { sportId: el.dataset.practice });
+  if ((el = hit('data-train'))) return open('train', { sportId: el.dataset.train });
+  if ((el = hit('data-league'))) return open('league', { sportId: el.dataset.league });
   if ((el = hit('data-team')) && el.dataset.team) return open('team', { teamId: el.dataset.team });
   if ((el = hit('data-coach'))) return open('coach', { coachId: el.dataset.coach });
   if ((el = hit('data-season'))) return open('season', { seasonId: el.dataset.season });
@@ -588,6 +717,16 @@ async function onClick(e) {
     return report(sp.hirePrivateCoach(sport.id, pick));
   }
   if ((el = hit('data-dropcoach'))) return report(sp.dropPrivateCoach(el.dataset.dropcoach));
+  if ((el = hit('data-dotrain'))) {
+    const focus = modal.el.querySelector('[data-focus]')?.value;
+    note({ focus });
+    return report(sp.trainFitness(focus));
+  }
+  if ((el = hit('data-work'))) {
+    const skill = modal.el.querySelector('[data-focus]')?.value;
+    note({ focus: skill });
+    return report(sp.extraSession(el.dataset.work, skill));
+  }
   if ((el = hit('data-extra'))) {
     shut();
     const sport = sportOf(el.dataset.extra);

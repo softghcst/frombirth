@@ -10,6 +10,7 @@
 //     conditions families generally know about), never therapy or prescriptions.
 //   - Group members' disclosures are never stored on them.
 import { rng } from '../../rng.js';
+import { clamp } from '../../util.js';
 import { store, player, log } from '../../state.js';
 import { remember } from '../conditions.js';
 import { roleLabel } from '../relationships.js';
@@ -157,9 +158,50 @@ export function tickPeopleHealth(p = player()) {
       } else if (diagnosed && !MENTAL.includes(def.group) && n.meters.relationship >= 40) {
         c.shared = true;
         log(`${n.firstName} tells you they have been diagnosed with ${nameIn(def, store.state.year)}.`, 'system', 'neutral');
+        // And it comes as news, with their face: "Your mother has been diagnosed with cancer."
+        const t = DX_NOTICE[def.id] ?? DX_NOTICE.default;
+        queue('kin_diagnosed', { who: n.id, words: { role: roleWord(n), cond: nameIn(def, store.state.year).toLowerCase(), emoji: t[0], title: t[1] ?? cap(nameIn(def, store.state.year)) } });
       }
     }
   }
+  everydayAilment(p);
+
+}
+
+/** How a shared diagnosis is announced: [emoji, title]. The title defaults to the condition's own name. */
+const DX_NOTICE = { cancer: ['😱', 'Cancer'], heart_disease: ['💔', 'Heart disease'], hypertension: ['🩺', 'High blood pressure'], type2_diabetes: ['🩸', 'Diabetes'],
+  asthma: ['😮‍💨', 'Asthma'], migraine: ['🤕', 'Migraines'], back_pain: ['🦴', 'Back pain'], epilepsy: ['⚡', 'Epilepsy'], default: ['🩺'] };
+const cap = (x) => String(x).charAt(0).toUpperCase() + String(x).slice(1);
+/** "mother", "brother", "grandfather": the word for who they are to the player. */
+function roleWord(n) {
+  const g = n.gender === 'male' ? 0 : n.gender === 'female' ? 1 : 2;
+  const words = { parent: ['father', 'mother', 'parent'], sibling: ['brother', 'sister', 'sibling'], grandparent: ['grandfather', 'grandmother', 'grandparent'],
+    child: ['son', 'daughter', 'child'], grandchild: ['grandson', 'granddaughter', 'grandchild'], spouse: ['husband', 'wife', 'spouse'], partner: ['partner', 'partner', 'partner'],
+    relative: ['relative', 'relative', 'relative'], niece: ['nephew', 'niece', 'niece or nephew'] };
+  return n.flags?.title ? n.flags.title.toLowerCase() : (words[n.role]?.[g] ?? 'relative');
+}
+/** Ordinary illnesses: [what, emoji, title, from age, to age]. A few days in bed, not a condition. */
+const AILMENTS = [
+  ['the flu', '🤒', 'Flu', 0, 120], ['a bad cold', '🤧', 'Cold', 0, 120], ['food poisoning', '🤢', 'Food poisoning', 3, 120], ['diarrhea', '💩', 'Diarrhea', 3, 120],
+  ['chickenpox', '🔴', 'Chickenpox', 1, 12], ['an ear infection', '👂', 'Ear infection', 0, 10], ['a sprained ankle', '🦶', 'Sprained ankle', 6, 80],
+  ['a migraine', '🤕', 'Migraine', 12, 90], ['bronchitis', '😷', 'Bronchitis', 5, 120], ['a kidney stone', '🪨', 'Kidney stone', 25, 90],
+  ['shingles', '🔥', 'Shingles', 55, 120], ['gout', '🦶', 'Gout', 45, 120],
+];
+/**
+ * Once a year at most, someone close comes down with something ordinary, and the player hears of it. A day or two
+ * of feeling rotten; it does them a little harm, and it is news, not a storyline.
+ */
+function everydayAilment(p) {
+  if (p.flags.ailmentYear === store.state.year) return;
+  p.flags.ailmentYear = store.state.year;
+  if (!rng.chance(0.3)) return;
+  const near = p.npcIds.map((id) => store.state.npcs[id]).filter((n) => n?.alive && CLOSE.includes(n.role) && n.meters.relationship >= 25);
+  if (!near.length) return;
+  const n = rng.pick(near);
+  const fits = AILMENTS.filter(([, , , a, b]) => n.age >= a && n.age <= b);
+  const [what, emoji, title] = rng.pick(fits);
+  n.meters.health = clamp(n.meters.health - rng.int(1, 4));
+  if (!store.state.pendingEvents.some((e) => e.id === 'kin_ailment')) store.state.pendingEvents.push({ id: 'kin_ailment', cast: { who: n.id, words: { role: roleWord(n), ailment: what, emoji, title } } });
 }
 
 // Care for the people around the player lives in kincare.js.

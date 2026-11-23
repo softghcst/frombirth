@@ -62,9 +62,9 @@ const before = await page.evaluate(() => document.querySelectorAll('#modal-root 
 await page.evaluate(() => [...document.querySelectorAll('.nav-row.locked')].forEach((b) => b.click()));
 await page.waitForTimeout(150);
 check(await page.evaluate(() => document.querySelectorAll('#modal-root .scrim').length) === before, 'a greyed row cannot be opened');
-await tab('people');
+await tab('self');
 rs = await rows();
-check(rs.some((r) => r.label === 'Look for Love' && r.locked && /From age 14/.test(r.line)), 'people: Look for love is greyed until 14');
+check(rs.some((r) => r.label === 'Look for Love' && r.locked && /From age 14/.test(r.line)), 'self: Look for Love is greyed until 14 (with Adopt a Child, under Love and Family)');
 
 // The same player, grown: the rows open.
 await page.evaluate(async () => { const S = await import('/js/state.js'); const p = S.store.state.player; p.age = 30; p.birthYear = S.store.state.year - 30; p.flags.livesWithParents = false; p.education.enrolled = false; });

@@ -1,5 +1,6 @@
 // Careers: finding work, interviews and auditions, the yearly review, raises,
 // promotions, getting fired, gigs, fame, and retirement.
+import { royalWorkBan } from './royalRules.js';
 import { hasRecord } from './records.js';
 import { licenseBlock } from './credentials.js';
 import { careerBlock, careerExists, eraTitle, worldYear } from './history.js';
@@ -34,7 +35,7 @@ import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '
 import { makeNpc } from './npcFactory.js';
 import { resolve, remember } from './conditions.js';
 import { CAREERS, CAREER_BY_ID, CAREER_CATEGORIES, BRANCHES, RETIREMENT_AGE, EARLY_RETIREMENT_AGE,
-  GIGS, MAX_GIGS_PER_YEAR, FAME_ACTIONS } from '../data/careers.js';
+  GIGS, MAX_GIGS_PER_YEAR, FAME_ACTIONS, FAME_MIN_AGE } from '../data/careers.js';
 import { GENERAL, PRACTICAL, MILITARY, AUDITION_PIECES } from '../data/interviewQuestions.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 import { TRADE_BY_ID, CERT_BY_ID } from '../data/schools.js';
@@ -636,11 +637,15 @@ export function doGig(id) {
 
 export const fame = () => Math.round(player().hidden.fame);
 
+/** Whether the player can use their fame at all: known enough, and old enough (a famous baby cannot). */
+export const canUseFame = (p = player()) => fame() >= 10 && p.age >= FAME_MIN_AGE && !royalWorkBan(p);
+
 /** @returns {{id, name, available:boolean, reason:string}[]} */
 export function fameOptions() {
   const done = acts().fame;
-  return FAME_ACTIONS.map((a) => ({ id: a.id, name: a.name, available: fame() >= a.min && !done[a.id],
-    reason: fame() < a.min ? `Needs ${a.min}% fame.` : done[a.id] ? 'Already done this year.' : '' }));
+  const age = player().age;
+  return FAME_ACTIONS.map((a) => ({ id: a.id, name: a.name, available: !royalWorkBan() && age >= (a.minAge ?? FAME_MIN_AGE) && fame() >= a.min && !done[a.id],
+    reason: royalWorkBan() ? 'Royals do not sell their name.' : age < (a.minAge ?? FAME_MIN_AGE) ? `From age ${a.minAge ?? FAME_MIN_AGE}.` : fame() < a.min ? `Needs ${a.min}% fame.` : done[a.id] ? 'Already done this year.' : '' }));
 }
 
 export function doFameAction(id) {
