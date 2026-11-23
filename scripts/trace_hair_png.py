@@ -390,6 +390,51 @@ def hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, neck_y, extra
 '''
 
 
+def jaw_shift(drawn, target, drawn_lobe, target_lobe):
+    """How far to move hair in at each row (pixels, left side and right side), so the lengths beside the jaw keep the
+    distance from it they were drawn with, on a head whose jaw is narrower (or wider) than the one it was drawn on.
+
+    The fitting warp only knows the crown, forehead, temples and ears, so below the ears hair keeps the width of the
+    jaw it was drawn beside. Each row from just below the ear lobes down to the corner of the jaw it was drawn on
+    compares the two heads' edges (both in the drawing's frame); the most it comes to so far is used, and held below
+    the corner, so the lengths hang straight down from the jaw as they were drawn (rather than following a narrow
+    chin in)."""
+    def edges(mask):
+        l = np.full(SIZE, np.nan); r = np.full(SIZE, np.nan)
+        any_ = mask.any(axis=1)
+        l[any_] = mask[any_].argmax(axis=1)
+        r[any_] = SIZE - 1 - mask[any_][:, ::-1].argmax(axis=1)
+        return l, r
+    (dl, dr), (tl, tr) = edges(drawn), edges(target)
+    y0 = int((max(drawn_lobe, target_lobe) + 8) * PX)
+    w = (dr - dl)[y0:y0 + int(120 * PX)]
+    widest = np.nanmax(w)
+    narrowing = np.nonzero((w < widest - 10 * PX) & (np.arange(w.size) > np.nanargmax(w)))[0]
+    corner = y0 + (narrowing.min() if narrowing.size else w.size - 1)  # where the drawn-on jaw turns in to the chin
+    rows = np.arange(SIZE)
+    out = []
+    for diff in (tl - dl, dr - tr):
+        d = np.zeros(SIZE)
+        seg = np.nan_to_num(diff[y0:corner + 1])
+        d[y0:corner + 1] = np.maximum.accumulate(np.clip(seg, -25 * PX, 40 * PX)) if seg.size else 0
+        d[corner + 1:] = d[corner] if corner < SIZE else 0
+        ramp = np.clip((rows - (y0 - 28 * PX)) / (28 * PX), 0, 1)  # eased in from above the lobes
+        d = np.where(rows < y0, (d[y0] if y0 < SIZE else 0) * ramp, d)
+        out.append(np.clip(ndi.gaussian_filter1d(d, 6 * PX), -25 * PX, 40 * PX))
+    return out[0], out[1]
+
+
+def squeeze(field, left, right):
+    """Moves a field's left half right by `left` px and its right half left by `right` px, row by row."""
+    if not (left.any() or right.any()):
+        return field
+    y, x = np.mgrid[0:SIZE, 0:SIZE].astype(np.float32)
+    side = 1 / (1 + np.exp(-(x - SIZE / 2) / (10 * PX)))  # 0 on the left, 1 on the right, eased across the middle
+    shift = left[:, None] * (1 - side) - right[:, None] * side
+    out = ndi.map_coordinates(field.astype(np.float32), [y, x - shift], order=1, mode='nearest')
+    return out if field.dtype != bool else out > 0.5
+
+
 def build(style, force=False):
     front = os.path.join(PNG_DIR, f'{style}.png')
     back = os.path.join(PNG_DIR, f'{style}_back.png')
@@ -399,11 +444,9 @@ def build(style, force=False):
         return None
     print(f'{style}:')
     fparts, fmask, fstats = trace(front)
-    extra_back, bstats = [], {}
+    bparts, bstats = [], {}
     if os.path.exists(back):
         bparts, _, bstats = trace(back)
-        m, rest = emit(bparts)
-        extra_back = m + rest
     # Its length, texture and minimum age (data-length: short/medium/long/updo; data-type: any, or a texture such as
     # wavy, coily, locs; data-min-age) are set by hand on the traced SVG's root once, and kept when traced again.
     tags = 'data-length="short"'
@@ -427,11 +470,17 @@ def build(style, force=False):
     os.makedirs(per, exist_ok=True)
     for f in os.listdir(per):
         os.remove(os.path.join(per, f))
+    drawn_head, drawn_lobe = head_in_base(EL.head_polys(os.path.join(FH.HEADS, f'{base_name}.svg')))[:2]
     for name, marks in heads.items():
         polys = EL.head_polys(os.path.join(FH.HEADS, f'{name}.svg'))
         warp = None if name == base_name else FH.warp_for(marks, heads[base_name])
         head, lobe_y, shoulder_y, neck_y = head_in_base(polys, warp)
-        svg = hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, neck_y, extra_back, None if name == base_name else name)
+        # On a narrower (or wider) jaw than the one it was drawn beside, the lengths are brought in (or out) to it.
+        left, right = jaw_shift(drawn_head, head, drawn_lobe, lobe_y) if name != base_name else (np.zeros(SIZE), np.zeros(SIZE))
+        hparts = [(n, squeeze(f, left, right), c) for n, f, c in fparts]
+        hmask = squeeze(fmask, left, right)
+        bm, brest = emit([(n, squeeze(f, left, right), c) for n, f, c in bparts]) if bparts else ([], [])
+        svg = hair_svg(style, tags, hparts, hmask, head, lobe_y, shoulder_y, neck_y, bm + brest, None if name == base_name else name)
         with open(out if name == base_name else os.path.join(per, f'{name}.svg'), 'w', encoding='utf-8') as fh:
             fh.write(svg)
     print(f'  front: {fstats}' + (f'\n  back: {bstats}' if bstats else ''))
