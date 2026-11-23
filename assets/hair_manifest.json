@@ -72,6 +72,23 @@
       ]
     },
     {
+      "id": "high_puffs",
+      "name": "High Puffs",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "coily",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "ivy_league_crew_cut",
       "name": "Ivy League Crew Cut",
       "clipToHead": false,
