@@ -73,7 +73,9 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     check(/guinea pig/i.test(text) && !/guinea_pig/.test(text), `${label}: a pet's kind is written as words`);
     if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/death-${label}.png` });
     await page.locator('.modal [data-ok]').last().click(); await page.waitForTimeout(150);
-    check(!(await page.locator('.modal .notice-head').count()), `${label}: the notice closes`);
+    // Toffee's notice closes. (In a random life a brother or sister can be born, or someone else die, the same year: that notice follows.)
+    const left = await page.locator('.modal').evaluateAll((ms) => ms.map((m) => m.innerText.replace(/\n/g, ' / ')));
+    check(!left.some((t) => /Toffee/.test(t) && /In memory/i.test(t)), `${label}: the notice closes (${left.join(' | ')})`);
   }
   check(!errors.length, `${label}: no errors in the page (${errors.join('; ')})`);
   await page.close();
