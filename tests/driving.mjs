@@ -24,9 +24,9 @@ const wrong = () => store.state.player.flags.drivingTest.questions.map((x) => x.
 
 check(DRIVING_QUESTIONS.length >= 15 && DRIVING_QUESTIONS.every(([q, a]) => q.endsWith('?') && a.length === 4 && new Set(a).size === 4), `a bank of real questions (${DRIVING_QUESTIONS.length}), four answers each`);
 
-// Too young.
-life(16);
-check(!cars.startDrivingTest().ok, 'not at 16');
+// Too young: the test is from the country's driving age (16 in the United States).
+life(15);
+check(!cars.startDrivingTest().ok && cars.drivingTestAge() === 16, 'not at 15 in the United States, where the driving age is 16');
 
 // Answer it right: a license.
 {

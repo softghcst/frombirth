@@ -29,6 +29,8 @@ import { navRow, icon, lockedRow, fromAge } from '../kit.js';
 import { workLaw } from '../../engine/worklife.js';
 import * as military from '../../engine/military.js';
 import { openMilitary } from '../military.js';
+import * as career from '../../engine/career.js';
+import { FAME_MIN_AGE } from '../../data/careers.js';
 
 const FUNDING = { employer: 'Paid by your employer', scholarship: 'Scholarship', parents: 'Paid by parents', loan: 'Student loan',
   self: 'Paying your own way', public: 'Publicly funded' };
@@ -421,6 +423,8 @@ function specialCareers(p, list) {
   rows.push(has(list, 'myfame') ? row(['myfame', 'My Fame']) : lockedRow('My Fame', fromAge(p.age, 5) || 'Needs a talent for acting, singing or dance'));
   rows.push(has(list, 'myidol') ? row(['myidol', 'K-pop Idol']) : lockedRow('K-pop Idol', fromAge(p.age, 12) || (store.state.year < 1996 ? 'K-pop begins in the 1990s' : 'Needs a talent for singing or dance')));
   if (has(list, 'fame')) rows.push(row(has(list, 'fame')));
+  // Famous before they can use it (a royal baby): shown, locked until old enough.
+  else if (career.fame() >= 10) rows.push(lockedRow('Use Your Fame', fromAge(p.age, FAME_MIN_AGE)));
   const athletics = p.legal.incarceration ? '' : athleticsCard();
   const politics = politicsCard();
   return `<div class="card"><h3>Special careers</h3><div class="nav-group">${rows.join('')}</div>

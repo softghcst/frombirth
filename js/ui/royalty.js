@@ -16,6 +16,7 @@ import * as peers from '../engine/peerage.js';
 import * as royalEd from '../engine/royaled.js';
 import { MONARCHIES } from '../data/royalty.js';
 import { openModal } from './modals.js';
+import { icon } from './kit.js';
 
 const mood = (v) => (v >= 80 ? 'adored' : v >= 62 ? 'well liked' : v >= 45 ? 'tolerated' : v >= 28 ? 'unpopular' : 'in disgrace');
 
@@ -66,13 +67,13 @@ export function royalCard() {
       <p class="muted" style="margin-top:6px">${esc(rep.meters.map((m) => m.word).join('; ').replace(/^./, (c) => c.toUpperCase()))}.${loud ? ` In the newspapers: ${esc(loud.label)}, ${esc(loud.loud)}.` : ''}</p>`;
   })() : ''}
     <div class="btn-stack" style="margin-top:10px">
-      ${inFamily ? '<button class="btn primary" data-dynasty>The dynasty</button><button class="btn" data-reputation>Reputation</button>' : ''}
-      ${inFamily ? '<button class="btn" data-household>Household and residences</button>' : ''}
-      ${peers.nobleRanks(r.countryId).length ? '<button class="btn" data-titles>Titles and honors</button>' : ''}
-      ${throne.canGovern() ? `<button class="btn" data-state>Affairs of state <small>${throne.powersLeft()} left this year</small></button>` : ''}
-      ${royalEd.royalChild() && p.age >= 8 ? `<button class="btn" data-lessons>Royal lessons <small>${royalEd.lessonTaken() ? 'Done this year' : 'One this year'}</small></button>` : ''}
-      ${crown.canDoDuties() && inFamily ? `<button class="btn" data-duties>Public duties <small>${crown.dutiesLeft()} left this year</small></button>` : ''}
-      ${p.age >= 18 && !r.waiting ? `<button class="btn" data-renounce>${r.rank === 'monarch' && r.reigning ? 'Abdicate' : inFamily ? 'Step back from royal life' : 'Give up the title'}</button>` : ''}
+      ${inFamily ? `<button class="btn primary" data-dynasty>${icon('crown')}The Dynasty</button><button class="btn" data-reputation>${icon('news')}Reputation</button>` : ''}
+      ${inFamily ? `<button class="btn" data-household>${icon('home')}Household and Residences</button>` : ''}
+      ${peers.nobleRanks(r.countryId).length ? `<button class="btn" data-titles>${icon('medal')}Titles and Honors</button>` : ''}
+      ${throne.canGovern() ? `<button class="btn" data-state>${icon('briefcase')}Affairs of State <small>${throne.powersLeft()} left this year</small></button>` : ''}
+      ${royalEd.royalChild() && p.age >= 8 ? `<button class="btn" data-lessons>${icon('book')}Royal Lessons <small>${royalEd.lessonTaken() ? 'Done this year' : 'One this year'}</small></button>` : ''}
+      ${crown.canDoDuties() && inFamily ? `<button class="btn" data-duties>${icon('people')}Public Duties <small>${crown.dutiesLeft()} left this year</small></button>` : ''}
+      ${p.age >= 18 && !r.waiting ? `<button class="btn" data-renounce>${icon('exit')}${r.rank === 'monarch' && r.reigning ? 'Abdicate' : inFamily ? 'Step back from royal life' : 'Give up the title'}</button>` : ''}
     </div></div>`;
 }
 
@@ -184,7 +185,7 @@ async function openHousehold(api) {
     const head = home.isHead();
     const money = (n) => (n === 0 ? '' : n > 0 ? `brings in ${fmtMoney(n, c)} a year` : `costs ${fmtMoney(-n, c)} a year`);
     const pick = await pickModal({
-      title: 'Household and residences',
+      title: 'Household and Residences',
       body: head ? 'As head of the family, its own houses are yours to keep up, open, restore or sell. The palaces belong to the country.' : 'The palaces belong to the country, and the family\'s own houses to its head. Your staff are yours.',
       cancel: 'Done',
       options: [
@@ -226,7 +227,7 @@ async function openTitles(api) {
     const list = peers.roll(cid);
     const can = peers.mayGrant();
     const pick = await pickModal({
-      title: 'Titles and honors',
+      title: 'Titles and Honors',
       body: can ? 'As monarch you may create one title a year, and take any away. Titles pass to the eldest child unless they are given for life.' : 'The titles of the realm. Only the monarch can create or revoke them.',
       cancel: 'Done',
       options: [

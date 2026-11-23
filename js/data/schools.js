@@ -201,7 +201,7 @@ export const CLIQUE_BY_ID = Object.fromEntries(CLIQUES.map((c) => [c.id, c]));
 export const CLUBS = [
   { id: 'dance_class', name: 'Dance classes', from: 4, blurb: 'Ballet, tap and jazz.',
     yearly: { talents: { dance: 5 }, stats: { health: 1 } } },
-  { id: 'choir', name: 'Singing lessons and choir', from: 6, blurb: 'Scales, harmonies, breath.',
+  { id: 'choir', name: 'Choir', from: 6, blurb: 'Singing lessons, harmonies and concerts.',
     yearly: { talents: { singing: 5, music: 1 } } },
   { id: 'youth_theater', name: 'Youth theater', from: 6, blurb: 'Saturday-morning acting classes.',
     yearly: { talents: { acting: 4 }, stats: { charm: 1 } } },

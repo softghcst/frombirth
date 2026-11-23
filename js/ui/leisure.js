@@ -11,6 +11,7 @@ import * as med from '../engine/medical.js';
 import * as fun from '../engine/activities.js';
 import { CHARM_ACTIVITIES } from '../data/activities.js';
 import * as clubs from '../engine/clubs.js';
+import { clubTitle } from '../data/clubs.js';
 import * as net from '../engine/social.js';
 import * as move from '../engine/emigration.js';
 import { messageModal, pickModal, confirmModal, inputModal, openModal } from './modals.js';
@@ -216,22 +217,22 @@ export async function openClubs(api, id = 'find') {
     const next = clubs.nextRank(id);
     const dues = clubs.duesOf(m.club);
     const friends = m.friends.length;
-    const pick = await pickModal({ title: m.club.name.replace(/^(A|An|The) /, '').replace(/^./, (x) => x.toUpperCase()),
+    const pick = await pickModal({ title: clubTitle(m.club),
       body: `${m.club.blurb} You joined in ${m.since}${m.years ? ` and have been a member for ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}. ${m.rankName === 'Member' ? 'You are a member.' : `You are ${m.rankName.toLowerCase()}.`} Dues: ${dues ? `${fmtMoney(dues, c)} a year` : 'nothing for you'}.${friends ? ` Friends made here: ${friends}.` : ''}`,
       cancel: 'Back',
-      options: [...(next ? [{ value: 'stand', label: next.rank === 1 ? 'Stand for the committee' : `Stand for ${next.name.toLowerCase()}`, sub: next.why || 'The members vote. Charm and loyalty count.', disabled: !!next.why }] : []),
-        { value: 'leave', label: 'Leave the club' }] });
+      options: [...(next ? [{ value: 'stand', label: next.rank === 1 ? 'Run for the Committee' : `Run for ${next.name}`, sub: next.why || 'The members vote. Charm and loyalty count.', disabled: !!next.why }] : []),
+        { value: 'leave', label: 'Leave' }] });
     if (pick === 'stand') return report(api, clubs.standFor(id));
     if (pick === 'leave' && await confirmModal({ title: 'Leave?', body: m.rank ? 'Someone else will take your place on the committee.' : 'You can always join again.', yes: 'Leave', danger: true })) return report(api, clubs.leave(id));
     return undefined;
   }
   const kinds = clubs.clubOptions();
-  const kind = await pickModal({ title: 'Clubs and classes', body: `Join and keep going: each year a club costs its dues, adds a little to what it is about, and brings people. Up to four at once.`,
-    options: kinds.map((k) => ({ value: k.id, label: k.name, sub: `${k.clubs.filter((x) => !x.why).length} open to you of ${k.clubs.length}` })) });
+  const kind = await pickModal({ title: 'Clubs and Classes', body: 'Each year a club costs its dues, makes you a little better at it, and brings new people. Up to four at once.',
+    options: kinds.map((k) => ({ value: k.id, label: k.name, sub: `${k.clubs.filter((x) => !x.why).length} of ${k.clubs.length} open to you` })) });
   if (!kind) return undefined;
   const list = kinds.find((k) => k.id === kind).clubs;
   const pick = await pickModal({ title: kinds.find((k) => k.id === kind).name, cancel: 'Back',
-    options: list.map((x) => ({ value: x.club.id, label: x.club.name.replace(/^./, (y) => y.toUpperCase()), disabled: !!x.why,
+    options: list.map((x) => ({ value: x.club.id, label: clubTitle(x.club), disabled: !!x.why,
       sub: `${x.why || x.club.blurb} ${x.dues ? `· ${fmtMoney(x.dues, c)} a year` : x.why ? '' : '· free'}`.trim() })) });
   if (!pick) return openClubs(api);
   return report(api, clubs.join(pick));

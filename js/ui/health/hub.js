@@ -10,6 +10,7 @@
 import { store, player, country } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
 import { openModal, messageModal, pickModal, confirmModal } from '../modals.js';
+import { icon } from '../kit.js';
 import { avatarSvg } from '../avatar.js';
 import { seeDoctor } from '../leisure.js';
 import { CONDITION_BY_ID, GROUPS, MENTAL, nameIn } from '../../data/health/conditions.js';
@@ -41,7 +42,16 @@ const nav = { section: 'overview', page: null, journey: 'overview', open: {}, sc
 
 const card = (title, body, extra = '') => `<div class="card hl-card"${extra}>${title ? `<h3>${title}</h3>` : ''}${body}</div>`;
 const kv = (a, b) => `<div class="kv"><span>${esc(a)}</span><span>${b}</span></div>`;
-const btn = (label, act, o = {}) => `<button class="btn ${o.primary ? 'primary' : ''} ${o.small ? 'hl-small' : ''}" data-act="${act}" ${o.arg != null ? `data-arg="${esc(o.arg)}"` : ''} ${o.disabled ? 'disabled' : ''}>${esc(label)}</button>`;
+/** Every option has an icon beside it: by what it does (a check-up is a doctor, talking is a speech bubble). */
+const ACT_ICON = {
+  accommodate: 'briefcase', adapt: 'home', addNeed: 'heart', appeal: 'letter', cancel: 'close', change: 'people', dbt: 'compass', dbtFocus: 'compass',
+  declineDevice: 'settings', device: 'settings', discuss: 'chat', discussMeds: 'chat', discussMedsPick: 'chat', doctor: 'doctor', end: 'exit',
+  findTherapy: 'people', goals: 'star', journey: 'compass', pause: 'calendar', physio: 'health', report: 'letter', resume: 'calendar', retire: 'archive',
+  second: 'doctor', seekOther: 'clipboard', tell: 'people', uninsure: 'coin', insure: 'coin', follow: 'settings', sensitive: 'settings', gene: 'family',
+  resched: 'calendar', shareFamily: 'family', startTherapy: 'people',
+};
+const actIcon = (act, arg) => (act === 'seek' ? icon(arg === 'mental' ? 'chat' : 'doctor') : ACT_ICON[act] ? icon(ACT_ICON[act]) : icon('sparkle'));
+const btn = (label, act, o = {}) => `<button class="btn ${o.primary ? 'primary' : ''} ${o.small ? 'hl-small' : ''}" data-act="${act}" ${o.arg != null ? `data-arg="${esc(o.arg)}"` : ''} ${o.disabled ? 'disabled' : ''}>${actIcon(act, o.arg)}${esc(label)}</button>`;
 const pill = (text, tone = '') => `<span class="hl-pill ${tone}">${esc(String(text).charAt(0).toUpperCase() + String(text).slice(1).replace(/_/g, ' '))}</span>`;
 const bar = (label, v, goodHigh = true) => `<div class="hl-meter"><span>${esc(label)}</span><i><b style="width:${Math.round(v)}%" class="${(goodHigh ? v : 100 - v) >= 60 ? 'good' : (goodHigh ? v : 100 - v) >= 35 ? 'mid' : 'low'}"></b></i><em>${esc(words(label, v))}</em></div>`;
 const muted = (t) => `<p class="muted">${t}</p>`;
@@ -112,10 +122,12 @@ function overview(p, h) {
 
       </div>
       `)}
-    ${card('Getting help', `<div class="btn-stack">${btn('Talk to someone about how I have been feeling', 'seek', { arg: 'mental' })}${btn('Other kinds of assessment', 'seekOther')}${btn('My Treatment Journey', 'journey')}</div>`)}
+    ${card('Getting help', p.age < care.MENTAL_CARE_AGE
+    ? `${muted(`Talking to someone, assessments and therapy are from age ${care.MENTAL_CARE_AGE}. Until then, your parents take you to the doctor when something is wrong.`)}<div class="btn-stack">${btn('Other kinds of assessment', 'seekOther')}</div>`
+    : `<div class="btn-stack">${btn('Talk to someone about how I have been feeling', 'seek', { arg: 'mental' })}${btn('Other kinds of assessment', 'seekOther')}${btn('My Treatment Journey', 'journey')}</div>`)}
     ${card('Preferences', `${kv('After a review', h.settings.follow ? 'Go with my clinician\'s recommendation' : 'Ask me each time')}
       ${kv('Hard storylines', h.settings.sensitive === 'full' ? 'Shown' : 'Reduced')}
-      <div class="btn-row" style="margin-top:8px">${btn(h.settings.follow ? 'Ask me each time' : 'Follow recommendations', 'follow', { small: true })}${btn(h.settings.sensitive === 'full' ? 'Reduce hard storylines' : 'Show them again', 'sensitive', { small: true })}</div>
+      <div class="btn-row" style="margin-top:8px">${btn(h.settings.follow ? 'Ask me each time' : 'Follow advice', 'follow', { small: true })}${btn(h.settings.sensitive === 'full' ? 'Reduce hard storylines' : 'Show them again', 'sensitive', { small: true })}</div>
       `)}`;
 }
 
@@ -177,7 +189,8 @@ function mental(p, h) {
     ${dx.length ? card('Diagnoses', dx.map((d) => `<button class="row hl-cond" data-cond="${esc(d.id)}"><div class="main"><strong>${esc(d.name.charAt(0).toUpperCase() + d.name.slice(1))}</strong><small>${esc(dxLine(d, h))}</small></div><div class="side">›</div></button>`).join('')) : ''}
     ${card('Care', `${active.length ? active.map((c) => kv(THERAPY_BY_ID[c.therapyId].name, esc(`${c.attended} session${c.attended === 1 ? '' : 's'}`))).join('') : muted('No current therapy.')}
       ${h.trials.filter(meds.isLive).map((t) => kv(MED_BY_ID[t.medicationId].name, esc(meds.RESPONSE_WORDS[t.responseState]))).join('')}
-      <div class="btn-stack" style="margin-top:10px">${btn('Book an assessment', 'seek', { arg: 'mental' })}${btn('Find a therapist or group', 'findTherapy')}${h.therapies.some((c) => THERAPY_BY_ID[c.therapyId].dbt) ? btn('My DBT Journey', 'dbt') : ''}</div>`)}
+      ${p.age < care.MENTAL_CARE_AGE ? muted(`Assessments and therapy are from age ${care.MENTAL_CARE_AGE}.`) : ''}
+      <div class="btn-stack" style="margin-top:10px">${p.age < care.MENTAL_CARE_AGE ? '' : `${btn('Book an assessment', 'seek', { arg: 'mental' })}${btn('Find a therapist or group', 'findTherapy')}`}${h.therapies.some((c) => THERAPY_BY_ID[c.therapyId].dbt) ? btn('My DBT Journey', 'dbt') : ''}</div>`)}
     ${skills.length ? card('Skills you have practiced', skills.map(([k, v]) => bar(SKILLS[k], v)).join('')) : ''}`;
 }
 
@@ -448,7 +461,7 @@ export function openHealth(api, to = {}) {
     if (!therapyId) {
       const offered = new Map();
       for (const d of dxs) for (const t of care.careOptions(d.id).therapies) if (t.ok) offered.set(t.therapyId, { ...t, dxId: d.id, for: d.name });
-      for (const id of ['supportive', 'dbt_group', 'depression_peer', 'grief_peer', 'disability_peer', 'couples']) if (!offered.has(id) && THERAPY_BY_ID[id] && store.state.year >= THERAPY_BY_ID[id].from) offered.set(id, { therapyId: id, name: THERAPY_BY_ID[id].name, dxId: null, for: 'support' });
+      for (const id of ['supportive', 'dbt_group', 'depression_peer', 'grief_peer', 'disability_peer', 'couples']) if (!offered.has(id) && THERAPY_BY_ID[id] && store.state.year >= THERAPY_BY_ID[id].from && p.age >= THERAPY_BY_ID[id].minAge && !(THERAPY_BY_ID[id].maxAge && p.age > THERAPY_BY_ID[id].maxAge)) offered.set(id, { therapyId: id, name: THERAPY_BY_ID[id].name, dxId: null, for: 'support' });
       const pick = await pickModal({ title: 'What kind of support?', body: 'Therapy is offered for what you have been diagnosed with; some support needs no diagnosis at all.',
         options: [...offered.values()].map((t) => ({ value: t.therapyId, label: t.name, sub: `${THERAPY_BY_ID[t.therapyId].blurb}${t.for !== 'support' ? ` For ${t.for}.` : ''}` })) });
       if (!pick) return draw(true);
@@ -466,7 +479,7 @@ export function openHealth(api, to = {}) {
 
   async function seek(concern) {
     if (!concern) {
-      concern = await pickModal({ title: 'What would you like help with?', options: Object.entries(care.CONCERNS).map(([id, c]) => ({ value: id, label: c.label })) });
+      concern = await pickModal({ title: 'What would you like help with?', options: care.concernsFor(p).map((id) => ({ value: id, label: care.CONCERNS[id].label })) });
       if (!concern) return draw(true);
     }
     const list = care.serviceOptions(concern, p);

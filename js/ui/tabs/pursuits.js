@@ -17,7 +17,9 @@ import { playBlackjack, playHorses, playLottery } from '../minigames/casino.js';
 import { meterHtml } from '../meter.js';
 import { messageModal, pickModal, confirmModal, openModal, selectModal } from '../modals.js';
 import * as fun from '../../engine/activities.js';
+import { atSchool } from '../../engine/schooling.js';
 import * as clubLife from '../../engine/clubs.js';
+import { clubTitle } from '../../data/clubs.js';
 import * as martial from '../../engine/martial.js';
 import { openDigitalLife, digitalCard } from '../digital.js';
 import * as bc from '../../engine/digital/broadcast.js';
@@ -155,6 +157,7 @@ export default {
       const cc = p.flags.childhood ?? {};
       // What is not open yet is shown greyed, with why, in its place in the list.
       const jailed = p.legal.incarceration ? 'Not from where you are' : '';
+      const inSchool = atSchool(p);
       const lock = (label, why) => `<div class="nav-group">${lockedRow(label, why)}</div>`;
       el.innerHTML = `
         ${thisYearCard()}
@@ -173,11 +176,12 @@ export default {
         </div>` : ''}
         <div class="section-label">Fun and hobbies</div>
         ${p.age >= lessons.LESSON_AGE && !p.legal.incarceration ? navGroup([navRow({ attrs: 'data-lessons', label: 'Lessons', sub: lessons.asksParents() ? 'Ask your parents for music, martial arts, dance and more' : '' })]) : lock('Lessons', jailed || fromAge(p.age, lessons.LESSON_AGE))}
-        ${p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and classes', jailed || fromAge(p.age, 6))}
-        ${p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and classes</h3>
+        ${/* At school, every club (the school's and those outside it) is under School › Activities: not here as well. */ ''}
+        ${inSchool ? '' : p.age >= 6 && !p.legal.incarceration ? '' : lock('Clubs and Classes', jailed || fromAge(p.age, 6))}
+        ${!inSchool && p.age >= 6 && !p.legal.incarceration ? `<div class="card"><h3>Clubs and Classes</h3>
           <p class="muted" style="margin-bottom:10px">${clubLife.memberships().length ? 'Kept up year after year: dues each year, a little better at it, and the people you meet.' : 'Choirs, chess, running, pottery, debating, the scouts and more. Join, and keep going.'}</p>
-          <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(m.club.name.replace(/^(A|An|The) /, '').replace(/^./, (x) => x.toUpperCase()))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
-            <button class="btn primary" data-club="find">Find a club or class</button></div>
+          <div class="btn-stack">${clubLife.memberships().map((m) => `<button class="btn" data-club="${m.id}">${esc(clubTitle(m.club))} · ${esc(m.rankName === 'Member' ? `member${m.years ? `, ${m.years} ${m.years === 1 ? 'year' : 'years'}` : ''}` : m.rankName.toLowerCase())}</button>`).join('')}
+            <button class="btn primary" data-club="find">Find a Club or Class</button></div>
         </div>` : ''}
         ${p.age >= 5 && !p.legal.incarceration ? `<div class="card"><h3>Martial arts</h3>
           <div class="nav-group">${martial.styles().map((st) => navRow({ attrs: `data-martial="${st.id}"`, label: st.name, sub: st.started ? `${st.rank}${/^(White|Yellow|Orange|Green|Blue|Purple|Brown|Black)$/.test(st.rank) ? ' belt' : ''} · ${st.moves.length} ${st.moves.length === 1 ? 'move' : 'moves'}` : st.why || `From ${st.from}`, ico: 'trophy' })).join('')}</div>

@@ -20,6 +20,7 @@
 // Performers in the pool are NPCs (state.npcs, role 'performer') who are not
 // part of the player's life until they work together; then they are, as
 // colleagues, and stay so.
+import { royalWorkBan } from './royalRules.js';
 import { rng } from '../rng.js';
 import { clamp, fmtMoney, localWage, uid } from '../util.js';
 import { store, player, country, log, milestone } from '../state.js';
@@ -376,6 +377,7 @@ export function whyNot(prod, r, p = player()) {
   const k = PRODUCTION_KINDS[prod.kind];
   if (!exists(k.medium)) return `There is no ${k.name.toLowerCase()} yet.`;
   if (p.legal.incarceration) return 'Not from a cell.';
+  if (royalWorkBan(p)) return 'Royals do not take paid parts.';
   if (prod.cast.some((x) => x.who === 'player') || f.contracts.some((c) => c.productionId === prod.id && ['offered', 'signed'].includes(c.status))) return 'You are already in this production, or have an offer from it.';
   if (p.age < r.ages[0] - 2 || p.age > r.ages[1] + 4) return `They are casting someone of about ${r.ages[0]}–${r.ages[1]}.`;
   if (p.age < 6) return 'Too young to work.';

@@ -47,6 +47,13 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   await page.waitForTimeout(200);
   await page.click('.modal [data-go="activities"]'); await page.waitForTimeout(150);
   check(await page.locator('[data-club-act]').count() >= 4, `${label}: each club has things to do`);
+  check(await page.locator('[data-club-act="choir:event"]').count() === 1 && /Sing in the concert/.test(await page.locator('[data-club-act="choir:event"]').innerText()), `${label}: each club has its big moment of the year`);
+  check(/Each year: your singing and music go up/.test(await page.locator('.modal').last().innerText()), `${label}: and says what a year in it does`);
+  check(!/Singing lessons and choir/i.test(await page.locator('.modal').last().innerText()), `${label}: the choir is just the Choir`);
+  // Clubs outside school are here too, at school: one place for every club, and not a second list in Pursuits.
+  check(await page.locator('.modal [data-outclub="find"]').count() === 1 && /Outside School/i.test(await page.locator('.modal').last().innerText()), `${label}: clubs outside school are under Activities`);
+  check(await page.evaluate(async () => { const { default: tab } = await import('/js/ui/tabs/pursuits.js'); const el = document.createElement('div'); tab.render(el, { changed() {}, rerender() {} }); return !/Clubs and Classes/i.test(el.innerText || el.textContent); }), `${label}: and not in Pursuits while at school`);
+  if (process.env.SHOT) { await page.locator('.modal [data-outclub="find"]').scrollIntoViewIfNeeded(); await page.screenshot({ path: `${process.env.SHOT}/clubs-outside-${label}.png` }); }
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/clubs-${label}.png` });
   await page.locator('[data-club-act="choir:practice"]').click(); await page.waitForTimeout(200);
   check(await page.locator('#modal-root .scrim').count() === 2, `${label}: doing one says what happened`);
