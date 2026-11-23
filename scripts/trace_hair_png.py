@@ -77,8 +77,10 @@ MAIN = (0x8f, 0x4b, 0x29)   # the color the game dyes
 OUTLINE = '#23140f'
 OUTLINE_W = 6
 MIN_AREA = 6                # specks smaller than this (square units) are dropped
+MIN_INK = 5          # ink fragments (strand lines) smaller than this are dropped
 MIN_SHADE_AREA = 14         # shadow and highlight shapes smaller than this too
-DISK3 = (lambda r: (np.add.outer(np.arange(-r, r + 1) ** 2, np.arange(-r, r + 1) ** 2) <= r * r))(3)
+DISK = lambda r: np.add.outer(np.arange(-r, r + 1) ** 2, np.arange(-r, r + 1) ** 2) <= r * r
+DISK3, DISK5 = DISK(3), DISK(5)
 CORNER_DEG = 58             # a turn sharper than this stays a point (lock tips)
 
 
@@ -217,7 +219,18 @@ def trace(path):
     main_rgb = smooth_rgb[mask][near].mean(axis=0)
     main_l = float(lum(main_rgb[None])[0])
 
-    ink = mask & (L < min(70, main_l * 0.55))
+    # Ink: dark enough, and joined to some truly dark ink (hysteresis), so a deep shadow tone that is nearly as dark as
+    # the lines does not break up into specks of ink.
+    # Measured on a slightly smoothed brightness, and thinner bits than a drawn line (grain) dropped first.
+    Ls = ndi.gaussian_filter(L, 1.5)
+    weak = ndi.binary_opening(mask & (Ls < min(70, main_l * 0.55)), structure=DISK(2))
+    lab, n = ndi.label(weak)
+    if n:
+        strong = np.zeros(n + 1, bool)
+        strong[np.unique(lab[weak & (Ls < min(45, main_l * 0.38))])] = True
+        strong[0] = False
+        weak = strong[lab]
+    ink = weak
     sdf = ndi.distance_transform_edt(mask) - ndi.distance_transform_edt(~mask)  # inside > 0, in pixels
     sdf = ndi.gaussian_filter(sdf, 1.5)
     ow = OUTLINE_W * PX
@@ -227,17 +240,19 @@ def trace(path):
     # inside the silhouette, drawn last, as a filled shape (so the hair can be cut in two with no outline along the cut).
     parts = [('main', sdf, hexc(MAIN))]
     inner = sdf > ow * 0.85
-    ratio = L / max(1, main_l)
+    # Tones are told apart on a smoothed brightness, so grain or texture in the picture does not flicker across the
+    # line between two tones and leave specks.
+    ratio = ndi.gaussian_filter(L, 3) / max(1, main_l)
     stats = {}
     for name, sel in (('shadow', (ratio < 0.8) & ~ink), ('highlight', ratio > 1.16)):
-        m = ndi.binary_opening(sel & inner, structure=DISK3)
+        m = ndi.binary_closing(ndi.binary_opening(sel & inner, structure=DISK5), structure=DISK3)
         m = clean(m, MIN_SHADE_AREA)
         if m.any():
             r = float(np.median(ratio[m]))
             parts.append((name, as_field(m), hexc(np.array(MAIN) * min(r, 2.2))))  # same hue as the main color, so it dyes
             stats[name] = int(m.sum() / PX / PX)
     # Ink drawn inside the hair (strand lines), and wisps too thin for the outline band to hold.
-    lines = clean(ink & (sdf > ow * 0.9), 2)
+    lines = clean(ink & (sdf > ow * 0.9), MIN_INK)
     wisps = clean(mask & (sdf < ow * 0.5) & ~ndi.binary_dilation(sdf > ow * 0.5, iterations=int(ow * 0.6)), 2)
     extra = lines | wisps
     if extra.any():
