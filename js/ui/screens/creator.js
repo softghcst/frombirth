@@ -76,7 +76,7 @@ export function renderCreator(app, hooks) {
     <main class="title-screen creator">
       <div class="creator-head">
         <div class="avatar preview" data-preview></div>
-        <div><h1>Design a life</h1><p class="muted" data-head-note>Leave anything on Random and fate will decide.</p></div>
+        <div><h1>Design a Life</h1><p class="muted" data-head-note>Leave anything on Random and fate will decide.</p></div>
       </div>
       <button type="button" class="btn randomize-all" data-randomize>${DIE}<span>Randomize everything</span></button>
       <form novalidate>

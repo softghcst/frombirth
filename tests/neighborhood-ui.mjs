@@ -133,17 +133,14 @@ for (const [name, viewport] of [['phone', { width: 390, height: 844 }], ['deskto
     await page.waitForSelector('.tab-btn[data-tab="people"].active, .tab-btn[data-tab="people"][aria-selected="true"], [data-top]', { timeout: 8000 }).catch(() => {});
     await settle(page);
     // A neighbor you have only met is kept off the People tab; it links to them on My Neighborhood instead.
-    // Whether they still live nearby: a household can move away in six months, and then they are on People like anyone.
-    const { role, nearby } = await page.evaluate(async (id) => {
-      const { store } = await import('/js/state.js'); const N = await import('/js/engine/neighborhood.js');
-      const here = N.currentHood(store.state);
-      return { role: store.state.npcs[id]?.role, nearby: !!here && N.knownIn(store.state, here.id).some((n) => n.id === id) };
-    }, met);
-    if (role === 'neighbor' && nearby) {
+    const role = await page.evaluate(async (id) => (await import('/js/state.js')).store.state.npcs[id]?.role, met);
+    // A neighbor whose household has since moved away is no longer close by, and is listed with everyone else.
+    const stillHere = await page.evaluate(async (id) => { const S = (await import('/js/state.js')).store.state; const N = await import('/js/engine/neighborhood.js'); const h = N.currentHood(S); return !!h && N.knownIn(S, h.id).some((n) => n.id === id); }, met);
+    if (role === 'neighbor' && stillHere) {
       const where = await page.evaluate((id) => [...document.querySelectorAll(`[data-panel-body] [data-npc="${id}"]`)].map((e) => e.closest('.card, section, .scrim')?.className ?? '?'), met);
       check(where.length === 0, `${name}: a neighbor you have only met is not on the People tab (${where.join(', ')})`);
       check(await page.locator('[data-panel-body] [data-top="neighbors"]').count() === 1, `${name}: the People tab links to the neighbors you know`);
-    } else check(await page.locator(`[data-npc="${met}"]`).count() === 1, `${name}: a neighbor who became a friend, or moved away, is on the People tab (${role}, ${nearby ? 'nearby' : 'moved'})`);
+    } else check(await page.locator(`[data-npc="${met}"]`).count() === 1, `${name}: a neighbor who became a friend is on the People tab`);
   }
   await openHood(page);
   await tab(page, 'neighbors');

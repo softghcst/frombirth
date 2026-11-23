@@ -52,21 +52,21 @@ export function renderTitle(app, hooks) {
 
   app.innerHTML = `
     <main class="title-screen">
-      <div class="title-hero">${MARK}<h1>Pathways</h1><p>One life. One year at a time.</p></div>
+      <div class="title-hero">${MARK}<h1>Pathways</h1><p>One Life. One Year at a Time.</p></div>
       <div class="btn-stack title-actions">
-        <button class="btn peach big" data-random>${icon('sparkle')}Begin a random life</button>
-        <button class="btn" data-design>${icon('id')}Design a life</button>
+        <button class="btn peach big" data-random>${icon('sparkle')}Begin a Random Life</button>
+        <button class="btn" data-design>${icon('id')}Design a Life</button>
         <div class="btn-row">
-          <button class="btn" data-world>${icon('globe')}The world</button>
+          <button class="btn" data-world>${icon('globe')}The World</button>
           <button class="btn" data-settings>${icon('settings')}Settings</button>
         </div>
       </div>
       ${cloud.signedIn() ? `<p class="muted sync-line" data-sync-line>${esc(cloudLine())}</p>` : ''}
-      <div class="title-section"><h2>Saved lives</h2>
+      <div class="title-section"><h2>Saved Lives</h2>
         ${slotRows || '<p class="empty">No lives in progress.</p>'}</div>
       <div class="title-section"><h2>Graveyard</h2>
         ${graveRows || '<p class="empty">Nobody is buried here yet.</p>'}
-        ${graves.length ? `<button class="btn" data-epitaphs style="margin-top:10px">Epitaphs earned: ${epitaphsEarned().length} of ${EPITAPHS.length}</button>` : ''}</div>
+        ${graves.length ? `<button class="btn" data-epitaphs style="margin-top:10px">Epitaphs Earned: ${epitaphsEarned().length} of ${EPITAPHS.length}</button>` : ''}</div>
     </main>`;
 
   app.querySelector('[data-random]').addEventListener('click', () => hooks.onPlay(createLife()));

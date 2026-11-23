@@ -4,6 +4,18 @@ const scene = (id, ages, text, choices) => ({ id, category: 'Service', ageRange:
   choices: choices.map(([label, value, line, tone = 'neutral']) => ({ label, outcomes: [{ on: 'always', text: line, tone, effects: [m(value)] }] })) });
 
 export default [
+  scene('mil_ns_idol', [18, 40], 'You are {age}, and your enlistment cannot be put off any longer. The fans have been counting down; {group} has been planning around it for a year.', [
+    ['Enlist quietly, with a letter to the fans', 'nsi:quiet', 'You write it by hand.'],
+    ['A farewell for the fans first', 'nsi:farewell', 'One last meeting before you go.'],
+    ['Ask for the state culture medal deferral', 'nsi:medal', 'Your agency puts the request in.'],
+    ['Ask the medical board about public service', 'nsi:public', 'You go for the medical.'],
+    ['Refuse', 'nsi:refuse', 'You say you will not go.', 'bad'],
+  ]),
+  scene('mil_ns_athlete', [20, 40], 'Military service is due before you turn {by}: about eighteen months. The armed forces have an athletic team that takes the best and keeps them competing in your sport, {sport}.', [
+    ['Apply to the athletic team', 'nsa:team', 'You send in your record.'],
+    ['Serve like anyone else', 'nsa:regular', 'You enlist.'],
+    ['Not yet', 'nsa:later', 'One more season first.'],
+  ]),
   scene('mil_basic_training', [16, 60], 'The first morning of {kind} with the {branch} starts at five, with shouting. Weeks of this lie ahead.', [
     ['Push to the front', 'basic:push', 'You decide to be the one they remember.'],
     ['Help a recruit who is struggling', 'basic:help', 'There is one who will not make it alone.'],
