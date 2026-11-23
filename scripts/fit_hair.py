@@ -342,9 +342,12 @@ def drawable(root):
     return out
 
 
-def fit_file(path, base, heads):
+BASE_MARKS = [None]  # the base head's landmarks, set by main(): every warp starts from them
+
+
+def fit_file(path, base, heads, name=None):
     """-> {head name: the fitted SVG text}."""
-    name = os.path.basename(path)[:-4]
+    name = name or os.path.basename(path)[:-4]
     parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
     tree = ET.parse(path, parser)
     root = tree.getroot()
@@ -372,7 +375,7 @@ def fit_file(path, base, heads):
             el.set('style', ';'.join(css + ([el.get('style')] if el.get('style') else [])))
     out = {}
     for head, dst in heads.items():
-        warp = warp_for(heads[base], dst)
+        warp = warp_for(BASE_MARKS[0], dst)
         for el, tag, cmds, pts in items:
             moved = warp(pts) if len(pts) else pts
             if tag != 'path':
@@ -525,6 +528,7 @@ and for hair cutting into the face or ears.</p>
 
 def main():
     base, heads, skipped = load_heads()
+    BASE_MARKS[0] = heads[base]
     os.makedirs(RAW, exist_ok=True)
     os.makedirs(FITTED, exist_ok=True)
     raws = sorted(f for f in os.listdir(RAW) if f.lower().endswith('.svg'))
@@ -538,6 +542,13 @@ def main():
         name = re.sub(r'[^a-z0-9]+', '_', raw[:-4].lower()).strip('_')
         print(f'{name}:')
         fitted = fit_file(os.path.join(RAW, raw), base, heads)
+        # A style traced from a PNG has its own version for each head (which hair is in front of the head and which
+        # behind depends on that head's jaw, ears and shoulders): assets/hair_raw/heads/<style>/<head>.svg.
+        per = os.path.join(RAW, 'heads', raw[:-4])
+        for head in heads:
+            own = os.path.join(per, f'{head}.svg')
+            if os.path.exists(own):
+                fitted[head] = fit_file(own, base, {head: heads[head]}, name=raw[:-4])[head]
         for head, text in fitted.items():
             out = f'{name}_{head}.svg'
             with open(os.path.join(FITTED, out), 'w', encoding='utf-8') as f:

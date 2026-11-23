@@ -25,25 +25,33 @@ knows what hair in this game is made of, and rebuilds it from those parts instea
               shade of the main color (so they dye).
   wisps       anything thinner than the outline (a flyaway strand) is kept as ink, so nothing drawn is lost.
 
-Front and back: everything above the ears is drawn in front of the head, and from the ears down only locks that
-fall over the face; the lengths beside the jaw and neck go behind it (hair_back), so a wider jaw draws over them and a
-narrower one shows hair beside it, never a gap (a hidden fill behind the jaw and neck, out of sight on the template
+Front and back: hair next to the jaw and neck (below the ear lobes, above the shoulders) goes behind the head
+(hair_back), so a wider jaw draws over it and a narrower one shows hair beside it, never a gap; everything else, the
+ears' cover and lengths over the shoulders included, stays in front (a hidden fill behind the jaw and neck, out of sight on the template
 head, sees to that). The outline is an even filled band, so cutting the hair in two leaves no line along the cut.
 
 Every edge is a smooth curve (Catmull-Rom through a simplified contour, turned into Bezier curves), with sharp points
 kept sharp, as on the tips of locks. Specks smaller than a few units are dropped.
 
-Writes assets/hair_raw/<style>.svg (marked data-from-png="1"), which `npm run fit-hair` then fits to every head, and
+Which hair is in front and which behind depends on each head's own jaw, ears and shoulders, so it is worked out on
+every head: the head's outline is mapped back onto the base head (the inverse of the fitting warp), its ear lobes and
+shoulders measured from it, and a version of the style written for it.
+
+Writes assets/hair_raw/<style>.svg (marked data-from-png="1"; the base head's version) and
+assets/hair_raw/heads/<style>/<head>.svg (each other head's), which `npm run fit-hair` then fits to each head, and
 scripts/debug_hair_png.html: each picture next to its SVG, on the base head, to check by eye that nothing was lost.
 A style whose SVG is newer than its PNG is skipped unless named on the command line.
 """
-import os, sys, math
+import json, os, sys, math
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     import numpy as np
     from PIL import Image
     from scipy import ndimage as ndi
     from skimage import measure
+    import extract_landmarks as EL  # noqa: E402  (head outlines)
+    import fit_hair as FH  # noqa: E402  (heads, landmarks and the warp between them)
 except ImportError as err:
     sys.exit(f'{err}\nInstall the pipeline\'s Python packages first:  pip install -r scripts/requirements.txt')
 
@@ -53,8 +61,12 @@ PNG_DIR = os.path.join(ROOT, 'assets', 'hair_png')
 RAW = os.path.join(ROOT, 'assets', 'hair_raw')
 DEBUG_HTML = os.path.join(HERE, 'debug_hair_png.html')
 TEMPLATE = os.path.join(PNG_DIR, 'TEMPLATE_base_head.png')
-EAR_Y = 278          # the base head's ears (assets/landmarks.json): hair below this beside the head goes behind it
-NECK_Y = 470         # the base of its neck: the filler behind the jaw and neck stops here
+LANDMARKS = os.path.join(ROOT, 'assets', 'landmarks.json')
+_BASE = json.load(open(LANDMARKS))[json.load(open(LANDMARKS))['base_head']]
+BASE_EAR_Y = _BASE['ear_left']['y']                            # where the ears join the base head
+EAR_X = (_BASE['ear_left']['x'], _BASE['ear_right']['x'])
+EAR_PAD = 7          # hair over an ear reaches this far past it, so no edge of the ear peeks out
+BEHIND_REACH = 40    # how far out from the head's outline hair beside the jaw goes behind it (so a wider jaw is clear)
 MIN_LOCK = 150       # a piece of hair over the face below the ears must be this big (square units) to stay in front
 FACE_MARGIN = 12     # below the ears, hair stays in front of the face only this far inside the head's outline
 
@@ -248,26 +260,104 @@ def emit(parts, region=None):
     return [p for n, p in out if n == 'main'], [p for n, p in out if n != 'main']
 
 
-def regions(mask):
-    """Where hair is in front of the head and where behind, from the template head (fields, > 0 inside), and the head."""
-    head = np.asarray(Image.open(TEMPLATE).convert('RGBA').resize((SIZE, SIZE)))[..., 3] > 127
-    head = ndi.binary_fill_holes(head)
-    inside = ndi.distance_transform_edt(head)
+def head_in_base(polys, warp=None):
+    """A head's silhouette in the base head's frame (its outline mapped by `warp`, if given), as a mask at SIZE, with
+    the bottom of its ear lobes and the top of its shoulders (in units), measured from the silhouette's row widths."""
+    if warp is not None:
+        polys = [[tuple(p) for p in warp(np.array(poly, float))] for poly in polys if len(poly) >= 3]
+    rows = EL.scan(polys)
+    mask = np.zeros((SIZE, SIZE), bool)
+    for yy, (x0, x1) in rows.items():
+        r0, r1 = int(yy * PX), int((yy + EL.STEP) * PX) + 1
+        mask[max(0, r0):min(SIZE, r1), max(0, int(x0 * PX)):min(SIZE, int(x1 * PX) + 1)] = True
+    width = lambda y: (lambda r: r[1] - r[0] if r else 0)(rows.get(round(y / EL.STEP) * EL.STEP))
+    ear = BASE_EAR_Y + 15
+    lobe = next((y for y in np.arange(ear, ear + 140, EL.STEP) if width(y) < width(ear) - 30), BASE_EAR_Y + 74)
+    span = np.arange(lobe, lobe + 160, EL.STEP)
+    neck_y = min(span, key=width)
+    shoulder = next((y for y in np.arange(neck_y, 512, EL.STEP) if width(y) > width(neck_y) + 20), neck_y + 30)
+    return mask, float(lobe), float(shoulder)
+
+
+_BASE_INSIDE = []
+
+
+def base_inside():
+    """Distance inside the base head (the template), in pixels."""
+    if not _BASE_INSIDE:
+        head = np.asarray(Image.open(TEMPLATE).convert('RGBA').resize((SIZE, SIZE)))[..., 3] > 127
+        _BASE_INSIDE.append(ndi.distance_transform_edt(ndi.binary_fill_holes(head)))
+    return _BASE_INSIDE[0]
+
+
+def regions(mask, head, lobe_y, shoulder_y):
+    """Where hair is in front of a head and where behind it (fields, > 0 inside), in the base head's frame.
+
+    Behind: only the hair next to the jaw and neck, below the ear lobes and above the shoulders, so the jaw draws over
+    it (and a narrow one shows hair beside it, not a gap). Everything else stays in front: hair over the ears covers
+    them whole, and lengths that reach the shoulders fall in front of them."""
     y = np.arange(SIZE)[:, None] * np.ones((1, SIZE))
-    split = EAR_Y * PX
-    # In front: everything above the ears, and below them only locks that fall well inside the face (over a cheek or
-    # an eye): whole pieces of hair, not slivers or the ends of strand lines.
-    over = mask & (y >= split) & (inside > FACE_MARGIN * PX)
+    x = np.ones((SIZE, 1)) * np.arange(SIZE)[None, :]
+    inside = ndi.distance_transform_edt(head)
+    outside = ndi.distance_transform_edt(~head)
+    # The shoulders: the head below the top of the shoulders, outside the neck's columns there.
+    cols = np.nonzero(head[min(SIZE - 1, int(shoulder_y * PX))])[0]
+    nl, nr = (cols.min(), cols.max()) if cols.size else (0, SIZE)
+    neck = head[min(SIZE - 1, int((shoulder_y - 8) * PX))]
+    ncols = np.nonzero(neck)[0]
+    if ncols.size:
+        nl, nr = ncols.min(), ncols.max()
+    shoulders = head & (y > shoulder_y * PX) & ((x < nl - 2 * PX) | (x > nr + 2 * PX))
+    behind = (y > (lobe_y + 12) * PX) & (outside < BEHIND_REACH * PX) & ~ndi.binary_dilation(shoulders, iterations=int(3 * PX))
+    # From the ears down, the face itself too (not the ears), so the cheek and jaw line runs unbroken up to the ear.
+    # Beside the ears the face's edge is taken as running straight from the temples (just above them) to just below
+    # the lobes; what sticks out past it there is ear, and hair over an ear stays in front of it.
+    def edges(r):
+        c = np.nonzero(head[min(SIZE - 1, max(0, r))])[0]
+        return (c.min(), c.max()) if c.size else (SIZE // 2, SIZE // 2)
+    r0, r1 = int((BASE_EAR_Y - 12) * PX), int((lobe_y + 14) * PX)
+    (l0, rr0), (l1, rr1) = edges(r0), edges(r1)
+    t = np.clip((y - r0) / max(1, r1 - r0), 0, 1)
+    in_rows = (y >= r0) & (y <= r1)
+    left = np.where(in_rows, l0 + (l1 - l0) * t, -1)
+    right = np.where(in_rows, rr0 + (rr1 - rr0) * t, SIZE)
+    face = head & (x > left) & (x < right) & (y > BASE_EAR_Y * PX) & (y < shoulder_y * PX) & ~shoulders
+    ears = head & in_rows & ~((x > left) & (x < right))
+    face &= ~ndi.binary_dilation(ears, iterations=int(EAR_PAD * PX))  # hair over an ear covers all of it, lobe included
+    behind |= face
+    # Locks drawn well over the face stay in front: whole pieces of hair, not slivers or the ends of strand lines.
+    # Judged on the base head the hair was drawn on, so hair drawn beside a jaw is not taken for a lock on a wider one.
+    over = mask & behind & (base_inside() > FACE_MARGIN * PX)
     lab, n = ndi.label(over)
     if n:
         big = np.bincount(lab.ravel()) >= MIN_LOCK * PX * PX
         big[0] = False
-        over = ndi.binary_dilation(big[lab], iterations=int(4 * PX)) & mask
-    front = np.maximum(split - y, (soft(over) - 0.5) * 8)
-    # Behind: everything from just above the ears down (its top edge hides under the front hair), so the lengths beside
-    # the jaw and neck go behind them: a wider jaw draws over them, rather than being covered by them.
-    back = y - (split - 15 * PX)
-    return front, back, head, y
+        behind &= ~ndi.binary_dilation(big[lab], iterations=int(4 * PX))
+    front = -(soft(behind, 3) - 0.5) * 8
+    back = (soft(ndi.binary_dilation(behind, iterations=int(10 * PX)), 3) - 0.5) * 8  # reaches under the front hair
+    # Behind it all: hair filling the space the drawing encloses between the hair and the head, from the ears down to
+    # the neck, so a jaw or neck narrower than the hair's shows hair beside it, not a gap. It stops short of the hair's
+    # own edge, where it could peek out, and the head covers the rest of it.
+    gap = ndi.binary_fill_holes(mask | head) & (y > BASE_EAR_Y * PX) & (y < (shoulder_y + 14) * PX)
+    gap &= ~mask | (ndi.distance_transform_edt(mask) > OUTLINE_W * PX * 1.5)
+    gap &= ~(head & (y > shoulder_y * PX))
+    return front, back, gap
+
+
+def hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, extra_back, head_name):
+    front_r, back_r, gap = regions(fmask, head, lobe_y, shoulder_y)
+    base, details = emit(fparts, front_r)
+    bmain, bdetails = emit(fparts, back_r)
+    filler = emit([('fill', (soft(gap) - 0.5) * 8, hexc(np.array(MAIN) * 0.72))])[1] if gap.any() else []
+    which = f' Front and back as they fall on the {head_name} head.' if head_name else ''
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-from-png="1" {tags}>
+<!-- Traced from assets/hair_png/{style}.png by scripts/trace_hair_png.py.{which} Redraw the PNG and trace again, rather than editing this. -->
+<g id="hair_back">{''.join(extra_back + filler + bmain + bdetails)}</g>
+<g id="hair_base">{''.join(base)}</g>
+<g id="hair_bangs"></g>
+<g id="hair_lines">{''.join(details)}</g>
+</svg>
+'''
 
 
 def build(style, force=False):
@@ -279,43 +369,35 @@ def build(style, force=False):
         return None
     print(f'{style}:')
     fparts, fmask, fstats = trace(front)
-    front_r, back_r, head, y = regions(fmask)
-    base, details = emit(fparts, front_r)
-    bmain, bdetails = emit(fparts, back_r)
-    # Behind it all: hair filling the space the drawing encloses between the hair and the head, from the ears down to
-    # the neck, so a narrower jaw or neck than the template's shows hair beside it, not a gap. No outline; the head
-    # covers it wherever the head is.
-    gap = ndi.binary_fill_holes(fmask | head) & (y > EAR_Y * PX) & (y < NECK_Y * PX)
-    hair_sdf = ndi.distance_transform_edt(fmask)
-    gap &= ~fmask | (hair_sdf > OUTLINE_W * PX * 1.5)  # never out to the hair's own edge, where it could peek past it
-    filler = emit([('fill', (soft(gap) - 0.5) * 8, hexc(np.array(MAIN) * 0.72))])[1]
-    bshapes = filler + bmain + bdetails
-    bstats = {}
+    extra_back, bstats = [], {}
     if os.path.exists(back):
         bparts, _, bstats = trace(back)
         m, rest = emit(bparts)
-        bshapes = m + rest + bshapes
-    # Its length and texture (data-length: short/medium/long/updo; data-type: any, or a texture such as wavy, coily,
-    # locs) are set by hand on the traced SVG's root once, and kept when it is traced again.
+        extra_back = m + rest
+    # Its length, texture and minimum age (data-length: short/medium/long/updo; data-type: any, or a texture such as
+    # wavy, coily, locs; data-min-age) are set by hand on the traced SVG's root once, and kept when traced again.
     tags = 'data-length="short"'
     if os.path.exists(out):
         import re
-        old = open(out, encoding='utf-8').read(400)
-        found = re.findall(r'data-(?:length|type|min-age)="[a-z0-9]+"', old)
+        found = re.findall(r'data-(?:length|type|min-age)="[a-z0-9]+"', open(out, encoding='utf-8').read(400))
         tags = ' '.join(found) or tags
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-from-png="1" {tags}>
-<!-- Traced from assets/hair_png/{style}.png by scripts/trace_hair_png.py. Redraw the PNG and trace again, rather than editing this. -->
-<g id="hair_back">{''.join(bshapes)}</g>
-<g id="hair_base">{''.join(base)}</g>
-<g id="hair_bangs"></g>
-<g id="hair_lines">{''.join(details)}</g>
-</svg>
-'''
-    os.makedirs(RAW, exist_ok=True)
-    with open(out, 'w', encoding='utf-8') as fh:
-        fh.write(svg)
+    # Which hair goes in front of the head and which behind depends on the head's own jaw, ears and shoulders, so it
+    # is worked out on each head (its outline mapped back onto the base head), and fit_hair.py fits each head's own
+    # version (assets/hair_raw/heads/<style>/<head>.svg). The base head's version is assets/hair_raw/<style>.svg.
+    base_name, heads, _ = FH.load_heads()
+    per = os.path.join(RAW, 'heads', style)
+    os.makedirs(per, exist_ok=True)
+    for f in os.listdir(per):
+        os.remove(os.path.join(per, f))
+    for name, marks in heads.items():
+        polys = EL.head_polys(os.path.join(FH.HEADS, f'{name}.svg'))
+        warp = None if name == base_name else FH.warp_for(marks, heads[base_name])
+        head, lobe_y, shoulder_y = head_in_base(polys, warp)
+        svg = hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, extra_back, None if name == base_name else name)
+        with open(out if name == base_name else os.path.join(per, f'{name}.svg'), 'w', encoding='utf-8') as fh:
+            fh.write(svg)
     print(f'  front: {fstats}' + (f'\n  back: {bstats}' if bstats else ''))
-    print(f'  -> assets/hair_raw/{style}.svg ({len(svg) // 1024} KB)')
+    print(f'  -> assets/hair_raw/{style}.svg, and a version for each of {len(heads) - 1} other heads in assets/hair_raw/heads/{style}/')
     return style
 
 
