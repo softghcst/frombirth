@@ -73,7 +73,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     check(/guinea pig/i.test(text) && !/guinea_pig/.test(text), `${label}: a pet's kind is written as words`);
     if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/death-${label}.png` });
     await page.locator('.modal [data-ok]').last().click(); await page.waitForTimeout(150);
-    check(!(await page.locator('.modal .notice-head').count()), `${label}: the notice closes`);
+    // Another notice may follow (someone else can die in the same turn): this one, the guinea pig's, is gone.
+    check(!(await page.locator('.modal .notice-head', { hasText: 'Toffee' }).count()), `${label}: the notice closes`);
   }
   check(!errors.length, `${label}: no errors in the page (${errors.join('; ')})`);
   await page.close();

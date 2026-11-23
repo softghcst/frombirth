@@ -134,7 +134,9 @@ for (const [name, viewport] of [['phone', { width: 390, height: 844 }], ['deskto
     await settle(page);
     // A neighbor you have only met is kept off the People tab; it links to them on My Neighborhood instead.
     const role = await page.evaluate(async (id) => (await import('/js/state.js')).store.state.npcs[id]?.role, met);
-    if (role === 'neighbor') {
+    // A neighbor whose household has since moved away is no longer close by, and is listed with everyone else.
+    const stillHere = await page.evaluate(async (id) => { const S = (await import('/js/state.js')).store.state; const N = await import('/js/engine/neighborhood.js'); const h = N.currentHood(S); return !!h && N.knownIn(S, h.id).some((n) => n.id === id); }, met);
+    if (role === 'neighbor' && stillHere) {
       const where = await page.evaluate((id) => [...document.querySelectorAll(`[data-panel-body] [data-npc="${id}"]`)].map((e) => e.closest('.card, section, .scrim')?.className ?? '?'), met);
       check(where.length === 0, `${name}: a neighbor you have only met is not on the People tab (${where.join(', ')})`);
       check(await page.locator('[data-panel-body] [data-top="neighbors"]').count() === 1, `${name}: the People tab links to the neighbors you know`);
