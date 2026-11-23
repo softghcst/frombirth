@@ -66,7 +66,9 @@ _BASE = json.load(open(LANDMARKS))[json.load(open(LANDMARKS))['base_head']]
 BASE_EAR_Y = _BASE['ear_left']['y']                            # where the ears join the base head
 EAR_X = (_BASE['ear_left']['x'], _BASE['ear_right']['x'])
 EAR_PAD = 7          # hair over an ear reaches this far past it, so no edge of the ear peeks out
-BEHIND_REACH = 40    # how far out from the head's outline hair beside the jaw goes behind it (so a wider jaw is clear)
+EDGE_START = 4       # that outline starts this far below the top of the shoulders, clear of the neck's own line
+NECK_PAD = 0         # the neck band reaches this far past the neck's outline
+LOCK_MAX_Y = 400     # ... and on the face (down to about the mouth): hair over the neck always goes behind it
 MIN_LOCK = 150       # a piece of hair over the face below the ears must be this big (square units) to stay in front
 FACE_MARGIN = 12     # below the ears, hair stays in front of the face only this far inside the head's outline
 
@@ -276,7 +278,7 @@ def head_in_base(polys, warp=None):
     span = np.arange(lobe, lobe + 160, EL.STEP)
     neck_y = min(span, key=width)
     shoulder = next((y for y in np.arange(neck_y, 512, EL.STEP) if width(y) > width(neck_y) + 20), neck_y + 30)
-    return mask, float(lobe), float(shoulder)
+    return mask, float(lobe), float(shoulder), float(neck_y)
 
 
 _BASE_INSIDE = []
@@ -290,7 +292,7 @@ def base_inside():
     return _BASE_INSIDE[0]
 
 
-def regions(mask, head, lobe_y, shoulder_y):
+def regions(mask, head, lobe_y, shoulder_y, neck_y):
     """Where hair is in front of a head and where behind it (fields, > 0 inside), in the base head's frame.
 
     Behind: only the hair next to the jaw and neck, below the ear lobes and above the shoulders, so the jaw draws over
@@ -299,16 +301,16 @@ def regions(mask, head, lobe_y, shoulder_y):
     y = np.arange(SIZE)[:, None] * np.ones((1, SIZE))
     x = np.ones((SIZE, 1)) * np.arange(SIZE)[None, :]
     inside = ndi.distance_transform_edt(head)
-    outside = ndi.distance_transform_edt(~head)
-    # The shoulders: the head below the top of the shoulders, outside the neck's columns there.
-    cols = np.nonzero(head[min(SIZE - 1, int(shoulder_y * PX))])[0]
-    nl, nr = (cols.min(), cols.max()) if cols.size else (0, SIZE)
-    neck = head[min(SIZE - 1, int((shoulder_y - 8) * PX))]
-    ncols = np.nonzero(neck)[0]
-    if ncols.size:
-        nl, nr = ncols.min(), ncols.max()
-    shoulders = head & (y > shoulder_y * PX) & ((x < nl - 2 * PX) | (x > nr + 2 * PX))
-    behind = (y > (lobe_y + 12) * PX) & (outside < BEHIND_REACH * PX) & ~ndi.binary_dilation(shoulders, iterations=int(3 * PX))
+    # The neck: the head's columns where its neck is narrowest, carried straight down (with its outline, and a little
+    # room). Hair there always goes behind, so the neck's outline shows all the way down to the shoulders.
+    ncols = np.nonzero(head[min(SIZE - 1, int(neck_y * PX))])[0]
+    nl, nr = (ncols.min(), ncols.max()) if ncols.size else (SIZE // 2, SIZE // 2)
+    neck = (x > nl - NECK_PAD * PX) & (x < nr + NECK_PAD * PX) & (y > lobe_y * PX)
+    # The shoulders: the head below the top of the shoulders, outside the neck. Hair over them stays in front.
+    shoulders = head & (y > shoulder_y * PX) & ~neck
+    # Below the ear lobes, hair over the jaw and neck goes behind them, cut along the head's own outline (which the head
+    # draws, so the cut never shows); hair beside the head, and over the shoulders, stays in front.
+    behind = (y > (lobe_y + 12) * PX) & head & ((y < shoulder_y * PX) | neck)
     # From the ears down, the face itself too (not the ears), so the cheek and jaw line runs unbroken up to the ear.
     # Beside the ears the face's edge is taken as running straight from the temples (just above them) to just below
     # the lobes; what sticks out past it there is ear, and hair over an ear stays in front of it.
@@ -325,9 +327,9 @@ def regions(mask, head, lobe_y, shoulder_y):
     ears = head & in_rows & ~((x > left) & (x < right))
     face &= ~ndi.binary_dilation(ears, iterations=int(EAR_PAD * PX))  # hair over an ear covers all of it, lobe included
     behind |= face
-    # Locks drawn well over the face stay in front: whole pieces of hair, not slivers or the ends of strand lines.
+    # Locks drawn well over the face (not the neck) stay in front: whole pieces of hair, not slivers or the ends of strand lines.
     # Judged on the base head the hair was drawn on, so hair drawn beside a jaw is not taken for a lock on a wider one.
-    over = mask & behind & (base_inside() > FACE_MARGIN * PX)
+    over = mask & behind & (base_inside() > FACE_MARGIN * PX) & (y < LOCK_MAX_Y * PX)  # the face, not the neck
     lab, n = ndi.label(over)
     if n:
         big = np.bincount(lab.ravel()) >= MIN_LOCK * PX * PX
@@ -341,12 +343,17 @@ def regions(mask, head, lobe_y, shoulder_y):
     gap = ndi.binary_fill_holes(mask | head) & (y > BASE_EAR_Y * PX) & (y < (shoulder_y + 14) * PX)
     gap &= ~mask | (ndi.distance_transform_edt(mask) > OUTLINE_W * PX * 1.5)
     gap &= ~(head & (y > shoulder_y * PX))
-    return front, back, gap
+    # Where hair in front of the shoulders stops at the neck, it gets an outline, like the rest of its edge.
+    edge = mask & (behind < 0.5) & (ndi.distance_transform_edt(~neck) < OUTLINE_W * PX) & (y > (shoulder_y + EDGE_START) * PX)
+    edge &= ndi.distance_transform_edt(mask) > 0
+    return front, back, gap, edge
 
 
-def hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, extra_back, head_name):
-    front_r, back_r, gap = regions(fmask, head, lobe_y, shoulder_y)
+def hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, neck_y, extra_back, head_name):
+    front_r, back_r, gap, edge = regions(fmask, head, lobe_y, shoulder_y, neck_y)
     base, details = emit(fparts, front_r)
+    if edge.any():
+        details += emit([('edge', np.minimum((soft(edge, 1.5) - 0.5) * 8, front_r), OUTLINE)])[1]
     bmain, bdetails = emit(fparts, back_r)
     filler = emit([('fill', (soft(gap) - 0.5) * 8, hexc(np.array(MAIN) * 0.72))])[1] if gap.any() else []
     which = f' Front and back as they fall on the {head_name} head.' if head_name else ''
@@ -392,8 +399,8 @@ def build(style, force=False):
     for name, marks in heads.items():
         polys = EL.head_polys(os.path.join(FH.HEADS, f'{name}.svg'))
         warp = None if name == base_name else FH.warp_for(marks, heads[base_name])
-        head, lobe_y, shoulder_y = head_in_base(polys, warp)
-        svg = hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, extra_back, None if name == base_name else name)
+        head, lobe_y, shoulder_y, neck_y = head_in_base(polys, warp)
+        svg = hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, neck_y, extra_back, None if name == base_name else name)
         with open(out if name == base_name else os.path.join(per, f'{name}.svg'), 'w', encoding='utf-8') as fh:
             fh.write(svg)
     print(f'  front: {fstats}' + (f'\n  back: {bstats}' if bstats else ''))
