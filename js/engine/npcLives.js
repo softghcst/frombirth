@@ -15,7 +15,7 @@ import { schoolModel } from '../data/education.js';
 import { clamp, localMoney, fmtMoney, localWage, localCost } from '../util.js';
 import { store, player, country, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
-import { inheritAppearance, inheritTalents, inheritTraits } from './genetics.js';
+import { inheritAppearance, inheritTalents, inheritTraits, addedTalents } from './genetics.js';
 import { roleLabel, spendAction, removeNpc } from './relationships.js';
 import { remember } from './conditions.js';
 import { CAREERS, CAREER_BY_ID } from '../data/careers.js';
@@ -435,6 +435,7 @@ function haveBaby(npc, love) {
   } else {
     baby.adopted = true;
     baby.talents = { music: rng.int(0, 60), sports: rng.int(0, 60), acting: rng.int(0, 60), crime: rng.int(0, 60), singing: rng.int(0, 60), dance: rng.int(0, 60) };
+    addedTalents(baby.talents, () => 30, 0, 60);
   }
   baby.parentIds = [npc.id, love.id];
   ensureLife(baby);

@@ -49,9 +49,10 @@ export function assess(a, inst, major, luck = 0) {
     }
   } else {
     const margin = (a.mark - inst.bar) * 1.6;
-    score = margin + a.advanced * 0.12 + a.recs * 0.12 + (a.activities - 40) / 200 + a.statement * 0.06;
+    score = margin + a.advanced * 0.12 + a.recs * 0.12 + (a.activities - 40) / 200 + a.statement * 0.06 + (a.skill ?? 0) * 0.15;
     reasons.push(margin >= 0.2 ? 'Your marks are above what it usually takes.' : margin >= -0.15 ? 'Your marks are about what it usually takes.' : 'Your marks are below what it usually takes.');
     if (a.advanced) reasons.push('Your advanced courses counted.');
+    if ((a.skill ?? 0) >= 0.3 && a.skillWhat) reasons.push(`What you can already do counted: ${a.skillWhat}.`);
     if (a.activities >= 65) reasons.push('What you did outside lessons counted.');
     if (a.statement >= 2) reasons.push('Your personal statement was remembered.');
     else if (a.statement < 0) reasons.push('Your personal statement did not help.');

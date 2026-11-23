@@ -1,4 +1,5 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { TALENTS } from '../../data/talents.js';
 import { getEra, eventsIn } from '../../engine/history.js';
 import { store } from '../../state.js';
 import { outlook } from '../../engine/economy.js';
@@ -56,9 +57,7 @@ export default {
         </div>
       </div>
       <div class="card"><h3>Talents and skills</h3>
-        ${meterHtml('Music', p.talents.music, true)}${meterHtml('Sports', p.talents.sports, true)}
-        ${meterHtml('Acting', p.talents.acting, true)}${meterHtml('Singing', p.talents.singing, true)}
-        ${meterHtml('Dance', p.talents.dance, true)}
+        ${TALENTS.filter((t) => !t.hidden).map((t) => meterHtml(t.name, p.talents[t.id] ?? 0, true)).join('')}
         ${p.flags.musicalRoute || p.career.careerId === 'mt_performer' || /musical/.test(p.education.majorId ?? '') ? `<div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat()}</strong></span></div>` : ''}
         ${skillsCard({ inner: true })}
         <div class="section-label">Traits</div>

@@ -5,6 +5,7 @@ import { illnessCause } from './passing.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney, theCountry } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
+import { TALENTS } from '../data/talents.js';
 import { store, player, country, livingNpcs, npcsByRole, log } from '../state.js';
 import { mortalityChance } from './death.js';
 import { remember } from './conditions.js';
@@ -442,7 +443,7 @@ export const canGetPet = () => player().age >= 18 && npcsByRole('pet').length < 
 /** The numbers that can be edited on anyone but the player. */
 export const EDITABLE_METERS = [['relationship', 'Relationship'], ['health', 'Health'], ['intellect', 'Intellect'], ['charm', 'Charm'],
   ['money', 'Money'], ['generosity', 'Generosity'], ['crazy', 'Crazy']];
-export const EDITABLE_TALENTS = [['music', 'Music'], ['singing', 'Singing'], ['dance', 'Dance'], ['acting', 'Acting'], ['sports', 'Sports'], ['crime', 'Mischief']];
+export const EDITABLE_TALENTS = TALENTS.map((t) => [t.id, t.name]);
 
 /**
  * Sets someone's stats and talents directly. Open to the player for anyone
