@@ -59,7 +59,7 @@ function migrate(state) {
   pl.orientation ??= 'straight';
   pl.skills ??= {};
   pl.flags.bornAs ??= pl.gender;
-  pl.flags.gifts ??= Object.entries(pl.talents).filter(([, v]) => v >= 75).map(([k]) => k);
+  pl.flags.gifts ??= Object.entries(pl.potential ?? pl.talents).filter(([, v]) => v >= 75).map(([k]) => k);
   // Lives saved before art, writing, technology and math and science were talents: each person is given them, from
   // their id so every load agrees, and centered a little toward what they already do well.
   const fillTalents = (who) => {

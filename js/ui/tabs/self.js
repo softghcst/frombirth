@@ -1,4 +1,5 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
+import { noticed } from '../../engine/talentGrowth.js';
 import { TALENTS } from '../../data/talents.js';
 import { getEra, eventsIn } from '../../engine/history.js';
 import { store } from '../../state.js';
@@ -58,6 +59,8 @@ export default {
       </div>
       <div class="card"><h3>Talents and skills</h3>
         ${TALENTS.filter((t) => !t.hidden).map((t) => meterHtml(t.name, p.talents[t.id] ?? 0, true)).join('')}
+        <p class="muted" style="margin-top:6px">${p.age < 3 ? 'Everyone starts somewhere. What you are good at grows with the years, and with practice.' : 'How good you are now: the years bring it on, and practice takes it further.'}</p>
+        ${(() => { const seen = noticed(p); return `<div class="section-label">What you have noticed about yourself</div>${seen.length ? seen.map((x) => `<div class="kv"><span>${esc(x.name)}</span><span>${esc(x.text)}</span></div>`).join('') : '<p class="muted">Nothing yet. Try things: a gift shows itself sooner when you do.</p>'}`; })()}
         ${p.flags.musicalRoute || p.career.careerId === 'mt_performer' || /musical/.test(p.education.majorId ?? '') ? `<div class="kv" style="margin-top:8px"><span>Triple threat (singing, dance, acting)</span><span><strong>${tripleThreat()}</strong></span></div>` : ''}
         ${skillsCard({ inner: true })}
         <div class="section-label">Traits</div>
