@@ -7,6 +7,7 @@
     "test": "node scripts/test-all.mjs",
     "fit-hair": "python scripts/fit_hair.py",
     "split-hair": "python scripts/split_batch.py && python scripts/fit_hair.py",
+    "trace-hair": "python scripts/trace_hair_png.py && python scripts/fit_hair.py",
     "soften-hair": "python scripts/soften_hair_lines.py && python scripts/fit_hair.py"
   }
 }
