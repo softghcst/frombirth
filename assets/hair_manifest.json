@@ -3,6 +3,23 @@
   "baseHead": "athletic",
   "hairstyles": [
     {
+      "id": "curly_puff",
+      "name": "Curly Puff",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "curtain_bangs_90s",
       "name": "Curtain Bangs 90s",
       "clipToHead": false,
@@ -191,8 +208,42 @@
       ]
     },
     {
+      "id": "side_ponytail",
+      "name": "Side Ponytail",
+      "clipToHead": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
       "id": "space_buns",
       "name": "Space Buns",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ]
+    },
+    {
+      "id": "space_buns_bangs",
+      "name": "Space Buns Bangs",
       "clipToHead": false,
       "length": "updo",
       "type": "any",

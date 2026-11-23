@@ -65,6 +65,7 @@ LANDMARKS = os.path.join(ROOT, 'assets', 'landmarks.json')
 BASE_EAR_Y = 0.0     # where the ears join the head the style was drawn on, and their x: set by drawn_on()
 EAR_X = (0.0, 0.0)
 EAR_PAD = 7          # hair over an ear reaches this far past it, so no edge of the ear peeks out
+GAP_REACH = 30       # the fill behind the jaw and neck reaches this far from hair drawn beside them
 EDGE_START = 4       # that outline starts this far below the top of the shoulders, clear of the neck's own line
 NECK_PAD = 0         # the neck band reaches this far past the neck's outline
 LOCK_MAX_Y = 400     # ... and on the face (down to about the mouth): hair over the neck always goes behind it
@@ -363,6 +364,7 @@ def regions(mask, head, lobe_y, shoulder_y, neck_y):
     # own edge, where it could peek out, and the head covers the rest of it.
     gap = ndi.binary_fill_holes(mask | head) & (y > BASE_EAR_Y * PX) & (y < (shoulder_y + 14) * PX)
     gap &= ~mask | (ndi.distance_transform_edt(mask) > OUTLINE_W * PX * 1.5)
+    gap &= ndi.distance_transform_edt(~mask) < GAP_REACH * PX  # only near hair that hangs there (none for short styles)
     gap &= ~(head & (y > shoulder_y * PX))
     # Where hair in front of the shoulders stops at the neck, it gets an outline, like the rest of its edge.
     edge = mask & (behind < 0.5) & (ndi.distance_transform_edt(~neck) < OUTLINE_W * PX) & (y > (shoulder_y + EDGE_START) * PX)
