@@ -1,6 +1,7 @@
 // Accessibility audit of Explore the World: axe-core on every screen of the hub (31, with the document and journal
-// tabs), at phone size, in the light or dark theme, then a keyboard pass. Files are served from the repository by
-// the browser itself, so no web server is needed. A developer tool, not part of the game. To run it:
+// tabs), at phone size, in the light or dark theme, then a keyboard pass. The script serves the repository itself on
+// a local port (a real server, so the offline service worker installs as it does for players). A developer tool,
+// not part of the game. To run it:
 //   mkdir -p /tmp/a11y && cd /tmp/a11y && npm i axe-core@4.10.2 playwright
 //   AXE=/tmp/a11y/node_modules/axe-core/axe.min.js node scripts/a11y-explore.cjs light   (or dark)   [save.json]
 // With no save file it builds a life in the page: a trip taken, a plan made, a move approved. See docs/ACCESSIBILITY.md.
@@ -16,14 +17,15 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, colorScheme: scheme, deviceScaleFactor: 1 });
-  await ctx.route('http://localhost:8765/**', (route) => {
-    let rel = decodeURIComponent(new URL(route.request().url()).pathname); if (rel.endsWith('/')) rel += 'index.html';
+  const server = require('http').createServer((req, res) => {
+    let rel = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); if (rel.endsWith('/')) rel += 'index.html';
     const file = path.join(ROOT, rel);
-    if (!fs.existsSync(file)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({ status: 200, contentType: TYPES[path.extname(file)] ?? 'application/octet-stream', body: fs.readFileSync(file) });
+    if (!file.startsWith(ROOT) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end(); }
+    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] ?? 'application/octet-stream' }); res.end(fs.readFileSync(file));
   });
+  await new Promise((r) => server.listen(8765, '127.0.0.1', r));
   const p = await ctx.newPage();
-  const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+  const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(`console: ${m.text()}`); });
   if (seed) await p.addInitScript((s) => { if (!sessionStorage.getItem('seeded')) { for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); sessionStorage.setItem('seeded', '1'); } }, seed);
   await p.goto('http://localhost:8765/');
   if (!seed) {
@@ -84,5 +86,5 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   const closed = !(await p.$('.gl-modal'));
   console.log(JSON.stringify({ scheme, violations: all, keyboard: { firstFocus: focus, stopsInHub: reached, distinct: seen.size, escapeCloses: closed }, errors: errs }, null, 1));
-  await b.close();
+  await b.close(); server.close();
 })();

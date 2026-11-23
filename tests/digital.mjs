@@ -504,8 +504,12 @@ section('Public life');
 }
 {
   const civic = await import('../js/engine/digital/civic.js');
-  let s; do { s = createLife({ countryId: 'uk', year: 1990, birthRank: 'royal' }); } while (!s.player.royal);
-  store.state = s; grow(30);
+  // Royal status can end over thirty years (abdication, deposition): take a life where it lasts.
+  for (let tries = 0; tries < 20; tries++) {
+    let s; do { s = createLife({ countryId: 'uk', year: 1990, birthRank: 'royal' }); } while (!s.player.royal);
+    store.state = s; grow(30);
+    if (store.state.player.royal) break;
+  }
   const p = store.state.player;
   phone();
   const opened = join('glimmer', 'royal.office', { visibility: 'public', kind: 'official' });

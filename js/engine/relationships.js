@@ -158,7 +158,9 @@ export function tickRelationships() {
       else if (close) {
         const cause = causeOfDeath(npc);
         npc.flags.cause = cause;
-        log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}${cause ? `, of ${cause}` : ''}.`, 'system', 'bad');
+        // Someone who lived abroad: the funeral is there, and can be traveled to (engine/travel.js).
+        const away = typeof npc.flags.abroad === 'string' ? ` The funeral is in ${theCountry(COUNTRIES[npc.flags.abroad]?.name ?? npc.flags.abroad)}; you could travel for it (Explore the World).` : '';
+        log(`Your ${roleLabel(npc).toLowerCase()} ${npc.firstName} died at age ${npc.age}${cause ? `, of ${cause}` : ''}.${away}`, 'system', 'bad');
         // The ones who matter most get a moment of their own: the funeral, and whether you go. Two a year at most.
         const told = store.state.pendingEvents.filter((e) => e.id === 'close_death').length;
         if (told < 2 && p.age >= 6 && (KIN_ROLES.includes(npc.role) || npc.meters.relationship >= 60)) {
