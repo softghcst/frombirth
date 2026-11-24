@@ -16,8 +16,9 @@ import { extname, join, normalize } from 'node:path';
 import { createRequire } from 'node:module';
 
 /** The outfits to snap: the royal and noble dress drawn for the game, each sized and placed by this script. */
+// Applied on grown-up heads only (js/CharacterAvatar.js): a child is drawn with the outfit as it is.
 const SNAP = ['outfit_45_princess_sweetheart', 'outfit_46_prince_epaulettes', 'outfit_47_sovereign_ermine', 'outfit_48_noble_cameo', 'outfit_49_noble_cravat',
-  'outfit_50_duke_mantle', 'outfit_51_imperial_fan_collar', 'outfit_52_princess_starlight', 'outfit_53_imperial_ruby'];
+  'outfit_50_duke_mantle', 'outfit_51_imperial_fan_collar', 'outfit_52_princess_starlight', 'outfit_53_imperial_ruby', 'outfit_54_denim_jacket_tee'];
 const MARGIN = 6; // template units the sleeves reach past the body's edge
 const BAND = 40; // how far up from the bottom of the portrait the sleeves are checked
 const MAX_DROP = 8; // the most an outfit may move down (its neckline with it): more, and a short gown slides out of the picture
