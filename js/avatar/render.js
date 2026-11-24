@@ -7,9 +7,12 @@ import { characterAvatarSvg } from '../CharacterAvatar.js';
 import { mixHex } from './color.js';
 
 /** A royal or noble rank as portraits dress it: crowns for the royal family, a coronet for the peerage. */
-export function royalDress(rank) {
+export function royalDress(rank, consort = false) {
   if (!rank || rank === 'knight') return null;
-  return { rank: ['monarch', 'heir', 'royal'].includes(rank) ? rank : 'noble' };
+  // The one who reigns wears the sovereign's crown; a king or queen by marriage wears a consort's.
+  if (rank === 'consort' || (rank === 'monarch' && consort)) return { rank: 'monarch', sovereign: false };
+  if (rank === 'monarch') return { rank, sovereign: true };
+  return { rank: ['heir', 'royal'].includes(rank) ? rank : 'noble' };
 }
 
 /** The player's portrait context: in prison, royal, or at work. */
@@ -31,7 +34,7 @@ export function faceGenderOf(p) {
 }
 
 export function dressOfPlayer(p) {
-  return { face: faceGenderOf(p), jailed: !!p.legal?.incarceration, royal: p.royal && !p.royal.waiting ? royalDress(p.royal.rank) : null,
+  return { face: faceGenderOf(p), jailed: !!p.legal?.incarceration, royal: p.royal && !p.royal.waiting ? royalDress(p.royal.rank, p.royal.rank === 'monarch' && !p.royal.reigning) : null,
     career: p.career?.careerId && !p.career.retired ? { id: p.career.careerId, level: p.career.level ?? 0 } : null };
 }
 

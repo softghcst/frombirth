@@ -2,6 +2,9 @@
 // Run with: node tests/crowns.mjs
 import { dressFor } from '../js/CharacterAvatar.js';
 import { resolveLook } from '../js/avatar/catalog.js';
+import { royalDress } from '../js/avatar/render.js';
+import { AVATAR_MANIFEST as MANIFEST } from '../js/avatarManifest.js';
+import { existsSync } from 'node:fs';
 
 const problems = [];
 const check = (ok, what) => { if (!ok) problems.push(what); };
@@ -19,5 +22,15 @@ for (const gender of ['male', 'female']) {
   check(!dressFor(look, { age: 30, gender, royal: { rank: 'monarch' }, jailed: true }).crown, `no crown in prison (${gender})`);
   check(!dressFor(look, { age: 30, gender }).crown, `no crown for a commoner (${gender})`);
 }
+// The sovereign's crown is worn by the one who reigns, king or queen, and by no one else.
+for (const gender of ['male', 'female']) {
+  const look = resolveLook({}, `sov-${gender}`, gender);
+  check(dressFor(look, { age: 40, gender, royal: royalDress('monarch') }).crown === 'crown_09_sovereign', `a reigning ${gender} monarch wears the sovereign's crown`);
+  check(dressFor(look, { age: 40, gender, royal: royalDress('monarch', true) }).crown !== 'crown_09_sovereign', `a ${gender} consort does not`);
+  check(dressFor(look, { age: 40, gender, royal: royalDress('consort') }).crown !== 'crown_09_sovereign', `a ${gender} consort (by dynasty rank) does not`);
+  for (const rank of ['heir', 'royal', 'noble', 'knight']) check(dressFor(look, { age: 40, gender, royal: royalDress(rank) }).crown !== 'crown_09_sovereign', `a ${gender} ${rank} does not`);
+}
+const sov = MANIFEST.crowns.find((c) => c.id === 'crown_09_sovereign');
+check(sov && existsSync(new URL(`../assets/${sov.file}`, import.meta.url)), 'the sovereign crown is in the manifest and on disk');
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }
 console.log('Every royal wears a crown, from birth.');

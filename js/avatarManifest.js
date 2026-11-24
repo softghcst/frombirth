@@ -281,6 +281,7 @@ export const AVATAR_MANIFEST = {
     {"id": "crown_06_noble_coronet", "file": "avatars/crowns/crown_06_noble_coronet.svg", "label": "Noble coronet", "tags": {"royal": true, "rank": "noble"}},
     {"id": "crown_07_laurel_wreath", "file": "avatars/crowns/crown_07_laurel_wreath.svg", "label": "Laurel wreath", "tags": {"royal": true, "rank": "noble"}},
     {"id": "crown_08_dark_royal", "file": "avatars/crowns/crown_08_dark_royal.svg", "label": "Dark royal", "tags": {"royal": true, "rank": "noble"}},
+    {"id": "crown_09_sovereign", "file": "avatars/crowns/crown_09_sovereign.svg", "label": "Sovereign", "tags": {"royal": true, "rank": "sovereign"}},
   ],
   hats: [
   ],
