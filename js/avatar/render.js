@@ -9,7 +9,7 @@ import { mixHex } from './color.js';
 /** A royal or noble rank as portraits dress it: crowns for the royal family, a coronet for the peerage. */
 export function royalDress(rank) {
   if (!rank || rank === 'knight') return null;
-  return { rank: ['monarch', 'heir', 'royal'].includes(rank) ? rank : 'noble' };
+  return ['monarch', 'heir', 'royal'].includes(rank) ? { rank } : { rank: 'noble', title: rank }; // a noble's own title, for dress that goes with it
 }
 
 /** The player's portrait context: in prison, royal, or at work. */

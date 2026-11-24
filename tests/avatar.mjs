@@ -78,7 +78,7 @@ for (let i = 0; i < 300; i++) check(!CUR.HAIR_COVERS_FACE.includes(randomAppeara
 
 // 2. Curated ids.
 const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, CUR.BABY_BROWS, ...Object.values(CUR.OUTFITS).flat(),
-  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch).flat(), ...Object.values(CUR.ROYAL.outfits.noble).flat(),
+  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch).flat(), ...Object.values(CUR.ROYAL.outfits.noble).flat(), ...Object.values(CUR.ROYAL.outfits.nobleByTitle).flatMap((x) => Object.values(x).flat()),
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
   ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, ...CUR.HAIR_COVERS_FACE];
 for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
@@ -607,6 +607,21 @@ for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5
   check(!CATALOG.outfit.some((o) => o.id === 'outfit_49_noble_cravat'), 'nobody can choose the cravat coat');
   check(dressFor(her, { age: 15, gender: 'female', royal: { rank: 'noble' } }).clothes !== id, 'a noble girl does not');
   check(dressFor(her, { age: 40, gender: 'female' }).clothes !== id && dressFor(her, { age: 40, gender: 'female', royal: { rank: 'royal' } }).clothes !== id, 'nor a commoner, nor a princess');
+}
+
+// A duke's or a duchess's coat: by title, not by being noble.
+{
+  const id = 'outfit_50_duke_mantle';
+  const { royalDress } = await import('../js/avatar/render.js');
+  check(PART_BY_ID[id]?.tags?.royal && !CATALOG.outfit.some((o) => o.id === id), 'the duke\'s coat is tagged, and nobody can choose it');
+  check(JSON.stringify(royalDress('duke')) === JSON.stringify({ rank: 'noble', title: 'duke' }) && royalDress('royal').rank === 'royal', 'the portrait knows a noble\'s title');
+  for (const g of ['male', 'female']) {
+    const look = resolveLook(randomAppearance(undefined, g), 'duke', g);
+    check(dressFor(look, { age: 45, gender: g, royal: royalDress('duke') }).clothes === id, `a ${g === 'male' ? 'duke' : 'duchess'} wears it`);
+    check(dressFor(look, { age: 45, gender: g, royal: royalDress('duke') }).crown === CUR.ROYAL.crowns.noble, 'with the coronet');
+    check(dressFor(look, { age: 45, gender: g, royal: royalDress('earl') }).clothes !== id, `an ${g === 'male' ? 'earl' : 'countess'} does not`);
+    check(dressFor(look, { age: 16, gender: g, royal: royalDress('duke') }).clothes !== id, 'a young heir to a dukedom does not');
+  }
 }
 
 if (problems.length) {
