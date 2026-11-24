@@ -25,7 +25,7 @@ import { SCHOOL_TYPE_BY_ID } from '../data/schools.js';
 import { MAJOR_BY_ID } from '../data/majors.js';
 import { CAREERS } from '../data/careers.js';
 import { OCCUPATIONS } from '../data/traits.js';
-import { assess, meets, aid as aidFor, outlook, luckRange, acceptanceRate, fitOf, chanceOf } from './admissions.js';
+import { assess, meets, aid as aidFor, outlook, luckRange, acceptanceRate, fitOf, chanceOf, standing } from './admissions.js';
 import { book } from './ledger.js';
 import { tripleThreat, resolve } from './conditions.js';
 import { wealthTier } from './living.js';
@@ -213,7 +213,7 @@ export function browse() {
   return catalog(p.countryId).map((u) => {
     const c = costs(u.id);
     return { id: u.id, name: u.name, label: u.label, city: u.city, founded: u.founded, blurb: u.blurb, reputation: repWord(u), entry: barWord(u), tuition: c.tuition, living: c.living,
-      strong: major ? u.strong.includes(majorId) : false, taught: !major || teaches(u, majorId), chances: !major ? '' : teaches(u, majorId) ? outlook(profile(majorId, u), u, major) : 'Not taught here', nearHome: u.city === p.city, family: u.alumni.filter((n) => n.endsWith(` ${p.lastName}`)),
+      strong: major ? u.strong.includes(majorId) : false, taught: !major || teaches(u, majorId), chances: !major ? '' : teaches(u, majorId) ? (u.open ? 'Open to all' : '') : 'Not taught here', bars: major && teaches(u, majorId) && !u.open ? standing(profile(majorId, u), u, major) : null, nearHome: u.city === p.city, family: u.alumni.filter((n) => n.endsWith(` ${p.lastName}`)),
       chosen: !!plan?.list.some((a) => a.instId === u.id),
       fit: major && teaches(u, majorId) ? FIT_WORD[fitOf(profile(majorId, u), u, major)] : '', acceptance: major && teaches(u, majorId) ? acceptanceRate(u, major) : null,
       attempts: major ? triesOf(majorId, u.id).n : 0, audition: !!major?.audition, private: !!u.private, rep: u.rep };
@@ -259,10 +259,9 @@ export function compare(ids) {
   const best = (get, dir) => { const vals = rows.map(get); const target = dir > 0 ? Math.max(...vals) : Math.min(...vals); const flags = vals.map((v) => v === target && rows.length > 1); return flags.every(Boolean) ? flags.map(() => false) : flags; }; // (nothing is "better" where all are the same)
   const col = (label, get, o2 = {}) => {
     const flags = o2.best ? best((r) => o2.best.value(r), o2.best.dir) : null;
-    return { label, values: rows.map((r, i) => ({ id: r.u.id, name: r.u.name, text: get(r), best: flags ? flags[i] : false })) };
+    return { label, values: rows.map((r, i) => ({ id: r.u.id, name: r.u.name, text: get(r), best: flags ? flags[i] : false, ...(o2.bars ? { bars: o2.bars(r) } : {}) })) };
   };
   const pct = (x) => (x == null ? '—' : x >= 0.995 ? 'Open to all' : `${Math.max(1, Math.round(x * 100))}%`);
-  const odds = (x, u) => (u.open ? 'Open to all' : `about ${Math.min(99, Math.max(1, Math.round(x * 100)))}%`); // nobody is ever certain
   const out = [
     col('Where', (r) => `${r.u.city}, ${COUNTRIES[r.u.countryId]?.name ?? ''}`),
     col('Kind of place', (r) => r.u.label),
@@ -275,7 +274,7 @@ export function compare(ids) {
     out.push(
       col('Known for this subject', (r) => (r.u.strong.includes(majorId) ? 'Yes' : 'Taught, not famous for it')),
       col(major.audition ? 'Places offered, of those who audition' : 'Places offered, of those who apply', (r) => pct(r.rate), { best: { value: (r) => r.rate ?? 0, dir: 1 } }),
-      col('Your chances', (r) => (r.chance == null ? 'Not taught here' : r.u.open ? 'Open to all' : `${FIT_WORD[fitOf(r.who, r.u, major)]}: ${odds(r.chance, r.u)}`), { best: { value: (r) => r.chance ?? 0, dir: 1 } }),
+      col('Where you stand', (r) => (r.chance == null ? 'Not taught here' : r.u.open ? 'Open to all' : ''), { bars: (r) => (r.chance == null || r.u.open ? null : standing(r.who, r.u, major)), best: { value: (r) => r.chance ?? 0, dir: 1 } }),
       col('How it is decided', (r) => (major.audition ? `An audition, and marks of ${(Math.max(0, (major.minGpa ?? 0) - 0.3 - (r.u.lenient ?? 0))).toFixed(1)} or better` : 'Your marks and what you have done')),
     );
     if (rows.some((r) => r.tries.n)) out.push(col('Times you have applied', (r) => (r.tries.n ? `${r.tries.n} (${r.tries.outcomes.map((o) => ({ accepted: 'accepted', conditional: 'offered', waitlisted: 'waiting list', deferred: 'asked back', rejected: 'turned away' })[o] ?? o).join(', ')})` : 'Never')));

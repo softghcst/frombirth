@@ -21,6 +21,7 @@
 //
 // Everything that comes down to luck in a competition is drawn from a run of luck keyed to that competition
 // (sportsPlay.seeded): loading a save never re-rolls a result, and the game's own dice are never touched by it.
+import { gift } from './talentGrowth.js';
 import { store, player, log, milestone, livingNpcs } from '../state.js';
 import { clamp, cap, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -112,7 +113,7 @@ export function activeSports(id = store.state.player.id, state = store.state) {
 }
 
 /** A value on the character by path: 'talents.sports', 'stats.health', 'hidden.discipline'. */
-const val = (p, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p) ?? 50;
+const val = (p, path) => (path.startsWith('talents.') ? gift(p, path.slice(8)) : path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p)) ?? 50; // a talent here is the gift: what someone could become
 
 /** Whether the person uses a wheelchair. Pathways has no wider disability system: this is the one marker the sports engine reads. */
 export const usesWheelchair = (p = player()) => !!p.flags?.wheelchair || (p.conditions ?? []).some((c) => /wheelchair|paraly|spinal/.test(c.id));

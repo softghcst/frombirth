@@ -67,11 +67,11 @@ export function rowTile(label, ico = 'sparkle') {
  * `attrs` is the data attribute(s) the screen's click handler listens for, e.g. 'data-top="tree"'.
  * A row that is not open to the player yet is shown greyed, with why in place of its line (`why`), and cannot be tapped.
  */
-export function navRow({ attrs, label, sub = '', ico = 'sparkle', tone = '', disabled = false, why = '' }) {
+export function navRow({ attrs, label, sub = '', ico = 'sparkle', tone = '', disabled = false, why = '', extra = '' }) {
   const line = (disabled && why) || sub || menuInfo(label)?.desc || '';
   return `<button class="nav-row${tone ? ` ${tone}` : ''}${disabled ? ' locked' : ''}" ${attrs} ${disabled ? 'disabled aria-disabled="true"' : ''}>
     ${rowTile(label, ico)}
-    <span class="nr-main"><span class="nr-label">${esc(label)}</span>${line ? `<small>${esc(line)}</small>` : ''}</span>
+    <span class="nr-main"><span class="nr-label">${esc(label)}</span>${line ? `<small>${esc(line)}</small>` : ''}${extra}</span>
     ${disabled ? '<span class="nr-lock" aria-hidden="true">🔒</span>' : icon('chevron', 'nr-chev')}
   </button>`;
 }

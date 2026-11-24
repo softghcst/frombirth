@@ -63,9 +63,9 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   const intro = await page.locator(`${modal} .dyn-body > p.muted`).first().innerText();
   check(/top 8 of \d+/.test(intro) && /best first/.test(intro) && /turned away is common|being turned away is common/.test(intro), `${label}: it says how many there are, that they are best first, and that being turned away is common ("${intro.slice(0, 90)}…")`);
   const first = await page.locator(`${modal} .sub-card`).first().innerText();
-  check(/#1/.test(first) && /Elite/.test(first) && /(Reach|Match|Safety) for you/.test(first) && /about \d+% of applicants/.test(first) && /Private, costly/.test(first), `${label}: the first place is the top-ranked, with reach / match / safety, its acceptance rate, and "costly"`);
+  check(/#1/.test(first) && /Elite/.test(first) && /(Reach|Match|Safety) for you/i.test(first) && /about \d+% of applicants/.test(first) && /Private, costly/i.test(first), `${label}: the first place is the top-ranked, with reach / match / safety, its acceptance rate, and "costly"`);
   const fits = await page.locator(`${modal} .sub-card .chip`).allInnerTexts();
-  check(fits.filter((t) => /for you/.test(t)).length === 8, `${label}: every place on the list says reach, match or safety`);
+  check(fits.filter((t) => /for you/i.test(t)).length === 8, `${label}: every place on the list says reach, match or safety`);
   check(!(await overflow()), `${label}: the list does not scroll sideways`);
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/uni-list-${label}.png` });
 
@@ -93,7 +93,8 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   const blocks = await page.locator('#modal-root .cmp-block').count();
   check(blocks >= 9, `${label}: the comparison has a block per attribute (${blocks})`);
   const text = await page.locator('#modal-root .modal').last().innerText();
-  for (const word of ['Tuition a year', 'Your chances', 'Places offered', 'Help with the cost', 'Length of the course', 'How it is decided']) check(text.toLowerCase().includes(word.toLowerCase()), `${label}: the comparison has "${word}"`);
+  for (const word of ['Tuition a year', 'Where you stand', 'Places offered', 'Help with the cost', 'Length of the course', 'How it is decided']) check(text.toLowerCase().includes(word.toLowerCase()), `${label}: the comparison has "${word}"`);
+  check(await page.locator('#modal-root .fit-bars').count() >= 2 && !/likely|a long shot|a fair chance/i.test(text), `${label}: where you stand is drawn as bars, with no odds in words`);
   check(/✓/.test(text), `${label}: the better one on a line is marked`);
   check(await page.evaluate(() => { const m = [...document.querySelectorAll('#modal-root .modal')].pop(); return m.scrollWidth <= m.clientWidth + 1; }), `${label}: the comparison does not scroll sideways`);
   check(await page.locator('#modal-root .modal').last().locator('.modal-back').count() === 1, `${label}: the comparison has a Back button`);

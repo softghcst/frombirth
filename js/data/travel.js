@@ -97,7 +97,7 @@ export const ACTIVITIES = [
   { id: 'lessons', name: 'Take a week of language lessons', cost: 120, days: 5, needs: 'language', tags: ['education'], skill: 'language', mood: 1, significance: 1 },
   { id: 'park', name: 'Spend a day at a theme park', cost: 90, days: 1, from: 1955, tags: ['family'], mood: 6, significance: 2, kids: true },
   { id: 'wildlife', name: 'Go out to see the wildlife', cost: 200, days: 2, region: 'Africa', tags: ['nature', 'adventure'], mood: 7, significance: 3 },
-  { id: 'campus', name: 'Look round a university', cost: 0, days: 0, tags: ['education'], intellect: 1, mood: 1, significance: 1 },
+  { id: 'campus', name: 'Tour a university', cost: 0, days: 0, tags: ['education'], intellect: 1, mood: 1, significance: 1 },
   { id: 'spa', name: 'A day at the spa', cost: 80, days: 1, from: 1900, tags: ['romantic'], health: 1, mood: 5, significance: 1 },
 ];
 export const ACTIVITY_BY_ID = Object.fromEntries(ACTIVITIES.map((a) => [a.id, a]));

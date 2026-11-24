@@ -51,12 +51,12 @@ const lessonsFresh = () => { const l = store.state.player.flags.lessons; if (l) 
   const kids = [];
   for (let i = 0; i < 40; i++) {
     const s = createLife({ countryId: 'us', year: 2000 });
-    kids.push(s.player.talents.tech);
+    kids.push(s.player.potential.tech); // the gift: what a newborn could become, not where a baby starts
   }
   const mean = kids.reduce((a, b) => a + b, 0) / kids.length;
   check(mean > 10 && mean < 60, `technology varies from life to life (average ${Math.round(mean)})`);
   const gifted = createLife({ countryId: 'us', year: 2000, talent: 'tech' }).player;
-  check(gifted.talents.tech >= 75, `a chosen gift for technology is a real gift (${gifted.talents.tech})`);
+  check(gifted.potential.tech >= 75 && gifted.talents.tech < 20, `a chosen gift for technology is a real gift, and the baby still starts low (${gifted.potential.tech}, now ${gifted.talents.tech})`);
   section('talents: art, writing, technology, math and science, for everyone; mischief stays off the chart');
 }
 
@@ -103,6 +103,7 @@ const lessonsFresh = () => { const l = store.state.player.flags.lessons; if (l) 
 {
   const p = life(16);
   p.talents.tech = 0; p.talents.science = 0; p.talents.art = 0; p.talents.writing = 0; p.skills = {}; // nothing to start from
+  p.potential = { ...p.potential, tech: 80, science: 50, art: 50, writing: 50 }; // a knack for it, fixed, so the dice of birth do not decide it
   const none = apt.majorEdge('computer_science');
   for (let y = 0; y < 6; y++) { p.age = 10 + y; lessonsFresh(); lessons.takeLesson('coding'); }
   for (let i = 0; i < 6; i++) { skills.practice('coding'); }

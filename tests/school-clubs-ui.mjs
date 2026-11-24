@@ -46,8 +46,21 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
   if (!ready) { check(true, 'not at school'); await page.close(); continue; }
   await page.waitForTimeout(200);
   await page.click('.modal [data-go="activities"]'); await page.waitForTimeout(150);
+  // Trying out for a team: two bars, you and what the coach looks for; no odds in numbers or words.
+  const tryRow = page.locator('.modal [data-team]').first();
+  if (await tryRow.count()) {
+    const rowText = await tryRow.innerText();
+    check(!/\d+%|likely|chance|long shot/i.test(rowText), `${label}: a try-out row gives no odds (${rowText.replace(/\n/g, ' ')})`);
+    await tryRow.click(); await page.waitForTimeout(150);
+    const ask = page.locator('#modal-root .modal').last();
+    const askText = await ask.innerText();
+    check(await ask.locator('.fit-bars .fit-row').count() === 2 && /Your Level/.test(askText) && /Coach Wants/.test(askText) && !/\d+%|likely/i.test(askText), `${label}: trying out shows two bars, you and what the coach looks for (${askText.replace(/\n/g, ' / ').slice(0, 160)})`);
+    if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/tryout-${label}.png` });
+    await ask.locator('[data-no]').click(); await page.waitForTimeout(150);
+    check(!(await page.evaluate(async () => (await import('/js/state.js')).store.state.player.education.clubs.includes('sports_team'))), `${label}: "Not Now" leaves you off the team`);
+  }
   check(await page.locator('[data-club-act]').count() >= 4, `${label}: each club has things to do`);
-  check(await page.locator('[data-club-act="choir:event"]').count() === 1 && /Sing in the concert/.test(await page.locator('[data-club-act="choir:event"]').innerText()), `${label}: each club has its big moment of the year`);
+  check(await page.locator('[data-club-act="choir:event"]').count() === 1 && /Sing in the concert/i.test(await page.locator('[data-club-act="choir:event"]').innerText()), `${label}: each club has its big moment of the year`);
   check(/Each year: your singing and music go up/.test(await page.locator('.modal').last().innerText()), `${label}: and says what a year in it does`);
   check(!/Singing lessons and choir/i.test(await page.locator('.modal').last().innerText()), `${label}: the choir is just the Choir`);
   // Clubs outside school are here too, at school: one place for every club, and not a second list in Pursuits.

@@ -101,6 +101,7 @@ section('a young performer\'s week is capped; no school-age life reaches 87 hour
   check(arts.fee >= priv.fee && sports.fee > 5000 && arts.fee > 5 * 2000, `a performing arts school costs more than a private one (${arts.fee} vs ${priv.fee}), a sports academy far more than before (${sports.fee})`);
   const p = child(11, { talent: 60 });
   p.talents.acting = p.talents.singing = p.talents.dance = p.talents.music = 60;
+  p.potential = { ...p.potential, acting: 60, singing: 60, dance: 60, music: 60 }; // the gift too: an ordinary child, not one born for the stage
   check(sch.feeFor(arts, p) === arts.fee && !sch.scholarshipFor(arts, p), 'an ordinary audition pays the full fee');
   p.talents.acting = 80;
   check(sch.feeFor(arts, p) === arts.fee * 0.5 && /half/.test(sch.scholarshipFor(arts, p).name), 'a strong audition earns a half scholarship');

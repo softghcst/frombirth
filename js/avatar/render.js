@@ -5,11 +5,20 @@
 import { resolveLook } from './catalog.js';
 import { characterAvatarSvg } from '../CharacterAvatar.js';
 import { mixHex } from './color.js';
+import { MONARCHIES } from '../data/royalty.js';
 
 /** A royal or noble rank as portraits dress it: crowns for the royal family, a coronet for the peerage. */
-export function royalDress(rank) {
+export function royalDress(rank, consort = false, countryId = null) {
   if (!rank || rank === 'knight') return null;
-  return ['monarch', 'heir', 'royal'].includes(rank) ? { rank } : { rank: 'noble', title: rank }; // a noble's own title, for dress that goes with it
+  // An empire's crowned head is an Emperor or Empress (Japan): an empress wears the empress's crown.
+  const imperial = MONARCHIES[countryId]?.ranks?.find(([r]) => r === 'monarch')?.[1] === 'Emperor';
+  // A monarch who holds real power (an absolute or executive monarchy) reigns in the obsidian crown.
+  const powerful = ['absolute', 'executive'].includes(MONARCHIES[countryId]?.type);
+  // The one who reigns wears the sovereign's crown; a king or queen by marriage wears a consort's.
+  if (rank === 'consort' || (rank === 'monarch' && consort)) return { rank: 'monarch', sovereign: false, imperial };
+  if (rank === 'monarch') return { rank, sovereign: true, imperial, powerful };
+  // A noble keeps their own title, for the dress that goes with it (a duke's or a duchess's coat).
+  return ['heir', 'royal'].includes(rank) ? { rank } : { rank: 'noble', title: rank };
 }
 
 /** The player's portrait context: in prison, royal, or at work. */
@@ -31,7 +40,7 @@ export function faceGenderOf(p) {
 }
 
 export function dressOfPlayer(p) {
-  return { face: faceGenderOf(p), jailed: !!p.legal?.incarceration, royal: p.royal && !p.royal.waiting ? royalDress(p.royal.rank) : null,
+  return { face: faceGenderOf(p), jailed: !!p.legal?.incarceration, royal: p.royal && !p.royal.waiting ? royalDress(p.royal.rank, p.royal.rank === 'monarch' && !p.royal.reigning, p.royal.countryId) : null,
     career: p.career?.careerId && !p.career.retired ? { id: p.career.careerId, level: p.career.level ?? 0 } : null };
 }
 

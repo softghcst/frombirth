@@ -11,7 +11,7 @@ import { policingShift } from './policy.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { store, player, country, npcsByRole, log, milestone } from '../state.js';
-import { resolve } from './conditions.js';
+import { resolve, checkBars } from './conditions.js';
 import { fire, currentCareer } from './career.js';
 import { leaveForPrison } from './education.js';
 import { CRIMES, CRIME_BY_ID, LIFE_SENTENCE, STRANGERS, METHODS, METHOD_BY_ID } from '../data/crimes.js';
@@ -48,6 +48,9 @@ export function successChance(crime, edge = 0) {
   return clamp(chance - legal().heat / 400, 0.03, 0.95);
 }
 
+/** A crime as two bars: what you bring to it, and what it takes (the police's attention raises that bar). */
+export const crimeBars = (crime, edge = 0) => checkBars({ base: crime.base, factors: crime.factors }, edge - legal().heat / 400);
+
 /** A handful of strangers who happen to be around this year. */
 export function strangerOptions() {
   const p = player();
@@ -66,7 +69,7 @@ export function methodOptions() {
   const murder = CRIME_BY_ID.murder;
   return METHODS.filter((m) => !m.needs || resolve(m.needs)).map((m) => {
     const chance = successChance(murder, m.edge);
-    return { id: m.id, name: m.name, blurb: m.blurb,
+    return { id: m.id, name: m.name, blurb: m.blurb, bars: crimeBars(murder, m.edge),
       odds: chance >= 0.7 ? 'good' : chance >= 0.45 ? 'fair' : chance >= 0.25 ? 'poor' : 'terrible' };
   });
 }
@@ -83,7 +86,7 @@ export function crimeOptions() {
   const p = player();
   return CRIMES.filter((c) => p.age >= c.minAge).map((c) => {
     const chance = successChance(c);
-    return { id: c.id, name: c.name, target: !!c.target,
+    return { id: c.id, name: c.name, target: !!c.target, bars: crimeBars(c),
       odds: chance >= 0.7 ? 'good' : chance >= 0.45 ? 'fair' : chance >= 0.25 ? 'poor' : 'terrible',
       stakes: stakes(OFFENSE_BY_ID[c.offense]) };
   });

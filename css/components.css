@@ -684,6 +684,7 @@ div.row { cursor: default; }
 .gl-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .gl-radio { display: flex; gap: 8px; align-items: center; min-height: 40px; font-size: 0.93rem; }
 .gl-radio input { width: 20px; height: 20px; flex: none; }
+.gl-answer { margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: var(--surface-2, rgba(127,127,127,.1)); font-weight: 600; }
 .gl-legs p { font-size: 0.85rem; margin: 4px 0; }
 .gl-entry { padding: 8px 0; border-top: 1px dashed var(--line); }
 .gl-entry small { display: block; color: var(--bad); font-size: 0.82rem; }
@@ -1233,3 +1234,12 @@ details.about-them { margin-top: 10px; border-top: 1px solid var(--line-soft); p
 .sd-head .mini, .sd-team .mini, .sd-skill .mini, .sd-lrow .mini { width: 100% !important; height: 8px; border-radius: 99px; background: var(--line-soft); overflow: hidden; margin: 0; }
 .sd-head .mini .fill, .sd-team .mini .fill, .sd-skill .mini .fill, .sd-lrow .mini .fill { display: block; height: 100%; border-radius: 99px; }
 .sd-lrow strong { white-space: normal; }
+
+/* How you measure up: two bars, no numbers (ui/fitBars.js). */
+.fit-bars { display: grid; gap: 5px; margin: 6px 0 2px; width: 100%; }
+.fit-row { display: grid; grid-template-columns: minmax(7.5em, 34%) 1fr; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+.fit-track { position: relative; height: 9px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.fit-track i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; }
+.fit-you { background: var(--accent); }
+.fit-need { background: var(--peach-strong); }
+.choice-btn .fit-bars, .nav-row .fit-bars { margin-top: 6px; }

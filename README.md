@@ -83,6 +83,7 @@ node tests/menu-layout.mjs   # every tab is a list of rows with pictures and a l
 node tests/family-news.mjs   # causes of death and funerals; lessons asked of parents; sleepovers; relatives' diagnoses and everyday illnesses as news
 node tests/family-news-ui.mjs   # the sleepover and lessons dropdowns, the death notice with the funeral, an illness notice, in a browser
 node tests/military.mjs   # joining from 18 with a branch, basic training, deployments with medals and wounds, contracts, veterans' college help, national service (idols, athletes, medal exemptions)
+node tests/talents.mjs   # born low whatever the gift; the years bring a talent on, practice further; a gift shows itself; sport ceilings from the gift
 node tests/sports-awards.mjs   # end-of-season awards: MVP, Rookie of the Year and each sport's own, decided once from the season played, on the record
 node tests/sports-regressions.mjs # sports: bugs found in review (contracts and jobs, school and university teams, injuries, prison, generations), kept fixed
 node tests/turns.mjs           # turn length: years, halves or quarters; the same life comes out the same; scenes for each season
