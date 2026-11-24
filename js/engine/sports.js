@@ -317,6 +317,25 @@ export function giveUp(sportId, state = store.state) {
   log(text);
   return result(true, text, 'neutral');
 }
+/** Seasons away from one professional sport before another sport's clubs, drafts or tours will take you on. */
+export const SWITCH_BREAK = 2;
+/**
+ * Why the player cannot go professional in this sport now, or '' if they can. Someone who plays one sport
+ * professionally plays the others for fun: to be a professional in another, they retire from the first, and spend a
+ * couple of seasons away before anyone takes them seriously in the new one.
+ */
+export function proLock(sportId, state = store.state) {
+  const a = myAthlete(state);
+  if (!a) return '';
+  for (const e of Object.values(a.sports)) {
+    if (e.id === sportId || !(e.proYear || e.level === 'pro' || e.contractId)) continue;
+    const name = sportOf(e.id).name.toLowerCase();
+    if (e.status === 'active') return `You play ${name} professionally. To go professional in another sport, you would retire from ${name} first.`;
+    const left = e.retiredYear ?? e.stoppedYear ?? 0;
+    if (state.year - left < SWITCH_BREAK) return `You left professional ${name} in ${left}. Nobody takes a switch seriously straight away: ${SWITCH_BREAK} seasons away from it first.`;
+  }
+  return '';
+}
 export function setPrimary(sportId, state = store.state) {
   const a = myAthlete(state);
   if (!a?.sports[sportId] || a.sports[sportId].status !== 'active') return result(false, 'You do not play that.', 'neutral');

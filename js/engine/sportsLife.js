@@ -211,6 +211,8 @@ const ANSWERS = {
   },
   turnPro(state, d, choice) {
     if (choice === 'no') return result(true, 'You stayed amateur for now.', 'neutral');
+    const lock = sp.proLock(d.sportId, state);
+    if (lock) return { ...result(false, lock, 'neutral'), close: true };
     const e = sp.entryOf(d.sportId, state.player.id, state);
     e.level = 'pro';
     e.proYear ??= state.year;
@@ -325,6 +327,8 @@ function signPro(state, d, o = {}) {
   if (!e || e.status !== 'active' || e.banUntil > state.year || p.legal?.incarceration || !p.alive) {
     return { ...result(false, `${org?.name ?? 'The club'} only signs players who are playing.`, 'neutral'), close: true };
   }
+  const lock = sp.proLock(d.sportId, state);
+  if (lock) return { ...result(false, lock, 'neutral'), close: true };
   // One professional contract at a time: a transfer ends the old one before this; any other offer waits until it is over.
   // A contract whose job has already gone (another job taken) is over now, not at the turn of the year.
   for (const x of Object.values(S.contracts)) if (x.kind === 'pro' && x.status === 'active' && x.personId === p.id && p.career.sportContract !== x.id) endContract(state, x, 'left the club');
@@ -381,6 +385,8 @@ export function goPro(sportId, state = store.state) {
   const sport = sportOf(sportId);
   if (!needsSport(state)) return result(false, 'You are not a professional athlete looking for a sport.', 'neutral');
   if (!sport || !proSports(state).includes(sport)) return result(false, `There is no professional ${sport?.name.toLowerCase() ?? 'game'} here yet.`, 'neutral');
+  const lock = sp.proLock(sportId, state);
+  if (lock) return result(false, lock, 'neutral');
   let e = sp.entryOf(sportId, p.id, state);
   if (!e || e.status !== 'active') { const r = sp.takeUp(sportId, state); if (!r.ok) return r; e = sp.entryOf(sportId, p.id, state); }
   // They were hired as a professional: their game is a professional's, from their talent and how senior the job is.
@@ -1043,16 +1049,20 @@ function yearIn(state, a, e) {
   // A coach who sees something says so: an academy calls.
   scouting(state, a, e, sum);
   recruitYear(state, a, e); // high school: stars, camps, offers, visits, commitment, signing day (engine/recruiting.js)
-  youthYear(state, a, e); // soccer academies: a scholarship or youth contract at 16, or released (engine/youthContracts.js)
-  asiaYear(state, a, e); // Japan and Korea: posting, free agency abroad, military service (engine/asiaBaseball.js)
-  intlYear(state, a, e); // outside the draft countries: trainers, handshake deals, signing at 16 (engine/international.js)
-  proRoutes(state, a, e);
+  // A professional in another sport plays this one for fun: no academy, draft, club or tour comes for them here.
+  const locked = !!sp.proLock(e.id, state);
+  if (!locked) {
+    youthYear(state, a, e); // soccer academies: a scholarship or youth contract at 16, or released (engine/youthContracts.js)
+    asiaYear(state, a, e); // Japan and Korea: posting, free agency abroad, military service (engine/asiaBaseball.js)
+    intlYear(state, a, e); // outside the draft countries: trainers, handshake deals, signing at 16 (engine/international.js)
+    proRoutes(state, a, e);
+  }
   if (e.contractId) contractYear(state, a, e);
   mindYear(state, a, e, sum);
   fameYear(state, a, e, sum);
   afterSeason(state, a, e, sum); // college: the season used, NIL money, the transfer portal
   minorsYear(state, a, e, sum); // the minor leagues: up a level, called up, or down (engine/draft.js)
-  draftYear(state, a, e); // the draft, by the league's own rules (engine/draft.js)
+  if (!locked) draftYear(state, a, e); // the draft, by the league's own rules (engine/draft.js)
   baseballYear(state, a, e, sum); // baseball: winter ball, the Classic, summer leagues, life abroad (engine/baseball.js)
   integrityYear(state, a, e);
   // The body says when: a professional in their thirties is asked whether this is the last year.
