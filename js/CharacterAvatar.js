@@ -134,6 +134,8 @@ export function dressFor(look, ctx = {}) {
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
     out.facialHair = null;
+    // A grown-up style (13 and up) is not drawn on a child: they wear a child's style until they are old enough.
+    if (age < (FITTED_HAIR[out.hair]?.minAge ?? 0)) out.hair = look.childHair ?? out.hair;
   } else {
     out.makeup = [...new Set([...(look.marks ?? []), ...out.makeup])];
     if (age < 16) out.facialHair = null;

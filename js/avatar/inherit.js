@@ -5,7 +5,7 @@
 // genetics. Only the `inherited` half of a parent is ever read, so a dyed
 // or restyled parent passes on what they were born with.
 import { rng } from '../rng.js';
-import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, DEPTH, HAIR_STYLES, TWEAKS, hairSuitsGender } from './catalog.js';
+import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, DEPTH, HAIR_STYLES, TWEAKS, hairSuitsGender, fittedFor } from './catalog.js';
 import { RESTING, OUTFITS, HAIR_COVERS_FACE } from './curation.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
@@ -38,14 +38,23 @@ export function randomInherited(skinDepthHint) {
   return g;
 }
 
+/** How often a generated person is given one of the fitted hairstyles rather than an older one. */
+const FITTED_SHARE = 0.7;
+
 /** A first haircut that suits the texture and the gender, and something to wear. */
 export function defaultStyle(inherited, gender) {
-  const suited = stylesFor(inherited.hairTexture).filter((s) => !HAIR_COVERS_FACE.includes(s.id));
   const longOk = rng.chance(0.25);
-  // Only styles for their own gender (or unisex ones): men's cuts go to men, women's to women.
-  const own = suited.filter((s) => hairSuitsGender(s, gender));
-  const leaning = gender === 'male' ? own.filter((s) => longOk || s.tags.length !== 'long') : own;
-  const hairPool = leaning.length ? leaning : own.length ? own : suited;
+  // Only styles for their own gender (or unisex ones): men's cuts go to men, women's to women; mostly long hair on women
+  // is fine, on men only now and then. The fitted styles (assets/hair_fitted/) are given most of the time; the elder ones
+  // only come with old age (elderHair), and a 13+ style is drawn as a child's (childHair) until then.
+  const pool = (list) => {
+    const own = list.filter((s) => !HAIR_COVERS_FACE.includes(s.id) && hairSuitsGender(s, gender));
+    const leaning = gender === 'male' ? own.filter((s) => longOk || s.tags.length !== 'long') : own;
+    return leaning.length ? leaning : own;
+  };
+  const fitted = pool(fittedFor(inherited.hairTexture).filter((s) => !s.elder));
+  const older = pool(stylesFor(inherited.hairTexture));
+  const hairPool = fitted.length && (!older.length || rng.chance(FITTED_SHARE)) ? fitted : older.length ? older : stylesFor(inherited.hairTexture);
   const wardrobe = [...OUTFITS.any, ...(gender === 'female' ? OUTFITS.female : gender === 'male' ? OUTFITS.male : [])];
   return { hair: rng.pick(hairPool.length ? hairPool : HAIR_STYLES).id, hairDye: null, glasses: null, facialHair: null, makeup: null, lipColor: null,
     jewelry: [], outfit: rng.pick(wardrobe), outfitColor: null, hat: null };

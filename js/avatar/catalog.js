@@ -257,7 +257,12 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   return {
     tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: ((s) => (s ? `babyhair_${s}` : null))(seeded(BABY_HAIR_STYLES.byTexture[g.hairTexture] ?? BABY_HAIR_STYLES.byTexture.straight, seed, 'babyhair')),
-    keepHair: !!st.keepHair, hairTexture: g.hairTexture, facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
+    keepHair: !!st.keepHair, hairTexture: g.hairTexture,
+    // What a child is drawn with while their own style is a grown-up one (minAge): a style for their gender and hair
+    // that anyone may wear, always the same one for the same person.
+    childHair: ((list) => (list.length ? seeded(list, seed, 'childhair').id : null))(
+      [...stylesFor(g.hairTexture), ...fittedFor(g.hairTexture)].filter((s) => !s.minAge && !s.elder && hairSuitsGender(s, sex))),
+    facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
     babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'),
     colors: {

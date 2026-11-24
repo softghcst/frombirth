@@ -72,7 +72,8 @@ for (const id of styles) {
   meta.clipToHead = was;
   // A child wears it on the kid head; under a hat it is still clipped by the brim.
   const kid = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid', age: 9 });
-  check(kid.includes(`hair_fitted/${id}_kid.svg#hair_back`), `a child is not drawn with ${id}_kid.svg`);
+  if (FITTED_HAIR[id].minAge) check(!kid.includes(`hair_fitted/${id}_`), `a child is drawn with ${id}, a ${FITTED_HAIR[id].minAge}+ style`);  // grown-up styles: a child's instead
+  else check(kid.includes(`hair_fitted/${id}_kid.svg#hair_back`), `a child is not drawn with ${id}_kid.svg`);
   check(filesFor({ head: 'head_11_pixie', hair: id, makeup: [], jewelry: [] }, { age: 30 }).includes(`./assets/hair_fitted/${id}_pixie.svg`), `the fitted file of ${id} is not preloaded`);
 }
 
@@ -149,7 +150,15 @@ for (const id of Object.keys(FITTED_HAIR)) {
     const gender = i % 2 ? 'female' : 'male';
     const hair = ensureStyled(randomAppearance(undefined, gender), gender).style.hair;
     check(hairSuitsGender(byId[hair], gender), `a generated ${gender === 'male' ? 'man' : 'woman'} was given ${hair}, a ${byId[hair]?.tags?.gender} style`);
+    check(!FITTED_HAIR[hair]?.elder, `a generated person was given an elder style, ${hair}`);
   }
+  // Generated people mostly get the fitted styles; a child with a 13+ style is drawn with a child's until 13.
+  let fitted = 0;
+  for (let i = 0; i < 400; i++) { const g = i % 2 ? 'female' : 'male'; if (FITTED_HAIR[ensureStyled(randomAppearance(undefined, g), g).style.hair]) fitted++; }
+  check(fitted > 200, `only ${fitted} of 400 generated people got a fitted style`);
+  const kid = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_13_athletic', skin: 'tan', hairTexture: 'wavy' }, style: { hair: 'storybook_waves' } }, seed: 'kid', age, gender: 'female' });
+  check(!kid(9).includes('storybook_waves') && /hair/.test(kid(9)), 'a child is drawn with a 13+ style');
+  check(kid(13).includes('hair_fitted/storybook_waves_'), 'a thirteen-year-old is not drawn with her own 13+ style');
 }
 
 if (problems.length) {
