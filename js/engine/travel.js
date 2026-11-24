@@ -24,7 +24,7 @@ import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { CABINS } from '../data/activities.js';
 import { MODES, MODE_BY_ID, STAYS, STAY_BY_ID, ACTIVITIES, ACTIVITY_BY_ID, TRIP_TYPES, TRIP_TYPE_BY_ID, REFUNDS, INSURANCE_RATE, DAILY, CABIN_FARE, HUBS, NONSTOP_KM } from '../data/travel.js';
 import { SKILL_BY_ID } from '../data/skills.js';
-import { CRUISE_LINES, CRUISE_LINE_BY_ID, ITINERARIES, ITINERARY_BY_ID, STATEROOMS, STATEROOM_BY_ID, VIEWS, VIEW_BY_ID, DECKS, DECK_BY_ID, OCCUPANCY, EXTRAS, EXTRA_BY_ID, CRUISE_FEES, CRUISE_MEMORIES, REGION_NAMES } from '../data/cruises.js';
+import { CRUISE_LINES, CRUISE_LINE_BY_ID, ITINERARIES, ITINERARY_BY_ID, STATEROOMS, STATEROOM_BY_ID, VIEWS, VIEW_BY_ID, DECKS, DECK_BY_ID, OCCUPANCY, EXTRAS, EXTRA_BY_ID, CRUISE_FEES, CRUISE_MEMORIES, REGION_NAMES, PORT_COUNTRY } from '../data/cruises.js';
 import { distanceKm, overland, coastal, regionOf, localTime, instantAt, season, climate, placeName, capitalCity, placeId, parsePlace } from './geo.js';
 import { today, addDays, daysBetween, yearOf, readiness, readyForTrip, addStay, ensureOwnPassport, personById, entryRule, needsAuthorization, eraOf } from './documents.js';
 import { charge, refund, recordEvent, hasEvent, archiveIdOf, events } from './chronicle.js';
@@ -361,6 +361,19 @@ function cruiseProblems(trip, people) {
   return out;
 }
 
+/**
+ * The foreign countries a trip goes into: for a cruise, the port it leaves from, every port of call in a country, and
+ * where a one-way sailing ends; otherwise just the destination. Each needs papers, and each is a stamp.
+ */
+export function countriesOf(trip, p = player()) {
+  const all = [trip.destination?.countryId];
+  if (trip.type === 'cruise' && trip.cruise?.itin) {
+    const it = ITINERARY_BY_ID[trip.cruise.itin];
+    all.push(...it.ports.map((x) => PORT_COUNTRY[x]), it.oneWay?.[0]);
+  }
+  return [...new Set(all.filter((c) => c && COUNTRIES[c] && c !== p.countryId))];
+}
+
 /** The sailing the trip is on, in words: for cards and the trip's story. */
 export function cruiseSummary(trip) {
   const cr = trip.cruise;
@@ -622,7 +635,7 @@ export function problems(trip, p = player()) {
   }
   if (p.flags.travelNeeds?.stepFree && m && !m.accessible) out.push(`${m.name}: step-free help cannot be arranged.`);
   // Traveling with children: a child under 16 crossing a border goes with a parent, or with written consent.
-  const abroad = trip.destination.countryId !== p.countryId;
+  const abroad = countriesOf(trip, p).length > 0;
   const people = goingPeople(trip);
   if (p.age < 16 && !people.some((x) => x.role === 'parent')) out.push('A child travels with a parent or guardian.');
   for (const x of people.filter((y) => y.role === 'child' && y.age < 16)) if (typeof x.flags.abroad === 'string') out.push(`${x.firstName} lives with their other parent: their consent is needed.`);
@@ -632,8 +645,8 @@ export function problems(trip, p = player()) {
     // A holiday or a business trip: passports and visitor's permissions are sorted when it is booked (readyForTrip), so
     // they are not problems. Study and anything closed still are.
     const auto = ['visit', 'business'].includes(purpose);
-    for (const x of people) {
-      const r = readiness(x, trip.destination.countryId, purpose, trip.depart, trip.ret);
+    for (const dest of countriesOf(trip, p)) for (const x of people) {
+      const r = readiness(x, dest, purpose, trip.depart, trip.ret);
       out.push(...r.problems.filter((y) => !(auto && r.papers.includes(y))));
     }
   }
@@ -648,16 +661,19 @@ export function problems(trip, p = player()) {
 
 /** What the border asks of each traveler on a plan, so the planner can show it and offer the applications. */
 export function entryCheck(trip, p = player()) {
-  if (!trip.destination || trip.destination.countryId === p.countryId) return [];
+  if (!trip.destination) return [];
+  const where = countriesOf(trip, p);
+  if (!where.length) return [];
   const purpose = TRIP_TYPE_BY_ID[trip.type].purpose;
-  return goingPeople(trip).map((x) => {
-    const r = readiness(x, trip.destination.countryId, purpose, trip.depart, trip.ret);
+  const several = where.length > 1;
+  return where.flatMap((dest) => goingPeople(trip).map((x) => {
+    const r = readiness(x, dest, purpose, trip.depart, trip.ret);
     // On a holiday or business trip, missing papers are sorted when it is booked: listed, not problems.
     const auto = ['visit', 'business'].includes(purpose);
     const sorted = auto ? r.papers : [];
     const left = r.problems.filter((y) => !sorted.includes(y));
-    return { id: x.id, name: x.firstName, you: x === p, rule: r.rule, ok: !left.length, problems: left, sorted, needs: auto ? null : r.needs, mayApply: x === p || (x.role === 'child' && x.age < 18) };
-  });
+    return { id: x.id, name: several ? `${x.firstName}, ${theCountry(COUNTRIES[dest].name)}` : x.firstName, countryId: dest, you: x === p, rule: r.rule, ok: !left.length, problems: left, sorted, needs: auto ? null : r.needs, mayApply: x === p || (x.role === 'child' && x.age < 18) };
+  }));
 }
 
 // ---------- Who pays ----------
@@ -830,10 +846,10 @@ export function confirm(tripId, p = player()) {
 /** Passports and visitor's permissions for everyone going on a holiday or business trip abroad (documents.readyForTrip). */
 function sortPapers(trip, p = player()) {
   const out = { fees: 0, notes: [] };
-  if (!trip.destination || trip.destination.countryId === p.countryId) return out;
+  if (!trip.destination) return out;
   const purpose = TRIP_TYPE_BY_ID[trip.type].purpose;
-  for (const x of goingPeople(trip)) {
-    const r = readyForTrip(x, trip.destination.countryId, purpose, trip.depart, trip.ret, trip.id);
+  for (const dest of countriesOf(trip, p)) for (const x of goingPeople(trip)) {
+    const r = readyForTrip(x, dest, purpose, trip.depart, trip.ret, trip.id);
     out.fees += r.fees; out.notes.push(...r.notes);
   }
   return out;
@@ -873,7 +889,7 @@ export function depart(tripId, p = player()) {
   const abroad = trip.destination.countryId !== p.countryId;
   const purpose = TRIP_TYPE_BY_ID[trip.type].purpose;
   // A trip booked before papers were sorted with the booking (an older save) is sorted now.
-  if (abroad) sortPapers(trip, p);
+  if (countriesOf(trip, p).length) sortPapers(trip, p);
   // At the border: anyone not able to cross stays home.
   if (abroad) {
     const me = readiness(p, trip.destination.countryId, purpose, trip.depart, trip.ret);
@@ -1045,6 +1061,14 @@ export function comeHome(tripId, p = player()) {
   trip.completedOn = trip.ret;
   trip.completedYear = year();
   for (const b of trip.bookings) if (b.status === 'confirmed') b.status = 'used';
+  // A cruise stamps every foreign country it stopped in, not only the one it sailed from.
+  const ashore = trip.type === 'cruise' ? countriesOf(trip, p).filter((c) => c !== trip.destination.countryId) : [];
+  for (const c of ashore) {
+    stamp(c, 'visit');
+    const seen = (p.flags.visited ??= []);
+    if (!seen.includes(c)) seen.push(c);
+  }
+  if (ashore.length) trip.notes.push(`Stamped: ${list(ashore.map((c) => theCountry(COUNTRIES[c].name)))}.`);
   if (abroad) {
     stamp(trip.destination.countryId, 'visit');
     (p.trips ??= []).push({ countryId: trip.destination.countryId, city: trip.destination.city, year: year(), age: p.age, purpose: trip.type === 'scouting' ? 'scouting' : ['visiting', 'wedding', 'funeral'].includes(trip.type) ? 'family' : 'holiday', with: people.length - 1, tripId: trip.id });

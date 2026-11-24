@@ -153,7 +153,8 @@ const plan = (o = {}) => {
   const before = p.finance.cash;
   const q = travel.quote(t);
   const b = travel.confirm(t.id);
-  check(b.ok && before - p.finance.cash === q.organizer, `booked and paid once (${q.organizer})`);
+  const fees = (p.finance.receipts ?? []).filter((x) => x.kind === 'passport_fee').reduce((s, x) => s - x.amount, 0);
+  check(b.ok && before - p.finance.cash === q.organizer + Math.abs(fees), `booked and paid once (${q.organizer}, plus ${Math.abs(fees)} for a passport: Victoria is in Canada)`);
   p.stats.mood = 50;
   store.state.today = t.depart;
   const d = travel.depart(t.id);
@@ -162,6 +163,30 @@ const plan = (o = {}) => {
   check(h.ok && /Alaska Inside Passage with Coral Bay Cruises/.test(h.text) && p.stats.mood > 55, `home, with a memory (${h.text})`);
   check(travel.tripCard(t).where.includes('Alaska Inside Passage') && travel.tripCard(t).cruise.room === 'Balcony stateroom', 'the trip card names the sailing and stateroom');
   check(p.flags.cruises?.length === 1, 'the cruise is remembered among the cruises taken');
+}
+
+// 8. Ports abroad count: papers for every country the ship stops in, and a stamp for each.
+{
+  const p = life();
+  p.flags.passport = []; p.flags.visited = [];
+  const t = travel.startPlan('cruise');
+  travel.updatePlan(t.id, { depart: `${store.state.year}-03-10`, cruise: { line: 'coral_bay' } });
+  travel.updatePlan(t.id, { cruise: { itin: 'caribbean_west' } });
+  travel.updatePlan(t.id, { cruise: { room: 'inside' } });
+  travel.updatePlan(t.id, { mode: 'walk' });
+  check(travel.countriesOf(t).sort().join() === 'bs,jm,mx', `from New York: the Bahamas, Jamaica and Mexico (${travel.countriesOf(t)})`);
+  const entries = travel.entryCheck(t);
+  check(entries.length === 3 && entries.some((x) => /Jamaica/.test(x.name)), 'the passport step lists every country the ship stops in');
+  check(travel.problems(t).length === 0, `bookable, papers sorted at booking (${travel.problems(t).join(' / ')})`);
+  check(travel.confirm(t.id).ok, 'booked');
+  store.state.today = t.depart;
+  check(travel.depart(t.id).ok, 'sailed');
+  const h = travel.comeHome(t.id);
+  const stamps = p.flags.passport.filter((x) => x.kind === 'visit').map((x) => x.id).sort().join();
+  check(stamps === 'bs,jm,mx', `a stamp for each country ashore (${stamps})`);
+  check(['bs', 'jm', 'mx'].every((c) => p.flags.visited.includes(c)), 'and each counts as visited');
+  check(['the Bahamas', 'Jamaica', 'Mexico'].every((c) => travel.tripCard(t).notes.some((n) => n.startsWith('Stamped:') && n.includes(c))), 'the trip notes the stamps');
+  void h;
 }
 
 if (problems.length) { console.log(`PROBLEMS:\n - ${problems.join('\n - ')}`); process.exit(1); }

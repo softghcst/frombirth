@@ -84,6 +84,20 @@ export const ITINERARIES = [
     ports: ['Ushuaia', 'Drake Passage (at sea)', 'Antarctic Peninsula landings', 'South Shetland Islands'] },
 ];
 export const ITINERARY_BY_ID = Object.fromEntries(ITINERARIES.map((i) => [i.id, i]));
+/**
+ * The country each port of call is in, for passports, visas and stamps (ids in data/countries.js). Scenic cruising,
+ * days at sea and Antarctica are no country's; islands the game has no country for (the Virgin Islands, St. Maarten,
+ * Antigua, St. Lucia, Barbados, the Caymans, the Falklands) are left out, so they stamp nothing.
+ */
+export const PORT_COUNTRY = {
+  Nassau: 'bs', 'A private island beach': 'bs', 'Ocho Rios': 'jm', Cozumel: 'mx', 'Costa Maya': 'mx', Progreso: 'mx',
+  Juneau: 'us', Skagway: 'us', Ketchikan: 'us', Victoria: 'ca',
+  Marseille: 'fr', 'Florence and Pisa (Livorno)': 'it', 'Rome (Civitavecchia)': 'it', Naples: 'it', 'Naples and Capri': 'it', Messina: 'it',
+  'Palma de Mallorca': 'es', Monaco: 'mc', Mykonos: 'gr', Santorini: 'gr', Rhodes: 'gr', Crete: 'gr', 'Ephesus (Kuşadası)': 'tr',
+  Geiranger: 'no', 'Ålesund': 'no', 'Flåm': 'no', Stavanger: 'no', Trondheim: 'no', 'Tromsø': 'no', 'North Cape (Honningsvåg)': 'no', 'Lofoten Islands': 'no',
+  Stockholm: 'se', Helsinki: 'fi', Tallinn: 'ee', 'Gdańsk': 'pl', Phuket: 'th', Penang: 'my', 'Ho Chi Minh City': 'vn', 'Bangkok (Laem Chabang)': 'th',
+  Dunedin: 'nz', Christchurch: 'nz', Wellington: 'nz', 'Bay of Islands': 'nz', Montevideo: 'uy', 'Puerto Madryn': 'ar', Ushuaia: 'ar', 'Punta Arenas': 'cl',
+};
 export const REGION_NAMES = { bahamas: 'Bahamas', caribbean: 'Caribbean', mexico: 'Mexico', alaska: 'Alaska', med: 'Mediterranean', greek: 'Greek Isles',
   fjords: 'Norway', baltic: 'Baltic', asia: 'Asia', australia: 'Australia and New Zealand', transatlantic: 'Transatlantic', south_america: 'South America', antarctica: 'Antarctica' };
 
