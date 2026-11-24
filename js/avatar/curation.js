@@ -130,14 +130,15 @@ export const OUTFITS = {
     'outfit_59_lightning_sweatshirt', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket'],
   male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
   // What a baby or toddler wears (0 to 6, one head): drawn on its template, assets/clothes_templates/baby_head_template.png.
-  baby: ['outfit_baby_01_cream_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_dot_bib', 'outfit_baby_04_bowtie_vest', 'outfit_baby_05_star_pajamas', 'outfit_baby_07_cable_sweater'],
+  baby: ['outfit_baby_01_cream_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_dot_bib', 'outfit_baby_04_bowtie_vest', 'outfit_baby_05_star_pajamas', 'outfit_baby_07_cable_sweater', 'outfit_baby_09_yellow_collar',
+    'outfit_baby_10_suspenders_bowtie'],
 };
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
   outfits: { female: ['outfit_09_princess_gown', 'outfit_45_princess_sweetheart', 'outfit_52_princess_starlight', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
     male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_46_prince_epaulettes', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
-      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_cape', monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
+      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: ['outfit_baby_06_royal_cape', 'outfit_baby_08_royal_christening_gown'], monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
     // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
     noble: { female: ['outfit_48_noble_cameo'], male: ['outfit_49_noble_cravat'] },
     // Some titles have their own dress: a duke or a duchess wears this instead.

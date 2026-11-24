@@ -145,7 +145,7 @@ export function dressFor(look, ctx = {}) {
     const minor = age < 18;
     const pick = (grown, child, list) => { const x = minor ? child ?? list.find((o) => !ROYAL.grownOnly.includes(o)) : grown ?? list[0]; return minor && ROYAL.grownOnly.includes(x) ? list.find((o) => !ROYAL.grownOnly.includes(o)) : x; };
     // A royal child (under 14, the kid head) wears children's clothes too (none drawn yet); royal dress begins at 14.
-    out.clothes = young ? ROYAL.outfits.baby : stage === 'kid' ? look.kidClothes ?? null : rank === 'monarch' ? pick(look.monarchOutfit, look.monarchOutfitYoung, ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)
+    out.clothes = young ? look.royalBabyClothes ?? ROYAL.outfits.baby[0] ?? null : stage === 'kid' ? look.kidClothes ?? null : rank === 'monarch' ? pick(look.monarchOutfit, look.monarchOutfitYoung, ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)
       : pick(look.royalOutfit, look.royalOutfitYoung, ROYAL.outfits[gender]);
     out.crown = stage === 'adult' || stage === 'older' ? (rank === 'monarch' && gender === 'female' && ctx.royal.imperial ? ROYAL.crowns.empress : rank === 'monarch' && ctx.royal.imperial && gender !== 'female' && ctx.royal.sovereign ? ROYAL.crowns.emperor : rank === 'monarch' && ctx.royal.sovereign ? (ctx.royal.powerful ? ROYAL.crowns.obsidian : gender === 'female' ? ROYAL.crowns.queen : ROYAL.crowns.sovereign) : ROYAL.crowns[rank]?.[gender] ?? ROYAL.crowns.child) : rank === 'heir' ? (gender === 'female' ? ROYAL.crowns.crownPrincess : ROYAL.crowns.crownPrince) : rank !== 'monarch' && gender === 'female' ? ROYAL.crowns.princess : ROYAL.crowns.child;
     out.hat = null;

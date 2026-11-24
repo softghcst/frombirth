@@ -78,7 +78,7 @@ for (let i = 0; i < 300; i++) check(!CUR.HAIR_COVERS_FACE.includes(randomAppeara
 
 // 2. Curated ids.
 const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, CUR.BABY_BROWS, ...Object.values(CUR.OUTFITS).flat(),
-  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, ...[CUR.ROYAL.outfits.baby].filter(Boolean), ...Object.values(CUR.ROYAL.outfits.monarch).flat(), ...Object.values(CUR.ROYAL.outfits.noble).flat(), ...Object.values(CUR.ROYAL.outfits.nobleByTitle).flatMap((x) => Object.values(x).flat()),
+  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, ...CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch).flat(), ...Object.values(CUR.ROYAL.outfits.noble).flat(), ...Object.values(CUR.ROYAL.outfits.nobleByTitle).flatMap((x) => Object.values(x).flat()),
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
   ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, ...CUR.HAIR_COVERS_FACE];
 for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
@@ -616,7 +616,7 @@ for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5
   check(!CUR.ROYAL.grownOnly.includes(c), `a ${rank} of ${age} is not in grown-up dress (${c})`);
   // A royal child (baby, toddler or kid head, under 14) is dressed as a child: the children's clothes are being redrawn,
   // so for now nothing (or the baby's royal dress, once there is one); from 14, in royal dress.
-  if (['baby', 'toddler', 'kid'].includes(ageStage(age))) check(c == null || c === CUR.ROYAL.outfits.baby || [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g], ...CUR.OUTFITS.baby].includes(c), `a ${rank} of ${age} is dressed as a child (${c})`);
+  if (['baby', 'toddler', 'kid'].includes(ageStage(age))) check(c == null || CUR.ROYAL.outfits.baby.includes(c) || [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g], ...CUR.OUTFITS.baby].includes(c), `a ${rank} of ${age} is dressed as a child (${c})`);
   else check((rank === 'monarch' ? CUR.ROYAL.outfits.monarch[g] : CUR.ROYAL.outfits[g]).includes(c), `a ${rank} of ${age} still wears royal dress (${c})`);
 }
 
@@ -727,7 +727,7 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
       check(c == null || [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g], ...CUR.OUTFITS.baby].includes(c), `a child of ${age} wears no grown-up's clothes (${c})`);
       check(dressFor(look, { age, gender: g, career: { id: 'police' } }).clothes === c, 'and no uniform');
       const r = dressFor(look, { age, gender: g, royal: { rank: 'royal' } });
-      check(r.clothes === c || (age < 7 && r.clothes === CUR.ROYAL.outfits.baby), `a royal child of ${age} is dressed as a child (${r.clothes})`);
+      check(r.clothes === c || (age < 7 && CUR.ROYAL.outfits.baby.includes(r.clothes)), `a royal child of ${age} is dressed as a child (${r.clothes})`);
     }
     check(dressFor(look, { age: 14, gender: g }).clothes === 'outfit_24_leather', 'from 14, their own style');
   }
