@@ -193,6 +193,7 @@
 .kv + .kv { border-top: 1px solid var(--line-soft); }
 .kv span:first-child { color: var(--muted); }
 .kv span:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.gl-bill .kv span:last-child { white-space: nowrap; overflow-wrap: normal; flex: none; }
 
 /* People and things in a list: a compact card with a portrait, a name, a line, and a side figure. */
 .row {
@@ -686,6 +687,9 @@ div.row { cursor: default; }
 .gl-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .gl-radio { display: flex; gap: 8px; align-items: center; min-height: 40px; font-size: 0.93rem; }
 .gl-radio input { width: 20px; height: 20px; flex: none; }
+.gl-radio .gl-opt { display: flex; flex-direction: column; flex: 1; min-width: 0; padding: 4px 0; }
+.gl-radio .gl-opt small { display: block; }
+.gl-radio.muted .gl-opt { opacity: 0.6; }
 .gl-answer { margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: var(--surface-2, rgba(127,127,127,.1)); font-weight: 600; }
 .gl-legs p { font-size: 0.85rem; margin: 4px 0; }
 .gl-entry { padding: 8px 0; border-top: 1px dashed var(--line); }

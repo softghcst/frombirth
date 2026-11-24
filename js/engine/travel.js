@@ -24,6 +24,7 @@ import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { CABINS } from '../data/activities.js';
 import { MODES, MODE_BY_ID, STAYS, STAY_BY_ID, ACTIVITIES, ACTIVITY_BY_ID, TRIP_TYPES, TRIP_TYPE_BY_ID, REFUNDS, INSURANCE_RATE, DAILY, CABIN_FARE, HUBS, NONSTOP_KM } from '../data/travel.js';
 import { SKILL_BY_ID } from '../data/skills.js';
+import { CRUISE_LINES, CRUISE_LINE_BY_ID, ITINERARIES, ITINERARY_BY_ID, STATEROOMS, STATEROOM_BY_ID, VIEWS, VIEW_BY_ID, DECKS, DECK_BY_ID, OCCUPANCY, EXTRAS, EXTRA_BY_ID, CRUISE_FEES, CRUISE_MEMORIES, REGION_NAMES } from '../data/cruises.js';
 import { distanceKm, overland, coastal, regionOf, localTime, instantAt, season, climate, placeName, capitalCity, placeId, parsePlace } from './geo.js';
 import { today, addDays, daysBetween, yearOf, readiness, readyForTrip, addStay, ensureOwnPassport, personById, entryRule, needsAuthorization, eraOf } from './documents.js';
 import { charge, refund, recordEvent, hasEvent, archiveIdOf, events } from './chronicle.js';
@@ -246,6 +247,131 @@ function likes(a, p) {
 }
 const costK = (destId) => COUNTRIES[destId]?.living?.cost ?? 1;
 
+// ---------- Cruises ----------
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const sameCity = (a, b) => a && b && a.countryId === b.countryId && a.city === b.city;
+/** The age you may drink on board: 21 on a sailing from the United States, 18 elsewhere. */
+export const drinkingAge = (it) => (it?.port[0] === 'us' ? 21 : 18);
+const yr = (trip) => yearOf(trip.depart);
+/** Cruise lines sailing in the trip's year. */
+export const cruiseLines = (trip) => CRUISE_LINES.filter((l) => yr(trip) >= l.from && yr(trip) <= (l.to ?? Infinity));
+/** Why a line cannot take this sailing, or null. */
+function sailingBlock(line, it, trip) {
+  if (!line || !it) return 'Choose a cruise line and a sailing.';
+  if (!line.regions.includes(it.region)) return `${line.name} does not sail there.`;
+  if (yr(trip) < it.from) return `Nobody sails that route yet in ${yr(trip)}.`;
+  const month = Number(cruiseOf(trip).sail?.slice(5, 7) ?? trip.depart.slice(5, 7));
+  if (it.months !== 'all' && !it.months.includes(month)) return `${it.name} sails only in ${it.months.map((m) => MONTHS[m - 1]).join(', ').replace(/, ([^,]*)$/, ' and $1')}.`;
+  return null;
+}
+/** A line's sailings, each with why it cannot be booked for these dates (null if it can). */
+export function sailings(trip) {
+  const line = CRUISE_LINE_BY_ID[cruiseOf(trip).line];
+  if (!line) return [];
+  return ITINERARIES.filter((it) => line.regions.includes(it.region) && yr(trip) >= it.from)
+    .map((it) => ({ ...it, regionName: REGION_NAMES[it.region], portName: placeName(it.port[0], it.port[1]), why: sailingBlock(line, it, trip) }));
+}
+/** Staterooms the line offers in the trip's year (luxury lines have no inside staterooms). */
+export function staterooms(trip) {
+  const line = CRUISE_LINE_BY_ID[cruiseOf(trip).line];
+  return STATEROOMS.filter((r) => yr(trip) >= (r.from ?? 0) && !(line?.tier === 'Luxury' && r.id === 'inside'));
+}
+/** The extras on sale this year, and whether the line includes them. */
+export function cruiseExtras(trip) {
+  const line = CRUISE_LINE_BY_ID[cruiseOf(trip).line];
+  const inc = line?.includes ?? [];
+  return EXTRAS.filter((e) => yr(trip) >= (e.from ?? 0)).map((e) => ({ ...e, included: inc.includes(e.group ?? e.id) || (e.id === 'excursions' && !!line?.excursionsIncluded) }));
+}
+/** The cruise part of a plan (created on first use). */
+export function cruiseOf(trip) { return (trip.cruise ??= { line: null, itin: null, room: null, view: null, deck: 'mid', extras: [], devices: 1, ports: [] }); }
+/** Sets the dates from the sailing: the day before at the port when it is somewhere else, then the nights at sea. */
+function syncCruise(trip) {
+  const c = cruiseOf(trip);
+  const it = ITINERARY_BY_ID[c.itin];
+  if (!it) return;
+  const port = { countryId: it.port[0], city: it.port[1] };
+  trip.destination = port;
+  c.sail = sameCity(trip.origin, port) ? trip.depart : addDays(trip.depart, 1);
+  trip.ret = addDays(c.sail, it.nights);
+}
+/** Where a cruise ends: back where it started, or another port for a one-way sailing. */
+const endPort = (trip) => { const it = ITINERARY_BY_ID[cruiseOf(trip).itin]; return it?.oneWay ? { countryId: it.oneWay[0], city: it.oneWay[1] } : trip.destination; };
+
+/** The cruise lines of a quote: the fare by stateroom, port fees, gratuities, packages, excursions (local money). */
+function cruiseLinesFor(trip, people, c) {
+  const cr = cruiseOf(trip);
+  const line = CRUISE_LINE_BY_ID[cr.line];
+  const it = ITINERARY_BY_ID[cr.itin];
+  const room = STATEROOM_BY_ID[cr.room];
+  if (!line || !it) return [];
+  const out = [];
+  const n = it.nights;
+  const ext = Object.fromEntries(cruiseExtras(trip).map((e) => [e.id, e]));
+  if (room) {
+    const each = line.perNight * room.k * (VIEW_BY_ID[cr.view]?.k ?? 1) * (DECK_BY_ID[cr.deck]?.k ?? 1);
+    const rooms = Math.max(1, Math.ceil(people.length / room.sleeps));
+    let fare = 0;
+    for (let r = 0; r < rooms; r++) {
+      // Guests spread evenly over the staterooms; two pay the full fare, a third and fourth much less, one alone more.
+      const guests = Math.floor(people.length / rooms) + (r < people.length % rooms ? 1 : 0);
+      fare += guests === 1 ? each * (line.solo && room.id === 'inside' ? OCCUPANCY.soloStudio : OCCUPANCY.single) : each * (2 + (guests - 2) * OCCUPANCY.extraGuest);
+    }
+    out.push({ kind: 'cruise', label: `Cruise fare: ${rooms > 1 ? `${rooms} ` : ''}${room.name.toLowerCase()}${rooms > 1 ? 's' : ''}, ${n} nights${people.length === 1 && !(line.solo && room.id === 'inside') ? ', single supplement' : ''}`,
+      amount: localMoney(fare * n, c) });
+  }
+  out.push({ kind: 'cruise', label: `Port fees and taxes (${people.length})`, amount: localMoney(CRUISE_FEES.portPerNight * n * people.length, c) });
+  if (line.gratuity) {
+    const tipped = people.filter((x) => (x.age ?? 30) >= 3).length;
+    if (tipped) out.push({ kind: 'cruise', label: `Daily service charge, gratuities (${tipped})`, amount: localMoney(line.gratuity * n * tipped, c) });
+  }
+  const adults = people.filter((x) => (x.age ?? 30) >= drinkingAge(it));
+  const has = (id) => cr.extras.includes(id) && ext[id] && !ext[id].included;
+  if (has('drinks') && adults.length) out.push({ kind: 'cruise', label: `Drinks package, every adult in the stateroom (${adults.length})`, amount: localMoney(EXTRA_BY_ID.drinks.perDay * n * adults.length, c) });
+  if (has('soda')) {
+    const soft = people.filter((x) => !(has('drinks') && adults.includes(x)) && !(ext.drinks?.included && adults.includes(x)));
+    if (soft.length) out.push({ kind: 'cruise', label: `Soft drinks package (${soft.length})`, amount: localMoney(EXTRA_BY_ID.soda.perDay * n * soft.length, c) });
+  }
+  if (has('dining')) out.push({ kind: 'cruise', label: `Specialty dining (${people.length})`, amount: localMoney(EXTRA_BY_ID.dining.perDay * n * people.length, c) });
+  for (const id of ['wifi_basic', 'wifi_stream']) if (has(id)) out.push({ kind: 'cruise', label: `${EXTRA_BY_ID[id].name}, ${cr.devices} device${cr.devices === 1 ? '' : 's'}`, amount: localMoney(EXTRA_BY_ID[id].perDay * n * cr.devices, c) });
+  const ports = cr.ports.filter((i) => it.ports[i]);
+  if (has('excursions') && ports.length) {
+    const childK = (x) => ((x.age ?? 30) < 3 ? 0 : (x.age ?? 30) < 12 ? 0.7 : 1);
+    out.push({ kind: 'cruise', label: `Shore excursions: ${ports.map((i) => it.ports[i]).join(', ')}`, amount: localMoney(EXTRA_BY_ID.excursions.perPort * ports.length * people.reduce((s, x) => s + childK(x), 0), c) });
+  }
+  return out;
+}
+
+/** What is wrong with the cruise part of a plan. */
+function cruiseProblems(trip, people) {
+  const cr = cruiseOf(trip);
+  const line = CRUISE_LINE_BY_ID[cr.line];
+  const it = ITINERARY_BY_ID[cr.itin];
+  const out = [];
+  if (!line) return ['Choose a cruise line.'];
+  if (!cruiseLines(trip).some((l) => l.id === line.id)) out.push(`${line.name} is not sailing in ${yr(trip)}.`);
+  if (!it) return [...out, 'Choose a sailing.'];
+  const block = sailingBlock(line, it, trip);
+  if (block) out.push(block);
+  if (!cr.room) out.push('Choose a stateroom.');
+  else if (!staterooms(trip).some((r) => r.id === cr.room)) out.push(`${STATEROOM_BY_ID[cr.room].name}: not on this ship.`);
+  else if (cr.view && !STATEROOM_BY_ID[cr.room].views.includes(cr.view)) out.push('Choose a view for that stateroom.');
+  if (line.kids === 'adults') for (const x of people.filter((y) => (y.age ?? 30) < 18)) out.push(`${line.name} is for adults only: ${x === player() ? 'you are' : `${x.firstName} is`} under 18.`);
+  if (it.nights >= 14) for (const x of people.filter((y) => (y.age ?? 30) < 1)) out.push(`${x.firstName} is too young for a sailing this long: babies must be a year old.`);
+  return out;
+}
+
+/** The sailing the trip is on, in words: for cards and the trip's story. */
+export function cruiseSummary(trip) {
+  const cr = trip.cruise;
+  const it = ITINERARY_BY_ID[cr?.itin];
+  const line = CRUISE_LINE_BY_ID[cr?.line];
+  if (!it || !line) return null;
+  return { line: line.name, tier: line.tier, itinerary: it.name, nights: it.nights, ports: it.ports, port: placeName(it.port[0], it.port[1]),
+    room: STATEROOM_BY_ID[cr.room]?.name ?? null, view: VIEW_BY_ID[cr.view]?.name ?? null, sail: cr.sail ?? null,
+    extras: cruiseExtras(trip).filter((e) => e.included || cr.extras.includes(e.id)).map((e) => (e.included ? `${e.name} (included)` : e.name)) };
+}
+
 // ---------- Planning ----------
 
 /** Starts a plan. Nothing is paid until it is confirmed. */
@@ -267,6 +393,8 @@ export function updatePlan(id, changes, p = player()) {
   const trip = tripById(id, p);
   if (!trip || trip.status !== 'draft') return result(false, 'Only a plan not yet booked can be changed.', 'neutral');
   if (changes.type && TRIP_TYPE_BY_ID[changes.type]) {
+    if (changes.type === 'cruise' && trip.type !== 'cruise') { trip.destination = null; trip.mode = null; trip.stay = null; trip.activities = []; cruiseOf(trip); }
+    if (changes.type !== 'cruise') delete trip.cruise;
     trip.type = changes.type;
     const o = ['wedding', 'funeral'].includes(trip.type) && !changes.destination ? occasions(trip.type, null, p)[0] : null;
     if (o && trip.destination?.countryId !== o.countryId) { trip.destination = { countryId: o.countryId, city: o.npc.city && COUNTRIES[o.countryId].cities.includes(o.npc.city) ? o.npc.city : capitalCity(o.countryId) }; trip.mode = null; trip.stay = null; trip.activities = []; }
@@ -286,6 +414,25 @@ export function updatePlan(id, changes, p = player()) {
   if (changes.activities) trip.activities = changes.activities.filter((a) => ACTIVITY_BY_ID[a]);
   if (changes.insurance != null) trip.insurance = !!changes.insurance;
   if (changes.payment && paymentOptions(p).some((o) => o.id === changes.payment)) trip.payment = changes.payment;
+  // A cruise: the line, the sailing (which sets where and how long), the stateroom and its view, and the extras.
+  if (trip.type === 'cruise') {
+    const c = cruiseOf(trip);
+    const ch = changes.cruise ?? {};
+    if (ch.line !== undefined && ch.line !== c.line) { c.line = CRUISE_LINE_BY_ID[ch.line] ? ch.line : null; c.itin = null; c.room = null; c.view = null; c.ports = []; c.extras = []; trip.destination = null; trip.mode = null; }
+    if (ch.itin !== undefined && ch.itin !== c.itin) { c.itin = ITINERARY_BY_ID[ch.itin] ? ch.itin : null; c.ports = []; trip.mode = null; }
+    if (ch.room !== undefined) { c.room = STATEROOM_BY_ID[ch.room] ? ch.room : null; c.view = STATEROOM_BY_ID[ch.room]?.views[0] ?? null; }
+    if (ch.view !== undefined && VIEW_BY_ID[ch.view]) c.view = ch.view;
+    if (ch.deck !== undefined && DECK_BY_ID[ch.deck]) c.deck = ch.deck;
+    if (ch.extra) {
+      const e = EXTRA_BY_ID[ch.extra];
+      if (e) {
+        c.extras = c.extras.includes(e.id) ? c.extras.filter((x) => x !== e.id) : [...c.extras.filter((x) => !(e.group && EXTRA_BY_ID[x]?.group === e.group)), e.id];
+      }
+    }
+    if (ch.devices != null) c.devices = Math.max(1, Math.min(6, Math.round(Number(ch.devices)) || 1));
+    if (ch.port != null) { const i = Number(ch.port); c.ports = c.ports.includes(i) ? c.ports.filter((x) => x !== i) : [...c.ports, i].sort((a, b) => a - b); }
+    syncCruise(trip);
+  }
   return result(true, 'Plan updated.', 'neutral', { trip });
 }
 
@@ -382,12 +529,18 @@ export function quote(trip, p = player()) {
   const k = costK(trip.destination.countryId);
   const m = MODE_BY_ID[trip.mode];
   const childK = (x) => ((x.age ?? 30) < 2 ? 0.1 : (x.age ?? 30) < 12 ? 0.7 : 1);
+  const cruise = trip.type === 'cruise';
   if (m) {
     const out = journey(trip.origin, trip.destination, m, trip.depart, trip.cabin);
-    const back = journey(trip.destination, trip.origin, m, trip.ret, trip.cabin);
+    const back = journey(cruise ? endPort(trip) : trip.destination, trip.origin, m, trip.ret, trip.cabin);
     for (const x of people) lines.push({ kind: 'transport', personId: x.id, label: `${m.name}${m.cabins ? `, ${CABINS.find((k2) => k2.id === trip.cabin)?.name.toLowerCase() ?? 'economy'}` : ''}, there and back, for ${x.firstName}`, amount: localMoney((out.fare + back.fare) * childK(x), c) });
   }
-  const s = STAY_BY_ID[trip.stay];
+  if (cruise) {
+    // The night before sailing, in a hotel by the port, when the ship leaves from somewhere else.
+    if (!sameCity(trip.origin, trip.destination)) lines.push({ kind: 'stay', label: 'A hotel by the port, the night before sailing', amount: localMoney(CRUISE_FEES.hotelNight * k * Math.ceil(people.length / 2) * 2 * 0.75, c) });
+    lines.push(...cruiseLinesFor(trip, people, c));
+  }
+  const s = cruise ? null : STAY_BY_ID[trip.stay];
   if (s && !(m?.includesStay)) {
     const amount = s.shared ? localMoney(s.perNight * k * nights * Math.max(1, Math.ceil(people.length / 4)) * 2, c) : people.reduce((sum, x) => sum + localMoney(s.perNight * k * nights * (childK(x) < 1 ? 0.5 : 1), c), 0);
     if (amount) lines.push({ kind: 'stay', label: `${s.name}, ${nights} night${nights === 1 ? '' : 's'}`, amount });
@@ -396,7 +549,7 @@ export function quote(trip, p = player()) {
     const a = ACTIVITY_BY_ID[id];
     if (a?.cost) lines.push({ kind: 'activity', activityId: id, label: `${a.name} (${people.length})`, amount: people.reduce((sum, x) => sum + localMoney(a.cost * k * childK(x), c), 0) });
   }
-  if (!m?.includesStay) lines.push({ kind: 'daily', label: `Food and getting about, ${nights + 1} days`, amount: people.reduce((sum, x) => sum + localMoney(DAILY * k * (nights + 1) * childK(x), c), 0) });
+  if (!m?.includesStay && !cruise) lines.push({ kind: 'daily', label: `Food and getting about, ${nights + 1} days`, amount: people.reduce((sum, x) => sum + localMoney(DAILY * k * (nights + 1) * childK(x), c), 0) });
   const sub = lines.reduce((sum, l) => sum + l.amount, 0);
   if (trip.insurance) lines.push({ kind: 'insurance', label: 'Travel insurance', amount: Math.round(sub * INSURANCE_RATE) });
   // Who pays: the organizer, everyone their own share, or an employer for a work trip (the journey, the hotel and expenses).
@@ -437,7 +590,8 @@ export function problems(trip, p = player()) {
   const out = [];
   const t = TRIP_TYPE_BY_ID[trip.type];
   if (!trip.destination) return ['Choose where to go.'];
-  if (trip.destination.countryId === trip.origin.countryId && trip.destination.city === trip.origin.city) out.push('That is where you live. Choose somewhere else.');
+  if (trip.type !== 'cruise' && trip.destination.countryId === trip.origin.countryId && trip.destination.city === trip.origin.city) out.push('That is where you live. Choose somewhere else.');
+  if (trip.type === 'cruise') out.push(...cruiseProblems(trip, goingPeople(trip)));
   const block = typeBlock(trip.type, trip.destination.countryId, p);
   if (block) out.push(`${t.name}: ${block}`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trip.depart) || !/^\d{4}-\d{2}-\d{2}$/.test(trip.ret)) out.push('Choose the dates.');
@@ -452,14 +606,15 @@ export function problems(trip, p = player()) {
     if (p.career.careerId && !['business', 'conference', 'interview'].includes(trip.type) && days > 30) out.push('Your job allows at most thirty days away at a time.');
   }
   const m = MODE_BY_ID[trip.mode];
-  const open = modesFor(trip.origin, trip.destination, yearOf(trip.depart), { cruise: trip.type === 'cruise' });
+  const open = modesFor(trip.origin, trip.destination, yearOf(trip.depart));
   if (!m) out.push(open.length ? 'Choose how to travel.' : 'There is no way to make that journey in this period.');
   else if (!open.some((x) => x.id === m.id)) out.push(`${m.name}: not possible for this journey in ${yearOf(trip.depart)}.`);
   else {
     const there = journey(trip.origin, trip.destination, m, trip.depart, trip.cabin);
-    if (there.arriveDate >= trip.ret) out.push(`The journey takes ${Math.ceil(there.hours / 24)} days each way: there would be no time there.`);
+    if (trip.type === 'cruise' && trip.cruise?.sail && there.arriveDate > trip.cruise.sail) out.push(`You would reach ${trip.destination.city} after the ship sails on ${trip.cruise.sail}.`);
+    else if (there.arriveDate >= trip.ret) out.push(`The journey takes ${Math.ceil(there.hours / 24)} days each way: there would be no time there.`);
   }
-  if (!m?.includesStay) {
+  if (!m?.includesStay && trip.type !== 'cruise') {
     if (!trip.stay) out.push('Choose somewhere to stay.');
     else if (!stayOptions(trip).some((s) => s.id === trip.stay)) out.push('That place to stay is not available.');
     else if (p.flags.travelNeeds?.stepFree && !STAY_BY_ID[trip.stay].accessible) out.push(`${STAY_BY_ID[trip.stay].name} cannot promise step-free access.`);
@@ -594,7 +749,7 @@ export function askFamily(tripId, p = player()) {
   // Paying for people who are not family: friends, a partner, their families.
   const kin = ['parent', 'sibling', 'guardian', 'grandparent', 'child'];
   const extras = goingPeople(trip).filter((x) => x !== p && !kin.includes(x.role)).length;
-  const lavish = LAVISH.cabins.includes(trip.cabin) || LAVISH.stays.includes(trip.stay);
+  const lavish = LAVISH.cabins.includes(trip.cabin) || LAVISH.stays.includes(trip.stay) || ['suite', 'minisuite'].includes(trip.cruise?.room) || CRUISE_LINE_BY_ID[trip.cruise?.line]?.tier === 'Luxury';
   const paidThisYear = (p.flags.familyPaidTrips ?? {})[year()] ?? 0;
   let score = (rel - 50) / 50 * 0.18 + (giving - 50) / 50 * 0.12 + (wealth - 50) / 50 * 0.1 + (coming ? 0.05 : 0)
     + (p.age < 14 ? 0.08 : p.age < 18 ? 0.04 : p.age < 22 ? -0.08 : -0.2)
@@ -608,7 +763,7 @@ export function askFamily(tripId, p = player()) {
   // Why not all of it, when it is not: the biggest thing against it.
   const why = afford < 3 ? 'It is a lot of money for them.'
     : extras ? `${they} will not pay for ${extras === 1 ? 'someone else' : `${extras} other people`} as well.`
-      : lavish ? `Not ${LAVISH.cabins.includes(trip.cabin) ? `${trip.cabin === 'first' ? 'first' : 'business'} class` : 'a grand hotel'}.`
+      : lavish ? `Not ${LAVISH.cabins.includes(trip.cabin) ? `${trip.cabin === 'first' ? 'first' : 'business'} class` : trip.type === 'cruise' ? (CRUISE_LINE_BY_ID[trip.cruise?.line]?.tier === 'Luxury' ? 'a luxury cruise' : 'a suite') : 'a grand hotel'}.`
         : paidThisYear ? `${they} already paid for a trip this year.`
           : rel < 45 ? `${they} are not in the mood to do you favors.`.replace('She are', 'She is').replace('He are', 'He is') : '';
   const text = share === 1 ? rng.pick([`${say} said yes: ${they.toLowerCase()} will pay for the whole trip.`, `${say} thought about it and will cover all of it.`, `${say} said yes. The whole thing is on ${fam.plural ? 'them' : they === 'She' ? 'her' : 'him'}.`])
@@ -731,14 +886,15 @@ export function depart(tripId, p = player()) {
   store.state.today = trip.depart;
   const m = MODE_BY_ID[trip.mode];
   const there = journey(trip.origin, trip.destination, m, trip.depart, trip.cabin);
-  trip.itinerary = { out: there.legs.map(packLeg), back: journey(trip.destination, trip.origin, m, trip.ret, trip.cabin).legs.map(packLeg) };
+  trip.itinerary = { out: there.legs.map(packLeg), back: journey(trip.type === 'cruise' ? endPort(trip) : trip.destination, trip.origin, m, trip.ret, trip.cabin).legs.map(packLeg) };
   trip.status = 'in_progress';
   trip.arrived = there.arriveDate;
   travelState(p).whereabouts = { countryId: trip.destination.countryId, city: trip.destination.city, tripId: trip.id, since: there.arriveDate };
   const leg = there.legs[there.legs.length - 1];
   const text = `You set off for ${placeName(trip.destination.countryId, trip.destination.city)} by ${m.name.toLowerCase()}${there.legs.length > 1 ? `, changing in ${there.legs[0].to.city}` : ''}. You arrived on ${leg.arrive.date} at ${leg.arrive.time}, local time.${trip.notes.length ? ` ${trip.notes.join(' ')}` : ''}`;
-  log(text, 'system', 'good');
-  return result(true, text, 'good', { trip });
+  const sails = trip.type === 'cruise' && trip.cruise?.sail ? ` The ship sails on ${trip.cruise.sail}.` : '';
+  log(text + sails, 'system', 'good');
+  return result(true, text + sails, 'good', { trip });
 }
 
 /** A leg as it is kept in the save: places by id, local times as text. */
@@ -831,6 +987,22 @@ export function comeHome(tripId, p = player()) {
   const comfort = STAY_BY_ID[trip.stay]?.comfort ?? 3;
   p.stats.mood = clamp(p.stats.mood + Math.min(8, 2 + Math.round(days / 4)) + (comfort >= 4 ? 2 : 0) + (m.cabins ? (CABINS.find((k) => k.id === trip.cabin)?.mood ?? 10) - 10 : 0));
   if (trip.type === 'scouting') p.stats.mood = clamp(p.stats.mood - 3);
+  // A cruise: the line, the stateroom and the drinks package each add to it, and something is remembered.
+  let sailed = '';
+  if (trip.type === 'cruise' && trip.cruise?.itin) {
+    const cr = trip.cruise;
+    const line = CRUISE_LINE_BY_ID[cr.line];
+    const room = STATEROOM_BY_ID[cr.room];
+    const it = ITINERARY_BY_ID[cr.itin];
+    p.stats.mood = clamp(p.stats.mood + (line?.mood ?? 2) + (room?.mood ?? 0) + (cr.extras.includes('drinks') || line?.includes.includes('drinks') ? 1 : 0));
+    const pool = [...CRUISE_MEMORIES.any, ...(CRUISE_MEMORIES[it.region] ?? []), ...(['balcony', 'minisuite', 'suite'].includes(cr.room) ? CRUISE_MEMORIES.balcony : []),
+      ...(room?.suite ? CRUISE_MEMORIES.suite : []), ...(cr.extras.includes('drinks') ? CRUISE_MEMORIES.drinks : []),
+      ...(line?.kids === 'club' && people.some((x) => (x.age ?? 30) < 13) ? CRUISE_MEMORIES.kids : []), ...(cr.deck === 'high' ? CRUISE_MEMORIES.rough : [])];
+    const memory = rng.pick(pool);
+    trip.notes.push(memory);
+    (p.flags.cruises ??= []).push({ year: year(), line: cr.line, itin: cr.itin, room: cr.room });
+    sailed = ` ${it.name} with ${line.name}. ${memory}`;
+  }
   // The occasion itself: a wedding brings people closer; a funeral is a goodbye, not a holiday.
   let occasion = '';
   const occ = ['wedding', 'funeral'].includes(trip.type) ? occasions(trip.type, trip.destination.countryId, p)[0]?.npc : null;
@@ -885,7 +1057,7 @@ export function comeHome(tripId, p = player()) {
     text: `${days} days${others.length ? ` with ${list(others)}` : ''}.` });
   trip.events.unshift(ev.id);
   earn(p);
-  const text = `Home from ${placeName(trip.destination.countryId, trip.destination.city)}${others.length ? ` with ${list(others)}` : ''}.${occasion}${study} ${notes.join(' ')}`.trim();
+  const text = `Home from ${trip.type === 'cruise' && trip.cruise?.itin ? `a cruise from ${placeName(trip.destination.countryId, trip.destination.city)}` : placeName(trip.destination.countryId, trip.destination.city)}${others.length ? ` with ${list(others)}` : ''}.${sailed}${occasion}${study} ${notes.join(' ')}`.trim();
   log(text, 'system', 'good');
   return result(true, text, 'good', { trip });
 }
@@ -1069,7 +1241,8 @@ export function tripCard(trip, p = player()) {
   const memories = events((e) => e.tripId === trip.id);
   return {
     id: trip.id, status: trip.status, type: TRIP_TYPE_BY_ID[trip.type]?.name ?? trip.type, group: TRIP_TYPE_BY_ID[trip.type]?.group,
-    where: trip.destination ? placeName(trip.destination.countryId, trip.destination.city, yearOf(trip.depart)) : 'Not chosen yet',
+    where: trip.type === 'cruise' && cruiseSummary(trip) ? `${cruiseSummary(trip).itinerary}, from ${cruiseSummary(trip).port}` : trip.destination ? placeName(trip.destination.countryId, trip.destination.city, yearOf(trip.depart)) : 'Not chosen yet',
+    cruise: trip.type === 'cruise' ? cruiseSummary(trip) : null,
     countryId: trip.destination?.countryId, city: trip.destination?.city, flag: COUNTRIES[trip.destination?.countryId]?.flag ?? '',
     depart: trip.depart, ret: trip.ret, year: yearOf(trip.depart),
     travelers: people.map((x) => ({ id: x.id, name: x.person.firstName, you: x.id === p.id, status: x.status, reason: x.reason, role: x.person.role, relation: x.id === p.id ? 'You' : roleLabel(x.person) })),
