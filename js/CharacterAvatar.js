@@ -158,7 +158,7 @@ const use = (id, extra = '') => { const h = href(id); return h ? `<use href="${h
 /** An outfit, from the copy fitted to this head's neck where there is one (scripts/fit-clothes.mjs). */
 const clothesLayer = (id, headId, extra = '') => {
   const head = headName(headId);
-  return id && FITTED_CLOTHES[id]?.includes(head) ? `<use href="${AVATAR_BASE}avatars/clothes_fit/${id}__${head}.svg#art"${extra}/>` : use(id, extra);
+  return id && FITTED_CLOTHES[id]?.includes(head) ? `<use href="${AVATAR_BASE}clothes_fit/${id}__${head}.svg#art"${extra}/>` : use(id, extra);
 };
 /**
  * An outfit fitted to the body (scripts/snap-clothes.mjs): shrunk about the middle of its top edge, where it meets the
@@ -430,7 +430,7 @@ export class CharacterAvatar {
 export function filesFor(look, ctx = {}) {
   const d = dressFor(look, ctx);
   const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
-  const neckFit = d.clothes && FITTED_CLOTHES[d.clothes]?.includes(headName(d.head)) ? `${AVATAR_BASE}avatars/clothes_fit/${d.clothes}__${headName(d.head)}.svg` : null;
+  const neckFit = d.clothes && FITTED_CLOTHES[d.clothes]?.includes(headName(d.head)) ? `${AVATAR_BASE}clothes_fit/${d.clothes}__${headName(d.head)}.svg` : null;
   return [...(fitted ? [`${AVATAR_BASE}${fitted}`] : []), ...(neckFit ? [neckFit] : []),
     ...[d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.lips, neckFit ? null : d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
       .filter((id) => id && PART_BY_ID[id]).map((id) => `${AVATAR_BASE}${PART_BY_ID[id].file}`)];
