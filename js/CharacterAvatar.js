@@ -69,16 +69,17 @@ const FRONT_HAIR_CUT = 404;
 const HAT_LINE = 262;
 const BULKY_HAT_LINE = 316;
 
-/** The hairstyles older women are drawn with (curation.ELDER_HAIR, and fitted styles marked data-elder). */
+/** The hairstyles older women or men are drawn with (curation.ELDER_HAIR, and fitted styles marked data-elder="female" or "male"). */
 export const elderHairStyles = (gender = 'female') => [...new Set([...(ELDER_HAIR[gender] ?? []),
   ...Object.values(FITTED_HAIR).filter((s) => s.elder === gender).map((s) => s.id)])];
 /**
- * The hair a person is drawn with in old age: from ELDER_HAIR_AGE a woman's style becomes an elder one (always the same
- * one for the same style), unless it already is one, she is bald, or she chose her hair at the salon since (keepHair).
+ * The hair a person is drawn with in old age: from ELDER_HAIR_AGE a woman's or man's style becomes an elder one for their
+ * gender (always the same one for the same style), unless it already is one, they are bald, there is none for their gender
+ * yet, or they chose their hair at the salon since (keepHair).
  */
 export function elderHair(hair, { age = 25, gender, keepHair = false } = {}) {
-  if (gender !== 'female' || age < ELDER_HAIR_AGE || keepHair || !hair) return hair;
-  const list = elderHairStyles('female');
+  if (!['female', 'male'].includes(gender) || age < ELDER_HAIR_AGE || keepHair || !hair) return hair;
+  const list = elderHairStyles(gender);
   if (!list.length || list.includes(hair)) return hair;
   return list[[...hair].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9973, 13) % list.length];
 }
@@ -127,7 +128,7 @@ export function dressFor(look, ctx = {}) {
   if (stage === 'older') {
     out.aging = AGING.filter(([from]) => age >= from).map(([, id]) => id);
     if (age >= 84 && gender === 'male' && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
-    out.hair = elderHair(out.hair, { age, gender, keepHair: look.keepHair });  // an older woman's hair (curation.ELDER_HAIR)
+    out.hair = elderHair(out.hair, { age, gender, keepHair: look.keepHair });  // an older person's hair (curation.ELDER_HAIR)
   }
   // Clothes: prison, then crown, then work, then the person's own.
   if (young) out.clothes = look.babyClothes ?? null;

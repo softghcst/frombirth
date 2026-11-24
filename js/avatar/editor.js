@@ -87,7 +87,7 @@ export function mountAppearanceEditor(el, o = {}) {
     // A thumbnail for a hat shows the hat; for glasses, make-up or jewelry, nothing hides it.
     if (key !== 'hat') next.style.hat = null;
     // Hair chosen in old age is kept as chosen, rather than drawn as an elder's style (elderHair).
-    if (key === 'hair' && o.gender === 'female' && age >= ELDER_HAIR_AGE) next.style.keepHair = true;
+    if (key === 'hair' && o.gender && age >= ELDER_HAIR_AGE) next.style.keepHair = true;
     return next;
   };
   const optionsFor = (key) => {
@@ -180,7 +180,7 @@ export function mountAppearanceEditor(el, o = {}) {
       a[c.half][key] = id == null ? [] : list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
     } else a[c.half][key] = id;
     // Hair chosen in old age is kept as chosen, rather than drawn as an elder's style (elderHair).
-    if (key === 'hair' && o.gender === 'female' && age >= ELDER_HAIR_AGE) a.style.keepHair = true;
+    if (key === 'hair' && o.gender && age >= ELDER_HAIR_AGE) a.style.keepHair = true;
     keepScroll(render);
     o.onChange?.(cloneAppearance(a));
   };

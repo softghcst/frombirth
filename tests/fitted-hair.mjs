@@ -125,7 +125,12 @@ for (const id of Object.keys(FITTED_HAIR)) {
   check(!elderly(drawn(ELDER_HAIR_AGE - 1, 'female')), 'a woman is drawn with an elder style before old age');
   check(elderly(drawn(ELDER_HAIR_AGE, 'female')) && elderly(drawn(90, 'female')), 'an older woman keeps a young style');
   check(!elderly(drawn(90, 'female', { keepHair: true })) && drawn(90, 'female', { keepHair: true }).includes('long_straight_center_part'), 'an older woman who chose her hair at the salon is not drawn with it');
+  const menElders = elderHairStyles('male');
+  check(menElders.includes('elder_twists') && !menElders.some((id) => elders.includes(id)), 'Elder Twists is not an elder men\'s style, or the lists overlap');
   check(!elderly(drawn(90, 'male')), 'an older man is drawn with an elder woman\'s style');
+  check(menElders.some((id) => drawn(90, 'male').includes(`hair_fitted/${id}_`)), 'an older man keeps a young style');
+  check(!menElders.some((id) => drawn(ELDER_HAIR_AGE - 1, 'male').includes(`hair_fitted/${id}_`)), 'a man is drawn with an elder style before old age');
+  check(drawn(90, 'male', { keepHair: true }).includes('long_straight_center_part'), 'an older man who chose his hair at the salon is not drawn with it');
   check(normalize(look({ keepHair: true }), 'k').style.keepHair === true, 'a salon choice in old age is not kept in the save');
 }
 

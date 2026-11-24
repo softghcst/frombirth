@@ -255,6 +255,26 @@
       "minAge": 13
     },
     {
+      "id": "elder_twists",
+      "name": "Elder Twists",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "elder": "male",
+      "minAge": 13
+    },
+    {
       "id": "feathered_flow",
       "name": "Feathered Flow",
       "clipToHead": false,
