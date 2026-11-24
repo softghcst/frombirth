@@ -15,8 +15,8 @@ export const CLOTHES_SNAP = {
     dy: 8
   },
   outfit_49_noble_cravat: {
-    s: 0.87,
-    dy: 5
+    s: 0.86,
+    dy: 6
   },
   outfit_50_duke_mantle: {
     s: 0.87,

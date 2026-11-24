@@ -40,6 +40,7 @@ HEADS = os.path.join(ASSETS_ROOT, 'heads')
 HEAD_IDS = {'baby': 'head_00_baby', 'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
             'pixie': 'head_11_pixie', 'sculpted': 'head_12_sculpted', 'athletic': 'head_13_athletic', 'almond': 'head_14_almond',
             'cherubic': 'head_15_cherubic', 'angular': 'head_16_angular', 'dimple_oval': 'head_17_dimple_oval'}
+SHARED_BODY = 'dimple_oval'  # whose neck and shoulders the adult heads share (scripts/unify_head_necks.mjs: BASE)
 
 
 def folder_dir(folder):
@@ -1481,9 +1482,24 @@ def write_manifest():
         data[folder] = [{'id': i, 'file': f'{rel}/{f}', 'label': label(i), **({'tags': tags_for(folder, i)} if tags_for(folder, i) else {})} for f, i in ids]
         if folder == 'heads':  # each head is measured, so parts can be moved onto it exactly
             for item in data[folder]:
-                _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())
+                text = open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read()
+                _, els = read_svg(text)
                 item['fit'] = measure_head(els)
                 item['edge'] = measure_head_edge(els)
+                # A head given the shared neck keeps the chin its face was measured with before (see
+                # scripts/unify_head_necks.mjs): the features are placed between the top of the head and the chin.
+                kept = re.search(r'data-face-chin="(\d+(?:\.\d+)?)"', text)
+                if kept:
+                    chin = float(kept.group(1))
+                    chin = int(chin) if chin.is_integer() else chin
+                    item['fit']['chin'], item['fit']['neck'] = chin, chin + 4
+            # The adult heads share one neck and one pair of shoulders (scripts/unify_head_necks.mjs, which marks
+            # them data-shared-neck), so clothes and necklaces sit on all of them where they sit on that body's own
+            # head, not under each head's chin: `collar` (the clothes' top) and `bodyX` (their centre).
+            shared = [i for i in data[folder] if 'data-shared-neck="1"' in open(os.path.join(ASSETS_ROOT, i['file']), encoding='utf-8').read()]
+            body = next((i['fit'] for i in shared if i['id'] == HEAD_IDS[SHARED_BODY]), None)
+            for item in shared if body else []:
+                item['fit']['collar'], item['fit']['bodyX'] = body['chin'] + 8, body['cx']
         if folder == 'hair':  # and each hairstyle, so it can be fitted to each head
             for item in data[folder]:
                 _, els = read_svg(open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read())

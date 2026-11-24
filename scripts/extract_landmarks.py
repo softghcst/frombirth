@@ -160,7 +160,15 @@ def scan(polys):
 # ---------- Measuring ----------
 
 
-def landmarks(rows):
+def stored_chin(path):
+    """The chin a head was measured with before it was given the shared neck (scripts/unify_head_necks.mjs keeps it
+    as data-outline-chin): the new neck can meet a narrow chin higher up, which would move every landmark below the
+    crown. None for any other head."""
+    m = re.search(r'data-outline-chin="([-\d.]+)"', open(path, encoding='utf-8').read())
+    return float(m.group(1)) if m else None
+
+
+def landmarks(rows, chin=None):
     ys = sorted(rows)
     wid = lambda y: rows[y][1] - rows[y][0]
     near = lambda v: min(ys, key=lambda y: abs(y - v))
@@ -175,8 +183,9 @@ def landmarks(rows):
     band = [y for y in band if y - band[0] < 80]  # the ears only, not the shoulders
     ear_bottom = band[-1]
     # The chin: where the jaw meets the neck, the narrowest row between the ears and the shoulders.
-    neck = min((y for y in ys if ear_bottom + 10 < y < 500), key=wid)
-    chin = neck - 4
+    if chin is None:
+        neck = min((y for y in ys if ear_bottom + 10 < y < 500), key=wid)
+        chin = neck - 4
     span = chin - top
     cx = sum(sum(rows[y]) / 2 for y in ys if top + 16 < y < ear_top) / len([y for y in ys if top + 16 < y < ear_top])
     # Where the ears attach: the head's own edge just above the widening.
@@ -283,7 +292,7 @@ def main():
             out[name] = {k: {'x': None, 'y': None} for k in POINTS}
             cards.append(card(name, path, None, None))
             continue
-        marks, extra = landmarks(scan(head_polys(path)))
+        marks, extra = landmarks(scan(head_polys(path)), stored_chin(path))
         out[name] = marks
         cards.append(card(name, path, marks, extra))
         print(f'{name:<12} ' + '  '.join(f'{k}=({v["x"]},{v["y"]})' for k, v in marks.items()))
