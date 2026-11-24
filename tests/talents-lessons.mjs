@@ -103,6 +103,7 @@ const lessonsFresh = () => { const l = store.state.player.flags.lessons; if (l) 
 {
   const p = life(16);
   p.talents.tech = 0; p.talents.science = 0; p.talents.art = 0; p.talents.writing = 0; p.skills = {}; // nothing to start from
+  p.potential = { ...p.potential, tech: 80, science: 50, art: 50, writing: 50 }; // a knack for it, fixed, so the dice of birth do not decide it
   const none = apt.majorEdge('computer_science');
   for (let y = 0; y < 6; y++) { p.age = 10 + y; lessonsFresh(); lessons.takeLesson('coding'); }
   for (let i = 0; i < 6; i++) { skills.practice('coding'); }

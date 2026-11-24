@@ -142,7 +142,8 @@ function coherent(where) {
   } while (!P().alive && seed < 20261210);
   coherent('thirty years on');
   for (const [id, x] of first) { const r = H().res[id]; if (r) check(r.by === x.by && r.f === x.f, `${id} keeps their name and birth year`); }
-  if (kid) check(N.ageOf(H().res[kid.id], S()) === S().year - kid.by && N.ageOf(H().res[kid.id], S()) >= 30, 'a child next door grows up');
+  // A child nobody met who moved away twenty years ago is forgotten on purpose (forget()); one still on record has grown up.
+  if (kid && H().res[kid.id]) check(N.ageOf(H().res[kid.id], S()) === S().year - kid.by && N.ageOf(H().res[kid.id], S()) >= 30, 'a child next door grows up');
   const log = N.chronicle(S(), hoodId);
   const kinds = new Set(log.map((x) => x.k));
   check(kinds.has('left') || kinds.has('arrived') || kinds.has('grownup'), `households and people move out and in (${[...kinds].join(', ')})`);
