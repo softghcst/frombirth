@@ -25,7 +25,7 @@ for (const gender of ['male', 'female']) {
 // The sovereign's crown is worn by the one who reigns, king or queen, and by no one else.
 for (const gender of ['male', 'female']) {
   const look = resolveLook({}, `sov-${gender}`, gender);
-  check(dressFor(look, { age: 40, gender, royal: royalDress('monarch') }).crown === 'crown_09_sovereign', `a reigning ${gender} monarch wears the sovereign's crown`);
+  check(dressFor(look, { age: 40, gender, royal: royalDress('monarch') }).crown === (gender === 'male' ? 'crown_09_sovereign' : 'crown_15_queen'), `a reigning ${gender} monarch wears the ${gender === 'male' ? "sovereign's" : "queen's"} crown`);
   check(dressFor(look, { age: 40, gender, royal: royalDress('monarch', true) }).crown !== 'crown_09_sovereign', `a ${gender} consort does not`);
   check(dressFor(look, { age: 40, gender, royal: royalDress('consort') }).crown !== 'crown_09_sovereign', `a ${gender} consort (by dynasty rank) does not`);
   for (const rank of ['heir', 'royal', 'noble', 'knight']) check(dressFor(look, { age: 40, gender, royal: royalDress(rank) }).crown !== 'crown_09_sovereign', `a ${gender} ${rank} does not`);
@@ -58,6 +58,15 @@ for (const gender of ['male', 'female']) {
   for (const c of ['uk', 'se', 'nl', 'th', null]) check(dressFor(him, { age: 55, gender: 'male', royal: royalDress('monarch', false, c) }).crown === 'crown_09_sovereign', `the reigning monarch of ${c} wears the gold sovereign crown`);
   check(dressFor(her, { age: 55, gender: 'female', royal: royalDress('monarch', true, 'sa') }).crown !== 'crown_13_obsidian_sovereign', 'a consort there does not');
   check(dressFor(him, { age: 30, gender: 'male', royal: royalDress('heir', false, 'sa') }).crown === 'crown_11_prince_band', 'nor does the crown prince');
+}
+// Queens, reigning or by marriage, wear the queen's crown; in a realm where the monarch rules, a reigning queen wears obsidian.
+{
+  const her = resolveLook({}, 'q-f', 'female');
+  check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', true, 'uk') }).crown === 'crown_15_queen', 'a queen consort wears the queen crown');
+  check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', false, 'uk') }).crown === 'crown_15_queen', 'a reigning queen wears it too');
+  check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('consort', false, 'se') }).crown === 'crown_15_queen', 'and so in the dynasty view');
+  check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', false, 'mc') }).crown === 'crown_13_obsidian_sovereign', 'a woman who rules Monaco wears obsidian');
+  check(dressFor(her, { age: 25, gender: 'female', royal: royalDress('heir', false, 'uk') }).crown === 'crown_10_princess_tiara', 'a crown princess keeps her tiara');
 }
 const sov = MANIFEST.crowns.find((c) => c.id === 'crown_09_sovereign');
 check(sov && existsSync(new URL(`../assets/${sov.file}`, import.meta.url)), 'the sovereign crown is in the manifest and on disk');

@@ -118,7 +118,7 @@ export function dressFor(look, ctx = {}) {
   if (ctx.jailed) { out.clothes = PRISON; out.hat = null; out.crown = null; }
   else if (rank && ['monarch', 'heir', 'royal'].includes(rank)) {
     out.clothes = young ? ROYAL.outfits.baby : rank === 'monarch' ? ROYAL.outfits.monarch[gender] : look.royalOutfit ?? ROYAL.outfits[gender][0];
-    out.crown = stage === 'adult' || stage === 'older' ? (rank === 'monarch' && gender === 'female' && ctx.royal.imperial ? ROYAL.crowns.empress : rank === 'monarch' && ctx.royal.imperial && gender !== 'female' && ctx.royal.sovereign ? ROYAL.crowns.emperor : rank === 'monarch' && ctx.royal.sovereign ? (ctx.royal.powerful ? ROYAL.crowns.obsidian : ROYAL.crowns.sovereign) : ROYAL.crowns[rank]?.[gender] ?? ROYAL.crowns.child) : rank !== 'monarch' && gender === 'female' ? ROYAL.crowns.princess : ROYAL.crowns.child;
+    out.crown = stage === 'adult' || stage === 'older' ? (rank === 'monarch' && gender === 'female' && ctx.royal.imperial ? ROYAL.crowns.empress : rank === 'monarch' && ctx.royal.imperial && gender !== 'female' && ctx.royal.sovereign ? ROYAL.crowns.emperor : rank === 'monarch' && ctx.royal.sovereign ? (ctx.royal.powerful ? ROYAL.crowns.obsidian : gender === 'female' ? ROYAL.crowns.queen : ROYAL.crowns.sovereign) : ROYAL.crowns[rank]?.[gender] ?? ROYAL.crowns.child) : rank !== 'monarch' && gender === 'female' ? ROYAL.crowns.princess : ROYAL.crowns.child;
     out.hat = null;
   } else if (rank === 'noble' && (stage === 'adult' || stage === 'older')) {
     out.crown = ROYAL.crowns.noble;
