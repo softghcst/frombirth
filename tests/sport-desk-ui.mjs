@@ -45,6 +45,8 @@ const ok = await page.evaluate(async () => {
   if (!sp.takeUp('baseball').ok) return 'no baseball';
   sp.takeUp('tennis');
   advanceYear(); store.state.pendingEvents = [];
+  // A year of two sports can end in an injury (tennis elbow keeps you out of the gym); these checks are of the desk.
+  for (const x of sp.myAthlete().injuries) if (x.status === 'out') x.status = 'healed';
   return 'ok';
 });
 check(ok === 'ok', `the athlete is set up (${ok})`);
@@ -84,7 +86,7 @@ await page.selectOption('.sport-modal select[data-focus]', 'cardio');
 await shot('sport-train');
 await page.locator('.sport-modal [data-dotrain]').click(); await page.waitForTimeout(250);
 const fAfter = await page.evaluate(async () => (await import('/js/engine/sports.js')).fitnessOf().cardio);
-check(fAfter > fBefore, `training cardio raises it (${fBefore} → ${fAfter})`);
+check(fAfter > fBefore, `training cardio raises it (${fBefore} → ${fAfter}: ${(await page.locator('#modal-root .modal').last().innerText()).slice(0, 120).replace(/\n/g, ' ')})`);
 await page.locator('#modal-root [data-ok]').last().click(); await page.waitForTimeout(200);
 await page.locator('.sport-modal [data-back]').click(); await page.waitForTimeout(150);
 // An individual sport: a rating instead of a league.

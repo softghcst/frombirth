@@ -224,7 +224,9 @@ export function startHrt() {
   return result(true, text);
 }
 export function stopHrt() {
-  if (!ident().hrtAge) return result(false, 'You are not on hormones.', 'neutral');
+  if (ident().hrtAge == null) return result(false, 'You are not on hormones.', 'neutral');
+  // The years already taken are kept: what hormones have changed mostly stays (the face, among other things).
+  ident().hrtYears = (ident().hrtYears ?? 0) + Math.max(0, player().age - ident().hrtAge);
   ident().hrtAge = null;
   const text = 'You stop hormone therapy.';
   log(text);
@@ -460,6 +462,7 @@ export function tickIdentity() {
   if (id.hrtAge != null && p.age > id.hrtAge) {
     const cost = hrtCost();
     if (p.age >= 18 && p.finance.cash < cost) {
+      id.hrtYears = (id.hrtYears ?? 0) + Math.max(0, p.age - id.hrtAge);
       id.hrtAge = null;
       p.stats.mood = clamp(p.stats.mood - 12);
       log(`You could not afford your hormones this year (${fmtMoney(cost, c)}) and had to stop.`, 'system', 'bad');

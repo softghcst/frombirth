@@ -1,4 +1,5 @@
 // localStorage persistence: multiple save slots plus the graveyard.
+import { faceGenderOf } from './avatar/render.js';
 import { settle as settleHood } from './engine/neighborhood.js';
 import { rng } from './rng.js';
 import { fameOf } from './engine/fame.js';
@@ -166,6 +167,7 @@ export function saveGame(state) {
     age: p.age,
     month: state.month ?? 0, // a turn partway through a year (engine/turns.js)
     gender: p.gender,
+    face: faceGenderOf(p), // how the face reads (avatar/render.js): for the saved-lives list
     appearance: p.appearance,
     countryId: p.countryId,
     netWorth: netWorth(state),

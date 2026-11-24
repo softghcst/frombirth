@@ -112,8 +112,10 @@ const offerOf = (kind, p) => {
 
 // 5. A season on the televised dance competition: a celebrity partner, a place, and a television audience.
 {
-  let places = [];
-  for (let i = 0; i < 12; i++) {
+  // A strong dancer makes the top three about one season in five: enough seasons to see both, not a lucky dozen.
+  let places = []; let tries = 0;
+  for (let i = 0; i < 30 && !(places.length >= 12 && places.some((x) => x <= 3) && places.some((x) => x > 3)); i++) {
+    tries++;
     const p = dancer(28, 92, { agent: true, record: 4 });
     const o = offerOf('tv_pro', p); o.wants = 'ballroom';
     let r = { ok: false };
@@ -124,7 +126,7 @@ const offerOf = (kind, p) => {
     check((p.fame?.audiences?.tv ?? 0) > 0, 'a television audience knows the dancer');
     places.push(g.place);
   }
-  check(places.length >= 6, `a fine dancer with an agent gets on the show (${places.length} of 12)`);
+  check(places.length >= tries / 2, `a fine dancer with an agent gets on the show (${places.length} of ${tries})`);
   check(places.some((x) => x <= 3) && places.some((x) => x > 3), `seasons go both ways: places ${places.join(', ')}`);
   section(`${DANCE_SHOW.name}: ${places.length} seasons, places ${places.join(', ')}`);
 }
