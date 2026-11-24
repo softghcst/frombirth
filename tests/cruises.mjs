@@ -189,5 +189,42 @@ const plan = (o = {}) => {
   void h;
 }
 
+// 9. Moments on the trip: they fit the trip, a choice costs what it says and leaves its mark, then home.
+{
+  const { TRIP_SCENE_BY_ID } = await import('../js/data/tripScenes.js');
+  const seen = new Set();
+  for (let k = 0; k < 25; k++) {
+    life();
+    const t = plan({ room: 'balcony' });
+    travel.updatePlan(t.id, { mode: 'jet' });
+    travel.confirm(t.id);
+    store.state.today = t.depart;
+    travel.beginTrip(t.id);
+    for (const sc of travel.tripScenes(t)) { seen.add(sc.id); check(TRIP_SCENE_BY_ID[sc.id].when?.cruise !== false, `${sc.id} is not for a cruise`); }
+    check(travel.tripScenes(t).length === 2, 'a week at sea has two moments');
+    for (const sc of travel.tripScenes(t)) check(!sc.text.includes('{'), `the words are filled in (${sc.text})`);
+    travel.finishTrip(t.id);
+  }
+  check(['seasick', 'missed_ship', 'dolphins', 'casino', 'captains_dinner'].some((id) => seen.has(id)), `cruise moments come up at sea (${[...seen]})`);
+  check(!seen.has('kids_tired') && !seen.has('romantic_dinner') && !seen.has('client_dinner'), 'and nothing about children, a partner or work, alone on holiday');
+  // A choice: paid, felt, remembered.
+  const p = life();
+  const t = plan({ room: 'balcony' });
+  travel.updatePlan(t.id, { mode: 'jet' });
+  travel.confirm(t.id); store.state.today = t.depart;
+  travel.beginTrip(t.id);
+  t.scenes = [{ id: 'captains_dinner', chosen: null }];
+  const cash = p.finance.cash; const mood = p.stats.mood;
+  const r = travel.chooseTripScene(t.id, 'captains_dinner', 0);
+  check(r.ok && p.finance.cash < cash && p.stats.mood > mood && t.notes.includes('Dinner at the captain\'s table.') && r.changes.some((c) => c.label === 'Money'), `a choice costs, lifts and is remembered (${r.text})`);
+  check(!travel.chooseTripScene(t.id, 'captains_dinner', 0).ok, 'a moment is answered once');
+  const h = travel.finishTrip(t.id);
+  check(h.ok && t.status === 'completed', 'then home');
+  // A funeral has no holiday moments.
+  life();
+  const f = travel.startPlan('vacation'); f.type = 'funeral'; f.destination = { countryId: 'us', city: 'Chicago' };
+  check(travel.tripScenes(f).length === 0, 'a funeral has no holiday moments');
+}
+
 if (problems.length) { console.log(`PROBLEMS:\n - ${problems.join('\n - ')}`); process.exit(1); }
 console.log('Cruises sail.');

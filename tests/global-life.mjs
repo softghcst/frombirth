@@ -848,7 +848,7 @@ let moved;
   check(chron.hasEvent(`funeral-trip:${uncle.id}`) && travel.typeBlock('funeral', 'it') !== '', 'recorded once; not offered again');
   check(!chron.hasEvent(`first-vacation:${chron.archiveIdOf(p)}`) || travel.trips(['completed']).some((t) => !['wedding', 'funeral'].includes(t.type)), 'neither counts as a first vacation');
   year(2);
-  check(travel.typeBlock('funeral') !== '', 'two years on, the moment has passed');
+  check(!travel.occasions('funeral').some((o) => o.npc.id === uncle.id), 'two years on, the moment has passed'); // (someone else may have died since)
   section('weddings and funerals: trips for real family occasions, where they happen, once each');
 }
 {

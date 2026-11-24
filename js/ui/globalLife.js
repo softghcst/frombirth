@@ -7,7 +7,7 @@
 import { faceGenderOf } from '../avatar/render.js';
 import { store, player, country, livingNpcs } from '../state.js';
 import { esc, fmtMoney, theCountry } from '../util.js';
-import { openModal, messageModal, confirmModal } from './modals.js';
+import { openModal, messageModal, confirmModal, tripSceneModal } from './modals.js';
 import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { FILTERS, MODE_BY_ID, STAY_BY_ID } from '../data/travel.js';
 import { SKILLS, LEVELS } from '../data/skills.js';
@@ -571,7 +571,25 @@ export function openExplore(api, start = {}) {
       if ((x = t('[data-trip]'))) { const trip = travel.tripById(x.dataset.trip); return trip ? go(trip.status === 'draft' ? 'plan' : 'trip', { id: trip.id }) : undefined; }
       // Going is instant: the whole trip is taken, and a notice says how it went.
       if (t('[data-passportbook]')) return openPassportBook();
-      if ((x = t('[data-depart]'))) return tell(travel.takeTrip(x.dataset.depart));
+      if ((x = t('[data-depart]'))) {
+        // Off on the trip: its moments one at a time, each answered, then home.
+        const id = x.dataset.depart;
+        const start = travel.beginTrip(id);
+        if (!start.ok) return tell(start);
+        changed(); render(modal.el.scrollTop);
+        const trip = start.trip;
+        const scenes = travel.tripScenes(trip);
+        let previous = null;
+        for (const [i, sc] of scenes.entries()) {
+          const index = await tripSceneModal({ eyebrow: `${trip.destination.city ?? ''} · ${i + 1} of ${scenes.length}`, text: sc.text, choices: sc.choices, previous });
+          previous = travel.chooseTripScene(id, sc.id, index);
+          changed();
+        }
+        const end = travel.finishTrip(id);
+        changed();
+        await messageModal({ title: end.title, body: end.text, tone: end.tone, changes: end.changes, previous });
+        return render(modal.el.scrollTop);
+      }
       if ((x = t('[data-doact]'))) return tell(travel.doActivity(v.params.id, x.dataset.doact));
       if ((x = t('[data-home]'))) return tell(travel.comeHome(x.dataset.home));
       if ((x = t('[data-cancel]'))) { if (await confirmModal({ title: 'Cancel this trip?', body: 'What comes back depends on what was booked and how soon it is.', yes: 'Cancel the trip', no: 'Keep it', danger: true })) return tell(travel.cancel(x.dataset.cancel)); return undefined; }

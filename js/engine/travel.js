@@ -24,6 +24,7 @@ import { COUNTRIES, COUNTRY_LIST } from '../data/countries.js';
 import { CABINS } from '../data/activities.js';
 import { MODES, MODE_BY_ID, STAYS, STAY_BY_ID, ACTIVITIES, ACTIVITY_BY_ID, TRIP_TYPES, TRIP_TYPE_BY_ID, REFUNDS, INSURANCE_RATE, DAILY, CABIN_FARE, HUBS, NONSTOP_KM } from '../data/travel.js';
 import { SKILL_BY_ID } from '../data/skills.js';
+import { TRIP_SCENES, TRIP_SCENE_BY_ID } from '../data/tripScenes.js';
 import { CRUISE_LINES, CRUISE_LINE_BY_ID, ITINERARIES, ITINERARY_BY_ID, STATEROOMS, STATEROOM_BY_ID, VIEWS, VIEW_BY_ID, DECKS, DECK_BY_ID, OCCUPANCY, EXTRAS, EXTRA_BY_ID, CRUISE_FEES, CRUISE_MEMORIES, REGION_NAMES, PORT_COUNTRY } from '../data/cruises.js';
 import { distanceKm, overland, coastal, regionOf, localTime, instantAt, season, climate, placeName, capitalCity, placeId, parsePlace } from './geo.js';
 import { today, addDays, daysBetween, yearOf, readiness, readyForTrip, addStay, ensureOwnPassport, personById, entryRule, needsAuthorization, eraOf } from './documents.js';
@@ -372,6 +373,18 @@ export function countriesOf(trip, p = player()) {
     all.push(...it.ports.map((x) => PORT_COUNTRY[x]), it.oneWay?.[0]);
   }
   return [...new Set(all.filter((c) => c && COUNTRIES[c] && c !== p.countryId))];
+}
+
+/**
+ * A cruise's calls, in order: each port of call that is in a country, with the day the ship is there (the days spread
+ * evenly over the sailing, sea days between). For stamps dated the day you went ashore.
+ */
+export function portCalls(trip) {
+  const it = ITINERARY_BY_ID[trip.cruise?.itin];
+  const sail = trip.cruise?.sail;
+  if (!it || !sail) return [];
+  return it.ports.map((port, i) => ({ port: port.replace(/ \(.*\)$/, ''), countryId: PORT_COUNTRY[port] ?? null, date: addDays(sail, Math.max(1, Math.round((i + 1) * it.nights / (it.ports.length + 1)))) }))
+    .filter((x) => x.countryId && COUNTRIES[x.countryId]);
 }
 
 /** The sailing the trip is on, in words: for cards and the trip's story. */
@@ -1064,7 +1077,7 @@ export function comeHome(tripId, p = player()) {
   // A cruise stamps every foreign country it stopped in, not only the one it sailed from.
   const ashore = trip.type === 'cruise' ? countriesOf(trip, p).filter((c) => c !== trip.destination.countryId) : [];
   for (const c of ashore) {
-    stamp(c, 'visit');
+    stamp(c, 'visit', portCalls(trip).find((x) => x.countryId === c)?.date);
     const seen = (p.flags.visited ??= []);
     if (!seen.includes(c)) seen.push(c);
   }
@@ -1092,24 +1105,131 @@ export function comeHome(tripId, p = player()) {
  * days remain), and comes home. Returns how it went, as one account, with what changed (mood, health, intellect),
  * for the notification. A trip that cannot go ahead is reported as such, refunded on its terms.
  */
-export function takeTrip(tripId, p = player()) {
+// ---------- Moments on a trip ----------
+
+/** What a trip is, for choosing scenes that fit it (data/tripScenes.js `when`). */
+function tripContext(trip, p) {
+  const people = goingPeople(trip).filter((x) => x !== p);
+  const close = people.filter((x) => ['spouse', 'partner', 'fiance'].includes(x.role) || x.flags?.partner);
+  return {
+    cruise: trip.type === 'cruise', abroad: countriesOf(trip, p).length > 0, plane: MODE_BY_ID[trip.mode]?.id === 'jet',
+    partner: close.length > 0, kids: people.some((x) => (x.age ?? 30) < 13), companion: people.length > 0, alone: people.length === 0,
+    adult: p.age >= 18, single: !livingNpcs().some((n) => ['spouse', 'partner'].includes(n.role)),
+    talent: Object.values(p.talents ?? {}).some((v) => v >= 60), work: ['business', 'conference', 'interview'].includes(trip.type),
+    leisure: !['business', 'conference', 'interview', 'funeral'].includes(trip.type), days: daysBetween(trip.depart, trip.ret),
+  };
+}
+function sceneFits(sc, ctx) {
+  return Object.entries(sc.when ?? {}).every(([k, v]) => (k === 'days' ? ctx.days >= v : ctx[k] === v));
+}
+/** Fills in a scene's words for this trip. */
+function sceneWords(text, trip, p) {
+  const who = goingPeople(trip).filter((x) => x !== p);
+  const it = ITINERARY_BY_ID[trip.cruise?.itin];
+  const calls = portCalls(trip);
+  const port = (trip.scenePort ??= calls.length ? rng.pick(calls).port : it?.ports?.[0]?.replace(/ \(.*\)$/, '') ?? trip.destination.city);
+  // On a cruise, 'the place' is a port of call, not the city it sailed from.
+  const place = trip.type === 'cruise' && port ? port : trip.destination.city ?? COUNTRIES[trip.destination.countryId].name;
+  return text.replace(/\{place\}/g, place).replace(/\{city\}/g, trip.destination.city ?? COUNTRIES[trip.destination.countryId].name).replace(/\{country\}/g, theCountry(COUNTRIES[trip.destination.countryId].name))
+    .replace(/\{who\}/g, who[0]?.firstName ?? 'your companion').replace(/\{line\}/g, CRUISE_LINE_BY_ID[trip.cruise?.line]?.name ?? 'the ship').replace(/\{port\}/g, port);
+}
+/** How many moments a trip has: one for a few days, two for a week or so, three for longer; a funeral, at most one. */
+const sceneCount = (days, type) => (type === 'funeral' ? 0 : days <= 3 ? 1 : days <= 10 ? 2 : 3);
+
+/**
+ * The moments of a trip, as the planner shows them: each scene's words and choices, a choice's cost in local money and
+ * whether it can be paid. Picked once, when the trip begins, and kept on the trip.
+ */
+export function tripScenes(trip, p = player()) {
+  if (!trip.scenes) {
+    const ctx = tripContext(trip, p);
+    const pool = TRIP_SCENES.filter((sc) => sceneFits(sc, ctx));
+    const picks = [];
+    for (let i = 0; i < sceneCount(ctx.days, trip.type) && pool.length; i++) {
+      const sc = rng.weighted(pool, (x) => x.weight ?? 1);
+      picks.push(sc.id);
+      pool.splice(pool.indexOf(sc), 1);
+    }
+    trip.scenes = picks.map((id) => ({ id, chosen: null }));
+  }
+  const c = country();
+  return trip.scenes.filter((x) => x.chosen == null && TRIP_SCENE_BY_ID[x.id]).map((x) => {
+    const sc = TRIP_SCENE_BY_ID[x.id];
+    return { id: sc.id, text: sceneWords(sc.text, trip, p), choices: sc.choices.map((ch) => {
+      const cost = ch.cost ? localMoney(ch.cost, c) : 0;
+      return { label: sceneWords(ch.label, trip, p), cost, ok: cost <= p.finance.cash };
+    }) };
+  });
+}
+
+/** Makes a choice in one of a trip's moments, and applies what comes of it. */
+export function chooseTripScene(tripId, sceneId, index, p = player()) {
+  const trip = tripById(tripId, p);
+  const entry = trip?.scenes?.find((x) => x.id === sceneId && x.chosen == null);
+  const sc = TRIP_SCENE_BY_ID[sceneId];
+  const ch = sc?.choices[index];
+  if (!entry || !ch) return result(false, 'That moment has passed.', 'neutral');
+  const c = country();
+  const before = { mood: p.stats.mood, health: p.stats.health, intellect: p.stats.intellect, charm: p.stats.charm, cash: p.finance.cash };
+  if (ch.cost) {
+    const paid = charge({ amount: localMoney(ch.cost, c), kind: 'travel', memo: `${sceneWords(ch.label, trip, p)} (${trip.destination.city})`, key: `trip:${trip.id}:scene:${sceneId}`, ref: { tripId: trip.id }, payer: 'player' });
+    if (!paid.ok) return result(false, paid.why, 'neutral');
+  }
+  const good = ch.risk ? rng.chance(ch.risk.odds) : true;
+  const o = ch.risk ? (good ? ch.risk.good : ch.risk.bad) : ch.outcome;
+  for (const k of ['mood', 'health', 'intellect', 'charm']) if (o[k]) p.stats[k] = clamp(p.stats[k] + o[k]);
+  if (o.money > 0) p.finance.cash += localMoney(o.money, c);
+  if (o.money < 0) { const amount = Math.min(p.finance.cash, localMoney(-o.money, c)); if (amount > 0) charge({ amount, kind: 'travel', memo: `${sceneWords(o.text, trip, p).slice(0, 60)}`, key: `trip:${trip.id}:scene:${sceneId}:loss`, ref: { tripId: trip.id }, payer: 'player' }); }
+  if (o.bond) for (const n of goingPeople(trip).filter((x) => x !== p)) n.meters.relationship = clamp(n.meters.relationship + o.bond);
+  const text = sceneWords(o.text, trip, p);
+  if (o.memory) trip.notes.push(sceneWords(o.memory, trip, p));
+  entry.chosen = index; entry.text = text;
+  const changes = [['Mood', 'mood'], ['Health', 'health'], ['Intellect', 'intellect'], ['Charm', 'charm']]
+    .map(([label, k]) => ({ label, delta: Math.round(p.stats[k] - before[k]) })).filter((x) => x.delta);
+  if (p.finance.cash !== before.cash) changes.push({ label: 'Money', delta: p.finance.cash - before.cash, money: true });
+  return result(true, text, (o.mood ?? 0) < 0 || (o.health ?? 0) < 0 ? 'bad' : 'good', { changes });
+}
+
+/** Sets off on a booked trip: the journey there, and free things they love. Its moments come next (tripScenes). */
+export function beginTrip(tripId, p = player()) {
   const before = { mood: p.stats.mood, health: p.stats.health, intellect: p.stats.intellect };
   const out = depart(tripId, p);
   if (!out.ok) return { ...out, title: 'The trip did not happen' };
   const trip = out.trip;
+  trip.before = before; trip.leftText = out.text;
   // Free things they love, if there is time: nobody spends a week in Tokyo doing only what was booked.
   for (const a of activityOptions(trip, p)) {
     if (!a.cost && likes(a, p) && !trip.activities.includes(a.id) && !trip.done.some((d) => d.id === a.id) && a.days <= daysLeft(trip) - planDays(trip)) experience(trip, a, p);
   }
+  tripScenes(trip, p);
+  return result(true, out.text, 'good', { trip });
+}
+
+/** Comes home from a trip begun with beginTrip, any moments still open settled, and sums it up. */
+export function finishTrip(tripId, p = player()) {
+  const trip = tripById(tripId, p);
+  if (!trip || trip.status !== 'in_progress') return result(false, 'You are not away on that trip.', 'neutral');
+  // A moment left unanswered goes the quiet way: its last choice.
+  for (const sc of tripScenes(trip, p)) chooseTripScene(trip.id, sc.id, sc.choices.length - 1, p);
+  const before = trip.before ?? { mood: p.stats.mood, health: p.stats.health, intellect: p.stats.intellect };
   const back = comeHome(trip.id, p);
   const where = trip.destination.city ?? COUNTRIES[trip.destination.countryId].name;
   const did = trip.done.map((d) => { const n = ACTIVITY_BY_ID[d.id]?.name ?? d.id; return `${n.charAt(0).toLowerCase()}${n.slice(1)}${d.liked ? ' (you loved it)' : ''}`; });
   const days = daysBetween(trip.depart, trip.ret);
-  const abroad = trip.destination.countryId !== trip.origin?.countryId;
-  const text = [out.text, did.length ? `While you were there: ${list(did)}.` : `${days} quiet days in ${where}.`, back.text, abroad ? `🛂 A new stamp in your passport: ${COUNTRIES[trip.destination.countryId].name}.` : ''].filter(Boolean).join(' ');
+  const stamped = countriesOf(trip, p).map((c) => theCountry(COUNTRIES[c].name));
+  const text = [trip.leftText, did.length ? `While you were there: ${list(did)}.` : trip.type === 'cruise' ? '' : `${days} quiet days in ${where}.`, back.text,
+    stamped.length ? `🛂 ${stamped.length === 1 ? 'A new stamp' : 'New stamps'} in your passport: ${list(stamped)}.` : ''].filter(Boolean).join(' ');
   const changes = [['Mood', 'mood'], ['Health', 'health'], ['Intellect', 'intellect']]
     .map(([label, k]) => ({ label, delta: Math.round(p.stats[k] - before[k]) })).filter((c) => c.delta);
+  delete trip.before; delete trip.leftText;
   return result(true, text, 'good', { trip, changes, title: `Back from ${where}` });
+}
+
+/** Takes a booked trip in one go: sets off, each moment settled the quiet way, home. (The planner shows the moments.) */
+export function takeTrip(tripId, p = player()) {
+  const out = beginTrip(tripId, p);
+  if (!out.ok) return out;
+  return finishTrip(tripId, p);
 }
 
 /** Days the trip's planned, not yet done activities will take. */

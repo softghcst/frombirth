@@ -138,15 +138,35 @@ function changeChips(changes) {
   }).join('')}</div>`;
 }
 
+/**
+ * A moment on a trip: what happened, and the choices (each with its cost, if any). What came of the moment before is
+ * shown on top, as with the year's scenes. Resolves to the chosen index.
+ */
+export function tripSceneModal({ eyebrow, text, choices, previous }) {
+  return new Promise((resolve) => {
+    const c = country();
+    const before = previous ? `<div class="prev-outcome tone-${esc(previous.tone ?? 'neutral')}"><p>${esc(previous.text)}</p>${changeChips(previous.changes)}</div>` : '';
+    const m = openModal(`${before}<div class="eyebrow">${esc(eyebrow)}</div><p class="scene">${esc(text)}</p>
+      ${choices.map((ch, i) => `<button class="choice-btn" data-i="${i}" ${ch.ok ? '' : 'disabled'}>${esc(ch.label)}${ch.cost ? `<small>${esc(fmtMoney(ch.cost, c))}${ch.ok ? '' : ', more than you have'}</small>` : ''}</button>`).join('')}`);
+    m.el.addEventListener('click', (e) => {
+      const btn = e.target.closest('.choice-btn');
+      if (!btn || btn.disabled) return;
+      m.close();
+      resolve(Number(btn.dataset.i));
+    });
+  });
+}
+
 /** Shows what happened after a choice. */
 export function outcomeModal(result) {
   return messageModal({ body: result.text, tone: result.tone, changes: result.changes, serif: true });
 }
 
 /** A single-button notice. */
-export function messageModal({ eyebrow, title, body, tone = 'neutral', changes, button = 'Continue', serif }) {
+export function messageModal({ eyebrow, title, body, tone = 'neutral', changes, button = 'Continue', serif, previous }) {
   return new Promise((resolve) => {
     const m = openModal(`
+      ${previous ? `<div class="prev-outcome tone-${esc(previous.tone ?? 'neutral')}"><p>${esc(previous.text)}</p>${changeChips(previous.changes)}</div>` : ''}
       ${eyebrow ? `<div class="eyebrow">${esc(eyebrow)}</div>` : ''}
       ${title ? `<h2>${esc(title)}</h2>` : ''}
       <p class="${serif ? 'scene' : 'body'}">${esc(body)}</p>
