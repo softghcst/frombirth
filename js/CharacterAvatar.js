@@ -205,7 +205,9 @@ export function fitTransforms(headId, stage, tweaks = {}, parts = {}) {
     glasses: feature(T.anchor.eyes, wr * young.k),
     hair: crown, hat: crown,
     ears: move(256, T.ear.lobe, (fit.earL + fit.earR) / 2, fit.lobe, earS),
-    clothes: move(256, T.clothesTop, fit.cx, fit.chin + 8, body), necklace: move(256, T.clothesTop, fit.cx, fit.chin + 8, body),
+    // On the adult heads, which share one neck and shoulders, clothes sit on that body (collar, bodyX); otherwise under the chin.
+    clothes: move(256, T.clothesTop, fit.bodyX ?? fit.cx, fit.collar ?? fit.chin + 8, body),
+    necklace: move(256, T.clothesTop, fit.bodyX ?? fit.cx, fit.collar ?? fit.chin + 8, body),
   };
 }
 
