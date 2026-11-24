@@ -34,7 +34,8 @@ for (const gender of ['male', 'female']) {
 {
   const her = resolveLook({}, 'tiara-f', 'female'); const him = resolveLook({}, 'tiara-m', 'male');
   for (const rank of ['heir', 'royal']) for (const age of [0, 3, 8, 25, 70]) {
-    check(dressFor(her, { age, gender: 'female', royal: royalDress(rank) }).crown === 'crown_10_princess_tiara', `a ${age}-year-old princess (${rank}) wears the tiara`);
+    const want = rank === 'heir' ? 'crown_16_crown_princess' : 'crown_10_princess_tiara';
+    check(dressFor(her, { age, gender: 'female', royal: royalDress(rank) }).crown === want, `a ${age}-year-old princess (${rank}) wears ${want}`);
     check(dressFor(him, { age, gender: 'male', royal: royalDress(rank) }).crown === 'crown_11_prince_band', `a ${age}-year-old prince (${rank}) wears the prince's band`);
     check(dressFor(her, { age, gender: 'female', royal: royalDress(rank) }).crown !== 'crown_11_prince_band', `a ${age}-year-old princess (${rank}) does not`);
   }
@@ -66,7 +67,7 @@ for (const gender of ['male', 'female']) {
   check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', false, 'uk') }).crown === 'crown_15_queen', 'a reigning queen wears it too');
   check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('consort', false, 'se') }).crown === 'crown_15_queen', 'and so in the dynasty view');
   check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', false, 'mc') }).crown === 'crown_13_obsidian_sovereign', 'a woman who rules Monaco wears obsidian');
-  check(dressFor(her, { age: 25, gender: 'female', royal: royalDress('heir', false, 'uk') }).crown === 'crown_10_princess_tiara', 'a crown princess keeps her tiara');
+  check(dressFor(her, { age: 25, gender: 'female', royal: royalDress('heir', false, 'uk') }).crown === 'crown_16_crown_princess', 'a crown princess wears the crown princess tiara');
 }
 const sov = MANIFEST.crowns.find((c) => c.id === 'crown_09_sovereign');
 check(sov && existsSync(new URL(`../assets/${sov.file}`, import.meta.url)), 'the sovereign crown is in the manifest and on disk');

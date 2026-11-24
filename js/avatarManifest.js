@@ -288,6 +288,7 @@ export const AVATAR_MANIFEST = {
     {"id": "crown_13_obsidian_sovereign", "file": "avatars/crowns/crown_13_obsidian_sovereign.svg", "label": "Obsidian sovereign", "tags": {"royal": true, "rank": "sovereign"}},
     {"id": "crown_14_imperial_laurel", "file": "avatars/crowns/crown_14_imperial_laurel.svg", "label": "Imperial laurel", "tags": {"royal": true, "rank": "emperor"}},
     {"id": "crown_15_queen", "file": "avatars/crowns/crown_15_queen.svg", "label": "Queen", "tags": {"royal": true, "rank": "queen"}},
+    {"id": "crown_16_crown_princess", "file": "avatars/crowns/crown_16_crown_princess.svg", "label": "Crown princess", "tags": {"royal": true, "rank": "heir"}},
   ],
   hats: [
   ],
