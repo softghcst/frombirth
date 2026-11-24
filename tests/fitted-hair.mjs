@@ -144,7 +144,7 @@ for (const id of Object.keys(FITTED_HAIR)) {
   const { randomAppearance, ensureStyled } = await import('../js/avatar/inherit.js');
   const { hairSuitsGender } = await import('../js/avatar/catalog.js');
   for (const [id, st] of Object.entries(FITTED_HAIR)) check(['male', 'female', 'any'].includes(st.gender), `${id}: no gender (data-gender on its raw SVG)`);
-  check(FITTED_HAIR.swept_back_waves?.gender === 'male' && FITTED_HAIR.storybook_waves?.gender === 'female', 'a men\'s or women\'s style is tagged wrong');
+  check(FITTED_HAIR.swept_back_waves?.gender === 'male' && FITTED_HAIR.curtain_bangs_90s?.gender === 'male' && FITTED_HAIR.storybook_waves?.gender === 'female', 'a men\'s or women\'s style is tagged wrong');
   const byId = Object.fromEntries(CATALOG.hair.map((h) => [h.id, h]));
   for (let i = 0; i < 400; i++) {
     const gender = i % 2 ? 'female' : 'male';
