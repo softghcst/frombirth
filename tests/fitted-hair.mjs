@@ -57,10 +57,10 @@ for (const id of styles) {
     const name = h.file.replace(/^.*\/|\.svg$/g, '');
     const want = `hair_fitted/${id}_${FITTED_HAIR[id].heads.includes(name) ? name : FITTED_BASE_HEAD}.svg`;
     check(fittedHairFile(id, h.id) === want, `${id} on ${h.id} uses ${fittedHairFile(id, h.id)}, not ${want}`);
-    const svg = characterAvatarSvg(dressFor({ head: h.id, hair: id, eyes: 'eyes_10', eyebrows: 'brows_10', nose: 'nose_10', lips: 'lips_6', clothes: 'outfit_01_tee', makeup: [], jewelry: [], colors: { skin: '#c68642', hair: '#2b1b14' } }, { age: 30 }), { age: 30 });
+    const svg = characterAvatarSvg(dressFor({ head: h.id, hair: id, eyes: 'eyes_10', eyebrows: 'brows_10', nose: 'nose_10', lips: 'lips_6', clothes: 'outfit_57_polo_shirt', makeup: [], jewelry: [], colors: { skin: '#c68642', hair: '#2b1b14' } }, { age: 30 }), { age: 30 });
     const at = (s) => svg.indexOf(s);
     check(at(`${want}#hair_back`) > 0 && at(`${want}#hair_back`) < at(`${h.file}#art`), `${id} on ${h.id}: hair_back is not drawn behind the head`);
-    for (const layer of LAYERS.slice(1)) check(at(`${want}#${layer}`) > at('outfit_01_tee'), `${id} on ${h.id}: ${layer} is not drawn in front`);
+    for (const layer of LAYERS.slice(1)) check(at(`${want}#${layer}`) > at('outfit_57_polo_shirt'), `${id} on ${h.id}: ${layer} is not drawn in front`);
     check(!svg.includes(`${id}.svg`) && !/scale\(/.test(svg.slice(at(`${want}#hair_back`) - 120, at(`${want}#hair_back`))), `${id} on ${h.id} is moved again at run time`);
   }
   // A style marked clipToHead is drawn inside the head's skin, back and front; one that is not, is not clipped to it.
