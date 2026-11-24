@@ -43,12 +43,11 @@
       "base": 453.4
     }
   },
-  "outfit_63_off_shoulder_top": {
+  "outfit_62_cropped_moto_jacket": {
     "head": "athletic",
-    "neckline": "open",
     "neck": {
-      "half": 46.9,
-      "base": 453.4
+      "half": 58,
+      "base": 452
     }
   }
 }
