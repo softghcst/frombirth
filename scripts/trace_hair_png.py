@@ -315,7 +315,7 @@ def base_inside():
     return _BASE_INSIDE[0]
 
 
-def regions(mask, head, lobe_y, shoulder_y, neck_y, sides_behind=False):
+def regions(mask, head, lobe_y, shoulder_y, neck_y, sides='front'):
     """Where hair is in front of a head and where behind it (fields, > 0 inside), in the base head's frame.
 
     Behind: only the hair next to the jaw and neck, below the ear lobes and above the shoulders, so the jaw draws over
@@ -352,11 +352,13 @@ def regions(mask, head, lobe_y, shoulder_y, neck_y, sides_behind=False):
     behind |= face
     # A style marked data-sides="behind" (hair swept back off the face): all of it below the tops of the ears that
     # overlaps the head goes behind the head, so the side lengths show only where they reach past the face.
-    if sides_behind:
+    # data-sides="jaw" (a bun or knot at the nape drawn beside the jaw): nothing below the ears is kept in front as a lock
+    # over the face, so it goes behind the jaw and peeks out past it.
+    if sides == 'behind':
         behind |= head & (y > (BASE_EAR_Y - SIDES_ABOVE_EAR) * PX)
     # Locks drawn well over the face (not the neck) stay in front: whole pieces of hair, not slivers or the ends of strand lines.
     # Judged on the base head the hair was drawn on, so hair drawn beside a jaw is not taken for a lock on a wider one.
-    over = mask & behind & (base_inside() > FACE_MARGIN * PX) & (y < LOCK_MAX_Y * PX) & (not sides_behind)  # the face, not the neck
+    over = mask & behind & (base_inside() > FACE_MARGIN * PX) & (y < LOCK_MAX_Y * PX) & (sides == 'front')  # the face, not the neck
     lab, n = ndi.label(over)
     if n:
         big = np.bincount(lab.ravel()) >= MIN_LOCK * PX * PX
@@ -378,7 +380,8 @@ def regions(mask, head, lobe_y, shoulder_y, neck_y, sides_behind=False):
 
 
 def hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, neck_y, extra_back, head_name):
-    front_r, back_r, gap, edge = regions(fmask, head, lobe_y, shoulder_y, neck_y, 'data-sides="behind"' in tags)
+    front_r, back_r, gap, edge = regions(fmask, head, lobe_y, shoulder_y, neck_y,
+                                         'behind' if 'data-sides="behind"' in tags else 'jaw' if 'data-sides="jaw"' in tags else 'front')
     base, details = emit(fparts, front_r)
     if edge.any():
         details += emit([('edge', np.minimum((soft(edge, 1.5) - 0.5) * 8, front_r), OUTLINE)])[1]
