@@ -70,10 +70,11 @@ const HAT_LINE = 262;
 const BULKY_HAT_LINE = 316;
 
 /** The stage of life a portrait shows. */
+/** Which head a person has: baby 0-3, toddler 4-6, kid 7-13, then the grown-up heads. */
 export function ageStage(age = 25) {
-  if (age < 2) return 'baby';
-  if (age < 5) return 'toddler';
-  if (age < 13) return 'kid';
+  if (age < 4) return 'baby';
+  if (age < 7) return 'toddler';
+  if (age < 14) return 'kid';
   if (age < 50) return 'adult';
   return 'older';
 }
@@ -84,6 +85,8 @@ export function ageStage(age = 25) {
  * and it never leaves the picture. `scale`: its size against the width of the head, by age.
  */
 const CROWN = { seat: 176, height: 132, dip: 36, lift: 34, scale: { baby: 0.9, toddler: 1, kid: 1.15, adult: 1.3, older: 1.3 } };
+/** Make-up and lipstick are worn from this age (the editor offers them from it too). */
+export const MAKEUP_AGE = 16;
 const STAGE_HEAD = { baby: 'head_00_baby', toddler: 'head_00_toddler', kid: 'head_00_kid' };
 
 /** Lines that come with age, from fifty on. */
@@ -107,10 +110,13 @@ export function dressFor(look, ctx = {}) {
     out.jewelry = []; out.glasses = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
   } else if (stage === 'kid') {
-    // A grown-up's hairstyle waits until 13: until then the child wears the one picked for them (resolveLook's kidHair).
+    // A grown-up's hairstyle waits until 14 (the kid head lasts to 13): until then the child wears the one picked for them (resolveLook's kidHair).
     if (out.hair && !kidsMayWear(out.hair)) out.hair = look.kidHair ?? null;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
+  } else if (age < MAKEUP_AGE) {
+    // A teenager has a grown-up's face but wears no make-up until MAKEUP_AGE: only their own marks show.
+    out.makeup = [...(look.marks ?? [])];
   } else {
     out.makeup = [...new Set([...(look.marks ?? []), ...out.makeup])];
   }
