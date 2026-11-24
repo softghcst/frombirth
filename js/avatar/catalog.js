@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH } from './curation.js';
+import { KID_OUTFITS, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
 
@@ -255,8 +255,7 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     kidHair: st.hair && st.hair !== 'bald' && !kidsMayWear(st.hair) ? seeded(stylesFor(g.hairTexture).length ? stylesFor(g.hairTexture) : HAIR_STYLES, seed, 'kidhair').id : null,
     makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
-    kidClothes: OUTFITS.grownOnly.includes(st.outfit) ? seeded(OUTFITS.any.filter((x) => !OUTFITS.grownOnly.includes(x)), seed, 'kidclothes') : null,
-    babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'), monarchOutfit: seeded(ROYAL.outfits.monarch[sex], seed, 'monarch'),
+    babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), kidClothes: seeded([...KID_OUTFITS.any, ...KID_OUTFITS[sex]], seed, 'kidclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'), monarchOutfit: seeded(ROYAL.outfits.monarch[sex], seed, 'monarch'),
     // The same, for someone under 18: grown-up dress (ROYAL.grownOnly) is not on offer.
     royalOutfitYoung: seeded(ROYAL.outfits[sex].filter((x) => !ROYAL.grownOnly.includes(x)), seed, 'royal'),
     monarchOutfitYoung: seeded(ROYAL.outfits.monarch[sex].filter((x) => !ROYAL.grownOnly.includes(x)), seed, 'monarch'), nobleOutfit: ROYAL.outfits.noble[sex] ? seeded(ROYAL.outfits.noble[sex], seed, 'noble') : null,
