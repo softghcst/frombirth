@@ -232,7 +232,6 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_61_high_neck_top", "file": "avatars/clothes/outfit_61_high_neck_top.svg", "label": "High neck top"},
     {"id": "outfit_62_cropped_moto_jacket", "file": "avatars/clothes/outfit_62_cropped_moto_jacket.svg", "label": "Cropped moto jacket"},
     {"id": "outfit_64_flannel_shirt", "file": "avatars/clothes/outfit_64_flannel_shirt.svg", "label": "Flannel shirt"},
-    {"id": "outfit_65_puffer_vest_hoodie", "file": "avatars/clothes/outfit_65_puffer_vest_hoodie.svg", "label": "Puffer vest hoodie"},
     {"id": "outfit_66_denim_shirt", "file": "avatars/clothes/outfit_66_denim_shirt.svg", "label": "Denim shirt"},
     {"id": "outfit_67_varsity_jacket", "file": "avatars/clothes/outfit_67_varsity_jacket.svg", "label": "Varsity jacket"},
     {"id": "outfit_baby_01_cream_onesie", "file": "avatars/clothes/outfit_baby_01_cream_onesie.svg", "label": "Cream onesie", "tags": {"age": "baby"}},
