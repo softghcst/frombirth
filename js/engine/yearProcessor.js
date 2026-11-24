@@ -18,6 +18,7 @@ import { tickEstate } from './estateReview.js';
 import { tickChildhood } from './childhood.js';
 import { tickLoveStories, teenAfterBirth } from './loveStories.js';
 import { tickMilitary } from './military.js';
+import { tickTalents } from './talentGrowth.js';
 import { tickTogether } from './together.js';
 import { tickChildren } from './children.js';
 import { tickLives } from './npcLives.js';
@@ -156,6 +157,7 @@ export const YEARLY = [
   ['animalArcs', tickArcs], // stories that take years
   ['sport', () => booked('sport', 'Sport', () => tickSports())], // the athletic year: training, seasons and events, and what they cost and paid
   ['travel', () => booked('travel', 'Travel, papers and life abroad', tickGlobalLife)],
+  ['talents', () => tickTalents()], // talents come on with the years; a gift shows itself (engine/talentGrowth.js)
   ['military', tickMilitary], // contracts, national service (engine/military.js)
   ['loveStories', () => { teenAfterBirth(); tickLoveStories(); }], // which of the true stories are told this year (engine/loveStories.js)
   ['clubs', () => booked('leisure', 'Clubs and classes', tickClubs)], // dues, what a year of each adds, and the people met there (engine/clubs.js)

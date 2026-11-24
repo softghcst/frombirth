@@ -157,11 +157,11 @@ export function messageModal({ eyebrow, title, body, tone = 'neutral', changes, 
 }
 
 /** @returns {Promise<boolean>} */
-export function confirmModal({ title, body, yes = 'Confirm', no = 'Cancel', danger = false }) {
+export function confirmModal({ title, body, yes = 'Confirm', no = 'Cancel', danger = false, html = '' }) {
   return new Promise((resolve) => {
     const m = openModal(`
       <h2>${esc(title)}</h2>
-      <p class="body">${esc(body)}</p>
+      <p class="body">${esc(body)}</p>${html}
       <div class="btn-row">
         <button class="btn" data-no>${esc(no)}</button>
         <button class="btn ${danger ? 'danger' : 'primary'}" data-yes>${esc(yes)}</button>
@@ -183,7 +183,7 @@ export function pickModal({ title, body, options, cancel = 'Cancel' }) {
       ${body ? `<p class="body">${esc(body)}</p>` : ''}
       ${options.map((o, i) => `
         <button class="choice-btn" data-i="${i}" ${o.disabled ? 'disabled' : ''}>
-          ${esc(o.label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}
+          ${esc(o.label)}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}${o.html ?? ''}
         </button>`).join('')}
       <button class="btn" data-cancel style="margin-top:14px">${esc(cancel)}</button>`,
     { dismissable: true, back: false, onDismiss: () => resolve(null) });

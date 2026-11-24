@@ -16,10 +16,10 @@ import { politicsCard, politicsAction } from '../politics.js';
 import { athleticsCard, openAthletics } from '../sports.js';
 import { store, player, country, livingNpcs } from '../../state.js';
 import { esc, fmtMoney } from '../../util.js';
+import { fitBars } from '../fitBars.js';
 import * as edu from '../../engine/education.js';
 import * as job from '../../engine/partTime.js';
 import { roleLabel } from '../../engine/relationships.js';
-import { tripleThreat } from '../../engine/conditions.js';
 import { PROGRAMS, HOUSING, CLIQUE_BY_ID, CLUB_BY_ID, MAX_CLUBS, TRADES, PRIORITY_BY_ID } from '../../data/schools.js';
 import { MAJORS, MAJOR_BY_ID } from '../../data/majors.js';
 import { meterHtml } from '../meter.js';
@@ -66,8 +66,8 @@ async function chooseClub(api) {
     body: `You have time for ${MAX_CLUBS} at once. Each one builds a skill every year you stay.`,
     options: edu.clubOptions().map((c) => ({
       value: c.id, label: c.joined ? `Leave: ${c.name}` : `Join: ${c.name}`,
-      sub: [c.blurb, c.joined ? 'You are a member.' : c.chance >= 1 ? 'Open to everyone.'
-        : `Try-out: roughly ${Math.round(c.chance * 100)}% chance.`].filter(Boolean).join(' '),
+      sub: [c.blurb, c.joined ? 'You are a member.' : c.chance >= 1 ? 'Open to everyone.' : 'By try-out.'].filter(Boolean).join(' '),
+      html: !c.joined && c.bars ? fitBars({ ...c.bars, youLabel: 'Your Level', needLabel: 'Club Wants' }) : '',
       disabled: !c.joined && e.clubs.length >= MAX_CLUBS,
     })),
   });
@@ -155,7 +155,8 @@ async function chooseNewMajor(api) {
     options: edu.switchOptions().map((m) => ({
       value: m.id, label: m.name, disabled: !m.allowed,
       sub: !m.allowed ? `Needs a GPA of ${m.minGpa.toFixed(1)}.`
-        : m.audition ? `By audition: about ${Math.round(m.chance * 100)}% chance.` : 'Open to you.',
+        : m.audition ? 'By audition.' : 'Open to you.',
+      html: m.allowed && m.bars ? fitBars({ ...m.bars, youLabel: 'Your Level', needLabel: 'Panel Wants' }) : '',
     })),
   });
   if (id) await report(api, edu.switchMajor(id));
@@ -174,10 +175,11 @@ function pickMajor(progId) {
     options: MAJORS.filter((m) => !(community && m.audition) && majorOpen(m.id)).map((m) => ({
       value: m.id, label: m.name, disabled: !community && gpa < m.minGpa,
       sub: m.audition
-        ? `${m.blurb} Entry by audition (your triple-threat score is ${tripleThreat(p)}): about ${Math.round(edu.admissionChance('university', m.id) * 100)}% at a typical school.`
+        ? `${m.blurb} Entry by audition.`
         : `${m.difficulty >= 0.45 ? 'Demanding' : m.difficulty >= 0.25 ? 'Moderate' : 'Gentle'} workload`
           + (community ? '' : ` · needs ${sch.mark(m.minGpa)} at school`)
           + (m.tracks.length ? ` · opens ${m.tracks.join(' and ')} school` : ''),
+      html: m.audition && !community && gpa >= m.minGpa ? fitBars({ ...edu.auditionBars(m.id), youLabel: 'Your Level', needLabel: 'Panel Wants' }) : '',
     })),
   });
 }

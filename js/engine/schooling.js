@@ -17,6 +17,7 @@
 //   p.education.history   [{ schoolId, name, kind, stage, stageName, from, to, how, mark }]
 // People: classmates are NPCs with role 'classmate' and flags.schoolId. Teachers are NPCs
 // with role 'mentor', flags.tag 'teacher', flags.teaches (a subject), flags.style and flags.skill.
+import { gift } from './talentGrowth.js';
 import { subjectEdge } from './aptitudes.js';
 import { neighborKidsFor, befriend as befriendNeighbor } from './neighborhood.js';
 import { cityOf as cityProfile } from './cities.js';
@@ -41,7 +42,9 @@ export const atSchool = (p = player()) => p.education.enrolled && SCHOOL.include
 const schools = () => (store.state.schools ??= {});
 export const school = (id = player().education.place?.schoolId) => schools()[id] ?? null;
 /** A value on the player by path; 'a|b' takes the best of several. */
-const val = (p, path) => Math.max(...path.split('|').map((one) => one.split('.').reduce((o, k) => o?.[k], p) ?? 0));
+// An audition or trial sees what a child can do now and what they might become: for a talent, halfway between the two.
+const one = (p, path) => (path.startsWith('talents.') ? Math.round(((p.talents?.[path.slice(8)] ?? 0) + gift(p, path.slice(8))) / 2) : path.split('.').reduce((o, k) => o?.[k], p) ?? 0);
+const val = (p, path) => Math.max(...path.split('|').map((x) => one(p, x)));
 
 /** The country's word for a stage: "Sixth form", "Lycée". */
 export const stageName = (stage, countryId = player().countryId) => schoolModel(countryId).stages.find((s) => s.id === stage)?.name ?? stage;
