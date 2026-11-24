@@ -544,6 +544,26 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(browsAt(60, 90, 'male') === CUR.ELDER_BROWS && browsAt(60, 90, 'female') === 'brows_10' && browsAt(60, 70, 'male') === 'brows_10', 'the bushy brows of old age are not an old man\'s alone');
 }
 
+// Outfits fitted to each head's neck (scripts/fit-clothes.mjs): every fitted copy exists, the portrait uses it on
+// that head, and the head the outfit was drawn for wears the outfit's own file.
+{
+  const { FITTED_CLOTHES } = await import('../js/avatar/fittedClothes.js');
+  const drawnFor = JSON.parse(readFileSync(new URL('assets/clothes_drawn_for.json', root), 'utf8'));
+  const headOf = (name) => Object.values(PART_BY_ID).find((p) => p.file === `heads/${name}.svg`)?.id;
+  for (const [outfit, heads] of Object.entries(FITTED_CLOTHES)) {
+    check(PART_BY_ID[outfit] && drawnFor[outfit], `${outfit}: a fitted outfit that is not in the manifest or clothes_drawn_for.json`);
+    for (const h of heads) {
+      const file = `assets/avatars/clothes_fit/${outfit}__${h}.svg`;
+      check(existsSync(new URL(file, root)), `${file} is missing: run npm run fit-clothes`);
+      const look = { ...resolveLook({}, 'neck', 'male'), head: headOf(h), clothes: outfit };
+      check(characterAvatarSvg(look, { age: 30, gender: 'male' }).includes(`clothes_fit/${outfit}__${h}.svg#art`), `${outfit} on ${h}: the portrait does not use the neck-fitted copy`);
+      check(filesFor(look, { age: 30, gender: 'male' }).some((f) => f.endsWith(`${outfit}__${h}.svg`)), `${outfit} on ${h}: the fitted copy is not preloaded`);
+    }
+    const own = { ...resolveLook({}, 'neck', 'male'), head: headOf(drawnFor[outfit]), clothes: outfit };
+    check(characterAvatarSvg(own, { age: 30, gender: 'male' }).includes(`${PART_BY_ID[outfit].file}#art`), `${outfit} on ${drawnFor[outfit]}, the head it was drawn for: not its own file`);
+  }
+}
+
 // The sweetheart princess dress: for royal girls and women only.
 {
   const id = 'outfit_45_princess_sweetheart';

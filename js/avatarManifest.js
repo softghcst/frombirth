@@ -268,6 +268,7 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_51_imperial_fan_collar", "file": "avatars/clothes/outfit_51_imperial_fan_collar.svg", "label": "Imperial fan collar", "tags": {"royal": true}},
     {"id": "outfit_52_princess_starlight", "file": "avatars/clothes/outfit_52_princess_starlight.svg", "label": "Princess starlight", "tags": {"royal": true}},
     {"id": "outfit_53_imperial_ruby", "file": "avatars/clothes/outfit_53_imperial_ruby.svg", "label": "Imperial ruby", "tags": {"royal": true}},
+    {"id": "outfit_54_denim_jacket_tee", "file": "avatars/clothes/outfit_54_denim_jacket_tee.svg", "label": "Denim jacket tee"},
     {"id": "outfit_baby_01_bib_onesie", "file": "avatars/clothes/outfit_baby_01_bib_onesie.svg", "label": "Bib onesie", "tags": {"age": "baby"}},
     {"id": "outfit_baby_02_overalls", "file": "avatars/clothes/outfit_baby_02_overalls.svg", "label": "Overalls", "tags": {"age": "baby"}},
     {"id": "outfit_baby_03_peterpan_dress", "file": "avatars/clothes/outfit_baby_03_peterpan_dress.svg", "label": "Peterpan dress", "tags": {"age": "baby"}},
