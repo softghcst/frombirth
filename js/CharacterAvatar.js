@@ -115,7 +115,7 @@ export function dressFor(look, ctx = {}) {
   const rank = ctx.royal?.rank;
   if (ctx.jailed) { out.clothes = PRISON; out.hat = null; out.crown = null; }
   else if (rank && ['monarch', 'heir', 'royal'].includes(rank)) {
-    out.clothes = young ? ROYAL.outfits.baby : rank === 'monarch' ? ROYAL.outfits.monarch[gender] : look.royalOutfit ?? ROYAL.outfits[gender][0];
+    out.clothes = young ? ROYAL.outfits.baby : rank === 'monarch' ? look.monarchOutfit ?? (ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)[0] : look.royalOutfit ?? ROYAL.outfits[gender][0];
     out.crown = stage === 'adult' || stage === 'older' ? (ROYAL.crowns[rank]?.[gender] ?? null) : stage === 'kid' ? ROYAL.crowns.child : null;
     out.hat = null;
   } else if (rank === 'noble' && (stage === 'adult' || stage === 'older')) {

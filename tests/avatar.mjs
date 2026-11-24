@@ -78,7 +78,7 @@ for (let i = 0; i < 300; i++) check(!CUR.HAIR_COVERS_FACE.includes(randomAppeara
 
 // 2. Curated ids.
 const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, CUR.BABY_BROWS, ...Object.values(CUR.OUTFITS).flat(),
-  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch),
+  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch).flat(),
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
   ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, ...CUR.HAIR_COVERS_FACE];
 for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
@@ -564,6 +564,22 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const look = { ...resolveLook(randomAppearance(undefined, 'male'), 'uniform', 'male'), royalOutfit: id };
   for (const age of [6, 24, 70]) check(dressFor(look, { age, gender: 'male', royal: { rank: 'royal' } }).clothes === id, `a prince of ${age} wears it`);
   check(dressFor(look, { age: 24, gender: 'male' }).clothes !== id, 'a commoner does not');
+}
+
+// The sovereign's ermine robe: for reigning kings and queens only.
+{
+  const id = 'outfit_47_sovereign_ermine';
+  check(PART_BY_ID[id]?.tags?.royal, 'the sovereign\'s robe is in the manifest, tagged royal');
+  check(CUR.ROYAL.outfits.monarch.male.includes(id) && CUR.ROYAL.outfits.monarch.female.includes(id), 'kings and queens may both wear it');
+  check(!CUR.ROYAL.outfits.male.includes(id) && !CUR.ROYAL.outfits.female.includes(id) && !CATALOG.outfit.some((o) => o.id === id), 'nobody else can');
+  for (const g of ['male', 'female']) {
+    const look = { ...resolveLook(randomAppearance(undefined, g), 'sovereign', g), monarchOutfit: id };
+    check(dressFor(look, { age: 50, gender: g, royal: { rank: 'monarch' } }).clothes === id, `a reigning ${g === 'male' ? 'king' : 'queen'} wears it`);
+    check(dressFor(look, { age: 50, gender: g, royal: { rank: 'royal' } }).clothes !== id, `a ${g === 'male' ? 'prince' : 'princess'} does not`);
+  }
+  // Every monarch wears one of the monarch's outfits, chosen once for them.
+  const picks = new Set(['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8'].map((s) => dressFor(resolveLook(randomAppearance(undefined, 'female'), s, 'female'), { age: 50, gender: 'female', royal: { rank: 'monarch' } }).clothes));
+  check([...picks].every((x) => CUR.ROYAL.outfits.monarch.female.includes(x)), `a queen wears a monarch's outfit (${[...picks]})`);
 }
 
 if (problems.length) {
