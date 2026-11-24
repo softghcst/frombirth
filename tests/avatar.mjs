@@ -555,6 +555,17 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(dressFor(look, { age: 24, gender: 'female' }).clothes !== id, 'a commoner does not');
 }
 
+// The prince's uniform with epaulettes and a sash: for royal boys and men only.
+{
+  const id = 'outfit_46_prince_epaulettes';
+  check(PART_BY_ID[id]?.tags?.royal, 'the prince\'s uniform is in the manifest, tagged royal');
+  check(CUR.ROYAL.outfits.male.includes(id) && !CUR.ROYAL.outfits.female.includes(id), 'it is among the royal outfits for boys, and not for girls');
+  check(!CATALOG.outfit.some((o) => o.id === id), 'nobody who is not royal can choose it');
+  const look = { ...resolveLook(randomAppearance(undefined, 'male'), 'uniform', 'male'), royalOutfit: id };
+  for (const age of [6, 24, 70]) check(dressFor(look, { age, gender: 'male', royal: { rank: 'royal' } }).clothes === id, `a prince of ${age} wears it`);
+  check(dressFor(look, { age: 24, gender: 'male' }).clothes !== id, 'a commoner does not');
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);
