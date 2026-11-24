@@ -105,6 +105,14 @@ export const PART_SCALE = {
 };
 /** Brows that come with age, to men: from 84 an old man's brows grow bushy (a woman's keep their shape and gray). */
 export const ELDER_BROWS = 'brows_23_elder_bushy';
+/**
+ * Hair in old age, to women: from ELDER_HAIR_AGE (when graying has turned their hair mostly white) a woman is drawn
+ * with one of the elder styles, unless her own style is one, or she has chosen her hair at the salon since (style.keepHair).
+ * The styles: the ids listed here, chosen by hand from the existing ones, and every fitted style whose raw SVG is marked
+ * data-elder="female" (elderHairStyles in js/CharacterAvatar.js).
+ */
+export const ELDER_HAIR_AGE = 70;
+export const ELDER_HAIR = { female: [] };
 
 // Clothes. The old outfits have been withdrawn while new ones are made: every list below is empty, so for now
 // nobody wears clothes (portraits show bare shoulders) and the creator hides its Clothes tab. To add clothes, put

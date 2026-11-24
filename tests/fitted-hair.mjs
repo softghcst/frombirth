@@ -112,6 +112,23 @@ for (const id of Object.keys(FITTED_HAIR)) {
 }
 
 
+// Older women: from ELDER_HAIR_AGE drawn with an elder style, unless they chose their hair at the salon since.
+{
+  const { elderHairStyles } = await import('../js/CharacterAvatar.js');
+  const { ELDER_HAIR_AGE } = await import('../js/avatar/curation.js');
+  const elders = elderHairStyles('female');
+  check(elders.includes('elder_low_bun'), 'Elder Low Bun is not an elder style');
+  check(elders.every((id) => !!FITTED_HAIR[id] || !!CATALOG.hair.find((h) => h.id === id)), 'an elder style does not exist');
+  const look = (extra = {}) => ({ v: 3, inherited: { head: 'head_13_athletic', skin: 'tan' }, style: { hair: 'long_straight_center_part', ...extra } });
+  const drawn = (age, gender, extra) => avatarSvg({ appearance: look(extra), seed: 'elder', age, gender });
+  const elderly = (svg) => elders.some((id) => svg.includes(`hair_fitted/${id}_`));
+  check(!elderly(drawn(ELDER_HAIR_AGE - 1, 'female')), 'a woman is drawn with an elder style before old age');
+  check(elderly(drawn(ELDER_HAIR_AGE, 'female')) && elderly(drawn(90, 'female')), 'an older woman keeps a young style');
+  check(!elderly(drawn(90, 'female', { keepHair: true })) && drawn(90, 'female', { keepHair: true }).includes('long_straight_center_part'), 'an older woman who chose her hair at the salon is not drawn with it');
+  check(!elderly(drawn(90, 'male')), 'an older man is drawn with an elder woman\'s style');
+  check(normalize(look({ keepHair: true }), 'k').style.keepHair === true, 'a salon choice in old age is not kept in the save');
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);

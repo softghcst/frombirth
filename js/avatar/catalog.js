@@ -52,7 +52,7 @@ export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));  // none: with
  * creator and at the salon, drawn from assets/hair_fitted/. They are not in HAIR_STYLES, so the styles picked at
  * random for new people stay as they were.
  */
-export const FITTED_STYLES = Object.values(FITTED_HAIR).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, tags: { length: s.length ?? 'short' }, type: s.type ?? 'any', minAge: s.minAge ?? 0 }));
+export const FITTED_STYLES = Object.values(FITTED_HAIR).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, tags: { length: s.length ?? 'short' }, type: s.type ?? 'any', minAge: s.minAge ?? 0, elder: s.elder ?? null }));
 /** Fitted styles that have been withdrawn, and the style a save that used one is given instead. */
 export const GONE_FITTED = {
   textured_crop: 'textured_pixie_cut',
@@ -213,6 +213,7 @@ export function normalize(a, seed = 'x') {
   style.outfit = has('outfit', st.outfit) ? st.outfit : wardrobe.length ? seeded(wardrobe, seed, 'outfit').id : null;
   style.outfitColor = has('outfitColor', st.outfitColor) ? st.outfitColor : null;
   style.hat = has('hat', st.hat) ? st.hat : null;
+  if (st.keepHair) style.keepHair = true;  // hair chosen at the salon in old age: kept, not drawn as an elder's style
   // Earlier saves kept surgery separately; it is simply the person's face now.
   if (st.tweaks) inherited.tweaks = cleanTweaks(st.tweaks);
   return { v: 3, inherited, style };
@@ -254,7 +255,7 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   return {
     tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: ((s) => (s ? `babyhair_${s}` : null))(seeded(BABY_HAIR_STYLES.byTexture[g.hairTexture] ?? BABY_HAIR_STYLES.byTexture.straight, seed, 'babyhair')),
-    facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
+    keepHair: !!st.keepHair, facialHair: st.facialHair, makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
     babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'),
     colors: {

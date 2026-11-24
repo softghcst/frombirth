@@ -490,7 +490,7 @@ def build(style, force=False):
     tags = 'data-length="short"'
     if os.path.exists(out):
         import re
-        found = re.findall(r'data-(?:length|type|min-age|drawn-on)="[a-z0-9_]+"', open(out, encoding='utf-8').read(400))
+        found = re.findall(r'data-(?:length|type|min-age|drawn-on|elder)="[a-z0-9_]+"', open(out, encoding='utf-8').read(400))
         tags = ' '.join(found) or tags
     # The head it was drawn on: kept from an earlier trace, or the base head now (a new style is drawn on the template).
     import re

@@ -24,7 +24,8 @@ export function salonQuote(next) {
   const now = normalize(p.appearance, p.id).style;
   const lines = [];
   for (const key of Object.keys(SALON_PRICES)) {
-    if (same(now[key], next.style[key])) continue;
+    // Keeping her own style in old age (rather than an elder's) is a haircut too, even with the same style id.
+    if (same(now[key], next.style[key]) && !(key === 'hair' && !!next.style.keepHair !== !!now.keepHair)) continue;
     const removing = next.style[key] == null || (Array.isArray(next.style[key]) && !next.style[key].length);
     lines.push({ label: LABELS[key], cost: removing ? 0 : localCost(SALON_PRICES[key], c) });
   }

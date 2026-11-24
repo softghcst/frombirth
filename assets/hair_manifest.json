@@ -128,6 +128,25 @@
       ]
     },
     {
+      "id": "elder_low_bun",
+      "name": "Elder Low Bun",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "elder": "female",
+      "minAge": 13
+    },
+    {
       "id": "feathered_flow",
       "name": "Feathered Flow",
       "clipToHead": false,

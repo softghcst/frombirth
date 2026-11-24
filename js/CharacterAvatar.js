@@ -31,7 +31,7 @@ import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { babyEyes, babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
+import { babyEyes, babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, ELDER_HAIR, ELDER_HAIR_AGE, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
@@ -68,6 +68,20 @@ const FRONT_HAIR_CUT = 404;
 /** Under a hat, hair above this line is hidden; bulky styles lose everything above the ears. */
 const HAT_LINE = 262;
 const BULKY_HAT_LINE = 316;
+
+/** The hairstyles older women are drawn with (curation.ELDER_HAIR, and fitted styles marked data-elder). */
+export const elderHairStyles = (gender = 'female') => [...new Set([...(ELDER_HAIR[gender] ?? []),
+  ...Object.values(FITTED_HAIR).filter((s) => s.elder === gender).map((s) => s.id)])];
+/**
+ * The hair a person is drawn with in old age: from ELDER_HAIR_AGE a woman's style becomes an elder one (always the same
+ * one for the same style), unless it already is one, she is bald, or she chose her hair at the salon since (keepHair).
+ */
+export function elderHair(hair, { age = 25, gender, keepHair = false } = {}) {
+  if (gender !== 'female' || age < ELDER_HAIR_AGE || keepHair || !hair) return hair;
+  const list = elderHairStyles('female');
+  if (!list.length || list.includes(hair)) return hair;
+  return list[[...hair].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9973, 13) % list.length];
+}
 
 /** The stage of life a portrait shows. */
 export function ageStage(age = 25) {
@@ -113,6 +127,7 @@ export function dressFor(look, ctx = {}) {
   if (stage === 'older') {
     out.aging = AGING.filter(([from]) => age >= from).map(([, id]) => id);
     if (age >= 84 && gender === 'male' && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
+    out.hair = elderHair(out.hair, { age, gender, keepHair: look.keepHair });  // an older woman's hair (curation.ELDER_HAIR)
   }
   // Clothes: prison, then crown, then work, then the person's own.
   if (young) out.clothes = look.babyClothes ?? null;
