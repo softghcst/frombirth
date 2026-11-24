@@ -8,6 +8,7 @@
     "snap-clothes": "node scripts/snap-clothes.mjs",
     "fit-hair": "python scripts/fit_hair.py",
     "fit-clothes": "node scripts/fit-clothes.mjs",
+    "import-outfit": "python3 scripts/import_outfit.py",
     "split-hair": "python scripts/split_batch.py && python scripts/fit_hair.py",
     "soften-hair": "python scripts/soften_hair_lines.py && python scripts/fit_hair.py"
   }

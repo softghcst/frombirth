@@ -554,14 +554,18 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   for (const [outfit, heads] of Object.entries(FITTED_CLOTHES)) {
     check(PART_BY_ID[outfit] && drawnFor[outfit], `${outfit}: a fitted outfit that is not in the manifest or clothes_drawn_for.json`);
     for (const h of heads) {
-      const file = `assets/avatars/clothes_fit/${outfit}__${h}.svg`;
+      const file = `assets/clothes_fit/${outfit}__${h}.svg`;
       check(existsSync(new URL(file, root)), `${file} is missing: run npm run fit-clothes`);
       const look = { ...resolveLook({}, 'neck', 'male'), head: headOf(h), clothes: outfit };
       check(characterAvatarSvg(look, { age: 30, gender: 'male' }).includes(`clothes_fit/${outfit}__${h}.svg#art`), `${outfit} on ${h}: the portrait does not use the neck-fitted copy`);
       check(filesFor(look, { age: 30, gender: 'male' }).some((f) => f.endsWith(`${outfit}__${h}.svg`)), `${outfit} on ${h}: the fitted copy is not preloaded`);
     }
-    const own = { ...resolveLook({}, 'neck', 'male'), head: headOf(drawnFor[outfit]), clothes: outfit };
-    check(characterAvatarSvg(own, { age: 30, gender: 'male' }).includes(`${PART_BY_ID[outfit].file}#art`), `${outfit} on ${drawnFor[outfit]}, the head it was drawn for: not its own file`);
+    // The head it was drawn on wears the outfit's own file, unless that head needed fitting too (its shoulders lifted).
+    const how = drawnFor[outfit]; const ref = typeof how === 'string' ? how : how.head;
+    if (!heads.includes(ref)) {
+      const own = { ...resolveLook({}, 'neck', 'male'), head: headOf(ref), clothes: outfit };
+      check(characterAvatarSvg(own, { age: 30, gender: 'male' }).includes(`${PART_BY_ID[outfit].file}#art`), `${outfit} on ${ref}, the head it was drawn for: not its own file`);
+    }
   }
 }
 
