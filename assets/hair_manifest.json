@@ -3,10 +3,46 @@
   "baseHead": "athletic",
   "hairstyles": [
     {
+      "id": "bowl_cut",
+      "name": "Bowl Cut",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
       "id": "center_part_waves",
       "name": "Center Part Waves",
       "clipToHead": false,
       "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
+      "id": "classic_side_part",
+      "name": "Classic Side Part",
+      "clipToHead": false,
+      "length": "short",
       "type": "any",
       "heads": [
         "almond",
@@ -57,6 +93,24 @@
       "minAge": 13
     },
     {
+      "id": "curly_top",
+      "name": "Curly Top",
+      "clipToHead": false,
+      "length": "short",
+      "type": "curly",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
       "id": "curtain_bangs_90s",
       "name": "Curtain Bangs 90s",
       "clipToHead": false,
@@ -72,6 +126,24 @@
         "pixie",
         "sculpted"
       ]
+    },
+    {
+      "id": "feathered_flow",
+      "name": "Feathered Flow",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
     },
     {
       "id": "flipped_half_up",
@@ -213,6 +285,42 @@
       ]
     },
     {
+      "id": "man_bun",
+      "name": "Man Bun",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
+      "id": "messy_curls",
+      "name": "Messy Curls",
+      "clipToHead": false,
+      "length": "short",
+      "type": "curly",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
       "id": "messy_top_bun",
       "name": "Messy Top Bun",
       "clipToHead": false,
@@ -335,6 +443,24 @@
       "minAge": 13
     },
     {
+      "id": "slicked_back",
+      "name": "Slicked Back",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
       "id": "space_buns",
       "name": "Space Buns",
       "clipToHead": false,
@@ -356,6 +482,24 @@
       "name": "Space Buns Bangs",
       "clipToHead": false,
       "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
+      "id": "spiky_crop",
+      "name": "Spiky Crop",
+      "clipToHead": false,
+      "length": "short",
       "type": "any",
       "heads": [
         "almond",
@@ -403,6 +547,24 @@
         "pixie",
         "sculpted"
       ]
+    },
+    {
+      "id": "swept_back_waves",
+      "name": "Swept Back Waves",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
     },
     {
       "id": "textured_faux_hawk",
