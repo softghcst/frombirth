@@ -30,6 +30,7 @@ import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD, kidsMayWear } from './avatar/fittedHair.js';
+import { FITTED_CLOTHES } from './avatar/fittedClothes.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
 import { ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
@@ -138,6 +139,11 @@ export function dressFor(look, ctx = {}) {
 let serial = 0;
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const use = (id, extra = '') => { const h = href(id); return h ? `<use href="${h}"${extra}/>` : ''; };
+/** An outfit, from the copy fitted to this head's neck where there is one (scripts/fit-clothes.mjs). */
+const clothesLayer = (id, headId, extra = '') => {
+  const head = headName(headId);
+  return id && FITTED_CLOTHES[id]?.includes(head) ? `<use href="${AVATAR_BASE}avatars/clothes_fit/${id}__${head}.svg#art"${extra}/>` : use(id, extra);
+};
 
 /** What one step of each personal adjustment changes. Steps run from -2 to 2. */
 export const TWEAK_STEP = { size: 0.09, gap: 4, height: 5 };
@@ -332,7 +338,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
-    use(d.clothes, f.clothes),
+    clothesLayer(d.clothes, d.head, f.clothes),
     necklaces.map((j) => use(j, f.necklace)).join(''),
     d.hair ? hairLayer(`pw-front-${n}`) : '',
     earrings.map((j) => use(j, f.ears)).join(''),
@@ -378,6 +384,8 @@ export class CharacterAvatar {
 export function filesFor(look, ctx = {}) {
   const d = dressFor(look, ctx);
   const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
-  return [...(fitted ? [`${AVATAR_BASE}${fitted}`] : []), ...[d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.lips, d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
-    .filter((id) => id && PART_BY_ID[id]).map((id) => `${AVATAR_BASE}${PART_BY_ID[id].file}`)];
+  const neckFit = d.clothes && FITTED_CLOTHES[d.clothes]?.includes(headName(d.head)) ? `${AVATAR_BASE}avatars/clothes_fit/${d.clothes}__${headName(d.head)}.svg` : null;
+  return [...(fitted ? [`${AVATAR_BASE}${fitted}`] : []), ...(neckFit ? [neckFit] : []),
+    ...[d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.lips, neckFit ? null : d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
+      .filter((id) => id && PART_BY_ID[id]).map((id) => `${AVATAR_BASE}${PART_BY_ID[id].file}`)];
 }
