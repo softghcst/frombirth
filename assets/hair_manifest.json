@@ -373,6 +373,24 @@
       ]
     },
     {
+      "id": "rocker_waves",
+      "name": "Rocker Waves",
+      "clipToHead": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
       "id": "shoulder_length_locs",
       "name": "Shoulder Length Locs",
       "clipToHead": false,
