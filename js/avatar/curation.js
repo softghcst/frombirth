@@ -123,21 +123,17 @@ export const ELDER_BROWS = 'brows_23_elder_bushy';
 export const KID_OUTFITS = { any: [], female: [], male: [] };
 
 export const OUTFITS = {
-  any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
-    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_54_denim_jacket_tee',
-    'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],
-  female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset',
-    'outfit_59_lightning_sweatshirt', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket'],
-  male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
+  any: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],
+  female: ['outfit_59_lightning_sweatshirt', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket'],
+  male: [],
   // What a baby or toddler wears: being redrawn; until then, nothing.
   baby: [],
 };
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
-  outfits: { female: ['outfit_09_princess_gown', 'outfit_45_princess_sweetheart', 'outfit_52_princess_starlight', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
-    male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_46_prince_epaulettes', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
-      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: null, monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
+  outfits: { female: ['outfit_45_princess_sweetheart', 'outfit_52_princess_starlight'],
+    male: ['outfit_46_prince_epaulettes'], baby: null, monarch: { male: ['outfit_47_sovereign_ermine'], female: ['outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
     // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
     noble: { female: ['outfit_48_noble_cameo'], male: ['outfit_49_noble_cravat'] },
     // Some titles have their own dress: a duke or a duchess wears this instead.
@@ -156,16 +152,11 @@ export const CROWN_SEATS = { crown_09_sovereign: { seat: 167.6, top: 45.9 }, cro
 
 /** Work clothes the portrait wears, by career id (engine/career.js). */
 export const CAREER_DRESS = {
-  police: { outfit: 'outfit_police_01', senior: { outfit: 'outfit_swat_02', level: 4 } },
-  firefighter: { outfit: 'outfit_firefighter_01' },
-  enlisted: { outfit: 'outfit_military_01' },
-  officer: { outfit: 'outfit_military_01' },
-  doctor: { outfit: 'outfit_06_doctor' }, nurse: { outfit: 'outfit_06_doctor' }, dentist: { outfit: 'outfit_06_doctor' }, vet: { outfit: 'outfit_06_doctor' },
-  pharmacist: { outfit: 'outfit_06_doctor' }, scientist: { outfit: 'outfit_06_doctor' },
-  lawyer: { outfit: 'outfit_03_suit' }, banker: { outfit: 'outfit_19_tuxedo' }, accountant: { outfit: 'outfit_03_suit' }, political_staff: { outfit: 'outfit_03_suit' },
+  // The work uniforms (police, firefighter, military, doctor, suit) are being redrawn: until then, people wear their own clothes at work.
 };
-export const PRISON = 'outfit_07_prison';
-export const GRADUATION = { outfit: 'outfit_08_grad' };
+/** What a prisoner wears: being redrawn; until then, their own clothes. */
+export const PRISON = null;
+export const GRADUATION = { outfit: null }; // the gown is being redrawn
 
 /**
  * Hairstyles that hide an eye or much of the face (measured: see README). Nobody is given one
