@@ -116,6 +116,16 @@ export const PART_SCALE = {
 export const ELDER_BROWS = 'brows_23_elder_bushy';
 
 /** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
+/**
+ * What a child of 5 to 12 wears: children's clothes, never a grown-up's (from 13, their own style). The children's
+ * outfits drawn for the youngest fit the kid head too; the bib and the bear hood are left to babies.
+ */
+export const KID_OUTFITS = {
+  any: ['outfit_baby_02_overalls', 'outfit_baby_05_sailor_romper', 'outfit_baby_07_rainbow_sweatshirt'],
+  female: ['outfit_baby_03_peterpan_dress'],
+  male: ['outfit_baby_08_mini_tux'],
+};
+
 export const OUTFITS = {
   any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
     'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_54_denim_jacket_tee'],

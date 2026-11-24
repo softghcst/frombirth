@@ -33,5 +33,9 @@ export const CLOTHES_SNAP = {
   outfit_53_imperial_ruby: {
     s: 0.92,
     dy: 8
+  },
+  outfit_54_denim_jacket_tee: {
+    s: 0.91,
+    dy: 8
   }
 };
