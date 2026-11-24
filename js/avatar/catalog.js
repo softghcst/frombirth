@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { KID_OUTFITS, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH } from './curation.js';
+import { BABY_HAIR as BABY_HAIR_STYLES, KID_OUTFITS, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
 
@@ -46,21 +46,27 @@ const MARK_FILES = new Set(MARKS.map((m) => m.file));
 const AUTO_OUTFIT = /prison|police|swat|military|firefighter|doctor|grad|^outfit_baby|babybib|royal|prince|princess|queen|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|jabot|capelet|doublet/;
 export const HEADS = parts('heads', (p) => p.tags?.age === 'adult');
 export const HAIR_STYLES = parts('hair', (p) => !/baby/.test(p.id)).map((h) => ({ ...h, type: HAIR_TYPE[h.id] ?? 'straight' }));
-export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));
+export const BABY_HAIR = parts('hair', (p) => /baby/.test(p.id));  // none: withdrawn, so babies and toddlers are bald
 /**
  * Hairstyles from the fitting pipeline, read from assets/hair_manifest.json (js/avatar/fittedHair.js): offered in the
  * creator and at the salon, drawn from assets/hair_fitted/. They are not in HAIR_STYLES, so the styles picked at
  * random for new people stay as they were.
  */
-export const FITTED_STYLES = Object.values(FITTED_HAIR).filter((s) => !s.legacy).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, kids: !!s.kids, tags: { length: s.length ?? 'short' }, type: s.type ?? 'any' }));
+export const FITTED_STYLES = Object.values(FITTED_HAIR).filter((s) => !s.legacy).map((s) => ({ id: s.id, name: s.name, file: null, fitted: true, clipToHead: !!s.clipToHead, kids: !!s.kids, tags: { length: s.length ?? 'short', gender: s.gender === 'any' ? undefined : s.gender }, type: s.type ?? 'any', minAge: s.minAge ?? 0, elder: s.elder ?? null, elderOk: s.elderOk ?? null }));
 /** Fitted styles that have been withdrawn, and the style a save that used one is given instead. */
-export const GONE_FITTED = { textured_crop: 'textured_pixie_cut' };
+export const GONE_FITTED = {
+  textured_crop: 'textured_pixie_cut',
+  // The girls' pack, withdrawn.
+  '90s_flipped_ponytail': 'half_up_half_down_waves', short_bubble_pigtails: 'space_buns', y2k_spiky_updo_bun: 'messy_top_bun',
+  collarbone_butterfly_cut: 'layered_feathered_midi', dutch_halo_braid: 'messy_top_bun', half_up_fountain_bob: 'half_up_half_down_waves',
+  retro_60s_bouffant_bob: 'layered_feathered_midi', short_hime_princess_bob: 'layered_feathered_midi',
+};
 /** The fitted styles that suit a natural texture ('any' suits every texture). */
 export const fittedFor = (texture) => FITTED_STYLES.filter((s) => s.type === 'any' || (SUITS[texture] ?? SUITS.straight).includes(s.type));
 
 /** Every list of options, by the key it is saved under. */
 export const CATALOG = {
-  head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying), // crying eyes appear only when something sad is happening
+  head: HEADS, skin: SKIN_TONES, eyes: parts('eyes', (p) => p.id !== EXPRESSION.crying).map((e) => (/^eyes_[fm]_/.test(e.id) ? { ...e, name: e.name.replace(/^[FM] /, '').replace(/^./, (ch) => ch.toUpperCase()) } : e)), // crying eyes appear only when something sad is happening
   eyeColor: EYE_COLORS, brows: parts('eyebrows', (p) => p.id !== EXPRESSION.sadBrows), nose: parts('noses'), lips: parts('lips'),
   hairColor: HAIR_COLORS.filter((c) => c.natural), hairTexture: HAIR_TEXTURES, marks: MARKS,
   hair: [...HAIR_STYLES, ...FITTED_STYLES], hairDye: HAIR_COLORS, glasses: parts('glasses'),
@@ -103,6 +109,28 @@ export function lipsFor(id, gender) {
   return match?.[id] ?? id;
 }
 
+/**
+ * Eyes, drawn to suit a gender. A man's are drawn without lashes or winged liner (EYE_MATCH in js/avatar/curation.js).
+ * Eyes made for one gender (traced from pictures: eyes_f_* women's, eyes_m_* men's, scripts/trace_eyes_png.py) are
+ * drawn on the other as one of that gender's own, always the same one for the same eyes. Eyes are inherited as they
+ * are, so a son passes on his mother's.
+ */
+export const isWomensEyes = (id) => /^eyes_f_/.test(id ?? '');
+export const isMensEyes = (id) => /^eyes_m_/.test(id ?? '');
+const MENS_PLAIN = ['eyes_18', 'eyes_19', 'eyes_8', 'eyes_9'];
+export function eyesFor(id, gender) {
+  if (gender === 'male') {
+    if (!isWomensEyes(id)) return EYE_MATCH.male[id] ?? id;
+    const own = [...MENS_PLAIN, ...CATALOG.eyes.map((e) => e.id).filter(isMensEyes)];
+    return own[hash(id) % own.length];
+  }
+  if (gender === 'female' && isMensEyes(id)) {
+    const own = [...RESTING.eyes, ...CATALOG.eyes.map((e) => e.id).filter(isWomensEyes)];
+    return own[hash(id) % own.length];
+  }
+  return id;
+}
+
 /** The option with this id, or undefined. */
 export const part = (key, id) => INDEX[key]?.[id];
 export const has = (key, id) => !!part(key, id);
@@ -118,6 +146,8 @@ const resting = (key) => {
   return CATALOG[key].filter((x) => RESTING[folder].includes(x.id));
 };
 /** The styles that suit a natural texture. */
+/** Whether a hairstyle is one for this gender: men's and women's styles go to their own, unisex ones (no tag) to both. */
+export const hairSuitsGender = (style, gender) => !gender || !style?.tags?.gender || style.tags.gender === gender;
 export const stylesFor = (texture) => HAIR_STYLES.filter((s) => (SUITS[texture] ?? SUITS.straight).includes(s.type));
 
 // ---------- Older saves ----------
@@ -203,9 +233,11 @@ export function normalize(a, seed = 'x') {
   style.makeup = has('makeup', st.makeup) ? st.makeup : (v2 && OLD_MAKEUP[st.makeup]) || null;
   style.lipColor = has('lipColor', st.lipColor) ? st.lipColor : null;
   style.jewelry = Array.isArray(st.jewelry) ? st.jewelry.filter((id) => has('jewelry', id)) : [];
-  style.outfit = has('outfit', st.outfit) ? st.outfit : seeded(CATALOG.outfit.filter((o) => OUTFITS.any.includes(o.id)), seed, 'outfit').id;
+  const wardrobe = CATALOG.outfit.filter((o) => OUTFITS.any.includes(o.id));  // empty while there are no clothes: then nobody wears any
+  style.outfit = has('outfit', st.outfit) ? st.outfit : wardrobe.length ? seeded(wardrobe, seed, 'outfit').id : null;
   style.outfitColor = has('outfitColor', st.outfitColor) ? st.outfitColor : null;
   style.hat = has('hat', st.hat) ? st.hat : null;
+  if (st.keepHair) style.keepHair = true;  // hair chosen at the salon in old age: kept, not drawn as an elder's style
   // Earlier saves kept surgery separately; it is simply the person's face now.
   if (st.tweaks) inherited.tweaks = cleanTweaks(st.tweaks);
   return { v: 3, inherited, style };
@@ -241,18 +273,16 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   const st = a.style;
   const skin = part('skin', g.skin);
   const natural = INDEX.anyHair[g.hairColor].hex;
-  const babyHair = g.hairTexture === 'coily' ? ['hair_baby_04_mini_puff', 'hair_baby_05_twin_puffs', 'hair_baby_08_baby_ringlets']
-    : g.hairTexture === 'curly' ? ['hair_baby_01_curl_tuft', 'hair_baby_08_baby_ringlets', 'hair_baby_04_mini_puff']
-      : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
   const sex = gender === 'female' ? 'female' : 'male';
   const lips = lipsFor(g.lips, gender);
   const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
   return {
-    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips,
-    hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),
+    tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: g.brows, nose: g.nose, lips,
+    hair: st.hair === 'bald' ? null : st.hair, babyHair: ((s) => (s ? `babyhair_${s}` : null))(seeded(BABY_HAIR_STYLES.byTexture[g.hairTexture] ?? BABY_HAIR_STYLES.byTexture.straight, seed, 'babyhair')),
+    keepHair: !!st.keepHair, hairTexture: g.hairTexture,
     // What a child wears while their own style is a grown-up's (a fitted style not marked for children): one of the
-    // older styles that suits their hair, picked from the seed so it stays the same through childhood.
-    kidHair: st.hair && st.hair !== 'bald' && !kidsMayWear(st.hair) ? seeded(stylesFor(g.hairTexture).length ? stylesFor(g.hairTexture) : HAIR_STYLES, seed, 'kidhair').id : null,
+    // older styles that suits their hair and gender, picked from the seed so it stays the same through childhood.
+    kidHair: st.hair && st.hair !== 'bald' && !kidsMayWear(st.hair) ? ((own) => seeded(own.length ? own : stylesFor(g.hairTexture).length ? stylesFor(g.hairTexture) : HAIR_STYLES, seed, 'kidhair').id)(stylesFor(g.hairTexture).filter((s) => hairSuitsGender(s, sex))) : null,
     makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
     babyClothes: OUTFITS.baby.length ? seeded(OUTFITS.baby, seed, 'babyclothes') : null,

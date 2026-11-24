@@ -23,11 +23,16 @@ export function stamps(p = player()) {
   const out = [];
   const home = p.countryId;
   for (const t of travel.trips(['completed']).slice().reverse()) {
+    // A cruise: a stamp for each country it called at, dated the day it was there.
+    for (const c of t.type === 'cruise' ? travel.portCalls(t) : []) {
+      if (c.countryId === home || out.some((x) => x.key === `${t.id}:${c.countryId}`)) continue;
+      out.push({ countryId: c.countryId, city: c.port, date: c.date, kind: 'visit', key: `${t.id}:${c.countryId}` });
+    }
     if (!t.destination || t.destination.countryId === t.origin?.countryId) continue;
     out.push({ countryId: t.destination.countryId, city: t.destination.city, date: t.arrived ?? t.depart, out: t.ret, kind: 'visit', key: t.id });
   }
   for (const s of p.flags.passport ?? []) {
-    if (s.kind === 'visit' && out.some((x) => x.countryId === s.id && Number(x.date.slice(0, 4)) === s.year)) continue;
+    if (s.kind === 'visit' && out.some((x) => x.countryId === s.id && (s.date ? x.date === s.date : Number(x.date.slice(0, 4)) === s.year))) continue;
     if (s.kind === 'visit' && !s.year) continue;
     out.push({ countryId: s.id, city: null, date: s.year ? `${s.year}-01-01` : null, kind: s.kind, key: `${s.id}:${s.kind}:${s.year}`, yearOnly: true });
   }

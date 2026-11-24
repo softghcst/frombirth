@@ -103,6 +103,73 @@ for (const id of styles) {
 }
 check(FITTED_STYLES.every((s) => s.type !== 'any' || ['straight', 'wavy', 'curly', 'coily'].every((t) => fittedFor(t).includes(s))), 'a style for any texture is not offered to every texture');
 
+// Grown-up styles (data-min-age on the raw SVG) carry their minimum age into the game, which does not offer them younger.
+for (const [id, st] of Object.entries(FITTED_HAIR).filter(([, x]) => !x.legacy)) {
+  const head = readFileSync(new URL(`assets/hair_raw/${id}.svg`, root), 'utf8').match(/<svg\b[^>]*>/)?.[0] ?? '';
+  const want = Number(head.match(/data-min-age="(\d+)"/)?.[1] ?? 0);
+  check((st.minAge ?? 0) === want && FITTED_STYLES.find((x) => x.id === id)?.minAge === want, `${id}: minimum age ${want} not carried into the game`);
+}
+check(FITTED_HAIR.storybook_waves?.minAge === 13, 'Storybook Waves is offered to children');
+// Each style is fitted from the head it was drawn on (data-drawn-on; the base head if not given), so changing the
+// base head keeps every style fitting.
+for (const id of Object.keys(FITTED_HAIR).filter((x) => !FITTED_HAIR[x].legacy)) {
+  const on = readFileSync(new URL(`assets/hair_raw/${id}.svg`, root), 'utf8').match(/<svg\b[^>]*>/)?.[0].match(/data-drawn-on="([a-z0-9_]+)"/)?.[1] ?? landmarks.base_head;
+  check(!!landmarks[on], `${id}: drawn on ${on}, which has no landmarks`);
+  const fitted = readFileSync(new URL(`assets/hair_fitted/${id}_${FITTED_BASE_HEAD}.svg`, root), 'utf8');
+  check(fitted.includes(`data-fitted-from="${on}"`), `${id}: not fitted from the head it was drawn on (${on})`);
+}
+
+
+// Older women: from ELDER_HAIR_AGE drawn with an elder style, unless they chose their hair at the salon since.
+{
+  const { elderHairStyles } = await import('../js/CharacterAvatar.js');
+  const { ELDER_HAIR_AGE } = await import('../js/avatar/curation.js');
+  const elders = elderHairStyles('female');
+  check(elders.includes('elder_low_bun'), 'Elder Low Bun is not an elder style');
+  check(elders.every((id) => !!FITTED_HAIR[id] || !!CATALOG.hair.find((h) => h.id === id)), 'an elder style does not exist');
+  const look = (extra = {}) => ({ v: 3, inherited: { head: 'head_13_athletic', skin: 'tan' }, style: { hair: 'long_straight_center_part', ...extra } });
+  const drawn = (age, gender, extra) => avatarSvg({ appearance: look(extra), seed: 'elder', age, gender });
+  const elderly = (svg) => elders.some((id) => svg.includes(`hair_fitted/${id}_`));
+  check(!elderly(drawn(ELDER_HAIR_AGE - 1, 'female')), 'a woman is drawn with an elder style before old age');
+  check(elderly(drawn(ELDER_HAIR_AGE, 'female')) && elderly(drawn(90, 'female')), 'an older woman keeps a young style');
+  check(!elderly(drawn(90, 'female', { keepHair: true })) && drawn(90, 'female', { keepHair: true }).includes('long_straight_center_part'), 'an older woman who chose her hair at the salon is not drawn with it');
+  // Coily hair or locs: the elder styles made for them (type 'coily'); everyone else: the general ones.
+  const dressed = (texture, hair) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_13_athletic', skin: 'umber', hairTexture: texture }, style: { hair } }, seed: 'elder', age: 80, gender: 'female' });
+  check(dressed('coily', 'long_straight_center_part').includes('hair_fitted/elder_braided_bun_') && dressed('straight', 'side_part_locs').includes('hair_fitted/elder_braided_bun_'), 'an older woman with coily hair or locs is not given the coily elder style');
+  for (const [tex, hair] of [['straight', 'long_straight_center_part'], ['wavy', 'storybook_waves'], ['curly', 'center_part_waves']]) check(!dressed(tex, hair).includes('elder_braided_bun') && elders.some((id) => dressed(tex, hair).includes(`hair_fitted/${id}_`)), `an older woman with ${tex} hair is given the coily elder style, or none`);
+  const menElders = elderHairStyles('male');
+  check(['elder_balding_sides', 'classic_side_part', 'swept_back_waves'].every((id) => menElders.includes(id)), 'an older men\'s cut is missing from the elder men\'s styles');
+  check(FITTED_STYLES.find((x) => x.id === 'classic_side_part')?.elder == null, 'Classic Side Part is kept from young men');
+  check(menElders.includes('elder_twists') && !menElders.some((id) => elders.includes(id)), 'Elder Twists is not an elder men\'s style, or the lists overlap');
+  check(!elderly(drawn(90, 'male')), 'an older man is drawn with an elder woman\'s style');
+  check(menElders.some((id) => drawn(90, 'male').includes(`hair_fitted/${id}_`)), 'an older man keeps a young style');
+  check(!menElders.some((id) => drawn(ELDER_HAIR_AGE - 1, 'male').includes(`hair_fitted/${id}_`)), 'a man is drawn with an elder style before old age');
+  check(drawn(90, 'male', { keepHair: true }).includes('long_straight_center_part'), 'an older man who chose his hair at the salon is not drawn with it');
+  check(normalize(look({ keepHair: true }), 'k').style.keepHair === true, 'a salon choice in old age is not kept in the save');
+}
+
+// Men's and women's hair: every fitted style says whose it is, and generated people only get their own gender's (or unisex).
+{
+  const { randomAppearance, ensureStyled } = await import('../js/avatar/inherit.js');
+  const { hairSuitsGender } = await import('../js/avatar/catalog.js');
+  for (const [id, st] of Object.entries(FITTED_HAIR).filter(([, x]) => !x.legacy)) check(['male', 'female', 'any'].includes(st.gender), `${id}: no gender (data-gender on its raw SVG)`);
+  check(FITTED_HAIR.swept_back_waves?.gender === 'male' && FITTED_HAIR.curtain_bangs_90s?.gender === 'male' && FITTED_HAIR.storybook_waves?.gender === 'female', 'a men\'s or women\'s style is tagged wrong');
+  const byId = Object.fromEntries(CATALOG.hair.map((h) => [h.id, h]));
+  for (let i = 0; i < 400; i++) {
+    const gender = i % 2 ? 'female' : 'male';
+    const hair = ensureStyled(randomAppearance(undefined, gender), gender).style.hair;
+    check(hairSuitsGender(byId[hair], gender), `a generated ${gender === 'male' ? 'man' : 'woman'} was given ${hair}, a ${byId[hair]?.tags?.gender} style`);
+    check(!FITTED_HAIR[hair]?.elder, `a generated person was given an elder style, ${hair}`);
+  }
+  // Generated people mostly get the fitted styles; a child with a 13+ style is drawn with a child's until 13.
+  let fitted = 0;
+  for (let i = 0; i < 400; i++) { const g = i % 2 ? 'female' : 'male'; if (FITTED_HAIR[ensureStyled(randomAppearance(undefined, g), g).style.hair]) fitted++; }
+  check(fitted > 200, `only ${fitted} of 400 generated people got a fitted style`);
+  const kid = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_13_athletic', skin: 'tan', hairTexture: 'wavy' }, style: { hair: 'storybook_waves' } }, seed: 'kid', age, gender: 'female' });
+  check(!kid(9).includes('storybook_waves') && /hair/.test(kid(9)), 'a child is drawn with a 13+ style');
+  check(kid(14).includes('hair_fitted/storybook_waves_'), 'at fourteen, with the grown-up head, she is drawn with her own style');
+}
+
 // 4. Older styles anchored to every adult head (assets/hair_legacy_fit.json): drawn from their fitted file on an adult
 // head, as one layer behind the head and again in front; from the older file, fitted at run time, on a child's.
 const legacyConfig = JSON.parse(readFileSync(new URL('assets/hair_legacy_fit.json', root), 'utf8')).styles;

@@ -35,6 +35,12 @@ const SECTIONS = [
   ['overview', 'Overview'], ['physical', 'Physical'], ['mental', 'Mental health'], ['conditions', 'My conditions'], ['appointments', 'Appointments'],
   ['therapy', 'Therapy'], ['medications', 'Medications'], ['supports', 'Accessibility'], ['cover', 'Cover & hospital'], ['history', 'History'], ['goals', 'Goals'],
 ];
+/**
+ * Under this age a child's health is in their parents' hands: My Health is one simple page, with how they are,
+ * what the doctors know and the next check-up, and nothing to set or manage. From it on, the full My Health.
+ */
+export const OWN_CARE_AGE = 6;
+
 const JOURNEY = [['overview', 'Overview'], ['medications', 'Medications'], ['therapy', 'Therapy'], ['appointments', 'Appointments'], ['plans', 'Treatment plans'], ['history', 'History']];
 
 /** Where the player is in My Health. Survives closing it, and leaving for a profile. */
@@ -129,6 +135,17 @@ function overview(p, h) {
       ${kv('Hard storylines', h.settings.sensitive === 'full' ? 'Shown' : 'Reduced')}
       <div class="btn-row" style="margin-top:8px">${btn(h.settings.follow ? 'Ask me each time' : 'Follow advice', 'follow', { small: true })}${btn(h.settings.sensitive === 'full' ? 'Reduce hard storylines' : 'Show them again', 'sensitive', { small: true })}</div>
       `)}`;
+}
+
+/** My Health for a baby or small child: what there is to know, with nothing to do. */
+function youngView(p, h) {
+  const known = [...activeDiagnoses(h).map((d) => d.name), ...presentConditions(h).filter((r) => !diagnosisFor(r, h)).map((r) => CONDITION_BY_ID[r.conditionId].name)];
+  const next = care.upcoming(h).slice(0, 2);
+  return `
+    ${card('How you are', `${kv('Health', words('Health', p.stats.health))}${kv('Sleep', words('Sleep', h.wellbeing.sleep))}`)}
+    ${known.length ? card('Conditions', known.map((n) => kv(n.charAt(0).toUpperCase() + n.slice(1), '')).join('')) : ''}
+    ${next.length ? card('Check-ups', next.map(apptLine).join('')) : ''}
+    ${muted('Your parents look after your health.')}`;
 }
 
 function apptLine(a) {
@@ -434,10 +451,11 @@ export function openHealth(api, to = {}) {
   if (to.journey) nav.journey = to.journey;
   const p = player();
   healthOf(p);
+  const young = p.age < OWN_CARE_AGE;  // a baby or small child: one simple page (youngView)
   const m = openModal(`
     <div class="dyn-head"><div><div class="eyebrow">${esc(p.firstName)}</div><h2>My Health</h2></div>
       <button class="icon-btn" data-close aria-label="Close">✕</button></div>
-    <div class="hl-tabs" role="tablist" aria-label="My Health sections">${SECTIONS.map(([id, l]) => `<button role="tab" data-tab="${id}">${l}</button>`).join('')}</div>
+    ${young ? '' : `<div class="hl-tabs" role="tablist" aria-label="My Health sections">${SECTIONS.map(([id, l]) => `<button role="tab" data-tab="${id}">${l}</button>`).join('')}</div>`}
     <div class="dyn-body hl-body" data-body></div>`, { dismissable: true });
   m.el.classList.add('dyn-modal', 'hl-modal');
   const body = m.el.querySelector('[data-body]');
@@ -447,7 +465,7 @@ export function openHealth(api, to = {}) {
     const top = keepScroll ? body.scrollTop : 0;
     m.el.querySelectorAll('[data-tab]').forEach((b) => { const on = !nav.page && b.dataset.tab === nav.section; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); });
     const pages = { overview, physical, mental, conditions, appointments, therapy, medications, supports, cover, history, goals };
-    body.innerHTML = nav.page === 'journey' ? journey(p, h) : nav.page === 'dbt' ? dbtPage(p, h) : nav.page?.startsWith('cond:') ? conditionPage(p, h, nav.page.slice(5)) : pages[nav.section](p, h);
+    body.innerHTML = young ? youngView(p, h) : nav.page === 'journey' ? journey(p, h) : nav.page === 'dbt' ? dbtPage(p, h) : nav.page?.startsWith('cond:') ? conditionPage(p, h, nav.page.slice(5)) : pages[nav.section](p, h);
     body.scrollTop = keepScroll ? top : nav.scroll && nav.restore ? nav.scroll : 0;
     nav.restore = false;
     m.el.querySelector(`[data-tab="${nav.section}"]`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
@@ -531,6 +549,7 @@ export function openHealth(api, to = {}) {
 
   m.el.addEventListener('click', async (e) => {
     if (e.target.closest('[data-close]')) return m.close();
+    if (young) return undefined;  // nothing to set or manage yet
     const tab = e.target.closest('[data-tab]');
     if (tab) { nav.section = tab.dataset.tab; nav.page = null; return draw(); }
     const jt = e.target.closest('[data-jtab]');

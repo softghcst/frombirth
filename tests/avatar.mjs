@@ -134,7 +134,7 @@ for (let i = 0; i < 400; i++) {
   const g = i % 2 ? 'female' : 'male';
   const a = randomAppearance(i % TONES.length, g);
   valid(normalize(a, `r${i}`), `random ${i}`);
-  check(CUR.RESTING.eyes.includes(a.inherited.eyes) && CUR.RESTING[g === 'male' ? 'lipsMasc' : 'lips'].includes(a.inherited.lips), `random ${i} was given an expression for a resting face, or a mouth for the other gender`);
+  check((CUR.RESTING.eyes.includes(a.inherited.eyes) || /^eyes_[fm]_/.test(a.inherited.eyes)) && CUR.RESTING[g === 'male' ? 'lipsMasc' : 'lips'].includes(a.inherited.lips), `random ${i} was given an expression for a resting face, or a mouth for the other gender`);
   if (i % TONES.length >= SKIN_DEPTH.chestnut) { deep++; if (['coily', 'curly'].includes(a.inherited.hairTexture)) coily++; }
 }
 check(coily / deep > 0.7, `deep skin tones should mostly have curly or coily hair (${coily}/${deep})`);
@@ -170,8 +170,8 @@ for (const age of [0, 1, 3, 7, 12, 15, 30, 49, 55, 66, 80, 101]) {
     // Prison clothes and work uniforms are being redrawn: until then, a prisoner or a police officer wears their own clothes.
     if (s.jailed && CUR.PRISON) check(d.clothes === CUR.PRISON, 'prisoners are not in prison clothes');
     if (s.royal?.rank === 'monarch' && age >= 13) check(/crown_0[13]/.test(d.crown ?? ''), 'a monarch has no crown');
-    if (ageStage(age) === 'baby') check(d.head === 'head_00_toddler' && d.binky && !d.glasses && !d.jewelry.length, 'a baby is wearing grown-up things, or has no binky');
-    if (ageStage(age) !== 'baby') check(!d.binky, `a ${age}-year-old still has a binky`);
+    if (ageStage(age) === 'baby') check(d.head === 'head_00_toddler' && d.pacifier && !d.glasses && !d.jewelry.length, 'a baby is wearing grown-up things, or has no binky');
+    if (ageStage(age) !== 'baby') check(!d.pacifier, `a ${age}-year-old still has a binky`);
     if (age >= 66) check(d.aging.length >= 2, 'no lines with age');
     if (CUR.CAREER_DRESS.police && s.career?.id === 'police' && age >= 18) check(/police|swat/.test(d.clothes), 'police are not in uniform');
     check(filesFor(resolveLook(a, 'x'), { age, ...s }).every((f) => existsSync(new URL(f.replace('./', ''), root))), 'filesFor lists a missing file');
@@ -306,8 +306,9 @@ check(normalize({ v: 2, inherited: { face: 'oval' }, style: { hair: 'long_straig
 // 10. The faces on offer: the withdrawn eyes, mouths and noses are gone, saves that used them land on the nearest kept,
 // and the rest are offered and drawn at random exactly as before.
 const EYES = ['eyes_10', 'eyes_14', 'eyes_16', 'eyes_18', 'eyes_19', 'eyes_20', 'eyes_22', 'eyes_25', 'eyes_26', 'eyes_6', 'eyes_7', 'eyes_8', 'eyes_9'];
-check(AVATAR_MANIFEST.eyes.map((e) => e.id).join() === EYES.join(), 'the eye shapes in the manifest have changed');
-check(CATALOG.eyes.map((e) => e.id).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
+const drawnEyes = (list) => list.map((e) => e.id ?? e).filter((id) => !/^eyes_[fm]_/.test(id));  // traced eyes (eyes_f_*, eyes_m_*) come and go
+check(drawnEyes(AVATAR_MANIFEST.eyes).join() === EYES.join(), 'the eye shapes in the manifest have changed');
+check(drawnEyes(CATALOG.eyes).join() === EYES.filter((id) => id !== 'eyes_14').join(), 'the eye shapes on offer have changed');
 check(CUR.RESTING.eyes.join() === 'eyes_6,eyes_8,eyes_9,eyes_10,eyes_16,eyes_18,eyes_19,eyes_22,eyes_25', 'the eyes given out at random have changed');
 for (const [key, folder] of [['eyes', 'eyes'], ['lips', 'lips'], ['nose', 'noses']]) {
   for (const [gone, kept] of Object.entries(CUR.WITHDRAWN[key])) {
@@ -331,7 +332,7 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   const seen = {};
   rng.seed(7);
   for (let i = 0; i < 4000; i++) { const e = randomAppearance(i % 12, i % 2 ? 'female' : 'male').inherited.eyes; seen[e] = (seen[e] ?? 0) + 1; }
-  check(Object.keys(seen).sort().join() === [...CUR.RESTING.eyes].sort().join(), 'random faces draw on a different set of eyes');
+  check(drawnEyes(Object.keys(seen)).sort().join() === [...CUR.RESTING.eyes].sort().join() && CATALOG.eyes.filter((e) => /^eyes_[fm]_/.test(e.id)).every((e) => seen[e.id]), 'random faces draw on a different set of eyes');
   check(Math.max(...Object.values(seen)) / Math.min(...Object.values(seen)) < 1.5, 'some eye shapes are now given out more often than others');
 }
 
@@ -350,9 +351,27 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(avatarSvg({ appearance: fresh, seed: 'f', age: 30 }).replace(/pw-[a-z]+-\d+/g, '') === avatarSvg({ appearance: again, seed: 'f', age: 30 }).replace(/pw-[a-z]+-\d+/g, ''), 'a saved copy of a face is drawn differently');
 }
 
+// Men's eyes: no lashes or winged liner; a woman's eyes are drawn as they are.
+{
+  const { EYE_MATCH } = CUR;
+  const eye = (eyes, gender) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_13_athletic', skin: 'tan', eyes }, style: { hair: 'bald' } }, seed: 'eyes', age: 40, gender });
+  for (const [lashed, plain] of Object.entries(EYE_MATCH.male)) {
+    check(eye(lashed, 'male').includes(`eyes/${plain}.svg`) && !eye(lashed, 'male').includes(`eyes/${lashed}.svg`), `a man is drawn with ${lashed}, which has lashes`);
+    check(eye(lashed, 'female').includes(`eyes/${lashed}.svg`), `a woman's ${lashed} is changed`);
+    check(!EYE_MATCH.male[plain], `${plain}, a man's eyes, has lashes of its own`);
+  }
+  // Eyes made for one gender (eyes_f_*, eyes_m_*) are never drawn on the other.
+  for (const e of CATALOG.eyes.filter((x) => /^eyes_[fm]_/.test(x.id))) {
+    const other = e.id.startsWith('eyes_f_') ? 'male' : 'female';
+    check(!eye(e.id, other).includes(`eyes/${e.id}.svg`), `${e.id} is drawn on a ${other === 'male' ? 'man' : 'woman'}`);
+    check(eye(e.id, other === 'male' ? 'female' : 'male').includes(`eyes/${e.id}.svg`), `${e.id} is not drawn on its own gender`);
+    check(!/^[FM] /.test(e.name), `${e.id} is named ${e.name}`);
+  }
+}
+
 // 12. Layers: lines of age kept on the face, front hair cut at the chin; an old beard is not drawn.
 {
-  const look = resolveLook({ v: 3, inherited: { head: 'head_13_athletic', skin: 'golden' }, style: { hair: 'hair_girl_long_04', facialHair: 'facial_hair_04_bushy_full_beard' } }, 'layers', 'male');
+  const look = resolveLook({ v: 3, inherited: { head: 'head_13_athletic', skin: 'golden' }, style: { hair: 'hair_girl_long_04', keepHair: true, facialHair: 'facial_hair_04_bushy_full_beard' } }, 'layers', 'male');  // keepHair: his own hair at 70, not an elder style
   const svg = characterAvatarSvg(look, { age: 70, gender: 'male' });
   check(!/facial_hair/.test(svg), 'a beard from an old save is drawn');
   check(/<g clip-path="url\(#pw-face-\d+\)"><use href="[^"]*aging/.test(svg), 'lines of age are not kept to the face');
@@ -546,6 +565,41 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(browsAt(5, 8) === sad && browsAt(5, 1) === CUR.BABY_BROWS, 'a sad child, or a baby, has the wrong brows');
   check(dressFor(resolveLook({ v: 3, inherited: { brows: 'brows_10' } }, 'x', 'female'), { age: 30, gender: 'female', mood: 5 }).eyes === CUR.EXPRESSION.crying, 'a very unhappy face does not cry');
   check(browsAt(60, 90, 'male') === CUR.ELDER_BROWS && browsAt(60, 90, 'female') === 'brows_10' && browsAt(60, 70, 'male') === 'brows_10', 'the bushy brows of old age are not an old man\'s alone');
+}
+
+// Baby hair: every style is made for both young heads, and a baby or toddler is drawn with the one for their head.
+{
+  for (const style of CUR.BABY_HAIR.styles) for (const head of CUR.BABY_HAIR.heads) check(existsSync(new URL(`assets/hair_baby/${style}_${head}.svg`, root)), `no ${style} baby hair for the ${head} head`);
+  const a = { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', hairTexture: 'curly' }, style: { hair: 'bald' } };
+  let seed = 'bh'; for (let k = 0; k < 50 && !resolveLook(a, seed, 'female').babyHair; k++) seed = `bh${k}`;
+  const style = resolveLook(a, seed, 'female').babyHair.slice(9);
+  check(CUR.BABY_HAIR.byTexture.curly.includes(style), `a curly-haired baby was given ${style}`);
+  // Babies (under 3) share the young head with toddlers, and wear the baby hair made for it; from 3, a child's style.
+  check(avatarSvg({ appearance: a, seed, age: 1, gender: 'female' }).includes(`hair_baby/${style}_toddler.svg#hair_base`), 'a baby is not drawn with the baby hair made for the young head');
+  check(!avatarSvg({ appearance: a, seed, age: 3, gender: 'female' }).includes('hair_baby/'), 'a three-year-old still has baby hair');
+  check(!avatarSvg({ appearance: a, seed, age: 8, gender: 'female' }).includes('hair_baby/'), 'a child still has baby hair');
+}
+
+// Babies (under 3) have a binky in place of a mouth: blue for a boy, pink for a girl. From 3, a mouth again.
+{
+  const face = (age, gender) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: 'bald' } }, seed: 'binkie', age, gender });
+  for (const [gender, hex] of [['male', CUR.PACIFIER.boy], ['female', CUR.PACIFIER.girl]]) for (const age of [0, 2]) {
+    const svg = face(age, gender);
+    check(svg.includes('pacifiers/pacifier_01.svg#art') && svg.includes(`--binkie-color:${hex}`) && !/lips\/lips_/.test(svg), `a ${age}-year-old ${gender === 'male' ? 'boy' : 'girl'} has no ${hex} binky in place of a mouth`);
+  }
+  check(!face(3, 'female').includes('pacifier') && /lips\/lips_/.test(face(3, 'female')), 'a three-year-old still has a binky, or no mouth');
+  // Round, open eyes until thirteen: a heavy-lidded shape is drawn as the round one it maps to.
+  const eyed = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender: 'female' });
+  check(eyed(1).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && CUR.BABY_EYES.includes(CUR.babyEyes('eyes_10')) && !eyed(3).includes('eyes/eyes_10.svg'), 'a baby or toddler is drawn with grown-up eyes');
+  // Children (to 13) keep the toddler eyes; their own eyes come back at fourteen, with the grown-up head.
+  for (const age of [5, 9, 13]) check(eyed(age).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
+  check(eyed(14).includes('eyes/eyes_10.svg'), 'a fourteen-year-old does not have the eyes they were born with');
+  // One soft pair of brows: no lighter edge on any skin, no lid crease under them, and never the crying eyes at rest.
+  for (const skin of ['porcelain', 'umber', 'ebony']) {
+    const svg = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin }, style: { hair: 'bald' } }, seed: 'brows', age: 1, gender: 'male', mood: 70 });
+    check(!/eyebrows\/[^"]+#art"[^>]*paint-order:stroke/.test(svg) && svg.includes('--crease-color:transparent'), `a baby on ${skin} skin has a lighter edge on the brows, or a crease`);
+  }
+  check(CUR.BABY_EYES.every((e) => e !== CUR.EXPRESSION.crying && PART_BY_ID[e]), 'a baby eye shape is the crying eyes, or missing');
 }
 
 // Outfits fitted to each head's neck (scripts/fit-clothes.mjs): every fitted copy exists, the portrait uses it on

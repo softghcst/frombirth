@@ -4,7 +4,7 @@
 import { rng } from '../../rng.js';
 import { clamp, localMoney, fmtMoney } from '../../util.js';
 import { store, player, country, log } from '../../state.js';
-import { PLATFORM_BY_ID } from '../../data/digital.js';
+import { PLATFORM_BY_ID, DIGITAL_AGES } from '../../data/digital.js';
 import { world, newId, charOf, acts, result, recordEvent, reputation, adjustReputation, spendHours, spareHours } from './core.js';
 import { accountsOf, activeAccountsOf, account, followerCount, block as blockAccount, updateAccount } from './accounts.js';
 import { FAMILY } from './messaging.js';
@@ -59,7 +59,12 @@ export function raise(kind, o = {}) {
  * never happened costs a little; facts help when the facts are on your side.
  * Resolved controversies stay resolved.
  */
+/** Babies and small children have no life online: nothing here can be done by them. */
+const tooYoung = () => player().age < DIGITAL_AGES.digitalLife;
+const TOO_YOUNG = 'You are too young for a life online.';
+
 export function respond(cvId, responseId) {
+  if (tooYoung()) return result(false, TOO_YOUNG);
   const p = player();
   const c = world().controversies[cvId];
   if (!c || c.charId !== p.id) return result(false, 'There is nothing to answer.');
@@ -121,6 +126,7 @@ export function respond(cvId, responseId) {
 
 /** A fundraiser for a good cause, run through the player's public following. The money goes to the charity, not the player. */
 export function fundraise(accountId) {
+  if (tooYoung()) return result(false, TOO_YOUNG);
   const p = player();
   const acc = account(accountId);
   if (!acc || acc.ownerId !== p.id || acc.status !== 'active') return result(false, 'That is not one of your accounts.');
@@ -164,6 +170,7 @@ export const SAFETY_ACTIONS = {
 };
 
 export function handleSafety(safetyId, actionId) {
+  if (tooYoung()) return result(false, TOO_YOUNG);
   const p = player();
   const s = world().safety.find((x) => x.id === safetyId && x.charId === p.id);
   if (!s || s.status !== 'open') return result(false, 'That is dealt with.');
@@ -264,21 +271,24 @@ export function wellbeing(charId = player().id) {
 
 /** A year away from posting. Accounts stay; people who care are still there when you come back. */
 export function takeBreak() {
+  if (tooYoung()) return result(false, TOO_YOUNG);
   const w = wellbeing();
   w.breakUntil = store.state.year + 1;
   w.breaks = (w.breaks ?? 0) + 1;
   return result(true, 'You are taking a break from social media until next year.', 'neutral');
 }
 export const onBreak = () => (wellbeing().breakUntil ?? 0) >= store.state.year;
-export function endBreak() { wellbeing().breakUntil = store.state.year - 1; return result(true, 'Welcome back.', 'neutral'); }
+export function endBreak() { if (tooYoung()) return result(false, TOO_YOUNG); wellbeing().breakUntil = store.state.year - 1; return result(true, 'Welcome back.', 'neutral'); }
 /** A limit on how much of the year goes to screens: 'light', 'moderate' or none. */
 export function setLimit(level) {
+  if (tooYoung()) return result(false, TOO_YOUNG);
   if (![null, 'light', 'moderate'].includes(level)) return result(false, 'Not a setting.');
   wellbeing().limit = level;
   return result(true, level ? `You will keep screens to ${level === 'light' ? 'a little' : 'a moderate amount'} of your spare time.` : 'No limit on screen time.', 'neutral');
 }
 
 export function setNotifications(level) {
+  if (tooYoung()) return result(false, TOO_YOUNG);
   if (!['all', 'important', 'off'].includes(level)) return result(false, 'Not a setting.');
   wellbeing().notifications = level;
   for (const a of activeAccountsOf(player().id)) a.notifications = level;

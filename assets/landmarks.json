@@ -1,5 +1,6 @@
 {
-  "base_head": "dimple_oval",
+  "base_head": "athletic",
+  "base_head_pinned": true,
   "pixie": {
     "crown_top": {
       "x": 254.9,

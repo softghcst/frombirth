@@ -58,12 +58,23 @@ if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/trip-bo
 check(/The Plan/.test(before) && /Museum/i.test(before) && !/What you did/i.test(before), 'before leaving it shows the plan, not "What you did"');
 check(/Cancel This Trip/.test(before) && /Your Share/.test(before), 'buttons and labels are capitalized');
 await go.click();
+// The trip's moments come first, one card at a time: each a scene with choices; answering moves on.
+let moments = 0;
+for (; moments < 5; moments++) {
+  const scene = page.locator('#modal-root .modal .choice-btn:not([disabled])').first();
+  if (!(await scene.count())) { await page.waitForTimeout(300); if (!(await page.locator('#modal-root .modal .choice-btn:not([disabled])').count())) break; }
+  if (process.env.SHOT) { await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT}/trip-moment-${moments}.png` }); }
+  if (moments === 0) check(/Chicago · 1 of \d/i.test(await page.locator('#modal-root .modal').last().innerText()), 'a moment says where, and which of how many');
+  await page.locator('#modal-root .modal .choice-btn:not([disabled])').first().click();
+  await page.waitForTimeout(150);
+}
+check(moments >= 2, `a week away has moments with choices (${moments})`);
 const notice = page.locator('#modal-root .modal', { hasText: 'Back from Chicago' });
 await notice.waitFor({ timeout: 5000 }).catch(() => {});
-check(await notice.count() === 1, 'one click: a notice says you are back from Chicago');
+check(await notice.count() === 1, 'then a notice says you are back from Chicago');
 const text = await notice.innerText().catch(() => '');
 check(/museum/i.test(text) && /Home from Chicago/.test(text), `the notice says what you did and that you are home (${text.slice(0, 200)})`);
-check(await notice.locator('.chip').count() >= 1, 'and shows what changed');
+check(await notice.locator('.chip').count() >= 1, 'and shows what changed, with what came of the last moment');
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/trip-notice.png` });
 await notice.locator('[data-ok]').click();
 const after = await page.evaluate(async (id) => { const travel = await import('/js/engine/travel.js'); return { status: travel.tripById(id).status, away: travel.whereabouts().away }; }, tripId);

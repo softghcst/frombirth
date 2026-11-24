@@ -310,11 +310,12 @@ export function emigrate(countryId, opts = {}) {
 // ---------- The passport ----------
 
 /** Records a country in the player's passport: 'born', 'moved' or 'visit'. */
-export function stamp(countryId, kind) {
+export function stamp(countryId, kind, date = null) {
   const p = player();
   const book = p.flags.passport ?? (p.flags.passport = []);
-  if (kind === 'visit' && book.some((s) => s.id === countryId && s.kind === 'visit' && s.age === p.age)) return;
-  book.push({ id: countryId, kind, age: p.age, year: store.state.year });
+  // A dated stamp (a port of call) is its own; an undated visit is kept once a year of age.
+  if (kind === 'visit' && book.some((s) => s.id === countryId && s.kind === 'visit' && (date ? s.date === date : s.age === p.age && !s.date))) return;
+  book.push({ id: countryId, kind, age: p.age, year: store.state.year, ...(date ? { date } : {}) });
 }
 
 /**

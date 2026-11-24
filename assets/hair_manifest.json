@@ -1,7 +1,122 @@
 {
   "generatedBy": "scripts/fit_hair.py (do not edit by hand)",
-  "baseHead": "dimple_oval",
+  "baseHead": "athletic",
   "hairstyles": [
+    {
+      "id": "bowl_cut",
+      "name": "Bowl Cut",
+      "clipToHead": false,
+      "kids": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "minAge": 13
+    },
+    {
+      "id": "center_part_waves",
+      "name": "Center Part Waves",
+      "clipToHead": false,
+      "kids": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
+    },
+    {
+      "id": "classic_side_part",
+      "name": "Classic Side Part",
+      "clipToHead": false,
+      "kids": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "elderOk": "male",
+      "minAge": 13
+    },
+    {
+      "id": "cloud_curls",
+      "name": "Cloud Curls",
+      "clipToHead": false,
+      "kids": false,
+      "length": "long",
+      "type": "coily",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
+    },
+    {
+      "id": "curly_puff",
+      "name": "Curly Puff",
+      "clipToHead": false,
+      "kids": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
+    },
+    {
+      "id": "curly_top",
+      "name": "Curly Top",
+      "clipToHead": false,
+      "kids": false,
+      "length": "short",
+      "type": "curly",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "minAge": 13
+    },
     {
       "id": "curtain_bangs_90s",
       "name": "Curtain Bangs 90s",
@@ -17,7 +132,265 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
+    },
+    {
+      "id": "elder_balding_sides",
+      "name": "Elder Balding Sides",
+      "clipToHead": false,
+      "kids": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "elder": "male",
+      "minAge": 13
+    },
+    {
+      "id": "elder_beehive",
+      "name": "Elder Beehive",
+      "clipToHead": false,
+      "kids": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_braided_bun",
+      "name": "Elder Braided Bun",
+      "clipToHead": false,
+      "kids": false,
+      "length": "updo",
+      "type": "coily",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_crown_braid",
+      "name": "Elder Crown Braid",
+      "clipToHead": false,
+      "kids": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_low_bun",
+      "name": "Elder Low Bun",
+      "clipToHead": false,
+      "kids": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_short_curls",
+      "name": "Elder Short Curls",
+      "clipToHead": false,
+      "kids": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "elder": "male",
+      "minAge": 13
+    },
+    {
+      "id": "elder_short_layers",
+      "name": "Elder Short Layers",
+      "clipToHead": false,
+      "kids": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_soft_waves",
+      "name": "Elder Soft Waves",
+      "clipToHead": false,
+      "kids": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_swirl_updo",
+      "name": "Elder Swirl Updo",
+      "clipToHead": false,
+      "kids": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_twists",
+      "name": "Elder Twists",
+      "clipToHead": false,
+      "kids": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "elder": "male",
+      "minAge": 13
+    },
+    {
+      "id": "feathered_flow",
+      "name": "Feathered Flow",
+      "clipToHead": false,
+      "kids": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "minAge": 13
+    },
+    {
+      "id": "flipped_half_up",
+      "name": "Flipped Half Up",
+      "clipToHead": false,
+      "kids": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
+    },
+    {
+      "id": "goddess_braids",
+      "name": "Goddess Braids",
+      "clipToHead": false,
+      "kids": false,
+      "length": "long",
+      "type": "braids",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
     },
     {
       "id": "half_up_half_down_waves",
@@ -34,7 +407,27 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
+    },
+    {
+      "id": "high_puffs",
+      "name": "High Puffs",
+      "clipToHead": false,
+      "kids": false,
+      "length": "updo",
+      "type": "coily",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
     },
     {
       "id": "ivy_league_crew_cut",
@@ -51,7 +444,8 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "layered_feathered_midi",
@@ -68,7 +462,27 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
+    },
+    {
+      "id": "locs_top_knot",
+      "name": "Locs Top Knot",
+      "clipToHead": false,
+      "kids": false,
+      "length": "long",
+      "type": "locs",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "minAge": 13
     },
     {
       "id": "long_straight_center_part",
@@ -85,7 +499,8 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "low_taper_fade",
@@ -102,7 +517,46 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
+    },
+    {
+      "id": "man_bun",
+      "name": "Man Bun",
+      "clipToHead": false,
+      "kids": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "minAge": 13
+    },
+    {
+      "id": "messy_curls",
+      "name": "Messy Curls",
+      "clipToHead": false,
+      "kids": false,
+      "length": "short",
+      "type": "curly",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "minAge": 13
     },
     {
       "id": "messy_top_bun",
@@ -119,7 +573,8 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "messy_wavy_fringe",
@@ -136,7 +591,27 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
+    },
+    {
+      "id": "rocker_waves",
+      "name": "Rocker Waves",
+      "clipToHead": false,
+      "kids": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "minAge": 13
     },
     {
       "id": "shoulder_length_locs",
@@ -153,7 +628,27 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "any"
+    },
+    {
+      "id": "side_part_locs",
+      "name": "Side Part Locs",
+      "clipToHead": false,
+      "kids": false,
+      "length": "medium",
+      "type": "locs",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
     },
     {
       "id": "side_part_quiff",
@@ -170,7 +665,65 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
+    },
+    {
+      "id": "side_ponytail",
+      "name": "Side Ponytail",
+      "clipToHead": false,
+      "kids": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
+    },
+    {
+      "id": "side_swept_bob",
+      "name": "Side Swept Bob",
+      "clipToHead": false,
+      "kids": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
+    },
+    {
+      "id": "slicked_back",
+      "name": "Slicked Back",
+      "clipToHead": false,
+      "kids": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "minAge": 13
     },
     {
       "id": "space_buns",
@@ -187,7 +740,65 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
+    },
+    {
+      "id": "space_buns_bangs",
+      "name": "Space Buns Bangs",
+      "clipToHead": false,
+      "kids": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
+    },
+    {
+      "id": "spiky_crop",
+      "name": "Spiky Crop",
+      "clipToHead": false,
+      "kids": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "minAge": 13
+    },
+    {
+      "id": "storybook_waves",
+      "name": "Storybook Waves",
+      "clipToHead": false,
+      "kids": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
     },
     {
       "id": "swept_back_pompadour",
@@ -204,7 +815,28 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
+    },
+    {
+      "id": "swept_back_waves",
+      "name": "Swept Back Waves",
+      "clipToHead": false,
+      "kids": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "elderOk": "male",
+      "minAge": 13
     },
     {
       "id": "textured_faux_hawk",
@@ -221,7 +853,8 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "textured_french_crop",
@@ -238,7 +871,8 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "textured_pixie_cut",
@@ -255,7 +889,8 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "twin_low_puffs",
@@ -272,7 +907,27 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
+    },
+    {
+      "id": "twisted_crown_waves",
+      "name": "Twisted Crown Waves",
+      "clipToHead": false,
+      "kids": false,
+      "length": "long",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
     },
     {
       "id": "voluminous_curly_afro",
@@ -289,7 +944,27 @@
         "dimple_oval",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "any"
+    },
+    {
+      "id": "wavy_side_part",
+      "name": "Wavy Side Part",
+      "clipToHead": false,
+      "kids": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "minAge": 13
     },
     {
       "id": "hair_boy_long_10",
@@ -705,13 +1380,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 262.2,
-        "angular": 260.1,
-        "athletic": 260.6,
-        "cherubic": 261.5,
-        "dimple_oval": 262.0,
-        "pixie": 263.4,
-        "sculpted": 260.1
+        "almond": 264.0,
+        "angular": 261.7,
+        "athletic": 262.0,
+        "cherubic": 263.2,
+        "dimple_oval": 263.7,
+        "pixie": 265.5,
+        "sculpted": 261.7
       }
     },
     {
@@ -732,13 +1407,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 262.2,
-        "angular": 260.1,
-        "athletic": 260.6,
-        "cherubic": 261.5,
-        "dimple_oval": 262.0,
-        "pixie": 263.4,
-        "sculpted": 260.1
+        "almond": 264.0,
+        "angular": 261.7,
+        "athletic": 262.0,
+        "cherubic": 263.2,
+        "dimple_oval": 263.7,
+        "pixie": 265.5,
+        "sculpted": 261.7
       }
     },
     {
@@ -777,13 +1452,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 262.2,
-        "angular": 260.1,
-        "athletic": 260.6,
-        "cherubic": 261.5,
-        "dimple_oval": 262.0,
-        "pixie": 263.4,
-        "sculpted": 260.1
+        "almond": 264.0,
+        "angular": 261.7,
+        "athletic": 262.0,
+        "cherubic": 263.2,
+        "dimple_oval": 263.7,
+        "pixie": 265.5,
+        "sculpted": 261.7
       }
     },
     {
@@ -804,13 +1479,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 262.2,
-        "angular": 260.1,
-        "athletic": 260.6,
-        "cherubic": 261.5,
-        "dimple_oval": 262.0,
-        "pixie": 263.4,
-        "sculpted": 260.1
+        "almond": 264.0,
+        "angular": 261.7,
+        "athletic": 262.0,
+        "cherubic": 263.2,
+        "dimple_oval": 263.7,
+        "pixie": 265.5,
+        "sculpted": 261.7
       }
     },
     {
@@ -831,13 +1506,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 262.2,
-        "angular": 260.1,
-        "athletic": 260.6,
-        "cherubic": 261.5,
-        "dimple_oval": 262.0,
-        "pixie": 263.4,
-        "sculpted": 260.1
+        "almond": 264.0,
+        "angular": 261.7,
+        "athletic": 262.0,
+        "cherubic": 263.2,
+        "dimple_oval": 263.7,
+        "pixie": 265.5,
+        "sculpted": 261.7
       }
     },
     {
@@ -858,13 +1533,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 262.2,
-        "angular": 260.1,
-        "athletic": 260.6,
-        "cherubic": 261.5,
-        "dimple_oval": 262.0,
-        "pixie": 263.4,
-        "sculpted": 260.1
+        "almond": 264.0,
+        "angular": 261.7,
+        "athletic": 262.0,
+        "cherubic": 263.2,
+        "dimple_oval": 263.7,
+        "pixie": 265.5,
+        "sculpted": 261.7
       }
     },
     {
@@ -885,13 +1560,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 262.2,
-        "angular": 260.1,
-        "athletic": 260.6,
-        "cherubic": 261.5,
-        "dimple_oval": 262.0,
-        "pixie": 263.4,
-        "sculpted": 260.1
+        "almond": 264.0,
+        "angular": 261.7,
+        "athletic": 262.0,
+        "cherubic": 263.2,
+        "dimple_oval": 263.7,
+        "pixie": 265.5,
+        "sculpted": 261.7
       }
     },
     {
@@ -912,13 +1587,13 @@
         "sculpted"
       ],
       "frontCut": {
-        "almond": 270.3,
-        "angular": 268.0,
-        "athletic": 268.2,
-        "cherubic": 269.5,
-        "dimple_oval": 270.0,
-        "pixie": 272.2,
-        "sculpted": 268.0
+        "almond": 272.5,
+        "angular": 269.9,
+        "athletic": 270.0,
+        "cherubic": 271.6,
+        "dimple_oval": 272.1,
+        "pixie": 274.9,
+        "sculpted": 269.9
       }
     },
     {
