@@ -254,7 +254,7 @@ check(framed('hair_boy_short_07', 3) === `${FRAME.x} ${FRAME.y} ${FRAME.size} ${
   check(strip(avatarSvg(who)) === strip(avatarSvg({ ...who, size: 42 })) && strip(avatarSvg(who)) === strip(avatarSvg({ ...who, size: 96, label: undefined })), 'the same person is drawn differently at different sizes');
 }
 
-// 9. Features read on every skin tone. Light faces are untouched; deep ones get softer whites and firmer features.
+// 9. Features read on every skin tone. Light faces are untouched; deep ones get softer whites and firmer lines; the brows are never outlined.
 const tone = (id) => part('skin', id).hex;
 check(['porcelain', 'ivory', 'rose_beige', 'sand', 'golden', 'olive', 'tan'].every((id) => deepness(tone(id)) === 0), 'a light skin tone is being adjusted');
 check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepness(tone('chestnut')) > 0 && deepness(tone('chestnut')) < deepness(tone('umber')), 'deep skin tones are not adjusted in step with their depth');
@@ -267,7 +267,9 @@ check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepn
   const places = (svg) => [...svg.matchAll(/transform="([^"]+)"/g)].map((m) => m[1]).join(' ');
   check(parts(light) === parts(deep) && places(light) === places(deep), 'the same features are not the same shapes in the same places on a deeper skin tone');
   check(!/eye-white|stroke/.test(light.replace(/--hair-stroke:[^;"]*;?/, '')), 'a light face has been given extra weight'); // --hair-stroke is the hair outline's color, on every face
-  check(/--eye-white:#[0-9a-f]{6}/.test(deep) && /stroke-width/.test(deep) && /paint-order:stroke/.test(deep), 'a deep face has not been made more readable');
+  check(/--eye-white:#[0-9a-f]{6}/.test(deep) && /--line-width:/.test(deep), 'a deep face has not been made more readable');
+  // The brows are drawn as they are on every tone: no light edge (it read as a white outline on deep skin).
+  check(!/eyebrows\/[^"]+#art"[^>]*stroke/.test(deep), 'the brows on a deep face have an outline');
   check(deep.includes(`--skin-color:${tone('ebony')}`), 'the skin tone itself was changed');
   // The nose is the skin itself: on every tone its skin is the face's. On deeper tones only its lines are heavier.
   for (const t of part('skin', 'porcelain') ? CATALOG.skin : []) {

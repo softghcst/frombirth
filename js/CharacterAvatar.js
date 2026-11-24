@@ -283,13 +283,12 @@ export const deepness = (skin) => Math.max(0, Math.min(1, (DEEP.from - luminance
  * What is done about it, at full strength (each is scaled by deepness, so lighter faces are untouched):
  *   white   how far the white of the eye is toned toward the skin
  *   line    extra weight on the dark lines of the eyes and mouth (frame units)
- *   rim     how much lighter than the skin the edge given to the brows is
- *   edge    how wide that edge is (frame units)
  *   nose    how much heavier the nose's dark lines get (frame units), in noseInk; its skin is never touched
  * The shapes of the features are not changed, and nobody's own colors are. The nose's skin is never
  * adjusted: it is drawn in exactly the face's skin color on every tone; only its lines get heavier.
+ * The brows are left as they are: a light edge round them read as a white outline on the deepest skin.
  */
-export const READABLE = { white: 0.2, line: 1.4, rim: 0.2, edge: 3, nose: 1.2, ink: '#170b06', noseInk: '#1a0c06' };
+export const READABLE = { white: 0.2, line: 1.4, nose: 1.2, ink: '#170b06', noseInk: '#1a0c06' };
 
 /** The outline of hairstyles drawn with color variables (var(--hair-stroke)): the heads' own outline color. */
 const HAIR_STROKE = '#23140f';
@@ -389,15 +388,13 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   if (hf && hf.squash < 1) defs.push(`<clipPath id="pw-low-${n}"><rect x="-400" y="${hf.line}" width="1312" height="1400"/></clipPath><clipPath id="pw-high-${n}"><rect x="-400" y="-2000" width="1312" height="${2000 + hf.line}"/></clipPath>`);
   // Eyes and brows are drawn as a pair in one file: each half is shown separately so they can sit closer or further apart.
   const pair = (id, l, r, extra = '') => (href(id) ? `<g${l} clip-path="url(#pw-l-${n})">${use(id, extra)}</g><g${r} clip-path="url(#pw-r-${n})">${use(id, extra)}</g>` : '');
-  // On deep skin the features are given a little more weight and the nose a little light, so the face
-  // reads as clearly as a lighter one (see READABLE). Stroke is inherited by the artwork a <use> draws.
+  // On deep skin the features are given a little more weight, so the face reads as clearly as a lighter one
+  // (see READABLE). Stroke is inherited by the artwork a <use> draws.
   const deep = deepness(look.colors?.skin);
-  const light = deep ? mixHex(look.colors.skin, '#ffe9d6', READABLE.rim * deep) : null;
-  // Dark lines gain weight; brows gain a faint lighter edge, drawn under their own shapes. Only the line shapes
+  // Dark lines gain weight; the brows are drawn as they are, with no edge. Only the line shapes
   // take the stroke (weigh_lines in the build script: an eye's or mouth's outline, a nose's lines), so whites,
   // irises, highlights and teeth stay clean. A nose's lines are also made a little darker.
   const weigh = (w) => (deep ? ` style="--line-ink:${READABLE.ink};--line-width:${n1(w * deep)}"` : '');
-  const rim = (w, extra = '') => (deep ? ` style="${extra}stroke:${light};stroke-width:${n1(w * deep)};stroke-linejoin:round;paint-order:stroke"` : '');
   const kind = (j) => PART_BY_ID[j]?.tags?.kind;
   const necklaces = d.jewelry.filter((j) => kind(j) === 'necklace');
   const earrings = d.jewelry.filter((j) => kind(j) === 'ears');
@@ -409,7 +406,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     d.makeup.length ? `<g clip-path="url(#pw-face-${n})">${d.makeup.map((m) => use(m, f.makeup)).join('')}</g>` : '',
     // Lines of age stay on the face: on a narrow head they would otherwise run out over the hair.
     d.aging.length ? `<g clip-path="url(#pw-face-${n})">${d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join('')}</g>` : '',
-    pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
+    pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, f.eyebrows),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     d.binky ? `<use href="${BINKY}#art"${f.lips ?? ''}/>` : use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
     clothesLayer(d.clothes, d.head, ASDRAWN.test(d.clothes ?? '') ? childFit(d.clothes) : snapped(d.clothes, f.clothes, d.head)),
