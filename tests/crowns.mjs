@@ -36,7 +36,8 @@ for (const gender of ['male', 'female']) {
   for (const rank of ['heir', 'royal']) for (const age of [0, 3, 8, 25, 70]) {
     const want = rank === 'heir' ? 'crown_16_crown_princess' : 'crown_10_princess_tiara';
     check(dressFor(her, { age, gender: 'female', royal: royalDress(rank) }).crown === want, `a ${age}-year-old princess (${rank}) wears ${want}`);
-    check(dressFor(him, { age, gender: 'male', royal: royalDress(rank) }).crown === 'crown_11_prince_band', `a ${age}-year-old prince (${rank}) wears the prince's band`);
+    const his = rank === 'heir' ? 'crown_17_crown_prince' : 'crown_11_prince_band';
+    check(dressFor(him, { age, gender: 'male', royal: royalDress(rank) }).crown === his, `a ${age}-year-old prince (${rank}) wears ${his}`);
     check(dressFor(her, { age, gender: 'female', royal: royalDress(rank) }).crown !== 'crown_11_prince_band', `a ${age}-year-old princess (${rank}) does not`);
   }
   check(!['crown_10_princess_tiara', 'crown_11_prince_band'].includes(dressFor(him, { age: 40, gender: 'male', royal: royalDress('monarch') }).crown), 'a king wears neither');
@@ -58,7 +59,7 @@ for (const gender of ['male', 'female']) {
   for (const c of ['sa', 'ae', 'qa', 'ma', 'jo', 'kw', 'mc']) check(dressFor(him, { age: 55, gender: 'male', royal: royalDress('monarch', false, c) }).crown === 'crown_13_obsidian_sovereign', `the reigning monarch of ${c} wears the obsidian crown`);
   for (const c of ['uk', 'se', 'nl', 'th', null]) check(dressFor(him, { age: 55, gender: 'male', royal: royalDress('monarch', false, c) }).crown === 'crown_09_sovereign', `the reigning monarch of ${c} wears the gold sovereign crown`);
   check(dressFor(her, { age: 55, gender: 'female', royal: royalDress('monarch', true, 'sa') }).crown !== 'crown_13_obsidian_sovereign', 'a consort there does not');
-  check(dressFor(him, { age: 30, gender: 'male', royal: royalDress('heir', false, 'sa') }).crown === 'crown_11_prince_band', 'nor does the crown prince');
+  check(dressFor(him, { age: 30, gender: 'male', royal: royalDress('heir', false, 'sa') }).crown === 'crown_17_crown_prince', 'nor does the crown prince');
 }
 // Queens, reigning or by marriage, wear the queen's crown; in a realm where the monarch rules, a reigning queen wears obsidian.
 {
