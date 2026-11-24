@@ -30,6 +30,15 @@ for (const gender of ['male', 'female']) {
   check(dressFor(look, { age: 40, gender, royal: royalDress('consort') }).crown !== 'crown_09_sovereign', `a ${gender} consort (by dynasty rank) does not`);
   for (const rank of ['heir', 'royal', 'noble', 'knight']) check(dressFor(look, { age: 40, gender, royal: royalDress(rank) }).crown !== 'crown_09_sovereign', `a ${gender} ${rank} does not`);
 }
+// Princesses wear the tiara at every age; princes and kings never do.
+{
+  const her = resolveLook({}, 'tiara-f', 'female'); const him = resolveLook({}, 'tiara-m', 'male');
+  for (const rank of ['heir', 'royal']) for (const age of [0, 3, 8, 25, 70]) {
+    check(dressFor(her, { age, gender: 'female', royal: royalDress(rank) }).crown === 'crown_10_princess_tiara', `a ${age}-year-old princess (${rank}) wears the tiara`);
+    check(dressFor(him, { age, gender: 'male', royal: royalDress(rank) }).crown !== 'crown_10_princess_tiara', `a ${age}-year-old prince (${rank}) does not`);
+  }
+  check(dressFor(him, { age: 40, gender: 'male', royal: royalDress('monarch') }).crown !== 'crown_10_princess_tiara', 'a king does not');
+}
 const sov = MANIFEST.crowns.find((c) => c.id === 'crown_09_sovereign');
 check(sov && existsSync(new URL(`../assets/${sov.file}`, import.meta.url)), 'the sovereign crown is in the manifest and on disk');
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }

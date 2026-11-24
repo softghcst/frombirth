@@ -282,6 +282,7 @@ export const AVATAR_MANIFEST = {
     {"id": "crown_07_laurel_wreath", "file": "avatars/crowns/crown_07_laurel_wreath.svg", "label": "Laurel wreath", "tags": {"royal": true, "rank": "noble"}},
     {"id": "crown_08_dark_royal", "file": "avatars/crowns/crown_08_dark_royal.svg", "label": "Dark royal", "tags": {"royal": true, "rank": "noble"}},
     {"id": "crown_09_sovereign", "file": "avatars/crowns/crown_09_sovereign.svg", "label": "Sovereign", "tags": {"royal": true, "rank": "sovereign"}},
+    {"id": "crown_10_princess_tiara", "file": "avatars/crowns/crown_10_princess_tiara.svg", "label": "Princess tiara (new)", "tags": {"royal": true, "rank": "princess"}},
   ],
   hats: [
   ],
