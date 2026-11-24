@@ -1399,7 +1399,9 @@ def process(path, folder, force=False):
             notes.append(f'made room for whites round {m} iris(es)')
     if main:
         notes.append(f'{main} -> var(--{RECOLOUR[folder]})')
-    notes.append(place(folder, name, elements, vb))
+    # An outfit drawn on a head, at that head's size (scripts/import_outfit.py), is already in the template frame.
+    as_drawn = 'data-as-drawn="1"' in re.search(r'<svg\b[^>]*>', text, re.S).group(0)
+    notes.append('left as drawn, on the head it was drawn on' if as_drawn else place(folder, name, elements, vb))
     paths = []
     for e in elements:
         role = ''
@@ -1412,7 +1414,7 @@ def process(path, folder, force=False):
         stroke = f';stroke:{e["stroke"]};stroke-width:5;stroke-linejoin:round' if e.get('stroke') else ''
         paths.append(f'<path{role} style="fill:{paint}{stroke}"{extra} d="{path_d(e["cmds"])}"/>')
     svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" '
-           f'data-pathways="1" data-source-viewbox="{" ".join(fmt(v) for v in vb)}">'
+           f'data-pathways="1"{' data-as-drawn="1"' if as_drawn else ''} data-source-viewbox="{" ".join(fmt(v) for v in vb)}">'
            f'<g id="art">{"".join(paths)}</g></svg>\n')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(svg)
@@ -1482,14 +1484,35 @@ def label(name):
     return text[:1].upper() + text[1:]
 
 
+def previous_entries():
+    """Labels and tags already in the manifest, by id. Kept for parts already listed: a label or tag set by hand there
+    (a crown's rank, say) is not undone by building again. Only new parts get them from their names."""
+    out = {}
+    if os.path.exists(MANIFEST):
+        for line in open(MANIFEST, encoding='utf-8'):
+            line = line.strip().rstrip(',')
+            if line.startswith('{"id"'):
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                out[e['id']] = e
+    return out
+
+
 def write_manifest():
     data = {}
+    before = previous_entries()
+    def entry(folder, f, i, rel):
+        old = before.get(i)
+        tags = old.get('tags') if old else tags_for(folder, i)
+        return {'id': i, 'file': f'{rel}/{f}', 'label': old['label'] if old else label(i), **({'tags': tags} if tags else {})}
     for folder in FOLDERS:
         d = folder_dir(folder)
         files = sorted(f for f in os.listdir(d) if f.endswith('.svg')) if os.path.isdir(d) else []
         rel = os.path.relpath(d, ASSETS_ROOT).replace(os.sep, '/')
         ids = sorted(((f, part_id(folder, f[:-4])) for f in files), key=lambda t: t[1])  # by id, so renaming a file never reorders the list
-        data[folder] = [{'id': i, 'file': f'{rel}/{f}', 'label': label(i), **({'tags': tags_for(folder, i)} if tags_for(folder, i) else {})} for f, i in ids]
+        data[folder] = [entry(folder, f, i, rel) for f, i in ids]
         if folder == 'heads':  # each head is measured, so parts can be moved onto it exactly
             for item in data[folder]:
                 text = open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read()
