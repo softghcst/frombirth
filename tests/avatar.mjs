@@ -639,6 +639,16 @@ for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5
   check(Math.max(...ys) >= 512 && Math.min(...ys) < 380, `the gown reaches the bottom and its collar rises beside the face (${Math.min(...ys)}–${Math.max(...ys)})`);
 }
 
+// The starlight princess gown: for grown princesses only.
+{
+  const id = 'outfit_52_princess_starlight';
+  check(PART_BY_ID[id]?.tags?.royal && !CATALOG.outfit.some((o) => o.id === id), 'the starlight gown is tagged, and nobody can choose it');
+  check(CUR.ROYAL.outfits.female.includes(id) && !CUR.ROYAL.outfits.male.includes(id) && CUR.ROYAL.grownOnly.includes(id), 'it is a grown princess\'s gown');
+  const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'star', 'female'), royalOutfit: id };
+  check(dressFor(look, { age: 22, gender: 'female', royal: { rank: 'royal' } }).clothes === id, 'a princess of 22 wears it');
+  check(dressFor(look, { age: 14, gender: 'female', royal: { rank: 'royal' } }).clothes !== id, 'a princess of 14 does not');
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);

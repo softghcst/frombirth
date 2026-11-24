@@ -127,7 +127,7 @@ export const OUTFITS = {
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
-  outfits: { female: ['outfit_09_princess_gown', 'outfit_45_princess_sweetheart', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
+  outfits: { female: ['outfit_09_princess_gown', 'outfit_45_princess_sweetheart', 'outfit_52_princess_starlight', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
     male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_46_prince_epaulettes', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
       'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar'] },
     // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
@@ -135,7 +135,7 @@ export const ROYAL = {
     // Some titles have their own dress: a duke or a duchess wears this instead.
     nobleByTitle: { duke: { male: ['outfit_50_duke_mantle'], female: ['outfit_50_duke_mantle'] } } },
   // Grown-up dress: worn from 18. A younger royal wears one of the others on their list.
-  grownOnly: ['outfit_45_princess_sweetheart', 'outfit_46_prince_epaulettes', 'outfit_47_sovereign_ermine', 'outfit_48_noble_cameo', 'outfit_49_noble_cravat', 'outfit_50_duke_mantle', 'outfit_51_imperial_fan_collar'],
+  grownOnly: ['outfit_45_princess_sweetheart', 'outfit_46_prince_epaulettes', 'outfit_47_sovereign_ermine', 'outfit_48_noble_cameo', 'outfit_49_noble_cravat', 'outfit_50_duke_mantle', 'outfit_51_imperial_fan_collar', 'outfit_52_princess_starlight'],
   crowns: { monarch: { male: 'crown_01_king', female: 'crown_03_queen' }, heir: { male: 'crown_04_prince_circlet', female: 'crown_02_princess_tiara' },
     royal: { male: null, female: 'crown_02_princess_tiara' }, child: 'crown_04_prince_circlet', noble: 'crown_06_noble_coronet' },
 };
