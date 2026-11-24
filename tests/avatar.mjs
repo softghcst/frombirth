@@ -659,6 +659,19 @@ for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5
   check(dressFor(look, { age: 15, gender: 'female', royal: { rank: 'monarch' } }).clothes !== id, 'a girl on the throne does not');
 }
 
+// Outfits fitted to the body (scripts/snap-clothes.mjs, js/avatar/clothesSnap.js): only a little smaller and lower, and
+// the portrait draws them so.
+const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
+{
+  for (const [id, k] of Object.entries(SNAP)) {
+    check(PART_BY_ID[id] && k.s >= 0.7 && k.s <= 1 && k.dy >= 0 && k.dy <= 8, `${id} is fitted sensibly (${JSON.stringify(k)})`);
+    const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'fit', 'female'), clothes: id };
+    const svg = characterAvatarSvg(look, { age: 30, gender: 'female' });
+    check(svg.includes(`scale(${k.s}) translate(-256 -${AVATAR_TEMPLATE.clothesTop})`), `${id} is drawn fitted`);
+  }
+  check(!SNAP.outfit_01_tee, 'the original outfits are drawn as they were');
+}
+
 // Every royal and noble outfit reaches past the bottom of the lowest portrait (the broadest face shows down to about 524),
 // so no shoulder ever shows beneath one.
 {
@@ -668,7 +681,10 @@ for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5
     ...Object.values(CUR.ROYAL.outfits.nobleByTitle).flatMap((x) => Object.values(x).flat())])];
   for (const id of dress) {
     const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
-    const bottom = Math.max(...[...svg.matchAll(/[MLCQ]\s*[-\d.]+[ ,]([-\d.]+)/g)].map((m) => +m[1]));
+    const drawn = Math.max(...[...svg.matchAll(/[MLCQ]\s*[-\d.]+[ ,]([-\d.]+)/g)].map((m) => +m[1]));
+    // As fitted to the body (scripts/snap-clothes.mjs): shrunk about the top of the outfit, and moved down.
+    const k = SNAP[id] ?? { s: 1, dy: 0 };
+    const bottom = AVATAR_TEMPLATE.clothesTop + (drawn - AVATAR_TEMPLATE.clothesTop) * k.s + k.dy;
     check(bottom >= lowest + 2, `${id} reaches past the bottom of every portrait (${bottom.toFixed(0)}, needs ${Math.ceil(lowest + 2)})`);
   }
 }

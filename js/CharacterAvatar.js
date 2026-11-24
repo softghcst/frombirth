@@ -26,6 +26,7 @@
 //   { head, eyes, eyebrows, nose, lips, hair, makeup: [], jewelry: [], glasses, clothes, hat, crown, emotion,
 //     colors: { skin, hair, brow, eye, lip, blush, outfit } }
 // `ctx` describes the moment: { age, gender, mood, jailed, royal: { rank }, career: { id, level }, label }.
+import { CLOTHES_SNAP } from './avatar/clothesSnap.js';
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
@@ -145,6 +146,16 @@ export function dressFor(look, ctx = {}) {
 let serial = 0;
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const use = (id, extra = '') => { const h = href(id); return h ? `<use href="${h}"${extra}/>` : ''; };
+/**
+ * An outfit fitted to the body (scripts/snap-clothes.mjs): shrunk about the middle of its top edge, where it meets the
+ * neck, and moved down, on top of the usual placement under the chin.
+ */
+const snapped = (id, tf = '') => {
+  const k = CLOTHES_SNAP[id];
+  if (!k || !tf) return tf;
+  const top = T.clothesTop;
+  return `${tf.slice(0, -1)} translate(256 ${top}) scale(${k.s}) translate(-256 ${-top}) translate(0 ${n1(k.dy / k.s)})"`;
+};
 
 /** What one step of each personal adjustment changes. Steps run from -2 to 2. */
 export const TWEAK_STEP = { size: 0.09, gap: 4, height: 5 };
@@ -339,7 +350,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
-    use(d.clothes, f.clothes),
+    use(d.clothes, snapped(d.clothes, f.clothes)),
     necklaces.map((j) => use(j, f.necklace)).join(''),
     d.hair ? hairLayer(`pw-front-${n}`) : '',
     earrings.map((j) => use(j, f.ears)).join(''),
