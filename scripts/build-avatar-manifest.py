@@ -37,9 +37,12 @@ ASSETS = os.path.join(ASSETS_ROOT, 'avatars')
 # Head shapes live on their own in assets/heads/ (shared with the hair-warping pipeline) under clean names.
 # Saves store each head by its id, so the ids stay what they were: HEAD_IDS maps file name -> id.
 HEADS = os.path.join(ASSETS_ROOT, 'heads')
-HEAD_IDS = {'baby': 'head_00_baby', 'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
+HEAD_IDS = {'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
             'pixie': 'head_11_pixie', 'sculpted': 'head_12_sculpted', 'athletic': 'head_13_athletic', 'almond': 'head_14_almond',
             'cherubic': 'head_15_cherubic', 'angular': 'head_16_angular', 'dimple_oval': 'head_17_dimple_oval'}
+# Folders under assets/avatars/ that other scripts write and the game reads as they are: the per-head outfit copies
+# (scripts/fit-clothes.mjs). Their SVGs are not parts, so they are never sorted into the part folders.
+KEEP_FOLDERS = {'clothes_fit'}
 SHARED_BODY = 'dimple_oval'  # whose neck and shoulders the adult heads share (scripts/unify_head_necks.mjs: BASE)
 
 
@@ -122,7 +125,8 @@ def sort_into_folders(search_dirs):
     """Moves every .svg found under search_dirs into its folder (folder_dir) by its filename prefix."""
     moved, skipped = 0, []
     for top in search_dirs:
-        for d, _, files in os.walk(top):
+        for d, subdirs, files in os.walk(top):
+            subdirs[:] = [s for s in subdirs if s not in KEEP_FOLDERS]  # written by other scripts: never sorted
             for f in files:
                 if not f.lower().endswith('.svg'):
                     continue
@@ -1574,7 +1578,7 @@ def main(argv):
         for z in zips:  # the packs are temporary once their contents are sorted
             os.remove(z)
     # Loose SVGs dropped anywhere under assets/avatars/ are sorted too.
-    loose = [os.path.join(ASSETS, d) for d in os.listdir(ASSETS) if os.path.isdir(os.path.join(ASSETS, d)) and d not in FOLDERS]
+    loose = [os.path.join(ASSETS, d) for d in os.listdir(ASSETS) if os.path.isdir(os.path.join(ASSETS, d)) and d not in FOLDERS and d not in KEEP_FOLDERS]
     moved, skipped = sort_into_folders([ASSETS] + loose)
     for d in loose:
         if not any(f.endswith('.svg') for _, _, fs in os.walk(d) for f in fs):
