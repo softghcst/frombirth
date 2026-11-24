@@ -117,29 +117,25 @@ export const ELDER_BROWS = 'brows_23_elder_bushy';
 
 /** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
 /**
- * What a child of 5 to 12 wears: children's clothes, never a grown-up's (from 13, their own style). The children's
- * outfits drawn for the youngest fit the kid head too; the bib and the bear hood are left to babies.
+ * What a child of 5 to 12 wears: children's clothes, never a grown-up's (from 13, their own style). Empty for now:
+ * the children's clothes are being redrawn, and until they are added here a child is drawn with no outfit.
  */
-export const KID_OUTFITS = {
-  any: ['outfit_baby_02_overalls', 'outfit_baby_05_sailor_romper', 'outfit_baby_07_rainbow_sweatshirt'],
-  female: ['outfit_baby_03_peterpan_dress'],
-  male: ['outfit_baby_08_mini_tux'],
-};
+export const KID_OUTFITS = { any: [], female: [], male: [] };
 
 export const OUTFITS = {
   any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
     'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_54_denim_jacket_tee'],
   female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset'],
   male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
-  baby: ['outfit_baby_01_bib_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_peterpan_dress', 'outfit_baby_04_bear_hoodie', 'outfit_baby_05_sailor_romper',
-    'outfit_baby_07_rainbow_sweatshirt', 'outfit_baby_08_mini_tux', 'outfit_04_babybib'],
+  // What a baby or toddler wears: being redrawn; until then, nothing.
+  baby: [],
 };
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
   outfits: { female: ['outfit_09_princess_gown', 'outfit_45_princess_sweetheart', 'outfit_52_princess_starlight', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
     male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_46_prince_epaulettes', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
-      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
+      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: null, monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
     // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
     noble: { female: ['outfit_48_noble_cameo'], male: ['outfit_49_noble_cravat'] },
     // Some titles have their own dress: a duke or a duchess wears this instead.
