@@ -135,8 +135,108 @@
       "gender": "female"
     },
     {
+      "id": "elder_beehive",
+      "name": "Elder Beehive",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_crown_braid",
+      "name": "Elder Crown Braid",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
       "id": "elder_low_bun",
       "name": "Elder Low Bun",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_short_layers",
+      "name": "Elder Short Layers",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_soft_waves",
+      "name": "Elder Soft Waves",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
+      "id": "elder_swirl_updo",
+      "name": "Elder Swirl Updo",
       "clipToHead": false,
       "length": "updo",
       "type": "any",
