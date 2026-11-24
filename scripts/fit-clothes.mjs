@@ -11,7 +11,7 @@
 //   { "outfit_54_denim_jacket_tee": "athletic" }
 // Writes assets/avatars/clothes_fit/<outfit>__<head>.svg, and js/avatar/fittedClothes.js listing them.
 // Needs Playwright's Chromium (to measure the necks from the head drawings).
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -99,6 +99,8 @@ function warpSvg(svg, f) {
   });
 }
 
+/** How close two necks must be (as a ratio of widths) for an outfit to need no copy of its own. */
+const SAME = 0.03;
 const necks = await measure();
 mkdirSync(at('assets', 'avatars', 'clothes_fit'), { recursive: true });
 const fitted = {};
@@ -108,10 +110,14 @@ for (const [outfit, refName] of Object.entries(drawnFor)) {
   const src = readFileSync(at('assets', PART_BY_ID[outfit].file), 'utf8');
   const r = inTemplate(ref, necks[refName]);
   fitted[outfit] = [];
+  // Copies made before are cleared first: a head whose neck now matches needs none.
+  for (const f of readdirSync(at('assets', 'avatars', 'clothes_fit'))) if (f.startsWith(`${outfit}__`)) unlinkSync(at('assets', 'avatars', 'clothes_fit', f));
   for (const h of heads) {
     if (h.name === refName) continue;
     const t = inTemplate(h, necks[h.name]);
     const k = t.half / r.half;
+    // A neck within SAME of the one the outfit was drawn on (the adult heads share one neck) wears the outfit's own file.
+    if (Math.abs(k - 1) < SAME) { console.log(`${outfit} on ${h.name}: same neck, no copy needed`); continue; }
     writeFileSync(at('assets', 'avatars', 'clothes_fit', `${outfit}__${h.name}.svg`), warpSvg(src, warper(k, r)).replace('<svg ', `<svg data-neck-fit="${h.name}" `));
     fitted[outfit].push(h.name);
     console.log(`${outfit} on ${h.name}: neckline x${k.toFixed(2)}`);
@@ -120,5 +126,5 @@ for (const [outfit, refName] of Object.entries(drawnFor)) {
 writeFileSync(at('js', 'avatar', 'fittedClothes.js'), `// Written by scripts/fit-clothes.mjs (\`npm run fit-clothes\`): do not edit by hand.
 // Outfits with a copy fitted to each head's neck, in assets/avatars/clothes_fit/<outfit>__<head>.svg. On the head an
 // outfit was drawn for (assets/clothes_drawn_for.json), and on any head not listed, the outfit's own file is used.
-export const FITTED_CLOTHES = ${JSON.stringify(fitted)};
+export const FITTED_CLOTHES = ${JSON.stringify(Object.fromEntries(Object.entries(fitted).filter(([, v]) => v.length)))};
 `);
