@@ -126,8 +126,8 @@ export const OUTFITS = {
   any: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],
   female: ['outfit_59_lightning_sweatshirt', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket'],
   male: ['outfit_64_flannel_shirt', 'outfit_65_puffer_vest_hoodie', 'outfit_66_denim_shirt', 'outfit_67_varsity_jacket'],
-  // What a baby or toddler wears: being redrawn; until then, nothing.
-  baby: [],
+  // What a baby or toddler wears (0 to 6, one head): drawn on its template, assets/clothes_templates/baby_head_template.png.
+  baby: ['outfit_baby_01_cream_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_dot_bib', 'outfit_baby_04_bowtie_vest'],
 };
 
 /** Royal dress, by sex where the art suggests it. */

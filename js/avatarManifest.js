@@ -235,6 +235,10 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_65_puffer_vest_hoodie", "file": "avatars/clothes/outfit_65_puffer_vest_hoodie.svg", "label": "Puffer vest hoodie"},
     {"id": "outfit_66_denim_shirt", "file": "avatars/clothes/outfit_66_denim_shirt.svg", "label": "Denim shirt"},
     {"id": "outfit_67_varsity_jacket", "file": "avatars/clothes/outfit_67_varsity_jacket.svg", "label": "Varsity jacket"},
+    {"id": "outfit_baby_01_cream_onesie", "file": "avatars/clothes/outfit_baby_01_cream_onesie.svg", "label": "Cream onesie", "tags": {"age": "baby"}},
+    {"id": "outfit_baby_02_overalls", "file": "avatars/clothes/outfit_baby_02_overalls.svg", "label": "Overalls", "tags": {"age": "baby"}},
+    {"id": "outfit_baby_03_dot_bib", "file": "avatars/clothes/outfit_baby_03_dot_bib.svg", "label": "Dot bib", "tags": {"age": "baby"}},
+    {"id": "outfit_baby_04_bowtie_vest", "file": "avatars/clothes/outfit_baby_04_bowtie_vest.svg", "label": "Bowtie vest", "tags": {"age": "baby"}},
   ],
   crowns: [
     {"id": "crown_01_king", "file": "avatars/crowns/crown_01_king.svg", "label": "King", "tags": {"royal": true, "rank": "monarch"}},
