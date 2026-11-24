@@ -716,7 +716,7 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
 // Grown-ups' everyday clothes (OUTFITS.grownOnly): a child wears one of the others, the same one each time.
 {
   for (const id of CUR.OUTFITS.grownOnly) {
-    check(PART_BY_ID[id] && CUR.OUTFITS.any.includes(id), `${id}: a grown-ups' outfit that is not an everyday outfit`);
+    check(PART_BY_ID[id] && [...CUR.OUTFITS.any, ...CUR.OUTFITS.female, ...CUR.OUTFITS.male].includes(id), `${id}: a grown-ups' outfit that is not an everyday outfit`);
     const look = resolveLook({ ...randomAppearance(undefined, 'female'), style: { ...randomAppearance(undefined, 'female').style, outfit: id } }, `kid-${id}`, 'female');
     const kid = dressFor(look, { age: 9, gender: 'female' }).clothes;
     check(look.clothes === id && dressFor(look, { age: 30, gender: 'female' }).clothes === id, `${id}: a grown-up does not wear it`);

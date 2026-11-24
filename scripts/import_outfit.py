@@ -166,6 +166,7 @@ def main():
     ap.add_argument('name', help='e.g. outfit_55_zip_hoodie')
     ap.add_argument('--head', default='athletic', help='the head it was drawn on (a file name in assets/heads/)')
     ap.add_argument('--open', action='store_true', help='a V-neck or scoop neck: widened for thicker necks, never drawn in')
+    ap.add_argument('--bare', action='store_true', help='shoulders bare by design (a halter, a tank): not widened to cover them')
     ap.add_argument('--no-build', action='store_true', help='only write the SVG')
     a = ap.parse_args()
     if not re.fullmatch(r'outfit_[a-z0-9_]+', a.name):
@@ -179,7 +180,7 @@ def main():
     if not a.source.lower().endswith('.svg'):  # an SVG drawn on the body covers what it means to (a tank top does not)
         fit = heads[a.head]
         body = max(0.8, min(1.06, fit['shoulderW'] / T['shoulderW']))
-        paths, k = widen(paths, T)
+        paths, k = widen(paths, T) if not a.bare else (paths, 1.0)
         if k > 1:
             print(f'widened outside the collar by x{k:.2f}, to reach past the shoulders')
         # The drawing stops at the bottom of the canvas, and some portraits show a little below that: its hem is
@@ -187,7 +188,7 @@ def main():
         hem = T['clothesTop'] + (512 - fit.get('collar', fit['chin'] + 8)) / body
         def lower(m):
             y = float(m.group(2))
-            return f'{m.group(1)} {y + 24 if y >= hem - 1.5 else y:.1f}'
+            return f'{m.group(1)} {y + 6 if y >= hem - 1.5 else y:.1f}'
         paths = [p.split(' d="')[0] + ' d="' + re.sub(NUMS, lower, p.split(' d="')[1]) for p in paths]
     out = os.path.join(CLOTHES, f'{a.name}.svg')
     with open(out, 'w', encoding='utf-8') as f:

@@ -121,8 +121,10 @@ export const OUTFITS = {
     'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_54_denim_jacket_tee',
     'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],
   // Drawn for grown-ups: a child (under 13) wears one of the others instead (resolveLook's kidClothes).
-  grownOnly: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],
-  female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset'],
+  grownOnly: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top',
+    'outfit_59_lightning_sweatshirt', 'outfit_60_wrap_top', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket', 'outfit_63_off_shoulder_top'],
+  female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset',
+    'outfit_59_lightning_sweatshirt', 'outfit_60_wrap_top', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket', 'outfit_63_off_shoulder_top'],
   male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
   baby: ['outfit_baby_01_bib_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_peterpan_dress', 'outfit_baby_04_bear_hoodie', 'outfit_baby_05_sailor_romper',
     'outfit_baby_07_rainbow_sweatshirt', 'outfit_baby_08_mini_tux', 'outfit_04_babybib'],
