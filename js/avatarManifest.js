@@ -231,6 +231,10 @@ export const AVATAR_MANIFEST = {
     {"id": "outfit_59_lightning_sweatshirt", "file": "avatars/clothes/outfit_59_lightning_sweatshirt.svg", "label": "Lightning sweatshirt"},
     {"id": "outfit_61_high_neck_top", "file": "avatars/clothes/outfit_61_high_neck_top.svg", "label": "High neck top"},
     {"id": "outfit_62_cropped_moto_jacket", "file": "avatars/clothes/outfit_62_cropped_moto_jacket.svg", "label": "Cropped moto jacket"},
+    {"id": "outfit_64_flannel_shirt", "file": "avatars/clothes/outfit_64_flannel_shirt.svg", "label": "Flannel shirt"},
+    {"id": "outfit_65_puffer_vest_hoodie", "file": "avatars/clothes/outfit_65_puffer_vest_hoodie.svg", "label": "Puffer vest hoodie"},
+    {"id": "outfit_66_denim_shirt", "file": "avatars/clothes/outfit_66_denim_shirt.svg", "label": "Denim shirt"},
+    {"id": "outfit_67_varsity_jacket", "file": "avatars/clothes/outfit_67_varsity_jacket.svg", "label": "Varsity jacket"},
   ],
   crowns: [
     {"id": "crown_01_king", "file": "avatars/crowns/crown_01_king.svg", "label": "King", "tags": {"royal": true, "rank": "monarch"}},

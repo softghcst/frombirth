@@ -125,7 +125,7 @@ export const KID_OUTFITS = { any: [], female: [], male: [] };
 export const OUTFITS = {
   any: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],
   female: ['outfit_59_lightning_sweatshirt', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket'],
-  male: [],
+  male: ['outfit_64_flannel_shirt', 'outfit_65_puffer_vest_hoodie', 'outfit_66_denim_shirt', 'outfit_67_varsity_jacket'],
   // What a baby or toddler wears: being redrawn; until then, nothing.
   baby: [],
 };
