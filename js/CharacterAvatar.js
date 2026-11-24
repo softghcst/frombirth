@@ -31,7 +31,7 @@ import { mixHex } from './avatar/color.js';
 import { hairFit, frameFor } from './avatar/hairFit.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD } from './avatar/fittedHair.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { babyEyes, babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, ELDER_HAIR, ELDER_HAIR_AGE, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
+import { babyEyes, babyHairStyle, BABY_HAIR, PACIFIER, ROYAL, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, ELDER_HAIR, ELDER_HAIR_AGE, HAIR_TYPE, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
@@ -69,18 +69,31 @@ const FRONT_HAIR_CUT = 404;
 const HAT_LINE = 262;
 const BULKY_HAT_LINE = 316;
 
-/** The hairstyles older women or men are drawn with (curation.ELDER_HAIR, and fitted styles marked data-elder="female" or "male"). */
-export const elderHairStyles = (gender = 'female') => [...new Set([...(ELDER_HAIR[gender] ?? []),
-  ...Object.values(FITTED_HAIR).filter((s) => s.elder === gender).map((s) => s.id)])];
+/** A hairstyle's texture type ('any', 'straight', 'wavy', 'curly', 'coily', 'locs', 'braids'). */
+const styleType = (id) => FITTED_HAIR[id]?.type ?? HAIR_TYPE[id] ?? 'any';
+/**
+ * The hairstyles older women or men are drawn with (curation.ELDER_HAIR, and fitted styles marked data-elder="female" or
+ * "male"). With a texture, only those for it: someone with coily hair, or wearing locs, gets the elder styles made for
+ * coily hair and locs (type 'coily') when there are any for their gender; everyone else gets the general ones (type 'any').
+ */
+export function elderHairStyles(gender = 'female', texture) {
+  const all = [...new Set([...(ELDER_HAIR[gender] ?? []), ...Object.values(FITTED_HAIR).filter((s) => s.elder === gender).map((s) => s.id)])];
+  if (!texture) return all;
+  const own = all.filter((id) => styleType(id) === texture);
+  return own.length ? own : all.filter((id) => styleType(id) === 'any');
+}
+/** The elder group a person's hair falls in: 'coily' for coily hair or locs, otherwise 'any'. */
+const elderGroup = (hair, texture) => (texture === 'coily' || ['coily', 'locs'].includes(styleType(hair)) ? 'coily' : 'any');
 /**
  * The hair a person is drawn with in old age: from ELDER_HAIR_AGE a woman's or man's style becomes an elder one for their
- * gender (always the same one for the same style), unless it already is one, they are bald, there is none for their gender
- * yet, or they chose their hair at the salon since (keepHair).
+ * gender and hair (always the same one for the same style), unless it already is one, they are bald, there is none for
+ * them yet, or they chose their hair at the salon since (keepHair).
  */
-export function elderHair(hair, { age = 25, gender, keepHair = false } = {}) {
+export function elderHair(hair, { age = 25, gender, keepHair = false, texture } = {}) {
   if (!['female', 'male'].includes(gender) || age < ELDER_HAIR_AGE || keepHair || !hair) return hair;
-  const list = elderHairStyles(gender);
-  if (!list.length || list.includes(hair)) return hair;
+  if (elderHairStyles(gender).includes(hair)) return hair;
+  const list = elderHairStyles(gender, elderGroup(hair, texture));
+  if (!list.length) return hair;
   return list[[...hair].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9973, 13) % list.length];
 }
 
@@ -128,7 +141,7 @@ export function dressFor(look, ctx = {}) {
   if (stage === 'older') {
     out.aging = AGING.filter(([from]) => age >= from).map(([, id]) => id);
     if (age >= 84 && gender === 'male' && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
-    out.hair = elderHair(out.hair, { age, gender, keepHair: look.keepHair });  // an older person's hair (curation.ELDER_HAIR)
+    out.hair = elderHair(out.hair, { age, gender, keepHair: look.keepHair, texture: look.hairTexture });  // an older person's hair (curation.ELDER_HAIR)
   }
   // Clothes: prison, then crown, then work, then the person's own.
   if (young) out.clothes = look.babyClothes ?? null;

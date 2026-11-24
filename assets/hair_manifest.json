@@ -155,6 +155,26 @@
       "minAge": 13
     },
     {
+      "id": "elder_braided_bun",
+      "name": "Elder Braided Bun",
+      "clipToHead": false,
+      "length": "updo",
+      "type": "coily",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "female",
+      "elder": "female",
+      "minAge": 13
+    },
+    {
       "id": "elder_crown_braid",
       "name": "Elder Crown Braid",
       "clipToHead": false,

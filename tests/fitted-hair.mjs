@@ -125,6 +125,10 @@ for (const id of Object.keys(FITTED_HAIR)) {
   check(!elderly(drawn(ELDER_HAIR_AGE - 1, 'female')), 'a woman is drawn with an elder style before old age');
   check(elderly(drawn(ELDER_HAIR_AGE, 'female')) && elderly(drawn(90, 'female')), 'an older woman keeps a young style');
   check(!elderly(drawn(90, 'female', { keepHair: true })) && drawn(90, 'female', { keepHair: true }).includes('long_straight_center_part'), 'an older woman who chose her hair at the salon is not drawn with it');
+  // Coily hair or locs: the elder styles made for them (type 'coily'); everyone else: the general ones.
+  const dressed = (texture, hair) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_13_athletic', skin: 'umber', hairTexture: texture }, style: { hair } }, seed: 'elder', age: 80, gender: 'female' });
+  check(dressed('coily', 'long_straight_center_part').includes('hair_fitted/elder_braided_bun_') && dressed('straight', 'side_part_locs').includes('hair_fitted/elder_braided_bun_'), 'an older woman with coily hair or locs is not given the coily elder style');
+  for (const [tex, hair] of [['straight', 'long_straight_center_part'], ['wavy', 'storybook_waves'], ['curly', 'center_part_waves']]) check(!dressed(tex, hair).includes('elder_braided_bun') && elders.some((id) => dressed(tex, hair).includes(`hair_fitted/${id}_`)), `an older woman with ${tex} hair is given the coily elder style, or none`);
   const menElders = elderHairStyles('male');
   check(menElders.includes('elder_twists') && !menElders.some((id) => elders.includes(id)), 'Elder Twists is not an elder men\'s style, or the lists overlap');
   check(!elderly(drawn(90, 'male')), 'an older man is drawn with an elder woman\'s style');

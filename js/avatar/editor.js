@@ -108,7 +108,7 @@ export function mountAppearanceEditor(el, o = {}) {
   function control(key) {
     const c = CONTROLS[key];
     const current = a[c.half][key];
-    const shown = key === 'lips' ? lipsFor(current, o.gender) : key === 'hair' ? elderHair(current, { age, gender: o.gender, keepHair: a.style.keepHair }) : current;
+    const shown = key === 'lips' ? lipsFor(current, o.gender) : key === 'hair' ? elderHair(current, { age, gender: o.gender, keepHair: a.style.keepHair, texture: a.inherited.hairTexture }) : current;
     const isOn = (id) => (c.multi ? current.includes(id) : shown === id);
     const zoom = ZOOM[key];
     const options = optionsFor(key).map((x) => {
