@@ -135,7 +135,7 @@ def load_heads():
     for name in EXTRA_HEADS:
         path = os.path.join(HEADS, f'{name}.svg')
         if name not in heads and os.path.exists(path):
-            marks, _ = EL.landmarks(EL.scan(EL.head_polys(path)))
+            marks, _ = EL.landmarks(EL.scan(EL.head_polys(path)), EL.stored_chin(path))
             heads[name] = np.array([[marks[p]['x'], marks[p]['y']] for p in POINTS], float)
     if base not in heads:
         sys.exit(f'the base head {base!r} has no landmarks')
@@ -529,9 +529,10 @@ def legacy_root(hair_id, base, tune, game=None):
     if tune.get('skull_fill'):
         # A cap of hair behind the head, its outline grown by skull_fill, from the crown down to where the ears attach:
         # the head hides it except where the style leaves a gap beside the skull.
-        rows = EL.scan(EL.head_polys(os.path.join(HEADS, f'{base}.svg')))
+        base_path = os.path.join(HEADS, f'{base}.svg')
+        rows = EL.scan(EL.head_polys(base_path))
         ys = sorted(rows)
-        m, pad = EL.landmarks(rows)[0], tune['skull_fill']
+        m, pad = EL.landmarks(rows, EL.stored_chin(base_path))[0], tune['skull_fill']
         band = [y for y in ys if y <= m['ear_left']['y'] + 6]
         # Grown sideways only, from nothing at the crown to the full amount 16 below it, so it never shows over the top.
         grow = lambda y: pad * min(1, (y - band[0]) / 16)
