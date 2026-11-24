@@ -131,7 +131,7 @@ export const ROYAL = {
     male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
       'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: 'outfit_37_emperor_ermine', female: 'outfit_10_queen_collar' } },
   crowns: { monarch: { male: 'crown_01_king', female: 'crown_03_queen' }, heir: { male: 'crown_04_prince_circlet', female: 'crown_02_princess_tiara' },
-    royal: { male: null, female: 'crown_02_princess_tiara' }, child: 'crown_04_prince_circlet', noble: 'crown_06_noble_coronet' },
+    royal: { male: 'crown_04_prince_circlet', female: 'crown_02_princess_tiara' }, child: 'crown_04_prince_circlet', noble: 'crown_06_noble_coronet' },
 };
 
 /** Work clothes the portrait wears, by career id (engine/career.js). */
