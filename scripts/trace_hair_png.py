@@ -66,6 +66,7 @@ BASE_EAR_Y = 0.0     # where the ears join the head the style was drawn on, and 
 EAR_X = (0.0, 0.0)
 EAR_PAD = 7          # hair over an ear reaches this far past it, so no edge of the ear peeks out
 GAP_REACH = 30       # the fill behind the jaw and neck reaches this far from hair drawn beside them
+SIDES_ABOVE_EAR = 14  # data-sides="behind": from this far above the tops of the ears down
 EDGE_START = 4       # that outline starts this far below the top of the shoulders, clear of the neck's own line
 NECK_PAD = 0         # the neck band reaches this far past the neck's outline
 LOCK_MAX_Y = 400     # ... and on the face (down to about the mouth): hair over the neck always goes behind it
@@ -314,7 +315,7 @@ def base_inside():
     return _BASE_INSIDE[0]
 
 
-def regions(mask, head, lobe_y, shoulder_y, neck_y):
+def regions(mask, head, lobe_y, shoulder_y, neck_y, sides_behind=False):
     """Where hair is in front of a head and where behind it (fields, > 0 inside), in the base head's frame.
 
     Behind: only the hair next to the jaw and neck, below the ear lobes and above the shoulders, so the jaw draws over
@@ -349,9 +350,13 @@ def regions(mask, head, lobe_y, shoulder_y, neck_y):
     ears = head & in_rows & ~((x > left) & (x < right))
     face &= ~ndi.binary_dilation(ears, iterations=int(EAR_PAD * PX))  # hair over an ear covers all of it, lobe included
     behind |= face
+    # A style marked data-sides="behind" (hair swept back off the face): all of it below the tops of the ears that
+    # overlaps the head goes behind the head, so the side lengths show only where they reach past the face.
+    if sides_behind:
+        behind |= head & (y > (BASE_EAR_Y - SIDES_ABOVE_EAR) * PX)
     # Locks drawn well over the face (not the neck) stay in front: whole pieces of hair, not slivers or the ends of strand lines.
     # Judged on the base head the hair was drawn on, so hair drawn beside a jaw is not taken for a lock on a wider one.
-    over = mask & behind & (base_inside() > FACE_MARGIN * PX) & (y < LOCK_MAX_Y * PX)  # the face, not the neck
+    over = mask & behind & (base_inside() > FACE_MARGIN * PX) & (y < LOCK_MAX_Y * PX) & (not sides_behind)  # the face, not the neck
     lab, n = ndi.label(over)
     if n:
         big = np.bincount(lab.ravel()) >= MIN_LOCK * PX * PX
@@ -373,7 +378,7 @@ def regions(mask, head, lobe_y, shoulder_y, neck_y):
 
 
 def hair_svg(style, tags, fparts, fmask, head, lobe_y, shoulder_y, neck_y, extra_back, head_name):
-    front_r, back_r, gap, edge = regions(fmask, head, lobe_y, shoulder_y, neck_y)
+    front_r, back_r, gap, edge = regions(fmask, head, lobe_y, shoulder_y, neck_y, 'data-sides="behind"' in tags)
     base, details = emit(fparts, front_r)
     if edge.any():
         details += emit([('edge', np.minimum((soft(edge, 1.5) - 0.5) * 8, front_r), OUTLINE)])[1]
@@ -490,7 +495,7 @@ def build(style, force=False):
     tags = 'data-length="short"'
     if os.path.exists(out):
         import re
-        found = re.findall(r'data-(?:length|type|min-age|drawn-on|elder)="[a-z0-9_]+"', open(out, encoding='utf-8').read(400))
+        found = re.findall(r'data-(?:length|type|min-age|drawn-on|elder|gender|sides)="[a-z0-9_]+"', open(out, encoding='utf-8').read(400))
         tags = ' '.join(found) or tags
     # The head it was drawn on: kept from an earlier trace, or the base head now (a new style is drawn on the template).
     import re

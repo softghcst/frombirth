@@ -3,7 +3,7 @@
 // creator (every feature), the in-game salon (styling only) and the avatar
 // lab page. Each feature has its own row of options, the portrait updates on
 // every tap, and nothing is saved until the caller's confirm handler runs.
-import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor } from './catalog.js';
+import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor, hairSuitsGender } from './catalog.js';
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
@@ -96,6 +96,7 @@ export function mountAppearanceEditor(el, o = {}) {
       if (hairFilter === 'suits') list = [...stylesFor(a.inherited.hairTexture), ...fittedFor(a.inherited.hairTexture)];
       else if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
       list = list.filter((h) => age >= (h.minAge ?? 0));  // grown-up styles are not offered to children
+      list = list.filter((h) => hairSuitsGender(h, o.gender));  // men's styles to men, women's to women, unisex to both
     }
     // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.
     if (key === 'lips') list = list.filter((x) => lipsFor(x.id, o.gender) === x.id);

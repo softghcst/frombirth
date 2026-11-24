@@ -562,6 +562,7 @@ def main():
         root = ET.parse(os.path.join(RAW, raw)).getroot()
         styles[name] = {'name': root.get('data-name') or label(name), 'clipToHead': clip_to_head(name, root),
                         'length': root.get('data-length', 'short'), 'type': root.get('data-type', 'any'), 'heads': sorted(fitted)}
+        styles[name]['gender'] = root.get('data-gender', 'any')  # whose style: 'male', 'female' or 'any' (offered, and given at random, by gender)
         if root.get('data-elder'):  # an elder's style (data-elder="female"): what older women are drawn with (curation.ELDER_HAIR)
             styles[name]['elder'] = root.get('data-elder')
         if root.get('data-min-age'):  # a grown-up style: not offered to anyone younger (data-min-age="13" on the raw SVG)

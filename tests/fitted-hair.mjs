@@ -129,6 +129,20 @@ for (const id of Object.keys(FITTED_HAIR)) {
   check(normalize(look({ keepHair: true }), 'k').style.keepHair === true, 'a salon choice in old age is not kept in the save');
 }
 
+// Men's and women's hair: every fitted style says whose it is, and generated people only get their own gender's (or unisex).
+{
+  const { randomAppearance, ensureStyled } = await import('../js/avatar/inherit.js');
+  const { hairSuitsGender } = await import('../js/avatar/catalog.js');
+  for (const [id, st] of Object.entries(FITTED_HAIR)) check(['male', 'female', 'any'].includes(st.gender), `${id}: no gender (data-gender on its raw SVG)`);
+  check(FITTED_HAIR.swept_back_waves?.gender === 'male' && FITTED_HAIR.storybook_waves?.gender === 'female', 'a men\'s or women\'s style is tagged wrong');
+  const byId = Object.fromEntries(CATALOG.hair.map((h) => [h.id, h]));
+  for (let i = 0; i < 400; i++) {
+    const gender = i % 2 ? 'female' : 'male';
+    const hair = ensureStyled(randomAppearance(undefined, gender), gender).style.hair;
+    check(hairSuitsGender(byId[hair], gender), `a generated ${gender === 'male' ? 'man' : 'woman'} was given ${hair}, a ${byId[hair]?.tags?.gender} style`);
+  }
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);

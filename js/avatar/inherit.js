@@ -5,7 +5,7 @@
 // genetics. Only the `inherited` half of a parent is ever read, so a dyed
 // or restyled parent passes on what they were born with.
 import { rng } from '../rng.js';
-import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, DEPTH, HAIR_STYLES, TWEAKS } from './catalog.js';
+import { CATALOG, INHERITED_KEYS, part, stylesFor, normalize, SKIN_TONES, DEPTH, HAIR_STYLES, TWEAKS, hairSuitsGender } from './catalog.js';
 import { RESTING, OUTFITS, HAIR_COVERS_FACE } from './curation.js';
 
 const clampDepth = (d) => Math.max(0, Math.min(SKIN_TONES.length - 1, Math.round(d)));
@@ -38,13 +38,14 @@ export function randomInherited(skinDepthHint) {
   return g;
 }
 
-/** A first haircut that suits the texture and, loosely, the gender, and something to wear. */
+/** A first haircut that suits the texture and the gender, and something to wear. */
 export function defaultStyle(inherited, gender) {
   const suited = stylesFor(inherited.hairTexture).filter((s) => !HAIR_COVERS_FACE.includes(s.id));
   const longOk = rng.chance(0.25);
-  const leaning = gender === 'female' ? suited.filter((s) => s.tags.gender !== 'male')
-    : gender === 'male' ? suited.filter((s) => s.tags.gender === 'male' && (longOk || s.tags.length !== 'long')) : suited;
-  const hairPool = leaning.length && rng.chance(0.88) ? leaning : suited;
+  // Only styles for their own gender (or unisex ones): men's cuts go to men, women's to women.
+  const own = suited.filter((s) => hairSuitsGender(s, gender));
+  const leaning = gender === 'male' ? own.filter((s) => longOk || s.tags.length !== 'long') : own;
+  const hairPool = leaning.length ? leaning : own.length ? own : suited;
   const wardrobe = [...OUTFITS.any, ...(gender === 'female' ? OUTFITS.female : gender === 'male' ? OUTFITS.male : [])];
   return { hair: rng.pick(hairPool.length ? hairPool : HAIR_STYLES).id, hairDye: null, glasses: null, facialHair: null, makeup: null, lipColor: null,
     jewelry: [], outfit: rng.pick(wardrobe), outfitColor: null, hat: null };

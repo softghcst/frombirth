@@ -18,6 +18,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -36,6 +37,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -54,6 +56,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -72,6 +75,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -90,6 +94,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -108,6 +113,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -125,7 +131,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "elder_low_bun",
@@ -143,6 +150,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "elder": "female",
       "minAge": 13
     },
@@ -162,6 +170,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -180,6 +189,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -198,6 +208,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -215,7 +226,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "high_puffs",
@@ -233,6 +245,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -250,7 +263,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "layered_feathered_midi",
@@ -267,7 +281,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "locs_top_knot",
@@ -285,6 +300,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -302,7 +318,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "low_taper_fade",
@@ -319,7 +336,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "man_bun",
@@ -337,6 +355,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -355,6 +374,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -372,7 +392,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "messy_wavy_fringe",
@@ -389,7 +410,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "rocker_waves",
@@ -407,6 +429,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -424,7 +447,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "any"
     },
     {
       "id": "side_part_locs",
@@ -442,6 +466,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -459,7 +484,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "side_ponytail",
@@ -477,6 +503,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -495,6 +522,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -513,6 +541,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -530,7 +559,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "space_buns_bangs",
@@ -548,6 +578,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -566,6 +597,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -584,6 +616,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -601,7 +634,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "swept_back_waves",
@@ -619,6 +653,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "male",
       "minAge": 13
     },
     {
@@ -636,7 +671,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "textured_french_crop",
@@ -653,7 +689,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "male"
     },
     {
       "id": "textured_pixie_cut",
@@ -670,7 +707,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "twin_low_puffs",
@@ -687,7 +725,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "female"
     },
     {
       "id": "twisted_crown_waves",
@@ -705,6 +744,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     },
     {
@@ -722,7 +762,8 @@
         "kid",
         "pixie",
         "sculpted"
-      ]
+      ],
+      "gender": "any"
     },
     {
       "id": "wavy_side_part",
@@ -740,6 +781,7 @@
         "pixie",
         "sculpted"
       ],
+      "gender": "female",
       "minAge": 13
     }
   ]
