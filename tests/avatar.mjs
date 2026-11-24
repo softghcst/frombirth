@@ -709,6 +709,22 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
   }
 }
 
+// Children of 5 to 12 wear children's clothes, never a grown-up's; from 13, their own style.
+{
+  const kids = [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS.female, ...CUR.KID_OUTFITS.male];
+  for (const g of ['male', 'female']) for (const s of ['c1', 'c2', 'c3', 'c4', 'c5', 'c6']) {
+    const look = { ...resolveLook(randomAppearance(undefined, g), s, g), clothes: 'outfit_24_leather' };
+    for (const age of [5, 9, 12]) {
+      const c = dressFor(look, { age, gender: g }).clothes;
+      check([...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g]].includes(c), `a child of ${age} wears children's clothes (${c})`);
+      check(dressFor(look, { age, gender: g, career: { id: 'police' } }).clothes === c, 'and no uniform');
+    }
+    check(dressFor(look, { age: 13, gender: g }).clothes === 'outfit_24_leather', 'from 13, their own style');
+    check(dressFor(look, { age: 9, gender: g, royal: { rank: 'royal' } }).clothes !== look.kidClothes || CUR.ROYAL.outfits[g].includes(dressFor(look, { age: 9, gender: g, royal: { rank: 'royal' } }).clothes), 'a royal child still wears royal clothes');
+  }
+  check(kids.every((id) => PART_BY_ID[id]), 'every children\'s outfit exists');
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);

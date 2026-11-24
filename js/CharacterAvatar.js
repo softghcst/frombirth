@@ -34,7 +34,7 @@ import { HAIR_TOPS } from './data/hairTops.js';
 import { FITTED_HAIR, FITTED_BASE_HEAD, kidsMayWear } from './avatar/fittedHair.js';
 import { FITTED_CLOTHES } from './avatar/fittedClothes.js';
 import { noseFit, mouthFit } from './avatar/featureFit.js';
-import { ROYAL, CROWN_SEATS, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
+import { KID_OUTFITS, ROYAL, CROWN_SEATS, CAREER_DRESS, PRISON, EXPRESSION, ELDER_BROWS, BABY_BROWS, PART_SCALE, RESTING, LOW_MOOD } from './avatar/curation.js';
 
 /** Where the part files are, relative to the page (works from the site root on GitHub Pages). */
 export const AVATAR_BASE = './assets/'; // manifest paths are relative to assets/ (heads/, avatars/<part>/)
@@ -113,6 +113,8 @@ export function dressFor(look, ctx = {}) {
     if (out.hair && !kidsMayWear(out.hair)) out.hair = look.kidHair ?? null;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
+    // Children's clothes until 13: never a grown-up's outfit (resolveLook's kidClothes).
+    out.clothes = look.kidClothes ?? KID_OUTFITS.any[0];
   } else {
     out.makeup = [...new Set([...(look.marks ?? []), ...out.makeup])];
   }
@@ -137,7 +139,7 @@ export function dressFor(look, ctx = {}) {
     const titled = ROYAL.outfits.nobleByTitle[ctx.royal?.title]?.[gender];
     if (age >= 18 && titled) out.clothes = titled[0];
     else if (age >= 18 && ROYAL.outfits.noble[gender]) out.clothes = look.nobleOutfit && ROYAL.outfits.noble[gender].includes(look.nobleOutfit) ? look.nobleOutfit : ROYAL.outfits.noble[gender][0];
-  } else if (ctx.career?.id && CAREER_DRESS[ctx.career.id] && !young) {
+  } else if (ctx.career?.id && CAREER_DRESS[ctx.career.id] && !young && stage !== 'kid') {
     const d = CAREER_DRESS[ctx.career.id];
     const pick = d.senior && (ctx.career.level ?? 0) >= d.senior.level ? d.senior : d;
     if (pick.outfit) out.clothes = pick.outfit;
