@@ -23,8 +23,6 @@ What an eye is made of, read from the picture:
   ink         outlines, lashes, lids, liner and the pupil: near-black, in the eyes' ink, which the game gives more
               weight on deep skin (the --line-ink / --line-width hooks)
   shine       small white spots inside the iris or pupil, pure white
-  rim         a dark outline about 2 units wide behind the white and the iris, so every eye has one, even when the
-              picture has none (where it has its own, the rim hides behind it)
 Edges are smooth curves (the hair tracer's), specks are dropped.
 
 Writes assets/avatars/eyes/eyes_<f|m>_<name>.svg, then run python3 scripts/build-avatar-manifest.py (npm run trace-eyes
@@ -48,7 +46,6 @@ FRAME = os.path.join(PNG_DIR, 'eye_frame.json')
 DEBUG_HTML = os.path.join(HERE, 'debug_eyes_png.html')
 GROUPS = {'women': 'f', 'men': 'm'}
 PX, SIZE = H.PX, H.SIZE
-RIM = 2.2   # the dark rim round each eye, in units
 INK = 'fill:#2d180e;stroke:var(--line-ink,currentColor);stroke-width:var(--line-width,0);stroke-linejoin:round'
 
 
@@ -116,13 +113,8 @@ def build(group, name, frame):
         'ink': INK,
         'shine': 'fill:#ffffff',
     }
-    # Behind it all, a dark rim round each eye (the white and the iris), so an eye is never just color on white: it
-    # shows only where the drawing has no outline of its own.
-    eye = masks['white'] | masks['iris'] | masks['shade']
-    masks['rim'] = H.clean(ndi.binary_dilation(ndi.binary_closing(eye, structure=H.DISK(int(2 * PX))), iterations=int(RIM * PX)), 4)
-    style['rim'] = INK
     paths = []
-    for key in ('rim', 'white', 'iris', 'shade', 'ink', 'shine'):
+    for key in ('white', 'iris', 'shade', 'ink', 'shine'):
         m = masks[key]
         if not m.any():
             continue
