@@ -115,12 +115,16 @@ export function dressFor(look, ctx = {}) {
   const rank = ctx.royal?.rank;
   if (ctx.jailed) { out.clothes = PRISON; out.hat = null; out.crown = null; }
   else if (rank && ['monarch', 'heir', 'royal'].includes(rank)) {
-    out.clothes = young ? ROYAL.outfits.baby : rank === 'monarch' ? look.monarchOutfit ?? (ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)[0] : look.royalOutfit ?? ROYAL.outfits[gender][0];
+    // Under 18, nothing from the grown-up wardrobe (ROYAL.grownOnly).
+    const minor = age < 18;
+    const pick = (grown, child, list) => { const x = minor ? child ?? list.find((o) => !ROYAL.grownOnly.includes(o)) : grown ?? list[0]; return minor && ROYAL.grownOnly.includes(x) ? list.find((o) => !ROYAL.grownOnly.includes(o)) : x; };
+    out.clothes = young ? ROYAL.outfits.baby : rank === 'monarch' ? pick(look.monarchOutfit, look.monarchOutfitYoung, ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)
+      : pick(look.royalOutfit, look.royalOutfitYoung, ROYAL.outfits[gender]);
     out.crown = stage === 'adult' || stage === 'older' ? (ROYAL.crowns[rank]?.[gender] ?? null) : stage === 'kid' ? ROYAL.crowns.child : null;
     out.hat = null;
   } else if (rank === 'noble' && (stage === 'adult' || stage === 'older')) {
     out.crown = ROYAL.crowns.noble;
-    if (gender === 'female') out.clothes = look.nobleOutfit ?? ROYAL.outfits.noble.female[0];
+    if (gender === 'female' && age >= 18) out.clothes = look.nobleOutfit ?? ROYAL.outfits.noble.female[0];
   } else if (ctx.career?.id && CAREER_DRESS[ctx.career.id] && !young) {
     const d = CAREER_DRESS[ctx.career.id];
     const pick = d.senior && (ctx.career.level ?? 0) >= d.senior.level ? d.senior : d;

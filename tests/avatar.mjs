@@ -551,7 +551,8 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(CUR.ROYAL.outfits.female.includes(id) && !CUR.ROYAL.outfits.male.includes(id), 'it is among the royal dresses for girls, and not for boys');
   check(!CATALOG.outfit?.some?.((o) => (o.id ?? o) === id), 'nobody who is not royal can choose it');
   const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'sweet', 'female'), royalOutfit: id };
-  for (const age of [6, 24, 70]) check(dressFor(look, { age, gender: 'female', royal: { rank: 'royal' } }).clothes === id, `a princess of ${age} wears it`);
+  for (const age of [18, 24, 70]) check(dressFor(look, { age, gender: 'female', royal: { rank: 'royal' } }).clothes === id, `a princess of ${age} wears it`);
+  for (const age of [6, 12, 15, 17]) check(dressFor(look, { age, gender: 'female', royal: { rank: 'royal' } }).clothes !== id, `a princess of ${age} does not: it is a grown-up's dress`);
   check(dressFor(look, { age: 24, gender: 'female' }).clothes !== id, 'a commoner does not');
 }
 
@@ -562,7 +563,8 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(CUR.ROYAL.outfits.male.includes(id) && !CUR.ROYAL.outfits.female.includes(id), 'it is among the royal outfits for boys, and not for girls');
   check(!CATALOG.outfit.some((o) => o.id === id), 'nobody who is not royal can choose it');
   const look = { ...resolveLook(randomAppearance(undefined, 'male'), 'uniform', 'male'), royalOutfit: id };
-  for (const age of [6, 24, 70]) check(dressFor(look, { age, gender: 'male', royal: { rank: 'royal' } }).clothes === id, `a prince of ${age} wears it`);
+  for (const age of [18, 24, 70]) check(dressFor(look, { age, gender: 'male', royal: { rank: 'royal' } }).clothes === id, `a prince of ${age} wears it`);
+  for (const age of [6, 12, 15, 17]) check(dressFor(look, { age, gender: 'male', royal: { rank: 'royal' } }).clothes !== id, `a prince of ${age} does not: it is a grown-up's uniform`);
   check(dressFor(look, { age: 24, gender: 'male' }).clothes !== id, 'a commoner does not');
 }
 
@@ -576,10 +578,18 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
     const look = { ...resolveLook(randomAppearance(undefined, g), 'sovereign', g), monarchOutfit: id };
     check(dressFor(look, { age: 50, gender: g, royal: { rank: 'monarch' } }).clothes === id, `a reigning ${g === 'male' ? 'king' : 'queen'} wears it`);
     check(dressFor(look, { age: 50, gender: g, royal: { rank: 'royal' } }).clothes !== id, `a ${g === 'male' ? 'prince' : 'princess'} does not`);
+    check(dressFor(look, { age: 10, gender: g, royal: { rank: 'monarch' } }).clothes !== id, 'a child on the throne does not');
   }
   // Every monarch wears one of the monarch's outfits, chosen once for them.
   const picks = new Set(['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8'].map((s) => dressFor(resolveLook(randomAppearance(undefined, 'female'), s, 'female'), { age: 50, gender: 'female', royal: { rank: 'monarch' } }).clothes));
   check([...picks].every((x) => CUR.ROYAL.outfits.monarch.female.includes(x)), `a queen wears a monarch's outfit (${[...picks]})`);
+}
+
+// None of the new royal and noble clothes is for children: every royal under 18 wears something else, and something royal.
+for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'k8']) for (const age of [5, 9, 13, 17]) for (const rank of ['royal', 'heir', 'monarch']) {
+  const c = dressFor(resolveLook(randomAppearance(undefined, g), s, g), { age, gender: g, royal: { rank } }).clothes;
+  check(!CUR.ROYAL.grownOnly.includes(c), `a ${rank} of ${age} is not in grown-up dress (${c})`);
+  check((rank === 'monarch' ? CUR.ROYAL.outfits.monarch[g] : CUR.ROYAL.outfits[g]).includes(c), `a ${rank} of ${age} still wears royal dress (${c})`);
 }
 
 // The noblewoman's cameo dress: for titled women of the nobility only.
@@ -591,6 +601,7 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(dressFor(her, { age: 40, gender: 'female', royal: { rank: 'noble' } }).clothes === id, 'a noblewoman wears it');
   check(dressFor(her, { age: 40, gender: 'female', royal: { rank: 'noble' } }).crown === CUR.ROYAL.crowns.noble, 'with her coronet');
   check(dressFor(him, { age: 40, gender: 'male', royal: { rank: 'noble' } }).clothes !== id, 'a nobleman does not');
+  check(dressFor(her, { age: 15, gender: 'female', royal: { rank: 'noble' } }).clothes !== id, 'a noble girl does not');
   check(dressFor(her, { age: 40, gender: 'female' }).clothes !== id && dressFor(her, { age: 40, gender: 'female', royal: { rank: 'royal' } }).clothes !== id, 'nor a commoner, nor a princess');
 }
 
