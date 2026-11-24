@@ -730,6 +730,7 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
   check(![...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS.female, ...CUR.KID_OUTFITS.male, ...CUR.OUTFITS.baby].some((id) => !PART_BY_ID[id]), 'every children\'s outfit listed exists');
 }
 
+const { CHILD_CLOTHES_FIT: CHILD_FIT, CHILD_NECKLINE: CHILD_NECK } = await import('../js/avatar/childClothesFit.js');
 // Baby clothes, drawn on the baby head's own template: worn from birth to 6, placed exactly as drawn (no refitting),
 // in the colors they were drawn in.
 {
@@ -742,7 +743,11 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
     check(dressFor(look, { age: 7, gender: 'female' }).clothes !== id, `a child of 7 does not wear ${id}`);
     const out = characterAvatarSvg(look, { age: 1, gender: 'female' });
     const use = out.match(new RegExp(`<use href="[^"]*${id}[^"]*"([^/]*)/>`));
-    check(use && !/transform/.test(use[1]), `${id} is drawn where it was drawn, not moved (${use?.[1]})`);
+    // Not moved under the chin like a grown-up's outfit: at most widened about its own neckline to cover the shoulders.
+    const fit = CHILD_FIT[id];
+    check(use && (fit ? use[1].includes(`scale(${fit.sx} ${fit.sy})`) && use[1].includes(`translate(${CHILD_NECK.baby.x} ${CHILD_NECK.baby.y})`) : !/transform/.test(use[1])),
+      `${id} is drawn where it was drawn, fitted only about its neckline (${use?.[1]})`);
+    if (fit) check(fit.sx >= 1 && fit.sx <= 1.6 && fit.sy >= 1 && fit.sy <= 1.2, `${id} is fitted sensibly (${JSON.stringify(fit)})`);
   }
 }
 

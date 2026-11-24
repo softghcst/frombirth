@@ -44,5 +44,6 @@ Rules:
    important details near the neck and shoulders, since nothing much lower than that is visible.
 ````
 
-Send the PNG it makes, and say if it's for royal babies. It is traced into the game's format and placed by these
-measurements, as the royal outfits were.
+Send the PNG it makes, and say if it's for royal babies. It is traced into the game's format (named `outfit_baby_...`)
+and placed exactly as drawn; then `npm run fit-child-clothes` widens it a little if it came out narrower than the
+shoulders.

@@ -26,6 +26,7 @@
 //   { head, eyes, eyebrows, nose, lips, hair, makeup: [], jewelry: [], glasses, clothes, hat, crown, emotion,
 //     colors: { skin, hair, brow, eye, lip, blush, outfit } }
 // `ctx` describes the moment: { age, gender, mood, jailed, royal: { rank }, career: { id, level }, label }.
+import { CHILD_CLOTHES_FIT, CHILD_NECKLINE } from './avatar/childClothesFit.js';
 import { CLOTHES_SNAP } from './avatar/clothesSnap.js';
 import { PART_BY_ID, AVATAR_TEMPLATE as T } from './avatarManifest.js';
 import { mixHex } from './avatar/color.js';
@@ -182,6 +183,12 @@ const clothesLayer = (id, headId, extra = '') => {
  */
 /** Children's clothes, drawn on a template of the child's own head (assets/clothes_templates/): already in place, drawn as they are. */
 const ASDRAWN = /^outfit_(baby|kid)_/;
+/** A child's outfit worn a little wider or taller than drawn, to cover the shoulders (scripts/fit-child-clothes.mjs). */
+const childFit = (id) => {
+  const k = CHILD_CLOTHES_FIT[id];
+  const n = CHILD_NECKLINE[/^outfit_kid_/.test(id) ? 'kid' : 'baby'];
+  return k && n ? ` transform="translate(${n.x} ${n.y}) scale(${k.sx} ${k.sy}) translate(${-n.x} ${-n.y})"` : '';
+};
 const snapped = (id, tf = '', headId = null) => {
   const k = CLOTHES_SNAP[id];
   // Measured against the grown-up bodies only: a child's shoulders are shaped differently, so a child wears it as drawn.
@@ -405,7 +412,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
     d.binky ? `<use href="${BINKY}#art"${f.lips ?? ''}/>` : use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
-    clothesLayer(d.clothes, d.head, ASDRAWN.test(d.clothes ?? '') ? '' : snapped(d.clothes, f.clothes, d.head)),
+    clothesLayer(d.clothes, d.head, ASDRAWN.test(d.clothes ?? '') ? childFit(d.clothes) : snapped(d.clothes, f.clothes, d.head)),
     necklaces.map((j) => use(j, f.necklace)).join(''),
     d.hair ? hairLayer(`pw-front-${n}`) : '',
     earrings.map((j) => use(j, f.ears)).join(''),
