@@ -649,6 +649,30 @@ for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5
   check(dressFor(look, { age: 14, gender: 'female', royal: { rank: 'royal' } }).clothes !== id, 'a princess of 14 does not');
 }
 
+// The imperial ruby gown: for a reigning queen or empress, grown up.
+{
+  const id = 'outfit_53_imperial_ruby';
+  check(PART_BY_ID[id]?.tags?.royal && !CATALOG.outfit.some((o) => o.id === id), 'the ruby gown is tagged, and nobody can choose it');
+  check(CUR.ROYAL.outfits.monarch.female.includes(id) && !CUR.ROYAL.outfits.monarch.male.includes(id) && !CUR.ROYAL.outfits.female.includes(id) && CUR.ROYAL.grownOnly.includes(id), 'a grown queen\'s gown, not a king\'s or a princess\'s');
+  const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'ruby', 'female'), monarchOutfit: id };
+  check(dressFor(look, { age: 40, gender: 'female', royal: { rank: 'monarch' } }).clothes === id, 'a reigning queen wears it');
+  check(dressFor(look, { age: 15, gender: 'female', royal: { rank: 'monarch' } }).clothes !== id, 'a girl on the throne does not');
+}
+
+// Every royal and noble outfit reaches past the bottom of the lowest portrait (the broadest face shows down to about 524),
+// so no shoulder ever shows beneath one.
+{
+  const { frameFor } = await import('../js/avatar/hairFit.js');
+  const lowest = Math.max(...Object.values(PART_BY_ID).filter((p) => p.id.startsWith('head_')).map((p) => { const f = frameFor(p.id); return f.y + f.size; }));
+  const dress = [...new Set([...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, ...Object.values(CUR.ROYAL.outfits.monarch).flat(), ...Object.values(CUR.ROYAL.outfits.noble).flat(),
+    ...Object.values(CUR.ROYAL.outfits.nobleByTitle).flatMap((x) => Object.values(x).flat())])];
+  for (const id of dress) {
+    const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+    const bottom = Math.max(...[...svg.matchAll(/[MLCQ]\s*[-\d.]+[ ,]([-\d.]+)/g)].map((m) => +m[1]));
+    check(bottom >= lowest + 2, `${id} reaches past the bottom of every portrait (${bottom.toFixed(0)}, needs ${Math.ceil(lowest + 2)})`);
+  }
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);
