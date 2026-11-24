@@ -9,6 +9,7 @@ import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
 import { ELDER_BROWS } from './curation.js';
 import { kidsMayWear } from './fittedHair.js';
+import { MAKEUP_AGE } from '../CharacterAvatar.js';
 import { icon } from '../ui/kit.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
@@ -29,7 +30,7 @@ const CONTROLS = {
   brows: { label: 'Eyebrows', half: 'inherited', kind: 'thumb' },
   nose: { label: 'Nose', half: 'inherited', kind: 'thumb' },
   lips: { label: 'Mouth', half: 'inherited', kind: 'thumb' },
-  lipColor: { label: 'Lip color', half: 'style', kind: 'swatch', none: 'Natural', minAge: 13 },
+  lipColor: { label: 'Lip color', half: 'style', kind: 'swatch', none: 'Natural', minAge: MAKEUP_AGE },
   hair: { label: 'Hairstyle', half: 'style', kind: 'thumb', none: 'Shaved', noneId: 'bald', filter: true },
   hairColor: { label: 'Natural hair color', half: 'inherited', kind: 'swatch' },
   hairTexture: { label: 'Natural hair texture', half: 'inherited', kind: 'chip' },
@@ -39,7 +40,7 @@ const CONTROLS = {
   hat: { label: 'Hat', half: 'style', kind: 'thumb', none: 'None' },
   glasses: { label: 'Glasses', half: 'style', kind: 'thumb', none: 'None' },
   jewelry: { label: 'Jewelry', half: 'style', kind: 'thumb', multi: true, minAge: 8 },
-  makeup: { label: 'Make-up', half: 'style', kind: 'thumb', none: 'None', minAge: 13 },
+  makeup: { label: 'Make-up', half: 'style', kind: 'thumb', none: 'None', minAge: MAKEUP_AGE },
 };
 
 const TABS = [
@@ -92,7 +93,7 @@ export function mountAppearanceEditor(el, o = {}) {
       if (hairFilter === 'suits') list = [...stylesFor(a.inherited.hairTexture), ...fittedFor(a.inherited.hairTexture)];
       else if (hairFilter !== 'all') list = list.filter((h) => h.tags.length === hairFilter);
       // A child is not offered the grown-ups' styles.
-      if (age < 13) list = list.filter((h) => kidsMayWear(h.id));
+      if (age < 14) list = list.filter((h) => kidsMayWear(h.id));
     }
     // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.
     if (key === 'lips') list = list.filter((x) => lipsFor(x.id, o.gender) === x.id);

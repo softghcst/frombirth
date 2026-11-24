@@ -72,10 +72,14 @@ const HAT_LINE = 262;
 const BULKY_HAT_LINE = 316;
 
 /** The stage of life a portrait shows. */
+/**
+ * The stages of a face. Babies (0-2) and toddlers (3-6) share one head; a baby has a binky for a mouth and a baby's
+ * hair, a toddler a mouth and a child's hairstyle. Kids (7-13) have the kid head; the grown-up heads come at 14.
+ */
 export function ageStage(age = 25) {
-  if (age < 2) return 'baby';
-  if (age < 5) return 'toddler';
-  if (age < 13) return 'kid';
+  if (age < 3) return 'baby';
+  if (age < 7) return 'toddler';
+  if (age < 14) return 'kid';
   if (age < 50) return 'adult';
   return 'older';
 }
@@ -86,7 +90,11 @@ export function ageStage(age = 25) {
  * and it never leaves the picture. `scale`: its size against the width of the head, by age.
  */
 const CROWN = { seat: 176, height: 132, dip: 36, lift: 34, scale: { baby: 0.9, toddler: 1, kid: 1.15, adult: 1.3, older: 1.3 } };
-const STAGE_HEAD = { baby: 'head_00_baby', toddler: 'head_00_toddler', kid: 'head_00_kid' };
+/** Make-up and lipstick are worn from this age (the editor offers them from it too). */
+export const MAKEUP_AGE = 16;
+const STAGE_HEAD = { baby: 'head_00_toddler', toddler: 'head_00_toddler', kid: 'head_00_kid' };
+/** A baby's binky, drawn in place of the mouth (ageStage 'baby': under 3). */
+const BINKY = `${AVATAR_BASE}avatars/binky.svg`;
 
 /** Lines that come with age, from fifty on. */
 const AGING = [[55, 'aging_01_smile_lines'], [66, 'aging_02_crows_feet'], [78, 'aging_03_forehead_lines']];
@@ -103,18 +111,23 @@ export function dressFor(look, ctx = {}) {
   const out = { ...look, makeup: [...(look.makeup ?? [])], jewelry: [...(look.jewelry ?? [])], aging: [] };
   out.head = STAGE_HEAD[stage] ?? look.head;
   const young = stage === 'baby' || stage === 'toddler';
+  out.binky = stage === 'baby';
   if (young) {
-    out.hair = look.babyHair ?? null;
+    // A baby has a baby's hair; from 3, a child's hairstyle (a grown-up's waits until 14, as for a kid).
+    out.hair = stage === 'baby' ? look.babyHair ?? null : out.hair && !kidsMayWear(out.hair) ? look.kidHair ?? null : out.hair;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = []; out.glasses = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
   } else if (stage === 'kid') {
-    // A grown-up's hairstyle waits until 13: until then the child wears the one picked for them (resolveLook's kidHair).
+    // A grown-up's hairstyle waits until 14 (the kid head lasts to 13): until then the child wears the one picked for them (resolveLook's kidHair).
     if (out.hair && !kidsMayWear(out.hair)) out.hair = look.kidHair ?? null;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = out.jewelry.filter((j) => /stud/.test(j));
-    // Children's clothes until 13: never a grown-up's outfit (resolveLook's kidClothes).
+    // Children's clothes until 14, when the kid head ends: never a grown-up's outfit (resolveLook's kidClothes).
     out.clothes = look.kidClothes ?? null;
+  } else if (age < MAKEUP_AGE) {
+    // A teenager has a grown-up's face but wears no make-up until MAKEUP_AGE: only their own marks show.
+    out.makeup = [...(look.marks ?? [])];
   } else {
     out.makeup = [...new Set([...(look.marks ?? []), ...out.makeup])];
   }
@@ -130,7 +143,7 @@ export function dressFor(look, ctx = {}) {
     // Under 18, nothing from the grown-up wardrobe (ROYAL.grownOnly).
     const minor = age < 18;
     const pick = (grown, child, list) => { const x = minor ? child ?? list.find((o) => !ROYAL.grownOnly.includes(o)) : grown ?? list[0]; return minor && ROYAL.grownOnly.includes(x) ? list.find((o) => !ROYAL.grownOnly.includes(o)) : x; };
-    // A royal child under 13 wears children's clothes too (none drawn yet); royal dress begins at 13.
+    // A royal child (under 14, the kid head) wears children's clothes too (none drawn yet); royal dress begins at 14.
     out.clothes = young ? ROYAL.outfits.baby : stage === 'kid' ? look.kidClothes ?? null : rank === 'monarch' ? pick(look.monarchOutfit, look.monarchOutfitYoung, ROYAL.outfits.monarch[gender] ?? ROYAL.outfits.monarch.male)
       : pick(look.royalOutfit, look.royalOutfitYoung, ROYAL.outfits[gender]);
     out.crown = stage === 'adult' || stage === 'older' ? (rank === 'monarch' && gender === 'female' && ctx.royal.imperial ? ROYAL.crowns.empress : rank === 'monarch' && ctx.royal.imperial && gender !== 'female' && ctx.royal.sovereign ? ROYAL.crowns.emperor : rank === 'monarch' && ctx.royal.sovereign ? (ctx.royal.powerful ? ROYAL.crowns.obsidian : gender === 'female' ? ROYAL.crowns.queen : ROYAL.crowns.sovereign) : ROYAL.crowns[rank]?.[gender] ?? ROYAL.crowns.child) : rank === 'heir' ? (gender === 'female' ? ROYAL.crowns.crownPrincess : ROYAL.crowns.crownPrince) : rank !== 'monarch' && gender === 'female' ? ROYAL.crowns.princess : ROYAL.crowns.child;
@@ -389,7 +402,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     d.aging.length ? `<g clip-path="url(#pw-face-${n})">${d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join('')}</g>` : '',
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
-    use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
+    d.binky ? `<use href="${BINKY}#art"${f.lips ?? ''}/>` : use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
     clothesLayer(d.clothes, d.head, snapped(d.clothes, f.clothes, d.head)),
     necklaces.map((j) => use(j, f.necklace)).join(''),
     d.hair ? hairLayer(`pw-front-${n}`) : '',
@@ -437,7 +450,7 @@ export function filesFor(look, ctx = {}) {
   const d = dressFor(look, ctx);
   const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
   const neckFit = d.clothes && FITTED_CLOTHES[d.clothes]?.includes(headName(d.head)) ? `${AVATAR_BASE}avatars/clothes_fit/${d.clothes}__${headName(d.head)}.svg` : null;
-  return [...(fitted ? [`${AVATAR_BASE}${fitted}`] : []), ...(neckFit ? [neckFit] : []),
+  return [...(fitted ? [`${AVATAR_BASE}${fitted}`] : []), ...(neckFit ? [neckFit] : []), ...(d.binky ? [BINKY] : []),
     ...[d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.lips, neckFit ? null : d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
       .filter((id) => id && PART_BY_ID[id]).map((id) => `${AVATAR_BASE}${PART_BY_ID[id].file}`)];
 }

@@ -117,7 +117,7 @@ export const ELDER_BROWS = 'brows_23_elder_bushy';
 
 /** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
 /**
- * What a child of 5 to 12 wears: children's clothes, never a grown-up's (from 13, their own style). Empty for now:
+ * What a child of 7 to 13 (the kid head) wears: children's clothes, never a grown-up's (from 14, their own style). Empty for now:
  * the children's clothes are being redrawn, and until they are added here a child is drawn with no outfit.
  */
 export const KID_OUTFITS = { any: [], female: [], male: [] };
