@@ -1,4 +1,5 @@
 // Promise-based modals. Scenario modals cannot be dismissed without choosing.
+import { haptic, hapticForTone } from '../haptics.js';
 import { esc, fmtMoney } from '../util.js';
 import { store, country } from '../state.js';
 import { avatarSvg } from '../avatar/render.js';
@@ -97,6 +98,7 @@ function noticeOf(ev, cast) {
 
 /** Shows a scenario and resolves with the index of the chosen option. */
 export function eventModal(ev, cast, opts = {}) {
+  if (ev?.category === 'loss') haptic('heavy'); // a death, told: felt as well as read
   return new Promise((resolve) => {
     const choices = choiceStates(ev, cast).map((c, i) => (c.hidden ? '' : `
       <button class="choice-btn" data-i="${i}" ${c.enabled ? '' : 'disabled'}>
@@ -145,6 +147,7 @@ export function outcomeModal(result) {
 
 /** A single-button notice. */
 export function messageModal({ eyebrow, title, body, tone = 'neutral', changes, button = 'Continue', serif }) {
+  hapticForTone(tone); // good news and bad news feel different (on Android; a light tick on iPhone)
   return new Promise((resolve) => {
     const m = openModal(`
       ${eyebrow ? `<div class="eyebrow">${esc(eyebrow)}</div>` : ''}
