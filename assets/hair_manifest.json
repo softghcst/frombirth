@@ -506,6 +506,24 @@
         "pixie",
         "sculpted"
       ]
+    },
+    {
+      "id": "wavy_side_part",
+      "name": "Wavy Side Part",
+      "clipToHead": false,
+      "length": "medium",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
     }
   ]
 }

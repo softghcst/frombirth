@@ -447,7 +447,18 @@ def cover_crown(parts, mask, head):
     if crown.sum() < MIN_AREA * PX * PX:
         return parts, mask
     print(f'  covered {int(crown.sum() / PX / PX)} square units of scalp left showing above the hair')
-    new = mask | crown
+    # The fill and the drawn hair are blended as one smooth shape (a smooth union of their distance fields), so where
+    # the fill runs out against hair that already sits higher there is a gentle curve, not a step.
+    sd = lambda m: ndi.distance_transform_edt(m) - ndi.distance_transform_edt(~m)
+    zone = (rows < BASE_EAR_Y * PX) & cols[None, :]
+    hs = sd(mask)
+    cap = head & (rows < top[None, :]) & zone  # the head above the hair's top edge only, never the face
+    ds = sd(cap) + OUTLINE_W * PX
+    k = 14 * PX
+    h = np.clip(0.5 + 0.5 * (hs - ds) / k, 0, 1)
+    new = (ds * (1 - h) + hs * h + k * h * (1 - h)) > 0
+    new |= mask
+    near = ndi.binary_dilation(crown, iterations=int(8 * PX))
     sdf = ndi.gaussian_filter(ndi.distance_transform_edt(new) - ndi.distance_transform_edt(~new), 1.5)
     ow = OUTLINE_W * PX
     out = []
@@ -456,6 +467,8 @@ def cover_crown(parts, mask, head):
             f = sdf
         elif n == 'outline':
             f = np.minimum(sdf, ow - sdf)
+        elif n == 'ink':  # the drawing's old top edge, now just inside the new one, must not poke through it
+            f = np.where(near, np.minimum(f, sdf - ow * 0.9), f)
         out.append((n, f, c))
     return out, new
 
