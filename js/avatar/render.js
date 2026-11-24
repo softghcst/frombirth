@@ -17,7 +17,8 @@ export function royalDress(rank, consort = false, countryId = null) {
   // The one who reigns wears the sovereign's crown; a king or queen by marriage wears a consort's.
   if (rank === 'consort' || (rank === 'monarch' && consort)) return { rank: 'monarch', sovereign: false, imperial };
   if (rank === 'monarch') return { rank, sovereign: true, imperial, powerful };
-  return { rank: ['heir', 'royal'].includes(rank) ? rank : 'noble' };
+  // A noble keeps their own title, for the dress that goes with it (a duke's or a duchess's coat).
+  return ['heir', 'royal'].includes(rank) ? { rank } : { rank: 'noble', title: rank };
 }
 
 /** The player's portrait context: in prison, royal, or at work. */

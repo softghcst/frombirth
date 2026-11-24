@@ -78,7 +78,7 @@ for (let i = 0; i < 300; i++) check(!CUR.HAIR_COVERS_FACE.includes(randomAppeara
 
 // 2. Curated ids.
 const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, CUR.BABY_BROWS, ...Object.values(CUR.OUTFITS).flat(),
-  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch),
+  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch).flat(), ...Object.values(CUR.ROYAL.outfits.noble).flat(), ...Object.values(CUR.ROYAL.outfits.nobleByTitle).flatMap((x) => Object.values(x).flat()),
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
   ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, ...CUR.HAIR_COVERS_FACE];
 for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
@@ -543,6 +543,173 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(browsAt(5, 8) === sad && browsAt(5, 1) === CUR.BABY_BROWS, 'a sad child, or a baby, has the wrong brows');
   check(dressFor(resolveLook({ v: 3, inherited: { brows: 'brows_10' } }, 'x', 'female'), { age: 30, gender: 'female', mood: 5 }).eyes === CUR.EXPRESSION.crying, 'a very unhappy face does not cry');
   check(browsAt(60, 90, 'male') === CUR.ELDER_BROWS && browsAt(60, 90, 'female') === 'brows_10' && browsAt(60, 70, 'male') === 'brows_10', 'the bushy brows of old age are not an old man\'s alone');
+}
+
+// Outfits fitted to each head's neck (scripts/fit-clothes.mjs): every fitted copy exists, the portrait uses it on
+// that head, and the head the outfit was drawn for wears the outfit's own file.
+{
+  const { FITTED_CLOTHES } = await import('../js/avatar/fittedClothes.js');
+  const drawnFor = JSON.parse(readFileSync(new URL('assets/clothes_drawn_for.json', root), 'utf8'));
+  const headOf = (name) => Object.values(PART_BY_ID).find((p) => p.file === `heads/${name}.svg`)?.id;
+  for (const [outfit, heads] of Object.entries(FITTED_CLOTHES)) {
+    check(PART_BY_ID[outfit] && drawnFor[outfit], `${outfit}: a fitted outfit that is not in the manifest or clothes_drawn_for.json`);
+    for (const h of heads) {
+      const file = `assets/avatars/clothes_fit/${outfit}__${h}.svg`;
+      check(existsSync(new URL(file, root)), `${file} is missing: run npm run fit-clothes`);
+      const look = { ...resolveLook({}, 'neck', 'male'), head: headOf(h), clothes: outfit };
+      check(characterAvatarSvg(look, { age: 30, gender: 'male' }).includes(`clothes_fit/${outfit}__${h}.svg#art`), `${outfit} on ${h}: the portrait does not use the neck-fitted copy`);
+      check(filesFor(look, { age: 30, gender: 'male' }).some((f) => f.endsWith(`${outfit}__${h}.svg`)), `${outfit} on ${h}: the fitted copy is not preloaded`);
+    }
+    const own = { ...resolveLook({}, 'neck', 'male'), head: headOf(drawnFor[outfit]), clothes: outfit };
+    check(characterAvatarSvg(own, { age: 30, gender: 'male' }).includes(`${PART_BY_ID[outfit].file}#art`), `${outfit} on ${drawnFor[outfit]}, the head it was drawn for: not its own file`);
+  }
+}
+
+// The sweetheart princess dress: for royal girls and women only.
+{
+  const id = 'outfit_45_princess_sweetheart';
+  check(PART_BY_ID[id]?.tags?.royal, 'the sweetheart princess dress is in the manifest, tagged royal');
+  check(CUR.ROYAL.outfits.female.includes(id) && !CUR.ROYAL.outfits.male.includes(id), 'it is among the royal dresses for girls, and not for boys');
+  check(!CATALOG.outfit?.some?.((o) => (o.id ?? o) === id), 'nobody who is not royal can choose it');
+  const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'sweet', 'female'), royalOutfit: id };
+  for (const age of [18, 24, 70]) check(dressFor(look, { age, gender: 'female', royal: { rank: 'royal' } }).clothes === id, `a princess of ${age} wears it`);
+  for (const age of [6, 12, 15, 17]) check(dressFor(look, { age, gender: 'female', royal: { rank: 'royal' } }).clothes !== id, `a princess of ${age} does not: it is a grown-up's dress`);
+  check(dressFor(look, { age: 24, gender: 'female' }).clothes !== id, 'a commoner does not');
+}
+
+// The prince's uniform with epaulettes and a sash: for royal boys and men only.
+{
+  const id = 'outfit_46_prince_epaulettes';
+  check(PART_BY_ID[id]?.tags?.royal, 'the prince\'s uniform is in the manifest, tagged royal');
+  check(CUR.ROYAL.outfits.male.includes(id) && !CUR.ROYAL.outfits.female.includes(id), 'it is among the royal outfits for boys, and not for girls');
+  check(!CATALOG.outfit.some((o) => o.id === id), 'nobody who is not royal can choose it');
+  const look = { ...resolveLook(randomAppearance(undefined, 'male'), 'uniform', 'male'), royalOutfit: id };
+  for (const age of [18, 24, 70]) check(dressFor(look, { age, gender: 'male', royal: { rank: 'royal' } }).clothes === id, `a prince of ${age} wears it`);
+  for (const age of [6, 12, 15, 17]) check(dressFor(look, { age, gender: 'male', royal: { rank: 'royal' } }).clothes !== id, `a prince of ${age} does not: it is a grown-up's uniform`);
+  check(dressFor(look, { age: 24, gender: 'male' }).clothes !== id, 'a commoner does not');
+}
+
+// The sovereign's ermine robe: for reigning kings and queens only.
+{
+  const id = 'outfit_47_sovereign_ermine';
+  check(PART_BY_ID[id]?.tags?.royal, 'the sovereign\'s robe is in the manifest, tagged royal');
+  check(CUR.ROYAL.outfits.monarch.male.includes(id) && CUR.ROYAL.outfits.monarch.female.includes(id), 'kings and queens may both wear it');
+  check(!CUR.ROYAL.outfits.male.includes(id) && !CUR.ROYAL.outfits.female.includes(id) && !CATALOG.outfit.some((o) => o.id === id), 'nobody else can');
+  for (const g of ['male', 'female']) {
+    const look = { ...resolveLook(randomAppearance(undefined, g), 'sovereign', g), monarchOutfit: id };
+    check(dressFor(look, { age: 50, gender: g, royal: { rank: 'monarch' } }).clothes === id, `a reigning ${g === 'male' ? 'king' : 'queen'} wears it`);
+    check(dressFor(look, { age: 50, gender: g, royal: { rank: 'royal' } }).clothes !== id, `a ${g === 'male' ? 'prince' : 'princess'} does not`);
+    check(dressFor(look, { age: 10, gender: g, royal: { rank: 'monarch' } }).clothes !== id, 'a child on the throne does not');
+  }
+  // Every monarch wears one of the monarch's outfits, chosen once for them.
+  const picks = new Set(['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8'].map((s) => dressFor(resolveLook(randomAppearance(undefined, 'female'), s, 'female'), { age: 50, gender: 'female', royal: { rank: 'monarch' } }).clothes));
+  check([...picks].every((x) => CUR.ROYAL.outfits.monarch.female.includes(x)), `a queen wears a monarch's outfit (${[...picks]})`);
+}
+
+// None of the new royal and noble clothes is for children: every royal under 18 wears something else, and something royal.
+for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'k8']) for (const age of [5, 9, 13, 17]) for (const rank of ['royal', 'heir', 'monarch']) {
+  const c = dressFor(resolveLook(randomAppearance(undefined, g), s, g), { age, gender: g, royal: { rank } }).clothes;
+  check(!CUR.ROYAL.grownOnly.includes(c), `a ${rank} of ${age} is not in grown-up dress (${c})`);
+  // Up to 6 (baby and toddler) a royal child wears the baby's royal dress; from 7, the royal outfits.
+  const young = ['baby', 'toddler'].includes(ageStage(age));
+  check(young ? c === CUR.ROYAL.outfits.baby : (rank === 'monarch' ? CUR.ROYAL.outfits.monarch[g] : CUR.ROYAL.outfits[g]).includes(c), `a ${rank} of ${age} still wears royal dress (${c})`);
+}
+
+// The noblewoman's cameo dress: for titled women of the nobility only.
+{
+  const id = 'outfit_48_noble_cameo';
+  check(PART_BY_ID[id]?.tags?.royal && !CATALOG.outfit.some((o) => o.id === id), 'the noblewoman\'s dress is tagged, and nobody can choose it');
+  const her = resolveLook(randomAppearance(undefined, 'female'), 'cameo', 'female');
+  const him = resolveLook(randomAppearance(undefined, 'male'), 'cameo', 'male');
+  check(dressFor(her, { age: 40, gender: 'female', royal: { rank: 'noble' } }).clothes === id, 'a noblewoman wears it');
+  check(dressFor(her, { age: 40, gender: 'female', royal: { rank: 'noble' } }).crown === CUR.ROYAL.crowns.noble, 'with her coronet');
+  check(dressFor(him, { age: 40, gender: 'male', royal: { rank: 'noble' } }).clothes !== id, 'a nobleman does not');
+  check(dressFor(him, { age: 40, gender: 'male', royal: { rank: 'noble' } }).clothes === 'outfit_49_noble_cravat', 'a nobleman wears the cravat coat');
+  check(dressFor(him, { age: 16, gender: 'male', royal: { rank: 'noble' } }).clothes !== 'outfit_49_noble_cravat', 'a noble boy does not');
+  check(dressFor(him, { age: 40, gender: 'male' }).clothes !== 'outfit_49_noble_cravat' && dressFor(him, { age: 40, gender: 'male', royal: { rank: 'royal' } }).clothes !== 'outfit_49_noble_cravat', 'nor a commoner, nor a prince');
+  check(!CATALOG.outfit.some((o) => o.id === 'outfit_49_noble_cravat'), 'nobody can choose the cravat coat');
+  check(dressFor(her, { age: 15, gender: 'female', royal: { rank: 'noble' } }).clothes !== id, 'a noble girl does not');
+  check(dressFor(her, { age: 40, gender: 'female' }).clothes !== id && dressFor(her, { age: 40, gender: 'female', royal: { rank: 'royal' } }).clothes !== id, 'nor a commoner, nor a princess');
+}
+
+// A duke's or a duchess's coat: by title, not by being noble.
+{
+  const id = 'outfit_50_duke_mantle';
+  const { royalDress } = await import('../js/avatar/render.js');
+  check(PART_BY_ID[id]?.tags?.royal && !CATALOG.outfit.some((o) => o.id === id), 'the duke\'s coat is tagged, and nobody can choose it');
+  check(JSON.stringify(royalDress('duke')) === JSON.stringify({ rank: 'noble', title: 'duke' }) && royalDress('royal').rank === 'royal', 'the portrait knows a noble\'s title');
+  for (const g of ['male', 'female']) {
+    const look = resolveLook(randomAppearance(undefined, g), 'duke', g);
+    check(dressFor(look, { age: 45, gender: g, royal: royalDress('duke') }).clothes === id, `a ${g === 'male' ? 'duke' : 'duchess'} wears it`);
+    check(dressFor(look, { age: 45, gender: g, royal: royalDress('duke') }).crown === CUR.ROYAL.crowns.noble, 'with the coronet');
+    check(dressFor(look, { age: 45, gender: g, royal: royalDress('earl') }).clothes !== id, `an ${g === 'male' ? 'earl' : 'countess'} does not`);
+    check(dressFor(look, { age: 16, gender: g, royal: royalDress('duke') }).clothes !== id, 'a young heir to a dukedom does not');
+  }
+}
+
+// The imperial fan-collar gown: for a reigning queen or empress, grown up.
+{
+  const id = 'outfit_51_imperial_fan_collar';
+  check(PART_BY_ID[id]?.tags?.royal && !CATALOG.outfit.some((o) => o.id === id), 'the imperial gown is tagged, and nobody can choose it');
+  check(CUR.ROYAL.outfits.monarch.female.includes(id) && !CUR.ROYAL.outfits.monarch.male.includes(id), 'a queen may wear it, a king not');
+  check(!CUR.ROYAL.outfits.female.includes(id) && CUR.ROYAL.grownOnly.includes(id), 'nor a princess, nor a child');
+  const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'imp', 'female'), monarchOutfit: id };
+  check(dressFor(look, { age: 40, gender: 'female', royal: { rank: 'monarch' } }).clothes === id, 'a reigning queen wears it');
+  check(dressFor(look, { age: 15, gender: 'female', royal: { rank: 'monarch' } }).clothes !== id, 'a girl on the throne does not');
+  // Placed by its shoulders: the gown reaches the bottom of the portrait, and its collar rises beside the face.
+  const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+  const ys = [...svg.matchAll(/[MLCQ]\s*[-\d.]+[ ,]([-\d.]+)/g)].map((m) => +m[1]);
+  check(Math.max(...ys) >= 512 && Math.min(...ys) < 380, `the gown reaches the bottom and its collar rises beside the face (${Math.min(...ys)}–${Math.max(...ys)})`);
+}
+
+// The starlight princess gown: for grown princesses only.
+{
+  const id = 'outfit_52_princess_starlight';
+  check(PART_BY_ID[id]?.tags?.royal && !CATALOG.outfit.some((o) => o.id === id), 'the starlight gown is tagged, and nobody can choose it');
+  check(CUR.ROYAL.outfits.female.includes(id) && !CUR.ROYAL.outfits.male.includes(id) && CUR.ROYAL.grownOnly.includes(id), 'it is a grown princess\'s gown');
+  const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'star', 'female'), royalOutfit: id };
+  check(dressFor(look, { age: 22, gender: 'female', royal: { rank: 'royal' } }).clothes === id, 'a princess of 22 wears it');
+  check(dressFor(look, { age: 14, gender: 'female', royal: { rank: 'royal' } }).clothes !== id, 'a princess of 14 does not');
+}
+
+// The imperial ruby gown: for a reigning queen or empress, grown up.
+{
+  const id = 'outfit_53_imperial_ruby';
+  check(PART_BY_ID[id]?.tags?.royal && !CATALOG.outfit.some((o) => o.id === id), 'the ruby gown is tagged, and nobody can choose it');
+  check(CUR.ROYAL.outfits.monarch.female.includes(id) && !CUR.ROYAL.outfits.monarch.male.includes(id) && !CUR.ROYAL.outfits.female.includes(id) && CUR.ROYAL.grownOnly.includes(id), 'a grown queen\'s gown, not a king\'s or a princess\'s');
+  const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'ruby', 'female'), monarchOutfit: id };
+  check(dressFor(look, { age: 40, gender: 'female', royal: { rank: 'monarch' } }).clothes === id, 'a reigning queen wears it');
+  check(dressFor(look, { age: 15, gender: 'female', royal: { rank: 'monarch' } }).clothes !== id, 'a girl on the throne does not');
+}
+
+// Outfits fitted to the body (scripts/snap-clothes.mjs, js/avatar/clothesSnap.js): only a little smaller and lower, and
+// the portrait draws them so.
+const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
+{
+  for (const [id, k] of Object.entries(SNAP)) {
+    check(PART_BY_ID[id] && k.s >= 0.7 && k.s <= 1 && k.dy >= 0 && k.dy <= 8, `${id} is fitted sensibly (${JSON.stringify(k)})`);
+    const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'fit', 'female'), clothes: id };
+    const svg = characterAvatarSvg(look, { age: 30, gender: 'female' });
+    check(svg.includes(`scale(${k.s}) translate(-256 -${AVATAR_TEMPLATE.clothesTop})`), `${id} is drawn fitted`);
+  }
+  check(!SNAP.outfit_01_tee, 'the original outfits are drawn as they were');
+}
+
+// Every royal and noble outfit reaches past the bottom of the lowest portrait (the broadest face shows down to about 524),
+// so no shoulder ever shows beneath one.
+{
+  const { frameFor } = await import('../js/avatar/hairFit.js');
+  const lowest = Math.max(...Object.values(PART_BY_ID).filter((p) => p.id.startsWith('head_')).map((p) => { const f = frameFor(p.id); return f.y + f.size; }));
+  const dress = [...new Set([...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, ...Object.values(CUR.ROYAL.outfits.monarch).flat(), ...Object.values(CUR.ROYAL.outfits.noble).flat(),
+    ...Object.values(CUR.ROYAL.outfits.nobleByTitle).flatMap((x) => Object.values(x).flat())])];
+  for (const id of dress) {
+    const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+    const drawn = Math.max(...[...svg.matchAll(/[MLCQ]\s*[-\d.]+[ ,]([-\d.]+)/g)].map((m) => +m[1]));
+    // As fitted to the body (scripts/snap-clothes.mjs): shrunk about the top of the outfit, and moved down.
+    const k = SNAP[id] ?? { s: 1, dy: 0 };
+    const bottom = AVATAR_TEMPLATE.clothesTop + (drawn - AVATAR_TEMPLATE.clothesTop) * k.s + k.dy;
+    check(bottom >= lowest + 2, `${id} reaches past the bottom of every portrait (${bottom.toFixed(0)}, needs ${Math.ceil(lowest + 2)})`);
+  }
 }
 
 if (problems.length) {
