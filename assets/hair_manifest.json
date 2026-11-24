@@ -57,6 +57,7 @@
         "sculpted"
       ],
       "gender": "male",
+      "elderOk": "male",
       "minAge": 13
     },
     {
@@ -133,6 +134,26 @@
         "sculpted"
       ],
       "gender": "male"
+    },
+    {
+      "id": "elder_balding_sides",
+      "name": "Elder Balding Sides",
+      "clipToHead": false,
+      "length": "short",
+      "type": "any",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "gender": "male",
+      "elder": "male",
+      "minAge": 13
     },
     {
       "id": "elder_beehive",
@@ -814,6 +835,7 @@
         "sculpted"
       ],
       "gender": "male",
+      "elderOk": "male",
       "minAge": 13
     },
     {

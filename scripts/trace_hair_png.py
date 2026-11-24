@@ -498,7 +498,7 @@ def build(style, force=False):
     tags = 'data-length="short"'
     if os.path.exists(out):
         import re
-        found = re.findall(r'data-(?:length|type|min-age|drawn-on|elder|gender|sides)="[a-z0-9_]+"', open(out, encoding='utf-8').read(400))
+        found = re.findall(r'data-(?:length|type|min-age|drawn-on|elder|elder-ok|gender|sides|crown)="[a-z0-9_]+"', open(out, encoding='utf-8').read(400))
         tags = ' '.join(found) or tags
     # The head it was drawn on: kept from an earlier trace, or the base head now (a new style is drawn on the template).
     import re
@@ -517,7 +517,8 @@ def build(style, force=False):
     for f in os.listdir(per):
         os.remove(os.path.join(per, f))
     drawn_head, drawn_lobe = head_in_base(EL.head_polys(os.path.join(FH.HEADS, f'{base_name}.svg')))[:2]
-    fparts, fmask = cover_crown(fparts, fmask, drawn_head)
+    if 'data-crown="bare"' not in tags:  # a balding style (data-crown="bare") keeps its bare crown
+        fparts, fmask = cover_crown(fparts, fmask, drawn_head)
     for name, marks in heads.items():
         polys = EL.head_polys(os.path.join(FH.HEADS, f'{name}.svg'))
         warp = None if name == base_name else FH.warp_for(marks, heads[base_name])

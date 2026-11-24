@@ -565,6 +565,8 @@ def main():
         styles[name]['gender'] = root.get('data-gender', 'any')  # whose style: 'male', 'female' or 'any' (offered, and given at random, by gender)
         if root.get('data-elder'):  # an elder's style (data-elder="female"): what older women are drawn with (curation.ELDER_HAIR)
             styles[name]['elder'] = root.get('data-elder')
+        if root.get('data-elder-ok'):  # a style also worn in old age (data-elder-ok="male"): given to the young too, and in the elder list
+            styles[name]['elderOk'] = root.get('data-elder-ok')
         if root.get('data-min-age'):  # a grown-up style: not offered to anyone younger (data-min-age="13" on the raw SVG)
             styles[name]['minAge'] = int(root.get('data-min-age'))
         print(f'  -> {len(fitted)} fitted: ' + ', '.join(sorted(fitted)))

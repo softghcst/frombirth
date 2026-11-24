@@ -73,11 +73,11 @@ const BULKY_HAT_LINE = 316;
 const styleType = (id) => FITTED_HAIR[id]?.type ?? HAIR_TYPE[id] ?? 'any';
 /**
  * The hairstyles older women or men are drawn with (curation.ELDER_HAIR, and fitted styles marked data-elder="female" or
- * "male"). With a texture, only those for it: someone with coily hair, or wearing locs, gets the elder styles made for
+ * "male", or data-elder-ok for styles worn young or old). With a texture, only those for it: someone with coily hair, or wearing locs, gets the elder styles made for
  * coily hair and locs (type 'coily') when there are any for their gender; everyone else gets the general ones (type 'any').
  */
 export function elderHairStyles(gender = 'female', texture) {
-  const all = [...new Set([...(ELDER_HAIR[gender] ?? []), ...Object.values(FITTED_HAIR).filter((s) => s.elder === gender).map((s) => s.id)])];
+  const all = [...new Set([...(ELDER_HAIR[gender] ?? []), ...Object.values(FITTED_HAIR).filter((s) => s.elder === gender || s.elderOk === gender).map((s) => s.id)])];
   if (!texture) return all;
   const own = all.filter((id) => styleType(id) === texture);
   return own.length ? own : all.filter((id) => styleType(id) === 'any');
