@@ -35,9 +35,10 @@ for (const gender of ['male', 'female']) {
   const her = resolveLook({}, 'tiara-f', 'female'); const him = resolveLook({}, 'tiara-m', 'male');
   for (const rank of ['heir', 'royal']) for (const age of [0, 3, 8, 25, 70]) {
     check(dressFor(her, { age, gender: 'female', royal: royalDress(rank) }).crown === 'crown_10_princess_tiara', `a ${age}-year-old princess (${rank}) wears the tiara`);
-    check(dressFor(him, { age, gender: 'male', royal: royalDress(rank) }).crown !== 'crown_10_princess_tiara', `a ${age}-year-old prince (${rank}) does not`);
+    check(dressFor(him, { age, gender: 'male', royal: royalDress(rank) }).crown === 'crown_11_prince_band', `a ${age}-year-old prince (${rank}) wears the prince's band`);
+    check(dressFor(her, { age, gender: 'female', royal: royalDress(rank) }).crown !== 'crown_11_prince_band', `a ${age}-year-old princess (${rank}) does not`);
   }
-  check(dressFor(him, { age: 40, gender: 'male', royal: royalDress('monarch') }).crown !== 'crown_10_princess_tiara', 'a king does not');
+  check(!['crown_10_princess_tiara', 'crown_11_prince_band'].includes(dressFor(him, { age: 40, gender: 'male', royal: royalDress('monarch') }).crown), 'a king wears neither');
 }
 const sov = MANIFEST.crowns.find((c) => c.id === 'crown_09_sovereign');
 check(sov && existsSync(new URL(`../assets/${sov.file}`, import.meta.url)), 'the sovereign crown is in the manifest and on disk');
