@@ -167,6 +167,9 @@ def main():
     ap.add_argument('--head', default='athletic', help='the head it was drawn on (a file name in assets/heads/)')
     ap.add_argument('--open', action='store_true', help='a V-neck or scoop neck: widened for thicker necks, never drawn in')
     ap.add_argument('--bare', action='store_true', help='shoulders bare by design (a halter, a tank): not widened to cover them')
+    ap.add_argument('--box', action='store_true', help='for an image not drawn to the template\'s scale: placed like the classic outfits '
+                    '(sized to the outfit width, its top under the chin) instead of where it was drawn')
+    ap.add_argument('--shift', type=float, default=0, help='move it down this many units (an image drawn too high on the template)')
     ap.add_argument('--no-build', action='store_true', help='only write the SVG')
     a = ap.parse_args()
     if not re.fullmatch(r'outfit_[a-z0-9_]+', a.name):
@@ -177,7 +180,13 @@ def main():
     im, per_unit = load(a.source)
     flat, palette = flatten(im, exact=a.source.lower().endswith('.svg'))
     paths = to_template(trace(flat), per_unit, heads[a.head], T)
-    if not a.source.lower().endswith('.svg'):  # an SVG drawn on the body covers what it means to (a tank top does not)
+    if a.shift:
+        def down(m):
+            return f'{m.group(1)} {float(m.group(2)) + a.shift:.1f}'
+        paths = [p.split(' d="')[0] + ' d="' + re.sub(NUMS, down, p.split(' d="')[1]) for p in paths]
+    if a.box:
+        pass  # the avatar build places it (LAYOUT['clothes'] in scripts/build-avatar-manifest.py)
+    elif not a.source.lower().endswith('.svg'):  # an SVG drawn on the body covers what it means to (a tank top does not)
         fit = heads[a.head]
         body = max(0.8, min(1.06, fit['shoulderW'] / T['shoulderW']))
         paths, k = widen(paths, T) if not a.bare else (paths, 1.0)
@@ -192,7 +201,7 @@ def main():
         paths = [p.split(' d="')[0] + ' d="' + re.sub(NUMS, lower, p.split(' d="')[1]) for p in paths]
     out = os.path.join(CLOTHES, f'{a.name}.svg')
     with open(out, 'w', encoding='utf-8') as f:
-        f.write(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-as-drawn="1">{"".join(paths)}</svg>\n')
+        f.write(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"{"" if a.box else " data-as-drawn=\"1\""}>{"".join(paths)}</svg>\n')
     print(f'{a.name}: {len(paths)} shapes in {len(palette)} colours, drawn on {a.head}')
     drawn = json.load(open(DRAWN_FOR, encoding='utf-8')) if os.path.exists(DRAWN_FOR) else {}
     drawn[a.name] = {'head': a.head, 'neckline': 'open'} if a.open else a.head
