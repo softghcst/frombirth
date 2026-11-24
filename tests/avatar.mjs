@@ -601,6 +601,10 @@ for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5
   check(dressFor(her, { age: 40, gender: 'female', royal: { rank: 'noble' } }).clothes === id, 'a noblewoman wears it');
   check(dressFor(her, { age: 40, gender: 'female', royal: { rank: 'noble' } }).crown === CUR.ROYAL.crowns.noble, 'with her coronet');
   check(dressFor(him, { age: 40, gender: 'male', royal: { rank: 'noble' } }).clothes !== id, 'a nobleman does not');
+  check(dressFor(him, { age: 40, gender: 'male', royal: { rank: 'noble' } }).clothes === 'outfit_49_noble_cravat', 'a nobleman wears the cravat coat');
+  check(dressFor(him, { age: 16, gender: 'male', royal: { rank: 'noble' } }).clothes !== 'outfit_49_noble_cravat', 'a noble boy does not');
+  check(dressFor(him, { age: 40, gender: 'male' }).clothes !== 'outfit_49_noble_cravat' && dressFor(him, { age: 40, gender: 'male', royal: { rank: 'royal' } }).clothes !== 'outfit_49_noble_cravat', 'nor a commoner, nor a prince');
+  check(!CATALOG.outfit.some((o) => o.id === 'outfit_49_noble_cravat'), 'nobody can choose the cravat coat');
   check(dressFor(her, { age: 15, gender: 'female', royal: { rank: 'noble' } }).clothes !== id, 'a noble girl does not');
   check(dressFor(her, { age: 40, gender: 'female' }).clothes !== id && dressFor(her, { age: 40, gender: 'female', royal: { rank: 'royal' } }).clothes !== id, 'nor a commoner, nor a princess');
 }

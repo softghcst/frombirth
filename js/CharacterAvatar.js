@@ -124,7 +124,7 @@ export function dressFor(look, ctx = {}) {
     out.hat = null;
   } else if (rank === 'noble' && (stage === 'adult' || stage === 'older')) {
     out.crown = ROYAL.crowns.noble;
-    if (gender === 'female' && age >= 18) out.clothes = look.nobleOutfit ?? ROYAL.outfits.noble.female[0];
+    if (age >= 18 && ROYAL.outfits.noble[gender]) out.clothes = look.nobleOutfit && ROYAL.outfits.noble[gender].includes(look.nobleOutfit) ? look.nobleOutfit : ROYAL.outfits.noble[gender][0];
   } else if (ctx.career?.id && CAREER_DRESS[ctx.career.id] && !young) {
     const d = CAREER_DRESS[ctx.career.id];
     const pick = d.senior && (ctx.career.level ?? 0) >= d.senior.level ? d.senior : d;
