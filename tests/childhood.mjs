@@ -114,7 +114,8 @@ section('early activities add a little and stop: a head start in what is taken u
     kid.doActivity('playground');
     met = p.npcIds.map((id) => S().npcs[id]).find((n) => !before.has(n.id)) ?? null;
   }
-  check(met && met.role === 'friend' && met.flags.metAt === 'playground' && Math.abs(met.age - 4) <= 1 && met.id.startsWith('npc_') && met.firstName && met.memories.some((m) => m.key === 'met'), 'a child met at the playground is a person: a name, an age, a memory of how you met');
+  // Within two years: a neighbor's child can be one met at the playground (neighborKidsFor, out of school: two years).
+  check(met && met.role === 'friend' && met.flags.metAt === 'playground' && Math.abs(met.age - 4) <= 2 && met.id.startsWith('npc_') && met.firstName && met.memories.some((m) => m.key === 'met'), 'a child met at the playground is a person: a name, an age, a memory of how you met');
   check(P().milestones.some((m) => /Made a friend/.test(m.text)), 'a first friend is a milestone');
   const id = met.id;
   const meta = save.saveGame(S());
