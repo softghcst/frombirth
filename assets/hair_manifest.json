@@ -251,6 +251,24 @@
       ]
     },
     {
+      "id": "locs_top_knot",
+      "name": "Locs Top Knot",
+      "clipToHead": false,
+      "length": "long",
+      "type": "locs",
+      "heads": [
+        "almond",
+        "angular",
+        "athletic",
+        "cherubic",
+        "dimple_oval",
+        "kid",
+        "pixie",
+        "sculpted"
+      ],
+      "minAge": 13
+    },
+    {
       "id": "long_straight_center_part",
       "name": "Long Straight Center Part",
       "clipToHead": false,
