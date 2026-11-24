@@ -62,7 +62,11 @@ for (const [label, viewport] of [['phone', { width: 390, height: 844 }], ['deskt
     // Someone else can die the same year (another pet, a grandparent): their notices are closed until Toffee's.
     if (await page.locator('.modal .notice-head').count() && /In memory/i.test(await page.locator('.modal').last().innerText())) {
       if (/Toffee/.test(await page.locator('.modal').last().innerText())) { seen = true; break; }
-      await page.locator('.modal [data-ok]').last().click(); continue;
+      // A person's notice asks about the funeral (choice buttons); a pet's has only OK.
+      const ok = page.locator('.modal:last-of-type [data-ok], .scrim:last-child [data-ok]');
+      if (await ok.count()) await ok.last().click({ timeout: 3000 }).catch(() => {});
+      else if (await page.locator('.modal .choice-btn:not([disabled])').count()) await page.locator('.modal .choice-btn:not([disabled])').last().click({ timeout: 3000 }).catch(() => {});
+      continue;
     }
     if (await page.locator('.modal .choice-btn:not([disabled])').count()) await page.locator('.modal .choice-btn:not([disabled])').first().click();
     else if (await page.locator('.modal [data-ok]').count()) await page.locator('.modal [data-ok]').last().click();
