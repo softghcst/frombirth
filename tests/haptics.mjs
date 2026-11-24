@@ -81,11 +81,11 @@ const clear = (page) => page.evaluate(() => { window.__buzz = []; window.__ticks
   await clear(page);
   await page.evaluate(async () => { (await import('/js/haptics.js')).setHaptics(false); });
   await clear(page);
-  await page.click('[data-year]');
-  await page.waitForTimeout(300);
+  // (Not a second Age up: the first may have left a scene waiting, which keeps Age up disabled until it is answered.)
   await page.evaluate(async () => { const m = await import('/js/ui/modals.js'); m.messageModal({ body: 'Good news.', tone: 'good' }); });
   await page.waitForTimeout(100);
-  check((await page.evaluate(() => window.__buzz)).length === 0, 'turned off, nothing buzzes');
+  await page.locator('#modal-root .modal [data-ok]').last().click();
+  check((await page.evaluate(() => window.__buzz)).length === 0, 'turned off, nothing buzzes: not the news, not the tap');
   check(await page.evaluate(() => localStorage.getItem('pathways.haptics')) === 'off', 'and it stays off on this device');
   // The setting is in Settings, and says what it does.
   await page.evaluate(async () => { document.querySelectorAll('#modal-root .scrim').forEach((s) => s.remove()); (await import('/js/ui/settings.js')).openSettings(); });
