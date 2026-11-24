@@ -46,8 +46,8 @@ await page.evaluate((id) => document.querySelector(`[data-npc="${id}"]`).click()
 await page.evaluate(() => document.querySelectorAll('#modal-root details.action-group').forEach((d) => { d.open = true; }));
 await page.locator('#modal-root [data-act="with:sleepover"]').click(); await page.waitForTimeout(250);
 check(await page.locator('#modal-root select#m-pick').count() === 1 && /Sleepover/.test(await page.locator('#modal-root .modal').last().innerText()), 'the sleepover asks with a dropdown');
-check((await page.locator('#modal-root select#m-pick option').allInnerTexts()).includes('Sleep out in a tent'), 'a night in a tent is one of the plans');
-await page.selectOption('#modal-root select#m-pick', { label: 'Sleep out in a tent' });
+check((await page.locator('#modal-root select#m-pick option').allInnerTexts()).some((x) => /^Sleep out in a tent$/i.test(x)), 'a night in a tent is one of the plans');
+await page.selectOption('#modal-root select#m-pick', await page.locator('#modal-root select#m-pick option', { hasText: /sleep out in a tent/i }).getAttribute('value'));
 await shot('sleepover');
 await page.locator('#modal-root [data-go]').click(); await page.waitForTimeout(300);
 const said = await page.locator('#modal-root .modal').last().innerText();
@@ -58,7 +58,7 @@ await page.evaluate(() => document.querySelector('.tab-btn[data-tab="pursuits"]'
 check(await page.locator('[data-lessons]').count() === 1, 'Pursuits has Lessons');
 await page.evaluate(() => document.querySelector('[data-lessons]').click()); await page.waitForTimeout(250);
 const lessonOpts = await page.locator('#modal-root select#m-pick option').allInnerTexts();
-check(lessonOpts.some((x) => /Voice lessons/.test(x)) && lessonOpts.some((x) => /Ballet/.test(x)) && /Ask your parents/.test(await page.locator('#modal-root [data-go]').innerText()), 'lessons: a dropdown, and "Ask your parents"');
+check(lessonOpts.some((x) => /Voice lessons/i.test(x)) && lessonOpts.some((x) => /Ballet/.test(x)) && /Ask your parents/i.test(await page.locator('#modal-root [data-go]').innerText()), 'lessons: a dropdown, and "Ask your parents"');
 await shot('lessons');
 await page.locator('#modal-root .modal-back').click(); await page.waitForTimeout(150);
 // 3. A death notice: the friend dies in the turn.

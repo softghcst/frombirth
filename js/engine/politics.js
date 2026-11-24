@@ -66,7 +66,7 @@ export function barrier(o) {
 export function ladder() {
   const c = country();
   return offices(c).map((o) => ({ id: o.id, title: o.title, tier: o.tier, blocked: barrier(o),
-    cost: localMoney(o.cost, c), salary: localWage(o.salary, c), term: o.term, fullTime: o.fullTime, odds: oddsLabel(o),
+    cost: localMoney(o.cost, c), salary: localWage(o.salary, c), term: o.term, fullTime: o.fullTime, odds: oddsLabel(o), bars: standingBars(o),
     electionYear: world.nextElection(o.id, c.id), opponent: world.opponentFor(o.id, c.id)?.name ?? null }));
 }
 
@@ -96,6 +96,12 @@ export function standing(o) {
   if (s.rigged && !p.politics) score -= 18;
   score += world.partyBacking(o.tier);
   return score;
+}
+
+/** Where the voters (or the committee) have you, set against what it takes to make it an even race. */
+function standingBars(o) {
+  const scale = (x) => Math.max(0, Math.min(100, x / 70 * 100));
+  return { you: scale(standing(o)), need: scale(35) };
 }
 
 function oddsLabel(o) {

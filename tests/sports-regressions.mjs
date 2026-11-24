@@ -205,6 +205,32 @@ caseOf('the money screen shows only this life\'s payments', () => {
   check(/Prize money, all time/.test(out.body) && !/5,000/.test(out.body.split('Payments')[0]) && /None yet/.test(out.body), 'the heir sees none of the parent\'s payments as their own');
 });
 
+caseOf('a professional in one sport cannot simply switch to another', () => {
+  grownTo(20, 'us', 'Chicago', able); sp.takeUp('tennis'); sp.takeUp('golf'); sp.takeUp('soccer');
+  const tennis = sp.entryOf('tennis'); const golf = sp.entryOf('golf'); maxOut(tennis, 82); maxOut(golf, 82);
+  life.internals.ANSWERS().turnPro(S(), { sportId: 'tennis' }, 'yes');
+  check(tennis.level === 'pro' && tennis.proYear, 'setup: a professional tennis player');
+  check(/retire from tennis/.test(sp.proLock('golf')), `golf says why not (${sp.proLock('golf')})`);
+  check(!sp.proLock('tennis'), 'and tennis itself is open');
+  // Golf good enough for the tour: not asked, and saying yes anyway does nothing.
+  let asked = 0;
+  for (let i = 0; i < 3; i++) { golf.pr = Math.max(golf.pr, 1500); advanceYear(); S().pendingEvents = []; for (const d of life.openDecisions()) { if (d.sportId === 'golf' && d.kind === 'turnPro') asked++; life.answer(d.id, 'no'); } }
+  check(!asked, `a tennis professional is not asked to turn professional in golf (${asked})`);
+  const forced = life.internals.ANSWERS().turnPro(S(), { sportId: 'golf' }, 'yes');
+  check(!forced.ok && golf.level !== 'pro' && !golf.proYear, 'and cannot, even when answering yes');
+  const club = life.internals.signPro(S(), { sportId: 'soccer', orgId: 'nobody', salary: 1000, years: 2, level: 0 });
+  check(!club.ok && !sp.entryOf('soccer').contractId, 'no club signs them for another sport either');
+  // Retiring from tennis: two seasons away, then golf is open.
+  life.retire('tennis');
+  check(/seasons away/.test(sp.proLock('golf')), `just retired: not yet (${sp.proLock('golf')})`);
+  S().year += 1;
+  check(!!sp.proLock('golf'), 'a season later: still not');
+  S().year += 1;
+  check(!sp.proLock('golf'), 'two seasons on: golf is open');
+  const now = life.internals.ANSWERS().turnPro(S(), { sportId: 'golf' }, 'yes');
+  check(now.ok && golf.level === 'pro', 'and they can turn professional in it');
+});
+
 for (const m of ok) console.log(`ok   ${m}`);
 for (const m of problems) console.log(`FAIL ${m}`);
 if (problems.length) { console.log(`${problems.length} problem(s).`); process.exit(1); }

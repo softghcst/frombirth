@@ -12,7 +12,7 @@ import { clamp, localMoney, fmtMoney, uid, localWage, localCost } from '../util.
 import { store, player, country, npcsByRole, livingNpcs, log, milestone } from '../state.js';
 import { makeNpc } from './npcFactory.js';
 import { applyMods } from './genetics.js';
-import { resolve, tripleThreat, remember } from './conditions.js';
+import { resolve, tripleThreat, remember, checkBars } from './conditions.js';
 import { SCHOOL_STAGES, SCHOOL_LEAVING_AGE, PROGRAMS, HOUSING, CLIQUES, CLIQUE_BY_ID,
   CLUBS, CLUB_BY_ID, MAX_CLUBS, TRADE_BY_ID, SCHOOL_TYPES, SCHOOL_TYPE_BY_ID, GAP_YEARS, PRIORITIES,
   PRIORITY_BY_ID } from '../data/schools.js';
@@ -625,7 +625,7 @@ export function clubOptions() {
   const p = player();
   const e = p.education;
   return CLUBS.filter((c) => p.age >= c.from).map((c) => ({ id: c.id, name: c.name, blurb: c.blurb ?? '',
-    joined: e.clubs.includes(c.id), chance: c.tryout ? checkChance(c.tryout) : 1 }));
+    joined: e.clubs.includes(c.id), chance: c.tryout ? checkChance(c.tryout) : 1, bars: c.tryout ? checkBars(c.tryout) : null }));
 }
 /** Children can take classes before they start school; adults need to be enrolled. */
 export const canJoinClubs = () =>
@@ -762,6 +762,15 @@ export function programOptions() {
 }
 
 /** Chance of getting in. Audition majors are judged on performance, not grades. */
+/** An audition course drawn as two bars: what you would show the panel, and what it takes to make it an even call. */
+export function auditionBars(subjectId) {
+  const p = player();
+  const m = MAJOR_BY_ID[subjectId];
+  const shown = m.auditionSkill ? Number(resolve(m.auditionSkill)) || 0 : tripleThreat(p);
+  const need = 50 + (0.5 - m.auditionBase - (p.flags.directorRec ? 0.2 : 0)) * 100 / 1.1;
+  return { you: clamp(shown), need: clamp(need, 5, 95) };
+}
+
 export function admissionChance(progId, subjectId) {
   const p = player();
   const iq = p.stats.intellect;
@@ -960,7 +969,7 @@ export function switchOptions() {
   const gpa = e.gpa || entryGpa();
   return MAJORS.filter((m) => m.id !== e.majorId && majorOpen(m.id)).map((m) => ({ id: m.id, name: m.name, audition: !!m.audition,
     allowed: gpa >= m.minGpa, minGpa: m.minGpa,
-    chance: m.audition ? admissionChance('university', m.id) : 1 }));
+    chance: m.audition ? admissionChance('university', m.id) : 1, bars: m.audition ? auditionBars(m.id) : null }));
 }
 export const canSwitchMajor = () => {
   const e = player().education;

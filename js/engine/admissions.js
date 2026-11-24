@@ -136,6 +136,18 @@ export function acceptanceRate(inst, major) {
   return yes / all;
 }
 
+/**
+ * Where an applicant stands with a place, as two bars on a 0–100 scale: what they bring (marks, or the audition, and
+ * everything else counted) and the bar the place sets. Reaching the bar is what usually brings an offer.
+ */
+export function standing(a, inst, major) {
+  if (inst.open) return { you: 100, need: 0 };
+  const r = assess({ ...a, predicted: false }, inst, major, 0);
+  const cut = (x) => Math.max(0, Math.min(100, x));
+  if (major.audition) { const need = inst.auditionBar ?? 60; return { you: cut(need + (r.score - 0.12) * 40), need: cut(need) }; }
+  return { you: cut((inst.bar + (r.score - 0.12) / 1.6) / 4 * 100), need: cut(inst.bar / 4 * 100) };
+}
+
 /** Where an applicant stands with a place, in the words applicants use: a reach, a match or a safety. */
 export function fitOf(a, inst, major) {
   if (inst.open) return 'safety';

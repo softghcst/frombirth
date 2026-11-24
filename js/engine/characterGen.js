@@ -1,5 +1,5 @@
 // Creates a brand-new life: the player, their family and the opening journal.
-import { talentWord } from '../data/talents.js';
+import { startTalents, giftsOf } from './talentGrowth.js';
 import { settle as settleHood } from './neighborhood.js';
 import { syncWorld } from './history.js';
 import { ensureEra } from './eras.js';
@@ -169,11 +169,16 @@ function createOnce(opts = {}) {
   player.flags.interestedIn = attractedTo(orientation, identityGender);
   // A transgender character who never goes looking feels it some time from the teenage years on: at 14, or 19, or 31.
   if (trans) { const r = rng.int(0, 99); player.flags.trueGender = identityGender; player.flags.realizeAge = r < 40 ? 13 + (r % 5) : r < 75 ? 18 + (r % 7) : 25 + (r % 11); }
+  // What is inherited is the gift; how good someone is starts low and is built (engine/talentGrowth.js).
+  player.potential = { ...player.talents };
+  player.talents = startTalents(player.potential, player.age);
   // Natural gifts make the matching skills come faster all life long.
-  player.flags.gifts = Object.entries(player.talents).filter(([, v]) => v >= 65).map(([k]) => k);
+  player.flags.gifts = giftsOf(player);
   // Growing up around how their parents handle money gives a child a little to start from (engine/achievements.js).
   player.flags.moneySense = startingSense([mother, father]);
 
+  // A trait or a condition at birth changes the gift, not how good a baby already is.
+  const before = { ...player.talents };
   for (const id of traits) applyMods(player, TRAIT_BY_ID[id]);
   for (const b of born) {
     applyMods(player, b);
@@ -244,10 +249,13 @@ function createOnce(opts = {}) {
     }
     journal.splice(1, 0, j(born, 'good'));
   }
+  for (const k of Object.keys(player.talents)) {
+    const d = player.talents[k] - (before[k] ?? 0);
+    if (d) { player.potential[k] = Math.max(0, Math.min(100, (player.potential[k] ?? 0) + d)); player.talents[k] = before[k] ?? 0; }
+  }
+  player.flags.gifts = giftsOf(player);
   player.flags.longevity = rollLongevity();
   if (player.flags.longevity >= 8) journal.push(j('People in your family tend to live to a great age.', 'good'));
-  const gift = Object.entries(player.talents).find(([, v]) => v >= 75);
-  if (gift) journal.push(j(`Something about you hints at a gift for ${talentWord(gift[0])}.`, 'good'));
 
   const state = {
     schemaVersion: SCHEMA_VERSION, spelling: 'us', slotId: uid('life'),

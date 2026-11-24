@@ -310,7 +310,7 @@ async function extras() {
   await page.fill('#modal-root input[name="perYear"]', '3');
   await page.click('#modal-root button[type="submit"]');
   check((await continueModal()).includes('Routine set'), 'a posting routine is set from Creator Studio');
-  check((await page.locator('.dl-body').innerText()).includes('Routine: 3 a year'), 'and shows on the overview');
+  check((await page.locator('.dl-body').innerText()).toLowerCase().includes('routine: 3 a year'), 'and shows on the overview');
   await page.click('.dl-nav [data-section="people"]');
   await page.click('.dl-body [data-do="datingPrefs"]');
   await page.fill('#modal-root input[name="ageMin"]', '27');

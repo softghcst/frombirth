@@ -1,6 +1,7 @@
 // Practicing skills: instruments, performing, sport, crafts and languages.
 // A few sessions a year; each one moves a progress bar, faster for someone
 // with a natural gift for it and slower as they near mastery.
+import { gift } from './talentGrowth.js';
 import { rng } from '../rng.js';
 import { clamp, localMoney, fmtMoney } from '../util.js';
 import { player, country, log, milestone } from '../state.js';
@@ -33,7 +34,7 @@ export function aptitude(id) {
   const key = s.talent ?? s.helps;
   let k = 1;
   if (key && gifts.includes(key)) k += 0.8; // born with a gift for exactly this
-  if (key) k += Math.max(0, (p.talents[key] ?? 0) - 50) / 125; // talent in the family of the skill
+  if (key) k += Math.max(0, gift(p, key) - 50) / 125; // a gift in the family of the skill
   if (s.stat === 'intellect' || s.group === 'language') k += Math.max(0, p.stats.intellect - 60) / 100;
   k += (p.hidden.discipline - 50) / 250;
   if (p.age < 12) k += 0.15; // children soak things up

@@ -21,6 +21,7 @@
 //
 // Everything that comes down to luck in a competition is drawn from a run of luck keyed to that competition
 // (sportsPlay.seeded): loading a save never re-rolls a result, and the game's own dice are never touched by it.
+import { gift } from './talentGrowth.js';
 import { store, player, log, milestone, livingNpcs } from '../state.js';
 import { clamp, cap, localMoney, fmtMoney } from '../util.js';
 import { COUNTRIES } from '../data/countries.js';
@@ -112,7 +113,7 @@ export function activeSports(id = store.state.player.id, state = store.state) {
 }
 
 /** A value on the character by path: 'talents.sports', 'stats.health', 'hidden.discipline'. */
-const val = (p, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p) ?? 50;
+const val = (p, path) => (path.startsWith('talents.') ? gift(p, path.slice(8)) : path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), p)) ?? 50; // a talent here is the gift: what someone could become
 
 /** Whether the person uses a wheelchair. Pathways has no wider disability system: this is the one marker the sports engine reads. */
 export const usesWheelchair = (p = player()) => !!p.flags?.wheelchair || (p.conditions ?? []).some((c) => /wheelchair|paraly|spinal/.test(c.id));
@@ -316,6 +317,25 @@ export function giveUp(sportId, state = store.state) {
   const text = `You stopped playing ${sportOf(sportId).name.toLowerCase()}.`;
   log(text);
   return result(true, text, 'neutral');
+}
+/** Seasons away from one professional sport before another sport's clubs, drafts or tours will take you on. */
+export const SWITCH_BREAK = 2;
+/**
+ * Why the player cannot go professional in this sport now, or '' if they can. Someone who plays one sport
+ * professionally plays the others for fun: to be a professional in another, they retire from the first, and spend a
+ * couple of seasons away before anyone takes them seriously in the new one.
+ */
+export function proLock(sportId, state = store.state) {
+  const a = myAthlete(state);
+  if (!a) return '';
+  for (const e of Object.values(a.sports)) {
+    if (e.id === sportId || !(e.proYear || e.level === 'pro' || e.contractId)) continue;
+    const name = sportOf(e.id).name.toLowerCase();
+    if (e.status === 'active') return `You play ${name} professionally. To go professional in another sport, you would retire from ${name} first.`;
+    const left = e.retiredYear ?? e.stoppedYear ?? 0;
+    if (state.year - left < SWITCH_BREAK) return `You left professional ${name} in ${left}. Nobody takes a switch seriously straight away: ${SWITCH_BREAK} seasons away from it first.`;
+  }
+  return '';
 }
 export function setPrimary(sportId, state = store.state) {
   const a = myAthlete(state);
