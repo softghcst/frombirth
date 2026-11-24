@@ -755,6 +755,19 @@ const { CHILD_CLOTHES_FIT: CHILD_FIT, CHILD_NECKLINE: CHILD_NECK } = await impor
   }
 }
 
+// Baby hair, by texture, drawn on the baby template: worn under 3, placed as drawn, in the baby's own hair color.
+{
+  for (const [tex, ids] of Object.entries(CUR.BABY_HAIR_BY_TEXTURE)) for (const id of ids) {
+    check(PART_BY_ID[id], `${id} exists`);
+    const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+    check(svg.includes('var(--hair-color'), `${id} takes the baby's hair color`);
+    const look = { ...resolveLook({ v: 3, inherited: { hairTexture: tex } }, 'bh', 'female'), babyHair: id };
+    check(dressFor(look, { age: 1, gender: 'female' }).hair === id && dressFor(look, { age: 4, gender: 'female' }).hair !== id, `${id} is a baby's (${tex})`);
+    const out = characterAvatarSvg(look, { age: 1, gender: 'female' });
+    check(new RegExp(`<g clip-path="[^"]*"><use href="[^"]*${id}`).test(out), `${id} is drawn as it was drawn, not moved`);
+  }
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);

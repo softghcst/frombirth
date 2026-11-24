@@ -124,7 +124,7 @@ export const ELDER_BROWS = 'brows_23_elder_bushy';
  * A baby's hair (under 3), by hair texture: drawn on the baby template (assets/clothes_templates/baby_head_template.png)
  * and placed as drawn. Being redrawn: until styles are added here, a baby has no hair drawn.
  */
-export const BABY_HAIR_BY_TEXTURE = { straight: [], wavy: [], curly: [], coily: [] };
+export const BABY_HAIR_BY_TEXTURE = { straight: ['hair_baby_straight_01_soft_fringe'], wavy: [], curly: [], coily: [] };
 
 export const KID_OUTFITS = { any: [], female: [], male: [] };
 

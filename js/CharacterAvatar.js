@@ -183,6 +183,8 @@ const clothesLayer = (id, headId, extra = '') => {
  */
 /** Children's clothes, drawn on a template of the child's own head (assets/clothes_templates/): already in place, drawn as they are. */
 const ASDRAWN = /^outfit_(baby|kid)_/;
+/** A baby's hair, drawn on the baby template: placed as drawn. */
+const BABY_HAIR_DRAWN = /^hair_baby_/;
 /** A child's outfit worn a little wider or taller than drawn, to cover the shoulders (scripts/fit-child-clothes.mjs). */
 const childFit = (id) => {
   const k = CHILD_CLOTHES_FIT[id];
@@ -347,7 +349,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   const under = (bottom) => `<path d="M-400 ${bottom}V${hairTop + 64}H112V${hairTop}H400V${hairTop + 64}H912V${bottom}Z"/>`;
   // Hair in front of the face ends at this head's own chin (in the hair's coordinates), so a lock that
   // falls across the face stops at the jawline, not in a straight edge part-way down the cheek.
-  const hf = d.hair && !fitted ? hairFit(d.hair, d.head) : null;
+  const hf = d.hair && !fitted && !BABY_HAIR_DRAWN.test(d.hair) ? hairFit(d.hair, d.head) : null;
   const chin = PART_BY_ID[d.head]?.fit?.chin;
   // An anchored older style is already in the head's own coordinates: it is cut at the chin as it is.
   const frontCut = hf && chin ? Math.round(T.face.top + (chin - 2 - hf.ty) / hf.sy) : fitted && legacy && chin ? Math.round(chin - 2) : FRONT_HAIR_CUT;
@@ -369,7 +371,8 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
   ];
   const f = fitTransforms(d.head, ageStage(ctx.age ?? 25), look.tweaks, { eyes: d.eyes, nose: d.nose, lips: d.lips });
   // Hair is fitted to this head from the measurements of both (js/avatar/hairFit.js).
-  const hairAt = hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
+  // A baby's hair is drawn on the baby template, where it belongs: as it is (BABY_HAIR_DRAWN).
+  const hairAt = BABY_HAIR_DRAWN.test(d.hair ?? '') ? '' : hf ? ` transform="translate(${hf.tx} ${hf.ty}) scale(${hf.sx} ${hf.sy}) translate(-256 ${-T.face.top})"` : f.hair ?? '';
   // A style too tall for the picture is flattened above the crown: the part above the line is drawn
   // again, squeezed toward it, so the two halves still meet along it.
   const hairLayer = (clip) => {
