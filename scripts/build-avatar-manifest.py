@@ -464,7 +464,7 @@ def hue_gap(a, b):
 # What each folder's main colour becomes. clothes: only everyday outfits; uniforms and costumes keep their colours.
 RECOLOUR = {'heads': 'skin-color', 'noses': 'skin-color', 'hair': 'hair-color',
             'eyebrows': 'brow-color', 'eyes': 'eye-color', 'lips': 'lip-color', 'makeup': 'blush-color', 'clothes': 'outfit-color'}
-FIXED_OUTFITS = re.compile(r'royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|doublet|jabot|capelet|'
+FIXED_OUTFITS = re.compile(r'^outfit_(baby|kid)_|royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|doublet|jabot|capelet|'
                            r'police|swat|military|firefighter|doctor|prison|grad|chef|tuxedo')
 
 
@@ -629,8 +629,14 @@ def hang_from_ears(name, elements, box):
     return f'hung from the ears ({len(halves)} piece(s))'
 
 
-def place(folder, name, elements):
+def place(folder, name, elements, vb=None):
     """Rewrites the elements' coordinates into the 512 frame. -> a note on how it was placed."""
+    # Children's clothes are drawn on a template of the child's own head (assets/clothes_templates/), so they are
+    # already where they belong: only scaled from that picture's size to the 512 frame, never moved or refitted.
+    if folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name) and vb:
+        s = 512 / vb[2]
+        transform_elements(elements, s, -vb[0] * s, -vb[1] * s)
+        return 'as drawn on the child template'
     box = bbox_of(elements)
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
@@ -1395,7 +1401,7 @@ def process(path, folder, force=False):
         notes.append(f'{main} -> var(--{RECOLOUR[folder]})')
     # An outfit drawn on a head, at that head's size (scripts/import_outfit.py), is already in the template frame.
     as_drawn = 'data-as-drawn="1"' in re.search(r'<svg\b[^>]*>', text, re.S).group(0)
-    notes.append('left as drawn, on the head it was drawn on' if as_drawn else place(folder, name, elements))
+    notes.append('left as drawn, on the head it was drawn on' if as_drawn else place(folder, name, elements, vb))
     paths = []
     for e in elements:
         role = ''
