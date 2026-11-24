@@ -544,6 +544,17 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(browsAt(60, 90, 'male') === CUR.ELDER_BROWS && browsAt(60, 90, 'female') === 'brows_10' && browsAt(60, 70, 'male') === 'brows_10', 'the bushy brows of old age are not an old man\'s alone');
 }
 
+// The sweetheart princess dress: for royal girls and women only.
+{
+  const id = 'outfit_45_princess_sweetheart';
+  check(PART_BY_ID[id]?.tags?.royal, 'the sweetheart princess dress is in the manifest, tagged royal');
+  check(CUR.ROYAL.outfits.female.includes(id) && !CUR.ROYAL.outfits.male.includes(id), 'it is among the royal dresses for girls, and not for boys');
+  check(!CATALOG.outfit?.some?.((o) => (o.id ?? o) === id), 'nobody who is not royal can choose it');
+  const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'sweet', 'female'), royalOutfit: id };
+  for (const age of [6, 24, 70]) check(dressFor(look, { age, gender: 'female', royal: { rank: 'royal' } }).clothes === id, `a princess of ${age} wears it`);
+  check(dressFor(look, { age: 24, gender: 'female' }).clothes !== id, 'a commoner does not');
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);
