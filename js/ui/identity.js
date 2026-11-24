@@ -1,5 +1,6 @@
 // Screens for identity (orientation, gender, name, transition) and for
 // practicing skills. The Self tab opens these.
+import { faceGenderOf } from '../avatar/render.js';
 import { player, country } from '../state.js';
 import { fmtMoney, esc } from '../util.js';
 import * as who from '../engine/identity.js';
@@ -88,7 +89,7 @@ async function openExplore(api) {
   if (!pick) return undefined;
   if (pick === 'stop') return report(api, who.stopQuestioning());
   if (opts.find((o) => o.id === pick)?.look) {
-    const next = await openAppearanceEditor({ title: 'A different look', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id, scope: 'style', confirm: 'Try it' });
+    const next = await openAppearanceEditor({ title: 'A different look', appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id, scope: 'style', confirm: 'Try it' });
     if (next) p.appearance = next;
   }
   return report(api, who.explore(pick));

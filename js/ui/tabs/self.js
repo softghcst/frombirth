@@ -1,5 +1,6 @@
 // Self tab: body and mind at a glance, life milestones, and the game menu.
 import { noticed } from '../../engine/talentGrowth.js';
+import { faceGenderOf } from '../../avatar/render.js';
 import { TALENTS } from '../../data/talents.js';
 import { getEra, eventsIn } from '../../engine/history.js';
 import { store } from '../../state.js';
@@ -100,7 +101,7 @@ export default {
     el.querySelector('[data-identity]').onclick = () => openIdentity(api);
     if (el.querySelector('[data-practice]')) el.querySelector('[data-practice]').onclick = () => openPractice(api);
     if (el.querySelector('[data-salon]')) el.querySelector('[data-salon]').onclick = async () => {
-      const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, seed: p.id,
+      const next = await openAppearanceEditor({ title: 'Beauty salon', appearance: p.appearance, age: p.age, gender: p.gender, face: faceGenderOf(p), seed: p.id,
         scope: 'style', note: salon.salonNote, confirm: 'Confirm appearance' });
       if (!next) return;
       const r = salon.applySalon(next);

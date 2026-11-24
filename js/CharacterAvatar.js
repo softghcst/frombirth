@@ -108,7 +108,7 @@ export function dressFor(look, ctx = {}) {
   }
   if (stage === 'older') {
     out.aging = AGING.filter(([from]) => age >= from).map(([, id]) => id);
-    if (age >= 84 && gender === 'male' && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
+    if (age >= 84 && (ctx.face ?? gender) === 'male' && out.eyebrows && !look.keepBrows) out.eyebrows = ELDER_BROWS;
   }
   // Clothes: prison, then crown, then work, then the person's own.
   if (young) out.clothes = look.babyClothes ?? 'outfit_baby_01_bib_onesie';

@@ -4,6 +4,7 @@
 // copy of the world. Each view remembers its own filters, scroll position and
 // what was expanded, so going deeper (a home, a person, their memories) and
 // coming back finds things as they were left.
+import { faceGenderOf } from '../avatar/render.js';
 import { store, player, country, livingNpcs } from '../state.js';
 import { esc, fmtMoney, theCountry } from '../util.js';
 import { openModal, messageModal, confirmModal } from './modals.js';
@@ -401,7 +402,7 @@ export function openExplore(api, start = {}) {
       if (!h) return '<p class="empty">That person is not in this family\'s record.</p>';
       const n = h.npcId ? store.state.npcs[h.npcId] : null;
       const age = n ? n.age : h.kind === 'player' ? player().age : h.died && h.born?.year ? h.died - h.born.year : 40;
-      return `<div class="world-head"><div class="avatar">${h.appearance ? avatarSvg({ age, gender: n?.gender ?? (h.kind === 'player' ? player().gender : 'female'), appearance: h.appearance, seed: h.npcId ?? h.id, label: h.firstName }) : ''}</div>
+      return `<div class="world-head"><div class="avatar">${h.appearance ? avatarSvg({ age, gender: n?.gender ?? (h.kind === 'player' ? player().gender : 'female'), ...(h.kind === 'player' && !n ? { face: faceGenderOf(player()) } : {}), appearance: h.appearance, seed: h.npcId ?? h.id, label: h.firstName }) : ''}</div>
           <div><h2 style="margin:0">${esc(h.name)}</h2><p class="muted" style="margin:0">${esc(h.relation ?? '')}${h.alive === false ? ' · died' : ''}</p></div></div>
         <div class="card"><h3>Places</h3>${kvt('Born', h.bornName)}${h.places.map((l) => kvt(`${l.from ?? '?'}${l.to ? `–${l.to}` : ''}`, `${l.flag} ${l.city ? `${l.city}, ` : ''}${l.jurisdiction.name}${l.derived ? ' (older record)' : ''}`)).join('')}</div>
         ${h.citizenship.length ? `<div class="card"><h3>Nationality</h3>${h.citizenship.map((c) => kvt(c.name, `${HOW[c.how] ?? c.how ?? ''}${c.lost ? `, until ${c.lost}` : ''}`)).join('')}${h.applicationsPrivate ? '<p class="muted">Their applications and papers are private.</p>' : ''}</div>` : ''}

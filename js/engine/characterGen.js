@@ -68,6 +68,12 @@ function createOnce(opts = {}) {
     if (!opts.sex) opts = { ...opts, sex: 'male', trans: opts.trans ?? false };
     else if (opts.sex !== 'male') opts = { ...opts, birthRank: 'royal' };
   }
+  // A random life with nothing chosen: the same odds as the life designer's "Randomize everything" (ui/screens/creator.js),
+  // so a random life can be trans or non-binary, and any sexuality (rollOrientation, below).
+  if (!opts.sex && !opts.gender && opts.trans == null) {
+    const kind = rng.weighted([['no', 95], ['yes', 3], ['nonbinary', 2]], (x) => x[1])[0];
+    opts = { ...opts, sex: rng.pick(['male', 'female']), trans: kind !== 'no', ...(kind === 'nonbinary' ? { gender: 'nonbinary' } : {}) };
+  }
   let identityGender, trans, gender;
   if (opts.sex === 'male' || opts.sex === 'female') {
     trans = opts.trans ?? (opts.gender === 'nonbinary' ? true : rng.chance(TRANS_RATE));
