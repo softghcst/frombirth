@@ -713,6 +713,18 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
   }
 }
 
+// Grown-ups' everyday clothes (OUTFITS.grownOnly): a child wears one of the others, the same one each time.
+{
+  for (const id of CUR.OUTFITS.grownOnly) {
+    check(PART_BY_ID[id] && CUR.OUTFITS.any.includes(id), `${id}: a grown-ups' outfit that is not an everyday outfit`);
+    const look = resolveLook({ ...randomAppearance(undefined, 'female'), style: { ...randomAppearance(undefined, 'female').style, outfit: id } }, `kid-${id}`, 'female');
+    const kid = dressFor(look, { age: 9, gender: 'female' }).clothes;
+    check(look.clothes === id && dressFor(look, { age: 30, gender: 'female' }).clothes === id, `${id}: a grown-up does not wear it`);
+    check(!CUR.OUTFITS.grownOnly.includes(kid) && CUR.OUTFITS.any.includes(kid), `${id}: a child of 9 wears ${kid}, not an everyday child's outfit`);
+    check(dressFor(look, { age: 9, gender: 'female' }).clothes === kid && dressFor(look, { age: 13, gender: 'female' }).clothes === id, `${id}: a child's swap is not steady, or lasts past 12`);
+  }
+}
+
 if (problems.length) {
   console.log([...new Set(problems)].slice(0, 30).join('\n'));
   console.log(`${problems.length} problem(s).`);

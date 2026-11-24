@@ -7,7 +7,7 @@ import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, li
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
-import { ELDER_BROWS } from './curation.js';
+import { ELDER_BROWS, OUTFITS } from './curation.js';
 import { kidsMayWear } from './fittedHair.js';
 import { icon } from '../ui/kit.js';
 
@@ -94,6 +94,8 @@ export function mountAppearanceEditor(el, o = {}) {
       // A child is not offered the grown-ups' styles.
       if (age < 13) list = list.filter((h) => kidsMayWear(h.id));
     }
+    // A child is not offered the grown-ups' clothes.
+    if (key === 'outfit' && age < 13) list = list.filter((x) => !OUTFITS.grownOnly.includes(x.id));
     // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.
     if (key === 'lips') list = list.filter((x) => lipsFor(x.id, o.gender) === x.id);
     // The bushy brows of old age are an old man's.

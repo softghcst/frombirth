@@ -255,6 +255,7 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
     kidHair: st.hair && st.hair !== 'bald' && !kidsMayWear(st.hair) ? seeded(stylesFor(g.hairTexture).length ? stylesFor(g.hairTexture) : HAIR_STYLES, seed, 'kidhair').id : null,
     makeup: st.makeup ? [st.makeup] : [], marks: g.marks.map((m) => part('marks', m).file),
     jewelry: st.jewelry, glasses: st.glasses, clothes: st.outfit, hat: st.hat,
+    kidClothes: OUTFITS.grownOnly.includes(st.outfit) ? seeded(OUTFITS.any.filter((x) => !OUTFITS.grownOnly.includes(x)), seed, 'kidclothes') : null,
     babyClothes: seeded(OUTFITS.baby, seed, 'babyclothes'), royalOutfit: seeded(ROYAL.outfits[sex], seed, 'royal'), monarchOutfit: seeded(ROYAL.outfits.monarch[sex], seed, 'monarch'),
     // The same, for someone under 18: grown-up dress (ROYAL.grownOnly) is not on offer.
     royalOutfitYoung: seeded(ROYAL.outfits[sex].filter((x) => !ROYAL.grownOnly.includes(x)), seed, 'royal'),
