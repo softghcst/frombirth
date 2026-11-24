@@ -48,7 +48,7 @@ const hub = await page.evaluate(() => document.querySelector('#modal-root .modal
 check(/Pets & Animals/.test(hub) && /My animals/.test(hub), 'it opens the animal hub');
 check(/House chronicle/.test(hub), 'which holds the house chronicle');
 check(await page.locator('#modal-root .modal-back').count() === 1, 'with one Back button');
-await page.evaluate(() => document.querySelector('#modal-root [data-chronicle]').click()); await page.waitForTimeout(400);
+await page.locator('#modal-root [data-chronicle]').first().click(); await page.waitForTimeout(400);
 const chron = await page.evaluate(() => document.querySelector('#modal-root .modal')?.innerText ?? '');
 check(/chronicle|House/i.test(chron) && !/Pets & Animals/.test(chron.split('\n')[0] ?? ''), 'the chronicle opens');
 // One way back is shown: the window's, or the page's own where it has one.
