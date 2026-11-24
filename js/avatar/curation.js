@@ -130,7 +130,7 @@ export const ROYAL = {
   outfits: { female: ['outfit_09_princess_gown', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
     male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
       'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: 'outfit_37_emperor_ermine', female: 'outfit_10_queen_collar' } },
-  crowns: { sovereign: 'crown_09_sovereign', empress: 'crown_12_empress', monarch: { male: 'crown_01_king', female: 'crown_03_queen' }, heir: { male: 'crown_11_prince_band', female: 'crown_10_princess_tiara' },
+  crowns: { sovereign: 'crown_09_sovereign', obsidian: 'crown_13_obsidian_sovereign', empress: 'crown_12_empress', monarch: { male: 'crown_01_king', female: 'crown_03_queen' }, heir: { male: 'crown_11_prince_band', female: 'crown_10_princess_tiara' },
     royal: { male: 'crown_11_prince_band', female: 'crown_10_princess_tiara' }, child: 'crown_11_prince_band', princess: 'crown_10_princess_tiara', noble: 'crown_06_noble_coronet' },
 };
 

@@ -73,7 +73,7 @@ check(!CATALOG.eyes.some((e) => e.id === CUR.EXPRESSION.crying), 'crying eyes ca
 check(!AVATAR_MANIFEST.heads.some((h) => /^face_0/.test(h.id)) && normalize({ v: 3, inherited: { head: 'face_02_round' } }, 'z').inherited.head === 'head_15_cherubic', 'withdrawn face shapes are not replaced');
 check(!AVATAR_MANIFEST.heads.some((h) => h.id === 'head_18_long_rect') && normalize({ v: 3, inherited: { head: 'head_18_long_rect' } }, 'z').inherited.head === 'head_12_sculpted', 'the withdrawn Rect face is not replaced by Sculpted');
 
-check(AVATAR_MANIFEST.hats.length === 0 && AVATAR_MANIFEST.crowns.length === 12, 'hats should be gone and crowns kept');
+check(AVATAR_MANIFEST.hats.length === 0 && AVATAR_MANIFEST.crowns.length === 13, 'hats should be gone and crowns kept');
 for (let i = 0; i < 300; i++) check(!CUR.HAIR_COVERS_FACE.includes(randomAppearance(i % 12, i % 2 ? 'female' : 'male').style.hair), 'a face-covering hairstyle was handed out at random');
 
 // 2. Curated ids.

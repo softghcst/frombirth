@@ -50,6 +50,14 @@ for (const gender of ['male', 'female']) {
   check(dressFor(her, { age: 50, gender: 'female', royal: royalDress('monarch', true, 'gb') }).crown !== 'crown_12_empress', 'a queen consort elsewhere does not');
   check(dressFor(her, { age: 25, gender: 'female', royal: royalDress('royal', false, 'jp') }).crown === 'crown_10_princess_tiara', 'a princess of Japan keeps her tiara');
 }
+// The obsidian sovereign crown: a reigning monarch who holds real power (an absolute or executive monarchy).
+{
+  const him = resolveLook({}, 'obs-m', 'male'); const her = resolveLook({}, 'obs-f', 'female');
+  for (const c of ['sa', 'ae', 'qa', 'ma', 'jo', 'kw', 'mc']) check(dressFor(him, { age: 55, gender: 'male', royal: royalDress('monarch', false, c) }).crown === 'crown_13_obsidian_sovereign', `the reigning monarch of ${c} wears the obsidian crown`);
+  for (const c of ['uk', 'se', 'nl', 'th', 'jp', null]) check(dressFor(him, { age: 55, gender: 'male', royal: royalDress('monarch', false, c) }).crown === 'crown_09_sovereign', `the reigning monarch of ${c} wears the gold sovereign crown`);
+  check(dressFor(her, { age: 55, gender: 'female', royal: royalDress('monarch', true, 'sa') }).crown !== 'crown_13_obsidian_sovereign', 'a consort there does not');
+  check(dressFor(him, { age: 30, gender: 'male', royal: royalDress('heir', false, 'sa') }).crown === 'crown_11_prince_band', 'nor does the crown prince');
+}
 const sov = MANIFEST.crowns.find((c) => c.id === 'crown_09_sovereign');
 check(sov && existsSync(new URL(`../assets/${sov.file}`, import.meta.url)), 'the sovereign crown is in the manifest and on disk');
 if (problems.length) { console.log(problems.join('\n')); process.exit(1); }

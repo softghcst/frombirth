@@ -12,9 +12,11 @@ export function royalDress(rank, consort = false, countryId = null) {
   if (!rank || rank === 'knight') return null;
   // An empire's crowned head is an Emperor or Empress (Japan): an empress wears the empress's crown.
   const imperial = MONARCHIES[countryId]?.ranks?.find(([r]) => r === 'monarch')?.[1] === 'Emperor';
+  // A monarch who holds real power (an absolute or executive monarchy) reigns in the obsidian crown.
+  const powerful = ['absolute', 'executive'].includes(MONARCHIES[countryId]?.type);
   // The one who reigns wears the sovereign's crown; a king or queen by marriage wears a consort's.
   if (rank === 'consort' || (rank === 'monarch' && consort)) return { rank: 'monarch', sovereign: false, imperial };
-  if (rank === 'monarch') return { rank, sovereign: true, imperial };
+  if (rank === 'monarch') return { rank, sovereign: true, imperial, powerful };
   return { rank: ['heir', 'royal'].includes(rank) ? rank : 'noble' };
 }
 
