@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { KID_OUTFITS, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH } from './curation.js';
+import { BABY_HAIR_BY_TEXTURE, KID_OUTFITS, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED, kidsMayWear } from './fittedHair.js';
 
@@ -241,15 +241,14 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   const st = a.style;
   const skin = part('skin', g.skin);
   const natural = INDEX.anyHair[g.hairColor].hex;
-  const babyHair = g.hairTexture === 'coily' ? ['hair_baby_04_mini_puff', 'hair_baby_05_twin_puffs', 'hair_baby_08_baby_ringlets']
-    : g.hairTexture === 'curly' ? ['hair_baby_01_curl_tuft', 'hair_baby_08_baby_ringlets', 'hair_baby_04_mini_puff']
-      : ['hair_baby_03_wispy_strands', 'hair_baby_06_boy_wave', 'hair_baby_10_toddler_fringe', 'hair_baby_02_fountain_pony'];
+  // A baby's hair, by texture (js/avatar/curation.js BABY_HAIR_BY_TEXTURE): being redrawn; until then, none.
+  const babyHair = BABY_HAIR_BY_TEXTURE[g.hairTexture] ?? BABY_HAIR_BY_TEXTURE.straight;
   const sex = gender === 'female' ? 'female' : 'male';
   const lips = lipsFor(g.lips, gender);
   const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
   return {
     tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips,
-    hair: st.hair === 'bald' ? null : st.hair, babyHair: seeded(babyHair, seed, 'babyhair'),
+    hair: st.hair === 'bald' ? null : st.hair, babyHair: babyHair.length ? seeded(babyHair, seed, 'babyhair') : null,
     // What a child wears while their own style is a grown-up's (a fitted style not marked for children): one of the
     // older styles that suits their hair, picked from the seed so it stays the same through childhood.
     kidHair: st.hair && st.hair !== 'bald' && !kidsMayWear(st.hair) ? seeded(stylesFor(g.hairTexture).length ? stylesFor(g.hairTexture) : HAIR_STYLES, seed, 'kidhair').id : null,

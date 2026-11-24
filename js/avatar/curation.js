@@ -120,6 +120,12 @@ export const ELDER_BROWS = 'brows_23_elder_bushy';
  * What a child of 7 to 13 (the kid head) wears: children's clothes, never a grown-up's (from 14, their own style). Empty for now:
  * the children's clothes are being redrawn, and until they are added here a child is drawn with no outfit.
  */
+/**
+ * A baby's hair (under 3), by hair texture: drawn on the baby template (assets/clothes_templates/baby_head_template.png)
+ * and placed as drawn. Being redrawn: until styles are added here, a baby has no hair drawn.
+ */
+export const BABY_HAIR_BY_TEXTURE = { straight: [], wavy: [], curly: [], coily: [] };
+
 export const KID_OUTFITS = { any: [], female: [], male: [] };
 
 export const OUTFITS = {
