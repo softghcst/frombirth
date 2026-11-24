@@ -332,6 +332,17 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   check(avatarSvg({ appearance: fresh, seed: 'f', age: 30 }).replace(/pw-[a-z]+-\d+/g, '') === avatarSvg({ appearance: again, seed: 'f', age: 30 }).replace(/pw-[a-z]+-\d+/g, ''), 'a saved copy of a face is drawn differently');
 }
 
+// Men's eyes: no lashes or winged liner; a woman's eyes are drawn as they are.
+{
+  const { EYE_MATCH } = CUR;
+  const eye = (eyes, gender) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_13_athletic', skin: 'tan', eyes }, style: { hair: 'bald' } }, seed: 'eyes', age: 40, gender });
+  for (const [lashed, plain] of Object.entries(EYE_MATCH.male)) {
+    check(eye(lashed, 'male').includes(`eyes/${plain}.svg`) && !eye(lashed, 'male').includes(`eyes/${lashed}.svg`), `a man is drawn with ${lashed}, which has lashes`);
+    check(eye(lashed, 'female').includes(`eyes/${lashed}.svg`), `a woman's ${lashed} is changed`);
+    check(!EYE_MATCH.male[plain], `${plain}, a man's eyes, has lashes of its own`);
+  }
+}
+
 // 12. Layers: the mouth over a beard, lines of age kept on the face, front hair cut at the chin.
 {
   const look = resolveLook({ v: 3, inherited: { head: 'head_13_athletic', skin: 'golden' }, style: { hair: 'hair_girl_long_04', keepHair: true, facialHair: 'facial_hair_04_bushy_full_beard' } }, 'layers', 'male');  // keepHair: his own hair at 70, not an elder style

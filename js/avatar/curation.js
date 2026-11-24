@@ -59,6 +59,14 @@ export const RESTING = {
  * A man is drawn with the `male` match of the mouth he was born with, a woman with the `female` match of hers
  * (lipsFor in js/avatar/catalog.js). What is saved, and passed on to children, is the mouth itself.
  */
+/**
+ * Eyes drawn on a man: the eye shapes with lashes or winged liner (10, 16, 25, 6, 22, 20, and the closed 7) are drawn as
+ * the plain shape closest to them (18, 19, 8, 9 have none). The eyes are still inherited as they are, so a son with his
+ * mother's eyes passes hers on; only how they are drawn on him changes.
+ */
+export const EYE_MATCH = {
+  male: { eyes_10: 'eyes_8', eyes_16: 'eyes_18', eyes_6: 'eyes_18', eyes_25: 'eyes_9', eyes_22: 'eyes_19', eyes_20: 'eyes_19', eyes_7: 'eyes_9' },
+};
 export const LIP_MATCH = {
   male: { lips_4: 'lips_masc_04', lips_6: 'lips_masc_14', lips_7: 'lips_masc_09', lips_11: 'lips_masc_03', lips_14: 'lips_masc_13' },
   female: { lips_masc_02: 'lips_8', lips_masc_03: 'lips_11', lips_masc_04: 'lips_4', lips_masc_06: 'lips_10', lips_masc_07: 'lips_14',

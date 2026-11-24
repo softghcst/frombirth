@@ -17,7 +17,7 @@
 // nose still shares one, and nobody's face changes between loads.
 import { AVATAR_MANIFEST, PART_BY_ID } from '../avatarManifest.js';
 import * as PAL from '../avatarPalettes.js';
-import { BABY_HAIR as BABY_HAIR_STYLES, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH } from './curation.js';
+import { BABY_HAIR as BABY_HAIR_STYLES, HAIR_TYPE, SUITS, TEXTURES, RESTING, OUTFITS, ROYAL, EXPRESSION, WITHDRAWN, LIP_MATCH, EYE_MATCH } from './curation.js';
 import { mixHex } from './color.js';
 import { FITTED_HAIR, FITTED_LOADED } from './fittedHair.js';
 
@@ -108,6 +108,9 @@ export function lipsFor(id, gender) {
   const match = gender === 'male' ? LIP_MATCH.male : gender === 'female' ? LIP_MATCH.female : null;
   return match?.[id] ?? id;
 }
+
+/** Eyes, drawn to suit a gender: a man's are drawn without lashes or winged liner (EYE_MATCH in js/avatar/curation.js). */
+export const eyesFor = (id, gender) => (gender === 'male' ? EYE_MATCH.male[id] ?? id : id);
 
 /** The option with this id, or undefined. */
 export const part = (key, id) => INDEX[key]?.[id];
@@ -255,7 +258,7 @@ export function resolveLook(appearance, seed = 'x', gender, { child = false } = 
   const lips = lipsFor(g.lips, gender);
   const colors = lipColors(skin, child ? null : st.lipColor, gender); // lipstick is a grown-up's choice
   return {
-    tweaks: g.tweaks, head: g.head, eyes: g.eyes, eyebrows: g.brows, nose: g.nose, lips,
+    tweaks: g.tweaks, head: g.head, eyes: eyesFor(g.eyes, gender), eyebrows: g.brows, nose: g.nose, lips,
     hair: st.hair === 'bald' ? null : st.hair, babyHair: ((s) => (s ? `babyhair_${s}` : null))(seeded(BABY_HAIR_STYLES.byTexture[g.hairTexture] ?? BABY_HAIR_STYLES.byTexture.straight, seed, 'babyhair')),
     keepHair: !!st.keepHair, hairTexture: g.hairTexture,
     // What a child is drawn with while their own style is a grown-up one (minAge): a style for their gender and hair

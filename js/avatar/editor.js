@@ -3,7 +3,7 @@
 // creator (every feature), the in-game salon (styling only) and the avatar
 // lab page. Each feature has its own row of options, the portrait updates on
 // every tap, and nothing is saved until the caller's confirm handler runs.
-import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor, hairSuitsGender } from './catalog.js';
+import { CATALOG, normalize, part, stylesFor, fittedFor, TWEAKS, shownTweaks, lipsFor, eyesFor, hairSuitsGender } from './catalog.js';
 import { avatarSvg } from './render.js';
 import { randomAppearance, defaultStyle, cloneAppearance } from './inherit.js';
 import { rng } from '../rng.js';
@@ -100,6 +100,7 @@ export function mountAppearanceEditor(el, o = {}) {
     }
     // Mouths are drawn to suit the person's gender (lipsFor), so only the ones that can be drawn for them are offered.
     if (key === 'lips') list = list.filter((x) => lipsFor(x.id, o.gender) === x.id);
+    if (key === 'eyes') list = list.filter((x) => eyesFor(x.id, o.gender) === x.id);  // a man's eyes have no lashes
     // The bushy brows of old age are an old man's.
     if (key === 'brows' && o.gender === 'female') list = list.filter((x) => x.id !== ELDER_BROWS);
     return list;
@@ -108,7 +109,7 @@ export function mountAppearanceEditor(el, o = {}) {
   function control(key) {
     const c = CONTROLS[key];
     const current = a[c.half][key];
-    const shown = key === 'lips' ? lipsFor(current, o.gender) : key === 'hair' ? elderHair(current, { age, gender: o.gender, keepHair: a.style.keepHair, texture: a.inherited.hairTexture }) : current;
+    const shown = key === 'lips' ? lipsFor(current, o.gender) : key === 'eyes' ? eyesFor(current, o.gender) : key === 'hair' ? elderHair(current, { age, gender: o.gender, keepHair: a.style.keepHair, texture: a.inherited.hairTexture }) : current;
     const isOn = (id) => (c.multi ? current.includes(id) : shown === id);
     const zoom = ZOOM[key];
     const options = optionsFor(key).map((x) => {
