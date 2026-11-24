@@ -3,7 +3,7 @@
 // assets/avatars/; this file turns what the game knows about a person
 // (their saved appearance, age, what they are doing) into a portrait.
 import { resolveLook } from './catalog.js';
-import { characterAvatarSvg } from '../CharacterAvatar.js';
+import { characterAvatarSvg, MAKEUP_AGE } from '../CharacterAvatar.js';
 import { mixHex } from './color.js';
 import { MONARCHIES } from '../data/royalty.js';
 
@@ -59,7 +59,7 @@ export function avatarSvg(o) {
   const age = o.age ?? 25;
   // Lipstick is a grown-up's choice: children's lips stay their natural color.
   // The face (lips and their color, an old man's brows) follows `face` where it is given: see faceGenderOf.
-  const look = resolveLook(o.appearance, seed, o.face ?? o.gender, { child: age < 13 });
+  const look = resolveLook(o.appearance, seed, o.face ?? o.gender, { child: age < MAKEUP_AGE });
   return characterAvatarSvg(look, { age, gender: o.gender, face: o.face ?? o.gender, mood: o.mood, jailed: o.jailed, royal: o.royal, career: o.career, emotion: o.emotion, label: o.label },
     { size: o.size, viewBox: o.viewBox });
 }

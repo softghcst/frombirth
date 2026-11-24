@@ -6,8 +6,10 @@
   "scripts": {
     "test": "node scripts/test-all.mjs",
     "snap-clothes": "node scripts/snap-clothes.mjs",
+    "fit-child-clothes": "node scripts/fit-child-clothes.mjs",
     "fit-hair": "python scripts/fit_hair.py",
     "fit-clothes": "node scripts/fit-clothes.mjs",
+    "import-outfit": "python3 scripts/import_outfit.py",
     "split-hair": "python scripts/split_batch.py && python scripts/fit_hair.py",
     "trace-hair": "python scripts/trace_hair_png.py && python scripts/fit_hair.py",
     "eye-template": "node scripts/make_eye_template.mjs",

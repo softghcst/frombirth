@@ -1,5 +1,6 @@
 // Settings: People you know, moving saves to another device with a transfer
 // code, and the account for cloud saves.
+import { hapticsOn, setHaptics } from '../haptics.js';
 import { esc } from '../util.js';
 import { getPeople, addPerson, removePerson, GENDERS, MAX_PEOPLE } from '../people.js';
 import { exportCode, importCode, collect, describe } from '../sync/bundle.js';
@@ -61,6 +62,7 @@ export async function openSettings(hooks = {}) {
       cancel: 'Done',
       options: [
         { value: 'appearance', label: 'Appearance', sub: THEME_NAMES[getTheme()] },
+        { value: 'haptics', label: 'Haptics', sub: hapticsOn() ? 'On: a light tap for Age up, answers and news. On iPhone, a single light tick.' : 'Off' },
         // Only while a life is being played: how far each turn moves the calendar.
         ...(store.state?.player?.alive ? [{ value: 'time', label: 'Time per turn', sub: `${STEP_NAMES[stepOf()]}${store.state.settings?.nextStep ? `, then ${STEP_NAMES[store.state.settings.nextStep].toLowerCase()}` : ''}` }] : []),
         // Only while a life is being played: how much of what could happen in love and family is told.
@@ -84,6 +86,7 @@ export async function openSettings(hooks = {}) {
       if (note != null) { const r = forkGame(store.state, note || `Age ${ageLabel(store.state.player.age, store.state.month)}`); hooks.onChange?.(); await messageModal({ body: r.text, tone: r.ok ? 'good' : 'bad' }); }
     }
     if (pick === 'summary') { store.state.settings = { ...(store.state.settings ?? {}), yearSummary: store.state.settings?.yearSummary !== true }; }
+    if (pick === 'haptics') { setHaptics(!hapticsOn()); continue; }
     if (pick === 'appearance') await openAppearance();
     if (pick === 'time') await openTime(hooks);
     if (pick === 'people') await openPeople();

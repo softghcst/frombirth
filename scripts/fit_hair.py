@@ -21,7 +21,7 @@ For each SVG in assets/hair_raw/ (drawn on the base head named in assets/landmar
 
 Heads: the adult heads in assets/landmarks.json (a head with no SVG, null landmarks, is skipped). The game's `kid`
 head is measured here the same way, but a style is fitted to it only when it is a children's style: the raw SVG's root
-has data-kids="true". Every other style is for grown-ups only; a child whose style it is wears another until 13
+has data-kids="true". Every other style is for grown-ups only; a child whose style it is wears another until 14
 (dressFor in js/CharacterAvatar.js), and the creator and salon do not offer it for a child.
 
 It also writes:

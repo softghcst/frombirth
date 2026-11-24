@@ -37,9 +37,12 @@ ASSETS = os.path.join(ASSETS_ROOT, 'avatars')
 # Head shapes live on their own in assets/heads/ (shared with the hair-warping pipeline) under clean names.
 # Saves store each head by its id, so the ids stay what they were: HEAD_IDS maps file name -> id.
 HEADS = os.path.join(ASSETS_ROOT, 'heads')
-HEAD_IDS = {'baby': 'head_00_baby', 'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
+HEAD_IDS = {'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
             'pixie': 'head_11_pixie', 'sculpted': 'head_12_sculpted', 'athletic': 'head_13_athletic', 'almond': 'head_14_almond',
             'cherubic': 'head_15_cherubic', 'angular': 'head_16_angular', 'dimple_oval': 'head_17_dimple_oval'}
+# Folders under assets/avatars/ that other scripts write and the game reads as they are: the per-head outfit copies
+# (scripts/fit-clothes.mjs). Their SVGs are not parts, so they are never sorted into the part folders.
+KEEP_FOLDERS = {'clothes_fit'}
 SHARED_BODY = 'dimple_oval'  # whose neck and shoulders the adult heads share (scripts/unify_head_necks.mjs: BASE)
 
 
@@ -122,7 +125,8 @@ def sort_into_folders(search_dirs):
     """Moves every .svg found under search_dirs into its folder (folder_dir) by its filename prefix."""
     moved, skipped = 0, []
     for top in search_dirs:
-        for d, _, files in os.walk(top):
+        for d, subdirs, files in os.walk(top):
+            subdirs[:] = [s for s in subdirs if s not in KEEP_FOLDERS]  # written by other scripts: never sorted
             for f in files:
                 if not f.lower().endswith('.svg'):
                     continue
@@ -460,7 +464,7 @@ def hue_gap(a, b):
 # What each folder's main colour becomes. clothes: only everyday outfits; uniforms and costumes keep their colours.
 RECOLOUR = {'heads': 'skin-color', 'noses': 'skin-color', 'hair': 'hair-color',
             'eyebrows': 'brow-color', 'eyes': 'eye-color', 'lips': 'lip-color', 'makeup': 'blush-color', 'clothes': 'outfit-color'}
-FIXED_OUTFITS = re.compile(r'royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|doublet|jabot|capelet|'
+FIXED_OUTFITS = re.compile(r'^outfit_(baby|kid)_|royal|prince|princess|queen|king|duchess|duke|emperor|imperial|noble|admiral|armor|ermine|doublet|jabot|capelet|'
                            r'police|swat|military|firefighter|doctor|prison|grad|chef|tuxedo')
 
 
@@ -625,8 +629,14 @@ def hang_from_ears(name, elements, box):
     return f'hung from the ears ({len(halves)} piece(s))'
 
 
-def place(folder, name, elements):
+def place(folder, name, elements, vb=None):
     """Rewrites the elements' coordinates into the 512 frame. -> a note on how it was placed."""
+    # Children's clothes are drawn on a template of the child's own head (assets/clothes_templates/), so they are
+    # already where they belong: only scaled from that picture's size to the 512 frame, never moved or refitted.
+    if folder == 'clothes' and re.match(r'outfit_(baby|kid)_', name) and vb:
+        s = 512 / vb[2]
+        transform_elements(elements, s, -vb[0] * s, -vb[1] * s)
+        return 'as drawn on the child template'
     box = bbox_of(elements)
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
@@ -1389,7 +1399,9 @@ def process(path, folder, force=False):
             notes.append(f'made room for whites round {m} iris(es)')
     if main:
         notes.append(f'{main} -> var(--{RECOLOUR[folder]})')
-    notes.append(place(folder, name, elements))
+    # An outfit drawn on a head, at that head's size (scripts/import_outfit.py), is already in the template frame.
+    as_drawn = 'data-as-drawn="1"' in re.search(r'<svg\b[^>]*>', text, re.S).group(0)
+    notes.append('left as drawn, on the head it was drawn on' if as_drawn else place(folder, name, elements, vb))
     paths = []
     for e in elements:
         role = ''
@@ -1402,7 +1414,7 @@ def process(path, folder, force=False):
         stroke = f';stroke:{e["stroke"]};stroke-width:5;stroke-linejoin:round' if e.get('stroke') else ''
         paths.append(f'<path{role} style="fill:{paint}{stroke}"{extra} d="{path_d(e["cmds"])}"/>')
     svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" '
-           f'data-pathways="1" data-source-viewbox="{" ".join(fmt(v) for v in vb)}">'
+           f'data-pathways="1"{' data-as-drawn="1"' if as_drawn else ''} data-source-viewbox="{" ".join(fmt(v) for v in vb)}">'
            f'<g id="art">{"".join(paths)}</g></svg>\n')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(svg)
@@ -1472,14 +1484,35 @@ def label(name):
     return text[:1].upper() + text[1:]
 
 
+def previous_entries():
+    """Labels and tags already in the manifest, by id. Kept for parts already listed: a label or tag set by hand there
+    (a crown's rank, say) is not undone by building again. Only new parts get them from their names."""
+    out = {}
+    if os.path.exists(MANIFEST):
+        for line in open(MANIFEST, encoding='utf-8'):
+            line = line.strip().rstrip(',')
+            if line.startswith('{"id"'):
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                out[e['id']] = e
+    return out
+
+
 def write_manifest():
     data = {}
+    before = previous_entries()
+    def entry(folder, f, i, rel):
+        old = before.get(i)
+        tags = old.get('tags') if old else tags_for(folder, i)
+        return {'id': i, 'file': f'{rel}/{f}', 'label': old['label'] if old else label(i), **({'tags': tags} if tags else {})}
     for folder in FOLDERS:
         d = folder_dir(folder)
         files = sorted(f for f in os.listdir(d) if f.endswith('.svg')) if os.path.isdir(d) else []
         rel = os.path.relpath(d, ASSETS_ROOT).replace(os.sep, '/')
         ids = sorted(((f, part_id(folder, f[:-4])) for f in files), key=lambda t: t[1])  # by id, so renaming a file never reorders the list
-        data[folder] = [{'id': i, 'file': f'{rel}/{f}', 'label': label(i), **({'tags': tags_for(folder, i)} if tags_for(folder, i) else {})} for f, i in ids]
+        data[folder] = [entry(folder, f, i, rel) for f, i in ids]
         if folder == 'heads':  # each head is measured, so parts can be moved onto it exactly
             for item in data[folder]:
                 text = open(os.path.join(ASSETS_ROOT, item['file']), encoding='utf-8').read()
@@ -1551,7 +1584,7 @@ def main(argv):
         for z in zips:  # the packs are temporary once their contents are sorted
             os.remove(z)
     # Loose SVGs dropped anywhere under assets/avatars/ are sorted too.
-    loose = [os.path.join(ASSETS, d) for d in os.listdir(ASSETS) if os.path.isdir(os.path.join(ASSETS, d)) and d not in FOLDERS]
+    loose = [os.path.join(ASSETS, d) for d in os.listdir(ASSETS) if os.path.isdir(os.path.join(ASSETS, d)) and d not in FOLDERS and d not in KEEP_FOLDERS]
     moved, skipped = sort_into_folders([ASSETS] + loose)
     for d in loose:
         if not any(f.endswith('.svg') for _, _, fs in os.walk(d) for f in fs):

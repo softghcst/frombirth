@@ -78,11 +78,10 @@ for (let i = 0; i < 300; i++) check(!CUR.HAIR_COVERS_FACE.includes(randomAppeara
 
 // 2. Curated ids.
 const curated = [...Object.keys(CUR.HAIR_TYPE), ...Object.values(CUR.RESTING).flat(), ...Object.values(CUR.EXPRESSION), CUR.ELDER_BROWS, CUR.BABY_BROWS, ...Object.values(CUR.OUTFITS).flat(),
-  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, CUR.ROYAL.outfits.baby, ...Object.values(CUR.ROYAL.outfits.monarch).flat(), ...Object.values(CUR.ROYAL.outfits.noble).flat(), ...Object.values(CUR.ROYAL.outfits.nobleByTitle).flatMap((x) => Object.values(x).flat()),
+  ...CUR.ROYAL.outfits.female, ...CUR.ROYAL.outfits.male, ...[CUR.ROYAL.outfits.baby].filter(Boolean), ...Object.values(CUR.ROYAL.outfits.monarch).flat(), ...Object.values(CUR.ROYAL.outfits.noble).flat(), ...Object.values(CUR.ROYAL.outfits.nobleByTitle).flatMap((x) => Object.values(x).flat()),
   ...Object.values(CUR.ROYAL.crowns).flatMap((x) => (typeof x === 'string' ? [x] : Object.values(x))).filter(Boolean),
-  ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), CUR.PRISON, CUR.GRADUATION.outfit, ...CUR.HAIR_COVERS_FACE];
-// An empty slot (null) is allowed: the clothes lists are empty while new clothes are made.
-for (const id of curated.filter(Boolean)) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
+  ...Object.values(CUR.CAREER_DRESS).flatMap((d) => [d.outfit, d.hat, d.senior?.outfit, d.senior?.hat]).filter(Boolean), ...[CUR.PRISON, CUR.GRADUATION.outfit].filter(Boolean), ...CUR.HAIR_COVERS_FACE];
+for (const id of curated) check(!!PART_BY_ID[id], `curation names a part that does not exist: ${id}`);
 for (const h of AVATAR_MANIFEST.hair) if (!/baby/.test(h.id)) check(!!CUR.HAIR_TYPE[h.id], `hairstyle without a texture: ${h.id}`);
 
 // 3. Colors that saves store by id.
@@ -142,7 +141,7 @@ check(coily / deep > 0.7, `deep skin tones should mostly have curly or coily hai
 for (let i = 0; i < 200; i++) {
   const mom = randomAppearance(rng.int(0, 11), 'female');
   const dad = randomAppearance(rng.int(0, 11), 'male');
-  mom.style.hairDye = 'pink'; dad.style.outfit = 'outfit_03_suit';
+  mom.style.hairDye = 'pink'; dad.style.outfit = 'outfit_57_polo_shirt';
   const kid = ensureStyled(inheritAppearance(mom, dad), i % 2 ? 'female' : 'male');
   valid(normalize(kid, `k${i}`), `child ${i}`);
   check(kid.style.hairDye == null, 'a parent\'s dye reached a child');
@@ -168,11 +167,13 @@ for (const age of [0, 1, 3, 7, 12, 15, 30, 49, 55, 66, 80, 101]) {
     for (const m of svg.matchAll(/href="\.\/assets\/([^"#]+)#(art|skin)"/g)) check(existsSync(new URL(`assets/${m[1]}`, root)), `portrait uses a missing file ${m[1]}`);
     check(!/undefined|NaN|null/.test(svg), `portrait at ${age} (${JSON.stringify(s)}) has a hole: ${svg.match(/.{40}(undefined|NaN|null).{20}/)?.[0]}`);
     const d = dressFor(resolveLook(a, 'x', 'female'), { age, ...s });
-    if (s.jailed) check(d.clothes === CUR.PRISON, 'prisoners are not in prison clothes');
+    // Prison clothes and work uniforms are being redrawn: until then, a prisoner or a police officer wears their own clothes.
+    if (s.jailed && CUR.PRISON) check(d.clothes === CUR.PRISON, 'prisoners are not in prison clothes');
     if (s.royal?.rank === 'monarch' && age >= 13) check(/crown_0[13]/.test(d.crown ?? ''), 'a monarch has no crown');
-    if (ageStage(age) === 'baby') check(d.head === 'head_00_baby' && !d.glasses && !d.jewelry.length, 'a baby is wearing grown-up things');
+    if (ageStage(age) === 'baby') check(d.head === 'head_00_toddler' && d.pacifier && !d.glasses && !d.jewelry.length, 'a baby is wearing grown-up things, or has no binky');
+    if (ageStage(age) !== 'baby') check(!d.pacifier, `a ${age}-year-old still has a binky`);
     if (age >= 66) check(d.aging.length >= 2, 'no lines with age');
-    if (s.career?.id === 'police' && age >= 18 && CUR.CAREER_DRESS.police.outfit) check(/police|swat/.test(d.clothes), 'police are not in uniform');
+    if (CUR.CAREER_DRESS.police && s.career?.id === 'police' && age >= 18) check(/police|swat/.test(d.clothes), 'police are not in uniform');
     check(filesFor(resolveLook(a, 'x'), { age, ...s }).every((f) => existsSync(new URL(f.replace('./', ''), root))), 'filesFor lists a missing file');
   }
 }
@@ -221,7 +222,7 @@ check(hairFit('hair_boy_updo_15_headband_puff', 'head_12_sculpted').squash < 1 &
 for (const id of ['hair_boy_medium_11', 'hair_girl_long_11']) check(readFileSync(new URL(`assets/${PART_BY_ID[id].file}`, root), 'utf8').includes('data-refit="1"'), `${id} has lost its repair`);
 check(fitGaps('hair_boy_medium_11', 'head_00_kid').top <= 2 && fitGaps('hair_boy_medium_03', 'head_00_kid').top <= 2, 'the arch styles show background over the forehead again');
 // A baby's tuft is left where it was put.
-for (const h of tufts) for (const head of ['head_00_baby', 'head_00_toddler']) check(JSON.stringify(hairFit(h.id, head)) === JSON.stringify(plainFit(head)), `${h.id} on ${head}: a baby's hair was refitted`);
+for (const h of tufts) for (const head of ['head_00_toddler']) check(JSON.stringify(hairFit(h.id, head)) === JSON.stringify(plainFit(head)), `${h.id} on ${head}: a baby's hair was refitted`);
 // The reference faces: hair that already sat well is left very nearly as drawn.
 const REFERENCES = { asel: ['hair_updo_03', 'head_15_cherubic'], zhi: ['hair_boy_medium_09', 'head_16_angular'], mehmet: ['hair_boy_updo_03_curly_puff', 'head_16_angular'], yoselin: ['hair_girl_long_13', 'head_17_dimple_oval'] };
 for (const [who, [hair, head]] of Object.entries(REFERENCES)) {
@@ -241,7 +242,7 @@ check(spread(adults.map((h) => share(h, frameFor(h.id)))) < spread(adults.map((h
 check(spread(adults.map((h) => share(h, frameFor(h.id)))) <= 1.08, `adult faces differ too much in size (${spread(adults.map((h) => share(h, frameFor(h.id)))).toFixed(3)})`);
 check(Math.max(...adults.map((h) => eyeLine(h, frameFor(h.id)))) - Math.min(...adults.map((h) => eyeLine(h, frameFor(h.id)))) < 0.002, 'adult eyes are not on one line');
 check(adults.every((h) => Math.abs(frameFor(h.id).x + frameFor(h.id).size / 2 - h.fit.cx) < 0.1), 'an adult face is not centered');
-for (const id of ['head_00_baby', 'head_00_toddler', 'head_00_kid']) check(frameFor(id) === FRAME, `${id} should keep the plain picture`);
+for (const id of ['head_00_toddler', 'head_00_kid']) check(frameFor(id) === FRAME, `${id} should keep the plain picture`);
 check(share(PART_BY_ID.head_00_toddler, FRAME) > share(PART_BY_ID.head_00_kid, FRAME), 'a toddler\'s head should be bigger in the picture than a child\'s');
 // Hair height does not move or resize the face: the same head has the same picture whatever is on it.
 const framed = (hair, age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair } }, seed: 'frame', age }).match(/viewBox="([^"]+)"/)[1];
@@ -254,20 +255,22 @@ check(framed('hair_boy_short_07', 3) === `${FRAME.x} ${FRAME.y} ${FRAME.size} ${
   check(strip(avatarSvg(who)) === strip(avatarSvg({ ...who, size: 42 })) && strip(avatarSvg(who)) === strip(avatarSvg({ ...who, size: 96, label: undefined })), 'the same person is drawn differently at different sizes');
 }
 
-// 9. Features read on every skin tone. Light faces are untouched; deep ones get softer whites and firmer features.
+// 9. Features read on every skin tone. Light faces are untouched; deep ones get softer whites and firmer lines; the brows are never outlined.
 const tone = (id) => part('skin', id).hex;
 check(['porcelain', 'ivory', 'rose_beige', 'sand', 'golden', 'olive', 'tan'].every((id) => deepness(tone(id)) === 0), 'a light skin tone is being adjusted');
 check(deepness(tone('ebony')) === 1 && deepness(tone('espresso')) > 0.9 && deepness(tone('chestnut')) > 0 && deepness(tone('chestnut')) < deepness(tone('umber')), 'deep skin tones are not adjusted in step with their depth');
 {
   const face = (skin) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin, eyes: 'eyes_10', eyeColor: 'brown', brows: 'brows_10', nose: 'nose_10', lips: 'lips_6', hairColor: 'black', hairTexture: 'coily', marks: [] },
-    style: { hair: 'hair_boy_short_07', jewelry: [], outfit: 'outfit_01_tee' } }, seed: 'tone', age: 30 });
+    style: { hair: 'hair_boy_short_07', jewelry: [], outfit: 'outfit_57_polo_shirt' } }, seed: 'tone', age: 30 });
   const light = face('sand');
   const deep = face('ebony');
   const parts = (svg) => [...svg.matchAll(/href="([^"#]+)#art"/g)].map((m) => m[1]).join(' ');
   const places = (svg) => [...svg.matchAll(/transform="([^"]+)"/g)].map((m) => m[1]).join(' ');
   check(parts(light) === parts(deep) && places(light) === places(deep), 'the same features are not the same shapes in the same places on a deeper skin tone');
   check(!/eye-white|stroke/.test(light.replace(/--hair-stroke:[^;"]*;?/, '')), 'a light face has been given extra weight'); // --hair-stroke is the hair outline's color, on every face
-  check(/--eye-white:#[0-9a-f]{6}/.test(deep) && /stroke-width/.test(deep) && /paint-order:stroke/.test(deep), 'a deep face has not been made more readable');
+  check(/--eye-white:#[0-9a-f]{6}/.test(deep) && /--line-width:/.test(deep), 'a deep face has not been made more readable');
+  // The brows are drawn as they are on every tone: no light edge (it read as a white outline on deep skin).
+  check(!/eyebrows\/[^"]+#art"[^>]*stroke/.test(deep), 'the brows on a deep face have an outline');
   check(deep.includes(`--skin-color:${tone('ebony')}`), 'the skin tone itself was changed');
   // The nose is the skin itself: on every tone its skin is the face's. On deeper tones only its lines are heavier.
   for (const t of part('skin', 'porcelain') ? CATALOG.skin : []) {
@@ -336,7 +339,7 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
 // 11. A saved face keeps its head, hair and eyes, and is drawn with those files.
 {
   const saved = JSON.parse(JSON.stringify({ v: 3, inherited: { head: 'head_16_angular', skin: 'umber', eyes: 'eyes_22', eyeColor: 'hazel', brows: 'brows_14', nose: 'nose_17', lips: 'lips_12', hairColor: 'black', hairTexture: 'coily', marks: [], tweaks: { eyeGap: 1 } },
-    style: { hair: 'hair_boy_updo_15_headband_puff', jewelry: [], outfit: 'outfit_22_denim' } }));
+    style: { hair: 'hair_boy_updo_15_headband_puff', jewelry: [], outfit: 'outfit_55_zip_hoodie' } }));
   const a = normalize(saved, 'npc_saved');
   check(a.inherited.head === 'head_16_angular' && a.style.hair === 'hair_boy_updo_15_headband_puff' && a.inherited.eyes === 'eyes_22' && a.inherited.tweaks.eyeGap === 1, 'a saved face lost its head, hair or eyes');
   const svg = avatarSvg({ appearance: saved, seed: 'npc_saved', age: 40 });
@@ -571,25 +574,26 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   let seed = 'bh'; for (let k = 0; k < 50 && !resolveLook(a, seed, 'female').babyHair; k++) seed = `bh${k}`;
   const style = resolveLook(a, seed, 'female').babyHair.slice(9);
   check(CUR.BABY_HAIR.byTexture.curly.includes(style), `a curly-haired baby was given ${style}`);
-  check(avatarSvg({ appearance: a, seed, age: 1, gender: 'female' }).includes(`hair_baby/${style}_baby.svg#hair_base`), 'a baby is not drawn with the baby hair made for the baby head');
-  check(avatarSvg({ appearance: a, seed, age: 3, gender: 'female' }).includes(`hair_baby/${style}_toddler.svg#hair_base`), 'a toddler is not drawn with the baby hair made for the toddler head');
+  // Babies (under 3) share the young head with toddlers, and wear the baby hair made for it; from 3, a child's style.
+  check(avatarSvg({ appearance: a, seed, age: 1, gender: 'female' }).includes(`hair_baby/${style}_toddler.svg#hair_base`), 'a baby is not drawn with the baby hair made for the young head');
+  check(!avatarSvg({ appearance: a, seed, age: 3, gender: 'female' }).includes('hair_baby/'), 'a three-year-old still has baby hair');
   check(!avatarSvg({ appearance: a, seed, age: 8, gender: 'female' }).includes('hair_baby/'), 'a child still has baby hair');
 }
 
-// Babies and toddlers have a binkie in place of a mouth: blue for a boy, pink for a girl. A child of five has a mouth again.
+// Babies (under 3) have a binky in place of a mouth: blue for a boy, pink for a girl. From 3, a mouth again.
 {
   const face = (age, gender) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: 'bald' } }, seed: 'binkie', age, gender });
-  for (const [gender, hex] of [['male', CUR.PACIFIER.boy], ['female', CUR.PACIFIER.girl]]) for (const age of [1, 3]) {
+  for (const [gender, hex] of [['male', CUR.PACIFIER.boy], ['female', CUR.PACIFIER.girl]]) for (const age of [0, 2]) {
     const svg = face(age, gender);
-    check(svg.includes('pacifiers/pacifier_01.svg#art') && svg.includes(`--binkie-color:${hex}`) && !/lips\/lips_/.test(svg), `a ${age === 1 ? 'baby' : 'toddler'} ${gender === 'male' ? 'boy' : 'girl'} has no ${hex} binkie in place of a mouth`);
+    check(svg.includes('pacifiers/pacifier_01.svg#art') && svg.includes(`--binkie-color:${hex}`) && !/lips\/lips_/.test(svg), `a ${age}-year-old ${gender === 'male' ? 'boy' : 'girl'} has no ${hex} binky in place of a mouth`);
   }
-  check(!face(5, 'female').includes('pacifier') && /lips\/lips_/.test(face(5, 'female')), 'a five-year-old still has a binkie, or no mouth');
+  check(!face(3, 'female').includes('pacifier') && /lips\/lips_/.test(face(3, 'female')), 'a three-year-old still has a binky, or no mouth');
   // Round, open eyes until thirteen: a heavy-lidded shape is drawn as the round one it maps to.
   const eyed = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan', eyes: 'eyes_10' }, style: { hair: 'bald' } }, seed: 'eyes', age, gender: 'female' });
   check(eyed(1).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && CUR.BABY_EYES.includes(CUR.babyEyes('eyes_10')) && !eyed(3).includes('eyes/eyes_10.svg'), 'a baby or toddler is drawn with grown-up eyes');
-  // Children (5 to 12) keep the toddler eyes; their own eyes come back at thirteen.
-  for (const age of [5, 9, 12]) check(eyed(age).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
-  check(eyed(13).includes('eyes/eyes_10.svg'), 'a thirteen-year-old does not have the eyes they were born with');
+  // Children (to 13) keep the toddler eyes; their own eyes come back at fourteen, with the grown-up head.
+  for (const age of [5, 9, 13]) check(eyed(age).includes(`eyes/${CUR.babyEyes('eyes_10')}.svg`) && !eyed(age).includes('eyes/eyes_10.svg'), `a ${age}-year-old is drawn with grown-up eyes`);
+  check(eyed(14).includes('eyes/eyes_10.svg'), 'a fourteen-year-old does not have the eyes they were born with');
   // One soft pair of brows: no lighter edge on any skin, no lid crease under them, and never the crying eyes at rest.
   for (const skin of ['porcelain', 'umber', 'ebony']) {
     const svg = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin }, style: { hair: 'bald' } }, seed: 'brows', age: 1, gender: 'male', mood: 70 });
@@ -607,14 +611,18 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
   for (const [outfit, heads] of Object.entries(FITTED_CLOTHES)) {
     check(PART_BY_ID[outfit] && drawnFor[outfit], `${outfit}: a fitted outfit that is not in the manifest or clothes_drawn_for.json`);
     for (const h of heads) {
-      const file = `assets/avatars/clothes_fit/${outfit}__${h}.svg`;
+      const file = `assets/clothes_fit/${outfit}__${h}.svg`;
       check(existsSync(new URL(file, root)), `${file} is missing: run npm run fit-clothes`);
       const look = { ...resolveLook({}, 'neck', 'male'), head: headOf(h), clothes: outfit };
       check(characterAvatarSvg(look, { age: 30, gender: 'male' }).includes(`clothes_fit/${outfit}__${h}.svg#art`), `${outfit} on ${h}: the portrait does not use the neck-fitted copy`);
       check(filesFor(look, { age: 30, gender: 'male' }).some((f) => f.endsWith(`${outfit}__${h}.svg`)), `${outfit} on ${h}: the fitted copy is not preloaded`);
     }
-    const own = { ...resolveLook({}, 'neck', 'male'), head: headOf(drawnFor[outfit]), clothes: outfit };
-    check(characterAvatarSvg(own, { age: 30, gender: 'male' }).includes(`${PART_BY_ID[outfit].file}#art`), `${outfit} on ${drawnFor[outfit]}, the head it was drawn for: not its own file`);
+    // The head it was drawn on wears the outfit's own file, unless that head needed fitting too (its shoulders lifted).
+    const how = drawnFor[outfit]; const ref = typeof how === 'string' ? how : how.head;
+    if (!heads.includes(ref)) {
+      const own = { ...resolveLook({}, 'neck', 'male'), head: headOf(ref), clothes: outfit };
+      check(characterAvatarSvg(own, { age: 30, gender: 'male' }).includes(`${PART_BY_ID[outfit].file}#art`), `${outfit} on ${ref}, the head it was drawn for: not its own file`);
+    }
   }
 }
 
@@ -661,9 +669,18 @@ check(CATALOG.lips.some((l) => l.id === 'lips_21') && PART_BY_ID[CUR.EXPRESSION.
 
 // None of the new royal and noble clothes is for children: every royal under 18 wears something else, and something royal.
 for (const g of ['male', 'female']) for (const s of ['k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'k8']) for (const age of [5, 9, 13, 17]) for (const rank of ['royal', 'heir', 'monarch']) {
-  const c = dressFor(resolveLook(randomAppearance(undefined, g), s, g), { age, gender: g, royal: { rank } }).clothes;
+  const look = resolveLook(randomAppearance(undefined, g), s, g);
+  const c = dressFor(look, { age, gender: g, royal: { rank } }).clothes;
   check(!CUR.ROYAL.grownOnly.includes(c), `a ${rank} of ${age} is not in grown-up dress (${c})`);
-  check((rank === 'monarch' ? CUR.ROYAL.outfits.monarch[g] : CUR.ROYAL.outfits[g]).includes(c), `a ${rank} of ${age} still wears royal dress (${c})`);
+  // A royal child (baby, toddler or kid head, under 14) is dressed as a child: the children's clothes are being redrawn,
+  // so for now nothing (or the baby's royal dress, once there is one); from 14, in royal dress.
+  if (['baby', 'toddler', 'kid'].includes(ageStage(age))) check(c == null || c === CUR.ROYAL.outfits.baby || [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g], ...CUR.OUTFITS.baby].includes(c), `a ${rank} of ${age} is dressed as a child (${c})`);
+  else {
+    // A royal teen wears royal dress drawn for their age; while all of it is grown-up dress, their own clothes.
+    const list = rank === 'monarch' ? CUR.ROYAL.outfits.monarch[g] : CUR.ROYAL.outfits[g];
+    if (list.some((x) => !CUR.ROYAL.grownOnly.includes(x))) check(list.includes(c), `a ${rank} of ${age} still wears royal dress (${c})`);
+    else check(c === look.clothes, `a ${rank} of ${age}, with no royal dress for their age, wears their own clothes (${c})`);
+  }
 }
 
 // The noblewoman's cameo dress: for titled women of the nobility only.
@@ -743,7 +760,7 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
     const svg = characterAvatarSvg(look, { age: 30, gender: 'female' });
     check(svg.includes(`scale(${k.s}) translate(-256 -${AVATAR_TEMPLATE.clothesTop})`), `${id} is drawn fitted`);
   }
-  check(!SNAP.outfit_01_tee, 'the original outfits are drawn as they were');
+  check(!SNAP.outfit_57_polo_shirt, 'an outfit drawn to the body is drawn as it was');
 }
 
 // Every royal and noble outfit reaches past the bottom of the lowest portrait (the broadest face shows down to about 524),
@@ -763,20 +780,42 @@ const { CLOTHES_SNAP: SNAP } = await import('../js/avatar/clothesSnap.js');
   }
 }
 
-// Children of 5 to 12 wear children's clothes, never a grown-up's; from 13, their own style.
+// Children (to 13, the kid head) wear children's clothes, never a grown-up's; from 14, their own style. The children's and
+// babies' clothes are being redrawn: until they are added, a child under 13 (royal or not) is drawn with no outfit.
 {
-  const kids = [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS.female, ...CUR.KID_OUTFITS.male];
   for (const g of ['male', 'female']) for (const s of ['c1', 'c2', 'c3', 'c4', 'c5', 'c6']) {
-    const look = { ...resolveLook(randomAppearance(undefined, g), s, g), clothes: 'outfit_24_leather' };
-    for (const age of [5, 9, 12]) {
+    const look = { ...resolveLook(randomAppearance(undefined, g), s, g), clothes: 'outfit_55_zip_hoodie' };
+    for (const age of [0, 2, 3, 6, 7, 9, 13]) {
       const c = dressFor(look, { age, gender: g }).clothes;
-      check([...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g]].includes(c), `a child of ${age} wears children's clothes (${c})`);
+      check(c == null || [...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS[g], ...CUR.OUTFITS.baby].includes(c), `a child of ${age} wears no grown-up's clothes (${c})`);
       check(dressFor(look, { age, gender: g, career: { id: 'police' } }).clothes === c, 'and no uniform');
+      const r = dressFor(look, { age, gender: g, royal: { rank: 'royal' } });
+      check(r.clothes === c || (age < 7 && r.clothes === CUR.ROYAL.outfits.baby), `a royal child of ${age} is dressed as a child (${r.clothes})`);
     }
-    check(dressFor(look, { age: 13, gender: g }).clothes === 'outfit_24_leather', 'from 13, their own style');
-    check(dressFor(look, { age: 9, gender: g, royal: { rank: 'royal' } }).clothes !== look.kidClothes || CUR.ROYAL.outfits[g].includes(dressFor(look, { age: 9, gender: g, royal: { rank: 'royal' } }).clothes), 'a royal child still wears royal clothes');
+    check(dressFor(look, { age: 14, gender: g }).clothes === 'outfit_55_zip_hoodie', 'from 14, their own style');
   }
-  check(kids.every((id) => PART_BY_ID[id]), 'every children\'s outfit exists');
+  check(![...CUR.KID_OUTFITS.any, ...CUR.KID_OUTFITS.female, ...CUR.KID_OUTFITS.male, ...CUR.OUTFITS.baby].some((id) => !PART_BY_ID[id]), 'every children\'s outfit listed exists');
+}
+
+const { CHILD_CLOTHES_FIT: CHILD_FIT, CHILD_NECKLINE: CHILD_NECK } = await import('../js/avatar/childClothesFit.js');
+// Baby clothes, drawn on the baby head's own template: worn from birth to 6, placed exactly as drawn (no refitting),
+// in the colors they were drawn in.
+{
+  for (const id of CUR.OUTFITS.baby) {
+    check(PART_BY_ID[id], `${id} exists`);
+    const svg = readFileSync(new URL('../assets/' + PART_BY_ID[id].file, import.meta.url), 'utf8');
+    check(!svg.includes('var(--outfit-color'), `${id} keeps the colors it was drawn in`);
+    const look = { ...resolveLook(randomAppearance(undefined, 'female'), 'babyfit', 'female'), babyClothes: id };
+    for (const age of [0, 2, 3, 6]) check(dressFor(look, { age, gender: 'female' }).clothes === id, `a child of ${age} wears ${id}`);
+    check(dressFor(look, { age: 7, gender: 'female' }).clothes !== id, `a child of 7 does not wear ${id}`);
+    const out = characterAvatarSvg(look, { age: 1, gender: 'female' });
+    const use = out.match(new RegExp(`<use href="[^"]*${id}[^"]*"([^/]*)/>`));
+    // Not moved under the chin like a grown-up's outfit: at most widened about its own neckline to cover the shoulders.
+    const fit = CHILD_FIT[id];
+    check(use && (fit ? use[1].includes(`scale(${fit.sx} ${fit.sy})`) && use[1].includes(`translate(${CHILD_NECK.baby.x} ${CHILD_NECK.baby.y})`) : !/transform/.test(use[1])),
+      `${id} is drawn where it was drawn, fitted only about its neckline (${use?.[1]})`);
+    if (fit) check(fit.sx >= 1 && fit.sx <= 1.6 && fit.sy >= 1 && fit.sy <= 1.2, `${id} is fitted sensibly (${JSON.stringify(fit)})`);
+  }
 }
 
 if (problems.length) {

@@ -1,4 +1,5 @@
 // Boot and screen routing.
+import { watchTaps } from './haptics.js';
 import { store } from './state.js';
 import { renderTitle } from './ui/screens/title.js';
 import { renderCreator } from './ui/screens/creator.js';
@@ -18,6 +19,7 @@ import { watchTitles } from './ui/titles.js';
 
 watchTitles();
 applyTheme(); // Light, Dark or System (Settings → Appearance)
+watchTaps(); // a light tap under the finger for Age up, answers and main buttons (Settings → Haptics)
 
 const app = document.getElementById('app');
 

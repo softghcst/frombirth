@@ -4,7 +4,7 @@
 //  - a portrait draws hair_back behind the head and the other layers in front, from that head's own file;
 //    a clipToHead style (buzz cut, fade) is clipped to the head's skin
 //  - a style is for grown-ups unless marked for children: only then is it fitted to the kid head and worn by a child;
-//    a child whose style is a grown-up's wears another of the older styles until 13; a head not fitted gets the base head's
+//    a child whose style is a grown-up's wears another of the older styles until 14 (the kid head lasts to 13); a head not fitted gets the base head's
 //  - a fitted style can be chosen and saved, and the hairstyles given out at random are unchanged
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { FITTED_HAIR, FITTED_BASE_HEAD, FITTED_LOADED, kidsMayWear } from '../js/avatar/fittedHair.js';
@@ -57,10 +57,10 @@ for (const id of styles) {
     const name = h.file.replace(/^.*\/|\.svg$/g, '');
     const want = `hair_fitted/${id}_${FITTED_HAIR[id].heads.includes(name) ? name : FITTED_BASE_HEAD}.svg`;
     check(fittedHairFile(id, h.id) === want, `${id} on ${h.id} uses ${fittedHairFile(id, h.id)}, not ${want}`);
-    const svg = characterAvatarSvg(dressFor({ head: h.id, hair: id, eyes: 'eyes_10', eyebrows: 'brows_10', nose: 'nose_10', lips: 'lips_6', clothes: 'outfit_01_tee', makeup: [], jewelry: [], colors: { skin: '#c68642', hair: '#2b1b14' } }, { age: 30 }), { age: 30 });
+    const svg = characterAvatarSvg(dressFor({ head: h.id, hair: id, eyes: 'eyes_10', eyebrows: 'brows_10', nose: 'nose_10', lips: 'lips_6', clothes: 'outfit_57_polo_shirt', makeup: [], jewelry: [], colors: { skin: '#c68642', hair: '#2b1b14' } }, { age: 30 }), { age: 30 });
     const at = (s) => svg.indexOf(s);
     check(at(`${want}#hair_back`) > 0 && at(`${want}#hair_back`) < at(`${h.file}#art`), `${id} on ${h.id}: hair_back is not drawn behind the head`);
-    for (const layer of LAYERS.slice(1)) check(at(`${want}#${layer}`) > at('outfit_01_tee'), `${id} on ${h.id}: ${layer} is not drawn in front`);
+    for (const layer of LAYERS.slice(1)) check(at(`${want}#${layer}`) > at('outfit_57_polo_shirt'), `${id} on ${h.id}: ${layer} is not drawn in front`);
     check(!svg.includes(`${id}.svg`) && !/scale\(/.test(svg.slice(at(`${want}#hair_back`) - 120, at(`${want}#hair_back`))), `${id} on ${h.id} is moved again at run time`);
   }
   // A style marked clipToHead is drawn inside the head's skin, back and front; one that is not, is not clipped to it.
@@ -78,8 +78,8 @@ for (const id of styles) {
   const kid = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid', age: 9 });
   if (meta.kids) check(kid.includes(`hair_fitted/${id}_kid.svg#hair_back`), `a child is not drawn with ${id}_kid.svg`);
   else check(!kid.includes('hair_fitted/') && /avatars\/hair\/hair_[a-z0-9_]+\.svg/.test(kid), `a child is drawn with the grown-up style ${id}, or with no hair`);
-  const grown = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid', age: 13 });
-  check(grown.includes(`hair_fitted/${id}_dimple_oval.svg#hair_back`), `at 13 the person does not wear their own style ${id}`);
+  const grown = avatarSvg({ appearance: { v: 3, inherited: { head: 'head_17_dimple_oval', skin: 'tan' }, style: { hair: id } }, seed: 'kid', age: 14 });
+  check(grown.includes(`hair_fitted/${id}_dimple_oval.svg#hair_back`), `at 14 the person does not wear their own style ${id}`);
   check(filesFor({ head: 'head_11_pixie', hair: id, makeup: [], jewelry: [] }, { age: 30 }).includes(`./assets/hair_fitted/${id}_pixie.svg`), `the fitted file of ${id} is not preloaded`);
 }
 
@@ -167,7 +167,7 @@ for (const id of Object.keys(FITTED_HAIR).filter((x) => !FITTED_HAIR[x].legacy))
   check(fitted > 200, `only ${fitted} of 400 generated people got a fitted style`);
   const kid = (age) => avatarSvg({ appearance: { v: 3, inherited: { head: 'head_13_athletic', skin: 'tan', hairTexture: 'wavy' }, style: { hair: 'storybook_waves' } }, seed: 'kid', age, gender: 'female' });
   check(!kid(9).includes('storybook_waves') && /hair/.test(kid(9)), 'a child is drawn with a 13+ style');
-  check(kid(13).includes('hair_fitted/storybook_waves_'), 'a thirteen-year-old is not drawn with her own 13+ style');
+  check(kid(14).includes('hair_fitted/storybook_waves_'), 'at fourteen, with the grown-up head, she is drawn with her own style');
 }
 
 // 4. Older styles anchored to every adult head (assets/hair_legacy_fit.json): drawn from their fitted file on an adult

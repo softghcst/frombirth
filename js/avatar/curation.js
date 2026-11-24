@@ -146,29 +146,23 @@ export const ELDER_HAIR = { female: [], male: [] };
 
 /** Everyday outfits, by who is likelier to wear them at random. Any can be chosen by anyone. */
 /**
- * What a child of 5 to 12 wears: children's clothes, never a grown-up's (from 13, their own style). The children's
- * outfits drawn for the youngest fit the kid head too; the bib and the bear hood are left to babies.
+ * What a child of 7 to 13 (the kid head) wears: children's clothes, never a grown-up's (from 14, their own style). Empty for now:
+ * the children's clothes are being redrawn, and until they are added here a child is drawn with no outfit.
  */
-export const KID_OUTFITS = {
-  any: ['outfit_baby_02_overalls', 'outfit_baby_05_sailor_romper', 'outfit_baby_07_rainbow_sweatshirt'],
-  female: ['outfit_baby_03_peterpan_dress'],
-  male: ['outfit_baby_08_mini_tux'],
-};
+export const KID_OUTFITS = { any: [], female: [], male: [] };
 
 export const OUTFITS = {
-  any: ['outfit_01_tee', 'outfit_02_sweater', 'outfit_14_cardigan', 'outfit_17_flannel', 'outfit_18_varsity', 'outfit_21_hoodie', 'outfit_22_denim', 'outfit_24_leather',
-    'outfit_27_trackjacket', 'outfit_28_hawaiian', 'outfit_29_denim_striped', 'outfit_30_fleece', 'outfit_31_overalls', 'outfit_32_moto_jacket', 'outfit_54_denim_jacket_tee'],
-  female: ['outfit_13_offshoulder', 'outfit_15_squareknit', 'outfit_16_glamhalter', 'outfit_33_sailor_bow', 'outfit_34_wrap_blouse', 'outfit_35_peterpan_vest', 'outfit_36_floral_corset'],
-  male: ['outfit_03_suit', 'outfit_23_polo', 'outfit_25_waistcoat'],
-  baby: ['outfit_baby_01_bib_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_peterpan_dress', 'outfit_baby_04_bear_hoodie', 'outfit_baby_05_sailor_romper',
-    'outfit_baby_07_rainbow_sweatshirt', 'outfit_baby_08_mini_tux', 'outfit_04_babybib'],
+  any: ['outfit_54_denim_jacket_tee', 'outfit_55_zip_hoodie', 'outfit_56_vneck_sweater', 'outfit_57_polo_shirt', 'outfit_58_tank_top'],
+  female: ['outfit_59_lightning_sweatshirt', 'outfit_61_high_neck_top', 'outfit_62_cropped_moto_jacket'],
+  male: ['outfit_64_flannel_shirt', 'outfit_66_denim_shirt', 'outfit_67_varsity_jacket'],
+  // What a baby or toddler wears (0 to 6, one head): drawn on its template, assets/clothes_templates/baby_head_template.png.
+  baby: ['outfit_baby_01_cream_onesie', 'outfit_baby_02_overalls', 'outfit_baby_03_dot_bib', 'outfit_baby_04_bowtie_vest'],
 };
 
 /** Royal dress, by sex where the art suggests it. */
 export const ROYAL = {
-  outfits: { female: ['outfit_09_princess_gown', 'outfit_45_princess_sweetheart', 'outfit_52_princess_starlight', 'outfit_10_queen_collar', 'outfit_11_duchess_square', 'outfit_12_royal_capelet', 'outfit_05_royal'],
-    male: ['outfit_05_royal', 'outfit_20_prince_military', 'outfit_46_prince_epaulettes', 'outfit_37_emperor_ermine', 'outfit_38_fairytale_prince', 'outfit_39_royal_admiral', 'outfit_40_duke_brocade',
-      'outfit_42_imperial_tunic', 'outfit_43_noble_jabot', 'outfit_44_prince_doublet'], baby: 'outfit_baby_06_royal_baby_cape', monarch: { male: ['outfit_37_emperor_ermine', 'outfit_47_sovereign_ermine'], female: ['outfit_10_queen_collar', 'outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
+  outfits: { female: ['outfit_45_princess_sweetheart', 'outfit_52_princess_starlight'],
+    male: ['outfit_46_prince_epaulettes'], baby: null, monarch: { male: ['outfit_47_sovereign_ermine'], female: ['outfit_47_sovereign_ermine', 'outfit_51_imperial_fan_collar', 'outfit_53_imperial_ruby'] },
     // What a titled noble wears, grown up, with the coronet: a marquess, an earl or a duke alike.
     noble: { female: ['outfit_48_noble_cameo'], male: ['outfit_49_noble_cravat'] },
     // Some titles have their own dress: a duke or a duchess wears this instead.
@@ -187,10 +181,7 @@ export const CROWN_SEATS = { crown_09_sovereign: { seat: 167.6, top: 45.9 }, cro
 
 /** Work clothes the portrait wears, by career id (engine/career.js). */
 export const CAREER_DRESS = {
-  police: { outfit: null, senior: { outfit: null, level: 4 } },
-  firefighter: { outfit: null }, enlisted: { outfit: null }, officer: { outfit: null },
-  doctor: { outfit: null }, nurse: { outfit: null }, dentist: { outfit: null }, vet: { outfit: null }, pharmacist: { outfit: null }, scientist: { outfit: null },
-  lawyer: { outfit: null }, banker: { outfit: null }, accountant: { outfit: null }, political_staff: { outfit: null },
+  // The work uniforms (police, firefighter, military, doctor, suit) are being redrawn: until then, people wear their own clothes at work.
 };
 /**
  * Baby hair, for babies and toddlers: made for each young head from its own outline (scripts/make_baby_hair.py),
@@ -202,11 +193,11 @@ export const BABY_HAIR = { styles: ['fuzz', 'wisps', 'curl', 'curls', 'fringe'],
 /** A baby hair id ('babyhair_fuzz') -> its style ('fuzz'), or null for any other hair. */
 export const babyHairStyle = (id) => (typeof id === 'string' && id.startsWith('babyhair_') && BABY_HAIR.styles.includes(id.slice(9)) ? id.slice(9) : null);
 
-/** Babies and toddlers (under 5) have a binkie in place of a mouth: blue for a boy, pink for a girl (the portrait sets --binkie-color). */
+/** A baby (under 3) has a binky in place of a mouth: blue for a boy, pink for a girl (the portrait sets --binkie-color). */
 export const PACIFIER = { id: 'pacifier_01', boy: '#5aa7f0', girl: '#f48cc4' };
-/** What a prisoner wears, and a graduate: null until there are clothes for them. */
+/** What a prisoner wears: being redrawn; until then, their own clothes. */
 export const PRISON = null;
-export const GRADUATION = { outfit: null };
+export const GRADUATION = { outfit: null }; // the gown is being redrawn
 
 /**
  * Hairstyles that hide an eye or much of the face (measured: see README). Nobody is given one
