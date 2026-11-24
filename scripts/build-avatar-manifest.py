@@ -37,7 +37,7 @@ ASSETS = os.path.join(ASSETS_ROOT, 'avatars')
 # Head shapes live on their own in assets/heads/ (shared with the hair-warping pipeline) under clean names.
 # Saves store each head by its id, so the ids stay what they were: HEAD_IDS maps file name -> id.
 HEADS = os.path.join(ASSETS_ROOT, 'heads')
-HEAD_IDS = {'baby': 'head_00_baby', 'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
+HEAD_IDS = {'toddler': 'head_00_toddler', 'kid': 'head_00_kid',
             'pixie': 'head_11_pixie', 'sculpted': 'head_12_sculpted', 'athletic': 'head_13_athletic', 'almond': 'head_14_almond',
             'cherubic': 'head_15_cherubic', 'angular': 'head_16_angular', 'dimple_oval': 'head_17_dimple_oval'}
 SHARED_BODY = 'dimple_oval'  # whose neck and shoulders the adult heads share (scripts/unify_head_necks.mjs: BASE)

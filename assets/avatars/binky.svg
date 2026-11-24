@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-pathways="1"><g id="art">
+<!-- A baby's binky, worn in place of the mouth until 3 (js/CharacterAvatar.js: BINKY_UNTIL). Drawn on the template
+     face, centred on the mouth (256, 386), like the lips it replaces. -->
+<path fill="#a9d8ec" stroke="#23140f" stroke-width="4" stroke-linejoin="round" d="M256 371C268 362 289 360 299 368C308 375 306 389 300 396C293 405 276 408 266 404C262 402.5 259 402 256 402C253 402 250 402.5 246 404C236 408 219 405 212 396C206 389 204 375 213 368C223 360 244 362 256 371Z"/>
+<path fill="none" stroke="#ffffff" stroke-opacity="0.65" stroke-width="3" stroke-linecap="round" d="M220 374C226 369 236 368 243 371"/>
+<circle cx="256" cy="402" r="13" fill="none" stroke="#23140f" stroke-width="10"/>
+<circle cx="256" cy="402" r="13" fill="none" stroke="#f3a9c6" stroke-width="5"/>
+<circle cx="256" cy="386" r="9" fill="#fdf6ec" stroke="#23140f" stroke-width="4"/>
+</g></svg>

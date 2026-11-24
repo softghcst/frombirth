@@ -70,9 +70,12 @@ const HAT_LINE = 262;
 const BULKY_HAT_LINE = 316;
 
 /** The stage of life a portrait shows. */
-/** Which head a person has: baby 0-3, toddler 4-6, kid 7-13, then the grown-up heads. */
+/**
+ * The stages of a face. Babies (0-2) and toddlers (3-6) share one head; a baby has a binky for a mouth and a baby's
+ * hair, a toddler a mouth and a child's hairstyle. Kids (7-13) have the kid head; the grown-up heads come at 14.
+ */
 export function ageStage(age = 25) {
-  if (age < 4) return 'baby';
+  if (age < 3) return 'baby';
   if (age < 7) return 'toddler';
   if (age < 14) return 'kid';
   if (age < 50) return 'adult';
@@ -87,7 +90,9 @@ export function ageStage(age = 25) {
 const CROWN = { seat: 176, height: 132, dip: 36, lift: 34, scale: { baby: 0.9, toddler: 1, kid: 1.15, adult: 1.3, older: 1.3 } };
 /** Make-up and lipstick are worn from this age (the editor offers them from it too). */
 export const MAKEUP_AGE = 16;
-const STAGE_HEAD = { baby: 'head_00_baby', toddler: 'head_00_toddler', kid: 'head_00_kid' };
+const STAGE_HEAD = { baby: 'head_00_toddler', toddler: 'head_00_toddler', kid: 'head_00_kid' };
+/** A baby's binky, drawn in place of the mouth (ageStage 'baby': under 3). */
+const BINKY = `${AVATAR_BASE}avatars/binky.svg`;
 
 /** Lines that come with age, from fifty on. */
 const AGING = [[55, 'aging_01_smile_lines'], [66, 'aging_02_crows_feet'], [78, 'aging_03_forehead_lines']];
@@ -104,8 +109,10 @@ export function dressFor(look, ctx = {}) {
   const out = { ...look, makeup: [...(look.makeup ?? [])], jewelry: [...(look.jewelry ?? [])], aging: [] };
   out.head = STAGE_HEAD[stage] ?? look.head;
   const young = stage === 'baby' || stage === 'toddler';
+  out.binky = stage === 'baby';
   if (young) {
-    out.hair = look.babyHair ?? null;
+    // A baby has a baby's hair; from 3, a child's hairstyle (a grown-up's waits until 14, as for a kid).
+    out.hair = stage === 'baby' ? look.babyHair ?? null : out.hair && !kidsMayWear(out.hair) ? look.kidHair ?? null : out.hair;
     out.makeup = (look.marks ?? []).filter((m) => /freckle/.test(m));
     out.jewelry = []; out.glasses = null; out.hat = null;
     out.eyebrows = BABY_BROWS;
@@ -367,7 +374,7 @@ export function characterAvatarSvg(look, ctx = {}, opts = {}) {
     d.aging.length ? `<g clip-path="url(#pw-face-${n})">${d.aging.map((a) => use(a, `${f.aging ?? ''} opacity=".38"`)).join('')}</g>` : '',
     pair(d.eyes, f.eyesL, f.eyesR, weigh(READABLE.line)), use(d.eyebrows, `${f.eyebrows ?? ''}${rim(READABLE.edge)}`),
     use(d.nose, `${f.nose ?? ''}${deep ? ` style="--line-ink:${READABLE.noseInk};--line-width:${n1(READABLE.nose * deep)}"` : ''}`),
-    use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
+    d.binky ? `<use href="${BINKY}#art"${f.lips ?? ''}/>` : use(d.lips, `${f.lips ?? ''}${weigh(READABLE.line * 0.6)}`),
     use(d.clothes, f.clothes),
     necklaces.map((j) => use(j, f.necklace)).join(''),
     d.hair ? hairLayer(`pw-front-${n}`) : '',
@@ -414,6 +421,6 @@ export class CharacterAvatar {
 export function filesFor(look, ctx = {}) {
   const d = dressFor(look, ctx);
   const fitted = d.hair ? fittedHairFile(d.hair, d.head) : null;
-  return [...(fitted ? [`${AVATAR_BASE}${fitted}`] : []), ...[d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.lips, d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
+  return [...(fitted ? [`${AVATAR_BASE}${fitted}`] : []), ...(d.binky ? [BINKY] : []), ...[d.hair, d.head, ...d.makeup, ...d.aging, d.eyes, d.eyebrows, d.nose, d.lips, d.clothes, ...d.jewelry, d.glasses, d.hat, d.crown, d.emotion]
     .filter((id) => id && PART_BY_ID[id]).map((id) => `${AVATAR_BASE}${PART_BY_ID[id].file}`)];
 }
